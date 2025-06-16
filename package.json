@@ -1,0 +1,66 @@
+{
+  "name": "@midnight-ntwrk/midnight-js",
+  "description": "Midnight application development framework",
+  "version": "2.0.2",
+  "packageManager": "yarn@4.9.1",
+  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "clean": "turbo run clean",
+    "build": "turbo run build",
+    "clean-build": "turbo run clean-build",
+    "test": "turbo run test",
+    "it": "turbo run it",
+    "it-latest": "turbo run it-latest",
+    "it-groups": "turbo run it-groups",
+    "check": "turbo run check && yarn lint",
+    "deploy": "turbo run deploy",
+    "build:markdown-docs": "typedoc --validation --plugin typedoc-plugin-markdown --options typedoc.json",
+    "lint": "eslint ./packages --ext .ts",
+    "lint:fix": "NODE_OPTIONS=--max-old-space-size=16192 eslint ./packages --ext .ts --fix"
+  },
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@midnight-ntwrk/compact-runtime": "0.8.1",
+    "@midnight-ntwrk/ledger": "4.0.0",
+    "@midnight-ntwrk/wallet-sdk-address-format": "2.0.0",
+    "@midnight-ntwrk/zswap": "4.0.0"
+  },
+  "devDependencies": {
+    "@d2t/vitest-ctrf-json-reporter": "^1.1.0",
+    "@midnight-ntwrk/wallet": "5.0.0",
+    "@midnight-ntwrk/wallet-api": "5.0.0",
+    "@midnight-ntwrk/wallet-sdk-hd": "2.0.0",
+    "@rollup/plugin-commonjs": "^28.0.1",
+    "@rollup/plugin-node-resolve": "^16.0.0",
+    "@rollup/plugin-typescript": "^12.1.1",
+    "@tsconfig/node22": "^22.0.0",
+    "@types/node": "^22.14.0",
+    "@typescript-eslint/eslint-plugin": "^8.27.0",
+    "@typescript-eslint/parser": "^8.27.0",
+    "@vitest/coverage-v8": "^3.1.4",
+    "@vitest/ui": "^3.1.4",
+    "eslint": "^8.57.1",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-import-resolver-typescript": "^3.6.3",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "jsdom": "^26.1.0",
+    "prettier": "^3.4.2",
+    "rollup": "^4.37.0",
+    "rxjs": "^7.8.1",
+    "testcontainers": "^11.0.3",
+    "ts-node": "^10.9.2",
+    "turbo": "^2.5.0",
+    "typedoc": "^0.28.1",
+    "typedoc-plugin-markdown": "4.6.1",
+    "typescript": "^5.8.2",
+    "vitest": "^3.1.4"
+  }
+}

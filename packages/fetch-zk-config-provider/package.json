@@ -1,0 +1,36 @@
+{
+  "name": "@midnight-ntwrk/midnight-js-fetch-zk-config-provider",
+  "version": "2.0.2",
+  "description": "MidnightJS module for retrieving proving and verifying keys and ZK intermediate representation",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "packageManager": "yarn@4.9.1",
+  "author": "IOHK",
+  "license": "Apache-2.0",
+  "scripts": {
+    "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
+    "build": "rollup -c rollup.config.mjs",
+    "test": "vitest run",
+    "deploy": "yarn npm publish"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/midnight-js-types": "workspace:*",
+    "cross-fetch": "^4.0.0"
+  },
+  "files": [
+    "dist/"
+  ],
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "express": "^5.0.0"
+  }
+}

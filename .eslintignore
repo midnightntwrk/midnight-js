@@ -1,0 +1,12 @@
+node_modules/
+dist/
+*.tsbuildinfo
+result
+.direnv/
+.idea/
+.env
+*.log
+coverage/
+*jest.config.js
+**/*.js
+**gen

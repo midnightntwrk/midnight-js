@@ -1,0 +1,36 @@
+{
+  "name": "@midnight-ntwrk/midnight-js-contracts",
+  "version": "2.0.2",
+  "description": "MidnightJS module for interacting with contracts",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "packageManager": "yarn@4.9.1",
+  "author": "IOHK",
+  "license": "Apache-2.0",
+  "scripts": {
+    "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
+    "build": "rollup -c rollup.config.mjs",
+    "test": "vitest run",
+    "deploy": "yarn npm publish"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
+    "@midnight-ntwrk/midnight-js-types": "workspace:*",
+    "@midnight-ntwrk/midnight-js-utils": "workspace:*"
+  },
+  "files": [
+    "dist/"
+  ],
+  "devDependencies": {
+    "@fast-check/vitest": "^0.2.1"
+  }
+}

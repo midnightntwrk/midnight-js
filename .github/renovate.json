@@ -1,0 +1,38 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:best-practices", "schedule:weekly", ":disableRateLimiting"],
+  "dependencyDashboard": true,
+  "semanticCommits": "enabled",
+  "rebaseWhen": "conflicted",
+  "enabled": true,
+  "ignoreDeps": ["actions/checkout"],
+  "hostRules": [
+    {
+      "hostType": "npm",
+      "matchHost": "https://npm.pkg.github.com/",
+      "npmrc": "@midnight-ntwrk:registry=https://npm.pkg.github.com/"
+    }
+  ],
+  "packageRules": [
+    {
+      "matchManagers": ["npm"],
+      "enabled": true
+    },
+    {
+      "groupName": "Midnight libraries and docker images",
+      "matchPackageNames": [
+        "@midnight-ntwrk/**",
+        "ghcr.io/midnight-ntwrk/**"
+      ]
+    },
+    {
+      "groupName": "devDependencies (non-major)",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["patch", "minor"]
+    },
+    {
+      "groupName": "eslint packages",
+      "matchPackageNames": ["eslint**"]
+    }
+  ]
+}

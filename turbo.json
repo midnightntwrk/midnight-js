@@ -1,0 +1,54 @@
+{
+  "$schema": "https://turbo.build/schema.v2.json",
+  "envMode": "loose",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputLogs": "new-only",
+      "inputs": ["src/**/*.ts", "!src/**/*.test.ts", "src/**/*.compact"],
+      "outputs": ["dist/**", "src/**/managed/**"]
+    },
+    "clean": {
+      "cache": false
+    },
+    "clean-build": {
+      "cache": false,
+      "dependsOn": [
+        "clean",
+        "build"
+      ]
+    },
+    "test": {
+      "outputLogs": "new-only",
+      "dependsOn": ["^build"],
+      "inputs": ["src/**/*.ts", "compose.yml"],
+      "outputs": ["reports/**", "coverage/**", "logs/**"]
+    },
+    "it": {
+      "outputLogs": "new-only",
+      "dependsOn": ["^build"],
+      "inputs": ["src/**/*.ts", "compose.yml"],
+      "outputs": ["reports/**", "coverage/**", "logs/**"]
+    },
+    "it-latest": {
+      "outputLogs": "new-only",
+      "dependsOn": ["^build"],
+      "inputs": ["src/**/*.ts", "compose.yml"],
+      "outputs": ["reports/**", "coverage/**", "logs/**"]
+    },
+    "it-groups": {
+      "outputLogs": "new-only",
+      "dependsOn": ["^build"],
+      "inputs": ["src/**/*.ts", "compose.yml"],
+      "outputs": ["reports/**", "coverage/**", "logs/**"]
+    },
+    "check": {
+      "outputLogs": "new-only",
+      "dependsOn": ["build", "test"]
+    },
+    "deploy": {
+      "cache": false,
+      "dependsOn": ["build"]
+    }
+  }
+}

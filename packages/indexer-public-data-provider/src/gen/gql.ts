@@ -1,0 +1,108 @@
+// This file is part of MIDNIGHT-JS.
+// Copyright (C) 2025 Midnight Foundation
+// SPDX-License-Identifier: Apache-2.0
+// Licensed under the Apache License, Version 2.0 (the "License");
+// You may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+/* eslint-disable */
+import * as types from './graphql';
+import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core';
+
+/**
+ * Map of all GraphQL operations in the project.
+ *
+ * This map has several performance disadvantages:
+ * 1. It is not tree-shakeable, so it will include all operations in the project.
+ * 2. It is not minifiable, so the string of a GraphQL query will be multiple times inside the bundle.
+ * 3. It does not support dead code elimination, so it will add unused operations.
+ *
+ * Therefore it is highly recommended to use the babel or swc plugin for production.
+ * Learn more about it here: https://the-guild.dev/graphql/codegen/plugins/presets/preset-client#reducing-bundle-size
+ */
+type Documents = {
+    "\n  query BLOCK_HASH_QUERY($offset: BlockOffset) {\n    block(offset: $offset) {\n      height\n      hash\n    }\n  }": typeof types.BlockHashQueryDocument,
+    "\n  query TX_ID_QUERY($offset: TransactionOffset!) {\n    transactions(offset: $offset) {\n      raw\n      applyStage\n      hash\n      block {\n        height\n        hash\n      }\n    }\n  }": typeof types.TxIdQueryDocument,
+    "\n  query DEPLOY_TX_QUERY($address: HexEncoded!) {\n    contractAction(address: $address) {\n      ... on ContractDeploy {\n        transaction {\n\t        raw\n          applyStage\n          hash\n          identifiers\n          contractActions {\n            address\n          }\n          block {\n            height\n            hash\n          }\n        }\n      }\n      ... on ContractUpdate {\n        transaction {\n\t        raw\n          applyStage\n          hash\n          identifiers\n          contractActions {\n            address\n          }\n          block {\n            height\n            hash\n          }\n        }\n      }\n      ... on ContractCall {\n        deploy {\n          transaction {\n\t          raw\n            applyStage\n            hash\n            identifiers\n            contractActions {\n              address\n            }\n            block {\n              height\n              hash\n            }\n          }\n        }\n      }\n    }\n  }": typeof types.DeployTxQueryDocument,
+    "\n  query DEPLOY_CONTRACT_STATE_TX_QUERY($address: HexEncoded!) {\n    contractAction(address: $address) {\n      ... on ContractDeploy {\n        state\n      }\n      ... on ContractUpdate {\n        state\n      }\n      ... on ContractCall {\n        deploy {\n          transaction {\n            contractActions {\n              address\n              state\n            }\n          }\n        }\n      }\n    }\n  }": typeof types.DeployContractStateTxQueryDocument,
+    "\n  query LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY($address: HexEncoded!) {\n    contractAction(address: $address) {\n      transaction {\n        block {\n          height\n        }\n      }\n    }\n  }": typeof types.LatestContractTxBlockHeightQueryDocument,
+    "\n  subscription TXS_FROM_BLOCK_SUB($offset: BlockOffset) {\n    blocks(offset: $offset) {\n      hash,\n      height,\n      transactions {\n        hash\n        identifiers\n        contractActions {\n          state\n          address\n        }\n      }\n    }\n  }": typeof types.TxsFromBlockSubDocument,
+    "\n  query CONTRACT_STATE_QUERY($address: HexEncoded!, $offset: ContractActionOffset) {\n    contractAction(address: $address, offset: $offset) {\n      state\n    }\n  }": typeof types.ContractStateQueryDocument,
+    "\n  subscription CONTRACT_STATE_SUB($address: HexEncoded!, $offset: BlockOffset) {\n    contractActions(address: $address, offset: $offset) {\n      state\n    }\n  }": typeof types.ContractStateSubDocument,
+    "\n  query BOTH_STATE_QUERY($address: HexEncoded!, $offset: ContractActionOffset) {\n    contractAction(address: $address, offset: $offset) {\n      state\n      chainState\n    }\n  }": typeof types.BothStateQueryDocument,
+};
+const documents: Documents = {
+    "\n  query BLOCK_HASH_QUERY($offset: BlockOffset) {\n    block(offset: $offset) {\n      height\n      hash\n    }\n  }": types.BlockHashQueryDocument,
+    "\n  query TX_ID_QUERY($offset: TransactionOffset!) {\n    transactions(offset: $offset) {\n      raw\n      applyStage\n      hash\n      block {\n        height\n        hash\n      }\n    }\n  }": types.TxIdQueryDocument,
+    "\n  query DEPLOY_TX_QUERY($address: HexEncoded!) {\n    contractAction(address: $address) {\n      ... on ContractDeploy {\n        transaction {\n\t        raw\n          applyStage\n          hash\n          identifiers\n          contractActions {\n            address\n          }\n          block {\n            height\n            hash\n          }\n        }\n      }\n      ... on ContractUpdate {\n        transaction {\n\t        raw\n          applyStage\n          hash\n          identifiers\n          contractActions {\n            address\n          }\n          block {\n            height\n            hash\n          }\n        }\n      }\n      ... on ContractCall {\n        deploy {\n          transaction {\n\t          raw\n            applyStage\n            hash\n            identifiers\n            contractActions {\n              address\n            }\n            block {\n              height\n              hash\n            }\n          }\n        }\n      }\n    }\n  }": types.DeployTxQueryDocument,
+    "\n  query DEPLOY_CONTRACT_STATE_TX_QUERY($address: HexEncoded!) {\n    contractAction(address: $address) {\n      ... on ContractDeploy {\n        state\n      }\n      ... on ContractUpdate {\n        state\n      }\n      ... on ContractCall {\n        deploy {\n          transaction {\n            contractActions {\n              address\n              state\n            }\n          }\n        }\n      }\n    }\n  }": types.DeployContractStateTxQueryDocument,
+    "\n  query LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY($address: HexEncoded!) {\n    contractAction(address: $address) {\n      transaction {\n        block {\n          height\n        }\n      }\n    }\n  }": types.LatestContractTxBlockHeightQueryDocument,
+    "\n  subscription TXS_FROM_BLOCK_SUB($offset: BlockOffset) {\n    blocks(offset: $offset) {\n      hash,\n      height,\n      transactions {\n        hash\n        identifiers\n        contractActions {\n          state\n          address\n        }\n      }\n    }\n  }": types.TxsFromBlockSubDocument,
+    "\n  query CONTRACT_STATE_QUERY($address: HexEncoded!, $offset: ContractActionOffset) {\n    contractAction(address: $address, offset: $offset) {\n      state\n    }\n  }": types.ContractStateQueryDocument,
+    "\n  subscription CONTRACT_STATE_SUB($address: HexEncoded!, $offset: BlockOffset) {\n    contractActions(address: $address, offset: $offset) {\n      state\n    }\n  }": types.ContractStateSubDocument,
+    "\n  query BOTH_STATE_QUERY($address: HexEncoded!, $offset: ContractActionOffset) {\n    contractAction(address: $address, offset: $offset) {\n      state\n      chainState\n    }\n  }": types.BothStateQueryDocument,
+};
+
+/**
+ * The gql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ *
+ *
+ * @example
+ * ```ts
+ * const query = gql(`query GetUser($id: ID!) { user(id: $id) { name } }`);
+ * ```
+ *
+ * The query argument is unknown!
+ * Please regenerate the types.
+ */
+export function gql(source: string): unknown;
+
+/**
+ * The gql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function gql(source: "\n  query BLOCK_HASH_QUERY($offset: BlockOffset) {\n    block(offset: $offset) {\n      height\n      hash\n    }\n  }"): (typeof documents)["\n  query BLOCK_HASH_QUERY($offset: BlockOffset) {\n    block(offset: $offset) {\n      height\n      hash\n    }\n  }"];
+/**
+ * The gql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function gql(source: "\n  query TX_ID_QUERY($offset: TransactionOffset!) {\n    transactions(offset: $offset) {\n      raw\n      applyStage\n      hash\n      block {\n        height\n        hash\n      }\n    }\n  }"): (typeof documents)["\n  query TX_ID_QUERY($offset: TransactionOffset!) {\n    transactions(offset: $offset) {\n      raw\n      applyStage\n      hash\n      block {\n        height\n        hash\n      }\n    }\n  }"];
+/**
+ * The gql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function gql(source: "\n  query DEPLOY_TX_QUERY($address: HexEncoded!) {\n    contractAction(address: $address) {\n      ... on ContractDeploy {\n        transaction {\n\t        raw\n          applyStage\n          hash\n          identifiers\n          contractActions {\n            address\n          }\n          block {\n            height\n            hash\n          }\n        }\n      }\n      ... on ContractUpdate {\n        transaction {\n\t        raw\n          applyStage\n          hash\n          identifiers\n          contractActions {\n            address\n          }\n          block {\n            height\n            hash\n          }\n        }\n      }\n      ... on ContractCall {\n        deploy {\n          transaction {\n\t          raw\n            applyStage\n            hash\n            identifiers\n            contractActions {\n              address\n            }\n            block {\n              height\n              hash\n            }\n          }\n        }\n      }\n    }\n  }"): (typeof documents)["\n  query DEPLOY_TX_QUERY($address: HexEncoded!) {\n    contractAction(address: $address) {\n      ... on ContractDeploy {\n        transaction {\n\t        raw\n          applyStage\n          hash\n          identifiers\n          contractActions {\n            address\n          }\n          block {\n            height\n            hash\n          }\n        }\n      }\n      ... on ContractUpdate {\n        transaction {\n\t        raw\n          applyStage\n          hash\n          identifiers\n          contractActions {\n            address\n          }\n          block {\n            height\n            hash\n          }\n        }\n      }\n      ... on ContractCall {\n        deploy {\n          transaction {\n\t          raw\n            applyStage\n            hash\n            identifiers\n            contractActions {\n              address\n            }\n            block {\n              height\n              hash\n            }\n          }\n        }\n      }\n    }\n  }"];
+/**
+ * The gql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function gql(source: "\n  query DEPLOY_CONTRACT_STATE_TX_QUERY($address: HexEncoded!) {\n    contractAction(address: $address) {\n      ... on ContractDeploy {\n        state\n      }\n      ... on ContractUpdate {\n        state\n      }\n      ... on ContractCall {\n        deploy {\n          transaction {\n            contractActions {\n              address\n              state\n            }\n          }\n        }\n      }\n    }\n  }"): (typeof documents)["\n  query DEPLOY_CONTRACT_STATE_TX_QUERY($address: HexEncoded!) {\n    contractAction(address: $address) {\n      ... on ContractDeploy {\n        state\n      }\n      ... on ContractUpdate {\n        state\n      }\n      ... on ContractCall {\n        deploy {\n          transaction {\n            contractActions {\n              address\n              state\n            }\n          }\n        }\n      }\n    }\n  }"];
+/**
+ * The gql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function gql(source: "\n  query LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY($address: HexEncoded!) {\n    contractAction(address: $address) {\n      transaction {\n        block {\n          height\n        }\n      }\n    }\n  }"): (typeof documents)["\n  query LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY($address: HexEncoded!) {\n    contractAction(address: $address) {\n      transaction {\n        block {\n          height\n        }\n      }\n    }\n  }"];
+/**
+ * The gql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function gql(source: "\n  subscription TXS_FROM_BLOCK_SUB($offset: BlockOffset) {\n    blocks(offset: $offset) {\n      hash,\n      height,\n      transactions {\n        hash\n        identifiers\n        contractActions {\n          state\n          address\n        }\n      }\n    }\n  }"): (typeof documents)["\n  subscription TXS_FROM_BLOCK_SUB($offset: BlockOffset) {\n    blocks(offset: $offset) {\n      hash,\n      height,\n      transactions {\n        hash\n        identifiers\n        contractActions {\n          state\n          address\n        }\n      }\n    }\n  }"];
+/**
+ * The gql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function gql(source: "\n  query CONTRACT_STATE_QUERY($address: HexEncoded!, $offset: ContractActionOffset) {\n    contractAction(address: $address, offset: $offset) {\n      state\n    }\n  }"): (typeof documents)["\n  query CONTRACT_STATE_QUERY($address: HexEncoded!, $offset: ContractActionOffset) {\n    contractAction(address: $address, offset: $offset) {\n      state\n    }\n  }"];
+/**
+ * The gql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function gql(source: "\n  subscription CONTRACT_STATE_SUB($address: HexEncoded!, $offset: BlockOffset) {\n    contractActions(address: $address, offset: $offset) {\n      state\n    }\n  }"): (typeof documents)["\n  subscription CONTRACT_STATE_SUB($address: HexEncoded!, $offset: BlockOffset) {\n    contractActions(address: $address, offset: $offset) {\n      state\n    }\n  }"];
+/**
+ * The gql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function gql(source: "\n  query BOTH_STATE_QUERY($address: HexEncoded!, $offset: ContractActionOffset) {\n    contractAction(address: $address, offset: $offset) {\n      state\n      chainState\n    }\n  }"): (typeof documents)["\n  query BOTH_STATE_QUERY($address: HexEncoded!, $offset: ContractActionOffset) {\n    contractAction(address: $address, offset: $offset) {\n      state\n      chainState\n    }\n  }"];
+
+export function gql(source: string) {
+  return (documents as any)[source] ?? {};
+}
+
+export type DocumentType<TDocumentNode extends DocumentNode<any, any>> = TDocumentNode extends DocumentNode<  infer TType,  any>  ? TType  : never;

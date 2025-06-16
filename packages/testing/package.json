@@ -1,0 +1,41 @@
+{
+  "name": "@midnight-ntwrk/midnight-js-testing",
+  "version": "2.0.2",
+  "description": "Testing utilities for MidnightJS and beyond",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "packageManager": "yarn@4.9.1",
+  "author": "IOHK",
+  "license": "Apache-2.0",
+  "scripts": {
+    "clean": "rm -rf dist reports coverage logs",
+    "build": "rollup -c rollup.config.mjs",
+    "test": "yarn it",
+    "ut": "DEBUG='testcontainers:compose' NODE_OPTIONS=--experimental-vm-modules vitest --config vitest.ut.config.ts run",
+    "it": "DEBUG='testcontainers:compose' NODE_OPTIONS=--experimental-vm-modules vitest --config vitest.it.config.ts run",
+    "deploy": "yarn npm publish"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
+    "@midnight-ntwrk/midnight-js-types": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.0",
+    "axios": "^1.7.4",
+    "pino": "^9.5.0",
+    "pino-pretty": "^13.0.0",
+    "rxjs": "^7.8.1"
+  },
+  "files": [
+    "dist/"
+  ]
+}

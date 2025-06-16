@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "esModuleInterop": true,
+    "strictPropertyInitialization": false,
+    "types": ["vitest/globals"]
+  },
+  "include": [
+    "vitest.config.ts",
+    "./src/**/*.ts"
+  ]
+}

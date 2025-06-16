@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "esModuleInterop": true,
+    "strictPropertyInitialization": false,
+    "declaration": true,
+    "declarationMap": false,
+    "declarationDir": "./dist"
+  },
+  "include": [
+    "*.ts",
+    "./src/**/*"
+  ]
+}

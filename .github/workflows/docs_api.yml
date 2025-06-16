@@ -1,0 +1,108 @@
+name: Publish updated API documentation
+env:
+  MIDNIGHTBOT_PACKAGES_WRITE: ${{ secrets.MIDNIGHTBOT_PACKAGES_WRITE }}
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Setup api.github.com credentials
+        uses: extractions/netrc@f6f1722d05ce2890aa86fd9654565b1214ac53a4 # ratchet:extractions/netrc@v2
+        with:
+          machine: api.github.com
+          username: ${{ secrets.GH_USERNAME }}
+          password: ${{ secrets.GH_PASSWORD }}
+
+      - name: Setup github.com credentials
+        uses: extractions/netrc@f6f1722d05ce2890aa86fd9654565b1214ac53a4 # ratchet:extractions/netrc@v2
+        with:
+          machine: github.com
+          username: ${{ secrets.GH_USERNAME }}
+          password: ${{ secrets.GH_PASSWORD }}
+
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # ratchet:actions/checkout@v4
+
+      - name: Load environment variables
+        run: |
+          export $(grep -v '^#' .github/env/global.env | xargs)
+          for var in $(cut -d= -f1 .github/env/global.env); do
+            echo "$var=${!var}" >> $GITHUB_ENV
+          done
+
+      - name: Set up Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # ratchet:actions/setup-node@v4
+        with:
+          always-auth: true
+          registry-url: https://npm.pkg.github.com/
+          scope: '@midnight-ntwrk'
+          node-version-file: '.nvmrc'
+          cache: 'yarn'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTBOT_PACKAGES_WRITE }}
+
+      - name: Cache Turbo and Yarn dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            **/node_modules
+            ~/.yarn
+            .turbo
+          key: turbo-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+
+      - name: Configure yarn
+        run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' "$MIDNIGHTBOT_PACKAGES_WRITE"
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Build the project
+        run: yarn build --cache-dir ./turbo
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTBOT_PACKAGES_WRITE }}
+
+      - name: Generate documentation
+        run: yarn run build:markdown-docs
+
+      - name: Check if there are changes in docs and create a new branch
+        id: set_update
+        run: |
+          if [ -n "$(git status ./docs --porcelain)" ]; then
+            echo "Adding new..."
+            git config --global user.email "midnight-ci@users.noreply.github.com"
+            git config --global user.name "Midnight CI GitHub Action"
+            BRANCH=api-docs/merge-prs/`date +'%Y-%m-%dT%H%M%S'`
+            git checkout -b $BRANCH
+            git push -u origin $BRANCH
+            echo "UPDATE=true" >> $GITHUB_OUTPUT
+            echo "NEW_BRANCH=$BRANCH" >> $GITHUB_OUTPUT
+          else
+            echo "Nothing to update"
+            echo "UPDATE=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - uses: MonikaJassova/ghcommit-action@aee0efc02d3707e178c534477e5c87f70fe6678f
+        if: steps.set_update.outputs.UPDATE == 'true'
+        with:
+          commit_message: "Midnight JS API documentation update - created by Midnight CI Github Action"
+          repo: ${{ github.repository }}
+          branch: ${{ steps.set_update.outputs.NEW_BRANCH }}
+          file_pattern: 'docs *.md'
+        env:
+          GITHUB_TOKEN: ${{secrets.GH_TOKEN}}
+
+      - name: Open a PR
+        if: steps.set_update.outputs.UPDATE == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: gh pr create --base main --head ${{ steps.set_update.outputs.NEW_BRANCH }} --title "API documentation update" --body "Update API documentation - created by Midnight CI Github Action"
