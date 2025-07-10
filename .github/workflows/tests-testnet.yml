@@ -1,0 +1,15 @@
+name: Nightly - testnet
+
+on:
+  workflow_dispatch:
+
+jobs:
+  testnet:
+    uses: ./.github/workflows/ci_base.yml
+    with:
+      network: testnet
+      allure_upload: true
+      allure_project_id: midnight-js-testnet
+      yarn_it: 'yarn it --cache-dir ./turbo --force'
+      build_timeout: 180
+    secrets: inherit

@@ -1,0 +1,5 @@
+src/e2e/
+src/test/
+dist/counter.*
+dist/contract/
+dist/e2e/

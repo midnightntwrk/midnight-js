@@ -1,0 +1,49 @@
+{
+  "name": "@midnight-ntwrk/midnight-js-indexer-public-data-provider",
+  "version": "2.0.2",
+  "description": "Implementation of public data provider based on the Midnight Pub-sub indexer",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "packageManager": "yarn@4.9.2",
+  "author": "IOHK",
+  "license": "Apache-2.0",
+  "scripts": {
+    "gen": "graphql-codegen",
+    "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache",
+    "build": "rollup -c rollup.config.mjs",
+    "test": "vitest run",
+    "deploy": "yarn npm publish"
+  },
+  "dependencies": {
+    "@apollo/client": "^3.13.8",
+    "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
+    "@midnight-ntwrk/midnight-js-types": "workspace:*",
+    "buffer": "^6.0.3",
+    "cross-fetch": "^4.0.0",
+    "graphql": "^16.8.0",
+    "graphql-ws": "^6.0.0",
+    "isomorphic-ws": "^5.0.0",
+    "rxjs": "^7.5.0",
+    "ws": "^8.14.2",
+    "zen-observable-ts": "^1.1.0"
+  },
+  "devDependencies": {
+    "@graphql-codegen/cli": "^5.0.5",
+    "@graphql-codegen/client-preset": "^4.7.0",
+    "@graphql-codegen/typescript": "^4.1.2",
+    "@graphql-codegen/typescript-operations": "^4.4.0",
+    "@types/ws": "^8.18.0"
+  },
+  "files": [
+    "dist/"
+  ]
+}

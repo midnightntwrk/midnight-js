@@ -1,0 +1,13 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "includeVersion": true,
+  "disableSources": true,
+  "hideGenerator": true,
+  "categoryOrder": ["Class", "Interface", "Enum", "Function", "Variable", "*"],
+  "categorizeByGroup": true,
+  "hideBreadcrumbs": true,
+  "hidePageTitle": true,
+  "excludePrivate": true,
+  "excludeProtected": true,
+  "excludeExternals": true
+}

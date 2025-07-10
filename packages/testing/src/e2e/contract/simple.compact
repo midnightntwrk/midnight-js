@@ -1,0 +1,7 @@
+include "std";
+
+export ledger round: Counter;
+
+export circuit noop(): [] {
+  round.increment(1);
+}

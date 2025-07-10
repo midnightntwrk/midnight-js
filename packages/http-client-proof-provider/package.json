@@ -1,0 +1,39 @@
+{
+  "name": "@midnight-ntwrk/midnight-js-http-client-proof-provider",
+  "version": "2.0.2",
+  "description": "Implementation of proof provider based on the Midnight ledger proof server",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "packageManager": "yarn@4.9.2",
+  "author": "IOHK",
+  "license": "Apache-2.0",
+  "scripts": {
+    "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage logs",
+    "build": "rollup -c rollup.config.mjs",
+    "test": "vitest run",
+    "deploy": "yarn npm publish"
+  },
+  "files": [
+    "dist/"
+  ],
+  "dependencies": {
+    "@dao-xyz/borsh": "^5.1.5",
+    "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
+    "@midnight-ntwrk/midnight-js-types": "workspace:*",
+    "cross-fetch": "^4.0.0",
+    "fetch-retry": "^6.0.0",
+    "lodash": "^4.17.21"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.17.19"
+  }
+}
