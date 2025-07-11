@@ -1,0 +1,11 @@
+{
+  "name": "Midnight.js API Reference",
+  "includeVersion": true,
+  "hideGenerator": true,
+  "out": "docs/api",
+  "readme": "docs/README_API.md",
+  "excludePrivate": true,
+  "entryPoints": ["packages/*"],
+  "entryPointStrategy": "packages",
+  "exclude": ["packages/e2e-tests", "packages/compact"]
+}

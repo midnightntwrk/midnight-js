@@ -1,0 +1,37 @@
+{
+  "name": "@midnight-ntwrk/midnight-js-level-private-state-provider",
+  "version": "2.0.2",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "author": "IOG",
+  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "packageManager": "yarn@4.9.2",
+  "license": "MIT",
+  "scripts": {
+    "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
+    "build": "rollup -c rollup.config.mjs",
+    "test": "vitest run",
+    "deploy": "yarn npm publish"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/midnight-js-types": "workspace:*",
+    "abstract-level": "^3.0.0",
+    "buffer": "^6.0.3",
+    "fp-ts": "^2.16.1",
+    "io-ts": "^2.2.20",
+    "level": "^10.0.0",
+    "lodash": "^4.17.21",
+    "superjson": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.17.19"
+  }
+}

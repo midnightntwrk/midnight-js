@@ -1,0 +1,31 @@
+{
+  "name": "@midnight-ntwrk/midnight-js-types",
+  "version": "2.0.2",
+  "description": "Shared data types and interfaces for MidnightJS modules",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "packageManager": "yarn@4.9.2",
+  "author": "IOHK",
+  "license": "Apache-2.0",
+  "scripts": {
+    "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache",
+    "build": "rollup -c rollup.config.mjs",
+    "test": "vitest run --passWithNoTests",
+    "deploy": "yarn npm publish"
+  },
+  "files": [
+    "dist/"
+  ],
+  "dependencies": {
+    "rxjs": "^7.5.0"
+  }
+}

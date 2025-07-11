@@ -1,0 +1,31 @@
+{
+  "name": "@midnight-ntwrk/midnight-js-compact",
+  "description": "Compact fetcher",
+  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "author": "IOG",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "license": "Apache-2.0",
+  "version": "2.0.2",
+  "type": "module",
+  "bin": {
+    "fetch-compactc": "dist/fetch-compact.mjs",
+    "run-compactc": "src/run-compactc.cjs"
+  },
+  "scripts": {
+    "clean": "rm -rf dist tsconfig.build.tsbuildinfo tsconfig.tsbuildinfo managed dist",
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "eslint ./src",
+    "typecheck": "tsc -p tsconfig.json",
+    "deploy": "yarn npm publish"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.2"
+  },
+  "files": [
+    "dist/"
+  ]
+}
