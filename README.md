@@ -221,15 +221,7 @@ This is a yarn [workspaces](https://yarnpkg.com/features/workspaces/) project. A
 ### 1. Nvm
 
 To start developing, first install [nvm](https://https://github.com/nvm-sh/nvm). Then [direnv](https://direnv.net) is
-optional but strongly recommended.
-
-### 2. Internal private registry and credentials
-
-Configure Yarn by following the [Authentication setup document](https://input-output.atlassian.net/wiki/spaces/MN/pages/3696001685/Authentication+setup).
-
-### 3. Developing
-
-After configuring the credentials you are all set up to start developing.
+optional, but strongly recommended.
 
 If you're using `direnv`, only the first time you will need to do:
 ```shell
@@ -270,9 +262,6 @@ It's recommended to enable automatic `eslint` formatting in your text editor
 upon save, in order to avoid CI errors due to incorrect format.
 
 ## Release a new version
-
-Please read our [git workflow](https://input-output.atlassian.net/wiki/spaces/MN/pages/3378086090/Git+Workflow)
-for how to branch and tag releases.
 
 In order to release a new version, the versions inside all `package.json` files
 should be bumped. You can do this by:
