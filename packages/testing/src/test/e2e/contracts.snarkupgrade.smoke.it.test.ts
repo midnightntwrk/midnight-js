@@ -31,12 +31,17 @@ import {
   getTestEnvironment
 } from '@/infrastructure';
 import path from 'path';
-import * as api from '@/e2e/api';
-import { cloneContractInstance, CounterCloneConfiguration, counterContractInstance } from '@/e2e/api';
+import * as api from '@/e2e/counter-api';
+import {
+  cloneContractInstance,
+  CounterCloneConfiguration,
+  counterContractInstance,
+  CIRCUIT_ID_RESET
+} from '@/e2e/counter-api';
 import { type CounterProviders } from '@/e2e/counter-types';
 import { type CounterPrivateState } from '@/e2e/contract';
 import { CounterClonePrivateStateId } from '@/e2e/counter-clone-types';
-import { CIRCUIT_ID_RESET, VERY_SLOW_TEST_TIMEOUT } from '@/e2e/constants';
+import { VERY_SLOW_TEST_TIMEOUT } from '@/e2e/constants';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_snark_upgrade_${new Date().toISOString()}.log`)

@@ -54,6 +54,11 @@ export const setLogger = (_logger: Logger) => {
   logger = _logger;
 };
 
+export const CIRCUIT_ID_RESET = 'reset';
+export const CIRCUIT_ID_INCREMENT = 'increment';
+export const CIRCUIT_ID_DECREMENT = 'decrement';
+export const CONTRACT_CIRCUITS = ['decrement', 'increment', 'reset'];
+
 export class CounterConfiguration implements ContractConfiguration {
   readonly privateStateStoreName;
   readonly zkConfigPath;

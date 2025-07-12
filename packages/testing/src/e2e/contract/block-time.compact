@@ -1,0 +1,17 @@
+import CompactStandardLibrary;
+
+export circuit testBlockTimeLt(time: Uint<64>): [] {
+  return assert(blockTimeLt(disclose(time)), "Block time is >= time");
+}
+
+export circuit testBlockTimeGte(time: Uint<64>): [] {
+  return assert(blockTimeGte(disclose(time)), "Block time is < time");
+}
+
+export circuit testBlockTimeGt(time: Uint<64>): [] {
+  return assert(blockTimeGt(disclose(time)), "Block time is <= time");
+}
+
+export circuit testBlockTimeLte(time: Uint<64>): [] {
+  return assert(blockTimeLte(disclose(time)), "Block time is > time");
+}

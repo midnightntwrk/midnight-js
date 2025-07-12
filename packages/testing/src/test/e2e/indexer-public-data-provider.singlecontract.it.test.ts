@@ -23,8 +23,8 @@ import {
 } from '@/infrastructure';
 import path from 'path';
 import { getRuntimeNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import * as api from '@/e2e/api';
-import { CounterConfiguration } from '@/e2e/api';
+import * as api from '@/e2e/counter-api';
+import { CounterConfiguration } from '@/e2e/counter-api';
 import {
   type CounterContract,
   type CounterProviders,

@@ -53,15 +53,16 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import * as api from '@/e2e/api';
+import * as api from '@/e2e/counter-api';
 import {
   CounterConfiguration,
   SimpleConfiguration,
   CounterCloneConfiguration,
   counterContractInstance,
   simpleContractInstance,
-  cloneContractInstance
-} from '@/e2e/api';
+  cloneContractInstance,
+  CIRCUIT_ID_INCREMENT
+} from '@/e2e/counter-api';
 import {
   type CounterContract,
   type DeployedCounterContract,
@@ -74,12 +75,12 @@ import {
   createInitialPrivateState,
   createPrivateState,
   CompiledCounter,
-  type CounterPrivateState,
+  type CounterPrivateState
+,
 } from '@/e2e/contract';
 import { CounterClonePrivateStateId, type CounterCloneCircuits } from '@/e2e/counter-clone-types';
 import { type SimpleCircuits } from '@/e2e/simple-types';
 import {
-  CIRCUIT_ID_INCREMENT,
   INVALID_CONTRACT_ADDRESS_HEX_FORMAT,
   INVALID_CONTRACT_ADDRESS_TOO_LONG,
   SLOW_TEST_TIMEOUT,

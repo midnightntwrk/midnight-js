@@ -39,8 +39,8 @@ import {
 import { sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
 import { getImpureCircuitIds } from '@midnight-ntwrk/midnight-js-types';
 import type { CounterCircuits } from '@/e2e/counter-types';
-import * as api from '@/e2e/api';
-import { CounterConfiguration, counterContractInstance } from '@/e2e/api';
+import * as api from '@/e2e/counter-api';
+import { CounterConfiguration, counterContractInstance } from '@/e2e/counter-api';
 import { createInitialPrivateState } from '@/e2e/contract';
 
 const logger = createLogger(

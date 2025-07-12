@@ -28,10 +28,9 @@ import type {
 } from '@/infrastructure';
 import { createLogger, getTestEnvironment } from '@/infrastructure';
 import path from 'path';
-import * as api from '@/e2e/api';
-import { counterContractInstance } from '@/e2e/api';
+import * as api from '@/e2e/counter-api';
+import { counterContractInstance, CIRCUIT_ID_RESET } from '@/e2e/counter-api';
 import { type CounterProviders } from '@/e2e/counter-types';
-import { CIRCUIT_ID_RESET } from '@/e2e/constants';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_snark_upgrade_${new Date().toISOString()}.log`)

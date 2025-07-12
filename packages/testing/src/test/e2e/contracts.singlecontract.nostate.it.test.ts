@@ -52,7 +52,7 @@ import {
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { CompiledSimple } from '@/e2e/contract';
-import * as api from '@/e2e/api';
+import * as api from '@/e2e/counter-api';
 import type { SimpleContract, SimpleProviders } from '@/e2e/simple-types';
 
 const logger = createLogger(

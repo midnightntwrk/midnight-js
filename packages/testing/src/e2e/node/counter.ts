@@ -24,7 +24,7 @@ import {
 import { CounterPrivateStateId, type CounterProviders, currentDir, privateStateZero } from '@/e2e';
 import path from 'path';
 import { type ContractConfiguration } from '@/infrastructure';
-import * as api from '../api';
+import * as api from '../counter-api';
 
 export class CounterConfiguration implements ContractConfiguration {
   readonly privateStateStoreName;

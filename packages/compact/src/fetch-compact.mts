@@ -86,7 +86,7 @@ const fetchCompact = async (): Promise<void> => {
     }
   }).then((r) => r.json() as unknown as Asset[]);
 
-  const platformToAssetSuffix = (platform: NodeJS.Platform, currentCpu: NodeJS.Architecture): string => {
+  const platformToAssetSuffix = (): string => {
     if (currentPlatform === 'darwin') {
       if (currentCpu === 'arm64') {
         return 'aarch64-darwin';
@@ -98,10 +98,10 @@ const fetchCompact = async (): Promise<void> => {
     } else if (currentPlatform === 'linux') {
       return 'x86_64-unknown-linux-musl';
     } else {
-      throw new Error(`Unsupported platform: ${platform}`);
+      throw new Error(`Unsupported platform: ${currentPlatform}`);
     }
   };
-  const assetName = `compactc_v${currentVersion}_${platformToAssetSuffix(currentPlatform, currentCpu)}.zip`;
+  const assetName = `compactc_v${currentVersion}_${platformToAssetSuffix()}.zip`;
   const asset = assets.find((assetLocal) => assetLocal.name === assetName);
 
   if (!asset) {

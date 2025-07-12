@@ -13,8 +13,15 @@
  * limitations under the License.
  */
 
-export * from './counter-api';
-export * from './counter-clone-types';
-export * from './counter-types';
-export * from './simple-types';
-export * from './constants';
+import type { ImpureCircuitId, MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
+import type { CompilerBlockTime } from './contract';
+import type { DeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
+
+export type BlockTimeCircuits = ImpureCircuitId<CompilerBlockTime.Contract<undefined>> & string;
+
+export type BlockTimeProviders = MidnightProviders<BlockTimeCircuits, string, undefined>;
+
+export type BlockTimeContract = CompilerBlockTime.Contract<undefined>;
+
+export type DeployedBlockTimeContract = DeployedContract<BlockTimeContract>;
+
