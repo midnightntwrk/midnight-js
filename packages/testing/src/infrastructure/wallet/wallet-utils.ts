@@ -14,10 +14,10 @@
  */
 
 import * as Rx from 'rxjs';
-import { nativeToken } from '@midnight-ntwrk/ledger';
+import { shieldedToken, type TokenType } from '@midnight-ntwrk/ledger';
 import { type TransactionHistoryEntry, type Wallet, type WalletState } from '@midnight-ntwrk/wallet-api';
 import type { MidnightWallet, TxOutput } from './wallet-types';
-import { type EnvironmentConfiguration } from '../test-environment';
+import { type EnvironmentConfiguration } from '@/infrastructure';
 import { FaucetClient } from '../client';
 import { logger } from '../logger';
 import { delay } from '../utils';
@@ -86,17 +86,18 @@ export const waitForSyncProgressDefined = async (wallet: Wallet, throttleTime = 
 /**
  * Synchronizes the wallet with the network and waits for a non-zero balance.
  * @param {Wallet} wallet - The wallet to synchronize
+ * @param tokenType
  * @param {number} [throttleTime=3000] - Throttle time in milliseconds
  * @returns {Promise<bigint>} A promise that resolves to the wallet balance when sync is close enough and balance is non-zero
  */
-export const syncWallet = (wallet: Wallet, throttleTime = 3_000) => {
+export const syncWallet = (wallet: Wallet, tokenType: TokenType = shieldedToken(), throttleTime = 3_000) => {
   logger.info('Syncing wallet...');
   return Rx.firstValueFrom(
     wallet.state().pipe(
       Rx.throttleTime(throttleTime),
       Rx.tap((state) => logger.info(logState(state))),
       Rx.filter((state) => state.syncProgress !== undefined && state.syncProgress.lag.applyGap < 100n),
-      Rx.map((s) => s.balances[nativeToken()] ?? 0n),
+      Rx.map((s) => s.balances[tokenType.tag] ?? 0n),
       Rx.filter((balance) => balance > 0n)
     )
   );
@@ -107,12 +108,14 @@ export const syncWallet = (wallet: Wallet, throttleTime = 3_000) => {
  * If a faucet is configured, requests tokens from it.
  * @param {Wallet} wallet - The wallet to check for funds
  * @param {EnvironmentConfiguration} env - Environment configuration containing faucet details
+ * @param tokenType
  * @param {boolean} [fundFromFaucet=false] - Whether to request tokens from the faucet
  * @returns {Promise<bigint>} A promise that resolves to the wallet balance
  */
 export const waitForFunds = async (
   wallet: MidnightWallet,
   env: EnvironmentConfiguration,
+  tokenType: TokenType = shieldedToken(),
   fundFromFaucet = false
 ) => {
   const initialState = await getInitialState(wallet);
@@ -121,7 +124,7 @@ export const waitForFunds = async (
     logger.info('Requesting tokens from faucet...');
     await new FaucetClient(env.faucet, logger).requestTokens(initialState.address);
   }
-  const initialBalance = initialState.balances[nativeToken()];
+  const initialBalance = initialState.balances[tokenType.tag];
   if (initialBalance === undefined || initialBalance === 0n) {
     logger.info(`Your wallet balance is: 0`);
     logger.info(`Waiting to receive tokens...`);
@@ -219,7 +222,7 @@ export const walletStateWithoutHistoryAndCoins = (state: WalletState): Partial<W
  * @returns {object} Normalized wallet state
  */
 export const normalizeWalletState = (state: WalletState): Record<string, unknown> => {
-   
+
   const normalized = state.transactionHistory.map((txHistoryEntry: TransactionHistoryEntry) => {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { transaction, ...otherProps } = txHistoryEntry;
@@ -257,12 +260,13 @@ const logWalletState = (stateName: string, state: WalletState, balance?: bigint)
  * Creates transaction outputs for a given address and amount.
  * @param {string} address - The receiver's address
  * @param {bigint} amount - The amount to send
+ * @param tokenType
  * @returns {TxOutput[]} Array of transaction outputs
  */
-export const createOutputs = (address: string, amount: bigint): TxOutput[] => {
+export const createOutputs = (address: string, amount: bigint, tokenType: TokenType = shieldedToken()): TxOutput[] => {
   return [
     {
-      type: nativeToken(),
+      type: tokenType.tag,
       amount,
       receiverAddress: address
     }
@@ -290,18 +294,20 @@ export const processTransaction = async (wallet: MidnightWallet, outputsToCreate
  * @param {WalletState} initialState - The initial wallet state
  * @param {bigint} initialBalance - The initial balance
  * @param {bigint} outputValue - The transaction output value
+ * @param tokenType
  * @private
  */
 export const validateFinalState = (
   finalState: WalletState,
   initialState: WalletState,
   initialBalance: bigint,
-  outputValue: bigint
+  outputValue: bigint,
+  tokenType: TokenType = shieldedToken()
 ) => {
-  expect(finalState.balances[nativeToken()] ?? 0n).toBeLessThan(initialBalance - outputValue);
+  expect(finalState.balances[tokenType.tag] ?? 0n).toBeLessThan(initialBalance - outputValue);
   expect(finalState.pendingCoins.length).toBe(0);
   expect(finalState.transactionHistory.length).toBeGreaterThanOrEqual(initialState.transactionHistory.length + 1);
-  logger.info(`Wallet balance: ${finalState.balances[nativeToken()]}`);
+  logger.info(`Wallet balance: ${finalState.balances[tokenType.tag]}`);
 };
 
 /**
@@ -309,16 +315,18 @@ export const validateFinalState = (
  * @param {MidnightWallet} walletWithFunds - The wallet to send funds from
  * @param {string} address - The recipient's address
  * @param {bigint} [outputValue=100_000_000n] - The amount to send
+ * @param tokenType
  * @returns {Promise<void>}
  */
 export const sendTransactionToAddress = async (
   walletWithFunds: MidnightWallet,
   address: string,
+  tokenType: TokenType = shieldedToken(),
   outputValue = 100_000_000n
 ): Promise<void> => {
   logger.info(`Sending ${outputValue} to address: ${address}`);
   const initialState = await getInitialState(walletWithFunds);
-  const initialBalance = initialState.balances[nativeToken()] ?? 0n;
+  const initialBalance = initialState.balances[tokenType.tag] ?? 0n;
   logWalletState('Initial', initialState, initialBalance);
 
   const outputsToCreate = createOutputs(address, outputValue);
