@@ -40,7 +40,12 @@ import {
   VerifierKeyInsert, Intent
 } from '@midnight-ntwrk/ledger';
 import type { ZswapChainState, SingleUpdate } from '@midnight-ntwrk/ledger';
-import { type ImpureCircuitId, UnprovenTransaction, type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
+import {
+  type ImpureCircuitId,
+  Transaction,
+  type UnprovenTransaction,
+  type VerifierKey
+} from '@midnight-ntwrk/midnight-js-types';
 import { type EncPublicKey } from '@midnight-ntwrk/zswap';
 import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
 import { getLedgerNetworkId, getRuntimeNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
@@ -101,7 +106,7 @@ export const createUnprovenLedgerDeployTx = (
   return [
     contractDeploy.address,
     fromLedgerContractState(contractDeploy.initialState),
-    new UnprovenTransaction(
+    Transaction.fromParts(
       zswapStateToOffer(zswapLocalState, encryptionPublicKey),
       undefined,
       Intent.new(ttl).addDeploy(contractDeploy)
@@ -123,7 +128,7 @@ export const createUnprovenLedgerCallTx = (
 ): UnprovenTransaction => {
   const op = toLedgerContractState(initialContractState).operation(circuitId);
   assertDefined(op, `Operation '${circuitId}' is undefined for contract state ${initialContractState.toString(false)}`);
-  return new UnprovenTransaction(
+  return Transaction.fromParts(
     zswapStateToOffer(nextZswapLocalState, encryptionPublicKey, {
       contractAddress,
       zswapChainState
@@ -169,7 +174,7 @@ export const unprovenTxFromContractUpdates = (
   // 'idx' is '0n' because Midnight.js currently only supports single-party maintenance update authorities
   const idx = 0n;
   const signedMaintenanceUpdate = maintenanceUpdate.addSignature(idx, signData(sk, maintenanceUpdate.dataToSign));
-  return new UnprovenTransaction(
+  return Transaction.fromParts(
     new ZswapOffer(),
     undefined,
     Intent.new(ttl).addMaintenanceUpdate(signedMaintenanceUpdate)

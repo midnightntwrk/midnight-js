@@ -17,12 +17,18 @@ import type {
   ProofProvider,
   ProveTxConfig,
   UnbalancedTransaction,
-  Transaction,
   ZKConfig
+} from '@midnight-ntwrk/midnight-js-types';
+import {
+  Transaction,
 } from '@midnight-ntwrk/midnight-js-types';
 import fetch from 'cross-fetch';
 import fetchBuilder from 'fetch-retry';
-import { Transaction } from '@midnight-ntwrk/ledger';
+import {
+  type Bindingish,
+  type PreProof,
+  type Signaturish
+} from '@midnight-ntwrk/ledger';
 import { BinaryWriter } from '@dao-xyz/borsh';
 import { createUnbalancedTx, InvalidProtocolSchemeError } from '@midnight-ntwrk/midnight-js-types';
 import _ from 'lodash';
@@ -67,13 +73,13 @@ export const serializeZKConfig = <K extends string>(zkConfig?: ZKConfig<K>): Uin
  *                 if a deployment transaction is being proven.
  */
 export const serializePayload = <K extends string>(
-  unprovenTx: Transaction,
+  unprovenTx: Transaction<Signaturish, PreProof, Bindingish>,
   zkConfig?: ZKConfig<K>
 ): Promise<ArrayBuffer> =>
   new Blob([unprovenTx.serialize(getLedgerNetworkId()), serializeZKConfig(zkConfig)]).arrayBuffer();
 
 const deserializePayload = (arrayBuffer: ArrayBuffer): UnbalancedTransaction =>
-  createUnbalancedTx(Transaction.deserialize(new Uint8Array(arrayBuffer), getLedgerNetworkId()));
+  createUnbalancedTx(Transaction.deserialize('signature', 'proof', 'binding', new Uint8Array(arrayBuffer), getLedgerNetworkId()));
 
 const PROVE_TX_PATH = '/prove-tx';
 
@@ -107,7 +113,7 @@ export const httpClientProofProvider = <K extends string>(url: string): ProofPro
   }
   return {
     async proveTx(
-      unprovenTx: Transaction,
+      unprovenTx: Transaction<Signaturish, PreProof, Bindingish>,
       partialProveTxConfig?: ProveTxConfig<K>
     ): Promise<UnbalancedTransaction> {
       const config = _.defaults(partialProveTxConfig, DEFAULT_CONFIG);

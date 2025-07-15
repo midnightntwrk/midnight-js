@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-import type {
-  ContractAddress,
-  ZswapChainState,
-  ShieldedCoinInfo,
-  QualifiedShieldedCoinInfo,
-  CoinPublicKey,
-  EncPublicKey
+import {
+  type ContractAddress,
+  type ZswapChainState,
+  type ShieldedCoinInfo,
+  type QualifiedShieldedCoinInfo,
+  type CoinPublicKey,
+  type EncPublicKey,
 } from '@midnight-ntwrk/ledger';
 import { ZswapOffer, ZswapOutput, ZswapTransient, ZswapInput } from '@midnight-ntwrk/ledger';
 import { type Recipient, type ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
@@ -31,6 +31,12 @@ import {
   parseEncPublicKeyToHex
 } from '@midnight-ntwrk/midnight-js-utils';
 import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import {
+  type UnprovenInput,
+  type UnprovenOffer,
+  type UnprovenOutput,
+  type UnprovenTransient
+} from '@midnight-ntwrk/midnight-js-types';
 
 // A default segment number to use when creating inputs and outputs. The Ledger has exposed this parameter
 // now but we don't know what the value should be, and assume that everything first in segment '0'. This
@@ -99,24 +105,24 @@ export const createZswapOutput = (
   },
   encryptionPublicKey: EncPublicKey,
   segmentNumber = 0
-): ZswapOutput =>
+): UnprovenOutput =>
   // TBD need to confirm segment number and wallet encryptionPublicKey usage.
   recipient.is_left
     ? ZswapOutput.new(coinInfo, segmentNumber, recipient.left, encryptionPublicKey)
     : ZswapOutput.newContractOwned(coinInfo, segmentNumber, recipient.right);
 
-const unprovenOfferFromCoinInfo = <U extends ZswapInput | ZswapOutput | ZswapTransient>(
+const unprovenOfferFromCoinInfo = <U extends UnprovenInput | UnprovenOutput | UnprovenTransient>(
   [coinInfo, unproven]: [string, U],
-  f: (u: U, type: string, value: bigint) => ZswapOffer
-): ZswapOffer => {
+  f: (u: U, type: string, value: bigint) => UnprovenOffer
+): UnprovenOffer => {
   const { type, value } = deserializeCoinInfo(coinInfo);
   return f(unproven, type, value);
 };
 
-export const unprovenOfferFromMap = <U extends ZswapInput | ZswapOutput | ZswapTransient>(
+export const unprovenOfferFromMap = <U extends UnprovenInput | UnprovenOutput | UnprovenTransient>(
   map: Map<string, U>,
-  f: (u: U, type: string, value: bigint) => ZswapOffer
-): ZswapOffer =>
+  f: (u: U, type: string, value: bigint) => UnprovenOffer
+): UnprovenOffer =>
   Array.from(map)
     .map((coinInfo) => unprovenOfferFromCoinInfo(coinInfo, f))
     .reduce((acc, curr) => acc.merge(curr), new ZswapOffer());
@@ -125,15 +131,15 @@ export const zswapStateToOffer = (
   zswapLocalState: ZswapLocalState,
   encryptionPublicKey: EncPublicKey,
   params?: { contractAddress: ContractAddress; zswapChainState: ZswapChainState }
-): ZswapOffer => {
-  const unprovenOutputs = new Map<string, ZswapOutput>(
+): UnprovenOffer => {
+  const unprovenOutputs = new Map<string, UnprovenOutput>(
     zswapLocalState.outputs.map((output) => [
       serializeCoinInfo(output.coinInfo),
       createZswapOutput(output, encryptionPublicKey, DEFAULT_SEGMENT_NUMBER)
     ])
   );
-  const unprovenInputs = new Map<string, ZswapInput>();
-  const unprovenTransients = new Map<string, ZswapTransient>();
+  const unprovenInputs = new Map<string, UnprovenInput>();
+  const unprovenTransients = new Map<string, UnprovenTransient>();
   zswapLocalState.inputs.forEach((qualifiedCoinInfo) => {
     const serializedCoinInfo =  serializeQualifiedShieldedCoinInfo(qualifiedCoinInfo);
     const unprovenOutput = unprovenOutputs.get(serializedCoinInfo);
@@ -172,10 +178,10 @@ export const encryptionPublicKeyForzswapState = (
   walletCoinPublicKey: CoinPublicKey,
   walletEncryptionPublicKey: EncPublicKey
 ): EncPublicKey => {
-  const walletCoinPublickKey = parseCoinPublicKeyToHex(walletCoinPublicKey, getZswapNetworkId());
+  const walletCoinPublicKeyLocal = parseCoinPublicKeyToHex(walletCoinPublicKey, getZswapNetworkId());
   const localCoinPublicKey = parseCoinPublicKeyToHex(zswapState.coinPublicKey, getZswapNetworkId());
 
-  if (localCoinPublicKey !== walletCoinPublickKey) {
+  if (localCoinPublicKey !== walletCoinPublicKeyLocal) {
     throw new Error('Unable to lookup encryption public key (Unsupported coin)');
   }
 

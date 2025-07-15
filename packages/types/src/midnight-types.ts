@@ -13,7 +13,27 @@
  * limitations under the License.
  */
 
-import type { Transaction, TransactionHash, TransactionId } from '@midnight-ntwrk/ledger';
+import {
+  type Binding,
+  type Bindingish,
+  type PreProof,
+  type Proof, type Proofish,
+  type SignatureEnabled,
+  type Signaturish,
+  type Transaction,
+  type TransactionHash,
+  type TransactionId, type ZswapInput, type ZswapOffer, type ZswapOutput, type ZswapTransient
+} from '@midnight-ntwrk/ledger';
+
+/**
+ * A type representing a transaction that has not been proven yet.
+ * It may contain the signature and binding information, but no proof.
+ */
+export type UnprovenTransaction = Transaction<Signaturish, PreProof, Bindingish>;
+export type UnprovenInput = ZswapInput<PreProof>;
+export type UnprovenOutput = ZswapOutput<PreProof>;
+export type UnprovenTransient = ZswapTransient<PreProof>;
+export type UnprovenOffer = ZswapOffer<PreProof>;
 
 /**
  * A type representing a prover key derived from a contract circuit.
@@ -98,7 +118,7 @@ export interface ZKConfig<K extends string> {
 /**
  * A type representing a proven, unbalanced transaction.
  */
-export type UnbalancedTransaction = Transaction & {
+export type UnbalancedTransaction = Transaction<Signaturish, Proof, Bindingish> & {
   /**
    * Unique symbol brand.
    */
@@ -110,14 +130,14 @@ export type UnbalancedTransaction = Transaction & {
  *
  * @param tx The ledger transaction to wrap.
  */
-export const createUnbalancedTx = (tx: Transaction): UnbalancedTransaction => {
+export const createUnbalancedTx = (tx: Transaction<Signaturish, Proof, Bindingish>): UnbalancedTransaction => {
   return tx as UnbalancedTransaction;
 };
 
 /**
  * A type representing a proven, balanced, submittable transaction.
  */
-export type BalancedTransaction = Transaction & {
+export type BalancedTransaction = Transaction<Signaturish, Proof, Bindingish> & {
   /**
    * Unique symbol brand.
    */
@@ -128,7 +148,7 @@ export type BalancedTransaction = Transaction & {
  * Creates an {@link BalancedTransaction} from a ledger transaction.
  * @param tx The ledger transaction to wrap.
  */
-export const createBalancedTx = (tx: Transaction): BalancedTransaction => {
+export const createBalancedTx = (tx: Transaction<Signaturish, Proofish, Bindingish>): BalancedTransaction => {
   return tx as BalancedTransaction;
 };
 
@@ -168,7 +188,7 @@ export interface FinalizedTxData {
   /**
    * The transaction that was finalized.
    */
-  readonly tx: Transaction;
+  readonly tx: Transaction<SignatureEnabled, Proof, Binding>;
   /**
    * The status of a submitted transaction.
    */

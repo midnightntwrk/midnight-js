@@ -27,7 +27,12 @@ import {
   SucceedEntirely,
   InvalidProtocolSchemeError
 } from '@midnight-ntwrk/midnight-js-types';
-import type { ContractAddress, TransactionId } from '@midnight-ntwrk/ledger';
+import {
+  type Binding,
+  type ContractAddress, type Proof,
+  type SignatureEnabled,
+  type TransactionId
+} from '@midnight-ntwrk/ledger';
 import { Transaction as LedgerTransaction, ZswapChainState } from '@midnight-ntwrk/ledger';
 import { ContractState } from '@midnight-ntwrk/compact-runtime';
 import type { ApolloQueryResult, FetchResult, NormalizedCacheObject } from '@apollo/client/core/index.js';
@@ -101,8 +106,8 @@ const deserializeContractState = (s: string): ContractState =>
 const deserializeZswapState = (s: string): ZswapChainState =>
   ZswapChainState.deserialize(toByteArray(s), getLedgerNetworkId());
 
-const deserializeTransaction = (s: string): LedgerTransaction =>
-  LedgerTransaction.deserialize(toByteArray(s), getLedgerNetworkId());
+const deserializeTransaction = (s: string): LedgerTransaction<SignatureEnabled, Proof, Binding> =>
+  LedgerTransaction.deserialize('signature', 'proof', 'binding', toByteArray(s), getLedgerNetworkId());
 
 /**
  * This is a dirty hack. Prepends a network ID to the given contract address and

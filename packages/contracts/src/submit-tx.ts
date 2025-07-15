@@ -13,8 +13,12 @@
  * limitations under the License.
  */
 
-import type { FinalizedTxData, Contract, ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
-import type { Transaction } from '@midnight-ntwrk/ledger';
+import type {
+  FinalizedTxData,
+  Contract,
+  ImpureCircuitId,
+  UnprovenTransaction
+} from '@midnight-ntwrk/midnight-js-types';
 import type { ShieldedCoinInfo } from '@midnight-ntwrk/compact-runtime';
 import { type ContractProviders } from './contract-providers';
 
@@ -25,7 +29,7 @@ export type SubmitTxOptions<ICK extends ImpureCircuitId> = {
   /**
    * The transaction to prove, balance, and submit.
    */
-  readonly unprovenTx: Transaction;
+  readonly unprovenTx: UnprovenTransaction;
   /**
    * Any new coins created during the construction of the transaction. Only defined
    * if the transaction being submitted is a call or deploy transaction.
