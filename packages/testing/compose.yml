@@ -1,6 +1,6 @@
 services:
   proof-server:
-    image: "ghcr.io/midnight-ntwrk/proof-server:4.0.0@sha256:bdbdfe74f4766d91c5be87a58cd64bb762445e9f87e0175059231892884d665b"
+    image: "ghcr.io/midnight-ntwrk/proof-server:5.0.0-alpha.3"
     container_name: "proof-server_$TESTCONTAINERS_UID"
     ports:
       - "0:6300"
@@ -15,7 +15,7 @@ services:
       retries: 3
       start_period: 10s
   indexer:
-    image: "ghcr.io/midnight-ntwrk/indexer-standalone:2.1.4@sha256:ad9b2ced30e3ebd5070fb3ce40e8dfe4e41d8d491410e34feb0c8c1afa70499e"
+    image: "ghcr.io/midnight-ntwrk/indexer-standalone:3.0.0-0f95067a"
     container_name: "indexer_$TESTCONTAINERS_UID"
     ports:
       - "0:8088"
@@ -34,7 +34,7 @@ services:
       node:
         condition: service_started
   node:
-    image: "ghcr.io/midnight-ntwrk/midnight-node:0.12.1@sha256:b01ab75dca12f670573fd89eb3a363c63dc2ac095c6844df0b49e57169bb9f10"
+    image: "ghcr.io/midnight-ntwrk/midnight-node:0.13.2-rc.1"
     container_name: "node_$TESTCONTAINERS_UID"
     ports:
       - "0:9944"
