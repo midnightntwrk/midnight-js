@@ -30,9 +30,25 @@ import {
  * It may contain the signature and binding information, but no proof.
  */
 export type UnprovenTransaction = Transaction<Signaturish, PreProof, Bindingish>;
+
+/**
+ * A type representing a transaction that has not been proven yet,
+ */
 export type UnprovenInput = ZswapInput<PreProof>;
+
+/**
+ * A type representing a transaction output that has not been proven yet.
+ */
 export type UnprovenOutput = ZswapOutput<PreProof>;
+
+/**
+ * A type representing a transaction transient that has not been proven yet.
+ */
 export type UnprovenTransient = ZswapTransient<PreProof>;
+
+/**
+ * A type representing an offer that has not been proven yet.
+ */
 export type UnprovenOffer = ZswapOffer<PreProof>;
 
 /**
