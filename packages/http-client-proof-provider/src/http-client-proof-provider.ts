@@ -17,22 +17,16 @@ import type {
   ProofProvider,
   ProveTxConfig,
   UnbalancedTransaction,
+  UnprovenTransaction,
   ZKConfig
-} from '@midnight-ntwrk/midnight-js-types';
-import {
-  Transaction,
 } from '@midnight-ntwrk/midnight-js-types';
 import fetch from 'cross-fetch';
 import fetchBuilder from 'fetch-retry';
-import {
-  type Bindingish,
-  type PreProof,
-  type Signaturish
-} from '@midnight-ntwrk/ledger';
 import { BinaryWriter } from '@dao-xyz/borsh';
 import { createUnbalancedTx, InvalidProtocolSchemeError } from '@midnight-ntwrk/midnight-js-types';
 import _ from 'lodash';
 import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { Transaction } from '@midnight-ntwrk/ledger';
 
 /**
  * configure fetch-retry with fetch and http error 500 & 503 backoff strategy.
@@ -73,7 +67,7 @@ export const serializeZKConfig = <K extends string>(zkConfig?: ZKConfig<K>): Uin
  *                 if a deployment transaction is being proven.
  */
 export const serializePayload = <K extends string>(
-  unprovenTx: Transaction<Signaturish, PreProof, Bindingish>,
+  unprovenTx: UnprovenTransaction,
   zkConfig?: ZKConfig<K>
 ): Promise<ArrayBuffer> =>
   new Blob([unprovenTx.serialize(getLedgerNetworkId()), serializeZKConfig(zkConfig)]).arrayBuffer();
@@ -113,7 +107,7 @@ export const httpClientProofProvider = <K extends string>(url: string): ProofPro
   }
   return {
     async proveTx(
-      unprovenTx: Transaction<Signaturish, PreProof, Bindingish>,
+      unprovenTx: UnprovenTransaction,
       partialProveTxConfig?: ProveTxConfig<K>
     ): Promise<UnbalancedTransaction> {
       const config = _.defaults(partialProveTxConfig, DEFAULT_CONFIG);

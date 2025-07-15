@@ -192,7 +192,7 @@ describe('Zswap utilities', () => {
       const output = createZswapOutput({ coinInfo, recipient }, randomEncryptionPublicKey());
       const proofErasedOffer = Transaction.fromParts(
         ZswapOffer.fromOutput(output, nativeToken().tag, value)
-      ).eraseProofs().guaranteedCoins;
+      ).eraseProofs().guaranteedOffer;
       if (proofErasedOffer) {
         const [newZswapChainState, mtIndices] = prevZSwapChainState.tryApply(proofErasedOffer);
         nonMatchingInputs.push({ ...coinInfo, mt_index: mtIndices.get(output.commitment)! });
@@ -268,9 +268,9 @@ describe('Zswap utilities', () => {
           const unprovenOffer = zswapStateToOffer(zswapState, randomEncryptionPublicKey(), params);
           expect(unprovenOffer.outputs.length).toBe(expectedOutputCount);
           expect(unprovenOffer.inputs.length).toBe(expectedInputCount);
-          expect(unprovenOffer.transient.length).toBe(expectedTransientCount);
+          expect(unprovenOffer.transients.length).toBe(expectedTransientCount);
 
-          const delta = unprovenOffer.deltas.get(nativeToken());
+          const delta = unprovenOffer.deltas.get(nativeToken().tag);
           if (params) {
             // we only count non-matching inputs if we called 'zswapStateToOffer' with additional parameters
             const expectedDelta = expectedInputsSum - expectedOutputsSum;

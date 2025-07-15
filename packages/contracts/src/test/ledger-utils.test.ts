@@ -94,7 +94,7 @@ describe('ledger-utils', () => {
     expect(vkInsert.operation).toBe('op');
   });
 
-  it('unprovenTxFromContractUpdates returns an Transaction', () => {
+  it('unprovenTxFromContractUpdates returns an UnprovenTransaction', () => {
     const tx = unprovenTxFromContractUpdates(
       dummyContractAddress,
       [replaceAuthority(dummySigningKey, dummyContractState)],
@@ -104,7 +104,7 @@ describe('ledger-utils', () => {
     expect(tx).toBeInstanceOf(Transaction);
   });
 
-  it('createUnprovenLedgerCallTx returns an Transaction', () => {
+  it('createUnprovenLedgerCallTx returns an UnprovenTransaction', () => {
     const circuitId = 'unProvenLedgerTx';
     const tokenType = unshieldedToken();
     const contractState = dummyContractState;
@@ -166,7 +166,7 @@ describe('ledger-utils', () => {
     expect(tx).toBeInstanceOf(Transaction);
   });
 
-  it('createUnprovenReplaceAuthorityTx returns an Transaction', () => {
+  it('createUnprovenReplaceAuthorityTx returns an UnprovenTransaction', () => {
     const tx = createUnprovenReplaceAuthorityTx(
       dummyContractAddress,
       dummySigningKey,
@@ -176,7 +176,7 @@ describe('ledger-utils', () => {
     expect(tx).toBeInstanceOf(Transaction);
   });
 
-  it('createUnprovenRemoveVerifierKeyTx returns an Transaction', () => {
+  it('createUnprovenRemoveVerifierKeyTx returns an UnprovenTransaction', () => {
     const tx = createUnprovenRemoveVerifierKeyTx(dummyContractAddress, 'op', dummyContractState, dummySigningKey);
     expect(tx).toBeInstanceOf(Transaction);
   });
