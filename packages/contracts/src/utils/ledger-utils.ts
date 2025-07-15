@@ -52,6 +52,8 @@ import { getLedgerNetworkId, getRuntimeNetworkId } from '@midnight-ntwrk/midnigh
 import { zswapStateToOffer } from './zswap-utils';
 import type { PartitionedTranscript } from '../call';
 
+const ttl = () => new Date(Date.now() + 60 * 60 * 1000);
+
 export const toLedgerContractState = (contractState: ContractState): LedgerContractState =>
   LedgerContractState.deserialize(contractState.serialize(getRuntimeNetworkId()), getLedgerNetworkId());
 
@@ -109,7 +111,7 @@ export const createUnprovenLedgerDeployTx = (
     Transaction.fromParts(
       zswapStateToOffer(zswapLocalState, encryptionPublicKey),
       undefined,
-      Intent.new(ttl).addDeploy(contractDeploy)
+      Intent.new(ttl()).addDeploy(contractDeploy)
     )
   ];
 };
@@ -134,7 +136,7 @@ export const createUnprovenLedgerCallTx = (
       zswapChainState
     }),
     undefined,
-    Intent.new(ttl).addCall(
+    Intent.new(ttl()).addCall(
       new ContractCallPrototype(
         contractAddress,
         circuitId,
@@ -177,7 +179,7 @@ export const unprovenTxFromContractUpdates = (
   return Transaction.fromParts(
     new ZswapOffer(),
     undefined,
-    Intent.new(ttl).addMaintenanceUpdate(signedMaintenanceUpdate)
+    Intent.new(ttl()).addMaintenanceUpdate(signedMaintenanceUpdate)
   );
 };
 
