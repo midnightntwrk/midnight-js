@@ -1,4 +1,4 @@
-include "std";
+import CompactStandardLibrary;
 
 export ledger round: Counter;
 

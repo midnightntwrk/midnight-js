@@ -1,4 +1,4 @@
-include "std";
+import CompactStandardLibrary;
 
 export ledger round: Counter;
 
@@ -10,11 +10,11 @@ export circuit increment(): [] {
 }
 
 export circuit decrement(amount: Uint<16>): [] {
-  round.decrement(amount);
+  round.decrement(disclose(amount));
   private_increment();
 }
 
 export circuit reset(): [] {
-  round.reset_to_default();
+  round.resetToDefault();
   private_increment();
 }
