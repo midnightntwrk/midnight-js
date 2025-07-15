@@ -15,7 +15,7 @@
 
 import { createProverKey, createVerifierKey, createZKIR } from '@midnight-ntwrk/midnight-js-types';
 import fs from 'fs/promises';
-import { UnprovenTransaction } from '@midnight-ntwrk/ledger';
+import { Transaction } from '@midnight-ntwrk/ledger';
 import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -35,6 +35,6 @@ export const getValidZKConfig = async () => ({
 });
 
 export const getValidUnprovenTx = async () =>
-  UnprovenTransaction.deserialize(await fs.readFile(`${resourceDir}/${UNPROVEN_TX}`), getLedgerNetworkId());
+  Transaction.deserialize(await fs.readFile(`${resourceDir}/${UNPROVEN_TX}`), getLedgerNetworkId());
 
 export const getValidPayload = async () => fs.readFile(`${resourceDir}/${PAYLOAD}`);

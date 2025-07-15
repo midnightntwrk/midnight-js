@@ -34,7 +34,7 @@ import {
   sampleEncryptionPublicKey,
   WellFormedStrictness,
   ZswapChainState,
-  type UnprovenTransaction
+  type Transaction
 } from '@midnight-ntwrk/ledger';
 import { sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
 import { getImpureCircuitIds } from '@midnight-ntwrk/midnight-js-types';
@@ -53,8 +53,8 @@ describe('Proof server integration', () => {
 
   let proofServerContainer: ProofServerContainer;
   let proofProvider: ProofProvider<CounterCircuits>;
-  let unprovenDeployTx: UnprovenTransaction;
-  let unprovenCallTx: UnprovenTransaction;
+  let unprovenDeployTx: Transaction;
+  let unprovenCallTx: Transaction;
   let zkConfig: ZKConfig<CounterCircuits>;
 
   beforeEach(() => {

@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-import type { QualifiedCoinInfo, CoinInfo, CoinPublicKey } from '@midnight-ntwrk/ledger';
+import { type QualifiedShieldedCoinInfo, type CoinPublicKey, type ShieldedCoinInfo, shieldedToken } from '@midnight-ntwrk/ledger';
 import {
-  UnprovenOffer,
-  createCoinInfo,
+  ZswapOffer,
+  createShieldedCoinInfo,
   nativeToken,
-  UnprovenTransaction,
+  Transaction,
   ZswapChainState,
-  sampleTokenType,
+  sampleRawTokenType,
   sampleCoinPublicKey,
   sampleContractAddress
 } from '@midnight-ntwrk/ledger';
@@ -29,20 +29,20 @@ import { fc } from '@fast-check/vitest';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { type Recipient } from '@midnight-ntwrk/compact-runtime';
 import {
-  createUnprovenOutput,
+  createZswapOutput,
   deserializeCoinInfo,
   serializeCoinInfo,
-  serializeQualifiedCoinInfo,
+  serializeQualifiedShieldedCoinInfo,
   zswapStateToNewCoins,
   zswapStateToOffer
 } from '../utils';
 
 const arbitraryBytes = fc.uint8Array({ minLength: 32, maxLength: 32 });
 
- 
+
 const arbitraryValue = fc.bigInt({ min: 0n, max: (1n << 64n) - 1n });
 
-const arbitraryNativeCoinInfo = arbitraryValue.map((value) => createCoinInfo(nativeToken(), value));
+const arbitraryNativeCoinInfo = arbitraryValue.map((value) => createShieldedCoinInfo(shieldedToken().tag, value));
 
 const arbitraryHex = arbitraryBytes.map(toHex);
 
@@ -50,13 +50,13 @@ const arbitraryCoinPublicKey = fc.boolean().map(() => sampleCoinPublicKey());
 
 const arbitraryContractAddress = fc.boolean().map(() => sampleContractAddress());
 
-const arbitraryTokenType = fc.boolean().map(() => sampleTokenType());
+const arbitraryTokenType = fc.boolean().map(() => sampleRawTokenType());
 
 const arbitraryCoinInfo = fc
   .tuple(arbitraryTokenType, arbitraryValue)
-  .map(([tokenType, value]) => createCoinInfo(tokenType, value));
+  .map(([tokenType, value]) => createShieldedCoinInfo(tokenType, value));
 
-const arbitraryQualifiedCoinInfo = fc.record({
+const arbitraryQualifiedShieldedCoinInfo = fc.record({
   mt_index: arbitraryValue,
   type: arbitraryTokenType,
   nonce: arbitraryHex,
@@ -87,26 +87,26 @@ const randomOutputData = () =>
     })
   );
 
-const randomQualifiedCoinInfo = () => sampleOne(arbitraryQualifiedCoinInfo);
+const randomQualifiedShieldedCoinInfo = () => sampleOne(arbitraryQualifiedShieldedCoinInfo);
 
 const randomEncryptionPublicKey = () => sampleOne(arbitraryHex);
 
 const randomCoinPublicKey = () => sampleOne(arbitraryCoinPublicKey);
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const dropMtIndex = ({ mt_index, ...coin }: QualifiedCoinInfo) => coin;
+const dropMtIndex = ({ mt_index, ...coin }: QualifiedShieldedCoinInfo) => coin;
 
-const toOutputData = (recipient: Recipient, coinInfos: (QualifiedCoinInfo | CoinInfo)[]) =>
+const toOutputData = (recipient: Recipient, coinInfos: (QualifiedShieldedCoinInfo | ShieldedCoinInfo)[]) =>
   coinInfos.map((coinInfo) =>
     'mt_index' in coinInfo ? { recipient, coinInfo: dropMtIndex(coinInfo) } : { recipient, coinInfo }
   );
 
-const distinctFrom = (coinInfos: (CoinInfo | QualifiedCoinInfo)[]) => {
+const distinctFrom = (coinInfos: (ShieldedCoinInfo | QualifiedShieldedCoinInfo)[]) => {
   const set = new Set(coinInfos.map(({ nonce }) => nonce));
-  return (coinInfo: CoinInfo) => !set.has(coinInfo.nonce);
+  return (coinInfo: ShieldedCoinInfo) => !set.has(coinInfo.nonce);
 };
 
-const withZeroMtIndex = (coinInfos: CoinInfo[]): QualifiedCoinInfo[] =>
+const withZeroMtIndex = (coinInfos: ShieldedCoinInfo[]): QualifiedShieldedCoinInfo[] =>
   coinInfos.map((coin) => ({ ...coin, mt_index: 0n }));
 
 describe('Zswap utilities', () => {
@@ -124,7 +124,7 @@ describe('Zswap utilities', () => {
         type: toHex(randomBytes(32)),
         value: 0n,
         hello: 'darkness'
-      } as CoinInfo)
+      } as ShieldedCoinInfo)
     ).toThrowError());
 
   test("attempting to deserialize a string representing a 'CoinInfo' with additional properties throws an error", () =>
@@ -146,20 +146,20 @@ describe('Zswap utilities', () => {
       })
     ));
 
-  test("serializing 'QualifiedCoinInfo' then deserializing 'CoinInfo' produces the original value without 'mt_index'", () =>
+  test("serializing 'QualifiedShieldedCoinInfo' then deserializing 'CoinInfo' produces the original value without 'mt_index'", () =>
     fc.assert(
-      fc.property(arbitraryQualifiedCoinInfo, (qualifiedCoinInfo) => {
-        expect(deserializeCoinInfo(serializeQualifiedCoinInfo(qualifiedCoinInfo))).toEqual(
+      fc.property(arbitraryQualifiedShieldedCoinInfo, (qualifiedCoinInfo) => {
+        expect(deserializeCoinInfo(serializeQualifiedShieldedCoinInfo(qualifiedCoinInfo))).toEqual(
           dropMtIndex(qualifiedCoinInfo)
         );
       })
     ));
 
-  test("'QualifiedCoinInfo' and extracted 'CoinInfo' serialized strings are equal", () =>
+  test("'QualifiedShieldedCoinInfo' and extracted 'CoinInfo' serialized strings are equal", () =>
     fc.assert(
-      fc.property(arbitraryQualifiedCoinInfo, (qualifiedCoinInfo) => {
+      fc.property(arbitraryQualifiedShieldedCoinInfo, (qualifiedCoinInfo) => {
         expect(serializeCoinInfo(dropMtIndex(qualifiedCoinInfo))).toEqual(
-          serializeQualifiedCoinInfo(qualifiedCoinInfo)
+          serializeQualifiedShieldedCoinInfo(qualifiedCoinInfo)
         );
       })
     ));
@@ -170,14 +170,14 @@ describe('Zswap utilities', () => {
         {
           currentIndex: 0n,
           coinPublicKey: randomCoinPublicKey(),
-          inputs: [randomQualifiedCoinInfo()],
+          inputs: [randomQualifiedShieldedCoinInfo()],
           outputs: [randomOutputData()]
         },
         randomEncryptionPublicKey()
       )
     ).toThrowError());
 
-  const sum = (bs: (CoinInfo | { recipient: Recipient; coinInfo: CoinInfo })[]): bigint =>
+  const sum = (bs: (ShieldedCoinInfo | { recipient: Recipient; coinInfo: ShieldedCoinInfo })[]): bigint =>
     bs.reduce((prev, curr) => {
       if (typeof curr === 'object' && 'recipient' in curr && 'coinInfo' in curr) {
         return prev + curr.coinInfo.value;
@@ -186,15 +186,15 @@ describe('Zswap utilities', () => {
     }, 0n);
 
   const zswapChainStateWithNonMatchingInputs = (recipient: Recipient, values: bigint[]) => {
-    const nonMatchingInputs: QualifiedCoinInfo[] = [];
+    const nonMatchingInputs: QualifiedShieldedCoinInfo[] = [];
     const zswapChainState = values.reduce((prevZSwapChainState, value) => {
-      const coinInfo = createCoinInfo(nativeToken(), value);
-      const output = createUnprovenOutput({ coinInfo, recipient }, randomEncryptionPublicKey());
-      const proofErasedOffer = new UnprovenTransaction(
-        UnprovenOffer.fromOutput(output, nativeToken(), value)
+      const coinInfo = createShieldedCoinInfo(shieldedToken().tag, value);
+      const output = createZswapOutput({ coinInfo, recipient }, randomEncryptionPublicKey());
+      const proofErasedOffer = Transaction.fromParts(
+        ZswapOffer.fromOutput(output, nativeToken().tag, value)
       ).eraseProofs().guaranteedCoins;
       if (proofErasedOffer) {
-        const [newZswapChainState, mtIndices] = prevZSwapChainState.tryApplyProofErased(proofErasedOffer);
+        const [newZswapChainState, mtIndices] = prevZSwapChainState.tryApply(proofErasedOffer);
         nonMatchingInputs.push({ ...coinInfo, mt_index: mtIndices.get(output.commitment)! });
         return newZswapChainState;
       }
@@ -205,8 +205,8 @@ describe('Zswap utilities', () => {
 
   const arbitraryMatchingInputOutputPairs = (
     recipient: Recipient,
-    preExistingCoins: (QualifiedCoinInfo | CoinInfo)[]
-  ): fc.Arbitrary<[QualifiedCoinInfo[], { recipient: Recipient; coinInfo: CoinInfo }[]]> =>
+    preExistingCoins: (QualifiedShieldedCoinInfo | ShieldedCoinInfo)[]
+  ): fc.Arbitrary<[QualifiedShieldedCoinInfo[], { recipient: Recipient; coinInfo: ShieldedCoinInfo }[]]> =>
     fc.array(arbitraryNativeCoinInfo.filter(distinctFrom(preExistingCoins))).map((matchingOutputsNoRecipient) => [
       withZeroMtIndex(matchingOutputsNoRecipient), // matching inputs
       toOutputData(recipient, matchingOutputsNoRecipient) // matching outputs
@@ -295,8 +295,8 @@ describe('Zswap utilities', () => {
   test('zswapStateToNewCoins returns only coins meant for provided wallet', () => {
     type ScenarioData = {
       walletCoinPublicKey: CoinPublicKey;
-      outputsForWallet: { recipient: Recipient; coinInfo: CoinInfo }[];
-      outputsNotForWallet: { recipient: Recipient; coinInfo: CoinInfo }[];
+      outputsForWallet: { recipient: Recipient; coinInfo: ShieldedCoinInfo }[];
+      outputsNotForWallet: { recipient: Recipient; coinInfo: ShieldedCoinInfo }[];
     }
     const arbitraryScenario = arbitraryCoinPublicKey.chain((walletCoinPublicKey) =>
       fc.record<ScenarioData>({

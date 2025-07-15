@@ -15,7 +15,7 @@
 
 import type { ContractState, ContractAddress, ZswapLocalState, SigningKey } from '@midnight-ntwrk/compact-runtime';
 import type { FinalizedTxData, Contract, ImpureCircuitId, PrivateState } from '@midnight-ntwrk/midnight-js-types';
-import type { CoinInfo, UnprovenTransaction } from '@midnight-ntwrk/ledger';
+import type { ShieldedCoinInfo, Transaction } from '@midnight-ntwrk/ledger';
 import type { CallResult } from './call';
 
 /**
@@ -25,11 +25,11 @@ export type UnsubmittedTxData = {
   /**
    * The unproven ledger transaction produced.
    */
-  readonly unprovenTx: UnprovenTransaction;
+  readonly unprovenTx: Transaction;
   /**
    * New coins created during the construction of the transaction.
    */
-  readonly newCoins: CoinInfo[];
+  readonly newCoins: ShieldedCoinInfo[];
 }
 
 /**

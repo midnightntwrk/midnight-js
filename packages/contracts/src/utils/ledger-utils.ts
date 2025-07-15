@@ -25,7 +25,6 @@ import {
 import {
   ContractMaintenanceAuthority,
   ContractCallPrototype,
-  ContractCallsPrototype,
   ContractDeploy,
   ContractState as LedgerContractState,
   QueryContext as LedgerQueryContext,
@@ -36,9 +35,9 @@ import {
   ContractOperationVersion,
   MaintenanceUpdate,
   signData,
-  UnprovenOffer,
+  ZswapOffer,
   ContractOperationVersionedVerifierKey,
-  VerifierKeyInsert
+  VerifierKeyInsert, Intent
 } from '@midnight-ntwrk/ledger';
 import type { ZswapChainState, SingleUpdate } from '@midnight-ntwrk/ledger';
 import { type ImpureCircuitId, UnprovenTransaction, type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
@@ -84,7 +83,7 @@ export const contractMaintenanceAuthority = (
 };
 
 const addMaintenanceAuthority = (sk: SigningKey, contractState: LedgerContractState): void => {
-   
+
   contractState.maintenanceAuthority = contractMaintenanceAuthority(sk);
 };
 
@@ -105,7 +104,7 @@ export const createUnprovenLedgerDeployTx = (
     new UnprovenTransaction(
       zswapStateToOffer(zswapLocalState, encryptionPublicKey),
       undefined,
-      new ContractCallsPrototype().addDeploy(contractDeploy)
+      Intent.new(ttl).addDeploy(contractDeploy)
     )
   ];
 };
@@ -130,7 +129,7 @@ export const createUnprovenLedgerCallTx = (
       zswapChainState
     }),
     undefined,
-    new ContractCallsPrototype().addCall(
+    Intent.new(ttl).addCall(
       new ContractCallPrototype(
         contractAddress,
         circuitId,
@@ -171,9 +170,9 @@ export const unprovenTxFromContractUpdates = (
   const idx = 0n;
   const signedMaintenanceUpdate = maintenanceUpdate.addSignature(idx, signData(sk, maintenanceUpdate.dataToSign));
   return new UnprovenTransaction(
-    new UnprovenOffer(),
+    new ZswapOffer(),
     undefined,
-    new ContractCallsPrototype().addMaintenanceUpdate(signedMaintenanceUpdate)
+    Intent.new(ttl).addMaintenanceUpdate(signedMaintenanceUpdate)
   );
 };
 

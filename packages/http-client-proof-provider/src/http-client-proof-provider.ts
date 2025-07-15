@@ -17,7 +17,7 @@ import type {
   ProofProvider,
   ProveTxConfig,
   UnbalancedTransaction,
-  UnprovenTransaction,
+  Transaction,
   ZKConfig
 } from '@midnight-ntwrk/midnight-js-types';
 import fetch from 'cross-fetch';
@@ -67,7 +67,7 @@ export const serializeZKConfig = <K extends string>(zkConfig?: ZKConfig<K>): Uin
  *                 if a deployment transaction is being proven.
  */
 export const serializePayload = <K extends string>(
-  unprovenTx: UnprovenTransaction,
+  unprovenTx: Transaction,
   zkConfig?: ZKConfig<K>
 ): Promise<ArrayBuffer> =>
   new Blob([unprovenTx.serialize(getLedgerNetworkId()), serializeZKConfig(zkConfig)]).arrayBuffer();
@@ -107,7 +107,7 @@ export const httpClientProofProvider = <K extends string>(url: string): ProofPro
   }
   return {
     async proveTx(
-      unprovenTx: UnprovenTransaction,
+      unprovenTx: Transaction,
       partialProveTxConfig?: ProveTxConfig<K>
     ): Promise<UnbalancedTransaction> {
       const config = _.defaults(partialProveTxConfig, DEFAULT_CONFIG);

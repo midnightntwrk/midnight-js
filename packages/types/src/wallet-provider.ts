@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { CoinInfo, CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/ledger';
+import type { ShieldedCoinInfo, CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/ledger';
 import type { BalancedTransaction, UnbalancedTransaction } from './midnight-types';
 
 /**
@@ -35,5 +35,5 @@ export interface WalletProvider {
    * @param tx The transaction to balance.
    * @param newCoins The outputs created during a transaction.
    */
-  balanceTx(tx: UnbalancedTransaction, newCoins: CoinInfo[]): Promise<BalancedTransaction>;
+  balanceTx(tx: UnbalancedTransaction, newCoins: ShieldedCoinInfo[]): Promise<BalancedTransaction>;
 }

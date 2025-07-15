@@ -39,7 +39,7 @@ export * from './public-data-provider';
 export * from './providers';
 export * from './zk-config-provider';
 export * from './errors';
-export { UnprovenTransaction } from '@midnight-ntwrk/ledger';
+export { Transaction } from '@midnight-ntwrk/ledger';
 export * from './logger-provider';
 export {
   ImpureCircuit,

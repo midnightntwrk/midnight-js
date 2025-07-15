@@ -195,7 +195,7 @@ const partitionTranscript = (
   const partitionedTranscripts = partitionTranscripts(
     [
       new PreTranscript(
-        Array.from(finalTxContext.comIndicies).reduce(
+        Array.from(finalTxContext.comIndices).reduce(
           (queryContext, entry) => queryContext.insertCommitment(...entry),
           toLedgerQueryContext(initialTxContext)
         ),
