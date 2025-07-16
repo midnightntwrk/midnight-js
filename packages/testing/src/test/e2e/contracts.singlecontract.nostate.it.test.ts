@@ -50,7 +50,7 @@ import {
   type UnsubmittedDeployTxData
 } from '@midnight-ntwrk/midnight-js-contracts';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
-import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { Simple } from '@/e2e/contract';
 import * as api from '@/e2e/api';
 import type { SimpleContract, SimpleProviders } from '@/e2e/simple-types';
@@ -66,7 +66,7 @@ const expectSimpleContractCallResult = (
 ): void => {
   expect(Simple.ledger(callResult.public.nextContractState).round).toEqual(round);
   expect(callResult.private.nextZswapLocalState).toEqual(
-    decodeZswapLocalState(emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, getZswapNetworkId())))
+    decodeZswapLocalState(emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, getLedgerNetworkId())))
   );
   expect(callResult.private.nextPrivateState).toBeUndefined();
   expect(callResult.private.privateTranscriptOutputs).toEqual([]);
@@ -93,7 +93,7 @@ const expectSimpleContractDeployTxData = (
   expect(Simple.ledger(deployTxResult.public.initialContractState.data).round).toEqual(round);
   expect(deployTxResult.private.initialPrivateState).toBeUndefined();
   expect(deployTxResult.private.initialZswapState).toEqual(
-    decodeZswapLocalState(emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, getZswapNetworkId())))
+    decodeZswapLocalState(emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, getLedgerNetworkId())))
   );
   expect(deployTxResult.private.signingKey).toEqual(signingKey);
   expect(deployTxResult.private.newCoins).toEqual([]);
@@ -141,7 +141,7 @@ describe('Contracts API', () => {
     expect(Simple.ledger(constructorResult.nextContractState.data).round).toEqual(0n);
     expect(constructorResult.nextPrivateState).toBeUndefined();
     expect(constructorResult.nextZswapLocalState).toEqual(
-      decodeZswapLocalState(emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, getZswapNetworkId())))
+      decodeZswapLocalState(emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, getLedgerNetworkId())))
     );
     const callResult = call({
       contract: api.simpleContractInstance,
@@ -186,7 +186,7 @@ describe('Contracts API', () => {
     const finalizedCallTxData = await foundSimpleContract.callTx.noop();
     await expectSuccessfulCallTx(providers, finalizedCallTxData);
     expectSimpleContractCallTxData(
-      parseCoinPublicKeyToHex(providers.walletProvider.coinPublicKey, getZswapNetworkId()),
+      parseCoinPublicKeyToHex(providers.walletProvider.coinPublicKey, getLedgerNetworkId()),
       1n,
       finalizedCallTxData
     );
@@ -253,7 +253,7 @@ describe('Contracts API', () => {
     } as const;
     const unprovenCallTxData1 = await createUnprovenCallTx(reducedProviders, callTxOptions);
     expectSimpleContractCallTxData(
-      parseCoinPublicKeyToHex(providers.walletProvider.coinPublicKey, getZswapNetworkId()),
+      parseCoinPublicKeyToHex(providers.walletProvider.coinPublicKey, getLedgerNetworkId()),
       1n,
       unprovenCallTxData1
     );

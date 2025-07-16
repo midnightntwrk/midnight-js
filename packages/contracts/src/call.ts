@@ -35,7 +35,7 @@ import type {
   ImpureCircuitId,
   PrivateState
 } from '@midnight-ntwrk/midnight-js-types';
-import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { toLedgerQueryContext } from './utils';
 
 /**
@@ -227,7 +227,7 @@ export const call = <C extends Contract, ICK extends ImpureCircuitId<C>>(
       originalState: initialContractState,
       currentPrivateState: 'initialPrivateState' in options ? options.initialPrivateState : undefined,
       transactionContext: initialTxContext,
-      currentZswapLocalState: emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, getZswapNetworkId()))
+      currentZswapLocalState: emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, getLedgerNetworkId()))
     },
     ...('args' in options ? options.args : [])
   );

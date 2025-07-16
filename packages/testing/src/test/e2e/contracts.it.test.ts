@@ -52,7 +52,7 @@ import {
   sampleSigningKey
 } from '@midnight-ntwrk/compact-runtime';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
-import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import * as api from '@/e2e/api';
 import {
   CounterConfiguration,
@@ -178,7 +178,7 @@ describe('Contracts API', () => {
     expect(unprovenDeployTxResult.private.initialPrivateState).toEqual(privateStateZero);
     expect(unprovenDeployTxResult.private.initialZswapState).toEqual(
       decodeZswapLocalState(
-        emptyZswapLocalState(parseCoinPublicKeyToHex(providers.walletProvider.coinPublicKey, getZswapNetworkId()))
+        emptyZswapLocalState(parseCoinPublicKeyToHex(providers.walletProvider.coinPublicKey, getLedgerNetworkId()))
       )
     );
     expect(unprovenDeployTxResult.private.signingKey).toEqual(signingKey);
@@ -202,7 +202,7 @@ describe('Contracts API', () => {
     expect(unprovenCallTxData.private.newCoins).toEqual([]);
     expect(unprovenCallTxData.private.nextZswapLocalState).toEqual(
       decodeZswapLocalState(
-        emptyZswapLocalState(parseCoinPublicKeyToHex(providers.walletProvider.coinPublicKey, getZswapNetworkId()))
+        emptyZswapLocalState(parseCoinPublicKeyToHex(providers.walletProvider.coinPublicKey, getLedgerNetworkId()))
       )
     );
     expect(unprovenCallTxData.private.nextPrivateState).toEqual(createPrivateState(2));

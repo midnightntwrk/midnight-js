@@ -17,7 +17,7 @@ import type { Contract, ImpureCircuitId, PrivateState, PrivateStateId } from '@m
 import { type ZswapChainState, type EncPublicKey } from '@midnight-ntwrk/ledger';
 import { assertDefined, assertIsContractAddress, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import type { CoinPublicKey, ContractState } from '@midnight-ntwrk/compact-runtime';
-import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { getPublicStates, getStates } from './get-states';
 import { createUnprovenLedgerCallTx, encryptionPublicKeyForZswapState, zswapStateToNewCoins } from './utils';
 import type { UnsubmittedCallTxData } from './tx-model';
@@ -87,7 +87,7 @@ export function createUnprovenCallTxFromInitialStates<C extends Contract, ICK ex
         )
       ),
       newCoins: zswapStateToNewCoins(
-        parseCoinPublicKeyToHex(coinPublicKey, getZswapNetworkId()),
+        parseCoinPublicKeyToHex(coinPublicKey, getLedgerNetworkId()),
         callResult.private.nextZswapLocalState
       )
     }
@@ -143,7 +143,7 @@ const createCallOptions = <C extends Contract, ICK extends ImpureCircuitId<C>>(
       : callOptionsBase;
   const callOptionsBaseWithProviderDataDependencies = {
     ...callOptionsWithArguments,
-    coinPublicKey: parseCoinPublicKeyToHex(coinPublicKey, getZswapNetworkId()),
+    coinPublicKey: parseCoinPublicKeyToHex(coinPublicKey, getLedgerNetworkId()),
     initialContractState,
     initialZswapChainState
   };
@@ -224,7 +224,7 @@ export async function createUnprovenCallTx<C extends Contract, ICK extends Impur
     return createUnprovenCallTxFromInitialStates(
       createCallOptions(
         options,
-        parseCoinPublicKeyToHex(providers.walletProvider.coinPublicKey, getZswapNetworkId()),
+        parseCoinPublicKeyToHex(providers.walletProvider.coinPublicKey, getLedgerNetworkId()),
         contractState,
         zswapChainState,
         privateState
@@ -241,7 +241,7 @@ export async function createUnprovenCallTx<C extends Contract, ICK extends Impur
   return createUnprovenCallTxFromInitialStates(
     createCallOptions(
       options,
-      parseCoinPublicKeyToHex(providers.walletProvider.coinPublicKey, getZswapNetworkId()),
+      parseCoinPublicKeyToHex(providers.walletProvider.coinPublicKey, getLedgerNetworkId()),
       contractState,
       zswapChainState
     ),
