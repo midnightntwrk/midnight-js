@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { createProverKey, createVerifierKey, createZKIR } from '@midnight-ntwrk/midnight-js-types';
+import { createProverKey, createVerifierKey, createZKIR, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-types';
 import fs from 'fs/promises';
 import { Transaction } from '@midnight-ntwrk/ledger';
 import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
@@ -34,7 +34,7 @@ export const getValidZKConfig = async () => ({
   zkir: createZKIR(await fs.readFile(`${resourceDir}/zkir/${SET_TOPIC_CIRCUIT_ID}.bzkir`))
 });
 
-export const getValidUnprovenTx = async () =>
-  Transaction.deserialize(await fs.readFile(`${resourceDir}/${UNPROVEN_TX}`), getLedgerNetworkId());
+export const getValidUnprovenTx = async (): Promise<UnprovenTransaction> =>
+  Transaction.deserialize('signature', 'pre-proof', 'binding', await fs.readFile(`${resourceDir}/${UNPROVEN_TX}`), getLedgerNetworkId());
 
 export const getValidPayload = async () => fs.readFile(`${resourceDir}/${PAYLOAD}`);

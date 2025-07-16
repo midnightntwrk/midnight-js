@@ -17,7 +17,7 @@ import {
   type Binding,
   type Bindingish,
   type PreProof,
-  type Proof, type Proofish,
+  type Proof,
   type SignatureEnabled,
   type Signaturish,
   type Transaction,
@@ -164,7 +164,7 @@ export type BalancedTransaction = Transaction<Signaturish, Proof, Bindingish> & 
  * Creates an {@link BalancedTransaction} from a ledger transaction.
  * @param tx The ledger transaction to wrap.
  */
-export const createBalancedTx = (tx: Transaction<Signaturish, Proofish, Bindingish>): BalancedTransaction => {
+export const createBalancedTx = (tx: Transaction<Signaturish, Proof, Bindingish>): BalancedTransaction => {
   return tx as BalancedTransaction;
 };
 

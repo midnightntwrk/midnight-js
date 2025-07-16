@@ -43,7 +43,7 @@ describe('Http Proof Server Proof Provider', () => {
     // Assert that the 'proveTx' call fails only with our arranged 500 error.
     await expect(() => proofProvider.proveTx(unprovenTx)).rejects.toThrow('MOCK_ERROR');
 
-    // Assert that 'fetch' was used to POST to constructed 'prove-tx' URL.
+    // Assert that 'fetch' was used to POST to construct 'prove-tx' URL.
     expect(mockFetch).toHaveBeenCalledWith(
       expect.objectContaining({ href: 'http://notvalidendpoint:8080/prove-tx' }),
       expect.objectContaining({
@@ -67,7 +67,7 @@ describe('Http Proof Server Proof Provider', () => {
     // Assert that the 'proveTx' call fails only with our arranged 500 error.
     await expect(() => proofProvider.proveTx(unprovenTx)).rejects.toThrow('MOCK_ERROR');
 
-    // Assert that 'fetch' was used to POST to constructed 'prove-tx' URL.
+    // Assert that 'fetch' was used to POST to construct 'prove-tx' URL.
     expect(mockFetch).toHaveBeenCalledWith(
       expect.objectContaining({ href: 'http://notvalidendpoint:8080/prove-tx' }),
       expect.objectContaining({

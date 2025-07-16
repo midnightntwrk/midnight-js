@@ -35,7 +35,6 @@ import {
   ContractOperationVersion,
   MaintenanceUpdate,
   signData,
-  ZswapOffer,
   ContractOperationVersionedVerifierKey,
   VerifierKeyInsert, Intent, type EncPublicKey
 } from '@midnight-ntwrk/ledger';
@@ -176,7 +175,7 @@ export const unprovenTxFromContractUpdates = (
   const idx = 0n;
   const signedMaintenanceUpdate = maintenanceUpdate.addSignature(idx, signData(sk, maintenanceUpdate.dataToSign));
   return Transaction.fromParts(
-    new ZswapOffer(),
+    undefined,
     undefined,
     Intent.new(ttl()).addMaintenanceUpdate(signedMaintenanceUpdate)
   );
