@@ -142,7 +142,7 @@ export class StaticProofServerContainer implements ProofServerContainer {
    * No-op stop method since this represents an external proof server.
    * @returns {Promise<void>} A resolved promise
    */
-   
+
   stop(): Promise<void> {
     return Promise.resolve(undefined);
   }

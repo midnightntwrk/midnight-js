@@ -1,18 +1,3 @@
-/*
- * This file is part of midnight-js.
- * Copyright (C) 2025 Midnight Foundation
- * SPDX-License-Identifier: Apache-2.0
- * Licensed under the Apache License, Version 2.0 (the "License");
- * You may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- * http://www.apache.org/licenses/LICENSE-2.0
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 /* eslint-disable */
 import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core';
 export type Maybe<T> = T | null;
@@ -29,9 +14,9 @@ export type Scalars = {
   Boolean: { input: boolean; output: boolean; }
   Int: { input: number; output: number; }
   Float: { input: number; output: number; }
-  ApplyStage: { input: string; output: string; }
   HexEncoded: { input: string; output: string; }
   Unit: { input: null; output: null; }
+  UnshieldedAddress: { input: string; output: string; }
   ViewingKey: { input: string; output: string; }
 };
 
@@ -53,10 +38,12 @@ export type Block = {
   transactions: Array<Transaction>;
 };
 
-/** Either a hash or a height to query a block. */
+/** Either a block hash or a block height. */
 export type BlockOffset =
+  /** A hex-encoded block hash. */
   { hash: Scalars['HexEncoded']['input']; height?: never; }
-  |  { hash?: never; height: Scalars['Int']['input']; };
+  |  /** A block height. */
+  { hash?: never; height: Scalars['Int']['input']; };
 
 /** A contract action. */
 export type ContractAction = {
@@ -66,10 +53,24 @@ export type ContractAction = {
   transaction: Transaction;
 };
 
-/** Either a block offset or a transaction offset to query a contract action. */
+/** Either a block offset or a transaction offset. */
 export type ContractActionOffset =
+  /** Either a block hash or a block height. */
   { blockOffset: BlockOffset; transactionOffset?: never; }
-  |  { blockOffset?: never; transactionOffset: TransactionOffset; };
+  |  /** Either a transaction hash or a transaction identifier. */
+  { blockOffset?: never; transactionOffset: TransactionOffset; };
+
+/**
+ * Represents a token balance held by a contract.
+ * This type is exposed through the GraphQL API to allow clients to query
+ * unshielded token balances for any contract action (Deploy, Call, Update).
+ */
+export type ContractBalance = {
+  /** Balance amount as string to support larger integer values (up to 16 bytes). */
+  amount: Scalars['String']['output'];
+  /** Hex-encoded token type identifier. */
+  tokenType: Scalars['HexEncoded']['output'];
+};
 
 /** A contract call. */
 export type ContractCall = ContractAction & {
@@ -79,6 +80,8 @@ export type ContractCall = ContractAction & {
   entryPoint: Scalars['HexEncoded']['output'];
   state: Scalars['HexEncoded']['output'];
   transaction: Transaction;
+  /** Unshielded token balances held by this contract. */
+  unshieldedBalances: Array<ContractBalance>;
 };
 
 /** A contract deployment. */
@@ -87,6 +90,11 @@ export type ContractDeploy = ContractAction & {
   chainState: Scalars['HexEncoded']['output'];
   state: Scalars['HexEncoded']['output'];
   transaction: Transaction;
+  /**
+   * Unshielded token balances held by this contract.
+   * According to the architecture, deployed contracts must have zero balance.
+   */
+  unshieldedBalances: Array<ContractBalance>;
 };
 
 /** A contract update. */
@@ -95,6 +103,8 @@ export type ContractUpdate = ContractAction & {
   chainState: Scalars['HexEncoded']['output'];
   state: Scalars['HexEncoded']['output'];
   transaction: Transaction;
+  /** Unshielded token balances held by this contract after the update. */
+  unshieldedBalances: Array<ContractBalance>;
 };
 
 export type MerkleTreeCollapsedUpdate = {
@@ -123,21 +133,6 @@ export type MutationConnectArgs = {
 
 export type MutationDisconnectArgs = {
   sessionId: Scalars['HexEncoded']['input'];
-};
-
-export type ProgressUpdate = {
-  /** The highest end index into the zswap state of all currently known transactions. */
-  highestIndex: Scalars['Int']['output'];
-  /**
-   * The highest end index into the zswap state of all currently known relevant transactions,
-   * i.e. such that belong to any wallet. Less or equal `highest_index`.
-   */
-  highestRelevantIndex: Scalars['Int']['output'];
-  /**
-   * The highest end index into the zswap state of all currently known relevant transactions for
-   * a particular wallet. Less or equal `highest_relevant_index`.
-   */
-  highestRelevantWalletIndex: Scalars['Int']['output'];
 };
 
 export type Query = {
@@ -174,13 +169,57 @@ export type RelevantTransaction = {
   transaction: Transaction;
 };
 
+/**
+ * One of many segments for a partially successful transaction result showing success for some
+ * segment.
+ */
+export type Segment = {
+  /** Segment ID. */
+  id: Scalars['Int']['output'];
+  /** Successful or not. */
+  success: Scalars['Boolean']['output'];
+};
+
+/** An event of the shielded transactions subscription. */
+export type ShieldedTransactionsEvent = ShieldedTransactionsProgress | ViewingUpdate;
+
+/** Aggregates information about the shielded transactions indexing progress. */
+export type ShieldedTransactionsProgress = {
+  /** The highest end index into the zswap state of all currently known transactions. */
+  highestIndex: Scalars['Int']['output'];
+  /**
+   * The highest end index into the zswap state of all currently known relevant transactions,
+   * i.e. those that belong to any known wallet. Less or equal `highest_index`.
+   */
+  highestRelevantIndex: Scalars['Int']['output'];
+  /**
+   * The highest end index into the zswap state of all currently known relevant transactions for
+   * a particular wallet. Less or equal `highest_relevant_index`.
+   */
+  highestRelevantWalletIndex: Scalars['Int']['output'];
+};
+
 export type Subscription = {
-  /** Subscribe to blocks. */
+  /**
+   * Subscribe to blocks starting at the given offset or at the latest block if the offset is
+   * omitted.
+   */
   blocks: Block;
-  /** Subscribe to contract actions. */
+  /**
+   * Subscribe to contract actions with the given address starting at the given offset or at the
+   * latest block if the offset is omitted.
+   */
   contractActions: ContractAction;
-  /** Subscribe to wallet events. */
-  wallet: WalletSyncEvent;
+  /**
+   * Subscribe shielded transaction events for the given session ID starting at the given index
+   * or at zero if omitted.
+   */
+  shieldedTransactions: ShieldedTransactionsEvent;
+  /**
+   * Subscribe unshielded transaction events for the given address and the given transaction ID
+   * or zero if omitted.
+   */
+  unshieldedTransactions: UnshieldedTransactionsEvent;
 };
 
 
@@ -195,22 +234,30 @@ export type SubscriptionContractActionsArgs = {
 };
 
 
-export type SubscriptionWalletArgs = {
+export type SubscriptionShieldedTransactionsArgs = {
   index: InputMaybe<Scalars['Int']['input']>;
   sendProgressUpdates: InputMaybe<Scalars['Boolean']['input']>;
   sessionId: Scalars['HexEncoded']['input'];
 };
 
+
+export type SubscriptionUnshieldedTransactionsArgs = {
+  address: Scalars['UnshieldedAddress']['input'];
+  transactionId: InputMaybe<Scalars['Int']['input']>;
+};
+
 /** A transaction with its relevant data. */
 export type Transaction = {
-  /** The transaction apply stage. */
-  applyStage: Scalars['ApplyStage']['output'];
   /** The block for this transaction. */
   block: Block;
   /** The contract actions. */
   contractActions: Array<ContractAction>;
+  /** Fee information for this transaction. */
+  fees: TransactionFees;
   /** The transaction hash. */
   hash: Scalars['HexEncoded']['output'];
+  /** The transaction ID. */
+  id: Scalars['Int']['output'];
   /** The transaction identifiers. */
   identifiers: Array<Scalars['HexEncoded']['output']>;
   /** The merkle-tree root. */
@@ -219,13 +266,86 @@ export type Transaction = {
   protocolVersion: Scalars['Int']['output'];
   /** The raw transaction content. */
   raw: Scalars['HexEncoded']['output'];
+  /** The result of applying a transaction to the ledger state. */
+  transactionResult: TransactionResult;
+  /** Unshielded UTXOs created by this transaction. */
+  unshieldedCreatedOutputs: Array<UnshieldedUtxo>;
+  /** Unshielded UTXOs spent (consumed) by this transaction. */
+  unshieldedSpentOutputs: Array<UnshieldedUtxo>;
 };
 
-/** Either a hash or an identifier to query transactions. */
-export type TransactionOffset =
-  { hash: Scalars['HexEncoded']['input']; identifier?: never; }
-  |  { hash?: never; identifier: Scalars['HexEncoded']['input']; };
+/** Fees information for a transaction, including both paid and estimated fees. */
+export type TransactionFees = {
+  /** The estimated fees that was calculated for this transaction in DUST. */
+  estimatedFees: Scalars['String']['output'];
+  /** The actual fees paid for this transaction in DUST. */
+  paidFees: Scalars['String']['output'];
+};
 
+/** Either a transaction hash or a transaction identifier. */
+export type TransactionOffset =
+  /** A hex-encoded transaction hash. */
+  { hash: Scalars['HexEncoded']['input']; identifier?: never; }
+  |  /** A hex-encoded transaction identifier. */
+  { hash?: never; identifier: Scalars['HexEncoded']['input']; };
+
+/**
+ * The result of applying a transaction to the ledger state. In case of a partial success (status),
+ * there will be segments.
+ */
+export type TransactionResult = {
+  segments: Maybe<Array<Segment>>;
+  status: TransactionResultStatus;
+};
+
+/** The status of the transaction result: success, partial success or failure. */
+export type TransactionResultStatus =
+  | 'FAILURE'
+  | 'PARTIAL_SUCCESS'
+  | 'SUCCESS'
+  | '%future added value';
+
+/** A transaction that created and/or spent UTXOs alongside these and other information. */
+export type UnshieldedTransaction = {
+  /** UTXOs created in the above transaction, possibly empty. */
+  createdUtxos: Array<UnshieldedUtxo>;
+  /** UTXOs spent in the above transaction, possibly empty. */
+  spentUtxos: Array<UnshieldedUtxo>;
+  /** The transaction that created and/or spent UTXOs. */
+  transaction: Transaction;
+};
+
+/** An event of the unshielded transactions subscription. */
+export type UnshieldedTransactionsEvent = UnshieldedTransaction | UnshieldedTransactionsProgress;
+
+/** Information about the unshielded indexing progress. */
+export type UnshieldedTransactionsProgress = {
+  /** The highest transaction ID of all currently known transactions for a subscribed address. */
+  highestTransactionId: Scalars['Int']['output'];
+};
+
+/** Represents an unshielded UTXO. */
+export type UnshieldedUtxo = {
+  /** Transaction that created this UTXO. */
+  createdAtTransaction: Transaction;
+  /** The hash of the intent that created this output (hex-encoded) */
+  intentHash: Scalars['HexEncoded']['output'];
+  /** Index of this output within its creating transaction */
+  outputIndex: Scalars['Int']['output'];
+  /** Owner address (Bech32m, `mn_addr…`) */
+  owner: Scalars['UnshieldedAddress']['output'];
+  /** Transaction that spent this UTXO. */
+  spentAtTransaction: Maybe<Transaction>;
+  /** Token type (hex-encoded) */
+  tokenType: Scalars['HexEncoded']['output'];
+  /** UTXO value (quantity) as a string to support u128 */
+  value: Scalars['String']['output'];
+};
+
+/**
+ * Aggregates a relevant transaction with the next start index and an optional collapsed
+ * Merkle-Tree update.
+ */
 export type ViewingUpdate = {
   /**
    * Next start index into the zswap state to be queried. Usually the end index of the included
@@ -236,8 +356,6 @@ export type ViewingUpdate = {
   /** Relevant transaction for the wallet and maybe a collapsed Merkle-Tree update. */
   update: Array<ZswapChainStateUpdate>;
 };
-
-export type WalletSyncEvent = ProgressUpdate | ViewingUpdate;
 
 export type ZswapChainStateUpdate = MerkleTreeCollapsedUpdate | RelevantTransaction;
 
@@ -253,14 +371,14 @@ export type TxIdQueryQueryVariables = Exact<{
 }>;
 
 
-export type TxIdQueryQuery = { transactions: Array<{ raw: string, applyStage: string, hash: string, block: { height: number, hash: string } }> };
+export type TxIdQueryQuery = { transactions: Array<{ raw: string, hash: string, block: { height: number, hash: string } }> };
 
 export type DeployTxQueryQueryVariables = Exact<{
   address: Scalars['HexEncoded']['input'];
 }>;
 
 
-export type DeployTxQueryQuery = { contractAction: { deploy: { transaction: { raw: string, applyStage: string, hash: string, identifiers: Array<string>, contractActions: Array<{ address: string } | { address: string } | { address: string }>, block: { height: number, hash: string } } } } | { transaction: { raw: string, applyStage: string, hash: string, identifiers: Array<string>, contractActions: Array<{ address: string } | { address: string } | { address: string }>, block: { height: number, hash: string } } } | { transaction: { raw: string, applyStage: string, hash: string, identifiers: Array<string>, contractActions: Array<{ address: string } | { address: string } | { address: string }>, block: { height: number, hash: string } } } | null };
+export type DeployTxQueryQuery = { contractAction: { deploy: { transaction: { raw: string, hash: string, identifiers: Array<string>, contractActions: Array<{ address: string } | { address: string } | { address: string }>, block: { height: number, hash: string } } } } | { transaction: { raw: string, hash: string, identifiers: Array<string>, contractActions: Array<{ address: string } | { address: string } | { address: string }>, block: { height: number, hash: string } } } | { transaction: { raw: string, hash: string, identifiers: Array<string>, contractActions: Array<{ address: string } | { address: string } | { address: string }>, block: { height: number, hash: string } } } | null };
 
 export type DeployContractStateTxQueryQueryVariables = Exact<{
   address: Scalars['HexEncoded']['input'];
@@ -309,8 +427,8 @@ export type BothStateQueryQuery = { contractAction: { state: string, chainState:
 
 
 export const BlockHashQueryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"BLOCK_HASH_QUERY"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"offset"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"BlockOffset"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"block"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"offset"},"value":{"kind":"Variable","name":{"kind":"Name","value":"offset"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"height"}},{"kind":"Field","name":{"kind":"Name","value":"hash"}}]}}]}}]} as unknown as DocumentNode<BlockHashQueryQuery, BlockHashQueryQueryVariables>;
-export const TxIdQueryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"TX_ID_QUERY"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"offset"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"TransactionOffset"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"transactions"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"offset"},"value":{"kind":"Variable","name":{"kind":"Name","value":"offset"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"raw"}},{"kind":"Field","name":{"kind":"Name","value":"applyStage"}},{"kind":"Field","name":{"kind":"Name","value":"hash"}},{"kind":"Field","name":{"kind":"Name","value":"block"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"height"}},{"kind":"Field","name":{"kind":"Name","value":"hash"}}]}}]}}]}}]} as unknown as DocumentNode<TxIdQueryQuery, TxIdQueryQueryVariables>;
-export const DeployTxQueryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"DEPLOY_TX_QUERY"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"address"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"HexEncoded"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"contractAction"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"address"},"value":{"kind":"Variable","name":{"kind":"Name","value":"address"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ContractDeploy"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"transaction"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"raw"}},{"kind":"Field","name":{"kind":"Name","value":"applyStage"}},{"kind":"Field","name":{"kind":"Name","value":"hash"}},{"kind":"Field","name":{"kind":"Name","value":"identifiers"}},{"kind":"Field","name":{"kind":"Name","value":"contractActions"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"block"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"height"}},{"kind":"Field","name":{"kind":"Name","value":"hash"}}]}}]}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ContractUpdate"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"transaction"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"raw"}},{"kind":"Field","name":{"kind":"Name","value":"applyStage"}},{"kind":"Field","name":{"kind":"Name","value":"hash"}},{"kind":"Field","name":{"kind":"Name","value":"identifiers"}},{"kind":"Field","name":{"kind":"Name","value":"contractActions"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"block"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"height"}},{"kind":"Field","name":{"kind":"Name","value":"hash"}}]}}]}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ContractCall"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deploy"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"transaction"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"raw"}},{"kind":"Field","name":{"kind":"Name","value":"applyStage"}},{"kind":"Field","name":{"kind":"Name","value":"hash"}},{"kind":"Field","name":{"kind":"Name","value":"identifiers"}},{"kind":"Field","name":{"kind":"Name","value":"contractActions"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"block"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"height"}},{"kind":"Field","name":{"kind":"Name","value":"hash"}}]}}]}}]}}]}}]}}]}}]} as unknown as DocumentNode<DeployTxQueryQuery, DeployTxQueryQueryVariables>;
+export const TxIdQueryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"TX_ID_QUERY"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"offset"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"TransactionOffset"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"transactions"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"offset"},"value":{"kind":"Variable","name":{"kind":"Name","value":"offset"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"raw"}},{"kind":"Field","name":{"kind":"Name","value":"hash"}},{"kind":"Field","name":{"kind":"Name","value":"block"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"height"}},{"kind":"Field","name":{"kind":"Name","value":"hash"}}]}}]}}]}}]} as unknown as DocumentNode<TxIdQueryQuery, TxIdQueryQueryVariables>;
+export const DeployTxQueryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"DEPLOY_TX_QUERY"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"address"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"HexEncoded"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"contractAction"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"address"},"value":{"kind":"Variable","name":{"kind":"Name","value":"address"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ContractDeploy"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"transaction"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"raw"}},{"kind":"Field","name":{"kind":"Name","value":"hash"}},{"kind":"Field","name":{"kind":"Name","value":"identifiers"}},{"kind":"Field","name":{"kind":"Name","value":"contractActions"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"block"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"height"}},{"kind":"Field","name":{"kind":"Name","value":"hash"}}]}}]}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ContractUpdate"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"transaction"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"raw"}},{"kind":"Field","name":{"kind":"Name","value":"hash"}},{"kind":"Field","name":{"kind":"Name","value":"identifiers"}},{"kind":"Field","name":{"kind":"Name","value":"contractActions"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"block"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"height"}},{"kind":"Field","name":{"kind":"Name","value":"hash"}}]}}]}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ContractCall"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deploy"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"transaction"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"raw"}},{"kind":"Field","name":{"kind":"Name","value":"hash"}},{"kind":"Field","name":{"kind":"Name","value":"identifiers"}},{"kind":"Field","name":{"kind":"Name","value":"contractActions"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"address"}}]}},{"kind":"Field","name":{"kind":"Name","value":"block"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"height"}},{"kind":"Field","name":{"kind":"Name","value":"hash"}}]}}]}}]}}]}}]}}]}}]} as unknown as DocumentNode<DeployTxQueryQuery, DeployTxQueryQueryVariables>;
 export const DeployContractStateTxQueryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"DEPLOY_CONTRACT_STATE_TX_QUERY"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"address"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"HexEncoded"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"contractAction"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"address"},"value":{"kind":"Variable","name":{"kind":"Name","value":"address"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ContractDeploy"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"state"}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ContractUpdate"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"state"}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"ContractCall"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"deploy"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"transaction"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"contractActions"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"address"}},{"kind":"Field","name":{"kind":"Name","value":"state"}}]}}]}}]}}]}}]}}]}}]} as unknown as DocumentNode<DeployContractStateTxQueryQuery, DeployContractStateTxQueryQueryVariables>;
 export const LatestContractTxBlockHeightQueryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"address"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"HexEncoded"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"contractAction"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"address"},"value":{"kind":"Variable","name":{"kind":"Name","value":"address"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"transaction"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"block"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"height"}}]}}]}}]}}]}}]} as unknown as DocumentNode<LatestContractTxBlockHeightQueryQuery, LatestContractTxBlockHeightQueryQueryVariables>;
 export const TxsFromBlockSubDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"TXS_FROM_BLOCK_SUB"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"offset"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"BlockOffset"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"blocks"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"offset"},"value":{"kind":"Variable","name":{"kind":"Name","value":"offset"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"hash"}},{"kind":"Field","name":{"kind":"Name","value":"height"}},{"kind":"Field","name":{"kind":"Name","value":"transactions"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"hash"}},{"kind":"Field","name":{"kind":"Name","value":"identifiers"}},{"kind":"Field","name":{"kind":"Name","value":"contractActions"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"state"}},{"kind":"Field","name":{"kind":"Name","value":"address"}}]}}]}}]}}]}}]} as unknown as DocumentNode<TxsFromBlockSubSubscription, TxsFromBlockSubSubscriptionVariables>;

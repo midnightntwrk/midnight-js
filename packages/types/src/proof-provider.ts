@@ -13,8 +13,7 @@
  * limitations under the License.
  */
 
-import { type Bindingish, type PreProof, type Signaturish, type Transaction } from '@midnight-ntwrk/ledger';
-import type { UnbalancedTransaction, ZKConfig } from './midnight-types';
+import type { UnbalancedTransaction, UnprovenTransaction, ZKConfig } from './midnight-types';
 
 /**
  * The configuration for the proof request to the proof provider.
@@ -44,5 +43,5 @@ export interface ProofProvider<K extends string> {
    * @param proveTxConfig The configuration for the proof request to the proof provider. Empty in case
    *                      a deploy transaction is being proved with no user-defined timeout.
    */
-  proveTx<S extends Signaturish, B extends Bindingish>(tx: Transaction<S, PreProof, B>, proveTxConfig?: ProveTxConfig<K>): Promise<UnbalancedTransaction>;
+  proveTx(tx: UnprovenTransaction, proveTxConfig?: ProveTxConfig<K>): Promise<UnbalancedTransaction>;
 }

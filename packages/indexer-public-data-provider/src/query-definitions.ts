@@ -30,7 +30,6 @@ export const TX_ID_QUERY = gql(
   query TX_ID_QUERY($offset: TransactionOffset!) {
     transactions(offset: $offset) {
       raw
-      applyStage
       hash
       block {
         height
@@ -47,7 +46,6 @@ export const DEPLOY_TX_QUERY = gql(
       ... on ContractDeploy {
         transaction {
 	        raw
-          applyStage
           hash
           identifiers
           contractActions {
@@ -62,7 +60,6 @@ export const DEPLOY_TX_QUERY = gql(
       ... on ContractUpdate {
         transaction {
 	        raw
-          applyStage
           hash
           identifiers
           contractActions {
@@ -78,7 +75,6 @@ export const DEPLOY_TX_QUERY = gql(
         deploy {
           transaction {
 	          raw
-            applyStage
             hash
             identifiers
             contractActions {

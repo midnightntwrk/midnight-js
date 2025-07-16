@@ -14,8 +14,12 @@
  */
 
 import type { Logger } from 'pino';
-import { type ShieldedCoinInfo, shieldedToken, type TokenType, type EncPublicKey } from '@midnight-ntwrk/ledger';
-import { Transaction } from '@midnight-ntwrk/ledger';
+import {
+  type ShieldedCoinInfo,
+  shieldedToken,
+  type TokenType,
+  type EncPublicKey,
+} from '@midnight-ntwrk/ledger';
 import { type LogLevel, type Resource } from '@midnight-ntwrk/wallet';
 import {
   type BalancedTransaction,
@@ -26,7 +30,6 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import { generateRandomSeed } from '@midnight-ntwrk/wallet-sdk-hd';
 import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type { EnvironmentConfiguration } from '@/infrastructure';
 import { getInitialState, waitForFunds } from './wallet-utils';
 import { type MidnightWallet } from './wallet-types';
@@ -70,7 +73,7 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider,
   }
 
   /**
-   * Balances an unbalanced transaction by adding necessary inputs and change outputs.
+   * Balances an unbalanced transaction by adding the necessary inputs and change outputs.
    * @param {UnbalancedTransaction} tx - The unbalanced transaction to balance
    * @param {ShieldedCoinInfo[]} newCoins - Array of new coins to include in the transaction
    * @returns {Promise<BalancedTransaction>} A promise that resolves to the balanced transaction
@@ -82,8 +85,6 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider,
           newCoins
       )
       .then((utx) => this.wallet.proveTransaction(utx))
-      .then((zswapTx) =>
-        Transaction.deserialize('signature', 'proof', 'no-binding', zswapTx.serialize(getNetworkId()), getNetworkId()))
       .then(createBalancedTx);
   }
 
@@ -93,9 +94,7 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider,
    * @returns {Promise<string>} A promise that resolves to the transaction hash
    */
   submitTx(tx: BalancedTransaction): Promise<string> {
-    return this.wallet.submitTransaction(
-      Transaction.deserialize(tx.serialize(getNetworkId()), getNetworkId())
-    );
+    return this.wallet.submitTransaction(tx);
   }
 
   /**

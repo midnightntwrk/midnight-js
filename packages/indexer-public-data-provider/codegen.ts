@@ -21,7 +21,6 @@ const config: CodegenConfig = {
       documents: ['./src/**/*.ts'],
       schema: './schema.graphql',
       preset: 'client',
-      plugins: ['typescript', 'typescript-operations'],
       config: {
         avoidOptionals: true,
         skipTypename: true,
@@ -39,7 +38,8 @@ const config: CodegenConfig = {
           Instant: 'number',
           ApplyStage: 'string',
           HexEncoded: 'string',
-          ViewingKey: 'string'
+          ViewingKey: 'string',
+          UnshieldedAddress: 'string'
         },
         namingConvention: {
           transformUnderscore: true

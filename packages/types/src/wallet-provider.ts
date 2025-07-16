@@ -31,7 +31,7 @@ export interface WalletProvider {
   readonly encryptionPublicKey: EncPublicKey;
 
   /**
-   * Balances selects coins, creates spend proofs, and pays fees for a transaction with call proofs.
+   * Balances select coins, create spend proofs, and pay fees for a transaction with call proofs.
    * @param tx The transaction to balance.
    * @param newCoins The outputs created during a transaction.
    */
