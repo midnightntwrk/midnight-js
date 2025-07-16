@@ -39,7 +39,7 @@ import {
 
 const arbitraryBytes = fc.uint8Array({ minLength: 32, maxLength: 32 });
 
- 
+
 const arbitraryValue = fc.bigInt({ min: 0n, max: (1n << 64n) - 1n });
 
 const arbitraryNativeCoinInfo = arbitraryValue.map((value) => createCoinInfo(nativeToken(), value));
@@ -93,8 +93,7 @@ const randomEncryptionPublicKey = () => sampleOne(arbitraryHex);
 
 const randomCoinPublicKey = () => sampleOne(arbitraryCoinPublicKey);
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const dropMtIndex = ({ mt_index, ...coin }: QualifiedCoinInfo) => coin;
+const dropMtIndex = ({ mt_index: _, ...coin }: QualifiedCoinInfo) => coin;
 
 const toOutputData = (recipient: Recipient, coinInfos: (QualifiedCoinInfo | CoinInfo)[]) =>
   coinInfos.map((coinInfo) =>

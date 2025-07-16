@@ -53,8 +53,7 @@ export const serializeCoinInfo = (coinInfo: CoinInfo): string => {
 };
 
 export const serializeQualifiedCoinInfo = (coinInfo: QualifiedCoinInfo): string => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { mt_index, ...rest } = coinInfo;
+  const { mt_index: _, ...rest } = coinInfo;
   return serializeCoinInfo(rest);
 };
 
@@ -65,10 +64,10 @@ export const deserializeCoinInfo = (coinInfo: string): CoinInfo => {
       value != null &&
       typeof value === 'object' &&
       '__big_int_val__' in value &&
-       
+
       typeof value.__big_int_val__ === 'string'
     ) {
-       
+
       return BigInt(value.__big_int_val__);
     }
     if (
@@ -76,10 +75,10 @@ export const deserializeCoinInfo = (coinInfo: string): CoinInfo => {
       value != null &&
       typeof value === 'object' &&
       '__uint8Array_val__' in value &&
-       
+
       typeof value.__uint8Array_val__ === 'string'
     ) {
-       
+
       return fromHex(value.__uint8Array_val__);
     }
     return value;

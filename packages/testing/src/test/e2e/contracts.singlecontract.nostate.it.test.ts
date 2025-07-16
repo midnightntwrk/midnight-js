@@ -244,8 +244,7 @@ describe('Contracts API', () => {
     await expectSuccessfulDeployTx(providers, deployedSimpleContract.deployTxData);
 
     // If there is no private state ID, we should be able to leave out the private state provider
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { privateStateProvider, ...reducedProviders } = providers;
+    const { privateStateProvider: _, ...reducedProviders } = providers;
     const callTxOptions = {
       contract: api.simpleContractInstance,
       circuitId: 'noop',
@@ -286,8 +285,7 @@ describe('Contracts API', () => {
     await expectSuccessfulDeployTx(providers, deployTxData, deployTxOptions);
 
     // If there is no private state ID, we should be able to leave out the private state provider
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { privateStateProvider, ...reducedProviders } = providers;
+    const { privateStateProvider: _, ...reducedProviders } = providers;
     const callTxOptions = {
       contract: api.simpleContractInstance,
       contractAddress: deployTxData.public.contractAddress,

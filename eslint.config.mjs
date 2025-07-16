@@ -54,7 +54,7 @@ export default tseslint.config(
       'simple-import-sort/exports': 'error',
       'unused-imports/no-unused-imports': 'error',
       'unused-imports/no-unused-vars': [
-        'off',
+        'error',
         {
           'vars': 'all',
           'varsIgnorePattern': '^_',
@@ -68,7 +68,7 @@ export default tseslint.config(
       'object-property-newline': ['error', {
         'allowAllPropertiesOnSameLine': true
       }],
-      '@typescript-eslint/no-unused-vars': 'error',
+      '@typescript-eslint/no-unused-vars': 'off',
       '@typescript-eslint/explicit-member-accessibility': 'off',
       '@typescript-eslint/no-object-literal-type-assertion': 'off',
       '@typescript-eslint/prefer-interface': 'off',

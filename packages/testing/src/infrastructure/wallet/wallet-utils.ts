@@ -209,8 +209,7 @@ export const waitForTxInHistory = async (txId: string, wallet: Wallet, delayTime
  * @returns {Partial<WalletState>} Filtered wallet state
  */
 export const walletStateWithoutHistoryAndCoins = (state: WalletState): Partial<WalletState> => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { transactionHistory, coins, availableCoins, ...rest } = state;
+  const { transactionHistory: _transactionHistory, coins: _coins, availableCoins: _availableCoins, ...rest } = state;
   return rest;
 };
 
@@ -220,14 +219,12 @@ export const walletStateWithoutHistoryAndCoins = (state: WalletState): Partial<W
  * @returns {object} Normalized wallet state
  */
 export const normalizeWalletState = (state: WalletState): Record<string, unknown> => {
-   
+
   const normalized = state.transactionHistory.map((txHistoryEntry: TransactionHistoryEntry) => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { transaction, ...otherProps } = txHistoryEntry;
+    const { transaction: _, ...otherProps } = txHistoryEntry;
     return otherProps;
   });
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { transactionHistory, syncProgress, ...otherProps } = state;
+  const { transactionHistory: _transactionHistory, syncProgress: _syncProgress, ...otherProps } = state;
   return { ...otherProps, normalized };
 };
 
