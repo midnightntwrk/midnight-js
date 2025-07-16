@@ -122,11 +122,15 @@ const unprovenOfferFromCoinInfo = <U extends UnprovenInput | UnprovenOutput | Un
 export const unprovenOfferFromMap = <U extends UnprovenInput | UnprovenOutput | UnprovenTransient>(
   map: Map<string, U>,
   f: (u: U, type: string, value: bigint) => UnprovenOffer
-): UnprovenOffer => {
-  const offers = Array.from(map).map((coinInfo) => unprovenOfferFromCoinInfo(coinInfo, f));
+): UnprovenOffer | undefined => {
+  if (map.size === 0) {
+    return undefined;
+  }
+
+  const offers = Array.from(map, (entry) => unprovenOfferFromCoinInfo(entry, f)).filter((offer) => offer != null);
 
   if (offers.length === 0) {
-    throw new Error('Cannot create UnprovenOffer from empty map');
+    return undefined;
   }
 
   return offers.reduce((acc, curr) => acc.merge(curr));
@@ -136,7 +140,7 @@ export const zswapStateToOffer = (
   zswapLocalState: ZswapLocalState,
   encryptionPublicKey: EncPublicKey,
   params?: { contractAddress: ContractAddress; zswapChainState: ZswapChainState }
-): UnprovenOffer => {
+): UnprovenOffer | undefined => {
   const unprovenOutputs = new Map<string, UnprovenOutput>(
     zswapLocalState.outputs.map((output) => [
       serializeCoinInfo(output.coinInfo),
@@ -168,9 +172,20 @@ export const zswapStateToOffer = (
       );
     }
   });
-  return unprovenOfferFromMap(unprovenInputs, ZswapOffer.fromInput)
-    .merge(unprovenOfferFromMap(unprovenOutputs, ZswapOffer.fromOutput))
-    .merge(unprovenOfferFromMap(unprovenTransients, ZswapOffer.fromTransient));
+
+   const inputsOffer = unprovenOfferFromMap(unprovenInputs, ZswapOffer.fromInput);
+   const outputsOffer = unprovenOfferFromMap(unprovenOutputs, ZswapOffer.fromOutput);
+   const transientsOffer = unprovenOfferFromMap(unprovenTransients, ZswapOffer.fromTransient);
+
+   let combinedOffer = inputsOffer || outputsOffer || transientsOffer || undefined;
+   if (inputsOffer && outputsOffer) {
+     combinedOffer = inputsOffer.merge(outputsOffer);
+   }
+   if (combinedOffer && transientsOffer) {
+     combinedOffer = combinedOffer.merge(transientsOffer);
+   }
+
+   return combinedOffer;
 };
 
 export const zswapStateToNewCoins = (receiverCoinPublicKey: CoinPublicKey, zswapState: ZswapLocalState): ShieldedCoinInfo[] =>
