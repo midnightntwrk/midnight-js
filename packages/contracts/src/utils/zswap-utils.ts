@@ -122,10 +122,15 @@ const unprovenOfferFromCoinInfo = <U extends UnprovenInput | UnprovenOutput | Un
 export const unprovenOfferFromMap = <U extends UnprovenInput | UnprovenOutput | UnprovenTransient>(
   map: Map<string, U>,
   f: (u: U, type: string, value: bigint) => UnprovenOffer
-): UnprovenOffer =>
-  Array.from(map)
-    .map((coinInfo) => unprovenOfferFromCoinInfo(coinInfo, f))
-    .reduce((acc, curr) => acc.merge(curr), new ZswapOffer());
+): UnprovenOffer => {
+  const offers = Array.from(map).map((coinInfo) => unprovenOfferFromCoinInfo(coinInfo, f));
+
+  if (offers.length === 0) {
+    throw new Error('Cannot create UnprovenOffer from empty map');
+  }
+
+  return offers.reduce((acc, curr) => acc.merge(curr));
+};
 
 export const zswapStateToOffer = (
   zswapLocalState: ZswapLocalState,
