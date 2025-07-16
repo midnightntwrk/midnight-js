@@ -13,14 +13,15 @@
  * limitations under the License.
  */
 
-import * as Rx from 'rxjs';
 import { nativeToken } from '@midnight-ntwrk/ledger';
 import { type TransactionHistoryEntry, type Wallet, type WalletState } from '@midnight-ntwrk/wallet-api';
-import type { MidnightWallet, TxOutput } from './wallet-types';
-import { type EnvironmentConfiguration } from '../test-environment';
+import * as Rx from 'rxjs';
+
 import { FaucetClient } from '../client';
 import { logger } from '../logger';
+import { type EnvironmentConfiguration } from '../test-environment';
 import { delay } from '../utils';
+import type { MidnightWallet, TxOutput } from './wallet-types';
 
 /**
  * Gets the initial state of a wallet.

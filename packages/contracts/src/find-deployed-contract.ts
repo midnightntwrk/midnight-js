@@ -13,22 +13,23 @@
  * limitations under the License.
  */
 
-import { assertDefined, assertIsContractAddress, toHex } from '@midnight-ntwrk/midnight-js-utils';
-import {
-  type PrivateStateId,
-  type PrivateStateProvider,
-  type VerifierKey,
-  type PrivateState,
-  type Contract,
-  getImpureCircuitIds,
-  type ImpureCircuitId
-} from '@midnight-ntwrk/midnight-js-types';
 import {
   type ContractAddress,
   type ContractState,
   sampleSigningKey,
   type SigningKey
 } from '@midnight-ntwrk/compact-runtime';
+import {
+  type Contract,
+  getImpureCircuitIds,
+  type ImpureCircuitId,
+  type PrivateState,
+  type PrivateStateId,
+  type PrivateStateProvider,
+  type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
+import { assertDefined, assertIsContractAddress, toHex } from '@midnight-ntwrk/midnight-js-utils';
+
+import { type ContractProviders } from './contract-providers';
 import { ContractTypeError, IncompleteFindContractPrivateStateConfig } from './errors';
 import {
   type CircuitCallTxInterface,
@@ -39,7 +40,6 @@ import {
   createContractMaintenanceTxInterface
 } from './tx-interfaces';
 import type { FinalizedDeployTxDataBase } from './tx-model';
-import { type ContractProviders } from './contract-providers';
 
 const setOrGetInitialSigningKey = async (
   privateStateProvider: PrivateStateProvider,

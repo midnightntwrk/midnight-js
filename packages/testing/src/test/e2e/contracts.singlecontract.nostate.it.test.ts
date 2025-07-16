@@ -14,19 +14,6 @@
  */
 
 import {
-  type EnvironmentConfiguration,
-  initializeMidnightProviders,
-  type MidnightWalletProvider,
-  type TestEnvironment,
-  createLogger,
-  getTestEnvironment,
-  expectFoundAndDeployedStatesEqual,
-  expectFoundAndDeployedTxDataEqual,
-  expectSuccessfulCallTx,
-  expectSuccessfulDeployTx
-} from '@/infrastructure';
-import path from 'path';
-import {
   type CoinPublicKey,
   decodeZswapLocalState,
   emptyZswapLocalState,
@@ -49,11 +36,24 @@ import {
   type UnsubmittedCallTxData,
   type UnsubmittedDeployTxData
 } from '@midnight-ntwrk/midnight-js-contracts';
-import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { Simple } from '@/e2e/contract';
+import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
+import path from 'path';
+
 import * as api from '@/e2e/api';
+import { Simple } from '@/e2e/contract';
 import type { SimpleContract, SimpleProviders } from '@/e2e/simple-types';
+import {
+  createLogger,
+  type EnvironmentConfiguration,
+  expectFoundAndDeployedStatesEqual,
+  expectFoundAndDeployedTxDataEqual,
+  expectSuccessfulCallTx,
+  expectSuccessfulDeployTx,
+  getTestEnvironment,
+  initializeMidnightProviders,
+  type MidnightWalletProvider,
+  type TestEnvironment} from '@/infrastructure';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_nostate_${new Date().toISOString()}.log`)

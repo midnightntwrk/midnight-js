@@ -13,24 +13,23 @@
  * limitations under the License.
  */
 
-import type {
-  ContractAddress,
-  ZswapChainState,
-  CoinInfo,
-  QualifiedCoinInfo,
-  CoinPublicKey,
-  EncPublicKey
-} from '@midnight-ntwrk/ledger';
-import { UnprovenOffer, UnprovenOutput, UnprovenTransient, UnprovenInput } from '@midnight-ntwrk/ledger';
 import { type Recipient, type ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
+import type {
+  CoinInfo,
+  CoinPublicKey,
+  ContractAddress,
+  EncPublicKey,
+  QualifiedCoinInfo,
+  ZswapChainState} from '@midnight-ntwrk/ledger';
+import { UnprovenInput,UnprovenOffer, UnprovenOutput, UnprovenTransient } from '@midnight-ntwrk/ledger';
+import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
-  fromHex,
-  assertIsContractAddress,
   assertDefined,
+  assertIsContractAddress,
+  fromHex,
   parseCoinPublicKeyToHex,
   parseEncPublicKeyToHex
 } from '@midnight-ntwrk/midnight-js-utils';
-import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 
 // A default segment number to use when creating inputs and outputs. The Ledger has exposed this parameter
 // now but we don't know what the value should be, and assume that everything first in segment '0'. This

@@ -14,65 +14,38 @@
  */
 
 import {
-  ContractTypeError,
-  createCircuitCallTxInterface,
-  submitCallTx,
-  deployContract,
-  findDeployedContract,
-  type FinalizedDeployTxData,
-  submitDeployTx,
-  callContractConstructor,
-  call,
-  createUnprovenDeployTx,
-  createUnprovenCallTxFromInitialStates
-} from '@midnight-ntwrk/midnight-js-contracts';
-import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import { type ContractAddress, sampleCoinPublicKey, ZswapChainState } from '@midnight-ntwrk/ledger';
-import {
-  createLogger,
-  getTestEnvironment,
-  initializeMidnightProviders,
-  expectFoundAndDeployedStatesEqual,
-  expectFoundAndDeployedTxDataEqual,
-  expectFoundAndDeployedTxPublicDataEqual,
-  expectSuccessfulCallTx,
-  expectSuccessfulDeployTx
-} from '@/infrastructure';
-import type {
-  MidnightWalletProvider,
-  TestEnvironment,
-  EnvironmentConfiguration
-} from '@/infrastructure';
-import path from 'path';
-import {
   ContractState,
   decodeZswapLocalState,
   emptyZswapLocalState,
   sampleContractAddress,
   sampleSigningKey
 } from '@midnight-ntwrk/compact-runtime';
-import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
+import { type ContractAddress, sampleCoinPublicKey, ZswapChainState } from '@midnight-ntwrk/ledger';
+import {
+  call,
+  callContractConstructor,
+  ContractTypeError,
+  createCircuitCallTxInterface,
+  createUnprovenCallTxFromInitialStates,
+  createUnprovenDeployTx,
+  deployContract,
+  type FinalizedDeployTxData,
+  findDeployedContract,
+  submitCallTx,
+  submitDeployTx} from '@midnight-ntwrk/midnight-js-contracts';
 import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
+import path from 'path';
+
 import * as api from '@/e2e/api';
 import {
-  CounterConfiguration,
-  SimpleConfiguration,
+  cloneContractInstance,
   CounterCloneConfiguration,
+  CounterConfiguration,
   counterContractInstance,
-  simpleContractInstance,
-  cloneContractInstance
-} from '@/e2e/api';
-import {
-  type CounterContract,
-  type DeployedCounterContract,
-  type CounterProviders,
-  type CounterCircuits,
-  CounterPrivateStateId,
-  privateStateZero
-} from '@/e2e/counter-types';
-import { createInitialPrivateState, createPrivateState, Counter, type CounterPrivateState } from '@/e2e/contract';
-import { CounterClonePrivateStateId, type CounterCloneCircuits } from '@/e2e/counter-clone-types';
-import { type SimpleCircuits } from '@/e2e/simple-types';
+  SimpleConfiguration,
+  simpleContractInstance} from '@/e2e/api';
 import {
   CIRCUIT_ID_INCREMENT,
   INVALID_CONTRACT_ADDRESS_HEX_FORMAT,
@@ -80,6 +53,30 @@ import {
   SLOW_TEST_TIMEOUT,
   UNDEPLOYED_CONTRACT_ADDRESS
 } from '@/e2e/constants';
+import { Counter, type CounterPrivateState,createInitialPrivateState, createPrivateState } from '@/e2e/contract';
+import { type CounterCloneCircuits,CounterClonePrivateStateId } from '@/e2e/counter-clone-types';
+import {
+  type CounterCircuits,
+  type CounterContract,
+  CounterPrivateStateId,
+  type CounterProviders,
+  type DeployedCounterContract,
+  privateStateZero
+} from '@/e2e/counter-types';
+import { type SimpleCircuits } from '@/e2e/simple-types';
+import type {
+  EnvironmentConfiguration,
+  MidnightWalletProvider,
+  TestEnvironment} from '@/infrastructure';
+import {
+  createLogger,
+  expectFoundAndDeployedStatesEqual,
+  expectFoundAndDeployedTxDataEqual,
+  expectFoundAndDeployedTxPublicDataEqual,
+  expectSuccessfulCallTx,
+  expectSuccessfulDeployTx,
+  getTestEnvironment,
+  initializeMidnightProviders} from '@/infrastructure';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_${new Date().toISOString()}.log`)

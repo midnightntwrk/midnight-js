@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
-import { SucceedEntirely, type Contract, type ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
+import { type Contract, type ImpureCircuitId,SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+
+import { type ContractProviders } from './contract-providers';
+import { DeployTxFailedError } from './errors';
+import { submitTx } from './submit-tx';
+import type { FinalizedDeployTxData } from './tx-model';
 import type { DeployTxOptionsBase, DeployTxOptionsWithPrivateStateId } from './unproven-deploy-tx';
 import { createUnprovenDeployTx } from './unproven-deploy-tx';
-import { submitTx } from './submit-tx';
-import { DeployTxFailedError } from './errors';
-import type { FinalizedDeployTxData } from './tx-model';
-import { type ContractProviders } from './contract-providers';
 
 /**
  * Providers necessary to submit a deployment transaction - all providers.

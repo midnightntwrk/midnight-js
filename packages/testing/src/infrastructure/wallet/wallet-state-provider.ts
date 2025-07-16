@@ -14,10 +14,12 @@
  */
 
 import fs from 'node:fs';
-import { type Logger } from 'pino';
+
 import { type Wallet } from '@midnight-ntwrk/wallet-api';
-import { GzipFile } from './gzip-file';
+import { type Logger } from 'pino';
+
 import { getEnvVarEnvironment } from '../env-vars';
+import { GzipFile } from './gzip-file';
 
 /** Default directory path for storing wallet state files */
 export const DEFAULT_WALLET_STATE_DIRECTORY = `./.states`;

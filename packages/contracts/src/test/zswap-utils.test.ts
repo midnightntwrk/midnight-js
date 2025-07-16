@@ -13,21 +13,21 @@
  * limitations under the License.
  */
 
-import type { QualifiedCoinInfo, CoinInfo, CoinPublicKey } from '@midnight-ntwrk/ledger';
+import { fc } from '@fast-check/vitest';
+import { type Recipient } from '@midnight-ntwrk/compact-runtime';
+import type { CoinInfo, CoinPublicKey,QualifiedCoinInfo } from '@midnight-ntwrk/ledger';
 import {
-  UnprovenOffer,
   createCoinInfo,
   nativeToken,
-  UnprovenTransaction,
-  ZswapChainState,
-  sampleTokenType,
   sampleCoinPublicKey,
-  sampleContractAddress
-} from '@midnight-ntwrk/ledger';
-import { randomBytes } from 'crypto';
-import { fc } from '@fast-check/vitest';
+  sampleContractAddress,
+  sampleTokenType,
+  UnprovenOffer,
+  UnprovenTransaction,
+  ZswapChainState} from '@midnight-ntwrk/ledger';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
-import { type Recipient } from '@midnight-ntwrk/compact-runtime';
+import { randomBytes } from 'crypto';
+
 import {
   createUnprovenOutput,
   deserializeCoinInfo,

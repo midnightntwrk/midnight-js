@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
+export * from './assertions';
+export * from './client';
 export * from './configuration';
 export * from './configuration-types';
-export * from './test-environment';
-export * from './logger';
-export * from './wallet';
 export * from './contract';
-export * from './client';
+export * from './logger';
 export * from './proof-server-container';
-export * from './assertions';
+export * from './test-environment';
 export * from './utils';
+export * from './wallet';

@@ -14,12 +14,11 @@
  */
 
 import type {
-  CircuitResults,
   CircuitContext,
-  WitnessContext,
+  CircuitResults,
   ConstructorContext,
-  ConstructorResult
-} from '@midnight-ntwrk/compact-runtime';
+  ConstructorResult,
+  WitnessContext} from '@midnight-ntwrk/compact-runtime';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 

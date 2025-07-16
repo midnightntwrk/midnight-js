@@ -14,6 +14,6 @@
  */
 
 export * as Counter from './managed/counter/contract/index.cjs';
-export * as Simple from './managed/simple/contract/index.cjs';
 export * as CounterClone from './managed/counter-clone/contract/index.cjs';
+export * as Simple from './managed/simple/contract/index.cjs';
 export * from './witnesses.js';

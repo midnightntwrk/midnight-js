@@ -14,35 +14,34 @@
  */
 
 import {
+  type AlignedValue,
+  ContractOperation,
   ContractState,
   QueryContext,
-  ZswapChainState,
-  UnprovenTransaction,
   sampleCoinPublicKey,
   sampleContractAddress,
+  sampleEncryptionPublicKey,
   sampleSigningKey,
-  ContractOperation,
-  type AlignedValue,
   type Transcript,
-  sampleEncryptionPublicKey
-} from '@midnight-ntwrk/ledger';
-import { randomBytes } from 'crypto';
+  UnprovenTransaction,
+  ZswapChainState} from '@midnight-ntwrk/ledger';
 import { createVerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
+import { randomBytes } from 'crypto';
+
+import { type PartitionedTranscript } from '../call';
 import {
-  toLedgerContractState,
-  fromLedgerContractState,
-  toLedgerQueryContext,
   contractMaintenanceAuthority,
   createUnprovenLedgerCallTx,
-  replaceAuthority,
-  removeVerifierKey,
-  insertVerifierKey,
-  unprovenTxFromContractUpdates,
+  createUnprovenRemoveVerifierKeyTx,
   createUnprovenReplaceAuthorityTx,
-  createUnprovenRemoveVerifierKeyTx
-} from '../utils/ledger-utils';
-import { type PartitionedTranscript } from '../call';
+  fromLedgerContractState,
+  insertVerifierKey,
+  removeVerifierKey,
+  replaceAuthority,
+  toLedgerContractState,
+  toLedgerQueryContext,
+  unprovenTxFromContractUpdates} from '../utils/ledger-utils';
 
 describe('ledger-utils', () => {
   const dummySigningKey = sampleSigningKey();

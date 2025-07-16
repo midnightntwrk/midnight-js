@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-export * from './remote-test-environment';
+export * from './devnet-test-environment';
+export * from './env-var-remote-test-environment';
 export * from './local-test-environment';
 export * from './qanet-test-environment';
-export * from './devnet-test-environment';
+export * from './remote-test-environment';
 export * from './testnet-test-environment';
 export * from './testnet2-test-environment';
-export * from './env-var-remote-test-environment';

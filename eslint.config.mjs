@@ -4,6 +4,8 @@ import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import prettierConfig from 'eslint-config-prettier';
 import importPlugin from 'eslint-plugin-import';
+import simpleImportSort from 'eslint-plugin-simple-import-sort';
+import unusedImports from 'eslint-plugin-unused-imports';
 
 export default tseslint.config(
   {
@@ -32,7 +34,9 @@ export default tseslint.config(
     files: ['packages/**/*.ts', 'packages/**/*.tsx', 'packages/**/*.mts'],
     plugins: {
       '@typescript-eslint': tseslint.plugin,
-      import: importPlugin
+      import: importPlugin,
+      'simple-import-sort': simpleImportSort,
+      'unused-imports': unusedImports
     },
     settings: {
       'import/parsers': {
@@ -46,6 +50,24 @@ export default tseslint.config(
       }
     },
     rules: {
+      'simple-import-sort/imports': 'error',
+      'simple-import-sort/exports': 'error',
+      'unused-imports/no-unused-imports': 'error',
+      'unused-imports/no-unused-vars': [
+        'off',
+        {
+          'vars': 'all',
+          'varsIgnorePattern': '^_',
+          'args': 'after-used',
+          'argsIgnorePattern': '^_'
+        }
+      ],
+      'object-curly-newline': ['error', {
+        'ImportDeclaration': 'never'
+      }],
+      'object-property-newline': ['error', {
+        'allowAllPropertiesOnSameLine': true
+      }],
       '@typescript-eslint/no-unused-vars': 'error',
       '@typescript-eslint/explicit-member-accessibility': 'off',
       '@typescript-eslint/no-object-literal-type-assertion': 'off',

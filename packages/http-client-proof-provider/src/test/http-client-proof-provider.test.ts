@@ -15,6 +15,7 @@
 
 import type { BinaryLike } from 'crypto';
 import crypto from 'crypto';
+
 import { httpClientProofProvider, serializePayload, serializeZKConfig } from '../http-client-proof-provider';
 import { getValidPayload, getValidUnprovenTx, getValidZKConfig } from './commons';
 

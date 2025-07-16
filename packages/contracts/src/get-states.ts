@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import type { PrivateStateProvider, PublicDataProvider, PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
-import type { ContractAddress, ZswapChainState } from '@midnight-ntwrk/ledger';
 import type { ContractState } from '@midnight-ntwrk/compact-runtime';
+import type { ContractAddress, ZswapChainState } from '@midnight-ntwrk/ledger';
+import type { PrivateStateId,PrivateStateProvider, PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
 /**

@@ -14,7 +14,8 @@
  */
 
 import { NetworkId } from '@midnight-ntwrk/zswap';
-import { isHex, assertIsHex, parseCoinPublicKeyToHex, parseEncPublicKeyToHex } from '../hex-utils';
+
+import { assertIsHex, isHex, parseCoinPublicKeyToHex, parseEncPublicKeyToHex } from '../hex-utils';
 
 describe('Hex Utils', () => {
   describe('with valid strings', () => {

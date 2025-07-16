@@ -15,25 +15,27 @@
 
 import type { ContractAddress } from '@midnight-ntwrk/ledger';
 import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
-import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 import type { FinalizedTxData, MidnightProviders, PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
-import { WebSocket } from 'ws';
-import type { Logger } from 'pino';
+import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 import path from 'path';
+import type { Logger } from 'pino';
+import { WebSocket } from 'ws';
+
 import {
   type ContractConfiguration,
   type EnvironmentConfiguration,
   initializeMidnightProviders,
   type MidnightWalletProvider
 } from '@/infrastructure';
+
 import {
   Counter,
-  Simple,
   CounterClone,
   type CounterPrivateState,
-  witnesses,
-  createInitialPrivateState
-} from './contract';
+  createInitialPrivateState,
+  Simple,
+  witnesses} from './contract';
+import type { CounterCloneContract } from './counter-clone-types';
 import type {
   CounterCircuits,
   CounterContract,
@@ -42,7 +44,6 @@ import type {
   DeployedCounterContract
 } from './counter-types';
 import type { SimpleContract } from './simple-types';
-import type { CounterCloneContract } from './counter-clone-types';
 
 export const currentDir = path.resolve(new URL(import.meta.url).pathname, '..');
 

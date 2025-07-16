@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-import type { Logger } from 'pino';
 import axios from 'axios';
+import type { Logger } from 'pino';
+
 import { extractHostnameAndPort } from '../utils';
 
 export class IndexerClient {

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
+export * from './environment-configuration';
+export * from './environment-provider';
 export * from './test-environment';
 export * from './test-environments';
-export * from './environment-provider';
-export * from './environment-configuration';
