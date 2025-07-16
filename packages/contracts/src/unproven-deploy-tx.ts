@@ -24,7 +24,7 @@ import { getImpureCircuitIds } from '@midnight-ntwrk/midnight-js-types';
 import type { SigningKey, CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import type { EncPublicKey } from '@midnight-ntwrk/zswap';
+import type { EncPublicKey } from '@midnight-ntwrk/ledger';
 import type { UnsubmittedDeployTxData } from './tx-model';
 import { createUnprovenLedgerDeployTx, zswapStateToNewCoins } from './utils';
 import type { ContractConstructorOptions, ContractConstructorOptionsWithArguments } from './call-constructor';
@@ -101,7 +101,7 @@ const createContractConstructorOptions = <C extends Contract>(
   return constructorOptions as ContractConstructorOptions<C>;
 };
 
- 
+
 
 export function createUnprovenDeployTxFromVerifierKeys<C extends Contract<undefined>>(
   verifierKeys: [ImpureCircuitId<C>, VerifierKey][],
@@ -124,7 +124,7 @@ export function createUnprovenDeployTxFromVerifierKeys<C extends Contract>(
  * @param verifierKeys The verifier keys for the contract being deployed.
  * @param coinPublicKey The Zswap coin public key of the current user.
  * @param options Configuration.
- *
+ * @param encryptionPublicKey
  * @returns Data produced by the contract constructor call and an unproven deployment transaction
  *          assembled from the contract constructor result.
  */

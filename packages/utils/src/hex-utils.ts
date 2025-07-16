@@ -18,7 +18,7 @@ import {
   ShieldedCoinPublicKey,
   ShieldedEncryptionPublicKey
 } from '@midnight-ntwrk/wallet-sdk-address-format';
-import { type NetworkId } from '@midnight-ntwrk/zswap';
+import { type NetworkId } from '@midnight-ntwrk/ledger';
 /**
  * The result of parsing a string as a hex-encoded string.
  */

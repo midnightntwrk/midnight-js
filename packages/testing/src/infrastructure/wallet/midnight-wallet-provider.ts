@@ -14,7 +14,7 @@
  */
 
 import type { Logger } from 'pino';
-import { type ShieldedCoinInfo, shieldedToken, type TokenType } from '@midnight-ntwrk/ledger';
+import { type ShieldedCoinInfo, shieldedToken, type TokenType, type EncPublicKey } from '@midnight-ntwrk/ledger';
 import { Transaction } from '@midnight-ntwrk/ledger';
 import { type LogLevel, type Resource } from '@midnight-ntwrk/wallet';
 import {
@@ -24,7 +24,6 @@ import {
   type UnbalancedTransaction,
   type WalletProvider
 } from '@midnight-ntwrk/midnight-js-types';
-import { Transaction as ZswapTransaction, type EncPublicKey } from '@midnight-ntwrk/zswap';
 import { generateRandomSeed } from '@midnight-ntwrk/wallet-sdk-hd';
 import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
 import { getLedgerNetworkId, getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
@@ -79,7 +78,7 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider,
   balanceTx(tx: UnbalancedTransaction, newCoins: ShieldedCoinInfo[]): Promise<BalancedTransaction> {
     return this.wallet
       .balanceTransaction(
-        ZswapTransaction.deserialize(tx.serialize(getLedgerNetworkId()), getZswapNetworkId()),
+        Transaction.deserialize(tx.serialize(getLedgerNetworkId()), getZswapNetworkId()),
         newCoins
       )
       .then((utx) => this.wallet.proveTransaction(utx))
@@ -95,7 +94,7 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider,
    */
   submitTx(tx: BalancedTransaction): Promise<string> {
     return this.wallet.submitTransaction(
-      ZswapTransaction.deserialize(tx.serialize(getLedgerNetworkId()), getZswapNetworkId())
+      Transaction.deserialize(tx.serialize(getLedgerNetworkId()), getZswapNetworkId())
     );
   }
 

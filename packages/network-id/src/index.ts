@@ -15,7 +15,6 @@
 
 import * as ledger from '@midnight-ntwrk/ledger';
 import * as runtime from '@midnight-ntwrk/compact-runtime';
-import * as zswap from '@midnight-ntwrk/zswap';
 import { NetworkIdTypeError } from './errors';
 import { NetworkId } from './network-id';
 
@@ -44,21 +43,6 @@ const toRuntimeNetworkId = (id: NetworkId): runtime.NetworkId => {
       return runtime.NetworkId.TestNet;
     case NetworkId.MainNet:
       return runtime.NetworkId.MainNet;
-    default:
-      throw new NetworkIdTypeError(String(id));
-  }
-};
-
-const toZswapNetworkId = (id: NetworkId): zswap.NetworkId => {
-  switch (id) {
-    case NetworkId.Undeployed:
-      return zswap.NetworkId.Undeployed;
-    case NetworkId.DevNet:
-      return zswap.NetworkId.DevNet;
-    case NetworkId.TestNet:
-      return zswap.NetworkId.TestNet;
-    case NetworkId.MainNet:
-      return zswap.NetworkId.MainNet;
     default:
       throw new NetworkIdTypeError(String(id));
   }
@@ -96,13 +80,6 @@ export const getRuntimeNetworkId = (): runtime.NetworkId => toRuntimeNetworkId(g
  * @returns The currently set {@link ledger.NetworkId}.
  */
 export const getLedgerNetworkId = (): ledger.NetworkId => toLedgerNetworkId(getNetworkId());
-
-/**
- * Retrieves the currently set global network identifier as a {@link zswap.NetworkId} value.
- *
- * @returns The currently set {@link zswap.NetworkId}.
- */
-export const getZswapNetworkId = (): zswap.NetworkId => toZswapNetworkId(getNetworkId());
 
 /**
  * Converts a potential network ID into a {@link NetworkId}. Returns null if the string is not

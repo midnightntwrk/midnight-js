@@ -37,7 +37,7 @@ import {
   signData,
   ZswapOffer,
   ContractOperationVersionedVerifierKey,
-  VerifierKeyInsert, Intent
+  VerifierKeyInsert, Intent, type EncPublicKey
 } from '@midnight-ntwrk/ledger';
 import type { ZswapChainState, SingleUpdate } from '@midnight-ntwrk/ledger';
 import {
@@ -46,7 +46,6 @@ import {
   type UnprovenTransaction,
   type VerifierKey
 } from '@midnight-ntwrk/midnight-js-types';
-import { type EncPublicKey } from '@midnight-ntwrk/zswap';
 import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
 import { getLedgerNetworkId, getRuntimeNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { zswapStateToOffer } from './zswap-utils';
