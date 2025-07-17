@@ -35,7 +35,7 @@ import {
   createMockPrivateStateId,
   createMockProviders,
   createMockUnprovenTx,
-  createMockCoinInfo, createMockSuccessFinalizedTxData, createMockUnprovenCallTxData
+  createMockCoinInfo, createMockFinalizedTxData, createMockUnprovenCallTxData
 } from './test-mocks';
 
 vi.mock('../unproven-call-tx');
@@ -81,7 +81,7 @@ describe('submit-call-tx', () => {
         const mockUnprovenCallTxData = createMockUnprovenCallTxData();
         mockUnprovenCallTxData.private.newState = 'updated';
 
-        const mockFinalizedTxData = createMockSuccessFinalizedTxData();
+        const mockFinalizedTxData = createMockFinalizedTxData();
 
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
         vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
@@ -124,9 +124,9 @@ describe('submit-call-tx', () => {
 
         const mockUnprovenCallTxData = createMockUnprovenCallTxData();
         const nextPrivateState = { newState: 'updated' };
-        mockUnprovenCallTxData.private.nextPrivateState = nextPrivateState;
+        mockUnprovenCallTxData.private = nextPrivateState;
 
-        const mockFinalizedTxData = createMockSuccessFinalizedTxData();
+        const mockFinalizedTxData = createMockFinalizedTxData();
 
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
         vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
@@ -179,7 +179,7 @@ describe('submit-call-tx', () => {
         };
 
         const mockUnprovenCallTxData = createMockUnprovenCallTxData();
-        const mockFinalizedTxData = createMockSuccessFinalizedTxData();
+        const mockFinalizedTxData = createMockFinalizedTxData();
 
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
         vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
@@ -358,7 +358,7 @@ describe('submit-call-tx', () => {
         };
 
         const mockUnprovenCallTxData = createMockUnprovenCallTxData();
-        const mockFinalizedTxData = createMockSuccessFinalizedTxData();
+        const mockFinalizedTxData = createMockFinalizedTxData();
 
         const stateError = new Error('Failed to set private state');
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
@@ -391,7 +391,7 @@ describe('submit-call-tx', () => {
           }
         };
 
-        const mockFinalizedTxData = createMockSuccessFinalizedTxData();
+        const mockFinalizedTxData = createMockFinalizedTxData();
 
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
         vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
@@ -424,7 +424,7 @@ describe('submit-call-tx', () => {
 
         const mockUnprovenCallTxData = createMockUnprovenCallTxData();
         mockUnprovenCallTxData.private.nextPrivateState = undefined;
-        const mockFinalizedTxData = createMockSuccessFinalizedTxData();
+        const mockFinalizedTxData = createMockFinalizedTxData();
 
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
         vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
@@ -441,7 +441,7 @@ describe('submit-call-tx', () => {
           circuitId: 'testCircuit' as ImpureCircuitId<Contract>
         };
 
-        const mockFinalizedTxData = createMockSuccessFinalizedTxData();
+        const mockFinalizedTxData = createMockFinalizedTxData();
         const mockUnprovenCallTxData = createMockUnprovenCallTxData();
 
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);

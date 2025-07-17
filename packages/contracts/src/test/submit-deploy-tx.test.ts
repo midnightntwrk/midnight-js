@@ -35,7 +35,7 @@ import {
   createMockProviders,
   createMockUnprovenTx,
   createMockCoinInfo,
-  createMockSuccessFinalizedTxData,
+  createMockFinalizedTxData,
   createMockUnprovenDeployTxData
 } from './test-mocks';
 
@@ -79,7 +79,7 @@ describe('submit-deploy-tx', () => {
         };
 
         const mockUnprovenDeployTxData = createMockUnprovenDeployTxData();
-        const mockFinalizedTxData = createMockSuccessFinalizedTxData();
+        const mockFinalizedTxData = createMockFinalizedTxData();
 
         vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
         vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
@@ -140,7 +140,7 @@ describe('submit-deploy-tx', () => {
           }
         };
 
-        const mockFinalizedTxData = createMockSuccessFinalizedTxData();
+        const mockFinalizedTxData = createMockFinalizedTxData();
 
         vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
         vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
@@ -316,7 +316,7 @@ describe('submit-deploy-tx', () => {
           }
         };
 
-        const mockFinalizedTxData = createMockSuccessFinalizedTxData();
+        const mockFinalizedTxData = createMockFinalizedTxData();
 
         const stateError = new Error('Failed to set private state');
         vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
@@ -335,7 +335,7 @@ describe('submit-deploy-tx', () => {
 
         const mockUnprovenDeployTxData = createMockUnprovenDeployTxData();
 
-        const mockFinalizedTxData = createMockSuccessFinalizedTxData();
+        const mockFinalizedTxData = createMockFinalizedTxData();
 
         const signingKeyError = new Error('Failed to set signing key');
         vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
@@ -368,7 +368,7 @@ describe('submit-deploy-tx', () => {
           }
         };
 
-        const mockFinalizedTxData = createMockSuccessFinalizedTxData();
+        const mockFinalizedTxData = createMockFinalizedTxData();
 
         vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
         vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
@@ -400,7 +400,7 @@ describe('submit-deploy-tx', () => {
 
         const mockUnprovenDeployTxData = createMockUnprovenDeployTxData();
 
-        const mockFinalizedTxData = createMockSuccessFinalizedTxData();
+        const mockFinalizedTxData = createMockFinalizedTxData();
 
         vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
         vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);

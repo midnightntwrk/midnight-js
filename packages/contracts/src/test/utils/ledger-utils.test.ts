@@ -41,8 +41,8 @@ import {
   unprovenTxFromContractUpdates,
   createUnprovenReplaceAuthorityTx,
   createUnprovenRemoveVerifierKeyTx
-} from '../utils/ledger-utils';
-import { type PartitionedTranscript } from '../call';
+} from '../../utils';
+import { type PartitionedTranscript } from '../../call';
 
 describe('ledger-utils', () => {
   const dummySigningKey = sampleSigningKey();

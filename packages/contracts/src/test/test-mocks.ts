@@ -15,10 +15,10 @@
 
 import { vi } from 'vitest';
 import {
-  type Contract,
+  type Contract, type FinalizedTxData,
   type PrivateStateId,
   SucceedEntirely,
-  FailEntirely
+  type TxStatus
 } from '@midnight-ntwrk/midnight-js-types';
 import {
   type SigningKey,
@@ -30,10 +30,10 @@ import {
   type ContractAddress,
   type CoinInfo,
   type UnprovenTransaction,
-  type Transaction, type AlignedValue
+  type Transaction, type AlignedValue, sampleCoinPublicKey
 } from '@midnight-ntwrk/ledger';
 import type { ContractProviders } from '../contract-providers';
-import { type PartitionedTranscript } from '../call';
+import { type CallOptions, type PartitionedTranscript } from '../call';
 
 export const createMockContractAddress = (): ContractAddress =>
   'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4' as ContractAddress;
@@ -59,7 +59,7 @@ export const createMockContractState = (signingKey?: SigningKey): ContractState 
 
 export const createMockZswapLocalState = (): ZswapLocalState => ({
   currentIndex: 0n,
-  coinPublicKey: {} as any,
+  coinPublicKey: sampleCoinPublicKey(),
   outputs: [],
   inputs: []
 } as ZswapLocalState);
@@ -117,7 +117,7 @@ export const createMockProviders = (): ContractProviders<any> => ({
     get: vi.fn()
   },
   walletProvider: {
-    coinPublicKey: {} as any,
+    coinPublicKey: sampleCoinPublicKey(),
     encryptionPublicKey: {} as any,
     balanceTx: vi.fn()
   },
@@ -126,23 +126,10 @@ export const createMockProviders = (): ContractProviders<any> => ({
   }
 });
 
-// Common finalized transaction data mocks
-export const createMockSuccessFinalizedTxData = () => ({
-  status: SucceedEntirely,
+export const createMockFinalizedTxData = (status: TxStatus = SucceedEntirely): FinalizedTxData => ({
+  status: status,
   txId: 'test-tx-id',
-  finalizedAt: new Date(),
   blockHeight: 100,
-  tx: undefined as unknown as Transaction,
-  txHash: 'hash',
-  blockHash: 'hash'
-});
-
-export const createMockFailedFinalizedTxData = (failureReason = 'Transaction failed') => ({
-  status: FailEntirely,
-  txId: 'failed-tx-id',
-  finalizedAt: new Date(),
-  blockHeight: 100,
-  failureReason,
   tx: undefined as unknown as Transaction,
   txHash: 'hash',
   blockHash: 'hash'
@@ -184,4 +171,78 @@ export const createMockUnprovenCallTxData = () => ({
       newState: 'undefined',
       nextZswapLocalState: createMockZswapLocalState()
     }
+});
+
+export const createMockCallOptions = (overrides: any = {}): CallOptions<any, any> => ({
+  contract: createMockContract(),
+  circuitId: 'testCircuit',
+  contractAddress: createMockContractAddress(),
+  coinPublicKey: sampleCoinPublicKey(),
+  initialContractState: createMockContractState(),
+  initialZswapChainState: { test: 'zswap-chain-state' },
+  ...overrides
+});
+
+export const createMockCallOptionsWithPrivateState = (overrides: any = {}): CallOptions<any, any> => ({
+  ...createMockCallOptions(),
+  initialPrivateState: { test: 'private-state' },
+  ...overrides
+});
+
+export const createMockConstructorResult = () => ({
+  nextContractState: createMockContractState(),
+  nextPrivateState: { test: 'next-private-state' },
+  nextZswapLocalState: createMockZswapLocalState()
+});
+
+export const createMockVerifierKeys = () => [
+  ['testCircuit', new Uint8Array(32)] as const
+];
+
+export const createMockEncryptionPublicKey = () => 'test-encryption-public-key' as any;
+
+export const createMockFinalizedDeployTxData = (): FinalizedTxData => ({
+  status: SucceedEntirely,
+  txId: 'deploy-tx-id',
+  blockHeight: 100,
+  tx: vi.fn() as unknown as Transaction,
+  txHash: 'deploy-hash',
+  blockHash: 'block-hash'
+});
+
+export const createMockDeployedContract = () => ({
+  deployTxData: {
+    public: {
+      ...createMockFinalizedDeployTxData(),
+      contractAddress: createMockContractAddress(),
+      initialContractState: createMockContractState()
+    },
+    private: {
+      signingKey: createMockSigningKey(),
+      initialPrivateState: undefined,
+      initialZswapState: createMockZswapLocalState(),
+      unprovenTx: createMockUnprovenTx(),
+      newCoins: [createMockCoinInfo()]
+    }
+  },
+  callTx: vi.fn(),
+  circuitMaintenanceTx: vi.fn(),
+  contractMaintenanceTx: vi.fn()
+});
+
+export const createMockFoundContract = () => ({
+  deployTxData: {
+    private: {
+      signingKey: createMockSigningKey(),
+      initialPrivateState: undefined
+    },
+    public: {
+      ...createMockFinalizedDeployTxData(),
+      contractAddress: createMockContractAddress(),
+      initialContractState: createMockContractState()
+    }
+  },
+  callTx: vi.fn(),
+  circuitMaintenanceTx: vi.fn(),
+  contractMaintenanceTx: vi.fn()
 });

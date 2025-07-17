@@ -40,7 +40,7 @@ import {
   serializeQualifiedCoinInfo,
   zswapStateToNewCoins,
   zswapStateToOffer
-} from '../utils';
+} from '../../utils';
 
 const arbitraryBytes = fc.uint8Array({ minLength: 32, maxLength: 32 });
 
