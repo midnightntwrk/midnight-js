@@ -23,7 +23,6 @@ import {
   createMockFinalizedTxData
 } from './test-mocks';
 
-// Mock the submitDeployTx function and tx-interfaces
 vi.mock('../submit-deploy-tx', () => ({
   submitDeployTx: vi.fn()
 }));
@@ -74,7 +73,7 @@ describe('deployContract', () => {
       expect.objectContaining({
         contract: options.contract,
         args: options.args,
-        signingKey: expect.any(Object) // Generated signing key
+        signingKey: expect.not.stringMatching(createMockSigningKey())
       })
     );
   });
@@ -165,7 +164,7 @@ describe('deployContract', () => {
         privateStateId,
         initialPrivateState,
         args: options.args,
-        signingKey: expect.any(Object)
+        signingKey: expect.not.stringMatching(createMockSigningKey())
       })
     );
   });

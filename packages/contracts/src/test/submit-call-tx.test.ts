@@ -23,7 +23,7 @@ import {
 import { type Transaction } from '@midnight-ntwrk/ledger';
 
 import { submitCallTx } from '../submit-call-tx';
-import { createUnprovenCallTx } from '../unproven-call-tx';
+import { type CallTxOptions, createUnprovenCallTx } from '../unproven-call-tx';
 import { submitTx } from '../submit-tx';
 import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from '../errors';
 import {
@@ -76,7 +76,7 @@ describe('submit-call-tx', () => {
           contractAddress: mockContractAddress,
           circuitId: 'testCircuit' as ImpureCircuitId<Contract>,
           args: ['arg1', 'arg2']
-        };
+        } as CallTxOptions<any, any>;
 
         const mockUnprovenCallTxData = createMockUnprovenCallTxData();
         mockUnprovenCallTxData.private.newState = 'updated';
@@ -328,7 +328,7 @@ describe('submit-call-tx', () => {
           args: ['arg1', 'arg2']
         };
 
-        const mockUnprovenCallTxData = {
+        const mockUnprovenCallTxData= {
           public: {
             contractAddress: mockContractAddress,
             contractState: mockContractState

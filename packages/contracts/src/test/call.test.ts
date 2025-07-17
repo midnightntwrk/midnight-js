@@ -13,18 +13,21 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 import { call } from '../call';
-import {
-  createMockCallOptions,
-  createMockCallOptionsWithPrivateState,
-} from './test-mocks';
-import { StateValue } from '@midnight-ntwrk/compact-runtime';
+import { createMockCallOptions, createMockCallOptionsWithPrivateState } from './test-mocks';
+import { StateValue, emptyZswapLocalState } from '@midnight-ntwrk/compact-runtime';
+import { sampleCoinPublicKey } from '@midnight-ntwrk/ledger';
+import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
+import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 
 describe('call', () => {
-  it('should call circuit without private state', () => {
-    const options = createMockCallOptions();
-    const mockCircuit = vi.fn().mockReturnValue({
+  let mockCircuit: Mock<(...args: any[]) => any>;
+
+  beforeEach(() => {
+    mockCircuit?.mockClear();
+
+    mockCircuit = vi.fn().mockReturnValue({
       result: 'test-result',
       context: {
         transactionContext: {
@@ -32,17 +35,22 @@ describe('call', () => {
           data: new Map(),
           comIndicies: new Set()
         },
-        currentPrivateState: undefined,
-        currentZswapLocalState: { test: 'zswap-state' }
+        currentPrivateState: { test: 'private-state' },
+        currentZswapLocalState: emptyZswapLocalState(
+          parseCoinPublicKeyToHex(sampleCoinPublicKey(), getZswapNetworkId())
+        )
       },
       proofData: {
         input: { test: 'input' },
         output: { test: 'output' },
-        privateTranscriptOutputs: [],
+        privateTranscriptOutputs: [{ test: 'transcript' }],
         publicTranscript: [{ noop: { n: 1 } }]
       }
     });
+  });
 
+  it('should call circuit without initial private state', () => {
+    const options = createMockCallOptions();
     options.contract.impureCircuits[options.circuitId] = mockCircuit;
 
     const result = call(options);
@@ -58,33 +66,15 @@ describe('call', () => {
 
   it('should call circuit with private state', () => {
     const options = createMockCallOptionsWithPrivateState();
-    const mockCircuit = vi.fn().mockReturnValue({
-      result: 'test-result-with-private',
-      context: {
-        transactionContext: {
-          state: StateValue.newNull(),
-          data: new Map(),
-          comIndicies: new Set()
-        },
-        currentPrivateState: { test: 'updated-private-state' },
-        currentZswapLocalState: { test: 'updated-zswap-state' }
-      },
-      proofData: {
-        input: { test: 'input' },
-        output: { test: 'output' },
-        privateTranscriptOutputs: [{ test: 'transcript' }],
-        publicTranscript: [{ noop: { n: 2 } }]
-      }
-    });
 
     options.contract.impureCircuits[options.circuitId] = mockCircuit;
 
     const result = call(options);
 
     expect(result).toBeDefined();
-    expect(result.public.publicTranscript).toEqual([{ noop: { n: 2 } }]);
-    expect(result.private.result).toBe('test-result-with-private');
-    expect(result.private.nextPrivateState).toEqual({ test: 'updated-private-state' });
+    expect(result.public.publicTranscript).toEqual([{ noop: { n: 1 } }]);
+    expect(result.private.result).toBe('test-result');
+    expect(result.private.nextPrivateState).toEqual({ test: 'private-state' });
     expect(mockCircuit).toHaveBeenCalledOnce();
   });
 
@@ -94,31 +84,12 @@ describe('call', () => {
       args: ['arg1', 'arg2']
     };
 
-    const mockCircuit = vi.fn().mockReturnValue({
-      result: 'test-result-with-args',
-      context: {
-        transactionContext: {
-          state: StateValue.newNull(),
-          data: new Map(),
-          comIndicies: new Set()
-        },
-        currentPrivateState: undefined,
-        currentZswapLocalState: { test: 'zswap-state' }
-      },
-      proofData: {
-        input: { test: 'input' },
-        output: { test: 'output' },
-        privateTranscriptOutputs: [],
-        publicTranscript: []
-      }
-    });
-
     options.contract.impureCircuits[options.circuitId] = mockCircuit;
 
     const result = call(options);
 
     expect(result).toBeDefined();
-    expect(result.private.result).toBe('test-result-with-args');
+    expect(result.private.result).toBe('test-result');
     expect(mockCircuit).toHaveBeenCalledWith(
       expect.objectContaining({
         originalState: options.initialContractState,

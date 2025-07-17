@@ -38,6 +38,7 @@ import {
   createMockFinalizedTxData,
   createMockUnprovenDeployTxData
 } from './test-mocks';
+import type { UnsubmittedDeployTxData } from '../tx-model';
 
 vi.mock('../unproven-deploy-tx');
 vi.mock('../submit-tx');
@@ -354,7 +355,7 @@ describe('submit-deploy-tx', () => {
           signingKey: mockSigningKey
         };
 
-        const mockUnprovenDeployTxData = {
+        const mockUnprovenDeployTxData : UnsubmittedDeployTxData<any> = {
           public: {
             contractAddress: mockContractAddress,
             initialContractState: mockContractState

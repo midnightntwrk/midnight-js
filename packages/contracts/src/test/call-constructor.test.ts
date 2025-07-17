@@ -13,14 +13,19 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { callContractConstructor, type ContractConstructorOptionsWithPrivateState } from '../call-constructor';
 import {
   createMockContract,
-  createMockConstructorResult
+  createMockConstructorResult, createMockCoinPublicKey, createMockZswapLocalState
 } from './test-mocks';
+import * as compactRuntime from '@midnight-ntwrk/compact-runtime';
 
 describe('callContractConstructor', () => {
+  beforeEach(() => {
+    vi.spyOn(compactRuntime, 'decodeZswapLocalState').mockReturnValue(createMockZswapLocalState());
+  });
+
   it('should call contract constructor without arguments', () => {
     const contract = createMockContract();
     const constructorResult = createMockConstructorResult();
@@ -33,7 +38,7 @@ describe('callContractConstructor', () => {
 
     const options = {
       contract,
-      coinPublicKey: 'test-coin-public-key'
+      coinPublicKey: createMockCoinPublicKey()
     } as ContractConstructorOptionsWithPrivateState<never>;
 
     const result = callContractConstructor(options);
@@ -57,7 +62,7 @@ describe('callContractConstructor', () => {
 
     const options = {
       contract,
-      coinPublicKey: 'test-coin-public-key',
+      coinPublicKey: createMockCoinPublicKey(),
       args: ['arg1', 'arg2']
     };
 
@@ -85,7 +90,7 @@ describe('callContractConstructor', () => {
 
     const options = {
       contract,
-      coinPublicKey: 'test-coin-public-key',
+      coinPublicKey: createMockCoinPublicKey(),
       initialPrivateState: { test: 'initial-private-state' }
     } as ContractConstructorOptionsWithPrivateState<never>;
 
@@ -109,7 +114,7 @@ describe('callContractConstructor', () => {
 
     const options = {
       contract,
-      coinPublicKey: 'test-coin-public-key',
+      coinPublicKey: createMockCoinPublicKey(),
       args: ['constructor-arg'],
       initialPrivateState: { test: 'initial-private-state' }
     };

@@ -51,12 +51,12 @@ describe('findDeployedContract', () => {
     const verifierKeys = createMockVerifierKeys();
 
     // Setup provider mocks
-    providers.publicDataProvider.watchForDeployTxData.mockResolvedValue(finalizedTxData);
-    providers.publicDataProvider.queryDeployContractState.mockResolvedValue(contractState);
-    providers.publicDataProvider.queryContractState.mockResolvedValue(contractState);
-    providers.zkConfigProvider.getVerifierKeys.mockResolvedValue(verifierKeys);
-    providers.privateStateProvider.getSigningKey.mockResolvedValue(null);
-    providers.privateStateProvider.setSigningKey.mockResolvedValue(undefined);
+    vi.mocked(providers.publicDataProvider.watchForDeployTxData).mockResolvedValue(finalizedTxData);
+    vi.mocked(providers.publicDataProvider.queryDeployContractState).mockResolvedValue(contractState);
+    vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue(contractState);
+    vi.mocked(providers.zkConfigProvider.getVerifierKeys).mockResolvedValue(verifierKeys);
+    vi.mocked(providers.privateStateProvider.getSigningKey).mockResolvedValue(null);
+    vi.mocked(providers.privateStateProvider.setSigningKey).mockResolvedValue(undefined);
 
     const options = {
       contract,
@@ -89,11 +89,11 @@ describe('findDeployedContract', () => {
     const signingKey = createMockSigningKey();
 
     // Setup provider mocks
-    providers.publicDataProvider.watchForDeployTxData.mockResolvedValue(finalizedTxData);
-    providers.publicDataProvider.queryDeployContractState.mockResolvedValue(contractState);
-    providers.publicDataProvider.queryContractState.mockResolvedValue(contractState);
-    providers.zkConfigProvider.getVerifierKeys.mockResolvedValue(verifierKeys);
-    providers.privateStateProvider.setSigningKey.mockResolvedValue(undefined);
+    vi.mocked(providers.publicDataProvider.watchForDeployTxData).mockResolvedValue(finalizedTxData);
+    vi.mocked(providers.publicDataProvider.queryDeployContractState).mockResolvedValue(contractState);
+    vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue(contractState);
+    vi.mocked(providers.zkConfigProvider.getVerifierKeys).mockResolvedValue(verifierKeys);
+    vi.mocked(providers.privateStateProvider.setSigningKey).mockResolvedValue(undefined);
 
     const options = {
       contract,
@@ -119,13 +119,13 @@ describe('findDeployedContract', () => {
     const existingPrivateState = { test: 'existing-private-state' };
 
     // Setup provider mocks
-    providers.publicDataProvider.watchForDeployTxData.mockResolvedValue(finalizedTxData);
-    providers.publicDataProvider.queryDeployContractState.mockResolvedValue(contractState);
-    providers.publicDataProvider.queryContractState.mockResolvedValue(contractState);
-    providers.zkConfigProvider.getVerifierKeys.mockResolvedValue(verifierKeys);
-    providers.privateStateProvider.getSigningKey.mockResolvedValue(null);
-    providers.privateStateProvider.setSigningKey.mockResolvedValue(undefined);
-    providers.privateStateProvider.get.mockResolvedValue(existingPrivateState);
+    vi.mocked(providers.publicDataProvider.watchForDeployTxData).mockResolvedValue(finalizedTxData);
+    vi.mocked(providers.publicDataProvider.queryDeployContractState).mockResolvedValue(contractState);
+    vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue(contractState);
+    vi.mocked(providers.zkConfigProvider.getVerifierKeys).mockResolvedValue(verifierKeys);
+    vi.mocked(providers.privateStateProvider.getSigningKey).mockResolvedValue(null);
+    vi.mocked(providers.privateStateProvider.setSigningKey).mockResolvedValue(undefined);
+    vi.mocked(providers.privateStateProvider.get).mockResolvedValue(existingPrivateState);
 
     const options = {
       contract,
@@ -151,13 +151,13 @@ describe('findDeployedContract', () => {
     const initialPrivateState = { test: 'initial-private-state' };
 
     // Setup provider mocks
-    providers.publicDataProvider.watchForDeployTxData.mockResolvedValue(finalizedTxData);
-    providers.publicDataProvider.queryDeployContractState.mockResolvedValue(contractState);
-    providers.publicDataProvider.queryContractState.mockResolvedValue(contractState);
-    providers.zkConfigProvider.getVerifierKeys.mockResolvedValue(verifierKeys);
-    providers.privateStateProvider.getSigningKey.mockResolvedValue(null);
-    providers.privateStateProvider.setSigningKey.mockResolvedValue(undefined);
-    providers.privateStateProvider.set.mockResolvedValue(undefined);
+    vi.mocked(providers.publicDataProvider.watchForDeployTxData).mockResolvedValue(finalizedTxData);
+    vi.mocked(providers.publicDataProvider.queryDeployContractState).mockResolvedValue(contractState);
+    vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue(contractState);
+    vi.mocked(providers.zkConfigProvider.getVerifierKeys).mockResolvedValue(verifierKeys);
+    vi.mocked(providers.privateStateProvider.getSigningKey).mockResolvedValue(null);
+    vi.mocked(providers.privateStateProvider.setSigningKey).mockResolvedValue(undefined);
+    vi.mocked(providers.privateStateProvider.set).mockResolvedValue(undefined);
 
     const options = {
       contract,
@@ -183,11 +183,11 @@ describe('findDeployedContract', () => {
     const existingSigningKey = createMockSigningKey();
 
     // Setup provider mocks
-    providers.publicDataProvider.watchForDeployTxData.mockResolvedValue(finalizedTxData);
-    providers.publicDataProvider.queryDeployContractState.mockResolvedValue(contractState);
-    providers.publicDataProvider.queryContractState.mockResolvedValue(contractState);
-    providers.zkConfigProvider.getVerifierKeys.mockResolvedValue(verifierKeys);
-    providers.privateStateProvider.getSigningKey.mockResolvedValue(existingSigningKey);
+    vi.mocked(providers.publicDataProvider.watchForDeployTxData).mockResolvedValue(finalizedTxData);
+    vi.mocked(providers.publicDataProvider.queryDeployContractState).mockResolvedValue(contractState);
+    vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue(contractState);
+    vi.mocked(providers.zkConfigProvider.getVerifierKeys).mockResolvedValue(verifierKeys);
+    vi.mocked(providers.privateStateProvider.getSigningKey).mockResolvedValue(existingSigningKey);
 
     const options = {
       contract,
