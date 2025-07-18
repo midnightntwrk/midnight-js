@@ -14,11 +14,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  type Contract,
-  type PrivateStateId,
-  FailEntirely, FailFallible
-} from '@midnight-ntwrk/midnight-js-types';
+import { type Contract, FailEntirely, FailFallible, type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { type Transaction } from '@midnight-ntwrk/ledger';
 
 import { submitDeployTx } from '../submit-deploy-tx';
@@ -26,17 +22,17 @@ import { createUnprovenDeployTx } from '../unproven-deploy-tx';
 import { submitTx } from '../submit-tx';
 import { DeployTxFailedError } from '../errors';
 import {
+  createMockCoinInfo,
   createMockContract,
   createMockContractAddress,
-  createMockSigningKey,
   createMockContractState,
-  createMockZswapLocalState,
+  createMockFinalizedTxData,
   createMockPrivateStateId,
   createMockProviders,
+  createMockSigningKey,
+  createMockUnprovenDeployTxData,
   createMockUnprovenTx,
-  createMockCoinInfo,
-  createMockFinalizedTxData,
-  createMockUnprovenDeployTxData
+  createMockZswapLocalState
 } from './test-mocks';
 import type { UnsubmittedDeployTxData } from '../tx-model';
 

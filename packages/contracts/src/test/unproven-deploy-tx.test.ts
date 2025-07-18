@@ -13,15 +13,15 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createUnprovenDeployTx, createUnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
 import {
-  createMockProviders,
+  createMockConstructorResult,
   createMockContract,
-  createMockSigningKey,
-  createMockVerifierKeys,
   createMockEncryptionPublicKey,
-  createMockConstructorResult
+  createMockProviders,
+  createMockSigningKey,
+  createMockVerifierKeys
 } from './test-mocks';
 
 // Mock the callContractConstructor function and utility functions
@@ -47,14 +47,14 @@ describe('unproven-deploy-tx', () => {
     it('should create unproven deploy tx from verifier keys without private state', async () => {
       const { callContractConstructor } = await import('../call-constructor');
       const mockCallContractConstructor = callContractConstructor as any;
-      
+
       const constructorResult = createMockConstructorResult();
       mockCallContractConstructor.mockReturnValue(constructorResult);
 
       const verifierKeys = createMockVerifierKeys();
       const coinPublicKey = 'test-coin-public-key';
       const encryptionPublicKey = createMockEncryptionPublicKey();
-      
+
       const options = {
         contract: createMockContract(),
         signingKey: createMockSigningKey(),
@@ -81,14 +81,14 @@ describe('unproven-deploy-tx', () => {
     it('should create unproven deploy tx from verifier keys with private state', async () => {
       const { callContractConstructor } = await import('../call-constructor');
       const mockCallContractConstructor = callContractConstructor as any;
-      
+
       const constructorResult = createMockConstructorResult();
       mockCallContractConstructor.mockReturnValue(constructorResult);
 
       const verifierKeys = createMockVerifierKeys();
       const coinPublicKey = 'test-coin-public-key';
       const encryptionPublicKey = createMockEncryptionPublicKey();
-      
+
       const options = {
         contract: createMockContract(),
         signingKey: createMockSigningKey(),

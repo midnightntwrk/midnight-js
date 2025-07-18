@@ -15,21 +15,27 @@
 
 import { vi } from 'vitest';
 import {
-  type Contract, type FinalizedTxData,
+  type Contract,
+  type FinalizedTxData,
   type PrivateStateId,
   SucceedEntirely,
   type TxStatus
 } from '@midnight-ntwrk/midnight-js-types';
 import {
-  type SigningKey,
+  type ContractState,
+  type Op,
+  sampleContractAddress,
   sampleSigningKey,
-  type ZswapLocalState,
-  type ContractState, StateValue, type Op, sampleContractAddress,
+  type SigningKey,
+  StateValue,
+  type ZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
 import {
+  type AlignedValue,
   type CoinInfo,
-  type UnprovenTransaction,
-  type Transaction, type AlignedValue, sampleCoinPublicKey
+  sampleCoinPublicKey,
+  type Transaction,
+  type UnprovenTransaction
 } from '@midnight-ntwrk/ledger';
 import type { ContractProviders } from '../contract-providers';
 import { type CallOptions, type PartitionedTranscript } from '../call';

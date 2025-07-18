@@ -13,17 +13,17 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { findDeployedContract } from '../find-deployed-contract';
 import {
-  createMockProviders,
   createMockContract,
   createMockContractAddress,
   createMockContractState,
-  createMockSigningKey,
+  createMockFinalizedDeployTxData,
   createMockPrivateStateId,
-  createMockVerifierKeys,
-  createMockFinalizedDeployTxData
+  createMockProviders,
+  createMockSigningKey,
+  createMockVerifierKeys
 } from './test-mocks';
 
 // Mock the tx-interfaces module

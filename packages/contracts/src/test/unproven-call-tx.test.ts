@@ -13,17 +13,17 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { createUnprovenCallTx, createUnprovenCallTxFromInitialStates } from '../unproven-call-tx';
 import {
-  createMockProviders,
   createMockCallOptions,
   createMockCallOptionsWithPrivateState,
-  createMockContractAddress,
   createMockContract,
+  createMockContractAddress,
   createMockContractState,
   createMockEncryptionPublicKey,
-  createMockPrivateStateId
+  createMockPrivateStateId,
+  createMockProviders
 } from './test-mocks';
 import { StateValue } from '@midnight-ntwrk/compact-runtime';
 
@@ -48,7 +48,7 @@ describe('unproven-call-tx', () => {
     it('should create unproven call tx from initial states without private state', async () => {
       const { call } = await import('../call');
       const mockCall = call as any;
-      
+
       const callResult = {
         public: {
           nextContractState: StateValue.newNull(),
@@ -88,7 +88,7 @@ describe('unproven-call-tx', () => {
     it('should create unproven call tx from initial states with private state', async () => {
       const { call } = await import('../call');
       const mockCall = call as any;
-      
+
       const callResult = {
         public: {
           nextContractState: StateValue.newNull(),

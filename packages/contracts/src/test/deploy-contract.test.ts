@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { deployContract } from '../deploy-contract';
 import {
-  createMockProviders,
   createMockContract,
-  createMockSigningKey,
+  createMockFinalizedTxData,
   createMockPrivateStateId,
-  createMockFinalizedTxData
+  createMockProviders,
+  createMockSigningKey
 } from './test-mocks';
 
 vi.mock('../submit-deploy-tx', () => ({

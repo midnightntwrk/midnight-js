@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
+import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 import { call } from '../call';
 import { createMockCallOptions, createMockCallOptionsWithPrivateState } from './test-mocks';
-import { StateValue, emptyZswapLocalState } from '@midnight-ntwrk/compact-runtime';
+import { emptyZswapLocalState, StateValue } from '@midnight-ntwrk/compact-runtime';
 import { sampleCoinPublicKey } from '@midnight-ntwrk/ledger';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';

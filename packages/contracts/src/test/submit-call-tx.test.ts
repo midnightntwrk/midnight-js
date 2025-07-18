@@ -16,8 +16,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   type Contract,
-  type ImpureCircuitId,
   FailEntirely,
+  type ImpureCircuitId,
   type PrivateStateId
 } from '@midnight-ntwrk/midnight-js-types';
 import { type Transaction } from '@midnight-ntwrk/ledger';
@@ -27,15 +27,17 @@ import { type CallTxOptions, createUnprovenCallTx } from '../unproven-call-tx';
 import { submitTx } from '../submit-tx';
 import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from '../errors';
 import {
+  createMockCoinInfo,
   createMockContract,
   createMockContractAddress,
-  createMockSigningKey,
   createMockContractState,
-  createMockZswapLocalState,
+  createMockFinalizedTxData,
   createMockPrivateStateId,
   createMockProviders,
+  createMockSigningKey,
+  createMockUnprovenCallTxData,
   createMockUnprovenTx,
-  createMockCoinInfo, createMockFinalizedTxData, createMockUnprovenCallTxData
+  createMockZswapLocalState
 } from './test-mocks';
 
 vi.mock('../unproven-call-tx');
@@ -295,7 +297,7 @@ describe('submit-call-tx', () => {
         const options = {
           contract: mockContract,
           contractAddress: mockContractAddress,
-          circuitId: 'nonExistentCircuit' as ImpureCircuitId<Contract>,
+          circuitId: 'nonExistentCircuit' as ImpureCircuitId,
           args: ['arg1', 'arg2']
         };
 
@@ -308,7 +310,7 @@ describe('submit-call-tx', () => {
         const options = {
           contract: mockContract,
           contractAddress: mockContractAddress,
-          circuitId: 'testCircuit' as ImpureCircuitId<Contract>,
+          circuitId: 'testCircuit' as ImpureCircuitId,
           args: ['arg1', 'arg2']
         };
 
