@@ -15,7 +15,6 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { type Contract, FailEntirely, FailFallible, type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
-import { type Transaction } from '@midnight-ntwrk/ledger';
 
 import { submitDeployTx } from '../submit-deploy-tx';
 import { createUnprovenDeployTx } from '../unproven-deploy-tx';
@@ -25,16 +24,13 @@ import {
   createMockCoinInfo,
   createMockContract,
   createMockContractAddress,
-  createMockContractState,
   createMockFinalizedTxData,
   createMockPrivateStateId,
   createMockProviders,
   createMockSigningKey,
   createMockUnprovenDeployTxData,
   createMockUnprovenTx,
-  createMockZswapLocalState
 } from './test-mocks';
-import type { UnsubmittedDeployTxData } from '../tx-model';
 
 vi.mock('../unproven-deploy-tx');
 vi.mock('../submit-tx');
@@ -42,11 +38,9 @@ vi.mock('@midnight-ntwrk/compact-runtime');
 vi.mock('@midnight-ntwrk/ledger');
 
 describe('submit-deploy-tx', () => {
-  let mockContract: Contract;
+  let mockContract: Contract<any, undefined>;
   let mockContractAddress: ReturnType<typeof createMockContractAddress>;
   let mockSigningKey: ReturnType<typeof createMockSigningKey>;
-  let mockContractState: ReturnType<typeof createMockContractState>;
-  let mockZswapLocalState: ReturnType<typeof createMockZswapLocalState>;
   let mockPrivateStateId: PrivateStateId;
   let mockProviders: ReturnType<typeof createMockProviders>;
   let mockUnprovenTx: ReturnType<typeof createMockUnprovenTx>;
@@ -58,8 +52,6 @@ describe('submit-deploy-tx', () => {
     mockContract = createMockContract();
     mockContractAddress = createMockContractAddress();
     mockSigningKey = createMockSigningKey();
-    mockContractState = createMockContractState(mockSigningKey);
-    mockZswapLocalState = createMockZswapLocalState();
     mockPrivateStateId = createMockPrivateStateId();
     mockProviders = createMockProviders();
     mockUnprovenTx = createMockUnprovenTx();
@@ -83,25 +75,16 @@ describe('submit-deploy-tx', () => {
 
         const result = await submitDeployTx(mockProviders, options);
 
-        // Verify createUnprovenDeployTx was called correctly
         expect(createUnprovenDeployTx).toHaveBeenCalledWith(mockProviders, options);
-
-        // Verify submitTx was called correctly
         expect(submitTx).toHaveBeenCalledWith(mockProviders, {
           unprovenTx: mockUnprovenTx,
           newCoins: [mockCoinInfo]
         });
-
-        // Verify signing key was set
         expect(mockProviders.privateStateProvider.setSigningKey).toHaveBeenCalledWith(
           mockContractAddress,
           mockSigningKey
         );
-
-        // Verify private state was not set (no privateStateId)
         expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
-
-        // Verify result structure
         expect(result).toEqual({
           private: mockUnprovenDeployTxData.private,
           public: {
@@ -123,20 +106,11 @@ describe('submit-deploy-tx', () => {
           initialPrivateState
         };
 
-        const mockUnprovenDeployTxData = {
-          public: {
-            contractAddress: mockContractAddress,
-            initialContractState: mockContractState
-          },
+        const mockUnprovenDeployTxData = createMockUnprovenDeployTxData({
           private: {
-            unprovenTx: mockUnprovenTx,
-            newCoins: [mockCoinInfo],
-            signingKey: mockSigningKey,
-            initialPrivateState,
-            initialZswapState: mockZswapLocalState
+            initialPrivateState: initialPrivateState
           }
-        };
-
+        });
         const mockFinalizedTxData = createMockFinalizedTxData();
 
         vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
@@ -144,16 +118,11 @@ describe('submit-deploy-tx', () => {
 
         const result = await submitDeployTx(mockProviders, options);
 
-        // Verify private state was set
         expect(mockProviders.privateStateProvider.set).toHaveBeenCalledWith(mockPrivateStateId, initialPrivateState);
-
-        // Verify signing key was set
         expect(mockProviders.privateStateProvider.setSigningKey).toHaveBeenCalledWith(
           mockContractAddress,
           mockSigningKey
         );
-
-        // Verify result structure
         expect(result).toEqual({
           private: mockUnprovenDeployTxData.private,
           public: {
@@ -173,24 +142,13 @@ describe('submit-deploy-tx', () => {
         };
 
         const mockUnprovenDeployTxData = createMockUnprovenDeployTxData();
-
-        const mockFailedTxData = {
-          status: FailFallible,
-          txId: 'failed-tx-id',
-          finalizedAt: new Date(),
-          blockHeight: 100,
-          failureReason: 'Insufficient funds',
-          tx: undefined as unknown as Transaction,
-          txHash: 'hash',
-          blockHash: 'hash'
-        };
+        const mockFailedTxData = createMockFinalizedTxData(FailFallible);
 
         vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
         vi.mocked(submitTx).mockResolvedValue(mockFailedTxData);
 
         await expect(submitDeployTx(mockProviders, options)).rejects.toThrow(DeployTxFailedError);
 
-        // Verify that private state and signing key are not set when deployment fails
         expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
         expect(mockProviders.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
       });
@@ -203,24 +161,13 @@ describe('submit-deploy-tx', () => {
         };
 
         const mockUnprovenDeployTxData = createMockUnprovenDeployTxData();
-
-        const mockFailedTxData = {
-          status: FailEntirely,
-          txId: 'failed-tx-id',
-          finalizedAt: new Date(),
-          blockHeight: 100,
-          failureReason: 'Invalid transaction',
-          tx: undefined as unknown as Transaction,
-          txHash: 'hash',
-          blockHash: 'hash'
-        };
+        const mockFailedTxData = createMockFinalizedTxData(FailEntirely);
 
         vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
         vi.mocked(submitTx).mockResolvedValue(mockFailedTxData);
 
         await expect(submitDeployTx(mockProviders, options)).rejects.toThrow(DeployTxFailedError);
 
-        // Verify that private state and signing key are not set when deployment fails
         expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
         expect(mockProviders.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
       });
@@ -233,17 +180,7 @@ describe('submit-deploy-tx', () => {
         };
 
         const mockUnprovenDeployTxData = createMockUnprovenDeployTxData();
-
-        const mockFailedTxData = {
-          status: FailEntirely,
-          txId: 'failed-tx-id',
-          finalizedAt: new Date(),
-          blockHeight: 100,
-          failureReason: 'Invalid transaction',
-          tx: undefined as unknown as Transaction,
-          txHash: 'hash',
-          blockHash: 'hash'
-        };
+        const mockFailedTxData = createMockFinalizedTxData(FailEntirely);
 
         vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
         vi.mocked(submitTx).mockResolvedValue(mockFailedTxData);
@@ -270,7 +207,6 @@ describe('submit-deploy-tx', () => {
         vi.mocked(createUnprovenDeployTx).mockRejectedValue(createError);
 
         await expect(submitDeployTx(mockProviders, options)).rejects.toThrow('Failed to create unproven deploy tx');
-
         expect(submitTx).not.toHaveBeenCalled();
       });
 
@@ -299,19 +235,11 @@ describe('submit-deploy-tx', () => {
           initialPrivateState: { someState: 'test' }
         };
 
-        const mockUnprovenDeployTxData = {
-          public: {
-            contractAddress: mockContractAddress,
-            initialContractState: mockContractState
-          },
+        const mockUnprovenDeployTxData = createMockUnprovenDeployTxData({
           private: {
-            unprovenTx: mockUnprovenTx,
-            newCoins: [mockCoinInfo],
-            signingKey: mockSigningKey,
-            initialPrivateState: { someState: 'test' },
-            initialZswapState: mockZswapLocalState
+            initialPrivateState: { someState: 'test' }
           }
-        };
+        });
 
         const mockFinalizedTxData = createMockFinalizedTxData();
 
@@ -331,7 +259,6 @@ describe('submit-deploy-tx', () => {
         };
 
         const mockUnprovenDeployTxData = createMockUnprovenDeployTxData();
-
         const mockFinalizedTxData = createMockFinalizedTxData();
 
         const signingKeyError = new Error('Failed to set signing key');
@@ -351,20 +278,12 @@ describe('submit-deploy-tx', () => {
           signingKey: mockSigningKey
         };
 
-        const mockUnprovenDeployTxData : UnsubmittedDeployTxData<any> = {
-          public: {
-            contractAddress: mockContractAddress,
-            initialContractState: mockContractState
-          },
+        const mockUnprovenDeployTxData = createMockUnprovenDeployTxData({
           private: {
             unprovenTx: mockUnprovenTx,
-            newCoins: [], // Empty array
-            signingKey: mockSigningKey,
-            initialPrivateState: undefined,
-            initialZswapState: mockZswapLocalState
+            newCoins: []
           }
-        };
-
+        });
         const mockFinalizedTxData = createMockFinalizedTxData();
 
         vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);
@@ -376,7 +295,6 @@ describe('submit-deploy-tx', () => {
           unprovenTx: mockUnprovenTx,
           newCoins: []
         });
-
         expect(result).toEqual({
           private: mockUnprovenDeployTxData.private,
           public: {
@@ -396,7 +314,6 @@ describe('submit-deploy-tx', () => {
         };
 
         const mockUnprovenDeployTxData = createMockUnprovenDeployTxData();
-
         const mockFinalizedTxData = createMockFinalizedTxData();
 
         vi.mocked(createUnprovenDeployTx).mockResolvedValue(mockUnprovenDeployTxData);

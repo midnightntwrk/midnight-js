@@ -13,20 +13,19 @@
  * limitations under the License.
  */
 
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { findDeployedContract } from '../find-deployed-contract';
 import {
   createMockContract,
   createMockContractAddress,
   createMockContractState,
-  createMockFinalizedDeployTxData,
+  createMockFinalizedTxData,
   createMockPrivateStateId,
   createMockProviders,
   createMockSigningKey,
   createMockVerifierKeys
 } from './test-mocks';
 
-// Mock the tx-interfaces module
 vi.mock('../tx-interfaces', () => ({
   createCircuitCallTxInterface: vi.fn().mockReturnValue({ call: 'mock-call-interface' }),
   createCircuitMaintenanceTxInterfaces: vi.fn().mockReturnValue({ maintenance: 'mock-maintenance-interfaces' }),
@@ -34,7 +33,7 @@ vi.mock('../tx-interfaces', () => ({
 }));
 
 vi.mock('@midnight-ntwrk/midnight-js-types', async (importOriginal) => {
-  const actual = await importOriginal();
+  const actual = await importOriginal() as any;
   return {
     ...actual,
     getImpureCircuitIds: vi.fn().mockReturnValue(['testCircuit'])
@@ -42,19 +41,49 @@ vi.mock('@midnight-ntwrk/midnight-js-types', async (importOriginal) => {
 });
 
 describe('findDeployedContract', () => {
-  it('should find deployed contract without private state', async () => {
-    const providers = createMockProviders();
-    const contractAddress = createMockContractAddress();
-    const contract = createMockContract();
-    const finalizedTxData = createMockFinalizedDeployTxData();
-    const contractState = createMockContractState();
-    const verifierKeys = createMockVerifierKeys();
+  let providers: ReturnType<typeof createMockProviders>;
+  let contractAddress: ReturnType<typeof createMockContractAddress>;
+  let contract: ReturnType<typeof createMockContract>;
+  let finalizedTxData: ReturnType<typeof createMockFinalizedTxData>;
+  let contractState: ReturnType<typeof createMockContractState>;
+  let verifierKeys: ReturnType<typeof createMockVerifierKeys>;
 
-    // Setup provider mocks
+  const setupCommonMocks = () => {
     vi.mocked(providers.publicDataProvider.watchForDeployTxData).mockResolvedValue(finalizedTxData);
     vi.mocked(providers.publicDataProvider.queryDeployContractState).mockResolvedValue(contractState);
     vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue(contractState);
     vi.mocked(providers.zkConfigProvider.getVerifierKeys).mockResolvedValue(verifierKeys);
+  };
+
+  const expectBasicResult = (result: any) => {
+    expect(result).toBeDefined();
+    expect(result.deployTxData).toBeDefined();
+    expect(result.deployTxData.public.contractAddress).toBe(contractAddress);
+    expect(result.deployTxData.public.initialContractState).toBe(contractState);
+    expect(result.callTx).toBeDefined();
+    expect(result.circuitMaintenanceTx).toBeDefined();
+    expect(result.contractMaintenanceTx).toBeDefined();
+  };
+
+  const expectCommonProviderCalls = () => {
+    expect(providers.publicDataProvider.watchForDeployTxData).toHaveBeenCalledWith(contractAddress);
+    expect(providers.publicDataProvider.queryDeployContractState).toHaveBeenCalledWith(contractAddress);
+    expect(providers.publicDataProvider.queryContractState).toHaveBeenCalledWith(contractAddress);
+    expect(providers.zkConfigProvider.getVerifierKeys).toHaveBeenCalledWith(['testCircuit']);
+  };
+
+  beforeEach(() => {
+    providers = createMockProviders();
+    contractAddress = createMockContractAddress();
+    contract = createMockContract();
+    finalizedTxData = createMockFinalizedTxData();
+    contractState = createMockContractState();
+    verifierKeys = createMockVerifierKeys();
+    
+    setupCommonMocks();
+  });
+
+  it('should find deployed contract without private state', async () => {
     vi.mocked(providers.privateStateProvider.getSigningKey).mockResolvedValue(null);
     vi.mocked(providers.privateStateProvider.setSigningKey).mockResolvedValue(undefined);
 
@@ -65,34 +94,12 @@ describe('findDeployedContract', () => {
 
     const result = await findDeployedContract(providers, options);
 
-    expect(result).toBeDefined();
-    expect(result.deployTxData).toBeDefined();
-    expect(result.deployTxData.public.contractAddress).toBe(contractAddress);
-    expect(result.deployTxData.public.initialContractState).toBe(contractState);
-    expect(result.callTx).toBeDefined();
-    expect(result.circuitMaintenanceTx).toBeDefined();
-    expect(result.contractMaintenanceTx).toBeDefined();
-
-    expect(providers.publicDataProvider.watchForDeployTxData).toHaveBeenCalledWith(contractAddress);
-    expect(providers.publicDataProvider.queryDeployContractState).toHaveBeenCalledWith(contractAddress);
-    expect(providers.publicDataProvider.queryContractState).toHaveBeenCalledWith(contractAddress);
-    expect(providers.zkConfigProvider.getVerifierKeys).toHaveBeenCalledWith(['testCircuit']);
+    expectBasicResult(result);
+    expectCommonProviderCalls();
   });
 
   it('should find deployed contract with provided signing key', async () => {
-    const providers = createMockProviders();
-    const contractAddress = createMockContractAddress();
-    const contract = createMockContract();
-    const finalizedTxData = createMockFinalizedDeployTxData();
-    const contractState = createMockContractState();
-    const verifierKeys = createMockVerifierKeys();
     const signingKey = createMockSigningKey();
-
-    // Setup provider mocks
-    vi.mocked(providers.publicDataProvider.watchForDeployTxData).mockResolvedValue(finalizedTxData);
-    vi.mocked(providers.publicDataProvider.queryDeployContractState).mockResolvedValue(contractState);
-    vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue(contractState);
-    vi.mocked(providers.zkConfigProvider.getVerifierKeys).mockResolvedValue(verifierKeys);
     vi.mocked(providers.privateStateProvider.setSigningKey).mockResolvedValue(undefined);
 
     const options = {
@@ -103,26 +110,15 @@ describe('findDeployedContract', () => {
 
     const result = await findDeployedContract(providers, options);
 
-    expect(result).toBeDefined();
+    expectBasicResult(result);
     expect(result.deployTxData.private.signingKey).toBe(signingKey);
     expect(providers.privateStateProvider.setSigningKey).toHaveBeenCalledWith(contractAddress, signingKey);
   });
 
   it('should find deployed contract with existing private state', async () => {
-    const providers = createMockProviders();
-    const contractAddress = createMockContractAddress();
-    const contract = createMockContract();
-    const finalizedTxData = createMockFinalizedDeployTxData();
-    const contractState = createMockContractState();
-    const verifierKeys = createMockVerifierKeys();
     const privateStateId = createMockPrivateStateId();
     const existingPrivateState = { test: 'existing-private-state' };
 
-    // Setup provider mocks
-    vi.mocked(providers.publicDataProvider.watchForDeployTxData).mockResolvedValue(finalizedTxData);
-    vi.mocked(providers.publicDataProvider.queryDeployContractState).mockResolvedValue(contractState);
-    vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue(contractState);
-    vi.mocked(providers.zkConfigProvider.getVerifierKeys).mockResolvedValue(verifierKeys);
     vi.mocked(providers.privateStateProvider.getSigningKey).mockResolvedValue(null);
     vi.mocked(providers.privateStateProvider.setSigningKey).mockResolvedValue(undefined);
     vi.mocked(providers.privateStateProvider.get).mockResolvedValue(existingPrivateState);
@@ -135,26 +131,15 @@ describe('findDeployedContract', () => {
 
     const result = await findDeployedContract(providers, options);
 
-    expect(result).toBeDefined();
+    expectBasicResult(result);
     expect(result.deployTxData.private.initialPrivateState).toBe(existingPrivateState);
     expect(providers.privateStateProvider.get).toHaveBeenCalledWith(privateStateId);
   });
 
   it('should find deployed contract and store new private state', async () => {
-    const providers = createMockProviders();
-    const contractAddress = createMockContractAddress();
-    const contract = createMockContract();
-    const finalizedTxData = createMockFinalizedDeployTxData();
-    const contractState = createMockContractState();
-    const verifierKeys = createMockVerifierKeys();
     const privateStateId = createMockPrivateStateId();
     const initialPrivateState = { test: 'initial-private-state' };
 
-    // Setup provider mocks
-    vi.mocked(providers.publicDataProvider.watchForDeployTxData).mockResolvedValue(finalizedTxData);
-    vi.mocked(providers.publicDataProvider.queryDeployContractState).mockResolvedValue(contractState);
-    vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue(contractState);
-    vi.mocked(providers.zkConfigProvider.getVerifierKeys).mockResolvedValue(verifierKeys);
     vi.mocked(providers.privateStateProvider.getSigningKey).mockResolvedValue(null);
     vi.mocked(providers.privateStateProvider.setSigningKey).mockResolvedValue(undefined);
     vi.mocked(providers.privateStateProvider.set).mockResolvedValue(undefined);
@@ -168,25 +153,13 @@ describe('findDeployedContract', () => {
 
     const result = await findDeployedContract(providers, options);
 
-    expect(result).toBeDefined();
+    expectBasicResult(result);
     expect(result.deployTxData.private.initialPrivateState).toBe(initialPrivateState);
     expect(providers.privateStateProvider.set).toHaveBeenCalledWith(privateStateId, initialPrivateState);
   });
 
   it('should find deployed contract with existing signing key', async () => {
-    const providers = createMockProviders();
-    const contractAddress = createMockContractAddress();
-    const contract = createMockContract();
-    const finalizedTxData = createMockFinalizedDeployTxData();
-    const contractState = createMockContractState();
-    const verifierKeys = createMockVerifierKeys();
     const existingSigningKey = createMockSigningKey();
-
-    // Setup provider mocks
-    vi.mocked(providers.publicDataProvider.watchForDeployTxData).mockResolvedValue(finalizedTxData);
-    vi.mocked(providers.publicDataProvider.queryDeployContractState).mockResolvedValue(contractState);
-    vi.mocked(providers.publicDataProvider.queryContractState).mockResolvedValue(contractState);
-    vi.mocked(providers.zkConfigProvider.getVerifierKeys).mockResolvedValue(verifierKeys);
     vi.mocked(providers.privateStateProvider.getSigningKey).mockResolvedValue(existingSigningKey);
 
     const options = {
@@ -196,7 +169,7 @@ describe('findDeployedContract', () => {
 
     const result = await findDeployedContract(providers, options);
 
-    expect(result).toBeDefined();
+    expectBasicResult(result);
     expect(result.deployTxData.private.signingKey).toBe(existingSigningKey);
     expect(providers.privateStateProvider.getSigningKey).toHaveBeenCalledWith(contractAddress);
     expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();

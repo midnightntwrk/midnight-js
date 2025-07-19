@@ -17,10 +17,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   type Contract,
   FailEntirely,
+  type FinalizedTxData,
   type ImpureCircuitId,
   type PrivateStateId
 } from '@midnight-ntwrk/midnight-js-types';
-import { type Transaction } from '@midnight-ntwrk/ledger';
+import { type AlignedValue, type Transaction } from '@midnight-ntwrk/ledger';
 
 import { submitCallTx } from '../submit-call-tx';
 import { type CallTxOptions, createUnprovenCallTx } from '../unproven-call-tx';
@@ -30,26 +31,20 @@ import {
   createMockCoinInfo,
   createMockContract,
   createMockContractAddress,
-  createMockContractState,
   createMockFinalizedTxData,
   createMockPrivateStateId,
   createMockProviders,
-  createMockSigningKey,
   createMockUnprovenCallTxData,
   createMockUnprovenTx,
   createMockZswapLocalState
 } from './test-mocks';
-
-vi.mock('../unproven-call-tx');
-vi.mock('../submit-tx');
-vi.mock('@midnight-ntwrk/compact-runtime');
-vi.mock('@midnight-ntwrk/ledger');
+import type { UnsubmittedCallTxData } from '../tx-model';
+import { type PartitionedTranscript } from '../call';
+import { StateValue } from '@midnight-ntwrk/compact-runtime';
 
 describe('submit-call-tx', () => {
-  let mockContract: Contract;
+  let mockContract: Contract<any, undefined>;
   let mockContractAddress: ReturnType<typeof createMockContractAddress>;
-  let mockSigningKey: ReturnType<typeof createMockSigningKey>;
-  let mockContractState: ReturnType<typeof createMockContractState>;
   let mockZswapLocalState: ReturnType<typeof createMockZswapLocalState>;
   let mockPrivateStateId: PrivateStateId;
   let mockProviders: ReturnType<typeof createMockProviders>;
@@ -58,111 +53,113 @@ describe('submit-call-tx', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-
     mockContract = createMockContract();
     mockContractAddress = createMockContractAddress();
-    mockSigningKey = createMockSigningKey();
-    mockContractState = createMockContractState(mockSigningKey);
     mockZswapLocalState = createMockZswapLocalState();
     mockPrivateStateId = createMockPrivateStateId();
     mockProviders = createMockProviders();
     mockUnprovenTx = createMockUnprovenTx();
     mockCoinInfo = createMockCoinInfo();
+
+    vi.mock('../unproven-call-tx');
+    vi.mock('../submit-tx');
   });
+
+  const createBasicCallOptions = (overrides: Partial<CallTxOptions<any, any>> = {}) => ({
+    contract: mockContract,
+    contractAddress: mockContractAddress,
+    circuitId: 'testCircuit' as ImpureCircuitId,
+    args: ['arg1', 'arg2'],
+    ...overrides
+  });
+
+  const setupSuccessfulMocks = () => {
+    const mockUnprovenCallTxData = createMockUnprovenCallTxData();
+    const mockFinalizedTxData = createMockFinalizedTxData();
+
+    vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+    vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
+
+    return { mockUnprovenCallTxData, mockFinalizedTxData };
+  };
+
+  const createFailedTxData = (): UnsubmittedCallTxData<any, any> => ({
+    public: {
+      nextContractState: StateValue.newNull(),
+      publicTranscript: [],
+      partitionedTranscript: vi.fn() as unknown as PartitionedTranscript
+    },
+    private: {
+      input: vi.fn() as unknown as AlignedValue,
+      output: vi.fn() as unknown as AlignedValue,
+      unprovenTx: mockUnprovenTx,
+      newCoins: [mockCoinInfo],
+      nextPrivateState: { state: 'test' },
+      nextZswapLocalState: mockZswapLocalState,
+      privateTranscriptOutputs: vi.fn() as unknown as AlignedValue[],
+      result: vi.fn()
+    }
+  });
+
+  const verifySuccessfulCall = (
+    mockUnprovenCallTxData: any,
+    mockFinalizedTxData: any,
+    result: any,
+    options: CallTxOptions<any, any>
+  ) => {
+    expect(createUnprovenCallTx).toHaveBeenCalledWith(mockProviders, options);
+    expect(submitTx).toHaveBeenCalledWith(mockProviders, {
+      unprovenTx: mockUnprovenCallTxData.private.unprovenTx,
+      newCoins: mockUnprovenCallTxData.private.newCoins,
+      circuitId: 'testCircuit'
+    });
+    expect(result).toEqual({
+      private: mockUnprovenCallTxData.private,
+      public: {
+        ...mockUnprovenCallTxData.public,
+        ...mockFinalizedTxData
+      }
+    });
+  };
 
   describe('submitCallTx', () => {
     describe('successful call without private state ID', () => {
       it('should successfully submit call transaction', async () => {
-        const options = {
-          contract: mockContract,
-          contractAddress: mockContractAddress,
-          circuitId: 'testCircuit' as ImpureCircuitId<Contract>,
-          args: ['arg1', 'arg2']
-        } as CallTxOptions<any, any>;
-
-        const mockUnprovenCallTxData = createMockUnprovenCallTxData();
-        mockUnprovenCallTxData.private.newState = 'updated';
-
-        const mockFinalizedTxData = createMockFinalizedTxData();
-
-        vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
-        vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
+        const options = createBasicCallOptions();
+        const { mockUnprovenCallTxData, mockFinalizedTxData } = setupSuccessfulMocks();
 
         const result = await submitCallTx(mockProviders, options);
 
-        // Verify createUnprovenCallTx was called correctly
-        expect(createUnprovenCallTx).toHaveBeenCalledWith(mockProviders, options);
-
-        // Verify submitTx was called correctly
-        expect(submitTx).toHaveBeenCalledWith(mockProviders, {
-          unprovenTx: mockUnprovenTx,
-          newCoins: [mockCoinInfo],
-          circuitId: 'testCircuit'
-        });
-
-        // Verify private state was not set (no privateStateId)
+        verifySuccessfulCall(mockUnprovenCallTxData, mockFinalizedTxData, result, options);
         expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
-
-        // Verify result structure
-        expect(result).toEqual({
-          private: mockUnprovenCallTxData.private,
-          public: {
-            ...mockUnprovenCallTxData.public,
-            ...mockFinalizedTxData
-          }
-        });
       });
     });
 
     describe('successful call with private state ID', () => {
       it('should successfully submit call transaction and update private state', async () => {
-        const options = {
-          contract: mockContract,
-          contractAddress: mockContractAddress,
-          circuitId: 'testCircuit' as ImpureCircuitId<Contract>,
-          args: ['arg1', 'arg2'],
-          privateStateId: mockPrivateStateId
-        };
-
-        const mockUnprovenCallTxData = createMockUnprovenCallTxData();
         const nextPrivateState = { newState: 'updated' };
-        mockUnprovenCallTxData.private = nextPrivateState;
+        const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
+        const { mockFinalizedTxData } = setupSuccessfulMocks();
 
-        const mockFinalizedTxData = createMockFinalizedTxData();
-
+        const mockUnprovenCallTxData = createMockUnprovenCallTxData({
+          private: {
+            nextPrivateState
+          }
+        });
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
-        vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
 
         const result = await submitCallTx(mockProviders, options);
 
-        // Verify private state was set
         expect(mockProviders.privateStateProvider.set).toHaveBeenCalledWith(mockPrivateStateId, nextPrivateState);
-
-        // Verify result structure
-        expect(result).toEqual({
-          private: mockUnprovenCallTxData.private,
-          public: {
-            ...mockUnprovenCallTxData.public,
-            ...mockFinalizedTxData
-          }
-        });
+        verifySuccessfulCall(mockUnprovenCallTxData, mockFinalizedTxData, result, options);
       });
     });
 
     describe('configuration validation', () => {
       it('should throw IncompleteCallTxPrivateStateConfig when privateStateId provided without privateStateProvider', async () => {
-        const providersWithoutPrivateState = {
-          ...mockProviders
-        };
+        const providersWithoutPrivateState = { ...mockProviders };
         delete (providersWithoutPrivateState as any).privateStateProvider;
-
-        const options = {
-          contract: mockContract,
-          contractAddress: mockContractAddress,
-          circuitId: 'testCircuit' as ImpureCircuitId<Contract>,
-          args: ['arg1', 'arg2'],
-          privateStateId: mockPrivateStateId
-        };
+        const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
 
         await expect(submitCallTx(providersWithoutPrivateState, options)).rejects.toThrow(
           IncompleteCallTxPrivateStateConfig
@@ -173,18 +170,8 @@ describe('submit-call-tx', () => {
       });
 
       it('should accept privateStateProvider without privateStateId', async () => {
-        const options = {
-          contract: mockContract,
-          contractAddress: mockContractAddress,
-          circuitId: 'testCircuit' as ImpureCircuitId<Contract>,
-          args: ['arg1', 'arg2']
-        };
-
-        const mockUnprovenCallTxData = createMockUnprovenCallTxData();
-        const mockFinalizedTxData = createMockFinalizedTxData();
-
-        vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
-        vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
+        const options = createBasicCallOptions();
+        setupSuccessfulMocks();
 
         await submitCallTx(mockProviders, options);
 
@@ -194,78 +181,29 @@ describe('submit-call-tx', () => {
 
     describe('failed call scenarios', () => {
       it('should throw CallTxFailedError when transaction fails with FailEntirely', async () => {
-        const options = {
-          contract: mockContract,
-          contractAddress: mockContractAddress,
-          circuitId: 'testCircuit' as ImpureCircuitId<Contract>,
-          args: ['arg1', 'arg2']
-        };
-
-        const mockUnprovenCallTxData = {
-          public: {
-            contractAddress: mockContractAddress,
-            contractState: mockContractState
-          },
-          private: {
-            unprovenTx: mockUnprovenTx,
-            newCoins: [mockCoinInfo],
-            nextPrivateState: { state: 'test' },
-            nextZswapState: mockZswapLocalState
-          }
-        };
-
+        const options = createBasicCallOptions();
+        const mockUnprovenCallTxData = createFailedTxData();
         const mockFailedTxData = {
           status: FailEntirely,
           txId: 'failed-tx-id',
-          finalizedAt: new Date(),
           blockHeight: 100,
-          failureReason: 'Insufficient funds',
           tx: undefined as unknown as Transaction,
           txHash: 'hash',
           blockHash: 'hash'
-        };
+        } as FinalizedTxData;
 
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
         vi.mocked(submitTx).mockResolvedValue(mockFailedTxData);
 
         await expect(submitCallTx(mockProviders, options)).rejects.toThrow(CallTxFailedError);
-
-        // Verify that private state is not set when call fails
         expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
       });
 
       it('should include failure data and circuit ID in CallTxFailedError', async () => {
         const circuitId = 'testCircuit' as ImpureCircuitId<Contract>;
-        const options = {
-          contract: mockContract,
-          contractAddress: mockContractAddress,
-          circuitId,
-          args: ['arg1', 'arg2']
-        };
-
-        const mockUnprovenCallTxData = {
-          public: {
-            contractAddress: mockContractAddress,
-            contractState: mockContractState
-          },
-          private: {
-            unprovenTx: mockUnprovenTx,
-            newCoins: [mockCoinInfo],
-            nextPrivateState: { state: 'test' },
-            nextZswapState: mockZswapLocalState
-          }
-        };
-
-        const mockFailedTxData = {
-          status: FailEntirely,
-          txId: 'failed-tx-id',
-          finalizedAt: new Date(),
-          blockHeight: 100,
-          failureReason: 'Circuit execution failed',
-          tx: undefined as unknown as Transaction,
-          txHash: 'hash',
-          blockHash: 'hash'
-        };
+        const options = createBasicCallOptions({ circuitId });
+        const mockUnprovenCallTxData = createFailedTxData();
+        const mockFailedTxData = createMockFinalizedTxData(FailEntirely);
 
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
         vi.mocked(submitTx).mockResolvedValue(mockFailedTxData);
@@ -283,23 +221,13 @@ describe('submit-call-tx', () => {
 
     describe('validation checks', () => {
       it('should validate contract address', async () => {
-        const options = {
-          contract: mockContract,
-          contractAddress: 'invalid-address' as any,
-          circuitId: 'testCircuit' as ImpureCircuitId<Contract>,
-          args: ['arg1', 'arg2']
-        };
+        const options = createBasicCallOptions({ contractAddress: 'invalid-address' as any });
 
         await expect(submitCallTx(mockProviders, options)).rejects.toThrow();
       });
 
       it('should validate circuit exists in contract', async () => {
-        const options = {
-          contract: mockContract,
-          contractAddress: mockContractAddress,
-          circuitId: 'nonExistentCircuit' as ImpureCircuitId,
-          args: ['arg1', 'arg2']
-        };
+        const options = createBasicCallOptions({ circuitId: 'nonExistentCircuit' as ImpureCircuitId });
 
         await expect(submitCallTx(mockProviders, options)).rejects.toThrow('Circuit \'nonExistentCircuit\' is undefined');
       });
@@ -307,43 +235,19 @@ describe('submit-call-tx', () => {
 
     describe('error propagation', () => {
       it('should propagate errors from createUnprovenCallTx', async () => {
-        const options = {
-          contract: mockContract,
-          contractAddress: mockContractAddress,
-          circuitId: 'testCircuit' as ImpureCircuitId,
-          args: ['arg1', 'arg2']
-        };
-
+        const options = createBasicCallOptions();
         const createError = new Error('Failed to create unproven call tx');
         vi.mocked(createUnprovenCallTx).mockRejectedValue(createError);
 
         await expect(submitCallTx(mockProviders, options)).rejects.toThrow('Failed to create unproven call tx');
-
         expect(submitTx).not.toHaveBeenCalled();
       });
 
       it('should propagate errors from submitTx', async () => {
-        const options = {
-          contract: mockContract,
-          contractAddress: mockContractAddress,
-          circuitId: 'testCircuit' as ImpureCircuitId<Contract>,
-          args: ['arg1', 'arg2']
-        };
-
-        const mockUnprovenCallTxData= {
-          public: {
-            contractAddress: mockContractAddress,
-            contractState: mockContractState
-          },
-          private: {
-            unprovenTx: mockUnprovenTx,
-            newCoins: [mockCoinInfo],
-            nextPrivateState: { state: 'test' },
-            nextZswapState: mockZswapLocalState
-          }
-        };
-
+        const options = createBasicCallOptions();
+        const mockUnprovenCallTxData = createFailedTxData();
         const submitError = new Error('Network error during submission');
+
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
         vi.mocked(submitTx).mockRejectedValue(submitError);
 
@@ -351,20 +255,9 @@ describe('submit-call-tx', () => {
       });
 
       it('should propagate errors from privateStateProvider.set', async () => {
-        const options = {
-          contract: mockContract,
-          contractAddress: mockContractAddress,
-          circuitId: 'testCircuit' as ImpureCircuitId<Contract>,
-          args: ['arg1', 'arg2'],
-          privateStateId: mockPrivateStateId
-        };
-
-        const mockUnprovenCallTxData = createMockUnprovenCallTxData();
-        const mockFinalizedTxData = createMockFinalizedTxData();
-
+        const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
         const stateError = new Error('Failed to set private state');
-        vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
-        vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
+
         mockProviders.privateStateProvider.set = vi.fn().mockRejectedValue(stateError);
 
         await expect(submitCallTx(mockProviders, options)).rejects.toThrow('Failed to set private state');
@@ -373,63 +266,39 @@ describe('submit-call-tx', () => {
 
     describe('edge cases', () => {
       it('should handle empty new coins array', async () => {
-        const options = {
-          contract: mockContract,
-          contractAddress: mockContractAddress,
-          circuitId: 'testCircuit' as ImpureCircuitId<Contract>,
-          args: ['arg1', 'arg2']
-        };
-
-        const mockUnprovenCallTxData = {
-          public: {
-            contractAddress: mockContractAddress,
-            contractState: mockContractState
-          },
-          private: {
-            unprovenTx: mockUnprovenTx,
-            newCoins: [], // Empty array
-            nextPrivateState: { state: 'test' },
-            nextZswapState: mockZswapLocalState
-          }
-        };
-
+        const options = createBasicCallOptions();
         const mockFinalizedTxData = createMockFinalizedTxData();
 
+        const mockUnprovenCallTxData = createMockUnprovenCallTxData({
+          private: {
+            newCoins: []
+          }
+        });
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
         vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
 
         const result = await submitCallTx(mockProviders, options);
 
         expect(submitTx).toHaveBeenCalledWith(mockProviders, {
-          unprovenTx: mockUnprovenTx,
+          unprovenTx: mockUnprovenCallTxData.private.unprovenTx,
           newCoins: [],
           circuitId: 'testCircuit'
         });
-
         expect(result).toEqual({
           private: mockUnprovenCallTxData.private,
-          public: {
-            ...mockUnprovenCallTxData.public,
-            ...mockFinalizedTxData
-          }
+          public: { ...mockUnprovenCallTxData.public, ...mockFinalizedTxData }
         });
       });
 
       it('should handle undefined next private state with private state ID', async () => {
-        const options = {
-          contract: mockContract,
-          contractAddress: mockContractAddress,
-          circuitId: 'testCircuit' as ImpureCircuitId<Contract>,
-          args: ['arg1', 'arg2'],
-          privateStateId: mockPrivateStateId
-        };
+        const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
 
-        const mockUnprovenCallTxData = createMockUnprovenCallTxData();
-        mockUnprovenCallTxData.private.nextPrivateState = undefined;
-        const mockFinalizedTxData = createMockFinalizedTxData();
-
+        const mockUnprovenCallTxData = createMockUnprovenCallTxData({
+          private: {
+            nextPrivateState: undefined
+          }
+        });
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
-        vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
 
         await submitCallTx(mockProviders, options);
 
@@ -437,28 +306,13 @@ describe('submit-call-tx', () => {
       });
 
       it('should handle call without arguments', async () => {
-        const options = {
-          contract: mockContract,
-          contractAddress: mockContractAddress,
-          circuitId: 'testCircuit' as ImpureCircuitId<Contract>
-        };
-
-        const mockFinalizedTxData = createMockFinalizedTxData();
-        const mockUnprovenCallTxData = createMockUnprovenCallTxData();
-
-        vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
-        vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
+        const options = createBasicCallOptions();
+        const { mockUnprovenCallTxData, mockFinalizedTxData } = setupSuccessfulMocks();
 
         const result = await submitCallTx(mockProviders, options);
 
         expect(createUnprovenCallTx).toHaveBeenCalledWith(mockProviders, options);
-        expect(result).toEqual({
-          private: mockUnprovenCallTxData.private,
-          public: {
-            ...mockUnprovenCallTxData.public,
-            ...mockFinalizedTxData
-          }
-        });
+        verifySuccessfulCall(mockUnprovenCallTxData, mockFinalizedTxData, result, options);
       });
     });
   });
