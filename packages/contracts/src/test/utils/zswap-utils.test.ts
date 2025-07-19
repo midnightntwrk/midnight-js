@@ -14,20 +14,18 @@
  */
 
 import {
-  type QualifiedCoinInfo,
   type CoinInfo,
   type CoinPublicKey,
-  sampleEncryptionPublicKey
-} from '@midnight-ntwrk/ledger';
-import {
-  UnprovenOffer,
   createCoinInfo,
   nativeToken,
-  UnprovenTransaction,
-  ZswapChainState,
-  sampleTokenType,
+  type QualifiedCoinInfo,
   sampleCoinPublicKey,
-  sampleContractAddress
+  sampleContractAddress,
+  sampleEncryptionPublicKey,
+  sampleTokenType,
+  UnprovenOffer,
+  UnprovenTransaction,
+  ZswapChainState
 } from '@midnight-ntwrk/ledger';
 import { randomBytes } from 'crypto';
 import { fc } from '@fast-check/vitest';

@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { findDeployedContract } from '../find-deployed-contract';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { findDeployedContract, type FoundContract } from '../find-deployed-contract';
 import {
   createMockContract,
   createMockContractAddress,
@@ -25,6 +25,7 @@ import {
   createMockSigningKey,
   createMockVerifierKeys
 } from './test-mocks';
+import { type Contract } from '@midnight-ntwrk/midnight-js-types';
 
 vi.mock('../tx-interfaces', () => ({
   createCircuitCallTxInterface: vi.fn().mockReturnValue({ call: 'mock-call-interface' }),
@@ -55,7 +56,7 @@ describe('findDeployedContract', () => {
     vi.mocked(providers.zkConfigProvider.getVerifierKeys).mockResolvedValue(verifierKeys);
   };
 
-  const expectBasicResult = (result: any) => {
+  const expectBasicResult = (result: FoundContract<Contract>) => {
     expect(result).toBeDefined();
     expect(result.deployTxData).toBeDefined();
     expect(result.deployTxData.public.contractAddress).toBe(contractAddress);
@@ -79,7 +80,7 @@ describe('findDeployedContract', () => {
     finalizedTxData = createMockFinalizedTxData();
     contractState = createMockContractState();
     verifierKeys = createMockVerifierKeys();
-    
+
     setupCommonMocks();
   });
 

@@ -14,33 +14,33 @@
  */
 
 import {
+  type AlignedValue,
+  ContractOperation,
   ContractState,
   QueryContext,
-  ZswapChainState,
-  UnprovenTransaction,
   sampleCoinPublicKey,
   sampleContractAddress,
+  sampleEncryptionPublicKey,
   sampleSigningKey,
-  ContractOperation,
-  type AlignedValue,
   type Transcript,
-  sampleEncryptionPublicKey
+  UnprovenTransaction,
+  ZswapChainState
 } from '@midnight-ntwrk/ledger';
 import { randomBytes } from 'crypto';
 import { createVerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import {
-  toLedgerContractState,
-  fromLedgerContractState,
-  toLedgerQueryContext,
   contractMaintenanceAuthority,
   createUnprovenLedgerCallTx,
-  replaceAuthority,
-  removeVerifierKey,
-  insertVerifierKey,
-  unprovenTxFromContractUpdates,
+  createUnprovenRemoveVerifierKeyTx,
   createUnprovenReplaceAuthorityTx,
-  createUnprovenRemoveVerifierKeyTx
+  fromLedgerContractState,
+  insertVerifierKey,
+  removeVerifierKey,
+  replaceAuthority,
+  toLedgerContractState,
+  toLedgerQueryContext,
+  unprovenTxFromContractUpdates
 } from '../../utils';
 import { type PartitionedTranscript } from '../../call';
 
@@ -143,7 +143,6 @@ describe('ledger-utils', () => {
       coinPublicKey: sampleCoinPublicKey(),
       currentIndex: 0n
     };
-    const encryptionPublicKey = dummyEncPublicKey;
 
     const tx = createUnprovenLedgerCallTx(
       circuitId,
@@ -155,7 +154,7 @@ describe('ledger-utils', () => {
       alignedValue,
       alignedValue,
       nextZswapLocalState,
-      encryptionPublicKey
+      dummyEncPublicKey
     );
     expect(tx).toBeInstanceOf(UnprovenTransaction);
   });

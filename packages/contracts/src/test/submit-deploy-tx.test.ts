@@ -21,7 +21,6 @@ import { createUnprovenDeployTx } from '../unproven-deploy-tx';
 import { submitTx } from '../submit-tx';
 import { DeployTxFailedError } from '../errors';
 import {
-  createMockCoinInfo,
   createMockContract,
   createMockContractAddress,
   createMockFinalizedTxData,
@@ -29,7 +28,7 @@ import {
   createMockProviders,
   createMockSigningKey,
   createMockUnprovenDeployTxData,
-  createMockUnprovenTx,
+  createMockUnprovenTx
 } from './test-mocks';
 
 vi.mock('../unproven-deploy-tx');
@@ -38,13 +37,12 @@ vi.mock('@midnight-ntwrk/compact-runtime');
 vi.mock('@midnight-ntwrk/ledger');
 
 describe('submit-deploy-tx', () => {
-  let mockContract: Contract<any, undefined>;
+  let mockContract: Contract<undefined>;
   let mockContractAddress: ReturnType<typeof createMockContractAddress>;
   let mockSigningKey: ReturnType<typeof createMockSigningKey>;
   let mockPrivateStateId: PrivateStateId;
   let mockProviders: ReturnType<typeof createMockProviders>;
   let mockUnprovenTx: ReturnType<typeof createMockUnprovenTx>;
-  let mockCoinInfo: ReturnType<typeof createMockCoinInfo>;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -55,7 +53,6 @@ describe('submit-deploy-tx', () => {
     mockPrivateStateId = createMockPrivateStateId();
     mockProviders = createMockProviders();
     mockUnprovenTx = createMockUnprovenTx();
-    mockCoinInfo = createMockCoinInfo();
   });
 
   describe('submitDeployTx', () => {
@@ -77,8 +74,8 @@ describe('submit-deploy-tx', () => {
 
         expect(createUnprovenDeployTx).toHaveBeenCalledWith(mockProviders, options);
         expect(submitTx).toHaveBeenCalledWith(mockProviders, {
-          unprovenTx: mockUnprovenTx,
-          newCoins: [mockCoinInfo]
+          unprovenTx: mockUnprovenDeployTxData.private.unprovenTx,
+          newCoins: mockUnprovenDeployTxData.private.newCoins
         });
         expect(mockProviders.privateStateProvider.setSigningKey).toHaveBeenCalledWith(
           mockContractAddress,

@@ -21,7 +21,7 @@ import {
   type ImpureCircuitId,
   type PrivateStateId
 } from '@midnight-ntwrk/midnight-js-types';
-import { type AlignedValue, type Transaction } from '@midnight-ntwrk/ledger';
+import { type AlignedValue, type CoinPublicKey, type ContractAddress, type Transaction } from '@midnight-ntwrk/ledger';
 
 import { submitCallTx } from '../submit-call-tx';
 import { type CallTxOptions, createUnprovenCallTx } from '../unproven-call-tx';
@@ -38,12 +38,12 @@ import {
   createMockUnprovenTx,
   createMockZswapLocalState
 } from './test-mocks';
-import type { UnsubmittedCallTxData } from '../tx-model';
+import type { FinalizedCallTxData, UnsubmittedCallTxData } from '../tx-model';
 import { type PartitionedTranscript } from '../call';
 import { StateValue } from '@midnight-ntwrk/compact-runtime';
 
 describe('submit-call-tx', () => {
-  let mockContract: Contract<any, undefined>;
+  let mockContract: Contract<undefined>;
   let mockContractAddress: ReturnType<typeof createMockContractAddress>;
   let mockZswapLocalState: ReturnType<typeof createMockZswapLocalState>;
   let mockPrivateStateId: PrivateStateId;
@@ -65,7 +65,7 @@ describe('submit-call-tx', () => {
     vi.mock('../submit-tx');
   });
 
-  const createBasicCallOptions = (overrides: Partial<CallTxOptions<any, any>> = {}) => ({
+  const createBasicCallOptions = (overrides: Partial<CallTxOptions<Contract, CoinPublicKey>> = {}) => ({
     contract: mockContract,
     contractAddress: mockContractAddress,
     circuitId: 'testCircuit' as ImpureCircuitId,
@@ -83,29 +83,29 @@ describe('submit-call-tx', () => {
     return { mockUnprovenCallTxData, mockFinalizedTxData };
   };
 
-  const createFailedTxData = (): UnsubmittedCallTxData<any, any> => ({
+  const createFailedTxData = (): UnsubmittedCallTxData<Contract, CoinPublicKey> => ({
     public: {
       nextContractState: StateValue.newNull(),
       publicTranscript: [],
-      partitionedTranscript: vi.fn() as unknown as PartitionedTranscript
+      partitionedTranscript: {} as PartitionedTranscript
     },
     private: {
-      input: vi.fn() as unknown as AlignedValue,
-      output: vi.fn() as unknown as AlignedValue,
+      input: {} as AlignedValue,
+      output: {} as AlignedValue,
       unprovenTx: mockUnprovenTx,
       newCoins: [mockCoinInfo],
       nextPrivateState: { state: 'test' },
       nextZswapLocalState: mockZswapLocalState,
-      privateTranscriptOutputs: vi.fn() as unknown as AlignedValue[],
+      privateTranscriptOutputs: {} as AlignedValue[],
       result: vi.fn()
     }
   });
 
   const verifySuccessfulCall = (
-    mockUnprovenCallTxData: any,
-    mockFinalizedTxData: any,
-    result: any,
-    options: CallTxOptions<any, any>
+    mockUnprovenCallTxData: UnsubmittedCallTxData<Contract, CoinPublicKey>,
+    mockFinalizedTxData: FinalizedTxData,
+    result: FinalizedCallTxData<Contract, CoinPublicKey>,
+    options: CallTxOptions<Contract, CoinPublicKey>
   ) => {
     expect(createUnprovenCallTx).toHaveBeenCalledWith(mockProviders, options);
     expect(submitTx).toHaveBeenCalledWith(mockProviders, {
@@ -187,7 +187,7 @@ describe('submit-call-tx', () => {
           status: FailEntirely,
           txId: 'failed-tx-id',
           blockHeight: 100,
-          tx: undefined as unknown as Transaction,
+          tx: {} as Transaction,
           txHash: 'hash',
           blockHash: 'hash'
         } as FinalizedTxData;
@@ -221,7 +221,7 @@ describe('submit-call-tx', () => {
 
     describe('validation checks', () => {
       it('should validate contract address', async () => {
-        const options = createBasicCallOptions({ contractAddress: 'invalid-address' as any });
+        const options = createBasicCallOptions({ contractAddress: 'invalid-address' as ContractAddress });
 
         await expect(submitCallTx(mockProviders, options)).rejects.toThrow();
       });
@@ -258,6 +258,11 @@ describe('submit-call-tx', () => {
         const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
         const stateError = new Error('Failed to set private state');
 
+        const mockUnprovenCallTxData = createMockUnprovenCallTxData();
+        const mockFinalizedTxData = createMockFinalizedTxData();
+
+        vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+        vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
         mockProviders.privateStateProvider.set = vi.fn().mockRejectedValue(stateError);
 
         await expect(submitCallTx(mockProviders, options)).rejects.toThrow('Failed to set private state');
