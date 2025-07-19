@@ -158,6 +158,7 @@ describe('submit-call-tx', () => {
     describe('configuration validation', () => {
       it('should throw IncompleteCallTxPrivateStateConfig when privateStateId provided without privateStateProvider', async () => {
         const providersWithoutPrivateState = { ...mockProviders };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         delete (providersWithoutPrivateState as any).privateStateProvider;
         const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
 

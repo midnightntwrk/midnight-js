@@ -22,6 +22,7 @@ import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 
 describe('call', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockCircuit: Mock<(...args: any[]) => any>;
 
   beforeEach(() => {

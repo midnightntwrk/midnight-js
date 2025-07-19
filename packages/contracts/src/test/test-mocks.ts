@@ -164,6 +164,7 @@ export const createMockFinalizedTxData = (status: TxStatus = SucceedEntirely): F
   blockHash: 'hash'
 });
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const createMockUnprovenDeployTxData = (overrides: any = {}): UnsubmittedDeployTxData<Contract> => ({
   public: {
     contractAddress: createMockContractAddress(),
@@ -179,6 +180,7 @@ export const createMockUnprovenDeployTxData = (overrides: any = {}): Unsubmitted
   ...overrides
 });
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const createMockUnprovenCallTxData = (overrides: any = {}): UnsubmittedCallTxData<Contract, CoinPublicKey> => ({
     public: {
       nextContractState: StateValue.newNull(),
@@ -201,6 +203,7 @@ export const createMockUnprovenCallTxData = (overrides: any = {}): UnsubmittedCa
     }
 });
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const createMockCallOptions = (overrides: any = {}): CallOptions<Contract, CoinPublicKey> => ({
   contract: createMockContract(),
   circuitId: 'testCircuit',
@@ -211,6 +214,7 @@ export const createMockCallOptions = (overrides: any = {}): CallOptions<Contract
   ...overrides
 });
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const createMockCallOptionsWithPrivateState = (overrides: any = {}): CallOptionsWithPrivateState<Contract, CoinPublicKey> => ({
   ...createMockCallOptions(),
   initialPrivateState: { test: 'private-state' },

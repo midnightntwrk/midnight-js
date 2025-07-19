@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { describe, expect, it, vi } from 'vitest';
-import { deployContract } from '../deploy-contract';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { deployContract, type DeployContractOptionsBase, type DeployedContract } from '../deploy-contract';
 import {
   createMockContract,
   createMockFinalizedTxData,
@@ -22,6 +22,11 @@ import {
   createMockProviders,
   createMockSigningKey
 } from './test-mocks';
+import { type UnsubmittedDeployTxData } from '../tx-model';
+import { type Contract, type PrivateState } from '@midnight-ntwrk/midnight-js-types';
+import { type ContractState, type UnprovenTransaction } from '@midnight-ntwrk/ledger';
+import { type ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
+import { type ContractProviders } from '../contract-providers';
 
 vi.mock('../submit-deploy-tx', () => ({
   submitDeployTx: vi.fn()
@@ -34,83 +39,74 @@ vi.mock('../tx-interfaces', () => ({
 }));
 
 describe('deployContract', () => {
-  it('should deploy contract without private state', async () => {
-    const { submitDeployTx } = await import('../submit-deploy-tx');
-    const mockSubmitDeployTx = submitDeployTx as any;
+  let mockSubmitDeployTx: ReturnType<typeof vi.fn>;
+  let mockDeployTxData: UnsubmittedDeployTxData<Contract>;
+  let providers: ContractProviders;
+  let baseOptions: DeployContractOptionsBase<Contract>;
 
-    const deployTxData = {
-      public: {
-        ...createMockFinalizedTxData(),
-        contractAddress: 'mock-contract-address',
-        initialContractState: { test: 'initial-state' }
-      },
-      private: {
-        signingKey: createMockSigningKey(),
-        initialPrivateState: undefined,
-        initialZswapState: { test: 'zswap-state' },
-        unprovenTx: { test: 'unproven-tx' },
-        newCoins: [{ test: 'coin' }]
-      }
-    };
+  const createMockDeployTxData = (initialPrivateState?: PrivateState<Contract>): UnsubmittedDeployTxData<Contract> => ({
+    public: {
+      ...createMockFinalizedTxData(),
+      contractAddress: 'mock-contract-address',
+      initialContractState: {} as ContractState
+    },
+    private: {
+      signingKey: createMockSigningKey(),
+      initialPrivateState,
+      initialZswapState: {} as ZswapLocalState,
+      unprovenTx: {} as UnprovenTransaction,
+      newCoins: []
+    }
+  });
 
-    mockSubmitDeployTx.mockResolvedValue(deployTxData);
-
-    const providers = createMockProviders();
-    const options = {
-      contract: createMockContract(),
-      args: ['deploy-arg']
-    };
-
-    const result = await deployContract(providers, options);
-
+  const assertDeployResult = (result: DeployedContract<Contract>, deployTxData: UnsubmittedDeployTxData<Contract>) => {
     expect(result).toBeDefined();
     expect(result.deployTxData).toBe(deployTxData);
     expect(result.callTx).toBeDefined();
     expect(result.circuitMaintenanceTx).toBeDefined();
     expect(result.contractMaintenanceTx).toBeDefined();
+  };
+
+  beforeEach(async () => {
+    const { submitDeployTx } = await import('../submit-deploy-tx');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockSubmitDeployTx = submitDeployTx as any;
+    vi.clearAllMocks();
+
+    providers = createMockProviders();
+    baseOptions = {
+      contract: createMockContract(),
+      args: ['deploy-arg']
+    };
+  });
+
+  it('should deploy contract without private state', async () => {
+    mockDeployTxData = createMockDeployTxData();
+    mockSubmitDeployTx.mockResolvedValue(mockDeployTxData);
+
+    const result = await deployContract(providers, baseOptions);
+
+    assertDeployResult(result, mockDeployTxData);
     expect(mockSubmitDeployTx).toHaveBeenCalledWith(
       providers,
       expect.objectContaining({
-        contract: options.contract,
-        args: options.args,
+        contract: baseOptions.contract,
+        args: baseOptions.args,
         signingKey: expect.not.stringMatching(createMockSigningKey())
       })
     );
   });
 
   it('should deploy contract with provided signing key', async () => {
-    const { submitDeployTx } = await import('../submit-deploy-tx');
-    const mockSubmitDeployTx = submitDeployTx as any;
+    mockDeployTxData = createMockDeployTxData();
+    mockSubmitDeployTx.mockResolvedValue(mockDeployTxData);
 
-    const deployTxData = {
-      public: {
-        ...createMockFinalizedTxData(),
-        contractAddress: 'mock-contract-address',
-        initialContractState: { test: 'initial-state' }
-      },
-      private: {
-        signingKey: createMockSigningKey(),
-        initialPrivateState: undefined,
-        initialZswapState: { test: 'zswap-state' },
-        unprovenTx: { test: 'unproven-tx' },
-        newCoins: [{ test: 'coin' }]
-      }
-    };
-
-    mockSubmitDeployTx.mockResolvedValue(deployTxData);
-
-    const providers = createMockProviders();
     const signingKey = createMockSigningKey();
-    const options = {
-      contract: createMockContract(),
-      signingKey,
-      args: ['deploy-arg']
-    };
+    const options = { ...baseOptions, signingKey };
 
     const result = await deployContract(providers, options);
 
-    expect(result).toBeDefined();
-    expect(result.deployTxData).toBe(deployTxData);
+    assertDeployResult(result, mockDeployTxData);
     expect(mockSubmitDeployTx).toHaveBeenCalledWith(
       providers,
       expect.objectContaining({
@@ -122,46 +118,24 @@ describe('deployContract', () => {
   });
 
   it('should deploy contract with private state', async () => {
-    const { submitDeployTx } = await import('../submit-deploy-tx');
-    const mockSubmitDeployTx = submitDeployTx as any;
-
-    const deployTxData = {
-      public: {
-        ...createMockFinalizedTxData(),
-        contractAddress: 'mock-contract-address',
-        initialContractState: { test: 'initial-state' }
-      },
-      private: {
-        signingKey: createMockSigningKey(),
-        initialPrivateState: { test: 'initial-private-state' },
-        initialZswapState: { test: 'zswap-state' },
-        unprovenTx: { test: 'unproven-tx' },
-        newCoins: [{ test: 'coin' }]
-      }
-    };
-
-    mockSubmitDeployTx.mockResolvedValue(deployTxData);
-
-    const providers = createMockProviders();
-    const privateStateId = createMockPrivateStateId();
     const initialPrivateState = { test: 'initial-private-state' };
+    mockDeployTxData = createMockDeployTxData(initialPrivateState);
+    mockSubmitDeployTx.mockResolvedValue(mockDeployTxData);
 
     const options = {
-      contract: createMockContract(),
-      privateStateId,
-      initialPrivateState,
-      args: ['deploy-arg']
+      ...baseOptions,
+      privateStateId: createMockPrivateStateId(),
+      initialPrivateState
     };
 
     const result = await deployContract(providers, options);
 
-    expect(result).toBeDefined();
-    expect(result.deployTxData).toBe(deployTxData);
+    assertDeployResult(result, mockDeployTxData);
     expect(mockSubmitDeployTx).toHaveBeenCalledWith(
       providers,
       expect.objectContaining({
         contract: options.contract,
-        privateStateId,
+        privateStateId: options.privateStateId,
         initialPrivateState,
         args: options.args,
         signingKey: expect.not.stringMatching(createMockSigningKey())
@@ -170,49 +144,27 @@ describe('deployContract', () => {
   });
 
   it('should deploy contract with both custom signing key and private state', async () => {
-    const { submitDeployTx } = await import('../submit-deploy-tx');
-    const mockSubmitDeployTx = submitDeployTx as any;
-
-    const deployTxData = {
-      public: {
-        ...createMockFinalizedTxData(),
-        contractAddress: 'mock-contract-address',
-        initialContractState: { test: 'initial-state' }
-      },
-      private: {
-        signingKey: createMockSigningKey(),
-        initialPrivateState: { test: 'initial-private-state' },
-        initialZswapState: { test: 'zswap-state' },
-        unprovenTx: { test: 'unproven-tx' },
-        newCoins: [{ test: 'coin' }]
-      }
-    };
-
-    mockSubmitDeployTx.mockResolvedValue(deployTxData);
-
-    const providers = createMockProviders();
-    const signingKey = createMockSigningKey();
-    const privateStateId = createMockPrivateStateId();
     const initialPrivateState = { test: 'initial-private-state' };
+    mockDeployTxData = createMockDeployTxData(initialPrivateState);
+    mockSubmitDeployTx.mockResolvedValue(mockDeployTxData);
 
+    const signingKey = createMockSigningKey();
     const options = {
-      contract: createMockContract(),
+      ...baseOptions,
       signingKey,
-      privateStateId,
-      initialPrivateState,
-      args: ['deploy-arg']
+      privateStateId: createMockPrivateStateId(),
+      initialPrivateState
     };
 
     const result = await deployContract(providers, options);
 
-    expect(result).toBeDefined();
-    expect(result.deployTxData).toBe(deployTxData);
+    assertDeployResult(result, mockDeployTxData);
     expect(mockSubmitDeployTx).toHaveBeenCalledWith(
       providers,
       expect.objectContaining({
         contract: options.contract,
         signingKey,
-        privateStateId,
+        privateStateId: options.privateStateId,
         initialPrivateState,
         args: options.args
       })

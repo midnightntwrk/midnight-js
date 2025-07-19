@@ -24,7 +24,6 @@ import {
   createMockVerifierKeys
 } from './test-mocks';
 
-// Mock the callContractConstructor function and utility functions
 vi.mock('../call-constructor', () => ({
   callContractConstructor: vi.fn()
 }));
@@ -46,6 +45,7 @@ describe('unproven-deploy-tx', () => {
   describe('createUnprovenDeployTxFromVerifierKeys', () => {
     it('should create unproven deploy tx from verifier keys without private state', async () => {
       const { callContractConstructor } = await import('../call-constructor');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mockCallContractConstructor = callContractConstructor as any;
 
       const constructorResult = createMockConstructorResult();
@@ -80,6 +80,7 @@ describe('unproven-deploy-tx', () => {
 
     it('should create unproven deploy tx from verifier keys with private state', async () => {
       const { callContractConstructor } = await import('../call-constructor');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mockCallContractConstructor = callContractConstructor as any;
 
       const constructorResult = createMockConstructorResult();
@@ -126,7 +127,7 @@ describe('unproven-deploy-tx', () => {
         walletProvider: createMockProviders().walletProvider
       };
 
-      providers.zkConfigProvider.getVerifierKeys.mockResolvedValue(createMockVerifierKeys());
+      vi.mocked(providers.zkConfigProvider.getVerifierKeys).mockResolvedValue(createMockVerifierKeys());
 
       const options = {
         contract: createMockContract(),
@@ -146,7 +147,7 @@ describe('unproven-deploy-tx', () => {
         walletProvider: createMockProviders().walletProvider
       };
 
-      providers.zkConfigProvider.getVerifierKeys.mockResolvedValue(createMockVerifierKeys());
+      vi.mocked(providers.zkConfigProvider.getVerifierKeys).mockResolvedValue(createMockVerifierKeys());
 
       const options = {
         contract: createMockContract(),
