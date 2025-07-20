@@ -817,6 +817,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@effect/vitest@npm:^0.24.1":
+  version: 0.24.1
+  resolution: "@effect/vitest@npm:0.24.1"
+  peerDependencies:
+    effect: ^3.16.14
+    vitest: ^3.2.0
+  checksum: 10/9cd4447fd323c01fe90495655463ccc6ff2f41ed668df506beb1121b0de500195afdd9a50dcec92d9142fc2c233415353c2082601b9a3dcd743f82be19de4bda
+  languageName: node
+  linkType: hard
+
 "@emnapi/core@npm:^1.4.3":
   version: 1.4.3
   resolution: "@emnapi/core@npm:1.4.3"
@@ -2135,6 +2145,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@midnight-ntwrk/compact-js@workspace:compact-js/compact-js":
+  version: 0.0.0-use.local
+  resolution: "@midnight-ntwrk/compact-js@workspace:compact-js/compact-js"
+  dependencies:
+    "@effect/vitest": "npm:^0.24.1"
+    "@midnight-ntwrk/compact-runtime": "npm:0.8.1"
+    "@midnight-ntwrk/ledger": "npm:4.0.0"
+    effect: "npm:^3.16.16"
+  languageName: unknown
+  linkType: soft
+
 "@midnight-ntwrk/compact-runtime@npm:0.8.1":
   version: 0.8.1
   resolution: "@midnight-ntwrk/compact-runtime@npm:0.8.1::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-runtime%2F0.8.1%2Ff6fb532ab1149e9509d0cdb2a93d47db31766ecb"
@@ -3028,6 +3049,13 @@ __metadata:
   version: 10.0.2
   resolution: "@shikijs/vscode-textmate@npm:10.0.2"
   checksum: 10/d924cba8a01cd9ca12f56ba097d628fdb81455abb85884c8d8a5ae85b628a37dd5907e7691019b97107bd6608c866adf91ba04a1c3bba391281c88e386c044ea
+  languageName: node
+  linkType: hard
+
+"@standard-schema/spec@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "@standard-schema/spec@npm:1.0.0"
+  checksum: 10/aee780cc1431888ca4b9aba9b24ffc8f3073fc083acc105e3951481478a2f4dc957796931b2da9e2d8329584cf211e4542275f188296c1cdff3ed44fd93a8bc8
   languageName: node
   linkType: hard
 
@@ -5592,6 +5620,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"effect@npm:^3.16.16":
+  version: 3.16.16
+  resolution: "effect@npm:3.16.16"
+  dependencies:
+    "@standard-schema/spec": "npm:^1.0.0"
+    fast-check: "npm:^3.23.1"
+  checksum: 10/4fee172e2d30206b5f45d7b5372bf1bdc41c6aa7012ab311cbc05f9a31fd8260be03769b4f5bf78a5b2b4d3435d45da79e8ea6004f5bfb4cc3cb13bf38d5cce5
+  languageName: node
+  linkType: hard
+
 "electron-to-chromium@npm:^1.5.4":
   version: 1.5.4
   resolution: "electron-to-chromium@npm:1.5.4"
@@ -6386,6 +6424,15 @@ __metadata:
   dependencies:
     pure-rand: "npm:^7.0.0"
   checksum: 10/fae29b0387cc08a89e6dc6e4c1292c4f2a84ddf7b9d2df9074107965f1c9a7238e17fbcbafe413a588cc57c2f51bdd8b6f1450f7c9379efd3149d718cce11444
+  languageName: node
+  linkType: hard
+
+"fast-check@npm:^3.23.1":
+  version: 3.23.2
+  resolution: "fast-check@npm:3.23.2"
+  dependencies:
+    pure-rand: "npm:^6.1.0"
+  checksum: 10/dab344146b778e8bc2973366ea55528d1b58d3e3037270262b877c54241e800c4d744957722c24705c787020d702aece11e57c9e3dbd5ea19c3e10926bf1f3fe
   languageName: node
   linkType: hard
 
@@ -9845,6 +9892,13 @@ __metadata:
   version: 2.3.1
   resolution: "punycode@npm:2.3.1"
   checksum: 10/febdc4362bead22f9e2608ff0171713230b57aff9dddc1c273aa2a651fbd366f94b7d6a71d78342a7c0819906750351ca7f2edd26ea41b626d87d6a13d1bd059
+  languageName: node
+  linkType: hard
+
+"pure-rand@npm:^6.1.0":
+  version: 6.1.0
+  resolution: "pure-rand@npm:6.1.0"
+  checksum: 10/256aa4bcaf9297256f552914e03cbdb0039c8fe1db11fa1e6d3f80790e16e563eb0a859a1e61082a95e224fc0c608661839439f8ecc6a3db4e48d46d99216ee4
   languageName: node
   linkType: hard
 

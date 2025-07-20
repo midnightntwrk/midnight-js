@@ -8,7 +8,8 @@
     "node": ">=22"
   },
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "compact-js/*"
   ],
   "scripts": {
     "clean": "turbo run clean",
@@ -69,6 +70,6 @@
     "vitest": "^3.2.4"
   },
   "lint-staged": {
-    "*.ts": "eslint --cache --fix"
+    "*.ts,!compact-js/**/*.ts": "eslint --cache --fix"
   }
 }

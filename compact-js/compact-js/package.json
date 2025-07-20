@@ -1,0 +1,41 @@
+{
+  "name": "@midnight-ntwrk/compact-js",
+  "version": "1.0.0",
+  "description": "Typescript-based execution environment for smart contracts compiled with the Compact language",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./effect": {
+      "types": "./dist/effect/index.d.ts",
+      "import": "./dist/effect/index.mjs",
+      "require": "./dist/effect/index.cjs"
+    }
+  },
+  "dependencies": {
+    "@midnight-ntwrk/compact-runtime": "0.8.1",
+    "@midnight-ntwrk/ledger": "4.0.0",
+    "effect": "^3.16.16"
+  },
+  "devDependencies": {
+    "@effect/vitest": "^0.24.1"
+  },
+  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "packageManager": "yarn@4.9.2",
+  "author": "IOHK",
+  "license": "Apache-2.0",
+  "scripts": {
+    "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
+    "build": "rollup -c rollup.config.mjs",
+    "test": "vitest run",
+    "deploy": "yarn npm publish"
+  },
+  "files": [
+    "dist/"
+  ]
+}

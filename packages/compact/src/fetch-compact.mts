@@ -7,7 +7,6 @@ import * as console from 'node:console';
 
 console.log('Fetching Compactc...');
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const [_node, _script, ...args] = process.argv;
 
 const packageDir = path.resolve(new URL(import.meta.url).pathname, '..', '..');
