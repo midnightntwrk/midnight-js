@@ -46,7 +46,15 @@ export default tseslint.config(
       }
     },
     rules: {
-      '@typescript-eslint/no-unused-vars': 'error',
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        // Ensure that discards (i.e., _, __) don't trigger this rule.
+        {
+          'argsIgnorePattern': '^_',
+          'destructuredArrayIgnorePattern': '^_',
+          'varsIgnorePattern': '^_'
+        }
+      ],
       '@typescript-eslint/explicit-member-accessibility': 'off',
       '@typescript-eslint/no-object-literal-type-assertion': 'off',
       '@typescript-eslint/prefer-interface': 'off',
@@ -61,6 +69,13 @@ export default tseslint.config(
         'error',
         {
           'fixStyle': 'inline-type-imports'
+        }
+      ],
+      '@typescript-eslint/no-namespace': [
+        'error',
+        // Ensure that we allow namespace declarations to support Effect style typing.
+        {
+          'allowDeclarations': true
         }
       ],
       'no-shadow': 'off',
