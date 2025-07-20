@@ -42,7 +42,7 @@ import {
   sampleContractAddress,
   sampleEncryptionPublicKey,
   type Transaction,
-  type UnprovenTransaction
+  type UnprovenTransaction, type ZswapChainState
 } from '@midnight-ntwrk/ledger';
 import type { ContractProviders } from '../contract-providers';
 import { type CallOptions, type CallOptionsWithPrivateState, type PartitionedTranscript } from '../call';
@@ -165,8 +165,7 @@ export const createMockFinalizedTxData = (status: TxStatus = SucceedEntirely): F
   blockHash: 'hash'
 });
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const createMockUnprovenDeployTxData = (overrides: any = {}): UnsubmittedDeployTxData<Contract> => ({
+export const createMockUnprovenDeployTxData = (overrides: Partial<UnsubmittedDeployTxData<Contract>> = {}): UnsubmittedDeployTxData<Contract> => ({
   public: {
     contractAddress: createMockContractAddress(),
     initialContractState: createMockContractState()
@@ -181,8 +180,7 @@ export const createMockUnprovenDeployTxData = (overrides: any = {}): Unsubmitted
   ...overrides
 });
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const createMockUnprovenCallTxData = (overrides: any = {}): UnsubmittedCallTxData<Contract, ImpureCircuitId> => ({
+export const createMockUnprovenCallTxData = (overrides: Partial<UnsubmittedCallTxData<Contract, ImpureCircuitId>> = {}): UnsubmittedCallTxData<Contract, ImpureCircuitId> => ({
     public: {
       nextContractState: StateValue.newNull(),
       publicTranscript: [
@@ -204,19 +202,18 @@ export const createMockUnprovenCallTxData = (overrides: any = {}): UnsubmittedCa
     }
 });
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const createMockCallOptions = (overrides: any = {}): CallOptions<Contract, ImpureCircuitId> => ({
+export const createMockCallOptions = (overrides: Partial<CallOptions<Contract, ImpureCircuitId>> = {}): CallOptions<Contract, ImpureCircuitId> => ({
   contract: createMockContract(),
   circuitId: 'testCircuit',
+  args: [] as never[],
   contractAddress: createMockContractAddress(),
   coinPublicKey: createMockCoinPublicKey(),
   initialContractState: createMockContractState(),
-  initialZswapChainState: { test: 'zswap-chain-state' },
+  initialZswapChainState: {} as ZswapChainState,
   ...overrides
 });
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const createMockCallOptionsWithPrivateState = (overrides: any = {}): CallOptionsWithPrivateState<Contract, ImpureCircuitId> => ({
+export const createMockCallOptionsWithPrivateState = (overrides: Partial<CallOptionsWithPrivateState<Contract, ImpureCircuitId>> = {}): CallOptionsWithPrivateState<Contract, ImpureCircuitId> => ({
   ...createMockCallOptions(),
   initialPrivateState: { test: 'private-state' },
   ...overrides
