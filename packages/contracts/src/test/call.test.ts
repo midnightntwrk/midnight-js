@@ -15,11 +15,24 @@
 
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 import { call } from '../call';
-import { createMockCallOptions, createMockCallOptionsWithPrivateState } from './test-mocks';
-import { emptyZswapLocalState, StateValue } from '@midnight-ntwrk/compact-runtime';
-import { sampleCoinPublicKey } from '@midnight-ntwrk/ledger';
+import { createMockCallOptions, createMockCallOptionsWithPrivateState, createMockContractAddress } from './test-mocks';
+import {
+  type CircuitContext,
+  type CircuitResults,
+  emptyZswapLocalState,
+  StateValue
+} from '@midnight-ntwrk/compact-runtime';
+import {
+  type AlignedValue,
+  type BlockContext,
+  type ContractState,
+  type Effects,
+  type QueryContext,
+  sampleCoinPublicKey
+} from '@midnight-ntwrk/ledger';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { type Contract, type PrivateState } from '@midnight-ntwrk/midnight-js-types';
 
 describe('call', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -32,22 +45,30 @@ describe('call', () => {
       result: 'test-result',
       context: {
         transactionContext: {
+          block: {} as BlockContext,
           state: StateValue.newNull(),
-          data: new Map(),
-          comIndicies: new Set()
-        },
-        currentPrivateState: { test: 'private-state' },
+          effects: {} as Effects,
+          comIndicies: new Map(),
+          insertCommitment: vi.fn(),
+          qualify: vi.fn(),
+          runTranscript: vi.fn(),
+          query: vi.fn(),
+          intoTranscript: vi.fn(),
+          address: createMockContractAddress(),
+        } as QueryContext,
+        originalState: {} as ContractState,
+        currentPrivateState: { test: 'private-state' } as PrivateState<Contract>,
         currentZswapLocalState: emptyZswapLocalState(
           parseCoinPublicKeyToHex(sampleCoinPublicKey(), getZswapNetworkId())
         )
-      },
+      } as CircuitContext<Contract>,
       proofData: {
-        input: { test: 'input' },
-        output: { test: 'output' },
-        privateTranscriptOutputs: [{ test: 'transcript' }],
+        input: {} as AlignedValue,
+        output: {} as AlignedValue,
+        privateTranscriptOutputs: [{}],
         publicTranscript: [{ noop: { n: 1 } }]
-      }
-    });
+      },
+    } as CircuitResults<Contract, string>);
   });
 
   it('should call circuit without initial private state', () => {
