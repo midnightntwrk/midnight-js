@@ -21,7 +21,7 @@ import {
   type ImpureCircuitId,
   type PrivateStateId
 } from '@midnight-ntwrk/midnight-js-types';
-import { type AlignedValue, type CoinPublicKey, type ContractAddress, type Transaction } from '@midnight-ntwrk/ledger';
+import { type AlignedValue, type ContractAddress, type Transaction } from '@midnight-ntwrk/ledger';
 
 import { submitCallTx } from '../submit-call-tx';
 import { type CallTxOptions, createUnprovenCallTx } from '../unproven-call-tx';
@@ -65,7 +65,7 @@ describe('submit-call-tx', () => {
     vi.mock('../submit-tx');
   });
 
-  const createBasicCallOptions = (overrides: Partial<CallTxOptions<Contract, CoinPublicKey>> = {}) => ({
+  const createBasicCallOptions = (overrides: Partial<CallTxOptions<Contract, ImpureCircuitId>> = {}) => ({
     contract: mockContract,
     contractAddress: mockContractAddress,
     circuitId: 'testCircuit' as ImpureCircuitId,
@@ -83,7 +83,7 @@ describe('submit-call-tx', () => {
     return { mockUnprovenCallTxData, mockFinalizedTxData };
   };
 
-  const createFailedTxData = (): UnsubmittedCallTxData<Contract, CoinPublicKey> => ({
+  const createFailedTxData = (): UnsubmittedCallTxData<Contract, ImpureCircuitId> => ({
     public: {
       nextContractState: StateValue.newNull(),
       publicTranscript: [],
@@ -102,10 +102,10 @@ describe('submit-call-tx', () => {
   });
 
   const verifySuccessfulCall = (
-    mockUnprovenCallTxData: UnsubmittedCallTxData<Contract, CoinPublicKey>,
+    mockUnprovenCallTxData: UnsubmittedCallTxData<Contract, ImpureCircuitId>,
     mockFinalizedTxData: FinalizedTxData,
-    result: FinalizedCallTxData<Contract, CoinPublicKey>,
-    options: CallTxOptions<Contract, CoinPublicKey>
+    result: FinalizedCallTxData<Contract, ImpureCircuitId>,
+    options: CallTxOptions<Contract, ImpureCircuitId>
   ) => {
     expect(createUnprovenCallTx).toHaveBeenCalledWith(mockProviders, options);
     expect(submitTx).toHaveBeenCalledWith(mockProviders, {

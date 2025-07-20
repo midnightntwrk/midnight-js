@@ -25,7 +25,10 @@ import {
   createMockPrivateStateId,
   createMockProviders
 } from './test-mocks';
-import { StateValue } from '@midnight-ntwrk/compact-runtime';
+import { StateValue, type ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
+import { type CallResult } from '../call';
+import { type AlignedValue } from '@midnight-ntwrk/ledger';
+import { type Contract, type ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
 
 // Mock the call function and utility functions
 vi.mock('../call', () => ({
@@ -58,13 +61,13 @@ describe('unproven-call-tx', () => {
         },
         private: {
           result: 'test-result',
-          input: { test: 'input' },
-          output: { test: 'output' },
+          input: {} as AlignedValue,
+          output: {} as AlignedValue,
           privateTranscriptOutputs: [],
           nextPrivateState: undefined,
-          nextZswapLocalState: { test: 'zswap-state' }
+          nextZswapLocalState: {} as ZswapLocalState
         }
-      };
+      } as CallResult<Contract, ImpureCircuitId>;
 
       mockCall.mockReturnValue(callResult);
 

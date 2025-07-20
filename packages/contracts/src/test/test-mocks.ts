@@ -17,6 +17,7 @@ import { vi } from 'vitest';
 import {
   type Contract,
   type FinalizedTxData,
+  type ImpureCircuitId,
   type PrivateState,
   type PrivateStateId,
   SucceedEntirely,
@@ -181,7 +182,7 @@ export const createMockUnprovenDeployTxData = (overrides: any = {}): Unsubmitted
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const createMockUnprovenCallTxData = (overrides: any = {}): UnsubmittedCallTxData<Contract, CoinPublicKey> => ({
+export const createMockUnprovenCallTxData = (overrides: any = {}): UnsubmittedCallTxData<Contract, ImpureCircuitId> => ({
     public: {
       nextContractState: StateValue.newNull(),
       publicTranscript: [
@@ -204,7 +205,7 @@ export const createMockUnprovenCallTxData = (overrides: any = {}): UnsubmittedCa
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const createMockCallOptions = (overrides: any = {}): CallOptions<Contract, CoinPublicKey> => ({
+export const createMockCallOptions = (overrides: any = {}): CallOptions<Contract, ImpureCircuitId> => ({
   contract: createMockContract(),
   circuitId: 'testCircuit',
   contractAddress: createMockContractAddress(),
@@ -215,7 +216,7 @@ export const createMockCallOptions = (overrides: any = {}): CallOptions<Contract
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const createMockCallOptionsWithPrivateState = (overrides: any = {}): CallOptionsWithPrivateState<Contract, CoinPublicKey> => ({
+export const createMockCallOptionsWithPrivateState = (overrides: any = {}): CallOptionsWithPrivateState<Contract, ImpureCircuitId> => ({
   ...createMockCallOptions(),
   initialPrivateState: { test: 'private-state' },
   ...overrides
