@@ -31,6 +31,18 @@ export const TX_ID_QUERY = gql(
     transactions(offset: $offset) {
       raw
       hash
+      unshieldedCreatedOutputs {
+        owner
+        intentHash
+        tokenType
+        value
+      }
+      unshieldedSpentOutputs {
+        owner
+        intentHash
+        tokenType
+        value
+      }
       block {
         height
         hash
@@ -69,6 +81,18 @@ export const DEPLOY_TX_QUERY = gql(
               success
             }
           }
+          unshieldedCreatedOutputs {
+            owner
+            intentHash
+            tokenType
+            value
+          }
+          unshieldedSpentOutputs {
+            owner
+            intentHash
+            tokenType
+            value
+          }
         }
       }
       ... on ContractUpdate {
@@ -89,6 +113,18 @@ export const DEPLOY_TX_QUERY = gql(
               id
               success
             }
+          }
+          unshieldedCreatedOutputs {
+            owner
+            intentHash
+            tokenType
+            value
+          }
+          unshieldedSpentOutputs {
+            owner
+            intentHash
+            tokenType
+            value
           }
         }
       }
@@ -111,6 +147,18 @@ export const DEPLOY_TX_QUERY = gql(
                 id
                 success
               }
+            }
+            unshieldedCreatedOutputs {
+              owner
+              intentHash
+              tokenType
+              value
+            }
+            unshieldedSpentOutputs {
+              owner
+              intentHash
+              tokenType
+              value
             }
           }
         }

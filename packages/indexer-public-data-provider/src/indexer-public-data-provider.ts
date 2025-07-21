@@ -19,17 +19,25 @@ import type {
   ContractStateObservableConfig,
   FinalizedTxData,
   PublicDataProvider,
-  TxStatus
+  TxStatus,
+  SegmentStatus,
+  UnshieldedUtxos,
+  UnshieldedUtxo
 } from '@midnight-ntwrk/midnight-js-types';
 import {
   FailEntirely,
   FailFallible,
   SucceedEntirely,
+  SegmentSuccess,
+  SegmentFail,
   InvalidProtocolSchemeError
 } from '@midnight-ntwrk/midnight-js-types';
 import {
   type Binding,
-  type ContractAddress, type Proof,
+  type ContractAddress,
+  type IntentHash,
+  type Proof,
+  type RawTokenType,
   type SignatureEnabled,
   type TransactionId
 } from '@midnight-ntwrk/ledger';
@@ -75,9 +83,8 @@ import {
   type InputMaybe,
   type LatestContractTxBlockHeightQueryQuery,
   type Segment,
-  type TransactionResult
+  type TransactionResult,
 } from './gen/graphql';
-import { type SegmentStatus, SegmentSuccess, SegmentFail } from '@midnight-ntwrk/midnight-js-types';
 
 type IsEmptyObject<T> = keyof T extends never ? true : false;
 type ExcludeEmptyAndNull<T> = T extends null ? never : IsEmptyObject<T> extends true ? never : T;
@@ -224,6 +231,25 @@ const toSegmentStatusMap = (transactionResult: TransactionResult): Map<number, S
     transactionResult.segments.map((segment: Segment) => [segment.id, toSegmentStatus(segment.success)])
   );
 }
+
+export type IndexerUtxo = {
+  owner: string,
+  intentHash: string,
+  tokenType: string,
+  value: string
+};
+
+const transformIndexerUtxoToUnshieldedUtxo = (indexerUtxo: IndexerUtxo): UnshieldedUtxo => ({
+  owner: indexerUtxo.owner as ContractAddress,
+  intentHash: indexerUtxo.intentHash as IntentHash,
+  tokenType: indexerUtxo.tokenType as RawTokenType,
+  value: BigInt(indexerUtxo.value)
+});
+
+export const toUnshieldedUtxos = (createdUtxo: IndexerUtxo[], spentUtxo: IndexerUtxo[]): UnshieldedUtxos => ({
+  created: createdUtxo.map(transformIndexerUtxoToUnshieldedUtxo),
+  spent: spentUtxo.map(transformIndexerUtxoToUnshieldedUtxo)
+});
 
 const blockToContractState$ = (contractAddress: ContractAddress) => (block: Block) =>
   Rx.from(block.transactions).pipe(
@@ -471,7 +497,8 @@ const indexerPublicDataProviderInternal = (
               txHash: transaction.hash,
               blockHeight: transaction.block.height,
               blockHash: transaction.block.hash,
-              segmentStatusMap: toSegmentStatusMap(transaction.transactionResult)
+              segmentStatusMap: toSegmentStatusMap(transaction.transactionResult),
+              unshielded: toUnshieldedUtxos(transaction.unshieldedCreatedOutputs, transaction.unshieldedSpentOutputs)
             }))
         )
       );
@@ -498,7 +525,8 @@ const indexerPublicDataProviderInternal = (
               txHash: transaction.hash,
               blockHeight: transaction.block.height,
               blockHash: transaction.block.hash,
-              segmentStatusMap: toSegmentStatusMap(transaction.transactionResult)
+              segmentStatusMap: toSegmentStatusMap(transaction.transactionResult),
+              unshielded: toUnshieldedUtxos(transaction.unshieldedCreatedOutputs, transaction.unshieldedSpentOutputs)
             }))
         )
       );

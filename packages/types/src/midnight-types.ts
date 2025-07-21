@@ -16,13 +16,20 @@
 import {
   type Binding,
   type Bindingish,
+  type ContractAddress,
+  type IntentHash,
   type PreProof,
   type Proof,
+  type RawTokenType,
   type SignatureEnabled,
   type Signaturish,
   type Transaction,
   type TransactionHash,
-  type TransactionId, type ZswapInput, type ZswapOffer, type ZswapOutput, type ZswapTransient
+  type TransactionId,
+  type ZswapInput,
+  type ZswapOffer,
+  type ZswapOutput,
+  type ZswapTransient
 } from '@midnight-ntwrk/ledger';
 
 /**
@@ -169,11 +176,6 @@ export const createBalancedTx = (tx: Transaction<Signaturish, Proof, Bindingish>
 };
 
 /**
- * Indicates that the transaction is invalid.
- */
-export const FailEntirely = 'FailEntirely' as const;
-
-/**
  * Indicates that the segment update is invalid.
  */
 export const SegmentFail = 'SegmentFail' as const;
@@ -188,6 +190,11 @@ export const SegmentSuccess = 'SegmentSuccess' as const;
  * (`SegmentSuccess`) or a failed operation (`SegmentFail`).
  */
 export type SegmentStatus = typeof SegmentSuccess | typeof SegmentFail;
+
+/**
+ * Indicates that the transaction is invalid.
+ */
+export const FailEntirely = 'FailEntirely' as const;
 
 /**
  * Indicates that the transaction is valid but the portion of the transcript
@@ -207,6 +214,18 @@ export const SucceedEntirely = 'SucceedEntirely' as const;
  * The status of a transaction.
  */
 export type TxStatus = typeof FailEntirely | typeof FailFallible | typeof SucceedEntirely;
+
+export type UnshieldedUtxo = {
+  readonly owner: ContractAddress;
+  readonly intentHash: IntentHash;
+  readonly tokenType: RawTokenType;
+  readonly value: bigint;
+}
+
+export type UnshieldedUtxos = {
+  readonly created: UnshieldedUtxo[];
+  readonly spent: UnshieldedUtxo[];
+};
 
 /**
  * Block identifier
@@ -248,4 +267,10 @@ export interface FinalizedTxData {
    * Typically, the boolean status indicates a specific state or condition associated with the segment, such as whether it is active or inactive.
    */
   readonly segmentStatusMap: Map<number, SegmentStatus> | undefined;
+
+  /**
+   * Represents the unshielded outputs, typically used for transactions or operations
+   * involving data or values that are not encrypted or concealed.
+   */
+  readonly unshielded: UnshieldedUtxos;
 }

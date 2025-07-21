@@ -34,6 +34,8 @@ export {
   UnprovenOutput,
   UnprovenTransient,
   UnprovenOffer,
+  UnshieldedUtxos,
+  UnshieldedUtxo,
   FinalizedTxData,
   createProverKey,
   createVerifierKey,
