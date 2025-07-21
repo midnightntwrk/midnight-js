@@ -17,7 +17,7 @@
   "author": "IOHK",
   "license": "Apache-2.0",
   "scripts": {
-    "gen": "graphql-codegen",
+    "gen": "rm -rf gen && graphql-codegen",
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache",
     "build": "rollup -c rollup.config.mjs",
     "test": "vitest run",

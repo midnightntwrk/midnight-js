@@ -35,6 +35,13 @@ export const TX_ID_QUERY = gql(
         height
         hash
       }
+      transactionResult {
+        status
+        segments {
+          id
+          success
+        }
+      }
     }
   }`
 );
@@ -55,6 +62,13 @@ export const DEPLOY_TX_QUERY = gql(
             height
             hash
           }
+          transactionResult {
+            status
+            segments {
+              id
+              success
+            }
+          }
         }
       }
       ... on ContractUpdate {
@@ -68,6 +82,13 @@ export const DEPLOY_TX_QUERY = gql(
           block {
             height
             hash
+          }
+          transactionResult {
+            status
+            segments {
+              id
+              success
+            }
           }
         }
       }
@@ -83,6 +104,13 @@ export const DEPLOY_TX_QUERY = gql(
             block {
               height
               hash
+            }
+            transactionResult {
+              status
+              segments {
+                id
+                success
+              }
             }
           }
         }

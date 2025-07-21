@@ -67,13 +67,14 @@ import {
   TXS_FROM_BLOCK_SUB
 } from './query-definitions';
 import { IndexerFormattedError } from './errors';
-import type {
-  BlockOffset,
-  ContractActionOffset,
-  DeployContractStateTxQueryQuery,
-  DeployTxQueryQuery,
-  InputMaybe,
-  LatestContractTxBlockHeightQueryQuery
+import {
+  type BlockOffset,
+  type ContractActionOffset,
+  type DeployContractStateTxQueryQuery,
+  type DeployTxQueryQuery,
+  type InputMaybe,
+  type LatestContractTxBlockHeightQueryQuery,
+  type TransactionResult,
 } from './gen/graphql';
 
 type IsEmptyObject<T> = keyof T extends never ? true : false;
@@ -192,11 +193,17 @@ const transactionToContractState$ =
       Rx.map((pair) => deserializeContractState(pair[1].state))
     );
 
-const toTxStatus = (applyStage: string): TxStatus => {
-  if (applyStage === FailEntirely || applyStage === FailFallible || applyStage === SucceedEntirely) {
-    return applyStage;
+const toTxStatus = (transactionResult: TransactionResult): TxStatus => {
+  const result = transactionResult.status;
+  const map = {
+    'FAILURE': FailEntirely,
+    'PARTIAL_SUCCESS': FailFallible,
+    'SUCCESS': SucceedEntirely
+  } as const
+  if (result === 'FAILURE' || result === 'PARTIAL_SUCCESS' || result === 'SUCCESS') {
+    return map[result];
   }
-  throw new Error(`Unexpected 'applyStage' value ${applyStage}`);
+  throw new Error(`Unexpected 'status' value ${result}`);
 };
 
 const blockToContractState$ = (contractAddress: ContractAddress) => (block: Block) =>
@@ -438,7 +445,7 @@ const indexerPublicDataProviderInternal = (
             })
             .map((transaction) => ({
               tx: deserializeTransaction(transaction.raw),
-              status: toTxStatus(transaction.applyStage),
+              status: toTxStatus(transaction.transactionResult),
               txId: transaction.identifiers[
                 transaction.contractActions.findIndex(({ address }) => address === contractAddress)
               ]!,
@@ -466,7 +473,7 @@ const indexerPublicDataProviderInternal = (
             .map((queryResult) => queryResult.data.transactions[0]!)
             .map((transaction) => ({
               tx: deserializeTransaction(transaction.raw),
-              status: toTxStatus(transaction.applyStage),
+              status: toTxStatus(transaction.transactionResult),
               txId,
               txHash: transaction.hash,
               blockHeight: transaction.block.height,
