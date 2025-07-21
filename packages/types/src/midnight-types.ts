@@ -174,6 +174,22 @@ export const createBalancedTx = (tx: Transaction<Signaturish, Proof, Bindingish>
 export const FailEntirely = 'FailEntirely' as const;
 
 /**
+ * Indicates that the segment update is invalid.
+ */
+export const SegmentFail = 'SegmentFail' as const;
+
+/**
+ * Indicates that the segment is valid.
+ */
+export const SegmentSuccess = 'SegmentSuccess' as const;
+
+/**
+ * Represents the result of a segment operation, which can either be a successful operation
+ * (`SegmentSuccess`) or a failed operation (`SegmentFail`).
+ */
+export type SegmentStatus = typeof SegmentSuccess | typeof SegmentFail;
+
+/**
  * Indicates that the transaction is valid but the portion of the transcript
  * that is allowed to fail (the portion after a checkpoint) did fail. All effects
  * from the guaranteed part of the transaction are kept but the effects from the
@@ -225,4 +241,11 @@ export interface FinalizedTxData {
    * The block height of the block in which the transaction was included.
    */
   readonly blockHeight: number;
+
+  /**
+   * The map that associates segment identifiers (numbers) with their corresponding status (boolean).
+   * The segment identifier is represented as a number (key in the map), and the status is represented as a boolean value.
+   * Typically, the boolean status indicates a specific state or condition associated with the segment, such as whether it is active or inactive.
+   */
+  readonly segmentStatusMap: Map<number, SegmentStatus> | undefined;
 }

@@ -74,8 +74,10 @@ import {
   type DeployTxQueryQuery,
   type InputMaybe,
   type LatestContractTxBlockHeightQueryQuery,
-  type TransactionResult,
+  type Segment,
+  type TransactionResult
 } from './gen/graphql';
+import { type SegmentStatus, SegmentSuccess, SegmentFail } from '@midnight-ntwrk/midnight-js-types';
 
 type IsEmptyObject<T> = keyof T extends never ? true : false;
 type ExcludeEmptyAndNull<T> = T extends null ? never : IsEmptyObject<T> extends true ? never : T;
@@ -205,6 +207,23 @@ const toTxStatus = (transactionResult: TransactionResult): TxStatus => {
   }
   throw new Error(`Unexpected 'status' value ${result}`);
 };
+
+const toSegmentStatus = (success: boolean): SegmentStatus =>
+  success ? SegmentSuccess : SegmentFail;
+
+const toSegmentStatusMap = (transactionResult: TransactionResult): Map<number, SegmentStatus> | undefined => {
+  if (transactionResult.status !== 'PARTIAL_SUCCESS') {
+    return undefined;
+  }
+
+  if (!transactionResult.segments) {
+    return undefined;
+  }
+
+  return new Map(
+    transactionResult.segments.map((segment: Segment) => [segment.id, toSegmentStatus(segment.success)])
+  );
+}
 
 const blockToContractState$ = (contractAddress: ContractAddress) => (block: Block) =>
   Rx.from(block.transactions).pipe(
@@ -451,7 +470,8 @@ const indexerPublicDataProviderInternal = (
               ]!,
               txHash: transaction.hash,
               blockHeight: transaction.block.height,
-              blockHash: transaction.block.hash
+              blockHash: transaction.block.hash,
+              segmentStatusMap: toSegmentStatusMap(transaction.transactionResult)
             }))
         )
       );
@@ -477,7 +497,8 @@ const indexerPublicDataProviderInternal = (
               txId,
               txHash: transaction.hash,
               blockHeight: transaction.block.height,
-              blockHash: transaction.block.hash
+              blockHash: transaction.block.hash,
+              segmentStatusMap: toSegmentStatusMap(transaction.transactionResult)
             }))
         )
       );
