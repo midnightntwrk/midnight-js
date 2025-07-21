@@ -23,6 +23,8 @@ import {
 } from './test-mocks';
 import * as compactRuntime from '@midnight-ntwrk/compact-runtime';
 
+// TODO: add test: add some negative tests
+
 describe('callContractConstructor', () => {
   beforeEach(() => {
     vi.spyOn(compactRuntime, 'decodeZswapLocalState').mockReturnValue(createMockZswapLocalState());

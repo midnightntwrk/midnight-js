@@ -176,4 +176,23 @@ describe('findDeployedContract', () => {
     expect(providers.privateStateProvider.getSigningKey).toHaveBeenCalledWith(contractAddress);
     expect(providers.privateStateProvider.setSigningKey).not.toHaveBeenCalled();
   });
+
+  it('should throw error when contract is not found', async () => {
+    vi.mocked(providers.publicDataProvider.watchForDeployTxData).mockResolvedValue(finalizedTxData);
+    vi.mocked(providers.publicDataProvider.queryDeployContractState).mockResolvedValue(null);
+
+    const options = {
+      contract,
+      contractAddress
+    };
+
+    await expect(findDeployedContract(providers, options)).rejects.toThrow(
+      `No contract deployed at contract address '${contractAddress}'`
+    );
+
+    expect(providers.publicDataProvider.watchForDeployTxData).toHaveBeenCalledWith(contractAddress);
+    expect(providers.publicDataProvider.queryDeployContractState).toHaveBeenCalledWith(contractAddress);
+    expect(providers.publicDataProvider.queryContractState).not.toHaveBeenCalled();
+    expect(providers.zkConfigProvider.getVerifierKeys).not.toHaveBeenCalled();
+  });
 });
