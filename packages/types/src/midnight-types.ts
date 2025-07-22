@@ -216,14 +216,34 @@ export const SucceedEntirely = 'SucceedEntirely' as const;
 export type TxStatus = typeof FailEntirely | typeof FailFallible | typeof SucceedEntirely;
 
 export type UnshieldedUtxo = {
+  /**
+   * The unique identifier of the unshielded UTXO.
+   */
   readonly owner: ContractAddress;
+  /**
+   * The identifier of the intent associated with the unshielded UTXO.
+   * This is used to track the intent behind the creation or use of the UTXO.
+   */
   readonly intentHash: IntentHash;
+  /**
+   * The type of token associated with the unshielded UTXO.
+   * This indicates the kind of asset or currency represented by the UTXO.
+   */
   readonly tokenType: RawTokenType;
+  /**
+   * The value of the unshielded UTXO, represented as a bigint.
+   */
   readonly value: bigint;
 }
 
 export type UnshieldedUtxos = {
+  /**
+   * Represents the unshielded UTXOs that have been created but not yet spent.
+   */
   readonly created: UnshieldedUtxo[];
+  /**
+   * Represents the unshielded UTXOs that have been spent.
+   */
   readonly spent: UnshieldedUtxo[];
 };
 
