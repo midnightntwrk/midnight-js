@@ -282,9 +282,8 @@ export interface FinalizedTxData {
   readonly blockHeight: number;
 
   /**
-   * The map that associates segment identifiers (numbers) with their corresponding status (boolean).
-   * The segment identifier is represented as a number (key in the map), and the status is represented as a boolean value.
-   * Typically, the boolean status indicates a specific state or condition associated with the segment, such as whether it is active or inactive.
+   * The map that associates segment identifiers (numbers) with their corresponding status {@link SegmentStatus}.
+   * The segment identifier is represented as a number (key in the map), and the status indicates the success or failure of the transaction update.
    */
   readonly segmentStatusMap: Map<number, SegmentStatus> | undefined;
 
