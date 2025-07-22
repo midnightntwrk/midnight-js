@@ -279,6 +279,34 @@ export const UNSHIELDED_BALANCE_QUERY = gql(
   }`
 );
 
+export const QUERY_UNSHIELDED_BALANCES_WITH_OFFSET = gql(
+  `
+  query QUERY_UNSHIELDED_BALANCES_WITH_OFFSET($address: HexEncoded!, $offset: ContractActionOffset) {
+    contractAction(address: $address, offset: $offset) {
+      ... on ContractDeploy {
+        unshieldedBalances {
+          tokenType
+          amount
+        }
+      }
+      ... on ContractUpdate {
+        unshieldedBalances {
+          tokenType
+          amount
+        }
+      }
+      ... on ContractCall {
+        deploy {
+          unshieldedBalances {
+            tokenType
+            amount
+          }
+        }
+      }
+    }
+  }`
+);
+
 export const UNSHIELDED_BALANCE_SUB = gql(
   `
   subscription UNSHIELDED_BALANCE_SUB($address: HexEncoded!, $offset: BlockOffset) {

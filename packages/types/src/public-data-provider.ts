@@ -122,6 +122,17 @@ export interface PublicDataProvider {
   queryDeployContractState(contractAddress: ContractAddress): Promise<ContractState | null>;
 
   /**
+   * Retrieves the unshielded balances associated with a specific contract address.
+   * @param contractAddress The address of the contract of interest.
+   * @param config The configuration of the query.
+   *               If `undefined` returns the latest states.
+   */
+  queryUnshieldedBalances(
+    contractAddress: ContractAddress,
+    config?: BlockHeightConfig | BlockHashConfig
+  ): Promise<UnshieldedBalances | null>;
+
+  /**
    * Retrieves the contract state of the contract with the given address.
    * Waits indefinitely for matching data to appear.
    * @param contractAddress The address of the contract of interest.

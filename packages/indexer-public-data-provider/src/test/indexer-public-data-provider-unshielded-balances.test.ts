@@ -24,6 +24,65 @@ describe('Unshielded Balances Integration', () => {
   const subscriptionURL = 'ws://localhost:4000/api/v1/graphql/ws';
   const mockContractAddress = '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234' as ContractAddress;
 
+  describe('queryUnshieldedBalances', () => {
+    test('should be a function that accepts contract address and optional config', () => {
+      const provider = indexerPublicDataProvider(queryURL, subscriptionURL, WebSocket);
+
+      expect(typeof provider.queryUnshieldedBalances).toBe('function');
+      expect(provider.queryUnshieldedBalances.length).toBe(2); // expects 2 parameters
+    });
+
+    test('should return a Promise for unshielded balances', () => {
+      const provider = indexerPublicDataProvider(queryURL, subscriptionURL, WebSocket);
+
+      const result = provider.queryUnshieldedBalances(mockContractAddress);
+
+      expect(result).toBeInstanceOf(Promise);
+
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
+      result.catch(() => {});
+    });
+
+    test('should accept blockHeight configuration', () => {
+      const provider = indexerPublicDataProvider(queryURL, subscriptionURL, WebSocket);
+      const config = {
+        type: 'blockHeight' as const,
+        blockHeight: 1000
+      };
+
+      const result = provider.queryUnshieldedBalances(mockContractAddress, config);
+
+      expect(result).toBeInstanceOf(Promise);
+
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
+      result.catch(() => {});
+    });
+
+    test('should accept blockHash configuration', () => {
+      const provider = indexerPublicDataProvider(queryURL, subscriptionURL, WebSocket);
+      const config = {
+        type: 'blockHash' as const,
+        blockHash: '0x1234567890abcdef'
+      };
+
+      const result = provider.queryUnshieldedBalances(mockContractAddress, config);
+
+      expect(result).toBeInstanceOf(Promise);
+
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
+      result.catch(() => {});
+    });
+
+    test('should validate contract address format', () => {
+      const provider = indexerPublicDataProvider(queryURL, subscriptionURL, WebSocket);
+      const invalidAddress = 'invalid-address' as ContractAddress;
+
+      expect(() => {
+        provider.queryUnshieldedBalances(invalidAddress);
+      }).toThrow();
+    });
+  });
+
   describe('watchForUnshieldedBalances', () => {
     test('should be a function that accepts contract address', () => {
       const provider = indexerPublicDataProvider(queryURL, subscriptionURL, WebSocket);

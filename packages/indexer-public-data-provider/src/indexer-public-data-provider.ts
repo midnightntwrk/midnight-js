@@ -72,6 +72,7 @@ import {
   DEPLOY_CONTRACT_STATE_TX_QUERY,
   DEPLOY_TX_QUERY,
   LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY,
+  QUERY_UNSHIELDED_BALANCES_WITH_OFFSET,
   TX_ID_QUERY,
   TXS_FROM_BLOCK_SUB,
   UNSHIELDED_BALANCE_QUERY,
@@ -506,6 +507,43 @@ const indexerPublicDataProviderInternal = (
         ? [deserializeZswapState(maybeContractStates.chainState), deserializeContractState(maybeContractStates.state)]
         : null;
     },
+    async queryUnshieldedBalances(
+      address: ContractAddress,
+      config?: BlockHeightConfig | BlockHashConfig
+    ): Promise<UnshieldedBalances | null> {
+      let offset: InputMaybe<ContractActionOffset>;
+      if (config) {
+        offset = {
+          blockOffset: config.type === 'blockHeight' ? { height: config.blockHeight } : { hash: config.blockHash }
+        };
+      } else {
+        offset = null;
+      }
+      const maybeUnshieldedBalances = await apolloClient
+        .query({
+          query: QUERY_UNSHIELDED_BALANCES_WITH_OFFSET,
+          variables: {
+            address,
+            offset
+          },
+          fetchPolicy: 'no-cache'
+        })
+        .then(maybeThrowErrors)
+        .then((queryResult) => {
+          const contractAction = queryResult.data.contractAction;
+          if (!contractAction) {
+            return null;
+          }
+          if ('unshieldedBalances' in contractAction) {
+            return contractAction.unshieldedBalances;
+          }
+          if ('deploy' in contractAction) {
+            return contractAction.deploy.unshieldedBalances;
+          }
+          return [];
+        });
+      return maybeUnshieldedBalances ? toUnshieldedBalances(maybeUnshieldedBalances) : null;
+    },
     async queryDeployContractState(contractAddress: ContractAddress): Promise<ContractState | null> {
       return apolloClient
         .query({
@@ -710,6 +748,13 @@ export const indexerPublicDataProvider = (
     ): Promise<[ZswapChainState, ContractState] | null> {
       assertIsContractAddress(contractAddress);
       return publicDataProvider.queryZSwapAndContractState(prependNetworkIdHex(contractAddress), config);
+    },
+    queryUnshieldedBalances(
+      contractAddress: ContractAddress,
+      config?: BlockHeightConfig | BlockHashConfig
+    ): Promise<UnshieldedBalances | null> {
+      assertIsContractAddress(contractAddress);
+      return publicDataProvider.queryUnshieldedBalances(prependNetworkIdHex(contractAddress), config);
     },
     watchForContractState(contractAddress: ContractAddress): Promise<ContractState> {
       assertIsContractAddress(contractAddress);
