@@ -24,7 +24,8 @@ import {
   sampleSigningKey,
   type Transcript,
   UnprovenTransaction,
-  ZswapChainState} from '@midnight-ntwrk/ledger';
+  ZswapChainState
+} from '@midnight-ntwrk/ledger';
 import { createVerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
@@ -41,7 +42,8 @@ import {
   replaceAuthority,
   toLedgerContractState,
   toLedgerQueryContext,
-  unprovenTxFromContractUpdates} from '../utils/ledger-utils';
+  unprovenTxFromContractUpdates
+} from '../utils/ledger-utils';
 
 describe('ledger-utils', () => {
   const dummySigningKey = sampleSigningKey();
@@ -142,7 +144,6 @@ describe('ledger-utils', () => {
       coinPublicKey: sampleCoinPublicKey(),
       currentIndex: 0n
     };
-    const encryptionPublicKey = dummyEncPublicKey;
 
     const tx = createUnprovenLedgerCallTx(
       circuitId,
@@ -154,7 +155,7 @@ describe('ledger-utils', () => {
       alignedValue,
       alignedValue,
       nextZswapLocalState,
-      encryptionPublicKey
+      dummyEncPublicKey
     );
     expect(tx).toBeInstanceOf(UnprovenTransaction);
   });

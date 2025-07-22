@@ -15,7 +15,7 @@
 
 import { fc } from '@fast-check/vitest';
 import { type Recipient } from '@midnight-ntwrk/compact-runtime';
-import type { CoinInfo, CoinPublicKey,QualifiedCoinInfo } from '@midnight-ntwrk/ledger';
+import type { CoinInfo, CoinPublicKey, QualifiedCoinInfo } from '@midnight-ntwrk/ledger';
 import {
   createCoinInfo,
   nativeToken,
@@ -24,7 +24,8 @@ import {
   sampleTokenType,
   UnprovenOffer,
   UnprovenTransaction,
-  ZswapChainState} from '@midnight-ntwrk/ledger';
+  ZswapChainState
+} from '@midnight-ntwrk/ledger';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
 
