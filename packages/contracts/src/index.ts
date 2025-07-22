@@ -62,6 +62,7 @@ export {
 export { submitDeployTx, DeployTxOptions } from './submit-deploy-tx';
 export { submitCallTx } from './submit-call-tx';
 export { getStates, getPublicStates, PublicContractStates, ContractStates } from './get-states';
+export { getUnshieldedBalances } from './get-unshielded-balances';
 export {
   UnsubmittedDeployTxData,
   FinalizedDeployTxData,

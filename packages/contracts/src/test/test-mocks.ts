@@ -136,6 +136,7 @@ export const createMockProviders = (): ContractProviders<Contract, CoinPublicKey
     queryDeployContractState: vi.fn(),
     queryContractState: vi.fn(),
     queryZSwapAndContractState: vi.fn(),
+    queryUnshieldedBalances: vi.fn(),
     watchForContractState: vi.fn(),
     watchForTxData: vi.fn(),
     contractStateObservable: vi.fn(),
