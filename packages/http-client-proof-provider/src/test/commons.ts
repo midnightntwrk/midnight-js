@@ -35,6 +35,6 @@ export const getValidZKConfig = async () => ({
 });
 
 export const getValidUnprovenTx = async (): Promise<UnprovenTransaction> =>
-  Transaction.deserialize('signature', 'pre-proof', 'binding', await fs.readFile(`${resourceDir}/${UNPROVEN_TX}`), getLedgerNetworkId());
+  Transaction.deserialize('signature', 'pre-proof', 'pre-binding', await fs.readFile(`${resourceDir}/${UNPROVEN_TX}`), getLedgerNetworkId());
 
 export const getValidPayload = async () => fs.readFile(`${resourceDir}/${PAYLOAD}`);
