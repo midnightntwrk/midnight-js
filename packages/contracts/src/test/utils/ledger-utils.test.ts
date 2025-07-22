@@ -30,7 +30,7 @@ import { createVerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
 
-import { type PartitionedTranscript } from '../call';
+import { type PartitionedTranscript } from '../../call';
 import {
   contractMaintenanceAuthority,
   createUnprovenLedgerCallTx,
@@ -40,7 +40,9 @@ import {
   insertVerifierKey,
   removeVerifierKey,
   replaceAuthority,
-  unprovenTxFromContractUpdates,
+  toLedgerContractState,
+  toLedgerQueryContext,
+  unprovenTxFromContractUpdates
 } from '../../utils';
 
 describe('ledger-utils', () => {
