@@ -97,8 +97,8 @@ describe('submit-call-tx', () => {
       newCoins: [mockCoinInfo],
       nextPrivateState: { state: 'test' },
       nextZswapLocalState: mockZswapLocalState,
-      privateTranscriptOutputs: {} as AlignedValue[],
-      result: vi.fn()
+      privateTranscriptOutputs: [] as AlignedValue[],
+      result: undefined
     }
   });
 
@@ -144,6 +144,7 @@ describe('submit-call-tx', () => {
 
         const mockUnprovenCallTxData = createMockUnprovenCallTxData({
           private: {
+            ...createMockUnprovenCallTxData().private,
             nextPrivateState
           }
         });
@@ -224,7 +225,7 @@ describe('submit-call-tx', () => {
       it('should validate circuit exists in contract', async () => {
         const options = createBasicCallOptions({ circuitId: 'nonExistentCircuit' as ImpureCircuitId });
 
-        await expect(submitCallTx(mockProviders, options)).rejects.toThrow('Circuit \'nonExistentCircuit\' is undefined');
+        await expect(submitCallTx(mockProviders, options)).rejects.toThrow("Circuit 'nonExistentCircuit' is undefined");
       });
     });
 
@@ -271,6 +272,7 @@ describe('submit-call-tx', () => {
 
         const mockUnprovenCallTxData = createMockUnprovenCallTxData({
           private: {
+            ...createMockUnprovenCallTxData().private,
             newCoins: []
           }
         });
@@ -295,6 +297,7 @@ describe('submit-call-tx', () => {
 
         const mockUnprovenCallTxData = createMockUnprovenCallTxData({
           private: {
+            ...createMockUnprovenCallTxData().private,
             nextPrivateState: undefined
           }
         });

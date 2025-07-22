@@ -105,6 +105,7 @@ describe('submit-deploy-tx', () => {
 
         const mockUnprovenDeployTxData = createMockUnprovenDeployTxData({
           private: {
+            ...createMockUnprovenDeployTxData().private,
             initialPrivateState: initialPrivateState
           }
         });
@@ -234,6 +235,7 @@ describe('submit-deploy-tx', () => {
 
         const mockUnprovenDeployTxData = createMockUnprovenDeployTxData({
           private: {
+            ...createMockUnprovenDeployTxData().private,
             initialPrivateState: { someState: 'test' }
           }
         });
@@ -277,6 +279,7 @@ describe('submit-deploy-tx', () => {
 
         const mockUnprovenDeployTxData = createMockUnprovenDeployTxData({
           private: {
+            ...createMockUnprovenDeployTxData().private,
             unprovenTx: mockUnprovenTx,
             newCoins: []
           }
