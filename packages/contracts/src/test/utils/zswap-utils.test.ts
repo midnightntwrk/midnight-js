@@ -35,10 +35,9 @@ import {
   serializeQualifiedShieldedCoinInfo,
   zswapStateToNewCoins,
   zswapStateToOffer
-} from '../utils';
+} from '../../utils';
 
 const arbitraryBytes = fc.uint8Array({ minLength: 32, maxLength: 32 });
-
 
 const arbitraryValue = fc.bigInt({ min: 0n, max: (1n << 64n) - 1n });
 

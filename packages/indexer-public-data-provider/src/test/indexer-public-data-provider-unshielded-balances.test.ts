@@ -56,7 +56,7 @@ describe('Unshielded Balances Integration', () => {
       const provider = indexerPublicDataProvider(queryURL, subscriptionURL, WebSocket);
       const config: ContractStateObservableConfig = {
         type: 'txId',
-        txId: 'test-tx-id' as any
+        txId: 'test-tx-id'
       };
 
       expect(() => {
