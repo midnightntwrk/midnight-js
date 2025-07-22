@@ -275,7 +275,7 @@ export interface FinalizedTxData {
   readonly unshielded: UnshieldedUtxos;
 }
 
-export interface UnshieldedBalances {
+export interface UnshieldedBalance {
   /**
    * Represents the current number of funds available or held in an account.
    */
@@ -285,3 +285,5 @@ export interface UnshieldedBalances {
    */
   readonly tokenType: RawTokenType;
 }
+
+export type UnshieldedBalances = UnshieldedBalance[];
