@@ -16,7 +16,7 @@
 import type { ContractAddress, TransactionId, ZswapChainState } from '@midnight-ntwrk/ledger';
 import type { ContractState } from '@midnight-ntwrk/compact-runtime';
 import type { Observable } from 'rxjs';
-import type { FinalizedTxData } from './midnight-types';
+import type { FinalizedTxData, UnshieldedBalances } from './midnight-types';
 
 /**
  * Streams all previous states of a contract.
@@ -129,6 +129,14 @@ export interface PublicDataProvider {
   watchForContractState(contractAddress: ContractAddress): Promise<ContractState>;
 
   /**
+   * Monitors for any unshielded balances associated with a specific contract address.
+   *
+   * @param {ContractAddress} contractAddress - The address of the contract to monitor for unshielded balances.
+   * @return {Promise<UnshieldedBalances>} A promise that resolves to the detected unshielded balances.
+   */
+  watchForUnshieldedBalances(contractAddress: ContractAddress): Promise<UnshieldedBalances>;
+
+  /**
    * Retrieves data of the deployment transaction for the contract at the given contract address.
    * Waits indefinitely for matching data to appear.
    * @param contractAddress The address of the contract of interest.
@@ -150,4 +158,13 @@ export interface PublicDataProvider {
    * @param config The configuration for the observable.
    */
   contractStateObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<ContractState>;
+
+  /**
+   * Retrieves an observable that tracks the unshielded balances for a specific contract address.
+   *
+   * @param {ContractAddress} address - The contract address for which unshielded balances are being observed.
+   * @param {ContractStateObservableConfig} config - The configuration object for observing contract state changes.
+   * @return {Observable<UnshieldedBalances>} An observable that emits the unshielded balances for the provided address.
+   */
+  unshieldedBalancesObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<UnshieldedBalances>;
 }

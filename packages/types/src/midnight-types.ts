@@ -274,3 +274,14 @@ export interface FinalizedTxData {
    */
   readonly unshielded: UnshieldedUtxos;
 }
+
+export interface UnshieldedBalances {
+  /**
+   * Represents the current number of funds available or held in an account.
+   */
+  readonly balance: bigint;
+  /**
+   * Represents the type of token in the system.
+   */
+  readonly tokenType: RawTokenType;
+}

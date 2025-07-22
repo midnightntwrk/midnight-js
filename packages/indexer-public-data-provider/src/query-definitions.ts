@@ -191,6 +191,41 @@ export const DEPLOY_CONTRACT_STATE_TX_QUERY = gql(
   }`
 );
 
+export const DEPLOY_UNSHIELDED_BALANCE_TX_QUERY = gql(
+    `
+    query DEPLOY_UNSHIELDED_BALANCE_TX_QUERY($address: HexEncoded!) {
+      contractAction(address: $address) {
+        ... on ContractDeploy {
+          unshieldedBalances {
+            tokenType
+            amount
+          }
+        }
+        ... on ContractUpdate {
+          unshieldedBalances {
+            tokenType
+            amount
+          }
+        }
+        ... on ContractCall {
+          deploy {
+            unshieldedBalances {
+              tokenType
+              amount
+            }
+            transaction {
+              contractActions {
+                address
+                state
+              }
+            }
+          }
+        }
+      }
+    }`
+);
+
+
 export const LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY = gql(
   `
   query LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY($address: HexEncoded!) {

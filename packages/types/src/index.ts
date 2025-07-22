@@ -36,6 +36,7 @@ export {
   UnprovenOffer,
   UnshieldedUtxos,
   UnshieldedUtxo,
+  UnshieldedBalances,
   FinalizedTxData,
   createProverKey,
   createVerifierKey,
