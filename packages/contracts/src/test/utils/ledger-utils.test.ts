@@ -40,10 +40,8 @@ import {
   insertVerifierKey,
   removeVerifierKey,
   replaceAuthority,
-  toLedgerContractState,
-  toLedgerQueryContext,
-  unprovenTxFromContractUpdates
-} from '../utils/ledger-utils';
+  unprovenTxFromContractUpdates,
+} from '../../utils';
 
 describe('ledger-utils', () => {
   const dummySigningKey = sampleSigningKey();
