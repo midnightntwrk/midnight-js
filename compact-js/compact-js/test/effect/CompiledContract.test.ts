@@ -13,11 +13,12 @@
  * limitations under the License.
  */
 
+import { Effect } from 'effect';
 import { describe, it, expect } from '@effect/vitest';
-import { CompiledContract } from '@midnight-ntwrk/compact-js/effect';
-// import { Contract as MockCounterContract } from './MockCounter';
-import { Contract as MockCounterContract } from '/Users/timjroberts/midnight/github/midnight-js/packages/testing/src/e2e/contract/managed/counter/contract/index.cjs';
-// import { Contract as MockCounterContract } from '/Users/timjroberts/midnight/github/midnight-js/packages/testing/src/e2e/contract/managed/simple/contract/index.cjs';
+import { CompiledContract, ContractExecutable } from '@midnight-ntwrk/compact-js/effect';
+import { Contract as MockCounterContract } from './MockCounter';
+// import { Contract as MockCounterContract } from '../../../../packages/testing/src/e2e/contract/managed/counter/contract/index.cjs';
+// import { Contract as MockCounterContract } from '../../../../packages/testing/src/e2e/contract/managed/simple/contract/index.cjs';
 
 type PrivateState = {
   runningCount: number;
@@ -25,16 +26,22 @@ type PrivateState = {
 
 describe('CompiledContract', () => {
   it('should work', () => {
-    const contract = CompiledContract.make<MockCounterContract<PrivateState>>('MockCounter', MockCounterContract).pipe(
+    const compiledContract = CompiledContract.make<MockCounterContract<PrivateState>>(
+      'MockCounter',
+      MockCounterContract
+    ).pipe(
       CompiledContract.withWitnesses({
         private_increment: (ctx) => {
           const { privateState } = ctx;
 
           return [{ runningCount: privateState.runningCount + 1 }, []];
         }
-      })
+      }),
+      CompiledContract.withFileAssets('/Users/hosky/compiled_contracts/counter')
     );
+    const contract = ContractExecutable.make(compiledContract);
+    const result = contract.initialize({ runningCount: 0 }).pipe(Effect.runSync);
 
-    expect(contract).toBeDefined();
+    expect(result).toBeDefined();
   });
 });

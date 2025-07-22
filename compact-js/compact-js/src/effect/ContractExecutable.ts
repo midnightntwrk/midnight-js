@@ -15,7 +15,27 @@
 
 import { Effect } from 'effect';
 import { ContractDeploy } from '@midnight-ntwrk/ledger';
+import { EncodedZswapLocalState } from '@midnight-ntwrk/compact-runtime';
+import * as internal from './internal/ContractExecutable';
+import { CompiledContract } from './CompiledContract';
+import { Contract } from './Contract';
 
-export interface ContractExecutable<PS> {
-  initialize(privateState?: PS): Effect.Effect<ContractDeploy, Error>;
+export interface ContractExecutable<in C extends Contract<PS>, PS = Contract.PrivateState<C>> {
+  initialize(
+    privateState: PS,
+    ...args: Contract.InitializeParameters<C>
+  ): Effect.Effect<ContractExecutable.Result<ContractDeploy, PS>, Error>;
 }
+
+export declare namespace ContractExecutable {
+  export type Result<T, PS> = {
+    readonly result: T;
+
+    readonly privateState: PS;
+
+    readonly zswapLocalState: EncodedZswapLocalState;
+  };
+}
+
+export const make: <C extends Contract.Any>(compiledContract: CompiledContract<C, never>) => ContractExecutable<C> =
+  internal.make;

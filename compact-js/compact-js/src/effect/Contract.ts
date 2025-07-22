@@ -32,12 +32,16 @@ import type {
 export type Witness<PS, L = any> = (context: WitnessContext<L, PS>, ...args: any[]) => [PS, L];
 export type Witnesses<PS> = Record<string, Witness<PS>>;
 
+export type Circuit<PS, L = any> = (context: CircuitContext<PS>, ...args: any[]) => CircuitResults<PS, L>;
+export type Circuits<PS> = Record<string, Circuit<PS>>;
+
 export type ImpureCircuit<PS, L = any> = (context: CircuitContext<PS>, ...args: any[]) => CircuitResults<PS, L>;
 export type ImpureCircuits<PS> = Record<string, ImpureCircuit<PS>>;
 
 export interface Contract<PS, W extends Witnesses<PS> = Witnesses<PS>> {
   witnesses: W;
 
+  circuits: Circuits<PS>;
   impureCircuits: ImpureCircuits<PS>;
 
   initialState(context: ConstructorContext<PS>, ...args: any[]): ConstructorResult<PS>;
@@ -57,4 +61,7 @@ export declare namespace Contract {
         ? never 
         : W
     : never;
+
+  export type InitializeParameters<C extends Contract<any>> =
+    Parameters<C['initialState']> extends [ConstructorContext<any>, ...infer A] ? A : never;
 }

@@ -26,6 +26,12 @@ export type Ledger = {
   readonly round: bigint;
 };
 
+export type Circuits<T> = {
+  increment(context: __compactRuntime.CircuitContext<T>): __compactRuntime.CircuitResults<T, []>;
+  decrement(context: __compactRuntime.CircuitContext<T>, amount_0: bigint): __compactRuntime.CircuitResults<T, []>;
+  reset(context: __compactRuntime.CircuitContext<T>): __compactRuntime.CircuitResults<T, []>;
+};
+
 export type ImpureCircuits<T> = {
   increment(context: __compactRuntime.CircuitContext<T>): __compactRuntime.CircuitResults<T, []>;
 };
@@ -33,12 +39,18 @@ export type ImpureCircuits<T> = {
 export class Contract<T, W extends Witnesses<T> = Witnesses<T>> {
   constructor(witnesses: W) {
     this.witnesses = witnesses;
+    this.circuits = {
+      increment: vi.fn(),
+      decrement: vi.fn(),
+      reset: vi.fn()
+    }
     this.impureCircuits = {
       increment: vi.fn()
     };
   }
 
   witnesses: W;
+  circuits: Circuits<T>;
   impureCircuits: ImpureCircuits<T>;
 
   initialState(_): __compactRuntime.ConstructorResult<T> {
