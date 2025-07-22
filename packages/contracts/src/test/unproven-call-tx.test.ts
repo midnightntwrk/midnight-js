@@ -13,7 +13,12 @@
  * limitations under the License.
  */
 
+import { StateValue, type ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
+import { type AlignedValue } from '@midnight-ntwrk/ledger';
+import { type Contract, type ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expect, it, vi } from 'vitest';
+
+import { type CallResult } from '../call';
 import { createUnprovenCallTx, createUnprovenCallTxFromInitialStates } from '../unproven-call-tx';
 import {
   createMockCallOptions,
@@ -25,10 +30,6 @@ import {
   createMockPrivateStateId,
   createMockProviders
 } from './test-mocks';
-import { StateValue, type ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
-import { type CallResult } from '../call';
-import { type AlignedValue } from '@midnight-ntwrk/ledger';
-import { type Contract, type ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
 
 // Mock the call function and utility functions
 vi.mock('../call', () => ({
