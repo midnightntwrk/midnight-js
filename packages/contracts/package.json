@@ -20,6 +20,7 @@
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
     "build": "rollup -c rollup.config.mjs",
     "test": "vitest run",
+    "test-no-utils": "vitest run --exclude src/test/*.test.ts",
     "deploy": "yarn npm publish"
   },
   "dependencies": {
