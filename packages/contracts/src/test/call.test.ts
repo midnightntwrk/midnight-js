@@ -24,14 +24,12 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import {
   type AlignedValue,
-  type BlockContext,
   type ContractState,
   type Effects,
-  type QueryContext,
-  sampleCoinPublicKey
+  sampleCoinPublicKey, type TokenType
 } from '@midnight-ntwrk/ledger';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
-import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { type Contract, type PrivateState } from '@midnight-ntwrk/midnight-js-types';
 
 // TODO: add test: circuit with invalid arguments
@@ -48,21 +46,29 @@ describe('call', () => {
       result: 'test-result',
       context: {
         transactionContext: {
-          block: {} as BlockContext,
+          block: {
+            ownAddress: '',
+            comIndices: {} as Map<string, number>,
+            balance: {} as Map<TokenType, bigint>,
+            secondsSinceEpoch: 0n,
+            secondsSinceEpochErr: 0,
+            parentBlockHash: ''
+          },
           state: StateValue.newNull(),
           effects: {} as Effects,
-          comIndicies: new Map(),
+          comIndices: new Map(),
           insertCommitment: vi.fn(),
           qualify: vi.fn(),
           runTranscript: vi.fn(),
           query: vi.fn(),
           intoTranscript: vi.fn(),
           address: createMockContractAddress(),
-        } as QueryContext,
+          toVmStack: vi.fn()
+        },
         originalState: {} as ContractState,
         currentPrivateState: { test: 'private-state' } as PrivateState<Contract>,
         currentZswapLocalState: emptyZswapLocalState(
-          parseCoinPublicKeyToHex(sampleCoinPublicKey(), getZswapNetworkId())
+          parseCoinPublicKeyToHex(sampleCoinPublicKey(), getLedgerNetworkId())
         )
       } as CircuitContext<Contract>,
       proofData: {

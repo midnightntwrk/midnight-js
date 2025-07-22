@@ -23,8 +23,8 @@ import {
   createMockSigningKey
 } from './test-mocks';
 import { type UnsubmittedDeployTxData } from '../tx-model';
-import { type Contract, type PrivateState } from '@midnight-ntwrk/midnight-js-types';
-import { type ContractState, type UnprovenTransaction } from '@midnight-ntwrk/ledger';
+import { type Contract, type PrivateState, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-types';
+import { type ContractState } from '@midnight-ntwrk/ledger';
 import { type ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
 import { type ContractProviders } from '../contract-providers';
 
