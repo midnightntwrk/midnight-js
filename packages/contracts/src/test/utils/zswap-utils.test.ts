@@ -306,27 +306,33 @@ describe('Zswap utilities', () => {
           params
         }) => {
           const unprovenOffer = zswapStateToOffer(zswapState, randomEncryptionPublicKey(), params);
-          expect(unprovenOffer?.outputs.length).toBe(expectedOutputCount);
-          expect(unprovenOffer?.inputs.length).toBe(expectedInputCount);
-          expect(unprovenOffer?.transients.length).toBe(expectedTransientCount);
 
-          const delta = unprovenOffer?.deltas.get(nativeToken().raw);
-          if (params) {
-            // we only count non-matching inputs if we called 'zswapStateToOffer' with additional parameters
-            const expectedDelta = expectedInputsSum - expectedOutputsSum;
-            if (expectedInputCount > 0 && expectedOutputCount > 0 && expectedDelta !== 0n) {
-              expect(delta).toBe(expectedDelta);
-            } else if (expectedInputCount > 0 && expectedInputsSum !== 0n) {
-              expect(delta).toBe(expectedInputsSum);
-            } else if (expectedOutputCount > 0 && expectedOutputsSum !== 0n) {
+          if (unprovenOffer) {
+            expect(unprovenOffer.outputs.length).toBe(expectedOutputCount);
+            expect(unprovenOffer.inputs.length).toBe(expectedInputCount);
+            expect(unprovenOffer.transients.length).toBe(expectedTransientCount);
+
+            const delta = unprovenOffer.deltas.get(nativeToken().raw);
+            if (params) {
+              const expectedDelta = expectedInputsSum - expectedOutputsSum;
+              if (expectedInputCount > 0 && expectedOutputCount > 0 && expectedDelta !== 0n) {
+                expect(delta).toBe(expectedDelta);
+              } else if (expectedInputCount > 0 && expectedInputsSum !== 0n) {
+                expect(delta).toBe(expectedInputsSum);
+              } else if (expectedOutputCount > 0 && expectedOutputsSum !== 0n) {
+                expect(delta).toBe(-expectedOutputsSum);
+              } else {
+                expect(delta).toBeUndefined();
+              }
+            } else if (expectedOutputCount > 0) {
               expect(delta).toBe(-expectedOutputsSum);
             } else {
               expect(delta).toBeUndefined();
             }
-          } else if (expectedOutputCount > 0) {
-            expect(delta).toBe(-expectedOutputsSum);
           } else {
-            expect(delta).toBeUndefined();
+            expect(expectedInputCount).toBe(0);
+            expect(expectedOutputCount).toBe(0);
+            expect(expectedTransientCount).toBe(0);
           }
         }
       )

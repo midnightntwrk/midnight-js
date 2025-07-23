@@ -177,15 +177,17 @@ export const zswapStateToOffer = (
    const outputsOffer = unprovenOfferFromMap(unprovenOutputs, ZswapOffer.fromOutput);
    const transientsOffer = unprovenOfferFromMap(unprovenTransients, ZswapOffer.fromTransient);
 
-   let combinedOffer = inputsOffer || outputsOffer || transientsOffer || undefined;
-   if (inputsOffer && outputsOffer) {
-     combinedOffer = inputsOffer.merge(outputsOffer);
-   }
-   if (combinedOffer && transientsOffer) {
-     combinedOffer = combinedOffer.merge(transientsOffer);
+   const offers = [inputsOffer, outputsOffer, transientsOffer].filter(offer => offer != null);
+
+   if (offers.length === 0) {
+     return undefined;
    }
 
-   return combinedOffer;
+   if (offers.length === 1) {
+     return offers[0];
+   }
+
+   return offers.reduce((acc, curr) => acc.merge(curr));
 };
 
 export const zswapStateToNewCoins = (receiverCoinPublicKey: CoinPublicKey, zswapState: ZswapLocalState): ShieldedCoinInfo[] =>
