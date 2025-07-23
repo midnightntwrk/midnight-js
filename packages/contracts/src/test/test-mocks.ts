@@ -181,6 +181,14 @@ export const createMockFinalizedTxData = (status: TxStatus = SucceedEntirely): F
   unshielded: {
     created: [],
     spent: []
+  },
+  blockTimestamp: 0,
+  blockAuthor: null,
+  indexerId: 0,
+  protocolVersion: 0,
+  fees: {
+    paidFees: '',
+    estimatedFees: ''
   }
 });
 
