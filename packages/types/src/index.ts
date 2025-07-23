@@ -39,6 +39,7 @@ export {
   UnshieldedBalance,
   UnshieldedBalances,
   FinalizedTxData,
+  Fees,
   createProverKey,
   createVerifierKey,
   createZKIR,

@@ -215,6 +215,10 @@ export const SucceedEntirely = 'SucceedEntirely' as const;
  */
 export type TxStatus = typeof FailEntirely | typeof FailFallible | typeof SucceedEntirely;
 
+/**
+ * Represents an unshielded UTXO (Unspent Transaction Output).
+ * Unshielded UTXOs are outputs that have not been shielded or encrypted, making them visible on the public ledger.
+ */
 export type UnshieldedUtxo = {
   /**
    * The unique identifier of the unshielded UTXO.
@@ -236,6 +240,10 @@ export type UnshieldedUtxo = {
   readonly value: bigint;
 }
 
+/**
+ * Represents a collection of unshielded UTXOs, which are unspent transaction outputs that are not shielded.
+ * This type is used to manage and track the state of unshielded UTXOs.
+ */
 export type UnshieldedUtxos = {
   /**
    * Represents the unshielded UTXOs that have been created but not yet spent.
@@ -245,6 +253,24 @@ export type UnshieldedUtxos = {
    * Represents the unshielded UTXOs that have been spent.
    */
   readonly spent: UnshieldedUtxo[];
+};
+
+/**
+ * Represents the fees associated with a particular entity or operation.
+ *
+ * This type includes both the paid fees and the estimated fees. The paid fees represent
+ * the amount that has already been settled, while the estimated fees provide a calculation
+ * or projection of expected fees.
+ */
+export type Fees = {
+  /**
+   * The fees that have already been paid.
+   */
+  readonly paidFees: string;
+  /**
+   * The estimated fees that are expected to be incurred.
+   */
+  readonly estimatedFees: string;
 };
 
 /**
@@ -280,13 +306,31 @@ export interface FinalizedTxData {
    * The block height of the block in which the transaction was included.
    */
   readonly blockHeight: number;
-
+  /**
+   * The timestamp of the block in which the transaction was included.
+   */
+  readonly blockTimestamp: number;
+  /**
+   * The author of the block in which the transaction was included.
+   */
+  readonly blockAuthor: string | null;
+  /**
+   * The indexer internal db ID.
+   */
+  readonly indexerId: number;
+  /**
+   * The protocol version of the transaction.
+   */
+  readonly protocolVersion: number;
+  /**
+   * The fees associated with the transaction, including both paid and estimated fees.
+   */
+  readonly fees: Fees;
   /**
    * The map that associates segment identifiers (numbers) with their corresponding status {@link SegmentStatus}.
    * The segment identifier is represented as a number (key in the map), and the status indicates the success or failure of the transaction update.
    */
   readonly segmentStatusMap: Map<number, SegmentStatus> | undefined;
-
   /**
    * Represents the unshielded outputs, typically used for transactions or operations
    * involving data or values that are not encrypted or concealed.
@@ -294,7 +338,11 @@ export interface FinalizedTxData {
   readonly unshielded: UnshieldedUtxos;
 }
 
-export interface UnshieldedBalance {
+/**
+ * Represents an unshielded balance, which is a balance that is not shielded or encrypted.
+ * This type is used to track the available funds in an account that are visible on the public ledger.
+ */
+export type UnshieldedBalance = {
   /**
    * Represents the current number of funds available or held in an account.
    */
@@ -305,4 +353,7 @@ export interface UnshieldedBalance {
   readonly tokenType: RawTokenType;
 }
 
+/**
+ * Represents a collection of unshielded balances, which are balances that are not shielded or encrypted.
+ */
 export type UnshieldedBalances = UnshieldedBalance[];

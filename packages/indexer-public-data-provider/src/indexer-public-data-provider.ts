@@ -599,18 +599,28 @@ const indexerPublicDataProviderInternal = (
 
               return 'deploy' in contract ? contract.deploy.transaction : contract.transaction;
             })
-            .map((transaction) => ({
-              tx: deserializeTransaction(transaction.raw),
-              status: toTxStatus(transaction.transactionResult),
-              txId: transaction.identifiers[
-                transaction.contractActions.findIndex(({ address }) => address === contractAddress)
-              ]!,
-              txHash: transaction.hash,
-              blockHeight: transaction.block.height,
-              blockHash: transaction.block.hash,
-              segmentStatusMap: toSegmentStatusMap(transaction.transactionResult),
-              unshielded: toUnshieldedUtxos(transaction.unshieldedCreatedOutputs, transaction.unshieldedSpentOutputs)
-            }))
+            .map(
+              (transaction): FinalizedTxData => ({
+                tx: deserializeTransaction(transaction.raw),
+                status: toTxStatus(transaction.transactionResult),
+                txId: transaction.identifiers[
+                  transaction.contractActions.findIndex(({ address }) => address === contractAddress)
+                ]!,
+                txHash: transaction.hash,
+                blockHeight: transaction.block.height,
+                blockHash: transaction.block.hash,
+                blockTimestamp: transaction.block.timestamp,
+                blockAuthor: transaction.block.author,
+                segmentStatusMap: toSegmentStatusMap(transaction.transactionResult),
+                unshielded: toUnshieldedUtxos(transaction.unshieldedCreatedOutputs, transaction.unshieldedSpentOutputs),
+                indexerId: transaction.id,
+                protocolVersion: transaction.protocolVersion,
+                fees: {
+                  estimatedFees: transaction.fees.estimatedFees,
+                  paidFees: transaction.fees.paidFees
+                },
+              })
+            )
         )
       );
     },
@@ -629,16 +639,26 @@ const indexerPublicDataProviderInternal = (
             .map(maybeThrowErrors)
             .filter((maybeQueryResult) => maybeQueryResult.data.transactions.length !== 0)
             .map((queryResult) => queryResult.data.transactions[0]!)
-            .map((transaction) => ({
-              tx: deserializeTransaction(transaction.raw),
-              status: toTxStatus(transaction.transactionResult),
-              txId,
-              txHash: transaction.hash,
-              blockHeight: transaction.block.height,
-              blockHash: transaction.block.hash,
-              segmentStatusMap: toSegmentStatusMap(transaction.transactionResult),
-              unshielded: toUnshieldedUtxos(transaction.unshieldedCreatedOutputs, transaction.unshieldedSpentOutputs)
-            }))
+            .map(
+              (transaction): FinalizedTxData => ({
+                tx: deserializeTransaction(transaction.raw),
+                status: toTxStatus(transaction.transactionResult),
+                txId,
+                txHash: transaction.hash,
+                blockHeight: transaction.block.height,
+                blockHash: transaction.block.hash,
+                segmentStatusMap: toSegmentStatusMap(transaction.transactionResult),
+                unshielded: toUnshieldedUtxos(transaction.unshieldedCreatedOutputs, transaction.unshieldedSpentOutputs),
+                blockTimestamp: transaction.block.timestamp,
+                blockAuthor: transaction.block.author,
+                indexerId: transaction.id,
+                protocolVersion: transaction.protocolVersion,
+                fees: {
+                  paidFees: transaction.fees.paidFees,
+                  estimatedFees: transaction.fees.estimatedFees
+                }
+              })
+            )
         )
       );
     },

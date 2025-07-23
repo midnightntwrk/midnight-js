@@ -29,6 +29,12 @@ export const TX_ID_QUERY = gql(
   `
   query TX_ID_QUERY($offset: TransactionOffset!) {
     transactions(offset: $offset) {
+      id
+      protocolVersion
+      fees {
+        estimatedFees
+        paidFees
+      }
       raw
       hash
       unshieldedCreatedOutputs {
@@ -46,6 +52,8 @@ export const TX_ID_QUERY = gql(
       block {
         height
         hash
+        author
+        timestamp
       }
       transactionResult {
         status
@@ -64,6 +72,12 @@ export const DEPLOY_TX_QUERY = gql(
     contractAction(address: $address) {
       ... on ContractDeploy {
         transaction {
+          id
+          protocolVersion
+          fees {
+            estimatedFees
+            paidFees
+          }
 	        raw
           hash
           identifiers
@@ -73,6 +87,8 @@ export const DEPLOY_TX_QUERY = gql(
           block {
             height
             hash
+            author
+            timestamp
           }
           transactionResult {
             status
@@ -97,6 +113,12 @@ export const DEPLOY_TX_QUERY = gql(
       }
       ... on ContractUpdate {
         transaction {
+          id
+          protocolVersion
+          fees {
+            estimatedFees
+            paidFees
+          }
 	        raw
           hash
           identifiers
@@ -106,6 +128,8 @@ export const DEPLOY_TX_QUERY = gql(
           block {
             height
             hash
+            author
+            timestamp
           }
           transactionResult {
             status
@@ -131,6 +155,12 @@ export const DEPLOY_TX_QUERY = gql(
       ... on ContractCall {
         deploy {
           transaction {
+            id
+            protocolVersion
+            fees {
+              estimatedFees
+              paidFees
+            }
 	          raw
             hash
             identifiers
@@ -140,6 +170,8 @@ export const DEPLOY_TX_QUERY = gql(
             block {
               height
               hash
+              author
+              timestamp
             }
             transactionResult {
               status
