@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { Effect } from 'effect';
+import { Effect, Layer } from 'effect';
 import { describe, it, expect } from '@effect/vitest';
-import { CompiledContract, ContractExecutable } from '@midnight-ntwrk/compact-js/effect';
+import { CompiledContract, ContractExecutable, ZKConfig, Contract } from '@midnight-ntwrk/compact-js/effect';
 import { Contract as MockCounterContract } from './MockCounter';
 // import { Contract as MockCounterContract } from '../../../../packages/testing/src/e2e/contract/managed/counter/contract/index.cjs';
 // import { Contract as MockCounterContract } from '../../../../packages/testing/src/e2e/contract/managed/simple/contract/index.cjs';
@@ -37,10 +37,27 @@ describe('CompiledContract', () => {
           return [{ runningCount: privateState.runningCount + 1 }, []];
         }
       }),
-      CompiledContract.withFileAssets('/Users/hosky/compiled_contracts/counter')
+      CompiledContract.withZKConfigFileAssets('/Users/hosky/compiled_contracts/counter')
     );
     const contract = ContractExecutable.make(compiledContract);
-    const result = contract.initialize({ runningCount: 0 }).pipe(Effect.runSync);
+    const c1 = contract.pipe(
+      ContractExecutable.provide(
+        Layer.effect(
+          ZKConfig.ZKConfig,
+          Effect.sync(() =>
+            ZKConfig.ZKConfig.of({
+              createReader: (c) =>
+                Effect.sync(() => ({
+                  getVerifierKey: (id) => Effect.sync(() => Contract.VerifierKey(new Uint8Array())),
+                  getVerifierKeys: (ids) => Effect.sync(() => [[ids[0], Contract.VerifierKey(new Uint8Array())]])
+                }))
+            })
+          )
+        )
+      )
+    );
+
+    const result = c1.initialize({ runningCount: 0 }).pipe(Effect.runSync);
 
     expect(result).toBeDefined();
   });

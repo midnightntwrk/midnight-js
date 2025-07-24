@@ -34,6 +34,7 @@ export type Circuits<T> = {
 
 export type ImpureCircuits<T> = {
   increment(context: __compactRuntime.CircuitContext<T>): __compactRuntime.CircuitResults<T, []>;
+  booboo(context: __compactRuntime.CircuitContext<T>): __compactRuntime.CircuitResults<T, []>;
 };
 
 export class Contract<T, W extends Witnesses<T> = Witnesses<T>> {

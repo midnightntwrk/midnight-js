@@ -39,7 +39,7 @@ const proto = {
 };
 
 /** @internal */
-export interface Meta<C extends Contract.Any, R> extends CompiledContract.CompiledContract<C, R> {
+export interface Meta<C extends Contract.Any, R = never> extends CompiledContract.CompiledContract<C, R> {
   [MetaTypeId]: Partial<Types.UnionToIntersection<CompiledContract.CompiledContract.Context<C>>> & {
     readonly tag: string;
     readonly ctor: Types.Ctor<C>;
@@ -84,28 +84,28 @@ export const withWitnesses = dual<
   }
 );
 
-export const withFileAssets = dual<
+export const withZKConfigFileAssets = dual<
   <C extends Contract.Any, R>(
-    fileAssetsPath: R extends CompiledContract.CompiledContract.Context.FileAssetsPath ? string : never
+    fileAssetsPath: R extends CompiledContract.CompiledContract.Context.ZKConfigAssetsPath ? string : never
   ) => (
     self: CompiledContract.CompiledContract<C, R>
-  ) => CompiledContract.CompiledContract<C, Exclude<R, CompiledContract.CompiledContract.Context.FileAssetsPath>>,
+  ) => CompiledContract.CompiledContract<C, Exclude<R, CompiledContract.CompiledContract.Context.ZKConfigAssetsPath>>,
   <C extends Contract.Any, R>(
     self: CompiledContract.CompiledContract<C, R>,
-    fileAssetsPath: R extends CompiledContract.CompiledContract.Context.FileAssetsPath ? string : never
-  ) => CompiledContract.CompiledContract<C, Exclude<R, CompiledContract.CompiledContract.Context.FileAssetsPath>>
+    fileAssetsPath: R extends CompiledContract.CompiledContract.Context.ZKConfigAssetsPath ? string : never
+  ) => CompiledContract.CompiledContract<C, Exclude<R, CompiledContract.CompiledContract.Context.ZKConfigAssetsPath>>
 >(
   2,
   <C extends Contract.Any, R>(
     self: CompiledContract.CompiledContract<C, R>,
-    fileAssetsPath: R extends CompiledContract.CompiledContract.Context.FileAssetsPath ? string : never
+    fileAssetsPath: R extends CompiledContract.CompiledContract.Context.ZKConfigAssetsPath ? string : never
   ) => {
     return {
       ...self,
       [MetaTypeId]: {
         ...(self as Meta<C, R>)[MetaTypeId],
-        fileAssetsPath
+        zkConfigAssetsPath: fileAssetsPath
       }
-    } as Meta<C, Exclude<R, CompiledContract.CompiledContract.Context.FileAssetsPath>>;
+    } as Meta<C, Exclude<R, CompiledContract.CompiledContract.Context.ZKConfigAssetsPath>>;
   }
 );

@@ -21,7 +21,7 @@ import { Contract } from './Contract';
 export const TypeId: unique symbol = internal.TypeId;
 export type TypeId = typeof TypeId;
 
-export interface CompiledContract<in C extends Contract.Any, out R = CompiledContract.Context<C>>
+export interface CompiledContract<in C extends Contract.Any, out R = never>
   extends CompiledContract.Variance<C, R>,
     Pipeable {}
 
@@ -33,15 +33,15 @@ export declare namespace CompiledContract {
     };
   };
 
-  export type Context<C extends Contract.Any> = Context.Witnesses<C> | Context.FileAssetsPath;
+  export type Context<C extends Contract.Any> = Context.Witnesses<C> | Context.ZKConfigAssetsPath;
 
   export namespace Context {
     export type Witnesses<C extends Contract.Any, W = Contract.Witnesses<C>> = {
       readonly witnesses: W;
     };
 
-    export type FileAssetsPath<FP extends string = ''> = {
-      readonly fileAssetsPath: FP;
+    export type ZKConfigAssetsPath<FP extends string = ''> = {
+      readonly zkConfigAssetsPath: FP;
     };
   }
 }
@@ -61,12 +61,12 @@ export const withWitnesses: {
   ): CompiledContract<C, Exclude<R, CompiledContract.Context.Witnesses<C>>>;
 } = internal.withWitnesses;
 
-export const withFileAssets: {
+export const withZKConfigFileAssets: {
   <C extends Contract.Any, R>(
-    fileAssetsPath: R extends CompiledContract.Context.FileAssetsPath ? string : never
-  ): (self: CompiledContract<C, R>) => CompiledContract<C, Exclude<R, CompiledContract.Context.FileAssetsPath>>;
+    fileAssetsPath: R extends CompiledContract.Context.ZKConfigAssetsPath ? string : never
+  ): (self: CompiledContract<C, R>) => CompiledContract<C, Exclude<R, CompiledContract.Context.ZKConfigAssetsPath>>;
   <C extends Contract.Any, R>(
     self: CompiledContract<C, R>,
-    fileAssetsPath: R extends CompiledContract.Context.FileAssetsPath ? string : never
-  ): CompiledContract<C, Exclude<R, CompiledContract.Context.FileAssetsPath>>;
-} = internal.withFileAssets;
+    fileAssetsPath: R extends CompiledContract.Context.ZKConfigAssetsPath ? string : never
+  ): CompiledContract<C, Exclude<R, CompiledContract.Context.ZKConfigAssetsPath>>;
+} = internal.withZKConfigFileAssets;

@@ -13,23 +13,33 @@
  * limitations under the License.
  */
 
-import { Effect } from 'effect';
+import { Effect, Layer } from 'effect';
+import { Pipeable } from 'effect/Pipeable';
 import { ContractDeploy } from '@midnight-ntwrk/ledger';
 import { EncodedZswapLocalState } from '@midnight-ntwrk/compact-runtime';
 import * as internal from './internal/ContractExecutable';
+import type { ContractExecutionError } from './internal/ContractExecutable';
 import { CompiledContract } from './CompiledContract';
 import { Contract } from './Contract';
+import type { ZKConfig } from './ZKConfig';
 
-export interface ContractExecutable<in C extends Contract<PS>, PS = Contract.PrivateState<C>> {
+export interface ContractExecutable<in C extends Contract.Any, out E = never, out R = never> extends Pipeable {
+  readonly compiledContract: CompiledContract<C>;
+
   initialize(
-    privateState: PS,
+    privateState: Contract.PrivateState<C>,
     ...args: Contract.InitializeParameters<C>
-  ): Effect.Effect<ContractExecutable.Result<ContractDeploy, PS>, Error>;
+  ): Effect.Effect<ContractExecutable.Result<ContractDeploy, Contract.PrivateState<C>>, E, R>;
 }
 
 export declare namespace ContractExecutable {
+  /**
+   * The services required as context for executing contracts.
+   */
+  export type Context = ZKConfig;
+
   export type Result<T, PS> = {
-    readonly result: T;
+    readonly data: T;
 
     readonly privateState: PS;
 
@@ -37,5 +47,18 @@ export declare namespace ContractExecutable {
   };
 }
 
-export const make: <C extends Contract.Any>(compiledContract: CompiledContract<C, never>) => ContractExecutable<C> =
-  internal.make;
+export const make: <C extends Contract.Any>(
+  compiledContract: CompiledContract<C, never>
+) => ContractExecutable<C, ContractExecutionError, ContractExecutable.Context> = internal.make;
+
+export const provide: {
+  <LA, LE, LR>(
+    layer: Layer.Layer<LA, LE, LR>
+  ): <C extends Contract.Any, E, R>(
+    self: ContractExecutable<C, E, R>
+  ) => ContractExecutable<C, E | LE, LR | Exclude<R, LA>>;
+  <C extends Contract.Any, E, R, LA, LE, LR>(
+    self: ContractExecutable<C, E, R>,
+    layer: Layer.Layer<LA, LE, LR>
+  ): ContractExecutable<C, E | LE, LR | Exclude<R, LA>>;
+} = internal.provide;

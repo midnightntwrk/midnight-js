@@ -21,6 +21,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { Brand } from 'effect';
 import type {
   WitnessContext,
   ConstructorContext,
@@ -37,6 +38,18 @@ export type Circuits<PS> = Record<string, Circuit<PS>>;
 
 export type ImpureCircuit<PS, L = any> = (context: CircuitContext<PS>, ...args: any[]) => CircuitResults<PS, L>;
 export type ImpureCircuits<PS> = Record<string, ImpureCircuit<PS>>;
+
+export type VerifierKey = Uint8Array & Brand.Brand<'VerifierKey'>;
+export const VerifierKey = Brand.nominal<VerifierKey>();
+
+export type ZKIR = Uint8Array & Brand.Brand<'ZKIR'>;
+export const ZKIR = Brand.nominal<ZKIR>();
+
+export type ImpureCircuitId<C extends Contract.Any = Contract.Any, K = Contract.ImpureCircuitId<C>> = K &
+  Brand.Brand<'ImpureCircuitId'>;
+export const ImpureCircuitId = <C extends Contract.Any>(
+  id: Brand.Brand.Unbranded<ImpureCircuitId<C>>
+): ImpureCircuitId<C> => Brand.nominal<ImpureCircuitId<C>>()(id);
 
 export interface Contract<PS, W extends Witnesses<PS> = Witnesses<PS>> {
   witnesses: W;
@@ -64,4 +77,9 @@ export declare namespace Contract {
 
   export type InitializeParameters<C extends Contract<any>> =
     Parameters<C['initialState']> extends [ConstructorContext<any>, ...infer A] ? A : never;
+
+  export type ImpureCircuitId<C extends Contract<any>> = keyof C['impureCircuits'] & string;
 }
+
+export const getImpureCircuitIds: <C extends Contract.Any>(contract: C) => ImpureCircuitId<C>[] = (contract) =>
+  Object.keys(contract.impureCircuits).map(ImpureCircuitId);
