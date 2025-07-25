@@ -16,7 +16,7 @@
 import { Effect, Layer } from 'effect';
 import { describe, it, expect } from '@effect/vitest';
 import { CompiledContract, ContractExecutable, ZKConfig, Contract } from '@midnight-ntwrk/compact-js/effect';
-import { Contract as MockCounterContract } from './MockCounter';
+import { Contract as MockCounterContract } from '../MockCounter';
 // import { Contract as MockCounterContract } from '../../../../packages/testing/src/e2e/contract/managed/counter/contract/index.cjs';
 // import { Contract as MockCounterContract } from '../../../../packages/testing/src/e2e/contract/managed/simple/contract/index.cjs';
 

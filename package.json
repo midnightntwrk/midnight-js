@@ -62,6 +62,7 @@
     "rxjs": "^7.8.1",
     "testcontainers": "^11.2.0",
     "ts-node": "^10.9.2",
+    "tstyche": "^4.3.0",
     "turbo": "^2.5.0",
     "typedoc": "^0.28.5",
     "typedoc-plugin-markdown": "4.7.0",

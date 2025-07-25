@@ -62,3 +62,9 @@ export const provide: {
     layer: Layer.Layer<LA, LE, LR>
   ): ContractExecutable<C, E | LE, LR | Exclude<R, LA>>;
 } = internal.provide;
+
+export type {
+  ContractExecutionError,
+  ContractRuntimeError,
+  ContractConfigurationError
+} from './internal/ContractExecutable';

@@ -34,7 +34,8 @@ export type Circuits<T> = {
 
 export type ImpureCircuits<T> = {
   increment(context: __compactRuntime.CircuitContext<T>): __compactRuntime.CircuitResults<T, []>;
-  booboo(context: __compactRuntime.CircuitContext<T>): __compactRuntime.CircuitResults<T, []>;
+  decrement(context: __compactRuntime.CircuitContext<T>, amount_0: bigint): __compactRuntime.CircuitResults<T, []>;
+  reset(context: __compactRuntime.CircuitContext<T>): __compactRuntime.CircuitResults<T, []>;
 };
 
 export class Contract<T, W extends Witnesses<T> = Witnesses<T>> {
@@ -44,36 +45,25 @@ export class Contract<T, W extends Witnesses<T> = Witnesses<T>> {
       increment: vi.fn(),
       decrement: vi.fn(),
       reset: vi.fn()
-    }
-    this.impureCircuits = {
-      increment: vi.fn()
     };
+    this.impureCircuits = this.circuits;
   }
 
   witnesses: W;
   circuits: Circuits<T>;
   impureCircuits: ImpureCircuits<T>;
 
-  initialState(_): __compactRuntime.ConstructorResult<T> {
+  initialState(ctx: __compactRuntime.ConstructorContext<T>): __compactRuntime.ConstructorResult<T> {
+    const state = new __compactRuntime.ContractState();
+    let stateValue = __compactRuntime.StateValue.newArray();
+
+    stateValue = stateValue.arrayPush(__compactRuntime.StateValue.newNull());
+    state.data = stateValue;
+
     return {
-      currentContractState: undefined,
-      currentPrivateState: undefined,
-      currentZswapLocalState: undefined
-    }
+      currentContractState: state,
+      currentPrivateState: ctx.initialPrivateState,
+      currentZswapLocalState: ctx.initialZswapLocalState
+    };
   }
 }
-
-// declare class _C<T, W extends Witnesses<T> = Witnesses<T>> {
-//   witnesses: W;
-//   impureCircuits: ImpureCircuits<T>;
-//   constructor(witnesses: W);
-// }
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-// export const Contract = vi.fn(function (this: any, witnesses: Witnesses<any>) {
-//   this.witnesses = witnesses;
-//   this.impureCircuits = {
-//     increment: vi.fn()
-//   };
-//   this.initialState = vi.fn();
-// }) as unknown as _C<any>;

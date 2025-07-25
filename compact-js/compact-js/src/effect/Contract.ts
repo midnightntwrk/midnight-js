@@ -47,9 +47,10 @@ export const ZKIR = Brand.nominal<ZKIR>();
 
 export type ImpureCircuitId<C extends Contract.Any = Contract.Any, K = Contract.ImpureCircuitId<C>> = K &
   Brand.Brand<'ImpureCircuitId'>;
+const ImpureCircuitId_ = Brand.nominal<ImpureCircuitId>();
 export const ImpureCircuitId = <C extends Contract.Any>(
   id: Brand.Brand.Unbranded<ImpureCircuitId<C>>
-): ImpureCircuitId<C> => Brand.nominal<ImpureCircuitId<C>>()(id);
+): ImpureCircuitId<C> => ImpureCircuitId_(id);
 
 export interface Contract<PS, W extends Witnesses<PS> = Witnesses<PS>> {
   witnesses: W;

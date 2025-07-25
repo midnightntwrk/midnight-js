@@ -2393,6 +2393,7 @@ __metadata:
     rxjs: "npm:^7.8.1"
     testcontainers: "npm:^11.2.0"
     ts-node: "npm:^10.9.2"
+    tstyche: "npm:^4.3.0"
     turbo: "npm:^2.5.0"
     typedoc: "npm:^0.28.5"
     typedoc-plugin-markdown: "npm:4.7.0"
@@ -11784,6 +11785,20 @@ __metadata:
   version: 2.6.3
   resolution: "tslib@npm:2.6.3"
   checksum: 10/52109bb681f8133a2e58142f11a50e05476de4f075ca906d13b596ae5f7f12d30c482feb0bff167ae01cfc84c5803e575a307d47938999246f5a49d174fc558c
+  languageName: node
+  linkType: hard
+
+"tstyche@npm:^4.3.0":
+  version: 4.3.0
+  resolution: "tstyche@npm:4.3.0"
+  peerDependencies:
+    typescript: ">=4.7"
+  peerDependenciesMeta:
+    typescript:
+      optional: true
+  bin:
+    tstyche: ./build/bin.js
+  checksum: 10/27283bbc8ca16b9b467cbe26b099c5e6cffeaa1f0a2b2b2225c48730e7334626dc3e837ed63ca9e385e8083d61af6229e42953f17ee685542fc10423dc3d0e3d
   languageName: node
   linkType: hard
 
