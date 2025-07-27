@@ -3,16 +3,16 @@
   "version": "1.0.0",
   "description": "Typescript-based execution environment for smart contracts compiled with the Compact language",
   "type": "module",
-  "module": "./dist/index.mjs",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs"
+      "import": "./dist/index.js"
     },
     "./effect": {
       "types": "./dist/effect/index.d.ts",
-      "import": "./dist/effect/index.mjs"
+      "import": "./dist/effect/index.js"
     }
   },
   "dependencies": {
