@@ -14,59 +14,104 @@
  */
 
 import { Types } from 'effect';
-import { Pipeable } from 'effect/Pipeable';
-import * as internal from './internal/CompiledContract';
+import { Pipeable, pipeArguments } from 'effect/Pipeable';
+import { dual } from 'effect/Function';
 import { Contract } from './Contract';
+import type * as CompactContext from './CompactContext';
+import * as CompactContextInternal from './internal/compactContext';
 
-export const TypeId: unique symbol = internal.TypeId;
+export const TypeId = Symbol.for('@midnight-ntwrk/compact-js/CompiledContract');
 export type TypeId = typeof TypeId;
 
-export interface CompiledContract<in C extends Contract.Any, out R = never>
+export interface CompiledContract<in out C extends Contract.Any, out R = never>
   extends CompiledContract.Variance<C, R>,
-    Pipeable {}
+    Pipeable {
+  [CompactContextInternal.CompactContextId]: Partial<CompactContextInternal.Context<C>>;
+}
 
 export declare namespace CompiledContract {
-  export type Variance<in C, out R> = {
+  export type Variance<in out C, out R> = {
     readonly [TypeId]: {
-      readonly _C: Types.Contravariant<C>;
+      readonly _C: Types.Invariant<C>;
       readonly _R: Types.Covariant<R>;
     };
   };
 
-  export type Context<C extends Contract.Any> = Context.Witnesses<C> | Context.ZKConfigAssetsPath;
-
-  export namespace Context {
-    export type Witnesses<C extends Contract.Any, W = Contract.Witnesses<C>> = {
-      readonly witnesses: W;
-    };
-
-    export type ZKConfigAssetsPath<FP extends string = ''> = {
-      readonly zkConfigAssetsPath: FP;
-    };
-  }
+  export type Context<C extends Contract.Any> = CompactContext.Witnesses<C> | CompactContext.ZKConfigAssetsPath;
 }
+
+const proto = {
+  [TypeId]: {
+    _C: (_: unknown) => _,
+    _R: (_: never) => _
+  },
+  pipe() {
+    return pipeArguments(this, arguments); // eslint-disable-line prefer-rest-params
+  }
+};
 
 export const make: <C extends Contract.Any, R = CompiledContract.Context<C>>(
   tag: string,
   ctor: Types.Ctor<C>
-) => CompiledContract<C, R> = internal.make;
+) => CompiledContract<C, R> = <C extends Contract.Any, R = CompiledContract.Context<C>>(
+  tag: string,
+  ctor: Types.Ctor<C>
+) => {
+  const self = Object.create(proto) as CompiledContract<C, R>;
+  self[CompactContextInternal.CompactContextId] = { tag, ctor };
+  return self;
+};
 
+/**
+ * @category combinators
+ */
 export const withWitnesses: {
   <C extends Contract.Any, R>(
-    witnesses: R extends CompiledContract.Context.Witnesses<C, infer W> ? W : never
-  ): (self: CompiledContract<C, R>) => CompiledContract<C, Exclude<R, CompiledContract.Context.Witnesses<C>>>;
+    witnesses: R extends CompactContext.Witnesses<C, infer W> ? W : never
+  ): (self: CompiledContract<C, R>) => CompiledContract<C, Exclude<R, CompactContext.Witnesses<C>>>;
   <C extends Contract.Any, R>(
     self: CompiledContract<C, R>,
-    witnesses: R extends CompiledContract.Context.Witnesses<C, infer W> ? W : never
-  ): CompiledContract<C, Exclude<R, CompiledContract.Context.Witnesses<C>>>;
-} = internal.withWitnesses;
+    witnesses: R extends CompactContext.Witnesses<C, infer W> ? W : never
+  ): CompiledContract<C, Exclude<R, CompactContext.Witnesses<C>>>;
+} = dual(
+  2,
+  <C extends Contract.Any, R>(
+    self: CompiledContract<C, R>,
+    witnesses: R extends CompactContext.Witnesses<C, infer W> ? W : never
+  ) => {
+    return {
+      ...self,
+      [CompactContextInternal.CompactContextId]: {
+        ...self[CompactContextInternal.CompactContextId],
+        witnesses
+      }
+    };
+  }
+);
 
+/**
+ * @category combinators
+ */
 export const withZKConfigFileAssets: {
   <C extends Contract.Any, R>(
-    fileAssetsPath: R extends CompiledContract.Context.ZKConfigAssetsPath ? string : never
-  ): (self: CompiledContract<C, R>) => CompiledContract<C, Exclude<R, CompiledContract.Context.ZKConfigAssetsPath>>;
+    fileAssetsPath: R extends CompactContext.ZKConfigAssetsPath ? string : never
+  ): (self: CompiledContract<C, R>) => CompiledContract<C, Exclude<R, CompactContext.ZKConfigAssetsPath>>;
   <C extends Contract.Any, R>(
     self: CompiledContract<C, R>,
-    fileAssetsPath: R extends CompiledContract.Context.ZKConfigAssetsPath ? string : never
-  ): CompiledContract<C, Exclude<R, CompiledContract.Context.ZKConfigAssetsPath>>;
-} = internal.withZKConfigFileAssets;
+    fileAssetsPath: R extends CompactContext.ZKConfigAssetsPath ? string : never
+  ): CompiledContract<C, Exclude<R, CompactContext.ZKConfigAssetsPath>>;
+} = dual(
+  2,
+  <C extends Contract.Any, R>(
+    self: CompiledContract<C, R>,
+    fileAssetsPath: R extends CompactContext.ZKConfigAssetsPath ? string : never
+  ) => {
+    return {
+      ...self,
+      [CompactContextInternal.CompactContextId]: {
+        ...self[CompactContextInternal.CompactContextId],
+        fileAssetsPath
+      }
+    };
+  }
+);

@@ -24,6 +24,9 @@ import * as Contract from './Contract';
  */
 export class ZKConfig extends Context.Tag('@midnight-ntwrk/compact-js/ZKConfig')<ZKConfig, ZKConfig.Service>() {}
 
+/**
+ * Describes a type of ZK asset.
+ */
 export type ZKConfigAssetType = 'verifier-key' | 'ZKIR' | 'prover-key';
 
 /**

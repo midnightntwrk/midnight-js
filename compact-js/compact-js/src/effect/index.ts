@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+export * as CompactContext from './CompactContext';
 export * as CompiledContract from './CompiledContract';
 export * as Contract from './Contract';
 export * as ContractExecutable from './ContractExecutable';

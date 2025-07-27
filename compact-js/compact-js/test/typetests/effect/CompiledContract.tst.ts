@@ -14,7 +14,7 @@
  */
 
 import { describe, expect, it } from 'tstyche';
-import { CompiledContract, Contract } from '@midnight-ntwrk/compact-js/effect';
+import { CompiledContract, Contract, CompactContext } from '@midnight-ntwrk/compact-js/effect';
 import { Contract as Contract_ } from '../../MockCounter';
 
 type MockCounterContract = Contract_<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -26,19 +26,13 @@ describe('CompiledContract', () => {
   describe('as initialized', () => {
     it('should require witnesses as defined by contract', () => {
       expect(compiledContract).type.toBeAssignableWith<
-        CompiledContract.CompiledContract<
-          MockCounterContract,
-          CompiledContract.CompiledContract.Context.Witnesses<MockCounterContract>
-        >
+        CompiledContract.CompiledContract<MockCounterContract, CompactContext.Witnesses<MockCounterContract>>
       >();
     });
 
     it('should require ZK path configuration', () => {
       expect(compiledContract).type.toBeAssignableWith<
-        CompiledContract.CompiledContract<
-          MockCounterContract,
-          CompiledContract.CompiledContract.Context.ZKConfigAssetsPath
-        >
+        CompiledContract.CompiledContract<MockCounterContract, CompactContext.ZKConfigAssetsPath>
       >();
     });
 
@@ -49,10 +43,7 @@ describe('CompiledContract', () => {
 
       it('should not require further witnesses', () => {
         expect(contract).type.not.toBeAssignableWith<
-          CompiledContract.CompiledContract<
-            MockCounterContract,
-            CompiledContract.CompiledContract.Context.Witnesses<MockCounterContract>
-          >
+          CompiledContract.CompiledContract<MockCounterContract, CompactContext.Witnesses<MockCounterContract>>
         >();
       });
     });
@@ -62,10 +53,7 @@ describe('CompiledContract', () => {
 
       it('should not require further witnesses', () => {
         expect(contract).type.not.toBeAssignableWith<
-          CompiledContract.CompiledContract<
-            MockCounterContract,
-            CompiledContract.CompiledContract.Context.ZKConfigAssetsPath
-          >
+          CompiledContract.CompiledContract<MockCounterContract, CompactContext.ZKConfigAssetsPath>
         >();
       });
     });
