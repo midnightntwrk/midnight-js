@@ -15,11 +15,19 @@
 
 import { describe, expect, it } from 'tstyche';
 import { Effect, Layer, Context } from 'effect';
-import { CompiledContract, ContractExecutable, Contract, ZKConfig } from '@midnight-ntwrk/compact-js/effect';
+import {
+  CompiledContract,
+  ContractExecutable,
+  Contract,
+  ZKConfiguration,
+  KeyConfiguration
+} from '@midnight-ntwrk/compact-js/effect';
 import type { ContractDeploy } from '@midnight-ntwrk/ledger';
 import { Contract as Contract_ } from '../../MockCounter';
 
-type MockCounterContract = Contract_<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+type MockCounterContract = Contract_<any>;
 const MockCounterContract = Contract_;
 
 class StringDep extends Context.Tag('StringDep')<StringDep, string>() {}
@@ -32,46 +40,67 @@ describe('ContractExecutable', () => {
   const contractExecutable = ContractExecutable.make(compiledContract);
 
   describe('as initialized', () => {
-    it('should require ZKConfig', () => {
+    it('should require ZKConfig and KeyConfig', () => {
       expect(contractExecutable).type.toBeAssignableWith<
-        ContractExecutable.ContractExecutable<MockCounterContract, any, ZKConfig.ZKConfig> // eslint-disable-line @typescript-eslint/no-explicit-any
+        ContractExecutable.ContractExecutable<
+          MockCounterContract,
+          any,
+          ContractExecutable.ContractExecutionError,
+          ZKConfiguration.ZKConfiguration | KeyConfiguration.KeyConfiguration
+        >
       >();
     });
 
     describe('with fully resolved layer', () => {
-      const zkConfigLayer = Layer.effect(
-        ZKConfig.ZKConfig,
-        Effect.sync(() => ({})) as Effect.Effect<ZKConfig.ZKConfig.Service>
+      const layer = Layer.mergeAll(
+        Layer.effect(
+          ZKConfiguration.ZKConfiguration,
+          Effect.sync(() => ({})) as Effect.Effect<ZKConfiguration.ZKConfiguration.Service>
+        ),
+        Layer.effect(
+          KeyConfiguration.KeyConfiguration,
+          Effect.sync(() => ({})) as Effect.Effect<KeyConfiguration.KeyConfiguration.Service>
+        )
       );
-      const executable = contractExecutable.pipe(ContractExecutable.provide(zkConfigLayer));
+      const executable = contractExecutable.pipe(ContractExecutable.provide(layer));
 
       it('should require no further context', () => {
         expect(executable).type.toBe<
-          ContractExecutable.ContractExecutable<MockCounterContract, ContractExecutable.ContractExecutionError, never>
+          ContractExecutable.ContractExecutable<
+            MockCounterContract,
+            any,
+            ContractExecutable.ContractExecutionError,
+            never
+          >
         >();
       });
     });
 
     describe('with partially resolved layer', () => {
-      // The layer requires `StringDep`. When provided, to a ContractExecutable, it (and any Effect's its functions
-      // return), should require it.
-      const zkConfigLayer = Layer.effect(
-        ZKConfig.ZKConfig,
-        Effect.sync(() => ({})) as unknown as Effect.Effect<ZKConfig.ZKConfig.Service, never, StringDep>
+      const layer = Layer.mergeAll(
+        Layer.effect(
+          ZKConfiguration.ZKConfiguration,
+          Effect.sync(() => ({})) as unknown as Effect.Effect<ZKConfiguration.ZKConfiguration.Service, never, StringDep>
+        ),
+        Layer.effect(
+          KeyConfiguration.KeyConfiguration,
+          Effect.sync(() => ({})) as Effect.Effect<KeyConfiguration.KeyConfiguration.Service>
+        )
       );
-      const executable = contractExecutable.pipe(ContractExecutable.provide(zkConfigLayer));
+      const executable = contractExecutable.pipe(ContractExecutable.provide(layer));
 
       it('should require additional context from the layer', () => {
         expect(executable).type.toBe<
           ContractExecutable.ContractExecutable<
             MockCounterContract,
+            any,
             ContractExecutable.ContractExecutionError,
             StringDep
           >
         >();
         expect(executable.initialize({})).type.toBe<
           Effect.Effect<
-            ContractExecutable.ContractExecutable.Result<ContractDeploy, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
+            ContractExecutable.ContractExecutable.Result<ContractDeploy, any>,
             ContractExecutable.ContractExecutionError,
             StringDep
           >

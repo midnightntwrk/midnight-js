@@ -23,18 +23,18 @@ import {
 } from '@midnight-ntwrk/ledger';
 import {
   constructorContext,
-  CoinPublicKey,
   ContractState,
   NetworkId as RuntimeNetworkId,
   EncodedZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
 import { CompiledContract } from './CompiledContract';
 import { Contract, getImpureCircuitIds } from './Contract';
-import { ZKConfig, ZKConfigReadError } from './ZKConfig';
+import { ZKConfiguration, ZKConfigurationReadError } from './ZKConfiguration';
+import { KeyConfiguration } from './KeyConfiguration';
 import * as CompactContextInternal from './internal/compactContext';
 
 export interface ContractExecutable<in out C extends Contract<PS>, PS, out E = never, out R = never> extends Pipeable {
-  readonly compiledContract: CompiledContract<C>;
+  readonly compiledContract: CompiledContract<C, PS>;
 
   initialize(
     privateState: PS,
@@ -46,7 +46,7 @@ export declare namespace ContractExecutable {
   /**
    * The services required as context for executing contracts.
    */
-  export type Context = ZKConfig;
+  export type Context = ZKConfiguration | KeyConfiguration;
 
   export type Result<T, PS> = {
     readonly data: T;
@@ -98,12 +98,12 @@ export class ContractConfigurationError extends Data.TaggedError('ContractConfig
  *`
  * @category errors
  */
-export type ContractExecutionError = ContractRuntimeError | ContractConfigurationError | ZKConfigReadError;
+export type ContractExecutionError = ContractRuntimeError | ContractConfigurationError | ZKConfigurationReadError;
 
 export const make: <C extends Contract<PS>, PS>(
-  compiledContract: CompiledContract<C, never>
+  compiledContract: CompiledContract<C, PS, never>
 ) => ContractExecutable<C, PS, ContractExecutionError, ContractExecutable.Context> = <C extends Contract<PS>, PS>(
-  compiledContract: CompiledContract<C, never>
+  compiledContract: CompiledContract<C, PS, never>
 ) => new ContractExecutableImpl<C, PS, ContractExecutionError, ContractExecutable.Context>(compiledContract);
 
 /**
@@ -135,10 +135,10 @@ export const provide: {
 type Transform<E, R> = <A>(effect: Effect.Effect<A, any, any>) => Effect.Effect<A, E, R>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 class ContractExecutableImpl<C extends Contract<PS>, PS, E, R> implements ContractExecutable<C, PS, E, R> {
-  compiledContract: CompiledContract<C>;
+  compiledContract: CompiledContract<C, PS>;
   transform: Transform<E, R>;
 
-  constructor(compiledContract: CompiledContract<C, never>, transform: Transform<E, R> = identity) {
+  constructor(compiledContract: CompiledContract<C, PS, never>, transform: Transform<E, R> = identity) {
     this.compiledContract = compiledContract;
     this.transform = transform;
   }
@@ -149,20 +149,21 @@ class ContractExecutableImpl<C extends Contract<PS>, PS, E, R> implements Contra
   }
 
   initialize(
-    privateState: Contract.PrivateState<C>,
+    privateState: PS,
     ...args: Contract.InitializeParameters<C>
   ): Effect.Effect<ContractExecutable.Result<ContractDeploy, PS>, E, R> {
     return Effect.all({
-      zkConfigReader: ZKConfig.pipe(Effect.andThen((zkConfig) => zkConfig.createReader<C>(this.compiledContract))),
+      zkConfigReader: ZKConfiguration.pipe(
+        Effect.andThen((zkConfig) => zkConfig.createReader<C, PS>(this.compiledContract))
+      ),
+      keyConfig: KeyConfiguration,
       contract: this.createContract()
     }).pipe(
-      Effect.flatMap(({ zkConfigReader, contract }) =>
+      Effect.flatMap(({ zkConfigReader, keyConfig, contract }) =>
         Effect.try({
           try: () => {
-            // TODO: Inject this, or pass it in?
-            const cpk: CoinPublicKey = 'coin-public-key';
             const { currentContractState, currentPrivateState, currentZswapLocalState } = contract.initialState(
-              constructorContext(privateState, cpk),
+              constructorContext(privateState, keyConfig.coinPublicKey()),
               ...args
             );
             return {

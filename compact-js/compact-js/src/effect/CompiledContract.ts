@@ -23,16 +23,17 @@ import * as CompactContextInternal from './internal/compactContext';
 export const TypeId = Symbol.for('@midnight-ntwrk/compact-js/CompiledContract');
 export type TypeId = typeof TypeId;
 
-export interface CompiledContract<in out C extends Contract.Any, out R = never>
-  extends CompiledContract.Variance<C, R>,
+export interface CompiledContract<in out C extends Contract<PS>, in out PS, out R = never>
+  extends CompiledContract.Variance<C, PS, R>,
     Pipeable {
   [CompactContextInternal.CompactContextId]: Partial<CompactContextInternal.Context<C>>;
 }
 
 export declare namespace CompiledContract {
-  export type Variance<in out C, out R> = {
+  export type Variance<in out C, in out PS, out R> = {
     readonly [TypeId]: {
       readonly _C: Types.Invariant<C>;
+      readonly _PS: Types.Invariant<PS>;
       readonly _R: Types.Covariant<R>;
     };
   };
@@ -43,6 +44,7 @@ export declare namespace CompiledContract {
 const proto = {
   [TypeId]: {
     _C: (_: unknown) => _,
+    _PS: (_: unknown) => _,
     _R: (_: never) => _
   },
   pipe() {
@@ -50,14 +52,14 @@ const proto = {
   }
 };
 
-export const make: <C extends Contract.Any, R = CompiledContract.Context<C>>(
+export const make: <C extends Contract<PS>, PS = Contract.PrivateState<C>, R = CompiledContract.Context<C>>(
   tag: string,
   ctor: Types.Ctor<C>
-) => CompiledContract<C, R> = <C extends Contract.Any, R = CompiledContract.Context<C>>(
+) => CompiledContract<C, PS, R> = <C extends Contract<PS>, PS, R = CompiledContract.Context<C>>(
   tag: string,
   ctor: Types.Ctor<C>
 ) => {
-  const self = Object.create(proto) as CompiledContract<C, R>;
+  const self = Object.create(proto) as CompiledContract<C, PS, R>;
   self[CompactContextInternal.CompactContextId] = { tag, ctor };
   return self;
 };
@@ -66,17 +68,17 @@ export const make: <C extends Contract.Any, R = CompiledContract.Context<C>>(
  * @category combinators
  */
 export const withWitnesses: {
-  <C extends Contract.Any, R>(
+  <C extends Contract<PS>, PS, R>(
     witnesses: R extends CompactContext.Witnesses<C, infer W> ? W : never
-  ): (self: CompiledContract<C, R>) => CompiledContract<C, Exclude<R, CompactContext.Witnesses<C>>>;
-  <C extends Contract.Any, R>(
-    self: CompiledContract<C, R>,
+  ): (self: CompiledContract<C, PS, R>) => CompiledContract<C, PS, Exclude<R, CompactContext.Witnesses<C>>>;
+  <C extends Contract<PS>, PS, R>(
+    self: CompiledContract<C, PS, R>,
     witnesses: R extends CompactContext.Witnesses<C, infer W> ? W : never
-  ): CompiledContract<C, Exclude<R, CompactContext.Witnesses<C>>>;
+  ): CompiledContract<C, PS, Exclude<R, CompactContext.Witnesses<C>>>;
 } = dual(
   2,
-  <C extends Contract.Any, R>(
-    self: CompiledContract<C, R>,
+  <C extends Contract<PS>, PS, R>(
+    self: CompiledContract<C, PS, R>,
     witnesses: R extends CompactContext.Witnesses<C, infer W> ? W : never
   ) => {
     return {
@@ -93,17 +95,17 @@ export const withWitnesses: {
  * @category combinators
  */
 export const withZKConfigFileAssets: {
-  <C extends Contract.Any, R>(
+  <C extends Contract<PS>, PS, R>(
     fileAssetsPath: R extends CompactContext.ZKConfigAssetsPath ? string : never
-  ): (self: CompiledContract<C, R>) => CompiledContract<C, Exclude<R, CompactContext.ZKConfigAssetsPath>>;
-  <C extends Contract.Any, R>(
-    self: CompiledContract<C, R>,
+  ): (self: CompiledContract<C, PS, R>) => CompiledContract<C, PS, Exclude<R, CompactContext.ZKConfigAssetsPath>>;
+  <C extends Contract<PS>, PS, R>(
+    self: CompiledContract<C, PS, R>,
     fileAssetsPath: R extends CompactContext.ZKConfigAssetsPath ? string : never
-  ): CompiledContract<C, Exclude<R, CompactContext.ZKConfigAssetsPath>>;
+  ): CompiledContract<C, PS, Exclude<R, CompactContext.ZKConfigAssetsPath>>;
 } = dual(
   2,
-  <C extends Contract.Any, R>(
-    self: CompiledContract<C, R>,
+  <C extends Contract<PS>, PS, R>(
+    self: CompiledContract<C, PS, R>,
     fileAssetsPath: R extends CompactContext.ZKConfigAssetsPath ? string : never
   ) => {
     return {

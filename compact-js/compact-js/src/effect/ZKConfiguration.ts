@@ -18,36 +18,39 @@ import type { CompiledContract } from './CompiledContract';
 import * as Contract from './Contract';
 
 /**
- * Provides read and write utilities for the ZK assets of a compiled Compact contract.
+ * Provides utilities for reading the ZK assets of a compiled Compact contract.
  *
  * @category services
  */
-export class ZKConfig extends Context.Tag('@midnight-ntwrk/compact-js/ZKConfig')<ZKConfig, ZKConfig.Service>() {}
+export class ZKConfiguration extends Context.Tag('@midnight-ntwrk/compact-js/ZKConfiguration')<
+  ZKConfiguration,
+  ZKConfiguration.Service
+>() {}
 
 /**
  * Describes a type of ZK asset.
  */
-export type ZKConfigAssetType = 'verifier-key' | 'ZKIR' | 'prover-key';
+export type AssetType = 'verifier-key' | 'ZKIR' | 'prover-key';
 
 /**
  * An error occurred while reading a ZK configuration asset for a circuit for a compiled Compact contract.
  *
  * @category errors
  */
-export class ZKConfigReadError extends Data.TaggedError('ZKConfigReadError')<{
+export class ZKConfigurationReadError extends Data.TaggedError('ZKConfigurationReadError')<{
   readonly message: string;
   readonly cause?: unknown;
   readonly contractTag: string;
   readonly impureCircuitId: Contract.ImpureCircuitId;
-  readonly assetType: ZKConfigAssetType;
+  readonly assetType: AssetType;
 }> {
   static make: <C extends Contract.Contract.Any>(
     contractTag: string,
     impureCircuitId: Contract.ImpureCircuitId<C>,
-    assetType: ZKConfigAssetType,
+    assetType: AssetType,
     cause?: unknown
-  ) => ZKConfigReadError = (contractTag, impureCircuitId, assetType, cause?: unknown) =>
-    new ZKConfigReadError({
+  ) => ZKConfigurationReadError = (contractTag, impureCircuitId, assetType, cause?: unknown) =>
+    new ZKConfigurationReadError({
       contractTag,
       impureCircuitId,
       assetType,
@@ -56,20 +59,20 @@ export class ZKConfigReadError extends Data.TaggedError('ZKConfigReadError')<{
     });
 }
 
-export declare namespace ZKConfig {
+export declare namespace ZKConfiguration {
   export interface Service {
-    readonly createReader: <C extends Contract.Contract.Any>(
-      compiledContract: CompiledContract<C, never>
-    ) => Effect.Effect<ZKConfig.Reader<C>>;
+    readonly createReader: <C extends Contract.Contract<PS>, PS>(
+      compiledContract: CompiledContract<C, PS, never>
+    ) => Effect.Effect<ZKConfiguration.Reader<C, PS>>;
   }
 
-  export interface Reader<C extends Contract.Contract.Any> {
+  export interface Reader<C extends Contract.Contract<PS>, PS> {
     getVerifierKey(
       impureCircuitId: Contract.ImpureCircuitId<C>
-    ): Effect.Effect<Contract.VerifierKey, ZKConfigReadError>;
+    ): Effect.Effect<Contract.VerifierKey, ZKConfigurationReadError>;
 
     getVerifierKeys(
       impureCircuitIds: Contract.ImpureCircuitId<C>[]
-    ): Effect.Effect<[Contract.ImpureCircuitId<C>, Contract.VerifierKey][], ZKConfigReadError>;
+    ): Effect.Effect<[Contract.ImpureCircuitId<C>, Contract.VerifierKey][], ZKConfigurationReadError>;
   }
 }

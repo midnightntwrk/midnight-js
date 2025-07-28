@@ -15,7 +15,7 @@
 
 import { Effect, Layer } from 'effect';
 import { describe, it, expect } from '@effect/vitest';
-import { CompiledContract, ContractExecutable, ZKConfig, Contract } from '@midnight-ntwrk/compact-js/effect';
+import { CompiledContract, ContractExecutable, ZKConfiguration, Contract } from '@midnight-ntwrk/compact-js/effect';
 import { Contract as MockCounterContract } from '../MockCounter';
 // import { Contract as MockCounterContract } from '../../../../packages/testing/src/e2e/contract/managed/counter/contract/index.cjs';
 // import { Contract as MockCounterContract } from '../../../../packages/testing/src/e2e/contract/managed/simple/contract/index.cjs';
@@ -43,9 +43,9 @@ describe('CompiledContract', () => {
     const c1 = contract.pipe(
       ContractExecutable.provide(
         Layer.effect(
-          ZKConfig.ZKConfig,
+          ZKConfiguration.ZKConfiguration,
           Effect.sync(() =>
-            ZKConfig.ZKConfig.of({
+            ZKConfiguration.ZKConfiguration.of({
               createReader: (c) =>
                 Effect.sync(() => ({
                   getVerifierKey: (id) => Effect.sync(() => Contract.VerifierKey(new Uint8Array())),

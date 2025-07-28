@@ -17,4 +17,6 @@ export * as CompactContext from './CompactContext';
 export * as CompiledContract from './CompiledContract';
 export * as Contract from './Contract';
 export * as ContractExecutable from './ContractExecutable';
-export * as ZKConfig from './ZKConfig';
+export * as KeyConfiguration from './KeyConfiguration';
+export * as ZKConfiguration from './ZKConfiguration';
+export * as CoinPublicKey from './CoinPublicKey';

@@ -16,7 +16,7 @@ export interface Context<C extends Contract.Any>
 }
 
 /** @internal */
-export const makeContractInstance: <C extends Contract.Any>(context: Partial<Context<C>>) => Effect.Effect<C> = (
+export const makeContractInstance: <C extends Contract.Any>(context: Partial<Context<C>>) => Effect.Effect<C, Error> = (
   context
 ) =>
   Effect.sync(() => {
