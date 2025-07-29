@@ -13,11 +13,18 @@
  * limitations under the License.
  */
 
-export * as CompactContext from './CompactContext';
-export * as CompiledContract from './CompiledContract';
-export * as Contract from './Contract';
-export * as ContractExecutable from './ContractExecutable';
-export * as KeyConfiguration from './KeyConfiguration';
-export * as ZKConfiguration from './ZKConfiguration';
-export * as CoinPublicKey from './CoinPublicKey';
-export * as SigningKey from './SigningKey';
+import { Brand } from 'effect';
+import { SigningKey as SigningKey_ } from '@midnight-ntwrk/compact-runtime';
+
+/**
+ * A public BIP-340 signing key, with a 3-byte version prefix.
+ *
+ * @remarks
+ * A signing key is used to create a Contract Maintenance Authority (CMA) when initializing a new contract.
+ * It is used to create a verifying key that is included in the contract deployment data that will
+ * eventually be stored on the Midnight network.
+ *
+ * @category keys
+ */
+export type SigningKey = Brand.Branded<SigningKey_, 'SigningKey'>;
+export const SigningKey = Brand.nominal<SigningKey>();

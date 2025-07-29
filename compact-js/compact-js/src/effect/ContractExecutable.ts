@@ -27,7 +27,6 @@ import {
   ContractState,
   NetworkId as RuntimeNetworkId,
   EncodedZswapLocalState,
-  SigningKey,
   sampleSigningKey,
   signatureVerifyingKey
 } from '@midnight-ntwrk/compact-runtime';
@@ -37,6 +36,7 @@ import { ZKConfiguration, ZKConfigurationReadError } from './ZKConfiguration';
 import { KeyConfiguration } from './KeyConfiguration';
 import * as CoinPublicKey from './CoinPublicKey';
 import * as CompactContextInternal from './internal/compactContext';
+import * as SigningKey from './SigningKey';
 
 export interface ContractExecutable<in out C extends Contract<PS>, PS, out E = never, out R = never> extends Pipeable {
   readonly compiledContract: CompiledContract<C, PS>;
@@ -66,7 +66,7 @@ export declare namespace ContractExecutable {
      * @remarks
      * This signing key should be re-used in all future maintenance activities for the contract.
      */
-    readonly signingKey: SigningKey;
+    readonly signingKey: SigningKey.SigningKey;
   };
 
   export type Result<T, PS> = {
@@ -107,11 +107,13 @@ export class ContractRuntimeError extends Data.TaggedError('ContractRuntimeError
 export class ContractConfigurationError extends Data.TaggedError('ContractConfigurationError')<{
   readonly message: string;
   readonly contractState: LedgerContractState;
+  readonly cause?: unknown;
 }> {
-  static make: (message: string, contractState: LedgerContractState) => ContractConfigurationError = (
+  static make: (message: string, contractState: LedgerContractState, cause?: unknown) => ContractConfigurationError = (
     message,
-    contractState
-  ) => new ContractConfigurationError({ message, contractState });
+    contractState,
+    cause
+  ) => new ContractConfigurationError({ message, contractState, cause });
 }
 
 /**
@@ -184,7 +186,7 @@ class ContractExecutableImpl<C extends Contract<PS>, PS, E, R> implements Contra
         Effect.try({
           try: () => {
             const { currentContractState, currentPrivateState, currentZswapLocalState } = contract.initialState(
-              constructorContext(privateState, CoinPublicKey.asHex(keyConfig.coinPublicKey())),
+              constructorContext(privateState, CoinPublicKey.asHex(keyConfig.coinPublicKey)),
               ...args
             );
             return {
@@ -201,23 +203,31 @@ class ContractExecutableImpl<C extends Contract<PS>, PS, E, R> implements Contra
               const verifierKeys = yield* zkConfigReader.getVerifierKeys(getImpureCircuitIds(contract));
 
               for (const [impureCircuitId, verifierKey] of verifierKeys) {
-                const op = contractState.operation(impureCircuitId);
+                const operation = contractState.operation(impureCircuitId);
 
-                if (!op)
+                if (!operation) {
                   return yield* ContractConfigurationError.make(
-                    `Circuit '${impureCircuitId}' is undefined`,
+                    `Circuit '${impureCircuitId}' is undefined for the given contract state`,
                     contractState
                   );
+                }
 
-                op.verifierKey = verifierKey;
-
-                contractState.setOperation(impureCircuitId, op);
+                try {
+                  operation.verifierKey = verifierKey;
+                  contractState.setOperation(impureCircuitId, operation);
+                } catch (err: unknown) {
+                  return yield* ContractConfigurationError.make(
+                    `Failed to configure verifier key for circuit '${impureCircuitId}' for the given contract state`,
+                    contractState,
+                    err
+                  );
+                }
               }
 
               // Add the Contract Maintenance Authority (CMA).
-              const signingKey = Option.match(keyConfig.signingKey(), {
+              const signingKey = Option.match(keyConfig.getSigningKey(), {
                 onSome: identity,
-                onNone: () => sampleSigningKey()
+                onNone: () => SigningKey.SigningKey(sampleSigningKey())
               });
               contractState.maintenanceAuthority = new ContractMaintenanceAuthority(
                 [signatureVerifyingKey(signingKey)],

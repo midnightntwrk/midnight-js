@@ -13,11 +13,18 @@
  * limitations under the License.
  */
 
-export * as CompactContext from './CompactContext';
-export * as CompiledContract from './CompiledContract';
-export * as Contract from './Contract';
-export * as ContractExecutable from './ContractExecutable';
-export * as KeyConfiguration from './KeyConfiguration';
-export * as ZKConfiguration from './ZKConfiguration';
-export * as CoinPublicKey from './CoinPublicKey';
-export * as SigningKey from './SigningKey';
+import { Effect, Layer } from 'effect';
+import { ZKConfiguration, Contract } from '@midnight-ntwrk/compact-js/effect';
+
+export const layer = Layer.effect(
+  ZKConfiguration.ZKConfiguration,
+  Effect.sync(() =>
+    ZKConfiguration.ZKConfiguration.of({
+      createReader: (_) =>
+        Effect.sync(() => ({
+          getVerifierKey: (_) => Effect.sync(() => Contract.VerifierKey(new Uint8Array())),
+          getVerifierKeys: (ids) => Effect.sync(() => [[ids[0], Contract.VerifierKey(new Uint8Array())]])
+        }))
+    })
+  )
+);

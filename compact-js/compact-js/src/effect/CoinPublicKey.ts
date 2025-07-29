@@ -15,27 +15,38 @@
 
 import { Brand } from 'effect';
 
+/**
+ * @category keys
+ */
 export type CoinPublicKey = CoinPublicKey.Bech32m | CoinPublicKey.Hex;
 
 export declare namespace CoinPublicKey {
   /**
    * A user public key capable of receiving Zswap coins, formatted as a hex-encoded 35-byte string.
+   *
+   * @category keys
    */
   export type Hex = Brand.Branded<string, 'CoinPublicKeyHex'>;
 
   /**
    * A user public key capable of receiving Zswap coins, formatted as a string using the Bech32m encoding scheme.
+   *
+   * @category keys
    */
   export type Bech32m = Brand.Branded<string, 'CoinPublicKeyBech32m'>;
 }
 
 /**
  * A user public key capable of receiving Zswap coins, formatted as a hex-encoded 35-byte string.
+ *
+ * @category keys
  */
 export const Hex = Brand.nominal<CoinPublicKey.Hex>();
 
 /**
  * A user public key capable of receiving Zswap coins, formatted as a string using the Bech32m encoding scheme.
+ *
+ * @category keys
  */
 export const Bech32m = Brand.nominal<CoinPublicKey.Bech32m>();
 

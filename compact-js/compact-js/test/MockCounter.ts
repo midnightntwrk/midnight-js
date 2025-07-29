@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/unbound-method */
 
 import { vi } from '@effect/vitest';
 import * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
@@ -46,7 +46,11 @@ export class Contract<T, W extends Witnesses<T> = Witnesses<T>> {
       decrement: vi.fn(),
       reset: vi.fn()
     };
-    this.impureCircuits = this.circuits;
+    this.impureCircuits = {
+      increment: this.circuits.increment,
+      decrement: this.circuits.decrement,
+      reset: this.circuits.reset
+    };
   }
 
   witnesses: W;
@@ -59,6 +63,9 @@ export class Contract<T, W extends Witnesses<T> = Witnesses<T>> {
 
     stateValue = stateValue.arrayPush(__compactRuntime.StateValue.newNull());
     state.data = stateValue;
+    state.setOperation('increment', new __compactRuntime.ContractOperation());
+    state.setOperation('decrement', new __compactRuntime.ContractOperation());
+    state.setOperation('reset', new __compactRuntime.ContractOperation());
 
     return {
       currentContractState: state,

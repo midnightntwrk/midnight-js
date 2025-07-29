@@ -14,8 +14,8 @@
  */
 
 import { Effect, Context, Layer, Option, Config, Schema } from 'effect';
-import { CoinPublicKey as CoinPubliicKey_, SigningKey } from '@midnight-ntwrk/compact-runtime';
 import * as CoinPublicKey from './CoinPublicKey';
+import * as SigningKey from './SigningKey';
 
 /**
  * Provides utilities for accessing keys.
@@ -38,28 +38,29 @@ export const KeyConfig = Config.all([
       Schema.String.pipe(Schema.fromBrand(CoinPublicKey.Bech32m))
     )
   ),
-  Config.option(Schema.Config('signing', Schema.String))
+  Config.option(Schema.Config('signing', Schema.String.pipe(Schema.fromBrand(SigningKey.SigningKey))))
 ]).pipe(Config.nested('keys'));
 
 export declare namespace KeyConfiguration {
   export interface Service {
     /**
-     * Retrieves the current user's Zswap public key.
+     * Gets the current user's Zswap public key.
+     *
+     * @category keys
      */
-    coinPublicKey(): CoinPublicKey.CoinPublicKey;
+    readonly coinPublicKey: CoinPublicKey.CoinPublicKey;
 
     /**
-     * Retrieves a signing key.
+     * Gets a signing key.
      *
      * @remarks
-     * A signing key is used to create a Contract Maintenance Authority (CMA) when initializing a new contract.
-     * It is used to create a verifying key that is included in the contract deployment data that will
-     * eventually be stored on the Midnight network.
+     * When used in creating Contract Maintenance Authority (CMA) instances, if `Option.None` is returned, then
+     * a new singing key is sampled and used for the CMA instead. Returning the same signing key is useful when
+     * that key is to be used to maintain multiple contracts.
      *
-     * If `Option.None` is returned, a new singing key is sampled and used for the CMA instead. Returning the same
-     * signing key is useful when that key is to be used to maintain different contracts.
+     * @category keys
      */
-    signingKey(): Option.Option<SigningKey>;
+    getSigningKey(): Option.Option<SigningKey.SigningKey>;
   }
 }
 
@@ -69,14 +70,14 @@ export declare namespace KeyConfiguration {
  *
  * @category layers
  */
-export const live = Layer.effect(
+export const layer = Layer.effect(
   KeyConfiguration,
   Effect.gen(function* () {
     const [coinPublic, signing] = yield* KeyConfig;
 
     return KeyConfiguration.of({
-      coinPublicKey: () => coinPublic,
-      signingKey: () => signing
+      coinPublicKey: coinPublic,
+      getSigningKey: () => signing
     });
   })
 );
