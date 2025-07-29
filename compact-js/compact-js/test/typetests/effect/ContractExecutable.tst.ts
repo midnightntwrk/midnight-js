@@ -100,7 +100,7 @@ describe('ContractExecutable', () => {
         >();
         expect(executable.initialize({})).type.toBe<
           Effect.Effect<
-            ContractExecutable.ContractExecutable.Result<ContractDeploy, any>,
+            ContractExecutable.ContractExecutable.Result<ContractExecutable.ContractExecutable.DeployState, any>,
             ContractExecutable.ContractExecutionError,
             StringDep
           >

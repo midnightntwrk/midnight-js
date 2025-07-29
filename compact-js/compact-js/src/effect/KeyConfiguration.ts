@@ -44,7 +44,7 @@ export const KeyConfig = Config.all([
 export declare namespace KeyConfiguration {
   export interface Service {
     /**
-     * Retrieves the current user's ZSwap public key.
+     * Retrieves the current user's Zswap public key.
      */
     coinPublicKey(): CoinPublicKey.CoinPublicKey;
 

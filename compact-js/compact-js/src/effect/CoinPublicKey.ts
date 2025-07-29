@@ -18,29 +18,44 @@ import { Brand } from 'effect';
 export type CoinPublicKey = CoinPublicKey.Bech32m | CoinPublicKey.Hex;
 
 export declare namespace CoinPublicKey {
+  /**
+   * A user public key capable of receiving Zswap coins, formatted as a hex-encoded 35-byte string.
+   */
   export type Hex = Brand.Branded<string, 'CoinPublicKeyHex'>;
 
+  /**
+   * A user public key capable of receiving Zswap coins, formatted as a string using the Bech32m encoding scheme.
+   */
   export type Bech32m = Brand.Branded<string, 'CoinPublicKeyBech32m'>;
 }
 
+/**
+ * A user public key capable of receiving Zswap coins, formatted as a hex-encoded 35-byte string.
+ */
 export const Hex = Brand.nominal<CoinPublicKey.Hex>();
 
+/**
+ * A user public key capable of receiving Zswap coins, formatted as a string using the Bech32m encoding scheme.
+ */
 export const Bech32m = Brand.nominal<CoinPublicKey.Bech32m>();
 
 export const make: (value: string) => CoinPublicKey = (value) => {
+  // TODO: if value is hex use asHex, otherwise use asBech32m.
   return asHex(value);
 };
 
-export const asHex: (self: CoinPublicKey.Bech32m | string) => CoinPublicKey.Hex = (self) => {
+export const asHex: (self: CoinPublicKey | string) => CoinPublicKey.Hex = (self) => {
+  if (Hex.is(self)) return self;
   if (Bech32m.is(self)) {
-    return /* convert */ Hex(self);
+    return /* TODO: convert */ Hex(self);
   }
   return Hex(self);
 };
 
-export const asBech32m: (self: CoinPublicKey.Hex | string) => CoinPublicKey.Bech32m = (self) => {
+export const asBech32m: (self: CoinPublicKey | string) => CoinPublicKey.Bech32m = (self) => {
+  if (Bech32m.is(self)) return self;
   if (Hex.is(self)) {
-    return /* convert */ Bech32m(self);
+    return /* TODO: convert */ Bech32m(self);
   }
   return Bech32m(self);
 };

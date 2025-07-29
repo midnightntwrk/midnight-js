@@ -13,24 +13,29 @@
  * limitations under the License.
  */
 
-import { Effect, Layer, Data } from 'effect';
+import { Effect, Layer, Data, Option } from 'effect';
 import { dual, identity } from 'effect/Function';
 import { Pipeable, pipeArguments } from 'effect/Pipeable';
 import {
   ContractDeploy,
   ContractState as LedgerContractState,
-  NetworkId as LedgerNetworkId
+  NetworkId as LedgerNetworkId,
+  ContractMaintenanceAuthority
 } from '@midnight-ntwrk/ledger';
 import {
   constructorContext,
   ContractState,
   NetworkId as RuntimeNetworkId,
-  EncodedZswapLocalState
+  EncodedZswapLocalState,
+  SigningKey,
+  sampleSigningKey,
+  signatureVerifyingKey
 } from '@midnight-ntwrk/compact-runtime';
 import { CompiledContract } from './CompiledContract';
 import { Contract, getImpureCircuitIds } from './Contract';
 import { ZKConfiguration, ZKConfigurationReadError } from './ZKConfiguration';
 import { KeyConfiguration } from './KeyConfiguration';
+import * as CoinPublicKey from './CoinPublicKey';
 import * as CompactContextInternal from './internal/compactContext';
 
 export interface ContractExecutable<in out C extends Contract<PS>, PS, out E = never, out R = never> extends Pipeable {
@@ -39,7 +44,7 @@ export interface ContractExecutable<in out C extends Contract<PS>, PS, out E = n
   initialize(
     privateState: PS,
     ...args: Contract.InitializeParameters<C>
-  ): Effect.Effect<ContractExecutable.Result<ContractDeploy, PS>, E, R>;
+  ): Effect.Effect<ContractExecutable.Result<ContractExecutable.DeployState, PS>, E, R>;
 }
 
 export declare namespace ContractExecutable {
@@ -47,6 +52,22 @@ export declare namespace ContractExecutable {
    * The services required as context for executing contracts.
    */
   export type Context = ZKConfiguration | KeyConfiguration;
+
+  export type DeployState = {
+    /**
+     * The initial state of the contract.
+     */
+    readonly contractState: ContractDeploy;
+
+    /**
+     * The signing key that was used to create the Contract Maintenance Authority (CMA) associated
+     * with the deployment.
+     *
+     * @remarks
+     * This signing key should be re-used in all future maintenance activities for the contract.
+     */
+    readonly signingKey: SigningKey;
+  };
 
   export type Result<T, PS> = {
     readonly data: T;
@@ -151,7 +172,7 @@ class ContractExecutableImpl<C extends Contract<PS>, PS, E, R> implements Contra
   initialize(
     privateState: PS,
     ...args: Contract.InitializeParameters<C>
-  ): Effect.Effect<ContractExecutable.Result<ContractDeploy, PS>, E, R> {
+  ): Effect.Effect<ContractExecutable.Result<ContractExecutable.DeployState, PS>, E, R> {
     return Effect.all({
       zkConfigReader: ZKConfiguration.pipe(
         Effect.andThen((zkConfig) => zkConfig.createReader<C, PS>(this.compiledContract))
@@ -163,7 +184,7 @@ class ContractExecutableImpl<C extends Contract<PS>, PS, E, R> implements Contra
         Effect.try({
           try: () => {
             const { currentContractState, currentPrivateState, currentZswapLocalState } = contract.initialState(
-              constructorContext(privateState, keyConfig.coinPublicKey()),
+              constructorContext(privateState, CoinPublicKey.asHex(keyConfig.coinPublicKey())),
               ...args
             );
             return {
@@ -176,6 +197,7 @@ class ContractExecutableImpl<C extends Contract<PS>, PS, E, R> implements Contra
         }).pipe(
           Effect.flatMap(({ contractState, privateState, zswapLocalState }) =>
             Effect.gen(this, function* () {
+              // Add the verifier keys.
               const verifierKeys = yield* zkConfigReader.getVerifierKeys(getImpureCircuitIds(contract));
 
               for (const [impureCircuitId, verifierKey] of verifierKeys) {
@@ -192,8 +214,18 @@ class ContractExecutableImpl<C extends Contract<PS>, PS, E, R> implements Contra
                 contractState.setOperation(impureCircuitId, op);
               }
 
+              // Add the Contract Maintenance Authority (CMA).
+              const signingKey = Option.match(keyConfig.signingKey(), {
+                onSome: identity,
+                onNone: () => sampleSigningKey()
+              });
+              contractState.maintenanceAuthority = new ContractMaintenanceAuthority(
+                [signatureVerifyingKey(signingKey)],
+                1
+              );
+
               return {
-                data: new ContractDeploy(contractState),
+                data: { contractState: new ContractDeploy(contractState), signingKey },
                 privateState,
                 zswapLocalState
               };
