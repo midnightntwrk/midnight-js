@@ -22,6 +22,7 @@ import {
   KeyConfiguration,
   ZKFileConfiguration
 } from '@midnight-ntwrk/compact-js/effect';
+import { sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
 import { resolve } from 'node:path';
 import { CounterContract } from '../contract';
 
@@ -29,6 +30,7 @@ const COUNTER_ASSETS_PATH = resolve(import.meta.dirname, '../contract/managed/co
 
 const VALID_COIN_PUBLIC_KEY = 'd2dc8d175c0ef7d1f7e5b7f32bd9da5fcd4c60fa1b651f1d312986269c2d3c79';
 const INVALID_COIN_PUBLIC_KEY = 'INVALIDd9da5fcd4c601';
+const VALID_SIGNING_KEY = sampleSigningKey();
 
 const testLayer = (configMap: Map<string, string>) =>
   Layer.mergeAll(ZKFileConfiguration.layer, KeyConfiguration.layer).pipe(
@@ -48,7 +50,7 @@ describe('ContractExecutable', () => {
   );
 
   describe('initialize', () => {
-    it.effect.skip('should initialize a new instance', () =>
+    it.effect('should initialize a new instance', () =>
       Effect.gen(function* () {
         const contract = counterContract.pipe(
           ContractExecutable.provide(testLayer(new Map([['KEYS_COIN_PUBLIC', VALID_COIN_PUBLIC_KEY]])))
@@ -57,9 +59,30 @@ describe('ContractExecutable', () => {
         const result = yield* contract.initialize(initialPS);
 
         expect(result.data).toBeDefined();
+        expect(result.data.signingKey).toBeDefined();
         expect(result.data.contractState).toBeDefined();
         expect(result.data.contractState.initialState).toBeDefined();
         expect(result.privateState).toMatchObject(initialPS);
+      })
+    );
+
+    it.effect('should return the given signing key', () =>
+      Effect.gen(function* () {
+        const contract = counterContract.pipe(
+          ContractExecutable.provide(
+            testLayer(
+              new Map([
+                ['KEYS_COIN_PUBLIC', VALID_COIN_PUBLIC_KEY],
+                ['KEYS_SIGNING', VALID_SIGNING_KEY]
+              ])
+            )
+          )
+        );
+        const initialPS = { count: 0 };
+        const result = yield* contract.initialize(initialPS);
+
+        expect(result.data).toBeDefined();
+        expect(result.data.signingKey).toBe(VALID_SIGNING_KEY);
       })
     );
 
@@ -71,6 +94,7 @@ describe('ContractExecutable', () => {
         const error = yield* contract.initialize({ count: 0 }).pipe(Effect.flip);
 
         expect(error).toBeInstanceOf(ContractExecutable.ContractConfigurationError);
+        expect((error as ContractExecutable.ContractConfigurationError).cause).toBeInstanceOf(Error);
       })
     );
   });

@@ -21,3 +21,4 @@ logs
 .states
 .eslintcache
 .rollup.cache
+.DS_Store
