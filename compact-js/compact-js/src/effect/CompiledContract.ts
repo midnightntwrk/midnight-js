@@ -96,23 +96,23 @@ export const withWitnesses: {
  */
 export const withZKConfigFileAssets: {
   <C extends Contract<PS>, PS, R>(
-    fileAssetsPath: R extends CompactContext.ZKConfigAssetsPath ? string : never
+    zkConfigAssetsPath: R extends CompactContext.ZKConfigAssetsPath ? string : never
   ): (self: CompiledContract<C, PS, R>) => CompiledContract<C, PS, Exclude<R, CompactContext.ZKConfigAssetsPath>>;
   <C extends Contract<PS>, PS, R>(
     self: CompiledContract<C, PS, R>,
-    fileAssetsPath: R extends CompactContext.ZKConfigAssetsPath ? string : never
+    zkConfigAssetsPath: R extends CompactContext.ZKConfigAssetsPath ? string : never
   ): CompiledContract<C, PS, Exclude<R, CompactContext.ZKConfigAssetsPath>>;
 } = dual(
   2,
   <C extends Contract<PS>, PS, R>(
     self: CompiledContract<C, PS, R>,
-    fileAssetsPath: R extends CompactContext.ZKConfigAssetsPath ? string : never
+    zkConfigAssetsPath: R extends CompactContext.ZKConfigAssetsPath ? string : never
   ) => {
     return {
       ...self,
       [CompactContextInternal.CompactContextId]: {
         ...self[CompactContextInternal.CompactContextId],
-        fileAssetsPath
+        zkConfigAssetsPath
       }
     };
   }

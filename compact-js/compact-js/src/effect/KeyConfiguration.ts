@@ -54,9 +54,9 @@ export declare namespace KeyConfiguration {
      * Gets a signing key.
      *
      * @remarks
-     * When used in creating Contract Maintenance Authority (CMA) instances, if `Option.None` is returned, then
-     * a new singing key is sampled and used for the CMA instead. Returning the same signing key is useful when
-     * that key is to be used to maintain multiple contracts.
+     * A signing key is required when creating Contract Maintenance Authority (CMA) instances when initializing
+     * new contracts. If `Option.None` is returned, then a new singing key is sampled and used for the CMA
+     * instead. Returning the same signing key is useful when that key is to be used to maintain multiple contracts.
      *
      * @category keys
      */

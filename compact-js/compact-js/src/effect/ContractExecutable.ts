@@ -248,9 +248,7 @@ class ContractExecutableImpl<C extends Contract<PS>, PS, E, R> implements Contra
   }
 
   protected createContract(): Effect.Effect<C, ContractRuntimeError> {
-    return (this.contract ??= CompactContextInternal.makeContractInstance(
-      this.compiledContract[CompactContextInternal.CompactContextId]
-    ).pipe(
+    return (this.contract ??= CompactContextInternal.createContract(this.compiledContract).pipe(
       Effect.mapError((err: unknown) => ContractRuntimeError.make(String(err), err)),
       Effect.cached,
       Effect.runSync

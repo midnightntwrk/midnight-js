@@ -15,42 +15,46 @@
 
 import { ConfigProvider, Effect, Layer } from 'effect';
 import { describe, it, expect } from '@effect/vitest';
-import { CompiledContract, ContractExecutable, KeyConfiguration } from '@midnight-ntwrk/compact-js/effect';
-import { Contract as Contract_ } from '../MockCounter';
-import * as MockZKConfiguration from './MockZKConfiguration';
+import { NodeContext } from '@effect/platform-node';
+import {
+  CompiledContract,
+  ContractExecutable,
+  KeyConfiguration,
+  ZKFileConfiguration
+} from '@midnight-ntwrk/compact-js/effect';
+import { resolve } from 'node:path';
+import { CounterContract } from '../contract';
 
-type CounterPrivateState = {
-  count: number;
-};
-type Counter = Contract_<CounterPrivateState>;
-const Counter = Contract_;
+const COUNTER_ASSETS_PATH = resolve(import.meta.dirname, '../contract/managed/counter');
 
 describe('ContractExecutable', () => {
   const configProvider = ConfigProvider.fromMap(
     new Map([['KEYS_COIN_PUBLIC', 'd2dc8d175c0ef7d1f7e5b7f32bd9da5fcd4c60fa1b651f1d312986269c2d3c79']]),
     { pathDelim: '_' }
   ).pipe(ConfigProvider.constantCase);
-  const layer = Layer.mergeAll(
-    MockZKConfiguration.layer,
-    KeyConfiguration.layer.pipe(Layer.provide(Layer.setConfigProvider(configProvider)))
+  const layer = Layer.mergeAll(ZKFileConfiguration.layer, KeyConfiguration.layer).pipe(
+    Layer.provideMerge(NodeContext.layer),
+    Layer.provide(Layer.setConfigProvider(configProvider))
   );
 
-  const counterContract = CompiledContract.make<Counter>('Counter', Counter)
+  const counterContract = CompiledContract.make<CounterContract>('Counter', CounterContract)
     .pipe(
       CompiledContract.withWitnesses({
         private_increment: ({ privateState }) => [{ count: privateState.count + 1 }, []]
       }),
-      CompiledContract.withZKConfigFileAssets('/Users/hosky/compiled_contracts/counter'),
+      CompiledContract.withZKConfigFileAssets(COUNTER_ASSETS_PATH),
       ContractExecutable.make
     )
     .pipe(ContractExecutable.provide(layer));
 
   describe('initialize', () => {
-    it('should work', () => {
-      const result = counterContract.initialize({ count: 0 }).pipe(Effect.runSync);
+    it.effect('should initialize a new instance', () =>
+      Effect.gen(function* () {
+        const result = yield* counterContract.initialize({ count: 0 });
 
-      expect(result.data).toBeDefined();
-      expect(result.data.contractState).toBeDefined();
-    });
+        expect(result.data).toBeDefined();
+        expect(result.data.contractState).toBeDefined();
+      })
+    );
   });
 });

@@ -1,4 +1,5 @@
 import { Effect, Types } from 'effect';
+import type { CompiledContract } from '../CompiledContract';
 import { Contract } from '../Contract';
 import type * as CompactContext from '../CompactContext';
 
@@ -16,11 +17,18 @@ export interface Context<C extends Contract.Any>
 }
 
 /** @internal */
-export const makeContractInstance: <C extends Contract.Any>(context: Partial<Context<C>>) => Effect.Effect<C, Error> = (
-  context
-) =>
-  Effect.sync(() => {
-    if (!context.ctor) throw new Error('Invalid CompactContext (missing constructor)');
+export const getContractContext: <C extends Contract<PS>, PS>(
+  compiledContract: CompiledContract<C, PS>
+) => Types.Simplify<Required<Context<C>>> = <C extends Contract<PS>, PS>(compiledContract: CompiledContract<C, PS>) =>
+  compiledContract[CompactContextId] as Required<Context<C>>;
 
+/** @internal */
+export const createContract: <C extends Contract<PS>, PS>(
+  compiledContract: CompiledContract<C, PS>
+) => Effect.Effect<C> = <C extends Contract<PS>, PS>(compiledContract: CompiledContract<C, PS>) =>
+  Effect.sync(() => {
+    const context = getContractContext(compiledContract);
+
+    if (!context.ctor) throw new Error('Invalid CompactContext (missing constructor)');
     return new context.ctor(context.witnesses);
   });

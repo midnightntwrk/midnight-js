@@ -15,7 +15,7 @@
 
 import { describe, expect, it } from 'tstyche';
 import { CompiledContract, Contract, CompactContext } from '@midnight-ntwrk/compact-js/effect';
-import { Contract as Contract_ } from '../../MockCounter';
+import { Contract as Contract_ } from '../../contract/managed/counter/contract/index.cjs';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 

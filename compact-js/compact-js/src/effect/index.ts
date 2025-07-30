@@ -19,5 +19,6 @@ export * as Contract from './Contract';
 export * as ContractExecutable from './ContractExecutable';
 export * as KeyConfiguration from './KeyConfiguration';
 export * as ZKConfiguration from './ZKConfiguration';
+export * as ZKFileConfiguration from './ZKFileConfiguration';
 export * as CoinPublicKey from './CoinPublicKey';
 export * as SigningKey from './SigningKey';

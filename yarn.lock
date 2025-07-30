@@ -817,6 +817,73 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@effect/cluster@npm:^0.46.2":
+  version: 0.46.2
+  resolution: "@effect/cluster@npm:0.46.2"
+  peerDependencies:
+    "@effect/platform": ^0.90.0
+    "@effect/rpc": ^0.68.0
+    "@effect/sql": ^0.44.0
+    "@effect/workflow": ^0.8.1
+    effect: ^3.17.3
+  checksum: 10/4f0cb9cab924f8a163571bac3e230dd1b59add631c0a7321681f9fae53793e94878ec04f99a6094c6d1d200301cc85fb9eea02f385c5c2613bf93b10f8307b74
+  languageName: node
+  linkType: hard
+
+"@effect/experimental@npm:^0.54.2":
+  version: 0.54.2
+  resolution: "@effect/experimental@npm:0.54.2"
+  dependencies:
+    uuid: "npm:^11.0.3"
+  peerDependencies:
+    "@effect/platform": ^0.90.0
+    effect: ^3.17.3
+    ioredis: ^5
+    lmdb: ^3
+  peerDependenciesMeta:
+    ioredis:
+      optional: true
+    lmdb:
+      optional: true
+  checksum: 10/d6c87066f2e3a14c00f245d1b9a30372f50efa6e9a3dff5302d4f3c726e3cfd40c90eb3855de9ed7365f8681add153ef2f200c1b26c044b950d9576c65453657
+  languageName: node
+  linkType: hard
+
+"@effect/platform-node-shared@npm:^0.47.0":
+  version: 0.47.0
+  resolution: "@effect/platform-node-shared@npm:0.47.0"
+  dependencies:
+    "@parcel/watcher": "npm:^2.5.1"
+    multipasta: "npm:^0.2.7"
+    ws: "npm:^8.18.2"
+  peerDependencies:
+    "@effect/cluster": ^0.46.0
+    "@effect/platform": ^0.90.0
+    "@effect/rpc": ^0.68.0
+    "@effect/sql": ^0.44.0
+    effect: ^3.17.1
+  checksum: 10/3b2397cb00c21c25cbcc97740897f6aac59ae8da976154d0a7b8a79a76e62808e0e3c7c02bc1f3b3cc5ee42a14205a2de2b3e3725e587bec59f2b76cf0603e27
+  languageName: node
+  linkType: hard
+
+"@effect/platform-node@npm:^0.94.0":
+  version: 0.94.0
+  resolution: "@effect/platform-node@npm:0.94.0"
+  dependencies:
+    "@effect/platform-node-shared": "npm:^0.47.0"
+    mime: "npm:^3.0.0"
+    undici: "npm:^7.10.0"
+    ws: "npm:^8.18.2"
+  peerDependencies:
+    "@effect/cluster": ^0.46.0
+    "@effect/platform": ^0.90.0
+    "@effect/rpc": ^0.68.0
+    "@effect/sql": ^0.44.0
+    effect: ^3.17.1
+  checksum: 10/b63c00ad79a65e1b1db8e24a90150c4df0d0b069f4b0aaccfee0a0cab6e3a3161acfd6dff9abb6419a0637245ab7a77730766f626b62357ecca026dedaee5e9d
+  languageName: node
+  linkType: hard
+
 "@effect/platform@npm:^0.89.0":
   version: 0.89.0
   resolution: "@effect/platform@npm:0.89.0"
@@ -828,6 +895,30 @@ __metadata:
   peerDependencies:
     effect: ^3.17.0
   checksum: 10/3169fe36d18cf1dff937bbc40271b0e76b4db1e6808e4537c87a6048aae545305638d3a0f65981527c36a60fd84aa4c233023f56439e0d100a852828c81eb7dd
+  languageName: node
+  linkType: hard
+
+"@effect/rpc@npm:^0.68.0":
+  version: 0.68.0
+  resolution: "@effect/rpc@npm:0.68.0"
+  peerDependencies:
+    "@effect/platform": ^0.90.0
+    effect: ^3.17.1
+  checksum: 10/25bbe86d9d9359aad0899b2d14b52a647a6e970553b183efb27c872f8c143a154d9b4ee435cdeb3e2503876efcf03c9ee7fc249eb928be43bed9c72d609a8e14
+  languageName: node
+  linkType: hard
+
+"@effect/sql@npm:^0.44.0":
+  version: 0.44.0
+  resolution: "@effect/sql@npm:0.44.0"
+  dependencies:
+    "@opentelemetry/semantic-conventions": "npm:^1.33.0"
+    uuid: "npm:^11.0.3"
+  peerDependencies:
+    "@effect/experimental": ^0.54.0
+    "@effect/platform": ^0.90.0
+    effect: ^3.17.0
+  checksum: 10/6712050815269921a9e890b856aa0bff757689e54c3d317c2005c0eaa48c78d434139f18ce8742552cdb487114746f06fef86a571b62164e6feae5e38dd2bfec
   languageName: node
   linkType: hard
 
@@ -2163,10 +2254,17 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/compact-js@workspace:compact-js/compact-js"
   dependencies:
+    "@effect/cluster": "npm:^0.46.2"
+    "@effect/experimental": "npm:^0.54.2"
     "@effect/platform": "npm:^0.89.0"
+    "@effect/platform-node": "npm:^0.94.0"
+    "@effect/platform-node-shared": "npm:^0.47.0"
+    "@effect/rpc": "npm:^0.68.0"
+    "@effect/sql": "npm:^0.44.0"
     "@effect/vitest": "npm:^0.24.1"
     "@midnight-ntwrk/compact-runtime": "npm:0.9.0-rc.0"
     "@midnight-ntwrk/ledger": "npm:5.0.0-alpha.3"
+    "@midnight-ntwrk/midnight-js-compact": "workspace:*"
     effect: "npm:^3.17.2"
   languageName: unknown
   linkType: soft
@@ -2605,6 +2703,150 @@ __metadata:
   version: 1.36.0
   resolution: "@opentelemetry/semantic-conventions@npm:1.36.0"
   checksum: 10/f1939066c30147348b326840d67cc48e73072b762f2e2af5c3ea894268d64c62fc4e73fad49a72ed4a52a543b2fa0824c969a676e658ae727f75182f52104007
+  languageName: node
+  linkType: hard
+
+"@parcel/watcher-android-arm64@npm:2.5.1":
+  version: 2.5.1
+  resolution: "@parcel/watcher-android-arm64@npm:2.5.1"
+  conditions: os=android & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@parcel/watcher-darwin-arm64@npm:2.5.1":
+  version: 2.5.1
+  resolution: "@parcel/watcher-darwin-arm64@npm:2.5.1"
+  conditions: os=darwin & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@parcel/watcher-darwin-x64@npm:2.5.1":
+  version: 2.5.1
+  resolution: "@parcel/watcher-darwin-x64@npm:2.5.1"
+  conditions: os=darwin & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@parcel/watcher-freebsd-x64@npm:2.5.1":
+  version: 2.5.1
+  resolution: "@parcel/watcher-freebsd-x64@npm:2.5.1"
+  conditions: os=freebsd & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@parcel/watcher-linux-arm-glibc@npm:2.5.1":
+  version: 2.5.1
+  resolution: "@parcel/watcher-linux-arm-glibc@npm:2.5.1"
+  conditions: os=linux & cpu=arm & libc=glibc
+  languageName: node
+  linkType: hard
+
+"@parcel/watcher-linux-arm-musl@npm:2.5.1":
+  version: 2.5.1
+  resolution: "@parcel/watcher-linux-arm-musl@npm:2.5.1"
+  conditions: os=linux & cpu=arm & libc=musl
+  languageName: node
+  linkType: hard
+
+"@parcel/watcher-linux-arm64-glibc@npm:2.5.1":
+  version: 2.5.1
+  resolution: "@parcel/watcher-linux-arm64-glibc@npm:2.5.1"
+  conditions: os=linux & cpu=arm64 & libc=glibc
+  languageName: node
+  linkType: hard
+
+"@parcel/watcher-linux-arm64-musl@npm:2.5.1":
+  version: 2.5.1
+  resolution: "@parcel/watcher-linux-arm64-musl@npm:2.5.1"
+  conditions: os=linux & cpu=arm64 & libc=musl
+  languageName: node
+  linkType: hard
+
+"@parcel/watcher-linux-x64-glibc@npm:2.5.1":
+  version: 2.5.1
+  resolution: "@parcel/watcher-linux-x64-glibc@npm:2.5.1"
+  conditions: os=linux & cpu=x64 & libc=glibc
+  languageName: node
+  linkType: hard
+
+"@parcel/watcher-linux-x64-musl@npm:2.5.1":
+  version: 2.5.1
+  resolution: "@parcel/watcher-linux-x64-musl@npm:2.5.1"
+  conditions: os=linux & cpu=x64 & libc=musl
+  languageName: node
+  linkType: hard
+
+"@parcel/watcher-win32-arm64@npm:2.5.1":
+  version: 2.5.1
+  resolution: "@parcel/watcher-win32-arm64@npm:2.5.1"
+  conditions: os=win32 & cpu=arm64
+  languageName: node
+  linkType: hard
+
+"@parcel/watcher-win32-ia32@npm:2.5.1":
+  version: 2.5.1
+  resolution: "@parcel/watcher-win32-ia32@npm:2.5.1"
+  conditions: os=win32 & cpu=ia32
+  languageName: node
+  linkType: hard
+
+"@parcel/watcher-win32-x64@npm:2.5.1":
+  version: 2.5.1
+  resolution: "@parcel/watcher-win32-x64@npm:2.5.1"
+  conditions: os=win32 & cpu=x64
+  languageName: node
+  linkType: hard
+
+"@parcel/watcher@npm:^2.5.1":
+  version: 2.5.1
+  resolution: "@parcel/watcher@npm:2.5.1"
+  dependencies:
+    "@parcel/watcher-android-arm64": "npm:2.5.1"
+    "@parcel/watcher-darwin-arm64": "npm:2.5.1"
+    "@parcel/watcher-darwin-x64": "npm:2.5.1"
+    "@parcel/watcher-freebsd-x64": "npm:2.5.1"
+    "@parcel/watcher-linux-arm-glibc": "npm:2.5.1"
+    "@parcel/watcher-linux-arm-musl": "npm:2.5.1"
+    "@parcel/watcher-linux-arm64-glibc": "npm:2.5.1"
+    "@parcel/watcher-linux-arm64-musl": "npm:2.5.1"
+    "@parcel/watcher-linux-x64-glibc": "npm:2.5.1"
+    "@parcel/watcher-linux-x64-musl": "npm:2.5.1"
+    "@parcel/watcher-win32-arm64": "npm:2.5.1"
+    "@parcel/watcher-win32-ia32": "npm:2.5.1"
+    "@parcel/watcher-win32-x64": "npm:2.5.1"
+    detect-libc: "npm:^1.0.3"
+    is-glob: "npm:^4.0.3"
+    micromatch: "npm:^4.0.5"
+    node-addon-api: "npm:^7.0.0"
+    node-gyp: "npm:latest"
+  dependenciesMeta:
+    "@parcel/watcher-android-arm64":
+      optional: true
+    "@parcel/watcher-darwin-arm64":
+      optional: true
+    "@parcel/watcher-darwin-x64":
+      optional: true
+    "@parcel/watcher-freebsd-x64":
+      optional: true
+    "@parcel/watcher-linux-arm-glibc":
+      optional: true
+    "@parcel/watcher-linux-arm-musl":
+      optional: true
+    "@parcel/watcher-linux-arm64-glibc":
+      optional: true
+    "@parcel/watcher-linux-arm64-musl":
+      optional: true
+    "@parcel/watcher-linux-x64-glibc":
+      optional: true
+    "@parcel/watcher-linux-x64-musl":
+      optional: true
+    "@parcel/watcher-win32-arm64":
+      optional: true
+    "@parcel/watcher-win32-ia32":
+      optional: true
+    "@parcel/watcher-win32-x64":
+      optional: true
+  checksum: 10/2cc1405166fb3016b34508661902ab08b6dec59513708165c633c84a4696fff64f9b99ea116e747c121215e09619f1decab6f0350d1cb26c9210b98eb28a6a56
   languageName: node
   linkType: hard
 
@@ -5597,6 +5839,15 @@ __metadata:
   version: 6.1.0
   resolution: "detect-indent@npm:6.1.0"
   checksum: 10/ab953a73c72dbd4e8fc68e4ed4bfd92c97eb6c43734af3900add963fd3a9316f3bc0578b018b24198d4c31a358571eff5f0656e81a1f3b9ad5c547d58b2d093d
+  languageName: node
+  linkType: hard
+
+"detect-libc@npm:^1.0.3":
+  version: 1.0.3
+  resolution: "detect-libc@npm:1.0.3"
+  bin:
+    detect-libc: ./bin/detect-libc.js
+  checksum: 10/3849fe7720feb153e4ac9407086956e073f1ce1704488290ef0ca8aab9430a8d48c8a9f8351889e7cdc64e5b1128589501e4fef48f3a4a49ba92cd6d112d0757
   languageName: node
   linkType: hard
 
@@ -8917,6 +9168,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"mime@npm:^3.0.0":
+  version: 3.0.0
+  resolution: "mime@npm:3.0.0"
+  bin:
+    mime: cli.js
+  checksum: 10/b2d31580deb58be89adaa1877cbbf152b7604b980fd7ef8f08b9e96bfedf7d605d9c23a8ba62aa12c8580b910cd7c1d27b7331d0f40f7a14e17d5a0bbec3b49f
+  languageName: node
+  linkType: hard
+
 "mimic-fn@npm:^2.1.0":
   version: 2.1.0
   resolution: "mimic-fn@npm:2.1.0"
@@ -9228,6 +9488,15 @@ __metadata:
     lower-case: "npm:^2.0.2"
     tslib: "npm:^2.0.3"
   checksum: 10/0b2ebc113dfcf737d48dde49cfebf3ad2d82a8c3188e7100c6f375e30eafbef9e9124aadc3becef237b042fd5eb0aad2fd78669c20972d045bbe7fea8ba0be5c
+  languageName: node
+  linkType: hard
+
+"node-addon-api@npm:^7.0.0":
+  version: 7.1.1
+  resolution: "node-addon-api@npm:7.1.1"
+  dependencies:
+    node-gyp: "npm:latest"
+  checksum: 10/ee1e1ed6284a2f8cd1d59ac6175ecbabf8978dcf570345e9a8095a9d0a2b9ced591074ae77f9009287b00c402352b38aa9322a34f2199cdc9f567b842a636b94
   languageName: node
   linkType: hard
 
@@ -12145,6 +12414,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"undici@npm:^7.10.0":
+  version: 7.12.0
+  resolution: "undici@npm:7.12.0"
+  checksum: 10/f33746d2a40e26553039ab22cd6fecd4fb1f0c39b0a98caee731e307d1e7c26a53c57437ca4e4863f892f6a5dd5c048f6e5c952891c444e6b8153f5739c1795e
+  languageName: node
+  linkType: hard
+
 "undici@npm:^7.11.0":
   version: 7.11.0
   resolution: "undici@npm:7.11.0"
@@ -12314,6 +12590,15 @@ __metadata:
   bin:
     uuid: dist/bin/uuid
   checksum: 10/35aa60614811a201ff90f8ca5e9ecb7076a75c3821e17f0f5ff72d44e36c2d35fcbc2ceee9c4ac7317f4cc41895da30e74f3885e30313bee48fda6338f250538
+  languageName: node
+  linkType: hard
+
+"uuid@npm:^11.0.3":
+  version: 11.1.0
+  resolution: "uuid@npm:11.1.0"
+  bin:
+    uuid: dist/esm/bin/uuid
+  checksum: 10/d2da43b49b154d154574891ced66d0c83fc70caaad87e043400cf644423b067542d6f3eb641b7c819224a7cd3b4c2f21906acbedd6ec9c6a05887aa9115a9cf5
   languageName: node
   linkType: hard
 
@@ -12725,7 +13010,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ws@npm:^8.12.0, ws@npm:^8.14.2, ws@npm:^8.17.1, ws@npm:^8.18.0, ws@npm:^8.8.1":
+"ws@npm:^8.12.0, ws@npm:^8.14.2, ws@npm:^8.17.1, ws@npm:^8.18.0, ws@npm:^8.18.2, ws@npm:^8.8.1":
   version: 8.18.3
   resolution: "ws@npm:8.18.3"
   peerDependencies:
