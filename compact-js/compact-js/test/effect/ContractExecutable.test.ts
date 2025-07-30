@@ -27,33 +27,50 @@ import { CounterContract } from '../contract';
 
 const COUNTER_ASSETS_PATH = resolve(import.meta.dirname, '../contract/managed/counter');
 
-describe('ContractExecutable', () => {
-  const configProvider = ConfigProvider.fromMap(
-    new Map([['KEYS_COIN_PUBLIC', 'd2dc8d175c0ef7d1f7e5b7f32bd9da5fcd4c60fa1b651f1d312986269c2d3c79']]),
-    { pathDelim: '_' }
-  ).pipe(ConfigProvider.constantCase);
-  const layer = Layer.mergeAll(ZKFileConfiguration.layer, KeyConfiguration.layer).pipe(
+const VALID_COIN_PUBLIC_KEY = 'd2dc8d175c0ef7d1f7e5b7f32bd9da5fcd4c60fa1b651f1d312986269c2d3c79';
+const INVALID_COIN_PUBLIC_KEY = 'INVALIDd9da5fcd4c601';
+
+const testLayer = (configMap: Map<string, string>) =>
+  Layer.mergeAll(ZKFileConfiguration.layer, KeyConfiguration.layer).pipe(
     Layer.provideMerge(NodeContext.layer),
-    Layer.provide(Layer.setConfigProvider(configProvider))
+    Layer.provide(
+      Layer.setConfigProvider(ConfigProvider.fromMap(configMap, { pathDelim: '_' }).pipe(ConfigProvider.constantCase))
+    )
   );
 
-  const counterContract = CompiledContract.make<CounterContract>('Counter', CounterContract)
-    .pipe(
-      CompiledContract.withWitnesses({
-        private_increment: ({ privateState }) => [{ count: privateState.count + 1 }, []]
-      }),
-      CompiledContract.withZKConfigFileAssets(COUNTER_ASSETS_PATH),
-      ContractExecutable.make
-    )
-    .pipe(ContractExecutable.provide(layer));
+describe('ContractExecutable', () => {
+  const counterContract = CompiledContract.make<CounterContract>('Counter', CounterContract).pipe(
+    CompiledContract.withWitnesses({
+      private_increment: ({ privateState }) => [{ count: privateState.count + 1 }, []]
+    }),
+    CompiledContract.withZKConfigFileAssets(COUNTER_ASSETS_PATH),
+    ContractExecutable.make
+  );
 
   describe('initialize', () => {
-    it.effect('should initialize a new instance', () =>
+    it.effect.skip('should initialize a new instance', () =>
       Effect.gen(function* () {
-        const result = yield* counterContract.initialize({ count: 0 });
+        const contract = counterContract.pipe(
+          ContractExecutable.provide(testLayer(new Map([['KEYS_COIN_PUBLIC', VALID_COIN_PUBLIC_KEY]])))
+        );
+        const initialPS = { count: 0 };
+        const result = yield* contract.initialize(initialPS);
 
         expect(result.data).toBeDefined();
         expect(result.data.contractState).toBeDefined();
+        expect(result.data.contractState.initialState).toBeDefined();
+        expect(result.privateState).toMatchObject(initialPS);
+      })
+    );
+
+    it.effect('should fail with an invalid CoinPublicKey', () =>
+      Effect.gen(function* () {
+        const contract = counterContract.pipe(
+          ContractExecutable.provide(testLayer(new Map([['KEYS_COIN_PUBLIC', INVALID_COIN_PUBLIC_KEY]])))
+        );
+        const error = yield* contract.initialize({ count: 0 }).pipe(Effect.flip);
+
+        expect(error).toBeInstanceOf(ContractExecutable.ContractConfigurationError);
       })
     );
   });

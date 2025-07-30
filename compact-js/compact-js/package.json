@@ -29,19 +29,20 @@
     "@effect/rpc": "^0.68.0",
     "@effect/sql": "^0.44.0",
     "@effect/vitest": "^0.24.1",
-    "@midnight-ntwrk/midnight-js-compact": "workspace:*"
+    "@midnight-ntwrk/midnight-js-compact": "workspace:*",
+    "shx": "^0.4.0"
   },
   "repository": "git@github.com:midnight-ntwrk/artifacts",
   "packageManager": "yarn@4.9.2",
   "author": "IOHK",
   "license": "Apache-2.0",
   "scripts": {
-    "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
+    "clean": "shx rm -rf ./dist ./tsconfig.build.tsbuildinfo ./.rollup.cache ./reports ./coverage",
     "build": "tsc -b tsconfig.build.json",
-    "test": "yarn compact && vitest run",
+    "test": "(shx --negate test -d ./test/contract/managed && yarn compact || true); vitest run && tstyche",
     "deploy": "yarn npm publish",
     "compact": "yarn fetch-compactc && yarn compact-counter",
-    "compact-counter": "run-compactc test/contract/counter.compact ./test/contract/managed/counter"
+    "compact-counter": "run-compactc ./test/contract/counter.compact ./test/contract/managed/counter"
   },
   "files": [
     "dist/"

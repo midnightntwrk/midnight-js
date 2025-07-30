@@ -28,7 +28,8 @@ import {
   NetworkId as RuntimeNetworkId,
   EncodedZswapLocalState,
   sampleSigningKey,
-  signatureVerifyingKey
+  signatureVerifyingKey,
+  CompactError
 } from '@midnight-ntwrk/compact-runtime';
 import { CompiledContract } from './CompiledContract';
 import { Contract, getImpureCircuitIds } from './Contract';
@@ -106,14 +107,15 @@ export class ContractRuntimeError extends Data.TaggedError('ContractRuntimeError
  */
 export class ContractConfigurationError extends Data.TaggedError('ContractConfigurationError')<{
   readonly message: string;
-  readonly contractState: LedgerContractState;
+  readonly contractState?: LedgerContractState | undefined;
   readonly cause?: unknown;
 }> {
-  static make: (message: string, contractState: LedgerContractState, cause?: unknown) => ContractConfigurationError = (
-    message,
-    contractState,
-    cause
-  ) => new ContractConfigurationError({ message, contractState, cause });
+  static make: {
+    (message: string): ContractConfigurationError;
+    (message: string, contractState: LedgerContractState | undefined): ContractConfigurationError;
+    (message: string, contractState: LedgerContractState | undefined, cause: unknown): ContractConfigurationError;
+  } = (message: string, contractState?: LedgerContractState, cause?: unknown) =>
+    new ContractConfigurationError({ message, contractState, cause });
 }
 
 /**
@@ -195,7 +197,11 @@ class ContractExecutableImpl<C extends Contract<PS>, PS, E, R> implements Contra
               zswapLocalState: currentZswapLocalState
             };
           },
-          catch: (err: unknown) => ContractRuntimeError.make(String(err), err)
+          catch: (err: unknown) =>
+            err instanceof CompactError
+              ? ContractRuntimeError.make('Failed to initialize contract', err)
+              : ContractConfigurationError.make(
+                  'Failed to configure constructor context with coin public key', undefined, err) // eslint-disable-line prettier/prettier
         }).pipe(
           Effect.flatMap(({ contractState, privateState, zswapLocalState }) =>
             Effect.gen(this, function* () {
