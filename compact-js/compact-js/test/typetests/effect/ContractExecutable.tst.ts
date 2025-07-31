@@ -99,7 +99,19 @@ describe('ContractExecutable', () => {
         >();
         expect(executable.initialize({})).type.toBe<
           Effect.Effect<
-            ContractExecutable.ContractExecutable.Result<ContractExecutable.ContractExecutable.DeployState, any>,
+            ContractExecutable.ContractExecutable.DeployResult<any>,
+            ContractExecutable.ContractExecutionError,
+            StringDep
+          >
+        >();
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        expect(executable.circuit(Contract.ImpureCircuitId<MockCounterContract>('reset'), {} as any)).type.toBe<
+          Effect.Effect<
+            ContractExecutable.ContractExecutable.CallResult<
+              MockCounterContract,
+              any,
+              Contract.ImpureCircuitId<MockCounterContract>
+            >,
             ContractExecutable.ContractExecutionError,
             StringDep
           >

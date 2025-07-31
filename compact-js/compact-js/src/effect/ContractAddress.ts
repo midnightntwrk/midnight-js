@@ -13,13 +13,11 @@
  * limitations under the License.
  */
 
-export * as CompactContext from './CompactContext';
-export * as CompiledContract from './CompiledContract';
-export * as Contract from './Contract';
-export * as ContractExecutable from './ContractExecutable';
-export * as KeyConfiguration from './KeyConfiguration';
-export * as ZKConfiguration from './ZKConfiguration';
-export * as ZKFileConfiguration from './ZKFileConfiguration';
-export * as CoinPublicKey from './CoinPublicKey';
-export * as SigningKey from './SigningKey';
-export * as ContractAddress from './ContractAddress';
+import { Brand } from 'effect';
+import { ContractAddress as ContractAddress_ } from '@midnight-ntwrk/compact-runtime';
+
+/**
+ * A contract address, as a hex-encoded 35-byte string.
+ */
+export type ContractAddress = Brand.Branded<ContractAddress_, 'ContractAddress'>;
+export const ContractAddress = Brand.nominal<ContractAddress>();

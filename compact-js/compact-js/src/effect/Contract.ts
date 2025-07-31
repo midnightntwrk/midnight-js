@@ -30,13 +30,13 @@ import type {
   CircuitResults
 } from '@midnight-ntwrk/compact-runtime';
 
-export type Witness<PS, L = any> = (context: WitnessContext<L, PS>, ...args: any[]) => [PS, L];
+export type Witness<PS, U = any> = (context: WitnessContext<U, PS>, ...args: any[]) => [PS, U];
 export type Witnesses<PS> = Record<string, Witness<PS>>;
 
-export type Circuit<PS, L = any> = (context: CircuitContext<PS>, ...args: any[]) => CircuitResults<PS, L>;
+export type Circuit<PS, U = any> = (context: CircuitContext<PS>, ...args: any[]) => CircuitResults<PS, U>;
 export type Circuits<PS> = Record<string, Circuit<PS>>;
 
-export type ImpureCircuit<PS, L = any> = (context: CircuitContext<PS>, ...args: any[]) => CircuitResults<PS, L>;
+export type ImpureCircuit<PS, U = any> = (context: CircuitContext<PS>, ...args: any[]) => CircuitResults<PS, U>;
 export type ImpureCircuits<PS> = Record<string, ImpureCircuit<PS>>;
 
 export type VerifierKey = Uint8Array & Brand.Brand<'VerifierKey'>;
@@ -80,6 +80,12 @@ export declare namespace Contract {
     Parameters<C['initialState']> extends [ConstructorContext<any>, ...infer A] ? A : never;
 
   export type ImpureCircuitId<C extends Contract<any>> = keyof C['impureCircuits'] & string;
+
+  export type CircuitParameters<C extends Contract<any>, K extends ImpureCircuitId<C>> =
+    Parameters<C['impureCircuits'][K]> extends [CircuitContext<any>, ...infer A] ? A : never;
+
+  export type CircuitReturnType<C extends Contract<any>, K extends ImpureCircuitId<C>> =
+    ReturnType<C['impureCircuits'][K]> extends CircuitResults<any, infer U> ? U : never;
 }
 
 export const getImpureCircuitIds: <C extends Contract.Any>(contract: C) => ImpureCircuitId<C>[] = (contract) =>

@@ -13,39 +13,56 @@
  * limitations under the License.
  */
 
-import { Effect, Layer, Data, Option } from 'effect';
+import { Effect, Layer, Data, Option, Either } from 'effect';
 import { dual, identity } from 'effect/Function';
 import { Pipeable, pipeArguments } from 'effect/Pipeable';
 import {
   ContractDeploy,
-  ContractState as LedgerContractState,
-  NetworkId as LedgerNetworkId,
-  ContractMaintenanceAuthority
+  QueryContext as LedgerQueryContext,
+  StateValue as LedgerStateValue,
+  Transcript,
+  partitionTranscripts,
+  PreTranscript,
+  LedgerParameters
 } from '@midnight-ntwrk/ledger';
 import {
+  ContractMaintenanceAuthority,
   constructorContext,
   ContractState,
-  NetworkId as RuntimeNetworkId,
-  EncodedZswapLocalState,
   sampleSigningKey,
   signatureVerifyingKey,
-  CompactError
+  CompactError,
+  QueryContext,
+  emptyZswapLocalState,
+  StateValue,
+  Op,
+  AlignedValue,
+  ZswapLocalState,
+  decodeZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
 import { CompiledContract } from './CompiledContract';
-import { Contract, getImpureCircuitIds } from './Contract';
+import * as Contract from './Contract';
 import { ZKConfiguration, ZKConfigurationReadError } from './ZKConfiguration';
 import { KeyConfiguration } from './KeyConfiguration';
 import * as CoinPublicKey from './CoinPublicKey';
 import * as CompactContextInternal from './internal/compactContext';
 import * as SigningKey from './SigningKey';
+import * as ContractAddress from './ContractAddress';
 
-export interface ContractExecutable<in out C extends Contract<PS>, PS, out E = never, out R = never> extends Pipeable {
+export interface ContractExecutable<in out C extends Contract.Contract<PS>, PS, out E = never, out R = never>
+  extends Pipeable {
   readonly compiledContract: CompiledContract<C, PS>;
 
   initialize(
     privateState: PS,
-    ...args: Contract.InitializeParameters<C>
-  ): Effect.Effect<ContractExecutable.Result<ContractExecutable.DeployState, PS>, E, R>;
+    ...args: Contract.Contract.InitializeParameters<C>
+  ): Effect.Effect<ContractExecutable.DeployResult<PS>, E, R>;
+
+  circuit<K extends Contract.ImpureCircuitId<C> = Contract.ImpureCircuitId<C>>(
+    impureCircuitId: K,
+    context: ContractExecutable.CircuitContext<PS>,
+    ...args: Contract.Contract.CircuitParameters<C, K>
+  ): Effect.Effect<ContractExecutable.CallResult<C, PS, K>, E, R>;
 }
 
 export declare namespace ContractExecutable {
@@ -54,11 +71,11 @@ export declare namespace ContractExecutable {
    */
   export type Context = ZKConfiguration | KeyConfiguration;
 
-  export type DeployState = {
+  export type DeployData = {
     /**
      * The initial state of the contract.
      */
-    readonly contractState: ContractDeploy;
+    readonly contractDeploy: ContractDeploy;
 
     /**
      * The signing key that was used to create the Contract Maintenance Authority (CMA) associated
@@ -70,12 +87,44 @@ export declare namespace ContractExecutable {
     readonly signingKey: SigningKey.SigningKey;
   };
 
-  export type Result<T, PS> = {
-    readonly data: T;
+  export type CircuitContext<PS> = {
+    readonly address: ContractAddress.ContractAddress;
+
+    readonly contractState: ContractState;
 
     readonly privateState: PS;
+  };
 
-    readonly zswapLocalState: EncodedZswapLocalState;
+  export type DeployResultPublic = {
+    readonly contractState: ContractState;
+  };
+  export type DeployResultPrivate<PS> = {
+    readonly signingKey: SigningKey.SigningKey;
+    readonly privateState: PS;
+    readonly zswapLocalState: ZswapLocalState;
+  };
+  export type DeployResult<PS> = {
+    readonly public: DeployResultPublic;
+    readonly private: DeployResultPrivate<PS>;
+  };
+
+  export type PartitionedTranscript = [Transcript<AlignedValue> | undefined, Transcript<AlignedValue> | undefined];
+  export type CallResultPublic = {
+    readonly contractState: StateValue;
+    readonly publicTranscript: Op<AlignedValue>[];
+    readonly partitionedTranscript: PartitionedTranscript;
+  };
+  export type CallResultPrivate<C extends Contract.Contract<PS>, PS, K extends Contract.ImpureCircuitId<C>> = {
+    readonly input: AlignedValue;
+    readonly output: AlignedValue;
+    readonly privateTranscriptOutputs: AlignedValue[];
+    readonly result: Contract.Contract.CircuitReturnType<C, K>;
+    readonly privateState: PS;
+    readonly zswapLocalState: ZswapLocalState;
+  };
+  export type CallResult<C extends Contract.Contract<PS>, PS, K extends Contract.ImpureCircuitId<C>> = {
+    readonly public: CallResultPublic;
+    readonly private: CallResultPrivate<C, PS, K>;
   };
 }
 
@@ -107,14 +156,14 @@ export class ContractRuntimeError extends Data.TaggedError('ContractRuntimeError
  */
 export class ContractConfigurationError extends Data.TaggedError('ContractConfigurationError')<{
   readonly message: string;
-  readonly contractState?: LedgerContractState | undefined;
+  readonly contractState?: ContractState | undefined;
   readonly cause?: unknown;
 }> {
   static make: {
     (message: string): ContractConfigurationError;
-    (message: string, contractState: LedgerContractState | undefined): ContractConfigurationError;
-    (message: string, contractState: LedgerContractState | undefined, cause: unknown): ContractConfigurationError;
-  } = (message: string, contractState?: LedgerContractState, cause?: unknown) =>
+    (message: string, contractState: ContractState | undefined): ContractConfigurationError;
+    (message: string, contractState: ContractState | undefined, cause: unknown): ContractConfigurationError;
+  } = (message: string, contractState?: ContractState, cause?: unknown) =>
     new ContractConfigurationError({ message, contractState, cause });
 }
 
@@ -125,9 +174,12 @@ export class ContractConfigurationError extends Data.TaggedError('ContractConfig
  */
 export type ContractExecutionError = ContractRuntimeError | ContractConfigurationError | ZKConfigurationReadError;
 
-export const make: <C extends Contract<PS>, PS>(
+export const make: <C extends Contract.Contract<PS>, PS>(
   compiledContract: CompiledContract<C, PS, never>
-) => ContractExecutable<C, PS, ContractExecutionError, ContractExecutable.Context> = <C extends Contract<PS>, PS>(
+) => ContractExecutable<C, PS, ContractExecutionError, ContractExecutable.Context> = <
+  C extends Contract.Contract<PS>,
+  PS
+>(
   compiledContract: CompiledContract<C, PS, never>
 ) => new ContractExecutableImpl<C, PS, ContractExecutionError, ContractExecutable.Context>(compiledContract);
 
@@ -137,16 +189,16 @@ export const make: <C extends Contract<PS>, PS>(
 export const provide: {
   <LA, LE, LR>(
     layer: Layer.Layer<LA, LE, LR>
-  ): <C extends Contract<PS>, PS, E, R>(
+  ): <C extends Contract.Contract<PS>, PS, E, R>(
     self: ContractExecutable<C, PS, E, R>
   ) => ContractExecutable<C, PS, E | LE, LR | Exclude<R, LA>>;
-  <C extends Contract<PS>, PS, E, R, LA, LE, LR>(
+  <C extends Contract.Contract<PS>, PS, E, R, LA, LE, LR>(
     self: ContractExecutable<C, PS, E, R>,
     layer: Layer.Layer<LA, LE, LR>
   ): ContractExecutable<C, PS, E | LE, LR | Exclude<R, LA>>;
 } = dual(
   2,
-  <C extends Contract<PS>, PS, E, R, LA, LE, LR>(
+  <C extends Contract.Contract<PS>, PS, E, R, LA, LE, LR>(
     self: ContractExecutable<C, PS, E, R>,
     layer: Layer.Layer<LA, LE, LR>
   ) =>
@@ -159,7 +211,9 @@ export const provide: {
 // specified error and context type.
 type Transform<E, R> = <A>(effect: Effect.Effect<A, any, any>) => Effect.Effect<A, E, R>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
-class ContractExecutableImpl<C extends Contract<PS>, PS, E, R> implements ContractExecutable<C, PS, E, R> {
+const DEFAULT_CMA_THRESHOLD = 1;
+
+class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implements ContractExecutable<C, PS, E, R> {
   compiledContract: CompiledContract<C, PS>;
   transform: Transform<E, R>;
 
@@ -169,14 +223,13 @@ class ContractExecutableImpl<C extends Contract<PS>, PS, E, R> implements Contra
   }
 
   pipe() {
-    // eslint-disable-next-line prefer-rest-params
-    return pipeArguments(this, arguments);
+    return pipeArguments(this, arguments); // eslint-disable-line prefer-rest-params
   }
 
   initialize(
     privateState: PS,
-    ...args: Contract.InitializeParameters<C>
-  ): Effect.Effect<ContractExecutable.Result<ContractExecutable.DeployState, PS>, E, R> {
+    ...args: Contract.Contract.InitializeParameters<C>
+  ): Effect.Effect<ContractExecutable.DeployResult<PS>, E, R> {
     return Effect.all({
       zkConfigReader: ZKConfiguration.pipe(
         Effect.andThen((zkConfig) => zkConfig.createReader<C, PS>(this.compiledContract))
@@ -192,9 +245,9 @@ class ContractExecutableImpl<C extends Contract<PS>, PS, E, R> implements Contra
               ...args
             );
             return {
-              contractState: asLedgerContractState(currentContractState),
+              contractState: currentContractState,
               privateState: currentPrivateState,
-              zswapLocalState: currentZswapLocalState
+              zswapLocalState: decodeZswapLocalState(currentZswapLocalState)
             };
           },
           catch: (err: unknown) =>
@@ -206,7 +259,7 @@ class ContractExecutableImpl<C extends Contract<PS>, PS, E, R> implements Contra
           Effect.flatMap(({ contractState, privateState, zswapLocalState }) =>
             Effect.gen(this, function* () {
               // Add the verifier keys.
-              const verifierKeys = yield* zkConfigReader.getVerifierKeys(getImpureCircuitIds(contract));
+              const verifierKeys = yield* zkConfigReader.getVerifierKeys(Contract.getImpureCircuitIds(contract));
 
               for (const [impureCircuitId, verifierKey] of verifierKeys) {
                 const operation = contractState.operation(impureCircuitId);
@@ -237,16 +290,83 @@ class ContractExecutableImpl<C extends Contract<PS>, PS, E, R> implements Contra
               });
               contractState.maintenanceAuthority = new ContractMaintenanceAuthority(
                 [signatureVerifyingKey(signingKey)],
-                1
+                DEFAULT_CMA_THRESHOLD
               );
 
               return {
-                data: { contractState: new ContractDeploy(contractState), signingKey },
-                privateState,
-                zswapLocalState
+                public: {
+                  contractState
+                },
+                private: {
+                  signingKey,
+                  privateState,
+                  zswapLocalState
+                }
               };
             })
           )
+        )
+      ),
+      this.transform
+    );
+  }
+
+  circuit<K extends Contract.ImpureCircuitId<C> = Contract.ImpureCircuitId<C>>(
+    impureCircuitId: K,
+    context: ContractExecutable.CircuitContext<PS>,
+    ...args: Contract.Contract.CircuitParameters<C, K>
+  ): Effect.Effect<ContractExecutable.CallResult<C, PS, K>, E, R> {
+    return Effect.all({
+      keyConfig: KeyConfiguration,
+      contract: this.createContract()
+    }).pipe(
+      Effect.flatMap(({ keyConfig, contract }) =>
+        Effect.try({
+          try: () => {
+            const circuit = contract.impureCircuits[impureCircuitId] as Contract.ImpureCircuit<
+              PS,
+              Contract.Contract.CircuitReturnType<C, K>
+            >;
+            const initialTxContext = new QueryContext(context.contractState.data, context.address);
+            return {
+              ...circuit(
+                {
+                  originalState: context.contractState,
+                  currentPrivateState: context.privateState,
+                  currentZswapLocalState: emptyZswapLocalState(CoinPublicKey.asHex(keyConfig.coinPublicKey)),
+                  transactionContext: initialTxContext
+                },
+                ...args
+              ),
+              initialTxContext
+            };
+          },
+          catch: identity
+        }).pipe(
+          Effect.flatMap(({ initialTxContext, result, context, proofData }) =>
+            Effect.gen(function* () {
+              return {
+                public: {
+                  contractState: context.transactionContext.state,
+                  publicTranscript: proofData.publicTranscript,
+                  partitionedTranscript: yield* partitionTranscript(
+                    initialTxContext,
+                    context.transactionContext,
+                    proofData.publicTranscript
+                  )
+                },
+                private: {
+                  result,
+                  input: proofData.input,
+                  output: proofData.output,
+                  privateTranscriptOutputs: proofData.privateTranscriptOutputs,
+                  privateState: context.currentPrivateState,
+                  zswapLocalState: decodeZswapLocalState(context.currentZswapLocalState)
+                }
+              };
+            })
+          ),
+          Effect.mapError((err) => ContractRuntimeError.make(`Error executing circuit '${impureCircuitId}'`, err))
         )
       ),
       this.transform
@@ -263,5 +383,27 @@ class ContractExecutableImpl<C extends Contract<PS>, PS, E, R> implements Contra
   private contract?: Effect.Effect<C, ContractRuntimeError>; // Backing property for `createContract`.
 }
 
-const asLedgerContractState: (contractState: ContractState) => LedgerContractState = (contractState) =>
-  LedgerContractState.deserialize(contractState.serialize(RuntimeNetworkId.Undeployed), LedgerNetworkId.Undeployed);
+const asLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext =>
+  new LedgerQueryContext(LedgerStateValue.decode(queryContext.state.encode()), queryContext.address);
+
+const partitionTranscript = (
+  txContext: QueryContext,
+  finalTxContext: QueryContext,
+  publicTranscript: Op<AlignedValue>[]
+): Either.Either<ContractExecutable.PartitionedTranscript, Error> => {
+  const partitionedTranscripts = partitionTranscripts(
+    [
+      new PreTranscript(
+        Array.from(finalTxContext.comIndices).reduce(
+          (queryContext, entry) => queryContext.insertCommitment(...entry),
+          asLedgerQueryContext(txContext)
+        ),
+        publicTranscript
+      )
+    ],
+    LedgerParameters.dummyParameters()
+  );
+  return partitionedTranscripts.length === 1
+    ? Either.right(partitionedTranscripts[0])
+    : Either.left(new Error(`Expected one transcript partition pair, received: ${partitionedTranscripts.length}`));
+};

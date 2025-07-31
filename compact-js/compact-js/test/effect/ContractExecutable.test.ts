@@ -13,16 +13,23 @@
  * limitations under the License.
  */
 
-import { ConfigProvider, Effect, Layer } from 'effect';
-import { describe, it, expect } from '@effect/vitest';
+import { ConfigProvider, Console, Effect, Layer } from 'effect';
+import { describe, it, expect, beforeEach } from '@effect/vitest';
 import { NodeContext } from '@effect/platform-node';
 import {
   CompiledContract,
   ContractExecutable,
+  Contract,
   KeyConfiguration,
-  ZKFileConfiguration
+  ZKFileConfiguration,
+  ContractAddress
 } from '@midnight-ntwrk/compact-js/effect';
-import { sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
+import { ContractState, sampleSigningKey, NetworkId as RuntimeNetworkId } from '@midnight-ntwrk/compact-runtime';
+import {
+  ContractState as LedgerContractState,
+  NetworkId as LedgerNetworkId,
+  ContractDeploy
+} from '@midnight-ntwrk/ledger';
 import { resolve } from 'node:path';
 import { CounterContract } from '../contract';
 
@@ -41,6 +48,7 @@ const testLayer = (configMap: Map<string, string>) =>
   );
 
 describe('ContractExecutable', () => {
+  const initialPS = { count: 0 };
   const counterContract = CompiledContract.make<CounterContract>('Counter', CounterContract).pipe(
     CompiledContract.withWitnesses({
       private_increment: ({ privateState }) => [{ count: privateState.count + 1 }, []]
@@ -55,14 +63,12 @@ describe('ContractExecutable', () => {
         const contract = counterContract.pipe(
           ContractExecutable.provide(testLayer(new Map([['KEYS_COIN_PUBLIC', VALID_COIN_PUBLIC_KEY]])))
         );
-        const initialPS = { count: 0 };
         const result = yield* contract.initialize(initialPS);
 
-        expect(result.data).toBeDefined();
-        expect(result.data.signingKey).toBeDefined();
-        expect(result.data.contractState).toBeDefined();
-        expect(result.data.contractState.initialState).toBeDefined();
-        expect(result.privateState).toMatchObject(initialPS);
+        expect(result.public.contractState).toBeDefined();
+        expect(result.public.contractState.data).toBeDefined();
+        expect(result.private.signingKey).toBeDefined();
+        expect(result.private.privateState).toMatchObject(initialPS);
       })
     );
 
@@ -81,8 +87,8 @@ describe('ContractExecutable', () => {
         const initialPS = { count: 0 };
         const result = yield* contract.initialize(initialPS);
 
-        expect(result.data).toBeDefined();
-        expect(result.data.signingKey).toBe(VALID_SIGNING_KEY);
+        expect(result.public.contractState).toBeDefined();
+        expect(result.private.signingKey).toBe(VALID_SIGNING_KEY);
       })
     );
 
@@ -98,4 +104,41 @@ describe('ContractExecutable', () => {
       })
     );
   });
+
+  describe('circuits', () => {
+    let contract: ContractExecutable.ContractExecutable<
+      CounterContract,
+      Contract.Contract.PrivateState<CounterContract>,
+      unknown
+    >;
+    let deployment: ContractDeploy;
+
+    // Create and initialize a new contract instance for each test.
+    beforeEach(async () => {
+      contract = counterContract.pipe(
+        ContractExecutable.provide(testLayer(new Map([['KEYS_COIN_PUBLIC', VALID_COIN_PUBLIC_KEY]])))
+      );
+      const result = await contract.initialize({ count: 0 }).pipe(Effect.runPromise);
+      deployment = new ContractDeploy(asLedgerContractState(result.public.contractState));
+    });
+
+    it.effect('should return updated contract state', () =>
+      Effect.gen(function* () {
+        const result = yield* contract.circuit(Contract.ImpureCircuitId<CounterContract>('increment'), {
+          address: ContractAddress.ContractAddress(deployment.address),
+          contractState: asContractState(deployment.initialState),
+          privateState: { count: 0 }
+        });
+
+        expect(result.public.contractState).toBeDefined();
+        expect(result.private.privateState).toMatchObject({ count: 1 });
+      })
+    );
+  });
 });
+
+const asLedgerContractState = (contractState: ContractState): LedgerContractState =>
+  LedgerContractState.deserialize(contractState.serialize(RuntimeNetworkId.Undeployed), LedgerNetworkId.Undeployed);
+
+const asContractState = (contractState: LedgerContractState): ContractState =>
+  ContractState.deserialize(contractState.serialize(LedgerNetworkId.Undeployed), RuntimeNetworkId.Undeployed);
