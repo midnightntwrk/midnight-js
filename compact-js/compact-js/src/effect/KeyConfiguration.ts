@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { Effect, Context, Layer, Option, Config, Schema } from 'effect';
+import { Effect, Context, Layer, type Option, Config, Schema } from 'effect';
 import * as CoinPublicKey from './CoinPublicKey';
 import * as SigningKey from './SigningKey';
 

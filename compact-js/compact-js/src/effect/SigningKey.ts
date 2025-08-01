@@ -14,7 +14,7 @@
  */
 
 import { Brand } from 'effect';
-import { SigningKey as SigningKey_ } from '@midnight-ntwrk/compact-runtime';
+import { type SigningKey as SigningKey_ } from '@midnight-ntwrk/compact-runtime';
 
 /**
  * A public BIP-340 signing key, with a 3-byte version prefix.

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { ConfigProvider, Console, Effect, Layer } from 'effect';
+import { ConfigProvider, Effect, Layer } from 'effect';
 import { describe, it, expect, beforeEach } from '@effect/vitest';
 import { NodeContext } from '@effect/platform-node';
 import {
@@ -38,6 +38,12 @@ const COUNTER_ASSETS_PATH = resolve(import.meta.dirname, '../contract/managed/co
 const VALID_COIN_PUBLIC_KEY = 'd2dc8d175c0ef7d1f7e5b7f32bd9da5fcd4c60fa1b651f1d312986269c2d3c79';
 const INVALID_COIN_PUBLIC_KEY = 'INVALIDd9da5fcd4c601';
 const VALID_SIGNING_KEY = sampleSigningKey();
+
+const asLedgerContractState = (contractState: ContractState): LedgerContractState =>
+  LedgerContractState.deserialize(contractState.serialize(RuntimeNetworkId.Undeployed), LedgerNetworkId.Undeployed);
+
+const asContractState = (contractState: LedgerContractState): ContractState =>
+  ContractState.deserialize(contractState.serialize(LedgerNetworkId.Undeployed), RuntimeNetworkId.Undeployed);
 
 const testLayer = (configMap: Map<string, string>) =>
   Layer.mergeAll(ZKFileConfiguration.layer, KeyConfiguration.layer).pipe(
@@ -84,7 +90,6 @@ describe('ContractExecutable', () => {
             )
           )
         );
-        const initialPS = { count: 0 };
         const result = yield* contract.initialize(initialPS);
 
         expect(result.public.contractState).toBeDefined();
@@ -136,9 +141,3 @@ describe('ContractExecutable', () => {
     );
   });
 });
-
-const asLedgerContractState = (contractState: ContractState): LedgerContractState =>
-  LedgerContractState.deserialize(contractState.serialize(RuntimeNetworkId.Undeployed), LedgerNetworkId.Undeployed);
-
-const asContractState = (contractState: LedgerContractState): ContractState =>
-  ContractState.deserialize(contractState.serialize(LedgerNetworkId.Undeployed), RuntimeNetworkId.Undeployed);

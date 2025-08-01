@@ -14,7 +14,7 @@
  */
 
 import { Brand } from 'effect';
-import { ContractAddress as ContractAddress_ } from '@midnight-ntwrk/compact-runtime';
+import type { ContractAddress as ContractAddress_ } from '@midnight-ntwrk/compact-runtime';
 
 /**
  * A contract address, as a hex-encoded 35-byte string.

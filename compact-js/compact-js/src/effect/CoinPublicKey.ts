@@ -50,11 +50,6 @@ export const Hex = Brand.nominal<CoinPublicKey.Hex>();
  */
 export const Bech32m = Brand.nominal<CoinPublicKey.Bech32m>();
 
-export const make: (value: string) => CoinPublicKey = (value) => {
-  // TODO: if value is hex use asHex, otherwise use asBech32m.
-  return asHex(value);
-};
-
 export const asHex: (self: CoinPublicKey | string) => CoinPublicKey.Hex = (self) => {
   if (Hex.is(self)) return self;
   if (Bech32m.is(self)) {
@@ -70,3 +65,9 @@ export const asBech32m: (self: CoinPublicKey | string) => CoinPublicKey.Bech32m 
   }
   return Bech32m(self);
 };
+
+export const make: (value: string) => CoinPublicKey = (value) => {
+  // TODO: if value is hex use asHex, otherwise use asBech32m.
+  return asHex(value);
+};
+

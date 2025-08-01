@@ -104,7 +104,6 @@ describe('ContractExecutable', () => {
             StringDep
           >
         >();
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         expect(executable.circuit(Contract.ImpureCircuitId<MockCounterContract>('reset'), {} as any)).type.toBe<
           Effect.Effect<
             ContractExecutable.ContractExecutable.CallResult<

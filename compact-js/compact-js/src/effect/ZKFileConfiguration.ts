@@ -15,29 +15,10 @@
 
 import { Effect, Layer } from 'effect';
 import { Path, FileSystem } from '@effect/platform';
-import * as CompiledContract from './CompiledContract';
+import type * as CompiledContract from './CompiledContract';
 import * as Contract from './Contract';
 import * as ZKConfiguration from './ZKConfiguration';
 import * as CompactContextInternal from './internal/compactContext';
-
-/**
- * A default {@link ZKConfiguration.ZKConfiguration | ZKConfiguration} implementation that reads ZK assets
- * from the file system.
- *
- * @category layers
- */
-export const layer = Layer.effect(
-  ZKConfiguration.ZKConfiguration,
-
-  Effect.gen(function* () {
-    const path = yield* Path.Path;
-    const fs = yield* FileSystem.FileSystem;
-
-    return ZKConfiguration.ZKConfiguration.of({
-      createReader: makeFileSystemReader(path, fs)
-    });
-  })
-);
 
 const KEYS_FOLDER = 'keys';
 const VERIFIER_EXT = '.verifier';
@@ -73,3 +54,22 @@ const makeFileSystemReader =
           )
       } satisfies ZKConfiguration.ZKConfiguration.Reader<C, PS>;
     });
+
+/**
+ * A default {@link ZKConfiguration.ZKConfiguration | ZKConfiguration} implementation that reads ZK assets
+ * from the file system.
+ *
+ * @category layers
+ */
+export const layer = Layer.effect(
+  ZKConfiguration.ZKConfiguration,
+
+  Effect.gen(function* () {
+    const path = yield* Path.Path;
+    const fs = yield* FileSystem.FileSystem;
+
+    return ZKConfiguration.ZKConfiguration.of({
+      createReader: makeFileSystemReader(path, fs)
+    });
+  })
+);

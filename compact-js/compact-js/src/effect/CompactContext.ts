@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { Contract } from './Contract';
+import type { Contract } from './Contract';
 
 export type Witnesses<in C extends Contract.Any, W = Contract.Witnesses<C>> = {
   readonly witnesses: W;

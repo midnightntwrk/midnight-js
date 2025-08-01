@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-import { Effect, Layer, Data, Option, Either } from 'effect';
+import { Effect, type Layer, Data, Option, Either } from 'effect';
 import { dual, identity } from 'effect/Function';
-import { Pipeable, pipeArguments } from 'effect/Pipeable';
+import { type Pipeable, pipeArguments } from 'effect/Pipeable';
 import {
-  ContractDeploy,
+  type ContractDeploy,
   QueryContext as LedgerQueryContext,
   StateValue as LedgerStateValue,
-  Transcript,
+  type Transcript,
   partitionTranscripts,
   PreTranscript,
   LedgerParameters
@@ -28,39 +28,39 @@ import {
 import {
   ContractMaintenanceAuthority,
   constructorContext,
-  ContractState,
+  type ContractState,
   sampleSigningKey,
   signatureVerifyingKey,
   CompactError,
   QueryContext,
   emptyZswapLocalState,
-  StateValue,
-  Op,
-  AlignedValue,
-  ZswapLocalState,
+  type StateValue,
+  type Op,
+  type AlignedValue,
+  type ZswapLocalState,
   decodeZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
-import { CompiledContract } from './CompiledContract';
+import { type CompiledContract } from './CompiledContract';
 import * as Contract from './Contract';
-import { ZKConfiguration, ZKConfigurationReadError } from './ZKConfiguration';
+import { ZKConfiguration, type ZKConfigurationReadError } from './ZKConfiguration';
 import { KeyConfiguration } from './KeyConfiguration';
 import * as CoinPublicKey from './CoinPublicKey';
 import * as CompactContextInternal from './internal/compactContext';
 import * as SigningKey from './SigningKey';
-import * as ContractAddress from './ContractAddress';
+import type * as ContractAddress from './ContractAddress';
 
 export interface ContractExecutable<in out C extends Contract.Contract<PS>, PS, out E = never, out R = never>
   extends Pipeable {
   readonly compiledContract: CompiledContract<C, PS>;
 
   initialize(
-    privateState: PS,
+    initialPrivateState: PS,
     ...args: Contract.Contract.InitializeParameters<C>
   ): Effect.Effect<ContractExecutable.DeployResult<PS>, E, R>;
 
   circuit<K extends Contract.ImpureCircuitId<C> = Contract.ImpureCircuitId<C>>(
     impureCircuitId: K,
-    context: ContractExecutable.CircuitContext<PS>,
+    circuitContext: ContractExecutable.CircuitContext<PS>,
     ...args: Contract.Contract.CircuitParameters<C, K>
   ): Effect.Effect<ContractExecutable.CallResult<C, PS, K>, E, R>;
 }
@@ -174,44 +174,36 @@ export class ContractConfigurationError extends Data.TaggedError('ContractConfig
  */
 export type ContractExecutionError = ContractRuntimeError | ContractConfigurationError | ZKConfigurationReadError;
 
-export const make: <C extends Contract.Contract<PS>, PS>(
-  compiledContract: CompiledContract<C, PS, never>
-) => ContractExecutable<C, PS, ContractExecutionError, ContractExecutable.Context> = <
-  C extends Contract.Contract<PS>,
-  PS
->(
-  compiledContract: CompiledContract<C, PS, never>
-) => new ContractExecutableImpl<C, PS, ContractExecutionError, ContractExecutable.Context>(compiledContract);
-
-/**
- * @category combinators
- */
-export const provide: {
-  <LA, LE, LR>(
-    layer: Layer.Layer<LA, LE, LR>
-  ): <C extends Contract.Contract<PS>, PS, E, R>(
-    self: ContractExecutable<C, PS, E, R>
-  ) => ContractExecutable<C, PS, E | LE, LR | Exclude<R, LA>>;
-  <C extends Contract.Contract<PS>, PS, E, R, LA, LE, LR>(
-    self: ContractExecutable<C, PS, E, R>,
-    layer: Layer.Layer<LA, LE, LR>
-  ): ContractExecutable<C, PS, E | LE, LR | Exclude<R, LA>>;
-} = dual(
-  2,
-  <C extends Contract.Contract<PS>, PS, E, R, LA, LE, LR>(
-    self: ContractExecutable<C, PS, E, R>,
-    layer: Layer.Layer<LA, LE, LR>
-  ) =>
-    new ContractExecutableImpl<C, PS, E | LE, LR | Exclude<R, LA>>(self.compiledContract, (e) =>
-      Effect.provide(e, layer)
-    )
-);
-
 // A function that receives an `Effect`, and captures it within another `Effect` that is bound to some
 // specified error and context type.
 type Transform<E, R> = <A>(effect: Effect.Effect<A, any, any>) => Effect.Effect<A, E, R>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 const DEFAULT_CMA_THRESHOLD = 1;
+
+const asLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext =>
+  new LedgerQueryContext(LedgerStateValue.decode(queryContext.state.encode()), queryContext.address);
+
+const partitionTranscript = (
+  txContext: QueryContext,
+  finalTxContext: QueryContext,
+  publicTranscript: Op<AlignedValue>[]
+): Either.Either<ContractExecutable.PartitionedTranscript, Error> => {
+  const partitionedTranscripts = partitionTranscripts(
+    [
+      new PreTranscript(
+        Array.from(finalTxContext.comIndices).reduce(
+          (queryContext, entry) => queryContext.insertCommitment(...entry),
+          asLedgerQueryContext(txContext)
+        ),
+        publicTranscript
+      )
+    ],
+    LedgerParameters.dummyParameters()
+  );
+  return partitionedTranscripts.length === 1
+    ? Either.right(partitionedTranscripts[0])
+    : Either.left(new Error(`Expected one transcript partition pair, received: ${partitionedTranscripts.length}`));
+};
 
 class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implements ContractExecutable<C, PS, E, R> {
   compiledContract: CompiledContract<C, PS>;
@@ -227,7 +219,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
   }
 
   initialize(
-    privateState: PS,
+    initialPrivateState: PS,
     ...args: Contract.Contract.InitializeParameters<C>
   ): Effect.Effect<ContractExecutable.DeployResult<PS>, E, R> {
     return Effect.all({
@@ -241,7 +233,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
         Effect.try({
           try: () => {
             const { currentContractState, currentPrivateState, currentZswapLocalState } = contract.initialState(
-              constructorContext(privateState, CoinPublicKey.asHex(keyConfig.coinPublicKey)),
+              constructorContext(initialPrivateState, CoinPublicKey.asHex(keyConfig.coinPublicKey)),
               ...args
             );
             return {
@@ -254,7 +246,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
             err instanceof CompactError
               ? ContractRuntimeError.make('Failed to initialize contract', err)
               : ContractConfigurationError.make(
-                  'Failed to configure constructor context with coin public key', undefined, err) // eslint-disable-line prettier/prettier
+                  'Failed to configure constructor context with coin public key', undefined, err)
         }).pipe(
           Effect.flatMap(({ contractState, privateState, zswapLocalState }) =>
             Effect.gen(this, function* () {
@@ -313,7 +305,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
 
   circuit<K extends Contract.ImpureCircuitId<C> = Contract.ImpureCircuitId<C>>(
     impureCircuitId: K,
-    context: ContractExecutable.CircuitContext<PS>,
+    circuitContext: ContractExecutable.CircuitContext<PS>,
     ...args: Contract.Contract.CircuitParameters<C, K>
   ): Effect.Effect<ContractExecutable.CallResult<C, PS, K>, E, R> {
     return Effect.all({
@@ -327,12 +319,12 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
               PS,
               Contract.Contract.CircuitReturnType<C, K>
             >;
-            const initialTxContext = new QueryContext(context.contractState.data, context.address);
+            const initialTxContext = new QueryContext(circuitContext.contractState.data, circuitContext.address);
             return {
               ...circuit(
                 {
-                  originalState: context.contractState,
-                  currentPrivateState: context.privateState,
+                  originalState: circuitContext.contractState,
+                  currentPrivateState: circuitContext.privateState,
                   currentZswapLocalState: emptyZswapLocalState(CoinPublicKey.asHex(keyConfig.coinPublicKey)),
                   transactionContext: initialTxContext
                 },
@@ -383,27 +375,35 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
   private contract?: Effect.Effect<C, ContractRuntimeError>; // Backing property for `createContract`.
 }
 
-const asLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext =>
-  new LedgerQueryContext(LedgerStateValue.decode(queryContext.state.encode()), queryContext.address);
+export const make: <C extends Contract.Contract<PS>, PS>(
+  compiledContract: CompiledContract<C, PS, never>
+) => ContractExecutable<C, PS, ContractExecutionError, ContractExecutable.Context> = <
+  C extends Contract.Contract<PS>,
+  PS
+>(
+  compiledContract: CompiledContract<C, PS, never>
+) => new ContractExecutableImpl<C, PS, ContractExecutionError, ContractExecutable.Context>(compiledContract);
 
-const partitionTranscript = (
-  txContext: QueryContext,
-  finalTxContext: QueryContext,
-  publicTranscript: Op<AlignedValue>[]
-): Either.Either<ContractExecutable.PartitionedTranscript, Error> => {
-  const partitionedTranscripts = partitionTranscripts(
-    [
-      new PreTranscript(
-        Array.from(finalTxContext.comIndices).reduce(
-          (queryContext, entry) => queryContext.insertCommitment(...entry),
-          asLedgerQueryContext(txContext)
-        ),
-        publicTranscript
-      )
-    ],
-    LedgerParameters.dummyParameters()
-  );
-  return partitionedTranscripts.length === 1
-    ? Either.right(partitionedTranscripts[0])
-    : Either.left(new Error(`Expected one transcript partition pair, received: ${partitionedTranscripts.length}`));
-};
+/**
+ * @category combinators
+ */
+export const provide: {
+  <LA, LE, LR>(
+    layer: Layer.Layer<LA, LE, LR>
+  ): <C extends Contract.Contract<PS>, PS, E, R>(
+    self: ContractExecutable<C, PS, E, R>
+  ) => ContractExecutable<C, PS, E | LE, LR | Exclude<R, LA>>;
+  <C extends Contract.Contract<PS>, PS, E, R, LA, LE, LR>(
+    self: ContractExecutable<C, PS, E, R>,
+    layer: Layer.Layer<LA, LE, LR>
+  ): ContractExecutable<C, PS, E | LE, LR | Exclude<R, LA>>;
+} = dual(
+  2,
+  <C extends Contract.Contract<PS>, PS, E, R, LA, LE, LR>(
+    self: ContractExecutable<C, PS, E, R>,
+    layer: Layer.Layer<LA, LE, LR>
+  ) =>
+    new ContractExecutableImpl<C, PS, E | LE, LR | Exclude<R, LA>>(self.compiledContract, (e) =>
+      Effect.provide(e, layer)
+    )
+);

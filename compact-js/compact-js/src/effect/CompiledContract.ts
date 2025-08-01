@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import { Types } from 'effect';
-import { Pipeable, pipeArguments } from 'effect/Pipeable';
+import type { Types } from 'effect';
+import { type Pipeable, pipeArguments } from 'effect/Pipeable';
 import { dual } from 'effect/Function';
-import { Contract } from './Contract';
+import type { Contract } from './Contract';
 import type * as CompactContext from './CompactContext';
 import * as CompactContextInternal from './internal/compactContext';
 

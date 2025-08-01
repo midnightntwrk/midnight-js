@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { Effect, Context, Data } from 'effect';
+import { type Effect, Context, Data } from 'effect';
 import type { CompiledContract } from './CompiledContract';
-import * as Contract from './Contract';
+import type * as Contract from './Contract';
 
 /**
  * Provides utilities for reading the ZK assets of a compiled Compact contract.
