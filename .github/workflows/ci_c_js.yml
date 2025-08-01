@@ -1,0 +1,27 @@
+name: CI - Compact.js
+env:
+  MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+on:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 4 * * *"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci_base.yml
+    with:
+      yarn_filter: --filter="./compact-js/*"
+      yarn_lint_paths: ./compact-js
+      network: undeployed
+      allure_upload: true
+      allure_project_id: midnight-js-main
+    secrets: inherit

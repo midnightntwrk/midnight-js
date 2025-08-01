@@ -7,6 +7,8 @@ jobs:
   testnet:
     uses: ./.github/workflows/ci_base.yml
     with:
+      yarn_filter: --filter="./packages/*"
+      yarn_lint_paths: ./packages
       network: undeployed
       yarn_install: 'sh ./update_packages_to_latest.sh;yarn install --immutable'
       yarn_it: 'yarn it-latest --cache-dir ./turbo --force'
