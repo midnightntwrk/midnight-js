@@ -3,21 +3,20 @@ env:
   MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
 on:
-  push:
-    branches:
-      - 'main'
-  pull_request:
   workflow_dispatch:
   workflow_call:
-  schedule:
-    - cron: "30 4 * * *"
+    inputs:
+      should_run:
+        required: true
+        type: string
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: C-JS-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
   ci:
+    if: inputs.should_run == 'true'
     uses: ./.github/workflows/ci_base.yml
     with:
       yarn_filter: --filter="./compact-js/*"

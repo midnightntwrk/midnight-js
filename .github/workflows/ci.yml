@@ -22,16 +22,19 @@ jobs:
       build_mn_js: ${{ steps.build-targets.outputs.build_mn_js }}
       build_c_js: ${{ steps.build-targets.outputs.build_c_js }}
     steps:
-      - name: Cache Turbo and Yarn dependencies
-        uses: actions/cache@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # ratchet:actions/checkout@v4
         with:
-          path: |
-            **/node_modules
-            ~/.yarn
-            .turbo
-          key: turbo-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
-          restore-keys: |
-            turbo-${{ runner.os }}-
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # ratchet:actions/setup-node@v4
+        with:
+          always-auth: true
+          registry-url: https://npm.pkg.github.com/
+          scope: '@midnight-ntwrk'
+          node-version-file: '.nvmrc'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Determine Build Targets
         id: build-targets
@@ -39,8 +42,8 @@ jobs:
           build_mn_js=$(yarn workspaces list --since --json | jq -s '([.[] | select(.location != ".") | .location | split("/")[0]] | unique) | index("packages") != null')
           build_c_js=$(yarn workspaces list --since --json | jq -s '([.[] | select(.location != ".") | .location | split("/")[0]] | unique) | index("compact-js") != null')
           
-          echo "build_mn_js=${build_mn_js}" >> $GITHUB_OUTPUT
-          echo "build_c_js=${build_c_js}" >> $GITHUB_OUTPUT
+          echo "build_mn_js=${build_mn_js}" >> "$GITHUB_OUTPUT"
+          echo "build_c_js=${build_c_js}" >> "$GITHUB_OUTPUT"
 
           echo "### Build Target Summary" >> $GITHUB_STEP_SUMMARY
           echo "The following table summarizes which targets have changes detected in them and that will be included in the build." >> $GITHUB_STEP_SUMMARY
@@ -52,13 +55,15 @@ jobs:
   ci-mnjs:
     needs: ci
     name: Build Midnight.js
-    if: ${{ needs.ci.outputs.build_mn_js == 'true' }}
     uses: ./.github/workflows/ci_mn_js.yml
+    with:
+      should_run: ${{ needs.ci.outputs.build_mn_js }}
     secrets: inherit
 
   ci-cjs:
     needs: ci
     name: Build Compact.js
-    if: ${{ needs.ci.outputs.build_c_js == 'true' }}
+    with:
+      should_run: ${{ needs.ci.outputs.build_c_js }}
     uses: ./.github/workflows/ci_c_js.yml
     secrets: inherit
