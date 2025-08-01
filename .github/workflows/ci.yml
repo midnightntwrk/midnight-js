@@ -22,6 +22,17 @@ jobs:
       build_mn_js: ${{ steps.build-targets.outputs.build_mn_js }}
       build_c_js: ${{ steps.build-targets.outputs.build_c_js }}
     steps:
+      - name: Cache Turbo and Yarn dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            **/node_modules
+            ~/.yarn
+            .turbo
+          key: turbo-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+
       - name: Determine Build Targets
         id: build-targets
         run: |
