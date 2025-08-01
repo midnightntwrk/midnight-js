@@ -21,6 +21,7 @@ jobs:
     uses: ./.github/workflows/ci_base.yml
     with:
       yarn_filter: --filter="./packages/*"
+      yarn_lint_paths: ./packages
       network: undeployed
       allure_upload: true
       allure_project_id: midnight-js-main

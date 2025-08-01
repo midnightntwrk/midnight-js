@@ -30,6 +30,11 @@ on:
         description: Optional filter to include when running Yarn (i.e., --filter=...)
         required: false
         default: ''
+      yarn_lint_paths:
+        type: string
+        description: Optional paths to include when running 'yarn lint'' (i.e., ./packages)
+        required: false
+        default: ''
       allure_upload:
         type: boolean
         description: Should upload e2e tests results to allure server
@@ -97,7 +102,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Run linter
-        run: yarn lint
+        run: yarn lint -- ${{ inputs.yarn_lint_paths }}
 
       - name: Run tests
         run: |
