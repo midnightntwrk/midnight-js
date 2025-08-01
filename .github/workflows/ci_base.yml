@@ -25,6 +25,11 @@ on:
         description: E2E tests command line
         required: false
         default: 'yarn e2e-groups --concurrency 1 --cache-dir ./turbo'
+      yarn_filter:
+        type: string
+        description: Optional filter to include when running Yarn (i.e., --filter=...)
+        required: false
+        default: ''
       allure_upload:
         type: boolean
         description: Should upload e2e tests results to allure server
@@ -87,7 +92,7 @@ jobs:
           ${{ inputs.yarn_install }}
 
       - name: Run build
-        run: yarn build --cache-dir ./turbo
+        run: yarn build ${{ inputs.yarn_filter }} --cache-dir ./turbo
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
@@ -96,13 +101,13 @@ jobs:
 
       - name: Run tests
         run: |
-          yarn test --cache-dir ./turbo
+          yarn test ${{ inputs.yarn_filter }} --cache-dir ./turbo
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Run integration tests
         run: |
-          yarn it --cache-dir ./turbo
+          yarn it ${{ inputs.yarn_filter }} --cache-dir ./turbo
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
