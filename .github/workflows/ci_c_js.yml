@@ -42,6 +42,10 @@ jobs:
           for var in $(cut -d= -f1 .github/env/global.env); do
             echo "$var=${!var}" >> $GITHUB_ENV
           done
+          export $(grep -v '^#' .github/env/global_c_js.env | xargs)
+          for var in $(cut -d= -f1 .github/env/global_c_js.env); do
+            echo "$var=${!var}" >> $GITHUB_ENV
+          done
 
       - name: Log in to GitHub Container registry
         uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # ratchet:docker/login-action@v3
