@@ -38,7 +38,7 @@
   "license": "Apache-2.0",
   "scripts": {
     "clean": "shx rm -rf ./dist ./tsconfig.build.tsbuildinfo ./.rollup.cache ./reports ./coverage",
-    "build": "tsc -b tsconfig.build.json",
+    "build": "(shx --negate test -d ./test/contract/managed && yarn compact || true); tsc -b tsconfig.build.json",
     "test": "(shx --negate test -d ./test/contract/managed && yarn compact || true); vitest run && tstyche",
     "deploy": "yarn npm publish",
     "compact": "yarn fetch-compactc && yarn compact-counter",
