@@ -37,6 +37,7 @@
   },
   "devDependencies": {
     "@d2t/vitest-ctrf-json-reporter": "^1.1.0",
+    "@effect/build-utils": "^0.8.9",
     "@eslint/js": "^9.30.1",
     "@midnight-ntwrk/wallet": "5.0.0",
     "@midnight-ntwrk/wallet-api": "5.0.0",
@@ -53,6 +54,7 @@
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-prettier": "^5.5.1",
+    "glob": "^11.0.3",
     "husky": "^9.1.7",
     "jsdom": "^26.1.0",
     "lint-staged": "^16.1.2",
@@ -60,6 +62,7 @@
     "prettier": "^3.6.2",
     "rollup": "^4.37.0",
     "rxjs": "^7.8.1",
+    "shx": "^0.4.0",
     "testcontainers": "^11.2.0",
     "ts-node": "^10.9.2",
     "tstyche": "^4.3.0",
