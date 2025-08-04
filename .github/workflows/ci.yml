@@ -11,6 +11,11 @@ on:
   schedule:
     - cron: "30 4 * * *"
 
+permissions:
+  id-token: write
+  contents: write
+  packages: write
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
