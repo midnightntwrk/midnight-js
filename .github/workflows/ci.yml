@@ -52,12 +52,19 @@ jobs:
           echo "| Midnight.js | ${build_mn_js} |" >> $GITHUB_STEP_SUMMARY
           echo "| Compact.js  | ${build_c_js}  |" >> $GITHUB_STEP_SUMMARY
 
+          echo "${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "${{ github.event.head_commit.message }}" >> $GITHUB_STEP_SUMMARY
+
+
   ci-mnjs:
     needs: ci
     name: Build Midnight.js
     uses: ./.github/workflows/ci_mn_js.yml
     with:
-      should_run: ${{ needs.ci.outputs.build_mn_js }}
+      should_run: 'false'
+      # should_run: ${{ needs.ci.outputs.build_mn_js }}
+      should_prerelease: 'false'
     secrets: inherit
 
   ci-cjs:
@@ -65,5 +72,10 @@ jobs:
     name: Build Compact.js
     with:
       should_run: ${{ needs.ci.outputs.build_c_js }}
+      should_prerelease: ${{ 
+          (github.event_name != 'schedule' &&
+          (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch'))
+            && 'true' || 'false'
+        }}
     uses: ./.github/workflows/ci_c_js.yml
     secrets: inherit
