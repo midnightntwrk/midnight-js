@@ -52,11 +52,6 @@ jobs:
           echo "| Midnight.js | ${build_mn_js} |" >> $GITHUB_STEP_SUMMARY
           echo "| Compact.js  | ${build_c_js}  |" >> $GITHUB_STEP_SUMMARY
 
-          echo "${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "${{ github.event.head_commit.message }}" >> $GITHUB_STEP_SUMMARY
-
-
   ci-mnjs:
     needs: ci
     name: Build Midnight.js

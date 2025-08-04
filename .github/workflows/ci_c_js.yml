@@ -156,8 +156,9 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
-      - name: Configure yarn
-        run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+      - name: Configure yarn & npm
+        run: |
+          yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Cache Turbo and Yarn dependencies
         uses: actions/cache@v4
@@ -181,14 +182,17 @@ jobs:
         id: vars
         run: |
           calculatedSha=$(git rev-parse --short ${{ github.sha }})
-          currentVersion=$(jq -r .version package.json)
-          targetVersion="$currentVersion-pre.$calculatedSha"
+          currentVersion=$(jq -r .cjsVersion versions.json)
+          currentTag=$(jq -r .cjsTag versions.json)
+          targetVersion="$currentVersion-$currentTag.$calculatedSha"
           echo "target_version=$targetVersion" >> $GITHUB_OUTPUT
+          echo "current_tag=$currentTag" >> $GITHUB_OUTPUT
 
       - name: Bump versions
         run: yarn workspaces foreach --all version ${{ steps.vars.outputs.target_version }}
 
       - name: Publish packages
-        run: yarn deploy ${{ inputs.yarn_filter }} --cache-dir ./turbo -- --tag ${{ steps.vars.outputs.target_version }}
+        run: yarn deploy ${{ inputs.yarn_filter }} --cache-dir ./turbo -- --tag ${{ steps.vars.outputs.current_tag }}
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
