@@ -23,13 +23,29 @@ import * as CompactContextInternal from './internal/compactContext';
 export const TypeId = Symbol.for('@midnight-ntwrk/compact-js/CompiledContract');
 export type TypeId = typeof TypeId;
 
+/**
+ * A binding to a Compact compiled contract.
+ *
+ * @remarks
+ * Alongside the imported type and contract instance, we also need to provide an implementation of the
+ * witnesses that the contract expects, along with a mechanism to retrieve the compiled ZK assets associated
+ * with the compiled contract. A {@link CompiledContract} represents such a container within a hosting
+ * TypeScript program. In order to make a contract executable, you should use the `ContractExecutable` module.
+ *
+ * @see {@link getContext} to retrieve the publicly visible properties associated with the compiled contract.
+ */
 export interface CompiledContract<in out C extends Contract<PS>, in out PS, out R = never>
   extends CompiledContract.Variance<C, PS, R>,
     Pipeable {
-  [CompactContextInternal.CompactContextId]: Partial<CompactContextInternal.Context<C>>;
+  /**
+   * Gets the tag assigned to this compiled contract.
+   */
+  readonly tag: string;
+  readonly [CompactContextInternal.TypeId]: Partial<CompactContextInternal.Context<C>>;
 }
 
 export declare namespace CompiledContract {
+  /** @internal */
   export type Variance<in out C, in out PS, out R> = {
     readonly [TypeId]: {
       readonly _C: Types.Invariant<C>;
@@ -38,6 +54,14 @@ export declare namespace CompiledContract {
     };
   };
 
+  /**
+   * The context required to fully build a {@link CompiledContract}.
+   *
+   * @remarks
+   * When looking to use a Compact compiled contract in a TypeScript program, we need to provide path
+   * information to where the generated ZK assets can be found, along with an implementation of the witnesses
+   * expected by the contract.
+   */
   export type Context<C extends Contract.Any> = CompactContext.Witnesses<C> | CompactContext.ZKConfigAssetsPath;
 }
 
@@ -52,6 +76,15 @@ const proto = {
   }
 };
 
+/**
+ * Initializes an object that represents a binding to a Compact compiled contract.
+ *
+ * @param tag A unique identifier that represents this type of contract.
+ * @param ctor The contract constructor, as imported from the compiled Compact output.
+ * @returns A {@link CompiledContract}.
+ *
+ * @category constructors
+ */
 export const make: <C extends Contract<PS>, PS = Contract.PrivateState<C>, R = CompiledContract.Context<C>>(
   tag: string,
   ctor: Types.Ctor<C>
@@ -59,8 +92,9 @@ export const make: <C extends Contract<PS>, PS = Contract.PrivateState<C>, R = C
   tag: string,
   ctor: Types.Ctor<C>
 ) => {
-  const self = Object.create(proto) as CompiledContract<C, PS, R>;
-  self[CompactContextInternal.CompactContextId] = { tag, ctor };
+  const self = Object.create(proto) as Types.Mutable<CompiledContract<C, PS, R>>;
+  self.tag = tag;
+  self[CompactContextInternal.TypeId] = { ctor };
   return self;
 };
 
@@ -83,8 +117,8 @@ export const withWitnesses: {
   ) => {
     return {
       ...self,
-      [CompactContextInternal.CompactContextId]: {
-        ...self[CompactContextInternal.CompactContextId],
+      [CompactContextInternal.TypeId]: {
+        ...self[CompactContextInternal.TypeId],
         witnesses
       }
     };
@@ -110,10 +144,25 @@ export const withZKConfigFileAssets: {
   ) => {
     return {
       ...self,
-      [CompactContextInternal.CompactContextId]: {
-        ...self[CompactContextInternal.CompactContextId],
+      [CompactContextInternal.TypeId]: {
+        ...self[CompactContextInternal.TypeId],
         zkConfigAssetsPath
       }
     };
   }
 );
+
+/**
+ * Retrieves the publicly visible context properties that are associated with a compiled contract.
+ *
+ * @param self The {@link CompiledContract} from which context should be retrieved.
+ * @returns An object that contains the publicly visible context properties for `self`.
+ */
+export const getContext: <C extends Contract<PS>, PS>(self: CompiledContract<C, PS>) => CompactContext.CompactContext.PublicVisible =
+  <C extends Contract<PS>, PS>(self: CompiledContract<C, PS>) => {
+    const context = CompactContextInternal.getContractContext(self);
+    return {
+      zkConfigAssetsPath: context.zkConfigAssetsPath
+    };
+  };
+

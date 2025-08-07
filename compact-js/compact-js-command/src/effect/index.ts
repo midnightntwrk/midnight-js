@@ -13,25 +13,13 @@
  * limitations under the License.
  */
 
-import type { Contract } from './Contract';
+import { Command } from '@effect/cli';
+import * as Options from './internal/options';
+import { deploy } from './internal/deployCommand';
 
-/**
- * Witness configuration.
- */
-export type Witnesses<in C extends Contract.Any, W = Contract.Witnesses<C>> = {
-  readonly witnesses: W;
-};
+export const deployCommand = Command.make("deploy", { ...Options.allCommandOptions }).pipe(
+  Command.withDescription("Initialize a new contract instance and returns a ContractDeploy object for it."),
+  Command.withHandler(deploy)
+);
 
-/**
- * ZK asset path configuration.
- */
-export type ZKConfigAssetsPath = {
-  readonly zkConfigAssetsPath: string;
-};
-
-export declare namespace CompactContext {
-  /**
-   * A subset of the context that is to be publicly accessible.
-   */
-  export type PublicVisible = ZKConfigAssetsPath;
-}
+export * as ConfigCompiler from './ConfigCompiler';

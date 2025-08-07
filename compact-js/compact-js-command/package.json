@@ -1,7 +1,7 @@
 {
-  "name": "@midnight-ntwrk/compact-js",
+  "name": "@midnight-ntwrk/compact-js-command",
   "version": "0.0.0",
-  "description": "Typescript-based execution environment for smart contracts compiled with the Compact language",
+  "description": "Command line utilities for working with smart contracts compiled with the Compact language",
   "type": "module",
   "exports": {
     "./package.json": "./package.json",
@@ -11,20 +11,25 @@
     "./effect/internal/*": null
   },
   "dependencies": {
-    "@effect/platform": "^0.89.0",
-    "@midnight-ntwrk/compact-runtime": "0.9.0-rc.0",
-    "@midnight-ntwrk/ledger": "5.0.0-alpha.3",
-    "effect": "^3.17.2"
-  },
-  "devDependencies": {
+    "@effect/cli": "^0.69.0",
     "@effect/cluster": "^0.46.2",
     "@effect/experimental": "^0.54.2",
+    "@effect/platform": "^0.89.0",
     "@effect/platform-node": "^0.94.0",
     "@effect/platform-node-shared": "^0.47.0",
+    "@effect/printer-ansi": "^0.45.0",
     "@effect/rpc": "^0.68.0",
     "@effect/sql": "^0.44.0",
-    "@effect/vitest": "^0.24.1",
+    "@effect/typeclass": "^0.36.0",
+    "@midnight-ntwrk/compact-js": "workspace:*",
     "@midnight-ntwrk/compact-js-node": "workspace:*",
+    "@midnight-ntwrk/compact-runtime": "0.9.0-rc.0",
+    "@midnight-ntwrk/ledger": "5.0.0-alpha.3",
+    "effect": "^3.17.2",
+    "ts-node": "^10.9.2"
+  },
+  "devDependencies": {
+    "@effect/vitest": "^0.24.1",
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
   },
   "repository": "git@github.com:midnight-ntwrk/artifacts",
@@ -32,14 +37,11 @@
   "author": "IOHK",
   "license": "Apache-2.0",
   "scripts": {
-    "build": "yarn build-compact && yarn build-esm && build-utils pack-v3",
+    "build": "yarn build-esm && build-utils pack-v3",
     "build-esm": "tsc -b tsconfig.build.json",
-    "build-compact": "(shx --negate test -d ./test/contract/managed && yarn compact || true)",
     "clean": "shx rm -rf ./build ./dist ./.tsbuildinfo ./reports ./coverage",
-    "test": "yarn build-compact && vitest run && tstyche",
-    "deploy": "shx rm -rf ./dist/src && (cd ./dist; npm pack) && npm publish ./dist/*.tgz --registry https://npm.pkg.github.com/",
-    "compact": "yarn fetch-compactc && yarn compact-counter",
-    "compact-counter": "run-compactc ./test/contract/counter.compact ./test/contract/managed/counter"
+    "test": "vitest run",
+    "deploy": "shx rm -rf ./dist/src && (cd ./dist; npm pack) && npm publish ./dist/*.tgz --registry https://npm.pkg.github.com/"
   },
   "files": [
     "dist/"

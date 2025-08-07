@@ -1,0 +1,35 @@
+{
+  "name": "@midnight-ntwrk/compact-js-node",
+  "version": "0.0.0",
+  "description": "Platform specific types and utilities for working with the Compact language on a Node.js runtime",
+  "type": "module",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./effect": "./src/effect/index.ts",
+    "./effect/*": "./src/effect/*.ts",
+    "./effect/internal/*": null
+  },
+  "dependencies": {
+    "@effect/platform": "^0.89.0",
+    "@effect/platform-node": "^0.89.0",
+    "effect": "^3.17.2"
+  },
+  "peerDependencies": {
+    "@midnight-ntwrk/compact-js": "workspace:*"
+  },
+  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "packageManager": "yarn@4.9.2",
+  "author": "IOHK",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "yarn build-esm && build-utils pack-v3",
+    "build-esm": "tsc -b tsconfig.build.json",
+    "clean": "shx rm -rf ./build ./dist ./.tsbuildinfo ./reports ./coverage",
+    "test": "vitest run --passWithNoTests",
+    "deploy": "shx rm -rf ./dist/src && (cd ./dist; npm pack) && npm publish ./dist/*.tgz --registry https://npm.pkg.github.com/"
+  },
+  "files": [
+    "dist/"
+  ]
+}

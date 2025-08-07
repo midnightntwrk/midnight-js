@@ -13,25 +13,4 @@
  * limitations under the License.
  */
 
-import type { Contract } from './Contract';
-
-/**
- * Witness configuration.
- */
-export type Witnesses<in C extends Contract.Any, W = Contract.Witnesses<C>> = {
-  readonly witnesses: W;
-};
-
-/**
- * ZK asset path configuration.
- */
-export type ZKConfigAssetsPath = {
-  readonly zkConfigAssetsPath: string;
-};
-
-export declare namespace CompactContext {
-  /**
-   * A subset of the context that is to be publicly accessible.
-   */
-  export type PublicVisible = ZKConfigAssetsPath;
-}
+export * as ZKFileConfiguration from './ZKFileConfiguration';

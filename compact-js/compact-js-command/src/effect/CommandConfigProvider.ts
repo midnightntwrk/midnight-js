@@ -13,25 +13,18 @@
  * limitations under the License.
  */
 
-import type { Contract } from './Contract';
+import { Config, ConfigProvider } from 'effect';
+import { KeyConfiguration } from '@midnight-ntwrk/compact-js/effect';
 
-/**
- * Witness configuration.
- */
-export type Witnesses<in C extends Contract.Any, W = Contract.Witnesses<C>> = {
-  readonly witnesses: W;
-};
+export const CommandConfig = Config.all([
+  KeyConfiguration.KeyConfig
+]);
 
-/**
- * ZK asset path configuration.
- */
-export type ZKConfigAssetsPath = {
-  readonly zkConfigAssetsPath: string;
-};
-
-export declare namespace CompactContext {
-  /**
-   * A subset of the context that is to be publicly accessible.
-   */
-  export type PublicVisible = ZKConfigAssetsPath;
-}
+export const make: (jsonConfg: unknown, cliConfigProvider: ConfigProvider.ConfigProvider) =>
+  ConfigProvider.ConfigProvider =
+    (jsonConfig, cliConfigProvider) => cliConfigProvider.pipe(
+      ConfigProvider.orElse(() => ConfigProvider.fromEnv({ pathDelim: '_' }).pipe(
+        ConfigProvider.constantCase)
+      ),
+      ConfigProvider.orElse(() => ConfigProvider.fromJson(jsonConfig))
+    );

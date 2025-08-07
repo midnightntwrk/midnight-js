@@ -15,29 +15,35 @@
 
 import { Effect, Layer } from 'effect';
 import { Path, FileSystem } from '@effect/platform';
-import type * as CompiledContract from './CompiledContract';
-import * as Contract from './Contract';
-import * as ZKConfiguration from './ZKConfiguration';
-import * as CompactContextInternal from './internal/compactContext';
+import { CompiledContract, Contract, ZKConfiguration } from '@midnight-ntwrk/compact-js/effect';
 
 const KEYS_FOLDER = 'keys';
 const VERIFIER_EXT = '.verifier';
 
+/**
+ * Returns a function, that when invoked, will create a ZK asset reader over the file system.
+ * 
+ * @param path A `Path` implementation.
+ * @param fs A `FileSystem` implementation.
+ * @returns A function that receives a `CompiledContract` instance and returns a ZK asset reader over `fs`.
+ *
+ * @internal
+ */
 const makeFileSystemReader =
   <C extends Contract.Contract<PS>, PS>(path: Path.Path, fs: FileSystem.FileSystem) =>
   (compiledContract: CompiledContract.CompiledContract<C, PS>) =>
     // eslint-disable-next-line require-yield
     Effect.gen(function* () {
-      const context = CompactContextInternal.getContractContext(compiledContract);
+      const zkConfigAssetsPath = CompiledContract.getContext(compiledContract).zkConfigAssetsPath;
       const getVerifierKey = (impureCircuitId: Contract.ImpureCircuitId<C>) =>
         Effect.gen(function* () {
           const data = yield* fs.readFile(
-            path.join(context.zkConfigAssetsPath, KEYS_FOLDER, `${impureCircuitId}${VERIFIER_EXT}`)
+            path.join(zkConfigAssetsPath, KEYS_FOLDER, `${impureCircuitId}${VERIFIER_EXT}`)
           );
           return Contract.VerifierKey(data);
         }).pipe(
           Effect.mapError((err: unknown) =>
-            ZKConfiguration.ZKConfigurationReadError.make(context.tag, impureCircuitId, 'verifier-key', err)
+            ZKConfiguration.ZKConfigurationReadError.make(compiledContract.tag, impureCircuitId, 'verifier-key', err)
           )
         );
 
@@ -56,14 +62,13 @@ const makeFileSystemReader =
     });
 
 /**
- * A default {@link ZKConfiguration.ZKConfiguration | ZKConfiguration} implementation that reads ZK assets
- * from the file system.
+ * A {@link ZKConfiguration.ZKConfiguration | ZKConfiguration} implementation that reads ZK assets from the
+ * file system.
  *
  * @category layers
  */
 export const layer = Layer.effect(
   ZKConfiguration.ZKConfiguration,
-
   Effect.gen(function* () {
     const path = yield* Path.Path;
     const fs = yield* FileSystem.FileSystem;

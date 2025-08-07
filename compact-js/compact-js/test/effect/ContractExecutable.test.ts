@@ -13,17 +13,17 @@
  * limitations under the License.
  */
 
-import { ConfigProvider, Effect, Layer } from 'effect';
 import { describe, it, expect, beforeEach } from '@effect/vitest';
+import { ConfigProvider, Effect, Layer } from 'effect';
 import { NodeContext } from '@effect/platform-node';
 import {
   CompiledContract,
   ContractExecutable,
   Contract,
   KeyConfiguration,
-  ZKFileConfiguration,
   ContractAddress
 } from '@midnight-ntwrk/compact-js/effect';
+import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import { ContractState, sampleSigningKey, NetworkId as RuntimeNetworkId } from '@midnight-ntwrk/compact-runtime';
 import {
   ContractState as LedgerContractState,

@@ -19,15 +19,14 @@ import { type Contract } from '../Contract';
 import type * as CompactContext from '../CompactContext';
 
 /** @internal */
-export const CompactContextId = Symbol();
+export const TypeId = Symbol();
 /** @internal */
-export type CompactContextId = typeof CompactContextId;
+export type TypeId = typeof TypeId;
 
 /** @internal */
 export interface Context<C extends Contract.Any>
   extends CompactContext.Witnesses<C>,
     CompactContext.ZKConfigAssetsPath {
-  readonly tag: string;
   readonly ctor: Types.Ctor<C>;
 }
 
@@ -35,7 +34,7 @@ export interface Context<C extends Contract.Any>
 export const getContractContext: <C extends Contract<PS>, PS>(
   compiledContract: CompiledContract<C, PS>
 ) => Types.Simplify<Required<Context<C>>> = <C extends Contract<PS>, PS>(compiledContract: CompiledContract<C, PS>) =>
-  compiledContract[CompactContextId] as Required<Context<C>>;
+  compiledContract[TypeId] as Required<Context<C>>;
 
 /** @internal */
 export const createContract: <C extends Contract<PS>, PS>(

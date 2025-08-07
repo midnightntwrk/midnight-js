@@ -13,25 +13,7 @@
  * limitations under the License.
  */
 
-import type { Contract } from './Contract';
+import { type Layer, ManagedRuntime } from 'effect';
+import { type ContractExecutable } from './ContractExecutable';
 
-/**
- * Witness configuration.
- */
-export type Witnesses<in C extends Contract.Any, W = Contract.Witnesses<C>> = {
-  readonly witnesses: W;
-};
-
-/**
- * ZK asset path configuration.
- */
-export type ZKConfigAssetsPath = {
-  readonly zkConfigAssetsPath: string;
-};
-
-export declare namespace CompactContext {
-  /**
-   * A subset of the context that is to be publicly accessible.
-   */
-  export type PublicVisible = ZKConfigAssetsPath;
-}
+export const make = <E>(layer: Layer.Layer<ContractExecutable.Context, E>) => ManagedRuntime.make(layer)
