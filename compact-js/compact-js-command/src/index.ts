@@ -13,4 +13,47 @@
  * limitations under the License.
  */
 
-export * from './effect';
+import { Effect, Equal, Layer } from 'effect';
+import { Command, CliConfig } from '@effect/cli';
+import { NodeContext, NodeRuntime } from "@effect/platform-node";
+import { deployCommand, ConfigCompiler } from './effect/index.js';
+import { fileURLToPath } from 'node:url';
+
+//#region Entry Point
+// dsd
+const isProcessRootModule = () => {
+  try {
+    if (!import.meta.url.startsWith("file:")) return false;
+
+    const urlPath = fileURLToPath(import.meta.url);
+    return Equal.equals(urlPath, process.argv[1]) || urlPath.startsWith(process.argv[1]);
+  }
+  catch {
+    return false;
+  }
+}
+
+if (isProcessRootModule()) {
+  const cli = Command.run(
+    Command.make('cpt_exec').pipe(
+      Command.withDescription('Executes Compact compiled contracts from the command line.'),
+      Command.withSubcommands([deployCommand])
+    ),
+    {
+      name: 'Compact Contract Execute',
+      version: '0.0.0'
+    }
+  );
+
+  cli(process.argv).pipe(
+    Effect.provide(Layer.mergeAll(
+      ConfigCompiler.layer.pipe(Layer.provideMerge(NodeContext.layer)),
+      CliConfig.layer({ showBuiltIns: false })
+    )),
+    NodeRuntime.runMain({ disablePrettyLogger: true })
+  );
+}
+
+//#endregion
+
+export * from './effect/index.js';

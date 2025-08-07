@@ -30,7 +30,7 @@ const VERIFIER_EXT = '.verifier';
  * @internal
  */
 const makeFileSystemReader =
-  <C extends Contract.Contract<PS>, PS>(path: Path.Path, fs: FileSystem.FileSystem) =>
+  <C extends Contract.Contract<PS>, PS>(path: Path.Path, fs: FileSystem.FileSystem, baseFolderPath: string) =>
   (compiledContract: CompiledContract.CompiledContract<C, PS>) =>
     // eslint-disable-next-line require-yield
     Effect.gen(function* () {
@@ -38,7 +38,7 @@ const makeFileSystemReader =
       const getVerifierKey = (impureCircuitId: Contract.ImpureCircuitId<C>) =>
         Effect.gen(function* () {
           const data = yield* fs.readFile(
-            path.join(zkConfigAssetsPath, KEYS_FOLDER, `${impureCircuitId}${VERIFIER_EXT}`)
+            path.join(path.resolve(baseFolderPath, zkConfigAssetsPath), KEYS_FOLDER, `${impureCircuitId}${VERIFIER_EXT}`)
           );
           return Contract.VerifierKey(data);
         }).pipe(
@@ -65,16 +65,18 @@ const makeFileSystemReader =
  * A {@link ZKConfiguration.ZKConfiguration | ZKConfiguration} implementation that reads ZK assets from the
  * file system.
  *
+ * @param baseFolderPath A base path to a folder containing the ZK assets.
+ *
  * @category layers
  */
-export const layer = Layer.effect(
+export const layer = (baseFolderPath = '.') => Layer.effect(
   ZKConfiguration.ZKConfiguration,
   Effect.gen(function* () {
     const path = yield* Path.Path;
     const fs = yield* FileSystem.FileSystem;
 
     return ZKConfiguration.ZKConfiguration.of({
-      createReader: makeFileSystemReader(path, fs)
+      createReader: makeFileSystemReader(path, fs, baseFolderPath)
     });
   })
 );

@@ -14,6 +14,6 @@
  */
 
 import { type Layer, ManagedRuntime } from 'effect';
-import { type ContractExecutable } from './ContractExecutable';
+import { type ContractExecutable } from './ContractExecutable.js';
 
 export const make = <E>(layer: Layer.Layer<ContractExecutable.Context, E>) => ManagedRuntime.make(layer)

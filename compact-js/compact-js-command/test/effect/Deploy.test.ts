@@ -45,5 +45,7 @@ describe('Deploy Command', () => {
     }).pipe(
       Effect.ensuring(ensureRemovePath(COUNTER_CONFIG_FILEPATH.replace('.ts', '.js'))),
       Effect.provide(testLayer)
-    ), 30_000);
+    ),
+    30_000
+  );
 });

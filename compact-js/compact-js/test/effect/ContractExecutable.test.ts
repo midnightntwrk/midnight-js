@@ -46,7 +46,7 @@ const asContractState = (contractState: LedgerContractState): ContractState =>
   ContractState.deserialize(contractState.serialize(LedgerNetworkId.Undeployed), RuntimeNetworkId.Undeployed);
 
 const testLayer = (configMap: Map<string, string>) =>
-  Layer.mergeAll(ZKFileConfiguration.layer, KeyConfiguration.layer).pipe(
+  Layer.mergeAll(ZKFileConfiguration.layer(COUNTER_ASSETS_PATH), KeyConfiguration.layer).pipe(
     Layer.provideMerge(NodeContext.layer),
     Layer.provide(
       Layer.setConfigProvider(ConfigProvider.fromMap(configMap, { pathDelim: '_' }).pipe(ConfigProvider.constantCase))

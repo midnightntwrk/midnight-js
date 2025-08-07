@@ -16,9 +16,9 @@
 import type { Types } from 'effect';
 import { type Pipeable, pipeArguments } from 'effect/Pipeable';
 import { dual } from 'effect/Function';
-import type { Contract } from './Contract';
-import type * as CompactContext from './CompactContext';
-import * as CompactContextInternal from './internal/compactContext';
+import type { Contract } from './Contract.js';
+import type * as CompactContext from './CompactContext.js';
+import * as CompactContextInternal from './internal/compactContext.js';
 
 export const TypeId = Symbol.for('@midnight-ntwrk/compact-js/CompiledContract');
 export type TypeId = typeof TypeId;

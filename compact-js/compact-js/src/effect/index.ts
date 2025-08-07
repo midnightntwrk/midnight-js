@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-export * as CompactContext from './CompactContext';
-export * as CompiledContract from './CompiledContract';
-export * as Contract from './Contract';
-export * as ContractExecutable from './ContractExecutable';
-export * as ContractExecutableRuntime from './ContractExecutableRuntime';
-export * as KeyConfiguration from './KeyConfiguration';
-export * as ZKConfiguration from './ZKConfiguration';
-export * as CoinPublicKey from './CoinPublicKey';
-export * as SigningKey from './SigningKey';
-export * as ContractAddress from './ContractAddress';
+export * as CompactContext from './CompactContext.js';
+export * as CompiledContract from './CompiledContract.js';
+export * as Contract from './Contract.js';
+export * as ContractExecutable from './ContractExecutable.js';
+export * as ContractExecutableRuntime from './ContractExecutableRuntime.js';
+export * as KeyConfiguration from './KeyConfiguration.js';
+export * as ZKConfiguration from './ZKConfiguration.js';
+export * as CoinPublicKey from './CoinPublicKey.js';
+export * as SigningKey from './SigningKey.js';
+export * as ContractAddress from './ContractAddress.js';

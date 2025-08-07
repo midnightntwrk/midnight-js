@@ -14,9 +14,9 @@
  */
 
 import { Effect, type Types } from 'effect';
-import type { CompiledContract } from '../CompiledContract';
-import { type Contract } from '../Contract';
-import type * as CompactContext from '../CompactContext';
+import type { CompiledContract } from '../CompiledContract.js';
+import { type Contract } from '../Contract.js';
+import type * as CompactContext from '../CompactContext.js';
 
 /** @internal */
 export const TypeId = Symbol();

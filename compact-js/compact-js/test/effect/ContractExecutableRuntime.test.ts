@@ -32,7 +32,7 @@ const COUNTER_ASSETS_PATH = resolve(import.meta.dirname, '../contract/managed/co
 const VALID_COIN_PUBLIC_KEY = 'd2dc8d175c0ef7d1f7e5b7f32bd9da5fcd4c60fa1b651f1d312986269c2d3c79';
 
 const testLayer = (configMap: Map<string, string>) =>
-  Layer.mergeAll(ZKFileConfiguration.layer, KeyConfiguration.layer).pipe(
+  Layer.mergeAll(ZKFileConfiguration.layer(COUNTER_ASSETS_PATH), KeyConfiguration.layer).pipe(
     Layer.provideMerge(NodeContext.layer),
     Layer.provide(
       Layer.setConfigProvider(ConfigProvider.fromMap(configMap, { pathDelim: '_' }).pipe(ConfigProvider.constantCase))

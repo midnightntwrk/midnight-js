@@ -33,13 +33,25 @@ export class ConfigError extends Data.TaggedError('ConfigError')<{
 }
 
 export declare namespace ConfigCompiler {
-  export type ModuleSpec<PS = any> = { // eslint-disable-line @typescript-eslint/no-explicit-any
+  /**
+   * Represents the _shape_ of an exported configuration module.
+   */
+  export type ModuleExport<PS = any> = { // eslint-disable-line @typescript-eslint/no-explicit-any
     default: {
       config: Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
       createInitialPrivateState: () => PS;
       contractExecutable: ContractExecutable.ContractExecutable<Contract.Contract<PS>,PS>;
     }
   }
+
+  /**
+   * Describes a configuration module.
+   */
+  export type ModuleSpec<PS = any> = { // eslint-disable-line @typescript-eslint/no-explicit-any
+    moduleImportDirectoryPath: string;
+    module: ModuleExport<PS>;
+  }
+
   export interface Service {
     readonly compile: (filePath: string) => Effect.Effect<ModuleSpec, ConfigError>;
   }
@@ -52,39 +64,45 @@ export const layer = Layer.effect(
     const fs = yield* FileSystem.FileSystem;
 
     const getFilePathProperties = (filePath: string) => Effect.gen(function* () {
-      const parsedFilePath = path.parse(filePath);
-      const fileImportPath = path.join(parsedFilePath.dir, `${parsedFilePath.name}.js`);
-      const filePathModifiedTime = (yield* fs.stat(filePath)).mtime;
-      const fileImportPathModifiedTime = (yield* fs.exists(fileImportPath))
-        ? (yield* fs.stat(fileImportPath)).mtime
+      const absoluteFilePath = path.resolve(filePath);
+      const parsedFilePath = path.parse(absoluteFilePath);
+      const absoluteFileImportPath = path.join(parsedFilePath.dir, `${parsedFilePath.name}.js`);
+      const filePathModifiedTime = (yield* fs.stat(absoluteFilePath)).mtime;
+      const fileImportPathModifiedTime = (yield* fs.exists(absoluteFileImportPath))
+        ? (yield* fs.stat(absoluteFileImportPath)).mtime
         : Option.some(Option.getOrThrow(filePathModifiedTime));
 
       return {
-        filePath,
-        workingDirectory: parsedFilePath.dir,
-        fileImportPath,
+        absoluteFilePath,
+        absoluteWorkingDirectory: parsedFilePath.dir,
+        absoluteFileImportPath,
         requiresCompilation: Option.getOrThrow(fileImportPathModifiedTime) <= Option.getOrThrow(filePathModifiedTime)
       };
     });
 
     const transpileTypeScript: (_: Effect.Effect.Success<ReturnType<typeof getFilePathProperties>>) =>
       Effect.Effect<string, PlatformError> =
-        ({ filePath, fileImportPath, workingDirectory, requiresCompilation }) => Effect.gen(function* () {
+        ({ absoluteFilePath, absoluteFileImportPath, absoluteWorkingDirectory, requiresCompilation }) => Effect.gen(function* () {
             if (!requiresCompilation) {
-              return fileImportPath;
+              return absoluteFileImportPath;
             }
-            const tsNodeService = create({ cwd: workingDirectory });
-            const jsSrc = tsNodeService.compile(yield* fs.readFileString(filePath), filePath);
+            const tsNodeService = create({ cwd: absoluteWorkingDirectory });
+            const jsSrc = tsNodeService.compile(yield* fs.readFileString(absoluteFilePath), absoluteFilePath);
             
-            yield* fs.writeFileString(fileImportPath, jsSrc);
+            yield* fs.writeFileString(absoluteFileImportPath, jsSrc);
 
-            return fileImportPath;
+            return absoluteFileImportPath;
         });
 
     return ConfigCompiler.of({
       compile: (filePath: string) => getFilePathProperties(filePath).pipe(
         Effect.flatMap(transpileTypeScript),
-        Effect.flatMap((fileImportPath) => Effect.tryPromise(() => import(fileImportPath))),
+        Effect.flatMap((fileImportPath) => Effect.tryPromise<ConfigCompiler.ModuleSpec>(
+          async () => ({
+            moduleImportDirectoryPath: path.dirname(fileImportPath),
+            module: await import(fileImportPath)
+          })
+        )),
         Effect.mapError((err) => ConfigError.make(`Error loading configuration ${filePath}`, err))
       )
     });

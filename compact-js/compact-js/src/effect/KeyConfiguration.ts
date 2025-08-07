@@ -14,8 +14,8 @@
  */
 
 import { Effect, Context, Layer, type Option, Config, Schema } from 'effect';
-import * as CoinPublicKey from './CoinPublicKey';
-import * as SigningKey from './SigningKey';
+import * as CoinPublicKey from './CoinPublicKey.js';
+import * as SigningKey from './SigningKey.js';
 
 /**
  * Provides utilities for accessing keys.

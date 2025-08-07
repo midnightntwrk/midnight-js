@@ -40,14 +40,14 @@ import {
   type ZswapLocalState,
   decodeZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
-import { type CompiledContract } from './CompiledContract';
-import * as Contract from './Contract';
-import { ZKConfiguration, type ZKConfigurationReadError } from './ZKConfiguration';
-import { KeyConfiguration } from './KeyConfiguration';
-import * as CoinPublicKey from './CoinPublicKey';
-import * as CompactContextInternal from './internal/compactContext';
-import * as SigningKey from './SigningKey';
-import type * as ContractAddress from './ContractAddress';
+import { type CompiledContract } from './CompiledContract.js';
+import * as Contract from './Contract.js';
+import { ZKConfiguration, type ZKConfigurationReadError } from './ZKConfiguration.js';
+import { KeyConfiguration } from './KeyConfiguration.js';
+import * as CoinPublicKey from './CoinPublicKey.js';
+import * as CompactContextInternal from './internal/compactContext.js';
+import * as SigningKey from './SigningKey.js';
+import type * as ContractAddress from './ContractAddress.js';
 
 export interface ContractExecutable<in out C extends Contract.Contract<PS>, PS, out E = never, out R = never>
   extends Pipeable {

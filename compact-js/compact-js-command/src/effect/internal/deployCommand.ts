@@ -15,22 +15,28 @@
 
 import { type ConfigError, Effect } from 'effect';
 import { type Path } from '@effect/platform';
-import * as Options from './options';
-import * as ConfigCompiler from '../ConfigCompiler';
-import * as CommandConfigProvider from '../CommandConfigProvider';
 import { ContractExecutableRuntime } from '@midnight-ntwrk/compact-js/effect';
-import * as InternalCommand from './command';
+import * as Options from './options.js';
+import * as ConfigCompiler from '../ConfigCompiler.js';
+import * as CommandConfigProvider from '../CommandConfigProvider.js';
+import * as InternalCommand from './command.js';
 
 /** @internal */
-export const deploy: (inputs: InternalCommand.DeployInputs) =>
+export const handler: (inputs: InternalCommand.DeployInputs) =>
   Effect.Effect<void, ConfigCompiler.ConfigError | ConfigError.ConfigError, Path.Path | ConfigCompiler.ConfigCompiler> =
   (inputs: InternalCommand.DeployInputs) => Effect.gen(function* () {
     const configFilePath = yield* Options.getConfigFilePath(inputs);
     const configCompiler = yield* ConfigCompiler.ConfigCompiler;
 
-    const { default: contractModule } = yield* configCompiler.compile(configFilePath);
+    const { 
+      moduleImportDirectoryPath,
+      module: { default: contractModule}
+    } = yield* configCompiler.compile(configFilePath);
     const contractRuntime = ContractExecutableRuntime.make(
-      InternalCommand.layer(CommandConfigProvider.make(contractModule.config, Options.asConfigProvider(inputs)))
+      InternalCommand.layer(
+        CommandConfigProvider.make(contractModule.config, Options.asConfigProvider(inputs)),
+        moduleImportDirectoryPath
+      )
     );
 
     const _ = yield* contractModule.contractExecutable.initialize(contractModule.createInitialPrivateState()).pipe(
@@ -38,6 +44,8 @@ export const deploy: (inputs: InternalCommand.DeployInputs) =>
         return result;
       }),
       contractRuntime.runFork,
-      Effect.catchAll(InternalCommand.reportContractExecutionError),
+      Effect.catchAll(InternalCommand.reportContractExecutionError)
     );
-  });
+  }).pipe(
+    Effect.catchAll(InternalCommand.reportContractConfigError)
+  );

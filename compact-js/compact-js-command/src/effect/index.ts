@@ -14,12 +14,12 @@
  */
 
 import { Command } from '@effect/cli';
-import * as Options from './internal/options';
-import { deploy } from './internal/deployCommand';
+import * as Options from './internal/options.js';
+import * as InternalDeployCommand from './internal/deployCommand.js';
 
 export const deployCommand = Command.make("deploy", { ...Options.allCommandOptions }).pipe(
   Command.withDescription("Initialize a new contract instance and returns a ContractDeploy object for it."),
-  Command.withHandler(deploy)
+  Command.withHandler(InternalDeployCommand.handler)
 );
 
-export * as ConfigCompiler from './ConfigCompiler';
+export * as ConfigCompiler from './ConfigCompiler.js';

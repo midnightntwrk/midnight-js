@@ -25,28 +25,34 @@ const COUNTER_CONFIG_FILEPATH = resolve(import.meta.dirname, '../contract/counte
 describe('ConfigCompiler', () => {
   describe('layer', () => {
     describe('with valid and well formed configuration file', () => {
-      it.effect('should compile and return module', () => Effect.gen(function* () {
-        const compiler = yield* ConfigCompiler.ConfigCompiler;
-        const configModule = yield* compiler.compile(COUNTER_CONFIG_FILEPATH);
+      it.effect('should compile and return module', () =>
+        Effect.gen(function* () {
+          const compiler = yield* ConfigCompiler.ConfigCompiler;
+          const configModuleSpec = yield* compiler.compile(COUNTER_CONFIG_FILEPATH);
 
-        expect(configModule).toMatchObject({
-          default: expect.objectContaining({
-            config: expect.any(Object),
-            contractExecutable: expect.objectContaining({
-              compiledContract: expect.objectContaining({
-                tag: 'CounterContract'
+          expect(configModuleSpec).toMatchObject({
+            moduleImportDirectoryPath: expect.any(String),
+            module: expect.objectContaining({
+              default: expect.objectContaining({
+                config: expect.any(Object),
+                contractExecutable: expect.objectContaining({
+                  compiledContract: expect.objectContaining({
+                    tag: 'CounterContract'
+                  })
+                })
               })
             })
+          });
+        }).pipe(
+          Effect.ensuring(ensureRemovePath(COUNTER_CONFIG_FILEPATH.replace('.ts', '.js'))),
+          Effect.provide(ConfigCompiler.layer.pipe(Layer.provideMerge(NodeContext.layer))),
+          Effect.catchAll((err) => {
+            console.log(err);
+            return Effect.void
           })
-        });
-      }).pipe(
-        Effect.ensuring(ensureRemovePath(COUNTER_CONFIG_FILEPATH.replace('.ts', '.js'))),
-        Effect.provide(ConfigCompiler.layer.pipe(Layer.provideMerge(NodeContext.layer))),
-        Effect.catchAll((err) => {
-          console.log(err);
-          return Effect.void
-        })
-      ), 30_000);
+        ),
+        30_000
+      );
     });
   });
 });

@@ -13,4 +13,4 @@
  * limitations under the License.
  */
 
-export * as ZKFileConfiguration from './ZKFileConfiguration';
+export * as ZKFileConfiguration from './ZKFileConfiguration.js';

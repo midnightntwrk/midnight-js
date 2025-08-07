@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { Contract } from './Contract';
+import type { Contract } from './Contract.js';
 
 /**
  * Witness configuration.

@@ -17,9 +17,19 @@ import { Effect, Layer, type ConfigProvider, type ConfigError, Console } from 'e
 import { NodeContext } from '@effect/platform-node';
 import { KeyConfiguration, type ZKConfiguration, type ContractExecutable } from '@midnight-ntwrk/compact-js/effect';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
-import type * as Options from './options';
+import type * as ConfigCompiler from '../ConfigCompiler.js';
+import type * as Options from './options.js';
 
 export type DeployInputs = Options.AllCommandOptionInputs;
+
+export const reportContractConfigError: (err: ConfigCompiler.ConfigError) =>
+  Effect.Effect<void, never> =
+    (err) => Effect.gen(function* () {
+      yield* Console.log(err.toString());
+      if (err.cause) {
+        yield* Console.log(String(err.cause));
+      }
+    });
 
 export const reportContractExecutionError: (err: ContractExecutable.ContractExecutionError | ConfigError.ConfigError) =>
   Effect.Effect<void, never> =
@@ -27,12 +37,12 @@ export const reportContractExecutionError: (err: ContractExecutable.ContractExec
       yield* Console.log(err.toString());
     });
 
-export const layer: (configProvider: ConfigProvider.ConfigProvider) =>
+export const layer: (configProvider: ConfigProvider.ConfigProvider, zkBaseFolderPath: string) =>
   Layer.Layer<
     ZKConfiguration.ZKConfiguration | KeyConfiguration.KeyConfiguration | NodeContext.NodeContext,
     ConfigError.ConfigError
-  > = (configProvider) =>
-    Layer.mergeAll(ZKFileConfiguration.layer, KeyConfiguration.layer).pipe(
+  > = (configProvider, zkBaseFolderPath) =>
+    Layer.mergeAll(ZKFileConfiguration.layer(zkBaseFolderPath), KeyConfiguration.layer).pipe(
       Layer.provideMerge(NodeContext.layer),
       Layer.provide(
         Layer.setConfigProvider(configProvider)

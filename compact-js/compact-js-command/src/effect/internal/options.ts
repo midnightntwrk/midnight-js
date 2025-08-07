@@ -25,9 +25,9 @@ export const config = Options.file('config').pipe(
 );
 
 /** @internal */
-export const coinPublicKey = Options.text('coinPublic').pipe(
-  Options.withAlias('cpk'),
-  Options.withDescription('A user public key, hex or Bech32m encoded.'),
+export const coinPublicKey = Options.text('coin-public').pipe(
+  Options.withAlias('p'),
+  Options.withDescription('A user public key capable of receiving Zswap coins, hex or Bech32m encoded.'),
   Options.withSchema(Schema.Union(
     Schema.String.pipe(Schema.fromBrand(CoinPublicKey.Hex)),
     Schema.String.pipe(Schema.fromBrand(CoinPublicKey.Bech32m))

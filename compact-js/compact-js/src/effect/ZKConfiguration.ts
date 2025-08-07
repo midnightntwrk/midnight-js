@@ -14,8 +14,8 @@
  */
 
 import { type Effect, Context, Data } from 'effect';
-import type { CompiledContract } from './CompiledContract';
-import type * as Contract from './Contract';
+import type { CompiledContract } from './CompiledContract.js';
+import type * as Contract from './Contract.js';
 
 /**
  * Provides utilities for reading the ZK assets of a compiled Compact contract.
