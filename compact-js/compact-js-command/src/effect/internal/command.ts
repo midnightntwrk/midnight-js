@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-import { Effect, Layer, type ConfigProvider, type ConfigError, Console } from 'effect';
+import { Effect, Layer, type ConfigProvider, ConfigError, Console } from 'effect';
 import { NodeContext } from '@effect/platform-node';
 import { KeyConfiguration, type ZKConfiguration, type ContractExecutable } from '@midnight-ntwrk/compact-js/effect';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
-import type * as ConfigCompiler from '../ConfigCompiler.js';
+import * as ConfigCompiler from '../ConfigCompiler.js';
 import type * as Options from './options.js';
 
 export type DeployInputs = Options.AllCommandOptionInputs;
@@ -27,6 +27,13 @@ export const reportContractConfigError: (err: ConfigCompiler.ConfigError) =>
     (err) => Effect.gen(function* () {
       yield* Console.log(err.toString());
       if (err.cause) {
+        if (err.cause instanceof ConfigCompiler.ConfigCompilationError) {
+          yield* Console.log(String(err.cause));
+          for (const diagnostic of err.cause.diagnostics) {
+            yield* Console.log(diagnostic.messageText);
+          }
+          return;
+        }
         yield* Console.log(String(err.cause));
       }
     });
@@ -34,6 +41,10 @@ export const reportContractConfigError: (err: ConfigCompiler.ConfigError) =>
 export const reportContractExecutionError: (err: ContractExecutable.ContractExecutionError | ConfigError.ConfigError) =>
   Effect.Effect<void, never> =
     (err) => Effect.gen(function* () {
+      if (ConfigError.isConfigError(err)) {
+        // TODO: Look at ConfigError.reduceWithContext to reduce the error is a meaningful message.
+        return yield* Console.log('ConfigurationError: Configuration is missing or invalid')
+      }
       yield* Console.log(err.toString());
     });
 

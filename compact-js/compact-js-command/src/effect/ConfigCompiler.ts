@@ -32,6 +32,14 @@ export class ConfigError extends Data.TaggedError('ConfigError')<{
     new ConfigError({ message, cause });
 }
 
+export class ConfigCompilationError extends Data.TaggedError('ConfigCompilationError')<{
+  readonly message: string;
+  readonly diagnostics: { messageText: string }[];
+}> {
+  static make: (message: string, diagnostics: { messageText: string }[]) => ConfigCompilationError =
+    (message, diagnostics) => new ConfigCompilationError({ message, diagnostics });
+}
+
 export declare namespace ConfigCompiler {
   /**
    * Represents the _shape_ of an exported configuration module.
@@ -65,8 +73,8 @@ export const layer = Layer.effect(
 
     const getFilePathProperties = (filePath: string) => Effect.gen(function* () {
       const absoluteFilePath = path.resolve(filePath);
-      const parsedFilePath = path.parse(absoluteFilePath);
-      const absoluteFileImportPath = path.join(parsedFilePath.dir, `${parsedFilePath.name}.js`);
+      const parsedAbsoluteFilePath = path.parse(absoluteFilePath);
+      const absoluteFileImportPath = path.join(parsedAbsoluteFilePath.dir, `${parsedAbsoluteFilePath.name}.js`);
       const filePathModifiedTime = (yield* fs.stat(absoluteFilePath)).mtime;
       const fileImportPathModifiedTime = (yield* fs.exists(absoluteFileImportPath))
         ? (yield* fs.stat(absoluteFileImportPath)).mtime
@@ -74,22 +82,32 @@ export const layer = Layer.effect(
 
       return {
         absoluteFilePath,
-        absoluteWorkingDirectory: parsedFilePath.dir,
+        absoluteWorkingDirectory: parsedAbsoluteFilePath.dir,
         absoluteFileImportPath,
         requiresCompilation: Option.getOrThrow(fileImportPathModifiedTime) <= Option.getOrThrow(filePathModifiedTime)
       };
     });
 
     const transpileTypeScript: (_: Effect.Effect.Success<ReturnType<typeof getFilePathProperties>>) =>
-      Effect.Effect<string, PlatformError> =
+      Effect.Effect<string, PlatformError | ConfigCompilationError> =
         ({ absoluteFilePath, absoluteFileImportPath, absoluteWorkingDirectory, requiresCompilation }) => Effect.gen(function* () {
             if (!requiresCompilation) {
               return absoluteFileImportPath;
             }
-            const tsNodeService = create({ cwd: absoluteWorkingDirectory });
-            const jsSrc = tsNodeService.compile(yield* fs.readFileString(absoluteFilePath), absoluteFilePath);
-            
-            yield* fs.writeFileString(absoluteFileImportPath, jsSrc);
+
+            try {
+              const tsNodeService = create({ cwd: absoluteWorkingDirectory });
+
+              yield* fs.writeFileString(
+                absoluteFileImportPath,
+                tsNodeService.compile(yield* fs.readFileString(absoluteFilePath), absoluteFilePath)
+              );
+            }
+            catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+              if (err?.name === 'TSError') {
+                return yield* ConfigCompilationError.make('Failed to compile TypeScript', err.diagnostics);
+              }
+            }
 
             return absoluteFileImportPath;
         });
@@ -103,7 +121,7 @@ export const layer = Layer.effect(
             module: await import(fileImportPath)
           })
         )),
-        Effect.mapError((err) => ConfigError.make(`Error loading configuration ${filePath}`, err))
+        Effect.mapError((err) => ConfigError.make(`Error loading configuration '${filePath}'`, err))
       )
     });
   })
