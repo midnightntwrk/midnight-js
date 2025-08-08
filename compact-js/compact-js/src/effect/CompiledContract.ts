@@ -153,16 +153,13 @@ export const withZKConfigFileAssets: {
 );
 
 /**
- * Retrieves the publicly visible context properties that are associated with a compiled contract.
+ * Retrieves a path to the ZK assets  associated with a compiled contract.
  *
- * @param self The {@link CompiledContract} from which context should be retrieved.
- * @returns An object that contains the publicly visible context properties for `self`.
+ * @param self The {@link CompiledContract} from which the assets path should be retrieved.
+ * @returns A string representing a path to the ZK assets configured for `self`.
  */
-export const getContext: <C extends Contract<PS>, PS>(self: CompiledContract<C, PS>) => CompactContext.CompactContext.PublicVisible =
+export const getZkConfigAssetsPath: <C extends Contract<PS>, PS>(self: CompiledContract<C, PS>) => string =
   <C extends Contract<PS>, PS>(self: CompiledContract<C, PS>) => {
     const context = CompactContextInternal.getContractContext(self);
-    return {
-      zkConfigAssetsPath: context.zkConfigAssetsPath
-    };
+    return context.zkConfigAssetsPath;
   };
-

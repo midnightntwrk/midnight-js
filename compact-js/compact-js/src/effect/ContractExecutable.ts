@@ -17,7 +17,6 @@ import { Effect, type Layer, Data, Option, Either } from 'effect';
 import { dual, identity } from 'effect/Function';
 import { type Pipeable, pipeArguments } from 'effect/Pipeable';
 import {
-  type ContractDeploy,
   QueryContext as LedgerQueryContext,
   StateValue as LedgerStateValue,
   type Transcript,
@@ -70,22 +69,6 @@ export declare namespace ContractExecutable {
    * The services required as context for executing contracts.
    */
   export type Context = ZKConfiguration | KeyConfiguration;
-
-  export type DeployData = {
-    /**
-     * The initial state of the contract.
-     */
-    readonly contractDeploy: ContractDeploy;
-
-    /**
-     * The signing key that was used to create the Contract Maintenance Authority (CMA) associated
-     * with the deployment.
-     *
-     * @remarks
-     * This signing key should be re-used in all future maintenance activities for the contract.
-     */
-    readonly signingKey: SigningKey.SigningKey;
-  };
 
   export type CircuitContext<PS> = {
     readonly address: ContractAddress.ContractAddress;

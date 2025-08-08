@@ -19,8 +19,9 @@ import { NodeContext, NodeRuntime } from "@effect/platform-node";
 import { deployCommand, ConfigCompiler } from './effect/index.js';
 import { fileURLToPath } from 'node:url';
 
-//#region Entry Point
-// dsd
+// #region Entry Point
+// This region of code hosts and executes the commands present in the package if this module was loaded
+// as the root of the process.
 const isProcessRootModule = () => {
   try {
     if (!import.meta.url.startsWith("file:")) return false;
@@ -35,7 +36,7 @@ const isProcessRootModule = () => {
 
 if (isProcessRootModule()) {
   const cli = Command.run(
-    Command.make('cpt_exec').pipe(
+    Command.make('cptexec').pipe(
       Command.withDescription('Executes Compact compiled contracts from the command line.'),
       Command.withSubcommands([deployCommand])
     ),
@@ -54,6 +55,6 @@ if (isProcessRootModule()) {
   );
 }
 
-//#endregion
+// #endregion
 
 export * from './effect/index.js';
