@@ -42,7 +42,7 @@
     "clean": "shx rm -rf ./build ./dist ./.tsbuildinfo ./reports ./coverage",
     "test": "vitest run",
     "cmd": "NODE_OPTIONS='--loader ts-node/esm --no-warnings' ts-node ./src/index.ts",
-    "deploy": "shx rm -rf ./dist/src && (cd ./dist; npm pack) && npm publish ./dist/*.tgz --registry https://npm.pkg.github.com/"
+    "deploy": "shx rm -rf ./dist/src && (cd ./dist; npm publish)"
   },
   "files": [
     "dist/"

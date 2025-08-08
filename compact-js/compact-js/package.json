@@ -37,7 +37,7 @@
     "build-compact": "(shx --negate test -d ./test/contract/managed && yarn compact || true)",
     "clean": "shx rm -rf ./build ./dist ./.tsbuildinfo ./reports ./coverage",
     "test": "yarn build-compact && vitest run && tstyche",
-    "deploy": "shx rm -rf ./dist/src && (cd ./dist; npm pack) && npm publish ./dist/*.tgz --registry https://npm.pkg.github.com/",
+    "deploy": "shx rm -rf ./dist/src && (cd ./dist; npm publish)",
     "compact": "yarn fetch-compactc && yarn compact-counter",
     "compact-counter": "run-compactc ./test/contract/counter.compact ./test/contract/managed/counter"
   },

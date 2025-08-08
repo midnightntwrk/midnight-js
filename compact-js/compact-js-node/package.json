@@ -27,7 +27,7 @@
     "build-esm": "tsc -b tsconfig.build.json",
     "clean": "shx rm -rf ./build ./dist ./.tsbuildinfo ./reports ./coverage",
     "test": "vitest run --passWithNoTests",
-    "deploy": "shx rm -rf ./dist/src && (cd ./dist; npm pack) && npm publish ./dist/*.tgz --registry https://npm.pkg.github.com/"
+    "deploy": "shx rm -rf ./dist/src && (cd ./dist; npm publish)"
   },
   "files": [
     "dist/"
