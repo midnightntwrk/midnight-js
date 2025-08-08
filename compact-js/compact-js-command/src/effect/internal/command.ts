@@ -15,12 +15,16 @@
 
 import { Effect, Layer, type ConfigProvider, ConfigError, Console } from 'effect';
 import { NodeContext } from '@effect/platform-node';
+import { type Command } from '@effect/cli';
 import { KeyConfiguration, type ZKConfiguration, type ContractExecutable } from '@midnight-ntwrk/compact-js/effect';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import * as ConfigCompiler from '../ConfigCompiler.js';
 import type * as Options from './options.js';
+import type * as Args from './args.js';
 
-export type DeployInputs = Options.AllCommandOptionInputs;
+export type DeployArgs = Command.Command.ParseConfig<{ args: typeof Args.contractArgs }>;
+
+export type DeployInputs = DeployArgs & Options.AllCommandOptionInputs;
 
 export const reportContractConfigError: (err: ConfigCompiler.ConfigError) =>
   Effect.Effect<void, never> =

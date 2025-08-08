@@ -58,7 +58,10 @@ export const handler: (inputs: InternalCommand.DeployInputs) =>
       )
     );
 
-    const outputPath = yield* contractModule.contractExecutable.initialize(contractModule.createInitialPrivateState()).pipe(
+    const outputPath = yield* contractModule.contractExecutable.initialize(
+      contractModule.createInitialPrivateState(),
+      ...inputs.args
+    ).pipe(
       Effect.flatMap((result) => Effect.gen(function* () {
         const intent = Intent.new(yield* ttl(Duration.minutes(10)))
           .addDeploy(new ContractDeploy(asLedgerContractState(result.public.contractState)));

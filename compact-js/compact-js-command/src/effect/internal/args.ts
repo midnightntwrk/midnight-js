@@ -13,14 +13,9 @@
  * limitations under the License.
  */
 
-import { Command } from '@effect/cli';
-import * as Options from './internal/options.js';
-import * as Args from './internal/args.js';
-import * as InternalDeployCommand from './internal/deployCommand.js';
+import { Args } from '@effect/cli';
 
-export const deployCommand = Command.make("deploy", { args: Args.contractArgs, ...Options.allCommandOptions }).pipe(
-  Command.withDescription("Initialize a new contract instance and returns a ContractDeploy object for it."),
-  Command.withHandler(InternalDeployCommand.handler)
+export const contractArgs = Args.text({ name: 'arg' }).pipe(
+  Args.withDescription('An argument that will be forwarded (in order), to the constructor or circuit being invoked.'),
+  Args.repeated
 );
-
-export * as ConfigCompiler from './ConfigCompiler.js';
