@@ -24,6 +24,7 @@ import { ensureRemovePath } from './cleanup';
 import * as MockConsole from './MockConsole';
 
 const COUNTER_CONFIG_FILEPATH = resolve(import.meta.dirname, '../contract/counter/contract.config.ts');
+const COUNTER_OUTPUT_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output.bin');
 
 const testLayer: Layer.Layer<ConfigCompiler.ConfigCompiler | NodeContext.NodeContext> =
   Effect.gen(function* () {
@@ -39,11 +40,14 @@ describe('Deploy Command', () => {
     Effect.gen(function* () {
       const cli = Command.run(deployCommand, { name: 'deploy', version: '0.0.0' });
 
-      yield* cli(['node', 'deploy.ts', '-c', COUNTER_CONFIG_FILEPATH]);
+      yield* cli(['node', 'deploy.ts', '-c', COUNTER_CONFIG_FILEPATH, '-o', COUNTER_OUTPUT_FILEPATH]);
 
-      // const lines = yield* MockConsole.getLines({ stripAnsi: true });
+      const lines = yield* MockConsole.getLines({ stripAnsi: true });
+
+      expect(lines.length).toBe(0);
     }).pipe(
       Effect.ensuring(ensureRemovePath(COUNTER_CONFIG_FILEPATH.replace('.ts', '.js'))),
+      Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
       Effect.provide(testLayer)
     ),
     30_000

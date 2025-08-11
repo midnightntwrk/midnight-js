@@ -13,18 +13,38 @@
  * limitations under the License.
  */
 
-import { Effect, Layer, type ConfigProvider, ConfigError, Console } from 'effect';
+import { Effect, Layer, type ConfigProvider, ConfigError, Console, DateTime, type Duration } from 'effect';
+import type { FileSystem, Path } from '@effect/platform';
 import { NodeContext } from '@effect/platform-node';
 import { type Command } from '@effect/cli';
-import { KeyConfiguration, type ZKConfiguration, type ContractExecutable } from '@midnight-ntwrk/compact-js/effect';
+import { KeyConfiguration, type ZKConfiguration, type ContractExecutable, ContractExecutableRuntime } from '@midnight-ntwrk/compact-js/effect';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import * as ConfigCompiler from '../ConfigCompiler.js';
-import type * as Options from './options.js';
+import * as CommandConfigProvider from '../CommandConfigProvider.js';
+import * as Options from './options.js';
 import type * as Args from './args.js';
 
-export type DeployArgs = Command.Command.ParseConfig<{ args: typeof Args.contractArgs }>;
+export type InvocationArgs = Command.Command.ParseConfig<{ args: typeof Args.contractArgs }>;
 
-export type DeployInputs = DeployArgs & Options.AllCommandOptionInputs;
+export type DeployInputs =
+  & InvocationArgs
+  & Options.AllCommandOptionInputs;
+
+export type CircuitArgs = Command.Command.ParseConfig<{
+  address: typeof Args.contractAddress,
+  circuitId: typeof Args.circuitId
+}>;
+
+export type CircuitInputs =
+  & CircuitArgs
+  & InvocationArgs
+  & Options.AllCommandOptionInputs
+  & Command.Command.ParseConfig<{
+    stateFilePath: typeof Options.stateFilePath
+  }>;
+
+export const ttl: (duration: Duration.Duration) => Effect.Effect<Date> = (duration) => 
+  DateTime.now.pipe(Effect.map((utcNow) => DateTime.toDate(DateTime.addDuration(utcNow, duration))));
 
 export const reportContractConfigError: (err: ConfigCompiler.ConfigError) =>
   Effect.Effect<void, never> =
@@ -57,9 +77,46 @@ export const layer: (configProvider: ConfigProvider.ConfigProvider, zkBaseFolder
     ZKConfiguration.ZKConfiguration | KeyConfiguration.KeyConfiguration | NodeContext.NodeContext,
     ConfigError.ConfigError
   > = (configProvider, zkBaseFolderPath) =>
-    Layer.mergeAll(ZKFileConfiguration.layer(zkBaseFolderPath), KeyConfiguration.layer).pipe(
+    Layer.mergeAll(
+      ZKFileConfiguration.layer(zkBaseFolderPath), KeyConfiguration.layer).pipe(
       Layer.provideMerge(NodeContext.layer),
       Layer.provide(
         Layer.setConfigProvider(configProvider)
       )
+    );
+
+export const invocationHandler: <I extends Options.AllCommandOptionInputs>(
+  handler: (inputs: I, module: ConfigCompiler.ConfigCompiler.ModuleSpec) =>
+    Effect.Effect<
+      void,
+      ContractExecutable.ContractExecutionError | ConfigError.ConfigError,
+      Path.Path | FileSystem.FileSystem
+    >
+) =>
+  (inputs: I) =>
+    Effect.Effect<
+      void,
+      ConfigCompiler.ConfigError | ConfigError.ConfigError,
+      Path.Path | FileSystem.FileSystem | ConfigCompiler.ConfigCompiler
+    > =
+    (handler) => (inputs) => Effect.gen(function* () {
+      const configFilePath = yield* Options.getConfigFilePath(inputs);
+      const configCompiler = yield* ConfigCompiler.ConfigCompiler;
+
+      const moduleSpec = yield* configCompiler.compile(configFilePath);
+      const { moduleImportDirectoryPath, module: { default: contractModule } } = moduleSpec;
+      const contractRuntime = ContractExecutableRuntime.make(
+        layer(
+          CommandConfigProvider.make(contractModule.config, Options.asConfigProvider(inputs)),
+          moduleImportDirectoryPath
+        )
+      );
+
+      yield* handler(inputs, moduleSpec).pipe(
+        Effect.provide(NodeContext.layer),
+        contractRuntime.runFork,
+        Effect.catchAll(reportContractExecutionError)
+      );
+    }).pipe(
+      Effect.catchAll(reportContractConfigError)
     );

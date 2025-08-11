@@ -43,14 +43,22 @@ export const signingKey = Options.text('signing').pipe(
   Options.optional
 );
 
-/** @internal */
-export const allConfigurableOptions = Options.all([coinPublicKey, signingKey]);
+export const outputFilePath = Options.file('output').pipe(
+  Options.withAlias('o'),
+  Options.withDescription('A file path of where the generated \'Intent\' data should be written.'),
+  Options.withDefault('output.bin')
+)
 
 /** @internal */
-export const allCommandOptions = { config, coinPublicKey, signingKey };
+export const allCommandOptions = { config, coinPublicKey, signingKey, outputFilePath };
 
 /** @internal */
 export type AllCommandOptionInputs = Command.Command.ParseConfig<typeof allCommandOptions>;
+
+/** @internal */
+export const stateFilePath = Options.file('state-file-path').pipe(
+  Options.withDescription('A file path of where the current onchain (or ledger), state data can be read.')
+);
 
 const DEFAULT_CONFIG_FILENAME = 'contract.config.ts';
 

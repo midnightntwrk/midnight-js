@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import { Effect, Equal, Layer } from 'effect';
+import { Effect, Equal, Layer, Logger, LogLevel } from 'effect';
 import { Command, CliConfig } from '@effect/cli';
 import { NodeContext, NodeRuntime } from "@effect/platform-node";
-import { deployCommand, ConfigCompiler } from './effect/index.js';
+import { deployCommand, circuitCommand, ConfigCompiler } from './effect/index.js';
 import { fileURLToPath } from 'node:url';
 
 // #region Entry Point
@@ -24,8 +24,9 @@ import { fileURLToPath } from 'node:url';
 // as the root of the process.
 const isProcessRootModule = () => {
   try {
-    if (!import.meta.url.startsWith("file:")) return false;
-
+    if (!import.meta.url.startsWith("file:")) {
+      return false;
+    }
     const urlPath = fileURLToPath(import.meta.url);
     return Equal.equals(urlPath, process.argv[1]) || urlPath.startsWith(process.argv[1]);
   }
@@ -38,7 +39,7 @@ if (isProcessRootModule()) {
   const cli = Command.run(
     Command.make('cptexec').pipe(
       Command.withDescription('Executes Compact compiled contracts from the command line.'),
-      Command.withSubcommands([deployCommand])
+      Command.withSubcommands([ deployCommand, circuitCommand ])
     ),
     {
       name: 'Compact Contract Execute',
@@ -47,11 +48,12 @@ if (isProcessRootModule()) {
   );
 
   cli(process.argv).pipe(
+    Logger.withMinimumLogLevel(LogLevel.None),
     Effect.provide(Layer.mergeAll(
       ConfigCompiler.layer.pipe(Layer.provideMerge(NodeContext.layer)),
       CliConfig.layer({ showBuiltIns: false })
     )),
-    NodeRuntime.runMain({ disablePrettyLogger: true })
+    NodeRuntime.runMain({ disableErrorReporting: true })
   );
 }
 
