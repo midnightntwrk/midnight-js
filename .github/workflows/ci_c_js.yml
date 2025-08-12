@@ -172,8 +172,7 @@ jobs:
             turbo-${{ runner.os }}-
 
       - name: Install dependencies
-        run: |
-          yarn install --immutable
+        run: yarn install --immutable
 
       - name: Temp bump prerelease
         run: yarn version prerelease
@@ -182,17 +181,18 @@ jobs:
         id: vars
         run: |
           calculatedSha=$(git rev-parse --short ${{ github.sha }})
-          currentVersion=$(jq -r .cjsVersion versions.json)
-          currentTag=$(jq -r .cjsTag versions.json)
-          targetVersion="$currentVersion-$currentTag.$calculatedSha"
+          version=$(jq -r '.v_info.version' version.compactjs.json)
+          preRelease=$(jq -r '.v_info.preRelease' version.compactjs.json)
+          tag=$(jq -r '.v_info.tag' version.compactjs.json)
+          targetVersion="$version$preRelease.g$calculatedSha"
           echo "target_version=$targetVersion" >> $GITHUB_OUTPUT
-          echo "current_tag=$currentTag" >> $GITHUB_OUTPUT
+          echo "tag=$tag" >> $GITHUB_OUTPUT
 
       - name: Bump versions
         run: yarn workspaces foreach --all version ${{ steps.vars.outputs.target_version }}
 
       - name: Publish packages
-        run: yarn deploy ${{ inputs.yarn_filter }} --cache-dir ./turbo -- --tag ${{ steps.vars.outputs.current_tag }}
+        run: yarn deploy ${{ inputs.yarn_filter }} --cache-dir ./turbo -- --tag ${{ steps.vars.outputs.tag }}
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
