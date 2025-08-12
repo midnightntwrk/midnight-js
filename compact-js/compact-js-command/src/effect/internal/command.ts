@@ -77,12 +77,9 @@ export const layer: (configProvider: ConfigProvider.ConfigProvider, zkBaseFolder
     ZKConfiguration.ZKConfiguration | KeyConfiguration.KeyConfiguration | NodeContext.NodeContext,
     ConfigError.ConfigError
   > = (configProvider, zkBaseFolderPath) =>
-    Layer.mergeAll(
-      ZKFileConfiguration.layer(zkBaseFolderPath), KeyConfiguration.layer).pipe(
+    Layer.mergeAll(ZKFileConfiguration.layer(zkBaseFolderPath), KeyConfiguration.layer).pipe(
       Layer.provideMerge(NodeContext.layer),
-      Layer.provide(
-        Layer.setConfigProvider(configProvider)
-      )
+      Layer.provide(Layer.setConfigProvider(configProvider))
     );
 
 export const invocationHandler: <I extends Options.AllCommandOptionInputs>(

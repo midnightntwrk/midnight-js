@@ -11,9 +11,9 @@
     "./effect/internal/*": null
   },
   "dependencies": {
-    "@effect/platform": "^0.89.0",
-    "@effect/platform-node": "^0.89.0",
-    "effect": "^3.17.2"
+    "@effect/platform": "^0.90.2",
+    "@effect/platform-node": "^0.95.0",
+    "effect": "^3.17.7"
   },
   "peerDependencies": {
     "@midnight-ntwrk/compact-js": ">=0.0.0"

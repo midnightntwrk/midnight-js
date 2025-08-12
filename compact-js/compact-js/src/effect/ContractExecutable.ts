@@ -302,6 +302,9 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
               PS,
               Contract.Contract.CircuitReturnType<C, K>
             >;
+            if (!circuit) {
+              throw new Error(`Circuit ${this.compiledContract.tag}#${impureCircuitId} could not be found.`);
+            }
             const initialTxContext = new QueryContext(circuitContext.contractState.data, circuitContext.address);
             return {
               ...circuit(
