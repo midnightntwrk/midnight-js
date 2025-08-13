@@ -43,35 +43,45 @@ export const signingKey = Options.text('signing').pipe(
   Options.optional
 );
 
+/** @internal */
 export const outputFilePath = Options.file('output').pipe(
   Options.withAlias('o'),
   Options.withDescription('A file path of where the generated \'Intent\' data should be written.'),
   Options.withDefault('output.bin')
-)
-
-/** @internal */
-export const allCommandOptions = { config, coinPublicKey, signingKey, outputFilePath };
-
-/** @internal */
-export type AllCommandOptionInputs = Command.Command.ParseConfig<typeof allCommandOptions>;
+);
 
 /** @internal */
 export const stateFilePath = Options.file('state-file-path').pipe(
   Options.withDescription('A file path of where the current onchain (or ledger), state data can be read.')
 );
 
+export type ConfigOptionInput = Command.Command.ParseConfig<{
+  config: typeof config;
+}>;
+
+/**
+ * All the options that contribute to the underlying `ConfigurationProvider`.
+ *
+ * @see {@link asConfigProvider}
+ * @internal
+ */
+export type AllConfigurableOptionInputs = Command.Command.ParseConfig<{
+  coinPublicKey: typeof coinPublicKey,
+  signingKey: typeof signingKey
+}>;
+
 const DEFAULT_CONFIG_FILENAME = 'contract.config.ts';
 
-export const getConfigFilePath: (optionInputs: AllCommandOptionInputs) => Effect.Effect<string, never, Path.Path> =
+export const getConfigFilePath: (optionInputs: ConfigOptionInput) => Effect.Effect<string, never, Path.Path> =
   ({ config }) => Option.match(config, { // eslint-disable-line @typescript-eslint/no-shadow
     onSome: (cfg) => Effect.succeed(cfg),
     onNone: () => Path.Path.pipe(Effect.map((path) => path.resolve(DEFAULT_CONFIG_FILENAME)))
   });
 
-export const asConfigProvider: (optionInputs: AllCommandOptionInputs) => ConfigProvider.ConfigProvider =
+export const asConfigProvider: (optionInputs: Partial<AllConfigurableOptionInputs>) => ConfigProvider.ConfigProvider =
   (optionInputs) => ConfigProvider.fromJson({
     keys: {
-      coinPublic: Option.getOrUndefined(optionInputs.coinPublicKey),
-      signing: Option.getOrUndefined(optionInputs.signingKey)
+      coinPublic: Option.getOrUndefined(optionInputs.coinPublicKey ?? Option.none()),
+      signing: Option.getOrUndefined(optionInputs.signingKey ?? Option.none())
     }
   });

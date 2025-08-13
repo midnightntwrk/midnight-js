@@ -81,3 +81,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Set build instance version number
+        if: steps.vars.outputs.on_release_branch
+        run: echo "id=${{ steps.vars.outputs.target_version }}" >> "$GITHUB_OUTPUT"

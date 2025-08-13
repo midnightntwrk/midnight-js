@@ -24,7 +24,10 @@ export const deployCommand = Command.make(
   'deploy',
   {
     args: Args.contractArgs,
-    ...Options.allCommandOptions
+    config: Options.config,
+    coinPublicKey: Options.coinPublicKey,
+    signingKey: Options.signingKey,
+    outputFilePath: Options.outputFilePath
   }).pipe(
   Command.withDescription('Initialize a new contract instance and returns a ContractDeploy intent for it.'),
   Command.withHandler(InternalCommand.invocationHandler(InternalDeployCommand.handler))
@@ -36,7 +39,9 @@ export const circuitCommand = Command.make(
     address: Args.contractAddress,
     circuitId: Args.circuitId,
     args: Args.contractArgs,
-    ...Options.allCommandOptions,
+    config: Options.config,
+    coinPublicKey: Options.coinPublicKey,
+    outputFilePath: Options.outputFilePath,
     stateFilePath: Options.stateFilePath,
   }).pipe(
     Command.withDescription('Invokes a circuit on a contract instance and returns a ContractCall intent for it.'),

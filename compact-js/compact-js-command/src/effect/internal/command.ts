@@ -28,7 +28,12 @@ export type InvocationArgs = Command.Command.ParseConfig<{ args: typeof Args.con
 
 export type DeployInputs =
   & InvocationArgs
-  & Options.AllCommandOptionInputs;
+  & Command.Command.ParseConfig<{
+    config: typeof Options.config,
+    coinPublicKey: typeof Options.coinPublicKey,
+    signingKey: typeof Options.signingKey,
+    outputFilePath: typeof Options.outputFilePath
+  }>;
 
 export type CircuitArgs = Command.Command.ParseConfig<{
   address: typeof Args.contractAddress,
@@ -38,9 +43,11 @@ export type CircuitArgs = Command.Command.ParseConfig<{
 export type CircuitInputs =
   & CircuitArgs
   & InvocationArgs
-  & Options.AllCommandOptionInputs
   & Command.Command.ParseConfig<{
-    stateFilePath: typeof Options.stateFilePath
+    config: typeof Options.config,
+    coinPublicKey: typeof Options.coinPublicKey,
+    stateFilePath: typeof Options.stateFilePath,
+    outputFilePath: typeof Options.outputFilePath
   }>;
 
 export const ttl: (duration: Duration.Duration) => Effect.Effect<Date> = (duration) => 
@@ -82,7 +89,7 @@ export const layer: (configProvider: ConfigProvider.ConfigProvider, zkBaseFolder
       Layer.provide(Layer.setConfigProvider(configProvider))
     );
 
-export const invocationHandler: <I extends Options.AllCommandOptionInputs>(
+export const invocationHandler: <I extends Options.ConfigOptionInput & Partial<Options.AllConfigurableOptionInputs>>(
   handler: (inputs: I, module: ConfigCompiler.ConfigCompiler.ModuleSpec) =>
     Effect.Effect<
       void,

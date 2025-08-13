@@ -263,10 +263,18 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
                 onSome: identity,
                 onNone: () => SigningKey.SigningKey(sampleSigningKey())
               });
-              contractState.maintenanceAuthority = new ContractMaintenanceAuthority(
-                [signatureVerifyingKey(signingKey)],
-                DEFAULT_CMA_THRESHOLD
-              );
+              try {
+                contractState.maintenanceAuthority = new ContractMaintenanceAuthority(
+                  [signatureVerifyingKey(signingKey)],
+                  DEFAULT_CMA_THRESHOLD
+                );
+              } catch (err: unknown) {
+                  return yield* ContractConfigurationError.make(
+                    `Failed to create a signature verifying key for signing key '${signingKey}'`,
+                    contractState,
+                    err
+                  );
+              }
 
               return {
                 public: {

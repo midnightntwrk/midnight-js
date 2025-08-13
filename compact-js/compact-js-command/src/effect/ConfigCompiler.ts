@@ -89,7 +89,7 @@ export const layer = Layer.effect(
     });
 
     const transpileTypeScript: (_: Effect.Effect.Success<ReturnType<typeof getFilePathProperties>>) =>
-      Effect.Effect<string, PlatformError | ConfigCompilationError> =
+      Effect.Effect<string, PlatformError | ConfigCompilationError | ConfigError> =
         ({ absoluteFilePath, absoluteFileImportPath, absoluteWorkingDirectory, requiresCompilation }) => Effect.gen(function* () {
             if (!requiresCompilation) {
               return absoluteFileImportPath;
@@ -104,9 +104,9 @@ export const layer = Layer.effect(
               );
             }
             catch (err: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
-              if (err?.name === 'TSError') {
-                return yield* ConfigCompilationError.make('Failed to compile TypeScript', err.diagnostics);
-              }
+              return yield* err?.name === 'TSError'
+                ? ConfigCompilationError.make('Failed to compile TypeScript configuration', err.diagnostics)
+                : ConfigError.make('Unexpected error while compiling TypeScript configuration', err);
             }
 
             return absoluteFileImportPath;
