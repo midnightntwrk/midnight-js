@@ -14,8 +14,6 @@
  */
 
 import { Command } from '@effect/cli';
-import * as Options from './internal/options.js';
-import * as Args from './internal/args.js';
 import * as InternalCommand from './internal/command.js';
 import * as InternalDeployCommand from './internal/deployCommand.js';
 import * as InternalCircuitCommand from './internal/circuitCommand.js';
@@ -23,11 +21,8 @@ import * as InternalCircuitCommand from './internal/circuitCommand.js';
 export const deployCommand = Command.make(
   'deploy',
   {
-    args: Args.contractArgs,
-    config: Options.config,
-    coinPublicKey: Options.coinPublicKey,
-    signingKey: Options.signingKey,
-    outputFilePath: Options.outputFilePath
+    ...InternalDeployCommand.Args,
+    ...InternalDeployCommand.Options
   }).pipe(
   Command.withDescription('Initialize a new contract instance and returns a ContractDeploy intent for it.'),
   Command.withHandler(InternalCommand.invocationHandler(InternalDeployCommand.handler))
@@ -36,13 +31,8 @@ export const deployCommand = Command.make(
 export const circuitCommand = Command.make(
   'circuit',
   { 
-    address: Args.contractAddress,
-    circuitId: Args.circuitId,
-    args: Args.contractArgs,
-    config: Options.config,
-    coinPublicKey: Options.coinPublicKey,
-    outputFilePath: Options.outputFilePath,
-    stateFilePath: Options.stateFilePath,
+    ...InternalCircuitCommand.Args,
+    ...InternalCircuitCommand.Options
   }).pipe(
     Command.withDescription('Invokes a circuit on a contract instance and returns a ContractCall intent for it.'),
     Command.withHandler(InternalCommand.invocationHandler(InternalCircuitCommand.handler))

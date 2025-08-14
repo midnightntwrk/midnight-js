@@ -16,39 +16,11 @@
 import { Effect, Layer, type ConfigProvider, ConfigError, Console, DateTime, type Duration } from 'effect';
 import type { FileSystem, Path } from '@effect/platform';
 import { NodeContext } from '@effect/platform-node';
-import { type Command } from '@effect/cli';
 import { KeyConfiguration, type ZKConfiguration, type ContractExecutable, ContractExecutableRuntime } from '@midnight-ntwrk/compact-js/effect';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import * as ConfigCompiler from '../ConfigCompiler.js';
 import * as CommandConfigProvider from '../CommandConfigProvider.js';
-import * as Options from './options.js';
-import type * as Args from './args.js';
-
-export type InvocationArgs = Command.Command.ParseConfig<{ args: typeof Args.contractArgs }>;
-
-export type DeployInputs =
-  & InvocationArgs
-  & Command.Command.ParseConfig<{
-    config: typeof Options.config,
-    coinPublicKey: typeof Options.coinPublicKey,
-    signingKey: typeof Options.signingKey,
-    outputFilePath: typeof Options.outputFilePath
-  }>;
-
-export type CircuitArgs = Command.Command.ParseConfig<{
-  address: typeof Args.contractAddress,
-  circuitId: typeof Args.circuitId
-}>;
-
-export type CircuitInputs =
-  & CircuitArgs
-  & InvocationArgs
-  & Command.Command.ParseConfig<{
-    config: typeof Options.config,
-    coinPublicKey: typeof Options.coinPublicKey,
-    stateFilePath: typeof Options.stateFilePath,
-    outputFilePath: typeof Options.outputFilePath
-  }>;
+import * as InternalOptions from './options.js';
 
 export const ttl: (duration: Duration.Duration) => Effect.Effect<Date> = (duration) => 
   DateTime.now.pipe(Effect.map((utcNow) => DateTime.toDate(DateTime.addDuration(utcNow, duration))));
@@ -89,7 +61,9 @@ export const layer: (configProvider: ConfigProvider.ConfigProvider, zkBaseFolder
       Layer.provide(Layer.setConfigProvider(configProvider))
     );
 
-export const invocationHandler: <I extends Options.ConfigOptionInput & Partial<Options.AllConfigurableOptionInputs>>(
+export const invocationHandler: <
+  I extends InternalOptions.ConfigOptionInput & Partial<InternalOptions.AllConfigurableOptionInputs>
+>(
   handler: (inputs: I, module: ConfigCompiler.ConfigCompiler.ModuleSpec) =>
     Effect.Effect<
       void,
@@ -104,14 +78,14 @@ export const invocationHandler: <I extends Options.ConfigOptionInput & Partial<O
       Path.Path | FileSystem.FileSystem | ConfigCompiler.ConfigCompiler
     > =
     (handler) => (inputs) => Effect.gen(function* () {
-      const configFilePath = yield* Options.getConfigFilePath(inputs);
+      const configFilePath = yield* InternalOptions.getConfigFilePath(inputs);
       const configCompiler = yield* ConfigCompiler.ConfigCompiler;
 
       const moduleSpec = yield* configCompiler.compile(configFilePath);
       const { moduleImportDirectoryPath, module: { default: contractModule } } = moduleSpec;
       const contractRuntime = ContractExecutableRuntime.make(
         layer(
-          CommandConfigProvider.make(contractModule.config, Options.asConfigProvider(inputs)),
+          CommandConfigProvider.make(contractModule.config, InternalOptions.asConfigProvider(inputs)),
           moduleImportDirectoryPath
         )
       );

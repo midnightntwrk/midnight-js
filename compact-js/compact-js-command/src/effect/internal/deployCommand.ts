@@ -15,6 +15,7 @@
 
 import { type ConfigError, Effect, Duration } from 'effect';
 import { FileSystem, Path } from '@effect/platform';
+import { type Command } from '@effect/cli';
 import { ContractExecutable } from '@midnight-ntwrk/compact-js/effect';
 import {
   ContractDeploy,
@@ -25,12 +26,29 @@ import {
 import { type ContractState, NetworkId as RuntimeNetworkId } from '@midnight-ntwrk/compact-runtime';
 import { type ConfigCompiler } from '../ConfigCompiler.js';
 import * as InternalCommand from './command.js';
+import * as InternalOptions from './options.js';
+import * as InternalArgs from './args.js';
+
+/** @internal */
+export type Args = Command.Command.ParseConfig<typeof Args>;
+/** @internal */
+export const Args = { args: InternalArgs.contractArgs };
+
+/** @internal */
+export type Options = Command.Command.ParseConfig<typeof Options>;
+/** @internal */
+export const Options = {
+    config: InternalOptions.config,
+    coinPublicKey: InternalOptions.coinPublicKey,
+    signingKey: InternalOptions.signingKey,
+    outputFilePath: InternalOptions.outputFilePath
+}
 
 const asLedgerContractState = (contractState: ContractState): LedgerContractState =>
   LedgerContractState.deserialize(contractState.serialize(RuntimeNetworkId.Undeployed), LedgerNetworkId.Undeployed);
 
 /** @internal */
-export const handler: (inputs: InternalCommand.DeployInputs, moduleSpec: ConfigCompiler.ModuleSpec) =>
+export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.ModuleSpec) =>
   Effect.Effect<
     void,
     ContractExecutable.ContractExecutionError | ConfigError.ConfigError,

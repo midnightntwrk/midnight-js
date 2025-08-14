@@ -15,6 +15,7 @@
 
 import { type ConfigError, Effect, Duration } from 'effect';
 import { FileSystem, Path } from '@effect/platform';
+import { type Command } from '@effect/cli';
 import { ContractExecutable, Contract } from '@midnight-ntwrk/compact-js/effect';
 import {
   Intent,
@@ -23,11 +24,32 @@ import {
   communicationCommitmentRandomness
 } from '@midnight-ntwrk/ledger';
 import { type ContractOperation, ContractState, NetworkId as RuntimeNetworkId } from '@midnight-ntwrk/compact-runtime';
-import * as InternalCommand from './command.js';
 import { type ConfigCompiler } from '../ConfigCompiler.js';
+import * as InternalCommand from './command.js';
+import * as InternalOptions from './options.js';
+import * as InternalArgs from './args.js';
 
 /** @internal */
-export const handler: (inputs: InternalCommand.CircuitInputs, moduleSpec: ConfigCompiler.ModuleSpec) =>
+export type Args = Command.Command.ParseConfig<typeof Args>;
+/** @internal */
+export const Args = { 
+  address: InternalArgs.contractAddress,
+  circuitId: InternalArgs.circuitId,
+  args: InternalArgs.contractArgs
+};
+
+/** @internal */
+export type Options = Command.Command.ParseConfig<typeof Options>;
+/** @internal */
+export const Options = {
+    config: InternalOptions.config,
+    coinPublicKey: InternalOptions.coinPublicKey,
+    stateFilePath: InternalOptions.stateFilePath,
+    outputFilePath: InternalOptions.outputFilePath
+}
+
+/** @internal */
+export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.ModuleSpec) =>
   Effect.Effect<
     void,
     ContractExecutable.ContractExecutionError | ConfigError.ConfigError,
