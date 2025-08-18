@@ -40,7 +40,7 @@
     "@midnight-ntwrk/wallet": "5.0.0",
     "@midnight-ntwrk/wallet-api": "5.0.0",
     "@midnight-ntwrk/wallet-sdk-hd": "2.0.0",
-    "@midnight-ntwrk/wallet-sdk-unshielded-wallet": "1.0.0-beta.1",
+    "@midnight-ntwrk/wallet-sdk-unshielded-wallet": "1.0.0-beta.2",
     "@rollup/plugin-commonjs": "^28.0.3",
     "@rollup/plugin-node-resolve": "^16.0.0",
     "@rollup/plugin-typescript": "^12.1.3",

@@ -1,0 +1,41 @@
+import CompactStandardLibrary;
+
+export circuit mintUnshieldedToSelfTest(domainSep: Bytes<32>, amount: Uint<64>): [Bytes<32>, Uint<128>] {
+  return mintUnshieldedToken(disclose(domainSep), disclose(amount), left<ContractAddress, UserAddress>(kernel.self()));
+}
+
+export circuit mintUnshieldedToContractTest(domainSep: Bytes<32>, address: ContractAddress, amount: Uint<64>): [Bytes<32>, Uint<128>] {
+  return mintUnshieldedToken(disclose(domainSep), disclose(amount), left<ContractAddress, UserAddress>(disclose(address)));
+}
+
+export circuit mintUnshieldedToUserTest(domainSep: Bytes<32>, address: UserAddress, amount: Uint<64>): [Bytes<32>, Uint<128>] {
+  return mintUnshieldedToken(disclose(domainSep), disclose(amount), right<ContractAddress, UserAddress>(disclose(address)));
+}
+
+export circuit sendUnshieldedToSelfTest(color: Bytes<32>, amount: Uint<128>): [] {
+  sendUnshielded(disclose(color), disclose(amount), left<ContractAddress, UserAddress>(kernel.self()));
+}
+
+export circuit sendUnshieldedToContractTest(color: Bytes<32>, amount: Uint<128>, address: ContractAddress): [] {
+  sendUnshielded(disclose(color), disclose(amount), left<ContractAddress, UserAddress>(disclose(address)));
+}
+
+export circuit sendUnshieldedToUserTest(color: Bytes<32>, amount: Uint<128>, address: UserAddress): [] {
+  sendUnshielded(disclose(color), disclose(amount), right<ContractAddress, UserAddress>(disclose(address)));
+}
+
+export circuit receiveUnshieldedTest(color: Bytes<32>, amount: Uint<128>): [] {
+  receiveUnshielded(disclose(color), disclose(amount));
+}
+
+export circuit getUnshieldedBalanceTest(color: Bytes<32>): Uint<128> {
+  return unshieldedBalance(disclose(color));
+}
+
+export circuit getUnshieldedBalanceGtTest(color: Bytes<32>, amount: Uint<128>): Boolean {
+  return unshieldedBalanceGt(disclose(color), disclose(amount));
+}
+
+export circuit getUnshieldedBalanceLtTest(color: Bytes<32>, amount: Uint<128>): Boolean {
+  return unshieldedBalanceLt(disclose(color), disclose(amount));
+}
