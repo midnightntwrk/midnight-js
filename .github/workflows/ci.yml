@@ -41,9 +41,11 @@ jobs:
         run: |
           build_mn_js=$(yarn workspaces list --since --json | jq -s '([.[] | select(.location != ".") | .location | split("/")[0]] | unique) | index("packages") != null')
           build_c_js=$(yarn workspaces list --since --json | jq -s '([.[] | select(.location != ".") | .location | split("/")[0]] | unique) | index("compact-js") != null')
+          do_publish=$([[ $(git log -1 --no-merges --pretty=%B) =~ .*'\[do_publish\]'.* ]] && echo 'true' || echo 'false')
           
           echo "build_mn_js=${build_mn_js}" >> "$GITHUB_OUTPUT"
           echo "build_c_js=${build_c_js}" >> "$GITHUB_OUTPUT"
+          echo "do_publish=${do_publish}" >> "$GITHUB_OUTPUT"
 
           echo "### Build Target Summary" >> $GITHUB_STEP_SUMMARY
           echo "The following table summarizes which targets have changes detected in them and that will be included in the build." >> $GITHUB_STEP_SUMMARY
@@ -51,15 +53,20 @@ jobs:
           echo "| ----------- | -------------- |" >> $GITHUB_STEP_SUMMARY
           echo "| Midnight.js | ${build_mn_js} |" >> $GITHUB_STEP_SUMMARY
           echo "| Compact.js  | ${build_c_js}  |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          [[ '$do_publish' = 'true' ]] && echo "Pre-release packages will be published." >> $GITHUB_STEP_SUMMARY || echo "Pre-release packages will not be published." >> $GITHUB_STEP_SUMMARY
 
   ci-mnjs:
     needs: ci
     name: Build Midnight.js
     uses: ./.github/workflows/ci_mn_js.yml
     with:
-      should_run: 'false'
-      # should_run: ${{ needs.ci.outputs.build_mn_js }}
-      should_prerelease: 'false'
+      should_run: ${{ needs.ci.outputs.build_mn_js }}
+      should_prerelease: ${{ 
+          (github.event_name != 'schedule' &&
+          (github.ref_name == 'main' || needs.ci.outputs.do_publish == 'true') || github.event_name == 'workflow_dispatch'))
+            && 'true' || 'false'
+        }}
     secrets: inherit
 
   ci-cjs:
@@ -69,7 +76,7 @@ jobs:
       should_run: ${{ needs.ci.outputs.build_c_js }}
       should_prerelease: ${{ 
           (github.event_name != 'schedule' &&
-          (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch'))
+          (github.ref_name == 'main' || needs.ci.outputs.do_publish == 'true') || github.event_name == 'workflow_dispatch'))
             && 'true' || 'false'
         }}
     uses: ./.github/workflows/ci_c_js.yml

@@ -69,7 +69,7 @@ jobs:
           echo "on_release_branch=${on_release_branch}" >> "$GITHUB_OUTPUT"
 
           echo "### Summary" >> $GITHUB_STEP_SUMMARY
-          [ '$on_release_branch' = 'true' ] && echo "Releasing v$target_version (tagged as $tag)." >> $GITHUB_OUTPUT || echo "Unlisted release branch, following steps will be skipped." >> $GITHUB_OUTPUT
+          [[ '$on_release_branch' = 'true' ]] && echo "Releasing v$target_version (tagged as $tag)." >> $GITHUB_OUTPUT || echo "Unlisted release branch, following steps will be skipped." >> $GITHUB_OUTPUT
 
       - name: Bump versions
         if: steps.vars.outputs.on_release_branch

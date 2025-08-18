@@ -25,8 +25,6 @@ import { FileSystem } from '@effect/platform';
 export const ensureRemovePath = (path: string) =>
   FileSystem.FileSystem.pipe(
     Effect.flatMap((fs) => fs.remove(path, { force: true }).pipe(
-      Effect.catchAll((_) => {
-        return Effect.void
-      })
+      Effect.catchAll((_) => Effect.void)
     ))
   );
