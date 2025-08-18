@@ -64,7 +64,7 @@ jobs:
       should_run: ${{ needs.ci.outputs.build_mn_js }}
       should_prerelease: ${{ 
           (github.event_name != 'schedule' &&
-          (github.ref_name == 'main' || needs.ci.outputs.do_publish == 'true') || github.event_name == 'workflow_dispatch'))
+          (github.ref_name == 'main' || needs.ci.outputs.do_publish == 'true' || github.event_name == 'workflow_dispatch'))
             && 'true' || 'false'
         }}
     secrets: inherit
@@ -76,7 +76,7 @@ jobs:
       should_run: ${{ needs.ci.outputs.build_c_js }}
       should_prerelease: ${{ 
           (github.event_name != 'schedule' &&
-          (github.ref_name == 'main' || needs.ci.outputs.do_publish == 'true') || github.event_name == 'workflow_dispatch'))
+          (github.ref_name == 'main' || needs.ci.outputs.do_publish == 'true' || github.event_name == 'workflow_dispatch'))
             && 'true' || 'false'
         }}
     uses: ./.github/workflows/ci_c_js.yml
