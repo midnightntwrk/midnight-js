@@ -27,7 +27,7 @@ export const createPrivateState = (privateCounter: number): CounterPrivateState 
 export const createInitialPrivateState = (privateCounter: number) => createPrivateState(privateCounter);
 
 export const witnesses = {
-  private_increment: ({ privateState }: WitnessContext<Ledger, CounterPrivateState>): [CounterPrivateState, []] => [
+  privateIncrement: ({ privateState }: WitnessContext<Ledger, CounterPrivateState>): [CounterPrivateState, []] => [
     { privateCounter: privateState.privateCounter + 1 },
     []
   ]

@@ -25,7 +25,7 @@ if (COMPACTC_DIR_ARG) {
 
 const COMPACTC_FORCE_ARG = args.find((arg) => arg.startsWith('--force'));
 console.log(`Checking directory: ${targetCompactDir}`);
-if(fs.existsSync(targetCompactDir) && !COMPACTC_FORCE_ARG) {
+if (fs.existsSync(targetCompactDir) && !COMPACTC_FORCE_ARG) {
   console.warn('Directory exists, skipping compactc download. To force download, use --force flag.');
   process.exit(0);
 }
@@ -47,7 +47,7 @@ if (COMPACT_HOME_ENV != null) {
 
 const compactcVersion = process.env.COMPACTC_VERSION;
 if (!compactcVersion) {
-  console.error("COMPACTC_VERSION env var is missing. I don't know which version to download.");
+  console.error('COMPACTC_VERSION env var is missing. I don\'t know which version to download.');
   process.exit(1);
 }
 
@@ -68,8 +68,8 @@ const fetchCompact = async (): Promise<void> => {
   console.log(`Trying to fetch release from: ${urlString}`);
   const release: Release = await fetch(urlString, {
     headers: {
-      Authorization: `Bearer ${githubToken}`,
-    },
+      Authorization: `Bearer ${githubToken}`
+    }
   }).then((r) => {
     if (r.ok) {
       return r.json() as unknown as Release;
@@ -82,19 +82,26 @@ const fetchCompact = async (): Promise<void> => {
   type Asset = { name: string; url: string }
   const assets: Asset[] = await fetch(release.assets_url, {
     headers: {
-      Authorization: `Bearer ${githubToken}`,
-    },
+      Authorization: `Bearer ${githubToken}`
+    }
   }).then((r) => r.json() as unknown as Asset[]);
 
-  const platformToAssetSuffix = (platform: NodeJS.Platform): string => {
-    switch (platform) {
-      case 'darwin':
+  const platformToAssetSuffix = (platform: NodeJS.Platform, currentCpu: NodeJS.Architecture): string => {
+    if (currentPlatform === 'darwin') {
+      if (currentCpu === 'arm64') {
         return 'aarch64-darwin';
-      default:
-        return 'x86_64-unknown-linux-musl';
+      } else if (currentCpu === 'x64') {
+        return 'x86_64-darwin';
+      } else {
+        throw new Error(`Unexpected platform architecture combination: platform=${currentPlatform}, architecture=${currentCpu}`);
+      }
+    } else if (currentPlatform === 'linux') {
+      return 'x86_64-unknown-linux-musl';
+    } else {
+      throw new Error(`Unsupported platform: ${platform}`);
     }
   };
-  const assetName = `compactc_v${currentVersion}_${platformToAssetSuffix(currentPlatform)}.zip`;
+  const assetName = `compactc_v${currentVersion}_${platformToAssetSuffix(currentPlatform, currentCpu)}.zip`;
   const asset = assets.find((assetLocal) => assetLocal.name === assetName);
 
   if (!asset) {
@@ -104,8 +111,8 @@ const fetchCompact = async (): Promise<void> => {
   const assetData = await fetch(asset.url, {
     headers: {
       Authorization: `Bearer ${githubToken}`,
-      Accept: 'application/octet-stream',
-    },
+      Accept: 'application/octet-stream'
+    }
   }).then(async (response) => {
     if (response.ok) {
       console.log(`Fetching Compact archive: ${urlString}`);
@@ -129,11 +136,11 @@ const fetchCompact = async (): Promise<void> => {
   fs.rmSync(targetFile);
   console.log('Compact archive removed');
   console.log('Compactc ready');
-}
+};
 
 const fetchDockerImage = () => {
   console.log('Fetching Compact docker image...');
-  const dockerImage= `ghcr.io/midnight-ntwrk/compactc:v${currentVersion}`;
+  const dockerImage = `ghcr.io/midnight-ntwrk/compactc:v${currentVersion}`;
   const child = childProcess.exec(`docker pull ${dockerImage}`);
   child.on('exit', (code, signal) => {
     console.log(`Child process exited with code ${code}`);
@@ -151,11 +158,11 @@ const fetchDockerImage = () => {
   child.stderr?.on('data', (data) => {
     console.error(`${data.toString().trim()}`);
   });
-}
+};
 
 const checkOs = (): string => {
   let compactOS;
-  if (currentPlatform === 'darwin' && currentCpu === 'arm64') {
+  if (currentPlatform === 'darwin' && (currentCpu === 'arm64' || currentCpu === 'x64')) {
     compactOS = 'macos';
   } else if (currentPlatform === 'linux') {
     compactOS = 'linux';
@@ -163,10 +170,10 @@ const checkOs = (): string => {
     compactOS = 'docker';
   }
   return compactOS;
-}
+};
 
 if (checkOs() === 'docker') {
   fetchDockerImage();
 } else {
-  await fetchCompact()
+  await fetchCompact();
 }
