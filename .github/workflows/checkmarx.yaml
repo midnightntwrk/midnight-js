@@ -19,7 +19,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
-      statuses: write
+      security-events: write
 
     runs-on: ubuntu-latest
 
@@ -74,10 +74,26 @@ jobs:
           fi
 
       - name: Checkmarx One CLI Action
-        uses: checkmarx/ast-github-action@88c60148b7b9689d67eb05bf66a65bbb871f2f2c #2.3.20
+        uses: checkmarx/ast-github-action@fa338ce82069b297c4852ac77e2d168db9fb56d8 #2.3.21
         with:
           cx_tenant: ${{ secrets.CX_TENANT }}
           base_uri: https://eu-2.ast.checkmarx.net/
           cx_client_id: ${{ secrets.CX_CLIENT_ID }}
           cx_client_secret: ${{ secrets.CX_CLIENT_SECRET_EU }}
-          additional_params: --scs-repo-url https://github.com/midnightntwrk/midnight-template-repo --scs-repo-token ${{ secrets.MIDNIGHTCI_REPO }}
+          additional_params: >
+            --scs-repo-url https://github.com/${{ github.repository }}
+            --scs-repo-token ${{ secrets.MIDNIGHTCI_REPO }}
+            --report-format sarif
+
+      # if artifactLocation is empty github will fail the whole import
+      - name: Filter out repo level issues that github can't handle
+        run: |
+          mv ./cx_result.sarif ./cx_result.sarif.orig
+          jq '.runs |= map(.results |= map(.locations |= map(if .physicalLocation.artifactLocation.uri == "" then .physicalLocation.artifactLocation.uri = "file:/README.md" else . end)))' cx_result.sarif.orig > cx_result.sarif
+
+      # Upload report so security issues are viewable from within the github ui
+      - name: Upload SARIF file
+        if: ${{ github.event.repository.private == false }}
+        uses: github/codeql-action/upload-sarif@4e20239e7b23c6078c563635c41d109adaaa1f72  # v3.29.2
+        with:
+          sarif_file: cx_result.sarif
