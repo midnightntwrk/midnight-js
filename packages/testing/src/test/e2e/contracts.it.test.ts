@@ -70,7 +70,12 @@ import {
   CounterPrivateStateId,
   privateStateZero
 } from '@/e2e/counter-types';
-import { createInitialPrivateState, createPrivateState, Counter, type CounterPrivateState } from '@/e2e/contract';
+import {
+  createInitialPrivateState,
+  createPrivateState,
+  CompiledCounter,
+  type CounterPrivateState,
+} from '@/e2e/contract';
 import { CounterClonePrivateStateId, type CounterCloneCircuits } from '@/e2e/counter-clone-types';
 import { type SimpleCircuits } from '@/e2e/simple-types';
 import {
@@ -84,6 +89,8 @@ import {
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_${new Date().toISOString()}.log`)
 );
+
+const ledger = CompiledCounter.ledger;
 
 describe('Contracts API', () => {
   const WAITING_PROMISE_TIMEOUT = 20_000;
@@ -138,7 +145,7 @@ describe('Contracts API', () => {
       coinPublicKey,
       initialPrivateState: privateStateZero
     });
-    expect(Counter.ledger(constructorResult.nextContractState.data).round).toEqual(0n);
+    expect(ledger(constructorResult.nextContractState.data).round).toEqual(0n);
     expect(constructorResult.nextPrivateState).toEqual(privateStateZero);
     expect(constructorResult.nextZswapLocalState).toEqual(decodeZswapLocalState(emptyZswapLocalState(coinPublicKey)));
 
@@ -152,7 +159,7 @@ describe('Contracts API', () => {
       initialPrivateState: privateStateZero
     });
 
-    expect(Counter.ledger(callResult.public.nextContractState).round).toEqual(1n);
+    expect(ledger(callResult.public.nextContractState).round).toEqual(1n);
     expect(callResult.private.nextPrivateState).toEqual(createPrivateState(1));
     expect(callResult.private.nextZswapLocalState).toEqual(decodeZswapLocalState(emptyZswapLocalState(coinPublicKey)));
   });
@@ -174,7 +181,7 @@ describe('Contracts API', () => {
       initialPrivateState: privateStateZero
     });
 
-    expect(Counter.ledger(unprovenDeployTxResult.public.initialContractState.data).round).toEqual(0n);
+    expect(ledger(unprovenDeployTxResult.public.initialContractState.data).round).toEqual(0n);
     expect(unprovenDeployTxResult.private.initialPrivateState).toEqual(privateStateZero);
     expect(unprovenDeployTxResult.private.initialZswapState).toEqual(
       decodeZswapLocalState(
@@ -198,7 +205,7 @@ describe('Contracts API', () => {
       providers.walletProvider.encryptionPublicKey
     );
 
-    expect(Counter.ledger(unprovenCallTxData.public.nextContractState).round).toEqual(1n);
+    expect(ledger(unprovenCallTxData.public.nextContractState).round).toEqual(1n);
     expect(unprovenCallTxData.private.newCoins).toEqual([]);
     expect(unprovenCallTxData.private.nextZswapLocalState).toEqual(
       decodeZswapLocalState(
@@ -671,7 +678,7 @@ describe('Contracts API', () => {
     // increment modifies state on the ledger, but not the state previously returned
     await api.increment(deployedContract);
 
-    expect(Counter.ledger(state.data).round).toEqual(counterValue1);
+    expect(ledger(state.data).round).toEqual(counterValue1);
   });
 
   /**
@@ -694,6 +701,6 @@ describe('Contracts API', () => {
     const result = await Promise.race([contractPromise, timeoutPromise]);
 
     expect(result).toBeInstanceOf(ContractState);
-    expect(Counter.ledger((result as ContractState).data).round).toEqual(counterValue1);
+    expect(ledger((result as ContractState).data).round).toEqual(counterValue1);
   });
 });
