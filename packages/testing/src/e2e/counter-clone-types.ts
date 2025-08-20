@@ -14,10 +14,12 @@
  */
 
 import type { ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
-import type { CounterClone, CounterPrivateState } from './contract';
+import { CompiledCounterClone, type CounterPrivateState, witnesses } from './contract';
 
-export type CounterCloneCircuits = ImpureCircuitId<CounterClone.Contract<CounterPrivateState>>;
+export type CounterCloneContract = CompiledCounterClone.Contract<CounterPrivateState>;
+
+export type CounterCloneCircuits = ImpureCircuitId<CounterCloneContract>;
 
 export const CounterClonePrivateStateId = 'counterClonePrivateState';
 
-export type CounterCloneContract = CounterClone.Contract<CounterPrivateState>;
+export const createCounterCloneContractInstance = (): CounterCloneContract => new CompiledCounterClone.Contract(witnesses);
