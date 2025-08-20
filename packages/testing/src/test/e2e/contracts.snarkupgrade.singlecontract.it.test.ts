@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+import { sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
+import type { ContractAddress } from '@midnight-ntwrk/ledger';
 import {
   createCircuitMaintenanceTxInterface,
   createCircuitMaintenanceTxInterfaces,
@@ -22,27 +24,25 @@ import {
   submitReplaceAuthorityTx
 } from '@midnight-ntwrk/midnight-js-contracts';
 import { SucceedEntirely, type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
-import { sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
-import type { ContractAddress } from '@midnight-ntwrk/ledger';
-import {
-  type EnvironmentConfiguration,
-  initializeMidnightProviders,
-  type MidnightWalletProvider,
-  type TestEnvironment,
-  createLogger,
-  getTestEnvironment
-} from '@/infrastructure';
 import path from 'path';
+
+import { UNDEPLOYED_CONTRACT_ADDRESS } from '@/e2e/constants';
 import * as api from '@/e2e/counter-api';
 import {
+  CIRCUIT_ID_DECREMENT,
+  CIRCUIT_ID_RESET,
   CounterCloneConfiguration,
   counterContractInstance,
-  SimpleConfiguration,
-  CIRCUIT_ID_DECREMENT,
-  CIRCUIT_ID_RESET
+  SimpleConfiguration
 } from '@/e2e/counter-api';
 import { type CounterProviders, type DeployedCounterContract } from '@/e2e/counter-types';
-import { UNDEPLOYED_CONTRACT_ADDRESS } from '@/e2e/constants';
+import {
+  createLogger,
+  type EnvironmentConfiguration,
+  getTestEnvironment,
+  initializeMidnightProviders,
+  type MidnightWalletProvider,
+  type TestEnvironment} from '@/infrastructure';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_snark_upgrade_${new Date().toISOString()}.log`)
@@ -69,11 +69,7 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
       new CounterCloneConfiguration()
     );
     simpleContractProviders = initializeMidnightProviders(wallet, environmentConfiguration, new SimpleConfiguration());
-    ({
-      counterProviders,
-      deployedCounterContract,
-      contractAddress
-    } = await api.deployCounterContract(
+    ({ counterProviders, deployedCounterContract, contractAddress } = await api.deployCounterContract(
       wallet,
       environmentConfiguration
     ));

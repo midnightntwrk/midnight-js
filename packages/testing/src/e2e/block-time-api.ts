@@ -15,16 +15,18 @@
 
 import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
 import type { FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
-import { WebSocket } from 'ws';
-import type { Logger } from 'pino';
 import path from 'path';
-import { type ContractConfiguration } from '@/infrastructure';
-import { CompilerBlockTime } from './contract';
+import type { Logger } from 'pino';
+import { WebSocket } from 'ws';
+
 import type {
   BlockTimeContract,
   BlockTimeProviders,
   DeployedBlockTimeContract
 } from '@/e2e/block-time-types';
+import { type ContractConfiguration } from '@/infrastructure';
+
+import { CompilerBlockTime } from './contract';
 
 export const currentDir = path.resolve(new URL(import.meta.url).pathname, '..');
 

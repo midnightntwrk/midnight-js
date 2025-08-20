@@ -14,6 +14,6 @@
  */
 
 export * from './faucet-client';
+export * from './indexer-client';
 export * from './node-client';
 export * from './proof-server-client';
-export * from './indexer-client';

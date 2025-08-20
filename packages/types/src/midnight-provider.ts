@@ -14,6 +14,7 @@
  */
 
 import type { TransactionId } from '@midnight-ntwrk/ledger';
+
 import type { BalancedTransaction } from './midnight-types';
 
 /**

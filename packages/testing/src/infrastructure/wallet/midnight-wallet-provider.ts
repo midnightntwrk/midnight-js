@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import type { Logger } from 'pino';
+import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
 import type { CoinInfo } from '@midnight-ntwrk/ledger';
 import { Transaction } from '@midnight-ntwrk/ledger';
-import { type LogLevel, type Resource } from '@midnight-ntwrk/wallet';
+import { getLedgerNetworkId, getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   type BalancedTransaction,
   createBalancedTx,
@@ -24,14 +24,15 @@ import {
   type UnbalancedTransaction,
   type WalletProvider
 } from '@midnight-ntwrk/midnight-js-types';
-import { Transaction as ZswapTransaction, type EncPublicKey } from '@midnight-ntwrk/zswap';
+import { type LogLevel, type Resource } from '@midnight-ntwrk/wallet';
 import { generateRandomSeed } from '@midnight-ntwrk/wallet-sdk-hd';
-import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
-import { getLedgerNetworkId, getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { type EncPublicKey,Transaction as ZswapTransaction } from '@midnight-ntwrk/zswap';
+import type { Logger } from 'pino';
+
 import type { EnvironmentConfiguration } from '../test-environment';
-import { getInitialState, waitForFunds } from './wallet-utils';
-import { type MidnightWallet } from './wallet-types';
 import { DEFAULT_WALLET_LOG_LEVEL, WalletFactory } from './wallet-factory';
+import { type MidnightWallet } from './wallet-types';
+import { getInitialState, waitForFunds } from './wallet-utils';
 
 /**
  * Provider class that implements wallet functionality for the Midnight network.

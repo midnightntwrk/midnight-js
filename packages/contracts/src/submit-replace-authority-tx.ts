@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
-import { type FinalizedTxData, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import type { ContractAddress, SigningKey } from '@midnight-ntwrk/ledger';
+import { type FinalizedTxData, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
+
+import { type ContractProviders } from './contract-providers';
 import { ReplaceMaintenanceAuthorityTxFailedError } from './errors';
 import { submitTx } from './submit-tx';
 import { createUnprovenReplaceAuthorityTx } from './utils';
-import { type ContractProviders } from './contract-providers';
 
 /**
  * Constructs and submits a transaction that replaces the maintenance

@@ -18,9 +18,8 @@ import {
   createProverKey,
   createVerifierKey,
   createZKIR,
-  ZKConfigProvider,
-  InvalidProtocolSchemeError
-} from '@midnight-ntwrk/midnight-js-types';
+  InvalidProtocolSchemeError,
+  ZKConfigProvider} from '@midnight-ntwrk/midnight-js-types';
 import { fetch } from 'cross-fetch';
 
 /**

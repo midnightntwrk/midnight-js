@@ -13,16 +13,13 @@
  * limitations under the License.
  */
 
-import { type FinalizedTxData, type PublicDataProvider, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import type { FinalizedDeployTxData } from '@midnight-ntwrk/midnight-js-contracts';
-import {
-  createLogger,
-  getTestEnvironment,
-  initializeMidnightProviders,
-  type TestEnvironment
-} from '@/infrastructure';
-import path from 'path';
 import { getRuntimeNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { type FinalizedTxData, type PublicDataProvider, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import path from 'path';
+
+import { UNDEPLOYED_CONTRACT_ADDRESS, VERY_SLOW_TEST_TIMEOUT } from '@/e2e/constants';
+import { CompiledCounter } from '@/e2e/contract';
 import * as api from '@/e2e/counter-api';
 import { CounterConfiguration } from '@/e2e/counter-api';
 import {
@@ -31,8 +28,12 @@ import {
   type DeployedCounterContract,
   privateStateZero
 } from '@/e2e/counter-types';
-import { CompiledCounter } from '@/e2e/contract';
-import { UNDEPLOYED_CONTRACT_ADDRESS, VERY_SLOW_TEST_TIMEOUT } from '@/e2e/constants';
+import {
+  createLogger,
+  getTestEnvironment,
+  initializeMidnightProviders,
+  type TestEnvironment
+} from '@/infrastructure';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `indexer_${new Date().toISOString()}.log`)

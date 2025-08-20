@@ -14,5 +14,5 @@
  */
 
 export * from './contract-types';
-export * from './providers';
 export * from './in-memory-private-state-provider';
+export * from './providers';

@@ -13,12 +13,23 @@
  * limitations under the License.
  */
 
+import { type ContractAddress } from '@midnight-ntwrk/ledger';
 import {
   createUnprovenCallTx,
   type FinalizedDeployTxData,
   submitTx
 } from '@midnight-ntwrk/midnight-js-contracts';
-import { type ContractAddress } from '@midnight-ntwrk/ledger';
+import { FailEntirely, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import path from 'path';
+import { vi } from 'vitest';
+
+import * as api from '@/e2e/block-time-api';
+import { BlockTimeConfiguration } from '@/e2e/block-time-api';
+import {
+  type BlockTimeContract,
+  type BlockTimeProviders,
+  type DeployedBlockTimeContract
+} from '@/e2e/block-time-types';
 import type {
   EnvironmentConfiguration,
   MidnightWalletProvider,
@@ -29,16 +40,6 @@ import {
   getTestEnvironment,
   initializeMidnightProviders
 } from '@/infrastructure';
-import path from 'path';
-import * as api from '@/e2e/block-time-api';
-import { BlockTimeConfiguration } from '@/e2e/block-time-api';
-import {
-  type BlockTimeContract,
-  type BlockTimeProviders,
-  type DeployedBlockTimeContract
-} from '@/e2e/block-time-types';
-import { FailEntirely, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import { vi } from 'vitest';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `block_time_${new Date().toISOString()}.log`)

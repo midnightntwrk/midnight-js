@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
-import { defineConfig } from 'vitest/config';
 import fs from 'fs';
 import path from 'path';
+import { defineConfig } from 'vitest/config';
+
 import testGroups from '../test-groups';
 import * as baseConfig from './vitest.e2e.config';
 

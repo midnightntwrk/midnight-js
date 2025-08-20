@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+import { fc } from '@fast-check/vitest';
+import { type Recipient } from '@midnight-ntwrk/compact-runtime';
 import {
   type CoinInfo,
   type CoinPublicKey,
@@ -27,10 +29,9 @@ import {
   UnprovenTransaction,
   ZswapChainState
 } from '@midnight-ntwrk/ledger';
-import { randomBytes } from 'crypto';
-import { fc } from '@fast-check/vitest';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
-import { type Recipient } from '@midnight-ntwrk/compact-runtime';
+import { randomBytes } from 'crypto';
+
 import {
   createUnprovenOutput,
   deserializeCoinInfo,
@@ -96,8 +97,8 @@ const randomEncryptionPublicKey = () => sampleOne(arbitraryHex);
 
 const randomCoinPublicKey = () => sampleOne(arbitraryCoinPublicKey);
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const dropMtIndex = ({ mt_index, ...coin }: QualifiedCoinInfo) => coin;
+
+const dropMtIndex = ({ mt_index: _, ...coin }: QualifiedCoinInfo) => coin;
 
 const toOutputData = (recipient: Recipient, coinInfos: (QualifiedCoinInfo | CoinInfo)[]) =>
   coinInfos.map((coinInfo) =>

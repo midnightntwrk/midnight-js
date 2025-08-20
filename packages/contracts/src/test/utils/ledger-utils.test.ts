@@ -26,9 +26,11 @@ import {
   UnprovenTransaction,
   ZswapChainState
 } from '@midnight-ntwrk/ledger';
-import { randomBytes } from 'crypto';
 import { createVerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
+import { randomBytes } from 'crypto';
+
+import { type PartitionedTranscript } from '../../call';
 import {
   contractMaintenanceAuthority,
   createUnprovenLedgerCallTx,
@@ -42,7 +44,6 @@ import {
   toLedgerQueryContext,
   unprovenTxFromContractUpdates
 } from '../../utils';
-import { type PartitionedTranscript } from '../../call';
 
 describe('ledger-utils', () => {
   const dummySigningKey = sampleSigningKey();

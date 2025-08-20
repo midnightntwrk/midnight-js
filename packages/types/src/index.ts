@@ -13,44 +13,42 @@
  * limitations under the License.
  */
 
-export * from './private-state-provider';
+export {
+  CircuitParameters,
+  CircuitReturnType,
+  Contract,
+  getImpureCircuitIds,
+  ImpureCircuit,
+  ImpureCircuitId,
+  ImpureCircuits,
+  InitialStateParameters,
+  PrivateState,
+  Witness,
+  Witnesses} from './contract';
+export * from './errors';
+export * from './logger-provider';
 export * from './midnight-provider';
 export {
-  ProverKey,
-  VerifierKey,
-  ZKIR,
-  ZKConfig,
+  BalancedTransaction,
+  createBalancedTx,
+  createProverKey,
+  createUnbalancedTx,
+  createVerifierKey,
+  createZKIR,
   FailEntirely,
   FailFallible,
+  FinalizedTxData,
+  ProverKey,
   SucceedEntirely,
   TxStatus,
   UnbalancedTransaction,
-  BalancedTransaction,
-  FinalizedTxData,
-  createProverKey,
-  createVerifierKey,
-  createZKIR,
-  createBalancedTx,
-  createUnbalancedTx
-} from './midnight-types';
+  VerifierKey,
+  ZKConfig,
+  ZKIR} from './midnight-types';
+export * from './private-state-provider';
 export * from './proof-provider';
-export * from './wallet-provider';
-export * from './public-data-provider';
 export * from './providers';
+export * from './public-data-provider';
+export * from './wallet-provider';
 export * from './zk-config-provider';
-export * from './errors';
 export { UnprovenTransaction } from '@midnight-ntwrk/ledger';
-export * from './logger-provider';
-export {
-  ImpureCircuit,
-  ImpureCircuits,
-  Witness,
-  Witnesses,
-  Contract,
-  ImpureCircuitId,
-  PrivateState,
-  getImpureCircuitIds,
-  CircuitParameters,
-  CircuitReturnType,
-  InitialStateParameters
-} from './contract';

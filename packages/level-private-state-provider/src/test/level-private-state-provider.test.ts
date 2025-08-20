@@ -15,8 +15,10 @@
 
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import * as crypto from 'crypto';
+
 import { type ContractAddress, sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
+import * as crypto from 'crypto';
+
 import { levelPrivateStateProvider } from '../index';
 
 describe('Level Private State Provider', (): void => {

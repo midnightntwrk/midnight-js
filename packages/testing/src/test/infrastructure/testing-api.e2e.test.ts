@@ -13,10 +13,11 @@
  * limitations under the License.
  */
 
-import { WebSocket } from 'ws';
+import { nativeToken } from '@midnight-ntwrk/ledger';
 import path from 'path';
 import * as Rx from 'rxjs';
-import { nativeToken } from '@midnight-ntwrk/ledger';
+import { WebSocket } from 'ws';
+
 import { createLogger } from '@/infrastructure/logger';
 import { getTestEnvironment } from '@/infrastructure/test-environment';
 

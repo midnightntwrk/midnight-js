@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-export * as CompiledCounter from './managed/counter/contract/index.cjs';
-export * as CompiledSimple from './managed/simple/contract/index.cjs';
-export * as CompiledCounterClone from './managed/counter-clone/contract/index.cjs';
 export * as CompilerBlockTime from './managed/block-time/contract/index.cjs';
+export * as CompiledCounter from './managed/counter/contract/index.cjs';
+export * as CompiledCounterClone from './managed/counter-clone/contract/index.cjs';
+export * as CompiledSimple from './managed/simple/contract/index.cjs';
 export * from './witnesses.js';

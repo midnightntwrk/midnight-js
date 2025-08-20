@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+import path from 'path';
+
+import { CounterPrivateStateId, type CounterProviders, currentDir, privateStateZero } from '@/e2e';
 import {
   type EnvironmentConfiguration,
   getTestEnvironment,
@@ -21,9 +24,8 @@ import {
   type MidnightWalletProvider,
   type TestEnvironment
 } from '@/infrastructure';
-import { CounterPrivateStateId, type CounterProviders, currentDir, privateStateZero } from '@/e2e';
-import path from 'path';
 import { type ContractConfiguration } from '@/infrastructure';
+
 import * as api from '../counter-api';
 
 export class CounterConfiguration implements ContractConfiguration {

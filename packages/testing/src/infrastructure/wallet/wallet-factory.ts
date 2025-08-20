@@ -13,11 +13,14 @@
  * limitations under the License.
  */
 
-import { type LogLevel, WalletBuilder } from '@midnight-ntwrk/wallet';
-import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import fs from 'node:fs';
-import { generateRandomSeed } from '@midnight-ntwrk/wallet-sdk-hd';
+
+import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { type LogLevel, WalletBuilder } from '@midnight-ntwrk/wallet';
 import { type Wallet } from '@midnight-ntwrk/wallet-api';
+import { generateRandomSeed } from '@midnight-ntwrk/wallet-sdk-hd';
+
+import { logger } from '../logger';
 import type { EnvironmentConfiguration } from '../test-environment';
 import {
   DEFAULT_WALLET_STATE_DIRECTORY,
@@ -25,7 +28,6 @@ import {
   WalletSaveStateProvider
 } from './wallet-state-provider';
 import type { MidnightWallet, SerializedWalletState } from './wallet-types';
-import { logger } from '../logger';
 import { waitForFullSync, waitForSyncProgressDefined } from './wallet-utils';
 
 export const DEFAULT_WALLET_LOG_LEVEL: LogLevel = 'info';

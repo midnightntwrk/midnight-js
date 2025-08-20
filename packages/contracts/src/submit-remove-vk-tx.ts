@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
-import { type FinalizedTxData, SucceedEntirely, type ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
 import type { ContractAddress } from '@midnight-ntwrk/ledger';
+import { type FinalizedTxData, type ImpureCircuitId,SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
-import { createUnprovenRemoveVerifierKeyTx } from './utils';
-import { submitTx } from './submit-tx';
-import { RemoveVerifierKeyTxFailedError } from './errors';
+
 import { type ContractProviders } from './contract-providers';
+import { RemoveVerifierKeyTxFailedError } from './errors';
+import { submitTx } from './submit-tx';
+import { createUnprovenRemoveVerifierKeyTx } from './utils';
 
 /**
  * Constructs and submits a transaction that removes the current verifier key stored

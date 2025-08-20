@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
-import type { ContractAddress, TransactionId, ZswapChainState } from '@midnight-ntwrk/ledger';
 import type { ContractState } from '@midnight-ntwrk/compact-runtime';
+import type { ContractAddress, TransactionId, ZswapChainState } from '@midnight-ntwrk/ledger';
 import type { Observable } from 'rxjs';
+
 import type { FinalizedTxData } from './midnight-types';
 
 /**

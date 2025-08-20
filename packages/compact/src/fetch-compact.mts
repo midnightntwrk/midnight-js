@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 import * as childProcess from 'node:child_process';
+import * as console from 'node:console';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as process from 'node:process';
-import * as console from 'node:console';
 
 console.log('Fetching Compactc...');
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 const [_node, _script, ...args] = process.argv;
 
 const packageDir = path.resolve(new URL(import.meta.url).pathname, '..', '..');
