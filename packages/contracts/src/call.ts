@@ -223,6 +223,10 @@ export const call = <C extends Contract, ICK extends ImpureCircuitId<C>>(
   const circuit = contract.impureCircuits[circuitId];
   assertDefined(circuit, `Circuit '${circuitId}' is not defined`);
   const initialTxContext = new QueryContext(initialContractState.data, contractAddress);
+  initialTxContext.block = {
+    ...initialTxContext.block,
+    secondsSinceEpoch: BigInt(Math.floor(Date.now() / 1_000)),
+  }
   const { result, context, proofData } = circuit(
     {
       originalState: initialContractState,

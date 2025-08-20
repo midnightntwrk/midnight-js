@@ -24,10 +24,15 @@ import {
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import path from 'path';
 
-import * as api from '@/e2e/api';
-import { cloneContractInstance, CounterCloneConfiguration, counterContractInstance } from '@/e2e/api';
-import { CIRCUIT_ID_RESET, VERY_SLOW_TEST_TIMEOUT } from '@/e2e/constants';
+import { VERY_SLOW_TEST_TIMEOUT } from '@/e2e/constants';
 import { type CounterPrivateState } from '@/e2e/contract';
+import * as api from '@/e2e/counter-api';
+import {
+  CIRCUIT_ID_RESET,
+  cloneContractInstance,
+  CounterCloneConfiguration,
+  counterContractInstance
+} from '@/e2e/counter-api';
 import { CounterClonePrivateStateId } from '@/e2e/counter-clone-types';
 import { type CounterProviders } from '@/e2e/counter-types';
 import {

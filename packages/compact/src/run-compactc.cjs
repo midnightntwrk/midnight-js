@@ -14,7 +14,7 @@ function checkOs ()  {
   const currentPlatform = process.platform;
   const currentCpu = process.arch;
   let compactOS = 'docker';
-  if (currentPlatform === 'darwin' && currentCpu === 'arm64') {
+  if (currentPlatform === 'darwin' && (currentCpu === 'arm64' || currentCpu === 'x64')) {
     compactOS = 'macos';
   } else if (currentPlatform === 'linux') {
     compactOS = 'linux';

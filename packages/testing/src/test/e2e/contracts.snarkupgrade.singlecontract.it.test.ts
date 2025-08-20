@@ -26,9 +26,15 @@ import {
 import { SucceedEntirely, type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import path from 'path';
 
-import * as api from '@/e2e/api';
-import { CounterCloneConfiguration, counterContractInstance, SimpleConfiguration } from '@/e2e/api';
-import { CIRCUIT_ID_DECREMENT, CIRCUIT_ID_RESET, UNDEPLOYED_CONTRACT_ADDRESS } from '@/e2e/constants';
+import { UNDEPLOYED_CONTRACT_ADDRESS } from '@/e2e/constants';
+import * as api from '@/e2e/counter-api';
+import {
+  CIRCUIT_ID_DECREMENT,
+  CIRCUIT_ID_RESET,
+  CounterCloneConfiguration,
+  counterContractInstance,
+  SimpleConfiguration
+} from '@/e2e/counter-api';
 import { type CounterProviders, type DeployedCounterContract } from '@/e2e/counter-types';
 import {
   createLogger,
