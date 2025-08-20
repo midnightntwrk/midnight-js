@@ -38,6 +38,7 @@ import {
   type DeployedBlockTimeContract
 } from '@/e2e/block-time-types';
 import { FailEntirely, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import { vi } from 'vitest';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `block_time_${new Date().toISOString()}.log`)
@@ -45,12 +46,10 @@ const logger = createLogger(
 
 const currentTimeSeconds = () => BigInt(Math.floor(Date.now() / 1_000));
 
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
 describe('Block Time Contract Tests', () => {
   const SLOW_TEST_TIMEOUT = 60_000;
-  const BLOCK_TIME_FUTURE_BUFFER = 60n; // 60 seconds buffer for future time checks
-  const BLOCK_TIME_PAST_BUFFER = 60n; // 60 seconds buffer for past time checks
+  const BLOCK_TIME_FUTURE_BUFFER = 60n;
+  const BLOCK_TIME_PAST_BUFFER = 60n;
 
   let providers: BlockTimeProviders;
   let finalizedDeployTxData: FinalizedDeployTxData<BlockTimeContract>;
@@ -62,8 +61,13 @@ describe('Block Time Contract Tests', () => {
   let contractConfiguration: BlockTimeConfiguration;
 
   beforeEach(() => {
+    vi.useFakeTimers();
     logger.info(`Running test: ${expect.getState().currentTestName}`);
   });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  })
 
   beforeAll(async () => {
     testEnvironment = getTestEnvironment(logger);
@@ -102,11 +106,10 @@ describe('Block Time Contract Tests', () => {
         contractAddress,
         args: [futureTime] as [bigint]
       };
-      // Create unproven transaction (succeeds on device)
       const unprovenCallTx = await createUnprovenCallTx(providers, unprovenCallTxOptions);
       // Delay submission so node time exceeds futureTime
-      await sleep(5000);
-      // Submit to node (should fail because node time > futureTime)
+      vi.advanceTimersByTime(4000);
+      // Should fail because node time > futureTime
       const finalizedCallTx = await submitTx(providers, {
         unprovenTx: unprovenCallTx.private.unprovenTx,
         newCoins: unprovenCallTx.private.newCoins,
@@ -138,7 +141,7 @@ describe('Block Time Contract Tests', () => {
       };
       const unprovenCallTx = await createUnprovenCallTx(providers, unprovenCallTxOptions);
       // Delay submission
-      await sleep(3000);
+      vi.advanceTimersByTime(3000);
       // Should still succeed because node time is still >= pastTime
       const finalizedCallTx = await submitTx(providers, {
         unprovenTx: unprovenCallTx.private.unprovenTx,
@@ -184,7 +187,7 @@ describe('Block Time Contract Tests', () => {
       };
       const unprovenCallTx = await createUnprovenCallTx(providers, unprovenCallTxOptions);
       // Delay so node time exceeds futureTime
-      await sleep(4000);
+      vi.advanceTimersByTime(4000);
       const finalizedCallTx = await submitTx(providers, {
         unprovenTx: unprovenCallTx.private.unprovenTx,
         newCoins: unprovenCallTx.private.newCoins,
@@ -209,7 +212,7 @@ describe('Block Time Contract Tests', () => {
         args: [nearFutureTime] as [bigint]
       };
       const unprovenCallTx = await createUnprovenCallTx(providers, unprovenCallTxOptions);
-      await sleep(3000);
+      vi.advanceTimersByTime(3000);
       const finalizedCallTx = await submitTx(providers, {
         unprovenTx: unprovenCallTx.private.unprovenTx,
         newCoins: unprovenCallTx.private.newCoins,

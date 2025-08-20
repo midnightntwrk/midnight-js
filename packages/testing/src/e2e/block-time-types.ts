@@ -17,11 +17,11 @@ import type { ImpureCircuitId, MidnightProviders } from '@midnight-ntwrk/midnigh
 import type { CompilerBlockTime } from './contract';
 import type { DeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
 
-export type BlockTimeCircuits = ImpureCircuitId<CompilerBlockTime.Contract<undefined>> & string;
+export type BlockTimeContract = CompilerBlockTime.Contract<undefined>;
+
+export type BlockTimeCircuits = ImpureCircuitId<BlockTimeContract> & string;
 
 export type BlockTimeProviders = MidnightProviders<BlockTimeCircuits, string, undefined>;
-
-export type BlockTimeContract = CompilerBlockTime.Contract<undefined>;
 
 export type DeployedBlockTimeContract = DeployedContract<BlockTimeContract>;
 
