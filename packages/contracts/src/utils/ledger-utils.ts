@@ -14,31 +14,30 @@
  */
 
 import {
-  ContractState,
-  signatureVerifyingKey,
-  type ZswapLocalState,
-  type ContractAddress,
   type AlignedValue,
+  type ContractAddress,
+  ContractState,
+  type QueryContext,
+  signatureVerifyingKey,
   type SigningKey,
-  type QueryContext
-} from '@midnight-ntwrk/compact-runtime';
+  type ZswapLocalState} from '@midnight-ntwrk/compact-runtime';
+import type { SingleUpdate,ZswapChainState } from '@midnight-ntwrk/ledger';
 import {
-  ContractMaintenanceAuthority,
+  communicationCommitmentRandomness,
   ContractCallPrototype,
   ContractDeploy,
-  ContractState as LedgerContractState,
-  QueryContext as LedgerQueryContext,
-  StateValue as LedgerStateValue,
-  communicationCommitmentRandomness,
-  ReplaceAuthority,
-  VerifierKeyRemove,
+  ContractMaintenanceAuthority,
   ContractOperationVersion,
-  MaintenanceUpdate,
-  signData,
   ContractOperationVersionedVerifierKey,
-  VerifierKeyInsert, Intent, type EncPublicKey
-} from '@midnight-ntwrk/ledger';
-import type { ZswapChainState, SingleUpdate } from '@midnight-ntwrk/ledger';
+  ContractState as LedgerContractState,
+type EncPublicKey,
+Intent,   MaintenanceUpdate,
+  QueryContext as LedgerQueryContext,
+  ReplaceAuthority,
+  signData,
+  StateValue as LedgerStateValue,
+  VerifierKeyInsert,   VerifierKeyRemove} from '@midnight-ntwrk/ledger';
+import { getLedgerNetworkId, getRuntimeNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   type ImpureCircuitId,
   Transaction,
@@ -46,9 +45,9 @@ import {
   type VerifierKey
 } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
-import { getLedgerNetworkId, getRuntimeNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { zswapStateToOffer } from './zswap-utils';
+
 import type { PartitionedTranscript } from '../call';
+import { zswapStateToOffer } from './zswap-utils';
 
 const ttl = () => new Date(Date.now() + 60 * 60 * 1000);
 

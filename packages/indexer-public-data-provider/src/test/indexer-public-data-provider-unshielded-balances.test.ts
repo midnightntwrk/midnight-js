@@ -13,11 +13,12 @@
  * limitations under the License.
  */
 
-import { describe, test, expect } from 'vitest';
-import { WebSocket } from 'ws';
-import { indexerPublicDataProvider } from '../indexer-public-data-provider';
 import type { ContractAddress } from '@midnight-ntwrk/ledger';
 import type { ContractStateObservableConfig } from '@midnight-ntwrk/midnight-js-types';
+import { describe, expect,test } from 'vitest';
+import { WebSocket } from 'ws';
+
+import { indexerPublicDataProvider } from '../indexer-public-data-provider';
 
 describe('Unshielded Balances Integration', () => {
   const queryURL = 'http://localhost:4000/api/v1/graphql';

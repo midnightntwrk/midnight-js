@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-import * as ledger from '@midnight-ntwrk/ledger';
 import * as runtime from '@midnight-ntwrk/compact-runtime';
+import * as ledger from '@midnight-ntwrk/ledger';
+
 import { NetworkIdTypeError } from './errors';
 import { NetworkId } from './network-id';
 
@@ -122,5 +123,5 @@ export const networkIdToHex = (networkId: NetworkId): string => {
   }
 };
 
-export * from './network-id';
 export * from './errors';
+export * from './network-id';

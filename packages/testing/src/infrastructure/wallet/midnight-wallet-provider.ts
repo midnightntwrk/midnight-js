@@ -13,14 +13,13 @@
  * limitations under the License.
  */
 
-import type { Logger } from 'pino';
+import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
 import {
+  type EncPublicKey,
   type ShieldedCoinInfo,
   shieldedToken,
   type TokenType,
-  type EncPublicKey,
 } from '@midnight-ntwrk/ledger';
-import { type LogLevel, type Resource } from '@midnight-ntwrk/wallet';
 import {
   type BalancedTransaction,
   createBalancedTx,
@@ -28,12 +27,15 @@ import {
   type UnbalancedTransaction,
   type WalletProvider
 } from '@midnight-ntwrk/midnight-js-types';
+import { type LogLevel, type Resource } from '@midnight-ntwrk/wallet';
 import { generateRandomSeed } from '@midnight-ntwrk/wallet-sdk-hd';
-import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
+import type { Logger } from 'pino';
+
 import type { EnvironmentConfiguration } from '@/infrastructure';
-import { getInitialState, waitForFunds } from './wallet-utils';
-import { type MidnightWallet } from './wallet-types';
+
 import { DEFAULT_WALLET_LOG_LEVEL, WalletFactory } from './wallet-factory';
+import { type MidnightWallet } from './wallet-types';
+import { getInitialState, waitForFunds } from './wallet-utils';
 
 /**
  * Provider class that implements wallet functionality for the Midnight network.

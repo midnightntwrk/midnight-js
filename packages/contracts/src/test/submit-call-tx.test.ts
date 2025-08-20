@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { StateValue } from '@midnight-ntwrk/compact-runtime';
+import { type AlignedValue, type ContractAddress } from '@midnight-ntwrk/ledger';
 import {
   type Contract,
   FailEntirely,
@@ -22,12 +23,14 @@ import {
   type PrivateState,
   type PrivateStateId
 } from '@midnight-ntwrk/midnight-js-types';
-import { type AlignedValue, type ContractAddress } from '@midnight-ntwrk/ledger';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { submitCallTx } from '../submit-call-tx';
-import { type CallTxOptions, createUnprovenCallTx } from '../unproven-call-tx';
-import { submitTx } from '../submit-tx';
+import { type PartitionedTranscript } from '../call';
 import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from '../errors';
+import { submitCallTx } from '../submit-call-tx';
+import { submitTx } from '../submit-tx';
+import type { FinalizedCallTxData, UnsubmittedCallTxData } from '../tx-model';
+import { type CallTxOptions, createUnprovenCallTx } from '../unproven-call-tx';
 import {
   createMockCoinInfo,
   createMockContract,
@@ -39,9 +42,6 @@ import {
   createMockUnprovenTx,
   createMockZswapLocalState
 } from './test-mocks';
-import type { FinalizedCallTxData, UnsubmittedCallTxData } from '../tx-model';
-import { type PartitionedTranscript } from '../call';
-import { StateValue } from '@midnight-ntwrk/compact-runtime';
 
 describe('submit-call-tx', () => {
   let mockContract: Contract<undefined>;

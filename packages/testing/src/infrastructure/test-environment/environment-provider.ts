@@ -13,8 +13,11 @@
  * limitations under the License.
  */
 
+import { NetworkId, NetworkIdTypeError,setNetworkId, stringToNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type { Logger } from 'pino';
-import { NetworkId, setNetworkId, stringToNetworkId, NetworkIdTypeError } from '@midnight-ntwrk/midnight-js-network-id';
+
+import { getEnvVarEnvironment, getEnvVarNetworkId } from '../env-vars';
+import { MissingEnvironmentVariable } from '../errors';
 import {
   DevnetTestEnvironment,
   EnvVarRemoteTestEnvironment,
@@ -23,8 +26,6 @@ import {
   Testnet2TestEnvironment,
   TestnetTestEnvironment
 } from './test-environments';
-import { MissingEnvironmentVariable } from '../errors';
-import { getEnvVarEnvironment, getEnvVarNetworkId } from '../env-vars';
 
 /**
  * Parses the network ID from the environment variable.

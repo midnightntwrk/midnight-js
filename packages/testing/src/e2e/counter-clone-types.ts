@@ -14,6 +14,7 @@
  */
 
 import type { ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
+
 import { CompiledCounterClone, type CounterPrivateState, witnesses } from './contract';
 
 export type CounterCloneContract = CompiledCounterClone.Contract<CounterPrivateState>;

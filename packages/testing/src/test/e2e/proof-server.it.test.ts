@@ -13,19 +13,7 @@
  * limitations under the License.
  */
 
-import {
-  createLogger,
-  DynamicProofServerContainer,
-  type ProofServerContainer
-} from '@/infrastructure';
-import path from 'path';
-import {
-  createUnprovenCallTxFromInitialStates,
-  createUnprovenDeployTxFromVerifierKeys
-} from '@midnight-ntwrk/midnight-js-contracts';
-import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
-import type { ProofProvider, UnprovenTransaction, ZKConfig } from '@midnight-ntwrk/midnight-js-types';
-import { DEFAULT_CONFIG, httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
+import { sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
 import {
   ContractCall,
   ContractDeploy,
@@ -35,13 +23,26 @@ import {
   WellFormedStrictness,
   ZswapChainState
 } from '@midnight-ntwrk/ledger';
-import { sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
+import {
+  createUnprovenCallTxFromInitialStates,
+  createUnprovenDeployTxFromVerifierKeys
+} from '@midnight-ntwrk/midnight-js-contracts';
+import { DEFAULT_CONFIG, httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
+import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
+import type { ProofProvider, UnprovenTransaction, ZKConfig } from '@midnight-ntwrk/midnight-js-types';
 import { getImpureCircuitIds } from '@midnight-ntwrk/midnight-js-types';
-import type { CounterCircuits } from '@/e2e/counter-types';
+import path from 'path';
+import { expect } from 'vitest';
+
 import * as api from '@/e2e/api';
 import { CounterConfiguration, counterContractInstance } from '@/e2e/api';
 import { createInitialPrivateState } from '@/e2e/contract';
-import { expect } from 'vitest';
+import type { CounterCircuits } from '@/e2e/counter-types';
+import {
+  createLogger,
+  DynamicProofServerContainer,
+  type ProofServerContainer
+} from '@/infrastructure';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `proof_server_${new Date().toISOString()}.log`)

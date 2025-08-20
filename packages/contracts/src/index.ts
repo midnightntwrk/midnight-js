@@ -14,102 +14,95 @@
  */
 
 export {
+  call,
+  CallOptions,
+  CallOptionsBase,
+  CallOptionsProviderDataDependencies,
+  CallOptionsWithArguments,
+  CallOptionsWithPrivateState,
+  CallOptionsWithProviderDataDependencies,
+  CallResult,
+  CallResultPrivate,
+  CallResultPublic,
+  PartitionedTranscript} from './call';
+export {
+  callContractConstructor,
+  ContractConstructorOptions,
+  ContractConstructorOptionsBase,
+  ContractConstructorOptionsProviderDataDependencies,
+  ContractConstructorOptionsWithArguments,
+  ContractConstructorOptionsWithPrivateState,
+  ContractConstructorOptionsWithProviderDataDependencies,
+  ContractConstructorResult} from './call-constructor';
+export { ContractProviders } from './contract-providers';
+export {
   deployContract,
+  DeployContractOptions,
   DeployContractOptionsBase,
   DeployContractOptionsWithPrivateState,
-  DeployContractOptions,
   DeployedContract
 } from './deploy-contract';
 export {
+  CallTxFailedError,
+  ContractTypeError,
+  DeployTxFailedError,
+  IncompleteCallTxPrivateStateConfig,
+  IncompleteFindContractPrivateStateConfig,
+  InsertVerifierKeyTxFailedError,
+  RemoveVerifierKeyTxFailedError,
+  ReplaceMaintenanceAuthorityTxFailedError,
+  TxFailedError} from './errors';
+export {
   findDeployedContract,
-  verifyContractState,
-  verifierKeysEqual,
-  FindDeployedContractOptionsBase,
   FindDeployedContractOptions,
+  FindDeployedContractOptionsBase,
   FindDeployedContractOptionsExistingPrivateState,
   FindDeployedContractOptionsStorePrivateState,
-  FoundContract
-} from './find-deployed-contract';
+  FoundContract,
+  verifierKeysEqual,
+  verifyContractState} from './find-deployed-contract';
+export { ContractStates,getPublicStates, getStates, PublicContractStates } from './get-states';
+export { getUnshieldedBalances } from './get-unshielded-balances';
+export { submitCallTx } from './submit-call-tx';
+export { DeployTxOptions,submitDeployTx } from './submit-deploy-tx';
+export { submitInsertVerifierKeyTx } from './submit-insert-vk-tx';
+export { submitRemoveVerifierKeyTx } from './submit-remove-vk-tx';
+export { submitReplaceAuthorityTx } from './submit-replace-authority-tx';
+export { submitTx, SubmitTxOptions, SubmitTxProviders } from './submit-tx';
 export {
   CircuitCallTxInterface,
-  createCircuitCallTxInterface,
-  createCallTxOptions,
-  createCircuitMaintenanceTxInterface,
   CircuitMaintenanceTxInterface,
-  ContractMaintenanceTxInterface,
   CircuitMaintenanceTxInterfaces,
-  createContractMaintenanceTxInterface,
-  createCircuitMaintenanceTxInterfaces
-} from './tx-interfaces';
+  ContractMaintenanceTxInterface,
+  createCallTxOptions,
+  createCircuitCallTxInterface,
+  createCircuitMaintenanceTxInterface,
+  createCircuitMaintenanceTxInterfaces,
+  createContractMaintenanceTxInterface} from './tx-interfaces';
 export {
-  createUnprovenCallTx,
-  createUnprovenCallTxFromInitialStates,
+  FinalizedCallTxData,
+  FinalizedDeployTxData,
+  FinalizedDeployTxDataBase,
+  UnsubmittedCallTxData,
+  UnsubmittedDeployTxData,
+  UnsubmittedDeployTxDataBase,
+  UnsubmittedDeployTxPrivateData,
+  UnsubmittedDeployTxPublicData,
+  UnsubmittedTxData} from './tx-model';
+export {
   CallTxOptions,
   CallTxOptionsBase,
   CallTxOptionsWithPrivateStateId,
+  createUnprovenCallTx,
+  createUnprovenCallTxFromInitialStates,
   UnprovenCallTxProvidersBase,
   UnprovenCallTxProvidersWithPrivateState
 } from './unproven-call-tx';
 export {
   createUnprovenDeployTx,
   createUnprovenDeployTxFromVerifierKeys,
-  UnprovenDeployTxOptions,
-  DeployTxOptionsWithPrivateStateId,
-  UnprovenDeployTxProviders,
   DeployTxOptionsBase,
-  DeployTxOptionsWithPrivateState
-} from './unproven-deploy-tx';
-export { submitDeployTx, DeployTxOptions } from './submit-deploy-tx';
-export { submitCallTx } from './submit-call-tx';
-export { getStates, getPublicStates, PublicContractStates, ContractStates } from './get-states';
-export { getUnshieldedBalances } from './get-unshielded-balances';
-export {
-  UnsubmittedDeployTxData,
-  FinalizedDeployTxData,
-  UnsubmittedCallTxData,
-  FinalizedCallTxData,
-  UnsubmittedTxData,
-  FinalizedDeployTxDataBase,
-  UnsubmittedDeployTxDataBase,
-  UnsubmittedDeployTxPublicData,
-  UnsubmittedDeployTxPrivateData
-} from './tx-model';
-export {
-  CallTxFailedError,
-  DeployTxFailedError,
-  ContractTypeError,
-  ReplaceMaintenanceAuthorityTxFailedError,
-  InsertVerifierKeyTxFailedError,
-  RemoveVerifierKeyTxFailedError,
-  TxFailedError,
-  IncompleteCallTxPrivateStateConfig,
-  IncompleteFindContractPrivateStateConfig
-} from './errors';
-export {
-  call,
-  CallResultPublic,
-  CallResult,
-  CallOptionsBase,
-  CallOptions,
-  CallResultPrivate,
-  CallOptionsProviderDataDependencies,
-  CallOptionsWithProviderDataDependencies,
-  CallOptionsWithPrivateState,
-  PartitionedTranscript,
-  CallOptionsWithArguments
-} from './call';
-export {
-  callContractConstructor,
-  ContractConstructorResult,
-  ContractConstructorOptions,
-  ContractConstructorOptionsWithProviderDataDependencies,
-  ContractConstructorOptionsWithPrivateState,
-  ContractConstructorOptionsWithArguments,
-  ContractConstructorOptionsBase,
-  ContractConstructorOptionsProviderDataDependencies
-} from './call-constructor';
-export { submitTx, SubmitTxOptions, SubmitTxProviders } from './submit-tx';
-export { submitRemoveVerifierKeyTx } from './submit-remove-vk-tx';
-export { submitReplaceAuthorityTx } from './submit-replace-authority-tx';
-export { submitInsertVerifierKeyTx } from './submit-insert-vk-tx';
-export { ContractProviders } from './contract-providers';
+  DeployTxOptionsWithPrivateState,
+  DeployTxOptionsWithPrivateStateId,
+  UnprovenDeployTxOptions,
+  UnprovenDeployTxProviders} from './unproven-deploy-tx';

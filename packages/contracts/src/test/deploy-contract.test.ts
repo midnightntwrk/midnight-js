@@ -13,8 +13,14 @@
  * limitations under the License.
  */
 
+import { type ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
+import { type ContractState } from '@midnight-ntwrk/ledger';
+import { type Contract, type PrivateState, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { type ContractProviders } from '../contract-providers';
 import { deployContract, type DeployContractOptionsBase, type DeployedContract } from '../deploy-contract';
+import { type UnsubmittedDeployTxData } from '../tx-model';
 import {
   createMockContract,
   createMockFinalizedTxData,
@@ -22,11 +28,6 @@ import {
   createMockProviders,
   createMockSigningKey
 } from './test-mocks';
-import { type UnsubmittedDeployTxData } from '../tx-model';
-import { type Contract, type PrivateState, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-types';
-import { type ContractState } from '@midnight-ntwrk/ledger';
-import { type ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
-import { type ContractProviders } from '../contract-providers';
 
 vi.mock('../submit-deploy-tx', () => ({
   submitDeployTx: vi.fn()

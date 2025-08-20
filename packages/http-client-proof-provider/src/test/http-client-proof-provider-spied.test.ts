@@ -14,7 +14,8 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { vi, beforeEach } from 'vitest';
+import { beforeEach,vi } from 'vitest';
+
 import { getValidUnprovenTx } from './commons';
 
 const mockFetch = vi.fn();

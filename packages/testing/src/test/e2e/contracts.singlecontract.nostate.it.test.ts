@@ -14,19 +14,6 @@
  */
 
 import {
-  type EnvironmentConfiguration,
-  initializeMidnightProviders,
-  type MidnightWalletProvider,
-  type TestEnvironment,
-  createLogger,
-  getTestEnvironment,
-  expectFoundAndDeployedStatesEqual,
-  expectFoundAndDeployedTxDataEqual,
-  expectSuccessfulCallTx,
-  expectSuccessfulDeployTx
-} from '@/infrastructure';
-import path from 'path';
-import {
   type CoinPublicKey,
   decodeZswapLocalState,
   emptyZswapLocalState,
@@ -49,11 +36,24 @@ import {
   type UnsubmittedCallTxData,
   type UnsubmittedDeployTxData
 } from '@midnight-ntwrk/midnight-js-contracts';
-import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { CompiledSimple } from '@/e2e/contract';
+import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
+import path from 'path';
+
 import * as api from '@/e2e/api';
+import { CompiledSimple } from '@/e2e/contract';
 import type { SimpleContract, SimpleProviders } from '@/e2e/simple-types';
+import {
+  createLogger,
+  type EnvironmentConfiguration,
+  expectFoundAndDeployedStatesEqual,
+  expectFoundAndDeployedTxDataEqual,
+  expectSuccessfulCallTx,
+  expectSuccessfulDeployTx,
+  getTestEnvironment,
+  initializeMidnightProviders,
+  type MidnightWalletProvider,
+  type TestEnvironment} from '@/infrastructure';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_nostate_${new Date().toISOString()}.log`)
@@ -246,8 +246,8 @@ describe('Contracts API', () => {
     await expectSuccessfulDeployTx(providers, deployedSimpleContract.deployTxData);
 
     // If there is no private state ID, we should be able to leave out the private state provider
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { privateStateProvider, ...reducedProviders } = providers;
+
+    const { privateStateProvider: _, ...reducedProviders } = providers;
     const callTxOptions = {
       contract: api.simpleContractInstance,
       circuitId: 'noop',
@@ -288,8 +288,8 @@ describe('Contracts API', () => {
     await expectSuccessfulDeployTx(providers, deployTxData, deployTxOptions);
 
     // If there is no private state ID, we should be able to leave out the private state provider
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { privateStateProvider, ...reducedProviders } = providers;
+
+    const { privateStateProvider: _, ...reducedProviders } = providers;
     const callTxOptions = {
       contract: api.simpleContractInstance,
       contractAddress: deployTxData.public.contractAddress,

@@ -13,57 +13,55 @@
  * limitations under the License.
  */
 
-export * from './private-state-provider';
-export * from './midnight-provider';
 export {
-  ProverKey,
-  VerifierKey,
-  ZKIR,
-  ZKConfig,
-  FailEntirely,
-  FailFallible,
-  SucceedEntirely,
-  TxStatus,
-  SegmentStatus,
-  SegmentSuccess,
-  SegmentFail,
-  UnbalancedTransaction,
-  BalancedTransaction,
-  UnprovenTransaction,
-  UnprovenInput,
-  UnprovenOutput,
-  UnprovenTransient,
-  UnprovenOffer,
-  UnshieldedUtxos,
-  UnshieldedUtxo,
-  UnshieldedBalance,
-  UnshieldedBalances,
-  FinalizedTxData,
-  Fees,
-  createProverKey,
-  createVerifierKey,
-  createZKIR,
-  createBalancedTx,
-  createUnbalancedTx
-} from './midnight-types';
-export * from './proof-provider';
-export * from './wallet-provider';
-export * from './public-data-provider';
-export * from './providers';
-export * from './zk-config-provider';
-export * from './errors';
-export { Transaction } from '@midnight-ntwrk/ledger';
-export * from './logger-provider';
-export {
-  ImpureCircuit,
-  ImpureCircuits,
-  Witness,
-  Witnesses,
-  Contract,
-  ImpureCircuitId,
-  PrivateState,
-  getImpureCircuitIds,
   CircuitParameters,
   CircuitReturnType,
-  InitialStateParameters
-} from './contract';
+  Contract,
+  getImpureCircuitIds,
+  ImpureCircuit,
+  ImpureCircuitId,
+  ImpureCircuits,
+  InitialStateParameters,
+  PrivateState,
+  Witness,
+  Witnesses} from './contract';
+export * from './errors';
+export * from './logger-provider';
+export * from './midnight-provider';
+export {
+  BalancedTransaction,
+  createBalancedTx,
+  createProverKey,
+  createUnbalancedTx,
+  createVerifierKey,
+  createZKIR,
+  FailEntirely,
+  FailFallible,
+  Fees,
+  FinalizedTxData,
+  ProverKey,
+  SegmentFail,
+  SegmentStatus,
+  SegmentSuccess,
+  SucceedEntirely,
+  TxStatus,
+  UnbalancedTransaction,
+  UnprovenInput,
+  UnprovenOffer,
+  UnprovenOutput,
+  UnprovenTransaction,
+  UnprovenTransient,
+  UnshieldedBalance,
+  UnshieldedBalances,
+  UnshieldedUtxo,
+  UnshieldedUtxos,
+  VerifierKey,
+  ZKConfig,
+  ZKIR} from './midnight-types';
+export * from './private-state-provider';
+export * from './proof-provider';
+export * from './providers';
+export * from './public-data-provider';
+export * from './wallet-provider';
+export * from './zk-config-provider';
+export { Transaction } from '@midnight-ntwrk/ledger';

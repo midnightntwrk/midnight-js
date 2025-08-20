@@ -14,7 +14,8 @@
  */
 
 import { NetworkId } from '@midnight-ntwrk/ledger';
-import { isHex, assertIsHex, parseCoinPublicKeyToHex, parseEncPublicKeyToHex } from '../hex-utils';
+
+import { assertIsHex, isHex, parseCoinPublicKeyToHex, parseEncPublicKeyToHex } from '../hex-utils';
 
 describe('Hex Utils', () => {
   describe('with valid strings', () => {

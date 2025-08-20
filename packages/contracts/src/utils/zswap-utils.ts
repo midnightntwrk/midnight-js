@@ -13,23 +13,16 @@
  * limitations under the License.
  */
 
-import {
-  type ContractAddress,
-  type ZswapChainState,
-  type ShieldedCoinInfo,
-  type QualifiedShieldedCoinInfo,
-  type CoinPublicKey,
-  type EncPublicKey,
-} from '@midnight-ntwrk/ledger';
-import { ZswapOffer, ZswapOutput, ZswapTransient, ZswapInput } from '@midnight-ntwrk/ledger';
 import { type Recipient, type ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
 import {
-  fromHex,
-  assertIsContractAddress,
-  assertDefined,
-  parseCoinPublicKeyToHex,
-  parseEncPublicKeyToHex
-} from '@midnight-ntwrk/midnight-js-utils';
+  type CoinPublicKey,
+  type ContractAddress,
+  type EncPublicKey,
+  type QualifiedShieldedCoinInfo,
+  type ShieldedCoinInfo,
+  type ZswapChainState,
+} from '@midnight-ntwrk/ledger';
+import { ZswapInput, ZswapOffer, ZswapOutput, ZswapTransient } from '@midnight-ntwrk/ledger';
 import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   type UnprovenInput,
@@ -37,6 +30,13 @@ import {
   type UnprovenOutput,
   type UnprovenTransient
 } from '@midnight-ntwrk/midnight-js-types';
+import {
+  assertDefined,
+  assertIsContractAddress,
+  fromHex,
+  parseCoinPublicKeyToHex,
+  parseEncPublicKeyToHex
+} from '@midnight-ntwrk/midnight-js-utils';
 
 // A default segment number to use when creating inputs and outputs. The Ledger has exposed this parameter
 // now but we don't know what the value should be, and assume that everything first in segment '0'. This
@@ -60,8 +60,8 @@ export const serializeCoinInfo = (coinInfo: ShieldedCoinInfo): string => {
 };
 
 export const serializeQualifiedShieldedCoinInfo = (coinInfo: QualifiedShieldedCoinInfo): string => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { mt_index, ...rest } = coinInfo;
+
+  const { mt_index: _, ...rest } = coinInfo;
   return serializeCoinInfo(rest);
 };
 

@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
-import { DockerComposeEnvironment, type StartedDockerComposeEnvironment } from 'testcontainers';
-import type { Logger } from 'pino';
 import { getNetworkId, NetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import type { Logger } from 'pino';
+import { DockerComposeEnvironment, type StartedDockerComposeEnvironment } from 'testcontainers';
+
 import { getContainersConfiguration } from './configuration';
 import type { ProofServerContainerConfiguration } from './configuration-types';
 

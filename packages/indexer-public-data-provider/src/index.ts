@@ -13,5 +13,5 @@
  * limitations under the License.
  */
 
-export * from './indexer-public-data-provider';
 export * from './errors';
+export * from './indexer-public-data-provider';

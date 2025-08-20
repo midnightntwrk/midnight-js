@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import { assertDefined, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import {
   type AlignedValue,
   type CoinPublicKey,
@@ -27,7 +26,8 @@ import {
   type ZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
 import type { Transcript, ZswapChainState } from '@midnight-ntwrk/ledger';
-import { partitionTranscripts, PreTranscript, LedgerParameters } from '@midnight-ntwrk/ledger';
+import { LedgerParameters, partitionTranscripts, PreTranscript } from '@midnight-ntwrk/ledger';
+import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type {
   CircuitParameters,
   CircuitReturnType,
@@ -35,7 +35,8 @@ import type {
   ImpureCircuitId,
   PrivateState
 } from '@midnight-ntwrk/midnight-js-types';
-import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { assertDefined, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
+
 import { toLedgerQueryContext } from './utils';
 
 /**

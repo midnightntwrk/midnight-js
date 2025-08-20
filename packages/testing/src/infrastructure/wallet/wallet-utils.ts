@@ -13,14 +13,16 @@
  * limitations under the License.
  */
 
-import * as Rx from 'rxjs';
 import { shieldedToken, type TokenType } from '@midnight-ntwrk/ledger';
 import { type TransactionHistoryEntry, type Wallet, type WalletState } from '@midnight-ntwrk/wallet-api';
-import type { MidnightWallet, TxOutput } from './wallet-types';
+import * as Rx from 'rxjs';
+
 import { type EnvironmentConfiguration } from '@/infrastructure';
+
 import { FaucetClient } from '../client';
 import { logger } from '../logger';
 import { delay } from '../utils';
+import type { MidnightWallet, TxOutput } from './wallet-types';
 
 /**
  * Gets the initial state of a wallet.
@@ -211,8 +213,8 @@ export const waitForTxInHistory = async (txId: string, wallet: Wallet, delayTime
  * @returns {Partial<WalletState>} Filtered wallet state
  */
 export const walletStateWithoutHistoryAndCoins = (state: WalletState): Partial<WalletState> => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { transactionHistory, coins, availableCoins, ...rest } = state;
+
+  const { transactionHistory: _, coins: __, availableCoins: ___, ...rest } = state;
   return rest;
 };
 
@@ -224,12 +226,12 @@ export const walletStateWithoutHistoryAndCoins = (state: WalletState): Partial<W
 export const normalizeWalletState = (state: WalletState): Record<string, unknown> => {
 
   const normalized = state.transactionHistory.map((txHistoryEntry: TransactionHistoryEntry) => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { transaction, ...otherProps } = txHistoryEntry;
+
+    const { transaction: _, ...otherProps } = txHistoryEntry;
     return otherProps;
   });
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { transactionHistory, syncProgress, ...otherProps } = state;
+
+  const { transactionHistory: _, syncProgress: __, ...otherProps } = state;
   return { ...otherProps, normalized };
 };
 

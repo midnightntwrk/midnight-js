@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+import type { StateValue } from '@midnight-ntwrk/compact-runtime';
+import type { Bindingish, Proofish, Signaturish, Transaction } from '@midnight-ntwrk/ledger';
 import type {
   CallTxOptions,
   DeployContractOptions,
@@ -22,16 +24,14 @@ import type {
   FinalizedDeployTxDataBase
 } from '@midnight-ntwrk/midnight-js-contracts';
 import {
-  type MidnightProviders,
-  type PrivateStateId,
-  type FinalizedTxData,
   type Contract,
+  type FinalizedTxData,
   type ImpureCircuitId,
+  type MidnightProviders,
   type PrivateState,
+  type PrivateStateId,
   SucceedEntirely
 } from '@midnight-ntwrk/midnight-js-types';
-import type { StateValue } from '@midnight-ntwrk/compact-runtime';
-import type { Bindingish, Proofish, Signaturish, Transaction } from '@midnight-ntwrk/ledger';
 
 export const stateValueEqual = (a: StateValue, b: StateValue): boolean => {
   return a.toString(false) === b.toString(false);

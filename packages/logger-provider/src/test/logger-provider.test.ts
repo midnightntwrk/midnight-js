@@ -13,10 +13,11 @@
  * limitations under the License.
  */
 
-import { vi } from 'vitest';
-import pinoPretty from 'pino-pretty';
-import pino from 'pino';
 import { LogLevel } from '@midnight-ntwrk/midnight-js-types';
+import pino from 'pino';
+import pinoPretty from 'pino-pretty';
+import { vi } from 'vitest';
+
 import { LoggerProvider } from '../index';
 
 // We do not need to mock pino, just provide a fake implementation.

@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { type Contract, FailEntirely, FailFallible, type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { submitDeployTx } from '../submit-deploy-tx';
-import { createUnprovenDeployTx } from '../unproven-deploy-tx';
-import { submitTx } from '../submit-tx';
 import { DeployTxFailedError } from '../errors';
+import { submitDeployTx } from '../submit-deploy-tx';
+import { submitTx } from '../submit-tx';
+import { createUnprovenDeployTx } from '../unproven-deploy-tx';
 import {
   createMockContract,
   createMockContractAddress,

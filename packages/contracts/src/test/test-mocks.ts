@@ -13,19 +13,6 @@
  * limitations under the License.
  */
 
-import { vi } from 'vitest';
-import {
-  type Contract,
-  type FinalizedTxData,
-  type ImpureCircuitId,
-  type PrivateState,
-  type PrivateStateId,
-  SucceedEntirely,
-  type TxStatus,
-  type UnprovenTransaction,
-  type VerifierKey,
-  type Witnesses
-} from '@midnight-ntwrk/midnight-js-types';
 import {
   type ContractState,
   type Op,
@@ -49,9 +36,23 @@ import {
   type Transaction,
   type ZswapChainState
 } from '@midnight-ntwrk/ledger';
-import type { ContractProviders } from '../contract-providers';
+import {
+  type Contract,
+  type FinalizedTxData,
+  type ImpureCircuitId,
+  type PrivateState,
+  type PrivateStateId,
+  SucceedEntirely,
+  type TxStatus,
+  type UnprovenTransaction,
+  type VerifierKey,
+  type Witnesses
+} from '@midnight-ntwrk/midnight-js-types';
+import { vi } from 'vitest';
+
 import { type CallOptions, type CallOptionsWithPrivateState, type PartitionedTranscript } from '../call';
 import { type ContractConstructorResult } from '../call-constructor';
+import type { ContractProviders } from '../contract-providers';
 import { type UnsubmittedCallTxData, type UnsubmittedDeployTxData } from '../tx-model';
 
 export const createMockContractAddress = () => sampleContractAddress();
@@ -67,7 +68,7 @@ export const createMockEncryptionPublicKey = (): EncPublicKey => sampleEncryptio
 export const createMockContractState = (signingKey?: SigningKey): ContractState => ({
   serialize: vi.fn().mockReturnValue(new Uint8Array(32)),
   data: StateValue.newNull(),
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   operation: vi.fn().mockImplementation((_circuitId: string) => ({
     verifierKey: new Uint8Array(32)
   })),

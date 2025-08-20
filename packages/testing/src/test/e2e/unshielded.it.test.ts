@@ -13,30 +13,29 @@
  * limitations under the License.
  */
 
-import { test, describe, beforeAll, afterAll, beforeEach } from '@vitest/runner';
-import { expect } from 'vitest';
+import { type ContractAddress,sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
 import { deployContract, submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import { sampleSigningKey, type ContractAddress } from '@midnight-ntwrk/compact-runtime';
-import {
-  createLogger,
-  getTestEnvironment,
-  initializeMidnightProviders,
-  expectSuccessfulDeployTx
-} from '@/infrastructure';
-import type {
-  MidnightWalletProvider,
-  TestEnvironment,
-  EnvironmentConfiguration,
-  ContractConfiguration
-} from '@/infrastructure';
+import { afterAll, beforeAll, beforeEach,describe, test } from '@vitest/runner';
 import path from 'path';
+import { expect } from 'vitest';
+
 import {
   createUnshieldedContract,
   type UnshieldedContract,
   type UnshieldedContractCircuits,
   type UnshieldedContractProviders
 } from '@/e2e/unshielded-types';
+import type {
+  ContractConfiguration,
+  EnvironmentConfiguration,
+  MidnightWalletProvider,
+  TestEnvironment} from '@/infrastructure';
+import {
+  createLogger,
+  expectSuccessfulDeployTx,
+  getTestEnvironment,
+  initializeMidnightProviders} from '@/infrastructure';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `unshielded_${new Date().toISOString()}.log`)

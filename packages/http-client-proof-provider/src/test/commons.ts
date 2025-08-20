@@ -13,12 +13,13 @@
  * limitations under the License.
  */
 
-import { createProverKey, createVerifierKey, createZKIR, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-types';
-import fs from 'fs/promises';
-import { Transaction } from '@midnight-ntwrk/ledger';
-import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import { Transaction } from '@midnight-ntwrk/ledger';
+import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { createProverKey, createVerifierKey, createZKIR, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-types';
+import fs from 'fs/promises';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 

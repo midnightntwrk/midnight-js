@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { SigningKey, ContractAddress } from '@midnight-ntwrk/compact-runtime';
+import type { ContractAddress,SigningKey } from '@midnight-ntwrk/compact-runtime';
 
 /**
  * A type representing an ID used to store a contract's private state.

@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
+import type { ShieldedCoinInfo } from '@midnight-ntwrk/compact-runtime';
 import type {
-  FinalizedTxData,
   Contract,
+  FinalizedTxData,
   ImpureCircuitId,
   UnprovenTransaction
 } from '@midnight-ntwrk/midnight-js-types';
-import type { ShieldedCoinInfo } from '@midnight-ntwrk/compact-runtime';
+
 import { type ContractProviders } from './contract-providers';
 
 /**

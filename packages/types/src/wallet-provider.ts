@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-import type { ShieldedCoinInfo, CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/ledger';
+import type { CoinPublicKey, EncPublicKey,ShieldedCoinInfo } from '@midnight-ntwrk/ledger';
+
 import type { BalancedTransaction, UnbalancedTransaction } from './midnight-types';
 
 /**

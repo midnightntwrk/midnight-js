@@ -14,6 +14,7 @@
  */
 
 import type { ContractAddress } from '@midnight-ntwrk/compact-runtime';
+
 import { assertIsHex, parseHex } from './hex-utils';
 
 /**

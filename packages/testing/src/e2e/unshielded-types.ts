@@ -14,6 +14,7 @@
  */
 
 import type { ImpureCircuitId, MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
+
 import { CompiledUnshielded } from './contract';
 
 export type UnshieldedContract = CompiledUnshielded.Contract<undefined>;

@@ -13,21 +13,21 @@
  * limitations under the License.
  */
 
-import { type QualifiedShieldedCoinInfo, type CoinPublicKey, type ShieldedCoinInfo, shieldedToken } from '@midnight-ntwrk/ledger';
+import { fc } from '@fast-check/vitest';
+import { type Recipient } from '@midnight-ntwrk/compact-runtime';
+import { type CoinPublicKey, type QualifiedShieldedCoinInfo, type ShieldedCoinInfo, shieldedToken } from '@midnight-ntwrk/ledger';
 import {
-  ZswapOffer,
   createShieldedCoinInfo,
   nativeToken,
+  sampleCoinPublicKey,
+  sampleContractAddress,
+  sampleRawTokenType,
   Transaction,
   ZswapChainState,
-  sampleRawTokenType,
-  sampleCoinPublicKey,
-  sampleContractAddress
-} from '@midnight-ntwrk/ledger';
-import { randomBytes } from 'crypto';
-import { fc } from '@fast-check/vitest';
+  ZswapOffer} from '@midnight-ntwrk/ledger';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
-import { type Recipient } from '@midnight-ntwrk/compact-runtime';
+import { randomBytes } from 'crypto';
+
 import {
   createZswapOutput,
   deserializeCoinInfo,
@@ -92,8 +92,8 @@ const randomEncryptionPublicKey = () => sampleOne(arbitraryHex);
 
 const randomCoinPublicKey = () => sampleOne(arbitraryCoinPublicKey);
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const dropMtIndex = ({ mt_index, ...coin }: QualifiedShieldedCoinInfo) => coin;
+
+const dropMtIndex = ({ mt_index: _, ...coin }: QualifiedShieldedCoinInfo) => coin;
 
 const toOutputData = (recipient: Recipient, coinInfos: (QualifiedShieldedCoinInfo | ShieldedCoinInfo)[]) =>
   coinInfos.map((coinInfo) =>
