@@ -14,38 +14,27 @@
  */
 
 /// <reference types="vitest" />
-/// <reference types="vitest/globals" />
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
+    include: ['test/**/*.test.ts'],
+    exclude: ['node_modules', 'dist'],
     coverage: {
+      provider: 'v8',
       enabled: true,
       clean: true,
-      provider: 'v8',
-      reporter: ['html', 'text', 'lcov', 'json', 'json-summary'],
-      reportsDirectory: 'coverage',
-      include: ['packages/**/*.{js,jsx,ts,tsx}'],
-      exclude: ['packages/**/src/test/**/*.{js,jsx,ts,tsx}']
+      include: ['src/**/*.ts'],
+      exclude: ['test/**'],
+      reporter: ['clover', 'json', 'json-summary', 'lcov', 'text'],
+      reportsDirectory: './coverage'
     },
-    reporters: ['default', 'json'],
-    outputFile: {
-      json: 'reports/test-report.json'
-    },
-    testTimeout: 180000,
-    include: ['packages/**/*.test.ts'],
-    exclude: ['node_modules', 'dist'],
-    projects: [
-      'packages/*/vitest.config.ts',
-      'compact-js/*/vitest.config.ts',
-      'platform-js/*/vitest.config.ts'
+    reporters: [
+      'default',
+      ['junit', { outputFile: `reports/report/test-report.xml` }],
+      ['html', { outputFile: `reports/report/test-report.html` }]
     ]
-  },
-  resolve: {
-    alias: {
-      '@midnight-ntwrk/onchain-runtime': '@midnight-ntwrk/onchain-runtime-cjs'
-    }
   }
 });
