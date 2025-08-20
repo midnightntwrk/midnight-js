@@ -49,7 +49,7 @@ header:
     - '**/*.d.ts'
     - '**/generated/**'
     - '**/auto-generated/**'
-    - '**/src/gen/**'
+    - 'packages/*/src/gen/*.ts'
 
   comment: on-failure
 
