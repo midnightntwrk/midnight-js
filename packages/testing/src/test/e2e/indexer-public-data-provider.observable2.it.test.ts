@@ -31,12 +31,14 @@ import path from 'path';
 import * as api from '@/e2e/api';
 import { CounterConfiguration } from '@/e2e/api';
 import { type CounterProviders, type DeployedCounterContract, privateStateZero } from '@/e2e/counter-types';
-import { Counter } from '@/e2e/contract';
+import { CompiledCounter } from '@/e2e/contract';
 import { CONTRACT_CIRCUITS, SLOW_TEST_TIMEOUT, VERY_SLOW_TEST_TIMEOUT } from '@/e2e/constants';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `indexer_${new Date().toISOString()}.log`)
 );
+
+const ledger = CompiledCounter.ledger;
 
 describe('Indexer API', () => {
   let publicDataProvider: PublicDataProvider;
@@ -54,7 +56,7 @@ describe('Indexer API', () => {
         states.forEach((state) => {
           expect(state).not.toBeNull();
           expect(state?.operations()).toEqual(CONTRACT_CIRCUITS);
-          ledgerStates.push(Counter.ledger(state.data).round);
+          ledgerStates.push(ledger(state.data).round);
         });
         expect(ledgerStates).toEqual(expectedStates);
       })
