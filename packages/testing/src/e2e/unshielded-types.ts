@@ -13,8 +13,13 @@
  * limitations under the License.
  */
 
-export * as Counter from './managed/counter/contract/index.cjs';
-export * as Simple from './managed/simple/contract/index.cjs';
-export * as CounterClone from './managed/counter-clone/contract/index.cjs';
-export * as UnshieldedCompiledCode from './managed/unshielded/contract/index.cjs';
-export * from './witnesses.js';
+import type { ImpureCircuitId, MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
+import { UnshieldedCompiledCode } from './contract';
+
+export type UnshieldedContract = UnshieldedCompiledCode.Contract<undefined>;
+
+export type UnshieldedContractCircuits = ImpureCircuitId<UnshieldedContract>;
+
+export type UnshieldedContractProviders = MidnightProviders<UnshieldedContractCircuits>;
+
+export const createUnshieldedContract = () : UnshieldedContract => new UnshieldedCompiledCode.Contract({});

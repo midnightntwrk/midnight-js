@@ -13,12 +13,108 @@
  * limitations under the License.
  */
 
-import { test } from '@vitest/runner';
+import { test, describe, beforeAll, afterAll, beforeEach } from '@vitest/runner';
+import { expect } from 'vitest';
+import { deployContract, submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
+import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import { sampleSigningKey, type ContractAddress } from '@midnight-ntwrk/compact-runtime';
+import {
+  createLogger,
+  getTestEnvironment,
+  initializeMidnightProviders,
+  expectSuccessfulDeployTx
+} from '@/infrastructure';
+import type {
+  MidnightWalletProvider,
+  TestEnvironment,
+  EnvironmentConfiguration,
+  ContractConfiguration
+} from '@/infrastructure';
+import path from 'path';
+import {
+  createUnshieldedContract,
+  type UnshieldedContract,
+  type UnshieldedContractCircuits,
+  type UnshieldedContractProviders
+} from '@/e2e/unshielded-types';
+
+const logger = createLogger(
+  path.resolve(`${process.cwd()}`, 'logs', 'tests', `unshielded_${new Date().toISOString()}.log`)
+);
+
+class UnshieldedConfiguration implements ContractConfiguration {
+  constructor(private suffix = Date.now().toString()) {}
+
+  get privateStateStoreName(): string {
+    return `unshielded-private-store-${this.suffix}`;
+  }
+
+  get zkConfigPath(): string {
+    return path.resolve(__dirname, '../../e2e/contract/managed/unshielded');
+  }
+}
 
 describe('Unshielded tokens', () => {
-  test.todo('Should create unshielded token with valid parameters');
-  test.todo('Should fail to create unshielded token with invalid parameters');
-  test.todo('Should serialize and deserialize unshielded token correctly');
-  test.todo('Should handle unshielded token transfers correctly');
-  test.todo('Should validate unshielded token ownership');
+  const TEST_TOKEN_AMOUNT = 1000n;
+  const TEST_DOMAIN_SEP = new Uint8Array(32).fill(1);
+  const SLOW_TEST_TIMEOUT = 60000;
+
+  let testEnvironment: TestEnvironment;
+  let wallet: MidnightWalletProvider;
+  let environmentConfiguration: EnvironmentConfiguration;
+  let providers: UnshieldedContractProviders;
+  let contractAddress: ContractAddress;
+  let unshieldedContract: UnshieldedContract;
+  let contractConfiguration: UnshieldedConfiguration;
+
+  beforeEach(() => {
+    logger.info(`Running test=${expect.getState().currentTestName}`);
+  });
+
+  beforeAll(async () => {
+    testEnvironment = getTestEnvironment(logger);
+    environmentConfiguration = await testEnvironment.start();
+    wallet = await testEnvironment.getMidnightWalletProvider();
+    contractConfiguration = new UnshieldedConfiguration();
+
+    providers = initializeMidnightProviders(wallet, environmentConfiguration, contractConfiguration);
+
+    unshieldedContract = createUnshieldedContract();
+
+    const deployTxOptions = {
+      contract: unshieldedContract,
+      signingKey: sampleSigningKey(),
+      initialPrivateState: undefined
+    };
+
+    const deployedContract = await deployContract(providers, deployTxOptions);
+    await expectSuccessfulDeployTx(providers, deployedContract.deployTxData, deployTxOptions);
+    contractAddress = deployedContract.deployTxData.public.contractAddress;
+
+    logger.info(`Deployed unshielded contract at address: ${contractAddress}`);
+  }, SLOW_TEST_TIMEOUT);
+
+  afterAll(async () => {
+    await testEnvironment.shutdown();
+  });
+
+  test('should mint tokens', async () => {
+    // Act & Assert - Mint unshielded token to self
+    const mintTxData = await submitCallTx(providers, {
+      contract: unshieldedContract,
+      contractAddress,
+      circuitId: 'mintUnshieldedToSelfTest' as UnshieldedContractCircuits,
+      args: [TEST_DOMAIN_SEP, TEST_TOKEN_AMOUNT]
+    });
+
+    expect(mintTxData.public.status).toBe(SucceedEntirely);
+    expect(mintTxData.public.unshielded).toBeDefined();
+
+    const mintedToken = mintTxData.public.unshielded.created;
+    expect(mintedToken.length).toEqual(1);
+    expect(mintedToken.at(0)?.value).toEqual(TEST_TOKEN_AMOUNT);
+    expect(mintedToken.at(0)?.owner).toEqual(TEST_DOMAIN_SEP);
+
+    logger.info(`Minted token: ${JSON.stringify(mintedToken)}`);
+  });
 });
