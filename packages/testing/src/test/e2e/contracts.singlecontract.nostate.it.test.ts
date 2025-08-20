@@ -51,7 +51,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-contracts';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { Simple } from '@/e2e/contract';
+import { CompiledSimple } from '@/e2e/contract';
 import * as api from '@/e2e/api';
 import type { SimpleContract, SimpleProviders } from '@/e2e/simple-types';
 
@@ -59,12 +59,14 @@ const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_nostate_${new Date().toISOString()}.log`)
 );
 
+const { ledger } = CompiledSimple;
+
 const expectSimpleContractCallResult = (
   coinPublicKey: CoinPublicKey,
   round: bigint,
   callResult: CallResult<SimpleContract, 'noop'>
 ): void => {
-  expect(Simple.ledger(callResult.public.nextContractState).round).toEqual(round);
+  expect(ledger(callResult.public.nextContractState).round).toEqual(round);
   expect(callResult.private.nextZswapLocalState).toEqual(
     decodeZswapLocalState(emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, getZswapNetworkId())))
   );
@@ -90,7 +92,7 @@ const expectSimpleContractDeployTxData = (
   round: bigint,
   deployTxResult: UnsubmittedDeployTxData<SimpleContract>
 ): void => {
-  expect(Simple.ledger(deployTxResult.public.initialContractState.data).round).toEqual(round);
+  expect(ledger(deployTxResult.public.initialContractState.data).round).toEqual(round);
   expect(deployTxResult.private.initialPrivateState).toBeUndefined();
   expect(deployTxResult.private.initialZswapState).toEqual(
     decodeZswapLocalState(emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, getZswapNetworkId())))
@@ -138,7 +140,7 @@ describe('Contracts API', () => {
       contract: api.simpleContractInstance,
       coinPublicKey
     });
-    expect(Simple.ledger(constructorResult.nextContractState.data).round).toEqual(0n);
+    expect(ledger(constructorResult.nextContractState.data).round).toEqual(0n);
     expect(constructorResult.nextPrivateState).toBeUndefined();
     expect(constructorResult.nextZswapLocalState).toEqual(
       decodeZswapLocalState(emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, getZswapNetworkId())))
