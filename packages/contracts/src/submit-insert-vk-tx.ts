@@ -13,18 +13,18 @@
  * limitations under the License.
  */
 
+import type { ContractAddress } from '@midnight-ntwrk/ledger';
 import {
   type FinalizedTxData,
+  type ImpureCircuitId,
   SucceedEntirely,
-  type VerifierKey,
-  type ImpureCircuitId
-} from '@midnight-ntwrk/midnight-js-types';
-import type { ContractAddress } from '@midnight-ntwrk/ledger';
+  type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress, assertUndefined } from '@midnight-ntwrk/midnight-js-utils';
-import { createUnprovenInsertVerifierKeyTx } from './utils';
-import { submitTx } from './submit-tx';
-import { InsertVerifierKeyTxFailedError } from './errors';
+
 import { type ContractProviders } from './contract-providers';
+import { InsertVerifierKeyTxFailedError } from './errors';
+import { submitTx } from './submit-tx';
+import { createUnprovenInsertVerifierKeyTx } from './utils';
 
 /**
  * Constructs and submits a transaction that adds a new verifier key to the

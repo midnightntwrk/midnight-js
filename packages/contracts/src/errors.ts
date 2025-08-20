@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { FinalizedTxData, ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
 import type { ContractState } from '@midnight-ntwrk/compact-runtime';
+import type { FinalizedTxData, ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
 
 /**
  * An error indicating that a transaction submitted to a consensus node failed.

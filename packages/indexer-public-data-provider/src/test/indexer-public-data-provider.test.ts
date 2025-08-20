@@ -14,6 +14,7 @@
  */
 
 import { WebSocket } from 'ws';
+
 import { indexerPublicDataProvider } from '../indexer-public-data-provider';
 
 describe('indexerPublicDataProvider', () => {

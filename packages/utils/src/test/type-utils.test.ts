@@ -14,6 +14,7 @@
  */
 
 import { randomBytes } from 'node:crypto';
+
 import { toHex } from '../hex-utils';
 import { assertIsContractAddress } from '../type-utils';
 

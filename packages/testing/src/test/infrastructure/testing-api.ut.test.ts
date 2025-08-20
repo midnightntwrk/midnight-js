@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
-import { WebSocket } from 'ws';
-import path from 'path';
 import { NetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import path from 'path';
+import { WebSocket } from 'ws';
+
 import { createLogger } from '@/infrastructure/logger';
 import {
   DevnetTestEnvironment,

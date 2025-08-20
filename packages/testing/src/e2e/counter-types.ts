@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-import type { ImpureCircuitId, MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
 import type { DeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
+import type { ImpureCircuitId, MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
+
 import { CompiledCounter, type CounterPrivateState, createInitialPrivateState, witnesses } from './contract';
 
 export type CounterContract = CompiledCounter.Contract<CounterPrivateState>;

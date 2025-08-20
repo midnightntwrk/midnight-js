@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
-import type { FinalizedTxData, Contract, ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
-import type { UnprovenTransaction } from '@midnight-ntwrk/ledger';
 import type { CoinInfo } from '@midnight-ntwrk/compact-runtime';
+import type { UnprovenTransaction } from '@midnight-ntwrk/ledger';
+import type { Contract, FinalizedTxData, ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
+
 import { type ContractProviders } from './contract-providers';
 
 /**

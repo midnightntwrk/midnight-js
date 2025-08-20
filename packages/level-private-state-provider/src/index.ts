@@ -14,7 +14,6 @@
  */
 
 export {
+  DEFAULT_CONFIG,
   levelPrivateStateProvider,
-  LevelPrivateStateProviderConfig,
-  DEFAULT_CONFIG
-} from './level-private-state-provider';
+  LevelPrivateStateProviderConfig} from './level-private-state-provider';

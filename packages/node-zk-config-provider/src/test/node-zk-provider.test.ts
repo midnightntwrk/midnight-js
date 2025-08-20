@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
+import type { BinaryLike } from 'crypto';
 import * as crypto from 'crypto';
 
-import type { BinaryLike } from 'crypto';
 import { NodeZkConfigProvider } from '../index';
 
 const createHash = (binaryLike: BinaryLike): string => {

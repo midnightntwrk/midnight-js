@@ -13,25 +13,25 @@
  * limitations under the License.
  */
 
+import type { SigningKey } from '@midnight-ntwrk/compact-runtime';
+import type { ContractAddress } from '@midnight-ntwrk/ledger';
 import {
-  type FinalizedTxData,
-  type VerifierKey,
   type CircuitParameters,
   type Contract,
-  type PrivateStateId,
+  type FinalizedTxData,
   getImpureCircuitIds,
-  type ImpureCircuitId
-} from '@midnight-ntwrk/midnight-js-types';
-import type { ContractAddress } from '@midnight-ntwrk/ledger';
+  type ImpureCircuitId,
+  type PrivateStateId,
+  type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
-import type { SigningKey } from '@midnight-ntwrk/compact-runtime';
+
+import { type ContractProviders } from './contract-providers';
 import { submitCallTx } from './submit-call-tx';
-import type { FinalizedCallTxData } from './tx-model';
-import type { CallTxOptions } from './unproven-call-tx';
-import { submitReplaceAuthorityTx } from './submit-replace-authority-tx';
 import { submitInsertVerifierKeyTx } from './submit-insert-vk-tx';
 import { submitRemoveVerifierKeyTx } from './submit-remove-vk-tx';
-import { type ContractProviders } from './contract-providers';
+import { submitReplaceAuthorityTx } from './submit-replace-authority-tx';
+import type { FinalizedCallTxData } from './tx-model';
+import type { CallTxOptions } from './unproven-call-tx';
 
 /**
  * A type that lifts each circuit defined in a contract to a function that builds

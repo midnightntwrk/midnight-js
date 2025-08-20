@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
-import type { ContractState, ContractAddress, ZswapLocalState, SigningKey } from '@midnight-ntwrk/compact-runtime';
-import type { FinalizedTxData, Contract, ImpureCircuitId, PrivateState } from '@midnight-ntwrk/midnight-js-types';
+import type { ContractAddress, ContractState, SigningKey,ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
 import type { CoinInfo, UnprovenTransaction } from '@midnight-ntwrk/ledger';
+import type { Contract, FinalizedTxData, ImpureCircuitId, PrivateState } from '@midnight-ntwrk/midnight-js-types';
+
 import type { CallResult } from './call';
 
 /**

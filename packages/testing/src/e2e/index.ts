@@ -14,7 +14,7 @@
  */
 
 export * from './api';
+export * from './constants';
 export * from './counter-clone-types';
 export * from './counter-types';
 export * from './simple-types';
-export * from './constants';

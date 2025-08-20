@@ -15,6 +15,7 @@
 
 import path from 'path';
 import { Wait } from 'testcontainers';
+
 import type { ContainersConfiguration } from './configuration-types';
 
 const currentWorkingDir = path.resolve(`${process.cwd()}`);
