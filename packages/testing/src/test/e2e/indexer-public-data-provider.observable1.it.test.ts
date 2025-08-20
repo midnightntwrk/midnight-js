@@ -33,7 +33,7 @@ const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `indexer_${new Date().toISOString()}.log`)
 );
 
-const ledger = CompiledCounter.ledger;
+const { ledger } = CompiledCounter;
 
 describe('Indexer API', () => {
   let publicDataProvider: PublicDataProvider;

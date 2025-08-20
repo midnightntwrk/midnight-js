@@ -90,7 +90,7 @@ const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_${new Date().toISOString()}.log`)
 );
 
-const ledger = CompiledCounter.ledger;
+const { ledger } = CompiledCounter;
 
 describe('Contracts API', () => {
   const WAITING_PROMISE_TIMEOUT = 20_000;

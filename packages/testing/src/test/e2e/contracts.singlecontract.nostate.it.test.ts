@@ -59,7 +59,7 @@ const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_nostate_${new Date().toISOString()}.log`)
 );
 
-const ledger = CompiledSimple.ledger;
+const { ledger } = CompiledSimple;
 
 const expectSimpleContractCallResult = (
   coinPublicKey: CoinPublicKey,
