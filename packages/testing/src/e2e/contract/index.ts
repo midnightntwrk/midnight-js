@@ -16,5 +16,5 @@
 export * as CompiledCounter from './managed/counter/contract/index.cjs';
 export * as CompiledSimple from './managed/simple/contract/index.cjs';
 export * as CompiledCounterClone from './managed/counter-clone/contract/index.cjs';
-export * as UnshieldedCompiledCode from './managed/unshielded/contract/index.cjs';
+export * as CompiledUnshielded from './managed/unshielded/contract/index.cjs';
 export * from './witnesses.js';

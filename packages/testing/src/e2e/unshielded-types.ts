@@ -14,12 +14,12 @@
  */
 
 import type { ImpureCircuitId, MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
-import { UnshieldedCompiledCode } from './contract';
+import { CompiledUnshielded } from './contract';
 
-export type UnshieldedContract = UnshieldedCompiledCode.Contract<undefined>;
+export type UnshieldedContract = CompiledUnshielded.Contract<undefined>;
 
 export type UnshieldedContractCircuits = ImpureCircuitId<UnshieldedContract>;
 
 export type UnshieldedContractProviders = MidnightProviders<UnshieldedContractCircuits>;
 
-export const createUnshieldedContract = () : UnshieldedContract => new UnshieldedCompiledCode.Contract({});
+export const createUnshieldedContract = () : UnshieldedContract => new CompiledUnshielded.Contract({});
