@@ -16,7 +16,7 @@
 import type { ContractAddress } from '@midnight-ntwrk/ledger';
 import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
-import type { FinalizedTxData, MidnightProviders, PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
+import type { FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
 import { WebSocket } from 'ws';
 import type { Logger } from 'pino';
 import path from 'path';
@@ -27,22 +27,19 @@ import {
   type MidnightWalletProvider
 } from '@/infrastructure';
 import {
-  Counter,
-  Simple,
-  CounterClone,
+  CompiledCounter,
   type CounterPrivateState,
-  witnesses,
   createInitialPrivateState
 } from './contract';
-import type {
-  CounterCircuits,
-  CounterContract,
+import {
+  type CounterContract,
   CounterPrivateStateId,
-  CounterProviders,
-  DeployedCounterContract
+  type CounterProviders,
+  createCounterContractInstance,
+  type DeployedCounterContract
 } from './counter-types';
-import type { SimpleContract } from './simple-types';
-import type { CounterCloneContract } from './counter-clone-types';
+import { createSimpleContractInstance, type SimpleContract } from './simple-types';
+import { createCounterCloneContractInstance, type CounterCloneContract } from './counter-clone-types';
 
 export const currentDir = path.resolve(new URL(import.meta.url).pathname, '..');
 
@@ -86,7 +83,7 @@ export class SimpleConfiguration implements ContractConfiguration {
 }
 
 export const getCounterPrivateState = async (
-  providers: MidnightProviders<CounterCircuits, PrivateStateId, CounterPrivateState>,
+  providers: CounterProviders,
   privateStateId: typeof CounterPrivateStateId
 ): Promise<CounterPrivateState | null> => {
   logger.info('Checking contract private state...');
@@ -103,16 +100,16 @@ export const getCounterLedgerState = async (
   logger.info('Checking contract ledger state...');
   const state = await providers.publicDataProvider
     .queryContractState(contractAddress)
-    .then((contractState) => (contractState != null ? Counter.ledger(contractState.data).round : null));
+    .then((contractState) => (contractState != null ? CompiledCounter.ledger(contractState.data).round : null));
   logger.info(`Ledger state: ${state}`);
   return state;
 };
 
-export const simpleContractInstance: SimpleContract = new Simple.Contract({});
+export const simpleContractInstance: SimpleContract = createSimpleContractInstance();
 
-export const counterContractInstance: CounterContract = new Counter.Contract(witnesses);
+export const counterContractInstance: CounterContract = createCounterContractInstance();
 
-export const cloneContractInstance: CounterCloneContract = new CounterClone.Contract(witnesses);
+export const cloneContractInstance: CounterCloneContract = createCounterCloneContractInstance();
 
 export const deploy = async (
   providers: CounterProviders,
@@ -121,7 +118,7 @@ export const deploy = async (
   logger.info('Deploying counter contract...');
   const counterContract = await deployContract(providers, {
     contract: counterContractInstance,
-    privateStateId: 'counterPrivateState',
+    privateStateId: CounterPrivateStateId,
     initialPrivateState: privateState
   });
   logger.info(`Deployed contract at address: ${counterContract.deployTxData.public.contractAddress}`);
