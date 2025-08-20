@@ -14,7 +14,9 @@
  */
 
 import { rm } from 'node:fs/promises';
+
 import path from 'path';
+
 import { logger } from './logger';
 
 export const MINUTE = 60_000;

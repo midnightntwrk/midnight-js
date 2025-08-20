@@ -13,10 +13,11 @@
  * limitations under the License.
  */
 
-import { WebSocket } from 'ws';
 import path from 'path';
-import { createLogger } from '@/infrastructure/logger';
+import { WebSocket } from 'ws';
+
 import { getEnvVarWalletSeeds } from '@/infrastructure/env-vars';
+import { createLogger } from '@/infrastructure/logger';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `ut_${new Date().toISOString().replace(/:/g, '-')}.log`)

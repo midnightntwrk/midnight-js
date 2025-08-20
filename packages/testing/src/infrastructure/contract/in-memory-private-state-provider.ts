@@ -13,14 +13,13 @@
  * limitations under the License.
  */
 
+import type { SigningKey } from '@midnight-ntwrk/compact-runtime';
+import type { ContractAddress } from '@midnight-ntwrk/ledger';
 import {
-  type PrivateStateProvider,
+  type Contract,
   type PrivateState,
   type PrivateStateId,
-  type Contract
-} from '@midnight-ntwrk/midnight-js-types';
-import type { ContractAddress } from '@midnight-ntwrk/ledger';
-import type { SigningKey } from '@midnight-ntwrk/compact-runtime';
+  type PrivateStateProvider} from '@midnight-ntwrk/midnight-js-types';
 
 /**
  * A simple in-memory implementation of private state provider. Makes it easy to capture and rewrite private state from deploy.

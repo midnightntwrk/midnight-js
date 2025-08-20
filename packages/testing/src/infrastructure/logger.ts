@@ -14,8 +14,10 @@
  */
 
 import * as path from 'node:path';
-import pinoPretty from 'pino-pretty';
+
 import pino from 'pino';
+import pinoPretty from 'pino-pretty';
+
 import { getContainersConfiguration } from './configuration';
 
 const { level } = getContainersConfiguration().log;

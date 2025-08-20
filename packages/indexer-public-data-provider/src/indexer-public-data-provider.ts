@@ -13,6 +13,22 @@
  * limitations under the License.
  */
 
+import { ApolloClient, InMemoryCache } from '@apollo/client/core/core.cjs';
+import type { ApolloQueryResult, FetchResult, NormalizedCacheObject } from '@apollo/client/core/index.js';
+import { from,split } from '@apollo/client/link/core/core.cjs';
+import { createHttpLink } from '@apollo/client/link/http/http.cjs';
+import { RetryLink } from '@apollo/client/link/retry/retry.cjs';
+import { GraphQLWsLink } from '@apollo/client/link/subscriptions/subscriptions.cjs';
+import { getMainDefinition } from '@apollo/client/utilities/utilities.cjs';
+import { ContractState } from '@midnight-ntwrk/compact-runtime';
+import type { ContractAddress, TransactionId } from '@midnight-ntwrk/ledger';
+import { Transaction as LedgerTransaction, ZswapChainState } from '@midnight-ntwrk/ledger';
+import {
+  getLedgerNetworkId,
+  getNetworkId,
+  getRuntimeNetworkId,
+  networkIdToHex
+} from '@midnight-ntwrk/midnight-js-network-id';
 import type {
   BlockHashConfig,
   BlockHeightConfig,
@@ -24,32 +40,25 @@ import type {
 import {
   FailEntirely,
   FailFallible,
-  SucceedEntirely,
-  InvalidProtocolSchemeError
-} from '@midnight-ntwrk/midnight-js-types';
-import type { ContractAddress, TransactionId } from '@midnight-ntwrk/ledger';
-import { Transaction as LedgerTransaction, ZswapChainState } from '@midnight-ntwrk/ledger';
-import { ContractState } from '@midnight-ntwrk/compact-runtime';
-import type { ApolloQueryResult, FetchResult, NormalizedCacheObject } from '@apollo/client/core/index.js';
-import { ApolloClient, InMemoryCache } from '@apollo/client/core/core.cjs';
-import { split, from } from '@apollo/client/link/core/core.cjs';
-import { createHttpLink } from '@apollo/client/link/http/http.cjs';
-import { RetryLink } from '@apollo/client/link/retry/retry.cjs';
-import { getMainDefinition } from '@apollo/client/utilities/utilities.cjs';
-import { GraphQLWsLink } from '@apollo/client/link/subscriptions/subscriptions.cjs';
+  InvalidProtocolSchemeError,
+  SucceedEntirely} from '@midnight-ntwrk/midnight-js-types';
+import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 import { Buffer } from 'buffer';
-import type * as Zen from 'zen-observable-ts';
-import * as Rx from 'rxjs';
 import fetch from 'cross-fetch';
 import { createClient } from 'graphql-ws';
 import * as ws from 'isomorphic-ws';
-import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
-import {
-  getLedgerNetworkId,
-  getNetworkId,
-  getRuntimeNetworkId,
-  networkIdToHex
-} from '@midnight-ntwrk/midnight-js-network-id';
+import * as Rx from 'rxjs';
+import type * as Zen from 'zen-observable-ts';
+
+import { IndexerFormattedError } from './errors';
+import type {
+  BlockOffset,
+  ContractActionOffset,
+  DeployContractStateTxQueryQuery,
+  DeployTxQueryQuery,
+  InputMaybe,
+  LatestContractTxBlockHeightQueryQuery
+} from './gen/graphql';
 import {
   BLOCK_QUERY,
   CONTRACT_AND_ZSWAP_STATE_QUERY,
@@ -61,15 +70,6 @@ import {
   TX_ID_QUERY,
   TXS_FROM_BLOCK_SUB
 } from './query-definitions';
-import { IndexerFormattedError } from './errors';
-import type {
-  BlockOffset,
-  ContractActionOffset,
-  DeployContractStateTxQueryQuery,
-  DeployTxQueryQuery,
-  InputMaybe,
-  LatestContractTxBlockHeightQueryQuery
-} from './gen/graphql';
 
 type IsEmptyObject<T> = keyof T extends never ? true : false;
 type ExcludeEmptyAndNull<T> = T extends null ? never : IsEmptyObject<T> extends true ? never : T;

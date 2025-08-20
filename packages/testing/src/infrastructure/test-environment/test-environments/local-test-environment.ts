@@ -13,16 +13,17 @@
  * limitations under the License.
  */
 
-import { DockerComposeEnvironment, type StartedDockerComposeEnvironment } from 'testcontainers';
 import { getNetworkId, NetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type { Logger } from 'pino';
+import { DockerComposeEnvironment, type StartedDockerComposeEnvironment } from 'testcontainers';
+
+import { getContainersConfiguration } from '../../configuration';
+import type { StandaloneContainersConfiguration } from '../../configuration-types';
+import { getEnvVarWalletSeeds } from '../../env-vars';
+import type { ProofServerContainer } from '../../proof-server-container';
 import { MidnightWalletProvider } from '../../wallet';
 import type { EnvironmentConfiguration } from '../environment-configuration';
 import { TestEnvironment } from '../test-environment';
-import type { ProofServerContainer } from '../../proof-server-container';
-import type { StandaloneContainersConfiguration } from '../../configuration-types';
-import { getContainersConfiguration } from '../../configuration';
-import { getEnvVarWalletSeeds } from '../../env-vars';
 
 /**
  * Configuration for component ports in the local test environment

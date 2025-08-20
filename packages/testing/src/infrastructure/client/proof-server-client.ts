@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-import type { Logger } from 'pino';
 import axios, { type AxiosRequestConfig } from 'axios';
+import type { Logger } from 'pino';
+
 import { extractHostnameAndPort } from '../utils';
 
 export class ProofServerClient {

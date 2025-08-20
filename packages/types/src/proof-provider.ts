@@ -14,6 +14,7 @@
  */
 
 import type { UnprovenTransaction } from '@midnight-ntwrk/ledger';
+
 import type { UnbalancedTransaction, ZKConfig } from './midnight-types';
 
 /**

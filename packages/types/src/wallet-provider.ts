@@ -14,6 +14,7 @@
  */
 
 import type { CoinInfo, CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/ledger';
+
 import type { BalancedTransaction, UnbalancedTransaction } from './midnight-types';
 
 /**

@@ -13,24 +13,23 @@
  * limitations under the License.
  */
 
-import type {
-  ContractAddress,
-  ZswapChainState,
-  CoinInfo,
-  QualifiedCoinInfo,
-  CoinPublicKey,
-  EncPublicKey
-} from '@midnight-ntwrk/ledger';
-import { UnprovenOffer, UnprovenOutput, UnprovenTransient, UnprovenInput } from '@midnight-ntwrk/ledger';
 import { type Recipient, type ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
+import type {
+  CoinInfo,
+  CoinPublicKey,
+  ContractAddress,
+  EncPublicKey,
+  QualifiedCoinInfo,
+  ZswapChainState} from '@midnight-ntwrk/ledger';
+import { UnprovenInput,UnprovenOffer, UnprovenOutput, UnprovenTransient } from '@midnight-ntwrk/ledger';
+import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
-  fromHex,
-  assertIsContractAddress,
   assertDefined,
+  assertIsContractAddress,
+  fromHex,
   parseCoinPublicKeyToHex,
   parseEncPublicKeyToHex
 } from '@midnight-ntwrk/midnight-js-utils';
-import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 
 // A default segment number to use when creating inputs and outputs. The Ledger has exposed this parameter
 // now but we don't know what the value should be, and assume that everything first in segment '0'. This
@@ -54,8 +53,8 @@ export const serializeCoinInfo = (coinInfo: CoinInfo): string => {
 };
 
 export const serializeQualifiedCoinInfo = (coinInfo: QualifiedCoinInfo): string => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { mt_index, ...rest } = coinInfo;
+
+  const { mt_index: _, ...rest } = coinInfo;
   return serializeCoinInfo(rest);
 };
 
@@ -66,10 +65,10 @@ export const deserializeCoinInfo = (coinInfo: string): CoinInfo => {
       value != null &&
       typeof value === 'object' &&
       '__big_int_val__' in value &&
-       
+
       typeof value.__big_int_val__ === 'string'
     ) {
-       
+
       return BigInt(value.__big_int_val__);
     }
     if (
@@ -77,10 +76,10 @@ export const deserializeCoinInfo = (coinInfo: string): CoinInfo => {
       value != null &&
       typeof value === 'object' &&
       '__uint8Array_val__' in value &&
-       
+
       typeof value.__uint8Array_val__ === 'string'
     ) {
-       
+
       return fromHex(value.__uint8Array_val__);
     }
     return value;

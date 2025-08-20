@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { Logger, LogFn } from 'pino';
 import type { LogLevel } from '@midnight-ntwrk/midnight-js-types';
+import type { LogFn,Logger } from 'pino';
 
 /**
  * Implementation of {@link LoggerProvider} that returns a {@link Logger} instance.

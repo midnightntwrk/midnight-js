@@ -16,17 +16,18 @@
 import type { Contract, ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
+
+import { type ContractProviders } from './contract-providers';
 import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from './errors';
-import type { FinalizedCallTxData } from './tx-model';
-import {
-  type CallTxOptionsBase,
-  type CallTxOptionsWithPrivateStateId,
-  type CallTxOptions,
-  createUnprovenCallTx
-} from './unproven-call-tx';
 import type { SubmitTxProviders } from './submit-tx';
 import { submitTx } from './submit-tx';
-import { type ContractProviders } from './contract-providers';
+import type { FinalizedCallTxData } from './tx-model';
+import {
+  type CallTxOptions,
+  type CallTxOptionsBase,
+  type CallTxOptionsWithPrivateStateId,
+  createUnprovenCallTx
+} from './unproven-call-tx';
 
 export type SubmitCallTxProviders<C extends Contract, ICK extends ImpureCircuitId<C>> =
   | ContractProviders<C>

@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-import type { PrivateStateId, PrivateStateProvider } from './private-state-provider';
-import type { PublicDataProvider } from './public-data-provider';
-import type { ProofProvider } from './proof-provider';
-import type { WalletProvider } from './wallet-provider';
-import type { MidnightProvider } from './midnight-provider';
-import type { ZKConfigProvider } from './zk-config-provider';
-import type { LoggerProvider } from './logger-provider';
 import { type ImpureCircuitId } from './contract';
+import type { LoggerProvider } from './logger-provider';
+import type { MidnightProvider } from './midnight-provider';
+import type { PrivateStateId, PrivateStateProvider } from './private-state-provider';
+import type { ProofProvider } from './proof-provider';
+import type { PublicDataProvider } from './public-data-provider';
+import type { WalletProvider } from './wallet-provider';
+import type { ZKConfigProvider } from './zk-config-provider';
 
 /**
  * Set of providers needed for transaction construction and submission.

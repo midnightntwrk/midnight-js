@@ -13,24 +13,24 @@
  * limitations under the License.
  */
 
-import {
-  type VerifierKey,
-  type PrivateStateId,
-  type PrivateState,
-  type Contract,
-  type ImpureCircuitId
-} from '@midnight-ntwrk/midnight-js-types';
-import { getImpureCircuitIds } from '@midnight-ntwrk/midnight-js-types';
-import type { SigningKey, CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
-import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
+import type { CoinPublicKey,SigningKey } from '@midnight-ntwrk/compact-runtime';
 import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import {
+  type Contract,
+  type ImpureCircuitId,
+  type PrivateState,
+  type PrivateStateId,
+  type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
+import { getImpureCircuitIds } from '@midnight-ntwrk/midnight-js-types';
+import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import type { EncPublicKey } from '@midnight-ntwrk/zswap';
-import type { UnsubmittedDeployTxData } from './tx-model';
-import { createUnprovenLedgerDeployTx, zswapStateToNewCoins } from './utils';
+
 import type { ContractConstructorOptions, ContractConstructorOptionsWithArguments } from './call-constructor';
 import { callContractConstructor } from './call-constructor';
 import { type ContractProviders } from './contract-providers';
 import { type DeployTxOptions } from './submit-deploy-tx';
+import type { UnsubmittedDeployTxData } from './tx-model';
+import { createUnprovenLedgerDeployTx, zswapStateToNewCoins } from './utils';
 
 /**
  * Base type for deploy transaction configuration.
