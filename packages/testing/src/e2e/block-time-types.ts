@@ -13,9 +13,16 @@
  * limitations under the License.
  */
 
-export * as CompilerBlockTime from './managed/block-time/contract/index.cjs';
-export * as CompiledCounter from './managed/counter/contract/index.cjs';
-export * as CompiledCounterClone from './managed/counter-clone/contract/index.cjs';
-export * as CompiledSimple from './managed/simple/contract/index.cjs';
-export * as CompiledUnshielded from './managed/unshielded/contract/index.cjs';
-export * from './witnesses.js';
+import type { DeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
+import type { ImpureCircuitId, MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
+
+import type { CompilerBlockTime } from './contract';
+
+export type BlockTimeContract = CompilerBlockTime.Contract<undefined>;
+
+export type BlockTimeCircuits = ImpureCircuitId<BlockTimeContract> & string;
+
+export type BlockTimeProviders = MidnightProviders<BlockTimeCircuits, string, undefined>;
+
+export type DeployedBlockTimeContract = DeployedContract<BlockTimeContract>;
+

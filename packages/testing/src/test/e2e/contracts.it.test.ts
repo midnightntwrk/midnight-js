@@ -38,16 +38,7 @@ import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import path from 'path';
 
-import * as api from '@/e2e/api';
 import {
-  cloneContractInstance,
-  CounterCloneConfiguration,
-  CounterConfiguration,
-  counterContractInstance,
-  SimpleConfiguration,
-  simpleContractInstance} from '@/e2e/api';
-import {
-  CIRCUIT_ID_INCREMENT,
   INVALID_CONTRACT_ADDRESS_HEX_FORMAT,
   INVALID_CONTRACT_ADDRESS_TOO_LONG,
   SLOW_TEST_TIMEOUT,
@@ -59,6 +50,16 @@ import {
   createInitialPrivateState,
   createPrivateState,
 } from '@/e2e/contract';
+import * as api from '@/e2e/counter-api';
+import {
+  CIRCUIT_ID_INCREMENT,
+  cloneContractInstance,
+  CounterCloneConfiguration,
+  CounterConfiguration,
+  counterContractInstance,
+  SimpleConfiguration,
+  simpleContractInstance
+} from '@/e2e/counter-api';
 import { type CounterCloneCircuits,CounterClonePrivateStateId } from '@/e2e/counter-clone-types';
 import {
   type CounterCircuits,

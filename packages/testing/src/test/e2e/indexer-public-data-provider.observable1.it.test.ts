@@ -18,10 +18,10 @@ import { type FinalizedTxData, type PublicDataProvider } from '@midnight-ntwrk/m
 import path from 'path';
 import { type Observable, toArray } from 'rxjs';
 
-import * as api from '@/e2e/api';
-import { CounterConfiguration } from '@/e2e/api';
-import { CONTRACT_CIRCUITS, SLOW_TEST_TIMEOUT, VERY_SLOW_TEST_TIMEOUT } from '@/e2e/constants';
+import { SLOW_TEST_TIMEOUT, VERY_SLOW_TEST_TIMEOUT } from '@/e2e/constants';
 import { CompiledCounter } from '@/e2e/contract';
+import * as api from '@/e2e/counter-api';
+import { CONTRACT_CIRCUITS, CounterConfiguration } from '@/e2e/counter-api';
 import { type CounterProviders, type DeployedCounterContract, privateStateZero } from '@/e2e/counter-types';
 import {
   createLogger,

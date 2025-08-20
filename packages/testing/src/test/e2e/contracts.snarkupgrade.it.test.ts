@@ -23,9 +23,8 @@ import {
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import path from 'path';
 
-import * as api from '@/e2e/api';
-import { counterContractInstance } from '@/e2e/api';
-import { CIRCUIT_ID_RESET } from '@/e2e/constants';
+import * as api from '@/e2e/counter-api';
+import { CIRCUIT_ID_RESET, counterContractInstance } from '@/e2e/counter-api';
 import { type CounterProviders } from '@/e2e/counter-types';
 import type {
   EnvironmentConfiguration,

@@ -34,9 +34,9 @@ import { getImpureCircuitIds } from '@midnight-ntwrk/midnight-js-types';
 import path from 'path';
 import { expect } from 'vitest';
 
-import * as api from '@/e2e/api';
-import { CounterConfiguration, counterContractInstance } from '@/e2e/api';
 import { createInitialPrivateState } from '@/e2e/contract';
+import * as api from '@/e2e/counter-api';
+import { CounterConfiguration, counterContractInstance } from '@/e2e/counter-api';
 import type { CounterCircuits } from '@/e2e/counter-types';
 import {
   createLogger,

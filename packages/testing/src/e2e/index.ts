@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-export * from './api';
 export * from './constants';
+export * from './counter-api';
 export * from './counter-clone-types';
 export * from './counter-types';
 export * from './simple-types';

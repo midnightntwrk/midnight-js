@@ -16,8 +16,8 @@ __metadata:
   linkType: hard
 
 "@apollo/client@npm:^3.13.8":
-  version: 3.13.8
-  resolution: "@apollo/client@npm:3.13.8"
+  version: 3.13.9
+  resolution: "@apollo/client@npm:3.13.9"
   dependencies:
     "@graphql-typed-document-node/core": "npm:^3.1.1"
     "@wry/caches": "npm:^1.0.0"
@@ -47,7 +47,7 @@ __metadata:
       optional: true
     subscriptions-transport-ws:
       optional: true
-  checksum: 10/a2fb3990ea25b96df2719ae0e925c07acc84cbf73da8871233169d65f01ae506cc0a52f6a83c40dea06bb3c9a5eb46a34f3e9b6e545931bae8c48f9bf4652e7a
+  checksum: 10/1eb44b971a9577018a93c3429fd18cc96340766dc5e5cdf002ff4bd0c0755d130d6994d4a15ff159243b7d2ac0261100382c2ae803d471909150fb33e873a3f4
   languageName: node
   linkType: hard
 
@@ -6168,13 +6168,13 @@ __metadata:
   linkType: hard
 
 "eslint-config-prettier@npm:^10.1.5":
-  version: 10.1.5
-  resolution: "eslint-config-prettier@npm:10.1.5"
+  version: 10.1.8
+  resolution: "eslint-config-prettier@npm:10.1.8"
   peerDependencies:
     eslint: ">=7.0.0"
   bin:
     eslint-config-prettier: bin/cli.js
-  checksum: 10/bc192e703e595c886c33703ebb9a8381a18179ce2ec14a24f671cb675a96b8ba1b4a862c5763680e1c918131007759afb3c874788c7d61706740147ae77f249a
+  checksum: 10/03f8e6ea1a6a9b8f9eeaf7c8c52a96499ec4b275b9ded33331a6cc738ed1d56de734097dbd0091f136f0e84bc197388bd8ec22a52a4658105883f8c8b7d8921a
   languageName: node
   linkType: hard
 
@@ -6270,8 +6270,8 @@ __metadata:
   linkType: hard
 
 "eslint-plugin-prettier@npm:^5.5.1":
-  version: 5.5.1
-  resolution: "eslint-plugin-prettier@npm:5.5.1"
+  version: 5.5.4
+  resolution: "eslint-plugin-prettier@npm:5.5.4"
   dependencies:
     prettier-linter-helpers: "npm:^1.0.0"
     synckit: "npm:^0.11.7"
@@ -6285,7 +6285,7 @@ __metadata:
       optional: true
     eslint-config-prettier:
       optional: true
-  checksum: 10/4d750c70d97d6ef50776bc0a27eeececaac64792fb50713213c69231ed475aa9822a3d177870300fee537d3e24d0dc8eed1528929cab2d20f6e7ec37484648a3
+  checksum: 10/5e39e3b7046d4ba0e1111cc2048630ee9d0aa5d5bb00d6230bef56893fdae37cbe2261babfb26db350cc2ad517c81d283b3f8b04cfee4e5aef7cd4bee72f90de
   languageName: node
   linkType: hard
 
@@ -7286,8 +7286,8 @@ __metadata:
   linkType: hard
 
 "graphql-ws@npm:^6.0.0":
-  version: 6.0.5
-  resolution: "graphql-ws@npm:6.0.5"
+  version: 6.0.6
+  resolution: "graphql-ws@npm:6.0.6"
   peerDependencies:
     "@fastify/websocket": ^10 || ^11
     crossws: ~0.3
@@ -7303,7 +7303,7 @@ __metadata:
       optional: true
     ws:
       optional: true
-  checksum: 10/33767813faf574ec225f52ffdf3cd4ef78acfb4905e82116afe0fe4adcd438ae3886f12b8ced588376dfaa26d50a6ad2dd30596547ed0a93c190fc4495ab91d2
+  checksum: 10/81d334800af4b38bdfc56971308b39184b5a696e794eed6315fc7c20d488fdc5f68a10a382e47f95b8ca9365fdd15fba098ba897ff7424d5ae39f3316af078ce
   languageName: node
   linkType: hard
 

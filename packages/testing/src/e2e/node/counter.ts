@@ -26,7 +26,7 @@ import {
 } from '@/infrastructure';
 import { type ContractConfiguration } from '@/infrastructure';
 
-import * as api from '../api';
+import * as api from '../counter-api';
 
 export class CounterConfiguration implements ContractConfiguration {
   readonly privateStateStoreName;
