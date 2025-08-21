@@ -15,7 +15,8 @@
 
 import { Effect, ConfigProvider, Schema, Option } from 'effect';
 import { type Command, Options } from '@effect/cli';
-import { CoinPublicKey, SigningKey } from '@midnight-ntwrk/compact-js/effect';
+import { CoinPublicKey } from '@midnight-ntwrk/compact-js/effect';
+import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
 import { Path } from '@effect/platform';
 
 /** @internal */

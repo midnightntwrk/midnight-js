@@ -17,3 +17,4 @@ export * as IntegerRange from './IntegerRange.js';
 export * as Hex from './Hex.js';
 export * as ContractAddress from './ContractAddress.js';
 export * as ParseError from './ParseError.js';
+export * as SigningKey from './SigningKey.js';

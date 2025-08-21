@@ -1,5 +1,5 @@
 /*
- * This file is part of compact-js.
+ * This file is part of platform-js.
  * Copyright (C) 2025 Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +14,10 @@
  */
 
 import { Brand } from 'effect';
-import { type SigningKey as SigningKey_ } from '@midnight-ntwrk/compact-runtime';
+import * as Hex from './Hex.js';
 
 /**
- * A public BIP-340 signing key, with a 3-byte version prefix.
+ * A public BIP-340 signing key, 32 bytes in length, with an optional 3-byte version prefix.
  *
  * @remarks
  * A signing key is used to create a Contract Maintenance Authority (CMA) when initializing a new contract.
@@ -26,5 +26,8 @@ import { type SigningKey as SigningKey_ } from '@midnight-ntwrk/compact-runtime'
  *
  * @category keys
  */
-export type SigningKey = Brand.Branded<SigningKey_, 'SigningKey'>;
-export const SigningKey = Brand.nominal<SigningKey>();
+export type SigningKey = Brand.Branded<string, 'SigningKey'>;
+export const SigningKey = Brand.all(
+  Brand.nominal<SigningKey>(),
+  Hex.ConstrainedPlainHex({ byteLength: '32..=35' })
+);

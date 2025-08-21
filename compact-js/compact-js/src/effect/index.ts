@@ -21,4 +21,3 @@ export * as ContractExecutableRuntime from './ContractExecutableRuntime.js';
 export * as KeyConfiguration from './KeyConfiguration.js';
 export * as ZKConfiguration from './ZKConfiguration.js';
 export * as CoinPublicKey from './CoinPublicKey.js';
-export * as SigningKey from './SigningKey.js';
