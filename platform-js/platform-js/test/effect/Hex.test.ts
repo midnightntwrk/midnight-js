@@ -70,9 +70,10 @@ describe('Hex', () => {
       })
     ));
 
-    it('should throw with plain hex-encodings', () => fc.assert(
+    // A `PrefixableHex` does not demand a prefix, so `PrefixableHex` should also parse plain hex-strings.
+    it('should parse plain hex-encodings', () => fc.assert(
       fc.property(Arbitrary.makePlainHexArbitrary('2..=10'), (hex) => {
-        expect(() => Hex.PrefixableHex(hex)).toThrowError();
+        expect(() => Hex.PrefixableHex(hex)).not.toThrowError();
       })
     ));
   });
