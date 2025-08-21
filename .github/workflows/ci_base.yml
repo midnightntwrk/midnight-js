@@ -2,6 +2,12 @@ name: Continuous Integration
 env:
   MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
+permissions:
+  contents: read
+  issues: read
+  checks: write
+  pull-requests: write
+
 on:
   workflow_dispatch:
   workflow_call:
