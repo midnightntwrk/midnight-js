@@ -12,9 +12,12 @@ on:
     - cron: "30 4 * * *"
 
 permissions:
+  contents: read
+  issues: read
   id-token: write
-  contents: write
   packages: write
+  checks: write
+  pull-requests: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
