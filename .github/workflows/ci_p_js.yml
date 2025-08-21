@@ -1,4 +1,4 @@
-name: CI - Compact.js
+name: CI - Platform.js
 env:
   MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
@@ -27,12 +27,12 @@ on:
         type: string
         description: Optional filter to include when running Yarn (i.e., --filter=...)
         required: false
-        default: '--filter="./compact-js/*"'
+        default: '--filter="./platform-js/*"'
       yarn_lint_paths:
         type: string
         description: Optional paths to include when running 'yarn lint'' (i.e., ./packages)
         required: false
-        default: './compact-js'
+        default: './platform-js'
 
 concurrency:
   group: C-JS-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -116,22 +116,20 @@ jobs:
         run: |
           #ArtiomTr/jest-coverage-report-action@v2 has a bug, this is temp solution
           mv coverage coverage_$(date +"%Y%m%d%H%M%S")
-          zip -r coverage-c-js.zip coverage*
+          zip -r coverage-p-js.zip coverage*
 
       - name: Upload Artifact
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # ratchet:actions/upload-artifact@v4
         with:
-          name: Coverage Report C-JS
-          path: coverage-c-js.zip
+          name: Coverage Report P-JS
+          path: coverage-p-js.zip
 
       - name: Publish Test Coverage
         uses: MishaKav/jest-coverage-comment@d74238813c33e6ea20530ff91b5ea37953d11c91 # ratchet:MishaKav/jest-coverage-comment@v1
         with:
           hide-comment: false
           multiple-files: |
-            compact-js, ./compact-js/compact-js/coverage/coverage-summary.json
-            compact-js-node, ./compact-js/compact-js-node/coverage/coverage-summary.json
-            compact-js-command, ./compact-js/compact-js-command/coverage/coverage-summary.json
+            platform-js, ./platform-js/platform-js/coverage/coverage-summary.json
 
   cd-prerelease:
     runs-on: ubuntu-latest
@@ -189,9 +187,9 @@ jobs:
         id: vars
         run: |
           calculatedSha=$(git rev-parse --short ${{ github.sha }})
-          version=$(jq -r '.v_info.version' version.compactjs.json)
-          preRelease=$(jq -r '.v_info.preRelease' version.compactjs.json)
-          tag=$(jq -r '.v_info.tag' version.compactjs.json)
+          version=$(jq -r '.v_info.version' version.platformjs.json)
+          preRelease=$(jq -r '.v_info.preRelease' version.platformjs.json)
+          tag=$(jq -r '.v_info.tag' version.platformjs.json)
           targetVersion="$version$preRelease.g$calculatedSha"
           echo "target_version=$targetVersion" >> $GITHUB_OUTPUT
           echo "tag=$tag" >> $GITHUB_OUTPUT
