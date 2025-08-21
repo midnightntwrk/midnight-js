@@ -231,7 +231,7 @@ const IntegerRangeProto: Omit<IntegerRange, 'value'> = {
       ...this.value
     };
   },
-  [NodeInspectSymbol]() {
+  [NodeInspectSymbol](this: IntegerRange) {
     return this.toJSON()
   },
   pipe() {

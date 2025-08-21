@@ -18,6 +18,4 @@ export * as CompiledContract from './CompiledContract.js';
 export * as Contract from './Contract.js';
 export * as ContractExecutable from './ContractExecutable.js';
 export * as ContractExecutableRuntime from './ContractExecutableRuntime.js';
-export * as KeyConfiguration from './KeyConfiguration.js';
 export * as ZKConfiguration from './ZKConfiguration.js';
-export * as CoinPublicKey from './CoinPublicKey.js';

@@ -40,12 +40,12 @@ import {
   decodeZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
 import type * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
+import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
+import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey';
 import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
 import { type CompiledContract } from './CompiledContract.js';
 import * as Contract from './Contract.js';
 import { ZKConfiguration, type ZKConfigurationReadError } from './ZKConfiguration.js';
-import { KeyConfiguration } from './KeyConfiguration.js';
-import * as CoinPublicKey from './CoinPublicKey.js';
 import * as CompactContextInternal from './internal/compactContext.js';
 
 export interface ContractExecutable<in out C extends Contract.Contract<PS>, PS, out E = never, out R = never>
@@ -68,7 +68,7 @@ export declare namespace ContractExecutable {
   /**
    * The services required as context for executing contracts.
    */
-  export type Context = ZKConfiguration | KeyConfiguration;
+  export type Context = ZKConfiguration | Configuration.Keys;
 
   export type CircuitContext<PS> = {
     readonly address: ContractAddress.ContractAddress;
@@ -209,7 +209,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
       zkConfigReader: ZKConfiguration.pipe(
         Effect.andThen((zkConfig) => zkConfig.createReader<C, PS>(this.compiledContract))
       ),
-      keyConfig: KeyConfiguration,
+      keyConfig: Configuration.Keys,
       contract: this.createContract()
     }).pipe(
       Effect.flatMap(({ zkConfigReader, keyConfig, contract }) =>
@@ -300,7 +300,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
     ...args: Contract.Contract.CircuitParameters<C, K>
   ): Effect.Effect<ContractExecutable.CallResult<C, PS, K>, E, R> {
     return Effect.all({
-      keyConfig: KeyConfiguration,
+      keyConfig: Configuration.Keys,
       contract: this.createContract()
     }).pipe(
       Effect.flatMap(({ keyConfig, contract }) =>
