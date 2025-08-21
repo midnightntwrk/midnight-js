@@ -26,11 +26,6 @@ on:
         description: Install phase command line
         required: false
         default: 'yarn install --immutable'
-      yarn_it:
-        type: string
-        description: E2E tests command line
-        required: false
-        default: 'yarn e2e-groups ${{ inputs.yarn_filter }} --concurrency 1 --cache-dir ./turbo'
       yarn_filter:
         type: string
         description: Optional filter to include when running Yarn (i.e., --filter=...)
@@ -248,7 +243,7 @@ jobs:
 
       - name: Run e2e tests - Group ${{ matrix.group }}
         if: ${{ !contains(github.event.head_commit.message, '[skip_it]') }}
-        run: ${{ inputs.yarn_it }}
+        run: yarn e2e-groups ${{ inputs.yarn_filter }} --concurrency 1 --cache-dir ./turbo
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           MN_TEST_ENVIRONMENT: ${{ inputs.network }}
