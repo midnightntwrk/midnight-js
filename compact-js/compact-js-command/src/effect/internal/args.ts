@@ -15,7 +15,7 @@
 
 import { Schema } from 'effect';
 import { Args } from '@effect/cli';
-import { ContractAddress } from '@midnight-ntwrk/compact-js/effect';
+import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
 
 export const contractArgs = Args.text({ name: 'arg' }).pipe(
   Args.withDescription('An argument that will be forwarded (in order), to the constructor or circuit being invoked.'),
@@ -23,7 +23,7 @@ export const contractArgs = Args.text({ name: 'arg' }).pipe(
 );
 
 export const contractAddress = Args.text({ name: 'contract_address' }).pipe(
-  Args.withDescription('A 35-byte contract address, hex-encoded.'),
+  Args.withDescription('A contract address, hex-encoded.'),
   Args.withSchema(Schema.String.pipe(Schema.fromBrand(ContractAddress.ContractAddress)))
 );
 

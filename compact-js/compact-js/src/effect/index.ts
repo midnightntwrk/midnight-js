@@ -22,4 +22,3 @@ export * as KeyConfiguration from './KeyConfiguration.js';
 export * as ZKConfiguration from './ZKConfiguration.js';
 export * as CoinPublicKey from './CoinPublicKey.js';
 export * as SigningKey from './SigningKey.js';
-export * as ContractAddress from './ContractAddress.js';

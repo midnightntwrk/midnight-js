@@ -17,10 +17,13 @@ import { Brand } from 'effect';
 import * as Hex from './Hex.js';
 
 /**
- * A plain hex-encoded contract address, 35 bytes in length.
+ * A plain hex-encoded contract address, 34 to 35 bytes in length.
+ * 
+ * @remarks
+ * The optional first byte represents a hex-encoded network identifier.
  */
 export type ContractAddress = Brand.Branded<string, 'ContractAddress'>;
 export const ContractAddress = Brand.all(
   Brand.nominal<ContractAddress>(),
-  Hex.ConstrainedPlainHex({ byteLength: '35..=35' })
+  Hex.ConstrainedPlainHex({ byteLength: '34..=35' })
 );

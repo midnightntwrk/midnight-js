@@ -20,8 +20,7 @@ import {
   CompiledContract,
   ContractExecutable,
   Contract,
-  KeyConfiguration,
-  ContractAddress
+  KeyConfiguration
 } from '@midnight-ntwrk/compact-js/effect';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import { ContractState, sampleSigningKey, NetworkId as RuntimeNetworkId } from '@midnight-ntwrk/compact-runtime';
@@ -30,6 +29,7 @@ import {
   NetworkId as LedgerNetworkId,
   ContractDeploy
 } from '@midnight-ntwrk/ledger';
+import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
 import { resolve } from 'node:path';
 import { CounterContract } from '../contract';
 
