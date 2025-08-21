@@ -30,7 +30,7 @@ on:
         type: string
         description: E2E tests command line
         required: false
-        default: 'yarn e2e-groups --concurrency 1 --cache-dir ./turbo'
+        default: 'yarn e2e-groups ${{ inputs.yarn_filter }} --concurrency 1 --cache-dir ./turbo'
       yarn_filter:
         type: string
         description: Optional filter to include when running Yarn (i.e., --filter=...)
