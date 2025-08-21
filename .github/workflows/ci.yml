@@ -27,6 +27,7 @@ jobs:
     outputs:
       build_mn_js: ${{ steps.build-targets.outputs.build_mn_js }}
       build_c_js: ${{ steps.build-targets.outputs.build_c_js }}
+      build_p_js: ${{ steps.build-targets.outputs.build_p_js }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # ratchet:actions/checkout@v4
         with:
