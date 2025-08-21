@@ -71,7 +71,8 @@ jobs:
     name: Build Midnight.js
     uses: ./.github/workflows/ci_mn_js.yml
     with:
-      should_run: ${{ needs.ci.outputs.build_mn_js }}
+      should_run: 'false'
+      # should_run: ${{ needs.ci.outputs.build_mn_js }}
       should_prerelease: ${{ 
           (github.event_name != 'schedule' &&
           (github.ref_name == 'main' || needs.ci.outputs.do_publish == 'true' || github.event_name == 'workflow_dispatch'))
