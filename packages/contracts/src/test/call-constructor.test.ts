@@ -13,7 +13,9 @@
  * limitations under the License.
  */
 
+import * as compactRuntime from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { callContractConstructor, type ContractConstructorOptionsWithPrivateState } from '../call-constructor';
 import {
   createMockCoinPublicKey,
@@ -21,7 +23,6 @@ import {
   createMockContract,
   createMockZswapLocalState
 } from './test-mocks';
-import * as compactRuntime from '@midnight-ntwrk/compact-runtime';
 
 // TODO: add test: add some negative tests
 

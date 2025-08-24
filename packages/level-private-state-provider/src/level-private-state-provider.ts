@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-import type { PrivateStateProvider, PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
+import type { ContractAddress, SigningKey } from '@midnight-ntwrk/compact-runtime';
+import type { PrivateStateId,PrivateStateProvider } from '@midnight-ntwrk/midnight-js-types';
+import { type AbstractSublevel } from 'abstract-level';
 import { Buffer } from 'buffer';
 import { Level } from 'level';
-import { type AbstractSublevel } from 'abstract-level';
 import _ from 'lodash';
 import * as superjson from 'superjson';
-import type { ContractAddress, SigningKey } from '@midnight-ntwrk/compact-runtime';
 
 /**
  * The default name of the indexedDB database for Midnight.

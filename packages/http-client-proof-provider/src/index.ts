@@ -14,8 +14,7 @@
  */
 
 export {
-  httpClientProofProvider,
   DEFAULT_CONFIG,
-  serializeZKConfig,
-  serializePayload
-} from './http-client-proof-provider';
+  httpClientProofProvider,
+  serializePayload,
+  serializeZKConfig} from './http-client-proof-provider';

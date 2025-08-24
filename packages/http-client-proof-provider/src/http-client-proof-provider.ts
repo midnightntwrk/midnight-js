@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+import { BinaryWriter } from '@dao-xyz/borsh';
+import { Transaction } from '@midnight-ntwrk/ledger';
+import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type {
   ProofProvider,
   ProveTxConfig,
@@ -20,13 +23,10 @@ import type {
   UnprovenTransaction,
   ZKConfig
 } from '@midnight-ntwrk/midnight-js-types';
+import { createUnbalancedTx, InvalidProtocolSchemeError } from '@midnight-ntwrk/midnight-js-types';
 import fetch from 'cross-fetch';
 import fetchBuilder from 'fetch-retry';
-import { Transaction } from '@midnight-ntwrk/ledger';
-import { BinaryWriter } from '@dao-xyz/borsh';
-import { createUnbalancedTx, InvalidProtocolSchemeError } from '@midnight-ntwrk/midnight-js-types';
 import _ from 'lodash';
-import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 
 /**
  * configure fetch-retry with fetch and http error 500 & 503 backoff strategy.

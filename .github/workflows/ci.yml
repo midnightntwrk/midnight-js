@@ -11,6 +11,14 @@ on:
   schedule:
     - cron: "30 4 * * *"
 
+permissions:
+  contents: read
+  issues: read
+  id-token: write
+  packages: write
+  checks: write
+  pull-requests: write
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -30,7 +38,7 @@ jobs:
     needs: ci
     if: ${{ github.event_name != 'schedule' && github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch' }}
     steps:
-      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # ratchet:actions/checkout@v3
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # ratchet:actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -42,7 +50,7 @@ jobs:
           done
 
       - name: Set up Node.js
-        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # ratchet:actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # ratchet:actions/setup-node@v4
         with:
           always-auth: true
           registry-url: https://npm.pkg.github.com/

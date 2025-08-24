@@ -14,8 +14,8 @@
  */
 
 export * from './gzip-file';
-export * from './wallet-types';
-export * from './wallet-state-provider';
 export * from './midnight-wallet-provider';
 export * from './wallet-factory';
+export * from './wallet-state-provider';
+export * from './wallet-types';
 export * from './wallet-utils';

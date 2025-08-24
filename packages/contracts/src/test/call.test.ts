@@ -13,9 +13,6 @@
  * limitations under the License.
  */
 
-import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
-import { call } from '../call';
-import { createMockCallOptions, createMockCallOptionsWithPrivateState, createMockContractAddress } from './test-mocks';
 import {
   type CircuitContext,
   type CircuitResults,
@@ -30,9 +27,13 @@ import {
   type QueryContext,
   sampleCoinPublicKey
 } from '@midnight-ntwrk/ledger';
-import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { type Contract, type PrivateState } from '@midnight-ntwrk/midnight-js-types';
+import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
+import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
+
+import { call } from '../call';
+import { createMockCallOptions, createMockCallOptionsWithPrivateState, createMockContractAddress } from './test-mocks';
 
 // TODO: add test: circuit with invalid arguments
 // TODO: add test: circuit with not matching arguments (e.g.: Boolean -> Field)

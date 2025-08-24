@@ -13,30 +13,33 @@
  * limitations under the License.
  */
 
+import { type ContractState } from '@midnight-ntwrk/compact-runtime';
 import {
   type All,
   type FinalizedTxData,
   type Latest,
   type PublicDataProvider
 } from '@midnight-ntwrk/midnight-js-types';
+import path from 'path';
 import { type Observable, toArray } from 'rxjs';
-import { type ContractState } from '@midnight-ntwrk/compact-runtime';
+
+import { SLOW_TEST_TIMEOUT, VERY_SLOW_TEST_TIMEOUT } from '@/e2e/constants';
+import { CompiledCounter } from '@/e2e/contract';
+import * as api from '@/e2e/counter-api';
+import { CONTRACT_CIRCUITS, CounterConfiguration } from '@/e2e/counter-api';
+import { type CounterProviders, type DeployedCounterContract, privateStateZero } from '@/e2e/counter-types';
 import {
   createLogger,
   getTestEnvironment,
   initializeMidnightProviders,
   type TestEnvironment
 } from '@/infrastructure';
-import path from 'path';
-import * as api from '@/e2e/api';
-import { CounterConfiguration } from '@/e2e/api';
-import { type CounterProviders, type DeployedCounterContract, privateStateZero } from '@/e2e/counter-types';
-import { Counter } from '@/e2e/contract';
-import { CONTRACT_CIRCUITS, SLOW_TEST_TIMEOUT, VERY_SLOW_TEST_TIMEOUT } from '@/e2e/constants';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `indexer_${new Date().toISOString()}.log`)
 );
+
+const { ledger } = CompiledCounter;
 
 describe('Indexer API', () => {
   let publicDataProvider: PublicDataProvider;
@@ -54,7 +57,7 @@ describe('Indexer API', () => {
         states.forEach((state) => {
           expect(state).not.toBeNull();
           expect(state?.operations()).toEqual(CONTRACT_CIRCUITS);
-          ledgerStates.push(Counter.ledger(state.data).round);
+          ledgerStates.push(ledger(state.data).round);
         });
         expect(ledgerStates).toEqual(expectedStates);
       })

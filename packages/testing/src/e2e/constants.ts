@@ -19,11 +19,6 @@ export const MINUTE = 60_000;
 export const SLOW_TEST_TIMEOUT = 6 * MINUTE;
 export const VERY_SLOW_TEST_TIMEOUT = 10 * MINUTE;
 
-export const CIRCUIT_ID_RESET = 'reset';
-export const CIRCUIT_ID_INCREMENT = 'increment';
-export const CIRCUIT_ID_DECREMENT = 'decrement';
-export const CONTRACT_CIRCUITS = ['decrement', 'increment', 'reset'];
-
 export const UNDEPLOYED_CONTRACT_ADDRESS = sampleContractAddress();
 export const INVALID_CONTRACT_ADDRESS_TOO_LONG = `00${sampleContractAddress()}`;
 export const INVALID_CONTRACT_ADDRESS_HEX_FORMAT = `${sampleContractAddress()}z`;

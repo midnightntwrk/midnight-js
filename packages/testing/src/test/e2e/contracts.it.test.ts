@@ -14,76 +14,81 @@
  */
 
 import {
-  ContractTypeError,
-  createCircuitCallTxInterface,
-  submitCallTx,
-  deployContract,
-  findDeployedContract,
-  type FinalizedDeployTxData,
-  submitDeployTx,
-  callContractConstructor,
-  call,
-  createUnprovenDeployTx,
-  createUnprovenCallTxFromInitialStates
-} from '@midnight-ntwrk/midnight-js-contracts';
-import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import { type ContractAddress, sampleCoinPublicKey, ZswapChainState } from '@midnight-ntwrk/ledger';
-import {
-  createLogger,
-  getTestEnvironment,
-  initializeMidnightProviders,
-  expectFoundAndDeployedStatesEqual,
-  expectFoundAndDeployedTxDataEqual,
-  expectFoundAndDeployedTxPublicDataEqual,
-  expectSuccessfulCallTx,
-  expectSuccessfulDeployTx
-} from '@/infrastructure';
-import type {
-  MidnightWalletProvider,
-  TestEnvironment,
-  EnvironmentConfiguration
-} from '@/infrastructure';
-import path from 'path';
-import {
   ContractState,
   decodeZswapLocalState,
   emptyZswapLocalState,
   sampleContractAddress,
   sampleSigningKey
 } from '@midnight-ntwrk/compact-runtime';
-import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
+import { type ContractAddress, sampleCoinPublicKey, ZswapChainState } from '@midnight-ntwrk/ledger';
+import {
+  call,
+  callContractConstructor,
+  ContractTypeError,
+  createCircuitCallTxInterface,
+  createUnprovenCallTxFromInitialStates,
+  createUnprovenDeployTx,
+  deployContract,
+  type FinalizedDeployTxData,
+  findDeployedContract,
+  submitCallTx,
+  submitDeployTx} from '@midnight-ntwrk/midnight-js-contracts';
 import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import * as api from '@/e2e/api';
+import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
+import path from 'path';
+
 import {
-  CounterConfiguration,
-  SimpleConfiguration,
-  CounterCloneConfiguration,
-  counterContractInstance,
-  simpleContractInstance,
-  cloneContractInstance
-} from '@/e2e/api';
-import {
-  type CounterContract,
-  type DeployedCounterContract,
-  type CounterProviders,
-  type CounterCircuits,
-  CounterPrivateStateId,
-  privateStateZero
-} from '@/e2e/counter-types';
-import { createInitialPrivateState, createPrivateState, Counter, type CounterPrivateState } from '@/e2e/contract';
-import { CounterClonePrivateStateId, type CounterCloneCircuits } from '@/e2e/counter-clone-types';
-import { type SimpleCircuits } from '@/e2e/simple-types';
-import {
-  CIRCUIT_ID_INCREMENT,
   INVALID_CONTRACT_ADDRESS_HEX_FORMAT,
   INVALID_CONTRACT_ADDRESS_TOO_LONG,
   SLOW_TEST_TIMEOUT,
   UNDEPLOYED_CONTRACT_ADDRESS
 } from '@/e2e/constants';
+import {
+  CompiledCounter,
+  type CounterPrivateState,
+  createInitialPrivateState,
+  createPrivateState,
+} from '@/e2e/contract';
+import * as api from '@/e2e/counter-api';
+import {
+  CIRCUIT_ID_INCREMENT,
+  cloneContractInstance,
+  CounterCloneConfiguration,
+  CounterConfiguration,
+  counterContractInstance,
+  SimpleConfiguration,
+  simpleContractInstance
+} from '@/e2e/counter-api';
+import { type CounterCloneCircuits,CounterClonePrivateStateId } from '@/e2e/counter-clone-types';
+import {
+  type CounterCircuits,
+  type CounterContract,
+  CounterPrivateStateId,
+  type CounterProviders,
+  type DeployedCounterContract,
+  privateStateZero
+} from '@/e2e/counter-types';
+import { type SimpleCircuits } from '@/e2e/simple-types';
+import type {
+  EnvironmentConfiguration,
+  MidnightWalletProvider,
+  TestEnvironment} from '@/infrastructure';
+import {
+  createLogger,
+  expectFoundAndDeployedStatesEqual,
+  expectFoundAndDeployedTxDataEqual,
+  expectFoundAndDeployedTxPublicDataEqual,
+  expectSuccessfulCallTx,
+  expectSuccessfulDeployTx,
+  getTestEnvironment,
+  initializeMidnightProviders} from '@/infrastructure';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_${new Date().toISOString()}.log`)
 );
+
+const { ledger } = CompiledCounter;
 
 describe('Contracts API', () => {
   const WAITING_PROMISE_TIMEOUT = 20_000;
@@ -138,7 +143,7 @@ describe('Contracts API', () => {
       coinPublicKey,
       initialPrivateState: privateStateZero
     });
-    expect(Counter.ledger(constructorResult.nextContractState.data).round).toEqual(0n);
+    expect(ledger(constructorResult.nextContractState.data).round).toEqual(0n);
     expect(constructorResult.nextPrivateState).toEqual(privateStateZero);
     expect(constructorResult.nextZswapLocalState).toEqual(decodeZswapLocalState(emptyZswapLocalState(coinPublicKey)));
 
@@ -152,7 +157,7 @@ describe('Contracts API', () => {
       initialPrivateState: privateStateZero
     });
 
-    expect(Counter.ledger(callResult.public.nextContractState).round).toEqual(1n);
+    expect(ledger(callResult.public.nextContractState).round).toEqual(1n);
     expect(callResult.private.nextPrivateState).toEqual(createPrivateState(1));
     expect(callResult.private.nextZswapLocalState).toEqual(decodeZswapLocalState(emptyZswapLocalState(coinPublicKey)));
   });
@@ -174,7 +179,7 @@ describe('Contracts API', () => {
       initialPrivateState: privateStateZero
     });
 
-    expect(Counter.ledger(unprovenDeployTxResult.public.initialContractState.data).round).toEqual(0n);
+    expect(ledger(unprovenDeployTxResult.public.initialContractState.data).round).toEqual(0n);
     expect(unprovenDeployTxResult.private.initialPrivateState).toEqual(privateStateZero);
     expect(unprovenDeployTxResult.private.initialZswapState).toEqual(
       decodeZswapLocalState(
@@ -198,7 +203,7 @@ describe('Contracts API', () => {
       providers.walletProvider.encryptionPublicKey
     );
 
-    expect(Counter.ledger(unprovenCallTxData.public.nextContractState).round).toEqual(1n);
+    expect(ledger(unprovenCallTxData.public.nextContractState).round).toEqual(1n);
     expect(unprovenCallTxData.private.newCoins).toEqual([]);
     expect(unprovenCallTxData.private.nextZswapLocalState).toEqual(
       decodeZswapLocalState(
@@ -671,7 +676,7 @@ describe('Contracts API', () => {
     // increment modifies state on the ledger, but not the state previously returned
     await api.increment(deployedContract);
 
-    expect(Counter.ledger(state.data).round).toEqual(counterValue1);
+    expect(ledger(state.data).round).toEqual(counterValue1);
   });
 
   /**
@@ -694,6 +699,6 @@ describe('Contracts API', () => {
     const result = await Promise.race([contractPromise, timeoutPromise]);
 
     expect(result).toBeInstanceOf(ContractState);
-    expect(Counter.ledger((result as ContractState).data).round).toEqual(counterValue1);
+    expect(ledger((result as ContractState).data).round).toEqual(counterValue1);
   });
 });

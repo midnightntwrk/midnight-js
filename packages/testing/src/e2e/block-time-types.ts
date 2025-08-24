@@ -13,5 +13,16 @@
  * limitations under the License.
  */
 
-export * from './errors';
-export * from './indexer-public-data-provider';
+import type { DeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
+import type { ImpureCircuitId, MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
+
+import type { CompilerBlockTime } from './contract';
+
+export type BlockTimeContract = CompilerBlockTime.Contract<undefined>;
+
+export type BlockTimeCircuits = ImpureCircuitId<BlockTimeContract> & string;
+
+export type BlockTimeProviders = MidnightProviders<BlockTimeCircuits, string, undefined>;
+
+export type DeployedBlockTimeContract = DeployedContract<BlockTimeContract>;
+

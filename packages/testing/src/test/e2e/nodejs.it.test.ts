@@ -13,8 +13,10 @@
  * limitations under the License.
  */
 
-import path from 'path';
 import { spawn } from 'node:child_process';
+
+import path from 'path';
+
 import { logger } from '@/infrastructure';
 
 function runNodeAndExpectExitCode(scriptPath: string, expectedExitCode: number): Promise<void> {

@@ -13,18 +13,19 @@
  * limitations under the License.
  */
 
-import { WebSocket } from 'ws';
 import path from 'path';
-import { createLogger } from '@/infrastructure/logger';
-import { getTestEnvironment, LocalTestEnvironment } from '@/infrastructure/test-environment';
+import { WebSocket } from 'ws';
+
+import { ProofServerClient } from '@/infrastructure/client';
 import {
   defaultContainersConfiguration,
   getContainersConfiguration,
   setContainersConfiguration
 } from '@/infrastructure/configuration';
 import type { ContainersConfiguration } from '@/infrastructure/configuration-types';
+import { createLogger } from '@/infrastructure/logger';
 import { DynamicProofServerContainer } from '@/infrastructure/proof-server-container';
-import { ProofServerClient } from '@/infrastructure/client';
+import { getTestEnvironment, LocalTestEnvironment } from '@/infrastructure/test-environment';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `it_${new Date().toISOString().replace(/:/g, '-')}.log`)

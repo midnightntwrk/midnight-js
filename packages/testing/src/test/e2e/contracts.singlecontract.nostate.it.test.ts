@@ -14,19 +14,6 @@
  */
 
 import {
-  type EnvironmentConfiguration,
-  initializeMidnightProviders,
-  type MidnightWalletProvider,
-  type TestEnvironment,
-  createLogger,
-  getTestEnvironment,
-  expectFoundAndDeployedStatesEqual,
-  expectFoundAndDeployedTxDataEqual,
-  expectSuccessfulCallTx,
-  expectSuccessfulDeployTx
-} from '@/infrastructure';
-import path from 'path';
-import {
   type CoinPublicKey,
   decodeZswapLocalState,
   emptyZswapLocalState,
@@ -49,22 +36,37 @@ import {
   type UnsubmittedCallTxData,
   type UnsubmittedDeployTxData
 } from '@midnight-ntwrk/midnight-js-contracts';
-import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { Simple } from '@/e2e/contract';
-import * as api from '@/e2e/api';
+import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
+import path from 'path';
+
+import { CompiledSimple } from '@/e2e/contract';
+import * as api from '@/e2e/counter-api';
 import type { SimpleContract, SimpleProviders } from '@/e2e/simple-types';
+import {
+  createLogger,
+  type EnvironmentConfiguration,
+  expectFoundAndDeployedStatesEqual,
+  expectFoundAndDeployedTxDataEqual,
+  expectSuccessfulCallTx,
+  expectSuccessfulDeployTx,
+  getTestEnvironment,
+  initializeMidnightProviders,
+  type MidnightWalletProvider,
+  type TestEnvironment} from '@/infrastructure';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_nostate_${new Date().toISOString()}.log`)
 );
+
+const { ledger } = CompiledSimple;
 
 const expectSimpleContractCallResult = (
   coinPublicKey: CoinPublicKey,
   round: bigint,
   callResult: CallResult<SimpleContract, 'noop'>
 ): void => {
-  expect(Simple.ledger(callResult.public.nextContractState).round).toEqual(round);
+  expect(ledger(callResult.public.nextContractState).round).toEqual(round);
   expect(callResult.private.nextZswapLocalState).toEqual(
     decodeZswapLocalState(emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, getZswapNetworkId())))
   );
@@ -90,7 +92,7 @@ const expectSimpleContractDeployTxData = (
   round: bigint,
   deployTxResult: UnsubmittedDeployTxData<SimpleContract>
 ): void => {
-  expect(Simple.ledger(deployTxResult.public.initialContractState.data).round).toEqual(round);
+  expect(ledger(deployTxResult.public.initialContractState.data).round).toEqual(round);
   expect(deployTxResult.private.initialPrivateState).toBeUndefined();
   expect(deployTxResult.private.initialZswapState).toEqual(
     decodeZswapLocalState(emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, getZswapNetworkId())))
@@ -138,7 +140,7 @@ describe('Contracts API', () => {
       contract: api.simpleContractInstance,
       coinPublicKey
     });
-    expect(Simple.ledger(constructorResult.nextContractState.data).round).toEqual(0n);
+    expect(ledger(constructorResult.nextContractState.data).round).toEqual(0n);
     expect(constructorResult.nextPrivateState).toBeUndefined();
     expect(constructorResult.nextZswapLocalState).toEqual(
       decodeZswapLocalState(emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, getZswapNetworkId())))
@@ -244,8 +246,8 @@ describe('Contracts API', () => {
     await expectSuccessfulDeployTx(providers, deployedSimpleContract.deployTxData);
 
     // If there is no private state ID, we should be able to leave out the private state provider
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { privateStateProvider, ...reducedProviders } = providers;
+
+    const { privateStateProvider: _, ...reducedProviders } = providers;
     const callTxOptions = {
       contract: api.simpleContractInstance,
       circuitId: 'noop',
@@ -286,8 +288,8 @@ describe('Contracts API', () => {
     await expectSuccessfulDeployTx(providers, deployTxData, deployTxOptions);
 
     // If there is no private state ID, we should be able to leave out the private state provider
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { privateStateProvider, ...reducedProviders } = providers;
+
+    const { privateStateProvider: _, ...reducedProviders } = providers;
     const callTxOptions = {
       contract: api.simpleContractInstance,
       contractAddress: deployTxData.public.contractAddress,

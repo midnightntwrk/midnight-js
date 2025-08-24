@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+import { sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
+import type { ContractAddress } from '@midnight-ntwrk/ledger';
 import {
   createCircuitMaintenanceTxInterfaces,
   findDeployedContract,
@@ -20,23 +22,26 @@ import {
   submitReplaceAuthorityTx
 } from '@midnight-ntwrk/midnight-js-contracts';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import { sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
-import type { ContractAddress } from '@midnight-ntwrk/ledger';
+import path from 'path';
+
+import { VERY_SLOW_TEST_TIMEOUT } from '@/e2e/constants';
+import { type CounterPrivateState } from '@/e2e/contract';
+import * as api from '@/e2e/counter-api';
 import {
+  CIRCUIT_ID_RESET,
+  cloneContractInstance,
+  CounterCloneConfiguration,
+  counterContractInstance
+} from '@/e2e/counter-api';
+import { CounterClonePrivateStateId } from '@/e2e/counter-clone-types';
+import { type CounterProviders } from '@/e2e/counter-types';
+import {
+  createLogger,
   type EnvironmentConfiguration,
+  getTestEnvironment,
   initializeMidnightProviders,
   type MidnightWalletProvider,
-  type TestEnvironment,
-  createLogger,
-  getTestEnvironment
-} from '@/infrastructure';
-import path from 'path';
-import * as api from '@/e2e/api';
-import { cloneContractInstance, CounterCloneConfiguration, counterContractInstance } from '@/e2e/api';
-import { type CounterProviders } from '@/e2e/counter-types';
-import { type CounterPrivateState } from '@/e2e/contract';
-import { CounterClonePrivateStateId } from '@/e2e/counter-clone-types';
-import { CIRCUIT_ID_RESET, VERY_SLOW_TEST_TIMEOUT } from '@/e2e/constants';
+  type TestEnvironment} from '@/infrastructure';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_snark_upgrade_${new Date().toISOString()}.log`)

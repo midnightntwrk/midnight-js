@@ -1,20 +1,20 @@
-include "std";
+import CompactStandardLibrary;
 
 export ledger round: Counter;
 
-witness private_increment(): [];
+witness privateIncrement(): [];
 
 export circuit increment(): [] {
   round.increment(1);
-  private_increment();
+  privateIncrement();
 }
 
 export circuit decrement(amount: Uint<16>): [] {
-  round.decrement(amount);
-  private_increment();
+  round.decrement(disclose(amount));
+  privateIncrement();
 }
 
 export circuit reset(): [] {
-  round.reset_to_default();
-  private_increment();
+  round.resetToDefault();
+  privateIncrement();
 }

@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { RemoteTestEnvironment } from './remote-test-environment';
 import type { EnvironmentConfiguration } from '../environment-configuration';
+import { RemoteTestEnvironment } from './remote-test-environment';
 
 /**
  * Test environment configuration for the Midnight QA network.

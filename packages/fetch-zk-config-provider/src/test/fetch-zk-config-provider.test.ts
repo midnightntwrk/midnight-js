@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-import * as crypto from 'crypto';
-
 import type { BinaryLike } from 'crypto';
+import * as crypto from 'crypto';
 import express from 'express';
 import * as fs from 'fs/promises';
 import type { Server } from 'http';
+
 import { FetchZkConfigProvider } from '../index';
 
 describe('Fetch ZK config Provider', () => {

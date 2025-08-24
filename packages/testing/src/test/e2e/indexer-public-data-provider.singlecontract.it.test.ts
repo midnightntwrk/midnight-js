@@ -13,30 +13,33 @@
  * limitations under the License.
  */
 
-import { type FinalizedTxData, type PublicDataProvider, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import type { FinalizedDeployTxData } from '@midnight-ntwrk/midnight-js-contracts';
-import {
-  createLogger,
-  getTestEnvironment,
-  initializeMidnightProviders,
-  type TestEnvironment
-} from '@/infrastructure';
-import path from 'path';
 import { getRuntimeNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import * as api from '@/e2e/api';
-import { CounterConfiguration } from '@/e2e/api';
+import { type FinalizedTxData, type PublicDataProvider, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import path from 'path';
+
+import { UNDEPLOYED_CONTRACT_ADDRESS, VERY_SLOW_TEST_TIMEOUT } from '@/e2e/constants';
+import { CompiledCounter } from '@/e2e/contract';
+import * as api from '@/e2e/counter-api';
+import { CounterConfiguration } from '@/e2e/counter-api';
 import {
   type CounterContract,
   type CounterProviders,
   type DeployedCounterContract,
   privateStateZero
 } from '@/e2e/counter-types';
-import { Counter } from '@/e2e/contract';
-import { UNDEPLOYED_CONTRACT_ADDRESS, VERY_SLOW_TEST_TIMEOUT } from '@/e2e/constants';
+import {
+  createLogger,
+  getTestEnvironment,
+  initializeMidnightProviders,
+  type TestEnvironment
+} from '@/infrastructure';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `indexer_${new Date().toISOString()}.log`)
 );
+
+const { ledger } = CompiledCounter;
 
 describe('Indexer API', () => {
   let publicDataProvider: PublicDataProvider;
@@ -76,8 +79,8 @@ describe('Indexer API', () => {
       finalizedDeployTxData.public.initialContractState.serialize(getRuntimeNetworkId())
     );
     if (state) {
-      expect(Counter.ledger(state.data)).toEqual(
-        Counter.ledger(finalizedDeployTxData.public.initialContractState.data)
+      expect(ledger(state.data)).toEqual(
+        ledger(finalizedDeployTxData.public.initialContractState.data)
       );
     }
   });
@@ -88,7 +91,7 @@ describe('Indexer API', () => {
     expect(state).not.toBeNull();
     expect(state?.operations()).toEqual(finalizedDeployTxData.public.initialContractState.operations());
     if (state) {
-      expect(Counter.ledger(state?.data).round).toEqual(2n);
+      expect(ledger(state?.data).round).toEqual(2n);
     }
   });
 
@@ -101,7 +104,7 @@ describe('Indexer API', () => {
     expect(state).not.toBeNull();
     expect(state?.operations()).toEqual(finalizedDeployTxData.public.initialContractState.operations());
     if (state) {
-      expect(Counter.ledger(state?.data).round).toEqual(1n);
+      expect(ledger(state?.data).round).toEqual(1n);
     }
   });
 
@@ -114,7 +117,7 @@ describe('Indexer API', () => {
     expect(state).not.toBeNull();
     expect(state?.operations()).toEqual(finalizedDeployTxData.public.initialContractState.operations());
     if (state) {
-      expect(Counter.ledger(state?.data).round).toEqual(1n);
+      expect(ledger(state?.data).round).toEqual(1n);
     }
   });
 
@@ -127,10 +130,10 @@ describe('Indexer API', () => {
 
     expect(state).not.toBeNull();
     if (state) {
-      expect(state[0].firstFree).toEqual(Counter.ledger(finalizedDeployTxData.public.initialContractState.data).round);
+      expect(state[0].firstFree).toEqual(ledger(finalizedDeployTxData.public.initialContractState.data).round);
       expect(state[1].operations()).toEqual(finalizedDeployTxData.public.initialContractState.operations());
-      expect(Counter.ledger(state[1].data).round).toEqual(
-        Counter.ledger(finalizedDeployTxData.public.initialContractState.data).round + 2n
+      expect(ledger(state[1].data).round).toEqual(
+        ledger(finalizedDeployTxData.public.initialContractState.data).round + 2n
       );
     }
   });
@@ -170,7 +173,7 @@ describe('Indexer API', () => {
     expect(state).not.toBeNull();
     expect(state?.operations()).toEqual(finalizedDeployTxData.public.initialContractState.operations());
     if (state) {
-      expect(Counter.ledger(state.data).round).toEqual(2n);
+      expect(ledger(state.data).round).toEqual(2n);
     }
   });
 });

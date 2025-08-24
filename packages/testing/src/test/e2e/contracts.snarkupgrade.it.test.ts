@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import type { ContractAddress } from '@midnight-ntwrk/ledger';
 import {
   createCircuitCallTxInterface,
   createCircuitMaintenanceTxInterface,
@@ -20,18 +21,17 @@ import {
   submitRemoveVerifierKeyTx
 } from '@midnight-ntwrk/midnight-js-contracts';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import type { ContractAddress } from '@midnight-ntwrk/ledger';
+import path from 'path';
+
+import * as api from '@/e2e/counter-api';
+import { CIRCUIT_ID_RESET, counterContractInstance } from '@/e2e/counter-api';
+import { type CounterProviders } from '@/e2e/counter-types';
 import type {
   EnvironmentConfiguration,
   MidnightWalletProvider,
   TestEnvironment
 } from '@/infrastructure';
 import { createLogger, getTestEnvironment } from '@/infrastructure';
-import path from 'path';
-import * as api from '@/e2e/api';
-import { counterContractInstance } from '@/e2e/api';
-import { type CounterProviders } from '@/e2e/counter-types';
-import { CIRCUIT_ID_RESET } from '@/e2e/constants';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_snark_upgrade_${new Date().toISOString()}.log`)

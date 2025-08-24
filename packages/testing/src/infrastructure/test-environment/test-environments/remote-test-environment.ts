@@ -13,16 +13,16 @@
  * limitations under the License.
  */
 
+import { FaucetClient, NodeClient } from '../../client';
+import { IndexerClient } from '../../client/indexer-client';
+import { ProofServerClient } from '../../client/proof-server-client';
+import { getEnvVarWalletSeeds } from '../../env-vars';
+import { logger } from '../../logger';
 import type { ProofServerContainer } from '../../proof-server-container';
 import { DynamicProofServerContainer } from '../../proof-server-container';
 import { MidnightWalletProvider, WalletSaveStateProvider } from '../../wallet';
 import type { EnvironmentConfiguration } from '../environment-configuration';
 import { TestEnvironment } from '../test-environment';
-import { logger } from '../../logger';
-import { getEnvVarWalletSeeds } from '../../env-vars';
-import { FaucetClient, NodeClient } from '../../client';
-import { IndexerClient } from '../../client/indexer-client';
-import { ProofServerClient } from '../../client/proof-server-client';
 
 /**
  * Base class for remote test environments that connect to external network services.
