@@ -17,6 +17,8 @@ import { describe, it, expect } from '@effect/vitest';
 import * as NetworkId from '@midnight-ntwrk/platform-js/effect/NetworkId';
 import * as fc from 'effect/FastCheck';
 import * as Arbitrary from './Arbitrary.js';
+import * as ledger from '@midnight-ntwrk/ledger';
+import * as runtime from '@midnight-ntwrk/compact-runtime';
 
 describe('NetworkId', () => {
   describe('isMainNet', () => {
@@ -24,7 +26,7 @@ describe('NetworkId', () => {
       expect(NetworkId.MainNet.isMainNet()).toBe(true);
     });
     
-    it('should return false for any named network identifier ', () => fc.assert(
+    it('should return false for any named network identifier', () => fc.assert(
       fc.property(Arbitrary.makeNetworkIdArbitrary(), (networkId) => {
         expect(NetworkId.make(networkId).isMainNet()).toBe(false);
       })
@@ -45,5 +47,53 @@ describe('NetworkId', () => {
 
       expect(NetworkId.equals(a, b)).toBe(false);
     });
+  });
+
+  describe('asLedgerLegacy', () => {
+    it.each([
+      ['undeployed', ledger.NetworkId.Undeployed] as const,
+      ['dev', ledger.NetworkId.DevNet] as const,
+      ['test', ledger.NetworkId.TestNet] as const,
+    ])('should map to legacy Ledger NetworkId for known moniker %s', (moniker, ledgerNetworkId) => {
+      const networkId = NetworkId.make(moniker);
+
+      expect(NetworkId.asLedgerLegacy(networkId)).toEqual(ledgerNetworkId);
+    });
+
+    it('should map to legacy Ledger NetworkId for MainNet', () => {
+      expect(NetworkId.asLedgerLegacy(NetworkId.MainNet)).toEqual(ledger.NetworkId.MainNet);
+    });
+
+    it('should throw for any named (non legacy) network identifier', () => fc.assert(
+      fc.property(Arbitrary.makeNetworkIdArbitrary(), (moniker) => {
+        const networkId = NetworkId.make(moniker);
+
+        expect(() => NetworkId.asLedgerLegacy(networkId)).toThrow();
+      })
+    ));
+  });
+
+  describe('asRuntimeLegacy', () => {
+    it.each([
+      ['undeployed', runtime.NetworkId.Undeployed] as const,
+      ['dev', runtime.NetworkId.DevNet] as const,
+      ['test', runtime.NetworkId.TestNet] as const,
+    ])('should map to legacy Ledger NetworkId for known moniker %s', (moniker, runtimeNetworkId) => {
+      const networkId = NetworkId.make(moniker);
+
+      expect(NetworkId.asRuntimeLegacy(networkId)).toEqual(runtimeNetworkId);
+    });
+
+    it('should map to legacy Ledger NetworkId for MainNet', () => {
+      expect(NetworkId.asRuntimeLegacy(NetworkId.MainNet)).toEqual(runtime.NetworkId.MainNet);
+    });
+
+    it('should throw for any named (non legacy) network identifier', () => fc.assert(
+      fc.property(Arbitrary.makeNetworkIdArbitrary(), (moniker) => {
+        const networkId = NetworkId.make(moniker);
+
+        expect(() => NetworkId.asRuntimeLegacy(networkId)).toThrow();
+      })
+    ));
   });
 });

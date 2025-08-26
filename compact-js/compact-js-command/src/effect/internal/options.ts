@@ -52,6 +52,13 @@ export const outputFilePath = Options.file('output').pipe(
 );
 
 /** @internal */
+export const network = Options.text('network').pipe(
+  Options.withAlias('n'),
+  Options.withDescription('Optional network identifier. Defaults to the Midnight \'MainNet\' if not specified.'),
+  Options.optional
+);
+
+/** @internal */
 export const stateFilePath = Options.file('state-file-path').pipe(
   Options.withDescription('A file path of where the current onchain (or ledger), state data can be read.')
 );
@@ -68,7 +75,8 @@ export type ConfigOptionInput = Command.Command.ParseConfig<{
  */
 export type AllConfigurableOptionInputs = Command.Command.ParseConfig<{
   coinPublicKey: typeof coinPublicKey,
-  signingKey: typeof signingKey
+  signingKey: typeof signingKey,
+  network: typeof network
 }>;
 
 const DEFAULT_CONFIG_FILENAME = 'contract.config.ts';
@@ -84,5 +92,6 @@ export const asConfigProvider: (optionInputs: Partial<AllConfigurableOptionInput
     keys: {
       coinPublic: Option.getOrUndefined(optionInputs.coinPublicKey ?? Option.none()),
       signing: Option.getOrUndefined(optionInputs.signingKey ?? Option.none())
-    }
+    },
+    network: Option.getOrUndefined(optionInputs.network ?? Option.none())
   });

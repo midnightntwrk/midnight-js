@@ -37,7 +37,7 @@ export class Keys extends Context.Tag('@midnight-ntwrk/platform-js/Configuration
 >() {}
 
 /**
- * Provides an accessor for retrieving the configured {@link NetworkId.NetworkId}.
+ * Provides an accessor for retrieving the configured {@link NetworkId.NetworkId | NetworkId}.
  *
  * @category services
  */

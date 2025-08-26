@@ -54,7 +54,7 @@ export const reportContractExecutionError: (err: ContractExecutable.ContractExec
 
 export const layer: (configProvider: ConfigProvider.ConfigProvider, zkBaseFolderPath: string) =>
   Layer.Layer<
-    ZKConfiguration.ZKConfiguration | Configuration.Keys | NodeContext.NodeContext,
+    ZKConfiguration.ZKConfiguration | Configuration.Keys | Configuration.Network | NodeContext.NodeContext,
     ConfigError.ConfigError
   > = (configProvider, zkBaseFolderPath) =>
     Layer.mergeAll(ZKFileConfiguration.layer(zkBaseFolderPath), Configuration.layer).pipe(
@@ -69,7 +69,7 @@ export const invocationHandler: <
     Effect.Effect<
       void,
       ContractExecutable.ContractExecutionError | ConfigError.ConfigError,
-      Path.Path | FileSystem.FileSystem
+      Path.Path | FileSystem.FileSystem | Configuration.Network
     >
 ) =>
   (inputs: I) =>

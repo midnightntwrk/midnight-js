@@ -24,6 +24,8 @@ import {
   NetworkId as LedgerNetworkId
 } from '@midnight-ntwrk/ledger';
 import { type ContractState, NetworkId as RuntimeNetworkId } from '@midnight-ntwrk/compact-runtime';
+import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
+import * as NetworkId from '@midnight-ntwrk/platform-js/effect/NetworkId';
 import { type ConfigCompiler } from '../ConfigCompiler.js';
 import * as InternalCommand from './command.js';
 import * as InternalOptions from './options.js';
@@ -38,25 +40,29 @@ export const Args = { args: InternalArgs.contractArgs };
 export type Options = Command.Command.ParseConfig<typeof Options>;
 /** @internal */
 export const Options = {
-    config: InternalOptions.config,
-    coinPublicKey: InternalOptions.coinPublicKey,
-    signingKey: InternalOptions.signingKey,
-    outputFilePath: InternalOptions.outputFilePath
+  config: InternalOptions.config,
+  coinPublicKey: InternalOptions.coinPublicKey,
+  signingKey: InternalOptions.signingKey,
+  outputFilePath: InternalOptions.outputFilePath
 }
 
-const asLedgerContractState = (contractState: ContractState): LedgerContractState =>
-  LedgerContractState.deserialize(contractState.serialize(RuntimeNetworkId.Undeployed), LedgerNetworkId.Undeployed);
+const asLedgerContractState = (contractState: ContractState, networkId: NetworkId.NetworkId): LedgerContractState =>
+  LedgerContractState.deserialize(
+    contractState.serialize(NetworkId.asRuntimeLegacy(networkId)),
+    NetworkId.asLedgerLegacy(networkId)
+  );
 
 /** @internal */
 export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.ModuleSpec) =>
   Effect.Effect<
     void,
     ContractExecutable.ContractExecutionError | ConfigError.ConfigError,
-    Path.Path | FileSystem.FileSystem
+    Path.Path | FileSystem.FileSystem | Configuration.Network
   > =
   (inputs, moduleSpec) => Effect.gen(function* () {
     const path = yield* Path.Path;
     const fs = yield* FileSystem.FileSystem;
+    const networkId = yield* Configuration.Network;
     const { module: { default: contractModule } } = moduleSpec;
     const intentFilePath = path.resolve(inputs.outputFilePath);
     const result = yield* contractModule.contractExecutable.initialize(
@@ -64,9 +70,9 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       ...inputs.args
     );
     const intent = Intent.new(yield* InternalCommand.ttl(Duration.minutes(10)))
-      .addDeploy(new ContractDeploy(asLedgerContractState(result.public.contractState)));
+      .addDeploy(new ContractDeploy(asLedgerContractState(result.public.contractState, networkId)));
 
-    yield* fs.writeFile(intentFilePath, intent.serialize(LedgerNetworkId.Undeployed));
+    yield* fs.writeFile(intentFilePath, intent.serialize(NetworkId.asLedgerLegacy(networkId)));
   }).pipe(
     Effect.mapError(
       (err) => ContractRuntimeError.make('Failed to initialize contract', err)
