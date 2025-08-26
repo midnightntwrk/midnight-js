@@ -35,8 +35,7 @@ export type TypeId = typeof TypeId;
  * @see {@link getContext} to retrieve the publicly visible properties associated with the compiled contract.
  */
 export interface CompiledContract<in out C extends Contract<PS>, in out PS, out R = never>
-  extends CompiledContract.Variance<C, PS, R>,
-    Pipeable {
+  extends CompiledContract.Variance<C, PS, R>, Pipeable {
   /**
    * Gets the tag assigned to this compiled contract.
    */
@@ -65,7 +64,7 @@ export declare namespace CompiledContract {
   export type Context<C extends Contract.Any> = CompactContext.Witnesses<C> | CompactContext.ZKConfigAssetsPath;
 }
 
-const proto = {
+const CompiledContractProto = {
   [TypeId]: {
     _C: (_: unknown) => _,
     _PS: (_: unknown) => _,
@@ -92,19 +91,29 @@ export const make: <C extends Contract<PS>, PS = Contract.PrivateState<C>, R = C
   tag: string,
   ctor: Types.Ctor<C>
 ) => {
-  const self = Object.create(proto) as Types.Mutable<CompiledContract<C, PS, R>>;
+  const self = Object.create(CompiledContractProto) as Types.Mutable<CompiledContract<C, PS, R>>;
   self.tag = tag;
   self[CompactContextInternal.TypeId] = { ctor };
   return self;
 };
 
 /**
+ * Associates an object that implements the contract witnesses for the Compact compiled contract.
+ * 
  * @category combinators
  */
 export const withWitnesses: {
+  /**
+   * @param witnesses An object implementing the witness functions required by the Compact compiled contract.
+   * @returns A function that receives the {@link CompiledContract} that `witnesses` will be attached to.
+   */
   <C extends Contract<PS>, PS, R>(
     witnesses: R extends CompactContext.Witnesses<C, infer W> ? W : never
   ): (self: CompiledContract<C, PS, R>) => CompiledContract<C, PS, Exclude<R, CompactContext.Witnesses<C>>>;
+  /**
+   * @param self The {@link CompiledContract} that `witnesses` will be attached to.
+   * @param witnesses An object implementing the witness functions required by the Compact compiled contract.
+   */
   <C extends Contract<PS>, PS, R>(
     self: CompiledContract<C, PS, R>,
     witnesses: R extends CompactContext.Witnesses<C, infer W> ? W : never
@@ -126,12 +135,22 @@ export const withWitnesses: {
 );
 
 /**
+ * Associates a file path where the ZK assets can be found for the Compact compiled contract.
+ *
  * @category combinators
  */
 export const withZKConfigFileAssets: {
+  /**
+   * @param zkConfigAssetsPath The file path.
+   * @returns A function that receives the {@link CompiledContract} that `zkConfigAssetsPath` will be attached to.
+   */
   <C extends Contract<PS>, PS, R>(
     zkConfigAssetsPath: R extends CompactContext.ZKConfigAssetsPath ? string : never
   ): (self: CompiledContract<C, PS, R>) => CompiledContract<C, PS, Exclude<R, CompactContext.ZKConfigAssetsPath>>;
+  /**
+   * @param self The {@link CompiledContract} that `zkConfigAssetsPath` will be attached to.
+   * @param zkConfigAssetsPath The file path.
+   */
   <C extends Contract<PS>, PS, R>(
     self: CompiledContract<C, PS, R>,
     zkConfigAssetsPath: R extends CompactContext.ZKConfigAssetsPath ? string : never
@@ -153,7 +172,7 @@ export const withZKConfigFileAssets: {
 );
 
 /**
- * Retrieves a path to the ZK assets  associated with a compiled contract.
+ * Retrieves a path to the ZK assets associated with a compiled contract.
  *
  * @param self The {@link CompiledContract} from which the assets path should be retrieved.
  * @returns A string representing a path to the ZK assets configured for `self`.

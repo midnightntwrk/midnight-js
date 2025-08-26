@@ -19,6 +19,9 @@ import type { Contract } from './Contract.js';
  * Witness configuration.
  */
 export type Witnesses<in C extends Contract.Any, W = Contract.Witnesses<C>> = {
+  /**
+   * An implementation of the witnesses of `C`.
+   */
   readonly witnesses: W;
 };
 
@@ -26,5 +29,8 @@ export type Witnesses<in C extends Contract.Any, W = Contract.Witnesses<C>> = {
  * ZK asset path configuration.
  */
 export type ZKConfigAssetsPath = {
+  /**
+   * A path to the compiled ZK assets produced by the Compact compiler.
+   */
   readonly zkConfigAssetsPath: string;
 };

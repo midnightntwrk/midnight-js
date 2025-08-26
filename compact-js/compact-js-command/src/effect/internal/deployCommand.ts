@@ -16,7 +16,7 @@
 import { type ConfigError, Effect, Duration } from 'effect';
 import { FileSystem, Path } from '@effect/platform';
 import { type Command } from '@effect/cli';
-import { ContractExecutable } from '@midnight-ntwrk/compact-js/effect';
+import { type ContractExecutable, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
 import {
   ContractDeploy,
   Intent,
@@ -69,6 +69,6 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     yield* fs.writeFile(intentFilePath, intent.serialize(LedgerNetworkId.Undeployed));
   }).pipe(
     Effect.mapError(
-      (err) => ContractExecutable.ContractRuntimeError.make('Failed to initialize contract', err)
+      (err) => ContractRuntimeError.make('Failed to initialize contract', err)
     )
   );

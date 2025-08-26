@@ -22,6 +22,7 @@ import {
   Contract
 } from '@midnight-ntwrk/compact-js/effect';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
+import * as ContractConfigurationError from '@midnight-ntwrk/compact-js/effect/ContractConfigurationError';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import { ContractState, sampleSigningKey, NetworkId as RuntimeNetworkId } from '@midnight-ntwrk/compact-runtime';
 import {
@@ -104,7 +105,7 @@ describe('ContractExecutable', () => {
         );
         const error = yield* contract.initialize({ count: 0 }).pipe(Effect.flip);
 
-        expect(error).toBeInstanceOf(ContractExecutable.ContractConfigurationError);
+        expect(error).toBeInstanceOf(ContractConfigurationError.ContractConfigurationError);
       })
     );
   });

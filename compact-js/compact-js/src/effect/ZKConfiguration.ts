@@ -13,12 +13,13 @@
  * limitations under the License.
  */
 
-import { type Effect, Context, Data } from 'effect';
+import { type Effect, Context } from 'effect';
 import type { CompiledContract } from './CompiledContract.js';
 import type * as Contract from './Contract.js';
+import type * as ZKConfigurationError from './ZKConfigurationReadError.js';
 
 /**
- * Provides utilities for reading the ZK assets of a compiled Compact contract.
+ * Provides utilities for working with the ZK assets of a compiled Compact contract.
  *
  * @category services
  */
@@ -27,52 +28,50 @@ export class ZKConfiguration extends Context.Tag('@midnight-ntwrk/compact-js/ZKC
   ZKConfiguration.Service
 >() {}
 
-/**
- * Describes a type of ZK asset.
- */
-export type AssetType = 'verifier-key' | 'ZKIR' | 'prover-key';
-
-/**
- * An error occurred while reading a ZK configuration asset for a circuit for a compiled Compact contract.
- *
- * @category errors
- */
-export class ZKConfigurationReadError extends Data.TaggedError('ZKConfigurationReadError')<{
-  readonly message: string;
-  readonly cause?: unknown;
-  readonly contractTag: string;
-  readonly impureCircuitId: Contract.ImpureCircuitId;
-  readonly assetType: AssetType;
-}> {
-  static make: <C extends Contract.Contract.Any>(
-    contractTag: string,
-    impureCircuitId: Contract.ImpureCircuitId<C>,
-    assetType: AssetType,
-    cause?: unknown
-  ) => ZKConfigurationReadError = (contractTag, impureCircuitId, assetType, cause?: unknown) =>
-    new ZKConfigurationReadError({
-      contractTag,
-      impureCircuitId,
-      assetType,
-      message: `Failed to read ${assetType.replaceAll('-', ' ')} for ${contractTag}#${impureCircuitId}`,
-      cause
-    });
-}
-
 export declare namespace ZKConfiguration {
+  /**
+   * Provides utilities for working with the ZK assets of a compiled Compact contract.
+   */
   export interface Service {
+    /**
+     * Creates a ZK asset reader for a given compiled Compact contract.
+     *
+     * @param compiledContract The Compact compiled contract.
+     * @returns An `Effect` that yields a {@link Reader}.
+     */
     readonly createReader: <C extends Contract.Contract<PS>, PS>(
       compiledContract: CompiledContract<C, PS, never>
     ) => Effect.Effect<ZKConfiguration.Reader<C, PS>>;
   }
 
+  /**
+   * Reads ZK assets.
+   */
   export interface Reader<C extends Contract.Contract<PS>, PS> {
+    /**
+     * Reads a verifier key for a given circuit identifier.
+     *
+     * @param impureCircuitId The identifier of the circuit to be read.
+     * @returns An `Effect` that yields a {@link Contract.VerifierKey | VerifierKey} for `impureCircuitId`; or
+     * fails with a {@link ZKConfigurationError.ZKConfigurationReadError | ZKConfigurationReadError}.
+     */
     getVerifierKey(
       impureCircuitId: Contract.ImpureCircuitId<C>
-    ): Effect.Effect<Contract.VerifierKey, ZKConfigurationReadError>;
+    ): Effect.Effect<Contract.VerifierKey, ZKConfigurationError.ZKConfigurationReadError>;
 
+    /**
+     * Batch reads the verifier keys for an array of circuit identifiers.
+     *
+     * @param impureCircuitIds The identifiers of the circuits to be read.
+     * @returns An `Effect` that yields an array of tuples describing a {@link Contract.VerifierKey | VerifierKey}
+     * and its associated circuit identifier; or fails with a 
+     * {@link ZKConfigurationError.ZKConfigurationReadError | ZKConfigurationReadError}.
+     */
     getVerifierKeys(
       impureCircuitIds: Contract.ImpureCircuitId<C>[]
-    ): Effect.Effect<[Contract.ImpureCircuitId<C>, Contract.VerifierKey][], ZKConfigurationReadError>;
+    ): Effect.Effect<
+      readonly [Contract.ImpureCircuitId<C>, Contract.VerifierKey][],
+      ZKConfigurationError.ZKConfigurationReadError
+      >;
   }
 }
