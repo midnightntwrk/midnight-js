@@ -32,8 +32,8 @@ import {
   signatureVerifyingKey,
   CompactError,
   QueryContext,
+  StateValue,
   emptyZswapLocalState,
-  type StateValue,
   type Op,
   type AlignedValue,
   type ZswapLocalState,
@@ -300,7 +300,10 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
             if (!circuit) {
               throw new Error(`Circuit ${this.compiledContract.tag}#${impureCircuitId} could not be found.`);
             }
-            const initialTxContext = new QueryContext(circuitContext.contractState.data, circuitContext.address);
+            const initialTxContext = new QueryContext(
+              StateValue.decode(circuitContext.contractState.data.encode()),
+              circuitContext.address
+            );
             return {
               ...circuit(
                 {

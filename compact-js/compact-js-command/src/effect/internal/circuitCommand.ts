@@ -53,8 +53,8 @@ export const Options = {
 
 const asContractState = (contractState: LedgerContractState, networkId: NetworkId.NetworkId): ContractState =>
   ContractState.deserialize(
-    contractState.serialize(NetworkId.asRuntimeLegacy(networkId)),
-    NetworkId.asLedgerLegacy(networkId)
+    contractState.serialize(NetworkId.asLedgerLegacy(networkId)),
+    NetworkId.asRuntimeLegacy(networkId)
   );
 
 /** @internal */
@@ -71,12 +71,11 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     const { module: { default: contractModule } } = moduleSpec;
     const intentFilePath = path.resolve(outputFilePath);
     const ledgerContractState = LedgerContractState.deserialize(yield* fs.readFile(path.resolve(stateFilePath)), NetworkId.asLedgerLegacy(networkId));
-    const contractState = asContractState(ledgerContractState, networkId);
     const result = yield* contractModule.contractExecutable.circuit(
       Contract.ImpureCircuitId(circuitId),
       {
         address,
-        contractState,
+        contractState: asContractState(ledgerContractState, networkId),
         privateState: undefined
       },
       ...args
@@ -85,7 +84,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       .addCall(new ContractCallPrototype(
         address,
         circuitId,
-        contractState.operation(circuitId) as ContractOperation,
+        ledgerContractState.operation(circuitId) as ContractOperation,
         result.public.partitionedTranscript[0],
         result.public.partitionedTranscript[1],
         result.private.privateTranscriptOutputs,
@@ -95,7 +94,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
         circuitId
       ));
 
-    yield* fs.writeFile(intentFilePath, intent.serialize(LedgerNetworkId.Undeployed));
+    yield* fs.writeFile(intentFilePath, intent.serialize(NetworkId.asLedgerLegacy(networkId)));
   }).pipe(
     Effect.mapError(
       (err) => ContractRuntimeError.make('Failed to invoke circuit', err)
