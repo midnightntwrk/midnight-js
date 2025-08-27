@@ -26,6 +26,15 @@ import * as InternalOptions from './options.js';
 export const ttl: (duration: Duration.Duration) => Effect.Effect<Date> = (duration) => 
   DateTime.now.pipe(Effect.map((utcNow) => DateTime.toDate(DateTime.addDuration(utcNow, duration))));
 
+export const reportCausableError: (err: unknown) => Effect.Effect<void, never> =
+  (err) => Effect.gen(function* () {
+    let _err: any = err; // eslint-disable-line @typescript-eslint/no-explicit-any
+    while (_err) {
+      yield* Console.log(_err.toString());
+      _err = _err.cause;
+    }
+  });
+
 export const reportContractConfigError: (err: ConfigCompiler.ConfigError) =>
   Effect.Effect<void, never> =
     (err) => Effect.gen(function* () {
@@ -38,7 +47,7 @@ export const reportContractConfigError: (err: ConfigCompiler.ConfigError) =>
           }
           return;
         }
-        yield* Console.log(String(err.cause));
+        yield* reportCausableError(err.cause);
       }
     });
 
@@ -47,9 +56,9 @@ export const reportContractExecutionError: (err: ContractExecutable.ContractExec
     (err) => Effect.gen(function* () {
       if (ConfigError.isConfigError(err)) {
         // TODO: Look at ConfigError.reduceWithContext to reduce the error is a meaningful message.
-        return yield* Console.log('ConfigurationError: Configuration is missing or invalid')
+        return yield* Console.log('ConfigurationError: Configuration is missing or invalid');
       }
-      yield* Console.log(err.toString());
+      yield* reportCausableError(err);
     });
 
 export const layer: (configProvider: ConfigProvider.ConfigProvider, zkBaseFolderPath: string) =>
