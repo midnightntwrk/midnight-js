@@ -21,7 +21,6 @@ const config: CodegenConfig = {
       documents: ['./src/**/*.ts'],
       schema: './schema.graphql',
       preset: 'client',
-      plugins: ['typescript', 'typescript-operations'],
       config: {
         avoidOptionals: true,
         skipTypename: true,
