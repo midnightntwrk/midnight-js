@@ -274,8 +274,6 @@ jobs:
           mkdir ctrf-results
           mv test-results/test-results-*/ctrf-*.json ctrf-results/
           npx ctrf merge ctrf-results --output ./ctrf-report-merged.json
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
       - name: Publish Test Report
         if: always()
@@ -285,6 +283,8 @@ jobs:
           summary-report: true
           file-report: true
           github-report: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
       - name: Upload Test Results
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # ratchet:actions/upload-artifact@v4
