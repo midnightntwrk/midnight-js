@@ -76,7 +76,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       {
         address,
         contractState: asContractState(ledgerContractState, networkId),
-        privateState: undefined
+        privateState: contractModule.createInitialPrivateState()
       },
       ...args
     );
