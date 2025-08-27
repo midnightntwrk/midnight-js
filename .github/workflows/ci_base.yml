@@ -268,16 +268,23 @@ jobs:
           pattern: test-results-group*
           path: test-results
 
-      - name: Publish Test Summary Results
+      - name: Merge CTRF Results
         if: always()
         run: |
           mkdir ctrf-results
           mv test-results/test-results-*/ctrf-*.json ctrf-results/
           npx ctrf merge ctrf-results --output ./ctrf-report-merged.json
-          npx github-actions-ctrf ctrf-results/ctrf-report-merged.json --title "E2E test results"
-          npx github-actions-ctrf pull-request ctrf-results/ctrf-report-merged.json --title "E2E test results"
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Publish Test Report
+        if: always()
+        uses: ctrf-io/github-test-reporter@c390e03fbec5cebcbe28cc24a9c6f7f3a4265b51 # v1.0.21
+        with:
+          report-path: 'ctrf-results/ctrf-report-merged.json'
+          summary-report: true
+          file-report: true
+          github-report: true
 
       - name: Upload Test Results
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # ratchet:actions/upload-artifact@v4
