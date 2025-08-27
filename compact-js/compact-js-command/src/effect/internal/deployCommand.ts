@@ -43,6 +43,7 @@ export const Options = {
   config: InternalOptions.config,
   coinPublicKey: InternalOptions.coinPublicKey,
   signingKey: InternalOptions.signingKey,
+  network: InternalOptions.network,
   outputFilePath: InternalOptions.outputFilePath
 }
 

@@ -48,6 +48,7 @@ export const Options = {
   config: InternalOptions.config,
   coinPublicKey: InternalOptions.coinPublicKey,
   stateFilePath: InternalOptions.stateFilePath,
+  network: InternalOptions.network,
   outputFilePath: InternalOptions.outputFilePath
 }
 
