@@ -273,7 +273,7 @@ jobs:
         run: |
           mkdir ctrf-results
           mv test-results/test-results-*/ctrf-*.json ctrf-results/
-          npx merge-ctrf ctrf-results --output ./ctrf-report-merged.json
+          npx ctrf merge ctrf-results --output ./ctrf-report-merged.json
           npx github-actions-ctrf ctrf-results/ctrf-report-merged.json --title "E2E test results"
           npx github-actions-ctrf pull-request ctrf-results/ctrf-report-merged.json --title "E2E test results"
         env:
