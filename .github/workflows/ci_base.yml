@@ -271,6 +271,7 @@ jobs:
       - name: Publish Test Summary Results
         if: always()
         run: |
+          set -x
           mkdir ctrf-results
           mv test-results/test-results-*/ctrf-*.json ctrf-results/
           npx merge-ctrf ctrf-results --output ./ctrf-report-merged.json
