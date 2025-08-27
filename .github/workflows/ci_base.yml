@@ -279,10 +279,12 @@ jobs:
         if: always()
         uses: ctrf-io/github-test-reporter@c390e03fbec5cebcbe28cc24a9c6f7f3a4265b51 # v1.0.21
         with:
+          title: 'E2E Tests Results'
           report-path: 'ctrf-results/ctrf-report-merged.json'
           summary-report: true
           file-report: true
           github-report: true
+          pull-request: true
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
@@ -307,6 +309,18 @@ jobs:
         with:
           name: test-results-junit-summary
           path: junit-test-results.xml
+
+  e2e_tests_reports_allure:
+    runs-on: ubuntu-latest
+    needs: e2e_tests
+    if: always()
+    steps:
+
+      - name: Download Test Results
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # ratchet:actions/download-artifact@v4
+        with:
+          pattern: test-results-group*
+          path: test-results
 
       - name: Send Results to Allure Server
         uses: robkatona/send-allure-results@935714d2ab2c0de7b15a9d3e29a0cffe0fa64c59 # ratchet:robkatona/send-allure-results@v1.0.5
