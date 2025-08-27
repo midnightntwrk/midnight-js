@@ -138,11 +138,12 @@ jobs:
             contracts, ./packages/contracts/coverage/coverage-summary.json
             fetch-zk-config-provider, ./packages/fetch-zk-config-provider/coverage/coverage-summary.json
             http-client-proof-provider, ./packages/http-client-proof-provider/coverage/coverage-summary.json
+            indexer-public-data-provider, ./packages/indexer-public-data-provider/coverage/coverage-summary.json
             level-private-state-provider, ./packages/level-private-state-provider/coverage/coverage-summary.json
+            logger-provider, ./packages/logger-state-provider/coverage/coverage-summary.json
             node-zk-config-provider, ./packages/node-zk-config-provider/coverage/coverage-summary.json
             testing, ./packages/testing/coverage/coverage-summary.json
             utils, ./packages/utils/coverage/coverage-summary.json
-            logger-provider, ./packages/logger-provider/coverage/coverage-summary.json
 
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@992d97d6eb2e5f3de985fbf9df6a04386874114d # ratchet:mikepenz/action-junit-report@v5
@@ -282,8 +283,6 @@ jobs:
           title: 'E2E Tests Results'
           report-path: 'ctrf-results/ctrf-report-merged.json'
           summary-report: true
-          file-report: true
-          github-report: true
           pull-request: true
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
