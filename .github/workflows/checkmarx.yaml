@@ -7,13 +7,16 @@ permissions:
   pull-requests: write       # to comment on or label PRs
 
 on:
+  workflow_dispatch:
   pull_request:
     branches: [ '**' ]
   push:
     branches: [ 'main' ]
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref }}
   cancel-in-progress: true
+
 jobs:
   build:
     permissions:
@@ -24,6 +27,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Checkout
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  #v5.0.0
 
@@ -74,7 +78,7 @@ jobs:
           fi
 
       - name: Checkmarx One CLI Action
-        uses: checkmarx/ast-github-action@fa338ce82069b297c4852ac77e2d168db9fb56d8 #2.3.21
+        uses: checkmarx/ast-github-action@f29b1171205dec7f7a301f53809ad54a0ee65f86 #2.3.24
         with:
           cx_tenant: ${{ secrets.CX_TENANT }}
           base_uri: https://eu-2.ast.checkmarx.net/
