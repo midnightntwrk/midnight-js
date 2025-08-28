@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.0.3] - Unreleased
 
 ### Added
+- Upgrades MN.js to use Compact 0.25.0
+- `secondsSinceLastEpoch` value added to `QueryContext` to Compact programs to retrieve the current block time in their contracts
 - E2E test documentation and README
 
 ### Changed
