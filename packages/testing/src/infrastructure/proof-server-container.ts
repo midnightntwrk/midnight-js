@@ -40,7 +40,6 @@ export interface ProofServerContainer {
 /**
  * A proof server container that is started and stopped dynamically by the test
  * suite on random port.
- * @implements {ProofServerContainer}
  */
 export class DynamicProofServerContainer implements ProofServerContainer {
   /** The Docker Compose environment running the container */
@@ -68,7 +67,6 @@ export class DynamicProofServerContainer implements ProofServerContainer {
    * @param {string} [maybeUID] - Optional unique identifier for the container
    * @param {string} [maybeNetworkId] - Optional network ID for the container
    * @returns {Promise<DynamicProofServerContainer>} A promise that resolves to the new container instance
-   * @static
    */
   static async start(logger: Logger, maybeUID?: string, maybeNetworkId?: string): Promise<DynamicProofServerContainer> {
     const config = getContainersConfiguration().proofServer;
@@ -117,7 +115,6 @@ export class DynamicProofServerContainer implements ProofServerContainer {
 /**
  * A proof server that is currently running on a specific port.
  * Used for connecting to an existing proof server instance.
- * @implements {ProofServerContainer}
  */
 export class StaticProofServerContainer implements ProofServerContainer {
   /** The port number where the proof server is running */
@@ -143,7 +140,7 @@ export class StaticProofServerContainer implements ProofServerContainer {
    * No-op stop method since this represents an external proof server.
    * @returns {Promise<void>} A resolved promise
    */
-   
+
   stop(): Promise<void> {
     return Promise.resolve(undefined);
   }
