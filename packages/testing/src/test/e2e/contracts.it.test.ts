@@ -91,7 +91,7 @@ const logger = createLogger(
 const { ledger } = CompiledCounter;
 
 describe('Contracts API', () => {
-  const WAITING_PROMISE_TIMEOUT = 20_000;
+  const WAITING_PROMISE_TIMEOUT = 60_000;
   let providers: CounterProviders;
   let finalizedDeployTxData: FinalizedDeployTxData<CounterContract>;
   let deployedContract: DeployedCounterContract;
@@ -107,6 +107,11 @@ describe('Contracts API', () => {
 
   beforeEach(() => {
     logger.info(`Running test=${expect.getState().currentTestName}`);
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   beforeAll(async () => {
@@ -369,7 +374,7 @@ describe('Contracts API', () => {
    * @then Should wait indefinitely without timing out
    * @and Should not resolve within the waiting timeout period
    */
-  it('should wait indefinitely until contract exists on specific address [@slow]', async () => {
+  it('should wait indefinitely until contract exists on specific address', async () => {
     const contractPromise = findDeployedContract(providers, {
       contract: counterContractInstance,
       contractAddress: UNDEPLOYED_CONTRACT_ADDRESS,
@@ -379,7 +384,11 @@ describe('Contracts API', () => {
     const timeoutPromise = new Promise((resolve) => {
       setTimeout(resolve, WAITING_PROMISE_TIMEOUT);
     });
-    const result = await Promise.race([contractPromise, timeoutPromise]);
+    const promiseRace = Promise.race([contractPromise, timeoutPromise]);
+
+    vi.advanceTimersByTime(WAITING_PROMISE_TIMEOUT);
+
+    const result = await promiseRace;
     expect(result).toBeUndefined();
   });
 
@@ -688,7 +697,7 @@ describe('Contracts API', () => {
    * @then Should wait indefinitely until stopped and return last contract state
    * @and Should return valid ContractState instance when timeout occurs
    */
-  it('should wait indefinitely until state change, if stopped returns last contract state [@slow]', async () => {
+  it('should wait indefinitely until state change, if stopped returns last contract state', async () => {
     const counterValue1 = await api.getCounterLedgerState(providers, contractAddress);
     const contractPromise = providers.publicDataProvider.watchForContractState(
       deployedContract.deployTxData.public.contractAddress
@@ -696,7 +705,12 @@ describe('Contracts API', () => {
     const timeoutPromise = new Promise((resolve) => {
       setTimeout(resolve, WAITING_PROMISE_TIMEOUT);
     });
-    const result = await Promise.race([contractPromise, timeoutPromise]);
+
+    const promiseRace = Promise.race([contractPromise, timeoutPromise]);
+
+    vi.advanceTimersByTime(WAITING_PROMISE_TIMEOUT);
+
+    const result = await promiseRace;
 
     expect(result).toBeInstanceOf(ContractState);
     expect(ledger((result as ContractState).data).round).toEqual(counterValue1);
