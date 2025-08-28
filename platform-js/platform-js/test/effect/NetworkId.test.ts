@@ -14,11 +14,11 @@
  */
 
 import { describe, it, expect } from '@effect/vitest';
-import * as NetworkId from '@midnight-ntwrk/platform-js/effect/NetworkId';
 import * as fc from 'effect/FastCheck';
-import * as Arbitrary from './Arbitrary.js';
+import * as NetworkId from '@midnight-ntwrk/platform-js/effect/NetworkId';
 import * as ledger from '@midnight-ntwrk/ledger';
 import * as runtime from '@midnight-ntwrk/compact-runtime';
+import * as Arbitrary from './Arbitrary.js';
 
 describe('NetworkId', () => {
   describe('isMainNet', () => {

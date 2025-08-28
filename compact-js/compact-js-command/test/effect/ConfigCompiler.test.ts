@@ -18,7 +18,7 @@ import { Effect, Layer } from 'effect';
 import { NodeContext } from '@effect/platform-node';
 import { ConfigCompiler } from '@midnight-ntwrk/compact-js-command/effect';
 import { resolve } from 'node:path';
-import { ensureRemovePath } from './cleanup';
+import { ensureRemovePath } from './cleanup.js';
 
 const COUNTER_CONFIG_FILEPATH = resolve(import.meta.dirname, '../contract/counter/contract.config.ts');
 

@@ -20,8 +20,8 @@ import { Command } from '@effect/cli';
 import { deployCommand } from '@midnight-ntwrk/compact-js-command/effect';
 import { ConfigCompiler } from '@midnight-ntwrk/compact-js-command/effect';
 import { resolve } from 'node:path';
-import { ensureRemovePath } from './cleanup';
-import * as MockConsole from './MockConsole';
+import { ensureRemovePath } from './cleanup.js';
+import * as MockConsole from './MockConsole.js';
 
 const COUNTER_CONFIG_FILEPATH = resolve(import.meta.dirname, '../contract/counter/contract.config.ts');
 const COUNTER_OUTPUT_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output.bin');
