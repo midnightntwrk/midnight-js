@@ -136,7 +136,7 @@ describe.concurrent('[Integration tests] Testing API', () => {
     try {
       server = await DynamicProofServerContainer.start(logger);
       const client = new ProofServerClient(server.getUrl(), logger);
-      await client.proveTx(Buffer.from('test'));
+      await client.proveTx(Buffer.from('test').buffer);
     } finally {
       await server?.stop();
     }

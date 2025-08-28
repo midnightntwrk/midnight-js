@@ -7,5 +7,5 @@
   "excludePrivate": true,
   "entryPoints": ["packages/*"],
   "entryPointStrategy": "packages",
-  "exclude": ["packages/e2e-tests", "packages/compact"]
+  "exclude": ["packages/testing/src/e2e", "packages/compact"]
 }
