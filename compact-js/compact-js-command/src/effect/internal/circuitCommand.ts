@@ -20,7 +20,6 @@ import { type ContractExecutable, Contract, ContractRuntimeError } from '@midnig
 import {
   Intent,
   ContractCallPrototype,
-  NetworkId as LedgerNetworkId,
   ContractState as LedgerContractState,
   communicationCommitmentRandomness
 } from '@midnight-ntwrk/ledger';

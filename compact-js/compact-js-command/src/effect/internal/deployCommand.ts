@@ -20,10 +20,9 @@ import { type ContractExecutable, ContractRuntimeError } from '@midnight-ntwrk/c
 import {
   ContractDeploy,
   Intent,
-  ContractState as LedgerContractState,
-  NetworkId as LedgerNetworkId
+  ContractState as LedgerContractState
 } from '@midnight-ntwrk/ledger';
-import { type ContractState, NetworkId as RuntimeNetworkId } from '@midnight-ntwrk/compact-runtime';
+import { type ContractState } from '@midnight-ntwrk/compact-runtime';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import * as NetworkId from '@midnight-ntwrk/platform-js/effect/NetworkId';
 import { type ConfigCompiler } from '../ConfigCompiler.js';

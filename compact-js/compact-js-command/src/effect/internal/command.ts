@@ -13,9 +13,11 @@
  * limitations under the License.
  */
 
-import { Effect, Layer, type ConfigProvider, ConfigError, Console, DateTime, type Duration } from 'effect';
+import { Effect, Layer, type ConfigProvider, ConfigError, Console, DateTime, type Duration, pipe } from 'effect';
 import type { FileSystem, Path } from '@effect/platform';
 import { NodeContext } from '@effect/platform-node';
+import * as Doc from '@effect/printer-ansi/AnsiDoc';
+import * as Ansi from '@effect/printer-ansi/Ansi';
 import { type ZKConfiguration, type ContractExecutable, ContractExecutableRuntime } from '@midnight-ntwrk/compact-js/effect';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
@@ -23,44 +25,138 @@ import * as ConfigCompiler from '../ConfigCompiler.js';
 import * as CommandConfigProvider from '../CommandConfigProvider.js';
 import * as InternalOptions from './options.js';
 
+/**
+ * Applies a duration to the current date/time, returning a date/time that is in the future.
+ *
+ * @param duration A `Duration` describing how far into the future the returned date/time should be.
+ * @returns An `Effect` that yields a `Date` that will be in the future from `duration`.
+ */
 export const ttl: (duration: Duration.Duration) => Effect.Effect<Date> = (duration) => 
   DateTime.now.pipe(Effect.map((utcNow) => DateTime.toDate(DateTime.addDuration(utcNow, duration))));
 
-export const reportCausableError: (err: unknown) => Effect.Effect<void, never> =
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const reportCausableError: (err: any) => Effect.Effect<void, never> =
   (err) => Effect.gen(function* () {
-    let _err: any = err; // eslint-disable-line @typescript-eslint/no-explicit-any
-    while (_err) {
-      yield* Console.log(_err.toString());
-      _err = _err.cause;
+    const buildCauseDocs = () => {
+      const docs: Doc.Doc<unknown>[] = [];
+      const buildCauseDoc = (errOrDoc: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+        if (Doc.isDoc(errOrDoc)) {
+          return docs.push(errOrDoc);
+        }
+        docs.push(Doc.text(errOrDoc.message));
+        buildCauseDoc(errOrDoc.cause);
+      }
+      buildCauseDoc(err.cause);
+      return docs;
     }
+    let errorDoc: Doc.AnsiDoc = Doc.text(err.message);
+    if (err.cause) {
+      errorDoc = errorDoc.pipe(
+        Doc.catWithLineBreak(Doc.annotate(Doc.text('(cause)'), Ansi.italicized)),
+        Doc.catWithLineBreak(Doc.hsep([
+          Doc.text('..'),
+          Doc.align(Doc.vsep(buildCauseDocs()))
+        ]))
+      ) as Doc.AnsiDoc
+    }
+    yield* Console.log(Doc.render(errorDoc, {style: 'pretty'}));
   });
 
+/**
+ * Pretty prints a configuration error from {@link ConfigCompiler.ConfigCompiler | ConfigCompiler} implementations.
+ *
+ * @param err The {@link ConfigCompiler.ConfigError | ConfigError} to report for.
+ * @returns An `Effect` that yields `void`.
+ */
 export const reportContractConfigError: (err: ConfigCompiler.ConfigError) =>
   Effect.Effect<void, never> =
     (err) => Effect.gen(function* () {
-      yield* Console.log(err.toString());
-      if (err.cause) {
-        if (err.cause instanceof ConfigCompiler.ConfigCompilationError) {
-          yield* Console.log(String(err.cause));
-          for (const diagnostic of err.cause.diagnostics) {
-            yield* Console.log(diagnostic.messageText);
-          }
-          return;
-        }
-        yield* reportCausableError(err.cause);
-      }
-    });
-
-export const reportContractExecutionError: (err: ContractExecutable.ContractExecutionError | ConfigError.ConfigError) =>
-  Effect.Effect<void, never> =
-    (err) => Effect.gen(function* () {
-      if (ConfigError.isConfigError(err)) {
-        // TODO: Look at ConfigError.reduceWithContext to reduce the error is a meaningful message.
-        return yield* Console.log('ConfigurationError: Configuration is missing or invalid');
+      if (err.cause && err.cause instanceof ConfigCompiler.ConfigCompilationError) {
+        return yield* reportCausableError({
+          message: err.message,
+          cause: Doc.annotate(Doc.text(err.cause.message), Ansi.italicized).pipe(
+            Doc.catWithLineBreak(Doc.hsep([
+              Doc.text('..'),
+              Doc.align(Doc.vsep(err.cause.diagnostics.map((d) => Doc.text(d.messageText))))
+            ]))
+          )
+        });
       }
       yield* reportCausableError(err);
     });
 
+const ConfigErrorType = {
+  MissingData: 1,
+  InvalidData: 2,
+  UnsupportedData: 4
+}
+type ConfigErrorType = typeof ConfigErrorType[keyof typeof ConfigErrorType];
+type ReportedConfigError = readonly [flag: ConfigErrorType, messages: string[]];
+
+const reduceConfigError = (err: ConfigError.ConfigError): ReportedConfigError =>
+  ConfigError.reduceWithContext<undefined, ReportedConfigError>(err, undefined, {
+    andCase: (_, left, right) => [left[0] | right[0], [...left[1], ...right[1]]],
+    orCase: (_, left, right) => left || right,
+    missingDataCase: (_, path) => [ConfigErrorType.MissingData, [`Missing data at path '${path.join(',')}'`]],
+    invalidDataCase: (_, path) => [ConfigErrorType.InvalidData, [`Invalid data at path '${path.join(',')}'`]],
+    sourceUnavailableCase: (_, path, message, cause) => [ConfigErrorType.MissingData, [`The underlying source for data at path '${path.join(',')}' could not be found`, message, cause.toString()]],
+    unsupportedCase: (_, path) => [ConfigErrorType.UnsupportedData, [`Unsupported data at path '${path.join(',')}'`]],
+  });
+
+/**
+ * Pretty prints a configuration or contract execution error .
+ *
+ * @param err The {@link ContractExecutable.ContractExecutionError | ContractExecutionError} or `ConfigError` to
+ * report for.
+ * 
+ * @returns An `Effect` that yields `void`.
+ */
+export const reportContractExecutionError: (err: ContractExecutable.ContractExecutionError | ConfigError.ConfigError) =>
+  Effect.Effect<void, never> =
+    (err) => Effect.gen(function* () {
+      if (ConfigError.isConfigError(err)) {
+        const [errorType, messages] = reduceConfigError(err);
+        yield* reportCausableError({
+          message: 'Invalid, missing, or unsupported configuration',
+          cause: Doc.vsep(messages.map(Doc.text))
+        });
+        if (errorType & ConfigErrorType.InvalidData || errorType & ConfigErrorType.MissingData) {
+          yield* Console.log();
+          yield* Console.log(Doc.render(
+            Doc.vsep([
+              Doc.text('The reported error indicates that configuration may be missing, or is invalid.'),
+              Doc.text('Check the values provided in the \'config\' property of the specified \'contract.config.ts\' file,'),
+              Doc.text('or the supplied environment variables, or the values supplied as options on the command line.')
+            ]),
+            { style: 'compact' }
+          ));
+        }
+        if (errorType & ConfigErrorType.UnsupportedData) {
+          yield* Console.log();
+          yield* Console.log(Doc.render(
+            Doc.vsep([
+              Doc.text('The reported error indicates that unsupported or incompatible configuration values was detected.'),
+              Doc.text('Check the values (along with their formats and lengths), provided in the \'config\' property of'),
+              Doc.text('the specified \'contract.config.ts\' file, or the supplied environment variables, or the values'),
+              Doc.text('supplied as options on the command line.')
+            ]),
+            { style: 'compact' }
+          ));
+        }
+        return;
+      }
+      yield* reportCausableError(err);
+    });
+
+/**
+ * Creates a default layer that provides services for executing Compact contracts via a command line.
+ *
+ * @param configProvider 
+ * @param zkBaseFolderPath A base path to a folder containing the ZK assets for the contract that will be in
+ * scope during invocation
+ *
+ * @category layers
+ */
 export const layer: (configProvider: ConfigProvider.ConfigProvider, zkBaseFolderPath: string) =>
   Layer.Layer<
     ZKConfiguration.ZKConfiguration | Configuration.Keys | Configuration.Network | NodeContext.NodeContext,
@@ -71,6 +167,14 @@ export const layer: (configProvider: ConfigProvider.ConfigProvider, zkBaseFolder
       Layer.provide(Layer.setConfigProvider(configProvider))
     );
 
+/**
+ * Creates an appropriate runtime for a command handler.
+ *
+ * @param handler A handler function that executes a command based on its received command line inputs and
+ * compiled configuration module.
+ * @returns An `Effect` that adapts `handler` by compiling the configured configuration file, and invoking
+ * `handler` within an appropriate `ContractExecutableRuntime`.
+ */
 export const invocationHandler: <
   I extends InternalOptions.ConfigOptionInput & Partial<InternalOptions.AllConfigurableOptionInputs>
 >(
