@@ -15,11 +15,11 @@ Provides functionality for managing walletProviders and a proof server container
 
 ## Extended by
 
-- [`QanetTestEnvironment`](QanetTestEnvironment.md)
 - [`DevnetTestEnvironment`](DevnetTestEnvironment.md)
+- [`EnvVarRemoteTestEnvironment`](EnvVarRemoteTestEnvironment.md)
+- [`QanetTestEnvironment`](QanetTestEnvironment.md)
 - [`TestnetTestEnvironment`](TestnetTestEnvironment.md)
 - [`Testnet2TestEnvironment`](Testnet2TestEnvironment.md)
-- [`EnvVarRemoteTestEnvironment`](EnvVarRemoteTestEnvironment.md)
 
 ## Constructors
 
