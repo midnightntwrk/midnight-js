@@ -11,8 +11,8 @@ Provides common functionality for managing test wallets and environments.
 
 ## Extended by
 
-- [`RemoteTestEnvironment`](RemoteTestEnvironment.md)
 - [`LocalTestEnvironment`](LocalTestEnvironment.md)
+- [`RemoteTestEnvironment`](RemoteTestEnvironment.md)
 
 ## Constructors
 

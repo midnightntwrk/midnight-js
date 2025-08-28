@@ -16,9 +16,9 @@ An error indicating that a transaction submitted to a consensus node failed.
 
 - [`CallTxFailedError`](CallTxFailedError.md)
 - [`DeployTxFailedError`](DeployTxFailedError.md)
-- [`ReplaceMaintenanceAuthorityTxFailedError`](ReplaceMaintenanceAuthorityTxFailedError.md)
 - [`InsertVerifierKeyTxFailedError`](InsertVerifierKeyTxFailedError.md)
 - [`RemoveVerifierKeyTxFailedError`](RemoveVerifierKeyTxFailedError.md)
+- [`ReplaceMaintenanceAuthorityTxFailedError`](ReplaceMaintenanceAuthorityTxFailedError.md)
 
 ## Constructors
 
