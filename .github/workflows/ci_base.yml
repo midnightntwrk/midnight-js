@@ -131,7 +131,7 @@ jobs:
           path: coverage.zip
 
       - name: Publish Test Coverage
-        uses: MishaKav/jest-coverage-comment@d74238813c33e6ea20530ff91b5ea37953d11c91 # ratchet:MishaKav/jest-coverage-comment@v1
+        uses: MishaKav/jest-coverage-comment@aa3935cf9ee61efc40d9e47dcc8a523a49a70b96 # ratchet:MishaKav/jest-coverage-comment@v1
         with:
           hide-comment: false
           multiple-files: |
