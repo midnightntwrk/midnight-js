@@ -141,7 +141,7 @@ jobs:
             http-client-proof-provider, ./packages/http-client-proof-provider/coverage/coverage-summary.json
             indexer-public-data-provider, ./packages/indexer-public-data-provider/coverage/coverage-summary.json
             level-private-state-provider, ./packages/level-private-state-provider/coverage/coverage-summary.json
-            logger-provider, ./packages/logger-state-provider/coverage/coverage-summary.json
+            logger-provider, ./packages/logger-provider/coverage/coverage-summary.json
             node-zk-config-provider, ./packages/node-zk-config-provider/coverage/coverage-summary.json
             testing, ./packages/testing/coverage/coverage-summary.json
             utils, ./packages/utils/coverage/coverage-summary.json
