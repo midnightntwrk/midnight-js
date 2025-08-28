@@ -16,6 +16,7 @@
 import { ConfigProvider } from 'effect';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 
+/** @internal */
 export const make: (jsonConfg: unknown, cliConfigProvider: ConfigProvider.ConfigProvider) =>
   ConfigProvider.ConfigProvider =
     (jsonConfig, cliConfigProvider) => cliConfigProvider.pipe(

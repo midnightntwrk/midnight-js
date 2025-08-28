@@ -39,3 +39,5 @@ export const circuitCommand = Command.make(
   );
 
 export * as ConfigCompiler from './ConfigCompiler.js';
+export * as ConfigError from './ConfigError.js';
+export * as ConfigCompilationError from './ConfigCompilationError.js';

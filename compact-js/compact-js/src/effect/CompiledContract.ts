@@ -20,7 +20,7 @@ import type { Contract } from './Contract.js';
 import type * as CompactContext from './CompactContext.js';
 import * as CompactContextInternal from './internal/compactContext.js';
 
-export const TypeId = Symbol.for('@midnight-ntwrk/compact-js/CompiledContract');
+export const TypeId = Symbol.for('compact-js/CompiledContract');
 export type TypeId = typeof TypeId;
 
 /**

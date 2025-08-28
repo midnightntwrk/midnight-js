@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { Effect, Layer, type ConfigProvider, ConfigError, Console, DateTime, type Duration, pipe } from 'effect';
+import { Effect, Layer, type ConfigProvider, ConfigError as EffectConfigError, Console, DateTime, type Duration } from 'effect';
 import type { FileSystem, Path } from '@effect/platform';
 import { NodeContext } from '@effect/platform-node';
 import * as Doc from '@effect/printer-ansi/AnsiDoc';
@@ -24,6 +24,8 @@ import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import * as ConfigCompiler from '../ConfigCompiler.js';
 import * as CommandConfigProvider from '../CommandConfigProvider.js';
 import * as InternalOptions from './options.js';
+import type * as ConfigError from '../ConfigError.js';
+import * as ConfigCompilationError from '../ConfigCompilationError.js';
 
 /**
  * Applies a duration to the current date/time, returning a date/time that is in the future.
@@ -67,13 +69,14 @@ const reportCausableError: (err: any) => Effect.Effect<void, never> =
 /**
  * Pretty prints a configuration error from {@link ConfigCompiler.ConfigCompiler | ConfigCompiler} implementations.
  *
- * @param err The {@link ConfigCompiler.ConfigError | ConfigError} to report for.
- * @returns An `Effect` that yields `void`.
+ * @param err The {@link ConfigError.ConfigError | ConfigError} or 
+ * {@link ConfigCompilationError.ConfigCompilationError | ConfigCompilationError} to report for.
+ * @returns An `Effect` that writes `err` to the console.
  */
-export const reportContractConfigError: (err: ConfigCompiler.ConfigError) =>
+export const reportContractConfigError: (err: ConfigError.ConfigError | ConfigCompilationError.ConfigCompilationError) =>
   Effect.Effect<void, never> =
     (err) => Effect.gen(function* () {
-      if (err.cause && err.cause instanceof ConfigCompiler.ConfigCompilationError) {
+      if (err.cause && err.cause instanceof ConfigCompilationError.ConfigCompilationError) {
         return yield* reportCausableError({
           message: err.message,
           cause: Doc.annotate(Doc.text(err.cause.message), Ansi.italicized).pipe(
@@ -95,8 +98,8 @@ const ConfigErrorType = {
 type ConfigErrorType = typeof ConfigErrorType[keyof typeof ConfigErrorType];
 type ReportedConfigError = readonly [flag: ConfigErrorType, messages: string[]];
 
-const reduceConfigError = (err: ConfigError.ConfigError): ReportedConfigError =>
-  ConfigError.reduceWithContext<undefined, ReportedConfigError>(err, undefined, {
+const reduceConfigError = (err: EffectConfigError.ConfigError): ReportedConfigError =>
+  EffectConfigError.reduceWithContext<undefined, ReportedConfigError>(err, undefined, {
     andCase: (_, left, right) => [left[0] | right[0], [...left[1], ...right[1]]],
     orCase: (_, left, right) => left || right,
     missingDataCase: (_, path) => [ConfigErrorType.MissingData, [`Missing data at path '${path.join(',')}'`]],
@@ -106,17 +109,16 @@ const reduceConfigError = (err: ConfigError.ConfigError): ReportedConfigError =>
   });
 
 /**
- * Pretty prints a configuration or contract execution error .
+ * Pretty prints a configuration or contract execution error.
  *
  * @param err The {@link ContractExecutable.ContractExecutionError | ContractExecutionError} or `ConfigError` to
  * report for.
- * 
- * @returns An `Effect` that yields `void`.
+ * @returns An `Effect` that writes `err` to the console.
  */
-export const reportContractExecutionError: (err: ContractExecutable.ContractExecutionError | ConfigError.ConfigError) =>
+export const reportContractExecutionError: (err: ContractExecutable.ContractExecutionError | EffectConfigError.ConfigError) =>
   Effect.Effect<void, never> =
     (err) => Effect.gen(function* () {
-      if (ConfigError.isConfigError(err)) {
+      if (EffectConfigError.isConfigError(err)) {
         const [errorType, messages] = reduceConfigError(err);
         yield* reportCausableError({
           message: 'Invalid, missing, or unsupported configuration',
@@ -162,7 +164,7 @@ export const reportContractExecutionError: (err: ContractExecutable.ContractExec
 export const layer: (configProvider: ConfigProvider.ConfigProvider, zkBaseFolderPath: string) =>
   Layer.Layer<
     ZKConfiguration.ZKConfiguration | Configuration.Keys | Configuration.Network | NodeContext.NodeContext,
-    ConfigError.ConfigError
+    EffectConfigError.ConfigError
   > = (configProvider, zkBaseFolderPath) =>
     Layer.mergeAll(ZKFileConfiguration.layer(zkBaseFolderPath), Configuration.layer).pipe(
       Layer.provideMerge(NodeContext.layer),
@@ -183,14 +185,14 @@ export const invocationHandler: <
   handler: (inputs: I, module: ConfigCompiler.ConfigCompiler.ModuleSpec) =>
     Effect.Effect<
       void,
-      ContractExecutable.ContractExecutionError | ConfigError.ConfigError,
+      ContractExecutable.ContractExecutionError | EffectConfigError.ConfigError,
       Path.Path | FileSystem.FileSystem | Configuration.Network
     >
 ) =>
   (inputs: I) =>
     Effect.Effect<
       void,
-      ConfigCompiler.ConfigError | ConfigError.ConfigError,
+      ConfigError.ConfigError | EffectConfigError.ConfigError,
       Path.Path | FileSystem.FileSystem | ConfigCompiler.ConfigCompiler
     > =
     (handler) => (inputs) => Effect.gen(function* () {

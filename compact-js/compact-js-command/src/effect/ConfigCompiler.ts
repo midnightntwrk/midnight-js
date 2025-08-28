@@ -13,32 +13,23 @@
  * limitations under the License.
  */
 
-import { Effect, Context, Data, Layer, Option } from 'effect';
+import { Effect, Context, Layer, Option } from 'effect';
 import { Path, FileSystem } from '@effect/platform';
 import { type PlatformError } from '@effect/platform/Error';
 import type { ContractExecutable, Contract } from '@midnight-ntwrk/compact-js/effect';
 import { create } from 'ts-node';
+import * as ConfigError from './ConfigError.js';
+import * as ConfigCompilationError from './ConfigCompilationError.js';
 
-export class ConfigCompiler extends Context.Tag('@midnight-ntwrk/compact-js-command/ConfigCompiler')<
+/**
+ * Compiles a contract configuration file into a JavaScript module.
+ * 
+ * @category services
+ */
+export class ConfigCompiler extends Context.Tag('compact-js-command/ConfigCompiler')<
   ConfigCompiler,
   ConfigCompiler.Service
 >() {}
-
-export class ConfigError extends Data.TaggedError('ConfigError')<{
-  readonly message: string;
-  readonly cause?: unknown;
-}> {
-  static make: (message: string, cause?: unknown) => ConfigError = (message, cause) =>
-    new ConfigError({ message, cause });
-}
-
-export class ConfigCompilationError extends Data.TaggedError('ConfigCompilationError')<{
-  readonly message: string;
-  readonly diagnostics: { messageText: string }[];
-}> {
-  static make: (message: string, diagnostics: { messageText: string }[]) => ConfigCompilationError =
-    (message, diagnostics) => new ConfigCompilationError({ message, diagnostics });
-}
 
 export declare namespace ConfigCompiler {
   /**
@@ -48,12 +39,12 @@ export declare namespace ConfigCompiler {
     default: {
       config: Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
       createInitialPrivateState: () => PS;
-      contractExecutable: ContractExecutable.ContractExecutable<Contract.Contract<PS>,PS>;
+      contractExecutable: ContractExecutable.ContractExecutable<Contract.Contract<PS>, PS>;
     }
   }
 
   /**
-   * Describes a configuration module.
+   * Describes a configuration module, the JavaScript module compiled from a contract configuration file.
    */
   export type ModuleSpec<PS = any> = { // eslint-disable-line @typescript-eslint/no-explicit-any
     moduleImportDirectoryPath: string;
@@ -61,10 +52,27 @@ export declare namespace ConfigCompiler {
   }
 
   export interface Service {
-    readonly compile: (filePath: string) => Effect.Effect<ModuleSpec, ConfigError>;
+    /**
+     * Compiles a contract configuration file.
+     *
+     * @param filePath A file path to the contract configuration file.
+     * @returns An `Effect` that yields a {@link ModuleSpec}; or fails with a
+     * {@link ConfigError.ConfigError | ConfigError} or a 
+     * {@link ConfigCompilationError.ConfigCompilationError | ConfigCompilationError}.
+     */
+    readonly compile: (filePath: string) => Effect.Effect<
+      ModuleSpec,
+      ConfigError.ConfigError | ConfigCompilationError.ConfigCompilationError
+    >;
   }
 }
 
+/**
+ * A {@link ConfigCompiler} implementation that uses TypeScript to compile the given file path and then load
+ * it as a JavaScript module.
+ * 
+ * @category layers
+ */
 export const layer = Layer.effect(
   ConfigCompiler,
   Effect.gen(function* () {
@@ -89,7 +97,7 @@ export const layer = Layer.effect(
     });
 
     const transpileTypeScript: (_: Effect.Effect.Success<ReturnType<typeof getFilePathProperties>>) =>
-      Effect.Effect<string, PlatformError | ConfigCompilationError | ConfigError> =
+      Effect.Effect<string, PlatformError | ConfigCompilationError.ConfigCompilationError | ConfigError.ConfigError> =
         ({ absoluteFilePath, absoluteFileImportPath, absoluteWorkingDirectory, requiresCompilation }) => Effect.gen(function* () {
             if (!requiresCompilation) {
               return absoluteFileImportPath;

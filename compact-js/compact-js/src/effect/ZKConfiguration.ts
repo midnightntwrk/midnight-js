@@ -23,7 +23,7 @@ import type * as ZKConfigurationError from './ZKConfigurationReadError.js';
  *
  * @category services
  */
-export class ZKConfiguration extends Context.Tag('@midnight-ntwrk/compact-js/ZKConfiguration')<
+export class ZKConfiguration extends Context.Tag('compact-js/ZKConfiguration')<
   ZKConfiguration,
   ZKConfiguration.Service
 >() {}
