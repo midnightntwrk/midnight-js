@@ -96,7 +96,7 @@ describe('submit-call-tx', () => {
       newCoins: [mockCoinInfo],
       nextPrivateState: { state: 'test' },
       nextZswapLocalState: mockZswapLocalState,
-      privateTranscriptOutputs: {} as AlignedValue[],
+      privateTranscriptOutputs: [] as AlignedValue[],
       result: vi.fn()
     }
   });
@@ -143,7 +143,14 @@ describe('submit-call-tx', () => {
 
         const mockUnprovenCallTxData = createMockUnprovenCallTxData({
           private: {
-            nextPrivateState
+            nextPrivateState,
+            input: {} as AlignedValue,
+            output: {} as AlignedValue,
+            privateTranscriptOutputs: [] as AlignedValue[],
+            result: vi.fn(),
+            nextZswapLocalState: mockZswapLocalState,
+            unprovenTx: mockUnprovenTx,
+            newCoins: [mockCoinInfo]
           }
         });
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
@@ -277,7 +284,14 @@ describe('submit-call-tx', () => {
 
         const mockUnprovenCallTxData = createMockUnprovenCallTxData({
           private: {
-            newCoins: []
+            newCoins: [],
+            input: {} as AlignedValue,
+            output: {} as AlignedValue,
+            privateTranscriptOutputs: [] as AlignedValue[],
+            result: vi.fn(),
+            nextZswapLocalState: mockZswapLocalState,
+            nextPrivateState: { state: 'test' },
+            unprovenTx: mockUnprovenTx
           }
         });
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
@@ -301,7 +315,14 @@ describe('submit-call-tx', () => {
 
         const mockUnprovenCallTxData = createMockUnprovenCallTxData({
           private: {
-            nextPrivateState: undefined
+            nextPrivateState: undefined,
+            input: {} as AlignedValue,
+            output: {} as AlignedValue,
+            privateTranscriptOutputs: [] as AlignedValue[],
+            result: vi.fn(),
+            nextZswapLocalState: mockZswapLocalState,
+            unprovenTx: mockUnprovenTx,
+            newCoins: [mockCoinInfo]
           }
         });
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);

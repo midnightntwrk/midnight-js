@@ -28,7 +28,8 @@ import {
   createMockProviders,
   createMockSigningKey,
   createMockUnprovenDeployTxData,
-  createMockUnprovenTx
+  createMockUnprovenTx,
+  createMockZswapLocalState
 } from './test-mocks';
 
 vi.mock('../unproven-deploy-tx');
@@ -105,7 +106,11 @@ describe('submit-deploy-tx', () => {
 
         const mockUnprovenDeployTxData = createMockUnprovenDeployTxData({
           private: {
-            initialPrivateState: initialPrivateState
+            initialPrivateState: initialPrivateState,
+            signingKey: mockSigningKey,
+            unprovenTx: mockUnprovenTx,
+            newCoins: [],
+            initialZswapState: createMockZswapLocalState()
           }
         });
         const mockFinalizedTxData = createMockFinalizedTxData();
@@ -234,7 +239,11 @@ describe('submit-deploy-tx', () => {
 
         const mockUnprovenDeployTxData = createMockUnprovenDeployTxData({
           private: {
-            initialPrivateState: { someState: 'test' }
+            initialPrivateState: { someState: 'test' },
+            signingKey: mockSigningKey,
+            unprovenTx: mockUnprovenTx,
+            newCoins: [],
+            initialZswapState: createMockZswapLocalState()
           }
         });
 
@@ -278,7 +287,10 @@ describe('submit-deploy-tx', () => {
         const mockUnprovenDeployTxData = createMockUnprovenDeployTxData({
           private: {
             unprovenTx: mockUnprovenTx,
-            newCoins: []
+            newCoins: [],
+            signingKey: mockSigningKey,
+            initialPrivateState: undefined,
+            initialZswapState: createMockZswapLocalState()
           }
         });
         const mockFinalizedTxData = createMockFinalizedTxData();
