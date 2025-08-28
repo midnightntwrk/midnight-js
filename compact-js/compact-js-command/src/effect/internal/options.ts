@@ -52,6 +52,12 @@ export const outputFilePath = Options.file('output').pipe(
 );
 
 /** @internal */
+export const outputPrivateStateFilePath = Options.file('output-ps').pipe(
+  Options.withDescription('A file path of where the generated \'PrivateState\' data should be written.'),
+  Options.withDefault('output.ps.json')
+);
+
+/** @internal */
 export const network = Options.text('network').pipe(
   Options.withAlias('n'),
   Options.withDescription('Optional network identifier. Defaults to the Midnight \'MainNet\' if not specified.'),
@@ -61,6 +67,11 @@ export const network = Options.text('network').pipe(
 /** @internal */
 export const stateFilePath = Options.file('state-file-path').pipe(
   Options.withDescription('A file path of where the current onchain (or ledger), state data can be read.')
+);
+
+/** @internal */
+export const privateStateFilePath = Options.file('ps-state-file-path').pipe(
+  Options.withDescription('A file path of where the current private state data can be read.')
 );
 
 export type ConfigOptionInput = Command.Command.ParseConfig<{

@@ -47,8 +47,10 @@ export const Options = {
   config: InternalOptions.config,
   coinPublicKey: InternalOptions.coinPublicKey,
   stateFilePath: InternalOptions.stateFilePath,
+  privateStateFilePath: InternalOptions.privateStateFilePath,
   network: InternalOptions.network,
-  outputFilePath: InternalOptions.outputFilePath
+  outputFilePath: InternalOptions.outputFilePath,
+  outputPrivateStateFilePath: InternalOptions.outputPrivateStateFilePath
 }
 
 const asContractState = (contractState: LedgerContractState, networkId: NetworkId.NetworkId): ContractState =>
@@ -64,19 +66,24 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     ContractExecutable.ContractExecutionError | ConfigError.ConfigError,
     Path.Path | FileSystem.FileSystem | Configuration.Network
   > =
-  ({ address, circuitId, args, stateFilePath, outputFilePath }, moduleSpec) => Effect.gen(function* () {
+  (
+    { address, circuitId, args, stateFilePath, privateStateFilePath, outputFilePath, outputPrivateStateFilePath },
+    moduleSpec
+  ) => Effect.gen(function* () {
     const path = yield* Path.Path;
     const fs = yield* FileSystem.FileSystem;
     const networkId = yield* Configuration.Network;
     const { module: { default: contractModule } } = moduleSpec;
-    const intentFilePath = path.resolve(outputFilePath);
+    const intentOutputFilePath = path.resolve(outputFilePath);
+    const privateStateOutputFilePath = path.resolve(outputPrivateStateFilePath);
     const ledgerContractState = LedgerContractState.deserialize(yield* fs.readFile(path.resolve(stateFilePath)), NetworkId.asLedgerLegacy(networkId));
+    const privateState = JSON.parse(yield* fs.readFileString(privateStateFilePath));
     const result = yield* contractModule.contractExecutable.circuit(
       Contract.ImpureCircuitId(circuitId),
       {
         address,
         contractState: asContractState(ledgerContractState, networkId),
-        privateState: contractModule.createInitialPrivateState()
+        privateState: privateState ?? contractModule.createInitialPrivateState()
       },
       ...args
     );
@@ -94,7 +101,8 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
         circuitId
       ));
 
-    yield* fs.writeFile(intentFilePath, intent.serialize(NetworkId.asLedgerLegacy(networkId)));
+    yield* fs.writeFile(intentOutputFilePath, intent.serialize(NetworkId.asLedgerLegacy(networkId)));
+    yield* fs.writeFileString(privateStateOutputFilePath, JSON.stringify(result.private.privateState));
   }).pipe(
     Effect.mapError(
       (err) => ContractRuntimeError.make('Failed to invoke circuit', err)

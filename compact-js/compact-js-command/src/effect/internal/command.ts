@@ -44,7 +44,9 @@ const reportCausableError: (err: any) => Effect.Effect<void, never> =
           return docs.push(errOrDoc);
         }
         docs.push(Doc.text(errOrDoc.message));
-        buildCauseDoc(errOrDoc.cause);
+        if (errOrDoc.cause) {
+          buildCauseDoc(errOrDoc.cause);
+        }
       }
       buildCauseDoc(err.cause);
       return docs;

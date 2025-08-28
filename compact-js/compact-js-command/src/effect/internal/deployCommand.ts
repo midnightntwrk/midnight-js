@@ -43,7 +43,8 @@ export const Options = {
   coinPublicKey: InternalOptions.coinPublicKey,
   signingKey: InternalOptions.signingKey,
   network: InternalOptions.network,
-  outputFilePath: InternalOptions.outputFilePath
+  outputFilePath: InternalOptions.outputFilePath,
+  outputPrivateStateFilePath: InternalOptions.outputPrivateStateFilePath
 }
 
 const asLedgerContractState = (contractState: ContractState, networkId: NetworkId.NetworkId): LedgerContractState =>
@@ -64,7 +65,8 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     const fs = yield* FileSystem.FileSystem;
     const networkId = yield* Configuration.Network;
     const { module: { default: contractModule } } = moduleSpec;
-    const intentFilePath = path.resolve(inputs.outputFilePath);
+    const intentOutputFilePath = path.resolve(inputs.outputFilePath);
+    const privateStateOutputFilePath = path.resolve(inputs.outputPrivateStateFilePath);
     const result = yield* contractModule.contractExecutable.initialize(
       contractModule.createInitialPrivateState(),
       ...inputs.args
@@ -72,7 +74,8 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     const intent = Intent.new(yield* InternalCommand.ttl(Duration.minutes(10)))
       .addDeploy(new ContractDeploy(asLedgerContractState(result.public.contractState, networkId)));
 
-    yield* fs.writeFile(intentFilePath, intent.serialize(NetworkId.asLedgerLegacy(networkId)));
+    yield* fs.writeFile(intentOutputFilePath, intent.serialize(NetworkId.asLedgerLegacy(networkId)));
+    yield* fs.writeFileString(privateStateOutputFilePath, JSON.stringify(result.private.privateState));
   }).pipe(
     Effect.mapError(
       (err) => ContractRuntimeError.make('Failed to initialize contract', err)
