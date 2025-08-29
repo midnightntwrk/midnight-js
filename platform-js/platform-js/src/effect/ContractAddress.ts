@@ -1,5 +1,5 @@
 /*
- * This file is part of compact-js.
+ * This file is part of platform-js.
  * Copyright (C) 2025 Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,10 +14,18 @@
  */
 
 import { Brand } from 'effect';
-import type { ContractAddress as ContractAddress_ } from '@midnight-ntwrk/compact-runtime';
+import * as Hex from './Hex.js';
 
 /**
- * A contract address, as a hex-encoded 35-byte string.
+ * A plain hex-encoded contract address, 34 to 35 bytes in length.
+ * 
+ * @remarks
+ * The optional first byte represents a hex-encoded network identifier.
+ * 
+ * @category models
  */
-export type ContractAddress = Brand.Branded<ContractAddress_, 'ContractAddress'>;
-export const ContractAddress = Brand.nominal<ContractAddress>();
+export type ContractAddress = Brand.Branded<string, 'ContractAddress'>;
+export const ContractAddress = Brand.all(
+  Brand.nominal<ContractAddress>(),
+  Hex.ConstrainedPlainHex({ byteLength: '34..=35' })
+);

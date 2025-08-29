@@ -19,9 +19,10 @@ import {
   CompiledContract,
   ContractExecutable,
   Contract,
-  ZKConfiguration,
-  KeyConfiguration
+  ZKConfiguration
 } from '@midnight-ntwrk/compact-js/effect';
+import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
+import * as NetworkId from '@midnight-ntwrk/platform-js/effect/NetworkId';
 import { Contract as Contract_ } from '../../contract/managed/counter/contract/index.cjs';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -45,7 +46,7 @@ describe('ContractExecutable', () => {
           MockCounterContract,
           any,
           ContractExecutable.ContractExecutionError,
-          ZKConfiguration.ZKConfiguration | KeyConfiguration.KeyConfiguration
+          ZKConfiguration.ZKConfiguration | Configuration.Keys
         >
       >();
     });
@@ -57,8 +58,12 @@ describe('ContractExecutable', () => {
           Effect.sync(() => ({})) as Effect.Effect<ZKConfiguration.ZKConfiguration.Service>
         ),
         Layer.effect(
-          KeyConfiguration.KeyConfiguration,
-          Effect.sync(() => ({})) as Effect.Effect<KeyConfiguration.KeyConfiguration.Service>
+          Configuration.Keys,
+          Effect.sync(() => ({})) as Effect.Effect<Configuration.Configuration.Keys>
+        ),
+        Layer.effect(
+          Configuration.Network,
+          Effect.sync(() => NetworkId.make('hosky-devnet'))
         )
       );
       const executable = contractExecutable.pipe(ContractExecutable.provide(layer));
@@ -82,8 +87,12 @@ describe('ContractExecutable', () => {
           Effect.sync(() => ({})) as unknown as Effect.Effect<ZKConfiguration.ZKConfiguration.Service, never, StringDep>
         ),
         Layer.effect(
-          KeyConfiguration.KeyConfiguration,
-          Effect.sync(() => ({})) as Effect.Effect<KeyConfiguration.KeyConfiguration.Service>
+          Configuration.Keys,
+          Effect.sync(() => ({})) as Effect.Effect<Configuration.Configuration.Keys>
+        ),
+        Layer.effect(
+          Configuration.Network,
+          Effect.sync(() => NetworkId.make('hosky-devnet'))
         )
       );
       const executable = contractExecutable.pipe(ContractExecutable.provide(layer));

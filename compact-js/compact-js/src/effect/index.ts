@@ -18,8 +18,8 @@ export * as CompiledContract from './CompiledContract.js';
 export * as Contract from './Contract.js';
 export * as ContractExecutable from './ContractExecutable.js';
 export * as ContractExecutableRuntime from './ContractExecutableRuntime.js';
-export * as KeyConfiguration from './KeyConfiguration.js';
 export * as ZKConfiguration from './ZKConfiguration.js';
-export * as CoinPublicKey from './CoinPublicKey.js';
-export * as SigningKey from './SigningKey.js';
-export * as ContractAddress from './ContractAddress.js';
+export * as ZKConfigurationReadError from './ZKConfigurationReadError.js';
+export * as ContractRuntimeError from './ContractRuntimeError.js';
+export * as ContractConfigurationError from './ContractConfigurationError.js';
+

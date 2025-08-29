@@ -15,7 +15,7 @@
 
 import { Effect, Context, Console, Array, Ref } from 'effect';
 
-export class MockConsole extends Context.Tag('@midnight-ntwrk/compact-js-command#test/MockConsole')<
+export class MockConsole extends Context.Tag('compact-js-command#test/MockConsole')<
   Console.Console,
   MockConsole.Service
 >() {}

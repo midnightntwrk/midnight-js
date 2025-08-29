@@ -13,18 +13,12 @@
  * limitations under the License.
  */
 
-import { Config, ConfigProvider } from 'effect';
-import { KeyConfiguration } from '@midnight-ntwrk/compact-js/effect';
+import { ConfigProvider } from 'effect';
+import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 
-export const CommandConfig = Config.all([
-  KeyConfiguration.KeyConfig
-]);
-
+/** @internal */
 export const make: (jsonConfg: unknown, cliConfigProvider: ConfigProvider.ConfigProvider) =>
   ConfigProvider.ConfigProvider =
     (jsonConfig, cliConfigProvider) => cliConfigProvider.pipe(
-      ConfigProvider.orElse(() => ConfigProvider.fromEnv({ pathDelim: '_' }).pipe(
-        ConfigProvider.constantCase)
-      ),
-      ConfigProvider.orElse(() => ConfigProvider.fromJson(jsonConfig))
+      ConfigProvider.orElse(() => Configuration.configProvider(jsonConfig))
     );

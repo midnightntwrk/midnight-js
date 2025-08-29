@@ -39,7 +39,8 @@ export default defineConfig({
     exclude: ['node_modules', 'dist'],
     projects: [
       'packages/*/vitest.config.ts',
-      'compact-js/*/vitest.config.ts'
+      'compact-js/*/vitest.config.ts',
+      'platform-js/*/vitest.config.ts'
     ]
   },
   resolve: {

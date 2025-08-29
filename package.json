@@ -9,7 +9,8 @@
   },
   "workspaces": [
     "packages/*",
-    "compact-js/*"
+    "compact-js/*",
+    "platform-js/*"
   ],
   "scripts": {
     "clean": "turbo run clean",

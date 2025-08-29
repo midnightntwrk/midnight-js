@@ -2345,6 +2345,7 @@ __metadata:
     "@midnight-ntwrk/compact-runtime": "npm:0.9.0-rc.0"
     "@midnight-ntwrk/ledger": "npm:5.0.0-alpha.3"
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
+    "@midnight-ntwrk/platform-js": "npm:^0.0.0"
     effect: "npm:^3.17.7"
     ts-node: "npm:^10.9.2"
   languageName: unknown
@@ -2378,6 +2379,7 @@ __metadata:
     "@midnight-ntwrk/compact-runtime": "npm:0.9.0-rc.0"
     "@midnight-ntwrk/ledger": "npm:5.0.0-alpha.3"
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
+    "@midnight-ntwrk/platform-js": "npm:^0.0.0"
     effect: "npm:^3.17.7"
   languageName: unknown
   linkType: soft
@@ -2630,6 +2632,18 @@ __metadata:
   checksum: 10/f704c7b7ba7afff0e30390207332aef460983b01bd62df6741eb5c1bf36ff7c4a69a8c14ced58b9aa97e9f6d4c6ff9660069de129d765bc55f0635ac2f60605e
   languageName: node
   linkType: hard
+
+"@midnight-ntwrk/platform-js@npm:^0.0.0, @midnight-ntwrk/platform-js@workspace:platform-js/platform-js":
+  version: 0.0.0-use.local
+  resolution: "@midnight-ntwrk/platform-js@workspace:platform-js/platform-js"
+  dependencies:
+    "@effect/platform": "npm:^0.90.2"
+    "@effect/vitest": "npm:^0.24.1"
+    "@midnight-ntwrk/compact-runtime": "npm:0.9.0-rc.0"
+    "@midnight-ntwrk/ledger": "npm:5.0.0-alpha.3"
+    effect: "npm:^3.17.7"
+  languageName: unknown
+  linkType: soft
 
 "@midnight-ntwrk/wallet-api@npm:5.0.0, @midnight-ntwrk/wallet-api@npm:^5.0.0":
   version: 5.0.0

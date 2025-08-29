@@ -15,7 +15,8 @@
 
 import { Effect, ConfigProvider, Schema, Option } from 'effect';
 import { type Command, Options } from '@effect/cli';
-import { CoinPublicKey, SigningKey } from '@midnight-ntwrk/compact-js/effect';
+import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey';
+import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
 import { Path } from '@effect/platform';
 
 /** @internal */
@@ -51,8 +52,26 @@ export const outputFilePath = Options.file('output').pipe(
 );
 
 /** @internal */
+export const outputPrivateStateFilePath = Options.file('output-ps').pipe(
+  Options.withDescription('A file path of where the generated \'PrivateState\' data should be written.'),
+  Options.withDefault('output.ps.json')
+);
+
+/** @internal */
+export const network = Options.text('network').pipe(
+  Options.withAlias('n'),
+  Options.withDescription('Optional network identifier. Defaults to the Midnight \'MainNet\' if not specified.'),
+  Options.optional
+);
+
+/** @internal */
 export const stateFilePath = Options.file('state-file-path').pipe(
   Options.withDescription('A file path of where the current onchain (or ledger), state data can be read.')
+);
+
+/** @internal */
+export const privateStateFilePath = Options.file('ps-state-file-path').pipe(
+  Options.withDescription('A file path of where the current private state data can be read.')
 );
 
 export type ConfigOptionInput = Command.Command.ParseConfig<{
@@ -67,7 +86,8 @@ export type ConfigOptionInput = Command.Command.ParseConfig<{
  */
 export type AllConfigurableOptionInputs = Command.Command.ParseConfig<{
   coinPublicKey: typeof coinPublicKey,
-  signingKey: typeof signingKey
+  signingKey: typeof signingKey,
+  network: typeof network
 }>;
 
 const DEFAULT_CONFIG_FILENAME = 'contract.config.ts';
@@ -83,5 +103,6 @@ export const asConfigProvider: (optionInputs: Partial<AllConfigurableOptionInput
     keys: {
       coinPublic: Option.getOrUndefined(optionInputs.coinPublicKey ?? Option.none()),
       signing: Option.getOrUndefined(optionInputs.signingKey ?? Option.none())
-    }
+    },
+    network: Option.getOrUndefined(optionInputs.network ?? Option.none())
   });

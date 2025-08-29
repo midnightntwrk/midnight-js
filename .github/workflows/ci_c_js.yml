@@ -2,6 +2,12 @@ name: CI - Compact.js
 env:
   MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
+permissions:
+  contents: read
+  issues: read
+  checks: write
+  pull-requests: write
+  
 on:
   workflow_dispatch:
   workflow_call:
@@ -124,6 +130,8 @@ jobs:
           hide-comment: false
           multiple-files: |
             compact-js, ./compact-js/compact-js/coverage/coverage-summary.json
+            compact-js-node, ./compact-js/compact-js-node/coverage/coverage-summary.json
+            compact-js-command, ./compact-js/compact-js-command/coverage/coverage-summary.json
 
   cd-prerelease:
     runs-on: ubuntu-latest

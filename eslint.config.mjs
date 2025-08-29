@@ -29,7 +29,7 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   ...tseslint.configs.stylistic,
   {
-    files: ['packages/**/*.ts', 'packages/**/*.tsx', 'packages/**/*.mts', 'compact-js/**/*.ts'],
+    files: ['packages/**/*.ts', 'packages/**/*.tsx', 'packages/**/*.mts', 'compact-js/**/*.ts', 'platform-js/**/*.ts'],
     plugins: {
       '@typescript-eslint': tseslint.plugin,
       import: importPlugin
@@ -41,7 +41,7 @@ export default tseslint.config(
       'import/resolver': {
         typescript: {
           alwaysTryTypes: false,
-          project: ['tsconfig.json', 'packages/*/tsconfig.json', 'compact-js/*/tsconfig.json']
+          project: ['tsconfig.json', 'packages/*/tsconfig.json', 'compact-js/*/tsconfig.json', 'platform-js/*/tsconfig.json']
         }
       }
     },

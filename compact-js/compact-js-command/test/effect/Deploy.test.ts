@@ -20,11 +20,12 @@ import { Command } from '@effect/cli';
 import { deployCommand } from '@midnight-ntwrk/compact-js-command/effect';
 import { ConfigCompiler } from '@midnight-ntwrk/compact-js-command/effect';
 import { resolve } from 'node:path';
-import { ensureRemovePath } from './cleanup';
-import * as MockConsole from './MockConsole';
+import { ensureRemovePath } from './cleanup.js';
+import * as MockConsole from './MockConsole.js';
 
 const COUNTER_CONFIG_FILEPATH = resolve(import.meta.dirname, '../contract/counter/contract.config.ts');
 const COUNTER_OUTPUT_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output.bin');
+const COUNTER_OUTPUT_PS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output.js');
 
 const testLayer: Layer.Layer<ConfigCompiler.ConfigCompiler | NodeContext.NodeContext> =
   Effect.gen(function* () {
@@ -40,7 +41,12 @@ describe('Deploy Command', () => {
     Effect.gen(function* () {
       const cli = Command.run(deployCommand, { name: 'deploy', version: '0.0.0' });
 
-      yield* cli(['node', 'deploy.ts', '-c', COUNTER_CONFIG_FILEPATH, '-o', COUNTER_OUTPUT_FILEPATH]);
+      yield* cli([
+        'node', 'deploy.ts',
+        '-c', COUNTER_CONFIG_FILEPATH,
+        '--output', COUNTER_OUTPUT_FILEPATH,
+        '--output-ps', COUNTER_OUTPUT_PS_FILEPATH
+      ]);
 
       const lines = yield* MockConsole.getLines({ stripAnsi: true });
 
@@ -48,6 +54,7 @@ describe('Deploy Command', () => {
     }).pipe(
       Effect.ensuring(ensureRemovePath(COUNTER_CONFIG_FILEPATH.replace('.ts', '.js'))),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
+      Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
       Effect.provide(testLayer)
     ),
     30_000
