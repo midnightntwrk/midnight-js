@@ -5,24 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.3] - Unreleased
+## [2.1.0] - Unreleased
 
 ### Added
-- E2E test documentation and README
+- **Block Time Access**: Added `secondsSinceLastEpoch` value to `QueryContext` in Compact programs to retrieve current block time within contracts
+- **E2E Test Documentation**: Comprehensive README for end-to-end testing setup and usage
+- **Enhanced Testing Framework**: New block time API tests and improved contract testing capabilities
+- **Import Sorting**: ESLint configuration now includes automatic import sorting for better code organization
 
 ### Changed
-- Updated GraphQL codegen version
-- Updated Axios version to address security concerns
-- Dependency updates via Dependabot for improved security
+- **Compact Compiler**: Upgraded to Compact version 0.25.0 with improved contract compilation
+- **Dependencies**: Major updates including:
+  - GraphQL codegen and related packages
+  - Axios version updates for security
+  - Apollo Client to v3.13.9
+  - Node.js type definitions to v22.0.2
+  - ESLint and Prettier configurations
+  - Vitest and testing utilities
+- **Development Workflow**: Enhanced CI/CD with better test reporting and security scanning
+- **Code Quality**: Improved TypeScript configurations and contract type definitions
+- **Husky Configuration**: Changed from pre-commit to pre-push hooks for better developer experience
 
 ### Security
-- Removed obsolete workflows and secured existing ones
-- Updated workflow permissions for enhanced security
-- Security patches through dependency updates
+- **Workflow Hardening**: Removed obsolete workflows and updated GitHub Actions permissions
+- **Dependency Security**: Applied security patches through comprehensive dependency updates
+- **GitHub Actions**: Updated to latest secure versions including:
+  - docker/login-action to 3.5.0
+  - actions/setup-node to 4.4.0
+  - actions/download-artifact to 5.0.0
+  - checkmarx/ast-github-action to 2.3.24
 
 ### Fixed
-- Various dependency version alignments
-- Workflow configuration improvements
+- **Configuration Issues**: Resolved Docker port conflicts and logger-provider path issues
+- **Type Definitions**: Cleaned up contract types and improved test mocks
+- **Workflow Permissions**: Updated GitHub Actions with proper security permissions
+- **Dependencies**: Aligned versions across packages and resolved version conflicts
+- **Documentation**: Fixed API documentation generation and TypeDoc configuration
+
+### Developer Experience
+- **Automated Dependency Management**: Enabled Dependabot and Renovate for automated updates
+- **Better Test Reporting**: Integrated CTRF reporting for improved test feedback
+- **Linting Improvements**: Enhanced ESLint rules with import sorting and unused import detection
+- **CI/CD Optimization**: Faster feedback with optimized workflow configurations
 
 ## [2.0.2] - 2025-06-11
 
