@@ -18,7 +18,7 @@ import * as Error from '@effect/platform/Error';
 import { hasProperty } from 'effect/Predicate';
 
 const TypeId: unique symbol = Symbol.for('platform-js/effect/ParseError');
-export type TypeId = typeof TypeId;
+type TypeId = typeof TypeId;
 
 /**
  * Error indicating a failure to parse some string value.

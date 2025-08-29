@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { Effect, type Layer, Data, Option, Either } from 'effect';
+import { Effect, type Layer, Option, Either } from 'effect';
 import { dual, identity } from 'effect/Function';
 import { type Pipeable, pipeArguments } from 'effect/Pipeable';
 import {
@@ -32,31 +32,54 @@ import {
   signatureVerifyingKey,
   CompactError,
   QueryContext,
+  StateValue,
   emptyZswapLocalState,
-  type StateValue,
   type Op,
   type AlignedValue,
   type ZswapLocalState,
   decodeZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
 import type * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
+import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
+import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey';
+import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
 import { type CompiledContract } from './CompiledContract.js';
 import * as Contract from './Contract.js';
-import { ZKConfiguration, type ZKConfigurationReadError } from './ZKConfiguration.js';
-import { KeyConfiguration } from './KeyConfiguration.js';
-import * as CoinPublicKey from './CoinPublicKey.js';
+import { ZKConfiguration } from './ZKConfiguration.js';
+import { type ZKConfigurationReadError } from './ZKConfigurationReadError.js';
+import * as ContractRuntimeError from './ContractRuntimeError.js';
+import * as ContractConfigurationError from './ContractConfigurationError.js';
 import * as CompactContextInternal from './internal/compactContext.js';
-import * as SigningKey from './SigningKey.js';
 
+/**
+ * An executable form of a Compact compiled contract.
+ */
 export interface ContractExecutable<in out C extends Contract.Contract<PS>, PS, out E = never, out R = never>
   extends Pipeable {
   readonly compiledContract: CompiledContract<C, PS>;
 
+  /**
+   * Creates and initializes a new instance of the contract.
+   *
+   * @param initialPrivateState The initial private state to apply when initializing the new contract instance.
+   * @param args The arguments to supply the contract constructor.
+   * @returns A {@link ContractExecutable.DeployResult} describing the result of initializing a new contract
+   * instance.
+   */
   initialize(
     initialPrivateState: PS,
     ...args: Contract.Contract.InitializeParameters<C>
   ): Effect.Effect<ContractExecutable.DeployResult<PS>, E, R>;
 
+  /**
+   * Invokes a circuit on deployed instance of the contract.
+   * 
+   * @param impureCircuitId The circuit to be invoked.
+   * @param circuitContext Execution context for `impureCircuitId` including its current onchain and private
+   * states.
+   * @param args The arguments to supply the circuit.
+   * @returns A {@link ContractExecutable.CallResult} describing the result of invoking `impureCircuitId`.
+   */
   circuit<K extends Contract.ImpureCircuitId<C> = Contract.ImpureCircuitId<C>>(
     impureCircuitId: K,
     circuitContext: ContractExecutable.CircuitContext<PS>,
@@ -68,7 +91,7 @@ export declare namespace ContractExecutable {
   /**
    * The services required as context for executing contracts.
    */
-  export type Context = ZKConfiguration | KeyConfiguration;
+  export type Context = ZKConfiguration | Configuration.Keys | Configuration.Network;
 
   export type CircuitContext<PS> = {
     readonly address: ContractAddress.ContractAddress;
@@ -112,50 +135,14 @@ export declare namespace ContractExecutable {
 }
 
 /**
- * A runtime error occurred while executing a constructor, or a circuit, of an executable contract.
- *
- * @category errors
- */
-export class ContractRuntimeError extends Data.TaggedError('ContractRuntimeError')<{
-  /** A human-readable description of the error. */
-  readonly message: string;
-  /** Indicates a more specific original cause of the error. */
-  readonly cause?: unknown;
-}> {
-  /**
-   * @param message A human-readable description of the runtime error.
-   * @param cause The optional cause of the runtime error.
-   * @returns A {@link ContractRuntimeError}.
-   */
-  static make: (message: string, cause?: unknown) => ContractRuntimeError = (message, cause) =>
-    new ContractRuntimeError({ message, cause });
-}
-
-/**
- * An error occurred while executing a constructor, or a circuit, of an executable contract with regards to
- * its configuration.
- *
- * @category errors
- */
-export class ContractConfigurationError extends Data.TaggedError('ContractConfigurationError')<{
-  readonly message: string;
-  readonly contractState?: ContractState | undefined;
-  readonly cause?: unknown;
-}> {
-  static make: {
-    (message: string): ContractConfigurationError;
-    (message: string, contractState: ContractState | undefined): ContractConfigurationError;
-    (message: string, contractState: ContractState | undefined, cause: unknown): ContractConfigurationError;
-  } = (message: string, contractState?: ContractState, cause?: unknown) =>
-    new ContractConfigurationError({ message, contractState, cause });
-}
-
-/**
  * An error occurred while executing a constructor, or a circuit, of an executable contract.
  *`
  * @category errors
  */
-export type ContractExecutionError = ContractRuntimeError | ContractConfigurationError | ZKConfigurationReadError;
+export type ContractExecutionError =
+  | ContractRuntimeError.ContractRuntimeError
+  | ContractConfigurationError.ContractConfigurationError
+  | ZKConfigurationReadError;
 
 // A function that receives an `Effect`, and captures it within another `Effect` that is bound to some
 // specified error and context type.
@@ -209,7 +196,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
       zkConfigReader: ZKConfiguration.pipe(
         Effect.andThen((zkConfig) => zkConfig.createReader<C, PS>(this.compiledContract))
       ),
-      keyConfig: KeyConfiguration,
+      keyConfig: Configuration.Keys,
       contract: this.createContract()
     }).pipe(
       Effect.flatMap(({ zkConfigReader, keyConfig, contract }) =>
@@ -300,7 +287,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
     ...args: Contract.Contract.CircuitParameters<C, K>
   ): Effect.Effect<ContractExecutable.CallResult<C, PS, K>, E, R> {
     return Effect.all({
-      keyConfig: KeyConfiguration,
+      keyConfig: Configuration.Keys,
       contract: this.createContract()
     }).pipe(
       Effect.flatMap(({ keyConfig, contract }) =>
@@ -313,7 +300,10 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
             if (!circuit) {
               throw new Error(`Circuit ${this.compiledContract.tag}#${impureCircuitId} could not be found.`);
             }
-            const initialTxContext = new QueryContext(circuitContext.contractState.data, circuitContext.address);
+            const initialTxContext = new QueryContext(
+              StateValue.decode(circuitContext.contractState.data.encode()),
+              circuitContext.address
+            );
             return {
               ...circuit(
                 {
@@ -359,16 +349,24 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
     );
   }
 
-  protected createContract(): Effect.Effect<C, ContractRuntimeError> {
+  protected createContract(): Effect.Effect<C, ContractRuntimeError.ContractRuntimeError> {
     return (this.contract ??= CompactContextInternal.createContract(this.compiledContract).pipe(
       Effect.mapError((err: unknown) => ContractRuntimeError.make(String(err), err)),
       Effect.cached,
       Effect.runSync
     ));
   }
-  private contract?: Effect.Effect<C, ContractRuntimeError>; // Backing property for `createContract`.
+  private contract?: Effect.Effect<C, ContractRuntimeError.ContractRuntimeError>; // Backing property for `createContract`.
 }
 
+/**
+ * Takes a Compact compiled contract, and makes it executable.
+ *
+ * @param compiledContract A {@link CompiledContract}
+ * @returns A {@link ContractExecutable} for `compiledContract`.
+ * 
+ * @category constructors
+ */
 export const make: <C extends Contract.Contract<PS>, PS>(
   compiledContract: CompiledContract<C, PS, never>
 ) => ContractExecutable<C, PS, ContractExecutionError, ContractExecutable.Context> = <
@@ -379,14 +377,24 @@ export const make: <C extends Contract.Contract<PS>, PS>(
 ) => new ContractExecutableImpl<C, PS, ContractExecutionError, ContractExecutable.Context>(compiledContract);
 
 /**
+ * Provides a layer to the executable contract.
+ *
  * @category combinators
  */
 export const provide: {
+  /**
+   * @param layer The layer to provide.
+   * @returns A function that receives the {@link ContractExecutable} that `layer` should be provided to.
+   */
   <LA, LE, LR>(
     layer: Layer.Layer<LA, LE, LR>
   ): <C extends Contract.Contract<PS>, PS, E, R>(
     self: ContractExecutable<C, PS, E, R>
   ) => ContractExecutable<C, PS, E | LE, LR | Exclude<R, LA>>;
+  /**
+   * @param self The {@link ContractExecutable} that `layer` should be provided with.
+   * @param layer The layer to provide.
+   */
   <C extends Contract.Contract<PS>, PS, E, R, LA, LE, LR>(
     self: ContractExecutable<C, PS, E, R>,
     layer: Layer.Layer<LA, LE, LR>

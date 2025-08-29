@@ -15,7 +15,7 @@
 
 import { Effect, Layer } from 'effect';
 import { Path, FileSystem } from '@effect/platform';
-import { CompiledContract, Contract, ZKConfiguration } from '@midnight-ntwrk/compact-js/effect';
+import { CompiledContract, Contract, ZKConfiguration, ZKConfigurationReadError } from '@midnight-ntwrk/compact-js/effect';
 
 const KEYS_FOLDER = 'keys';
 const VERIFIER_EXT = '.verifier';
@@ -43,7 +43,7 @@ const makeFileSystemReader =
           return Contract.VerifierKey(data);
         }).pipe(
           Effect.mapError((err: unknown) =>
-            ZKConfiguration.ZKConfigurationReadError.make(compiledContract.tag, impureCircuitId, 'verifier-key', err)
+            ZKConfigurationReadError.make(compiledContract.tag, impureCircuitId, 'verifier-key', err)
           )
         );
 

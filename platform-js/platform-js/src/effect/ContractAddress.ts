@@ -21,6 +21,8 @@ import * as Hex from './Hex.js';
  * 
  * @remarks
  * The optional first byte represents a hex-encoded network identifier.
+ * 
+ * @category models
  */
 export type ContractAddress = Brand.Branded<string, 'ContractAddress'>;
 export const ContractAddress = Brand.all(

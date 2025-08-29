@@ -19,10 +19,11 @@ import { NodeContext } from '@effect/platform-node';
 import {
   CompiledContract,
   ContractExecutable,
-  Contract,
-  KeyConfiguration
+  Contract
 } from '@midnight-ntwrk/compact-js/effect';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
+import * as ContractConfigurationError from '@midnight-ntwrk/compact-js/effect/ContractConfigurationError';
+import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import { ContractState, sampleSigningKey, NetworkId as RuntimeNetworkId } from '@midnight-ntwrk/compact-runtime';
 import {
   ContractState as LedgerContractState,
@@ -46,7 +47,7 @@ const asContractState = (contractState: LedgerContractState): ContractState =>
   ContractState.deserialize(contractState.serialize(LedgerNetworkId.Undeployed), RuntimeNetworkId.Undeployed);
 
 const testLayer = (configMap: Map<string, string>) =>
-  Layer.mergeAll(ZKFileConfiguration.layer(COUNTER_ASSETS_PATH), KeyConfiguration.layer).pipe(
+  Layer.mergeAll(ZKFileConfiguration.layer(COUNTER_ASSETS_PATH), Configuration.layer).pipe(
     Layer.provideMerge(NodeContext.layer),
     Layer.provide(
       Layer.setConfigProvider(ConfigProvider.fromMap(configMap, { pathDelim: '_' }).pipe(ConfigProvider.constantCase))
@@ -104,8 +105,7 @@ describe('ContractExecutable', () => {
         );
         const error = yield* contract.initialize({ count: 0 }).pipe(Effect.flip);
 
-        expect(error).toBeInstanceOf(ContractExecutable.ContractConfigurationError);
-        expect((error as ContractExecutable.ContractConfigurationError).cause).toBeInstanceOf(Error);
+        expect(error).toBeInstanceOf(ContractConfigurationError.ContractConfigurationError);
       })
     );
   });

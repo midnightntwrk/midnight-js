@@ -18,6 +18,9 @@
 import * as fc from 'effect/FastCheck';
 import * as IntegerRange from '@midnight-ntwrk/platform-js/effect/IntegerRange';
 
+export const makeNetworkIdArbitrary: () => fc.Arbitrary<string> =
+  () => fc.stringMatching(/^(dev|test)-[0-9a-fA-F]{4,8}-0[1-9]$/);
+
 export const makePlainHexArbitrary: (inputOrRange: IntegerRange.IntegerRangeInput | IntegerRange.IntegerRange) => fc.Arbitrary<string> =
   (inputOrRange) => fc.stringMatching(hexRegExp(inputOrRange));
 
