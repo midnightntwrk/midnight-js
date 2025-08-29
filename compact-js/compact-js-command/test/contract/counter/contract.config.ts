@@ -1,16 +1,20 @@
 import { CompiledContract, ContractExecutable, type Contract } from '@midnight-ntwrk/compact-js/effect';
 import { Contract as C_ } from '../../../../compact-js/test/contract/managed/counter/contract/index.cjs';
 
-type PrivateState = undefined;
+type PrivateState = {
+  count: number;
+};
 
 type CounterContract = C_<PrivateState>;
 const CounterContract = C_;
 
 const witnesses: Contract.Contract.Witnesses<CounterContract> = {
-  private_increment: ({ privateState }) => [privateState, []]
+  private_increment: ({ privateState }) => [{ count: privateState.count + 1 }, []]
 }
 
-const createInitialPrivateState: () => PrivateState = () => undefined;
+const createInitialPrivateState: () => PrivateState = () => ({
+  count: 0
+});
 
 export default {
   contractExecutable: CompiledContract.make<CounterContract>('CounterContract', CounterContract).pipe(

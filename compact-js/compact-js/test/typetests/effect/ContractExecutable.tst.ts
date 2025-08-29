@@ -22,6 +22,7 @@ import {
   ZKConfiguration
 } from '@midnight-ntwrk/compact-js/effect';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
+import * as NetworkId from '@midnight-ntwrk/platform-js/effect/NetworkId';
 import { Contract as Contract_ } from '../../contract/managed/counter/contract/index.cjs';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -59,6 +60,10 @@ describe('ContractExecutable', () => {
         Layer.effect(
           Configuration.Keys,
           Effect.sync(() => ({})) as Effect.Effect<Configuration.Configuration.Keys>
+        ),
+        Layer.effect(
+          Configuration.Network,
+          Effect.sync(() => NetworkId.make('hosky-devnet'))
         )
       );
       const executable = contractExecutable.pipe(ContractExecutable.provide(layer));
@@ -84,6 +89,10 @@ describe('ContractExecutable', () => {
         Layer.effect(
           Configuration.Keys,
           Effect.sync(() => ({})) as Effect.Effect<Configuration.Configuration.Keys>
+        ),
+        Layer.effect(
+          Configuration.Network,
+          Effect.sync(() => NetworkId.make('hosky-devnet'))
         )
       );
       const executable = contractExecutable.pipe(ContractExecutable.provide(layer));
