@@ -62,11 +62,11 @@ export const parseHex: (source: string) => Either.Either<Hex.ParsedHexString, Pa
   };
 
 type HexConstraints = Hex.HexConstraints & {
-  readonly allowPrefix? : boolean;
+  readonly requirePrefix? : boolean;
 }
 
 const defaultHexConstructionConstraints: HexConstraints = {
-  allowPrefix: true
+  requirePrefix: false
 };
 
 /** @internal */
@@ -78,7 +78,10 @@ export const make: <T extends Brand.Branded<string, any>>(constraints?: HexConst
       (source: string) => Either.match(parseHex(source), {
         onLeft: (error) => Option.some(Brand.error(error.message, error.meta)),
         onRight: (parsedHex) => {
-          if (parsedHex.hasPrefix && !mergedOptions.allowPrefix) {
+          if (mergedOptions.requirePrefix && !parsedHex.hasPrefix) {
+            return Option.some(Brand.error(`Source string '${source}' requires a '0x' prefix`));
+          }
+          if (!mergedOptions.requirePrefix && parsedHex.hasPrefix) {
             return Option.some(Brand.error(`Source string '${source}' has a '0x' prefix but prefixes are not allowed`));
           }
           if (mergedOptions.byteLength) {

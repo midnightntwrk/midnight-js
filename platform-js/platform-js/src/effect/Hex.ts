@@ -25,25 +25,25 @@ import type * as ParseError from './ParseError.js';
  * 
  * @remarks
  * `Hex` is a 'branded' string type defining a sequence of hexadecimal characters, and represented either as a
- * {@link Hex.PrefixableHex | PrefixableHex} or {@link Hex.PlainHex | PlainHex} instance.
+ * {@link Hex.PrefixedHex | PrefixedHex} or {@link Hex.PlainHex | PlainHex} instance.
  * 
  * It is possible to create custom `Hex` constructors that represent hex-encoded strings with specific constraints
- * (such as byte lengths), by invoking {@link ConstrainedPrefixableHex} or
+ * (such as byte lengths), by invoking {@link ConstrainedPrefixedHex} or
  * {@link ConstrainedPlainHex} with options described by {@link HexConstraints}.
  * 
- * @see {@link ConstrainedPrefixableHex}
+ * @see {@link ConstrainedPrefixedHex}
  * @see {@link ConstrainedPlainHex}
  * @category models
  */
-export type Hex = Hex.PlainHex | Hex.PrefixableHex;
+export type Hex = Hex.PlainHex | Hex.PrefixedHex;
 
 export declare namespace Hex {
   /**
-   * A hex-encoded string, of some arbitrary byte length, that may or may not have a `'0x'` prefix.
+   * A hex-encoded string, of some arbitrary byte length, that has a `'0x'` prefix.
    * 
    * @category models
    */
-  export type PrefixableHex = Brand.Branded<string, 'PrefixableHex'>;
+  export type PrefixedHex = Brand.Branded<string, 'PrefixedHex'>;
 
   /**
    * A plain hex-encoded string, of some arbitrary byte length.
@@ -54,24 +54,24 @@ export declare namespace Hex {
 }
 
 /**
- * Creates a hex-encoded string, of some arbitrary byte length, that may or may not have a `'0x'` prefix.
+ * Creates a hex-encoded string, of some arbitrary byte length, that has a `'0x'` prefix.
  * 
  * @category constructors
  */
-export const PrefixableHex: Brand.Brand.Constructor<Hex.PrefixableHex> =
-  internal.make<Hex.PrefixableHex>({ allowPrefix: true });
+export const PrefixedHex: Brand.Brand.Constructor<Hex.PrefixedHex> =
+  internal.make<Hex.PrefixedHex>({ requirePrefix: true });
 
 /**
- * Creates a hex-encoded string, from some given constraints, that may or may not have a `'0x'` prefix.
+ * Creates a hex-encoded string, from some given constraints, that has a `'0x'` prefix.
  *
  * @param constraints The {@link HexConstraints} to apply when parsing a received hex-encoded string.
- * @returns A function that creates a {@link Hex.PrefixableHex | PrefixableHex} instance from a received string
+ * @returns A function that creates a {@link Hex.PrefixedHex | PrefixedHex} instance from a received string
  * ensuring that it meets `constraints`.
  * 
  * @category constructors
  */
-export const ConstrainedPrefixableHex: (constraints: HexConstraints) => Brand.Brand.Constructor<Hex.PrefixableHex> =
-  (constraints) => internal.make<Hex.PrefixableHex>({ allowPrefix: true, ...constraints });
+export const ConstrainedPrefixedHex: (constraints: HexConstraints) => Brand.Brand.Constructor<Hex.PrefixedHex> =
+  (constraints) => internal.make<Hex.PrefixedHex>({ requirePrefix: true, ...constraints });
 
 /**
  * Creates a plain hex-encoded string, of some arbitrary byte length.
@@ -79,7 +79,7 @@ export const ConstrainedPrefixableHex: (constraints: HexConstraints) => Brand.Br
  * @category constructors
  */
 export const PlainHex: Brand.Brand.Constructor<Hex.PlainHex> =
-  internal.make<Hex.PlainHex>({ allowPrefix: false });
+  internal.make<Hex.PlainHex>({ requirePrefix: false });
 
 /**
  * Creates a plain hex-encoded string, from some given constraints.
@@ -91,7 +91,7 @@ export const PlainHex: Brand.Brand.Constructor<Hex.PlainHex> =
  * @category constructors
  */
 export const ConstrainedPlainHex: (constraints: HexConstraints) => Brand.Brand.Constructor<Hex.PlainHex> =
-  (constraints) => internal.make<Hex.PlainHex>({ allowPrefix: false, ...constraints });
+  (constraints) => internal.make<Hex.PlainHex>({ requirePrefix: false, ...constraints });
   
 /**
  * Describes constraints for creating {@link Hex} constructors that parse hex-encoded strings.

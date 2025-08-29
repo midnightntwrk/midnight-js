@@ -63,17 +63,16 @@ describe('Hex', () => {
     ));
   });
 
-  describe('PrefixableHex', () => {
+  describe('PrefixedHex', () => {
     it('should parse prefixed hex-encodings', () => fc.assert(
       fc.property(Arbitrary.makePrefixedHexArbitrary('2..=10'), (hex) => {
-        expect(() => Hex.PrefixableHex(hex)).not.toThrowError();
+        expect(() => Hex.PrefixedHex(hex)).not.toThrowError();
       })
     ));
 
-    // A `PrefixableHex` does not demand a prefix, so `PrefixableHex` should also parse plain hex-strings.
-    it('should parse plain hex-encodings', () => fc.assert(
+    it('should throw with plain hex-encodings', () => fc.assert(
       fc.property(Arbitrary.makePlainHexArbitrary('2..=10'), (hex) => {
-        expect(() => Hex.PrefixableHex(hex)).not.toThrowError();
+        expect(() => Hex.PrefixedHex(hex)).toThrowError();
       })
     ));
   });
