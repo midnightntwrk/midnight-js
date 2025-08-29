@@ -2,6 +2,12 @@ name: CI
 env:
   MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
+permissions:
+  contents: read
+  issues: read
+  checks: write
+  pull-requests: write
+  
 on:
   push:
     branches:
@@ -24,31 +30,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-
   ci:
-    uses: ./.github/workflows/ci_base.yml
-    with:
-      network: undeployed
-      allure_upload: true
-      allure_project_id: midnight-js-main
-    secrets: inherit
-
-  cd-prerelease:
     runs-on: ubuntu-latest
-    needs: ci
-    if: ${{ github.event_name != 'schedule' && github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch' }}
+    outputs:
+      build_mn_js: ${{ steps.build-targets.outputs.build_mn_js }}
+      build_c_js: ${{ steps.build-targets.outputs.build_c_js }}
+      build_p_js: ${{ steps.build-targets.outputs.build_p_js }}
     steps:
 
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # ratchet:actions/checkout@v5
         with:
           fetch-depth: 0
-
-      - name: Load environment variables
-        run: |
-          export $(grep -v '^#' .github/env/global.env | xargs)
-          for var in $(cut -d= -f1 .github/env/global.env); do
-            echo "$var=${!var}" >> $GITHUB_ENV
-          done
 
       - name: Set up Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # ratchet:actions/setup-node@v4
@@ -57,43 +49,68 @@ jobs:
           registry-url: https://npm.pkg.github.com/
           scope: '@midnight-ntwrk'
           node-version-file: '.nvmrc'
-          cache: 'yarn'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
-      - name: Configure yarn
-        run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-
-      - name: Cache Turbo and Yarn dependencies
-        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
-        with:
-          path: |
-            **/node_modules
-            ~/.yarn
-            .turbo
-          key: turbo-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
-          restore-keys: |
-            turbo-${{ runner.os }}-
-
-      - name: Install dependencies
+      - name: Determine Build Targets
+        id: build-targets
         run: |
-          yarn install --immutable
+          build_mn_js=$(yarn workspaces list --since --json | jq -s '([.[] | select(.location != ".") | .location | split("/")[0]] | unique) | index("packages") != null')
+          build_c_js=$(yarn workspaces list --since --json | jq -s '([.[] | select(.location != ".") | .location | split("/")[0]] | unique) | index("compact-js") != null')
+          build_p_js=$(yarn workspaces list --since --json | jq -s '([.[] | select(.location != ".") | .location | split("/")[0]] | unique) | index("platform-js") != null')
+          do_publish=$([[ $(git log -1 --no-merges --pretty=%B) =~ .*'\[do_publish\]'.* ]] && echo 'true' || echo 'false')
+          
+          echo "build_mn_js=${build_mn_js}" >> "$GITHUB_OUTPUT"
+          echo "build_c_js=${build_c_js}" >> "$GITHUB_OUTPUT"
+          echo "build_p_js=${build_p_js}" >> "$GITHUB_OUTPUT"
+          echo "do_publish=${do_publish}" >> "$GITHUB_OUTPUT"
 
-      - name: Temp bump prerelease
-        run: yarn version prerelease
+          echo "### Build Target Summary" >> $GITHUB_STEP_SUMMARY
+          echo "The following table summarizes which targets have changes detected in them and that will be included in the build." >> $GITHUB_STEP_SUMMARY
+          echo "| Target      | Changed        |" >> $GITHUB_STEP_SUMMARY
+          echo "| ----------- | -------------- |" >> $GITHUB_STEP_SUMMARY
+          echo "| Platform.js | ${build_p_js}  |" >> $GITHUB_STEP_SUMMARY
+          echo "| Midnight.js | ${build_mn_js} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Compact.js  | ${build_c_js}  |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          [[ '$do_publish' = 'true' ]] && echo "Pre-release packages will be published." >> $GITHUB_STEP_SUMMARY || echo "Pre-release packages will not be published." >> $GITHUB_STEP_SUMMARY
 
-      - name: Set short git commit SHA
-        id: vars
-        run: |
-          calculatedSha=$(git rev-parse --short ${{ github.sha }})
-          currentVersion=$(jq -r .version package.json)
-          targetVersion="$currentVersion-pre.$calculatedSha"
-          echo "target_version=$targetVersion" >> $GITHUB_OUTPUT
+  ci-mnjs:
+    needs: ci
+    name: Build Midnight.js
+    uses: ./.github/workflows/ci_mn_js.yml
+    with:
+      should_run: 'false'
+      # should_run: ${{ needs.ci.outputs.build_mn_js }}
+      should_prerelease: ${{ 
+          (github.event_name != 'schedule' &&
+          (github.ref_name == 'main' || needs.ci.outputs.do_publish == 'true' || github.event_name == 'workflow_dispatch'))
+            && 'true' || 'false'
+        }}
+    secrets: inherit
 
-      - name: Bump versions
-        run: yarn workspaces foreach --all version ${{ steps.vars.outputs.target_version }}
+  ci-cjs:
+    needs: ci
+    name: Build Compact.js
+    with:
+      should_run: ${{ needs.ci.outputs.build_c_js }}
+      should_prerelease: ${{ 
+          (github.event_name != 'schedule' &&
+          (github.ref_name == 'main' || needs.ci.outputs.do_publish == 'true' || github.event_name == 'workflow_dispatch'))
+            && 'true' || 'false'
+        }}
+    uses: ./.github/workflows/ci_c_js.yml
+    secrets: inherit
 
-      - name: Publish packages
-        run: yarn deploy --cache-dir ./turbo -- --tag ${{ steps.vars.outputs.target_version }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+  ci-pjs:
+    needs: ci
+    name: Build Platform.js
+    with:
+      should_run: ${{ needs.ci.outputs.build_p_js }}
+      should_prerelease: ${{ 
+          (github.event_name != 'schedule' &&
+          (github.ref_name == 'main' || needs.ci.outputs.do_publish == 'true' || github.event_name == 'workflow_dispatch'))
+            && 'true' || 'false'
+        }}
+    uses: ./.github/workflows/ci_p_js.yml
+    secrets: inherit
