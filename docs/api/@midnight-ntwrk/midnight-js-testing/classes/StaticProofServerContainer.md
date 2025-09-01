@@ -11,8 +11,6 @@ Used for connecting to an existing proof server instance.
 
 ## Implements
 
-## Implements
-
 - [`ProofServerContainer`](../interfaces/ProofServerContainer.md)
 
 ## Constructors

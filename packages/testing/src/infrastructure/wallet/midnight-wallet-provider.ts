@@ -40,9 +40,6 @@ import { getInitialState, waitForFunds } from './wallet-utils';
 /**
  * Provider class that implements wallet functionality for the Midnight network.
  * Handles transaction balancing, submission, and wallet state management.
- * @implements {MidnightProvider}
- * @implements {WalletProvider}
- * @implements {Resource}
  */
 export class MidnightWalletProvider implements MidnightProvider, WalletProvider, Resource {
   logger: Logger;
@@ -129,7 +126,6 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider,
    * @param {string} [seed] - Optional seed for wallet generation. If not provided, a new random wallet will be created
    * @param {string} [walletLogLevel='info'] - Optional log level for wallet operations
    * @returns {Promise<MidnightWalletProvider>} A promise that resolves to the new wallet provider
-   * @static
    */
   static async build(
     logger: Logger,
@@ -159,7 +155,6 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider,
    * @param {EnvironmentConfiguration} env - Configuration for the wallet environment
    * @param {MidnightWallet} wallet - Existing wallet instance to use
    * @returns {Promise<MidnightWalletProvider>} A promise that resolves to the new wallet provider using the existing wallet
-   * @static
    */
   static async withWallet(logger: Logger, env: EnvironmentConfiguration, wallet: MidnightWallet) {
     const initialState = await getInitialState(wallet);

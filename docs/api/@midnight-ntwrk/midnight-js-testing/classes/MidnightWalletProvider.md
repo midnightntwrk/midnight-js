@@ -11,12 +11,6 @@ Handles transaction balancing, submission, and wallet state management.
 
 ## Implements
 
-## Implements
-
-## Implements
-
-## Implements
-
 - [`MidnightProvider`](../../midnight-js-types/interfaces/MidnightProvider.md)
 - [`WalletProvider`](../../midnight-js-types/interfaces/WalletProvider.md)
 - `Resource`
@@ -205,8 +199,6 @@ Optional log level for wallet operations
 
 A promise that resolves to the new wallet provider
 
-#### Static
-
 ***
 
 ### withWallet()
@@ -240,5 +232,3 @@ Existing wallet instance to use
 `Promise`\<`MidnightWalletProvider`\>
 
 A promise that resolves to the new wallet provider using the existing wallet
-
-#### Static

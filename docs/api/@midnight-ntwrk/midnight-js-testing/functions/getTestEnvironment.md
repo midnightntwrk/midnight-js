@@ -6,7 +6,7 @@
 
 # Function: getTestEnvironment()
 
-> **getTestEnvironment**(`logger`): [`LocalTestEnvironment`](../classes/LocalTestEnvironment.md) \| [`QanetTestEnvironment`](../classes/QanetTestEnvironment.md) \| [`DevnetTestEnvironment`](../classes/DevnetTestEnvironment.md) \| [`TestnetTestEnvironment`](../classes/TestnetTestEnvironment.md) \| [`Testnet2TestEnvironment`](../classes/Testnet2TestEnvironment.md) \| [`EnvVarRemoteTestEnvironment`](../classes/EnvVarRemoteTestEnvironment.md)
+> **getTestEnvironment**(`logger`): [`DevnetTestEnvironment`](../classes/DevnetTestEnvironment.md) \| [`EnvVarRemoteTestEnvironment`](../classes/EnvVarRemoteTestEnvironment.md) \| [`LocalTestEnvironment`](../classes/LocalTestEnvironment.md) \| [`QanetTestEnvironment`](../classes/QanetTestEnvironment.md) \| [`TestnetTestEnvironment`](../classes/TestnetTestEnvironment.md) \| [`Testnet2TestEnvironment`](../classes/Testnet2TestEnvironment.md)
 
 Returns the appropriate test environment based on the MN_TEST_ENVIRONMENT variable.
 
@@ -20,6 +20,6 @@ The logger instance to be used by the test environment.
 
 ## Returns
 
-[`LocalTestEnvironment`](../classes/LocalTestEnvironment.md) \| [`QanetTestEnvironment`](../classes/QanetTestEnvironment.md) \| [`DevnetTestEnvironment`](../classes/DevnetTestEnvironment.md) \| [`TestnetTestEnvironment`](../classes/TestnetTestEnvironment.md) \| [`Testnet2TestEnvironment`](../classes/Testnet2TestEnvironment.md) \| [`EnvVarRemoteTestEnvironment`](../classes/EnvVarRemoteTestEnvironment.md)
+[`DevnetTestEnvironment`](../classes/DevnetTestEnvironment.md) \| [`EnvVarRemoteTestEnvironment`](../classes/EnvVarRemoteTestEnvironment.md) \| [`LocalTestEnvironment`](../classes/LocalTestEnvironment.md) \| [`QanetTestEnvironment`](../classes/QanetTestEnvironment.md) \| [`TestnetTestEnvironment`](../classes/TestnetTestEnvironment.md) \| [`Testnet2TestEnvironment`](../classes/Testnet2TestEnvironment.md)
 
 The selected test environment instance.

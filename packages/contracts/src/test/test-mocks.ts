@@ -68,7 +68,7 @@ export const createMockEncryptionPublicKey = (): EncPublicKey => sampleEncryptio
 export const createMockContractState = (signingKey?: SigningKey): ContractState => ({
   serialize: vi.fn().mockReturnValue(new Uint8Array(32)),
   data: StateValue.newNull(),
-   
+
   operation: vi.fn().mockImplementation((_circuitId: string) => ({
     verifierKey: new Uint8Array(32)
   })),
@@ -223,8 +223,8 @@ export const createMockUnprovenCallTxData = (overrides: Partial<UnsubmittedCallT
       nextPrivateState: { state: 'test' },
       input: {} as AlignedValue,
       output: {} as AlignedValue,
-      privateTranscriptOutputs: {} as AlignedValue[],
-      result: undefined,
+      privateTranscriptOutputs: [] as AlignedValue[],
+      result: vi.fn(),
       nextZswapLocalState: createMockZswapLocalState(),
       ...overrides.private
     }

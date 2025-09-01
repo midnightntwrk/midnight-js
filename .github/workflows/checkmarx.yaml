@@ -98,6 +98,6 @@ jobs:
       # Upload report so security issues are viewable from within the github ui
       - name: Upload SARIF file
         if: ${{ github.event.repository.private == false }}
-        uses: github/codeql-action/upload-sarif@4e20239e7b23c6078c563635c41d109adaaa1f72  # v3.29.2
+        uses: github/codeql-action/upload-sarif@5b49155c7f37b5ec074ffd26b428e6b64b1bf412  # v3.29.2
         with:
           sarif_file: cx_result.sarif

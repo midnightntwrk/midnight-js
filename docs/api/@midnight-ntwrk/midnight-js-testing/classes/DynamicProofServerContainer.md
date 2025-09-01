@@ -11,8 +11,6 @@ suite on random port.
 
 ## Implements
 
-## Implements
-
 - [`ProofServerContainer`](../interfaces/ProofServerContainer.md)
 
 ## Properties
@@ -106,5 +104,3 @@ Optional network ID for the container
 `Promise`\<`DynamicProofServerContainer`\>
 
 A promise that resolves to the new container instance
-
-#### Static
