@@ -64,6 +64,7 @@ const reportCausableError: (err: any) => Effect.Effect<void, never> =
       ) as Doc.AnsiDoc
     }
     yield* Console.log(Doc.render(errorDoc, {style: 'pretty'}));
+    process.exit(1); // Terminate with non-zero exit code on any causable error.
   });
 
 /**
