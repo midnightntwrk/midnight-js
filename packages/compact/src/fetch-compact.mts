@@ -5,58 +5,64 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as process from 'node:process';
 
+import { parseArgs, printHelp,shouldSkipDownload } from './fetch-utils.js';
+import { VersionManager } from './version-manager.js';
+
 console.log('Fetching Compactc...');
 
- 
 const [_node, _script, ...args] = process.argv;
+const options = parseArgs(args);
 
 const packageDir = path.resolve(new URL(import.meta.url).pathname, '..', '..');
-const targetFile = path.resolve(packageDir, 'compactc.zip');
-const targetCompactDir = path.resolve(packageDir, 'managed');
+const versionManager = new VersionManager(packageDir);
 
-const COMPACTC_DIR_ARG = args.find((arg) => arg.startsWith('--help'));
-if (COMPACTC_DIR_ARG) {
-  console.log('Supported flags:\n' +
-    '    --help              - this help\n' +
-    '    --force             - force download, even if directory exists\n' +
-    '    --version=<version> - specify the version to download');
+if (options.help) {
+  printHelp();
   process.exit(0);
 }
 
-const COMPACTC_FORCE_ARG = args.find((arg) => arg.startsWith('--force'));
-console.log(`Checking directory: ${targetCompactDir}`);
-if (fs.existsSync(targetCompactDir) && !COMPACTC_FORCE_ARG) {
-  console.warn('Directory exists, skipping compactc download. To force download, use --force flag.');
-  process.exit(0);
-}
-
-const COMPACTC_VERSION_ARG = args.find((arg) => arg.startsWith('--version='));
-if (COMPACTC_VERSION_ARG) {
-  console.log(`--version: ${COMPACTC_VERSION_ARG}`);
-  const version = COMPACTC_VERSION_ARG.split('=')[1];
-  if (version) {
-    process.env.COMPACTC_VERSION = version;
+if (options.listVersions) {
+  const versions = versionManager.listVersions();
+  if (versions.length === 0) {
+    console.log('No versions installed');
+  } else {
+    console.log('Installed versions:');
+    versions.forEach(version => console.log(`  ${version}`));
   }
-}
-
-const COMPACT_HOME_ENV = process.env.COMPACT_HOME;
-if (COMPACT_HOME_ENV != null) {
-  console.log(`COMPACT_HOME env variable is set, skipping fetch to use Compact from ${COMPACT_HOME_ENV}`);
   process.exit(0);
 }
 
-const compactcVersion = process.env.COMPACTC_VERSION;
+if (options.cleanup) {
+  console.log(`Cleaning up, keeping ${options.cleanup} latest versions...`);
+  versionManager.cleanupOldVersions(options.cleanup);
+  console.log('Cleanup completed');
+  process.exit(0);
+}
+
+if (shouldSkipDownload()) {
+  console.log(`COMPACT_HOME env variable is set, skipping fetch to use Compact from ${process.env.COMPACT_HOME}`);
+  process.exit(0);
+}
+
+const compactcVersion = options.version || process.env.COMPACTC_VERSION;
 if (!compactcVersion) {
-  console.error('COMPACTC_VERSION env var is missing. I don\'t know which version to download.');
+  console.error('COMPACTC_VERSION env var is missing or --version flag not provided. I don\'t know which version to download.');
   process.exit(1);
 }
 
+const targetCompactDir = versionManager.getVersionDir(compactcVersion);
+console.log(`Target directory: ${targetCompactDir}`);
+
+if (shouldSkipDownload(targetCompactDir, options.force)) {
+  console.warn(`Version ${compactcVersion} already exists. Use --force to re-download.`);
+  process.exit(0);
+}
+
+const targetFile = path.resolve(packageDir, `compactc-${compactcVersion}.zip`);
 const currentPlatform = process.platform;
 const currentCpu = process.arch;
-const currentVersion = compactcVersion!;
 
 const fetchCompact = async (): Promise<void> => {
-
   const githubToken = process.env['GITHUB_TOKEN'];
 
   if (githubToken == undefined || githubToken == '') {
@@ -64,7 +70,7 @@ const fetchCompact = async (): Promise<void> => {
   }
 
   type Release = { assets_url: string }
-  const urlString = `https://api.github.com/repos/midnight-ntwrk/artifacts/releases/tags/compactc-v${currentVersion}`;
+  const urlString = `https://api.github.com/repos/midnight-ntwrk/artifacts/releases/tags/compactc-v${compactcVersion}`;
   console.log(`Trying to fetch release from: ${urlString}`);
   const release: Release = await fetch(urlString, {
     headers: {
@@ -101,7 +107,8 @@ const fetchCompact = async (): Promise<void> => {
       throw new Error(`Unsupported platform: ${currentPlatform}`);
     }
   };
-  const assetName = `compactc_v${currentVersion}_${platformToAssetSuffix()}.zip`;
+
+  const assetName = `compactc_v${compactcVersion}_${platformToAssetSuffix()}.zip`;
   const asset = assets.find((assetLocal) => assetLocal.name === assetName);
 
   if (!asset) {
@@ -116,7 +123,7 @@ const fetchCompact = async (): Promise<void> => {
   }).then(async (response) => {
     if (response.ok) {
       console.log(`Fetching Compact archive: ${urlString}`);
-      console.log(`Compact version: ${currentVersion}`);
+      console.log(`Compact version: ${compactcVersion}`);
       return response.arrayBuffer();
     } else {
       console.error('Error: could not fetch asset: ', response.statusText, response.status);
@@ -129,18 +136,20 @@ const fetchCompact = async (): Promise<void> => {
   console.log(`Compact archive fetched and saved to ${targetFile}`);
 
   fs.rmSync(targetCompactDir, { force: true, recursive: true });
+  fs.mkdirSync(targetCompactDir, { recursive: true });
+
   childProcess.execSync(`unzip ${targetFile} -d ${targetCompactDir}`);
   childProcess.execSync(`chmod -R +w ${targetCompactDir}`);
   console.log(`Compact extracted to ${targetCompactDir}`);
 
   fs.rmSync(targetFile);
   console.log('Compact archive removed');
-  console.log('Compactc ready');
+  console.log(`Compactc v${compactcVersion} ready`);
 };
 
 const fetchDockerImage = () => {
   console.log('Fetching Compact docker image...');
-  const dockerImage = `ghcr.io/midnight-ntwrk/compactc:v${currentVersion}`;
+  const dockerImage = `ghcr.io/midnight-ntwrk/compactc:v${compactcVersion}`;
   const child = childProcess.exec(`docker pull ${dockerImage}`);
   child.on('exit', (code, signal) => {
     console.log(`Child process exited with code ${code}`);
@@ -171,6 +180,8 @@ const checkOs = (): string => {
   }
   return compactOS;
 };
+
+versionManager.ensureManagedDirExists();
 
 if (checkOs() === 'docker') {
   fetchDockerImage();
