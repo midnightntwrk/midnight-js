@@ -36,6 +36,7 @@ jobs:
       build_mn_js: ${{ steps.build-targets.outputs.build_mn_js }}
       build_c_js: ${{ steps.build-targets.outputs.build_c_js }}
       build_p_js: ${{ steps.build-targets.outputs.build_p_js }}
+      do_publish: ${{ steps.build-targets.outputs.do_publish }}
     steps:
 
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # ratchet:actions/checkout@v5
@@ -80,8 +81,7 @@ jobs:
     name: Build Midnight.js
     uses: ./.github/workflows/ci_mn_js.yml
     with:
-      should_run: 'false'
-      # should_run: ${{ needs.ci.outputs.build_mn_js }}
+      should_run: ${{ needs.ci.outputs.build_mn_js }}
       should_prerelease: ${{ 
           (github.event_name != 'schedule' &&
           (github.ref_name == 'main' || needs.ci.outputs.do_publish == 'true' || github.event_name == 'workflow_dispatch'))
