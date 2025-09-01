@@ -1,11 +1,11 @@
 {
   "v_info": {
-    "version": "0.0.0",
+    "version": "1.0.0",
     "preRelease": "-pre",
     "tag": "pre",
     "releaseBranches": [
       "main",
-      "release/.*"
+      "release/cjs/.*"
     ]
   }
 }
