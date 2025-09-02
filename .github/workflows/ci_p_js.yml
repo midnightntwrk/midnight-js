@@ -5,6 +5,8 @@ env:
 permissions:
   contents: read
   issues: read
+  id-token: write
+  packages: write
   checks: write
   pull-requests: write
   
@@ -44,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # ratchet:actions/checkout@v4
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # ratchet:actions/checkout@v5
 
       - name: Load environment variables
         run: |
@@ -58,14 +60,14 @@ jobs:
           done
 
       - name: Log in to GitHub Container registry
-        uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # ratchet:docker/login-action@v3
+        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # ratchet:docker/login-action@v3
         with:
           registry: 'https://ghcr.io'
           username: ${{ github.actor }}
           password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # ratchet:actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # ratchet:actions/setup-node@v4
         with:
           always-auth: true
           registry-url: https://npm.pkg.github.com/
@@ -79,7 +81,7 @@ jobs:
         run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Cache Turbo and Yarn dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
         with:
           path: |
             **/node_modules
@@ -125,7 +127,7 @@ jobs:
           path: coverage-p-js.zip
 
       - name: Publish Test Coverage
-        uses: MishaKav/jest-coverage-comment@d74238813c33e6ea20530ff91b5ea37953d11c91 # ratchet:MishaKav/jest-coverage-comment@v1
+        uses: MishaKav/jest-coverage-comment@aa3935cf9ee61efc40d9e47dcc8a523a49a70b96 # ratchet:MishaKav/jest-coverage-comment@v1
         with:
           hide-comment: false
           multiple-files: |
@@ -136,7 +138,7 @@ jobs:
     needs: ci
     if: inputs.should_prerelease == 'true'
     steps:
-      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # ratchet:actions/checkout@v3
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # ratchet:actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -152,7 +154,7 @@ jobs:
           done
 
       - name: Set up Node.js
-        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # ratchet:actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # ratchet:actions/setup-node@v4
         with:
           always-auth: true
           registry-url: https://npm.pkg.github.com/
@@ -167,7 +169,7 @@ jobs:
           yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Cache Turbo and Yarn dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
         with:
           path: |
             **/node_modules
