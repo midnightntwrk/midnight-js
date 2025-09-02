@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
-import { describe, it, expect } from '@effect/vitest';
+import { describe, expect,it } from '@effect/vitest';
 import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
 import * as fc from 'effect/FastCheck';
+
 import * as Arbitrary from './Arbitrary.js';
 
 describe('ContractAddress', () => {

@@ -16,6 +16,7 @@
 import type * as Brand from 'effect/Brand';
 import type * as Either from 'effect/Either';
 import { type Inspectable } from 'effect/Inspectable';
+
 import type * as IntegerRange from './IntegerRange.js';
 import * as internal from './internal/hex.js';
 import type * as ParseError from './ParseError.js';

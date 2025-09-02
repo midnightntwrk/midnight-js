@@ -13,15 +13,15 @@
  * limitations under the License.
  */
 
+import * as runtime from '@midnight-ntwrk/compact-runtime';
+import * as ledger from '@midnight-ntwrk/ledger';
 import * as Equal from 'effect/Equal';
-import { hasProperty } from 'effect/Predicate';
-import { NodeInspectSymbol, type Inspectable } from 'effect/Inspectable';
 import * as equivalence from 'effect/Equivalence';
 import { dual } from 'effect/Function';
 import * as HashMap from 'effect/HashMap';
+import { type Inspectable,NodeInspectSymbol } from 'effect/Inspectable';
 import * as Option from 'effect/Option';
-import * as ledger from '@midnight-ntwrk/ledger';
-import * as runtime from '@midnight-ntwrk/compact-runtime';
+import { hasProperty } from 'effect/Predicate';
 
 const MAINNET_MONIKER = 'main';
 

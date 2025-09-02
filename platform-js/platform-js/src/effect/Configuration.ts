@@ -13,18 +13,19 @@
  * limitations under the License.
  */
 
-import * as Effect from 'effect/Effect';
-import * as Option from 'effect/Option';
-import * as Context from 'effect/Context';
+import { identity } from 'effect';
 import * as Config from 'effect/Config';
-import * as Schema from 'effect/Schema';
-import * as Layer from 'effect/Layer';
+import { type ConfigError } from 'effect/ConfigError';
 import * as ConfigProvider from 'effect/ConfigProvider';
-import * as SigningKey from './SigningKey.js';
+import * as Context from 'effect/Context';
+import * as Effect from 'effect/Effect';
+import * as Layer from 'effect/Layer';
+import * as Option from 'effect/Option';
+import * as Schema from 'effect/Schema';
+
 import * as CoinPublicKey from './CoinPublicKey.js';
 import * as NetworkId from './NetworkId.js';
-import { type ConfigError } from 'effect/ConfigError';
-import { identity } from 'effect';
+import * as SigningKey from './SigningKey.js';
 
 /**
  * Provides accessors for retrieving configured keys.

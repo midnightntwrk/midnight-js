@@ -15,6 +15,7 @@
 
 import { Brand } from 'effect';
 import * as Either from 'effect/Either';
+
 import * as Hex_ from './Hex.js';
 
 /**

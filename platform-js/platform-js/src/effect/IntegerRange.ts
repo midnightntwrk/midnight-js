@@ -16,12 +16,12 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
 
 import * as Equal from 'effect/Equal';
-import * as Hash from 'effect/Hash';
 import * as equivalence from 'effect/Equivalence';
 import { dual } from 'effect/Function';
-import { pipeArguments, type Pipeable } from 'effect/Pipeable';
+import * as Hash from 'effect/Hash';
+import { type Inspectable,NodeInspectSymbol } from 'effect/Inspectable';
+import { type Pipeable,pipeArguments } from 'effect/Pipeable';
 import { hasProperty, isNumber, isString } from 'effect/Predicate';
-import { NodeInspectSymbol, type Inspectable } from 'effect/Inspectable';
 
 const TypeId: unique symbol = Symbol.for('platform-js/effect/IntegerRange');
 export type TypeId = typeof TypeId;

@@ -14,12 +14,13 @@
  */
 
 import * as Brand from 'effect/Brand';
-import * as Option from 'effect/Option'
 import * as Either from 'effect/Either';
 import { NodeInspectSymbol } from 'effect/Inspectable';
+import * as Option from 'effect/Option'
+
 import type * as Hex from '../Hex.js';
-import * as ParseError from '../ParseError.js';
 import * as IntegerRange from '../IntegerRange.js';
+import * as ParseError from '../ParseError.js';
 
 const HEX_STRING_REGEXP = /^(?<prefix>(0x)?)(?<byteChars>([0-9A-Fa-f]{2})*)(?<incompleteChars>.*)$/;
 

@@ -14,6 +14,7 @@
  */
 
 import { Brand } from 'effect';
+
 import * as Hex from './Hex.js';
 
 /**

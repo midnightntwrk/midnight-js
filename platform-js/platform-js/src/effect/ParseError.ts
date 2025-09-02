@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { type Inspectable } from 'effect/Inspectable';
 import * as Error from '@effect/platform/Error';
+import { type Inspectable } from 'effect/Inspectable';
 import { hasProperty } from 'effect/Predicate';
 
 const TypeId: unique symbol = Symbol.for('platform-js/effect/ParseError');

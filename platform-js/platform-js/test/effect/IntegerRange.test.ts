@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { describe, it, expect } from '@effect/vitest';
+import { describe, expect,it } from '@effect/vitest';
 import * as IntegerRange from '@midnight-ntwrk/platform-js/effect/IntegerRange';
 
 describe('IntegerRange', () => {
