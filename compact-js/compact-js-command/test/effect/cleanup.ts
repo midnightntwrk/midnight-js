@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { Effect } from 'effect';
 import { FileSystem } from '@effect/platform';
+import { Effect } from 'effect';
 
 /**
  * Force remove a file or directory.

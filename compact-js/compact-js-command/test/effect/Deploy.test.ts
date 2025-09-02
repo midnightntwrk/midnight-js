@@ -13,13 +13,15 @@
  * limitations under the License.
  */
 
-import { describe, it } from '@effect/vitest';
-import { Effect, Layer, Console } from 'effect';
-import { NodeContext } from '@effect/platform-node';
+import { resolve } from 'node:path';
+
 import { Command } from '@effect/cli';
+import { NodeContext } from '@effect/platform-node';
+import { describe, it } from '@effect/vitest';
 import { deployCommand } from '@midnight-ntwrk/compact-js-command/effect';
 import { ConfigCompiler } from '@midnight-ntwrk/compact-js-command/effect';
-import { resolve } from 'node:path';
+import { Console,Effect, Layer } from 'effect';
+
 import { ensureRemovePath } from './cleanup.js';
 import * as MockConsole from './MockConsole.js';
 

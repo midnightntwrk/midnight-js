@@ -21,14 +21,13 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { Brand } from 'effect';
 import type {
-  WitnessContext,
+  CircuitContext,
+  CircuitResults,
   ConstructorContext,
   ConstructorResult,
-  CircuitContext,
-  CircuitResults
-} from '@midnight-ntwrk/compact-runtime';
+  WitnessContext} from '@midnight-ntwrk/compact-runtime';
+import { Brand } from 'effect';
 
 export type Witness<PS, U = any> = (context: WitnessContext<U, PS>, ...args: any[]) => [PS, U];
 export type Witnesses<PS> = Record<string, Witness<PS>>;

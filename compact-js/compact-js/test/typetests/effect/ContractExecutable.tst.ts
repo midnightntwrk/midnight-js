@@ -13,16 +13,17 @@
  * limitations under the License.
  */
 
-import { describe, expect, it } from 'tstyche';
-import { Effect, Layer, Context } from 'effect';
 import {
   CompiledContract,
-  ContractExecutable,
   Contract,
+  ContractExecutable,
   ZKConfiguration
 } from '@midnight-ntwrk/compact-js/effect';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import * as NetworkId from '@midnight-ntwrk/platform-js/effect/NetworkId';
+import { Context,Effect, Layer } from 'effect';
+import { describe, expect, it } from 'tstyche';
+
 import { Contract as Contract_ } from '../../contract/managed/counter/contract/index.cjs';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */

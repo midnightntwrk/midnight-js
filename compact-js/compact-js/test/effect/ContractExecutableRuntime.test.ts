@@ -13,18 +13,19 @@
  * limitations under the License.
  */
 
-import { describe, it, expect } from '@effect/vitest';
-import { ConfigProvider, Effect, Layer } from 'effect';
-import { NodeContext } from '@effect/platform-node';
+import { resolve } from 'node:path';
 
+import { NodeContext } from '@effect/platform-node';
+import { describe, expect,it } from '@effect/vitest';
 import {
   CompiledContract,
   ContractExecutable,
   ContractExecutableRuntime
 } from '@midnight-ntwrk/compact-js/effect';
-import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
-import { resolve } from 'node:path';
+import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
+import { ConfigProvider, Effect, Layer } from 'effect';
+
 import { CounterContract } from '../contract';
 
 const COUNTER_ASSETS_PATH = resolve(import.meta.dirname, '../contract/managed/counter');

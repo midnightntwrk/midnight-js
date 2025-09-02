@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-import { CompiledContract, ContractExecutable, type Contract } from '@midnight-ntwrk/compact-js/effect';
+import { CompiledContract, type Contract,ContractExecutable } from '@midnight-ntwrk/compact-js/effect';
+
 import { Contract as C_ } from '../../../../compact-js/test/contract/managed/counter/contract/index.cjs';
 
 type PrivateState = {

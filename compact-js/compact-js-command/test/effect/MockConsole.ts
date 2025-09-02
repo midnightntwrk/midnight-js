@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { Effect, Context, Console, Array, Ref } from 'effect';
+import { Array, Console, Context, Effect, Ref } from 'effect';
 
 export class MockConsole extends Context.Tag('compact-js-command#test/MockConsole')<
   Console.Console,

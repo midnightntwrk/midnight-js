@@ -14,10 +14,11 @@
  */
 
 import type { Types } from 'effect';
-import { type Pipeable, pipeArguments } from 'effect/Pipeable';
 import { dual } from 'effect/Function';
-import type { Contract } from './Contract.js';
+import { type Pipeable, pipeArguments } from 'effect/Pipeable';
+
 import type * as CompactContext from './CompactContext.js';
+import type { Contract } from './Contract.js';
 import * as CompactContextInternal from './internal/compactContext.js';
 
 export const TypeId = Symbol.for('compact-js/CompiledContract');

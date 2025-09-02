@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { ConfigProvider } from 'effect';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
+import { ConfigProvider } from 'effect';
 
 /** @internal */
 export const make: (jsonConfg: unknown, cliConfigProvider: ConfigProvider.ConfigProvider) =>

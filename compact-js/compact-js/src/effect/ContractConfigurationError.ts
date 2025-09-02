@@ -14,8 +14,8 @@
  */
 
 import * as Error from '@effect/platform/Error';
-import { hasProperty } from 'effect/Predicate';
 import { type ContractState } from '@midnight-ntwrk/compact-runtime';
+import { hasProperty } from 'effect/Predicate';
 
 const TypeId: unique symbol = Symbol.for('compact-js/effect/ContractConfigurationError');
 type TypeId = typeof TypeId;

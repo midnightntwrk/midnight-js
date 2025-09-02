@@ -13,19 +13,20 @@
  * limitations under the License.
  */
 
-import { Effect, Layer, type ConfigProvider, ConfigError as EffectConfigError, Console, DateTime, type Duration } from 'effect';
 import type { FileSystem, Path } from '@effect/platform';
 import { NodeContext } from '@effect/platform-node';
-import * as Doc from '@effect/printer-ansi/AnsiDoc';
 import * as Ansi from '@effect/printer-ansi/Ansi';
-import { type ZKConfiguration, type ContractExecutable, ContractExecutableRuntime } from '@midnight-ntwrk/compact-js/effect';
-import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
+import * as Doc from '@effect/printer-ansi/AnsiDoc';
+import { type ContractExecutable, ContractExecutableRuntime,type ZKConfiguration } from '@midnight-ntwrk/compact-js/effect';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
-import * as ConfigCompiler from '../ConfigCompiler.js';
+import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
+import { ConfigError as EffectConfigError, type ConfigProvider, Console, DateTime, type Duration,Effect, Layer } from 'effect';
+
 import * as CommandConfigProvider from '../CommandConfigProvider.js';
-import * as InternalOptions from './options.js';
-import type * as ConfigError from '../ConfigError.js';
 import * as ConfigCompilationError from '../ConfigCompilationError.js';
+import * as ConfigCompiler from '../ConfigCompiler.js';
+import type * as ConfigError from '../ConfigError.js';
+import * as InternalOptions from './options.js';
 
 /**
  * Applies a duration to the current date/time, returning a date/time that is in the future.

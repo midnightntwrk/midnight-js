@@ -13,22 +13,22 @@
  * limitations under the License.
  */
 
-import { type ConfigError, Effect, Duration } from 'effect';
-import { FileSystem, Path } from '@effect/platform';
 import { type Command } from '@effect/cli';
+import { FileSystem, Path } from '@effect/platform';
 import { type ContractExecutable, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
+import { type ContractState } from '@midnight-ntwrk/compact-runtime';
 import {
   ContractDeploy,
-  Intent,
-  ContractState as LedgerContractState
-} from '@midnight-ntwrk/ledger';
-import { type ContractState } from '@midnight-ntwrk/compact-runtime';
+  ContractState as LedgerContractState,
+  Intent} from '@midnight-ntwrk/ledger';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import * as NetworkId from '@midnight-ntwrk/platform-js/effect/NetworkId';
+import { type ConfigError, Duration,Effect } from 'effect';
+
 import { type ConfigCompiler } from '../ConfigCompiler.js';
+import * as InternalArgs from './args.js';
 import * as InternalCommand from './command.js';
 import * as InternalOptions from './options.js';
-import * as InternalArgs from './args.js';
 
 /** @internal */
 export type Args = Command.Command.ParseConfig<typeof Args>;

@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
-import { Effect, Context, Layer, Option } from 'effect';
-import { Path, FileSystem } from '@effect/platform';
+import { FileSystem,Path } from '@effect/platform';
 import { type PlatformError } from '@effect/platform/Error';
-import type { ContractExecutable, Contract } from '@midnight-ntwrk/compact-js/effect';
+import type { Contract,ContractExecutable } from '@midnight-ntwrk/compact-js/effect';
+import { Context, Effect, Layer, Option } from 'effect';
 import { create } from 'ts-node';
-import * as ConfigError from './ConfigError.js';
+
 import * as ConfigCompilationError from './ConfigCompilationError.js';
+import * as ConfigError from './ConfigError.js';
 
 /**
  * Compiles a contract configuration file into a JavaScript module.

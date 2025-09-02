@@ -13,11 +13,13 @@
  * limitations under the License.
  */
 
-import { describe, it, expect } from '@effect/vitest';
-import { Effect, Layer } from 'effect';
-import { NodeContext } from '@effect/platform-node';
-import { ConfigCompiler } from '@midnight-ntwrk/compact-js-command/effect';
 import { resolve } from 'node:path';
+
+import { NodeContext } from '@effect/platform-node';
+import { describe, expect,it } from '@effect/vitest';
+import { ConfigCompiler } from '@midnight-ntwrk/compact-js-command/effect';
+import { Effect, Layer } from 'effect';
+
 import { ensureRemovePath } from './cleanup.js';
 
 const COUNTER_CONFIG_FILEPATH = resolve(import.meta.dirname, '../contract/counter/contract.config.ts');

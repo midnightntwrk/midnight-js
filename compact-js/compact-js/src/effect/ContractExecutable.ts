@@ -13,43 +13,42 @@
  * limitations under the License.
  */
 
-import { Effect, type Layer, Option, Either } from 'effect';
-import { dual, identity } from 'effect/Function';
-import { type Pipeable, pipeArguments } from 'effect/Pipeable';
 import {
-  QueryContext as LedgerQueryContext,
-  StateValue as LedgerStateValue,
-  type Transcript,
-  partitionTranscripts,
-  PreTranscript,
-  LedgerParameters
-} from '@midnight-ntwrk/ledger';
-import {
-  ContractMaintenanceAuthority,
-  constructorContext,
-  type ContractState,
-  sampleSigningKey,
-  signatureVerifyingKey,
+  type AlignedValue,
   CompactError,
-  QueryContext,
-  StateValue,
+  constructorContext,
+  ContractMaintenanceAuthority,
+  type ContractState,
+  decodeZswapLocalState,
   emptyZswapLocalState,
   type Op,
-  type AlignedValue,
-  type ZswapLocalState,
-  decodeZswapLocalState
-} from '@midnight-ntwrk/compact-runtime';
-import type * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
-import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
+  QueryContext,
+  sampleSigningKey,
+  signatureVerifyingKey,
+  StateValue,
+  type ZswapLocalState} from '@midnight-ntwrk/compact-runtime';
+import {
+  LedgerParameters,
+  partitionTranscripts,
+  PreTranscript,
+  QueryContext as LedgerQueryContext,
+  StateValue as LedgerStateValue,
+  type Transcript} from '@midnight-ntwrk/ledger';
 import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey';
+import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
+import type * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
 import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
+import { Effect, Either,type Layer, Option } from 'effect';
+import { dual, identity } from 'effect/Function';
+import { type Pipeable, pipeArguments } from 'effect/Pipeable';
+
 import { type CompiledContract } from './CompiledContract.js';
 import * as Contract from './Contract.js';
+import * as ContractConfigurationError from './ContractConfigurationError.js';
+import * as ContractRuntimeError from './ContractRuntimeError.js';
+import * as CompactContextInternal from './internal/compactContext.js';
 import { ZKConfiguration } from './ZKConfiguration.js';
 import { type ZKConfigurationReadError } from './ZKConfigurationReadError.js';
-import * as ContractRuntimeError from './ContractRuntimeError.js';
-import * as ContractConfigurationError from './ContractConfigurationError.js';
-import * as CompactContextInternal from './internal/compactContext.js';
 
 /**
  * An executable form of a Compact compiled contract.

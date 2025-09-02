@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { Effect, Layer } from 'effect';
-import { Path, FileSystem } from '@effect/platform';
+import { FileSystem,Path } from '@effect/platform';
 import { CompiledContract, Contract, ZKConfiguration, ZKConfigurationReadError } from '@midnight-ntwrk/compact-js/effect';
+import { Effect, Layer } from 'effect';
 
 const KEYS_FOLDER = 'keys';
 const VERIFIER_EXT = '.verifier';

@@ -14,9 +14,10 @@
  */
 
 import { Command } from '@effect/cli';
+
+import * as InternalCircuitCommand from './internal/circuitCommand.js';
 import * as InternalCommand from './internal/command.js';
 import * as InternalDeployCommand from './internal/deployCommand.js';
-import * as InternalCircuitCommand from './internal/circuitCommand.js';
 
 export const deployCommand = Command.make(
   'deploy',
@@ -38,6 +39,6 @@ export const circuitCommand = Command.make(
     Command.withHandler(InternalCommand.invocationHandler(InternalCircuitCommand.handler))
   );
 
+export * as ConfigCompilationError from './ConfigCompilationError.js';
 export * as ConfigCompiler from './ConfigCompiler.js';
 export * as ConfigError from './ConfigError.js';
-export * as ConfigCompilationError from './ConfigCompilationError.js';

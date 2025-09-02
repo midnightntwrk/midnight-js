@@ -15,6 +15,7 @@
 
 import * as Error from '@effect/platform/Error';
 import { hasProperty } from 'effect/Predicate';
+
 import type * as Contract from './Contract.js';
 
 const TypeId: unique symbol = Symbol.for('compact-js/effect/ZKConfigurationReadError');

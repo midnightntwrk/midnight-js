@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-import { Effect, ConfigProvider, Schema, Option } from 'effect';
 import { type Command, Options } from '@effect/cli';
+import { Path } from '@effect/platform';
 import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey';
 import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
-import { Path } from '@effect/platform';
+import { ConfigProvider, Effect, Option,Schema } from 'effect';
 
 /** @internal */
 export const config = Options.file('config').pipe(

@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-import { type Effect, Context } from 'effect';
+import { Context,type Effect } from 'effect';
+
 import type { CompiledContract } from './CompiledContract.js';
 import type * as Contract from './Contract.js';
 import type * as ZKConfigurationError from './ZKConfigurationReadError.js';

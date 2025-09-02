@@ -13,25 +13,25 @@
  * limitations under the License.
  */
 
-import { describe, it, expect, beforeEach } from '@effect/vitest';
-import { ConfigProvider, Effect, Layer } from 'effect';
+import { resolve } from 'node:path';
+
 import { NodeContext } from '@effect/platform-node';
+import { beforeEach,describe, expect, it } from '@effect/vitest';
 import {
   CompiledContract,
-  ContractExecutable,
-  Contract
-} from '@midnight-ntwrk/compact-js/effect';
-import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
+  Contract,
+  ContractExecutable} from '@midnight-ntwrk/compact-js/effect';
 import * as ContractConfigurationError from '@midnight-ntwrk/compact-js/effect/ContractConfigurationError';
-import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
-import { ContractState, sampleSigningKey, NetworkId as RuntimeNetworkId } from '@midnight-ntwrk/compact-runtime';
+import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
+import { ContractState, NetworkId as RuntimeNetworkId,sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
 import {
+  ContractDeploy,
   ContractState as LedgerContractState,
-  NetworkId as LedgerNetworkId,
-  ContractDeploy
-} from '@midnight-ntwrk/ledger';
+  NetworkId as LedgerNetworkId} from '@midnight-ntwrk/ledger';
+import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
-import { resolve } from 'node:path';
+import { ConfigProvider, Effect, Layer } from 'effect';
+
 import { CounterContract } from '../contract';
 
 const COUNTER_ASSETS_PATH = resolve(import.meta.dirname, '../contract/managed/counter');

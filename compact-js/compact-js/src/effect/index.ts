@@ -16,10 +16,10 @@
 export * as CompactContext from './CompactContext.js';
 export * as CompiledContract from './CompiledContract.js';
 export * as Contract from './Contract.js';
+export * as ContractConfigurationError from './ContractConfigurationError.js';
 export * as ContractExecutable from './ContractExecutable.js';
 export * as ContractExecutableRuntime from './ContractExecutableRuntime.js';
+export * as ContractRuntimeError from './ContractRuntimeError.js';
 export * as ZKConfiguration from './ZKConfiguration.js';
 export * as ZKConfigurationReadError from './ZKConfigurationReadError.js';
-export * as ContractRuntimeError from './ContractRuntimeError.js';
-export * as ContractConfigurationError from './ContractConfigurationError.js';
 

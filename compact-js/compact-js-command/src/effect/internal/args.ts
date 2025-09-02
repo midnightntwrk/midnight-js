@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { Schema } from 'effect';
 import { Args } from '@effect/cli';
 import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
+import { Schema } from 'effect';
 
 export const contractArgs = Args.text({ name: 'arg' }).pipe(
   Args.withDescription('An argument that will be forwarded (in order), to the constructor or circuit being invoked.'),
