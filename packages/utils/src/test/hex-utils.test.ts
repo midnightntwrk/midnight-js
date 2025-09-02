@@ -93,7 +93,7 @@ describe('Hex Utils', () => {
     describe('with valid inputs', () => {
       it('should return the input if it is a valid hex string', () => {
         const validHex = 'abcdef1234567890';
-        expect(parseCoinPublicKeyToHex(validHex, mockNetworkId)).toBe(validHex);
+        expect(() => parseCoinPublicKeyToHex(validHex, mockNetworkId)).toThrow("Bech32m string expected, got hex string: 'abcdef1234567890'");
       });
 
       it('should parse a valid Bech32m-encoded public key and return its hex representation', () => {
@@ -119,7 +119,7 @@ describe('Hex Utils', () => {
     describe('with valid inputs', () => {
       it('should return the input if it is a valid hex string', () => {
         const validHex = 'abcdef1234567890';
-        expect(parseEncPublicKeyToHex(validHex, mockNetworkId)).toBe(validHex);
+        expect(() => parseEncPublicKeyToHex(validHex, mockNetworkId)).toThrow("Bech32m string expected, got hex string: 'abcdef1234567890'");
       });
 
       it('should parse a valid Bech32m-encoded public key and return its hex representation', () => {
