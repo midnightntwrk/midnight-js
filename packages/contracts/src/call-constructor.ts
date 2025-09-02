@@ -20,7 +20,6 @@ import {
   decodeZswapLocalState,
   type ZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
-import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type { Contract, InitialStateParameters, PrivateState } from '@midnight-ntwrk/midnight-js-types';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 

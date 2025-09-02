@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import { type NetworkId } from '@midnight-ntwrk/ledger';
 import {
   MidnightBech32m,
   ShieldedCoinPublicKey,
@@ -180,10 +179,10 @@ export function assertIsHex(source: string, byteLen?: number): asserts source is
  * @throws `Error`
  * If the input string is not a valid hex string or a valid Bech32m-encoded coin public key.
  */
-export const parseCoinPublicKeyToHex = (possibleBech32: string, zswapNetworkId: NetworkId): string => {
+export const parseCoinPublicKeyToHex = (possibleBech32: string): string => {
   if (isHex(possibleBech32)) return possibleBech32;
   const parsedBech32 = MidnightBech32m.parse(possibleBech32); // Ensure compatibility
-  const decoded = ShieldedCoinPublicKey.codec.decode(zswapNetworkId, parsedBech32);
+  const decoded = ShieldedCoinPublicKey.codec.decode(parsedBech32);
   return Buffer.from(decoded.data).toString('hex');
 };
 
@@ -197,9 +196,9 @@ export const parseCoinPublicKeyToHex = (possibleBech32: string, zswapNetworkId: 
  * @throws `Error`
  * If the input string is not a valid hex string or a valid Bech32m-encoded encryption public key.
  */
-export const parseEncPublicKeyToHex = (possibleBech32: string, zswapNetworkId: NetworkId): string => {
+export const parseEncPublicKeyToHex = (possibleBech32: string): string => {
   if (isHex(possibleBech32)) return possibleBech32;
   const parsedBech32 = MidnightBech32m.parse(possibleBech32);
-  const decoded = ShieldedEncryptionPublicKey.codec.decode(zswapNetworkId, parsedBech32);
+  const decoded = ShieldedEncryptionPublicKey.codec.decode(parsedBech32);
   return Buffer.from(decoded.data).toString('hex');
 };
