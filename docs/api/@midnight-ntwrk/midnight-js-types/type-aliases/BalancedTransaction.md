@@ -10,7 +10,7 @@
 
 A type representing a proven, balanced, submittable transaction.
 
-## Type declaration
+## Type Declaration
 
 ### BalancedTransaction
 

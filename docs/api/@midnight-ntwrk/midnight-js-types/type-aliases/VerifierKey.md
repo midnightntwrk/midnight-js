@@ -10,7 +10,7 @@
 
 A type representing a verifier key derived from a contract circuit.
 
-## Type declaration
+## Type Declaration
 
 ### VerifierKey
 
