@@ -806,12 +806,14 @@ __metadata:
   linkType: hard
 
 "@dao-xyz/borsh@npm:^5.1.5":
-  version: 5.2.3
-  resolution: "@dao-xyz/borsh@npm:5.2.3"
+  version: 5.2.4
+  resolution: "@dao-xyz/borsh@npm:5.2.4"
   dependencies:
     "@protobufjs/float": "npm:^1.0.2"
     "@protobufjs/utf8": "npm:^1.1.0"
-  checksum: 10/87480526dd501ee5726aa39dccb27018e82e00a0d21ec7eaed6f23dd80eb94662f2395b17b09b44cd34ff06ffde9458d7734940e42cf5e7b5daf2c7bc03cfe3a
+    "@types/benchmark": "npm:^2.1.5"
+    protobufjs: "npm:^7.5.4"
+  checksum: 10/ca8ec437751bd74176dcdabeeecf17018640b1fab81b84de73e9207667b2c07262910ab704a6e76f4696994a18a495e25d61e0d5dd56d75c5d2ff5414ca76124
   languageName: node
   linkType: hard
 
@@ -2919,6 +2921,13 @@ __metadata:
   dependencies:
     tslib: "npm:^2.4.0"
   checksum: 10/aa58e64753a420ad1eefaf7bacef3dda61d74f9336925943d9244132d5b48d9242f734f1e707fd5ccfa6dd1d8ec8e6debc234b4dedb3a5b0d8486d1f373350b2
+  languageName: node
+  linkType: hard
+
+"@types/benchmark@npm:^2.1.5":
+  version: 2.1.5
+  resolution: "@types/benchmark@npm:2.1.5"
+  checksum: 10/1540d8698620da2f4ef0d93dd6e57e40583bb3d5c735768d94c52bdfc039f474f83213badcc66013f0c1f73edcebec99dc731fa8943fc13b4f0d18ddfdf77bee
   languageName: node
   linkType: hard
 
@@ -9640,6 +9649,26 @@ __metadata:
     "@types/node": "npm:>=13.7.0"
     long: "npm:^5.0.0"
   checksum: 10/3e412d2e2f799875dcdac1b43508f465a499dd3ffd9d24073669702589ef016529905617a12a967b1a8cfbe803a638b494cc3ed8db035605c7570d1a7fc094c9
+  languageName: node
+  linkType: hard
+
+"protobufjs@npm:^7.5.4":
+  version: 7.5.4
+  resolution: "protobufjs@npm:7.5.4"
+  dependencies:
+    "@protobufjs/aspromise": "npm:^1.1.2"
+    "@protobufjs/base64": "npm:^1.1.2"
+    "@protobufjs/codegen": "npm:^2.0.4"
+    "@protobufjs/eventemitter": "npm:^1.1.0"
+    "@protobufjs/fetch": "npm:^1.1.0"
+    "@protobufjs/float": "npm:^1.0.2"
+    "@protobufjs/inquire": "npm:^1.1.0"
+    "@protobufjs/path": "npm:^1.1.2"
+    "@protobufjs/pool": "npm:^1.1.0"
+    "@protobufjs/utf8": "npm:^1.1.0"
+    "@types/node": "npm:>=13.7.0"
+    long: "npm:^5.0.0"
+  checksum: 10/88d677bb6f11a2ecec63fdd053dfe6d31120844d04e865efa9c8fbe0674cd077d6624ecfdf014018a20dcb114ae2a59c1b21966dd8073e920650c71370966439
   languageName: node
   linkType: hard
 
