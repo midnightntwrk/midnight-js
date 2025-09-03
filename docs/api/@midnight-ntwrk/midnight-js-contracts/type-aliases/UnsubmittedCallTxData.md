@@ -10,7 +10,7 @@
 
 Data for an unsubmitted call transaction.
 
-## Type declaration
+## Type Declaration
 
 ### private
 

@@ -13,7 +13,7 @@ Base type for configuration for [deployContract](../functions/deployContract.md)
 now optional, since [deployContract](../functions/deployContract.md) will generate a fresh signing key
 in the event that `signingKey` is undefined.
 
-## Type declaration
+## Type Declaration
 
 ### signingKey?
 

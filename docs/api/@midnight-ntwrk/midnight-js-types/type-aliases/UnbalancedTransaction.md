@@ -10,7 +10,7 @@
 
 A type representing a proven, unbalanced transaction.
 
-## Type declaration
+## Type Declaration
 
 ### UnbalancedTransaction
 
