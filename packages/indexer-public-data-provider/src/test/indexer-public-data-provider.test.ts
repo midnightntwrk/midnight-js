@@ -13,8 +13,6 @@
  * limitations under the License.
  */
 
-import { WebSocket } from 'ws';
-
 import { indexerPublicDataProvider } from '../indexer-public-data-provider';
 
 describe('indexerPublicDataProvider', () => {
@@ -48,12 +46,12 @@ describe('indexerPublicDataProvider', () => {
   });
 
   test('indexerPublicDataProvider should create a PublicDataProvider instance for subscriptionWithWs', () => {
-    const provider = indexerPublicDataProvider(queryOrigin, subscriptionOriginWithWs, WebSocket);
+    const provider = indexerPublicDataProvider(queryOrigin, subscriptionOriginWithWs);
     expect(provider).toBeDefined();
   });
 
   test('indexerPublicDataProvider should use the provided WebSocket implementation', () => {
-    const provider = indexerPublicDataProvider(queryURL, subscriptionURL, WebSocket);
+    const provider = indexerPublicDataProvider(queryURL, subscriptionURL);
     expect(provider).toBeDefined();
   });
 });

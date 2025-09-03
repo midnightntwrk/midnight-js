@@ -14,7 +14,6 @@
  */
 
 import { vi } from 'vitest';
-import { WebSocket } from 'ws';
 
 // Dynamically load the package to be able to mock its dependencies.
 const mockLinkHttp = await import('@apollo/client/link/http/http.cjs');
@@ -58,7 +57,7 @@ describe.skip('indexerPublicDataProvider', () => {
   test('indexerPublicDataProvider should create a PublicDataProvider instance using fully qualified urls', async () => {
     // Dynamically load the function so jest can mock its dependencies.
     const { indexerPublicDataProvider } = await import('../indexer-public-data-provider');
-    const provider = indexerPublicDataProvider(queryURL, subscriptionURL, WebSocket);
+    const provider = indexerPublicDataProvider(queryURL, subscriptionURL);
     expect(mockCreateHttpLink).toHaveBeenCalledWith(expect.objectContaining({ uri: queryURL }));
     expect(mockCreateClient).toHaveBeenCalledWith(expect.objectContaining({ url: subscriptionURL }));
     expect(provider).toBeDefined();
@@ -67,7 +66,7 @@ describe.skip('indexerPublicDataProvider', () => {
   test('indexerPublicDataProvider should create a PublicDataProvider instance using origin urls with ws', async () => {
     // Dynamically load the function so jest can mock its dependencies.
     const { indexerPublicDataProvider } = await import('../indexer-public-data-provider');
-    const provider = indexerPublicDataProvider(queryOrigin, subscriptionWithWs, WebSocket);
+    const provider = indexerPublicDataProvider(queryOrigin, subscriptionWithWs);
     expect(mockCreateHttpLink).toHaveBeenCalledWith(expect.objectContaining({ uri: queryURL }));
     expect(mockCreateClient).toHaveBeenCalledWith(expect.objectContaining({ url: subscriptionURL }));
     expect(provider).toBeDefined();
