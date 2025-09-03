@@ -79,7 +79,11 @@ export class FaucetClient {
       );
       this.logger.info(`Faucet response: ${response.statusText}`);
     } catch (error) {
-      this.logger.error('Error requesting tokens:', error);
+      if (error instanceof Error) {
+        this.logger.error(`Error requesting tokens: ${error.message}`);
+      } else {
+        this.logger.error(`Error requesting tokens`);
+      }
     }
   }
 }

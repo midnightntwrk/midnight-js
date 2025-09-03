@@ -21,30 +21,35 @@ import { logger } from '@/infrastructure';
 
 function runNodeAndExpectExitCode(scriptPath: string, expectedExitCode: number): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawn('node', [scriptPath], { cwd: process.cwd(), stdio: 'inherit' });
+    const child = spawn('node', [scriptPath], {
+      cwd: process.cwd(),
+      stdio: ['inherit', 'pipe', 'pipe']
+    });
 
     let stdout = '';
     let stderr = '';
 
-    child.stdout?.on('data', (data) => {
+    child.stdout.on('data', (data) => {
       stdout += data.toString();
+      process.stdout.write(data);
     });
 
-    child.stderr?.on('data', (data) => {
+    child.stderr.on('data', (data) => {
       stderr += data.toString();
+      process.stderr.write(data);
     });
 
-    child.on('error', (err) => {
-      logger.error('Error spawning child process:', err);
-      reject(err instanceof Error ? err : new Error(String(err)));
+    child.on('error', (err: Error) => {
+      logger.error(`Error spawning child process: ${err.message}`);
+      reject(err);
     });
 
-    child.on('close', (code) => {
+    child.on('close', (code: number | null) => {
       if (stdout) {
-        logger.info('Standard output:', stdout);
+        logger.info(`Standard output: ${stdout}`);
       }
       if (stderr) {
-        logger.warn('Standard error:', stderr);
+        logger.warn(`Standard error: ${stderr}`);
       }
 
       try {
