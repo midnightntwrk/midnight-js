@@ -10,7 +10,7 @@
 
 Data for an unsubmitted deployment transaction.
 
-## Type declaration
+## Type Declaration
 
 ### private
 
@@ -18,7 +18,7 @@ Data for an unsubmitted deployment transaction.
 
 The data of this transaction that is only visible on the user device.
 
-#### Type declaration
+#### Type Declaration
 
 ##### initialZswapState
 

@@ -10,7 +10,7 @@
 
 Call options for contracts with private state.
 
-## Type declaration
+## Type Declaration
 
 ### initialPrivateState
 
