@@ -2181,7 +2181,7 @@ __metadata:
     ts-node: "npm:^10.9.2"
     turbo: "npm:^2.5.0"
     typedoc: "npm:^0.28.5"
-    typedoc-plugin-markdown: "npm:4.7.0"
+    typedoc-plugin-markdown: "npm:4.8.1"
     typescript: "npm:^5.8.2"
     typescript-eslint: "npm:^8.35.1"
     vitest: "npm:^3.2.4"
@@ -11634,12 +11634,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typedoc-plugin-markdown@npm:4.7.0":
-  version: 4.7.0
-  resolution: "typedoc-plugin-markdown@npm:4.7.0"
+"typedoc-plugin-markdown@npm:4.8.1":
+  version: 4.8.1
+  resolution: "typedoc-plugin-markdown@npm:4.8.1"
   peerDependencies:
     typedoc: 0.28.x
-  checksum: 10/ecb1d655d7a689791e1837a80733b5114c91acd4d3e9ad70aad929a42931d1192a64fbd107bfc1e14a41915642dd9a159d868d495acd09179506904166e9972c
+  checksum: 10/d4819a0028a1715243e26d49428c8433e65858803aaebbdf74fe9d20ffc06aa32cf5e41aef8da611f5f5516aa61fb21cfff7018e69fc0bbba3418c044420be57
   languageName: node
   linkType: hard
 
