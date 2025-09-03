@@ -102,9 +102,17 @@ export default tseslint.config(
       'import/no-extraneous-dependencies': 'off',
       'max-classes-per-file': 'off',
       'lines-between-class-members': 'off',
-      'no-restricted-imports': ['error', {
-        'patterns': ['*/dist/*']
-      }]
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/dist/**', './dist/**', '../dist/**'],
+              message: 'Direct imports from dist folders are not allowed. Use source files instead.'
+            }
+          ]
+        }
+      ],
     }
   },
   prettierConfig
