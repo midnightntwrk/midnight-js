@@ -10,7 +10,7 @@
 
 A type representing a zero-knowledge circuit intermediate representation derived from a contract circuit.
 
-## Type declaration
+## Type Declaration
 
 ### ZKIR
 

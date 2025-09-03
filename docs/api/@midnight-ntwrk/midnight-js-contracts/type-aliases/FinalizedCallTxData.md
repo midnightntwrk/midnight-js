@@ -10,7 +10,7 @@
 
 Data for a submitted, finalized call transaction.
 
-## Type declaration
+## Type Declaration
 
 ### public
 
