@@ -11,7 +11,7 @@
 [deployContract](../functions/deployContract.md) base options with information needed to store private states;
 only used if the contract being deployed has a private state.
 
-## Type declaration
+## Type Declaration
 
 ### initialPrivateState
 

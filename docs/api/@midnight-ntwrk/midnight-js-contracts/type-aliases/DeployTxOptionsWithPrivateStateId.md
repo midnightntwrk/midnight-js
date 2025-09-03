@@ -12,7 +12,7 @@ Configuration for creating deploy transactions for contracts with private state.
 configuration is used when a deployment transaction is created and an initial private
 state needs to be stored, as is the case in [submitDeployTx](../functions/submitDeployTx.md).
 
-## Type declaration
+## Type Declaration
 
 ### privateStateId
 
