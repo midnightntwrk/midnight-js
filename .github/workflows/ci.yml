@@ -77,10 +77,9 @@ jobs:
     with:
       should_run: ${{ needs.ci.outputs.build_mn_js }}
       should_prerelease: ${{ 
-          (github.event_name != 'schedule' &&
-          (github.ref_name == 'main' || needs.ci.outputs.do_publish == 'true' || github.event_name == 'workflow_dispatch'))
-            && 'true' || 'false'
-        }}
+        github.event_name != 'schedule' &&
+        (github.ref_name == 'main' || needs.ci.outputs.do_publish == 'true' || github.event_name == 'workflow_dispatch')
+      }}
     secrets: inherit
 
   ci-cjs:
@@ -89,10 +88,9 @@ jobs:
     with:
       should_run: ${{ needs.ci.outputs.build_c_js }}
       should_prerelease: ${{ 
-          (github.event_name != 'schedule' &&
-          (github.ref_name == 'main' || needs.ci.outputs.do_publish == 'true' || github.event_name == 'workflow_dispatch'))
-            && 'true' || 'false'
-        }}
+        github.event_name != 'schedule' &&
+        (github.ref_name == 'main' || needs.ci.outputs.do_publish == 'true' || github.event_name == 'workflow_dispatch')
+      }}
     uses: ./.github/workflows/ci_c_js.yml
     secrets: inherit
 
@@ -102,9 +100,8 @@ jobs:
     with:
       should_run: ${{ needs.ci.outputs.build_p_js }}
       should_prerelease: ${{ 
-          (github.event_name != 'schedule' &&
-          (github.ref_name == 'main' || needs.ci.outputs.do_publish == 'true' || github.event_name == 'workflow_dispatch'))
-            && 'true' || 'false'
-        }}
+        github.event_name != 'schedule' &&
+        (github.ref_name == 'main' || needs.ci.outputs.do_publish == 'true' || github.event_name == 'workflow_dispatch')
+      }}
     uses: ./.github/workflows/ci_p_js.yml
     secrets: inherit

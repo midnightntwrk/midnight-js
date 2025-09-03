@@ -87,9 +87,9 @@ jobs:
             **/node_modules
             ~/.yarn
             .turbo
-          key: turbo-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
+          key: turbo-pjs-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
           restore-keys: |
-            turbo-${{ runner.os }}-
+            turbo-pjs-${{ runner.os }}-
 
       - name: Install dependencies
         run: |
@@ -175,9 +175,9 @@ jobs:
             **/node_modules
             ~/.yarn
             .turbo
-          key: turbo-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
+          key: turbo-pjs-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
           restore-keys: |
-            turbo-${{ runner.os }}-
+            turbo-pjs-${{ runner.os }}-
 
       - name: Install dependencies
         run: yarn install --immutable
