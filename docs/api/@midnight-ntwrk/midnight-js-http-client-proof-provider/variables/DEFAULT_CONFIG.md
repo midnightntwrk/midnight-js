@@ -10,7 +10,7 @@
 
 The default configuration for the proof server client.
 
-## Type declaration
+## Type Declaration
 
 ### timeout
 

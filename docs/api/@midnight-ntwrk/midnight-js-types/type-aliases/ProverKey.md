@@ -10,7 +10,7 @@
 
 A type representing a prover key derived from a contract circuit.
 
-## Type declaration
+## Type Declaration
 
 ### ProverKey
 

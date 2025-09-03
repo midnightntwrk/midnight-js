@@ -10,7 +10,7 @@
 
 Data for a finalized deploy transaction submitted in this process.
 
-## Type declaration
+## Type Declaration
 
 ### public
 

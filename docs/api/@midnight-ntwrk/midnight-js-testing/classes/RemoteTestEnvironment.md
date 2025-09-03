@@ -4,7 +4,7 @@
 
 [Midnight.js API Reference](../../../packages.md) / [@midnight-ntwrk/midnight-js-testing](../README.md) / RemoteTestEnvironment
 
-# Class: `abstract` RemoteTestEnvironment
+# Abstract Class: RemoteTestEnvironment
 
 Base class for remote test environments that connect to external network services.
 Provides functionality for managing walletProviders and a proof server container.

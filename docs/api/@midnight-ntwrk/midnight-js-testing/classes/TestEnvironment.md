@@ -4,7 +4,7 @@
 
 [Midnight.js API Reference](../../../packages.md) / [@midnight-ntwrk/midnight-js-testing](../README.md) / TestEnvironment
 
-# Class: `abstract` TestEnvironment
+# Abstract Class: TestEnvironment
 
 Abstract base class for test environments.
 Provides common functionality for managing test wallets and environments.
