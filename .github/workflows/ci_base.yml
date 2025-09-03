@@ -7,7 +7,7 @@ permissions:
   issues: read
   checks: write
   pull-requests: write
-
+  
 on:
   workflow_dispatch:
   workflow_call:
@@ -26,11 +26,16 @@ on:
         description: Install phase command line
         required: false
         default: 'yarn install --immutable'
-      yarn_it:
+      yarn_filter:
         type: string
-        description: E2E tests command line
+        description: Optional filter to include when running Yarn (i.e., --filter=...)
         required: false
-        default: 'yarn e2e-groups --concurrency 1 --cache-dir ./turbo'
+        default: ''
+      yarn_lint_paths:
+        type: string
+        description: Optional paths to include when running 'yarn lint'' (i.e., ./packages)
+        required: false
+        default: ''
       allure_upload:
         type: boolean
         description: Should upload e2e tests results to allure server
@@ -95,22 +100,22 @@ jobs:
           ${{ inputs.yarn_install }}
 
       - name: Run build
-        run: yarn build --cache-dir ./turbo
+        run: yarn build ${{ inputs.yarn_filter }} --cache-dir ./turbo
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Run linter
-        run: yarn lint
+        run: yarn lint -- ${{ inputs.yarn_lint_paths }}
 
       - name: Run tests
         run: |
-          yarn test --cache-dir ./turbo
+          yarn test ${{ inputs.yarn_filter }} --cache-dir ./turbo
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Run integration tests
         run: |
-          yarn it --cache-dir ./turbo
+          yarn it ${{ inputs.yarn_filter }} --cache-dir ./turbo
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
@@ -303,7 +308,7 @@ jobs:
 
       - name: Run e2e tests - Group ${{ matrix.group }}
         if: ${{ !contains(github.event.head_commit.message, '[skip_it]') }}
-        run: ${{ inputs.yarn_it }}
+        run: yarn e2e-groups ${{ inputs.yarn_filter }} --concurrency 1 --cache-dir ./turbo
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           MN_TEST_ENVIRONMENT: ${{ inputs.network }}

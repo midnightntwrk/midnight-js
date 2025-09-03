@@ -30,6 +30,7 @@ export * from './logger-provider';
 export * from './midnight-provider';
 export {
   BalancedTransaction,
+  BlockHash,
   createBalancedTx,
   createProverKey,
   createUnbalancedTx,

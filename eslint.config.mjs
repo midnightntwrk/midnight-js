@@ -31,7 +31,7 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   ...tseslint.configs.stylistic,
   {
-    files: ['packages/**/*.ts', 'packages/**/*.tsx', 'packages/**/*.mts'],
+    files: ['packages/**/*.ts', 'packages/**/*.tsx', 'packages/**/*.mts', 'compact-js/**/*.ts', 'platform-js/**/*.ts'],
     plugins: {
       '@typescript-eslint': tseslint.plugin,
       import: importPlugin,
@@ -45,7 +45,7 @@ export default tseslint.config(
       'import/resolver': {
         typescript: {
           alwaysTryTypes: false,
-          project: ['tsconfig.json', 'packages/*/tsconfig.json']
+          project: ['tsconfig.json', 'packages/*/tsconfig.json', 'compact-js/*/tsconfig.json', 'platform-js/*/tsconfig.json']
         }
       }
     },
@@ -85,6 +85,13 @@ export default tseslint.config(
           'fixStyle': 'inline-type-imports'
         }
       ],
+      '@typescript-eslint/no-namespace': [
+        'error',
+        // Ensure that we allow namespace declarations to support Effect style typing.
+        {
+          'allowDeclarations': true
+        }
+      ],
       'no-shadow': 'off',
       'prefer-destructuring': 'off',
       'no-use-before-define': 'off',
@@ -94,7 +101,18 @@ export default tseslint.config(
       'import/no-unresolved': 'error',
       'import/no-extraneous-dependencies': 'off',
       'max-classes-per-file': 'off',
-      'lines-between-class-members': 'off'
+      'lines-between-class-members': 'off',
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/dist/**', './dist/**', '../dist/**'],
+              message: 'Direct imports from dist folders are not allowed. Use source files instead.'
+            }
+          ]
+        }
+      ],
     }
   },
   prettierConfig
