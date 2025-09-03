@@ -2128,7 +2128,7 @@ __metadata:
     axios: "npm:^1.11.0"
     buffer: "npm:^6.0.3"
     cross-fetch: "npm:^4.0.0"
-    pino: "npm:^9.7.0"
+    pino: "npm:^9.9.1"
     pino-pretty: "npm:^13.0.0"
     rxjs: "npm:^7.8.2"
     vitest: "npm:^3.2.4"
@@ -9472,7 +9472,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pino@npm:^9.7.0":
+"pino@npm:^9.9.1":
   version: 9.9.1
   resolution: "pino@npm:9.9.1"
   dependencies:
