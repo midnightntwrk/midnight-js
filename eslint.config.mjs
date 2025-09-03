@@ -101,7 +101,10 @@ export default tseslint.config(
       'import/no-unresolved': 'error',
       'import/no-extraneous-dependencies': 'off',
       'max-classes-per-file': 'off',
-      'lines-between-class-members': 'off'
+      'lines-between-class-members': 'off',
+      'no-restricted-imports': ['error', {
+        'patterns': ['*/dist/*']
+      }]
     }
   },
   prettierConfig

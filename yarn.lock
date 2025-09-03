@@ -12099,6 +12099,20 @@ __metadata:
   languageName: node
   linkType: hard
 
+"tstyche@npm:^4.3.0":
+  version: 4.3.0
+  resolution: "tstyche@npm:4.3.0"
+  peerDependencies:
+    typescript: ">=4.7"
+  peerDependenciesMeta:
+    typescript:
+      optional: true
+  bin:
+    tstyche: ./build/bin.js
+  checksum: 10/27283bbc8ca16b9b467cbe26b099c5e6cffeaa1f0a2b2b2225c48730e7334626dc3e837ed63ca9e385e8083d61af6229e42953f17ee685542fc10423dc3d0e3d
+  languageName: node
+  linkType: hard
+
 "turbo-darwin-64@npm:2.5.6":
   version: 2.5.6
   resolution: "turbo-darwin-64@npm:2.5.6"
@@ -12141,7 +12155,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"turbo@npm:^2.5.0":
+"turbo@npm:^2.5.5":
   version: 2.5.6
   resolution: "turbo@npm:2.5.6"
   dependencies:
@@ -12436,7 +12450,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"undici@npm:^7.13.0":
+"undici@npm:^7.10.0, undici@npm:^7.13.0":
   version: 7.15.0
   resolution: "undici@npm:7.15.0"
   checksum: 10/f48170c88c25d5fed0d7a3d6df9f1b6af97b530c8d799508af685ffa9913e75eb85394c0d3c0be2765548388fdd487e172da5659da8a1b052493cd809482fe06
