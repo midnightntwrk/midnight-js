@@ -4,7 +4,7 @@
 
 [Midnight.js API Reference](../../../packages.md) / [@midnight-ntwrk/midnight-js-types](../README.md) / ZKConfigProvider
 
-# Class: `abstract` ZKConfigProvider\<K\>
+# Abstract Class: ZKConfigProvider\<K\>
 
 A provider for zero-knowledge intermediate representations, prover keys, and verifier keys. All
 three are used by the [ProofProvider](../interfaces/ProofProvider.md) to create a proof for a call transaction. The implementation
