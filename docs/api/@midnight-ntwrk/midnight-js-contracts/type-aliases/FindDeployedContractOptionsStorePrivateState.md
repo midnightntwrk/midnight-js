@@ -13,7 +13,7 @@ state to store and the private state ID at which to store it. Only used if
 the intention is to overwrite the private state currently stored at the given
 private state ID.
 
-## Type declaration
+## Type Declaration
 
 ### initialPrivateState
 
