@@ -2190,7 +2190,7 @@ __metadata:
     ts-node: "npm:^10.9.2"
     turbo: "npm:^2.5.0"
     typedoc: "npm:^0.28.5"
-    typedoc-plugin-markdown: "npm:4.7.0"
+    typedoc-plugin-markdown: "npm:4.8.1"
     typescript: "npm:^5.8.2"
     typescript-eslint: "npm:^8.35.1"
     vitest: "npm:^3.2.4"
@@ -11642,12 +11642,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typedoc-plugin-markdown@npm:4.7.0":
-  version: 4.7.0
-  resolution: "typedoc-plugin-markdown@npm:4.7.0"
+"typedoc-plugin-markdown@npm:4.8.1":
+  version: 4.8.1
+  resolution: "typedoc-plugin-markdown@npm:4.8.1"
   peerDependencies:
     typedoc: 0.28.x
-  checksum: 10/ecb1d655d7a689791e1837a80733b5114c91acd4d3e9ad70aad929a42931d1192a64fbd107bfc1e14a41915642dd9a159d868d495acd09179506904166e9972c
+  checksum: 10/d4819a0028a1715243e26d49428c8433e65858803aaebbdf74fe9d20ffc06aa32cf5e41aef8da611f5f5516aa61fb21cfff7018e69fc0bbba3418c044420be57
   languageName: node
   linkType: hard
 
@@ -12418,15 +12418,6 @@ __metadata:
   bin:
     yaml: bin.mjs
   checksum: 10/72e903fdbe3742058885205db4a6c9ff38e5f497f4e05e631264f7756083c05e7d10dfb5e4ce9d7a95de95338f9b20d19dd0b91c60c65f7d7608b6b3929820ad
-  languageName: node
-  linkType: hard
-
-"yaml@npm:^2.8.0":
-  version: 2.8.0
-  resolution: "yaml@npm:2.8.0"
-  bin:
-    yaml: bin.mjs
-  checksum: 10/7d4bd9c10d0e467601f496193f2ac254140f8e36f96f5ff7f852b9ce37974168eb7354f4c36dc8837dde527a2043d004b6aff48818ec24a69ab2dd3c6b6c381c
   languageName: node
   linkType: hard
 
