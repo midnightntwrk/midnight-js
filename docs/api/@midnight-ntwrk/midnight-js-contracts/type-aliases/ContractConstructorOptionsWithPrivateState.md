@@ -11,7 +11,7 @@
 Conditional type that optionally adds the inferred circuit argument types to
 the target of a circuit invocation.
 
-## Type declaration
+## Type Declaration
 
 ### initialPrivateState
 

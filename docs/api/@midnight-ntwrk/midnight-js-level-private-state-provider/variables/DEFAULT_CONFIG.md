@@ -10,7 +10,7 @@
 
 The default configuration for the level database.
 
-## Type declaration
+## Type Declaration
 
 ### midnightDbName
 

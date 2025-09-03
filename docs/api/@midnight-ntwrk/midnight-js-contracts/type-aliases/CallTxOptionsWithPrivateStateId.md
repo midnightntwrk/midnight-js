@@ -13,7 +13,7 @@ state resulting from the circuit call. Since a private state should already be
 stored at the given private state ID, we don't need an 'initialPrivateState' like
 in [DeployTxOptionsWithPrivateState](DeployTxOptionsWithPrivateState.md).
 
-## Type declaration
+## Type Declaration
 
 ### privateStateId
 
