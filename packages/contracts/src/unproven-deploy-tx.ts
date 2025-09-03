@@ -15,7 +15,6 @@
 
 import type { CoinPublicKey,SigningKey } from '@midnight-ntwrk/compact-runtime';
 import type { EncPublicKey } from '@midnight-ntwrk/ledger';
-import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   type Contract,
   type ImpureCircuitId,
@@ -195,7 +194,7 @@ export async function createUnprovenDeployTx<C extends Contract>(
   const verifierKeys = await providers.zkConfigProvider.getVerifierKeys(getImpureCircuitIds(options.contract));
   return createUnprovenDeployTxFromVerifierKeys(
     verifierKeys,
-    parseCoinPublicKeyToHex(providers.walletProvider.coinPublicKey, getLedgerNetworkId()),
+    parseCoinPublicKeyToHex(providers.walletProvider.coinPublicKey),
     options,
     providers.walletProvider.encryptionPublicKey
   );

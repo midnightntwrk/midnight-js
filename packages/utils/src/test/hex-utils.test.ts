@@ -13,8 +13,6 @@
  * limitations under the License.
  */
 
-import { NetworkId } from '@midnight-ntwrk/ledger';
-
 import { assertIsHex, isHex, parseCoinPublicKeyToHex, parseEncPublicKeyToHex } from '../hex-utils';
 
 describe('Hex Utils', () => {
@@ -88,18 +86,16 @@ describe('Hex Utils', () => {
 
   // Note that we are not mocking the underlying use of @midnight-ntwrk/wallet-sdk-address-format
   describe('parseCoinPublicKeyToHex', () => {
-    const mockNetworkId = NetworkId.Undeployed;
-
     describe('with valid inputs', () => {
       it('should return the input if it is a valid hex string', () => {
         const validHex = 'abcdef1234567890';
-        expect(parseCoinPublicKeyToHex(validHex, mockNetworkId)).toBe(validHex);
+        expect(parseCoinPublicKeyToHex(validHex)).toBe(validHex);
       });
 
       it('should parse a valid Bech32m-encoded public key and return its hex representation', () => {
         const bech32Input = 'mn_shield-cpk_undeployed1mjngjmnlutcq50trhcsk3hugvt9wyjnhq3c7prryd5nqmvtzva0sn7kq7h';
         const expectedHex = 'dca6896e7fe2f00a3d63be2168df8862cae24a770471e08c646d260db162675f';
-        const result = parseCoinPublicKeyToHex(bech32Input, mockNetworkId);
+        const result = parseCoinPublicKeyToHex(bech32Input);
         expect(result).toBe(expectedHex);
       });
     });
@@ -107,25 +103,23 @@ describe('Hex Utils', () => {
     describe('with invalid inputs', () => {
       it('should throw an error if the input is neither a valid hex string nor a valid Bech32m-encoded public key', () => {
         const invalidInput = 'invalidKey';
-        expect(() => parseCoinPublicKeyToHex(invalidInput, mockNetworkId)).toThrow();
+        expect(() => parseCoinPublicKeyToHex(invalidInput)).toThrow();
       });
     });
   });
 
   // Note that we are not mocking the underlying use of @midnight-ntwrk/wallet-sdk-address-format
   describe('parseEncPublicKeyToHex', () => {
-    const mockNetworkId = NetworkId.TestNet;
-
     describe('with valid inputs', () => {
       it('should return the input if it is a valid hex string', () => {
         const validHex = 'abcdef1234567890';
-        expect(parseEncPublicKeyToHex(validHex, mockNetworkId)).toBe(validHex);
+        expect(parseEncPublicKeyToHex(validHex)).toBe(validHex);
       });
 
       it('should parse a valid Bech32m-encoded public key and return its hex representation', () => {
         const bech32Input = 'mn_shield-epk_test1qvqpla2ttj8v49y52ayluya23spy3m6dgt3mxv9sp9cduuq8uw2lw0snz2sze';
         const expectedHex = '03001ff54b5c8eca94945749fe13aa8c0248ef4d42e3b330b00970de7007e395f73e';
-        const result = parseEncPublicKeyToHex(bech32Input, mockNetworkId);
+        const result = parseEncPublicKeyToHex(bech32Input);
         expect(result).toBe(expectedHex);
       });
     });
@@ -133,7 +127,7 @@ describe('Hex Utils', () => {
     describe('with invalid inputs', () => {
       it('should throw an error if the input is neither a valid hex string nor a valid Bech32m-encoded public key', () => {
         const invalidInput = 'invalidKey';
-        expect(() => parseEncPublicKeyToHex(invalidInput, mockNetworkId)).toThrow();
+        expect(() => parseEncPublicKeyToHex(invalidInput)).toThrow();
       });
     });
   });

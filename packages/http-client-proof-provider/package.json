@@ -27,7 +27,6 @@
   ],
   "dependencies": {
     "@dao-xyz/borsh": "^5.1.5",
-    "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
     "cross-fetch": "^4.0.0",
     "fetch-retry": "^6.0.0",

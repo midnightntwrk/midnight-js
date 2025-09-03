@@ -25,7 +25,6 @@
   },
   "dependencies": {
     "@apollo/client": "^3.13.8",
-    "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
     "buffer": "^6.0.3",
     "cross-fetch": "^4.0.0",

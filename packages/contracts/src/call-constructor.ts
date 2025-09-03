@@ -20,7 +20,6 @@ import {
   decodeZswapLocalState,
   type ZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
-import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type { Contract, InitialStateParameters, PrivateState } from '@midnight-ntwrk/midnight-js-types';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
@@ -113,7 +112,7 @@ export const callContractConstructor = <C extends Contract>(
   const constructorResult = options.contract.initialState(
     constructorContext(
       'initialPrivateState' in options ? options.initialPrivateState : undefined,
-      parseCoinPublicKeyToHex(options.coinPublicKey, getLedgerNetworkId())
+      parseCoinPublicKeyToHex(options.coinPublicKey)
     ),
     ...('args' in options ? options.args : [])
   );

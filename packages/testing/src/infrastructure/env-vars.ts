@@ -19,9 +19,7 @@ export const getEnvVarEnvironment = () => {
   }
   return process.env.MN_TEST_ENVIRONMENT;
 };
-export const getEnvVarNetworkId = () => {
-  return process.env.MN_TEST_NETWORK_ID;
-};
+
 export const getEnvVarWalletSeeds = () => {
   const envSeeds = process.env.MN_TEST_WALLET_SEED || process.env.TEST_WALLET_SEED;
   return envSeeds ? envSeeds.split(',') : undefined;

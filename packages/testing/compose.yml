@@ -1,11 +1,10 @@
 services:
   proof-server:
-    image: "ghcr.io/midnight-ntwrk/proof-server:5.0.0-alpha.3"
+    image: "ghcr.io/midnight-ntwrk/proof-server:6.1.0-alpha.1"
     container_name: "proof-server_$TESTCONTAINERS_UID"
     ports:
-      - "8000-9000:6300"
+      - "9000-9999:6300"
     environment:
-      NETWORK: ${NETWORK_ID:-undeployed}
       EXTRA_ARGS: -v
       RUST_BACKTRACE: "full"
     healthcheck:
@@ -18,7 +17,7 @@ services:
     image: "ghcr.io/midnight-ntwrk/indexer-standalone:3.0.0-0f95067a"
     container_name: "indexer_$TESTCONTAINERS_UID"
     ports:
-      - "8000-9000:8088"
+      - "9000-9999:8088"
     environment:
       RUST_LOG: "indexer=debug,chain_indexer=debug,indexer_api=debug,wallet_indexer=debug,indexer_common=debug,fastrace_opentelemetry=off,info"
       APP__INFRA__SECRET: "303132333435363738393031323334353637383930313233343536373839303132"
@@ -37,7 +36,7 @@ services:
     image: "ghcr.io/midnight-ntwrk/midnight-node:0.13.2-rc.1"
     container_name: "node_$TESTCONTAINERS_UID"
     ports:
-      - "8000-9000:9944"
+      - "9000-9999:9944"
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:9944/health" ]
       interval: 2s

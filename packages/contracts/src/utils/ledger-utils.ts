@@ -37,7 +37,6 @@ Intent,   MaintenanceUpdate,
   signData,
   StateValue as LedgerStateValue,
   VerifierKeyInsert,   VerifierKeyRemove} from '@midnight-ntwrk/ledger';
-import { getLedgerNetworkId, getRuntimeNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   type ImpureCircuitId,
   Transaction,
@@ -52,10 +51,10 @@ import { zswapStateToOffer } from './zswap-utils';
 const ttl = () => new Date(Date.now() + 60 * 60 * 1000);
 
 export const toLedgerContractState = (contractState: ContractState): LedgerContractState =>
-  LedgerContractState.deserialize(contractState.serialize(getRuntimeNetworkId()), getLedgerNetworkId());
+  LedgerContractState.deserialize(contractState.serialize());
 
 export const fromLedgerContractState = (contractState: LedgerContractState): ContractState =>
-  ContractState.deserialize(contractState.serialize(getLedgerNetworkId()), getRuntimeNetworkId());
+  ContractState.deserialize(contractState.serialize());
 
 export const toLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext =>
   new LedgerQueryContext(LedgerStateValue.decode(queryContext.state.encode()), queryContext.address);

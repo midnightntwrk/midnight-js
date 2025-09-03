@@ -22,14 +22,12 @@ import { type Wallet } from '@midnight-ntwrk/wallet-api';
  * @property {string} protocolVersion - Version of the protocol being used
  * @property {string[]} txHistory - Array of serialized transaction history entries
  * @property {string} state - Serialized wallet state data
- * @property {string} networkId - Identifier for the network this wallet state belongs to
  */
 export type SerializedWalletState = {
   offset: number;
   protocolVersion: string;
   txHistory: string[];
   state: string;
-  networkId: string;
 }
 
 /**
