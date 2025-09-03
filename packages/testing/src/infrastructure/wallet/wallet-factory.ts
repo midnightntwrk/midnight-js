@@ -15,18 +15,19 @@
 
 import fs from 'node:fs';
 
-import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { type LogLevel, WalletBuilder } from '@midnight-ntwrk/wallet';
 import { type Wallet } from '@midnight-ntwrk/wallet-api';
 import { generateRandomSeed } from '@midnight-ntwrk/wallet-sdk-hd';
 
-import { logger } from '../logger';
-import type { EnvironmentConfiguration } from '../test-environment';
+import type { EnvironmentConfiguration } from '@/infrastructure';
 import {
   DEFAULT_WALLET_STATE_DIRECTORY,
   getWalletStateFilename,
   WalletSaveStateProvider
-} from './wallet-state-provider';
+} from '@/infrastructure';
+
+import { logger } from '../logger';
 import type { MidnightWallet, SerializedWalletState } from './wallet-types';
 import { waitForFullSync, waitForSyncProgressDefined } from './wallet-utils';
 
@@ -75,7 +76,7 @@ export class WalletFactory {
       proofServer,
       node,
       Buffer.from(generateRandomSeed()).toString('hex'),
-      getZswapNetworkId(),
+      getLedgerNetworkId(),
       walletLogLevel
     );
   };
@@ -100,7 +101,7 @@ export class WalletFactory {
       proofServer,
       node,
       seed,
-      getZswapNetworkId(),
+      getLedgerNetworkId(),
       walletLogLevel
     );
   };
@@ -109,6 +110,7 @@ export class WalletFactory {
    * Restores a wallet instance from a serialized state based on the provided environment configuration.
    * @param {EnvironmentConfiguration} env - Configuration for the wallet environment
    * @param {string} serialized - Serialized wallet state
+   * @param seed
    * @param {boolean} [trimTxHistory=true] - Optional flag to trim the transaction history during restoration
    * @param {LogLevel} [walletLogLevel=DEFAULT_WALLET_LOG_LEVEL] - Optional log level for wallet operations
    * @returns {Promise<MidnightWallet>} A promise that resolves to the restored wallet instance

@@ -21,7 +21,15 @@ import { RetryLink } from '@apollo/client/link/retry/retry.cjs';
 import { GraphQLWsLink } from '@apollo/client/link/subscriptions/subscriptions.cjs';
 import { getMainDefinition } from '@apollo/client/utilities/utilities.cjs';
 import { ContractState } from '@midnight-ntwrk/compact-runtime';
-import type { ContractAddress, TransactionId } from '@midnight-ntwrk/ledger';
+import {
+  type Binding,
+  type ContractAddress,
+  type IntentHash,
+  type Proof,
+  type RawTokenType,
+  type SignatureEnabled,
+  type TransactionId
+} from '@midnight-ntwrk/ledger';
 import { Transaction as LedgerTransaction, ZswapChainState } from '@midnight-ntwrk/ledger';
 import {
   getLedgerNetworkId,
@@ -35,12 +43,17 @@ import type {
   ContractStateObservableConfig,
   FinalizedTxData,
   PublicDataProvider,
-  TxStatus
-} from '@midnight-ntwrk/midnight-js-types';
+  SegmentStatus,
+  TxStatus,
+  UnshieldedBalances,
+  UnshieldedUtxo,
+  UnshieldedUtxos} from '@midnight-ntwrk/midnight-js-types';
 import {
   FailEntirely,
   FailFallible,
   InvalidProtocolSchemeError,
+  SegmentFail,
+  SegmentSuccess,
   SucceedEntirely} from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 import { Buffer } from 'buffer';
@@ -51,13 +64,16 @@ import * as Rx from 'rxjs';
 import type * as Zen from 'zen-observable-ts';
 
 import { IndexerFormattedError } from './errors';
-import type {
-  BlockOffset,
-  ContractActionOffset,
-  DeployContractStateTxQueryQuery,
-  DeployTxQueryQuery,
-  InputMaybe,
-  LatestContractTxBlockHeightQueryQuery
+import {
+  type BlockOffset,
+  type ContractActionOffset,
+  type ContractBalance,
+  type DeployContractStateTxQueryQuery,
+  type DeployTxQueryQuery,
+  type InputMaybe,
+  type LatestContractTxBlockHeightQueryQuery,
+  type Segment,
+  type TransactionResult,
 } from './gen/graphql';
 import {
   BLOCK_QUERY,
@@ -67,8 +83,11 @@ import {
   DEPLOY_CONTRACT_STATE_TX_QUERY,
   DEPLOY_TX_QUERY,
   LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY,
+  QUERY_UNSHIELDED_BALANCES_WITH_OFFSET,
   TX_ID_QUERY,
-  TXS_FROM_BLOCK_SUB
+  TXS_FROM_BLOCK_SUB,
+  UNSHIELDED_BALANCE_QUERY,
+  UNSHIELDED_BALANCE_SUB
 } from './query-definitions';
 
 type IsEmptyObject<T> = keyof T extends never ? true : false;
@@ -101,8 +120,8 @@ const deserializeContractState = (s: string): ContractState =>
 const deserializeZswapState = (s: string): ZswapChainState =>
   ZswapChainState.deserialize(toByteArray(s), getLedgerNetworkId());
 
-const deserializeTransaction = (s: string): LedgerTransaction =>
-  LedgerTransaction.deserialize(toByteArray(s), getLedgerNetworkId());
+const deserializeTransaction = (s: string): LedgerTransaction<SignatureEnabled, Proof, Binding> =>
+  LedgerTransaction.deserialize('signature', 'proof', 'binding', toByteArray(s), getLedgerNetworkId());
 
 /**
  * This is a dirty hack. Prepends a network ID to the given contract address and
@@ -187,12 +206,62 @@ const transactionToContractState$ =
       Rx.map((pair) => deserializeContractState(pair[1].state))
     );
 
-const toTxStatus = (applyStage: string): TxStatus => {
-  if (applyStage === FailEntirely || applyStage === FailFallible || applyStage === SucceedEntirely) {
-    return applyStage;
+const toTxStatus = (transactionResult: TransactionResult): TxStatus => {
+  const result = transactionResult.status;
+  const map = {
+    'FAILURE': FailEntirely,
+    'PARTIAL_SUCCESS': FailFallible,
+    'SUCCESS': SucceedEntirely
+  } as const
+  if (result === 'FAILURE' || result === 'PARTIAL_SUCCESS' || result === 'SUCCESS') {
+    return map[result];
   }
-  throw new Error(`Unexpected 'applyStage' value ${applyStage}`);
+  throw new Error(`Unexpected 'status' value ${result}`);
 };
+
+const toSegmentStatus = (success: boolean): SegmentStatus =>
+  success ? SegmentSuccess : SegmentFail;
+
+const toSegmentStatusMap = (transactionResult: TransactionResult): Map<number, SegmentStatus> | undefined => {
+  if (transactionResult.status !== 'PARTIAL_SUCCESS') {
+    return undefined;
+  }
+
+  if (!transactionResult.segments) {
+    return undefined;
+  }
+
+  return new Map(
+    transactionResult.segments.map((segment: Segment) => [segment.id, toSegmentStatus(segment.success)])
+  );
+}
+
+export type IndexerUtxo = {
+  owner: string,
+  intentHash: string,
+  tokenType: string,
+  value: string
+};
+
+const transformIndexerUtxoToUnshieldedUtxo = (indexerUtxo: IndexerUtxo): UnshieldedUtxo => ({
+  owner: indexerUtxo.owner as ContractAddress,
+  intentHash: indexerUtxo.intentHash as IntentHash,
+  tokenType: indexerUtxo.tokenType as RawTokenType,
+  value: BigInt(indexerUtxo.value)
+});
+
+export const toUnshieldedUtxos = (createdUtxo: IndexerUtxo[], spentUtxo: IndexerUtxo[]): UnshieldedUtxos => ({
+  created: createdUtxo.map(transformIndexerUtxoToUnshieldedUtxo),
+  spent: spentUtxo.map(transformIndexerUtxoToUnshieldedUtxo)
+});
+
+const transformContractBalanceToUnshieldedBalance = (contractBalance: ContractBalance): UnshieldedBalances[0] => ({
+  balance: BigInt(contractBalance.amount),
+  tokenType: contractBalance.tokenType as RawTokenType
+});
+
+export const toUnshieldedBalances = (contractBalances: ContractBalance[]): UnshieldedBalances =>
+  contractBalances.map(transformContractBalanceToUnshieldedBalance);
 
 const blockToContractState$ = (contractAddress: ContractAddress) => (block: Block) =>
   Rx.from(block.transactions).pipe(
@@ -286,6 +355,62 @@ const waitForBlockToAppear = (apolloClient: ApolloClient<NormalizedCacheObject>)
       .map(maybeThrowErrors)
       .filter((fetchResult) => fetchResult.data.block !== null)
   ).pipe(Rx.take(1));
+
+const waitForUnshieldedBalancesToAppear =
+  (apolloClient: ApolloClient<NormalizedCacheObject>) => (contractAddress: ContractAddress) =>
+    zenToRx(
+      apolloClient
+        .watchQuery({
+          query: UNSHIELDED_BALANCE_QUERY,
+          variables: {
+            address: contractAddress
+          },
+          pollInterval: DEFAULT_POLL_INTERVAL,
+          fetchPolicy: 'no-cache',
+          initialFetchPolicy: 'no-cache',
+          nextFetchPolicy: 'no-cache'
+        })
+        .map(maybeThrowErrors)
+        .filter((maybeQueryResult) => maybeQueryResult.data.contractAction !== null)
+        .map((queryResult) => {
+          const contractAction = queryResult.data.contractAction!;
+          if ('unshieldedBalances' in contractAction) {
+            return contractAction.unshieldedBalances;
+          }
+          if ('deploy' in contractAction) {
+            return contractAction.deploy.unshieldedBalances;
+          }
+          return [];
+        })
+    ).pipe(Rx.take(1));
+
+const blockOffsetToUnshieldedBalances$ =
+  (apolloClient: ApolloClient<NormalizedCacheObject>) =>
+  (contractAddress: ContractAddress) =>
+  (offset: InputMaybe<BlockOffset>) =>
+    zenToRx(
+      apolloClient
+        .subscribe({
+          query: UNSHIELDED_BALANCE_SUB,
+          variables: {
+            address: contractAddress,
+            offset
+          },
+          fetchPolicy: 'no-cache'
+        })
+        .map(maybeThrowGraphQLErrors)
+        .map((queryResult) => {
+          const contractAction = queryResult.data!.contractActions!;
+          if ('unshieldedBalances' in contractAction) {
+            return contractAction.unshieldedBalances;
+          }
+          if ('deploy' in contractAction) {
+            return contractAction.deploy.unshieldedBalances;
+          }
+          return [];
+        })
+        .map(toUnshieldedBalances)
+    );
 
 const indexerPublicDataProviderInternal = (
   queryURL: string,
@@ -381,6 +506,43 @@ const indexerPublicDataProviderInternal = (
         ? [deserializeZswapState(maybeContractStates.chainState), deserializeContractState(maybeContractStates.state)]
         : null;
     },
+    async queryUnshieldedBalances(
+      address: ContractAddress,
+      config?: BlockHeightConfig | BlockHashConfig
+    ): Promise<UnshieldedBalances | null> {
+      let offset: InputMaybe<ContractActionOffset>;
+      if (config) {
+        offset = {
+          blockOffset: config.type === 'blockHeight' ? { height: config.blockHeight } : { hash: config.blockHash }
+        };
+      } else {
+        offset = null;
+      }
+      const maybeUnshieldedBalances = await apolloClient
+        .query({
+          query: QUERY_UNSHIELDED_BALANCES_WITH_OFFSET,
+          variables: {
+            address,
+            offset
+          },
+          fetchPolicy: 'no-cache'
+        })
+        .then(maybeThrowErrors)
+        .then((queryResult) => {
+          const contractAction = queryResult.data.contractAction;
+          if (!contractAction) {
+            return null;
+          }
+          if ('unshieldedBalances' in contractAction) {
+            return contractAction.unshieldedBalances;
+          }
+          if ('deploy' in contractAction) {
+            return contractAction.deploy.unshieldedBalances;
+          }
+          return [];
+        });
+      return maybeUnshieldedBalances ? toUnshieldedBalances(maybeUnshieldedBalances) : null;
+    },
     async queryDeployContractState(contractAddress: ContractAddress): Promise<ContractState | null> {
       return apolloClient
         .query({
@@ -408,6 +570,11 @@ const indexerPublicDataProviderInternal = (
         waitForContractToAppear(apolloClient)(contractAddress)(null).pipe(Rx.map(deserializeContractState))
       );
     },
+    async watchForUnshieldedBalances(contractAddress: ContractAddress): Promise<UnshieldedBalances> {
+      return Rx.firstValueFrom(
+        waitForUnshieldedBalancesToAppear(apolloClient)(contractAddress).pipe(Rx.map(toUnshieldedBalances))
+      );
+    },
     async watchForDeployTxData(contractAddress: ContractAddress): Promise<FinalizedTxData> {
       return Rx.firstValueFrom(
         zenToRx(
@@ -431,16 +598,28 @@ const indexerPublicDataProviderInternal = (
 
               return 'deploy' in contract ? contract.deploy.transaction : contract.transaction;
             })
-            .map((transaction) => ({
-              tx: deserializeTransaction(transaction.raw),
-              status: toTxStatus(transaction.applyStage),
-              txId: transaction.identifiers[
-                transaction.contractActions.findIndex(({ address }) => address === contractAddress)
-              ]!,
-              txHash: transaction.hash,
-              blockHeight: transaction.block.height,
-              blockHash: transaction.block.hash
-            }))
+            .map(
+              (transaction): FinalizedTxData => ({
+                tx: deserializeTransaction(transaction.raw),
+                status: toTxStatus(transaction.transactionResult),
+                txId: transaction.identifiers[
+                  transaction.contractActions.findIndex(({ address }) => address === contractAddress)
+                ]!,
+                txHash: transaction.hash,
+                blockHeight: transaction.block.height,
+                blockHash: transaction.block.hash,
+                blockTimestamp: transaction.block.timestamp,
+                blockAuthor: transaction.block.author,
+                segmentStatusMap: toSegmentStatusMap(transaction.transactionResult),
+                unshielded: toUnshieldedUtxos(transaction.unshieldedCreatedOutputs, transaction.unshieldedSpentOutputs),
+                indexerId: transaction.id,
+                protocolVersion: transaction.protocolVersion,
+                fees: {
+                  estimatedFees: transaction.fees.estimatedFees,
+                  paidFees: transaction.fees.paidFees
+                },
+              })
+            )
         )
       );
     },
@@ -459,14 +638,26 @@ const indexerPublicDataProviderInternal = (
             .map(maybeThrowErrors)
             .filter((maybeQueryResult) => maybeQueryResult.data.transactions.length !== 0)
             .map((queryResult) => queryResult.data.transactions[0]!)
-            .map((transaction) => ({
-              tx: deserializeTransaction(transaction.raw),
-              status: toTxStatus(transaction.applyStage),
-              txId,
-              txHash: transaction.hash,
-              blockHeight: transaction.block.height,
-              blockHash: transaction.block.hash
-            }))
+            .map(
+              (transaction): FinalizedTxData => ({
+                tx: deserializeTransaction(transaction.raw),
+                status: toTxStatus(transaction.transactionResult),
+                txId,
+                txHash: transaction.hash,
+                blockHeight: transaction.block.height,
+                blockHash: transaction.block.hash,
+                segmentStatusMap: toSegmentStatusMap(transaction.transactionResult),
+                unshielded: toUnshieldedUtxos(transaction.unshieldedCreatedOutputs, transaction.unshieldedSpentOutputs),
+                blockTimestamp: transaction.block.timestamp,
+                blockAuthor: transaction.block.author,
+                indexerId: transaction.id,
+                protocolVersion: transaction.protocolVersion,
+                fees: {
+                  paidFees: transaction.fees.paidFees,
+                  estimatedFees: transaction.fees.estimatedFees
+                }
+              })
+            )
         )
       );
     },
@@ -500,6 +691,31 @@ const indexerPublicDataProviderInternal = (
           ? Rx.iif(() => config.inclusive ?? true, blocks, blocks.pipe(Rx.skip(1)))
           : blocks;
       return maybeShortenedBlocks.pipe(Rx.concatMap(blockToContractState$(contractAddress)));
+    },
+    unshieldedBalancesObservable(
+      contractAddress: ContractAddress,
+      config: ContractStateObservableConfig = { type: 'latest' }
+    ): Rx.Observable<UnshieldedBalances> {
+      if (config.type === 'txId') {
+        throw new Error('txId configuration not supported for unshielded balances observable');
+      }
+      if (config.type === 'latest') {
+        return contractAddressToLatestBlockOffset$(apolloClient)(contractAddress).pipe(
+          Rx.concatMap(blockOffsetToUnshieldedBalances$(apolloClient)(contractAddress))
+        );
+      }
+      if (config.type === 'all') {
+        return waitForUnshieldedBalancesToAppear(apolloClient)(contractAddress).pipe(
+          Rx.concatMap(() => blockOffsetToUnshieldedBalances$(apolloClient)(contractAddress)(null))
+        );
+      }
+      const offset = config.type === 'blockHash' ? { hash: config.blockHash } : { height: config.blockHeight };
+      const balances = waitForBlockToAppear(apolloClient)(offset).pipe(
+        Rx.concatMap(() => blockOffsetToUnshieldedBalances$(apolloClient)(contractAddress)(offset))
+      );
+      return config.type === 'blockHeight' || config.type === 'blockHash'
+        ? Rx.iif(() => config.inclusive ?? true, balances, balances.pipe(Rx.skip(1)))
+        : balances;
     }
   };
 };
@@ -552,9 +768,20 @@ export const indexerPublicDataProvider = (
       assertIsContractAddress(contractAddress);
       return publicDataProvider.queryZSwapAndContractState(prependNetworkIdHex(contractAddress), config);
     },
+    queryUnshieldedBalances(
+      contractAddress: ContractAddress,
+      config?: BlockHeightConfig | BlockHashConfig
+    ): Promise<UnshieldedBalances | null> {
+      assertIsContractAddress(contractAddress);
+      return publicDataProvider.queryUnshieldedBalances(prependNetworkIdHex(contractAddress), config);
+    },
     watchForContractState(contractAddress: ContractAddress): Promise<ContractState> {
       assertIsContractAddress(contractAddress);
       return publicDataProvider.watchForContractState(prependNetworkIdHex(contractAddress));
+    },
+    watchForUnshieldedBalances(contractAddress: ContractAddress): Promise<UnshieldedBalances> {
+      assertIsContractAddress(contractAddress);
+      return publicDataProvider.watchForUnshieldedBalances(prependNetworkIdHex(contractAddress));
     },
     watchForDeployTxData(contractAddress: ContractAddress): Promise<FinalizedTxData> {
       assertIsContractAddress(contractAddress);
@@ -562,6 +789,13 @@ export const indexerPublicDataProvider = (
     },
     watchForTxData(txId: TransactionId): Promise<FinalizedTxData> {
       return publicDataProvider.watchForTxData(txId);
+    },
+    unshieldedBalancesObservable(
+      contractAddress: ContractAddress,
+      config: ContractStateObservableConfig
+    ): Rx.Observable<UnshieldedBalances> {
+      assertIsContractAddress(contractAddress);
+      return publicDataProvider.unshieldedBalancesObservable(prependNetworkIdHex(contractAddress), config);
     }
   };
 };

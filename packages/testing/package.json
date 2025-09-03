@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-testing",
-  "version": "2.0.2",
+  "version": "2.1.0-rc.1",
   "description": "Testing utilities and e2e tests for MidnightJS",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -27,11 +27,12 @@
     "e2e-testnet": "MN_TEST_ENVIRONMENT=testnet-02 DEBUG='testcontainers:compose' NODE_OPTIONS=--experimental-vm-modules vitest --config config/vitest.e2e.config.ts run",
     "e2e-groups": "docker compose -f compose.yml pull && DEBUG='testcontainers:containers' NODE_OPTIONS=--experimental-vm-modules vitest --config config/vitest.groups.config.ts run",
     "compact-copy": "mkdir -p ./dist/contract/ && cp -Rf ./src/e2e/contract/managed ./dist/contract",
-    "compact": "yarn fetch-compactc && yarn compact-counter && yarn compact-simple && yarn compact-counter-clone && yarn compact-block-time",
+    "compact": "yarn fetch-compactc && yarn compact-counter && yarn compact-simple && yarn compact-counter-clone && yarn compact-unshielded",
     "compact-counter": "run-compactc src/e2e/contract/counter.compact ./src/e2e/contract/managed/counter",
     "compact-simple": "run-compactc src/e2e/contract/simple.compact ./src/e2e/contract/managed/simple",
     "compact-counter-clone": "run-compactc src/e2e/contract/counter-clone.compact ./src/e2e/contract/managed/counter-clone",
     "compact-block-time": "run-compactc src/e2e/contract/block-time.compact ./src/e2e/contract/managed/block-time",
+    "compact-unshielded": "run-compactc src/e2e/contract/unshielded.compact ./src/e2e/contract/managed/unshielded",
     "deploy": "yarn npm publish"
   },
   "dependencies": {

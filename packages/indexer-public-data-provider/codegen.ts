@@ -36,9 +36,9 @@ const config: CodegenConfig = {
           WalletLocalState: 'string',
           Unit: 'null',
           Instant: 'number',
-          ApplyStage: 'string',
           HexEncoded: 'string',
-          ViewingKey: 'string'
+          ViewingKey: 'string',
+          UnshieldedAddress: 'string'
         },
         namingConvention: {
           transformUnderscore: true

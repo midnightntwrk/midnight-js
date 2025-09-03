@@ -16,9 +16,9 @@
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { UnprovenTransaction } from '@midnight-ntwrk/ledger';
+import { Transaction } from '@midnight-ntwrk/ledger';
 import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { createProverKey, createVerifierKey, createZKIR } from '@midnight-ntwrk/midnight-js-types';
+import { createProverKey, createVerifierKey, createZKIR, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-types';
 import fs from 'fs/promises';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
@@ -35,7 +35,7 @@ export const getValidZKConfig = async () => ({
   zkir: createZKIR(await fs.readFile(`${resourceDir}/zkir/${SET_TOPIC_CIRCUIT_ID}.bzkir`))
 });
 
-export const getValidUnprovenTx = async () =>
-  UnprovenTransaction.deserialize(await fs.readFile(`${resourceDir}/${UNPROVEN_TX}`), getLedgerNetworkId());
+export const getValidUnprovenTx = async (): Promise<UnprovenTransaction> =>
+  Transaction.deserialize('signature', 'pre-proof', 'pre-binding', await fs.readFile(`${resourceDir}/${UNPROVEN_TX}`), getLedgerNetworkId());
 
 export const getValidPayload = async () => fs.readFile(`${resourceDir}/${PAYLOAD}`);

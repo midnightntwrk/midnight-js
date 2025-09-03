@@ -13,9 +13,13 @@
  * limitations under the License.
  */
 
-import type { CoinInfo } from '@midnight-ntwrk/compact-runtime';
-import type { UnprovenTransaction } from '@midnight-ntwrk/ledger';
-import type { Contract, FinalizedTxData, ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
+import type { ShieldedCoinInfo } from '@midnight-ntwrk/compact-runtime';
+import type {
+  Contract,
+  FinalizedTxData,
+  ImpureCircuitId,
+  UnprovenTransaction
+} from '@midnight-ntwrk/midnight-js-types';
 
 import { type ContractProviders } from './contract-providers';
 
@@ -31,7 +35,7 @@ export type SubmitTxOptions<ICK extends ImpureCircuitId> = {
    * Any new coins created during the construction of the transaction. Only defined
    * if the transaction being submitted is a call or deploy transaction.
    */
-  readonly newCoins?: CoinInfo[];
+  readonly newCoins?: ShieldedCoinInfo[];
   /**
    * A circuit identifier to use to fetch the ZK artifacts needed to prove the
    * transaction. Only defined if a call transaction is being submitted.

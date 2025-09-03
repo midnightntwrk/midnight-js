@@ -17,15 +17,16 @@ import {
   type AlignedValue,
   ContractOperation,
   ContractState,
+  type PublicAddress,
   QueryContext,
   sampleCoinPublicKey,
   sampleContractAddress,
   sampleEncryptionPublicKey,
   sampleSigningKey,
+  Transaction,
   type Transcript,
-  UnprovenTransaction,
-  ZswapChainState
-} from '@midnight-ntwrk/ledger';
+  unshieldedToken,
+  ZswapChainState} from '@midnight-ntwrk/ledger';
 import { createVerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
@@ -42,8 +43,7 @@ import {
   replaceAuthority,
   toLedgerContractState,
   toLedgerQueryContext,
-  unprovenTxFromContractUpdates
-} from '../../utils';
+  unprovenTxFromContractUpdates} from '../../utils';
 
 describe('ledger-utils', () => {
   const dummySigningKey = sampleSigningKey();
@@ -102,13 +102,15 @@ describe('ledger-utils', () => {
       dummyContractState2,
       dummySigningKey2
     );
-    expect(tx).toBeInstanceOf(UnprovenTransaction);
+    expect(tx).toBeInstanceOf(Transaction);
   });
 
   it('createUnprovenLedgerCallTx returns an UnprovenTransaction', () => {
     const circuitId = 'unProvenLedgerTx';
+    const tokenType = unshieldedToken();
     const contractState = dummyContractState;
     const contractOperation = new ContractOperation();
+    const address = { tag: 'contract', address: sampleContractAddress() } as PublicAddress;
 
     contractState.setOperation(circuitId, contractOperation);
 
@@ -116,10 +118,14 @@ describe('ledger-utils', () => {
       gas: 10n,
       effects: {
         claimedNullifiers: [toHex(randomBytes(32))],
-        claimedReceives: [toHex(randomBytes(32))],
-        claimedSpends: [toHex(randomBytes(32))],
+        claimedShieldedReceives: [toHex(randomBytes(32))],
+        claimedShieldedSpends: [toHex(randomBytes(32))],
         claimedContractCalls: new Array([5n, sampleContractAddress(), toHex(randomBytes(32)), new Uint8Array([0])]),
-        mints: new Map([[toHex(randomBytes(32)), 1n]])
+        shieldedMints: new Map([[toHex(randomBytes(32)), 1n]]),
+        unshieldedInputs: new Map([[tokenType, 1n]]),
+        unshieldedOutputs: new Map([[tokenType, 1n]]),
+        unshieldedMints: new Map([[toHex(randomBytes(32)), 1n]]),
+        claimedUnshieldedSpends: new Map([[[tokenType, address], 1n]])
       },
       program: ['new', { noop: { n: 5 } }]
     };
@@ -157,7 +163,7 @@ describe('ledger-utils', () => {
       nextZswapLocalState,
       dummyEncPublicKey
     );
-    expect(tx).toBeInstanceOf(UnprovenTransaction);
+    expect(tx).toBeInstanceOf(Transaction);
   });
 
   it('createUnprovenReplaceAuthorityTx returns an UnprovenTransaction', () => {
@@ -167,11 +173,11 @@ describe('ledger-utils', () => {
       dummyContractState,
       dummySigningKey2
     );
-    expect(tx).toBeInstanceOf(UnprovenTransaction);
+    expect(tx).toBeInstanceOf(Transaction);
   });
 
   it('createUnprovenRemoveVerifierKeyTx returns an UnprovenTransaction', () => {
     const tx = createUnprovenRemoveVerifierKeyTx(dummyContractAddress, 'op', dummyContractState, dummySigningKey);
-    expect(tx).toBeInstanceOf(UnprovenTransaction);
+    expect(tx).toBeInstanceOf(Transaction);
   });
 });

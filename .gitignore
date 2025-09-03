@@ -20,3 +20,4 @@ midnight-level-db
 logs
 .states
 .eslintcache
+.DS_Store

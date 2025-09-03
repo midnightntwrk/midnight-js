@@ -14,9 +14,12 @@
  */
 
 import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
-import type { CoinInfo } from '@midnight-ntwrk/ledger';
-import { Transaction } from '@midnight-ntwrk/ledger';
-import { getLedgerNetworkId, getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import {
+  type EncPublicKey,
+  type ShieldedCoinInfo,
+  shieldedToken,
+  type TokenType,
+} from '@midnight-ntwrk/ledger';
 import {
   type BalancedTransaction,
   createBalancedTx,
@@ -26,10 +29,10 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import { type LogLevel, type Resource } from '@midnight-ntwrk/wallet';
 import { generateRandomSeed } from '@midnight-ntwrk/wallet-sdk-hd';
-import { type EncPublicKey,Transaction as ZswapTransaction } from '@midnight-ntwrk/zswap';
 import type { Logger } from 'pino';
 
-import type { EnvironmentConfiguration } from '../test-environment';
+import type { EnvironmentConfiguration } from '@/infrastructure';
+
 import { DEFAULT_WALLET_LOG_LEVEL, WalletFactory } from './wallet-factory';
 import { type MidnightWallet } from './wallet-types';
 import { getInitialState, waitForFunds } from './wallet-utils';
@@ -51,6 +54,7 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider,
    * @param {EnvironmentConfiguration} environmentConfiguration - Configuration for the wallet environment
    * @param {MidnightWallet} wallet - Wallet instance
    * @param {CoinPublicKey} coinPublicKey - Public key for the wallet's coins
+   * @param encryptionPublicKey
    * @private
    */
   private constructor(
@@ -68,19 +72,18 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider,
   }
 
   /**
-   * Balances an unbalanced transaction by adding necessary inputs and change outputs.
+   * Balances an unbalanced transaction by adding the necessary inputs and change outputs.
    * @param {UnbalancedTransaction} tx - The unbalanced transaction to balance
-   * @param {CoinInfo[]} newCoins - Array of new coins to include in the transaction
+   * @param {ShieldedCoinInfo[]} newCoins - Array of new coins to include in the transaction
    * @returns {Promise<BalancedTransaction>} A promise that resolves to the balanced transaction
    */
-  balanceTx(tx: UnbalancedTransaction, newCoins: CoinInfo[]): Promise<BalancedTransaction> {
+  balanceTx(tx: UnbalancedTransaction, newCoins: ShieldedCoinInfo[]): Promise<BalancedTransaction> {
     return this.wallet
       .balanceTransaction(
-        ZswapTransaction.deserialize(tx.serialize(getLedgerNetworkId()), getZswapNetworkId()),
-        newCoins
+          tx,
+          newCoins
       )
       .then((utx) => this.wallet.proveTransaction(utx))
-      .then((zswapTx) => Transaction.deserialize(zswapTx.serialize(getZswapNetworkId()), getLedgerNetworkId()))
       .then(createBalancedTx);
   }
 
@@ -90,21 +93,20 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider,
    * @returns {Promise<string>} A promise that resolves to the transaction hash
    */
   submitTx(tx: BalancedTransaction): Promise<string> {
-    return this.wallet.submitTransaction(
-      ZswapTransaction.deserialize(tx.serialize(getLedgerNetworkId()), getZswapNetworkId())
-    );
+    return this.wallet.submitTransaction(tx);
   }
 
   /**
    * Starts the wallet and optionally waits for funds to be available.
    * @param {boolean} waitForFundsInWallet - Whether to wait for funds to be available (default: true)
+   * @param tokenType
    * @returns {Promise<void>} A promise that resolves when the wallet is started and funds are available if requested
    */
-  async start(waitForFundsInWallet = true): Promise<void> {
+  async start(waitForFundsInWallet = true, tokenType: TokenType = shieldedToken()): Promise<void> {
     this.logger.info('Starting wallet...');
     this.wallet.start();
     if (waitForFundsInWallet) {
-      const balance = await waitForFunds(this.wallet, this.env, true);
+      const balance = await waitForFunds(this.wallet, this.env, tokenType, true);
       this.logger.info(`Your wallet balance is: ${balance}`);
     }
   }
