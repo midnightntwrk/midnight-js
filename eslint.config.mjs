@@ -93,6 +93,17 @@ export default tseslint.config(
       'import/extensions': 'off',
       'import/no-unresolved': 'error',
       'import/no-extraneous-dependencies': 'off',
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/dist/**', './dist/**', '../dist/**'],
+              message: 'Direct imports from dist folders are not allowed. Use source files instead.'
+            }
+          ]
+        }
+      ],
       'max-classes-per-file': 'off',
       'lines-between-class-members': 'off'
     }
