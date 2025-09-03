@@ -2,7 +2,7 @@
   "name": "@midnight-ntwrk/midnight-js",
   "description": "Midnight application development framework",
   "version": "2.0.2",
-  "packageManager": "yarn@4.9.2",
+  "packageManager": "yarn@4.9.4",
   "repository": "git@github.com:midnight-ntwrk/artifacts",
   "engines": {
     "node": ">=22"
