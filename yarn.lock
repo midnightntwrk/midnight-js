@@ -6584,9 +6584,9 @@ __metadata:
   linkType: hard
 
 "fp-ts@npm:^2.16.1":
-  version: 2.16.10
-  resolution: "fp-ts@npm:2.16.10"
-  checksum: 10/516d15eb8578c96a818e77870321e335bc0d6c1577d26edec7b7fca0a4eef28e71a5088828f2b12a11ab71fc77e57917b0644d64734f9d6e68727bf9fb0e153d
+  version: 2.16.11
+  resolution: "fp-ts@npm:2.16.11"
+  checksum: 10/4c034326728c43a28b3a0f3a88c1218bca13c69ee3c420ab7a52636aa0d68cb68990308e72d93b3e5cc952e998019f7e3ba16389bb1ecc0174574536c29d3ab3
   languageName: node
   linkType: hard
 
