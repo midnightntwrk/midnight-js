@@ -799,9 +799,9 @@ __metadata:
   linkType: hard
 
 "@d2t/vitest-ctrf-json-reporter@npm:^1.1.0":
-  version: 1.1.0
-  resolution: "@d2t/vitest-ctrf-json-reporter@npm:1.1.0"
-  checksum: 10/161dd6818d202fe8d0ae6c4e3fe8f93c37ec416b6e08d03d0599b94fdd37f00d330d4f4c2e87fef3210127130b3477a2b34d04cafd87574bfe561cc22a6d63d6
+  version: 1.2.0
+  resolution: "@d2t/vitest-ctrf-json-reporter@npm:1.2.0"
+  checksum: 10/2713cb4c4d99596c0066ff0226eae8f7090936723a36eb26360345d57a5f2035991e2f4e6e4541b27c23dc1f9b0d9b2e84353115c8492193982e864355a89d69
   languageName: node
   linkType: hard
 
