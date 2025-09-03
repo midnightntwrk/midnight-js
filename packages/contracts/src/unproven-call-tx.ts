@@ -15,7 +15,6 @@
 
 import type { CoinPublicKey, ContractState } from '@midnight-ntwrk/compact-runtime';
 import { type EncPublicKey,type ZswapChainState } from '@midnight-ntwrk/ledger';
-import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type { Contract, ImpureCircuitId, PrivateState, PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
@@ -88,7 +87,7 @@ export function createUnprovenCallTxFromInitialStates<C extends Contract, ICK ex
         )
       ),
       newCoins: zswapStateToNewCoins(
-        parseCoinPublicKeyToHex(coinPublicKey, getLedgerNetworkId()),
+        parseCoinPublicKeyToHex(coinPublicKey),
         callResult.private.nextZswapLocalState
       )
     }
@@ -144,7 +143,7 @@ const createCallOptions = <C extends Contract, ICK extends ImpureCircuitId<C>>(
       : callOptionsBase;
   const callOptionsBaseWithProviderDataDependencies = {
     ...callOptionsWithArguments,
-    coinPublicKey: parseCoinPublicKeyToHex(coinPublicKey, getLedgerNetworkId()),
+    coinPublicKey: parseCoinPublicKeyToHex(coinPublicKey),
     initialContractState,
     initialZswapChainState
   };
@@ -225,7 +224,7 @@ export async function createUnprovenCallTx<C extends Contract, ICK extends Impur
     return createUnprovenCallTxFromInitialStates(
       createCallOptions(
         options,
-        parseCoinPublicKeyToHex(providers.walletProvider.coinPublicKey, getLedgerNetworkId()),
+        parseCoinPublicKeyToHex(providers.walletProvider.coinPublicKey),
         contractState,
         zswapChainState,
         privateState
@@ -242,7 +241,7 @@ export async function createUnprovenCallTx<C extends Contract, ICK extends Impur
   return createUnprovenCallTxFromInitialStates(
     createCallOptions(
       options,
-      parseCoinPublicKeyToHex(providers.walletProvider.coinPublicKey, getLedgerNetworkId()),
+      parseCoinPublicKeyToHex(providers.walletProvider.coinPublicKey),
       contractState,
       zswapChainState
     ),

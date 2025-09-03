@@ -23,7 +23,6 @@ import {
   type ZswapChainState,
 } from '@midnight-ntwrk/ledger';
 import { ZswapInput, ZswapOffer, ZswapOutput, ZswapTransient } from '@midnight-ntwrk/ledger';
-import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   type UnprovenInput,
   type UnprovenOffer,
@@ -200,13 +199,12 @@ export const encryptionPublicKeyForZswapState = (
   walletCoinPublicKey: CoinPublicKey,
   walletEncryptionPublicKey: EncPublicKey
 ): EncPublicKey => {
-  const networkId = getLedgerNetworkId();
-  const walletCoinPublicKeyLocal = parseCoinPublicKeyToHex(walletCoinPublicKey, networkId);
-  const localCoinPublicKey = parseCoinPublicKeyToHex(zswapState.coinPublicKey, networkId);
+  const walletCoinPublicKeyLocal = parseCoinPublicKeyToHex(walletCoinPublicKey);
+  const localCoinPublicKey = parseCoinPublicKeyToHex(zswapState.coinPublicKey);
 
   if (localCoinPublicKey !== walletCoinPublicKeyLocal) {
     throw new Error('Unable to lookup encryption public key (Unsupported coin)');
   }
 
-  return parseEncPublicKeyToHex(walletEncryptionPublicKey, networkId);
+  return parseEncPublicKeyToHex(walletEncryptionPublicKey);
 };

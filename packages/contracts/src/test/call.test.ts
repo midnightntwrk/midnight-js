@@ -25,7 +25,6 @@ import {
   type Effects,
   sampleCoinPublicKey, type TokenType
 } from '@midnight-ntwrk/ledger';
-import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { type Contract, type PrivateState } from '@midnight-ntwrk/midnight-js-types';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
@@ -69,7 +68,7 @@ describe('call', () => {
         originalState: {} as ContractState,
         currentPrivateState: { test: 'private-state' } as PrivateState<Contract>,
         currentZswapLocalState: emptyZswapLocalState(
-          parseCoinPublicKeyToHex(sampleCoinPublicKey(), getLedgerNetworkId())
+          parseCoinPublicKeyToHex(sampleCoinPublicKey())
         )
       } as CircuitContext<Contract>,
       proofData: {

@@ -112,7 +112,7 @@ export const callContractConstructor = <C extends Contract>(
   const constructorResult = options.contract.initialState(
     constructorContext(
       'initialPrivateState' in options ? options.initialPrivateState : undefined,
-      parseCoinPublicKeyToHex(options.coinPublicKey, getLedgerNetworkId())
+      parseCoinPublicKeyToHex(options.coinPublicKey)
     ),
     ...('args' in options ? options.args : [])
   );

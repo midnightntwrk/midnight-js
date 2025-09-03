@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import { getNetworkId, NetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type { Logger } from 'pino';
 import { DockerComposeEnvironment, type StartedDockerComposeEnvironment } from 'testcontainers';
 
@@ -65,21 +64,18 @@ export class DynamicProofServerContainer implements ProofServerContainer {
    * Starts a new proof server container.
    * @param {Logger} logger - Logger instance for recording operations
    * @param {string} [maybeUID] - Optional unique identifier for the container
-   * @param {string} [maybeNetworkId] - Optional network ID for the container
    * @returns {Promise<DynamicProofServerContainer>} A promise that resolves to the new container instance
    */
-  static async start(logger: Logger, maybeUID?: string, maybeNetworkId?: string): Promise<DynamicProofServerContainer> {
+  static async start(logger: Logger, maybeUID?: string): Promise<DynamicProofServerContainer> {
     const config = getContainersConfiguration().proofServer;
     const uid = maybeUID ?? Math.floor(Math.random() * Number.MAX_SAFE_INTEGER).toString();
-    const networkId = maybeNetworkId ?? NetworkId[getNetworkId()].toLowerCase();
     logger.info(
-      `Starting proof server: path='${config.path}', file=${config.fileName}, networkId=${networkId}, uid=${uid}`
+      `Starting proof server: path='${config.path}', file=${config.fileName}, uid=${uid}`
     );
     const dockerEnv = await new DockerComposeEnvironment(config.path, config.fileName)
       .withWaitStrategy(`${config.container.name}_${uid}`, config.container.waitStrategy)
       .withEnvironment({
-        TESTCONTAINERS_UID: uid,
-        NETWORK_ID: networkId
+        TESTCONTAINERS_UID: uid
       })
       .up();
     return new DynamicProofServerContainer(dockerEnv, uid);

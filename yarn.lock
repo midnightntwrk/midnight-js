@@ -2023,7 +2023,6 @@ __metadata:
   resolution: "@midnight-ntwrk/midnight-js-contracts@workspace:packages/contracts"
   dependencies:
     "@fast-check/vitest": "npm:^0.2.1"
-    "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     vitest: "npm:^3.2.4"
@@ -2046,7 +2045,6 @@ __metadata:
   resolution: "@midnight-ntwrk/midnight-js-http-client-proof-provider@workspace:packages/http-client-proof-provider"
   dependencies:
     "@dao-xyz/borsh": "npm:^5.1.5"
-    "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@types/lodash": "npm:^4.17.19"
     cross-fetch: "npm:^4.0.0"
@@ -2064,7 +2062,6 @@ __metadata:
     "@graphql-codegen/client-preset": "npm:^4.8.3"
     "@graphql-codegen/typescript": "npm:^4.1.6"
     "@graphql-codegen/typescript-operations": "npm:^4.6.1"
-    "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@types/ws": "npm:^8.18.0"
     buffer: "npm:^6.0.3"
@@ -2102,12 +2099,6 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@midnight-ntwrk/midnight-js-network-id@workspace:*, @midnight-ntwrk/midnight-js-network-id@workspace:packages/network-id":
-  version: 0.0.0-use.local
-  resolution: "@midnight-ntwrk/midnight-js-network-id@workspace:packages/network-id"
-  languageName: unknown
-  linkType: soft
-
 "@midnight-ntwrk/midnight-js-node-zk-config-provider@workspace:packages/node-zk-config-provider":
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-node-zk-config-provider@workspace:packages/node-zk-config-provider"
@@ -2124,7 +2115,6 @@ __metadata:
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*"
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*"
     "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "workspace:*"
-    "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     "@types/ws": "npm:^8.18.1"

@@ -27,7 +27,6 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import type { Transcript, ZswapChainState } from '@midnight-ntwrk/ledger';
 import { LedgerParameters, partitionTranscripts, PreTranscript } from '@midnight-ntwrk/ledger';
-import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type {
   CircuitParameters,
   CircuitReturnType,
@@ -232,7 +231,7 @@ export const call = <C extends Contract, ICK extends ImpureCircuitId<C>>(
       originalState: initialContractState,
       currentPrivateState: 'initialPrivateState' in options ? options.initialPrivateState : undefined,
       transactionContext: initialTxContext,
-      currentZswapLocalState: emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, getLedgerNetworkId()))
+      currentZswapLocalState: emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey))
     },
     ...('args' in options ? options.args : [])
   );

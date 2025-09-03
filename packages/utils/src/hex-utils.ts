@@ -173,7 +173,6 @@ export function assertIsHex(source: string, byteLen?: number): asserts source is
  * Parses a coin public key (in Bech32m format or hex) into a hex formatted string.
  *
  * @param possibleBech32 The input string, which can be a Bech32m-encoded coin public key or a hex string.
- * @param zswapNetworkId The network ID used for decoding the Bech32m formatted string.
  * @returns The hex string representation of the coin public key.
  *
  * @throws `Error`
@@ -190,7 +189,6 @@ export const parseCoinPublicKeyToHex = (possibleBech32: string): string => {
  * Parses an encryption public key (in Bech32m or hex format) into a hex formatted string.
  *
  * @param possibleBech32 The input string, which can be a Bech32m-encoded encryption public key or a hex string.
- * @param zswapNetworkId The network ID used for decoding the Bech32m formatted string.
  * @returns The hex string representation of the encryption public key.
  *
  * @throws `Error`
