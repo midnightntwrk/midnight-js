@@ -27,6 +27,7 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     outputs:
+      build_workflows: ${{ steps.build-targets.outputs.workflows }}
       build_mn_js: ${{ steps.build-targets.outputs.midnight-js }}
       build_c_js: ${{ steps.build-targets.outputs.compact-js }}
       build_p_js: ${{ steps.build-targets.outputs.platform-js }}
@@ -61,7 +62,7 @@ jobs:
     name: Build Midnight.js
     uses: ./.github/workflows/ci_mn_js.yml
     with:
-      should_run: ${{ needs.ci.outputs.build_mn_js }} || ${{ needs.ci.outputs.workflows }}
+      should_run: ${{ needs.ci.outputs.build_mn_js }} || ${{ needs.ci.outputs.build_workflows }}
       should_prerelease: ${{ 
           github.event_name != 'schedule' &&
           (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch')
@@ -72,7 +73,7 @@ jobs:
     needs: ci
     name: Build Compact.js
     with:
-      should_run: ${{ needs.ci.outputs.build_c_js }} || ${{ needs.ci.outputs.workflows }}
+      should_run: ${{ needs.ci.outputs.build_c_js }} || ${{ needs.ci.outputs.build_workflows }}
       should_prerelease: ${{ 
           github.event_name != 'schedule' &&
           (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch')
@@ -84,7 +85,7 @@ jobs:
     needs: ci
     name: Build Platform.js
     with:
-      should_run: ${{ needs.ci.outputs.build_p_js }} || ${{ needs.ci.outputs.workflows }}
+      should_run: ${{ needs.ci.outputs.build_p_js }} || ${{ needs.ci.outputs.build_workflows }}
       should_prerelease: ${{ 
           github.event_name != 'schedule' &&
           (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch')
