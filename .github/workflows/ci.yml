@@ -51,7 +51,7 @@ jobs:
         id: build-targets
         with:
           filters: |
-            workflows: '.github/workflows'
+            workflows: '.github/workflows/**'
             compact-js: 'compact-js/**'
             platform-js: 'platform-js/**'
             midnight-js: 'packages/**' 
