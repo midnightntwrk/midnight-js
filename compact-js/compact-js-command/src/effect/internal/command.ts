@@ -43,6 +43,7 @@ const reportCausableError: (err: any) => Effect.Effect<void, never> =
     const buildCauseDocs = () => {
       const docs: Doc.Doc<unknown>[] = [];
       const buildCauseDoc = (errOrDoc: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+        if (!errOrDoc) return;
         if (Doc.isDoc(errOrDoc)) {
           return docs.push(errOrDoc);
         }
