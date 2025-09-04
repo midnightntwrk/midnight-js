@@ -49,10 +49,18 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
+      - name: Determine Build Targets
+        uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            midnight-js: 'packages/**' 
+
       - name: Publish packages
+        if: steps.changes.outputs.midnight-js == 'true'
         run: |
           rm docs/image/deployment-diagram.png || true
           rm docs/image/call-tx-build-sequence-diagram.png || true
-          yarn deploy --cache-dir ./turbo
+          yarn deploy --filter="./packages/*" --cache-dir ./turbo
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}

@@ -77,17 +77,24 @@ jobs:
           echo "### Summary" >> $GITHUB_STEP_SUMMARY
           [[ '$on_release_branch' = 'true' ]] && echo "Releasing v$target_version (tagged as $tag)." >> $GITHUB_OUTPUT || echo "Unlisted release branch, following steps will be skipped." >> $GITHUB_OUTPUT
 
+      - name: Determine Build Targets
+        uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            platform-js: 'platform-js/**' 
+
       - name: Bump versions
-        if: steps.vars.outputs.on_release_branch
+        if: steps.vars.outputs.on_release_branch steps.changes.outputs.platform-js == 'true'
         run: yarn workspaces foreach --all version ${{ steps.vars.outputs.target_version }}
 
       - name: Publish packages
-        if: steps.vars.outputs.on_release_branch
+        if: steps.vars.outputs.on_release_branch steps.changes.outputs.platform-js == 'true'
         run: yarn deploy --filter="./platform-js/*" --cache-dir ./turbo -- --tag ${{ steps.vars.outputs.tag }}
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Set build instance version number
-        if: steps.vars.outputs.on_release_branch
+        if: steps.vars.outputs.on_release_branch steps.changes.outputs.platform-js == 'true'
         run: echo "id=${{ steps.vars.outputs.target_version }}" >> "$GITHUB_OUTPUT"
