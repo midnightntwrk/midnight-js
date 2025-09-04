@@ -94,6 +94,10 @@ jobs:
         run: |
           mv ./cx_result.sarif ./cx_result.sarif.orig
           jq '.runs |= map(.results |= map(.locations |= map(if .physicalLocation.artifactLocation.uri == "" then .physicalLocation.artifactLocation.uri = "file:/README.md" else . end)))' cx_result.sarif.orig > cx_result.sarif
+          # Fix missing message text that causes codeql-action to fail
+          mv ./cx_result.sarif ./cx_result.sarif.tmp
+          jq '.runs[].results[] |= (if .message.text == null or .message.text == "" then .message.text = ("Security issue detected by " + .ruleId) else . end)' cx_result.sarif.tmp > cx_result.sarif
+          rm -f cx_result.sarif.tmp cx_result.sarif.orig
 
       # Upload report so security issues are viewable from within the github ui
       - name: Upload SARIF file
