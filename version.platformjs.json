@@ -1,8 +1,8 @@
 {
   "v_info": {
-    "version": "1.0.0",
-    "preRelease": "-rc",
-    "tag": "rc",
+    "version": "1.0",
+    "preRelease": "",
+    "tag": "latest",
     "releaseBranches": [
       "main",
       "release/pjs/.*"
