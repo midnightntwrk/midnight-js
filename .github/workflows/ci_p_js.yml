@@ -130,6 +130,7 @@ jobs:
         uses: MishaKav/jest-coverage-comment@aa3935cf9ee61efc40d9e47dcc8a523a49a70b96 # ratchet:MishaKav/jest-coverage-comment@v1
         with:
           hide-comment: false
+          unique-id-for-comment: 'platform-js-coverage'
           multiple-files: |
             platform-js, ./platform-js/platform-js/coverage/coverage-summary.json
 

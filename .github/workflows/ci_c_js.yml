@@ -130,6 +130,7 @@ jobs:
         uses: MishaKav/jest-coverage-comment@aa3935cf9ee61efc40d9e47dcc8a523a49a70b96 # ratchet:MishaKav/jest-coverage-comment@v1
         with:
           hide-comment: false
+          unique-id-for-comment: 'compact-js-coverage'
           multiple-files: |
             compact-js, ./compact-js/compact-js/coverage/coverage-summary.json
             compact-js-node, ./compact-js/compact-js-node/coverage/coverage-summary.json
