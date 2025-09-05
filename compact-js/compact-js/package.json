@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@effect/platform": "^0.90.2",
-    "@midnight-ntwrk/compact-runtime": "0.9.0-rc.0",
+    "@midnight-ntwrk/compact-runtime": "0.9.0-rc.1",
     "@midnight-ntwrk/ledger": "5.0.0-alpha.3",
     "@midnight-ntwrk/platform-js": "^1.0.0",
     "effect": "^3.17.7"
