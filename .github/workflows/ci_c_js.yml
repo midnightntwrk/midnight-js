@@ -206,7 +206,7 @@ jobs:
           echo "tag=$tag" >> $GITHUB_OUTPUT
 
       - name: Bump versions
-        run: yarn workspaces foreach --all version ${{ steps.vars.outputs.target_version }}
+        run: yarn workspaces foreach -R --from "./compact-js/*" --exclude "./platform-js/*" --exclude "./packages/*" version ${{ steps.vars.outputs.target_version }}
 
       - name: Publish packages
         run: yarn deploy ${{ inputs.yarn_filter }} --cache-dir ./turbo -- --tag ${{ steps.vars.outputs.tag }}

@@ -87,7 +87,7 @@ jobs:
             steps.vars.outputs.on_release_branch == 'true' &&
             (steps.changes.outputs.compact-js == 'true' || steps.changes.outputs.vinfo == 'true')
           }}
-        run: yarn workspaces foreach --all version ${{ steps.vars.outputs.target_version }}
+        run: yarn workspaces foreach -R --from "./compact-js/*" --exclude "./platform-js/*" --exclude "./packages/*" version ${{ steps.vars.outputs.target_version }}
 
       - name: Publish packages
         if: ${{
