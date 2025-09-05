@@ -26,8 +26,8 @@ import { ensureRemovePath } from './cleanup.js';
 import * as MockConsole from './MockConsole.js';
 
 const COUNTER_CONFIG_FILEPATH = resolve(import.meta.dirname, '../contract/counter/contract.config.ts');
-const COUNTER_OUTPUT_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output.bin');
-const COUNTER_OUTPUT_PS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output.js');
+const COUNTER_OUTPUT_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_deploy.bin');
+const COUNTER_OUTPUT_PS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_deploy.json');
 
 const testLayer: Layer.Layer<ConfigCompiler.ConfigCompiler | NodeContext.NodeContext> =
   Effect.gen(function* () {
