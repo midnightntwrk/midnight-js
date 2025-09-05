@@ -27,6 +27,7 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     outputs:
+      build_workflows: ${{ steps.build-targets.outputs.workflows }}
       build_mn_js: ${{ steps.build-targets.outputs.midnight-js }}
       build_c_js: ${{ steps.build-targets.outputs.compact-js }}
       build_p_js: ${{ steps.build-targets.outputs.platform-js }}
@@ -47,10 +48,11 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Determine Build Targets
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
         id: build-targets
         with:
           filters: |
+            workflows: '.github/workflows/**'
             compact-js: 'compact-js/**'
             platform-js: 'platform-js/**'
             midnight-js: 'packages/**' 
@@ -60,7 +62,7 @@ jobs:
     name: Build Midnight.js
     uses: ./.github/workflows/ci_mn_js.yml
     with:
-      should_run: ${{ needs.ci.outputs.build_mn_js }}
+      should_run: ${{ needs.ci.outputs.build_mn_js == 'true' || needs.ci.outputs.build_workflows == 'true' }}
       should_prerelease: ${{ 
           github.event_name != 'schedule' &&
           (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch')
@@ -71,7 +73,7 @@ jobs:
     needs: ci
     name: Build Compact.js
     with:
-      should_run: ${{ needs.ci.outputs.build_c_js }}
+      should_run: ${{ needs.ci.outputs.build_c_js == 'true' || needs.ci.outputs.build_workflows == 'true' }}
       should_prerelease: ${{ 
           github.event_name != 'schedule' &&
           (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch')
@@ -83,7 +85,7 @@ jobs:
     needs: ci
     name: Build Platform.js
     with:
-      should_run: ${{ needs.ci.outputs.build_p_js }}
+      should_run: ${{ needs.ci.outputs.build_p_js == 'true' || needs.ci.outputs.build_workflows == 'true' }}
       should_prerelease: ${{ 
           github.event_name != 'schedule' &&
           (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch')
