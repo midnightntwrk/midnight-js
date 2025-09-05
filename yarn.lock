@@ -913,16 +913,15 @@ __metadata:
   linkType: hard
 
 "@effect/platform@npm:^0.90.2":
-  version: 0.90.2
-  resolution: "@effect/platform@npm:0.90.2"
+  version: 0.90.7
+  resolution: "@effect/platform@npm:0.90.7"
   dependencies:
-    "@opentelemetry/semantic-conventions": "npm:^1.33.0"
     find-my-way-ts: "npm:^0.1.6"
     msgpackr: "npm:^1.11.4"
     multipasta: "npm:^0.2.7"
   peerDependencies:
-    effect: ^3.17.7
-  checksum: 10/c4105ec37bd8facf91af0efb1f91694f3575079d3d7a6505ba36a68d9309324b149f28b94bfcb155e0d44ff747052765721fefc667a8fbd859edb16ad7e5ec24
+    effect: ^3.17.13
+  checksum: 10/51bc6e07e2c51e9035309de4c309381cfdddd6c062696f4cb1d88127ad69054572059185f8ef50aef8104d744dd1e7f6fae6587cf55084d3cc5c0b3cc803794c
   languageName: node
   linkType: hard
 
