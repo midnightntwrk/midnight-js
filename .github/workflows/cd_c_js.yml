@@ -74,27 +74,34 @@ jobs:
           echo "tag=${tag}" >> "$GITHUB_OUTPUT"
           echo "on_release_branch=${on_release_branch}" >> "$GITHUB_OUTPUT"
 
-          echo "### Summary" >> $GITHUB_STEP_SUMMARY
-          [[ '$on_release_branch' = 'true' ]] && echo "Releasing v$target_version (tagged as $tag)." >> $GITHUB_OUTPUT || echo "Unlisted release branch, following steps will be skipped." >> $GITHUB_OUTPUT
-
       - name: Determine Build Targets
         uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
         id: changes
         with:
           filters: |
+            vinfo: 'version.compactjs.json'
             compact-js: 'compact-js/**' 
 
       - name: Bump versions
-        if: steps.vars.outputs.on_release_branch steps.changes.outputs.compact-js == 'true'
+        if: ${{
+            steps.vars.outputs.on_release_branch == 'true' &&
+            (steps.changes.outputs.compact-js == 'true' || steps.changes.outputs.vinfo == 'true')
+          }}
         run: yarn workspaces foreach --all version ${{ steps.vars.outputs.target_version }}
 
       - name: Publish packages
-        if: steps.vars.outputs.on_release_branch steps.changes.outputs.compact-js == 'true'
+        if: ${{
+            steps.vars.outputs.on_release_branch == 'true' &&
+            (steps.changes.outputs.compact-js == 'true' || steps.changes.outputs.vinfo == 'true')
+          }}
         run: yarn deploy --filter="./compact-js/*" --cache-dir ./turbo -- --tag ${{ steps.vars.outputs.tag }}
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Set build instance version number
-        if: steps.vars.outputs.on_release_branch steps.changes.outputs.compact-js == 'true'
+        if: ${{
+            steps.vars.outputs.on_release_branch == 'true' &&
+            (steps.changes.outputs.compact-js == 'true' || steps.changes.outputs.vinfo == 'true')
+          }}
         run: echo "id=${{ steps.vars.outputs.target_version }}" >> "$GITHUB_OUTPUT"
