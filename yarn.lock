@@ -830,18 +830,18 @@ __metadata:
   linkType: hard
 
 "@effect/cli@npm:^0.69.0":
-  version: 0.69.0
-  resolution: "@effect/cli@npm:0.69.0"
+  version: 0.69.2
+  resolution: "@effect/cli@npm:0.69.2"
   dependencies:
     ini: "npm:^4.1.3"
     toml: "npm:^3.0.0"
     yaml: "npm:^2.5.0"
   peerDependencies:
-    "@effect/platform": ^0.90.0
+    "@effect/platform": ^0.90.5
     "@effect/printer": ^0.45.0
     "@effect/printer-ansi": ^0.45.0
-    effect: ^3.17.0
-  checksum: 10/e1d1a72e369387daf3fc8aa34d1c097dae9504ecb2039e1758eeedce0856ac3fb3c1b9c08fdd7a9b48077aef980d97ca8aa51695d57100aacbf5b7a3e1864c74
+    effect: ^3.17.8
+  checksum: 10/72e358c10053b10ba579ab6266be122a124040261432948d69e25966b614215e5a0084a3492e03d6a35ef6e8da5ecbbfd70792c2e3244e0683847aaeef495836
   languageName: node
   linkType: hard
 
