@@ -23,7 +23,9 @@ import { type Inspectable,NodeInspectSymbol } from 'effect/Inspectable';
 import * as Option from 'effect/Option';
 import { hasProperty } from 'effect/Predicate';
 
-const MAINNET_MONIKER = 'main';
+import * as NetworkIdMoniker from './NetworkIdMoniker.js';
+
+const MAINNET_MONIKER = NetworkIdMoniker.NetworkIdMoniker('main');
 
 const TypeId: unique symbol = Symbol.for('platform-js/effect/NetworkId');
 export type TypeId = typeof TypeId;
@@ -32,10 +34,18 @@ const MonikerSymbol: unique symbol = Symbol.for('platform-js/effect/NetworkId#Ne
 
 /**
  * Represents a Midnight network identifier.
+ * 
+ * @remarks
+ * A {@link NetworkId} can be constructed by calling {@link make} with a valid
+ * {@link NetworkIdMoniker.NetworkIdMoniker | NetworkIdMoniker} identifying the network. Alternatively, in order
+ * to use the Midnight MainNet, use the exported instance {@link MainNet}.
+ * 
+ * @see {@link NetworkIdInput}
+ * @see {@link make}
  */
 export interface NetworkId extends Equal.Equal, Inspectable {
   readonly [TypeId]: TypeId;
-  readonly [MonikerSymbol]: string | true;
+  readonly [MonikerSymbol]: NetworkIdMoniker.NetworkIdMoniker | true;
   /**
    * Determines if the network identifier represents the Midnight MainNet.
    *
@@ -49,7 +59,7 @@ export interface NetworkId extends Equal.Equal, Inspectable {
  * 
  * @see {@link make}
  */
-export type NetworkIdInput = string | NetworkId;
+export type NetworkIdInput = NetworkIdMoniker.NetworkIdMoniker | NetworkId;
 
 /**
  * Provides equivalence for {@link NetworkId} instances.

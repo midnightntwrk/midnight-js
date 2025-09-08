@@ -13,12 +13,24 @@
  * limitations under the License.
  */
 
-export * as CoinPublicKey from './CoinPublicKey.js';
-export * as Configuration from './Configuration.js';
-export * as ContractAddress from './ContractAddress.js';
-export * as Hex from './Hex.js';
-export * as IntegerRange from './IntegerRange.js';
-export * as NetworkId from './NetworkId.js';
-export * as NetworkIdMoniker from './NetworkIdMoniker.js';
-export * as ParseError from './ParseError.js';
-export * as SigningKey from './SigningKey.js';
+import { Brand, Option } from 'effect';
+
+const NETWORK_ID_REGEXP = /^[a-zA-Z0-9-]+$/;
+
+/**
+ * A name, handle, or tag representing a familiar identifier given to an instance of a Midnight network.
+ * 
+ * @category models
+ */
+export type NetworkIdMoniker = Brand.Branded<string, 'NetworkIdMoniker'>;
+
+/**
+ * @category constructors
+ */
+export const NetworkIdMoniker = Brand.refined<NetworkIdMoniker>(
+  (source: string) => {
+    return source.match(NETWORK_ID_REGEXP)
+      ? Option.none()
+      : Option.some(Brand.error(`Source string '${source}' is not a valid network identifier`));
+  }
+);

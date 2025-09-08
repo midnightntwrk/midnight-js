@@ -25,6 +25,7 @@ import * as Schema from 'effect/Schema';
 
 import * as CoinPublicKey from './CoinPublicKey.js';
 import * as NetworkId from './NetworkId.js';
+import * as NetworkIdMoniker from './NetworkIdMoniker.js';
 import * as SigningKey from './SigningKey.js';
 
 /**
@@ -84,7 +85,10 @@ const KeysConfig = Config.all([
   Config.option(Schema.Config('signing', Schema.String.pipe(Schema.fromBrand(SigningKey.SigningKey))))
 ]).pipe(Config.nested('keys'));
 
-const NetworkIdConfig = Config.option(Schema.Config('network', Schema.String));
+const NetworkIdConfig = Config.option(Schema.Config(
+  'network',
+  Schema.String.pipe(Schema.fromBrand(NetworkIdMoniker.NetworkIdMoniker))
+));
 
 const makeKeys: () => Layer.Layer<Keys, ConfigError>
   = () => Layer.effect(Keys, Effect.gen(function* () {
