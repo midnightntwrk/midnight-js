@@ -14,7 +14,7 @@
  */
 
 import type { CoinPublicKey, ContractState } from '@midnight-ntwrk/compact-runtime';
-import { type EncPublicKey,type ZswapChainState } from '@midnight-ntwrk/ledger';
+import { type EncPublicKey,type ZswapChainState } from '@midnight-ntwrk/ledger-v6';
 import type { Contract, ImpureCircuitId, PrivateState, PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 

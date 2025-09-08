@@ -14,7 +14,7 @@
  */
 
 import type { ContractAddress } from '@midnight-ntwrk/compact-runtime';
-import { ContractState, LedgerState } from '@midnight-ntwrk/ledger';
+import { ContractState, LedgerState } from '@midnight-ntwrk/ledger-v6';
 import type { BlockHash } from '@midnight-ntwrk/midnight-js-types/dist/midnight-types';
 import axios, { type AxiosResponse } from 'axios';
 import type { Logger } from 'pino';

@@ -14,7 +14,7 @@
  */
 
 import { BinaryWriter } from '@dao-xyz/borsh';
-import { Transaction } from '@midnight-ntwrk/ledger';
+import { Transaction } from '@midnight-ntwrk/ledger-v6';
 import type {
   ProofProvider,
   ProveTxConfig,

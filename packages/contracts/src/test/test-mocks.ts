@@ -35,7 +35,7 @@ import {
   type TokenType,
   type Transaction,
   type ZswapChainState
-} from '@midnight-ntwrk/ledger';
+} from '@midnight-ntwrk/ledger-v6';
 import {
   type Contract,
   type FinalizedTxData,

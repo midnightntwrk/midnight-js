@@ -22,7 +22,7 @@ import {
   sampleEncryptionPublicKey,
   WellFormedStrictness,
   ZswapChainState
-} from '@midnight-ntwrk/ledger';
+} from '@midnight-ntwrk/ledger-v6';
 import {
   createUnprovenCallTxFromInitialStates,
   createUnprovenDeployTxFromVerifierKeys

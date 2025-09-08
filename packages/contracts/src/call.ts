@@ -25,8 +25,8 @@ import {
   type StateValue,
   type ZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
-import type { Transcript, ZswapChainState } from '@midnight-ntwrk/ledger';
-import { LedgerParameters, partitionTranscripts, PreTranscript } from '@midnight-ntwrk/ledger';
+import type { Transcript, ZswapChainState } from '@midnight-ntwrk/ledger-v6';
+import { LedgerParameters, partitionTranscripts, PreTranscript } from '@midnight-ntwrk/ledger-v6';
 import type {
   CircuitParameters,
   CircuitReturnType,

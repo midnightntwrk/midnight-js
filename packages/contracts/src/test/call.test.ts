@@ -24,7 +24,7 @@ import {
   type ContractState,
   type Effects,
   sampleCoinPublicKey, type TokenType
-} from '@midnight-ntwrk/ledger';
+} from '@midnight-ntwrk/ledger-v6';
 import { type Contract, type PrivateState } from '@midnight-ntwrk/midnight-js-types';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';

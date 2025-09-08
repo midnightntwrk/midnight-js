@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { TransactionId } from '@midnight-ntwrk/ledger';
+import type { TransactionId } from '@midnight-ntwrk/ledger-v6';
 
 import type { BalancedTransaction } from './midnight-types';
 

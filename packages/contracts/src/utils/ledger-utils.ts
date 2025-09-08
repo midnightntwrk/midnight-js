@@ -21,7 +21,7 @@ import {
   signatureVerifyingKey,
   type SigningKey,
   type ZswapLocalState} from '@midnight-ntwrk/compact-runtime';
-import type { SingleUpdate,ZswapChainState } from '@midnight-ntwrk/ledger';
+import type { SingleUpdate,ZswapChainState } from '@midnight-ntwrk/ledger-v6';
 import {
   communicationCommitmentRandomness,
   ContractCallPrototype,
@@ -36,7 +36,7 @@ Intent,   MaintenanceUpdate,
   ReplaceAuthority,
   signData,
   StateValue as LedgerStateValue,
-  VerifierKeyInsert,   VerifierKeyRemove} from '@midnight-ntwrk/ledger';
+  VerifierKeyInsert,   VerifierKeyRemove} from '@midnight-ntwrk/ledger-v6';
 import {
   type ImpureCircuitId,
   Transaction,

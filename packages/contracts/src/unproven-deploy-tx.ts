@@ -14,7 +14,7 @@
  */
 
 import type { CoinPublicKey,SigningKey } from '@midnight-ntwrk/compact-runtime';
-import type { EncPublicKey } from '@midnight-ntwrk/ledger';
+import type { EncPublicKey } from '@midnight-ntwrk/ledger-v6';
 import {
   type Contract,
   type ImpureCircuitId,

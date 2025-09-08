@@ -21,8 +21,8 @@ import {
   type QualifiedShieldedCoinInfo,
   type ShieldedCoinInfo,
   type ZswapChainState,
-} from '@midnight-ntwrk/ledger';
-import { ZswapInput, ZswapOffer, ZswapOutput, ZswapTransient } from '@midnight-ntwrk/ledger';
+} from '@midnight-ntwrk/ledger-v6';
+import { ZswapInput, ZswapOffer, ZswapOutput, ZswapTransient } from '@midnight-ntwrk/ledger-v6';
 import {
   type UnprovenInput,
   type UnprovenOffer,

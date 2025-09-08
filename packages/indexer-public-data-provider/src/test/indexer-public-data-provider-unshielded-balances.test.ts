@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { ContractAddress } from '@midnight-ntwrk/ledger';
+import type { ContractAddress } from '@midnight-ntwrk/ledger-v6';
 import type { ContractStateObservableConfig } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expect,test } from 'vitest';
 import { WebSocket } from 'ws';

@@ -26,7 +26,7 @@ import {
   Transaction,
   type Transcript,
   unshieldedToken,
-  ZswapChainState} from '@midnight-ntwrk/ledger';
+  ZswapChainState} from '@midnight-ntwrk/ledger-v6';
 import { createVerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';

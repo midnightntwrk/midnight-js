@@ -15,7 +15,7 @@
 
 import { fc } from '@fast-check/vitest';
 import { type Recipient } from '@midnight-ntwrk/compact-runtime';
-import { type CoinPublicKey, type QualifiedShieldedCoinInfo, type ShieldedCoinInfo, shieldedToken } from '@midnight-ntwrk/ledger';
+import { type CoinPublicKey, type QualifiedShieldedCoinInfo, type ShieldedCoinInfo, shieldedToken } from '@midnight-ntwrk/ledger-v6';
 import {
   createShieldedCoinInfo,
   nativeToken,
@@ -24,7 +24,7 @@ import {
   sampleRawTokenType,
   Transaction,
   ZswapChainState,
-  ZswapOffer} from '@midnight-ntwrk/ledger';
+  ZswapOffer} from '@midnight-ntwrk/ledger-v6';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
 
