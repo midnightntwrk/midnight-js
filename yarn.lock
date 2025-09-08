@@ -2180,8 +2180,8 @@ __metadata:
     "@effect/vitest": "npm:^0.24.1"
     "@midnight-ntwrk/compact-js": "npm:^0.0.0"
     "@midnight-ntwrk/compact-js-node": "npm:^0.0.0"
-    "@midnight-ntwrk/compact-runtime": "npm:0.9.0-rc.0"
-    "@midnight-ntwrk/ledger": "npm:5.0.0-alpha.3"
+    "@midnight-ntwrk/compact-runtime": "npm:0.9.0-rc.1"
+    "@midnight-ntwrk/ledger": "npm:@midnight-ntwrk/ledger-v6@6.1.0-alpha.2"
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
     "@midnight-ntwrk/platform-js": "npm:^1.0.0"
     effect: "npm:^3.17.7"
@@ -2214,8 +2214,8 @@ __metadata:
     "@effect/sql": "npm:^0.44.1"
     "@effect/vitest": "npm:^0.24.1"
     "@midnight-ntwrk/compact-js-node": "workspace:*"
-    "@midnight-ntwrk/compact-runtime": "npm:0.9.0-rc.0"
-    "@midnight-ntwrk/ledger": "npm:5.0.0-alpha.3"
+    "@midnight-ntwrk/compact-runtime": "npm:0.9.0-rc.1"
+    "@midnight-ntwrk/ledger": "npm:@midnight-ntwrk/ledger-v6@6.1.0-alpha.2"
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
     "@midnight-ntwrk/platform-js": "npm:^1.0.0"
     effect: "npm:^3.17.7"
@@ -2233,14 +2233,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/compact-runtime@npm:0.9.0-rc.0":
-  version: 0.9.0-rc.0
-  resolution: "@midnight-ntwrk/compact-runtime@npm:0.9.0-rc.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-runtime%2F0.9.0-rc.0%2Fc0139f3f054e57bdf0347efb0a6b68c81c04ef71"
+"@midnight-ntwrk/compact-runtime@npm:0.9.0-rc.1":
+  version: 0.9.0-rc.1
+  resolution: "@midnight-ntwrk/compact-runtime@npm:0.9.0-rc.1::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-runtime%2F0.9.0-rc.1%2F68d9bdc70996af4bc4641a8d537b5630a9e654c4"
   dependencies:
-    "@midnight-ntwrk/onchain-runtime": "npm:^0.4.0-alpha.3"
+    "@midnight-ntwrk/onchain-runtime": "npm:^0.5.0-alpha.3"
     "@types/object-inspect": "npm:^1.8.1"
     object-inspect: "npm:^1.12.3"
-  checksum: 10/53961dc78dc511c031ca7a25e711ead08f49bb8ab0681b66bed1cb0168bdeeebbd76c50186d0f6bec58aed5328be09c9c8c05c9e9d071235c0dfaae9720a4f6e
+  checksum: 10/4cb07ec29e614f4dd439dabdd524d15991f32e2b3369d7dd8e9bd38a87b705c18894d9e030caf41b8ff2d70721172f8be69a3eba6dc4383f83b2b173f9750ddc
   languageName: node
   linkType: hard
 
@@ -2251,10 +2251,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/ledger@npm:5.0.0-alpha.3":
-  version: 5.0.0-alpha.3
-  resolution: "@midnight-ntwrk/ledger@npm:5.0.0-alpha.3::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fledger%2F5.0.0-alpha.3%2Fc358b7ddba8005266b96c2276431443ffc1ddae3"
-  checksum: 10/d469f3e8ee3e8caa7d0213804f12567f6edee9ee4fc6bbd9c0b0c9243ad234635812c4e4bda2d9f95752098f23323df5eefc254b339977bdb6e6c866592a4371
+"@midnight-ntwrk/ledger@npm:@midnight-ntwrk/ledger-v6@6.1.0-alpha.2":
+  version: 6.1.0-alpha.2
+  resolution: "@midnight-ntwrk/ledger-v6@npm:6.1.0-alpha.2::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fledger-v6%2F6.1.0-alpha.2%2F83eebd3fc32d946b54334f89f4bd02fad7193e0d"
+  checksum: 10/7e2aa67c39471de92e0719662341799d8ce236052845a99326c5f1861da7943e248fd92a360a51ab370b198c412fb9ddf2ed3a92d9fa09181198360a88167289
   languageName: node
   linkType: hard
 
@@ -2466,10 +2466,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/onchain-runtime@npm:^0.4.0-alpha.3":
-  version: 0.4.0-alpha.3
-  resolution: "@midnight-ntwrk/onchain-runtime@npm:0.4.0-alpha.3::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fonchain-runtime%2F0.4.0-alpha.3%2Fbc2389763a4acea0a0990fd99e5f4eb64059db00"
-  checksum: 10/f704c7b7ba7afff0e30390207332aef460983b01bd62df6741eb5c1bf36ff7c4a69a8c14ced58b9aa97e9f6d4c6ff9660069de129d765bc55f0635ac2f60605e
+"@midnight-ntwrk/onchain-runtime@npm:^0.5.0-alpha.3":
+  version: 0.5.0-alpha.3
+  resolution: "@midnight-ntwrk/onchain-runtime@npm:0.5.0-alpha.3::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fonchain-runtime%2F0.5.0-alpha.3%2F61999985f83709959653ddc554e398b420a61de5"
+  checksum: 10/2b4a5a3bb8d094434852ce8b303c609d54f3b5eac343ff713db06e22e462b52cd009f27bee71ce4e31d956f2692dafa9cc26803fde5289bb7016bd5489d2b181
   languageName: node
   linkType: hard
 

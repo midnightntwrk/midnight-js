@@ -20,7 +20,7 @@ import * as Doc from '@effect/printer-ansi/AnsiDoc';
 import { type ContractExecutable, ContractExecutableRuntime,type ZKConfiguration } from '@midnight-ntwrk/compact-js/effect';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
-import { ConfigError as EffectConfigError, type ConfigProvider, Console, DateTime, type Duration,Effect, Layer } from 'effect';
+import { ConfigError as EffectConfigError, type ConfigProvider, Console, DateTime, type Duration,Effect,Layer } from 'effect';
 
 import * as CommandConfigProvider from '../CommandConfigProvider.js';
 import * as ConfigCompilationError from '../ConfigCompilationError.js';

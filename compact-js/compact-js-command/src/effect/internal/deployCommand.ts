@@ -21,8 +21,6 @@ import {
   ContractDeploy,
   ContractState as LedgerContractState,
   Intent} from '@midnight-ntwrk/ledger';
-import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
-import * as NetworkId from '@midnight-ntwrk/platform-js/effect/NetworkId';
 import { type ConfigError, Duration,Effect } from 'effect';
 
 import { type ConfigCompiler } from '../ConfigCompiler.js';
@@ -47,23 +45,19 @@ export const Options = {
   outputPrivateStateFilePath: InternalOptions.outputPrivateStateFilePath
 }
 
-const asLedgerContractState = (contractState: ContractState, networkId: NetworkId.NetworkId): LedgerContractState =>
-  LedgerContractState.deserialize(
-    contractState.serialize(NetworkId.asRuntimeLegacy(networkId)),
-    NetworkId.asLedgerLegacy(networkId)
-  );
+const asLedgerContractState = (contractState: ContractState): LedgerContractState =>
+  LedgerContractState.deserialize(contractState.serialize());
 
 /** @internal */
 export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.ModuleSpec) =>
   Effect.Effect<
     void,
     ContractExecutable.ContractExecutionError | ConfigError.ConfigError,
-    Path.Path | FileSystem.FileSystem | Configuration.Network
+    Path.Path | FileSystem.FileSystem
   > =
   (inputs, moduleSpec) => Effect.gen(function* () {
     const path = yield* Path.Path;
     const fs = yield* FileSystem.FileSystem;
-    const networkId = yield* Configuration.Network;
     const { module: { default: contractModule } } = moduleSpec;
     const intentOutputFilePath = path.resolve(inputs.outputFilePath);
     const privateStateOutputFilePath = path.resolve(inputs.outputPrivateStateFilePath);
@@ -71,10 +65,11 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       contractModule.createInitialPrivateState(),
       ...inputs.args
     );
+    const _a = asLedgerContractState(result.public.contractState);
     const intent = Intent.new(yield* InternalCommand.ttl(Duration.minutes(10)))
-      .addDeploy(new ContractDeploy(asLedgerContractState(result.public.contractState, networkId)));
+      .addDeploy(new ContractDeploy(asLedgerContractState(result.public.contractState)));
 
-    yield* fs.writeFile(intentOutputFilePath, intent.serialize(NetworkId.asLedgerLegacy(networkId)));
+    yield* fs.writeFile(intentOutputFilePath, intent.serialize());
     yield* fs.writeFileString(privateStateOutputFilePath, JSON.stringify(result.private.privateState));
   }).pipe(
     Effect.mapError(
