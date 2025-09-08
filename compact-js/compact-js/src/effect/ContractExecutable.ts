@@ -28,12 +28,14 @@ import {
   StateValue,
   type ZswapLocalState} from '@midnight-ntwrk/compact-runtime';
 import {
+  ChargedState as LedgerChargedState,
   LedgerParameters,
   partitionTranscripts,
   PreTranscript,
   QueryContext as LedgerQueryContext,
   StateValue as LedgerStateValue,
-  type Transcript} from '@midnight-ntwrk/ledger';
+  type Transcript
+} from '@midnight-ntwrk/ledger';
 import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import type * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
@@ -150,7 +152,10 @@ type Transform<E, R> = <A>(effect: Effect.Effect<A, any, any>) => Effect.Effect<
 const DEFAULT_CMA_THRESHOLD = 1;
 
 const asLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext =>
-  new LedgerQueryContext(LedgerStateValue.decode(queryContext.state.encode()), queryContext.address);
+  new LedgerQueryContext(
+    new LedgerChargedState(LedgerStateValue.decode(queryContext.state.encode())),
+    queryContext.address
+  );
 
 const partitionTranscript = (
   txContext: QueryContext,
@@ -167,7 +172,7 @@ const partitionTranscript = (
         publicTranscript
       )
     ],
-    LedgerParameters.dummyParameters()
+    LedgerParameters.initialParameters()
   );
   return partitionedTranscripts.length === 1
     ? Either.right(partitionedTranscripts[0])
