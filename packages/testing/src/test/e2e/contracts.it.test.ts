@@ -32,7 +32,8 @@ import {
   type FinalizedDeployTxData,
   findDeployedContract,
   submitCallTx,
-  submitDeployTx} from '@midnight-ntwrk/midnight-js-contracts';
+  submitDeployTx
+} from '@midnight-ntwrk/midnight-js-contracts';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import path from 'path';
@@ -47,7 +48,7 @@ import {
   CompiledCounter,
   type CounterPrivateState,
   createInitialPrivateState,
-  createPrivateState,
+  createPrivateState
 } from '@/e2e/contract';
 import * as api from '@/e2e/counter-api';
 import {
@@ -59,7 +60,7 @@ import {
   SimpleConfiguration,
   simpleContractInstance
 } from '@/e2e/counter-api';
-import { type CounterCloneCircuits,CounterClonePrivateStateId } from '@/e2e/counter-clone-types';
+import { type CounterCloneCircuits, CounterClonePrivateStateId } from '@/e2e/counter-clone-types';
 import {
   type CounterCircuits,
   type CounterContract,
@@ -69,10 +70,7 @@ import {
   privateStateZero
 } from '@/e2e/counter-types';
 import { type SimpleCircuits } from '@/e2e/simple-types';
-import type {
-  EnvironmentConfiguration,
-  MidnightWalletProvider,
-  TestEnvironment} from '@/infrastructure';
+import type { EnvironmentConfiguration, MidnightWalletProvider, TestEnvironment } from '@/infrastructure';
 import {
   createLogger,
   expectFoundAndDeployedStatesEqual,
@@ -81,7 +79,8 @@ import {
   expectSuccessfulCallTx,
   expectSuccessfulDeployTx,
   getTestEnvironment,
-  initializeMidnightProviders} from '@/infrastructure';
+  initializeMidnightProviders
+} from '@/infrastructure';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_${new Date().toISOString()}.log`)

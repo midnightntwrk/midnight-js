@@ -23,7 +23,8 @@ import {
   type AlignedValue,
   type ContractState,
   type Effects,
-  sampleCoinPublicKey, type TokenType
+  sampleCoinPublicKey,
+  type TokenType
 } from '@midnight-ntwrk/ledger-v6';
 import { type Contract, type PrivateState } from '@midnight-ntwrk/midnight-js-types';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';

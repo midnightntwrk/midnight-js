@@ -19,11 +19,7 @@ import path from 'path';
 import type { Logger } from 'pino';
 import { WebSocket } from 'ws';
 
-import type {
-  BlockTimeContract,
-  BlockTimeProviders,
-  DeployedBlockTimeContract
-} from '@/e2e/block-time-types';
+import type { BlockTimeContract, BlockTimeProviders, DeployedBlockTimeContract } from '@/e2e/block-time-types';
 import { type ContractConfiguration } from '@/infrastructure';
 
 import { CompilerBlockTime } from './contract';

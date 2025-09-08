@@ -28,12 +28,8 @@ import {
   type MidnightWalletProvider
 } from '@/infrastructure';
 
-import {
-  CompiledCounter,
-  type CounterPrivateState,
-  createInitialPrivateState
-} from './contract';
-import { type CounterCloneContract,createCounterCloneContractInstance } from './counter-clone-types';
+import { CompiledCounter, type CounterPrivateState, createInitialPrivateState } from './contract';
+import { type CounterCloneContract, createCounterCloneContractInstance } from './counter-clone-types';
 import {
   type CounterContract,
   CounterPrivateStateId,

@@ -22,7 +22,8 @@ import {
   getImpureCircuitIds,
   type ImpureCircuitId,
   type PrivateStateId,
-  type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
+  type VerifierKey
+} from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';

@@ -17,7 +17,8 @@ import { sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
 import {
   ContractCall,
   ContractDeploy,
-  LedgerState, type Proof,
+  LedgerState,
+  type Proof,
   sampleCoinPublicKey,
   sampleEncryptionPublicKey,
   WellFormedStrictness,
@@ -38,11 +39,7 @@ import { createInitialPrivateState } from '@/e2e/contract';
 import * as api from '@/e2e/counter-api';
 import { CounterConfiguration, counterContractInstance } from '@/e2e/counter-api';
 import type { CounterCircuits } from '@/e2e/counter-types';
-import {
-  createLogger,
-  DynamicProofServerContainer,
-  type ProofServerContainer
-} from '@/infrastructure';
+import { createLogger, DynamicProofServerContainer, type ProofServerContainer } from '@/infrastructure';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `proof_server_${new Date().toISOString()}.log`)

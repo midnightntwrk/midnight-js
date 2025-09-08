@@ -14,11 +14,7 @@
  */
 
 import { type ContractAddress } from '@midnight-ntwrk/ledger-v6';
-import {
-  createUnprovenCallTx,
-  type FinalizedDeployTxData,
-  submitTx
-} from '@midnight-ntwrk/midnight-js-contracts';
+import { createUnprovenCallTx, type FinalizedDeployTxData, submitTx } from '@midnight-ntwrk/midnight-js-contracts';
 import { FailEntirely, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import path from 'path';
 import { vi } from 'vitest';
@@ -30,16 +26,8 @@ import {
   type BlockTimeProviders,
   type DeployedBlockTimeContract
 } from '@/e2e/block-time-types';
-import type {
-  EnvironmentConfiguration,
-  MidnightWalletProvider,
-  TestEnvironment
-} from '@/infrastructure';
-import {
-  createLogger,
-  getTestEnvironment,
-  initializeMidnightProviders
-} from '@/infrastructure';
+import type { EnvironmentConfiguration, MidnightWalletProvider, TestEnvironment } from '@/infrastructure';
+import { createLogger, getTestEnvironment, initializeMidnightProviders } from '@/infrastructure';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `block_time_${new Date().toISOString()}.log`)

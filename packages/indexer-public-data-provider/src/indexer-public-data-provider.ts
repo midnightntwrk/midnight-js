@@ -15,7 +15,7 @@
 
 import { ApolloClient, InMemoryCache } from '@apollo/client/core/core.cjs';
 import type { ApolloQueryResult, FetchResult, NormalizedCacheObject } from '@apollo/client/core/index.js';
-import { from,split } from '@apollo/client/link/core/core.cjs';
+import { from, split } from '@apollo/client/link/core/core.cjs';
 import { createHttpLink } from '@apollo/client/link/http/http.cjs';
 import { RetryLink } from '@apollo/client/link/retry/retry.cjs';
 import { GraphQLWsLink } from '@apollo/client/link/subscriptions/subscriptions.cjs';
@@ -28,9 +28,10 @@ import {
   type Proof,
   type RawTokenType,
   type SignatureEnabled,
-  type TransactionId
+  Transaction as LedgerTransaction,
+  type TransactionId,
+  ZswapChainState
 } from '@midnight-ntwrk/ledger-v6';
-import { Transaction as LedgerTransaction, ZswapChainState } from '@midnight-ntwrk/ledger-v6';
 import type {
   BlockHashConfig,
   BlockHeightConfig,
@@ -41,14 +42,16 @@ import type {
   TxStatus,
   UnshieldedBalances,
   UnshieldedUtxo,
-  UnshieldedUtxos} from '@midnight-ntwrk/midnight-js-types';
+  UnshieldedUtxos
+} from '@midnight-ntwrk/midnight-js-types';
 import {
   FailEntirely,
   FailFallible,
   InvalidProtocolSchemeError,
   SegmentFail,
   SegmentSuccess,
-  SucceedEntirely} from '@midnight-ntwrk/midnight-js-types';
+  SucceedEntirely
+} from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 import { Buffer } from 'buffer';
 import fetch from 'cross-fetch';
@@ -67,7 +70,7 @@ import {
   type InputMaybe,
   type LatestContractTxBlockHeightQueryQuery,
   type Segment,
-  type TransactionResult,
+  type TransactionResult
 } from './gen/graphql';
 import {
   BLOCK_QUERY,

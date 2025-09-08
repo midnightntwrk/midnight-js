@@ -1,8 +1,8 @@
 import { beforeAll, vi } from 'vitest';
 import {
   createLogger,
-  deleteDirectory,
   defaultContainersConfiguration,
+  deleteDirectory,
   setContainersConfiguration
 } from '@/infrastructure/index';
 
@@ -10,9 +10,7 @@ const logger = await createLogger('default.log');
 globalThis.logger = logger;
 
 beforeAll(async () => {
-  logger.info(
-    'Setting up container configuration to use pinned component versions'
-  );
+  logger.info('Setting up container configuration to use pinned component versions');
   setContainersConfiguration(defaultContainersConfiguration);
   await deleteDirectory('../midnight-level-db');
 });
@@ -27,6 +25,4 @@ if (!localNetEnvVarValues.includes(envVar)) {
   timeout = 10 * MINUTE;
 }
 vi.setConfig({ testTimeout: timeout });
-logger.info(
-  `Setting test timeout to ${timeout / MINUTE} minutes for MN_TEST_ENVIRONMENT='${envVar}'`
-);
+logger.info(`Setting test timeout to ${timeout / MINUTE} minutes for MN_TEST_ENVIRONMENT='${envVar}'`);

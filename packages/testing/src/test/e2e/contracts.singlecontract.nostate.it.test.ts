@@ -52,7 +52,8 @@ import {
   getTestEnvironment,
   initializeMidnightProviders,
   type MidnightWalletProvider,
-  type TestEnvironment} from '@/infrastructure';
+  type TestEnvironment
+} from '@/infrastructure';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_nostate_${new Date().toISOString()}.log`)

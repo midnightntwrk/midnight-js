@@ -15,8 +15,7 @@
 
 import type { ContractAddress } from '@midnight-ntwrk/ledger-v6';
 import { sampleContractAddress } from '@midnight-ntwrk/ledger-v6';
-import type { PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
-import type { UnshieldedBalances } from '@midnight-ntwrk/midnight-js-types';
+import type { PublicDataProvider, UnshieldedBalances } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expect, it, vi } from 'vitest';
 
 import { getUnshieldedBalances } from '../get-unshielded-balances';

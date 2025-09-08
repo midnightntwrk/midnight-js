@@ -17,6 +17,7 @@ import path from 'path';
 
 import { CounterPrivateStateId, type CounterProviders, currentDir, privateStateZero } from '@/e2e';
 import {
+  type ContractConfiguration,
   type EnvironmentConfiguration,
   getTestEnvironment,
   initializeMidnightProviders,
@@ -24,7 +25,6 @@ import {
   type MidnightWalletProvider,
   type TestEnvironment
 } from '@/infrastructure';
-import { type ContractConfiguration } from '@/infrastructure';
 
 import * as api from '../counter-api';
 

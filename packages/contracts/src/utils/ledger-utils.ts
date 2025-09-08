@@ -20,8 +20,9 @@ import {
   type QueryContext,
   signatureVerifyingKey,
   type SigningKey,
-  type ZswapLocalState} from '@midnight-ntwrk/compact-runtime';
-import type { SingleUpdate,ZswapChainState } from '@midnight-ntwrk/ledger-v6';
+  type ZswapLocalState
+} from '@midnight-ntwrk/compact-runtime';
+import type { SingleUpdate, ZswapChainState } from '@midnight-ntwrk/ledger-v6';
 import {
   communicationCommitmentRandomness,
   ContractCallPrototype,
@@ -30,13 +31,16 @@ import {
   ContractOperationVersion,
   ContractOperationVersionedVerifierKey,
   ContractState as LedgerContractState,
-type EncPublicKey,
-Intent,   MaintenanceUpdate,
+  type EncPublicKey,
+  Intent,
+  MaintenanceUpdate,
   QueryContext as LedgerQueryContext,
   ReplaceAuthority,
   signData,
   StateValue as LedgerStateValue,
-  VerifierKeyInsert,   VerifierKeyRemove} from '@midnight-ntwrk/ledger-v6';
+  VerifierKeyInsert,
+  VerifierKeyRemove
+} from '@midnight-ntwrk/ledger-v6';
 import {
   type ImpureCircuitId,
   Transaction,

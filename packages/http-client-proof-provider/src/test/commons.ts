@@ -17,7 +17,12 @@ import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { Transaction } from '@midnight-ntwrk/ledger-v6';
-import { createProverKey, createVerifierKey, createZKIR, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-types';
+import {
+  createProverKey,
+  createVerifierKey,
+  createZKIR,
+  type UnprovenTransaction
+} from '@midnight-ntwrk/midnight-js-types';
 import fs from 'fs/promises';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));

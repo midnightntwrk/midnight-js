@@ -18,7 +18,8 @@ import type {
   CircuitResults,
   ConstructorContext,
   ConstructorResult,
-  WitnessContext} from '@midnight-ntwrk/compact-runtime';
+  WitnessContext
+} from '@midnight-ntwrk/compact-runtime';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 

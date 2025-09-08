@@ -23,12 +23,7 @@ import { CompiledCounter } from '@/e2e/contract';
 import * as api from '@/e2e/counter-api';
 import { CONTRACT_CIRCUITS, CounterConfiguration } from '@/e2e/counter-api';
 import { type CounterProviders, type DeployedCounterContract, privateStateZero } from '@/e2e/counter-types';
-import {
-  createLogger,
-  getTestEnvironment,
-  initializeMidnightProviders,
-  type TestEnvironment
-} from '@/infrastructure';
+import { createLogger, getTestEnvironment, initializeMidnightProviders, type TestEnvironment } from '@/infrastructure';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `indexer_${new Date().toISOString()}.log`)

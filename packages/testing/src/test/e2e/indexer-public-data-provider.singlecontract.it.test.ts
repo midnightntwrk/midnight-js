@@ -27,12 +27,7 @@ import {
   type DeployedCounterContract,
   privateStateZero
 } from '@/e2e/counter-types';
-import {
-  createLogger,
-  getTestEnvironment,
-  initializeMidnightProviders,
-  type TestEnvironment
-} from '@/infrastructure';
+import { createLogger, getTestEnvironment, initializeMidnightProviders, type TestEnvironment } from '@/infrastructure';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `indexer_${new Date().toISOString()}.log`)

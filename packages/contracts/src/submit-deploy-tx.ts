@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { type Contract, type ImpureCircuitId,SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import { type Contract, type ImpureCircuitId, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 
 import { type ContractProviders } from './contract-providers';
 import { DeployTxFailedError } from './errors';
@@ -34,7 +34,7 @@ export type SubmitDeployTxProviders<C extends Contract> =
  */
 export type DeployTxOptions<C extends Contract> = DeployTxOptionsBase<C> | DeployTxOptionsWithPrivateStateId<C>;
 
- 
+
 
 export async function submitDeployTx<C extends Contract<undefined>>(
   providers: ContractProviders<C, ImpureCircuitId<C>, unknown>,

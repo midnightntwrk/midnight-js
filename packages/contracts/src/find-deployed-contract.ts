@@ -26,7 +26,8 @@ import {
   type PrivateState,
   type PrivateStateId,
   type PrivateStateProvider,
-  type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
+  type VerifierKey
+} from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress, toHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
@@ -219,7 +220,7 @@ export type FoundContract<C extends Contract> = {
   readonly contractMaintenanceTx: ContractMaintenanceTxInterface;
 }
 
- 
+
 
 export async function findDeployedContract<C extends Contract<undefined>>(
   providers: ContractProviders<C, ImpureCircuitId<C>, unknown>,

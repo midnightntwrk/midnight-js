@@ -26,7 +26,8 @@ import {
   Transaction,
   type Transcript,
   unshieldedToken,
-  ZswapChainState} from '@midnight-ntwrk/ledger-v6';
+  ZswapChainState
+} from '@midnight-ntwrk/ledger-v6';
 import { createVerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
@@ -43,7 +44,8 @@ import {
   replaceAuthority,
   toLedgerContractState,
   toLedgerQueryContext,
-  unprovenTxFromContractUpdates} from '../../utils';
+  unprovenTxFromContractUpdates
+} from '../../utils';
 
 describe('ledger-utils', () => {
   const dummySigningKey = sampleSigningKey();

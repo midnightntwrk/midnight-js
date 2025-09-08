@@ -19,7 +19,8 @@ import {
   type Contract,
   type PrivateState,
   type PrivateStateId,
-  type PrivateStateProvider} from '@midnight-ntwrk/midnight-js-types';
+  type PrivateStateProvider
+} from '@midnight-ntwrk/midnight-js-types';
 
 /**
  * A simple in-memory implementation of private state provider. Makes it easy to capture and rewrite private state from deploy.

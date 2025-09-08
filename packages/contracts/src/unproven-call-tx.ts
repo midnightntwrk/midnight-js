@@ -14,7 +14,7 @@
  */
 
 import type { CoinPublicKey, ContractState } from '@midnight-ntwrk/compact-runtime';
-import { type EncPublicKey,type ZswapChainState } from '@midnight-ntwrk/ledger-v6';
+import { type EncPublicKey, type ZswapChainState } from '@midnight-ntwrk/ledger-v6';
 import type { Contract, ImpureCircuitId, PrivateState, PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
@@ -30,7 +30,6 @@ import { IncompleteCallTxPrivateStateConfig } from './errors';
 import { getPublicStates, getStates } from './get-states';
 import type { UnsubmittedCallTxData } from './tx-model';
 import { createUnprovenLedgerCallTx, encryptionPublicKeyForZswapState, zswapStateToNewCoins } from './utils';
-
 
 
 export function createUnprovenCallTxFromInitialStates<C extends Contract<undefined>, ICK extends ImpureCircuitId<C>>(

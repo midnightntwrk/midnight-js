@@ -14,7 +14,7 @@
  */
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { beforeEach,vi } from 'vitest';
+import { beforeEach, vi } from 'vitest';
 
 import { getValidUnprovenTx } from './commons';
 

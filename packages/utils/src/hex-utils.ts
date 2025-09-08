@@ -18,6 +18,7 @@ import {
   ShieldedCoinPublicKey,
   ShieldedEncryptionPublicKey
 } from '@midnight-ntwrk/wallet-sdk-address-format';
+
 /**
  * The result of parsing a string as a hex-encoded string.
  */

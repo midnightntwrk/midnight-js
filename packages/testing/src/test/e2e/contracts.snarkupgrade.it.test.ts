@@ -26,11 +26,7 @@ import path from 'path';
 import * as api from '@/e2e/counter-api';
 import { CIRCUIT_ID_RESET, counterContractInstance } from '@/e2e/counter-api';
 import { type CounterProviders } from '@/e2e/counter-types';
-import type {
-  EnvironmentConfiguration,
-  MidnightWalletProvider,
-  TestEnvironment
-} from '@/infrastructure';
+import type { EnvironmentConfiguration, MidnightWalletProvider, TestEnvironment } from '@/infrastructure';
 import { createLogger, getTestEnvironment } from '@/infrastructure';
 
 const logger = createLogger(

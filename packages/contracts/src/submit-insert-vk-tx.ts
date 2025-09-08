@@ -18,7 +18,8 @@ import {
   type FinalizedTxData,
   type ImpureCircuitId,
   SucceedEntirely,
-  type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
+  type VerifierKey
+} from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress, assertUndefined } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';

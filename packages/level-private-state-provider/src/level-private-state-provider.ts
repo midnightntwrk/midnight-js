@@ -14,7 +14,7 @@
  */
 
 import type { ContractAddress, SigningKey } from '@midnight-ntwrk/compact-runtime';
-import type { PrivateStateId,PrivateStateProvider } from '@midnight-ntwrk/midnight-js-types';
+import type { PrivateStateId, PrivateStateProvider } from '@midnight-ntwrk/midnight-js-types';
 import { type AbstractSublevel } from 'abstract-level';
 import { Buffer } from 'buffer';
 import { Level } from 'level';

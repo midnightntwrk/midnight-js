@@ -13,15 +13,16 @@
  * limitations under the License.
  */
 
-import type { CoinPublicKey,SigningKey } from '@midnight-ntwrk/compact-runtime';
+import type { CoinPublicKey, SigningKey } from '@midnight-ntwrk/compact-runtime';
 import type { EncPublicKey } from '@midnight-ntwrk/ledger-v6';
 import {
   type Contract,
+  getImpureCircuitIds,
   type ImpureCircuitId,
   type PrivateState,
   type PrivateStateId,
-  type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
-import { getImpureCircuitIds } from '@midnight-ntwrk/midnight-js-types';
+  type VerifierKey
+} from '@midnight-ntwrk/midnight-js-types';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import type { ContractConstructorOptions, ContractConstructorOptionsWithArguments } from './call-constructor';

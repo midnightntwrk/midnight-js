@@ -14,12 +14,7 @@
  */
 
 import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
-import {
-  type EncPublicKey,
-  type ShieldedCoinInfo,
-  shieldedToken,
-  type TokenType,
-} from '@midnight-ntwrk/ledger-v6';
+import { type EncPublicKey, type ShieldedCoinInfo, shieldedToken, type TokenType } from '@midnight-ntwrk/ledger-v6';
 import {
   type BalancedTransaction,
   createBalancedTx,

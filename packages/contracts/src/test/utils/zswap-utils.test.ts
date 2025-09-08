@@ -15,16 +15,20 @@
 
 import { fc } from '@fast-check/vitest';
 import { type Recipient } from '@midnight-ntwrk/compact-runtime';
-import { type CoinPublicKey, type QualifiedShieldedCoinInfo, type ShieldedCoinInfo, shieldedToken } from '@midnight-ntwrk/ledger-v6';
 import {
+  type CoinPublicKey,
   createShieldedCoinInfo,
   nativeToken,
+  type QualifiedShieldedCoinInfo,
   sampleCoinPublicKey,
   sampleContractAddress,
   sampleRawTokenType,
+  type ShieldedCoinInfo,
+  shieldedToken,
   Transaction,
   ZswapChainState,
-  ZswapOffer} from '@midnight-ntwrk/ledger-v6';
+  ZswapOffer
+} from '@midnight-ntwrk/ledger-v6';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
 

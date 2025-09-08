@@ -26,11 +26,7 @@ export default [
       }),
       commonjs()
     ],
-    external: [
-      /node_modules/,
-      /^@midnight-ntwrk\/midnight-js-(.*)$/,
-      /^@midnight-ntwrk\/(.*)$/
-    ]
+    external: [/node_modules/, /^@midnight-ntwrk\/midnight-js-(.*)$/, /^@midnight-ntwrk\/(.*)$/]
   },
   {
     input: 'src/e2e/node/counter.ts',
@@ -54,10 +50,6 @@ export default [
       }),
       commonjs()
     ],
-    external: [
-      /node_modules/,
-      /^@midnight-ntwrk\/midnight-js-(.*)$/,
-      /^@midnight-ntwrk\/(.*)$/
-    ]
+    external: [/node_modules/, /^@midnight-ntwrk\/midnight-js-(.*)$/, /^@midnight-ntwrk\/(.*)$/]
   }
 ];

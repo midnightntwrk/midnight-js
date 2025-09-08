@@ -20,11 +20,7 @@ import { type Wallet } from '@midnight-ntwrk/wallet-api';
 import { generateRandomSeed } from '@midnight-ntwrk/wallet-sdk-hd';
 
 import type { EnvironmentConfiguration } from '@/infrastructure';
-import {
-  DEFAULT_WALLET_STATE_DIRECTORY,
-  getWalletStateFilename,
-  WalletSaveStateProvider
-} from '@/infrastructure';
+import { DEFAULT_WALLET_STATE_DIRECTORY, getWalletStateFilename, WalletSaveStateProvider } from '@/infrastructure';
 
 import { logger } from '../logger';
 import type { MidnightWallet, SerializedWalletState } from './wallet-types';

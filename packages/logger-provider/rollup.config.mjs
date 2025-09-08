@@ -10,21 +10,21 @@ export default {
     {
       file: packageJson.module,
       format: 'esm',
-      sourcemap: true,
+      sourcemap: true
     },
     {
       file: packageJson.main,
       format: 'cjs',
-      sourcemap: true,
-    },
+      sourcemap: true
+    }
   ],
   plugins: [
     resolve(),
     typescript({
       tsconfig: './tsconfig.build.json',
-      composite: false,
+      composite: false
     }),
     commonjs()
   ],
-  external: [/node_modules/, /^@midnight-ntwrk\/midnight-js-(.*)$/],
+  external: [/node_modules/, /^@midnight-ntwrk\/midnight-js-(.*)$/]
 };
