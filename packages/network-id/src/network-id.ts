@@ -16,5 +16,4 @@
 /**
  * A valid named Midnight network identifier.
  */
-
 export type NetworkId = string | 'undeployed';

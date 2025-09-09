@@ -21,9 +21,9 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import {
   type AlignedValue,
-  type ContractState,
   type Effects,
-  sampleCoinPublicKey, type TokenType
+  sampleCoinPublicKey,
+  type TokenType
 } from '@midnight-ntwrk/ledger-v6';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { type Contract, type PrivateState } from '@midnight-ntwrk/midnight-js-types';
@@ -31,7 +31,7 @@ import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
 import { call } from '../call';
-import { createMockCallOptions, createMockCallOptionsWithPrivateState, createMockContractAddress } from './test-mocks';
+import { createMockCallOptions, createMockCallOptionsWithPrivateState, createMockContractAddress, createMockContractState } from './test-mocks';
 
 // TODO: add test: circuit with invalid arguments
 // TODO: add test: circuit with not matching arguments (e.g.: Boolean -> Field)
@@ -66,7 +66,7 @@ describe('call', () => {
           address: createMockContractAddress(),
           toVmStack: vi.fn()
         },
-        originalState: {} as ContractState,
+        originalState: createMockContractState(),
         currentPrivateState: { test: 'private-state' } as PrivateState<Contract>,
         currentZswapLocalState: emptyZswapLocalState(
           parseCoinPublicKeyToHex(sampleCoinPublicKey(), getNetworkId())

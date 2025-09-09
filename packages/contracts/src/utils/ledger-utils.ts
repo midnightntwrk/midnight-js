@@ -21,7 +21,7 @@ import {
   signatureVerifyingKey,
   type SigningKey,
   type ZswapLocalState} from '@midnight-ntwrk/compact-runtime';
-import { ChargedState, SingleUpdate, ZswapChainState } from '@midnight-ntwrk/ledger-v6';
+import { ChargedState, type SingleUpdate, type ZswapChainState } from '@midnight-ntwrk/ledger-v6';
 import {
   communicationCommitmentRandomness,
   ContractCallPrototype,

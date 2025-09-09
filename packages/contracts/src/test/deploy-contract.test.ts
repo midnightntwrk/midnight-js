@@ -22,7 +22,7 @@ import { type ContractProviders } from '../contract-providers';
 import { deployContract, type DeployContractOptionsBase, type DeployedContract } from '../deploy-contract';
 import { type UnsubmittedDeployTxData } from '../tx-model';
 import {
-  createMockContract,
+  createMockContract, createMockContractState,
   createMockFinalizedTxData,
   createMockPrivateStateId,
   createMockProviders,
@@ -49,7 +49,7 @@ describe('deployContract', () => {
     public: {
       ...createMockFinalizedTxData(),
       contractAddress: 'mock-contract-address',
-      initialContractState: {} as ContractState
+      initialContractState: createMockContractState()
     },
     private: {
       signingKey: createMockSigningKey(),
