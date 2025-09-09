@@ -17,21 +17,22 @@ import { sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
 import {
   ContractCall,
   ContractDeploy,
-  LedgerState,
+  LedgerState, type Proof,
   sampleCoinPublicKey,
   sampleEncryptionPublicKey,
-  type UnprovenTransaction,
   WellFormedStrictness,
-  ZswapChainState} from '@midnight-ntwrk/ledger';
+  ZswapChainState
+} from '@midnight-ntwrk/ledger';
 import {
   createUnprovenCallTxFromInitialStates,
   createUnprovenDeployTxFromVerifierKeys
 } from '@midnight-ntwrk/midnight-js-contracts';
 import { DEFAULT_CONFIG, httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
 import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
-import type { ProofProvider, ZKConfig } from '@midnight-ntwrk/midnight-js-types';
+import type { ProofProvider, UnprovenTransaction, ZKConfig } from '@midnight-ntwrk/midnight-js-types';
 import { getImpureCircuitIds } from '@midnight-ntwrk/midnight-js-types';
 import path from 'path';
+import { expect } from 'vitest';
 
 import { createInitialPrivateState } from '@/e2e/contract';
 import * as api from '@/e2e/counter-api';
@@ -111,12 +112,18 @@ describe('Proof server integration', () => {
    */
   test('should create proofs successfully for deploy and call transactions', async () => {
     const provenDeployTx = await proofProvider.proveTx(unprovenDeployTx);
-    expect(provenDeployTx.contractCalls.length).toEqual(1);
-    expect(provenDeployTx.contractCalls[0]).toBeInstanceOf(ContractDeploy);
+    const contractActions = provenDeployTx.intents?.get(1)?.actions;
+    expect(contractActions?.length).toEqual(1);
+    if (contractActions) {
+      expect(contractActions[0]).toBeInstanceOf(ContractDeploy);
+    }
     const provenCallTx = await proofProvider.proveTx(unprovenCallTx, { zkConfig });
-    expect(provenCallTx.contractCalls.length).toEqual(1);
-    expect(provenCallTx.contractCalls[0]).toBeInstanceOf(ContractCall);
-    expect((provenCallTx.contractCalls[0] as ContractCall).entryPoint).toEqual(circuitId);
+    const contractActionsCall = provenCallTx.intents?.get(1)?.actions;
+    expect(contractActionsCall?.length).toEqual(1);
+    if (contractActionsCall) {
+      expect(contractActionsCall[0]).toBeInstanceOf(ContractCall);
+      expect((contractActionsCall[0] as ContractCall<Proof>).entryPoint).toEqual(circuitId);
+    }
   });
 
   test('should create proofs with transactions that has succesfull well-formedness', async () => {
@@ -128,10 +135,10 @@ describe('Proof server integration', () => {
     strictness.verifyNativeProofs = false;
 
     const provenDeployTx = await proofProvider.proveTx(unprovenDeployTx);
-    expect(() => provenDeployTx.wellFormed(ledgerState, strictness)).not.toThrow();
+    expect(() => provenDeployTx.wellFormed(ledgerState, strictness, new Date())).not.toThrow();
 
     const provenCallTx = await proofProvider.proveTx(unprovenCallTx, { zkConfig });
-    expect(() => provenCallTx.wellFormed(ledgerState, strictness)).not.toThrow();
+    expect(() => provenCallTx.wellFormed(ledgerState, strictness, new Date())).not.toThrow();
   });
   /**
    * Test error handling for invalid ZKConfig circuit ID.
@@ -182,9 +189,13 @@ describe('Proof server integration', () => {
     expect(results).toHaveLength(numTxsToProve);
     results.forEach((result) => {
       expect(result).toBeDefined();
-      expect(result.contractCalls).toHaveLength(1);
-      expect(result.contractCalls[0]).toBeInstanceOf(ContractCall);
-      expect((result.contractCalls[0] as ContractCall).entryPoint).toEqual(circuitId);
+      const contractActions = result.intents?.get(1)?.actions;
+      expect(contractActions).toBeDefined();
+      if (contractActions) {
+        expect(contractActions[0]).toHaveLength(1);
+        expect(contractActions[0]).toBeInstanceOf(ContractCall);
+        expect((contractActions[0] as ContractCall<Proof>).entryPoint).toEqual(circuitId);
+      }
     });
   });
 });

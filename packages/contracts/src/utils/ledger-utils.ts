@@ -25,27 +25,31 @@ import type { SingleUpdate,ZswapChainState } from '@midnight-ntwrk/ledger';
 import {
   communicationCommitmentRandomness,
   ContractCallPrototype,
-  ContractCallsPrototype,
   ContractDeploy,
   ContractMaintenanceAuthority,
   ContractOperationVersion,
   ContractOperationVersionedVerifierKey,
   ContractState as LedgerContractState,
-  MaintenanceUpdate,
+type EncPublicKey,
+Intent,   MaintenanceUpdate,
   QueryContext as LedgerQueryContext,
   ReplaceAuthority,
   signData,
   StateValue as LedgerStateValue,
-  UnprovenOffer,
-  VerifierKeyInsert,
-  VerifierKeyRemove} from '@midnight-ntwrk/ledger';
+  VerifierKeyInsert,   VerifierKeyRemove} from '@midnight-ntwrk/ledger';
 import { getLedgerNetworkId, getRuntimeNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { type ImpureCircuitId, UnprovenTransaction, type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
+import {
+  type ImpureCircuitId,
+  Transaction,
+  type UnprovenTransaction,
+  type VerifierKey
+} from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
-import { type EncPublicKey } from '@midnight-ntwrk/zswap';
 
 import type { PartitionedTranscript } from '../call';
 import { zswapStateToOffer } from './zswap-utils';
+
+const ttl = () => new Date(Date.now() + 60 * 60 * 1000);
 
 export const toLedgerContractState = (contractState: ContractState): LedgerContractState =>
   LedgerContractState.deserialize(contractState.serialize(getRuntimeNetworkId()), getLedgerNetworkId());
@@ -83,7 +87,7 @@ export const contractMaintenanceAuthority = (
 };
 
 const addMaintenanceAuthority = (sk: SigningKey, contractState: LedgerContractState): void => {
-   
+
   contractState.maintenanceAuthority = contractMaintenanceAuthority(sk);
 };
 
@@ -101,10 +105,10 @@ export const createUnprovenLedgerDeployTx = (
   return [
     contractDeploy.address,
     fromLedgerContractState(contractDeploy.initialState),
-    new UnprovenTransaction(
+    Transaction.fromParts(
       zswapStateToOffer(zswapLocalState, encryptionPublicKey),
       undefined,
-      new ContractCallsPrototype().addDeploy(contractDeploy)
+      Intent.new(ttl()).addDeploy(contractDeploy)
     )
   ];
 };
@@ -123,13 +127,13 @@ export const createUnprovenLedgerCallTx = (
 ): UnprovenTransaction => {
   const op = toLedgerContractState(initialContractState).operation(circuitId);
   assertDefined(op, `Operation '${circuitId}' is undefined for contract state ${initialContractState.toString(false)}`);
-  return new UnprovenTransaction(
+  return Transaction.fromParts(
     zswapStateToOffer(nextZswapLocalState, encryptionPublicKey, {
       contractAddress,
       zswapChainState
     }),
     undefined,
-    new ContractCallsPrototype().addCall(
+    Intent.new(ttl()).addCall(
       new ContractCallPrototype(
         contractAddress,
         circuitId,
@@ -169,10 +173,10 @@ export const unprovenTxFromContractUpdates = (
   // 'idx' is '0n' because Midnight.js currently only supports single-party maintenance update authorities
   const idx = 0n;
   const signedMaintenanceUpdate = maintenanceUpdate.addSignature(idx, signData(sk, maintenanceUpdate.dataToSign));
-  return new UnprovenTransaction(
-    new UnprovenOffer(),
+  return Transaction.fromParts(
     undefined,
-    new ContractCallsPrototype().addMaintenanceUpdate(signedMaintenanceUpdate)
+    undefined,
+    Intent.new(ttl()).addMaintenanceUpdate(signedMaintenanceUpdate)
   );
 };
 

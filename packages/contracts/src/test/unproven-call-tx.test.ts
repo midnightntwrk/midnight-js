@@ -43,7 +43,7 @@ vi.mock('../get-states', () => ({
 
 vi.mock('../utils', () => ({
   createUnprovenLedgerCallTx: vi.fn().mockReturnValue({ test: 'unproven-tx' }),
-  encryptionPublicKeyForzswapState: vi.fn().mockReturnValue('encrypted-key'),
+  encryptionPublicKeyForZswapState: vi.fn().mockReturnValue('encrypted-key'),
   zswapStateToNewCoins: vi.fn().mockReturnValue([{ test: 'coin' }])
 }));
 

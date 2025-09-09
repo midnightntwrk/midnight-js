@@ -26,8 +26,8 @@ import {
   type ZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
 import type { Transcript, ZswapChainState } from '@midnight-ntwrk/ledger';
-import { LedgerParameters,partitionTranscripts, PreTranscript } from '@midnight-ntwrk/ledger';
-import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { LedgerParameters, partitionTranscripts, PreTranscript } from '@midnight-ntwrk/ledger';
+import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type {
   CircuitParameters,
   CircuitReturnType,
@@ -196,7 +196,7 @@ const partitionTranscript = (
   const partitionedTranscripts = partitionTranscripts(
     [
       new PreTranscript(
-        Array.from(finalTxContext.comIndicies).reduce(
+        Array.from(finalTxContext.comIndices).reduce(
           (queryContext, entry) => queryContext.insertCommitment(...entry),
           toLedgerQueryContext(initialTxContext)
         ),
@@ -232,7 +232,7 @@ export const call = <C extends Contract, ICK extends ImpureCircuitId<C>>(
       originalState: initialContractState,
       currentPrivateState: 'initialPrivateState' in options ? options.initialPrivateState : undefined,
       transactionContext: initialTxContext,
-      currentZswapLocalState: emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, getZswapNetworkId()))
+      currentZswapLocalState: emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, getLedgerNetworkId()))
     },
     ...('args' in options ? options.args : [])
   );

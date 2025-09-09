@@ -73,7 +73,7 @@ export const serializePayload = <K extends string>(
   new Blob([unprovenTx.serialize(getLedgerNetworkId()), serializeZKConfig(zkConfig)]).arrayBuffer();
 
 const deserializePayload = (arrayBuffer: ArrayBuffer): UnbalancedTransaction =>
-  createUnbalancedTx(Transaction.deserialize(new Uint8Array(arrayBuffer), getLedgerNetworkId()));
+  createUnbalancedTx(Transaction.deserialize('signature', 'proof', 'binding', new Uint8Array(arrayBuffer), getLedgerNetworkId()));
 
 const PROVE_TX_PATH = '/prove-tx';
 

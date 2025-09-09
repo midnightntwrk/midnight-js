@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { NetworkId } from '@midnight-ntwrk/zswap';
+import { NetworkId } from '@midnight-ntwrk/ledger';
 
 import { assertIsHex, isHex, parseCoinPublicKeyToHex, parseEncPublicKeyToHex } from '../hex-utils';
 
