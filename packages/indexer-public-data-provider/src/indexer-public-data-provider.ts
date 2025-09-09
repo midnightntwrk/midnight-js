@@ -29,13 +29,10 @@ import {
   type RawTokenType,
   type SignatureEnabled,
   type TransactionId
-} from '@midnight-ntwrk/ledger';
-import { Transaction as LedgerTransaction, ZswapChainState } from '@midnight-ntwrk/ledger';
+} from '@midnight-ntwrk/ledger-v6';
+import { Transaction as LedgerTransaction, ZswapChainState } from '@midnight-ntwrk/ledger-v6';
 import {
-  getLedgerNetworkId,
-  getNetworkId,
-  getRuntimeNetworkId,
-  networkIdToHex
+  getNetworkId
 } from '@midnight-ntwrk/midnight-js-network-id';
 import type {
   BlockHashConfig,
@@ -115,13 +112,13 @@ const maybeThrowErrors = <A>(queryResult: ApolloQueryResult<A>): ApolloQueryResu
 const toByteArray = (s: string): Buffer => Buffer.from(s, 'hex');
 
 const deserializeContractState = (s: string): ContractState =>
-  ContractState.deserialize(toByteArray(s), getRuntimeNetworkId());
+  ContractState.deserialize(toByteArray(s));
 
 const deserializeZswapState = (s: string): ZswapChainState =>
-  ZswapChainState.deserialize(toByteArray(s), getLedgerNetworkId());
+  ZswapChainState.deserialize(toByteArray(s));
 
 const deserializeTransaction = (s: string): LedgerTransaction<SignatureEnabled, Proof, Binding> =>
-  LedgerTransaction.deserialize('signature', 'proof', 'binding', toByteArray(s), getLedgerNetworkId());
+  LedgerTransaction.deserialize('signature', 'proof', 'binding', toByteArray(s));
 
 /**
  * This is a dirty hack. Prepends a network ID to the given contract address and
@@ -132,8 +129,8 @@ const deserializeTransaction = (s: string): LedgerTransaction<SignatureEnabled, 
  *
  * @param contractAddress The contract address to which to prepend the network ID.
  */
-const prependNetworkIdHex = (contractAddress: ContractAddress): string =>
-  `${networkIdToHex(getNetworkId())}${contractAddress}`;
+const prependNetworkId = (contractAddress: ContractAddress): string =>
+  `${getNetworkId()}${contractAddress}`;
 
 const zenToRx = <T>(zenObservable: Zen.Observable<T>): Rx.Observable<T> =>
   new Rx.Observable((subscriber) => zenObservable.subscribe(subscriber));
@@ -748,44 +745,44 @@ export const indexerPublicDataProvider = (
       config: ContractStateObservableConfig
     ): Rx.Observable<ContractState> {
       assertIsContractAddress(contractAddress);
-      return publicDataProvider.contractStateObservable(prependNetworkIdHex(contractAddress), config);
+      return publicDataProvider.contractStateObservable(prependNetworkId(contractAddress), config);
     },
     queryContractState(
       contractAddress: ContractAddress,
       config?: BlockHeightConfig | BlockHashConfig
     ): Promise<ContractState | null> {
       assertIsContractAddress(contractAddress);
-      return publicDataProvider.queryContractState(prependNetworkIdHex(contractAddress), config);
+      return publicDataProvider.queryContractState(prependNetworkId(contractAddress), config);
     },
     queryDeployContractState(contractAddress: ContractAddress): Promise<ContractState | null> {
       assertIsContractAddress(contractAddress);
-      return publicDataProvider.queryDeployContractState(prependNetworkIdHex(contractAddress));
+      return publicDataProvider.queryDeployContractState(prependNetworkId(contractAddress));
     },
     queryZSwapAndContractState(
       contractAddress: ContractAddress,
       config?: BlockHeightConfig | BlockHashConfig
     ): Promise<[ZswapChainState, ContractState] | null> {
       assertIsContractAddress(contractAddress);
-      return publicDataProvider.queryZSwapAndContractState(prependNetworkIdHex(contractAddress), config);
+      return publicDataProvider.queryZSwapAndContractState(prependNetworkId(contractAddress), config);
     },
     queryUnshieldedBalances(
       contractAddress: ContractAddress,
       config?: BlockHeightConfig | BlockHashConfig
     ): Promise<UnshieldedBalances | null> {
       assertIsContractAddress(contractAddress);
-      return publicDataProvider.queryUnshieldedBalances(prependNetworkIdHex(contractAddress), config);
+      return publicDataProvider.queryUnshieldedBalances(prependNetworkId(contractAddress), config);
     },
     watchForContractState(contractAddress: ContractAddress): Promise<ContractState> {
       assertIsContractAddress(contractAddress);
-      return publicDataProvider.watchForContractState(prependNetworkIdHex(contractAddress));
+      return publicDataProvider.watchForContractState(prependNetworkId(contractAddress));
     },
     watchForUnshieldedBalances(contractAddress: ContractAddress): Promise<UnshieldedBalances> {
       assertIsContractAddress(contractAddress);
-      return publicDataProvider.watchForUnshieldedBalances(prependNetworkIdHex(contractAddress));
+      return publicDataProvider.watchForUnshieldedBalances(prependNetworkId(contractAddress));
     },
     watchForDeployTxData(contractAddress: ContractAddress): Promise<FinalizedTxData> {
       assertIsContractAddress(contractAddress);
-      return publicDataProvider.watchForDeployTxData(prependNetworkIdHex(contractAddress));
+      return publicDataProvider.watchForDeployTxData(prependNetworkId(contractAddress));
     },
     watchForTxData(txId: TransactionId): Promise<FinalizedTxData> {
       return publicDataProvider.watchForTxData(txId);
@@ -795,7 +792,7 @@ export const indexerPublicDataProvider = (
       config: ContractStateObservableConfig
     ): Rx.Observable<UnshieldedBalances> {
       assertIsContractAddress(contractAddress);
-      return publicDataProvider.unshieldedBalancesObservable(prependNetworkIdHex(contractAddress), config);
+      return publicDataProvider.unshieldedBalancesObservable(prependNetworkId(contractAddress), config);
     }
   };
 };

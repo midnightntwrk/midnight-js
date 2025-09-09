@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { ContractAddress } from '@midnight-ntwrk/ledger';
+import type { ContractAddress } from '@midnight-ntwrk/ledger-v6';
 import {
   createCircuitCallTxInterface,
   createCircuitMaintenanceTxInterface,

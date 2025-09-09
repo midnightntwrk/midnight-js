@@ -25,9 +25,9 @@ import {
   type StateValue,
   type ZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
-import type { Transcript, ZswapChainState } from '@midnight-ntwrk/ledger';
-import { LedgerParameters, partitionTranscripts, PreTranscript } from '@midnight-ntwrk/ledger';
-import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import type { Transcript, ZswapChainState } from '@midnight-ntwrk/ledger-v6';
+import { LedgerParameters, partitionTranscripts, PreTranscript } from '@midnight-ntwrk/ledger-v6';
+import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type {
   CircuitParameters,
   CircuitReturnType,
@@ -203,7 +203,7 @@ const partitionTranscript = (
         publicTranscript
       )
     ],
-    LedgerParameters.dummyParameters()
+    LedgerParameters.initialParameters()
   );
   if (partitionedTranscripts.length !== 1) {
     throw new Error(`Expected one transcript partition pair, received: ${partitionedTranscripts.length}`);
@@ -232,7 +232,7 @@ export const call = <C extends Contract, ICK extends ImpureCircuitId<C>>(
       originalState: initialContractState,
       currentPrivateState: 'initialPrivateState' in options ? options.initialPrivateState : undefined,
       transactionContext: initialTxContext,
-      currentZswapLocalState: emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, getLedgerNetworkId()))
+      currentZswapLocalState: emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, getNetworkId()))
     },
     ...('args' in options ? options.args : [])
   );

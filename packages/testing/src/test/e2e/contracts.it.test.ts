@@ -20,7 +20,7 @@ import {
   sampleContractAddress,
   sampleSigningKey
 } from '@midnight-ntwrk/compact-runtime';
-import { type ContractAddress, sampleCoinPublicKey, ZswapChainState } from '@midnight-ntwrk/ledger';
+import { type ContractAddress, sampleCoinPublicKey, ZswapChainState } from '@midnight-ntwrk/ledger-v6';
 import {
   call,
   callContractConstructor,
@@ -33,7 +33,7 @@ import {
   findDeployedContract,
   submitCallTx,
   submitDeployTx} from '@midnight-ntwrk/midnight-js-contracts';
-import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import path from 'path';
@@ -183,7 +183,7 @@ describe('Contracts API', () => {
     expect(unprovenDeployTxResult.private.initialPrivateState).toEqual(privateStateZero);
     expect(unprovenDeployTxResult.private.initialZswapState).toEqual(
       decodeZswapLocalState(
-        emptyZswapLocalState(parseCoinPublicKeyToHex(providers.walletProvider.coinPublicKey, getLedgerNetworkId()))
+        emptyZswapLocalState(parseCoinPublicKeyToHex(providers.walletProvider.coinPublicKey, getNetworkId()))
       )
     );
     expect(unprovenDeployTxResult.private.signingKey).toEqual(signingKey);
@@ -207,7 +207,7 @@ describe('Contracts API', () => {
     expect(unprovenCallTxData.private.newCoins).toEqual([]);
     expect(unprovenCallTxData.private.nextZswapLocalState).toEqual(
       decodeZswapLocalState(
-        emptyZswapLocalState(parseCoinPublicKeyToHex(providers.walletProvider.coinPublicKey, getLedgerNetworkId()))
+        emptyZswapLocalState(parseCoinPublicKeyToHex(providers.walletProvider.coinPublicKey, getNetworkId()))
       )
     );
     expect(unprovenCallTxData.private.nextPrivateState).toEqual(createPrivateState(2));

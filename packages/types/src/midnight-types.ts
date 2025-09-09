@@ -30,7 +30,7 @@ import {
   type ZswapOffer,
   type ZswapOutput,
   type ZswapTransient
-} from '@midnight-ntwrk/ledger';
+} from '@midnight-ntwrk/ledger-v6';
 
 /**
  * A type representing a transaction that has not been proven yet.

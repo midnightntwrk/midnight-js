@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { NetworkId, NetworkIdTypeError,setNetworkId, stringToNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { type NetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type { Logger } from 'pino';
 
 import { getEnvVarEnvironment, getEnvVarNetworkId } from '../env-vars';
@@ -23,7 +23,6 @@ import {
   EnvVarRemoteTestEnvironment,
   LocalTestEnvironment,
   QanetTestEnvironment,
-  Testnet2TestEnvironment,
   TestnetTestEnvironment
 } from './test-environments';
 
@@ -33,16 +32,12 @@ import {
  * @throws {NetworkIdTypeError} If the network ID is invalid.
  * @returns {NetworkId} The parsed network ID.
  */
-const parseNetworkIdEnvVar = () => {
+const parseNetworkIdEnvVar = () : NetworkId => {
   const networkIdEnv = getEnvVarNetworkId();
   if (!networkIdEnv) {
     throw new MissingEnvironmentVariable('MN_TEST_NETWORK_ID');
   }
-  const networkId = stringToNetworkId(networkIdEnv);
-  if (!networkId) {
-    throw new NetworkIdTypeError(networkIdEnv);
-  }
-  return networkId;
+  return networkIdEnv;
 };
 
 /**
@@ -54,22 +49,22 @@ export const getTestEnvironment = (logger: Logger) => {
   const testEnv = getEnvVarEnvironment().toLowerCase();
   switch (testEnv) {
     case 'testnet':
-      setNetworkId(NetworkId.TestNet);
+      setNetworkId('testnet');
       return new TestnetTestEnvironment(logger);
     case 'testnet-02':
-      setNetworkId(NetworkId.TestNet);
-      return new Testnet2TestEnvironment(logger);
+      setNetworkId('testnet');
+      return new TestnetTestEnvironment(logger);
     case 'devnet':
-      setNetworkId(NetworkId.DevNet);
+      setNetworkId('devnet');
       return new DevnetTestEnvironment(logger);
     case 'qanet':
-      setNetworkId(NetworkId.DevNet);
+      setNetworkId('devnet');
       return new QanetTestEnvironment(logger);
     case 'env-var-remote':
       setNetworkId(parseNetworkIdEnvVar());
       return new EnvVarRemoteTestEnvironment(logger);
     default:
-      setNetworkId(NetworkId.Undeployed);
+      setNetworkId('undeployed');
       return new LocalTestEnvironment(logger);
   }
 };

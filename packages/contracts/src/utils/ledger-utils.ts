@@ -21,7 +21,7 @@ import {
   signatureVerifyingKey,
   type SigningKey,
   type ZswapLocalState} from '@midnight-ntwrk/compact-runtime';
-import type { SingleUpdate,ZswapChainState } from '@midnight-ntwrk/ledger';
+import { ChargedState, SingleUpdate, ZswapChainState } from '@midnight-ntwrk/ledger-v6';
 import {
   communicationCommitmentRandomness,
   ContractCallPrototype,
@@ -36,8 +36,8 @@ Intent,   MaintenanceUpdate,
   ReplaceAuthority,
   signData,
   StateValue as LedgerStateValue,
-  VerifierKeyInsert,   VerifierKeyRemove} from '@midnight-ntwrk/ledger';
-import { getLedgerNetworkId, getRuntimeNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+  VerifierKeyInsert,   VerifierKeyRemove} from '@midnight-ntwrk/ledger-v6';
+import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   type ImpureCircuitId,
   Transaction,
@@ -52,13 +52,15 @@ import { zswapStateToOffer } from './zswap-utils';
 const ttl = () => new Date(Date.now() + 60 * 60 * 1000);
 
 export const toLedgerContractState = (contractState: ContractState): LedgerContractState =>
-  LedgerContractState.deserialize(contractState.serialize(getRuntimeNetworkId()), getLedgerNetworkId());
+  LedgerContractState.deserialize(contractState.serialize());
 
 export const fromLedgerContractState = (contractState: LedgerContractState): ContractState =>
-  ContractState.deserialize(contractState.serialize(getLedgerNetworkId()), getRuntimeNetworkId());
+  ContractState.deserialize(contractState.serialize(), );
 
-export const toLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext =>
-  new LedgerQueryContext(LedgerStateValue.decode(queryContext.state.encode()), queryContext.address);
+export const toLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext => {
+  const stateValue = LedgerStateValue.decode(queryContext.state.encode());
+  return new LedgerQueryContext(new ChargedState(stateValue), queryContext.address);
+}
 
 const addVerifierKeys = (verifierKeys: [ImpureCircuitId, VerifierKey][], contractState: LedgerContractState): void => {
   verifierKeys.forEach(([impureCircuitId, verifierKey]) => {
@@ -106,6 +108,7 @@ export const createUnprovenLedgerDeployTx = (
     contractDeploy.address,
     fromLedgerContractState(contractDeploy.initialState),
     Transaction.fromParts(
+      getNetworkId(),
       zswapStateToOffer(zswapLocalState, encryptionPublicKey),
       undefined,
       Intent.new(ttl()).addDeploy(contractDeploy)
@@ -128,6 +131,7 @@ export const createUnprovenLedgerCallTx = (
   const op = toLedgerContractState(initialContractState).operation(circuitId);
   assertDefined(op, `Operation '${circuitId}' is undefined for contract state ${initialContractState.toString(false)}`);
   return Transaction.fromParts(
+    getNetworkId(),
     zswapStateToOffer(nextZswapLocalState, encryptionPublicKey, {
       contractAddress,
       zswapChainState
@@ -174,6 +178,7 @@ export const unprovenTxFromContractUpdates = (
   const idx = 0n;
   const signedMaintenanceUpdate = maintenanceUpdate.addSignature(idx, signData(sk, maintenanceUpdate.dataToSign));
   return Transaction.fromParts(
+    getNetworkId(),
     undefined,
     undefined,
     Intent.new(ttl()).addMaintenanceUpdate(signedMaintenanceUpdate)

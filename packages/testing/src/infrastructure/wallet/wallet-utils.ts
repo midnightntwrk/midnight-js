@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { shieldedToken, type TokenType } from '@midnight-ntwrk/ledger';
+import { shieldedToken, type TokenType } from '@midnight-ntwrk/ledger-v6';
 import { type TransactionHistoryEntry, type Wallet, type WalletState } from '@midnight-ntwrk/wallet-api';
 import * as Rx from 'rxjs';
 
