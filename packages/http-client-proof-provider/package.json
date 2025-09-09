@@ -19,7 +19,7 @@
   "scripts": {
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage logs",
     "compact": "yarn fetch-compactc && yarn compact-simple",
-    "compact-simple": "run-compactc src/test/resources/topics.compact ./src/test/resources/managed/topics",
+    "compact-simple": "run-compactc src/test/resources/simple.compact ./src/test/resources/managed/simple",
     "build": "yarn compact && rollup -c rollup.config.mjs",
     "test": "vitest run",
     "deploy": "yarn npm publish"
