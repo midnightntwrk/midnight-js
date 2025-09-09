@@ -14,12 +14,14 @@
  */
 
 import { BinaryWriter } from '@dao-xyz/borsh';
-import { Transaction } from '@midnight-ntwrk/ledger-v6';
+import {
+  Transaction,
+  type UnprovenTransaction
+} from '@midnight-ntwrk/ledger-v6';
 import type {
   ProofProvider,
   ProveTxConfig,
   UnbalancedTransaction,
-  UnprovenTransaction,
   ZKConfig
 } from '@midnight-ntwrk/midnight-js-types';
 import { createUnbalancedTx, InvalidProtocolSchemeError } from '@midnight-ntwrk/midnight-js-types';

@@ -34,7 +34,8 @@ import {
   type SignatureEnabled,
   type TokenType,
   type Transaction,
-  type ZswapChainState
+  type ZswapChainState,
+  type UnprovenTransaction
 } from '@midnight-ntwrk/ledger-v6';
 import {
   type Contract,
@@ -44,7 +45,6 @@ import {
   type PrivateStateId,
   SucceedEntirely,
   type TxStatus,
-  type UnprovenTransaction,
   type VerifierKey,
   type Witnesses
 } from '@midnight-ntwrk/midnight-js-types';

@@ -30,18 +30,20 @@ import {
   ContractOperationVersion,
   ContractOperationVersionedVerifierKey,
   ContractState as LedgerContractState,
-type EncPublicKey,
-Intent,   MaintenanceUpdate,
+  type EncPublicKey,
+  Intent,
+  MaintenanceUpdate,
   QueryContext as LedgerQueryContext,
   ReplaceAuthority,
   signData,
   StateValue as LedgerStateValue,
-  VerifierKeyInsert,   VerifierKeyRemove} from '@midnight-ntwrk/ledger-v6';
+  type UnprovenTransaction,
+  VerifierKeyInsert,
+  VerifierKeyRemove} from '@midnight-ntwrk/ledger-v6';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   type ImpureCircuitId,
   Transaction,
-  type UnprovenTransaction,
   type VerifierKey
 } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';

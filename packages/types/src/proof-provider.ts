@@ -13,7 +13,9 @@
  * limitations under the License.
  */
 
-import type { UnbalancedTransaction, UnprovenTransaction, ZKConfig } from './midnight-types';
+import { type UnprovenTransaction } from '@midnight-ntwrk/ledger-v6';
+
+import type { UnbalancedTransaction, ZKConfig } from './midnight-types';
 
 /**
  * The configuration for the proof request to the proof provider.

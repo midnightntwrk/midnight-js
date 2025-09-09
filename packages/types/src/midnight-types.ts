@@ -18,7 +18,6 @@ import {
   type Bindingish,
   type ContractAddress,
   type IntentHash,
-  type PreProof,
   type Proof,
   type RawTokenType,
   type SignatureEnabled,
@@ -26,37 +25,7 @@ import {
   type Transaction,
   type TransactionHash,
   type TransactionId,
-  type ZswapInput,
-  type ZswapOffer,
-  type ZswapOutput,
-  type ZswapTransient
 } from '@midnight-ntwrk/ledger-v6';
-
-/**
- * A type representing a transaction that has not been proven yet.
- * It may contain the signature and binding information, but no proof.
- */
-export type UnprovenTransaction = Transaction<Signaturish, PreProof, Bindingish>;
-
-/**
- * A type representing a transaction that has not been proven yet,
- */
-export type UnprovenInput = ZswapInput<PreProof>;
-
-/**
- * A type representing a transaction output that has not been proven yet.
- */
-export type UnprovenOutput = ZswapOutput<PreProof>;
-
-/**
- * A type representing a transaction transient that has not been proven yet.
- */
-export type UnprovenTransient = ZswapTransient<PreProof>;
-
-/**
- * A type representing an offer that has not been proven yet.
- */
-export type UnprovenOffer = ZswapOffer<PreProof>;
 
 /**
  * A type representing a prover key derived from a contract circuit.
@@ -67,8 +36,8 @@ export type ProverKey = Uint8Array & {
    */
   readonly ProverKey: unique symbol;
 };
-
 /**
+
  * Creates a branded prover key representation from a prover key binary.
  *
  * @param uint8Array The prover key binary.

@@ -17,11 +17,11 @@ import type { ShieldedCoinInfo } from '@midnight-ntwrk/compact-runtime';
 import type {
   Contract,
   FinalizedTxData,
-  ImpureCircuitId,
-  UnprovenTransaction
+  ImpureCircuitId
 } from '@midnight-ntwrk/midnight-js-types';
 
 import { type ContractProviders } from './contract-providers';
+import { type UnprovenTransaction } from '@midnight-ntwrk/ledger-v6';
 
 /**
  * Configuration for {@link submitTx}.

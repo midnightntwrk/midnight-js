@@ -17,9 +17,11 @@ import { sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
 import {
   ContractCall,
   ContractDeploy,
-  LedgerState, type Proof,
+  LedgerState,
+  type Proof,
   sampleCoinPublicKey,
   sampleEncryptionPublicKey,
+  type UnprovenTransaction,
   WellFormedStrictness,
   ZswapChainState
 } from '@midnight-ntwrk/ledger-v6';
@@ -28,8 +30,9 @@ import {
   createUnprovenDeployTxFromVerifierKeys
 } from '@midnight-ntwrk/midnight-js-contracts';
 import { DEFAULT_CONFIG, httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
+import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
-import type { ProofProvider, UnprovenTransaction, ZKConfig } from '@midnight-ntwrk/midnight-js-types';
+import type { ProofProvider, ZKConfig } from '@midnight-ntwrk/midnight-js-types';
 import { getImpureCircuitIds } from '@midnight-ntwrk/midnight-js-types';
 import path from 'path';
 import { expect } from 'vitest';
@@ -128,7 +131,7 @@ describe('Proof server integration', () => {
 
   test('should create proofs with transactions that has succesfull well-formedness', async () => {
     const zSwapChainState = new ZswapChainState();
-    const ledgerState = new LedgerState(zSwapChainState);
+    const ledgerState = new LedgerState(getNetworkId(), zSwapChainState);
     const strictness = new WellFormedStrictness();
     strictness.verifyContractProofs = false;
     strictness.enforceBalancing = false;

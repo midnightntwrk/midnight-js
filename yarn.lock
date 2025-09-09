@@ -2227,6 +2227,17 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@midnight-ntwrk/compact-runtime@npm:0.8.1":
+  version: 0.8.1
+  resolution: "@midnight-ntwrk/compact-runtime@npm:0.8.1::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-runtime%2F0.8.1%2Ff6fb532ab1149e9509d0cdb2a93d47db31766ecb"
+  dependencies:
+    "@midnight-ntwrk/onchain-runtime": "npm:^0.3.0"
+    "@types/object-inspect": "npm:^1.8.1"
+    object-inspect: "npm:^1.12.3"
+  checksum: 10/caec8b65018e38e1fac35d6d5538d5203152948411b72121185ea7bea601f616fd32dd65851acceff3435c472b22ec7d6919916f64d03de6096ae952967f55e1
+  languageName: node
+  linkType: hard
+
 "@midnight-ntwrk/compact-runtime@npm:0.9.0-rc.0":
   version: 0.9.0-rc.0
   resolution: "@midnight-ntwrk/compact-runtime@npm:0.9.0-rc.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-runtime%2F0.9.0-rc.0%2Fc0139f3f054e57bdf0347efb0a6b68c81c04ef71"
@@ -2253,6 +2264,13 @@ __metadata:
   version: 6.1.0-alpha.2
   resolution: "@midnight-ntwrk/ledger-v6@npm:6.1.0-alpha.2::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fledger-v6%2F6.1.0-alpha.2%2F83eebd3fc32d946b54334f89f4bd02fad7193e0d"
   checksum: 10/7e2aa67c39471de92e0719662341799d8ce236052845a99326c5f1861da7943e248fd92a360a51ab370b198c412fb9ddf2ed3a92d9fa09181198360a88167289
+  languageName: node
+  linkType: hard
+
+"@midnight-ntwrk/ledger@npm:4.0.0":
+  version: 4.0.0
+  resolution: "@midnight-ntwrk/ledger@npm:4.0.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fledger%2F4.0.0%2F2cf7370ff6e27482cce60724f114935512b5e473"
+  checksum: 10/826f6d2743af2a3f199f1ad61cb946a529eb5755dfc68ea7f8fc436bb366716bd5118a4561ed541938caa9db6f366b7c9ee8047511f41e5bcaaf21c335d29b1d
   languageName: node
   linkType: hard
 
@@ -2469,6 +2487,13 @@ __metadata:
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
+
+"@midnight-ntwrk/onchain-runtime@npm:^0.3.0":
+  version: 0.3.0
+  resolution: "@midnight-ntwrk/onchain-runtime@npm:0.3.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fonchain-runtime%2F0.3.0%2F48f44f2aa2123f4009bbe3b191dd162c053c8e0a"
+  checksum: 10/e0d6a9a96314dbce99345b9794395682a3471568fde13d90122227f52082dba7b83dc05d419e4745e5bf997e93274c2a01f3938ccd20351de8249923c0c9ab45
+  languageName: node
+  linkType: hard
 
 "@midnight-ntwrk/onchain-runtime@npm:^0.4.0-alpha.3":
   version: 0.4.0-alpha.3

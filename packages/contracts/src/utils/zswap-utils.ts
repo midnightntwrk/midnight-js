@@ -21,15 +21,18 @@ import {
   type QualifiedShieldedCoinInfo,
   type ShieldedCoinInfo,
   type ZswapChainState,
+  ZswapInput,
+  ZswapOffer,
+  ZswapOutput,
+  ZswapTransient
 } from '@midnight-ntwrk/ledger-v6';
-import { ZswapInput, ZswapOffer, ZswapOutput, ZswapTransient } from '@midnight-ntwrk/ledger-v6';
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   type UnprovenInput,
   type UnprovenOffer,
   type UnprovenOutput,
   type UnprovenTransient
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnight-ntwrk/ledger-v6';
+import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   assertDefined,
   assertIsContractAddress,

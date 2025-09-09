@@ -23,9 +23,9 @@ import {
   sampleEncryptionPublicKey,
   type UnprovenTransaction,
   ZswapChainState
-} from '@midnight-ntwrk/ledger';
+} from '@midnight-ntwrk/ledger-v6';
 import { createUnprovenCallTxFromInitialStates } from '@midnight-ntwrk/midnight-js-contracts';
-import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { createProverKey, createVerifierKey, createZKIR } from '@midnight-ntwrk/midnight-js-types';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import fs from 'fs/promises';
@@ -56,7 +56,7 @@ export const getValidUnprovenTx = async (): Promise<UnprovenTransaction> => {
   const constructorResult = contract.initialState(
     constructorContext(
       undefined,
-      parseCoinPublicKeyToHex(coinPublicKey, getZswapNetworkId())
+      parseCoinPublicKeyToHex(coinPublicKey, getNetworkId())
     )
   );
 
