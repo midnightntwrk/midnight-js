@@ -16,7 +16,7 @@
 import { type NetworkId } from './network-id';
 
 // Module level state that will be preserved by the JavaScript module system.
-let currentNetworkId: NetworkId;
+let currentNetworkId: NetworkId = 'undeployed';
 
 /**
  * Sets the global network identifier.

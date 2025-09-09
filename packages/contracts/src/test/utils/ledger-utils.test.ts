@@ -15,11 +15,11 @@
 
 import {
   type AlignedValue,
+  ContractOperation,
   ContractState as CompactContractState,
   QueryContext
 } from '@midnight-ntwrk/compact-runtime';
 import {
-  ContractOperation,
   type PublicAddress,
   sampleCoinPublicKey,
   sampleContractAddress,
