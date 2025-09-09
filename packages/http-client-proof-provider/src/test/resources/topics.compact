@@ -2,6 +2,6 @@ import CompactStandardLibrary;
 
 export ledger round: Counter;
 
-export circuit noop(): [] {
+export circuit set_topic(): [] {
   round.increment(1);
 }
