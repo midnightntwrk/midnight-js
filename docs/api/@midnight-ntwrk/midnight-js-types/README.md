@@ -33,6 +33,7 @@
 
 - [All](type-aliases/All.md)
 - [BalancedTransaction](type-aliases/BalancedTransaction.md)
+- [BlockHash](type-aliases/BlockHash.md)
 - [BlockHashConfig](type-aliases/BlockHashConfig.md)
 - [BlockHeightConfig](type-aliases/BlockHeightConfig.md)
 - [CircuitParameters](type-aliases/CircuitParameters.md)

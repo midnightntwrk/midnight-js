@@ -2,13 +2,15 @@
   "name": "@midnight-ntwrk/midnight-js",
   "description": "Midnight application development framework",
   "version": "2.1.0-rc.1",
-  "packageManager": "yarn@4.9.2",
+  "packageManager": "yarn@4.9.4",
   "repository": "git@github.com:midnight-ntwrk/artifacts",
   "engines": {
     "node": ">=22"
   },
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "compact-js/*",
+    "platform-js/*"
   ],
   "scripts": {
     "clean": "turbo run clean",
@@ -21,7 +23,7 @@
     "check": "turbo run check && yarn lint",
     "deploy": "turbo run deploy",
     "build:markdown-docs": "typedoc --validation --plugin typedoc-plugin-markdown --options typedoc.json",
-    "lint": "eslint ./packages",
+    "lint": "eslint",
     "lint:fix": "NODE_OPTIONS=--max-old-space-size=16192 eslint ./packages --fix",
     "postinstall": "husky install",
     "prepublishOnly": "pinst --disable",
@@ -36,6 +38,7 @@
   },
   "devDependencies": {
     "@d2t/vitest-ctrf-json-reporter": "^1.1.0",
+    "@effect/build-utils": "^0.8.9",
     "@eslint/js": "^9.30.1",
     "@midnight-ntwrk/wallet": "5.0.0",
     "@midnight-ntwrk/wallet-api": "5.0.0",
@@ -55,6 +58,7 @@
     "eslint-plugin-prettier": "^5.5.1",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "eslint-plugin-unused-imports": "^4.1.4",
+    "glob": "^11.0.3",
     "husky": "^9.1.7",
     "jsdom": "^26.1.0",
     "lint-staged": "^16.1.2",
@@ -62,16 +66,18 @@
     "prettier": "^3.6.2",
     "rollup": "^4.37.0",
     "rxjs": "^7.8.1",
+    "shx": "^0.4.0",
     "testcontainers": "^11.2.0",
     "ts-node": "^10.9.2",
-    "turbo": "^2.5.0",
+    "tstyche": "^4.3.0",
+    "turbo": "^2.5.5",
     "typedoc": "^0.28.5",
-    "typedoc-plugin-markdown": "4.7.0",
+    "typedoc-plugin-markdown": "4.8.1",
     "typescript": "^5.8.2",
     "typescript-eslint": "^8.35.1",
     "vitest": "^3.2.4"
   },
   "lint-staged": {
-    "*.ts": "eslint --cache --fix"
+    "*.ts,!compact-js/**/*.ts": "eslint --cache --fix"
   }
 }

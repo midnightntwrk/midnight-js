@@ -6,7 +6,7 @@
       "dependsOn": ["^build"],
       "outputLogs": "new-only",
       "inputs": ["src/**/*.ts", "!src/**/*.test.ts", "src/**/*.compact"],
-      "outputs": ["dist/**", "src/**/managed/**"]
+      "outputs": ["dist/**", "build/**", "src/**/managed/**"]
     },
     "clean": {
       "cache": false

@@ -1,0 +1,54 @@
+{
+  "name": "@midnight-ntwrk/compact-js-command",
+  "version": "0.0.0",
+  "description": "Command line utilities for working with smart contracts compiled with the Compact language",
+  "type": "module",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./effect": "./src/effect/index.ts",
+    "./effect/*": "./src/effect/*.ts",
+    "./effect/internal/*": null
+  },
+  "dependencies": {
+    "@effect/cli": "^0.69.0",
+    "@effect/cluster": "^0.47.0",
+    "@effect/experimental": "^0.54.5",
+    "@effect/platform": "^0.90.2",
+    "@effect/platform-node": "^0.95.0",
+    "@effect/platform-node-shared": "^0.48.0",
+    "@effect/printer-ansi": "^0.45.0",
+    "@effect/rpc": "^0.68.4",
+    "@effect/sql": "^0.44.1",
+    "@effect/typeclass": "^0.36.0",
+    "@midnight-ntwrk/compact-js": "^0.0.0",
+    "@midnight-ntwrk/compact-js-node": "^0.0.0",
+    "@midnight-ntwrk/compact-runtime": "0.9.0-rc.0",
+    "@midnight-ntwrk/ledger": "5.0.0-alpha.3",
+    "@midnight-ntwrk/platform-js": "^1.0.0",
+    "effect": "^3.17.7",
+    "ts-node": "^10.9.2"
+  },
+  "devDependencies": {
+    "@effect/vitest": "^0.24.1",
+    "@midnight-ntwrk/midnight-js-compact": "workspace:*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/midnight-ntwrk/artifacts.git"
+  },
+  "packageManager": "yarn@4.9.2",
+  "author": "IOHK",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "yarn build-esm && build-utils pack-v3",
+    "build-esm": "tsc -b tsconfig.build.json",
+    "clean": "shx rm -rf ./build ./dist ./.tsbuildinfo ./reports ./coverage",
+    "test": "vitest run",
+    "cmd": "NODE_OPTIONS='--loader ts-node/esm --no-warnings' ts-node ./src/index.ts",
+    "deploy": "shx rm -rf ./dist/src && (cd ./dist; npm publish)"
+  },
+  "files": [
+    "dist/"
+  ]
+}

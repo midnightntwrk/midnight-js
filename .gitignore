@@ -1,5 +1,6 @@
 node_modules/
 dist/
+build/
 .turbo
 *.tsbuildinfo
 .direnv/
@@ -20,4 +21,5 @@ midnight-level-db
 logs
 .states
 .eslintcache
+.rollup.cache
 .DS_Store

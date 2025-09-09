@@ -68,7 +68,6 @@ export const createMockEncryptionPublicKey = (): EncPublicKey => sampleEncryptio
 export const createMockContractState = (signingKey?: SigningKey): ContractState => ({
   serialize: vi.fn().mockReturnValue(new Uint8Array(32)),
   data: StateValue.newNull(),
-
   operation: vi.fn().mockImplementation((_circuitId: string) => ({
     verifierKey: new Uint8Array(32)
   })),

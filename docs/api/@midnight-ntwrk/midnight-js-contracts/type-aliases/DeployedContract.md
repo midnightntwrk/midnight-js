@@ -10,7 +10,7 @@
 
 Interface for a contract that has been deployed to the blockchain.
 
-## Type declaration
+## Type Declaration
 
 ### deployTxData
 

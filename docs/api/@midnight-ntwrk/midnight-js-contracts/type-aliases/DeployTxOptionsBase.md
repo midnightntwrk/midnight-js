@@ -10,7 +10,7 @@
 
 Base type for deploy transaction configuration.
 
-## Type declaration
+## Type Declaration
 
 ### signingKey
 
