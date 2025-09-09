@@ -16,26 +16,68 @@
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { Transaction } from '@midnight-ntwrk/ledger';
-import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { createProverKey, createVerifierKey, createZKIR, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-types';
+import { constructorContext } from '@midnight-ntwrk/compact-runtime';
+import {
+  sampleCoinPublicKey,
+  sampleContractAddress,
+  sampleEncryptionPublicKey,
+  type UnprovenTransaction,
+  ZswapChainState
+} from '@midnight-ntwrk/ledger';
+import { createUnprovenCallTxFromInitialStates } from '@midnight-ntwrk/midnight-js-contracts';
+import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { createProverKey, createVerifierKey, createZKIR } from '@midnight-ntwrk/midnight-js-types';
+import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import fs from 'fs/promises';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
 
 export const resourceDir = `${currentDir}/resources`;
-const SET_TOPIC_CIRCUIT_ID = 'set_topic';
-const UNPROVEN_TX = 'unproven_tx_set_topic';
-const PAYLOAD = 'payload_set_topic';
+
+const CONTRACT = `simple`;
+const CIRCUIT_ID = 'add';
 
 export const getValidZKConfig = async () => ({
-  circuitId: SET_TOPIC_CIRCUIT_ID,
-  proverKey: createProverKey(await fs.readFile(`${resourceDir}/keys/${SET_TOPIC_CIRCUIT_ID}.prover`)),
-  verifierKey: createVerifierKey(await fs.readFile(`${resourceDir}/keys/${SET_TOPIC_CIRCUIT_ID}.verifier`)),
-  zkir: createZKIR(await fs.readFile(`${resourceDir}/zkir/${SET_TOPIC_CIRCUIT_ID}.bzkir`))
+  circuitId: CIRCUIT_ID,
+  proverKey: createProverKey(await fs.readFile(`${resourceDir}/managed/${CONTRACT}/keys/${CIRCUIT_ID}.prover`)),
+  verifierKey: createVerifierKey(await fs.readFile(`${resourceDir}/managed/${CONTRACT}/keys/${CIRCUIT_ID}.verifier`)),
+  zkir: createZKIR(await fs.readFile(`${resourceDir}/managed/${CONTRACT}/zkir/${CIRCUIT_ID}.bzkir`))
 });
 
-export const getValidUnprovenTx = async (): Promise<UnprovenTransaction> =>
-  Transaction.deserialize('signature', 'pre-proof', 'pre-binding', await fs.readFile(`${resourceDir}/${UNPROVEN_TX}`), getLedgerNetworkId());
+/**
+ * Creates a valid UnprovenTransaction for testing using proper object construction
+ * from the topic contract instead of binary data.
+ */
+export const getValidUnprovenTx = async (): Promise<UnprovenTransaction> => {
+  const contractModule = await import(`${resourceDir}/managed/${CONTRACT}/contract/index.cjs`);
+  const contract = new contractModule.Contract({});
+  const coinPublicKey = sampleCoinPublicKey();
 
-export const getValidPayload = async () => fs.readFile(`${resourceDir}/${PAYLOAD}`);
+  const constructorResult = contract.initialState(
+    constructorContext(
+      undefined,
+      parseCoinPublicKeyToHex(coinPublicKey, getZswapNetworkId())
+    )
+  );
+
+  const initialContractState = constructorResult.currentContractState;
+
+  const callOptions = {
+    contract,
+    circuitId: CIRCUIT_ID,
+    contractAddress: sampleContractAddress(),
+    coinPublicKey,
+    initialContractState,
+    initialZswapChainState: new ZswapChainState(),
+    arguments: []
+  };
+
+  const result = createUnprovenCallTxFromInitialStates(
+    callOptions,
+    coinPublicKey,
+    sampleEncryptionPublicKey()
+  );
+
+  return result.private.unprovenTx;
+};
+
