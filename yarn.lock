@@ -2299,6 +2299,7 @@ __metadata:
   resolution: "@midnight-ntwrk/midnight-js-http-client-proof-provider@workspace:packages/http-client-proof-provider"
   dependencies:
     "@dao-xyz/borsh": "npm:^5.1.5"
+    "@midnight-ntwrk/midnight-js-compact": "workspace:*"
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@types/lodash": "npm:^4.17.19"

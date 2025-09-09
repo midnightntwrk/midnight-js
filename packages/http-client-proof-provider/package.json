@@ -18,7 +18,9 @@
   "license": "Apache-2.0",
   "scripts": {
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage logs",
-    "build": "rollup -c rollup.config.mjs",
+    "compact": "yarn fetch-compactc && yarn compact-simple",
+    "compact-simple": "run-compactc src/test/resources/simple.compact ./src/test/resources/contract/managed/simple",
+    "build": "yarn compact && rollup -c rollup.config.mjs",
     "test": "vitest run",
     "deploy": "yarn npm publish"
   },
@@ -27,6 +29,7 @@
   ],
   "dependencies": {
     "@dao-xyz/borsh": "^5.1.5",
+    "@midnight-ntwrk/midnight-js-compact": "workspace:*",
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
     "cross-fetch": "^4.0.0",
