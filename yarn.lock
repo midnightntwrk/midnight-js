@@ -2299,8 +2299,13 @@ __metadata:
   resolution: "@midnight-ntwrk/midnight-js-http-client-proof-provider@workspace:packages/http-client-proof-provider"
   dependencies:
     "@dao-xyz/borsh": "npm:^5.1.5"
+    "@midnight-ntwrk/compact-runtime": "npm:0.8.1"
+    "@midnight-ntwrk/ledger": "npm:4.0.0"
+    "@midnight-ntwrk/midnight-js-compact": "workspace:*"
+    "@midnight-ntwrk/midnight-js-contracts": "workspace:*"
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
+    "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     "@types/lodash": "npm:^4.17.19"
     cross-fetch: "npm:^4.0.0"
     fetch-retry: "npm:^6.0.0"
