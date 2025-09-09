@@ -15,10 +15,12 @@
 
 import {
   type AlignedValue,
+  ContractState as CompactContractState,
+  QueryContext
+} from '@midnight-ntwrk/compact-runtime';
+import {
   ContractOperation,
-  ContractState,
   type PublicAddress,
-  QueryContext,
   sampleCoinPublicKey,
   sampleContractAddress,
   sampleEncryptionPublicKey,
@@ -26,7 +28,8 @@ import {
   Transaction,
   type Transcript,
   unshieldedToken,
-  ZswapChainState} from '@midnight-ntwrk/ledger-v6';
+  ZswapChainState
+} from '@midnight-ntwrk/ledger-v6';
 import { createVerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
@@ -48,8 +51,8 @@ import {
 describe('ledger-utils', () => {
   const dummySigningKey = sampleSigningKey();
   const dummySigningKey2 = sampleSigningKey();
-  const dummyContractState = new ContractState();
-  const dummyContractState2 = new ContractState();
+  const dummyContractState = new CompactContractState();
+  const dummyContractState2 = new CompactContractState();
   const dummyContractAddress = sampleContractAddress();
   const dummyEncPublicKey = sampleEncryptionPublicKey();
   // Generate a concrete Uint8Array for use as a verifier key
@@ -115,7 +118,12 @@ describe('ledger-utils', () => {
     contractState.setOperation(circuitId, contractOperation);
 
     const transcript: Transcript<AlignedValue> = {
-      gas: 10n,
+      gas: {
+        readTime: 1n,
+        computeTime: 2n,
+        bytesWritten: 4n,
+        bytesDeleted: 8n,
+      },
       effects: {
         claimedNullifiers: [toHex(randomBytes(32))],
         claimedShieldedReceives: [toHex(randomBytes(32))],
