@@ -15,26 +15,25 @@
 
 import type { ContractAddress } from '@midnight-ntwrk/ledger-v6';
 import type { ContractStateObservableConfig } from '@midnight-ntwrk/midnight-js-types';
-import { describe, expect,test } from 'vitest';
-import { WebSocket } from 'ws';
+import { describe, expect, test } from 'vitest';
 
 import { indexerPublicDataProvider } from '../indexer-public-data-provider';
 
 describe('Unshielded Balances Integration', () => {
   const queryURL = 'http://localhost:4000/api/v1/graphql';
   const subscriptionURL = 'ws://localhost:4000/api/v1/graphql/ws';
-  const mockContractAddress = '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234' as ContractAddress;
+  const mockContractAddress = '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef' as ContractAddress;
 
   describe('queryUnshieldedBalances', () => {
     test('should be a function that accepts contract address and optional config', () => {
-      const provider = indexerPublicDataProvider(queryURL, subscriptionURL, WebSocket);
+      const provider = indexerPublicDataProvider(queryURL, subscriptionURL);
 
       expect(typeof provider.queryUnshieldedBalances).toBe('function');
       expect(provider.queryUnshieldedBalances.length).toBe(2); // expects 2 parameters
     });
 
     test('should return a Promise for unshielded balances', () => {
-      const provider = indexerPublicDataProvider(queryURL, subscriptionURL, WebSocket);
+      const provider = indexerPublicDataProvider(queryURL, subscriptionURL);
 
       const result = provider.queryUnshieldedBalances(mockContractAddress);
 
@@ -45,7 +44,7 @@ describe('Unshielded Balances Integration', () => {
     });
 
     test('should accept blockHeight configuration', () => {
-      const provider = indexerPublicDataProvider(queryURL, subscriptionURL, WebSocket);
+      const provider = indexerPublicDataProvider(queryURL, subscriptionURL);
       const config = {
         type: 'blockHeight' as const,
         blockHeight: 1000
@@ -60,7 +59,7 @@ describe('Unshielded Balances Integration', () => {
     });
 
     test('should accept blockHash configuration', () => {
-      const provider = indexerPublicDataProvider(queryURL, subscriptionURL, WebSocket);
+      const provider = indexerPublicDataProvider(queryURL, subscriptionURL);
       const config = {
         type: 'blockHash' as const,
         blockHash: '0x1234567890abcdef'
@@ -75,7 +74,7 @@ describe('Unshielded Balances Integration', () => {
     });
 
     test('should validate contract address format', () => {
-      const provider = indexerPublicDataProvider(queryURL, subscriptionURL, WebSocket);
+      const provider = indexerPublicDataProvider(queryURL, subscriptionURL);
       const invalidAddress = 'invalid-address' as ContractAddress;
 
       expect(() => {
@@ -86,14 +85,14 @@ describe('Unshielded Balances Integration', () => {
 
   describe('watchForUnshieldedBalances', () => {
     test('should be a function that accepts contract address', () => {
-      const provider = indexerPublicDataProvider(queryURL, subscriptionURL, WebSocket);
+      const provider = indexerPublicDataProvider(queryURL, subscriptionURL);
 
       expect(typeof provider.watchForUnshieldedBalances).toBe('function');
       expect(provider.watchForUnshieldedBalances.length).toBe(1); // expects 1 parameter
     });
 
     test('should return a Promise that eventually times out in test environment', () => {
-      const provider = indexerPublicDataProvider(queryURL, subscriptionURL, WebSocket);
+      const provider = indexerPublicDataProvider(queryURL, subscriptionURL);
 
       const result = provider.watchForUnshieldedBalances(mockContractAddress);
 
@@ -106,14 +105,14 @@ describe('Unshielded Balances Integration', () => {
 
   describe('unshieldedBalancesObservable', () => {
     test('should be a function that accepts contract address and config', () => {
-      const provider = indexerPublicDataProvider(queryURL, subscriptionURL, WebSocket);
+      const provider = indexerPublicDataProvider(queryURL, subscriptionURL);
 
       expect(typeof provider.unshieldedBalancesObservable).toBe('function');
       expect(provider.unshieldedBalancesObservable.length).toBe(2); // expects 2 parameters
     });
 
     test('should throw error for txId configuration before address validation', () => {
-      const provider = indexerPublicDataProvider(queryURL, subscriptionURL, WebSocket);
+      const provider = indexerPublicDataProvider(queryURL, subscriptionURL);
       const config: ContractStateObservableConfig = {
         type: 'txId',
         txId: 'test-tx-id'
@@ -125,7 +124,7 @@ describe('Unshielded Balances Integration', () => {
     });
 
     test('should accept latest configuration', () => {
-      const provider = indexerPublicDataProvider(queryURL, subscriptionURL, WebSocket);
+      const provider = indexerPublicDataProvider(queryURL, subscriptionURL);
       const config: ContractStateObservableConfig = { type: 'latest' };
 
       const result = provider.unshieldedBalancesObservable(mockContractAddress, config);
@@ -135,7 +134,7 @@ describe('Unshielded Balances Integration', () => {
     });
 
     test('should accept all configuration', () => {
-      const provider = indexerPublicDataProvider(queryURL, subscriptionURL, WebSocket);
+      const provider = indexerPublicDataProvider(queryURL, subscriptionURL);
       const config: ContractStateObservableConfig = { type: 'all' };
 
       const result = provider.unshieldedBalancesObservable(mockContractAddress, config);
@@ -145,7 +144,7 @@ describe('Unshielded Balances Integration', () => {
     });
 
     test('should accept blockHeight configuration', () => {
-      const provider = indexerPublicDataProvider(queryURL, subscriptionURL, WebSocket);
+      const provider = indexerPublicDataProvider(queryURL, subscriptionURL);
       const config: ContractStateObservableConfig = {
         type: 'blockHeight',
         blockHeight: 1000,
@@ -159,7 +158,7 @@ describe('Unshielded Balances Integration', () => {
     });
 
     test('should accept blockHash configuration', () => {
-      const provider = indexerPublicDataProvider(queryURL, subscriptionURL, WebSocket);
+      const provider = indexerPublicDataProvider(queryURL, subscriptionURL);
       const config: ContractStateObservableConfig = {
         type: 'blockHash',
         blockHash: '0x1234567890abcdef',
@@ -173,7 +172,7 @@ describe('Unshielded Balances Integration', () => {
     });
 
     test('should use latest as default configuration', () => {
-      const provider = indexerPublicDataProvider(queryURL, subscriptionURL, WebSocket);
+      const provider = indexerPublicDataProvider(queryURL, subscriptionURL);
 
       const result = provider.unshieldedBalancesObservable(mockContractAddress, {} as ContractStateObservableConfig);
 
@@ -182,7 +181,7 @@ describe('Unshielded Balances Integration', () => {
     });
 
     test('should validate contract address format', () => {
-      const provider = indexerPublicDataProvider(queryURL, subscriptionURL, WebSocket);
+      const provider = indexerPublicDataProvider(queryURL, subscriptionURL);
       const invalidAddress = 'invalid-address' as ContractAddress;
 
       expect(() => {
