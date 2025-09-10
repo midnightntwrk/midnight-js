@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { type NetworkId } from '@midnight-ntwrk/ledger';
+import { type NetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   MidnightBech32m,
   ShieldedCoinPublicKey,

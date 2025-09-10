@@ -14,7 +14,7 @@
  */
 
 import type { StateValue } from '@midnight-ntwrk/compact-runtime';
-import type { Bindingish, Proofish, Signaturish, Transaction } from '@midnight-ntwrk/ledger';
+import type { Bindingish, Proofish, Signaturish, Transaction } from '@midnight-ntwrk/ledger-v6';
 import type {
   CallTxOptions,
   DeployContractOptions,

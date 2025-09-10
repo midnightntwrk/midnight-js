@@ -14,13 +14,14 @@
  */
 
 import { BinaryWriter } from '@dao-xyz/borsh';
-import { Transaction } from '@midnight-ntwrk/ledger';
-import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import {
+  Transaction,
+  type UnprovenTransaction
+} from '@midnight-ntwrk/ledger-v6';
 import type {
   ProofProvider,
   ProveTxConfig,
   UnbalancedTransaction,
-  UnprovenTransaction,
   ZKConfig
 } from '@midnight-ntwrk/midnight-js-types';
 import { createUnbalancedTx, InvalidProtocolSchemeError } from '@midnight-ntwrk/midnight-js-types';
@@ -70,10 +71,10 @@ export const serializePayload = <K extends string>(
   unprovenTx: UnprovenTransaction,
   zkConfig?: ZKConfig<K>
 ): Promise<ArrayBuffer> =>
-  new Blob([unprovenTx.serialize(getLedgerNetworkId()), serializeZKConfig(zkConfig)]).arrayBuffer();
+  new Blob([unprovenTx.serialize(), serializeZKConfig(zkConfig)]).arrayBuffer();
 
 const deserializePayload = (arrayBuffer: ArrayBuffer): UnbalancedTransaction =>
-  createUnbalancedTx(Transaction.deserialize('signature', 'proof', 'binding', new Uint8Array(arrayBuffer), getLedgerNetworkId()));
+  createUnbalancedTx(Transaction.deserialize('signature', 'proof', 'binding', new Uint8Array(arrayBuffer)));
 
 const PROVE_TX_PATH = '/prove-tx';
 

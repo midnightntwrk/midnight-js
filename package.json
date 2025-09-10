@@ -31,8 +31,8 @@
   },
   "license": "Apache-2.0",
   "dependencies": {
-    "@midnight-ntwrk/compact-runtime": "0.9.0-rc.0",
-    "@midnight-ntwrk/ledger": "5.0.0-alpha.3",
+    "@midnight-ntwrk/compact-runtime": "0.9.0-rc.1",
+    "@midnight-ntwrk/ledger-v6": "6.1.0-alpha.2",
     "@midnight-ntwrk/wallet-sdk-address-format": "2.0.0",
     "@midnight-ntwrk/zswap": "4.0.0"
   },

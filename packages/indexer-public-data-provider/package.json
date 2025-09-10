@@ -27,6 +27,7 @@
     "@apollo/client": "^3.13.8",
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
+    "@midnight-ntwrk/midnight-js-utils": "workspace:*",
     "buffer": "^6.0.3",
     "cross-fetch": "^4.0.0",
     "graphql": "^16.8.0",

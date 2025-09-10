@@ -71,7 +71,7 @@ export class DynamicProofServerContainer implements ProofServerContainer {
   static async start(logger: Logger, maybeUID?: string, maybeNetworkId?: string): Promise<DynamicProofServerContainer> {
     const config = getContainersConfiguration().proofServer;
     const uid = maybeUID ?? Math.floor(Math.random() * Number.MAX_SAFE_INTEGER).toString();
-    const networkId = maybeNetworkId ?? NetworkId[getNetworkId()].toLowerCase();
+    const networkId = maybeNetworkId;
     logger.info(
       `Starting proof server: path='${config.path}', file=${config.fileName}, networkId=${networkId}, uid=${uid}`
     );
@@ -79,7 +79,7 @@ export class DynamicProofServerContainer implements ProofServerContainer {
       .withWaitStrategy(`${config.container.name}_${uid}`, config.container.waitStrategy)
       .withEnvironment({
         TESTCONTAINERS_UID: uid,
-        NETWORK_ID: networkId
+        NETWORK_ID: networkId ?? 'undeployed'
       })
       .up();
     return new DynamicProofServerContainer(dockerEnv, uid);

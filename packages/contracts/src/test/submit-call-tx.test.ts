@@ -14,7 +14,7 @@
  */
 
 import { StateValue } from '@midnight-ntwrk/compact-runtime';
-import { type AlignedValue, type ContractAddress } from '@midnight-ntwrk/ledger';
+import { type AlignedValue, type ContractAddress } from '@midnight-ntwrk/ledger-v6';
 import {
   type Contract,
   FailEntirely,

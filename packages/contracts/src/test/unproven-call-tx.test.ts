@@ -14,7 +14,7 @@
  */
 
 import { StateValue, type ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
-import { type AlignedValue } from '@midnight-ntwrk/ledger';
+import { type AlignedValue } from '@midnight-ntwrk/ledger-v6';
 import { type Contract, type ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expect, it, vi } from 'vitest';
 

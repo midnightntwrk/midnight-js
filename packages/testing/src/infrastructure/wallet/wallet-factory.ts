@@ -15,7 +15,7 @@
 
 import fs from 'node:fs';
 
-import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { type LogLevel, WalletBuilder } from '@midnight-ntwrk/wallet';
 import { type Wallet } from '@midnight-ntwrk/wallet-api';
 import { generateRandomSeed } from '@midnight-ntwrk/wallet-sdk-hd';
@@ -76,7 +76,7 @@ export class WalletFactory {
       proofServer,
       node,
       Buffer.from(generateRandomSeed()).toString('hex'),
-      getLedgerNetworkId(),
+      getNetworkId(),
       walletLogLevel
     );
   };
@@ -101,7 +101,7 @@ export class WalletFactory {
       proofServer,
       node,
       seed,
-      getLedgerNetworkId(),
+      getNetworkId(),
       walletLogLevel
     );
   };

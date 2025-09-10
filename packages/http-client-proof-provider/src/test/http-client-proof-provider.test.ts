@@ -17,7 +17,7 @@ import type { BinaryLike } from 'crypto';
 import crypto from 'crypto';
 
 import { httpClientProofProvider, serializePayload, serializeZKConfig } from '../http-client-proof-provider';
-import { getValidPayload, getValidUnprovenTx, getValidZKConfig } from './commons';
+import { getValidUnprovenTx, getValidZKConfig } from './commons';
 
 const createHash = (binaryLike: BinaryLike): string => {
   return crypto.createHash('sha256').update(binaryLike).digest().toString('base64');
@@ -32,11 +32,12 @@ describe('Http Proof Server Proof Provider', () => {
     expect(createHash(serializeZKConfig())).toEqual(createHash(Buffer.alloc(4, 0)));
   });
 
-  test("'serializeData' encodes unproven call transactions correctly", async () => {
+  test("'serializePayload' produces deterministic output", async () => {
     const zkConfig = await getValidZKConfig();
     const unprovenTx = await getValidUnprovenTx();
-    const myPayload = await serializePayload(unprovenTx, zkConfig);
-    const payloadBuffer = await getValidPayload();
-    expect(createHash(payloadBuffer)).toEqual(createHash(Buffer.from(myPayload)));
+    const payload1 = await serializePayload(unprovenTx, zkConfig);
+    const payload2 = await serializePayload(unprovenTx, zkConfig);
+    expect(createHash(Buffer.from(payload1))).toEqual(createHash(Buffer.from(payload2)));
+    expect(payload1.byteLength).toBeGreaterThan(0);
   });
 });

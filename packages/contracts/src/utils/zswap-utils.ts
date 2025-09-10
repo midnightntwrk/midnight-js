@@ -21,15 +21,18 @@ import {
   type QualifiedShieldedCoinInfo,
   type ShieldedCoinInfo,
   type ZswapChainState,
-} from '@midnight-ntwrk/ledger';
-import { ZswapInput, ZswapOffer, ZswapOutput, ZswapTransient } from '@midnight-ntwrk/ledger';
-import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+  ZswapInput,
+  ZswapOffer,
+  ZswapOutput,
+  ZswapTransient
+} from '@midnight-ntwrk/ledger-v6';
 import {
   type UnprovenInput,
   type UnprovenOffer,
   type UnprovenOutput,
   type UnprovenTransient
-} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnight-ntwrk/ledger-v6';
+import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   assertDefined,
   assertIsContractAddress,
@@ -200,7 +203,7 @@ export const encryptionPublicKeyForZswapState = (
   walletCoinPublicKey: CoinPublicKey,
   walletEncryptionPublicKey: EncPublicKey
 ): EncPublicKey => {
-  const networkId = getLedgerNetworkId();
+  const networkId = getNetworkId();
   const walletCoinPublicKeyLocal = parseCoinPublicKeyToHex(walletCoinPublicKey, networkId);
   const localCoinPublicKey = parseCoinPublicKeyToHex(zswapState.coinPublicKey, networkId);
 

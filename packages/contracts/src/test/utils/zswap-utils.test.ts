@@ -15,7 +15,7 @@
 
 import { fc } from '@fast-check/vitest';
 import { type Recipient } from '@midnight-ntwrk/compact-runtime';
-import { type CoinPublicKey, type QualifiedShieldedCoinInfo, type ShieldedCoinInfo, shieldedToken } from '@midnight-ntwrk/ledger';
+import { type CoinPublicKey, type QualifiedShieldedCoinInfo, type ShieldedCoinInfo, shieldedToken } from '@midnight-ntwrk/ledger-v6';
 import {
   createShieldedCoinInfo,
   nativeToken,
@@ -24,7 +24,8 @@ import {
   sampleRawTokenType,
   Transaction,
   ZswapChainState,
-  ZswapOffer} from '@midnight-ntwrk/ledger';
+  ZswapOffer} from '@midnight-ntwrk/ledger-v6';
+import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
 
@@ -190,7 +191,7 @@ describe('Zswap utilities', () => {
       const coinInfo = createShieldedCoinInfo(shieldedToken().raw, value);
       const output = createZswapOutput({ coinInfo, recipient }, randomEncryptionPublicKey());
       const proofErasedOffer = Transaction.fromParts(
-        ZswapOffer.fromOutput(output, nativeToken().raw, value)
+        getNetworkId(), ZswapOffer.fromOutput(output, nativeToken().raw, value)
       ).eraseProofs().guaranteedOffer;
       if (proofErasedOffer) {
         const [newZswapChainState, mtIndices] = prevZSwapChainState.tryApply(proofErasedOffer);

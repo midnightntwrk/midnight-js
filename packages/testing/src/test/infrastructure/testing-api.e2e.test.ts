@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { nativeToken } from '@midnight-ntwrk/ledger';
+import { nativeToken } from '@midnight-ntwrk/ledger-v6';
 import path from 'path';
 import * as Rx from 'rxjs';
 import { WebSocket } from 'ws';

@@ -34,8 +34,9 @@ import {
   type SignatureEnabled,
   type TokenType,
   type Transaction,
-  type ZswapChainState
-} from '@midnight-ntwrk/ledger';
+  type ZswapChainState,
+  type UnprovenTransaction
+} from '@midnight-ntwrk/ledger-v6';
 import {
   type Contract,
   type FinalizedTxData,
@@ -44,7 +45,6 @@ import {
   type PrivateStateId,
   SucceedEntirely,
   type TxStatus,
-  type UnprovenTransaction,
   type VerifierKey,
   type Witnesses
 } from '@midnight-ntwrk/midnight-js-types';
@@ -110,7 +110,6 @@ export const createMockUnprovenTx = (): UnprovenTransaction => ({
   merge: vi.fn(),
   serialize: vi.fn(),
   imbalances: vi.fn(),
-  mint: undefined,
   bind: vi.fn(),
   wellFormed: vi.fn(),
   transactionHash: vi.fn(),
@@ -118,7 +117,12 @@ export const createMockUnprovenTx = (): UnprovenTransaction => ({
   intents: undefined,
   fallibleOffer: undefined,
   guaranteedOffer: undefined,
-  bindingRandomness: 0n
+  bindingRandomness: 0n,
+  rewards: undefined,
+  mockProve: vi.fn(),
+  prove: vi.fn(),
+  eraseSignatures: vi.fn(),
+  cost: vi.fn()
 });
 
 export const createMockCoinInfo = (): ShieldedCoinInfo => ({
