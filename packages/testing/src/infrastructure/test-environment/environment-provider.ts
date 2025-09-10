@@ -23,6 +23,7 @@ import {
   EnvVarRemoteTestEnvironment,
   LocalTestEnvironment,
   QanetTestEnvironment,
+  Testnet2TestEnvironment,
   TestnetTestEnvironment
 } from './test-environments';
 
@@ -53,7 +54,7 @@ export const getTestEnvironment = (logger: Logger) => {
       return new TestnetTestEnvironment(logger);
     case 'testnet-02':
       setNetworkId('testnet');
-      return new TestnetTestEnvironment(logger);
+      return new Testnet2TestEnvironment(logger);
     case 'devnet':
       setNetworkId('devnet');
       return new DevnetTestEnvironment(logger);
