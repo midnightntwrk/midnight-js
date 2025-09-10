@@ -52,27 +52,23 @@ jobs:
         id: build-targets
         with:
           filters: |
-            workflows:
+            shared:
               - '.github/workflows/**'
+              - 'yarn.lock'
+              - 'package.json'
             compact-js:
               - 'compact-js/**'
-              - 'yarn.lock'
-              - 'package.json'
             platform-js:
               - 'platform-js/**'
-              - 'yarn.lock'
-              - 'package.json'
             midnight-js:
               - 'packages/**'
-              - 'yarn.lock'
-              - 'package.json'
 
   ci-mnjs:
     needs: ci
     name: Build Midnight.js
     uses: ./.github/workflows/ci_mn_js.yml
     with:
-      should_run: ${{ needs.ci.outputs.build_mn_js == 'true' || needs.ci.outputs.build_workflows == 'true' }}
+      should_run: ${{ needs.ci.outputs.build_mn_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
       should_prerelease: ${{
           github.event_name != 'schedule' &&
           (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch')
@@ -83,7 +79,7 @@ jobs:
     needs: ci
     name: Build Compact.js
     with:
-      should_run: ${{ needs.ci.outputs.build_c_js == 'true' || needs.ci.outputs.build_workflows == 'true' }}
+      should_run: ${{ needs.ci.outputs.build_c_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
       should_prerelease: ${{
           github.event_name != 'schedule' &&
           (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch')
@@ -95,7 +91,7 @@ jobs:
     needs: ci
     name: Build Platform.js
     with:
-      should_run: ${{ needs.ci.outputs.build_p_js == 'true' || needs.ci.outputs.build_workflows == 'true' }}
+      should_run: ${{ needs.ci.outputs.build_p_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
       should_prerelease: ${{
           github.event_name != 'schedule' &&
           (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch')
