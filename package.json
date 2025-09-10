@@ -10,7 +10,8 @@
   "workspaces": [
     "packages/*",
     "compact-js/*",
-    "platform-js/*"
+    "platform-js/*",
+    "testkit-js/*"
   ],
   "scripts": {
     "clean": "turbo run clean",

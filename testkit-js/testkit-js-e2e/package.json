@@ -1,0 +1,63 @@
+{
+  "name": "@midnight-ntwrk/testkit-js-e2e",
+  "version": "2.0.2",
+  "description": "E2E tests for Midnight JS packages",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "packageManager": "yarn@4.9.4",
+  "author": "IOHK",
+  "license": "Apache-2.0",
+  "scripts": {
+    "clean": "rm -rf dist reports coverage logs tsconfig.build.tsbuildinfo .rollup.cache managed midnight-level-db",
+    "build": "yarn compact && rollup -c rollup.config.mjs && yarn compact-copy",
+    "test": "yarn e2e",
+    "e2e": "docker compose -f ../compose.yml pull && DEBUG='testcontainers:compose' NODE_OPTIONS=--experimental-vm-modules vitest --config vitest.e2e.config.ts run",
+    "e2e-debug": "docker compose -f ../compose.yml pull && DEBUG='testcontainers:containers' NODE_OPTIONS=--experimental-vm-modules vitest --config vitest.e2e.config.ts run",
+    "e2e-testnet": "MN_TEST_ENVIRONMENT=testnet-02 DEBUG='testcontainers:compose' NODE_OPTIONS=--experimental-vm-modules vitest --config vitest.e2e.config.ts run",
+    "e2e-groups": "docker compose -f ../compose.yml pull && DEBUG='testcontainers:containers' NODE_OPTIONS=--experimental-vm-modules vitest --config vitest.groups.config.ts run",
+    "compact-copy": "mkdir -p ./dist/contract/ && cp -Rf ./src/contract/managed ./dist/contract",
+    "compact": "yarn fetch-compactc && yarn compact-counter && yarn compact-simple && yarn compact-counter-clone && yarn compact-block-time",
+    "compact-counter": "run-compactc src/e2e/contract/counter.compact ./src/contract/managed/counter",
+    "compact-simple": "run-compactc src/e2e/contract/simple.compact ./src/contract/managed/simple",
+    "compact-counter-clone": "run-compactc src/e2e/contract/counter-clone.compact ./src/contract/managed/counter-clone",
+    "compact-block-time": "run-compactc src/e2e/contract/block-time.compact ./src/contract/managed/block-time",
+    "deploy": "yarn npm publish"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/midnight-js-compact": "workspace:*",
+    "@midnight-ntwrk/midnight-js-contracts": "workspace:*",
+    "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*",
+    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "workspace:*",
+    "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
+    "@midnight-ntwrk/midnight-js-types": "workspace:*",
+    "@midnight-ntwrk/midnight-js-utils": "workspace:*",
+    "buffer": "^6.0.3",
+    "cross-fetch": "^4.0.0",
+    "rxjs": "^7.8.1",
+    "ws": "^8.14.2"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.1",
+    "@vitest/runner": "^3.2.4",
+    "allure-commandline": "^2.34.1",
+    "allure-js-commons": "^3.3.0",
+    "allure-vitest": "^3.3.0",
+    "axios": "^1.11.0",
+    "pino": "^9.9.1",
+    "pino-pretty": "^13.0.0",
+    "rxjs": "^7.8.2",
+    "vitest": "^3.2.4"
+  },
+  "files": [
+    "dist/"
+  ]
+}
