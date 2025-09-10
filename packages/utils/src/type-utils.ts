@@ -28,7 +28,7 @@ import { assertIsHex, parseHex } from './hex-utils';
  * @internal
  */
 export function assertIsContractAddress(contractAddress: string): asserts contractAddress is ContractAddress {
-  const CONTRACT_ADDRESS_BYTE_LENGTH = 34;
+  const CONTRACT_ADDRESS_BYTE_LENGTH = 32;
 
   assertIsHex(contractAddress, CONTRACT_ADDRESS_BYTE_LENGTH);
 
