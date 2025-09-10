@@ -27,7 +27,7 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     outputs:
-      build_workflows: ${{ steps.build-targets.outputs.workflows }}
+      build_shared: ${{ steps.build-targets.outputs.shared }}
       build_mn_js: ${{ steps.build-targets.outputs.midnight-js }}
       build_c_js: ${{ steps.build-targets.outputs.compact-js }}
       build_p_js: ${{ steps.build-targets.outputs.platform-js }}
