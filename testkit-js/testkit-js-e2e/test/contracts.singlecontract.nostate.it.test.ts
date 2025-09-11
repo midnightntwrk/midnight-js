@@ -38,11 +38,6 @@ import {
 } from '@midnight-ntwrk/midnight-js-contracts';
 import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
-import path from 'path';
-
-import { CompiledSimple } from '@/contract';
-import * as api from '@/counter-api';
-import type { SimpleContract, SimpleProviders } from '@/simple-types';
 import {
   createLogger,
   type EnvironmentConfiguration,
@@ -54,6 +49,11 @@ import {
   initializeMidnightProviders,
   type MidnightWalletProvider,
   type TestEnvironment} from '@midnight-ntwrk/testkit-js';
+import path from 'path';
+
+import { CompiledSimple } from '@/contract';
+import * as api from '@/counter-api';
+import type { SimpleContract, SimpleProviders } from '@/simple-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_nostate_${new Date().toISOString()}.log`)

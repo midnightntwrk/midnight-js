@@ -13,9 +13,6 @@
  * limitations under the License.
  */
 
-import path from 'path';
-
-import { CounterPrivateStateId, type CounterProviders, currentDir, privateStateZero } from '@/index';
 import {
   type EnvironmentConfiguration,
   getTestEnvironment,
@@ -25,6 +22,9 @@ import {
   type TestEnvironment
 } from '@midnight-ntwrk/testkit-js';
 import { type ContractConfiguration } from '@midnight-ntwrk/testkit-js';
+import path from 'path';
+
+import { CounterPrivateStateId, type CounterProviders, currentDir, privateStateZero } from '@/index';
 
 import * as api from '../counter-api';
 

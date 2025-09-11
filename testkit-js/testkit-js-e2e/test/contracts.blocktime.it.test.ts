@@ -20,16 +20,6 @@ import {
   submitTx
 } from '@midnight-ntwrk/midnight-js-contracts';
 import { FailEntirely, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import path from 'path';
-import { vi } from 'vitest';
-
-import * as api from '@/block-time-api';
-import { BlockTimeConfiguration } from '@/block-time-api';
-import {
-  type BlockTimeContract,
-  type BlockTimeProviders,
-  type DeployedBlockTimeContract
-} from '@/block-time-types';
 import type {
   EnvironmentConfiguration,
   MidnightWalletProvider,
@@ -40,6 +30,16 @@ import {
   getTestEnvironment,
   initializeMidnightProviders
 } from '@midnight-ntwrk/testkit-js';
+import path from 'path';
+import { vi } from 'vitest';
+
+import * as api from '@/block-time-api';
+import { BlockTimeConfiguration } from '@/block-time-api';
+import {
+  type BlockTimeContract,
+  type BlockTimeProviders,
+  type DeployedBlockTimeContract
+} from '@/block-time-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `block_time_${new Date().toISOString()}.log`)

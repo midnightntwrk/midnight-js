@@ -15,6 +15,12 @@
 
 import { type ContractState } from '@midnight-ntwrk/compact-runtime';
 import { type FinalizedTxData, type PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
+import {
+  createLogger,
+  getTestEnvironment,
+  initializeMidnightProviders,
+  type TestEnvironment
+} from '@midnight-ntwrk/testkit-js';
 import path from 'path';
 import { type Observable, toArray } from 'rxjs';
 
@@ -23,12 +29,6 @@ import { CompiledCounter } from '@/contract';
 import * as api from '@/counter-api';
 import { CONTRACT_CIRCUITS, CounterConfiguration } from '@/counter-api';
 import { type CounterProviders, type DeployedCounterContract, privateStateZero } from '@/counter-types';
-import {
-  createLogger,
-  getTestEnvironment,
-  initializeMidnightProviders,
-  type TestEnvironment
-} from '@midnight-ntwrk/testkit-js';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `indexer_${new Date().toISOString()}.log`)

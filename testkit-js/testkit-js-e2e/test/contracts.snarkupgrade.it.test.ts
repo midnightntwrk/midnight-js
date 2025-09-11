@@ -21,17 +21,17 @@ import {
   submitRemoveVerifierKeyTx
 } from '@midnight-ntwrk/midnight-js-contracts';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import path from 'path';
-
-import * as api from '@/counter-api';
-import { CIRCUIT_ID_RESET, counterContractInstance } from '@/counter-api';
-import { type CounterProviders } from '@/counter-types';
 import type {
   EnvironmentConfiguration,
   MidnightWalletProvider,
   TestEnvironment
 } from '@midnight-ntwrk/testkit-js';
 import { createLogger, getTestEnvironment } from '@midnight-ntwrk/testkit-js';
+import path from 'path';
+
+import * as api from '@/counter-api';
+import { CIRCUIT_ID_RESET, counterContractInstance } from '@/counter-api';
+import { type CounterProviders } from '@/counter-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_snark_upgrade_${new Date().toISOString()}.log`)

@@ -16,6 +16,12 @@
 import type { FinalizedDeployTxData } from '@midnight-ntwrk/midnight-js-contracts';
 import { getRuntimeNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { type FinalizedTxData, type PublicDataProvider, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import {
+  createLogger,
+  getTestEnvironment,
+  initializeMidnightProviders,
+  type TestEnvironment
+} from '@midnight-ntwrk/testkit-js';
 import path from 'path';
 
 import { UNDEPLOYED_CONTRACT_ADDRESS, VERY_SLOW_TEST_TIMEOUT } from '@/constants';
@@ -28,12 +34,6 @@ import {
   type DeployedCounterContract,
   privateStateZero
 } from '@/counter-types';
-import {
-  createLogger,
-  getTestEnvironment,
-  initializeMidnightProviders,
-  type TestEnvironment
-} from '@midnight-ntwrk/testkit-js';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `indexer_${new Date().toISOString()}.log`)

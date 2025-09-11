@@ -15,6 +15,7 @@
 
 import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
 import type { FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
+import { type ContractConfiguration } from '@midnight-ntwrk/testkit-js';
 import path from 'path';
 import type { Logger } from 'pino';
 import { WebSocket } from 'ws';
@@ -24,7 +25,6 @@ import type {
   BlockTimeProviders,
   DeployedBlockTimeContract
 } from '@/block-time-types';
-import { type ContractConfiguration } from '@midnight-ntwrk/testkit-js';
 
 import { CompilerBlockTime } from './contract';
 

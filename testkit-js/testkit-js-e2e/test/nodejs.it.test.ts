@@ -15,9 +15,8 @@
 
 import { spawn } from 'node:child_process';
 
-import path from 'path';
-
 import { logger } from '@midnight-ntwrk/testkit-js';
+import path from 'path';
 
 function runNodeAndExpectExitCode(scriptPath: string, expectedExitCode: number): Promise<void> {
   return new Promise((resolve, reject) => {

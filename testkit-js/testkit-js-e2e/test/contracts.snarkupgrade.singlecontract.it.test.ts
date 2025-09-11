@@ -24,6 +24,13 @@ import {
   submitReplaceAuthorityTx
 } from '@midnight-ntwrk/midnight-js-contracts';
 import { SucceedEntirely, type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
+import {
+  createLogger,
+  type EnvironmentConfiguration,
+  getTestEnvironment,
+  initializeMidnightProviders,
+  type MidnightWalletProvider,
+  type TestEnvironment} from '@midnight-ntwrk/testkit-js';
 import path from 'path';
 
 import { UNDEPLOYED_CONTRACT_ADDRESS } from '@/constants';
@@ -36,13 +43,6 @@ import {
   SimpleConfiguration
 } from '@/counter-api';
 import { type CounterProviders, type DeployedCounterContract } from '@/counter-types';
-import {
-  createLogger,
-  type EnvironmentConfiguration,
-  getTestEnvironment,
-  initializeMidnightProviders,
-  type MidnightWalletProvider,
-  type TestEnvironment} from '@midnight-ntwrk/testkit-js';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_snark_upgrade_${new Date().toISOString()}.log`)

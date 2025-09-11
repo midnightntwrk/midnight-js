@@ -31,7 +31,7 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   ...tseslint.configs.stylistic,
   {
-    files: ['packages/**/*.ts', 'packages/**/*.tsx', 'packages/**/*.mts', 'compact-js/**/*.ts', 'platform-js/**/*.ts'],
+    files: ['packages/**/*.ts', 'packages/**/*.tsx', 'packages/**/*.mts', 'compact-js/**/*.ts', 'platform-js/**/*.ts', 'testkit-js/**/*.ts'],
     plugins: {
       '@typescript-eslint': tseslint.plugin,
       import: importPlugin,

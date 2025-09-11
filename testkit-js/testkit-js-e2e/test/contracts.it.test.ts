@@ -36,6 +36,19 @@ import {
 import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
+import type {
+  EnvironmentConfiguration,
+  MidnightWalletProvider,
+  TestEnvironment} from '@midnight-ntwrk/testkit-js';
+import {
+  createLogger,
+  expectFoundAndDeployedStatesEqual,
+  expectFoundAndDeployedTxDataEqual,
+  expectFoundAndDeployedTxPublicDataEqual,
+  expectSuccessfulCallTx,
+  expectSuccessfulDeployTx,
+  getTestEnvironment,
+  initializeMidnightProviders} from '@midnight-ntwrk/testkit-js';
 import path from 'path';
 
 import {
@@ -70,19 +83,6 @@ import {
   privateStateZero
 } from '@/counter-types';
 import { type SimpleCircuits } from '@/simple-types';
-import type {
-  EnvironmentConfiguration,
-  MidnightWalletProvider,
-  TestEnvironment} from '@midnight-ntwrk/testkit-js';
-import {
-  createLogger,
-  expectFoundAndDeployedStatesEqual,
-  expectFoundAndDeployedTxDataEqual,
-  expectFoundAndDeployedTxPublicDataEqual,
-  expectSuccessfulCallTx,
-  expectSuccessfulDeployTx,
-  getTestEnvironment,
-  initializeMidnightProviders} from '@midnight-ntwrk/testkit-js';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_${new Date().toISOString()}.log`)

@@ -31,17 +31,17 @@ import { DEFAULT_CONFIG, httpClientProofProvider } from '@midnight-ntwrk/midnigh
 import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
 import type { ProofProvider, ZKConfig } from '@midnight-ntwrk/midnight-js-types';
 import { getImpureCircuitIds } from '@midnight-ntwrk/midnight-js-types';
+import {
+  createLogger,
+  DynamicProofServerContainer,
+  type ProofServerContainer
+} from '@midnight-ntwrk/testkit-js';
 import path from 'path';
 
 import { createInitialPrivateState } from '@/contract';
 import * as api from '@/counter-api';
 import { CounterConfiguration, counterContractInstance } from '@/counter-api';
 import type { CounterCircuits } from '@/counter-types';
-import {
-  createLogger,
-  DynamicProofServerContainer,
-  type ProofServerContainer
-} from '@midnight-ntwrk/testkit-js';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `proof_server_${new Date().toISOString()}.log`)

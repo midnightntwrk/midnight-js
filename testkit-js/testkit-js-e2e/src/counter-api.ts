@@ -17,16 +17,15 @@ import type { ContractAddress } from '@midnight-ntwrk/ledger';
 import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
 import type { FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
-import path from 'path';
-import type { Logger } from 'pino';
-import { WebSocket } from 'ws';
-
 import {
   type ContractConfiguration,
   type EnvironmentConfiguration,
   initializeMidnightProviders,
   type MidnightWalletProvider
 } from '@midnight-ntwrk/testkit-js';
+import path from 'path';
+import type { Logger } from 'pino';
+import { WebSocket } from 'ws';
 
 import {
   CompiledCounter,
