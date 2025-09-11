@@ -69,6 +69,11 @@ jobs:
     needs: ci
     name: Build Midnight.js
     uses: ./.github/workflows/ci_mn_js.yml
+    permissions:
+      contents: read
+      issues: read
+      checks: write
+      pull-requests: write
     with:
       should_run: ${{ needs.ci.outputs.build_mn_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
       should_prerelease: ${{
@@ -80,6 +85,11 @@ jobs:
   ci-cjs:
     needs: ci
     name: Build Compact.js
+    permissions:
+      contents: read
+      issues: read
+      checks: write
+      pull-requests: write
     with:
       should_run: ${{ needs.ci.outputs.build_c_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
       should_prerelease: ${{
@@ -92,6 +102,11 @@ jobs:
   ci-pjs:
     needs: ci
     name: Build Platform.js
+    permissions:
+      contents: read
+      issues: read
+      checks: write
+      pull-requests: write
     with:
       should_run: ${{ needs.ci.outputs.build_p_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
       should_prerelease: ${{
