@@ -31,15 +31,16 @@ export default defineConfig({
       reporter: ['clover', 'json', 'json-summary', 'lcov', 'text'],
       reportsDirectory: './coverage'
     },
-    hookTimeout: 30_000,
-    testTimeout: 30_000,
+    testTimeout: 60_000,
+    hookTimeout: 2 * 60_000,
     reporters: [
       'default',
       ['junit', { outputFile: './reports/test-report.xml' }],
       ['html', { outputFile: './reports/html/index.html' }],
-      ['@d2t/vitest-ctrf-json-reporter', { outputDir: './reports/', outputFile: 'ctrf-report.json' }]
+      ['@d2t/vitest-ctrf-json-reporter', { outputDir: './reports/', outputFile: 'ctrf-report.json' }],
+      ['allure-vitest/reporter', { resultsDir: './reports/allure-results' }]
     ],
-    setupFiles: []
+    setupFiles: ['allure-vitest/setup', 'vite.setup.mjs']
   },
   resolve: {
     extensions: ['.ts', '.js'],

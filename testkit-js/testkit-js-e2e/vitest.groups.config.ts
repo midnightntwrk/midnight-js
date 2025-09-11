@@ -18,7 +18,7 @@ import path from 'path';
 import { defineConfig } from 'vitest/config';
 
 import testGroups from './test-groups';
-import * as baseConfig from './vitest.e2e.config';
+import * as baseConfig from './vitest.config';
 
 const directoryPath = path.join(__dirname, '..', 'src', 'test');
 
@@ -55,6 +55,7 @@ if (!selectedGroup) {
 
 export default defineConfig({
   ...baseConfig.default,
+  ...baseConfig.default.plugins,
   test: {
     ...baseConfig.default.test,
     include: selectedGroup,

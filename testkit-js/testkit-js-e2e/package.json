@@ -19,10 +19,9 @@
   "scripts": {
     "clean": "rm -rf dist reports coverage logs tsconfig.build.tsbuildinfo .rollup.cache managed midnight-level-db",
     "build": "yarn compact && rollup -c rollup.config.mjs && yarn compact-copy",
-    "test": "yarn e2e",
-    "e2e": "docker compose -f ../compose.yml pull && DEBUG='testcontainers:compose' NODE_OPTIONS=--experimental-vm-modules vitest --config vitest.e2e.config.ts run",
-    "e2e-debug": "docker compose -f ../compose.yml pull && DEBUG='testcontainers:containers' NODE_OPTIONS=--experimental-vm-modules vitest --config vitest.e2e.config.ts run",
-    "e2e-testnet": "MN_TEST_ENVIRONMENT=testnet-02 DEBUG='testcontainers:compose' NODE_OPTIONS=--experimental-vm-modules vitest --config vitest.e2e.config.ts run",
+    "e2e": "docker compose -f ../compose.yml pull && DEBUG='testcontainers:compose' NODE_OPTIONS=--experimental-vm-modules vitest --config vitest.config.ts run",
+    "e2e-debug": "docker compose -f ../compose.yml pull && DEBUG='testcontainers:containers' NODE_OPTIONS=--experimental-vm-modules vitest --config vitest.config.ts run",
+    "e2e-testnet": "MN_TEST_ENVIRONMENT=testnet-02 DEBUG='testcontainers:compose' NODE_OPTIONS=--experimental-vm-modules vitest --config vitest.config.ts run",
     "e2e-groups": "docker compose -f ../compose.yml pull && DEBUG='testcontainers:containers' NODE_OPTIONS=--experimental-vm-modules vitest --config vitest.groups.config.ts run",
     "compact-copy": "mkdir -p ./dist/contract/ && cp -Rf ./src/contract/managed ./dist/contract",
     "compact": "yarn fetch-compactc && yarn compact-counter && yarn compact-simple && yarn compact-counter-clone && yarn compact-block-time",

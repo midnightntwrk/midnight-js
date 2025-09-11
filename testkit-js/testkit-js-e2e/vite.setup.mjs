@@ -5,15 +5,21 @@ import {
   defaultContainersConfiguration,
   setContainersConfiguration
 } from '@midnight-ntwrk/testkit-js';
+import path from 'path';
 
 const logger = await createLogger('default.log');
 globalThis.logger = logger;
+
+const dir = path.resolve('./../');
+const testKitContainersConfiguration = defaultContainersConfiguration;
+testKitContainersConfiguration.standalone.path = dir;
+testKitContainersConfiguration.proofServer.path = dir;
 
 beforeAll(async () => {
   logger.info(
     'Setting up container configuration to use pinned component versions'
   );
-  setContainersConfiguration(defaultContainersConfiguration);
+  setContainersConfiguration(testKitContainersConfiguration);
   await deleteDirectory('../midnight-level-db');
 });
 
