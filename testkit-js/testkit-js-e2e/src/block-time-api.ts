@@ -46,7 +46,7 @@ export class BlockTimeConfiguration implements ContractConfiguration {
   readonly zkConfigPath;
   constructor(privateStateStoreName?: string, zkConfigPath?: string) {
     this.privateStateStoreName = privateStateStoreName || 'block-time-private-state';
-    this.zkConfigPath = zkConfigPath || path.resolve(currentDir, '..', '..', 'dist', 'contract', 'managed', 'block-time');
+    this.zkConfigPath = zkConfigPath || path.resolve(currentDir, '..', 'dist', 'contract', 'managed', 'block-time');
   }
 }
 
