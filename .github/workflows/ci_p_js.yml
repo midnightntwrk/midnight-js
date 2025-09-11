@@ -2,13 +2,7 @@ name: CI - Platform.js
 env:
   MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
-permissions:
-  contents: read
-  issues: read
-  id-token: write
-  packages: write
-  checks: write
-  pull-requests: write
+permissions: {}
 
 on:
   workflow_dispatch:
@@ -42,6 +36,13 @@ concurrency:
 
 jobs:
   ci:
+    permissions:
+      contents: read
+      issues: read
+      id-token: write
+      packages: write
+      checks: write
+      pull-requests: write
     if: inputs.should_run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -145,6 +146,13 @@ jobs:
   cd-prerelease:
     runs-on: ubuntu-latest
     needs: ci
+    permissions:
+      contents: read
+      issues: read
+      id-token: write
+      packages: write
+      checks: write
+      pull-requests: write
     if: inputs.should_prerelease == 'true'
     steps:
       - uses: GitHubSecurityLab/actions-permissions/monitor@d2ee2b1047995102b08cb4e778b44bd2a662eba3  #v1
