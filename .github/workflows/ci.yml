@@ -104,7 +104,7 @@ jobs:
 
   ci-testkit:
     needs: ci
-    name: Build Testkit
+    name: Build Testkit.js
     with:
       should_run: ${{ needs.ci.outputs.build_t_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
       should_prerelease: ${{

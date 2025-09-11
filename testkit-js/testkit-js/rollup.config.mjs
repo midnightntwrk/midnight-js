@@ -32,32 +32,4 @@ export default [
       /^@midnight-ntwrk\/(.*)$/
     ]
   },
-  {
-    input: 'src/e2e/node/counter.ts',
-    output: [
-      {
-        file: './dist/counter.cjs',
-        format: 'cjs',
-        sourcemap: true
-      },
-      {
-        file: './dist/counter.mjs',
-        format: 'esm',
-        sourcemap: true
-      }
-    ],
-    plugins: [
-      resolve(),
-      typescript({
-        tsconfig: './tsconfig.build.json',
-        composite: false
-      }),
-      commonjs()
-    ],
-    external: [
-      /node_modules/,
-      /^@midnight-ntwrk\/midnight-js-(.*)$/,
-      /^@midnight-ntwrk\/(.*)$/
-    ]
-  }
 ];
