@@ -7,6 +7,8 @@ import importPlugin from 'eslint-plugin-import';
 import simpleImportSort from 'eslint-plugin-simple-import-sort';
 import unusedImports from 'eslint-plugin-unused-imports';
 
+
+
 export default tseslint.config(
   {
     ignores: [
@@ -45,7 +47,7 @@ export default tseslint.config(
       'import/resolver': {
         typescript: {
           alwaysTryTypes: false,
-          project: ['tsconfig.json', 'packages/*/tsconfig.json', 'compact-js/*/tsconfig.json', 'platform-js/*/tsconfig.json']
+          project: ['tsconfig.json', 'packages/*/tsconfig.json', 'compact-js/*/tsconfig.json', 'platform-js/*/tsconfig.json', 'testkit-js/*/tsconfig.json']
         }
       }
     },
