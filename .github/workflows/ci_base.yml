@@ -2,11 +2,7 @@ name: Continuous Integration
 env:
   MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
-permissions:
-  contents: read
-  issues: read
-  checks: write
-  pull-requests: write
+permissions: {}
 
 on:
   workflow_dispatch:
@@ -51,6 +47,11 @@ jobs:
   ci:
     name: Build, Lint and Unit/Integration Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      checks: write
+      pull-requests: write
     timeout-minutes: 15
     steps:
       - uses: GitHubSecurityLab/actions-permissions/monitor@d2ee2b1047995102b08cb4e778b44bd2a662eba3  #v1
@@ -183,6 +184,11 @@ jobs:
   docs_api:
     name: Generate API Documentation
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      checks: write
+      pull-requests: write
     needs: ci
     steps:
       - uses: GitHubSecurityLab/actions-permissions/monitor@d2ee2b1047995102b08cb4e778b44bd2a662eba3  #v1
@@ -243,6 +249,11 @@ jobs:
   e2e_tests:
     name: E2E Tests
     runs-on: ubuntu-latest-8-core-x64
+    permissions:
+      contents: read
+      issues: read
+      checks: write
+      pull-requests: write
     needs: ci
     timeout-minutes: ${{ inputs.build_timeout }}
     strategy:
@@ -326,6 +337,11 @@ jobs:
   e2e_tests_reports:
     name: E2E Tests Reports
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      checks: write
+      pull-requests: write
     needs: e2e_tests
     if: always()
     steps:
@@ -382,6 +398,11 @@ jobs:
   e2e_tests_reports_allure:
     name: E2E Tests Reports to Allure Server
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      checks: write
+      pull-requests: write
     needs: e2e_tests
     if: always()
     steps:

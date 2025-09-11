@@ -2,11 +2,7 @@ name: CD - Release Platform.js
 env:
   MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
-permissions:
-  contents: read
-  issues: read
-  checks: write
-  pull-requests: write
+permissions: {}
 
 on:
   workflow_dispatch:
@@ -14,6 +10,11 @@ on:
 jobs:
   cd:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      checks: write
+      pull-requests: write
     steps:
       - uses: GitHubSecurityLab/actions-permissions/monitor@d2ee2b1047995102b08cb4e778b44bd2a662eba3  #v1
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # ratchet:actions/checkout@v4

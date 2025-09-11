@@ -11,13 +11,7 @@ on:
   schedule:
     - cron: "30 4 * * *"
 
-permissions:
-  contents: read
-  issues: read
-  id-token: write
-  packages: write
-  checks: write
-  pull-requests: write
+permissions: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -31,6 +25,13 @@ jobs:
       build_mn_js: ${{ steps.build-targets.outputs.midnight-js }}
       build_c_js: ${{ steps.build-targets.outputs.compact-js }}
       build_p_js: ${{ steps.build-targets.outputs.platform-js }}
+    permissions:
+      contents: read
+      issues: read
+      id-token: write
+      packages: write
+      checks: write
+      pull-requests: write
 
     steps:
       - uses: GitHubSecurityLab/actions-permissions/monitor@d2ee2b1047995102b08cb4e778b44bd2a662eba3  #v1
