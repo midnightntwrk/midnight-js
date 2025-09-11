@@ -62,7 +62,7 @@ export declare namespace CompiledContract {
    * information to where the generated ZK assets can be found, along with an implementation of the witnesses
    * expected by the contract.
    */
-  export type Context<C extends Contract.Any> = CompactContext.Witnesses<C> | CompactContext.ZKConfigAssetsPath;
+  export type Context<C extends Contract.Any> = CompactContext.Witnesses<C> | CompactContext.CompiledAssetsPath;
 }
 
 const CompiledContractProto = {
@@ -136,37 +136,41 @@ export const withWitnesses: {
 );
 
 /**
- * Associates a file path where the ZK assets can be found for the Compact compiled contract.
+ * Associates a file path of where to find the compiled assets for the Compact compiled contract.
+ * 
+ * @remarks
+ * Relative file paths will be resolved relative to the base paths provided to each service that accesses
+ * the compiled file assets. 
  *
  * @category combinators
  */
-export const withZKConfigFileAssets: {
+export const withCompiledFileAssets: {
   /**
-   * @param zkConfigAssetsPath The file path.
-   * @returns A function that receives the {@link CompiledContract} that `zkConfigAssetsPath` will be attached to.
+   * @param compiledAssetsPath The file path.
+   * @returns A function that receives the {@link CompiledContract} that `compiledAssetsPath` will be attached to.
    */
   <C extends Contract<PS>, PS, R>(
-    zkConfigAssetsPath: R extends CompactContext.ZKConfigAssetsPath ? string : never
-  ): (self: CompiledContract<C, PS, R>) => CompiledContract<C, PS, Exclude<R, CompactContext.ZKConfigAssetsPath>>;
+    compiledAssetsPath: R extends CompactContext.CompiledAssetsPath ? string : never
+  ): (self: CompiledContract<C, PS, R>) => CompiledContract<C, PS, Exclude<R, CompactContext.CompiledAssetsPath>>;
   /**
-   * @param self The {@link CompiledContract} that `zkConfigAssetsPath` will be attached to.
-   * @param zkConfigAssetsPath The file path.
+   * @param self The {@link CompiledContract} that `compiledAssetsPath` will be attached to.
+   * @param compiledAssetsPath The file path.
    */
   <C extends Contract<PS>, PS, R>(
     self: CompiledContract<C, PS, R>,
-    zkConfigAssetsPath: R extends CompactContext.ZKConfigAssetsPath ? string : never
-  ): CompiledContract<C, PS, Exclude<R, CompactContext.ZKConfigAssetsPath>>;
+    compiledAssetsPath: R extends CompactContext.CompiledAssetsPath ? string : never
+  ): CompiledContract<C, PS, Exclude<R, CompactContext.CompiledAssetsPath>>;
 } = dual(
   2,
   <C extends Contract<PS>, PS, R>(
     self: CompiledContract<C, PS, R>,
-    zkConfigAssetsPath: R extends CompactContext.ZKConfigAssetsPath ? string : never
+    compiledAssetsPath: R extends CompactContext.CompiledAssetsPath ? string : never
   ) => {
     return {
       ...self,
       [CompactContextInternal.TypeId]: {
         ...self[CompactContextInternal.TypeId],
-        zkConfigAssetsPath
+        compiledAssetsPath
       }
     };
   }
@@ -178,8 +182,8 @@ export const withZKConfigFileAssets: {
  * @param self The {@link CompiledContract} from which the assets path should be retrieved.
  * @returns A string representing a path to the ZK assets configured for `self`.
  */
-export const getZkConfigAssetsPath: <C extends Contract<PS>, PS>(self: CompiledContract<C, PS>) => string =
+export const getCompiledAssetsPath: <C extends Contract<PS>, PS>(self: CompiledContract<C, PS>) => string =
   <C extends Contract<PS>, PS>(self: CompiledContract<C, PS>) => {
     const context = CompactContextInternal.getContractContext(self);
-    return context.zkConfigAssetsPath;
+    return context.compiledAssetsPath;
   };

@@ -34,7 +34,7 @@ const makeFileSystemReader =
   (compiledContract: CompiledContract.CompiledContract<C, PS>) =>
     // eslint-disable-next-line require-yield
     Effect.gen(function* () {
-      const zkConfigAssetsPath = CompiledContract.getZkConfigAssetsPath(compiledContract);
+      const zkConfigAssetsPath = CompiledContract.getCompiledAssetsPath(compiledContract);
       const getVerifierKey = (impureCircuitId: Contract.ImpureCircuitId<C>) =>
         Effect.gen(function* () {
           const data = yield* fs.readFile(
