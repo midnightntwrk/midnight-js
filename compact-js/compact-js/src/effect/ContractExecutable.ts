@@ -15,10 +15,12 @@
 
 import {
   type AlignedValue,
+  ChargedState,
   CompactError,
-  constructorContext,
   ContractMaintenanceAuthority,
   type ContractState,
+  CostModel,
+  createConstructorContext,
   decodeZswapLocalState,
   emptyZswapLocalState,
   type Op,
@@ -153,7 +155,7 @@ const DEFAULT_CMA_THRESHOLD = 1;
 
 const asLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext =>
   new LedgerQueryContext(
-    new LedgerChargedState(LedgerStateValue.decode(queryContext.state.encode())),
+    new LedgerChargedState(LedgerStateValue.decode(queryContext.state.state.encode())),
     queryContext.address
   );
 
@@ -207,7 +209,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
         Effect.try({
           try: () => {
             const { currentContractState, currentPrivateState, currentZswapLocalState } = contract.initialState(
-              constructorContext(initialPrivateState, CoinPublicKey.asHex(keyConfig.coinPublicKey)),
+              createConstructorContext(initialPrivateState, CoinPublicKey.asHex(keyConfig.coinPublicKey)),
               ...args
             );
             return {
@@ -305,16 +307,16 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
               throw new Error(`Circuit ${this.compiledContract.tag}#${impureCircuitId} could not be found.`);
             }
             const initialTxContext = new QueryContext(
-              StateValue.decode(circuitContext.contractState.data.encode()),
+              new ChargedState(StateValue.decode(circuitContext.contractState.data.state.encode())),
               circuitContext.address
             );
             return {
               ...circuit(
                 {
-                  originalState: circuitContext.contractState,
                   currentPrivateState: circuitContext.privateState,
                   currentZswapLocalState: emptyZswapLocalState(CoinPublicKey.asHex(keyConfig.coinPublicKey)),
-                  transactionContext: initialTxContext
+                  transactionContext: initialTxContext,
+                  costModel: CostModel.initialCostModel()
                 },
                 ...args
               ),
@@ -327,7 +329,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
             Effect.gen(function* () {
               return {
                 public: {
-                  contractState: context.transactionContext.state,
+                  contractState: context.transactionContext.state.state,
                   publicTranscript: proofData.publicTranscript,
                   partitionedTranscript: yield* partitionTranscript(
                     initialTxContext,
