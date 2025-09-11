@@ -136,6 +136,12 @@ jobs:
           name: midnight-js-dist-testkit
           path: packages/*/dist/
 
+      - name: Upload dist for it
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # ratchet:actions/upload-artifact@v4
+        with:
+          name: testkit-dist
+          path: testkit-js/*/dist/
+
   cd-prerelease:
     runs-on: ubuntu-latest
     needs: ci
@@ -270,11 +276,11 @@ jobs:
           name: midnight-js-dist-testkit
           path: packages/
 
-      - name: Download contracts
+      - name: Download testkit build
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # ratchet:actions/download-artifact@v4
         with:
-          name: e2e-tests-contracts
-          path: testkit-js/testkit-js-e2e/dist/contract/managed
+          name: testkit-dist
+          path: testkit-js/
 
       - name: Download contracts
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
