@@ -276,6 +276,12 @@ jobs:
           name: e2e-tests-contracts
           path: testkit-js/testkit-js-e2e/dist/contract/managed
 
+      - name: Download contracts
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        with:
+          name: e2e-tests-contracts
+          path: testkit-js/testkit-js-e2e/src/contract/managed
+
       - name: Run e2e tests - Group ${{ matrix.group }}
         if: ${{ !contains(github.event.head_commit.message, '[skip_it]') }}
         run: yarn e2e-groups ${{ inputs.yarn_filter }} --concurrency 1 --cache-dir ./turbo
