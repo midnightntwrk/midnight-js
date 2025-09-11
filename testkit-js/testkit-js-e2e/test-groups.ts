@@ -14,15 +14,15 @@
  */
 
 export default {
-  group1: ['./src/test/e2e/contracts.it.test.ts'],
-  group2: ['./src/test/e2e/contracts.snarkupgrade.smoke.it.test.ts', './src/test/e2e/proof-server.it.test.ts'],
-  group3: ['./src/test/e2e/contracts.snarkupgrade.singlecontract.it.test.ts'],
-  group4: ['./src/test/e2e/contracts.snarkupgrade.it.test.ts'],
-  group5: ['./src/test/e2e/indexer-public-data-provider.observable1.it.test.ts'],
-  group6: ['./src/test/e2e/indexer-public-data-provider.observable2.it.test.ts'],
+  group1: ['./test/contracts.it.test.ts'],
+  group2: ['./test/contracts.snarkupgrade.smoke.it.test.ts', './test/proof-server.it.test.ts'],
+  group3: ['./test/contracts.snarkupgrade.singlecontract.it.test.ts'],
+  group4: ['./test/contracts.snarkupgrade.it.test.ts'],
+  group5: ['./test/indexer-public-data-provider.observable1.it.test.ts'],
+  group6: ['./test/indexer-public-data-provider.observable2.it.test.ts'],
   group7: [
-    './src/test/e2e/indexer-public-data-provider.singlecontract.it.test.ts',
-    './src/test/e2e/contracts.singlecontract.nostate.it.test.ts',
-    './src/test/e2e/nodejs.it.test.ts'
+    './test/indexer-public-data-provider.singlecontract.it.test.ts',
+    './test/contracts.singlecontract.nostate.it.test.ts',
+    './test/nodejs.it.test.ts'
   ]
 };

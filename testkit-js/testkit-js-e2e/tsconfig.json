@@ -13,7 +13,7 @@
   "include": [
     "./test/**/*.ts",
     "./src/**/*.ts",
-    "*.config.ts"
+    "*.ts"
   ],
   "exclude": [
     "node_modules",

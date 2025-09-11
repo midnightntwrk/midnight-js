@@ -21,6 +21,6 @@ export default defineConfig({
   ...baseConfig.default,
   test: {
     ...baseConfig.default.test,
-    include: ['src/test/infrastructure/**/*.it.test.{js,ts,jsx,tsx}']
+    include: ['**/test/**/*.it.test.{js,ts,jsx,tsx}']
   }
 });
