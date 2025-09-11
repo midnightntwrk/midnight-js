@@ -17,8 +17,6 @@ jobs:
       issues: "read"
       pull-requests: "write"
     steps:
-      - uses: GitHubSecurityLab/actions-permissions/monitor@d2ee2b1047995102b08cb4e778b44bd2a662eba3  #v1
-
       - name: Setup api.github.com credentials
         uses: extractions/netrc@f6f1722d05ce2890aa86fd9654565b1214ac53a4 # ratchet:extractions/netrc@v2
         with:

@@ -11,8 +11,6 @@ jobs:
   cd-release:
     runs-on: ubuntu-latest
     steps:
-      - uses: GitHubSecurityLab/actions-permissions/monitor@d2ee2b1047995102b08cb4e778b44bd2a662eba3  #v1
-
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # ratchet:actions/checkout@v5
 
       - name: Load environment variables
