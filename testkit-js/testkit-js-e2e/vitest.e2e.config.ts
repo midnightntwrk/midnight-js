@@ -39,7 +39,7 @@ export default defineConfig({
       ['@d2t/vitest-ctrf-json-reporter', { outputDir: './reports/', outputFile: 'ctrf-report.json' }],
       ['allure-vitest/reporter', { resultsDir: './reports/allure-results' }]
     ],
-    setupFiles: ['allure-vitest/setup', 'src/e2e/config/vite.setup.mjs']
+    setupFiles: ['allure-vitest/setup', 'vite.setup.mjs']
   },
   resolve: {
     extensions: ['.ts', '.js'],

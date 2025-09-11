@@ -118,7 +118,7 @@ yarn e2e
 ### Test Template
 
 ```typescript
-import { createLogger, getTestEnvironment, initializeMidnightProviders } from '@/infrastructure';
+import { createLogger, getTestEnvironment, initializeMidnightProviders } from '@midnight-ntwrk/testkit-js';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `feature_${new Date().toISOString()}.log`)
