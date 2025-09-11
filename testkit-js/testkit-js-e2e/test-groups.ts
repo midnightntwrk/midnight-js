@@ -15,14 +15,14 @@
 
 export default {
   group1: ['./test/contracts.it.test.ts'],
-  group2: ['./test/contracts.snarkupgrade.smoke.it.test.ts', './test/proof-server.it.test.ts'],
+  group2: ['./test/contracts.snarkupgrade.smoke.it.test.ts'],
   group3: ['./test/contracts.snarkupgrade.singlecontract.it.test.ts'],
   group4: ['./test/contracts.snarkupgrade.it.test.ts'],
-  group5: ['./test/indexer-public-data-provider.observable1.it.test.ts'],
-  group6: ['./test/indexer-public-data-provider.observable2.it.test.ts'],
-  group7: [
-    './test/indexer-public-data-provider.singlecontract.it.test.ts',
-    './test/contracts.singlecontract.nostate.it.test.ts',
-    './test/nodejs.it.test.ts'
-  ]
+  group5: ['./test/contracts.singlecontract.nostate.it.test.ts'],
+  group6: ['./test/indexer-public-data-provider.observable1.it.test.ts'],
+  group7: ['./test/indexer-public-data-provider.observable2.it.test.ts'],
+  group8: ['./test/indexer-public-data-provider.singlecontract.it.test.ts'],
+  group9: ['./test/nodejs.it.test.ts'],
+  group10: ['./test/proof-server.it.test.ts'],
+  group11: ['./test/contracts.blocktime.it.test.ts'],
 };
