@@ -1,4 +1,5 @@
 name: Publish updated API documentation
+permissions: {}
 env:
   MIDNIGHTBOT_PACKAGES_WRITE: ${{ secrets.MIDNIGHTBOT_PACKAGES_WRITE }}
 on:
@@ -10,7 +11,11 @@ on:
 jobs:
   docs:
     runs-on: ubuntu-latest
-
+    permissions:
+      checks: "write"
+      contents: "read"
+      issues: "read"
+      pull-requests: "write"
     steps:
       - uses: GitHubSecurityLab/actions-permissions/monitor@d2ee2b1047995102b08cb4e778b44bd2a662eba3  #v1
 
