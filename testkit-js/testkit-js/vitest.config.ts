@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import path from 'path';
 import tsconfigPaths from 'vite-tsconfig-paths';
 import { defineConfig } from 'vitest/config';
 
