@@ -288,7 +288,7 @@ jobs:
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # ratchet:actions/download-artifact@v4
         with:
           name: e2e-tests-contracts
-          path: packages/testing/src/e2e/contract/managed
+          path: testkit-js/testkit-js-e2e/src/contract/managed
 
       - name: Run e2e tests - Group ${{ matrix.group }}
         if: ${{ !contains(github.event.head_commit.message, '[skip_it]') }}
@@ -303,7 +303,7 @@ jobs:
         if: always()
         with:
           name: test-results-${{ matrix.group }}
-          path: packages/testing/reports/
+          path: testkit-js/testkit-js-e2e/reports/
 
   e2e_tests_reports:
     name: E2E Tests Reports
