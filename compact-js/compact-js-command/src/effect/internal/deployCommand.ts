@@ -65,7 +65,6 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       contractModule.createInitialPrivateState(),
       ...inputs.args
     );
-    const _a = asLedgerContractState(result.public.contractState);
     const intent = Intent.new(yield* InternalCommand.ttl(Duration.minutes(10)))
       .addDeploy(new ContractDeploy(asLedgerContractState(result.public.contractState)));
 

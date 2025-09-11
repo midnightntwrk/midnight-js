@@ -21,6 +21,7 @@ import {
 } from '@midnight-ntwrk/compact-js/effect';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import * as NetworkId from '@midnight-ntwrk/platform-js/effect/NetworkId';
+import * as NetworkIdMoniker from '@midnight-ntwrk/platform-js/effect/NetworkIdMoniker';
 import { Context,Effect, Layer } from 'effect';
 import { describe, expect, it } from 'tstyche';
 
@@ -64,7 +65,7 @@ describe('ContractExecutable', () => {
         ),
         Layer.effect(
           Configuration.Network,
-          Effect.sync(() => NetworkId.make('hosky-devnet'))
+          Effect.sync(() => NetworkId.make(NetworkIdMoniker.NetworkIdMoniker('hosky-devnet')))
         )
       );
       const executable = contractExecutable.pipe(ContractExecutable.provide(layer));
@@ -93,7 +94,7 @@ describe('ContractExecutable', () => {
         ),
         Layer.effect(
           Configuration.Network,
-          Effect.sync(() => NetworkId.make('hosky-devnet'))
+          Effect.sync(() => NetworkId.make(NetworkIdMoniker.NetworkIdMoniker('hosky-devnet')))
         )
       );
       const executable = contractExecutable.pipe(ContractExecutable.provide(layer));
