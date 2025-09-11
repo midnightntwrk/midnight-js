@@ -74,6 +74,8 @@ jobs:
       issues: read
       checks: write
       pull-requests: write
+      packages: write
+      id-token: write
     with:
       should_run: ${{ needs.ci.outputs.build_mn_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
       should_prerelease: ${{
@@ -90,6 +92,8 @@ jobs:
       issues: read
       checks: write
       pull-requests: write
+      packages: write
+      id-token: write
     with:
       should_run: ${{ needs.ci.outputs.build_c_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
       should_prerelease: ${{
@@ -107,6 +111,8 @@ jobs:
       issues: read
       checks: write
       pull-requests: write
+      packages: write
+      id-token: write
     with:
       should_run: ${{ needs.ci.outputs.build_p_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
       should_prerelease: ${{
