@@ -19,7 +19,7 @@ import { type FinalizedTxData, type PublicDataProvider, SucceedEntirely } from '
 import path from 'path';
 
 import { UNDEPLOYED_CONTRACT_ADDRESS, VERY_SLOW_TEST_TIMEOUT } from '@/constants';
-import { CompiledCounter } from '@/e2e/contract';
+import { CompiledCounter } from '@/contract';
 import * as api from '@/counter-api';
 import { CounterConfiguration } from '@/counter-api';
 import {

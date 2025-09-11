@@ -33,7 +33,7 @@ import type { ProofProvider, ZKConfig } from '@midnight-ntwrk/midnight-js-types'
 import { getImpureCircuitIds } from '@midnight-ntwrk/midnight-js-types';
 import path from 'path';
 
-import { createInitialPrivateState } from '@/e2e/contract';
+import { createInitialPrivateState } from '@/contract';
 import * as api from '@/counter-api';
 import { CounterConfiguration, counterContractInstance } from '@/counter-api';
 import type { CounterCircuits } from '@/counter-types';

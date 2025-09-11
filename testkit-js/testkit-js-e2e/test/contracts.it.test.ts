@@ -49,7 +49,7 @@ import {
   type CounterPrivateState,
   createInitialPrivateState,
   createPrivateState,
-} from '@/e2e/contract';
+} from '@/contract';
 import * as api from '@/counter-api';
 import {
   CIRCUIT_ID_INCREMENT,

@@ -24,7 +24,7 @@ import path from 'path';
 import { type Observable, toArray } from 'rxjs';
 
 import { SLOW_TEST_TIMEOUT, VERY_SLOW_TEST_TIMEOUT } from '@/constants';
-import { CompiledCounter } from '@/e2e/contract';
+import { CompiledCounter } from '@/contract';
 import * as api from '@/counter-api';
 import { CONTRACT_CIRCUITS, CounterConfiguration } from '@/counter-api';
 import { type CounterProviders, type DeployedCounterContract, privateStateZero } from '@/counter-types';

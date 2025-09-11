@@ -25,7 +25,7 @@ import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import path from 'path';
 
 import { VERY_SLOW_TEST_TIMEOUT } from '@/constants';
-import { type CounterPrivateState } from '@/e2e/contract';
+import { type CounterPrivateState } from '@/contract';
 import * as api from '@/counter-api';
 import {
   CIRCUIT_ID_RESET,

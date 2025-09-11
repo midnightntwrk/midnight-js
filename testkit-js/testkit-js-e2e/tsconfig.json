@@ -11,8 +11,9 @@
     }
   },
   "include": [
-    "*./config/*.ts",
-    "./src/**/*.ts"
+    "./test/**/*.ts",
+    "./src/**/*.ts",
+    "*.config.ts"
   ],
   "exclude": [
     "node_modules",

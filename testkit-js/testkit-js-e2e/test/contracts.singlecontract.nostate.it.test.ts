@@ -40,7 +40,7 @@ import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import path from 'path';
 
-import { CompiledSimple } from '@/e2e/contract';
+import { CompiledSimple } from '@/contract';
 import * as api from '@/counter-api';
 import type { SimpleContract, SimpleProviders } from '@/simple-types';
 import {
