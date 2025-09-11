@@ -28,12 +28,13 @@ export default [
     ],
     external: [
       /node_modules/,
+      /^@midnight-ntwrk\/testkit-js$/,
       /^@midnight-ntwrk\/midnight-js-(.*)$/,
       /^@midnight-ntwrk\/(.*)$/
     ]
   },
   {
-    input: 'src/e2e/node/counter.ts',
+    input: 'src/node/counter.ts',
     output: [
       {
         file: './dist/counter.cjs',
@@ -56,6 +57,7 @@ export default [
     ],
     external: [
       /node_modules/,
+      /^@midnight-ntwrk\/testkit-js$/,
       /^@midnight-ntwrk\/midnight-js-(.*)$/,
       /^@midnight-ntwrk\/(.*)$/
     ]
