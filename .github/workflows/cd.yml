@@ -11,6 +11,7 @@ jobs:
   cd-release:
     runs-on: ubuntu-latest
     steps:
+      - uses: GitHubSecurityLab/actions-permissions/monitor@v1
 
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # ratchet:actions/checkout@v5
 
@@ -54,7 +55,7 @@ jobs:
         id: changes
         with:
           filters: |
-            midnight-js: 'packages/**' 
+            midnight-js: 'packages/**'
 
       - name: Publish packages
         if: steps.changes.outputs.midnight-js == 'true'

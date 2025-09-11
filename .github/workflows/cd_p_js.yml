@@ -7,7 +7,7 @@ permissions:
   issues: read
   checks: write
   pull-requests: write
-  
+
 on:
   workflow_dispatch:
 
@@ -15,6 +15,7 @@ jobs:
   cd:
     runs-on: ubuntu-latest
     steps:
+      - uses: GitHubSecurityLab/actions-permissions/monitor@v1
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # ratchet:actions/checkout@v4
         with:
           fetch-depth: 0
@@ -62,7 +63,7 @@ jobs:
         id: vars
         run: |
           on_release_branch=$(jq --arg b "$(git rev-parse --abbrev-ref HEAD)" '(.v_info.releaseBranches | join("|")) as $p | ($b | test("^(" + $p + ")$"))' version.platformjs.json)
-          
+
           source_commit=$(git log --format=%h -1 -- version.platformjs.json)
           commit_height=$(($(git log --format=%h $source_commit.. | wc -l)))
           version=$(jq -r '.v_info.version' version.platformjs.json)
@@ -80,7 +81,7 @@ jobs:
         with:
           filters: |
             vinfo: 'version.platformjs.json'
-            platform-js: 'platform-js/**' 
+            platform-js: 'platform-js/**'
 
       - name: Bump versions
         if: ${{

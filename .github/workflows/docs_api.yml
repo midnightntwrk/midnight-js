@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: GitHubSecurityLab/actions-permissions/monitor@v1
 
       - name: Setup api.github.com credentials
         uses: extractions/netrc@f6f1722d05ce2890aa86fd9654565b1214ac53a4 # ratchet:extractions/netrc@v2
