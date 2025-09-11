@@ -16,14 +16,14 @@
 import { type Command } from '@effect/cli';
 import { FileSystem, Path } from '@effect/platform';
 import { Contract, type ContractExecutable, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
-import { type ContractOperation, ContractState} from '@midnight-ntwrk/compact-runtime';
+import { ContractState } from '@midnight-ntwrk/compact-runtime';
 import {
   communicationCommitmentRandomness,
   ContractCallPrototype,
+  type ContractOperation as LedgerContractOption,
   ContractState as LedgerContractState,
-  Intent} from '@midnight-ntwrk/ledger';
-import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
-import * as NetworkId from '@midnight-ntwrk/platform-js/effect/NetworkId';
+  Intent
+} from '@midnight-ntwrk/ledger';
 import { type ConfigError, Duration,Effect } from 'effect';
 
 import { type ConfigCompiler } from '../ConfigCompiler.js';
@@ -53,18 +53,15 @@ export const Options = {
   outputPrivateStateFilePath: InternalOptions.outputPrivateStateFilePath
 }
 
-const asContractState = (contractState: LedgerContractState, networkId: NetworkId.NetworkId): ContractState =>
-  ContractState.deserialize(
-    contractState.serialize(NetworkId.asLedgerLegacy(networkId)),
-    NetworkId.asRuntimeLegacy(networkId)
-  );
+const asContractState = (contractState: LedgerContractState): ContractState =>
+  ContractState.deserialize(contractState.serialize());
 
 /** @internal */
 export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.ModuleSpec) =>
   Effect.Effect<
     void,
     ContractExecutable.ContractExecutionError | ConfigError.ConfigError,
-    Path.Path | FileSystem.FileSystem | Configuration.Network
+    Path.Path | FileSystem.FileSystem
   > =
   (
     { address, circuitId, args, stateFilePath, privateStateFilePath, outputFilePath, outputPrivateStateFilePath },
@@ -72,17 +69,16 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
   ) => Effect.gen(function* () {
     const path = yield* Path.Path;
     const fs = yield* FileSystem.FileSystem;
-    const networkId = yield* Configuration.Network;
     const { module: { default: contractModule } } = moduleSpec;
     const intentOutputFilePath = path.resolve(outputFilePath);
     const privateStateOutputFilePath = path.resolve(outputPrivateStateFilePath);
-    const ledgerContractState = LedgerContractState.deserialize(yield* fs.readFile(path.resolve(stateFilePath)), NetworkId.asLedgerLegacy(networkId));
+    const ledgerContractState = LedgerContractState.deserialize(yield* fs.readFile(path.resolve(stateFilePath)));
     const privateState = JSON.parse(yield* fs.readFileString(privateStateFilePath));
     const result = yield* contractModule.contractExecutable.circuit(
       Contract.ImpureCircuitId(circuitId),
       {
         address,
-        contractState: asContractState(ledgerContractState, networkId),
+        contractState: asContractState(ledgerContractState),
         privateState: privateState ?? contractModule.createInitialPrivateState()
       },
       ...args
@@ -91,7 +87,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       .addCall(new ContractCallPrototype(
         address,
         circuitId,
-        ledgerContractState.operation(circuitId) as ContractOperation,
+        ledgerContractState.operation(circuitId) as LedgerContractOption,
         result.public.partitionedTranscript[0],
         result.public.partitionedTranscript[1],
         result.private.privateTranscriptOutputs,
@@ -101,7 +97,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
         circuitId
       ));
 
-    yield* fs.writeFile(intentOutputFilePath, intent.serialize(NetworkId.asLedgerLegacy(networkId)));
+    yield* fs.writeFile(intentOutputFilePath, intent.serialize());
     yield* fs.writeFileString(privateStateOutputFilePath, JSON.stringify(result.private.privateState));
   }).pipe(
     Effect.mapError(

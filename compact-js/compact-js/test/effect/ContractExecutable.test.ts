@@ -23,11 +23,11 @@ import {
   ContractExecutable} from '@midnight-ntwrk/compact-js/effect';
 import * as ContractConfigurationError from '@midnight-ntwrk/compact-js/effect/ContractConfigurationError';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
-import { ContractState, NetworkId as RuntimeNetworkId,sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
+import { ContractState, sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
 import {
   ContractDeploy,
-  ContractState as LedgerContractState,
-  NetworkId as LedgerNetworkId} from '@midnight-ntwrk/ledger';
+  ContractState as LedgerContractState
+} from '@midnight-ntwrk/ledger';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
 import { ConfigProvider, Effect, Layer } from 'effect';
@@ -41,10 +41,10 @@ const INVALID_COIN_PUBLIC_KEY = 'INVALIDd9da5fcd4c601';
 const VALID_SIGNING_KEY = sampleSigningKey();
 
 const asLedgerContractState = (contractState: ContractState): LedgerContractState =>
-  LedgerContractState.deserialize(contractState.serialize(RuntimeNetworkId.Undeployed), LedgerNetworkId.Undeployed);
+  LedgerContractState.deserialize(contractState.serialize());
 
 const asContractState = (contractState: LedgerContractState): ContractState =>
-  ContractState.deserialize(contractState.serialize(LedgerNetworkId.Undeployed), RuntimeNetworkId.Undeployed);
+  ContractState.deserialize(contractState.serialize());
 
 const testLayer = (configMap: Map<string, string>) =>
   Layer.mergeAll(ZKFileConfiguration.layer(COUNTER_ASSETS_PATH), Configuration.layer).pipe(

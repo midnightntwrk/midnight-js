@@ -57,7 +57,7 @@ describe('Circuit Command', () => {
         '--output-ps', COUNTER_OUTPUT_PS_FILEPATH,
         '--state-file-path', COUNTER_STATE_FILEPATH,
         '--ps-state-file-path', COUNTER_OUTPUT_PS_FILEPATH,
-        '02000a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a', 'increment'
+        '0a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a', 'increment'
       ]);
 
       const lines = yield* MockConsole.getLines({ stripAnsi: true });
