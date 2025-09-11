@@ -2178,18 +2178,18 @@ __metadata:
     "@effect/sql": "npm:^0.44.1"
     "@effect/typeclass": "npm:^0.36.0"
     "@effect/vitest": "npm:^0.24.1"
-    "@midnight-ntwrk/compact-js": "npm:^0.0.0"
-    "@midnight-ntwrk/compact-js-node": "npm:^0.0.0"
+    "@midnight-ntwrk/compact-js": "npm:^2.0.0"
+    "@midnight-ntwrk/compact-js-node": "npm:^2.0.0"
     "@midnight-ntwrk/compact-runtime": "npm:0.9.0-rc.2"
     "@midnight-ntwrk/ledger": "npm:@midnight-ntwrk/ledger-v6@6.1.0-alpha.2"
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
-    "@midnight-ntwrk/platform-js": "npm:^1.0.0"
+    "@midnight-ntwrk/platform-js": "npm:^2.0.0-rc.0"
     effect: "npm:^3.17.7"
     ts-node: "npm:^10.9.2"
   languageName: unknown
   linkType: soft
 
-"@midnight-ntwrk/compact-js-node@npm:^0.0.0, @midnight-ntwrk/compact-js-node@workspace:*, @midnight-ntwrk/compact-js-node@workspace:compact-js/compact-js-node":
+"@midnight-ntwrk/compact-js-node@npm:^2.0.0, @midnight-ntwrk/compact-js-node@workspace:*, @midnight-ntwrk/compact-js-node@workspace:compact-js/compact-js-node":
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/compact-js-node@workspace:compact-js/compact-js-node"
   dependencies:
@@ -2201,7 +2201,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@midnight-ntwrk/compact-js@npm:^0.0.0, @midnight-ntwrk/compact-js@workspace:compact-js/compact-js":
+"@midnight-ntwrk/compact-js@npm:^2.0.0, @midnight-ntwrk/compact-js@workspace:compact-js/compact-js":
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/compact-js@workspace:compact-js/compact-js"
   dependencies:
@@ -2217,7 +2217,7 @@ __metadata:
     "@midnight-ntwrk/compact-runtime": "npm:0.9.0-rc.2"
     "@midnight-ntwrk/ledger": "npm:@midnight-ntwrk/ledger-v6@6.1.0-alpha.2"
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
-    "@midnight-ntwrk/platform-js": "npm:^1.0.0"
+    "@midnight-ntwrk/platform-js": "npm:^2.0.0-rc.0"
     effect: "npm:^3.17.7"
   languageName: unknown
   linkType: soft
@@ -2479,7 +2479,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/platform-js@npm:^1.0.0, @midnight-ntwrk/platform-js@workspace:platform-js/platform-js":
+"@midnight-ntwrk/platform-js@npm:^2.0.0-rc.0":
+  version: 2.0.0-rc.0
+  resolution: "@midnight-ntwrk/platform-js@npm:2.0.0-rc.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fplatform-js%2F2.0.0-rc.0%2F97386cfa045393c41ceef1f79818de46ad4e8ca2"
+  dependencies:
+    "@effect/platform": "npm:^0.90.2"
+    effect: "npm:^3.17.7"
+  checksum: 10/a4ab3c7ce83efa5805dce5e418cae3b0337fbed4839872e6a11a49392d7d02e5ee03672f53150ba6e3801e04a5c530da9ce3295447bd518cb710480c5e6304da
+  languageName: node
+  linkType: hard
+
+"@midnight-ntwrk/platform-js@workspace:platform-js/platform-js":
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/platform-js@workspace:platform-js/platform-js"
   dependencies:
