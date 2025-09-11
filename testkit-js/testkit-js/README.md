@@ -31,13 +31,13 @@ Before using the testing library, ensure you have the following prerequisites:
 
 Install the testing library by running the following command in your terminal:
 ```
-yarn add -D @midnight-ntwrk/midnight-js-testing
+yarn add -D @midnight-ntwrk/testkit-js
 ```
 
 ## Getting Started
 To use the testing library, create a new file called `midnight.test.js` in the `__tests__` directory of your project. In this file, import the necessary dependencies:
 ```typescript
-import { getTestEnvironment } from '@midnight-ntwrk/midnight-js-testing';
+import { getTestEnvironment } from '@midnight-ntwrk/testkit-js';
 
 beforeAll(async () => {
   testEnvironment = getTestEnvironment(logger);
