@@ -15,7 +15,7 @@ jobs:
   cd:
     runs-on: ubuntu-latest
     steps:
-      - uses: GitHubSecurityLab/actions-permissions/monitor@v1
+      - uses: GitHubSecurityLab/actions-permissions/monitor@d2ee2b1047995102b08cb4e778b44bd2a662eba3  #v1
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # ratchet:actions/checkout@v4
         with:
           fetch-depth: 0
