@@ -28,7 +28,7 @@ concurrency:
 jobs:
   ci:
     if: inputs.should_run == 'true'
-    uses: ci-base.yml
+    uses: ./.github/workflows/ci-base.yml
     with:
       yarn_filter: --filter="./packages/*"
       yarn_lint_paths: ./packages

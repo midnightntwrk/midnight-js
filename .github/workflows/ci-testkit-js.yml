@@ -37,7 +37,7 @@ on:
         default: './testkit-js'
 
 concurrency:
-  group: P-JS-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: TK-JS-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -109,6 +109,18 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
+      - name: Upload compiled contracts
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # ratchet:actions/upload-artifact@v4
+        with:
+          name: e2e-tests-contracts
+          path: testkit-js/testkit-js-e2e/src/contract/managed
+
+      - name: Run e2e tests
+        run: yarn e2e ${{ inputs.yarn_filter }} --cache-dir ./turbo
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          MN_TEST_ENVIRONMENT: undeployed
+
       - name: Aggregate coverage reports
         run: |
           npx --yes istanbul-merge --out coverage.json $(find . -type f -name 'coverage-final.json' | sort -u | tr '\n' ' ')
@@ -133,6 +145,7 @@ jobs:
           unique-id-for-comment: 'testkit-js-coverage'
           multiple-files: |
             testkit-js, ./testkit-js/testkit-js/coverage/coverage-summary.json
+            testkit-js-e2e, ./testkit-js/testkit-js-e2e/coverage/coverage-summary.json
 
       - name: Publish Test Report
         uses: mikepenz/action-junit-report@3585e9575db828022551b4231f165eb59a0e74e3 # ratchet:mikepenz/action-junit-report@v5
@@ -212,3 +225,165 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+  e2e_tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest-8-core-x64
+    needs: ci
+    timeout-minutes: ${{ inputs.build_timeout }}
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [group1, group2, group3, group4, group5, group6, group7]
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # ratchet:actions/checkout@v5
+
+      - name: Load environment variables
+        run: |
+          export $(grep -v '^#' .github/env/global.env | xargs)
+          for var in $(cut -d= -f1 .github/env/global.env); do
+            echo "$var=${!var}" >> $GITHUB_ENV
+          done
+
+      - name: Log in to GitHub Container registry
+        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # ratchet:docker/login-action@v3
+        with:
+          registry: 'https://ghcr.io'
+          username: ${{ github.actor }}
+          password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # ratchet:actions/setup-node@v4
+        with:
+          always-auth: true
+          registry-url: https://npm.pkg.github.com/
+          scope: '@midnight-ntwrk'
+          node-version-file: '.nvmrc'
+          cache: 'yarn'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Configure yarn
+        run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Cache Turbo and Yarn dependencies
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            **/node_modules
+            ~/.yarn
+            .turbo
+          key: turbo-testkit-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
+          restore-keys: |
+            turbo-testkit-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Download build
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # ratchet:actions/download-artifact@v4
+        with:
+          name: midnight-js-dist
+          path: packages/
+
+      - name: Download contracts
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # ratchet:actions/download-artifact@v4
+        with:
+          name: e2e-tests-contracts
+          path: packages/testing/src/e2e/contract/managed
+
+      - name: Run e2e tests - Group ${{ matrix.group }}
+        if: ${{ !contains(github.event.head_commit.message, '[skip_it]') }}
+        run: yarn e2e-groups ${{ inputs.yarn_filter }} --concurrency 1 --cache-dir ./turbo
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          MN_TEST_ENVIRONMENT: ${{ inputs.network }}
+          MN_TEST_GROUP: ${{ matrix.group }}
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # ratchet:actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.group }}
+          path: packages/testing/reports/
+
+  e2e_tests_reports:
+    name: E2E Tests Reports
+    runs-on: ubuntu-latest
+    needs: e2e_tests
+    if: always()
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # ratchet:actions/checkout@v5
+
+      - name: Download Test Results
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # ratchet:actions/download-artifact@v4
+        with:
+          pattern: test-results-group*
+          path: test-results
+
+      - name: Merge CTRF Results
+        if: always()
+        run: |
+          mkdir ctrf-results
+          mv test-results/test-results-*/ctrf-*.json ctrf-results/
+          npx ctrf merge ctrf-results --output ./ctrf-report-merged.json
+
+      - name: Publish Test Report
+        if: always()
+        uses: ctrf-io/github-test-reporter@646f98cfc16c6f7a0e1f6100cabe2deb95dd2eef # v1.0.22
+        with:
+          title: 'E2E Tests Results'
+          report-path: 'ctrf-results/ctrf-report-merged.json'
+          summary-report: true
+          pull-request: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # ratchet:actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-ctrf-summary
+          path: ctrf-results
+
+      - name: Publish Test Summary Results
+        if: always()
+        run: |
+          mkdir junit-results
+          mv test-results/test-results-*/*.xml junit-results/
+          npm install -g junit-report-merger
+          jrm junit-test-results.xml junit-results/*.xml
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # ratchet:actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-junit-summary
+          path: junit-test-results.xml
+
+  e2e_tests_reports_allure:
+    name: E2E Tests Reports to Allure Server
+    runs-on: ubuntu-latest
+    needs: e2e_tests
+    if: always()
+    steps:
+
+      - name: Download Test Results
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # ratchet:actions/download-artifact@v4
+        with:
+          pattern: test-results-group*
+          path: test-results
+
+      - name: Send Results to Allure Server
+        uses: robkatona/send-allure-results@935714d2ab2c0de7b15a9d3e29a0cffe0fa64c59 # ratchet:robkatona/send-allure-results@v1.0.5
+        if: ${{ inputs.allure_upload && always() }}
+        with:
+          allure-server-url: https://allure-server.prd.midnight.tools
+          allure-results-directory: test-results/**/allure-results-*
+          project-id: ${{ inputs.allure_project_id }}
+          security-user: ${{ secrets.ALLURE_ADMIN_USER }}
+          security-pass: ${{ secrets.ALLURE_ADMIN_PASSWORD }}

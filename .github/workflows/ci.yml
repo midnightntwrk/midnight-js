@@ -64,12 +64,12 @@ jobs:
             midnight-js:
               - 'packages/**'
             testkit-js:
-              - 'testkit/**'
+              - 'testkit-js/**'
 
   ci-midnightjs:
     needs: ci
     name: Build Midnight.js
-    uses: ci-midnight-js.yml
+    uses: ./.github/workflows/ci-midnight-js.yml
     with:
       should_run: ${{ needs.ci.outputs.build_mn_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
       should_prerelease: ${{
@@ -87,7 +87,7 @@ jobs:
           github.event_name != 'schedule' &&
           (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch')
         }}
-    uses: ci-compact-js.yml
+    uses: ./.github/workflows/ci-compact-js.yml
     secrets: inherit
 
   ci-platformjs:
@@ -99,7 +99,7 @@ jobs:
           github.event_name != 'schedule' &&
           (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch')
         }}
-    uses: ci-platform-js.yml
+    uses: ./.github/workflows/ci-platform-js.yml
     secrets: inherit
 
   ci-testkit:
@@ -111,5 +111,5 @@ jobs:
           github.event_name != 'schedule' &&
           (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch')
         }}
-    uses: ci-testkit-js.yml
+    uses: ./.github/workflows/ci-testkit-js.yml
     secrets: inherit
