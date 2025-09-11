@@ -79,6 +79,9 @@ jobs:
   ci-cjs:
     needs: ci
     name: Build Compact.js
+    permissions:
+      pull-requests: write
+      checks: write
     with:
       should_run: ${{ needs.ci.outputs.build_c_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
       should_prerelease: ${{
@@ -91,6 +94,9 @@ jobs:
   ci-pjs:
     needs: ci
     name: Build Platform.js
+    permissions:
+      pull-requests: write
+      checks: write
     with:
       should_run: ${{ needs.ci.outputs.build_p_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
       should_prerelease: ${{
