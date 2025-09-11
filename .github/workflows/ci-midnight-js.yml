@@ -32,9 +32,6 @@ jobs:
     with:
       yarn_filter: --filter="./packages/*"
       yarn_lint_paths: ./packages
-      network: undeployed
-      allure_upload: true
-      allure_project_id: midnight-js-main
     secrets: inherit
 
   cd-prerelease:

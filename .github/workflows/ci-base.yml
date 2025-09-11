@@ -12,15 +12,6 @@ on:
   workflow_dispatch:
   workflow_call:
     inputs:
-      build_timeout:
-        required: false
-        type: number
-        default: 30
-      network:
-        type: string
-        description: Midnight network to use (testnet/devnet/undeployed)
-        required: true
-        default: 'undeployed'
       yarn_install:
         type: string
         description: Install phase command line
@@ -36,16 +27,6 @@ on:
         description: Optional paths to include when running 'yarn lint'' (i.e., ./packages)
         required: false
         default: ''
-      allure_upload:
-        type: boolean
-        description: Should upload e2e tests results to allure server
-        required: false
-        default: false
-      allure_project_id:
-        type: string
-        description: Allure project id
-        required: false
-        default: midnight-js-main
 
 jobs:
   ci:
