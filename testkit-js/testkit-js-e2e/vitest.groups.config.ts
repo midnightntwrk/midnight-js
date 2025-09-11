@@ -20,7 +20,7 @@ import { defineConfig } from 'vitest/config';
 import testGroups from './test-groups';
 import * as baseConfig from './vitest.config';
 
-const directoryPath = path.join(__dirname, '..', 'test');
+const directoryPath = path.join(__dirname, 'test');
 
 const groupsFlattened: string[] = [];
 groupsFlattened.push(...Object.values(testGroups).flat());
