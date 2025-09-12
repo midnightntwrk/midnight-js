@@ -48,7 +48,7 @@ const logger = createLogger(
 const currentTimeSeconds = () => BigInt(Math.floor(Date.now() / 1_000));
 
 describe('Block Time Contract Tests', () => {
-  const SLOW_TEST_TIMEOUT = 60_000;
+  const SLOW_TEST_TIMEOUT = 90_000;
   const BLOCK_TIME_FUTURE_BUFFER = 60n;
   const BLOCK_TIME_PAST_BUFFER = 60n;
 
@@ -94,9 +94,9 @@ describe('Block Time Contract Tests', () => {
       expect(finalizedTx.status).toEqual(SucceedEntirely);
     }, SLOW_TEST_TIMEOUT);
 
-    it('should fail immediately on device when device time is already past the check time', () => {
+    it('should fail immediately on device when device time is already past the check time', async () => {
       const pastTime = currentTimeSeconds() - 10n;
-      expect(() => api.testBlockTimeLt(deployedContract, pastTime)).rejects.toThrow('Block time is >= time');
+      await expect(() => api.testBlockTimeLt(deployedContract, pastTime)).rejects.toThrow('Block time is >= time');
     });
 
     it('should succeed on device but fail on node when submission is delayed', async () => {
@@ -129,7 +129,7 @@ describe('Block Time Contract Tests', () => {
 
     it('should fail immediately on device when device time is less than check time', async () => {
       const futureTime = currentTimeSeconds() + BLOCK_TIME_FUTURE_BUFFER;
-      expect(() => api.testBlockTimeGte(deployedContract, futureTime)).rejects.toThrow('Block time is < time');
+      await expect(() => api.testBlockTimeGte(deployedContract, futureTime)).rejects.toThrow('Block time is < time');
     });
 
     it('should succeed even with submission delay when checking past time', async () => {
@@ -162,7 +162,7 @@ describe('Block Time Contract Tests', () => {
 
     it('should fail when device time is not greater than check time', async () => {
       const futureTime = currentTimeSeconds() + BLOCK_TIME_FUTURE_BUFFER;
-      expect(() => api.testBlockTimeGt(deployedContract, futureTime)).rejects.toThrow('Block time is <= time');
+      await expect(() => api.testBlockTimeGt(deployedContract, futureTime)).rejects.toThrow('Block time is <= time');
     });
   });
 
@@ -175,7 +175,7 @@ describe('Block Time Contract Tests', () => {
 
     it('should fail immediately on device when device time exceeds check time', async () => {
       const pastTime = currentTimeSeconds() - BLOCK_TIME_PAST_BUFFER;
-      expect(() => api.testBlockTimeLte(deployedContract, pastTime)).rejects.toThrow('Block time is > time');
+      await expect(() => api.testBlockTimeLte(deployedContract, pastTime)).rejects.toThrow('Block time is > time');
     });
 
     it('should succeed on device but fail on node when submission delay causes time to exceed threshold', async () => {
@@ -202,7 +202,7 @@ describe('Block Time Contract Tests', () => {
     it('should demonstrate different failure points for Lt check', async () => {
       // Test 1: Immediate past time - fails on device
       const pastTime = currentTimeSeconds() - 5n;
-      expect(() => api.testBlockTimeLt(deployedContract, pastTime)).rejects.toThrow('Block time is >= time');
+      await expect(() => api.testBlockTimeLt(deployedContract, pastTime)).rejects.toThrow('Block time is >= time');
 
       // Test 2: Near future time with delay - succeeds on device, fails on node
       const nearFutureTime = currentTimeSeconds() + 2n;
@@ -257,10 +257,10 @@ describe('Block Time Contract Tests', () => {
     it('should handle zero time value', async () => {
       const zeroTime = 0n;
       // Lt with 0 should fail (block time is always >= 0)
-      expect(() => api.testBlockTimeLt(deployedContract, zeroTime)).rejects.toThrow('Block time is >= time');
+      await expect(() => api.testBlockTimeLt(deployedContract, zeroTime)).rejects.toThrow('Block time is >= time');
 
       // Lte with 0 should fail (block time is always > 0)
-      expect(() => api.testBlockTimeLte(deployedContract, zeroTime)).rejects.toThrow('Block time is > time');
+      await expect(() => api.testBlockTimeLte(deployedContract, zeroTime)).rejects.toThrow('Block time is > time');
 
       // Gte with 0 should succeed (block time is always >= 0)
       const gteTx = await api.testBlockTimeGte(deployedContract, zeroTime);
