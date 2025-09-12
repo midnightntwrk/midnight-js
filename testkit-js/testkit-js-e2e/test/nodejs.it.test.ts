@@ -20,7 +20,10 @@ import path from 'path';
 
 function runNodeAndExpectExitCode(scriptPath: string, expectedExitCode: number): Promise<void> {
   return new Promise((resolve, reject) => {
-    const child = spawn('node', [scriptPath], {
+    const child = spawn('node', [
+      '--experimental-require-module',
+      scriptPath
+    ], {
       cwd: process.cwd(),
       stdio: ['inherit', 'pipe', 'pipe']
     });
