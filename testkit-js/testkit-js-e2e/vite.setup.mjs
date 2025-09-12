@@ -11,9 +11,17 @@ const logger = await createLogger('default.log');
 globalThis.logger = logger;
 
 const dir = path.resolve('./../');
-const testKitContainersConfiguration = defaultContainersConfiguration;
-testKitContainersConfiguration.standalone.path = dir;
-testKitContainersConfiguration.proofServer.path = dir;
+const testKitContainersConfiguration = {
+  ...defaultContainersConfiguration,
+  standalone: {
+    ...defaultContainersConfiguration.standalone,
+    path: dir,
+  },
+  proofServer: {
+    ...defaultContainersConfiguration.proofServer,
+    path: dir
+  }
+};
 
 beforeAll(async () => {
   logger.info(

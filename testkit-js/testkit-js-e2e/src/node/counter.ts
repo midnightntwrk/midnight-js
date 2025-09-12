@@ -14,11 +14,13 @@
  */
 
 import {
+  defaultContainersConfiguration,
   type EnvironmentConfiguration,
   getTestEnvironment,
   initializeMidnightProviders,
   logger,
   type MidnightWalletProvider,
+  setContainersConfiguration,
   type TestEnvironment
 } from '@midnight-ntwrk/testkit-js';
 import { type ContractConfiguration } from '@midnight-ntwrk/testkit-js';
@@ -46,6 +48,20 @@ async function counter() {
 
   logger.info('Starting counter...');
   try {
+    const dir = path.resolve('./../');
+    const containersConfiguration = {
+      ...defaultContainersConfiguration,
+      standalone: {
+        ...defaultContainersConfiguration.standalone,
+        path: dir,
+      },
+      proofServer: {
+        ...defaultContainersConfiguration.proofServer,
+        path: dir
+      }
+    };
+    setContainersConfiguration(containersConfiguration);
+
     testEnvironment = getTestEnvironment(logger);
     environmentConfiguration = await testEnvironment.start();
     contractConfiguration = new CounterConfiguration();

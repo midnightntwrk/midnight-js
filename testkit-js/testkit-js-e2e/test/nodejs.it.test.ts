@@ -86,6 +86,6 @@ describe('Ledger API - NodeJS Integration Tests', () => {
    * @bug Expected exit code 1 indicates intentional failure behavior in test setup
    */
   test('should run CJS module with expected exit code', async () => {
-    await runNodeAndExpectExitCode(path.resolve('./dist/counter.cjs'), 1);
+    await runNodeAndExpectExitCode(path.resolve('./dist/counter.cjs'), 0);
   });
 });
