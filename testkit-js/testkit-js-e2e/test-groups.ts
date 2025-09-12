@@ -24,4 +24,5 @@ export default {
   group8: ['./test/indexer-public-data-provider.singlecontract.it.test.ts'],
   group9: ['./test/nodejs.it.test.ts'],
   group10: ['./test/proof-server.it.test.ts'],
+  group11: ['./test/contracts.blocktime.it.test.ts'],
 };

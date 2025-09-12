@@ -333,7 +333,12 @@ jobs:
           title: 'E2E Tests Results'
           report-path: 'ctrf-results/ctrf-report-merged.json'
           summary-report: true
+          suite-folded-report: true
           pull-request: true
+          pull-request-report: true
+          overwrite-comment: true
+          collapse-large-reports: true
+          comment-tag: '${{ github.workflow }}-${{ github.job }}'
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
