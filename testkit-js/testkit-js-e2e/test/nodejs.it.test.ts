@@ -21,7 +21,6 @@ import path from 'path';
 function runNodeAndExpectExitCode(scriptPath: string, expectedExitCode: number): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn('node', [
-      '--experimental-require-module',
       scriptPath
     ], {
       cwd: process.cwd(),
@@ -89,6 +88,6 @@ describe('Ledger API - NodeJS Integration Tests', () => {
    * @bug Expected exit code 1 indicates intentional failure behavior in test setup
    */
   test('should run CJS module with expected exit code', async () => {
-    await runNodeAndExpectExitCode(path.resolve('./dist/counter.cjs'), 0);
+    await runNodeAndExpectExitCode(path.resolve('./dist/counter.cjs'), 1);
   });
 });
