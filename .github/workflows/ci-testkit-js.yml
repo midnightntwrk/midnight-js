@@ -270,6 +270,9 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
+      - name: Post-Install dependencies
+        run: yarn postinstall
+
       - name: Download build
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # ratchet:actions/download-artifact@v4
         with:
@@ -332,7 +335,6 @@ jobs:
         with:
           title: 'E2E Tests Results'
           report-path: 'ctrf-results/ctrf-report-merged.json'
-          summary-report: true
           suite-folded-report: true
           pull-request: true
           pull-request-report: true
