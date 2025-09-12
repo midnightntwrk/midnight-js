@@ -31,6 +31,7 @@ jobs:
       build_mn_js: ${{ steps.build-targets.outputs.midnight-js }}
       build_c_js: ${{ steps.build-targets.outputs.compact-js }}
       build_p_js: ${{ steps.build-targets.outputs.platform-js }}
+      build_t_js: ${{ steps.build-targets.outputs.testkit-js }}
 
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # ratchet:actions/checkout@v5
@@ -62,11 +63,13 @@ jobs:
               - 'platform-js/**'
             midnight-js:
               - 'packages/**'
+            testkit-js:
+              - 'testkit-js/**'
 
-  ci-mnjs:
+  ci-midnightjs:
     needs: ci
     name: Build Midnight.js
-    uses: ./.github/workflows/ci_mn_js.yml
+    uses: ./.github/workflows/ci-midnight-js.yml
     with:
       should_run: ${{ needs.ci.outputs.build_mn_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
       should_prerelease: ${{
@@ -75,7 +78,7 @@ jobs:
         }}
     secrets: inherit
 
-  ci-cjs:
+  ci-compactjs:
     needs: ci
     name: Build Compact.js
     with:
@@ -84,10 +87,10 @@ jobs:
           github.event_name != 'schedule' &&
           (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch')
         }}
-    uses: ./.github/workflows/ci_c_js.yml
+    uses: ./.github/workflows/ci-compact-js.yml
     secrets: inherit
 
-  ci-pjs:
+  ci-platformjs:
     needs: ci
     name: Build Platform.js
     with:
@@ -96,5 +99,20 @@ jobs:
           github.event_name != 'schedule' &&
           (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch')
         }}
-    uses: ./.github/workflows/ci_p_js.yml
+    uses: ./.github/workflows/ci-platform-js.yml
+    secrets: inherit
+
+  ci-testkit:
+    needs: ci
+    name: Build Testkit.js
+    with:
+      should_run: ${{ needs.ci.outputs.build_t_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
+      should_prerelease: ${{
+          github.event_name != 'schedule' &&
+          (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch')
+        }}
+      network: undeployed
+      allure_upload: true
+      allure_project_id: midnight-js-main
+    uses: ./.github/workflows/ci-testkit-js.yml
     secrets: inherit

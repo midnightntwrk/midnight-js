@@ -1,0 +1,12 @@
+diff --git a/node_modules/@midnight-ntwrk/wallet/package.json b/node_modules/@midnight-ntwrk/wallet/package.json
+index 1234567..abcdefg 100644
+--- a/node_modules/@midnight-ntwrk/wallet/package.json
++++ b/node_modules/@midnight-ntwrk/wallet/package.json
+@@ -8,6 +8,7 @@
+   "exports": {
+     ".": {
+       "import": "./dist/main.js",
++      "require": "./dist/main.js",
+       "types": "./dist/main.d.ts"
+     }
+   },

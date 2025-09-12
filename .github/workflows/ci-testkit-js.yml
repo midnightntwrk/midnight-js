@@ -1,0 +1,390 @@
+name: CI - TestKit.js
+env:
+  MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+permissions:
+  contents: read
+  issues: read
+  id-token: write
+  packages: write
+  checks: write
+  pull-requests: write
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      should_run:
+        required: true
+        type: string
+      should_prerelease:
+        required: true
+        type: string
+      yarn_install:
+        type: string
+        description: Install phase command line
+        required: false
+        default: 'yarn install --immutable'
+      yarn_filter:
+        type: string
+        description: Optional filter to include when running Yarn (i.e., --filter=...)
+        required: false
+        default: '--filter="./testkit-js/*"'
+      yarn_lint_paths:
+        type: string
+        description: Optional paths to include when running 'yarn lint'' (i.e., ./packages)
+        required: false
+        default: './testkit-js'
+      build_timeout:
+        required: false
+        type: number
+        default: 30
+      network:
+        type: string
+        description: Midnight network to use (testnet/devnet/undeployed)
+        required: true
+        default: 'undeployed'
+      allure_upload:
+        type: boolean
+        description: Should upload e2e tests results to allure server
+        required: false
+        default: false
+      allure_project_id:
+        type: string
+        description: Allure project id
+        required: false
+        default: midnight-js-main
+
+concurrency:
+  group: TK-JS-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    if: inputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # ratchet:actions/checkout@v5
+
+      - name: Load environment variables
+        run: |
+          export $(grep -v '^#' .github/env/global.env | xargs)
+          for var in $(cut -d= -f1 .github/env/global.env); do
+            echo "$var=${!var}" >> $GITHUB_ENV
+          done
+
+      - name: Log in to GitHub Container registry
+        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # ratchet:docker/login-action@v3
+        with:
+          registry: 'https://ghcr.io'
+          username: ${{ github.actor }}
+          password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # ratchet:actions/setup-node@v4
+        with:
+          always-auth: true
+          registry-url: https://npm.pkg.github.com/
+          scope: '@midnight-ntwrk'
+          node-version-file: '.nvmrc'
+          cache: 'yarn'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Configure yarn
+        run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Cache Turbo and Yarn dependencies
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            **/node_modules
+            ~/.yarn
+            .turbo
+          key: turbo-testkit-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
+          restore-keys: |
+            turbo-testkit-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          ${{ inputs.yarn_install }}
+
+      - name: Run build
+        run: yarn build ${{ inputs.yarn_filter }} --cache-dir ./turbo
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Run linter
+        run: yarn lint -- ${{ inputs.yarn_lint_paths }}
+
+      - name: Run tests
+        run: |
+          yarn test ${{ inputs.yarn_filter }} --cache-dir ./turbo
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Upload compiled contracts
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # ratchet:actions/upload-artifact@v4
+        with:
+          name: e2e-tests-contracts
+          path: testkit-js/testkit-js-e2e/src/contract/managed
+
+      - name: Upload dist for it
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # ratchet:actions/upload-artifact@v4
+        with:
+          name: midnight-js-dist-testkit
+          path: packages/*/dist/
+
+      - name: Upload dist for it
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # ratchet:actions/upload-artifact@v4
+        with:
+          name: testkit-dist
+          path: testkit-js/*/dist/
+
+  cd-prerelease:
+    runs-on: ubuntu-latest
+    needs: ci
+    if: inputs.should_prerelease == 'true'
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # ratchet:actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Load environment variables
+        run: |
+          export $(grep -v '^#' .github/env/global.env | xargs)
+          for var in $(cut -d= -f1 .github/env/global.env); do
+            echo "$var=${!var}" >> $GITHUB_ENV
+          done
+          export $(grep -v '^#' .github/env/global_c_js.env | xargs)
+          for var in $(cut -d= -f1 .github/env/global_c_js.env); do
+            echo "$var=${!var}" >> $GITHUB_ENV
+          done
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # ratchet:actions/setup-node@v4
+        with:
+          always-auth: true
+          registry-url: https://npm.pkg.github.com/
+          scope: '@midnight-ntwrk'
+          node-version-file: '.nvmrc'
+          cache: 'yarn'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Configure yarn & npm
+        run: |
+          yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Cache Turbo and Yarn dependencies
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            **/node_modules
+            ~/.yarn
+            .turbo
+          key: turbo-testkit-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
+          restore-keys: |
+            turbo-testkit-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Temp bump prerelease
+        run: yarn version prerelease
+
+      - name: Set short git commit SHA
+        id: vars
+        run: |
+          calculatedSha=$(git rev-parse --short ${{ github.sha }})
+          version=$(jq -r '.v_info.version' version.testkitjs.json)
+          preRelease=$(jq -r '.v_info.preRelease' version.testkitjs.json)
+          tag=$(jq -r '.v_info.tag' version.testkitjs.json)
+          targetVersion="$version$preRelease.g$calculatedSha"
+          echo "target_version=$targetVersion" >> $GITHUB_OUTPUT
+          echo "tag=$tag" >> $GITHUB_OUTPUT
+
+      - name: Bump versions
+        run: yarn workspaces foreach -R --from "./testkit-js/*" --exclude "./compact-js/*" --exclude "./packages/*" version ${{ steps.vars.outputs.target_version }}
+
+      - name: Publish packages
+        run: yarn deploy ${{ inputs.yarn_filter }} --cache-dir ./turbo -- --tag ${{ steps.vars.outputs.tag }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+  e2e_tests:
+    name: E2E Tests
+    runs-on: ubuntu-latest-8-core-x64
+    needs: ci
+    timeout-minutes: ${{ inputs.build_timeout }}
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [group1, group2, group3, group4, group5, group6, group7, group8, group9, group10]
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # ratchet:actions/checkout@v5
+
+      - name: Load environment variables
+        run: |
+          export $(grep -v '^#' .github/env/global.env | xargs)
+          for var in $(cut -d= -f1 .github/env/global.env); do
+            echo "$var=${!var}" >> $GITHUB_ENV
+          done
+
+      - name: Log in to GitHub Container registry
+        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # ratchet:docker/login-action@v3
+        with:
+          registry: 'https://ghcr.io'
+          username: ${{ github.actor }}
+          password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # ratchet:actions/setup-node@v4
+        with:
+          always-auth: true
+          registry-url: https://npm.pkg.github.com/
+          scope: '@midnight-ntwrk'
+          node-version-file: '.nvmrc'
+          cache: 'yarn'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Configure yarn
+        run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Cache Turbo and Yarn dependencies
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            **/node_modules
+            ~/.yarn
+            .turbo
+          key: turbo-testkit-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
+          restore-keys: |
+            turbo-testkit-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Download build
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # ratchet:actions/download-artifact@v4
+        with:
+          name: midnight-js-dist-testkit
+          path: packages/
+
+      - name: Download testkit build
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # ratchet:actions/download-artifact@v4
+        with:
+          name: testkit-dist
+          path: testkit-js/
+
+      - name: Download contracts
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0
+        with:
+          name: e2e-tests-contracts
+          path: testkit-js/testkit-js-e2e/src/contract/managed
+
+      - name: Post-Install dependencies
+        run: yarn postinstall
+
+      - name: Run e2e tests - Group ${{ matrix.group }}
+        if: ${{ !contains(github.event.head_commit.message, '[skip_it]') }}
+        run: yarn e2e-groups ${{ inputs.yarn_filter }} --concurrency 1 --cache-dir ./turbo
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          MN_TEST_ENVIRONMENT: ${{ inputs.network }}
+          MN_TEST_GROUP: ${{ matrix.group }}
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # ratchet:actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.group }}
+          path: testkit-js/testkit-js-e2e/reports/
+
+  e2e_tests_reports:
+    name: E2E Tests Reports
+    runs-on: ubuntu-latest
+    needs: e2e_tests
+    if: always()
+    steps:
+
+      - name: Checkout code
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # ratchet:actions/checkout@v5
+
+      - name: Download Test Results
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # ratchet:actions/download-artifact@v4
+        with:
+          pattern: test-results-group*
+          path: test-results
+
+      - name: Merge CTRF Results
+        if: always()
+        run: |
+          mkdir ctrf-results
+          mv test-results/test-results-*/ctrf-*.json ctrf-results/
+          npx ctrf merge ctrf-results --output ./ctrf-report-merged.json
+
+      - name: Publish Test Report
+        if: always()
+        uses: ctrf-io/github-test-reporter@646f98cfc16c6f7a0e1f6100cabe2deb95dd2eef # v1.0.22
+        with:
+          title: 'E2E Tests Results'
+          report-path: 'ctrf-results/ctrf-report-merged.json'
+          suite-folded-report: true
+          pull-request: true
+          pull-request-report: true
+          overwrite-comment: true
+          collapse-large-reports: true
+          comment-tag: '${{ github.workflow }}-${{ github.job }}'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # ratchet:actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-ctrf-summary
+          path: ctrf-results
+
+      - name: Publish Test Summary Results
+        if: always()
+        run: |
+          mkdir junit-results
+          mv test-results/test-results-*/*.xml junit-results/
+          npm install -g junit-report-merger
+          jrm junit-test-results.xml junit-results/*.xml
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # ratchet:actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-junit-summary
+          path: junit-test-results.xml
+
+  e2e_tests_reports_allure:
+    name: E2E Tests Reports to Allure Server
+    runs-on: ubuntu-latest
+    needs: e2e_tests
+    if: always()
+    steps:
+
+      - name: Download Test Results
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # ratchet:actions/download-artifact@v4
+        with:
+          pattern: test-results-group*
+          path: test-results
+
+      - name: Send Results to Allure Server
+        uses: robkatona/send-allure-results@935714d2ab2c0de7b15a9d3e29a0cffe0fa64c59 # ratchet:robkatona/send-allure-results@v1.0.5
+        if: ${{ inputs.allure_upload && always() }}
+        with:
+          allure-server-url: https://allure-server.prd.midnight.tools
+          allure-results-directory: test-results/**/allure-results-*
+          project-id: ${{ inputs.allure_project_id }}
+          security-user: ${{ secrets.ALLURE_ADMIN_USER }}
+          security-pass: ${{ secrets.ALLURE_ADMIN_PASSWORD }}

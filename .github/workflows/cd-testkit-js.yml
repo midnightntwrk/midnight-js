@@ -1,0 +1,107 @@
+name: CD - Release TestKit.js
+env:
+  MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+permissions:
+  contents: read
+  issues: read
+  checks: write
+  pull-requests: write
+
+on:
+  workflow_dispatch:
+
+jobs:
+  cd:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # ratchet:actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Load environment variables
+        run: |
+          export $(grep -v '^#' .github/env/global.env | xargs)
+          for var in $(cut -d= -f1 .github/env/global.env); do
+            echo "$var=${!var}" >> $GITHUB_ENV
+          done
+          export $(grep -v '^#' .github/env/global_c_js.env | xargs)
+          for var in $(cut -d= -f1 .github/env/global_c_js.env); do
+            echo "$var=${!var}" >> $GITHUB_ENV
+          done
+
+      - name: Set up Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # ratchet:actions/setup-node@v4
+        with:
+          always-auth: true
+          registry-url: https://npm.pkg.github.com/
+          scope: '@midnight-ntwrk'
+          node-version-file: '.nvmrc'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Configure yarn & npm
+        run: |
+          yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Cache Turbo and Yarn dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            **/node_modules
+            ~/.yarn
+            .turbo
+          key: turbo-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Determine Version
+        id: vars
+        run: |
+          on_release_branch=$(jq --arg b "$(git rev-parse --abbrev-ref HEAD)" '(.v_info.releaseBranches | join("|")) as $p | ($b | test("^(" + $p + ")$"))' version.testkitjs.json)
+
+          source_commit=$(git log --format=%h -1 -- version.testkitjs.json)
+          commit_height=$(($(git log --format=%h $source_commit.. | wc -l)))
+          version=$(jq -r '.v_info.version' version.testkitjs.json)
+          preRelease=$(jq -r '.v_info.preRelease' version.testkitjs.json)
+          tag=$(jq -r '.v_info.tag' version.testkitjs.json)
+          target_version="$version$preRelease.$commit_height"
+
+          echo "target_version=${target_version}" >> "$GITHUB_OUTPUT"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "on_release_branch=${on_release_branch}" >> "$GITHUB_OUTPUT"
+
+      - name: Determine Build Targets
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
+        id: changes
+        with:
+          filters: |
+            vinfo: 'version.testkitjs.json'
+            testkit-js: 'testkit-js/**'
+
+      - name: Bump versions
+        if: ${{
+            steps.vars.outputs.on_release_branch == 'true' &&
+            (steps.changes.outputs.testkit-js == 'true' || steps.changes.outputs.vinfo == 'true')
+          }}
+        run: yarn workspaces foreach -R --from "./testkit-js/*" --exclude "./compact-js/*" --exclude "./packages/*" version ${{ steps.vars.outputs.target_version }}
+
+      - name: Publish packages
+        if: ${{
+            steps.vars.outputs.on_release_branch == 'true' &&
+            (steps.changes.outputs.testkit-js == 'true' || steps.changes.outputs.vinfo == 'true')
+          }}
+        run: yarn deploy --filter="./testkit-js/*" --cache-dir ./turbo -- --tag ${{ steps.vars.outputs.tag }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Set build instance version number
+        if: ${{
+            steps.vars.outputs.on_release_branch == 'true' &&
+            (steps.changes.outputs.testkit-js == 'true' || steps.changes.outputs.vinfo == 'true')
+          }}
+        run: echo "id=${{ steps.vars.outputs.target_version }}" >> "$GITHUB_OUTPUT"
