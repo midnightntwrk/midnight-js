@@ -13,6 +13,19 @@
  * limitations under the License.
  */
 
+<<<<<<<< HEAD:testkit-js/testkit-js-e2e/src/unshielded-types.ts
+import type { ImpureCircuitId, MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
+
+import { CompiledUnshielded } from './contract';
+
+export type UnshieldedContract = CompiledUnshielded.Contract<undefined>;
+
+export type UnshieldedContractCircuits = ImpureCircuitId<UnshieldedContract>;
+
+export type UnshieldedContractProviders = MidnightProviders<UnshieldedContractCircuits>;
+
+export const createUnshieldedContract = () : UnshieldedContract => new CompiledUnshielded.Contract({});
+========
 import { Brand, Option } from 'effect';
 
 const NETWORK_ID_REGEXP = /^[a-zA-Z0-9-]+$/;
@@ -34,3 +47,4 @@ export const NetworkIdMoniker = Brand.refined<NetworkIdMoniker>(
       : Option.some(Brand.error(`Source string '${source}' is not a valid network identifier`));
   }
 );
+>>>>>>>> main:platform-js/platform-js/src/effect/NetworkIdMoniker.ts
