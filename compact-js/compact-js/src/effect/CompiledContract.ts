@@ -177,10 +177,10 @@ export const withCompiledFileAssets: {
 );
 
 /**
- * Retrieves a path to the ZK assets associated with a compiled contract.
+ * Retrieves a path to file based assets associated with a compiled contract.
  *
  * @param self The {@link CompiledContract} from which the assets path should be retrieved.
- * @returns A string representing a path to the ZK assets configured for `self`.
+ * @returns A string representing a path to the file assets configured for `self`.
  */
 export const getCompiledAssetsPath: <C extends Contract<PS>, PS>(self: CompiledContract<C, PS>) => string =
   <C extends Contract<PS>, PS>(self: CompiledContract<C, PS>) => {

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { Context,type Effect } from 'effect';
+import { Context, type Effect } from 'effect';
 
 import type { CompiledContract } from './CompiledContract.js';
 import type * as Contract from './Contract.js';
