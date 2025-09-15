@@ -12,8 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-<<<<<<<< HEAD:testkit-js/testkit-js-e2e/src/unshielded-types.ts
 import type { ImpureCircuitId, MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
 
 import { CompiledUnshielded } from './contract';
@@ -25,26 +23,3 @@ export type UnshieldedContractCircuits = ImpureCircuitId<UnshieldedContract>;
 export type UnshieldedContractProviders = MidnightProviders<UnshieldedContractCircuits>;
 
 export const createUnshieldedContract = () : UnshieldedContract => new CompiledUnshielded.Contract({});
-========
-import { Brand, Option } from 'effect';
-
-const NETWORK_ID_REGEXP = /^[a-zA-Z0-9-]+$/;
-
-/**
- * A name, handle, or tag representing a familiar identifier given to an instance of a Midnight network.
- * 
- * @category models
- */
-export type NetworkIdMoniker = Brand.Branded<string, 'NetworkIdMoniker'>;
-
-/**
- * @category constructors
- */
-export const NetworkIdMoniker = Brand.refined<NetworkIdMoniker>(
-  (source: string) => {
-    return source.match(NETWORK_ID_REGEXP)
-      ? Option.none()
-      : Option.some(Brand.error(`Source string '${source}' is not a valid network identifier`));
-  }
-);
->>>>>>>> main:platform-js/platform-js/src/effect/NetworkIdMoniker.ts
