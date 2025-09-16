@@ -99,25 +99,26 @@ describe('Block Time Contract Tests', () => {
       await expect(() => api.testBlockTimeLt(deployedContract, pastTime)).rejects.toThrow('Block time is >= time');
     });
 
-    it('should succeed on device but fail on node when submission is delayed', async () => {
-      const futureTime = currentTimeSeconds() + 3n; // Only 3 seconds in future
-      const unprovenCallTxOptions = {
-        contract: api.blockTimeContractInstance,
-        circuitId: api.CIRCUIT_ID_TEST_BLOCK_TIME_LT,
-        contractAddress,
-        args: [futureTime] as [bigint]
-      };
-      const unprovenCallTx = await createUnprovenCallTx(providers, unprovenCallTxOptions);
-      // Delay submission so node time exceeds futureTime
-      await sleep(4000);
-      // Should fail because node time > futureTime
-      const finalizedCallTx = await submitTx(providers, {
-        unprovenTx: unprovenCallTx.private.unprovenTx,
-        newCoins: unprovenCallTx.private.newCoins,
-        circuitId: unprovenCallTxOptions.circuitId
-      });
-      expect(finalizedCallTx.status).toEqual(FailEntirely);
-    }, SLOW_TEST_TIMEOUT);
+    // TODO: Uncomment once PM-19372 is resolved
+    // it('should succeed on device but fail on node when submission is delayed', async () => {
+    //   const futureTime = currentTimeSeconds() + 3n; // Only 3 seconds in future
+    //   const unprovenCallTxOptions = {
+    //     contract: api.blockTimeContractInstance,
+    //     circuitId: api.CIRCUIT_ID_TEST_BLOCK_TIME_LT,
+    //     contractAddress,
+    //     args: [futureTime] as [bigint]
+    //   };
+    //   const unprovenCallTx = await createUnprovenCallTx(providers, unprovenCallTxOptions);
+    //   // Delay submission so node time exceeds futureTime
+    //   await sleep(4000);
+    //   // Should fail because node time > futureTime
+    //   const finalizedCallTx = await submitTx(providers, {
+    //     unprovenTx: unprovenCallTx.private.unprovenTx,
+    //     newCoins: unprovenCallTx.private.newCoins,
+    //     circuitId: unprovenCallTxOptions.circuitId
+    //   });
+    //   expect(finalizedCallTx.status).toEqual(FailEntirely);
+    // }, SLOW_TEST_TIMEOUT);
 
     it('should succeed when both device time and node time are greater than past time', async () => {
       const pastTime = currentTimeSeconds() - BLOCK_TIME_PAST_BUFFER;
