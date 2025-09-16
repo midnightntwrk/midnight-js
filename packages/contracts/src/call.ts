@@ -15,6 +15,7 @@
 
 import {
   type AlignedValue,
+  type CircuitContext,
   type CoinPublicKey,
   type ContractAddress,
   type ContractState,
@@ -25,7 +26,7 @@ import {
   type StateValue,
   type ZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
-import type { Transcript, ZswapChainState } from '@midnight-ntwrk/ledger-v6';
+import { CostModel, type Transcript, type ZswapChainState } from '@midnight-ntwrk/ledger-v6';
 import { LedgerParameters, partitionTranscripts, PreTranscript } from '@midnight-ntwrk/ledger-v6';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type {
@@ -229,16 +230,18 @@ export const call = <C extends Contract, ICK extends ImpureCircuitId<C>>(
   }
   const { result, context, proofData } = circuit(
     {
+      //TODO: validate this originalState
       originalState: initialContractState,
       currentPrivateState: 'initialPrivateState' in options ? options.initialPrivateState : undefined,
       transactionContext: initialTxContext,
-      currentZswapLocalState: emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, getNetworkId()))
-    },
+      currentZswapLocalState: emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, getNetworkId())),
+      costModel: CostModel.initialCostModel(),
+    } as CircuitContext<C>,
     ...('args' in options ? options.args : [])
   );
   return {
     public: {
-      nextContractState: context.transactionContext.state,
+      nextContractState: context.transactionContext.state.state,
       publicTranscript: proofData.publicTranscript,
       partitionedTranscript: partitionTranscript(
         initialTxContext,

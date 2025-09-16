@@ -60,7 +60,7 @@ export const fromLedgerContractState = (contractState: LedgerContractState): Con
   ContractState.deserialize(contractState.serialize(), );
 
 export const toLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext => {
-  const stateValue = LedgerStateValue.decode(queryContext.state.encode());
+  const stateValue = LedgerStateValue.decode(queryContext.state.state.encode());
   return new LedgerQueryContext(new ChargedState(stateValue), queryContext.address);
 }
 
