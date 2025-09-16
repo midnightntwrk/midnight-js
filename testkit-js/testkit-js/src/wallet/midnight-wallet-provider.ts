@@ -31,7 +31,7 @@ import { type LogLevel, type Resource } from '@midnight-ntwrk/wallet';
 import { generateRandomSeed } from '@midnight-ntwrk/wallet-sdk-hd';
 import type { Logger } from 'pino';
 
-import type { EnvironmentConfiguration } from '@/infrastructure';
+import type { EnvironmentConfiguration } from '@/index';
 
 import { DEFAULT_WALLET_LOG_LEVEL, WalletFactory } from './wallet-factory';
 import { type MidnightWallet } from './wallet-types';

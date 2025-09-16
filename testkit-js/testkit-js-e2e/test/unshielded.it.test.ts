@@ -13,8 +13,17 @@
  * limitations under the License.
  */
 
-import { type ContractAddress,sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
+import { type ContractAddress, sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
 import { deployContract, submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
+import type {
+  type ContractConfiguration,
+  createLogger,
+  type EnvironmentConfiguration,
+  expectSuccessfulDeployTx,
+  getTestEnvironment,
+  initializeMidnightProviders,
+  type MidnightWalletProvider,
+  type TestEnvironment} from '@midnight-ntwrk/midnight-js-testkit';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { afterAll, beforeAll, beforeEach,describe, test } from '@vitest/runner';
 import path from 'path';
@@ -25,17 +34,7 @@ import {
   type UnshieldedContract,
   type UnshieldedContractCircuits,
   type UnshieldedContractProviders
-} from '@/e2e/unshielded-types';
-import type {
-  ContractConfiguration,
-  EnvironmentConfiguration,
-  MidnightWalletProvider,
-  TestEnvironment} from '@/infrastructure';
-import {
-  createLogger,
-  expectSuccessfulDeployTx,
-  getTestEnvironment,
-  initializeMidnightProviders} from '@/infrastructure';
+} from '@/unshielded-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `unshielded_${new Date().toISOString()}.log`)

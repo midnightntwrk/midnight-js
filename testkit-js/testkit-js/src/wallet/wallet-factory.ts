@@ -20,12 +20,12 @@ import { type LogLevel, WalletBuilder } from '@midnight-ntwrk/wallet';
 import { type Wallet } from '@midnight-ntwrk/wallet-api';
 import { generateRandomSeed } from '@midnight-ntwrk/wallet-sdk-hd';
 
-import type { EnvironmentConfiguration } from '@/infrastructure';
+import type { EnvironmentConfiguration } from '@/index';
 import {
   DEFAULT_WALLET_STATE_DIRECTORY,
   getWalletStateFilename,
   WalletSaveStateProvider
-} from '@/infrastructure';
+} from '@/index';
 
 import { logger } from '../logger';
 import type { MidnightWallet, SerializedWalletState } from './wallet-types';

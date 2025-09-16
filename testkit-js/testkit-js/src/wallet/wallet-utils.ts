@@ -17,7 +17,7 @@ import { shieldedToken, type TokenType } from '@midnight-ntwrk/ledger-v6';
 import { type TransactionHistoryEntry, type Wallet, type WalletState } from '@midnight-ntwrk/wallet-api';
 import * as Rx from 'rxjs';
 
-import { type EnvironmentConfiguration } from '@/infrastructure';
+import { type EnvironmentConfiguration } from '@/index';
 
 import { FaucetClient } from '../client';
 import { logger } from '../logger';
