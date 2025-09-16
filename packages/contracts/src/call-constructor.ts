@@ -18,6 +18,7 @@ import {
   type ConstructorContext,
   type ContractState,
   decodeZswapLocalState,
+  emptyZswapLocalState,
   type ZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
 import type { Contract, InitialStateParameters, PrivateState } from '@midnight-ntwrk/midnight-js-types';
@@ -112,7 +113,7 @@ export const callContractConstructor = <C extends Contract>(
     {
       initialPrivateState: 'initialPrivateState' in options ? options.initialPrivateState : undefined,
       // TODO: consult
-      initialZswapLocalState: {}
+      initialZswapLocalState: emptyZswapLocalState(options.coinPublicKey)
     } as ConstructorContext<C>,
     ...('args' in options ? options.args : [])
   );

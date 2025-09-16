@@ -16,7 +16,10 @@
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { constructorContext } from '@midnight-ntwrk/compact-runtime';
+import {
+  type ConstructorContext,
+  emptyZswapLocalState
+} from '@midnight-ntwrk/compact-runtime';
 import {
   sampleCoinPublicKey,
   sampleContractAddress,
@@ -25,9 +28,7 @@ import {
   ZswapChainState
 } from '@midnight-ntwrk/ledger-v6';
 import { createUnprovenCallTxFromInitialStates } from '@midnight-ntwrk/midnight-js-contracts';
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { createProverKey, createVerifierKey, createZKIR } from '@midnight-ntwrk/midnight-js-types';
-import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import fs from 'fs/promises';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
@@ -54,10 +55,10 @@ export const getValidUnprovenTx = async (): Promise<UnprovenTransaction> => {
   const coinPublicKey = sampleCoinPublicKey();
 
   const constructorResult = contract.initialState(
-    constructorContext(
-      undefined,
-      parseCoinPublicKeyToHex(coinPublicKey, getNetworkId())
-    )
+    {
+      initialPrivateState: undefined,
+      initialZswapLocalState: emptyZswapLocalState(coinPublicKey)
+    } as ConstructorContext<undefined>
   );
 
   const initialContractState = constructorResult.currentContractState;
