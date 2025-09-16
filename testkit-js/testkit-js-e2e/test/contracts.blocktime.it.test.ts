@@ -19,7 +19,7 @@ import {
   type FinalizedDeployTxData,
   submitTx
 } from '@midnight-ntwrk/midnight-js-contracts';
-import { FailEntirely, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import type {
   EnvironmentConfiguration,
   MidnightWalletProvider,
