@@ -46,6 +46,9 @@ const logger = createLogger(
 
 const currentTimeSeconds = () => BigInt(Math.floor(Date.now() / 1_000));
 
+// We don't want to use vitest virtual time because we want time to proceed relatively
+// uniformly on the node and the local device for testing and advancing local device time
+// without advancing time on node container risks them being unintentionally inconsistent.
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
