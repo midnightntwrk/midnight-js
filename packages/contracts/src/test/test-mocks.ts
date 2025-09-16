@@ -34,9 +34,8 @@ import {
   type SignatureEnabled,
   type TokenType,
   type Transaction,
-  type ZswapChainState,
-  type UnprovenTransaction
-} from '@midnight-ntwrk/ledger-v6';
+  type UnprovenTransaction,
+  type ZswapChainState} from '@midnight-ntwrk/ledger-v6';
 import {
   type Contract,
   type FinalizedTxData,

@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import { NetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import path from 'path';
 import { WebSocket } from 'ws';
 

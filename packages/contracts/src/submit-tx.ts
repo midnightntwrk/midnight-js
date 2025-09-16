@@ -14,6 +14,7 @@
  */
 
 import type { ShieldedCoinInfo } from '@midnight-ntwrk/compact-runtime';
+import { type UnprovenTransaction } from '@midnight-ntwrk/ledger-v6';
 import type {
   Contract,
   FinalizedTxData,
@@ -21,7 +22,6 @@ import type {
 } from '@midnight-ntwrk/midnight-js-types';
 
 import { type ContractProviders } from './contract-providers';
-import { type UnprovenTransaction } from '@midnight-ntwrk/ledger-v6';
 
 /**
  * Configuration for {@link submitTx}.
