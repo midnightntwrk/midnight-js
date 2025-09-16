@@ -31,7 +31,7 @@
     "build:markdown-docs": "typedoc --validation --plugin typedoc-plugin-markdown --options typedoc.json",
     "lint": "eslint",
     "lint:fix": "NODE_OPTIONS=--max-old-space-size=16192 eslint ./packages --fix",
-    "postinstall": "husky && patch-package",
+    "prepare": "husky && patch-package",
     "prepublishOnly": "pinst --disable",
     "postpublish": "pinst --enable"
   },

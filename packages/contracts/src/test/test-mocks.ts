@@ -14,6 +14,7 @@
  */
 
 import {
+  ChargedState,
   type ContractState,
   type Op,
   sampleSigningKey,
@@ -35,7 +36,8 @@ import {
   type TokenType,
   type Transaction,
   type UnprovenTransaction,
-  type ZswapChainState} from '@midnight-ntwrk/ledger-v6';
+  type ZswapChainState
+} from '@midnight-ntwrk/ledger-v6';
 import {
   type Contract,
   type FinalizedTxData,
@@ -66,7 +68,7 @@ export const createMockEncryptionPublicKey = (): EncPublicKey => sampleEncryptio
 
 export const createMockContractState = (signingKey?: SigningKey): ContractState => ({
   serialize: vi.fn().mockReturnValue(new Uint8Array(32)),
-  data: StateValue.newNull(),
+  data: new ChargedState(StateValue.newNull()),
   operation: vi.fn().mockImplementation((_circuitId: string) => ({
     verifierKey: new Uint8Array(32)
   })),

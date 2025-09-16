@@ -14,8 +14,10 @@
  */
 
 import {
+  ChargedState,
   type CircuitContext,
   type CircuitResults,
+  CostModel,
   emptyZswapLocalState,
   StateValue
 } from '@midnight-ntwrk/compact-runtime';
@@ -25,9 +27,7 @@ import {
   sampleCoinPublicKey,
   type TokenType
 } from '@midnight-ntwrk/ledger-v6';
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { type Contract, type PrivateState } from '@midnight-ntwrk/midnight-js-types';
-import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
 import { call } from '../call';
@@ -55,7 +55,7 @@ describe('call', () => {
             secondsSinceEpochErr: 0,
             parentBlockHash: ''
           },
-          state: StateValue.newNull(),
+          state: new ChargedState(StateValue.newNull()),
           effects: {} as Effects,
           comIndices: new Map(),
           insertCommitment: vi.fn(),
@@ -68,9 +68,8 @@ describe('call', () => {
         },
         originalState: createMockContractState(),
         currentPrivateState: { test: 'private-state' } as PrivateState<Contract>,
-        currentZswapLocalState: emptyZswapLocalState(
-          parseCoinPublicKeyToHex(sampleCoinPublicKey(), getNetworkId())
-        )
+        currentZswapLocalState: emptyZswapLocalState(sampleCoinPublicKey()),
+        costModel: CostModel.initialCostModel()
       } as CircuitContext<Contract>,
       proofData: {
         input: {} as AlignedValue,
