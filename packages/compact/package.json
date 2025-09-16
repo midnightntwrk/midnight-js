@@ -16,6 +16,9 @@
   "scripts": {
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo tsconfig.tsbuildinfo managed dist",
     "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run --passWithNoTests",
+    "test:unit": "vitest run --passWithNoTests",
+    "test:property": "vitest run --passWithNoTests",
     "lint": "eslint ./src",
     "typecheck": "tsc -p tsconfig.json",
     "deploy": "yarn npm publish"

@@ -24,6 +24,18 @@
       "inputs": ["src/**/*.ts", "compose.yml"],
       "outputs": ["reports/**", "coverage/**", "logs/**"]
     },
+    "test:unit": {
+      "outputLogs": "new-only",
+      "dependsOn": ["^build"],
+      "inputs": ["src/**/*.ts", "compose.yml"],
+      "outputs": ["reports/**", "coverage/**", "logs/**"]
+    },
+    "test:property": {
+      "outputLogs": "new-only",
+      "dependsOn": ["^build"],
+      "inputs": ["src/**/*.ts", "compose.yml"],
+      "outputs": ["reports/**", "coverage/**", "logs/**"]
+    },
     "it": {
       "outputLogs": "new-only",
       "dependsOn": ["^build"],

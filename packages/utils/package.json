@@ -20,6 +20,8 @@
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
     "build": "rollup -c rollup.config.mjs",
     "test": "vitest run",
+    "test:unit": "vitest run -t \"^(?!.*\\[PROPERTY\\]).*\"",
+    "test:property": "vitest run -t \"\\[PROPERTY\\]\" --passWithNoTests",
     "deploy": "yarn npm publish"
   },
   "files": [

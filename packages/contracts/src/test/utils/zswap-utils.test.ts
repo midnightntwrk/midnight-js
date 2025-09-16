@@ -143,14 +143,14 @@ describe('Zswap utilities', () => {
       )
     ).toThrowError());
 
-  test("serializing then deserializing 'CoinInfo' produces the original value", () =>
+  test("[PROPERTY] serializing then deserializing 'CoinInfo' produces the original value", () =>
     fc.assert(
       fc.property(arbitraryCoinInfo, (coinInfo) => {
         expect(deserializeCoinInfo(serializeCoinInfo(coinInfo))).toEqual(coinInfo);
       })
     ));
 
-  test("serializing 'QualifiedCoinInfo' then deserializing 'CoinInfo' produces the original value without 'mt_index'", () =>
+  test("[PROPERTY] serializing 'QualifiedCoinInfo' then deserializing 'CoinInfo' produces the original value without 'mt_index'", () =>
     fc.assert(
       fc.property(arbitraryQualifiedCoinInfo, (qualifiedCoinInfo) => {
         expect(deserializeCoinInfo(serializeQualifiedCoinInfo(qualifiedCoinInfo))).toEqual(
@@ -159,7 +159,7 @@ describe('Zswap utilities', () => {
       })
     ));
 
-  test("'QualifiedCoinInfo' and extracted 'CoinInfo' serialized strings are equal", () =>
+  test("[PROPERTY] 'QualifiedCoinInfo' and extracted 'CoinInfo' serialized strings are equal", () =>
     fc.assert(
       fc.property(arbitraryQualifiedCoinInfo, (qualifiedCoinInfo) => {
         expect(serializeCoinInfo(dropMtIndex(qualifiedCoinInfo))).toEqual(
@@ -256,7 +256,7 @@ describe('Zswap utilities', () => {
         );
     });
 
-  test('expected number of inputs, outputs, and transients are created', () =>
+  test('[PROPERTY] expected number of inputs, outputs, and transients are created', () =>
     fc.assert(
       fc.property(
         arbitraryZswapScenario,
@@ -296,7 +296,7 @@ describe('Zswap utilities', () => {
       )
     ));
 
-  test('zswapStateToNewCoins returns only coins meant for provided wallet', () => {
+  test('[PROPERTY] zswapStateToNewCoins returns only coins meant for provided wallet', () => {
     type ScenarioData = {
       walletCoinPublicKey: CoinPublicKey;
       outputsForWallet: { recipient: Recipient; coinInfo: CoinInfo }[];

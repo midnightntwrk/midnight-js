@@ -22,6 +22,8 @@
     "compact-simple": "run-compactc src/test/resources/simple.compact ./src/test/resources/managed/simple",
     "build": "yarn compact && rollup -c rollup.config.mjs",
     "test": "vitest run",
+    "test:unit": "vitest run -t \"^(?!.*\\[PROPERTY\\]).*\"",
+    "test:property": "vitest run -t \"\\[PROPERTY\\]\" --passWithNoTests",
     "deploy": "yarn npm publish"
   },
   "files": [

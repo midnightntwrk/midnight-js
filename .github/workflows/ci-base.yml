@@ -89,9 +89,15 @@ jobs:
         if: ${{ inputs.yarn_lint_paths != '' }}
         run: yarn lint -- ${{ inputs.yarn_lint_paths }}
 
-      - name: Run tests
+      - name: Run unit tests
         run: |
-          yarn test ${{ inputs.yarn_filter }} --concurrency 1 --cache-dir ./turbo
+          yarn test:unit ${{ inputs.yarn_filter }} --concurrency 1 --cache-dir ./turbo
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Run property tests
+        run: |
+          yarn test:property ${{ inputs.yarn_filter }} --concurrency 1 --cache-dir ./turbo
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
