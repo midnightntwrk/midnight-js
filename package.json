@@ -10,22 +10,28 @@
   "workspaces": [
     "packages/*",
     "compact-js/*",
-    "platform-js/*"
+    "platform-js/*",
+    "testkit-js/*"
   ],
   "scripts": {
     "clean": "turbo run clean",
     "build": "turbo run build",
+    "build:core": "turbo run build --filter='!@midnight-ntwrk/testkit-*'",
+    "build:testkit": "turbo run build --filter='@midnight-ntwrk/testkit-*'",
     "clean-build": "turbo run clean-build",
     "test": "turbo run test",
+    "test:unit": "turbo run test --filter='!@midnight-ntwrk/testkit-*'",
     "it": "turbo run it",
     "e2e": "turbo run e2e",
     "e2e-groups": "turbo run e2e-groups",
     "check": "turbo run check && yarn lint",
+    "check:core": "turbo run check --filter='!@midnight-ntwrk/testkit-*' && yarn lint",
     "deploy": "turbo run deploy",
+    "deploy:core": "turbo run deploy --filter='!@midnight-ntwrk/testkit-*'",
     "build:markdown-docs": "typedoc --validation --plugin typedoc-plugin-markdown --options typedoc.json",
     "lint": "eslint",
     "lint:fix": "NODE_OPTIONS=--max-old-space-size=16192 eslint ./packages --fix",
-    "postinstall": "husky install",
+    "postinstall": "husky && patch-package",
     "prepublishOnly": "pinst --disable",
     "postpublish": "pinst --enable"
   },
@@ -62,6 +68,7 @@
     "husky": "^9.1.7",
     "jsdom": "^26.1.0",
     "lint-staged": "^16.1.2",
+    "patch-package": "^8.0.0",
     "pinst": "^3.0.0",
     "prettier": "^3.6.2",
     "rollup": "^4.37.0",

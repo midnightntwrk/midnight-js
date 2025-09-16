@@ -15,10 +15,12 @@
 
 import {
   type AlignedValue,
+  ChargedState,
   CompactError,
-  constructorContext,
   ContractMaintenanceAuthority,
   type ContractState,
+  CostModel,
+  createConstructorContext,
   decodeZswapLocalState,
   emptyZswapLocalState,
   type Op,
@@ -28,12 +30,14 @@ import {
   StateValue,
   type ZswapLocalState} from '@midnight-ntwrk/compact-runtime';
 import {
+  ChargedState as LedgerChargedState,
   LedgerParameters,
   partitionTranscripts,
   PreTranscript,
   QueryContext as LedgerQueryContext,
   StateValue as LedgerStateValue,
-  type Transcript} from '@midnight-ntwrk/ledger';
+  type Transcript
+} from '@midnight-ntwrk/ledger';
 import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import type * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
@@ -150,7 +154,10 @@ type Transform<E, R> = <A>(effect: Effect.Effect<A, any, any>) => Effect.Effect<
 const DEFAULT_CMA_THRESHOLD = 1;
 
 const asLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext =>
-  new LedgerQueryContext(LedgerStateValue.decode(queryContext.state.encode()), queryContext.address);
+  new LedgerQueryContext(
+    new LedgerChargedState(LedgerStateValue.decode(queryContext.state.state.encode())),
+    queryContext.address
+  );
 
 const partitionTranscript = (
   txContext: QueryContext,
@@ -167,7 +174,7 @@ const partitionTranscript = (
         publicTranscript
       )
     ],
-    LedgerParameters.dummyParameters()
+    LedgerParameters.initialParameters()
   );
   return partitionedTranscripts.length === 1
     ? Either.right(partitionedTranscripts[0])
@@ -202,7 +209,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
         Effect.try({
           try: () => {
             const { currentContractState, currentPrivateState, currentZswapLocalState } = contract.initialState(
-              constructorContext(initialPrivateState, CoinPublicKey.asHex(keyConfig.coinPublicKey)),
+              createConstructorContext(initialPrivateState, CoinPublicKey.asHex(keyConfig.coinPublicKey)),
               ...args
             );
             return {
@@ -300,16 +307,16 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
               throw new Error(`Circuit ${this.compiledContract.tag}#${impureCircuitId} could not be found.`);
             }
             const initialTxContext = new QueryContext(
-              StateValue.decode(circuitContext.contractState.data.encode()),
+              new ChargedState(StateValue.decode(circuitContext.contractState.data.state.encode())),
               circuitContext.address
             );
             return {
               ...circuit(
                 {
-                  originalState: circuitContext.contractState,
                   currentPrivateState: circuitContext.privateState,
                   currentZswapLocalState: emptyZswapLocalState(CoinPublicKey.asHex(keyConfig.coinPublicKey)),
-                  transactionContext: initialTxContext
+                  transactionContext: initialTxContext,
+                  costModel: CostModel.initialCostModel()
                 },
                 ...args
               ),
@@ -322,7 +329,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
             Effect.gen(function* () {
               return {
                 public: {
-                  contractState: context.transactionContext.state,
+                  contractState: context.transactionContext.state.state,
                   publicTranscript: proofData.publicTranscript,
                   partitionedTranscript: yield* partitionTranscript(
                     initialTxContext,

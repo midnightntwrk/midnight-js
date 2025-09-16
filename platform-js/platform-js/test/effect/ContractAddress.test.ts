@@ -21,25 +21,25 @@ import * as Arbitrary from './Arbitrary.js';
 
 describe('ContractAddress', () => {
     it('should parse plain addresses', () => fc.assert(
-      fc.property(Arbitrary.makePlainHexArbitrary('35..=35'), (hex) => {
+      fc.property(Arbitrary.makePlainHexArbitrary('32..=32'), (hex) => {
         expect(() => ContractAddress.ContractAddress(hex)).not.toThrowError();
       })
     ));
 
     it('should throw with short length plain addresses', () => fc.assert(
-      fc.property(Arbitrary.makePlainHexArbitrary('2..35'), (hex) => {
+      fc.property(Arbitrary.makePlainHexArbitrary('2..32'), (hex) => {
         expect(() => ContractAddress.ContractAddress(hex)).toThrowError();
       })
     ));
 
     it('should throw with long length plain addresses', () => fc.assert(
-      fc.property(Arbitrary.makePlainHexArbitrary('36..=50'), (hex) => {
+      fc.property(Arbitrary.makePlainHexArbitrary('33..=50'), (hex) => {
         expect(() => ContractAddress.ContractAddress(hex)).toThrowError();
       })
     ));
 
     it('should throw with prefixed addresses', () => fc.assert(
-      fc.property(Arbitrary.makePrefixedHexArbitrary('35..=35'), (hex) => {
+      fc.property(Arbitrary.makePrefixedHexArbitrary('32..=32'), (hex) => {
         expect(() => ContractAddress.ContractAddress(hex)).toThrowError();
       })
     ));

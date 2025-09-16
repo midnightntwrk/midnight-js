@@ -13,17 +13,15 @@
  * limitations under the License.
  */
 
-import * as runtime from '@midnight-ntwrk/compact-runtime';
-import * as ledger from '@midnight-ntwrk/ledger';
 import * as Equal from 'effect/Equal';
 import * as equivalence from 'effect/Equivalence';
 import { dual } from 'effect/Function';
-import * as HashMap from 'effect/HashMap';
 import { type Inspectable,NodeInspectSymbol } from 'effect/Inspectable';
-import * as Option from 'effect/Option';
 import { hasProperty } from 'effect/Predicate';
 
-const MAINNET_MONIKER = 'main';
+import * as NetworkIdMoniker from './NetworkIdMoniker.js';
+
+const MAINNET_MONIKER = NetworkIdMoniker.NetworkIdMoniker('main');
 
 const TypeId: unique symbol = Symbol.for('platform-js/effect/NetworkId');
 export type TypeId = typeof TypeId;
@@ -32,10 +30,18 @@ const MonikerSymbol: unique symbol = Symbol.for('platform-js/effect/NetworkId#Ne
 
 /**
  * Represents a Midnight network identifier.
+ * 
+ * @remarks
+ * A {@link NetworkId} can be constructed by calling {@link make} with a valid
+ * {@link NetworkIdMoniker.NetworkIdMoniker | NetworkIdMoniker} identifying the network. Alternatively, in order
+ * to use the Midnight MainNet, use the exported instance {@link MainNet}.
+ * 
+ * @see {@link NetworkIdInput}
+ * @see {@link make}
  */
 export interface NetworkId extends Equal.Equal, Inspectable {
   readonly [TypeId]: TypeId;
-  readonly [MonikerSymbol]: string | true;
+  readonly [MonikerSymbol]: NetworkIdMoniker.NetworkIdMoniker | true;
   /**
    * Determines if the network identifier represents the Midnight MainNet.
    *
@@ -49,7 +55,7 @@ export interface NetworkId extends Equal.Equal, Inspectable {
  * 
  * @see {@link make}
  */
-export type NetworkIdInput = string | NetworkId;
+export type NetworkIdInput = NetworkIdMoniker.NetworkIdMoniker | NetworkId;
 
 /**
  * Provides equivalence for {@link NetworkId} instances.
@@ -126,38 +132,3 @@ export const MainNet: NetworkId = Object.create(NetworkIdProto(true));
  */
 export const make: (input: NetworkIdInput) => NetworkId =
   (input) => Object.create(NetworkIdProto(isNetworkId(input) ? input[MonikerSymbol] : input));
-
-const monikerMap = HashMap.make(
-  ['undeployed', [ledger.NetworkId.Undeployed, runtime.NetworkId.Undeployed] as const ],
-  ['dev', [ledger.NetworkId.DevNet, runtime.NetworkId.DevNet]] as const,
-  ['test', [ledger.NetworkId.TestNet, runtime.NetworkId.TestNet]] as const,
-  [MAINNET_MONIKER.toLocaleLowerCase(), [ledger.NetworkId.MainNet, runtime.NetworkId.MainNet]] as const
-);
-
-/**
- * Converts a {@link NetworkId} to a legacy 'Ledger' `NetworkId`.
- *
- * @param self The network identifier.
- * @returns A `NetworkId` value from the `'@midnight-ntwrk/ledger'` package that represents `self`.
- * 
- * @deprecated This will be removed in version 0.1.
- */
-export const asLedgerLegacy: (self: NetworkId) => ledger.NetworkId =
-  (self) => {
-    const networkIds = Option.getOrThrow(HashMap.get(monikerMap, self.toString()));
-    return networkIds[0];
-  };
-
-/**
- * Converts a {@link NetworkId} to a legacy 'Runtime' `NetworkId`.
- *
- * @param self The network identifier.
- * @returns A `NetworkId` value from the `'@midnight-ntwrk/compact-runtime'` package that represents `self`.
- *
- * @deprecated This will be removed in version 0.1.
- */
-export const asRuntimeLegacy: (self: NetworkId) => ledger.NetworkId =
-  (self) => {
-    const networkIds = Option.getOrThrow(HashMap.get(monikerMap, self.toString()));
-    return networkIds[1];
-  };
