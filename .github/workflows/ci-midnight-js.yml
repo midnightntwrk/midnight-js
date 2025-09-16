@@ -30,7 +30,7 @@ jobs:
     if: inputs.should_run == 'true'
     uses: ./.github/workflows/ci-base.yml
     with:
-      yarn_filter: --filter="./packages/*"
+      yarn_filter: --filter="@midnight-ntwrk/midnight-js*"
       yarn_lint_paths: ./packages
     secrets: inherit
 

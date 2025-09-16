@@ -29,7 +29,7 @@ on:
         type: string
         description: Optional filter to include when running Yarn (i.e., --filter=...)
         required: false
-        default: '--filter="./testkit-js/*"'
+        default: '--filter="@midnight-ntwrk/testkit-js*"'
       yarn_lint_paths:
         type: string
         description: Optional paths to include when running 'yarn lint'' (i.e., ./packages)
