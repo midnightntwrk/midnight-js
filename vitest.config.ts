@@ -23,7 +23,7 @@ export default defineConfig({
     globals: true,
     coverage: {
       enabled: true,
-      clean: true,
+      clean: false, // Don't clean coverage between runs to allow merging
       provider: 'v8',
       reporter: ['html', 'text', 'lcov', 'json', 'json-summary'],
       reportsDirectory: 'coverage',
