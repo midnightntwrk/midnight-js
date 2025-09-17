@@ -53,7 +53,6 @@ export const serializeCoinInfo = (coinInfo: CoinInfo): string => {
 };
 
 export const serializeQualifiedCoinInfo = (coinInfo: QualifiedCoinInfo): string => {
-
   const { mt_index: _, ...rest } = coinInfo;
   return serializeCoinInfo(rest);
 };
