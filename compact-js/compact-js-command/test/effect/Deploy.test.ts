@@ -28,6 +28,7 @@ import * as MockConsole from './MockConsole.js';
 const COUNTER_CONFIG_FILEPATH = resolve(import.meta.dirname, '../contract/counter/contract.config.ts');
 const COUNTER_OUTPUT_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_deploy.bin');
 const COUNTER_OUTPUT_PS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_deploy.json');
+const COUNTER_OUTPUT_ZSWAP_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_zswap.json');
 
 const testLayer: Layer.Layer<ConfigCompiler.ConfigCompiler | NodeContext.NodeContext> =
   Effect.gen(function* () {
@@ -47,7 +48,8 @@ describe('Deploy Command', () => {
         'node', 'deploy.ts',
         '-c', COUNTER_CONFIG_FILEPATH,
         '--output', COUNTER_OUTPUT_FILEPATH,
-        '--output-ps', COUNTER_OUTPUT_PS_FILEPATH
+        '--output-ps', COUNTER_OUTPUT_PS_FILEPATH,
+        '--output-zswap', COUNTER_OUTPUT_ZSWAP_FILEPATH
       ]);
 
       const lines = yield* MockConsole.getLines({ stripAnsi: true });
@@ -57,6 +59,7 @@ describe('Deploy Command', () => {
       Effect.ensuring(ensureRemovePath(COUNTER_CONFIG_FILEPATH.replace('.ts', '.js'))),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
+      Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_ZSWAP_FILEPATH)),
       Effect.provide(testLayer)
     ),
     30_000
