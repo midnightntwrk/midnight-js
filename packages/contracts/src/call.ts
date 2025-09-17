@@ -19,6 +19,7 @@ import {
   type CoinPublicKey,
   type ContractAddress,
   type ContractState,
+  CostModel,
   decodeZswapLocalState,
   emptyZswapLocalState,
   type Op,
@@ -26,7 +27,7 @@ import {
   type StateValue,
   type ZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
-import { CostModel, type Transcript, type ZswapChainState } from '@midnight-ntwrk/ledger-v6';
+import { type Transcript, type ZswapChainState } from '@midnight-ntwrk/ledger-v6';
 import { LedgerParameters, partitionTranscripts, PreTranscript } from '@midnight-ntwrk/ledger-v6';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type {
