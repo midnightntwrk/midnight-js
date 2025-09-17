@@ -53,7 +53,6 @@ export const serializeCoinInfo = (coinInfo: CoinInfo): string => {
 };
 
 export const serializeQualifiedCoinInfo = (coinInfo: QualifiedCoinInfo): string => {
-
   const { mt_index: _, ...rest } = coinInfo;
   return serializeCoinInfo(rest);
 };
@@ -123,7 +122,7 @@ export const unprovenOfferFromMap = <U extends UnprovenInput | UnprovenOutput | 
 export const zswapStateToOffer = (
   zswapLocalState: ZswapLocalState,
   encryptionPublicKey: EncPublicKey,
-  params?: { contractAddress: ContractAddress; zswapChainState: ZswapChainState }
+  addressAndChainStateTuple?: { contractAddress: ContractAddress; zswapChainState: ZswapChainState }
 ): UnprovenOffer => {
   const unprovenOutputs = new Map<string, UnprovenOutput>(
     zswapLocalState.outputs.map((output) => [
@@ -143,15 +142,15 @@ export const zswapStateToOffer = (
       );
       unprovenOutputs.delete(serializedCoinInfo);
     } else {
-      assertDefined(params, `Only outputs or transients are expected when no chain state is provided`);
-      assertIsContractAddress(params.contractAddress);
+      assertDefined(addressAndChainStateTuple, `Only outputs or transients are expected when no chain state is provided`);
+      assertIsContractAddress(addressAndChainStateTuple.contractAddress);
       unprovenInputs.set(
         serializedCoinInfo,
         UnprovenInput.newContractOwned(
           qualifiedCoinInfo,
           DEFAULT_SEGMENT_NUMBER,
-          params.contractAddress,
-          params.zswapChainState
+          addressAndChainStateTuple.contractAddress,
+          addressAndChainStateTuple.zswapChainState
         )
       );
     }
