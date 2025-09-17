@@ -43,10 +43,13 @@ import {
 
 const arbitraryBytes = fc.uint8Array({ minLength: 32, maxLength: 32 });
 
-
 const arbitraryValue = fc.bigInt({ min: 0n, max: (1n << 64n) - 1n });
 
+const arbitraryPositiveValue = fc.bigInt({ min: 1n, max: (1n << 64n) - 1n });
+
 const arbitraryNativeCoinInfo = arbitraryValue.map((value) => createCoinInfo(nativeToken(), value));
+
+const arbitraryPositiveNativeCoinInfo = arbitraryPositiveValue.map((value) => createCoinInfo(nativeToken(), value));
 
 const arbitraryHex = arbitraryBytes.map(toHex);
 
@@ -58,6 +61,10 @@ const arbitraryTokenType = fc.boolean().map(() => sampleTokenType());
 
 const arbitraryCoinInfo = fc
   .tuple(arbitraryTokenType, arbitraryValue)
+  .map(([tokenType, value]) => createCoinInfo(tokenType, value));
+
+const arbitraryPositiveCoinInfo = fc
+  .tuple(arbitraryTokenType, arbitraryPositiveValue)
   .map(([tokenType, value]) => createCoinInfo(tokenType, value));
 
 const arbitraryQualifiedCoinInfo = fc.record({
@@ -86,7 +93,7 @@ const arbitraryRecipient = fc.oneof(arbitraryContractRecipient, arbitraryNonCont
 const randomOutputData = () =>
   sampleOne(
     fc.record({
-      coinInfo: arbitraryCoinInfo,
+      coinInfo: arbitraryPositiveCoinInfo,
       recipient: arbitraryNonContractRecipient
     })
   );
@@ -211,28 +218,27 @@ describe('Zswap utilities', () => {
     recipient: Recipient,
     preExistingCoins: (QualifiedCoinInfo | CoinInfo)[]
   ): fc.Arbitrary<[QualifiedCoinInfo[], { recipient: Recipient; coinInfo: CoinInfo }[]]> =>
-    fc.array(arbitraryNativeCoinInfo.filter(distinctFrom(preExistingCoins))).map((matchingOutputsNoRecipient) => [
+      fc.array(arbitraryPositiveNativeCoinInfo.filter(distinctFrom(preExistingCoins)), { minLength: 0 }).map((matchingOutputsNoRecipient) => [
       withZeroMtIndex(matchingOutputsNoRecipient), // matching inputs
       toOutputData(recipient, matchingOutputsNoRecipient) // matching outputs
     ]);
 
   const arbitraryZswapScenario = fc
-    // TODO: Generalize to arbitrary recipients to capture scenarios where no inputs are created.
-    .tuple(arbitraryContractRecipient, fc.array(arbitraryValue))
+    .tuple(arbitraryContractRecipient, fc.array(arbitraryPositiveValue, { minLength: 1 }))
     .chain(([recipient, values]) => {
       const { nonMatchingInputs, zswapChainState } = zswapChainStateWithNonMatchingInputs(recipient, values);
       return fc
-        .array(arbitraryNativeCoinInfo.filter(distinctFrom(nonMatchingInputs)))
+        .array(arbitraryPositiveNativeCoinInfo.filter(distinctFrom(nonMatchingInputs)), { minLength: 0 })
         .chain((nonMatchingOutputsNoRecipient) =>
           arbitraryMatchingInputOutputPairs(recipient, nonMatchingOutputsNoRecipient.concat(nonMatchingInputs)).chain(
             ([matchingInputs, matchingOutputs]) => {
               const nonMatchingOutputs = toOutputData(recipient, nonMatchingOutputsNoRecipient);
-              return fc.boolean().map((useParams) => {
+              return fc.boolean().map((useAddressAndChainStateTuple) => {
                 return {
                   zswapChainState,
                   // only count non-matching inputs if we're calling 'zswapStateToOffer' with optional parameters
-                  expectedInputCount: useParams ? nonMatchingInputs.length : 0,
-                  expectedInputsSum: useParams ? sum(nonMatchingInputs) : 0n,
+                  expectedInputCount: useAddressAndChainStateTuple ? nonMatchingInputs.length : 0,
+                  expectedInputsSum: useAddressAndChainStateTuple ? sum(nonMatchingInputs) : 0n,
                   expectedOutputCount: nonMatchingOutputsNoRecipient.length,
                   expectedOutputsSum: sum(nonMatchingOutputs),
                   expectedTransientCount: matchingOutputs.length,
@@ -240,10 +246,10 @@ describe('Zswap utilities', () => {
                     currentIndex: 0n,
                     coinPublicKey: randomCoinPublicKey(),
                     // only count non-matching inputs if we're calling 'zswapStateToOffer' with optional parameters
-                    inputs: useParams ? nonMatchingInputs.concat(matchingInputs) : matchingInputs,
+                    inputs: useAddressAndChainStateTuple ? nonMatchingInputs.concat(matchingInputs) : matchingInputs,
                     outputs: nonMatchingOutputs.concat(matchingOutputs)
                   },
-                  params: useParams
+                  addressAndChainStateTuple: useAddressAndChainStateTuple
                     ? {
                         contractAddress: recipient.right, // the recipient of all spendable outputs
                         zswapChainState // chain state containing spendable outputs
@@ -256,27 +262,26 @@ describe('Zswap utilities', () => {
         );
     });
 
-  test('expected number of inputs, outputs, and transients are created', () =>
+  test('expected number of inputs, outputs, and transients are created [@slow]', () =>
     fc.assert(
       fc.property(
         arbitraryZswapScenario,
         ({
-          expectedInputCount, // number of inputs expected to be produced
-          expectedInputsSum, // sum of the value of all expected inputs produced
-          expectedOutputCount, // number of outputs expected to be produced
-          expectedOutputsSum, // sum of the value of all expected outputs produced
-          expectedTransientCount, // number of transients expected to be produced
-          zswapState, // state of zswap witnesses consistent with the above data
-          params
+          expectedInputCount,
+          expectedInputsSum,
+          expectedOutputCount,
+          expectedOutputsSum,
+          expectedTransientCount,
+          zswapState,
+          addressAndChainStateTuple
         }) => {
-          const unprovenOffer = zswapStateToOffer(zswapState, randomEncryptionPublicKey(), params);
+          const unprovenOffer = zswapStateToOffer(zswapState, randomEncryptionPublicKey(), addressAndChainStateTuple);
           expect(unprovenOffer.outputs.length).toBe(expectedOutputCount);
           expect(unprovenOffer.inputs.length).toBe(expectedInputCount);
           expect(unprovenOffer.transient.length).toBe(expectedTransientCount);
 
           const delta = unprovenOffer.deltas.get(nativeToken());
-          if (params) {
-            // we only count non-matching inputs if we called 'zswapStateToOffer' with additional parameters
+          if (addressAndChainStateTuple) {
             const expectedDelta = expectedInputsSum - expectedOutputsSum;
             if (expectedInputCount > 0 && expectedOutputCount > 0 && expectedDelta !== 0n) {
               expect(delta).toBe(expectedDelta);
@@ -305,7 +310,7 @@ describe('Zswap utilities', () => {
     const arbitraryScenario = arbitraryCoinPublicKey.chain((walletCoinPublicKey) =>
       fc.record<ScenarioData>({
         walletCoinPublicKey: fc.constant(walletCoinPublicKey),
-        outputsForWallet: fc.array(arbitraryCoinInfo).map((coins) =>
+        outputsForWallet: fc.array(arbitraryPositiveCoinInfo, { minLength: 1 }).map((coins) =>
           coins.map((coinInfo) => ({
             coinInfo,
             recipient: {
@@ -316,7 +321,7 @@ describe('Zswap utilities', () => {
           }))
         ),
         outputsNotForWallet: fc
-          .array(fc.tuple(arbitraryCoinInfo, arbitraryRecipient))
+          .array(fc.tuple(arbitraryPositiveCoinInfo, arbitraryRecipient), { minLength: 0 })
           .map((coinsAndRecipients) => coinsAndRecipients.map(([coinInfo, recipient]) => ({ coinInfo, recipient })))
       })
     );
@@ -336,9 +341,7 @@ describe('Zswap utilities', () => {
     );
   });
 
-
-  describe('Zswap utilities - inputs/outputs/transients', () => {
-    // Test empty state - handles the failing case
+  describe('Edge cases for inputs, outputs, and transients', () => {
     test('returns undefined for empty zswap state', () => {
       const emptyZswapState = {
         currentIndex: 0n,
@@ -351,7 +354,6 @@ describe('Zswap utilities', () => {
       expect(result).toBeDefined();
     });
 
-    // Test outputs only
     test('creates correct number of outputs when no inputs', () => {
       const outputData = randomOutputData();
       const zswapState = {
@@ -368,8 +370,7 @@ describe('Zswap utilities', () => {
       expect(result!.transient.length).toBe(0);
     });
 
-    // Test inputs with params
-    test('creates correct number of inputs when params provided', () => {
+    test('creates correct number of inputs when addressAndChainStateTuple provided', () => {
       const recipient = sampleOne(arbitraryContractRecipient);
       const { zswapChainState, nonMatchingInputs } = zswapChainStateWithNonMatchingInputs(recipient, [100n]);
 
@@ -380,39 +381,18 @@ describe('Zswap utilities', () => {
         outputs: []
       };
 
-      const params = {
+      const addressAndChainStateTuple = {
         contractAddress: recipient.right,
         zswapChainState
       };
 
-      const result = zswapStateToOffer(zswapState, randomEncryptionPublicKey(), params);
+      const result = zswapStateToOffer(zswapState, randomEncryptionPublicKey(), addressAndChainStateTuple);
       expect(result).toBeDefined();
       expect(result!.inputs.length).toBe(1);
       expect(result!.outputs.length).toBe(0);
       expect(result!.transient.length).toBe(0);
     });
 
-    // Test transients (matching inputs/outputs)
-    test('creates transients for matching inputs and outputs', () => {
-      const recipient = sampleOne(arbitraryContractRecipient);
-      const coinInfo = sampleOne(arbitraryNativeCoinInfo);
-      const qualifiedCoinInfo = { ...coinInfo, mt_index: 0n };
-
-      const zswapState = {
-        currentIndex: 0n,
-        coinPublicKey: randomCoinPublicKey(),
-        inputs: [qualifiedCoinInfo],
-        outputs: [{ recipient, coinInfo }]
-      };
-
-      const result = zswapStateToOffer(zswapState, randomEncryptionPublicKey());
-      expect(result).toBeDefined();
-      expect(result!.inputs.length).toBe(0);
-      expect(result!.outputs.length).toBe(0);
-      expect(result!.transient.length).toBe(1);
-    });
-
-    // Test mixed scenario
     test('handles mixed inputs, outputs, and transients', () => {
       const recipient = sampleOne(arbitraryContractRecipient);
       const { zswapChainState, nonMatchingInputs } = zswapChainStateWithNonMatchingInputs(recipient, [50n]);
@@ -431,45 +411,194 @@ describe('Zswap utilities', () => {
         ]
       };
 
-      const params = {
+      const addressAndChainStateTuple = {
         contractAddress: recipient.right,
         zswapChainState
       };
 
-      const result = zswapStateToOffer(zswapState, randomEncryptionPublicKey(), params);
+      const result = zswapStateToOffer(zswapState, randomEncryptionPublicKey(), addressAndChainStateTuple);
       expect(result).toBeDefined();
       expect(result!.inputs.length).toBe(1); // nonMatchingInputs
       expect(result!.outputs.length).toBe(1); // outputCoinInfo
       expect(result!.transient.length).toBe(1); // transientCoinInfo
     });
 
-    // Test delta calculations
-    test('calculates correct deltas', () => {
-      const recipient = sampleOne(arbitraryContractRecipient);
-      const { zswapChainState, nonMatchingInputs } = zswapChainStateWithNonMatchingInputs(recipient, [100n]);
+    test('empty state produces no inputs, outputs, or transients', () => {
+      const emptyZswapState = {
+        currentIndex: 0n,
+        coinPublicKey: randomCoinPublicKey(),
+        inputs: [],
+        outputs: []
+      };
 
-      const outputData = {
-        recipient,
+      const result = zswapStateToOffer(emptyZswapState, randomEncryptionPublicKey());
+
+      expect(result.inputs.length).toBe(0);
+      expect(result.outputs.length).toBe(0);
+      expect(result.transient.length).toBe(0);
+      expect(result.deltas.get(nativeToken())).toBeUndefined();
+    });
+
+    test('zero value outputs are handled correctly', () => {
+      const zeroValueOutput = {
+        recipient: sampleOne(arbitraryContractRecipient),
+        coinInfo: createCoinInfo(nativeToken(), 0n)
+      };
+
+      const zswapState = {
+        currentIndex: 0n,
+        coinPublicKey: randomCoinPublicKey(),
+        inputs: [],
+        outputs: [zeroValueOutput]
+      };
+
+      const result = zswapStateToOffer(zswapState, randomEncryptionPublicKey());
+
+      expect(result.outputs.length).toBe(1);
+      expect(result.inputs.length).toBe(0);
+      expect(result.transient.length).toBe(0);
+      expect(result.deltas.get(nativeToken()), result.toString()).toBe(0n);
+    });
+
+    test('zero value inputs with addressAndChainStateTuple are handled correctly', () => {
+      const recipient = sampleOne(arbitraryContractRecipient);
+      const { zswapChainState } = zswapChainStateWithNonMatchingInputs(recipient, [0n]);
+      const zeroValueInput = { ...createCoinInfo(nativeToken(), 0n), mt_index: 0n };
+
+      const zswapState = {
+        currentIndex: 0n,
+        coinPublicKey: randomCoinPublicKey(),
+        inputs: [zeroValueInput],
+        outputs: []
+      };
+
+      const addressAndChainStateTuple = {
+        contractAddress: recipient.right,
+        zswapChainState
+      };
+
+      const result = zswapStateToOffer(zswapState, randomEncryptionPublicKey(), addressAndChainStateTuple);
+
+      expect(result.inputs.length).toBe(1);
+      expect(result.outputs.length).toBe(0);
+      expect(result.transient.length).toBe(0);
+      expect(result.deltas.get(nativeToken()), result.toString()).toBe(0n);
+    });
+
+    test('single matching input-output pair creates transient', () => {
+      const recipient = sampleOne(arbitraryContractRecipient);
+      const coinInfo = createCoinInfo(nativeToken(), 100n);
+      const qualifiedInput = { ...coinInfo, mt_index: 0n };
+      const output = { recipient, coinInfo };
+
+      const zswapState = {
+        currentIndex: 0n,
+        coinPublicKey: randomCoinPublicKey(),
+        inputs: [qualifiedInput],
+        outputs: [output]
+      };
+
+      const result = zswapStateToOffer(zswapState, randomEncryptionPublicKey());
+
+      expect(result.inputs.length).toBe(0);
+      expect(result.outputs.length).toBe(0);
+      expect(result.transient.length).toBe(1);
+      expect(result.deltas.get(nativeToken())).toBeUndefined();
+    });
+
+    test('zero value matching pair creates transient with zero delta', () => {
+      const recipient = sampleOne(arbitraryContractRecipient);
+      const coinInfo = createCoinInfo(nativeToken(), 0n);
+      const qualifiedInput = { ...coinInfo, mt_index: 0n };
+      const output = { recipient, coinInfo };
+
+      const zswapState = {
+        currentIndex: 0n,
+        coinPublicKey: randomCoinPublicKey(),
+        inputs: [qualifiedInput],
+        outputs: [output]
+      };
+
+      const result = zswapStateToOffer(zswapState, randomEncryptionPublicKey());
+
+      expect(result.inputs.length).toBe(0);
+      expect(result.outputs.length).toBe(0);
+      expect(result.transient.length).toBe(1);
+      expect(result.deltas.get(nativeToken()), result.toString()).toBeUndefined();
+    });
+
+    test('only outputs without addressAndChainStateTuple produces negative delta', () => {
+      const output = {
+        recipient: sampleOne(arbitraryContractRecipient),
         coinInfo: createCoinInfo(nativeToken(), 50n)
       };
 
       const zswapState = {
         currentIndex: 0n,
         coinPublicKey: randomCoinPublicKey(),
-        inputs: nonMatchingInputs,
-        outputs: [outputData]
+        inputs: [],
+        outputs: [output]
       };
 
-      const params = {
+      const result = zswapStateToOffer(zswapState, randomEncryptionPublicKey());
+
+      expect(result.outputs.length).toBe(1);
+      expect(result.inputs.length).toBe(0);
+      expect(result.transient.length).toBe(0);
+      expect(result.deltas.get(nativeToken())).toBe(-50n);
+    });
+
+    test('only inputs with addressAndChainStateTuple produces positive delta', () => {
+      const recipient = sampleOne(arbitraryContractRecipient);
+      const { zswapChainState, nonMatchingInputs } = zswapChainStateWithNonMatchingInputs(recipient, [75n]);
+
+      const zswapState = {
+        currentIndex: 0n,
+        coinPublicKey: randomCoinPublicKey(),
+        inputs: nonMatchingInputs,
+        outputs: []
+      };
+
+      const addressAndChainStateTuple = {
         contractAddress: recipient.right,
         zswapChainState
       };
 
-      const result = zswapStateToOffer(zswapState, randomEncryptionPublicKey(), params);
-      expect(result).toBeDefined();
+      const result = zswapStateToOffer(zswapState, randomEncryptionPublicKey(), addressAndChainStateTuple);
 
-      const delta = result!.deltas.get(nativeToken());
-      expect(delta).toBe(50n); // 100n input - 50n output = 50n delta
+      expect(result.inputs.length).toBe(1);
+      expect(result.outputs.length).toBe(0);
+      expect(result.transient.length).toBe(0);
+      expect(result.deltas.get(nativeToken())).toBe(75n);
+    });
+
+    test('balanced inputs and outputs with addressAndChainStateTuple produces zero delta', () => {
+      const recipient = sampleOne(arbitraryContractRecipient);
+      const { zswapChainState, nonMatchingInputs } = zswapChainStateWithNonMatchingInputs(recipient, [100n]);
+
+      const output = {
+        recipient,
+        coinInfo: createCoinInfo(nativeToken(), 100n)
+      };
+
+      const zswapState = {
+        currentIndex: 0n,
+        coinPublicKey: randomCoinPublicKey(),
+        inputs: nonMatchingInputs,
+        outputs: [output]
+      };
+
+      const addressAndChainStateTuple = {
+        contractAddress: recipient.right,
+        zswapChainState
+      };
+
+      const result = zswapStateToOffer(zswapState, randomEncryptionPublicKey(), addressAndChainStateTuple);
+
+      expect(result.inputs.length).toBe(1);
+      expect(result.outputs.length).toBe(1);
+      expect(result.transient.length).toBe(0);
+      expect(result.deltas.get(nativeToken()), result.toString()).toBe(0n);
     });
   });
 });
