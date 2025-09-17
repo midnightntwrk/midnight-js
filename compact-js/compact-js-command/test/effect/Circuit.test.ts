@@ -29,6 +29,7 @@ const COUNTER_CONFIG_FILEPATH = resolve(import.meta.dirname, '../contract/counte
 const COUNTER_STATE_FILEPATH = resolve(import.meta.dirname, '../contract/counter/state.bin');
 const COUNTER_OUTPUT_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_circuit.bin');
 const COUNTER_OUTPUT_PS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_circuit.json');
+const COUNTER_OUTPUT_ZSWAP_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_zswap.json');
 
 const testLayer: Layer.Layer<ConfigCompiler.ConfigCompiler | NodeContext.NodeContext | FileSystem.FileSystem> =
   Effect.gen(function* () {
@@ -55,6 +56,7 @@ describe('Circuit Command', () => {
         '-c', COUNTER_CONFIG_FILEPATH,
         '--output', COUNTER_OUTPUT_FILEPATH,
         '--output-ps', COUNTER_OUTPUT_PS_FILEPATH,
+        '--output-zswap', COUNTER_OUTPUT_ZSWAP_FILEPATH,
         '--state-file-path', COUNTER_STATE_FILEPATH,
         '--ps-state-file-path', COUNTER_OUTPUT_PS_FILEPATH,
         '0a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a', 'increment'
@@ -68,6 +70,7 @@ describe('Circuit Command', () => {
       Effect.ensuring(ensureRemovePath(COUNTER_CONFIG_FILEPATH.replace('.ts', '.js'))),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
+      Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_ZSWAP_FILEPATH)),
       Effect.provide(testLayer)
     ),
     30_000

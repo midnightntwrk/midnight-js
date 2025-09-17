@@ -23,6 +23,7 @@ import {
   createConstructorContext,
   decodeZswapLocalState,
   emptyZswapLocalState,
+  encodeZswapLocalState,
   type Op,
   QueryContext,
   sampleSigningKey,
@@ -102,6 +103,8 @@ export declare namespace ContractExecutable {
     readonly contractState: ContractState;
 
     readonly privateState: PS;
+
+    readonly zswapLocalState?: ZswapLocalState;
   };
 
   export type DeployResultPublic = {
@@ -314,7 +317,9 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
               ...circuit(
                 {
                   currentPrivateState: circuitContext.privateState,
-                  currentZswapLocalState: emptyZswapLocalState(CoinPublicKey.asHex(keyConfig.coinPublicKey)),
+                  currentZswapLocalState: circuitContext.zswapLocalState
+                    ? encodeZswapLocalState(circuitContext.zswapLocalState)
+                    : emptyZswapLocalState(CoinPublicKey.asHex(keyConfig.coinPublicKey)),
                   transactionContext: initialTxContext,
                   costModel: CostModel.initialCostModel()
                 },
