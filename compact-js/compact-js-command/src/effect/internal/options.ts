@@ -58,6 +58,12 @@ export const outputPrivateStateFilePath = Options.file('output-ps').pipe(
 );
 
 /** @internal */
+export const outputZswapLocalStateFilePath = Options.file('output-zswap').pipe(
+  Options.withDescription('A file path of where the generated \'ZswapLocalState\' data should be written.'),
+  Options.withDefault('zswap.json')
+);
+
+/** @internal */
 export const network = Options.text('network').pipe(
   Options.withAlias('n'),
   Options.withDescription('Optional network identifier. Defaults to the Midnight \'MainNet\' if not specified.'),
@@ -72,6 +78,12 @@ export const stateFilePath = Options.file('state-file-path').pipe(
 /** @internal */
 export const privateStateFilePath = Options.file('ps-state-file-path').pipe(
   Options.withDescription('A file path of where the current private state data can be read.')
+);
+
+/** @internal */
+export const zswapLocalStateFilePath = Options.file('zswap-state-file-path').pipe(
+  Options.withDescription('A file path of where the current Zswap local state data can be read.'),
+  Options.optional
 );
 
 export type ConfigOptionInput = Command.Command.ParseConfig<{

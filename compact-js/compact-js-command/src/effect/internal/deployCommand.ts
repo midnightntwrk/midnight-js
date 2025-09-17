@@ -16,16 +16,17 @@
 import { type Command } from '@effect/cli';
 import { FileSystem, Path } from '@effect/platform';
 import { type ContractExecutable, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
-import { type ContractState } from '@midnight-ntwrk/compact-runtime';
+import { type ContractState, encodeZswapLocalState } from '@midnight-ntwrk/compact-runtime';
 import {
   ContractDeploy,
   ContractState as LedgerContractState,
   Intent} from '@midnight-ntwrk/ledger';
-import { type ConfigError, Duration,Effect } from 'effect';
+import { type ConfigError, Duration, Effect, Schema } from 'effect';
 
 import { type ConfigCompiler } from '../ConfigCompiler.js';
 import * as InternalArgs from './args.js';
 import * as InternalCommand from './command.js';
+import { EncodedZswapLocalStateSchema } from './encodedZswapLocalStateSchema.js'
 import * as InternalOptions from './options.js';
 
 /** @internal */
@@ -42,8 +43,11 @@ export const Options = {
   signingKey: InternalOptions.signingKey,
   network: InternalOptions.network,
   outputFilePath: InternalOptions.outputFilePath,
-  outputPrivateStateFilePath: InternalOptions.outputPrivateStateFilePath
+  outputPrivateStateFilePath: InternalOptions.outputPrivateStateFilePath,
+  outputZswapLocalStateFilePath: InternalOptions.outputZswapLocalStateFilePath
 }
+
+const encodeZswapLocalStateObject = Schema.encodeUnknown(EncodedZswapLocalStateSchema);
 
 const asLedgerContractState = (contractState: ContractState): LedgerContractState =>
   LedgerContractState.deserialize(contractState.serialize());
@@ -61,6 +65,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     const { module: { default: contractModule } } = moduleSpec;
     const intentOutputFilePath = path.resolve(inputs.outputFilePath);
     const privateStateOutputFilePath = path.resolve(inputs.outputPrivateStateFilePath);
+    const outputZswapLocalStateFilePath = path.resolve(inputs.outputZswapLocalStateFilePath);
     const result = yield* contractModule.contractExecutable.initialize(
       contractModule.createInitialPrivateState(),
       ...inputs.args
@@ -70,6 +75,12 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
 
     yield* fs.writeFile(intentOutputFilePath, intent.serialize());
     yield* fs.writeFileString(privateStateOutputFilePath, JSON.stringify(result.private.privateState));
+    yield* fs.writeFileString(
+      outputZswapLocalStateFilePath,
+      JSON.stringify(
+        yield* encodeZswapLocalStateObject(encodeZswapLocalState(result.private.zswapLocalState))
+      )
+    );
   }).pipe(
     Effect.mapError(
       (err) => ContractRuntimeError.make('Failed to initialize contract', err)

@@ -16,7 +16,8 @@
 import { type Command } from '@effect/cli';
 import { FileSystem, Path } from '@effect/platform';
 import { Contract, type ContractExecutable, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
-import { ContractState } from '@midnight-ntwrk/compact-runtime';
+import { ContractState, decodeZswapLocalState, type EncodedZswapLocalState,
+  encodeZswapLocalState } from '@midnight-ntwrk/compact-runtime';
 import {
   communicationCommitmentRandomness,
   ContractCallPrototype,
@@ -24,11 +25,12 @@ import {
   ContractState as LedgerContractState,
   Intent
 } from '@midnight-ntwrk/ledger';
-import { type ConfigError, Duration,Effect } from 'effect';
+import { type ConfigError, Duration, Effect, Option, Schema } from 'effect';
 
 import { type ConfigCompiler } from '../ConfigCompiler.js';
 import * as InternalArgs from './args.js';
 import * as InternalCommand from './command.js';
+import { EncodedZswapLocalStateSchema } from './encodedZswapLocalStateSchema.js'
 import * as InternalOptions from './options.js';
 
 /** @internal */
@@ -48,10 +50,15 @@ export const Options = {
   coinPublicKey: InternalOptions.coinPublicKey,
   stateFilePath: InternalOptions.stateFilePath,
   privateStateFilePath: InternalOptions.privateStateFilePath,
+  zswapLocalStateFilePath: InternalOptions.zswapLocalStateFilePath,
   network: InternalOptions.network,
   outputFilePath: InternalOptions.outputFilePath,
-  outputPrivateStateFilePath: InternalOptions.outputPrivateStateFilePath
+  outputPrivateStateFilePath: InternalOptions.outputPrivateStateFilePath,
+  outputZswapLocalStateFilePath: InternalOptions.outputZswapLocalStateFilePath
 }
+
+const encodeZswapLocalStateObject = Schema.encodeUnknown(EncodedZswapLocalStateSchema);
+const decodeZswapLocalStateObject = Schema.decodeUnknown(EncodedZswapLocalStateSchema);
 
 const asContractState = (contractState: LedgerContractState): ContractState =>
   ContractState.deserialize(contractState.serialize());
@@ -64,7 +71,17 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     Path.Path | FileSystem.FileSystem
   > =
   (
-    { address, circuitId, args, stateFilePath, privateStateFilePath, outputFilePath, outputPrivateStateFilePath },
+    {
+      address,
+      circuitId,
+      args,
+      stateFilePath,
+      privateStateFilePath,
+      zswapLocalStateFilePath,
+      outputFilePath,
+      outputPrivateStateFilePath,
+      outputZswapLocalStateFilePath
+    },
     moduleSpec
   ) => Effect.gen(function* () {
     const path = yield* Path.Path;
@@ -72,14 +89,25 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     const { module: { default: contractModule } } = moduleSpec;
     const intentOutputFilePath = path.resolve(outputFilePath);
     const privateStateOutputFilePath = path.resolve(outputPrivateStateFilePath);
+    const zswapLocalStateOutputFilePath = path.resolve(outputZswapLocalStateFilePath);
     const ledgerContractState = LedgerContractState.deserialize(yield* fs.readFile(path.resolve(stateFilePath)));
     const privateState = JSON.parse(yield* fs.readFileString(privateStateFilePath));
+    const encodedZswapLocalState = Option.map(
+      zswapLocalStateFilePath,
+      (filePath) => fs.readFileString(filePath).pipe(
+        Effect.flatMap((str) => decodeZswapLocalStateObject(JSON.parse(str))
+      ))
+    );
+
     const result = yield* contractModule.contractExecutable.circuit(
       Contract.ImpureCircuitId(circuitId),
       {
         address,
         contractState: asContractState(ledgerContractState),
-        privateState: privateState ?? contractModule.createInitialPrivateState()
+        privateState: privateState ?? contractModule.createInitialPrivateState(),
+        zswapLocalState: Option.isSome(encodedZswapLocalState)
+          ? decodeZswapLocalState((yield* Option.getOrThrow(encodedZswapLocalState)) as EncodedZswapLocalState)
+          : undefined 
       },
       ...args
     );
@@ -99,6 +127,12 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
 
     yield* fs.writeFile(intentOutputFilePath, intent.serialize());
     yield* fs.writeFileString(privateStateOutputFilePath, JSON.stringify(result.private.privateState));
+    yield* fs.writeFileString(
+      zswapLocalStateOutputFilePath,
+      JSON.stringify(
+        yield* encodeZswapLocalStateObject(encodeZswapLocalState(result.private.zswapLocalState))
+      )
+    );
   }).pipe(
     Effect.mapError(
       (err) => ContractRuntimeError.make('Failed to invoke circuit', err)
