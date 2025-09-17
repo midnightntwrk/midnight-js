@@ -310,7 +310,7 @@ jobs:
     name: E2E Tests Reports
     runs-on: ubuntu-latest
     needs: e2e_tests
-    if: always()
+    if: always() && (needs.e2e_tests.result == 'success' || needs.e2e_tests.result == 'failure')
     steps:
 
       - name: Checkout code
@@ -370,7 +370,7 @@ jobs:
     name: E2E Tests Reports to Allure Server
     runs-on: ubuntu-latest
     needs: e2e_tests
-    if: always()
+    if: always() && (needs.e2e_tests.result == 'success' || needs.e2e_tests.result == 'failure')
     steps:
 
       - name: Download Test Results

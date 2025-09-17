@@ -64,6 +64,7 @@ jobs:
             midnight-js:
               - 'packages/**'
             testkit-js:
+              - 'packages/**'
               - 'testkit-js/**'
 
   ci-midnightjs:
