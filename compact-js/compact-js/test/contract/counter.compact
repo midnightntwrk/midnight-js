@@ -9,7 +9,7 @@ export circuit increment(): [] {
   private_increment();
 }
 
-export circuit decrement(amount: Uint<16>, other: [Uint<16>, Opaque<"string">]): [] {
+export circuit decrement(amount: Uint<16>): [] {
   round.decrement(disclose(amount));
   private_increment();
 }
