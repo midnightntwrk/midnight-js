@@ -75,59 +75,93 @@ const parseArgumentsTest = (
   );
 
 describe.sequential('CompiledContractReflection', () => {
-  it.each([
-    ['bigint', 'abc'],
-    ['boolean', 'maybe']
-  ])('should fail to parse with an invalid argument (%s)', async (type, invalidValue) => {
-    await Effect.runPromise(Effect.gen(function* () {
-      expect(yield* parseArgumentsTest(
-          `a: ${type}`,
-          (_) => _.parseInitializationArgs([invalidValue])
-        ).pipe(Effect.flip)
-      ).toBeInstanceOf(ContractRuntimeError.ContractRuntimeError);
-    }).pipe(Effect.provide(testLayer)));
-  });
-
-  it.each([
-    ['bigint', '100'],
-    ['boolean', 'true'],
-    ['boolean', 'false'],
-    ['string', 'hosky']
-  ])('should parse with a valid argument (%s)', async (type, validString) => {
-    await Effect.runPromise(Effect.gen(function* () {
-      expect(yield* parseArgumentsTest(
-          `a: ${type}`,
-          (_) => _.parseInitializationArgs([validString])
-        )
-      ).toHaveLength(1);
-    }).pipe(Effect.provide(testLayer)));
-  });
-
-  it('should parse multiple arguments', async () => {
-    await Effect.runPromise(Effect.gen(function* () {
-      expect(yield* parseArgumentsTest(
-        'a: bigint, b: string, c: boolean',
-        (_) => _.parseInitializationArgs(['100', 'hosky', 'true'])
-      )).toStrictEqual([100n, 'hosky', true]);
-    }).pipe(Effect.provide(testLayer)));
-  });
-
-  it('should fail when parsing an invalid tuple element', async () => {
-    await Effect.runPromise(Effect.gen(function* () {
+  describe('argument parsing', () => {
+    it.each([
+      ['bigint', 'abc'],
+      ['boolean', 'maybe']
+    ])('should fail to parse with an invalid argument (%s)', async (type, invalidValue) => {
+      await Effect.runPromise(Effect.gen(function* () {
         expect(yield* parseArgumentsTest(
-          'a: [bigint, boolean]',
-          (_) => _.parseInitializationArgs(['[100, maybe]'])
-        ).pipe(Effect.flip)
-      ).toBeInstanceOf(ContractRuntimeError.ContractRuntimeError)
-    }).pipe(Effect.provide(testLayer)));
-  });
+            `a: ${type}`,
+            (_) => _.parseInitializationArgs([invalidValue])
+          ).pipe(Effect.flip)
+        ).toBeInstanceOf(ContractRuntimeError.ContractRuntimeError);
+      }).pipe(Effect.provide(testLayer)));
+    });
 
-  it('should parse multiple valid tuple type elements', async () => {
-    await Effect.runPromise(Effect.gen(function* () {
-      expect(yield* parseArgumentsTest(
-        'a: [bigint, string, boolean]',
-        (_) => _.parseInitializationArgs(["[100, 'hosky', true]"])
-      )).toStrictEqual([[100n, 'hosky', true]]);
-    }).pipe(Effect.provide(testLayer)));
+    it.each([
+      ['bigint', '100'],
+      ['boolean', 'true'],
+      ['boolean', 'false'],
+      ['string', 'hosky'],
+      ['Uint8Array', 'ffffff']
+    ])('should parse with a valid argument (%s)', async (type, validString) => {
+      await Effect.runPromise(Effect.gen(function* () {
+        expect(yield* parseArgumentsTest(
+            `a: ${type}`,
+            (_) => _.parseInitializationArgs([validString])
+          )
+        ).toHaveLength(1);
+      }).pipe(Effect.provide(testLayer)));
+    });
+
+    it('should parse multiple arguments', async () => {
+      await Effect.runPromise(Effect.gen(function* () {
+        expect(yield* parseArgumentsTest(
+          'a: bigint, b: string, c: boolean',
+          (_) => _.parseInitializationArgs(['100', 'hosky', 'true'])
+        )).toStrictEqual([100n, 'hosky', true]);
+      }).pipe(Effect.provide(testLayer)));
+    });
+
+    it('should fail when parsing an invalid tuple element', async () => {
+      await Effect.runPromise(Effect.gen(function* () {
+          expect(yield* parseArgumentsTest(
+            'a: [bigint, boolean]',
+            (_) => _.parseInitializationArgs(['[100, maybe]'])
+          ).pipe(Effect.flip)
+        ).toBeInstanceOf(ContractRuntimeError.ContractRuntimeError)
+      }).pipe(Effect.provide(testLayer)));
+    });
+
+    it('should parse multiple valid tuple type elements', async () => {
+      await Effect.runPromise(Effect.gen(function* () {
+        expect(yield* parseArgumentsTest(
+          'a: [bigint, string, boolean]',
+          (_) => _.parseInitializationArgs(["[100, 'hosky', true]"])
+        )).toStrictEqual([[100n, 'hosky', true]]);
+      }).pipe(Effect.provide(testLayer)));
+    });
+
+    it('should parse object literal type elements', async () => {
+      await Effect.runPromise(Effect.gen(function* () {
+        const parsedArgs = yield* parseArgumentsTest(
+          'a: { x: Uint8Array; y: bigint; z: string; }',
+          (_) => _.parseInitializationArgs(["{ x: 'ffffff', y: 100, z: 'hosky' }"])
+        );
+        expect(parsedArgs[0].x).toBeInstanceOf(Uint8Array);
+        expect(parsedArgs[0]).toMatchObject({ y: 100n, z: 'hosky' });
+      }).pipe(Effect.provide(testLayer)));
+    });
+
+    it('should parse object literal type elements containing tuple types', async () => {
+      await Effect.runPromise(Effect.gen(function* () {
+        expect(yield* parseArgumentsTest(
+          'a: { x: [bigint, string]; y: string; }',
+          (_) => _.parseInitializationArgs(["{ x: [100, 'doggo'], y: 'hosky' }"])
+        )).toStrictEqual({ x: [100n, 'doggo'], y: 'hosky' });
+      }).pipe(Effect.provide(testLayer)));
+    });
+
+    it('should parse nested object literal type elements', async () => {
+      await Effect.runPromise(Effect.gen(function* () {
+        const parsedArgs = yield* parseArgumentsTest(
+          'a: { x: Uint8Array; y: { y1: bigint, y2: string  }; z: string; }',
+          (_) => _.parseInitializationArgs(["{ x: 'ffffff', y: { y1: 200, y2: 'doggo' }, z: 'hosky' }"])
+        );
+        expect(parsedArgs[0].x).toBeInstanceOf(Uint8Array);
+        expect(parsedArgs[0]).toMatchObject({ y: { y1: 200n, y2: 'doggo' }, z: 'hosky' });
+      }).pipe(Effect.provide(testLayer)));
+    });
   });
 });
