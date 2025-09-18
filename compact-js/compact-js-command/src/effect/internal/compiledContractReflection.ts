@@ -17,15 +17,14 @@ import { FileSystem, Path } from '@effect/platform';
 import { CompiledContract, type Contract, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
 import * as Hex from '@midnight-ntwrk/platform-js/effect/Hex'
 import { Effect, Either, identity, Layer } from 'effect';
-import TS from 'typescript';
 import * as JSON5 from 'json5';
+import TS from 'typescript';
 
 import * as CompiledContractReflection from "../CompiledContractReflection.js";
 
 const CONTRACT_FOLDER = 'contract';
 const CONTRACT_DECLARATION_FILE = 'index.d.cts';
 const TRUE_OR_FALSE_REGEXP = /^true|false$/;
-const TUPLE_REGEXP = /('[^']*'|\d+|true|false)/gm
 
 type FileSnapshot = {
   file: TS.IScriptSnapshot;
