@@ -48,7 +48,7 @@ const reportCausableError: (err: any) => Effect.Effect<void, never> =
         if (Doc.isDoc(errOrDoc)) {
           return docs.push(errOrDoc);
         }
-        docs.push(Doc.text(err.message));
+        docs.push(Doc.text(errOrDoc.message));
         if (errOrDoc.cause) {
           buildCauseDoc(errOrDoc.cause);
         }
@@ -66,7 +66,6 @@ const reportCausableError: (err: any) => Effect.Effect<void, never> =
         ]))
       ) as Doc.AnsiDoc
     }
-    const _a = Doc.render(errorDoc, {style: 'pretty'});
     yield* Console.log(Doc.render(errorDoc, {style: 'pretty'}));
     process.exit(1); // Terminate with non-zero exit code on any causable error.
   });
