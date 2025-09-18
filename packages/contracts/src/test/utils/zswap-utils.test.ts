@@ -15,19 +15,24 @@
 
 import { fc } from '@fast-check/vitest';
 import { type Recipient } from '@midnight-ntwrk/compact-runtime';
-import { type CoinPublicKey, type QualifiedShieldedCoinInfo, type ShieldedCoinInfo, shieldedToken } from '@midnight-ntwrk/ledger-v6';
 import {
+  type CoinPublicKey,
   createShieldedCoinInfo,
   nativeToken,
+  type QualifiedShieldedCoinInfo,
   sampleCoinPublicKey,
   sampleContractAddress,
+  sampleEncryptionPublicKey,
   sampleRawTokenType,
+  type ShieldedCoinInfo,
+  shieldedToken,
   Transaction,
   ZswapChainState,
   ZswapOffer} from '@midnight-ntwrk/ledger-v6';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
+import { expect } from 'vitest';
 
 import {
   createZswapOutput,
@@ -315,11 +320,12 @@ describe('Zswap utilities', () => {
           addressAndChainStateTuple
         }) => {
           const unprovenOffer = zswapStateToOffer(zswapState, randomEncryptionPublicKey(), addressAndChainStateTuple);
-          expect(unprovenOffer.outputs.length).toBe(expectedOutputCount);
-          expect(unprovenOffer.inputs.length).toBe(expectedInputCount);
-          expect(unprovenOffer.transient.length).toBe(expectedTransientCount);
+          expect(unprovenOffer).toBeDefined();
+          expect(unprovenOffer!.outputs.length).toBe(expectedOutputCount);
+          expect(unprovenOffer!.inputs.length).toBe(expectedInputCount);
+          expect(unprovenOffer!.transients.length).toBe(expectedTransientCount);
 
-          const delta = unprovenOffer.deltas.get(nativeToken());
+          const delta = unprovenOffer!.deltas.get(nativeToken().raw);
           if (addressAndChainStateTuple) {
             const expectedDelta = expectedInputsSum - expectedOutputsSum;
             if (expectedInputCount > 0 && expectedOutputCount > 0 && expectedDelta !== 0n) {
@@ -406,7 +412,7 @@ describe('Zswap utilities', () => {
       expect(result).toBeDefined();
       expect(result!.outputs.length).toBe(1);
       expect(result!.inputs.length).toBe(0);
-      expect(result!.transient.length).toBe(0);
+      expect(result!.transients.length).toBe(0);
     });
 
     test('creates correct number of inputs when addressAndChainStateTuple provided', () => {
@@ -429,7 +435,7 @@ describe('Zswap utilities', () => {
       expect(result).toBeDefined();
       expect(result!.inputs.length).toBe(1);
       expect(result!.outputs.length).toBe(0);
-      expect(result!.transient.length).toBe(0);
+      expect(result!.transients.length).toBe(0);
     });
 
     test('handles mixed inputs, outputs, and transients', () => {
@@ -459,7 +465,7 @@ describe('Zswap utilities', () => {
       expect(result).toBeDefined();
       expect(result!.inputs.length).toBe(1); // nonMatchingInputs
       expect(result!.outputs.length).toBe(1); // outputCoinInfo
-      expect(result!.transient.length).toBe(1); // transientCoinInfo
+      expect(result!.transients.length).toBe(1); // transientCoinInfo
     });
 
     test('empty state produces no inputs, outputs, or transients', () => {
@@ -472,16 +478,16 @@ describe('Zswap utilities', () => {
 
       const result = zswapStateToOffer(emptyZswapState, randomEncryptionPublicKey());
 
-      expect(result.inputs.length).toBe(0);
-      expect(result.outputs.length).toBe(0);
-      expect(result.transient.length).toBe(0);
-      expect(result.deltas.get(nativeToken())).toBeUndefined();
+      expect(result!.inputs.length).toBe(0);
+      expect(result!.outputs.length).toBe(0);
+      expect(result!.transients.length).toBe(0);
+      expect(result!.deltas.get(nativeToken().raw)).toBeUndefined();
     });
 
     test('zero value outputs are handled correctly', () => {
       const zeroValueOutput = {
         recipient: sampleOne(arbitraryContractRecipient),
-        coinInfo: createCoinInfo(nativeToken(), 0n)
+        coinInfo: createShieldedCoinInfo(nativeToken().raw, 0n)
       };
 
       const zswapState = {
@@ -493,17 +499,17 @@ describe('Zswap utilities', () => {
 
       const result = zswapStateToOffer(zswapState, randomEncryptionPublicKey());
 
-      expect(result.outputs.length).toBe(1);
-      expect(result.inputs.length).toBe(0);
-      expect(result.transient.length).toBe(0);
+      expect(result!.outputs.length).toBe(1);
+      expect(result!.inputs.length).toBe(0);
+      expect(result!.transients.length).toBe(0);
       // BUG: PM-19382 - delta should be 0, but is currently undefined
-      expect(result.deltas.get(nativeToken()), result.toString()).toBe(undefined);
+      expect(result!.deltas.get(nativeToken().raw), result!.toString()).toBe(undefined);
     });
 
     test('zero value inputs with addressAndChainStateTuple are handled correctly', () => {
       const recipient = sampleOne(arbitraryContractRecipient);
       const { zswapChainState } = zswapChainStateWithNonMatchingInputs(recipient, [0n]);
-      const zeroValueInput = { ...createCoinInfo(nativeToken(), 0n), mt_index: 0n };
+      const zeroValueInput = { ...createShieldedCoinInfo(nativeToken().raw, 0n), mt_index: 0n };
 
       const zswapState = {
         currentIndex: 0n,
@@ -519,16 +525,16 @@ describe('Zswap utilities', () => {
 
       const result = zswapStateToOffer(zswapState, randomEncryptionPublicKey(), addressAndChainStateTuple);
 
-      expect(result.inputs.length).toBe(1);
-      expect(result.outputs.length).toBe(0);
-      expect(result.transient.length).toBe(0);
+      expect(result!.inputs.length).toBe(1);
+      expect(result!.outputs.length).toBe(0);
+      expect(result!.transients.length).toBe(0);
       // BUG: PM-19382 - delta should be 0, but is currently undefined
-      expect(result.deltas.get(nativeToken()), result.toString()).toBe(undefined);
+      expect(result!.deltas.get(nativeToken().raw), result!.toString()).toBe(undefined);
     });
 
     test('single matching input-output pair creates transient', () => {
       const recipient = sampleOne(arbitraryContractRecipient);
-      const coinInfo = createCoinInfo(nativeToken(), 100n);
+      const coinInfo = createShieldedCoinInfo(nativeToken().raw, 100n);
       const qualifiedInput = { ...coinInfo, mt_index: 0n };
       const output = { recipient, coinInfo };
 
@@ -541,15 +547,15 @@ describe('Zswap utilities', () => {
 
       const result = zswapStateToOffer(zswapState, randomEncryptionPublicKey());
 
-      expect(result.inputs.length).toBe(0);
-      expect(result.outputs.length).toBe(0);
-      expect(result.transient.length).toBe(1);
-      expect(result.deltas.get(nativeToken())).toBeUndefined();
+      expect(result!.inputs.length).toBe(0);
+      expect(result!.outputs.length).toBe(0);
+      expect(result!.transients.length).toBe(1);
+      expect(result!.deltas.get(nativeToken().raw)).toBeUndefined();
     });
 
     test('zero value matching pair creates transient with zero delta', () => {
       const recipient = sampleOne(arbitraryContractRecipient);
-      const coinInfo = createCoinInfo(nativeToken(), 0n);
+      const coinInfo = createShieldedCoinInfo(nativeToken().raw, 0n);
       const qualifiedInput = { ...coinInfo, mt_index: 0n };
       const output = { recipient, coinInfo };
 
@@ -562,16 +568,16 @@ describe('Zswap utilities', () => {
 
       const result = zswapStateToOffer(zswapState, randomEncryptionPublicKey());
 
-      expect(result.inputs.length).toBe(0);
-      expect(result.outputs.length).toBe(0);
-      expect(result.transient.length).toBe(1);
-      expect(result.deltas.get(nativeToken()), result.toString()).toBeUndefined();
+      expect(result!.inputs.length).toBe(0);
+      expect(result!.outputs.length).toBe(0);
+      expect(result!.transients.length).toBe(1);
+      expect(result!.deltas.get(nativeToken().raw), result!.toString()).toBeUndefined();
     });
 
     test('only outputs without addressAndChainStateTuple produces negative delta', () => {
       const output = {
         recipient: sampleOne(arbitraryContractRecipient),
-        coinInfo: createCoinInfo(nativeToken(), 50n)
+        coinInfo: createShieldedCoinInfo(nativeToken().raw, 50n)
       };
 
       const zswapState = {
@@ -583,10 +589,10 @@ describe('Zswap utilities', () => {
 
       const result = zswapStateToOffer(zswapState, randomEncryptionPublicKey());
 
-      expect(result.outputs.length).toBe(1);
-      expect(result.inputs.length).toBe(0);
-      expect(result.transient.length).toBe(0);
-      expect(result.deltas.get(nativeToken())).toBe(-50n);
+      expect(result!.outputs.length).toBe(1);
+      expect(result!.inputs.length).toBe(0);
+      expect(result!.transients.length).toBe(0);
+      expect(result!.deltas.get(nativeToken().raw)).toBe(-50n);
     });
 
     test('only inputs with addressAndChainStateTuple produces positive delta', () => {
@@ -607,10 +613,10 @@ describe('Zswap utilities', () => {
 
       const result = zswapStateToOffer(zswapState, randomEncryptionPublicKey(), addressAndChainStateTuple);
 
-      expect(result.inputs.length).toBe(1);
-      expect(result.outputs.length).toBe(0);
-      expect(result.transient.length).toBe(0);
-      expect(result.deltas.get(nativeToken())).toBe(75n);
+      expect(result!.inputs.length).toBe(1);
+      expect(result!.outputs.length).toBe(0);
+      expect(result!.transients.length).toBe(0);
+      expect(result!.deltas.get(nativeToken().raw)).toBe(75n);
     });
 
     test('balanced inputs and outputs with addressAndChainStateTuple produces zero delta', () => {
@@ -619,7 +625,7 @@ describe('Zswap utilities', () => {
 
       const output = {
         recipient,
-        coinInfo: createCoinInfo(nativeToken(), 100n)
+        coinInfo: createShieldedCoinInfo(nativeToken().raw, 100n)
       };
 
       const zswapState = {
@@ -636,11 +642,11 @@ describe('Zswap utilities', () => {
 
       const result = zswapStateToOffer(zswapState, randomEncryptionPublicKey(), addressAndChainStateTuple);
 
-      expect(result.inputs.length).toBe(1);
-      expect(result.outputs.length).toBe(1);
-      expect(result.transient.length).toBe(0);
+      expect(result!.inputs.length).toBe(1);
+      expect(result!.outputs.length).toBe(1);
+      expect(result!.transients.length).toBe(0);
       // BUG: PM-19382 - delta should be 0, but is currently undefined
-      expect(result.deltas.get(nativeToken()), result.toString()).toBe(undefined);
+      expect(result!.deltas.get(nativeToken().raw), result!.toString()).toBe(undefined);
     });
   });
 });
