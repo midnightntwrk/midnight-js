@@ -208,7 +208,7 @@ export const invocationHandler: <
       const { moduleImportDirectoryPath, module: { default: contractModule } } = moduleSpec;
       const contractRuntime = ContractExecutableRuntime.make(
         layer(
-          CommandConfigProvider.make(contractModule.config, InternalOptions.asConfigProvider(inputs)),
+          CommandConfigProvider.make(contractModule.config ?? {}, InternalOptions.asConfigProvider(inputs)),
           moduleImportDirectoryPath
         )
       );
