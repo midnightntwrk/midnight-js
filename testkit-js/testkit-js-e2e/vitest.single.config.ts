@@ -14,6 +14,7 @@
  */
 
 import { defineConfig } from 'vitest/config';
+
 import * as baseConfig from './vitest.config';
 
 const testFile = process.env.MN_TEST_FILE;
