@@ -23,7 +23,7 @@
     "test:unit": "turbo run test --filter='!@midnight-ntwrk/testkit-*'",
     "it": "turbo run it",
     "e2e": "turbo run e2e",
-    "e2e-groups": "turbo run e2e-groups",
+    "e2e-single": "turbo run e2e-single",
     "check": "turbo run check && yarn lint",
     "check:core": "turbo run check --filter='!@midnight-ntwrk/testkit-*' && yarn lint",
     "deploy": "turbo run deploy",

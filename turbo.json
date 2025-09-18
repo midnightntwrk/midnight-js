@@ -36,7 +36,7 @@
       "inputs": ["src/**/*.ts", "compose.yml"],
       "outputs": ["reports/**", "coverage/**", "logs/**"]
     },
-    "e2e-groups": {
+    "e2e-single": {
       "outputLogs": "new-only",
       "dependsOn": ["^build"],
       "inputs": ["src/**/*.ts", "compose.yml"],

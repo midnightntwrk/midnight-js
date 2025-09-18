@@ -214,15 +214,31 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
+  generate-test-matrix:
+    runs-on: ubuntu-latest
+    needs: ci
+    outputs:
+      test-files: ${{ steps.generate-matrix.outputs.test-files }}
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # ratchet:actions/checkout@v5
+
+      - name: Generate test matrix
+        id: generate-matrix
+        run: |
+          cd testkit-js/testkit-js-e2e/test
+          TEST_FILES=$(ls *.test.ts | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "test-files=$TEST_FILES" >> $GITHUB_OUTPUT
+          echo "Generated test matrix: $TEST_FILES"
+
   e2e_tests:
     name: E2E Tests
     runs-on: ubuntu-latest-8-core-x64
-    needs: ci
+    needs: [ci, generate-test-matrix]
     timeout-minutes: ${{ inputs.build_timeout }}
     strategy:
       fail-fast: false
       matrix:
-        group: [group1, group2, group3, group4, group5, group6, group7, group8, group9, group10]
+        test-file: ${{ fromJson(needs.generate-test-matrix.outputs.test-files) }}
     steps:
 
       - name: Checkout code
@@ -291,19 +307,19 @@ jobs:
       - name: Post-Install dependencies
         run: yarn postinstall
 
-      - name: Run e2e tests - Group ${{ matrix.group }}
+      - name: Run e2e tests - ${{ matrix.test-file }}
         if: ${{ !contains(github.event.head_commit.message, '[skip_it]') }}
-        run: yarn e2e-groups ${{ inputs.yarn_filter }} --concurrency 1 --cache-dir ./turbo
+        run: yarn e2e-single ${{ inputs.yarn_filter }} --concurrency 1 --cache-dir ./turbo
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           MN_TEST_ENVIRONMENT: ${{ inputs.network }}
-          MN_TEST_GROUP: ${{ matrix.group }}
+          MN_TEST_FILE: ${{ matrix.test-file }}
 
       - name: Upload Test Results
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # ratchet:actions/upload-artifact@v4
         if: always()
         with:
-          name: test-results-${{ matrix.group }}
+          name: test-results-${{ matrix.test-file }}
           path: testkit-js/testkit-js-e2e/reports/
 
   e2e_tests_reports:
@@ -319,15 +335,19 @@ jobs:
       - name: Download Test Results
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # ratchet:actions/download-artifact@v4
         with:
-          pattern: test-results-group*
+          pattern: test-results-*
           path: test-results
 
       - name: Merge CTRF Results
         if: always()
         run: |
           mkdir ctrf-results
-          mv test-results/test-results-*/ctrf-*.json ctrf-results/
-          npx ctrf merge ctrf-results --output ./ctrf-report-merged.json
+          find test-results -name "ctrf-*.json" -exec cp {} ctrf-results/ \;
+          if [ "$(ls -A ctrf-results)" ]; then
+            npx ctrf merge ctrf-results --output ./ctrf-report-merged.json
+          else
+            echo "No CTRF results found"
+          fi
 
       - name: Publish Test Report
         if: always()
@@ -355,9 +375,13 @@ jobs:
         if: always()
         run: |
           mkdir junit-results
-          mv test-results/test-results-*/*.xml junit-results/
-          npm install -g junit-report-merger
-          jrm junit-test-results.xml junit-results/*.xml
+          find test-results -name "*.xml" -exec cp {} junit-results/ \;
+          if [ "$(ls -A junit-results)" ]; then
+            npm install -g junit-report-merger
+            jrm junit-test-results.xml junit-results/*.xml
+          else
+            echo "No JUnit results found"
+          fi
 
       - name: Upload Test Results
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # ratchet:actions/upload-artifact@v4
@@ -376,7 +400,7 @@ jobs:
       - name: Download Test Results
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # ratchet:actions/download-artifact@v4
         with:
-          pattern: test-results-group*
+          pattern: test-results-*
           path: test-results
 
       - name: Send Results to Allure Server
