@@ -16,7 +16,7 @@
 import { FileSystem, Path } from '@effect/platform';
 import { CompiledContract, type Contract, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
 import * as Hex from '@midnight-ntwrk/platform-js/effect/Hex'
-import { Effect, Either, Layer } from 'effect';
+import { Effect, Either, identity, Layer } from 'effect';
 import TS from 'typescript';
 import * as JSON5 from 'json5';
 
@@ -109,14 +109,15 @@ const transformParams: (
           continue;
         }
         if (type!.kind === TS.SyntaxKind.TupleType) {
-          const tupleElems = args[idx].match(TUPLE_REGEXP);
+          const tupleElems = JSON5.parse(args[idx]);
           transformedArgs.push(
-            Either.getOrThrow(
+            Either.getOrThrowWith(
               transformParams(
-                tupleElems as string[],
+                tupleElems.map(JSON5.stringify),
                 (type as TS.TupleTypeNode).elements.map((_) => _ as TS.TypeNode),
                 true
-              )
+              ),
+              identity // Rethrow the error from `transformParams`.
             )
           );
           continue;
@@ -127,15 +128,10 @@ const transformParams: (
           for (const member of typeLiteral.members) {
             const propKey = ((member as TS.PropertySignature).name as TS.Identifier).escapedText.valueOf() as string;
             const propType = (member as TS.PropertySignature).type!;
-            const memberValue = Either.getOrThrow(transformParams(
-              [
-                propType.kind === TS.SyntaxKind.TypeLiteral || propType.kind === TS.SyntaxKind.TupleType
-                  ? JSON5.stringify(srcObj[propKey]) 
-                  : String(srcObj[propKey])
-              ],
-              [propType],
-              true
-            ));
+            const memberValue = Either.getOrThrowWith(
+              transformParams([JSON5.stringify(srcObj[propKey])], [propType], true),
+              identity // Rethrow the error from `transformParams`.
+            );
             srcObj[propKey] = memberValue[0];
           }
           transformedArgs.push(srcObj);
@@ -144,7 +140,7 @@ const transformParams: (
         if (type!.kind === TS.SyntaxKind.TypeReference) {
           const typeName = (type as TS.TypeReferenceNode).typeName;
           if (TS.isIdentifier(typeName) && typeName.escapedText === 'Uint8Array') {
-            transformedArgs.push(Either.match(Hex.parseHex(args[idx]), {
+            transformedArgs.push(Either.match(Hex.parseHex(quotedStrings ? args[idx].replaceAll('\'', '') : args[idx]), {
               onRight: (parsedHex) => Buffer.from(parsedHex.byteChars, 'hex'),
               onLeft: (parseErr) => { 
                 throw new SyntaxError(`Cannot convert ${args[idx]} to a Uint8Array: ${parseErr.message}`);

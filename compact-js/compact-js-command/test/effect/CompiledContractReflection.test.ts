@@ -133,6 +133,16 @@ describe.sequential('CompiledContractReflection', () => {
       }).pipe(Effect.provide(testLayer)));
     });
 
+    it('should parse nested tuple type elements', async () => {
+      await Effect.runPromise(Effect.gen(function* () {
+        expect(yield* parseArgumentsTest(
+          'a: [bigint, [string, boolean], boolean]',
+          (_) => _.parseInitializationArgs(["[100, ['hosky', false], true]"])
+        )).toStrictEqual([[100n, ['hosky', false], true]]);
+      }).pipe(Effect.provide(testLayer)));
+    });
+
+
     it('should parse object literal type elements', async () => {
       await Effect.runPromise(Effect.gen(function* () {
         const parsedArgs = yield* parseArgumentsTest(
@@ -149,7 +159,7 @@ describe.sequential('CompiledContractReflection', () => {
         expect(yield* parseArgumentsTest(
           'a: { x: [bigint, string]; y: string; }',
           (_) => _.parseInitializationArgs(["{ x: [100, 'doggo'], y: 'hosky' }"])
-        )).toStrictEqual({ x: [100n, 'doggo'], y: 'hosky' });
+        )).toStrictEqual([{ x: [100n, 'doggo'], y: 'hosky' }]);
       }).pipe(Effect.provide(testLayer)));
     });
 
