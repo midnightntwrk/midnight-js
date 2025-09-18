@@ -90,6 +90,7 @@ describe.sequential('CompiledContractReflection', () => {
     });
 
     it.each([
+      ['number', '3'],
       ['bigint', '100'],
       ['boolean', 'true'],
       ['boolean', 'false'],

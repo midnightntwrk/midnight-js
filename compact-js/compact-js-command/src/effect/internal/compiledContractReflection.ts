@@ -94,6 +94,10 @@ const transformParams: (
       const type = types[idx];
       
       try {
+        if (type!.kind === TS.SyntaxKind.NumberKeyword) {
+          transformedArgs.push(Number(args[idx]))
+          continue;
+        }
         if (type!.kind === TS.SyntaxKind.BigIntKeyword) {
           transformedArgs.push(BigInt(args[idx]))
           continue;
