@@ -207,7 +207,7 @@ expect(stateAfter.value).toEqual(stateBefore.value + 1);
 yarn e2e              # Run all E2E tests locally
 yarn e2e-debug        # Run with debug output  
 yarn e2e-testnet      # Run against testnet
-yarn e2e-groups       # Run in test groups (designed to run in multiple CI runners in parallel)
+yarn e2e-single       # Run single test file (requires MN_TEST_FILE environment variable)
 ```
 
 ### Configuration
@@ -215,8 +215,8 @@ yarn e2e-groups       # Run in test groups (designed to run in multiple CI runne
 #### Timeouts
 ```typescript
 // config/vitest.e2e.config.ts
-testTimeout: 60_000,      // 1 minute default
-hookTimeout: 2 * 60_000,  // 2 minutes for setup/teardown
+testTimeout: 60_000     // 1 minute default
+hookTimeout: 2 * 60_000  // 2 minutes for setup/teardown
 
 // For slow tests
 const SLOW_TEST_TIMEOUT = 5 * 60_000; // 5 minutes
