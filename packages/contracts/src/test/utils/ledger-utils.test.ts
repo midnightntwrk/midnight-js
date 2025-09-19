@@ -20,6 +20,7 @@ import {
   QueryContext
 } from '@midnight-ntwrk/compact-runtime';
 import {
+  MaintenanceUpdate,
   type PublicAddress,
   sampleCoinPublicKey,
   sampleContractAddress,
@@ -191,7 +192,7 @@ describe('ledger-utils', () => {
 
   it('contractMaintenanceAuthority without contract state starts at 0', () => {
     const authority = contractMaintenanceAuthority(dummySigningKey);
-    
+
     expect(authority.counter).toBe(0n);
     expect(authority.threshold).toBe(1);
     expect(authority.committee.length).toBe(1);
@@ -215,27 +216,29 @@ describe('ledger-utils', () => {
       replaceAuthority(dummySigningKey, dummyContractState),
       removeVerifierKey('circuit1')
     ];
-    
+
     const tx = unprovenTxFromContractUpdates(
       dummyContractAddress,
       updates,
       dummyContractState2,
       dummySigningKey2
     );
-    
-    expect(tx).toBeInstanceOf(UnprovenTransaction);
+
+    expect(tx).toBeInstanceOf(Transaction);
+    expect(tx.intents?.get(1)?.actions.at(0), tx.toString()).toBeInstanceOf(MaintenanceUpdate);
+    expect((tx.intents?.get(1)?.actions.at(0) as MaintenanceUpdate).updates.length).toEqual(2);
   });
 
   it('createUnprovenRemoveVerifierKeyTx with Uint8Array operation', () => {
     const opBytes = new Uint8Array([5, 6, 7, 8]);
     const tx = createUnprovenRemoveVerifierKeyTx(dummyContractAddress, opBytes, dummyContractState, dummySigningKey);
-    expect(tx).toBeInstanceOf(UnprovenTransaction);
+    expect(tx).toBeInstanceOf(Transaction);
   });
 
   it('replaceAuthority with different contract states', () => {
     const ra1 = replaceAuthority(dummySigningKey, dummyContractState);
     const ra2 = replaceAuthority(dummySigningKey2, dummyContractState2);
-    
+
     expect(ra1).toBeDefined();
     expect(ra2).toBeDefined();
     expect(ra1.authority.threshold).toBe(1);
@@ -245,7 +248,7 @@ describe('ledger-utils', () => {
   it('contractMaintenanceAuthority handles different signing keys', () => {
     const authority1 = contractMaintenanceAuthority(dummySigningKey);
     const authority2 = contractMaintenanceAuthority(dummySigningKey2);
-    
+
     expect(authority1).toBeDefined();
     expect(authority2).toBeDefined();
     expect(authority1.threshold).toBe(authority2.threshold);
