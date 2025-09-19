@@ -14,15 +14,17 @@
  */
 
 import type { FileSystem, Path } from '@effect/platform';
+import { type PlatformError } from '@effect/platform/Error';
 import { NodeContext } from '@effect/platform-node';
 import * as Ansi from '@effect/printer-ansi/Ansi';
 import * as Doc from '@effect/printer-ansi/AnsiDoc';
 import { type ContractExecutable, ContractExecutableRuntime,type ZKConfiguration } from '@midnight-ntwrk/compact-js/effect';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
-import { ConfigError as EffectConfigError, type ConfigProvider, Console, DateTime, type Duration,Effect,Layer } from 'effect';
+import { ConfigError as EffectConfigError, type ConfigProvider, Console, DateTime, type Duration, Effect, Layer } from 'effect';
 
 import * as CommandConfigProvider from '../CommandConfigProvider.js';
+import * as CompiledContractReflection from '../CompiledContractReflection.js';
 import * as ConfigCompilationError from '../ConfigCompilationError.js';
 import * as ConfigCompiler from '../ConfigCompiler.js';
 import type * as ConfigError from '../ConfigError.js';
@@ -46,7 +48,7 @@ const reportCausableError: (err: any) => Effect.Effect<void, never> =
         if (Doc.isDoc(errOrDoc)) {
           return docs.push(errOrDoc);
         }
-        docs.push(Doc.text(err.message));
+        docs.push(Doc.text(errOrDoc.message));
         if (errOrDoc.cause) {
           buildCauseDoc(errOrDoc.cause);
         }
@@ -117,42 +119,43 @@ const reduceConfigError = (err: EffectConfigError.ConfigError): ReportedConfigEr
  * report for.
  * @returns An `Effect` that writes `err` to the console.
  */
-export const reportContractExecutionError: (err: ContractExecutable.ContractExecutionError | EffectConfigError.ConfigError) =>
-  Effect.Effect<void, never> =
-    (err) => Effect.gen(function* () {
-      if (EffectConfigError.isConfigError(err)) {
-        const [errorType, messages] = reduceConfigError(err);
-        yield* reportCausableError({
-          message: 'Invalid, missing, or unsupported configuration',
-          cause: Doc.vsep(messages.map(Doc.text))
-        });
-        if (errorType & ConfigErrorType.InvalidData || errorType & ConfigErrorType.MissingData) {
-          yield* Console.log();
-          yield* Console.log(Doc.render(
-            Doc.vsep([
-              Doc.text('The reported error indicates that configuration may be missing, or is invalid.'),
-              Doc.text('Check the values provided in the \'config\' property of the specified \'contract.config.ts\' file,'),
-              Doc.text('or the supplied environment variables, or the values supplied as options on the command line.')
-            ]),
-            { style: 'compact' }
-          ));
-        }
-        if (errorType & ConfigErrorType.UnsupportedData) {
-          yield* Console.log();
-          yield* Console.log(Doc.render(
-            Doc.vsep([
-              Doc.text('The reported error indicates that unsupported or incompatible configuration values was detected.'),
-              Doc.text('Check the values (along with their formats and lengths), provided in the \'config\' property of'),
-              Doc.text('the specified \'contract.config.ts\' file, or the supplied environment variables, or the values'),
-              Doc.text('supplied as options on the command line.')
-            ]),
-            { style: 'compact' }
-          ));
-        }
-        return;
+export const reportContractExecutionError: (
+  err: ContractExecutable.ContractExecutionError | EffectConfigError.ConfigError | PlatformError
+) => Effect.Effect<void, never> =
+  (err) => Effect.gen(function* () {
+    if (EffectConfigError.isConfigError(err)) {
+      const [errorType, messages] = reduceConfigError(err);
+      yield* reportCausableError({
+        message: 'Invalid, missing, or unsupported configuration',
+        cause: Doc.vsep(messages.map(Doc.text))
+      });
+      if (errorType & ConfigErrorType.InvalidData || errorType & ConfigErrorType.MissingData) {
+        yield* Console.log();
+        yield* Console.log(Doc.render(
+          Doc.vsep([
+            Doc.text('The reported error indicates that configuration may be missing, or is invalid.'),
+            Doc.text('Check the values provided in the \'config\' property of the specified \'contract.config.ts\' file,'),
+            Doc.text('or the supplied environment variables, or the values supplied as options on the command line.')
+          ]),
+          { style: 'compact' }
+        ));
       }
-      yield* reportCausableError(err);
-    });
+      if (errorType & ConfigErrorType.UnsupportedData) {
+        yield* Console.log();
+        yield* Console.log(Doc.render(
+          Doc.vsep([
+            Doc.text('The reported error indicates that unsupported or incompatible configuration values was detected.'),
+            Doc.text('Check the values (along with their formats and lengths), provided in the \'config\' property of'),
+            Doc.text('the specified \'contract.config.ts\' file, or the supplied environment variables, or the values'),
+            Doc.text('supplied as options on the command line.')
+          ]),
+          { style: 'compact' }
+        ));
+      }
+      return;
+    }
+    yield* reportCausableError(err);
+  });
 
 /**
  * Creates a default layer that provides services for executing Compact contracts via a command line.
@@ -188,7 +191,7 @@ export const invocationHandler: <
     Effect.Effect<
       void,
       ContractExecutable.ContractExecutionError | EffectConfigError.ConfigError,
-      Path.Path | FileSystem.FileSystem | Configuration.Network
+      Path.Path | FileSystem.FileSystem | CompiledContractReflection.CompiledContractReflection
     >
 ) =>
   (inputs: I) =>
@@ -205,13 +208,15 @@ export const invocationHandler: <
       const { moduleImportDirectoryPath, module: { default: contractModule } } = moduleSpec;
       const contractRuntime = ContractExecutableRuntime.make(
         layer(
-          CommandConfigProvider.make(contractModule.config, InternalOptions.asConfigProvider(inputs)),
+          CommandConfigProvider.make(contractModule.config ?? {}, InternalOptions.asConfigProvider(inputs)),
           moduleImportDirectoryPath
         )
       );
 
       yield* handler(inputs, moduleSpec).pipe(
-        Effect.provide(NodeContext.layer),
+        Effect.provide(CompiledContractReflection.layer(moduleImportDirectoryPath).pipe(
+          Layer.provideMerge(NodeContext.layer)
+        )),
         contractRuntime.runFork,
         Effect.catchAll(reportContractExecutionError)
       );

@@ -27,6 +27,7 @@ import {
 } from '@midnight-ntwrk/ledger';
 import { type ConfigError, Duration, Effect, Option, Schema } from 'effect';
 
+import * as CompiledContractReflection from '../CompiledContractReflection.js';
 import { type ConfigCompiler } from '../ConfigCompiler.js';
 import * as InternalArgs from './args.js';
 import * as InternalCommand from './command.js';
@@ -68,7 +69,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
   Effect.Effect<
     void,
     ContractExecutable.ContractExecutionError | ConfigError.ConfigError,
-    Path.Path | FileSystem.FileSystem
+    CompiledContractReflection.CompiledContractReflection | Path.Path | FileSystem.FileSystem
   > =
   (
     {
@@ -87,6 +88,8 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     const path = yield* Path.Path;
     const fs = yield* FileSystem.FileSystem;
     const { module: { default: contractModule } } = moduleSpec;
+    const contractReflector = yield* CompiledContractReflection.CompiledContractReflection;
+    const argsParser = yield* contractReflector.createArgumentParser(contractModule.contractExecutable.compiledContract);
     const intentOutputFilePath = path.resolve(outputFilePath);
     const privateStateOutputFilePath = path.resolve(outputPrivateStateFilePath);
     const zswapLocalStateOutputFilePath = path.resolve(outputZswapLocalStateFilePath);
@@ -109,7 +112,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
           ? decodeZswapLocalState((yield* Option.getOrThrow(encodedZswapLocalState)) as EncodedZswapLocalState)
           : undefined 
       },
-      ...args
+      ...(yield* argsParser.parseCircuitArgs(Contract.ImpureCircuitId(circuitId), args))
     );
     const intent = Intent.new(yield* InternalCommand.ttl(Duration.minutes(10)))
       .addCall(new ContractCallPrototype(

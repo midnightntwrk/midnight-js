@@ -35,7 +35,7 @@ describe('CompiledContract', () => {
 
     it('should require ZK path configuration', () => {
       expect(compiledContract).type.toBeAssignableWith<
-        CompiledContract.CompiledContract<MockCounterContract, any, CompactContext.ZKConfigAssetsPath>
+        CompiledContract.CompiledContract<MockCounterContract, any, CompactContext.CompiledAssetsPath>
       >();
     });
 
@@ -52,11 +52,11 @@ describe('CompiledContract', () => {
     });
 
     describe('with resolved ZK path configuration', () => {
-      const contract = compiledContract.pipe(CompiledContract.withZKConfigFileAssets('~/contracts'));
+      const contract = compiledContract.pipe(CompiledContract.withCompiledFileAssets('~/contracts'));
 
       it('should not require further witnesses', () => {
         expect(contract).type.not.toBeAssignableWith<
-          CompiledContract.CompiledContract<MockCounterContract, any, CompactContext.ZKConfigAssetsPath>
+          CompiledContract.CompiledContract<MockCounterContract, any, CompactContext.CompiledAssetsPath>
         >();
       });
     });
@@ -64,7 +64,7 @@ describe('CompiledContract', () => {
     describe('as fully resolved', () => {
       const contract = compiledContract.pipe(
         CompiledContract.withWitnesses({} as Contract.Contract.Witnesses<MockCounterContract>),
-        CompiledContract.withZKConfigFileAssets('/Users/hosky/compact_contracts/counter')
+        CompiledContract.withCompiledFileAssets('/Users/hosky/compact_contracts/counter')
       );
 
       it('should require no further context', () => {

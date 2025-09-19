@@ -26,7 +26,7 @@ export type TypeId = typeof TypeId;
 
 /** @internal */
 export interface Context<C extends Contract.Any>
-  extends CompactContext.Witnesses<C>, CompactContext.ZKConfigAssetsPath {
+  extends CompactContext.Witnesses<C>, CompactContext.CompiledAssetsPath {
     readonly ctor: Types.Ctor<C>;
   }
 

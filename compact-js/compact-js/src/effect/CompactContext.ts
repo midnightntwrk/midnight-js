@@ -26,11 +26,11 @@ export type Witnesses<in C extends Contract.Any, W = Contract.Witnesses<C>> = {
 };
 
 /**
- * ZK asset path configuration.
+ * Compiled asset path configuration.
  */
-export type ZKConfigAssetsPath = {
+export type CompiledAssetsPath = {
   /**
-   * A path to the compiled ZK assets produced by the Compact compiler.
+   * A path to the compiled assets produced by the Compact compiler.
    */
-  readonly zkConfigAssetsPath: string;
+  readonly compiledAssetsPath: string;
 };

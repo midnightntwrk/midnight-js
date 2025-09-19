@@ -39,6 +39,7 @@ export const circuitCommand = Command.make(
     Command.withHandler(InternalCommand.invocationHandler(InternalCircuitCommand.handler))
   );
 
+export * as CompiledContractReflection from './CompiledContractReflection.js';
 export * as ConfigCompilationError from './ConfigCompilationError.js';
 export * as ConfigCompiler from './ConfigCompiler.js';
 export * as ConfigError from './ConfigError.js';

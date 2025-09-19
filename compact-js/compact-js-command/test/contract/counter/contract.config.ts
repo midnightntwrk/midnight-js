@@ -35,7 +35,7 @@ const createInitialPrivateState: () => PrivateState = () => ({
 export default {
   contractExecutable: CompiledContract.make<CounterContract>('CounterContract', CounterContract).pipe(
     CompiledContract.withWitnesses(witnesses),
-    CompiledContract.withZKConfigFileAssets('../../../../compact-js/test/contract/managed/counter'),
+    CompiledContract.withCompiledFileAssets('../../../../compact-js/test/contract/managed/counter'),
     ContractExecutable.make
   ),
   createInitialPrivateState,

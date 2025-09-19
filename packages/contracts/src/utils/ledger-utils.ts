@@ -53,8 +53,13 @@ export const toLedgerContractState = (contractState: ContractState): LedgerContr
 export const fromLedgerContractState = (contractState: LedgerContractState): ContractState =>
   ContractState.deserialize(contractState.serialize(getLedgerNetworkId()), getRuntimeNetworkId());
 
-export const toLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext =>
-  new LedgerQueryContext(LedgerStateValue.decode(queryContext.state.encode()), queryContext.address);
+export const toLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext => {
+  const ledgerQueryContext = new LedgerQueryContext(LedgerStateValue.decode(queryContext.state.encode()), queryContext.address);
+  // The above method of converting to ledger query context only retains the state. So, we have to set the settable properties manually
+  ledgerQueryContext.block = queryContext.block;
+  ledgerQueryContext.effects = queryContext.effects;
+  return ledgerQueryContext;
+}
 
 const addVerifierKeys = (verifierKeys: [ImpureCircuitId, VerifierKey][], contractState: LedgerContractState): void => {
   verifierKeys.forEach(([impureCircuitId, verifierKey]) => {
@@ -83,7 +88,6 @@ export const contractMaintenanceAuthority = (
 };
 
 const addMaintenanceAuthority = (sk: SigningKey, contractState: LedgerContractState): void => {
-   
   contractState.maintenanceAuthority = contractMaintenanceAuthority(sk);
 };
 

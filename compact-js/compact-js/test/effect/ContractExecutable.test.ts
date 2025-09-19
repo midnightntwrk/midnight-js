@@ -60,7 +60,7 @@ describe('ContractExecutable', () => {
     CompiledContract.withWitnesses({
       private_increment: ({ privateState }) => [{ count: privateState.count + 1 }, []]
     }),
-    CompiledContract.withZKConfigFileAssets(COUNTER_ASSETS_PATH),
+    CompiledContract.withCompiledFileAssets(COUNTER_ASSETS_PATH),
     ContractExecutable.make
   );
 
