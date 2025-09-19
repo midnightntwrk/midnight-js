@@ -12,16 +12,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import type { ImpureCircuitId, MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
 
-import { NetworkId } from './network-id';
-/**
- * An error indicating an unexpected network identifier.
- */
-export class NetworkIdTypeError extends TypeError {
-  /**
-   * @param networkId A string representation of the invalid network identifier.
-   */
-  constructor(public readonly networkId: string) {
-    super(`Invalid network ID: '${networkId}'. Must be one of: ${Object.values(NetworkId).join(', ')}`);
-  }
-}
+import { CompiledUnshielded } from './contract';
+
+export type UnshieldedContract = CompiledUnshielded.Contract<undefined>;
+
+export type UnshieldedContractCircuits = ImpureCircuitId<UnshieldedContract>;
+
+export type UnshieldedContractProviders = MidnightProviders<UnshieldedContractCircuits>;
+
+export const createUnshieldedContract = () : UnshieldedContract => new CompiledUnshielded.Contract({});

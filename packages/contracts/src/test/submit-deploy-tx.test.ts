@@ -35,7 +35,7 @@ import {
 vi.mock('../unproven-deploy-tx');
 vi.mock('../submit-tx');
 vi.mock('@midnight-ntwrk/compact-runtime');
-vi.mock('@midnight-ntwrk/ledger');
+vi.mock('@midnight-ntwrk/ledger-v6');
 
 describe('submit-deploy-tx', () => {
   let mockContract: Contract<undefined>;

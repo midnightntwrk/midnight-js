@@ -13,8 +13,6 @@
  * limitations under the License.
  */
 
-import { NetworkId } from '@midnight-ntwrk/zswap';
-
 import { assertIsHex, isHex, parseCoinPublicKeyToHex, parseEncPublicKeyToHex } from '../hex-utils';
 
 describe('Hex Utils', () => {
@@ -88,7 +86,7 @@ describe('Hex Utils', () => {
 
   // Note that we are not mocking the underlying use of @midnight-ntwrk/wallet-sdk-address-format
   describe('parseCoinPublicKeyToHex', () => {
-    const mockNetworkId = NetworkId.Undeployed;
+    const mockNetworkId = 'undeployed';
 
     describe('with valid inputs', () => {
       it('should return the input if it is a valid hex string', () => {
@@ -114,7 +112,7 @@ describe('Hex Utils', () => {
 
   // Note that we are not mocking the underlying use of @midnight-ntwrk/wallet-sdk-address-format
   describe('parseEncPublicKeyToHex', () => {
-    const mockNetworkId = NetworkId.TestNet;
+    const mockNetworkId = 'test';
 
     describe('with valid inputs', () => {
       it('should return the input if it is a valid hex string', () => {

@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-indexer-public-data-provider",
-  "version": "2.0.2",
+  "version": "2.1.0-rc.1",
   "description": "Implementation of public data provider based on the Midnight Pub-sub indexer",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -17,7 +17,7 @@
   "author": "IOHK",
   "license": "Apache-2.0",
   "scripts": {
-    "gen": "graphql-codegen",
+    "gen": "rm -rf gen && graphql-codegen",
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache",
     "build": "rollup -c rollup.config.mjs",
     "test": "vitest run",
@@ -27,6 +27,7 @@
     "@apollo/client": "^3.13.8",
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
+    "@midnight-ntwrk/midnight-js-utils": "workspace:*",
     "buffer": "^6.0.3",
     "cross-fetch": "^4.0.0",
     "graphql": "^16.8.0",

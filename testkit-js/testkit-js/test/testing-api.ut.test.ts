@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import { NetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import path from 'path';
 import { WebSocket } from 'ws';
 
@@ -60,12 +59,10 @@ describe.concurrent('[Unit tests] Testing API', () => {
     expect(getTestEnvironment(logger)).toBeInstanceOf(EnvVarRemoteTestEnvironment);
   });
 
-  it('should fail on wrong MN_TEST_NETWORK_ID for env var remote test environment', () => {
+  it('should not fail on wrong MN_TEST_NETWORK_ID for env var remote test environment', () => {
     process.env.MN_TEST_ENVIRONMENT = 'env-var-remote';
     process.env.MN_TEST_NETWORK_ID = 'unknown';
-    expect(() => getTestEnvironment(logger)).toThrow(
-      `Invalid network ID: 'unknown'. Must be one of: ${Object.values(NetworkId).join(', ')}`
-    );
+    expect(() => getTestEnvironment(logger)).not.toThrow();
   });
 
   it('should fail on wrong MN_TEST_NETWORK_ID for env var remote test environment', () => {
