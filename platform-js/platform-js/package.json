@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/platform-js",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Provides a set of core abstractions, utilities, and types for building services and libraries that work with the Midnight blockchain",
   "type": "module",
   "exports": {
@@ -21,7 +21,7 @@
     "type": "git",
     "url": "git+ssh://git@github.com/midnight-ntwrk/artifacts.git"
   },
-  "packageManager": "yarn@4.9.2",
+  "packageManager": "yarn@4.10.0",
   "author": "IOHK",
   "license": "Apache-2.0",
   "scripts": {

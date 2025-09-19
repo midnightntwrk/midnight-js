@@ -37,7 +37,7 @@ class StringDep extends Context.Tag('StringDep')<StringDep, string>() {}
 describe('ContractExecutable', () => {
   const compiledContract = CompiledContract.make<MockCounterContract>('MockCounter', MockCounterContract).pipe(
     CompiledContract.withWitnesses({} as Contract.Contract.Witnesses<MockCounterContract>),
-    CompiledContract.withZKConfigFileAssets('/Users/hosky/compact_contracts/counter')
+    CompiledContract.withCompiledFileAssets('/Users/hosky/compact_contracts/counter')
   );
   const contractExecutable = ContractExecutable.make(compiledContract);
 
