@@ -27,6 +27,7 @@
     "@midnight-ntwrk/ledger": "npm:@midnight-ntwrk/ledger-v6@6.1.0-alpha.2",
     "@midnight-ntwrk/platform-js": "^1.0.0",
     "effect": "^3.17.7",
+    "json5": "^2.2.3",
     "ts-node": "^10.9.2"
   },
   "devDependencies": {
