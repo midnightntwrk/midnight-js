@@ -13,7 +13,7 @@
   },
   "author": "IOG",
   "repository": "git@github.com:midnight-ntwrk/artifacts",
-  "packageManager": "yarn@4.9.4",
+  "packageManager": "yarn@4.10.0",
   "license": "MIT",
   "scripts": {
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
