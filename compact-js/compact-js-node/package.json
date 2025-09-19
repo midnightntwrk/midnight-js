@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/compact-js-node",
-  "version": "0.0.0",
+  "version": "2.0.0",
   "description": "Platform specific types and utilities for working with the Compact language on a Node.js runtime",
   "type": "module",
   "exports": {
@@ -16,7 +16,7 @@
     "effect": "^3.17.7"
   },
   "peerDependencies": {
-    "@midnight-ntwrk/compact-js": ">=0.0.0"
+    "@midnight-ntwrk/compact-js": ">=2.0.0"
   },
   "repository": {
     "type": "git",
