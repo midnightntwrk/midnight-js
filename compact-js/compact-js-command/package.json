@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/compact-js-command",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Command line utilities for working with smart contracts compiled with the Compact language",
   "type": "module",
   "exports": {
@@ -21,8 +21,8 @@
     "@effect/rpc": "^0.68.4",
     "@effect/sql": "^0.44.1",
     "@effect/typeclass": "^0.36.0",
-    "@midnight-ntwrk/compact-js": "^2.0.0",
-    "@midnight-ntwrk/compact-js-node": "^2.0.0",
+    "@midnight-ntwrk/compact-js": "^2.1.0",
+    "@midnight-ntwrk/compact-js-node": "^2.1.0",
     "@midnight-ntwrk/compact-runtime": "0.9.0-rc.2",
     "@midnight-ntwrk/ledger": "npm:@midnight-ntwrk/ledger-v6@6.1.0-alpha.2",
     "@midnight-ntwrk/platform-js": "^2.0.0",

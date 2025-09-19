@@ -2178,8 +2178,8 @@ __metadata:
     "@effect/sql": "npm:^0.44.1"
     "@effect/typeclass": "npm:^0.36.0"
     "@effect/vitest": "npm:^0.24.1"
-    "@midnight-ntwrk/compact-js": "npm:^2.0.0"
-    "@midnight-ntwrk/compact-js-node": "npm:^2.0.0"
+    "@midnight-ntwrk/compact-js": "npm:^2.1.0"
+    "@midnight-ntwrk/compact-js-node": "npm:^2.1.0"
     "@midnight-ntwrk/compact-runtime": "npm:0.9.0-rc.2"
     "@midnight-ntwrk/ledger": "npm:@midnight-ntwrk/ledger-v6@6.1.0-alpha.2"
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
@@ -2190,7 +2190,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@midnight-ntwrk/compact-js-node@npm:^2.0.0, @midnight-ntwrk/compact-js-node@workspace:*, @midnight-ntwrk/compact-js-node@workspace:compact-js/compact-js-node":
+"@midnight-ntwrk/compact-js-node@npm:^2.1.0, @midnight-ntwrk/compact-js-node@workspace:*, @midnight-ntwrk/compact-js-node@workspace:compact-js/compact-js-node":
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/compact-js-node@workspace:compact-js/compact-js-node"
   dependencies:
@@ -2198,11 +2198,11 @@ __metadata:
     "@effect/platform-node": "npm:^0.95.0"
     effect: "npm:^3.17.7"
   peerDependencies:
-    "@midnight-ntwrk/compact-js": ">=2.0.0"
+    "@midnight-ntwrk/compact-js": ">=2.1.0"
   languageName: unknown
   linkType: soft
 
-"@midnight-ntwrk/compact-js@npm:^2.0.0, @midnight-ntwrk/compact-js@workspace:compact-js/compact-js":
+"@midnight-ntwrk/compact-js@npm:^2.1.0, @midnight-ntwrk/compact-js@workspace:compact-js/compact-js":
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/compact-js@workspace:compact-js/compact-js"
   dependencies:
