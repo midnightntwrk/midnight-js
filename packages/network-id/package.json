@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-network-id",
-  "version": "2.1.0-rc.1",
+  "version": "2.1.0-rc.2",
   "description": "Package for setting the network ID of runtime and ledger WASM API",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
