@@ -21,13 +21,13 @@ import {
   ContractDeploy,
   ContractState as LedgerContractState,
   Intent} from '@midnight-ntwrk/ledger';
-import { type ConfigError, Duration, Effect, Schema } from 'effect';
+import { type ConfigError, Duration, Effect } from 'effect';
 
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
 import { type ConfigCompiler } from '../ConfigCompiler.js';
 import * as InternalArgs from './args.js';
 import * as InternalCommand from './command.js';
-import { EncodedZswapLocalStateSchema } from './encodedZswapLocalStateSchema.js'
+import { encodeZswapLocalStateObject } from './encodedZswapLocalStateSchema.js'
 import * as InternalOptions from './options.js';
 
 /** @internal */
@@ -44,8 +44,6 @@ export const Options = {
   outputPrivateStateFilePath: InternalOptions.outputPrivateStateFilePath,
   outputZswapLocalStateFilePath: InternalOptions.outputZswapLocalStateFilePath
 }
-
-const encodeZswapLocalStateObject = Schema.encodeUnknown(EncodedZswapLocalStateSchema);
 
 const asLedgerContractState = (contractState: ContractState): LedgerContractState =>
   LedgerContractState.deserialize(contractState.serialize());
