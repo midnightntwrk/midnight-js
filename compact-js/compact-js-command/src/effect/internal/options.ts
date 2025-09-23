@@ -20,9 +20,10 @@ import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
 import { ConfigProvider, Effect, Option,Schema } from 'effect';
 
 /** @internal */
-export const config = Options.file('config').pipe(
+export const config = Options.file('config', { exists: 'either' }).pipe(
   Options.withAlias('c'),
-  Options.optional
+  Options.withDefault('contract.config.ts'),
+  Options.mapEffect((filePath) => Path.Path.pipe(Effect.map((path) => path.resolve(filePath))))
 );
 
 /** @internal */
@@ -45,22 +46,25 @@ export const signingKey = Options.text('signing').pipe(
 );
 
 /** @internal */
-export const outputFilePath = Options.file('output').pipe(
+export const outputFilePath = Options.file('output', { exists: 'either' }).pipe(
   Options.withAlias('o'),
   Options.withDescription('A file path of where the generated \'Intent\' data should be written.'),
-  Options.withDefault('output.bin')
+  Options.withDefault('output.bin'),
+  Options.mapEffect((filePath) => Path.Path.pipe(Effect.map((path) => path.resolve(filePath))))
 );
 
 /** @internal */
-export const outputPrivateStateFilePath = Options.file('output-ps').pipe(
+export const outputPrivateStateFilePath = Options.file('output-ps', { exists: 'either' }).pipe(
   Options.withDescription('A file path of where the generated \'PrivateState\' data should be written.'),
-  Options.withDefault('output.ps.json')
+  Options.withDefault('output.ps.json'),
+  Options.mapEffect((filePath) => Path.Path.pipe(Effect.map((path) => path.resolve(filePath))))
 );
 
 /** @internal */
-export const outputZswapLocalStateFilePath = Options.file('output-zswap').pipe(
+export const outputZswapLocalStateFilePath = Options.file('output-zswap', { exists: 'either' }).pipe(
   Options.withDescription('A file path of where the generated \'ZswapLocalState\' data should be written.'),
-  Options.withDefault('zswap.json')
+  Options.withDefault('zswap.json'),
+  Options.mapEffect((filePath) => Path.Path.pipe(Effect.map((path) => path.resolve(filePath))))
 );
 
 /** @internal */
@@ -71,19 +75,25 @@ export const network = Options.text('network').pipe(
 );
 
 /** @internal */
-export const stateFilePath = Options.file('state-file-path').pipe(
-  Options.withDescription('A file path of where the current onchain (or ledger), state data can be read.')
+export const stateFilePath = Options.file('state-file-path', { exists: 'either' }).pipe(
+  Options.withDescription('A file path of where the current onchain (or ledger), state data can be read.'),
+  Options.mapEffect((filePath) => Path.Path.pipe(Effect.map((path) => path.resolve(filePath))))
 );
 
 /** @internal */
-export const privateStateFilePath = Options.file('ps-state-file-path').pipe(
-  Options.withDescription('A file path of where the current private state data can be read.')
+export const privateStateFilePath = Options.file('ps-state-file-path', { exists: 'either' }).pipe(
+  Options.withDescription('A file path of where the current private state data can be read.'),
+  Options.mapEffect((filePath) => Path.Path.pipe(Effect.map((path) => path.resolve(filePath))))
 );
 
 /** @internal */
-export const zswapLocalStateFilePath = Options.file('zswap-state-file-path').pipe(
+export const zswapLocalStateFilePath = Options.file('zswap-state-file-path', { exists: 'either' }).pipe(
   Options.withDescription('A file path of where the current Zswap local state data can be read.'),
-  Options.optional
+  Options.optional,
+  Options.mapEffect((_) => Option.match(_, {
+    onSome: (filePath) => Path.Path.pipe(Effect.map((path) => Option.some(path.resolve(filePath)))),
+    onNone: () => Effect.succeed(Option.none())
+  }))
 );
 
 export type ConfigOptionInput = Command.Command.ParseConfig<{
@@ -102,19 +112,11 @@ export type AllConfigurableOptionInputs = Command.Command.ParseConfig<{
   network: typeof network
 }>;
 
-const DEFAULT_CONFIG_FILENAME = 'contract.config.ts';
-
-export const getConfigFilePath: (optionInputs: ConfigOptionInput) => Effect.Effect<string, never, Path.Path> =
-  ({ config }) => Option.match(config, { // eslint-disable-line @typescript-eslint/no-shadow
-    onSome: (cfg) => Effect.succeed(cfg),
-    onNone: () => Path.Path.pipe(Effect.map((path) => path.resolve(DEFAULT_CONFIG_FILENAME)))
-  });
-
-export const asConfigProvider: (optionInputs: Partial<AllConfigurableOptionInputs>) => ConfigProvider.ConfigProvider =
-  (optionInputs) => ConfigProvider.fromJson({
+export const asConfigProvider: (configurableOptions: Partial<AllConfigurableOptionInputs>) => ConfigProvider.ConfigProvider =
+  (configurableOptions) => ConfigProvider.fromJson({
     keys: {
-      coinPublic: Option.getOrUndefined(optionInputs.coinPublicKey ?? Option.none()),
-      signing: Option.getOrUndefined(optionInputs.signingKey ?? Option.none())
+      coinPublic: Option.getOrUndefined(configurableOptions.coinPublicKey ?? Option.none()),
+      signing: Option.getOrUndefined(configurableOptions.signingKey ?? Option.none())
     },
-    network: Option.getOrUndefined(optionInputs.network ?? Option.none())
+    network: Option.getOrUndefined(configurableOptions.network ?? Option.none())
   });
