@@ -12,8 +12,17 @@ on:
   workflow_dispatch:
 
 jobs:
+  ci-compactjs:
+    name: Run CI for Compact.js
+    uses: ./.github/workflows/ci-compact-js.yml
+    with:
+      should_run: true
+      should_prerelease: false
+    secrets: inherit
+
   cd:
     runs-on: ubuntu-latest
+    needs: ci-compactjs
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # ratchet:actions/checkout@v4
         with:
@@ -88,6 +97,15 @@ jobs:
             (steps.changes.outputs.compact-js == 'true' || steps.changes.outputs.vinfo == 'true')
           }}
         run: yarn workspaces foreach -R --from "./compact-js/*" --exclude "./platform-js/*" --exclude "./packages/*" version ${{ steps.vars.outputs.target_version }}
+
+      - name: Validate Packages Before Publishing
+        if: ${{
+            steps.vars.outputs.on_release_branch == 'true' &&
+            (steps.changes.outputs.compact-js == 'true' || steps.changes.outputs.vinfo == 'true')
+          }}
+        uses: ./.github/actions/validate-packages
+        with:
+          workspace-path: './compact-js'
 
       - name: Publish packages
         if: ${{
