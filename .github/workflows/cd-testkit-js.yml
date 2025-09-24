@@ -94,16 +94,9 @@ jobs:
             steps.vars.outputs.on_release_branch == 'true' &&
             (steps.changes.outputs.testkit-js == 'true' || steps.changes.outputs.vinfo == 'true')
           }}
-        run: |
-          echo "🔍 Validating testkit-js packages..."
-          npx publint@latest testkit-js/*/dist --strict
-          
-          echo "🧪 Testing package creation..."
-          cd testkit-js && find . -name "package.json" -maxdepth 2 | while read pkg; do
-            dir=$(dirname "$pkg")
-            echo "Testing $dir..."
-            cd "$dir" && yarn pack --dry-run && cd ..
-          done
+        uses: ./.github/actions/validate-packages
+        with:
+          workspace-path: './testkit-js'
 
       - name: Publish packages
         if: ${{
