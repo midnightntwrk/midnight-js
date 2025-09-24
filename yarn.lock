@@ -2425,6 +2425,7 @@ __metadata:
     patch-package: "npm:^8.0.0"
     pinst: "npm:^3.0.0"
     prettier: "npm:^3.6.2"
+    publint: "npm:^0.3.13"
     rollup: "npm:^4.37.0"
     rxjs: "npm:^7.8.1"
     shx: "npm:^0.4.0"
@@ -2950,6 +2951,13 @@ __metadata:
   version: 1.1.0
   resolution: "@protobufjs/utf8@npm:1.1.0"
   checksum: 10/131e289c57534c1d73a0e55782d6751dd821db1583cb2f7f7e017c9d6747addaebe79f28120b2e0185395d990aad347fb14ffa73ef4096fa38508d61a0e64602
+  languageName: node
+  linkType: hard
+
+"@publint/pack@npm:^0.1.2":
+  version: 0.1.2
+  resolution: "@publint/pack@npm:0.1.2"
+  checksum: 10/83e1de31ae29a0e651f7f91ebe6ad1fdf8cbb61d1eb056476586a234d05fa6fde9f34d3a0e36fbf18a2e9affa1082f758833242fd285637d303130f1a286b928
   languageName: node
   linkType: hard
 
@@ -9427,6 +9435,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"mri@npm:^1.1.0":
+  version: 1.2.0
+  resolution: "mri@npm:1.2.0"
+  checksum: 10/6775a1d2228bb9d191ead4efc220bd6be64f943ad3afd4dcb3b3ac8fc7b87034443f666e38805df38e8d047b29f910c3cc7810da0109af83e42c82c73bd3f6bc
+  languageName: node
+  linkType: hard
+
 "mrmime@npm:^2.0.0":
   version: 2.0.1
   resolution: "mrmime@npm:2.0.1"
@@ -10011,6 +10026,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"package-manager-detector@npm:^1.3.0":
+  version: 1.3.0
+  resolution: "package-manager-detector@npm:1.3.0"
+  checksum: 10/b21155d53a8ab96d5be3bfae43cc1d397bf363782b922d1f6967d220d2a9f08234ebb76035318bf92822ce761d10451959f01019faebc08fdb4d4a8bc3103da6
+  languageName: node
+  linkType: hard
+
 "param-case@npm:^3.0.4":
   version: 3.0.4
   resolution: "param-case@npm:3.0.4"
@@ -10508,6 +10530,20 @@ __metadata:
   version: 1.1.0
   resolution: "proxy-from-env@npm:1.1.0"
   checksum: 10/f0bb4a87cfd18f77bc2fba23ae49c3b378fb35143af16cc478171c623eebe181678f09439707ad80081d340d1593cd54a33a0113f3ccb3f4bc9451488780ee23
+  languageName: node
+  linkType: hard
+
+"publint@npm:^0.3.13":
+  version: 0.3.13
+  resolution: "publint@npm:0.3.13"
+  dependencies:
+    "@publint/pack": "npm:^0.1.2"
+    package-manager-detector: "npm:^1.3.0"
+    picocolors: "npm:^1.1.1"
+    sade: "npm:^1.8.1"
+  bin:
+    publint: src/cli.js
+  checksum: 10/4b84064c7c7e6beef229650385706603794f7d5169d46b34289941b00ef20f27b9f895d399a3b3490bfff3b7afd9cf5ba6f57e254f603e8cc8fa19e762cb13c0
   languageName: node
   linkType: hard
 
@@ -11017,6 +11053,15 @@ __metadata:
   dependencies:
     tslib: "npm:^2.1.0"
   checksum: 10/03dff09191356b2b87d94fbc1e97c4e9eb3c09d4452399dddd451b09c2f1ba8d56925a40af114282d7bc0c6fe7514a2236ca09f903cf70e4bbf156650dddb49d
+  languageName: node
+  linkType: hard
+
+"sade@npm:^1.8.1":
+  version: 1.8.1
+  resolution: "sade@npm:1.8.1"
+  dependencies:
+    mri: "npm:^1.1.0"
+  checksum: 10/1c67ba03c94083e0ae307ff5564ecb86c2104c0f558042fdaa40ea0054f91a63a9783f14069870f2f784336adabb70f90f22a84dc457b5a25e859aaadefe0910
   languageName: node
   linkType: hard
 
