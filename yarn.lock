@@ -6595,12 +6595,12 @@ __metadata:
   linkType: hard
 
 "effect@npm:^3.17.7":
-  version: 3.17.7
-  resolution: "effect@npm:3.17.7"
+  version: 3.17.14
+  resolution: "effect@npm:3.17.14"
   dependencies:
     "@standard-schema/spec": "npm:^1.0.0"
     fast-check: "npm:^3.23.1"
-  checksum: 10/cc702f3cda788239e0d8ce44660376dda4a5aeb312796415c5f9b55063a278e53a4b3f256af4ed9cb2eb0f1d50ec5d85bcde2cd33fb9b32296922803666eac35
+  checksum: 10/04c3b2cd1e9ec217e3bd038b2e4af76817290dc10dcd54a17350d3100c637ad47f0d1b59fe07b22ab921fc33a48572dacd8664b563f27cf9bfe16188cb187b71
   languageName: node
   linkType: hard
 
