@@ -14,12 +14,13 @@
  */
 
 import { StateValue } from '@midnight-ntwrk/compact-runtime';
-import { type AlignedValue, type ContractAddress, type Transaction } from '@midnight-ntwrk/ledger';
+import { type AlignedValue, type ContractAddress } from '@midnight-ntwrk/ledger-v6';
 import {
   type Contract,
   FailEntirely,
   type FinalizedTxData,
   type ImpureCircuitId,
+  type PrivateState,
   type PrivateStateId
 } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -137,7 +138,7 @@ describe('submit-call-tx', () => {
 
     describe('successful call with private state ID', () => {
       it('should successfully submit call transaction and update private state', async () => {
-        const nextPrivateState = { newState: 'updated' };
+        const nextPrivateState = { newState: 'updated' } as PrivateState<Contract>;
         const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
         const { mockFinalizedTxData } = setupSuccessfulMocks();
 
@@ -191,14 +192,7 @@ describe('submit-call-tx', () => {
       it('should throw CallTxFailedError when transaction fails with FailEntirely', async () => {
         const options = createBasicCallOptions();
         const mockUnprovenCallTxData = createFailedTxData();
-        const mockFailedTxData = {
-          status: FailEntirely,
-          txId: 'failed-tx-id',
-          blockHeight: 100,
-          tx: {} as Transaction,
-          txHash: 'hash',
-          blockHash: 'hash'
-        } as FinalizedTxData;
+        const mockFailedTxData = createMockFinalizedTxData(FailEntirely);
 
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
         vi.mocked(submitTx).mockResolvedValue(mockFailedTxData);
@@ -237,7 +231,7 @@ describe('submit-call-tx', () => {
       it('should validate circuit exists in contract', async () => {
         const options = createBasicCallOptions({ circuitId: 'nonExistentCircuit' as ImpureCircuitId });
 
-        await expect(submitCallTx(mockProviders, options)).rejects.toThrow('Circuit \'nonExistentCircuit\' is undefined');
+        await expect(submitCallTx(mockProviders, options)).rejects.toThrow("Circuit 'nonExistentCircuit' is undefined");
       });
     });
 

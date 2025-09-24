@@ -14,26 +14,24 @@
  */
 
 import {
+  ChargedState,
   type CircuitContext,
   type CircuitResults,
+  CostModel,
   emptyZswapLocalState,
   StateValue
 } from '@midnight-ntwrk/compact-runtime';
 import {
   type AlignedValue,
-  type BlockContext,
-  type ContractState,
   type Effects,
-  type QueryContext,
-  sampleCoinPublicKey
-} from '@midnight-ntwrk/ledger';
-import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+  sampleCoinPublicKey,
+  type TokenType
+} from '@midnight-ntwrk/ledger-v6';
 import { type Contract, type PrivateState } from '@midnight-ntwrk/midnight-js-types';
-import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
 import { call } from '../call';
-import { createMockCallOptions, createMockCallOptionsWithPrivateState, createMockContractAddress } from './test-mocks';
+import { createMockCallOptions, createMockCallOptionsWithPrivateState, createMockContractAddress, createMockContractState } from './test-mocks';
 
 // TODO: add test: circuit with invalid arguments
 // TODO: add test: circuit with not matching arguments (e.g.: Boolean -> Field)
@@ -49,22 +47,29 @@ describe('call', () => {
       result: 'test-result',
       context: {
         transactionContext: {
-          block: {} as BlockContext,
-          state: StateValue.newNull(),
+          block: {
+            ownAddress: '',
+            comIndices: {} as Map<string, number>,
+            balance: {} as Map<TokenType, bigint>,
+            secondsSinceEpoch: 0n,
+            secondsSinceEpochErr: 0,
+            parentBlockHash: ''
+          },
+          state: new ChargedState(StateValue.newNull()),
           effects: {} as Effects,
-          comIndicies: new Map(),
+          comIndices: new Map(),
           insertCommitment: vi.fn(),
           qualify: vi.fn(),
           runTranscript: vi.fn(),
           query: vi.fn(),
           intoTranscript: vi.fn(),
           address: createMockContractAddress(),
-        } as QueryContext,
-        originalState: {} as ContractState,
+          toVmStack: vi.fn()
+        },
+        originalState: createMockContractState(),
         currentPrivateState: { test: 'private-state' } as PrivateState<Contract>,
-        currentZswapLocalState: emptyZswapLocalState(
-          parseCoinPublicKeyToHex(sampleCoinPublicKey(), getZswapNetworkId())
-        )
+        currentZswapLocalState: emptyZswapLocalState(sampleCoinPublicKey()),
+        costModel: CostModel.initialCostModel()
       } as CircuitContext<Contract>,
       proofData: {
         input: {} as AlignedValue,

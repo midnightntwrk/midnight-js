@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { CoinInfo, CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/ledger';
+import type { CoinPublicKey, EncPublicKey,ShieldedCoinInfo } from '@midnight-ntwrk/ledger-v6';
 
 import type { BalancedTransaction, UnbalancedTransaction } from './midnight-types';
 
@@ -32,9 +32,9 @@ export interface WalletProvider {
   readonly encryptionPublicKey: EncPublicKey;
 
   /**
-   * Balances selects coins, creates spend proofs, and pays fees for a transaction with call proofs.
+   * Balances select coins, create spend proofs, and pay fees for a transaction with call proofs.
    * @param tx The transaction to balance.
    * @param newCoins The outputs created during a transaction.
    */
-  balanceTx(tx: UnbalancedTransaction, newCoins: CoinInfo[]): Promise<BalancedTransaction>;
+  balanceTx(tx: UnbalancedTransaction, newCoins: ShieldedCoinInfo[]): Promise<BalancedTransaction>;
 }

@@ -1,7 +1,7 @@
 {
   "name": "@midnight-ntwrk/midnight-js",
   "description": "Midnight application development framework",
-  "version": "2.0.2",
+  "version": "2.1.0-rc.1",
   "packageManager": "yarn@4.10.0",
   "repository": "git@github.com:midnight-ntwrk/artifacts",
   "engines": {
@@ -37,8 +37,9 @@
   },
   "license": "Apache-2.0",
   "dependencies": {
-    "@midnight-ntwrk/compact-runtime": "0.8.1",
-    "@midnight-ntwrk/ledger": "4.0.0",
+    "@midnight-ntwrk/compact-runtime": "0.9.0-rc.2",
+    "@midnight-ntwrk/ledger-v6": "6.1.0-alpha.2",
+    "@midnight-ntwrk/onchain-runtime-v1": "1.0.0-alpha.2",
     "@midnight-ntwrk/wallet-sdk-address-format": "2.0.0",
     "@midnight-ntwrk/zswap": "4.0.0"
   },
@@ -49,6 +50,7 @@
     "@midnight-ntwrk/wallet": "5.0.0",
     "@midnight-ntwrk/wallet-api": "5.0.0",
     "@midnight-ntwrk/wallet-sdk-hd": "2.0.0",
+    "@midnight-ntwrk/wallet-sdk-unshielded-wallet": "1.0.0-beta.2",
     "@rollup/plugin-commonjs": "^28.0.3",
     "@rollup/plugin-node-resolve": "^16.0.0",
     "@rollup/plugin-typescript": "^12.1.3",

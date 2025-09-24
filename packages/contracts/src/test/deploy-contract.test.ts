@@ -14,7 +14,7 @@
  */
 
 import { type ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
-import { type ContractState, type UnprovenTransaction } from '@midnight-ntwrk/ledger';
+import { type UnprovenTransaction } from '@midnight-ntwrk/ledger-v6';
 import { type Contract, type PrivateState } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -22,7 +22,7 @@ import { type ContractProviders } from '../contract-providers';
 import { deployContract, type DeployContractOptionsBase, type DeployedContract } from '../deploy-contract';
 import { type UnsubmittedDeployTxData } from '../tx-model';
 import {
-  createMockContract,
+  createMockContract, createMockContractState,
   createMockFinalizedTxData,
   createMockPrivateStateId,
   createMockProviders,
@@ -49,7 +49,7 @@ describe('deployContract', () => {
     public: {
       ...createMockFinalizedTxData(),
       contractAddress: 'mock-contract-address',
-      initialContractState: {} as ContractState
+      initialContractState: createMockContractState()
     },
     private: {
       signingKey: createMockSigningKey(),

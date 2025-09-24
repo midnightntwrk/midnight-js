@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-http-client-proof-provider",
-  "version": "2.0.2",
+  "version": "2.1.0-rc.1",
   "description": "Implementation of proof provider based on the Midnight ledger proof server",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -29,8 +29,6 @@
   ],
   "dependencies": {
     "@dao-xyz/borsh": "^5.1.5",
-    "@midnight-ntwrk/compact-runtime": "0.8.1",
-    "@midnight-ntwrk/ledger": "4.0.0",
     "@midnight-ntwrk/midnight-js-compact": "workspace:*",
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*",
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*",

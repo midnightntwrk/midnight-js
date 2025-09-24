@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { getNetworkId, NetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type { Logger } from 'pino';
 import { DockerComposeEnvironment, type StartedDockerComposeEnvironment } from 'testcontainers';
 
@@ -146,7 +146,7 @@ export class LocalTestEnvironment extends TestEnvironment {
       .withWaitStrategy(`${this.config.container.indexer.name}_${this.uid}`, this.config.container.indexer.waitStrategy)
       .withEnvironment({
         TESTCONTAINERS_UID: this.uid,
-        NETWORK_ID: NetworkId[getNetworkId()].toLowerCase()
+        NETWORK_ID: getNetworkId()
       })
       .up();
     this.environmentConfiguration = new LocalTestConfiguration(this.getMappedPorts());

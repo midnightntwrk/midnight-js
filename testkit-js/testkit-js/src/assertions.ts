@@ -14,7 +14,7 @@
  */
 
 import type { StateValue } from '@midnight-ntwrk/compact-runtime';
-import type { Transaction } from '@midnight-ntwrk/ledger';
+import type { Bindingish, Proofish, Signaturish, Transaction } from '@midnight-ntwrk/ledger-v6';
 import type {
   CallTxOptions,
   DeployContractOptions,
@@ -37,7 +37,7 @@ export const stateValueEqual = (a: StateValue, b: StateValue): boolean => {
   return a.toString(false) === b.toString(false);
 };
 
-export const txsEqual = (a: Transaction, b: Transaction): boolean => {
+export const txsEqual = <S extends Signaturish, P extends Proofish, B extends Bindingish>(a: Transaction<S, P, B>, b: Transaction<S, P, B>): boolean => {
   return a.toString(false) === b.toString(false);
 };
 
