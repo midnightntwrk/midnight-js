@@ -1241,16 +1241,15 @@ __metadata:
   linkType: hard
 
 "@effect/sql@npm:^0.44.1":
-  version: 0.44.1
-  resolution: "@effect/sql@npm:0.44.1"
+  version: 0.44.2
+  resolution: "@effect/sql@npm:0.44.2"
   dependencies:
-    "@opentelemetry/semantic-conventions": "npm:^1.33.0"
     uuid: "npm:^11.0.3"
   peerDependencies:
-    "@effect/experimental": ^0.54.4
-    "@effect/platform": ^0.90.0
-    effect: ^3.17.6
-  checksum: 10/fa7cdcb96fa44001136bcfe442643fb9f274325402c8b776341d3a97be4ee7862c13b73462b313d2e2c0a3d0976de92b687098917c587304319eec4752f9efd8
+    "@effect/experimental": ^0.54.6
+    "@effect/platform": ^0.90.4
+    effect: ^3.17.7
+  checksum: 10/d76b9bc7db18ec388abf2b170a612586dfce004ddc814d5d89604829aa4362055f06378a0eed77ed15e92d2f58877ea26308e31fdd7680b96bccc7c336ad12ad
   languageName: node
   linkType: hard
 
