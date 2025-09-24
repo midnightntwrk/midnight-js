@@ -1,0 +1,29 @@
+name: 'Validate Packages Before Publishing'
+description: 'Simple package validation using proven tools'
+
+inputs:
+  working-directory:
+    description: 'Working directory for validation'
+    required: false
+    default: '.'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Validate with publint
+      shell: bash
+      run: |
+        echo "🔍 Installing and running publint..."
+        npx publint@latest --strict
+        
+    - name: Package size check
+      uses: pkg-size/action@v1
+      with:
+        github-token: ${{ github.token }}
+        unchanged-files: 'ignore'
+        
+    - name: Dry run pack
+      shell: bash
+      run: |
+        echo "🧪 Testing package creation..."
+        yarn pack --dry-run

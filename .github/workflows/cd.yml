@@ -56,6 +56,19 @@ jobs:
           filters: |
             midnight-js: 'packages/**' 
 
+      - name: Validate Packages Before Publishing
+        if: steps.changes.outputs.midnight-js == 'true'
+        run: |
+          echo "🔍 Validating packages..."
+          npx publint@latest packages/*/dist --strict
+          
+          echo "🧪 Testing package creation..."
+          cd packages && find . -name "package.json" -maxdepth 2 | while read pkg; do
+            dir=$(dirname "$pkg")
+            echo "Testing $dir..."
+            cd "$dir" && yarn pack --dry-run && cd ..
+          done
+
       - name: Publish packages
         if: steps.changes.outputs.midnight-js == 'true'
         run: |

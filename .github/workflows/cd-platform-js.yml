@@ -89,6 +89,22 @@ jobs:
           }}
         run: yarn workspaces foreach -R --from "./platform-js/*" --exclude "./compact-js/*" --exclude "./packages/*" version ${{ steps.vars.outputs.target_version }}
 
+      - name: Validate Packages Before Publishing
+        if: ${{
+            steps.vars.outputs.on_release_branch == 'true' &&
+            (steps.changes.outputs.platform-js == 'true' || steps.changes.outputs.vinfo == 'true')
+          }}
+        run: |
+          echo "🔍 Validating platform-js packages..."
+          npx publint@latest platform-js/*/dist --strict
+          
+          echo "🧪 Testing package creation..."
+          cd platform-js && find . -name "package.json" -maxdepth 2 | while read pkg; do
+            dir=$(dirname "$pkg")
+            echo "Testing $dir..."
+            cd "$dir" && yarn pack --dry-run && cd ..
+          done
+
       - name: Publish packages
         if: ${{
             steps.vars.outputs.on_release_branch == 'true' &&
