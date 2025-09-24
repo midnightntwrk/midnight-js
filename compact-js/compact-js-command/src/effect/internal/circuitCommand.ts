@@ -14,24 +14,24 @@
  */
 
 import { type Command } from '@effect/cli';
-import { FileSystem, Path } from '@effect/platform';
+import { FileSystem } from '@effect/platform';
 import { Contract, type ContractExecutable, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
-import { ContractState, decodeZswapLocalState, type EncodedZswapLocalState,
+import { decodeZswapLocalState, type EncodedZswapLocalState,
   encodeZswapLocalState } from '@midnight-ntwrk/compact-runtime';
 import {
   communicationCommitmentRandomness,
   ContractCallPrototype,
   type ContractOperation as LedgerContractOption,
-  ContractState as LedgerContractState,
   Intent
 } from '@midnight-ntwrk/ledger';
-import { type ConfigError, Duration, Effect, Option, Schema } from 'effect';
+import { type ConfigError, Duration, Effect, Option } from 'effect';
 
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
 import { type ConfigCompiler } from '../ConfigCompiler.js';
 import * as InternalArgs from './args.js';
 import * as InternalCommand from './command.js';
-import { EncodedZswapLocalStateSchema } from './encodedZswapLocalStateSchema.js'
+import * as ContractState from './contractState.js';
+import { decodeZswapLocalStateObject, encodeZswapLocalStateObject } from './encodedZswapLocalStateSchema.js'
 import * as InternalOptions from './options.js';
 
 /** @internal */
@@ -47,56 +47,45 @@ export const Args = {
 export type Options = Command.Command.ParseConfig<typeof Options>;
 /** @internal */
 export const Options = {
-  config: InternalOptions.config,
-  coinPublicKey: InternalOptions.coinPublicKey,
-  stateFilePath: InternalOptions.stateFilePath,
-  privateStateFilePath: InternalOptions.privateStateFilePath,
-  zswapLocalStateFilePath: InternalOptions.zswapLocalStateFilePath,
-  network: InternalOptions.network,
+  inputFilePath: InternalOptions.inputFilePath,
+  inputPrivateStateFilePath: InternalOptions.inputPrivateStateFilePath,
+  inputZswapLocalStateFilePath: InternalOptions.inputZswapLocalStateFilePath,
   outputFilePath: InternalOptions.outputFilePath,
   outputPrivateStateFilePath: InternalOptions.outputPrivateStateFilePath,
   outputZswapLocalStateFilePath: InternalOptions.outputZswapLocalStateFilePath
 }
-
-const encodeZswapLocalStateObject = Schema.encodeUnknown(EncodedZswapLocalStateSchema);
-const decodeZswapLocalStateObject = Schema.decodeUnknown(EncodedZswapLocalStateSchema);
-
-const asContractState = (contractState: LedgerContractState): ContractState =>
-  ContractState.deserialize(contractState.serialize());
 
 /** @internal */
 export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.ModuleSpec) =>
   Effect.Effect<
     void,
     ContractExecutable.ContractExecutionError | ConfigError.ConfigError,
-    CompiledContractReflection.CompiledContractReflection | Path.Path | FileSystem.FileSystem
+    CompiledContractReflection.CompiledContractReflection | FileSystem.FileSystem
   > =
   (
     {
       address,
       circuitId,
       args,
-      stateFilePath,
-      privateStateFilePath,
-      zswapLocalStateFilePath,
+      inputFilePath,
+      inputPrivateStateFilePath,
+      inputZswapLocalStateFilePath,
       outputFilePath,
       outputPrivateStateFilePath,
       outputZswapLocalStateFilePath
     },
     moduleSpec
   ) => Effect.gen(function* () {
-    const path = yield* Path.Path;
     const fs = yield* FileSystem.FileSystem;
     const { module: { default: contractModule } } = moduleSpec;
     const contractReflector = yield* CompiledContractReflection.CompiledContractReflection;
     const argsParser = yield* contractReflector.createArgumentParser(contractModule.contractExecutable.compiledContract);
-    const intentOutputFilePath = path.resolve(outputFilePath);
-    const privateStateOutputFilePath = path.resolve(outputPrivateStateFilePath);
-    const zswapLocalStateOutputFilePath = path.resolve(outputZswapLocalStateFilePath);
-    const ledgerContractState = LedgerContractState.deserialize(yield* fs.readFile(path.resolve(stateFilePath)));
-    const privateState = JSON.parse(yield* fs.readFileString(privateStateFilePath));
+    const ledgerContractState = yield* fs.readFile(inputFilePath).pipe(
+      Effect.flatMap(ContractState.asLedgerContractStateFromBytes)
+    );
+    const privateState = JSON.parse(yield* fs.readFileString(inputPrivateStateFilePath));
     const encodedZswapLocalState = Option.map(
-      zswapLocalStateFilePath,
+      inputZswapLocalStateFilePath,
       (filePath) => fs.readFileString(filePath).pipe(
         Effect.flatMap((str) => decodeZswapLocalStateObject(JSON.parse(str))
       ))
@@ -106,7 +95,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       Contract.ImpureCircuitId(circuitId),
       {
         address,
-        contractState: asContractState(ledgerContractState),
+        contractState: yield* ContractState.asContractState(ledgerContractState),
         privateState: privateState ?? contractModule.createInitialPrivateState(),
         zswapLocalState: Option.isSome(encodedZswapLocalState)
           ? decodeZswapLocalState((yield* Option.getOrThrow(encodedZswapLocalState)) as EncodedZswapLocalState)
@@ -128,10 +117,10 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
         circuitId
       ));
 
-    yield* fs.writeFile(intentOutputFilePath, intent.serialize());
-    yield* fs.writeFileString(privateStateOutputFilePath, JSON.stringify(result.private.privateState));
+    yield* fs.writeFile(outputFilePath, intent.serialize());
+    yield* fs.writeFileString(outputPrivateStateFilePath, JSON.stringify(result.private.privateState));
     yield* fs.writeFileString(
-      zswapLocalStateOutputFilePath,
+      outputZswapLocalStateFilePath,
       JSON.stringify(
         yield* encodeZswapLocalStateObject(encodeZswapLocalState(result.private.zswapLocalState))
       )
