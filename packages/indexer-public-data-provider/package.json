@@ -24,7 +24,7 @@
     "deploy": "yarn npm publish"
   },
   "dependencies": {
-    "@apollo/client": "^3.13.8",
+    "@apollo/client": "^4.0.0",
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
     "buffer": "^6.0.3",
