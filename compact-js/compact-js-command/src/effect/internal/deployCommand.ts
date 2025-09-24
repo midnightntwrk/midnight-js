@@ -16,17 +16,18 @@
 import { type Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
 import { type ContractExecutable, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
-import { type ContractState, encodeZswapLocalState } from '@midnight-ntwrk/compact-runtime';
+import { encodeZswapLocalState } from '@midnight-ntwrk/compact-runtime';
 import {
   ContractDeploy,
-  ContractState as LedgerContractState,
-  Intent} from '@midnight-ntwrk/ledger';
+  Intent
+} from '@midnight-ntwrk/ledger';
 import { type ConfigError, Duration, Effect } from 'effect';
 
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
 import { type ConfigCompiler } from '../ConfigCompiler.js';
 import * as InternalArgs from './args.js';
 import * as InternalCommand from './command.js';
+import * as ContractState from './contractState.js';
 import { encodeZswapLocalStateObject } from './encodedZswapLocalStateSchema.js'
 import * as InternalOptions from './options.js';
 
@@ -44,9 +45,6 @@ export const Options = {
   outputPrivateStateFilePath: InternalOptions.outputPrivateStateFilePath,
   outputZswapLocalStateFilePath: InternalOptions.outputZswapLocalStateFilePath
 }
-
-const asLedgerContractState = (contractState: ContractState): LedgerContractState =>
-  LedgerContractState.deserialize(contractState.serialize());
 
 /** @internal */
 export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.ModuleSpec) =>
@@ -73,7 +71,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       ...(yield* argsParser.parseInitializationArgs(args))
     );
     const intent = Intent.new(yield* InternalCommand.ttl(Duration.minutes(10)))
-      .addDeploy(new ContractDeploy(asLedgerContractState(result.public.contractState)));
+      .addDeploy(new ContractDeploy(yield* ContractState.asLedgerContractState(result.public.contractState)));
 
     yield* fs.writeFile(outputFilePath, intent.serialize());
     yield* fs.writeFileString(outputPrivateStateFilePath, JSON.stringify(result.private.privateState));
