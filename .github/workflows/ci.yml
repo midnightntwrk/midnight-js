@@ -8,7 +8,6 @@ on:
       - 'main'
   pull_request:
   workflow_dispatch:
-  workflow_call:
   schedule:
     - cron: "30 4 * * *"
 
@@ -28,11 +27,11 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     outputs:
-      build_shared: ${{ steps.build-targets.outputs.shared || steps.fallback-targets.outputs.shared }}
-      build_mn_js: ${{ steps.build-targets.outputs.midnight-js || steps.fallback-targets.outputs.midnight-js }}
-      build_c_js: ${{ steps.build-targets.outputs.compact-js || steps.fallback-targets.outputs.compact-js }}
-      build_p_js: ${{ steps.build-targets.outputs.platform-js || steps.fallback-targets.outputs.platform-js }}
-      build_t_js: ${{ steps.build-targets.outputs.testkit-js || steps.fallback-targets.outputs.testkit-js }}
+      build_shared: ${{ steps.build-targets.outputs.shared }}
+      build_mn_js: ${{ steps.build-targets.outputs.midnight-js }}
+      build_c_js: ${{ steps.build-targets.outputs.compact-js }}
+      build_p_js: ${{ steps.build-targets.outputs.platform-js }}
+      build_t_js: ${{ steps.build-targets.outputs.testkit-js }}
 
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # ratchet:actions/checkout@v5
@@ -50,7 +49,6 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Determine Build Targets
-        if: github.event_name == 'push' || github.event_name == 'pull_request'
         uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
         id: build-targets
         with:
@@ -68,16 +66,6 @@ jobs:
             testkit-js:
               - 'packages/**'
               - 'testkit-js/**'
-
-      - name: Set build targets for CD workflows
-        if: github.event_name != 'push' && github.event_name != 'pull_request'
-        id: fallback-targets
-        run: |
-          echo "shared=true" >> $GITHUB_OUTPUT
-          echo "compact-js=true" >> $GITHUB_OUTPUT
-          echo "platform-js=true" >> $GITHUB_OUTPUT
-          echo "midnight-js=true" >> $GITHUB_OUTPUT
-          echo "testkit-js=true" >> $GITHUB_OUTPUT
 
   ci-midnightjs:
     needs: ci
