@@ -47,9 +47,9 @@ export const Args = {
 export type Options = Command.Command.ParseConfig<typeof Options>;
 /** @internal */
 export const Options = {
-  stateFilePath: InternalOptions.stateFilePath,
-  privateStateFilePath: InternalOptions.privateStateFilePath,
-  zswapLocalStateFilePath: InternalOptions.zswapLocalStateFilePath,
+  inputFilePath: InternalOptions.inputFilePath,
+  inputPrivateStateFilePath: InternalOptions.inputPrivateStateFilePath,
+  inputZswapLocalStateFilePath: InternalOptions.inputZswapLocalStateFilePath,
   outputFilePath: InternalOptions.outputFilePath,
   outputPrivateStateFilePath: InternalOptions.outputPrivateStateFilePath,
   outputZswapLocalStateFilePath: InternalOptions.outputZswapLocalStateFilePath
@@ -67,9 +67,9 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       address,
       circuitId,
       args,
-      stateFilePath,
-      privateStateFilePath,
-      zswapLocalStateFilePath,
+      inputFilePath,
+      inputPrivateStateFilePath,
+      inputZswapLocalStateFilePath,
       outputFilePath,
       outputPrivateStateFilePath,
       outputZswapLocalStateFilePath
@@ -80,12 +80,12 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     const { module: { default: contractModule } } = moduleSpec;
     const contractReflector = yield* CompiledContractReflection.CompiledContractReflection;
     const argsParser = yield* contractReflector.createArgumentParser(contractModule.contractExecutable.compiledContract);
-    const ledgerContractState = yield* fs.readFile(stateFilePath).pipe(
+    const ledgerContractState = yield* fs.readFile(inputFilePath).pipe(
       Effect.flatMap(ContractState.asLedgerContractStateFromBytes)
     );
-    const privateState = JSON.parse(yield* fs.readFileString(privateStateFilePath));
+    const privateState = JSON.parse(yield* fs.readFileString(inputPrivateStateFilePath));
     const encodedZswapLocalState = Option.map(
-      zswapLocalStateFilePath,
+      inputZswapLocalStateFilePath,
       (filePath) => fs.readFileString(filePath).pipe(
         Effect.flatMap((str) => decodeZswapLocalStateObject(JSON.parse(str))
       ))

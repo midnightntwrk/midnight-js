@@ -54,11 +54,11 @@ describe('Circuit Command', () => {
       yield* cli([
         'node', 'circuit.ts',
         '-c', COUNTER_CONFIG_FILEPATH,
+        '--input', COUNTER_STATE_FILEPATH,
+        '--input-ps', COUNTER_OUTPUT_PS_FILEPATH,
         '--output', COUNTER_OUTPUT_FILEPATH,
         '--output-ps', COUNTER_OUTPUT_PS_FILEPATH,
         '--output-zswap', COUNTER_OUTPUT_ZSWAP_FILEPATH,
-        '--state-file-path', COUNTER_STATE_FILEPATH,
-        '--ps-state-file-path', COUNTER_OUTPUT_PS_FILEPATH,
         '0a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a', 'increment'
       ]);
 

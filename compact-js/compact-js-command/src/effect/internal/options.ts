@@ -75,19 +75,20 @@ export const network = Options.text('network').pipe(
 );
 
 /** @internal */
-export const stateFilePath = Options.file('state-file-path', { exists: 'either' }).pipe(
+export const inputFilePath = Options.file('input', { exists: 'either' }).pipe(
+  Options.withAlias('i'),
   Options.withDescription('A file path of where the current onchain (or ledger), state data can be read.'),
   Options.mapEffect((filePath) => Path.Path.pipe(Effect.map((path) => path.resolve(filePath))))
 );
 
 /** @internal */
-export const privateStateFilePath = Options.file('ps-state-file-path', { exists: 'either' }).pipe(
+export const inputPrivateStateFilePath = Options.file('input-ps', { exists: 'either' }).pipe(
   Options.withDescription('A file path of where the current private state data can be read.'),
   Options.mapEffect((filePath) => Path.Path.pipe(Effect.map((path) => path.resolve(filePath))))
 );
 
 /** @internal */
-export const zswapLocalStateFilePath = Options.file('zswap-state-file-path', { exists: 'either' }).pipe(
+export const inputZswapLocalStateFilePath = Options.file('input-zswap', { exists: 'either' }).pipe(
   Options.withDescription('A file path of where the current Zswap local state data can be read.'),
   Options.optional,
   Options.mapEffect((_) => Option.match(_, {
