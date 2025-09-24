@@ -69,8 +69,11 @@ export const serializeZKConfig = <K extends string>(zkConfig?: ZKConfig<K>): Uin
 export const serializePayload = <K extends string>(
   unprovenTx: UnprovenTransaction,
   zkConfig?: ZKConfig<K>
-): Promise<ArrayBuffer> =>
-  new Blob([unprovenTx.serialize(getLedgerNetworkId()), serializeZKConfig(zkConfig)]).arrayBuffer();
+): Promise<ArrayBuffer> => {
+  const serializedTx = new Uint8Array(unprovenTx.serialize(getLedgerNetworkId()));
+  const serializedConfig = new Uint8Array(serializeZKConfig(zkConfig));
+  return new Blob([serializedTx, serializedConfig]).arrayBuffer();
+};
 
 const deserializePayload = (arrayBuffer: ArrayBuffer): UnbalancedTransaction =>
   createUnbalancedTx(Transaction.deserialize(new Uint8Array(arrayBuffer), getLedgerNetworkId()));
