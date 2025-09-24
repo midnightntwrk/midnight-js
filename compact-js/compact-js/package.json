@@ -20,7 +20,7 @@
   "devDependencies": {
     "@effect/cluster": "^0.47.0",
     "@effect/experimental": "^0.54.5",
-    "@effect/platform-node": "^0.95.0",
+    "@effect/platform-node": "^0.97.0",
     "@effect/platform-node-shared": "^0.48.0",
     "@effect/rpc": "^0.68.4",
     "@effect/sql": "^0.44.1",
