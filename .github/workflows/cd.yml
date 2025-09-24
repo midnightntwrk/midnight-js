@@ -4,8 +4,8 @@ on:
   push:
     tags: ['v*']
 
-permissions:  # added using https://github.com/step-security/secure-repo
-  contents: read
+permissions:
+  contents: write
   issues: read
   id-token: write
   packages: write
@@ -63,12 +63,33 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
+      - name: Build packages
+        run: yarn build:core
+
+      - name: Run tests
+        run: yarn test
+
+      - name: Extract release notes
+        id: release_notes
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Extract release notes from CHANGELOG.md for this version
+          awk "/^## .*$VERSION/,/^## /{if(/^## .*$VERSION/) found=1; else if(/^## / && found) exit; if(found && !/^## .*$VERSION/) print}" CHANGELOG.md > release_notes.md
+
+          # If no release notes found, use commit messages since last tag
+          if [ ! -s release_notes.md ]; then
+            echo "### Changes" > release_notes.md
+            git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 HEAD^)..HEAD >> release_notes.md
+          fi
+
       - name: Determine Build Targets
         uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
         id: changes
         with:
           filters: |
-            midnight-js: 'packages/**' 
+            midnight-js: 'packages/**'
 
       - name: Validate Packages Before Publishing
         if: steps.changes.outputs.midnight-js == 'true'
@@ -84,3 +105,15 @@ jobs:
           yarn deploy --filter="./packages/*" --cache-dir ./turbo
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Create GitHub Release
+        if: steps.changes.outputs.midnight-js == 'true'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.release_notes.outputs.version }}
+          release_name: Release ${{ steps.release_notes.outputs.version }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
