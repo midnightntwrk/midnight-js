@@ -1,0 +1,65 @@
+name: Check PR
+
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - synchronize
+      - reopened
+
+permissions:
+  pull-requests: read
+
+jobs:
+  validate-pr-title:
+    name: Validate PR Title
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            docs
+            style
+            refactor
+            perf
+            test
+            chore
+            ci
+            build
+            revert
+          scopes: |
+            core
+            testkit
+            compact-js
+            platform-js
+            wallet
+            deps
+            config
+          requireScope: false
+          subjectPattern: ^(?=.*\S).+$
+          subjectPatternError: |
+            The subject "{subject}" found in the pull request title "{title}"
+            is empty. Please provide a meaningful description after the type/scope.
+          wip: true
+
+  validate-pr-body:
+    name: Validate PR Body
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const prBody = context.payload.pull_request.body || '';
+            const trimmedBody = prBody.trim();
+
+            if (!trimmedBody || trimmedBody.length === 0) {
+              core.setFailed('PR body is empty. Please provide a description of your changes.');
+              return;
+            }
+
+            console.log('PR body validation passed');
