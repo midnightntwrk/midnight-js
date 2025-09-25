@@ -35,7 +35,7 @@ module.exports = {
       ]
     ],
     'scope-enum': [
-      2,
+      1,
       'always',
       [
         'core',
@@ -47,10 +47,11 @@ module.exports = {
         'config'
       ]
     ],
-    'subject-case': [2, 'never', ['sentence-case', 'start-case', 'pascal-case', 'upper-case']],
+    'subject-case': [0, 'always'],
     'subject-empty': [2, 'never'],
-    'subject-full-stop': [2, 'never', '.'],
-    'type-case': [2, 'always', 'lower-case'],
-    'type-empty': [2, 'never']
+    'subject-full-stop': [0, 'never', '.'],
+    'type-case': [0, 'never', 'lower-case'],
+    'type-empty': [2, 'never'],
+    'scope-empty': [1, 'never']
   }
 };
