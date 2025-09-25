@@ -25,11 +25,11 @@ services:
       APP__INFRA__NODE__URL: "ws://node:9944"
       APP__APPLICATION__NETWORK_ID: "Undeployed"
     healthcheck:
-      test: ["CMD-SHELL", "cat /var/run/indexer-standalone/running"]
-      start_period: "30s"
-      interval: "10s"
-      timeout: "2s"
-      retries: 5
+      test: ["CMD", "curl", "-f", "http://localhost:8088/api/v1/graphql"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 10s
     depends_on:
       node:
         condition: service_started
