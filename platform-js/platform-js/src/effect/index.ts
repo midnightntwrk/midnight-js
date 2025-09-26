@@ -16,6 +16,7 @@
 export * as CoinPublicKey from './CoinPublicKey.js';
 export * as Configuration from './Configuration.js';
 export * as ContractAddress from './ContractAddress.js';
+export * as DomainSeparator from './DomainSeparator.js';
 export * as Hex from './Hex.js';
 export * as IntegerRange from './IntegerRange.js';
 export * as NetworkId from './NetworkId.js';
