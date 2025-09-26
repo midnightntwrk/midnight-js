@@ -18,22 +18,22 @@ import { Brand } from 'effect';
 import * as Hex from './Hex.js';
 
 /**
- * A plain hex-encoded contract address, 32 bytes in length.
+ * A plain hex-encoded token domain separator, 32 bytes in length.
  * 
  * @category models
  */
-export type ContractAddress = Brand.Branded<string, 'ContractAddress'>;
-export const ContractAddress = Brand.all(
-  Brand.nominal<ContractAddress>(),
+export type DomainSeparator = Brand.Branded<string, 'DomainSeparator'>;
+export const DomainSeparator = Brand.all(
+  Brand.nominal<DomainSeparator>(),
   Hex.ConstrainedPlainHex({ byteLength: '32..=32' })
 );
 
 /**
- * Creates a buffer representing the raw bytes of a contract address.
+ * Creates a buffer representing the raw bytes of a token domain separator.
  * 
- * @param self The {@link ContractAddress} for which raw bytes are required.
+ * @param self The {@link DomainSeparator} for which raw bytes are required.
  * @returns A `Uint8Array` representing the raw bytes of `self`.
  * 
  * @category constructors
  */
-export const asBytes: (self: ContractAddress) => Uint8Array = (self) => Buffer.from(self, 'hex');
+export const asBytes: (self: DomainSeparator) => Uint8Array = (self) => Buffer.from(self, 'hex');

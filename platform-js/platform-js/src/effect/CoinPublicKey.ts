@@ -100,6 +100,16 @@ export const asBech32m: (self: CoinPublicKey | string) => CoinPublicKey.Bech32m 
 };
 
 /**
+ * Creates a buffer representing the raw bytes of a coin public key.
+ * 
+ * @param self The {@link CoinPublicKey} for which raw bytes are required.
+ * @returns A `Uint8Array` representing the raw bytes of `self`.
+ * 
+ * @category constructors
+ */
+export const asBytes: (self: CoinPublicKey) => Uint8Array = (self) => Buffer.from(asHex(self), 'hex');
+
+/**
  * Create a coin public key from a source string.
  *
  * @param value The string value that is become a {@link CoinPublicKey}.

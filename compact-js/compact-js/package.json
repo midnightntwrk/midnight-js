@@ -42,8 +42,9 @@
     "clean": "shx rm -rf ./build ./dist ./.tsbuildinfo ./reports ./coverage",
     "test": "yarn build-compact && vitest run && tstyche",
     "deploy": "shx rm -rf ./dist/src && (cd ./dist; npm publish)",
-    "compact": "yarn fetch-compactc && yarn compact-counter",
-    "compact-counter": "run-compactc ./test/contract/counter.compact ./test/contract/managed/counter"
+    "compact": "yarn fetch-compactc && yarn compact-counter && yarn compact-unshielded",
+    "compact-counter": "run-compactc ./test/contract/counter.compact ./test/contract/managed/counter",
+    "compact-unshielded": "run-compactc ./test/contract/unshielded.compact ./test/contract/managed/unshielded"
   },
   "files": [
     "dist/"

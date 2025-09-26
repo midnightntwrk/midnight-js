@@ -136,6 +136,26 @@ export const withWitnesses: {
 );
 
 /**
+ * Associates _vacant_ witnesses with a Compact compiled contract that specifies no witnesses.
+ * 
+ * @param self The {@link CompiledContract} for which no witnesses are required.
+ * 
+ * @category combinators
+ */
+export const withVacantWitnesses: <C extends Contract<PS>, PS, R>(
+  self: CompiledContract<C, PS, R>
+) => CompiledContract<C, PS, Exclude<R, CompactContext.Witnesses<C>>> =
+  <C extends Contract<PS>, PS, R>(self: CompiledContract<C, PS, R>) => {
+    return {
+      ...self,
+      [CompactContextInternal.TypeId]: {
+        ...self[CompactContextInternal.TypeId],
+        witnesses: {}
+      }
+    } as CompiledContract<C, PS, Exclude<R, CompactContext.Witnesses<C>>>;
+  };
+
+/**
  * Associates a file path of where to find the compiled assets for the Compact compiled contract.
  * 
  * @remarks
