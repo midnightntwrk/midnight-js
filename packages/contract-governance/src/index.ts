@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+export * from './ledger-utils';
 export * from './submit-insert-vk-tx';
 export * from './submit-remove-vk-tx';
 export * from './submit-replace-authority-tx';

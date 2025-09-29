@@ -21,24 +21,17 @@ import {
   signatureVerifyingKey,
   type SigningKey,
   type ZswapLocalState} from '@midnight-ntwrk/compact-runtime';
-import type { SingleUpdate,ZswapChainState } from '@midnight-ntwrk/ledger';
+import type { ZswapChainState } from '@midnight-ntwrk/ledger';
 import {
   communicationCommitmentRandomness,
   ContractCallPrototype,
   ContractCallsPrototype,
   ContractDeploy,
   ContractMaintenanceAuthority,
-  ContractOperationVersion,
-  ContractOperationVersionedVerifierKey,
   ContractState as LedgerContractState,
-  MaintenanceUpdate,
   QueryContext as LedgerQueryContext,
-  ReplaceAuthority,
-  signData,
-  StateValue as LedgerStateValue,
-  UnprovenOffer,
-  VerifierKeyInsert,
-  VerifierKeyRemove} from '@midnight-ntwrk/ledger';
+  StateValue as LedgerStateValue
+} from '@midnight-ntwrk/ledger';
 import { getLedgerNetworkId, getRuntimeNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { type ImpureCircuitId, UnprovenTransaction, type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
@@ -149,68 +142,3 @@ export const createUnprovenLedgerCallTx = (
     )
   );
 };
-
-// Utilities for creating single contract updates.
-
-export const replaceAuthority = (newAuthority: SigningKey, contractState: ContractState): ReplaceAuthority =>
-  new ReplaceAuthority(contractMaintenanceAuthority(newAuthority, contractState));
-
-export const removeVerifierKey = (operation: string | Uint8Array): VerifierKeyRemove =>
-  new VerifierKeyRemove(operation, new ContractOperationVersion('v2'));
-
-export const insertVerifierKey = (operation: string | Uint8Array, newVk: VerifierKey): VerifierKeyInsert =>
-  new VerifierKeyInsert(operation, new ContractOperationVersionedVerifierKey('v2', newVk));
-
-// Utilities for unproven transactions for the single contract updates above.
-
-export const unprovenTxFromContractUpdates = (
-  contractAddress: ContractAddress,
-  updates: SingleUpdate[],
-  contractState: ContractState,
-  sk: SigningKey
-): UnprovenTransaction => {
-  const maintenanceUpdate = new MaintenanceUpdate(contractAddress, updates, contractState.maintenanceAuthority.counter);
-  // 'idx' is '0n' because Midnight.js currently only supports single-party maintenance update authorities
-  const idx = 0n;
-  const signedMaintenanceUpdate = maintenanceUpdate.addSignature(idx, signData(sk, maintenanceUpdate.dataToSign));
-  return new UnprovenTransaction(
-    new UnprovenOffer(),
-    undefined,
-    new ContractCallsPrototype().addMaintenanceUpdate(signedMaintenanceUpdate)
-  );
-};
-
-export const createUnprovenReplaceAuthorityTx = (
-  contractAddress: ContractAddress,
-  newAuthority: SigningKey,
-  contractState: ContractState,
-  currentAuthority: SigningKey
-): UnprovenTransaction =>
-  unprovenTxFromContractUpdates(
-    contractAddress,
-    [replaceAuthority(newAuthority, contractState)],
-    contractState,
-    currentAuthority
-  );
-
-export const createUnprovenRemoveVerifierKeyTx = (
-  contractAddress: ContractAddress,
-  operation: string | Uint8Array,
-  contractState: ContractState,
-  currentAuthority: SigningKey
-): UnprovenTransaction =>
-  unprovenTxFromContractUpdates(contractAddress, [removeVerifierKey(operation)], contractState, currentAuthority);
-
-export const createUnprovenInsertVerifierKeyTx = (
-  contractAddress: ContractAddress,
-  operation: string | Uint8Array,
-  newVk: VerifierKey,
-  contractState: ContractState,
-  currentAuthority: SigningKey
-): UnprovenTransaction =>
-  unprovenTxFromContractUpdates(
-    contractAddress,
-    [insertVerifierKey(operation, newVk)],
-    contractState,
-    currentAuthority
-  );

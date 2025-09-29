@@ -14,7 +14,6 @@
  */
 
 import { submitTx } from '@midnight-ntwrk/midnight-js-contract-core';
-import { createUnprovenReplaceAuthorityTx } from '@midnight-ntwrk/midnight-js-contract-core';
 import {
   createMockContractAddress,
   createMockContractState,
@@ -25,6 +24,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-contract-mocks';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createUnprovenReplaceAuthorityTx } from '../ledger-utils';
 import { submitReplaceAuthorityTx } from '../submit-replace-authority-tx';
 
 vi.mock('../submit-tx');

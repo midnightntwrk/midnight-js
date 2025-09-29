@@ -14,7 +14,6 @@
  */
 
 import { submitTx } from '@midnight-ntwrk/midnight-js-contract-core';
-import { createUnprovenInsertVerifierKeyTx } from '@midnight-ntwrk/midnight-js-contract-core';
 import {
   createMockContractAddress,
   createMockContractState,
@@ -26,6 +25,7 @@ import {
 import { type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createUnprovenInsertVerifierKeyTx } from '../ledger-utils';
 import { submitInsertVerifierKeyTx } from '../submit-insert-vk-tx';
 
 vi.mock('../submit-tx');
