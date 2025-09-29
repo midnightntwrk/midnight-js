@@ -1128,15 +1128,15 @@ __metadata:
   linkType: hard
 
 "@effect/cluster@npm:^0.49.0":
-  version: 0.49.3
-  resolution: "@effect/cluster@npm:0.49.3"
+  version: 0.49.6
+  resolution: "@effect/cluster@npm:0.49.6"
   peerDependencies:
     "@effect/platform": ^0.91.1
-    "@effect/rpc": ^0.70.0
+    "@effect/rpc": ^0.70.2
     "@effect/sql": ^0.45.0
-    "@effect/workflow": ^0.10.0
+    "@effect/workflow": ^0.10.3
     effect: ^3.17.14
-  checksum: 10/d0f3ab916503f053d65b16f434cfbf816d8c829fb7fab0d0fdefbb6e15f0b602fdf2c8dc4ab87b90772224d18b2bdcff764e8a4cbf785b087bdb8e7894037eac
+  checksum: 10/01cb049f392f18c4e204899a2e03125cafef86f06ecfb175e3f7058a9ee83a96c4707e1ce7ce044f9342d85f32ac17b9ea1498e8289a6bc5961fcbbccda24dc3
   languageName: node
   linkType: hard
 
