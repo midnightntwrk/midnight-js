@@ -1,0 +1,34 @@
+{
+  "name": "@midnight-ntwrk/midnight-js-contract-mocks",
+  "version": "2.0.3",
+  "description": "Test utilities for Midnight contracts",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "packageManager": "yarn@4.10.0",
+  "author": "IOHK",
+  "license": "Apache-2.0",
+  "scripts": {
+    "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
+    "build": "rollup -c rollup.config.mjs",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/midnight-js-contract-core": "workspace:*"
+  },
+  "files": [
+    "dist/"
+  ],
+  "devDependencies": {
+    "@fast-check/vitest": "^0.2.1",
+    "vitest": "^3.2.4"
+  }
+}
