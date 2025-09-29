@@ -33,8 +33,11 @@ vi.mock('../submit-deploy-tx', () => ({
   submitDeployTx: vi.fn()
 }));
 
-vi.mock('../tx-interfaces', () => ({
+vi.mock('@midnight-ntwrk/midnight-js-contract-sdk', () => ({
   createCircuitCallTxInterface: vi.fn().mockReturnValue({ call: 'mock-call-interface' }),
+}));
+
+vi.mock('@midnight-ntwrk/midnight-js-contract-governance', () => ({
   createCircuitMaintenanceTxInterfaces: vi.fn().mockReturnValue({ maintenance: 'mock-maintenance-interfaces' }),
   createContractMaintenanceTxInterface: vi.fn().mockReturnValue({ contractMaintenance: 'mock-contract-maintenance' })
 }));

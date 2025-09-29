@@ -25,11 +25,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { createUnprovenDeployTx, createUnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
 import { createMockConstructorResult } from './mocks';
 
-vi.mock('../call-constructor', () => ({
+vi.mock('@midnight-ntwrk/midnight-js-contract-sdk', () => ({
   callContractConstructor: vi.fn()
 }));
 
-vi.mock('../utils', () => ({
+vi.mock('../ledger-utils', () => ({
   createUnprovenLedgerDeployTx: vi.fn().mockReturnValue([
     'mock-contract-address',
     { test: 'initial-contract-state' },

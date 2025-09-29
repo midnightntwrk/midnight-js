@@ -125,5 +125,4 @@ describe('ledger-utils', () => {
     expect(ra1.authority.threshold).toBe(1);
     expect(ra2.authority.threshold).toBe(1);
   });
-
 });

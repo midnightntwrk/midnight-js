@@ -64,7 +64,7 @@ describe('submit-call-tx', () => {
     mockCoinInfo = createMockCoinInfo();
 
     vi.mock('../unproven-call-tx');
-    vi.mock('../submit-tx');
+    vi.mock('@midnight-ntwrk/midnight-js-contract-core');
   });
 
   const createBasicCallOptions = (overrides: Partial<CallTxOptions<Contract, ImpureCircuitId>> = {}) => ({

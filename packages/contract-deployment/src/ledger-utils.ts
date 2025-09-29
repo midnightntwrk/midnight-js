@@ -14,17 +14,13 @@
  */
 
 import {
-  type AlignedValue,
   type ContractAddress,
   ContractState,
   type QueryContext,
   signatureVerifyingKey,
   type SigningKey,
   type ZswapLocalState} from '@midnight-ntwrk/compact-runtime';
-import type { ZswapChainState } from '@midnight-ntwrk/ledger';
 import {
-  communicationCommitmentRandomness,
-  ContractCallPrototype,
   ContractCallsPrototype,
   ContractDeploy,
   ContractMaintenanceAuthority,
@@ -32,13 +28,11 @@ import {
   QueryContext as LedgerQueryContext,
   StateValue as LedgerStateValue
 } from '@midnight-ntwrk/ledger';
+import { zswapStateToOffer } from '@midnight-ntwrk/midnight-js-contract-core';
 import { getLedgerNetworkId, getRuntimeNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { type ImpureCircuitId, UnprovenTransaction, type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
 import { type EncPublicKey } from '@midnight-ntwrk/zswap';
-
-import type { PartitionedTranscript } from '../types';
-import { zswapStateToOffer } from './zswap-utils';
 
 export const toLedgerContractState = (contractState: ContractState): LedgerContractState =>
   LedgerContractState.deserialize(contractState.serialize(getRuntimeNetworkId()), getLedgerNetworkId());
@@ -80,7 +74,7 @@ export const contractMaintenanceAuthority = (
   );
 };
 
-const addMaintenanceAuthority = (sk: SigningKey, contractState: LedgerContractState): void => {
+export const addMaintenanceAuthority = (sk: SigningKey, contractState: LedgerContractState): void => {
   contractState.maintenanceAuthority = contractMaintenanceAuthority(sk);
 };
 
@@ -104,41 +98,4 @@ export const createUnprovenLedgerDeployTx = (
       new ContractCallsPrototype().addDeploy(contractDeploy)
     )
   ];
-};
-
-export const createUnprovenLedgerCallTx = (
-  circuitId: ImpureCircuitId,
-  contractAddress: ContractAddress,
-  initialContractState: ContractState,
-  zswapChainState: ZswapChainState,
-  partitionedTranscript: PartitionedTranscript,
-  privateTranscriptOutputs: AlignedValue[],
-  input: AlignedValue,
-  output: AlignedValue,
-  nextZswapLocalState: ZswapLocalState,
-  encryptionPublicKey: EncPublicKey
-): UnprovenTransaction => {
-  const op = toLedgerContractState(initialContractState).operation(circuitId);
-  assertDefined(op, `Operation '${circuitId}' is undefined for contract state ${initialContractState.toString(false)}`);
-  return new UnprovenTransaction(
-    zswapStateToOffer(nextZswapLocalState, encryptionPublicKey, {
-      contractAddress,
-      zswapChainState
-    }),
-    undefined,
-    new ContractCallsPrototype().addCall(
-      new ContractCallPrototype(
-        contractAddress,
-        circuitId,
-        op,
-        partitionedTranscript[0],
-        partitionedTranscript[1],
-        privateTranscriptOutputs,
-        input,
-        output,
-        communicationCommitmentRandomness(),
-        circuitId
-      )
-    )
-  );
 };

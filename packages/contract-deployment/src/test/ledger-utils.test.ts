@@ -14,36 +14,24 @@
  */
 
 import {
-  type AlignedValue,
-  ContractOperation,
   ContractState,
   QueryContext,
-  sampleCoinPublicKey,
   sampleContractAddress,
-  sampleEncryptionPublicKey,
   sampleSigningKey,
-  type Transcript,
-  UnprovenTransaction,
-  ZswapChainState
 } from '@midnight-ntwrk/ledger';
-import { toHex } from '@midnight-ntwrk/midnight-js-utils';
-import { randomBytes } from 'crypto';
 
-import { type PartitionedTranscript } from '../../types';
 import {
   contractMaintenanceAuthority,
-  createUnprovenLedgerCallTx,
   fromLedgerContractState,
   toLedgerContractState,
   toLedgerQueryContext,
-} from '../../utils';
+} from '../ledger-utils';
 
 describe('ledger-utils', () => {
   const dummySigningKey = sampleSigningKey();
   const dummySigningKey2 = sampleSigningKey();
   const dummyContractState = new ContractState();
   const dummyContractAddress = sampleContractAddress();
-  const dummyEncPublicKey = sampleEncryptionPublicKey();
 
   it('toLedgerContractState and fromLedgerContractState are inverses', () => {
     const ledgerState = toLedgerContractState(dummyContractState);
@@ -67,61 +55,6 @@ describe('ledger-utils', () => {
     expect(authority.counter).toBe(1n);
   });
 
-  it('createUnprovenLedgerCallTx returns an UnprovenTransaction', () => {
-    const circuitId = 'unProvenLedgerTx';
-    const contractState = dummyContractState;
-    const contractOperation = new ContractOperation();
-
-    contractState.setOperation(circuitId, contractOperation);
-
-    const transcript: Transcript<AlignedValue> = {
-      gas: 10n,
-      effects: {
-        claimedNullifiers: [toHex(randomBytes(32))],
-        claimedReceives: [toHex(randomBytes(32))],
-        claimedSpends: [toHex(randomBytes(32))],
-        claimedContractCalls: new Array([5n, sampleContractAddress(), toHex(randomBytes(32)), new Uint8Array([0])]),
-        mints: new Map([[toHex(randomBytes(32)), 1n]])
-      },
-      program: ['new', { noop: { n: 5 } }]
-    };
-
-    const alignedValue: AlignedValue = {
-      value: [new Uint8Array()],
-      alignment: [
-        {
-          tag: 'atom',
-          value: { tag: 'field' }
-        }
-      ]
-    };
-
-    const contractAddress = sampleContractAddress();
-    const zswapChainState = new ZswapChainState();
-    const partitionedTranscript: PartitionedTranscript = [transcript, transcript];
-    const privateTranscriptOutputs: AlignedValue[] = [];
-    const nextZswapLocalState = {
-      outputs: [],
-      inputs: [],
-      coinPublicKey: sampleCoinPublicKey(),
-      currentIndex: 0n
-    };
-
-    const tx = createUnprovenLedgerCallTx(
-      circuitId,
-      contractAddress,
-      contractState,
-      zswapChainState,
-      partitionedTranscript,
-      privateTranscriptOutputs,
-      alignedValue,
-      alignedValue,
-      nextZswapLocalState,
-      dummyEncPublicKey
-    );
-    expect(tx).toBeInstanceOf(UnprovenTransaction);
-  });
-
   it('contractMaintenanceAuthority without contract state starts at 0', () => {
     const authority = contractMaintenanceAuthority(dummySigningKey);
 
@@ -129,7 +62,6 @@ describe('ledger-utils', () => {
     expect(authority.threshold).toBe(1);
     expect(authority.committee.length).toBe(1);
   });
-
 
   it('contractMaintenanceAuthority handles different signing keys', () => {
     const authority1 = contractMaintenanceAuthority(dummySigningKey);

@@ -28,8 +28,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createUnprovenInsertVerifierKeyTx } from '../ledger-utils';
 import { submitInsertVerifierKeyTx } from '../submit-insert-vk-tx';
 
-vi.mock('../submit-tx');
-vi.mock('../utils');
+vi.mock('@midnight-ntwrk/midnight-js-contract-core');
+vi.mock('../ledger-utils');
 
 describe('submitInsertVerifierKeyTx', () => {
   let mockProviders: ReturnType<typeof createMockProviders>;
