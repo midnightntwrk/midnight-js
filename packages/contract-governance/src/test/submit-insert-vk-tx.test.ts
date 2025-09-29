@@ -13,12 +13,8 @@
  * limitations under the License.
  */
 
-import { type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-import { submitInsertVerifierKeyTx } from '../submit-insert-vk-tx';
-import { submitTx } from '../submit-tx';
-import { createUnprovenInsertVerifierKeyTx } from '../utils';
+import { submitTx } from '@midnight-ntwrk/midnight-js-contract-core';
+import { createUnprovenInsertVerifierKeyTx } from '@midnight-ntwrk/midnight-js-contract-core';
 import {
   createMockContractAddress,
   createMockContractState,
@@ -26,7 +22,11 @@ import {
   createMockProviders,
   createMockSigningKey,
   createMockUnprovenTx
-} from './test-mocks';
+} from '@midnight-ntwrk/midnight-js-contract-mocks';
+import { type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { submitInsertVerifierKeyTx } from '../submit-insert-vk-tx';
 
 vi.mock('../submit-tx');
 vi.mock('../utils');
@@ -41,7 +41,7 @@ describe('submitInsertVerifierKeyTx', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     mockProviders = createMockProviders();
     mockContractAddress = createMockContractAddress();
     mockContractState = createMockContractState();
@@ -58,7 +58,7 @@ describe('submitInsertVerifierKeyTx', () => {
       mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockSigningKey);
       mockContractState.operation = vi.fn().mockReturnValue(undefined);
-      
+
       vi.mocked(createUnprovenInsertVerifierKeyTx).mockReturnValue(mockUnprovenTx);
       vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
 
@@ -88,14 +88,14 @@ describe('submitInsertVerifierKeyTx', () => {
     it('should throw InsertVerifierKeyTxFailedError when transaction fails', async () => {
       const { InsertVerifierKeyTxFailedError } = await import('../errors');
       const { FailEntirely } = await import('@midnight-ntwrk/midnight-js-types');
-      
+
       const circuitId = 'testCircuit';
       const failedTxData = createMockFinalizedTxData(FailEntirely);
 
       mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockSigningKey);
       mockContractState.operation = vi.fn().mockReturnValue(undefined);
-      
+
       vi.mocked(createUnprovenInsertVerifierKeyTx).mockReturnValue(mockUnprovenTx);
       vi.mocked(submitTx).mockResolvedValue(failedTxData);
 

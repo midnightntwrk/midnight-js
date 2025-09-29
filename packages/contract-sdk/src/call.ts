@@ -22,28 +22,22 @@ import {
   emptyZswapLocalState,
   type Op,
   QueryContext,
-  type StateValue,
-  type ZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
-import type { Transcript, ZswapChainState } from '@midnight-ntwrk/ledger';
-import { LedgerParameters,partitionTranscripts, PreTranscript } from '@midnight-ntwrk/ledger';
-import {
-  type CallResult,
-  type CallResultPrivate,
-  type CallResultPublic,
-  type PartitionedTranscript
-} from '@midnight-ntwrk/midnight-js-contract-core';
+import type { ZswapChainState } from '@midnight-ntwrk/ledger';
+import { LedgerParameters, partitionTranscripts, PreTranscript } from '@midnight-ntwrk/ledger';
+import { type PartitionedTranscript, toLedgerQueryContext } from '@midnight-ntwrk/midnight-js-contract-core';
 import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type {
   CircuitParameters,
-  CircuitReturnType,
   Contract,
   ImpureCircuitId,
   PrivateState
 } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
-import { toLedgerQueryContext } from './utils';
+import {
+  type CallResult,
+} from './tx-model';
 
 /**
  * Describes the target of a circuit invocation.
@@ -122,9 +116,6 @@ export type CallOptionsWithPrivateState<
 export type CallOptions<C extends Contract, ICK extends ImpureCircuitId<C>> =
   | CallOptionsWithProviderDataDependencies<C, ICK>
   | CallOptionsWithPrivateState<C, ICK>;
-
-// Re-export CallResult types from contract-core for backward compatibility
-export type { CallResult, CallResultPrivate, CallResultPublic, PartitionedTranscript } from '@midnight-ntwrk/midnight-js-contract-core';
 
 const partitionTranscript = (
   initialTxContext: QueryContext,

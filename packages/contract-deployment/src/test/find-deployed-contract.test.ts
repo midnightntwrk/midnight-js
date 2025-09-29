@@ -13,10 +13,6 @@
  * limitations under the License.
  */
 
-import { type Contract } from '@midnight-ntwrk/midnight-js-types';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-import { findDeployedContract, type FoundContract } from '../find-deployed-contract';
 import {
   createMockContract,
   createMockContractAddress,
@@ -25,8 +21,12 @@ import {
   createMockPrivateStateId,
   createMockProviders,
   createMockSigningKey,
-  createMockVerifierKeys
-} from './test-mocks';
+  createMockVerifierKeys,
+} from '@midnight-ntwrk/midnight-js-contract-mocks';
+import { type Contract } from '@midnight-ntwrk/midnight-js-types';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { findDeployedContract, type FoundContract } from '../find-deployed-contract';
 
 vi.mock('../tx-interfaces', () => ({
   createCircuitCallTxInterface: vi.fn().mockReturnValue({ call: 'mock-call-interface' }),

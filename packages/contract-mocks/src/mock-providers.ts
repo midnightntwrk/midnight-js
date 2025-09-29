@@ -15,14 +15,12 @@
 
 import {
   type ContractState,
-  type Op,
   sampleSigningKey,
   type SigningKey,
   StateValue,
   type ZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
 import {
-  type AlignedValue,
   type CoinInfo,
   type CoinPublicKey,
   type EncPublicKey,
@@ -30,16 +28,12 @@ import {
   sampleContractAddress,
   sampleEncryptionPublicKey,
   type Transaction,
-  type UnprovenTransaction, type ZswapChainState
+  type UnprovenTransaction
 } from '@midnight-ntwrk/ledger';
 import type { ContractProviders } from '@midnight-ntwrk/midnight-js-contract-core';
-import { type CallOptions, type CallOptionsWithPrivateState, type PartitionedTranscript } from '@midnight-ntwrk/midnight-js-contract-sdk';
-import { type ContractConstructorResult } from '@midnight-ntwrk/midnight-js-contract-sdk';
-import { type UnsubmittedCallTxData, type UnsubmittedDeployTxData } from '@midnight-ntwrk/midnight-js-contract-sdk';
 import {
   type Contract,
   type FinalizedTxData,
-  type ImpureCircuitId,
   type PrivateState,
   type PrivateStateId,
   SucceedEntirely,
@@ -162,66 +156,6 @@ export const createMockFinalizedTxData = (status: TxStatus = SucceedEntirely): F
   tx: {} as Transaction,
   txHash: 'hash',
   blockHash: 'hash'
-});
-
-export const createMockUnprovenDeployTxData = (overrides: Partial<UnsubmittedDeployTxData<Contract>> = {}): UnsubmittedDeployTxData<Contract> => ({
-  public: {
-    contractAddress: createMockContractAddress(),
-    initialContractState: createMockContractState()
-  },
-  private: {
-    unprovenTx: createMockUnprovenTx(),
-    newCoins: [createMockCoinInfo()],
-    signingKey: createMockSigningKey(),
-    initialPrivateState: undefined,
-    initialZswapState: createMockZswapLocalState()
-  },
-  ...overrides
-});
-
-export const createMockUnprovenCallTxData = (overrides: Partial<UnsubmittedCallTxData<Contract, ImpureCircuitId>> = {}): UnsubmittedCallTxData<Contract, ImpureCircuitId> => ({
-    public: {
-      nextContractState: StateValue.newNull(),
-      publicTranscript: [
-        { noop: { n: 1 } }
-      ] as Op<AlignedValue>[],
-      partitionedTranscript: {} as PartitionedTranscript,
-      ...overrides.public
-    },
-    private: {
-      unprovenTx: createMockUnprovenTx(),
-      newCoins: [createMockCoinInfo()],
-      nextPrivateState: { state: 'test' },
-      input: {} as AlignedValue,
-      output: {} as AlignedValue,
-      privateTranscriptOutputs: [] as AlignedValue[],
-      result: vi.fn(),
-      nextZswapLocalState: createMockZswapLocalState(),
-      ...overrides.private
-    }
-});
-
-export const createMockCallOptions = (overrides: Partial<CallOptions<Contract, ImpureCircuitId>> = {}): CallOptions<Contract, ImpureCircuitId> => ({
-  contract: createMockContract(),
-  circuitId: 'testCircuit',
-  args: [] as never[],
-  contractAddress: createMockContractAddress(),
-  coinPublicKey: createMockCoinPublicKey(),
-  initialContractState: createMockContractState(),
-  initialZswapChainState: {} as ZswapChainState,
-  ...overrides
-});
-
-export const createMockCallOptionsWithPrivateState = (overrides: Partial<CallOptionsWithPrivateState<Contract, ImpureCircuitId>> = {}): CallOptionsWithPrivateState<Contract, ImpureCircuitId> => ({
-  ...createMockCallOptions(),
-  initialPrivateState: { test: 'private-state' },
-  ...overrides
-});
-
-export const createMockConstructorResult = (): ContractConstructorResult<Contract> => ({
-  nextContractState: createMockContractState(),
-  nextPrivateState: { test: 'next-private-state' },
-  nextZswapLocalState: createMockZswapLocalState(),
 });
 
 export const createMockVerifierKeys = (): [string, VerifierKey][] => [

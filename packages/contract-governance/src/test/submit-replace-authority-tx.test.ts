@@ -13,11 +13,8 @@
  * limitations under the License.
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-import { submitReplaceAuthorityTx } from '../submit-replace-authority-tx';
-import { submitTx } from '../submit-tx';
-import { createUnprovenReplaceAuthorityTx } from '../utils';
+import { submitTx } from '@midnight-ntwrk/midnight-js-contract-core';
+import { createUnprovenReplaceAuthorityTx } from '@midnight-ntwrk/midnight-js-contract-core';
 import {
   createMockContractAddress,
   createMockContractState,
@@ -25,7 +22,10 @@ import {
   createMockProviders,
   createMockSigningKey,
   createMockUnprovenTx
-} from './test-mocks';
+} from '@midnight-ntwrk/midnight-js-contract-mocks';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { submitReplaceAuthorityTx } from '../submit-replace-authority-tx';
 
 vi.mock('../submit-tx');
 vi.mock('../utils');
@@ -40,7 +40,7 @@ describe('submitReplaceAuthorityTx', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     mockProviders = createMockProviders();
     mockContractAddress = createMockContractAddress();
     mockContractState = createMockContractState();
@@ -56,7 +56,7 @@ describe('submitReplaceAuthorityTx', () => {
       mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockCurrentAuthority);
       mockProviders.privateStateProvider.setSigningKey = vi.fn().mockResolvedValue(undefined);
-      
+
       vi.mocked(createUnprovenReplaceAuthorityTx).mockReturnValue(mockUnprovenTx);
       vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
 
@@ -81,18 +81,18 @@ describe('submitReplaceAuthorityTx', () => {
     it('should throw ReplaceMaintenanceAuthorityTxFailedError when transaction fails', async () => {
       const { ReplaceMaintenanceAuthorityTxFailedError } = await import('../errors');
       const { FailEntirely } = await import('@midnight-ntwrk/midnight-js-types');
-      
+
       const failedTxData = createMockFinalizedTxData(FailEntirely);
 
       mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockCurrentAuthority);
       mockProviders.privateStateProvider.setSigningKey = vi.fn().mockResolvedValue(undefined);
-      
+
       vi.mocked(createUnprovenReplaceAuthorityTx).mockReturnValue(mockUnprovenTx);
       vi.mocked(submitTx).mockResolvedValue(failedTxData);
 
       const replaceAuthorityFn = submitReplaceAuthorityTx(mockProviders, mockContractAddress);
-      
+
       await expect(replaceAuthorityFn(mockNewAuthority)).rejects.toThrow(ReplaceMaintenanceAuthorityTxFailedError);
     });
   });

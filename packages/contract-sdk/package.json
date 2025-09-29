@@ -22,8 +22,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@midnight-ntwrk/midnight-js-contract-core": "workspace:*",
-    "@midnight-ntwrk/midnight-js-contract-deployment": "workspace:*"
+    "@midnight-ntwrk/midnight-js-contract-core": "workspace:*"
   },
   "files": [
     "dist/"

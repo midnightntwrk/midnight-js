@@ -38,7 +38,6 @@ export type UnsubmittedTxData = {
   readonly newCoins: CoinInfo[];
 }
 
-
 /**
  * Data for an unsubmitted call transaction.
  */
@@ -58,8 +57,6 @@ export type FinalizedCallTxData<C extends Contract, ICK extends ImpureCircuitId<
    */
   readonly public: FinalizedTxData;
 };
-
-
 
 /**
  * The private (sensitive) portions of the call result.
@@ -90,7 +87,6 @@ export type CallResultPrivate<C extends Contract, ICK extends ImpureCircuitId<C>
    */
   readonly nextZswapLocalState: ZswapLocalState;
 };
-
 
 /**
  * The public portions of the call result.

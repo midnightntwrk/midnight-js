@@ -15,19 +15,19 @@
 
 import { type ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
 import { type ContractState, type UnprovenTransaction } from '@midnight-ntwrk/ledger';
-import { type Contract, type PrivateState } from '@midnight-ntwrk/midnight-js-types';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-import { type ContractProviders } from '../contract-providers';
-import { deployContract, type DeployContractOptionsBase, type DeployedContract } from '../deploy-contract';
-import { type UnsubmittedDeployTxData } from '../tx-model';
+import { type ContractProviders } from '@midnight-ntwrk/midnight-js-contract-core';
 import {
   createMockContract,
   createMockFinalizedTxData,
   createMockPrivateStateId,
   createMockProviders,
   createMockSigningKey
-} from './test-mocks';
+} from '@midnight-ntwrk/midnight-js-contract-mocks';
+import { type Contract, type PrivateState } from '@midnight-ntwrk/midnight-js-types';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { deployContract, type DeployContractOptionsBase, type DeployedContract } from '../deploy-contract';
+import { type UnsubmittedDeployTxData } from '../tx-model';
 
 vi.mock('../submit-deploy-tx', () => ({
   submitDeployTx: vi.fn()

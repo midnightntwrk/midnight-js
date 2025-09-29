@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
 import { TxFailedError } from '@midnight-ntwrk/midnight-js-contract-core';
+import type { FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
 
 /**
  * An error indicating that a contract maintenance authority replacement transaction failed.

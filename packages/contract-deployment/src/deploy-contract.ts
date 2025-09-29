@@ -14,16 +14,18 @@
  */
 
 import { sampleSigningKey, type SigningKey } from '@midnight-ntwrk/compact-runtime';
+import { type ContractProviders } from '@midnight-ntwrk/midnight-js-contract-core';
+import {
+  createCircuitMaintenanceTxInterfaces,
+  createContractMaintenanceTxInterface} from '@midnight-ntwrk/midnight-js-contract-governance';
+import {
+  type ContractConstructorOptionsWithArguments,
+  createCircuitCallTxInterface
+} from '@midnight-ntwrk/midnight-js-contract-sdk';
 import type { Contract, ImpureCircuitId,PrivateState, PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 
-import type { ContractConstructorOptionsWithArguments } from './call-constructor';
-import { type ContractProviders } from '@midnight-ntwrk/midnight-js-contract-core';
 import type { FoundContract } from './find-deployed-contract';
 import { type DeployTxOptions, submitDeployTx } from './submit-deploy-tx';
-import {
-  createCircuitCallTxInterface,
-  createCircuitMaintenanceTxInterfaces,
-  createContractMaintenanceTxInterface} from './tx-interfaces';
 import type { FinalizedDeployTxData } from './tx-model';
 
 /**

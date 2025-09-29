@@ -13,14 +13,11 @@
  * limitations under the License.
  */
 
-import type { Contract, ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
-import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import { type ContractProviders, submitTx, type SubmitTxProviders } from '@midnight-ntwrk/midnight-js-contract-core';
+import { type Contract, type ImpureCircuitId, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
-import { type ContractProviders } from '@midnight-ntwrk/midnight-js-contract-core';
 import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from './errors';
-import type { SubmitTxProviders } from './submit-tx';
-import { submitTx } from './submit-tx';
 import type { FinalizedCallTxData } from './tx-model';
 import {
   type CallTxOptions,
@@ -32,8 +29,6 @@ import {
 export type SubmitCallTxProviders<C extends Contract, ICK extends ImpureCircuitId<C>> =
   | ContractProviders<C>
   | SubmitTxProviders<C, ICK>;
-
-
 
 export async function submitCallTx<C extends Contract<undefined>, ICK extends ImpureCircuitId<C>>(
   providers: SubmitTxProviders<C, ICK>,

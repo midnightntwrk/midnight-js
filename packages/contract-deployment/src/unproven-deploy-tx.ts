@@ -13,7 +13,11 @@
  * limitations under the License.
  */
 
-import type { CoinPublicKey,SigningKey } from '@midnight-ntwrk/compact-runtime';
+import type { CoinPublicKey, SigningKey } from '@midnight-ntwrk/compact-runtime';
+import { type ContractProviders } from '@midnight-ntwrk/midnight-js-contract-core';
+import { createUnprovenLedgerDeployTx, zswapStateToNewCoins } from '@midnight-ntwrk/midnight-js-contract-core';
+import type { ContractConstructorOptions, ContractConstructorOptionsWithArguments } from '@midnight-ntwrk/midnight-js-contract-sdk';
+import { callContractConstructor } from '@midnight-ntwrk/midnight-js-contract-sdk';
 import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   type Contract,
@@ -25,12 +29,8 @@ import { getImpureCircuitIds } from '@midnight-ntwrk/midnight-js-types';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import type { EncPublicKey } from '@midnight-ntwrk/zswap';
 
-import type { ContractConstructorOptions, ContractConstructorOptionsWithArguments } from './call-constructor';
-import { callContractConstructor } from './call-constructor';
-import { type ContractProviders } from '@midnight-ntwrk/midnight-js-contract-core';
 import { type DeployTxOptions } from './submit-deploy-tx';
 import type { UnsubmittedDeployTxData } from './tx-model';
-import { createUnprovenLedgerDeployTx, zswapStateToNewCoins } from './utils';
 
 /**
  * Base type for deploy transaction configuration.
@@ -124,7 +124,7 @@ export function createUnprovenDeployTxFromVerifierKeys<C extends Contract>(
  * @param verifierKeys The verifier keys for the contract being deployed.
  * @param coinPublicKey The Zswap coin public key of the current user.
  * @param options Configuration.
- *
+ * @param encryptionPublicKey The encryption public key used for encrypting private contract state.
  * @returns Data produced by the contract constructor call and an unproven deployment transaction
  *          assembled from the contract constructor result.
  */

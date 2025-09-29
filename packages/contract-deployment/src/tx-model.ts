@@ -13,16 +13,13 @@
  * limitations under the License.
  */
 
-import type { AlignedValue, ContractAddress, ContractState, Op, SigningKey, StateValue,ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
-import type { CoinInfo, Transcript, UnprovenTransaction } from '@midnight-ntwrk/ledger';
+import type { ContractAddress, ContractState, SigningKey, ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
+import { type UnsubmittedTxData } from '@midnight-ntwrk/midnight-js-contract-sdk';
 import type {
-  CircuitReturnType,
   Contract,
   FinalizedTxData,
-  ImpureCircuitId,
   PrivateState
 } from '@midnight-ntwrk/midnight-js-types';
-import type { CoinInfo, Transcript, UnprovenTransaction } from '@midnight-ntwrk/ledger';
 
 /**
  * Base type for public data relevant to an unsubmitted deployment transaction.

@@ -15,21 +15,23 @@
 
 import { StateValue, type ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
 import { type AlignedValue } from '@midnight-ntwrk/ledger';
-import { type Contract, type ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
-import { describe, expect, it, vi } from 'vitest';
-
-import { type CallResult } from '../call';
-import { createUnprovenCallTx, createUnprovenCallTxFromInitialStates } from '../unproven-call-tx';
 import {
-  createMockCallOptions,
-  createMockCallOptionsWithPrivateState,
   createMockContract,
   createMockContractAddress,
   createMockContractState,
   createMockEncryptionPublicKey,
   createMockPrivateStateId,
   createMockProviders
-} from './test-mocks';
+} from '@midnight-ntwrk/midnight-js-contract-mocks';
+import { type Contract, type ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
+import { describe, expect, it, vi } from 'vitest';
+
+import { type CallResult } from '../tx-model';
+import { createUnprovenCallTx, createUnprovenCallTxFromInitialStates } from '../unproven-call-tx';
+import {
+  createMockCallOptions,
+  createMockCallOptionsWithPrivateState
+} from './mocks';
 
 // Mock the call function and utility functions
 vi.mock('../call', () => ({

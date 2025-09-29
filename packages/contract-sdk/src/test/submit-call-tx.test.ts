@@ -15,6 +15,18 @@
 
 import { StateValue } from '@midnight-ntwrk/compact-runtime';
 import { type AlignedValue, type ContractAddress, type Transaction } from '@midnight-ntwrk/ledger';
+import { type PartitionedTranscript } from '@midnight-ntwrk/midnight-js-contract-core';
+import { submitTx } from '@midnight-ntwrk/midnight-js-contract-core';
+import {
+  createMockCoinInfo,
+  createMockContract,
+  createMockContractAddress,
+  createMockFinalizedTxData,
+  createMockPrivateStateId,
+  createMockProviders,
+  createMockUnprovenTx,
+  createMockZswapLocalState
+} from '@midnight-ntwrk/midnight-js-contract-mocks';
 import {
   type Contract,
   FailEntirely,
@@ -24,23 +36,13 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { type PartitionedTranscript } from '../call';
 import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from '../errors';
 import { submitCallTx } from '../submit-call-tx';
-import { submitTx } from '../submit-tx';
 import type { FinalizedCallTxData, UnsubmittedCallTxData } from '../tx-model';
 import { type CallTxOptions, createUnprovenCallTx } from '../unproven-call-tx';
 import {
-  createMockCoinInfo,
-  createMockContract,
-  createMockContractAddress,
-  createMockFinalizedTxData,
-  createMockPrivateStateId,
-  createMockProviders,
   createMockUnprovenCallTxData,
-  createMockUnprovenTx,
-  createMockZswapLocalState
-} from './test-mocks';
+} from './mocks';
 
 describe('submit-call-tx', () => {
   let mockContract: Contract<undefined>;

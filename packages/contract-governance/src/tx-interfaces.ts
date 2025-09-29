@@ -15,6 +15,7 @@
 
 import type { SigningKey } from '@midnight-ntwrk/compact-runtime';
 import type { ContractAddress } from '@midnight-ntwrk/ledger';
+import type { ContractProviders } from '@midnight-ntwrk/midnight-js-contract-core';
 import {
   type Contract,
   type FinalizedTxData,
@@ -22,7 +23,6 @@ import {
   type ImpureCircuitId,
   type VerifierKey
 } from '@midnight-ntwrk/midnight-js-types';
-import type { ContractProviders } from '@midnight-ntwrk/midnight-js-contract-core';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
 import { submitInsertVerifierKeyTx } from './submit-insert-vk-tx';

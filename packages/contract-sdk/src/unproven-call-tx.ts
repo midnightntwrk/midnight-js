@@ -15,6 +15,7 @@
 
 import type { CoinPublicKey, ContractState } from '@midnight-ntwrk/compact-runtime';
 import { type EncPublicKey,type ZswapChainState } from '@midnight-ntwrk/ledger';
+import { type ContractProviders, createUnprovenLedgerCallTx, encryptionPublicKeyForzswapState, zswapStateToNewCoins } from '@midnight-ntwrk/midnight-js-contract-core';
 import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type { Contract, ImpureCircuitId, PrivateState, PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
@@ -26,13 +27,9 @@ import type {
   CallOptionsWithProviderDataDependencies
 } from './call';
 import { call } from './call';
-import { type ContractProviders } from '@midnight-ntwrk/midnight-js-contract-core';
 import { IncompleteCallTxPrivateStateConfig } from './errors';
 import { getPublicStates, getStates } from './get-states';
 import type { UnsubmittedCallTxData } from './tx-model';
-import { createUnprovenLedgerCallTx, encryptionPublicKeyForzswapState, zswapStateToNewCoins } from './utils';
-
-
 
 export function createUnprovenCallTxFromInitialStates<C extends Contract<undefined>, ICK extends ImpureCircuitId<C>>(
   options: CallOptionsWithProviderDataDependencies<C, ICK>,
@@ -51,7 +48,8 @@ export function createUnprovenCallTxFromInitialStates<C extends Contract, ICK ex
  * unproven, unsubmitted, call transaction.
  *
  * @param options Configuration.
- *
+ * @param walletCoinPublicKey
+ * @param walletEncryptionPublicKey
  * @returns Data produced by the circuit call and an unproven transaction assembled from the call result.
  */
 export function createUnprovenCallTxFromInitialStates<C extends Contract, ICK extends ImpureCircuitId<C>>(

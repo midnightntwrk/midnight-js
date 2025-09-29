@@ -27,13 +27,14 @@ import {
   type QueryContext,
   sampleCoinPublicKey
 } from '@midnight-ntwrk/ledger';
+import { createMockContractAddress } from '@midnight-ntwrk/midnight-js-contract-mocks';
 import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { type Contract, type PrivateState } from '@midnight-ntwrk/midnight-js-types';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
 import { call } from '../call';
-import { createMockCallOptions, createMockCallOptionsWithPrivateState, createMockContractAddress } from './test-mocks';
+import { createMockCallOptions, createMockCallOptionsWithPrivateState } from './mocks';
 
 // TODO: add test: circuit with invalid arguments
 // TODO: add test: circuit with not matching arguments (e.g.: Boolean -> Field)

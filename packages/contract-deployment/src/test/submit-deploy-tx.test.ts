@@ -13,13 +13,7 @@
  * limitations under the License.
  */
 
-import { type Contract, FailEntirely, FailFallible, type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-import { DeployTxFailedError } from '../errors';
-import { submitDeployTx } from '../submit-deploy-tx';
-import { submitTx } from '../submit-tx';
-import { createUnprovenDeployTx } from '../unproven-deploy-tx';
+import { submitTx } from '@midnight-ntwrk/midnight-js-contract-core';
 import {
   createMockContract,
   createMockContractAddress,
@@ -27,10 +21,16 @@ import {
   createMockPrivateStateId,
   createMockProviders,
   createMockSigningKey,
-  createMockUnprovenDeployTxData,
   createMockUnprovenTx,
   createMockZswapLocalState
-} from './test-mocks';
+} from '@midnight-ntwrk/midnight-js-contract-mocks';
+import { type Contract, FailEntirely, FailFallible, type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { DeployTxFailedError } from '../errors';
+import { submitDeployTx } from '../submit-deploy-tx';
+import { createUnprovenDeployTx } from '../unproven-deploy-tx';
+import { createMockUnprovenDeployTxData } from './mocks';
 
 vi.mock('../unproven-deploy-tx');
 vi.mock('../submit-tx');

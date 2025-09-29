@@ -13,17 +13,17 @@
  * limitations under the License.
  */
 
-import { describe, expect, it, vi } from 'vitest';
-
-import { createUnprovenDeployTx, createUnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
 import {
-  createMockConstructorResult,
   createMockContract,
   createMockEncryptionPublicKey,
   createMockProviders,
   createMockSigningKey,
   createMockVerifierKeys
-} from './test-mocks';
+} from '@midnight-ntwrk/midnight-js-contract-mocks';
+import { describe, expect, it, vi } from 'vitest';
+
+import { createUnprovenDeployTx, createUnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
+import { createMockConstructorResult } from './mocks';
 
 vi.mock('../call-constructor', () => ({
   callContractConstructor: vi.fn()
@@ -45,7 +45,7 @@ vi.mock('@midnight-ntwrk/midnight-js-types', () => ({
 describe('unproven-deploy-tx', () => {
   describe('createUnprovenDeployTxFromVerifierKeys', () => {
     it('should create unproven deploy tx from verifier keys without private state', async () => {
-      const { callContractConstructor } = await import('../call-constructor');
+      const { callContractConstructor } = await import('@midnight-ntwrk/midnight-js-contract-sdk');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mockCallContractConstructor = callContractConstructor as any;
 
@@ -80,7 +80,7 @@ describe('unproven-deploy-tx', () => {
     });
 
     it('should create unproven deploy tx from verifier keys with private state', async () => {
-      const { callContractConstructor } = await import('../call-constructor');
+      const { callContractConstructor } = await import('@midnight-ntwrk/midnight-js-contract-sdk');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mockCallContractConstructor = callContractConstructor as any;
 

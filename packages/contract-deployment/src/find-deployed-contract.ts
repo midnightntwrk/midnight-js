@@ -19,6 +19,17 @@ import {
   sampleSigningKey,
   type SigningKey
 } from '@midnight-ntwrk/compact-runtime';
+import { type ContractProviders } from '@midnight-ntwrk/midnight-js-contract-core';
+import {
+  type CircuitMaintenanceTxInterfaces,
+  type ContractMaintenanceTxInterface,
+  createCircuitMaintenanceTxInterfaces,
+  createContractMaintenanceTxInterface
+} from '@midnight-ntwrk/midnight-js-contract-governance';
+import {
+  type CircuitCallTxInterface,
+  createCircuitCallTxInterface,
+} from '@midnight-ntwrk/midnight-js-contract-sdk';
 import {
   type Contract,
   getImpureCircuitIds,
@@ -29,16 +40,7 @@ import {
   type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress, toHex } from '@midnight-ntwrk/midnight-js-utils';
 
-import { type ContractProviders } from '@midnight-ntwrk/midnight-js-contract-core';
 import { ContractTypeError, IncompleteFindContractPrivateStateConfig } from './errors';
-import {
-  type CircuitCallTxInterface,
-  type CircuitMaintenanceTxInterfaces,
-  type ContractMaintenanceTxInterface,
-  createCircuitCallTxInterface,
-  createCircuitMaintenanceTxInterfaces,
-  createContractMaintenanceTxInterface
-} from './tx-interfaces';
 import type { FinalizedDeployTxDataBase } from './tx-model';
 
 const setOrGetInitialSigningKey = async (
@@ -218,8 +220,6 @@ export type FoundContract<C extends Contract> = {
    */
   readonly contractMaintenanceTx: ContractMaintenanceTxInterface;
 }
-
-
 
 export async function findDeployedContract<C extends Contract<undefined>>(
   providers: ContractProviders<C, ImpureCircuitId<C>, unknown>,

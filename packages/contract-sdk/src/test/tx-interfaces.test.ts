@@ -13,18 +13,18 @@
  * limitations under the License.
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-import {
-  createCallTxOptions,
-  createCircuitCallTxInterface,
-} from '../tx-interfaces';
 import {
   createMockContract,
   createMockContractAddress,
   createMockPrivateStateId,
   createMockProviders
 } from '@midnight-ntwrk/midnight-js-contract-mocks';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import {
+  createCallTxOptions,
+  createCircuitCallTxInterface,
+} from '../tx-interfaces';
 
 vi.mock('../submit-call-tx');
 vi.mock('../submit-insert-vk-tx');

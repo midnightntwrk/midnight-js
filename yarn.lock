@@ -2595,13 +2595,15 @@ __metadata:
   dependencies:
     "@fast-check/vitest": "npm:^0.2.1"
     "@midnight-ntwrk/midnight-js-contract-core": "workspace:*"
+    "@midnight-ntwrk/midnight-js-contract-governance": "workspace:*"
     "@midnight-ntwrk/midnight-js-contract-mocks": "workspace:*"
+    "@midnight-ntwrk/midnight-js-contract-sdk": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft
 
-"@midnight-ntwrk/midnight-js-contract-governance@workspace:packages/contract-governance":
+"@midnight-ntwrk/midnight-js-contract-governance@workspace:*, @midnight-ntwrk/midnight-js-contract-governance@workspace:packages/contract-governance":
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-contract-governance@workspace:packages/contract-governance"
   dependencies:
@@ -2622,13 +2624,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@midnight-ntwrk/midnight-js-contract-sdk@workspace:packages/contract-sdk":
+"@midnight-ntwrk/midnight-js-contract-sdk@workspace:*, @midnight-ntwrk/midnight-js-contract-sdk@workspace:packages/contract-sdk":
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-contract-sdk@workspace:packages/contract-sdk"
   dependencies:
     "@fast-check/vitest": "npm:^0.2.1"
     "@midnight-ntwrk/midnight-js-contract-core": "workspace:*"
-    "@midnight-ntwrk/midnight-js-contract-deployment": "workspace:*"
     "@midnight-ntwrk/midnight-js-contract-mocks": "workspace:*"
     vitest: "npm:^3.2.4"
   languageName: unknown
@@ -2639,9 +2640,10 @@ __metadata:
   resolution: "@midnight-ntwrk/midnight-js-contracts@workspace:packages/contracts"
   dependencies:
     "@fast-check/vitest": "npm:^0.2.1"
-    "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
-    "@midnight-ntwrk/midnight-js-types": "workspace:*"
-    "@midnight-ntwrk/midnight-js-utils": "workspace:*"
+    "@midnight-ntwrk/midnight-js-contract-core": "workspace:*"
+    "@midnight-ntwrk/midnight-js-contract-deployment": "workspace:*"
+    "@midnight-ntwrk/midnight-js-contract-governance": "workspace:*"
+    "@midnight-ntwrk/midnight-js-contract-sdk": "workspace:*"
     vitest: "npm:^3.2.4"
   languageName: unknown
   linkType: soft

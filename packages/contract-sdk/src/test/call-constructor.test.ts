@@ -14,15 +14,17 @@
  */
 
 import * as compactRuntime from '@midnight-ntwrk/compact-runtime';
+import {
+  createMockCoinPublicKey,
+  createMockContract,
+  createMockZswapLocalState
+} from '@midnight-ntwrk/midnight-js-contract-mocks';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { callContractConstructor, type ContractConstructorOptionsWithPrivateState } from '../call-constructor';
 import {
-  createMockCoinPublicKey,
   createMockConstructorResult,
-  createMockContract,
-  createMockZswapLocalState
-} from './test-mocks';
+} from './mocks';
 
 // TODO: add test: add some negative tests
 

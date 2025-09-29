@@ -13,6 +13,12 @@
  * limitations under the License.
  */
 
+import {
+  createMockContract,
+  createMockContractAddress,
+  createMockFinalizedTxData,
+  createMockProviders
+} from '@midnight-ntwrk/midnight-js-contract-mocks';
 import type { VerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -21,12 +27,6 @@ import {
   createCircuitMaintenanceTxInterfaces,
   createContractMaintenanceTxInterface
 } from '../tx-interfaces';
-import {
-  createMockContract,
-  createMockContractAddress,
-  createMockFinalizedTxData,
-  createMockProviders
-} from './@midnight-ntwrk/midnight-js-contract-mocks';
 
 vi.mock('../submit-call-tx');
 vi.mock('../submit-insert-vk-tx');

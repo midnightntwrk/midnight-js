@@ -14,13 +14,13 @@
  */
 
 import type { ContractAddress } from '@midnight-ntwrk/ledger';
+import { type ContractProviders } from '@midnight-ntwrk/midnight-js-contract-core';
+import { submitTx } from '@midnight-ntwrk/midnight-js-contract-core';
+import { createUnprovenRemoveVerifierKeyTx } from '@midnight-ntwrk/midnight-js-contract-core';
 import { type FinalizedTxData, type ImpureCircuitId,SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
-import { type ContractProviders } from '@midnight-ntwrk/midnight-js-contract-core';
 import { RemoveVerifierKeyTxFailedError } from './errors';
-import { submitTx } from './submit-tx';
-import { createUnprovenRemoveVerifierKeyTx } from './utils';
 
 /**
  * Constructs and submits a transaction that removes the current verifier key stored

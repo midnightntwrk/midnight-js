@@ -13,19 +13,17 @@
  * limitations under the License.
  */
 
-import type { SigningKey } from '@midnight-ntwrk/compact-runtime';
 import type { ContractAddress } from '@midnight-ntwrk/ledger';
+import { type ContractProviders } from '@midnight-ntwrk/midnight-js-contract-core';
 import {
   type CircuitParameters,
   type Contract,
-  type FinalizedTxData,
   getImpureCircuitIds,
   type ImpureCircuitId,
   type PrivateStateId,
-  type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
+} from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
-import { type ContractProviders } from '@midnight-ntwrk/midnight-js-contract-core';
 import { submitCallTx } from './submit-call-tx';
 import type { FinalizedCallTxData } from './tx-model';
 import type { CallTxOptions } from './unproven-call-tx';

@@ -23,6 +23,8 @@
   },
   "dependencies": {
     "@midnight-ntwrk/midnight-js-contract-core": "workspace:*",
+    "@midnight-ntwrk/midnight-js-contract-governance": "workspace:*",
+    "@midnight-ntwrk/midnight-js-contract-sdk": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
   },
   "files": [

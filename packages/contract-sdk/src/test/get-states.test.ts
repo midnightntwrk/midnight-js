@@ -14,16 +14,16 @@
  */
 
 import type { ZswapChainState } from '@midnight-ntwrk/ledger';
-import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-import { getPublicStates, getStates } from '../get-states';
 import {
   createMockContractAddress,
   createMockContractState,
   createMockPrivateStateId,
   createMockProviders,
-} from './test-mocks';
+} from '@midnight-ntwrk/midnight-js-contract-mocks';
+import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { getPublicStates, getStates } from '../get-states';
 
 describe('get-states', () => {
   let mockProviders: ReturnType<typeof createMockProviders>;

@@ -13,11 +13,8 @@
  * limitations under the License.
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-import { submitRemoveVerifierKeyTx } from '../submit-remove-vk-tx';
-import { submitTx } from '../submit-tx';
-import { createUnprovenRemoveVerifierKeyTx } from '../utils';
+import { submitTx } from '@midnight-ntwrk/midnight-js-contract-core';
+import { createUnprovenRemoveVerifierKeyTx } from '@midnight-ntwrk/midnight-js-contract-core';
 import {
   createMockContractAddress,
   createMockContractState,
@@ -25,7 +22,10 @@ import {
   createMockProviders,
   createMockSigningKey,
   createMockUnprovenTx
-} from './test-mocks';
+} from '@midnight-ntwrk/midnight-js-contract-mocks';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { submitRemoveVerifierKeyTx } from '../submit-remove-vk-tx';
 
 vi.mock('../submit-tx');
 vi.mock('../utils');
@@ -39,7 +39,7 @@ describe('submitRemoveVerifierKeyTx', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     mockProviders = createMockProviders();
     mockContractAddress = createMockContractAddress();
     mockContractState = createMockContractState();
@@ -56,7 +56,7 @@ describe('submitRemoveVerifierKeyTx', () => {
       mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockSigningKey);
       mockContractState.operation = vi.fn().mockReturnValue(mockOperation);
-      
+
       vi.mocked(createUnprovenRemoveVerifierKeyTx).mockReturnValue(mockUnprovenTx);
       vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
 
@@ -84,7 +84,7 @@ describe('submitRemoveVerifierKeyTx', () => {
     it('should throw RemoveVerifierKeyTxFailedError when transaction fails', async () => {
       const { RemoveVerifierKeyTxFailedError } = await import('../errors');
       const { FailEntirely } = await import('@midnight-ntwrk/midnight-js-types');
-      
+
       const circuitId = 'testCircuit';
       const failedTxData = createMockFinalizedTxData(FailEntirely);
       const mockOperation = { verifierKey: new Uint8Array(32) };
@@ -92,7 +92,7 @@ describe('submitRemoveVerifierKeyTx', () => {
       mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockSigningKey);
       mockContractState.operation = vi.fn().mockReturnValue(mockOperation);
-      
+
       vi.mocked(createUnprovenRemoveVerifierKeyTx).mockReturnValue(mockUnprovenTx);
       vi.mocked(submitTx).mockResolvedValue(failedTxData);
 
