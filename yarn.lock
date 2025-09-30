@@ -4457,8 +4457,8 @@ __metadata:
   linkType: hard
 
 "abstract-level@npm:^3.0.0, abstract-level@npm:^3.1.0":
-  version: 3.1.0
-  resolution: "abstract-level@npm:3.1.0"
+  version: 3.1.1
+  resolution: "abstract-level@npm:3.1.1"
   dependencies:
     buffer: "npm:^6.0.3"
     is-buffer: "npm:^2.0.5"
@@ -4466,7 +4466,7 @@ __metadata:
     level-transcoder: "npm:^1.0.1"
     maybe-combine-errors: "npm:^1.0.0"
     module-error: "npm:^1.0.1"
-  checksum: 10/22e8f6b3f3c7f0318925cfa391d4a7ec8692e7e6f3ec1f2b1310438ec99e909fe1af44ae8d893a746729f877ef332a4e93957e44f594ce8778c4fcd7c309d95d
+  checksum: 10/1a4d19efac7a8781972aa5e8a57dce39b3ada75a15c1ee25c8dce5978d72b5f9e2bc8d7fbfabafdc49b5941c5b1913465331864b3061fd0d0ed351a397624b46
   languageName: node
   linkType: hard
 
