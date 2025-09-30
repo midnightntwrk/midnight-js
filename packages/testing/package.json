@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-testing",
-  "version": "2.1.0-rc.2",
+  "version": "2.1.0-rc.3",
   "description": "Testing utilities and e2e tests for MidnightJS",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",

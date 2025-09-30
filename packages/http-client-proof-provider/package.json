@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-http-client-proof-provider",
-  "version": "2.1.0-rc.2",
+  "version": "2.1.0-rc.3",
   "description": "Implementation of proof provider based on the Midnight ledger proof server",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
