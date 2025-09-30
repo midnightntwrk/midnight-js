@@ -15,7 +15,7 @@
 
 import type { CoinPublicKey, SigningKey } from '@midnight-ntwrk/compact-runtime';
 import { type ContractProviders } from '@midnight-ntwrk/midnight-js-contract-core';
-import { createUnprovenLedgerDeployTx, zswapStateToNewCoins } from '@midnight-ntwrk/midnight-js-contract-core';
+import { zswapStateToNewCoins } from '@midnight-ntwrk/midnight-js-contract-core';
 import type { ContractConstructorOptions, ContractConstructorOptionsWithArguments } from '@midnight-ntwrk/midnight-js-contract-sdk';
 import { callContractConstructor } from '@midnight-ntwrk/midnight-js-contract-sdk';
 import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
@@ -29,6 +29,7 @@ import { getImpureCircuitIds } from '@midnight-ntwrk/midnight-js-types';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import type { EncPublicKey } from '@midnight-ntwrk/zswap';
 
+import { createUnprovenLedgerDeployTx } from './ledger-utils';
 import { type DeployTxOptions } from './submit-deploy-tx';
 import type { UnsubmittedDeployTxData } from './tx-model';
 

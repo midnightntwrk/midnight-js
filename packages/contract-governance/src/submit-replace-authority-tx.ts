@@ -16,11 +16,11 @@
 import type { ContractAddress, SigningKey } from '@midnight-ntwrk/ledger';
 import { type ContractProviders } from '@midnight-ntwrk/midnight-js-contract-core';
 import { submitTx } from '@midnight-ntwrk/midnight-js-contract-core';
-import { createUnprovenReplaceAuthorityTx } from '@midnight-ntwrk/midnight-js-contract-core';
 import { type FinalizedTxData, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
 import { ReplaceMaintenanceAuthorityTxFailedError } from './errors';
+import { createUnprovenReplaceAuthorityTx } from './ledger-utils';
 
 /**
  * Constructs and submits a transaction that replaces the maintenance

@@ -16,7 +16,6 @@
 import type { ContractAddress } from '@midnight-ntwrk/ledger';
 import { type ContractProviders } from '@midnight-ntwrk/midnight-js-contract-core';
 import { submitTx } from '@midnight-ntwrk/midnight-js-contract-core';
-import { createUnprovenInsertVerifierKeyTx } from '@midnight-ntwrk/midnight-js-contract-core';
 import {
   type FinalizedTxData,
   type ImpureCircuitId,
@@ -25,6 +24,7 @@ import {
 import { assertDefined, assertIsContractAddress, assertUndefined } from '@midnight-ntwrk/midnight-js-utils';
 
 import { InsertVerifierKeyTxFailedError } from './errors';
+import { createUnprovenInsertVerifierKeyTx } from './ledger-utils';
 
 /**
  * Constructs and submits a transaction that adds a new verifier key to the
