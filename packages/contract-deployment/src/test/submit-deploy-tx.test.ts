@@ -33,7 +33,14 @@ import { createUnprovenDeployTx } from '../unproven-deploy-tx';
 import { createMockUnprovenDeployTxData } from './mocks';
 
 vi.mock('../unproven-deploy-tx');
-vi.mock('@midnight-ntwrk/midnight-js-contract-core');
+vi.mock('../ledger-utils');
+vi.mock('@midnight-ntwrk/midnight-js-contract-core', async () => {
+  const actual = await vi.importActual('@midnight-ntwrk/midnight-js-contract-core');
+  return {
+    ...actual,
+    submitTx: vi.fn()
+  };
+});
 vi.mock('@midnight-ntwrk/compact-runtime');
 vi.mock('@midnight-ntwrk/ledger');
 
