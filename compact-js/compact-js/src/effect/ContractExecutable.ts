@@ -32,13 +32,21 @@ import {
   type ZswapLocalState} from '@midnight-ntwrk/compact-runtime';
 import {
   ChargedState as LedgerChargedState,
+  ContractMaintenanceAuthority as LedgerContractMaintenanceAuthority,
+  ContractOperationVersion,
+  ContractOperationVersionedVerifierKey,
   LedgerParameters,
+  MaintenanceUpdate,
   partitionTranscripts,
   PreTranscript,
   QueryContext as LedgerQueryContext,
+  ReplaceAuthority,
+  signData,
+  type SingleUpdate,
   StateValue as LedgerStateValue,
-  type Transcript
-} from '@midnight-ntwrk/ledger';
+  type Transcript,
+  VerifierKeyInsert,
+  VerifierKeyRemove} from '@midnight-ntwrk/ledger';
 import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import type * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
@@ -86,9 +94,52 @@ export interface ContractExecutable<in out C extends Contract.Contract<PS>, PS, 
    */
   circuit<K extends Contract.ImpureCircuitId<C> = Contract.ImpureCircuitId<C>>(
     impureCircuitId: K,
-    circuitContext: ContractExecutable.CircuitContext<PS>,
+    circuitContext: ContractExecutable.StatefulCircuitContext<PS>,
     ...args: Contract.Contract.CircuitParameters<C, K>
   ): Effect.Effect<ContractExecutable.CallResult<C, PS, K>, E, R>;
+
+  /**
+   * Applies a new Contract Maintenance Authority (CMA) to a deployed instance of the contract.
+   * 
+   * @param circuitContext Execution context for the maintenance operation.
+   * @param newSigningKey The signing key that will replace the current that is associated with the
+   * deployed contract. If `Option.none` then a new singing key is sampled and used instead,
+   * @returns A {@link ContractExecutable.MaintenanceResult} describing the result of the maintenance update.
+   * 
+   * @remarks
+   * The current signing key will be taken from the {@link Configuration.Keys} that is part of the executable
+   * context, and used to sign the maintenance operation.
+   */
+  replaceContractMaintenanceAuthority(
+    newSigningKey: Option.Option<SigningKey.SigningKey>,
+    circuitContext: ContractExecutable.CircuitContext
+  ): Effect.Effect<ContractExecutable.MaintenanceResult, E, R>;
+
+  /**
+   * Removes the current verifier key for an operation on a deployed instance of the contract.
+   * 
+   * @param impureCircuitId The circuit to be removed from the deployed contract.
+   * @param circuitContext Execution context for the maintenance operation.
+   * @returns A {@link ContractExecutable.MaintenanceResult} describing the result of the maintenance update.
+   */
+  removeContractOperation<K extends Contract.ImpureCircuitId<C> = Contract.ImpureCircuitId<C>>(
+    impureCircuitId: K,
+    circuitContext: ContractExecutable.CircuitContext
+  ): Effect.Effect<ContractExecutable.MaintenanceResult, E, R>;
+
+  /**
+   * Adds or replaces a verifier key associated with a circuit on a deployed contract.
+   * 
+   * @param impureCircuitId The circuit to add or replace on the deployed contract.
+   * @param verifierKey The verifier key to apply to `impureCircuitId`.
+   * @param circuitContext Execution context for the maintenance operation.
+   * @returns A {@link ContractExecutable.MaintenanceResult} describing the result of the maintenance update.
+   */
+  addOrReplaceContractOperation<K extends Contract.ImpureCircuitId<C> = Contract.ImpureCircuitId<C>>(
+    impureCircuitId: K,
+    verifierKey: Contract.VerifierKey,
+    circuitContext: ContractExecutable.CircuitContext
+  ): Effect.Effect<ContractExecutable.MaintenanceResult, E, R>;
 }
 
 export declare namespace ContractExecutable {
@@ -97,15 +148,15 @@ export declare namespace ContractExecutable {
    */
   export type Context = ZKConfiguration | Configuration.Keys | Configuration.Network;
 
-  export type CircuitContext<PS> = {
+  export type CircuitContext = {
     readonly address: ContractAddress.ContractAddress;
-
     readonly contractState: ContractState;
-
-    readonly privateState: PS;
-
-    readonly zswapLocalState?: ZswapLocalState;
   };
+
+  export type StatefulCircuitContext<PS> = CircuitContext & {
+    readonly privateState: PS;
+    readonly zswapLocalState?: ZswapLocalState;
+  }
 
   export type DeployResultPublic = {
     readonly contractState: ContractState;
@@ -138,6 +189,17 @@ export declare namespace ContractExecutable {
     readonly public: CallResultPublic;
     readonly private: CallResultPrivate<C, PS, K>;
   };
+
+  export type MaintenanceResultPublic = {
+    readonly maintenanceUpdate: MaintenanceUpdate;
+  }
+  export type MaintenanceResultPrivate = {
+    readonly signingKey: SigningKey.SigningKey;
+  }
+  export type MaintenanceResult = {
+    readonly public: MaintenanceResultPublic;
+    readonly private: MaintenanceResultPrivate;
+  }
 }
 
 /**
@@ -155,6 +217,7 @@ export type ContractExecutionError =
 type Transform<E, R> = <A>(effect: Effect.Effect<A, any, any>) => Effect.Effect<A, E, R>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 const DEFAULT_CMA_THRESHOLD = 1;
+const DEFAULT_SIGNATURE_INDEX = 0n;
 
 const asLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext =>
   new LedgerQueryContext(
@@ -254,23 +317,26 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
                 }
               }
 
+              const [cma, signingKey] = yield* this.createMaintenanceAuthority(keyConfig.getSigningKey());
+
+              contractState.maintenanceAuthority = cma;
               // Add the Contract Maintenance Authority (CMA).
-              const signingKey = Option.match(keyConfig.getSigningKey(), {
-                onSome: identity,
-                onNone: () => SigningKey.SigningKey(sampleSigningKey())
-              });
-              try {
-                contractState.maintenanceAuthority = new ContractMaintenanceAuthority(
-                  [signatureVerifyingKey(signingKey)],
-                  DEFAULT_CMA_THRESHOLD
-                );
-              } catch (err: unknown) {
-                  return yield* ContractConfigurationError.make(
-                    `Failed to create a signature verifying key for signing key '${signingKey}'`,
-                    contractState,
-                    err
-                  );
-              }
+              // const signingKey = Option.match(keyConfig.getSigningKey(), {
+              //   onSome: identity,
+              //   onNone: () => SigningKey.SigningKey(sampleSigningKey())
+              // });
+              // try {
+              //   contractState.maintenanceAuthority = new ContractMaintenanceAuthority(
+              //     [signatureVerifyingKey(signingKey)],
+              //     DEFAULT_CMA_THRESHOLD
+              //   );
+              // } catch (err: unknown) {
+              //     return yield* ContractConfigurationError.make(
+              //       `Failed to create a signature verifying key for signing key '${signingKey}'`,
+              //       contractState,
+              //       err
+              //     );
+              // }
 
               return {
                 public: {
@@ -292,7 +358,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
 
   circuit<K extends Contract.ImpureCircuitId<C> = Contract.ImpureCircuitId<C>>(
     impureCircuitId: K,
-    circuitContext: ContractExecutable.CircuitContext<PS>,
+    circuitContext: ContractExecutable.StatefulCircuitContext<PS>,
     ...args: Contract.Contract.CircuitParameters<C, K>
   ): Effect.Effect<ContractExecutable.CallResult<C, PS, K>, E, R> {
     return Effect.all({
@@ -358,6 +424,144 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
       ),
       this.transform
     );
+  }
+
+  replaceContractMaintenanceAuthority(
+    this: ContractExecutableImpl<C, PS, E, R>,
+    newSigningKey: Option.Option<SigningKey.SigningKey>,
+    circuitContext: ContractExecutable.CircuitContext
+  ): Effect.Effect<ContractExecutable.MaintenanceResult, E, R> {
+    return Effect.all({
+      keyConfig: Configuration.Keys
+    }).pipe(
+      Effect.flatMap(({ keyConfig  }) => Effect.gen(this, function* () {
+        const { contractState } = circuitContext;
+        const [cma, signingKey] = yield* this.createMaintenanceAuthority(newSigningKey, contractState);
+        const ledger_cma = LedgerContractMaintenanceAuthority.deserialize(cma.serialize()) as unknown as LedgerContractMaintenanceAuthority;
+        const update = yield* this.createSignedMaintenanceUpdate(
+          () => {
+            return Either.right([
+              new ReplaceAuthority(ledger_cma)
+            ]);
+          },
+          keyConfig,
+          circuitContext
+        );
+        return {
+          ...update,
+          private: {
+            ...update.private,
+            signingKey // We need to include the new signing key in the result.
+          }
+        }
+      })),
+      this.transform
+    );
+  }
+
+  removeContractOperation<K extends Contract.ImpureCircuitId<C> = Contract.ImpureCircuitId<C>>(
+    this: ContractExecutableImpl<C, PS, E, R>,
+    impureCircuitId: K,
+    circuitContext: ContractExecutable.CircuitContext
+  ): Effect.Effect<ContractExecutable.MaintenanceResult, E, R> {
+    return Effect.all({
+      keyConfig: Configuration.Keys
+    }).pipe(
+      Effect.flatMap(({ keyConfig  }) => Effect.gen(this, function* () {
+        return yield* this.createSignedMaintenanceUpdate(
+          () => {
+            return Either.right([
+              new VerifierKeyRemove(impureCircuitId, new ContractOperationVersion('v2'))
+            ]);
+          },
+          keyConfig,
+          circuitContext
+        );
+      })),
+      this.transform
+    );
+  }
+
+  addOrReplaceContractOperation<K extends Contract.ImpureCircuitId<C> = Contract.ImpureCircuitId<C>>(
+    impureCircuitId: K,
+    verifierKey: Contract.VerifierKey,
+    circuitContext: ContractExecutable.CircuitContext
+  ): Effect.Effect<ContractExecutable.MaintenanceResult, E, R> {
+    return Effect.all({
+      keyConfig: Configuration.Keys
+    }).pipe(
+      Effect.flatMap(({ keyConfig  }) => Effect.gen(this, function* () {
+        return yield* this.createSignedMaintenanceUpdate(
+          () => {
+            return Either.right([
+              new VerifierKeyInsert(impureCircuitId, new ContractOperationVersionedVerifierKey('v2', verifierKey))
+            ]);
+          },
+          keyConfig,
+          circuitContext
+        );
+      })),
+      this.transform
+    );
+  }
+
+  protected createSignedMaintenanceUpdate(
+    createUpdateFn: () => Either.Either<SingleUpdate[], ContractConfigurationError.ContractConfigurationError>,
+    keyConfig: Configuration.Configuration.Keys,
+    circuitContext: ContractExecutable.CircuitContext
+  ): Either.Either<ContractExecutable.MaintenanceResult, ContractConfigurationError.ContractConfigurationError> {
+    const { address, contractState } = circuitContext;
+    const currentSigningKey = keyConfig.getSigningKey();
+    if (Option.isNone(currentSigningKey)) {
+      return Either.left(ContractConfigurationError.make(
+        'Signing key required to authorize contract maintenance update',
+        contractState
+      ));
+    }
+    const update = createUpdateFn();
+    if (Either.isLeft(update)) return Either.left(update.left);
+    const maintenanceUpdate = new MaintenanceUpdate(
+      address,
+      Either.getOrThrow(update),
+      contractState.maintenanceAuthority.counter
+    );
+    return Either.right({
+      public: {
+        maintenanceUpdate: maintenanceUpdate.addSignature(
+          DEFAULT_SIGNATURE_INDEX, 
+          signData(Option.getOrThrow(currentSigningKey), maintenanceUpdate.dataToSign)
+        )
+      },
+      private: {
+        signingKey: Option.getOrThrow(currentSigningKey)
+      }
+    });
+  }
+
+  protected createMaintenanceAuthority(
+    key: Option.Option<SigningKey.SigningKey>,
+    contractState?: ContractState
+  ): Either.Either<[ContractMaintenanceAuthority, SigningKey.SigningKey], ContractConfigurationError.ContractConfigurationError> {
+    const signingKey = Option.match(key, {
+      onSome: identity,
+      onNone: () => SigningKey.SigningKey(sampleSigningKey())
+    });
+    try {
+      return Either.right([
+        new ContractMaintenanceAuthority(
+          [signatureVerifyingKey(signingKey)],
+          DEFAULT_CMA_THRESHOLD,
+          contractState ? contractState.maintenanceAuthority.counter + 1n : 0n
+        ),
+        signingKey
+      ]);
+    } catch (err: unknown) {
+      return Either.left(ContractConfigurationError.make(
+        `Failed to create a signature verifying key for signing key '${signingKey}'`,
+        contractState,
+        err
+      ));
+    }
   }
 
   protected createContract(): Effect.Effect<C, ContractRuntimeError.ContractRuntimeError> {
