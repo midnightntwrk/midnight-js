@@ -29,7 +29,7 @@ import { createUnprovenInsertVerifierKeyTx } from '../ledger-utils';
 import { submitInsertVerifierKeyTx } from '../submit-insert-vk-tx';
 
 vi.mock('@midnight-ntwrk/midnight-js-contract-core', async () => {
-  const actual = await vi.importActual<typeof import('@midnight-ntwrk/midnight-js-contract-core')>('@midnight-ntwrk/midnight-js-contract-core');
+  const actual = await vi.importActual('@midnight-ntwrk/midnight-js-contract-core');
   return {
     ...actual,
     submitTx: vi.fn()
