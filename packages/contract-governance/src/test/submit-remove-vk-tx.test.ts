@@ -27,8 +27,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createUnprovenRemoveVerifierKeyTx } from '../ledger-utils';
 import { submitRemoveVerifierKeyTx } from '../submit-remove-vk-tx';
 
-vi.mock('../submit-tx');
-vi.mock('../utils');
+vi.mock('@midnight-ntwrk/midnight-js-contract-core', async () => {
+  const actual = await vi.importActual<typeof import('@midnight-ntwrk/midnight-js-contract-core')>('@midnight-ntwrk/midnight-js-contract-core');
+  return {
+    ...actual,
+    submitTx: vi.fn()
+  };
+});
+vi.mock('../ledger-utils');
 
 describe('submitRemoveVerifierKeyTx', () => {
   let mockProviders: ReturnType<typeof createMockProviders>;

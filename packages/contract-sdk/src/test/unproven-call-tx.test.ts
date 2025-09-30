@@ -16,6 +16,7 @@
 import { StateValue, type ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
 import { type AlignedValue } from '@midnight-ntwrk/ledger';
 import {
+  createMockCoinPublicKey,
   createMockContract,
   createMockContractAddress,
   createMockContractState,
@@ -43,10 +44,17 @@ vi.mock('../get-states', () => ({
   getPublicStates: vi.fn()
 }));
 
-vi.mock('../utils', () => ({
-  createUnprovenLedgerCallTx: vi.fn().mockReturnValue({ test: 'unproven-tx' }),
-  encryptionPublicKeyForzswapState: vi.fn().mockReturnValue('encrypted-key'),
-  zswapStateToNewCoins: vi.fn().mockReturnValue([{ test: 'coin' }])
+vi.mock('@midnight-ntwrk/midnight-js-contract-core', async () => {
+  const actual = await vi.importActual('@midnight-ntwrk/midnight-js-contract-core');
+  return {
+    ...actual,
+    encryptionPublicKeyForzswapState: vi.fn().mockReturnValue('encrypted-key'),
+    zswapStateToNewCoins: vi.fn().mockReturnValue([{ test: 'coin' }])
+  };
+});
+
+vi.mock('../ledger-utils', () => ({
+  createUnprovenLedgerCallTx: vi.fn().mockReturnValue({ test: 'unproven-tx' })
 }));
 
 describe('unproven-call-tx', () => {
@@ -75,7 +83,7 @@ describe('unproven-call-tx', () => {
       mockCall.mockReturnValue(callResult);
 
       const options = createMockCallOptions();
-      const walletCoinPublicKey = 'wallet-coin-key';
+      const walletCoinPublicKey = createMockCoinPublicKey();
       const walletEncryptionPublicKey = createMockEncryptionPublicKey();
 
       const result = createUnprovenCallTxFromInitialStates(
@@ -116,7 +124,7 @@ describe('unproven-call-tx', () => {
       mockCall.mockReturnValue(callResult);
 
       const options = createMockCallOptionsWithPrivateState();
-      const walletCoinPublicKey = 'wallet-coin-key';
+      const walletCoinPublicKey = createMockCoinPublicKey();
       const walletEncryptionPublicKey = createMockEncryptionPublicKey();
 
       const result = createUnprovenCallTxFromInitialStates(

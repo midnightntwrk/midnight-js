@@ -27,8 +27,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createUnprovenReplaceAuthorityTx } from '../ledger-utils';
 import { submitReplaceAuthorityTx } from '../submit-replace-authority-tx';
 
-vi.mock('../submit-tx');
-vi.mock('../utils');
+vi.mock('@midnight-ntwrk/midnight-js-contract-core', async () => {
+  const actual = await vi.importActual('@midnight-ntwrk/midnight-js-contract-core');
+  return {
+    ...actual,
+    submitTx: vi.fn()
+  };
+});
+vi.mock('../ledger-utils');
 
 describe('submitReplaceAuthorityTx', () => {
   let mockProviders: ReturnType<typeof createMockProviders>;
