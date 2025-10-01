@@ -42,7 +42,8 @@
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "0.9.0",
     "@midnight-ntwrk/ledger-v6": "6.1.0-alpha.3",
-    "@midnight-ntwrk/onchain-runtime-v1": "1.0.0-alpha.3",    "@midnight-ntwrk/wallet-sdk-address-format": "2.0.0",
+    "@midnight-ntwrk/onchain-runtime-v1": "1.0.0-alpha.3",
+    "@midnight-ntwrk/wallet-sdk-address-format": "2.0.0",
     "@midnight-ntwrk/zswap": "4.0.0"
   },
   "devDependencies": {
