@@ -27,8 +27,13 @@ import {
   type StateValue,
   type ZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
-import { type Transcript, type ZswapChainState } from '@midnight-ntwrk/ledger-v6';
-import { LedgerParameters, partitionTranscripts, PreTranscript } from '@midnight-ntwrk/ledger-v6';
+import {
+  LedgerParameters,
+  type PartitionedTranscript,
+  partitionTranscripts,
+  PreTranscript,
+  type ZswapChainState
+} from '@midnight-ntwrk/ledger-v6';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type {
   CircuitParameters,
@@ -148,12 +153,6 @@ export type CallResultPrivate<C extends Contract, ICK extends ImpureCircuitId<C>
    */
   readonly nextZswapLocalState: ZswapLocalState;
 };
-
-// TODO: Move into @midnight-ntwrk/ledger
-/**
- * Convenience type for result returned from {@link partitionTranscripts}.
- */
-export type PartitionedTranscript = [Transcript<AlignedValue> | undefined, Transcript<AlignedValue> | undefined];
 
 /**
  * The public portions of the call result.

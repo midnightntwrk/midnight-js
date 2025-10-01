@@ -21,6 +21,7 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import {
   MaintenanceUpdate,
+  type PartitionedTranscript,
   type PublicAddress,
   sampleCoinPublicKey,
   sampleContractAddress,
@@ -35,7 +36,6 @@ import { createVerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
 
-import { type PartitionedTranscript } from '../../call';
 import {
   contractMaintenanceAuthority,
   createUnprovenLedgerCallTx,

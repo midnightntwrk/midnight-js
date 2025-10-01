@@ -23,8 +23,8 @@ export {
   CallOptionsWithProviderDataDependencies,
   CallResult,
   CallResultPrivate,
-  CallResultPublic,
-  PartitionedTranscript} from './call';
+  CallResultPublic
+} from './call';
 export {
   callContractConstructor,
   ContractConstructorOptions,

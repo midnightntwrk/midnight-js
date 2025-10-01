@@ -33,6 +33,7 @@ import {
   type EncPublicKey,
   Intent,
   MaintenanceUpdate,
+  type PartitionedTranscript,
   QueryContext as LedgerQueryContext,
   ReplaceAuthority,
   signData,
@@ -40,7 +41,9 @@ import {
   StateValue as LedgerStateValue,
   type UnprovenTransaction,
   VerifierKeyInsert,
-  VerifierKeyRemove,  type ZswapChainState} from '@midnight-ntwrk/ledger-v6';
+  VerifierKeyRemove,
+  type ZswapChainState
+} from '@midnight-ntwrk/ledger-v6';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   type ImpureCircuitId,
@@ -49,7 +52,6 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
 
-import type { PartitionedTranscript } from '../call';
 import { zswapStateToOffer } from './zswap-utils';
 
 const ttl = () => new Date(Date.now() + 60 * 60 * 1000);

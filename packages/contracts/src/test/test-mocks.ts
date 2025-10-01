@@ -27,6 +27,7 @@ import {
   type Binding,
   type CoinPublicKey,
   type EncPublicKey,
+  type PartitionedTranscript,
   type Proof,
   sampleCoinPublicKey,
   sampleContractAddress,
@@ -51,7 +52,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import { vi } from 'vitest';
 
-import { type CallOptions, type CallOptionsWithPrivateState, type PartitionedTranscript } from '../call';
+import { type CallOptions, type CallOptionsWithPrivateState } from '../call';
 import { type ContractConstructorResult } from '../call-constructor';
 import type { ContractProviders } from '../contract-providers';
 import { type UnsubmittedCallTxData, type UnsubmittedDeployTxData } from '../tx-model';

@@ -14,7 +14,7 @@
  */
 
 import { StateValue } from '@midnight-ntwrk/compact-runtime';
-import { type AlignedValue, type ContractAddress } from '@midnight-ntwrk/ledger-v6';
+import { type AlignedValue, type ContractAddress, type PartitionedTranscript } from '@midnight-ntwrk/ledger-v6';
 import {
   type Contract,
   FailEntirely,
@@ -25,7 +25,6 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { type PartitionedTranscript } from '../call';
 import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from '../errors';
 import { submitCallTx } from '../submit-call-tx';
 import { submitTx } from '../submit-tx';
