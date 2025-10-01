@@ -14,20 +14,21 @@
  */
 
 import { type Command } from '@effect/cli';
-import { FileSystem, Path } from '@effect/platform';
+import { FileSystem } from '@effect/platform';
 import { type ContractExecutable, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
-import { type ContractState, encodeZswapLocalState } from '@midnight-ntwrk/compact-runtime';
+import { encodeZswapLocalState } from '@midnight-ntwrk/compact-runtime';
 import {
   ContractDeploy,
-  ContractState as LedgerContractState,
-  Intent} from '@midnight-ntwrk/ledger';
-import { type ConfigError, Duration, Effect, Schema } from 'effect';
+  Intent
+} from '@midnight-ntwrk/ledger';
+import { type ConfigError, Duration, Effect } from 'effect';
 
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
 import { type ConfigCompiler } from '../ConfigCompiler.js';
 import * as InternalArgs from './args.js';
 import * as InternalCommand from './command.js';
-import { EncodedZswapLocalStateSchema } from './encodedZswapLocalStateSchema.js'
+import * as ContractState from './contractState.js';
+import { encodeZswapLocalStateObject } from './encodedZswapLocalStateSchema.js'
 import * as InternalOptions from './options.js';
 
 /** @internal */
@@ -39,45 +40,41 @@ export const Args = { args: InternalArgs.contractArgs };
 export type Options = Command.Command.ParseConfig<typeof Options>;
 /** @internal */
 export const Options = {
-  config: InternalOptions.config,
-  coinPublicKey: InternalOptions.coinPublicKey,
   signingKey: InternalOptions.signingKey,
-  network: InternalOptions.network,
   outputFilePath: InternalOptions.outputFilePath,
   outputPrivateStateFilePath: InternalOptions.outputPrivateStateFilePath,
   outputZswapLocalStateFilePath: InternalOptions.outputZswapLocalStateFilePath
 }
-
-const encodeZswapLocalStateObject = Schema.encodeUnknown(EncodedZswapLocalStateSchema);
-
-const asLedgerContractState = (contractState: ContractState): LedgerContractState =>
-  LedgerContractState.deserialize(contractState.serialize());
 
 /** @internal */
 export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.ModuleSpec) =>
   Effect.Effect<
     void,
     ContractExecutable.ContractExecutionError | ConfigError.ConfigError,
-    CompiledContractReflection.CompiledContractReflection | Path.Path | FileSystem.FileSystem
+    CompiledContractReflection.CompiledContractReflection | FileSystem.FileSystem
   > =
-  (inputs, moduleSpec) => Effect.gen(function* () {
-    const path = yield* Path.Path;
+  (
+    {
+      outputFilePath,
+      outputPrivateStateFilePath,
+      outputZswapLocalStateFilePath,
+      args
+    },
+    moduleSpec
+  ) => Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
     const { module: { default: contractModule } } = moduleSpec;
     const contractReflector = yield* CompiledContractReflection.CompiledContractReflection;
     const argsParser = yield* contractReflector.createArgumentParser(contractModule.contractExecutable.compiledContract);
-    const intentOutputFilePath = path.resolve(inputs.outputFilePath);
-    const privateStateOutputFilePath = path.resolve(inputs.outputPrivateStateFilePath);
-    const outputZswapLocalStateFilePath = path.resolve(inputs.outputZswapLocalStateFilePath);
     const result = yield* contractModule.contractExecutable.initialize(
       contractModule.createInitialPrivateState(),
-      ...(yield* argsParser.parseInitializationArgs(inputs.args))
+      ...(yield* argsParser.parseInitializationArgs(args))
     );
     const intent = Intent.new(yield* InternalCommand.ttl(Duration.minutes(10)))
-      .addDeploy(new ContractDeploy(asLedgerContractState(result.public.contractState)));
+      .addDeploy(new ContractDeploy(yield* ContractState.asLedgerContractState(result.public.contractState)));
 
-    yield* fs.writeFile(intentOutputFilePath, intent.serialize());
-    yield* fs.writeFileString(privateStateOutputFilePath, JSON.stringify(result.private.privateState));
+    yield* fs.writeFile(outputFilePath, intent.serialize());
+    yield* fs.writeFileString(outputPrivateStateFilePath, JSON.stringify(result.private.privateState));
     yield* fs.writeFileString(
       outputZswapLocalStateFilePath,
       JSON.stringify(

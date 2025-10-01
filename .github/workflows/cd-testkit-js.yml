@@ -12,8 +12,20 @@ on:
   workflow_dispatch:
 
 jobs:
+  ci-testkit:
+    name: Run CI for Testkit.js
+    uses: ./.github/workflows/ci-testkit-js.yml
+    with:
+      should_run: true
+      should_prerelease: false
+      network: undeployed
+      allure_upload: false
+      allure_project_id: midnight-js-main
+    secrets: inherit
+
   cd:
     runs-on: ubuntu-latest
+    needs: ci-testkit
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # ratchet:actions/checkout@v4
         with:
@@ -88,6 +100,15 @@ jobs:
             (steps.changes.outputs.testkit-js == 'true' || steps.changes.outputs.vinfo == 'true')
           }}
         run: yarn workspaces foreach -R --from "./testkit-js/*" --exclude "./compact-js/*" --exclude "./packages/*" version ${{ steps.vars.outputs.target_version }}
+
+      - name: Validate Packages Before Publishing
+        if: ${{
+            steps.vars.outputs.on_release_branch == 'true' &&
+            (steps.changes.outputs.testkit-js == 'true' || steps.changes.outputs.vinfo == 'true')
+          }}
+        uses: ./.github/actions/validate-packages
+        with:
+          workspace-path: './testkit-js'
 
       - name: Publish packages
         if: ${{

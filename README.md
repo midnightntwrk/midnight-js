@@ -261,13 +261,65 @@ All new features must branch off the default branch `main`.
 It's recommended to enable automatic `eslint` formatting in your text editor
 upon save, in order to avoid CI errors due to incorrect format.
 
+### Commit Message Format
+
+This project uses [Conventional Commits](https://www.conventionalcommits.org/). Please format your commit messages as:
+
+```
+<type>[optional scope]: <description>
+```
+
+**Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `ci`, `build`, `revert`  
+**Scopes:** `core`, `testkit`, `compact-js`, `platform-js`, `wallet`, `deps`, `config`
+
+### Making Commits
+
+```bash
+# Interactive commit (recommended)
+yarn commit
+
+# Manual commit
+git commit -m "feat(core): add new feature"
+```
+
+### Git Hooks
+
+- `pre-commit`: Runs lint-staged
+- `commit-msg`: Validates commit message format  
+- `pre-push`: Runs full check suite
+
 ## Release a new version
 
-In order to release a new version, the versions inside all `package.json` files
-should be bumped. You can do this by:
+### 1. Generate changelog
+```bash
+yarn changelog  # Updates CHANGELOG.md with new entries
 ```
+
+### 2. Update versions
+```bash
 yarn workspaces foreach --all version $VERSION
 ```
+
+### 3. Commit and tag
+```bash
+git add .
+git commit -m "chore: release v$VERSION"
+git tag v$VERSION
+git push origin v$VERSION  # Triggers CD workflow
+```
+
+## Available Scripts
+
+### Development
+- `yarn commit` - Interactive conventional commit prompt
+- `yarn build` - Build all packages
+- `yarn test` - Run all tests
+- `yarn lint` - Run ESLint
+- `yarn lint:fix` - Fix linting issues
+
+### Release
+- `yarn changelog` - Generate/update CHANGELOG.md
+- `yarn changelog:first` - Generate complete changelog from git history
 
 After that, use the [Releases](https://github.com/input-output-hk/midnight-js/releases/new) feature
 from GitHub to create a tag with a name following the pattern `vX.Y.Z`.

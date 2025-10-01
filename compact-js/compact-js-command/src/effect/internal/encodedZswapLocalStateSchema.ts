@@ -51,3 +51,6 @@ export const EncodedZswapLocalStateSchema = Schema.Struct({
     recipient: EncodedRecipientSchema
   }))
 });
+
+export const encodeZswapLocalStateObject = Schema.encodeUnknown(EncodedZswapLocalStateSchema);
+export const decodeZswapLocalStateObject = Schema.decodeUnknown(EncodedZswapLocalStateSchema);

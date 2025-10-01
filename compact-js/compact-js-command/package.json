@@ -12,11 +12,11 @@
   },
   "dependencies": {
     "@effect/cli": "^0.69.0",
-    "@effect/cluster": "^0.47.0",
-    "@effect/experimental": "^0.54.5",
+    "@effect/cluster": "^0.49.0",
+    "@effect/experimental": "^0.55.0",
     "@effect/platform": "^0.90.2",
     "@effect/platform-node": "^0.95.0",
-    "@effect/platform-node-shared": "^0.48.0",
+    "@effect/platform-node-shared": "^0.50.0",
     "@effect/printer-ansi": "^0.45.0",
     "@effect/rpc": "^0.68.4",
     "@effect/sql": "^0.44.1",
@@ -24,7 +24,7 @@
     "@midnight-ntwrk/compact-js": "^2.0.0",
     "@midnight-ntwrk/compact-js-node": "^2.0.0",
     "@midnight-ntwrk/compact-runtime": "0.9.0-rc.2",
-    "@midnight-ntwrk/ledger": "npm:@midnight-ntwrk/ledger-v6@6.1.0-alpha.2",
+    "@midnight-ntwrk/ledger": "npm:@midnight-ntwrk/ledger-v6@6.1.0-alpha.3",
     "@midnight-ntwrk/platform-js": "^2.0.0",
     "effect": "^3.17.7",
     "json5": "^2.2.3",
@@ -38,7 +38,7 @@
     "type": "git",
     "url": "git+ssh://git@github.com/midnight-ntwrk/artifacts.git"
   },
-  "packageManager": "yarn@4.10.0",
+  "packageManager": "yarn@4.10.3",
   "author": "IOHK",
   "license": "Apache-2.0",
   "scripts": {

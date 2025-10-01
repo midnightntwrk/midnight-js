@@ -40,4 +40,23 @@ describe('Http Proof Server Proof Provider', () => {
     expect(createHash(Buffer.from(payload1))).toEqual(createHash(Buffer.from(payload2)));
     expect(payload1.byteLength).toBeGreaterThan(0);
   });
+
+  test('handles Uint8Array<ArrayBufferLike> correctly', async () => {
+    const zkConfig = await getValidZKConfig();
+    const unprovenTx = await getValidUnprovenTx();
+
+    const result = await serializePayload(unprovenTx, zkConfig);
+
+    expect(result).toBeInstanceOf(ArrayBuffer);
+    expect(result.byteLength).toBeGreaterThan(0);
+  });
+
+  test('handles undefined zkConfig correctly', async () => {
+    const unprovenTx = await getValidUnprovenTx();
+
+    const result = await serializePayload(unprovenTx, undefined);
+
+    expect(result).toBeInstanceOf(ArrayBuffer);
+    expect(result.byteLength).toBeGreaterThan(0);
+  });
 });

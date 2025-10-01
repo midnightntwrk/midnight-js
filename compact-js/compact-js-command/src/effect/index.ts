@@ -22,8 +22,9 @@ import * as InternalDeployCommand from './internal/deployCommand.js';
 export const deployCommand = Command.make(
   'deploy',
   {
-    ...InternalDeployCommand.Args,
-    ...InternalDeployCommand.Options
+    ...InternalCommand.GlobalOptions,
+    ...InternalDeployCommand.Options,
+    ...InternalDeployCommand.Args
   }).pipe(
   Command.withDescription('Initialize a new contract instance and returns a ContractDeploy intent for it.'),
   Command.withHandler(InternalCommand.invocationHandler(InternalDeployCommand.handler))
@@ -31,9 +32,10 @@ export const deployCommand = Command.make(
 
 export const circuitCommand = Command.make(
   'circuit',
-  { 
-    ...InternalCircuitCommand.Args,
-    ...InternalCircuitCommand.Options
+  {
+    ...InternalCommand.GlobalOptions,
+    ...InternalCircuitCommand.Options,
+    ...InternalCircuitCommand.Args
   }).pipe(
     Command.withDescription('Invokes a circuit on a contract instance and returns a ContractCall intent for it.'),
     Command.withHandler(InternalCommand.invocationHandler(InternalCircuitCommand.handler))

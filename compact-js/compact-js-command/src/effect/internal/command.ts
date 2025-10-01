@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import type { Command } from '@effect/cli';
 import type { FileSystem, Path } from '@effect/platform';
 import { type PlatformError } from '@effect/platform/Error';
 import { NodeContext } from '@effect/platform-node';
@@ -157,6 +158,15 @@ export const reportContractExecutionError: (
     yield* reportCausableError(err);
   });
 
+/** @internal */
+export type GlobalOptions = Command.Command.ParseConfig<typeof GlobalOptions>;
+/** @internal */
+export const GlobalOptions = {
+  config: InternalOptions.config,
+  coinPublicKey: InternalOptions.coinPublicKey,
+  network: InternalOptions.network
+}
+
 /**
  * Creates a default layer that provides services for executing Compact contracts via a command line.
  *
@@ -184,27 +194,23 @@ export const layer: (configProvider: ConfigProvider.ConfigProvider, zkBaseFolder
  * @returns An `Effect` that adapts `handler` by compiling the configured configuration file, and invoking
  * `handler` within an appropriate `ContractExecutableRuntime`.
  */
-export const invocationHandler: <
-  I extends InternalOptions.ConfigOptionInput & Partial<InternalOptions.AllConfigurableOptionInputs>
->(
-  handler: (inputs: I, module: ConfigCompiler.ConfigCompiler.ModuleSpec) =>
+export const invocationHandler: <I>(
+  handler: (inputs: I & GlobalOptions, module: ConfigCompiler.ConfigCompiler.ModuleSpec) =>
     Effect.Effect<
       void,
       ContractExecutable.ContractExecutionError | EffectConfigError.ConfigError,
       Path.Path | FileSystem.FileSystem | CompiledContractReflection.CompiledContractReflection
     >
 ) =>
-  (inputs: I) =>
+  (inputs: I & GlobalOptions) =>
     Effect.Effect<
       void,
       ConfigError.ConfigError | EffectConfigError.ConfigError,
       Path.Path | FileSystem.FileSystem | ConfigCompiler.ConfigCompiler
     > =
     (handler) => (inputs) => Effect.gen(function* () {
-      const configFilePath = yield* InternalOptions.getConfigFilePath(inputs);
       const configCompiler = yield* ConfigCompiler.ConfigCompiler;
-
-      const moduleSpec = yield* configCompiler.compile(configFilePath);
+      const moduleSpec = yield* configCompiler.compile(inputs.config);
       const { moduleImportDirectoryPath, module: { default: contractModule } } = moduleSpec;
       const contractRuntime = ContractExecutableRuntime.make(
         layer(

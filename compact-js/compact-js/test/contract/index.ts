@@ -13,11 +13,15 @@
  * limitations under the License.
  */
 
-import { Contract } from './managed/counter/contract/index.cjs';
+import { Contract as _CounterContract } from './managed/counter/contract/index.cjs';
+import { Contract as _UnshieldedContract } from './managed/unshielded/contract/index.cjs';
 
 type CounterPrivateState = {
   count: number;
 };
 
-export type CounterContract = Contract<CounterPrivateState>;
-export const CounterContract = Contract;
+export type CounterContract = _CounterContract<CounterPrivateState>;
+export const CounterContract = _CounterContract;
+
+export type UnshieldedContract = _UnshieldedContract<undefined>;
+export const UnshieldedContract = _UnshieldedContract;

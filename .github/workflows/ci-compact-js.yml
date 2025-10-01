@@ -60,7 +60,7 @@ jobs:
           done
 
       - name: Log in to GitHub Container registry
-        uses: docker/login-action@184bdaa0721073962dff0199f1fb9940f07167d1 # ratchet:docker/login-action@v3
+        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # ratchet:docker/login-action@v3
         with:
           registry: 'https://ghcr.io'
           username: ${{ github.actor }}
@@ -127,7 +127,7 @@ jobs:
           path: coverage-c-js.zip
 
       - name: Publish Test Coverage
-        uses: MishaKav/jest-coverage-comment@aa3935cf9ee61efc40d9e47dcc8a523a49a70b96 # ratchet:MishaKav/jest-coverage-comment@v1
+        uses: MishaKav/jest-coverage-comment@174f9cbf582b7cc2a7a3acce14dcfc8362e9d37f # ratchet:MishaKav/jest-coverage-comment@v1
         with:
           hide-comment: false
           unique-id-for-comment: 'compact-js-coverage'

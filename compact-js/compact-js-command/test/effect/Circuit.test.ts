@@ -46,19 +46,16 @@ describe('Circuit Command', () => {
       const fs = yield* FileSystem.FileSystem;
       yield* fs.writeFileString(COUNTER_OUTPUT_PS_FILEPATH, JSON.stringify({ count: 100 }));
 
-      // Make a command line instance from the 'deploy' command...
       const cli = Command.run(circuitCommand, { name: 'circuit', version: '0.0.0' });
 
-      // ...and then execute it. We'll use the '-c' option to provide a path to a configuration file, and the
-      // '-o' to provide a path to where we want the serialized Intent to be written.
       yield* cli([
         'node', 'circuit.ts',
         '-c', COUNTER_CONFIG_FILEPATH,
+        '--input', COUNTER_STATE_FILEPATH,
+        '--input-ps', COUNTER_OUTPUT_PS_FILEPATH,
         '--output', COUNTER_OUTPUT_FILEPATH,
         '--output-ps', COUNTER_OUTPUT_PS_FILEPATH,
         '--output-zswap', COUNTER_OUTPUT_ZSWAP_FILEPATH,
-        '--state-file-path', COUNTER_STATE_FILEPATH,
-        '--ps-state-file-path', COUNTER_OUTPUT_PS_FILEPATH,
         '0a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a', 'increment'
       ]);
 
