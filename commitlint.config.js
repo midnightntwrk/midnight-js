@@ -47,14 +47,15 @@ module.exports = {
         'config'
       ]
     ],
-    'subject-case': [0, 'always'],
+    'subject-case': [0, 'never'],
     'subject-empty': [1, 'never'],
     'subject-full-stop': [0, 'never', '.'],
     'type-case': [0, 'never', 'lower-case'],
     'type-empty': [1, 'never'],
     'scope-empty': [1, 'never'],
     'body-max-length': [1, 'never', 256],
-    'header-max-length': [0, 'never', 256],
-    'footer-max-length': [0, 'never', 256]
+    'header-max-length': [1, 'never', 256],
+    'footer-max-length': [1, 'never', 256],
+    'body-max-line-length': [1, 'never', 100],
   }
 };
