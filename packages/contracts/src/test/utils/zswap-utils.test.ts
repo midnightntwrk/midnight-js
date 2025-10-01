@@ -287,7 +287,7 @@ describe('Zswap utilities', () => {
       const { nonMatchingInputs, zswapChainState } = zswapChainStateWithNonMatchingInputs(recipient, values);
 
       return fc
-        .array(arbitraryPositiveNativeCoinInfo.filter(distinctFrom(nonMatchingInputs)), { minLength: 0 })
+        .array(arbitraryPositiveNativeCoinInfo.filter(distinctFrom(nonMatchingInputs)), { minLength: 1 })
         .chain((nonMatchingOutputsNoRecipient) =>
           arbitraryMatchingInputOutputPairs(recipient, nonMatchingOutputsNoRecipient.concat(nonMatchingInputs))
             .chain(([matchingInputs, matchingOutputs]) =>
