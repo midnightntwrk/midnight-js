@@ -54,5 +54,7 @@ module.exports = {
     'type-empty': [1, 'never'],
     'scope-empty': [1, 'never'],
     'body-max-line-length': [0, 'never', 100],
+    'header-max-length': [0, 'never', 100],
+    'footer-max-length': [0, 'never', 100],
   }
 };
