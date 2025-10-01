@@ -52,6 +52,7 @@ module.exports = {
     'subject-full-stop': [0, 'never', '.'],
     'type-case': [0, 'never', 'lower-case'],
     'type-empty': [1, 'never'],
-    'scope-empty': [1, 'never']
+    'scope-empty': [1, 'never'],
+    'body-max-line-length': [0, 'never', 100],
   }
 };
