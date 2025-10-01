@@ -123,7 +123,8 @@ export const createMockUnprovenTx = (): UnprovenTransaction => ({
   mockProve: vi.fn(),
   prove: vi.fn(),
   eraseSignatures: vi.fn(),
-  cost: vi.fn()
+  cost: vi.fn(),
+  feesWithMargin: vi.fn()
 });
 
 export const createMockCoinInfo = (): ShieldedCoinInfo => ({
