@@ -1,147 +1,110 @@
-## <small>2.0.2 (2025-09-24)</small>
+# Changelog
 
-* - uncomment tests to not have them omitted in future (#151) ([745435a](https://github.com/midnight-ntwrk/artifacts/commit/745435a)), closes [#151](https://github.com/midnight-ntwrk/artifacts/issues/151)
-* (chore): Change `CD` workflows to publish only when changed (#112) ([6796358](https://github.com/midnight-ntwrk/artifacts/commit/6796358)), closes [#112](https://github.com/midnight-ntwrk/artifacts/issues/112)
-* Add `CompiledContractReflection` service. Reflects over contract and circuit method declarations ([52372fa](https://github.com/midnight-ntwrk/artifacts/commit/52372fa))
-* Add `NetworkIdMoniker`, a branded regex validated string ([d27a540](https://github.com/midnight-ntwrk/artifacts/commit/d27a540))
-* Add dotenv configuration and set up Node.js environment ([8aab2a1](https://github.com/midnight-ntwrk/artifacts/commit/8aab2a1))
-* Add happy path unit tests ([bbe1c49](https://github.com/midnight-ntwrk/artifacts/commit/bbe1c49))
-* Add import sorting to eslint ([4163acd](https://github.com/midnight-ntwrk/artifacts/commit/4163acd))
-* Add import sorting to eslint ([28d5b2b](https://github.com/midnight-ntwrk/artifacts/commit/28d5b2b))
-* Add README for e2e tests ([3260704](https://github.com/midnight-ntwrk/artifacts/commit/3260704))
-* Add support for block time access ([c72f0f4](https://github.com/midnight-ntwrk/artifacts/commit/c72f0f4))
-* Add support for nested tuple types ([2963cd6](https://github.com/midnight-ntwrk/artifacts/commit/2963cd6))
-* Add support for number/enum values ([a9e21cc](https://github.com/midnight-ntwrk/artifacts/commit/a9e21cc))
-* Add support for object literals and Uint8Array ([bfb23ef](https://github.com/midnight-ntwrk/artifacts/commit/bfb23ef))
-* Add TODOs and 1 test ([dc26eab](https://github.com/midnight-ntwrk/artifacts/commit/dc26eab))
-* Add token ([ea30259](https://github.com/midnight-ntwrk/artifacts/commit/ea30259))
-* Add unit tests for contracts package ([026d0df](https://github.com/midnight-ntwrk/artifacts/commit/026d0df))
-* add unit tests to contracts package (#149) ([5b0d13f](https://github.com/midnight-ntwrk/artifacts/commit/5b0d13f)), closes [#149](https://github.com/midnight-ntwrk/artifacts/issues/149)
-* added permisisons; ([bf8a32c](https://github.com/midnight-ntwrk/artifacts/commit/bf8a32c))
-* Address review comments ([fa52946](https://github.com/midnight-ntwrk/artifacts/commit/fa52946))
-* Allow support for Zswap local state (#144) ([cdf5825](https://github.com/midnight-ntwrk/artifacts/commit/cdf5825)), closes [#144](https://github.com/midnight-ntwrk/artifacts/issues/144)
-* Block time hot fix (#139) ([978a9c2](https://github.com/midnight-ntwrk/artifacts/commit/978a9c2)), closes [#139](https://github.com/midnight-ntwrk/artifacts/issues/139)
-* Bump actions/download-artifact from 4.1.8 to 5.0.0 ([15a8405](https://github.com/midnight-ntwrk/artifacts/commit/15a8405))
-* Bump actions/setup-node from 4.1.0 to 4.4.0 ([a3e68ea](https://github.com/midnight-ntwrk/artifacts/commit/a3e68ea))
-* Bump checkmarx/ast-github-action from 2.3.19 to 2.3.20 ([ebefc48](https://github.com/midnight-ntwrk/artifacts/commit/ebefc48))
-* Bump checkmarx/ast-github-action from 2.3.21 to 2.3.24 ([024062f](https://github.com/midnight-ntwrk/artifacts/commit/024062f))
-* Bump checkmarx/ast-github-action from 2.3.24 to 2.3.26 ([8e81f03](https://github.com/midnight-ntwrk/artifacts/commit/8e81f03))
-* Bump ctrf-io/github-test-reporter from 1.0.21 to 1.0.22 (#64) ([02a909e](https://github.com/midnight-ntwrk/artifacts/commit/02a909e)), closes [#64](https://github.com/midnight-ntwrk/artifacts/issues/64)
-* Bump docker/login-action from 3.3.0 to 3.5.0 ([4123943](https://github.com/midnight-ntwrk/artifacts/commit/4123943))
-* Bump EnricoMi/publish-unit-test-result-action from 2.18.0 to 2.20.0 ([90c792b](https://github.com/midnight-ntwrk/artifacts/commit/90c792b))
-* Bump github/codeql-action ([794b318](https://github.com/midnight-ntwrk/artifacts/commit/794b318))
-* Bump github/codeql-action ([92e25bd](https://github.com/midnight-ntwrk/artifacts/commit/92e25bd))
-* Bump mikepenz/action-junit-report from 5.1.0 to 5.6.2 ([6c65944](https://github.com/midnight-ntwrk/artifacts/commit/6c65944))
-* Bump MishaKav/jest-coverage-comment from 1.0.27 to 1.0.28 ([db9f954](https://github.com/midnight-ntwrk/artifacts/commit/db9f954))
-* Bump peter-evans/create-pull-request from 5.0.3 to 7.0.8 (#65) ([c98eb45](https://github.com/midnight-ntwrk/artifacts/commit/c98eb45)), closes [#65](https://github.com/midnight-ntwrk/artifacts/issues/65)
-* Bump the npm_and_yarn group with 6 updates ([b47e888](https://github.com/midnight-ntwrk/artifacts/commit/b47e888))
-* Change pre-commit to pre-push in husky ([a40d680](https://github.com/midnight-ntwrk/artifacts/commit/a40d680))
-* Change the docker compose port configuration ([d383f60](https://github.com/midnight-ntwrk/artifacts/commit/d383f60))
-* Cleanup of contracts types ([07cf742](https://github.com/midnight-ntwrk/artifacts/commit/07cf742))
-* exclude graphql generated files ([ebfbb30](https://github.com/midnight-ntwrk/artifacts/commit/ebfbb30))
-* Execute linter against code base ([fbc8046](https://github.com/midnight-ntwrk/artifacts/commit/fbc8046))
-* Fix broken reference ([e0b34de](https://github.com/midnight-ntwrk/artifacts/commit/e0b34de))
-* Fix broken references ([df874e1](https://github.com/midnight-ntwrk/artifacts/commit/df874e1))
-* Fix broken references ([24249d7](https://github.com/midnight-ntwrk/artifacts/commit/24249d7))
-* Fix broken unit tests (binary state file and ContractAddress) ([df7de94](https://github.com/midnight-ntwrk/artifacts/commit/df7de94))
-* Fix bug in `reportCausableError` to report correct `message` property on errors ([48f730a](https://github.com/midnight-ntwrk/artifacts/commit/48f730a))
-* fix job triggers (#145) ([0e7013b](https://github.com/midnight-ntwrk/artifacts/commit/0e7013b)), closes [#145](https://github.com/midnight-ntwrk/artifacts/issues/145)
-* Fix lint issues ([3b64c1d](https://github.com/midnight-ntwrk/artifacts/commit/3b64c1d))
-* Initial commit ([e4f78f8](https://github.com/midnight-ntwrk/artifacts/commit/e4f78f8))
-* Initial commit ([3ba407d](https://github.com/midnight-ntwrk/artifacts/commit/3ba407d))
-* Midnight JS API documentation update - created by Midnight CI Github Action (#103) ([16c131e](https://github.com/midnight-ntwrk/artifacts/commit/16c131e)), closes [#103](https://github.com/midnight-ntwrk/artifacts/issues/103)
-* Midnight JS API documentation update - created by Midnight CI Github Action (#104) ([07294c1](https://github.com/midnight-ntwrk/artifacts/commit/07294c1)), closes [#104](https://github.com/midnight-ntwrk/artifacts/issues/104)
-* Midnight JS API documentation update - created by Midnight CI Github Action (#146) ([a7f1c9c](https://github.com/midnight-ntwrk/artifacts/commit/a7f1c9c)), closes [#146](https://github.com/midnight-ntwrk/artifacts/issues/146)
-* Midnight JS API documentation update - created by Midnight CI Github Action (#60) ([9856023](https://github.com/midnight-ntwrk/artifacts/commit/9856023)), closes [#60](https://github.com/midnight-ntwrk/artifacts/issues/60)
-* Midnight JS API documentation update - created by Midnight CI Github Action (#98) ([7a3abad](https://github.com/midnight-ntwrk/artifacts/commit/7a3abad)), closes [#98](https://github.com/midnight-ntwrk/artifacts/issues/98)
-* Optimize imports ([1c3577b](https://github.com/midnight-ntwrk/artifacts/commit/1c3577b))
-* Optimize imports, deduplicate code ([eb31ce3](https://github.com/midnight-ntwrk/artifacts/commit/eb31ce3))
-* Optimize imports, use types ([d2f2ae4](https://github.com/midnight-ntwrk/artifacts/commit/d2f2ae4))
-* Provide _empty_ configuration object is one is not provided (forces config from environment or comma ([30ef3f9](https://github.com/midnight-ntwrk/artifacts/commit/30ef3f9))
-* Remove obsolete workflows and secure existing ones ([43c023c](https://github.com/midnight-ntwrk/artifacts/commit/43c023c))
-* Remove paid plugin ([52855fb](https://github.com/midnight-ntwrk/artifacts/commit/52855fb))
-* Remove use of Ledger/Compact Runtime NetworkId in `platform-js` ([49113d6](https://github.com/midnight-ntwrk/artifacts/commit/49113d6))
-* Rename 'zkconfig' assets to 'compiled' assets (ZK assets are only one type of asset) ([edab524](https://github.com/midnight-ntwrk/artifacts/commit/edab524))
-* Revert change to `counter.compact` ([8729718](https://github.com/midnight-ntwrk/artifacts/commit/8729718))
-* Update and optimize tests ([626b78b](https://github.com/midnight-ntwrk/artifacts/commit/626b78b))
-* Update axios version ([6b3f25c](https://github.com/midnight-ntwrk/artifacts/commit/6b3f25c))
-* Update CHANGELOG.md to reflect historic changes ([1085ef1](https://github.com/midnight-ntwrk/artifacts/commit/1085ef1))
-* Update components to support `compact-runtime` v`0.9.0-rc.2` (bringing in `onchain-runtime-v1`) ([0751fdb](https://github.com/midnight-ntwrk/artifacts/commit/0751fdb))
-* Update components to support `ledger@6`, fix breakages ([dc1528f](https://github.com/midnight-ntwrk/artifacts/commit/dc1528f))
-* Update config, separate Allure for faster feedback ([24b067b](https://github.com/midnight-ntwrk/artifacts/commit/24b067b))
-* Update ctrf plugin ([42bd100](https://github.com/midnight-ntwrk/artifacts/commit/42bd100))
-* Update dependency @apollo/client to v3.13.9 ([ed1bff2](https://github.com/midnight-ntwrk/artifacts/commit/ed1bff2))
-* Update dependency @fast-check/vitest to v0.2.2 ([49d3900](https://github.com/midnight-ntwrk/artifacts/commit/49d3900))
-* Update dependency @tsconfig/node22 to v22.0.2 ([12ac5a6](https://github.com/midnight-ntwrk/artifacts/commit/12ac5a6))
-* Update dependency @types/express to v5.0.3 ([b67e44d](https://github.com/midnight-ntwrk/artifacts/commit/b67e44d))
-* Update dependency @types/ws to v8.18.1 ([7536e56](https://github.com/midnight-ntwrk/artifacts/commit/7536e56))
-* Update dependency allure-vitest to v3.3.3 ([69905f5](https://github.com/midnight-ntwrk/artifacts/commit/69905f5))
-* Update dependency eslint-config-prettier to v10.1.8 ([1df8725](https://github.com/midnight-ntwrk/artifacts/commit/1df8725))
-* Update dependency eslint-plugin-prettier to v5.5.4 ([a0c25e0](https://github.com/midnight-ntwrk/artifacts/commit/a0c25e0))
-* Update dependency graphql-ws to v6.0.6 ([f3de37c](https://github.com/midnight-ntwrk/artifacts/commit/f3de37c))
-* Update deprecated merge-ctrf to ctrf package ([4b37c8d](https://github.com/midnight-ntwrk/artifacts/commit/4b37c8d))
-* Update graphql codegen version ([74ce6e9](https://github.com/midnight-ntwrk/artifacts/commit/74ce6e9))
-* Update mock types ([d6344c9](https://github.com/midnight-ntwrk/artifacts/commit/d6344c9))
-* Update README.md to streamline development instructions and remove outdated sections ([70619e8](https://github.com/midnight-ntwrk/artifacts/commit/70619e8))
-* Update to 'compactc' version 0.25.0 ([928cde1](https://github.com/midnight-ntwrk/artifacts/commit/928cde1))
-* Update types ([7d2a92a](https://github.com/midnight-ntwrk/artifacts/commit/7d2a92a))
-* Update types ([f855231](https://github.com/midnight-ntwrk/artifacts/commit/f855231))
-* Update workflow configuration ([ed9c194](https://github.com/midnight-ntwrk/artifacts/commit/ed9c194))
-* Update workflow permissions ([aef8c41](https://github.com/midnight-ntwrk/artifacts/commit/aef8c41))
-* Update workflow permissions ([6d08059](https://github.com/midnight-ntwrk/artifacts/commit/6d08059))
-* Use `CompiledContractReflection` in commands to parse any given arguments ([77cc579](https://github.com/midnight-ntwrk/artifacts/commit/77cc579))
-* Working on unit tests ([8b6a217](https://github.com/midnight-ntwrk/artifacts/commit/8b6a217))
-* chore: Bump major version number on Platform.js and Compact.js (#118) ([6a53094](https://github.com/midnight-ntwrk/artifacts/commit/6a53094)), closes [#118](https://github.com/midnight-ntwrk/artifacts/issues/118)
-* chore: commit staged changes across repos ([4fa5b3b](https://github.com/midnight-ntwrk/artifacts/commit/4fa5b3b))
-* chore: multlple compactc versions support (#63) ([dd8071b](https://github.com/midnight-ntwrk/artifacts/commit/dd8071b)), closes [#63](https://github.com/midnight-ntwrk/artifacts/issues/63)
-* chore: refactor tests to exclude edge cases from pbt (#142) ([7edd198](https://github.com/midnight-ntwrk/artifacts/commit/7edd198)), closes [#142](https://github.com/midnight-ntwrk/artifacts/issues/142)
-* chore: update CHANGELOG for version 2.1.0 with new features, changes, and security updates ([46071cc](https://github.com/midnight-ntwrk/artifacts/commit/46071cc))
-* chore(compact-js/platform-js): Fix up package version numbers (#150) ([32356c3](https://github.com/midnight-ntwrk/artifacts/commit/32356c3)), closes [#150](https://github.com/midnight-ntwrk/artifacts/issues/150)
-* chore(deps): bump actions/setup-node from 4.1.0 to 5.0.0 (#120) ([e445cfc](https://github.com/midnight-ntwrk/artifacts/commit/e445cfc)), closes [#120](https://github.com/midnight-ntwrk/artifacts/issues/120)
-* chore(deps): bump apache/skywalking-eyes (#138) ([1c61af3](https://github.com/midnight-ntwrk/artifacts/commit/1c61af3)), closes [#138](https://github.com/midnight-ntwrk/artifacts/issues/138)
-* chore(deps): bump docker/login-action from 3.3.0 to 3.5.0 (#121) ([4604977](https://github.com/midnight-ntwrk/artifacts/commit/4604977)), closes [#121](https://github.com/midnight-ntwrk/artifacts/issues/121)
-* chore(deps): bump vite in the npm_and_yarn group across 1 directory (#128) ([e86d9d4](https://github.com/midnight-ntwrk/artifacts/commit/e86d9d4)), closes [#128](https://github.com/midnight-ntwrk/artifacts/issues/128)
-* chore(deps): update dependency @d2t/vitest-ctrf-json-reporter to v1.2.0 (#76) ([54d3e6e](https://github.com/midnight-ntwrk/artifacts/commit/54d3e6e)), closes [#76](https://github.com/midnight-ntwrk/artifacts/issues/76)
-* chore(deps): update dependency @types/node to v22.18.0 (#77) ([aa69d17](https://github.com/midnight-ntwrk/artifacts/commit/aa69d17)), closes [#77](https://github.com/midnight-ntwrk/artifacts/issues/77)
-* chore(deps): update dependency @types/node to v22.18.6 (#132) ([81a9625](https://github.com/midnight-ntwrk/artifacts/commit/81a9625)), closes [#132](https://github.com/midnight-ntwrk/artifacts/issues/132)
-* chore(deps): update dependency axios to v1.12.0 [security] (#134) ([72be53f](https://github.com/midnight-ntwrk/artifacts/commit/72be53f)), closes [#134](https://github.com/midnight-ntwrk/artifacts/issues/134)
-* chore(deps): update dependency lint-staged to v16.1.6 (#71) ([220f3eb](https://github.com/midnight-ntwrk/artifacts/commit/220f3eb)), closes [#71](https://github.com/midnight-ntwrk/artifacts/issues/71)
-* chore(deps): update dependency node to v22.19.0 (#78) ([914529c](https://github.com/midnight-ntwrk/artifacts/commit/914529c)), closes [#78](https://github.com/midnight-ntwrk/artifacts/issues/78)
-* chore(deps): update dependency pino to v9.9.1 (#83) ([bb84a97](https://github.com/midnight-ntwrk/artifacts/commit/bb84a97)), closes [#83](https://github.com/midnight-ntwrk/artifacts/issues/83)
-* chore(deps): update dependency pino-pretty to v13.1.1 (#84) ([357fdb6](https://github.com/midnight-ntwrk/artifacts/commit/357fdb6)), closes [#84](https://github.com/midnight-ntwrk/artifacts/issues/84)
-* chore(deps): update dependency rollup to v4.50.0 (#85) ([d885af8](https://github.com/midnight-ntwrk/artifacts/commit/d885af8)), closes [#85](https://github.com/midnight-ntwrk/artifacts/issues/85)
-* chore(deps): update dependency rollup to v4.50.2 (#147) ([9a9cf98](https://github.com/midnight-ntwrk/artifacts/commit/9a9cf98)), closes [#147](https://github.com/midnight-ntwrk/artifacts/issues/147)
-* chore(deps): update dependency testcontainers to v11.5.1 (#86) ([3c50c19](https://github.com/midnight-ntwrk/artifacts/commit/3c50c19)), closes [#86](https://github.com/midnight-ntwrk/artifacts/issues/86)
-* chore(deps): update dependency turbo to v2.5.6 (#72) ([71f0072](https://github.com/midnight-ntwrk/artifacts/commit/71f0072)), closes [#72](https://github.com/midnight-ntwrk/artifacts/issues/72)
-* chore(deps): update dependency typedoc to v0.28.12 (#73) ([2b31332](https://github.com/midnight-ntwrk/artifacts/commit/2b31332)), closes [#73](https://github.com/midnight-ntwrk/artifacts/issues/73)
-* chore(deps): update dependency typedoc-plugin-markdown to v4.8.1 (#89) ([f79bebc](https://github.com/midnight-ntwrk/artifacts/commit/f79bebc)), closes [#89](https://github.com/midnight-ntwrk/artifacts/issues/89)
-* chore(deps): update dependency typescript-eslint to v8.42.0 (#91) ([ec535c8](https://github.com/midnight-ntwrk/artifacts/commit/ec535c8)), closes [#91](https://github.com/midnight-ntwrk/artifacts/issues/91)
-* chore(deps): update eslint monorepo to v9.34.0 (#92) ([7ad8965](https://github.com/midnight-ntwrk/artifacts/commit/7ad8965)), closes [#92](https://github.com/midnight-ntwrk/artifacts/issues/92)
-* chore(deps): update yarn to v4.10.0 (#107) ([5a907a6](https://github.com/midnight-ntwrk/artifacts/commit/5a907a6)), closes [#107](https://github.com/midnight-ntwrk/artifacts/issues/107)
-* chore(deps): update yarn to v4.9.4 (#74) ([e978c67](https://github.com/midnight-ntwrk/artifacts/commit/e978c67)), closes [#74](https://github.com/midnight-ntwrk/artifacts/issues/74)
-* chore(testkit-js): change way e2e tests are executed (#148) ([918dab0](https://github.com/midnight-ntwrk/artifacts/commit/918dab0)), closes [#148](https://github.com/midnight-ntwrk/artifacts/issues/148)
-* feature: testkit-js (#130) ([b1bcb00](https://github.com/midnight-ntwrk/artifacts/commit/b1bcb00)), closes [#130](https://github.com/midnight-ntwrk/artifacts/issues/130)
-* hotfix: CI configuration for API documentation generation (#59) ([98ab9f2](https://github.com/midnight-ntwrk/artifacts/commit/98ab9f2)), closes [#59](https://github.com/midnight-ntwrk/artifacts/issues/59)
-* hotfix: CI trigger tweak for shared configuration (#129) ([1aa4c5f](https://github.com/midnight-ntwrk/artifacts/commit/1aa4c5f)), closes [#129](https://github.com/midnight-ntwrk/artifacts/issues/129)
-* hotfix: proof provider - remove hardcoded binary files (#127) ([527cf7e](https://github.com/midnight-ntwrk/artifacts/commit/527cf7e)), closes [#127](https://github.com/midnight-ntwrk/artifacts/issues/127)
-* hotfix: remove hardcoded COMPACTC_VERSION and add verbose information (#126) ([3327229](https://github.com/midnight-ntwrk/artifacts/commit/3327229)), closes [#126](https://github.com/midnight-ntwrk/artifacts/issues/126)
-* feat: daily scans of main ([d04c1b3](https://github.com/midnight-ntwrk/artifacts/commit/d04c1b3))
-* feat: fix and update checkmarx ([f87f615](https://github.com/midnight-ntwrk/artifacts/commit/f87f615))
-* feat: Platform.js and Compact.js (#80) ([3a02d96](https://github.com/midnight-ntwrk/artifacts/commit/3a02d96)), closes [#80](https://github.com/midnight-ntwrk/artifacts/issues/80)
-* feat: schedule checkmarx daily (at midnight of couese) and allow manual kick off of workflow ([7bed270](https://github.com/midnight-ntwrk/artifacts/commit/7bed270))
-* feat: turn on dependabot ([9d37dc3](https://github.com/midnight-ntwrk/artifacts/commit/9d37dc3))
-* feat: upgrade checkout action to latest version and pin to hash ([a4d2878](https://github.com/midnight-ntwrk/artifacts/commit/a4d2878))
-* feat: upgrade checkout action to latest version and pin to hash ([71c3777](https://github.com/midnight-ntwrk/artifacts/commit/71c3777))
-* feat: use latest checkmarx action ([a960114](https://github.com/midnight-ntwrk/artifacts/commit/a960114))
-* release(Compact.js): Compact.js version 1.0 (#117) ([455b7f3](https://github.com/midnight-ntwrk/artifacts/commit/455b7f3)), closes [#117](https://github.com/midnight-ntwrk/artifacts/issues/117)
-* release(Platform.js): Platform.js version `1.0` (#116) ([eb96d93](https://github.com/midnight-ntwrk/artifacts/commit/eb96d93)), closes [#116](https://github.com/midnight-ntwrk/artifacts/issues/116)
-* fix: add SARIF message validation for codeql-action compatibility ([5db5a41](https://github.com/midnight-ntwrk/artifacts/commit/5db5a41))
-* fix(deps): update dependency @apollo/client to v3.14.0 (#93) ([257650f](https://github.com/midnight-ntwrk/artifacts/commit/257650f)), closes [#93](https://github.com/midnight-ntwrk/artifacts/issues/93)
-* fix(deps): update dependency @dao-xyz/borsh to v5.2.4 (#82) ([3a114f8](https://github.com/midnight-ntwrk/artifacts/commit/3a114f8)), closes [#82](https://github.com/midnight-ntwrk/artifacts/issues/82)
-* fix(deps): update dependency fp-ts to v2.16.11 (#75) ([5567fd1](https://github.com/midnight-ntwrk/artifacts/commit/5567fd1)), closes [#75](https://github.com/midnight-ntwrk/artifacts/issues/75)
-* docs: acknowledge original co-authors from repository migration ([0c34ecf](https://github.com/midnight-ntwrk/artifacts/commit/0c34ecf))
-* docs: acknowledge original co-authors from repository migration ([8bf34b9](https://github.com/midnight-ntwrk/artifacts/commit/8bf34b9))
-* docs: acknowledge original co-authors from repository migration ([363527a](https://github.com/midnight-ntwrk/artifacts/commit/363527a))
+All notable changes to this project will be documented in this file.
 
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0-rc.3] - 2025-09-30]
 
+### Changed
+- **Compactc**: Upgrade to 0.26.0
+- **Compact-runtime**: Upgrade to 0.9.0
+
+## [2.1.0-rc.2] - 2025-09-23]
+
+### Fixed
+- **Block Time Access**: Fix for `toLedgerState`, which erased the `block`
+
+## [2.1.0-rc.1] - 2025-08-29
+
+### Added
+- **Block Time Access**: Added `secondsSinceLastEpoch` value to `QueryContext` in Compact programs to retrieve current block time within contracts
+- **E2E Test Documentation**: Comprehensive README for end-to-end testing setup and usage
+- **Enhanced Testing Framework**: New block time API tests and improved contract testing capabilities
+- **Import Sorting**: ESLint configuration now includes automatic import sorting for better code organization
+
+### Changed
+- **Compact Compiler**: Upgraded to Compact version 0.25.0 with improved contract compilation
+- **Dependencies**: Major updates including:
+  - GraphQL codegen and related packages
+  - Axios version updates for security
+  - Apollo Client to v3.13.9
+  - Node.js type definitions to v22.0.2
+  - ESLint and Prettier configurations
+  - Vitest and testing utilities
+- **Development Workflow**: Enhanced CI/CD with better test reporting and security scanning
+- **Code Quality**: Improved TypeScript configurations and contract type definitions
+- **Husky Configuration**: Changed from pre-commit to pre-push hooks for better developer experience
+
+### Security
+- **Workflow Hardening**: Removed obsolete workflows and updated GitHub Actions permissions
+- **Dependency Security**: Applied security patches through comprehensive dependency updates
+- **GitHub Actions**: Updated to latest secure versions including:
+  - docker/login-action to 3.5.0
+  - actions/setup-node to 4.4.0
+  - actions/download-artifact to 5.0.0
+  - checkmarx/ast-github-action to 2.3.24
+
+### Fixed
+- **Configuration Issues**: Resolved Docker port conflicts and logger-provider path issues
+- **Type Definitions**: Cleaned up contract types and improved test mocks
+- **Workflow Permissions**: Updated GitHub Actions with proper security permissions
+- **Dependencies**: Aligned versions across packages and resolved version conflicts
+- **Documentation**: Fixed API documentation generation and TypeDoc configuration
+
+### Developer Experience
+- **Automated Dependency Management**: Enabled Dependabot and Renovate for automated updates
+- **Better Test Reporting**: Integrated CTRF reporting for improved test feedback
+- **Linting Improvements**: Enhanced ESLint rules with import sorting and unused import detection
+- **CI/CD Optimization**: Faster feedback with optimized workflow configurations
+
+## [2.0.2] - 2025-06-11
+
+### Summary
+- Add captcha header for faucet request
+- Ensure segment number defaults to 0
+
+## [2.0.1] - 2025-05-30
+
+### Summary
+- Consider EncPublicKey as Bech32m formatted strings
+- Update zSwap-utils createUnprovenOutput to use segment 0
+
+## [2.0.0] - 2025-05-12
+
+### Summary
+- Update typedoc.json
+- Fix the broken compact package
+- Fix the docs workflow
+- Fix API docs
+- Fix the docs workflow (again)
+- Update dependency cross-fetch to v4.1.0
+- Update dependency node to v22.14.0
+- Pin dependencies
+- Update dependency graphql to v16.10.0
+- Update devDependencies (non-major)
+- Update dependency @rollup/plugin-node-resolve to v16
+- Update dependency @apollo/client to v3.13.6
+- Update dependency graphql-ws to v6
+- Update dependency express to v5
+- API documentation update
+- Update dependency node to v22.15.0
+- Add BLS support
+- Rename contract to contractAction in GraphQL schema
+- Release 2.0.0-rc.1
+- Update yarn to v4.9.1
+- Bump @apollo/client to v3.13.8 and force import of only CJS modules
+- Release 2.0.0-rc.2
+- Add single test for Node.js compatibility
+- Prepare release 2.0.0
+
+## [1.0.0] - 2025-04-02
+
+### Summary
+- Introduces proper semantic versioning.
+- Bech32m is now default and works with older wallets.
+- Test framework is now public.
+- Custom logging strategies are now supported.
+- Works with the latest Node.js LTS.
+- Dependencies updated to fix vulnerabilities.
