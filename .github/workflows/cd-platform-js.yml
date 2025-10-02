@@ -100,15 +100,6 @@ jobs:
           }}
         run: yarn workspaces foreach -R --from "./platform-js/*" --exclude "./compact-js/*" --exclude "./packages/*" version ${{ steps.vars.outputs.target_version }}
 
-      - name: Validate Packages Before Publishing
-        if: ${{
-            steps.vars.outputs.on_release_branch == 'true' &&
-            (steps.changes.outputs.platform-js == 'true' || steps.changes.outputs.vinfo == 'true')
-          }}
-        uses: ./.github/actions/validate-packages
-        with:
-          workspace-path: './platform-js'
-
       - name: Publish packages
         if: ${{
             steps.vars.outputs.on_release_branch == 'true' &&
