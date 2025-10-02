@@ -5,6 +5,8 @@ env:
 permissions:
   contents: read
   issues: read
+  id-token: write
+  packages: write
   checks: write
   pull-requests: write
   
