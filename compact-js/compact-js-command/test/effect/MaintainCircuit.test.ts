@@ -38,7 +38,15 @@ const testLayer: Layer.Layer<ConfigCompiler.ConfigCompiler | NodeContext.NodeCon
     );
   }).pipe(Layer.unwrapEffect);
 
-describe('Maintain Circuit Command', () => {
+// Skipped. The current yarn workspace setup (with the root dependent on Ledger@4), means that Ledger@6 that
+// both `compact-js` and `compact-js-command` depended on are not being deduped on install. At runtime this
+// means that two instances of the Ledger WASM is being loaded. `compact-js` creates an instance of 
+// `MaintenanceUpdate` that is then added to an `Intent` created in `compact-js-command`, and since these two types
+// are originated from different instances of the Ledger WASM, the `Intent.addMaintenanceUpdate()` function
+// throws an `'expected instance of MaintenanceUpdate'` error. To fix this we need to properly segregate the
+// workspace. The Contract Maintenance Operations are tested (outside of the command) in the `compact-js` package.
+// @seealso ./MaintainContract.test.ts
+describe.skip('Maintain Circuit Command', () => {
   it.effect('should report success with valid setup', () =>
     Effect.gen(function* () {
       const cli = Command.run(maintainCommand, { name: 'maintain', version: '0.0.0' });
