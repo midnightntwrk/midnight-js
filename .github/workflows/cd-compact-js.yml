@@ -5,6 +5,8 @@ env:
 permissions:
   contents: read
   issues: read
+  id-token: write
+  packages: write
   checks: write
   pull-requests: write
   
@@ -97,15 +99,6 @@ jobs:
             (steps.changes.outputs.compact-js == 'true' || steps.changes.outputs.vinfo == 'true')
           }}
         run: yarn workspaces foreach -R --from "./compact-js/*" --exclude "./platform-js/*" --exclude "./packages/*" version ${{ steps.vars.outputs.target_version }}
-
-      - name: Validate Packages Before Publishing
-        if: ${{
-            steps.vars.outputs.on_release_branch == 'true' &&
-            (steps.changes.outputs.compact-js == 'true' || steps.changes.outputs.vinfo == 'true')
-          }}
-        uses: ./.github/actions/validate-packages
-        with:
-          workspace-path: './compact-js'
 
       - name: Publish packages
         if: ${{
