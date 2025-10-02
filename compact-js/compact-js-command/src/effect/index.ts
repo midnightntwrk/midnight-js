@@ -18,6 +18,8 @@ import { Command } from '@effect/cli';
 import * as InternalCircuitCommand from './internal/circuitCommand.js';
 import * as InternalCommand from './internal/command.js';
 import * as InternalDeployCommand from './internal/deployCommand.js';
+import * as InternalMaintainCircuitCommand from './internal/maintainCircuitCommand.js';
+import * as InternalMaintainContractCommand from './internal/maintainContractCommand.js';
 
 export const deployCommand = Command.make(
   'deploy',
@@ -39,6 +41,32 @@ export const circuitCommand = Command.make(
   }).pipe(
     Command.withDescription('Invokes a circuit on a contract instance and returns a ContractCall intent for it.'),
     Command.withHandler(InternalCommand.invocationHandler(InternalCircuitCommand.handler))
+  );
+
+export const maintainCommand = Command.make('maintain').pipe(
+    Command.withDescription('Performs maintenance operations on deployed contract state and returns a MaintenanceUpdate intent for it.'),
+    Command.withSubcommands([
+      Command.make(
+        'contract',
+        {
+          ...InternalCommand.GlobalOptions,
+          ...InternalMaintainContractCommand.Options,
+          ...InternalMaintainContractCommand.Args
+        }).pipe(
+          Command.withDescription('Updates the Contract Maintenance Authority for deployed contract state and returns a MaintenanceUpdate intent for it.'),
+          Command.withHandler(InternalCommand.invocationHandler(InternalMaintainContractCommand.handler))
+        ),
+      Command.make(
+        'circuit',
+        {
+          ...InternalCommand.GlobalOptions,
+          ...InternalMaintainCircuitCommand.Options,
+          ...InternalMaintainCircuitCommand.Args
+        }).pipe(
+          Command.withDescription('Updates the circuits associated with deployed contract state and returns a MaintenanceUpdate intent for it.'),
+          Command.withHandler(InternalCommand.invocationHandler(InternalMaintainCircuitCommand.handler))
+        )
+    ])
   );
 
 export * as CompiledContractReflection from './CompiledContractReflection.js';
