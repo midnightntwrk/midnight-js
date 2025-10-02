@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/platform-js",
-  "version": "2.0.0",
+  "version": "2.1.0-rc.2",
   "description": "Provides a set of core abstractions, utilities, and types for building services and libraries that work with the Midnight blockchain",
   "type": "module",
   "exports": {
@@ -33,5 +33,6 @@
   },
   "files": [
     "dist/"
-  ]
+  ],
+  "stableVersion": "2.0.0"
 }
