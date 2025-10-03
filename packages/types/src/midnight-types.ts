@@ -18,13 +18,14 @@ import {
   type Bindingish,
   type ContractAddress,
   type IntentHash,
+  type PreBinding,
+  type PreProof,
   type Proof,
   type RawTokenType,
   type SignatureEnabled,
-  type Signaturish,
   type Transaction,
   type TransactionHash,
-  type TransactionId,
+  type TransactionId
 } from '@midnight-ntwrk/ledger-v6';
 
 /**
@@ -110,7 +111,7 @@ export interface ZKConfig<K extends string> {
 /**
  * A type representing a proven, unbalanced transaction.
  */
-export type UnbalancedTransaction = Transaction<Signaturish, Proof, Bindingish> & {
+export type UnbalancedTransaction = Transaction<SignatureEnabled, PreProof, PreBinding> & {
   /**
    * Unique symbol brand.
    */
@@ -122,14 +123,14 @@ export type UnbalancedTransaction = Transaction<Signaturish, Proof, Bindingish> 
  *
  * @param tx The ledger transaction to wrap.
  */
-export const createUnbalancedTx = (tx: Transaction<Signaturish, Proof, Bindingish>): UnbalancedTransaction => {
+export const createUnbalancedTx = (tx: Transaction<SignatureEnabled, PreProof, PreBinding>): UnbalancedTransaction => {
   return tx as UnbalancedTransaction;
 };
 
 /**
  * A type representing a proven, balanced, submittable transaction.
  */
-export type BalancedTransaction = Transaction<Signaturish, Proof, Bindingish> & {
+export type BalancedTransaction = Transaction<SignatureEnabled, Proof, Bindingish> & {
   /**
    * Unique symbol brand.
    */
@@ -140,7 +141,7 @@ export type BalancedTransaction = Transaction<Signaturish, Proof, Bindingish> & 
  * Creates an {@link BalancedTransaction} from a ledger transaction.
  * @param tx The ledger transaction to wrap.
  */
-export const createBalancedTx = (tx: Transaction<Signaturish, Proof, Bindingish>): BalancedTransaction => {
+export const createBalancedTx = (tx: Transaction<SignatureEnabled, Proof, Bindingish>): BalancedTransaction => {
   return tx as BalancedTransaction;
 };
 

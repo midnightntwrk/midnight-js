@@ -112,7 +112,7 @@ export const callContractConstructor = <C extends Contract>(
   const constructorResult = options.contract.initialState(
     {
       initialPrivateState: 'initialPrivateState' in options ? options.initialPrivateState : undefined,
-      // TODO: consult
+      // TODO: IMPORTANT - consult
       initialZswapLocalState: emptyZswapLocalState(options.coinPublicKey)
     } as ConstructorContext<C>,
     ...('args' in options ? options.args : [])

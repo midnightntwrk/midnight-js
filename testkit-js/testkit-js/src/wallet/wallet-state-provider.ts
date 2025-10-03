@@ -15,14 +15,17 @@
 
 import fs from 'node:fs';
 
-import { type Wallet } from '@midnight-ntwrk/wallet-api';
+import { type ShieldedWallet } from '@midnight-ntwrk/wallet-sdk-shielded';
+import { type UnshieldedWallet } from '@midnight-ntwrk/wallet-sdk-unshielded-wallet';
 import { type Logger } from 'pino';
 
-import { getEnvVarEnvironment } from '../env-vars';
+import { getEnvVarEnvironment } from '@/env-vars';
+
 import { GzipFile } from './gzip-file';
 
 /** Default directory path for storing wallet state files */
 export const DEFAULT_WALLET_STATE_DIRECTORY = `./.states`;
+
 
 /**
  * Generates a filename for the wallet state file based on environment and optional seed
@@ -71,10 +74,10 @@ export class WalletSaveStateProvider {
 
   /**
    * Saves the wallet state to a compressed file
-   * @param {Wallet} wallet - The wallet instance to save state from
+   * @param {ShieldedWallet | UnshieldedWallet} wallet - The wallet instance to save state from
    * @returns {Promise<void>} A promise that resolves when the save is complete
    */
-  async save(wallet: Wallet) {
+  async save(wallet: ShieldedWallet | UnshieldedWallet): Promise<void> {
     this.logger.info(`Saving state in ${this.filePath}`);
     try {
       fs.mkdirSync(this.directoryPath, { recursive: true });
@@ -99,7 +102,7 @@ export class WalletSaveStateProvider {
    * @returns {Promise<string>} A promise that resolves with the decompressed wallet state as a string
    * @throws {Error} If there is an error reading or decompressing the file
    */
-  async load() {
+  async load(): Promise<string> {
     this.logger.info(`Loading state from ${this.filePath}`);
     try {
       return await new GzipFile(this.filePath, `${this.filePath.replaceAll('.gz', '')}.gz`).decompress();
