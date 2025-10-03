@@ -38,6 +38,7 @@ jobs:
             core
             testkit
             compact-js
+            midnight-js
             platform-js
             wallet
             deps

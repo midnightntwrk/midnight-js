@@ -38,11 +38,19 @@ export {
   createZKIR,
   FailEntirely,
   FailFallible,
+  Fees,
   FinalizedTxData,
   ProverKey,
+  SegmentFail,
+  SegmentStatus,
+  SegmentSuccess,
   SucceedEntirely,
   TxStatus,
   UnbalancedTransaction,
+  UnshieldedBalance,
+  UnshieldedBalances,
+  UnshieldedUtxo,
+  UnshieldedUtxos,
   VerifierKey,
   ZKConfig,
   ZKIR} from './midnight-types';
@@ -52,4 +60,4 @@ export * from './providers';
 export * from './public-data-provider';
 export * from './wallet-provider';
 export * from './zk-config-provider';
-export { UnprovenTransaction } from '@midnight-ntwrk/ledger';
+export { Transaction } from '@midnight-ntwrk/ledger-v6';

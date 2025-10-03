@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { CoinInfo } from '@midnight-ntwrk/compact-runtime';
+import type { ShieldedCoinInfo } from '@midnight-ntwrk/compact-runtime';
 import type { ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -28,11 +28,11 @@ import {
 describe('submitTx', () => {
   let mockProviders: ReturnType<typeof createMockProviders>;
   let mockUnprovenTx: ReturnType<typeof createMockUnprovenTx>;
-  let mockCoinInfo: CoinInfo;
+  let mockCoinInfo: ShieldedCoinInfo;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     mockProviders = createMockProviders();
     mockUnprovenTx = createMockUnprovenTx();
     mockCoinInfo = createMockCoinInfo();

@@ -21,40 +21,50 @@ import {
   signatureVerifyingKey,
   type SigningKey,
   type ZswapLocalState} from '@midnight-ntwrk/compact-runtime';
-import type { SingleUpdate,ZswapChainState } from '@midnight-ntwrk/ledger';
 import {
+  ChargedState,
   communicationCommitmentRandomness,
   ContractCallPrototype,
-  ContractCallsPrototype,
   ContractDeploy,
   ContractMaintenanceAuthority,
   ContractOperationVersion,
   ContractOperationVersionedVerifierKey,
   ContractState as LedgerContractState,
+  type EncPublicKey,
+  Intent,
   MaintenanceUpdate,
+  type PartitionedTranscript,
   QueryContext as LedgerQueryContext,
   ReplaceAuthority,
   signData,
+  type SingleUpdate,
   StateValue as LedgerStateValue,
-  UnprovenOffer,
+  type UnprovenTransaction,
   VerifierKeyInsert,
-  VerifierKeyRemove} from '@midnight-ntwrk/ledger';
-import { getLedgerNetworkId, getRuntimeNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { type ImpureCircuitId, UnprovenTransaction, type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
+  VerifierKeyRemove,
+  type ZswapChainState
+} from '@midnight-ntwrk/ledger-v6';
+import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import {
+  type ImpureCircuitId,
+  Transaction,
+  type VerifierKey
+} from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
-import { type EncPublicKey } from '@midnight-ntwrk/zswap';
 
-import type { PartitionedTranscript } from '../call';
 import { zswapStateToOffer } from './zswap-utils';
 
+const ttl = () => new Date(Date.now() + 60 * 60 * 1000);
+
 export const toLedgerContractState = (contractState: ContractState): LedgerContractState =>
-  LedgerContractState.deserialize(contractState.serialize(getRuntimeNetworkId()), getLedgerNetworkId());
+  LedgerContractState.deserialize(contractState.serialize());
 
 export const fromLedgerContractState = (contractState: LedgerContractState): ContractState =>
-  ContractState.deserialize(contractState.serialize(getLedgerNetworkId()), getRuntimeNetworkId());
+  ContractState.deserialize(contractState.serialize(), );
 
 export const toLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext => {
-  const ledgerQueryContext = new LedgerQueryContext(LedgerStateValue.decode(queryContext.state.encode()), queryContext.address);
+  const stateValue = LedgerStateValue.decode(queryContext.state.state.encode());
+  const ledgerQueryContext = new LedgerQueryContext(new ChargedState(stateValue), queryContext.address);
   // The above method of converting to ledger query context only retains the state. So, we have to set the settable properties manually
   ledgerQueryContext.block = queryContext.block;
   ledgerQueryContext.effects = queryContext.effects;
@@ -105,10 +115,11 @@ export const createUnprovenLedgerDeployTx = (
   return [
     contractDeploy.address,
     fromLedgerContractState(contractDeploy.initialState),
-    new UnprovenTransaction(
+    Transaction.fromParts(
+      getNetworkId(),
       zswapStateToOffer(zswapLocalState, encryptionPublicKey),
       undefined,
-      new ContractCallsPrototype().addDeploy(contractDeploy)
+      Intent.new(ttl()).addDeploy(contractDeploy)
     )
   ];
 };
@@ -127,13 +138,14 @@ export const createUnprovenLedgerCallTx = (
 ): UnprovenTransaction => {
   const op = toLedgerContractState(initialContractState).operation(circuitId);
   assertDefined(op, `Operation '${circuitId}' is undefined for contract state ${initialContractState.toString(false)}`);
-  return new UnprovenTransaction(
+  return Transaction.fromParts(
+    getNetworkId(),
     zswapStateToOffer(nextZswapLocalState, encryptionPublicKey, {
       contractAddress,
       zswapChainState
     }),
     undefined,
-    new ContractCallsPrototype().addCall(
+    Intent.new(ttl()).addCall(
       new ContractCallPrototype(
         contractAddress,
         circuitId,
@@ -173,10 +185,11 @@ export const unprovenTxFromContractUpdates = (
   // 'idx' is '0n' because Midnight.js currently only supports single-party maintenance update authorities
   const idx = 0n;
   const signedMaintenanceUpdate = maintenanceUpdate.addSignature(idx, signData(sk, maintenanceUpdate.dataToSign));
-  return new UnprovenTransaction(
-    new UnprovenOffer(),
+  return Transaction.fromParts(
+    getNetworkId(),
     undefined,
-    new ContractCallsPrototype().addMaintenanceUpdate(signedMaintenanceUpdate)
+    undefined,
+    Intent.new(ttl()).addMaintenanceUpdate(signedMaintenanceUpdate)
   );
 };
 
