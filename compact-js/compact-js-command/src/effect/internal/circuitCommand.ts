@@ -24,7 +24,7 @@ import {
   type ContractOperation as LedgerContractOption,
   Intent
 } from '@midnight-ntwrk/ledger';
-import { type ConfigError, Duration, Effect, Option } from 'effect';
+import { type ConfigError, Console,Duration, Effect, Option } from 'effect';
 
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
 import { type ConfigCompiler } from '../ConfigCompiler.js';
@@ -102,6 +102,13 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
           : undefined 
       },
       ...(yield* argsParser.parseCircuitArgs(Contract.ImpureCircuitId(circuitId), args))
+    );
+    yield* Console.log(
+      JSON.stringify(
+        result.private.result,
+        (_, value) => typeof value === 'bigint' ? value.toString() : value,
+        2
+      )
     );
     const intent = Intent.new(yield* InternalCommand.ttl(Duration.minutes(10)))
       .addCall(new ContractCallPrototype(
