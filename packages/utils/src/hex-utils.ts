@@ -173,7 +173,7 @@ export function assertIsHex(source: string, byteLen?: number): asserts source is
 /**
  * Parses a coin public key (in Bech32m format or hex) into a hex formatted string.
  *
- * @param possibleBech32 The input string, which can be a Bech32m-encoded coin public key or a hex string.
+ * @param possibleBech32 The input string, which should be a Bech32m-encoded coin public key.
  * @param zswapNetworkId The network ID used for decoding the Bech32m formatted string.
  * @returns The hex string representation of the coin public key.
  *
@@ -181,7 +181,7 @@ export function assertIsHex(source: string, byteLen?: number): asserts source is
  * If the input string is not a valid hex string or a valid Bech32m-encoded coin public key.
  */
 export const parseCoinPublicKeyToHex = (possibleBech32: string, zswapNetworkId: NetworkId): string => {
-  if (isHex(possibleBech32)) return possibleBech32;
+  if (isHex(possibleBech32)) throw TypeError(`Bech32m string expected, got hex string: '${possibleBech32}'`);
   const parsedBech32 = MidnightBech32m.parse(possibleBech32); // Ensure compatibility
   const decoded = ShieldedCoinPublicKey.codec.decode(zswapNetworkId, parsedBech32);
   return Buffer.from(decoded.data).toString('hex');
@@ -190,7 +190,7 @@ export const parseCoinPublicKeyToHex = (possibleBech32: string, zswapNetworkId: 
 /**
  * Parses an encryption public key (in Bech32m or hex format) into a hex formatted string.
  *
- * @param possibleBech32 The input string, which can be a Bech32m-encoded encryption public key or a hex string.
+ * @param possibleBech32 The input string, which should be a Bech32m-encoded encryption public key.
  * @param zswapNetworkId The network ID used for decoding the Bech32m formatted string.
  * @returns The hex string representation of the encryption public key.
  *
@@ -198,7 +198,7 @@ export const parseCoinPublicKeyToHex = (possibleBech32: string, zswapNetworkId: 
  * If the input string is not a valid hex string or a valid Bech32m-encoded encryption public key.
  */
 export const parseEncPublicKeyToHex = (possibleBech32: string, zswapNetworkId: NetworkId): string => {
-  if (isHex(possibleBech32)) return possibleBech32;
+  if (isHex(possibleBech32)) throw TypeError(`Bech32m string expected, got hex string: '${possibleBech32}'`);
   const parsedBech32 = MidnightBech32m.parse(possibleBech32);
   const decoded = ShieldedEncryptionPublicKey.codec.decode(zswapNetworkId, parsedBech32);
   return Buffer.from(decoded.data).toString('hex');
