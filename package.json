@@ -43,7 +43,7 @@
     "@midnight-ntwrk/compact-runtime": "0.9.0-rc.2",
     "@midnight-ntwrk/ledger-v6": "6.1.0-alpha.3",
     "@midnight-ntwrk/onchain-runtime-v1": "1.0.0-alpha.3",
-    "@midnight-ntwrk/wallet-sdk-address-format": "2.0.0",
+    "@midnight-ntwrk/wallet-sdk-address-format": "2.0.0-beta.4",
     "@midnight-ntwrk/zswap": "4.0.0"
   },
   "devDependencies": {
@@ -54,8 +54,10 @@
     "@eslint/js": "^9.30.1",
     "@midnight-ntwrk/wallet": "5.0.0",
     "@midnight-ntwrk/wallet-api": "5.0.0",
+    "@midnight-ntwrk/wallet-sdk-abstractions": "1.0.0-beta.1",
     "@midnight-ntwrk/wallet-sdk-facade": "1.0.0-beta.1",
-    "@midnight-ntwrk/wallet-sdk-hd": "2.0.0",
+    "@midnight-ntwrk/wallet-sdk-hd": "2.0.0-beta.3",
+    "@midnight-ntwrk/wallet-sdk-shielded": "1.0.0-beta.1",
     "@midnight-ntwrk/wallet-sdk-unshielded-wallet": "1.0.0-beta.3",
     "@rollup/plugin-commonjs": "^28.0.3",
     "@rollup/plugin-node-resolve": "^16.0.0",
@@ -101,5 +103,14 @@
     "commitizen": {
       "path": "cz-conventional-changelog"
     }
+  },
+  "resolutions": {
+    "@midnight-ntwrk/wallet-sdk-abstractions": "link:/Users/paluchs/iohk/dev/github/midnightntwrk/midnight-wallet/packages/abstractions",
+    "@midnight-ntwrk/wallet-sdk-address-format": "link:/Users/paluchs/iohk/dev/github/midnightntwrk/midnight-wallet/packages/address-format",
+    "@midnight-ntwrk/wallet-sdk-facade": "link:/Users/paluchs/iohk/dev/github/midnightntwrk/midnight-wallet/packages/facade",
+    "@midnight-ntwrk/wallet-sdk-hd": "link:/Users/paluchs/iohk/dev/github/midnightntwrk/midnight-wallet/packages/hd",
+    "@midnight-ntwrk/wallet-sdk-node-client": "link:/Users/paluchs/iohk/dev/github/midnightntwrk/midnight-wallet/packages/node-client",
+    "@midnight-ntwrk/wallet-sdk-unshielded-state": "link:/Users/paluchs/iohk/dev/github/midnightntwrk/midnight-wallet/packages/unshielded-state",
+    "@midnight-ntwrk/wallet-sdk-shielded": "link:/Users/paluchs/iohk/dev/github/midnightntwrk/midnight-wallet/packages/wallet"
   }
 }

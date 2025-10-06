@@ -13,9 +13,7 @@
  * limitations under the License.
  */
 
-import type { TransactionId } from '@midnight-ntwrk/ledger-v6';
-
-import type { BalancedTransaction } from './midnight-types';
+import type { FinalizedTransaction, TransactionId } from '@midnight-ntwrk/ledger-v6';
 
 /**
  * Interface for Midnight transaction submission logic. It could be implemented, e.g., by a wallet,
@@ -24,8 +22,8 @@ import type { BalancedTransaction } from './midnight-types';
 export interface MidnightProvider {
   /**
    * Submit a transaction to the network to be consensed upon.
-   * @param tx A balanced and proven transaction.
+   * @param tx The finalized transaction to submit.
    * @returns The transaction identifier of the submitted transaction.
    */
-  submitTx(tx: BalancedTransaction): Promise<TransactionId>;
+  submitTx(tx: FinalizedTransaction): Promise<TransactionId>;
 }

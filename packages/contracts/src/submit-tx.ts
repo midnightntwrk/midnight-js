@@ -70,7 +70,7 @@ export const submitTx = async <C extends Contract, ICK extends ImpureCircuitId<C
     ? { zkConfig: await providers.zkConfigProvider.get(options.circuitId) }
     : undefined;
   const unbalancedTx = await providers.proofProvider.proveTx(options.unprovenTx, proveTxConfig);
-  const balancedTx = await providers.walletProvider.balanceTx(unbalancedTx, options.newCoins ?? []);
-  const txId = await providers.midnightProvider.submitTx(balancedTx);
+  const finalizedTx = await providers.walletProvider.finalizeTransaction(unbalancedTx, options.newCoins ?? []);
+  const txId = await providers.midnightProvider.submitTx(finalizedTx);
   return await providers.publicDataProvider.watchForTxData(txId);
 };

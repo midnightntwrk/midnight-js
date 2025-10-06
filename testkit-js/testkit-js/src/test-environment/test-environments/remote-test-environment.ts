@@ -70,7 +70,7 @@ export abstract class RemoteTestEnvironment extends TestEnvironment {
       if (saveWalletState) {
         await Promise.all(
           this.walletProviders.map((midnightWallet) =>
-            new WalletSaveStateProvider(logger, midnightWallet.coinPublicKey).save(midnightWallet.wallet.shielded)
+            new WalletSaveStateProvider(logger, midnightWallet.zswapSecretKeys.coinPublicKey).save(midnightWallet.wallet.shielded)
           )
         );
       }

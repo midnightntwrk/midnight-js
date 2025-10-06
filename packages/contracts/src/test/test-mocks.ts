@@ -26,7 +26,9 @@ import {
   type AlignedValue,
   type Binding,
   type CoinPublicKey,
+  type CoinSecretKey,
   type EncPublicKey,
+  type EncryptionSecretKey,
   type PartitionedTranscript,
   type Proof,
   sampleCoinPublicKey,
@@ -37,7 +39,8 @@ import {
   type TokenType,
   type Transaction,
   type UnprovenTransaction,
-  type ZswapChainState
+  type ZswapChainState,
+  type ZswapSecretKeys
 } from '@midnight-ntwrk/ledger-v6';
 import {
   type Contract,
@@ -66,6 +69,16 @@ export const createMockCoinPublicKey = () => sampleCoinPublicKey();
 export const createMockPrivateStateId = (): PrivateStateId => 'test-private-state-id' as PrivateStateId;
 
 export const createMockEncryptionPublicKey = (): EncPublicKey => sampleEncryptionPublicKey();
+
+export const createMockZswapSecretKeys = (): ZswapSecretKeys => {
+  return {
+    coinPublicKey: createMockCoinPublicKey() as CoinPublicKey,
+    coinSecretKey: {} as CoinSecretKey,
+    encryptionPublicKey: createMockEncryptionPublicKey() as EncPublicKey,
+    encryptionSecretKey: {} as EncryptionSecretKey,
+    clear: vi.fn()
+  };
+};
 
 export const createMockContractState = (signingKey?: SigningKey): ContractState => ({
   serialize: vi.fn().mockReturnValue(new Uint8Array(32)),
@@ -168,9 +181,8 @@ export const createMockProviders = (): ContractProviders<Contract, CoinPublicKey
     get: vi.fn()
   },
   walletProvider: {
-    coinPublicKey: createMockCoinPublicKey(),
-    encryptionPublicKey: {} as EncPublicKey,
-    balanceTx: vi.fn()
+    zswapSecretKeys: createMockZswapSecretKeys(),
+    finalizeTransaction: vi.fn()
   },
   proofProvider: {
     proveTx: vi.fn()

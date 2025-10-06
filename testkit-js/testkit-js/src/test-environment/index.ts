@@ -16,4 +16,3 @@
 export * from './environment-configuration';
 export * from './environment-provider';
 export * from './test-environment';
-export * from './test-environments';

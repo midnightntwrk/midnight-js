@@ -16,7 +16,7 @@
 import { type NetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type { Logger } from 'pino';
 
-import { getEnvVarEnvironment, getEnvVarNetworkId } from '@/env-vars';
+import { getEnvVarEnvironment, MN_TEST_NETWORK_ID } from '@/env-vars';
 import { MissingEnvironmentVariable } from '@/errors';
 import { type TestEnvironment } from '@/test-environment/test-environment';
 
@@ -30,11 +30,10 @@ import {
 /**
  * Parses the network ID from the environment variable.
  * @throws {MissingEnvironmentVariable} If MN_TEST_NETWORK_ID is not set.
- * @throws {NetworkIdTypeError} If the network ID is invalid.
  * @returns {NetworkId} The parsed network ID.
  */
 const parseNetworkIdEnvVar = () : NetworkId => {
-  const networkIdEnv = getEnvVarNetworkId();
+  const networkIdEnv = MN_TEST_NETWORK_ID;
   if (!networkIdEnv) {
     throw new MissingEnvironmentVariable('MN_TEST_NETWORK_ID');
   }
@@ -44,23 +43,26 @@ const parseNetworkIdEnvVar = () : NetworkId => {
 /**
  * Returns the appropriate test environment based on the MN_TEST_ENVIRONMENT variable.
  * @param {Logger} logger - The logger instance to be used by the test environment.
- * @returns {TestnetTestEnvironment | DevnetTestEnvironment | QanetTestEnvironment | EnvVarRemoteTestEnvironment | LocalTestEnvironment} The selected test environment instance.
+ * @returns { TestEnvironment} The selected test environment instance.
  */
 export const getTestEnvironment = (logger: Logger): TestEnvironment => {
   const testEnv = getEnvVarEnvironment().toLowerCase();
+  let env;
   switch (testEnv) {
     case 'testnet':
     case 'testnet-02':
-      setNetworkId('testnet');
-      return new Testnet2TestEnvironment(logger);
+      env = new Testnet2TestEnvironment(logger);
+      break;
     case 'qanet':
-      setNetworkId('devnet');
-      return new QanetTestEnvironment(logger);
+      env = new QanetTestEnvironment(logger);
+      break;
     case 'env-var-remote':
-      setNetworkId(parseNetworkIdEnvVar());
-      return new EnvVarRemoteTestEnvironment(logger);
+      parseNetworkIdEnvVar();
+      env = new EnvVarRemoteTestEnvironment(logger);
+      break;
     default:
-      setNetworkId('undeployed');
-      return new LocalTestEnvironment(logger);
+      env = new LocalTestEnvironment(logger);
   }
+  setNetworkId('testnet');
+  return env;
 };

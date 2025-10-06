@@ -195,8 +195,8 @@ export async function createUnprovenDeployTx<C extends Contract>(
   const verifierKeys = await providers.zkConfigProvider.getVerifierKeys(getImpureCircuitIds(options.contract));
   return createUnprovenDeployTxFromVerifierKeys(
     verifierKeys,
-    parseCoinPublicKeyToHex(providers.walletProvider.coinPublicKey, getNetworkId()),
+    parseCoinPublicKeyToHex(providers.walletProvider.zswapSecretKeys.coinPublicKey, getNetworkId()),
     options,
-    providers.walletProvider.encryptionPublicKey
+    providers.walletProvider.zswapSecretKeys.encryptionPublicKey
   );
 }

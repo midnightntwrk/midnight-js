@@ -13,28 +13,25 @@
  * limitations under the License.
  */
 
-import type { CoinPublicKey, EncPublicKey, ShieldedCoinInfo } from '@midnight-ntwrk/ledger-v6';
+import { type FinalizedTransaction, type ShieldedCoinInfo, type ZswapSecretKeys } from '@midnight-ntwrk/ledger-v6';
 
-import type { BalancedTransaction, UnbalancedTransaction } from './midnight-types';
+import type { UnbalancedTransaction } from './midnight-types';
 
 /**
  * Interface for a wallet
  */
 export interface WalletProvider {
   /**
-   * Wallet public coin key
+   * Represents a readonly property that stores secret keys used for Zswap encryption or authentication.
+   *
+   * @type {ZswapSecretKeys}
    */
-  readonly coinPublicKey: CoinPublicKey;
-
-  /**
-   * Wallet EncryptionPublicKey
-   */
-  readonly encryptionPublicKey: EncPublicKey;
+  readonly zswapSecretKeys: ZswapSecretKeys;
 
   /**
    * Balances select coins, create spend proofs, and pay fees for a transaction with call proofs.
    * @param tx The transaction to balance.
    * @param newCoins The outputs created during a transaction.
    */
-  balanceTx(tx: UnbalancedTransaction, newCoins: ShieldedCoinInfo[]): Promise<BalancedTransaction>;
+  finalizeTransaction(tx: UnbalancedTransaction, newCoins: ShieldedCoinInfo[]): Promise<FinalizedTransaction>;
 }

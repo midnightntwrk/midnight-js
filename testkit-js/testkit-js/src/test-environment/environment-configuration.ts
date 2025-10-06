@@ -13,10 +13,16 @@
  * limitations under the License.
  */
 
+import { type NetworkId } from '@midnight-ntwrk/wallet-sdk-abstractions';
+
 /**
  * Configuration interface for the test environment services
  */
 export interface EnvironmentConfiguration {
+  /** Wallet Network identifier */
+  readonly walletNetworkId: NetworkId.NetworkId;
+  /** Network identifier */
+  readonly networkId: string;
   /** URL of the indexer HTTP endpoint */
   readonly indexer: string;
   /** WebSocket URL for the indexer service */

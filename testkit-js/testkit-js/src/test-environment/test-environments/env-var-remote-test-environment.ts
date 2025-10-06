@@ -13,10 +13,19 @@
  * limitations under the License.
  */
 
-import { MN_TEST_FAUCET, MN_TEST_INDEXER, MN_TEST_INDEXER_WS, MN_TEST_NODE } from '@/env-vars';
+import { type NetworkId } from '@midnight-ntwrk/wallet-sdk-abstractions';
+
+import {
+  MN_TEST_FAUCET,
+  MN_TEST_INDEXER,
+  MN_TEST_INDEXER_WS,
+  MN_TEST_NETWORK_ID,
+  MN_TEST_NODE,
+  MN_TEST_WALLET_NETWORK_ID
+} from '@/env-vars';
 import { MissingEnvironmentVariable } from '@/errors';
 import type { EnvironmentConfiguration } from '@/test-environment';
-import { RemoteTestEnvironment } from '@/test-environment';
+import { RemoteTestEnvironment } from '@/test-environment/test-environments/remote-test-environment';
 
 /**
  * List of required environment variables that must be set for this test environment
@@ -31,6 +40,7 @@ export class EnvVarRemoteTestEnvironment extends RemoteTestEnvironment {
   /**
    * Returns the configuration for environment services based on environment variables.
    * Required environment variables:
+   * - MN_TEST_NETWORK_ID: Network identifier (e.g., 'testnet', 'devnet')
    * - MN_TEST_INDEXER: GraphQL API endpoint for the indexer
    * - MN_TEST_INDEXER_WS: WebSocket endpoint for the indexer
    * - MN_TEST_NODE: RPC endpoint for the blockchain node
@@ -47,6 +57,8 @@ export class EnvVarRemoteTestEnvironment extends RemoteTestEnvironment {
       }
     });
     return {
+      walletNetworkId: MN_TEST_WALLET_NETWORK_ID as NetworkId.NetworkId,
+      networkId: MN_TEST_NETWORK_ID as string,
       indexer: MN_TEST_INDEXER as string,
       indexerWS: MN_TEST_INDEXER_WS as string,
       node: MN_TEST_NODE as string,

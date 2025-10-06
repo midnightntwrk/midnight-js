@@ -13,15 +13,8 @@
  * limitations under the License.
  */
 
+import { type FinalizedTransaction, shieldedToken, type TokenType, ZswapSecretKeys } from '@midnight-ntwrk/ledger-v6';
 import {
-  type CoinPublicKey,
-  type EncPublicKey,
-  shieldedToken,
-  type TokenType,
-} from '@midnight-ntwrk/ledger-v6';
-import {
-  type BalancedTransaction,
-  createBalancedTx,
   type MidnightProvider,
   type UnbalancedTransaction,
   type WalletProvider
@@ -31,6 +24,7 @@ import { generateRandomSeed } from '@midnight-ntwrk/wallet-sdk-hd';
 import type { Logger } from 'pino';
 
 import { type EnvironmentConfiguration } from '@/index';
+import { getShieldedSeed } from '@/wallet/wallet-seed-utils';
 
 import { WalletFactory } from './wallet-factory';
 import { getInitialShieldedState, waitForFunds } from './wallet-utils';
@@ -43,37 +37,33 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
   logger: Logger;
   readonly env: EnvironmentConfiguration;
   readonly wallet: WalletFacade;
-  readonly coinPublicKey: CoinPublicKey;
-  readonly encryptionPublicKey: EncPublicKey;
+  readonly zswapSecretKeys: ZswapSecretKeys;
 
   private constructor(
     logger: Logger,
     environmentConfiguration: EnvironmentConfiguration,
     wallet: WalletFacade,
-    coinPublicKey: CoinPublicKey,
-    encryptionPublicKey: EncPublicKey
+    zswapSecretKeys: ZswapSecretKeys
   ) {
     this.logger = logger;
     this.env = environmentConfiguration;
     this.wallet = wallet;
-    this.coinPublicKey = coinPublicKey;
-    this.encryptionPublicKey = encryptionPublicKey;
+    this.zswapSecretKeys = zswapSecretKeys;
   }
 
-  balanceTx(tx: UnbalancedTransaction): Promise<BalancedTransaction> {
+  finalizeTransaction(tx: UnbalancedTransaction): Promise<FinalizedTransaction> {
     return this.wallet
-      .balanceTransaction(tx)
-      .then((utx) => this.wallet.proveTransaction(utx))
-      .then(createBalancedTx);
+      .balanceTransaction(this.zswapSecretKeys, tx)
+      .then((utx) => this.wallet.finalizeTransaction(utx));
   }
 
-  submitTx(tx: BalancedTransaction): Promise<string> {
+  submitTx(tx: FinalizedTransaction): Promise<string> {
     return this.wallet.submitTransaction(tx);
   }
 
   async start(waitForFundsInWallet = true, tokenType: TokenType = shieldedToken()): Promise<void> {
     this.logger.info('Starting wallet...');
-    this.wallet.start();
+    this.wallet.start(this.zswapSecretKeys);
     if (waitForFundsInWallet) {
       const balance = await waitForFunds(this.wallet, this.env, tokenType, true);
       this.logger.info(`Your wallet balance is: ${balance}`);
@@ -89,9 +79,10 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     env: EnvironmentConfiguration,
     seed?: string | undefined
   ): Promise<MidnightWalletProvider> {
+    const walletSeed = seed ??  Buffer.from(generateRandomSeed()).toString('hex');
     const wallet = await WalletFactory.createStartedWallet(
       env,
-      seed ?? Buffer.from(generateRandomSeed()).toString('hex')
+      walletSeed
     );
     const initialState = await getInitialShieldedState(wallet.shielded);
     logger.info(`Your wallet seed is: ${seed} and your address is: ${initialState.address}`);
@@ -99,23 +90,21 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
       logger,
       env,
       wallet,
-      initialState.coinPublicKey.toHexString(),
-      initialState.encryptionPublicKey.toHexString()
+      ZswapSecretKeys.fromSeed(getShieldedSeed(walletSeed))
     );
   }
 
   static async withWallet(
     logger: Logger,
     env: EnvironmentConfiguration,
-    wallet: WalletFacade
+    wallet: WalletFacade,
+    zswapSecretKeys: ZswapSecretKeys
   ): Promise<MidnightWalletProvider> {
-    const initialState = await getInitialShieldedState(wallet.shielded);
     return new MidnightWalletProvider(
       logger,
       env,
       wallet,
-      initialState.coinPublicKey.toHexString(),
-      initialState.encryptionPublicKey.toHexString()
+      zswapSecretKeys
     );
   }
 }

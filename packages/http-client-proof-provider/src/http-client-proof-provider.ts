@@ -15,6 +15,9 @@
 
 import { BinaryWriter } from '@dao-xyz/borsh';
 import {
+  type PreBinding,
+  type PreProof,
+  type SignatureEnabled,
   Transaction,
   type UnprovenTransaction
 } from '@midnight-ntwrk/ledger-v6';
@@ -76,9 +79,12 @@ export const serializePayload = <K extends string>(
   return new Blob([serializedTx, serializedConfig]).arrayBuffer();
 };
 
-const deserializePayload = (arrayBuffer: ArrayBuffer): UnbalancedTransaction =>
-  createUnbalancedTx(Transaction.deserialize('signature', 'proof', 'binding', new Uint8Array(arrayBuffer)));
 
+const deserializePayload = (arrayBuffer: ArrayBuffer): UnbalancedTransaction => {
+  const bytes = new Uint8Array(arrayBuffer);
+  const transaction : Transaction<SignatureEnabled, PreProof, PreBinding> = Transaction.deserialize('signature', 'pre-proof', 'pre-binding', bytes);
+  return createUnbalancedTx(transaction);
+};
 const PROVE_TX_PATH = '/prove-tx';
 
 /**

@@ -14,6 +14,7 @@
  */
 
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { NetworkId } from '@midnight-ntwrk/wallet-sdk-abstractions';
 import type { Logger } from 'pino';
 import { DockerComposeEnvironment, type StartedDockerComposeEnvironment } from 'testcontainers';
 
@@ -38,6 +39,8 @@ export type ComponentPortsConfiguration = {
  * Configuration class for local test environment implementing EnvironmentConfiguration
  */
 export class LocalTestConfiguration implements EnvironmentConfiguration {
+  readonly walletNetworkId: NetworkId.NetworkId;
+  readonly networkId: string;
   readonly indexer: string;
   readonly indexerWS: string;
   readonly node: string;
@@ -49,6 +52,8 @@ export class LocalTestConfiguration implements EnvironmentConfiguration {
    * @param {ComponentPortsConfiguration} ports - Object containing port numbers for each component
    */
   constructor({ indexer, node, proofServer }: ComponentPortsConfiguration) {
+    this.walletNetworkId = NetworkId.NetworkId.Undeployed;
+    this.networkId = 'undeployed';
     this.indexer = `http://127.0.0.1:${indexer}/api/v1/graphql`;
     this.indexerWS = `ws://127.0.0.1:${indexer}/api/v1/graphql/ws`;
     this.node = `http://127.0.0.1:${node}`;
