@@ -49,7 +49,7 @@ export const syncWallet = (wallet: WalletFacade, throttleTime = 1_000, timeout =
       .state()
       .pipe(
         Rx.tap((state) => {
-          logger.info(`Raw wallet state emission: { unshielded: ${state.unshielded.syncProgress}, shielded: ${state.shielded.state.progress.highestIndex}}`);
+          logger.info(`Raw wallet state emission: { unshielded: ${state.unshielded.syncProgress?.synced}, shielded: ${state.shielded.state.progress.isStrictlyComplete()}}`);
         }),
         Rx.throttleTime(throttleTime),
         Rx.tap((state) => {

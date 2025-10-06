@@ -1,6 +1,6 @@
 services:
   proof-server:
-    image: "ghcr.io/midnight-ntwrk/proof-server:6.1.0-alpha.2"
+    image: "ghcr.io/midnight-ntwrk/proof-server:6.1.0-alpha.3"
     container_name: "proof-server_$TESTCONTAINERS_UID"
     ports:
       - "0:6300"
@@ -14,15 +14,18 @@ services:
       retries: 3
       start_period: 10s
   indexer:
-    image: "ghcr.io/midnight-ntwrk/indexer-standalone:3.0.0-0f95067a"
-    container_name: "indexer_$TESTCONTAINERS_UID"
+    image: 'ghcr.io/midnight-ntwrk/indexer-standalone:3.0.0-c12e9051'
+    container_name: indexer_$TESTCONTAINERS_UID
     ports:
-      - "0:8088"
+      - '0:8088'
     environment:
-      RUST_LOG: "indexer=debug,chain_indexer=debug,indexer_api=debug,wallet_indexer=debug,indexer_common=debug,fastrace_opentelemetry=off,info"
-      APP__INFRA__SECRET: "303132333435363738393031323334353637383930313233343536373839303132"
-      APP__INFRA__NODE__URL: "ws://node:9944"
-      APP__APPLICATION__NETWORK_ID: "Undeployed"
+      RUST_LOG: 'indexer=debug,chain_indexer=debug,indexer_api=debug,wallet_indexer=debug,indexer_common=debug,fastrace_opentelemetry=off,info'
+      APP__INFRA__NODE__URL: 'ws://node:9944'
+      APP__APPLICATION__NETWORK_ID: 'Undeployed'
+      APP__INFRA__STORAGE__PASSWORD: 'indexer'
+      APP__INFRA__PUB_SUB__PASSWORD: 'indexer'
+      APP__INFRA__LEDGER_STATE_STORAGE__PASSWORD: 'indexer'
+      APP__INFRA__SECRET: '303132333435363738393031323334353637383930313233343536373839303132'
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8088/api/v1/graphql"]
       interval: 2s
@@ -33,7 +36,7 @@ services:
       node:
         condition: service_started
   node:
-    image: "ghcr.io/midnight-ntwrk/midnight-node:0.13.2-rc.1"
+    image: "ghcr.io/midnight-ntwrk/midnight-node:0.17.0-rc.2"
     container_name: "node_$TESTCONTAINERS_UID"
     ports:
       - "0:9944"
