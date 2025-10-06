@@ -15,7 +15,8 @@
 
 import { type ContractAddress, sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
 import { deployContract, submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
-import type {
+import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import {
   type ContractConfiguration,
   createLogger,
   type EnvironmentConfiguration,
@@ -23,8 +24,8 @@ import type {
   getTestEnvironment,
   initializeMidnightProviders,
   type MidnightWalletProvider,
-  type TestEnvironment} from '@midnight-ntwrk/midnight-js-testkit';
-import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+  type TestEnvironment
+} from '@midnight-ntwrk/testkit-js';
 import { afterAll, beforeAll, beforeEach,describe, test } from '@vitest/runner';
 import path from 'path';
 import { expect } from 'vitest';

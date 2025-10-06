@@ -18,14 +18,13 @@ import { WebSocket } from 'ws';
 
 import { createLogger } from '@/logger';
 import {
-  DevnetTestEnvironment,
+  getTestEnvironment
+} from '@/test-environment';
+import {
   EnvVarRemoteTestEnvironment,
-  getTestEnvironment,
   LocalTestEnvironment,
   QanetTestEnvironment,
-  Testnet2TestEnvironment,
-  TestnetTestEnvironment
-} from '@/test-environment';
+  Testnet2TestEnvironment} from '@/test-environment/test-environments';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `ut_${new Date().toISOString().replace(/:/g, '-')}.log`)
@@ -42,8 +41,6 @@ describe.concurrent('[Unit tests] Testing API', () => {
   it.each([
     ['local environment reference', undefined, LocalTestEnvironment],
     ['qanet environment reference', 'qanet', QanetTestEnvironment],
-    ['devnet environment reference', 'devnet', DevnetTestEnvironment],
-    ['testnet environment reference', 'testnet', TestnetTestEnvironment],
     ['testnet2 environment reference', 'testnet-02', Testnet2TestEnvironment]
   ])('test environment should return %s', async (_, envVar, expectedInstance) => {
     process.env.MN_TEST_ENVIRONMENT = envVar;

@@ -51,10 +51,13 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     this.zswapSecretKeys = zswapSecretKeys;
   }
 
-  finalizeTransaction(tx: UnbalancedTransaction): Promise<FinalizedTransaction> {
-    return this.wallet
-      .balanceTransaction(this.zswapSecretKeys, tx)
-      .then((utx) => this.wallet.finalizeTransaction(utx));
+  async finalizeTransaction(tx: UnbalancedTransaction): Promise<FinalizedTransaction> {
+    const recipe = await this.wallet.balanceTransaction(this.zswapSecretKeys, tx);
+    //TODO: temporary - consult
+    if (recipe.type !== 'TransactionToProve') {
+      throw new Error(`Failed to balance transaction: ${recipe.type}`);
+    }
+    return this.wallet.finalizeTransaction(recipe);
   }
 
   submitTx(tx: FinalizedTransaction): Promise<string> {
@@ -79,19 +82,11 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     env: EnvironmentConfiguration,
     seed?: string | undefined
   ): Promise<MidnightWalletProvider> {
-    const walletSeed = seed ??  Buffer.from(generateRandomSeed()).toString('hex');
-    const wallet = await WalletFactory.createStartedWallet(
-      env,
-      walletSeed
-    );
+    const walletSeed = seed ?? Buffer.from(generateRandomSeed()).toString('hex');
+    const wallet = await WalletFactory.createStartedWallet(env, walletSeed);
     const initialState = await getInitialShieldedState(wallet.shielded);
     logger.info(`Your wallet seed is: ${seed} and your address is: ${initialState.address}`);
-    return new MidnightWalletProvider(
-      logger,
-      env,
-      wallet,
-      ZswapSecretKeys.fromSeed(getShieldedSeed(walletSeed))
-    );
+    return new MidnightWalletProvider(logger, env, wallet, ZswapSecretKeys.fromSeed(getShieldedSeed(walletSeed)));
   }
 
   static async withWallet(
@@ -100,11 +95,6 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     wallet: WalletFacade,
     zswapSecretKeys: ZswapSecretKeys
   ): Promise<MidnightWalletProvider> {
-    return new MidnightWalletProvider(
-      logger,
-      env,
-      wallet,
-      zswapSecretKeys
-    );
+    return new MidnightWalletProvider(logger, env, wallet, zswapSecretKeys);
   }
 }

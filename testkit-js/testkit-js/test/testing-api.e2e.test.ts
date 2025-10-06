@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import { nativeToken } from '@midnight-ntwrk/ledger-v6';
 import path from 'path';
 import * as Rx from 'rxjs';
 import { WebSocket } from 'ws';
@@ -49,9 +48,9 @@ describe.concurrent('[E2E] Testing API', () => {
         expect(wallets).toHaveLength(2);
 
         const promises = wallets.map(async (walletProvider) => {
-          expect(walletProvider.coinPublicKey).not.toBeUndefined();
+          expect(walletProvider.zswapSecretKeys.coinPublicKey).not.toBeUndefined();
           const initialState = await Rx.firstValueFrom(walletProvider.wallet.state());
-          const initialBalance = initialState.balances[nativeToken()];
+          const initialBalance = initialState.shielded.balances[0];
           expect(initialBalance).toBeGreaterThan(0);
         });
 
