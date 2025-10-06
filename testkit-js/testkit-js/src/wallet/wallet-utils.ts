@@ -41,16 +41,24 @@ export const getInitialUnshieldedState = async (wallet: UnshieldedWallet) => {
   return Rx.firstValueFrom(wallet.state());
 };
 
-export const syncWallet = (wallet: WalletFacade, throttleTime = 3_000) => {
+export const syncWallet = (wallet: WalletFacade, throttleTime = 1_000, timeout = 60_000) => {
   logger.info('Syncing wallet...');
-  return  Rx.firstValueFrom(
+
+  return Rx.firstValueFrom(
     wallet
       .state()
       .pipe(
+        Rx.tap((state) => {
+          logger.info(`Raw wallet state emission: { unshielded: ${state.unshielded.syncProgress}, shielded: ${state.shielded.state.progress.highestIndex}}`);
+        }),
         Rx.throttleTime(throttleTime),
         Rx.tap((state) => {
-          logger.info(`Sync progress: { unshieldedSyncProgress: ${state.unshielded.syncProgress}, applyGap: ${state.unshielded.syncProgress?.applyGap}, shieldedProgress: ${state.shielded.state.progress}, isComplete: ${state.shielded.state.progress.isStrictlyComplete()}
-          }`);
+          const isSynced =
+            state.unshielded.syncProgress !== undefined &&
+            state.unshielded.syncProgress.applyGap === 0 &&
+            state.shielded.state.progress.isStrictlyComplete();
+
+          logger.info(`Sync progress: { unshieldedSyncProgress: ${state.unshielded.syncProgress}, applyGap: ${state.unshielded.syncProgress?.applyGap}, shieldedProgress: ${state.shielded.state.progress?.highestIndex}, isComplete: ${state.shielded.state.progress.isStrictlyComplete()}, meetsCondition: ${isSynced}}`);
         }),
         Rx.filter(
           (state) =>
@@ -59,6 +67,10 @@ export const syncWallet = (wallet: WalletFacade, throttleTime = 3_000) => {
             state.shielded.state.progress.isStrictlyComplete(),
         ),
         Rx.tap(() => logger.info('Sync complete')),
+        Rx.timeout({
+          each: timeout,
+          with: () => Rx.throwError(() => new Error(`Wallet sync timeout after ${timeout}ms`)),
+        }),
       ),
   );
 };
@@ -70,7 +82,7 @@ export const waitForFunds = async (
   fundFromFaucet = false
 ) => {
   const initialState = await getInitialShieldedState(wallet.shielded);
-  logger.info(`Your wallet address is: ${initialState.address}, waiting for funds...`);
+  logger.info(`Your wallet address is: ${initialState.address.coinPublicKeyString()}, waiting for funds...`);
   if (fundFromFaucet && env.faucet) {
     logger.info('Requesting tokens from faucet...');
     await new FaucetClient(env.faucet, logger).requestTokens(initialState.address.coinPublicKeyString());

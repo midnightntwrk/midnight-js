@@ -18,7 +18,7 @@ import type { Logger } from 'pino';
 
 import { getEnvVarEnvironment, MN_TEST_NETWORK_ID } from '@/env-vars';
 import { MissingEnvironmentVariable } from '@/errors';
-import { type TestEnvironment } from '@/test-environment/test-environment';
+import { type TestEnvironment } from '@/test-environment/test-environments/test-environment';
 
 import {
   EnvVarRemoteTestEnvironment,
@@ -35,7 +35,7 @@ import {
 const parseNetworkIdEnvVar = () : NetworkId => {
   const networkIdEnv = MN_TEST_NETWORK_ID;
   if (!networkIdEnv) {
-    throw new MissingEnvironmentVariable('MN_TEST_NETWORK_ID');
+    throw new MissingEnvironmentVariable(`MN_TEST_NETWORK_ID=${networkIdEnv}`);
   }
   return networkIdEnv;
 };

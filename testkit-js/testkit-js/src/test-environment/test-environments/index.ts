@@ -17,4 +17,5 @@ export * from './env-var-remote-test-environment';
 export * from './local-test-environment';
 export * from './qanet-test-environment';
 export * from './remote-test-environment';
+export * from './test-environment';
 export * from './testnet2-test-environment';

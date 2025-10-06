@@ -16,7 +16,8 @@
 import { NetworkId } from '@midnight-ntwrk/wallet-sdk-abstractions';
 
 import type { EnvironmentConfiguration } from '@/test-environment';
-import { RemoteTestEnvironment } from '@/test-environment/test-environments/remote-test-environment';
+
+import { RemoteTestEnvironment } from './remote-test-environment';
 
 /**
  * Test environment configuration for the Midnight testnet network.

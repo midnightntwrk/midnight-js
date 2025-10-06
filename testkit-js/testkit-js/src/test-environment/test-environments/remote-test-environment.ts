@@ -21,8 +21,9 @@ import { logger } from '@/logger';
 import type { ProofServerContainer } from '@/proof-server-container';
 import { DynamicProofServerContainer } from '@/proof-server-container';
 import type { EnvironmentConfiguration } from '@/test-environment';
-import { TestEnvironment } from '@/test-environment';
 import { MidnightWalletProvider, WalletSaveStateProvider } from '@/wallet';
+
+import { TestEnvironment } from './test-environment';
 
 /**
  * Base class for remote test environments that connect to external network services.

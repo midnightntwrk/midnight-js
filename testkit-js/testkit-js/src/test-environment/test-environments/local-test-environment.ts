@@ -23,8 +23,9 @@ import type { StandaloneContainersConfiguration } from '@/configuration-types';
 import { getEnvVarWalletSeeds } from '@/env-vars';
 import type { ProofServerContainer } from '@/proof-server-container';
 import type { EnvironmentConfiguration } from '@/test-environment';
-import { TestEnvironment } from '@/test-environment';
 import { MidnightWalletProvider } from '@/wallet';
+
+import { TestEnvironment } from './test-environment';
 
 /**
  * Configuration for component ports in the local test environment

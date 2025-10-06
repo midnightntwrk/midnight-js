@@ -85,7 +85,7 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     const walletSeed = seed ?? Buffer.from(generateRandomSeed()).toString('hex');
     const wallet = await WalletFactory.createStartedWallet(env, walletSeed);
     const initialState = await getInitialShieldedState(wallet.shielded);
-    logger.info(`Your wallet seed is: ${seed} and your address is: ${initialState.address}`);
+    logger.info(`Your wallet seed is: ${seed} and your address is: ${initialState.address.coinPublicKeyString()}`);
     return new MidnightWalletProvider(logger, env, wallet, ZswapSecretKeys.fromSeed(getShieldedSeed(walletSeed)));
   }
 

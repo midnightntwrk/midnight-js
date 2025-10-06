@@ -107,8 +107,7 @@
     "@midnight-ntwrk/wallet-sdk-address-format": "link:/Users/paluchs/iohk/dev/github/midnightntwrk/midnight-wallet/packages/address-format",
     "@midnight-ntwrk/wallet-sdk-facade": "link:/Users/paluchs/iohk/dev/github/midnightntwrk/midnight-wallet/packages/facade",
     "@midnight-ntwrk/wallet-sdk-hd": "link:/Users/paluchs/iohk/dev/github/midnightntwrk/midnight-wallet/packages/hd",
-    "@midnight-ntwrk/wallet-sdk-node-client": "link:/Users/paluchs/iohk/dev/github/midnightntwrk/midnight-wallet/packages/node-client",
-    "@midnight-ntwrk/wallet-sdk-unshielded-state": "link:/Users/paluchs/iohk/dev/github/midnightntwrk/midnight-wallet/packages/unshielded-state",
-    "@midnight-ntwrk/wallet-sdk-shielded": "link:/Users/paluchs/iohk/dev/github/midnightntwrk/midnight-wallet/packages/wallet"
+    "@midnight-ntwrk/wallet-sdk-shielded": "link:/Users/paluchs/iohk/dev/github/midnightntwrk/midnight-wallet/packages/wallet",
+    "@midnight-ntwrk/wallet-sdk-unshielded-wallet": "link:/Users/paluchs/iohk/dev/github/midnightntwrk/midnight-wallet/packages/unshielded-wallet"
   }
 }

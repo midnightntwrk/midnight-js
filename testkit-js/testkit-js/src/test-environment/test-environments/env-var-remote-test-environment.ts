@@ -25,7 +25,8 @@ import {
 } from '@/env-vars';
 import { MissingEnvironmentVariable } from '@/errors';
 import type { EnvironmentConfiguration } from '@/test-environment';
-import { RemoteTestEnvironment } from '@/test-environment/test-environments/remote-test-environment';
+
+import { RemoteTestEnvironment } from './remote-test-environment';
 
 /**
  * List of required environment variables that must be set for this test environment
