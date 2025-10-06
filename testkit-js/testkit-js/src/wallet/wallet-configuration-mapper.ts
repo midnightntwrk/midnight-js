@@ -2,6 +2,7 @@ import { LedgerParameters } from '@midnight-ntwrk/ledger-v6';
 import { type DefaultV1Configuration } from '@midnight-ntwrk/wallet-sdk-shielded/v1';
 
 import { type EnvironmentConfiguration } from '@/test-environment';
+import { NetworkId } from '@midnight-ntwrk/zswap';
 
 export interface MapperOptions {
   readonly networkId?: string;
@@ -26,7 +27,7 @@ export function mapEnvironmentToConfiguration(
     },
     provingServerUrl: new URL(env.proofServer),
     relayURL: new URL(env.node),
-    networkId,
+    networkId: NetworkId.Undeployed,
     costParameters: {
       ledgerParams,
       additionalFeeOverhead,

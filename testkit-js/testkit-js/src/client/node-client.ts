@@ -20,7 +20,7 @@ import type { BlockHash } from '@midnight-ntwrk/midnight-js-types';
 import axios, { type AxiosResponse } from 'axios';
 import type { Logger } from 'pino';
 
-import { extractHostnameAndPort } from '../utils';
+import { extractHostnameAndPort } from '@/utils';
 
 /**
  * Client for interacting with a Midnight node's JSON-RPC API

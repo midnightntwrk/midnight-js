@@ -16,15 +16,15 @@
 import { type NetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type { Logger } from 'pino';
 
-import { getEnvVarEnvironment, getEnvVarNetworkId } from '../env-vars';
-import { MissingEnvironmentVariable } from '../errors';
+import { getEnvVarEnvironment, getEnvVarNetworkId } from '@/env-vars';
+import { MissingEnvironmentVariable } from '@/errors';
+import { type TestEnvironment } from '@/test-environment/test-environment';
+
 import {
-  DevnetTestEnvironment,
   EnvVarRemoteTestEnvironment,
   LocalTestEnvironment,
   QanetTestEnvironment,
   Testnet2TestEnvironment,
-  TestnetTestEnvironment
 } from './test-environments';
 
 /**
@@ -46,18 +46,13 @@ const parseNetworkIdEnvVar = () : NetworkId => {
  * @param {Logger} logger - The logger instance to be used by the test environment.
  * @returns {TestnetTestEnvironment | DevnetTestEnvironment | QanetTestEnvironment | EnvVarRemoteTestEnvironment | LocalTestEnvironment} The selected test environment instance.
  */
-export const getTestEnvironment = (logger: Logger) => {
+export const getTestEnvironment = (logger: Logger): TestEnvironment => {
   const testEnv = getEnvVarEnvironment().toLowerCase();
   switch (testEnv) {
     case 'testnet':
-      setNetworkId('testnet');
-      return new TestnetTestEnvironment(logger);
     case 'testnet-02':
       setNetworkId('testnet');
       return new Testnet2TestEnvironment(logger);
-    case 'devnet':
-      setNetworkId('devnet');
-      return new DevnetTestEnvironment(logger);
     case 'qanet':
       setNetworkId('devnet');
       return new QanetTestEnvironment(logger);

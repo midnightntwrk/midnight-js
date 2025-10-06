@@ -16,7 +16,7 @@
 import axios from 'axios';
 import type { Logger } from 'pino';
 
-import { extractHostnameAndPort } from '../utils';
+import { extractHostnameAndPort } from '@/utils';
 
 /**
  * Client for interacting with the Midnight faucet service.

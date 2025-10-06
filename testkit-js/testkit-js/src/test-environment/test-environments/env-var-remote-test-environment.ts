@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import { MN_TEST_FAUCET, MN_TEST_INDEXER, MN_TEST_INDEXER_WS, MN_TEST_NODE } from '../../env-vars';
-import { MissingEnvironmentVariable } from '../../errors';
-import type { EnvironmentConfiguration } from '../environment-configuration';
-import { RemoteTestEnvironment } from './remote-test-environment';
+import { MN_TEST_FAUCET, MN_TEST_INDEXER, MN_TEST_INDEXER_WS, MN_TEST_NODE } from '@/env-vars';
+import { MissingEnvironmentVariable } from '@/errors';
+import type { EnvironmentConfiguration } from '@/test-environment';
+import { RemoteTestEnvironment } from '@/test-environment';
 
 /**
  * List of required environment variables that must be set for this test environment

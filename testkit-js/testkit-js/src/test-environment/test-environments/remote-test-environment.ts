@@ -13,16 +13,16 @@
  * limitations under the License.
  */
 
-import { FaucetClient, NodeClient } from '../../client';
-import { IndexerClient } from '../../client/indexer-client';
-import { ProofServerClient } from '../../client/proof-server-client';
-import { getEnvVarWalletSeeds } from '../../env-vars';
-import { logger } from '../../logger';
-import type { ProofServerContainer } from '../../proof-server-container';
-import { DynamicProofServerContainer } from '../../proof-server-container';
-import { MidnightWalletProvider, WalletSaveStateProvider } from '../../wallet';
-import type { EnvironmentConfiguration } from '../environment-configuration';
-import { TestEnvironment } from '../test-environment';
+import { FaucetClient, NodeClient } from '@/client';
+import { IndexerClient } from '@/client';
+import { ProofServerClient } from '@/client';
+import { getEnvVarWalletSeeds } from '@/env-vars';
+import { logger } from '@/logger';
+import type { ProofServerContainer } from '@/proof-server-container';
+import { DynamicProofServerContainer } from '@/proof-server-container';
+import type { EnvironmentConfiguration } from '@/test-environment';
+import { TestEnvironment } from '@/test-environment';
+import { MidnightWalletProvider, WalletSaveStateProvider } from '@/wallet';
 
 /**
  * Base class for remote test environments that connect to external network services.
@@ -70,11 +70,11 @@ export abstract class RemoteTestEnvironment extends TestEnvironment {
       if (saveWalletState) {
         await Promise.all(
           this.walletProviders.map((midnightWallet) =>
-            new WalletSaveStateProvider(logger, midnightWallet.coinPublicKey).save(midnightWallet.wallet)
+            new WalletSaveStateProvider(logger, midnightWallet.coinPublicKey).save(midnightWallet.wallet.shielded)
           )
         );
       }
-      await Promise.all(this.walletProviders.map((wallet) => wallet.close()));
+      await Promise.all(this.walletProviders.map((wallet) => wallet.stop()));
     }
     if (this.proofServerContainer) {
       await this.proofServerContainer.stop();

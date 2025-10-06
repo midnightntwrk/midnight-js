@@ -13,18 +13,18 @@
  * limitations under the License.
  */
 
-import { ZswapSecretKeys } from '@midnight-ntwrk/ledger-v6';
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { WalletFacade } from '@midnight-ntwrk/wallet-sdk-facade';
 import { generateRandomSeed } from '@midnight-ntwrk/wallet-sdk-hd';
 import { ShieldedWallet } from '@midnight-ntwrk/wallet-sdk-shielded';
 import { type DefaultV1Configuration } from '@midnight-ntwrk/wallet-sdk-shielded/v1';
 import { createKeystore, PublicKey, WalletBuilder } from '@midnight-ntwrk/wallet-sdk-unshielded-wallet';
+import { NetworkId } from '@midnight-ntwrk/zswap';
 
 import type { EnvironmentConfiguration } from '@/index';
 import { logger } from '@/logger';
 import { mapEnvironmentToConfiguration } from '@/wallet/wallet-configuration-mapper';
-import { getShieldedSeed, getUnshieldedSeed } from '@/wallet/wallet-new-utils';
+import { getShieldedSeed, getUnshieldedSeed } from '@/wallet/wallet-seed-utils';
+import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 
 export class WalletFactory {
   static createShieldedWallet = (
@@ -45,10 +45,10 @@ export class WalletFactory {
     logger.info('Create unshielded wallet...');
     const configuration: DefaultV1Configuration = mapEnvironmentToConfiguration(envConfiguration);
     const unshieldedSenderSeed = getUnshieldedSeed(seed);
-    const unshieldedSenderKeystore = createKeystore(unshieldedSenderSeed, getNetworkId());
+    const unshieldedSenderKeystore = createKeystore(unshieldedSenderSeed, NetworkId.Undeployed);
     return await WalletBuilder.build({
       publicKey: PublicKey.fromKeyStore(unshieldedSenderKeystore),
-      networkId: getNetworkId(),
+      networkId: NetworkId.Undeployed,
       indexerUrl: configuration.indexerClientConnection.indexerWsUrl!,
     });
   }
@@ -65,9 +65,10 @@ export class WalletFactory {
     walletFacade: WalletFacade,
     seed: string
   ) => {
-    logger.info('Starting wallet...');
-    const shieldedSeed = getShieldedSeed(seed);
-    walletFacade.start(ZswapSecretKeys.fromSeed(shieldedSeed));
+    logger.info(`Starting wallet with seed ${seed}`);
+    // const shieldedSeed = getShieldedSeed(seed);
+    // walletFacade.start(ZswapSecretKeys.fromSeed(shieldedSeed));
+    return walletFacade.start();
   }
 
   static createStartedWallet = async (

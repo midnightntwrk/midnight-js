@@ -17,13 +17,13 @@ import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type { Logger } from 'pino';
 import { DockerComposeEnvironment, type StartedDockerComposeEnvironment } from 'testcontainers';
 
-import { getContainersConfiguration } from '../../configuration';
-import type { StandaloneContainersConfiguration } from '../../configuration-types';
-import { getEnvVarWalletSeeds } from '../../env-vars';
-import type { ProofServerContainer } from '../../proof-server-container';
-import { MidnightWalletProvider } from '../../wallet';
-import type { EnvironmentConfiguration } from '../environment-configuration';
-import { TestEnvironment } from '../test-environment';
+import { getContainersConfiguration } from '@/configuration';
+import type { StandaloneContainersConfiguration } from '@/configuration-types';
+import { getEnvVarWalletSeeds } from '@/env-vars';
+import type { ProofServerContainer } from '@/proof-server-container';
+import type { EnvironmentConfiguration } from '@/test-environment';
+import { TestEnvironment } from '@/test-environment';
+import { MidnightWalletProvider } from '@/wallet';
 
 /**
  * Configuration for component ports in the local test environment
@@ -114,7 +114,7 @@ export class LocalTestEnvironment extends TestEnvironment {
   startWithInjectedEnvironment = async (
     dockerEnv: StartedDockerComposeEnvironment,
     ports: ComponentPortsConfiguration
-  ) => {
+  ): Promise<EnvironmentConfiguration> => {
     this.logger.info(`Starting test environment...`);
     this.dockerEnv = dockerEnv;
     this.environmentConfiguration = new LocalTestConfiguration(ports);
@@ -164,7 +164,7 @@ export class LocalTestEnvironment extends TestEnvironment {
       if (saveWalletState) {
         this.logger.warn('Skipping wallet save state as it is obsolete in this context...');
       }
-      await Promise.all(this.walletProviders.map((wallet) => wallet.close()));
+      await Promise.all(this.walletProviders.map((wallet) => wallet.stop()));
     }
     if (this.dockerEnv) {
       await this.dockerEnv.down({ timeout: 10000, removeVolumes: true });

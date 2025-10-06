@@ -15,8 +15,9 @@
 
 import type { Logger } from 'pino';
 
-import type { ProofServerContainer } from '../proof-server-container';
-import type { MidnightWalletProvider } from '../wallet';
+import type { ProofServerContainer } from '@/proof-server-container';
+import type { MidnightWalletProvider } from '@/wallet';
+
 import type { EnvironmentConfiguration } from './environment-configuration';
 
 /**

@@ -17,7 +17,8 @@ import {
   type CoinPublicKey,
   type EncPublicKey,
   shieldedToken,
-  type TokenType} from '@midnight-ntwrk/ledger-v6';
+  type TokenType,
+} from '@midnight-ntwrk/ledger-v6';
 import {
   type BalancedTransaction,
   createBalancedTx,
