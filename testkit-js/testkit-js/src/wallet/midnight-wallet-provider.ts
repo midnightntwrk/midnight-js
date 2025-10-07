@@ -13,12 +13,16 @@
  * limitations under the License.
  */
 
-import { type FinalizedTransaction, shieldedToken, type TokenType, ZswapSecretKeys } from '@midnight-ntwrk/ledger-v6';
 import {
-  type BalancedTransaction,
-  createBalancedTx,
+  type FinalizedTransaction,
+  shieldedToken,
+  type TokenType,
+  type UnprovenTransaction,
+  ZswapSecretKeys} from '@midnight-ntwrk/ledger-v6';
+import {
   type MidnightProvider,
-  type UnbalancedTransaction,
+  type ProvenTransaction,
+  type ProvingRecipe,
   type WalletProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import { type WalletFacade } from '@midnight-ntwrk/wallet-sdk-facade';
@@ -53,21 +57,38 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     this.zswapSecretKeys = zswapSecretKeys;
   }
 
-  async balanceTx(tx: UnbalancedTransaction): Promise<BalancedTransaction> {
+  async balanceTx(tx: UnprovenTransaction): Promise<ProvingRecipe<UnprovenTransaction | FinalizedTransaction>> {
     const recipe = await this.wallet.balanceTransaction(this.zswapSecretKeys, tx);
-    //TODO: temporary - consult
-    if (recipe.type !== 'TransactionToProve') {
-      throw new Error(`Failed to balance transaction: ${recipe.type}`);
+
+    switch (recipe.type) {
+      case 'TransactionToProve':
+        return recipe;
+
+      case 'NothingToProve':
+        this.logger.warn('Transaction already finalized during balancing');
+        return recipe;
+
+      default:
+        throw new Error(`Unsupported recipe type: ${recipe.type}`);
     }
-    return createBalancedTx(recipe.transaction);
   }
 
-  async finalizeTx(tx: FinalizedTransaction): Promise<FinalizedTransaction> {
+  async finalizeTx(provenTx: ProvenTransaction): Promise<FinalizedTransaction> {
+    if (this.isFinalizedTransaction(provenTx)) {
+      this.logger.debug('Transaction already finalized, skipping finalization step');
+      return provenTx;
+    }
+
     const recipe = {
       type: 'NothingToProve' as const,
-      transaction: tx
+      transaction: provenTx as FinalizedTransaction
     };
+
     return this.wallet.finalizeTransaction(recipe);
+  }
+
+  private isFinalizedTransaction(tx: ProvenTransaction | FinalizedTransaction): tx is FinalizedTransaction {
+    return 'txHash' in tx;
   }
 
   submitTx(tx: FinalizedTransaction): Promise<string> {

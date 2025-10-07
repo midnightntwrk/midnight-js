@@ -13,11 +13,10 @@
  * limitations under the License.
  */
 
-import { type NetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type { Logger } from 'pino';
 
-import { getEnvVarEnvironment, MN_TEST_NETWORK_ID } from '@/env-vars';
-import { MissingEnvironmentVariable } from '@/errors';
+import { getEnvVarEnvironment } from '@/env-vars';
 import { type TestEnvironment } from '@/test-environment/test-environments/test-environment';
 
 import {
@@ -26,19 +25,6 @@ import {
   QanetTestEnvironment,
   Testnet2TestEnvironment,
 } from './test-environments';
-
-/**
- * Parses the network ID from the environment variable.
- * @throws {MissingEnvironmentVariable} If MN_TEST_NETWORK_ID is not set.
- * @returns {NetworkId} The parsed network ID.
- */
-const parseNetworkIdEnvVar = () : NetworkId => {
-  const networkIdEnv = MN_TEST_NETWORK_ID;
-  if (!networkIdEnv) {
-    throw new MissingEnvironmentVariable(`MN_TEST_NETWORK_ID=${networkIdEnv}`);
-  }
-  return networkIdEnv;
-};
 
 /**
  * Returns the appropriate test environment based on the MN_TEST_ENVIRONMENT variable.
@@ -57,12 +43,11 @@ export const getTestEnvironment = (logger: Logger): TestEnvironment => {
       env = new QanetTestEnvironment(logger);
       break;
     case 'env-var-remote':
-      parseNetworkIdEnvVar();
       env = new EnvVarRemoteTestEnvironment(logger);
       break;
     default:
       env = new LocalTestEnvironment(logger);
   }
-  setNetworkId('testnet');
+  setNetworkId(env.getEnvironmentConfiguration().networkId);
   return env;
 };

@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
-import type { ShieldedCoinInfo } from '@midnight-ntwrk/compact-runtime';
-import { type UnprovenTransaction } from '@midnight-ntwrk/ledger-v6';
-import  {
+import { type FinalizedTransaction, type UnprovenTransaction } from '@midnight-ntwrk/ledger-v6';
+import {
   type Contract,
-  createUnbalancedTx,
   type FinalizedTxData,
-  type ImpureCircuitId
+  type ImpureCircuitId,
+  type NothingToProve,
+  TRANSACTION_TO_PROVE,
+  type TransactionToProve
 } from '@midnight-ntwrk/midnight-js-types';
 
 import { type ContractProviders } from './contract-providers';
@@ -32,11 +33,6 @@ export type SubmitTxOptions<ICK extends ImpureCircuitId> = {
    * The transaction to prove, balance, and submit.
    */
   readonly unprovenTx: UnprovenTransaction;
-  /**
-   * Any new coins created during the construction of the transaction. Only defined
-   * if the transaction being submitted is a call or deploy transaction.
-   */
-  readonly newCoins?: ShieldedCoinInfo[];
   /**
    * A circuit identifier to use to fetch the ZK artifacts needed to prove the
    * transaction. Only defined if a call transaction is being submitted.
@@ -70,9 +66,14 @@ export const submitTx = async <C extends Contract, ICK extends ImpureCircuitId<C
   const proveTxConfig = options.circuitId
     ? { zkConfig: await providers.zkConfigProvider.get(options.circuitId) }
     : undefined;
-  const unprovenTx = await providers.walletProvider.balanceTx(createUnbalancedTx(options.unprovenTx), options.newCoins ?? []);
-  const provenTx = await providers.proofProvider.proveTx(unprovenTx, proveTxConfig);
-  const finalizedTx = await providers.walletProvider.finalizeTx(provenTx);
-  const txId = await providers.midnightProvider.submitTx(finalizedTx);
+  const recipe = await providers.walletProvider.balanceTx(options.unprovenTx);
+  let finalizedTx: FinalizedTransaction;
+  if (recipe.type === TRANSACTION_TO_PROVE) {
+    finalizedTx = await providers.proofProvider.proveTx((recipe as TransactionToProve).transaction , proveTxConfig);
+  } else {
+    finalizedTx = (recipe as NothingToProve<FinalizedTransaction>).transaction;
+  }
+  const finallyFinalizedTx = await providers.walletProvider.finalizeTx(finalizedTx);
+  const txId = await providers.midnightProvider.submitTx(finallyFinalizedTx);
   return await providers.publicDataProvider.watchForTxData(txId);
 };

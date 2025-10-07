@@ -91,6 +91,27 @@ export class LocalTestEnvironment extends TestEnvironment {
   }
 
   /**
+   * Returns the configuration for the testnet environment services.
+   * @returns {EnvironmentConfiguration} Object containing URLs for testnet services:
+   * - indexer: GraphQL API endpoint for the indexer
+   * - indexerWS: WebSocket endpoint for the indexer
+   * - node: RPC endpoint for the blockchain node
+   * - faucet: API endpoint for requesting test tokens
+   * - proofServer: URL for the proof generation server
+   */
+  getEnvironmentConfiguration(): EnvironmentConfiguration {
+    return {
+      walletNetworkId: this.environmentConfiguration?.walletNetworkId,
+      networkId: this.environmentConfiguration?.networkId,
+      indexer: this.environmentConfiguration?.indexer,
+      indexerWS: this.environmentConfiguration?.indexerWS,
+      node: this.environmentConfiguration?.node,
+      faucet: this.environmentConfiguration?.faucet,
+      proofServer: this.environmentConfiguration?.proofServer
+    };
+  }
+
+  /**
    * Gets the mapped ports for all containers in the environment
    * @returns {ComponentPortsConfiguration} Object containing mapped port numbers
    * @private

@@ -15,17 +15,15 @@
 
 import {
   type Binding,
-  type Bindingish,
   type ContractAddress,
   type IntentHash,
-  type PreBinding,
-  type PreProof,
   type Proof,
   type RawTokenType,
   type SignatureEnabled,
   type Transaction,
   type TransactionHash,
-  type TransactionId
+  type TransactionId,
+  type UnprovenTransaction
 } from '@midnight-ntwrk/ledger-v6';
 
 /**
@@ -107,43 +105,6 @@ export interface ZKConfig<K extends string> {
    */
   readonly zkir: ZKIR;
 }
-
-/**
- * A type representing a proven, unbalanced transaction.
- */
-export type UnbalancedTransaction = Transaction<SignatureEnabled, PreProof, PreBinding> & {
-  /**
-   * Unique symbol brand.
-   */
-  readonly UnbalancedTransaction: unique symbol;
-};
-
-/**
- * Creates an {@link UnbalancedTransaction} from a ledger transaction.
- *
- * @param tx The ledger transaction to wrap.
- */
-export const createUnbalancedTx = (tx: Transaction<SignatureEnabled, PreProof, PreBinding>): UnbalancedTransaction => {
-  return tx as UnbalancedTransaction;
-};
-
-/**
- * A type representing a balanced, provable transaction.
- */
-export type BalancedTransaction = Transaction<SignatureEnabled, PreProof, PreBinding> & {
-  /**
-   * Unique symbol brand.
-   */
-  readonly BalancedTransaction: unique symbol;
-};
-
-/**
- * Creates an {@link BalancedTransaction} from a ledger transaction.
- * @param tx The ledger transaction to wrap.
- */
-export const createBalancedTx = (tx: Transaction<SignatureEnabled, PreProof, Bindingish>): BalancedTransaction => {
-  return tx as BalancedTransaction;
-};
 
 /**
  * Indicates that the segment update is invalid.
@@ -327,3 +288,20 @@ export type UnshieldedBalance = {
  * Represents a collection of unshielded balances, which are balances that are not shielded or encrypted.
  */
 export type UnshieldedBalances = UnshieldedBalance[];
+
+export const TRANSACTION_TO_PROVE = 'TransactionToProve';
+export const NOTHING_TO_PROVE = 'NothingToProve';
+
+export type TransactionToProve = {
+  readonly type: typeof TRANSACTION_TO_PROVE;
+  readonly transaction: UnprovenTransaction;
+};
+
+export type NothingToProve<TTransaction> = {
+  readonly type: typeof NOTHING_TO_PROVE;
+  readonly transaction: TTransaction;
+};
+
+export type ProvingRecipe<TTransaction> =
+  | TransactionToProve
+  | NothingToProve<TTransaction>;

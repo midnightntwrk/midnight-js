@@ -24,29 +24,31 @@ export {
   InitialStateParameters,
   PrivateState,
   Witness,
-  Witnesses} from './contract';
+  Witnesses
+} from './contract';
 export * from './errors';
 export * from './logger-provider';
 export * from './midnight-provider';
 export {
-  BalancedTransaction,
   BlockHash,
-  createBalancedTx,
   createProverKey,
-  createUnbalancedTx,
   createVerifierKey,
   createZKIR,
   FailEntirely,
   FailFallible,
   Fees,
   FinalizedTxData,
+  NOTHING_TO_PROVE,
+  NothingToProve,
   ProverKey,
+  ProvingRecipe,
   SegmentFail,
   SegmentStatus,
   SegmentSuccess,
   SucceedEntirely,
+  TRANSACTION_TO_PROVE,
+  TransactionToProve,
   TxStatus,
-  UnbalancedTransaction,
   UnshieldedBalance,
   UnshieldedBalances,
   UnshieldedUtxo,

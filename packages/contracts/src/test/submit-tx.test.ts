@@ -13,13 +13,11 @@
  * limitations under the License.
  */
 
-import type { ShieldedCoinInfo } from '@midnight-ntwrk/compact-runtime';
 import type { ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { submitTx, type SubmitTxOptions } from '../submit-tx';
 import {
-  createMockCoinInfo,
   createMockFinalizedTxData,
   createMockProviders,
   createMockUnprovenTx
@@ -28,36 +26,35 @@ import {
 describe('submitTx', () => {
   let mockProviders: ReturnType<typeof createMockProviders>;
   let mockUnprovenTx: ReturnType<typeof createMockUnprovenTx>;
-  let mockCoinInfo: ShieldedCoinInfo;
 
   beforeEach(() => {
     vi.clearAllMocks();
 
     mockProviders = createMockProviders();
     mockUnprovenTx = createMockUnprovenTx();
-    mockCoinInfo = createMockCoinInfo();
   });
 
   describe('happy path', () => {
     it('should successfully submit transaction without circuit ID', async () => {
       const mockFinalizedTx = { balanced: true };
       const mockTxId = 'test-tx-id';
+      const mockRecipe = { type: 'TransactionToProve' as const, transaction: mockFinalizedTx };
       const mockFinalizedTxData = createMockFinalizedTxData();
 
       const options: SubmitTxOptions<ImpureCircuitId> = {
         unprovenTx: mockUnprovenTx,
-        newCoins: [mockCoinInfo]
       };
 
       mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue(mockFinalizedTx);
-      mockProviders.walletProvider.finalizeTransaction = vi.fn().mockResolvedValue(mockFinalizedTx);
+      mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue(mockRecipe);
+      mockProviders.walletProvider.finalizeTx = vi.fn().mockResolvedValue(mockFinalizedTx);
       mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue(mockTxId);
       mockProviders.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(mockFinalizedTxData);
 
       const result = await submitTx(mockProviders, options);
 
-      expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith(mockUnprovenTx, undefined);
-      expect(mockProviders.walletProvider.finalizeTransaction).toHaveBeenCalledWith(mockFinalizedTx, [mockCoinInfo]);
+      expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith(mockFinalizedTx, undefined);
+      expect(mockProviders.walletProvider.finalizeTx).toHaveBeenCalledWith(mockFinalizedTx);
       expect(mockProviders.midnightProvider.submitTx).toHaveBeenCalledWith(mockFinalizedTx);
       expect(mockProviders.publicDataProvider.watchForTxData).toHaveBeenCalledWith(mockTxId);
       expect(result).toBe(mockFinalizedTxData);
@@ -67,26 +64,27 @@ describe('submitTx', () => {
       const circuitId = 'testCircuit' as ImpureCircuitId;
       const mockZkConfig = { zkConfig: 'test-config' };
       const mockFinalizedTx = { balanced: true };
+      const mockRecipe = { type: 'TransactionToProve' as const, transaction: mockFinalizedTx };
       const mockTxId = 'test-tx-id';
       const mockFinalizedTxData = createMockFinalizedTxData();
 
       const options: SubmitTxOptions<ImpureCircuitId> = {
         unprovenTx: mockUnprovenTx,
-        circuitId,
-        newCoins: []
+        circuitId
       };
 
       mockProviders.zkConfigProvider.get = vi.fn().mockResolvedValue(mockZkConfig);
+      mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue(mockRecipe);
       mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue(mockFinalizedTx);
-      mockProviders.walletProvider.finalizeTransaction = vi.fn().mockResolvedValue(mockFinalizedTx);
+      mockProviders.walletProvider.finalizeTx = vi.fn().mockResolvedValue(mockFinalizedTx);
       mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue(mockTxId);
       mockProviders.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(mockFinalizedTxData);
 
       const result = await submitTx(mockProviders, options);
 
       expect(mockProviders.zkConfigProvider.get).toHaveBeenCalledWith(circuitId);
-      expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith(mockUnprovenTx, { zkConfig: mockZkConfig });
-      expect(mockProviders.walletProvider.finalizeTransaction).toHaveBeenCalledWith(mockFinalizedTx, []);
+      expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith(mockFinalizedTx, { zkConfig: mockZkConfig });
+      expect(mockProviders.walletProvider.finalizeTx).toHaveBeenCalledWith(mockFinalizedTx);
       expect(mockProviders.midnightProvider.submitTx).toHaveBeenCalledWith(mockFinalizedTx);
       expect(mockProviders.publicDataProvider.watchForTxData).toHaveBeenCalledWith(mockTxId);
       expect(result).toBe(mockFinalizedTxData);

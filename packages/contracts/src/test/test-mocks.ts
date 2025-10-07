@@ -182,7 +182,8 @@ export const createMockProviders = (): ContractProviders<Contract, CoinPublicKey
   },
   walletProvider: {
     zswapSecretKeys: createMockZswapSecretKeys(),
-    finalizeTransaction: vi.fn()
+    balanceTx: vi.fn(),
+    finalizeTx: vi.fn()
   },
   proofProvider: {
     proveTx: vi.fn()

@@ -33,7 +33,7 @@ const logger = createLogger(
 // @ts-expect-error: It's needed to enable WebSocket usage through apollo
 globalThis.WebSocket = WebSocket;
 
-describe.concurrent('[Unit tests] Testing API', () => {
+describe('[Unit tests] Testing API', () => {
   beforeEach(() => {
     logger.info(`Starting test... ${expect.getState().currentTestName}`);
   });
