@@ -38,7 +38,7 @@ export abstract class RemoteTestEnvironment extends TestEnvironment {
    * Abstract method that must be implemented by subclasses to provide environment configuration.
    * @returns {EnvironmentConfiguration} Configuration object containing service URLs and endpoints
    */
-  protected abstract getEnvironmentConfiguration(): EnvironmentConfiguration;
+  abstract getEnvironmentConfiguration(): EnvironmentConfiguration;
 
   /**
    * Creates and starts the specified number of wallet providers.

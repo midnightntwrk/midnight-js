@@ -32,7 +32,7 @@ import type { Logger } from 'pino';
 import { type EnvironmentConfiguration } from '@/index';
 import { getShieldedSeed } from '@/wallet/wallet-seed-utils';
 
-import { WalletFactory } from './wallet-factory';
+import { WalletBuilder } from './wallet-builder';
 import { getInitialShieldedState, waitForFunds } from './wallet-utils';
 
 /**
@@ -114,7 +114,7 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     seed?: string | undefined
   ): Promise<MidnightWalletProvider> {
     const walletSeed = seed ?? Buffer.from(generateRandomSeed()).toString('hex');
-    const wallet = await WalletFactory.createStartedWallet(env, walletSeed);
+    const wallet = await WalletBuilder.buildAndStartWallet(env, walletSeed);
     const initialState = await getInitialShieldedState(wallet.shielded);
     logger.info(`Your wallet seed is: ${seed} and your address is: ${initialState.address.coinPublicKeyString()}`);
     return new MidnightWalletProvider(logger, env, wallet, ZswapSecretKeys.fromSeed(getShieldedSeed(walletSeed)));
