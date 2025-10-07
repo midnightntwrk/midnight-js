@@ -1,18 +1,19 @@
 services:
   proof-server:
-    image: "ghcr.io/midnight-ntwrk/proof-server:6.1.0-alpha.3"
-    container_name: "proof-server_$TESTCONTAINERS_UID"
+    image: 'ghcr.io/midnight-ntwrk/proof-server:6.1.0-alpha.3'
+    container_name: 'proof-server_$TESTCONTAINERS_UID'
     ports:
-      - "0:6300"
+      - '0:6300'
     environment:
       EXTRA_ARGS: -v
-      RUST_BACKTRACE: "full"
+      RUST_BACKTRACE: 'full'
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:6300/version" ]
+      test: ['CMD', 'curl', '-f', 'http://localhost:6300/version']
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
+
   indexer:
     image: 'ghcr.io/midnight-ntwrk/indexer-standalone:3.0.0-c12e9051'
     container_name: indexer_$TESTCONTAINERS_UID
@@ -26,26 +27,27 @@ services:
       APP__INFRA__PUB_SUB__PASSWORD: 'indexer'
       APP__INFRA__LEDGER_STATE_STORAGE__PASSWORD: 'indexer'
       APP__INFRA__SECRET: '303132333435363738393031323334353637383930313233343536373839303132'
+
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8088/api/v1/graphql"]
-      interval: 2s
-      timeout: 3s
-      retries: 15
-      start_period: 10s
+      test: ['CMD-SHELL', 'cat /var/run/indexer-standalone/running']
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
     depends_on:
       node:
-        condition: service_started
+        condition: service_healthy
   node:
-    image: "ghcr.io/midnight-ntwrk/midnight-node:0.17.0-rc.2"
-    container_name: "node_$TESTCONTAINERS_UID"
+    image: 'ghcr.io/midnight-ntwrk/midnight-node:0.16.3-3b7b8d7c'
+    container_name: node_$TESTCONTAINERS_UID
     ports:
-      - "0:9944"
+      - '0:9944'
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9944/health" ]
+      test: ['CMD', 'curl', '-f', 'http://localhost:9944/health']
       interval: 2s
       timeout: 5s
       retries: 5
       start_period: 5s
     environment:
-      CFG_PRESET: "dev"
-      RUST_LOG: info
+      CFG_PRESET: 'dev'
+      SIDECHAIN_BLOCK_BENEFICIARY: '04bcf7ad3be7a5c790460be82a713af570f22e0f801f6659ab8e84a52be6969e'

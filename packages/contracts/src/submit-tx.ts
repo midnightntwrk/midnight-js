@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import type { ShieldedCoinInfo } from '@midnight-ntwrk/compact-runtime';
 import { type FinalizedTransaction, type UnprovenTransaction } from '@midnight-ntwrk/ledger-v6';
 import {
   type Contract,
@@ -33,6 +34,11 @@ export type SubmitTxOptions<ICK extends ImpureCircuitId> = {
    * The transaction to prove, balance, and submit.
    */
   readonly unprovenTx: UnprovenTransaction;
+  /**
+   * Any new coins created during the construction of the transaction. Only defined
+   * if the transaction being submitted is a call or deploy transaction.
+   */
+  readonly newCoins?: ShieldedCoinInfo[];
   /**
    * A circuit identifier to use to fetch the ZK artifacts needed to prove the
    * transaction. Only defined if a call transaction is being submitted.
