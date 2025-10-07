@@ -128,9 +128,9 @@ export const createUnbalancedTx = (tx: Transaction<SignatureEnabled, PreProof, P
 };
 
 /**
- * A type representing a proven, balanced, submittable transaction.
+ * A type representing a balanced, provable transaction.
  */
-export type BalancedTransaction = Transaction<SignatureEnabled, Proof, Bindingish> & {
+export type BalancedTransaction = Transaction<SignatureEnabled, PreProof, PreBinding> & {
   /**
    * Unique symbol brand.
    */
@@ -141,7 +141,7 @@ export type BalancedTransaction = Transaction<SignatureEnabled, Proof, Bindingis
  * Creates an {@link BalancedTransaction} from a ledger transaction.
  * @param tx The ledger transaction to wrap.
  */
-export const createBalancedTx = (tx: Transaction<SignatureEnabled, Proof, Bindingish>): BalancedTransaction => {
+export const createBalancedTx = (tx: Transaction<SignatureEnabled, PreProof, Bindingish>): BalancedTransaction => {
   return tx as BalancedTransaction;
 };
 

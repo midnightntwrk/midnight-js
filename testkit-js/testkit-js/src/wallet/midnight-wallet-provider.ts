@@ -15,6 +15,8 @@
 
 import { type FinalizedTransaction, shieldedToken, type TokenType, ZswapSecretKeys } from '@midnight-ntwrk/ledger-v6';
 import {
+  type BalancedTransaction,
+  createBalancedTx,
   type MidnightProvider,
   type UnbalancedTransaction,
   type WalletProvider
@@ -51,12 +53,20 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     this.zswapSecretKeys = zswapSecretKeys;
   }
 
-  async finalizeTransaction(tx: UnbalancedTransaction): Promise<FinalizedTransaction> {
+  async balanceTx(tx: UnbalancedTransaction): Promise<BalancedTransaction> {
     const recipe = await this.wallet.balanceTransaction(this.zswapSecretKeys, tx);
     //TODO: temporary - consult
     if (recipe.type !== 'TransactionToProve') {
       throw new Error(`Failed to balance transaction: ${recipe.type}`);
     }
+    return createBalancedTx(recipe.transaction);
+  }
+
+  async finalizeTx(tx: FinalizedTransaction): Promise<FinalizedTransaction> {
+    const recipe = {
+      type: 'NothingToProve' as const,
+      transaction: tx
+    };
     return this.wallet.finalizeTransaction(recipe);
   }
 

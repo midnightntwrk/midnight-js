@@ -13,9 +13,17 @@
  * limitations under the License.
  */
 
-import { type UnprovenTransaction } from '@midnight-ntwrk/ledger-v6';
+import {
+  type Binding,
+  type Proof,
+  type SignatureEnabled,
+  type Transaction,
+  type UnprovenTransaction
+} from '@midnight-ntwrk/ledger-v6';
 
-import type { UnbalancedTransaction, ZKConfig } from './midnight-types';
+import type { ZKConfig } from './midnight-types';
+
+export type ProvenTransaction = Transaction<SignatureEnabled, Proof, Binding>;
 
 /**
  * The configuration for the proof request to the proof provider.
@@ -40,10 +48,10 @@ export interface ProofProvider<K extends string> {
   /**
    * Creates call proofs for an unproven transaction. The resulting transaction is unbalanced and
    * must be balanced using the {@link WalletProvider} interface.
-   * @param tx The transaction to be proved. Prior to version 1.0.0, unproven transactions always only
    *           contain a single contract call.
+   * @param unprovenTx
    * @param proveTxConfig The configuration for the proof request to the proof provider. Empty in case
    *                      a deploy transaction is being proved with no user-defined timeout.
    */
-  proveTx(tx: UnprovenTransaction, proveTxConfig?: ProveTxConfig<K>): Promise<UnbalancedTransaction>;
+  proveTx(unprovenTx: UnprovenTransaction, proveTxConfig?: ProveTxConfig<K>): Promise<ProvenTransaction>;
 }

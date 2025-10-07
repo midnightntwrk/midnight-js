@@ -15,10 +15,11 @@
 
 import type { ShieldedCoinInfo } from '@midnight-ntwrk/compact-runtime';
 import { type UnprovenTransaction } from '@midnight-ntwrk/ledger-v6';
-import type {
-  Contract,
-  FinalizedTxData,
-  ImpureCircuitId
+import  {
+  type Contract,
+  createUnbalancedTx,
+  type FinalizedTxData,
+  type ImpureCircuitId
 } from '@midnight-ntwrk/midnight-js-types';
 
 import { type ContractProviders } from './contract-providers';
@@ -69,8 +70,9 @@ export const submitTx = async <C extends Contract, ICK extends ImpureCircuitId<C
   const proveTxConfig = options.circuitId
     ? { zkConfig: await providers.zkConfigProvider.get(options.circuitId) }
     : undefined;
-  const unbalancedTx = await providers.proofProvider.proveTx(options.unprovenTx, proveTxConfig);
-  const finalizedTx = await providers.walletProvider.finalizeTransaction(unbalancedTx, options.newCoins ?? []);
+  const unprovenTx = await providers.walletProvider.balanceTx(createUnbalancedTx(options.unprovenTx), options.newCoins ?? []);
+  const provenTx = await providers.proofProvider.proveTx(unprovenTx, proveTxConfig);
+  const finalizedTx = await providers.walletProvider.finalizeTx(provenTx);
   const txId = await providers.midnightProvider.submitTx(finalizedTx);
   return await providers.publicDataProvider.watchForTxData(txId);
 };

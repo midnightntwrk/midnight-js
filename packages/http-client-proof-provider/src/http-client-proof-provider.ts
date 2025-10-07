@@ -15,19 +15,16 @@
 
 import { BinaryWriter } from '@dao-xyz/borsh';
 import {
-  type PreBinding,
-  type PreProof,
-  type SignatureEnabled,
   Transaction,
   type UnprovenTransaction
 } from '@midnight-ntwrk/ledger-v6';
 import type {
   ProofProvider,
+  ProvenTransaction,
   ProveTxConfig,
-  UnbalancedTransaction,
   ZKConfig
 } from '@midnight-ntwrk/midnight-js-types';
-import { createUnbalancedTx, InvalidProtocolSchemeError } from '@midnight-ntwrk/midnight-js-types';
+import { InvalidProtocolSchemeError } from '@midnight-ntwrk/midnight-js-types';
 import fetch from 'cross-fetch';
 import fetchBuilder from 'fetch-retry';
 import _ from 'lodash';
@@ -80,10 +77,10 @@ export const serializePayload = <K extends string>(
 };
 
 
-const deserializePayload = (arrayBuffer: ArrayBuffer): UnbalancedTransaction => {
+const deserializePayload = (arrayBuffer: ArrayBuffer): ProvenTransaction => {
   const bytes = new Uint8Array(arrayBuffer);
-  const transaction : Transaction<SignatureEnabled, PreProof, PreBinding> = Transaction.deserialize('signature', 'pre-proof', 'pre-binding', bytes);
-  return createUnbalancedTx(transaction);
+  const transaction = Transaction.deserialize('signature', 'proof', 'pre-binding', bytes);
+  return transaction as ProvenTransaction;
 };
 const PROVE_TX_PATH = '/prove-tx';
 
@@ -119,7 +116,7 @@ export const httpClientProofProvider = <K extends string>(url: string): ProofPro
     async proveTx(
       unprovenTx: UnprovenTransaction,
       partialProveTxConfig?: ProveTxConfig<K>
-    ): Promise<UnbalancedTransaction> {
+    ): Promise<ProvenTransaction> {
       const config = _.defaults(partialProveTxConfig, DEFAULT_CONFIG);
       const response = await fetchRetry(urlObject, {
         method: 'POST',

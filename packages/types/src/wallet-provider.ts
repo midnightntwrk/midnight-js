@@ -15,7 +15,8 @@
 
 import { type FinalizedTransaction, type ShieldedCoinInfo, type ZswapSecretKeys } from '@midnight-ntwrk/ledger-v6';
 
-import type { UnbalancedTransaction } from './midnight-types';
+import type { BalancedTransaction, UnbalancedTransaction } from './midnight-types';
+import { type ProvenTransaction } from './proof-provider';
 
 /**
  * Interface for a wallet
@@ -27,11 +28,18 @@ export interface WalletProvider {
    * @type {ZswapSecretKeys}
    */
   readonly zswapSecretKeys: ZswapSecretKeys;
+  /**
+   * Balances select coins, create spend proofs, and pay fees for a transaction with call proofs
+   * @param tx The transaction to balance.
+   * @param newCoins
+   */
+  balanceTx(tx: UnbalancedTransaction, newCoins: ShieldedCoinInfo[]): Promise<BalancedTransaction>;
 
   /**
-   * Balances select coins, create spend proofs, and pay fees for a transaction with call proofs.
-   * @param tx The transaction to balance.
-   * @param newCoins The outputs created during a transaction.
+   * Finalizes the given transaction to complete its processing.
+   *
+   * @param {ProvenTransaction} tx - The transaction object that needs to be finalized.
+   * @return {Promise<FinalizedTransaction>} A promise that resolves to the finalized transaction object.
    */
-  finalizeTransaction(tx: UnbalancedTransaction, newCoins: ShieldedCoinInfo[]): Promise<FinalizedTransaction>;
+  finalizeTx(tx: ProvenTransaction): Promise<FinalizedTransaction>;
 }
