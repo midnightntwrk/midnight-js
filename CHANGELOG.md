@@ -5,18 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.1.0-rc.3] - 2025-09-30]
-
-### Changed
-- **Compactc**: Upgrade to 0.26.0
-- **Compact-runtime**: Upgrade to 0.9.0
-
-## [2.1.0-rc.2] - 2025-09-23]
-
-### Fixed
-- **Block Time Access**: Fix for `toLedgerState`, which erased the `block`
-
-## [2.1.0-rc.1] - 2025-08-29
+## [2.1.0] - 2025-10-08]
 
 ### Added
 - **Block Time Access**: Added `secondsSinceLastEpoch` value to `QueryContext` in Compact programs to retrieve current block time within contracts
@@ -25,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Import Sorting**: ESLint configuration now includes automatic import sorting for better code organization
 
 ### Changed
+- **Compactc**: Upgrade to 0.26.0
+- **Compact-runtime**: Upgrade to 0.9.0
 - **Compact Compiler**: Upgraded to Compact version 0.25.0 with improved contract compilation
 - **Dependencies**: Major updates including:
   - GraphQL codegen and related packages
@@ -47,6 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - checkmarx/ast-github-action to 2.3.24
 
 ### Fixed
+- **Block Time Access**: Fix for `toLedgerState`, which erased the `block`
 - **Configuration Issues**: Resolved Docker port conflicts and logger-provider path issues
 - **Type Definitions**: Cleaned up contract types and improved test mocks
 - **Workflow Permissions**: Updated GitHub Actions with proper security permissions
