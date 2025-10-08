@@ -14,7 +14,6 @@
  */
 
 import type { FinalizedDeployTxData } from '@midnight-ntwrk/midnight-js-contracts';
-import { getRuntimeNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { type FinalizedTxData, type PublicDataProvider, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import {
   createLogger,
@@ -75,8 +74,8 @@ describe('Indexer API', () => {
     const state = await publicDataProvider.queryDeployContractState(finalizedDeployTxData.public.contractAddress);
 
     expect(state).not.toBeNull();
-    expect(state?.serialize(getRuntimeNetworkId())).toEqual(
-      finalizedDeployTxData.public.initialContractState.serialize(getRuntimeNetworkId())
+    expect(state?.serialize()).toEqual(
+      finalizedDeployTxData.public.initialContractState.serialize()
     );
     if (state) {
       expect(ledger(state.data)).toEqual(

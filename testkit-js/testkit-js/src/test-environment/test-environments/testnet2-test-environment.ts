@@ -13,7 +13,10 @@
  * limitations under the License.
  */
 
-import type { EnvironmentConfiguration } from '../environment-configuration';
+import { NetworkId } from '@midnight-ntwrk/wallet-sdk-abstractions';
+
+import type { EnvironmentConfiguration } from '@/test-environment';
+
 import { RemoteTestEnvironment } from './remote-test-environment';
 
 /**
@@ -32,11 +35,13 @@ export class Testnet2TestEnvironment extends RemoteTestEnvironment {
    */
   getEnvironmentConfiguration(): EnvironmentConfiguration {
     return {
+      walletNetworkId: NetworkId.NetworkId.TestNet,
+      networkId: 'testnet-02',
       indexer: 'https://indexer.testnet-02.midnight.network/api/v1/graphql',
       indexerWS: 'wss://indexer.testnet-02.midnight.network/api/v1/graphql/ws',
       node: 'https://rpc.testnet-02.midnight.network',
       faucet: 'https://faucet.testnet-02.midnight.network/api/request-tokens',
-      proofServer: this.proofServerContainer.getUrl()
+      proofServer: this.proofServerContainer?.getUrl()
     };
   }
 }

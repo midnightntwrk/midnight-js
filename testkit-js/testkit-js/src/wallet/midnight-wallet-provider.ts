@@ -13,155 +13,119 @@
  * limitations under the License.
  */
 
-import type { CoinPublicKey } from '@midnight-ntwrk/compact-runtime';
-import type { CoinInfo } from '@midnight-ntwrk/ledger';
-import { Transaction } from '@midnight-ntwrk/ledger';
-import { getLedgerNetworkId, getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
-  type BalancedTransaction,
-  createBalancedTx,
+  type FinalizedTransaction,
+  shieldedToken,
+  type TokenType,
+  type UnprovenTransaction,
+  ZswapSecretKeys} from '@midnight-ntwrk/ledger-v6';
+import {
   type MidnightProvider,
-  type UnbalancedTransaction,
+  type ProvenTransaction,
+  type ProvingRecipe,
   type WalletProvider
 } from '@midnight-ntwrk/midnight-js-types';
-import { type LogLevel, type Resource } from '@midnight-ntwrk/wallet';
+import { type WalletFacade } from '@midnight-ntwrk/wallet-sdk-facade';
 import { generateRandomSeed } from '@midnight-ntwrk/wallet-sdk-hd';
-import { type EncPublicKey,Transaction as ZswapTransaction } from '@midnight-ntwrk/zswap';
 import type { Logger } from 'pino';
 
-import type { EnvironmentConfiguration } from '../test-environment';
-import { DEFAULT_WALLET_LOG_LEVEL, WalletFactory } from './wallet-factory';
-import { type MidnightWallet } from './wallet-types';
-import { getInitialState, waitForFunds } from './wallet-utils';
+import { type EnvironmentConfiguration } from '@/index';
+import { getShieldedSeed } from '@/wallet/wallet-seed-utils';
+
+import { WalletBuilder } from './wallet-builder';
+import { getInitialShieldedState, waitForFunds } from './wallet-utils';
 
 /**
  * Provider class that implements wallet functionality for the Midnight network.
  * Handles transaction balancing, submission, and wallet state management.
  */
-export class MidnightWalletProvider implements MidnightProvider, WalletProvider, Resource {
+export class MidnightWalletProvider implements MidnightProvider, WalletProvider {
   logger: Logger;
   readonly env: EnvironmentConfiguration;
-  readonly wallet: MidnightWallet;
-  readonly coinPublicKey: CoinPublicKey;
-  readonly encryptionPublicKey: EncPublicKey;
+  readonly wallet: WalletFacade;
+  readonly zswapSecretKeys: ZswapSecretKeys;
 
-  /**
-   * Creates a new MidnightWalletProvider instance.
-   * @param {Logger} logger - Logger instance for recording operations
-   * @param {EnvironmentConfiguration} environmentConfiguration - Configuration for the wallet environment
-   * @param {MidnightWallet} wallet - Wallet instance
-   * @param {CoinPublicKey} coinPublicKey - Public key for the wallet's coins
-   * @private
-   */
   private constructor(
     logger: Logger,
     environmentConfiguration: EnvironmentConfiguration,
-    wallet: MidnightWallet,
-    coinPublicKey: CoinPublicKey,
-    encryptionPublicKey: EncPublicKey
+    wallet: WalletFacade,
+    zswapSecretKeys: ZswapSecretKeys
   ) {
     this.logger = logger;
     this.env = environmentConfiguration;
     this.wallet = wallet;
-    this.coinPublicKey = coinPublicKey;
-    this.encryptionPublicKey = encryptionPublicKey;
+    this.zswapSecretKeys = zswapSecretKeys;
   }
 
-  /**
-   * Balances an unbalanced transaction by adding necessary inputs and change outputs.
-   * @param {UnbalancedTransaction} tx - The unbalanced transaction to balance
-   * @param {CoinInfo[]} newCoins - Array of new coins to include in the transaction
-   * @returns {Promise<BalancedTransaction>} A promise that resolves to the balanced transaction
-   */
-  balanceTx(tx: UnbalancedTransaction, newCoins: CoinInfo[]): Promise<BalancedTransaction> {
-    return this.wallet
-      .balanceTransaction(
-        ZswapTransaction.deserialize(tx.serialize(getLedgerNetworkId()), getZswapNetworkId()),
-        newCoins
-      )
-      .then((utx) => this.wallet.proveTransaction(utx))
-      .then((zswapTx) => Transaction.deserialize(zswapTx.serialize(getZswapNetworkId()), getLedgerNetworkId()))
-      .then(createBalancedTx);
+  async balanceTx(tx: UnprovenTransaction): Promise<ProvingRecipe<UnprovenTransaction | FinalizedTransaction>> {
+    const recipe = await this.wallet.balanceTransaction(this.zswapSecretKeys, tx);
+
+    switch (recipe.type) {
+      case 'TransactionToProve':
+        return recipe;
+
+      case 'NothingToProve':
+        this.logger.warn('Transaction already finalized during balancing');
+        return recipe;
+
+      default:
+        throw new Error(`Unsupported recipe type: ${recipe.type}`);
+    }
   }
 
-  /**
-   * Submits a balanced transaction to the network.
-   * @param {BalancedTransaction} tx - The balanced transaction to submit
-   * @returns {Promise<string>} A promise that resolves to the transaction hash
-   */
-  submitTx(tx: BalancedTransaction): Promise<string> {
-    return this.wallet.submitTransaction(
-      ZswapTransaction.deserialize(tx.serialize(getLedgerNetworkId()), getZswapNetworkId())
-    );
+  async finalizeTx(provenTx: ProvenTransaction): Promise<FinalizedTransaction> {
+    if (this.isFinalizedTransaction(provenTx)) {
+      this.logger.debug('Transaction already finalized, skipping finalization step');
+      return provenTx;
+    }
+
+    const recipe = {
+      type: 'NothingToProve' as const,
+      transaction: provenTx as FinalizedTransaction
+    };
+
+    return this.wallet.finalizeTransaction(recipe);
   }
 
-  /**
-   * Starts the wallet and optionally waits for funds to be available.
-   * @param {boolean} waitForFundsInWallet - Whether to wait for funds to be available (default: true)
-   * @returns {Promise<void>} A promise that resolves when the wallet is started and funds are available if requested
-   */
-  async start(waitForFundsInWallet = true): Promise<void> {
+  private isFinalizedTransaction(tx: ProvenTransaction | FinalizedTransaction): tx is FinalizedTransaction {
+    return 'txHash' in tx;
+  }
+
+  submitTx(tx: FinalizedTransaction): Promise<string> {
+    return this.wallet.submitTransaction(tx);
+  }
+
+  async start(waitForFundsInWallet = true, tokenType: TokenType = shieldedToken()): Promise<void> {
     this.logger.info('Starting wallet...');
-    this.wallet.start();
+    this.wallet.start(this.zswapSecretKeys);
     if (waitForFundsInWallet) {
-      const balance = await waitForFunds(this.wallet, this.env, true);
+      const balance = await waitForFunds(this.wallet, this.env, tokenType, true);
       this.logger.info(`Your wallet balance is: ${balance}`);
     }
   }
 
-  /**
-   * Closes the wallet and releases resources.
-   * @returns {Promise<void>} A promise that resolves when the wallet is closed
-   */
-  async close(): Promise<void> {
-    return this.wallet.close();
+  async stop(): Promise<void> {
+    return this.wallet.stop();
   }
 
-  /**
-   * Creates a new MidnightWalletProvider instance.
-   * @param {Logger} logger - Logger instance for recording operations
-   * @param {EnvironmentConfiguration} env - Configuration for the wallet environment
-   * @param {string} [seed] - Optional seed for wallet generation. If not provided, a new random wallet will be created
-   * @param {string} [walletLogLevel='info'] - Optional log level for wallet operations
-   * @returns {Promise<MidnightWalletProvider>} A promise that resolves to the new wallet provider
-   */
   static async build(
     logger: Logger,
     env: EnvironmentConfiguration,
-    seed?: string | undefined,
-    walletLogLevel: LogLevel = DEFAULT_WALLET_LOG_LEVEL
-  ) {
-    const wallet = await WalletFactory.buildFromEnvContext(
-      env,
-      seed ?? Buffer.from(generateRandomSeed()).toString('hex'),
-      walletLogLevel
-    );
-    const initialState = await getInitialState(wallet);
-    logger.info(`Your wallet seed is: ${seed} and your address is: ${initialState.address}`);
-    return new MidnightWalletProvider(
-      logger,
-      env,
-      wallet,
-      initialState.coinPublicKey,
-      initialState.encryptionPublicKey
-    );
+    seed?: string | undefined
+  ): Promise<MidnightWalletProvider> {
+    const walletSeed = seed ?? Buffer.from(generateRandomSeed()).toString('hex');
+    const wallet = await WalletBuilder.buildAndStartWallet(env, walletSeed);
+    const initialState = await getInitialShieldedState(wallet.shielded);
+    logger.info(`Your wallet seed is: ${seed} and your address is: ${initialState.address.coinPublicKeyString()}`);
+    return new MidnightWalletProvider(logger, env, wallet, ZswapSecretKeys.fromSeed(getShieldedSeed(walletSeed)));
   }
 
-  /**
-   * Creates a new MidnightWalletProvider instance using an existing wallet.
-   * @param {Logger} logger - Logger instance for recording operations
-   * @param {EnvironmentConfiguration} env - Configuration for the wallet environment
-   * @param {MidnightWallet} wallet - Existing wallet instance to use
-   * @returns {Promise<MidnightWalletProvider>} A promise that resolves to the new wallet provider using the existing wallet
-   */
-  static async withWallet(logger: Logger, env: EnvironmentConfiguration, wallet: MidnightWallet) {
-    const initialState = await getInitialState(wallet);
-    return new MidnightWalletProvider(
-      logger,
-      env,
-      wallet,
-      initialState.coinPublicKey,
-      initialState.encryptionPublicKey
-    );
+  static async withWallet(
+    logger: Logger,
+    env: EnvironmentConfiguration,
+    wallet: WalletFacade,
+    zswapSecretKeys: ZswapSecretKeys
+  ): Promise<MidnightWalletProvider> {
+    return new MidnightWalletProvider(logger, env, wallet, zswapSecretKeys);
   }
 }

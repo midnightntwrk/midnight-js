@@ -15,9 +15,11 @@
 
 import {
   type AlignedValue,
+  type CircuitContext,
   type CoinPublicKey,
   type ContractAddress,
   type ContractState,
+  CostModel,
   decodeZswapLocalState,
   emptyZswapLocalState,
   type Op,
@@ -25,9 +27,14 @@ import {
   type StateValue,
   type ZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
-import type { Transcript, ZswapChainState } from '@midnight-ntwrk/ledger';
-import { LedgerParameters,partitionTranscripts, PreTranscript } from '@midnight-ntwrk/ledger';
-import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import {
+  LedgerParameters,
+  type PartitionedTranscript,
+  partitionTranscripts,
+  PreTranscript,
+  type ZswapChainState
+} from '@midnight-ntwrk/ledger-v6';
+import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type {
   CircuitParameters,
   CircuitReturnType,
@@ -147,12 +154,6 @@ export type CallResultPrivate<C extends Contract, ICK extends ImpureCircuitId<C>
   readonly nextZswapLocalState: ZswapLocalState;
 };
 
-// TODO: Move into @midnight-ntwrk/ledger
-/**
- * Convenience type for result returned from {@link partitionTranscripts}.
- */
-export type PartitionedTranscript = [Transcript<AlignedValue> | undefined, Transcript<AlignedValue> | undefined];
-
 /**
  * The public portions of the call result.
  */
@@ -196,14 +197,14 @@ const partitionTranscript = (
   const partitionedTranscripts = partitionTranscripts(
     [
       new PreTranscript(
-        Array.from(finalTxContext.comIndicies).reduce(
+        Array.from(finalTxContext.comIndices).reduce(
           (queryContext, entry) => queryContext.insertCommitment(...entry),
           toLedgerQueryContext(initialTxContext)
         ),
         publicTranscript
       )
     ],
-    LedgerParameters.dummyParameters()
+    LedgerParameters.initialParameters()
   );
   if (partitionedTranscripts.length !== 1) {
     throw new Error(`Expected one transcript partition pair, received: ${partitionedTranscripts.length}`);
@@ -229,16 +230,18 @@ export const call = <C extends Contract, ICK extends ImpureCircuitId<C>>(
   }
   const { result, context, proofData } = circuit(
     {
+      //TODO: validate this originalState
       originalState: initialContractState,
       currentPrivateState: 'initialPrivateState' in options ? options.initialPrivateState : undefined,
       transactionContext: initialTxContext,
-      currentZswapLocalState: emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, getZswapNetworkId()))
-    },
+      currentZswapLocalState: emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, getNetworkId())),
+      costModel: CostModel.initialCostModel(),
+    } as CircuitContext<C>,
     ...('args' in options ? options.args : [])
   );
   return {
     public: {
-      nextContractState: context.transactionContext.state,
+      nextContractState: context.transactionContext.state.state,
       publicTranscript: proofData.publicTranscript,
       partitionedTranscript: partitionTranscript(
         initialTxContext,

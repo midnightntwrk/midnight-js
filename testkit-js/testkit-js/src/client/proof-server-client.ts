@@ -16,7 +16,7 @@
 import axios, { type AxiosRequestConfig } from 'axios';
 import type { Logger } from 'pino';
 
-import { extractHostnameAndPort } from '../utils';
+import { extractHostnameAndPort } from '@/utils';
 
 export class ProofServerClient {
   readonly proofServer: string;

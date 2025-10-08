@@ -19,7 +19,7 @@ const NETWORK_ID_REGEXP = /^[a-zA-Z0-9-]+$/;
 
 /**
  * A name, handle, or tag representing a familiar identifier given to an instance of a Midnight network.
- * 
+ *
  * @category models
  */
 export type NetworkIdMoniker = Brand.Branded<string, 'NetworkIdMoniker'>;

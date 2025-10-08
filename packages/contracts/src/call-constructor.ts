@@ -15,14 +15,13 @@
 
 import {
   type CoinPublicKey,
-  constructorContext,
+  type ConstructorContext,
   type ContractState,
   decodeZswapLocalState,
+  emptyZswapLocalState,
   type ZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
-import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type { Contract, InitialStateParameters, PrivateState } from '@midnight-ntwrk/midnight-js-types';
-import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
 /**
  * Describes the target of a circuit invocation.
@@ -111,10 +110,11 @@ export const callContractConstructor = <C extends Contract>(
   options: ContractConstructorOptions<C>
 ): ContractConstructorResult<C> => {
   const constructorResult = options.contract.initialState(
-    constructorContext(
-      'initialPrivateState' in options ? options.initialPrivateState : undefined,
-      parseCoinPublicKeyToHex(options.coinPublicKey, getZswapNetworkId())
-    ),
+    {
+      initialPrivateState: 'initialPrivateState' in options ? options.initialPrivateState : undefined,
+      // TODO: IMPORTANT - consult
+      initialZswapLocalState: emptyZswapLocalState(options.coinPublicKey)
+    } as ConstructorContext<C>,
     ...('args' in options ? options.args : [])
   );
   return {

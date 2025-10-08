@@ -29,12 +29,38 @@ export const TX_ID_QUERY = gql(
   `
   query TX_ID_QUERY($offset: TransactionOffset!) {
     transactions(offset: $offset) {
+      id
+      protocolVersion
+      fees {
+        estimatedFees
+        paidFees
+      }
       raw
-      applyStage
       hash
+      unshieldedCreatedOutputs {
+        owner
+        intentHash
+        tokenType
+        value
+      }
+      unshieldedSpentOutputs {
+        owner
+        intentHash
+        tokenType
+        value
+      }
       block {
         height
         hash
+        author
+        timestamp
+      }
+      transactionResult {
+        status
+        segments {
+          id
+          success
+        }
       }
     }
   }`
@@ -46,8 +72,13 @@ export const DEPLOY_TX_QUERY = gql(
     contractAction(address: $address) {
       ... on ContractDeploy {
         transaction {
+          id
+          protocolVersion
+          fees {
+            estimatedFees
+            paidFees
+          }
 	        raw
-          applyStage
           hash
           identifiers
           contractActions {
@@ -56,13 +87,39 @@ export const DEPLOY_TX_QUERY = gql(
           block {
             height
             hash
+            author
+            timestamp
+          }
+          transactionResult {
+            status
+            segments {
+              id
+              success
+            }
+          }
+          unshieldedCreatedOutputs {
+            owner
+            intentHash
+            tokenType
+            value
+          }
+          unshieldedSpentOutputs {
+            owner
+            intentHash
+            tokenType
+            value
           }
         }
       }
       ... on ContractUpdate {
         transaction {
+          id
+          protocolVersion
+          fees {
+            estimatedFees
+            paidFees
+          }
 	        raw
-          applyStage
           hash
           identifiers
           contractActions {
@@ -71,14 +128,40 @@ export const DEPLOY_TX_QUERY = gql(
           block {
             height
             hash
+            author
+            timestamp
+          }
+          transactionResult {
+            status
+            segments {
+              id
+              success
+            }
+          }
+          unshieldedCreatedOutputs {
+            owner
+            intentHash
+            tokenType
+            value
+          }
+          unshieldedSpentOutputs {
+            owner
+            intentHash
+            tokenType
+            value
           }
         }
       }
       ... on ContractCall {
         deploy {
           transaction {
+            id
+            protocolVersion
+            fees {
+              estimatedFees
+              paidFees
+            }
 	          raw
-            applyStage
             hash
             identifiers
             contractActions {
@@ -87,6 +170,27 @@ export const DEPLOY_TX_QUERY = gql(
             block {
               height
               hash
+              author
+              timestamp
+            }
+            transactionResult {
+              status
+              segments {
+                id
+                success
+              }
+            }
+            unshieldedCreatedOutputs {
+              owner
+              intentHash
+              tokenType
+              value
+            }
+            unshieldedSpentOutputs {
+              owner
+              intentHash
+              tokenType
+              value
             }
           }
         }
@@ -118,6 +222,7 @@ export const DEPLOY_CONTRACT_STATE_TX_QUERY = gql(
     }
   }`
 );
+
 
 export const LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY = gql(
   `
@@ -174,6 +279,90 @@ export const CONTRACT_AND_ZSWAP_STATE_QUERY = gql(
     contractAction(address: $address, offset: $offset) {
       state
       chainState
+    }
+  }`
+);
+
+export const UNSHIELDED_BALANCE_QUERY = gql(
+  `
+  query UNSHIELDED_BALANCE_QUERY($address: HexEncoded!) {
+    contractAction(address: $address) {
+      ... on ContractDeploy {
+        unshieldedBalances {
+          tokenType
+          amount
+        }
+      }
+      ... on ContractUpdate {
+        unshieldedBalances {
+          tokenType
+          amount
+        }
+      }
+      ... on ContractCall {
+        deploy {
+          unshieldedBalances {
+            tokenType
+            amount
+          }
+        }
+      }
+    }
+  }`
+);
+
+export const QUERY_UNSHIELDED_BALANCES_WITH_OFFSET = gql(
+  `
+  query QUERY_UNSHIELDED_BALANCES_WITH_OFFSET($address: HexEncoded!, $offset: ContractActionOffset) {
+    contractAction(address: $address, offset: $offset) {
+      ... on ContractDeploy {
+        unshieldedBalances {
+          tokenType
+          amount
+        }
+      }
+      ... on ContractUpdate {
+        unshieldedBalances {
+          tokenType
+          amount
+        }
+      }
+      ... on ContractCall {
+        deploy {
+          unshieldedBalances {
+            tokenType
+            amount
+          }
+        }
+      }
+    }
+  }`
+);
+
+export const UNSHIELDED_BALANCE_SUB = gql(
+  `
+  subscription UNSHIELDED_BALANCE_SUB($address: HexEncoded!, $offset: BlockOffset) {
+    contractActions(address: $address, offset: $offset) {
+      ... on ContractDeploy {
+        unshieldedBalances {
+          tokenType
+          amount
+        }
+      }
+      ... on ContractUpdate {
+        unshieldedBalances {
+          tokenType
+          amount
+        }
+      }
+      ... on ContractCall {
+        deploy {
+          unshieldedBalances {
+            tokenType
+            amount
+          }
+        }
+      }
     }
   }`
 );

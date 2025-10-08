@@ -1,11 +1,10 @@
 services:
   proof-server:
-    image: "ghcr.io/midnight-ntwrk/proof-server:4.0.0"
+    image: "ghcr.io/midnight-ntwrk/proof-server:6.1.0-alpha.3"
     container_name: "proof-server_$TESTCONTAINERS_UID"
     ports:
       - "0:6300"
     environment:
-      NETWORK: ${NETWORK_ID:-undeployed}
       EXTRA_ARGS: -v
       RUST_BACKTRACE: "full"
     healthcheck:

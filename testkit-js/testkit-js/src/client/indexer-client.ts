@@ -16,7 +16,7 @@
 import axios from 'axios';
 import type { Logger } from 'pino';
 
-import { extractHostnameAndPort } from '../utils';
+import { extractHostnameAndPort } from '@/utils';
 
 export class IndexerClient {
   readonly indexerUrl: string;

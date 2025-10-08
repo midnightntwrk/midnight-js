@@ -14,13 +14,13 @@
  */
 
 import type { ContractAddress } from '@midnight-ntwrk/compact-runtime';
-import { ContractState, LedgerState } from '@midnight-ntwrk/ledger';
-import { getLedgerNetworkId, getNetworkId, networkIdToHex } from '@midnight-ntwrk/midnight-js-network-id';
+import { ContractState, LedgerState } from '@midnight-ntwrk/ledger-v6';
+import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type { BlockHash } from '@midnight-ntwrk/midnight-js-types';
 import axios, { type AxiosResponse } from 'axios';
 import type { Logger } from 'pino';
 
-import { extractHostnameAndPort } from '../utils';
+import { extractHostnameAndPort } from '@/utils';
 
 /**
  * Client for interacting with a Midnight node's JSON-RPC API
@@ -106,9 +106,9 @@ export class NodeClient {
   async contractState(contractAddress: ContractAddress): Promise<ContractState | null> {
     this.logger.info(`Fetching contract state for address '${contractAddress}'`);
     const result = await this.jsonRPC('midnight_contractState', [
-      `${networkIdToHex(getNetworkId())}${contractAddress}`
+      `${getNetworkId()}${contractAddress}`
     ]);
-    return result === '' ? null : ContractState.deserialize(Buffer.from(result, 'hex'), getLedgerNetworkId());
+    return result === '' ? null : ContractState.deserialize(Buffer.from(result, 'hex'));
   }
 
   /**
@@ -118,7 +118,7 @@ export class NodeClient {
    */
   async ledgerState(blockHash: BlockHash): Promise<LedgerState> {
     const blob = await this.ledgerStateBlob(blockHash);
-    return LedgerState.deserialize(blob, getLedgerNetworkId());
+    return LedgerState.deserialize(blob);
   }
 
   /**

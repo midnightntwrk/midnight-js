@@ -14,7 +14,7 @@
  */
 
 import type { StateValue } from '@midnight-ntwrk/compact-runtime';
-import type { Transaction } from '@midnight-ntwrk/ledger';
+import type { Bindingish, Proofish, Signaturish, Transaction } from '@midnight-ntwrk/ledger-v6';
 import type {
   CallTxOptions,
   DeployContractOptions,
@@ -37,7 +37,7 @@ export const stateValueEqual = (a: StateValue, b: StateValue): boolean => {
   return a.toString(false) === b.toString(false);
 };
 
-export const txsEqual = (a: Transaction, b: Transaction): boolean => {
+export const txsEqual = <S extends Signaturish, P extends Proofish, B extends Bindingish>(a: Transaction<S, P, B>, b: Transaction<S, P, B>): boolean => {
   return a.toString(false) === b.toString(false);
 };
 
@@ -46,7 +46,7 @@ export const expectFoundAndDeployedTxPublicDataEqual = <C extends Contract>(
   foundDeployTxData: FinalizedDeployTxDataBase<C>
 ): void => {
   expect(
-    stateValueEqual(deployTxData.public.initialContractState.data, foundDeployTxData.public.initialContractState.data)
+    stateValueEqual(deployTxData.public.initialContractState.data.state, foundDeployTxData.public.initialContractState.data.state)
   ).toBeTruthy();
   expect(deployTxData.public.contractAddress).toEqual(foundDeployTxData.public.contractAddress);
   expect(deployTxData.public.blockHash).toEqual(foundDeployTxData.public.blockHash);
@@ -85,7 +85,7 @@ export const expectFoundAndDeployedStatesEqual = async <C extends Contract>(
     deployTxData.public.contractAddress
   );
   expect(deployedLedgerState).toBeDefined();
-  expect(stateValueEqual(deployedLedgerState!.data, foundDeployTxData.public.initialContractState.data)).toBeTruthy();
+  expect(stateValueEqual(deployedLedgerState!.data.state, foundDeployTxData.public.initialContractState.data.state)).toBeTruthy();
   if (privateStateId) {
     const privateState = await providers.privateStateProvider.get(privateStateId);
     expect(privateState).toEqual(foundDeployTxData.private.initialPrivateState);
@@ -114,7 +114,7 @@ export const expectSuccessfulDeployTx = async <C extends Contract>(
   const deployedLedgerState = await providers.publicDataProvider.queryContractState(
     deployTxData.public.contractAddress
   );
-  expect(stateValueEqual(deployTxData.public.initialContractState.data, deployedLedgerState!.data));
+  expect(stateValueEqual(deployTxData.public.initialContractState.data.state, deployedLedgerState!.data.state));
   expect(deployTxData.public.initialContractState).toBeTruthy();
 
   // Checks that the signing key and private state passed in the deploy configuration

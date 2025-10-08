@@ -14,16 +14,17 @@
  */
 
 import { BinaryWriter } from '@dao-xyz/borsh';
-import { Transaction } from '@midnight-ntwrk/ledger';
-import { getLedgerNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import {
+  Transaction,
+  type UnprovenTransaction
+} from '@midnight-ntwrk/ledger-v6';
 import type {
   ProofProvider,
+  ProvenTransaction,
   ProveTxConfig,
-  UnbalancedTransaction,
-  UnprovenTransaction,
   ZKConfig
 } from '@midnight-ntwrk/midnight-js-types';
-import { createUnbalancedTx, InvalidProtocolSchemeError } from '@midnight-ntwrk/midnight-js-types';
+import { InvalidProtocolSchemeError } from '@midnight-ntwrk/midnight-js-types';
 import fetch from 'cross-fetch';
 import fetchBuilder from 'fetch-retry';
 import _ from 'lodash';
@@ -70,14 +71,17 @@ export const serializePayload = <K extends string>(
   unprovenTx: UnprovenTransaction,
   zkConfig?: ZKConfig<K>
 ): Promise<ArrayBuffer> => {
-  const serializedTx = new Uint8Array(unprovenTx.serialize(getLedgerNetworkId()));
+  const serializedTx = new Uint8Array(unprovenTx.serialize());
   const serializedConfig = new Uint8Array(serializeZKConfig(zkConfig));
   return new Blob([serializedTx, serializedConfig]).arrayBuffer();
 };
 
-const deserializePayload = (arrayBuffer: ArrayBuffer): UnbalancedTransaction =>
-  createUnbalancedTx(Transaction.deserialize(new Uint8Array(arrayBuffer), getLedgerNetworkId()));
 
+const deserializePayload = (arrayBuffer: ArrayBuffer): ProvenTransaction => {
+  const bytes = new Uint8Array(arrayBuffer);
+  const transaction = Transaction.deserialize('signature', 'proof', 'pre-binding', bytes);
+  return transaction as ProvenTransaction;
+};
 const PROVE_TX_PATH = '/prove-tx';
 
 /**
@@ -112,7 +116,7 @@ export const httpClientProofProvider = <K extends string>(url: string): ProofPro
     async proveTx(
       unprovenTx: UnprovenTransaction,
       partialProveTxConfig?: ProveTxConfig<K>
-    ): Promise<UnbalancedTransaction> {
+    ): Promise<ProvenTransaction> {
       const config = _.defaults(partialProveTxConfig, DEFAULT_CONFIG);
       const response = await fetchRetry(urlObject, {
         method: 'POST',

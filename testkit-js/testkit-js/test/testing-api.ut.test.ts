@@ -13,20 +13,18 @@
  * limitations under the License.
  */
 
-import { NetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import path from 'path';
 import { WebSocket } from 'ws';
 
 import { createLogger } from '@/logger';
 import {
-  DevnetTestEnvironment,
+  getTestEnvironment
+} from '@/test-environment';
+import {
   EnvVarRemoteTestEnvironment,
-  getTestEnvironment,
   LocalTestEnvironment,
   QanetTestEnvironment,
-  Testnet2TestEnvironment,
-  TestnetTestEnvironment
-} from '@/test-environment';
+  Testnet2TestEnvironment} from '@/test-environment/test-environments';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `ut_${new Date().toISOString().replace(/:/g, '-')}.log`)
@@ -35,7 +33,7 @@ const logger = createLogger(
 // @ts-expect-error: It's needed to enable WebSocket usage through apollo
 globalThis.WebSocket = WebSocket;
 
-describe.concurrent('[Unit tests] Testing API', () => {
+describe('[Unit tests] Testing API', () => {
   beforeEach(() => {
     logger.info(`Starting test... ${expect.getState().currentTestName}`);
   });
@@ -43,8 +41,6 @@ describe.concurrent('[Unit tests] Testing API', () => {
   it.each([
     ['local environment reference', undefined, LocalTestEnvironment],
     ['qanet environment reference', 'qanet', QanetTestEnvironment],
-    ['devnet environment reference', 'devnet', DevnetTestEnvironment],
-    ['testnet environment reference', 'testnet', TestnetTestEnvironment],
     ['testnet2 environment reference', 'testnet-02', Testnet2TestEnvironment]
   ])('test environment should return %s', async (_, envVar, expectedInstance) => {
     process.env.MN_TEST_ENVIRONMENT = envVar;
@@ -60,13 +56,11 @@ describe.concurrent('[Unit tests] Testing API', () => {
     expect(getTestEnvironment(logger)).toBeInstanceOf(EnvVarRemoteTestEnvironment);
   });
 
-  it('should fail on wrong MN_TEST_NETWORK_ID for env var remote test environment', () => {
-    process.env.MN_TEST_ENVIRONMENT = 'env-var-remote';
-    process.env.MN_TEST_NETWORK_ID = 'unknown';
-    expect(() => getTestEnvironment(logger)).toThrow(
-      `Invalid network ID: 'unknown'. Must be one of: ${Object.values(NetworkId).join(', ')}`
-    );
-  });
+  // it('should not fail on wrong MN_TEST_NETWORK_ID for env var remote test environment', () => {
+  //   process.env.MN_TEST_ENVIRONMENT = 'env-var-remote';
+  //   process.env.MN_TEST_NETWORK_ID = 'something';
+  //   expect(() => getTestEnvironment(logger)).not.toThrow();
+  // });
 
   it('should fail on wrong MN_TEST_NETWORK_ID for env var remote test environment', () => {
     process.env.MN_TEST_ENVIRONMENT = 'env-var-remote';

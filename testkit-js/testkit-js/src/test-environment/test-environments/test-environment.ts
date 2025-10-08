@@ -15,9 +15,10 @@
 
 import type { Logger } from 'pino';
 
-import type { ProofServerContainer } from '../proof-server-container';
-import type { MidnightWalletProvider } from '../wallet';
-import type { EnvironmentConfiguration } from './environment-configuration';
+import type { ProofServerContainer } from '@/proof-server-container';
+import type { MidnightWalletProvider } from '@/wallet';
+
+import type { EnvironmentConfiguration } from '../environment-configuration';
 
 /**
  * Abstract base class for test environments.
@@ -29,6 +30,7 @@ export abstract class TestEnvironment {
   /** Unique identifier for this test environment instance */
   protected readonly uid: string;
 
+  protected readonly envConfiguration: EnvironmentConfiguration;
   /**
    * Creates a new TestEnvironment instance.
    * @param {Logger} logger - Logger instance for recording operations
@@ -74,4 +76,6 @@ export abstract class TestEnvironment {
    * @returns {Promise<MidnightWalletProvider[]>} A promise that resolves to an array of started wallets
    */
   abstract startMidnightWalletProviders(amount?: number, seeds?: string[]): Promise<MidnightWalletProvider[]>;
+
+  abstract getEnvironmentConfiguration(): EnvironmentConfiguration;
 }

@@ -25,7 +25,8 @@ import {
 import type { ContainersConfiguration } from '@/configuration-types';
 import { createLogger } from '@/logger';
 import { DynamicProofServerContainer } from '@/proof-server-container';
-import { getTestEnvironment, LocalTestEnvironment } from '@/test-environment';
+import { getTestEnvironment } from '@/test-environment';
+import { LocalTestEnvironment } from '@/test-environment/test-environments';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `it_${new Date().toISOString().replace(/:/g, '-')}.log`)
@@ -72,7 +73,7 @@ describe.concurrent('[Integration tests] Testing API', () => {
       const wallet = await testEnvironment.getMidnightWalletProvider();
       await testEnvironment.shutdown();
 
-      expect(wallet.coinPublicKey).not.toBeUndefined();
+      expect(wallet.zswapSecretKeys.coinPublicKey).not.toBeUndefined();
     },
     2 * 60_000
   );

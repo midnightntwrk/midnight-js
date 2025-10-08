@@ -16,22 +16,4 @@
 /**
  * A valid named Midnight network identifier.
  */
-
-export enum NetworkId {
-  /**
-   * Indicates a local test network is being used.
-   */
-  Undeployed = 'Undeployed',
-  /**
-   * Indicates the official Midnight developer network is being used.
-   */
-  DevNet = 'DevNet',
-  /**
-   * Indicates the official Midnight test network is being used.
-   */
-  TestNet = 'TestNet',
-  /**
-   * Indicates the official, main, Midnight network is being used.
-   */
-  MainNet = 'MainNet'
-}
+export type NetworkId = string;

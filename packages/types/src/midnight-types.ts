@@ -13,7 +13,18 @@
  * limitations under the License.
  */
 
-import type { Transaction, TransactionHash, TransactionId } from '@midnight-ntwrk/ledger';
+import {
+  type Binding,
+  type ContractAddress,
+  type IntentHash,
+  type Proof,
+  type RawTokenType,
+  type SignatureEnabled,
+  type Transaction,
+  type TransactionHash,
+  type TransactionId,
+  type UnprovenTransaction
+} from '@midnight-ntwrk/ledger-v6';
 
 /**
  * A type representing a prover key derived from a contract circuit.
@@ -24,8 +35,8 @@ export type ProverKey = Uint8Array & {
    */
   readonly ProverKey: unique symbol;
 };
-
 /**
+
  * Creates a branded prover key representation from a prover key binary.
  *
  * @param uint8Array The prover key binary.
@@ -96,41 +107,20 @@ export interface ZKConfig<K extends string> {
 }
 
 /**
- * A type representing a proven, unbalanced transaction.
+ * Indicates that the segment update is invalid.
  */
-export type UnbalancedTransaction = Transaction & {
-  /**
-   * Unique symbol brand.
-   */
-  readonly UnbalancedTransaction: unique symbol;
-};
+export const SegmentFail = 'SegmentFail' as const;
 
 /**
- * Creates an {@link UnbalancedTransaction} from a ledger transaction.
- *
- * @param tx The ledger transaction to wrap.
+ * Indicates that the segment is valid.
  */
-export const createUnbalancedTx = (tx: Transaction): UnbalancedTransaction => {
-  return tx as UnbalancedTransaction;
-};
+export const SegmentSuccess = 'SegmentSuccess' as const;
 
 /**
- * A type representing a proven, balanced, submittable transaction.
+ * Represents the result of a segment operation, which can either be a successful operation
+ * (`SegmentSuccess`) or a failed operation (`SegmentFail`).
  */
-export type BalancedTransaction = Transaction & {
-  /**
-   * Unique symbol brand.
-   */
-  readonly BalancedTransaction: unique symbol;
-};
-
-/**
- * Creates an {@link BalancedTransaction} from a ledger transaction.
- * @param tx The ledger transaction to wrap.
- */
-export const createBalancedTx = (tx: Transaction): BalancedTransaction => {
-  return tx as BalancedTransaction;
-};
+export type SegmentStatus = typeof SegmentSuccess | typeof SegmentFail;
 
 /**
  * Indicates that the transaction is invalid.
@@ -157,6 +147,64 @@ export const SucceedEntirely = 'SucceedEntirely' as const;
 export type TxStatus = typeof FailEntirely | typeof FailFallible | typeof SucceedEntirely;
 
 /**
+ * Represents an unshielded UTXO (Unspent Transaction Output).
+ * Unshielded UTXOs are outputs that have not been shielded or encrypted, making them visible on the public ledger.
+ */
+export type UnshieldedUtxo = {
+  /**
+   * The unique identifier of the unshielded UTXO.
+   */
+  readonly owner: ContractAddress;
+  /**
+   * The identifier of the intent associated with the unshielded UTXO.
+   * This is used to track the intent behind the creation or use of the UTXO.
+   */
+  readonly intentHash: IntentHash;
+  /**
+   * The type of token associated with the unshielded UTXO.
+   * This indicates the kind of asset or currency represented by the UTXO.
+   */
+  readonly tokenType: RawTokenType;
+  /**
+   * The value of the unshielded UTXO, represented as a bigint.
+   */
+  readonly value: bigint;
+}
+
+/**
+ * Represents a collection of unshielded UTXOs, which are unspent transaction outputs that are not shielded.
+ * This type is used to manage and track the state of unshielded UTXOs.
+ */
+export type UnshieldedUtxos = {
+  /**
+   * Represents the unshielded UTXOs that have been created but not yet spent.
+   */
+  readonly created: UnshieldedUtxo[];
+  /**
+   * Represents the unshielded UTXOs that have been spent.
+   */
+  readonly spent: UnshieldedUtxo[];
+};
+
+/**
+ * Represents the fees associated with a particular entity or operation.
+ *
+ * This type includes both the paid fees and the estimated fees. The paid fees represent
+ * the amount that has already been settled, while the estimated fees provide a calculation
+ * or projection of expected fees.
+ */
+export type Fees = {
+  /**
+   * The fees that have already been paid.
+   */
+  readonly paidFees: string;
+  /**
+   * The estimated fees that are expected to be incurred.
+   */
+  readonly estimatedFees: string;
+};
+
+/**
  * Block identifier
  */
 export type BlockHash = string;
@@ -168,7 +216,7 @@ export interface FinalizedTxData {
   /**
    * The transaction that was finalized.
    */
-  readonly tx: Transaction;
+  readonly tx: Transaction<SignatureEnabled, Proof, Binding>;
   /**
    * The status of a submitted transaction.
    */
@@ -189,4 +237,71 @@ export interface FinalizedTxData {
    * The block height of the block in which the transaction was included.
    */
   readonly blockHeight: number;
+  /**
+   * The timestamp of the block in which the transaction was included.
+   */
+  readonly blockTimestamp: number;
+  /**
+   * The author of the block in which the transaction was included.
+   */
+  readonly blockAuthor: string | null;
+  /**
+   * The indexer internal db ID.
+   */
+  readonly indexerId: number;
+  /**
+   * The protocol version of the transaction.
+   */
+  readonly protocolVersion: number;
+  /**
+   * The fees associated with the transaction, including both paid and estimated fees.
+   */
+  readonly fees: Fees;
+  /**
+   * The map that associates segment identifiers (numbers) with their corresponding status {@link SegmentStatus}.
+   * The segment identifier is represented as a number (key in the map), and the status indicates the success or failure of the transaction update.
+   */
+  readonly segmentStatusMap: Map<number, SegmentStatus> | undefined;
+  /**
+   * Represents the unshielded outputs, typically used for transactions or operations
+   * involving data or values that are not encrypted or concealed.
+   */
+  readonly unshielded: UnshieldedUtxos;
 }
+
+/**
+ * Represents an unshielded balance, which is a balance that is not shielded or encrypted.
+ * This type is used to track the available funds in an account that are visible on the public ledger.
+ */
+export type UnshieldedBalance = {
+  /**
+   * Represents the current number of funds available or held in an account.
+   */
+  readonly balance: bigint;
+  /**
+   * Represents the type of token in the system.
+   */
+  readonly tokenType: RawTokenType;
+}
+
+/**
+ * Represents a collection of unshielded balances, which are balances that are not shielded or encrypted.
+ */
+export type UnshieldedBalances = UnshieldedBalance[];
+
+export const TRANSACTION_TO_PROVE = 'TransactionToProve';
+export const NOTHING_TO_PROVE = 'NothingToProve';
+
+export type TransactionToProve = {
+  readonly type: typeof TRANSACTION_TO_PROVE;
+  readonly transaction: UnprovenTransaction;
+};
+
+export type NothingToProve<TTransaction> = {
+  readonly type: typeof NOTHING_TO_PROVE;
+  readonly transaction: TTransaction;
+};
+
+export type ProvingRecipe<TTransaction> =
+  | TransactionToProve
+  | NothingToProve<TTransaction>;

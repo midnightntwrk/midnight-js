@@ -14,15 +14,22 @@
  */
 
 import { type Recipient, type ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
-import type {
-  CoinInfo,
-  CoinPublicKey,
-  ContractAddress,
-  EncPublicKey,
-  QualifiedCoinInfo,
-  ZswapChainState} from '@midnight-ntwrk/ledger';
-import { UnprovenInput,UnprovenOffer, UnprovenOutput, UnprovenTransient } from '@midnight-ntwrk/ledger';
-import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import {
+  type CoinPublicKey,
+  type ContractAddress,
+  type EncPublicKey,
+  type QualifiedShieldedCoinInfo,
+  type ShieldedCoinInfo,
+  type UnprovenInput,
+  type UnprovenOffer,
+  type UnprovenOutput,
+  type UnprovenTransient,
+  type ZswapChainState,
+  ZswapInput,
+  ZswapOffer,
+  ZswapOutput,
+  ZswapTransient} from '@midnight-ntwrk/ledger-v6';
+import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   assertDefined,
   assertIsContractAddress,
@@ -37,14 +44,14 @@ import {
 // the segment numbers.
 const DEFAULT_SEGMENT_NUMBER = 0;
 
-export const checkKeys = (coinInfo: CoinInfo): void =>
+export const checkKeys = (coinInfo: ShieldedCoinInfo): void =>
   Object.keys(coinInfo).forEach((key) => {
     if (key !== 'value' && key !== 'type' && key !== 'nonce') {
       throw new TypeError(`Key '${key}' should not be present in output data ${coinInfo}`);
     }
   });
 
-export const serializeCoinInfo = (coinInfo: CoinInfo): string => {
+export const serializeCoinInfo = (coinInfo: ShieldedCoinInfo): string => {
   checkKeys(coinInfo);
   return JSON.stringify({
     ...coinInfo,
@@ -52,12 +59,12 @@ export const serializeCoinInfo = (coinInfo: CoinInfo): string => {
   });
 };
 
-export const serializeQualifiedCoinInfo = (coinInfo: QualifiedCoinInfo): string => {
+export const serializeQualifiedShieldedCoinInfo = (coinInfo: QualifiedShieldedCoinInfo): string => {
   const { mt_index: _, ...rest } = coinInfo;
   return serializeCoinInfo(rest);
 };
 
-export const deserializeCoinInfo = (coinInfo: string): CoinInfo => {
+export const deserializeCoinInfo = (coinInfo: string): ShieldedCoinInfo => {
   const res = JSON.parse(coinInfo, (key: string, value: unknown) => {
     if (
       key === 'value' &&
@@ -87,12 +94,12 @@ export const deserializeCoinInfo = (coinInfo: string): CoinInfo => {
   return res;
 };
 
-export const createUnprovenOutput = (
+export const createZswapOutput = (
   {
     coinInfo,
     recipient
   }: {
-    coinInfo: CoinInfo;
+    coinInfo: ShieldedCoinInfo;
     recipient: Recipient;
   },
   encryptionPublicKey: EncPublicKey,
@@ -100,8 +107,8 @@ export const createUnprovenOutput = (
 ): UnprovenOutput =>
   // TBD need to confirm segment number and wallet encryptionPublicKey usage.
   recipient.is_left
-    ? UnprovenOutput.new(coinInfo, segmentNumber, recipient.left, encryptionPublicKey)
-    : UnprovenOutput.newContractOwned(coinInfo, segmentNumber, recipient.right);
+    ? ZswapOutput.new(coinInfo, segmentNumber, recipient.left, encryptionPublicKey)
+    : ZswapOutput.newContractOwned(coinInfo, segmentNumber, recipient.right);
 
 const unprovenOfferFromCoinInfo = <U extends UnprovenInput | UnprovenOutput | UnprovenTransient>(
   [coinInfo, unproven]: [string, U],
@@ -114,31 +121,40 @@ const unprovenOfferFromCoinInfo = <U extends UnprovenInput | UnprovenOutput | Un
 export const unprovenOfferFromMap = <U extends UnprovenInput | UnprovenOutput | UnprovenTransient>(
   map: Map<string, U>,
   f: (u: U, type: string, value: bigint) => UnprovenOffer
-): UnprovenOffer =>
-  Array.from(map)
-    .map((coinInfo) => unprovenOfferFromCoinInfo(coinInfo, f))
-    .reduce((acc, curr) => acc.merge(curr), new UnprovenOffer());
+): UnprovenOffer | undefined => {
+  if (map.size === 0) {
+    return undefined;
+  }
+
+  const offers = Array.from(map, (entry) => unprovenOfferFromCoinInfo(entry, f)).filter((offer) => offer != null);
+
+  if (offers.length === 0) {
+    return undefined;
+  }
+
+  return offers.reduce((acc, curr) => acc.merge(curr));
+};
 
 export const zswapStateToOffer = (
   zswapLocalState: ZswapLocalState,
   encryptionPublicKey: EncPublicKey,
   addressAndChainStateTuple?: { contractAddress: ContractAddress; zswapChainState: ZswapChainState }
-): UnprovenOffer => {
+): UnprovenOffer | undefined => {
   const unprovenOutputs = new Map<string, UnprovenOutput>(
     zswapLocalState.outputs.map((output) => [
       serializeCoinInfo(output.coinInfo),
-      createUnprovenOutput(output, encryptionPublicKey, DEFAULT_SEGMENT_NUMBER)
+      createZswapOutput(output, encryptionPublicKey, DEFAULT_SEGMENT_NUMBER)
     ])
   );
   const unprovenInputs = new Map<string, UnprovenInput>();
   const unprovenTransients = new Map<string, UnprovenTransient>();
   zswapLocalState.inputs.forEach((qualifiedCoinInfo) => {
-    const serializedCoinInfo = serializeQualifiedCoinInfo(qualifiedCoinInfo);
+    const serializedCoinInfo =  serializeQualifiedShieldedCoinInfo(qualifiedCoinInfo);
     const unprovenOutput = unprovenOutputs.get(serializedCoinInfo);
     if (unprovenOutput) {
       unprovenTransients.set(
         serializedCoinInfo,
-        UnprovenTransient.newFromContractOwnedOutput(qualifiedCoinInfo, DEFAULT_SEGMENT_NUMBER, unprovenOutput)
+        ZswapTransient.newFromContractOwnedOutput(qualifiedCoinInfo, DEFAULT_SEGMENT_NUMBER, unprovenOutput)
       );
       unprovenOutputs.delete(serializedCoinInfo);
     } else {
@@ -146,7 +162,7 @@ export const zswapStateToOffer = (
       assertIsContractAddress(addressAndChainStateTuple.contractAddress);
       unprovenInputs.set(
         serializedCoinInfo,
-        UnprovenInput.newContractOwned(
+        ZswapInput.newContractOwned(
           qualifiedCoinInfo,
           DEFAULT_SEGMENT_NUMBER,
           addressAndChainStateTuple.contractAddress,
@@ -155,27 +171,41 @@ export const zswapStateToOffer = (
       );
     }
   });
-  return unprovenOfferFromMap(unprovenInputs, UnprovenOffer.fromInput)
-    .merge(unprovenOfferFromMap(unprovenOutputs, UnprovenOffer.fromOutput))
-    .merge(unprovenOfferFromMap(unprovenTransients, UnprovenOffer.fromTransient));
+
+   const inputsOffer = unprovenOfferFromMap(unprovenInputs, ZswapOffer.fromInput);
+   const outputsOffer = unprovenOfferFromMap(unprovenOutputs, ZswapOffer.fromOutput);
+   const transientsOffer = unprovenOfferFromMap(unprovenTransients, ZswapOffer.fromTransient);
+
+   const offers = [inputsOffer, outputsOffer, transientsOffer].filter(offer => offer != null);
+
+   if (offers.length === 0) {
+     return undefined;
+   }
+
+   if (offers.length === 1) {
+     return offers[0];
+   }
+
+   return offers.reduce((acc, curr) => acc.merge(curr));
 };
 
-export const zswapStateToNewCoins = (receiverCoinPublicKey: CoinPublicKey, zswapState: ZswapLocalState): CoinInfo[] =>
+export const zswapStateToNewCoins = (receiverCoinPublicKey: CoinPublicKey, zswapState: ZswapLocalState): ShieldedCoinInfo[] =>
   zswapState.outputs
     .filter((output) => output.recipient.left === receiverCoinPublicKey)
     .map(({ coinInfo }) => coinInfo);
 
-export const encryptionPublicKeyForzswapState = (
+export const encryptionPublicKeyForZswapState = (
   zswapState: ZswapLocalState,
   walletCoinPublicKey: CoinPublicKey,
   walletEncryptionPublicKey: EncPublicKey
 ): EncPublicKey => {
-  const walletCoinPublickKey = parseCoinPublicKeyToHex(walletCoinPublicKey, getZswapNetworkId());
-  const localCoinPublicKey = parseCoinPublicKeyToHex(zswapState.coinPublicKey, getZswapNetworkId());
+  const networkId = getNetworkId();
+  const walletCoinPublicKeyLocal = parseCoinPublicKeyToHex(walletCoinPublicKey, networkId);
+  const localCoinPublicKey = parseCoinPublicKeyToHex(zswapState.coinPublicKey, networkId);
 
-  if (localCoinPublicKey !== walletCoinPublickKey) {
+  if (localCoinPublicKey !== walletCoinPublicKeyLocal) {
     throw new Error('Unable to lookup encryption public key (Unsupported coin)');
   }
 
-  return parseEncPublicKeyToHex(walletEncryptionPublicKey, getZswapNetworkId());
+  return parseEncPublicKeyToHex(walletEncryptionPublicKey, networkId);
 };

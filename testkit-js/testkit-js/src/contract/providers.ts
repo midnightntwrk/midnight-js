@@ -19,8 +19,9 @@ import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-pri
 import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
 import { type MidnightProviders, type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 
-import { type EnvironmentConfiguration } from '../test-environment';
-import { type MidnightWalletProvider } from '../wallet';
+import { type EnvironmentConfiguration } from '@/test-environment';
+import { type MidnightWalletProvider } from '@/wallet';
+
 import { type ContractConfiguration } from './contract-types';
 
 /**

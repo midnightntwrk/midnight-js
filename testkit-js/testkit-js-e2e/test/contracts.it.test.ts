@@ -20,7 +20,7 @@ import {
   sampleContractAddress,
   sampleSigningKey
 } from '@midnight-ntwrk/compact-runtime';
-import { type ContractAddress, sampleCoinPublicKey, ZswapChainState } from '@midnight-ntwrk/ledger';
+import { type ContractAddress, sampleCoinPublicKey, ZswapChainState } from '@midnight-ntwrk/ledger-v6';
 import {
   call,
   callContractConstructor,
@@ -33,7 +33,7 @@ import {
   findDeployedContract,
   submitCallTx,
   submitDeployTx} from '@midnight-ntwrk/midnight-js-contracts';
-import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import type {
@@ -183,7 +183,7 @@ describe('Contracts API', () => {
     expect(unprovenDeployTxResult.private.initialPrivateState).toEqual(privateStateZero);
     expect(unprovenDeployTxResult.private.initialZswapState).toEqual(
       decodeZswapLocalState(
-        emptyZswapLocalState(parseCoinPublicKeyToHex(providers.walletProvider.coinPublicKey, getZswapNetworkId()))
+        emptyZswapLocalState(parseCoinPublicKeyToHex(providers.walletProvider.zswapSecretKeys.coinPublicKey, getNetworkId()))
       )
     );
     expect(unprovenDeployTxResult.private.signingKey).toEqual(signingKey);
@@ -194,20 +194,20 @@ describe('Contracts API', () => {
         contract: api.counterContractInstance,
         circuitId: 'increment',
         contractAddress: unprovenDeployTxResult.public.contractAddress,
-        coinPublicKey: providers.walletProvider.coinPublicKey,
+        coinPublicKey: providers.walletProvider.zswapSecretKeys.coinPublicKey,
         initialPrivateState: createPrivateState(1),
         initialContractState: unprovenDeployTxResult.public.initialContractState,
         initialZswapChainState: new ZswapChainState()
       },
-      providers.walletProvider.coinPublicKey,
-      providers.walletProvider.encryptionPublicKey
+      providers.walletProvider.zswapSecretKeys.coinPublicKey,
+      providers.walletProvider.zswapSecretKeys.encryptionPublicKey
     );
 
     expect(ledger(unprovenCallTxData.public.nextContractState).round).toEqual(1n);
     expect(unprovenCallTxData.private.newCoins).toEqual([]);
     expect(unprovenCallTxData.private.nextZswapLocalState).toEqual(
       decodeZswapLocalState(
-        emptyZswapLocalState(parseCoinPublicKeyToHex(providers.walletProvider.coinPublicKey, getZswapNetworkId()))
+        emptyZswapLocalState(parseCoinPublicKeyToHex(providers.walletProvider.zswapSecretKeys.coinPublicKey, getNetworkId()))
       )
     );
     expect(unprovenCallTxData.private.nextPrivateState).toEqual(createPrivateState(2));
