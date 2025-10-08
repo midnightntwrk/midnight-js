@@ -48,8 +48,7 @@
     "@midnight-ntwrk/wallet-sdk-facade": "1.0.0-beta.1",
     "@midnight-ntwrk/wallet-sdk-hd": "2.0.0-beta.3",
     "@midnight-ntwrk/wallet-sdk-shielded": "1.0.0-beta.1",
-    "@midnight-ntwrk/wallet-sdk-unshielded-wallet": "1.0.0-beta.3",
-    "@midnight-ntwrk/zswap": "4.0.0"
+    "@midnight-ntwrk/wallet-sdk-unshielded-wallet": "1.0.0-beta.3"
   },
   "devDependencies": {
     "@commitlint/cli": "^18.4.3",

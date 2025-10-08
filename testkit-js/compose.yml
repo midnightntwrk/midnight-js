@@ -15,7 +15,7 @@ services:
       start_period: 10s
 
   indexer:
-    image: 'ghcr.io/midnight-ntwrk/indexer-standalone:3.0.0-c12e9051'
+    image: 'ghcr.io/midnight-ntwrk/indexer-standalone:3.0.0-05a05868'
     container_name: indexer_$TESTCONTAINERS_UID
     ports:
       - '0:8088'
@@ -38,7 +38,7 @@ services:
       node:
         condition: service_healthy
   node:
-    image: 'ghcr.io/midnight-ntwrk/midnight-node:0.16.3-3b7b8d7c'
+    image: 'ghcr.io/midnight-ntwrk/midnight-node:0.17.0-rc.2'
     container_name: node_$TESTCONTAINERS_UID
     ports:
       - '0:9944'
@@ -50,4 +50,3 @@ services:
       start_period: 5s
     environment:
       CFG_PRESET: 'dev'
-      SIDECHAIN_BLOCK_BENEFICIARY: '04bcf7ad3be7a5c790460be82a713af570f22e0f801f6659ab8e84a52be6969e'

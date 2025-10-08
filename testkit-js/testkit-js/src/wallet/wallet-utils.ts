@@ -29,7 +29,7 @@ export const getInitialState = async (wallet: ShieldedWallet | UnshieldedWallet)
   } else {
     return Rx.firstValueFrom((wallet as UnshieldedWallet).state());
   }
-}
+};
 
 export const getInitialShieldedState = async (wallet: ShieldedWallet) => {
   logger.info('Getting initial state of wallet...');
@@ -41,37 +41,39 @@ export const getInitialUnshieldedState = async (wallet: UnshieldedWallet) => {
   return Rx.firstValueFrom(wallet.state());
 };
 
-export const syncWallet = (wallet: WalletFacade, throttleTime = 1_000, timeout = 60_000) => {
+export const syncWallet = (wallet: WalletFacade, throttleTime = 1_000, timeout = 2 * 60_000) => {
   logger.info('Syncing wallet...');
 
   return Rx.firstValueFrom(
-    wallet
-      .state()
-      .pipe(
-        Rx.tap((state) => {
-          logger.info(`Raw wallet state emission: { unshielded: ${state.unshielded.syncProgress?.synced}, shielded: ${state.shielded.state.progress.isStrictlyComplete()}}`);
-        }),
-        Rx.throttleTime(throttleTime),
-        Rx.tap((state) => {
-          const isSynced =
-            state.unshielded.syncProgress !== undefined &&
-            state.unshielded.syncProgress.applyGap === 0 &&
-            state.shielded.state.progress.isStrictlyComplete();
+    wallet.state().pipe(
+      Rx.tap((state) => {
+        logger.info(
+          `Raw wallet state emission: { unshielded: address=${state.unshielded.address}, synced=${state.unshielded.syncProgress?.synced}, shielded: address=${state.shielded.address.coinPublicKeyString()}, synced=${state.shielded.state.progress.isStrictlyComplete()}}`
+        );
+      }),
+      Rx.throttleTime(throttleTime),
+      Rx.tap((state) => {
+        const isSynced =
+          state.unshielded.syncProgress !== undefined &&
+          state.unshielded.syncProgress.applyGap === 0 &&
+          state.shielded.state.progress.isStrictlyComplete();
 
-          logger.info(`Sync progress: { unshieldedSyncProgress: ${state.unshielded.syncProgress}, applyGap: ${state.unshielded.syncProgress?.applyGap}, shieldedProgress: ${state.shielded.state.progress?.highestIndex}, isComplete: ${state.shielded.state.progress.isStrictlyComplete()}, meetsCondition: ${isSynced}}`);
-        }),
-        Rx.filter(
-          (state) =>
-            state.unshielded.syncProgress !== undefined &&
-            state.unshielded.syncProgress.applyGap === 0 &&
-            state.shielded.state.progress.isStrictlyComplete(),
-        ),
-        Rx.tap(() => logger.info('Sync complete')),
-        Rx.timeout({
-          each: timeout,
-          with: () => Rx.throwError(() => new Error(`Wallet sync timeout after ${timeout}ms`)),
-        }),
+        logger.info(
+          `Sync progress: { unshieldedSyncProgress: ${state.unshielded.syncProgress?.synced}, applyGap: ${state.unshielded.syncProgress?.applyGap}, shieldedProgress: ${state.shielded.state.progress?.highestIndex}, isComplete: ${state.shielded.state.progress.isStrictlyComplete()}, meetsCondition: ${isSynced}}`
+        );
+      }),
+      Rx.filter(
+        (state) =>
+          state.unshielded.syncProgress !== undefined &&
+          state.unshielded.syncProgress.applyGap === 0 &&
+          state.shielded.state.progress.isStrictlyComplete()
       ),
+      Rx.tap(() => logger.info('Sync complete')),
+      Rx.timeout({
+        each: timeout,
+        with: () => Rx.throwError(() => new Error(`Wallet sync timeout after ${timeout}ms`))
+      })
+    )
   );
 };
 

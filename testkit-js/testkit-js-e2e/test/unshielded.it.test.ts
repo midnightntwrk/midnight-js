@@ -56,7 +56,6 @@ class UnshieldedConfiguration implements ContractConfiguration {
 describe('Unshielded tokens', () => {
   const TEST_TOKEN_AMOUNT = 1000n;
   const TEST_DOMAIN_SEP = new Uint8Array(32).fill(1);
-  const SLOW_TEST_TIMEOUT = 60000;
 
   let testEnvironment: TestEnvironment;
   let wallet: MidnightWalletProvider;
@@ -91,7 +90,7 @@ describe('Unshielded tokens', () => {
     contractAddress = deployedContract.deployTxData.public.contractAddress;
 
     logger.info(`Deployed unshielded contract at address: ${contractAddress}`);
-  }, SLOW_TEST_TIMEOUT);
+  });
 
   afterAll(async () => {
     await testEnvironment.shutdown();
