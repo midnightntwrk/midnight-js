@@ -116,6 +116,20 @@ const transformParams: (
             if (!TRUE_OR_FALSE_REGEXP.test(args[idx])) throw new SyntaxError(`Cannot convert ${args[idx]} to a Boolean`);
             return args[idx] === 'true';
           }
+          if (type!.kind === TS.SyntaxKind.ArrayType) {
+            const arrayElems = JSON5.parse(args[idx]);
+            if (!Array.isArray(arrayElems)) {
+              throw new SyntaxError(`Cannot convert ${args[idx]} to an array`);
+            }
+              return Either.getOrThrowWith(
+                transformParams(
+                  arrayElems.map((_) => JSON5.stringify(_)),
+                  Array(arrayElems.length).fill((type as TS.ArrayTypeNode).elementType), // Same type repeated.
+                  true
+                ),
+                identity // Rethrow the error from `transformParams`.
+              );
+          }
           if (type!.kind === TS.SyntaxKind.TupleType) {
             const tupleElems = JSON5.parse(args[idx]);
             return Either.getOrThrowWith(
