@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@effect/platform": "^0.90.2",
-    "@effect/platform-node": "^0.95.0",
+    "@effect/platform-node": "^0.98.0",
     "effect": "^3.17.7"
   },
   "peerDependencies": {
