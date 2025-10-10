@@ -1,7 +1,7 @@
 {
   "name": "@midnight-ntwrk/testkit-js-e2e",
-  "version": "2.0.2",
-  "description": "E2E tests for Midnight JS packages",
+  "version": "2.1.0",
+  "description": "Testing utilities and e2e tests for MidnightJS",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
