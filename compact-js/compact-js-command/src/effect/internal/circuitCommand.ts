@@ -130,8 +130,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       outputResultFilePath,
       JSON.stringify(
         result.private.result,
-        (_, value) => typeof value === 'bigint' ? value.toString() : value,
-        2
+        (_, value) => typeof value === 'bigint' ? value.toString() : value
       )
     );
     yield* fs.writeFile(outputFilePath, intent.serialize());
