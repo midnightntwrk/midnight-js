@@ -71,6 +71,9 @@ const typeNodeName: (type: TS.TypeNode) => string =
     if (type.kind === TS.SyntaxKind.BigIntKeyword) return 'bigint';
     if (type.kind === TS.SyntaxKind.StringKeyword) return 'string';
     if (type.kind === TS.SyntaxKind.BooleanKeyword) return 'boolean';
+    if (type.kind === TS.SyntaxKind.ArrayType) {
+      return `${typeNodeName((type as TS.ArrayTypeNode).elementType)}[]`;
+    }
     if (type.kind === TS.SyntaxKind.TupleType) {
       return `[${(type as TS.TupleTypeNode).elements.map((_) => typeNodeName(_ as TS.TypeNode)).join(', ')}]`;
     }
@@ -116,12 +119,29 @@ const transformParams: (
             if (!TRUE_OR_FALSE_REGEXP.test(args[idx])) throw new SyntaxError(`Cannot convert ${args[idx]} to a Boolean`);
             return args[idx] === 'true';
           }
-          if (type!.kind === TS.SyntaxKind.TupleType) {
-            const tupleElems = JSON5.parse(args[idx]);
+          if (type!.kind === TS.SyntaxKind.ArrayType) {
+            const arrayElems = JSON5.parse(args[idx]);
+            if (!Array.isArray(arrayElems)) {
+              throw new SyntaxError(`Cannot convert ${args[idx]} to an array`);
+            }
             return Either.getOrThrowWith(
               transformParams(
-                tupleElems.map(JSON5.stringify),
-                (type as TS.TupleTypeNode).elements.map((_) => _ as TS.TypeNode),
+                arrayElems.map((arrayElem) => JSON5.stringify(arrayElem)),
+                Array(arrayElems.length).fill((type as TS.ArrayTypeNode).elementType), // Same type repeated.
+                true
+              ),
+              identity // Rethrow the error from `transformParams`.
+            );
+          }
+          if (type!.kind === TS.SyntaxKind.TupleType) {
+            const tupleElems = JSON5.parse(args[idx]);
+            if (!Array.isArray(tupleElems)) {
+              throw new SyntaxError(`Cannot convert ${args[idx]} to an array`);
+            }
+            return Either.getOrThrowWith(
+              transformParams(
+                tupleElems.map((tupleElem) => JSON5.stringify(tupleElem)),
+                (type as TS.TupleTypeNode).elements.map((elemType) => elemType as TS.TypeNode),
                 true
               ),
               identity // Rethrow the error from `transformParams`.
