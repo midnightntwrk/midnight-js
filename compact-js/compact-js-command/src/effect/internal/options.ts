@@ -68,6 +68,13 @@ export const outputZswapLocalStateFilePath = Options.file('output-zswap', { exis
 );
 
 /** @internal */
+export const outputResultFilePath = Options.file('output-result', { exists: 'either' }).pipe(
+  Options.withDescription('A file path of where the invoked circuit result data should be written.'),
+  Options.withDefault('result.json'),
+  Options.mapEffect((filePath) => Path.Path.pipe(Effect.map((path) => path.resolve(filePath))))
+);
+
+/** @internal */
 export const network = Options.text('network').pipe(
   Options.withAlias('n'),
   Options.withDescription('Optional network identifier. Defaults to the Midnight \'MainNet\' if not specified.'),
