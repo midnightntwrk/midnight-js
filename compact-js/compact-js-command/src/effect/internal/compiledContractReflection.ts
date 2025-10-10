@@ -71,6 +71,9 @@ const typeNodeName: (type: TS.TypeNode) => string =
     if (type.kind === TS.SyntaxKind.BigIntKeyword) return 'bigint';
     if (type.kind === TS.SyntaxKind.StringKeyword) return 'string';
     if (type.kind === TS.SyntaxKind.BooleanKeyword) return 'boolean';
+    if (type.kind === TS.SyntaxKind.ArrayType) {
+      return `${typeNodeName((type as TS.ArrayTypeNode).elementType)}[]`;
+    }
     if (type.kind === TS.SyntaxKind.TupleType) {
       return `[${(type as TS.TupleTypeNode).elements.map((_) => typeNodeName(_ as TS.TypeNode)).join(', ')}]`;
     }
