@@ -121,21 +121,24 @@ const transformParams: (
             if (!Array.isArray(arrayElems)) {
               throw new SyntaxError(`Cannot convert ${args[idx]} to an array`);
             }
-              return Either.getOrThrowWith(
-                transformParams(
-                  arrayElems.map((_) => JSON5.stringify(_)),
-                  Array(arrayElems.length).fill((type as TS.ArrayTypeNode).elementType), // Same type repeated.
-                  true
-                ),
-                identity // Rethrow the error from `transformParams`.
-              );
+            return Either.getOrThrowWith(
+              transformParams(
+                arrayElems.map((arrayElem) => JSON5.stringify(arrayElem)),
+                Array(arrayElems.length).fill((type as TS.ArrayTypeNode).elementType), // Same type repeated.
+                true
+              ),
+              identity // Rethrow the error from `transformParams`.
+            );
           }
           if (type!.kind === TS.SyntaxKind.TupleType) {
             const tupleElems = JSON5.parse(args[idx]);
+            if (!Array.isArray(tupleElems)) {
+              throw new SyntaxError(`Cannot convert ${args[idx]} to an array`);
+            }
             return Either.getOrThrowWith(
               transformParams(
-                tupleElems.map(JSON5.stringify),
-                (type as TS.TupleTypeNode).elements.map((_) => _ as TS.TypeNode),
+                tupleElems.map((tupleElem) => JSON5.stringify(tupleElem)),
+                (type as TS.TupleTypeNode).elements.map((elemType) => elemType as TS.TypeNode),
                 true
               ),
               identity // Rethrow the error from `transformParams`.
