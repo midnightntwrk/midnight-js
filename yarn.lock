@@ -1140,14 +1140,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/experimental@npm:^0.55.0":
-  version: 0.55.0
-  resolution: "@effect/experimental@npm:0.55.0"
+"@effect/experimental@npm:^0.56.0":
+  version: 0.56.0
+  resolution: "@effect/experimental@npm:0.56.0"
   dependencies:
     uuid: "npm:^11.0.3"
   peerDependencies:
-    "@effect/platform": ^0.91.0
-    effect: ^3.17.14
+    "@effect/platform": ^0.92.0
+    effect: ^3.18.0
     ioredis: ^5
     lmdb: ^3
   peerDependenciesMeta:
@@ -1155,7 +1155,7 @@ __metadata:
       optional: true
     lmdb:
       optional: true
-  checksum: 10/e4e820eb1d5b71abfec62a00fc4646398d1e6b6a8c9974c757ae852a4a28132535e996188e8852af256ffbec650d3d1f26ec12716e4a8126d0487e1dab9c7298
+  checksum: 10/a8a6955e797022f2bcff9ec0d5cc6bf748a1399da00156a3ad9d6ac24e2a1bc28abcff23ca7d708429b5674ed0e34b82f8ad781a9e89a3a3942fa964cd4b3582
   languageName: node
   linkType: hard
 
@@ -2473,7 +2473,7 @@ __metadata:
   dependencies:
     "@effect/cli": "npm:^0.69.0"
     "@effect/cluster": "npm:^0.49.0"
-    "@effect/experimental": "npm:^0.55.0"
+    "@effect/experimental": "npm:^0.56.0"
     "@effect/platform": "npm:^0.90.2"
     "@effect/platform-node": "npm:^0.95.0"
     "@effect/platform-node-shared": "npm:^0.50.0"
@@ -2511,7 +2511,7 @@ __metadata:
   resolution: "@midnight-ntwrk/compact-js@workspace:compact-js/compact-js"
   dependencies:
     "@effect/cluster": "npm:^0.49.0"
-    "@effect/experimental": "npm:^0.55.0"
+    "@effect/experimental": "npm:^0.56.0"
     "@effect/platform": "npm:^0.90.2"
     "@effect/platform-node": "npm:^0.95.0"
     "@effect/platform-node-shared": "npm:^0.50.0"
