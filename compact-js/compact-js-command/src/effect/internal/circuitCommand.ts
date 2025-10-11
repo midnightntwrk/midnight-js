@@ -52,7 +52,8 @@ export const Options = {
   inputZswapLocalStateFilePath: InternalOptions.inputZswapLocalStateFilePath,
   outputFilePath: InternalOptions.outputFilePath,
   outputPrivateStateFilePath: InternalOptions.outputPrivateStateFilePath,
-  outputZswapLocalStateFilePath: InternalOptions.outputZswapLocalStateFilePath
+  outputZswapLocalStateFilePath: InternalOptions.outputZswapLocalStateFilePath,
+  outputResultFilePath: InternalOptions.outputResultFilePath
 }
 
 /** @internal */
@@ -72,7 +73,8 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       inputZswapLocalStateFilePath,
       outputFilePath,
       outputPrivateStateFilePath,
-      outputZswapLocalStateFilePath
+      outputZswapLocalStateFilePath,
+      outputResultFilePath
     },
     moduleSpec
   ) => Effect.gen(function* () {
@@ -124,6 +126,13 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
         circuitId
       ));
 
+    yield* fs.writeFileString(
+      outputResultFilePath,
+      JSON.stringify(
+        result.private.result,
+        (_, value) => typeof value === 'bigint' ? value.toString() : value
+      )
+    );
     yield* fs.writeFile(outputFilePath, intent.serialize());
     yield* fs.writeFileString(outputPrivateStateFilePath, JSON.stringify(result.private.privateState));
     yield* fs.writeFileString(

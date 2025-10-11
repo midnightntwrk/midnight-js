@@ -68,7 +68,9 @@ const reportCausableError: (err: any) => Effect.Effect<void, never> =
       ) as Doc.AnsiDoc
     }
     yield* Console.log(Doc.render(errorDoc, {style: 'pretty'}));
-    process.exit(1); // Terminate with non-zero exit code on any causable error.
+    if (!process.env['VITEST']) {
+      process.exit(1); // Terminate with non-zero exit code on any causable error (if not running inside a test).
+    }
   });
 
 /**
