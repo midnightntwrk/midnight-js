@@ -15,7 +15,7 @@
     "effect": "^3.17.7"
   },
   "devDependencies": {
-    "@effect/vitest": "^0.24.1"
+    "@effect/vitest": "^0.26.0"
   },
   "repository": {
     "type": "git",

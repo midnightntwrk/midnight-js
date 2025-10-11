@@ -24,7 +24,7 @@
     "@effect/platform-node-shared": "^0.50.0",
     "@effect/rpc": "^0.71.0",
     "@effect/sql": "^0.44.1",
-    "@effect/vitest": "^0.24.1",
+    "@effect/vitest": "^0.26.0",
     "@midnight-ntwrk/compact-js-node": "workspace:*",
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
   },

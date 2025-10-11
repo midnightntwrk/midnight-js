@@ -1280,13 +1280,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/vitest@npm:^0.24.1":
-  version: 0.24.1
-  resolution: "@effect/vitest@npm:0.24.1"
+"@effect/vitest@npm:^0.26.0":
+  version: 0.26.0
+  resolution: "@effect/vitest@npm:0.26.0"
   peerDependencies:
-    effect: ^3.16.14
+    effect: ^3.18.0
     vitest: ^3.2.0
-  checksum: 10/9cd4447fd323c01fe90495655463ccc6ff2f41ed668df506beb1121b0de500195afdd9a50dcec92d9142fc2c233415353c2082601b9a3dcd743f82be19de4bda
+  checksum: 10/c9c1fd8579de9ab772dd36f34e90a357b9f97b4ac5995ad8c2be1b802df962cd2365bf5de29c6eec99288a245f952212866c777d31aa2837e15fef94d0ee443e
   languageName: node
   linkType: hard
 
@@ -2483,7 +2483,7 @@ __metadata:
     "@effect/rpc": "npm:^0.71.0"
     "@effect/sql": "npm:^0.44.1"
     "@effect/typeclass": "npm:^0.36.0"
-    "@effect/vitest": "npm:^0.24.1"
+    "@effect/vitest": "npm:^0.26.0"
     "@midnight-ntwrk/compact-js": "npm:^2.0.0"
     "@midnight-ntwrk/compact-js-node": "npm:^2.0.0"
     "@midnight-ntwrk/compact-runtime": "npm:0.9.0-rc.2"
@@ -2519,7 +2519,7 @@ __metadata:
     "@effect/platform-node-shared": "npm:^0.50.0"
     "@effect/rpc": "npm:^0.71.0"
     "@effect/sql": "npm:^0.44.1"
-    "@effect/vitest": "npm:^0.24.1"
+    "@effect/vitest": "npm:^0.26.0"
     "@midnight-ntwrk/compact-js-node": "workspace:*"
     "@midnight-ntwrk/compact-runtime": "npm:0.9.0-rc.2"
     "@midnight-ntwrk/ledger": "npm:@midnight-ntwrk/ledger-v6@6.1.0-alpha.3"
@@ -2768,7 +2768,7 @@ __metadata:
   resolution: "@midnight-ntwrk/platform-js@workspace:platform-js/platform-js"
   dependencies:
     "@effect/platform": "npm:^0.90.2"
-    "@effect/vitest": "npm:^0.24.1"
+    "@effect/vitest": "npm:^0.26.0"
     effect: "npm:^3.17.7"
   languageName: unknown
   linkType: soft
