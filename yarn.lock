@@ -2255,6 +2255,7 @@ __metadata:
     "@midnight-ntwrk/wallet-sdk-dust-wallet": "npm:1.0.0-beta.1"
     "@midnight-ntwrk/wallet-sdk-facade": "npm:1.0.0-beta.2"
     "@midnight-ntwrk/wallet-sdk-hd": "npm:2.0.0-beta.4"
+    "@midnight-ntwrk/wallet-sdk-node-client": "npm:1.0.0-beta.2"
     "@midnight-ntwrk/wallet-sdk-shielded": "npm:1.0.0-beta.2"
     "@midnight-ntwrk/wallet-sdk-unshielded-wallet": "npm:1.0.0-beta.4"
     "@rollup/plugin-commonjs": "npm:^28.0.3"
