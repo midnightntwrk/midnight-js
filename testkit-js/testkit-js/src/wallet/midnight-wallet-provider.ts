@@ -14,11 +14,13 @@
  */
 
 import {
+  DustSecretKey,
   type FinalizedTransaction,
   shieldedToken,
   type TokenType,
   type UnprovenTransaction,
-  ZswapSecretKeys} from '@midnight-ntwrk/ledger-v6';
+  ZswapSecretKeys
+} from '@midnight-ntwrk/ledger-v6';
 import {
   type MidnightProvider,
   type ProvenTransaction,
@@ -30,7 +32,7 @@ import { generateRandomSeed } from '@midnight-ntwrk/wallet-sdk-hd';
 import type { Logger } from 'pino';
 
 import { type EnvironmentConfiguration } from '@/index';
-import { getShieldedSeed } from '@/wallet/wallet-seed-utils';
+import { getDustSeed, getShieldedSeed } from '@/wallet/wallet-seed-utils';
 
 import { WalletBuilder } from './wallet-builder';
 import { getInitialShieldedState, waitForFunds } from './wallet-utils';
@@ -44,17 +46,20 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
   readonly env: EnvironmentConfiguration;
   readonly wallet: WalletFacade;
   readonly zswapSecretKeys: ZswapSecretKeys;
+  readonly dustSecretKey: DustSecretKey;
 
   private constructor(
     logger: Logger,
     environmentConfiguration: EnvironmentConfiguration,
     wallet: WalletFacade,
-    zswapSecretKeys: ZswapSecretKeys
+    zswapSecretKeys: ZswapSecretKeys,
+    dustSecretKey: DustSecretKey
   ) {
     this.logger = logger;
     this.env = environmentConfiguration;
     this.wallet = wallet;
     this.zswapSecretKeys = zswapSecretKeys;
+    this.dustSecretKey = dustSecretKey;
   }
 
   async balanceTx(tx: UnprovenTransaction): Promise<ProvingRecipe<UnprovenTransaction | FinalizedTransaction>> {
@@ -97,7 +102,7 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
 
   async start(waitForFundsInWallet = true, tokenType: TokenType = shieldedToken()): Promise<void> {
     this.logger.info('Starting wallet...');
-    this.wallet.start(this.zswapSecretKeys);
+    await this.wallet.start(this.zswapSecretKeys, this.dustSecretKey);
     if (waitForFundsInWallet) {
       const balance = await waitForFunds(this.wallet, this.env, tokenType, true);
       this.logger.info(`Your wallet balance is: ${balance}`);
@@ -117,15 +122,18 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     const wallet = await WalletBuilder.buildAndStartWallet(env, walletSeed);
     const initialState = await getInitialShieldedState(wallet.shielded);
     logger.info(`Your wallet seed is: ${seed} and your address is: ${initialState.address.coinPublicKeyString()}`);
-    return new MidnightWalletProvider(logger, env, wallet, ZswapSecretKeys.fromSeed(getShieldedSeed(walletSeed)));
+    const shieldedSeed = getShieldedSeed(walletSeed);
+    const dustSeed = getDustSeed(walletSeed);
+    return new MidnightWalletProvider(logger, env, wallet, ZswapSecretKeys.fromSeed(shieldedSeed), DustSecretKey.fromSeed(dustSeed));
   }
 
   static async withWallet(
     logger: Logger,
     env: EnvironmentConfiguration,
     wallet: WalletFacade,
-    zswapSecretKeys: ZswapSecretKeys
+    zswapSecretKeys: ZswapSecretKeys,
+    dustSecretKey: DustSecretKey
   ): Promise<MidnightWalletProvider> {
-    return new MidnightWalletProvider(logger, env, wallet, zswapSecretKeys);
+    return new MidnightWalletProvider(logger, env, wallet, zswapSecretKeys, dustSecretKey);
   }
 }

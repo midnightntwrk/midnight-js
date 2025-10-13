@@ -14,6 +14,7 @@
  */
 
 import {
+  type DustSecretKey,
   type FinalizedTransaction,
   type UnprovenTransaction,
   type ZswapSecretKeys
@@ -22,7 +23,8 @@ import {
 import { type ProvingRecipe } from './midnight-types';
 
 /**
- * Interface for a wallet
+ * Interface representing a WalletProvider that handles operations such as
+ * transaction balancing and finalization, and provides access to cryptographic secret keys.
  */
 export interface WalletProvider {
   /**
@@ -31,6 +33,14 @@ export interface WalletProvider {
    * @type {ZswapSecretKeys}
    */
   readonly zswapSecretKeys: ZswapSecretKeys;
+
+  /**
+   * A readonly property that stores the secret key used for dust operations.
+   *
+   * @type {DustSecretKey}
+   */
+  readonly dustSecretKey: DustSecretKey;
+
   /**
    * Balances a transaction
    * @param tx The transaction to balance.
