@@ -43,14 +43,7 @@
     "@midnight-ntwrk/compact-runtime": "0.9.0-rc.2",
     "@midnight-ntwrk/ledger-v6": "6.1.0-alpha.3",
     "@midnight-ntwrk/onchain-runtime-v1": "1.0.0-alpha.3",
-    "@midnight-ntwrk/wallet-sdk-abstractions": "1.0.0-alpha.20251013154259-0954ce8a",
-    "@midnight-ntwrk/wallet-sdk-address-format": "3.0.0-alpha.20251013154259-0954ce8a",
-    "@midnight-ntwrk/wallet-sdk-dust-wallet": "1.0.0-alpha.20251013154259-0954ce8a",
-    "@midnight-ntwrk/wallet-sdk-facade": "1.0.0-alpha.20251013154259-0954ce8a",
-    "@midnight-ntwrk/wallet-sdk-hd": "3.0.0-alpha.20251013154259-0954ce8a",
-    "@midnight-ntwrk/wallet-sdk-node-client": "1.0.0-alpha.20251013154259-0954ce8a",
-    "@midnight-ntwrk/wallet-sdk-shielded": "1.0.0-alpha.20251013154259-0954ce8a",
-    "@midnight-ntwrk/wallet-sdk-unshielded-wallet": "1.0.0-alpha.20251013154259-0954ce8a"
+    "@midnight-ntwrk/wallet-sdk-facade": "1.0.0-alpha.20251013154259-0954ce8a"
   },
   "devDependencies": {
     "@commitlint/cli": "^18.4.3",
