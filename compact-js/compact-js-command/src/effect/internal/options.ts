@@ -33,7 +33,7 @@ export const coinPublicKey = Options.text('coin-public').pipe(
   Options.withSchema(Schema.Union(
     Schema.String.pipe(Schema.fromBrand(CoinPublicKey.Hex)),
     Schema.String.pipe(Schema.fromBrand(CoinPublicKey.Bech32m))
-  )),
+  ).annotations({ title: 'coin-public' })),
   Options.optional
 );
 
@@ -41,7 +41,7 @@ export const coinPublicKey = Options.text('coin-public').pipe(
 export const signingKey = Options.text('signing').pipe(
   Options.withAlias('s'),
   Options.withDescription('A public BIP-340 signing key, hex encoded.'),
-  Options.withSchema(Schema.String.pipe(Schema.fromBrand(SigningKey.SigningKey))),
+  Options.withSchema(Schema.String.pipe(Schema.fromBrand(SigningKey.SigningKey)).annotations({ title: 'signing' })),
   Options.optional
 );
 
@@ -64,6 +64,13 @@ export const outputPrivateStateFilePath = Options.file('output-ps', { exists: 'e
 export const outputZswapLocalStateFilePath = Options.file('output-zswap', { exists: 'either' }).pipe(
   Options.withDescription('A file path of where the generated \'ZswapLocalState\' data should be written.'),
   Options.withDefault('zswap.json'),
+  Options.mapEffect((filePath) => Path.Path.pipe(Effect.map((path) => path.resolve(filePath))))
+);
+
+/** @internal */
+export const outputResultFilePath = Options.file('output-result', { exists: 'either' }).pipe(
+  Options.withDescription('A file path of where the invoked circuit result data should be written.'),
+  Options.withDefault('result.json'),
   Options.mapEffect((filePath) => Path.Path.pipe(Effect.map((path) => path.resolve(filePath))))
 );
 

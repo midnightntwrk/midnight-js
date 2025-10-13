@@ -19,7 +19,7 @@ import { CliConfig,Command } from '@effect/cli';
 import { NodeContext, NodeRuntime } from "@effect/platform-node";
 import { Effect, Equal, Layer, Logger, LogLevel } from 'effect';
 
-import { circuitCommand, ConfigCompiler, deployCommand } from './effect/index.js';
+import { circuitCommand, ConfigCompiler, deployCommand, maintainCommand } from './effect/index.js';
 
 // #region Entry Point
 // This region of code hosts and executes the commands present in the package if this module was loaded
@@ -41,7 +41,7 @@ if (isProcessRootModule()) {
   const cli = Command.run(
     Command.make('cptexec').pipe(
       Command.withDescription('Executes Compact compiled contracts from the command line.'),
-      Command.withSubcommands([ deployCommand, circuitCommand ])
+      Command.withSubcommands([ deployCommand, circuitCommand, maintainCommand ])
     ),
     {
       name: 'Compact Contract Execute',

@@ -26,11 +26,14 @@ import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import { ContractState, sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
 import {
   ContractDeploy,
-  ContractState as LedgerContractState
+  ContractState as LedgerContractState,
+  type ReplaceAuthority,
+  type VerifierKeyInsert,
+  type VerifierKeyRemove
 } from '@midnight-ntwrk/ledger';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
-import { ConfigProvider, Effect, Layer } from 'effect';
+import { ConfigProvider, Effect, Layer, Option } from 'effect';
 
 import { CounterContract } from '../contract';
 
@@ -137,6 +140,82 @@ describe('ContractExecutable', () => {
 
         expect(result.public.contractState).toBeDefined();
         expect(result.private.privateState).toMatchObject({ count: 1 });
+      })
+    );
+  });
+
+  describe('contract maintenance operations', () => {
+    let contract: ContractExecutable.ContractExecutable<
+      CounterContract,
+      Contract.Contract.PrivateState<CounterContract>,
+      unknown
+    >;
+    let deployment: ContractDeploy;
+
+    // Create and initialize a new contract instance for each test.
+    beforeEach(async () => {
+      contract = counterContract.pipe(
+        ContractExecutable.provide(testLayer(new Map([
+          ['KEYS_COIN_PUBLIC', VALID_COIN_PUBLIC_KEY],
+          ['KEYS_SIGNING', VALID_SIGNING_KEY]
+        ])))
+      );
+      const result = await contract.initialize({ count: 0 }).pipe(Effect.runPromise);
+      deployment = new ContractDeploy(asLedgerContractState(result.public.contractState));
+    });
+
+    it.effect('replaceContractMaintenanceAuthority should return new signing key', () =>
+      Effect.gen(function* () {
+        const result = yield* contract.replaceContractMaintenanceAuthority(
+          Option.none(),
+          {
+            address: ContractAddress.ContractAddress(deployment.address),
+            contractState: asContractState(deployment.initialState),
+          }
+        );
+
+        expect(result.public.maintenanceUpdate).toBeDefined();
+        expect(result.public.maintenanceUpdate.counter).toEqual(deployment.initialState.maintenanceAuthority.counter);
+        expect(
+          (result.public.maintenanceUpdate.updates[0] as ReplaceAuthority).authority.counter
+            - deployment.initialState.maintenanceAuthority.counter
+        ).toEqual(1n);
+        expect(result.private.signingKey).not.toEqual(VALID_SIGNING_KEY);
+      })
+    );
+
+    it.effect('removeContractOperation should work', () =>
+      Effect.gen(function* () {
+        const result = yield* contract.removeContractOperation(
+          Contract.ImpureCircuitId<CounterContract>('increment'),
+          {
+            address: ContractAddress.ContractAddress(deployment.address),
+            contractState: asContractState(deployment.initialState),
+          }
+        );
+
+        expect(result.public.maintenanceUpdate).toBeDefined();
+        expect(result.public.maintenanceUpdate.counter).toEqual(deployment.initialState.maintenanceAuthority.counter);
+        expect((result.public.maintenanceUpdate.updates[0] as VerifierKeyRemove).operation).toEqual('increment');
+        expect(result.private.signingKey).toEqual(VALID_SIGNING_KEY);
+      })
+    );
+
+    it.effect('addOrReplaceContractOperation should work', () =>
+      Effect.gen(function* () {
+        const result = yield* contract.addOrReplaceContractOperation(
+          Contract.ImpureCircuitId<CounterContract>('increment'),
+          Contract.VerifierKey(deployment.initialState.operation('increment')!.verifierKey),
+          {
+            address: ContractAddress.ContractAddress(deployment.address),
+            contractState: asContractState(deployment.initialState),
+          }
+        );
+
+        expect(result.public.maintenanceUpdate).toBeDefined();
+        expect(result.public.maintenanceUpdate.counter).toEqual(deployment.initialState.maintenanceAuthority.counter);
+        expect((result.public.maintenanceUpdate.updates[0] as VerifierKeyInsert).operation).toEqual('increment');
+        expect(result.private.signingKey).toEqual(VALID_SIGNING_KEY);
       })
     );
   });

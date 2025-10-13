@@ -15,6 +15,7 @@
 
 import { Args } from '@effect/cli';
 import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
+import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
 import { Schema } from 'effect';
 
 export const contractArgs = Args.text({ name: 'arg' }).pipe(
@@ -24,9 +25,19 @@ export const contractArgs = Args.text({ name: 'arg' }).pipe(
 
 export const contractAddress = Args.text({ name: 'contract_address' }).pipe(
   Args.withDescription('A contract address, hex-encoded.'),
-  Args.withSchema(Schema.String.pipe(Schema.fromBrand(ContractAddress.ContractAddress)))
+  Args.withSchema(Schema.String.pipe(Schema.fromBrand(ContractAddress.ContractAddress)).annotations({ title: 'contract_address' }))
+);
+
+export const signingKey = Args.text({ name: 'signing_key' }).pipe(
+  Args.withDescription('A signing key, hex-encoded.'),
+  Args.withSchema(Schema.String.pipe(Schema.fromBrand(SigningKey.SigningKey)).annotations({ title: 'signing_key' }))
 );
 
 export const circuitId = Args.text({ name: 'circuit_id'}).pipe(
   Args.withDescription('A circuit identifier.')
+);
+
+export const verifierKeyPath = Args.file({ name: 'vk_path'}).pipe(
+  Args.withDescription('A path to a verifier key.'),
+  Args.optional
 );

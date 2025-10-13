@@ -67,11 +67,23 @@ class BasicHost implements TS.LanguageServiceHost {
 
 const typeNodeName: (type: TS.TypeNode) => string =
   (type) => {
+    if (type.kind === TS.SyntaxKind.NumberKeyword) return 'number';
     if (type.kind === TS.SyntaxKind.BigIntKeyword) return 'bigint';
     if (type.kind === TS.SyntaxKind.StringKeyword) return 'string';
     if (type.kind === TS.SyntaxKind.BooleanKeyword) return 'boolean';
+    if (type.kind === TS.SyntaxKind.ArrayType) {
+      return `${typeNodeName((type as TS.ArrayTypeNode).elementType)}[]`;
+    }
     if (type.kind === TS.SyntaxKind.TupleType) {
       return `[${(type as TS.TupleTypeNode).elements.map((_) => typeNodeName(_ as TS.TypeNode)).join(', ')}]`;
+    }
+    if (type.kind === TS.SyntaxKind.TypeLiteral) {
+      const typeLiteral = type as TS.TypeLiteralNode;
+      return `{ ${typeLiteral.members.map((_) => `${(_.name as TS.Identifier).escapedText.toString()}: ${typeNodeName((_ as TS.PropertySignature).type!)}`).join(', ')} }`;
+    }
+    if (type.kind === TS.SyntaxKind.TypeReference) {
+      const typeName = (type as TS.TypeReferenceNode).typeName;
+      if (TS.isIdentifier(typeName)) return typeName.escapedText.toString();
     }
     return '<unknown>';
   };
@@ -92,77 +104,88 @@ const transformParams: (
     const transformedArgs: any[] = []; // eslint-disable-line @typescript-eslint/no-explicit-any
     for (let idx = 0; idx < types.length; idx++) {
       const type = types[idx];
-      
-      try {
-        if (type!.kind === TS.SyntaxKind.NumberKeyword) {
-          transformedArgs.push(Number(args[idx]))
-          continue;
-        }
-        if (type!.kind === TS.SyntaxKind.BigIntKeyword) {
-          transformedArgs.push(BigInt(args[idx]))
-          continue;
-        }
-        if (type!.kind === TS.SyntaxKind.StringKeyword) {
-          transformedArgs.push(quotedStrings ? args[idx].replaceAll('\'', '') : args[idx]);
-          continue;
-        }
-        if (type!.kind === TS.SyntaxKind.BooleanKeyword) {
-          if (!TRUE_OR_FALSE_REGEXP.test(args[idx])) throw new SyntaxError(`Cannot convert ${args[idx]} to a Boolean`);
-          transformedArgs.push(args[idx] === 'true');
-          continue;
-        }
-        if (type!.kind === TS.SyntaxKind.TupleType) {
-          const tupleElems = JSON5.parse(args[idx]);
-          transformedArgs.push(
-            Either.getOrThrowWith(
+      const transformedArg = Either.try({
+        try: () => {
+          if (type!.kind === TS.SyntaxKind.NumberKeyword) {
+            return Number(args[idx]);
+          }
+          if (type!.kind === TS.SyntaxKind.BigIntKeyword) {
+            return BigInt(args[idx]);
+          }
+          if (type!.kind === TS.SyntaxKind.StringKeyword) {
+            return quotedStrings ? args[idx].replaceAll('\'', '') : args[idx];
+          }
+          if (type!.kind === TS.SyntaxKind.BooleanKeyword) {
+            if (!TRUE_OR_FALSE_REGEXP.test(args[idx])) throw new SyntaxError(`Cannot convert ${args[idx]} to a Boolean`);
+            return args[idx] === 'true';
+          }
+          if (type!.kind === TS.SyntaxKind.ArrayType) {
+            const arrayElems = JSON5.parse(args[idx]);
+            if (!Array.isArray(arrayElems)) {
+              throw new SyntaxError(`Cannot convert ${args[idx]} to an array`);
+            }
+            return Either.getOrThrowWith(
               transformParams(
-                tupleElems.map(JSON5.stringify),
-                (type as TS.TupleTypeNode).elements.map((_) => _ as TS.TypeNode),
+                arrayElems.map((arrayElem) => JSON5.stringify(arrayElem)),
+                Array(arrayElems.length).fill((type as TS.ArrayTypeNode).elementType), // Same type repeated.
                 true
               ),
               identity // Rethrow the error from `transformParams`.
-            )
-          );
-          continue;
-        }
-        if (type!.kind === TS.SyntaxKind.TypeLiteral) {
-          const typeLiteral = type as TS.TypeLiteralNode;
-          const srcObj = JSON5.parse(args[idx]);
-          for (const member of typeLiteral.members) {
-            const propKey = ((member as TS.PropertySignature).name as TS.Identifier).escapedText.valueOf() as string;
-            const propType = (member as TS.PropertySignature).type!;
-            const memberValue = Either.getOrThrowWith(
-              transformParams([JSON5.stringify(srcObj[propKey])], [propType], true),
+            );
+          }
+          if (type!.kind === TS.SyntaxKind.TupleType) {
+            const tupleElems = JSON5.parse(args[idx]);
+            if (!Array.isArray(tupleElems)) {
+              throw new SyntaxError(`Cannot convert ${args[idx]} to an array`);
+            }
+            return Either.getOrThrowWith(
+              transformParams(
+                tupleElems.map((tupleElem) => JSON5.stringify(tupleElem)),
+                (type as TS.TupleTypeNode).elements.map((elemType) => elemType as TS.TypeNode),
+                true
+              ),
               identity // Rethrow the error from `transformParams`.
             );
-            srcObj[propKey] = memberValue[0];
           }
-          transformedArgs.push(srcObj);
-          continue
-        }
-        if (type!.kind === TS.SyntaxKind.TypeReference) {
-          const typeName = (type as TS.TypeReferenceNode).typeName;
-          if (TS.isIdentifier(typeName) && typeName.escapedText === 'Uint8Array') {
-            transformedArgs.push(Either.match(Hex.parseHex(quotedStrings ? args[idx].replaceAll('\'', '') : args[idx]), {
-              onRight: (parsedHex) => Buffer.from(parsedHex.byteChars, 'hex'),
-              onLeft: (parseErr) => { 
-                throw new SyntaxError(`Cannot convert ${args[idx]} to a Uint8Array: ${parseErr.message}`);
-              }
-            }));
+          if (type!.kind === TS.SyntaxKind.TypeLiteral) {
+            const typeLiteral = type as TS.TypeLiteralNode;
+            const srcObj = JSON5.parse(args[idx]);
+            if (typeof srcObj !== 'object') {
+              throw new SyntaxError(`Cannot convert ${args[idx]} to an object literal`);
+            }
+            for (const member of typeLiteral.members) {
+              const propKey = ((member as TS.PropertySignature).name as TS.Identifier).escapedText.toString();
+              const propType = (member as TS.PropertySignature).type!;
+              const memberValue = Either.getOrThrowWith(
+                transformParams([JSON5.stringify(srcObj[propKey])], [propType], true),
+                identity // Rethrow the error from `transformParams`.
+              );
+              srcObj[propKey] = memberValue[0];
+            }
+            return srcObj;
           }
-        }
-      }
-      catch (err: unknown) {
-        return Either.left(
+          if (type!.kind === TS.SyntaxKind.TypeReference) {
+            const typeName = (type as TS.TypeReferenceNode).typeName;
+            if (TS.isIdentifier(typeName) && typeName.escapedText === 'Uint8Array') {
+              return Either.match(Hex.parseHex(quotedStrings ? args[idx].replaceAll('\'', '') : args[idx]), {
+                onRight: (parsedHex) => Buffer.from(parsedHex.byteChars, 'hex'),
+                onLeft: (parseErr) => { 
+                  throw new SyntaxError(`Cannot convert ${args[idx]} to a Uint8Array: ${parseErr.message}`);
+                }
+              });
+            }
+          }
+        },
+        catch: (err) => ContractRuntimeError.make(
+          `Failed to parse argument with index ${idx}`,
           ContractRuntimeError.make(
-            `Failed to parse argument with index ${idx}`,
-            ContractRuntimeError.make(
-              `Failed to parse string '${args[idx]}' as type of ${typeNodeName(type!)}`,
-              err
-            )
+            `Failed to parse string '${args[idx]}' as type of ${typeNodeName(type!)}`,
+            err
           )
-        );
-      }
+        )
+      });
+      if (Either.isLeft(transformedArg)) return transformedArg;
+      transformedArgs.push(transformedArg.right);
     }
     return Either.right(transformedArgs);
   };

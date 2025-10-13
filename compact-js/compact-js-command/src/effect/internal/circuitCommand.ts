@@ -24,7 +24,7 @@ import {
   type ContractOperation as LedgerContractOption,
   Intent
 } from '@midnight-ntwrk/ledger';
-import { type ConfigError, Duration, Effect, Option } from 'effect';
+import { type ConfigError, Console,Duration, Effect, Option } from 'effect';
 
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
 import { type ConfigCompiler } from '../ConfigCompiler.js';
@@ -52,7 +52,8 @@ export const Options = {
   inputZswapLocalStateFilePath: InternalOptions.inputZswapLocalStateFilePath,
   outputFilePath: InternalOptions.outputFilePath,
   outputPrivateStateFilePath: InternalOptions.outputPrivateStateFilePath,
-  outputZswapLocalStateFilePath: InternalOptions.outputZswapLocalStateFilePath
+  outputZswapLocalStateFilePath: InternalOptions.outputZswapLocalStateFilePath,
+  outputResultFilePath: InternalOptions.outputResultFilePath
 }
 
 /** @internal */
@@ -72,7 +73,8 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       inputZswapLocalStateFilePath,
       outputFilePath,
       outputPrivateStateFilePath,
-      outputZswapLocalStateFilePath
+      outputZswapLocalStateFilePath,
+      outputResultFilePath
     },
     moduleSpec
   ) => Effect.gen(function* () {
@@ -103,6 +105,13 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       },
       ...(yield* argsParser.parseCircuitArgs(Contract.ImpureCircuitId(circuitId), args))
     );
+    yield* Console.log(
+      JSON.stringify(
+        result.private.result,
+        (_, value) => typeof value === 'bigint' ? value.toString() : value,
+        2
+      )
+    );
     const intent = Intent.new(yield* InternalCommand.ttl(Duration.minutes(10)))
       .addCall(new ContractCallPrototype(
         address,
@@ -117,6 +126,13 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
         circuitId
       ));
 
+    yield* fs.writeFileString(
+      outputResultFilePath,
+      JSON.stringify(
+        result.private.result,
+        (_, value) => typeof value === 'bigint' ? value.toString() : value
+      )
+    );
     yield* fs.writeFile(outputFilePath, intent.serialize());
     yield* fs.writeFileString(outputPrivateStateFilePath, JSON.stringify(result.private.privateState));
     yield* fs.writeFileString(
