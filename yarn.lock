@@ -2090,6 +2090,17 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@midnight-ntwrk/compact-runtime@npm:0.11.0-rc.0":
+  version: 0.11.0-rc.0
+  resolution: "@midnight-ntwrk/compact-runtime@npm:0.11.0-rc.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-runtime%2F0.11.0-rc.0%2F8ae89db4e1a356046eea994f61f11826fe38b28d"
+  dependencies:
+    "@midnight-ntwrk/onchain-runtime-v1": "npm:^1.0.0-alpha.3"
+    "@types/object-inspect": "npm:^1.8.1"
+    object-inspect: "npm:^1.12.3"
+  checksum: 10/7ae4ca0bda1c0c6d07349dc693f45097be0a5905e0877915968c72303f28d6b0c9c23004238336d291285a7a5987d23ffa8f0857995018f79ca6188f8fcb4ef3
+  languageName: node
+  linkType: hard
+
 "@midnight-ntwrk/compact-runtime@npm:0.9.0-rc.2":
   version: 0.9.0-rc.2
   resolution: "@midnight-ntwrk/compact-runtime@npm:0.9.0-rc.2::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-runtime%2F0.9.0-rc.2%2F7278afceace0a426108f598abc9339ee8c7d196b"
@@ -2249,7 +2260,7 @@ __metadata:
     "@d2t/vitest-ctrf-json-reporter": "npm:^1.1.0"
     "@effect/build-utils": "npm:^0.8.9"
     "@eslint/js": "npm:^9.30.1"
-    "@midnight-ntwrk/compact-runtime": "npm:0.9.0-rc.2"
+    "@midnight-ntwrk/compact-runtime": "npm:0.11.0-rc.0"
     "@midnight-ntwrk/ledger-v6": "npm:6.1.0-alpha.3"
     "@midnight-ntwrk/onchain-runtime-v1": "npm:1.0.0-alpha.3"
     "@midnight-ntwrk/wallet-sdk-facade": "npm:1.0.0-beta.4"
@@ -2292,7 +2303,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@midnight-ntwrk/onchain-runtime-v1@npm:1.0.0-alpha.3, @midnight-ntwrk/onchain-runtime-v1@npm:^1.0.0-alpha.2":
+"@midnight-ntwrk/onchain-runtime-v1@npm:1.0.0-alpha.3, @midnight-ntwrk/onchain-runtime-v1@npm:^1.0.0-alpha.2, @midnight-ntwrk/onchain-runtime-v1@npm:^1.0.0-alpha.3":
   version: 1.0.0-alpha.3
   resolution: "@midnight-ntwrk/onchain-runtime-v1@npm:1.0.0-alpha.3::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fonchain-runtime-v1%2F1.0.0-alpha.3%2F73e786dd6a2349454ccee099257a601961ebcf26"
   checksum: 10/abdb5d487f4bab8602c44705aa67c5f0a82517c3e548124d4f91c8074ff830c09cd9a421a18079c11ebae90488fb87d1b04382c9e09ac1f224c17573ed2f6e38

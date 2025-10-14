@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-export * as CompilerBlockTime from './managed/block-time/contract/index.cjs';
-export * as CompiledCounter from './managed/counter/contract/index.cjs';
-export * as CompiledCounterClone from './managed/counter-clone/contract/index.cjs';
-export * as CompiledSimple from './managed/simple/contract/index.cjs';
-export * as CompiledUnshielded from './managed/unshielded/contract/index.cjs';
+export * as CompilerBlockTime from './managed/block-time/contract/index.js';
+export * as CompiledCounter from './managed/counter/contract/index.js';
+export * as CompiledCounterClone from './managed/counter-clone/contract/index.js';
+export * as CompiledSimple from './managed/simple/contract/index.js';
+export * as CompiledUnshielded from './managed/unshielded/contract/index.js';
 export * from './witnesses.js';

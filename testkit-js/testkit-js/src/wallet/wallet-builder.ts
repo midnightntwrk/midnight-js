@@ -27,7 +27,8 @@ import {
   WalletBuilder as UnshieldedWalletBuilder
 } from '@midnight-ntwrk/wallet-sdk-unshielded-wallet';
 
-import type { EnvironmentConfiguration } from '@/index';
+import { logger } from '@/logger';
+import { type EnvironmentConfiguration } from '@/test-environment/environment-configuration';
 import { mapEnvironmentToConfiguration } from '@/wallet/wallet-configuration-mapper';
 import { getDustSeed, getShieldedSeed, getUnshieldedSeed } from '@/wallet/wallet-seed-utils';
 
@@ -88,7 +89,9 @@ export class WalletBuilder {
     unshieldedSeed: Uint8Array,
     dustSeed: Uint8Array
   ): Promise<WalletFacade> {
+    logger.info(`Starting wallet for ${envConfig.walletNetworkId}`);
     const config = mapEnvironmentToConfiguration(envConfig);
+    logger.info(`Starting wallet for ${JSON.stringify(config)}`);
     return new WalletFacade(
       this.buildShieldedWallet(config, shieldedSeed),
       await this.buildUnshieldedWallet(config, unshieldedSeed, envConfig.walletNetworkId),
@@ -96,8 +99,9 @@ export class WalletBuilder {
     );
   }
 
-  static async startWallet(wallet: WalletFacade, seed: Uint8Array): Promise<WalletFacade> {
-    await wallet.start(ZswapSecretKeys.fromSeed(seed), DustSecretKey.fromSeed(seed));
+  static async startWallet(wallet: WalletFacade, shieldedSeed: Uint8Array, dustSeed: Uint8Array): Promise<WalletFacade> {
+    logger.info(`Starting wallet...`);
+    await wallet.start(ZswapSecretKeys.fromSeed(shieldedSeed), DustSecretKey.fromSeed(dustSeed));
     return wallet;
   }
 
@@ -111,6 +115,6 @@ export class WalletBuilder {
     const dustSeed = getDustSeed(walletSeed);
 
     const wallet = await this.buildWallet(envConfig, shieldedSeed, unshieldedSeed, dustSeed);
-    return this.startWallet(wallet, shieldedSeed);
+    return this.startWallet(wallet, shieldedSeed, dustSeed);
   }
 }
