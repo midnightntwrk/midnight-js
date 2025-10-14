@@ -37,8 +37,8 @@ export class Testnet2TestEnvironment extends RemoteTestEnvironment {
     return {
       walletNetworkId: NetworkId.NetworkId.TestNet,
       networkId: 'testnet-02',
-      indexer: 'https://indexer.testnet-02.midnight.network/api/v1/graphql',
-      indexerWS: 'wss://indexer.testnet-02.midnight.network/api/v1/graphql/ws',
+      indexer: 'https://indexer.testnet-02.midnight.network/api/v3/graphql',
+      indexerWS: 'wss://indexer.testnet-02.midnight.network/api/v3/graphql/ws',
       node: 'https://rpc.testnet-02.midnight.network',
       faucet: 'https://faucet.testnet-02.midnight.network/api/request-tokens',
       proofServer: this.proofServerContainer?.getUrl()

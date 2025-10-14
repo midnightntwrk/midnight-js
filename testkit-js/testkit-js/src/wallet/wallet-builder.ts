@@ -32,6 +32,14 @@ import { type EnvironmentConfiguration } from '@/test-environment/environment-co
 import { mapEnvironmentToConfiguration } from '@/wallet/wallet-configuration-mapper';
 import { getDustSeed, getShieldedSeed, getUnshieldedSeed } from '@/wallet/wallet-seed-utils';
 
+declare global {
+  interface BigInt {
+    toJSON(): number;
+  }
+}
+
+BigInt.prototype.toJSON = function () { return Number(this) }
+
 export const DustOptions = {
   ledgerParams: LedgerParameters.initialParameters(),
   costParametersAdditionalFeeOverhead: 300_000_000_000_000n,
@@ -65,13 +73,15 @@ export class WalletBuilder {
     networkId: NetworkId.NetworkId,
     dustOptions = DustOptions
   ): DustWallet {
-    const Dust = DustWallet({
+    const dustConfig = {
       ...config,
       costParameters: {
         ledgerParams: dustOptions.ledgerParams,
         additionalFeeOverhead: dustOptions.costParametersAdditionalFeeOverhead,
       },
-    });
+    };
+    logger.info(`Building dust wallet with params: ${JSON.stringify(dustConfig)}`);
+    const Dust = DustWallet(dustConfig);
     const dustParameters = new DustParameters(dustOptions.nightDustRatio, dustOptions.generationDecayDate, dustOptions.dustGracePeriodSeconds);
     return Dust.startWithSeed(seed, dustParameters, networkId);
   }
