@@ -6,7 +6,6 @@ services:
     ports:
       - '6300'
     environment:
-      EXTRA_ARGS: -v
       RUST_BACKTRACE: 'full'
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:6300/version']
@@ -16,12 +15,12 @@ services:
       start_period: 10s
 
   indexer:
-    image: 'ghcr.io/midnight-ntwrk/indexer-standalone:3.0.0-05a05868'
+    image: 'ghcr.io/midnight-ntwrk/indexer-standalone:3.0.0-alpha.5'
     container_name: indexer_$TESTCONTAINERS_UID
     ports:
       - '8088'
     environment:
-      RUST_LOG: 'indexer_standalone=debug,chain_indexer=debug,indexer_api=debug,wallet_indexer=debug,indexer_common=debug,fastrace_opentelemetry=off,info'
+      RUST_LOG: 'indexer=debug,chain_indexer=debug,indexer_api=debug,wallet_indexer=debug,indexer_common=debug,fastrace_opentelemetry=off,info'
       APP__INFRA__NODE__URL: 'ws://node:9944'
       APP__APPLICATION__NETWORK_ID: 'Undeployed'
       APP__INFRA__STORAGE__PASSWORD: 'indexer'
