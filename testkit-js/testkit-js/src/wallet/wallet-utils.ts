@@ -41,7 +41,7 @@ export const getInitialUnshieldedState = async (wallet: UnshieldedWallet) => {
   return Rx.firstValueFrom(wallet.state());
 };
 
-export const syncWallet = (wallet: WalletFacade, throttleTime = 1_000, timeout = 2 * 60_000) => {
+export const syncWallet = (wallet: WalletFacade, throttleTime = 1_000, timeout = 60_000) => {
   logger.info('Syncing wallet...');
 
   return Rx.firstValueFrom(
@@ -54,9 +54,9 @@ export const syncWallet = (wallet: WalletFacade, throttleTime = 1_000, timeout =
       Rx.throttleTime(throttleTime),
       Rx.tap((state) => {
         const isSynced =
-          state.unshielded.syncProgress !== undefined &&
-          state.unshielded.syncProgress.applyGap === 0 &&
-          state.shielded.state.progress.isStrictlyComplete();
+            state.shielded.state.progress.isStrictlyComplete() &&
+            state.dust.state.progress.isStrictlyComplete() &&
+            state.unshielded.syncProgress?.synced === true;
 
         logger.info(
           `Sync progress: { unshieldedSyncProgress: ${state.unshielded.syncProgress?.synced}, applyGap: ${state.unshielded.syncProgress?.applyGap}, shieldedProgress: ${state.shielded.state.progress?.highestIndex}, isComplete: ${state.shielded.state.progress.isStrictlyComplete()}, meetsCondition: ${isSynced}}`
@@ -64,9 +64,9 @@ export const syncWallet = (wallet: WalletFacade, throttleTime = 1_000, timeout =
       }),
       Rx.filter(
         (state) =>
-          state.unshielded.syncProgress !== undefined &&
-          state.unshielded.syncProgress.applyGap === 0 &&
-          state.shielded.state.progress.isStrictlyComplete()
+          state.shielded.state.progress.isStrictlyComplete() &&
+          state.dust.state.progress.isStrictlyComplete() &&
+          state.unshielded.syncProgress?.synced === true,
       ),
       Rx.tap(() => logger.info('Sync complete')),
       Rx.timeout({
