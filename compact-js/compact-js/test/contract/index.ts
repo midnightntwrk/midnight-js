@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { Contract as _CounterContract } from './managed/counter/contract/index.cjs';
-import { Contract as _UnshieldedContract } from './managed/unshielded/contract/index.cjs';
+import { Contract as _CounterContract } from './managed/counter/contract';
+import { Contract as _UnshieldedContract } from './managed/unshielded/contract';
 
 type CounterPrivateState = {
   count: number;
