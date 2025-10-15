@@ -124,7 +124,13 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     logger.info(`Your wallet seed is: ${seed} and your address is: ${initialState.address.coinPublicKeyString()}`);
     const shieldedSeed = getShieldedSeed(walletSeed);
     const dustSeed = getDustSeed(walletSeed);
-    return new MidnightWalletProvider(logger, env, wallet, ZswapSecretKeys.fromSeed(shieldedSeed), DustSecretKey.fromSeed(dustSeed));
+    return new MidnightWalletProvider(
+      logger,
+      env,
+      wallet,
+      ZswapSecretKeys.fromSeed(shieldedSeed),
+      DustSecretKey.fromSeed(dustSeed)
+    );
   }
 
   static async withWallet(

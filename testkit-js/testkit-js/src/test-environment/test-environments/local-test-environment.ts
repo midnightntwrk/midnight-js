@@ -57,7 +57,7 @@ export class LocalTestConfiguration implements EnvironmentConfiguration {
     this.networkId = 'undeployed';
     this.indexer = `http://127.0.0.1:${indexer}/api/v3/graphql`;
     this.indexerWS = `ws://127.0.0.1:${indexer}/api/v3/graphql/ws`;
-    this.node = `http://127.0.0.1:${node}`;
+    this.node = `ws://127.0.0.1:${node}`;
     this.proofServer = `http://127.0.0.1:${proofServer}`;
     this.faucet = undefined;
   }

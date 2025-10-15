@@ -233,7 +233,7 @@ export const call = <C extends Contract, ICK extends ImpureCircuitId<C>>(
       //TODO: validate this originalState
       originalState: initialContractState,
       currentPrivateState: 'initialPrivateState' in options ? options.initialPrivateState : undefined,
-      transactionContext: initialTxContext,
+      currentQueryContext: initialTxContext,
       currentZswapLocalState: emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, getNetworkId())),
       costModel: CostModel.initialCostModel(),
     } as CircuitContext<C>,
@@ -241,11 +241,11 @@ export const call = <C extends Contract, ICK extends ImpureCircuitId<C>>(
   );
   return {
     public: {
-      nextContractState: context.transactionContext.state.state,
+      nextContractState: context.currentQueryContext.state.state,
       publicTranscript: proofData.publicTranscript,
       partitionedTranscript: partitionTranscript(
         initialTxContext,
-        context.transactionContext,
+        context.currentQueryContext,
         proofData.publicTranscript
       )
     },

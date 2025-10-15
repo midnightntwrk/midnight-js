@@ -38,16 +38,19 @@ export const getTestEnvironment = (logger: Logger): TestEnvironment => {
     case 'testnet':
     case 'testnet-02':
       env = new Testnet2TestEnvironment(logger);
+      setNetworkId('test');
       break;
     case 'qanet':
       env = new QanetTestEnvironment(logger);
+      setNetworkId('dev');
       break;
     case 'env-var-remote':
       env = new EnvVarRemoteTestEnvironment(logger);
+      setNetworkId(env.getEnvironmentConfiguration().networkId);
       break;
     default:
       env = new LocalTestEnvironment(logger);
+      setNetworkId('undeployed');
   }
-  setNetworkId(env.getEnvironmentConfiguration().networkId);
   return env;
 };
