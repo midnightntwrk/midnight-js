@@ -40,6 +40,7 @@ export class Testnet2TestEnvironment extends RemoteTestEnvironment {
       indexer: 'https://indexer.testnet-02.midnight.network/api/v3/graphql',
       indexerWS: 'wss://indexer.testnet-02.midnight.network/api/v3/graphql/ws',
       node: 'https://rpc.testnet-02.midnight.network',
+      nodeWS: 'wss://rpc.testnet-02.midnight.network',
       faucet: 'https://faucet.testnet-02.midnight.network/api/request-tokens',
       proofServer: this.proofServerContainer?.getUrl()
     };

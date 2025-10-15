@@ -45,6 +45,7 @@ export class LocalTestConfiguration implements EnvironmentConfiguration {
   readonly indexer: string;
   readonly indexerWS: string;
   readonly node: string;
+  readonly nodeWS: string;
   readonly proofServer: string;
   readonly faucet: string | undefined;
 
@@ -57,7 +58,8 @@ export class LocalTestConfiguration implements EnvironmentConfiguration {
     this.networkId = 'undeployed';
     this.indexer = `http://127.0.0.1:${indexer}/api/v3/graphql`;
     this.indexerWS = `ws://127.0.0.1:${indexer}/api/v3/graphql/ws`;
-    this.node = `ws://127.0.0.1:${node}`;
+    this.node = `http://127.0.0.1:${node}`;
+    this.nodeWS = `ws://127.0.0.1:${node}`;
     this.proofServer = `http://127.0.0.1:${proofServer}`;
     this.faucet = undefined;
   }
@@ -106,6 +108,7 @@ export class LocalTestEnvironment extends TestEnvironment {
       indexer: this.environmentConfiguration?.indexer,
       indexerWS: this.environmentConfiguration?.indexerWS,
       node: this.environmentConfiguration?.node,
+      nodeWS: this.environmentConfiguration?.nodeWS,
       faucet: this.environmentConfiguration?.faucet,
       proofServer: this.environmentConfiguration?.proofServer
     };

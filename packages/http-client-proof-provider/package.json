@@ -28,7 +28,6 @@
     "dist/"
   ],
   "dependencies": {
-    "@dao-xyz/borsh": "^5.1.5",
     "@midnight-ntwrk/midnight-js-compact": "workspace:*",
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*",
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*",

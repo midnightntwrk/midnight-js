@@ -29,6 +29,8 @@ export interface EnvironmentConfiguration {
   readonly indexerWS: string;
   /** URL of the blockchain node */
   readonly node: string;
+  /** WebSocket URL for the blockchain node */
+  readonly nodeWS: string;
   /** URL of the proof generation server */
   readonly proofServer: string;
   /** Optional URL for the faucet service to obtain test tokens */

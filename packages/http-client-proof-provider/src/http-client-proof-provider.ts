@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-import { BinaryWriter } from '@dao-xyz/borsh';
 import {
+  createProvingTransactionPayload,
+  type ProvingKeyMaterial,
   Transaction,
   type UnprovenTransaction
 } from '@midnight-ntwrk/ledger-v6';
@@ -39,43 +40,6 @@ const retryOptions = {
 };
 const fetchRetry = fetchBuilder(fetch, retryOptions);
 
-/**
- * Serializes a {@link ZKConfig} using Borsh format.
- *
- * @param zkConfig The configuration to serialize.
- */
-export const serializeZKConfig = <K extends string>(zkConfig?: ZKConfig<K>): Uint8Array => {
-  // Borsh serialized as a one element hash map with 'circuitId' as a key
-  const binaryWriter = new BinaryWriter();
-  if (zkConfig) {
-    binaryWriter.u32(1);
-    binaryWriter.string(zkConfig.circuitId);
-    BinaryWriter.uint8ArrayFixed(zkConfig.proverKey, binaryWriter);
-    BinaryWriter.uint8ArrayFixed(zkConfig.verifierKey, binaryWriter);
-    BinaryWriter.uint8ArrayFixed(zkConfig.zkir, binaryWriter);
-  } else {
-    binaryWriter.u32(0);
-  }
-  return binaryWriter.finalize();
-};
-
-/**
- * Creates a serialized proving server payload from the given transaction and
- * ZK configuration.
- *
- * @param unprovenTx The transaction being proven.
- * @param zkConfig The ZK artifacts needed to prove the transaction. Undefined
- *                 if a deployment transaction is being proven.
- */
-export const serializePayload = <K extends string>(
-  unprovenTx: UnprovenTransaction,
-  zkConfig?: ZKConfig<K>
-): Promise<ArrayBuffer> => {
-  const serializedTx = new Uint8Array(unprovenTx.serialize());
-  const serializedConfig = new Uint8Array(serializeZKConfig(zkConfig));
-  return new Blob([serializedTx, serializedConfig]).arrayBuffer();
-};
-
 const deserializePayload = (arrayBuffer: ArrayBuffer): ProvenTransaction => {
   const bytes = new Uint8Array(arrayBuffer);
   const transaction = Transaction.deserialize('signature', 'proof', 'binding', bytes);
@@ -99,6 +63,22 @@ export const DEFAULT_CONFIG = {
   zkConfig: undefined
 };
 
+const getKeyMaterial = <K extends string>(zkConfig?: ZKConfig<K>): ProvingKeyMaterial => {
+  return {
+    proverKey: zkConfig?.proverKey as Uint8Array,
+    verifierKey: zkConfig?.verifierKey as Uint8Array,
+    ir: zkConfig?.zkir as Uint8Array,
+  };
+}
+
+const serializeTransactionPayload = <K extends string>(unprovenTx: UnprovenTransaction, zkConfig?: ZKConfig<K>): Uint8Array => {
+  const map = new Map();
+  if(zkConfig) {
+    map.set(zkConfig?.circuitId, getKeyMaterial(zkConfig));
+  }
+  return createProvingTransactionPayload(unprovenTx, map);
+}
+
 /**
  * Creates a {@link ProofProvider} by creating a client for a running proof server.
  * Allows for HTTP and HTTPS. The data passed to 'proveTx' are intended to be
@@ -120,14 +100,14 @@ export const httpClientProofProvider = <K extends string>(url: string): ProofPro
       const config = _.defaults(partialProveTxConfig, DEFAULT_CONFIG);
       const response = await fetchRetry(urlObject, {
         method: 'POST',
-        body: await serializePayload(unprovenTx, config.zkConfig),
+        body: new Blob([serializeTransactionPayload(unprovenTx, config.zkConfig).buffer as ArrayBuffer]),
         signal: AbortSignal.timeout(config.timeout)
       });
       // TODO: More sophisticated error handling
       // TODO: Check that response is valid format (has arrayBuffer content-type)
       if (!response.ok) {
         throw new Error(
-          `Failed Proof Server response: url="${response.url}", code="${response.status}", status="${response.statusText}""`
+          `Failed Proof Server response: url="${response.url}", code="${response.status}", status="${response.statusText}"`
         );
       }
       return deserializePayload(await response.arrayBuffer());

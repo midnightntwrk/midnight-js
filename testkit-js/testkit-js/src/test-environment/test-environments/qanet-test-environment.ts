@@ -40,6 +40,7 @@ export class QanetTestEnvironment extends RemoteTestEnvironment {
       indexer: 'https://indexer.qanet.dev.midnight.network/api/v3/graphql',
       indexerWS: 'wss://indexer.qanet.dev.midnight.network/api/v3/graphql/ws',
       node: 'https://rpc.qanet.dev.midnight.network',
+      nodeWS: 'wss://rpc.qanet.dev.midnight.network',
       faucet: 'https://faucet.qanet.dev.midnight.network/api/request-tokens',
       proofServer: this.proofServerContainer?.getUrl()
     };

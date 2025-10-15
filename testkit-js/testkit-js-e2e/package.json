@@ -23,7 +23,7 @@
     "e2e": "docker compose -f ../compose.yml pull && DEBUG='testcontainers:compose' NODE_OPTIONS=--experimental-vm-modules vitest --config vitest.config.ts run",
     "e2e-debug": "docker compose -f ../compose.yml pull && DEBUG='testcontainers:containers' NODE_OPTIONS=--experimental-vm-modules vitest --config vitest.config.ts run",
     "e2e-testnet": "MN_TEST_ENVIRONMENT=testnet-02 DEBUG='testcontainers:compose' NODE_OPTIONS=--experimental-vm-modules vitest --config vitest.config.ts run",
-    "e2e-single": "docker compose -f ../compose.yml pull && DEBUG='testcontainers:compose' NODE_OPTIONS=--experimental-vm-modules vitest --config vitest.single.config.ts run",
+    "e2e-single": "docker compose -f ../compose.yml pull && DEBUG='testcontainers:*' NODE_OPTIONS=--experimental-vm-modules vitest --config vitest.single.config.ts run",
     "compact-copy": "mkdir -p ./dist/contract/ && cp -Rf ./src/contract/managed ./dist/contract",
     "compact": "yarn fetch-compactc && yarn compact-counter && yarn compact-simple && yarn compact-counter-clone && yarn compact-block-time && yarn compact-unshielded",
     "compact-counter": "run-compactc src/contract/counter.compact ./src/contract/managed/counter",

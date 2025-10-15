@@ -633,18 +633,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@dao-xyz/borsh@npm:^5.1.5":
-  version: 5.2.4
-  resolution: "@dao-xyz/borsh@npm:5.2.4"
-  dependencies:
-    "@protobufjs/float": "npm:^1.0.2"
-    "@protobufjs/utf8": "npm:^1.1.0"
-    "@types/benchmark": "npm:^2.1.5"
-    protobufjs: "npm:^7.5.4"
-  checksum: 10/ca8ec437751bd74176dcdabeeecf17018640b1fab81b84de73e9207667b2c07262910ab704a6e76f4696994a18a495e25d61e0d5dd56d75c5d2ff5414ca76124
-  languageName: node
-  linkType: hard
-
 "@effect/build-utils@npm:^0.8.9":
   version: 0.8.9
   resolution: "@effect/build-utils@npm:0.8.9"
@@ -2160,7 +2148,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-http-client-proof-provider@workspace:packages/http-client-proof-provider"
   dependencies:
-    "@dao-xyz/borsh": "npm:^5.1.5"
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*"
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
@@ -3896,13 +3883,6 @@ __metadata:
   dependencies:
     tslib: "npm:^2.4.0"
   checksum: 10/7fe0d239397aebb002ac4855d30c197c06a05ea8df8511350a3a5b1abeefe26167c60eda8a5508337571161e4c4b53d7c1342296123f9607af8705369de9fa7f
-  languageName: node
-  linkType: hard
-
-"@types/benchmark@npm:^2.1.5":
-  version: 2.1.5
-  resolution: "@types/benchmark@npm:2.1.5"
-  checksum: 10/1540d8698620da2f4ef0d93dd6e57e40583bb3d5c735768d94c52bdfc039f474f83213badcc66013f0c1f73edcebec99dc731fa8943fc13b4f0d18ddfdf77bee
   languageName: node
   linkType: hard
 
@@ -11418,7 +11398,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"protobufjs@npm:^7.2.5, protobufjs@npm:^7.3.2, protobufjs@npm:^7.5.3, protobufjs@npm:^7.5.4":
+"protobufjs@npm:^7.2.5, protobufjs@npm:^7.3.2, protobufjs@npm:^7.5.3":
   version: 7.5.4
   resolution: "protobufjs@npm:7.5.4"
   dependencies:

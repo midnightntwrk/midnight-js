@@ -69,8 +69,9 @@ import {
   type DeployTxQueryQuery,
   type InputMaybe,
   type LatestContractTxBlockHeightQueryQuery,
+  type RegularTransaction,
   type Segment,
-  type TransactionResult,
+  type TransactionResult
 } from './gen/graphql';
 import {
   BLOCK_QUERY,
@@ -89,6 +90,13 @@ import {
 
 type IsEmptyObject<T> = keyof T extends never ? true : false;
 type ExcludeEmptyAndNull<T> = T extends null ? never : IsEmptyObject<T> extends true ? never : T;
+
+const isRegularTransaction = (
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  tx: any
+): tx is RegularTransaction & { hash: string; identifiers: string[] } => {
+  return 'identifiers' in tx && 'hash' in tx && Array.isArray(tx.identifiers);
+};
 
 const maybeThrowGraphQLErrors = <A, R extends FetchResult<A> | ApolloQueryResult<A>>(result: R): R => {
   if (result.errors && result.errors.length > 0) {
@@ -162,7 +170,22 @@ const blockOffsetToBlock$ = (apolloClient: ApolloClient<NormalizedCacheObject>) 
         fetchPolicy: 'no-cache'
       })
       .map(maybeThrowGraphQLErrors)
-      .map((fetchResult) => fetchResult.data!.blocks!)
+      .map((fetchResult) => {
+        const blocks = fetchResult.data!.blocks!;
+        return {
+          hash: blocks.hash,
+          height: blocks.height,
+          transactions: blocks.transactions
+            .filter((tx): tx is RegularTransaction & { hash: string; contractActions: { state: string; address: string }[] } =>
+              'identifiers' in tx
+            )
+            .map(tx => ({
+              hash: tx.hash,
+              identifiers: tx.identifiers,
+              contractActions: tx.contractActions
+            }))
+        };
+      })
   );
 
 const transactionIdToTransaction$ =
@@ -595,8 +618,9 @@ const indexerPublicDataProviderInternal = (
 
               return 'deploy' in contract ? contract.deploy.transaction : contract.transaction;
             })
+            .filter(isRegularTransaction)
             .map(
-              (transaction): FinalizedTxData => ({
+              (transaction: RegularTransaction): FinalizedTxData => ({
                 tx: deserializeTransaction(transaction.raw),
                 status: toTxStatus(transaction.transactionResult),
                 txId: transaction.identifiers[
@@ -635,8 +659,9 @@ const indexerPublicDataProviderInternal = (
             .map(maybeThrowErrors)
             .filter((maybeQueryResult) => maybeQueryResult.data.transactions.length !== 0)
             .map((queryResult) => queryResult.data.transactions[0]!)
+            .filter(isRegularTransaction)
             .map(
-              (transaction): FinalizedTxData => ({
+              (transaction: RegularTransaction): FinalizedTxData => ({
                 tx: deserializeTransaction(transaction.raw),
                 status: toTxStatus(transaction.transactionResult),
                 txId,
@@ -664,6 +689,7 @@ const indexerPublicDataProviderInternal = (
     ): Rx.Observable<ContractState> {
       if (config.type === 'txId') {
         const contractStates = transactionIdToTransaction$(apolloClient)(config.txId).pipe(
+          Rx.filter(isRegularTransaction),
           Rx.concatMap(transactionToContractState$(config.txId))
         );
         return (config.inclusive ?? true) ? contractStates : contractStates.pipe(Rx.skip(1));
@@ -681,6 +707,7 @@ const indexerPublicDataProviderInternal = (
       }
       const offset = config.type === 'blockHash' ? { hash: config.blockHash } : { height: config.blockHeight };
       const blocks = waitForBlockToAppear(apolloClient)(offset).pipe(
+        Rx.filter(isRegularTransaction),
         Rx.concatMap(() => blockOffsetToBlock$(apolloClient)(offset))
       );
       const maybeShortenedBlocks =

@@ -31,10 +31,6 @@ export const TX_ID_QUERY = gql(
     transactions(offset: $offset) {
       id
       protocolVersion
-      fees {
-        estimatedFees
-        paidFees
-      }
       raw
       hash
       unshieldedCreatedOutputs {
@@ -55,11 +51,18 @@ export const TX_ID_QUERY = gql(
         author
         timestamp
       }
-      transactionResult {
-        status
-        segments {
-          id
-          success
+      ... on RegularTransaction {
+        identifiers
+        fees {
+          estimatedFees
+          paidFees
+        }
+        transactionResult {
+          status
+          segments {
+            id
+            success
+          }
         }
       }
     }
@@ -74,13 +77,8 @@ export const DEPLOY_TX_QUERY = gql(
         transaction {
           id
           protocolVersion
-          fees {
-            estimatedFees
-            paidFees
-          }
 	        raw
           hash
-          identifiers
           contractActions {
             address
           }
@@ -89,13 +87,6 @@ export const DEPLOY_TX_QUERY = gql(
             hash
             author
             timestamp
-          }
-          transactionResult {
-            status
-            segments {
-              id
-              success
-            }
           }
           unshieldedCreatedOutputs {
             owner
@@ -108,6 +99,20 @@ export const DEPLOY_TX_QUERY = gql(
             intentHash
             tokenType
             value
+          }
+          ... on RegularTransaction {
+            identifiers
+            fees {
+              estimatedFees
+              paidFees
+            }
+            transactionResult {
+              status
+              segments {
+                id
+                success
+              }
+            }
           }
         }
       }
@@ -115,13 +120,8 @@ export const DEPLOY_TX_QUERY = gql(
         transaction {
           id
           protocolVersion
-          fees {
-            estimatedFees
-            paidFees
-          }
 	        raw
           hash
-          identifiers
           contractActions {
             address
           }
@@ -130,13 +130,6 @@ export const DEPLOY_TX_QUERY = gql(
             hash
             author
             timestamp
-          }
-          transactionResult {
-            status
-            segments {
-              id
-              success
-            }
           }
           unshieldedCreatedOutputs {
             owner
@@ -149,6 +142,20 @@ export const DEPLOY_TX_QUERY = gql(
             intentHash
             tokenType
             value
+          }
+          ... on RegularTransaction {
+            identifiers
+            fees {
+              estimatedFees
+              paidFees
+            }
+            transactionResult {
+              status
+              segments {
+                id
+                success
+              }
+            }
           }
         }
       }
@@ -157,13 +164,8 @@ export const DEPLOY_TX_QUERY = gql(
           transaction {
             id
             protocolVersion
-            fees {
-              estimatedFees
-              paidFees
-            }
 	          raw
             hash
-            identifiers
             contractActions {
               address
             }
@@ -172,13 +174,6 @@ export const DEPLOY_TX_QUERY = gql(
               hash
               author
               timestamp
-            }
-            transactionResult {
-              status
-              segments {
-                id
-                success
-              }
             }
             unshieldedCreatedOutputs {
               owner
@@ -191,6 +186,20 @@ export const DEPLOY_TX_QUERY = gql(
               intentHash
               tokenType
               value
+            }
+            ... on RegularTransaction {
+              identifiers
+              fees {
+                estimatedFees
+                paidFees
+              }
+              transactionResult {
+                status
+                segments {
+                  id
+                  success
+                }
+              }
             }
           }
         }
@@ -245,10 +254,12 @@ export const TXS_FROM_BLOCK_SUB = gql(
       height,
       transactions {
         hash
-        identifiers
         contractActions {
           state
           address
+        }
+        ... on RegularTransaction {
+          identifiers
         }
       }
     }

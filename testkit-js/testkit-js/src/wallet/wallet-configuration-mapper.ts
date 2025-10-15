@@ -33,7 +33,7 @@ export function mapEnvironmentToConfiguration(
       indexerWsUrl: env.indexerWS,
     },
     provingServerUrl: new URL(env.proofServer),
-    relayURL: new URL(env.node),
+    relayURL: new URL(env.nodeWS),
     networkId: env.walletNetworkId,
   };
 }

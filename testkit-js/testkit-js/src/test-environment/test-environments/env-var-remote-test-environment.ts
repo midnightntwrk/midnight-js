@@ -21,6 +21,7 @@ import {
   MN_TEST_INDEXER_WS,
   MN_TEST_NETWORK_ID,
   MN_TEST_NODE,
+  MN_TEST_NODE_WS,
   MN_TEST_WALLET_NETWORK_ID
 } from '@/env-vars';
 import { MissingEnvironmentVariable } from '@/errors';
@@ -31,7 +32,7 @@ import { RemoteTestEnvironment } from './remote-test-environment';
 /**
  * List of required environment variables that must be set for this test environment
  */
-const MN_REQUIRED_ENVIRONMENT_VARIABLES = ['MN_TEST_INDEXER', 'MN_TEST_INDEXER_WS', 'MN_TEST_NODE', 'MN_TEST_NETWORK_ID'];
+const MN_REQUIRED_ENVIRONMENT_VARIABLES = ['MN_TEST_INDEXER', 'MN_TEST_INDEXER_WS', 'MN_TEST_NODE', 'MN_TEST_NODE_WS', 'MN_TEST_NETWORK_ID'];
 
 /**
  * Test environment that configures services using environment variables.
@@ -63,6 +64,7 @@ export class EnvVarRemoteTestEnvironment extends RemoteTestEnvironment {
       indexer: MN_TEST_INDEXER as string,
       indexerWS: MN_TEST_INDEXER_WS as string,
       node: MN_TEST_NODE as string,
+      nodeWS: MN_TEST_NODE_WS as string,
       faucet: MN_TEST_FAUCET,
       proofServer: this.proofServerContainer?.getUrl()
     };
