@@ -53,5 +53,5 @@ export interface WalletProvider {
    * @param {FinalizedTransaction} tx - The transaction object that needs to be finalized.
    * @return {Promise<FinalizedTransaction>} A promise that resolves to the finalized transaction object.
    */
-  finalizeTx(tx: FinalizedTransaction): Promise<FinalizedTransaction>;
+  finalizeTx(tx: ProvingRecipe<FinalizedTransaction>): Promise<FinalizedTransaction>;
 }

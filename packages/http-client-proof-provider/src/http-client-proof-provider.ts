@@ -76,12 +76,12 @@ export const serializePayload = <K extends string>(
   return new Blob([serializedTx, serializedConfig]).arrayBuffer();
 };
 
-
 const deserializePayload = (arrayBuffer: ArrayBuffer): ProvenTransaction => {
   const bytes = new Uint8Array(arrayBuffer);
-  const transaction = Transaction.deserialize('signature', 'proof', 'pre-binding', bytes);
+  const transaction = Transaction.deserialize('signature', 'proof', 'binding', bytes);
   return transaction as ProvenTransaction;
 };
+
 const PROVE_TX_PATH = '/prove-tx';
 
 /**

@@ -290,11 +290,18 @@ export type UnshieldedBalance = {
 export type UnshieldedBalances = UnshieldedBalance[];
 
 export const TRANSACTION_TO_PROVE = 'TransactionToProve';
+export const BALANCE_TRANSACTION_TO_PROVE = 'BalanceTransactionToProve';
 export const NOTHING_TO_PROVE = 'NothingToProve';
 
 export type TransactionToProve = {
   readonly type: typeof TRANSACTION_TO_PROVE;
   readonly transaction: UnprovenTransaction;
+};
+
+export type BalanceTransactionToProve<TTransaction> = {
+  readonly type: typeof BALANCE_TRANSACTION_TO_PROVE;
+  readonly transactionToProve: UnprovenTransaction;
+  readonly transactionToBalance: TTransaction;
 };
 
 export type NothingToProve<TTransaction> = {
@@ -304,4 +311,5 @@ export type NothingToProve<TTransaction> = {
 
 export type ProvingRecipe<TTransaction> =
   | TransactionToProve
+  | BalanceTransactionToProve<TTransaction>
   | NothingToProve<TTransaction>;

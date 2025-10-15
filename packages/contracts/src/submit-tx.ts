@@ -14,13 +14,11 @@
  */
 
 import type { ShieldedCoinInfo } from '@midnight-ntwrk/compact-runtime';
-import { type FinalizedTransaction, type UnprovenTransaction } from '@midnight-ntwrk/ledger-v6';
+import { type UnprovenTransaction } from '@midnight-ntwrk/ledger-v6';
 import {
   type Contract,
   type FinalizedTxData,
   type ImpureCircuitId,
-  type NothingToProve,
-  TRANSACTION_TO_PROVE,
   type TransactionToProve
 } from '@midnight-ntwrk/midnight-js-types';
 
@@ -73,13 +71,9 @@ export const submitTx = async <C extends Contract, ICK extends ImpureCircuitId<C
     ? { zkConfig: await providers.zkConfigProvider.get(options.circuitId) }
     : undefined;
   const recipe = await providers.walletProvider.balanceTx(options.unprovenTx);
-  let finalizedTx: FinalizedTransaction;
-  if (recipe.type === TRANSACTION_TO_PROVE) {
-    finalizedTx = await providers.proofProvider.proveTx((recipe as TransactionToProve).transaction , proveTxConfig);
-  } else {
-    finalizedTx = (recipe as NothingToProve<FinalizedTransaction>).transaction;
-  }
-  const finallyFinalizedTx = await providers.walletProvider.finalizeTx(finalizedTx);
-  const txId = await providers.midnightProvider.submitTx(finallyFinalizedTx);
+  // TODO: we can switch to 'await providers.walletProvider.finalizeTx(recipe)' once it supports ZKConfig
+  // TODO: unsafe cast just for temporal workaround
+  const finalizedTx = await providers.proofProvider.proveTx((recipe as TransactionToProve).transaction , proveTxConfig);
+  const txId = await providers.midnightProvider.submitTx(finalizedTx);
   return await providers.publicDataProvider.watchForTxData(txId);
 };

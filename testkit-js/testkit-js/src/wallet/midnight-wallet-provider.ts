@@ -23,7 +23,6 @@ import {
 } from '@midnight-ntwrk/ledger-v6';
 import {
   type MidnightProvider,
-  type ProvenTransaction,
   type ProvingRecipe,
   type WalletProvider
 } from '@midnight-ntwrk/midnight-js-types';
@@ -63,37 +62,11 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
   }
 
   async balanceTx(tx: UnprovenTransaction): Promise<ProvingRecipe<UnprovenTransaction | FinalizedTransaction>> {
-    const recipe = await this.wallet.balanceTransaction(this.zswapSecretKeys, tx);
-
-    switch (recipe.type) {
-      case 'TransactionToProve':
-        return recipe;
-
-      case 'NothingToProve':
-        this.logger.warn('Transaction already finalized during balancing');
-        return recipe;
-
-      default:
-        throw new Error(`Unsupported recipe type: ${recipe.type}`);
-    }
+    return this.wallet.balanceTransaction(this.zswapSecretKeys, tx);
   }
 
-  async finalizeTx(provenTx: ProvenTransaction): Promise<FinalizedTransaction> {
-    if (this.isFinalizedTransaction(provenTx)) {
-      this.logger.debug('Transaction already finalized, skipping finalization step');
-      return provenTx;
-    }
-
-    const recipe = {
-      type: 'NothingToProve' as const,
-      transaction: provenTx as FinalizedTransaction
-    };
-
+  async finalizeTx(recipe: ProvingRecipe<FinalizedTransaction>): Promise<FinalizedTransaction> {
     return this.wallet.finalizeTransaction(recipe);
-  }
-
-  private isFinalizedTransaction(tx: ProvenTransaction | FinalizedTransaction): tx is FinalizedTransaction {
-    return 'txHash' in tx;
   }
 
   submitTx(tx: FinalizedTransaction): Promise<string> {
