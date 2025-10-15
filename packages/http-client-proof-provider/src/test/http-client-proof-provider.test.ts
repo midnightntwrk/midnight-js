@@ -16,7 +16,7 @@
 import type { BinaryLike } from 'crypto';
 import crypto from 'crypto';
 
-import { httpClientProofProvider, serializePayload, serializeZKConfig } from '../http-client-proof-provider';
+import { httpClientProofProvider, serializeTransactionPayload } from '../http-client-proof-provider';
 import { getValidUnprovenTx, getValidZKConfig } from './commons';
 
 const createHash = (binaryLike: BinaryLike): string => {
@@ -28,15 +28,11 @@ describe('Http Proof Server Proof Provider', () => {
     expect(() => httpClientProofProvider('ws://localhost:8080')).toThrow(/Invalid protocol scheme: 'ws:'/);
   });
 
-  test("'serializeData' encodes empty key/zkir sets correctly", async () => {
-    expect(createHash(serializeZKConfig())).toEqual(createHash(Buffer.alloc(4, 0)));
-  });
-
   test("'serializePayload' produces deterministic output", async () => {
     const zkConfig = await getValidZKConfig();
     const unprovenTx = await getValidUnprovenTx();
-    const payload1 = await serializePayload(unprovenTx, zkConfig);
-    const payload2 = await serializePayload(unprovenTx, zkConfig);
+    const payload1 = serializeTransactionPayload(unprovenTx, zkConfig);
+    const payload2 = serializeTransactionPayload(unprovenTx, zkConfig);
     expect(createHash(Buffer.from(payload1))).toEqual(createHash(Buffer.from(payload2)));
     expect(payload1.byteLength).toBeGreaterThan(0);
   });
@@ -45,7 +41,7 @@ describe('Http Proof Server Proof Provider', () => {
     const zkConfig = await getValidZKConfig();
     const unprovenTx = await getValidUnprovenTx();
 
-    const result = await serializePayload(unprovenTx, zkConfig);
+    const result = serializeTransactionPayload(unprovenTx, zkConfig);
 
     expect(result).toBeInstanceOf(ArrayBuffer);
     expect(result.byteLength).toBeGreaterThan(0);
@@ -54,7 +50,7 @@ describe('Http Proof Server Proof Provider', () => {
   test('handles undefined zkConfig correctly', async () => {
     const unprovenTx = await getValidUnprovenTx();
 
-    const result = await serializePayload(unprovenTx, undefined);
+    const result = serializeTransactionPayload(unprovenTx, undefined);
 
     expect(result).toBeInstanceOf(ArrayBuffer);
     expect(result.byteLength).toBeGreaterThan(0);

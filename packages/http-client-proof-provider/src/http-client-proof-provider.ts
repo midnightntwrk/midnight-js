@@ -42,7 +42,7 @@ const fetchRetry = fetchBuilder(fetch, retryOptions);
 
 const deserializePayload = (arrayBuffer: ArrayBuffer): ProvenTransaction => {
   const bytes = new Uint8Array(arrayBuffer);
-  const transaction = Transaction.deserialize('signature', 'proof', 'binding', bytes);
+  const transaction = Transaction.deserialize('signature', 'proof', 'pre-binding', bytes);
   return transaction as ProvenTransaction;
 };
 
@@ -71,7 +71,7 @@ const getKeyMaterial = <K extends string>(zkConfig?: ZKConfig<K>): ProvingKeyMat
   };
 }
 
-const serializeTransactionPayload = <K extends string>(unprovenTx: UnprovenTransaction, zkConfig?: ZKConfig<K>): Uint8Array => {
+export const serializeTransactionPayload = <K extends string>(unprovenTx: UnprovenTransaction, zkConfig?: ZKConfig<K>): Uint8Array => {
   const map = new Map();
   if(zkConfig) {
     map.set(zkConfig?.circuitId, getKeyMaterial(zkConfig));
@@ -98,9 +98,10 @@ export const httpClientProofProvider = <K extends string>(url: string): ProofPro
       partialProveTxConfig?: ProveTxConfig<K>
     ): Promise<ProvenTransaction> {
       const config = _.defaults(partialProveTxConfig, DEFAULT_CONFIG);
+      const requestBody = serializeTransactionPayload(unprovenTx, config.zkConfig).buffer as ArrayBuffer;
       const response = await fetchRetry(urlObject, {
         method: 'POST',
-        body: new Blob([serializeTransactionPayload(unprovenTx, config.zkConfig).buffer as ArrayBuffer]),
+        body: requestBody,
         signal: AbortSignal.timeout(config.timeout)
       });
       // TODO: More sophisticated error handling

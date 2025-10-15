@@ -27,12 +27,14 @@ import {
   type Binding,
   type CoinPublicKey,
   type CoinSecretKey,
+  type DustSecretKey,
   type EncPublicKey,
   type EncryptionSecretKey,
   type PartitionedTranscript,
   type Proof,
   sampleCoinPublicKey,
   sampleContractAddress,
+  sampleDustSecretKey,
   sampleEncryptionPublicKey,
   type ShieldedCoinInfo,
   type SignatureEnabled,
@@ -69,6 +71,8 @@ export const createMockCoinPublicKey = () => sampleCoinPublicKey();
 export const createMockPrivateStateId = (): PrivateStateId => 'test-private-state-id' as PrivateStateId;
 
 export const createMockEncryptionPublicKey = (): EncPublicKey => sampleEncryptionPublicKey();
+
+export const createMockDustSecretKey = (): DustSecretKey => sampleDustSecretKey();
 
 export const createMockZswapSecretKeys = (): ZswapSecretKeys => {
   return {
@@ -182,6 +186,7 @@ export const createMockProviders = (): ContractProviders<Contract, CoinPublicKey
   },
   walletProvider: {
     zswapSecretKeys: createMockZswapSecretKeys(),
+    dustSecretKey: createMockDustSecretKey(),
     balanceTx: vi.fn(),
     finalizeTx: vi.fn()
   },

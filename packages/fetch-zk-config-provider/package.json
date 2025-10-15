@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
-    "cross-fetch": "^4.0.0"
+    "cross-fetch": "^4.1.0"
   },
   "files": [
     "dist/"

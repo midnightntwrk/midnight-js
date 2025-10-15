@@ -55,7 +55,8 @@ export {
   UnshieldedUtxos,
   VerifierKey,
   ZKConfig,
-  ZKIR} from './midnight-types';
+  ZKIR
+} from './midnight-types';
 export * from './private-state-provider';
 export * from './proof-provider';
 export * from './providers';

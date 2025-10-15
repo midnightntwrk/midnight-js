@@ -33,7 +33,7 @@
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
     "@midnight-ntwrk/midnight-js-utils": "workspace:*",
-    "cross-fetch": "^4.0.0",
+    "cross-fetch": "^4.1.0",
     "fetch-retry": "^6.0.0",
     "lodash": "^4.17.21"
   },

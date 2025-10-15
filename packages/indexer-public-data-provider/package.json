@@ -29,7 +29,7 @@
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
     "@midnight-ntwrk/midnight-js-utils": "workspace:*",
     "buffer": "^6.0.3",
-    "cross-fetch": "^4.0.0",
+    "cross-fetch": "^4.1.0",
     "graphql": "^16.8.0",
     "graphql-ws": "^6.0.0",
     "isomorphic-ws": "^5.0.0",

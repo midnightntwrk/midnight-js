@@ -41,14 +41,14 @@ export const getInitialUnshieldedState = async (wallet: UnshieldedWallet) => {
   return Rx.firstValueFrom(wallet.state());
 };
 
-export const syncWallet = (wallet: WalletFacade, throttleTime = 1_000, timeout = 60_000) => {
+export const syncWallet = (wallet: WalletFacade, throttleTime = 2_000, timeout = 90_000) => {
   logger.info('Syncing wallet...');
 
   return Rx.firstValueFrom(
     wallet.state().pipe(
       Rx.tap((state) => {
         logger.info(
-          `Raw wallet state emission: { unshielded: address=${state.unshielded.address}, synced=${state.unshielded.syncProgress?.synced}, shielded: address=${state.shielded.address.coinPublicKeyString()}, synced=${state.shielded.state.progress.isStrictlyComplete()}}`
+          `Raw wallet synced state emission: { shielded=${state.shielded.state.progress.isStrictlyComplete()}, unshielded=${state.unshielded.syncProgress?.synced}, dust=${state.dust.state.progress.isStrictlyComplete()}}`
         );
       }),
       Rx.throttleTime(throttleTime),

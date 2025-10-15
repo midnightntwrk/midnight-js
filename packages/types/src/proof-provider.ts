@@ -14,7 +14,7 @@
  */
 
 import {
-  type Binding,
+  type PreBinding,
   type Proof,
   type SignatureEnabled,
   type Transaction,
@@ -23,7 +23,7 @@ import {
 
 import type { ZKConfig } from './midnight-types';
 
-export type ProvenTransaction = Transaction<SignatureEnabled, Proof, Binding>;
+export type ProvenTransaction = Transaction<SignatureEnabled, Proof, PreBinding>;
 
 /**
  * The configuration for the proof request to the proof provider.
