@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { DustParameters, DustSecretKey, LedgerParameters, ZswapSecretKeys } from '@midnight-ntwrk/ledger-v6';
+import { DustSecretKey, LedgerParameters, ZswapSecretKeys } from '@midnight-ntwrk/ledger-v6';
 import { type NetworkId } from '@midnight-ntwrk/wallet-sdk-abstractions';
 import { DustWallet } from '@midnight-ntwrk/wallet-sdk-dust-wallet';
 import { WalletFacade } from '@midnight-ntwrk/wallet-sdk-facade';
@@ -42,10 +42,8 @@ BigInt.prototype.toJSON = function () { return Number(this) }
 
 export const DustOptions = {
   ledgerParams: LedgerParameters.initialParameters(),
-  costParametersAdditionalFeeOverhead: 500_000_000_000_000_000_000n,
-  nightDustRatio: 5_000_000_000n,
-  generationDecayDate: 8_267n,
-  dustGracePeriodSeconds: 3n * 60n * 60n
+  additionalFeeOverhead: 500_000_000_000_000_000_000n,
+  feeBlocksMargin: 5
 };
 
 export class WalletBuilder {
@@ -77,12 +75,13 @@ export class WalletBuilder {
       ...config,
       costParameters: {
         ledgerParams: dustOptions.ledgerParams,
-        additionalFeeOverhead: dustOptions.costParametersAdditionalFeeOverhead,
+        additionalFeeOverhead: dustOptions.additionalFeeOverhead,
+        feeBlocksMargin: dustOptions.feeBlocksMargin,
       },
     };
     logger.info(`Building dust wallet with params: ${JSON.stringify(dustConfig)}`);
     const Dust = DustWallet(dustConfig);
-    const dustParameters = new DustParameters(dustOptions.nightDustRatio, dustOptions.generationDecayDate, dustOptions.dustGracePeriodSeconds);
+    const dustParameters = LedgerParameters.initialParameters().dust;
     return Dust.startWithSeed(seed, dustParameters, networkId);
   }
 

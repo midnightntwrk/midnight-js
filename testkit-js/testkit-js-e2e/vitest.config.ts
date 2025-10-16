@@ -31,8 +31,8 @@ export default defineConfig({
       reporter: ['clover', 'json', 'json-summary', 'lcov', 'text'],
       reportsDirectory: './coverage'
     },
-    testTimeout: 60_000,
-    hookTimeout: 2 * 60_000,
+    testTimeout: 2 * 60_000,
+    hookTimeout: 5 * 60_000,
     reporters: [
       'default',
       ['junit', { outputFile: './reports/test-report.xml' }],

@@ -50,11 +50,9 @@ import {
   Transaction,
   type VerifierKey
 } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined } from '@midnight-ntwrk/midnight-js-utils';
+import { assertDefined, ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
 
 import { zswapStateToOffer } from './zswap-utils';
-
-const ttl = () => new Date(Date.now() + 60 * 60 * 1000);
 
 export const toLedgerContractState = (contractState: ContractState): LedgerContractState =>
   LedgerContractState.deserialize(contractState.serialize());
@@ -119,7 +117,7 @@ export const createUnprovenLedgerDeployTx = (
       getNetworkId(),
       zswapStateToOffer(zswapLocalState, encryptionPublicKey),
       undefined,
-      Intent.new(ttl()).addDeploy(contractDeploy)
+      Intent.new(ttlOneHour()).addDeploy(contractDeploy)
     )
   ];
 };
@@ -145,7 +143,7 @@ export const createUnprovenLedgerCallTx = (
       zswapChainState
     }),
     undefined,
-    Intent.new(ttl()).addCall(
+    Intent.new(ttlOneHour()).addCall(
       new ContractCallPrototype(
         contractAddress,
         circuitId,
@@ -189,7 +187,7 @@ export const unprovenTxFromContractUpdates = (
     getNetworkId(),
     undefined,
     undefined,
-    Intent.new(ttl()).addMaintenanceUpdate(signedMaintenanceUpdate)
+    Intent.new(ttlOneHour()).addMaintenanceUpdate(signedMaintenanceUpdate)
   );
 };
 

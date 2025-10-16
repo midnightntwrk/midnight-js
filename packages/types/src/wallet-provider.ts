@@ -44,8 +44,9 @@ export interface WalletProvider {
   /**
    * Balances a transaction
    * @param tx The transaction to balance.
+   * @param ttl
    */
-  balanceTx(tx: UnprovenTransaction): Promise<ProvingRecipe<UnprovenTransaction | FinalizedTransaction>>;
+  balanceTx(tx: UnprovenTransaction, ttl?: Date): Promise<ProvingRecipe<UnprovenTransaction | FinalizedTransaction>>;
 
   /**
    * Finalizes the given transaction to complete its processing.
