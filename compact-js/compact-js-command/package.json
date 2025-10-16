@@ -16,11 +16,13 @@
     "@effect/experimental": "^0.56.0",
     "@effect/platform": "^0.92.1",
     "@effect/platform-node": "^0.98.3",
-    "@effect/platform-node-shared": "^0.51.4",
+    "@effect/platform-node-shared": "^0.51.5",
+    "@effect/printer": "^0.46.0",
     "@effect/printer-ansi": "^0.46.0",
     "@effect/rpc": "^0.71.0",
     "@effect/sql": "^0.46.0",
     "@effect/typeclass": "^0.37.0",
+    "@effect/workflow": "^0.11.3",
     "@midnight-ntwrk/compact-js": "^2.3.0",
     "@midnight-ntwrk/compact-js-node": "^2.3.0",
     "@midnight-ntwrk/compact-runtime": "0.11.0-rc.0",
@@ -31,7 +33,7 @@
     "ts-node": "^10.9.2"
   },
   "devDependencies": {
-    "@effect/vitest": "^0.24.1",
+    "@effect/vitest": "^0.26.0",
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
   },
   "repository": {
