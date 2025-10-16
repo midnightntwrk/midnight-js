@@ -42,7 +42,7 @@ BigInt.prototype.toJSON = function () { return Number(this) }
 
 export const DustOptions = {
   ledgerParams: LedgerParameters.initialParameters(),
-  costParametersAdditionalFeeOverhead: 300_000_000_000_000n,
+  costParametersAdditionalFeeOverhead: 500_000_000_000_000_000_000n,
   nightDustRatio: 5_000_000_000n,
   generationDecayDate: 8_267n,
   dustGracePeriodSeconds: 3n * 60n * 60n

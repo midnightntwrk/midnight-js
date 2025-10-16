@@ -48,7 +48,7 @@ export const syncWallet = (wallet: WalletFacade, throttleTime = 2_000, timeout =
     wallet.state().pipe(
       Rx.tap((state) => {
         logger.info(
-          `Raw wallet synced state emission: { shielded=${state.shielded.state.progress.isStrictlyComplete()}, unshielded=${state.unshielded.syncProgress?.synced}, dust=${state.dust.state.progress.isStrictlyComplete()}}`
+          `Wallet synced state emission: { shielded=${state.shielded.state.progress.isStrictlyComplete()}, unshielded=${state.unshielded.syncProgress?.synced}, dust=${state.dust.state.progress.isStrictlyComplete()} }`
         );
       }),
       Rx.throttleTime(throttleTime),
@@ -59,7 +59,7 @@ export const syncWallet = (wallet: WalletFacade, throttleTime = 2_000, timeout =
             state.unshielded.syncProgress?.synced === true;
 
         logger.info(
-          `Sync progress: { unshieldedSyncProgress: ${state.unshielded.syncProgress?.synced}, applyGap: ${state.unshielded.syncProgress?.applyGap}, shieldedProgress: ${state.shielded.state.progress?.highestIndex}, isComplete: ${state.shielded.state.progress.isStrictlyComplete()}, meetsCondition: ${isSynced}}`
+          `Wallet synced state emission (synced=${isSynced}): { shielded=${state.shielded.state.progress.isStrictlyComplete()}, unshielded=${state.unshielded.syncProgress?.synced}, dust=${state.dust.state.progress.isStrictlyComplete()} }`
         );
       }),
       Rx.filter(
@@ -69,6 +69,13 @@ export const syncWallet = (wallet: WalletFacade, throttleTime = 2_000, timeout =
           state.unshielded.syncProgress?.synced === true,
       ),
       Rx.tap(() => logger.info('Sync complete')),
+      Rx.tap((state) => {
+        const shieldedBalances = state.shielded.balances || {};
+        const unshieldedBalances = state.unshielded.balances || {};
+        const dustBalances = state.dust.walletBalance(new Date(Date.now())) || {};
+
+        logger.info(`Wallet balances after sync - Shielded: ${JSON.stringify(shieldedBalances)}, Unshielded: ${JSON.stringify(Object.fromEntries(unshieldedBalances))}, Dust: ${dustBalances}`);
+      }),
       Rx.timeout({
         each: timeout,
         with: () => Rx.throwError(() => new Error(`Wallet sync timeout after ${timeout}ms`))
