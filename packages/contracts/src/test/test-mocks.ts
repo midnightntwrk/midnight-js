@@ -25,6 +25,7 @@ import {
 import {
   type AlignedValue,
   type Binding,
+  type Bindingish,
   type CoinPublicKey,
   type CoinSecretKey,
   type DustSecretKey,
@@ -32,12 +33,14 @@ import {
   type EncryptionSecretKey,
   type PartitionedTranscript,
   type Proof,
+  type Proofish,
   sampleCoinPublicKey,
   sampleContractAddress,
   sampleDustSecretKey,
   sampleEncryptionPublicKey,
   type ShieldedCoinInfo,
   type SignatureEnabled,
+  type Signaturish,
   type TokenType,
   type Transaction,
   type UnprovenTransaction,
@@ -143,6 +146,28 @@ export const createMockUnprovenTx = (): UnprovenTransaction => ({
   eraseSignatures: vi.fn(),
   cost: vi.fn(),
   feesWithMargin: vi.fn()
+});
+
+export const createMockProvenTx = (): Transaction<Signaturish, Proofish, Bindingish> => ({
+  eraseProofs: vi.fn(),
+  identifiers: vi.fn(),
+  merge: vi.fn(),
+  serialize: vi.fn(),
+  imbalances: vi.fn(),
+  bind: vi.fn().mockReturnValue(new Uint8Array(0)),
+  wellFormed: vi.fn(),
+  transactionHash: vi.fn(),
+  fees: vi.fn(),
+  intents: undefined,
+  fallibleOffer: undefined,
+  guaranteedOffer: undefined,
+  bindingRandomness: 0n,
+  rewards: undefined,
+  eraseSignatures: vi.fn(),
+  cost: vi.fn(),
+  feesWithMargin: vi.fn(),
+  mockProve: vi.fn(),
+  prove: vi.fn()
 });
 
 export const createMockCoinInfo = (): ShieldedCoinInfo => ({

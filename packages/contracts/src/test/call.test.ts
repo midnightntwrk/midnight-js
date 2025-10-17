@@ -46,7 +46,7 @@ describe('call', () => {
     mockCircuit = vi.fn().mockReturnValue({
       result: 'test-result',
       context: {
-        transactionContext: {
+        currentQueryContext: {
           block: {
             ownAddress: '',
             comIndices: {} as Map<string, number>,

@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import * as compactRuntime from '@midnight-ntwrk/compact-runtime';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { callContractConstructor, type ContractConstructorOptionsWithPrivateState } from '../call-constructor';
@@ -24,11 +23,19 @@ import {
   createMockZswapLocalState
 } from './test-mocks';
 
-// TODO: add test: add some negative tests
+vi.mock('@midnight-ntwrk/compact-runtime', async (importOriginal) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const actual = await importOriginal() as any;
+  return {
+    ...actual,
+    decodeZswapLocalState: vi.fn()
+  };
+});
 
 describe('callContractConstructor', () => {
-  beforeEach(() => {
-    vi.spyOn(compactRuntime, 'decodeZswapLocalState').mockReturnValue(createMockZswapLocalState());
+  beforeEach(async () => {
+    const { decodeZswapLocalState } = await import('@midnight-ntwrk/compact-runtime');
+    vi.mocked(decodeZswapLocalState).mockReturnValue(createMockZswapLocalState());
   });
 
   it('should call contract constructor without arguments', () => {

@@ -95,6 +95,7 @@ const isRegularTransaction = (
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tx: any
 ): tx is RegularTransaction & { hash: string; identifiers: string[] } => {
+  console.log(`isRegularTransaction check: ${JSON.stringify(tx)}`);
   return 'identifiers' in tx && 'hash' in tx && Array.isArray(tx.identifiers);
 };
 
