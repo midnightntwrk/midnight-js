@@ -1159,23 +1159,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/platform-node-shared@npm:^0.51.3":
-  version: 0.51.4
-  resolution: "@effect/platform-node-shared@npm:0.51.4"
-  dependencies:
-    "@parcel/watcher": "npm:^2.5.1"
-    multipasta: "npm:^0.2.7"
-    ws: "npm:^8.18.2"
-  peerDependencies:
-    "@effect/cluster": ^0.50.3
-    "@effect/platform": ^0.92.1
-    "@effect/rpc": ^0.71.0
-    "@effect/sql": ^0.46.0
-    effect: ^3.18.2
-  checksum: 10/7037576e9341d484e7cfd69a92cc9538e6168ad988c8bce06ce012516013c82a66889c328c05e271a48ff8c05f72e91ce7e77840aaaa327bdc0078b5b938da77
-  languageName: node
-  linkType: hard
-
 "@effect/platform-node-shared@npm:^0.51.5":
   version: 0.51.5
   resolution: "@effect/platform-node-shared@npm:0.51.5"
@@ -1193,21 +1176,38 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/platform-node@npm:^0.98.3":
-  version: 0.98.3
-  resolution: "@effect/platform-node@npm:0.98.3"
+"@effect/platform-node-shared@npm:^0.51.6":
+  version: 0.51.6
+  resolution: "@effect/platform-node-shared@npm:0.51.6"
   dependencies:
-    "@effect/platform-node-shared": "npm:^0.51.3"
+    "@parcel/watcher": "npm:^2.5.1"
+    multipasta: "npm:^0.2.7"
+    ws: "npm:^8.18.2"
+  peerDependencies:
+    "@effect/cluster": ^0.50.6
+    "@effect/platform": ^0.92.1
+    "@effect/rpc": ^0.71.1
+    "@effect/sql": ^0.46.0
+    effect: ^3.18.4
+  checksum: 10/2d65227136fcf12dd949eb1054b47bbb614503c11caf0e5560f23fedc73a1985aa9151d19b5c7c7be2f31e9f911a3dc0f70e2e4ac31e37aa3dd7c5c124ae2eff
+  languageName: node
+  linkType: hard
+
+"@effect/platform-node@npm:^0.98.3":
+  version: 0.98.4
+  resolution: "@effect/platform-node@npm:0.98.4"
+  dependencies:
+    "@effect/platform-node-shared": "npm:^0.51.6"
     mime: "npm:^3.0.0"
     undici: "npm:^7.10.0"
     ws: "npm:^8.18.2"
   peerDependencies:
-    "@effect/cluster": ^0.50.3
+    "@effect/cluster": ^0.50.6
     "@effect/platform": ^0.92.1
-    "@effect/rpc": ^0.71.0
+    "@effect/rpc": ^0.71.1
     "@effect/sql": ^0.46.0
-    effect: ^3.18.1
-  checksum: 10/7c8fa46ec65a2e95710c8db016702142b2f4a97c8dbbbd855a24cd1d71519db8d33fa20a71af3323aff6843592c9f631665b22c1d8da4b4dfaa2c5af88a30d9b
+    effect: ^3.18.4
+  checksum: 10/b28c38617d5e4c1072a7f0e835b6ae6b91fcd3949bbe12a271f7f4c53b18ea5dfe95e74aa68948b7cc820dbaffeb83372021401de41bbd5ecef1d2b9491bf90a
   languageName: node
   linkType: hard
 
