@@ -27,7 +27,7 @@ import { Effect, Layer, String } from 'effect';
 import { ensureRemovePath } from './cleanup.js';
 
 const BASE_PATH = join(import.meta.dirname);
-const DECLARATION_FILEPATH = join(BASE_PATH, 'contract', 'index.d.cts');
+const DECLARATION_FILEPATH = join(BASE_PATH, 'contract', 'index.d.ts');
 const testLayer: Layer.Layer<
   CompiledContractReflection.CompiledContractReflection
   | NodeContext.NodeContext,

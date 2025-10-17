@@ -25,7 +25,7 @@ import * as NetworkIdMoniker from '@midnight-ntwrk/platform-js/effect/NetworkIdM
 import { Context,Effect, Layer } from 'effect';
 import { describe, expect, it } from 'tstyche';
 
-import { Contract as Contract_ } from '../../contract/managed/counter/contract/index.cjs';
+import { Contract as Contract_ } from '../../contract/managed/counter/contract';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 

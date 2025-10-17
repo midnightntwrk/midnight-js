@@ -23,7 +23,7 @@ import TS from 'typescript';
 import * as CompiledContractReflection from "../CompiledContractReflection.js";
 
 const CONTRACT_FOLDER = 'contract';
-const CONTRACT_DECLARATION_FILE = 'index.d.cts';
+const CONTRACT_DECLARATION_FILE = 'index.d.ts';
 const TRUE_OR_FALSE_REGEXP = /^true|false$/;
 
 type FileSnapshot = {

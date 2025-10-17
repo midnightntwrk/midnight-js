@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/compact-js-command",
-  "version": "2.0.0",
+  "version": "2.3.0",
   "description": "Command line utilities for working with smart contracts compiled with the Compact language",
   "type": "module",
   "exports": {
@@ -11,27 +11,29 @@
     "./effect/internal/*": null
   },
   "dependencies": {
-    "@effect/cli": "^0.69.0",
-    "@effect/cluster": "^0.50.0",
+    "@effect/cli": "^0.71.0",
+    "@effect/cluster": "^0.50.4",
     "@effect/experimental": "^0.56.0",
-    "@effect/platform": "^0.90.2",
-    "@effect/platform-node": "^0.98.0",
-    "@effect/platform-node-shared": "^0.50.0",
-    "@effect/printer-ansi": "^0.45.0",
+    "@effect/platform": "^0.92.1",
+    "@effect/platform-node": "^0.98.3",
+    "@effect/platform-node-shared": "^0.51.5",
+    "@effect/printer": "^0.46.0",
+    "@effect/printer-ansi": "^0.46.0",
     "@effect/rpc": "^0.71.0",
     "@effect/sql": "^0.46.0",
-    "@effect/typeclass": "^0.36.0",
-    "@midnight-ntwrk/compact-js": "^2.0.0",
-    "@midnight-ntwrk/compact-js-node": "^2.0.0",
-    "@midnight-ntwrk/compact-runtime": "0.9.0-rc.2",
+    "@effect/typeclass": "^0.37.0",
+    "@effect/workflow": "^0.11.3",
+    "@midnight-ntwrk/compact-js": "^2.3.0",
+    "@midnight-ntwrk/compact-js-node": "^2.3.0",
+    "@midnight-ntwrk/compact-runtime": "0.11.0-rc.0",
     "@midnight-ntwrk/ledger": "npm:@midnight-ntwrk/ledger-v6@6.1.0-alpha.3",
-    "@midnight-ntwrk/platform-js": "^2.0.0",
-    "effect": "^3.17.7",
+    "@midnight-ntwrk/platform-js": "^2.1.0",
+    "effect": "^3.18.4",
     "json5": "^2.2.3",
     "ts-node": "^10.9.2"
   },
   "devDependencies": {
-    "@effect/vitest": "^0.24.1",
+    "@effect/vitest": "^0.26.0",
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
   },
   "repository": {

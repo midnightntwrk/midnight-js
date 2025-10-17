@@ -368,7 +368,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
                   currentZswapLocalState: circuitContext.zswapLocalState
                     ? encodeZswapLocalState(circuitContext.zswapLocalState)
                     : emptyZswapLocalState(CoinPublicKey.asHex(keyConfig.coinPublicKey)),
-                  transactionContext: initialTxContext,
+                  currentQueryContext: initialTxContext,
                   costModel: CostModel.initialCostModel()
                 },
                 ...args
@@ -382,11 +382,11 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
             Effect.gen(function* () {
               return {
                 public: {
-                  contractState: context.transactionContext.state.state,
+                  contractState: context.currentQueryContext.state.state,
                   publicTranscript: proofData.publicTranscript,
                   partitionedTranscript: yield* partitionTranscript(
                     initialTxContext,
-                    context.transactionContext,
+                    context.currentQueryContext,
                     proofData.publicTranscript
                   )
                 },

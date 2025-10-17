@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/compact-js-node",
-  "version": "2.0.0",
+  "version": "2.3.0",
   "description": "Platform specific types and utilities for working with the Compact language on a Node.js runtime",
   "type": "module",
   "exports": {
@@ -11,12 +11,17 @@
     "./effect/internal/*": null
   },
   "dependencies": {
-    "@effect/platform": "^0.90.2",
-    "@effect/platform-node": "^0.98.0",
-    "effect": "^3.17.7"
+    "@effect/cluster": "^0.50.4",
+    "@effect/experimental": "^0.56.0",
+    "@effect/platform": "^0.92.1",
+    "@effect/platform-node": "^0.98.3",
+    "@effect/rpc": "^0.71.0",
+    "@effect/sql": "^0.46.0",
+    "@effect/workflow": "^0.11.3",
+    "effect": "^3.18.4"
   },
   "peerDependencies": {
-    "@midnight-ntwrk/compact-js": ">=2.0.0"
+    "@midnight-ntwrk/compact-js": ">=2.3.0"
   },
   "repository": {
     "type": "git",
