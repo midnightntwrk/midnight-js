@@ -1280,16 +1280,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/vitest@npm:^0.24.1":
-  version: 0.24.1
-  resolution: "@effect/vitest@npm:0.24.1"
-  peerDependencies:
-    effect: ^3.16.14
-    vitest: ^3.2.0
-  checksum: 10/9cd4447fd323c01fe90495655463ccc6ff2f41ed668df506beb1121b0de500195afdd9a50dcec92d9142fc2c233415353c2082601b9a3dcd743f82be19de4bda
-  languageName: node
-  linkType: hard
-
 "@effect/vitest@npm:^0.26.0":
   version: 0.26.0
   resolution: "@effect/vitest@npm:0.26.0"
@@ -2796,7 +2786,7 @@ __metadata:
   resolution: "@midnight-ntwrk/platform-js@workspace:platform-js/platform-js"
   dependencies:
     "@effect/platform": "npm:^0.92.1"
-    "@effect/vitest": "npm:^0.24.1"
+    "@effect/vitest": "npm:^0.26.0"
     effect: "npm:^3.18.4"
   languageName: unknown
   linkType: soft
