@@ -50,7 +50,7 @@ export const getValidZKConfig = async () => ({
  * from the topic contract instead of binary data.
  */
 export const getValidUnprovenTx = async (): Promise<UnprovenTransaction> => {
-  const contractModule = await import(`${resourceDir}/managed/${CONTRACT}/contract/index.cjs`);
+  const contractModule = await import(`${resourceDir}/managed/${CONTRACT}/contract/index.js`);
   const contract = new contractModule.Contract({});
   const coinPublicKey = sampleCoinPublicKey();
 
