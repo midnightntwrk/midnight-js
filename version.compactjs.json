@@ -1,8 +1,8 @@
 {
   "v_info": {
-    "version": "2.3.0",
-    "preRelease": "-rc",
-    "tag": "rc",
+    "version": "2.3",
+    "preRelease": "",
+    "tag": "latest",
     "releaseBranches": [
       "main",
       "release/cjs/.*"

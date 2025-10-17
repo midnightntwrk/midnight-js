@@ -2512,7 +2512,7 @@ __metadata:
     "@midnight-ntwrk/compact-runtime": "npm:0.11.0-rc.0"
     "@midnight-ntwrk/ledger": "npm:@midnight-ntwrk/ledger-v6@6.1.0-alpha.3"
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
-    "@midnight-ntwrk/platform-js": "npm:^2.1.0-rc.2"
+    "@midnight-ntwrk/platform-js": "npm:^2.1.0"
     effect: "npm:^3.18.4"
     json5: "npm:^2.2.3"
     ts-node: "npm:^10.9.2"
@@ -2553,7 +2553,7 @@ __metadata:
     "@midnight-ntwrk/compact-runtime": "npm:0.11.0-rc.0"
     "@midnight-ntwrk/ledger": "npm:@midnight-ntwrk/ledger-v6@6.1.0-alpha.3"
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
-    "@midnight-ntwrk/platform-js": "npm:^2.1.0-rc.2"
+    "@midnight-ntwrk/platform-js": "npm:^2.1.0"
     effect: "npm:^3.18.4"
   languageName: unknown
   linkType: soft
@@ -2791,7 +2791,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/platform-js@npm:^2.1.0-rc.2, @midnight-ntwrk/platform-js@workspace:platform-js/platform-js":
+"@midnight-ntwrk/platform-js@npm:^2.1.0, @midnight-ntwrk/platform-js@workspace:platform-js/platform-js":
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/platform-js@workspace:platform-js/platform-js"
   dependencies:
