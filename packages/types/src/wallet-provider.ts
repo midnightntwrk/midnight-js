@@ -16,6 +16,7 @@
 import {
   type DustSecretKey,
   type FinalizedTransaction,
+  type ShieldedCoinInfo,
   type UnprovenTransaction,
   type ZswapSecretKeys
 } from '@midnight-ntwrk/ledger-v6';
@@ -44,9 +45,10 @@ export interface WalletProvider {
   /**
    * Balances a transaction
    * @param tx The transaction to balance.
+   * @param newCoins
    * @param ttl
    */
-  balanceTx(tx: UnprovenTransaction, ttl?: Date): Promise<ProvingRecipe<UnprovenTransaction | FinalizedTransaction>>;
+  balanceTx(tx: UnprovenTransaction, newCoins?: ShieldedCoinInfo[], ttl?: Date): Promise<ProvingRecipe<UnprovenTransaction | FinalizedTransaction>>;
 
   /**
    * Finalizes the given transaction to complete its processing.

@@ -16,6 +16,7 @@
 import {
   DustSecretKey,
   type FinalizedTransaction,
+  type ShieldedCoinInfo,
   shieldedToken,
   type TokenType,
   type UnprovenTransaction,
@@ -64,7 +65,7 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     this.dustSecretKey = dustSecretKey;
   }
 
-  async balanceTx(tx: UnprovenTransaction, ttl: Date = ttlOneHour()): Promise<ProvingRecipe<UnprovenTransaction | FinalizedTransaction>> {
+  async balanceTx(tx: UnprovenTransaction, _newCoins: ShieldedCoinInfo[], ttl: Date = ttlOneHour()): Promise<ProvingRecipe<UnprovenTransaction | FinalizedTransaction>> {
     return this.wallet.balanceTransaction(this.zswapSecretKeys, this.dustSecretKey, tx, ttl);
   }
 

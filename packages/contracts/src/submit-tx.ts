@@ -70,7 +70,7 @@ export const submitTx = async <C extends Contract, ICK extends ImpureCircuitId<C
   const proveTxConfig = options.circuitId
     ? { zkConfig: await providers.zkConfigProvider.get(options.circuitId) }
     : undefined;
-  const recipe = await providers.walletProvider.balanceTx(options.unprovenTx);
+  const recipe = await providers.walletProvider.balanceTx(options.unprovenTx, options.newCoins);
   // TODO: we can switch to 'await providers.walletProvider.finalizeTx(recipe)' once it supports ZKConfig
   // TODO: unsafe cast just for temporal workaround
   const provenTx = await providers.proofProvider.proveTx((recipe as TransactionToProve).transaction , proveTxConfig);
