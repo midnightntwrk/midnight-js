@@ -4,7 +4,7 @@
 
 Compact.js provides a Typescript-based execution environment for smart contracts
 compiled with the [Compact](https://docs.midnight.network/develop/reference/compact/) language.
-When a Compact smart contract is compiled with `compactc`, part of the output includes:
+When a Compact smart contract is compiled with `compact`, part of the output includes:
 
 1. A JavaScript file.
 2. A TypeScript [declaration file](https://www.typescriptlang.org/docs/handbook/2/type-declarations.html).

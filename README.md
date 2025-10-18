@@ -32,7 +32,7 @@ GraphQL client for the indexer.
 > This section assumes the reader has a working understanding of the Compact
 > language.
 
-When a user compiles a Compact smart contract with compactc, they obtain two
+When a user compiles a Compact smart contract with compact, they obtain two
 files:
 
 1. A JavaScript file
@@ -170,8 +170,8 @@ submit transactions. Each of the clients in `Midnight.js` are concrete instances
 of the provider interfaces defined in the `@midnight-ntwrk/midnight-js-types` package.
 
 The dark arrow from `GUI` to `Web Page` indicates that the GUI for a given application may depend
-on any of the packages in Midnight.js. The dashed arrow from `compactc` to `Contract` indicates
-that the application developer has run `compactc` on a Compact source file `foo.compact` and produced an executable, `foo.js`.
+on any of the packages in Midnight.js. The dashed arrow from `compact` to `Contract` indicates
+that the application developer has run `compact` on a Compact source file `foo.compact` and produced an executable, `foo.js`.
 The `Contracts` element uses the `foo.js` and `witnesses.js` programs stored on the web server to execute circuits and create unproven transactions,
 and it uses the `Prover Keys`, `Verifier Keys`, and `ZKIRs` to prove those transactions. `Midnight.js` does not depend on `UI Components` because
 UI components are created using Midnight.js.

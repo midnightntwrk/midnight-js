@@ -52,8 +52,8 @@ export type Witnesses<PS = any> = Record<string, Witness<PS>>;
 
 /**
  * Interface for a contract. The data types defined in this file are generic shapes for the artifacts
- * produced by the `compactc` compiler. In other words, this `Contract` interface should match the shape
- * of any `Contract` class produced by `compactc`. Midnight.js uses it for generic constraints.
+ * produced by the `compact` compiler. In other words, this `Contract` interface should match the shape
+ * of any `Contract` class produced by `compact`. Midnight.js uses it for generic constraints.
  *
  * @typeParam PS - The private state modified by the contract witnesses.
  * @typeParam W - The contract witnesses type.

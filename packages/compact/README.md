@@ -17,7 +17,7 @@ yarn install
 
 ### Compile Compact contract 
 
-**NOTE:** It can be executed even if you don't have compactc installed and set up.
+**NOTE:** It can be executed even if you don't have compact installed and set up.
 
 ```shell
 yarn fetch-compactc
