@@ -1247,14 +1247,14 @@ __metadata:
   linkType: hard
 
 "@effect/rpc@npm:^0.71.0":
-  version: 0.71.0
-  resolution: "@effect/rpc@npm:0.71.0"
+  version: 0.71.1
+  resolution: "@effect/rpc@npm:0.71.1"
   dependencies:
     msgpackr: "npm:^1.11.4"
   peerDependencies:
-    "@effect/platform": ^0.92.0
-    effect: ^3.18.0
-  checksum: 10/9a6b36f30ad9afbe5492e8f624ad2a304b3c2ce699229b34b5b2971f3a92bf6511c3066726f163feedbaafecb29814e1d75712c03ea1d295bb764e6ea901ac7b
+    "@effect/platform": ^0.92.1
+    effect: ^3.18.4
+  checksum: 10/0c1290620753b13a40bb8e8e410822267c7d2cc22547d38e605d5445d528af3bfdcd86e58c59bd458b43f4bf9bffb5bab1ca7e8e50e2b6969c435bc479ec63a6
   languageName: node
   linkType: hard
 
