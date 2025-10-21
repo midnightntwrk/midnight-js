@@ -1291,13 +1291,13 @@ __metadata:
   linkType: hard
 
 "@effect/workflow@npm:^0.11.3":
-  version: 0.11.3
-  resolution: "@effect/workflow@npm:0.11.3"
+  version: 0.11.5
+  resolution: "@effect/workflow@npm:0.11.5"
   peerDependencies:
     "@effect/platform": ^0.92.1
-    "@effect/rpc": ^0.71.0
-    effect: ^3.18.1
-  checksum: 10/a9e318ed477defbfd69e178b466b16e04e1890b3c6cb192bafc1ddf812c22f598ec2d97428999aa44f0be8111e8a03882af83d5537ef183b8c0b1bd8d6258bfe
+    "@effect/rpc": ^0.71.1
+    effect: ^3.18.4
+  checksum: 10/e8ba8aa2026134f8ceb3cf7e80b029e1686e8569eb6bd9e025b1ca1c167e578ac48f79df40922b106a63dcd7ce189d20e24072b27a5471b4c6939f57d7c490e0
   languageName: node
   linkType: hard
 
