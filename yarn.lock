@@ -1159,24 +1159,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/platform-node-shared@npm:^0.51.5":
-  version: 0.51.5
-  resolution: "@effect/platform-node-shared@npm:0.51.5"
-  dependencies:
-    "@parcel/watcher": "npm:^2.5.1"
-    multipasta: "npm:^0.2.7"
-    ws: "npm:^8.18.2"
-  peerDependencies:
-    "@effect/cluster": ^0.50.4
-    "@effect/platform": ^0.92.1
-    "@effect/rpc": ^0.71.0
-    "@effect/sql": ^0.46.0
-    effect: ^3.18.4
-  checksum: 10/37168d3da6ee65f7b40ad761a4736ec3992ee9b8b775ce76136074892d2f7e7613795c07717c2ea29e840432f9aa200ce83daa9844d4b7164cbeadb885cb4ada
-  languageName: node
-  linkType: hard
-
-"@effect/platform-node-shared@npm:^0.51.6":
+"@effect/platform-node-shared@npm:^0.51.5, @effect/platform-node-shared@npm:^0.51.6":
   version: 0.51.6
   resolution: "@effect/platform-node-shared@npm:0.51.6"
   dependencies:
