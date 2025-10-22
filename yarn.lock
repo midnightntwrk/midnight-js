@@ -2500,7 +2500,7 @@ __metadata:
     "@midnight-ntwrk/compact-js": "npm:^2.3.0"
     "@midnight-ntwrk/compact-js-node": "npm:^2.3.0"
     "@midnight-ntwrk/compact-runtime": "npm:0.11.0-rc.0"
-    "@midnight-ntwrk/ledger": "npm:@midnight-ntwrk/ledger-v6@6.1.0-alpha.3"
+    "@midnight-ntwrk/ledger": "npm:@midnight-ntwrk/ledger-v6@6.1.0-alpha.4"
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
     "@midnight-ntwrk/platform-js": "npm:^2.1.0"
     effect: "npm:^3.18.4"
@@ -2541,7 +2541,7 @@ __metadata:
     "@effect/workflow": "npm:^0.11.3"
     "@midnight-ntwrk/compact-js-node": "workspace:*"
     "@midnight-ntwrk/compact-runtime": "npm:0.11.0-rc.0"
-    "@midnight-ntwrk/ledger": "npm:@midnight-ntwrk/ledger-v6@6.1.0-alpha.3"
+    "@midnight-ntwrk/ledger": "npm:@midnight-ntwrk/ledger-v6@6.1.0-alpha.4"
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
     "@midnight-ntwrk/platform-js": "npm:^2.1.0"
     effect: "npm:^3.18.4"
@@ -2577,10 +2577,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/ledger@npm:@midnight-ntwrk/ledger-v6@6.1.0-alpha.3":
-  version: 6.1.0-alpha.3
-  resolution: "@midnight-ntwrk/ledger-v6@npm:6.1.0-alpha.3::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fledger-v6%2F6.1.0-alpha.3%2F26dccba47325c534787a6802467d210f947cd2a2"
-  checksum: 10/ef5d2dbe9f21fe21ea32871208e0a02225b26c11e1584709825f8f7ca2a1927c3f1cb8345025e8c57b20ea5cfd99a873000c733e4d0dbde5361b5fa19e70df8b
+"@midnight-ntwrk/ledger@npm:@midnight-ntwrk/ledger-v6@6.1.0-alpha.4":
+  version: 6.1.0-alpha.4
+  resolution: "@midnight-ntwrk/ledger-v6@npm:6.1.0-alpha.4::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fledger-v6%2F6.1.0-alpha.4%2F60ec4b77cbc77a03e163156eb8b514bbd837a9fe"
+  checksum: 10/a52143c5aefde61d6b98733e03ca07e331f7fc4021595ad357103998946e611367ce0fea5d1c8da5fc864f9036a47c87e30a9ef9db5bf6c0ad1fb73d6269e8ba
   languageName: node
   linkType: hard
 
