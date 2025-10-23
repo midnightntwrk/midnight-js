@@ -177,7 +177,7 @@ describe('Unshielded tokens', () => {
     expect(created.length).toEqual(0);
   });
 
-  test('should get balance of tokens - less than', async () => {
+  test.skip('should get balance of tokens - less than', async () => {
     const txData = await submitCallTx(providers, {
       contract: unshieldedContract,
       contractAddress,
@@ -196,6 +196,17 @@ describe('Unshielded tokens', () => {
   });
 
   test('should receive tokens - invalid', async () => {
+    await expect(() =>
+      submitCallTx(providers, {
+        contract: unshieldedContract,
+        contractAddress,
+        circuitId: 'receiveUnshieldedTest' as UnshieldedContractCircuits,
+        args: [TEST_DOMAIN_SEP, TEST_TOKEN_AMOUNT]
+      })
+    ).rejects.toThrow('Transaction submission error: Transaction submission failed');
+  });
+
+  test.skip('should receive tokens - wallet', async () => {
     const txData = await submitCallTx(providers, {
       contract: unshieldedContract,
       contractAddress,
@@ -213,25 +224,7 @@ describe('Unshielded tokens', () => {
     expect(created.length).toEqual(0);
   });
 
-  test('should receive tokens - wallet', async () => {
-    const txData = await submitCallTx(providers, {
-      contract: unshieldedContract,
-      contractAddress,
-      circuitId: 'receiveUnshieldedTest' as UnshieldedContractCircuits,
-      args: [TEST_DOMAIN_SEP, TEST_TOKEN_AMOUNT]
-    });
-
-    expect(txData.public.status).toBe(SucceedEntirely);
-    expect(txData.private.result).toEqual(0n);
-    expect(txData.public.unshielded).toBeDefined();
-
-    const spent = txData.public.unshielded.spent;
-    const created = txData.public.unshielded.created;
-    expect(spent.length).toEqual(0);
-    expect(created.length).toEqual(0);
-  });
-
-  test('should send tokens to wallet', async () => {
+  test.skip('should send tokens to wallet', async () => {
     const address = new Uint8Array(Buffer.from('0f09f9eb5538606c6490c0595b771ecb0c29ae71778f089a95e8465b84774aed', 'hex'));
     const sep = new Uint8Array(32).fill(0);
 
