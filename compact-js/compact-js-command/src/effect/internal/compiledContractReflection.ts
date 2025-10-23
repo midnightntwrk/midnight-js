@@ -17,7 +17,7 @@ import { FileSystem, Path } from '@effect/platform';
 import { CompiledContract, type Contract, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
 import * as Hex from '@midnight-ntwrk/platform-js/effect/Hex'
 import { Effect, Either, identity, Layer } from 'effect';
-import * as JSON5 from 'json5';
+import { parse, stringify } from 'json5';
 import TS from 'typescript';
 
 import * as CompiledContractReflection from "../CompiledContractReflection.js";
@@ -120,13 +120,13 @@ const transformParams: (
             return args[idx] === 'true';
           }
           if (type!.kind === TS.SyntaxKind.ArrayType) {
-            const arrayElems = JSON5.parse(args[idx]);
+            const arrayElems = parse(args[idx]);
             if (!Array.isArray(arrayElems)) {
               throw new SyntaxError(`Cannot convert ${args[idx]} to an array`);
             }
             return Either.getOrThrowWith(
               transformParams(
-                arrayElems.map((arrayElem) => JSON5.stringify(arrayElem)),
+                arrayElems.map((arrayElem) => stringify(arrayElem)),
                 Array(arrayElems.length).fill((type as TS.ArrayTypeNode).elementType), // Same type repeated.
                 true
               ),
@@ -134,13 +134,13 @@ const transformParams: (
             );
           }
           if (type!.kind === TS.SyntaxKind.TupleType) {
-            const tupleElems = JSON5.parse(args[idx]);
+            const tupleElems = parse(args[idx]);
             if (!Array.isArray(tupleElems)) {
               throw new SyntaxError(`Cannot convert ${args[idx]} to an array`);
             }
             return Either.getOrThrowWith(
               transformParams(
-                tupleElems.map((tupleElem) => JSON5.stringify(tupleElem)),
+                tupleElems.map((tupleElem) => stringify(tupleElem)),
                 (type as TS.TupleTypeNode).elements.map((elemType) => elemType as TS.TypeNode),
                 true
               ),
@@ -149,7 +149,7 @@ const transformParams: (
           }
           if (type!.kind === TS.SyntaxKind.TypeLiteral) {
             const typeLiteral = type as TS.TypeLiteralNode;
-            const srcObj = JSON5.parse(args[idx]);
+            const srcObj = parse(args[idx]);
             if (typeof srcObj !== 'object') {
               throw new SyntaxError(`Cannot convert ${args[idx]} to an object literal`);
             }
@@ -157,7 +157,7 @@ const transformParams: (
               const propKey = ((member as TS.PropertySignature).name as TS.Identifier).escapedText.toString();
               const propType = (member as TS.PropertySignature).type!;
               const memberValue = Either.getOrThrowWith(
-                transformParams([JSON5.stringify(srcObj[propKey])], [propType], true),
+                transformParams([stringify(srcObj[propKey])], [propType], true),
                 identity // Rethrow the error from `transformParams`.
               );
               srcObj[propKey] = memberValue[0];
@@ -169,7 +169,7 @@ const transformParams: (
             if (TS.isIdentifier(typeName) && typeName.escapedText === 'Uint8Array') {
               return Either.match(Hex.parseHex(quotedStrings ? args[idx].replaceAll('\'', '') : args[idx]), {
                 onRight: (parsedHex) => Buffer.from(parsedHex.byteChars, 'hex'),
-                onLeft: (parseErr) => { 
+                onLeft: (parseErr) => {
                   throw new SyntaxError(`Cannot convert ${args[idx]} to a Uint8Array: ${parseErr.message}`);
                 }
               });
