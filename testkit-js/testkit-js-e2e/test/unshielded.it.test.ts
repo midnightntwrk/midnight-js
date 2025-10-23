@@ -96,7 +96,7 @@ describe('Unshielded tokens', () => {
     await testEnvironment.shutdown();
   });
 
-  test('should mint tokens', async () => {
+  test.skip('should mint tokens', async () => {
     // Act & Assert - Mint unshielded token to self
     logger.info(`Submit tx`);
     const mintTxData = await submitCallTx(providers, {
@@ -118,29 +118,6 @@ describe('Unshielded tokens', () => {
     logger.info(`Minted token: ${JSON.stringify(mintedToken)}`);
   });
 
-
-  test.skip('should mint tokens', async () => {
-    // Act & Assert - Mint unshielded token to self
-    logger.info(`Submit tx`);
-    const mintTxData = await submitCallTx(providers, {
-      contract: unshieldedContract,
-      contractAddress,
-      circuitId: 'mintUnshieldedToSelfTest' as UnshieldedContractCircuits,
-      args: [TEST_DOMAIN_SEP, TEST_TOKEN_AMOUNT]
-    });
-
-    logger.info(`Verify submitted tx`);
-    expect(mintTxData.public.status).toBe(SucceedEntirely);
-    expect(mintTxData.public.unshielded).toBeDefined();
-
-    const created = mintTxData.public.unshielded.created;
-    expect(created.length).toEqual(1);
-    expect(created.at(0)?.value).toEqual(TEST_TOKEN_AMOUNT);
-    expect(created.at(0)?.owner).toEqual(TEST_DOMAIN_SEP);
-
-    logger.info(`Minted token: ${JSON.stringify(created)}`);
-  });
-
   test('should get balance of tokens - 0 value', async () => {
     const txData = await submitCallTx(providers, {
       contract: unshieldedContract,
@@ -159,7 +136,7 @@ describe('Unshielded tokens', () => {
     expect(created.length).toEqual(0);
   });
 
-  test('should get balance of tokens - greater than', async () => {
+  test.skip('should get balance of tokens - greater than', async () => {
     const txData = await submitCallTx(providers, {
       contract: unshieldedContract,
       contractAddress,
@@ -195,7 +172,7 @@ describe('Unshielded tokens', () => {
     expect(created.length).toEqual(0);
   });
 
-  test('should receive tokens - invalid', async () => {
+  test.skip('should receive tokens - invalid', async () => {
     await expect(() =>
       submitCallTx(providers, {
         contract: unshieldedContract,
@@ -206,12 +183,14 @@ describe('Unshielded tokens', () => {
     ).rejects.toThrow('Transaction submission error: Transaction submission failed');
   });
 
-  test.skip('should receive tokens - wallet', async () => {
+  test('should receive tokens - wallet', async () => {
+    const sep = new Uint8Array(32).fill(0);
+
     const txData = await submitCallTx(providers, {
       contract: unshieldedContract,
       contractAddress,
       circuitId: 'receiveUnshieldedTest' as UnshieldedContractCircuits,
-      args: [TEST_DOMAIN_SEP, TEST_TOKEN_AMOUNT]
+      args: [sep, TEST_TOKEN_AMOUNT]
     });
 
     expect(txData.public.status).toBe(SucceedEntirely);

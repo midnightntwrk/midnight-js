@@ -73,25 +73,24 @@ export const submitTx = async <C extends Contract, ICK extends ImpureCircuitId<C
   const proveTxConfig = options.circuitId
     ? { zkConfig: await providers.zkConfigProvider.get(options.circuitId) }
     : undefined;
-  if (process.env.MN_DEBUG_MODE) {
-    console.log(`Submit tx: ${options.circuitId} : ${options.unprovenTx}`);
-    const serialized = options.unprovenTx.serialize();
-    const logsDir = path.join(process.cwd(), 'logs', 'transactions');
-    // Create logs directory if it doesn't exist
-    if (!fs.existsSync(logsDir)) {
-      fs.mkdirSync(logsDir, { recursive: true });
-    }
-    const filename = `tx-${options.circuitId}-${Date.now()}.bin`;
-    const filepath = path.join(logsDir, filename);
-    fs.writeFileSync(filepath, serialized);
-    console.log(`Transaction serialized and written to: ${filepath}`);
-  }
-  const recipe = await providers.walletProvider.balanceTx(options.unprovenTx, options.newCoins);
+    const recipe = await providers.walletProvider.balanceTx(options.unprovenTx, options.newCoins);
   // TODO: we can switch to 'await providers.walletProvider.finalizeTx(recipe)' once it supports ZKConfig
   // TODO: unsafe cast just for temporal workaround
   const provenTx = await providers.proofProvider.proveTx((recipe as TransactionToProve).transaction , proveTxConfig);
   const bound = provenTx.bind();
-  if (process.env.MN_DEBUG_MODE) {
+  if (process.env.MN_DEBUG) {
+    console.log(`Submit tx: ${options.circuitId} : ${options.unprovenTx}`);
+    const serialized = options.unprovenTx.serialize();
+    const logsDir = path.join(process.cwd(), 'logs', 'transactions');
+    if (!fs.existsSync(logsDir)) {
+      fs.mkdirSync(logsDir, { recursive: true });
+    }
+    const filename = `tx-${Date.now()}-${options.circuitId}`;
+    const filepath = path.join(logsDir, filename + '.bin');
+    const filepathString = path.join(logsDir, filename + '.txt');
+    fs.writeFileSync(filepath, serialized);
+    fs.writeFileSync(filepathString, options.unprovenTx.toString());
+    console.log(`Transaction serialized and written to: ${filepath}`);
     if (options.circuitId) {
       const vtx = bound.wellFormed(LedgerState.blank(getNetworkId()), new WellFormedStrictness(), new Date(Date.now()));
       console.log(`Vtx: ${vtx}`);
