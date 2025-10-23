@@ -26,6 +26,6 @@
     "dist/"
   ],
   "dependencies": {
-    "@scure/base": "^1.1.9"
+    "@scure/base": "^2.0.0"
   }
 }
