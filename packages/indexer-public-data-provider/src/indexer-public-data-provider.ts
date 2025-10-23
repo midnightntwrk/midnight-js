@@ -31,9 +31,6 @@ import {
   type TransactionId
 } from '@midnight-ntwrk/ledger-v6';
 import { Transaction as LedgerTransaction, ZswapChainState } from '@midnight-ntwrk/ledger-v6';
-import {
-  getNetworkId
-} from '@midnight-ntwrk/midnight-js-network-id';
 import type {
   BlockHashConfig,
   BlockHeightConfig,
@@ -127,18 +124,6 @@ const deserializeZswapState = (s: string): ZswapChainState =>
 
 const deserializeTransaction = (s: string): LedgerTransaction<SignatureEnabled, Proof, Binding> =>
   LedgerTransaction.deserialize('signature', 'proof', 'binding', toByteArray(s));
-
-/**
- * This is a dirty hack. Prepends a network ID to the given contract address and
- * returns the result. As of ledger 3.0.0, the running node and indexer store
- * contract addresses with the network ID (in hex format) prepended to the address
- * while the ledger WASM API does not. So, before we query for a contract address,
- * we need to manually prepend the network ID to the contract address.
- *
- * @param contractAddress The contract address to which to prepend the network ID.
- */
-const prependNetworkId = (contractAddress: ContractAddress): string =>
-  `${getNetworkId()}${contractAddress}`;
 
 const zenToRx = <T>(zenObservable: Zen.Observable<T>): Rx.Observable<T> =>
   new Rx.Observable((subscriber) => zenObservable.subscribe(subscriber));
@@ -522,8 +507,9 @@ const indexerPublicDataProviderInternal = (
         })
         .then(maybeThrowErrors)
         .then((queryResult) => queryResult.data.contractAction);
+      //TODO: this has to be checked: maybeContractStates.chainState ? deserializeZswapState(maybeContractStates.chainState) : new ZswapChainState()
       return maybeContractStates
-        ? [deserializeZswapState(maybeContractStates.chainState), deserializeContractState(maybeContractStates.state)]
+        ? [maybeContractStates.chainState ? deserializeZswapState(maybeContractStates.chainState) : new ZswapChainState(), deserializeContractState(maybeContractStates.state)]
         : null;
     },
     async queryUnshieldedBalances(
@@ -772,44 +758,44 @@ export const indexerPublicDataProvider = (
       config: ContractStateObservableConfig
     ): Rx.Observable<ContractState> {
       assertIsContractAddress(contractAddress);
-      return publicDataProvider.contractStateObservable(prependNetworkId(contractAddress), config);
+      return publicDataProvider.contractStateObservable(contractAddress, config);
     },
     queryContractState(
       contractAddress: ContractAddress,
       config?: BlockHeightConfig | BlockHashConfig
     ): Promise<ContractState | null> {
       assertIsContractAddress(contractAddress);
-      return publicDataProvider.queryContractState(prependNetworkId(contractAddress), config);
+      return publicDataProvider.queryContractState(contractAddress, config);
     },
     queryDeployContractState(contractAddress: ContractAddress): Promise<ContractState | null> {
       assertIsContractAddress(contractAddress);
-      return publicDataProvider.queryDeployContractState(prependNetworkId(contractAddress));
+      return publicDataProvider.queryDeployContractState(contractAddress);
     },
     queryZSwapAndContractState(
       contractAddress: ContractAddress,
       config?: BlockHeightConfig | BlockHashConfig
     ): Promise<[ZswapChainState, ContractState] | null> {
       assertIsContractAddress(contractAddress);
-      return publicDataProvider.queryZSwapAndContractState(prependNetworkId(contractAddress), config);
+      return publicDataProvider.queryZSwapAndContractState(contractAddress, config);
     },
     queryUnshieldedBalances(
       contractAddress: ContractAddress,
       config?: BlockHeightConfig | BlockHashConfig
     ): Promise<UnshieldedBalances | null> {
       assertIsContractAddress(contractAddress);
-      return publicDataProvider.queryUnshieldedBalances(prependNetworkId(contractAddress), config);
+      return publicDataProvider.queryUnshieldedBalances(contractAddress, config);
     },
     watchForContractState(contractAddress: ContractAddress): Promise<ContractState> {
       assertIsContractAddress(contractAddress);
-      return publicDataProvider.watchForContractState(prependNetworkId(contractAddress));
+      return publicDataProvider.watchForContractState(contractAddress);
     },
     watchForUnshieldedBalances(contractAddress: ContractAddress): Promise<UnshieldedBalances> {
       assertIsContractAddress(contractAddress);
-      return publicDataProvider.watchForUnshieldedBalances(prependNetworkId(contractAddress));
+      return publicDataProvider.watchForUnshieldedBalances(contractAddress);
     },
     watchForDeployTxData(contractAddress: ContractAddress): Promise<FinalizedTxData> {
       assertIsContractAddress(contractAddress);
-      return publicDataProvider.watchForDeployTxData(prependNetworkId(contractAddress));
+      return publicDataProvider.watchForDeployTxData(contractAddress);
     },
     watchForTxData(txId: TransactionId): Promise<FinalizedTxData> {
       return publicDataProvider.watchForTxData(txId);
@@ -819,7 +805,7 @@ export const indexerPublicDataProvider = (
       config: ContractStateObservableConfig
     ): Rx.Observable<UnshieldedBalances> {
       assertIsContractAddress(contractAddress);
-      return publicDataProvider.unshieldedBalancesObservable(prependNetworkId(contractAddress), config);
+      return publicDataProvider.unshieldedBalancesObservable(contractAddress, config);
     }
   };
 };

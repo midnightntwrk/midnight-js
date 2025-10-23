@@ -43,7 +43,7 @@ describe('Http Proof Server Proof Provider', () => {
 
     const result = serializeTransactionPayload(unprovenTx, zkConfig);
 
-    expect(result).toBeInstanceOf(ArrayBuffer);
+    expect(result).toBeInstanceOf(Uint8Array);
     expect(result.byteLength).toBeGreaterThan(0);
   });
 
@@ -52,7 +52,7 @@ describe('Http Proof Server Proof Provider', () => {
 
     const result = serializeTransactionPayload(unprovenTx, undefined);
 
-    expect(result).toBeInstanceOf(ArrayBuffer);
+    expect(result).toBeInstanceOf(Uint8Array);
     expect(result.byteLength).toBeGreaterThan(0);
   });
 });

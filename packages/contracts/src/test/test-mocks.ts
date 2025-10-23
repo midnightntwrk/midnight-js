@@ -150,7 +150,7 @@ export const createMockUnprovenTx = (): UnprovenTransaction => ({
 
 export const createMockProvenTx = (): Transaction<Signaturish, Proofish, Bindingish> => ({
   eraseProofs: vi.fn(),
-  identifiers: vi.fn(),
+  identifiers: vi.fn().mockReturnValue(['test-tx-id']),
   merge: vi.fn(),
   serialize: vi.fn(),
   imbalances: vi.fn(),

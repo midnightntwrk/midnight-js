@@ -39,13 +39,14 @@ describe('submitTx', () => {
 
   describe('happy path', () => {
     it('should successfully submit transaction without circuit ID', async () => {
-      const mockTxId = 'test-tx-id';
       const mockRecipe = { type: 'TransactionToProve' as const, transaction: mockProvenTx };
       const mockFinalizedTxData = createMockFinalizedTxData();
+      const mockIdentifier = 'test-identifier';
 
+      mockProvenTx.identifiers = vi.fn().mockReturnValue([mockIdentifier]);
       mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue(mockRecipe);
       mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue(mockProvenTx);
-      mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue(mockTxId);
+      mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue('test-tx-id');
       mockProviders.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(mockFinalizedTxData);
 
       const options: SubmitTxOptions<ImpureCircuitId> = {
@@ -54,10 +55,10 @@ describe('submitTx', () => {
 
       const result = await submitTx(mockProviders, options);
 
-      expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(mockUnprovenTx);
+      expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(mockUnprovenTx, undefined);
       expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith(mockProvenTx, undefined);
       expect(mockProviders.midnightProvider.submitTx).toHaveBeenCalled();
-      expect(mockProviders.publicDataProvider.watchForTxData).toHaveBeenCalledWith(mockTxId);
+      expect(mockProviders.publicDataProvider.watchForTxData).toHaveBeenCalledWith(mockIdentifier);
       expect(result).toBe(mockFinalizedTxData);
     });
 
@@ -65,13 +66,14 @@ describe('submitTx', () => {
       const circuitId = 'testCircuit' as ImpureCircuitId;
       const mockZkConfig = { zkConfig: 'test-config' };
       const mockRecipe = { type: 'TransactionToProve' as const, transaction: mockProvenTx };
-      const mockTxId = 'test-tx-id';
       const mockFinalizedTxData = createMockFinalizedTxData();
+      const mockIdentifier = 'test-identifier';
 
+      mockProvenTx.identifiers = vi.fn().mockReturnValue([mockIdentifier]);
       mockProviders.zkConfigProvider.get = vi.fn().mockResolvedValue(mockZkConfig);
       mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue(mockRecipe);
       mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue(mockProvenTx);
-      mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue(mockTxId);
+      mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue('test-tx-id');
       mockProviders.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(mockFinalizedTxData);
 
       const options: SubmitTxOptions<ImpureCircuitId> = {
@@ -82,10 +84,10 @@ describe('submitTx', () => {
       const result = await submitTx(mockProviders, options);
 
       expect(mockProviders.zkConfigProvider.get).toHaveBeenCalledWith(circuitId);
-      expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(mockUnprovenTx);
+      expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(mockUnprovenTx, undefined);
       expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith(mockProvenTx, { zkConfig: mockZkConfig });
       expect(mockProviders.midnightProvider.submitTx).toHaveBeenCalled();
-      expect(mockProviders.publicDataProvider.watchForTxData).toHaveBeenCalledWith(mockTxId);
+      expect(mockProviders.publicDataProvider.watchForTxData).toHaveBeenCalledWith(mockIdentifier);
       expect(result).toBe(mockFinalizedTxData);
     });
   });

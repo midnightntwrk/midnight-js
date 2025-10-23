@@ -194,9 +194,10 @@ describe('Proof server integration', () => {
       const contractActions = result.intents?.get(1)?.actions;
       expect(contractActions).toBeDefined();
       if (contractActions) {
-        expect(contractActions[0]).toHaveLength(1);
+        expect(contractActions).toHaveLength(1);
         expect(contractActions[0]).toBeInstanceOf(ContractCall);
-        expect((contractActions[0] as ContractCall<Proof>).entryPoint).toEqual(circuitId);
+        const call = contractActions[0] as ContractCall<Proof>;
+        expect(call.entryPoint).toEqual(circuitId);
       }
     });
   });

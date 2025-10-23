@@ -52,15 +52,10 @@ describe('[Unit tests] Testing API', () => {
     process.env.MN_TEST_INDEXER = 'https://test.url';
     process.env.MN_TEST_INDEXER_WS = 'wss://test.url';
     process.env.MN_TEST_NODE = 'http://test.url';
+    process.env.MN_TEST_NODE_WS = 'ws://test.url';
     process.env.MN_TEST_NETWORK_ID = 'TestNet';
     expect(getTestEnvironment(logger)).toBeInstanceOf(EnvVarRemoteTestEnvironment);
   });
-
-  // it('should not fail on wrong MN_TEST_NETWORK_ID for env var remote test environment', () => {
-  //   process.env.MN_TEST_ENVIRONMENT = 'env-var-remote';
-  //   process.env.MN_TEST_NETWORK_ID = 'something';
-  //   expect(() => getTestEnvironment(logger)).not.toThrow();
-  // });
 
   it('should fail on wrong MN_TEST_NETWORK_ID for env var remote test environment', () => {
     process.env.MN_TEST_ENVIRONMENT = 'env-var-remote';

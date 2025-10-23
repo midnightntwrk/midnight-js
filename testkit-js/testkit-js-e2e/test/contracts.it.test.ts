@@ -290,14 +290,14 @@ describe('Contracts API', () => {
    * @when Finding the deployed contract with invalid address
    * @then Should throw error with specific message about byte length
    */
-  it('should throw error if contract address has wrong format', async () => {
+  it('should throw error if contract address has wrong format - length', async () => {
     await expect(
       findDeployedContract(providers, {
         contract: counterContractInstance,
         contractAddress: INVALID_CONTRACT_ADDRESS_TOO_LONG,
         privateStateId: CounterPrivateStateId
       })
-    ).rejects.toThrow('Expected an input string with byte length of 34, got 35.');
+    ).rejects.toThrow('Expected an input string with byte length of 32, got 33.');
   });
 
   /**
@@ -643,7 +643,7 @@ describe('Contracts API', () => {
    * @then Should throw error about incomplete byte in input string
    * @and Should reference the invalid address in error message
    */
-  it('should throw error if contract address has wrong format', async () => {
+  it('should throw error if contract address has wrong format - not hex', async () => {
     await expect(
       submitCallTx(providers, {
         contract: counterContractInstance,
