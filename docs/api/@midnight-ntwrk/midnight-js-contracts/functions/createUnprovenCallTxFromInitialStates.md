@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v2.0.2**](../../../README.md)
+[**Midnight.js API Reference v3.0.0**](../../../README.md)
 
 ***
 
@@ -12,6 +12,10 @@ unproven, unsubmitted, call transaction.
 ## Param
 
 Configuration.
+
+## Param
+
+## Param
 
 ## Call Signature
 

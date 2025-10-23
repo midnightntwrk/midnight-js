@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v2.0.2**](../../README.md)
+[**Midnight.js API Reference v3.0.0**](../../README.md)
 
 ***
 
@@ -10,6 +10,12 @@
 
 - [IndexerFormattedError](classes/IndexerFormattedError.md)
 
+## Type Aliases
+
+- [IndexerUtxo](type-aliases/IndexerUtxo.md)
+
 ## Functions
 
 - [indexerPublicDataProvider](functions/indexerPublicDataProvider.md)
+- [toUnshieldedBalances](functions/toUnshieldedBalances.md)
+- [toUnshieldedUtxos](functions/toUnshieldedUtxos.md)

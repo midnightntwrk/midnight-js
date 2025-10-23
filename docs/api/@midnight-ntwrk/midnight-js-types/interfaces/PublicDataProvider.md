@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v2.0.2**](../../../README.md)
+[**Midnight.js API Reference v3.0.0**](../../../README.md)
 
 ***
 
@@ -41,7 +41,7 @@ The configuration for the observable.
 
 ### queryContractState()
 
-> **queryContractState**(`contractAddress`, `config?`): `Promise`\<`null` \| `ContractState`\>
+> **queryContractState**(`contractAddress`, `config?`): `Promise`\<`ContractState` \| `null`\>
 
 Retrieves the on-chain state of a contract. If no block hash or block height are provided, the
 contract state at the address in the latest block is returned.
@@ -64,13 +64,13 @@ The configuration of the query.
 
 #### Returns
 
-`Promise`\<`null` \| `ContractState`\>
+`Promise`\<`ContractState` \| `null`\>
 
 ***
 
 ### queryDeployContractState()
 
-> **queryDeployContractState**(`contractAddress`): `Promise`\<`null` \| `ContractState`\>
+> **queryDeployContractState**(`contractAddress`): `Promise`\<`ContractState` \| `null`\>
 
 Retrieves the contract state included in the deployment of the contract at the given contract address.
 Immediately returns null if no matching data is found.
@@ -85,13 +85,40 @@ The address of the contract of interest.
 
 #### Returns
 
-`Promise`\<`null` \| `ContractState`\>
+`Promise`\<`ContractState` \| `null`\>
+
+***
+
+### queryUnshieldedBalances()
+
+> **queryUnshieldedBalances**(`contractAddress`, `config?`): `Promise`\<[`UnshieldedBalances`](../type-aliases/UnshieldedBalances.md) \| `null`\>
+
+Retrieves the unshielded balances associated with a specific contract address.
+
+#### Parameters
+
+##### contractAddress
+
+`string`
+
+The address of the contract of interest.
+
+##### config?
+
+The configuration of the query.
+              If `undefined` returns the latest states.
+
+[`BlockHeightConfig`](../type-aliases/BlockHeightConfig.md) | [`BlockHashConfig`](../type-aliases/BlockHashConfig.md)
+
+#### Returns
+
+`Promise`\<[`UnshieldedBalances`](../type-aliases/UnshieldedBalances.md) \| `null`\>
 
 ***
 
 ### queryZSwapAndContractState()
 
-> **queryZSwapAndContractState**(`contractAddress`, `config?`): `Promise`\<`null` \| \[`ZswapChainState`, `ContractState`\]\>
+> **queryZSwapAndContractState**(`contractAddress`, `config?`): `Promise`\<\[`ZswapChainState`, `ContractState`\] \| `null`\>
 
 Retrieves the zswap chain state (token balances) and the contract state of the contract at the
 given address. Both states are retrieved in a single query to ensure consistency between the two.
@@ -114,7 +141,35 @@ The configuration of the query.
 
 #### Returns
 
-`Promise`\<`null` \| \[`ZswapChainState`, `ContractState`\]\>
+`Promise`\<\[`ZswapChainState`, `ContractState`\] \| `null`\>
+
+***
+
+### unshieldedBalancesObservable()
+
+> **unshieldedBalancesObservable**(`address`, `config`): `Observable`\<[`UnshieldedBalances`](../type-aliases/UnshieldedBalances.md)\>
+
+Retrieves an observable that tracks the unshielded balances for a specific contract address.
+
+#### Parameters
+
+##### address
+
+`string`
+
+The contract address for which unshielded balances are being observed.
+
+##### config
+
+[`ContractStateObservableConfig`](../type-aliases/ContractStateObservableConfig.md)
+
+The configuration object for observing contract state changes.
+
+#### Returns
+
+`Observable`\<[`UnshieldedBalances`](../type-aliases/UnshieldedBalances.md)\>
+
+An observable that emits the unshielded balances for the provided address.
 
 ***
 
@@ -178,3 +233,25 @@ The identifier of the call or deployment of interest.
 #### Returns
 
 `Promise`\<[`FinalizedTxData`](FinalizedTxData.md)\>
+
+***
+
+### watchForUnshieldedBalances()
+
+> **watchForUnshieldedBalances**(`contractAddress`): `Promise`\<[`UnshieldedBalances`](../type-aliases/UnshieldedBalances.md)\>
+
+Monitors for any unshielded balances associated with a specific contract address.
+
+#### Parameters
+
+##### contractAddress
+
+`string`
+
+The address of the contract to monitor for unshielded balances.
+
+#### Returns
+
+`Promise`\<[`UnshieldedBalances`](../type-aliases/UnshieldedBalances.md)\>
+
+A promise that resolves to the detected unshielded balances.

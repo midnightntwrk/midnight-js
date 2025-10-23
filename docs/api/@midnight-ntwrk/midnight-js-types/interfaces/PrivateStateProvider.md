@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v2.0.2**](../../../README.md)
+[**Midnight.js API Reference v3.0.0**](../../../README.md)
 
 ***
 
@@ -50,7 +50,7 @@ Remove all contract signing keys.
 
 ### get()
 
-> **get**(`privateStateId`): `Promise`\<`null` \| `PS`\>
+> **get**(`privateStateId`): `Promise`\<`PS` \| `null`\>
 
 Retrieve the private state at the given private state ID.
 
@@ -64,13 +64,13 @@ The private state identifier.
 
 #### Returns
 
-`Promise`\<`null` \| `PS`\>
+`Promise`\<`PS` \| `null`\>
 
 ***
 
 ### getSigningKey()
 
-> **getSigningKey**(`address`): `Promise`\<`null` \| `string`\>
+> **getSigningKey**(`address`): `Promise`\<`string` \| `null`\>
 
 Retrieve the signing key for a contract.
 
@@ -84,7 +84,7 @@ The address of the contract for which to get the signing key.
 
 #### Returns
 
-`Promise`\<`null` \| `string`\>
+`Promise`\<`string` \| `null`\>
 
 ***
 

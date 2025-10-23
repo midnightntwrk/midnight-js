@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v2.0.2**](../../README.md)
+[**Midnight.js API Reference v3.0.0**](../../README.md)
 
 ***
 
@@ -13,5 +13,4 @@
 ## Functions
 
 - [httpClientProofProvider](functions/httpClientProofProvider.md)
-- [serializePayload](functions/serializePayload.md)
-- [serializeZKConfig](functions/serializeZKConfig.md)
+- [serializeTransactionPayload](functions/serializeTransactionPayload.md)

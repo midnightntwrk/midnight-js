@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v2.0.2**](../../../README.md)
+[**Midnight.js API Reference v3.0.0**](../../../README.md)
 
 ***
 
@@ -40,7 +40,7 @@ The ledger address of the contract.
 
 The identifier of the state of the witnesses of the contract.
 
-`undefined` | `string`
+`string` | `undefined`
 
 ## Returns
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v2.0.2**](../../README.md)
+[**Midnight.js API Reference v3.0.0**](../../README.md)
 
 ***
 
@@ -64,7 +64,6 @@
 - [FindDeployedContractOptionsExistingPrivateState](type-aliases/FindDeployedContractOptionsExistingPrivateState.md)
 - [FindDeployedContractOptionsStorePrivateState](type-aliases/FindDeployedContractOptionsStorePrivateState.md)
 - [FoundContract](type-aliases/FoundContract.md)
-- [PartitionedTranscript](type-aliases/PartitionedTranscript.md)
 - [PublicContractStates](type-aliases/PublicContractStates.md)
 - [SubmitTxOptions](type-aliases/SubmitTxOptions.md)
 - [SubmitTxProviders](type-aliases/SubmitTxProviders.md)
@@ -96,6 +95,7 @@
 - [findDeployedContract](functions/findDeployedContract.md)
 - [getPublicStates](functions/getPublicStates.md)
 - [getStates](functions/getStates.md)
+- [getUnshieldedBalances](functions/getUnshieldedBalances.md)
 - [submitCallTx](functions/submitCallTx.md)
 - [submitDeployTx](functions/submitDeployTx.md)
 - [submitInsertVerifierKeyTx](functions/submitInsertVerifierKeyTx.md)

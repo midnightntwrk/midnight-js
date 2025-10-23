@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v2.0.2**](../../../README.md)
+[**Midnight.js API Reference v3.0.0**](../../../README.md)
 
 ***
 
@@ -20,6 +20,8 @@ The Zswap coin public key of the current user.
 ## Param
 
 Configuration.
+
+## Param
 
 ## Call Signature
 

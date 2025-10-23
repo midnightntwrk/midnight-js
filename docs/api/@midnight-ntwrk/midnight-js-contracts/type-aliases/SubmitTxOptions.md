@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v2.0.2**](../../../README.md)
+[**Midnight.js API Reference v3.0.0**](../../../README.md)
 
 ***
 
@@ -29,7 +29,7 @@ transaction. Only defined if a call transaction is being submitted.
 
 ### newCoins?
 
-> `readonly` `optional` **newCoins**: `CoinInfo`[]
+> `readonly` `optional` **newCoins**: `ShieldedCoinInfo`[]
 
 Any new coins created during the construction of the transaction. Only defined
 if the transaction being submitted is a call or deploy transaction.
