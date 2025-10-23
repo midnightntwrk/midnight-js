@@ -172,7 +172,7 @@ describe('Unshielded tokens', () => {
     expect(created.length).toEqual(0);
   });
 
-  test.skip('should receive tokens - invalid', async () => {
+  test('should receive tokens - invalid', async () => {
     await expect(() =>
       submitCallTx(providers, {
         contract: unshieldedContract,
@@ -183,7 +183,7 @@ describe('Unshielded tokens', () => {
     ).rejects.toThrow('Transaction submission error: Transaction submission failed');
   });
 
-  test('should receive tokens - wallet', async () => {
+  test.skip('should receive tokens - wallet', async () => {
     const sep = new Uint8Array(32).fill(0);
 
     const txData = await submitCallTx(providers, {
