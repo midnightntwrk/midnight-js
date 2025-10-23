@@ -46,8 +46,8 @@
     "@midnight-ntwrk/wallet-sdk-facade": "1.0.0-beta.6"
   },
   "devDependencies": {
-    "@commitlint/cli": "^18.4.3",
-    "@commitlint/config-conventional": "^18.4.3",
+    "@commitlint/cli": "^20.0.0",
+    "@commitlint/config-conventional": "^20.0.0",
     "@d2t/vitest-ctrf-json-reporter": "^1.1.0",
     "@effect/build-utils": "^0.8.9",
     "@eslint/js": "^9.30.1",
