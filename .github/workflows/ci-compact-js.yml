@@ -9,7 +9,7 @@ permissions:
   packages: write
   checks: write
   pull-requests: write
-  
+
 on:
   workflow_dispatch:
   workflow_call:
@@ -202,7 +202,7 @@ jobs:
           version=$(jq -r '.v_info.version' version.compactjs.json)
           preRelease=$(jq -r '.v_info.preRelease' version.compactjs.json)
           tag=$(jq -r '.v_info.tag' version.compactjs.json)
-          targetVersion="$version$preRelease.g$calculatedSha"
+          targetVersion="$version$preRelease.$calculatedSha"
           echo "target_version=$targetVersion" >> $GITHUB_OUTPUT
           echo "tag=$tag" >> $GITHUB_OUTPUT
 
