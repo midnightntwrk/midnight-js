@@ -65,9 +65,13 @@ jobs:
 
       - name: Build packages
         run: yarn build:core
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Run tests
         run: yarn test
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Extract release notes
         id: release_notes
