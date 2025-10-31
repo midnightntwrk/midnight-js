@@ -15,21 +15,21 @@
 
 import {
   type AlignedValue,
-  ChargedState,
   CompactError,
   ContractMaintenanceAuthority,
   type ContractState,
-  CostModel,
+  createCircuitContext,
   createConstructorContext,
   decodeZswapLocalState,
   emptyZswapLocalState,
   encodeZswapLocalState,
   type Op,
-  QueryContext,
+  type QueryContext,
   sampleSigningKey,
   signatureVerifyingKey,
-  StateValue,
-  type ZswapLocalState} from '@midnight-ntwrk/compact-runtime';
+  type StateValue,
+  type ZswapLocalState
+} from '@midnight-ntwrk/compact-runtime';
 import {
   ChargedState as LedgerChargedState,
   ContractMaintenanceAuthority as LedgerContractMaintenanceAuthority,
@@ -85,7 +85,7 @@ export interface ContractExecutable<in out C extends Contract.Contract<PS>, PS, 
 
   /**
    * Invokes a circuit on deployed instance of the contract.
-   * 
+   *
    * @param impureCircuitId The circuit to be invoked.
    * @param circuitContext Execution context for `impureCircuitId` including its current onchain and private
    * states.
@@ -100,12 +100,12 @@ export interface ContractExecutable<in out C extends Contract.Contract<PS>, PS, 
 
   /**
    * Applies a new Contract Maintenance Authority (CMA) to a deployed instance of the contract.
-   * 
+   *
    * @param newSigningKey The signing key that will replace the current that is associated with the
    * deployed contract. If `Option.none` then a new singing key is sampled and used instead.
    * @param contractContext Execution context for the maintenance operation.
    * @returns A {@link ContractExecutable.MaintenanceResult} describing the result of the maintenance update.
-   * 
+   *
    * @remarks
    * The current signing key will be taken from the {@link Configuration.Keys} that is part of the executable
    * context, and used to sign the maintenance operation.
@@ -117,7 +117,7 @@ export interface ContractExecutable<in out C extends Contract.Contract<PS>, PS, 
 
   /**
    * Removes the current verifier key for an operation on a deployed instance of the contract.
-   * 
+   *
    * @param impureCircuitId The circuit to be removed from the deployed contract.
    * @param contractContext Execution context for the maintenance operation.
    * @returns A {@link ContractExecutable.MaintenanceResult} describing the result of the maintenance update.
@@ -129,7 +129,7 @@ export interface ContractExecutable<in out C extends Contract.Contract<PS>, PS, 
 
   /**
    * Adds or replaces a verifier key associated with a circuit on a deployed contract.
-   * 
+   *
    * @param impureCircuitId The circuit to add or replace on the deployed contract.
    * @param verifierKey The verifier key to apply to `impureCircuitId`.
    * @param contractContext Execution context for the maintenance operation.
@@ -219,11 +219,14 @@ type Transform<E, R> = <A>(effect: Effect.Effect<A, any, any>) => Effect.Effect<
 const DEFAULT_CMA_THRESHOLD = 1;
 const DEFAULT_SIGNATURE_INDEX = 0n;
 
-const asLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext =>
-  new LedgerQueryContext(
-    new LedgerChargedState(LedgerStateValue.decode(queryContext.state.state.encode())),
-    queryContext.address
-  );
+const asLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext => {
+  const stateValue = LedgerStateValue.decode(queryContext.state.state.encode());
+  const ledgerQueryContext = new LedgerQueryContext(new LedgerChargedState(stateValue), queryContext.address);
+  // The above method of converting to ledger query context only retains the state. So, we have to set the settable properties manually
+  ledgerQueryContext.block = queryContext.block;
+  ledgerQueryContext.effects = queryContext.effects;
+  return ledgerQueryContext;
+}
 
 const partitionTranscript = (
   txContext: QueryContext,
@@ -357,22 +360,13 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
             if (!circuit) {
               throw new Error(`Circuit ${this.compiledContract.tag}#${impureCircuitId} could not be found.`);
             }
-            const initialTxContext = new QueryContext(
-              new ChargedState(StateValue.decode(circuitContext.contractState.data.state.encode())),
-              circuitContext.address
-            );
+            const zswapLocalState = circuitContext.zswapLocalState
+                ? encodeZswapLocalState(circuitContext.zswapLocalState)
+                : emptyZswapLocalState(CoinPublicKey.asHex(keyConfig.coinPublicKey))
+            const runtimeContext = createCircuitContext(circuitContext.address, zswapLocalState, circuitContext.contractState, circuitContext.privateState)
+            const initialTxContext = runtimeContext.currentQueryContext
             return {
-              ...circuit(
-                {
-                  currentPrivateState: circuitContext.privateState,
-                  currentZswapLocalState: circuitContext.zswapLocalState
-                    ? encodeZswapLocalState(circuitContext.zswapLocalState)
-                    : emptyZswapLocalState(CoinPublicKey.asHex(keyConfig.coinPublicKey)),
-                  currentQueryContext: initialTxContext,
-                  costModel: CostModel.initialCostModel()
-                },
-                ...args
-              ),
+              ...circuit(runtimeContext, ...args),
               initialTxContext
             };
           },
@@ -510,7 +504,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
     return Either.right({
       public: {
         maintenanceUpdate: maintenanceUpdate.addSignature(
-          DEFAULT_SIGNATURE_INDEX, 
+          DEFAULT_SIGNATURE_INDEX,
           signData(Option.getOrThrow(currentSigningKey), maintenanceUpdate.dataToSign)
         )
       },
@@ -561,7 +555,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
  *
  * @param compiledContract A {@link CompiledContract}
  * @returns A {@link ContractExecutable} for `compiledContract`.
- * 
+ *
  * @category constructors
  */
 export const make: <C extends Contract.Contract<PS>, PS>(

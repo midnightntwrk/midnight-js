@@ -105,10 +105,17 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       },
       ...(yield* argsParser.parseCircuitArgs(Contract.ImpureCircuitId(circuitId), args))
     );
+    // Replacer function handles types that don't serialize properly in JSON:
+    // - Uint8Array serializes as {"0": 215, "1": 182, ...} instead of [215, 182, ...]
+    // - bigint cannot be serialized and throws TypeError without conversion
     yield* Console.log(
       JSON.stringify(
         result.private.result,
-        (_, value) => typeof value === 'bigint' ? value.toString() : value,
+        (_, value) => {
+          if (typeof value === 'bigint') return value.toString();
+          if (value instanceof Uint8Array) return Array.from(value);
+          return value;
+        },
         2
       )
     );
@@ -130,7 +137,11 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       outputResultFilePath,
       JSON.stringify(
         result.private.result,
-        (_, value) => typeof value === 'bigint' ? value.toString() : value
+        (_, value) => {
+          if (typeof value === 'bigint') return value.toString();
+          if (value instanceof Uint8Array) return Array.from(value);
+          return value;
+        }
       )
     );
     yield* fs.writeFile(outputFilePath, intent.serialize());
