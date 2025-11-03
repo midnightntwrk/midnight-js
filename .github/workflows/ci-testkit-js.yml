@@ -351,7 +351,7 @@ jobs:
 
       - name: Publish Test Report
         if: always()
-        uses: ctrf-io/github-test-reporter@9bd31188517cfb3ff683f135041cc3bfbb0c78b3 # v1.0.25
+        uses: ctrf-io/github-test-reporter@024bc4b64d997ca9da86833c6b9548c55c620e40 # v1.0.26
         with:
           title: 'E2E Tests Results'
           report-path: 'ctrf-results/ctrf-report-merged.json'
