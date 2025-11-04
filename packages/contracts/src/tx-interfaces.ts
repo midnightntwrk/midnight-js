@@ -14,7 +14,7 @@
  */
 
 import type { SigningKey } from '@midnight-ntwrk/compact-runtime';
-import type { ContractAddress } from '@midnight-ntwrk/ledger';
+import type { ContractAddress } from '@midnight-ntwrk/ledger-v6';
 import {
   type CircuitParameters,
   type Contract,

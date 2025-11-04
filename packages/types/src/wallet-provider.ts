@@ -13,28 +13,48 @@
  * limitations under the License.
  */
 
-import type { CoinInfo, CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/ledger';
+import {
+  type DustSecretKey,
+  type FinalizedTransaction,
+  type ShieldedCoinInfo,
+  type UnprovenTransaction,
+  type ZswapSecretKeys
+} from '@midnight-ntwrk/ledger-v6';
 
-import type { BalancedTransaction, UnbalancedTransaction } from './midnight-types';
+import { type ProvingRecipe } from './midnight-types';
 
 /**
- * Interface for a wallet
+ * Interface representing a WalletProvider that handles operations such as
+ * transaction balancing and finalization, and provides access to cryptographic secret keys.
  */
 export interface WalletProvider {
   /**
-   * Wallet public coin key
+   * Represents a readonly property that stores secret keys used for Zswap encryption or authentication.
+   *
+   * @type {ZswapSecretKeys}
    */
-  readonly coinPublicKey: CoinPublicKey;
+  readonly zswapSecretKeys: ZswapSecretKeys;
 
   /**
-   * Wallet EncryptionPublicKey
+   * A readonly property that stores the secret key used for dust operations.
+   *
+   * @type {DustSecretKey}
    */
-  readonly encryptionPublicKey: EncPublicKey;
+  readonly dustSecretKey: DustSecretKey;
 
   /**
-   * Balances selects coins, creates spend proofs, and pays fees for a transaction with call proofs.
+   * Balances a transaction
    * @param tx The transaction to balance.
-   * @param newCoins The outputs created during a transaction.
+   * @param newCoins
+   * @param ttl
    */
-  balanceTx(tx: UnbalancedTransaction, newCoins: CoinInfo[]): Promise<BalancedTransaction>;
+  balanceTx(tx: UnprovenTransaction, newCoins?: ShieldedCoinInfo[], ttl?: Date): Promise<ProvingRecipe<UnprovenTransaction | FinalizedTransaction>>;
+
+  /**
+   * Finalizes the given transaction to complete its processing.
+   *
+   * @param {FinalizedTransaction} tx - The transaction object that needs to be finalized.
+   * @return {Promise<FinalizedTransaction>} A promise that resolves to the finalized transaction object.
+   */
+  finalizeTx(tx: ProvingRecipe<FinalizedTransaction>): Promise<FinalizedTransaction>;
 }

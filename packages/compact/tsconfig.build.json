@@ -1,6 +1,7 @@
 {
   "extends": "./tsconfig.json",
   "exclude": [
-    "./src/test/**/*.mts"
+    "./src/test/**/*.mts",
+    "./src/test/**/*.ts"
   ]
 }

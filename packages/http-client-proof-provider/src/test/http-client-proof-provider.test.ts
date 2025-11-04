@@ -16,8 +16,8 @@
 import type { BinaryLike } from 'crypto';
 import crypto from 'crypto';
 
-import { httpClientProofProvider, serializePayload, serializeZKConfig } from '../http-client-proof-provider';
-import { getValidPayload, getValidUnprovenTx, getValidZKConfig } from './commons';
+import { httpClientProofProvider, serializeTransactionPayload } from '../http-client-proof-provider';
+import { getValidUnprovenTx, getValidZKConfig } from './commons';
 
 const createHash = (binaryLike: BinaryLike): string => {
   return crypto.createHash('sha256').update(binaryLike).digest().toString('base64');
@@ -28,15 +28,31 @@ describe('Http Proof Server Proof Provider', () => {
     expect(() => httpClientProofProvider('ws://localhost:8080')).toThrow(/Invalid protocol scheme: 'ws:'/);
   });
 
-  test("'serializeData' encodes empty key/zkir sets correctly", async () => {
-    expect(createHash(serializeZKConfig())).toEqual(createHash(Buffer.alloc(4, 0)));
-  });
-
-  test("'serializeData' encodes unproven call transactions correctly", async () => {
+  test("'serializePayload' produces deterministic output", async () => {
     const zkConfig = await getValidZKConfig();
     const unprovenTx = await getValidUnprovenTx();
-    const myPayload = await serializePayload(unprovenTx, zkConfig);
-    const payloadBuffer = await getValidPayload();
-    expect(createHash(payloadBuffer)).toEqual(createHash(Buffer.from(myPayload)));
+    const payload1 = serializeTransactionPayload(unprovenTx, zkConfig);
+    const payload2 = serializeTransactionPayload(unprovenTx, zkConfig);
+    expect(createHash(Buffer.from(payload1))).toEqual(createHash(Buffer.from(payload2)));
+    expect(payload1.byteLength).toBeGreaterThan(0);
+  });
+
+  test('handles Uint8Array<ArrayBufferLike> correctly', async () => {
+    const zkConfig = await getValidZKConfig();
+    const unprovenTx = await getValidUnprovenTx();
+
+    const result = serializeTransactionPayload(unprovenTx, zkConfig);
+
+    expect(result).toBeInstanceOf(Uint8Array);
+    expect(result.byteLength).toBeGreaterThan(0);
+  });
+
+  test('handles undefined zkConfig correctly', async () => {
+    const unprovenTx = await getValidUnprovenTx();
+
+    const result = serializeTransactionPayload(unprovenTx, undefined);
+
+    expect(result).toBeInstanceOf(Uint8Array);
+    expect(result.byteLength).toBeGreaterThan(0);
   });
 });

@@ -14,5 +14,6 @@
  */
 
 export * from './assertion-utils';
+export * from './date-utils';
 export * from './hex-utils';
 export * from './type-utils';

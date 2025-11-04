@@ -16,5 +16,5 @@
 export {
   DEFAULT_CONFIG,
   httpClientProofProvider,
-  serializePayload,
-  serializeZKConfig} from './http-client-proof-provider';
+  serializeTransactionPayload
+} from './http-client-proof-provider';

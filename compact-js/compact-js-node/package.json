@@ -1,0 +1,43 @@
+{
+  "name": "@midnight-ntwrk/compact-js-node",
+  "version": "2.3.0",
+  "description": "Platform specific types and utilities for working with the Compact language on a Node.js runtime",
+  "type": "module",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./effect": "./src/effect/index.ts",
+    "./effect/*": "./src/effect/*.ts",
+    "./effect/internal/*": null
+  },
+  "dependencies": {
+    "@effect/cluster": "^0.50.4",
+    "@effect/experimental": "^0.56.0",
+    "@effect/platform": "^0.92.1",
+    "@effect/platform-node": "^0.98.3",
+    "@effect/rpc": "^0.71.0",
+    "@effect/sql": "^0.46.0",
+    "@effect/workflow": "^0.11.3",
+    "effect": "^3.18.4"
+  },
+  "peerDependencies": {
+    "@midnight-ntwrk/compact-js": ">=2.3.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/midnight-ntwrk/artifacts.git"
+  },
+  "packageManager": "yarn@4.10.3",
+  "author": "IOHK",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "yarn build-esm && build-utils pack-v3",
+    "build-esm": "tsc -b tsconfig.build.json",
+    "clean": "shx rm -rf ./build ./dist ./.tsbuildinfo ./reports ./coverage",
+    "test": "vitest run --passWithNoTests",
+    "deploy": "shx rm -rf ./dist/src && (cd ./dist; npm publish)"
+  },
+  "files": [
+    "dist/"
+  ]
+}

@@ -1,52 +1,66 @@
 {
   "name": "@midnight-ntwrk/midnight-js",
   "description": "Midnight application development framework",
-  "version": "2.0.2",
-  "packageManager": "yarn@4.9.2",
+  "version": "3.0.0-alpha.1",
+  "packageManager": "yarn@4.10.3",
   "repository": "git@github.com:midnight-ntwrk/artifacts",
   "engines": {
     "node": ">=22"
   },
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "compact-js/*",
+    "platform-js/*",
+    "testkit-js/*"
   ],
   "scripts": {
     "clean": "turbo run clean",
     "build": "turbo run build",
+    "build:core": "turbo run build --filter='!@midnight-ntwrk/testkit-*'",
+    "build:testkit": "turbo run build --filter='@midnight-ntwrk/testkit-*'",
     "clean-build": "turbo run clean-build",
     "test": "turbo run test",
+    "test:unit": "turbo run test --filter='!@midnight-ntwrk/testkit-*'",
     "it": "turbo run it",
     "e2e": "turbo run e2e",
-    "e2e-groups": "turbo run e2e-groups",
+    "e2e-single": "turbo run e2e-single",
     "check": "turbo run check && yarn lint",
+    "check:core": "turbo run check --filter='!@midnight-ntwrk/testkit-*' && yarn lint",
     "deploy": "turbo run deploy",
+    "deploy:core": "turbo run deploy --filter='!@midnight-ntwrk/testkit-*'",
     "build:markdown-docs": "typedoc --validation --plugin typedoc-plugin-markdown --options typedoc.json",
-    "lint": "eslint ./packages",
+    "lint": "eslint",
     "lint:fix": "NODE_OPTIONS=--max-old-space-size=16192 eslint ./packages --fix",
-    "postinstall": "husky install",
+    "commit": "git-cz",
+    "changelog": "conventional-changelog -p conventionalcommits -i CHANGELOG.md -s",
+    "changelog:first": "conventional-changelog -p conventionalcommits -i CHANGELOG.md -s -r 0",
+    "postinstall": "husky && patch-package",
     "prepublishOnly": "pinst --disable",
     "postpublish": "pinst --enable"
   },
   "license": "Apache-2.0",
   "dependencies": {
-    "@midnight-ntwrk/compact-runtime": "0.8.1",
-    "@midnight-ntwrk/ledger": "4.0.0",
-    "@midnight-ntwrk/wallet-sdk-address-format": "2.0.0",
-    "@midnight-ntwrk/zswap": "4.0.0"
+    "@midnight-ntwrk/compact-runtime": "0.11.0-rc.1",
+    "@midnight-ntwrk/ledger-v6": "6.1.0-alpha.5",
+    "@midnight-ntwrk/onchain-runtime-v1": "1.0.0-alpha.5",
+    "@midnight-ntwrk/wallet-sdk-facade": "1.0.0-beta.8"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.0.0",
+    "@commitlint/config-conventional": "^20.0.0",
     "@d2t/vitest-ctrf-json-reporter": "^1.1.0",
+    "@effect/build-utils": "^0.8.9",
     "@eslint/js": "^9.30.1",
-    "@midnight-ntwrk/wallet": "5.0.0",
-    "@midnight-ntwrk/wallet-api": "5.0.0",
-    "@midnight-ntwrk/wallet-sdk-hd": "2.0.0",
-    "@rollup/plugin-commonjs": "^28.0.3",
-    "@rollup/plugin-node-resolve": "^16.0.0",
-    "@rollup/plugin-typescript": "^12.1.3",
+    "@rollup/plugin-commonjs": "^28.0.9",
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-typescript": "^12.3.0",
     "@tsconfig/node22": "^22.0.0",
-    "@types/node": "^22.14.0",
+    "@types/node": "^24.0.0",
     "@vitest/coverage-v8": "^3.2.4",
     "@vitest/ui": "^3.2.4",
+    "commitizen": "^4.3.0",
+    "conventional-changelog-cli": "^5.0.0",
+    "cz-conventional-changelog": "^3.3.0",
     "eslint": "^9.30.1",
     "eslint-config-prettier": "^10.1.5",
     "eslint-import-resolver-typescript": "^4.4.4",
@@ -54,23 +68,38 @@
     "eslint-plugin-prettier": "^5.5.1",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "eslint-plugin-unused-imports": "^4.1.4",
+    "glob": "^11.0.3",
     "husky": "^9.1.7",
-    "jsdom": "^26.1.0",
+    "jsdom": "^27.0.0",
     "lint-staged": "^16.1.2",
+    "patch-package": "^8.0.1",
     "pinst": "^3.0.0",
     "prettier": "^3.6.2",
-    "rollup": "^4.37.0",
+    "rollup": "^4.52.5",
+    "rollup-plugin-dts": "^6.2.3",
     "rxjs": "^7.8.1",
+    "shx": "^0.4.0",
     "testcontainers": "^11.2.0",
     "ts-node": "^10.9.2",
-    "turbo": "^2.5.0",
+    "tstyche": "^4.3.0",
+    "turbo": "^2.5.5",
     "typedoc": "^0.28.5",
-    "typedoc-plugin-markdown": "4.7.0",
+    "typedoc-plugin-markdown": "4.9.0",
     "typescript": "^5.8.2",
     "typescript-eslint": "^8.35.1",
     "vitest": "^3.2.4"
   },
   "lint-staged": {
-    "*.ts": "eslint --cache --fix"
-  }
+    "*.ts,!compact-js/**/*.ts": "eslint --cache --fix"
+  },
+  "config": {
+    "commitizen": {
+      "path": "cz-conventional-changelog"
+    }
+  },
+  "resolutions": {
+    "@midnight-ntwrk/ledger-v6": "6.1.0-alpha.5",
+    "@midnight-ntwrk/compact-runtime": "0.11.0-rc.1"
+  },
+  "stableVersion": "3.0.0"
 }

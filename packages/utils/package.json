@@ -1,19 +1,22 @@
 {
   "name": "@midnight-ntwrk/midnight-js-utils",
-  "version": "2.0.2",
+  "version": "3.0.0-alpha.1",
   "description": "Shared utilities for MidnightJS modules",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": {
+        "import": "./dist/index.d.mts",
+        "require": "./dist/index.d.cts"
+      },
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
     }
   },
   "repository": "git@github.com:midnight-ntwrk/artifacts",
-  "packageManager": "yarn@4.9.2",
+  "packageManager": "yarn@4.10.3",
   "author": "IOHK",
   "license": "Apache-2.0",
   "scripts": {
@@ -24,5 +27,10 @@
   },
   "files": [
     "dist/"
-  ]
+  ],
+  "dependencies": {
+    "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
+    "@scure/base": "^2.0.0"
+  },
+  "stableVersion": "3.0.0"
 }

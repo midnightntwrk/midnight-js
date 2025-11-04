@@ -13,9 +13,17 @@
  * limitations under the License.
  */
 
-import type { CoinInfo } from '@midnight-ntwrk/compact-runtime';
-import type { UnprovenTransaction } from '@midnight-ntwrk/ledger';
-import type { Contract, FinalizedTxData, ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
+import type { ShieldedCoinInfo } from '@midnight-ntwrk/compact-runtime';
+import { LedgerState, type UnprovenTransaction, WellFormedStrictness } from '@midnight-ntwrk/ledger-v6';
+import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import {
+  type Contract,
+  type FinalizedTxData,
+  type ImpureCircuitId,
+  type TransactionToProve
+} from '@midnight-ntwrk/midnight-js-types';
+import fs from 'fs';
+import path from 'path';
 
 import { type ContractProviders } from './contract-providers';
 
@@ -31,7 +39,7 @@ export type SubmitTxOptions<ICK extends ImpureCircuitId> = {
    * Any new coins created during the construction of the transaction. Only defined
    * if the transaction being submitted is a call or deploy transaction.
    */
-  readonly newCoins?: CoinInfo[];
+  readonly newCoins?: ShieldedCoinInfo[];
   /**
    * A circuit identifier to use to fetch the ZK artifacts needed to prove the
    * transaction. Only defined if a call transaction is being submitted.
@@ -65,8 +73,29 @@ export const submitTx = async <C extends Contract, ICK extends ImpureCircuitId<C
   const proveTxConfig = options.circuitId
     ? { zkConfig: await providers.zkConfigProvider.get(options.circuitId) }
     : undefined;
-  const unbalancedTx = await providers.proofProvider.proveTx(options.unprovenTx, proveTxConfig);
-  const balancedTx = await providers.walletProvider.balanceTx(unbalancedTx, options.newCoins ?? []);
-  const txId = await providers.midnightProvider.submitTx(balancedTx);
+  const recipe = await providers.walletProvider.balanceTx(options.unprovenTx, options.newCoins);
+  // TODO: we can switch to 'await providers.walletProvider.finalizeTx(recipe)' once it supports ZKConfig
+  // TODO: unsafe cast just for temporal workaround
+  const provenTx = await providers.proofProvider.proveTx((recipe as TransactionToProve).transaction , proveTxConfig);
+  const bound = provenTx.bind();
+  if (process.env.MN_DEBUG) {
+    console.log(`Submit tx: ${options.circuitId} : ${options.unprovenTx}`);
+    const serialized = options.unprovenTx.serialize();
+    const logsDir = path.join(process.cwd(), 'logs', 'transactions');
+    if (!fs.existsSync(logsDir)) {
+      fs.mkdirSync(logsDir, { recursive: true });
+    }
+    const filename = `tx-${Date.now()}-${options.circuitId}`;
+    const filepath = path.join(logsDir, filename + '.bin');
+    const filepathString = path.join(logsDir, filename + '.txt');
+    fs.writeFileSync(filepath, serialized);
+    fs.writeFileSync(filepathString, options.unprovenTx.toString());
+    console.log(`Transaction serialized and written to: ${filepath}`);
+    if (options.circuitId) {
+      const vtx = bound.wellFormed(LedgerState.blank(getNetworkId()), new WellFormedStrictness(), new Date(Date.now()));
+      console.log(`Vtx: ${vtx}`);
+    }
+  }
+  const txId = await providers.midnightProvider.submitTx(bound);
   return await providers.publicDataProvider.watchForTxData(txId);
 };

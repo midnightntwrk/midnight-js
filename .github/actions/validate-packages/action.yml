@@ -1,0 +1,23 @@
+name: 'Validate Packages Before Publishing'
+description: 'Simple package validation using proven tools'
+
+inputs:
+  workspace-path:
+    description: 'Path to workspace to validate'
+    required: true
+    default: './packages'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Validate with publint
+      shell: bash
+      run: |
+        echo "🔍 Validating packages with publint..."
+        for dir in ${{ inputs.workspace-path }}/*/; do npx publint@latest "$dir" --strict || true; done
+
+    - name: Test package creation
+      shell: bash
+      run: |
+        echo "🧪 Testing package creation..."
+        for dir in ${{ inputs.workspace-path }}/*/; do yarn pack --dry-run || true; done

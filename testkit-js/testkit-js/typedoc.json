@@ -1,0 +1,7 @@
+{
+  "extends": ["../../typedoc.base.json"],
+  "readme": "README.md",
+  "entryPoints": ["src/index.ts"],
+  "out": "../../docs/api/testkit-js",
+  "tsconfig": "tsconfig.docs.json"
+}

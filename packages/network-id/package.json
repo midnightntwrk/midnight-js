@@ -1,19 +1,22 @@
 {
   "name": "@midnight-ntwrk/midnight-js-network-id",
-  "version": "2.0.2",
+  "version": "3.0.0-alpha.1",
   "description": "Package for setting the network ID of runtime and ledger WASM API",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": {
+        "import": "./dist/index.d.mts",
+        "require": "./dist/index.d.cts"
+      },
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
     }
   },
   "repository": "git@github.com:midnight-ntwrk/artifacts",
-  "packageManager": "yarn@4.9.2",
+  "packageManager": "yarn@4.10.3",
   "author": "IOHK",
   "license": "Apache-2.0",
   "scripts": {
@@ -24,5 +27,6 @@
   },
   "files": [
     "dist/"
-  ]
+  ],
+  "stableVersion": "3.0.0"
 }

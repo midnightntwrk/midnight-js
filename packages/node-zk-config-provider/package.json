@@ -1,20 +1,23 @@
 {
   "name": "@midnight-ntwrk/midnight-js-node-zk-config-provider",
-  "version": "2.0.2",
+  "version": "3.0.0-alpha.1",
   "description": "MidnightJS module for reading proving and verifying keys and ZK intermediate representation",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": {
+        "import": "./dist/index.d.mts",
+        "require": "./dist/index.d.cts"
+      },
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
     }
   },
   "author": "IOG",
   "repository": "git@github.com:midnight-ntwrk/artifacts",
-  "packageManager": "yarn@4.9.2",
+  "packageManager": "yarn@4.10.3",
   "license": "MIT",
   "scripts": {
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
@@ -24,5 +27,6 @@
   },
   "dependencies": {
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
-  }
+  },
+  "stableVersion": "3.0.0"
 }

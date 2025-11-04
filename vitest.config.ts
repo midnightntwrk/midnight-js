@@ -36,7 +36,12 @@ export default defineConfig({
     },
     testTimeout: 180000,
     include: ['packages/**/*.test.ts'],
-    exclude: ['node_modules', 'dist']
+    exclude: ['node_modules', 'dist'],
+    projects: [
+      'packages/*/vitest.config.ts',
+      'compact-js/*/vitest.config.ts',
+      'platform-js/*/vitest.config.ts'
+    ]
   },
   resolve: {
     alias: {

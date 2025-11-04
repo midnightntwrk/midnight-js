@@ -7,7 +7,7 @@
     "node": ">=22.0.0"
   },
   "license": "Apache-2.0",
-  "version": "2.0.2",
+  "version": "3.0.0-alpha.1",
   "type": "module",
   "bin": {
     "fetch-compactc": "dist/fetch-compact.mjs",
@@ -21,11 +21,12 @@
     "deploy": "yarn npm publish"
   },
   "devDependencies": {
-    "@types/node": "^22.14.0",
+    "@types/node": "^24.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.2"
   },
   "files": [
     "dist/"
-  ]
+  ],
+  "stableVersion": "3.0.0"
 }

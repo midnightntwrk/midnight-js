@@ -219,8 +219,6 @@ export type FoundContract<C extends Contract> = {
   readonly contractMaintenanceTx: ContractMaintenanceTxInterface;
 }
 
- 
-
 export async function findDeployedContract<C extends Contract<undefined>>(
   providers: ContractProviders<C, ImpureCircuitId<C>, unknown>,
   options: FindDeployedContractOptionsBase<C>

@@ -24,76 +24,96 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-
   ci:
-    uses: ./.github/workflows/ci_base.yml
-    with:
-      network: undeployed
-      allure_upload: true
-      allure_project_id: midnight-js-main
-    secrets: inherit
-
-  cd-prerelease:
     runs-on: ubuntu-latest
-    needs: ci
-    if: ${{ github.event_name != 'schedule' && github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch' }}
-    steps:
+    outputs:
+      build_shared: ${{ steps.build-targets.outputs.shared }}
+      build_mn_js: ${{ steps.build-targets.outputs.midnight-js }}
+      build_c_js: ${{ steps.build-targets.outputs.compact-js }}
+      build_p_js: ${{ steps.build-targets.outputs.platform-js }}
+      build_t_js: ${{ steps.build-targets.outputs.testkit-js }}
 
+    steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # ratchet:actions/checkout@v5
         with:
           fetch-depth: 0
 
-      - name: Load environment variables
-        run: |
-          export $(grep -v '^#' .github/env/global.env | xargs)
-          for var in $(cut -d= -f1 .github/env/global.env); do
-            echo "$var=${!var}" >> $GITHUB_ENV
-          done
-
       - name: Set up Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # ratchet:actions/setup-node@v4
+        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # ratchet:actions/setup-node@v4
         with:
           always-auth: true
           registry-url: https://npm.pkg.github.com/
           scope: '@midnight-ntwrk'
           node-version-file: '.nvmrc'
-          cache: 'yarn'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
-      - name: Configure yarn
-        run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-
-      - name: Cache Turbo and Yarn dependencies
-        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+      - name: Determine Build Targets
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
+        id: build-targets
         with:
-          path: |
-            **/node_modules
-            ~/.yarn
-            .turbo
-          key: turbo-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
-          restore-keys: |
-            turbo-${{ runner.os }}-
+          filters: |
+            shared:
+              - '.github/workflows/**'
+              - 'yarn.lock'
+              - 'package.json'
+            compact-js:
+              - 'compact-js/**'
+            platform-js:
+              - 'platform-js/**'
+            midnight-js:
+              - 'packages/**'
+            testkit-js:
+              - 'packages/**'
+              - 'testkit-js/**'
 
-      - name: Install dependencies
-        run: |
-          yarn install --immutable
+  ci-midnightjs:
+    needs: ci
+    name: Build Midnight.js
+    uses: ./.github/workflows/ci-midnight-js.yml
+    with:
+      should_run: ${{ needs.ci.outputs.build_mn_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
+      should_prerelease: ${{
+          github.event_name != 'schedule' &&
+          (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch')
+        }}
+    secrets: inherit
 
-      - name: Temp bump prerelease
-        run: yarn version prerelease
+  ci-compactjs:
+    needs: ci
+    name: Build Compact.js
+    with:
+      should_run: ${{ needs.ci.outputs.build_c_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
+      should_prerelease: ${{
+          github.event_name != 'schedule' &&
+          (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch')
+        }}
+    uses: ./.github/workflows/ci-compact-js.yml
+    secrets: inherit
 
-      - name: Set short git commit SHA
-        id: vars
-        run: |
-          calculatedSha=$(git rev-parse --short ${{ github.sha }})
-          currentVersion=$(jq -r .version package.json)
-          targetVersion="$currentVersion-pre.$calculatedSha"
-          echo "target_version=$targetVersion" >> $GITHUB_OUTPUT
+  ci-platformjs:
+    needs: ci
+    name: Build Platform.js
+    with:
+      should_run: ${{ needs.ci.outputs.build_p_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
+      should_prerelease: ${{
+          github.event_name != 'schedule' &&
+          (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch')
+        }}
+    uses: ./.github/workflows/ci-platform-js.yml
+    secrets: inherit
 
-      - name: Bump versions
-        run: yarn workspaces foreach --all version ${{ steps.vars.outputs.target_version }}
-
-      - name: Publish packages
-        run: yarn deploy --cache-dir ./turbo -- --tag ${{ steps.vars.outputs.target_version }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+  ci-testkit:
+    needs: ci
+    name: Build Testkit.js
+    with:
+      should_run: ${{ needs.ci.outputs.build_t_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
+      should_prerelease: ${{
+          github.event_name != 'schedule' &&
+          (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch')
+        }}
+      network: undeployed
+      allure_upload: true
+      allure_project_id: midnight-js-main
+    uses: ./.github/workflows/ci-testkit-js.yml
+    secrets: inherit

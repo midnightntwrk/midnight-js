@@ -1,0 +1,37 @@
+{
+  "name": "@midnight-ntwrk/platform-js",
+  "version": "2.1.0",
+  "description": "Provides a set of core abstractions, utilities, and types for building services and libraries that work with the Midnight blockchain",
+  "type": "module",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": "./src/index.ts",
+    "./effect": "./src/effect/index.ts",
+    "./effect/*": "./src/effect/*.ts",
+    "./effect/internal/*": null
+  },
+  "dependencies": {
+    "@effect/platform": "^0.92.1",
+    "effect": "^3.18.4"
+  },
+  "devDependencies": {
+    "@effect/vitest": "^0.26.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/midnight-ntwrk/artifacts.git"
+  },
+  "packageManager": "yarn@4.10.3",
+  "author": "IOHK",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "yarn build-esm && build-utils pack-v3",
+    "build-esm": "tsc -b tsconfig.build.json",
+    "clean": "shx rm -rf ./build ./dist ./.tsbuildinfo ./reports ./coverage",
+    "test": "vitest run",
+    "deploy": "shx rm -rf ./dist/src && (cd ./dist; npm publish)"
+  },
+  "files": [
+    "dist/"
+  ]
+}

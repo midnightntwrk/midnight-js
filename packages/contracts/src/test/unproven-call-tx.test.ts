@@ -14,7 +14,7 @@
  */
 
 import { StateValue, type ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
-import { type AlignedValue } from '@midnight-ntwrk/ledger';
+import { type AlignedValue } from '@midnight-ntwrk/ledger-v6';
 import { type Contract, type ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -43,7 +43,7 @@ vi.mock('../get-states', () => ({
 
 vi.mock('../utils', () => ({
   createUnprovenLedgerCallTx: vi.fn().mockReturnValue({ test: 'unproven-tx' }),
-  encryptionPublicKeyForzswapState: vi.fn().mockReturnValue('encrypted-key'),
+  encryptionPublicKeyForZswapState: vi.fn().mockReturnValue('encrypted-key'),
   zswapStateToNewCoins: vi.fn().mockReturnValue([{ test: 'coin' }])
 }));
 

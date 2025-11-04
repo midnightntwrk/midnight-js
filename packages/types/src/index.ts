@@ -24,31 +24,43 @@ export {
   InitialStateParameters,
   PrivateState,
   Witness,
-  Witnesses} from './contract';
+  Witnesses
+} from './contract';
 export * from './errors';
 export * from './logger-provider';
 export * from './midnight-provider';
 export {
-  BalancedTransaction,
-  createBalancedTx,
+  BlockHash,
   createProverKey,
-  createUnbalancedTx,
   createVerifierKey,
   createZKIR,
   FailEntirely,
   FailFallible,
+  Fees,
   FinalizedTxData,
+  NOTHING_TO_PROVE,
+  NothingToProve,
   ProverKey,
+  ProvingRecipe,
+  SegmentFail,
+  SegmentStatus,
+  SegmentSuccess,
   SucceedEntirely,
+  TRANSACTION_TO_PROVE,
+  TransactionToProve,
   TxStatus,
-  UnbalancedTransaction,
+  UnshieldedBalance,
+  UnshieldedBalances,
+  UnshieldedUtxo,
+  UnshieldedUtxos,
   VerifierKey,
   ZKConfig,
-  ZKIR} from './midnight-types';
+  ZKIR
+} from './midnight-types';
 export * from './private-state-provider';
 export * from './proof-provider';
 export * from './providers';
 export * from './public-data-provider';
 export * from './wallet-provider';
 export * from './zk-config-provider';
-export { UnprovenTransaction } from '@midnight-ntwrk/ledger';
+export { Transaction } from '@midnight-ntwrk/ledger-v6';

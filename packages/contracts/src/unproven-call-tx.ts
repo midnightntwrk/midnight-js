@@ -14,8 +14,8 @@
  */
 
 import type { CoinPublicKey, ContractState } from '@midnight-ntwrk/compact-runtime';
-import { type EncPublicKey,type ZswapChainState } from '@midnight-ntwrk/ledger';
-import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { type EncPublicKey,type ZswapChainState } from '@midnight-ntwrk/ledger-v6';
+import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import type { Contract, ImpureCircuitId, PrivateState, PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
@@ -30,9 +30,9 @@ import { type ContractProviders } from './contract-providers';
 import { IncompleteCallTxPrivateStateConfig } from './errors';
 import { getPublicStates, getStates } from './get-states';
 import type { UnsubmittedCallTxData } from './tx-model';
-import { createUnprovenLedgerCallTx, encryptionPublicKeyForzswapState, zswapStateToNewCoins } from './utils';
+import { createUnprovenLedgerCallTx, encryptionPublicKeyForZswapState, zswapStateToNewCoins } from './utils';
 
- 
+
 
 export function createUnprovenCallTxFromInitialStates<C extends Contract<undefined>, ICK extends ImpureCircuitId<C>>(
   options: CallOptionsWithProviderDataDependencies<C, ICK>,
@@ -52,6 +52,8 @@ export function createUnprovenCallTxFromInitialStates<C extends Contract, ICK ex
  *
  * @param options Configuration.
  *
+ * @param walletCoinPublicKey
+ * @param walletEncryptionPublicKey
  * @returns Data produced by the circuit call and an unproven transaction assembled from the call result.
  */
 export function createUnprovenCallTxFromInitialStates<C extends Contract, ICK extends ImpureCircuitId<C>>(
@@ -79,14 +81,14 @@ export function createUnprovenCallTxFromInitialStates<C extends Contract, ICK ex
         callResult.private.input,
         callResult.private.output,
         callResult.private.nextZswapLocalState,
-        encryptionPublicKeyForzswapState(
+        encryptionPublicKeyForZswapState(
           callResult.private.nextZswapLocalState,
           walletCoinPublicKey,
           walletEncryptionPublicKey
         )
       ),
       newCoins: zswapStateToNewCoins(
-        parseCoinPublicKeyToHex(coinPublicKey, getZswapNetworkId()),
+        parseCoinPublicKeyToHex(coinPublicKey, getNetworkId()),
         callResult.private.nextZswapLocalState
       )
     }
@@ -142,7 +144,7 @@ const createCallOptions = <C extends Contract, ICK extends ImpureCircuitId<C>>(
       : callOptionsBase;
   const callOptionsBaseWithProviderDataDependencies = {
     ...callOptionsWithArguments,
-    coinPublicKey: parseCoinPublicKeyToHex(coinPublicKey, getZswapNetworkId()),
+    coinPublicKey: parseCoinPublicKeyToHex(coinPublicKey, getNetworkId()),
     initialContractState,
     initialZswapChainState
   };
@@ -223,13 +225,13 @@ export async function createUnprovenCallTx<C extends Contract, ICK extends Impur
     return createUnprovenCallTxFromInitialStates(
       createCallOptions(
         options,
-        parseCoinPublicKeyToHex(providers.walletProvider.coinPublicKey, getZswapNetworkId()),
+        parseCoinPublicKeyToHex(providers.walletProvider.zswapSecretKeys.coinPublicKey, getNetworkId()),
         contractState,
         zswapChainState,
         privateState
       ),
-      providers.walletProvider.coinPublicKey,
-      providers.walletProvider.encryptionPublicKey
+      providers.walletProvider.zswapSecretKeys.coinPublicKey,
+      providers.walletProvider.zswapSecretKeys.encryptionPublicKey
     );
   }
 
@@ -240,11 +242,11 @@ export async function createUnprovenCallTx<C extends Contract, ICK extends Impur
   return createUnprovenCallTxFromInitialStates(
     createCallOptions(
       options,
-      parseCoinPublicKeyToHex(providers.walletProvider.coinPublicKey, getZswapNetworkId()),
+      parseCoinPublicKeyToHex(providers.walletProvider.zswapSecretKeys.coinPublicKey, getNetworkId()),
       contractState,
       zswapChainState
     ),
-    providers.walletProvider.coinPublicKey,
-    providers.walletProvider.encryptionPublicKey
+    providers.walletProvider.zswapSecretKeys.coinPublicKey,
+    providers.walletProvider.zswapSecretKeys.encryptionPublicKey
   );
 }

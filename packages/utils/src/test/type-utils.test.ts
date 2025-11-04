@@ -20,6 +20,8 @@ import { assertIsContractAddress } from '../type-utils';
 
 const createHexString = (byteLen: number): string => toHex(randomBytes(byteLen));
 
+const EXPECTED_CONTRACT_ADDRESS_BYTE_LENGTH = 32;
+
 describe('Type Utils', () => {
   describe('assertIsContractAddress', () => {
     it('throws with zero length contract address', () => {
@@ -28,15 +30,15 @@ describe('Type Utils', () => {
     });
 
     it('throws with malformed contract address', () => {
-      expect(() => assertIsContractAddress(`X${createHexString(34).substring(1)}`)).toThrow();
+      expect(() => assertIsContractAddress(`X${createHexString(EXPECTED_CONTRACT_ADDRESS_BYTE_LENGTH).substring(1)}`)).toThrow();
     });
 
     it('passes with valid contract address', () => {
-      expect(() => assertIsContractAddress(createHexString(34))).not.toThrow();
+      expect(() => assertIsContractAddress(createHexString(EXPECTED_CONTRACT_ADDRESS_BYTE_LENGTH))).not.toThrow();
     });
 
     it('throws with prefixed but valid contract address', () => {
-      expect(() => assertIsContractAddress(`0x${createHexString(34)}`)).toThrow(
+      expect(() => assertIsContractAddress(`0x${createHexString(EXPECTED_CONTRACT_ADDRESS_BYTE_LENGTH)}`)).toThrow(
         /Unexpected '0x' prefix in contract address/
       );
     });

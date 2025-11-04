@@ -1,12 +1,13 @@
 {
   "$schema": "https://turbo.build/schema.v2.json",
   "envMode": "loose",
+  "globalEnv": ["COMPACTC_VERSION"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "outputLogs": "new-only",
       "inputs": ["src/**/*.ts", "!src/**/*.test.ts", "src/**/*.compact"],
-      "outputs": ["dist/**", "src/**/managed/**"]
+      "outputs": ["dist/**", "build/**", "src/**/managed/**"]
     },
     "clean": {
       "cache": false
@@ -36,7 +37,7 @@
       "inputs": ["src/**/*.ts", "compose.yml"],
       "outputs": ["reports/**", "coverage/**", "logs/**"]
     },
-    "e2e-groups": {
+    "e2e-single": {
       "outputLogs": "new-only",
       "dependsOn": ["^build"],
       "inputs": ["src/**/*.ts", "compose.yml"],

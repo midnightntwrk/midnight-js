@@ -14,7 +14,8 @@
  */
 
 import type { CoinPublicKey,SigningKey } from '@midnight-ntwrk/compact-runtime';
-import { getZswapNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import type { EncPublicKey } from '@midnight-ntwrk/ledger-v6';
+import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   type Contract,
   type ImpureCircuitId,
@@ -23,7 +24,6 @@ import {
   type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
 import { getImpureCircuitIds } from '@midnight-ntwrk/midnight-js-types';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
-import type { EncPublicKey } from '@midnight-ntwrk/zswap';
 
 import type { ContractConstructorOptions, ContractConstructorOptionsWithArguments } from './call-constructor';
 import { callContractConstructor } from './call-constructor';
@@ -101,7 +101,7 @@ const createContractConstructorOptions = <C extends Contract>(
   return constructorOptions as ContractConstructorOptions<C>;
 };
 
- 
+
 
 export function createUnprovenDeployTxFromVerifierKeys<C extends Contract<undefined>>(
   verifierKeys: [ImpureCircuitId<C>, VerifierKey][],
@@ -124,7 +124,7 @@ export function createUnprovenDeployTxFromVerifierKeys<C extends Contract>(
  * @param verifierKeys The verifier keys for the contract being deployed.
  * @param coinPublicKey The Zswap coin public key of the current user.
  * @param options Configuration.
- *
+ * @param encryptionPublicKey
  * @returns Data produced by the contract constructor call and an unproven deployment transaction
  *          assembled from the contract constructor result.
  */
@@ -195,8 +195,8 @@ export async function createUnprovenDeployTx<C extends Contract>(
   const verifierKeys = await providers.zkConfigProvider.getVerifierKeys(getImpureCircuitIds(options.contract));
   return createUnprovenDeployTxFromVerifierKeys(
     verifierKeys,
-    parseCoinPublicKeyToHex(providers.walletProvider.coinPublicKey, getZswapNetworkId()),
+    parseCoinPublicKeyToHex(providers.walletProvider.zswapSecretKeys.coinPublicKey, getNetworkId()),
     options,
-    providers.walletProvider.encryptionPublicKey
+    providers.walletProvider.zswapSecretKeys.encryptionPublicKey
   );
 }

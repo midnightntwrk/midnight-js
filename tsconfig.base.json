@@ -10,7 +10,7 @@
     "noPropertyAccessFromIndexSignature": false,
     "ignoreDeprecations": "5.0",
     "module": "ES2022",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "types": ["vitest/globals"]
   },
 }

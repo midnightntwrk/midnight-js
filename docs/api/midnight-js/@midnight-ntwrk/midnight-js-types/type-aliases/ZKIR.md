@@ -1,0 +1,19 @@
+[**Midnight.js API Reference v3.0.0**](../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../packages.md) / [@midnight-ntwrk/midnight-js-types](../README.md) / ZKIR
+
+# Type Alias: ZKIR
+
+> **ZKIR** = `Uint8Array` & `object`
+
+A type representing a zero-knowledge circuit intermediate representation derived from a contract circuit.
+
+## Type Declaration
+
+### ZKIR
+
+> `readonly` **ZKIR**: unique `symbol`
+
+Unique symbol brand.
