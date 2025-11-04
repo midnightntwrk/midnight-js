@@ -2801,7 +2801,7 @@ __metadata:
     axios: "npm:^1.11.0"
     buffer: "npm:^6.0.3"
     cross-fetch: "npm:^4.0.0"
-    pino: "npm:^9.9.1"
+    pino: "npm:^10.0.0"
     pino-pretty: "npm:^13.0.0"
     rxjs: "npm:^7.8.2"
     vite-tsconfig-paths: "npm:^5.1.4"
@@ -2831,7 +2831,7 @@ __metadata:
     axios: "npm:^1.12.0"
     buffer: "npm:^6.0.3"
     cross-fetch: "npm:^4.0.0"
-    pino: "npm:^9.9.1"
+    pino: "npm:^10.0.0"
     pino-pretty: "npm:^13.0.0"
     rxjs: "npm:^7.8.2"
     vite-tsconfig-paths: "npm:^5.1.4"
@@ -12262,9 +12262,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"pino@npm:^9.9.1":
-  version: 9.14.0
-  resolution: "pino@npm:9.14.0"
+"pino@npm:^10.0.0":
+  version: 10.1.0
+  resolution: "pino@npm:10.1.0"
   dependencies:
     "@pinojs/redact": "npm:^0.4.0"
     atomic-sleep: "npm:^1.0.0"
@@ -12279,7 +12279,7 @@ __metadata:
     thread-stream: "npm:^3.0.0"
   bin:
     pino: bin.js
-  checksum: 10/918e1fc764885150cb2b4fae8249a0ece53275020a7ca389f994fa2fbbb17b6353cd736c2db3a3794fbac0351f8e3d58411fabe127e875e24151a8fa4cd0b2b5
+  checksum: 10/6f9c86572669842950887cf1cd45fc977903ce1be0a6e32b98918c87d1914ff8854395dc64388d75a583672439997422975977275ed92c14a2f6ee1a26b07ccf
   languageName: node
   linkType: hard
 
