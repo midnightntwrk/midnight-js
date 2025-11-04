@@ -1614,13 +1614,13 @@ __metadata:
   linkType: hard
 
 "@fast-check/vitest@npm:^0.2.1":
-  version: 0.2.2
-  resolution: "@fast-check/vitest@npm:0.2.2"
+  version: 0.2.3
+  resolution: "@fast-check/vitest@npm:0.2.3"
   dependencies:
     fast-check: "npm:^3.0.0 || ^4.0.0"
   peerDependencies:
-    vitest: ^1 || ^2 || ^3
-  checksum: 10/1a06a3f33b91da1686166650a5cb25c4f25442a5f9177a929746f215f6156d43b13bfc70ec0319d1a1f7e433c3e1b636c02ae15cf899ad93ee0192da5a708d7f
+    vitest: ^1 || ^2 || ^3 || ^4
+  checksum: 10/e7dfd3d0dcf2b41d5ece41e5afd8f1a90dd2e8061d8ad1cdda93a203d4dc74a882eac7b139f0b553a7ecf195395a6a1e8b36198d4d12a59cbef30b9594bd6ddb
   languageName: node
   linkType: hard
 
