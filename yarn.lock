@@ -13960,11 +13960,11 @@ __metadata:
   linkType: hard
 
 "superjson@npm:^2.0.0":
-  version: 2.2.3
-  resolution: "superjson@npm:2.2.3"
+  version: 2.2.5
+  resolution: "superjson@npm:2.2.5"
   dependencies:
     copy-anything: "npm:^4"
-  checksum: 10/2292cf384cb9ccea648dbee28cc69ad8102dfe96db07227073bab6b9585cf5999f34b604dbb363e14fce2f986ac1a4b00e846b9fccbe9e6c5d85fdd58a60d437
+  checksum: 10/0016a841ab51c02abada4a321561dbfdbd9cf2d739fff44e036e2247b909f438d3c0b4897fedab5581251dae293af2ac96e276376e8508d603505d5d9248d3a4
   languageName: node
   linkType: hard
 
