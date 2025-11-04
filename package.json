@@ -55,7 +55,7 @@
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-typescript": "^12.3.0",
     "@tsconfig/node22": "^22.0.0",
-    "@types/node": "^22.14.0",
+    "@types/node": "^24.0.0",
     "@vitest/coverage-v8": "^3.2.4",
     "@vitest/ui": "^3.2.4",
     "commitizen": "^4.3.0",
