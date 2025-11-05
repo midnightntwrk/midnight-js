@@ -1,11 +1,30 @@
-# Changelog
+## 3.0.0-alpha.2 (2025-11-05)
 
-All notable changes to this project will be documented in this file.
+* chore(deps): bump actions/upload-artifact from 4.4.3 to 5.0.0 (#255) ([1946bdd](https://github.com/midnight-ntwrk/artifacts/commit/1946bdd)), closes [#255](https://github.com/midnight-ntwrk/artifacts/issues/255)
+* chore(deps): bump ctrf-io/github-test-reporter from 1.0.25 to 1.0.26 (#269) ([ce3ee9a](https://github.com/midnight-ntwrk/artifacts/commit/ce3ee9a)), closes [#269](https://github.com/midnight-ntwrk/artifacts/issues/269)
+* chore(deps): bump EnricoMi/publish-unit-test-result-action (#271) ([2fc8ab7](https://github.com/midnight-ntwrk/artifacts/commit/2fc8ab7)), closes [#271](https://github.com/midnight-ntwrk/artifacts/issues/271)
+* chore(deps): bump mikepenz/action-junit-report from 6.0.0 to 6.0.1 (#270) ([095db97](https://github.com/midnight-ntwrk/artifacts/commit/095db97)), closes [#270](https://github.com/midnight-ntwrk/artifacts/issues/270)
+* chore(deps): update actions/github-script action to v8 (#260) ([05d59ee](https://github.com/midnight-ntwrk/artifacts/commit/05d59ee)), closes [#260](https://github.com/midnight-ntwrk/artifacts/issues/260)
+* chore(deps): update dependency @fast-check/vitest to v0.2.3 (#273) ([6c0bcd2](https://github.com/midnight-ntwrk/artifacts/commit/6c0bcd2)), closes [#273](https://github.com/midnight-ntwrk/artifacts/issues/273)
+* chore(deps): update dependency @types/express to v5.0.5 (#258) ([5163a92](https://github.com/midnight-ntwrk/artifacts/commit/5163a92)), closes [#258](https://github.com/midnight-ntwrk/artifacts/issues/258)
+* chore(deps): update dependency allure-vitest to v3.4.2 (#274) ([cd15b40](https://github.com/midnight-ntwrk/artifacts/commit/cd15b40)), closes [#274](https://github.com/midnight-ntwrk/artifacts/issues/274)
+* chore(deps): update dependency axios to v1.13.1 (#257) ([7cc7f95](https://github.com/midnight-ntwrk/artifacts/commit/7cc7f95)), closes [#257](https://github.com/midnight-ntwrk/artifacts/issues/257)
+* chore(deps): update dependency node to v24 (#259) ([e7d1a0f](https://github.com/midnight-ntwrk/artifacts/commit/e7d1a0f)), closes [#259](https://github.com/midnight-ntwrk/artifacts/issues/259)
+* chore(deps): update dependency pino to v10 (#245) ([773ee91](https://github.com/midnight-ntwrk/artifacts/commit/773ee91)), closes [#245](https://github.com/midnight-ntwrk/artifacts/issues/245)
+* chore(deps): update dependency typescript-eslint to v8.46.3 (#275) ([b5feb2e](https://github.com/midnight-ntwrk/artifacts/commit/b5feb2e)), closes [#275](https://github.com/midnight-ntwrk/artifacts/issues/275)
+* fix(deps): update dependency superjson to v2.2.5 (#276) ([18d26ec](https://github.com/midnight-ntwrk/artifacts/commit/18d26ec)), closes [#276](https://github.com/midnight-ntwrk/artifacts/issues/276)
+* feat: change assertions ([1e7db4e](https://github.com/midnight-ntwrk/artifacts/commit/1e7db4e))
+* feat: fix esm and cjs packaging ([3d224d4](https://github.com/midnight-ntwrk/artifacts/commit/3d224d4))
+* feat: update cd workflow (#265) ([df3a423](https://github.com/midnight-ntwrk/artifacts/commit/df3a423)), closes [#265](https://github.com/midnight-ntwrk/artifacts/issues/265)
+* feat: update components ([1f06ec0](https://github.com/midnight-ntwrk/artifacts/commit/1f06ec0))
+* feat: update indexer TxId mapping ([9ed2fef](https://github.com/midnight-ntwrk/artifacts/commit/9ed2fef))
+* feat: update mock ([afb9bdf](https://github.com/midnight-ntwrk/artifacts/commit/afb9bdf))
+* feat: update submit tx ([7ceba12](https://github.com/midnight-ntwrk/artifacts/commit/7ceba12))
+* feat: update tests ([6d46777](https://github.com/midnight-ntwrk/artifacts/commit/6d46777))
+* feat: update the FinalizedTxData to store all transaction identifiers ([df58c30](https://github.com/midnight-ntwrk/artifacts/commit/df58c30))
+* Use 'createCircuitContext' constructor from runtime. Add support for parsing Uint8Array circuit resu ([5d4ff2c](https://github.com/midnight-ntwrk/artifacts/commit/5d4ff2c)), closes [#268](https://github.com/midnight-ntwrk/artifacts/issues/268)
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-## [3.0.0-alpha.1] (2025-10-29)
+## 3.0.0-alpha.1 (2025-10-29)
 
 * chore: Bump major version number on Platform.js and Compact.js (#118) ([6a53094](https://github.com/midnight-ntwrk/artifacts/commit/6a53094)), closes [#118](https://github.com/midnight-ntwrk/artifacts/issues/118)
 * chore: commit staged changes across repos ([4fa5b3b](https://github.com/midnight-ntwrk/artifacts/commit/4fa5b3b))
@@ -259,7 +278,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * docs: acknowledge original co-authors from repository migration ([8bf34b9](https://github.com/midnight-ntwrk/artifacts/commit/8bf34b9))
 * docs: acknowledge original co-authors from repository migration ([363527a](https://github.com/midnight-ntwrk/artifacts/commit/363527a))
 
-## [2.1.0] - 2025-10-08]
+## 2.1.0 - 2025-10-08]
 
 ### Added
 - **Block Time Access**: Added `secondsSinceLastEpoch` value to `QueryContext` in Compact programs to retrieve current block time within contracts
@@ -305,19 +324,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Linting Improvements**: Enhanced ESLint rules with import sorting and unused import detection
 - **CI/CD Optimization**: Faster feedback with optimized workflow configurations
 
-## [2.0.2] - 2025-06-11
+## 2.0.2 - 2025-06-11
 
 ### Summary
 - Add captcha header for faucet request
 - Ensure segment number defaults to 0
 
-## [2.0.1] - 2025-05-30
+## 2.0.1 - 2025-05-30
 
 ### Summary
 - Consider EncPublicKey as Bech32m formatted strings
 - Update zSwap-utils createUnprovenOutput to use segment 0
 
-## [2.0.0] - 2025-05-12
+## 2.0.0 - 2025-05-12
 
 ### Summary
 - Update typedoc.json
@@ -345,7 +364,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add single test for Node.js compatibility
 - Prepare release 2.0.0
 
-## [1.0.0] - 2025-04-02
+## 1.0.0 - 2025-04-02
 
 ### Summary
 - Introduces proper semantic versioning.
