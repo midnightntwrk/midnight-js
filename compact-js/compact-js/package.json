@@ -22,7 +22,7 @@
     "@effect/experimental": "^0.56.0",
     "@effect/platform-node": "^0.98.3",
     "@effect/platform-node-shared": "^0.51.5",
-    "@effect/rpc": "^0.71.0",
+    "@effect/rpc": "^0.72.0",
     "@effect/sql": "^0.46.0",
     "@effect/vitest": "^0.26.0",
     "@effect/workflow": "^0.11.3",
