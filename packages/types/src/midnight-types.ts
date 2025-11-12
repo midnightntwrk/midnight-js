@@ -179,11 +179,11 @@ export type UnshieldedUtxos = {
   /**
    * Represents the unshielded UTXOs that have been created but not yet spent.
    */
-  readonly created: UnshieldedUtxo[];
+  readonly created: readonly UnshieldedUtxo[];
   /**
    * Represents the unshielded UTXOs that have been spent.
    */
-  readonly spent: UnshieldedUtxo[];
+  readonly spent: readonly UnshieldedUtxo[];
 };
 
 /**
@@ -228,7 +228,7 @@ export interface FinalizedTxData {
   /**
    * All transaction IDs of the submitted transaction.
    */
-  readonly identifiers: TransactionId[];
+  readonly identifiers: readonly TransactionId[];
   /**
    * The transaction hash of the transaction in which the original transaction was included.
    */

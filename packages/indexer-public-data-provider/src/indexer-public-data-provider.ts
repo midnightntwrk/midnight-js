@@ -138,8 +138,8 @@ type Block = {
   height: number;
   transactions: {
     hash: string;
-    identifiers: string[];
-    contractActions: { state: string; address: string }[];
+    identifiers: readonly string[];
+    contractActions: readonly { state: string; address: string }[];
   }[];
 }
 
@@ -199,8 +199,8 @@ const transactionIdToTransaction$ =
 
 type Transaction = {
   hash: string;
-  identifiers: string[];
-  contractActions: { state: string; address: string }[];
+  identifiers: readonly string[];
+  contractActions: readonly { state: string; address: string }[];
 }
 
 const transactionToContractState$ =
@@ -255,7 +255,7 @@ const transformIndexerUtxoToUnshieldedUtxo = (indexerUtxo: IndexerUtxo): Unshiel
   value: BigInt(indexerUtxo.value)
 });
 
-export const toUnshieldedUtxos = (createdUtxo: IndexerUtxo[], spentUtxo: IndexerUtxo[]): UnshieldedUtxos => ({
+export const toUnshieldedUtxos = (createdUtxo: readonly IndexerUtxo[], spentUtxo: readonly IndexerUtxo[]): UnshieldedUtxos => ({
   created: createdUtxo.map(transformIndexerUtxoToUnshieldedUtxo),
   spent: spentUtxo.map(transformIndexerUtxoToUnshieldedUtxo)
 });
@@ -265,7 +265,7 @@ const transformContractBalanceToUnshieldedBalance = (contractBalance: ContractBa
   tokenType: contractBalance.tokenType as RawTokenType
 });
 
-export const toUnshieldedBalances = (contractBalances: ContractBalance[]): UnshieldedBalances =>
+export const toUnshieldedBalances = (contractBalances: readonly ContractBalance[]): UnshieldedBalances =>
   contractBalances.map(transformContractBalanceToUnshieldedBalance);
 
 const blockToContractState$ = (contractAddress: ContractAddress) => (block: Block) =>
