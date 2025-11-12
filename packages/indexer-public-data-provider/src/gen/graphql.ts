@@ -1,7 +1,7 @@
 /* eslint-disable */
 import type { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core';
 export type Maybe<T> = T | null;
-export type InputMaybe<T> = Maybe<T>;
+export type InputMaybe<T> = T | null | undefined;
 export type Exact<T extends { [key: string]: unknown }> = { [K in keyof T]: T[K] };
 export type MakeOptional<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]?: Maybe<T[SubKey]> };
 export type MakeMaybe<T, K extends keyof T> = Omit<T, K> & { [SubKey in K]: Maybe<T[SubKey]> };
@@ -23,56 +23,56 @@ export type Scalars = {
 /** A block with its relevant data. */
 export type Block = {
   /** The hex-encoded block author. */
-  author: Maybe<Scalars['HexEncoded']['output']>;
+  readonly author: Maybe<Scalars['HexEncoded']['output']>;
   /** The block hash. */
-  hash: Scalars['HexEncoded']['output'];
+  readonly hash: Scalars['HexEncoded']['output'];
   /** The block height. */
-  height: Scalars['Int']['output'];
+  readonly height: Scalars['Int']['output'];
   /** The hex-encoded ledger parameters for this block. */
-  ledgerParameters: Scalars['HexEncoded']['output'];
+  readonly ledgerParameters: Scalars['HexEncoded']['output'];
   /** The parent of this block. */
-  parent: Maybe<Block>;
+  readonly parent: Maybe<Block>;
   /** The protocol version. */
-  protocolVersion: Scalars['Int']['output'];
+  readonly protocolVersion: Scalars['Int']['output'];
   /** The UNIX timestamp. */
-  timestamp: Scalars['Int']['output'];
+  readonly timestamp: Scalars['Int']['output'];
   /** The transactions within this block. */
-  transactions: Array<Transaction>;
+  readonly transactions: ReadonlyArray<Transaction>;
 };
 
 /** Either a block hash or a block height. */
 export type BlockOffset =
   /** A hex-encoded block hash. */
-  { hash: Scalars['HexEncoded']['input']; height?: never; }
+  { readonly hash: Scalars['HexEncoded']['input']; readonly height?: never; }
   |  /** A block height. */
-  { hash?: never; height: Scalars['Int']['input']; };
+  { readonly hash?: never; readonly height: Scalars['Int']['input']; };
 
 export type CollapsedMerkleTree = {
   /** The zswap state end index. */
-  endIndex: Scalars['Int']['output'];
+  readonly endIndex: Scalars['Int']['output'];
   /** The protocol version. */
-  protocolVersion: Scalars['Int']['output'];
+  readonly protocolVersion: Scalars['Int']['output'];
   /** The zswap state start index. */
-  startIndex: Scalars['Int']['output'];
+  readonly startIndex: Scalars['Int']['output'];
   /** The hex-encoded value. */
-  update: Scalars['HexEncoded']['output'];
+  readonly update: Scalars['HexEncoded']['output'];
 };
 
 /** A contract action. */
 export type ContractAction = {
-  address: Scalars['HexEncoded']['output'];
-  state: Scalars['HexEncoded']['output'];
-  transaction: Transaction;
-  unshieldedBalances: Array<ContractBalance>;
-  zswapState: Scalars['HexEncoded']['output'];
+  readonly address: Scalars['HexEncoded']['output'];
+  readonly state: Scalars['HexEncoded']['output'];
+  readonly transaction: Transaction;
+  readonly unshieldedBalances: ReadonlyArray<ContractBalance>;
+  readonly zswapState: Scalars['HexEncoded']['output'];
 };
 
 /** Either a block offset or a transaction offset. */
 export type ContractActionOffset =
   /** Either a block hash or a block height. */
-  { blockOffset: BlockOffset; transactionOffset?: never; }
+  { readonly blockOffset: BlockOffset; readonly transactionOffset?: never; }
   |  /** Either a transaction hash or a transaction identifier. */
-  { blockOffset?: never; transactionOffset: TransactionOffset; };
+  { readonly blockOffset?: never; readonly transactionOffset: TransactionOffset; };
 
 /**
  * Represents a token balance held by a contract.
@@ -81,120 +81,120 @@ export type ContractActionOffset =
  */
 export type ContractBalance = {
   /** Balance amount as string to support larger integer values (up to 16 bytes). */
-  amount: Scalars['String']['output'];
+  readonly amount: Scalars['String']['output'];
   /** Hex-encoded token type identifier. */
-  tokenType: Scalars['HexEncoded']['output'];
+  readonly tokenType: Scalars['HexEncoded']['output'];
 };
 
 /** A contract call. */
 export type ContractCall = ContractAction & {
   /** The hex-encoded serialized address. */
-  address: Scalars['HexEncoded']['output'];
+  readonly address: Scalars['HexEncoded']['output'];
   /** Contract deploy for this contract call. */
-  deploy: ContractDeploy;
+  readonly deploy: ContractDeploy;
   /** The entry point. */
-  entryPoint: Scalars['String']['output'];
+  readonly entryPoint: Scalars['String']['output'];
   /** The hex-encoded serialized state. */
-  state: Scalars['HexEncoded']['output'];
+  readonly state: Scalars['HexEncoded']['output'];
   /** Transaction for this contract call. */
-  transaction: Transaction;
+  readonly transaction: Transaction;
   /** Unshielded token balances held by this contract. */
-  unshieldedBalances: Array<ContractBalance>;
+  readonly unshieldedBalances: ReadonlyArray<ContractBalance>;
   /** The hex-encoded serialized contract-specific zswap state. */
-  zswapState: Scalars['HexEncoded']['output'];
+  readonly zswapState: Scalars['HexEncoded']['output'];
 };
 
 /** A contract deployment. */
 export type ContractDeploy = ContractAction & {
   /** The hex-encoded serialized address. */
-  address: Scalars['HexEncoded']['output'];
+  readonly address: Scalars['HexEncoded']['output'];
   /** The hex-encoded serialized state. */
-  state: Scalars['HexEncoded']['output'];
+  readonly state: Scalars['HexEncoded']['output'];
   /** Transaction for this contract deploy. */
-  transaction: Transaction;
+  readonly transaction: Transaction;
   /** Unshielded token balances held by this contract. */
-  unshieldedBalances: Array<ContractBalance>;
+  readonly unshieldedBalances: ReadonlyArray<ContractBalance>;
   /** The hex-encoded serialized contract-specific zswap state. */
-  zswapState: Scalars['HexEncoded']['output'];
+  readonly zswapState: Scalars['HexEncoded']['output'];
 };
 
 /** A contract update. */
 export type ContractUpdate = ContractAction & {
   /** The hex-encoded serialized address. */
-  address: Scalars['HexEncoded']['output'];
+  readonly address: Scalars['HexEncoded']['output'];
   /** The hex-encoded serialized state. */
-  state: Scalars['HexEncoded']['output'];
+  readonly state: Scalars['HexEncoded']['output'];
   /** Transaction for this contract update. */
-  transaction: Transaction;
+  readonly transaction: Transaction;
   /** Unshielded token balances held by this contract after the update. */
-  unshieldedBalances: Array<ContractBalance>;
+  readonly unshieldedBalances: ReadonlyArray<ContractBalance>;
   /** The hex-encoded serialized contract-specific zswap state. */
-  zswapState: Scalars['HexEncoded']['output'];
+  readonly zswapState: Scalars['HexEncoded']['output'];
 };
 
 export type DustGenerationDtimeUpdate = DustLedgerEvent & {
   /** The ID of this dust ledger event. */
-  id: Scalars['Int']['output'];
+  readonly id: Scalars['Int']['output'];
   /** The maximum ID of all dust ledger events. */
-  maxId: Scalars['Int']['output'];
+  readonly maxId: Scalars['Int']['output'];
   /** The hex-encoded serialized event. */
-  raw: Scalars['HexEncoded']['output'];
+  readonly raw: Scalars['HexEncoded']['output'];
 };
 
 /** DUST generation status for a specific Cardano stake key. */
 export type DustGenerationStatus = {
   /** The hex-encoded Cardano stake key. */
-  cardanoStakeKey: Scalars['HexEncoded']['output'];
+  readonly cardanoStakeKey: Scalars['HexEncoded']['output'];
   /** Current DUST capacity. */
-  currentCapacity: Scalars['String']['output'];
+  readonly currentCapacity: Scalars['String']['output'];
   /** The hex-encoded associated DUST address if registered. */
-  dustAddress: Maybe<Scalars['HexEncoded']['output']>;
+  readonly dustAddress: Maybe<Scalars['HexEncoded']['output']>;
   /** Generation rate in Specks per second. */
-  generationRate: Scalars['String']['output'];
+  readonly generationRate: Scalars['String']['output'];
   /** NIGHT balance backing generation. */
-  nightBalance: Scalars['String']['output'];
+  readonly nightBalance: Scalars['String']['output'];
   /** Whether this stake key is registered. */
-  registered: Scalars['Boolean']['output'];
+  readonly registered: Scalars['Boolean']['output'];
 };
 
 export type DustInitialUtxo = DustLedgerEvent & {
   /** The ID of this dust ledger event. */
-  id: Scalars['Int']['output'];
+  readonly id: Scalars['Int']['output'];
   /** The maximum ID of all dust ledger events. */
-  maxId: Scalars['Int']['output'];
+  readonly maxId: Scalars['Int']['output'];
   /** The dust output. */
-  output: DustOutput;
+  readonly output: DustOutput;
   /** The hex-encoded serialized event. */
-  raw: Scalars['HexEncoded']['output'];
+  readonly raw: Scalars['HexEncoded']['output'];
 };
 
 /** A dust related ledger event. */
 export type DustLedgerEvent = {
-  id: Scalars['Int']['output'];
-  maxId: Scalars['Int']['output'];
-  raw: Scalars['HexEncoded']['output'];
+  readonly id: Scalars['Int']['output'];
+  readonly maxId: Scalars['Int']['output'];
+  readonly raw: Scalars['HexEncoded']['output'];
 };
 
 /** A dust output. */
 export type DustOutput = {
   /** The hex-encoded 32-byte nonce. */
-  nonce: Scalars['HexEncoded']['output'];
+  readonly nonce: Scalars['HexEncoded']['output'];
 };
 
 export type DustSpendProcessed = DustLedgerEvent & {
   /** The ID of this dust ledger event. */
-  id: Scalars['Int']['output'];
+  readonly id: Scalars['Int']['output'];
   /** The maximum ID of all dust ledger events. */
-  maxId: Scalars['Int']['output'];
+  readonly maxId: Scalars['Int']['output'];
   /** The hex-encoded serialized event. */
-  raw: Scalars['HexEncoded']['output'];
+  readonly raw: Scalars['HexEncoded']['output'];
 };
 
 export type Mutation = {
   /** Connect the wallet with the given viewing key and return a session ID. */
-  connect: Scalars['HexEncoded']['output'];
+  readonly connect: Scalars['HexEncoded']['output'];
   /** Disconnect the wallet with the given session ID. */
-  disconnect: Scalars['Unit']['output'];
+  readonly disconnect: Scalars['Unit']['output'];
 };
 
 
@@ -209,22 +209,22 @@ export type MutationDisconnectArgs = {
 
 export type ParamChange = DustLedgerEvent & {
   /** The ID of this dust ledger event. */
-  id: Scalars['Int']['output'];
+  readonly id: Scalars['Int']['output'];
   /** The maximum ID of all dust ledger events. */
-  maxId: Scalars['Int']['output'];
+  readonly maxId: Scalars['Int']['output'];
   /** The hex-encoded serialized event. */
-  raw: Scalars['HexEncoded']['output'];
+  readonly raw: Scalars['HexEncoded']['output'];
 };
 
 export type Query = {
   /** Find a block for the given optional offset; if not present, the latest block is returned. */
-  block: Maybe<Block>;
+  readonly block: Maybe<Block>;
   /** Find a contract action for the given address and optional offset. */
-  contractAction: Maybe<ContractAction>;
+  readonly contractAction: Maybe<ContractAction>;
   /** Get DUST generation status for specific Cardano stake keys. */
-  dustGenerationStatus: Array<DustGenerationStatus>;
+  readonly dustGenerationStatus: ReadonlyArray<DustGenerationStatus>;
   /** Find transactions for the given offset. */
-  transactions: Array<Transaction>;
+  readonly transactions: ReadonlyArray<Transaction>;
 };
 
 
@@ -240,7 +240,7 @@ export type QueryContractActionArgs = {
 
 
 export type QueryDustGenerationStatusArgs = {
-  cardanoStakeKeys: Array<Scalars['HexEncoded']['input']>;
+  cardanoStakeKeys: ReadonlyArray<Scalars['HexEncoded']['input']>;
 };
 
 
@@ -251,45 +251,45 @@ export type QueryTransactionsArgs = {
 /** A regular Midnight transaction. */
 export type RegularTransaction = Transaction & {
   /** The block for this transaction. */
-  block: Block;
+  readonly block: Block;
   /** The contract actions for this transaction. */
-  contractActions: Array<ContractAction>;
+  readonly contractActions: ReadonlyArray<ContractAction>;
   /** Dust ledger events of this transaction. */
-  dustLedgerEvents: Array<DustLedgerEvent>;
+  readonly dustLedgerEvents: ReadonlyArray<DustLedgerEvent>;
   /** The zswap state end index. */
-  endIndex: Scalars['Int']['output'];
+  readonly endIndex: Scalars['Int']['output'];
   /** Fee information for this transaction. */
-  fees: TransactionFees;
+  readonly fees: TransactionFees;
   /** The hex-encoded transaction hash. */
-  hash: Scalars['HexEncoded']['output'];
+  readonly hash: Scalars['HexEncoded']['output'];
   /** The transaction ID. */
-  id: Scalars['Int']['output'];
+  readonly id: Scalars['Int']['output'];
   /** The hex-encoded serialized transaction identifiers. */
-  identifiers: Array<Scalars['HexEncoded']['output']>;
+  readonly identifiers: ReadonlyArray<Scalars['HexEncoded']['output']>;
   /** The hex-encoded serialized merkle-tree root. */
-  merkleTreeRoot: Scalars['HexEncoded']['output'];
+  readonly merkleTreeRoot: Scalars['HexEncoded']['output'];
   /** The protocol version. */
-  protocolVersion: Scalars['Int']['output'];
+  readonly protocolVersion: Scalars['Int']['output'];
   /** The hex-encoded serialized transaction content. */
-  raw: Scalars['HexEncoded']['output'];
+  readonly raw: Scalars['HexEncoded']['output'];
   /** The zswap state start index. */
-  startIndex: Scalars['Int']['output'];
+  readonly startIndex: Scalars['Int']['output'];
   /** The result of applying this transaction to the ledger state. */
-  transactionResult: TransactionResult;
+  readonly transactionResult: TransactionResult;
   /** Unshielded UTXOs created by this transaction. */
-  unshieldedCreatedOutputs: Array<UnshieldedUtxo>;
+  readonly unshieldedCreatedOutputs: ReadonlyArray<UnshieldedUtxo>;
   /** Unshielded UTXOs spent (consumed) by this transaction. */
-  unshieldedSpentOutputs: Array<UnshieldedUtxo>;
+  readonly unshieldedSpentOutputs: ReadonlyArray<UnshieldedUtxo>;
   /** Zswap ledger events of this transaction. */
-  zswapLedgerEvents: Array<ZswapLedgerEvent>;
+  readonly zswapLedgerEvents: ReadonlyArray<ZswapLedgerEvent>;
 };
 
 /** A transaction relevant for the subscribing wallet and an optional collapsed merkle tree. */
 export type RelevantTransaction = {
   /** An optional collapsed merkle tree. */
-  collapsedMerkleTree: Maybe<CollapsedMerkleTree>;
+  readonly collapsedMerkleTree: Maybe<CollapsedMerkleTree>;
   /** A transaction relevant for the subscribing wallet. */
-  transaction: RegularTransaction;
+  readonly transaction: RegularTransaction;
 };
 
 /**
@@ -298,9 +298,9 @@ export type RelevantTransaction = {
  */
 export type Segment = {
   /** Segment ID. */
-  id: Scalars['Int']['output'];
+  readonly id: Scalars['Int']['output'];
   /** Successful or not. */
-  success: Scalars['Boolean']['output'];
+  readonly success: Scalars['Boolean']['output'];
 };
 
 /** An event of the shielded transactions subscription. */
@@ -314,20 +314,20 @@ export type ShieldedTransactionsProgress = {
    * indexed) equal to `highest_end_index`. A value of zero (very unlikely) means that no wallet
    * has subscribed before and indexing for the subscribing wallet has not yet started.
    */
-  highestCheckedEndIndex: Scalars['Int']['output'];
+  readonly highestCheckedEndIndex: Scalars['Int']['output'];
   /**
    * The highest zswap state end index (see `endIndex` of `Transaction`) of all transactions. It
    * represents the known state of the blockchain. A value of zero (completely unlikely) means
    * that no shielded transactions have been indexed yet.
    */
-  highestEndIndex: Scalars['Int']['output'];
+  readonly highestEndIndex: Scalars['Int']['output'];
   /**
    * The highest zswap state end index (see `endIndex` of `Transaction`) of all relevant
    * transactions for the subscribing wallet. Usually less than `highest_checked_end_index`
    * unless the latest checked transaction is relevant for the subscribing wallet. A value of
    * zero means that no relevant transactions have been indexed for the subscribing wallet.
    */
-  highestRelevantEndIndex: Scalars['Int']['output'];
+  readonly highestRelevantEndIndex: Scalars['Int']['output'];
 };
 
 export type Subscription = {
@@ -335,26 +335,26 @@ export type Subscription = {
    * Subscribe to blocks starting at the given offset or at the latest block if the offset is
    * omitted.
    */
-  blocks: Block;
+  readonly blocks: Block;
   /**
    * Subscribe to contract actions with the given address starting at the given offset or at the
    * latest block if the offset is omitted.
    */
-  contractActions: ContractAction;
+  readonly contractActions: ContractAction;
   /** Subscribe to dust ledger events starting at the given ID or at the very start if omitted. */
-  dustLedgerEvents: DustLedgerEvent;
+  readonly dustLedgerEvents: DustLedgerEvent;
   /**
    * Subscribe to shielded transaction events for the given session ID starting at the given
    * index or at zero if omitted.
    */
-  shieldedTransactions: ShieldedTransactionsEvent;
+  readonly shieldedTransactions: ShieldedTransactionsEvent;
   /**
    * Subscribe unshielded transaction events for the given address and the given transaction ID
    * or zero if omitted.
    */
-  unshieldedTransactions: UnshieldedTransactionsEvent;
+  readonly unshieldedTransactions: UnshieldedTransactionsEvent;
   /** Subscribe to zswap ledger events starting at the given ID or at the very start if omitted. */
-  zswapLedgerEvents: ZswapLedgerEvent;
+  readonly zswapLedgerEvents: ZswapLedgerEvent;
 };
 
 
@@ -393,63 +393,63 @@ export type SubscriptionZswapLedgerEventsArgs = {
 /** A system Midnight transaction. */
 export type SystemTransaction = Transaction & {
   /** The block for this transaction. */
-  block: Block;
+  readonly block: Block;
   /** The contract actions for this transaction. */
-  contractActions: Array<ContractAction>;
+  readonly contractActions: ReadonlyArray<ContractAction>;
   /** Dust ledger events of this transaction. */
-  dustLedgerEvents: Array<DustLedgerEvent>;
+  readonly dustLedgerEvents: ReadonlyArray<DustLedgerEvent>;
   /** The hex-encoded transaction hash. */
-  hash: Scalars['HexEncoded']['output'];
+  readonly hash: Scalars['HexEncoded']['output'];
   /** The transaction ID. */
-  id: Scalars['Int']['output'];
+  readonly id: Scalars['Int']['output'];
   /** The protocol version. */
-  protocolVersion: Scalars['Int']['output'];
+  readonly protocolVersion: Scalars['Int']['output'];
   /** The hex-encoded serialized transaction content. */
-  raw: Scalars['HexEncoded']['output'];
+  readonly raw: Scalars['HexEncoded']['output'];
   /** Unshielded UTXOs created by this transaction. */
-  unshieldedCreatedOutputs: Array<UnshieldedUtxo>;
+  readonly unshieldedCreatedOutputs: ReadonlyArray<UnshieldedUtxo>;
   /** Unshielded UTXOs spent (consumed) by this transaction. */
-  unshieldedSpentOutputs: Array<UnshieldedUtxo>;
+  readonly unshieldedSpentOutputs: ReadonlyArray<UnshieldedUtxo>;
   /** Zswap ledger events of this transaction. */
-  zswapLedgerEvents: Array<ZswapLedgerEvent>;
+  readonly zswapLedgerEvents: ReadonlyArray<ZswapLedgerEvent>;
 };
 
 /** A Midnight transaction. */
 export type Transaction = {
-  block: Block;
-  contractActions: Array<ContractAction>;
-  dustLedgerEvents: Array<DustLedgerEvent>;
-  hash: Scalars['HexEncoded']['output'];
-  id: Scalars['Int']['output'];
-  protocolVersion: Scalars['Int']['output'];
-  raw: Scalars['HexEncoded']['output'];
-  unshieldedCreatedOutputs: Array<UnshieldedUtxo>;
-  unshieldedSpentOutputs: Array<UnshieldedUtxo>;
-  zswapLedgerEvents: Array<ZswapLedgerEvent>;
+  readonly block: Block;
+  readonly contractActions: ReadonlyArray<ContractAction>;
+  readonly dustLedgerEvents: ReadonlyArray<DustLedgerEvent>;
+  readonly hash: Scalars['HexEncoded']['output'];
+  readonly id: Scalars['Int']['output'];
+  readonly protocolVersion: Scalars['Int']['output'];
+  readonly raw: Scalars['HexEncoded']['output'];
+  readonly unshieldedCreatedOutputs: ReadonlyArray<UnshieldedUtxo>;
+  readonly unshieldedSpentOutputs: ReadonlyArray<UnshieldedUtxo>;
+  readonly zswapLedgerEvents: ReadonlyArray<ZswapLedgerEvent>;
 };
 
 /** Fees information for a transaction, including both paid and estimated fees. */
 export type TransactionFees = {
   /** The estimated fees that was calculated for this transaction in DUST. */
-  estimatedFees: Scalars['String']['output'];
+  readonly estimatedFees: Scalars['String']['output'];
   /** The actual fees paid for this transaction in DUST. */
-  paidFees: Scalars['String']['output'];
+  readonly paidFees: Scalars['String']['output'];
 };
 
 /** Either a transaction hash or a transaction identifier. */
 export type TransactionOffset =
   /** A hex-encoded transaction hash. */
-  { hash: Scalars['HexEncoded']['input']; identifier?: never; }
+  { readonly hash: Scalars['HexEncoded']['input']; readonly identifier?: never; }
   |  /** A hex-encoded transaction identifier. */
-  { hash?: never; identifier: Scalars['HexEncoded']['input']; };
+  { readonly hash?: never; readonly identifier: Scalars['HexEncoded']['input']; };
 
 /**
  * The result of applying a transaction to the ledger state. In case of a partial success (status),
  * there will be segments.
  */
 export type TransactionResult = {
-  segments: Maybe<Array<Segment>>;
-  status: TransactionResultStatus;
+  readonly segments: Maybe<ReadonlyArray<Segment>>;
+  readonly status: TransactionResultStatus;
 };
 
 /** The status of the transaction result: success, partial success or failure. */
@@ -462,11 +462,11 @@ export type TransactionResultStatus =
 /** A transaction that created and/or spent UTXOs alongside these and other information. */
 export type UnshieldedTransaction = {
   /** UTXOs created in the above transaction, possibly empty. */
-  createdUtxos: Array<UnshieldedUtxo>;
+  readonly createdUtxos: ReadonlyArray<UnshieldedUtxo>;
   /** UTXOs spent in the above transaction, possibly empty. */
-  spentUtxos: Array<UnshieldedUtxo>;
+  readonly spentUtxos: ReadonlyArray<UnshieldedUtxo>;
   /** The transaction that created and/or spent UTXOs. */
-  transaction: Transaction;
+  readonly transaction: Transaction;
 };
 
 /** An event of the unshielded transactions subscription. */
@@ -475,41 +475,41 @@ export type UnshieldedTransactionsEvent = UnshieldedTransaction | UnshieldedTran
 /** Information about the unshielded indexing progress. */
 export type UnshieldedTransactionsProgress = {
   /** The highest transaction ID of all currently known transactions for a subscribed address. */
-  highestTransactionId: Scalars['Int']['output'];
+  readonly highestTransactionId: Scalars['Int']['output'];
 };
 
 /** Represents an unshielded UTXO. */
 export type UnshieldedUtxo = {
   /** Transaction that created this UTXO. */
-  createdAtTransaction: Transaction;
+  readonly createdAtTransaction: Transaction;
   /** The creation time in seconds. */
-  ctime: Maybe<Scalars['Int']['output']>;
+  readonly ctime: Maybe<Scalars['Int']['output']>;
   /** The hex-encoded initial nonce for DUST generation tracking. */
-  initialNonce: Scalars['HexEncoded']['output'];
+  readonly initialNonce: Scalars['HexEncoded']['output'];
   /** The hex-encoded serialized intent hash. */
-  intentHash: Scalars['HexEncoded']['output'];
+  readonly intentHash: Scalars['HexEncoded']['output'];
   /** Index of this output within its creating transaction. */
-  outputIndex: Scalars['Int']['output'];
+  readonly outputIndex: Scalars['Int']['output'];
   /** Owner Bech32m-encoded address. */
-  owner: Scalars['UnshieldedAddress']['output'];
+  readonly owner: Scalars['UnshieldedAddress']['output'];
   /** Whether this UTXO is registered for DUST generation. */
-  registeredForDustGeneration: Scalars['Boolean']['output'];
+  readonly registeredForDustGeneration: Scalars['Boolean']['output'];
   /** Transaction that spent this UTXO. */
-  spentAtTransaction: Maybe<Transaction>;
+  readonly spentAtTransaction: Maybe<Transaction>;
   /** Token hex-encoded serialized token type. */
-  tokenType: Scalars['HexEncoded']['output'];
+  readonly tokenType: Scalars['HexEncoded']['output'];
   /** UTXO value (quantity) as a string to support u128. */
-  value: Scalars['String']['output'];
+  readonly value: Scalars['String']['output'];
 };
 
 /** A zswap related ledger event. */
 export type ZswapLedgerEvent = {
   /** The ID of this zswap ledger event. */
-  id: Scalars['Int']['output'];
+  readonly id: Scalars['Int']['output'];
   /** The maximum ID of all zswap ledger events. */
-  maxId: Scalars['Int']['output'];
+  readonly maxId: Scalars['Int']['output'];
   /** The hex-encoded serialized event. */
-  raw: Scalars['HexEncoded']['output'];
+  readonly raw: Scalars['HexEncoded']['output'];
 };
 
 export type BlockHashQueryQueryVariables = Exact<{
@@ -517,42 +517,121 @@ export type BlockHashQueryQueryVariables = Exact<{
 }>;
 
 
-export type BlockHashQueryQuery = { block: { height: number, hash: string } | null };
+export type BlockHashQueryQuery = { readonly block: { readonly height: number, readonly hash: string } | null };
 
 export type TxIdQueryQueryVariables = Exact<{
   offset: TransactionOffset;
 }>;
 
 
-export type TxIdQueryQuery = { transactions: Array<{ identifiers: Array<string>, id: number, protocolVersion: number, raw: string, hash: string, fees: { estimatedFees: string, paidFees: string }, transactionResult: { status: TransactionResultStatus, segments: Array<{ id: number, success: boolean }> | null }, unshieldedCreatedOutputs: Array<{ owner: string, intentHash: string, tokenType: string, value: string }>, unshieldedSpentOutputs: Array<{ owner: string, intentHash: string, tokenType: string, value: string }>, block: { height: number, hash: string, author: string | null, timestamp: number } } | { id: number, protocolVersion: number, raw: string, hash: string, unshieldedCreatedOutputs: Array<{ owner: string, intentHash: string, tokenType: string, value: string }>, unshieldedSpentOutputs: Array<{ owner: string, intentHash: string, tokenType: string, value: string }>, block: { height: number, hash: string, author: string | null, timestamp: number } }> };
+export type TxIdQueryQuery = { readonly transactions: ReadonlyArray<
+    | { readonly identifiers: ReadonlyArray<string>, readonly id: number, readonly protocolVersion: number, readonly raw: string, readonly hash: string, readonly fees: { readonly estimatedFees: string, readonly paidFees: string }, readonly transactionResult: { readonly status: TransactionResultStatus, readonly segments: ReadonlyArray<{ readonly id: number, readonly success: boolean }> | null }, readonly unshieldedCreatedOutputs: ReadonlyArray<{ readonly owner: string, readonly intentHash: string, readonly tokenType: string, readonly value: string }>, readonly unshieldedSpentOutputs: ReadonlyArray<{ readonly owner: string, readonly intentHash: string, readonly tokenType: string, readonly value: string }>, readonly block: { readonly height: number, readonly hash: string, readonly author: string | null, readonly timestamp: number } }
+    | { readonly id: number, readonly protocolVersion: number, readonly raw: string, readonly hash: string, readonly unshieldedCreatedOutputs: ReadonlyArray<{ readonly owner: string, readonly intentHash: string, readonly tokenType: string, readonly value: string }>, readonly unshieldedSpentOutputs: ReadonlyArray<{ readonly owner: string, readonly intentHash: string, readonly tokenType: string, readonly value: string }>, readonly block: { readonly height: number, readonly hash: string, readonly author: string | null, readonly timestamp: number } }
+  > };
 
 export type DeployTxQueryQueryVariables = Exact<{
   address: Scalars['HexEncoded']['input'];
 }>;
 
 
-export type DeployTxQueryQuery = { contractAction: { deploy: { transaction: { identifiers: Array<string>, id: number, protocolVersion: number, raw: string, hash: string, fees: { estimatedFees: string, paidFees: string }, transactionResult: { status: TransactionResultStatus, segments: Array<{ id: number, success: boolean }> | null }, contractActions: Array<{ address: string } | { address: string } | { address: string }>, block: { height: number, hash: string, author: string | null, timestamp: number }, unshieldedCreatedOutputs: Array<{ owner: string, intentHash: string, tokenType: string, value: string }>, unshieldedSpentOutputs: Array<{ owner: string, intentHash: string, tokenType: string, value: string }> } | { id: number, protocolVersion: number, raw: string, hash: string, contractActions: Array<{ address: string } | { address: string } | { address: string }>, block: { height: number, hash: string, author: string | null, timestamp: number }, unshieldedCreatedOutputs: Array<{ owner: string, intentHash: string, tokenType: string, value: string }>, unshieldedSpentOutputs: Array<{ owner: string, intentHash: string, tokenType: string, value: string }> } } } | { transaction: { identifiers: Array<string>, id: number, protocolVersion: number, raw: string, hash: string, fees: { estimatedFees: string, paidFees: string }, transactionResult: { status: TransactionResultStatus, segments: Array<{ id: number, success: boolean }> | null }, contractActions: Array<{ address: string } | { address: string } | { address: string }>, block: { height: number, hash: string, author: string | null, timestamp: number }, unshieldedCreatedOutputs: Array<{ owner: string, intentHash: string, tokenType: string, value: string }>, unshieldedSpentOutputs: Array<{ owner: string, intentHash: string, tokenType: string, value: string }> } | { id: number, protocolVersion: number, raw: string, hash: string, contractActions: Array<{ address: string } | { address: string } | { address: string }>, block: { height: number, hash: string, author: string | null, timestamp: number }, unshieldedCreatedOutputs: Array<{ owner: string, intentHash: string, tokenType: string, value: string }>, unshieldedSpentOutputs: Array<{ owner: string, intentHash: string, tokenType: string, value: string }> } } | { transaction: { identifiers: Array<string>, id: number, protocolVersion: number, raw: string, hash: string, fees: { estimatedFees: string, paidFees: string }, transactionResult: { status: TransactionResultStatus, segments: Array<{ id: number, success: boolean }> | null }, contractActions: Array<{ address: string } | { address: string } | { address: string }>, block: { height: number, hash: string, author: string | null, timestamp: number }, unshieldedCreatedOutputs: Array<{ owner: string, intentHash: string, tokenType: string, value: string }>, unshieldedSpentOutputs: Array<{ owner: string, intentHash: string, tokenType: string, value: string }> } | { id: number, protocolVersion: number, raw: string, hash: string, contractActions: Array<{ address: string } | { address: string } | { address: string }>, block: { height: number, hash: string, author: string | null, timestamp: number }, unshieldedCreatedOutputs: Array<{ owner: string, intentHash: string, tokenType: string, value: string }>, unshieldedSpentOutputs: Array<{ owner: string, intentHash: string, tokenType: string, value: string }> } } | null };
+export type DeployTxQueryQuery = { readonly contractAction:
+    | { readonly deploy: { readonly transaction:
+          | { readonly identifiers: ReadonlyArray<string>, readonly id: number, readonly protocolVersion: number, readonly raw: string, readonly hash: string, readonly fees: { readonly estimatedFees: string, readonly paidFees: string }, readonly transactionResult: { readonly status: TransactionResultStatus, readonly segments: ReadonlyArray<{ readonly id: number, readonly success: boolean }> | null }, readonly contractActions: ReadonlyArray<
+              | { readonly address: string }
+              | { readonly address: string }
+              | { readonly address: string }
+            >, readonly block: { readonly height: number, readonly hash: string, readonly author: string | null, readonly timestamp: number }, readonly unshieldedCreatedOutputs: ReadonlyArray<{ readonly owner: string, readonly intentHash: string, readonly tokenType: string, readonly value: string }>, readonly unshieldedSpentOutputs: ReadonlyArray<{ readonly owner: string, readonly intentHash: string, readonly tokenType: string, readonly value: string }> }
+          | { readonly id: number, readonly protocolVersion: number, readonly raw: string, readonly hash: string, readonly contractActions: ReadonlyArray<
+              | { readonly address: string }
+              | { readonly address: string }
+              | { readonly address: string }
+            >, readonly block: { readonly height: number, readonly hash: string, readonly author: string | null, readonly timestamp: number }, readonly unshieldedCreatedOutputs: ReadonlyArray<{ readonly owner: string, readonly intentHash: string, readonly tokenType: string, readonly value: string }>, readonly unshieldedSpentOutputs: ReadonlyArray<{ readonly owner: string, readonly intentHash: string, readonly tokenType: string, readonly value: string }> }
+         } }
+    | { readonly transaction:
+        | { readonly identifiers: ReadonlyArray<string>, readonly id: number, readonly protocolVersion: number, readonly raw: string, readonly hash: string, readonly fees: { readonly estimatedFees: string, readonly paidFees: string }, readonly transactionResult: { readonly status: TransactionResultStatus, readonly segments: ReadonlyArray<{ readonly id: number, readonly success: boolean }> | null }, readonly contractActions: ReadonlyArray<
+            | { readonly address: string }
+            | { readonly address: string }
+            | { readonly address: string }
+          >, readonly block: { readonly height: number, readonly hash: string, readonly author: string | null, readonly timestamp: number }, readonly unshieldedCreatedOutputs: ReadonlyArray<{ readonly owner: string, readonly intentHash: string, readonly tokenType: string, readonly value: string }>, readonly unshieldedSpentOutputs: ReadonlyArray<{ readonly owner: string, readonly intentHash: string, readonly tokenType: string, readonly value: string }> }
+        | { readonly id: number, readonly protocolVersion: number, readonly raw: string, readonly hash: string, readonly contractActions: ReadonlyArray<
+            | { readonly address: string }
+            | { readonly address: string }
+            | { readonly address: string }
+          >, readonly block: { readonly height: number, readonly hash: string, readonly author: string | null, readonly timestamp: number }, readonly unshieldedCreatedOutputs: ReadonlyArray<{ readonly owner: string, readonly intentHash: string, readonly tokenType: string, readonly value: string }>, readonly unshieldedSpentOutputs: ReadonlyArray<{ readonly owner: string, readonly intentHash: string, readonly tokenType: string, readonly value: string }> }
+       }
+    | { readonly transaction:
+        | { readonly identifiers: ReadonlyArray<string>, readonly id: number, readonly protocolVersion: number, readonly raw: string, readonly hash: string, readonly fees: { readonly estimatedFees: string, readonly paidFees: string }, readonly transactionResult: { readonly status: TransactionResultStatus, readonly segments: ReadonlyArray<{ readonly id: number, readonly success: boolean }> | null }, readonly contractActions: ReadonlyArray<
+            | { readonly address: string }
+            | { readonly address: string }
+            | { readonly address: string }
+          >, readonly block: { readonly height: number, readonly hash: string, readonly author: string | null, readonly timestamp: number }, readonly unshieldedCreatedOutputs: ReadonlyArray<{ readonly owner: string, readonly intentHash: string, readonly tokenType: string, readonly value: string }>, readonly unshieldedSpentOutputs: ReadonlyArray<{ readonly owner: string, readonly intentHash: string, readonly tokenType: string, readonly value: string }> }
+        | { readonly id: number, readonly protocolVersion: number, readonly raw: string, readonly hash: string, readonly contractActions: ReadonlyArray<
+            | { readonly address: string }
+            | { readonly address: string }
+            | { readonly address: string }
+          >, readonly block: { readonly height: number, readonly hash: string, readonly author: string | null, readonly timestamp: number }, readonly unshieldedCreatedOutputs: ReadonlyArray<{ readonly owner: string, readonly intentHash: string, readonly tokenType: string, readonly value: string }>, readonly unshieldedSpentOutputs: ReadonlyArray<{ readonly owner: string, readonly intentHash: string, readonly tokenType: string, readonly value: string }> }
+       }
+   | null };
 
 export type DeployContractStateTxQueryQueryVariables = Exact<{
   address: Scalars['HexEncoded']['input'];
 }>;
 
 
-export type DeployContractStateTxQueryQuery = { contractAction: { deploy: { transaction: { contractActions: Array<{ address: string, state: string } | { address: string, state: string } | { address: string, state: string }> } | { contractActions: Array<{ address: string, state: string } | { address: string, state: string } | { address: string, state: string }> } } } | { state: string } | { state: string } | null };
+export type DeployContractStateTxQueryQuery = { readonly contractAction:
+    | { readonly deploy: { readonly transaction:
+          | { readonly contractActions: ReadonlyArray<
+              | { readonly address: string, readonly state: string }
+              | { readonly address: string, readonly state: string }
+              | { readonly address: string, readonly state: string }
+            > }
+          | { readonly contractActions: ReadonlyArray<
+              | { readonly address: string, readonly state: string }
+              | { readonly address: string, readonly state: string }
+              | { readonly address: string, readonly state: string }
+            > }
+         } }
+    | { readonly state: string }
+    | { readonly state: string }
+   | null };
 
 export type LatestContractTxBlockHeightQueryQueryVariables = Exact<{
   address: Scalars['HexEncoded']['input'];
 }>;
 
 
-export type LatestContractTxBlockHeightQueryQuery = { contractAction: { transaction: { block: { height: number } } | { block: { height: number } } } | { transaction: { block: { height: number } } | { block: { height: number } } } | { transaction: { block: { height: number } } | { block: { height: number } } } | null };
+export type LatestContractTxBlockHeightQueryQuery = { readonly contractAction:
+    | { readonly transaction:
+        | { readonly block: { readonly height: number } }
+        | { readonly block: { readonly height: number } }
+       }
+    | { readonly transaction:
+        | { readonly block: { readonly height: number } }
+        | { readonly block: { readonly height: number } }
+       }
+    | { readonly transaction:
+        | { readonly block: { readonly height: number } }
+        | { readonly block: { readonly height: number } }
+       }
+   | null };
 
 export type TxsFromBlockSubSubscriptionVariables = Exact<{
   offset: InputMaybe<BlockOffset>;
 }>;
 
 
-export type TxsFromBlockSubSubscription = { blocks: { hash: string, height: number, transactions: Array<{ identifiers: Array<string>, hash: string, contractActions: Array<{ state: string, address: string } | { state: string, address: string } | { state: string, address: string }> } | { hash: string, contractActions: Array<{ state: string, address: string } | { state: string, address: string } | { state: string, address: string }> }> } };
+export type TxsFromBlockSubSubscription = { readonly blocks: { readonly hash: string, readonly height: number, readonly transactions: ReadonlyArray<
+      | { readonly identifiers: ReadonlyArray<string>, readonly hash: string, readonly contractActions: ReadonlyArray<
+          | { readonly state: string, readonly address: string }
+          | { readonly state: string, readonly address: string }
+          | { readonly state: string, readonly address: string }
+        > }
+      | { readonly hash: string, readonly contractActions: ReadonlyArray<
+          | { readonly state: string, readonly address: string }
+          | { readonly state: string, readonly address: string }
+          | { readonly state: string, readonly address: string }
+        > }
+    > } };
 
 export type ContractStateQueryQueryVariables = Exact<{
   address: Scalars['HexEncoded']['input'];
@@ -560,7 +639,11 @@ export type ContractStateQueryQueryVariables = Exact<{
 }>;
 
 
-export type ContractStateQueryQuery = { contractAction: { state: string } | { state: string } | { state: string } | null };
+export type ContractStateQueryQuery = { readonly contractAction:
+    | { readonly state: string }
+    | { readonly state: string }
+    | { readonly state: string }
+   | null };
 
 export type ContractStateSubSubscriptionVariables = Exact<{
   address: Scalars['HexEncoded']['input'];
@@ -568,7 +651,11 @@ export type ContractStateSubSubscriptionVariables = Exact<{
 }>;
 
 
-export type ContractStateSubSubscription = { contractActions: { state: string } | { state: string } | { state: string } };
+export type ContractStateSubSubscription = { readonly contractActions:
+    | { readonly state: string }
+    | { readonly state: string }
+    | { readonly state: string }
+   };
 
 export type BothStateQueryQueryVariables = Exact<{
   address: Scalars['HexEncoded']['input'];
@@ -576,14 +663,22 @@ export type BothStateQueryQueryVariables = Exact<{
 }>;
 
 
-export type BothStateQueryQuery = { contractAction: { state: string, zswapState: string } | { state: string, zswapState: string } | { state: string, zswapState: string } | null };
+export type BothStateQueryQuery = { readonly contractAction:
+    | { readonly state: string, readonly zswapState: string }
+    | { readonly state: string, readonly zswapState: string }
+    | { readonly state: string, readonly zswapState: string }
+   | null };
 
 export type UnshieldedBalanceQueryQueryVariables = Exact<{
   address: Scalars['HexEncoded']['input'];
 }>;
 
 
-export type UnshieldedBalanceQueryQuery = { contractAction: { deploy: { unshieldedBalances: Array<{ tokenType: string, amount: string }> } } | { unshieldedBalances: Array<{ tokenType: string, amount: string }> } | { unshieldedBalances: Array<{ tokenType: string, amount: string }> } | null };
+export type UnshieldedBalanceQueryQuery = { readonly contractAction:
+    | { readonly deploy: { readonly unshieldedBalances: ReadonlyArray<{ readonly tokenType: string, readonly amount: string }> } }
+    | { readonly unshieldedBalances: ReadonlyArray<{ readonly tokenType: string, readonly amount: string }> }
+    | { readonly unshieldedBalances: ReadonlyArray<{ readonly tokenType: string, readonly amount: string }> }
+   | null };
 
 export type QueryUnshieldedBalancesWithOffsetQueryVariables = Exact<{
   address: Scalars['HexEncoded']['input'];
@@ -591,7 +686,11 @@ export type QueryUnshieldedBalancesWithOffsetQueryVariables = Exact<{
 }>;
 
 
-export type QueryUnshieldedBalancesWithOffsetQuery = { contractAction: { deploy: { unshieldedBalances: Array<{ tokenType: string, amount: string }> } } | { unshieldedBalances: Array<{ tokenType: string, amount: string }> } | { unshieldedBalances: Array<{ tokenType: string, amount: string }> } | null };
+export type QueryUnshieldedBalancesWithOffsetQuery = { readonly contractAction:
+    | { readonly deploy: { readonly unshieldedBalances: ReadonlyArray<{ readonly tokenType: string, readonly amount: string }> } }
+    | { readonly unshieldedBalances: ReadonlyArray<{ readonly tokenType: string, readonly amount: string }> }
+    | { readonly unshieldedBalances: ReadonlyArray<{ readonly tokenType: string, readonly amount: string }> }
+   | null };
 
 export type UnshieldedBalanceSubSubscriptionVariables = Exact<{
   address: Scalars['HexEncoded']['input'];
@@ -599,7 +698,11 @@ export type UnshieldedBalanceSubSubscriptionVariables = Exact<{
 }>;
 
 
-export type UnshieldedBalanceSubSubscription = { contractActions: { deploy: { unshieldedBalances: Array<{ tokenType: string, amount: string }> } } | { unshieldedBalances: Array<{ tokenType: string, amount: string }> } | { unshieldedBalances: Array<{ tokenType: string, amount: string }> } };
+export type UnshieldedBalanceSubSubscription = { readonly contractActions:
+    | { readonly deploy: { readonly unshieldedBalances: ReadonlyArray<{ readonly tokenType: string, readonly amount: string }> } }
+    | { readonly unshieldedBalances: ReadonlyArray<{ readonly tokenType: string, readonly amount: string }> }
+    | { readonly unshieldedBalances: ReadonlyArray<{ readonly tokenType: string, readonly amount: string }> }
+   };
 
 
 export const BlockHashQueryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"BLOCK_HASH_QUERY"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"offset"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"BlockOffset"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"block"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"offset"},"value":{"kind":"Variable","name":{"kind":"Name","value":"offset"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"height"}},{"kind":"Field","name":{"kind":"Name","value":"hash"}}]}}]}}]} as unknown as DocumentNode<BlockHashQueryQuery, BlockHashQueryQueryVariables>;
