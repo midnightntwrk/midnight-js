@@ -4552,9 +4552,9 @@ __metadata:
   linkType: hard
 
 "@tsconfig/node22@npm:^22.0.0":
-  version: 22.0.2
-  resolution: "@tsconfig/node22@npm:22.0.2"
-  checksum: 10/b9fb6543856cbac8b9b79c234bbefa3415f083e0a46e6f0fbe418fe21c5d086440222e1383258d75ebac951cbe17564a6d146fafc59c889d6302decd1a7880dd
+  version: 22.0.3
+  resolution: "@tsconfig/node22@npm:22.0.3"
+  checksum: 10/3abd924dde08d76b946af730c4e1452fbe50e42a4fcde641e57a899303579fe3c082fc0f0aa44c0769d4dbf69ef87b69aa41063fcbad0a9661582e7473178674
   languageName: node
   linkType: hard
 
