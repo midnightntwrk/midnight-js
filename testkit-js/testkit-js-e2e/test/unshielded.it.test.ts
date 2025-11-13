@@ -220,4 +220,24 @@ describe('Unshielded tokens', () => {
     expect(spent.length).toEqual(0);
     expect(created.length).toEqual(0);
   });
+
+  test('should mint to user', async () => {
+    const address = new Uint8Array(Buffer.from('0f09f9eb5538606c6490c0595b771ecb0c29ae71778f089a95e8465b84774aed', 'hex'));
+
+    const txData = await submitCallTx(providers, {
+      contract: unshieldedContract,
+      contractAddress,
+      circuitId: 'mint_to_user_address' as UnshieldedContractCircuits,
+      args: [1_000_000n, { bytes: address } ]
+    });
+
+    expect(txData.public.status).toBe(SucceedEntirely);
+    expect(txData.private.result).toEqual(0n);
+    expect(txData.public.unshielded).toBeDefined();
+
+    const spent = txData.public.unshielded.spent;
+    const created = txData.public.unshielded.created;
+    expect(spent.length).toEqual(0);
+    expect(created.length).toEqual(0);
+  });
 });

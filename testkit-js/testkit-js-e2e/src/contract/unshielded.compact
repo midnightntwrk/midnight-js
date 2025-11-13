@@ -45,3 +45,15 @@ export circuit mintToSelfReceive(domainSep: Bytes<32>, amount: Uint<64>): Bytes<
   receiveUnshielded(color, disclose(amount) as Uint<128>);
   return color;
 }
+
+export circuit mintToUserAddress(amount: Uint<64>, user_addr: UserAddress): Bytes<32> {
+    const domain = pad(32, "test:user:address");
+
+    const color = mintUnshieldedToken(
+        disclose(domain),
+        disclose(amount),
+        right<ContractAddress, UserAddress>(disclose(user_addr))
+    );
+
+    return color;
+}
