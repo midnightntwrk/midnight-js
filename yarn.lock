@@ -1155,13 +1155,13 @@ __metadata:
   linkType: hard
 
 "@effect/experimental@npm:^0.57.0":
-  version: 0.57.0
-  resolution: "@effect/experimental@npm:0.57.0"
+  version: 0.57.1
+  resolution: "@effect/experimental@npm:0.57.1"
   dependencies:
     uuid: "npm:^11.0.3"
   peerDependencies:
-    "@effect/platform": ^0.93.0
-    effect: ^3.19.0
+    "@effect/platform": ^0.93.1
+    effect: ^3.19.3
     ioredis: ^5
     lmdb: ^3
   peerDependenciesMeta:
@@ -1169,7 +1169,7 @@ __metadata:
       optional: true
     lmdb:
       optional: true
-  checksum: 10/0754a54878a9f83aba91fe15c2a13db735d667922aeb4a111a6ea6abda85bc718be099dab8dd67c67a82993d93e38e5293ef837e01860dd114cc1a1bbc62958c
+  checksum: 10/ac29580526e13a7b2f1008a49963fe3d5c173c1c54c61522e2b1d00376e0a01a738271d4c579e5bd5bf24b9e3751fff57366bd5b1ea5d8a7644df6418cdc688a
   languageName: node
   linkType: hard
 
