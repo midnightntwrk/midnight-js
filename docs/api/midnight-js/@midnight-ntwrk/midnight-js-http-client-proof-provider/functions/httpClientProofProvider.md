@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.2**](../../../README.md)
 
 ***
 
@@ -6,9 +6,9 @@
 
 # Function: httpClientProofProvider()
 
-> **httpClientProofProvider**\<`K`\>(`url`): [`ProofProvider`](../../midnight-js-types/interfaces/ProofProvider.md)\<`K`\>
+> **httpClientProofProvider**\<`K`\>(`url`): `ProofProvider`\<`K`\>
 
-Creates a [ProofProvider](../../midnight-js-types/interfaces/ProofProvider.md) by creating a client for a running proof server.
+Creates a ProofProvider by creating a client for a running proof server.
 Allows for HTTP and HTTPS. The data passed to 'proveTx' are intended to be
 secret, so usage of this function should be heavily scrutinized.
 
@@ -28,4 +28,4 @@ The url of a running proof server.
 
 ## Returns
 
-[`ProofProvider`](../../midnight-js-types/interfaces/ProofProvider.md)\<`K`\>
+`ProofProvider`\<`K`\>

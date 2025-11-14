@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.2**](../../../README.md)
 
 ***
 
@@ -22,7 +22,7 @@ An error indicating that a call transaction was not successfully applied by the 
 
 ##### finalizedTxData
 
-[`FinalizedTxData`](../../midnight-js-types/interfaces/FinalizedTxData.md)
+`FinalizedTxData`
 
 The finalization data of the call transaction that failed.
 
@@ -58,7 +58,7 @@ The name of the circuit that was called to create the call
 
 ### finalizedTxData
 
-> `readonly` **finalizedTxData**: [`FinalizedTxData`](../../midnight-js-types/interfaces/FinalizedTxData.md)
+> `readonly` **finalizedTxData**: `FinalizedTxData`
 
 The finalization data of the transaction that failed.
 

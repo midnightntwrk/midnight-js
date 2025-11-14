@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.2**](../../../README.md)
 
 ***
 
@@ -6,18 +6,18 @@
 
 # Function: toUnshieldedUtxos()
 
-> **toUnshieldedUtxos**(`createdUtxo`, `spentUtxo`): [`UnshieldedUtxos`](../../midnight-js-types/type-aliases/UnshieldedUtxos.md)
+> **toUnshieldedUtxos**(`createdUtxo`, `spentUtxo`): `UnshieldedUtxos`
 
 ## Parameters
 
 ### createdUtxo
 
-[`IndexerUtxo`](../type-aliases/IndexerUtxo.md)[]
+readonly [`IndexerUtxo`](../type-aliases/IndexerUtxo.md)[]
 
 ### spentUtxo
 
-[`IndexerUtxo`](../type-aliases/IndexerUtxo.md)[]
+readonly [`IndexerUtxo`](../type-aliases/IndexerUtxo.md)[]
 
 ## Returns
 
-[`UnshieldedUtxos`](../../midnight-js-types/type-aliases/UnshieldedUtxos.md)
+`UnshieldedUtxos`

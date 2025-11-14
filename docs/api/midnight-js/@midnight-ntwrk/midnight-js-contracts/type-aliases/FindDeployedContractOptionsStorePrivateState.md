@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.2**](../../../README.md)
 
 ***
 
@@ -17,7 +17,7 @@ private state ID.
 
 ### initialPrivateState
 
-> `readonly` **initialPrivateState**: [`PrivateState`](../../midnight-js-types/type-aliases/PrivateState.md)\<`C`\>
+> `readonly` **initialPrivateState**: `PrivateState`\<`C`\>
 
 For types of contract that make no use of private state and or witnesses that operate upon it, this
 property may be `undefined`. Otherwise, the value provided via this property should be same initial
@@ -27,4 +27,4 @@ state that was used when calling [deployContract](../functions/deployContract.md
 
 ### C
 
-`C` *extends* [`Contract`](../../midnight-js-types/interfaces/Contract.md)
+`C` *extends* `Contract`

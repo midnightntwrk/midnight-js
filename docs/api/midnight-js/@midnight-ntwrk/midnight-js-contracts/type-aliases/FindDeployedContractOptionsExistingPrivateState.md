@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.2**](../../../README.md)
 
 ***
 
@@ -17,7 +17,7 @@ private state ID.
 
 ### privateStateId
 
-> `readonly` **privateStateId**: [`PrivateStateId`](../../midnight-js-types/type-aliases/PrivateStateId.md)
+> `readonly` **privateStateId**: `PrivateStateId`
 
 An identifier for the private state of the contract being found.
 
@@ -25,4 +25,4 @@ An identifier for the private state of the contract being found.
 
 ### C
 
-`C` *extends* [`Contract`](../../midnight-js-types/interfaces/Contract.md)
+`C` *extends* `Contract`

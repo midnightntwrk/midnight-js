@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.2**](../../../README.md)
 
 ***
 
@@ -18,7 +18,7 @@ initial private state to run the contract constructor against.
 
 ### initialPrivateState
 
-> `readonly` **initialPrivateState**: [`PrivateState`](../../midnight-js-types/type-aliases/PrivateState.md)\<`C`\>
+> `readonly` **initialPrivateState**: `PrivateState`\<`C`\>
 
 The private state to run the contract constructor against.
 
@@ -26,4 +26,4 @@ The private state to run the contract constructor against.
 
 ### C
 
-`C` *extends* [`Contract`](../../midnight-js-types/interfaces/Contract.md)
+`C` *extends* `Contract`

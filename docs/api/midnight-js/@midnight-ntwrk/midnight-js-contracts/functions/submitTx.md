@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.2**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Function: submitTx()
 
-> **submitTx**\<`C`, `ICK`\>(`providers`, `options`): `Promise`\<[`FinalizedTxData`](../../midnight-js-types/interfaces/FinalizedTxData.md)\>
+> **submitTx**\<`C`, `ICK`\>(`providers`, `options`): `Promise`\<`FinalizedTxData`\>
 
 Proves, balances, and submits an unproven deployment or call transaction using
 the given providers, according to the given options.
@@ -15,7 +15,7 @@ the given providers, according to the given options.
 
 ### C
 
-`C` *extends* [`Contract`](../../midnight-js-types/interfaces/Contract.md)\<`any`, [`Witnesses`](../../midnight-js-types/type-aliases/Witnesses.md)\<`any`\>\>
+`C` *extends* `Contract`\<`any`, `Witnesses`\<`any`\>\>
 
 ### ICK
 
@@ -37,7 +37,7 @@ Configuration.
 
 ## Returns
 
-`Promise`\<[`FinalizedTxData`](../../midnight-js-types/interfaces/FinalizedTxData.md)\>
+`Promise`\<`FinalizedTxData`\>
 
 A promise that resolves with the finalized transaction data for the invocation,
          or rejects if an error occurs along the way.
