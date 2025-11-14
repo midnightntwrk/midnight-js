@@ -13,14 +13,15 @@
  * limitations under the License.
  */
 
+import type { Contract } from '@midnight-ntwrk/compact-js';
 import type { DeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
-import type { ImpureCircuitId, MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
+import type { MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
 
-import type { CompilerBlockTime } from './contract';
+import type { CompiledBlockTime } from './contract';
 
-export type BlockTimeContract = CompilerBlockTime.Contract<undefined>;
+export type BlockTimeContract = CompiledBlockTime.Contract<undefined>;
 
-export type BlockTimeCircuits = ImpureCircuitId<BlockTimeContract> & string;
+export type BlockTimeCircuits = Contract.ImpureCircuitId<BlockTimeContract> & string;
 
 export type BlockTimeProviders = MidnightProviders<BlockTimeCircuits, string, undefined>;
 

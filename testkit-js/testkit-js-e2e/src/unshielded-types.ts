@@ -12,13 +12,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import type { ImpureCircuitId, MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
+
+import type { Contract } from '@midnight-ntwrk/compact-js';
+import type { MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
 
 import { CompiledUnshielded } from './contract';
 
 export type UnshieldedContract = CompiledUnshielded.Contract<undefined>;
 
-export type UnshieldedContractCircuits = ImpureCircuitId<UnshieldedContract>;
+export type UnshieldedContractCircuits = Contract.ImpureCircuitId<UnshieldedContract>;
 
 export type UnshieldedContractProviders = MidnightProviders<UnshieldedContractCircuits>;
 

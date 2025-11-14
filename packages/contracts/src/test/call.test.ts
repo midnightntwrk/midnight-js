@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { type Contract } from '@midnight-ntwrk/compact-js';
 import {
   ChargedState,
   type CircuitContext,
@@ -27,7 +28,7 @@ import {
   sampleCoinPublicKey,
   type TokenType
 } from '@midnight-ntwrk/ledger-v6';
-import { type Contract, type PrivateState } from '@midnight-ntwrk/midnight-js-types';
+import { type PrivateState } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, type Mock, vi } from 'vitest';
 
 import { call } from '../call';
@@ -67,17 +68,17 @@ describe('call', () => {
           toVmStack: vi.fn()
         },
         originalState: createMockContractState(),
-        currentPrivateState: { test: 'private-state' } as PrivateState<Contract>,
+        currentPrivateState: { test: 'private-state' } as PrivateState<Contract.Any>,
         currentZswapLocalState: emptyZswapLocalState(sampleCoinPublicKey()),
         costModel: CostModel.initialCostModel()
-      } as CircuitContext<Contract>,
+      } as CircuitContext<Contract.Any>,
       proofData: {
         input: {} as AlignedValue,
         output: {} as AlignedValue,
         privateTranscriptOutputs: [{}],
         publicTranscript: [{ noop: { n: 1 } }]
       },
-    } as CircuitResults<Contract, string>);
+    } as CircuitResults<Contract.Any, string>);
   });
 
   it('should call circuit without initial private state', () => {

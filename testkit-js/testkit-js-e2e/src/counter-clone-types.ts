@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-import type { ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
+import type { Contract } from '@midnight-ntwrk/compact-js';
 
 import { CompiledCounterClone, type CounterPrivateState, witnesses } from './contract';
 
 export type CounterCloneContract = CompiledCounterClone.Contract<CounterPrivateState>;
 
-export type CounterCloneCircuits = ImpureCircuitId<CounterCloneContract>;
+export type CounterCloneCircuits = Contract.ImpureCircuitId<CounterCloneContract>;
 
 export const CounterClonePrivateStateId = 'counterClonePrivateState';
 

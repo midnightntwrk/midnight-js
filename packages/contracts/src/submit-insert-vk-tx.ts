@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
+import { type Contract } from '@midnight-ntwrk/compact-js';
 import type { ContractAddress } from '@midnight-ntwrk/ledger-v6';
 import {
   type FinalizedTxData,
-  type ImpureCircuitId,
   SucceedEntirely,
   type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress, assertUndefined } from '@midnight-ntwrk/midnight-js-utils';
@@ -70,7 +70,7 @@ import { createUnprovenInsertVerifierKeyTx } from './utils';
 export const submitInsertVerifierKeyTx = async (
   providers: ContractProviders,
   contractAddress: ContractAddress,
-  circuitId: ImpureCircuitId,
+  circuitId: Contract.ImpureCircuitId<Contract.Any>,
   newVk: VerifierKey
 ): Promise<FinalizedTxData> => {
   assertIsContractAddress(contractAddress);

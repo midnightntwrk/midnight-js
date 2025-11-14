@@ -13,7 +13,52 @@
  * limitations under the License.
  */
 
-export * as CompilerBlockTime from './managed/block-time/contract/index.js';
+import { CompiledContract } from '@midnight-ntwrk/compact-js';
+
+import * as CompiledBlockTime from './managed/block-time/contract/index.js';
+import * as CompiledCounter from './managed/counter/contract/index.js';
+import * as CompiledCounterClone from './managed/counter-clone/contract/index.js';
+import * as CompiledSimple from './managed/simple/contract/index.js';
+import * as CompiledUnshielded from './managed/unshielded/contract/index.js';
+import * as Witnesses from './witnesses.js';
+
+export const CompiledBlockTimeContract =
+  CompiledContract.make<CompiledBlockTime.Contract>('BlockTime', CompiledBlockTime.Contract).pipe(
+    CompiledContract.withVacantWitnesses,
+    CompiledContract.withCompiledFileAssets('./managed/block-time')
+  );
+
+export const CompiledCounterContract =
+  CompiledContract.make<CompiledCounter.Contract<Witnesses.CounterPrivateState>>(
+    'Counter',
+    CompiledCounter.Contract<Witnesses.CounterPrivateState>
+  ).pipe(
+    CompiledContract.withWitnesses(Witnesses.witnesses),
+    CompiledContract.withCompiledFileAssets('./managed/counter')
+  );
+
+export const CompiledCounterCloneContract =
+  CompiledContract.make<CompiledCounterClone.Contract<Witnesses.CounterPrivateState>>(
+    'Counter',
+    CompiledCounterClone.Contract<Witnesses.CounterPrivateState>
+  ).pipe(
+    CompiledContract.withWitnesses(Witnesses.witnesses),
+    CompiledContract.withCompiledFileAssets('./managed/counter-clone')
+  );
+
+export const CompiledSimpleContract =
+  CompiledContract.make<CompiledSimple.Contract>('BlockTime', CompiledSimple.Contract).pipe(
+    CompiledContract.withVacantWitnesses,
+    CompiledContract.withCompiledFileAssets('./managed/simple')
+  );
+
+export const CompiledUnshieldedContract =
+  CompiledContract.make<CompiledUnshielded.Contract>('BlockTime', CompiledUnshielded.Contract).pipe(
+    CompiledContract.withVacantWitnesses,
+    CompiledContract.withCompiledFileAssets('./managed/unshielded')
+  );
+
+export * as CompiledBlockTime from './managed/block-time/contract/index.js';
 export * as CompiledCounter from './managed/counter/contract/index.js';
 export * as CompiledCounterClone from './managed/counter-clone/contract/index.js';
 export * as CompiledSimple from './managed/simple/contract/index.js';

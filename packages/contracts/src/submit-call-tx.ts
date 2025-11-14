@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { Contract, ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
+import { type Contract } from '@midnight-ntwrk/compact-js';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
@@ -29,16 +29,18 @@ import {
   createUnprovenCallTx
 } from './unproven-call-tx';
 
-export type SubmitCallTxProviders<C extends Contract, ICK extends ImpureCircuitId<C>> =
+export type SubmitCallTxProviders<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> =
   | ContractProviders<C>
   | SubmitTxProviders<C, ICK>;
 
-export async function submitCallTx<C extends Contract<undefined>, ICK extends ImpureCircuitId<C>>(
+ 
+
+export async function submitCallTx<C extends Contract<undefined>, ICK extends Contract.ImpureCircuitId<C>>(
   providers: SubmitTxProviders<C, ICK>,
   options: CallTxOptionsBase<C, ICK>
 ): Promise<FinalizedCallTxData<C, ICK>>;
 
-export async function submitCallTx<C extends Contract, ICK extends ImpureCircuitId<C>>(
+export async function submitCallTx<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   providers: ContractProviders<C>,
   options: CallTxOptionsWithPrivateStateId<C, ICK>
 ): Promise<FinalizedCallTxData<C, ICK>>;
@@ -75,7 +77,7 @@ export async function submitCallTx<C extends Contract, ICK extends ImpureCircuit
  * @throws {CallTxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data and circuit ID for debugging.
  */
-export async function submitCallTx<C extends Contract, ICK extends ImpureCircuitId<C>>(
+export async function submitCallTx<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   providers: SubmitCallTxProviders<C, ICK>,
   options: CallTxOptions<C, ICK>
 ): Promise<FinalizedCallTxData<C, ICK>> {

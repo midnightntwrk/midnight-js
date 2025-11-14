@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { type CompiledContract, type Contract } from '@midnight-ntwrk/compact-js';
 import {
   type CoinPublicKey,
   type ConstructorContext,
@@ -21,30 +22,32 @@ import {
   emptyZswapLocalState,
   type ZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
-import type { Contract, InitialStateParameters, PrivateState } from '@midnight-ntwrk/midnight-js-types';
 
 /**
  * Describes the target of a circuit invocation.
  */
-export type ContractConstructorOptionsBase<C extends Contract> = {
+export type ContractConstructorOptionsBase<C extends Contract.Any> = {
   /**
    * The contract defining the circuit to call.
    */
   readonly contract: C;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  readonly compiledContract: CompiledContract.CompiledContract<C, any>;
 }
 
 /**
  * Conditional type that optionally adds the inferred contract constructor argument types
  * to the constructor options.
  */
-export type ContractConstructorOptionsWithArguments<C extends Contract> =
-  InitialStateParameters<C> extends []
+export type ContractConstructorOptionsWithArguments<C extends Contract.Any> =
+  Contract.InitializeParameters<C> extends []
     ? ContractConstructorOptionsBase<C>
     : ContractConstructorOptionsBase<C> & {
         /**
          * Arguments to pass to the circuit being called.
          */
-        readonly args: InitialStateParameters<C>;
+        readonly args: Contract.InitializeParameters<C>;
       };
 
 /**
@@ -60,33 +63,33 @@ export type ContractConstructorOptionsProviderDataDependencies = {
 /**
  * Contract constructor options including arguments and provider data.
  */
-export type ContractConstructorOptionsWithProviderDataDependencies<C extends Contract> =
+export type ContractConstructorOptionsWithProviderDataDependencies<C extends Contract.Any> =
   ContractConstructorOptionsWithArguments<C> & ContractConstructorOptionsProviderDataDependencies;
 
 /**
  * Conditional type that optionally adds the inferred circuit argument types to
  * the target of a circuit invocation.
  */
-export type ContractConstructorOptionsWithPrivateState<C extends Contract> =
+export type ContractConstructorOptionsWithPrivateState<C extends Contract.Any> =
   ContractConstructorOptionsWithProviderDataDependencies<C> & {
     /**
      * The private state to run the circuit against.
      */
-    readonly initialPrivateState: PrivateState<C>;
+    readonly initialPrivateState: Contract.PrivateState<C>;
   };
 
 /**
  * Conditional type that optionally adds the inferred circuit argument types to
  * the target of a circuit invocation.
  */
-export type ContractConstructorOptions<C extends Contract> =
+export type ContractConstructorOptions<C extends Contract.Any> =
   | ContractConstructorOptionsWithProviderDataDependencies<C>
   | ContractConstructorOptionsWithPrivateState<C>;
 
 /**
  * The updated states resulting from executing a contract constructor.
  */
-export type ContractConstructorResult<C extends Contract> = {
+export type ContractConstructorResult<C extends Contract.Any> = {
   /**
    * The public state resulting from executing the contract constructor.
    */
@@ -94,7 +97,7 @@ export type ContractConstructorResult<C extends Contract> = {
   /**
    * The private state resulting from executing the contract constructor.
    */
-  readonly nextPrivateState: PrivateState<C>;
+  readonly nextPrivateState: Contract.PrivateState<C>;
   /**
    * The Zswap local state resulting from executing the contract constructor.
    */
@@ -106,7 +109,7 @@ export type ContractConstructorResult<C extends Contract> = {
  *
  * @param options Configuration.
  */
-export const callContractConstructor = <C extends Contract>(
+export const callContractConstructor = <C extends Contract.Any>(
   options: ContractConstructorOptions<C>
 ): ContractConstructorResult<C> => {
   const constructorResult = options.contract.initialState(

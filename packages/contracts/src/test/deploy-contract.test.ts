@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
+import { type Contract } from '@midnight-ntwrk/compact-js';
 import { type ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
 import { type UnprovenTransaction } from '@midnight-ntwrk/ledger-v6';
-import { type Contract, type PrivateState } from '@midnight-ntwrk/midnight-js-types';
+import { type PrivateState } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type ContractProviders } from '../contract-providers';
@@ -41,11 +42,11 @@ vi.mock('../tx-interfaces', () => ({
 
 describe('deployContract', () => {
   let mockSubmitDeployTx: ReturnType<typeof vi.fn>;
-  let mockDeployTxData: UnsubmittedDeployTxData<Contract>;
+  let mockDeployTxData: UnsubmittedDeployTxData<Contract.Any>;
   let providers: ContractProviders;
-  let baseOptions: DeployContractOptionsBase<Contract>;
+  let baseOptions: DeployContractOptionsBase<Contract.Any>;
 
-  const createMockDeployTxData = (initialPrivateState?: PrivateState<Contract>): UnsubmittedDeployTxData<Contract> => ({
+  const createMockDeployTxData = (initialPrivateState?: PrivateState<Contract.Any>): UnsubmittedDeployTxData<Contract.Any> => ({
     public: {
       ...createMockFinalizedTxData(),
       contractAddress: 'mock-contract-address',
@@ -60,7 +61,7 @@ describe('deployContract', () => {
     }
   });
 
-  const assertDeployResult = (result: DeployedContract<Contract>, deployTxData: UnsubmittedDeployTxData<Contract>) => {
+  const assertDeployResult = (result: DeployedContract<Contract.Any>, deployTxData: UnsubmittedDeployTxData<Contract.Any>) => {
     expect(result).toBeDefined();
     expect(result.deployTxData).toBe(deployTxData);
     expect(result.callTx).toBeDefined();

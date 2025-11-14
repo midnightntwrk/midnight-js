@@ -13,19 +13,19 @@
  * limitations under the License.
  */
 
-export {
-  CircuitParameters,
-  CircuitReturnType,
-  Contract,
-  getImpureCircuitIds,
-  ImpureCircuit,
-  ImpureCircuitId,
-  ImpureCircuits,
-  InitialStateParameters,
-  PrivateState,
-  Witness,
-  Witnesses
-} from './contract';
+// export {
+//   CircuitParameters,
+//   CircuitReturnType,
+//   Contract,
+//   getImpureCircuitIds,
+//   ImpureCircuit,
+//   ImpureCircuitId,
+//   ImpureCircuits,
+//   InitialStateParameters,
+//   PrivateState,
+//   Witness,
+//   Witnesses
+// } from './contract';
 export * from './errors';
 export * from './logger-provider';
 export * from './midnight-provider';

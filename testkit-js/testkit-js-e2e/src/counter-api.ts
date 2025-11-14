@@ -32,6 +32,7 @@ import {
   type CounterPrivateState,
   createInitialPrivateState
 } from './contract';
+import { CompiledCounterContract } from './contract';
 import { type CounterCloneContract,createCounterCloneContractInstance } from './counter-clone-types';
 import {
   type CounterContract,
@@ -124,6 +125,7 @@ export const deploy = async (
   logger.info('Deploying counter contract...');
   const counterContract = await deployContract(providers, {
     contract: counterContractInstance,
+    compiledContract: CompiledCounterContract,
     privateStateId: CounterPrivateStateId,
     initialPrivateState: privateState
   });

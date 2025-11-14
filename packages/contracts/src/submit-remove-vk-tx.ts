@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
+import { type Contract } from '@midnight-ntwrk/compact-js';
 import type { ContractAddress } from '@midnight-ntwrk/ledger-v6';
-import { type FinalizedTxData, type ImpureCircuitId,SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import { type FinalizedTxData,SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
@@ -65,7 +66,7 @@ import { createUnprovenRemoveVerifierKeyTx } from './utils';
 export const submitRemoveVerifierKeyTx = async (
   providers: ContractProviders,
   contractAddress: ContractAddress,
-  circuitId: ImpureCircuitId
+  circuitId: Contract.ImpureCircuitId<Contract.Any>
 ): Promise<FinalizedTxData> => {
   assertIsContractAddress(contractAddress);
   const contractState = await providers.publicDataProvider.queryContractState(contractAddress);

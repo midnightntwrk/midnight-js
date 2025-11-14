@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-import { type Contract, type ImpureCircuitId,SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import { type Contract } from '@midnight-ntwrk/compact-js';
+import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 
 import { type ContractProviders } from './contract-providers';
 import { DeployTxFailedError } from './errors';
@@ -25,23 +26,23 @@ import { createUnprovenDeployTx } from './unproven-deploy-tx';
 /**
  * Providers necessary to submit a deployment transaction - all providers.
  */
-export type SubmitDeployTxProviders<C extends Contract> =
-  | ContractProviders<C, ImpureCircuitId<C>, unknown>
+export type SubmitDeployTxProviders<C extends Contract.Any> =
+  | ContractProviders<C, Contract.ImpureCircuitId<C>, unknown>
   | ContractProviders<C>;
 
 /**
  * Configuration for creating deploy transactions.
  */
-export type DeployTxOptions<C extends Contract> = DeployTxOptionsBase<C> | DeployTxOptionsWithPrivateStateId<C>;
+export type DeployTxOptions<C extends Contract.Any> = DeployTxOptionsBase<C> | DeployTxOptionsWithPrivateStateId<C>;
 
  
 
 export async function submitDeployTx<C extends Contract<undefined>>(
-  providers: ContractProviders<C, ImpureCircuitId<C>, unknown>,
+  providers: ContractProviders<C, Contract.ImpureCircuitId<C>, unknown>,
   options: DeployTxOptionsBase<C>
 ): Promise<FinalizedDeployTxData<C>>;
 
-export async function submitDeployTx<C extends Contract>(
+export async function submitDeployTx<C extends Contract.Any>(
   providers: ContractProviders<C>,
   options: DeployTxOptionsWithPrivateStateId<C>
 ): Promise<FinalizedDeployTxData<C>>;
@@ -81,7 +82,7 @@ export async function submitDeployTx<C extends Contract>(
  * @throws {DeployTxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data for debugging.
  */
-export async function submitDeployTx<C extends Contract>(
+export async function submitDeployTx<C extends Contract.Any>(
   providers: SubmitDeployTxProviders<C>,
   options: DeployTxOptions<C>
 ): Promise<FinalizedDeployTxData<C>> {

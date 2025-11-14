@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-import { type ImpureCircuitId } from './contract';
+import type { Contract } from '@midnight-ntwrk/compact-js';
+
 import type { LoggerProvider } from './logger-provider';
 import type { MidnightProvider } from './midnight-provider';
 import type { PrivateStateId, PrivateStateProvider } from './private-state-provider';
@@ -30,7 +31,7 @@ import type { ZKConfigProvider } from './zk-config-provider';
  * @typeParam PS - Parameter indicating the private state type stored, sometimes a union of private state types.
  */
 export interface MidnightProviders<
-  ICK extends ImpureCircuitId = ImpureCircuitId,
+  ICK extends Contract.ImpureCircuitId<Contract.Any> = Contract.ImpureCircuitId<Contract.Any>,
   PSI extends PrivateStateId = PrivateStateId,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   PS = any

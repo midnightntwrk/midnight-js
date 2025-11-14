@@ -13,10 +13,11 @@
  * limitations under the License.
  */
 
+import { type Contract } from '@midnight-ntwrk/compact-js';
 import type { CoinPublicKey, ContractState } from '@midnight-ntwrk/compact-runtime';
 import { type EncPublicKey,type ZswapChainState } from '@midnight-ntwrk/ledger-v6';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import type { Contract, ImpureCircuitId, PrivateState, PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
+import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import type {
@@ -34,13 +35,13 @@ import { createUnprovenLedgerCallTx, encryptionPublicKeyForZswapState, zswapStat
 
 
 
-export function createUnprovenCallTxFromInitialStates<C extends Contract<undefined>, ICK extends ImpureCircuitId<C>>(
+export function createUnprovenCallTxFromInitialStates<C extends Contract<undefined>, ICK extends Contract.ImpureCircuitId<C>>(
   options: CallOptionsWithProviderDataDependencies<C, ICK>,
   walletCoinPublicKey: CoinPublicKey,
   walletEncryptionPublicKey: EncPublicKey
 ): UnsubmittedCallTxData<C, ICK>;
 
-export function createUnprovenCallTxFromInitialStates<C extends Contract, ICK extends ImpureCircuitId<C>>(
+export function createUnprovenCallTxFromInitialStates<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   options: CallOptionsWithPrivateState<C, ICK>,
   walletCoinPublicKey: CoinPublicKey,
   walletEncryptionPublicKey: EncPublicKey
@@ -56,7 +57,7 @@ export function createUnprovenCallTxFromInitialStates<C extends Contract, ICK ex
  * @param walletEncryptionPublicKey
  * @returns Data produced by the circuit call and an unproven transaction assembled from the call result.
  */
-export function createUnprovenCallTxFromInitialStates<C extends Contract, ICK extends ImpureCircuitId<C>>(
+export function createUnprovenCallTxFromInitialStates<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   options: CallOptions<C, ICK>,
   walletCoinPublicKey: CoinPublicKey,
   walletEncryptionPublicKey: EncPublicKey
@@ -98,7 +99,7 @@ export function createUnprovenCallTxFromInitialStates<C extends Contract, ICK ex
 /**
  * Base type for configuration for a call transaction; identical to {@link CallOptionsWithArguments}.
  */
-export type CallTxOptionsBase<C extends Contract, ICK extends ImpureCircuitId<C>> = CallOptionsWithArguments<C, ICK>;
+export type CallTxOptionsBase<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = CallOptionsWithArguments<C, ICK>;
 
 /**
  * Call transaction options with the private state ID to use to store the new private
@@ -106,7 +107,7 @@ export type CallTxOptionsBase<C extends Contract, ICK extends ImpureCircuitId<C>
  * stored at the given private state ID, we don't need an 'initialPrivateState' like
  * in {@link DeployTxOptionsWithPrivateState}.
  */
-export type CallTxOptionsWithPrivateStateId<C extends Contract, ICK extends ImpureCircuitId<C>> = CallTxOptionsBase<
+export type CallTxOptionsWithPrivateStateId<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = CallTxOptionsBase<
   C,
   ICK
 > & {
@@ -119,16 +120,16 @@ export type CallTxOptionsWithPrivateStateId<C extends Contract, ICK extends Impu
 /**
  * Call transaction configuration.
  */
-export type CallTxOptions<C extends Contract, ICK extends ImpureCircuitId<C>> =
+export type CallTxOptions<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> =
   | CallTxOptionsBase<C, ICK>
   | CallTxOptionsWithPrivateStateId<C, ICK>;
 
-const createCallOptions = <C extends Contract, ICK extends ImpureCircuitId<C>>(
+const createCallOptions = <C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   callTxOptions: CallTxOptions<C, ICK>,
   coinPublicKey: CoinPublicKey,
   initialContractState: ContractState,
   initialZswapChainState: ZswapChainState,
-  initialPrivateState?: PrivateState<C>
+  initialPrivateState?: Contract.PrivateState<C>
 ): CallOptions<C, ICK> => {
   const callOptionsBase = {
     contract: callTxOptions.contract,
@@ -167,22 +168,22 @@ export type UnprovenCallTxProvidersBase = Pick<ContractProviders, 'publicDataPro
  * state provider to store the new private state resulting from the circuit call -
  * only used when creating a call transaction for a contract with a private state.
  */
-export type UnprovenCallTxProvidersWithPrivateState<C extends Contract> = UnprovenCallTxProvidersBase &
+export type UnprovenCallTxProvidersWithPrivateState<C extends Contract.Any> = UnprovenCallTxProvidersBase &
   Pick<ContractProviders<C>, 'privateStateProvider'>;
 
 /**
  * Providers needed to create a call transaction.
  */
-export type UnprovenCallTxProviders<C extends Contract> =
+export type UnprovenCallTxProviders<C extends Contract.Any> =
   | UnprovenCallTxProvidersBase
   | UnprovenCallTxProvidersWithPrivateState<C>;
 
-export async function createUnprovenCallTx<C extends Contract<undefined>, ICK extends ImpureCircuitId<C>>(
+export async function createUnprovenCallTx<C extends Contract<undefined>, ICK extends Contract.ImpureCircuitId<C>>(
   providers: UnprovenCallTxProvidersBase,
   options: CallTxOptionsBase<C, ICK>
 ): Promise<UnsubmittedCallTxData<C, ICK>>;
 
-export async function createUnprovenCallTx<C extends Contract, ICK extends ImpureCircuitId<C>>(
+export async function createUnprovenCallTx<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   providers: UnprovenCallTxProvidersWithPrivateState<C>,
   options: CallTxOptionsWithPrivateStateId<C, ICK>
 ): Promise<UnsubmittedCallTxData<C, ICK>>;
@@ -201,7 +202,7 @@ export async function createUnprovenCallTx<C extends Contract, ICK extends Impur
  *                                           was not. We assume that when a user gives a `privateStateId`,
  *                                           they want to update the private state store.
  */
-export async function createUnprovenCallTx<C extends Contract, ICK extends ImpureCircuitId<C>>(
+export async function createUnprovenCallTx<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   providers: UnprovenCallTxProviders<C>,
   options: CallTxOptions<C, ICK>
 ): Promise<UnsubmittedCallTxData<C, ICK>> {

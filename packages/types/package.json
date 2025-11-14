@@ -29,6 +29,7 @@
     "dist/"
   ],
   "dependencies": {
+    "@midnight-ntwrk/compact-js": "^2.3.0",
     "rxjs": "^7.5.0"
   },
   "stableVersion": "3.0.0"

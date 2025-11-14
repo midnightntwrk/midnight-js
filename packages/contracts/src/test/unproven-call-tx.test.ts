@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
+import { type Contract } from '@midnight-ntwrk/compact-js';
 import { StateValue, type ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
 import { type AlignedValue } from '@midnight-ntwrk/ledger-v6';
-import { type Contract, type ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expect, it, vi } from 'vitest';
 
 import { type CallResult } from '../call';
@@ -68,7 +68,7 @@ describe('unproven-call-tx', () => {
           nextPrivateState: undefined,
           nextZswapLocalState: {} as ZswapLocalState
         }
-      } as CallResult<Contract, ImpureCircuitId>;
+      } as CallResult<Contract.Any, Contract.ImpureCircuitId<Contract.Any>>;
 
       mockCall.mockReturnValue(callResult);
 

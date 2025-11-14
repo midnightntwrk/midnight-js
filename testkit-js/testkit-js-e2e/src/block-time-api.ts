@@ -26,7 +26,7 @@ import type {
   DeployedBlockTimeContract
 } from '@/block-time-types';
 
-import { CompilerBlockTime } from './contract';
+import { CompiledBlockTime, CompiledBlockTimeContract } from './contract';
 
 export const currentDir = path.resolve(new URL(import.meta.url).pathname, '..');
 
@@ -54,14 +54,15 @@ export const CIRCUIT_ID_TEST_BLOCK_TIME_LT = 'testBlockTimeLt' as const;
 export const CIRCUIT_ID_TEST_BLOCK_TIME_GTE = 'testBlockTimeGte' as const;
 export const CIRCUIT_ID_TEST_BLOCK_TIME_LTE = 'testBlockTimeLte' as const;
 
-export const blockTimeContractInstance: BlockTimeContract = new CompilerBlockTime.Contract({});
+export const blockTimeContractInstance: BlockTimeContract = new CompiledBlockTime.Contract({});
 
 export const deploy = async (
   providers: BlockTimeProviders
 ): Promise<DeployedBlockTimeContract> => {
   logger.info('Deploying block time contract...');
   const blockTimeContract = await deployContract(providers, {
-    contract: blockTimeContractInstance
+    contract: blockTimeContractInstance,
+    compiledContract: CompiledBlockTimeContract
   });
   logger.info(`Deployed contract at address: ${blockTimeContract.deployTxData.public.contractAddress}`);
   return blockTimeContract;

@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-import { type Contract, FailEntirely, FailFallible, type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
+import { type Contract } from '@midnight-ntwrk/compact-js';
+import { FailEntirely, FailFallible, type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DeployTxFailedError } from '../errors';

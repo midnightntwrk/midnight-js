@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import type { Contract  } from '@midnight-ntwrk/compact-js';
 import {
   type AlignedValue,
   type CircuitContext,
@@ -35,13 +36,6 @@ import {
   type ZswapChainState
 } from '@midnight-ntwrk/ledger-v6';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import type {
-  CircuitParameters,
-  CircuitReturnType,
-  Contract,
-  ImpureCircuitId,
-  PrivateState
-} from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import { toLedgerQueryContext } from './utils';
@@ -49,7 +43,7 @@ import { toLedgerQueryContext } from './utils';
 /**
  * Describes the target of a circuit invocation.
  */
-export type CallOptionsBase<C extends Contract, ICK extends ImpureCircuitId<C>> = {
+export type CallOptionsBase<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = {
   /**
    * The contract defining the circuit to call.
    */
@@ -68,14 +62,14 @@ export type CallOptionsBase<C extends Contract, ICK extends ImpureCircuitId<C>> 
  * Conditional type that optionally adds the inferred circuit argument types to
  * the options for a circuit call.
  */
-export type CallOptionsWithArguments<C extends Contract, ICK extends ImpureCircuitId<C>> =
-  CircuitParameters<C, ICK> extends []
+export type CallOptionsWithArguments<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> =
+  Contract.CircuitParameters<C, ICK> extends []
     ? CallOptionsBase<C, ICK>
     : CallOptionsBase<C, ICK> & {
     /**
      * Arguments to pass to the circuit being called.
      */
-    readonly args: CircuitParameters<C, ICK>;
+    readonly args: Contract.CircuitParameters<C, ICK>;
   };
 
 /**
@@ -100,34 +94,34 @@ export type CallOptionsProviderDataDependencies = {
  * Call options with circuit arguments and data
  */
 export type CallOptionsWithProviderDataDependencies<
-  C extends Contract,
-  ICK extends ImpureCircuitId<C>
+  C extends Contract.Any,
+  ICK extends Contract.ImpureCircuitId<C>
 > = CallOptionsWithArguments<C, ICK> & CallOptionsProviderDataDependencies;
 
 /**
  * Call options for contracts with private state.
  */
 export type CallOptionsWithPrivateState<
-  C extends Contract,
-  ICK extends ImpureCircuitId<C>
+  C extends Contract.Any,
+  ICK extends Contract.ImpureCircuitId<C>
 > = CallOptionsWithProviderDataDependencies<C, ICK> & {
   /**
    * The private state to run the circuit against.
    */
-  readonly initialPrivateState: PrivateState<C>;
+  readonly initialPrivateState: Contract.PrivateState<C>;
 };
 
 /**
  * Call options for a given contract and circuit.
  */
-export type CallOptions<C extends Contract, ICK extends ImpureCircuitId<C>> =
+export type CallOptions<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> =
   | CallOptionsWithProviderDataDependencies<C, ICK>
   | CallOptionsWithPrivateState<C, ICK>;
 
 /**
  * The private (sensitive) portions of the call result.
  */
-export type CallResultPrivate<C extends Contract, ICK extends ImpureCircuitId<C>> = {
+export type CallResultPrivate<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = {
   /**
    * ZK representation of the circuit arguments.
    */
@@ -143,11 +137,11 @@ export type CallResultPrivate<C extends Contract, ICK extends ImpureCircuitId<C>
   /**
    * The JS representation of the input to the circuit.
    */
-  readonly result: CircuitReturnType<C, ICK>;
+  readonly result: Contract.CircuitReturnType<C, ICK>;
   /**
    * The private state resulting from executing the circuit.
    */
-  readonly nextPrivateState: PrivateState<C>;
+  readonly nextPrivateState: Contract.PrivateState<C>;
   /**
    * The Zswap local state resulting from executing the circuit.
    */
@@ -178,7 +172,7 @@ export type CallResultPublic = {
 /**
  * Contains all information resulting from circuit execution.
  */
-export type CallResult<C extends Contract, ICK extends ImpureCircuitId<C>> = {
+export type CallResult<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = {
   /**
    * The public/non-sensitive data produced by the circuit execution.
    */
@@ -217,7 +211,7 @@ const partitionTranscript = (
  *
  * @param options Configuration.
  */
-export const call = <C extends Contract, ICK extends ImpureCircuitId<C>>(
+export const call = <C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   options: CallOptions<C, ICK>
 ): CallResult<C, ICK> => {
   const { contract, circuitId, contractAddress, coinPublicKey, initialContractState } = options;

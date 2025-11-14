@@ -13,24 +13,11 @@
  * limitations under the License.
  */
 
+import { type Contract } from '@midnight-ntwrk/compact-js';
 import type { ShieldedCoinInfo } from '@midnight-ntwrk/compact-runtime';
 import {
-  type FinalizedTransaction,
-  type Transaction,
-  type UnprovenTransaction,
-} from '@midnight-ntwrk/ledger-v6';
-import {
-  BALANCE_TRANSACTION_TO_PROVE,
-  type BalancedProvingRecipe,
-  type BalanceTransactionToProve,
-  type Contract,
   type FinalizedTxData,
-  type ImpureCircuitId,
-  NOTHING_TO_PROVE,
-  type NothingToProve,
-  type ProvenTransaction,
-  TRANSACTION_TO_PROVE,
-  type ZKConfig
+  type TransactionToProve
 } from '@midnight-ntwrk/midnight-js-types';
 import fs from 'fs';
 import path from 'path';
@@ -42,7 +29,7 @@ declare const __DEBUG__: boolean;
 /**
  * Configuration for {@link submitTx}.
  */
-export type SubmitTxOptions<ICK extends ImpureCircuitId> = {
+export type SubmitTxOptions<ICK extends Contract.ImpureCircuitId<Contract.Any>> = {
   /**
    * The transaction to prove, balance, and submit.
    */
@@ -63,7 +50,7 @@ export type SubmitTxOptions<ICK extends ImpureCircuitId> = {
  * Providers required to submit an unproven deployment transaction. Since {@link submitTx} doesn't
  * manipulate private state, the private state provider can be omitted.
  */
-export type SubmitTxProviders<C extends Contract, ICK extends ImpureCircuitId<C>> = Omit<
+export type SubmitTxProviders<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = Omit<
   ContractProviders<C, ICK>,
   'privateStateProvider'
 >;
@@ -185,7 +172,7 @@ async function submitTxCore<C extends Contract, ICK extends ImpureCircuitId<C>>(
  * @returns A promise that resolves with the finalized transaction data for the invocation,
  *          or rejects if an error occurs along the way.
  */
-export const submitTx = async <C extends Contract, ICK extends ImpureCircuitId<C>>(
+export const submitTx = async <C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   providers: SubmitTxProviders<C, ICK>,
   options: SubmitTxOptions<ICK>
 ): Promise<FinalizedTxData> => {

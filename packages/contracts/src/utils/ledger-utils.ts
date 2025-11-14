@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { type Contract } from '@midnight-ntwrk/compact-js';
 import {
   type AlignedValue,
   type ContractAddress,
@@ -46,7 +47,6 @@ import {
 } from '@midnight-ntwrk/ledger-v6';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
-  type ImpureCircuitId,
   Transaction,
   type VerifierKey
 } from '@midnight-ntwrk/midnight-js-types';
@@ -69,7 +69,7 @@ export const toLedgerQueryContext = (queryContext: QueryContext): LedgerQueryCon
   return ledgerQueryContext;
 }
 
-const addVerifierKeys = (verifierKeys: [ImpureCircuitId, VerifierKey][], contractState: LedgerContractState): void => {
+const addVerifierKeys = (verifierKeys: [Contract.ImpureCircuitId<Contract.Any>, VerifierKey][], contractState: LedgerContractState): void => {
   verifierKeys.forEach(([impureCircuitId, verifierKey]) => {
     const operation = contractState.operation(impureCircuitId);
     assertDefined(
@@ -100,7 +100,7 @@ const addMaintenanceAuthority = (sk: SigningKey, contractState: LedgerContractSt
 };
 
 export const createUnprovenLedgerDeployTx = (
-  verifierKeys: [ImpureCircuitId, VerifierKey][],
+  verifierKeys: [Contract.ImpureCircuitId<Contract.Any>, VerifierKey][],
   sk: SigningKey,
   contractState: ContractState,
   zswapLocalState: ZswapLocalState,
@@ -123,7 +123,7 @@ export const createUnprovenLedgerDeployTx = (
 };
 
 export const createUnprovenLedgerCallTx = (
-  circuitId: ImpureCircuitId,
+  circuitId: Contract.ImpureCircuitId<Contract.Any>,
   contractAddress: ContractAddress,
   initialContractState: ContractState,
   zswapChainState: ZswapChainState,

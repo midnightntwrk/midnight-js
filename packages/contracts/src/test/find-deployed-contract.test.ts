@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { type Contract } from '@midnight-ntwrk/midnight-js-types';
+import { type Contract } from '@midnight-ntwrk/compact-js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { findDeployedContract, type FoundContract } from '../find-deployed-contract';
@@ -58,7 +58,7 @@ describe('findDeployedContract', () => {
     vi.mocked(providers.zkConfigProvider.getVerifierKeys).mockResolvedValue(verifierKeys);
   };
 
-  const expectBasicResult = (result: FoundContract<Contract>) => {
+  const expectBasicResult = (result: FoundContract<Contract.Any>) => {
     expect(result).toBeDefined();
     expect(result.deployTxData).toBeDefined();
     expect(result.deployTxData.public.contractAddress).toBe(contractAddress);
