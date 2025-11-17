@@ -118,7 +118,12 @@ for pkg in $TESTKIT_PACKAGES; do
 done
 
 log_info "Step 4: Generate changelog"
-execute_or_log "yarn changelog"
+if [ "$DRY_RUN" = false ]; then
+  CHANGELOG_OUTPUT=$(yarn changelog 2>&1)
+  log_info "Changelog generated"
+else
+  execute_or_log "yarn changelog"
+fi
 
 if [ "$RUN_TESTS" = true ]; then
   log_info "Step 5: Build and test"
@@ -130,7 +135,7 @@ else
 fi
 
 log_info "Step 6: Create release branch"
-RELEASE_BRANCH="release/$NEW_VERSION"
+RELEASE_BRANCH="release/v$NEW_VERSION"
 execute_or_log "git checkout -b $RELEASE_BRANCH"
 
 log_info "Step 7: Commit changes"
@@ -141,14 +146,6 @@ log_info "Step 8: Create and push tag"
 execute_or_log "git tag -a v$NEW_VERSION -m 'Release v$NEW_VERSION'"
 execute_or_log "git push origin $RELEASE_BRANCH"
 execute_or_log "git push origin v$NEW_VERSION"
-
-log_info "Step 9: Create GitHub release"
-execute_or_log "gh release create v$NEW_VERSION --title 'v$NEW_VERSION' --notes 'Release v$NEW_VERSION' --prerelease --target $RELEASE_BRANCH"
-
-log_info "Step 10: Merge to main"
-execute_or_log "git checkout main"
-execute_or_log "git merge $RELEASE_BRANCH --no-ff -m 'chore: merge $RELEASE_BRANCH'"
-execute_or_log "git push origin main"
 
 log_info "Release process completed successfully!"
 
