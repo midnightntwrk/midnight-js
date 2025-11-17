@@ -89,22 +89,26 @@ if [ -n "$(git status --porcelain)" ]; then
   exit 1
 fi
 
-log_info "Step 1: Update version in package.json files"
-execute_or_log "sed -i '' 's/\"version\": \".*\"/\"version\": \"$NEW_VERSION\"/' package.json"
+log_info "Step 1: Update version in root package.json"
+execute_or_log "yarn version $NEW_VERSION"
 
-WORKSPACE_PACKAGES=$(find packages testkit-js platform-js compact-js -name "package.json" 2>/dev/null || true)
-for pkg in $WORKSPACE_PACKAGES; do
-  execute_or_log "sed -i '' 's/\"version\": \".*\"/\"version\": \"$NEW_VERSION\"/' $pkg"
+log_info "Step 2: Update versions in packages/* workspaces"
+PACKAGES=$(yarn workspaces list --json | jq -r 'select(.location | startswith("packages/")) | .name')
+for pkg in $PACKAGES; do
+  execute_or_log "yarn workspace $pkg version $NEW_VERSION"
 done
 
-log_info "Step 2: Update lockfile"
-execute_or_log "yarn install"
+log_info "Step 3: Update versions in testkit-js/* workspaces"
+TESTKIT_PACKAGES=$(yarn workspaces list --json | jq -r 'select(.location | startswith("testkit-js/")) | .name')
+for pkg in $TESTKIT_PACKAGES; do
+  execute_or_log "yarn workspace $pkg version $NEW_VERSION"
+done
 
-log_info "Step 3: Generate changelog"
+log_info "Step 4: Generate changelog"
 execute_or_log "yarn changelog"
 
 if [ "$RUN_TESTS" = true ]; then
-  log_info "Step 4: Build and test"
+  log_info "Step 5: Build and test"
   execute_or_log "yarn clean-build"
   execute_or_log "yarn check"
   execute_or_log "yarn test"
@@ -112,23 +116,23 @@ else
   log_warn "Skipping build and tests (use --with-tests to include)"
 fi
 
-log_info "Step 5: Create release branch"
+log_info "Step 6: Create release branch"
 RELEASE_BRANCH="release/$NEW_VERSION"
 execute_or_log "git checkout -b $RELEASE_BRANCH"
 
-log_info "Step 6: Commit changes"
+log_info "Step 7: Commit changes"
 execute_or_log "git add ."
 execute_or_log "git commit -m 'chore(release): bump version to $NEW_VERSION'"
 
-log_info "Step 7: Create and push tag"
+log_info "Step 8: Create and push tag"
 execute_or_log "git tag -a v$NEW_VERSION -m 'Release v$NEW_VERSION'"
 execute_or_log "git push origin $RELEASE_BRANCH"
 execute_or_log "git push origin v$NEW_VERSION"
 
-log_info "Step 8: Create GitHub release"
+log_info "Step 9: Create GitHub release"
 execute_or_log "gh release create v$NEW_VERSION --title 'v$NEW_VERSION' --notes 'Release v$NEW_VERSION' --prerelease --target $RELEASE_BRANCH"
 
-log_info "Step 9: Merge to main"
+log_info "Step 10: Merge to main"
 execute_or_log "git checkout main"
 execute_or_log "git merge $RELEASE_BRANCH --no-ff -m 'chore: merge $RELEASE_BRANCH'"
 execute_or_log "git push origin main"
