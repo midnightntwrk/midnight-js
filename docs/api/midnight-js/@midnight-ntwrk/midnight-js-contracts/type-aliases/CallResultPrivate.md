@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.2**](../../../README.md)
 
 ***
 
@@ -14,11 +14,11 @@ The private (sensitive) portions of the call result.
 
 ### C
 
-`C` *extends* [`Contract`](../../midnight-js-types/interfaces/Contract.md)
+`C` *extends* `Contract`
 
 ### ICK
 
-`ICK` *extends* [`ImpureCircuitId`](../../midnight-js-types/type-aliases/ImpureCircuitId.md)\<`C`\>
+`ICK` *extends* `ImpureCircuitId`\<`C`\>
 
 ## Properties
 
@@ -32,7 +32,7 @@ ZK representation of the circuit arguments.
 
 ### nextPrivateState
 
-> `readonly` **nextPrivateState**: [`PrivateState`](../../midnight-js-types/type-aliases/PrivateState.md)\<`C`\>
+> `readonly` **nextPrivateState**: `PrivateState`\<`C`\>
 
 The private state resulting from executing the circuit.
 
@@ -64,6 +64,6 @@ ZK representation of the circuit witness call results.
 
 ### result
 
-> `readonly` **result**: [`CircuitReturnType`](../../midnight-js-types/type-aliases/CircuitReturnType.md)\<`C`, `ICK`\>
+> `readonly` **result**: `CircuitReturnType`\<`C`, `ICK`\>
 
 The JS representation of the input to the circuit.

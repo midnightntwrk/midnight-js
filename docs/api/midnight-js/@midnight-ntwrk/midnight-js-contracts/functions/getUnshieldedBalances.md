@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.2**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Function: getUnshieldedBalances()
 
-> **getUnshieldedBalances**(`publicDataProvider`, `contractAddress`): `Promise`\<[`UnshieldedBalances`](../../midnight-js-types/type-aliases/UnshieldedBalances.md)\>
+> **getUnshieldedBalances**(`publicDataProvider`, `contractAddress`): `Promise`\<`UnshieldedBalances`\>
 
 Fetches the unshielded balances associated with a specific contract address.
 
@@ -14,7 +14,7 @@ Fetches the unshielded balances associated with a specific contract address.
 
 ### publicDataProvider
 
-[`PublicDataProvider`](../../midnight-js-types/interfaces/PublicDataProvider.md)
+`PublicDataProvider`
 
 The provider to use to fetch the unshielded balances from the blockchain.
 
@@ -26,4 +26,4 @@ The ledger address of the contract.
 
 ## Returns
 
-`Promise`\<[`UnshieldedBalances`](../../midnight-js-types/type-aliases/UnshieldedBalances.md)\>
+`Promise`\<`UnshieldedBalances`\>

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.2**](../../../README.md)
 
 ***
 
@@ -17,7 +17,7 @@ in [DeployTxOptionsWithPrivateState](DeployTxOptionsWithPrivateState.md).
 
 ### privateStateId
 
-> `readonly` **privateStateId**: [`PrivateStateId`](../../midnight-js-types/type-aliases/PrivateStateId.md)
+> `readonly` **privateStateId**: `PrivateStateId`
 
 The identifier for the private state of the contract.
 
@@ -25,8 +25,8 @@ The identifier for the private state of the contract.
 
 ### C
 
-`C` *extends* [`Contract`](../../midnight-js-types/interfaces/Contract.md)
+`C` *extends* `Contract`
 
 ### ICK
 
-`ICK` *extends* [`ImpureCircuitId`](../../midnight-js-types/type-aliases/ImpureCircuitId.md)\<`C`\>
+`ICK` *extends* `ImpureCircuitId`\<`C`\>

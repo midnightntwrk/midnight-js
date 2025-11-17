@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.2**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Function: submitReplaceAuthorityTx()
 
-> **submitReplaceAuthorityTx**(`providers`, `contractAddress`): (`newAuthority`) => `Promise`\<[`FinalizedTxData`](../../midnight-js-types/interfaces/FinalizedTxData.md)\>
+> **submitReplaceAuthorityTx**(`providers`, `contractAddress`): (`newAuthority`) => `Promise`\<`FinalizedTxData`\>
 
 Constructs and submits a transaction that replaces the maintenance
 authority stored on the blockchain for this contract. After the transaction is
@@ -35,7 +35,7 @@ TODO: There are at least three options we should support in the future:
 
 ## Returns
 
-> (`newAuthority`): `Promise`\<[`FinalizedTxData`](../../midnight-js-types/interfaces/FinalizedTxData.md)\>
+> (`newAuthority`): `Promise`\<`FinalizedTxData`\>
 
 ### Parameters
 
@@ -47,7 +47,7 @@ The signing key of the new contract maintenance authority.
 
 ### Returns
 
-`Promise`\<[`FinalizedTxData`](../../midnight-js-types/interfaces/FinalizedTxData.md)\>
+`Promise`\<`FinalizedTxData`\>
 
 A promise that resolves with the finalized transaction data, or rejects if
          an error occurs along the way.

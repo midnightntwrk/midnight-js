@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.2**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Function: submitInsertVerifierKeyTx()
 
-> **submitInsertVerifierKeyTx**(`providers`, `contractAddress`, `circuitId`, `newVk`): `Promise`\<[`FinalizedTxData`](../../midnight-js-types/interfaces/FinalizedTxData.md)\>
+> **submitInsertVerifierKeyTx**(`providers`, `contractAddress`, `circuitId`, `newVk`): `Promise`\<`FinalizedTxData`\>
 
 Constructs and submits a transaction that adds a new verifier key to the
 blockchain for the given circuit ID at the given contract address.
@@ -34,13 +34,13 @@ The circuit for which the verifier key should be inserted.
 
 ### newVk
 
-[`VerifierKey`](../../midnight-js-types/type-aliases/VerifierKey.md)
+`VerifierKey`
 
 The new verifier key for the circuit.
 
 ## Returns
 
-`Promise`\<[`FinalizedTxData`](../../midnight-js-types/interfaces/FinalizedTxData.md)\>
+`Promise`\<`FinalizedTxData`\>
 
 A promise that resolves with the finalized transaction data, or rejects if
          an error occurs along the way.

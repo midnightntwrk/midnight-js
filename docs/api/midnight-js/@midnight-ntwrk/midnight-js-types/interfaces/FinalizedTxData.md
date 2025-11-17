@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.2**](../../../README.md)
 
 ***
 
@@ -47,6 +47,14 @@ The timestamp of the block in which the transaction was included.
 > `readonly` **fees**: [`Fees`](../type-aliases/Fees.md)
 
 The fees associated with the transaction, including both paid and estimated fees.
+
+***
+
+### identifiers
+
+> `readonly` **identifiers**: readonly `string`[]
+
+All transaction IDs of the submitted transaction.
 
 ***
 
@@ -103,7 +111,7 @@ The transaction hash of the transaction in which the original transaction was in
 
 > `readonly` **txId**: `string`
 
-The transaction ID of the submitted transaction.
+One of the transaction ID of the submitted transaction.
 
 ***
 

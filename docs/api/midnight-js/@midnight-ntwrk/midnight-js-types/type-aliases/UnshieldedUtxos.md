@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.2**](../../../README.md)
 
 ***
 
@@ -15,7 +15,7 @@ This type is used to manage and track the state of unshielded UTXOs.
 
 ### created
 
-> `readonly` **created**: [`UnshieldedUtxo`](UnshieldedUtxo.md)[]
+> `readonly` **created**: readonly [`UnshieldedUtxo`](UnshieldedUtxo.md)[]
 
 Represents the unshielded UTXOs that have been created but not yet spent.
 
@@ -23,6 +23,6 @@ Represents the unshielded UTXOs that have been created but not yet spent.
 
 ### spent
 
-> `readonly` **spent**: [`UnshieldedUtxo`](UnshieldedUtxo.md)[]
+> `readonly` **spent**: readonly [`UnshieldedUtxo`](UnshieldedUtxo.md)[]
 
 Represents the unshielded UTXOs that have been spent.

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.2**](../../../README.md)
 
 ***
 
@@ -24,13 +24,13 @@ Configuration.
 
 #### C
 
-`C` *extends* [`Contract`](../../midnight-js-types/interfaces/Contract.md)\<`undefined`, [`Witnesses`](../../midnight-js-types/type-aliases/Witnesses.md)\<`undefined`\>\>
+`C` *extends* `Contract`\<`undefined`, `Witnesses`\<`undefined`\>\>
 
 ### Parameters
 
 #### providers
 
-[`ContractProviders`](../type-aliases/ContractProviders.md)\<`C`, [`ImpureCircuitId`](../../midnight-js-types/type-aliases/ImpureCircuitId.md)\<`C`\>, `unknown`\>
+[`ContractProviders`](../type-aliases/ContractProviders.md)\<`C`, `ImpureCircuitId`\<`C`\>, `unknown`\>
 
 #### options
 
@@ -48,7 +48,7 @@ Configuration.
 
 #### C
 
-`C` *extends* [`Contract`](../../midnight-js-types/interfaces/Contract.md)\<`any`, [`Witnesses`](../../midnight-js-types/type-aliases/Witnesses.md)\<`any`\>\>
+`C` *extends* `Contract`\<`any`, `Witnesses`\<`any`\>\>
 
 ### Parameters
 

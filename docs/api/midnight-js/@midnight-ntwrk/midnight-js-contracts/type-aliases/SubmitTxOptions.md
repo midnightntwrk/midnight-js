@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.2**](../../../README.md)
 
 ***
 
@@ -14,7 +14,7 @@ Configuration for [submitTx](../functions/submitTx.md).
 
 ### ICK
 
-`ICK` *extends* [`ImpureCircuitId`](../../midnight-js-types/type-aliases/ImpureCircuitId.md)
+`ICK` *extends* `ImpureCircuitId`
 
 ## Properties
 

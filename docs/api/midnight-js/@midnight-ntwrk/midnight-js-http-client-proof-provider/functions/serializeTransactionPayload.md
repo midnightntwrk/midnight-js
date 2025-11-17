@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.2**](../../../README.md)
 
 ***
 
@@ -22,7 +22,7 @@
 
 ### zkConfig?
 
-[`ZKConfig`](../../midnight-js-types/interfaces/ZKConfig.md)\<`K`\>
+`ZKConfig`\<`K`\>
 
 ## Returns
 
