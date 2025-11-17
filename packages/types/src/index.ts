@@ -30,6 +30,8 @@ export * from './errors';
 export * from './logger-provider';
 export * from './midnight-provider';
 export {
+  BALANCE_TRANSACTION_TO_PROVE,
+  BalanceTransactionToProve,
   BlockHash,
   createProverKey,
   createVerifierKey,

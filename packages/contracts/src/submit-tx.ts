@@ -17,11 +17,14 @@ import type { ShieldedCoinInfo } from '@midnight-ntwrk/compact-runtime';
 import { LedgerState, type UnprovenTransaction, WellFormedStrictness } from '@midnight-ntwrk/ledger-v6';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
+  BALANCE_TRANSACTION_TO_PROVE,
+  type BalanceTransactionToProve,
   type Contract,
   type FinalizedTxData,
   type ImpureCircuitId,
-  type TransactionToProve
-} from '@midnight-ntwrk/midnight-js-types';
+  NOTHING_TO_PROVE,
+  type ProvenTransaction,
+  TRANSACTION_TO_PROVE} from '@midnight-ntwrk/midnight-js-types';
 import fs from 'fs';
 import path from 'path';
 
@@ -74,9 +77,21 @@ export const submitTx = async <C extends Contract, ICK extends ImpureCircuitId<C
     ? { zkConfig: await providers.zkConfigProvider.get(options.circuitId) }
     : undefined;
   const recipe = await providers.walletProvider.balanceTx(options.unprovenTx, options.newCoins);
-  // TODO: we can switch to 'await providers.walletProvider.finalizeTx(recipe)' once it supports ZKConfig
-  // TODO: unsafe cast just for temporal workaround
-  const provenTx = await providers.proofProvider.proveTx((recipe as TransactionToProve).transaction , proveTxConfig);
+  let provenTx: ProvenTransaction;
+  switch (recipe.type) {
+    case TRANSACTION_TO_PROVE:
+      provenTx = await providers.proofProvider.proveTx(recipe.transaction, proveTxConfig);
+      break;
+
+    case BALANCE_TRANSACTION_TO_PROVE:
+      provenTx = await providers.proofProvider.proveTx((recipe as BalanceTransactionToProve<UnprovenTransaction>).transactionToProve, proveTxConfig);
+      //TODO: balance the transactionToBalance as well if needed ?
+      break;
+
+    case NOTHING_TO_PROVE:
+    default:
+      throw new Error(`Unknown recipe type: ${recipe.type}`);
+  }
   const bound = provenTx.bind();
   if (process.env.MN_DEBUG) {
     console.log(`Submit tx: ${options.circuitId} : ${options.unprovenTx}`);
