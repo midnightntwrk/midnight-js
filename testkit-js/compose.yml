@@ -9,9 +9,9 @@ services:
       RUST_BACKTRACE: 'full'
     healthcheck:
       test: ['CMD', 'curl', '-f', 'http://localhost:6300/version']
-      interval: 30s
+      interval: 10s
       timeout: 5s
-      retries: 3
+      retries: 20
       start_period: 10s
 
   indexer:
@@ -30,10 +30,10 @@ services:
 
     healthcheck:
       test: ['CMD-SHELL', 'cat /var/run/indexer-standalone/running']
-      interval: 60s
+      interval: 10s
       timeout: 5s
-      retries: 3
-      start_period: 60s
+      retries: 20
+      start_period: 10s
     depends_on:
       node:
         condition: service_healthy
@@ -47,7 +47,7 @@ services:
       test: ['CMD', 'curl', '-f', 'http://localhost:9944/health']
       interval: 2s
       timeout: 5s
-      retries: 5
+      retries: 20
       start_period: 5s
     environment:
       CFG_PRESET: 'dev'

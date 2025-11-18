@@ -16,11 +16,9 @@
 import type { ShieldedCoinInfo } from '@midnight-ntwrk/compact-runtime';
 import {
   type FinalizedTransaction,
-  LedgerState, Transaction,
+  type Transaction,
   type UnprovenTransaction,
-  WellFormedStrictness
 } from '@midnight-ntwrk/ledger-v6';
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   BALANCE_TRANSACTION_TO_PROVE,
   type BalanceTransactionToProve,
@@ -30,9 +28,9 @@ import {
   NOTHING_TO_PROVE,
   type NothingToProve,
   type ProvenTransaction,
+  type ProvingRecipe,
   TRANSACTION_TO_PROVE,
-  type TransactionToProve,
-  ZKConfig
+  type ZKConfig
 } from '@midnight-ntwrk/midnight-js-types';
 import fs from 'fs';
 import path from 'path';
@@ -86,7 +84,7 @@ function logAndCheckTransaction(circuitId: string | undefined, tx: Transaction<a
   }
 }
 
-async function proveTransaction<C extends Contract, ICK extends ImpureCircuitId<C>>(recipe: TransactionToProve | BalanceTransactionToProve<UnprovenTransaction | FinalizedTransaction> | NothingToProve<UnprovenTransaction | FinalizedTransaction>, providers: SubmitTxProviders<C, ICK>, proveTxConfig: {
+async function proveTransaction<C extends Contract, ICK extends ImpureCircuitId<C>>(recipe: ProvingRecipe<UnprovenTransaction | FinalizedTransaction>, providers: SubmitTxProviders<C, ICK>, proveTxConfig: {
   zkConfig: ZKConfig<ICK>
 } | undefined) {
   let toSubmit: ProvenTransaction;
@@ -98,9 +96,8 @@ async function proveTransaction<C extends Contract, ICK extends ImpureCircuitId<
 
     case BALANCE_TRANSACTION_TO_PROVE: {
       const recipeBalance = recipe as BalanceTransactionToProve<UnprovenTransaction>;
-      const balanced = await providers.walletProvider.balanceTx(recipeBalance.transactionToBalance);
-      const toProve = (recipeBalance.transactionToProve as UnprovenTransaction).merge((balanced as TransactionToProve).transaction);
-      toSubmit = await providers.proofProvider.proveTx(toProve, proveTxConfig);
+      const merged = recipeBalance.transactionToBalance.merge(recipeBalance.transactionToProve);
+      toSubmit = await providers.proofProvider.proveTx(merged, proveTxConfig);
       break;
     }
 
