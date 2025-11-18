@@ -45,3 +45,9 @@ export circuit mintToSelfReceive(domainSep: Bytes<32>, amount: Uint<64>): Bytes<
   receiveUnshielded(color, disclose(amount) as Uint<128>);
   return color;
 }
+
+export circuit mintNativeTokens(amount: Uint<64>): Uint<128> {
+    const domain = pad(32, "simple:shielded:native");
+    kernel.mintShielded(disclose(domain), disclose(amount));
+    return disclose(amount);
+}
