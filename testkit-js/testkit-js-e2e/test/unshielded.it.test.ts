@@ -221,7 +221,7 @@ describe('Unshielded tokens', () => {
     expect(created.length).toEqual(0);
   });
 
-  test.only('should mint native tokens', async () => {
+  test('should mint native tokens', async () => {
     const txData = await submitCallTx(providers, {
       contract: unshieldedContract,
       contractAddress,
