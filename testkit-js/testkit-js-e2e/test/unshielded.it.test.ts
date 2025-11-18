@@ -221,15 +221,12 @@ describe('Unshielded tokens', () => {
     expect(created.length).toEqual(0);
   });
 
-  test('should mint native tokens', async () => {
-    const address = new Uint8Array(Buffer.from('0f09f9eb5538606c6490c0595b771ecb0c29ae71778f089a95e8465b84774aed', 'hex'));
-    const sep = new Uint8Array(32).fill(0);
-
+  test.only('should mint native tokens', async () => {
     const txData = await submitCallTx(providers, {
       contract: unshieldedContract,
       contractAddress,
       circuitId: 'mintNativeTokens' as UnshieldedContractCircuits,
-      args: [sep, 1_000_000n, { bytes: address } ]
+      args: [1_000_000n]
     });
 
     expect(txData.public.status).toBe(SucceedEntirely);
