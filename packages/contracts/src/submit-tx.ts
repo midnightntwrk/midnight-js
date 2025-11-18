@@ -16,7 +16,7 @@
 import type { ShieldedCoinInfo } from '@midnight-ntwrk/compact-runtime';
 import {
   type FinalizedTransaction,
-  LedgerState,
+  LedgerState, Transaction,
   type UnprovenTransaction,
   WellFormedStrictness
 } from '@midnight-ntwrk/ledger-v6';
@@ -31,7 +31,8 @@ import {
   type NothingToProve,
   type ProvenTransaction,
   TRANSACTION_TO_PROVE,
-  type TransactionToProve
+  type TransactionToProve,
+  ZKConfig
 } from '@midnight-ntwrk/midnight-js-types';
 import fs from 'fs';
 import path from 'path';
@@ -67,46 +68,27 @@ export type SubmitTxProviders<C extends Contract, ICK extends ImpureCircuitId<C>
   'privateStateProvider'
 >;
 
-function logAndCheckTransaction<ICK extends string>(options: SubmitTxOptions<ICK>) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function logAndCheckTransaction(circuitId: string | undefined, tx: Transaction<any, any, any>) {
   if (process.env.MN_DEBUG) {
-    console.log(`Submit tx: ${options.circuitId} : ${options.unprovenTx}`);
-    const serialized = options.unprovenTx.serialize();
+    console.log(`Submit tx: ${circuitId} : ${tx}`);
+    const serialized = tx.serialize();
     const logsDir = path.join(process.cwd(), 'logs', 'transactions');
     if (!fs.existsSync(logsDir)) {
       fs.mkdirSync(logsDir, { recursive: true });
     }
-    const filename = `tx-${Date.now()}-${options.circuitId}`;
+    const filename = `tx-${Date.now()}-${circuitId}`;
     const filepath = path.join(logsDir, filename + '.bin');
     const filepathString = path.join(logsDir, filename + '.txt');
     fs.writeFileSync(filepath, serialized);
-    fs.writeFileSync(filepathString, options.unprovenTx.toString());
+    fs.writeFileSync(filepathString, tx.toString());
     console.log(`Transaction serialized and written to: ${filepath}`);
-    if (options.circuitId) {
-      const vtx = options.unprovenTx.wellFormed(LedgerState.blank(getNetworkId()), new WellFormedStrictness(), new Date(Date.now()));
-      console.log(`Vtx: ${vtx}`);
-    }
   }
 }
 
-/**
- * Proves, balances, and submits an unproven deployment or call transaction using
- * the given providers, according to the given options.
- *
- * @param providers The providers used to manage the transaction lifecycle.
- * @param options Configuration.
- *
- * @returns A promise that resolves with the finalized transaction data for the invocation,
- *          or rejects if an error occurs along the way.
- */
-export const submitTx = async <C extends Contract, ICK extends ImpureCircuitId<C>>(
-  providers: SubmitTxProviders<C, ICK>,
-  options: SubmitTxOptions<ICK>
-): Promise<FinalizedTxData> => {
-  const proveTxConfig = options.circuitId
-    ? { zkConfig: await providers.zkConfigProvider.get(options.circuitId) }
-    : undefined;
-  logAndCheckTransaction(options);
-  const recipe = await providers.walletProvider.balanceTx(options.unprovenTx, options.newCoins);
+async function proveTransaction<C extends Contract, ICK extends ImpureCircuitId<C>>(recipe: TransactionToProve | BalanceTransactionToProve<UnprovenTransaction | FinalizedTransaction> | NothingToProve<UnprovenTransaction | FinalizedTransaction>, providers: SubmitTxProviders<C, ICK>, proveTxConfig: {
+  zkConfig: ZKConfig<ICK>
+} | undefined) {
   let toSubmit: ProvenTransaction;
   switch (recipe.type) {
     case TRANSACTION_TO_PROVE: {
@@ -132,7 +114,30 @@ export const submitTx = async <C extends Contract, ICK extends ImpureCircuitId<C
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       throw new Error(`Unknown recipe type: ${(recipe as any).type}`);
   }
+  return toSubmit;
+}
+
+/**
+ * Proves, balances, and submits an unproven deployment or call transaction using
+ * the given providers, according to the given options.
+ *
+ * @param providers The providers used to manage the transaction lifecycle.
+ * @param options Configuration.
+ *
+ * @returns A promise that resolves with the finalized transaction data for the invocation,
+ *          or rejects if an error occurs along the way.
+ */
+export const submitTx = async <C extends Contract, ICK extends ImpureCircuitId<C>>(
+  providers: SubmitTxProviders<C, ICK>,
+  options: SubmitTxOptions<ICK>
+): Promise<FinalizedTxData> => {
+  const proveTxConfig = options.circuitId
+    ? { zkConfig: await providers.zkConfigProvider.get(options.circuitId) }
+    : undefined;
+  const recipe = await providers.walletProvider.balanceTx(options.unprovenTx, options.newCoins);
+  const toSubmit = await proveTransaction(recipe, providers, proveTxConfig);
   const bound = toSubmit.bind();
+  logAndCheckTransaction(options.circuitId, bound);
   const txId = await providers.midnightProvider.submitTx(bound);
   return await providers.publicDataProvider.watchForTxData(txId);
 };
