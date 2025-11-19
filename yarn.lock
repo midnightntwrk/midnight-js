@@ -5063,14 +5063,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/dockerode@npm:^3.3.44":
-  version: 3.3.44
-  resolution: "@types/dockerode@npm:3.3.44"
+"@types/dockerode@npm:^3.3.45":
+  version: 3.3.47
+  resolution: "@types/dockerode@npm:3.3.47"
   dependencies:
     "@types/docker-modem": "npm:*"
     "@types/node": "npm:*"
     "@types/ssh2": "npm:*"
-  checksum: 10/ec717066109bb9c00bd15dd725632277650ae401f9c2c92df064d6f1a4ce3b5fce27cd0e9663222f27c01ebf55e8e3bf74815cd79ca8dfc4645cf093ca8a6d65
+  checksum: 10/b840ae7872398a3b02e5789006a69d0cf5bb7ec6c0eb714c7ca04ca093add8de4cd06204ecd8f01388e347e62927cf4c599e8b7dba53e81c1350910da766d517
   languageName: node
   linkType: hard
 
@@ -14680,11 +14680,11 @@ __metadata:
   linkType: hard
 
 "testcontainers@npm:^11.2.0, testcontainers@npm:^11.4.0":
-  version: 11.7.2
-  resolution: "testcontainers@npm:11.7.2"
+  version: 11.8.1
+  resolution: "testcontainers@npm:11.8.1"
   dependencies:
     "@balena/dockerignore": "npm:^1.0.2"
-    "@types/dockerode": "npm:^3.3.44"
+    "@types/dockerode": "npm:^3.3.45"
     archiver: "npm:^7.0.1"
     async-lock: "npm:^1.4.1"
     byline: "npm:^5.0.0"
@@ -14698,7 +14698,7 @@ __metadata:
     tar-fs: "npm:^3.1.1"
     tmp: "npm:^0.2.5"
     undici: "npm:^7.16.0"
-  checksum: 10/75222e5fbeffbc3002a3a06d9ac00bfff6602bb36d4f421ec0ef7f71075bf0b295ab754d48668ddce0066a4a9d67e9334e3aefca1254141de4e94c65824df06a
+  checksum: 10/a850edba49608792b21b12da278d47751307cea047315e82bc7104a54160079812b93b9865bd2b17aaa708ac2ebc85aec384c1087d320e64baed5d95f9cc8f21
   languageName: node
   linkType: hard
 
