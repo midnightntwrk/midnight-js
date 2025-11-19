@@ -27,3 +27,5 @@ export {
   ProofProviderService,
   ProofProviderServiceLive
 } from './http-client-proof-provider.effect';
+export type { HttpUrl } from './HttpURL';
+export { HttpURL, make as makeHttpUrl } from './HttpURL';

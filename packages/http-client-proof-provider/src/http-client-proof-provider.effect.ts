@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { HttpClient, type HttpClientError, HttpClientRequest, type HttpClientResponse } from '@effect/platform';
+import { HttpClient, HttpClientRequest, type HttpClientResponse } from '@effect/platform';
 import {
   createProvingTransactionPayload,
   type ProvingKeyMaterial,
@@ -21,17 +21,18 @@ import {
   type UnprovenTransaction
 } from '@midnight-ntwrk/ledger-v6';
 import type { ProvenTransaction, ProveTxConfig, ZKConfig } from '@midnight-ntwrk/midnight-js-types';
-import { Context, Duration, Effect, Layer, Schedule } from 'effect';
+import { Chunk, Context, Duration, Effect, Either, Layer, Schedule, Stream } from 'effect';
 import _ from 'lodash';
 
 import {
   DeserializationError,
   HttpError,
-  InvalidProtocolError,
+  type InvalidProtocolError,
   NetworkError,
   type ProofProviderError,
   TimeoutError
 } from './errors';
+import * as HttpURL from './HttpURL';
 
 const PROVE_TX_PATH = '/prove-tx';
 
@@ -72,36 +73,29 @@ const deserializePayload = (arrayBuffer: ArrayBuffer): Effect.Effect<ProvenTrans
       })
   });
 
-const validateUrl = (url: string): Effect.Effect<URL, InvalidProtocolError> =>
-  Effect.try({
-    try: () => {
-      const urlObject = new URL(PROVE_TX_PATH, url);
-      if (urlObject.protocol !== 'http:' && urlObject.protocol !== 'https:') {
-        throw new InvalidProtocolError({
-          protocol: urlObject.protocol,
-          allowed: ['http:', 'https:']
-        });
-      }
-      return urlObject;
-    },
-    catch: (error) => {
-      if (error instanceof InvalidProtocolError) {
-        return error;
-      }
-      throw error;
-    }
-  });
+const concatBytes = (chunks: Uint8Array[]): Uint8Array => {
+  const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
+  const result = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return result;
+};
 
-const retrySchedule = Schedule.exponential(Duration.seconds(1), 2).pipe(
-  Schedule.compose(Schedule.recurs(3)),
-  Schedule.whileInput((error: HttpClientError.HttpClientError) => {
-    if (error._tag === 'ResponseError') {
-      const responseError = error as HttpClientError.ResponseError;
-      return responseError.response.status === 500 || responseError.response.status === 503;
-    }
-    return false;
-  })
-);
+const receiveBody = (response: HttpClientResponse.HttpClientResponse): Effect.Effect<Uint8Array, NetworkError> =>
+  response.stream.pipe(
+    Stream.runCollect,
+    Effect.map((chunks) => concatBytes(Chunk.toArray(chunks))),
+    Effect.mapError(
+      (error) =>
+        new NetworkError({
+          message: 'Failed to read response body',
+          cause: error
+        })
+    )
+  );
 
 export class ProofProviderService extends Context.Tag('ProofProviderService')<
   ProofProviderService,
@@ -114,63 +108,83 @@ export class ProofProviderService extends Context.Tag('ProofProviderService')<
 >() {}
 
 export const makeProofProviderService = (url: string) =>
-  Effect.gen(function* () {
-    const httpClient = yield* HttpClient.HttpClient;
-    const validatedUrl = yield* validateUrl(url);
-
-    const proveTx = <K extends string>(
-      unprovenTx: UnprovenTransaction,
-      partialProveTxConfig?: ProveTxConfig<K>
-    ): Effect.Effect<ProvenTransaction, ProofProviderError> =>
+  HttpURL.make(url).pipe(
+    Either.map((baseUrl) =>
       Effect.gen(function* () {
-        const config = _.defaults(partialProveTxConfig, DEFAULT_CONFIG);
-        const requestBody = serializeTransactionPayload(unprovenTx, config.zkConfig);
+        const httpClient = yield* HttpClient.HttpClient;
+        const endpointUrl = new URL(PROVE_TX_PATH, baseUrl);
 
-        const request = HttpClientRequest.post(validatedUrl.toString()).pipe(
-          HttpClientRequest.bodyUint8Array(requestBody),
-          HttpClientRequest.acceptJson
-        );
+        const proveTx = <K extends string>(
+          unprovenTx: UnprovenTransaction,
+          partialProveTxConfig?: ProveTxConfig<K>
+        ): Effect.Effect<ProvenTransaction, ProofProviderError> =>
+          Effect.gen(function* () {
+            const config = _.defaults(partialProveTxConfig, DEFAULT_CONFIG);
+            const requestBody = serializeTransactionPayload(unprovenTx, config.zkConfig);
 
-        const executeWithRetry: Effect.Effect<HttpClientResponse.HttpClientResponse, HttpClientError.HttpClientError> =
-          httpClient.execute(request).pipe(Effect.retry(retrySchedule));
+            const request = HttpClientRequest.post(endpointUrl.toString()).pipe(
+              HttpClientRequest.bodyUint8Array(requestBody),
+              HttpClientRequest.acceptJson
+            );
 
-        const executeWithTimeout: Effect.Effect<HttpClientResponse.HttpClientResponse, HttpClientError.HttpClientError | { _tag: 'TimeoutException' }> =
-          Effect.timeout(executeWithRetry, Duration.millis(config.timeout));
+            const response: HttpClientResponse.HttpClientResponse = yield* httpClient.execute(request).pipe(
+              Effect.retry({
+                times: 3,
+                while: (error) =>
+                  error._tag === 'ResponseError' && (error.response.status === 500 || error.response.status === 503),
+                schedule: Schedule.exponential(Duration.seconds(1), 2)
+              }),
+              Effect.timeout(Duration.millis(config.timeout)),
+              Effect.catchTags({
+                TimeoutException: () => Effect.fail(new TimeoutError({ duration: config.timeout })),
+                RequestError: (error) =>
+                  Effect.fail(
+                    new NetworkError({
+                      message: `Failed to connect to Proof Server: ${error.message}`,
+                      cause: error
+                    })
+                  ),
+                ResponseError: (error) =>
+                  Effect.gen(function* () {
+                    const text = yield* Effect.orElse(error.response.text, () =>
+                      Effect.succeed('Unknown server error')
+                    );
+                    return yield* Effect.fail(
+                      new HttpError({
+                        url: endpointUrl.toString(),
+                        status: error.response.status,
+                        statusText: text
+                      })
+                    );
+                  })
+              })
+            );
 
-        const response: HttpClientResponse.HttpClientResponse = yield* executeWithTimeout.pipe(
-          Effect.mapError((error): ProofProviderError => {
-            if (error._tag === 'TimeoutException') {
-              return new TimeoutError({ duration: config.timeout });
+            if (response.status !== 200) {
+              const text = yield* Effect.orElse(response.text, () => Effect.succeed('Unknown error'));
+              return yield* Effect.fail(
+                new HttpError({
+                  url: endpointUrl.toString(),
+                  status: response.status,
+                  statusText: text
+                })
+              );
             }
-            if (error._tag === 'ResponseError') {
-              const responseError = error as HttpClientError.ResponseError;
-              return new HttpError({
-                url: validatedUrl.toString(),
-                status: responseError.response.status,
-                statusText: String(responseError.response.status)
-              });
-            }
-            return new NetworkError({
-              message: 'Network request failed',
-              cause: error
-            });
-          })
-        );
 
-        const arrayBuffer: ArrayBuffer = yield* response.arrayBuffer.pipe(
-          Effect.mapError((error): ProofProviderError =>
-            new NetworkError({
-              message: 'Failed to read response body',
-              cause: error
-            })
-          )
-        );
+            const bodyBytes = yield* receiveBody(response);
+            return yield* deserializePayload(bodyBytes.buffer as ArrayBuffer);
+          });
 
-        return yield* deserializePayload(arrayBuffer);
-      });
+        return { proveTx };
+      })
+    ),
+    Either.match({
+      onLeft: (error) => Effect.fail(error),
+      onRight: (effect) => effect
+    })
+  );
 
-    return { proveTx };
-  });
-
-export const ProofProviderServiceLive = (url: string): Layer.Layer<ProofProviderService, InvalidProtocolError, HttpClient.HttpClient> =>
+export const ProofProviderServiceLive = (
+  url: string
+): Layer.Layer<ProofProviderService, InvalidProtocolError, HttpClient.HttpClient> =>
   Layer.effect(ProofProviderService, makeProofProviderService(url));

@@ -13,23 +13,23 @@
  * limitations under the License.
  */
 
-import { FetchHttpClient, HttpClient, HttpClientResponse } from '@effect/platform';
-import { Effect, Either, Layer } from 'effect';
+import { FetchHttpClient, HttpClient, type HttpClientResponse } from '@effect/platform';
+import { Effect, Either, Layer, Stream } from 'effect';
 import { describe, expect, test } from 'vitest';
 
 import { InvalidProtocolError } from '../errors';
-import { ProofProviderService, ProofProviderServiceLive, serializeTransactionPayload } from '../http-client-proof-provider.effect';
+import {
+  ProofProviderService,
+  ProofProviderServiceLive,
+  serializeTransactionPayload
+} from '../http-client-proof-provider.effect';
 import { getValidUnprovenTx, getValidZKConfig } from './commons';
 
 describe('Http Proof Server Proof Provider - Effect', () => {
   test('ProofProviderServiceLive fails with InvalidProtocolError for invalid protocol', async () => {
     const program = Effect.gen(function* () {
       yield* ProofProviderService;
-    }).pipe(
-      Effect.provide(ProofProviderServiceLive('ws://localhost:8080')),
-      Effect.provide(FetchHttpClient.layer),
-      Effect.either
-    );
+    }).pipe(Effect.provide(ProofProviderServiceLive('ws://localhost:8080')), Effect.provide(FetchHttpClient.layer), Effect.either);
 
     const result = await Effect.runPromise(program);
 
@@ -39,6 +39,25 @@ describe('Http Proof Server Proof Provider - Effect', () => {
       expect(result.left.protocol).toBe('ws:');
     }
   });
+
+  test.each(['ftp:', 'mailto:', 'ws:', 'wss:', 'file:'])(
+    'should fail when constructed with %s as the URI scheme',
+    async (scheme) => {
+      const program = Effect.gen(function* () {
+        yield* ProofProviderService;
+      }).pipe(
+        Effect.provide(ProofProviderServiceLive(`${scheme}//localhost:8080`)),
+        Effect.provide(FetchHttpClient.layer),
+        Effect.catchTag('InvalidProtocolError', (err) =>
+          err.protocol !== scheme
+            ? Effect.fail(`Expected '${scheme}' but received '${err.protocol}'`)
+            : Effect.succeed(undefined)
+        )
+      );
+
+      await Effect.runPromise(program);
+    }
+  );
 
   test('serializeTransactionPayload produces deterministic output', async () => {
     const zkConfig = await getValidZKConfig();
@@ -71,12 +90,16 @@ describe('Http Proof Server Proof Provider - Effect', () => {
   });
 
   test('ProofProviderService handles timeout correctly', async () => {
+    const mockStream = Stream.make(new Uint8Array([1, 2, 3])).pipe(Stream.schedule(Effect.sleep('500 millis')));
+
     const mockHttpClient = {
       execute: () =>
-        Effect.gen(function* () {
-          yield* Effect.sleep('400 millis');
-          return {} as HttpClientResponse.HttpClientResponse;
-        })
+        Effect.succeed({
+          status: 200,
+          stream: mockStream,
+          text: Effect.succeed('mock response'),
+          arrayBuffer: Effect.succeed(new ArrayBuffer(0))
+        } as unknown as HttpClientResponse.HttpClientResponse)
     };
 
     const program = Effect.gen(function* () {
@@ -98,16 +121,17 @@ describe('Http Proof Server Proof Provider - Effect', () => {
   });
 
   test('ProofProviderService handles HTTP errors correctly', async () => {
-    const mockResponse = {
-      status: 500,
-      statusText: 'Internal Server Error'
-    };
+    const mockStream = Stream.make(new Uint8Array([1, 2, 3]));
 
     const mockHttpClient = {
       execute: () =>
         Effect.fail({
           _tag: 'ResponseError',
-          response: mockResponse
+          response: {
+            status: 500,
+            text: Effect.succeed('Internal Server Error'),
+            stream: mockStream
+          }
         } as any)
     };
 
@@ -128,6 +152,42 @@ describe('Http Proof Server Proof Provider - Effect', () => {
       expect(result.left._tag).toBe('HttpError');
       if (result.left._tag === 'HttpError') {
         expect(result.left.status).toBe(500);
+        expect(result.left.statusText).toBe('Internal Server Error');
+      }
+    }
+  });
+
+  test('ProofProviderService handles non-200 response status', async () => {
+    const mockStream = Stream.fromIterable([new Uint8Array([1, 2, 3])]);
+
+    const mockHttpClient = {
+      execute: () =>
+        Effect.succeed({
+          status: 400,
+          text: Effect.succeed('Bad Request'),
+          stream: mockStream,
+          arrayBuffer: Effect.succeed(new ArrayBuffer(0))
+        } as unknown as HttpClientResponse.HttpClientResponse)
+    };
+
+    const program = Effect.gen(function* () {
+      const service = yield* ProofProviderService;
+      const unprovenTx = yield* Effect.promise(() => getValidUnprovenTx());
+      return yield* service.proveTx(unprovenTx, { timeout: 5000, zkConfig: undefined });
+    }).pipe(
+      Effect.provide(ProofProviderServiceLive('http://localhost:8080')),
+      Effect.provide(Layer.succeed(HttpClient.HttpClient, mockHttpClient as any)),
+      Effect.either
+    );
+
+    const result = await Effect.runPromise(program);
+
+    expect(Either.isLeft(result)).toBe(true);
+    if (Either.isLeft(result)) {
+      expect(result.left._tag).toBe('HttpError');
+      if (result.left._tag === 'HttpError') {
+        expect(result.left.status).toBe(400);
+        expect(result.left.statusText).toBe('Bad Request');
       }
     }
   });
