@@ -6,7 +6,7 @@
 
 # Type Alias: ProvingRecipe\<TTransaction\>
 
-> **ProvingRecipe**\<`TTransaction`\> = [`TransactionToProve`](TransactionToProve.md) \| `BalanceTransactionToProve`\<`TTransaction`\> \| [`NothingToProve`](NothingToProve.md)\<`TTransaction`\>
+> **ProvingRecipe**\<`TTransaction`\> = [`TransactionToProve`](TransactionToProve.md) \| [`BalanceTransactionToProve`](BalanceTransactionToProve.md)\<`TTransaction`\> \| [`NothingToProve`](NothingToProve.md)\<`TTransaction`\>
 
 ## Type Parameters
 

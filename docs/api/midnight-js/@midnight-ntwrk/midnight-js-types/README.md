@@ -32,6 +32,7 @@
 ## Type Aliases
 
 - [All](type-aliases/All.md)
+- [BalanceTransactionToProve](type-aliases/BalanceTransactionToProve.md)
 - [BlockHash](type-aliases/BlockHash.md)
 - [BlockHashConfig](type-aliases/BlockHashConfig.md)
 - [BlockHeightConfig](type-aliases/BlockHeightConfig.md)
@@ -65,6 +66,7 @@
 
 ## Variables
 
+- [BALANCE\_TRANSACTION\_TO\_PROVE](variables/BALANCE_TRANSACTION_TO_PROVE.md)
 - [FailEntirely](variables/FailEntirely.md)
 - [FailFallible](variables/FailFallible.md)
 - [NOTHING\_TO\_PROVE](variables/NOTHING_TO_PROVE.md)
