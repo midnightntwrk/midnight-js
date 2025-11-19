@@ -13,8 +13,17 @@
  * limitations under the License.
  */
 
+export type { ProofProviderError } from './errors';
 export {
-  DEFAULT_CONFIG,
-  httpClientProofProvider,
-  serializeTransactionPayload
-} from './http-client-proof-provider';
+  DeserializationError,
+  HttpError,
+  InvalidProtocolError,
+  NetworkError,
+  TimeoutError
+} from './errors';
+export { DEFAULT_CONFIG, httpClientProofProvider, serializeTransactionPayload } from './http-client-proof-provider';
+export {
+  makeProofProviderService,
+  ProofProviderService,
+  ProofProviderServiceLive
+} from './http-client-proof-provider.effect';

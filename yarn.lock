@@ -1402,6 +1402,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@effect/platform@npm:^0.93.3":
+  version: 0.93.3
+  resolution: "@effect/platform@npm:0.93.3"
+  dependencies:
+    find-my-way-ts: "npm:^0.1.6"
+    msgpackr: "npm:^1.11.4"
+    multipasta: "npm:^0.2.7"
+  peerDependencies:
+    effect: ^3.19.4
+  checksum: 10/6b80f571e6d02fa833ca5a6a162d357e3499571b9434d213749dfced5fd2006492889b815fea993f89e4fb28a174369f09e03dcfb7d5958e7e0dfeb95ea51932
+  languageName: node
+  linkType: hard
+
 "@effect/printer-ansi@npm:^0.46.0":
   version: 0.46.0
   resolution: "@effect/printer-ansi@npm:0.46.0"
@@ -3256,6 +3269,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-http-client-proof-provider@workspace:packages/http-client-proof-provider"
   dependencies:
+    "@effect/platform": "npm:^0.93.3"
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*"
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
@@ -3263,6 +3277,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     "@types/lodash": "npm:^4.17.19"
     cross-fetch: "npm:^4.1.0"
+    effect: "npm:^3.19.4"
     fetch-retry: "npm:^6.0.0"
     lodash: "npm:^4.17.21"
   languageName: unknown
@@ -8004,6 +8019,16 @@ __metadata:
     "@standard-schema/spec": "npm:^1.0.0"
     fast-check: "npm:^3.23.1"
   checksum: 10/aa1d55bbb9f52e2e0899a169545aa41a8d7487f710a625aa411aec3421152084b39cf8ceb5780884df481d0790d67079775588d0b3451a7827e288801c76dadb
+  languageName: node
+  linkType: hard
+
+"effect@npm:^3.19.4":
+  version: 3.19.4
+  resolution: "effect@npm:3.19.4"
+  dependencies:
+    "@standard-schema/spec": "npm:^1.0.0"
+    fast-check: "npm:^3.23.1"
+  checksum: 10/f05e408424378ef2e5471f090657a5cbc851625426393e05240eadad11290b91c1cced4d54302b2d9a13e8ca12de88e916646d847e2869da5f0522742fe7d44c
   languageName: node
   linkType: hard
 

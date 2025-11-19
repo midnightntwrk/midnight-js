@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-import type { BinaryLike } from 'crypto';
 import crypto from 'crypto';
+import { type BinaryLike } from 'crypto';
+import { describe, expect, test } from 'vitest';
 
 import { httpClientProofProvider, serializeTransactionPayload } from '../http-client-proof-provider';
 import { getValidUnprovenTx, getValidZKConfig } from './commons';
@@ -23,21 +24,24 @@ const createHash = (binaryLike: BinaryLike): string => {
   return crypto.createHash('sha256').update(binaryLike).digest().toString('base64');
 };
 
-describe('Http Proof Server Proof Provider', () => {
-  test("'httpProofServerProofProvider' throws when 'url' does not start with 'http:' or 'https:'", () => {
+describe('Http Proof Server Proof Provider - Promise API', () => {
+  test("httpClientProofProvider throws when url does not start with 'http:' or 'https:'", () => {
     expect(() => httpClientProofProvider('ws://localhost:8080')).toThrow(/Invalid protocol scheme: 'ws:'/);
   });
 
-  test("'serializePayload' produces deterministic output", async () => {
+  test('serializeTransactionPayload produces deterministic output', async () => {
     const zkConfig = await getValidZKConfig();
     const unprovenTx = await getValidUnprovenTx();
+
     const payload1 = serializeTransactionPayload(unprovenTx, zkConfig);
     const payload2 = serializeTransactionPayload(unprovenTx, zkConfig);
+
     expect(createHash(Buffer.from(payload1))).toEqual(createHash(Buffer.from(payload2)));
+    expect(payload1).toEqual(payload2);
     expect(payload1.byteLength).toBeGreaterThan(0);
   });
 
-  test('handles Uint8Array<ArrayBufferLike> correctly', async () => {
+  test('serializeTransactionPayload handles Uint8Array correctly', async () => {
     const zkConfig = await getValidZKConfig();
     const unprovenTx = await getValidUnprovenTx();
 
@@ -47,7 +51,7 @@ describe('Http Proof Server Proof Provider', () => {
     expect(result.byteLength).toBeGreaterThan(0);
   });
 
-  test('handles undefined zkConfig correctly', async () => {
+  test('serializeTransactionPayload handles undefined zkConfig', async () => {
     const unprovenTx = await getValidUnprovenTx();
 
     const result = serializeTransactionPayload(unprovenTx, undefined);
