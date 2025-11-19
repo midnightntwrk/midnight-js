@@ -4995,9 +4995,9 @@ __metadata:
   linkType: hard
 
 "@tsconfig/node24@npm:^24.0.0":
-  version: 24.0.2
-  resolution: "@tsconfig/node24@npm:24.0.2"
-  checksum: 10/f8ae55e0a27320272ab6eed6966c1722fd0ee7e418ec5bd35283e4ec0ee0a2099b9de8c3527efb99edb9844ac3b71c87f220571005786e5e1a9e289a10b5a474
+  version: 24.0.3
+  resolution: "@tsconfig/node24@npm:24.0.3"
+  checksum: 10/02318441e4fc1a493be0ea4299813f952cc564e8eac7b23508f22a1774692e7b362ba58b9dddd9ffb052d1c9fadc4f1937f5590bc581584fe662ae83512feb8d
   languageName: node
   linkType: hard
 
