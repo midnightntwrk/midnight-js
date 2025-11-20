@@ -1425,14 +1425,14 @@ __metadata:
   linkType: hard
 
 "@effect/rpc@npm:^0.72.0":
-  version: 0.72.1
-  resolution: "@effect/rpc@npm:0.72.1"
+  version: 0.72.2
+  resolution: "@effect/rpc@npm:0.72.2"
   dependencies:
     msgpackr: "npm:^1.11.4"
   peerDependencies:
-    "@effect/platform": ^0.93.0
-    effect: ^3.19.0
-  checksum: 10/133fa60e787df265959fc2fb4c3773d6040be9a024d0dda17053fd8e502eae21304f9f5133b17c84ea994229f2c86181d7d8cdcb65d8d34a47b97186d3fa02e8
+    "@effect/platform": ^0.93.3
+    effect: ^3.19.5
+  checksum: 10/21bd1b852ef9a3102c1ce7425f99c641ed9c3272ec67a9b15ddfaea609b18c73ac3a6f5495a9c7868ccab6e711418480b161158b46f3d4499b87c78ef07f260a
   languageName: node
   linkType: hard
 
