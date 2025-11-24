@@ -14,11 +14,11 @@
  */
 
 import {
-  type DustSecretKey,
+  type CoinPublicKey,
+  type EncPublicKey,
   type FinalizedTransaction,
   type ShieldedCoinInfo,
   type UnprovenTransaction,
-  type ZswapSecretKeys
 } from '@midnight-ntwrk/ledger-v6';
 
 import { type ProvingRecipe } from './midnight-types';
@@ -28,19 +28,6 @@ import { type ProvingRecipe } from './midnight-types';
  * transaction balancing and finalization, and provides access to cryptographic secret keys.
  */
 export interface WalletProvider {
-  /**
-   * Represents a readonly property that stores secret keys used for Zswap encryption or authentication.
-   *
-   * @type {ZswapSecretKeys}
-   */
-  readonly zswapSecretKeys: ZswapSecretKeys;
-
-  /**
-   * A readonly property that stores the secret key used for dust operations.
-   *
-   * @type {DustSecretKey}
-   */
-  readonly dustSecretKey: DustSecretKey;
 
   /**
    * Balances a transaction
@@ -49,4 +36,8 @@ export interface WalletProvider {
    * @param ttl
    */
   balanceTx(tx: UnprovenTransaction, newCoins?: ShieldedCoinInfo[], ttl?: Date): Promise<ProvingRecipe<UnprovenTransaction | FinalizedTransaction>>;
+
+  getCoinPublicKey(): CoinPublicKey;
+
+  getEncryptionPublicKey(): EncPublicKey;
 }
