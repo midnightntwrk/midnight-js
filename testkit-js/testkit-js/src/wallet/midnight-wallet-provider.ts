@@ -69,10 +69,6 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     return this.wallet.balanceTransaction(this.zswapSecretKeys, this.dustSecretKey, tx, ttl);
   }
 
-  async finalizeTx(recipe: ProvingRecipe<FinalizedTransaction>): Promise<FinalizedTransaction> {
-    return this.wallet.finalizeTransaction(recipe);
-  }
-
   submitTx(tx: FinalizedTransaction): Promise<string> {
     return this.wallet.submitTransaction(tx);
   }

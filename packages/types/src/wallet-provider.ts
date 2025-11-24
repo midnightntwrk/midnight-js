@@ -49,12 +49,4 @@ export interface WalletProvider {
    * @param ttl
    */
   balanceTx(tx: UnprovenTransaction, newCoins?: ShieldedCoinInfo[], ttl?: Date): Promise<ProvingRecipe<UnprovenTransaction | FinalizedTransaction>>;
-
-  /**
-   * Finalizes the given transaction to complete its processing.
-   *
-   * @param {FinalizedTransaction} tx - The transaction object that needs to be finalized.
-   * @return {Promise<FinalizedTransaction>} A promise that resolves to the finalized transaction object.
-   */
-  finalizeTx(tx: ProvingRecipe<FinalizedTransaction>): Promise<FinalizedTransaction>;
 }
