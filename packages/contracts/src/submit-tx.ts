@@ -21,6 +21,7 @@ import {
 } from '@midnight-ntwrk/ledger-v6';
 import {
   BALANCE_TRANSACTION_TO_PROVE,
+  type BalancedTransaction,
   type BalanceTransactionToProve,
   type Contract,
   type FinalizedTxData,
@@ -84,7 +85,7 @@ function logAndCheckTransaction(circuitId: string | undefined, tx: Transaction<a
   }
 }
 
-async function proveTransaction<C extends Contract, ICK extends ImpureCircuitId<C>>(recipe: ProvingRecipe<UnprovenTransaction | FinalizedTransaction>, providers: SubmitTxProviders<C, ICK>, proveTxConfig: {
+async function proveTransaction<C extends Contract, ICK extends ImpureCircuitId<C>>(recipe: ProvingRecipe<BalancedTransaction>, providers: SubmitTxProviders<C, ICK>, proveTxConfig: {
   zkConfig: ZKConfig<ICK>
 } | undefined) {
   let toSubmit: ProvenTransaction;

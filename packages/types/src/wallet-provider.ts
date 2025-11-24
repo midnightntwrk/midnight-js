@@ -23,6 +23,8 @@ import {
 
 import { type ProvingRecipe } from './midnight-types';
 
+export type BalancedTransaction = UnprovenTransaction | FinalizedTransaction;
+
 /**
  * Interface representing a WalletProvider that handles operations such as
  * transaction balancing and finalization, and provides access to cryptographic secret keys.
@@ -35,7 +37,7 @@ export interface WalletProvider {
    * @param newCoins
    * @param ttl
    */
-  balanceTx(tx: UnprovenTransaction, newCoins?: ShieldedCoinInfo[], ttl?: Date): Promise<ProvingRecipe<UnprovenTransaction | FinalizedTransaction>>;
+  balanceTx(tx: UnprovenTransaction, newCoins?: ShieldedCoinInfo[], ttl?: Date): Promise<ProvingRecipe<BalancedTransaction>>;
 
   getCoinPublicKey(): CoinPublicKey;
 
