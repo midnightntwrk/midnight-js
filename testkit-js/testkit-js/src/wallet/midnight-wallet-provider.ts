@@ -25,9 +25,8 @@ import {
   ZswapSecretKeys
 } from '@midnight-ntwrk/ledger-v6';
 import {
-  type BalancedTransaction,
+  type BalancedProvingRecipe,
   type MidnightProvider,
-  type ProvingRecipe,
   type WalletProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import { ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
@@ -78,7 +77,7 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     tx: UnprovenTransaction,
     _newCoins: ShieldedCoinInfo[],
     ttl: Date = ttlOneHour()
-  ): Promise<ProvingRecipe<BalancedTransaction>> {
+  ): Promise<BalancedProvingRecipe> {
     return this.wallet.balanceTransaction(this.zswapSecretKeys, this.dustSecretKey, tx, ttl);
   }
 

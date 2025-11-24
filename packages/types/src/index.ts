@@ -30,8 +30,6 @@ export * from './errors';
 export * from './logger-provider';
 export * from './midnight-provider';
 export {
-  BALANCE_TRANSACTION_TO_PROVE,
-  BalanceTransactionToProve,
   BlockHash,
   createProverKey,
   createVerifierKey,
@@ -40,16 +38,11 @@ export {
   FailFallible,
   Fees,
   FinalizedTxData,
-  NOTHING_TO_PROVE,
-  NothingToProve,
   ProverKey,
-  ProvingRecipe,
   SegmentFail,
   SegmentStatus,
   SegmentSuccess,
   SucceedEntirely,
-  TRANSACTION_TO_PROVE,
-  TransactionToProve,
   TxStatus,
   UnshieldedBalance,
   UnshieldedBalances,
