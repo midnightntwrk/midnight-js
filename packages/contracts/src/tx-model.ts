@@ -136,3 +136,18 @@ export type FinalizedCallTxData<C extends Contract, ICK extends ImpureCircuitId<
    */
   readonly public: FinalizedTxData;
 };
+
+/**
+ * Data returned from an asynchronous call transaction submission.
+ * Contains the transaction ID and call transaction data without waiting for finalization.
+ */
+export type SubmittedCallTx<C extends Contract, ICK extends ImpureCircuitId<C>> = {
+  /**
+   * The transaction ID returned from submission.
+   */
+  readonly txId: string;
+  /**
+   * The unproven call transaction data including private state.
+   */
+  readonly callTxData: UnsubmittedCallTxData<C, ICK>;
+};

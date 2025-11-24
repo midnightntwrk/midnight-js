@@ -37,30 +37,12 @@ import path from 'path';
 
 import { type ContractProviders } from './contract-providers';
 
-/**
- * Configuration for {@link submitTx}.
- */
 export type SubmitTxOptions<ICK extends ImpureCircuitId> = {
-  /**
-   * The transaction to prove, balance, and submit.
-   */
   readonly unprovenTx: UnprovenTransaction;
-  /**
-   * Any new coins created during the construction of the transaction. Only defined
-   * if the transaction being submitted is a call or deploy transaction.
-   */
   readonly newCoins?: ShieldedCoinInfo[];
-  /**
-   * A circuit identifier to use to fetch the ZK artifacts needed to prove the
-   * transaction. Only defined if a call transaction is being submitted.
-   */
   readonly circuitId?: ICK;
 }
 
-/**
- * Providers required to submit an unproven deployment transaction. Since {@link submitTx} doesn't
- * manipulate private state, the private state provider can be omitted.
- */
 export type SubmitTxProviders<C extends Contract, ICK extends ImpureCircuitId<C>> = Omit<
   ContractProviders<C, ICK>,
   'privateStateProvider'
@@ -102,7 +84,6 @@ async function proveTransaction<C extends Contract, ICK extends ImpureCircuitId<
     }
 
     case NOTHING_TO_PROVE: {
-      // unsafe cast, but it looks like these types are not proper
       toSubmit = (recipe as NothingToProve<FinalizedTransaction>).transaction as unknown as ProvenTransaction;
       break;
     }
@@ -112,6 +93,20 @@ async function proveTransaction<C extends Contract, ICK extends ImpureCircuitId<
       throw new Error(`Unknown recipe type: ${(recipe as any).type}`);
   }
   return toSubmit;
+}
+
+async function submitTxCore<C extends Contract, ICK extends ImpureCircuitId<C>>(
+  providers: SubmitTxProviders<C, ICK>,
+  options: SubmitTxOptions<ICK>
+): Promise<string> {
+  const proveTxConfig = options.circuitId
+    ? { zkConfig: await providers.zkConfigProvider.get(options.circuitId) }
+    : undefined;
+  const recipe = await providers.walletProvider.balanceTx(options.unprovenTx, options.newCoins);
+  const toSubmit = await proveTransaction(recipe, providers, proveTxConfig);
+  const bound = toSubmit.bind();
+  logAndCheckTransaction(options.circuitId, bound);
+  return await providers.midnightProvider.submitTx(bound);
 }
 
 /**
@@ -128,13 +123,25 @@ export const submitTx = async <C extends Contract, ICK extends ImpureCircuitId<C
   providers: SubmitTxProviders<C, ICK>,
   options: SubmitTxOptions<ICK>
 ): Promise<FinalizedTxData> => {
-  const proveTxConfig = options.circuitId
-    ? { zkConfig: await providers.zkConfigProvider.get(options.circuitId) }
-    : undefined;
-  const recipe = await providers.walletProvider.balanceTx(options.unprovenTx, options.newCoins);
-  const toSubmit = await proveTransaction(recipe, providers, proveTxConfig);
-  const bound = toSubmit.bind();
-  logAndCheckTransaction(options.circuitId, bound);
-  const txId = await providers.midnightProvider.submitTx(bound);
+  const txId = await submitTxCore(providers, options);
   return await providers.publicDataProvider.watchForTxData(txId);
+};
+
+/**
+ * Proves, balances, and submits an unproven deployment or call transaction using
+ * the given providers, according to the given options. Unlike {@link submitTx},
+ * this function returns immediately after submission without waiting for finalization.
+ *
+ * @param providers The providers used to manage the transaction lifecycle.
+ * @param options Configuration.
+ *
+ * @returns A promise that resolves with the transaction ID immediately after submission,
+ *          or rejects if an error occurs during preparation or submission.
+ *          To watch for finalization, use providers.publicDataProvider.watchForTxData(txId).
+ */
+export const submitTxAsync = async <C extends Contract, ICK extends ImpureCircuitId<C>>(
+  providers: SubmitTxProviders<C, ICK>,
+  options: SubmitTxOptions<ICK>
+): Promise<string> => {
+  return await submitTxCore(providers, options);
 };
