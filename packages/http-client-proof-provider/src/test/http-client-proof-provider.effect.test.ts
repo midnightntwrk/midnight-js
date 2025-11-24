@@ -14,7 +14,7 @@
  */
 
 import { FetchHttpClient, HttpClient, type HttpClientResponse } from '@effect/platform';
-import { Effect, Either, Layer, Stream } from 'effect';
+import { Duration, Effect, Either, Layer, Schedule, Stream } from 'effect';
 import { describe, expect, test } from 'vitest';
 
 import { InvalidProtocolError } from '../errors';
@@ -90,7 +90,7 @@ describe('Http Proof Server Proof Provider - Effect', () => {
   });
 
   test('ProofProviderService handles timeout correctly', async () => {
-    const mockStream = Stream.make(new Uint8Array([1, 2, 3])).pipe(Stream.schedule(Effect.sleep('500 millis')));
+    const mockStream = Stream.make(new Uint8Array([1, 2, 3])).pipe(Stream.schedule(Schedule.spaced(Duration.millis(500))));
 
     const mockHttpClient = {
       execute: () =>
