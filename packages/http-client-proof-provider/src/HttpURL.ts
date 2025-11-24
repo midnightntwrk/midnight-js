@@ -26,14 +26,15 @@ export const HttpURL = Brand.refined<HttpUrl>(
 );
 
 export const make = (url: URL | string): Either.Either<HttpUrl, InvalidProtocolError> => {
-  const targetURL = typeof url === 'string' ? new URL(url) : url;
   try {
+    const targetURL = typeof url === 'string' ? new URL(url) : url;
     return Either.right(HttpURL(targetURL));
     // eslint-disable-next-line unused-imports/no-unused-vars
   } catch (err: unknown) {
+    const protocol = typeof url === 'string' ? url.split(':')[0] + ':' : url.protocol;
     return Either.left(
       new InvalidProtocolError({
-        protocol: targetURL.protocol,
+        protocol,
         allowed: ['http:', 'https:']
       })
     );

@@ -17,10 +17,11 @@ import { FetchHttpClient } from '@effect/platform';
 import type { UnprovenTransaction } from '@midnight-ntwrk/ledger-v6';
 import type { ProofProvider, ProvenTransaction, ProveTxConfig } from '@midnight-ntwrk/midnight-js-types';
 import { InvalidProtocolSchemeError } from '@midnight-ntwrk/midnight-js-types';
-import { Effect } from 'effect';
+import { Effect, Either } from 'effect';
 
 import type { ProofProviderError } from './errors';
 import { ProofProviderService, ProofProviderServiceLive } from './http-client-proof-provider.effect';
+import * as HttpURL from './HttpURL';
 
 const convertErrorToThrowable = (error: ProofProviderError): Error => {
   switch (error._tag) {
@@ -40,6 +41,12 @@ const convertErrorToThrowable = (error: ProofProviderError): Error => {
 };
 
 export const httpClientProofProvider = <K extends string>(url: string): ProofProvider<K> => {
+  const validationResult = HttpURL.make(url);
+  
+  if (Either.isLeft(validationResult)) {
+    throw new InvalidProtocolSchemeError(validationResult.left.protocol, validationResult.left.allowed as string[]);
+  }
+
   return {
     async proveTx(unprovenTx: UnprovenTransaction, config?: ProveTxConfig<K>): Promise<ProvenTransaction> {
       const program = Effect.gen(function* () {

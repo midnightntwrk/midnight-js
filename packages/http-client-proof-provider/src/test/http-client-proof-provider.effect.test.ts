@@ -90,13 +90,21 @@ describe('Http Proof Server Proof Provider - Effect', () => {
   });
 
   test('ProofProviderService handles timeout correctly', async () => {
-    const mockStream = Stream.make(new Uint8Array([1, 2, 3])).pipe(Stream.schedule(Schedule.spaced(Duration.millis(500))));
+    const neverEndingStream = Stream.fromAsyncIterable(
+      (async function* () {
+        while (true) {
+          await new Promise((resolve) => setTimeout(resolve, 10000));
+          yield new Uint8Array([1, 2, 3]);
+        }
+      })(),
+      () => void 0
+    );
 
     const mockHttpClient = {
       execute: () =>
         Effect.succeed({
           status: 200,
-          stream: mockStream,
+          stream: neverEndingStream,
           text: Effect.succeed('mock response'),
           arrayBuffer: Effect.succeed(new ArrayBuffer(0))
         } as unknown as HttpClientResponse.HttpClientResponse)
@@ -121,16 +129,13 @@ describe('Http Proof Server Proof Provider - Effect', () => {
   });
 
   test('ProofProviderService handles HTTP errors correctly', async () => {
-    const mockStream = Stream.make(new Uint8Array([1, 2, 3]));
-
     const mockHttpClient = {
       execute: () =>
         Effect.fail({
           _tag: 'ResponseError',
           response: {
             status: 500,
-            text: Effect.succeed('Internal Server Error'),
-            stream: mockStream
+            text: Effect.succeed('Internal Server Error')
           }
         } as any)
     };
