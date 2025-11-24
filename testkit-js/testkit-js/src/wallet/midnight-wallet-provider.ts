@@ -25,7 +25,7 @@ import {
   ZswapSecretKeys
 } from '@midnight-ntwrk/ledger-v6';
 import {
-  BalancedTransaction,
+  type BalancedTransaction,
   type MidnightProvider,
   type ProvingRecipe,
   type WalletProvider
