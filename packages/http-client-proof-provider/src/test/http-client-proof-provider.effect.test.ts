@@ -14,7 +14,7 @@
  */
 
 import { FetchHttpClient, HttpClient, type HttpClientResponse } from '@effect/platform';
-import { Duration, Effect, Either, Layer, Schedule, Stream } from 'effect';
+import { Effect, Either, Layer, Stream } from 'effect';
 import { describe, expect, test } from 'vitest';
 
 import { InvalidProtocolError } from '../errors';
