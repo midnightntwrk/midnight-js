@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.3**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.4**](../../../README.md)
 
 ***
 
@@ -8,22 +8,6 @@
 
 Interface representing a WalletProvider that handles operations such as
 transaction balancing and finalization, and provides access to cryptographic secret keys.
-
-## Properties
-
-### dustSecretKey
-
-> `readonly` **dustSecretKey**: `DustSecretKey`
-
-A readonly property that stores the secret key used for dust operations.
-
-***
-
-### zswapSecretKeys
-
-> `readonly` **zswapSecretKeys**: `ZswapSecretKeys`
-
-Represents a readonly property that stores secret keys used for Zswap encryption or authentication.
 
 ## Methods
 
@@ -55,22 +39,20 @@ The transaction to balance.
 
 ***
 
-### finalizeTx()
+### getCoinPublicKey()
 
-> **finalizeTx**(`tx`): `Promise`\<`FinalizedTransaction`\>
-
-Finalizes the given transaction to complete its processing.
-
-#### Parameters
-
-##### tx
-
-[`ProvingRecipe`](../type-aliases/ProvingRecipe.md)\<`FinalizedTransaction`\>
-
-The transaction object that needs to be finalized.
+> **getCoinPublicKey**(): `string`
 
 #### Returns
 
-`Promise`\<`FinalizedTransaction`\>
+`string`
 
-A promise that resolves to the finalized transaction object.
+***
+
+### getEncryptionPublicKey()
+
+> **getEncryptionPublicKey**(): `string`
+
+#### Returns
+
+`string`

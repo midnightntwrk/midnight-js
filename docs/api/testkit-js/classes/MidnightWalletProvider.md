@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v3.0.0-alpha.3**](../README.md)
+[**@midnight-ntwrk/testkit-js v3.0.0-alpha.4**](../README.md)
 
 ***
 
@@ -15,12 +15,6 @@ Handles transaction balancing, submission, and wallet state management.
 ### dustSecretKey
 
 > `readonly` **dustSecretKey**: `DustSecretKey`
-
-A readonly property that stores the secret key used for dust operations.
-
-#### Implementation of
-
-`WalletProvider.dustSecretKey`
 
 ***
 
@@ -45,12 +39,6 @@ A readonly property that stores the secret key used for dust operations.
 ### zswapSecretKeys
 
 > `readonly` **zswapSecretKeys**: `ZswapSecretKeys`
-
-Represents a readonly property that stores secret keys used for Zswap encryption or authentication.
-
-#### Implementation of
-
-`WalletProvider.zswapSecretKeys`
 
 ## Methods
 
@@ -86,27 +74,31 @@ The transaction to balance.
 
 ***
 
-### finalizeTx()
+### getCoinPublicKey()
 
-> **finalizeTx**(`recipe`): `Promise`\<`FinalizedTransaction`\>
-
-Finalizes the given transaction to complete its processing.
-
-#### Parameters
-
-##### recipe
-
-`ProvingRecipe`\<`FinalizedTransaction`\>
+> **getCoinPublicKey**(): `string`
 
 #### Returns
 
-`Promise`\<`FinalizedTransaction`\>
-
-A promise that resolves to the finalized transaction object.
+`string`
 
 #### Implementation of
 
-`WalletProvider.finalizeTx`
+`WalletProvider.getCoinPublicKey`
+
+***
+
+### getEncryptionPublicKey()
+
+> **getEncryptionPublicKey**(): `string`
+
+#### Returns
+
+`string`
+
+#### Implementation of
+
+`WalletProvider.getEncryptionPublicKey`
 
 ***
 
