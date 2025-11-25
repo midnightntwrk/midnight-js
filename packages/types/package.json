@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-types",
-  "version": "3.0.0-alpha.5",
+  "version": "4.0.0-alpha.0",
   "description": "Shared data types and interfaces for MidnightJS modules",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -29,6 +29,8 @@
     "dist/"
   ],
   "dependencies": {
+    "@midnight-ntwrk/compact-js": "^2.3.0",
+    "effect": "^3.18.4",
     "rxjs": "^7.5.0"
   },
   "stableVersion": "3.0.0"

@@ -3334,6 +3334,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-types@workspace:packages/types"
   dependencies:
+    "@midnight-ntwrk/compact-js": "npm:^2.3.0"
+    effect: "npm:^3.18.4"
     rxjs: "npm:^7.5.0"
   languageName: unknown
   linkType: soft

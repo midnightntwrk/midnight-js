@@ -120,6 +120,7 @@ export const createMockContract = (): Contract<undefined> => ({
     currentPrivateState: { test: 'mock-private-state' },
     currentZswapLocalState: new Uint8Array(0)
   }),
+  circuits: {},
   impureCircuits: {
     testCircuit: vi.fn()
   },
