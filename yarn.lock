@@ -3176,7 +3176,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@midnight-ntwrk/compact-js@npm:^2.3.0, @midnight-ntwrk/compact-js@workspace:*, @midnight-ntwrk/compact-js@workspace:compact-js/compact-js":
+"@midnight-ntwrk/compact-js@npm:^2.3.0, @midnight-ntwrk/compact-js@workspace:compact-js/compact-js":
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/compact-js@workspace:compact-js/compact-js"
   dependencies:
@@ -3233,14 +3233,10 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-contracts@workspace:packages/contracts"
   dependencies:
-    "@effect/platform": "npm:^0.92.1"
     "@fast-check/vitest": "npm:^0.2.1"
-    "@midnight-ntwrk/compact-js": "workspace:*"
-    "@midnight-ntwrk/compact-js-node": "workspace:*"
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
-    effect: "npm:^3.18.4"
     vitest: "npm:^4.0.0"
   languageName: unknown
   linkType: soft
@@ -3391,7 +3387,7 @@ __metadata:
     patch-package: "npm:^8.0.1"
     pinst: "npm:^3.0.0"
     prettier: "npm:^3.6.2"
-    rollup: "npm:^4.52.5"
+    rollup: "npm:^4.53.3"
     rollup-plugin-dts: "npm:^6.2.3"
     rxjs: "npm:^7.8.1"
     shx: "npm:^0.4.0"
@@ -13518,7 +13514,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"rollup@npm:^4.43.0, rollup@npm:^4.52.5":
+"rollup@npm:^4.43.0, rollup@npm:^4.53.3":
   version: 4.53.3
   resolution: "rollup@npm:4.53.3"
   dependencies:

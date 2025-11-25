@@ -27,13 +27,9 @@
     "deploy": "yarn npm publish"
   },
   "dependencies": {
-    "@effect/platform": "^0.92.1",
-    "@midnight-ntwrk/compact-js": "workspace:*",
-    "@midnight-ntwrk/compact-js-node": "workspace:*",
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
-    "@midnight-ntwrk/midnight-js-utils": "workspace:*",
-    "effect": "^3.18.4"
+    "@midnight-ntwrk/midnight-js-utils": "workspace:*"
   },
   "files": [
     "dist/"
