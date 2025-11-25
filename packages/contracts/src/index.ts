@@ -42,6 +42,7 @@ export {
   DeployContractOptionsWithPrivateState,
   DeployedContract
 } from './deploy-contract';
+export * as Effect from './effect';
 export {
   CallTxFailedError,
   ContractTypeError,
