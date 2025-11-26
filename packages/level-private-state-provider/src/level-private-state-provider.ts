@@ -21,7 +21,7 @@ import { Level } from 'level';
 import _ from 'lodash';
 import * as superjson from 'superjson';
 
-import { ensureSodiumReady, zeroizeBuffer, zeroizeString } from './zeroize';
+import { ensureSodiumReady, zeroizeString } from './zeroize';
 
 /**
  * The default name of the indexedDB database for Midnight.
