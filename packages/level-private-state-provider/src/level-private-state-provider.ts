@@ -21,6 +21,8 @@ import { Level } from 'level';
 import _ from 'lodash';
 import * as superjson from 'superjson';
 
+import { ensureSodiumReady, zeroizeBuffer, zeroizeString } from './zeroize';
+
 /**
  * The default name of the indexedDB database for Midnight.
  */
@@ -75,8 +77,16 @@ export const DEFAULT_CONFIG = {
 superjson.registerCustom<Buffer, string>(
   {
     isApplicable: (v): v is Buffer => v instanceof Buffer,
-    serialize: (v) => v.toString('hex'),
-    deserialize: (v) => Buffer.from(v, 'hex')
+    serialize: (v) => {
+      return v.toString('hex');
+    },
+    deserialize: (v) => {
+      const buffer = Buffer.from(v, 'hex');
+      try {
+        zeroizeString(v);
+      } catch { /* empty */ }
+      return buffer;
+    }
   },
   'buffer'
 );
@@ -129,6 +139,7 @@ const subLevelMaybeGet = <K, V>(dbName: string, levelName: string, key: K): Prom
 export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
   partialConfig: Partial<LevelPrivateStateProviderConfig> = {}
 ): PrivateStateProvider<PSI, PS> => {
+  void ensureSodiumReady();
   const config = _.defaults(partialConfig, DEFAULT_CONFIG);
   return {
     get(privateStateId: PSI): Promise<PS | null> {

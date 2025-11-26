@@ -17,3 +17,4 @@ export {
   DEFAULT_CONFIG,
   levelPrivateStateProvider,
   LevelPrivateStateProviderConfig} from './level-private-state-provider';
+export { ensureSodiumReady, withZeroization,zeroizeBuffer, zeroizeString } from './zeroize';

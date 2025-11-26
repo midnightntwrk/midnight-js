@@ -31,10 +31,12 @@
     "fp-ts": "^2.16.1",
     "io-ts": "^2.2.20",
     "level": "^10.0.0",
+    "libsodium-wrappers": "^0.7.15",
     "lodash": "^4.17.21",
     "superjson": "^2.0.0"
   },
   "devDependencies": {
+    "@types/libsodium-wrappers": "^0.7.14",
     "@types/lodash": "^4.17.19"
   },
   "stableVersion": "3.0.0"
