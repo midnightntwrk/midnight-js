@@ -118,7 +118,7 @@ export async function submitCallTx<C extends Contract, ICK extends ImpureCircuit
  * }
  *
  * // 4. Update private state manually if needed
- * if (privateStateId) {
+ * if (options.privateStateId) {
  *   await providers.privateStateProvider.set(
  *     privateStateId,
  *     callTxData.private.nextPrivateState
