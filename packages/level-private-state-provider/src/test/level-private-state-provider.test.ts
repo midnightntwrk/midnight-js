@@ -22,8 +22,14 @@ import * as crypto from 'crypto';
 import { levelPrivateStateProvider } from '../index';
 
 describe('Level Private State Provider', (): void => {
-  // The provider creates a default DB directory named `midnight-level-db`, so we delete the directory after testing
-  afterAll(() => fs.rm(path.join('.', 'midnight-level-db'), { recursive: true, force: true }));
+  beforeAll(() => {
+    process.env.MIDNIGHT_STORAGE_PASSWORD = 'test-storage-password-for-unit-tests-only';
+  });
+
+  afterAll(async () => {
+    await fs.rm(path.join('.', 'midnight-level-db'), { recursive: true, force: true });
+    delete process.env.MIDNIGHT_STORAGE_PASSWORD;
+  });
 
   // tests adapted from https://github.com/solydhq/typed-local-store
 

@@ -21,6 +21,8 @@ import { Level } from 'level';
 import _ from 'lodash';
 import * as superjson from 'superjson';
 
+import { getStoragePassword, StorageEncryption } from './storage-encryption';
+
 /**
  * The default name of the indexedDB database for Midnight.
  */
@@ -90,11 +92,7 @@ const withSubLevel = async <K, V, A>(
     createIfMissing: true
   });
   const subLevel = level.sublevel<K, V>(levelName, {
-    valueEncoding: {
-      encode: superjson.stringify,
-      decode: superjson.parse,
-      name: 'super-json-values'
-    }
+    valueEncoding: 'utf-8'
   });
   try {
     await level.open();
@@ -106,16 +104,66 @@ const withSubLevel = async <K, V, A>(
   }
 };
 
-const subLevelMaybeGet = <K, V>(dbName: string, levelName: string, key: K): Promise<V | null> => {
-  return withSubLevel<K, V, V | null>(dbName, levelName, async (subLevel) => {
-    const value = await subLevel.get(key);
-    // We convert undefined values to null because we use undefined for contracts without private
-    // state, and we want to be able to distinguish private states that are undefined but present
-    // from private states that are not present at all.
-    if (value === undefined) {
-      return null;
+const METADATA_KEY = '__midnight_encryption_metadata__';
+
+const getOrCreateEncryption = async (dbName: string, levelName: string): Promise<StorageEncryption> => {
+  const password = getStoragePassword();
+
+  return withSubLevel<string, string, StorageEncryption>(dbName, levelName, async (subLevel) => {
+    try {
+      const metadataJson = await subLevel.get(METADATA_KEY);
+      if (!metadataJson) {
+        throw new Error('Metadata not found');
+      }
+      const metadata = JSON.parse(metadataJson);
+      const salt = Buffer.from(metadata.salt, 'hex');
+      return new StorageEncryption(password, salt);
+    } catch {
+      const encryption = new StorageEncryption(password);
+      const metadata = {
+        salt: encryption.getSalt().toString('hex'),
+        version: 1
+      };
+      await subLevel.put(METADATA_KEY, JSON.stringify(metadata));
+      return encryption;
     }
-    return value;
+  });
+};
+
+const subLevelMaybeGet = async <K, V>(dbName: string, levelName: string, key: K): Promise<V | null> => {
+  const encryption = await getOrCreateEncryption(dbName, levelName);
+
+  return withSubLevel<K, string, V | null>(dbName, levelName, async (subLevel) => {
+    try {
+      const encryptedValue = await subLevel.get(key);
+
+      if (encryptedValue === undefined) {
+        return null;
+      }
+
+      let decryptedValue: string;
+
+      if (StorageEncryption.isEncrypted(encryptedValue)) {
+        decryptedValue = encryption.decrypt(encryptedValue);
+      } else {
+        decryptedValue = encryptedValue;
+        const reEncrypted = encryption.encrypt(encryptedValue);
+        await subLevel.put(key, reEncrypted);
+      }
+
+      const value = superjson.parse<V>(decryptedValue);
+
+      if (value === undefined) {
+        return null;
+      }
+
+      return value;
+    } catch (error: unknown) {
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'LEVEL_NOT_FOUND') {
+        return null;
+      }
+      throw error;
+    }
   });
 };
 
@@ -135,13 +183,17 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       return subLevelMaybeGet<PSI, PS>(config.midnightDbName, config.privateStateStoreName, privateStateId);
     },
     remove(privateStateId: PSI): Promise<void> {
-      return withSubLevel<PSI, PS, void>(config.midnightDbName, config.privateStateStoreName, (subLevel) =>
+      return withSubLevel<PSI, string, void>(config.midnightDbName, config.privateStateStoreName, (subLevel) =>
         subLevel.del(privateStateId)
       );
     },
-    set(privateStateId: PSI, state: PS): Promise<void> {
-      return withSubLevel<PSI, PS, void>(config.midnightDbName, config.privateStateStoreName, (subLevel) =>
-        subLevel.put(privateStateId, state)
+    async set(privateStateId: PSI, state: PS): Promise<void> {
+      const encryption = await getOrCreateEncryption(config.midnightDbName, config.privateStateStoreName);
+      const serialized = superjson.stringify(state);
+      const encrypted = encryption.encrypt(serialized);
+
+      return withSubLevel<PSI, string, void>(config.midnightDbName, config.privateStateStoreName, (subLevel) =>
+        subLevel.put(privateStateId, encrypted)
       );
     },
     clear(): Promise<void> {
@@ -151,17 +203,21 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       return subLevelMaybeGet<ContractAddress, SigningKey>(config.midnightDbName, config.signingKeyStoreName, address);
     },
     removeSigningKey(address: ContractAddress): Promise<void> {
-      return withSubLevel<ContractAddress, SigningKey, void>(
+      return withSubLevel<ContractAddress, string, void>(
         config.midnightDbName,
         config.signingKeyStoreName,
         (subLevel) => subLevel.del(address)
       );
     },
-    setSigningKey(address: ContractAddress, signingKey: SigningKey): Promise<void> {
-      return withSubLevel<ContractAddress, SigningKey, void>(
+    async setSigningKey(address: ContractAddress, signingKey: SigningKey): Promise<void> {
+      const encryption = await getOrCreateEncryption(config.midnightDbName, config.signingKeyStoreName);
+      const serialized = superjson.stringify(signingKey);
+      const encrypted = encryption.encrypt(serialized);
+
+      return withSubLevel<ContractAddress, string, void>(
         config.midnightDbName,
         config.signingKeyStoreName,
-        (subLevel) => subLevel.put(address, signingKey)
+        (subLevel) => subLevel.put(address, encrypted)
       );
     },
     clearSigningKeys(): Promise<void> {

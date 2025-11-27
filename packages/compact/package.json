@@ -7,15 +7,15 @@
     "node": ">=22.0.0"
   },
   "license": "Apache-2.0",
-  "version": "3.0.0-alpha.4",
+  "version": "3.0.0-alpha.6",
   "type": "module",
   "bin": {
     "fetch-compactc": "dist/fetch-compact.mjs",
-    "run-compactc": "src/run-compactc.cjs"
+    "run-compactc": "dist/run-compactc.cjs"
   },
   "scripts": {
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo tsconfig.tsbuildinfo managed dist",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && cp src/run-compactc.cjs dist/",
     "lint": "eslint ./src",
     "typecheck": "tsc -p tsconfig.json",
     "deploy": "yarn npm publish"

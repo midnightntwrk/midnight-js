@@ -44,7 +44,8 @@ module.exports = {
         'platform-js',
         'wallet',
         'deps',
-        'config'
+        'config',
+        'release'
       ]
     ],
     'subject-case': [0, 'never'],

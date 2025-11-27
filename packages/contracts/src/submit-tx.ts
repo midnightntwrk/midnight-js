@@ -21,6 +21,7 @@ import {
 } from '@midnight-ntwrk/ledger-v6';
 import {
   BALANCE_TRANSACTION_TO_PROVE,
+  type BalancedProvingRecipe,
   type BalanceTransactionToProve,
   type Contract,
   type FinalizedTxData,
@@ -28,7 +29,6 @@ import {
   NOTHING_TO_PROVE,
   type NothingToProve,
   type ProvenTransaction,
-  type ProvingRecipe,
   TRANSACTION_TO_PROVE,
   type ZKConfig
 } from '@midnight-ntwrk/midnight-js-types';
@@ -37,36 +37,71 @@ import path from 'path';
 
 import { type ContractProviders } from './contract-providers';
 
+declare const __DEBUG__: boolean;
+
+/**
+ * Configuration for {@link submitTx}.
+ */
 export type SubmitTxOptions<ICK extends ImpureCircuitId> = {
+  /**
+   * The transaction to prove, balance, and submit.
+   */
   readonly unprovenTx: UnprovenTransaction;
+  /**
+   * Any new coins created during the construction of the transaction. Only defined
+   * if the transaction being submitted is a call or deploy transaction.
+   */
   readonly newCoins?: ShieldedCoinInfo[];
+  /**
+   * A circuit identifier to use to fetch the ZK artifacts needed to prove the
+   * transaction. Only defined if a call transaction is being submitted.
+   */
   readonly circuitId?: ICK;
 }
 
+/**
+ * Providers required to submit an unproven deployment transaction. Since {@link submitTx} doesn't
+ * manipulate private state, the private state provider can be omitted.
+ */
 export type SubmitTxProviders<C extends Contract, ICK extends ImpureCircuitId<C>> = Omit<
   ContractProviders<C, ICK>,
   'privateStateProvider'
 >;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function logAndCheckTransaction(circuitId: string | undefined, tx: Transaction<any, any, any>) {
-  if (process.env.MN_DEBUG) {
+function logTransaction(circuitId: string | undefined, tx: Transaction<any, any, any>) {
+  if (!__DEBUG__) {
+    return;
+  }
+
+  const debug = process.env.MN_DEBUG?.toLowerCase();
+  if (debug !== 'true') {
+    return;
+  }
+
+  try {
     console.log(`Submit tx: ${circuitId} : ${tx}`);
     const serialized = tx.serialize();
     const logsDir = path.join(process.cwd(), 'logs', 'transactions');
+
     if (!fs.existsSync(logsDir)) {
       fs.mkdirSync(logsDir, { recursive: true });
     }
+
     const filename = `tx-${Date.now()}-${circuitId}`;
     const filepath = path.join(logsDir, filename + '.bin');
     const filepathString = path.join(logsDir, filename + '.txt');
+
     fs.writeFileSync(filepath, serialized);
     fs.writeFileSync(filepathString, tx.toString());
+
     console.log(`Transaction serialized and written to: ${filepath}`);
+  } catch (error) {
+    console.error('Failed to write debug transaction logs:', error instanceof Error ? error.message : String(error));
   }
 }
 
-async function proveTransaction<C extends Contract, ICK extends ImpureCircuitId<C>>(recipe: ProvingRecipe<UnprovenTransaction | FinalizedTransaction>, providers: SubmitTxProviders<C, ICK>, proveTxConfig: {
+async function proveTransaction<C extends Contract, ICK extends ImpureCircuitId<C>>(recipe: BalancedProvingRecipe, providers: SubmitTxProviders<C, ICK>, proveTxConfig: {
   zkConfig: ZKConfig<ICK>
 } | undefined) {
   let toSubmit: ProvenTransaction;
@@ -84,6 +119,7 @@ async function proveTransaction<C extends Contract, ICK extends ImpureCircuitId<
     }
 
     case NOTHING_TO_PROVE: {
+      // unsafe cast, but it looks like these types are not proper
       toSubmit = (recipe as NothingToProve<FinalizedTransaction>).transaction as unknown as ProvenTransaction;
       break;
     }
@@ -105,8 +141,10 @@ async function submitTxCore<C extends Contract, ICK extends ImpureCircuitId<C>>(
   const recipe = await providers.walletProvider.balanceTx(options.unprovenTx, options.newCoins);
   const toSubmit = await proveTransaction(recipe, providers, proveTxConfig);
   const bound = toSubmit.bind();
-  logAndCheckTransaction(options.circuitId, bound);
-  return await providers.midnightProvider.submitTx(bound);
+  if (__DEBUG__) {
+    logTransaction(options.circuitId, bound);
+  }
+  return providers.midnightProvider.submitTx(bound);
 }
 
 /**
@@ -124,7 +162,7 @@ export const submitTx = async <C extends Contract, ICK extends ImpureCircuitId<C
   options: SubmitTxOptions<ICK>
 ): Promise<FinalizedTxData> => {
   const txId = await submitTxCore(providers, options);
-  return await providers.publicDataProvider.watchForTxData(txId);
+  return providers.publicDataProvider.watchForTxData(txId);
 };
 
 /**

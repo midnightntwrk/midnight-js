@@ -28,7 +28,7 @@ jobs:
           password: ${{ secrets.GH_PASSWORD }}
 
       - name: Checkout repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # ratchet:actions/checkout@v5
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # ratchet:actions/checkout@v5
 
       - name: Load environment variables
         run: |
@@ -97,7 +97,7 @@ jobs:
       - uses: MonikaJassova/ghcommit-action@aee0efc02d3707e178c534477e5c87f70fe6678f
         if: steps.set_update.outputs.UPDATE == 'true'
         with:
-          commit_message: "Midnight JS API documentation update - created by Midnight CI Github Action"
+          commit_message: "docs: API documentation update"
           repo: ${{ github.repository }}
           branch: ${{ steps.set_update.outputs.NEW_BRANCH }}
           file_pattern: 'docs *.md'

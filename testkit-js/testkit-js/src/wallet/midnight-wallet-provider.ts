@@ -24,7 +24,11 @@ import {
   type UnprovenTransaction,
   ZswapSecretKeys
 } from '@midnight-ntwrk/ledger-v6';
-import { type MidnightProvider, type ProvingRecipe, type WalletProvider } from '@midnight-ntwrk/midnight-js-types';
+import {
+  type BalancedProvingRecipe,
+  type MidnightProvider,
+  type WalletProvider
+} from '@midnight-ntwrk/midnight-js-types';
 import { ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
 import { type WalletFacade } from '@midnight-ntwrk/wallet-sdk-facade';
 import { generateRandomSeed } from '@midnight-ntwrk/wallet-sdk-hd';
@@ -73,7 +77,7 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     tx: UnprovenTransaction,
     _newCoins: ShieldedCoinInfo[],
     ttl: Date = ttlOneHour()
-  ): Promise<ProvingRecipe<UnprovenTransaction | FinalizedTransaction>> {
+  ): Promise<BalancedProvingRecipe> {
     return this.wallet.balanceTransaction(this.zswapSecretKeys, this.dustSecretKey, tx, ttl);
   }
 
