@@ -69,18 +69,18 @@ export const toLedgerQueryContext = (queryContext: QueryContext): LedgerQueryCon
   return ledgerQueryContext;
 }
 
-const addVerifierKeys = (verifierKeys: [Contract.ImpureCircuitId<Contract.Any>, VerifierKey][], contractState: LedgerContractState): void => {
-  verifierKeys.forEach(([impureCircuitId, verifierKey]) => {
-    const operation = contractState.operation(impureCircuitId);
-    assertDefined(
-      operation,
-      `Circuit '${impureCircuitId}' is undefined for contract state ${contractState.toString(false)}`
-    );
-    // TODO: Remove mutability
-    operation.verifierKey = verifierKey;
-    contractState.setOperation(impureCircuitId, operation);
-  });
-};
+// const addVerifierKeys = (verifierKeys: [Contract.ImpureCircuitId<Contract.Any>, VerifierKey][], contractState: LedgerContractState): void => {
+//   verifierKeys.forEach(([impureCircuitId, verifierKey]) => {
+//     const operation = contractState.operation(impureCircuitId);
+//     assertDefined(
+//       operation,
+//       `Circuit '${impureCircuitId}' is undefined for contract state ${contractState.toString(false)}`
+//     );
+//     // TODO: Remove mutability
+//     operation.verifierKey = verifierKey;
+//     contractState.setOperation(impureCircuitId, operation);
+//   });
+// };
 
 export const contractMaintenanceAuthority = (
   sk: SigningKey,
@@ -95,21 +95,16 @@ export const contractMaintenanceAuthority = (
   );
 };
 
-const addMaintenanceAuthority = (sk: SigningKey, contractState: LedgerContractState): void => {
-  contractState.maintenanceAuthority = contractMaintenanceAuthority(sk);
-};
+// const addMaintenanceAuthority = (sk: SigningKey, contractState: LedgerContractState): void => {
+//   contractState.maintenanceAuthority = contractMaintenanceAuthority(sk);
+// };
 
 export const createUnprovenLedgerDeployTx = (
-  verifierKeys: [Contract.ImpureCircuitId<Contract.Any>, VerifierKey][],
-  sk: SigningKey,
   contractState: ContractState,
   zswapLocalState: ZswapLocalState,
   encryptionPublicKey: EncPublicKey
 ): [ContractAddress, ContractState, UnprovenTransaction] => {
-  const ledgerContractState = toLedgerContractState(contractState);
-  addVerifierKeys(verifierKeys, ledgerContractState);
-  addMaintenanceAuthority(sk, ledgerContractState);
-  const contractDeploy = new ContractDeploy(ledgerContractState);
+  const contractDeploy = new ContractDeploy(toLedgerContractState(contractState));
   return [
     contractDeploy.address,
     fromLedgerContractState(contractDeploy.initialState),
@@ -120,7 +115,30 @@ export const createUnprovenLedgerDeployTx = (
       Intent.new(ttlOneHour()).addDeploy(contractDeploy)
     )
   ];
-};
+}
+
+// export const createUnprovenLedgerDeployTx = (
+//   verifierKeys: [Contract.ImpureCircuitId<Contract.Any>, VerifierKey][],
+//   sk: SigningKey,
+//   contractState: ContractState,
+//   zswapLocalState: ZswapLocalState,
+//   encryptionPublicKey: EncPublicKey
+// ): [ContractAddress, ContractState, UnprovenTransaction] => {
+//   const ledgerContractState = toLedgerContractState(contractState);
+//   addVerifierKeys(verifierKeys, ledgerContractState);
+//   addMaintenanceAuthority(sk, ledgerContractState);
+//   const contractDeploy = new ContractDeploy(ledgerContractState);
+//   return [
+//     contractDeploy.address,
+//     fromLedgerContractState(contractDeploy.initialState),
+//     Transaction.fromParts(
+//       getNetworkId(),
+//       zswapStateToOffer(zswapLocalState, encryptionPublicKey),
+//       undefined,
+//       Intent.new(ttlOneHour()).addDeploy(contractDeploy)
+//     )
+//   ];
+// };
 
 export const createUnprovenLedgerCallTx = (
   circuitId: Contract.ImpureCircuitId<Contract.Any>,

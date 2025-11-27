@@ -3350,6 +3350,7 @@ __metadata:
   resolution: "@midnight-ntwrk/midnight-js-types@workspace:packages/types"
   dependencies:
     "@midnight-ntwrk/compact-js": "npm:^2.3.0"
+    "@midnight-ntwrk/platform-js": "npm:^2.1.0"
     rxjs: "npm:^7.5.0"
   languageName: unknown
   linkType: soft

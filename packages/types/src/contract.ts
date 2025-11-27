@@ -13,6 +13,87 @@
 //  * limitations under the License.
 //  */
 
+import { type CompiledContract, Contract, type ContractExecutable, ContractExecutableRuntime,  ZKConfiguration, ZKConfigurationReadError } from '@midnight-ntwrk/compact-js/effect';
+import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
+import { type ConfigError, ConfigProvider, Effect, Layer } from 'effect';
+import { type ManagedRuntime } from 'effect/ManagedRuntime';
+
+import { type ZKConfigProvider } from './zk-config-provider';
+
+/**
+ * Creates a ZK configuration reader by adapting a given {@link ZKConfigProvider}.
+ *
+ * @param zkConfigProvider The {@link ZKConfigProvider} that is to be adapted.
+ * @returns A {@link ZKConfiguration.ZKConfiguration.Reader | ZKConfiguration.Reader} that reads from
+ * `zkConfigProvider`.
+ *
+ * @internal
+ */
+const makeAdaptedReader = <C extends Contract.Contract<PS>, PS>(zkConfigProvider: ZKConfigProvider<string>) =>
+  (compiledContract: CompiledContract.CompiledContract<C, PS>) =>
+    Effect.gen(function* () { // eslint-disable-line require-yield
+      const getVerifierKey = (impureCircuitId: Contract.ImpureCircuitId<C>) =>
+        Effect.tryPromise({
+          try: () => zkConfigProvider.getVerifierKey(impureCircuitId).then(Contract.VerifierKey),
+          catch: (err: unknown) => ZKConfigurationReadError.make(compiledContract.tag, impureCircuitId, 'verifier-key', err)
+        });
+      return {
+        getVerifierKey,
+        getVerifierKeys: (impureCircuitIds) =>
+          Effect.forEach(
+            impureCircuitIds,
+            (impureCircuitId) =>
+              getVerifierKey(impureCircuitId).pipe(
+                Effect.map((verifierKey) => [impureCircuitId, verifierKey] as const)
+              ),
+            { concurrency: 'unbounded', discard: false }
+          )
+      } satisfies ZKConfiguration.ZKConfiguration.Reader<C, PS>
+    });
+
+const makeAdaptedRuntimeLayer = (zkConfigProvider: ZKConfigProvider<string>, configMap: Map<string, string>) =>
+  Layer.mergeAll(
+    Layer.succeed(
+      ZKConfiguration.ZKConfiguration,
+      ZKConfiguration.ZKConfiguration.of({
+        createReader: makeAdaptedReader(zkConfigProvider)
+      })
+    ),
+    Configuration.layer
+  ).pipe(
+    Layer.provide(
+      Layer.setConfigProvider(ConfigProvider.fromMap(configMap, { pathDelim: '_' }).pipe(ConfigProvider.constantCase))
+    )
+  );
+
+/**
+ * Options for use when constructing a Compact.js contract executable runtime.
+ */
+export type ContractExecutableRuntimeOptions = {
+  /** The current user's ZSwap public key. */
+  readonly coinPublicKey: string;
+
+  /** The signing key to add as the to-be-deployed contract's maintenance authority. */
+  readonly signingKey?: string;
+}
+
+/**
+ * Constructs an Effect managed runtime configured to execute contract executables.
+ *
+ * @param zkConfigProvider The {@link ZKConfigProvider} that is to be adapted.
+ * @param options Values that will be mapped into and made available within the constructed runtime.
+ * @returns An Effect {@link ManagedRuntime} that can be used to execute {@link ContractExecutable} instances.
+ */
+export const makeContractExecutableRuntime:
+  (zkConfigProvider: ZKConfigProvider<string>, options: ContractExecutableRuntimeOptions) => ManagedRuntime<ContractExecutable.ContractExecutable.Context, ConfigError.ConfigError> =
+  (zkConfigProvider, options) => {
+    let config: readonly [string, string][] = [['KEYS_COIN_PUBLIC', options.coinPublicKey]];
+    if (options.signingKey) {
+      config = config.concat([['KEYS_SIGNING', options.signingKey]])
+    }
+    return ContractExecutableRuntime.make(makeAdaptedRuntimeLayer(zkConfigProvider, new Map(config)));
+  };
+
 // import type {
 //   CircuitContext,
 //   CircuitResults,

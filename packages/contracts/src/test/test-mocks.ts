@@ -13,10 +13,11 @@
  * limitations under the License.
  */
 
-import { type Contract } from '@midnight-ntwrk/compact-js';
+import { CompiledContract,type Contract } from '@midnight-ntwrk/compact-js';
 import {
   ChargedState,
   type ContractState,
+  emptyZswapLocalState,
   type Op,
   sampleSigningKey,
   type SigningKey,
@@ -51,9 +52,12 @@ import {
 import {
   type FinalizedTxData,
   type PrivateStateId,
+  type ProverKey,
   SucceedEntirely,
   type TxStatus,
-  type VerifierKey
+  type VerifierKey,
+  ZKConfigProvider,
+  type ZKIR
 } from '@midnight-ntwrk/midnight-js-types';
 import { vi } from 'vitest';
 
@@ -111,17 +115,38 @@ export const createMockZswapLocalState = (): ZswapLocalState => ({
   inputs: []
 });
 
-export const createMockContract = (): Contract<undefined> => ({
-  initialState: vi.fn().mockReturnValue({
-    currentContractState: createMockContractState(),
-    currentPrivateState: { test: 'mock-private-state' },
-    currentZswapLocalState: new Uint8Array(0)
-  }),
-  impureCircuits: {
-    testCircuit: vi.fn()
-  },
-  witnesses: {} as Witnesses<undefined>
-});
+const createMockContractClass = () => {
+  const testCircuit = vi.fn();
+  return class {
+    constructor(witnesses: Contract.Witnesses<any>) { // eslint-disable-line @typescript-eslint/no-explicit-any
+      this.witnesses = witnesses;
+      this.initialState = vi.fn().mockImplementation((ctx) => ({
+        currentContractState: createMockContractState(),
+        currentPrivateState: { test: 'mock-private-state' },
+        currentZswapLocalState: emptyZswapLocalState(ctx.initialZswapLocalState.coinPublicKey)
+      }));
+      this.circuits = {
+        testCircuit
+      };
+      this.impureCircuits = {
+        testCircuit
+      }
+    }
+    initialState;
+    circuits;
+    impureCircuits;
+    witnesses;
+  }
+}
+
+export const createMockContract = (): Contract<undefined> =>
+  new (createMockContractClass())({});
+
+export const createMockCompiledContract = (): CompiledContract.CompiledContract<any, unknown, never> => { // eslint-disable-line @typescript-eslint/no-explicit-any
+  return CompiledContract.make('test', createMockContractClass()).pipe(
+    CompiledContract.withVacantWitnesses
+  ) as unknown as CompiledContract.CompiledContract<any, unknown, never>; // eslint-disable-line @typescript-eslint/no-explicit-any
+}
 
 export const createMockUnprovenTx = (): UnprovenTransaction => ({
   eraseProofs: vi.fn(),
@@ -302,3 +327,18 @@ export const createMockConstructorResult = (): ContractConstructorResult<Contrac
 export const createMockVerifierKeys = (): [string, VerifierKey][] => [
   ['testCircuit', new Uint8Array(32) as VerifierKey]
 ];
+
+export const createMockZKConfigProvider = (): ZKConfigProvider<string> => {
+  const verifierKeys = createMockVerifierKeys();
+  return new (class extends ZKConfigProvider<string> {
+    getZKIR(_: string): Promise<ZKIR> {
+      throw new Error('Method not implemented.');
+    }
+    getProverKey(_: string): Promise<ProverKey> {
+      throw new Error('Method not implemented.');
+    }
+    getVerifierKey(_: string): Promise<VerifierKey> {
+      return Promise.resolve(verifierKeys[0][1]);
+    }
+  })();
+}

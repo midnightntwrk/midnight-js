@@ -16,10 +16,10 @@
 import { type CompiledContract, type Contract } from '@midnight-ntwrk/compact-js';
 import {
   type CoinPublicKey,
-  type ConstructorContext,
+  // type ConstructorContext,
   type ContractState,
-  decodeZswapLocalState,
-  emptyZswapLocalState,
+  // decodeZswapLocalState,
+  // emptyZswapLocalState,
   type ZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
 
@@ -109,20 +109,20 @@ export type ContractConstructorResult<C extends Contract.Any> = {
  *
  * @param options Configuration.
  */
-export const callContractConstructor = <C extends Contract.Any>(
-  options: ContractConstructorOptions<C>
-): ContractConstructorResult<C> => {
-  const constructorResult = options.contract.initialState(
-    {
-      initialPrivateState: 'initialPrivateState' in options ? options.initialPrivateState : undefined,
-      // TODO: IMPORTANT - consult
-      initialZswapLocalState: emptyZswapLocalState(options.coinPublicKey)
-    } as ConstructorContext<C>,
-    ...('args' in options ? options.args : [])
-  );
-  return {
-    nextContractState: constructorResult.currentContractState,
-    nextPrivateState: constructorResult.currentPrivateState,
-    nextZswapLocalState: decodeZswapLocalState(constructorResult.currentZswapLocalState)
-  };
-};
+// export const callContractConstructor = <C extends Contract.Any>(
+//   options: ContractConstructorOptions<C>
+// ): ContractConstructorResult<C> => {
+//   const constructorResult = options.contract.initialState(
+//     {
+//       initialPrivateState: 'initialPrivateState' in options ? options.initialPrivateState : undefined,
+//       // TODO: IMPORTANT - consult
+//       initialZswapLocalState: emptyZswapLocalState(options.coinPublicKey)
+//     } as ConstructorContext<C>,
+//     ...('args' in options ? options.args : [])
+//   );
+//   return {
+//     nextContractState: constructorResult.currentContractState,
+//     nextPrivateState: constructorResult.currentPrivateState,
+//     nextZswapLocalState: decodeZswapLocalState(constructorResult.currentZswapLocalState)
+//   };
+// };

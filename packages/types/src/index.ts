@@ -26,6 +26,7 @@
 //   Witness,
 //   Witnesses
 // } from './contract';
+export * from './contract';
 export * from './errors';
 export * from './logger-provider';
 export * from './midnight-provider';
