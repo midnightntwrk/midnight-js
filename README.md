@@ -202,6 +202,10 @@ The following is a sequence diagram for the construction of a typical call trans
   for circuit execution.
 - Private state - The state updated by a witness and stored on the end user's device.
 
+## Security
+
+For information about the security model, threat landscape, and best practices, see the [Threat Model](./docs/THREAT_MODEL.md).
+
 ## Package structure
 
 This is a yarn [workspaces](https://yarnpkg.com/features/workspaces/) project. All packages live in the [`packages`](packages) directory:
