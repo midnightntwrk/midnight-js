@@ -143,5 +143,5 @@ export const submitTxAsync = async <C extends Contract, ICK extends ImpureCircui
   providers: SubmitTxProviders<C, ICK>,
   options: SubmitTxOptions<ICK>
 ): Promise<string> => {
-  return await submitTxCore(providers, options);
+  return submitTxCore(providers, options);
 };
