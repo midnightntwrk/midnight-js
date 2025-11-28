@@ -107,14 +107,14 @@ export function createUnprovenDeployTxFromVerifierKeys<C extends Contract<undefi
   coinPublicKey: CoinPublicKey,
   options: DeployTxOptionsBase<C>,
   encryptionPublicKey: EncPublicKey
-): UnsubmittedDeployTxData<C>;
+): Promise<UnsubmittedDeployTxData<C>>;
 
 export function createUnprovenDeployTxFromVerifierKeys<C extends Contract.Any>(
   zkConfigProvider: ZKConfigProvider<string>,
   coinPublicKey: CoinPublicKey,
   options: DeployTxOptionsWithPrivateState<C>,
   encryptionPublicKey: EncPublicKey
-): UnsubmittedDeployTxData<C>;
+): Promise<UnsubmittedDeployTxData<C>>;
 
 /**
  * Calls a contract constructor and creates an unbalanced, unproven, unsubmitted, deploy transaction
@@ -127,12 +127,12 @@ export function createUnprovenDeployTxFromVerifierKeys<C extends Contract.Any>(
  * @returns Data produced by the contract constructor call and an unproven deployment transaction
  *          assembled from the contract constructor result.
  */
-export function createUnprovenDeployTxFromVerifierKeys<C extends Contract.Any>(
+export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.Any>(
   zkConfigProvider: ZKConfigProvider<string>,
   coinPublicKey: CoinPublicKey,
   options: UnprovenDeployTxOptions<C>,
   encryptionPublicKey: EncPublicKey
-): UnsubmittedDeployTxData<C> {
+): Promise<UnsubmittedDeployTxData<C>> {
   const contractExec = ContractExecutable.make(options.compiledContract);
   const contractRuntime = makeContractExecutableRuntime(zkConfigProvider, {
     coinPublicKey: coinPublicKey,
@@ -147,7 +147,7 @@ export function createUnprovenDeployTxFromVerifierKeys<C extends Contract.Any>(
       signingKey,
       zswapLocalState
     }
-  } = contractRuntime.runSync(contractExec.initialize(initialPrivateState, ...args));
+  } = await contractRuntime.runPromise(contractExec.initialize(initialPrivateState, ...args));
   const [contractAddress, initialContractState, unprovenTx] = createUnprovenLedgerDeployTx(
     contractState,
     zswapLocalState,

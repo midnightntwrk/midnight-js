@@ -18,12 +18,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { createUnprovenDeployTx, createUnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
 import {
   createMockCompiledContract,
-  // createMockConstructorResult,
   createMockContract,
   createMockEncryptionPublicKey,
   createMockProviders,
   createMockSigningKey,
-  createMockVerifierKeys,
   createMockZKConfigProvider
 } from './test-mocks';
 
@@ -67,7 +65,7 @@ describe('unproven-deploy-tx', () => {
         args: ['deploy-arg']
       };
 
-      const result = createUnprovenDeployTxFromVerifierKeys(
+      const result = await createUnprovenDeployTxFromVerifierKeys(
         createMockZKConfigProvider(),
         VALID_COIN_PUBLIC_KEY,
         options,
@@ -93,7 +91,7 @@ describe('unproven-deploy-tx', () => {
       // mockCallContractConstructor.mockReturnValue(constructorResult);
 
       // const verifierKeys = createMockVerifierKeys();
-      const coinPublicKey = 'test-coin-public-key';
+      // const coinPublicKey = 'test-coin-public-key';
       const encryptionPublicKey = createMockEncryptionPublicKey();
 
       const options = {
@@ -104,9 +102,9 @@ describe('unproven-deploy-tx', () => {
         args: ['deploy-arg']
       };
 
-      const result = createUnprovenDeployTxFromVerifierKeys(
+      const result = await createUnprovenDeployTxFromVerifierKeys(
         createMockZKConfigProvider(),
-        coinPublicKey,
+        VALID_COIN_PUBLIC_KEY,
         options,
         encryptionPublicKey
       );
@@ -130,11 +128,11 @@ describe('unproven-deploy-tx', () => {
   describe('createUnprovenDeployTx', () => {
     it('should create unproven deploy tx without private state', async () => {
       const providers = {
-        zkConfigProvider: createMockProviders().zkConfigProvider,
+        zkConfigProvider: createMockZKConfigProvider(),
         walletProvider: createMockProviders().walletProvider
       };
 
-      vi.mocked(providers.zkConfigProvider.getVerifierKeys).mockResolvedValue(createMockVerifierKeys());
+      vi.spyOn(providers.zkConfigProvider, 'getVerifierKey');
 
       const options = {
         contract: createMockContract(),
@@ -146,7 +144,7 @@ describe('unproven-deploy-tx', () => {
       const result = await createUnprovenDeployTx(providers, options);
 
       expect(result).toBeDefined();
-      expect(providers.zkConfigProvider.getVerifierKeys).toHaveBeenCalledWith(['testCircuit']);
+      expect(providers.zkConfigProvider.getVerifierKey).toHaveBeenCalledWith('testCircuit');
     });
 
     it('should create unproven deploy tx with private state', async () => {
@@ -155,7 +153,7 @@ describe('unproven-deploy-tx', () => {
         walletProvider: createMockProviders().walletProvider
       };
 
-      vi.mocked(providers.zkConfigProvider.getVerifierKeys).mockResolvedValue(createMockVerifierKeys());
+      vi.spyOn(providers.zkConfigProvider, 'getVerifierKey');
 
       const options = {
         contract: createMockContract(),
@@ -168,7 +166,7 @@ describe('unproven-deploy-tx', () => {
       const result = await createUnprovenDeployTx(providers, options);
 
       expect(result).toBeDefined();
-      expect(providers.zkConfigProvider.getVerifierKeys).toHaveBeenCalledWith(['testCircuit']);
+      expect(providers.zkConfigProvider.getVerifierKey).toHaveBeenCalledWith('testCircuit');
     });
   });
 });
