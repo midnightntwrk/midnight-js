@@ -30,7 +30,7 @@ export type ContractConstructorOptionsBase<C extends Contract.Any> = {
   /**
    * The contract defining the circuit to call.
    */
-  readonly contract: C;
+  // readonly contract: C;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   readonly compiledContract: CompiledContract.CompiledContract<C, any>;

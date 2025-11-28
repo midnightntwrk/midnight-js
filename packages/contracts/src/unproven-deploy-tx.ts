@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-import { type Contract, ContractExecutable } from '@midnight-ntwrk/compact-js';
+import { ContractExecutable } from '@midnight-ntwrk/compact-js';
+import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
 import type { CoinPublicKey,SigningKey } from '@midnight-ntwrk/compact-runtime';
 import type { EncPublicKey } from '@midnight-ntwrk/ledger-v6';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
@@ -34,7 +35,7 @@ import { createUnprovenLedgerDeployTx, zswapStateToNewCoins } from './utils';
 /**
  * Base type for deploy transaction configuration.
  */
-export type DeployTxOptionsBase<C extends Contract.Any> = ContractConstructorOptionsWithArguments<C> & {
+export type DeployTxOptionsBase<C extends Contract.Contract.Any> = ContractConstructorOptionsWithArguments<C> & {
   /**
    * The signing key to add as the to-be-deployed contract's maintenance authority.
    */
@@ -48,11 +49,11 @@ export type DeployTxOptionsBase<C extends Contract.Any> = ContractConstructorOpt
  * to save private state (and therefore doesn't need a private state ID) but does need to supply an
  * initial private state to run the contract constructor against.
  */
-export type DeployTxOptionsWithPrivateState<C extends Contract.Any> = DeployTxOptionsBase<C> & {
+export type DeployTxOptionsWithPrivateState<C extends Contract.Contract.Any> = DeployTxOptionsBase<C> & {
   /**
    * The private state to run the contract constructor against.
    */
-  readonly initialPrivateState: Contract.PrivateState<C>;
+  readonly initialPrivateState: Contract.Contract.PrivateState<C>;
 };
 
 /**
@@ -60,7 +61,7 @@ export type DeployTxOptionsWithPrivateState<C extends Contract.Any> = DeployTxOp
  * configuration is used when a deployment transaction is created and an initial private
  * state needs to be stored, as is the case in {@link submitDeployTx}.
  */
-export type DeployTxOptionsWithPrivateStateId<C extends Contract.Any> = DeployTxOptionsWithPrivateState<C> & {
+export type DeployTxOptionsWithPrivateStateId<C extends Contract.Contract.Any> = DeployTxOptionsWithPrivateState<C> & {
   /**
    * The identifier for the private state of the contract.
    */
@@ -70,7 +71,7 @@ export type DeployTxOptionsWithPrivateStateId<C extends Contract.Any> = DeployTx
 /**
  * Configuration for creating unproven deploy transactions.
  */
-export type UnprovenDeployTxOptions<C extends Contract.Any> = DeployTxOptionsBase<C> | DeployTxOptionsWithPrivateState<C>;
+export type UnprovenDeployTxOptions<C extends Contract.Contract.Any> = DeployTxOptionsBase<C> | DeployTxOptionsWithPrivateState<C>;
 
 // const createContractConstructorOptions = <C extends Contract.Any>(
 //   deployTxOptions: DeployTxOptions<C>,
@@ -102,14 +103,14 @@ export type UnprovenDeployTxOptions<C extends Contract.Any> = DeployTxOptionsBas
 
 
 
-export function createUnprovenDeployTxFromVerifierKeys<C extends Contract<undefined>>(
+export function createUnprovenDeployTxFromVerifierKeys<C extends Contract.Contract<undefined>>(
   zkConfigProvider: ZKConfigProvider<string>,
   coinPublicKey: CoinPublicKey,
   options: DeployTxOptionsBase<C>,
   encryptionPublicKey: EncPublicKey
 ): Promise<UnsubmittedDeployTxData<C>>;
 
-export function createUnprovenDeployTxFromVerifierKeys<C extends Contract.Any>(
+export function createUnprovenDeployTxFromVerifierKeys<C extends Contract.Contract.Any>(
   zkConfigProvider: ZKConfigProvider<string>,
   coinPublicKey: CoinPublicKey,
   options: DeployTxOptionsWithPrivateState<C>,
@@ -127,7 +128,7 @@ export function createUnprovenDeployTxFromVerifierKeys<C extends Contract.Any>(
  * @returns Data produced by the contract constructor call and an unproven deployment transaction
  *          assembled from the contract constructor result.
  */
-export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.Any>(
+export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.Contract.Any>(
   zkConfigProvider: ZKConfigProvider<string>,
   coinPublicKey: CoinPublicKey,
   options: UnprovenDeployTxOptions<C>,
@@ -139,7 +140,7 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
     signingKey: options.signingKey
   });
   const initialPrivateState = 'initialPrivateState' in options ? options.initialPrivateState : undefined;
-  const args = ('args' in options ? options.args : []) as Contract.InitializeParameters<C>;
+  const args = ('args' in options ? options.args : []) as Contract.Contract.InitializeParameters<C>;
   const {
     public: { contractState },
     private: {
@@ -173,17 +174,17 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
  * Providers needed to create an unproven deployment transactions, just the ZK artifact
  * provider and a wallet.
  */
-export type UnprovenDeployTxProviders<C extends Contract.Any> = Pick<
+export type UnprovenDeployTxProviders<C extends Contract.Contract.Any> = Pick<
   ContractProviders<C>,
   'zkConfigProvider' | 'walletProvider'
 >;
 
-export async function createUnprovenDeployTx<C extends Contract<undefined>>(
+export async function createUnprovenDeployTx<C extends Contract.Contract<undefined>>(
   providers: UnprovenDeployTxProviders<C>,
   options: DeployTxOptionsBase<C>
 ): Promise<UnsubmittedDeployTxData<C>>;
 
-export async function createUnprovenDeployTx<C extends Contract.Any>(
+export async function createUnprovenDeployTx<C extends Contract.Contract.Any>(
   providers: UnprovenDeployTxProviders<C>,
   options: DeployTxOptionsWithPrivateState<C>
 ): Promise<UnsubmittedDeployTxData<C>>;
@@ -198,7 +199,7 @@ export async function createUnprovenDeployTx<C extends Contract.Any>(
  * @returns A promise that contains all data produced by the constructor call and an unproven
  *          transaction assembled from the constructor result.
  */
-export async function createUnprovenDeployTx<C extends Contract.Any>(
+export async function createUnprovenDeployTx<C extends Contract.Contract.Any>(
   providers: UnprovenDeployTxProviders<C>,
   options: UnprovenDeployTxOptions<C>
 ): Promise<UnsubmittedDeployTxData<C>> {

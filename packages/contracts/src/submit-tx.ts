@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { type Contract } from '@midnight-ntwrk/compact-js';
+import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
 import type { ShieldedCoinInfo } from '@midnight-ntwrk/compact-runtime';
 import {
   type FinalizedTxData,
@@ -29,7 +29,7 @@ declare const __DEBUG__: boolean;
 /**
  * Configuration for {@link submitTx}.
  */
-export type SubmitTxOptions<ICK extends Contract.ImpureCircuitId<Contract.Any>> = {
+export type SubmitTxOptions<ICK extends Contract.Contract.ImpureCircuitId<Contract.Contract.Any>> = {
   /**
    * The transaction to prove, balance, and submit.
    */
@@ -50,7 +50,7 @@ export type SubmitTxOptions<ICK extends Contract.ImpureCircuitId<Contract.Any>> 
  * Providers required to submit an unproven deployment transaction. Since {@link submitTx} doesn't
  * manipulate private state, the private state provider can be omitted.
  */
-export type SubmitTxProviders<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = Omit<
+export type SubmitTxProviders<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>> = Omit<
   ContractProviders<C, ICK>,
   'privateStateProvider'
 >;
@@ -172,7 +172,7 @@ async function submitTxCore<C extends Contract, ICK extends ImpureCircuitId<C>>(
  * @returns A promise that resolves with the finalized transaction data for the invocation,
  *          or rejects if an error occurs along the way.
  */
-export const submitTx = async <C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
+export const submitTx = async <C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
   providers: SubmitTxProviders<C, ICK>,
   options: SubmitTxOptions<ICK>
 ): Promise<FinalizedTxData> => {

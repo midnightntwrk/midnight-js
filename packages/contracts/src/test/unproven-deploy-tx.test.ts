@@ -95,7 +95,7 @@ describe('unproven-deploy-tx', () => {
       const encryptionPublicKey = createMockEncryptionPublicKey();
 
       const options = {
-        contract: createMockContract(),
+        // contract: createMockContract(),
         compiledContract: createMockCompiledContract(),
         signingKey: createMockSigningKey(),
         initialPrivateState: { test: 'initial-private-state' },
