@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { type CompiledContract, getImpureCircuitIds } from '@midnight-ntwrk/compact-js';
+import { type CompiledContract, ContractExecutable } from '@midnight-ntwrk/compact-js';
 import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
 import type { SigningKey } from '@midnight-ntwrk/compact-runtime';
 import type { ContractAddress } from '@midnight-ntwrk/ledger-v6';
@@ -74,7 +74,7 @@ export const createCircuitCallTxInterface = <C extends Contract.Contract.Any>(
   privateStateId: PrivateStateId | undefined
 ): CircuitCallTxInterface<C> => {
   assertIsContractAddress(contractAddress);
-  return getImpureCircuitIds(compiledContract).reduce(
+  return ContractExecutable.make(compiledContract).getImpureCircuitIds().reduce(
     (acc, circuitId) => ({
       ...acc,
       [circuitId]: (...args: Contract.Contract.CircuitParameters<C, typeof circuitId>) =>
@@ -146,7 +146,7 @@ export const createCircuitMaintenanceTxInterfaces = <C extends Contract.Contract
   contractAddress: ContractAddress
 ): CircuitMaintenanceTxInterfaces<C> => {
   assertIsContractAddress(contractAddress);
-  return getImpureCircuitIds(compiledContract).reduce(
+  return ContractExecutable.make(compiledContract).getImpureCircuitIds().reduce(
     (acc, circuitId) => ({
       ...acc,
       [circuitId]: createCircuitMaintenanceTxInterface(providers, circuitId, contractAddress)

@@ -17,29 +17,17 @@ import type { CompiledContract  } from '@midnight-ntwrk/compact-js';
 import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
 import {
   type AlignedValue,
-  type CircuitContext,
   type CoinPublicKey,
   type ContractAddress,
   type ContractState,
-  CostModel,
-  decodeZswapLocalState,
-  emptyZswapLocalState,
   type Op,
-  QueryContext,
   type StateValue,
   type ZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
 import {
-  LedgerParameters,
   type PartitionedTranscript,
-  partitionTranscripts,
-  PreTranscript,
   type ZswapChainState
 } from '@midnight-ntwrk/ledger-v6';
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { assertDefined, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
-
-import { toLedgerQueryContext } from './utils';
 
 /**
  * Describes the target of a circuit invocation.
@@ -48,10 +36,7 @@ export type CallOptionsBase<C extends Contract.Contract.Any, ICK extends Contrac
   /**
    * The contract defining the circuit to call.
    */
-  readonly contract: C;
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  readonly compiledContract: CompiledContract.CompiledContract<C, any>;
+  readonly compiledContract: CompiledContract.CompiledContract<C, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   
   /**
    * The identifier of the circuit to call.
@@ -187,74 +172,3 @@ export type CallResult<C extends Contract.Contract.Any, ICK extends Contract.Con
    */
   readonly private: CallResultPrivate<C, ICK>;
 };
-
-// const partitionTranscript = (
-//   initialTxContext: QueryContext,
-//   finalTxContext: QueryContext,
-//   publicTranscript: Op<AlignedValue>[]
-// ): PartitionedTranscript => {
-//   const partitionedTranscripts = partitionTranscripts(
-//     [
-//       new PreTranscript(
-//         Array.from(finalTxContext.comIndices).reduce(
-//           (queryContext, entry) => queryContext.insertCommitment(...entry),
-//           toLedgerQueryContext(initialTxContext)
-//         ),
-//         publicTranscript
-//       )
-//     ],
-//     LedgerParameters.initialParameters()
-//   );
-//   if (partitionedTranscripts.length !== 1) {
-//     throw new Error(`Expected one transcript partition pair, received: ${partitionedTranscripts.length}`);
-//   }
-//   return partitionedTranscripts[0]!;
-// };
-
-// /**
-//  * Calls a circuit in the given contract according to the given configuration.
-//  *
-//  * @param options Configuration.
-//  */
-// export const call = <C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
-//   options: CallOptions<C, ICK>
-// ): CallResult<C, ICK> => {
-//   const { contract, circuitId, contractAddress, coinPublicKey, initialContractState } = options;
-//   const circuit = contract.impureCircuits[circuitId];
-//   assertDefined(circuit, `Circuit '${circuitId}' is not defined`);
-//   const initialTxContext = new QueryContext(initialContractState.data, contractAddress);
-//   initialTxContext.block = {
-//     ...initialTxContext.block,
-//     secondsSinceEpoch: BigInt(Math.floor(Date.now() / 1_000)),
-//   }
-//   const { result, context, proofData } = circuit(
-//     {
-//       //TODO: validate this originalState
-//       originalState: initialContractState,
-//       currentPrivateState: 'initialPrivateState' in options ? options.initialPrivateState : undefined,
-//       currentQueryContext: initialTxContext,
-//       currentZswapLocalState: emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, getNetworkId())),
-//       costModel: CostModel.initialCostModel(),
-//     } as CircuitContext<C>,
-//     ...('args' in options ? options.args : [])
-//   );
-//   return {
-//     public: {
-//       nextContractState: context.currentQueryContext.state.state,
-//       publicTranscript: proofData.publicTranscript,
-//       partitionedTranscript: partitionTranscript(
-//         initialTxContext,
-//         context.currentQueryContext,
-//         proofData.publicTranscript
-//       )
-//     },
-//     private: {
-//       result,
-//       input: proofData.input,
-//       output: proofData.output,
-//       privateTranscriptOutputs: proofData.privateTranscriptOutputs,
-//       nextPrivateState: context.currentPrivateState,
-//       nextZswapLocalState: decodeZswapLocalState(context.currentZswapLocalState)
-//     }
-//   };
-// };

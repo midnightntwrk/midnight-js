@@ -16,10 +16,7 @@
 import { type CompiledContract, type Contract } from '@midnight-ntwrk/compact-js';
 import {
   type CoinPublicKey,
-  // type ConstructorContext,
   type ContractState,
-  // decodeZswapLocalState,
-  // emptyZswapLocalState,
   type ZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
 
@@ -28,12 +25,9 @@ import {
  */
 export type ContractConstructorOptionsBase<C extends Contract.Any> = {
   /**
-   * The contract defining the circuit to call.
+   * The compiled contract defining the circuit to call.
    */
-  // readonly contract: C;
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  readonly compiledContract: CompiledContract.CompiledContract<C, any>;
+  readonly compiledContract: CompiledContract.CompiledContract<C, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 /**
@@ -103,26 +97,3 @@ export type ContractConstructorResult<C extends Contract.Any> = {
    */
   readonly nextZswapLocalState: ZswapLocalState;
 }
-
-/**
- * Calls the constructor of the given contract according to the given configuration.
- *
- * @param options Configuration.
- */
-// export const callContractConstructor = <C extends Contract.Any>(
-//   options: ContractConstructorOptions<C>
-// ): ContractConstructorResult<C> => {
-//   const constructorResult = options.contract.initialState(
-//     {
-//       initialPrivateState: 'initialPrivateState' in options ? options.initialPrivateState : undefined,
-//       // TODO: IMPORTANT - consult
-//       initialZswapLocalState: emptyZswapLocalState(options.coinPublicKey)
-//     } as ConstructorContext<C>,
-//     ...('args' in options ? options.args : [])
-//   );
-//   return {
-//     nextContractState: constructorResult.currentContractState,
-//     nextPrivateState: constructorResult.currentPrivateState,
-//     nextZswapLocalState: decodeZswapLocalState(constructorResult.currentZswapLocalState)
-//   };
-// };

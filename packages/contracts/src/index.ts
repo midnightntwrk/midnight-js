@@ -26,7 +26,6 @@ export {
   CallResultPublic
 } from './call';
 export {
-  // callContractConstructor,
   ContractConstructorOptions,
   ContractConstructorOptionsBase,
   ContractConstructorOptionsProviderDataDependencies,

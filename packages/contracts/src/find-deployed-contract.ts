@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { type Contract, getImpureCircuitIds } from '@midnight-ntwrk/compact-js';
+import { type CompiledContract, type Contract, ContractExecutable } from '@midnight-ntwrk/compact-js';
 import {
   type ContractAddress,
   type ContractState,
@@ -38,9 +38,9 @@ import {
 } from './tx-interfaces';
 import type { FinalizedDeployTxDataBase } from './tx-model';
 
-const setOrGetInitialSigningKey = async (
+const setOrGetInitialSigningKey = async <C extends Contract.Any>(
   privateStateProvider: PrivateStateProvider,
-  options: FindDeployedContractOptions<Contract.Any>
+  options: FindDeployedContractOptions<C>
 ): Promise<SigningKey> => {
   if (options.signingKey) {
     await privateStateProvider.setSigningKey(options.contractAddress, options.signingKey);
@@ -136,9 +136,10 @@ export const verifyContractState = (
  */
 export type FindDeployedContractOptionsBase<C extends Contract.Any> = {
   /**
-   * The contract to use to execute circuits.
+   * The compiled contract to use to execute circuits.
    */
-  readonly contract: C;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  readonly compiledContract: CompiledContract.CompiledContract<C, any>;
   /**
    * The address of a previously deployed contract.
    */
@@ -252,7 +253,7 @@ export async function findDeployedContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
   options: FindDeployedContractOptions<C>
 ): Promise<FoundContract<C>> {
-  const { contract, contractAddress } = options;
+  const { compiledContract, contractAddress } = options;
   assertIsContractAddress(contractAddress);
 
   const finalizedTxData = await providers.publicDataProvider.watchForDeployTxData(contractAddress);
@@ -263,7 +264,9 @@ export async function findDeployedContract<C extends Contract.Any>(
   const currentContractState = await providers.publicDataProvider.queryContractState(contractAddress);
   assertDefined(currentContractState, `No contract deployed at contract address '${contractAddress}'`);
 
-  const verifierKeys = await providers.zkConfigProvider.getVerifierKeys(getImpureCircuitIds(contract));
+  const verifierKeys = await providers.zkConfigProvider.getVerifierKeys(
+    ContractExecutable.make(compiledContract).getImpureCircuitIds()
+  );
   verifyContractState(verifierKeys, currentContractState);
 
   const signingKey = await setOrGetInitialSigningKey(providers.privateStateProvider, options);
@@ -283,11 +286,11 @@ export async function findDeployedContract<C extends Contract.Any>(
     },
     callTx: createCircuitCallTxInterface(
       providers,
-      contract,
+      compiledContract,
       contractAddress,
       'privateStateId' in options ? options.privateStateId : undefined
     ),
-    circuitMaintenanceTx: createCircuitMaintenanceTxInterfaces(providers, contract, contractAddress),
+    circuitMaintenanceTx: createCircuitMaintenanceTxInterfaces(providers, compiledContract, contractAddress),
     contractMaintenanceTx: createContractMaintenanceTxInterface(providers, contractAddress)
   };
 }

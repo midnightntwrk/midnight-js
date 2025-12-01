@@ -65,9 +65,14 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.C
   walletCoinPublicKey: CoinPublicKey,
   walletEncryptionPublicKey: EncPublicKey
 ): Promise<UnsubmittedCallTxData<C, ICK>> {
-  const { contract, compiledContract, circuitId, contractAddress, coinPublicKey, initialContractState, initialZswapChainState } = options;
+  const { compiledContract, circuitId, contractAddress, coinPublicKey, initialContractState, initialZswapChainState } = options;
   assertIsContractAddress(contractAddress);
-  assertDefined(contract.impureCircuits[circuitId], `Circuit '${circuitId}' is undefined`);
+  assertDefined(
+    ContractExecutable.make(options.compiledContract)
+      .getImpureCircuitIds()
+      .find((a) => a as unknown as ICK === options.circuitId),
+    `Circuit '${options.circuitId}' is undefined`
+  );
 
   const contractExec = ContractExecutable.make(compiledContract);
   const contractRuntime = makeContractExecutableRuntime(zkConfigProvider, {
@@ -172,7 +177,6 @@ const createCallOptions = <C extends Contract.Contract.Any, ICK extends Contract
   initialPrivateState?: Contract.Contract.PrivateState<C>
 ): CallOptions<C, ICK> => {
   const callOptionsBase = {
-    contract: callTxOptions.contract,
     compiledContract: callTxOptions.compiledContract,
     contractAddress: callTxOptions.contractAddress,
     circuitId: callTxOptions.circuitId
@@ -248,7 +252,12 @@ export async function createUnprovenCallTx<C extends Contract.Contract.Any, ICK 
   options: CallTxOptions<C, ICK>
 ): Promise<UnsubmittedCallTxData<C, ICK>> {
   assertIsContractAddress(options.contractAddress);
-  assertDefined(options.contract.impureCircuits[options.circuitId], `Circuit '${options.circuitId}' is undefined`);
+  assertDefined(
+    ContractExecutable.make(options.compiledContract)
+      .getImpureCircuitIds()
+      .find((a) => a as unknown as ICK === options.circuitId),
+    `Circuit '${options.circuitId}' is undefined`
+  );
 
   const hasPrivateStateProvider = 'privateStateProvider' in providers;
   const hasPrivateStateId = 'privateStateId' in options;

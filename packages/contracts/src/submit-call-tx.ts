@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { ContractExecutable } from '@midnight-ntwrk/compact-js';
 import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
@@ -82,7 +83,12 @@ export async function submitCallTx<C extends Contract.Contract.Any, ICK extends 
   options: CallTxOptions<C, ICK>
 ): Promise<FinalizedCallTxData<C, ICK>> {
   assertIsContractAddress(options.contractAddress);
-  assertDefined(options.contract.impureCircuits[options.circuitId], `Circuit '${options.circuitId}' is undefined`);
+  assertDefined(
+    ContractExecutable.make(options.compiledContract)
+      .getImpureCircuitIds()
+      .find((circuitId) => circuitId === options.circuitId),
+    `Circuit '${options.circuitId}' is undefined`
+  );
 
   const hasPrivateStateProvider = 'privateStateProvider' in providers;
   const hasPrivateStateId = 'privateStateId' in options;
