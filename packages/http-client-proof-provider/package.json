@@ -31,7 +31,6 @@
     "dist/"
   ],
   "dependencies": {
-    "@midnight-ntwrk/midnight-js-compact": "workspace:*",
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*",
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
@@ -41,6 +40,7 @@
     "lodash": "^4.17.21"
   },
   "devDependencies": {
+    "@midnight-ntwrk/midnight-js-compact": "workspace:*",
     "@types/lodash": "^4.17.19"
   },
   "stableVersion": "3.0.0"
