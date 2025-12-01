@@ -4,7 +4,10 @@
     "rootDir": "./src",
     "outDir": "./dist",
     "esModuleInterop": true,
-    "strictPropertyInitialization": false
+    "strictPropertyInitialization": false,
+    "moduleResolution": "nodenext",
+    "module": "NodeNext",
+    "types": ["node"]
   },
   "include": [
     "./src/**/*.mts",

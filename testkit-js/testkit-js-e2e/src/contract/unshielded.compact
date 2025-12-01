@@ -57,3 +57,9 @@ export circuit mintToUserAddress(amount: Uint<64>, user_addr: UserAddress): Byte
 
     return color;
 }
+
+export circuit mintNativeTokens(amount: Uint<64>): Uint<128> {
+    const domain = pad(32, "simple:shielded:native");
+    kernel.mintShielded(disclose(domain), disclose(amount));
+    return disclose(amount);
+}

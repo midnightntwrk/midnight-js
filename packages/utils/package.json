@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-utils",
-  "version": "3.0.0-alpha.2",
+  "version": "3.0.0-alpha.7",
   "description": "Shared utilities for MidnightJS modules",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -31,6 +31,9 @@
   "dependencies": {
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
     "@scure/base": "^2.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0"
   },
   "stableVersion": "3.0.0"
 }

@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # ratchet:actions/checkout@v5
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # ratchet:actions/checkout@v5
 
       - name: Load environment variables
         run: |
@@ -111,8 +111,11 @@ jobs:
 
       - name: Aggregate coverage reports
         run: |
-          npx --yes istanbul-merge --out coverage.json $(find . -type f -name 'coverage-final.json' | sort -u | tr '\n' ' ')
-          npx --yes istanbul report --include coverage.json --dir coverage html
+          mkdir -p .nyc_output
+          find . -type f -name 'coverage-final.json' -exec cp {} .nyc_output/ \;
+          npx --yes nyc merge .nyc_output coverage.json
+          npx --yes nyc report --reporter=html --report-dir=coverage --temp-dir=.nyc_output
+          rm -rf .nyc_output
 
       - name: Merge report as ZIP
         run: |
@@ -148,7 +151,7 @@ jobs:
     needs: ci
     if: inputs.should_prerelease == 'true'
     steps:
-      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # ratchet:actions/checkout@v5
+      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # ratchet:actions/checkout@v5
         with:
           fetch-depth: 0
 

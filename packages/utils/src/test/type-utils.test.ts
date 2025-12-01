@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { randomBytes } from 'node:crypto';
+import { randomBytes } from 'crypto';
 
 import { toHex } from '../hex-utils';
 import { assertIsContractAddress } from '../type-utils';

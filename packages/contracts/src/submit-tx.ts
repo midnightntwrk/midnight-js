@@ -14,18 +14,30 @@
  */
 
 import type { ShieldedCoinInfo } from '@midnight-ntwrk/compact-runtime';
-import { LedgerState, type UnprovenTransaction, WellFormedStrictness } from '@midnight-ntwrk/ledger-v6';
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
+  type FinalizedTransaction,
+  type Transaction,
+  type UnprovenTransaction,
+} from '@midnight-ntwrk/ledger-v6';
+import {
+  BALANCE_TRANSACTION_TO_PROVE,
+  type BalancedProvingRecipe,
+  type BalanceTransactionToProve,
   type Contract,
   type FinalizedTxData,
   type ImpureCircuitId,
-  type TransactionToProve
+  NOTHING_TO_PROVE,
+  type NothingToProve,
+  type ProvenTransaction,
+  TRANSACTION_TO_PROVE,
+  type ZKConfig
 } from '@midnight-ntwrk/midnight-js-types';
 import fs from 'fs';
 import path from 'path';
 
 import { type ContractProviders } from './contract-providers';
+
+declare const __DEBUG__: boolean;
 
 /**
  * Configuration for {@link submitTx}.
@@ -56,6 +68,85 @@ export type SubmitTxProviders<C extends Contract, ICK extends ImpureCircuitId<C>
   'privateStateProvider'
 >;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function logTransaction(circuitId: string | undefined, tx: Transaction<any, any, any>) {
+  if (!__DEBUG__) {
+    return;
+  }
+
+  const debug = process.env.MN_DEBUG?.toLowerCase();
+  if (debug !== 'true') {
+    return;
+  }
+
+  try {
+    console.log(`Submit tx: ${circuitId} : ${tx}`);
+    const serialized = tx.serialize();
+    const logsDir = path.join(process.cwd(), 'logs', 'transactions');
+
+    if (!fs.existsSync(logsDir)) {
+      fs.mkdirSync(logsDir, { recursive: true });
+    }
+
+    const filename = `tx-${Date.now()}-${circuitId}`;
+    const filepath = path.join(logsDir, filename + '.bin');
+    const filepathString = path.join(logsDir, filename + '.txt');
+
+    fs.writeFileSync(filepath, serialized);
+    fs.writeFileSync(filepathString, tx.toString());
+
+    console.log(`Transaction serialized and written to: ${filepath}`);
+  } catch (error) {
+    console.error('Failed to write debug transaction logs:', error instanceof Error ? error.message : String(error));
+  }
+}
+
+async function proveTransaction<C extends Contract, ICK extends ImpureCircuitId<C>>(recipe: BalancedProvingRecipe, providers: SubmitTxProviders<C, ICK>, proveTxConfig: {
+  zkConfig: ZKConfig<ICK>
+} | undefined) {
+  let toSubmit: ProvenTransaction;
+  switch (recipe.type) {
+    case TRANSACTION_TO_PROVE: {
+      toSubmit = await providers.proofProvider.proveTx(recipe.transaction, proveTxConfig);
+      break;
+    }
+
+    case BALANCE_TRANSACTION_TO_PROVE: {
+      const recipeBalance = recipe as BalanceTransactionToProve<UnprovenTransaction>;
+      const merged = recipeBalance.transactionToBalance.merge(recipeBalance.transactionToProve);
+      toSubmit = await providers.proofProvider.proveTx(merged, proveTxConfig);
+      break;
+    }
+
+    case NOTHING_TO_PROVE: {
+      // unsafe cast, but it looks like these types are not proper
+      toSubmit = (recipe as NothingToProve<FinalizedTransaction>).transaction as unknown as ProvenTransaction;
+      break;
+    }
+
+    default:
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      throw new Error(`Unknown recipe type: ${(recipe as any).type}`);
+  }
+  return toSubmit;
+}
+
+async function submitTxCore<C extends Contract, ICK extends ImpureCircuitId<C>>(
+  providers: SubmitTxProviders<C, ICK>,
+  options: SubmitTxOptions<ICK>
+): Promise<string> {
+  const proveTxConfig = options.circuitId
+    ? { zkConfig: await providers.zkConfigProvider.get(options.circuitId) }
+    : undefined;
+  const recipe = await providers.walletProvider.balanceTx(options.unprovenTx, options.newCoins);
+  const toSubmit = await proveTransaction(recipe, providers, proveTxConfig);
+  const bound = toSubmit.bind();
+  if (__DEBUG__) {
+    logTransaction(options.circuitId, bound);
+  }
+  return providers.midnightProvider.submitTx(bound);
+}
+
 /**
  * Proves, balances, and submits an unproven deployment or call transaction using
  * the given providers, according to the given options.
@@ -70,32 +161,25 @@ export const submitTx = async <C extends Contract, ICK extends ImpureCircuitId<C
   providers: SubmitTxProviders<C, ICK>,
   options: SubmitTxOptions<ICK>
 ): Promise<FinalizedTxData> => {
-  const proveTxConfig = options.circuitId
-    ? { zkConfig: await providers.zkConfigProvider.get(options.circuitId) }
-    : undefined;
-  const recipe = await providers.walletProvider.balanceTx(options.unprovenTx, options.newCoins);
-  // TODO: we can switch to 'await providers.walletProvider.finalizeTx(recipe)' once it supports ZKConfig
-  // TODO: unsafe cast just for temporal workaround
-  const provenTx = await providers.proofProvider.proveTx((recipe as TransactionToProve).transaction , proveTxConfig);
-  const bound = provenTx.bind();
-  if (process.env.MN_DEBUG) {
-    console.log(`Submit tx: ${options.circuitId} : ${options.unprovenTx}`);
-    const serialized = options.unprovenTx.serialize();
-    const logsDir = path.join(process.cwd(), 'logs', 'transactions');
-    if (!fs.existsSync(logsDir)) {
-      fs.mkdirSync(logsDir, { recursive: true });
-    }
-    const filename = `tx-${Date.now()}-${options.circuitId}`;
-    const filepath = path.join(logsDir, filename + '.bin');
-    const filepathString = path.join(logsDir, filename + '.txt');
-    fs.writeFileSync(filepath, serialized);
-    fs.writeFileSync(filepathString, options.unprovenTx.toString());
-    console.log(`Transaction serialized and written to: ${filepath}`);
-    if (options.circuitId) {
-      const vtx = bound.wellFormed(LedgerState.blank(getNetworkId()), new WellFormedStrictness(), new Date(Date.now()));
-      console.log(`Vtx: ${vtx}`);
-    }
-  }
-  const txId = await providers.midnightProvider.submitTx(bound);
-  return await providers.publicDataProvider.watchForTxData(txId);
+  const txId = await submitTxCore(providers, options);
+  return providers.publicDataProvider.watchForTxData(txId);
+};
+
+/**
+ * Proves, balances, and submits an unproven deployment or call transaction using
+ * the given providers, according to the given options. Unlike {@link submitTx},
+ * this function returns immediately after submission without waiting for finalization.
+ *
+ * @param providers The providers used to manage the transaction lifecycle.
+ * @param options Configuration.
+ *
+ * @returns A promise that resolves with the transaction ID immediately after submission,
+ *          or rejects if an error occurs during preparation or submission.
+ *          To watch for finalization, use providers.publicDataProvider.watchForTxData(txId).
+ */
+export const submitTxAsync = async <C extends Contract, ICK extends ImpureCircuitId<C>>(
+  providers: SubmitTxProviders<C, ICK>,
+  options: SubmitTxOptions<ICK>
+): Promise<string> => {
+  return submitTxCore(providers, options);
 };

@@ -135,7 +135,7 @@ describe('Contracts API', () => {
    * @and Should maintain proper ledger state and local state consistency
    */
   it('should execute constructor and circuits of contracts with no private state', () => {
-    const { coinPublicKey } = providers.walletProvider.zswapSecretKeys;
+    const coinPublicKey = providers.walletProvider.getCoinPublicKey();
     const constructorResult = callContractConstructor({
       contract: api.simpleContractInstance,
       coinPublicKey
@@ -188,7 +188,7 @@ describe('Contracts API', () => {
     const finalizedCallTxData = await foundSimpleContract.callTx.noop();
     await expectSuccessfulCallTx(providers, finalizedCallTxData);
     expectSimpleContractCallTxData(
-      parseCoinPublicKeyToHex(providers.walletProvider.zswapSecretKeys.coinPublicKey, getNetworkId()),
+      parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), getNetworkId()),
       1n,
       finalizedCallTxData
     );
@@ -217,7 +217,7 @@ describe('Contracts API', () => {
    */
   it('should create unproven call and deploy transactions for contract with no private state', async () => {
     const signingKey = sampleSigningKey();
-    const { coinPublicKey } = providers.walletProvider.zswapSecretKeys;
+    const coinPublicKey = providers.walletProvider.getCoinPublicKey();
     const unprovenDeployTxResult = await createUnprovenDeployTx(providers, {
       contract: api.simpleContractInstance,
       signingKey
@@ -233,8 +233,8 @@ describe('Contracts API', () => {
         initialContractState: unprovenDeployTxResult.public.initialContractState,
         initialZswapChainState: new ZswapChainState()
       },
-      providers.walletProvider.zswapSecretKeys.coinPublicKey,
-      providers.walletProvider.zswapSecretKeys.encryptionPublicKey
+      providers.walletProvider.getCoinPublicKey(),
+      providers.walletProvider.getEncryptionPublicKey()
     );
     expectSimpleContractCallTxData(coinPublicKey, 1n, unprovenCallTxData0);
 
@@ -255,7 +255,7 @@ describe('Contracts API', () => {
     } as const;
     const unprovenCallTxData1 = await createUnprovenCallTx(reducedProviders, callTxOptions);
     expectSimpleContractCallTxData(
-      parseCoinPublicKeyToHex(providers.walletProvider.zswapSecretKeys.coinPublicKey, getNetworkId()),
+      parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), getNetworkId()),
       1n,
       unprovenCallTxData1
     );

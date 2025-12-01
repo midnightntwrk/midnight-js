@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
+import { Buffer } from 'buffer';
 import { Brand } from 'effect';
 
 import * as Hex from './Hex.js';
 
 /**
  * A plain hex-encoded token domain separator, 32 bytes in length.
- * 
+ *
  * @category models
  */
 export type DomainSeparator = Brand.Branded<string, 'DomainSeparator'>;
@@ -30,10 +31,10 @@ export const DomainSeparator = Brand.all(
 
 /**
  * Creates a buffer representing the raw bytes of a token domain separator.
- * 
+ *
  * @param self The {@link DomainSeparator} for which raw bytes are required.
  * @returns A `Uint8Array` representing the raw bytes of `self`.
- * 
+ *
  * @category constructors
  */
 export const asBytes: (self: DomainSeparator) => Uint8Array = (self) => Buffer.from(self, 'hex');

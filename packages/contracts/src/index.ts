@@ -63,12 +63,12 @@ export {
   verifyContractState} from './find-deployed-contract';
 export { ContractStates,getPublicStates, getStates, PublicContractStates } from './get-states';
 export { getUnshieldedBalances } from './get-unshielded-balances';
-export { submitCallTx } from './submit-call-tx';
+export { submitCallTx, submitCallTxAsync } from './submit-call-tx';
 export { DeployTxOptions,submitDeployTx } from './submit-deploy-tx';
 export { submitInsertVerifierKeyTx } from './submit-insert-vk-tx';
 export { submitRemoveVerifierKeyTx } from './submit-remove-vk-tx';
 export { submitReplaceAuthorityTx } from './submit-replace-authority-tx';
-export { submitTx, SubmitTxOptions, SubmitTxProviders } from './submit-tx';
+export { submitTx, submitTxAsync, SubmitTxOptions, SubmitTxProviders } from './submit-tx';
 export {
   CircuitCallTxInterface,
   CircuitMaintenanceTxInterface,
@@ -83,6 +83,7 @@ export {
   FinalizedCallTxData,
   FinalizedDeployTxData,
   FinalizedDeployTxDataBase,
+  SubmittedCallTx,
   UnsubmittedCallTxData,
   UnsubmittedDeployTxData,
   UnsubmittedDeployTxDataBase,

@@ -20,8 +20,8 @@ import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight
 import { type ContractProviders } from './contract-providers';
 import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from './errors';
 import type { SubmitTxProviders } from './submit-tx';
-import { submitTx } from './submit-tx';
-import type { FinalizedCallTxData } from './tx-model';
+import { submitTx, submitTxAsync } from './submit-tx';
+import type { FinalizedCallTxData, SubmittedCallTx } from './tx-model';
 import {
   type CallTxOptions,
   type CallTxOptionsBase,
@@ -32,8 +32,6 @@ import {
 export type SubmitCallTxProviders<C extends Contract, ICK extends ImpureCircuitId<C>> =
   | ContractProviders<C>
   | SubmitTxProviders<C, ICK>;
-
- 
 
 export async function submitCallTx<C extends Contract<undefined>, ICK extends ImpureCircuitId<C>>(
   providers: SubmitTxProviders<C, ICK>,
@@ -90,5 +88,68 @@ export async function submitCallTx<C extends Contract, ICK extends ImpureCircuit
       ...unprovenCallTxData.public,
       ...finalizedTxData
     }
+  };
+}
+
+/**
+ * Creates and submits a transaction for the invocation of a circuit on a given contract,
+ * returning immediately after submission without waiting for finalization.
+ *
+ * Unlike {@link submitCallTx}, this function does not wait for transaction finalization,
+ * check transaction status, or update private state. The caller must handle these steps manually.
+ *
+ * @param providers The providers used to manage the invocation lifecycle.
+ * @param options Configuration.
+ *
+ * @returns A `Promise` that resolves with the transaction ID and call transaction data immediately after submission;
+ *         or rejects with an error if the submission fails.
+ *
+ * @example
+ * ```typescript
+ * // 1. Submit
+ * const { txId, callTxData } = await submitCallTxAsync(providers, options);
+ *
+ * // 2. Watch (when ready)
+ * const finalizedData = await providers.publicDataProvider.watchForTxData(txId);
+ *
+ * // 3. Check status
+ * if (finalizedData.status !== SucceedEntirely) {
+ *   throw new CallTxFailedError(finalizedData, options.circuitId);
+ * }
+ *
+ * // 4. Update private state manually if needed
+ * if (options.privateStateId) {
+ *   await providers.privateStateProvider.set(
+ *     privateStateId,
+ *     callTxData.private.nextPrivateState
+ *   );
+ * }
+ * ```
+ */
+export async function submitCallTxAsync<C extends Contract, ICK extends ImpureCircuitId<C>>(
+  providers: SubmitCallTxProviders<C, ICK>,
+  options: CallTxOptions<C, ICK>
+): Promise<SubmittedCallTx<C, ICK>> {
+  assertIsContractAddress(options.contractAddress);
+  assertDefined(options.contract.impureCircuits[options.circuitId], `Circuit '${options.circuitId}' is undefined`);
+
+  const hasPrivateStateProvider = 'privateStateProvider' in providers;
+  const hasPrivateStateId = 'privateStateId' in options;
+
+  if (hasPrivateStateId && !hasPrivateStateProvider) {
+    throw new IncompleteCallTxPrivateStateConfig();
+  }
+
+  const unprovenCallTxData = await createUnprovenCallTx(providers, options);
+
+  const txId = await submitTxAsync(providers, {
+    unprovenTx: unprovenCallTxData.private.unprovenTx,
+    newCoins: unprovenCallTxData.private.newCoins,
+    circuitId: options.circuitId
+  });
+
+  return {
+    txId,
+    callTxData: unprovenCallTxData
   };
 }

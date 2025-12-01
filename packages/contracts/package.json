@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-contracts",
-  "version": "3.0.0-alpha.2",
+  "version": "3.0.0-alpha.7",
   "description": "MidnightJS module for interacting with contracts",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -36,7 +36,7 @@
   ],
   "devDependencies": {
     "@fast-check/vitest": "^0.2.1",
-    "vitest": "^3.2.4"
+    "vitest": "^4.0.0"
   },
   "stableVersion": "3.0.0"
 }

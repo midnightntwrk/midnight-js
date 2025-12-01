@@ -17,6 +17,9 @@
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  define: {
+    __DEBUG__: true,
+  },
   test: {
     pool: 'threads',
     environment: 'node',

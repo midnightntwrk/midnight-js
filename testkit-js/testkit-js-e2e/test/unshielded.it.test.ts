@@ -240,4 +240,15 @@ describe('Unshielded tokens', () => {
     expect(spent.length).toEqual(0);
     expect(created.length).toEqual(0);
   });
+
+  test('should mint native tokens', async () => {
+    const txData = await submitCallTx(providers, {
+      contract: unshieldedContract,
+      contractAddress,
+      circuitId: 'mintNativeTokens' as UnshieldedContractCircuits,
+      args: [1_000_000n]
+    });
+
+    expect(txData.public.status).toBe(SucceedEntirely);
+  });
 });

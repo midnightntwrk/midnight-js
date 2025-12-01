@@ -183,7 +183,7 @@ describe('Contracts API', () => {
     expect(unprovenDeployTxResult.private.initialPrivateState).toEqual(privateStateZero);
     expect(unprovenDeployTxResult.private.initialZswapState).toEqual(
       decodeZswapLocalState(
-        emptyZswapLocalState(parseCoinPublicKeyToHex(providers.walletProvider.zswapSecretKeys.coinPublicKey, getNetworkId()))
+        emptyZswapLocalState(parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), getNetworkId()))
       )
     );
     expect(unprovenDeployTxResult.private.signingKey).toEqual(signingKey);
@@ -194,20 +194,20 @@ describe('Contracts API', () => {
         contract: api.counterContractInstance,
         circuitId: 'increment',
         contractAddress: unprovenDeployTxResult.public.contractAddress,
-        coinPublicKey: providers.walletProvider.zswapSecretKeys.coinPublicKey,
+        coinPublicKey: providers.walletProvider.getCoinPublicKey(),
         initialPrivateState: createPrivateState(1),
         initialContractState: unprovenDeployTxResult.public.initialContractState,
         initialZswapChainState: new ZswapChainState()
       },
-      providers.walletProvider.zswapSecretKeys.coinPublicKey,
-      providers.walletProvider.zswapSecretKeys.encryptionPublicKey
+      providers.walletProvider.getCoinPublicKey(),
+      providers.walletProvider.getEncryptionPublicKey()
     );
 
     expect(ledger(unprovenCallTxData.public.nextContractState).round).toEqual(1n);
     expect(unprovenCallTxData.private.newCoins).toEqual([]);
     expect(unprovenCallTxData.private.nextZswapLocalState).toEqual(
       decodeZswapLocalState(
-        emptyZswapLocalState(parseCoinPublicKeyToHex(providers.walletProvider.zswapSecretKeys.coinPublicKey, getNetworkId()))
+        emptyZswapLocalState(parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), getNetworkId()))
       )
     );
     expect(unprovenCallTxData.private.nextPrivateState).toEqual(createPrivateState(2));

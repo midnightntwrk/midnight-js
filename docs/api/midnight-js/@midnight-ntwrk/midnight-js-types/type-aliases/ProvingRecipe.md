@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.5**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Type Alias: ProvingRecipe\<TTransaction\>
 
-> **ProvingRecipe**\<`TTransaction`\> = [`TransactionToProve`](TransactionToProve.md) \| `BalanceTransactionToProve`\<`TTransaction`\> \| [`NothingToProve`](NothingToProve.md)\<`TTransaction`\>
+> **ProvingRecipe**\<`TTransaction`\> = [`TransactionToProve`](TransactionToProve.md) \| [`BalanceTransactionToProve`](BalanceTransactionToProve.md)\<`TTransaction`\> \| [`NothingToProve`](NothingToProve.md)\<`TTransaction`\>
 
 ## Type Parameters
 

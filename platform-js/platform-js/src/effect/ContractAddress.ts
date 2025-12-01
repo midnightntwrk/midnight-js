@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
+import { Buffer } from 'buffer';
 import { Brand } from 'effect';
 
 import * as Hex from './Hex.js';
 
 /**
  * A plain hex-encoded contract address, 32 bytes in length.
- * 
+ *
  * @category models
  */
 export type ContractAddress = Brand.Branded<string, 'ContractAddress'>;
@@ -30,10 +31,10 @@ export const ContractAddress = Brand.all(
 
 /**
  * Creates a buffer representing the raw bytes of a contract address.
- * 
+ *
  * @param self The {@link ContractAddress} for which raw bytes are required.
  * @returns A `Uint8Array` representing the raw bytes of `self`.
- * 
+ *
  * @category constructors
  */
 export const asBytes: (self: ContractAddress) => Uint8Array = (self) => Buffer.from(self, 'hex');

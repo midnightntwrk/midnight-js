@@ -14,33 +14,45 @@
  */
 
 import {
-  type DustSecretKey,
+  type CoinPublicKey,
+  type EncPublicKey,
   type FinalizedTransaction,
   type ShieldedCoinInfo,
   type UnprovenTransaction,
-  type ZswapSecretKeys
 } from '@midnight-ntwrk/ledger-v6';
 
-import { type ProvingRecipe } from './midnight-types';
+export const TRANSACTION_TO_PROVE = 'TransactionToProve';
+export const BALANCE_TRANSACTION_TO_PROVE = 'BalanceTransactionToProve';
+export const NOTHING_TO_PROVE = 'NothingToProve';
+
+export type TransactionToProve = {
+  readonly type: typeof TRANSACTION_TO_PROVE;
+  readonly transaction: UnprovenTransaction;
+};
+
+export type BalanceTransactionToProve<TTransaction> = {
+  readonly type: typeof BALANCE_TRANSACTION_TO_PROVE;
+  readonly transactionToProve: UnprovenTransaction;
+  readonly transactionToBalance: TTransaction;
+};
+
+export type NothingToProve<TTransaction> = {
+  readonly type: typeof NOTHING_TO_PROVE;
+  readonly transaction: TTransaction;
+};
+
+export type ProvingRecipe<TTransaction> =
+  | TransactionToProve
+  | BalanceTransactionToProve<TTransaction>
+  | NothingToProve<TTransaction>;
+
+export type BalancedProvingRecipe = ProvingRecipe<UnprovenTransaction | FinalizedTransaction>;
 
 /**
  * Interface representing a WalletProvider that handles operations such as
  * transaction balancing and finalization, and provides access to cryptographic secret keys.
  */
 export interface WalletProvider {
-  /**
-   * Represents a readonly property that stores secret keys used for Zswap encryption or authentication.
-   *
-   * @type {ZswapSecretKeys}
-   */
-  readonly zswapSecretKeys: ZswapSecretKeys;
-
-  /**
-   * A readonly property that stores the secret key used for dust operations.
-   *
-   * @type {DustSecretKey}
-   */
-  readonly dustSecretKey: DustSecretKey;
 
   /**
    * Balances a transaction
@@ -48,13 +60,9 @@ export interface WalletProvider {
    * @param newCoins
    * @param ttl
    */
-  balanceTx(tx: UnprovenTransaction, newCoins?: ShieldedCoinInfo[], ttl?: Date): Promise<ProvingRecipe<UnprovenTransaction | FinalizedTransaction>>;
+  balanceTx(tx: UnprovenTransaction, newCoins?: ShieldedCoinInfo[], ttl?: Date): Promise<BalancedProvingRecipe>;
 
-  /**
-   * Finalizes the given transaction to complete its processing.
-   *
-   * @param {FinalizedTransaction} tx - The transaction object that needs to be finalized.
-   * @return {Promise<FinalizedTransaction>} A promise that resolves to the finalized transaction object.
-   */
-  finalizeTx(tx: ProvingRecipe<FinalizedTransaction>): Promise<FinalizedTransaction>;
+  getCoinPublicKey(): CoinPublicKey;
+
+  getEncryptionPublicKey(): EncPublicKey;
 }

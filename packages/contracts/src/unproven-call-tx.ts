@@ -225,13 +225,13 @@ export async function createUnprovenCallTx<C extends Contract, ICK extends Impur
     return createUnprovenCallTxFromInitialStates(
       createCallOptions(
         options,
-        parseCoinPublicKeyToHex(providers.walletProvider.zswapSecretKeys.coinPublicKey, getNetworkId()),
+        parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), getNetworkId()),
         contractState,
         zswapChainState,
         privateState
       ),
-      providers.walletProvider.zswapSecretKeys.coinPublicKey,
-      providers.walletProvider.zswapSecretKeys.encryptionPublicKey
+      providers.walletProvider.getCoinPublicKey(),
+      providers.walletProvider.getEncryptionPublicKey()
     );
   }
 
@@ -242,11 +242,11 @@ export async function createUnprovenCallTx<C extends Contract, ICK extends Impur
   return createUnprovenCallTxFromInitialStates(
     createCallOptions(
       options,
-      parseCoinPublicKeyToHex(providers.walletProvider.zswapSecretKeys.coinPublicKey, getNetworkId()),
+      parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), getNetworkId()),
       contractState,
       zswapChainState
     ),
-    providers.walletProvider.zswapSecretKeys.coinPublicKey,
-    providers.walletProvider.zswapSecretKeys.encryptionPublicKey
+    providers.walletProvider.getCoinPublicKey(),
+    providers.walletProvider.getEncryptionPublicKey()
   );
 }

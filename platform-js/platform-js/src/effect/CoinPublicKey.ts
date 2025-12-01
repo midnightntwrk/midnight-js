@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { Buffer } from 'buffer';
 import { Brand } from 'effect';
 import * as Either from 'effect/Either';
 
@@ -24,7 +25,7 @@ import * as Hex_ from './Hex.js';
  * @remarks
  * `CoinPublicKey` is a 'branded' string type that represents a public key encoded either as a sequence of
  * hexadecimal characters, or as a string formatted according to the Bech32m encoding scheme.
- * 
+ *
  * @see {@link CoinPublicKey.Hex}
  * @see {@link CoinPublicKey.Bech32m}
  * @category keys
@@ -101,10 +102,10 @@ export const asBech32m: (self: CoinPublicKey | string) => CoinPublicKey.Bech32m 
 
 /**
  * Creates a buffer representing the raw bytes of a coin public key.
- * 
+ *
  * @param self The {@link CoinPublicKey} for which raw bytes are required.
  * @returns A `Uint8Array` representing the raw bytes of `self`.
- * 
+ *
  * @category constructors
  */
 export const asBytes: (self: CoinPublicKey) => Uint8Array = (self) => Buffer.from(asHex(self), 'hex');
