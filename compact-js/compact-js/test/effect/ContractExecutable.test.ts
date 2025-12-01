@@ -130,6 +130,12 @@ describe('ContractExecutable', () => {
       deployment = new ContractDeploy(asLedgerContractState(result.public.contractState));
     });
 
+    it('should return identifiers of impure circuits', () => {
+      const circuitIds = contract.getImpureCircuitIds();
+
+      expect(circuitIds.length).toBeGreaterThan(0);
+    });
+
     it.effect('should return updated contract state', () =>
       Effect.gen(function* () {
         const result = yield* contract.circuit(Contract.ImpureCircuitId<CounterContract>('increment'), {

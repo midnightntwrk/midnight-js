@@ -99,6 +99,13 @@ export interface ContractExecutable<in out C extends Contract.Contract<PS>, PS, 
   ): Effect.Effect<ContractExecutable.CallResult<C, PS, K>, E, R>;
 
   /**
+   * Retrieves the impure circuits available as part of the underlying contract.
+   * 
+   * @returns An array of {@link Contract.ImpureCircuitId} describing the available impure circuits.
+   */
+  getImpureCircuitIds(): Contract.ImpureCircuitId<C>[];
+
+  /**
    * Applies a new Contract Maintenance Authority (CMA) to a deployed instance of the contract.
    *
    * @param newSigningKey The signing key that will replace the current that is associated with the
@@ -400,6 +407,10 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
       ),
       this.transform
     );
+  }
+
+  getImpureCircuitIds(): Contract.ImpureCircuitId<C>[] {
+    return Contract.getImpureCircuitIds(Effect.runSync(this.createContract()));
   }
 
   replaceContractMaintenanceAuthority(
