@@ -114,15 +114,16 @@ export type CircuitMaintenanceTxInterface = {
 export const createCircuitMaintenanceTxInterface = <C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
   providers: ContractProviders<C, ICK>,
   circuitId: ICK,
+  compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   contractAddress: ContractAddress
 ): CircuitMaintenanceTxInterface => {
   assertIsContractAddress(contractAddress);
   return {
     removeVerifierKey(): Promise<FinalizedTxData> {
-      return submitRemoveVerifierKeyTx(providers, contractAddress, circuitId);
+      return submitRemoveVerifierKeyTx(providers, compiledContract, contractAddress, circuitId);
     },
     insertVerifierKey(newVk: VerifierKey): Promise<FinalizedTxData> {
-      return submitInsertVerifierKeyTx(providers, contractAddress, circuitId, newVk);
+      return submitInsertVerifierKeyTx(providers, compiledContract, contractAddress, circuitId, newVk);
     }
   };
 };
@@ -149,7 +150,7 @@ export const createCircuitMaintenanceTxInterfaces = <C extends Contract.Contract
   return ContractExecutable.make(compiledContract).getImpureCircuitIds().reduce(
     (acc, circuitId) => ({
       ...acc,
-      [circuitId]: createCircuitMaintenanceTxInterface(providers, circuitId, contractAddress)
+      [circuitId]: createCircuitMaintenanceTxInterface(providers, circuitId, compiledContract, contractAddress)
     }),
     {}
   ) as CircuitMaintenanceTxInterfaces<C>;
@@ -175,12 +176,13 @@ export interface ContractMaintenanceTxInterface {
  * @param providers The providers to use to build transactions.
  * @param contractAddress The ledger address of the contract.
  */
-export const createContractMaintenanceTxInterface = (
+export const createContractMaintenanceTxInterface = <C extends Contract.Contract.Any>(
   providers: ContractProviders,
+  compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   contractAddress: ContractAddress
 ): ContractMaintenanceTxInterface => {
   assertIsContractAddress(contractAddress);
   return {
-    replaceAuthority: submitReplaceAuthorityTx(providers, contractAddress)
+    replaceAuthority: submitReplaceAuthorityTx(providers, compiledContract, contractAddress)
   };
 };

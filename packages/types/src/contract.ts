@@ -13,9 +13,11 @@
  * limitations under the License.
  */
 
-import { type CompiledContract, Contract, type ContractExecutable, ContractExecutableRuntime,  ZKConfiguration, ZKConfigurationReadError } from '@midnight-ntwrk/compact-js/effect';
+import { type CompiledContract, Contract, type ContractExecutable, ContractExecutableRuntime, 
+  ZKConfiguration, ZKConfigurationReadError } from '@midnight-ntwrk/compact-js/effect';
+import { ContractAddress } from '@midnight-ntwrk/platform-js';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
-import { type ConfigError, ConfigProvider, Effect, Layer } from 'effect';
+import { type ConfigError, ConfigProvider, Effect, Layer, Option } from 'effect';
 import { type ManagedRuntime } from 'effect/ManagedRuntime';
 
 import { type ZKConfigProvider } from './zk-config-provider';
@@ -93,3 +95,22 @@ export const makeContractExecutableRuntime:
     }
     return ContractExecutableRuntime.make(makeAdaptedRuntimeLayer(zkConfigProvider, new Map(config)));
   };
+
+/**
+ * Wraps an object into an `Option.some`.
+ *
+ * @param obj The value that should be wrapped into an `Option`.
+ * @returns An `Option.some` for `obj`.
+ */
+export const asEffectOption = <T>(obj: unknown): Option.Option<T> => {
+  return Option.some(obj) as Option.Option<T>;
+}
+
+/**
+ * Constructs a branded contract address from a given string value.
+ *
+ * @param address A string value representing a contract address.
+ * @returns A {@link ContractAddress.ContractAddress | ContractAddress} constructed from `address`.
+ */
+export const asContractAddress = (address: string): ContractAddress.ContractAddress =>
+  ContractAddress.ContractAddress(address);

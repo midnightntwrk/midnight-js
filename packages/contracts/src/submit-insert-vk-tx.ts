@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-import { type Contract } from '@midnight-ntwrk/compact-js';
+import type { CompiledContract } from '@midnight-ntwrk/compact-js';
+import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
 import type { ContractAddress } from '@midnight-ntwrk/ledger-v6';
 import {
   type FinalizedTxData,
@@ -51,6 +52,8 @@ import { createUnprovenInsertVerifierKeyTx } from './utils';
  * - Transaction appears in blockchain history as partial success
  *
  * @param providers The providers to use to manage the transaction lifecycle.
+ * @param compiledContract The compiled contract for which the maintenance authority
+ *                         should be updated.
  * @param contractAddress The address of the contract containing the circuit for which
  *                        the verifier key should be inserted.
  * @param circuitId The circuit for which the verifier key should be inserted.
@@ -67,10 +70,11 @@ import { createUnprovenInsertVerifierKeyTx } from './utils';
  *       along with keys in ZKConfigProvider. By default, artifacts for the latest version
  *       would be fetched to build transactions.
  */
-export const submitInsertVerifierKeyTx = async (
+export const submitInsertVerifierKeyTx = async <C extends Contract.Contract.Any>(
   providers: ContractProviders,
+  compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   contractAddress: ContractAddress,
-  circuitId: Contract.ImpureCircuitId<Contract.Any>,
+  circuitId: Contract.Contract.ImpureCircuitId<C>,
   newVk: VerifierKey
 ): Promise<FinalizedTxData> => {
   assertIsContractAddress(contractAddress);
@@ -82,7 +86,16 @@ export const submitInsertVerifierKeyTx = async (
   );
   const signingKey = await providers.privateStateProvider.getSigningKey(contractAddress);
   assertDefined(signingKey, `Signing key for contract address '${contractAddress}' not found`);
-  const unprovenTx = createUnprovenInsertVerifierKeyTx(contractAddress, circuitId, newVk, contractState, signingKey);
+  const unprovenTx = await createUnprovenInsertVerifierKeyTx(
+    providers.zkConfigProvider,
+    compiledContract,
+    contractAddress, 
+    circuitId, 
+    newVk, 
+    contractState, 
+    signingKey,
+    providers.walletProvider.zswapSecretKeys.coinPublicKey
+  );
   const submitTxResult = await submitTx(providers, { unprovenTx });
   if (submitTxResult.status !== SucceedEntirely) {
     throw new InsertVerifierKeyTxFailedError(submitTxResult);

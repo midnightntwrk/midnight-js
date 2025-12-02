@@ -135,6 +135,10 @@ export async function deployContract<C extends Contract.Contract.Any>(
       options.compiledContract,
       deployTxData.public.contractAddress
     ),
-    contractMaintenanceTx: createContractMaintenanceTxInterface(providers, deployTxData.public.contractAddress)
+    contractMaintenanceTx: createContractMaintenanceTxInterface(
+      providers,
+      options.compiledContract,
+      deployTxData.public.contractAddress
+    )
   };
 }

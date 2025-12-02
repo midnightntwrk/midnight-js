@@ -291,6 +291,6 @@ export async function findDeployedContract<C extends Contract.Any>(
       'privateStateId' in options ? options.privateStateId : undefined
     ),
     circuitMaintenanceTx: createCircuitMaintenanceTxInterfaces(providers, compiledContract, contractAddress),
-    contractMaintenanceTx: createContractMaintenanceTxInterface(providers, contractAddress)
+    contractMaintenanceTx: createContractMaintenanceTxInterface(providers, compiledContract, contractAddress)
   };
 }
