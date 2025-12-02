@@ -98,7 +98,7 @@ const createDeployTxOptions = <C extends Contract.Contract.Any>(
 };
 
 export async function deployContract<C extends Contract.Contract<undefined>>(
-  providers: ContractProviders<C, Contract.ImpureCircuitId<C>, unknown>,
+  providers: ContractProviders<C, Contract.Contract.ImpureCircuitId<C>, unknown>,
   options: DeployContractOptionsBase<C>
 ): Promise<DeployedContract<C>>;
 

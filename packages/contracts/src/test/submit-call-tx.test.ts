@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { type Contract } from '@midnight-ntwrk/compact-js';
+import { type CompiledContract,type Contract } from '@midnight-ntwrk/compact-js';
 import { StateValue } from '@midnight-ntwrk/compact-runtime';
 import { type AlignedValue, type ContractAddress, type PartitionedTranscript } from '@midnight-ntwrk/ledger-v6';
 import {
@@ -30,7 +30,7 @@ import type { FinalizedCallTxData, UnsubmittedCallTxData } from '../tx-model';
 import { type CallTxOptions, createUnprovenCallTx } from '../unproven-call-tx';
 import {
   createMockCoinInfo,
-  createMockContract,
+  createMockCompiledContract,
   createMockContractAddress,
   createMockFinalizedTxData,
   createMockPrivateStateId,
@@ -41,7 +41,7 @@ import {
 } from './test-mocks';
 
 describe('submit-call-tx', () => {
-  let mockContract: Contract<undefined>;
+  let mockCompiledContract: CompiledContract.CompiledContract<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   let mockContractAddress: ReturnType<typeof createMockContractAddress>;
   let mockZswapLocalState: ReturnType<typeof createMockZswapLocalState>;
   let mockPrivateStateId: PrivateStateId;
@@ -51,7 +51,7 @@ describe('submit-call-tx', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockContract = createMockContract();
+    mockCompiledContract = createMockCompiledContract();
     mockContractAddress = createMockContractAddress();
     mockZswapLocalState = createMockZswapLocalState();
     mockPrivateStateId = createMockPrivateStateId();
@@ -64,7 +64,7 @@ describe('submit-call-tx', () => {
   });
 
   const createBasicCallOptions = (overrides: Partial<CallTxOptions<Contract.Any, Contract.ImpureCircuitId<Contract.Any>>> = {}) => ({
-    contract: mockContract,
+    compiledContract: mockCompiledContract,
     contractAddress: mockContractAddress,
     circuitId: 'testCircuit' as Contract.ImpureCircuitId<Contract.Any>,
     args: ['arg1', 'arg2'],

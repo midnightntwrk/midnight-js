@@ -18,7 +18,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { createUnprovenDeployTx, createUnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
 import {
   createMockCompiledContract,
-  createMockContract,
   createMockEncryptionPublicKey,
   createMockProviders,
   createMockSigningKey,
@@ -38,28 +37,14 @@ vi.mock('../utils', () => ({
   zswapStateToNewCoins: vi.fn().mockReturnValue([{ test: 'coin' }])
 }));
 
-// vi.mock('@midnight-ntwrk/midnight-js-types', () => ({
-//   getImpureCircuitIds: vi.fn().mockReturnValue(['testCircuit'])
-// }));
-
 const VALID_COIN_PUBLIC_KEY = 'd2dc8d175c0ef7d1f7e5b7f32bd9da5fcd4c60fa1b651f1d312986269c2d3c79';
 
 describe('unproven-deploy-tx', () => {
   describe('createUnprovenDeployTxFromVerifierKeys', () => {
     it('should create unproven deploy tx from verifier keys without private state', async () => {
-      // const { callContractConstructor } = await import('../call-constructor');
-      // // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      // const mockCallContractConstructor = callContractConstructor as any;
-
-      // const constructorResult = createMockConstructorResult();
-      // mockCallContractConstructor.mockReturnValue(constructorResult);
-
-      // const verifierKeys = createMockVerifierKeys();
-      // const coinPublicKey = 'test-coin-public-key';
       const encryptionPublicKey = createMockEncryptionPublicKey();
 
       const options = {
-        contract: createMockContract(),
         compiledContract: createMockCompiledContract(),
         signingKey: createMockSigningKey(),
         args: ['deploy-arg']
@@ -79,23 +64,12 @@ describe('unproven-deploy-tx', () => {
       expect(result.public.initialContractState).toEqual({ test: 'initial-contract-state' });
       expect(result.private.signingKey).toBe(options.signingKey);
       expect(result.private.unprovenTx).toEqual({ test: 'unproven-tx' });
-      // expect(mockCallContractConstructor).toHaveBeenCalledOnce();
     });
 
     it('should create unproven deploy tx from verifier keys with private state', async () => {
-      // const { callContractConstructor } = await import('../call-constructor');
-      // // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      // const mockCallContractConstructor = callContractConstructor as any;
-
-      // const constructorResult = createMockConstructorResult();
-      // mockCallContractConstructor.mockReturnValue(constructorResult);
-
-      // const verifierKeys = createMockVerifierKeys();
-      // const coinPublicKey = 'test-coin-public-key';
       const encryptionPublicKey = createMockEncryptionPublicKey();
 
       const options = {
-        // contract: createMockContract(),
         compiledContract: createMockCompiledContract(),
         signingKey: createMockSigningKey(),
         initialPrivateState: { test: 'initial-private-state' },
@@ -112,16 +86,7 @@ describe('unproven-deploy-tx', () => {
       expect(result).toBeDefined();
       expect(result.public).toBeDefined();
       expect(result.private).toBeDefined();
-      // expect(result.private.initialPrivateState).toBe(constructorResult.nextPrivateState);
       expect(result.private.signingKey).toBe(options.signingKey);
-      // expect(mockCallContractConstructor).toHaveBeenCalledWith(
-      //   expect.objectContaining({
-      //     contract: options.contract,
-      //     coinPublicKey,
-      //     initialPrivateState: options.initialPrivateState,
-      //     args: options.args
-      //   })
-      // );
     });
   });
 
@@ -135,7 +100,6 @@ describe('unproven-deploy-tx', () => {
       vi.spyOn(providers.zkConfigProvider, 'getVerifierKey');
 
       const options = {
-        contract: createMockContract(),
         compiledContract: createMockCompiledContract(),
         signingKey: createMockSigningKey(),
         args: ['deploy-arg']
@@ -149,14 +113,13 @@ describe('unproven-deploy-tx', () => {
 
     it('should create unproven deploy tx with private state', async () => {
       const providers = {
-        zkConfigProvider: createMockProviders().zkConfigProvider,
+        zkConfigProvider: createMockZKConfigProvider(),
         walletProvider: createMockProviders().walletProvider
       };
 
       vi.spyOn(providers.zkConfigProvider, 'getVerifierKey');
 
       const options = {
-        contract: createMockContract(),
         compiledContract: createMockCompiledContract(),
         signingKey: createMockSigningKey(),
         initialPrivateState: { test: 'initial-private-state' },

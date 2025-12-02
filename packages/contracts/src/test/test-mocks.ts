@@ -211,7 +211,7 @@ export const createMockCoinInfo = (): ShieldedCoinInfo => ({
   value: 0n
 });
 
-export const createMockProviders = (): ContractProviders<Contract.Contract.Any, Contract.ImpureCircuitId<Contract.Contract.Any>, Contract.Contract.PrivateState<Contract.Contract.Any>> => ({
+export const createMockProviders = (): ContractProviders<Contract.Contract.Any, Contract.Contract.ImpureCircuitId<Contract.Contract.Any>, Contract.Contract.PrivateState<Contract.Contract.Any>> => ({
   midnightProvider: {
     submitTx: vi.fn()
   },
@@ -315,7 +315,6 @@ export const createMockUnprovenCallTxData = (overrides: Partial<UnsubmittedCallT
 });
 
 export const createMockCallOptions = (overrides: Partial<CallOptions<Contract.Contract.Any, Contract.Contract.ImpureCircuitId<Contract.Contract.Any>>> = {}): CallOptions<Contract.Contract.Any, Contract.Contract.ImpureCircuitId<Contract.Contract.Any>> => ({
-  contract: createMockContract(),
   compiledContract: createMockCompiledContract(),
   circuitId: 'testCircuit',
   args: [] as never[],

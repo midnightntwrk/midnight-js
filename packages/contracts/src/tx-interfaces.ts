@@ -36,13 +36,13 @@ import type { CallTxOptions } from './unproven-call-tx';
  * and submits a call transaction.
  */
 export type CircuitCallTxInterface<C extends Contract.Contract.Any> = {
-  [ICK in Contract.ImpureCircuitId<C>]: (...args: Contract.Contract.CircuitParameters<C, ICK>) => Promise<FinalizedCallTxData<C, ICK>>;
+  [ICK in Contract.Contract.ImpureCircuitId<C>]: (...args: Contract.Contract.CircuitParameters<C, ICK>) => Promise<FinalizedCallTxData<C, ICK>>;
 };
 
 /**
  * Creates a {@link CallTxOptions} object from various data.
  */
-export const createCallTxOptions = <C extends Contract.Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
+export const createCallTxOptions = <C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
   compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   circuitId: ICK,
   contractAddress: ContractAddress,

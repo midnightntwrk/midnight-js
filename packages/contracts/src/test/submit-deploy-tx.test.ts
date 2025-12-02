@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { type Contract } from '@midnight-ntwrk/compact-js';
+import { type CompiledContract } from '@midnight-ntwrk/compact-js';
 import { FailEntirely, FailFallible, type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -22,7 +22,7 @@ import { submitDeployTx } from '../submit-deploy-tx';
 import { submitTx } from '../submit-tx';
 import { createUnprovenDeployTx } from '../unproven-deploy-tx';
 import {
-  createMockContract,
+  createMockCompiledContract,
   createMockContractAddress,
   createMockFinalizedTxData,
   createMockPrivateStateId,
@@ -39,7 +39,7 @@ vi.mock('@midnight-ntwrk/compact-runtime');
 vi.mock('@midnight-ntwrk/ledger-v6');
 
 describe('submit-deploy-tx', () => {
-  let mockContract: Contract<undefined>;
+  let mockCompiledContract: CompiledContract.CompiledContract<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   let mockContractAddress: ReturnType<typeof createMockContractAddress>;
   let mockSigningKey: ReturnType<typeof createMockSigningKey>;
   let mockPrivateStateId: PrivateStateId;
@@ -49,7 +49,7 @@ describe('submit-deploy-tx', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockContract = createMockContract();
+    mockCompiledContract = createMockCompiledContract();
     mockContractAddress = createMockContractAddress();
     mockSigningKey = createMockSigningKey();
     mockPrivateStateId = createMockPrivateStateId();
@@ -61,7 +61,7 @@ describe('submit-deploy-tx', () => {
     describe('successful deployment without private state ID', () => {
       it('should successfully submit deploy transaction and set signing key', async () => {
         const options = {
-          contract: mockContract,
+          compiledContract: mockCompiledContract,
           args: [],
           signingKey: mockSigningKey
         };
@@ -98,7 +98,7 @@ describe('submit-deploy-tx', () => {
       it('should successfully submit deploy transaction and set both signing key and private state', async () => {
         const initialPrivateState = { someState: 'test' };
         const options = {
-          contract: mockContract,
+          compiledContract: mockCompiledContract,
           args: [],
           signingKey: mockSigningKey,
           privateStateId: mockPrivateStateId,
@@ -139,7 +139,7 @@ describe('submit-deploy-tx', () => {
     describe('failed deployment scenarios', () => {
       it('should throw DeployTxFailedError when transaction fails with FailFallible', async () => {
         const options = {
-          contract: mockContract,
+          compiledContract: mockCompiledContract,
           args: [],
           signingKey: mockSigningKey
         };
@@ -158,7 +158,7 @@ describe('submit-deploy-tx', () => {
 
       it('should throw DeployTxFailedError when transaction fails with FailEntirely', async () => {
         const options = {
-          contract: mockContract,
+          compiledContract: mockCompiledContract,
           args: [],
           signingKey: mockSigningKey
         };
@@ -177,7 +177,7 @@ describe('submit-deploy-tx', () => {
 
       it('should include failure data in DeployTxFailedError', async () => {
         const options = {
-          contract: mockContract,
+          compiledContract: mockCompiledContract,
           args: [],
           signingKey: mockSigningKey
         };
@@ -201,7 +201,7 @@ describe('submit-deploy-tx', () => {
     describe('error propagation', () => {
       it('should propagate errors from createUnprovenDeployTx', async () => {
         const options = {
-          contract: mockContract,
+          compiledContract: mockCompiledContract,
           args: [],
           signingKey: mockSigningKey
         };
@@ -215,7 +215,7 @@ describe('submit-deploy-tx', () => {
 
       it('should propagate errors from submitTx', async () => {
         const options = {
-          contract: mockContract,
+          compiledContract: mockCompiledContract,
           args: [],
           signingKey: mockSigningKey
         };
@@ -231,7 +231,7 @@ describe('submit-deploy-tx', () => {
 
       it('should propagate errors from privateStateProvider.set', async () => {
         const options = {
-          contract: mockContract,
+          compiledContract: mockCompiledContract,
           args: [],
           signingKey: mockSigningKey,
           privateStateId: mockPrivateStateId,
@@ -260,7 +260,7 @@ describe('submit-deploy-tx', () => {
 
       it('should propagate errors from privateStateProvider.setSigningKey', async () => {
         const options = {
-          contract: mockContract,
+          compiledContract: mockCompiledContract,
           args: [],
           signingKey: mockSigningKey
         };
@@ -280,7 +280,7 @@ describe('submit-deploy-tx', () => {
     describe('edge cases', () => {
       it('should handle empty new coins array', async () => {
         const options = {
-          contract: mockContract,
+          compiledContract: mockCompiledContract,
           args: [],
           signingKey: mockSigningKey
         };
@@ -316,7 +316,7 @@ describe('submit-deploy-tx', () => {
 
       it('should handle undefined initial private state with private state ID', async () => {
         const options = {
-          contract: mockContract,
+          compiledContract: mockCompiledContract,
           args: [],
           signingKey: mockSigningKey,
           privateStateId: mockPrivateStateId,
