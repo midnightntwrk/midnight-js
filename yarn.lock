@@ -3209,6 +3209,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@midnight-ntwrk/contract-builder@workspace:packages/contract-builder":
+  version: 0.0.0-use.local
+  resolution: "@midnight-ntwrk/contract-builder@workspace:packages/contract-builder"
+  dependencies:
+    "@fast-check/vitest": "npm:^0.2.1"
+    "@midnight-ntwrk/midnight-js-contracts": "workspace:*"
+    "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
+    "@midnight-ntwrk/midnight-js-types": "workspace:*"
+    "@midnight-ntwrk/midnight-js-utils": "workspace:*"
+    vitest: "npm:^4.0.0"
+  languageName: unknown
+  linkType: soft
+
 "@midnight-ntwrk/ledger-v6@npm:6.1.0-alpha.5, @midnight-ntwrk/ledger@npm:@midnight-ntwrk/ledger-v6@6.1.0-alpha.5":
   version: 6.1.0-alpha.5
   resolution: "@midnight-ntwrk/ledger-v6@npm:6.1.0-alpha.5::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fledger-v6%2F6.1.0-alpha.5%2F25da2a8f4fd40f76d2282279b4d9b457ae62a33e"

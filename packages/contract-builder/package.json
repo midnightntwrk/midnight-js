@@ -1,0 +1,68 @@
+{
+  "name": "@midnight-ntwrk/contract-builder",
+  "version": "0.1.0",
+  "description": "Simplified API for deploying and interacting with Midnight smart contracts",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": {
+        "import": "./dist/index.d.mts",
+        "require": "./dist/index.d.cts"
+      },
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "packageManager": "yarn@4.10.3",
+  "author": "IOHK",
+  "license": "Apache-2.0",
+  "keywords": [
+    "midnight",
+    "smart-contracts",
+    "blockchain",
+    "dapp",
+    "contract-builder"
+  ],
+  "scripts": {
+    "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
+    "build": "rollup -c rollup.config.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "deploy": "yarn npm publish"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/midnight-js-contracts": "workspace:*",
+    "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
+    "@midnight-ntwrk/midnight-js-types": "workspace:*",
+    "@midnight-ntwrk/midnight-js-utils": "workspace:*"
+  },
+  "peerDependencies": {
+    "@midnight-ntwrk/midnight-js-node-zk-config-provider": "workspace:*",
+    "@midnight-ntwrk/midnight-js-fetch-zk-config-provider": "workspace:*",
+    "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*",
+    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "workspace:*",
+    "@midnight-ntwrk/midnight-js-level-private-state-provider": "workspace:*"
+  },
+  "peerDependenciesMeta": {
+    "@midnight-ntwrk/midnight-js-node-zk-config-provider": {
+      "optional": true
+    },
+    "@midnight-ntwrk/midnight-js-fetch-zk-config-provider": {
+      "optional": true
+    },
+    "@midnight-ntwrk/midnight-js-level-private-state-provider": {
+      "optional": true
+    }
+  },
+  "files": [
+    "dist/"
+  ],
+  "devDependencies": {
+    "@fast-check/vitest": "^0.2.1",
+    "vitest": "^4.0.0"
+  }
+}
