@@ -56,7 +56,17 @@ describe('submit-tx', () => {
         const result = await submitTx(mockProviders, options);
 
         expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith(mockUnprovenTx, undefined);
-        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(mockProvenTx, undefined);
+        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(
+          mockProvenTx,
+          expect.objectContaining({
+            proof: {
+              provider: mockProviders.proofProvider,
+              txConfig: undefined
+            },
+            newCoins: undefined,
+            ttl: expect.any(Date)
+          })
+        );
         expect(mockProviders.midnightProvider.submitTx).toHaveBeenCalled();
         expect(mockProviders.publicDataProvider.watchForTxData).toHaveBeenCalledWith('test-tx-id');
         expect(result).toBe(mockFinalizedTxData);
@@ -83,7 +93,17 @@ describe('submit-tx', () => {
 
         expect(mockProviders.zkConfigProvider.get).toHaveBeenCalledWith(circuitId);
         expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith(mockUnprovenTx, { zkConfig: mockZkConfig });
-        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(mockProvenTx, undefined);
+        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(
+          mockProvenTx,
+          expect.objectContaining({
+            proof: {
+              provider: mockProviders.proofProvider,
+              txConfig: { zkConfig: mockZkConfig }
+            },
+            newCoins: undefined,
+            ttl: expect.any(Date)
+          })
+        );
         expect(mockProviders.midnightProvider.submitTx).toHaveBeenCalled();
         expect(mockProviders.publicDataProvider.watchForTxData).toHaveBeenCalledWith('test-tx-id');
         expect(result).toBe(mockFinalizedTxData);
@@ -119,7 +139,17 @@ describe('submit-tx', () => {
         const result = await submitTxAsync(mockProviders, options);
 
         expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith(mockUnprovenTx, undefined);
-        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(mockProvenTx, undefined);
+        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(
+          mockProvenTx,
+          expect.objectContaining({
+            proof: {
+              provider: mockProviders.proofProvider,
+              txConfig: undefined
+            },
+            newCoins: undefined,
+            ttl: expect.any(Date)
+          })
+        );
         expect(mockProviders.midnightProvider.submitTx).toHaveBeenCalled();
         expect(mockProviders.publicDataProvider.watchForTxData).not.toHaveBeenCalled();
         expect(result).toBe(expectedTxId);
@@ -145,7 +175,17 @@ describe('submit-tx', () => {
 
         expect(mockProviders.zkConfigProvider.get).toHaveBeenCalledWith(circuitId);
         expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith(mockUnprovenTx, { zkConfig: mockZkConfig });
-        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(mockProvenTx, undefined);
+        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(
+          mockProvenTx,
+          expect.objectContaining({
+            proof: {
+              provider: mockProviders.proofProvider,
+              txConfig: { zkConfig: mockZkConfig }
+            },
+            newCoins: undefined,
+            ttl: expect.any(Date)
+          })
+        );
         expect(mockProviders.midnightProvider.submitTx).toHaveBeenCalled();
         expect(mockProviders.publicDataProvider.watchForTxData).not.toHaveBeenCalled();
         expect(result).toBe(expectedTxId);
@@ -168,7 +208,17 @@ describe('submit-tx', () => {
         const result = await submitTxAsync(mockProviders, options);
 
         expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith(mockUnprovenTx, undefined);
-        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(mockProvenTx, mockNewCoins);
+        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(
+          mockProvenTx,
+          expect.objectContaining({
+            proof: {
+              provider: mockProviders.proofProvider,
+              txConfig: undefined
+            },
+            newCoins: mockNewCoins,
+            ttl: expect.any(Date)
+          })
+        );
         expect(result).toBe(expectedTxId);
       });
     });

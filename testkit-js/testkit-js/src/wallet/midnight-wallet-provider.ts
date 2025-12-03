@@ -18,17 +18,15 @@ import {
   DustSecretKey,
   type EncPublicKey,
   type FinalizedTransaction,
-  type ShieldedCoinInfo,
   shieldedToken,
   type TokenType,
-  type UnprovenTransaction,
   ZswapSecretKeys
 } from '@midnight-ntwrk/ledger-v6';
 import {
+  type BalancingOptions,
   type MidnightProvider,
   type ProofProvider,
   type ProvenTransaction,
-  type ProveTxConfig,
   type WalletProvider,
 } from '@midnight-ntwrk/midnight-js-types';
 import { ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
@@ -79,31 +77,28 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
 
   async balanceTx(
     tx: ProvenTransaction,
-    { proofProvider, proveTxConfig }: { proofProvider: ProofProvider<string>; proveTxConfig?: ProveTxConfig<string> },
-    _newCoins: ShieldedCoinInfo[],
-    ttl: Date = ttlOneHour()
+    options: BalancingOptions<string>
   ): Promise<FinalizedTransaction> {
+    const { proof: { provider: proofProvider, txConfig: proveTxConfig }, ttl = ttlOneHour() } = options;
     const recipe = await this.wallet.balanceTransaction(this.zswapSecretKeys, this.dustSecretKey, tx, ttl);
 
-    // MOVED FROM submitTx, we may need proving AGAIN
-
-    let toSubmit: ProvenTransaction;
+    let toSubmit: FinalizedTransaction;
     switch (recipe.type) {
       case ProvingRecipe.TRANSACTION_TO_PROVE: {
-        toSubmit = await this.proofProvider.proveTx((recipe as ProvingRecipe.TransactionToProve).transaction, proveTxConfig);
+        const proven = await this.proofProvider.proveTx((recipe as ProvingRecipe.TransactionToProve).transaction, proveTxConfig);
+        toSubmit = proven.bind();
         break;
       }
 
       case ProvingRecipe.BALANCE_TRANSACTION_TO_PROVE: {
-        const recipeBalance = recipe as unknown as ProvingRecipe.BalanceTransactionToProve<UnprovenTransaction>;
-        const merged = recipeBalance.transactionToBalance.merge(recipeBalance.transactionToProve);
-        toSubmit = await proofProvider.proveTx(merged, proveTxConfig);
+        const provenTx = await proofProvider.proveTx(recipe.transactionToProve, proveTxConfig);
+        const bound = provenTx.bind();
+        toSubmit = recipe.transactionToBalance.merge(bound);
         break;
       }
 
       case ProvingRecipe.NOTHING_TO_PROVE: {
-        // unsafe cast, but it looks like these types are not proper
-        toSubmit = (recipe as ProvingRecipe.NothingToProve<FinalizedTransaction>).transaction as unknown as ProvenTransaction;
+        toSubmit = (recipe as ProvingRecipe.NothingToProve<FinalizedTransaction>).transaction;
         break;
       }
 
@@ -112,7 +107,7 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
         throw new Error(`Unknown recipe type: ${(recipe as any).type}`);
     }
 
-    return toSubmit.bind();
+    return toSubmit;
   }
 
   submitTx(tx: FinalizedTransaction): Promise<string> {

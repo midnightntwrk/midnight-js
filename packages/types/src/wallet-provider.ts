@@ -23,9 +23,13 @@ import {
 import { type ImpureCircuitId } from './contract';
 import type { ProofProvider, ProvenTransaction, ProveTxConfig } from './proof-provider';
 
-export type BalancingProvingConfig<ICK extends ImpureCircuitId>= {
-  proofProvider: ProofProvider<ICK>;
-  proveTxConfig?: ProveTxConfig<ICK>
+export type BalancingOptions<ICK extends ImpureCircuitId> = {
+  proof : {
+    provider: ProofProvider<ICK>;
+    txConfig?: ProveTxConfig<ICK>;
+  }
+  newCoins?: ShieldedCoinInfo[];
+  ttl?: Date;
 }
 
 /**
@@ -37,11 +41,9 @@ export interface WalletProvider {
   /**
    * Balances a proven transaction
    * @param tx The proven transaction to balance.
-   * @param balancingProvingConfig
-   * @param newCoins
-   * @param ttl
+   * @param options The balancing options including proving config, new coins, and TTL.
    */
-  balanceTx(tx: ProvenTransaction, balancingProvingConfig: BalancingProvingConfig<string>, newCoins?: ShieldedCoinInfo[], ttl?: Date): Promise<FinalizedTransaction>;
+  balanceTx(tx: ProvenTransaction, options: BalancingOptions<string>): Promise<FinalizedTransaction>;
 
   getCoinPublicKey(): CoinPublicKey;
 

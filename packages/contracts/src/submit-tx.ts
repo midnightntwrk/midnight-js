@@ -19,11 +19,11 @@ import {
   type UnprovenTransaction,
 } from '@midnight-ntwrk/ledger-v6';
 import {
-  type BalancingProvingConfig,
   type Contract,
   type FinalizedTxData,
   type ImpureCircuitId,
 } from '@midnight-ntwrk/midnight-js-types';
+import { ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
 import fs from 'fs';
 import path from 'path';
 
@@ -100,12 +100,15 @@ async function submitTxCore<C extends Contract, ICK extends ImpureCircuitId<C>>(
   const proveTxConfig = options.circuitId
     ? { zkConfig: await providers.zkConfigProvider.get(options.circuitId) }
     : undefined;
-  const provingConfiguration: BalancingProvingConfig<ICK> = {
-    proofProvider: providers.proofProvider,
-    proveTxConfig: proveTxConfig
-  };
   const provenTx = await providers.proofProvider.proveTx(options.unprovenTx, proveTxConfig);
-  const balancedTx = await providers.walletProvider.balanceTx(provenTx, provingConfiguration, options.newCoins);
+  const balancedTx = await providers.walletProvider.balanceTx(provenTx, {
+    proof: {
+      provider: providers.proofProvider,
+      txConfig: proveTxConfig
+    },
+    newCoins: options.newCoins,
+    ttl: ttlOneHour()
+  });
   const bound = balancedTx.bind();
   if (__DEBUG__) {
     logTransaction(options.circuitId, bound);
