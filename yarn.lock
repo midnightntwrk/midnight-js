@@ -3477,6 +3477,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-node-zk-config-provider": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
+    "@midnight-ntwrk/wallet-sdk-shielded": "npm:^1.0.0-beta.11"
     "@types/ws": "npm:^8.18.1"
     "@vitest/runner": "npm:^4.0.0"
     allure-commandline: "npm:^2.34.1"
@@ -3649,7 +3650,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/wallet-sdk-shielded@npm:1.0.0-beta.11":
+"@midnight-ntwrk/wallet-sdk-shielded@npm:1.0.0-beta.11, @midnight-ntwrk/wallet-sdk-shielded@npm:^1.0.0-beta.11":
   version: 1.0.0-beta.11
   resolution: "@midnight-ntwrk/wallet-sdk-shielded@npm:1.0.0-beta.11::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-shielded%2F1.0.0-beta.11%2Fdd45fc4d556171ccce500176b8ee3bee73be08de"
   dependencies:

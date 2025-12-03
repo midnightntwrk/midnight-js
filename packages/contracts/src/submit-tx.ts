@@ -15,22 +15,13 @@
 
 import type { ShieldedCoinInfo } from '@midnight-ntwrk/compact-runtime';
 import {
-  type FinalizedTransaction,
   type Transaction,
   type UnprovenTransaction,
 } from '@midnight-ntwrk/ledger-v6';
 import {
-  BALANCE_TRANSACTION_TO_PROVE,
-  type BalancedProvingRecipe,
-  type BalanceTransactionToProve,
   type Contract,
   type FinalizedTxData,
   type ImpureCircuitId,
-  NOTHING_TO_PROVE,
-  type NothingToProve,
-  type ProvenTransaction,
-  TRANSACTION_TO_PROVE,
-  type ZKConfig
 } from '@midnight-ntwrk/midnight-js-types';
 import fs from 'fs';
 import path from 'path';
@@ -101,36 +92,6 @@ function logTransaction(circuitId: string | undefined, tx: Transaction<any, any,
   }
 }
 
-async function proveTransaction<C extends Contract, ICK extends ImpureCircuitId<C>>(recipe: BalancedProvingRecipe, providers: SubmitTxProviders<C, ICK>, proveTxConfig: {
-  zkConfig: ZKConfig<ICK>
-} | undefined) {
-  let toSubmit: ProvenTransaction;
-  switch (recipe.type) {
-    case TRANSACTION_TO_PROVE: {
-      toSubmit = await providers.proofProvider.proveTx(recipe.transaction, proveTxConfig);
-      break;
-    }
-
-    case BALANCE_TRANSACTION_TO_PROVE: {
-      const recipeBalance = recipe as BalanceTransactionToProve<UnprovenTransaction>;
-      const merged = recipeBalance.transactionToBalance.merge(recipeBalance.transactionToProve);
-      toSubmit = await providers.proofProvider.proveTx(merged, proveTxConfig);
-      break;
-    }
-
-    case NOTHING_TO_PROVE: {
-      // unsafe cast, but it looks like these types are not proper
-      toSubmit = (recipe as NothingToProve<FinalizedTransaction>).transaction as unknown as ProvenTransaction;
-      break;
-    }
-
-    default:
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      throw new Error(`Unknown recipe type: ${(recipe as any).type}`);
-  }
-  return toSubmit;
-}
-
 async function submitTxCore<C extends Contract, ICK extends ImpureCircuitId<C>>(
   providers: SubmitTxProviders<C, ICK>,
   options: SubmitTxOptions<ICK>
@@ -138,9 +99,9 @@ async function submitTxCore<C extends Contract, ICK extends ImpureCircuitId<C>>(
   const proveTxConfig = options.circuitId
     ? { zkConfig: await providers.zkConfigProvider.get(options.circuitId) }
     : undefined;
-  const recipe = await providers.walletProvider.balanceTx(options.unprovenTx, options.newCoins);
-  const toSubmit = await proveTransaction(recipe, providers, proveTxConfig);
-  const bound = toSubmit.bind();
+  const provenTx = await providers.proofProvider.proveTx(options.unprovenTx, proveTxConfig);
+  const balancedTx = await providers.walletProvider.balanceTx(provenTx, proveTxConfig, options.newCoins);
+  const bound = balancedTx.bind();
   if (__DEBUG__) {
     logTransaction(options.circuitId, bound);
   }

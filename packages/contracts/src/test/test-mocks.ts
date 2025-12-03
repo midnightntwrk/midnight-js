@@ -28,12 +28,15 @@ import {
   type Bindingish,
   type CoinPublicKey,
   type CoinSecretKey,
+  type CostModel,
   type DustSecretKey,
   type EncPublicKey,
   type EncryptionSecretKey,
+  type FinalizedTransaction,
   type PartitionedTranscript,
   type Proof,
   type Proofish,
+  type ProvingProvider,
   sampleCoinPublicKey,
   sampleContractAddress,
   sampleDustSecretKey,
@@ -174,6 +177,28 @@ export const createMockCoinInfo = (): ShieldedCoinInfo => ({
   type: 'shielded',
   nonce: 'nonce',
   value: 0n
+});
+
+export const createMockFinalizedTx = (): FinalizedTransaction => ({
+  eraseProofs: vi.fn(),
+  identifiers: vi.fn().mockReturnValue(['test-finalized-tx-id']),
+  merge: vi.fn(),
+  serialize: vi.fn(),
+  imbalances: vi.fn(),
+  bind: vi.fn().mockReturnValue(new Uint8Array(0)),
+  wellFormed: vi.fn(),
+  transactionHash: vi.fn(),
+  fees: vi.fn(),
+  intents: undefined,
+  fallibleOffer: undefined,
+  guaranteedOffer: undefined,
+  bindingRandomness: 0n,
+  rewards: undefined,
+  eraseSignatures: vi.fn(),
+  cost: vi.fn(),
+  feesWithMargin: vi.fn(),
+  mockProve: vi.fn(),
+  prove: vi.fn()
 });
 
 export const createMockProviders = (): ContractProviders<Contract, CoinPublicKey, PrivateState<Contract>> => ({
