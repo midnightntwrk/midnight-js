@@ -1,3 +1,13 @@
+## 3.0.0-alpha.9 (2025-12-03)
+
+* feat: enhance transaction documentation with execution phases and failure behavior ([a274ecc](https://github.com/midnight-ntwrk/artifacts/commit/a274ecc))
+* feat: enhance transaction handling documentation for indefinite waiting behavior ([69606e7](https://github.com/midnight-ntwrk/artifacts/commit/69606e7))
+* feat: enhance transaction handling documentation for indefinite waiting behavior ([944a242](https://github.com/midnight-ntwrk/artifacts/commit/944a242))
+* feat: move @midnight-ntwrk/midnight-js-compact to devDependencies (#361) ([b5771d1](https://github.com/midnight-ntwrk/artifacts/commit/b5771d1)), closes [#361](https://github.com/midnight-ntwrk/artifacts/issues/361)
+* chore: update proof-server, indexer, and node images to latest alpha versions ([759a061](https://github.com/midnight-ntwrk/artifacts/commit/759a061))
+
+
+
 ## 3.0.0-alpha.8 (2025-12-01)
 
 * feat: move @midnight-ntwrk/midnight-js-compact to devDependencies (#361) ([625854b](https://github.com/midnight-ntwrk/artifacts/commit/625854b)), closes [#361](https://github.com/midnight-ntwrk/artifacts/issues/361)
