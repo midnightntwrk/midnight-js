@@ -21,7 +21,6 @@ import {
   type ContractAddress,
   ContractState,
   type QueryContext,
-  signatureVerifyingKey,
   type SigningKey,
   type ZswapLocalState} from '@midnight-ntwrk/compact-runtime';
 import {
@@ -29,20 +28,14 @@ import {
   communicationCommitmentRandomness,
   ContractCallPrototype,
   ContractDeploy,
-  ContractMaintenanceAuthority,
-  ContractOperationVersion,
-  ContractOperationVersionedVerifierKey,
   ContractState as LedgerContractState,
   type EncPublicKey,
   Intent,
   type MaintenanceUpdate,
   type PartitionedTranscript,
   QueryContext as LedgerQueryContext,
-  ReplaceAuthority,
   StateValue as LedgerStateValue,
   type UnprovenTransaction,
-  VerifierKeyInsert,
-  VerifierKeyRemove,
   type ZswapChainState
 } from '@midnight-ntwrk/ledger-v6';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
@@ -72,19 +65,6 @@ export const toLedgerQueryContext = (queryContext: QueryContext): LedgerQueryCon
   ledgerQueryContext.effects = queryContext.effects;
   return ledgerQueryContext;
 }
-
-export const contractMaintenanceAuthority = (
-  sk: SigningKey,
-  contractState?: ContractState
-): ContractMaintenanceAuthority => {
-  const svk = signatureVerifyingKey(sk);
-  const threshold = 1;
-  return new ContractMaintenanceAuthority(
-    [svk],
-    threshold,
-    contractState ? contractState.maintenanceAuthority.counter + 1n : 0n
-  );
-};
 
 export const createUnprovenLedgerDeployTx = (
   contractState: ContractState,
@@ -141,17 +121,6 @@ export const createUnprovenLedgerCallTx = (
     )
   );
 };
-
-// Utilities for creating single contract updates.
-
-export const replaceAuthority = (newAuthority: SigningKey, contractState: ContractState): ReplaceAuthority =>
-  new ReplaceAuthority(contractMaintenanceAuthority(newAuthority, contractState));
-
-export const removeVerifierKey = (operation: string | Uint8Array): VerifierKeyRemove =>
-  new VerifierKeyRemove(operation, new ContractOperationVersion('v2'));
-
-export const insertVerifierKey = (operation: string | Uint8Array, newVk: VerifierKey): VerifierKeyInsert =>
-  new VerifierKeyInsert(operation, new ContractOperationVersionedVerifierKey('v2', newVk));
 
 // Utilities for unproven transactions for the single contract updates above.
 

@@ -20,6 +20,7 @@ import { submitInsertVerifierKeyTx } from '../submit-insert-vk-tx';
 import { submitTx } from '../submit-tx';
 import { createUnprovenInsertVerifierKeyTx } from '../utils';
 import {
+  createMockCompiledContract,
   createMockContractAddress,
   createMockContractState,
   createMockFinalizedTxData,
@@ -33,20 +34,22 @@ vi.mock('../utils');
 
 describe('submitInsertVerifierKeyTx', () => {
   let mockProviders: ReturnType<typeof createMockProviders>;
+  let mockCompiledContract: ReturnType<typeof createMockCompiledContract>;
   let mockContractAddress: ReturnType<typeof createMockContractAddress>;
   let mockContractState: ReturnType<typeof createMockContractState>;
   let mockSigningKey: ReturnType<typeof createMockSigningKey>;
-  let mockUnprovenTx: ReturnType<typeof createMockUnprovenTx>;
+  let mockUnprovenTx: Promise<ReturnType<typeof createMockUnprovenTx>>;
   let mockVerifierKey: VerifierKey;
 
   beforeEach(() => {
     vi.clearAllMocks();
     
     mockProviders = createMockProviders();
+    mockCompiledContract = createMockCompiledContract();
     mockContractAddress = createMockContractAddress();
     mockContractState = createMockContractState();
     mockSigningKey = createMockSigningKey();
-    mockUnprovenTx = createMockUnprovenTx();
+    mockUnprovenTx = Promise.resolve(createMockUnprovenTx());
     mockVerifierKey = new Uint8Array(32) as VerifierKey;
   });
 
@@ -64,6 +67,7 @@ describe('submitInsertVerifierKeyTx', () => {
 
       const result = await submitInsertVerifierKeyTx(
         mockProviders,
+        mockCompiledContract,
         mockContractAddress,
         circuitId,
         mockVerifierKey
@@ -73,13 +77,16 @@ describe('submitInsertVerifierKeyTx', () => {
       expect(mockProviders.privateStateProvider.getSigningKey).toHaveBeenCalledWith(mockContractAddress);
       expect(mockContractState.operation).toHaveBeenCalledWith(circuitId);
       expect(createUnprovenInsertVerifierKeyTx).toHaveBeenCalledWith(
+        mockProviders.zkConfigProvider,
+        mockCompiledContract,
         mockContractAddress,
         circuitId,
         mockVerifierKey,
         mockContractState,
-        mockSigningKey
+        mockSigningKey,
+        mockProviders.walletProvider.zswapSecretKeys.coinPublicKey
       );
-      expect(submitTx).toHaveBeenCalledWith(mockProviders, { unprovenTx: mockUnprovenTx });
+      expect(submitTx).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
       expect(result).toBe(mockFinalizedTxData);
     });
   });
@@ -100,7 +107,7 @@ describe('submitInsertVerifierKeyTx', () => {
       vi.mocked(submitTx).mockResolvedValue(failedTxData);
 
       await expect(
-        submitInsertVerifierKeyTx(mockProviders, mockContractAddress, circuitId, mockVerifierKey)
+        submitInsertVerifierKeyTx(mockProviders, mockCompiledContract, mockContractAddress, circuitId, mockVerifierKey)
       ).rejects.toThrow(InsertVerifierKeyTxFailedError);
     });
   });

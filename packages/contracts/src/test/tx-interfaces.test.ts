@@ -21,7 +21,7 @@ import {
   createCircuitCallTxInterface,
   createCircuitMaintenanceTxInterface,
   createCircuitMaintenanceTxInterfaces,
-  createContractMaintenanceTxInterface
+  createContractMaintenanceTxInterface,
 } from '../tx-interfaces';
 import {
   createMockCompiledContract,
@@ -143,6 +143,7 @@ describe('tx-interfaces', () => {
       const maintenanceInterface = createCircuitMaintenanceTxInterface(
         mockProviders,
         circuitId,
+        mockCompiledContract,
         mockContractAddress
       );
 
@@ -157,6 +158,7 @@ describe('tx-interfaces', () => {
       const maintenanceInterface = createCircuitMaintenanceTxInterface(
         mockProviders,
         circuitId,
+        mockCompiledContract,
         mockContractAddress
       );
 
@@ -165,7 +167,12 @@ describe('tx-interfaces', () => {
 
       const result = await maintenanceInterface.removeVerifierKey();
 
-      expect(submitRemoveVerifierKeyTx).toHaveBeenCalledWith(mockProviders, mockContractAddress, circuitId);
+      expect(submitRemoveVerifierKeyTx).toHaveBeenCalledWith(
+        mockProviders,
+        mockCompiledContract,
+        mockContractAddress,
+        circuitId
+      );
       expect(result).toBe(mockFinalizedTxData);
     });
 
@@ -175,6 +182,7 @@ describe('tx-interfaces', () => {
       const maintenanceInterface = createCircuitMaintenanceTxInterface(
         mockProviders,
         circuitId,
+        mockCompiledContract,
         mockContractAddress
       );
 
@@ -185,6 +193,7 @@ describe('tx-interfaces', () => {
 
       expect(submitInsertVerifierKeyTx).toHaveBeenCalledWith(
         mockProviders,
+        mockCompiledContract,
         mockContractAddress,
         circuitId,
         mockVerifierKey
@@ -211,6 +220,7 @@ describe('tx-interfaces', () => {
     it('should create contract maintenance interface', () => {
       const contractInterface = createContractMaintenanceTxInterface(
         mockProviders,
+        mockCompiledContract,
         mockContractAddress
       );
 

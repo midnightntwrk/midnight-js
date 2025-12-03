@@ -19,6 +19,7 @@ import { submitReplaceAuthorityTx } from '../submit-replace-authority-tx';
 import { submitTx } from '../submit-tx';
 import { createUnprovenReplaceAuthorityTx } from '../utils';
 import {
+  createMockCompiledContract,
   createMockContractAddress,
   createMockContractState,
   createMockFinalizedTxData,
@@ -32,21 +33,23 @@ vi.mock('../utils');
 
 describe('submitReplaceAuthorityTx', () => {
   let mockProviders: ReturnType<typeof createMockProviders>;
+  let mockCompiledContract: ReturnType<typeof createMockCompiledContract>;
   let mockContractAddress: ReturnType<typeof createMockContractAddress>;
   let mockContractState: ReturnType<typeof createMockContractState>;
   let mockCurrentAuthority: ReturnType<typeof createMockSigningKey>;
   let mockNewAuthority: ReturnType<typeof createMockSigningKey>;
-  let mockUnprovenTx: ReturnType<typeof createMockUnprovenTx>;
+  let mockUnprovenTx: Promise<ReturnType<typeof createMockUnprovenTx>>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     
     mockProviders = createMockProviders();
+    mockCompiledContract = createMockCompiledContract();
     mockContractAddress = createMockContractAddress();
     mockContractState = createMockContractState();
     mockCurrentAuthority = createMockSigningKey();
     mockNewAuthority = createMockSigningKey();
-    mockUnprovenTx = createMockUnprovenTx();
+    mockUnprovenTx = Promise.resolve(createMockUnprovenTx());
   });
 
   describe('happy path', () => {
@@ -60,18 +63,21 @@ describe('submitReplaceAuthorityTx', () => {
       vi.mocked(createUnprovenReplaceAuthorityTx).mockReturnValue(mockUnprovenTx);
       vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
 
-      const replaceAuthorityFn = submitReplaceAuthorityTx(mockProviders, mockContractAddress);
+      const replaceAuthorityFn = submitReplaceAuthorityTx(mockProviders, mockCompiledContract, mockContractAddress);
       const result = await replaceAuthorityFn(mockNewAuthority);
 
       expect(mockProviders.publicDataProvider.queryContractState).toHaveBeenCalledWith(mockContractAddress);
       expect(mockProviders.privateStateProvider.getSigningKey).toHaveBeenCalledWith(mockContractAddress);
       expect(createUnprovenReplaceAuthorityTx).toHaveBeenCalledWith(
+        mockProviders.zkConfigProvider,
+        mockCompiledContract,
         mockContractAddress,
         mockNewAuthority,
         mockContractState,
-        mockCurrentAuthority
+        mockCurrentAuthority,
+        mockProviders.walletProvider.zswapSecretKeys.coinPublicKey
       );
-      expect(submitTx).toHaveBeenCalledWith(mockProviders, { unprovenTx: mockUnprovenTx });
+      expect(submitTx).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
       expect(mockProviders.privateStateProvider.setSigningKey).toHaveBeenCalledWith(mockContractAddress, mockNewAuthority);
       expect(result).toBe(mockFinalizedTxData);
     });
@@ -91,7 +97,7 @@ describe('submitReplaceAuthorityTx', () => {
       vi.mocked(createUnprovenReplaceAuthorityTx).mockReturnValue(mockUnprovenTx);
       vi.mocked(submitTx).mockResolvedValue(failedTxData);
 
-      const replaceAuthorityFn = submitReplaceAuthorityTx(mockProviders, mockContractAddress);
+      const replaceAuthorityFn = submitReplaceAuthorityTx(mockProviders, mockCompiledContract, mockContractAddress);
       
       await expect(replaceAuthorityFn(mockNewAuthority)).rejects.toThrow(ReplaceMaintenanceAuthorityTxFailedError);
     });
