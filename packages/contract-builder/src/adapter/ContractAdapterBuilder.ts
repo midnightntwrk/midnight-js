@@ -5,21 +5,27 @@
 import type { ContractProviders, Logger, RetryConfig } from '../types/contract-types.js';
 import type { AdapterConfig, ContractAdapter as IContractAdapter } from '../types/adapter-types.js';
 import type { NetworkConfig, NetworkPreset, WalletConfig, ProviderPresetConfig } from '../providers/types.js';
+import type { Witnesses } from '../types/witness-types.js';
+import type { PrivateStateConfig } from '../config/PrivateStateConfig.js';
 import { ContractAdapter } from './ContractAdapter.js';
 import { DeploymentError } from '../errors/AdapterError.js';
 import { mergeRetryConfig } from '../config/RetryConfig.js';
 import { createDefaultProviders } from '../providers/factory.js';
+import { WitnessManager } from './WitnessManager.js';
+import { PrivateStateManager } from '../private-state/PrivateStateManager.js';
 
 /**
  * Builder for creating ContractAdapter instances with a fluent API
  */
-export class ContractAdapterBuilder<TContract> {
+export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = undefined> {
   private logger?: Logger;
   private retryConfig?: RetryConfig;
   private errorHandler?: (error: any) => void;
   private eventHandlers: Record<string, Function> = {};
   private providersConfig?: NetworkPreset | NetworkConfig | ProviderPresetConfig;
   private walletConfig?: WalletConfig;
+  private witnesses?: Witnesses<TLedger, TPrivateState>;
+  private privateStateConfig?: PrivateStateConfig<TPrivateState>;
 
   constructor(private readonly contractInstance: any) {}
 
@@ -91,19 +97,35 @@ export class ContractAdapterBuilder<TContract> {
   }
 
   /**
+   * Configure witnesses for contracts with private state
+   */
+  withWitnesses(witnesses: Witnesses<TLedger, TPrivateState>): this {
+    this.witnesses = witnesses;
+    return this;
+  }
+
+  /**
+   * Configure private state for the contract
+   */
+  withPrivateState(config: PrivateStateConfig<TPrivateState>): this {
+    this.privateStateConfig = config;
+    return this;
+  }
+
+  /**
    * Deploy the contract with explicitly provided providers
    */
-  async deploy(providers: ContractProviders): Promise<IContractAdapter<TContract>>;
+  async deploy(providers: ContractProviders): Promise<IContractAdapter<TContract, TPrivateState>>;
 
   /**
    * Deploy the contract using default providers (must call withDefaultProviders first)
    */
-  async deploy(): Promise<IContractAdapter<TContract>>;
+  async deploy(): Promise<IContractAdapter<TContract, TPrivateState>>;
 
   /**
    * Deploy the contract and return an adapter
    */
-  async deploy(providers?: ContractProviders): Promise<IContractAdapter<TContract>> {
+  async deploy(providers?: ContractProviders): Promise<IContractAdapter<TContract, TPrivateState>> {
     this.logger?.info('Deploying contract...');
 
     try {
@@ -147,19 +169,51 @@ export class ContractAdapterBuilder<TContract> {
         );
       }
 
-      // Import deployContract dynamically to avoid circular dependencies
-      // In a real implementation, this would be imported from @midnight-ntwrk/midnight-js-contracts
+      let contractInstance = this.contractInstance;
+
+      if (this.witnesses) {
+        this.logger?.info('Attaching witnesses to contract...');
+        const witnessManager = new WitnessManager<TLedger, TPrivateState>(
+          this.witnesses,
+          this.contractInstance.constructor
+        );
+        witnessManager.validate();
+        contractInstance = witnessManager.attachToContract();
+        this.logger?.info('Witnesses attached successfully', {
+          witnesses: witnessManager.getWitnessNames()
+        });
+      }
+
+      const deployOptions: any = {
+        contract: contractInstance
+      };
+
+      let privateStateManager: PrivateStateManager<TPrivateState> | undefined;
+
+      if (this.privateStateConfig) {
+        this.logger?.info('Configuring private state...');
+        privateStateManager = new PrivateStateManager(
+          this.privateStateConfig,
+          resolvedProviders,
+          this.logger
+        );
+
+        deployOptions.privateStateId = privateStateManager.getStateId();
+        deployOptions.initialPrivateState = privateStateManager.getInitialState();
+
+        this.logger?.info('Private state configured', {
+          stateId: deployOptions.privateStateId
+        });
+      }
+
       const { deployContract } = await import('@midnight-ntwrk/midnight-js-contracts');
 
-      const deployed = await deployContract(resolvedProviders, {
-        contract: this.contractInstance
-      });
+      const deployed = await deployContract(resolvedProviders, deployOptions);
 
       this.logger?.info('Contract deployed successfully', {
         address: deployed.address
       });
 
-      // Create adapter config
       const config: AdapterConfig = {
         logger: this.logger,
         retry: this.retryConfig,
@@ -167,8 +221,9 @@ export class ContractAdapterBuilder<TContract> {
         eventHandlers: this.eventHandlers
       };
 
-      // Create and return adapter
-      return new ContractAdapter(deployed, config);
+      return new ContractAdapter(deployed, config, {
+        privateStateManager
+      });
     } catch (error) {
       const deployError = new DeploymentError(
         `Failed to deploy contract: ${error instanceof Error ? error.message : String(error)}`,
@@ -187,25 +242,49 @@ export class ContractAdapterBuilder<TContract> {
   async connect(
     contractAddress: string,
     providers: ContractProviders
-  ): Promise<IContractAdapter<TContract>> {
+  ): Promise<IContractAdapter<TContract, TPrivateState>> {
     this.logger?.info('Connecting to existing contract...', { contractAddress });
 
     try {
-      // Import connectContract dynamically
-      // In a real implementation, this would be imported from @midnight-ntwrk/midnight-js-contracts
+      let contractInstance = this.contractInstance;
+
+      if (this.witnesses) {
+        this.logger?.info('Attaching witnesses to contract...');
+        const witnessManager = new WitnessManager<TLedger, TPrivateState>(
+          this.witnesses,
+          this.contractInstance.constructor
+        );
+        witnessManager.validate();
+        contractInstance = witnessManager.attachToContract();
+        this.logger?.info('Witnesses attached successfully');
+      }
+
       const { connectContract } = await import('@midnight-ntwrk/midnight-js-contracts');
 
       const connected = await connectContract(
         providers,
         contractAddress,
-        this.contractInstance
+        contractInstance
       );
 
       this.logger?.info('Connected to contract successfully', {
         address: connected.address
       });
 
-      // Create adapter config
+      let privateStateManager: PrivateStateManager<TPrivateState> | undefined;
+
+      if (this.privateStateConfig) {
+        this.logger?.info('Configuring private state for connected contract...');
+        privateStateManager = new PrivateStateManager(
+          this.privateStateConfig,
+          providers,
+          this.logger
+        );
+        this.logger?.info('Private state configured', {
+          stateId: privateStateManager.getStateId()
+        });
+      }
+
       const config: AdapterConfig = {
         logger: this.logger,
         retry: this.retryConfig,
@@ -213,8 +292,9 @@ export class ContractAdapterBuilder<TContract> {
         eventHandlers: this.eventHandlers
       };
 
-      // Create and return adapter
-      return new ContractAdapter(connected, config);
+      return new ContractAdapter(connected, config, {
+        privateStateManager
+      });
     } catch (error) {
       const connectError = new DeploymentError(
         `Failed to connect to contract: ${error instanceof Error ? error.message : String(error)}`,
@@ -231,8 +311,8 @@ export class ContractAdapterBuilder<TContract> {
 /**
  * Factory function to create a ContractAdapterBuilder
  */
-export function createContractAdapter<TContract>(
+export function createContractAdapter<TContract, TLedger = any, TPrivateState = undefined>(
   contractInstance: any
-): ContractAdapterBuilder<TContract> {
-  return new ContractAdapterBuilder<TContract>(contractInstance);
+): ContractAdapterBuilder<TContract, TLedger, TPrivateState> {
+  return new ContractAdapterBuilder<TContract, TLedger, TPrivateState>(contractInstance);
 }

@@ -7,6 +7,10 @@
 // Main adapter exports
 export { ContractAdapter } from './adapter/ContractAdapter.js';
 export { ContractAdapterBuilder, createContractAdapter } from './adapter/ContractAdapterBuilder.js';
+export { WitnessManager } from './adapter/WitnessManager.js';
+
+// Private state exports
+export { PrivateStateManager } from './private-state/PrivateStateManager.js';
 
 // Type exports
 export type {
@@ -14,7 +18,8 @@ export type {
   AdapterConfig,
   CallEventHandler,
   SuccessEventHandler,
-  ErrorEventHandler
+  ErrorEventHandler,
+  WitnessCallEventHandler
 } from './types/adapter-types.js';
 
 export type {
@@ -27,9 +32,22 @@ export type {
   MethodErrorEvent
 } from './types/contract-types.js';
 
+export type {
+  Witnesses,
+  WitnessFunction,
+  WitnessContext,
+  WitnessCallEvent
+} from './types/witness-types.js';
+
 // Config exports
 export { defaultAdapterConfig, mergeAdapterConfig } from './config/AdapterConfig.js';
 export { defaultRetryConfig, mergeRetryConfig, calculateRetryDelay } from './config/RetryConfig.js';
+export { DEFAULT_PRIVATE_STATE_CONFIG } from './config/PrivateStateConfig.js';
+
+export type {
+  PrivateStateConfig,
+  ConnectWithPrivateStateOptions
+} from './config/PrivateStateConfig.js';
 
 // Error exports
 export {
@@ -39,6 +57,18 @@ export {
   RetryExhaustedError,
   ConfigurationError
 } from './errors/AdapterError.js';
+
+export {
+  WitnessError,
+  WitnessValidationError,
+  WitnessAttachmentError
+} from './errors/WitnessError.js';
+
+export {
+  PrivateStateError,
+  PrivateStateValidationError,
+  PrivateStateNotConfiguredError
+} from './errors/PrivateStateError.js';
 
 // Utility exports
 export { withRetry } from './utils/retry-logic.js';

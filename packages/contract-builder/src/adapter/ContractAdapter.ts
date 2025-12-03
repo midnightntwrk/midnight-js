@@ -6,6 +6,8 @@ import type { DeployedContract } from '../types/contract-types.js';
 import type { AdapterConfig, ContractAdapter as IContractAdapter, CallEventHandler, SuccessEventHandler, ErrorEventHandler } from '../types/adapter-types.js';
 import { createContractProxy, EventEmitter } from './ContractProxy.js';
 import { mergeAdapterConfig } from '../config/AdapterConfig.js';
+import { PrivateStateManager } from '../private-state/PrivateStateManager.js';
+import { PrivateStateNotConfiguredError } from '../errors/PrivateStateError.js';
 
 /**
  * ContractAdapter wraps a deployed contract and provides:
@@ -14,15 +16,21 @@ import { mergeAdapterConfig } from '../config/AdapterConfig.js';
  * - Retry logic for transient failures
  * - Event emission for monitoring
  * - Logging integration
+ * - Private state management (optional)
  */
-export class ContractAdapter<TContract> {
+export class ContractAdapter<TContract, TPrivateState = undefined> {
   private readonly eventEmitter: EventEmitter;
   private readonly proxy: TContract & { address: string; deployTxData: any };
+  private readonly privateStateManager?: PrivateStateManager<TPrivateState>;
 
   constructor(
     private readonly deployedContract: DeployedContract<TContract>,
-    private readonly config: AdapterConfig = {}
+    private readonly config: AdapterConfig = {},
+    options?: {
+      privateStateManager?: PrivateStateManager<TPrivateState>;
+    }
   ) {
+    this.privateStateManager = options?.privateStateManager;
     // Merge with default config
     const mergedConfig = mergeAdapterConfig(config);
 
@@ -72,9 +80,38 @@ export class ContractAdapter<TContract> {
   }
 
   /**
+   * Get the current private state
+   */
+  async getPrivateState(): Promise<TPrivateState | null> {
+    if (!this.privateStateManager) {
+      throw new PrivateStateNotConfiguredError();
+    }
+
+    return await this.privateStateManager.getState();
+  }
+
+  /**
+   * Set the private state
+   */
+  async setPrivateState(state: TPrivateState): Promise<void> {
+    if (!this.privateStateManager) {
+      throw new PrivateStateNotConfiguredError();
+    }
+
+    return await this.privateStateManager.setState(state);
+  }
+
+  /**
+   * Get the private state ID
+   */
+  getPrivateStateId(): string | undefined {
+    return this.privateStateManager?.getStateId();
+  }
+
+  /**
    * Creates a proxy that combines contract methods with adapter methods
    */
-  private createAdapterProxy(): IContractAdapter<TContract> {
+  private createAdapterProxy(): IContractAdapter<TContract, TPrivateState> {
     const self = this;
 
     const adapterProxy = new Proxy(this.proxy, {
@@ -97,6 +134,19 @@ export class ContractAdapter<TContract> {
           return self.deployTxData;
         }
 
+        // Handle private state methods
+        if (prop === 'getPrivateState') {
+          return () => self.getPrivateState();
+        }
+
+        if (prop === 'setPrivateState') {
+          return (state: TPrivateState) => self.setPrivateState(state);
+        }
+
+        if (prop === 'getPrivateStateId') {
+          return () => self.getPrivateStateId();
+        }
+
         // Forward to the proxied contract's callTx methods
         const callTx = target.callTx;
         if (callTx && prop in callTx) {
@@ -108,6 +158,6 @@ export class ContractAdapter<TContract> {
       }
     });
 
-    return adapterProxy as unknown as IContractAdapter<TContract>;
+    return adapterProxy as unknown as IContractAdapter<TContract, TPrivateState>;
   }
 }
