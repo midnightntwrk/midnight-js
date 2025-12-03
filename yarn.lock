@@ -3219,6 +3219,19 @@ __metadata:
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     vitest: "npm:^4.0.0"
+  peerDependencies:
+    "@midnight-ntwrk/midnight-js-fetch-zk-config-provider": "workspace:*"
+    "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*"
+    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "workspace:*"
+    "@midnight-ntwrk/midnight-js-level-private-state-provider": "workspace:*"
+    "@midnight-ntwrk/midnight-js-node-zk-config-provider": "workspace:*"
+  peerDependenciesMeta:
+    "@midnight-ntwrk/midnight-js-fetch-zk-config-provider":
+      optional: true
+    "@midnight-ntwrk/midnight-js-level-private-state-provider":
+      optional: true
+    "@midnight-ntwrk/midnight-js-node-zk-config-provider":
+      optional: true
   languageName: unknown
   linkType: soft
 
