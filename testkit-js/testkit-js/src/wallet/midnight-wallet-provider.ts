@@ -34,14 +34,7 @@ import {
 import { ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
 import { type WalletFacade } from '@midnight-ntwrk/wallet-sdk-facade';
 import { generateRandomSeed } from '@midnight-ntwrk/wallet-sdk-hd';
-import {
-  BALANCE_TRANSACTION_TO_PROVE,
-  type BalanceTransactionToProve,
-  NOTHING_TO_PROVE,
-  type NothingToProve,
-  TRANSACTION_TO_PROVE,
-  type TransactionToProve
-} from '@midnight-ntwrk/wallet-sdk-shielded';
+import { ProvingRecipe } from '@midnight-ntwrk/wallet-sdk-shielded/v1';
 import type { Logger } from 'pino';
 
 import { type EnvironmentConfiguration } from '@/index';
@@ -68,14 +61,12 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     wallet: WalletFacade,
     zswapSecretKeys: ZswapSecretKeys,
     dustSecretKey: DustSecretKey,
-    proofProvider: ProofProvider<string>
   ) {
     this.logger = logger;
     this.env = environmentConfiguration;
     this.wallet = wallet;
     this.zswapSecretKeys = zswapSecretKeys;
     this.dustSecretKey = dustSecretKey;
-    this.proofProvider = proofProvider;
   }
 
   getCoinPublicKey(): CoinPublicKey {
@@ -88,7 +79,7 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
 
   async balanceTx(
     tx: ProvenTransaction,
-    proveTxConfig: ProveTxConfig<string>,
+    { proofProvider, proveTxConfig }: { proofProvider: ProofProvider<string>; proveTxConfig?: ProveTxConfig<string> },
     _newCoins: ShieldedCoinInfo[],
     ttl: Date = ttlOneHour()
   ): Promise<FinalizedTransaction> {
@@ -98,21 +89,21 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
 
     let toSubmit: ProvenTransaction;
     switch (recipe.type) {
-      case TRANSACTION_TO_PROVE: {
-        toSubmit = await this.proofProvider.proveTx((recipe as TransactionToProve).transaction, proveTxConfig);
+      case ProvingRecipe.TRANSACTION_TO_PROVE: {
+        toSubmit = await this.proofProvider.proveTx((recipe as ProvingRecipe.TransactionToProve).transaction, proveTxConfig);
         break;
       }
 
-      case BALANCE_TRANSACTION_TO_PROVE: {
-        const recipeBalance = recipe as BalanceTransactionToProve<UnprovenTransaction>;
+      case ProvingRecipe.BALANCE_TRANSACTION_TO_PROVE: {
+        const recipeBalance = recipe as unknown as ProvingRecipe.BalanceTransactionToProve<UnprovenTransaction>;
         const merged = recipeBalance.transactionToBalance.merge(recipeBalance.transactionToProve);
-        toSubmit = await this.proofProvider.proveTx(merged, proveTxConfig);
+        toSubmit = await proofProvider.proveTx(merged, proveTxConfig);
         break;
       }
 
-      case NOTHING_TO_PROVE: {
+      case ProvingRecipe.NOTHING_TO_PROVE: {
         // unsafe cast, but it looks like these types are not proper
-        toSubmit = (recipe as NothingToProve<FinalizedTransaction>).transaction as unknown as ProvenTransaction;
+        toSubmit = (recipe as ProvingRecipe.NothingToProve<FinalizedTransaction>).transaction as unknown as ProvenTransaction;
         break;
       }
 
@@ -144,7 +135,6 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
   static async build(
     logger: Logger,
     env: EnvironmentConfiguration,
-    proofProvider: ProofProvider<string>,
     seed?: string | undefined
   ): Promise<MidnightWalletProvider> {
     const walletSeed = seed ?? Buffer.from(generateRandomSeed()).toString('hex');
@@ -159,7 +149,6 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
       wallet,
       ZswapSecretKeys.fromSeed(shieldedSeed),
       DustSecretKey.fromSeed(dustSeed),
-      proofProvider,
     );
   }
 
@@ -169,8 +158,7 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     wallet: WalletFacade,
     zswapSecretKeys: ZswapSecretKeys,
     dustSecretKey: DustSecretKey,
-    proofProvider: ProofProvider<string>,
   ): Promise<MidnightWalletProvider> {
-    return new MidnightWalletProvider(logger, env, wallet, zswapSecretKeys, dustSecretKey, proofProvider);
+    return new MidnightWalletProvider(logger, env, wallet, zswapSecretKeys, dustSecretKey);
   }
 }

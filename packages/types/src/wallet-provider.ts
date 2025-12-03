@@ -20,7 +20,13 @@ import {
   type ShieldedCoinInfo,
 } from '@midnight-ntwrk/ledger-v6';
 
-import type { ProvenTransaction, ProveTxConfig } from './proof-provider';
+import { type ImpureCircuitId } from './contract';
+import type { ProofProvider, ProvenTransaction, ProveTxConfig } from './proof-provider';
+
+export type BalancingProvingConfig<ICK extends ImpureCircuitId>= {
+  proofProvider: ProofProvider<ICK>;
+  proveTxConfig?: ProveTxConfig<ICK>
+}
 
 /**
  * Interface representing a WalletProvider that handles operations such as
@@ -31,11 +37,11 @@ export interface WalletProvider {
   /**
    * Balances a proven transaction
    * @param tx The proven transaction to balance.
+   * @param balancingProvingConfig
    * @param newCoins
-   * @param proveTxConfig
    * @param ttl
    */
-  balanceTx(tx: ProvenTransaction, proveTxConfig?: ProveTxConfig<string>, newCoins?: ShieldedCoinInfo[], ttl?: Date): Promise<FinalizedTransaction>;
+  balanceTx(tx: ProvenTransaction, balancingProvingConfig: BalancingProvingConfig<string>, newCoins?: ShieldedCoinInfo[], ttl?: Date): Promise<FinalizedTransaction>;
 
   getCoinPublicKey(): CoinPublicKey;
 
