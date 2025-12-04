@@ -91,8 +91,10 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
       }
 
       case ProvingRecipe.BALANCE_TRANSACTION_TO_PROVE: {
-        const merged = recipe.transactionToBalance.eraseProofs().merge(recipe.transactionToProve.eraseProofs());
-        toSubmit = await proofProvider.proveTx(merged, proveTxConfig).bind();
+        const toProve = recipe.transactionToProve;
+        const toBalance = recipe.transactionToBalance;
+        const proven = await proofProvider.proveTx(toProve, proveTxConfig);
+        toSubmit = toBalance.merge(proven.bind());
         break;
       }
 
