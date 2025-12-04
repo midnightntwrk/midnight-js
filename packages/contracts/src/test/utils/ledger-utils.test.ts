@@ -152,7 +152,7 @@ describe('ledger-utils', () => {
   });
 
   it.skip('createUnprovenReplaceAuthorityTx returns an UnprovenTransaction', async () => {
-    // TODO: Remove 'skip' when Compact.js has been removed from the repo.
+    // TODO: timjroberts: Remove 'skip' when Compact.js has been removed from the repo.
     const tx = await createUnprovenReplaceAuthorityTx(
       mockZKProvider,
       mockCompiledContract,
@@ -166,7 +166,7 @@ describe('ledger-utils', () => {
   });
 
   it.skip('createUnprovenRemoveVerifierKeyTx returns an UnprovenTransaction', async () => {
-    // TODO: Remove 'skip' when Compact.js has been removed from the repo.
+    // TODO: timjroberts Remove 'skip' when Compact.js has been removed from the repo.
     const tx = await createUnprovenRemoveVerifierKeyTx(
       mockZKProvider,
       mockCompiledContract,

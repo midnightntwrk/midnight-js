@@ -38,14 +38,12 @@ import { createUnprovenLedgerCallTx, encryptionPublicKeyForZswapState, zswapStat
 export function createUnprovenCallTxFromInitialStates<C extends Contract.Contract<undefined>, ICK extends Contract.Contract.ImpureCircuitId<C>>(
   zkConfigProvider: ZKConfigProvider<string>,
   options: CallOptionsWithProviderDataDependencies<C, ICK>,
-  walletCoinPublicKey: CoinPublicKey,
   walletEncryptionPublicKey: EncPublicKey
 ): Promise<UnsubmittedCallTxData<C, ICK>>;
 
 export function createUnprovenCallTxFromInitialStates<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
   zkConfigProvider: ZKConfigProvider<string>,
   options: CallOptionsWithPrivateState<C, ICK>,
-  walletCoinPublicKey: CoinPublicKey,
   walletEncryptionPublicKey: EncPublicKey
 ): Promise<UnsubmittedCallTxData<C, ICK>>;
 
@@ -62,7 +60,6 @@ export function createUnprovenCallTxFromInitialStates<C extends Contract.Contrac
 export async function createUnprovenCallTxFromInitialStates<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
   zkConfigProvider: ZKConfigProvider<string>,
   options: CallOptions<C, ICK>,
-  walletCoinPublicKey: CoinPublicKey,
   walletEncryptionPublicKey: EncPublicKey
 ): Promise<UnsubmittedCallTxData<C, ICK>> {
   const { compiledContract, circuitId, contractAddress, coinPublicKey, initialContractState, initialZswapChainState } = options;
@@ -76,7 +73,7 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.C
 
   const contractExec = ContractExecutable.make(compiledContract);
   const contractRuntime = makeContractExecutableRuntime(zkConfigProvider, {
-    coinPublicKey: walletCoinPublicKey
+    coinPublicKey: options.coinPublicKey
   });
   const initialPrivateState = 'initialPrivateState' in options ? options.initialPrivateState : undefined;
   const args = ('args' in options ? options.args : []);
@@ -129,7 +126,7 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.C
         zswapLocalState,
         encryptionPublicKeyForZswapState(
           zswapLocalState,
-          walletCoinPublicKey,
+          options.coinPublicKey,
           walletEncryptionPublicKey
         )
       ),
@@ -282,8 +279,7 @@ export async function createUnprovenCallTx<C extends Contract.Contract.Any, ICK 
         zswapChainState,
         privateState
       ),
-      providers.walletProvider.getCoinPublicKey(),
-      providers.walletProvider.getEncryptionPublicKey()
+      providers.walletProvider.zswapSecretKeys.encryptionPublicKey
     );
   }
 
@@ -299,7 +295,6 @@ export async function createUnprovenCallTx<C extends Contract.Contract.Any, ICK 
       contractState,
       zswapChainState
     ),
-    providers.walletProvider.getCoinPublicKey(),
-    providers.walletProvider.getEncryptionPublicKey()
+    providers.walletProvider.zswapSecretKeys.encryptionPublicKey
   );
 }

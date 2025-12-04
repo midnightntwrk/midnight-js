@@ -24,7 +24,8 @@ vi.mock('cross-fetch', () => ({
   default: mockFetch
 }));
 
-describe('Http Proof Server Proof Provider', () => {
+describe.skip('Http Proof Server Proof Provider', () => {
+  // TODO: timjroberts Remove 'skip' when Compact.js has been removed from the repo.
   beforeEach(() => {
     vi.clearAllMocks();
   });

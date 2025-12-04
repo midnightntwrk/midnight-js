@@ -21,6 +21,7 @@ import { createUnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
 import {
   createMockCallOptions,
   createMockCallOptionsWithPrivateState,
+  createMockCoinPublicKey,
   createMockCompiledContract,
   createMockContract,
   createMockContractAddress,
@@ -47,15 +48,13 @@ vi.mock('../utils', () => ({
     zswapStateToNewCoins: vi.fn().mockReturnValue([{ test: 'coin' }])
 }));
 
-const VALID_COIN_PUBLIC_KEY = 'd2dc8d175c0ef7d1f7e5b7f32bd9da5fcd4c60fa1b651f1d312986269c2d3c79';
-
 describe('unproven-call-tx', () => {
   let initialContractState: Promise<ContractState> | null = null;
   const getInitialContractState = async () => {
     const _ = async () => {
-      const a = await createUnprovenDeployTxFromVerifierKeys(
+      const deploy = await createUnprovenDeployTxFromVerifierKeys(
         createMockZKConfigProvider(),
-        VALID_COIN_PUBLIC_KEY,
+        createMockCoinPublicKey(),
         {
           compiledContract: createMockCompiledContract(),
           signingKey: createMockSigningKey(),
@@ -63,7 +62,7 @@ describe('unproven-call-tx', () => {
         createMockEncryptionPublicKey()
       );
 
-      return a.public.initialContractState;
+      return deploy.public.initialContractState;
     }
     return initialContractState || (initialContractState = _());
   }
@@ -78,7 +77,6 @@ describe('unproven-call-tx', () => {
       const result = await createUnprovenCallTxFromInitialStates(
         createMockZKConfigProvider(),
         options,
-        VALID_COIN_PUBLIC_KEY,
         walletEncryptionPublicKey
       );
 
@@ -98,7 +96,6 @@ describe('unproven-call-tx', () => {
       const result = await createUnprovenCallTxFromInitialStates(
         createMockZKConfigProvider(),
         options,
-        VALID_COIN_PUBLIC_KEY,
         walletEncryptionPublicKey
       );
 
