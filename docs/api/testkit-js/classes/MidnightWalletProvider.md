@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v3.0.0-alpha.5**](../README.md)
+[**@midnight-ntwrk/testkit-js v3.0.0-alpha.9**](../README.md)
 
 ***
 
@@ -44,7 +44,7 @@ Handles transaction balancing, submission, and wallet state management.
 
 ### balanceTx()
 
-> **balanceTx**(`tx`, `_newCoins`, `ttl`): `Promise`\<`ProvingRecipe`\<`FinalizedTransaction` \| `UnprovenTransaction`\>\>
+> **balanceTx**(`tx`, `_newCoins`, `ttl`): `Promise`\<`BalancedProvingRecipe`\>
 
 Balances a transaction
 
@@ -66,7 +66,7 @@ The transaction to balance.
 
 #### Returns
 
-`Promise`\<`ProvingRecipe`\<`FinalizedTransaction` \| `UnprovenTransaction`\>\>
+`Promise`\<`BalancedProvingRecipe`\>
 
 #### Implementation of
 
