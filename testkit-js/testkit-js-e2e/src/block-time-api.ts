@@ -21,12 +21,11 @@ import type { Logger } from 'pino';
 import { WebSocket } from 'ws';
 
 import type {
-  BlockTimeContract,
   BlockTimeProviders,
   DeployedBlockTimeContract
 } from '@/block-time-types';
 
-import { CompiledBlockTime, CompiledBlockTimeContract } from './contract';
+import { CompiledBlockTimeContract } from './contract';
 
 export const currentDir = path.resolve(new URL(import.meta.url).pathname, '..');
 
@@ -54,14 +53,11 @@ export const CIRCUIT_ID_TEST_BLOCK_TIME_LT = 'testBlockTimeLt' as const;
 export const CIRCUIT_ID_TEST_BLOCK_TIME_GTE = 'testBlockTimeGte' as const;
 export const CIRCUIT_ID_TEST_BLOCK_TIME_LTE = 'testBlockTimeLte' as const;
 
-export const blockTimeContractInstance: BlockTimeContract = new CompiledBlockTime.Contract({});
-
 export const deploy = async (
   providers: BlockTimeProviders
 ): Promise<DeployedBlockTimeContract> => {
   logger.info('Deploying block time contract...');
   const blockTimeContract = await deployContract(providers, {
-    contract: blockTimeContractInstance,
     compiledContract: CompiledBlockTimeContract
   });
   logger.info(`Deployed contract at address: ${blockTimeContract.deployTxData.public.contractAddress}`);

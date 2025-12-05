@@ -39,6 +39,7 @@ import {
   type BlockTimeProviders,
   type DeployedBlockTimeContract
 } from '@/block-time-types';
+import { CompiledBlockTimeContract } from '@/contract';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `block_time_${new Date().toISOString()}.log`)
@@ -103,7 +104,7 @@ describe('Block Time Contract Tests', () => {
     it.skip('should succeed on device but fail on node when submission is delayed', async () => {
       const futureTime = currentTimeSeconds() + 3n; // Only 3 seconds in future
       const unprovenCallTxOptions = {
-        contract: api.blockTimeContractInstance,
+        compiledContract: CompiledBlockTimeContract,
         circuitId: api.CIRCUIT_ID_TEST_BLOCK_TIME_LT,
         contractAddress,
         args: [futureTime] as [bigint]
@@ -134,7 +135,7 @@ describe('Block Time Contract Tests', () => {
     it('should succeed even with submission delay when checking past time', async () => {
       const pastTime = currentTimeSeconds() - 30n;
       const unprovenCallTxOptions = {
-        contract: api.blockTimeContractInstance,
+        compiledContract: CompiledBlockTimeContract,
         circuitId: api.CIRCUIT_ID_TEST_BLOCK_TIME_GTE,
         contractAddress,
         args: [pastTime] as [bigint]
@@ -177,7 +178,7 @@ describe('Block Time Contract Tests', () => {
     it.skip('should succeed on device but fail on node when submission delay causes time to exceed threshold', async () => {
       const futureTime = currentTimeSeconds() + 2n; // Only 2 seconds in future
       const unprovenCallTxOptions = {
-        contract: api.blockTimeContractInstance,
+        compiledContract: CompiledBlockTimeContract,
         circuitId: api.CIRCUIT_ID_TEST_BLOCK_TIME_LTE,
         contractAddress,
         args: [futureTime] as [bigint]
@@ -209,7 +210,7 @@ describe('Block Time Contract Tests', () => {
         async () => {
           const nearFutureTime = currentTimeSeconds() + 2n;
           const unprovenCallTxOptions = {
-            contract: api.blockTimeContractInstance,
+            compiledContract: CompiledBlockTimeContract,
             circuitId: api.CIRCUIT_ID_TEST_BLOCK_TIME_LT,
             contractAddress,
             args: [nearFutureTime] as [bigint]

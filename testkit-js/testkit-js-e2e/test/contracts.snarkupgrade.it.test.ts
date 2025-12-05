@@ -30,7 +30,7 @@ import { createLogger, getTestEnvironment } from '@midnight-ntwrk/testkit-js';
 import path from 'path';
 
 import * as api from '@/counter-api';
-import { CIRCUIT_ID_RESET, counterContractInstance } from '@/counter-api';
+import { CIRCUIT_ID_RESET, CompiledCounterContract } from '@/counter-api';
 import { type CounterProviders } from '@/counter-types';
 
 const logger = createLogger(
@@ -70,7 +70,7 @@ describe('Contracts API Snark Upgrade [dedicated contract] [@slow]', () => {
    * @and Should return transaction with SucceedEntirely status
    */
   it('should successfully remove verifier key using submitRemoveVerifierKeyTx', async () => {
-    const finalizedTxData = await submitRemoveVerifierKeyTx(counterProviders, contractAddress, CIRCUIT_ID_RESET);
+    const finalizedTxData = await submitRemoveVerifierKeyTx(counterProviders, CompiledCounterContract, contractAddress, CIRCUIT_ID_RESET);
 
     expect(finalizedTxData.status).toEqual(SucceedEntirely);
   });
@@ -88,6 +88,7 @@ describe('Contracts API Snark Upgrade [dedicated contract] [@slow]', () => {
     const circuitMaintenanceTxInterface = createCircuitMaintenanceTxInterface(
       counterProviders,
       CIRCUIT_ID_RESET,
+      CompiledCounterContract,
       contractAddress
     );
     const finalizedTxData = await circuitMaintenanceTxInterface.removeVerifierKey();
@@ -108,7 +109,7 @@ describe('Contracts API Snark Upgrade [dedicated contract] [@slow]', () => {
   it('should successfully remove verifier key and disable circuit operation', async () => {
     const circuitMaintenanceTxInterfaces = createCircuitMaintenanceTxInterfaces(
       counterProviders,
-      counterContractInstance,
+      CompiledCounterContract,
       contractAddress
     );
     const finalizedTxData = await circuitMaintenanceTxInterfaces.reset.removeVerifierKey();
@@ -117,7 +118,7 @@ describe('Contracts API Snark Upgrade [dedicated contract] [@slow]', () => {
     logger.info('Interact with contract');
     const contractCircuitsInterface = createCircuitCallTxInterface(
       counterProviders,
-      counterContractInstance,
+      CompiledCounterContract,
       contractAddress,
       'counterPrivateState'
     );
@@ -146,7 +147,7 @@ describe('Contracts API Snark Upgrade [dedicated contract] [@slow]', () => {
     const vk = await counterProviders.zkConfigProvider.getVerifierKey(CIRCUIT_ID_RESET);
     const circuitMaintenanceTxInterfaces = createCircuitMaintenanceTxInterfaces(
       counterProviders,
-      counterContractInstance,
+      CompiledCounterContract,
       contractAddress
     );
     await expect(() => circuitMaintenanceTxInterfaces.reset.insertVerifierKey(vk)).rejects.toThrow(
@@ -172,7 +173,7 @@ describe('Contracts API Snark Upgrade [dedicated contract] [@slow]', () => {
     const vk = await counterProviders.zkConfigProvider.getVerifierKey(CIRCUIT_ID_RESET);
     const circuitMaintenanceTxInterfaces = createCircuitMaintenanceTxInterfaces(
       counterProviders,
-      counterContractInstance,
+      CompiledCounterContract,
       contractAddress
     );
     await circuitMaintenanceTxInterfaces.reset.removeVerifierKey();

@@ -36,9 +36,9 @@ import { type CounterPrivateState } from '@/contract';
 import * as api from '@/counter-api';
 import {
   CIRCUIT_ID_RESET,
-  cloneContractInstance,
-  CounterCloneConfiguration,
-  counterContractInstance
+  CompiledCounterCloneContract,
+  CompiledCounterContract,
+  CounterCloneConfiguration
 } from '@/counter-api';
 import { CounterClonePrivateStateId } from '@/counter-clone-types';
 import { type CounterProviders } from '@/counter-types';
@@ -99,7 +99,7 @@ describe('Contracts API Snark Upgrade [@slow][@smoke]', () => {
     async () => {
       const circuitMaintenanceTxInterfaces = createCircuitMaintenanceTxInterfaces(
         counterProviders,
-        counterContractInstance,
+        CompiledCounterContract,
         contractAddress
       );
 
@@ -127,7 +127,7 @@ describe('Contracts API Snark Upgrade [@slow][@smoke]', () => {
 
       logger.info('Interact with contract');
       const contract = await findDeployedContract(counterCloneContractProviders, {
-        contract: cloneContractInstance,
+        compiledContract: CompiledCounterCloneContract,
         contractAddress,
         privateStateId: CounterClonePrivateStateId,
         initialPrivateState: privateState
@@ -162,13 +162,13 @@ describe('Contracts API Snark Upgrade [@slow][@smoke]', () => {
 
       if (oldAuthority) {
         const newAuthority = sampleSigningKey();
-        const finalizedTxData = await submitReplaceAuthorityTx(counterProviders, contractAddress)(newAuthority);
+        const finalizedTxData = await submitReplaceAuthorityTx(counterProviders, CompiledCounterContract, contractAddress)(newAuthority);
 
         expect(finalizedTxData.status).toEqual(SucceedEntirely);
 
         await counterProviders.privateStateProvider.setSigningKey(contractAddress, oldAuthority);
 
-        await expect(submitRemoveVerifierKeyTx(counterProviders, contractAddress, CIRCUIT_ID_RESET)).rejects.toThrow(
+        await expect(submitRemoveVerifierKeyTx(counterProviders, CompiledCounterContract, contractAddress, CIRCUIT_ID_RESET)).rejects.toThrow(
           'Transaction submission error: Transaction submission failed'
         );
       }

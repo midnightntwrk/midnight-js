@@ -30,9 +30,8 @@ import { afterAll, beforeAll, beforeEach,describe, test } from '@vitest/runner';
 import path from 'path';
 import { expect } from 'vitest';
 
+import { CompiledUnshieldedContract } from '@/contract';
 import {
-  createUnshieldedContract,
-  type UnshieldedContract,
   type UnshieldedContractCircuits,
   type UnshieldedContractProviders
 } from '@/unshielded-types';
@@ -62,7 +61,6 @@ describe('Unshielded tokens', () => {
   let environmentConfiguration: EnvironmentConfiguration;
   let providers: UnshieldedContractProviders;
   let contractAddress: ContractAddress;
-  let unshieldedContract: UnshieldedContract;
   let contractConfiguration: UnshieldedConfiguration;
 
   beforeEach(() => {
@@ -77,10 +75,8 @@ describe('Unshielded tokens', () => {
 
     providers = initializeMidnightProviders(wallet, environmentConfiguration, contractConfiguration);
 
-    unshieldedContract = createUnshieldedContract();
-
     const deployTxOptions = {
-      contract: unshieldedContract,
+      compiledContract: CompiledUnshieldedContract,
       signingKey: sampleSigningKey(),
       initialPrivateState: undefined
     };
@@ -98,7 +94,7 @@ describe('Unshielded tokens', () => {
 
   test('should mint tokens', async () => {
     const mintTxData = await submitCallTx(providers, {
-      contract: unshieldedContract,
+      compiledContract: CompiledUnshieldedContract,
       contractAddress,
       circuitId: 'mintToSelfReceive' as UnshieldedContractCircuits,
       args: [TEST_DOMAIN_SEP, TEST_TOKEN_AMOUNT]
@@ -117,7 +113,7 @@ describe('Unshielded tokens', () => {
 
   test('should get balance of tokens - 0 value', async () => {
     const txData = await submitCallTx(providers, {
-      contract: unshieldedContract,
+      compiledContract: CompiledUnshieldedContract,
       contractAddress,
       circuitId: 'getUnshieldedBalanceTest' as UnshieldedContractCircuits,
       args: [TEST_DOMAIN_SEP]
@@ -135,7 +131,7 @@ describe('Unshielded tokens', () => {
 
   test.skip('should get balance of tokens - greater than', async () => {
     const txData = await submitCallTx(providers, {
-      contract: unshieldedContract,
+      compiledContract: CompiledUnshieldedContract,
       contractAddress,
       circuitId: 'getUnshieldedBalanceGtTest' as UnshieldedContractCircuits,
       args: [TEST_DOMAIN_SEP, 1n]
@@ -153,7 +149,7 @@ describe('Unshielded tokens', () => {
 
   test.skip('should get balance of tokens - less than', async () => {
     const txData = await submitCallTx(providers, {
-      contract: unshieldedContract,
+      compiledContract: CompiledUnshieldedContract,
       contractAddress,
       circuitId: 'getUnshieldedBalanceGtTest' as UnshieldedContractCircuits,
       args: [TEST_DOMAIN_SEP, 1n]
@@ -172,7 +168,7 @@ describe('Unshielded tokens', () => {
   test('should receive tokens - invalid', async () => {
     await expect(() =>
       submitCallTx(providers, {
-        contract: unshieldedContract,
+        compiledContract: CompiledUnshieldedContract,
         contractAddress,
         circuitId: 'receiveUnshieldedTest' as UnshieldedContractCircuits,
         args: [TEST_DOMAIN_SEP, TEST_TOKEN_AMOUNT]
@@ -184,7 +180,7 @@ describe('Unshielded tokens', () => {
     const sep = new Uint8Array(32).fill(0);
 
     const txData = await submitCallTx(providers, {
-      contract: unshieldedContract,
+      compiledContract: CompiledUnshieldedContract,
       contractAddress,
       circuitId: 'receiveUnshieldedTest' as UnshieldedContractCircuits,
       args: [sep, TEST_TOKEN_AMOUNT]
@@ -205,7 +201,7 @@ describe('Unshielded tokens', () => {
     const sep = new Uint8Array(32).fill(0);
 
     const txData = await submitCallTx(providers, {
-      contract: unshieldedContract,
+      compiledContract: CompiledUnshieldedContract,
       contractAddress,
       circuitId: 'sendUnshieldedToUserTest' as UnshieldedContractCircuits,
       args: [sep, 1_000_000n, { bytes: address } ]
