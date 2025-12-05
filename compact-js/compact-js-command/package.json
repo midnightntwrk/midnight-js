@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@effect/cli": "^0.71.0",
-    "@effect/cluster": "^0.50.4",
+    "@effect/cluster": "^0.55.0",
     "@effect/experimental": "^0.57.0",
     "@effect/platform": "^0.92.1",
     "@effect/platform-node": "^0.98.3",
