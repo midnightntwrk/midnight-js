@@ -82,7 +82,7 @@ export class WalletBuilder {
     logger.info(`Building dust wallet with params: ${JSON.stringify(dustConfig)}`);
     const Dust = DustWallet(dustConfig);
     const dustParameters = LedgerParameters.initialParameters().dust;
-    return Dust.startWithSeed(seed, dustParameters, networkId);
+    return Dust.startWithSeed(seed, dustParameters);
   }
 
   static async restoreShieldedWallet(
