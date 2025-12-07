@@ -14,7 +14,7 @@
     "@effect/cluster": "^0.50.4",
     "@effect/experimental": "^0.57.0",
     "@effect/platform": "^0.92.1",
-    "@effect/platform-node": "^0.98.3",
+    "@effect/platform-node": "^0.103.0",
     "@effect/rpc": "^0.72.0",
     "@effect/sql": "^0.48.0",
     "@effect/workflow": "^0.12.0",
