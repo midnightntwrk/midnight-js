@@ -8,6 +8,7 @@
 export { ContractAdapter } from './adapter/ContractAdapter.js';
 export { ContractAdapterBuilder, createContractAdapter } from './adapter/ContractAdapterBuilder.js';
 export { WitnessManager } from './adapter/WitnessManager.js';
+export { WitnessInterceptor } from './adapter/WitnessInterceptor.js';
 
 // Private state exports
 export { PrivateStateManager } from './private-state/PrivateStateManager.js';
@@ -61,7 +62,8 @@ export {
 export {
   WitnessError,
   WitnessValidationError,
-  WitnessAttachmentError
+  WitnessAttachmentError,
+  WitnessExecutionError
 } from './errors/WitnessError.js';
 
 export {

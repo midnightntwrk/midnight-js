@@ -22,3 +22,15 @@ export class WitnessAttachmentError extends WitnessError {
     this.name = 'WitnessAttachmentError';
   }
 }
+
+export class WitnessExecutionError extends WitnessError {
+  constructor(
+    message: string,
+    public readonly witnessName: string,
+    public readonly context?: any,
+    cause?: Error
+  ) {
+    super(message, cause);
+    this.name = 'WitnessExecutionError';
+  }
+}

@@ -193,8 +193,9 @@ describe('PrivateStateManager', () => {
       );
     });
 
-    it('should log to console when debug is enabled', async () => {
+    it('should log state changes with before/after when debug is enabled', async () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      mockProviders.privateStateProvider.get.mockResolvedValue({ privateCounter: 0 });
       const newState: CounterPrivateState = { privateCounter: 99 };
 
       const config: PrivateStateConfig<CounterPrivateState> = {
@@ -207,8 +208,11 @@ describe('PrivateStateManager', () => {
       await manager.setState(newState);
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        '[PrivateState] State updated:',
-        newState
+        '[PrivateState] State changed:',
+        {
+          from: { privateCounter: 0 },
+          to: newState
+        }
       );
 
       consoleSpy.mockRestore();
@@ -313,6 +317,72 @@ describe('PrivateStateManager', () => {
       const id2 = manager.generateStateId();
 
       expect(id1).not.toBe(id2);
+    });
+  });
+
+  describe('snapshot and restore', () => {
+    it('should create snapshot of current state', async () => {
+      mockProviders.privateStateProvider.get.mockResolvedValue({ privateCounter: 42 });
+
+      const config: PrivateStateConfig<CounterPrivateState> = {
+        initialState: { privateCounter: 0 }
+      };
+
+      const manager = new PrivateStateManager(config, mockProviders);
+
+      await manager.createSnapshot();
+
+      expect(manager.hasSnapshot()).toBe(true);
+    });
+
+    it('should restore state from snapshot', async () => {
+      mockProviders.privateStateProvider.get.mockResolvedValue({ privateCounter: 42 });
+
+      const config: PrivateStateConfig<CounterPrivateState> = {
+        initialState: { privateCounter: 0 }
+      };
+
+      const manager = new PrivateStateManager(config, mockProviders);
+
+      await manager.createSnapshot();
+
+      mockProviders.privateStateProvider.get.mockResolvedValue({ privateCounter: 100 });
+
+      await manager.restoreSnapshot();
+
+      expect(mockProviders.privateStateProvider.set).toHaveBeenCalledWith(
+        manager.getStateId(),
+        { privateCounter: 42 }
+      );
+      expect(manager.hasSnapshot()).toBe(false);
+    });
+
+    it('should do nothing when restoring without snapshot', async () => {
+      const config: PrivateStateConfig<CounterPrivateState> = {
+        initialState: { privateCounter: 0 }
+      };
+
+      const manager = new PrivateStateManager(config, mockProviders);
+
+      await manager.restoreSnapshot();
+
+      expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
+    });
+
+    it('should clear snapshot', async () => {
+      mockProviders.privateStateProvider.get.mockResolvedValue({ privateCounter: 42 });
+
+      const config: PrivateStateConfig<CounterPrivateState> = {
+        initialState: { privateCounter: 0 }
+      };
+
+      const manager = new PrivateStateManager(config, mockProviders);
+
+      await manager.createSnapshot();
+      expect(manager.hasSnapshot()).toBe(true);
+
+      manager.clearSnapshot();
+      expect(manager.hasSnapshot()).toBe(false);
     });
   });
 });

@@ -5,7 +5,7 @@
 import type { ContractProviders, Logger, RetryConfig } from '../types/contract-types.js';
 import type { AdapterConfig, ContractAdapter as IContractAdapter } from '../types/adapter-types.js';
 import type { NetworkConfig, NetworkPreset, WalletConfig, ProviderPresetConfig } from '../providers/types.js';
-import type { Witnesses } from '../types/witness-types.js';
+import type { Witnesses, WitnessCallEvent } from '../types/witness-types.js';
 import type { PrivateStateConfig } from '../config/PrivateStateConfig.js';
 import { ContractAdapter } from './ContractAdapter.js';
 import { DeploymentError } from '../errors/AdapterError.js';
@@ -13,6 +13,7 @@ import { mergeRetryConfig } from '../config/RetryConfig.js';
 import { createDefaultProviders } from '../providers/factory.js';
 import { WitnessManager } from './WitnessManager.js';
 import { PrivateStateManager } from '../private-state/PrivateStateManager.js';
+import { WitnessInterceptor } from './WitnessInterceptor.js';
 
 /**
  * Builder for creating ContractAdapter instances with a fluent API
@@ -26,6 +27,7 @@ export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = un
   private walletConfig?: WalletConfig;
   private witnesses?: Witnesses<TLedger, TPrivateState>;
   private privateStateConfig?: PrivateStateConfig<TPrivateState>;
+  private witnessInterceptor?: WitnessInterceptor<TLedger, TPrivateState>;
 
   constructor(private readonly contractInstance: any) {}
 
@@ -101,6 +103,7 @@ export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = un
    */
   withWitnesses(witnesses: Witnesses<TLedger, TPrivateState>): this {
     this.witnesses = witnesses;
+    this.witnessInterceptor = new WitnessInterceptor(witnesses, this.logger);
     return this;
   }
 
@@ -109,6 +112,16 @@ export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = un
    */
   withPrivateState(config: PrivateStateConfig<TPrivateState>): this {
     this.privateStateConfig = config;
+    return this;
+  }
+
+  /**
+   * Enable private state debugging (shorthand for withPrivateState with debug: true)
+   */
+  withPrivateStateDebug(enabled: boolean = true): this {
+    if (this.privateStateConfig) {
+      this.privateStateConfig.debug = enabled;
+    }
     return this;
   }
 
@@ -171,10 +184,13 @@ export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = un
 
       let contractInstance = this.contractInstance;
 
-      if (this.witnesses) {
+      if (this.witnesses && this.witnessInterceptor) {
         this.logger?.info('Attaching witnesses to contract...');
+
+        const interceptedWitnesses = this.witnessInterceptor.createInterceptedWitnesses();
+
         const witnessManager = new WitnessManager<TLedger, TPrivateState>(
-          this.witnesses,
+          interceptedWitnesses,
           this.contractInstance.constructor
         );
         witnessManager.validate();
@@ -221,9 +237,17 @@ export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = un
         eventHandlers: this.eventHandlers
       };
 
-      return new ContractAdapter(deployed, config, {
+      const adapter = new ContractAdapter(deployed, config, {
         privateStateManager
       });
+
+      if (this.witnessInterceptor) {
+        this.witnessInterceptor.onWitnessCall((event: WitnessCallEvent<TPrivateState>) => {
+          (adapter as any).eventEmitter?.emit('witnessCall', event);
+        });
+      }
+
+      return adapter;
     } catch (error) {
       const deployError = new DeploymentError(
         `Failed to deploy contract: ${error instanceof Error ? error.message : String(error)}`,
@@ -248,10 +272,13 @@ export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = un
     try {
       let contractInstance = this.contractInstance;
 
-      if (this.witnesses) {
+      if (this.witnesses && this.witnessInterceptor) {
         this.logger?.info('Attaching witnesses to contract...');
+
+        const interceptedWitnesses = this.witnessInterceptor.createInterceptedWitnesses();
+
         const witnessManager = new WitnessManager<TLedger, TPrivateState>(
-          this.witnesses,
+          interceptedWitnesses,
           this.contractInstance.constructor
         );
         witnessManager.validate();
@@ -292,9 +319,17 @@ export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = un
         eventHandlers: this.eventHandlers
       };
 
-      return new ContractAdapter(connected, config, {
+      const adapter = new ContractAdapter(connected, config, {
         privateStateManager
       });
+
+      if (this.witnessInterceptor) {
+        this.witnessInterceptor.onWitnessCall((event: WitnessCallEvent<TPrivateState>) => {
+          (adapter as any).eventEmitter?.emit('witnessCall', event);
+        });
+      }
+
+      return adapter;
     } catch (error) {
       const connectError = new DeploymentError(
         `Failed to connect to contract: ${error instanceof Error ? error.message : String(error)}`,

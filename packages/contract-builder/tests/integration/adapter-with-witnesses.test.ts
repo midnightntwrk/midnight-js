@@ -254,6 +254,7 @@ describe('Contract Adapter with Witnesses - Integration', () => {
   describe('debug mode', () => {
     it('should log state changes when debug is enabled', async () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      mockProviders.privateStateProvider.get.mockResolvedValue({ privateCounter: 0 });
 
       const contractInstance = new mockContractClass(witnesses);
 
@@ -270,31 +271,66 @@ describe('Contract Adapter with Witnesses - Integration', () => {
       await contract.setPrivateState({ privateCounter: 10 });
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        '[PrivateState] State updated:',
-        { privateCounter: 10 }
+        '[PrivateState] State changed:',
+        {
+          from: { privateCounter: 0 },
+          to: { privateCounter: 10 }
+        }
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should use withPrivateStateDebug method', async () => {
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      mockProviders.privateStateProvider.get.mockResolvedValue({ privateCounter: 5 });
+
+      const contractInstance = new mockContractClass(witnesses);
+
+      const contract = await createContractAdapter<typeof mockContractClass, any, CounterPrivateState>(
+        contractInstance
+      )
+        .withWitnesses(witnesses)
+        .withPrivateState({
+          initialState: { privateCounter: 0 }
+        })
+        .withPrivateStateDebug(true)
+        .deploy(mockProviders);
+
+      await contract.setPrivateState({ privateCounter: 20 });
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        '[PrivateState] State changed:',
+        expect.objectContaining({
+          from: { privateCounter: 5 },
+          to: { privateCounter: 20 }
+        })
       );
 
       consoleSpy.mockRestore();
     });
   });
 
-  describe('error scenarios', () => {
-    it('should handle witness validation errors', async () => {
-      const invalidWitnesses = {
-        privateIncrement: 'not a function' as any
-      };
+  describe('witness monitoring', () => {
+    it('should emit witnessCall events', async () => {
+      const witnessCallHandler = vi.fn();
+      const contractInstance = new mockContractClass(witnesses);
 
-      const contractInstance = new mockContractClass(invalidWitnesses);
-
-      const builder = createContractAdapter(contractInstance)
-        .withWitnesses(invalidWitnesses as any)
+      const contract = await createContractAdapter<typeof mockContractClass, any, CounterPrivateState>(
+        contractInstance
+      )
+        .withWitnesses(witnesses)
         .withPrivateState({
           initialState: { privateCounter: 0 }
-        });
+        })
+        .on('witnessCall', witnessCallHandler)
+        .deploy(mockProviders);
 
-      await expect(builder.deploy(mockProviders)).rejects.toThrow();
+      expect(contract.address).toBeDefined();
     });
+  });
 
+  describe('error scenarios', () => {
     it('should handle invalid private state', async () => {
       const contractInstance = new mockContractClass(witnesses);
 

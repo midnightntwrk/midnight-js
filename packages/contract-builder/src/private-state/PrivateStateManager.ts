@@ -1,10 +1,11 @@
-import type { Logger } from '../types/contract-types.js';
 import type { PrivateStateConfig } from '../config/PrivateStateConfig.js';
 import { PrivateStateError, PrivateStateValidationError } from '../errors/PrivateStateError.js';
+import type { Logger } from '../types/contract-types.js';
 
 export class PrivateStateManager<TPrivateState> {
   private stateId: string;
   private logger?: Logger;
+  private stateSnapshot?: TPrivateState;
 
   constructor(
     private config: PrivateStateConfig<TPrivateState>,
@@ -39,10 +40,15 @@ export class PrivateStateManager<TPrivateState> {
     }
 
     try {
+      const oldState = await this.getState();
+
       await this.providers.privateStateProvider.set(this.stateId, state);
 
       if (this.config.debug) {
-        console.log('[PrivateState] State updated:', state);
+        console.log('[PrivateState] State changed:', {
+          from: oldState,
+          to: state
+        });
       }
     } catch (error) {
       throw new PrivateStateError(
@@ -86,6 +92,30 @@ export class PrivateStateManager<TPrivateState> {
     if (!this.validate(this.config.initialState)) {
       throw new PrivateStateValidationError('Invalid initial state structure');
     }
+  }
+
+  async createSnapshot(): Promise<void> {
+    this.log('Creating private state snapshot');
+    this.stateSnapshot = await this.getState() || undefined;
+  }
+
+  async restoreSnapshot(): Promise<void> {
+    if (!this.stateSnapshot) {
+      this.log('No snapshot to restore');
+      return;
+    }
+
+    this.log('Restoring private state from snapshot', { snapshot: this.stateSnapshot });
+    await this.setState(this.stateSnapshot);
+    this.stateSnapshot = undefined;
+  }
+
+  hasSnapshot(): boolean {
+    return this.stateSnapshot !== undefined;
+  }
+
+  clearSnapshot(): void {
+    this.stateSnapshot = undefined;
   }
 
   private log(message: string, data?: any): void {

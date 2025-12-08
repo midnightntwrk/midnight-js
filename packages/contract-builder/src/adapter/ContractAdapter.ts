@@ -19,7 +19,7 @@ import { PrivateStateNotConfiguredError } from '../errors/PrivateStateError.js';
  * - Private state management (optional)
  */
 export class ContractAdapter<TContract, TPrivateState = undefined> {
-  private readonly eventEmitter: EventEmitter;
+  readonly eventEmitter: EventEmitter;
   private readonly proxy: TContract & { address: string; deployTxData: any };
   private readonly privateStateManager?: PrivateStateManager<TPrivateState>;
 
