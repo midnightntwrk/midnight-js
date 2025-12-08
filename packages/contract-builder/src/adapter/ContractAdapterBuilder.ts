@@ -328,7 +328,7 @@ export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = un
 
       const { deployContract } = await import('@midnight-ntwrk/midnight-js-contracts');
 
-      const deployed = await deployContract(resolvedProviders, deployOptions);
+      const deployed = await (deployContract as any)(resolvedProviders, deployOptions) as any;
 
       this.logger?.info('Contract deployed successfully', {
         address: deployed.address
@@ -341,9 +341,9 @@ export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = un
         eventHandlers: this.eventHandlers
       };
 
-      const adapter = new ContractAdapter(deployed, config, {
+      const adapter = new ContractAdapter<TContract, TPrivateState>(deployed, config, {
         privateStateManager
-      });
+      }) as unknown as IContractAdapter<TContract, TPrivateState>;
 
       if (this.witnessInterceptor) {
         this.witnessInterceptor.onWitnessCall((event: WitnessCallEvent<TPrivateState>) => {
@@ -390,13 +390,12 @@ export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = un
         this.logger?.info('Witnesses attached successfully');
       }
 
-      const { connectContract } = await import('@midnight-ntwrk/midnight-js-contracts');
+      const { findDeployedContract } = await import('@midnight-ntwrk/midnight-js-contracts');
 
-      const connected = await connectContract(
-        providers,
-        contractAddress,
-        contractInstance
-      );
+      const connected = await (findDeployedContract as any)(providers, {
+        contract: contractInstance,
+        contractAddress
+      }) as any;
 
       this.logger?.info('Connected to contract successfully', {
         address: connected.address
@@ -423,9 +422,9 @@ export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = un
         eventHandlers: this.eventHandlers
       };
 
-      const adapter = new ContractAdapter(connected, config, {
+      const adapter = new ContractAdapter<TContract, TPrivateState>(connected, config, {
         privateStateManager
-      });
+      }) as unknown as IContractAdapter<TContract, TPrivateState>;
 
       if (this.witnessInterceptor) {
         this.witnessInterceptor.onWitnessCall((event: WitnessCallEvent<TPrivateState>) => {

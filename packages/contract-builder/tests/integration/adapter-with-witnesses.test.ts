@@ -13,7 +13,7 @@ vi.mock('@midnight-ntwrk/midnight-js-contracts', () => ({
       getValue: vi.fn().mockResolvedValue(5)
     }
   }),
-  connectContract: vi.fn().mockResolvedValue({
+  findDeployedContract: vi.fn().mockResolvedValue({
     address: '0xcontract456',
     deployTxData: null,
     callTx: {
