@@ -7,94 +7,90 @@
 // Main adapter exports
 export { ContractAdapter } from './adapter/ContractAdapter.js';
 export { ContractAdapterBuilder, createContractAdapter } from './adapter/ContractAdapterBuilder.js';
-export { WitnessManager } from './adapter/WitnessManager.js';
 export { WitnessInterceptor } from './adapter/WitnessInterceptor.js';
+export { WitnessManager } from './adapter/WitnessManager.js';
 
 // Private state exports
 export { PrivateStateManager } from './private-state/PrivateStateManager.js';
 
 // Type exports
 export type {
-  ContractAdapter as IContractAdapter,
   AdapterConfig,
   CallEventHandler,
-  SuccessEventHandler,
   ErrorEventHandler,
+  ContractAdapter as IContractAdapter,
+  SuccessEventHandler,
   WitnessCallEventHandler
 } from './types/adapter-types.js';
-
 export type {
-  DeployedContract,
   ContractProviders,
+  DeployedContract,
   Logger,
-  RetryConfig,
   MethodCallEvent,
+  MethodErrorEvent,
   MethodSuccessEvent,
-  MethodErrorEvent
-} from './types/contract-types.js';
-
+  RetryConfig} from './types/contract-types.js';
 export type {
-  Witnesses,
-  WitnessFunction,
+  WitnessCallEvent,
   WitnessContext,
-  WitnessCallEvent
-} from './types/witness-types.js';
+  Witnesses,
+  WitnessFunction} from './types/witness-types.js';
+
+// Utility types for advanced TypeScript usage
+export type {
+  FunctionProperties,
+  FunctionPropertyNames,
+  NonNullish,
+  PartialKeys,
+  Prettify,
+  RequireKeys,
+  UnwrapPromise} from './types/type-utils.js';
 
 // Config exports
 export { defaultAdapterConfig, mergeAdapterConfig } from './config/AdapterConfig.js';
-export { defaultRetryConfig, mergeRetryConfig, calculateRetryDelay } from './config/RetryConfig.js';
-export { DEFAULT_PRIVATE_STATE_CONFIG } from './config/PrivateStateConfig.js';
-
 export type {
-  PrivateStateConfig,
-  ConnectWithPrivateStateOptions
-} from './config/PrivateStateConfig.js';
+  ConnectWithPrivateStateOptions,
+  PrivateStateConfig} from './config/PrivateStateConfig.js';
+export { DEFAULT_PRIVATE_STATE_CONFIG } from './config/PrivateStateConfig.js';
+export { calculateRetryDelay,defaultRetryConfig, mergeRetryConfig } from './config/RetryConfig.js';
 
 // Error exports
 export {
   AdapterError,
+  ConfigurationError,
   DeploymentError,
   MethodCallError,
-  RetryExhaustedError,
-  ConfigurationError
-} from './errors/AdapterError.js';
-
-export {
-  WitnessError,
-  WitnessValidationError,
-  WitnessAttachmentError,
-  WitnessExecutionError
-} from './errors/WitnessError.js';
-
+  RetryExhaustedError} from './errors/AdapterError.js';
 export {
   PrivateStateError,
-  PrivateStateValidationError,
-  PrivateStateNotConfiguredError
-} from './errors/PrivateStateError.js';
+  PrivateStateNotConfiguredError,
+  PrivateStateValidationError} from './errors/PrivateStateError.js';
+export {
+  WitnessAttachmentError,
+  WitnessError,
+  WitnessExecutionError,
+  WitnessValidationError} from './errors/WitnessError.js';
 
 // Utility exports
+export { consoleLogger, createPrefixedLogger,noopLogger } from './utils/logger-wrapper.js';
 export { withRetry } from './utils/retry-logic.js';
-export { noopLogger, consoleLogger, createPrefixedLogger } from './utils/logger-wrapper.js';
 export { isFunction, isObject, isPromise, safeStringify } from './utils/type-helpers.js';
 
 // Provider exports
+export type {
+  ContractProvidersConfig,
+  NetworkConfig,
+  NetworkPreset,
+  ProviderEnvironment,
+  ProviderPresetConfig,
+  WalletConfig} from './providers/index.js';
 export {
   createDefaultProviders,
-  createTestnetProviders,
   createDevnetProviders,
   createLocalProviders,
+  createTestnetProviders,
   detectEnvironment,
-  resolveEnvironment,
-  isNodeJS,
   isBrowser,
-  NETWORK_PRESETS
-} from './providers/index.js';
-
-export type {
-  ProviderEnvironment,
-  NetworkConfig,
-  WalletConfig,
-  ProviderPresetConfig,
-  ContractProvidersConfig,
-  NetworkPreset
-} from './providers/index.js';
+  isNodeJS,
+  NETWORK_PRESETS,
+  resolveEnvironment} from './providers/index.js';

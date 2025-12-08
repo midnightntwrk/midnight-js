@@ -2,12 +2,12 @@
  * Main Contract Adapter class that wraps a deployed contract
  */
 
-import type { DeployedContract } from '../types/contract-types.js';
-import type { AdapterConfig, ContractAdapter as IContractAdapter, CallEventHandler, SuccessEventHandler, ErrorEventHandler } from '../types/adapter-types.js';
-import { createContractProxy, EventEmitter } from './ContractProxy.js';
 import { mergeAdapterConfig } from '../config/AdapterConfig.js';
-import { PrivateStateManager } from '../private-state/PrivateStateManager.js';
 import { PrivateStateNotConfiguredError } from '../errors/PrivateStateError.js';
+import { type PrivateStateManager } from '../private-state/PrivateStateManager.js';
+import type { AdapterConfig, ContractAdapter as IContractAdapter } from '../types/adapter-types.js';
+import type { DeployedContract } from '../types/contract-types.js';
+import { createContractProxy, EventEmitter } from './ContractProxy.js';
 
 /**
  * ContractAdapter wraps a deployed contract and provides:
@@ -111,7 +111,7 @@ export class ContractAdapter<TContract, TPrivateState = undefined> {
   /**
    * Creates a proxy that combines contract methods with adapter methods
    */
-  private createAdapterProxy(): IContractAdapter<TContract, TPrivateState> {
+  private createAdapterProxy(): any {
     const self = this;
 
     const adapterProxy = new Proxy(this.proxy, {

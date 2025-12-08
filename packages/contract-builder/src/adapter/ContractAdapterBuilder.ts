@@ -1,22 +1,59 @@
 /**
  * Fluent builder API for creating Contract Adapters
+ *
+ * @packageDocumentation
+ * Provides a fluent, type-safe builder interface for creating contract adapters
+ * with optional witnesses, private state, logging, and retry logic.
+ *
+ * @example
+ * ```typescript
+ * // Simple contract without witnesses
+ * const contract = await createContractAdapter(contractInstance)
+ *   .withLogger(logger)
+ *   .deploy(providers);
+ *
+ * // Contract with witnesses and private state
+ * const contract = await createContractAdapter<MyContract, Ledger, PrivateState>(contractInstance)
+ *   .withWitnesses(witnesses)
+ *   .withPrivateState({ initialState: { counter: 0 } })
+ *   .withLogger(logger)
+ *   .withRetry({ maxRetries: 3, backoffMs: 1000 })
+ *   .deploy(providers);
+ * ```
  */
 
-import type { ContractProviders, Logger, RetryConfig } from '../types/contract-types.js';
-import type { AdapterConfig, ContractAdapter as IContractAdapter } from '../types/adapter-types.js';
-import type { NetworkConfig, NetworkPreset, WalletConfig, ProviderPresetConfig } from '../providers/types.js';
-import type { Witnesses, WitnessCallEvent } from '../types/witness-types.js';
 import type { PrivateStateConfig } from '../config/PrivateStateConfig.js';
-import { ContractAdapter } from './ContractAdapter.js';
-import { DeploymentError } from '../errors/AdapterError.js';
 import { mergeRetryConfig } from '../config/RetryConfig.js';
-import { createDefaultProviders } from '../providers/factory.js';
-import { WitnessManager } from './WitnessManager.js';
+import { DeploymentError } from '../errors/AdapterError.js';
 import { PrivateStateManager } from '../private-state/PrivateStateManager.js';
+import { createDefaultProviders } from '../providers/factory.js';
+import type { NetworkConfig, NetworkPreset, ProviderPresetConfig,WalletConfig } from '../providers/types.js';
+import type { AdapterConfig, ContractAdapter as IContractAdapter } from '../types/adapter-types.js';
+import type { ContractProviders, Logger, RetryConfig } from '../types/contract-types.js';
+import type { WitnessCallEvent,Witnesses } from '../types/witness-types.js';
+import { ContractAdapter } from './ContractAdapter.js';
 import { WitnessInterceptor } from './WitnessInterceptor.js';
+import { WitnessManager } from './WitnessManager.js';
 
 /**
  * Builder for creating ContractAdapter instances with a fluent API
+ *
+ * @typeParam TContract - The contract interface type
+ * @typeParam TLedger - The ledger type for witness context (defaults to any)
+ * @typeParam TPrivateState - The private state type (undefined if no private state)
+ *
+ * @remarks
+ * This builder provides a fluent interface for configuring and deploying contract adapters.
+ * All configuration methods return `this` for method chaining.
+ *
+ * @example
+ * ```typescript
+ * const builder = new ContractAdapterBuilder(contractInstance)
+ *   .withLogger(consoleLogger)
+ *   .withRetry({ maxRetries: 3, backoffMs: 1000 });
+ *
+ * const adapter = await builder.deploy(providers);
+ * ```
  */
 export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = undefined> {
   private logger?: Logger;
@@ -33,6 +70,14 @@ export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = un
 
   /**
    * Configure a logger for the adapter
+   *
+   * @param logger - Logger instance implementing the Logger interface
+   * @returns The builder instance for method chaining
+   *
+   * @example
+   * ```typescript
+   * builder.withLogger(consoleLogger);
+   * ```
    */
   withLogger(logger: Logger): this {
     this.logger = logger;
@@ -41,6 +86,18 @@ export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = un
 
   /**
    * Configure retry logic for failed operations
+   *
+   * @param config - Retry configuration specifying max retries, backoff, etc.
+   * @returns The builder instance for method chaining
+   *
+   * @example
+   * ```typescript
+   * builder.withRetry({
+   *   maxRetries: 3,
+   *   backoffMs: 1000,
+   *   exponentialBackoff: true
+   * });
+   * ```
    */
   withRetry(config: RetryConfig): this {
     this.retryConfig = mergeRetryConfig(config);
@@ -100,6 +157,23 @@ export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = un
 
   /**
    * Configure witnesses for contracts with private state
+   *
+   * @param witnesses - Object mapping witness names to witness functions
+   * @returns The builder instance for method chaining
+   *
+   * @remarks
+   * Witnesses are functions that compute private state transitions and outputs.
+   * They are automatically intercepted for monitoring and error handling.
+   *
+   * @example
+   * ```typescript
+   * builder.withWitnesses({
+   *   privateIncrement: ({ privateState }) => [
+   *     { counter: privateState.counter + 1 },
+   *     []
+   *   ]
+   * });
+   * ```
    */
   withWitnesses(witnesses: Witnesses<TLedger, TPrivateState>): this {
     this.witnesses = witnesses;
@@ -109,6 +183,22 @@ export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = un
 
   /**
    * Configure private state for the contract
+   *
+   * @param config - Private state configuration including initial state and options
+   * @returns The builder instance for method chaining
+   *
+   * @remarks
+   * Private state is managed locally and synchronized with the contract.
+   * If no `stateId` is provided, one will be auto-generated.
+   *
+   * @example
+   * ```typescript
+   * builder.withPrivateState({
+   *   stateId: 'my-counter', // Optional
+   *   initialState: { counter: 0 },
+   *   debug: true // Enable debug logging
+   * });
+   * ```
    */
   withPrivateState(config: PrivateStateConfig<TPrivateState>): this {
     this.privateStateConfig = config;
@@ -117,6 +207,20 @@ export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = un
 
   /**
    * Enable private state debugging (shorthand for withPrivateState with debug: true)
+   *
+   * @param enabled - Whether to enable debug mode (defaults to true)
+   * @returns The builder instance for method chaining
+   *
+   * @remarks
+   * Debug mode logs all private state changes showing before/after values.
+   * Must be called after `withPrivateState()`.
+   *
+   * @example
+   * ```typescript
+   * builder
+   *   .withPrivateState({ initialState: { counter: 0 } })
+   *   .withPrivateStateDebug(true);
+   * ```
    */
   withPrivateStateDebug(enabled: boolean = true): this {
     if (this.privateStateConfig) {
@@ -345,6 +449,34 @@ export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = un
 
 /**
  * Factory function to create a ContractAdapterBuilder
+ *
+ * @typeParam TContract - The contract interface type
+ * @typeParam TLedger - The ledger type for witness context (defaults to any)
+ * @typeParam TPrivateState - The private state type (undefined if no private state)
+ *
+ * @param contractInstance - The contract instance to wrap
+ * @returns A new ContractAdapterBuilder instance
+ *
+ * @remarks
+ * This is the primary entry point for creating contract adapters.
+ * Use type parameters to enable full type safety and autocomplete.
+ *
+ * @example
+ * ```typescript
+ * // Without type parameters (basic usage)
+ * const adapter = await createContractAdapter(contractInstance)
+ *   .deploy(providers);
+ *
+ * // With type parameters (full type safety)
+ * const adapter = await createContractAdapter<MyContract, Ledger, MyState>(contractInstance)
+ *   .withWitnesses(witnesses)
+ *   .withPrivateState({ initialState: { counter: 0 } })
+ *   .deploy(providers);
+ *
+ * // Type-safe method calls
+ * await adapter.increment(); // Autocomplete works!
+ * const state = await adapter.getPrivateState(); // Returns MyState | null
+ * ```
  */
 export function createContractAdapter<TContract, TLedger = any, TPrivateState = undefined>(
   contractInstance: any
