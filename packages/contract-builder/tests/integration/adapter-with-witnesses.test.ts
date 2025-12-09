@@ -60,7 +60,7 @@ describe('Contract Adapter with Witnesses - Integration', () => {
     };
 
     mockContractClass = class MockContract {
-      constructor(public witnesses: any) {}
+      constructor(public contractWitnesses: any) {}
     };
   });
 
@@ -119,6 +119,7 @@ describe('Contract Adapter with Witnesses - Integration', () => {
 
     it('should deploy contract without witnesses for contracts that do not need them', async () => {
       const simpleContractClass = class SimpleContract {
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
         constructor() {}
       };
       const contractInstance = new simpleContractClass();
@@ -179,6 +180,7 @@ describe('Contract Adapter with Witnesses - Integration', () => {
 
     it('should throw error when accessing private state without configuration', async () => {
       const simpleContractClass = class SimpleContract {
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
         constructor() {}
       };
       const contractInstance = new simpleContractClass();
@@ -253,6 +255,7 @@ describe('Contract Adapter with Witnesses - Integration', () => {
 
   describe('debug mode', () => {
     it('should log state changes when debug is enabled', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       mockProviders.privateStateProvider.get.mockResolvedValue({ privateCounter: 0 });
 
@@ -282,6 +285,7 @@ describe('Contract Adapter with Witnesses - Integration', () => {
     });
 
     it('should use withPrivateStateDebug method', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       mockProviders.privateStateProvider.get.mockResolvedValue({ privateCounter: 5 });
 

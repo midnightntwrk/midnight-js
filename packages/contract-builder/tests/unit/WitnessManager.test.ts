@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { WitnessManager } from '../../src/adapter/WitnessManager.js';
-import { WitnessValidationError, WitnessAttachmentError } from '../../src/errors/WitnessError.js';
+import { WitnessAttachmentError, WitnessValidationError } from '../../src/errors/WitnessError.js';
 import type { Witnesses } from '../../src/types/witness-types.js';
 
 describe('WitnessManager', () => {
@@ -9,7 +9,9 @@ describe('WitnessManager', () => {
     privateCounter: number;
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let mockContractClass: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let witnesses: Witnesses<any, CounterPrivateState>;
 
   beforeEach(() => {
@@ -21,7 +23,8 @@ describe('WitnessManager', () => {
     };
 
     mockContractClass = class MockContract {
-      constructor(public witnesses: any) {}
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      constructor(public mockWitnesses: any) {}
       name = 'MockContract';
     };
   });
@@ -43,6 +46,7 @@ describe('WitnessManager', () => {
 
     it('should throw error when witness is not a function', () => {
       const invalidWitnesses = {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         privateIncrement: 'not a function' as any
       };
       const manager = new WitnessManager(invalidWitnesses, mockContractClass);
@@ -52,6 +56,7 @@ describe('WitnessManager', () => {
     });
 
     it('should validate multiple witnesses', () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const multipleWitnesses: Witnesses<any, CounterPrivateState> = {
         privateIncrement: ({ privateState }) => [
           { privateCounter: privateState.privateCounter + 1 },
@@ -70,10 +75,12 @@ describe('WitnessManager', () => {
 
     it('should throw error when one of multiple witnesses is invalid', () => {
       const invalidWitnesses = {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         privateIncrement: ({ privateState }: any) => [
           { privateCounter: privateState.privateCounter + 1 },
           []
         ],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         privateDecrement: 42 as any
       };
 

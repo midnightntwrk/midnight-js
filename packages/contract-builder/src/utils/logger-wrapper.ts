@@ -8,9 +8,13 @@ import type { Logger } from '../types/contract-types.js';
  * No-op logger that discards all log messages
  */
 export const noopLogger: Logger = {
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
   info: () => {},
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
   warn: () => {},
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
   error: () => {},
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
   debug: () => {}
 };
 

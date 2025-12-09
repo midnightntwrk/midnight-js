@@ -10,8 +10,9 @@
  * 4. Event handler type safety
  */
 
+/* eslint-disable unused-imports/no-unused-vars */
+
 import { createContractAdapter } from '../../src/index.js';
-import type { ContractAdapter } from '../../src/types/adapter-types.js';
 
 // Demo contract interface
 type CounterContract = {

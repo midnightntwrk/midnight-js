@@ -5,7 +5,7 @@
  * Provides type-safe interfaces for contract adapters with full TypeScript inference
  */
 
-import type { DeployedContract, Logger, MethodCallEvent, MethodErrorEvent, MethodSuccessEvent, RetryConfig, DeployTxData } from './contract-types.js';
+import type { DeployedContract, DeployTxData, Logger, MethodCallEvent, MethodErrorEvent, MethodSuccessEvent, RetryConfig } from './contract-types.js';
 import type { Prettify } from './type-utils.js';
 import type { WitnessCallEvent } from './witness-types.js';
 
@@ -55,6 +55,7 @@ export interface AdapterConfig {
    * Optional event handlers for monitoring
    * @remarks Pre-register event handlers that will be attached to the adapter
    */
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
   eventHandlers?: Record<string, Function>;
 }
 

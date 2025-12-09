@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { PrivateStateManager } from '../../src/private-state/PrivateStateManager.js';
-import { PrivateStateError, PrivateStateValidationError } from '../../src/errors/PrivateStateError.js';
 import type { PrivateStateConfig } from '../../src/config/PrivateStateConfig.js';
+import { PrivateStateError, PrivateStateValidationError } from '../../src/errors/PrivateStateError.js';
+import { PrivateStateManager } from '../../src/private-state/PrivateStateManager.js';
 import type { Logger } from '../../src/types/contract-types.js';
 
 describe('PrivateStateManager', () => {
@@ -194,6 +194,7 @@ describe('PrivateStateManager', () => {
     });
 
     it('should log state changes with before/after when debug is enabled', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       mockProviders.privateStateProvider.get.mockResolvedValue({ privateCounter: 0 });
       const newState: CounterPrivateState = { privateCounter: 99 };
@@ -219,6 +220,7 @@ describe('PrivateStateManager', () => {
     });
 
     it('should not log to console when debug is disabled', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
       const config: PrivateStateConfig<CounterPrivateState> = {

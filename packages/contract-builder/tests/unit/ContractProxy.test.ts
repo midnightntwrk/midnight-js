@@ -40,6 +40,7 @@ describe('ContractProxy', () => {
     });
 
     it('should handle errors in event handlers gracefully', () => {
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const throwingHandler = vi.fn().mockImplementation(() => {
         throw new Error('Handler error');

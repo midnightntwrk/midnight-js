@@ -5,6 +5,10 @@
  * If any test fails, TypeScript will show a compilation error.
  */
 
+/* eslint-disable unused-imports/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-unused-expressions */
+/* eslint-disable @typescript-eslint/no-empty-function */
+
 import { createContractAdapter } from '../../src/adapter/ContractAdapterBuilder.js';
 import type { PrivateStateConfig } from '../../src/config/PrivateStateConfig.js';
 import type { ContractAdapter } from '../../src/types/adapter-types.js';
