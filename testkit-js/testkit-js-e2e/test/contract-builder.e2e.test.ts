@@ -234,6 +234,7 @@ describe('Contract Builder E2E Tests', () => {
 
       try {
         await (adapter as any).callTx?.nonExistentMethod?.();
+        // eslint-disable-next-line unused-imports/no-unused-vars
       } catch (error) {
         // Expected error for non-existent method
       }
