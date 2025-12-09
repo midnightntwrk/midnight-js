@@ -14,7 +14,7 @@
  */
 
 import type { ContractState } from '@midnight-ntwrk/compact-runtime';
-import type { ContractAddress, TransactionId, ZswapChainState } from '@midnight-ntwrk/ledger';
+import type { ContractAddress, TransactionId, ZswapChainState } from '@midnight-ntwrk/ledger-v6';
 import type { Observable } from 'rxjs';
 
 import type { FinalizedTxData, UnshieldedBalances } from './midnight-types';

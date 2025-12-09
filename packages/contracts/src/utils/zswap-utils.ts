@@ -28,7 +28,7 @@ import {
   ZswapInput,
   ZswapOffer,
   ZswapOutput,
-  ZswapTransient} from '@midnight-ntwrk/ledger';
+  ZswapTransient} from '@midnight-ntwrk/ledger-v6';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   assertDefined,

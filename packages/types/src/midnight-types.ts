@@ -24,7 +24,7 @@ import {
   type TransactionHash,
   type TransactionId,
   type UnprovenTransaction
-} from '@midnight-ntwrk/ledger';
+} from '@midnight-ntwrk/ledger-v6';
 
 /**
  * A type representing a prover key derived from a contract circuit.

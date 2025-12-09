@@ -37,7 +37,7 @@ import {
   StateValue as LedgerStateValue,
   type UnprovenTransaction,
   type ZswapChainState
-} from '@midnight-ntwrk/ledger';
+} from '@midnight-ntwrk/ledger-v6';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   asContractAddress,

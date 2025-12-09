@@ -16,7 +16,7 @@
 import { ContractExecutable } from '@midnight-ntwrk/compact-js';
 import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
 import type { CoinPublicKey,SigningKey } from '@midnight-ntwrk/compact-runtime';
-import type { EncPublicKey } from '@midnight-ntwrk/ledger';
+import type { EncPublicKey } from '@midnight-ntwrk/ledger-v6';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   makeContractExecutableRuntime,

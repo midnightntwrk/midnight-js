@@ -49,7 +49,7 @@ import {
   type UnprovenTransaction,
   type ZswapChainState,
   type ZswapSecretKeys
-} from '@midnight-ntwrk/ledger';
+} from '@midnight-ntwrk/ledger-v6';
 import {
   type FinalizedTxData,
   type PrivateStateId,
