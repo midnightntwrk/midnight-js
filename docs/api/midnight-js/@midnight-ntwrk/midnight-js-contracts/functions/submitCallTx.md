@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.5**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.9**](../../../README.md)
 
 ***
 
@@ -8,6 +8,26 @@
 
 Creates and submits a transaction for the invocation of a circuit on a given contract.
 
+## Transaction Execution Phases
+
+Midnight transactions execute in two phases:
+1. **Guaranteed phase**: If failure occurs, the transaction is NOT included in the blockchain
+2. **Fallible phase**: If failure occurs, the transaction IS recorded on-chain as a partial success
+
+## Failure Behavior
+
+**Guaranteed Phase Failure:**
+- Transaction is rejected and not included in the blockchain
+- `CallTxFailedError` is thrown with transaction data and circuit ID
+- Private state updates are NOT stored (state remains unchanged)
+- No on-chain record of the failed transaction
+
+**Fallible Phase Failure:**
+- Transaction is recorded on-chain with non-`SucceedEntirely` status
+- `CallTxFailedError` is thrown with transaction data and circuit ID
+- Private state updates are NOT stored (state remains unchanged)
+- Transaction appears in blockchain history as partial success
+
 ## Param
 
 The providers used to manage the invocation lifecycle.
@@ -15,6 +35,11 @@ The providers used to manage the invocation lifecycle.
 ## Param
 
 Configuration.
+
+## Throws
+
+When transaction fails in either guaranteed or fallible phase.
+        The error contains the finalized transaction data and circuit ID for debugging.
 
 ## Call Signature
 

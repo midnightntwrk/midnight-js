@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.5**](../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.9**](../../README.md)
 
 ***
 
@@ -32,6 +32,7 @@
 ## Type Aliases
 
 - [All](type-aliases/All.md)
+- [BalancedProvingRecipe](type-aliases/BalancedProvingRecipe.md)
 - [BalanceTransactionToProve](type-aliases/BalanceTransactionToProve.md)
 - [BlockHash](type-aliases/BlockHash.md)
 - [BlockHashConfig](type-aliases/BlockHashConfig.md)

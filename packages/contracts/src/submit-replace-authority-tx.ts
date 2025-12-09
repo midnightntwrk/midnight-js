@@ -28,6 +28,27 @@ import { createUnprovenReplaceAuthorityTx } from './utils';
  * finalized, the current signing key stored in the given private state provider
  * is overwritten with the given new authority key.
  *
+ * ## Transaction Execution Phases
+ *
+ * Midnight transactions execute in two phases:
+ * 1. **Guaranteed phase**: If failure occurs, the transaction is NOT included in the blockchain
+ * 2. **Fallible phase**: If failure occurs, the transaction IS recorded on-chain as a partial success
+ *
+ * ## Failure Behavior
+ *
+ * **Guaranteed Phase Failure:**
+ * - Transaction is rejected and not included in the blockchain
+ * - `ReplaceMaintenanceAuthorityTxFailedError` is thrown with transaction data
+ * - Signing key in private state provider is NOT updated (remains as current authority)
+ * - Contract authority on-chain remains unchanged
+ *
+ * **Fallible Phase Failure:**
+ * - Transaction is recorded on-chain with non-`SucceedEntirely` status
+ * - `ReplaceMaintenanceAuthorityTxFailedError` is thrown with transaction data
+ * - Signing key in private state provider is NOT updated (remains as current authority)
+ * - Contract authority on-chain may be partially updated but inconsistent
+ * - Transaction appears in blockchain history as partial success
+ *
  * @param providers The providers to use to manage the transaction lifecycle.
  * @param contractAddress The address of the contract for which the maintenance
  *                        authority should be updated.
@@ -44,6 +65,9 @@ export const submitReplaceAuthorityTx =
    *
    * @returns A promise that resolves with the finalized transaction data, or rejects if
    *          an error occurs along the way.
+   *
+   * @throws {ReplaceMaintenanceAuthorityTxFailedError} When transaction fails in either guaranteed or fallible phase.
+   *         The error contains the finalized transaction data for debugging.
    */
   async (newAuthority: SigningKey): Promise<FinalizedTxData> => {
     assertIsContractAddress(contractAddress);

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.5**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.9**](../../../README.md)
 
 ***
 
@@ -199,7 +199,12 @@ The address of the contract of interest.
 > **watchForDeployTxData**(`contractAddress`): `Promise`\<[`FinalizedTxData`](FinalizedTxData.md)\>
 
 Retrieves data of the deployment transaction for the contract at the given contract address.
-Waits indefinitely for matching data to appear.
+
+**IMPORTANT: This method waits indefinitely** until the deployment transaction appears on the
+blockchain. It will never timeout or reject unless an error occurs.
+
+Custom implementations MUST maintain this indefinite waiting behavior to ensure consistency
+across all PublicDataProvider implementations. Do not implement timeouts in this method.
 
 #### Parameters
 
@@ -213,6 +218,9 @@ The address of the contract of interest.
 
 `Promise`\<[`FinalizedTxData`](FinalizedTxData.md)\>
 
+A promise that resolves with finalized transaction data when the deployment appears on-chain.
+         The promise never rejects due to timeout.
+
 ***
 
 ### watchForTxData()
@@ -220,7 +228,17 @@ The address of the contract of interest.
 > **watchForTxData**(`txId`): `Promise`\<[`FinalizedTxData`](FinalizedTxData.md)\>
 
 Retrieves data of the transaction containing the call or deployment with the given identifier.
-Waits indefinitely for matching data to appear.
+
+**IMPORTANT: This method waits indefinitely** until the transaction appears on the blockchain.
+It will never timeout or reject unless an error occurs.
+
+Custom implementations MUST maintain this indefinite waiting behavior to ensure consistency
+across all PublicDataProvider implementations. Do not implement timeouts in this method.
+
+Applications using this method should be aware that:
+- The promise will not resolve until the transaction appears on-chain
+- If a transaction is invalid and never appears, this will never return
+- Consider using application-level timeouts or cancellation mechanisms if needed
 
 #### Parameters
 
@@ -233,6 +251,9 @@ The identifier of the call or deployment of interest.
 #### Returns
 
 `Promise`\<[`FinalizedTxData`](FinalizedTxData.md)\>
+
+A promise that resolves with finalized transaction data when the transaction appears on-chain.
+         The promise never rejects due to timeout.
 
 ***
 
