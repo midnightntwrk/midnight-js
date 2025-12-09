@@ -31,7 +31,7 @@ import {
   type Transcript,
   unshieldedToken,
   ZswapChainState
-} from '@midnight-ntwrk/ledger-v6';
+} from '@midnight-ntwrk/ledger';
 // import { createVerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
@@ -151,8 +151,7 @@ describe('ledger-utils', () => {
     expect(tx).toBeInstanceOf(Transaction);
   });
 
-  it.skip('createUnprovenReplaceAuthorityTx returns an UnprovenTransaction', async () => {
-    // TODO: timjroberts: Remove 'skip' when Compact.js has been removed from the repo.
+  it('createUnprovenReplaceAuthorityTx returns an UnprovenTransaction', async () => {
     const tx = await createUnprovenReplaceAuthorityTx(
       mockZKProvider,
       mockCompiledContract,
@@ -165,8 +164,7 @@ describe('ledger-utils', () => {
     expect(tx).toBeInstanceOf(Transaction);
   });
 
-  it.skip('createUnprovenRemoveVerifierKeyTx returns an UnprovenTransaction', async () => {
-    // TODO: timjroberts Remove 'skip' when Compact.js has been removed from the repo.
+  it('createUnprovenRemoveVerifierKeyTx returns an UnprovenTransaction', async () => {
     const tx = await createUnprovenRemoveVerifierKeyTx(
       mockZKProvider,
       mockCompiledContract,

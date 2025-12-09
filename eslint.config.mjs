@@ -27,13 +27,15 @@ export default tseslint.config(
       '**/reports/**',
       '**/*.json',
       'packages/compact/src/run-compactc.cjs',
+      'compact-js/**',
+      'platform-js/**'
     ]
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   ...tseslint.configs.stylistic,
   {
-    files: ['packages/**/*.ts', 'packages/**/*.tsx', 'packages/**/*.mts', 'compact-js/**/*.ts', 'platform-js/**/*.ts', 'testkit-js/**/*.ts'],
+    files: ['packages/**/*.ts', 'packages/**/*.tsx', 'packages/**/*.mts', 'testkit-js/**/*.ts'],
     plugins: {
       '@typescript-eslint': tseslint.plugin,
       import: importPlugin,
@@ -47,7 +49,7 @@ export default tseslint.config(
       'import/resolver': {
         typescript: {
           alwaysTryTypes: false,
-          project: ['tsconfig.json', 'packages/*/tsconfig.json', 'compact-js/*/tsconfig.json', 'platform-js/*/tsconfig.json', 'testkit-js/*/tsconfig.json']
+          project: ['tsconfig.json', 'packages/*/tsconfig.json', 'testkit-js/*/tsconfig.json']
         }
       }
     },

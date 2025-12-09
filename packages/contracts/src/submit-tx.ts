@@ -15,6 +15,8 @@
 
 import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
 import type { ShieldedCoinInfo } from '@midnight-ntwrk/compact-runtime';
+import { LedgerState, type UnprovenTransaction, WellFormedStrictness } from '@midnight-ntwrk/ledger';
+import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   type FinalizedTxData,
   type TransactionToProve

@@ -19,7 +19,8 @@ import {
   type FinalizedTransaction,
   type ShieldedCoinInfo,
   type UnprovenTransaction,
-} from '@midnight-ntwrk/ledger-v6';
+  type ZswapSecretKeys
+} from '@midnight-ntwrk/ledger';
 
 export const TRANSACTION_TO_PROVE = 'TransactionToProve';
 export const BALANCE_TRANSACTION_TO_PROVE = 'BalanceTransactionToProve';

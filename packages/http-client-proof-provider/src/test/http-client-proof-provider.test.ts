@@ -28,8 +28,7 @@ describe('Http Proof Server Proof Provider', () => {
     expect(() => httpClientProofProvider('ws://localhost:8080')).toThrow(/Invalid protocol scheme: 'ws:'/);
   });
 
-  test.skip("'serializePayload' produces deterministic output", async () => {
-    // TODO: timjroberts Remove 'skip' when Compact.js has been removed from the repo.
+  test("'serializePayload' produces deterministic output", async () => {
     const zkConfig = await getValidZKConfig();
     const unprovenTx = await getValidUnprovenTx();
     const payload1 = serializeTransactionPayload(unprovenTx, zkConfig);
@@ -38,8 +37,7 @@ describe('Http Proof Server Proof Provider', () => {
     expect(payload1.byteLength).toBeGreaterThan(0);
   });
 
-  test.skip('handles Uint8Array<ArrayBufferLike> correctly', async () => {
-    // TODO: timjroberts Remove 'skip' when Compact.js has been removed from the repo.
+  test('handles Uint8Array<ArrayBufferLike> correctly', async () => {
     const zkConfig = await getValidZKConfig();
     const unprovenTx = await getValidUnprovenTx();
 
@@ -49,8 +47,7 @@ describe('Http Proof Server Proof Provider', () => {
     expect(result.byteLength).toBeGreaterThan(0);
   });
 
-  test.skip('handles undefined zkConfig correctly', async () => {
-    // TODO: timjroberts Remove 'skip' when Compact.js has been removed from the repo.
+  test('handles undefined zkConfig correctly', async () => {
     const unprovenTx = await getValidUnprovenTx();
 
     const result = serializeTransactionPayload(unprovenTx, undefined);

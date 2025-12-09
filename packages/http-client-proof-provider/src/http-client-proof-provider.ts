@@ -18,7 +18,7 @@ import {
   type ProvingKeyMaterial,
   Transaction,
   type UnprovenTransaction
-} from '@midnight-ntwrk/ledger-v6';
+} from '@midnight-ntwrk/ledger';
 import type {
   ProofProvider,
   ProvenTransaction,

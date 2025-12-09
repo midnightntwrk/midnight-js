@@ -15,7 +15,7 @@
 
 import type { CompiledContract } from '@midnight-ntwrk/compact-js';
 import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
-import type { ContractAddress } from '@midnight-ntwrk/ledger-v6';
+import type { ContractAddress } from '@midnight-ntwrk/ledger';
 import {
   type FinalizedTxData,
   SucceedEntirely,

@@ -8,9 +8,7 @@ import dts from 'rollup-plugin-dts';
 export function createRollupConfig(packageJson) {
   const external = [
     /node_modules/,
-    /^@midnight-ntwrk\/midnight-js-(.*)$/,
-    /^@midnight-ntwrk\/compact-js(.*)$/,
-    /^@midnight-ntwrk\/platform-js(.*)$/
+    /^@midnight-ntwrk\/midnight-js-(.*)$/
   ];
 
   return [

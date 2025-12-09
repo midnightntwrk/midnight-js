@@ -19,7 +19,7 @@ import {
   type SignatureEnabled,
   type Transaction,
   type UnprovenTransaction
-} from '@midnight-ntwrk/ledger-v6';
+} from '@midnight-ntwrk/ledger';
 
 import type { ZKConfig } from './midnight-types';
 
