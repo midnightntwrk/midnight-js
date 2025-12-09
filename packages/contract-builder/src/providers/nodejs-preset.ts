@@ -3,8 +3,39 @@
  * Uses node-zk-config-provider and other Node.js-specific providers
  */
 
-import type { NetworkConfig, WalletConfig, ContractProvidersConfig } from './types.js';
 import type { Logger } from '../types/contract-types.js';
+import type { ContractProvidersConfig, NetworkConfig, WalletConfig } from './types.js';
+
+/**
+ * Node.js wallet provider interface
+ */
+interface NodeJSWalletProvider {
+  address: string;
+  sign: (data: unknown) => Promise<{ signature: string }>;
+}
+
+/**
+ * Creates a wallet provider for Node.js
+ * This is a placeholder - actual implementation depends on wallet API
+ */
+async function createNodeJSWallet(
+  wallet: WalletConfig,
+  logger?: Logger
+): Promise<NodeJSWalletProvider> {
+  logger?.debug('Creating Node.js wallet provider...');
+
+  // TODO: Implement actual wallet creation
+  // This will depend on the midnight-js wallet API
+  // For now, return a mock structure
+
+  return {
+    address: 'wallet-address-placeholder',
+    sign: async (_data: unknown) => {
+      logger?.warn('Using mock wallet provider - implement actual wallet');
+      return { signature: 'mock-signature' };
+    }
+  };
+}
 
 /**
  * Creates providers for Node.js environment
@@ -87,27 +118,4 @@ export async function createNodeJSProviders(
       `Failed to create Node.js providers: ${error instanceof Error ? error.message : String(error)}`
     );
   }
-}
-
-/**
- * Creates a wallet provider for Node.js
- * This is a placeholder - actual implementation depends on wallet API
- */
-async function createNodeJSWallet(
-  wallet: WalletConfig,
-  logger?: Logger
-): Promise<any> {
-  logger?.debug('Creating Node.js wallet provider...');
-
-  // TODO: Implement actual wallet creation
-  // This will depend on the midnight-js wallet API
-  // For now, return a mock structure
-
-  return {
-    address: 'wallet-address-placeholder',
-    sign: async (data: any) => {
-      logger?.warn('Using mock wallet provider - implement actual wallet');
-      return { signature: 'mock-signature' };
-    }
-  };
 }

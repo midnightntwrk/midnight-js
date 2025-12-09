@@ -2,9 +2,9 @@ import { WitnessExecutionError } from '../errors/WitnessError.js';
 import type { Logger } from '../types/contract-types.js';
 import type { WitnessCallEvent, WitnessContext,Witnesses } from '../types/witness-types.js';
 
-export type WitnessCallHandler<TPrivateState = any> = (event: WitnessCallEvent<TPrivateState>) => void;
+export type WitnessCallHandler<TPrivateState = unknown> = (event: WitnessCallEvent<TPrivateState>) => void;
 
-export class WitnessInterceptor<TLedger = any, TPrivateState = any> {
+export class WitnessInterceptor<TLedger = unknown, TPrivateState = unknown> {
   private handlers: WitnessCallHandler<TPrivateState>[] = [];
 
   constructor(

@@ -3,8 +3,135 @@
  * Uses fetch-zk-config-provider and other browser-compatible providers
  */
 
-import type { NetworkConfig, WalletConfig, ContractProvidersConfig } from './types.js';
 import type { Logger } from '../types/contract-types.js';
+import type { ContractProvidersConfig, NetworkConfig, WalletConfig } from './types.js';
+
+/**
+ * Private state provider interface
+ */
+interface PrivateStateProvider {
+  get: (key: string) => Promise<unknown>;
+  set: (key: string, value: unknown) => Promise<void>;
+  delete: (key: string) => Promise<void>;
+}
+
+/**
+ * Wallet provider interface
+ */
+interface WalletProvider {
+  address: string;
+  sign: (data: unknown) => Promise<{ signature: string }>;
+  isExtensionAvailable: boolean;
+}
+
+/**
+ * Creates a private state provider for browser using IndexedDB
+ */
+async function createBrowserPrivateStateProvider(): Promise<PrivateStateProvider> {
+  // Check if IndexedDB is available
+  if (typeof indexedDB === 'undefined') {
+    throw new Error('IndexedDB is not available in this environment');
+  }
+
+  // Simple IndexedDB-based private state provider
+  const dbName = 'midnight-private-state';
+  const storeName = 'states';
+
+  return {
+    get: async (key: string): Promise<unknown> => {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(dbName, 1);
+
+        request.onerror = () => reject(request.error);
+
+        request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
+          const db = (event.target as IDBOpenDBRequest).result;
+          if (!db.objectStoreNames.contains(storeName)) {
+            db.createObjectStore(storeName);
+          }
+        };
+
+        request.onsuccess = () => {
+          const db = request.result;
+          const transaction = db.transaction([storeName], 'readonly');
+          const store = transaction.objectStore(storeName);
+          const getRequest = store.get(key);
+
+          getRequest.onsuccess = () => resolve(getRequest.result);
+          getRequest.onerror = () => reject(getRequest.error);
+        };
+      });
+    },
+
+    set: async (key: string, value: unknown): Promise<void> => {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(dbName, 1);
+
+        request.onerror = () => reject(request.error);
+
+        request.onupgradeneeded = (event: IDBVersionChangeEvent) => {
+          const db = (event.target as IDBOpenDBRequest).result;
+          if (!db.objectStoreNames.contains(storeName)) {
+            db.createObjectStore(storeName);
+          }
+        };
+
+        request.onsuccess = () => {
+          const db = request.result;
+          const transaction = db.transaction([storeName], 'readwrite');
+          const store = transaction.objectStore(storeName);
+          const putRequest = store.put(value, key);
+
+          putRequest.onsuccess = () => resolve();
+          putRequest.onerror = () => reject(putRequest.error);
+        };
+      });
+    },
+
+    delete: async (key: string): Promise<void> => {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(dbName, 1);
+
+        request.onerror = () => reject(request.error);
+
+        request.onsuccess = () => {
+          const db = request.result;
+          const transaction = db.transaction([storeName], 'readwrite');
+          const store = transaction.objectStore(storeName);
+          const deleteRequest = store.delete(key);
+
+          deleteRequest.onsuccess = () => resolve();
+          deleteRequest.onerror = () => reject(deleteRequest.error);
+        };
+      });
+    }
+  };
+}
+
+/**
+ * Creates a wallet provider for browser
+ * This is a placeholder - actual implementation depends on wallet API
+ */
+async function createBrowserWallet(
+  wallet: WalletConfig,
+  logger?: Logger
+): Promise<WalletProvider> {
+  logger?.debug('Creating browser wallet provider...');
+
+  // TODO: Implement actual browser wallet creation
+  // This might integrate with browser wallet extensions (MetaMask-like)
+  // For now, return a mock structure
+
+  return {
+    address: 'browser-wallet-address-placeholder',
+    sign: async (_data: unknown) => {
+      logger?.warn('Using mock wallet provider - implement actual wallet');
+      return { signature: 'mock-signature' };
+    },
+    // Browser-specific: could integrate with wallet extensions
+    isExtensionAvailable: false
+  };
+}
 
 /**
  * Creates providers for browser environment
@@ -79,113 +206,4 @@ export async function createBrowserProviders(
       `Failed to create browser providers: ${error instanceof Error ? error.message : String(error)}`
     );
   }
-}
-
-/**
- * Creates a private state provider for browser using IndexedDB
- */
-async function createBrowserPrivateStateProvider(): Promise<any> {
-  // Check if IndexedDB is available
-  if (typeof indexedDB === 'undefined') {
-    throw new Error('IndexedDB is not available in this environment');
-  }
-
-  // Simple IndexedDB-based private state provider
-  const dbName = 'midnight-private-state';
-  const storeName = 'states';
-
-  return {
-    get: async (key: string): Promise<any> => {
-      return new Promise((resolve, reject) => {
-        const request = indexedDB.open(dbName, 1);
-
-        request.onerror = () => reject(request.error);
-
-        request.onupgradeneeded = (event: any) => {
-          const db = event.target.result;
-          if (!db.objectStoreNames.contains(storeName)) {
-            db.createObjectStore(storeName);
-          }
-        };
-
-        request.onsuccess = () => {
-          const db = request.result;
-          const transaction = db.transaction([storeName], 'readonly');
-          const store = transaction.objectStore(storeName);
-          const getRequest = store.get(key);
-
-          getRequest.onsuccess = () => resolve(getRequest.result);
-          getRequest.onerror = () => reject(getRequest.error);
-        };
-      });
-    },
-
-    set: async (key: string, value: any): Promise<void> => {
-      return new Promise((resolve, reject) => {
-        const request = indexedDB.open(dbName, 1);
-
-        request.onerror = () => reject(request.error);
-
-        request.onupgradeneeded = (event: any) => {
-          const db = event.target.result;
-          if (!db.objectStoreNames.contains(storeName)) {
-            db.createObjectStore(storeName);
-          }
-        };
-
-        request.onsuccess = () => {
-          const db = request.result;
-          const transaction = db.transaction([storeName], 'readwrite');
-          const store = transaction.objectStore(storeName);
-          const putRequest = store.put(value, key);
-
-          putRequest.onsuccess = () => resolve();
-          putRequest.onerror = () => reject(putRequest.error);
-        };
-      });
-    },
-
-    delete: async (key: string): Promise<void> => {
-      return new Promise((resolve, reject) => {
-        const request = indexedDB.open(dbName, 1);
-
-        request.onerror = () => reject(request.error);
-
-        request.onsuccess = () => {
-          const db = request.result;
-          const transaction = db.transaction([storeName], 'readwrite');
-          const store = transaction.objectStore(storeName);
-          const deleteRequest = store.delete(key);
-
-          deleteRequest.onsuccess = () => resolve();
-          deleteRequest.onerror = () => reject(deleteRequest.error);
-        };
-      });
-    }
-  };
-}
-
-/**
- * Creates a wallet provider for browser
- * This is a placeholder - actual implementation depends on wallet API
- */
-async function createBrowserWallet(
-  wallet: WalletConfig,
-  logger?: Logger
-): Promise<any> {
-  logger?.debug('Creating browser wallet provider...');
-
-  // TODO: Implement actual browser wallet creation
-  // This might integrate with browser wallet extensions (MetaMask-like)
-  // For now, return a mock structure
-
-  return {
-    address: 'browser-wallet-address-placeholder',
-    sign: async (data: any) => {
-      logger?.warn('Using mock wallet provider - implement actual wallet');
-      return { signature: 'mock-signature' };
-    },
-    // Browser-specific: could integrate with wallet extensions
-    isExtensionAvailable: false
-  };
 }

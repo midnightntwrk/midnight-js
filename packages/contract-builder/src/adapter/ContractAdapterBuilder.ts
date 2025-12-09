@@ -27,11 +27,13 @@ import { mergeRetryConfig } from '../config/RetryConfig.js';
 import { DeploymentError } from '../errors/AdapterError.js';
 import { PrivateStateManager } from '../private-state/PrivateStateManager.js';
 import { createDefaultProviders } from '../providers/factory.js';
-import type { NetworkConfig, NetworkPreset, ProviderPresetConfig,WalletConfig } from '../providers/types.js';
+import type { NetworkConfig, NetworkPreset, ProviderPresetConfig, WalletConfig } from '../providers/types.js';
 import type { AdapterConfig, ContractAdapter as IContractAdapter } from '../types/adapter-types.js';
-import type { ContractProviders, Logger, RetryConfig } from '../types/contract-types.js';
-import type { WitnessCallEvent,Witnesses } from '../types/witness-types.js';
+import type { ContractProviders, DeployedContract, Logger, RetryConfig } from '../types/contract-types.js';
+import type { ContractInstance, DeployOptions, ErrorHandler, FindContractOptions } from '../types/external-contract-types.js';
+import type { WitnessCallEvent, Witnesses } from '../types/witness-types.js';
 import { ContractAdapter } from './ContractAdapter.js';
+import type { EventEmitter } from './ContractProxy.js';
 import { WitnessInterceptor } from './WitnessInterceptor.js';
 import { WitnessManager } from './WitnessManager.js';
 
@@ -55,18 +57,18 @@ import { WitnessManager } from './WitnessManager.js';
  * const adapter = await builder.deploy(providers);
  * ```
  */
-export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = undefined> {
+export class ContractAdapterBuilder<TContract, TLedger = unknown, TPrivateState = undefined> {
   private logger?: Logger;
   private retryConfig?: RetryConfig;
-  private errorHandler?: (error: any) => void;
-  private eventHandlers: Record<string, Function> = {};
+  private errorHandler?: ErrorHandler;
+  private eventHandlers: Record<string, (data: unknown) => void> = {};
   private providersConfig?: NetworkPreset | NetworkConfig | ProviderPresetConfig;
   private walletConfig?: WalletConfig;
   private witnesses?: Witnesses<TLedger, TPrivateState>;
   private privateStateConfig?: PrivateStateConfig<TPrivateState>;
   private witnessInterceptor?: WitnessInterceptor<TLedger, TPrivateState>;
 
-  constructor(private readonly contractInstance: any) {}
+  constructor(private readonly contractInstance: ContractInstance) {}
 
   /**
    * Configure a logger for the adapter
@@ -107,7 +109,7 @@ export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = un
   /**
    * Configure a custom error handler
    */
-  withErrorHandler(handler: (error: any) => void): this {
+  withErrorHandler(handler: ErrorHandler): this {
     this.errorHandler = handler;
     return this;
   }
@@ -115,7 +117,7 @@ export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = un
   /**
    * Register an event handler
    */
-  on(event: string, handler: Function): this {
+  on(event: string, handler: (data: unknown) => void): this {
     this.eventHandlers[event] = handler;
     return this;
   }
@@ -222,7 +224,7 @@ export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = un
    *   .withPrivateStateDebug(true);
    * ```
    */
-  withPrivateStateDebug(enabled: boolean = true): this {
+  withPrivateStateDebug(enabled = true): this {
     if (this.privateStateConfig) {
       this.privateStateConfig.debug = enabled;
     }
@@ -278,7 +280,7 @@ export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = un
           };
         }
 
-        resolvedProviders = await createDefaultProviders(fullConfig, this.logger) as any;
+        resolvedProviders = await createDefaultProviders(fullConfig, this.logger) as ContractProviders;
         this.logger?.info('Default providers created successfully');
       } else {
         throw new DeploymentError(
@@ -295,7 +297,7 @@ export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = un
 
         const witnessManager = new WitnessManager<TLedger, TPrivateState>(
           interceptedWitnesses,
-          this.contractInstance.constructor
+          (this.contractInstance as { constructor: new (witnesses: Witnesses<unknown, unknown>) => ContractInstance }).constructor
         );
         witnessManager.validate();
         contractInstance = witnessManager.attachToContract();
@@ -304,7 +306,7 @@ export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = un
         });
       }
 
-      const deployOptions: any = {
+      const deployOptions: DeployOptions = {
         contract: contractInstance
       };
 
@@ -328,10 +330,11 @@ export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = un
 
       const { deployContract } = await import('@midnight-ntwrk/midnight-js-contracts');
 
-      const deployed = await (deployContract as any)(resolvedProviders, deployOptions) as any;
+      // Type assertion needed due to external library's complex overloads
+      const deployed = await (deployContract as unknown as (providers: ContractProviders, options: DeployOptions) => Promise<unknown>)(resolvedProviders, deployOptions);
 
       this.logger?.info('Contract deployed successfully', {
-        address: deployed.address
+        address: (deployed as { address: string }).address
       });
 
       const config: AdapterConfig = {
@@ -341,13 +344,15 @@ export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = un
         eventHandlers: this.eventHandlers
       };
 
-      const adapter = new ContractAdapter<TContract, TPrivateState>(deployed, config, {
+      const adapter = new ContractAdapter<TContract, TPrivateState>(deployed as DeployedContract<TContract>, config, {
         privateStateManager
       }) as unknown as IContractAdapter<TContract, TPrivateState>;
 
       if (this.witnessInterceptor) {
         this.witnessInterceptor.onWitnessCall((event: WitnessCallEvent<TPrivateState>) => {
-          (adapter as any).eventEmitter?.emit('witnessCall', event);
+          // Access the private eventEmitter through the adapter interface
+          const adapterWithEmitter = adapter as unknown as { eventEmitter?: EventEmitter };
+          adapterWithEmitter.eventEmitter?.emit('witnessCall', event);
         });
       }
 
@@ -383,7 +388,7 @@ export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = un
 
         const witnessManager = new WitnessManager<TLedger, TPrivateState>(
           interceptedWitnesses,
-          this.contractInstance.constructor
+          (this.contractInstance as { constructor: new (witnesses: Witnesses<unknown, unknown>) => ContractInstance }).constructor
         );
         witnessManager.validate();
         contractInstance = witnessManager.attachToContract();
@@ -392,13 +397,16 @@ export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = un
 
       const { findDeployedContract } = await import('@midnight-ntwrk/midnight-js-contracts');
 
-      const connected = await (findDeployedContract as any)(providers, {
+      const findOptions: FindContractOptions = {
         contract: contractInstance,
         contractAddress
-      }) as any;
+      };
+
+      // Type assertion needed due to external library's complex overloads
+      const connected = await (findDeployedContract as unknown as (providers: ContractProviders, options: FindContractOptions) => Promise<unknown>)(providers, findOptions);
 
       this.logger?.info('Connected to contract successfully', {
-        address: connected.address
+        address: (connected as { address: string }).address
       });
 
       let privateStateManager: PrivateStateManager<TPrivateState> | undefined;
@@ -422,13 +430,15 @@ export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = un
         eventHandlers: this.eventHandlers
       };
 
-      const adapter = new ContractAdapter<TContract, TPrivateState>(connected, config, {
+      const adapter = new ContractAdapter<TContract, TPrivateState>(connected as DeployedContract<TContract>, config, {
         privateStateManager
       }) as unknown as IContractAdapter<TContract, TPrivateState>;
 
       if (this.witnessInterceptor) {
         this.witnessInterceptor.onWitnessCall((event: WitnessCallEvent<TPrivateState>) => {
-          (adapter as any).eventEmitter?.emit('witnessCall', event);
+          // Access the private eventEmitter through the adapter interface
+          const adapterWithEmitter = adapter as unknown as { eventEmitter?: EventEmitter };
+          adapterWithEmitter.eventEmitter?.emit('witnessCall', event);
         });
       }
 
@@ -477,8 +487,8 @@ export class ContractAdapterBuilder<TContract, TLedger = any, TPrivateState = un
  * const state = await adapter.getPrivateState(); // Returns MyState | null
  * ```
  */
-export function createContractAdapter<TContract, TLedger = any, TPrivateState = undefined>(
-  contractInstance: any
+export function createContractAdapter<TContract, TLedger = unknown, TPrivateState = undefined>(
+  contractInstance: ContractInstance
 ): ContractAdapterBuilder<TContract, TLedger, TPrivateState> {
   return new ContractAdapterBuilder<TContract, TLedger, TPrivateState>(contractInstance);
 }

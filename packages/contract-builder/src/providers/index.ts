@@ -5,31 +5,27 @@
 // Main factory
 export {
   createDefaultProviders,
-  createTestnetProviders,
   createDevnetProviders,
-  createLocalProviders
-} from './factory.js';
+  createLocalProviders,
+  createTestnetProviders} from './factory.js';
 
 // Types
 export type {
-  ProviderEnvironment,
-  NetworkConfig,
-  WalletConfig,
-  ProviderPresetConfig,
   ContractProvidersConfig,
-  NetworkPreset
-} from './types.js';
-
+  NetworkConfig,
+  NetworkPreset,
+  ProviderEnvironment,
+  ProviderPresetConfig,
+  WalletConfig} from './types.js';
 export { NETWORK_PRESETS } from './types.js';
 
 // Environment detection
 export {
   detectEnvironment,
-  resolveEnvironment,
+  isBrowser,
   isNodeJS,
-  isBrowser
-} from './environment.js';
+  resolveEnvironment} from './environment.js';
 
 // Individual presets (advanced use)
-export { createNodeJSProviders } from './nodejs-preset.js';
 export { createBrowserProviders } from './browser-preset.js';
+export { createNodeJSProviders } from './nodejs-preset.js';

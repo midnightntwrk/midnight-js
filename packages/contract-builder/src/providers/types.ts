@@ -39,14 +39,19 @@ export interface WalletConfig {
 }
 
 /**
+ * Network preset names
+ */
+export type NetworkPreset = keyof typeof NETWORK_PRESETS;
+
+/**
  * Provider preset configuration combining network and wallet settings
  */
 export interface ProviderPresetConfig {
   /** Environment to use (nodejs, browser, or auto-detect) */
   environment?: ProviderEnvironment;
 
-  /** Network configuration */
-  network: NetworkConfig;
+  /** Network configuration - can be a preset name or custom config */
+  network: NetworkPreset | NetworkConfig;
 
   /** Optional wallet configuration */
   wallet?: WalletConfig;
@@ -59,12 +64,12 @@ export interface ProviderPresetConfig {
  * Full providers configuration matching midnight-js requirements
  */
 export interface ContractProvidersConfig {
-  walletProvider: any;
-  indexerProvider: any;
-  privateStateProvider?: any;
-  zkConfigProvider: any;
-  proofProvider: any;
-  [key: string]: any;
+  walletProvider: unknown;
+  indexerProvider: unknown;
+  privateStateProvider?: unknown;
+  zkConfigProvider: unknown;
+  proofProvider: unknown;
+  [key: string]: unknown;
 }
 
 /**
@@ -90,5 +95,3 @@ export const NETWORK_PRESETS = {
     zkConfigUrl: 'http://localhost:8081'
   }
 } as const;
-
-export type NetworkPreset = keyof typeof NETWORK_PRESETS;

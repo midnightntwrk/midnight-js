@@ -5,7 +5,7 @@
  * Provides type-safe interfaces for contract adapters with full TypeScript inference
  */
 
-import type { DeployedContract,Logger, MethodCallEvent, MethodErrorEvent, MethodSuccessEvent, RetryConfig } from './contract-types.js';
+import type { DeployedContract, Logger, MethodCallEvent, MethodErrorEvent, MethodSuccessEvent, RetryConfig, DeployTxData } from './contract-types.js';
 import type { Prettify } from './type-utils.js';
 import type { WitnessCallEvent } from './witness-types.js';
 
@@ -49,7 +49,7 @@ export interface AdapterConfig {
    * @param error - The error that occurred
    * @remarks This handler is called for all errors, even if retries are configured
    */
-  errorHandler?: (error: any) => void;
+  errorHandler?: (error: unknown) => void;
 
   /**
    * Optional event handlers for monitoring
@@ -136,7 +136,7 @@ export type ContractAdapter<TContract, TPrivateState = undefined> = Prettify<
       readonly address: string;
 
       /** Deployment transaction data */
-      readonly deployTxData: any;
+      readonly deployTxData: DeployTxData;
 
       /**
        * Register an event handler for method calls

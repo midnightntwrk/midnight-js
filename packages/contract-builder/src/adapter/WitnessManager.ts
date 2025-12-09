@@ -1,10 +1,16 @@
+import { WitnessAttachmentError, WitnessValidationError } from '../errors/WitnessError.js';
+import type { ContractInstance } from '../types/external-contract-types.js';
 import type { Witnesses, WitnessFunction } from '../types/witness-types.js';
-import { WitnessError, WitnessValidationError, WitnessAttachmentError } from '../errors/WitnessError.js';
 
-export class WitnessManager<TLedger = any, TPrivateState = any> {
+/**
+ * Contract constructor type that accepts witnesses
+ */
+type ContractConstructor = new (witnesses: Witnesses<unknown, unknown>) => ContractInstance;
+
+export class WitnessManager<TLedger = unknown, TPrivateState = unknown> {
   constructor(
     private witnesses: Witnesses<TLedger, TPrivateState>,
-    private contractClass: any
+    private contractClass: ContractConstructor
   ) {}
 
   validate(): void {
@@ -23,9 +29,9 @@ export class WitnessManager<TLedger = any, TPrivateState = any> {
     }
   }
 
-  attachToContract(): any {
+  attachToContract(): ContractInstance {
     try {
-      return new this.contractClass(this.witnesses);
+      return new this.contractClass(this.witnesses as Witnesses<unknown, unknown>);
     } catch (error) {
       throw new WitnessAttachmentError(
         `Failed to attach witnesses to contract: ${error instanceof Error ? error.message : String(error)}`,

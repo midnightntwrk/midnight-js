@@ -4,10 +4,10 @@
 
 import { mergeAdapterConfig } from '../config/AdapterConfig.js';
 import { PrivateStateNotConfiguredError } from '../errors/PrivateStateError.js';
-import { type PrivateStateManager } from '../private-state/PrivateStateManager.js';
+import type { PrivateStateManager } from '../private-state/PrivateStateManager.js';
 import type { AdapterConfig, ContractAdapter as IContractAdapter } from '../types/adapter-types.js';
-import type { DeployedContract } from '../types/contract-types.js';
-import { createContractProxy, EventEmitter } from './ContractProxy.js';
+import type { DeployedContract, DeployTxData } from '../types/contract-types.js';
+import { createContractProxy, EventEmitter, type EventHandler } from './ContractProxy.js';
 
 /**
  * ContractAdapter wraps a deployed contract and provides:
@@ -20,7 +20,7 @@ import { createContractProxy, EventEmitter } from './ContractProxy.js';
  */
 export class ContractAdapter<TContract, TPrivateState = undefined> {
   readonly eventEmitter: EventEmitter;
-  private readonly proxy: TContract & { address: string; deployTxData: any };
+  private readonly proxy: DeployedContract<TContract>;
   private readonly privateStateManager?: PrivateStateManager<TPrivateState>;
 
   constructor(
@@ -40,7 +40,7 @@ export class ContractAdapter<TContract, TPrivateState = undefined> {
     // Register any pre-configured event handlers
     if (mergedConfig.eventHandlers) {
       Object.entries(mergedConfig.eventHandlers).forEach(([event, handler]) => {
-        this.eventEmitter.on(event, handler);
+        this.eventEmitter.on(event, handler as EventHandler);
       });
     }
 
@@ -54,13 +54,13 @@ export class ContractAdapter<TContract, TPrivateState = undefined> {
     });
 
     // Return proxy to make this object behave like the contract
-    return this.createAdapterProxy();
+    return this.createAdapterProxy() as unknown as ContractAdapter<TContract, TPrivateState>;
   }
 
   /**
    * Register an event handler
    */
-  private registerEventHandler(event: string, handler: Function): this {
+  private registerEventHandler(event: string, handler: EventHandler): this {
     this.eventEmitter.on(event, handler);
     return this;
   }
@@ -75,7 +75,7 @@ export class ContractAdapter<TContract, TPrivateState = undefined> {
   /**
    * Get deployment transaction data
    */
-  get deployTxData(): any {
+  get deployTxData(): DeployTxData {
     return this.deployedContract.deployTxData;
   }
 
@@ -111,50 +111,52 @@ export class ContractAdapter<TContract, TPrivateState = undefined> {
   /**
    * Creates a proxy that combines contract methods with adapter methods
    */
-  private createAdapterProxy(): any {
-    const self = this;
+  private createAdapterProxy(): IContractAdapter<TContract, TPrivateState> {
+    // Capture reference to this for use in proxy
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const adapter = this;
 
     const adapterProxy = new Proxy(this.proxy, {
-      get(target: any, prop: string | symbol) {
+      get(target: DeployedContract<TContract>, prop: string | symbol): unknown {
         // Handle 'on' method for event registration
         if (prop === 'on') {
-          return (event: string, handler: Function) => {
-            self.registerEventHandler(event, handler);
+          return (event: string, handler: EventHandler) => {
+            adapter.registerEventHandler(event, handler);
             return adapterProxy;
           };
         }
 
         // Handle address
         if (prop === 'address') {
-          return self.address;
+          return adapter.address;
         }
 
         // Handle deployTxData
         if (prop === 'deployTxData') {
-          return self.deployTxData;
+          return adapter.deployTxData;
         }
 
         // Handle private state methods
         if (prop === 'getPrivateState') {
-          return () => self.getPrivateState();
+          return () => adapter.getPrivateState();
         }
 
         if (prop === 'setPrivateState') {
-          return (state: TPrivateState) => self.setPrivateState(state);
+          return (state: TPrivateState) => adapter.setPrivateState(state);
         }
 
         if (prop === 'getPrivateStateId') {
-          return () => self.getPrivateStateId();
+          return () => adapter.getPrivateStateId();
         }
 
         // Forward to the proxied contract's callTx methods
         const callTx = target.callTx;
-        if (callTx && prop in callTx) {
-          return callTx[prop];
+        if (callTx && typeof callTx === 'object' && prop in callTx) {
+          return (callTx as Record<string | symbol, unknown>)[prop];
         }
 
         // Forward to target
-        return target[prop];
+        return (target as unknown as Record<string | symbol, unknown>)[prop];
       }
     });
 

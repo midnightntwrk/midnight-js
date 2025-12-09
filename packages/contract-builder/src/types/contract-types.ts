@@ -3,32 +3,42 @@
  */
 
 /**
+ * Deployment transaction data type
+ */
+export type DeployTxData = Record<string, unknown> | null | undefined;
+
+/**
  * Represents a deployed contract instance from midnight-js
  */
 export interface DeployedContract<TContract> {
   callTx: TContract;
   address: string;
-  deployTxData: any;
+  deployTxData: DeployTxData;
 }
 
 /**
  * Provider interfaces required for contract operations
  */
 export interface ContractProviders {
-  walletProvider: any;
-  indexerProvider: any;
-  privateStateProvider?: any;
-  [key: string]: any;
+  walletProvider: unknown;
+  indexerProvider: unknown;
+  privateStateProvider?: unknown;
+  [key: string]: unknown;
 }
+
+/**
+ * Logger data type - can be any JSON-serializable value
+ */
+export type LoggerData = Record<string, unknown> | unknown[] | string | number | boolean | null | undefined;
 
 /**
  * Logger interface for contract operations
  */
 export interface Logger {
-  info(message: string, data?: any): void;
-  warn(message: string, data?: any): void;
-  error(message: string, data?: any): void;
-  debug(message: string, data?: any): void;
+  info(message: string, data?: LoggerData): void;
+  warn(message: string, data?: LoggerData): void;
+  error(message: string, data?: LoggerData): void;
+  debug(message: string, data?: LoggerData): void;
 }
 
 /**
@@ -45,7 +55,7 @@ export interface RetryConfig {
  */
 export interface MethodCallEvent {
   methodName: string;
-  args: any[];
+  args: unknown[];
   timestamp: number;
 }
 
@@ -54,8 +64,8 @@ export interface MethodCallEvent {
  */
 export interface MethodSuccessEvent {
   methodName: string;
-  args: any[];
-  result: any;
+  args: unknown[];
+  result: unknown;
   duration: number;
   timestamp: number;
 }
@@ -65,8 +75,8 @@ export interface MethodSuccessEvent {
  */
 export interface MethodErrorEvent {
   methodName: string;
-  args: any[];
-  error: any;
+  args: unknown[];
+  error: unknown;
   duration: number;
   timestamp: number;
 }

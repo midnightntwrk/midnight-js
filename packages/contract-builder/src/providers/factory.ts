@@ -2,20 +2,65 @@
  * Provider factory - main entry point for creating providers
  */
 
-import type {
-  NetworkConfig,
-  WalletConfig,
-  ContractProvidersConfig,
-  ProviderPresetConfig,
-  NetworkPreset,
-  ProviderEnvironment
-} from './types.js';
-import { NETWORK_PRESETS } from './types.js';
+import { ConfigurationError } from '../errors/AdapterError.js';
+import type { Logger } from '../types/contract-types.js';
+import { createBrowserProviders } from './browser-preset.js';
 import { resolveEnvironment } from './environment.js';
 import { createNodeJSProviders } from './nodejs-preset.js';
-import { createBrowserProviders } from './browser-preset.js';
-import type { Logger } from '../types/contract-types.js';
-import { ConfigurationError } from '../errors/AdapterError.js';
+import type {
+  ContractProvidersConfig,
+  NetworkConfig,
+  NetworkPreset,
+  ProviderPresetConfig,
+  WalletConfig} from './types.js';
+import { NETWORK_PRESETS } from './types.js';
+
+/**
+ * Helper: Normalize various config formats to ProviderPresetConfig
+ */
+function normalizeConfig(
+  config: NetworkPreset | NetworkConfig | ProviderPresetConfig
+): ProviderPresetConfig {
+  // If it's a string (network preset)
+  if (typeof config === 'string') {
+    if (!(config in NETWORK_PRESETS)) {
+      throw new ConfigurationError(
+        `Unknown network preset: ${config}. Available: ${Object.keys(NETWORK_PRESETS).join(', ')}`
+      );
+    }
+    return {
+      network: NETWORK_PRESETS[config]
+    };
+  }
+
+  // If it's a NetworkConfig (has networkId)
+  if ('networkId' in config && 'indexerUrl' in config) {
+    return {
+      network: config
+    };
+  }
+
+  // Otherwise it's already a ProviderPresetConfig
+  return config as ProviderPresetConfig;
+}
+
+/**
+ * Helper: Normalize network config from preset or custom
+ */
+function normalizeNetworkConfig(
+  network: NetworkPreset | NetworkConfig
+): NetworkConfig {
+  if (typeof network === 'string') {
+    if (!(network in NETWORK_PRESETS)) {
+      throw new ConfigurationError(
+        `Unknown network preset: ${network}. Available: ${Object.keys(NETWORK_PRESETS).join(', ')}`
+      );
+    }
+    return NETWORK_PRESETS[network];
+  }
+
+  return network;
+}
 
 /**
  * Creates default providers based on environment and configuration
@@ -93,53 +138,6 @@ export async function createDefaultProviders(
   }
 
   return providers;
-}
-
-/**
- * Helper: Normalize various config formats to ProviderPresetConfig
- */
-function normalizeConfig(
-  config: NetworkPreset | NetworkConfig | ProviderPresetConfig
-): ProviderPresetConfig {
-  // If it's a string (network preset)
-  if (typeof config === 'string') {
-    if (!(config in NETWORK_PRESETS)) {
-      throw new ConfigurationError(
-        `Unknown network preset: ${config}. Available: ${Object.keys(NETWORK_PRESETS).join(', ')}`
-      );
-    }
-    return {
-      network: NETWORK_PRESETS[config]
-    };
-  }
-
-  // If it's a NetworkConfig (has networkId)
-  if ('networkId' in config && 'indexerUrl' in config) {
-    return {
-      network: config
-    };
-  }
-
-  // Otherwise it's already a ProviderPresetConfig
-  return config as ProviderPresetConfig;
-}
-
-/**
- * Helper: Normalize network config from preset or custom
- */
-function normalizeNetworkConfig(
-  network: NetworkPreset | NetworkConfig
-): NetworkConfig {
-  if (typeof network === 'string') {
-    if (!(network in NETWORK_PRESETS)) {
-      throw new ConfigurationError(
-        `Unknown network preset: ${network}. Available: ${Object.keys(NETWORK_PRESETS).join(', ')}`
-      );
-    }
-    return NETWORK_PRESETS[network];
-  }
-
-  return network;
 }
 
 /**
