@@ -1,5 +1,5 @@
 {
-  "name": "@midnight-ntwrk/contract-builder",
+  "name": "@midnight-ntwrk/midnight-js-contract-builder",
   "version": "0.1.0",
   "description": "Simplified API for deploying and interacting with Midnight smart contracts",
   "main": "dist/index.cjs",

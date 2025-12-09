@@ -38,14 +38,7 @@
     "deploy": "yarn npm publish"
   },
   "dependencies": {
-    "@midnight-ntwrk/midnight-js-compact": "workspace:*",
-    "@midnight-ntwrk/midnight-js-contracts": "workspace:*",
-    "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*",
-    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "workspace:*",
-    "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
-    "@midnight-ntwrk/midnight-js-node-zk-config-provider": "workspace:*",
-    "@midnight-ntwrk/midnight-js-types": "workspace:*",
-    "@midnight-ntwrk/midnight-js-utils": "workspace:*",
+    "@midnight-ntwrk/midnight-js-contract-builder": "workspace:*",
     "@midnight-ntwrk/testkit-js": "workspace:*",
     "buffer": "^6.0.3",
     "cross-fetch": "^4.0.0",
@@ -53,6 +46,7 @@
     "ws": "^8.14.2"
   },
   "devDependencies": {
+    "@midnight-ntwrk/midnight-js-compact": "workspace:*",
     "@types/ws": "^8.18.1",
     "@vitest/runner": "^4.0.0",
     "allure-commandline": "^2.34.1",

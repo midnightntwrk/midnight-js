@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { createContractAdapter } from '@midnight-ntwrk/contract-builder';
+import { createContractAdapter } from '@midnight-ntwrk/midnight-js-contract-builder';
 import type {
   EnvironmentConfiguration,
   MidnightWalletProvider,
@@ -31,7 +31,7 @@ import {
 } from '@/contract';
 import type { Ledger } from '@/contract/managed/counter/contract/index.js';
 import { CounterConfiguration } from '@/counter-api';
-import type { CounterContract, CounterProviders } from '@/counter-types';
+import type { CounterContract, CounterProviders, DeployedCounterContract } from '@/counter-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contract-builder-e2e_${new Date().toISOString()}.log`)
@@ -60,7 +60,13 @@ describe('Contract Builder E2E Tests', () => {
     it('should deploy counter contract and increment the value', async () => {
       const contractInstance: CounterContract = new CompiledCounter.Contract(witnesses);
 
-      const adapter = await createContractAdapter<CounterContract, Ledger, CounterPrivateState>(
+      type CounterAdapter = DeployedCounterContract & {
+        getPrivateState(): Promise<CounterPrivateState | null>;
+        setPrivateState(state: CounterPrivateState): Promise<void>;
+        getPrivateStateId(): string | undefined;
+      };
+
+      const adapter = (await createContractAdapter<CounterContract, Ledger, CounterPrivateState>(
         contractInstance
       )
         .withWitnesses(witnesses)
@@ -69,7 +75,7 @@ describe('Contract Builder E2E Tests', () => {
           initialState: createInitialPrivateState(0)
         })
         .withLogger(logger)
-        .deploy(providers);
+        .deploy(providers)) as unknown as CounterAdapter;
 
       expect(adapter.address).toBeDefined();
       expect(adapter.address).toMatch(/^[0-9a-f]{64}$/);
@@ -81,7 +87,7 @@ describe('Contract Builder E2E Tests', () => {
       expect(initialState).toBeDefined();
       expect(initialState?.privateCounter).toBe(0);
 
-      await (adapter as any).increment();
+      await adapter.callTx.increment();
 
       const updatedState = await adapter.getPrivateState();
       expect(updatedState?.privateCounter).toBe(1);
@@ -92,7 +98,13 @@ describe('Contract Builder E2E Tests', () => {
     it('should manage private state updates correctly', async () => {
       const contractInstance: CounterContract = new CompiledCounter.Contract(witnesses);
 
-      const adapter = await createContractAdapter<CounterContract, Ledger, CounterPrivateState>(
+      type CounterAdapter = DeployedCounterContract & {
+        getPrivateState(): Promise<CounterPrivateState | null>;
+        setPrivateState(state: CounterPrivateState): Promise<void>;
+        getPrivateStateId(): string | undefined;
+      };
+
+      const adapter = (await createContractAdapter<CounterContract, Ledger, CounterPrivateState>(
         contractInstance
       )
         .withWitnesses(witnesses)
@@ -101,7 +113,7 @@ describe('Contract Builder E2E Tests', () => {
           initialState: createInitialPrivateState(10)
         })
         .withPrivateStateDebug(true)
-        .deploy(providers);
+        .deploy(providers)) as unknown as CounterAdapter;
 
       const initialState = await adapter.getPrivateState();
       expect(initialState?.privateCounter).toBe(10);
@@ -111,7 +123,7 @@ describe('Contract Builder E2E Tests', () => {
       const updatedState = await adapter.getPrivateState();
       expect(updatedState?.privateCounter).toBe(42);
 
-      await (adapter as any).increment();
+      await adapter.callTx.increment();
 
       const finalState = await adapter.getPrivateState();
       expect(finalState?.privateCounter).toBe(43);
@@ -120,7 +132,13 @@ describe('Contract Builder E2E Tests', () => {
     it('should handle multiple increments correctly', async () => {
       const contractInstance: CounterContract = new CompiledCounter.Contract(witnesses);
 
-      const adapter = await createContractAdapter<CounterContract, Ledger, CounterPrivateState>(
+      type CounterAdapter = DeployedCounterContract & {
+        getPrivateState(): Promise<CounterPrivateState | null>;
+        setPrivateState(state: CounterPrivateState): Promise<void>;
+        getPrivateStateId(): string | undefined;
+      };
+
+      const adapter = (await createContractAdapter<CounterContract, Ledger, CounterPrivateState>(
         contractInstance
       )
         .withWitnesses(witnesses)
@@ -128,10 +146,10 @@ describe('Contract Builder E2E Tests', () => {
           stateId: 'test-counter-3',
           initialState: createInitialPrivateState(0)
         })
-        .deploy(providers);
+        .deploy(providers)) as unknown as CounterAdapter;
 
       for (let i = 0; i < 5; i++) {
-        await (adapter as any).increment();
+        await adapter.callTx.increment();
       }
 
       const state = await adapter.getPrivateState();
@@ -147,7 +165,13 @@ describe('Contract Builder E2E Tests', () => {
 
       const contractInstance: CounterContract = new CompiledCounter.Contract(witnesses);
 
-      const adapter = await createContractAdapter<CounterContract, Ledger, CounterPrivateState>(
+      type CounterAdapter = DeployedCounterContract & {
+        getPrivateState(): Promise<CounterPrivateState | null>;
+        setPrivateState(state: CounterPrivateState): Promise<void>;
+        getPrivateStateId(): string | undefined;
+      };
+
+      const adapter = (await createContractAdapter<CounterContract, Ledger, CounterPrivateState>(
         contractInstance
       )
         .withWitnesses(witnesses)
@@ -167,9 +191,9 @@ describe('Contract Builder E2E Tests', () => {
           witnessCallEvents.push(event);
           logger.info(`Witness called: ${event.witnessName}`);
         })
-        .deploy(providers);
+        .deploy(providers)) as unknown as CounterAdapter;
 
-      await adapter.increment();
+      await adapter.callTx.increment();
 
       expect(callEvents.length).toBeGreaterThan(0);
       expect(callEvents[0].methodName).toBe('increment');
@@ -188,7 +212,13 @@ describe('Contract Builder E2E Tests', () => {
 
       const contractInstance: CounterContract = new CompiledCounter.Contract(witnesses);
 
-      const adapter = await createContractAdapter<CounterContract, Ledger, CounterPrivateState>(
+      type CounterAdapter = DeployedCounterContract & {
+        getPrivateState(): Promise<CounterPrivateState | null>;
+        setPrivateState(state: CounterPrivateState): Promise<void>;
+        getPrivateStateId(): string | undefined;
+      };
+
+      const adapter = (await createContractAdapter<CounterContract, Ledger, CounterPrivateState>(
         contractInstance
       )
         .withWitnesses(witnesses)
@@ -200,10 +230,10 @@ describe('Contract Builder E2E Tests', () => {
           errorEvents.push(event);
           logger.error(`Method failed: ${event.methodName}, Error: ${event.error}`);
         })
-        .deploy(providers);
+        .deploy(providers)) as unknown as CounterAdapter;
 
       try {
-        await (adapter as any).nonExistentMethod?.();
+        await (adapter as any).callTx?.nonExistentMethod?.();
       } catch (error) {
         // Expected error for non-existent method
       }
