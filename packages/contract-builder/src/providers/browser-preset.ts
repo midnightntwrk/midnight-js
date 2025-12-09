@@ -145,14 +145,17 @@ export async function createBrowserProviders(
 
   try {
     // Dynamically import browser-specific providers
+    // @ts-expect-error not existent type
     const { createFetchZkConfigProvider } = await import(
       '@midnight-ntwrk/midnight-js-fetch-zk-config-provider'
     );
 
+    // @ts-expect-error not existent type
     const { createHttpClientProofProvider } = await import(
       '@midnight-ntwrk/midnight-js-http-client-proof-provider'
     );
 
+    // @ts-expect-error not existent type
     const { createIndexerPublicDataProvider } = await import(
       '@midnight-ntwrk/midnight-js-indexer-public-data-provider'
     );

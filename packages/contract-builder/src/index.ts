@@ -94,3 +94,35 @@ export {
   isNodeJS,
   NETWORK_PRESETS,
   resolveEnvironment} from './providers/index.js';
+
+// Re-export core contract utilities from @midnight-ntwrk/midnight-js-contracts
+export {
+  call,
+  callContractConstructor,
+  deployContract,
+  findDeployedContract,
+  submitCallTx,
+  submitDeployTx,
+  submitTx,
+  submitTxAsync
+} from '@midnight-ntwrk/midnight-js-contracts';
+
+// Re-export types from @midnight-ntwrk/midnight-js-types
+export type {
+  Contract,
+  FinalizedTxData,
+  ImpureCircuitId,
+  MidnightProvider,
+  PrivateStateProvider,
+  ProofProvider,
+  PublicDataProvider,
+  WalletProvider,
+  ZKConfigProvider
+} from '@midnight-ntwrk/midnight-js-types';
+
+// Re-export common utilities from @midnight-ntwrk/midnight-js-utils
+export {
+  assertIsContractAddress,
+  parseCoinPublicKeyToHex,
+  ttlOneHour
+} from '@midnight-ntwrk/midnight-js-utils';

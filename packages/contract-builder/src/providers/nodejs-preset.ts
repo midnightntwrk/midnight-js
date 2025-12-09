@@ -49,18 +49,22 @@ export async function createNodeJSProviders(
 
   try {
     // Dynamically import Node.js-specific providers
+    // @ts-expect-error not existent type
     const { createNodeZkConfigProvider } = await import(
       '@midnight-ntwrk/midnight-js-node-zk-config-provider'
     );
 
+    // @ts-expect-error not existent type
     const { createLevelPrivateStateProvider } = await import(
       '@midnight-ntwrk/midnight-js-level-private-state-provider'
     );
 
+    // @ts-expect-error not existent type
     const { createHttpClientProofProvider } = await import(
       '@midnight-ntwrk/midnight-js-http-client-proof-provider'
     );
 
+    // @ts-expect-error not existent type
     const { createIndexerPublicDataProvider } = await import(
       '@midnight-ntwrk/midnight-js-indexer-public-data-provider'
     );
