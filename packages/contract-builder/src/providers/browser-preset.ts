@@ -195,12 +195,11 @@ export async function createBrowserProviders(
     logger?.info('Browser providers created successfully');
 
     return {
-      zkConfigProvider,
       privateStateProvider,
-      proofProvider,
-      indexerProvider,
-      walletProvider,
       publicDataProvider: indexerProvider,
+      zkConfigProvider,
+      proofProvider,
+      walletProvider,
       midnightProvider: undefined // Will be created by midnight-js if needed
     };
   } catch (error) {

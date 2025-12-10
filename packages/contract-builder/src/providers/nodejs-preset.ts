@@ -108,12 +108,11 @@ export async function createNodeJSProviders(
     logger?.info('Node.js providers created successfully');
 
     return {
-      zkConfigProvider,
       privateStateProvider,
-      proofProvider,
-      indexerProvider,
-      walletProvider,
       publicDataProvider: indexerProvider,
+      zkConfigProvider,
+      proofProvider,
+      walletProvider,
       midnightProvider: undefined // Will be created by midnight-js if needed
     };
   } catch (error) {

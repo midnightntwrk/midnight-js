@@ -18,13 +18,9 @@ export interface DeployedContract<TContract> {
 
 /**
  * Provider interfaces required for contract operations
+ * Re-exported from @midnight-ntwrk/midnight-js-contracts for type compatibility
  */
-export interface ContractProviders {
-  walletProvider: unknown;
-  indexerProvider: unknown;
-  privateStateProvider?: unknown;
-  [key: string]: unknown;
-}
+export type { ContractProviders } from '@midnight-ntwrk/midnight-js-contracts';
 
 /**
  * Logger data type - can be any JSON-serializable value

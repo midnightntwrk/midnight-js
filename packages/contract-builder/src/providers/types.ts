@@ -2,6 +2,15 @@
  * Provider types and configuration for different environments
  */
 
+import {
+  type MidnightProvider,
+  type PrivateStateProvider,
+  type ProofProvider,
+  type PublicDataProvider,
+  type WalletProvider,
+  type ZKConfigProvider
+} from '@midnight-ntwrk/midnight-js-types';
+
 /**
  * Environment type for provider selection
  */
@@ -62,13 +71,15 @@ export interface ProviderPresetConfig {
 
 /**
  * Full providers configuration matching midnight-js requirements
+ * Aligns with MidnightProviders from @midnight-ntwrk/midnight-js-types
  */
 export interface ContractProvidersConfig {
-  walletProvider: unknown;
-  indexerProvider: unknown;
-  privateStateProvider?: unknown;
-  zkConfigProvider: unknown;
-  proofProvider: unknown;
+  privateStateProvider: PrivateStateProvider;
+  publicDataProvider: PublicDataProvider;
+  zkConfigProvider: ZKConfigProvider<string>;
+  proofProvider: ProofProvider<string>;
+  walletProvider: WalletProvider;
+  midnightProvider: MidnightProvider;
   [key: string]: unknown;
 }
 
@@ -80,16 +91,16 @@ export const NETWORK_PRESETS = {
     networkId: 'testnet',
     indexerUrl: 'https://indexer.testnet.midnight.network',
     nodeUrl: 'https://node.testnet.midnight.network',
-    zkConfigUrl: 'https://zk-config.testnet.midnight.network'
+    zkConfigUrl: undefined
   },
   devnet: {
     networkId: 'devnet',
     indexerUrl: 'https://indexer.devnet.midnight.network',
     nodeUrl: 'https://node.devnet.midnight.network',
-    zkConfigUrl: 'https://zk-config.devnet.midnight.network'
+    zkConfigUrl: undefined
   },
   local: {
-    networkId: 'local',
+    networkId: 'undeployed',
     indexerUrl: 'http://localhost:8080',
     nodeUrl: 'http://localhost:3000',
     zkConfigUrl: 'http://localhost:8081'
