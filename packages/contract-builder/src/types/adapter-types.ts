@@ -5,16 +5,15 @@
  * Provides type-safe interfaces for contract adapters with full TypeScript inference
  */
 
-import type { DeployedContract, DeployTxData, Logger, MethodCallEvent, MethodErrorEvent, MethodSuccessEvent, RetryConfig } from './contract-types.js';
+import type { DeployedContract, DeployTxData, Logger, RetryConfig } from './contract-types.js';
 import type { Prettify } from './type-utils.js';
-import type { WitnessCallEvent } from './witness-types.js';
 
 /**
  * Configuration options for the Contract Adapter
  *
  * @remarks
  * This interface allows you to customize the behavior of the contract adapter including
- * logging, retry logic, error handling, and event monitoring.
+ * logging, retry logic, and error handling.
  *
  * @example
  * ```typescript
@@ -50,28 +49,28 @@ export interface AdapterConfig {
    * @remarks This handler is called for all errors, even if retries are configured
    */
   errorHandler?: (error: unknown) => void;
-
-  /**
-   * Optional event handlers for monitoring
-   * @remarks Pre-register event handlers that will be attached to the adapter
-   */
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-  eventHandlers?: Record<string, Function>;
 }
 
 /**
- * Event handler function types
+ * Helper type to extract the callTx interface from a deployed contract
  */
-export type CallEventHandler = (event: MethodCallEvent) => void;
-export type SuccessEventHandler = (event: MethodSuccessEvent) => void;
-export type ErrorEventHandler = (event: MethodErrorEvent) => void;
-export type WitnessCallEventHandler<TPrivateState = any> = (event: WitnessCallEvent<TPrivateState>) => void;
+type CallTxInterface<TContract> = DeployedContract<TContract>['callTx'];
 
 /**
  * Helper type to extract contract methods with better type inference
+ * Wraps callTx methods to provide a cleaner API
  */
-type ContractMethods<TContract> = {
-  [K in keyof DeployedContract<TContract>['callTx']]: DeployedContract<TContract>['callTx'][K];
+type ContractMethods<TContract> = CallTxInterface<TContract> & {
+  /**
+   * Access internal contract APIs for advanced use cases
+   * @remarks Most users should not need this. Use the direct method calls instead.
+   */
+  readonly internal: {
+    /** Direct access to callTx for advanced operations */
+    readonly callTx: CallTxInterface<TContract>;
+    /** Deployment transaction data */
+    readonly deployTxData: DeployTxData;
+  };
 };
 
 /**
@@ -114,64 +113,31 @@ type PrivateStateMethods<TPrivateState> = TPrivateState extends undefined
  *
  * @remarks
  * This type provides:
- * - Full type safety for all contract methods
+ * - Full type safety for all contract methods (directly accessible, e.g., adapter.increment())
  * - Conditional private state methods based on whether private state is configured
- * - Event handler registration with proper typing
- * - Fluent interface for chaining operations
+ * - Contract address access
+ * - Internal API for power users (adapter.internal.callTx, adapter.internal.deployTxData)
  *
  * @example
  * ```typescript
  * // Contract without private state
  * const adapter: ContractAdapter<MyContract> = ...;
- * await adapter.myMethod(); // Fully typed
+ * await adapter.myMethod(); // Fully typed - contract methods directly accessible
+ * const addr = adapter.address; // Contract address
  *
  * // Contract with private state
  * const adapter: ContractAdapter<MyContract, MyState> = ...;
  * const state = await adapter.getPrivateState(); // Returns MyState | null
+ *
+ * // Power users can access internals
+ * const callTx = adapter.internal.callTx;
+ * const deployData = adapter.internal.deployTxData;
  * ```
  */
 export type ContractAdapter<TContract, TPrivateState = undefined> = Prettify<
-  ContractMethods<TContract> &
-    PrivateStateMethods<TPrivateState> & {
-      /** Contract address on the blockchain */
-      readonly address: string;
-
-      /** Deployment transaction data */
-      readonly deployTxData: DeployTxData;
-
-      /**
-       * Register an event handler for method calls
-       * @param event - The event type ('call')
-       * @param handler - The event handler function
-       * @returns The adapter instance for chaining
-       */
-      on(event: 'call', handler: CallEventHandler): ContractAdapter<TContract, TPrivateState>;
-
-      /**
-       * Register an event handler for successful method execution
-       * @param event - The event type ('success')
-       * @param handler - The event handler function
-       * @returns The adapter instance for chaining
-       */
-      on(event: 'success', handler: SuccessEventHandler): ContractAdapter<TContract, TPrivateState>;
-
-      /**
-       * Register an event handler for method errors
-       * @param event - The event type ('error')
-       * @param handler - The event handler function
-       * @returns The adapter instance for chaining
-       */
-      on(event: 'error', handler: ErrorEventHandler): ContractAdapter<TContract, TPrivateState>;
-
-      /**
-       * Register an event handler for witness calls (only relevant for contracts with witnesses)
-       * @param event - The event type ('witnessCall')
-       * @param handler - The event handler function
-       * @returns The adapter instance for chaining
-       */
-      on(
-        event: 'witnessCall',
-        handler: WitnessCallEventHandler<TPrivateState>
-      ): ContractAdapter<TContract, TPrivateState>;
-    }
+  {
+    /** Contract address on the blockchain */
+    readonly address: string;
+  } & ContractMethods<TContract> &
+    PrivateStateMethods<TPrivateState>
 >;

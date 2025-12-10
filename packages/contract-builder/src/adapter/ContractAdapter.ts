@@ -7,19 +7,17 @@ import { PrivateStateNotConfiguredError } from '../errors/PrivateStateError.js';
 import type { PrivateStateManager } from '../private-state/PrivateStateManager.js';
 import type { AdapterConfig, ContractAdapter as IContractAdapter } from '../types/adapter-types.js';
 import type { DeployedContract, DeployTxData } from '../types/contract-types.js';
-import { createContractProxy, EventEmitter, type EventHandler } from './ContractProxy.js';
+import { createContractProxy } from './ContractProxy.js';
 
 /**
  * ContractAdapter wraps a deployed contract and provides:
  * - Automatic method proxying with interceptors
  * - Built-in error handling
  * - Retry logic for transient failures
- * - Event emission for monitoring
  * - Logging integration
  * - Private state management (optional)
  */
 export class ContractAdapter<TContract, TPrivateState = undefined> {
-  readonly eventEmitter: EventEmitter;
   private readonly proxy: DeployedContract<TContract>;
   private readonly privateStateManager?: PrivateStateManager<TPrivateState>;
 
@@ -34,35 +32,16 @@ export class ContractAdapter<TContract, TPrivateState = undefined> {
     // Merge with default config
     const mergedConfig = mergeAdapterConfig(config);
 
-    // Create event emitter
-    this.eventEmitter = new EventEmitter();
-
-    // Register any pre-configured event handlers
-    if (mergedConfig.eventHandlers) {
-      Object.entries(mergedConfig.eventHandlers).forEach(([event, handler]) => {
-        this.eventEmitter.on(event, handler as EventHandler);
-      });
-    }
-
     // Create the proxy
     this.proxy = createContractProxy({
       contract: deployedContract,
       logger: mergedConfig.logger,
       retryConfig: mergedConfig.retry,
-      errorHandler: mergedConfig.errorHandler,
-      eventEmitter: this.eventEmitter
+      errorHandler: mergedConfig.errorHandler
     });
 
     // Return proxy to make this object behave like the contract
     return this.createAdapterProxy() as unknown as ContractAdapter<TContract, TPrivateState>;
-  }
-
-  /**
-   * Register an event handler
-   */
-  private registerEventHandler(event: string, handler: EventHandler): this {
-    this.eventEmitter.on(event, handler);
-    return this;
   }
 
   /**
@@ -118,22 +97,17 @@ export class ContractAdapter<TContract, TPrivateState = undefined> {
 
     const adapterProxy = new Proxy(this.proxy, {
       get(target: DeployedContract<TContract>, prop: string | symbol): unknown {
-        // Handle 'on' method for event registration
-        if (prop === 'on') {
-          return (event: string, handler: EventHandler) => {
-            adapter.registerEventHandler(event, handler);
-            return adapterProxy;
-          };
-        }
-
         // Handle address
         if (prop === 'address') {
           return adapter.address;
         }
 
-        // Handle deployTxData
-        if (prop === 'deployTxData') {
-          return adapter.deployTxData;
+        // Handle internal API access
+        if (prop === 'internal') {
+          return {
+            callTx: target.callTx,
+            deployTxData: adapter.deployTxData
+          };
         }
 
         // Handle private state methods
@@ -149,7 +123,7 @@ export class ContractAdapter<TContract, TPrivateState = undefined> {
           return () => adapter.getPrivateStateId();
         }
 
-        // Forward to the proxied contract's callTx methods
+        // Forward to the proxied contract's callTx methods (direct access)
         const callTx = target.callTx;
         if (callTx && typeof callTx === 'object' && prop in callTx) {
           return (callTx as Record<string | symbol, unknown>)[prop];

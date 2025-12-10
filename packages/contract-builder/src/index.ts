@@ -16,11 +16,7 @@ export { PrivateStateManager } from './private-state/PrivateStateManager.js';
 // Type exports
 export type {
   AdapterConfig,
-  CallEventHandler,
-  ErrorEventHandler,
-  ContractAdapter as IContractAdapter,
-  SuccessEventHandler,
-  WitnessCallEventHandler
+  ContractAdapter as IContractAdapter
 } from './types/adapter-types.js';
 export type {
   ContractProviders,

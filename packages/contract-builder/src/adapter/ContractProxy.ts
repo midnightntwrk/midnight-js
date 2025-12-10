@@ -3,8 +3,8 @@
  */
 
 import { MethodCallError } from '../errors/AdapterError.js';
-import type { DeployedContract,Logger, MethodCallEvent, MethodErrorEvent, MethodSuccessEvent, RetryConfig } from '../types/contract-types.js';
-import type { ErrorHandler, EventData } from '../types/external-contract-types.js';
+import type { DeployedContract, Logger, RetryConfig } from '../types/contract-types.js';
+import type { ErrorHandler } from '../types/external-contract-types.js';
 import { withRetry } from '../utils/retry-logic.js';
 import { isFunction } from '../utils/type-helpers.js';
 
@@ -23,41 +23,6 @@ export interface ContractProxyOptions<TContract = unknown> {
 
   /** Optional custom error handler */
   errorHandler?: ErrorHandler;
-
-  /** Event emitter for method lifecycle events */
-  eventEmitter: EventEmitter;
-}
-
-/**
- * Event handler function type
- */
-export type EventHandler = (data: EventData) => void;
-
-/**
- * Simple event emitter for contract events
- */
-export class EventEmitter {
-  private handlers = new Map<string, EventHandler[]>();
-
-  on(event: string, handler: EventHandler): void {
-    if (!this.handlers.has(event)) {
-      this.handlers.set(event, []);
-    }
-    this.handlers.get(event)!.push(handler);
-  }
-
-  emit(event: string, data: EventData): void {
-    const handlers = this.handlers.get(event);
-    if (handlers) {
-      handlers.forEach(handler => {
-        try {
-          handler(data);
-        } catch (error) {
-          console.error(`Error in event handler for ${event}:`, error);
-        }
-      });
-    }
-  }
 }
 
 /**
@@ -67,7 +32,6 @@ interface CallTxProxyOptions {
   logger?: Logger;
   retryConfig?: RetryConfig;
   errorHandler?: ErrorHandler;
-  eventEmitter: EventEmitter;
 }
 
 /**
@@ -77,7 +41,7 @@ function createCallTxProxy<TCallTx = unknown>(
   callTx: TCallTx,
   options: CallTxProxyOptions
 ): TCallTx {
-  const { logger, retryConfig, errorHandler, eventEmitter } = options;
+  const { logger, retryConfig, errorHandler } = options;
 
   return new Proxy(callTx as object, {
     get(target: object, methodName: string | symbol): unknown {
@@ -92,14 +56,6 @@ function createCallTxProxy<TCallTx = unknown>(
       return async function (...args: unknown[]): Promise<unknown> {
         const startTime = Date.now();
         const methodNameStr = String(methodName);
-
-        // Emit 'call' event
-        const callEvent: MethodCallEvent = {
-          methodName: methodNameStr,
-          args,
-          timestamp: startTime
-        };
-        eventEmitter.emit('call', callEvent);
 
         logger?.info(`Calling contract method: ${methodNameStr}`, { args });
 
@@ -117,16 +73,6 @@ function createCallTxProxy<TCallTx = unknown>(
 
           const duration = Date.now() - startTime;
 
-          // Emit 'success' event
-          const successEvent: MethodSuccessEvent = {
-            methodName: methodNameStr,
-            args,
-            result,
-            duration,
-            timestamp: Date.now()
-          };
-          eventEmitter.emit('success', successEvent);
-
           logger?.info(`Contract method ${methodNameStr} succeeded`, {
             duration: `${duration}ms`
           });
@@ -142,16 +88,6 @@ function createCallTxProxy<TCallTx = unknown>(
             args,
             error instanceof Error ? error : undefined
           );
-
-          // Emit 'error' event
-          const errorEvent: MethodErrorEvent = {
-            methodName: methodNameStr,
-            args,
-            error: methodError,
-            duration,
-            timestamp: Date.now()
-          };
-          eventEmitter.emit('error', errorEvent);
 
           logger?.error(`Contract method ${methodNameStr} failed`, {
             error: methodError,
@@ -180,7 +116,7 @@ function createCallTxProxy<TCallTx = unknown>(
 export function createContractProxy<TContract>(
   options: ContractProxyOptions<TContract>
 ): DeployedContract<TContract> {
-  const { contract, logger, retryConfig, errorHandler, eventEmitter } = options;
+  const { contract, logger, retryConfig, errorHandler } = options;
 
   // Create a proxy that intercepts method calls
   const proxy = new Proxy(contract, {
@@ -199,8 +135,7 @@ export function createContractProxy<TContract>(
         return createCallTxProxy(target.callTx, {
           logger,
           retryConfig,
-          errorHandler,
-          eventEmitter
+          errorHandler
         });
       }
 

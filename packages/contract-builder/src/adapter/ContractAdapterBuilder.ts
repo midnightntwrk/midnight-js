@@ -31,9 +31,8 @@ import type { NetworkConfig, NetworkPreset, ProviderPresetConfig, WalletConfig }
 import type { AdapterConfig, ContractAdapter as IContractAdapter } from '../types/adapter-types.js';
 import type { ContractProviders, DeployedContract, Logger, RetryConfig } from '../types/contract-types.js';
 import type { ContractInstance, DeployOptions, ErrorHandler, FindContractOptions } from '../types/external-contract-types.js';
-import type { WitnessCallEvent, Witnesses } from '../types/witness-types.js';
+import type { Witnesses } from '../types/witness-types.js';
 import { ContractAdapter } from './ContractAdapter.js';
-import type { EventEmitter } from './ContractProxy.js';
 import { WitnessInterceptor } from './WitnessInterceptor.js';
 import { WitnessManager } from './WitnessManager.js';
 
@@ -61,7 +60,6 @@ export class ContractAdapterBuilder<TContract, TLedger = unknown, TPrivateState 
   private logger?: Logger;
   private retryConfig?: RetryConfig;
   private errorHandler?: ErrorHandler;
-  private eventHandlers: Record<string, (data: unknown) => void> = {};
   private providersConfig?: NetworkPreset | NetworkConfig | ProviderPresetConfig;
   private walletConfig?: WalletConfig;
   private witnesses?: Witnesses<TLedger, TPrivateState>;
@@ -111,14 +109,6 @@ export class ContractAdapterBuilder<TContract, TLedger = unknown, TPrivateState 
    */
   withErrorHandler(handler: ErrorHandler): this {
     this.errorHandler = handler;
-    return this;
-  }
-
-  /**
-   * Register an event handler
-   */
-  on(event: string, handler: (data: unknown) => void): this {
-    this.eventHandlers[event] = handler;
     return this;
   }
 
@@ -340,21 +330,12 @@ export class ContractAdapterBuilder<TContract, TLedger = unknown, TPrivateState 
       const config: AdapterConfig = {
         logger: this.logger,
         retry: this.retryConfig,
-        errorHandler: this.errorHandler,
-        eventHandlers: this.eventHandlers
+        errorHandler: this.errorHandler
       };
 
       const adapter = new ContractAdapter<TContract, TPrivateState>(deployed as DeployedContract<TContract>, config, {
         privateStateManager
       }) as unknown as IContractAdapter<TContract, TPrivateState>;
-
-      if (this.witnessInterceptor) {
-        this.witnessInterceptor.onWitnessCall((event: WitnessCallEvent<TPrivateState>) => {
-          // Access the private eventEmitter through the adapter interface
-          const adapterWithEmitter = adapter as unknown as { eventEmitter?: EventEmitter };
-          adapterWithEmitter.eventEmitter?.emit('witnessCall', event);
-        });
-      }
 
       return adapter;
     } catch (error) {
@@ -426,21 +407,12 @@ export class ContractAdapterBuilder<TContract, TLedger = unknown, TPrivateState 
       const config: AdapterConfig = {
         logger: this.logger,
         retry: this.retryConfig,
-        errorHandler: this.errorHandler,
-        eventHandlers: this.eventHandlers
+        errorHandler: this.errorHandler
       };
 
       const adapter = new ContractAdapter<TContract, TPrivateState>(connected as DeployedContract<TContract>, config, {
         privateStateManager
       }) as unknown as IContractAdapter<TContract, TPrivateState>;
-
-      if (this.witnessInterceptor) {
-        this.witnessInterceptor.onWitnessCall((event: WitnessCallEvent<TPrivateState>) => {
-          // Access the private eventEmitter through the adapter interface
-          const adapterWithEmitter = adapter as unknown as { eventEmitter?: EventEmitter };
-          adapterWithEmitter.eventEmitter?.emit('witnessCall', event);
-        });
-      }
 
       return adapter;
     } catch (error) {

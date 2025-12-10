@@ -315,24 +315,6 @@ describe('Contract Adapter with Witnesses - Integration', () => {
     });
   });
 
-  describe('witness monitoring', () => {
-    it('should emit witnessCall events', async () => {
-      const witnessCallHandler = vi.fn();
-      const contractInstance = new mockContractClass(witnesses);
-
-      const contract = await createContractAdapter<typeof mockContractClass, any, CounterPrivateState>(
-        contractInstance
-      )
-        .withWitnesses(witnesses)
-        .withPrivateState({
-          initialState: { privateCounter: 0 }
-        })
-        .on('witnessCall', witnessCallHandler)
-        .deploy(mockProviders);
-
-      expect(contract.address).toBeDefined();
-    });
-  });
 
   describe('error scenarios', () => {
     it('should handle invalid private state', async () => {
