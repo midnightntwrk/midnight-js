@@ -31,7 +31,7 @@ import {
 } from '@/contract';
 import type { Ledger } from '@/contract/managed/counter/contract/index.js';
 import { CounterConfiguration } from '@/counter-api';
-import type { CounterContract, CounterProviders, DeployedCounterContract } from '@/counter-types';
+import type { CounterContract, CounterProviders } from '@/counter-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contract-builder-e2e_${new Date().toISOString()}.log`)
