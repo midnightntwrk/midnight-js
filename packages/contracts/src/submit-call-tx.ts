@@ -78,7 +78,7 @@ export async function submitCallTx<C extends Contract.Contract.Any, ICK extends 
  * @throws {CallTxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data and circuit ID for debugging.
  */
-export async function submitCallTx<C extends Contract.Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
+export async function submitCallTx<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
   providers: SubmitCallTxProviders<C, ICK>,
   options: CallTxOptions<C, ICK>
 ): Promise<FinalizedCallTxData<C, ICK>> {
@@ -86,7 +86,7 @@ export async function submitCallTx<C extends Contract.Contract.Any, ICK extends 
   assertDefined(
     ContractExecutable.make(options.compiledContract)
       .getImpureCircuitIds()
-      .find((circuitId) => circuitId === options.circuitId),
+      .find((circuitId) => circuitId as string === options.circuitId),
     `Circuit '${options.circuitId}' is undefined`
   );
 
@@ -184,7 +184,7 @@ export async function submitCallTx<C extends Contract.Contract.Any, ICK extends 
  * }
  * ```
  */
-export async function submitCallTxAsync<C extends Contract.Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
+export async function submitCallTxAsync<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
   providers: SubmitCallTxProviders<C, ICK>,
   options: CallTxOptions<C, ICK>
 ): Promise<SubmittedCallTx<C, ICK>> {
@@ -192,7 +192,7 @@ export async function submitCallTxAsync<C extends Contract.Contract.Any, ICK ext
   assertDefined(
     ContractExecutable.make(options.compiledContract)
       .getImpureCircuitIds()
-      .find((circuitId) => circuitId === options.circuitId),
+      .find((circuitId) => circuitId as string === options.circuitId),
     `Circuit '${options.circuitId}' is undefined`
   );
 

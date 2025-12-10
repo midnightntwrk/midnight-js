@@ -410,7 +410,7 @@ describe('submit-call-tx', () => {
       });
 
       it('should validate circuit exists in contract', async () => {
-        const options = createBasicCallOptions({ circuitId: 'nonExistentCircuit' as ImpureCircuitId });
+        const options = createBasicCallOptions({ circuitId: 'nonExistentCircuit' as Contract.ImpureCircuitId<Contract.Any> });
 
         await expect(submitCallTxAsync(mockProviders, options)).rejects.toThrow("Circuit 'nonExistentCircuit' is undefined");
       });
@@ -472,7 +472,7 @@ describe('submit-call-tx', () => {
       it('should return callTxData with all private state information', async () => {
         const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
         const mockTxId = 'test-tx-id-full-data';
-        const nextPrivateState = { complexState: 'data' } as PrivateState<Contract>;
+        const nextPrivateState = { complexState: 'data' } as Contract.PrivateState<Contract.Any>;
 
         const mockUnprovenCallTxData = createMockUnprovenCallTxData({
           private: {
