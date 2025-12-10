@@ -184,12 +184,17 @@ export async function submitCallTx<C extends Contract.Contract.Any, ICK extends 
  * }
  * ```
  */
-export async function submitCallTxAsync<C extends Contract, ICK extends ImpureCircuitId<C>>(
+export async function submitCallTxAsync<C extends Contract.Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   providers: SubmitCallTxProviders<C, ICK>,
   options: CallTxOptions<C, ICK>
 ): Promise<SubmittedCallTx<C, ICK>> {
   assertIsContractAddress(options.contractAddress);
-  assertDefined(options.contract.impureCircuits[options.circuitId], `Circuit '${options.circuitId}' is undefined`);
+  assertDefined(
+    ContractExecutable.make(options.compiledContract)
+      .getImpureCircuitIds()
+      .find((circuitId) => circuitId === options.circuitId),
+    `Circuit '${options.circuitId}' is undefined`
+  );
 
   const hasPrivateStateProvider = 'privateStateProvider' in providers;
   const hasPrivateStateId = 'privateStateId' in options;

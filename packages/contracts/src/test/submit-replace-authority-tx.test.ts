@@ -19,6 +19,7 @@ import { submitReplaceAuthorityTx } from '../submit-replace-authority-tx';
 import { submitTx } from '../submit-tx';
 import { createUnprovenReplaceAuthorityTx } from '../utils';
 import {
+  createMockCoinPublicKey,
   createMockCompiledContract,
   createMockContractAddress,
   createMockContractState,
@@ -36,6 +37,7 @@ describe('submitReplaceAuthorityTx', () => {
   let mockCompiledContract: ReturnType<typeof createMockCompiledContract>;
   let mockContractAddress: ReturnType<typeof createMockContractAddress>;
   let mockContractState: ReturnType<typeof createMockContractState>;
+  let mockCoinPublicKey: ReturnType<typeof createMockCoinPublicKey>;
   let mockCurrentAuthority: ReturnType<typeof createMockSigningKey>;
   let mockNewAuthority: ReturnType<typeof createMockSigningKey>;
   let mockUnprovenTx: Promise<ReturnType<typeof createMockUnprovenTx>>;
@@ -47,6 +49,7 @@ describe('submitReplaceAuthorityTx', () => {
     mockCompiledContract = createMockCompiledContract();
     mockContractAddress = createMockContractAddress();
     mockContractState = createMockContractState();
+    mockCoinPublicKey = createMockCoinPublicKey();
     mockCurrentAuthority = createMockSigningKey();
     mockNewAuthority = createMockSigningKey();
     mockUnprovenTx = Promise.resolve(createMockUnprovenTx());
@@ -59,6 +62,7 @@ describe('submitReplaceAuthorityTx', () => {
       mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockCurrentAuthority);
       mockProviders.privateStateProvider.setSigningKey = vi.fn().mockResolvedValue(undefined);
+      mockProviders.walletProvider.getCoinPublicKey = vi.fn().mockReturnValue(mockCoinPublicKey);
       
       vi.mocked(createUnprovenReplaceAuthorityTx).mockReturnValue(mockUnprovenTx);
       vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
@@ -75,7 +79,7 @@ describe('submitReplaceAuthorityTx', () => {
         mockNewAuthority,
         mockContractState,
         mockCurrentAuthority,
-        mockProviders.walletProvider.zswapSecretKeys.coinPublicKey
+        mockCoinPublicKey
       );
       expect(submitTx).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
       expect(mockProviders.privateStateProvider.setSigningKey).toHaveBeenCalledWith(mockContractAddress, mockNewAuthority);

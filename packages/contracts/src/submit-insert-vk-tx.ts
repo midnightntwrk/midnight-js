@@ -94,7 +94,7 @@ export const submitInsertVerifierKeyTx = async <C extends Contract.Contract.Any>
     newVk, 
     contractState, 
     signingKey,
-    providers.walletProvider.zswapSecretKeys.coinPublicKey
+    providers.walletProvider.getCoinPublicKey()
   );
   const submitTxResult = await submitTx(providers, { unprovenTx });
   if (submitTxResult.status !== SucceedEntirely) {

@@ -19,7 +19,6 @@ import {
   type FinalizedTransaction,
   type ShieldedCoinInfo,
   type UnprovenTransaction,
-  type ZswapSecretKeys
 } from '@midnight-ntwrk/ledger-v6';
 
 export const TRANSACTION_TO_PROVE = 'TransactionToProve';

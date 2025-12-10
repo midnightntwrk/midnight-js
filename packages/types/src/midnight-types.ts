@@ -23,7 +23,6 @@ import {
   type Transaction,
   type TransactionHash,
   type TransactionId,
-  type UnprovenTransaction
 } from '@midnight-ntwrk/ledger-v6';
 
 /**

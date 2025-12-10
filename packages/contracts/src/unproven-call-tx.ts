@@ -279,7 +279,7 @@ export async function createUnprovenCallTx<C extends Contract.Contract.Any, ICK 
         zswapChainState,
         privateState
       ),
-      providers.walletProvider.zswapSecretKeys.encryptionPublicKey
+      providers.walletProvider.getEncryptionPublicKey()
     );
   }
 
@@ -295,6 +295,6 @@ export async function createUnprovenCallTx<C extends Contract.Contract.Any, ICK 
       contractState,
       zswapChainState
     ),
-    providers.walletProvider.zswapSecretKeys.encryptionPublicKey
+    providers.walletProvider.getEncryptionPublicKey()
   );
 }

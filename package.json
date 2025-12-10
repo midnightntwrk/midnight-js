@@ -43,7 +43,7 @@
   },
   "dependencies": {
     "@midnight-ntwrk/ledger-v6": "6.1.0-alpha.5",
-    "@midnight-ntwrk/wallet-sdk-facade": "1.0.0-beta.8"
+    "@midnight-ntwrk/wallet-sdk-facade": "1.0.0-beta.11"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.0.0",

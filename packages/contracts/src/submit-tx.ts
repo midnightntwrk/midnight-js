@@ -15,12 +15,17 @@
 
 import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
 import type { ShieldedCoinInfo } from '@midnight-ntwrk/compact-runtime';
-import { LedgerState, type UnprovenTransaction, WellFormedStrictness } from '@midnight-ntwrk/ledger-v6';
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { type FinalizedTransaction, type Transaction,type UnprovenTransaction } from '@midnight-ntwrk/ledger-v6';
 import {
+  BALANCE_TRANSACTION_TO_PROVE,
+  type BalancedProvingRecipe,
+  type BalanceTransactionToProve,
   type FinalizedTxData,
-  type TransactionToProve
-} from '@midnight-ntwrk/midnight-js-types';
+  NOTHING_TO_PROVE,
+  type NothingToProve,
+  type ProvenTransaction,
+  TRANSACTION_TO_PROVE,
+  type ZKConfig} from '@midnight-ntwrk/midnight-js-types';
 import fs from 'fs';
 import path from 'path';
 
@@ -90,7 +95,7 @@ function logTransaction(circuitId: string | undefined, tx: Transaction<any, any,
   }
 }
 
-async function proveTransaction<C extends Contract, ICK extends ImpureCircuitId<C>>(recipe: BalancedProvingRecipe, providers: SubmitTxProviders<C, ICK>, proveTxConfig: {
+async function proveTransaction<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(recipe: BalancedProvingRecipe, providers: SubmitTxProviders<C, ICK>, proveTxConfig: {
   zkConfig: ZKConfig<ICK>
 } | undefined) {
   let toSubmit: ProvenTransaction;
@@ -120,7 +125,7 @@ async function proveTransaction<C extends Contract, ICK extends ImpureCircuitId<
   return toSubmit;
 }
 
-async function submitTxCore<C extends Contract, ICK extends ImpureCircuitId<C>>(
+async function submitTxCore<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
   providers: SubmitTxProviders<C, ICK>,
   options: SubmitTxOptions<ICK>
 ): Promise<string> {
@@ -194,7 +199,7 @@ export const submitTx = async <C extends Contract.Contract.Any, ICK extends Cont
  *          or rejects if an error occurs during preparation or submission.
  *          To watch for finalization, use providers.publicDataProvider.watchForTxData(txId).
  */
-export const submitTxAsync = async <C extends Contract, ICK extends ImpureCircuitId<C>>(
+export const submitTxAsync = async <C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
   providers: SubmitTxProviders<C, ICK>,
   options: SubmitTxOptions<ICK>
 ): Promise<string> => {

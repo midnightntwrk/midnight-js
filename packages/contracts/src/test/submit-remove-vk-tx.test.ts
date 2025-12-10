@@ -19,6 +19,7 @@ import { submitRemoveVerifierKeyTx } from '../submit-remove-vk-tx';
 import { submitTx } from '../submit-tx';
 import { createUnprovenRemoveVerifierKeyTx } from '../utils';
 import {
+  createMockCoinPublicKey,
   createMockCompiledContract,
   createMockContractAddress,
   createMockContractState,
@@ -37,6 +38,7 @@ describe('submitRemoveVerifierKeyTx', () => {
   let mockContractAddress: ReturnType<typeof createMockContractAddress>;
   let mockContractState: ReturnType<typeof createMockContractState>;
   let mockSigningKey: ReturnType<typeof createMockSigningKey>;
+  let mockCoinPublicKey: ReturnType<typeof createMockCoinPublicKey>;
   let mockUnprovenTx: Promise<ReturnType<typeof createMockUnprovenTx>>;
 
   beforeEach(() => {
@@ -47,6 +49,7 @@ describe('submitRemoveVerifierKeyTx', () => {
     mockContractAddress = createMockContractAddress();
     mockContractState = createMockContractState();
     mockSigningKey = createMockSigningKey();
+    mockCoinPublicKey = createMockCoinPublicKey();
     mockUnprovenTx = Promise.resolve(createMockUnprovenTx());
   });
 
@@ -58,6 +61,7 @@ describe('submitRemoveVerifierKeyTx', () => {
 
       mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockSigningKey);
+      mockProviders.walletProvider.getCoinPublicKey = vi.fn().mockReturnValue(mockCoinPublicKey);
       mockContractState.operation = vi.fn().mockReturnValue(mockOperation);
       
       vi.mocked(createUnprovenRemoveVerifierKeyTx).mockReturnValue(mockUnprovenTx);
@@ -80,7 +84,7 @@ describe('submitRemoveVerifierKeyTx', () => {
         circuitId,
         mockContractState,
         mockSigningKey,
-        mockProviders.walletProvider.zswapSecretKeys.coinPublicKey
+        mockCoinPublicKey
       );
       expect(submitTx).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
       expect(result).toBe(mockFinalizedTxData);

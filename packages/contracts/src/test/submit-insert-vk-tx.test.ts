@@ -20,6 +20,7 @@ import { submitInsertVerifierKeyTx } from '../submit-insert-vk-tx';
 import { submitTx } from '../submit-tx';
 import { createUnprovenInsertVerifierKeyTx } from '../utils';
 import {
+  createMockCoinPublicKey,
   createMockCompiledContract,
   createMockContractAddress,
   createMockContractState,
@@ -38,6 +39,7 @@ describe('submitInsertVerifierKeyTx', () => {
   let mockContractAddress: ReturnType<typeof createMockContractAddress>;
   let mockContractState: ReturnType<typeof createMockContractState>;
   let mockSigningKey: ReturnType<typeof createMockSigningKey>;
+  let mockCoinPublicKey: ReturnType<typeof createMockCoinPublicKey>;
   let mockUnprovenTx: Promise<ReturnType<typeof createMockUnprovenTx>>;
   let mockVerifierKey: VerifierKey;
 
@@ -49,6 +51,7 @@ describe('submitInsertVerifierKeyTx', () => {
     mockContractAddress = createMockContractAddress();
     mockContractState = createMockContractState();
     mockSigningKey = createMockSigningKey();
+    mockCoinPublicKey = createMockCoinPublicKey();
     mockUnprovenTx = Promise.resolve(createMockUnprovenTx());
     mockVerifierKey = new Uint8Array(32) as VerifierKey;
   });
@@ -60,6 +63,7 @@ describe('submitInsertVerifierKeyTx', () => {
 
       mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockSigningKey);
+      mockProviders.walletProvider.getCoinPublicKey = vi.fn().mockReturnValue(mockCoinPublicKey);
       mockContractState.operation = vi.fn().mockReturnValue(undefined);
       
       vi.mocked(createUnprovenInsertVerifierKeyTx).mockReturnValue(mockUnprovenTx);
@@ -84,7 +88,7 @@ describe('submitInsertVerifierKeyTx', () => {
         mockVerifierKey,
         mockContractState,
         mockSigningKey,
-        mockProviders.walletProvider.zswapSecretKeys.coinPublicKey
+        mockCoinPublicKey
       );
       expect(submitTx).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
       expect(result).toBe(mockFinalizedTxData);

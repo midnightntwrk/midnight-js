@@ -139,7 +139,7 @@ export type FinalizedCallTxData<C extends Contract.Any, ICK extends Contract.Imp
  * Data returned from an asynchronous call transaction submission.
  * Contains the transaction ID and call transaction data without waiting for finalization.
  */
-export type SubmittedCallTx<C extends Contract, ICK extends ImpureCircuitId<C>> = {
+export type SubmittedCallTx<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = {
   /**
    * The transaction ID returned from submission.
    */
