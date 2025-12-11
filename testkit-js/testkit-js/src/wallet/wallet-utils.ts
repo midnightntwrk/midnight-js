@@ -27,7 +27,7 @@ export const getInitialState = async (wallet: ShieldedWallet | UnshieldedWallet)
   if (wallet instanceof ShieldedWallet) {
     return Rx.firstValueFrom((wallet as ShieldedWallet).state);
   } else {
-    return Rx.firstValueFrom((wallet as UnshieldedWallet).state());
+    return Rx.firstValueFrom((wallet as UnshieldedWallet).state);
   }
 };
 
@@ -38,7 +38,7 @@ export const getInitialShieldedState = async (wallet: ShieldedWallet) => {
 
 export const getInitialUnshieldedState = async (wallet: UnshieldedWallet) => {
   logger.info('Getting initial state of wallet...');
-  return Rx.firstValueFrom(wallet.state());
+  return Rx.firstValueFrom(wallet.state);
 };
 
 export const syncWallet = (wallet: WalletFacade, throttleTime = 2_000, timeout = 90_000) => {
@@ -48,25 +48,25 @@ export const syncWallet = (wallet: WalletFacade, throttleTime = 2_000, timeout =
     wallet.state().pipe(
       Rx.tap((state) => {
         logger.info(
-          `Wallet synced state emission: { shielded=${state.shielded.state.progress.isStrictlyComplete()}, unshielded=${state.unshielded.syncProgress?.synced}, dust=${state.dust.state.progress.isStrictlyComplete()} }`
+          `Wallet synced state emission: { shielded=${state.shielded.state.progress.isStrictlyComplete()}, unshielded=${state.unshielded.progress.isStrictlyComplete()}, dust=${state.dust.state.progress.isStrictlyComplete()} }`
         );
       }),
       Rx.throttleTime(throttleTime),
       Rx.tap((state) => {
         const isSynced =
-            state.shielded.state.progress.isStrictlyComplete() &&
-            state.dust.state.progress.isStrictlyComplete() &&
-            state.unshielded.syncProgress?.synced === true;
+          state.shielded.state.progress.isStrictlyComplete() &&
+          state.dust.state.progress.isStrictlyComplete() &&
+          state.unshielded.progress.isStrictlyComplete();
 
         logger.info(
-          `Wallet synced state emission (synced=${isSynced}): { shielded=${state.shielded.state.progress.isStrictlyComplete()}, unshielded=${state.unshielded.syncProgress?.synced}, dust=${state.dust.state.progress.isStrictlyComplete()} }`
+          `Wallet synced state emission (synced=${isSynced}): { shielded=${state.shielded.state.progress.isStrictlyComplete()}, unshielded=${state.unshielded.progress.isStrictlyComplete()}, dust=${state.dust.state.progress.isStrictlyComplete()} }`
         );
       }),
       Rx.filter(
         (state) =>
           state.shielded.state.progress.isStrictlyComplete() &&
           state.dust.state.progress.isStrictlyComplete() &&
-          state.unshielded.syncProgress?.synced === true,
+          state.unshielded.progress.isStrictlyComplete()
       ),
       Rx.tap(() => logger.info('Sync complete')),
       Rx.tap((state) => {
@@ -74,7 +74,9 @@ export const syncWallet = (wallet: WalletFacade, throttleTime = 2_000, timeout =
         const unshieldedBalances = state.unshielded.balances || {};
         const dustBalances = state.dust.walletBalance(new Date(Date.now())) || {};
 
-        logger.info(`Wallet balances after sync - Shielded: ${JSON.stringify(shieldedBalances)}, Unshielded: ${JSON.stringify(Object.fromEntries(unshieldedBalances))}, Dust: ${dustBalances}`);
+        logger.info(
+          `Wallet balances after sync - Shielded: ${JSON.stringify(shieldedBalances)}, Unshielded: ${JSON.stringify(unshieldedBalances)}, Dust: ${dustBalances}`
+        );
       }),
       Rx.timeout({
         each: timeout,

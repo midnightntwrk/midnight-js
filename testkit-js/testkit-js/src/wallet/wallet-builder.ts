@@ -22,9 +22,9 @@ import { ShieldedWallet } from '@midnight-ntwrk/wallet-sdk-shielded';
 import { type DefaultV1Configuration } from '@midnight-ntwrk/wallet-sdk-shielded/v1';
 import {
   createKeystore,
+  InMemoryTransactionHistoryStorage,
   PublicKey,
-  type UnshieldedWallet,
-  WalletBuilder as UnshieldedWalletBuilder
+  UnshieldedWallet
 } from '@midnight-ntwrk/wallet-sdk-unshielded-wallet';
 
 import { logger } from '@/logger';
@@ -38,7 +38,9 @@ declare global {
   }
 }
 
-BigInt.prototype.toJSON = function () { return Number(this) }
+BigInt.prototype.toJSON = function () {
+  return Number(this);
+};
 
 export const DustOptions = {
   ledgerParams: LedgerParameters.initialParameters(),
@@ -52,17 +54,17 @@ export class WalletBuilder {
     return Shielded.startWithShieldedSeed(seed);
   }
 
-  static async buildUnshieldedWallet(
+  static buildUnshieldedWallet(
     config: DefaultV1Configuration,
     seed: Uint8Array,
     networkId: NetworkId.NetworkId
-  ): Promise<UnshieldedWallet> {
+  ): UnshieldedWallet {
     const keystore = createKeystore(seed, networkId);
-    return await UnshieldedWalletBuilder.build({
-      publicKey: PublicKey.fromKeyStore(keystore),
+    return UnshieldedWallet({
       networkId,
-      indexerUrl: config.indexerClientConnection.indexerWsUrl!,
-    });
+      indexerClientConnection: config.indexerClientConnection,
+      txHistoryStorage: new InMemoryTransactionHistoryStorage()
+    }).startWithPublicKey(PublicKey.fromKeyStore(keystore));
   }
 
   static buildDustWallet(
@@ -76,8 +78,8 @@ export class WalletBuilder {
       costParameters: {
         ledgerParams: dustOptions.ledgerParams,
         additionalFeeOverhead: dustOptions.additionalFeeOverhead,
-        feeBlocksMargin: dustOptions.feeBlocksMargin,
-      },
+        feeBlocksMargin: dustOptions.feeBlocksMargin
+      }
     };
     logger.info(`Building dust wallet with params: ${JSON.stringify(dustConfig)}`);
     const Dust = DustWallet(dustConfig);
@@ -85,45 +87,43 @@ export class WalletBuilder {
     return Dust.startWithSeed(seed, dustParameters);
   }
 
-  static async restoreShieldedWallet(
-    config: DefaultV1Configuration,
-    serializedState: string
-  ): Promise<ShieldedWallet> {
+  static async restoreShieldedWallet(config: DefaultV1Configuration, serializedState: string): Promise<ShieldedWallet> {
     return ShieldedWallet(config).restore(serializedState);
   }
 
-  static async buildWallet(
+  static buildWallet(
     envConfig: EnvironmentConfiguration,
     shieldedSeed: Uint8Array,
     unshieldedSeed: Uint8Array,
     dustSeed: Uint8Array
-  ): Promise<WalletFacade> {
+  ): WalletFacade {
     logger.info(`Starting wallet for ${envConfig.walletNetworkId}`);
     const config = mapEnvironmentToConfiguration(envConfig);
     logger.info(`Starting wallet for ${JSON.stringify(config)}`);
     return new WalletFacade(
       this.buildShieldedWallet(config, shieldedSeed),
-      await this.buildUnshieldedWallet(config, unshieldedSeed, envConfig.walletNetworkId),
+      this.buildUnshieldedWallet(config, unshieldedSeed, envConfig.walletNetworkId),
       this.buildDustWallet(config, dustSeed, envConfig.walletNetworkId, DustOptions)
     );
   }
 
-  static async startWallet(wallet: WalletFacade, shieldedSeed: Uint8Array, dustSeed: Uint8Array): Promise<WalletFacade> {
+  static async startWallet(
+    wallet: WalletFacade,
+    shieldedSeed: Uint8Array,
+    dustSeed: Uint8Array
+  ): Promise<WalletFacade> {
     logger.info(`Starting wallet...`);
     await wallet.start(ZswapSecretKeys.fromSeed(shieldedSeed), DustSecretKey.fromSeed(dustSeed));
     return wallet;
   }
 
-  static async buildAndStartWallet(
-    envConfig: EnvironmentConfiguration,
-    seed?: string
-  ): Promise<WalletFacade> {
+  static async buildAndStartWallet(envConfig: EnvironmentConfiguration, seed?: string): Promise<WalletFacade> {
     const walletSeed = seed ?? generateRandomSeed().toString();
     const shieldedSeed = getShieldedSeed(walletSeed);
     const unshieldedSeed = getUnshieldedSeed(walletSeed);
     const dustSeed = getDustSeed(walletSeed);
 
-    const wallet = await this.buildWallet(envConfig, shieldedSeed, unshieldedSeed, dustSeed);
+    const wallet = this.buildWallet(envConfig, shieldedSeed, unshieldedSeed, dustSeed);
     return this.startWallet(wallet, shieldedSeed, dustSeed);
   }
 }
