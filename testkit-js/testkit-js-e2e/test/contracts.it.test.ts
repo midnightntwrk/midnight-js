@@ -17,13 +17,10 @@ import {
   ContractState,
   decodeZswapLocalState,
   emptyZswapLocalState,
-  sampleContractAddress,
   sampleSigningKey
 } from '@midnight-ntwrk/compact-runtime';
-import { type ContractAddress, sampleCoinPublicKey, ZswapChainState } from '@midnight-ntwrk/ledger-v6';
+import { type ContractAddress, ZswapChainState } from '@midnight-ntwrk/ledger-v6';
 import {
-  call,
-  callContractConstructor,
   ContractTypeError,
   createCircuitCallTxInterface,
   createUnprovenCallTxFromInitialStates,
@@ -63,15 +60,13 @@ import {
   createInitialPrivateState,
   createPrivateState,
 } from '@/contract';
+import { CompiledCounterCloneContract,CompiledCounterContract, CompiledSimpleContract } from '@/contract';
 import * as api from '@/counter-api';
 import {
   CIRCUIT_ID_INCREMENT,
-  cloneContractInstance,
   CounterCloneConfiguration,
   CounterConfiguration,
-  counterContractInstance,
-  SimpleConfiguration,
-  simpleContractInstance
+  SimpleConfiguration
 } from '@/counter-api';
 import { type CounterCloneCircuits,CounterClonePrivateStateId } from '@/counter-clone-types';
 import {
@@ -127,40 +122,6 @@ describe('Contracts API', () => {
     await testEnvironment.shutdown();
   });
 
-  /**
-   * Test constructor and circuit execution for contracts with private state.
-   *
-   * @given A contract with private state and initial configuration
-   * @and A coin public key and constructor result
-   * @when Executing constructor and increment circuit
-   * @then Should correctly update contract state, private state, and local state
-   * @and Should maintain proper state consistency across operations
-   */
-  it('should execute constructor and circuits of contracts with private state', () => {
-    const coinPublicKey = sampleCoinPublicKey();
-    const constructorResult = callContractConstructor({
-      contract: api.counterContractInstance,
-      coinPublicKey,
-      initialPrivateState: privateStateZero
-    });
-    expect(ledger(constructorResult.nextContractState.data).round).toEqual(0n);
-    expect(constructorResult.nextPrivateState).toEqual(privateStateZero);
-    expect(constructorResult.nextZswapLocalState).toEqual(decodeZswapLocalState(emptyZswapLocalState(coinPublicKey)));
-
-    const callResult = call({
-      contract: api.counterContractInstance,
-      coinPublicKey,
-      circuitId: 'increment',
-      contractAddress: sampleContractAddress(),
-      initialContractState: constructorResult.nextContractState,
-      initialZswapChainState: new ZswapChainState(),
-      initialPrivateState: privateStateZero
-    });
-
-    expect(ledger(callResult.public.nextContractState).round).toEqual(1n);
-    expect(callResult.private.nextPrivateState).toEqual(createPrivateState(1));
-    expect(callResult.private.nextZswapLocalState).toEqual(decodeZswapLocalState(emptyZswapLocalState(coinPublicKey)));
-  });
 
   /**
    * Test creating unproven call and deploy transactions for contract with private state.
@@ -174,7 +135,7 @@ describe('Contracts API', () => {
   it('should create unproven call and deploy transactions for contract with private state', async () => {
     const signingKey = sampleSigningKey();
     const unprovenDeployTxResult = await createUnprovenDeployTx(providers, {
-      contract: api.counterContractInstance,
+      compiledContract: CompiledCounterContract,
       signingKey,
       initialPrivateState: privateStateZero
     });
@@ -189,9 +150,10 @@ describe('Contracts API', () => {
     expect(unprovenDeployTxResult.private.signingKey).toEqual(signingKey);
     expect(unprovenDeployTxResult.private.newCoins).toEqual([]);
 
-    const unprovenCallTxData = createUnprovenCallTxFromInitialStates(
+    const unprovenCallTxData = await createUnprovenCallTxFromInitialStates(
+      providers.zkConfigProvider,
       {
-        contract: api.counterContractInstance,
+        compiledContract: CompiledCounterContract,
         circuitId: 'increment',
         contractAddress: unprovenDeployTxResult.public.contractAddress,
         coinPublicKey: providers.walletProvider.getCoinPublicKey(),
@@ -199,7 +161,6 @@ describe('Contracts API', () => {
         initialContractState: unprovenDeployTxResult.public.initialContractState,
         initialZswapChainState: new ZswapChainState()
       },
-      providers.walletProvider.getCoinPublicKey(),
       providers.walletProvider.getEncryptionPublicKey()
     );
 
@@ -224,7 +185,7 @@ describe('Contracts API', () => {
    */
   it('should deploy contract on the chain [@slow]', async () => {
     const deployTxOptions = {
-      contract: counterContractInstance,
+      compiledContract: CompiledCounterContract,
       privateStateId: CounterPrivateStateId,
       initialPrivateState: privateStateZero
     };
@@ -243,7 +204,7 @@ describe('Contracts API', () => {
    */
   it('should return deployed contract if it exists on specific address', async () => {
     const foundContract = await findDeployedContract(providers, {
-      contract: counterContractInstance,
+      compiledContract: CompiledCounterContract,
       contractAddress,
       privateStateId: CounterPrivateStateId,
       initialPrivateState: privateStateZero
@@ -269,7 +230,7 @@ describe('Contracts API', () => {
    */
   it('should return deployed contract if it exists on specific address without initialPrivateState', async () => {
     const foundContract = await findDeployedContract(providers, {
-      contract: counterContractInstance,
+      compiledContract: CompiledCounterContract,
       contractAddress,
       privateStateId: CounterPrivateStateId
     });
@@ -293,7 +254,7 @@ describe('Contracts API', () => {
   it('should throw error if contract address has wrong format - length', async () => {
     await expect(
       findDeployedContract(providers, {
-        contract: counterContractInstance,
+        compiledContract: CompiledCounterContract,
         contractAddress: INVALID_CONTRACT_ADDRESS_TOO_LONG,
         privateStateId: CounterPrivateStateId
       })
@@ -317,7 +278,7 @@ describe('Contracts API', () => {
     );
 
     const foundContract = await findDeployedContract(providersLocal, {
-      contract: counterContractInstance,
+      compiledContract: CompiledCounterContract,
       contractAddress,
       privateStateId: CounterPrivateStateId,
       initialPrivateState: privateStateZero
@@ -344,7 +305,7 @@ describe('Contracts API', () => {
   it('should return deployed contract if it exists on specific address with different initialPrivateState', async () => {
     const privateStateLocal = createInitialPrivateState(5);
     const foundContract = await findDeployedContract(providers, {
-      contract: counterContractInstance,
+      compiledContract: CompiledCounterContract,
       contractAddress,
       privateStateId: CounterPrivateStateId,
       initialPrivateState: privateStateLocal
@@ -371,7 +332,7 @@ describe('Contracts API', () => {
    */
   it('should wait indefinitely until contract exists on specific address [@slow]', async () => {
     const contractPromise = findDeployedContract(providers, {
-      contract: counterContractInstance,
+      compiledContract: CompiledCounterContract,
       contractAddress: UNDEPLOYED_CONTRACT_ADDRESS,
       privateStateId: CounterPrivateStateId
     });
@@ -402,7 +363,7 @@ describe('Contracts API', () => {
     // contract. This should result in an error.
     await expect(
       findDeployedContract(providersLocal, {
-        contract: simpleContractInstance,
+        compiledContract: CompiledSimpleContract,
         contractAddress
       })
     ).rejects.toThrow(ContractTypeError);
@@ -428,7 +389,7 @@ describe('Contracts API', () => {
     // result in an error.
     await expect(
       findDeployedContract(providersLocal, {
-        contract: cloneContractInstance,
+        compiledContract: CompiledCounterCloneContract,
         contractAddress,
         privateStateId: CounterClonePrivateStateId
       })
@@ -449,7 +410,7 @@ describe('Contracts API', () => {
     async () => {
       const contractCircuitsInterface = createCircuitCallTxInterface(
         providers,
-        counterContractInstance,
+        CompiledCounterContract,
         contractAddress,
         CounterPrivateStateId
       );
@@ -508,7 +469,7 @@ describe('Contracts API', () => {
   it('should throw error on undefined public state at wrong address', async () => {
     const contractCircuitsInterface = createCircuitCallTxInterface(
       providers,
-      counterContractInstance,
+      CompiledCounterContract,
       UNDEPLOYED_CONTRACT_ADDRESS,
       CounterPrivateStateId
     );
@@ -536,7 +497,7 @@ describe('Contracts API', () => {
   it('should submit a deploy transaction [@slow]', async () => {
     const signingKey = sampleSigningKey();
     const deployTxOptions = {
-      contract: api.counterContractInstance,
+      compiledContract: CompiledCounterContract,
       signingKey,
       privateStateId: CounterPrivateStateId,
       initialPrivateState: privateStateZero
@@ -544,7 +505,7 @@ describe('Contracts API', () => {
     const deployTxData = await submitDeployTx(providers, deployTxOptions);
     await expectSuccessfulDeployTx(providers, deployTxData, deployTxOptions);
     const callTxOptions = {
-      contract: api.counterContractInstance,
+      compiledContract: CompiledCounterContract,
       contractAddress: deployTxData.public.contractAddress,
       circuitId: CIRCUIT_ID_INCREMENT,
       privateStateId: CounterPrivateStateId
@@ -570,7 +531,7 @@ describe('Contracts API', () => {
     expect(privateState1).toBeDefined();
 
     const callTxOptions = {
-      contract: counterContractInstance,
+      compiledContract: CompiledCounterContract,
       contractAddress,
       circuitId: CIRCUIT_ID_INCREMENT,
       privateStateId: CounterPrivateStateId
@@ -606,7 +567,7 @@ describe('Contracts API', () => {
 
     await expect(
       submitCallTx(providersLocal, {
-        contract: counterContractInstance,
+        compiledContract: CompiledCounterContract,
         circuitId: CIRCUIT_ID_INCREMENT,
         contractAddress,
         privateStateId: CounterPrivateStateId
@@ -626,7 +587,7 @@ describe('Contracts API', () => {
   it('should throw error if public state is undefined', async () => {
     await expect(
       submitCallTx(providers, {
-        contract: counterContractInstance,
+        compiledContract: CompiledCounterContract,
         circuitId: CIRCUIT_ID_INCREMENT,
         contractAddress: UNDEPLOYED_CONTRACT_ADDRESS,
         privateStateId: CounterPrivateStateId
@@ -646,7 +607,7 @@ describe('Contracts API', () => {
   it('should throw error if contract address has wrong format - not hex', async () => {
     await expect(
       submitCallTx(providers, {
-        contract: counterContractInstance,
+        compiledContract: CompiledCounterContract,
         circuitId: CIRCUIT_ID_INCREMENT,
         contractAddress: INVALID_CONTRACT_ADDRESS_HEX_FORMAT,
         privateStateId: CounterPrivateStateId

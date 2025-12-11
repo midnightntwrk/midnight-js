@@ -219,7 +219,7 @@ describe('Unshielded tokens', () => {
 
   test('should mint native tokens', async () => {
     const txData = await submitCallTx(providers, {
-      contract: unshieldedContract,
+      compiledContract: CompiledUnshieldedContract,
       contractAddress,
       circuitId: 'mintNativeTokens' as UnshieldedContractCircuits,
       args: [1_000_000n]
