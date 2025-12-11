@@ -49,11 +49,37 @@ export async function submitDeployTx<C extends Contract>(
 /**
  * Creates and submits a deploy transaction for the given contract.
  *
+ * ## Transaction Execution Phases
+ *
+ * Midnight transactions execute in two phases:
+ * 1. **Guaranteed phase**: If failure occurs, the transaction is NOT included in the blockchain
+ * 2. **Fallible phase**: If failure occurs, the transaction IS recorded on-chain as a partial success
+ *
+ * ## Failure Behavior
+ *
+ * **Guaranteed Phase Failure:**
+ * - Transaction is rejected and not included in the blockchain
+ * - `DeployTxFailedError` is thrown with transaction data
+ * - Private state (if `privateStateId` provided) is NOT stored
+ * - Contract signing key is NOT stored in private state provider
+ * - Contract is NOT deployed
+ *
+ * **Fallible Phase Failure:**
+ * - Transaction is recorded on-chain with non-`SucceedEntirely` status
+ * - `DeployTxFailedError` is thrown with transaction data
+ * - Private state (if `privateStateId` provided) is NOT stored
+ * - Contract signing key is NOT stored in private state provider
+ * - Transaction appears in blockchain history as partial success
+ * - Contract may be partially deployed but not functional
+ *
  * @param providers The providers used to manage the deploy lifecycle.
  * @param options Configuration.
  *
  * @returns A `Promise` that resolves with the finalized deployment transaction data;
  *          or rejects with an error if the deployment fails.
+ *
+ * @throws {DeployTxFailedError} When transaction fails in either guaranteed or fallible phase.
+ *         The error contains the finalized transaction data for debugging.
  */
 export async function submitDeployTx<C extends Contract>(
   providers: SubmitDeployTxProviders<C>,

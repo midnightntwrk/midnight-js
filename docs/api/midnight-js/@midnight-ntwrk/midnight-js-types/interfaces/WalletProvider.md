@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.5**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.9**](../../../README.md)
 
 ***
 
@@ -13,7 +13,7 @@ transaction balancing and finalization, and provides access to cryptographic sec
 
 ### balanceTx()
 
-> **balanceTx**(`tx`, `newCoins?`, `ttl?`): `Promise`\<[`ProvingRecipe`](../type-aliases/ProvingRecipe.md)\<`FinalizedTransaction` \| `UnprovenTransaction`\>\>
+> **balanceTx**(`tx`, `newCoins?`, `ttl?`): `Promise`\<[`BalancedProvingRecipe`](../type-aliases/BalancedProvingRecipe.md)\>
 
 Balances a transaction
 
@@ -35,7 +35,7 @@ The transaction to balance.
 
 #### Returns
 
-`Promise`\<[`ProvingRecipe`](../type-aliases/ProvingRecipe.md)\<`FinalizedTransaction` \| `UnprovenTransaction`\>\>
+`Promise`\<[`BalancedProvingRecipe`](../type-aliases/BalancedProvingRecipe.md)\>
 
 ***
 
