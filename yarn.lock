@@ -3149,7 +3149,7 @@ __metadata:
     "@midnight-ntwrk/compact-js": "npm:^2.3.0"
     "@midnight-ntwrk/compact-js-node": "npm:^2.3.0"
     "@midnight-ntwrk/compact-runtime": "npm:0.11.0-rc.1"
-    "@midnight-ntwrk/ledger": "npm:@midnight-ntwrk/ledger-v6@6.1.0-alpha.5"
+    "@midnight-ntwrk/ledger": "npm:@midnight-ntwrk/ledger-v6@6.2.0-rc.2"
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
     "@midnight-ntwrk/platform-js": "npm:^2.1.0"
     "@midnight-ntwrk/wallet-sdk-address-format": "npm:3.0.0-beta.4"
@@ -3191,7 +3191,7 @@ __metadata:
     "@effect/workflow": "npm:^0.12.0"
     "@midnight-ntwrk/compact-js-node": "workspace:*"
     "@midnight-ntwrk/compact-runtime": "npm:0.11.0-rc.1"
-    "@midnight-ntwrk/ledger": "npm:@midnight-ntwrk/ledger-v6@6.1.0-alpha.5"
+    "@midnight-ntwrk/ledger": "npm:@midnight-ntwrk/ledger-v6@6.2.0-rc.2"
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
     "@midnight-ntwrk/platform-js": "npm:^2.1.0"
     effect: "npm:^3.18.4"
@@ -3209,10 +3209,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/ledger-v6@npm:6.1.0-alpha.5, @midnight-ntwrk/ledger@npm:@midnight-ntwrk/ledger-v6@6.1.0-alpha.5":
-  version: 6.1.0-alpha.5
-  resolution: "@midnight-ntwrk/ledger-v6@npm:6.1.0-alpha.5::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fledger-v6%2F6.1.0-alpha.5%2F25da2a8f4fd40f76d2282279b4d9b457ae62a33e"
-  checksum: 10/fa87cc15bbf80538586b7276f5fab1e7644105363060ff1db6f6935135ffca93ce46358e3c768f747758ef7f537a86efe365b6f3c567cf9d179ec660809a2643
+"@midnight-ntwrk/ledger-v6@npm:6.2.0-rc.2, @midnight-ntwrk/ledger@npm:@midnight-ntwrk/ledger-v6@6.2.0-rc.2":
+  version: 6.2.0-rc.2
+  resolution: "@midnight-ntwrk/ledger-v6@npm:6.2.0-rc.2::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fledger-v6%2F6.2.0-rc.2%2F45e99735e87438176d618cee7fa5b0b7922fbf88"
+  checksum: 10/ad2882af12d8665ccf3037f8570f94ea5cde445e27dc3f7a23b14a41fd541bc8d76c3c879e40871d0d4586303a26e20a52f4a23f9f1988d81e83dab6f95808ef
   languageName: node
   linkType: hard
 
@@ -3358,7 +3358,7 @@ __metadata:
     "@effect/build-utils": "npm:^0.8.9"
     "@eslint/js": "npm:^9.30.1"
     "@midnight-ntwrk/compact-runtime": "npm:0.11.0-rc.1"
-    "@midnight-ntwrk/ledger-v6": "npm:6.1.0-alpha.5"
+    "@midnight-ntwrk/ledger-v6": "npm:6.2.0-rc.2"
     "@midnight-ntwrk/onchain-runtime-v1": "npm:1.0.0-alpha.5"
     "@midnight-ntwrk/wallet-sdk-facade": "npm:1.0.0-beta.10"
     "@rollup/plugin-commonjs": "npm:^28.0.9"

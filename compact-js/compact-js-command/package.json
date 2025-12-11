@@ -26,7 +26,7 @@
     "@midnight-ntwrk/compact-js": "^2.3.0",
     "@midnight-ntwrk/compact-js-node": "^2.3.0",
     "@midnight-ntwrk/compact-runtime": "0.11.0-rc.1",
-    "@midnight-ntwrk/ledger": "npm:@midnight-ntwrk/ledger-v6@6.1.0-alpha.5",
+    "@midnight-ntwrk/ledger": "npm:@midnight-ntwrk/ledger-v6@6.2.0-rc.2",
     "@midnight-ntwrk/platform-js": "^2.1.0",
     "@midnight-ntwrk/wallet-sdk-address-format": "3.0.0-beta.4",
     "effect": "^3.18.4",
