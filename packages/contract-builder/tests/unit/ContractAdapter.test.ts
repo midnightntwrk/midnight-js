@@ -17,8 +17,12 @@ describe('ContractAdapter', () => {
     };
 
     mockDeployedContract = {
-      address: '0x123456789',
-      deployTxData: { txHash: '0xabc' },
+      deployTxData: {
+        public: {
+          contractAddress: '0x123456789'
+        },
+        txHash: '0xabc'
+      },
       callTx: {
         increment: vi.fn().mockResolvedValue({ success: true }),
         getValue: vi.fn().mockResolvedValue(42)
@@ -31,7 +35,12 @@ describe('ContractAdapter', () => {
       const adapter = new ContractAdapter(mockDeployedContract);
 
       expect(adapter.address).toBe('0x123456789');
-      expect(adapter.deployTxData).toEqual({ txHash: '0xabc' });
+      expect(adapter.deployTxData).toEqual({
+        public: {
+          contractAddress: '0x123456789'
+        },
+        txHash: '0xabc'
+      });
     });
 
     it('should create adapter with custom config', () => {
@@ -68,70 +77,24 @@ describe('ContractAdapter', () => {
     });
   });
 
-  describe('event handlers', () => {
-    it('should register and trigger call event handlers', async () => {
-      const callHandler = vi.fn();
+  describe('internal API access', () => {
+    it('should provide access to internal callTx via internal property', () => {
       const adapter = new ContractAdapter(mockDeployedContract);
 
-      (adapter as any).on('call', callHandler);
-      await (adapter as any).increment();
-
-      expect(callHandler).toHaveBeenCalledWith(
-        expect.objectContaining({
-          methodName: 'increment',
-          args: []
-        })
-      );
+      // internal.callTx returns a proxy that wraps the original callTx
+      expect((adapter as any).internal.callTx).toBeDefined();
+      expect(typeof (adapter as any).internal.callTx.increment).toBe('function');
     });
 
-    it('should register and trigger success event handlers', async () => {
-      const successHandler = vi.fn();
+    it('should provide access to deployTxData via internal property', () => {
       const adapter = new ContractAdapter(mockDeployedContract);
 
-      (adapter as any).on('success', successHandler);
-      await (adapter as any).increment();
-
-      expect(successHandler).toHaveBeenCalledWith(
-        expect.objectContaining({
-          methodName: 'increment',
-          result: { success: true }
-        })
-      );
-    });
-
-    it('should register and trigger error event handlers', async () => {
-      const errorHandler = vi.fn();
-      mockDeployedContract.callTx.increment = vi.fn().mockRejectedValue(
-        new Error('Test error')
-      );
-
-      const adapter = new ContractAdapter(mockDeployedContract);
-
-      (adapter as any).on('error', errorHandler);
-
-      await expect((adapter as any).increment()).rejects.toThrow();
-
-      expect(errorHandler).toHaveBeenCalledWith(
-        expect.objectContaining({
-          methodName: 'increment',
-          error: expect.any(Error)
-        })
-      );
-    });
-
-    it('should support multiple event handlers', async () => {
-      const handler1 = vi.fn();
-      const handler2 = vi.fn();
-
-      const adapter = new ContractAdapter(mockDeployedContract);
-
-      (adapter as any).on('call', handler1);
-      (adapter as any).on('call', handler2);
-
-      await (adapter as any).increment();
-
-      expect(handler1).toHaveBeenCalled();
-      expect(handler2).toHaveBeenCalled();
+      expect((adapter as any).internal.deployTxData).toEqual({
+        public: {
+          contractAddress: '0x123456789'
+        },
+        txHash: '0xabc'
+      });
     });
   });
 

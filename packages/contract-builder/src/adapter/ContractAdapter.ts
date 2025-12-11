@@ -46,9 +46,13 @@ export class ContractAdapter<TContract, TPrivateState = undefined> {
 
   /**
    * Get contract address
+   * The address is extracted from deployTxData.public.contractAddress as per midnight-js structure
    */
   get address(): string {
-    return this.deployedContract.address;
+    const deployTxData = this.deployedContract.deployTxData as {
+      public?: { contractAddress?: string };
+    };
+    return deployTxData?.public?.contractAddress || '';
   }
 
   /**
@@ -91,22 +95,28 @@ export class ContractAdapter<TContract, TPrivateState = undefined> {
    * Creates a proxy that combines contract methods with adapter methods
    */
   private createAdapterProxy(): IContractAdapter<TContract, TPrivateState> {
-    // Capture reference to this for use in proxy
+    // Capture references for use in proxy
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const adapter = this;
+    const deployedContract = this.deployedContract;
 
     const adapterProxy = new Proxy(this.proxy, {
       get(target: DeployedContract<TContract>, prop: string | symbol): unknown {
-        // Handle address
+        // Handle address - extract from deployTxData.public.contractAddress
         if (prop === 'address') {
           return adapter.address;
+        }
+
+        // Handle deployTxData - access directly from deployedContract
+        if (prop === 'deployTxData') {
+          return deployedContract.deployTxData;
         }
 
         // Handle internal API access
         if (prop === 'internal') {
           return {
             callTx: target.callTx,
-            deployTxData: adapter.deployTxData
+            deployTxData: deployedContract.deployTxData
           };
         }
 

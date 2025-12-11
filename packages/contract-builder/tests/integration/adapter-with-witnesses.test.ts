@@ -6,16 +6,23 @@ import type { Witnesses } from '../../src/types/witness-types.js';
 
 vi.mock('@midnight-ntwrk/midnight-js-contracts', () => ({
   deployContract: vi.fn().mockResolvedValue({
-    address: '0xcontract123',
-    deployTxData: { txHash: '0xtx123' },
+    deployTxData: {
+      public: {
+        contractAddress: '0xcontract123'
+      },
+      txHash: '0xtx123'
+    },
     callTx: {
       increment: vi.fn().mockResolvedValue({ success: true }),
       getValue: vi.fn().mockResolvedValue(5)
     }
   }),
   findDeployedContract: vi.fn().mockResolvedValue({
-    address: '0xcontract456',
-    deployTxData: null,
+    deployTxData: {
+      public: {
+        contractAddress: '0xcontract456'
+      }
+    },
     callTx: {
       increment: vi.fn().mockResolvedValue({ success: true }),
       getValue: vi.fn().mockResolvedValue(10)

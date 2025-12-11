@@ -98,7 +98,7 @@ describe('WitnessManager', () => {
       const instance = manager.attachToContract();
 
       expect(instance).toBeInstanceOf(mockContractClass);
-      expect(instance.witnesses).toEqual(witnesses);
+      expect(instance.mockWitnesses).toEqual(witnesses);
     });
 
     it('should throw WitnessAttachmentError when contract instantiation fails', () => {
