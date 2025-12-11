@@ -227,7 +227,7 @@ describe('Unshielded tokens', () => {
     const txData = await submitCallTx(providers, {
       contract: unshieldedContract,
       contractAddress,
-      circuitId: 'mint_to_user_address' as UnshieldedContractCircuits,
+      circuitId: 'mintToUserAddress' as UnshieldedContractCircuits,
       args: [1_000_000n, { bytes: address } ]
     });
 
