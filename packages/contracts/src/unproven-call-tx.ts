@@ -18,7 +18,7 @@ import * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
 import type { CoinPublicKey, ContractState } from '@midnight-ntwrk/compact-runtime';
 import { type EncPublicKey,type ZswapChainState } from '@midnight-ntwrk/ledger-v6';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { makeContractExecutableRuntime, type PrivateStateId, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
+import { exitResultOrError, makeContractExecutableRuntime, type PrivateStateId, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import { ContractAddress } from '@midnight-ntwrk/platform-js/effect/ContractAddress';
 
@@ -62,12 +62,12 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.C
   options: CallOptions<C, ICK>,
   walletEncryptionPublicKey: EncPublicKey
 ): Promise<UnsubmittedCallTxData<C, ICK>> {
-  const { compiledContract, circuitId, contractAddress, coinPublicKey, initialContractState, initialZswapChainState } = options;
+  const { compiledContract, contractAddress, coinPublicKey, initialContractState, initialZswapChainState } = options;
   assertIsContractAddress(contractAddress);
   assertDefined(
     ContractExecutable.make(options.compiledContract)
       .getImpureCircuitIds()
-      .find((a) => a as unknown as ICK === options.circuitId),
+      .find((circuitId) => circuitId as unknown as ICK === options.circuitId),
     `Circuit '${options.circuitId}' is undefined`
   );
 
@@ -78,21 +78,7 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.C
   const initialPrivateState = 'initialPrivateState' in options ? options.initialPrivateState : undefined;
   const args = ('args' in options ? options.args : []);
 
-  const {
-    public: {
-      contractState,
-      partitionedTranscript,
-      publicTranscript
-    },
-    private: {
-      input,
-      output,
-      privateState,
-      privateTranscriptOutputs,
-      result,
-      zswapLocalState
-    }
-  } = await contractRuntime.runPromise(contractExec.circuit(Contract.ImpureCircuitId<C>(circuitId as any), { // eslint-disable-line @typescript-eslint/no-explicit-any
+  const exitResult = await contractRuntime.runPromiseExit(contractExec.circuit(Contract.ImpureCircuitId<C>(options.circuitId as any), { // eslint-disable-line @typescript-eslint/no-explicit-any
       address: ContractAddress(contractAddress),
       contractState: initialContractState,
       privateState: initialPrivateState
@@ -100,42 +86,64 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.C
     ...args as any // eslint-disable-line @typescript-eslint/no-explicit-any
   ));
 
-  // const callResult = call(options);
-  return {
-    public: {
-      nextContractState: contractState,
-      partitionedTranscript,
-      publicTranscript
-    },
-    private: {
-      input,
-      output,
-      result: result as unknown as Contract.Contract.CircuitReturnType<C, ICK>,
-      nextPrivateState: privateState,
-      nextZswapLocalState: zswapLocalState,
-      privateTranscriptOutputs,
-      unprovenTx: createUnprovenLedgerCallTx(
-        circuitId,
-        contractAddress,
-        initialContractState,
-        initialZswapChainState,
+  try {
+    const {
+      public: {
+        contractState,
         partitionedTranscript,
-        privateTranscriptOutputs,
+        publicTranscript
+      },
+      private: {
         input,
         output,
-        zswapLocalState,
-        encryptionPublicKeyForZswapState(
-          zswapLocalState,
-          options.coinPublicKey,
-          walletEncryptionPublicKey
-        )
-      ),
-      newCoins: zswapStateToNewCoins(
-        parseCoinPublicKeyToHex(coinPublicKey, getNetworkId()),
+        privateState,
+        privateTranscriptOutputs,
+        result,
         zswapLocalState
-      )
-    }
-  };
+      }
+    } = exitResultOrError(exitResult)
+
+    return {
+      public: {
+        nextContractState: contractState,
+        partitionedTranscript,
+        publicTranscript
+      },
+      private: {
+        input,
+        output,
+        result: result as unknown as Contract.Contract.CircuitReturnType<C, ICK>,
+        nextPrivateState: privateState,
+        nextZswapLocalState: zswapLocalState,
+        privateTranscriptOutputs,
+        unprovenTx: createUnprovenLedgerCallTx(
+          options.circuitId,
+          contractAddress,
+          initialContractState,
+          initialZswapChainState,
+          partitionedTranscript,
+          privateTranscriptOutputs,
+          input,
+          output,
+          zswapLocalState,
+          encryptionPublicKeyForZswapState(
+            zswapLocalState,
+            options.coinPublicKey,
+            walletEncryptionPublicKey
+          )
+        ),
+        newCoins: zswapStateToNewCoins(
+          parseCoinPublicKeyToHex(coinPublicKey, getNetworkId()),
+          zswapLocalState
+        )
+      }
+    };
+  } catch (error: unknown) {
+    // Report CompactError messages as they are, otherwise re-throw the error.
+    if ((error as any)?.['_tag'] !== 'ContractRuntimeError') throw error; // eslint-disable-line @typescript-eslint/no-explicit-any
+    if ((error as any)?.cause.name !== 'CompactError') throw error; // eslint-disable-line @typescript-eslint/no-explicit-any
+    throw new Error((error as any)?.cause.message); // eslint-disable-line @typescript-eslint/no-explicit-any
+  }
 }
 
 /**

@@ -86,7 +86,7 @@ export async function submitCallTx<C extends Contract.Contract.Any, ICK extends 
   assertDefined(
     ContractExecutable.make(options.compiledContract)
       .getImpureCircuitIds()
-      .find((circuitId) => circuitId as string === options.circuitId),
+      .find((circuitId) => circuitId as unknown as ICK === options.circuitId),
     `Circuit '${options.circuitId}' is undefined`
   );
 
@@ -192,7 +192,7 @@ export async function submitCallTxAsync<C extends Contract.Contract.Any, ICK ext
   assertDefined(
     ContractExecutable.make(options.compiledContract)
       .getImpureCircuitIds()
-      .find((circuitId) => circuitId as string === options.circuitId),
+      .find((circuitId) => circuitId as unknown as ICK === options.circuitId),
     `Circuit '${options.circuitId}' is undefined`
   );
 

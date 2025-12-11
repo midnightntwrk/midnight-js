@@ -19,6 +19,7 @@ import type { CoinPublicKey,SigningKey } from '@midnight-ntwrk/compact-runtime';
 import type { EncPublicKey } from '@midnight-ntwrk/ledger-v6';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
+  exitResultOrError,
   makeContractExecutableRuntime,
   type PrivateStateId,
   type ZKConfigProvider
@@ -141,33 +142,41 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
   });
   const initialPrivateState = 'initialPrivateState' in options ? options.initialPrivateState : undefined;
   const args = ('args' in options ? options.args : []) as Contract.Contract.InitializeParameters<C>;
-  const {
-    public: { contractState },
-    private: {
-      privateState,
-      signingKey,
-      zswapLocalState
-    }
-  } = await contractRuntime.runPromise(contractExec.initialize(initialPrivateState, ...args));
-  const [contractAddress, initialContractState, unprovenTx] = createUnprovenLedgerDeployTx(
-    contractState,
-    zswapLocalState,
-    encryptionPublicKey
-  );
+  const exitResult = await contractRuntime.runPromiseExit(contractExec.initialize(initialPrivateState, ...args));
+  try {
+    const {
+      public: { contractState },
+      private: {
+        privateState,
+        signingKey,
+        zswapLocalState
+      }
+    } = exitResultOrError(exitResult);
+    const [contractAddress, initialContractState, unprovenTx] = createUnprovenLedgerDeployTx(
+      contractState,
+      zswapLocalState,
+      encryptionPublicKey
+    );
 
-  return {
-    public: {
-      contractAddress,
-      initialContractState
-    },
-    private: {
-      signingKey,
-      initialPrivateState: privateState,
-      initialZswapState: zswapLocalState,
-      unprovenTx,
-      newCoins: zswapStateToNewCoins(coinPublicKey, zswapLocalState)
-    }
-  };
+    return {
+      public: {
+        contractAddress,
+        initialContractState
+      },
+      private: {
+        signingKey,
+        initialPrivateState: privateState,
+        initialZswapState: zswapLocalState,
+        unprovenTx,
+        newCoins: zswapStateToNewCoins(coinPublicKey, zswapLocalState)
+      }
+    };
+  } catch (error: unknown) {
+    // Report CompactError messages as they are, otherwise re-throw the error.
+    if ((error as any)?.['_tag'] !== 'ContractRuntimeError') throw error; // eslint-disable-line @typescript-eslint/no-explicit-any
+    if ((error as any)?.cause.name !== 'CompactError') throw error; // eslint-disable-line @typescript-eslint/no-explicit-any
+    throw new Error((error as any)?.cause.message); // eslint-disable-line @typescript-eslint/no-explicit-any
+  }
 }
 
 /**

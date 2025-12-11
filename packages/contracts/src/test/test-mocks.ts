@@ -16,15 +16,15 @@
 import { CompiledContract } from '@midnight-ntwrk/compact-js';
 import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
 import {
+  assert as compactAssert,
   ChargedState,
+  CompactError,
   type ContractState,
-  emptyZswapLocalState,
-  type Op,
+  emptyZswapLocalState,  type Op,
   sampleSigningKey,
   type SigningKey,
   StateValue,
-  type ZswapLocalState
-} from '@midnight-ntwrk/compact-runtime';
+  type ZswapLocalState} from '@midnight-ntwrk/compact-runtime';
 import {
   type AlignedValue,
   type Binding,
@@ -60,7 +60,6 @@ import {
   ZKConfigProvider,
   type ZKIR
 } from '@midnight-ntwrk/midnight-js-types';
-import { vi } from 'vitest';
 
 import { type CallOptions, type CallOptionsWithPrivateState } from '../call';
 import { type ContractConstructorResult } from '../call-constructor';
@@ -116,34 +115,58 @@ export const createMockZswapLocalState = (): ZswapLocalState => ({
   inputs: []
 });
 
-const createMockContractClass = () => {
-  const testCircuit = vi.fn().mockImplementation((ctx) => ({
-    result: { test: 'result ' },
-    context: {
-      ...ctx,
-      currentPrivateState: { test: 'next-private-state' }
-    },
-    proofData: {
-      input: { value: [], alignment: [] },
-      output: undefined,
-      publicTranscript: [],
-      privateTranscriptOutputs: []
-    }
-  }));
+export const createDefaultCircuit = () => vi.fn().mockImplementation((ctx) => ({
+  result: { test: 'result ' },
+  context: {
+    ...ctx,
+    currentPrivateState: { test: 'next-private-state' }
+  },
+  proofData: {
+    input: { value: [], alignment: [] },
+    output: undefined,
+    publicTranscript: [],
+    privateTranscriptOutputs: []
+  }
+}));
+
+export const createFailingCircuit = (failMessage: string) => vi.fn().mockImplementation((() => {
+  compactAssert(false, failMessage);
+}));
+
+type MockCircuit = ReturnType<typeof createDefaultCircuit>;
+
+type MockContractClassOptions = {
+  testCircuit: MockCircuit;
+  constructorErrorMessage?: string;
+  initialStateErrorMessage?: string;
+}
+
+const defaultMockContractClassOptions: MockContractClassOptions = {
+  testCircuit: createDefaultCircuit()
+};
+
+const createMockContractClass = (options?: Partial<MockContractClassOptions>) => {
+  const finalOptions = { ...defaultMockContractClassOptions, ...options } as MockContractClassOptions;
   return class {
     constructor(witnesses: Contract.Witnesses<any>) { // eslint-disable-line @typescript-eslint/no-explicit-any
-      this.witnesses = witnesses;
-      this.initialState = vi.fn().mockImplementation((ctx) => ({
-        currentContractState: createMockContractState(),
-        currentPrivateState: { test: 'mock-private-state' },
-        currentZswapLocalState: emptyZswapLocalState(ctx.initialZswapLocalState.coinPublicKey)
-      }));
-      this.circuits = {
-        testCircuit
-      };
-      this.impureCircuits = {
-        testCircuit
+      if (finalOptions.constructorErrorMessage) {
+        throw new CompactError(finalOptions.constructorErrorMessage);
       }
+      this.witnesses = witnesses;
+      this.initialState = vi.fn().mockImplementation((ctx) => {
+        if (finalOptions.initialStateErrorMessage) {
+          throw new CompactError(finalOptions.initialStateErrorMessage);
+        }
+        return {
+          currentContractState: createMockContractState(),
+          currentPrivateState: { test: 'mock-private-state' },
+          currentZswapLocalState: emptyZswapLocalState(ctx.initialZswapLocalState.coinPublicKey)
+        };
+      });
+      this.circuits = {
+        testCircuit: finalOptions.testCircuit
+      };
+      this.impureCircuits = this.circuits;
     }
     initialState;
     circuits;
@@ -152,11 +175,11 @@ const createMockContractClass = () => {
   }
 }
 
-export const createMockContract = (): Contract.Contract<undefined> =>
-  new (createMockContractClass())({});
+export const createMockContract = (options?: Partial<MockContractClassOptions>): Contract.Contract<undefined> =>
+  new (createMockContractClass(options))({});
 
-export const createMockCompiledContract = (): CompiledContract.CompiledContract<any, unknown, never> => { // eslint-disable-line @typescript-eslint/no-explicit-any
-  return CompiledContract.make('test', createMockContractClass()).pipe(
+export const createMockCompiledContract = (options?: Partial<MockContractClassOptions>): CompiledContract.CompiledContract<any, unknown, never> => { // eslint-disable-line @typescript-eslint/no-explicit-any
+  return CompiledContract.make('test', createMockContractClass(options)).pipe(
     CompiledContract.withVacantWitnesses
   ) as unknown as CompiledContract.CompiledContract<any, unknown, never>; // eslint-disable-line @typescript-eslint/no-explicit-any
 }

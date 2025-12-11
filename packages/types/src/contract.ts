@@ -17,7 +17,7 @@ import { type CompiledContract, Contract, type ContractExecutable, ContractExecu
   ZKConfiguration, ZKConfigurationReadError } from '@midnight-ntwrk/compact-js/effect';
 import { ContractAddress } from '@midnight-ntwrk/platform-js';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
-import { type ConfigError, ConfigProvider, Effect, Layer, Option } from 'effect';
+import { Cause, type ConfigError, ConfigProvider, Effect, Exit,Layer, Option } from 'effect';
 import { type ManagedRuntime } from 'effect/ManagedRuntime';
 
 import { type ZKConfigProvider } from './zk-config-provider';
@@ -95,6 +95,22 @@ export const makeContractExecutableRuntime:
     }
     return ContractExecutableRuntime.make(makeAdaptedRuntimeLayer(zkConfigProvider, new Map(config)));
   };
+
+/**
+ * Unwraps an Effect `Exit` instance, returning its value if it is successful, or throwing the error contained
+ * within it.
+ * 
+ * @param exit The source Effect `Exit` instance.
+ * @returns The value from `exit` if it is successful, otherwise throws the error contained within it.
+ */
+export const exitResultOrError: <A, E>(exit: Exit.Exit<A, E>) => A =
+  (exit) => Exit.match(exit, {
+    onSuccess: (a) => a,
+    onFailure: (cause) => {
+      if (Cause.isFailType(cause)) throw cause.error;
+      throw new Error(`Unexpected error: ${Cause.pretty(cause)}`);
+    }
+  });
 
 /**
  * Wraps an object into an `Option.some`.

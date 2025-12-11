@@ -17,6 +17,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { createUnprovenDeployTx, createUnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
 import {
+  createMockCoinPublicKey,
   createMockCompiledContract,
   createMockEncryptionPublicKey,
   createMockProviders,
@@ -37,8 +38,6 @@ vi.mock('../utils', () => ({
   zswapStateToNewCoins: vi.fn().mockReturnValue([{ test: 'coin' }])
 }));
 
-const VALID_COIN_PUBLIC_KEY = 'd2dc8d175c0ef7d1f7e5b7f32bd9da5fcd4c60fa1b651f1d312986269c2d3c79';
-
 describe('unproven-deploy-tx', () => {
   describe('createUnprovenDeployTxFromVerifierKeys', () => {
     it('should create unproven deploy tx from verifier keys without private state', async () => {
@@ -52,7 +51,7 @@ describe('unproven-deploy-tx', () => {
 
       const result = await createUnprovenDeployTxFromVerifierKeys(
         createMockZKConfigProvider(),
-        VALID_COIN_PUBLIC_KEY,
+        createMockCoinPublicKey(),
         options,
         encryptionPublicKey
       );
@@ -78,7 +77,7 @@ describe('unproven-deploy-tx', () => {
 
       const result = await createUnprovenDeployTxFromVerifierKeys(
         createMockZKConfigProvider(),
-        VALID_COIN_PUBLIC_KEY,
+        createMockCoinPublicKey(),
         options,
         encryptionPublicKey
       );
@@ -87,6 +86,26 @@ describe('unproven-deploy-tx', () => {
       expect(result.public).toBeDefined();
       expect(result.private).toBeDefined();
       expect(result.private.signingKey).toBe(options.signingKey);
+    });
+
+    it('should fail when contract initialState function throws CompactError', async () => {
+      const encryptionPublicKey = createMockEncryptionPublicKey();
+
+      const options = {
+        compiledContract: createMockCompiledContract({
+          initialStateErrorMessage: 'FAIL'
+        }),
+        signingKey: createMockSigningKey(),
+        initialPrivateState: { test: 'initial-private-state' },
+        args: ['deploy-arg']
+      };
+
+      await expect(createUnprovenDeployTxFromVerifierKeys(
+        createMockZKConfigProvider(),
+        createMockCoinPublicKey(),
+        options,
+        encryptionPublicKey
+      )).rejects.toThrow('FAIL');
     });
   });
 

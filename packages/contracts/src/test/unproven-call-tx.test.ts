@@ -19,6 +19,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createUnprovenCallTx, createUnprovenCallTxFromInitialStates } from '../unproven-call-tx';
 import { createUnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
 import {
+  createFailingCircuit,
   createMockCallOptions,
   createMockCallOptionsWithPrivateState,
   createMockCoinPublicKey,
@@ -103,6 +104,22 @@ describe('unproven-call-tx', () => {
       expect(result.public).toBeDefined();
       expect(result.private).toBeDefined();
       expect(result.private.nextPrivateState).toEqual({ test: 'next-private-state' });
+    });
+
+    it('should fail when circuit fails at runtime', async () => {
+      const options = createMockCallOptions({
+        compiledContract: createMockCompiledContract({
+          testCircuit: createFailingCircuit('FAIL')
+        }),
+        initialContractState: await getInitialContractState()
+      });
+      const walletEncryptionPublicKey = createMockEncryptionPublicKey();
+
+      await expect(createUnprovenCallTxFromInitialStates(
+        createMockZKConfigProvider(),
+        options,
+        walletEncryptionPublicKey
+      )).rejects.toThrow('failed assert: FAIL');
     });
   });
 
