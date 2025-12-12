@@ -13,8 +13,10 @@
  * limitations under the License.
  */
 
+export * from './fluent-wallet-builder';
 export * from './gzip-file';
 export * from './midnight-wallet-provider';
-export * from './wallet-builder';
+export * from './wallet-factory';
+export * from './wallet-seed';
 export * from './wallet-state-provider';
 export * from './wallet-utils';
