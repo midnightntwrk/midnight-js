@@ -72,7 +72,7 @@ export class FluentWalletBuilder {
       logger.info(`Generated random wallet seed: ${this.seeds.masterSeed}`);
     }
 
-    logger.info(`Building wallet with configuration: ${JSON.stringify(this.config)}`);
+    logger.info('Building wallet with configuration');
 
     const shieldedWallet = WalletFactory.createShieldedWallet(this.config, this.seeds.shielded);
     const unshieldedWallet = WalletFactory.createUnshieldedWallet(
@@ -83,7 +83,6 @@ export class FluentWalletBuilder {
     const dustWallet = WalletFactory.createDustWallet(
       this.config,
       this.seeds.dust,
-      this.networkId,
       this.dustOptions
     );
 
@@ -102,7 +101,7 @@ export class FluentWalletBuilder {
       logger.info(`Generated random wallet seed: ${this.seeds.masterSeed}`);
     }
 
-    logger.info(`Building wallet without starting with configuration: ${JSON.stringify(this.config)}`);
+    logger.info('Building wallet without starting');
 
     const shieldedWallet = WalletFactory.createShieldedWallet(this.config, this.seeds.shielded);
     const unshieldedWallet = WalletFactory.createUnshieldedWallet(
@@ -113,7 +112,6 @@ export class FluentWalletBuilder {
     const dustWallet = WalletFactory.createDustWallet(
       this.config,
       this.seeds.dust,
-      this.networkId,
       this.dustOptions
     );
 

@@ -61,7 +61,6 @@ export class WalletFactory {
   static createDustWallet(
     config: DefaultV1Configuration,
     seed: Uint8Array,
-    networkId: NetworkId.NetworkId,
     dustOptions: DustWalletOptions = DEFAULT_DUST_OPTIONS
   ): DustWallet {
     const dustConfig = {
@@ -72,7 +71,7 @@ export class WalletFactory {
         feeBlocksMargin: dustOptions.feeBlocksMargin,
       },
     };
-    logger.info(`Creating dust wallet with params: ${JSON.stringify(dustConfig)}`);
+    logger.info('Creating dust wallet');
     const Dust = DustWallet(dustConfig);
     const dustParameters = LedgerParameters.initialParameters().dust;
     return Dust.startWithSeed(seed, dustParameters);
