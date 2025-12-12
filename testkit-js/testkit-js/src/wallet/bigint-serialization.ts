@@ -13,12 +13,14 @@
  * limitations under the License.
  */
 
-import './bigint-serialization';
+declare global {
+  interface BigInt {
+    toJSON(): number;
+  }
+}
 
-export * from './fluent-wallet-builder';
-export * from './gzip-file';
-export * from './midnight-wallet-provider';
-export * from './wallet-factory';
-export * from './wallet-seed';
-export * from './wallet-state-provider';
-export * from './wallet-utils';
+BigInt.prototype.toJSON = function () {
+  return Number(this);
+};
+
+export {};

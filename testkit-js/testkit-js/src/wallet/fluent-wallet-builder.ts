@@ -72,7 +72,7 @@ export class FluentWalletBuilder {
       logger.info(`Generated random wallet seed: ${this.seeds.masterSeed}`);
     }
 
-    logger.info('Building wallet with configuration');
+    logger.info(`Building wallet with configuration: ${JSON.stringify(this.config)}`);
 
     const shieldedWallet = WalletFactory.createShieldedWallet(this.config, this.seeds.shielded);
     const unshieldedWallet = WalletFactory.createUnshieldedWallet(
@@ -101,7 +101,7 @@ export class FluentWalletBuilder {
       logger.info(`Generated random wallet seed: ${this.seeds.masterSeed}`);
     }
 
-    logger.info('Building wallet without starting');
+    logger.info(`Building wallet without starting with configuration: ${JSON.stringify(this.config)}`);
 
     const shieldedWallet = WalletFactory.createShieldedWallet(this.config, this.seeds.shielded);
     const unshieldedWallet = WalletFactory.createUnshieldedWallet(
