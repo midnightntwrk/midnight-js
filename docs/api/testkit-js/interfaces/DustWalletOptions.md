@@ -2,17 +2,19 @@
 
 ***
 
-> `const` **DustOptions**: `object`
-
-## Type Declaration
+## Properties
 
 ### additionalFeeOverhead
 
-> **additionalFeeOverhead**: `bigint` = `500_000_000_000_000_000_000n`
+> **additionalFeeOverhead**: `bigint`
+
+***
 
 ### feeBlocksMargin
 
-> **feeBlocksMargin**: `number` = `5`
+> **feeBlocksMargin**: `number`
+
+***
 
 ### ledgerParams
 
