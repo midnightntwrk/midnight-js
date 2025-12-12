@@ -22,10 +22,9 @@ import { ShieldedWallet } from '@midnight-ntwrk/wallet-sdk-shielded';
 import { type DefaultV1Configuration } from '@midnight-ntwrk/wallet-sdk-shielded/v1';
 import {
   createKeystore,
+  InMemoryTransactionHistoryStorage,
   PublicKey,
-  type UnshieldedWallet,
-  WalletBuilder as UnshieldedWalletBuilder
-} from '@midnight-ntwrk/wallet-sdk-unshielded-wallet';
+  UnshieldedWallet} from '@midnight-ntwrk/wallet-sdk-unshielded-wallet';
 
 import { logger } from '@/logger';
 import { type EnvironmentConfiguration } from '@/test-environment/environment-configuration';
@@ -52,17 +51,16 @@ export class WalletBuilder {
     return Shielded.startWithShieldedSeed(seed);
   }
 
-  static async buildUnshieldedWallet(
+  static buildUnshieldedWallet(
     config: DefaultV1Configuration,
     seed: Uint8Array,
     networkId: NetworkId.NetworkId
-  ): Promise<UnshieldedWallet> {
+  ): UnshieldedWallet {
     const keystore = createKeystore(seed, networkId);
-    return await UnshieldedWalletBuilder.build({
-      publicKey: PublicKey.fromKeyStore(keystore),
-      networkId,
-      indexerUrl: config.indexerClientConnection.indexerWsUrl!,
-    });
+    return UnshieldedWallet({
+      ...config,
+      txHistoryStorage: new InMemoryTransactionHistoryStorage(),
+    }).startWithPublicKey(PublicKey.fromKeyStore(keystore));
   }
 
   static buildDustWallet(
@@ -103,7 +101,7 @@ export class WalletBuilder {
     logger.info(`Starting wallet for ${JSON.stringify(config)}`);
     return new WalletFacade(
       this.buildShieldedWallet(config, shieldedSeed),
-      await this.buildUnshieldedWallet(config, unshieldedSeed, envConfig.walletNetworkId),
+      this.buildUnshieldedWallet(config, unshieldedSeed, envConfig.walletNetworkId),
       this.buildDustWallet(config, dustSeed, envConfig.walletNetworkId, DustOptions)
     );
   }
