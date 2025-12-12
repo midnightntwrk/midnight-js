@@ -15,7 +15,10 @@
       "require": "./dist/index.cjs"
     }
   },
-  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/midnight-ntwrk/artifacts.git"
+  },
   "packageManager": "yarn@4.10.3",
   "author": "IOHK",
   "license": "Apache-2.0",

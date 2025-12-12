@@ -1,7 +1,10 @@
 {
   "name": "@midnight-ntwrk/midnight-js-compact",
   "description": "Compact fetcher",
-  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/midnight-ntwrk/artifacts.git"
+  },
   "author": "IOG",
   "engines": {
     "node": ">=22.0.0"
