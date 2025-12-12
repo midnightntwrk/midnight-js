@@ -14,7 +14,6 @@
  */
 
 export {
-  // call,
   CallOptions,
   CallOptionsBase,
   CallOptionsProviderDataDependencies,

@@ -27,9 +27,7 @@ import {
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import type { ContractConstructorOptionsWithArguments } from './call-constructor';
-// import { callContractConstructor } from './call-constructor';
 import { type ContractProviders } from './contract-providers';
-// import { type DeployTxOptions } from './submit-deploy-tx';111
 import type { UnsubmittedDeployTxData } from './tx-model';
 import { createUnprovenLedgerDeployTx, zswapStateToNewCoins } from './utils';
 
@@ -73,36 +71,6 @@ export type DeployTxOptionsWithPrivateStateId<C extends Contract.Contract.Any> =
  * Configuration for creating unproven deploy transactions.
  */
 export type UnprovenDeployTxOptions<C extends Contract.Contract.Any> = DeployTxOptionsBase<C> | DeployTxOptionsWithPrivateState<C>;
-
-// const createContractConstructorOptions = <C extends Contract.Any>(
-//   deployTxOptions: DeployTxOptions<C>,
-//   coinPublicKey: CoinPublicKey
-// ): ContractConstructorOptions<C> => {
-//   const constructorOptionsBase = {
-//     contract: deployTxOptions.contract
-//   };
-//   const constructorOptionsWithArguments =
-//     'args' in deployTxOptions
-//       ? {
-//           ...constructorOptionsBase,
-//           args: deployTxOptions.args
-//         }
-//       : constructorOptionsBase;
-//   const constructorOptionsWithProviderDataDependencies = {
-//     ...constructorOptionsWithArguments,
-//     coinPublicKey
-//   };
-//   const constructorOptions =
-//     'initialPrivateState' in deployTxOptions
-//       ? {
-//           ...constructorOptionsWithProviderDataDependencies,
-//           initialPrivateState: deployTxOptions.initialPrivateState
-//         }
-//       : constructorOptionsWithProviderDataDependencies;
-//   return constructorOptions as unknown as ContractConstructorOptions<C>;
-// };
-
-
 
 export function createUnprovenDeployTxFromVerifierKeys<C extends Contract.Contract<undefined>>(
   zkConfigProvider: ZKConfigProvider<string>,
@@ -212,7 +180,6 @@ export async function createUnprovenDeployTx<C extends Contract.Contract.Any>(
   providers: UnprovenDeployTxProviders<C>,
   options: UnprovenDeployTxOptions<C>
 ): Promise<UnsubmittedDeployTxData<C>> {
-  // const verifierKeys = await providers.zkConfigProvider.getVerifierKeys(getImpureCircuitIds(options.contract));
   return createUnprovenDeployTxFromVerifierKeys(
     providers.zkConfigProvider,
     parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), getNetworkId()),

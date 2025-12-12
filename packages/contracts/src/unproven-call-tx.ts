@@ -28,7 +28,6 @@ import type {
   CallOptionsWithPrivateState,
   CallOptionsWithProviderDataDependencies
 } from './call';
-// import { call } from './call';
 import { type ContractProviders } from './contract-providers';
 import { IncompleteCallTxPrivateStateConfig } from './errors';
 import { getPublicStates, getStates } from './get-states';

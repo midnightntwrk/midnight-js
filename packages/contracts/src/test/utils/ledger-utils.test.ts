@@ -32,19 +32,14 @@ import {
   unshieldedToken,
   ZswapChainState
 } from '@midnight-ntwrk/ledger-v6';
-// import { createVerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
 
 import {
-  // contractMaintenanceAuthority,
   createUnprovenLedgerCallTx,
   createUnprovenRemoveVerifierKeyTx,
   createUnprovenReplaceAuthorityTx,
   fromLedgerContractState,
-  // insertVerifierKey,
-  // removeVerifierKey,
-  // replaceAuthority,
   toLedgerContractState,
   toLedgerQueryContext,
   unprovenTxFromContractUpdates} from '../../utils';
@@ -56,12 +51,9 @@ describe('ledger-utils', () => {
   const dummySigningKey = sampleSigningKey();
   const dummySigningKey2 = sampleSigningKey();
   const dummyContractState = new CompactContractState();
-  // const dummyContractState2 = new CompactContractState();
   const dummyContractAddress = sampleContractAddress();
   const dummyEncPublicKey = sampleEncryptionPublicKey();
   const dummyCPK = sampleCoinPublicKey();
-  // // Generate a concrete Uint8Array for use as a verifier key
-  // const verifierKey = createVerifierKey(new Uint8Array(32));
 
   it('toLedgerContractState and fromLedgerContractState are inverses', () => {
     const ledgerState = toLedgerContractState(dummyContractState);
