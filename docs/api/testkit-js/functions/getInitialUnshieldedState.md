@@ -2,7 +2,7 @@
 
 ***
 
-> **getInitialUnshieldedState**(`wallet`): `Promise`\<`State`\>
+> **getInitialUnshieldedState**(`wallet`): `Promise`\<`UnshieldedWalletState`\<`string`\>\>
 
 ## Parameters
 
@@ -12,4 +12,4 @@
 
 ## Returns
 
-`Promise`\<`State`\>
+`Promise`\<`UnshieldedWalletState`\<`string`\>\>

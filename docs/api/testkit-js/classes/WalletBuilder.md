@@ -94,7 +94,7 @@
 
 ### buildUnshieldedWallet()
 
-> `static` **buildUnshieldedWallet**(`config`, `seed`, `networkId`): `Promise`\<`UnshieldedWallet`\>
+> `static` **buildUnshieldedWallet**(`config`, `seed`, `networkId`): `UnshieldedWallet`
 
 #### Parameters
 
@@ -112,7 +112,7 @@
 
 #### Returns
 
-`Promise`\<`UnshieldedWallet`\>
+`UnshieldedWallet`
 
 ***
 

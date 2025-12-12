@@ -2,7 +2,7 @@
 
 ***
 
-> **getInitialState**(`wallet`): `Promise`\<`ShieldedWalletState`\<`string`, `FinalizedTransaction`\> \| `State`\>
+> **getInitialState**(`wallet`): `Promise`\<`ShieldedWalletState`\<`string`, `FinalizedTransaction`\> \| `UnshieldedWalletState`\<`string`\>\>
 
 ## Parameters
 
@@ -12,4 +12,4 @@
 
 ## Returns
 
-`Promise`\<`ShieldedWalletState`\<`string`, `FinalizedTransaction`\> \| `State`\>
+`Promise`\<`ShieldedWalletState`\<`string`, `FinalizedTransaction`\> \| `UnshieldedWalletState`\<`string`\>\>
