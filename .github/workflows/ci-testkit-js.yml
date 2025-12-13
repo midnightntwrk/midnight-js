@@ -95,16 +95,15 @@ jobs:
       - name: Configure yarn
         run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
-      - name: Cache Turbo and Yarn dependencies
+      - name: Cache Yarn dependencies
         uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
         with:
           path: |
             **/node_modules
             ~/.yarn
-            .turbo
-          key: turbo-testkit-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
+          key: yarn-testkit-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}
           restore-keys: |
-            turbo-testkit-${{ runner.os }}-
+            yarn-testkit-${{ runner.os }}-
 
       - name: Install dependencies
         run: |
@@ -177,16 +176,15 @@ jobs:
         run: |
           yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
-      - name: Cache Turbo and Yarn dependencies
+      - name: Cache Yarn dependencies
         uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
         with:
           path: |
             **/node_modules
             ~/.yarn
-            .turbo
-          key: turbo-testkit-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
+          key: yarn-testkit-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}
           restore-keys: |
-            turbo-testkit-${{ runner.os }}-
+            yarn-testkit-${{ runner.os }}-
 
       - name: Install dependencies
         run: yarn install --immutable
@@ -272,16 +270,15 @@ jobs:
       - name: Configure yarn
         run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
-      - name: Cache Turbo and Yarn dependencies
+      - name: Cache Yarn dependencies
         uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
         with:
           path: |
             **/node_modules
             ~/.yarn
-            .turbo
-          key: turbo-testkit-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
+          key: yarn-testkit-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}
           restore-keys: |
-            turbo-testkit-${{ runner.os }}-
+            yarn-testkit-${{ runner.os }}-
 
       - name: Install dependencies
         run: yarn install --immutable

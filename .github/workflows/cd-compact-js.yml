@@ -55,16 +55,15 @@ jobs:
         run: |
           yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
-      - name: Cache Turbo and Yarn dependencies
+      - name: Cache Yarn dependencies
         uses: actions/cache@v4
         with:
           path: |
             **/node_modules
             ~/.yarn
-            .turbo
-          key: turbo-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}-${{ hashFiles('.github/env/global.env') }}
+          key: yarn-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}
           restore-keys: |
-            turbo-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-
+            yarn-${{ runner.os }}-
 
       - name: Install dependencies
         run: yarn install --immutable
