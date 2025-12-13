@@ -87,6 +87,11 @@ jobs:
         run: |
           ${{ inputs.yarn_install }}
 
+      - name: Clean stale compiled contracts
+        run: |
+          find . -type d -name "managed" -path "*/test/*" -exec rm -rf {} + 2>/dev/null || true
+          find . -type d -name "managed" -path "*/src/test/*" -exec rm -rf {} + 2>/dev/null || true
+
       - name: Run build
         run: yarn build ${{ inputs.yarn_filter }} --cache-dir ./turbo
         env:
