@@ -70,10 +70,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ./turbo
-          key: turbo-${{ runner.os }}-${{ hashFiles('.github/env/global.env') }}-${{ hashFiles('**/yarn.lock') }}-${{ github.sha }}
+          key: turbo-${{ runner.os }}-${{ github.sha }}
           restore-keys: |
-            turbo-${{ runner.os }}-${{ hashFiles('.github/env/global.env') }}-${{ hashFiles('**/yarn.lock') }}-
-            turbo-${{ runner.os }}-${{ hashFiles('.github/env/global.env') }}-
+            turbo-${{ runner.os }}-
 
       - name: Install dependencies
         run: yarn install --immutable
