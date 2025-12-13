@@ -1,6 +1,7 @@
 {
   "$schema": "https://turbo.build/schema.v2.json",
   "envMode": "loose",
+  "globalDependencies": ["yarn.lock"],
   "globalEnv": ["COMPACTC_VERSION"],
   "tasks": {
     "build": {
