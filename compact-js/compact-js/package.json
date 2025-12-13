@@ -39,8 +39,8 @@
   "scripts": {
     "build": "yarn build-compact && yarn build-esm && build-utils pack-v3",
     "build-esm": "tsc -b tsconfig.build.json",
-    "build-compact": "(shx --negate test -d ./test/contract/managed && yarn compact || true)",
-    "clean": "shx rm -rf ./build ./dist ./.tsbuildinfo ./reports ./coverage",
+    "build-compact": "yarn compact",
+    "clean": "shx rm -rf ./build ./dist ./.tsbuildinfo ./reports ./coverage ./test/contract/managed",
     "test": "yarn build-compact && vitest run && tstyche",
     "deploy": "shx rm -rf ./dist/src && (cd ./dist; npm publish)",
     "compact": "yarn fetch-compactc && yarn compact-counter && yarn compact-unshielded",

@@ -102,6 +102,25 @@ restore-keys: |
 - `.github/workflows/cd-testkit-js.yml`
 - `.github/workflows/docs-api.yml`
 
+#### Build Script Fixes
+
+Updated `compact-js/compact-js/package.json` to always regenerate Compact
+contracts during build. The previous conditional logic skipped compilation
+if the `managed/` directory already existed, which caused stale contracts
+to be used when the compactc version changed.
+
+```json
+// Before - skips if managed/ exists
+"build-compact": "(shx --negate test -d ./test/contract/managed && yarn compact || true)"
+
+// After - always regenerates
+"build-compact": "yarn compact"
+```
+
+Also updated `turbo.json` to include test compact files in build inputs:
+- Added `test/**/*.compact` to inputs
+- Added `test/**/managed/**` to outputs
+
 ### Positive Consequences
 
 * SDK remains compatible with latest midnight-node
