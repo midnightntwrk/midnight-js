@@ -75,6 +75,33 @@ function correctly in production environments.
    ).rejects.toThrow(/Insufficient Funds: could not balance/);
    ```
 
+#### CI Cache Configuration
+
+Updated all GitHub Actions workflow files to include the compactc version
+in the turbo cache key. This ensures the cache is invalidated when the
+compiler version changes, preventing stale compiled contracts from being used.
+
+```yaml
+# Before
+key: turbo-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
+restore-keys: |
+  turbo-${{ runner.os }}-
+
+# After
+key: turbo-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}-${{ hashFiles('.github/env/global.env') }}
+restore-keys: |
+  turbo-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-
+```
+
+**Files updated:**
+- `.github/workflows/ci-base.yml`
+- `.github/workflows/ci-midnight-js.yml`
+- `.github/workflows/cd.yml`
+- `.github/workflows/cd-compact-js.yml`
+- `.github/workflows/cd-platform-js.yml`
+- `.github/workflows/cd-testkit-js.yml`
+- `.github/workflows/docs-api.yml`
+
 ### Positive Consequences
 
 * SDK remains compatible with latest midnight-node
