@@ -40,6 +40,7 @@ function correctly in production environments.
 | `@midnight-ntwrk/ledger-v6` | 6.1.0-alpha.5 | 6.2.0-rc.2 |
 | `@midnight-ntwrk/compact-runtime` | 0.11.0-rc.1 | 0.12.0-alpha.0 |
 | `@midnight-ntwrk/wallet-sdk-facade` | 1.0.0-beta.10 | 1.0.0-beta.11 |
+| `compactc` (COMPACTC_VERSION) | 0.26.114-rc.0-UT-L6 | 0.27.0-rc.1 |
 
 #### Infrastructure Updates
 
