@@ -56,23 +56,16 @@ jobs:
         run: |
           yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
-      - name: Cache Yarn dependencies
+      - name: Cache Turbo and Yarn dependencies
         uses: actions/cache@v4
         with:
           path: |
             **/node_modules
             ~/.yarn
-          key: yarn-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}
+            .turbo
+          key: turbo-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
           restore-keys: |
-            yarn-${{ runner.os }}-
-
-      - name: Cache Turbo
-        uses: actions/cache@v4
-        with:
-          path: ./turbo
-          key: turbo-v2-${{ runner.os }}-${{ github.sha }}
-          restore-keys: |
-            turbo-v2-${{ runner.os }}-
+            turbo-${{ runner.os }}-
 
       - name: Install dependencies
         run: yarn install --immutable
@@ -116,12 +109,6 @@ jobs:
         uses: ./.github/actions/validate-packages
         with:
           workspace-path: './testkit-js'
-
-      - name: Clean stale compiled contracts
-        run: |
-          rm -rf ./turbo
-          find . -type d -name "managed" -path "*/test/*" -exec rm -rf {} + 2>/dev/null || true
-          find . -type d -name "managed" -path "*/src/test/*" -exec rm -rf {} + 2>/dev/null || true
 
       - name: Publish packages
         if: ${{
