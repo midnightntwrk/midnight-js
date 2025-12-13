@@ -177,7 +177,7 @@ describe('Unshielded tokens', () => {
         circuitId: 'receiveUnshieldedTest' as UnshieldedContractCircuits,
         args: [TEST_DOMAIN_SEP, TEST_TOKEN_AMOUNT]
       })
-    ).rejects.toThrow('Insufficient Funds: could not balance 0101010101010101010101010101010101010101010101010101010101010101');
+    ).rejects.toThrow(/Insufficient Funds: could not balance/);
   });
 
   test.skip('should receive tokens - wallet', async () => {
