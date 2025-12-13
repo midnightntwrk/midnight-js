@@ -70,6 +70,11 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
 
+      - name: Clean stale compiled contracts
+        run: |
+          find . -type d -name "managed" -path "*/test/*" -exec rm -rf {} + 2>/dev/null || true
+          find . -type d -name "managed" -path "*/src/test/*" -exec rm -rf {} + 2>/dev/null || true
+
       - name: Build packages
         run: yarn build:core
         env:

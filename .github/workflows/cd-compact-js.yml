@@ -116,6 +116,11 @@ jobs:
       #   with:
       #     workspace-path: './compact-js'
 
+      - name: Clean stale compiled contracts
+        run: |
+          find . -type d -name "managed" -path "*/test/*" -exec rm -rf {} + 2>/dev/null || true
+          find . -type d -name "managed" -path "*/src/test/*" -exec rm -rf {} + 2>/dev/null || true
+
       - name: Publish packages
         if: ${{
             steps.vars.outputs.on_release_branch == 'true' &&
