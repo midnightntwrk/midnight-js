@@ -80,6 +80,9 @@ jobs:
         run: |
           ${{ inputs.yarn_install }}
 
+      - name: Clear stale turbo cache
+        run: rm -rf .turbo
+
       - name: Run build
         run: yarn build ${{ inputs.yarn_filter }} --cache-dir ./turbo
         env:
