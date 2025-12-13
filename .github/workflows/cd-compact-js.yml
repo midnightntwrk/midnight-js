@@ -69,9 +69,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ./turbo
-          key: turbo-${{ runner.os }}-${{ github.sha }}
+          key: turbo-v2-${{ runner.os }}-${{ github.sha }}
           restore-keys: |
-            turbo-${{ runner.os }}-
+            turbo-v2-${{ runner.os }}-
 
       - name: Install dependencies
         run: yarn install --immutable
