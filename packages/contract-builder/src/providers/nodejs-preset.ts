@@ -4,7 +4,7 @@
  */
 
 import type { Logger } from '../types/contract-types.js';
-import type { ContractProvidersConfig, NetworkConfig, WalletConfig } from './types.js';
+import type { ContractProviders, NetworkConfig, WalletConfig } from './types.js';
 
 /**
  * Node.js wallet provider interface
@@ -44,56 +44,53 @@ export async function createNodeJSProviders(
   network: NetworkConfig,
   wallet?: WalletConfig,
   logger?: Logger
-): Promise<ContractProvidersConfig> {
+): Promise<ContractProviders> {
   logger?.info('Creating Node.js providers...', { network: network.networkId });
 
   try {
     // Dynamically import Node.js-specific providers
-    // @ts-expect-error not existent type
-    const { createNodeZkConfigProvider } = await import(
+    const { NodeZkConfigProvider } = await import(
       '@midnight-ntwrk/midnight-js-node-zk-config-provider'
     );
 
-    // @ts-expect-error not existent type
-    const { createLevelPrivateStateProvider } = await import(
+    const { levelPrivateStateProvider } = await import(
       '@midnight-ntwrk/midnight-js-level-private-state-provider'
     );
 
-    // @ts-expect-error not existent type
-    const { createHttpClientProofProvider } = await import(
+    const { httpClientProofProvider } = await import(
       '@midnight-ntwrk/midnight-js-http-client-proof-provider'
     );
 
-    // @ts-expect-error not existent type
-    const { createIndexerPublicDataProvider } = await import(
+    const { indexerPublicDataProvider } = await import(
       '@midnight-ntwrk/midnight-js-indexer-public-data-provider'
     );
 
     // Create ZK config provider for Node.js (reads from filesystem or URL)
-    const zkConfigProvider = await createNodeZkConfigProvider({
-      zkConfigPath: network.zkConfigUrl || './zk-config'
-    });
+    const zkConfigProvider = new NodeZkConfigProvider(
+      network.zkConfigUrl || './zk-config'
+    );
 
     logger?.debug('Created Node.js ZK config provider');
 
     // Create private state provider (LevelDB for Node.js)
-    const privateStateProvider = await createLevelPrivateStateProvider({
-      dbPath: './.midnight/private-state'
+    const privateStateProvider = levelPrivateStateProvider({
+      midnightDbName: '.midnight-private-state'
     });
 
     logger?.debug('Created Level private state provider');
 
     // Create proof provider
-    const proofProvider = await createHttpClientProofProvider({
-      proofServerUrl: network.proofServerUrl || network.nodeUrl
-    });
+    const proofProvider = httpClientProofProvider(
+      network.proofServerUrl || network.nodeUrl
+    );
 
     logger?.debug('Created HTTP client proof provider');
 
     // Create indexer provider
-    const indexerProvider = await createIndexerPublicDataProvider({
-      indexerUrl: network.indexerUrl
-    });
+    const indexerProvider = indexerPublicDataProvider(
+      network.indexerUrl,
+      network.indexerUrl.replace(/^http/, 'ws')
+    );
 
     logger?.debug('Created indexer public data provider');
 
@@ -114,7 +111,7 @@ export async function createNodeJSProviders(
       proofProvider,
       walletProvider,
       midnightProvider: undefined // Will be created by midnight-js if needed
-    };
+    } as unknown as ContractProviders;
   } catch (error) {
     logger?.error('Failed to create Node.js providers', { error });
     throw new Error(

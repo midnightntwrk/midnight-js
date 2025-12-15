@@ -2,14 +2,7 @@
  * Provider types and configuration for different environments
  */
 
-import {
-  type MidnightProvider,
-  type PrivateStateProvider,
-  type ProofProvider,
-  type PublicDataProvider,
-  type WalletProvider,
-  type ZKConfigProvider
-} from '@midnight-ntwrk/midnight-js-types';
+import type { ContractProviders } from '@midnight-ntwrk/midnight-js-contracts';
 
 /**
  * Environment type for provider selection
@@ -66,22 +59,14 @@ export interface ProviderPresetConfig {
   wallet?: WalletConfig;
 
   /** Optional custom provider overrides */
-  providers?: Partial<ContractProvidersConfig>;
+  providers?: Partial<ContractProviders>;
 }
 
 /**
- * Full providers configuration matching midnight-js requirements
- * Aligns with MidnightProviders from @midnight-ntwrk/midnight-js-types
+ * Re-export ContractProviders from midnight-js-contracts
+ * This is the standard type used across the midnight-js ecosystem
  */
-export interface ContractProvidersConfig {
-  privateStateProvider: PrivateStateProvider;
-  publicDataProvider: PublicDataProvider;
-  zkConfigProvider: ZKConfigProvider<string>;
-  proofProvider: ProofProvider<string>;
-  walletProvider: WalletProvider;
-  midnightProvider: MidnightProvider;
-  [key: string]: unknown;
-}
+export type { ContractProviders } from '@midnight-ntwrk/midnight-js-contracts';
 
 /**
  * Preset network configurations

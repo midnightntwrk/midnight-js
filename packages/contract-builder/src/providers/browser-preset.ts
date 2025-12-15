@@ -4,7 +4,7 @@
  */
 
 import type { Logger } from '../types/contract-types.js';
-import type { ContractProvidersConfig, NetworkConfig, WalletConfig } from './types.js';
+import type { ContractProviders, NetworkConfig, WalletConfig } from './types.js';
 
 /**
  * Private state provider interface
@@ -140,30 +140,27 @@ export async function createBrowserProviders(
   network: NetworkConfig,
   wallet?: WalletConfig,
   logger?: Logger
-): Promise<ContractProvidersConfig> {
+): Promise<ContractProviders> {
   logger?.info('Creating browser providers...', { network: network.networkId });
 
   try {
     // Dynamically import browser-specific providers
-    // @ts-expect-error not existent type
-    const { createFetchZkConfigProvider } = await import(
+    const { FetchZkConfigProvider } = await import(
       '@midnight-ntwrk/midnight-js-fetch-zk-config-provider'
     );
 
-    // @ts-expect-error not existent type
-    const { createHttpClientProofProvider } = await import(
+    const { httpClientProofProvider } = await import(
       '@midnight-ntwrk/midnight-js-http-client-proof-provider'
     );
 
-    // @ts-expect-error not existent type
-    const { createIndexerPublicDataProvider } = await import(
+    const { indexerPublicDataProvider } = await import(
       '@midnight-ntwrk/midnight-js-indexer-public-data-provider'
     );
 
     // Create ZK config provider for browser (fetches from URL)
-    const zkConfigProvider = await createFetchZkConfigProvider({
-      zkConfigUrl: network.zkConfigUrl || `${network.nodeUrl}/zk-config`
-    });
+    const zkConfigProvider = new FetchZkConfigProvider(
+      network.zkConfigUrl || `${network.nodeUrl}/zk-config`
+    );
 
     logger?.debug('Created fetch ZK config provider');
 
@@ -173,16 +170,17 @@ export async function createBrowserProviders(
     logger?.debug('Created browser private state provider');
 
     // Create proof provider
-    const proofProvider = await createHttpClientProofProvider({
-      proofServerUrl: network.proofServerUrl || network.nodeUrl
-    });
+    const proofProvider = httpClientProofProvider(
+      network.proofServerUrl || network.nodeUrl
+    );
 
     logger?.debug('Created HTTP client proof provider');
 
     // Create indexer provider
-    const indexerProvider = await createIndexerPublicDataProvider({
-      indexerUrl: network.indexerUrl
-    });
+    const indexerProvider = indexerPublicDataProvider(
+      network.indexerUrl,
+      network.indexerUrl.replace(/^http/, 'ws')
+    );
 
     logger?.debug('Created indexer public data provider');
 
@@ -201,7 +199,7 @@ export async function createBrowserProviders(
       proofProvider,
       walletProvider,
       midnightProvider: undefined // Will be created by midnight-js if needed
-    };
+    } as unknown as ContractProviders;
   } catch (error) {
     logger?.error('Failed to create browser providers', { error });
     throw new Error(

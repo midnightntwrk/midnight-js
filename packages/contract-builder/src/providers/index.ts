@@ -11,7 +11,7 @@ export {
 
 // Types
 export type {
-  ContractProvidersConfig,
+  ContractProviders,
   NetworkConfig,
   NetworkPreset,
   ProviderEnvironment,

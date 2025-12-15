@@ -8,7 +8,7 @@ import { createBrowserProviders } from './browser-preset.js';
 import { resolveEnvironment } from './environment.js';
 import { createNodeJSProviders } from './nodejs-preset.js';
 import type {
-  ContractProvidersConfig,
+  ContractProviders,
   NetworkConfig,
   NetworkPreset,
   ProviderPresetConfig,
@@ -92,7 +92,7 @@ function normalizeNetworkConfig(
 export async function createDefaultProviders(
   config: NetworkPreset | NetworkConfig | ProviderPresetConfig,
   logger?: Logger
-): Promise<ContractProvidersConfig> {
+): Promise<ContractProviders> {
   // Normalize config to ProviderPresetConfig
   const normalizedConfig = normalizeConfig(config);
 
@@ -112,7 +112,7 @@ export async function createDefaultProviders(
   const networkConfig = normalizeNetworkConfig(normalizedConfig.network);
 
   // Create providers based on environment
-  let providers: ContractProvidersConfig;
+  let providers: ContractProviders;
 
   if (environment === 'nodejs') {
     providers = await createNodeJSProviders(
@@ -146,7 +146,7 @@ export async function createDefaultProviders(
 export async function createTestnetProviders(
   wallet?: WalletConfig,
   logger?: Logger
-): Promise<ContractProvidersConfig> {
+): Promise<ContractProviders> {
   return createDefaultProviders({
     network: 'testnet',
     wallet,
@@ -160,7 +160,7 @@ export async function createTestnetProviders(
 export async function createDevnetProviders(
   wallet?: WalletConfig,
   logger?: Logger
-): Promise<ContractProvidersConfig> {
+): Promise<ContractProviders> {
   return createDefaultProviders({
     network: 'devnet',
     wallet,
@@ -174,7 +174,7 @@ export async function createDevnetProviders(
 export async function createLocalProviders(
   wallet?: WalletConfig,
   logger?: Logger
-): Promise<ContractProvidersConfig> {
+): Promise<ContractProviders> {
   return createDefaultProviders({
     network: 'local',
     wallet,

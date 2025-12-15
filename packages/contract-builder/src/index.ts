@@ -19,7 +19,6 @@ export type {
   ContractAdapter as IContractAdapter
 } from './types/adapter-types.js';
 export type {
-  ContractProviders,
   DeployedContract,
   Logger,
   MethodCallEvent,
@@ -74,7 +73,7 @@ export { isFunction, isObject, isPromise, safeStringify } from './utils/type-hel
 
 // Provider exports
 export type {
-  ContractProvidersConfig,
+  ContractProviders,
   NetworkConfig,
   NetworkPreset,
   ProviderEnvironment,
