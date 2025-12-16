@@ -50,6 +50,9 @@ if (!compactcVersion) {
   process.exit(1);
 }
 
+// URL-encode the version to handle special characters like '+' in semver build metadata
+const compactcVersionUrlEncoded = encodeURIComponent(compactcVersion);
+
 const targetCompactDir = versionManager.getVersionDir(compactcVersion);
 console.log(`Target directory: ${targetCompactDir}`);
 
@@ -70,7 +73,7 @@ const fetchCompact = async (): Promise<void> => {
   }
 
   type Release = { assets_url: string }
-  const urlString = `https://api.github.com/repos/midnight-ntwrk/artifacts/releases/tags/compactc-v${compactcVersion}`;
+  const urlString = `https://api.github.com/repos/midnight-ntwrk/artifacts/releases/tags/compactc-v${compactcVersionUrlEncoded}`;
   console.log(`Trying to fetch release from: ${urlString}`);
   const release: Release = await fetch(urlString, {
     headers: {
