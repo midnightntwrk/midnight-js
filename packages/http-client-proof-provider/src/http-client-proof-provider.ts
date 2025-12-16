@@ -46,7 +46,7 @@ const deserializePayload = (arrayBuffer: ArrayBuffer): ProvenTransaction => {
   return transaction as ProvenTransaction;
 };
 
-const PROVE_TX_PATH = '/prove-tx';
+const PROVE_TX_PATH = '/prove';
 
 /**
  * The default configuration for the proof server client.

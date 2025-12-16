@@ -226,4 +226,47 @@ describe('Level Private State Provider', (): void => {
       .getSigningKey(null as unknown as ContractAddress)
       .catch((e) => expect(e.code).toMatch('LEVEL_INVALID_KEY'));
   });
+
+  describe('Edge cases for null and undefined values', () => {
+    test("'get' returns null for stored null value", async () => {
+      const db = levelPrivateStateProvider<string, null>();
+      await db.set('nullKey', null);
+      const value = await db.get('nullKey');
+      expect(value).toBeNull();
+    });
+
+    test("'get' returns undefined for stored undefined value", async () => {
+      const db = levelPrivateStateProvider<string, undefined>();
+      await db.set('undefinedKey', undefined);
+      const value = await db.get('undefinedKey');
+      expect(value).toBeUndefined();
+    });
+
+    test("'get' returns null when key does not exist (distinguishable from stored null)", async () => {
+      const db = levelPrivateStateProvider<string, string | null>();
+      const value = await db.get('nonExistentKey');
+      expect(value).toBeNull();
+    });
+
+    test("'get' returns 0 for stored zero value", async () => {
+      const db = levelPrivateStateProvider<string, number>();
+      await db.set('zeroKey', 0);
+      const value = await db.get('zeroKey');
+      expect(value).toBe(0);
+    });
+
+    test("'get' returns false for stored false value", async () => {
+      const db = levelPrivateStateProvider<string, boolean>();
+      await db.set('falseKey', false);
+      const value = await db.get('falseKey');
+      expect(value).toBe(false);
+    });
+
+    test("'get' returns empty string for stored empty string value", async () => {
+      const db = levelPrivateStateProvider<string, string>();
+      await db.set('emptyStringKey', '');
+      const value = await db.get('emptyStringKey');
+      expect(value).toBe('');
+    });
+  });
 });

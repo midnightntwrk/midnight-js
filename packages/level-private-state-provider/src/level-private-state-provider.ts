@@ -17,6 +17,7 @@ import type { ContractAddress, SigningKey } from '@midnight-ntwrk/compact-runtim
 import type { PrivateStateId,PrivateStateProvider } from '@midnight-ntwrk/midnight-js-types';
 import { type AbstractSublevel } from 'abstract-level';
 import { Buffer } from 'buffer';
+import * as Option from 'fp-ts/Option';
 import { Level } from 'level';
 import _ from 'lodash';
 import * as superjson from 'superjson';
@@ -130,15 +131,15 @@ const getOrCreateEncryption = async (dbName: string, levelName: string): Promise
   });
 };
 
-const subLevelMaybeGet = async <K, V>(dbName: string, levelName: string, key: K): Promise<V | null> => {
+const subLevelMaybeGet = async <K, V>(dbName: string, levelName: string, key: K): Promise<Option.Option<V>> => {
   const encryption = await getOrCreateEncryption(dbName, levelName);
 
-  return withSubLevel<K, string, V | null>(dbName, levelName, async (subLevel) => {
+  return withSubLevel<K, string, Option.Option<V>>(dbName, levelName, async (subLevel) => {
     try {
       const encryptedValue = await subLevel.get(key);
 
       if (encryptedValue === undefined) {
-        return null;
+        return Option.none;
       }
 
       let decryptedValue: string;
@@ -153,14 +154,10 @@ const subLevelMaybeGet = async <K, V>(dbName: string, levelName: string, key: K)
 
       const value = superjson.parse<V>(decryptedValue);
 
-      if (value === undefined) {
-        return null;
-      }
-
-      return value;
+      return Option.some(value);
     } catch (error: unknown) {
       if (error && typeof error === 'object' && 'code' in error && error.code === 'LEVEL_NOT_FOUND') {
-        return null;
+        return Option.none;
       }
       throw error;
     }
@@ -179,8 +176,9 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
 ): PrivateStateProvider<PSI, PS> => {
   const config = _.defaults(partialConfig, DEFAULT_CONFIG);
   return {
-    get(privateStateId: PSI): Promise<PS | null> {
-      return subLevelMaybeGet<PSI, PS>(config.midnightDbName, config.privateStateStoreName, privateStateId);
+    async get(privateStateId: PSI): Promise<PS | null> {
+      const result = await subLevelMaybeGet<PSI, PS>(config.midnightDbName, config.privateStateStoreName, privateStateId);
+      return Option.toNullable(result);
     },
     remove(privateStateId: PSI): Promise<void> {
       return withSubLevel<PSI, string, void>(config.midnightDbName, config.privateStateStoreName, (subLevel) =>
@@ -199,8 +197,9 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
     clear(): Promise<void> {
       return withSubLevel(config.midnightDbName, config.privateStateStoreName, (subLevel) => subLevel.clear());
     },
-    getSigningKey(address: ContractAddress): Promise<SigningKey | null> {
-      return subLevelMaybeGet<ContractAddress, SigningKey>(config.midnightDbName, config.signingKeyStoreName, address);
+    async getSigningKey(address: ContractAddress): Promise<SigningKey | null> {
+      const result = await subLevelMaybeGet<ContractAddress, SigningKey>(config.midnightDbName, config.signingKeyStoreName, address);
+      return Option.toNullable(result);
     },
     removeSigningKey(address: ContractAddress): Promise<void> {
       return withSubLevel<ContractAddress, string, void>(
