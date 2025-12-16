@@ -16,5 +16,6 @@
 export {
   DEFAULT_CONFIG,
   httpClientProofProvider,
-  serializeTransactionPayload
-} from './http-client-proof-provider';
+  httpClientProver,
+  type Prover,
+  serializeTransactionPayload} from './http-client-proof-provider';

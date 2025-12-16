@@ -16,7 +16,7 @@
 import type { BinaryLike } from 'crypto';
 import crypto from 'crypto';
 
-import { httpClientProofProvider, serializeTransactionPayload } from '../http-client-proof-provider';
+import { httpClientProofProvider, httpClientProver, serializeTransactionPayload } from '../http-client-proof-provider';
 import { getValidUnprovenTx, getValidZKConfig } from './commons';
 
 const createHash = (binaryLike: BinaryLike): string => {
@@ -54,5 +54,36 @@ describe('Http Proof Server Proof Provider', () => {
 
     expect(result).toBeInstanceOf(Uint8Array);
     expect(result.byteLength).toBeGreaterThan(0);
+  });
+});
+
+describe('Http Client Prover', () => {
+  const mockZkConfigProvider = {
+    get: async () => getValidZKConfig(),
+    getZKIR: async () => (await getValidZKConfig()).zkir,
+    getProverKey: async () => (await getValidZKConfig()).proverKey,
+    getVerifierKey: async () => (await getValidZKConfig()).verifierKey,
+    getVerifierKeys: async (circuitIds: string[]) =>
+      Promise.all(circuitIds.map(async (id) => [id, (await getValidZKConfig()).verifierKey] as [string, any]))
+  };
+
+  test("'httpClientProver' throws when 'url' does not start with 'http:' or 'https:'", () => {
+    expect(() => httpClientProver('ws://localhost:8080', mockZkConfigProvider as any)).toThrow(/Invalid protocol scheme: 'ws:'/);
+  });
+
+  test("'httpClientProver' accepts http:// URLs", () => {
+    expect(() => httpClientProver('http://localhost:6300', mockZkConfigProvider as any)).not.toThrow();
+  });
+
+  test("'httpClientProver' accepts https:// URLs", () => {
+    expect(() => httpClientProver('https://proof-server.example.com', mockZkConfigProvider as any)).not.toThrow();
+  });
+
+  test("'httpClientProver' returns object with check and prove methods", () => {
+    const prover = httpClientProver('http://localhost:6300', mockZkConfigProvider as any);
+    expect(prover).toHaveProperty('check');
+    expect(prover).toHaveProperty('prove');
+    expect(typeof prover.check).toBe('function');
+    expect(typeof prover.prove).toBe('function');
   });
 });

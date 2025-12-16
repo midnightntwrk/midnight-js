@@ -17,6 +17,7 @@ import { sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
 import {
   ContractCall,
   ContractDeploy,
+  CostModel,
   LedgerState,
   type Proof,
   sampleCoinPublicKey,
@@ -29,7 +30,7 @@ import {
   createUnprovenCallTxFromInitialStates,
   createUnprovenDeployTxFromVerifierKeys
 } from '@midnight-ntwrk/midnight-js-contracts';
-import { DEFAULT_CONFIG, httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
+import { DEFAULT_CONFIG, httpClientProofProvider, httpClientProver } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
 import type { ProofProvider, ZKConfig } from '@midnight-ntwrk/midnight-js-types';
@@ -200,5 +201,35 @@ describe('Proof server integration', () => {
         expect(call.entryPoint).toEqual(circuitId);
       }
     });
+  });
+
+  /**
+   * Test new proving workflow using Transaction.prove() with httpClientProver
+   *
+   * @given A proof server container and http client prover
+   * @and Unproven deploy and call transactions
+   * @when Using Transaction.prove() with the http client prover
+   * @then Should successfully generate proofs for both transaction types
+   * @and Should return valid ContractDeploy and ContractCall instances
+   */
+  test('should create proofs using Transaction.prove() with httpClientProver', async () => {
+    const zkConfigProvider = new NodeZkConfigProvider<CounterCircuits>(new CounterConfiguration().zkConfigPath);
+    const prover = httpClientProver(proofServerContainer.getUrl(), zkConfigProvider);
+    const costModel = CostModel.initialCostModel();
+
+    const provenDeployTx = await unprovenDeployTx.prove(prover, costModel);
+    const contractActionsD = provenDeployTx.intents?.get(1)?.actions;
+    expect(contractActionsD?.length).toEqual(1);
+    if (contractActionsD) {
+      expect(contractActionsD[0]).toBeInstanceOf(ContractDeploy);
+    }
+
+    const provenCallTx = await unprovenCallTx.prove(prover, costModel);
+    const contractActionsC = provenCallTx.intents?.get(1)?.actions;
+    expect(contractActionsC?.length).toEqual(1);
+    if (contractActionsC) {
+      expect(contractActionsC[0]).toBeInstanceOf(ContractCall);
+      expect((contractActionsC[0] as ContractCall<Proof>).entryPoint).toEqual(circuitId);
+    }
   });
 });
