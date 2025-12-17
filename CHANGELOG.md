@@ -1,3 +1,20 @@
+## 3.0.0-alpha.10 (2025-12-12)
+
+* docs: API documentation update (#369) ([7a2d84b](https://github.com/midnight-ntwrk/artifacts/commit/7a2d84b)), closes [#369](https://github.com/midnight-ntwrk/artifacts/issues/369)
+* docs: API documentation update (#378) ([696f959](https://github.com/midnight-ntwrk/artifacts/commit/696f959)), closes [#378](https://github.com/midnight-ntwrk/artifacts/issues/378)
+* refactor: replace WalletBuilder with FluentWalletBuilder pattern (#376) ([0e1f175](https://github.com/midnight-ntwrk/artifacts/commit/0e1f175)), closes [#376](https://github.com/midnight-ntwrk/artifacts/issues/376)
+* feat: bump compact compiler to 0.27.0 (#373) ([e45ac9d](https://github.com/midnight-ntwrk/artifacts/commit/e45ac9d)), closes [#373](https://github.com/midnight-ntwrk/artifacts/issues/373)
+* feat: enhance transaction documentation with execution phases and failure behavior ([a274ecc](https://github.com/midnight-ntwrk/artifacts/commit/a274ecc))
+* feat: enhance transaction handling documentation for indefinite waiting behavior ([69606e7](https://github.com/midnight-ntwrk/artifacts/commit/69606e7))
+* feat: enhance transaction handling documentation for indefinite waiting behavior ([944a242](https://github.com/midnight-ntwrk/artifacts/commit/944a242))
+* feat: move @midnight-ntwrk/midnight-js-compact to devDependencies (#361) ([b5771d1](https://github.com/midnight-ntwrk/artifacts/commit/b5771d1)), closes [#361](https://github.com/midnight-ntwrk/artifacts/issues/361)
+* feat: update to latest version ([a705430](https://github.com/midnight-ntwrk/artifacts/commit/a705430))
+* fix: remove unnecessary networkId parameter from Dust.startWithSeed (#368) ([c0448a6](https://github.com/midnight-ntwrk/artifacts/commit/c0448a6)), closes [#368](https://github.com/midnight-ntwrk/artifacts/issues/368)
+* chore: update proof-server, indexer, and node images to latest alpha versions ([759a061](https://github.com/midnight-ntwrk/artifacts/commit/759a061))
+* chore(release): bump version to 3.0.0-alpha.9 (#365) ([5ef16e5](https://github.com/midnight-ntwrk/artifacts/commit/5ef16e5)), closes [#365](https://github.com/midnight-ntwrk/artifacts/issues/365)
+
+
+
 ## 3.0.0-alpha.9 (2025-12-03)
 
 * feat: enhance transaction documentation with execution phases and failure behavior ([a274ecc](https://github.com/midnight-ntwrk/artifacts/commit/a274ecc))
