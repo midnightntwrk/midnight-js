@@ -22,13 +22,13 @@ import * as crypto from 'crypto';
 import { levelPrivateStateProvider } from '../index';
 
 describe('Level Private State Provider', (): void => {
-  beforeAll(() => {
-    process.env.MIDNIGHT_STORAGE_PASSWORD = 'test-storage-password-for-unit-tests-only';
-  });
+  const TEST_PASSWORD = 'test-storage-password-for-unit-tests-only';
+  const testConfig = {
+    privateStoragePasswordProvider: () => TEST_PASSWORD
+  };
 
   afterAll(async () => {
     await fs.rm(path.join('.', 'midnight-level-db'), { recursive: true, force: true });
-    delete process.env.MIDNIGHT_STORAGE_PASSWORD;
   });
 
   // tests adapted from https://github.com/solydhq/typed-local-store
@@ -70,19 +70,19 @@ describe('Level Private State Provider', (): void => {
   type PS = (typeof testStates)[PID];
 
   test("'get' returns null if key does not exist", async () => {
-    const db = levelPrivateStateProvider<PID, PS>();
+    const db = levelPrivateStateProvider<PID, PS>(testConfig);
     const value = await db.get('stringValue');
     expect(value).toBeNull();
   });
 
   test("'getSigningKey' returns null if the signing key does not exist", async () => {
-    const db = levelPrivateStateProvider<PID, PS>();
+    const db = levelPrivateStateProvider<PID, PS>(testConfig);
     const value = await db.getSigningKey('booleanValue');
     expect(value).toBeNull();
   });
 
   async function testSetGet<K extends PID>(key: K): Promise<void> {
-    const stateRepo = levelPrivateStateProvider<PID, PS>();
+    const stateRepo = levelPrivateStateProvider<PID, PS>(testConfig);
     await stateRepo.set(key, testStates[key]);
     const value = await stateRepo.get(key);
     expect(value).toEqual(testStates[key]);
@@ -90,13 +90,13 @@ describe('Level Private State Provider', (): void => {
 
   test("'get' functions do not interfere", async () => {
     await testSetGet('booleanArrayValue');
-    const db = levelPrivateStateProvider<PID, PS>();
+    const db = levelPrivateStateProvider<PID, PS>(testConfig);
     const value = await db.getSigningKey('booleanArrayValue');
     expect(value).toBeNull();
   });
 
   async function testSetGetSigningKey<K extends PID>(key: K): Promise<void> {
-    const stateRepo = levelPrivateStateProvider<PID, PS>();
+    const stateRepo = levelPrivateStateProvider<PID, PS>(testConfig);
     const signingKey = sampleSigningKey();
     await stateRepo.setSigningKey(key, signingKey);
     const value = await stateRepo.getSigningKey(key);
@@ -147,7 +147,7 @@ describe('Level Private State Provider', (): void => {
 
   test("'set' functions do not interfere", async () => {
     await testSetGet('booleanArrayValue');
-    const db = levelPrivateStateProvider<PID, PS>();
+    const db = levelPrivateStateProvider<PID, PS>(testConfig);
     await db.setSigningKey('booleanArrayValue', sampleSigningKey());
     const value = await db.get('booleanValue');
     expect(value).toEqual(testStates.booleanValue);
@@ -155,7 +155,7 @@ describe('Level Private State Provider', (): void => {
 
   test("'remove' deletes private states", async () => {
     await testSetGet('stringValue');
-    const db = levelPrivateStateProvider<PID, PS>();
+    const db = levelPrivateStateProvider<PID, PS>(testConfig);
     await db.remove('stringValue');
     const value = await db.get('stringValue');
     expect(value).toBeNull();
@@ -163,7 +163,7 @@ describe('Level Private State Provider', (): void => {
 
   test("'removeSigningKey' deletes signing keys", async () => {
     await testSetGetSigningKey('stringValue');
-    const db = levelPrivateStateProvider<PID, PS>();
+    const db = levelPrivateStateProvider<PID, PS>(testConfig);
     await db.removeSigningKey('stringValue');
     const value = await db.getSigningKey('stringValue');
     expect(value).toBeNull();
@@ -172,7 +172,7 @@ describe('Level Private State Provider', (): void => {
   test("'remove' functions do not interfere", async () => {
     await testSetGet('stringValue');
     await testSetGetSigningKey('stringValue');
-    const db = levelPrivateStateProvider<PID, PS>();
+    const db = levelPrivateStateProvider<PID, PS>(testConfig);
     await db.removeSigningKey('stringValue');
     const value = await db.get('stringValue');
     expect(value).toEqual(testStates.stringValue);
@@ -181,7 +181,7 @@ describe('Level Private State Provider', (): void => {
   test("'clear' deletes private states", async () => {
     await testSetGet('stringValue');
     await testSetGet('objectValue');
-    const db = levelPrivateStateProvider<PID, PS>();
+    const db = levelPrivateStateProvider<PID, PS>(testConfig);
     await db.clear();
     const value0 = await db.get('stringValue');
     expect(value0).toBeNull();
@@ -192,7 +192,7 @@ describe('Level Private State Provider', (): void => {
   test("'clearSigningKeys' deletes signing keys", async () => {
     await testSetGetSigningKey('stringValue');
     await testSetGetSigningKey('bufferArrayValue');
-    const db = levelPrivateStateProvider<PID, PS>();
+    const db = levelPrivateStateProvider<PID, PS>(testConfig);
     await db.clearSigningKeys();
     const value0 = await db.getSigningKey('stringValue');
     expect(value0).toBeNull();
@@ -205,7 +205,7 @@ describe('Level Private State Provider', (): void => {
     await testSetGet('objectValue');
     await testSetGetSigningKey('stringValue');
     await testSetGetSigningKey('objectValue');
-    const db = levelPrivateStateProvider<PID, PS>();
+    const db = levelPrivateStateProvider<PID, PS>(testConfig);
     await db.clearSigningKeys();
     const value0 = await db.get('stringValue');
     expect(value0).toEqual(testStates.stringValue);
@@ -215,15 +215,51 @@ describe('Level Private State Provider', (): void => {
 
   test("'get' throws error on non-'LEVEL_NOT_FOUND_ERROR' codes", () => {
     expect.assertions(1);
-    return levelPrivateStateProvider<PID, PS>()
+    return levelPrivateStateProvider<PID, PS>(testConfig)
       .get(null as unknown as PID)
       .catch((e) => expect(e.code).toMatch('LEVEL_INVALID_KEY'));
   });
 
   test("'getSigningKey' throws error on non-'LEVEL_NOT_FOUND_ERROR' codes", () => {
     expect.assertions(1);
-    return levelPrivateStateProvider<PID, PS>()
+    return levelPrivateStateProvider<PID, PS>(testConfig)
       .getSigningKey(null as unknown as ContractAddress)
       .catch((e) => expect(e.code).toMatch('LEVEL_INVALID_KEY'));
+  });
+
+  describe('Password provider configuration', () => {
+    test('uses wallet encryption public key when only walletProvider is provided', async () => {
+      const mockWallet = {
+        getEncryptionPublicKey: () => TEST_PASSWORD,
+        getCoinPublicKey: () => 'mock-coin-public-key',
+        balanceTx: async () => ({ type: 'NothingToProve' as const, transaction: {} as any })
+      };
+
+      const db = levelPrivateStateProvider<PID, PS>({ walletProvider: mockWallet });
+      await db.set('stringValue', testStates.stringValue);
+      const value = await db.get('stringValue');
+      expect(value).toEqual(testStates.stringValue);
+    });
+
+    test('throws error when neither walletProvider nor privateStoragePasswordProvider is provided', () => {
+      expect(() => {
+        levelPrivateStateProvider<PID, PS>({});
+      }).toThrow('Either privateStoragePasswordProvider or walletProvider must be provided');
+    });
+
+    test('throws error when both privateStoragePasswordProvider and walletProvider are provided', () => {
+      const mockWallet = {
+        getEncryptionPublicKey: () => TEST_PASSWORD,
+        getCoinPublicKey: () => 'mock-coin-public-key',
+        balanceTx: async () => ({ type: 'NothingToProve' as const, transaction: {} as any })
+      };
+
+      expect(() => {
+        levelPrivateStateProvider<PID, PS>({
+          walletProvider: mockWallet,
+          privateStoragePasswordProvider: () => TEST_PASSWORD
+        });
+      }).toThrow('Cannot provide both privateStoragePasswordProvider and walletProvider');
+    });
   });
 });
