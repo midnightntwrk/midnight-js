@@ -1,3 +1,28 @@
+## 3.0.0-alpha.11 (2025-12-17)
+
+* feat: add a configurable password provider with wallet fallback ([c318cb4](https://github.com/midnight-ntwrk/artifacts/commit/c318cb4))
+* feat: bump compact compiler to 0.27.0 (#373) ([e45ac9d](https://github.com/midnight-ntwrk/artifacts/commit/e45ac9d)), closes [#373](https://github.com/midnight-ntwrk/artifacts/issues/373)
+* feat: enhance transaction documentation with execution phases and failure behavior ([a274ecc](https://github.com/midnight-ntwrk/artifacts/commit/a274ecc))
+* feat: enhance transaction handling documentation for indefinite waiting behavior ([69606e7](https://github.com/midnight-ntwrk/artifacts/commit/69606e7))
+* feat: enhance transaction handling documentation for indefinite waiting behavior ([944a242](https://github.com/midnight-ntwrk/artifacts/commit/944a242))
+* feat: fix the repository urls (#380) ([026b7a0](https://github.com/midnight-ntwrk/artifacts/commit/026b7a0)), closes [#380](https://github.com/midnight-ntwrk/artifacts/issues/380)
+* feat: move @midnight-ntwrk/midnight-js-compact to devDependencies (#361) ([b5771d1](https://github.com/midnight-ntwrk/artifacts/commit/b5771d1)), closes [#361](https://github.com/midnight-ntwrk/artifacts/issues/361)
+* feat: provider configuration tweaks ([9894f67](https://github.com/midnight-ntwrk/artifacts/commit/9894f67))
+* feat: update to latest version ([a705430](https://github.com/midnight-ntwrk/artifacts/commit/a705430))
+* chore: indexer-standalone:3.0.0-alpha.19 and midnight-node:0.18.0-rc.10 (#383) ([7d3a0fc](https://github.com/midnight-ntwrk/artifacts/commit/7d3a0fc)), closes [#383](https://github.com/midnight-ntwrk/artifacts/issues/383)
+* chore: update proof-server, indexer, and node images to latest alpha versions ([759a061](https://github.com/midnight-ntwrk/artifacts/commit/759a061))
+* chore(deps): bump actions/cache from 4 to 5 (#385) ([1d4df6b](https://github.com/midnight-ntwrk/artifacts/commit/1d4df6b)), closes [#385](https://github.com/midnight-ntwrk/artifacts/issues/385)
+* chore(release): bump version to 3.0.0-alpha.10 (#379) ([ddeab79](https://github.com/midnight-ntwrk/artifacts/commit/ddeab79)), closes [#379](https://github.com/midnight-ntwrk/artifacts/issues/379)
+* chore(release): bump version to 3.0.0-alpha.9 (#365) ([5ef16e5](https://github.com/midnight-ntwrk/artifacts/commit/5ef16e5)), closes [#365](https://github.com/midnight-ntwrk/artifacts/issues/365)
+* docs: API documentation update (#369) ([7a2d84b](https://github.com/midnight-ntwrk/artifacts/commit/7a2d84b)), closes [#369](https://github.com/midnight-ntwrk/artifacts/issues/369)
+* docs: API documentation update (#378) ([696f959](https://github.com/midnight-ntwrk/artifacts/commit/696f959)), closes [#378](https://github.com/midnight-ntwrk/artifacts/issues/378)
+* docs: API documentation update (#381) ([5ba607b](https://github.com/midnight-ntwrk/artifacts/commit/5ba607b)), closes [#381](https://github.com/midnight-ntwrk/artifacts/issues/381)
+* docs: API documentation update (#382) ([581e42f](https://github.com/midnight-ntwrk/artifacts/commit/581e42f)), closes [#382](https://github.com/midnight-ntwrk/artifacts/issues/382)
+* refactor: replace WalletBuilder with FluentWalletBuilder pattern (#376) ([0e1f175](https://github.com/midnight-ntwrk/artifacts/commit/0e1f175)), closes [#376](https://github.com/midnight-ntwrk/artifacts/issues/376)
+* fix: remove unnecessary networkId parameter from Dust.startWithSeed (#368) ([c0448a6](https://github.com/midnight-ntwrk/artifacts/commit/c0448a6)), closes [#368](https://github.com/midnight-ntwrk/artifacts/issues/368)
+
+
+
 ## 3.0.0-alpha.10 (2025-12-12)
 
 * docs: API documentation update (#369) ([7a2d84b](https://github.com/midnight-ntwrk/artifacts/commit/7a2d84b)), closes [#369](https://github.com/midnight-ntwrk/artifacts/issues/369)
