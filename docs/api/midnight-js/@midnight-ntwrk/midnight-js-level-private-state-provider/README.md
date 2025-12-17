@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.10**](../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.11**](../../README.md)
 
 ***
 
@@ -14,11 +14,14 @@
 
 - [LevelPrivateStateProviderConfig](interfaces/LevelPrivateStateProviderConfig.md)
 
+## Type Aliases
+
+- [PrivateStoragePasswordProvider](type-aliases/PrivateStoragePasswordProvider.md)
+
 ## Variables
 
 - [DEFAULT\_CONFIG](variables/DEFAULT_CONFIG.md)
 
 ## Functions
 
-- [getStoragePassword](functions/getStoragePassword.md)
 - [levelPrivateStateProvider](functions/levelPrivateStateProvider.md)
