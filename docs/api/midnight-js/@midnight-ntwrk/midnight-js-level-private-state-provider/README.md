@@ -14,11 +14,14 @@
 
 - [LevelPrivateStateProviderConfig](interfaces/LevelPrivateStateProviderConfig.md)
 
+## Type Aliases
+
+- [PrivateStoragePasswordProvider](type-aliases/PrivateStoragePasswordProvider.md)
+
 ## Variables
 
 - [DEFAULT\_CONFIG](variables/DEFAULT_CONFIG.md)
 
 ## Functions
 
-- [getStoragePassword](functions/getStoragePassword.md)
 - [levelPrivateStateProvider](functions/levelPrivateStateProvider.md)
