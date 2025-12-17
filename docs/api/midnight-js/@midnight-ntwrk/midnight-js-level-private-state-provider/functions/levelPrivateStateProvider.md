@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.10**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.11**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Function: levelPrivateStateProvider()
 
-> **levelPrivateStateProvider**\<`PSI`, `PS`\>(`partialConfig`): `PrivateStateProvider`\<`PSI`, `PS`\>
+> **levelPrivateStateProvider**\<`PSI`, `PS`\>(`config`): `PrivateStateProvider`\<`PSI`, `PS`\>
 
 Constructs an instance of PrivateStateProvider based on Level database.
 
@@ -22,9 +22,9 @@ Constructs an instance of PrivateStateProvider based on Level database.
 
 ## Parameters
 
-### partialConfig
+### config
 
-`Partial`\<[`LevelPrivateStateProviderConfig`](../interfaces/LevelPrivateStateProviderConfig.md)\> = `{}`
+`Partial`\<[`LevelPrivateStateProviderConfig`](../interfaces/LevelPrivateStateProviderConfig.md)\>
 
 Database configuration options.
 
