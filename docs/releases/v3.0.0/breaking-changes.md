@@ -134,34 +134,44 @@ const txId = await provider.submitTx(provenTx.transaction);
 
 ---
 
-## 5. ZswapOffer Changes (#125)
+## 5. ZswapOffer Return Type (#125)
 
 ### Reason
-Empty ZswapOffer creation removed for data consistency and integrity.
+Improved data consistency by returning undefined for empty Zswap states.
 
 ### Impact
-Cannot create ZswapOffer without valid offer data.
+`zswapStateToOffer()` now returns `UnprovenOffer | undefined` instead of always returning `UnprovenOffer`.
 
 ### Before
 ```typescript
-// v2.1.0 - Empty offers allowed
-const emptyOffer = createZswapOffer();
+// v2.1.0 - Always returns UnprovenOffer
+const offer = zswapStateToOffer(
+  zswapLocalState,
+  encryptionPublicKey
+);
+// offer is always defined
 ```
 
 ### After
 ```typescript
-// v3.0.0 - Must provide offer data
-const offer = createZswapOffer({
-  amount: 100n,
-  token: 'NIGHT',
-  // ... other required fields
-});
+// v3.0.0 - Can return undefined
+const offer = zswapStateToOffer(
+  zswapLocalState,
+  encryptionPublicKey
+);
+
+if (!offer) {
+  // Handle empty Zswap state (no inputs/outputs/transients)
+  return;
+}
+
+// Use offer
 ```
 
 ### Migration Steps
-1. Review all ZswapOffer creation code
-2. Ensure all offers have valid data
-3. Remove any empty offer creation patterns
+1. Locate all `zswapStateToOffer()` calls
+2. Add undefined checks
+3. Handle empty state scenarios appropriately
 
 ---
 

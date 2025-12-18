@@ -68,17 +68,21 @@ const provenTx = await prover.prove(unprovenTx);
 const txId = await provider.submitTx(provenTx.transaction);
 ```
 
-### ZswapOffer Changes (#125)
-Empty ZswapOffer creation no longer supported.
+### ZswapOffer Return Type (#125)
+Empty Zswap state now returns undefined.
 
-- **Before:** `createZswapOffer()` allowed empty offers
-- **After:** Must provide valid offer data
+- **Before:** `zswapStateToOffer()` always returned `UnprovenOffer`
+- **After:** Returns `UnprovenOffer | undefined`
 
 ```typescript
-const offer = createZswapOffer({
-  amount: 100n,
-  token: 'NIGHT'
-});
+// v2.1.0
+const offer = zswapStateToOffer(state, encKey);
+
+// v3.0.0-alpha.11
+const offer = zswapStateToOffer(state, encKey);
+if (!offer) {
+  // Handle empty state
+}
 ```
 
 ### networkId Type Change (#125)
