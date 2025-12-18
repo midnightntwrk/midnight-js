@@ -13,10 +13,6 @@
  * limitations under the License.
  */
 
-if (!process.env.MIDNIGHT_STORAGE_PASSWORD) {
-  process.env.MIDNIGHT_STORAGE_PASSWORD = 'testkit-default-storage-password-for-testing-only';
-}
-
 export const getEnvVarEnvironment = () => {
   if (process.env.MN_TEST_ENVIRONMENT === undefined || process.env.MN_TEST_ENVIRONMENT === 'undefined') {
     return 'undeployed';
