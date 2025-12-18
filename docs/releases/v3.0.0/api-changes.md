@@ -332,20 +332,3 @@ interface CircuitContext {
 +   networkId: string; // Free-form network identifier
 + }
 ```
-
----
-
-## Compiler Requirements
-
-- **TypeScript:** 5.0+
-- **Node.js:** 22+
-- **Package Manager:** Yarn 4.10.3 (recommended)
-
----
-
-## Related Documentation
-
-- [Release Notes](./release-notes.md)
-- [Breaking Changes](./breaking-changes.md)
-- [New Features](./new-features.md)
-- [Migration Guide](./migration-guide.md)

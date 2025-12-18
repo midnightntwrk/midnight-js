@@ -305,9 +305,3 @@ test('submitTx returns TransactionId', async () => {
   expect(txId).toBeDefined();
 });
 ```
-
-## Support
-
-- [GitHub Issues](https://github.com/midnightntwrk/midnight-js/issues)
-- [Breaking Changes](./breaking-changes.md)
-- [New Features](./new-features.md)

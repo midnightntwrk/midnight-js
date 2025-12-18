@@ -211,10 +211,3 @@ const config = {
 ### Issue: Module Resolution
 **Solution:** Clear node_modules and reinstall. Update bundler configuration for ESM/CJS.
 
----
-
-## Support
-
-For migration assistance:
-- [GitHub Issues](https://github.com/midnightntwrk/midnight-js/issues)
-- [Migration Guide](./migration-guide.md)
