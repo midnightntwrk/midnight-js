@@ -146,11 +146,15 @@ import { IndexerPublicDataProvider } from '@midnight-ntwrk/indexer-public-data-p
 const balances = await provider.queryUnshieldedBalances(contractAddress);
 ```
 
-### Transaction TTL Configuration (#125)
-Configure transaction time-to-live.
+### Transaction TTL Support (#125)
+Configure transaction time-to-live via `balanceTx`.
 
 ```typescript
-const tx = createTransaction(proof, { ttl: 600 }); // 10 minutes
+const recipe = await walletProvider.balanceTx(
+  unprovenTx,
+  newCoins,
+  new Date(Date.now() + 10 * 60 * 1000) // 10 min TTL
+);
 ```
 
 ## Bug Fixes

@@ -319,31 +319,32 @@ console.log('Transaction ID:', callResult.txId);
 
 ---
 
-## 10. Transaction TTL Configuration (#125)
+## 10. Transaction TTL Support (#125)
 
-Configure transaction time-to-live for expiry management.
+Configure transaction time-to-live via `balanceTx` for expiry management.
 
-### TypeScript Signatures
+### TypeScript Signature
 ```typescript
-interface TransactionConfig {
-  ttl?: number; // Time-to-live in seconds
+interface WalletProvider {
+  balanceTx(
+    tx: UnprovenTransaction, 
+    newCoins?: ShieldedCoinInfo[], 
+    ttl?: Date  // Optional expiry time
+  ): Promise<BalancedProvingRecipe>;
 }
-
-function createTransaction(
-  proof: Proof, 
-  config?: TransactionConfig
-): Transaction;
 ```
 
 ### Usage
 ```typescript
 // Set 10-minute TTL
-const tx = createTransaction(proof, {
-  ttl: 600 // 10 minutes
-});
+const recipe = await walletProvider.balanceTx(
+  unprovenTx,
+  newCoins,
+  new Date(Date.now() + 10 * 60 * 1000) // 10 minutes from now
+);
 
-// Default TTL (no expiry)
-const tx = createTransaction(proof);
+// No TTL (default)
+const recipe = await walletProvider.balanceTx(unprovenTx);
 ```
 
 ### Benefits

@@ -145,14 +145,6 @@ export type BalancedProvingRecipe = ProvingRecipe<UnprovenTransaction | Finalize
 export type PrivateStoragePasswordProvider = () => Promise<string>;
 ```
 
-#### TransactionConfig (#125)
-
-```typescript
-interface TransactionConfig {
-  ttl?: number; // Time-to-live in seconds
-}
-```
-
 ---
 
 ## Package: @midnight-ntwrk/midnight-js-contracts
@@ -286,7 +278,6 @@ interface CircuitContext {
 | `ProvingRecipe` | types | Union of above three |
 | `BalancedProvingRecipe` | types | Result from balanceTx |
 | `PrivateStoragePasswordProvider` | types | Storage encryption |
-| `TransactionConfig` | types (#125) | Transaction TTL configuration |
 
 ### Removed Types
 
