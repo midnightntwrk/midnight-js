@@ -15,8 +15,8 @@
 yarn add @midnight-ntwrk/midnight-js@3.0.0-alpha.11
 
 # Or for specific packages
-yarn add @midnight-ntwrk/types@3.0.0-alpha.11 \
-         @midnight-ntwrk/contracts@3.0.0-alpha.11 \
+yarn add @midnight-ntwrk/midnight-js-types@3.0.0-alpha.11 \
+         @midnight-ntwrk/midnight-js-contracts@3.0.0-alpha.11 \
          @midnight-ntwrk/level-private-state-provider@3.0.0-alpha.11
 ```
 
@@ -38,7 +38,7 @@ nvm use 22
 import { LevelPrivateStateProvider } from '@midnight-ntwrk/level-private-state-provider';
 
 const provider = new LevelPrivateStateProvider({
-  storeDirectory: './data'
+  midnightDbName: 'midnight-db'
 });
 ```
 
@@ -48,14 +48,18 @@ import { LevelPrivateStateProvider } from '@midnight-ntwrk/level-private-state-p
 
 // Option A: Use wallet provider
 const provider = new LevelPrivateStateProvider({
-  storeDirectory: './data',
+  midnightDbName: 'midnight-db',
+  privateStateStoreName: 'private-states',
+  signingKeyStoreName: 'signing-keys',
   walletProvider: myWalletProvider
 });
 
 // Option B: Use password provider (recommended)
 const provider = new LevelPrivateStateProvider({
-  storeDirectory: './data',
-  passwordProvider: async () => process.env.STORAGE_PASSWORD!
+  midnightDbName: 'midnight-db',
+  privateStateStoreName: 'private-states',
+  signingKeyStoreName: 'signing-keys',
+  privateStoragePasswordProvider: async () => process.env.STORAGE_PASSWORD!
 });
 ```
 
@@ -63,21 +67,26 @@ const provider = new LevelPrivateStateProvider({
 
 #### v2.1.0
 ```typescript
-const recipe = await walletProvider.balanceTx(provingRecipe);
+const recipe = await walletProvider.balanceTx(unprovenTx);
 const proof = await prover.prove(recipe);
 ```
 
 #### v3.0.0
 ```typescript
-const result = await walletProvider.balanceTx(provingRecipe);
+const recipe = await walletProvider.balanceTx(unprovenTx);
 
-// Add type discrimination
-if ('type' in result && result.type === 'BalanceTransactionToProve') {
-  // Handle balance transaction
-  const txId = await midnightProvider.submitTx(result.transaction);
+// Handle all three recipe types
+if (recipe.type === 'TransactionToProve') {
+  // Needs proving
+  const provenTx = await prover.prove(recipe.transaction);
+  await midnightProvider.submitTx(provenTx);
+} else if (recipe.type === 'BalanceTransactionToProve') {
+  // Needs balancing and proving
+  const provenTx = await prover.prove(recipe.transactionToProve);
+  await midnightProvider.submitTx(provenTx);
 } else {
-  // Handle proving recipe
-  const proof = await prover.prove(result);
+  // NothingToProve - ready to submit
+  await midnightProvider.submitTx(recipe.transaction);
 }
 ```
 
@@ -85,7 +94,7 @@ if ('type' in result && result.type === 'BalanceTransactionToProve') {
 
 #### v2.1.0
 ```typescript
-function processTransaction(tx: Transaction): TransactionId {
+function processTransaction(tx: FinalizedTransaction): TransactionId {
   const txId = midnightProvider.submitTx(tx);
   return txId;
 }
@@ -93,7 +102,7 @@ function processTransaction(tx: Transaction): TransactionId {
 
 #### v3.0.0
 ```typescript
-async function processTransaction(tx: Transaction): Promise<TransactionId> {
+async function processTransaction(tx: FinalizedTransaction): Promise<TransactionId> {
   const txId = await midnightProvider.submitTx(tx);
   return txId;
 }
@@ -113,19 +122,7 @@ const result = await myContract.call.transfer(from, to, amount);
 processResult(result);
 ```
 
-### Step 4: Update CircuitContext Import
-
-#### v2.1.0
-```typescript
-import { createCircuitContext } from '@midnight-ntwrk/compact';
-```
-
-#### v3.0.0
-```typescript
-import { createCircuitContext } from '@midnight-ntwrk/compact-runtime';
-```
-
-### Step 5: Adopt Unproven Transaction Types (#125)
+### Step 7: Use High-Level Transaction Functions
 
 #### v2.1.0
 ```typescript
@@ -136,36 +133,29 @@ const txId = await provider.submitTx(tx);
 
 #### v3.0.0
 ```typescript
-// Create unproven transaction
-const unprovenTx = createUnprovenTransaction(recipe);
+// Use submitDeployTx for deployments
+import { submitDeployTx } from '@midnight-ntwrk/midnight-js-contracts';
 
-// Prove transaction
-const provenTx = await prover.prove(unprovenTx);
+const result = await submitDeployTx(providers, {
+  contract: myContract,
+  initialState: { /* ... */ }
+});
 
-// Submit proven transaction
-const txId = await provider.submitTx(provenTx.transaction);
+// Use submitCallTx for contract calls
+import { submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
+
+const result = await submitCallTx(providers, {
+  contract: myContract,
+  circuit: 'myCircuit',
+  args: [arg1, arg2]
+});
 ```
 
-### Step 6: Use Unshielded Token APIs (Optional) (#125)
-
-If working with NIGHT tokens:
-
-```typescript
-import { IndexerPublicDataProvider } from '@midnight-ntwrk/indexer-public-data-provider';
-
-// Query unshielded balances
-const balances = await provider.queryUnshieldedBalances(myAddress);
-console.log('NIGHT balance:', balances[0].amount);
-
-// Query multiple addresses
-const addressBalances = await provider.getUnshieldedBalances([addr1, addr2]);
-```
-
-### Step 7: Update networkId Usage (#125)
+### Step 8: Update networkId Usage (#125)
 
 #### v2.1.0
 ```typescript
-import { NetworkId } from '@midnight-ntwrk/types';
+import { NetworkId } from '@midnight-ntwrk/midnight-js-types';
 
 const config = {
   networkId: NetworkId.Testnet
@@ -194,11 +184,11 @@ const config = {
 import { LevelPrivateStateProvider } from '@midnight-ntwrk/level-private-state-provider';
 
 const provider = new LevelPrivateStateProvider({
-  storeDirectory: './data'
+  midnightDbName: 'midnight-db'
 });
 
 function transfer(from: string, to: string, amount: bigint) {
-  const recipe = walletProvider.balanceTx(provingRecipe);
+  const recipe = walletProvider.balanceTx(unprovenTx);
   const proof = prover.prove(recipe);
   const tx = createTransaction(proof);
   const txId = midnightProvider.submitTx(tx);
@@ -210,10 +200,13 @@ function transfer(from: string, to: string, amount: bigint) {
 
 ```typescript
 import { LevelPrivateStateProvider } from '@midnight-ntwrk/level-private-state-provider';
+import { submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
 
 const provider = new LevelPrivateStateProvider({
-  storeDirectory: './data',
-  passwordProvider: async () => process.env.STORAGE_PASSWORD!
+  midnightDbName: 'midnight-db',
+  privateStateStoreName: 'private-states',
+  signingKeyStoreName: 'signing-keys',
+  privateStoragePasswordProvider: async () => process.env.STORAGE_PASSWORD!
 });
 
 async function transfer(
@@ -221,16 +214,13 @@ async function transfer(
   to: string, 
   amount: bigint
 ): Promise<TransactionId> {
-  const result = await walletProvider.balanceTx(provingRecipe);
+  const result = await submitCallTx(providers, {
+    contract: myContract,
+    circuit: 'transfer',
+    args: [from, to, amount]
+  });
   
-  if ('type' in result && result.type === 'BalanceTransactionToProve') {
-    return await midnightProvider.submitTx(result.transaction);
-  }
-  
-  const proof = await prover.prove(result);
-  const tx = createTransaction(proof);
-  const txId = await midnightProvider.submitTx(tx);
-  return txId;
+  return result.txId;
 }
 ```
 
@@ -238,13 +228,16 @@ async function transfer(
 
 ### Issue 1: Type Errors on walletProvider.balanceTx
 
-**Solution:** Add type discrimination:
+**Solution:** Handle all three recipe types:
 ```typescript
-const result = await walletProvider.balanceTx(recipe);
-if ('type' in result && result.type === 'BalanceTransactionToProve') {
+const recipe = await walletProvider.balanceTx(unprovenTx);
+
+if (recipe.type === 'TransactionToProve') {
+  // Handle TransactionToProve
+} else if (recipe.type === 'BalanceTransactionToProve') {
   // Handle BalanceTransactionToProve
 } else {
-  // Handle BalancedProvingRecipe
+  // Handle NothingToProve
 }
 ```
 
@@ -260,40 +253,28 @@ const txId = await midnightProvider.submitTx(tx);
 **Solution:**
 ```typescript
 const provider = new LevelPrivateStateProvider({
-  storeDirectory: './data',
-  passwordProvider: async () => 'your-password'
+  midnightDbName: 'midnight-db',
+  privateStateStoreName: 'private-states',
+  signingKeyStoreName: 'signing-keys',
+  privateStoragePasswordProvider: async () => 'your-password'
 });
 ```
 
-### Issue 4: ZswapOffer Creation Fails (#125)
+### Issue 4: ZswapOffer Undefined
 
 **Error:**
 ```
-Cannot create empty ZswapOffer
+Cannot read property 'inputs' of undefined
 ```
 
 **Solution:**
-Provide required offer data:
+Check for undefined:
 ```typescript
-const offer = createZswapOffer({
-  amount: 100n,
-  token: 'NIGHT'
-});
-```
-
-### Issue 5: Unproven Transaction Type Errors (#125)
-
-**Error:**
-```
-Property 'transaction' does not exist on type 'UnprovenTransaction'
-```
-
-**Solution:**
-Prove the transaction first:
-```typescript
-const unprovenTx = createUnprovenTransaction(recipe);
-const provenTx = await prover.prove(unprovenTx);
-const txId = await provider.submitTx(provenTx.transaction);
+const offer = zswapStateToOffer(state, encKey);
+if (!offer) {
+  console.log('Empty Zswap state');
+  return;
+}
 ```
 
 ## Testing After Migration

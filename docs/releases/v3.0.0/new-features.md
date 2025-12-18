@@ -6,17 +6,14 @@ Flexible password management for encrypted storage with wallet fallback.
 
 ### TypeScript Signature
 ```typescript
-interface PasswordProviderConfig {
-  passwordProvider: () => Promise<string>;
-  walletProvider?: WalletProvider;
-}
+type PrivateStoragePasswordProvider = () => Promise<string>;
 
-class LevelPrivateStateProvider {
-  constructor(config: {
-    storeDirectory: string;
-    passwordProvider?: () => Promise<string>;
-    walletProvider?: WalletProvider;
-  });
+interface LevelPrivateStateProviderConfig {
+  readonly midnightDbName: string;
+  readonly privateStateStoreName: string;
+  readonly signingKeyStoreName: string;
+  readonly walletProvider?: WalletProvider;
+  readonly privateStoragePasswordProvider?: PrivateStoragePasswordProvider;
 }
 ```
 
@@ -26,14 +23,18 @@ import { LevelPrivateStateProvider } from '@midnight-ntwrk/level-private-state-p
 
 // Basic password provider
 const provider = new LevelPrivateStateProvider({
-  storeDirectory: './private-data',
-  passwordProvider: async () => process.env.STORAGE_PASSWORD!
+  midnightDbName: 'midnight-db',
+  privateStateStoreName: 'private-states',
+  signingKeyStoreName: 'signing-keys',
+  privateStoragePasswordProvider: async () => process.env.STORAGE_PASSWORD!
 });
 
 // With environment-based selection
 const provider = new LevelPrivateStateProvider({
-  storeDirectory: './private-data',
-  passwordProvider: async () => {
+  midnightDbName: 'midnight-db',
+  privateStateStoreName: 'private-states',
+  signingKeyStoreName: 'signing-keys',
+  privateStoragePasswordProvider: async () => {
     if (process.env.NODE_ENV === 'production') {
       return await fetchFromSecretManager();
     }
@@ -57,7 +58,7 @@ Transaction submission and contract calls now support asynchronous execution.
 ### TypeScript Signatures
 ```typescript
 interface MidnightProvider {
-  submitTx(transaction: Transaction): Promise<TransactionId>;
+  submitTx(transaction: FinalizedTransaction): Promise<TransactionId>;
 }
 
 interface Contract<T> {
@@ -100,8 +101,10 @@ AES-256-GCM encryption for private state storage.
 ### Usage
 ```typescript
 const provider = new LevelPrivateStateProvider({
-  storeDirectory: './encrypted-data',
-  passwordProvider: async () => crypto.randomBytes(32).toString('hex')
+  midnightDbName: 'encrypted-db',
+  privateStateStoreName: 'private-states',
+  signingKeyStoreName: 'signing-keys',
+  privateStoragePasswordProvider: async () => crypto.randomBytes(32).toString('hex')
 });
 
 // Storage is automatically encrypted/decrypted
@@ -117,37 +120,55 @@ const data = await provider.get('key');
 
 ---
 
-## 4. BalanceTransactionToProve (#320)
+## 4. BalancedProvingRecipe Types (#320)
 
-New transaction type for explicit balance operations.
+Enhanced proving recipe system with three distinct types.
 
-### TypeScript Signature
+### TypeScript Signatures
 ```typescript
-type BalanceTransactionToProve = {
-  type: 'BalanceTransactionToProve';
-  transaction: Transaction;
-  metadata: {
-    requiredBalance: bigint;
-    availableBalance: bigint;
-  };
+export const TRANSACTION_TO_PROVE = 'TransactionToProve';
+export const BALANCE_TRANSACTION_TO_PROVE = 'BalanceTransactionToProve';
+export const NOTHING_TO_PROVE = 'NothingToProve';
+
+export type TransactionToProve = {
+  readonly type: typeof TRANSACTION_TO_PROVE;
+  readonly transaction: UnprovenTransaction;
 };
 
-type WalletProviderResult<T> = 
-  | BalancedProvingRecipe<T>
-  | BalanceTransactionToProve;
+export type BalanceTransactionToProve<TTransaction> = {
+  readonly type: typeof BALANCE_TRANSACTION_TO_PROVE;
+  readonly transactionToProve: UnprovenTransaction;
+  readonly transactionToBalance: TTransaction;
+};
+
+export type NothingToProve<TTransaction> = {
+  readonly type: typeof NOTHING_TO_PROVE;
+  readonly transaction: TTransaction;
+};
+
+export type ProvingRecipe<TTransaction> =
+  | TransactionToProve
+  | BalanceTransactionToProve<TTransaction>
+  | NothingToProve<TTransaction>;
+
+export type BalancedProvingRecipe = ProvingRecipe<UnprovenTransaction | FinalizedTransaction>;
 ```
 
 ### Usage
 ```typescript
-const result = await walletProvider.balanceTx(recipe);
+const recipe = await walletProvider.balanceTx(unprovenTx);
 
-if ('type' in result && result.type === 'BalanceTransactionToProve') {
-  console.log('Required:', result.metadata.requiredBalance);
-  console.log('Available:', result.metadata.availableBalance);
-  
-  const txId = await midnightProvider.submitTx(result.transaction);
+if (recipe.type === TRANSACTION_TO_PROVE) {
+  console.log('Transaction needs proving');
+  const provenTx = await prover.prove(recipe.transaction);
+  await midnightProvider.submitTx(provenTx);
+} else if (recipe.type === BALANCE_TRANSACTION_TO_PROVE) {
+  console.log('Transaction needs balancing and proving');
+  const provenTx = await prover.prove(recipe.transactionToProve);
+  await midnightProvider.submitTx(provenTx);
 } else {
-  const proof = await prover.prove(result);
+  console.log('Transaction ready to submit');
+  await midnightProvider.submitTx(recipe.transaction);
 }
 ```
 
@@ -200,10 +221,10 @@ Fixed module resolution for both ESM and CommonJS.
 ### Usage
 ```typescript
 // ESM
-import { MidnightProvider } from '@midnight-ntwrk/types';
+import { MidnightProvider } from '@midnight-ntwrk/midnight-js-types';
 
 // CommonJS
-const { MidnightProvider } = require('@midnight-ntwrk/types');
+const { MidnightProvider } = require('@midnight-ntwrk/midnight-js-types');
 ```
 
 ### Benefits
@@ -219,15 +240,15 @@ Support for NIGHT (unshielded) public tokens on Midnight network.
 
 ### TypeScript Signatures
 ```typescript
-interface UnshieldedBalance {
-  address: string;
-  amount: bigint;
-  token: 'NIGHT';
+interface UnshieldedBalances {
+  [address: string]: bigint;
 }
 
 interface IndexerPublicDataProvider {
-  queryUnshieldedBalances(address: string): Promise<UnshieldedBalance[]>;
-  getUnshieldedBalances(addresses: string[]): Promise<Map<string, UnshieldedBalance>>;
+  queryUnshieldedBalances(
+    contractAddress: ContractAddress,
+    config?: QueryConfigOptions
+  ): Promise<UnshieldedBalances | null>;
 }
 ```
 
@@ -235,14 +256,13 @@ interface IndexerPublicDataProvider {
 ```typescript
 import { IndexerPublicDataProvider } from '@midnight-ntwrk/indexer-public-data-provider';
 
-// Query single address unshielded balance
-const balances = await provider.queryUnshieldedBalances(myAddress);
-console.log('NIGHT balance:', balances[0].amount);
+// Query unshielded balances for a contract
+const balances = await provider.queryUnshieldedBalances(contractAddress);
 
-// Query multiple addresses
-const addressBalances = await provider.getUnshieldedBalances([addr1, addr2]);
-for (const [address, balance] of addressBalances) {
-  console.log(`${address}: ${balance.amount} NIGHT`);
+if (balances) {
+  for (const [address, amount] of Object.entries(balances)) {
+    console.log(`${address}: ${amount} NIGHT`);
+  }
 }
 ```
 
@@ -254,45 +274,47 @@ for (const [address, balance] of addressBalances) {
 
 ---
 
-## 9. Unproven Transaction Types (#125)
+## 9. High-Level Transaction Functions (#125)
 
-New transaction type system for better workflow control with ledger v6.
+Simplified transaction workflow with integrated proving.
 
 ### TypeScript Signatures
 ```typescript
-type UnprovenTransaction = {
-  type: 'Unproven';
-  recipe: TransactionRecipe;
-};
+async function submitDeployTx<C extends Contract>(
+  providers: SubmitTxProviders,
+  options: DeployTxOptions<C>
+): Promise<FinalizedTxData>;
 
-type ProvenTransaction = {
-  type: 'Proven';
-  proof: Proof;
-  transaction: Transaction;
-};
-
-function createUnprovenTransaction(recipe: TransactionRecipe): UnprovenTransaction;
-function prove(unproven: UnprovenTransaction): Promise<ProvenTransaction>;
+async function submitCallTx<C extends Contract, ICK extends ImpureCircuitId<C>>(
+  providers: SubmitTxProviders,
+  options: CallTxOptions<C, ICK>
+): Promise<FinalizedTxData>;
 ```
 
 ### Usage
 ```typescript
-import { createUnprovenTransaction } from '@midnight-ntwrk/types';
+import { submitDeployTx, submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
 
-// Create unproven transaction
-const unprovenTx = createUnprovenTransaction(recipe);
+// Deploy a contract
+const deployResult = await submitDeployTx(providers, {
+  contract: myContract,
+  initialState: { balance: 0n }
+});
 
-// Prove transaction
-const provenTx = await prover.prove(unprovenTx);
+// Call a contract method
+const callResult = await submitCallTx(providers, {
+  contract: myContract,
+  circuit: 'transfer',
+  args: [fromAddress, toAddress, amount]
+});
 
-// Submit proven transaction
-const txId = await provider.submitTx(provenTx.transaction);
+console.log('Transaction ID:', callResult.txId);
 ```
 
 ### Benefits
 - Clearer transaction lifecycle
-- Better proof management
-- Type-safe transaction workflow
+- Integrated proving workflow
+- Type-safe transaction handling
 - Improved error handling
 
 ---
@@ -338,9 +360,9 @@ const tx = createTransaction(proof);
 | Password Provider | ❌ | ✅ |
 | Async Transactions | ❌ | ✅ |
 | Storage Encryption | ❌ | ✅ |
-| Balance Transaction Type | ❌ | ✅ |
+| Proving Recipe Types | ❌ | ✅ (3 types) |
 | Uint8Array Results | ❌ | ✅ |
 | ESM/CJS Support | Partial | ✅ |
 | Unshielded Tokens | ❌ | ✅ |
-| Unproven Types | ❌ | ✅ |
+| High-Level TX Functions | ❌ | ✅ |
 | Transaction TTL | ❌ | ✅ |

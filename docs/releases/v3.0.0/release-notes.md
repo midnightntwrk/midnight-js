@@ -10,42 +10,47 @@
 Authentication now requires explicit configuration.
 
 - **Before:** `new LevelPrivateStateProvider(config)`
-- **After:** Must provide `walletProvider` OR `passwordProvider`
+- **After:** Must provide `walletProvider` OR `privateStoragePasswordProvider`
 
 ```typescript
 // Option 1: Wallet provider
 const provider = new LevelPrivateStateProvider({
-  ...config,
+  midnightDbName: 'midnight-db',
+  privateStateStoreName: 'private-states',
+  signingKeyStoreName: 'signing-keys',
   walletProvider: myWalletProvider
 });
 
 // Option 2: Password provider (new)
 const provider = new LevelPrivateStateProvider({
-  ...config,
-  passwordProvider: async () => 'my-secure-password'
+  midnightDbName: 'midnight-db',
+  privateStateStoreName: 'private-states',
+  signingKeyStoreName: 'signing-keys',
+  privateStoragePasswordProvider: async () => 'my-secure-password'
 });
 ```
 
 ### WalletProvider.balanceTx Return Type (#346)
-Return type changed to discriminated union.
-
-- **Before:** `BalancedProvingRecipe<T>`
-- **After:** `BalancedProvingRecipe<T> | BalanceTransactionToProve`
+Return type is now `BalancedProvingRecipe` (union of three types).
 
 ```typescript
-const result = await walletProvider.balanceTx(recipe);
-if ('type' in result && result.type === 'BalanceTransactionToProve') {
-  // Handle balance transaction
+const recipe = await walletProvider.balanceTx(unprovenTx);
+
+if (recipe.type === 'TransactionToProve') {
+  const provenTx = await prover.prove(recipe.transaction);
+} else if (recipe.type === 'BalanceTransactionToProve') {
+  const provenTx = await prover.prove(recipe.transactionToProve);
 } else {
-  // Handle proving recipe
+  // NothingToProve
+  await provider.submitTx(recipe.transaction);
 }
 ```
 
 ### MidnightProvider.submitTx Now Async (#348)
 Transaction submission is now asynchronous with indefinite waiting.
 
-- **Before:** `submitTx(tx: Transaction): TransactionId`
-- **After:** `submitTx(tx: Transaction): Promise<TransactionId>`
+- **Before:** `submitTx(tx: FinalizedTransaction): TransactionId`
+- **After:** `submitTx(tx: FinalizedTransaction): Promise<TransactionId>`
 
 ```typescript
 // Before
@@ -55,17 +60,18 @@ const txId = midnightProvider.submitTx(tx);
 const txId = await midnightProvider.submitTx(tx);
 ```
 
-### Unproven Transaction Types (#125)
-New transaction type system for ledger v6.
-
-- **Before:** `createTransaction(proof)`
-- **After:** `createUnprovenTransaction(recipe)` → `prove()` → `submitTx()`
+### Transaction Workflow (#125)
+Use high-level submission functions for better workflow.
 
 ```typescript
-// v3.0.0
-const unprovenTx = createUnprovenTransaction(recipe);
-const provenTx = await prover.prove(unprovenTx);
-const txId = await provider.submitTx(provenTx.transaction);
+// v3.0.0 - Use submitDeployTx or submitCallTx
+import { submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
+
+const result = await submitCallTx(providers, {
+  contract: myContract,
+  circuit: 'myCircuit',
+  args: [arg1, arg2]
+});
 ```
 
 ### ZswapOffer Return Type (#125)
@@ -75,10 +81,6 @@ Empty Zswap state now returns undefined.
 - **After:** Returns `UnprovenOffer | undefined`
 
 ```typescript
-// v2.1.0
-const offer = zswapStateToOffer(state, encKey);
-
-// v3.0.0-alpha.11
 const offer = zswapStateToOffer(state, encKey);
 if (!offer) {
   // Handle empty state
@@ -106,11 +108,11 @@ config.networkId = 'testnet-02';
 Add password provider with wallet fallback for encrypted storage.
 
 ```typescript
-import { LevelPrivateStateProvider } from '@midnight-ntwrk/level-private-state-provider';
-
 const provider = new LevelPrivateStateProvider({
-  storeDirectory: './data',
-  passwordProvider: async () => {
+  midnightDbName: 'midnight-db',
+  privateStateStoreName: 'private-states',
+  signingKeyStoreName: 'signing-keys',
+  privateStoragePasswordProvider: async () => {
     return process.env.STORAGE_PASSWORD || 'fallback-password';
   }
 });
@@ -126,22 +128,11 @@ const result = await contractInstance.call.myMethod(params);
 ### Storage Encryption
 AES-256-GCM encryption for private state storage.
 
-```typescript
-const provider = new LevelPrivateStateProvider({
-  storeDirectory: './data',
-  passwordProvider: async () => 'secure-password'
-});
-```
-
-### BalanceTransactionToProve (#320)
-New transaction type for balance operations.
-
-```typescript
-type BalanceTransactionToProve = {
-  type: 'BalanceTransactionToProve';
-  transaction: Transaction;
-};
-```
+### BalancedProvingRecipe Types (#320)
+Enhanced proving recipe system with three types:
+- `TransactionToProve` - requires proving
+- `BalanceTransactionToProve` - requires balancing and proving
+- `NothingToProve` - ready to submit
 
 ### Compact Compiler 0.27.0 (#373)
 Updated to latest Compact compiler version.
@@ -152,21 +143,7 @@ Support for NIGHT (unshielded) public tokens.
 ```typescript
 import { IndexerPublicDataProvider } from '@midnight-ntwrk/indexer-public-data-provider';
 
-// Query unshielded balances
-const balances = await provider.queryUnshieldedBalances(address);
-console.log('NIGHT balance:', balances[0].amount);
-
-// Query multiple addresses
-const addressBalances = await provider.getUnshieldedBalances([addr1, addr2]);
-```
-
-### Unproven Transaction Types (#125)
-New transaction workflow with unproven types.
-
-```typescript
-const unprovenTx = createUnprovenTransaction(recipe);
-const provenTx = await prover.prove(unprovenTx);
-const txId = await provider.submitTx(provenTx.transaction);
+const balances = await provider.queryUnshieldedBalances(contractAddress);
 ```
 
 ### Transaction TTL Configuration (#125)

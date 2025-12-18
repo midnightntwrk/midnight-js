@@ -6,12 +6,12 @@
 Improved security model requiring explicit authentication configuration for encrypted storage.
 
 ### Impact
-All `LevelPrivateStateProvider` instantiations must provide either `walletProvider` or `passwordProvider`.
+All `LevelPrivateStateProvider` instantiations must provide either `walletProvider` or `privateStoragePasswordProvider`.
 
 ### Before
 ```typescript
 const provider = new LevelPrivateStateProvider({
-  storeDirectory: './data'
+  midnightDbName: 'midnight-db'
 });
 ```
 
@@ -19,21 +19,25 @@ const provider = new LevelPrivateStateProvider({
 ```typescript
 // Option 1: Using wallet provider
 const provider = new LevelPrivateStateProvider({
-  storeDirectory: './data',
+  midnightDbName: 'midnight-db',
+  privateStateStoreName: 'private-states',
+  signingKeyStoreName: 'signing-keys',
   walletProvider: myWalletProvider
 });
 
 // Option 2: Using password provider
 const provider = new LevelPrivateStateProvider({
-  storeDirectory: './data',
-  passwordProvider: async () => process.env.STORAGE_PASSWORD!
+  midnightDbName: 'midnight-db',
+  privateStateStoreName: 'private-states',
+  signingKeyStoreName: 'signing-keys',
+  privateStoragePasswordProvider: async () => process.env.STORAGE_PASSWORD!
 });
 ```
 
 ### Migration Steps
 1. Identify all `LevelPrivateStateProvider` instances
 2. Choose authentication method (wallet or password)
-3. Add `walletProvider` or `passwordProvider` to configuration
+3. Add `walletProvider` or `privateStoragePasswordProvider` to configuration
 4. Test encrypted storage access
 
 ---
@@ -41,10 +45,10 @@ const provider = new LevelPrivateStateProvider({
 ## 2. WalletProvider.balanceTx Return Type (#346)
 
 ### Reason
-Support for new balance transaction type with better type discrimination.
+Support for new proving recipe types with better transaction handling.
 
 ### Impact
-Return type is now `BalancedProvingRecipe<T> | BalanceTransactionToProve`.
+Return type is now `BalancedProvingRecipe` (union of three types).
 
 ### Before
 ```typescript
@@ -54,19 +58,25 @@ const recipe: BalancedProvingRecipe<MyState> =
 
 ### After
 ```typescript
-const result = await walletProvider.balanceTx(provingRecipe);
+const recipe = await walletProvider.balanceTx(unprovenTx);
 
-if ('type' in result && result.type === 'BalanceTransactionToProve') {
-  const txId = await submitBalanceTransaction(result);
+// Check the recipe type
+if (recipe.type === 'TransactionToProve') {
+  // Needs proving
+  const provenTx = await prover.prove(recipe.transaction);
+} else if (recipe.type === 'BalanceTransactionToProve') {
+  // Needs balancing and proving
+  const provenTx = await prover.prove(recipe.transactionToProve);
 } else {
-  const proof = await prove(result);
+  // NothingToProve - ready to submit
+  await provider.submitTx(recipe.transaction);
 }
 ```
 
 ### Migration Steps
 1. Update all `balanceTx` call sites
 2. Add type discrimination logic
-3. Handle both result types appropriately
+3. Handle all three recipe types appropriately
 
 ---
 
@@ -80,7 +90,7 @@ Transaction submission now supports indefinite waiting for finalization.
 
 ### Before
 ```typescript
-function submitTransaction(tx: Transaction): TransactionId {
+function submitTransaction(tx: FinalizedTransaction): TransactionId {
   const txId = midnightProvider.submitTx(tx);
   return txId;
 }
@@ -88,7 +98,7 @@ function submitTransaction(tx: Transaction): TransactionId {
 
 ### After
 ```typescript
-async function submitTransaction(tx: Transaction): Promise<TransactionId> {
+async function submitTransaction(tx: FinalizedTransaction): Promise<TransactionId> {
   const txId = await midnightProvider.submitTx(tx);
   return txId;
 }
@@ -102,17 +112,17 @@ async function submitTransaction(tx: Transaction): Promise<TransactionId> {
 
 ---
 
-## 4. Unproven Transaction Types (#125)
+## 4. Transaction Workflow Changes (#125)
 
 ### Reason
-Ledger v6 introduces unproven transaction types for improved transaction workflow and proof management.
+Ledger v6 introduces improved transaction workflow with proving recipes.
 
 ### Impact
-Transaction creation now uses unproven types that must be proven before submission.
+Transaction submission now uses high-level functions that handle the proving workflow internally.
 
 ### Before
 ```typescript
-// v2.1.0 - Direct transaction creation
+// v2.1.0 - Manual workflow
 const proof = await prover.prove(recipe);
 const tx = createTransaction(proof);
 const txId = await provider.submitTx(tx);
@@ -120,17 +130,21 @@ const txId = await provider.submitTx(tx);
 
 ### After
 ```typescript
-// v3.0.0 - Unproven transaction workflow
-const unprovenTx = createUnprovenTransaction(recipe);
-const provenTx = await prover.prove(unprovenTx);
-const txId = await provider.submitTx(provenTx.transaction);
+// v3.0.0 - Integrated workflow with submitDeployTx/submitCallTx
+import { submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
+
+const result = await submitCallTx(providers, {
+  contract: myContract,
+  circuit: 'myCircuit',
+  args: [arg1, arg2]
+});
 ```
 
 ### Migration Steps
-1. Update to `@midnight-ntwrk/ledger-v6` types
-2. Use `createUnprovenTransaction()` instead of direct transaction creation
-3. Prove unproven transactions before submission
-4. Extract transaction from proven result
+1. Use `submitDeployTx()` for contract deployment
+2. Use `submitCallTx()` for contract calls
+3. These functions handle proving internally
+4. No manual transaction creation needed
 
 ---
 
@@ -220,4 +234,3 @@ const config = {
 
 ### Issue: Module Resolution
 **Solution:** Clear node_modules and reinstall. Update bundler configuration for ESM/CJS.
-

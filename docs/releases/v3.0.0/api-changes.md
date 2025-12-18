@@ -4,29 +4,33 @@
 
 ### Modified Exports
 
-#### LevelPrivateStateProvider (Constructor)
+#### LevelPrivateStateProviderConfig
 
 **v2.1.0:**
 ```typescript
-constructor(config: {
-  storeDirectory: string;
-})
+interface LevelPrivateStateProviderConfig {
+  readonly midnightDbName: string;
+  readonly privateStateStoreName: string;
+  readonly signingKeyStoreName: string;
+}
 ```
 
 **v3.0.0:**
 ```typescript
-constructor(config: {
-  storeDirectory: string;
-  walletProvider?: WalletProvider;
-  passwordProvider?: () => Promise<string>;
-})
+interface LevelPrivateStateProviderConfig {
+  readonly midnightDbName: string;
+  readonly privateStateStoreName: string;
+  readonly signingKeyStoreName: string;
+  readonly walletProvider?: WalletProvider;
+  readonly privateStoragePasswordProvider?: PrivateStoragePasswordProvider;
+}
 ```
 
-**Breaking:** Now requires either `walletProvider` or `passwordProvider`.
+**Breaking:** Now requires either `walletProvider` or `privateStoragePasswordProvider`.
 
 ---
 
-## Package: @midnight-ntwrk/types
+## Package: @midnight-ntwrk/midnight-js-types
 
 ### Modified Exports
 
@@ -35,14 +39,14 @@ constructor(config: {
 **v2.1.0:**
 ```typescript
 interface MidnightProvider {
-  submitTx(transaction: Transaction): TransactionId;
+  submitTx(transaction: FinalizedTransaction): TransactionId;
 }
 ```
 
 **v3.0.0:**
 ```typescript
 interface MidnightProvider {
-  submitTx(transaction: Transaction): Promise<TransactionId>;
+  submitTx(transaction: FinalizedTransaction): Promise<TransactionId>;
 }
 ```
 
@@ -53,20 +57,28 @@ interface MidnightProvider {
 **v2.1.0:**
 ```typescript
 interface WalletProvider {
-  balanceTx<T>(recipe: ProvingRecipe<T>): Promise<BalancedProvingRecipe<T>>;
+  balanceTx(tx: UnprovenTransaction): Promise<BalancedProvingRecipe>;
 }
 ```
 
 **v3.0.0:**
 ```typescript
 interface WalletProvider {
-  balanceTx<T>(
-    recipe: ProvingRecipe<T>
-  ): Promise<BalancedProvingRecipe<T> | BalanceTransactionToProve>;
+  balanceTx(
+    tx: UnprovenTransaction, 
+    newCoins?: ShieldedCoinInfo[], 
+    ttl?: Date
+  ): Promise<BalancedProvingRecipe>;
 }
 ```
 
-**Breaking:** Return type is now discriminated union.
+**Note:** `BalancedProvingRecipe` is a union type:
+```typescript
+type BalancedProvingRecipe = 
+  | TransactionToProve
+  | BalanceTransactionToProve<UnprovenTransaction | FinalizedTransaction>
+  | NothingToProve<UnprovenTransaction | FinalizedTransaction>;
+```
 
 #### Contract Call Signatures
 
@@ -96,52 +108,41 @@ interface Contract<T> {
 
 ### Added Exports
 
-#### BalanceTransactionToProve
+#### ProvingRecipe Types
 
 ```typescript
-type BalanceTransactionToProve = {
-  type: 'BalanceTransactionToProve';
-  transaction: Transaction;
-  metadata: {
-    requiredBalance: bigint;
-    availableBalance: bigint;
-  };
+export const TRANSACTION_TO_PROVE = 'TransactionToProve';
+export const BALANCE_TRANSACTION_TO_PROVE = 'BalanceTransactionToProve';
+export const NOTHING_TO_PROVE = 'NothingToProve';
+
+export type TransactionToProve = {
+  readonly type: typeof TRANSACTION_TO_PROVE;
+  readonly transaction: UnprovenTransaction;
 };
-```
 
-#### PasswordProvider
-
-```typescript
-type PasswordProvider = () => Promise<string>;
-```
-
-#### UnprovenTransaction (#125)
-
-```typescript
-type UnprovenTransaction = {
-  type: 'Unproven';
-  recipe: TransactionRecipe;
+export type BalanceTransactionToProve<TTransaction> = {
+  readonly type: typeof BALANCE_TRANSACTION_TO_PROVE;
+  readonly transactionToProve: UnprovenTransaction;
+  readonly transactionToBalance: TTransaction;
 };
-```
 
-#### ProvenTransaction (#125)
-
-```typescript
-type ProvenTransaction = {
-  type: 'Proven';
-  proof: Proof;
-  transaction: Transaction;
+export type NothingToProve<TTransaction> = {
+  readonly type: typeof NOTHING_TO_PROVE;
+  readonly transaction: TTransaction;
 };
+
+export type ProvingRecipe<TTransaction> =
+  | TransactionToProve
+  | BalanceTransactionToProve<TTransaction>
+  | NothingToProve<TTransaction>;
+
+export type BalancedProvingRecipe = ProvingRecipe<UnprovenTransaction | FinalizedTransaction>;
 ```
 
-#### UnshieldedBalance (#125)
+#### PrivateStoragePasswordProvider
 
 ```typescript
-interface UnshieldedBalance {
-  address: string;
-  amount: bigint;
-  token: 'NIGHT';
-}
+export type PrivateStoragePasswordProvider = () => Promise<string>;
 ```
 
 #### TransactionConfig (#125)
@@ -154,6 +155,30 @@ interface TransactionConfig {
 
 ---
 
+## Package: @midnight-ntwrk/midnight-js-contracts
+
+### Modified Exports
+
+#### submitDeployTx
+
+```typescript
+async function submitDeployTx<C extends Contract>(
+  providers: SubmitTxProviders,
+  options: DeployTxOptions<C>
+): Promise<FinalizedTxData>;
+```
+
+#### submitCallTx
+
+```typescript
+async function submitCallTx<C extends Contract, ICK extends ImpureCircuitId<C>>(
+  providers: SubmitTxProviders,
+  options: CallTxOptions<C, ICK>
+): Promise<FinalizedTxData>;
+```
+
+---
+
 ## Package: @midnight-ntwrk/indexer-public-data-provider
 
 ### Added Exports (#125)
@@ -162,28 +187,16 @@ interface TransactionConfig {
 
 ```typescript
 interface IndexerPublicDataProvider {
-  queryUnshieldedBalances(address: string): Promise<UnshieldedBalance[]>;
+  queryUnshieldedBalances(
+    contractAddress: ContractAddress,
+    config?: QueryConfigOptions
+  ): Promise<UnshieldedBalances | null>;
 }
 ```
 
 **Usage:**
 ```typescript
-const balances = await provider.queryUnshieldedBalances(myAddress);
-```
-
-#### getUnshieldedBalances
-
-```typescript
-interface IndexerPublicDataProvider {
-  getUnshieldedBalances(
-    addresses: string[]
-  ): Promise<Map<string, UnshieldedBalance>>;
-}
-```
-
-**Usage:**
-```typescript
-const balances = await provider.getUnshieldedBalances([addr1, addr2]);
+const balances = await provider.queryUnshieldedBalances(contractAddress);
 ```
 
 ### Modified Exports (#125)
@@ -258,22 +271,21 @@ interface CircuitContext {
 | Type | Change | Impact |
 |------|--------|--------|
 | `MidnightProvider.submitTx` | Return type `Promise<TransactionId>` | Must await |
-| `WalletProvider.balanceTx` | Union return type | Type guard needed |
+| `WalletProvider.balanceTx` | Returns `BalancedProvingRecipe` (union) | Type guard needed |
 | `Contract.call.*` | All return `Promise` | Must await |
 | `LevelPrivateStateProvider` | Config required | Add auth config |
-| `UnprovenTransaction` | New transaction type (#125) | New workflow |
-| `ZswapOffer` | Empty offers removed (#125) | Must provide data |
 | `networkId` | Enum → String (#125) | Use string literals |
 
 ### New Types
 
 | Type | Package | Purpose |
 |------|---------|---------|
-| `BalanceTransactionToProve` | types | Balance transaction handling |
-| `PasswordProvider` | types | Storage encryption |
-| `UnprovenTransaction` | types (#125) | Unproven transaction workflow |
-| `ProvenTransaction` | types (#125) | Proven transaction result |
-| `UnshieldedBalance` | types (#125) | NIGHT token balances |
+| `TransactionToProve` | types | Transaction needs proving |
+| `BalanceTransactionToProve` | types | Transaction needs balancing |
+| `NothingToProve` | types | Transaction ready to submit |
+| `ProvingRecipe` | types | Union of above three |
+| `BalancedProvingRecipe` | types | Result from balanceTx |
+| `PrivateStoragePasswordProvider` | types | Storage encryption |
 | `TransactionConfig` | types (#125) | Transaction TTL configuration |
 
 ### Removed Types
@@ -289,37 +301,42 @@ interface CircuitContext {
 ### @midnight-ntwrk/level-private-state-provider
 
 ```diff
-  class LevelPrivateStateProvider {
-    constructor(config: {
-      storeDirectory: string;
-+     walletProvider?: WalletProvider;
-+     passwordProvider?: () => Promise<string>;
-    })
+  interface LevelPrivateStateProviderConfig {
+    readonly midnightDbName: string;
+    readonly privateStateStoreName: string;
+    readonly signingKeyStoreName: string;
++   readonly walletProvider?: WalletProvider;
++   readonly privateStoragePasswordProvider?: PrivateStoragePasswordProvider;
   }
 ```
 
-### @midnight-ntwrk/types
+### @midnight-ntwrk/midnight-js-types
 
 ```diff
   interface MidnightProvider {
--   submitTx(tx: Transaction): TransactionId;
-+   submitTx(tx: Transaction): Promise<TransactionId>;
+-   submitTx(tx: FinalizedTransaction): TransactionId;
++   submitTx(tx: FinalizedTransaction): Promise<TransactionId>;
   }
 
   interface WalletProvider {
-    balanceTx<T>(
-      recipe: ProvingRecipe<T>
--   ): Promise<BalancedProvingRecipe<T>>;
-+   ): Promise<BalancedProvingRecipe<T> | BalanceTransactionToProve>;
+-   balanceTx(tx: UnprovenTransaction): Promise<BalancedProvingRecipe>;
++   balanceTx(tx: UnprovenTransaction, newCoins?: ShieldedCoinInfo[], ttl?: Date): Promise<BalancedProvingRecipe>;
   }
 
-+ type BalanceTransactionToProve = {
-+   type: 'BalanceTransactionToProve';
-+   transaction: Transaction;
-+   metadata: {
-+     requiredBalance: bigint;
-+     availableBalance: bigint;
-+   };
++ type TransactionToProve = {
++   readonly type: 'TransactionToProve';
++   readonly transaction: UnprovenTransaction;
++ };
+
++ type BalanceTransactionToProve<TTransaction> = {
++   readonly type: 'BalanceTransactionToProve';
++   readonly transactionToProve: UnprovenTransaction;
++   readonly transactionToBalance: TTransaction;
++ };
+
++ type NothingToProve<TTransaction> = {
++   readonly type: 'NothingToProve';
++   readonly transaction: TTransaction;
 + };
 
 - enum NetworkId {
@@ -328,7 +345,4 @@ interface CircuitContext {
 -   Devnet = 'devnet'
 - }
 + // networkId is now plain string type
-+ interface Config {
-+   networkId: string; // Free-form network identifier
-+ }
 ```
