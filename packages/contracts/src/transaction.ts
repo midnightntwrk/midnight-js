@@ -44,7 +44,7 @@ export type ScopedTransactionOptions = {
 
 export const withContractScopedTransaction: <
   C extends Contract.Contract.Any,
-  ICK extends Contract.Contract.ImpureCircuitId<C>
+  ICK extends Contract.Contract.ImpureCircuitId<C> = Contract.Contract.ImpureCircuitId<C>
 >(
   providers: ContractProviders<C, ICK>,
   fn: (txCtx: TransactionContext<C, ICK>) => Promise<void>,

@@ -36,6 +36,28 @@ export type SubmitCallTxProviders<C extends Contract.Contract.Any, ICK extends C
   | ContractProviders<C>
   | SubmitTxProviders<C, ICK>;
 
+export async function submitCallTx<C extends Contract.Contract<undefined>, ICK extends Contract.Contract.ImpureCircuitId<C>>(
+  providers: SubmitTxProviders<C, ICK>,
+  options: CallTxOptionsBase<C, ICK>
+): Promise<FinalizedCallTxData<C, ICK>>;
+
+export async function submitCallTx<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
+  providers: ContractProviders<C>,
+  options: CallTxOptionsWithPrivateStateId<C, ICK>
+): Promise<FinalizedCallTxData<C, ICK>>;
+
+export async function submitCallTx<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
+  providers: ContractProviders<C>,
+  options: CallTxOptionsWithPrivateStateId<C, ICK>,
+  transactionContext: TransactionContext<C, ICK>
+): Promise<CallResult<C, ICK>>;
+
+export async function submitCallTx<C extends Contract.Contract<undefined>, ICK extends Contract.Contract.ImpureCircuitId<C>>(
+  providers: SubmitTxProviders<C, ICK>,
+  options: CallTxOptionsBase<C, ICK>,
+  transactionContext: TransactionContext<C, ICK>
+): Promise<CallResult<C, ICK>>;
+
  /**
  * Creates and submits a transaction for the invocation of a circuit on a given contract.
  *
@@ -61,6 +83,8 @@ export type SubmitCallTxProviders<C extends Contract.Contract.Any, ICK extends C
  *
  * @param providers The providers used to manage the invocation lifecycle.
  * @param options Configuration.
+ * @param transactionContext Optional scoped transaction context to participate in an
+ *        existing transaction scope.
  *
  * @returns A `Promise` that resolves with the finalized transaction data for the invocation of
  *         `circuitId` on `contract` with the given `args`; or rejects with an error if the invocation fails.
@@ -68,22 +92,6 @@ export type SubmitCallTxProviders<C extends Contract.Contract.Any, ICK extends C
  * @throws {CallTxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data and circuit ID for debugging.
  */
-export async function submitCallTx<C extends Contract.Contract<undefined>, ICK extends Contract.Contract.ImpureCircuitId<C>>(
-  providers: SubmitTxProviders<C, ICK>,
-  options: CallTxOptionsBase<C, ICK>
-): Promise<FinalizedCallTxData<C, ICK>>;
-
-export async function submitCallTx<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
-  providers: ContractProviders<C>,
-  options: CallTxOptionsWithPrivateStateId<C, ICK>
-): Promise<FinalizedCallTxData<C, ICK>>;
-
-export async function submitCallTx<C extends Contract.Contract<undefined>, ICK extends Contract.Contract.ImpureCircuitId<C>>(
-  providers: SubmitTxProviders<C, ICK>,
-  options: CallTxOptionsBase<C, ICK>,
-  transactionContext: TransactionContext<C, ICK>
-): Promise<CallResult<C, ICK>>;
-
 export async function submitCallTx<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
   providers: SubmitCallTxProviders<C, ICK>,
   options: CallTxOptions<C, ICK>,
