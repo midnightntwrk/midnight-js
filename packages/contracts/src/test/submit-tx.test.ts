@@ -14,6 +14,7 @@
  */
 
 import type { Contract } from '@midnight-ntwrk/compact-js';
+import { type ShieldedCoinInfo } from '@midnight-ntwrk/ledger-v6';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { submitTx, submitTxAsync, type SubmitTxOptions } from '../submit-tx';
@@ -179,7 +180,7 @@ describe('submit-tx', () => {
 
       it('should handle newCoins parameter', async () => {
         const mockRecipe = { type: 'TransactionToProve' as const, transaction: mockProvenTx };
-        const mockNewCoins = [{ coinId: 'coin1' }];
+        const mockNewCoins = [] as ShieldedCoinInfo[];
         const expectedTxId = 'test-tx-id-coins';
 
         mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue(mockRecipe);
@@ -188,7 +189,7 @@ describe('submit-tx', () => {
 
         const options: SubmitTxOptions<Contract.ImpureCircuitId<Contract.Any>> = {
           unprovenTx: mockUnprovenTx,
-          newCoins: mockNewCoins as any // eslint-disable-line @typescript-eslint/no-explicit-any
+          newCoins: mockNewCoins
         };
 
         const result = await submitTxAsync(mockProviders, options);
