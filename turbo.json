@@ -1,14 +1,13 @@
 {
   "$schema": "https://turbo.build/schema.v2.json",
   "envMode": "loose",
-  "globalDependencies": ["yarn.lock"],
   "globalEnv": ["COMPACTC_VERSION"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "outputLogs": "new-only",
-      "inputs": ["src/**/*.ts", "!src/**/*.test.ts", "src/**/*.compact", "test/**/*.compact"],
-      "outputs": ["dist/**", "build/**", "src/**/managed/**", "test/**/managed/**"]
+      "inputs": ["src/**/*.ts", "!src/**/*.test.ts", "src/**/*.compact"],
+      "outputs": ["dist/**", "build/**", "src/**/managed/**"]
     },
     "clean": {
       "cache": false

@@ -56,9 +56,9 @@ jobs:
             **/node_modules
             ~/.yarn
             .turbo
-          key: turbo-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}-${{ hashFiles('.github/env/global.env') }}
+          key: turbo-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
           restore-keys: |
-            turbo-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-
+            turbo-${{ runner.os }}-
 
       - name: Install dependencies
         run: yarn install --immutable
