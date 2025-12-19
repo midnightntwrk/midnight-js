@@ -51,6 +51,7 @@ if (!compactcVersion) {
 }
 
 const targetCompactDir = versionManager.getVersionDir(compactcVersion);
+const compactcVersionUrlEncoded = encodeURIComponent(compactcVersion);
 console.log(`Target directory: ${targetCompactDir}`);
 
 if (shouldSkipDownload(targetCompactDir, options.force)) {
@@ -70,7 +71,7 @@ const fetchCompact = async (): Promise<void> => {
   }
 
   type Release = { assets_url: string }
-  const urlString = `https://api.github.com/repos/midnight-ntwrk/artifacts/releases/tags/compactc-v${compactcVersion}`;
+  const urlString = `https://api.github.com/repos/midnight-ntwrk/artifacts/releases/tags/compactc-v${compactcVersionUrlEncoded}`;
   console.log(`Trying to fetch release from: ${urlString}`);
   const release: Release = await fetch(urlString, {
     headers: {
