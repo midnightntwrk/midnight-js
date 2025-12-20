@@ -79,7 +79,7 @@ describe('Scoped Transaction Contract Tests', () => {
     await testEnvironment.shutdown();
   });
 
-  it.skip('should submit scoped transaction that calls circuit in contract [@slow]', async () => {
+  it('should submit scoped transaction that calls circuit in contract [@slow]', async () => {
     const counterValue1 = await api.getCounterLedgerState(providers, contractAddress);
     expect(counterValue1).toBeDefined();
 
@@ -99,17 +99,14 @@ describe('Scoped Transaction Contract Tests', () => {
         await submitCallTx(providers, callTxOptions, txCtx);
       }
     );
-    // const callTxData = await submitCallTx(providers, callTxOptions);
-    // await expectSuccessfulCallTx(
-    //   providers,
-    //   callTxData,
-    //   callTxOptions,
-    //   createPrivateState(privateState1!.privateCounter + 2)
-    // );
     expect(callTxData.private.nextPrivateState.privateCounter).toEqual(privateState1!.privateCounter + 2);
 
     const counterValue2 = await api.getCounterLedgerState(providers, contractAddress);
     expect(counterValue2).toBeDefined();
     expect(counterValue2!).toEqual(counterValue1! + 2n);
+
+    const counterPS = await api.getCounterPrivateState(providers, CounterPrivateStateId);
+    expect(counterPS).toBeDefined();
+    expect(counterPS!.privateCounter).toEqual(privateState1!.privateCounter + 2);
   });
 });

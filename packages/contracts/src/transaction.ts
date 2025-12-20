@@ -17,6 +17,7 @@ import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
 import { type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 
 import { type ContractProviders } from './contract-providers';
+import { type ContractStates,type PublicContractStates } from './get-states';
 import * as Internal from './internal/transaction';
 import type { FinalizedCallTxData, UnsubmittedCallTxData } from './tx-model';
 
@@ -34,6 +35,9 @@ export interface TransactionContext<
     callData: UnsubmittedCallTxData<C, ICK>,
     privateStateId?: PrivateStateId
   ) => void;
+  readonly [Internal.CacheStates]: (states: ContractStates<Contract.Contract.PrivateState<C>> | PublicContractStates) => void;
+
+  getCurrentStates(): ContractStates<Contract.Contract.PrivateState<C>> | PublicContractStates | undefined;
 
   getLastUnsubmittedCallTxDataToTransact(): [UnsubmittedCallTxData<C, ICK>, PrivateStateId?] | undefined;
 }

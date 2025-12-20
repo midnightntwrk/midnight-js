@@ -14,12 +14,14 @@
  */
 
 import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
+import { ZswapOffer as LedgerZswapOffer } from '@midnight-ntwrk/ledger-v6';
 import { type PrivateStateId, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import { type ShieldedCoinInfo } from '@midnight-ntwrk/onchain-runtime-v1';
+import { ChargedState,type ShieldedCoinInfo } from '@midnight-ntwrk/onchain-runtime-v1';
 
 import { type CallResult } from '../call';
 import { type ContractProviders } from '../contract-providers';
 import { CallTxFailedError } from '../errors';
+import { type ContractStates,type PublicContractStates } from '../get-states';
 import { submitTx, type SubmitTxOptions } from '../submit-tx';
 import type * as Transaction from '../transaction';
 import { type FinalizedCallTxData, type UnsubmittedCallTxData } from '../tx-model';
@@ -30,6 +32,8 @@ export const TypeId: Transaction.TypeId = Symbol.for('@midnight-ntwrk/midnight-j
 export const Submit = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/Submit');
 /** @internal */
 export const MergeUnsubmittedCallTxData = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/MergeUnsubmittedCallTxData');
+/** @internal */
+export const CacheStates = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/CacheStates');
 
 const mergeSubmitTxOptions = <ICK extends Contract.Contract.ImpureCircuitId<Contract.Contract.Any>>(
   current: SubmitTxOptions<ICK> | undefined,
@@ -71,12 +75,17 @@ export class TransactionContextImpl<
   readonly providers: ContractProviders<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   readonly options?: Transaction.ScopedTransactionOptions;
 
+  currentStates: ContractStates<Contract.Contract.PrivateState<C>> | PublicContractStates | undefined = undefined;
   currentUnsubmittedCall: [callTxData: UnsubmittedCallTxData<C, ICK>, privateStateId?: PrivateStateId] | undefined;
   submitTxOptions: SubmitTxOptions<ICK> | undefined = undefined;
   
   constructor(providers: ContractProviders<C, ICK>, options?: Transaction.ScopedTransactionOptions) {  
     this.providers = providers;
     this.options = options;
+  }
+
+  getCurrentStates(): ContractStates<Contract.Contract.PrivateState<C>> | PublicContractStates | undefined {
+    return this.currentStates;
   }
 
   getLastUnsubmittedCallTxDataToTransact(): [UnsubmittedCallTxData<C, ICK>, PrivateStateId?] | undefined {
@@ -104,6 +113,10 @@ export class TransactionContextImpl<
     }
   }
 
+  [CacheStates](states: ContractStates<Contract.Contract.PrivateState<C>> | PublicContractStates): void {
+    this.currentStates = states;
+  }
+
   [MergeUnsubmittedCallTxData](circuitId: ICK, callData: UnsubmittedCallTxData<C, ICK>, privateStateId?: PrivateStateId): void {
     this.currentUnsubmittedCall = [callData, privateStateId];
     this.submitTxOptions = mergeSubmitTxOptions(
@@ -114,6 +127,15 @@ export class TransactionContextImpl<
         circuitId
        }
     );
+
+    const privateState = callData.private.nextPrivateState;
+    const contractState = this.currentStates!.contractState;
+    contractState.data = new ChargedState(callData.public.nextContractState);
+    const [zswapChainState] = callData.private.unprovenTx.guaranteedOffer
+      ? this.currentStates!.zswapChainState.tryApply(LedgerZswapOffer.deserialize('pre-proof', callData.private.unprovenTx.guaranteedOffer!.serialize()))
+      : [this.currentStates!.zswapChainState];
+
+    this[CacheStates]({ contractState, zswapChainState, privateState });
   }
 }
 
@@ -203,9 +225,11 @@ export const scoped: {
       }
     } as CallResult<C, ICK>;
   } catch (err: unknown) {
-    if (err instanceof CallTxFailedError) {
+    // Rethrow known call transaction failures and errors occurring within an outer transaction context...
+    if (err instanceof CallTxFailedError || outerTxCtx) {
       throw err;
     }
+    // ...otherwise, wrap and rethrow errors occurring during submission at the root transaction context.
     const submitErr = new Error(
       `Unexpected error submitting scoped transaction '${options?.scopeName ?? '<unnamed>'}': ${String(err)}`,
       { cause: err }

@@ -116,7 +116,7 @@ export async function submitCallTx<C extends Contract.Contract.Any, ICK extends 
     Transaction.mergeUnsubmittedCallTxData(
       txCtx,
       options.circuitId,
-      await createUnprovenCallTx(providers, options),
+      await createUnprovenCallTx(providers, options, txCtx),
       hasPrivateStateId ? options.privateStateId : undefined
     );
   };
