@@ -106,7 +106,11 @@ describe('submit-call-tx', () => {
     result: FinalizedCallTxData<Contract.Any, Contract.ImpureCircuitId<Contract.Any>>,
     options: CallTxOptions<Contract.Any, Contract.ImpureCircuitId<Contract.Any>>
   ) => {
-    expect(createUnprovenCallTx).toHaveBeenCalledWith(mockProviders, options);
+    expect(createUnprovenCallTx).toHaveBeenCalledWith(
+      mockProviders, 
+      options,
+      expect.anything() // Ignore transaction context.
+    );
     expect(submitTx).toHaveBeenCalledWith(mockProviders, {
       unprovenTx: mockUnprovenCallTxData.private.unprovenTx,
       newCoins: mockUnprovenCallTxData.private.newCoins,
@@ -214,7 +218,7 @@ describe('submit-call-tx', () => {
         });
 
         expect(mockProviders.privateStateProvider.set).toHaveBeenCalledWith(mockPrivateStateId, nextPrivateState_2);
-        expect(createUnprovenCallTx).toHaveBeenCalledWith(mockProviders, options);
+        expect(createUnprovenCallTx).toHaveBeenCalledWith(mockProviders, options, expect.anything());
         expect(result).toEqual({
           private: mockUnprovenCallTxData_2.private,
           public: {
@@ -409,7 +413,7 @@ describe('submit-call-tx', () => {
 
         const result = await submitCallTx(mockProviders, options);
 
-        expect(createUnprovenCallTx).toHaveBeenCalledWith(mockProviders, options);
+        expect(createUnprovenCallTx).toHaveBeenCalledWith(mockProviders, options, expect.anything());
         verifySuccessfulCall(mockUnprovenCallTxData, mockFinalizedTxData, result, options);
       });
     });

@@ -127,7 +127,11 @@ export class TransactionContextImpl<
         circuitId
        }
     );
+    
+    // If there is no currently active state, then return...
+    if (!this.currentStates) return;
 
+    // ...otherwise apply the changes in `callData` to the cached state.
     const privateState = callData.private.nextPrivateState;
     const contractState = this.currentStates!.contractState;
     contractState.data = new ChargedState(callData.public.nextContractState);
