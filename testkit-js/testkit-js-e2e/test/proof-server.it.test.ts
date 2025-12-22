@@ -120,7 +120,8 @@ describe('Proof server integration', () => {
       expect(contractActions[0]).toBeInstanceOf(ContractDeploy);
     }
     const provenCallTx = await proofProvider.proveTx(unprovenCallTx, { zkConfig });
-    const contractActionsCall = provenCallTx.intents?.get(1)?.actions;
+    expect(provenCallTx.intents?.size ?? 0).toEqual(1);
+    const contractActionsCall = [...provenCallTx.intents!.entries()][0][1].actions;
     expect(contractActionsCall?.length).toEqual(1);
     if (contractActionsCall) {
       expect(contractActionsCall[0]).toBeInstanceOf(ContractCall);
@@ -191,7 +192,8 @@ describe('Proof server integration', () => {
     expect(results).toHaveLength(numTxsToProve);
     results.forEach((result) => {
       expect(result).toBeDefined();
-      const contractActions = result.intents?.get(1)?.actions;
+      expect(result.intents?.size ?? 0).toEqual(1);
+      const contractActions = [...result.intents!.entries()][0][1].actions;
       expect(contractActions).toBeDefined();
       if (contractActions) {
         expect(contractActions).toHaveLength(1);
