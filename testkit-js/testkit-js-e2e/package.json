@@ -47,6 +47,9 @@
   },
   "devDependencies": {
     "@midnight-ntwrk/midnight-js-compact": "workspace:*",
+    "@midnight-ntwrk/midnight-js-fetch-zk-config-provider": "workspace:*",
+    "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*",
+    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "workspace:*",
     "@types/ws": "^8.18.1",
     "@vitest/runner": "^4.0.0",
     "allure-commandline": "^2.34.1",
