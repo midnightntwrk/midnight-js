@@ -25,13 +25,11 @@ import path from 'path';
 import { SLOW_TEST_TIMEOUT } from '@/constants';
 import {
   CompiledCounter,
-  type CounterPrivateState,
   createInitialPrivateState,
   witnesses
 } from '@/contract';
-import type { Ledger } from '@/contract/managed/counter/contract/index.js';
 import { CounterConfiguration } from '@/counter-api';
-import type { CounterContract, CounterProviders } from '@/counter-types';
+import type { CounterProviders } from '@/counter-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contract-builder-e2e_${new Date().toISOString()}.log`)
@@ -58,12 +56,9 @@ describe('Contract Builder E2E Tests', () => {
 
   describe('Test 1: Deploy and increment counter using contract-builder', () => {
     it('should deploy counter contract and increment the value', async () => {
-      const contractInstance: CounterContract = new CompiledCounter.Contract(witnesses);
+      const contractInstance = new CompiledCounter.Contract(witnesses);
 
-      const adapter = await createContractAdapter<CounterContract, Ledger, CounterPrivateState>(
-        contractInstance
-      )
-        .withWitnesses(witnesses)
+      const adapter = await createContractAdapter(contractInstance, witnesses)
         .withPrivateState({
           stateId: 'test-counter-1',
           initialState: createInitialPrivateState(0)
@@ -90,12 +85,9 @@ describe('Contract Builder E2E Tests', () => {
 
   describe('Test 2: Private state management with contract-builder', () => {
     it('should manage private state updates correctly', async () => {
-      const contractInstance: CounterContract = new CompiledCounter.Contract(witnesses);
+      const contractInstance = new CompiledCounter.Contract(witnesses);
 
-      const adapter = await createContractAdapter<CounterContract, Ledger, CounterPrivateState>(
-        contractInstance
-      )
-        .withWitnesses(witnesses)
+      const adapter = await createContractAdapter(contractInstance, witnesses)
         .withPrivateState({
           stateId: 'test-counter-2',
           initialState: createInitialPrivateState(10)
@@ -118,12 +110,9 @@ describe('Contract Builder E2E Tests', () => {
     }, SLOW_TEST_TIMEOUT);
 
     it('should handle multiple increments correctly', async () => {
-      const contractInstance: CounterContract = new CompiledCounter.Contract(witnesses);
+      const contractInstance = new CompiledCounter.Contract(witnesses);
 
-      const adapter = await createContractAdapter<CounterContract, Ledger, CounterPrivateState>(
-        contractInstance
-      )
-        .withWitnesses(witnesses)
+      const adapter = await createContractAdapter(contractInstance, witnesses)
         .withPrivateState({
           stateId: 'test-counter-3',
           initialState: createInitialPrivateState(0)
@@ -141,13 +130,10 @@ describe('Contract Builder E2E Tests', () => {
 
   describe('Test 3: Connect to deployed contract', () => {
     it('should connect to existing contract and maintain state', async () => {
-      const contractInstance1: CounterContract = new CompiledCounter.Contract(witnesses);
+      const contractInstance1 = new CompiledCounter.Contract(witnesses);
 
       // Deploy contract first
-      const adapter1 = await createContractAdapter<CounterContract, Ledger, CounterPrivateState>(
-        contractInstance1
-      )
-        .withWitnesses(witnesses)
+      const adapter1 = await createContractAdapter(contractInstance1, witnesses)
         .withPrivateState({
           stateId: 'shared-counter-state',
           initialState: createInitialPrivateState(0)
@@ -168,12 +154,9 @@ describe('Contract Builder E2E Tests', () => {
       expect(state1?.privateCounter).toBe(3);
 
       // Connect to the same contract with a new adapter instance
-      const contractInstance2: CounterContract = new CompiledCounter.Contract(witnesses);
+      const contractInstance2 = new CompiledCounter.Contract(witnesses);
 
-      const adapter2 = await createContractAdapter<CounterContract, Ledger, CounterPrivateState>(
-        contractInstance2
-      )
-        .withWitnesses(witnesses)
+      const adapter2 = await createContractAdapter(contractInstance2, witnesses)
         .withPrivateState({
           stateId: 'shared-counter-state',
           initialState: createInitialPrivateState(0)

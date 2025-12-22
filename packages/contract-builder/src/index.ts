@@ -37,12 +37,19 @@ export type {
   ExtractPrivateStateFromWitness,
   FunctionProperties,
   FunctionPropertyNames,
+  InferCircuits,
+  InferContractInterface,
+  InferImpureCircuits,
   InferLedger,
+  InferLedgerFromContract,
   InferPrivateState,
+  InferPrivateStateFromContract,
   NonNullish,
   PartialKeys,
   Prettify,
+  RemoveContextParameter,
   RequireKeys,
+  TransformCircuitMethods,
   UnwrapPromise} from './types/type-utils.js';
 
 // Config exports

@@ -135,8 +135,23 @@ export class ContractAdapter<TContract, TPrivateState = undefined> {
 
         // Forward to the proxied contract's callTx methods (direct access)
         const callTx = target.callTx;
-        if (callTx && typeof callTx === 'object' && prop in callTx) {
-          return (callTx as Record<string | symbol, unknown>)[prop];
+        if (callTx && typeof callTx === 'object') {
+          // First check if the property exists directly on callTx
+          if (prop in callTx) {
+            return (callTx as Record<string | symbol, unknown>)[prop];
+          }
+
+          // For compiled contracts, check if the property exists in the circuits object
+          const circuits = (callTx as { circuits?: Record<string | symbol, unknown> }).circuits;
+          if (circuits && typeof circuits === 'object' && prop in circuits) {
+            return circuits[prop];
+          }
+
+          // Also check impureCircuits as a fallback
+          const impureCircuits = (callTx as { impureCircuits?: Record<string | symbol, unknown> }).impureCircuits;
+          if (impureCircuits && typeof impureCircuits === 'object' && prop in impureCircuits) {
+            return impureCircuits[prop];
+          }
         }
 
         // Forward to target

@@ -132,3 +132,90 @@ export type ExtractLedgerFromWitness<W> = W extends Record<
     ? L
     : unknown
   : unknown;
+
+/**
+ * Extracts the circuits property from a compiled contract class
+ * Works with compiled contracts from the Compact compiler
+ */
+export type InferCircuits<T> = T extends { circuits: infer C } ? C : never;
+
+/**
+ * Extracts the impure circuits property from a compiled contract class
+ */
+export type InferImpureCircuits<T> = T extends { impureCircuits: infer C } ? C : never;
+
+/**
+ * Removes the first parameter from a function type (the context parameter)
+ * and returns a function with the remaining parameters
+ */
+export type RemoveContextParameter<T> = T extends (
+  context: any,
+  ...args: infer P
+) => infer R
+  ? (...args: P) => R
+  : T extends (context: any) => infer R
+    ? () => R
+    : T;
+
+/**
+ * Transforms all circuit methods in a circuits interface by removing the context parameter
+ * This makes circuit methods compatible with the ContractAdapter API
+ */
+export type TransformCircuitMethods<T> = {
+  [K in keyof T]: RemoveContextParameter<T[K]>;
+};
+
+/**
+ * Infers a contract interface from a compiled contract class
+ * Extracts circuit methods and transforms them to remove the context parameter
+ *
+ * @example
+ * ```typescript
+ * import { CompiledCounter } from './managed/counter/contract';
+ * import type { CounterPrivateState } from './witnesses';
+ *
+ * // Infer the contract interface from the compiled contract
+ * type CounterContract = InferContractInterface<CompiledCounter.Contract<CounterPrivateState>>;
+ *
+ * // CounterContract will have: increment(), decrement(amount: bigint), reset()
+ * const adapter = await createContractAdapter<CounterContract, CounterPrivateState>(instance)
+ *   .deploy(providers);
+ *
+ * await adapter.increment(); // Type-safe!
+ * ```
+ */
+export type InferContractInterface<T> = T extends { circuits: infer C }
+  ? TransformCircuitMethods<C>
+  : T extends { impureCircuits: infer C }
+    ? TransformCircuitMethods<C>
+    : T;
+
+/**
+ * Extracts the private state type parameter from a contract class
+ * Works with contracts of the form: Contract<PS, ...>
+ */
+export type InferPrivateStateFromContract<T> = T extends {
+  circuits: Record<string, (context: { privateState: infer PS }) => unknown>;
+}
+  ? PS
+  : T extends {
+      circuits: Record<string, (context: { privateState: infer PS; [key: string]: unknown }) => unknown>;
+    }
+    ? PS
+    : T extends { witnesses: Record<string, (context: { privateState: infer PS }) => unknown> }
+      ? PS
+      : T extends { witnesses: Record<string, (context: { privateState: infer PS; [key: string]: unknown }) => unknown> }
+        ? PS
+        : undefined;
+
+/**
+ * Extracts the ledger type from a contract instance
+ * Works by extracting from circuit or witness context
+ */
+export type InferLedgerFromContract<T> = T extends {
+  circuits: Record<string, (context: { ledger: infer L; [key: string]: unknown }) => unknown>;
+}
+  ? L
+  : T extends { witnesses: Record<string, (context: { ledger: infer L; [key: string]: unknown }) => unknown> }
+    ? L
+    : unknown;

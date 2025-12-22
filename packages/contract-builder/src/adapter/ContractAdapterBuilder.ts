@@ -31,7 +31,7 @@ import type { NetworkConfig, NetworkPreset, ProviderPresetConfig, WalletConfig }
 import type { AdapterConfig, ContractAdapter as IContractAdapter } from '../types/adapter-types.js';
 import type { ContractProviders, DeployedContract, Logger, RetryConfig } from '../types/contract-types.js';
 import type { ContractInstance, DeployOptions, ErrorHandler, FindContractOptions } from '../types/external-contract-types.js';
-import type { ExtractLedgerFromWitness, ExtractPrivateStateFromWitness } from '../types/type-utils.js';
+import type { ExtractLedgerFromWitness, ExtractPrivateStateFromWitness, InferContractInterface, InferLedgerFromContract, InferPrivateStateFromContract } from '../types/type-utils.js';
 import type { Witnesses } from '../types/witness-types.js';
 import { ContractAdapter } from './ContractAdapter.js';
 import { WitnessInterceptor } from './WitnessInterceptor.js';
@@ -433,6 +433,48 @@ export class ContractAdapterBuilder<TContract, TLedger = unknown, TPrivateState 
 }
 
 /**
+ * Factory function with automatic type inference from contract instance
+ *
+ * @typeParam TContractInstance - The contract instance type (inferred automatically)
+ *
+ * @param contractInstance - The compiled contract instance
+ * @returns A new ContractAdapterBuilder with fully inferred types
+ *
+ * @remarks
+ * This overload automatically infers:
+ * - Contract interface (circuit methods) from the contract's circuits property
+ * - Ledger type from the circuit context
+ * - Private state type from the circuit context
+ *
+ * @example
+ * ```typescript
+ * import { CompiledCounter } from './managed/counter/contract';
+ * import { witnesses } from './witnesses';
+ *
+ * // Full automatic type inference - no manual type definitions needed!
+ * const contractInstance = new CompiledCounter.Contract(witnesses);
+ * const adapter = await createContractAdapter(contractInstance)
+ *   .withWitnesses(witnesses)
+ *   .withPrivateState({
+ *     initialState: { privateCounter: 0 }
+ *   })
+ *   .deploy(providers);
+ *
+ * // All methods are fully typed automatically!
+ * await adapter.increment(); // ✓ Type-safe
+ * await adapter.decrement(5n); // ✓ Type-safe
+ * const state = await adapter.getPrivateState(); // ✓ Returns correct type
+ * ```
+ */
+export function createContractAdapter<TContractInstance extends ContractInstance>(
+  contractInstance: TContractInstance
+): ContractAdapterBuilder<
+  InferContractInterface<TContractInstance>,
+  InferLedgerFromContract<TContractInstance>,
+  InferPrivateStateFromContract<TContractInstance>
+>;
+
+/**
  * Factory function to create a ContractAdapterBuilder with explicit type parameters
  *
  * @typeParam TContract - The contract interface type
@@ -443,24 +485,16 @@ export class ContractAdapterBuilder<TContract, TLedger = unknown, TPrivateState 
  * @returns A new ContractAdapterBuilder instance
  *
  * @remarks
- * This is the primary entry point for creating contract adapters.
- * Use type parameters to enable full type safety and autocomplete.
+ * Use this overload when you need explicit control over types or when automatic
+ * inference doesn't work for your use case.
  *
  * @example
  * ```typescript
- * // Without type parameters (basic usage)
- * const adapter = await createContractAdapter(contractInstance)
- *   .deploy(providers);
- *
- * // With explicit type parameters (full type safety)
+ * // With explicit type parameters (manual control)
  * const adapter = await createContractAdapter<MyContract, Ledger, MyState>(contractInstance)
  *   .withWitnesses(witnesses)
  *   .withPrivateState({ initialState: { counter: 0 } })
  *   .deploy(providers);
- *
- * // Type-safe method calls
- * await adapter.increment(); // Autocomplete works!
- * const state = await adapter.getPrivateState(); // Returns MyState | null
  * ```
  */
 export function createContractAdapter<TContract, TLedger = unknown, TPrivateState = undefined>(
@@ -468,40 +502,54 @@ export function createContractAdapter<TContract, TLedger = unknown, TPrivateStat
 ): ContractAdapterBuilder<TContract, TLedger, TPrivateState>;
 
 /**
- * Factory function to create a ContractAdapterBuilder with automatic type inference
+ * Factory function to create a ContractAdapterBuilder with automatic type inference from witnesses
  *
- * @typeParam TContract - The contract interface type
- * @typeParam W - The witnesses type (used for automatic type inference)
+ * @typeParam TContractInstance - The contract instance type (inferred automatically)
+ * @typeParam W - The witnesses type (inferred automatically)
  *
  * @param contractInstance - The contract instance to wrap
  * @param witnesses - Witness functions for type inference
- * @returns A new ContractAdapterBuilder instance with inferred types
+ * @returns A new ContractAdapterBuilder instance with fully inferred types
  *
  * @remarks
- * This overload automatically infers TLedger and TPrivateState from the witnesses parameter.
- * Reduces boilerplate by eliminating the need for explicit type parameters.
+ * This overload automatically infers all types from the contract instance and witnesses:
+ * - Contract interface from the contract's circuits property
+ * - Ledger type from witness context
+ * - Private state type from witness context
+ *
+ * **This is the recommended approach - no manual type definitions needed!**
  *
  * @example
  * ```typescript
- * // Automatic type inference from witnesses
- * const adapter = await createContractAdapter(
- *   new CompiledCounter.Contract(witnesses),
- *   witnesses  // TLedger and TPrivateState inferred from this
- * )
+ * import { CompiledCounter } from './managed/counter/contract';
+ * import { witnesses } from './witnesses';
+ *
+ * // Full automatic type inference - no type files needed!
+ * const contractInstance = new CompiledCounter.Contract(witnesses);
+ * const adapter = await createContractAdapter(contractInstance, witnesses)
  *   .withPrivateState({
  *     stateId: 'my-counter',
- *     initialState: { counter: 0 }
+ *     initialState: { privateCounter: 0 }
  *   })
  *   .deploy(providers);
  *
- * // No need for counter-types.ts file!
- * // Types are automatically inferred from witness signatures
+ * // All methods fully typed automatically!
+ * await adapter.increment(); // ✓ Type-safe
+ * await adapter.decrement(5n); // ✓ Type-safe
+ * const state = await adapter.getPrivateState(); // ✓ Returns CounterPrivateState | null
  * ```
  */
-export function createContractAdapter<TContract, W extends Witnesses<any, any>>(
-  contractInstance: ContractInstance,
+export function createContractAdapter<
+  TContractInstance extends ContractInstance,
+  W extends Witnesses<any, any>
+>(
+  contractInstance: TContractInstance,
   witnesses: W
-): ContractAdapterBuilder<TContract, ExtractLedgerFromWitness<W>, ExtractPrivateStateFromWitness<W>>;
+): ContractAdapterBuilder<
+  InferContractInterface<TContractInstance>,
+  ExtractLedgerFromWitness<W>,
+  ExtractPrivateStateFromWitness<W>
+>;
 
 /**
  * Implementation of createContractAdapter factory function
