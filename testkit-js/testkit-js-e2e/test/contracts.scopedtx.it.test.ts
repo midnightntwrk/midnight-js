@@ -29,7 +29,6 @@ import {
   initializeMidnightProviders} from '@midnight-ntwrk/testkit-js';
 import path from 'path';
 
-import {CompiledCounterContract } from '@/contract';
 import * as api from '@/counter-api';
 import {
   CIRCUIT_ID_INCREMENT,
@@ -87,7 +86,7 @@ describe('Scoped Transaction Contract Tests', () => {
     expect(privateState1).toBeDefined();
 
     const callTxOptions = {
-      compiledContract: CompiledCounterContract,
+      contract: api.counterContractInstance,
       contractAddress,
       circuitId: CIRCUIT_ID_INCREMENT,
       privateStateId: CounterPrivateStateId
