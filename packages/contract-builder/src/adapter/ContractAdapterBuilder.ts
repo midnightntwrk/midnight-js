@@ -383,13 +383,6 @@ export class ContractAdapterBuilder<TContract, TLedger = unknown, TPrivateState 
         contractAddress
       };
 
-      // Type assertion needed due to external library's complex overloads
-      const connected = await (findDeployedContract as unknown as (providers: ContractProviders, options: FindContractOptions) => Promise<unknown>)(providers, findOptions);
-
-      this.logger?.info('Connected to contract successfully', {
-        address: (connected as { address: string }).address
-      });
-
       let privateStateManager: PrivateStateManager<TPrivateState> | undefined;
 
       if (this.privateStateConfig) {
@@ -399,10 +392,20 @@ export class ContractAdapterBuilder<TContract, TLedger = unknown, TPrivateState 
           providers,
           this.logger
         );
+
+        findOptions.privateStateId = privateStateManager.getStateId();
+
         this.logger?.info('Private state configured', {
           stateId: privateStateManager.getStateId()
         });
       }
+
+      // Type assertion needed due to external library's complex overloads
+      const connected = await (findDeployedContract as unknown as (providers: ContractProviders, options: FindContractOptions) => Promise<unknown>)(providers, findOptions);
+
+      this.logger?.info('Connected to contract successfully', {
+        address: (connected as { address: string }).address
+      });
 
       const config: AdapterConfig = {
         logger: this.logger,
