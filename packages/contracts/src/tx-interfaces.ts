@@ -31,7 +31,7 @@ import { submitRemoveVerifierKeyTx } from './submit-remove-vk-tx';
 import { submitReplaceAuthorityTx } from './submit-replace-authority-tx';
 import * as Transaction from './transaction';
 import type { FinalizedCallTxData } from './tx-model';
-import type { CallTxOptions } from './unproven-call-tx';
+import type { CallTxOptions, CallTxOptionsWithPrivateStateId } from './unproven-call-tx';
 
 /**
  * A type that lifts each circuit defined in a contract to a function that builds
@@ -82,10 +82,20 @@ export const createCircuitCallTxInterface = <C extends Contract.Contract.Any>(
   return ContractExecutable.make(compiledContract).getImpureCircuitIds().reduce(
     (acc, circuitId) => ({
       ...acc,
-      [circuitId]: (txCtx?: Transaction.TransactionContext<C>, ...args: Contract.Contract.CircuitParameters<C, typeof circuitId>) =>
-        txCtx && Transaction.isTransactionContext(txCtx)
-        ? submitCallTx(providers, createCallTxOptions(compiledContract, circuitId, contractAddress, privateStateId, args), txCtx)
-        : submitCallTx(providers, createCallTxOptions(compiledContract, circuitId, contractAddress, privateStateId, args))
+      [circuitId]: (...args: unknown[]) => {
+        const txCtx = args.length > 0 && Transaction.isTransactionContext(args[0]) ? args[0] : undefined;
+        const callArgs = !txCtx ? args : args as Contract.Contract.CircuitParameters<C, typeof circuitId>;
+        const callOptions = createCallTxOptions(
+          compiledContract,
+          circuitId,
+          contractAddress,
+          privateStateId,
+          callArgs as Contract.Contract.CircuitParameters<C, typeof circuitId>
+        );
+        return txCtx
+          ? submitCallTx(providers, callOptions as CallTxOptionsWithPrivateStateId<C, typeof circuitId>, txCtx)
+          : submitCallTx(providers, callOptions)
+      }
     }),
     {}
   ) as CircuitCallTxInterface<C>;
