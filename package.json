@@ -1,7 +1,7 @@
 {
   "name": "@midnight-ntwrk/midnight-js",
   "description": "Midnight application development framework",
-  "version": "3.0.0-alpha.9",
+  "version": "3.0.0-alpha.11",
   "packageManager": "yarn@4.10.3",
   "repository": "git@github.com:midnight-ntwrk/artifacts",
   "engines": {
@@ -43,7 +43,7 @@
     "@midnight-ntwrk/compact-runtime": "0.11.0-rc.1",
     "@midnight-ntwrk/ledger-v6": "6.1.0-alpha.6",
     "@midnight-ntwrk/onchain-runtime-v1": "1.0.0-alpha.5",
-    "@midnight-ntwrk/wallet-sdk-facade": "1.0.0-beta.11"
+    "@midnight-ntwrk/wallet-sdk-facade": "1.0.0-beta.12"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.0.0",
@@ -88,7 +88,7 @@
     "typedoc-plugin-markdown": "4.9.0",
     "typescript": "^5.8.2",
     "typescript-eslint": "^8.35.1",
-    "vitest": "^4.0.0"
+    "vitest": "^4.0.15"
   },
   "lint-staged": {
     "*.ts,!compact-js/**/*.ts": "eslint --cache --fix"
