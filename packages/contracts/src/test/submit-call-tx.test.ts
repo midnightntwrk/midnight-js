@@ -179,8 +179,8 @@ describe('submit-call-tx', () => {
       });
 
       it('should successfully submit scoped call transaction and update private state', async () => {
-        const nextPrivateState_1 = { newState: 'updated_1' } as Contract.PrivateState<Contract.Any>;
-        const nextPrivateState_2 = { newState: 'updated_2' } as Contract.PrivateState<Contract.Any>;
+        const nextPrivateState_1 = { newState: 'updated_1' } as PrivateState<Contract>;
+        const nextPrivateState_2 = { newState: 'updated_2' } as PrivateState<Contract>;
         const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
         const { mockFinalizedTxData } = setupSuccessfulMocks();
 
