@@ -67,6 +67,7 @@ export { submitInsertVerifierKeyTx } from './submit-insert-vk-tx';
 export { submitRemoveVerifierKeyTx } from './submit-remove-vk-tx';
 export { submitReplaceAuthorityTx } from './submit-replace-authority-tx';
 export { submitTx, submitTxAsync, SubmitTxOptions, SubmitTxProviders } from './submit-tx';
+export { ScopedTransactionOptions, TransactionContext, withContractScopedTransaction } from './transaction';
 export {
   CircuitCallTxInterface,
   CircuitMaintenanceTxInterface,
