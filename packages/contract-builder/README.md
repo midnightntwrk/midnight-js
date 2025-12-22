@@ -6,12 +6,11 @@ Simplified API for deploying and interacting with Midnight smart contracts.
 
 The Contract Builder provides a fluent, developer-friendly interface for working with Midnight smart contracts. It significantly reduces boilerplate code (85%+ reduction) and provides built-in:
 
-- 🎯 **Intuitive Fluent API** - Chain configuration methods for clean, readable code
-- 🔄 **Automatic Retry Logic** - Configurable retry with exponential backoff
-- 📊 **Built-in Logging** - Integrated logging for debugging and monitoring
-- 🎪 **Event System** - Listen to contract method lifecycle events
-- 🛡️ **Enhanced Error Handling** - Detailed error messages with context
-- 🔍 **Type Safety** - Full TypeScript support with type inference
+- **Intuitive Fluent API** - Chain configuration methods for clean, readable code
+- **Automatic Type Inference** - Zero-boilerplate types from compiled contracts
+- **Automatic Retry Logic** - Configurable retry with exponential backoff
+- **Built-in Logging** - Integrated logging for debugging and monitoring
+- **Type Safety** - Full TypeScript support with complete type inference
 
 ## Installation
 
@@ -21,7 +20,7 @@ yarn add @midnight-ntwrk/contract-builder
 
 ## Quick Start
 
-### 🚀 Simplest Way: Using Default Providers
+### Simplest Way: Using Default Providers
 
 The easiest way to get started is using default providers that work in both Node.js and Browser:
 
@@ -34,7 +33,7 @@ const blockTimeInstance = new CompilerBlockTime.Contract({});
 
 // Deploy with default testnet providers - automatically detects environment!
 const contract = await createContractAdapter(blockTimeInstance)
-  .withDefaultProviders('testnet')  // 🎉 That's it! Providers auto-configured
+  .withDefaultProviders('testnet')  // That's it! Providers auto-configured
   .withLogger(consoleLogger)
   .withRetry({ maxRetries: 3, backoffMs: 1000 })
   .deploy();  // No providers parameter needed!
@@ -172,71 +171,6 @@ const contract = await createContractAdapter(instance)
   .deploy();
 ```
 
-#### `.withErrorHandler(handler: Function)`
-
-Registers a custom error handler for contract operations.
-
-```typescript
-const contract = await createContractAdapter(instance)
-  .withErrorHandler((error) => {
-    console.error('Contract error:', error);
-    // Send to monitoring service, etc.
-  })
-  .deploy(providers);
-```
-
-#### `.on(event: string, handler: Function)`
-
-Registers event listeners for contract method lifecycle.
-
-```typescript
-const contract = await createContractAdapter(instance)
-  .on('call', (event) => {
-    console.log('Method called:', event.methodName, event.args);
-  })
-  .on('success', (event) => {
-    console.log('Method succeeded:', event.methodName, event.result);
-  })
-  .on('error', (event) => {
-    console.error('Method failed:', event.methodName, event.error);
-  })
-  .deploy(providers);
-```
-
-**Available Events:**
-- `call` - Emitted when a contract method is called
-- `success` - Emitted when a method completes successfully
-- `error` - Emitted when a method fails
-
-**Event Objects:**
-
-```typescript
-// MethodCallEvent
-{
-  methodName: string;
-  args: any[];
-  timestamp: number;
-}
-
-// MethodSuccessEvent
-{
-  methodName: string;
-  args: any[];
-  result: any;
-  duration: number;
-  timestamp: number;
-}
-
-// MethodErrorEvent
-{
-  methodName: string;
-  args: any[];
-  error: Error;
-  duration: number;
-  timestamp: number;
-}
-```
-
 #### `.deploy(providers: ContractProviders)`
 
 Deploys the contract and returns an adapter instance.
@@ -266,7 +200,6 @@ The adapter returned by `deploy()` or `connect()` provides:
 - All contract methods from `callTx` are directly accessible
 - `address: string` - Contract address
 - `deployTxData: any` - Deployment transaction data
-- `on(event, handler)` - Register event handlers (can be chained)
 
 ## Advanced Examples
 
@@ -282,19 +215,6 @@ const contract = await createContractAdapter(contractInstance)
     maxRetries: 5,
     backoffMs: 2000,
     exponentialBackoff: true
-  })
-  .withErrorHandler((error) => {
-    // Send to error tracking service
-    errorTracker.report(error);
-  })
-  .on('call', (event) => {
-    console.log(`📞 Calling ${event.methodName}`);
-  })
-  .on('success', (event) => {
-    console.log(`✅ ${event.methodName} completed in ${event.duration}ms`);
-  })
-  .on('error', (event) => {
-    console.error(`❌ ${event.methodName} failed:`, event.error);
   })
   .deploy();  // No providers needed!
 
@@ -336,37 +256,6 @@ const contract = await createContractAdapter(instance)
   .deploy(testnetProviders);
 ```
 
-### Monitoring and Metrics
-
-```typescript
-const metrics = {
-  calls: 0,
-  successes: 0,
-  failures: 0,
-  totalDuration: 0
-};
-
-const contract = await createContractAdapter(instance)
-  .on('call', () => {
-    metrics.calls++;
-  })
-  .on('success', (event) => {
-    metrics.successes++;
-    metrics.totalDuration += event.duration;
-  })
-  .on('error', () => {
-    metrics.failures++;
-  })
-  .deploy(providers);
-
-// Use the contract...
-
-console.log('Metrics:', {
-  ...metrics,
-  averageDuration: metrics.totalDuration / metrics.successes
-});
-```
-
 ### Custom Logger Integration
 
 ```typescript
@@ -396,30 +285,44 @@ const contract = await createContractAdapter(instance)
 await contract.someMethod();
 ```
 
-## Error Handling
+## Automatic Type Inference
 
-The Contract Builder provides enhanced error classes:
+**NEW:** Pass contract instance + witnesses for full automatic type inference - no manual type files needed!
 
 ```typescript
-import {
-  AdapterError,
-  DeploymentError,
-  MethodCallError,
-  RetryExhaustedError,
-  ConfigurationError
-} from '@midnight-ntwrk/contract-builder';
+import { createContractAdapter } from '@midnight-ntwrk/contract-builder';
+import { CompiledCounter, witnesses, createInitialPrivateState } from './contract';
 
-try {
-  await contract.increment();
-} catch (error) {
-  if (error instanceof MethodCallError) {
-    console.error('Method:', error.methodName);
-    console.error('Args:', error.args);
-    console.error('Cause:', error.cause);
-  } else if (error instanceof RetryExhaustedError) {
-    console.error('Failed after', error.attempts, 'attempts');
-  }
-}
+// Everything is typed automatically!
+const instance = new CompiledCounter.Contract(witnesses);
+const adapter = await createContractAdapter(instance, witnesses)
+  .withPrivateState({
+    stateId: 'my-counter',
+    initialState: createInitialPrivateState(0)
+  })
+  .deploy(providers);
+
+// All methods fully typed - no manual type definitions needed
+await adapter.increment();           // ✓ Type-safe
+await adapter.decrement(5n);         // ✓ Type-safe
+const state = await adapter.getPrivateState(); // ✓ Returns { privateCounter: number } | null
+```
+
+**What's inferred:**
+- Circuit methods from compiled contract (with context parameter removed)
+- Ledger type from witness context
+- Private state type from witness context
+
+**Benefits:** Zero boilerplate, always up-to-date, full IDE autocomplete
+
+**Migration:** Delete manual type files (`counter-types.ts`, etc.) and remove type parameters:
+```typescript
+// Before
+const adapter = await createContractAdapter<CounterContract, Ledger, State>(instance)
+  .withWitnesses(witnesses)
+
+// After
+const adapter = await createContractAdapter(instance, witnesses)
 ```
 
 ## Type Safety
@@ -435,11 +338,11 @@ const contract = await createContractAdapter(counterInstance)
   .deploy(providers);
 
 // TypeScript knows about all contract methods
-await contract.increment(); // ✅ Type-safe
-await contract.getValue();   // ✅ Type-safe
-// await contract.nonExistent(); // ❌ TypeScript error!
+await contract.increment(); // Type-safe
+await contract.getValue();   // Type-safe
+// await contract.nonExistent(); // TypeScript error!
 
-// Explicit typing
+// Explicit typing (when needed for library exports, etc.)
 type MyContract = { increment: () => Promise<void> };
 const typedContract: ContractAdapter<MyContract> = contract;
 ```
@@ -503,7 +406,7 @@ await contract.testBlockTimeLt(time);
 ```
 
 **Lines of code: ~7 lines**
-**Code reduction: 80%** 🎉
+**Code reduction: 80%**
 
 ## Migration Guide
 
@@ -546,7 +449,6 @@ await contract.myMethod(arg1, arg2);
 const contract = await createContractAdapter(contractInstance)
   .withLogger(consoleLogger)        // Add logging
   .withRetry({ maxRetries: 3 })     // Add retry logic
-  .on('error', handleError)          // Add error monitoring
   .deploy(providers);
 ```
 
@@ -566,15 +468,18 @@ For issues and questions:
 
 ---
 
-**Phase 1 Implementation Complete** ✅
+## Implementation Status
+
+**Core Features** - Complete
 - Core adapter functionality
 - Fluent API
 - Retry logic
 - Logging integration
-- Event system
 - Comprehensive tests
 
-**Coming in Phase 2:**
+**Advanced Features** - Complete
 - Witnesses support
 - Private state management
 - Auto-generated state IDs
+- **Automatic type inference from compiled contracts** (NEW!)
+- Zero-boilerplate type definitions
