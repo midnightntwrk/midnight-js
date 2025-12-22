@@ -80,3 +80,55 @@ export type RequireAtLeastOne<T, Keys extends keyof T = keyof T> = Pick<T, Exclu
 export type Prettify<T> = {
   [K in keyof T]: T[K];
 } & {};
+
+/**
+ * Infer the private state type from witness context
+ * Extracts TPrivateState from WitnessContext<TLedger, TPrivateState>
+ */
+export type InferPrivateState<W> = W extends Record<
+  string,
+  (context: { privateState: infer PS; ledger: unknown }) => unknown
+>
+  ? PS
+  : W extends Record<string, (context: { privateState: infer PS }) => unknown>
+    ? PS
+    : undefined;
+
+/**
+ * Infer the ledger type from witness context
+ * Extracts TLedger from WitnessContext<TLedger, TPrivateState>
+ */
+export type InferLedger<W> = W extends Record<
+  string,
+  (context: { privateState: unknown; ledger: infer L }) => unknown
+>
+  ? L
+  : W extends Record<string, (context: { ledger: infer L }) => unknown>
+    ? L
+    : unknown;
+
+/**
+ * Extract private state type from first witness function
+ * More reliable inference from actual witness signature
+ */
+export type ExtractPrivateStateFromWitness<W> = W extends Record<
+  infer _K,
+  (context: infer C) => unknown
+>
+  ? C extends { privateState: infer PS }
+    ? PS
+    : undefined
+  : undefined;
+
+/**
+ * Extract ledger type from first witness function
+ * More reliable inference from actual witness signature
+ */
+export type ExtractLedgerFromWitness<W> = W extends Record<
+  infer _K,
+  (context: infer C) => unknown
+>
+  ? C extends { ledger: infer L }
+    ? L
+    : unknown
+  : unknown;

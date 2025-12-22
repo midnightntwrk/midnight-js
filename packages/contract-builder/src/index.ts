@@ -33,8 +33,12 @@ export type {
 
 // Utility types for advanced TypeScript usage
 export type {
+  ExtractLedgerFromWitness,
+  ExtractPrivateStateFromWitness,
   FunctionProperties,
   FunctionPropertyNames,
+  InferLedger,
+  InferPrivateState,
   NonNullish,
   PartialKeys,
   Prettify,

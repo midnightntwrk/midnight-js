@@ -31,6 +31,7 @@ import type { NetworkConfig, NetworkPreset, ProviderPresetConfig, WalletConfig }
 import type { AdapterConfig, ContractAdapter as IContractAdapter } from '../types/adapter-types.js';
 import type { ContractProviders, DeployedContract, Logger, RetryConfig } from '../types/contract-types.js';
 import type { ContractInstance, DeployOptions, ErrorHandler, FindContractOptions } from '../types/external-contract-types.js';
+import type { ExtractLedgerFromWitness, ExtractPrivateStateFromWitness } from '../types/type-utils.js';
 import type { Witnesses } from '../types/witness-types.js';
 import { ContractAdapter } from './ContractAdapter.js';
 import { WitnessInterceptor } from './WitnessInterceptor.js';
@@ -432,11 +433,11 @@ export class ContractAdapterBuilder<TContract, TLedger = unknown, TPrivateState 
 }
 
 /**
- * Factory function to create a ContractAdapterBuilder
+ * Factory function to create a ContractAdapterBuilder with explicit type parameters
  *
  * @typeParam TContract - The contract interface type
- * @typeParam TLedger - The ledger type for witness context (defaults to any)
- * @typeParam TPrivateState - The private state type (undefined if no private state)
+ * @typeParam TLedger - The ledger type for witness context (defaults to unknown)
+ * @typeParam TPrivateState - The private state type (defaults to undefined)
  *
  * @param contractInstance - The contract instance to wrap
  * @returns A new ContractAdapterBuilder instance
@@ -451,7 +452,7 @@ export class ContractAdapterBuilder<TContract, TLedger = unknown, TPrivateState 
  * const adapter = await createContractAdapter(contractInstance)
  *   .deploy(providers);
  *
- * // With type parameters (full type safety)
+ * // With explicit type parameters (full type safety)
  * const adapter = await createContractAdapter<MyContract, Ledger, MyState>(contractInstance)
  *   .withWitnesses(witnesses)
  *   .withPrivateState({ initialState: { counter: 0 } })
@@ -464,6 +465,56 @@ export class ContractAdapterBuilder<TContract, TLedger = unknown, TPrivateState 
  */
 export function createContractAdapter<TContract, TLedger = unknown, TPrivateState = undefined>(
   contractInstance: ContractInstance
+): ContractAdapterBuilder<TContract, TLedger, TPrivateState>;
+
+/**
+ * Factory function to create a ContractAdapterBuilder with automatic type inference
+ *
+ * @typeParam TContract - The contract interface type
+ * @typeParam W - The witnesses type (used for automatic type inference)
+ *
+ * @param contractInstance - The contract instance to wrap
+ * @param witnesses - Witness functions for type inference
+ * @returns A new ContractAdapterBuilder instance with inferred types
+ *
+ * @remarks
+ * This overload automatically infers TLedger and TPrivateState from the witnesses parameter.
+ * Reduces boilerplate by eliminating the need for explicit type parameters.
+ *
+ * @example
+ * ```typescript
+ * // Automatic type inference from witnesses
+ * const adapter = await createContractAdapter(
+ *   new CompiledCounter.Contract(witnesses),
+ *   witnesses  // TLedger and TPrivateState inferred from this
+ * )
+ *   .withPrivateState({
+ *     stateId: 'my-counter',
+ *     initialState: { counter: 0 }
+ *   })
+ *   .deploy(providers);
+ *
+ * // No need for counter-types.ts file!
+ * // Types are automatically inferred from witness signatures
+ * ```
+ */
+export function createContractAdapter<TContract, W extends Witnesses<any, any>>(
+  contractInstance: ContractInstance,
+  witnesses: W
+): ContractAdapterBuilder<TContract, ExtractLedgerFromWitness<W>, ExtractPrivateStateFromWitness<W>>;
+
+/**
+ * Implementation of createContractAdapter factory function
+ */
+export function createContractAdapter<TContract, TLedger = unknown, TPrivateState = undefined>(
+  contractInstance: ContractInstance,
+  witnesses?: Witnesses<TLedger, TPrivateState>
 ): ContractAdapterBuilder<TContract, TLedger, TPrivateState> {
-  return new ContractAdapterBuilder<TContract, TLedger, TPrivateState>(contractInstance);
+  const builder = new ContractAdapterBuilder<TContract, TLedger, TPrivateState>(contractInstance);
+
+  if (witnesses) {
+    builder.withWitnesses(witnesses);
+  }
+
+  return builder;
 }
