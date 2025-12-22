@@ -23,11 +23,13 @@ import {
   type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
+import { type CallResult } from './call';
 import { type ContractProviders } from './contract-providers';
 import { submitCallTx } from './submit-call-tx';
 import { submitInsertVerifierKeyTx } from './submit-insert-vk-tx';
 import { submitRemoveVerifierKeyTx } from './submit-remove-vk-tx';
 import { submitReplaceAuthorityTx } from './submit-replace-authority-tx';
+import * as Transaction from './transaction';
 import type { FinalizedCallTxData } from './tx-model';
 import type { CallTxOptions } from './unproven-call-tx';
 
@@ -36,7 +38,10 @@ import type { CallTxOptions } from './unproven-call-tx';
  * and submits a call transaction.
  */
 export type CircuitCallTxInterface<C extends Contract.Contract.Any> = {
-  [ICK in Contract.Contract.ImpureCircuitId<C>]: (...args: Contract.Contract.CircuitParameters<C, ICK>) => Promise<FinalizedCallTxData<C, ICK>>;
+  [ICK in Contract.Contract.ImpureCircuitId<C>]: {
+    (...args: Contract.Contract.CircuitParameters<C, ICK>): Promise<FinalizedCallTxData<C, ICK>>,
+    (txCtx: Transaction.TransactionContext<C, ICK>, ...args: Contract.Contract.CircuitParameters<C, ICK>): Promise<CallResult<C, ICK>>
+  };
 };
 
 /**
@@ -77,8 +82,10 @@ export const createCircuitCallTxInterface = <C extends Contract.Contract.Any>(
   return ContractExecutable.make(compiledContract).getImpureCircuitIds().reduce(
     (acc, circuitId) => ({
       ...acc,
-      [circuitId]: (...args: Contract.Contract.CircuitParameters<C, typeof circuitId>) =>
-        submitCallTx(providers, createCallTxOptions(compiledContract, circuitId, contractAddress, privateStateId, args))
+      [circuitId]: (txCtx?: Transaction.TransactionContext<C>, ...args: Contract.Contract.CircuitParameters<C, typeof circuitId>) =>
+        txCtx && Transaction.isTransactionContext(txCtx)
+        ? submitCallTx(providers, createCallTxOptions(compiledContract, circuitId, contractAddress, privateStateId, args), txCtx)
+        : submitCallTx(providers, createCallTxOptions(compiledContract, circuitId, contractAddress, privateStateId, args))
     }),
     {}
   ) as CircuitCallTxInterface<C>;

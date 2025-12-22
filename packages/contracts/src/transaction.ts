@@ -26,7 +26,7 @@ export type TypeId = typeof TypeId;
 
 export interface TransactionContext<
   C extends Contract.Contract.Any,
-  ICK extends Contract.Contract.ImpureCircuitId<C>
+  ICK extends Contract.Contract.ImpureCircuitId<C> = Contract.Contract.ImpureCircuitId<C>
 > {
   readonly [TypeId]: TypeId;
   readonly [Internal.Submit]: () => Promise<FinalizedCallTxData<C, ICK>>;
@@ -45,6 +45,9 @@ export interface TransactionContext<
 export type ScopedTransactionOptions = {
   readonly scopeName?: string;
 }
+
+export const isTransactionContext: (u: unknown) => u is TransactionContext<Contract.Contract.Any> =
+  Internal.isTransactionContext;
 
 export const withContractScopedTransaction: <
   C extends Contract.Contract.Any,

@@ -157,7 +157,7 @@ export const mergeUnsubmittedCallTxData = <
 };
 
 /** @internal */
-export const isTransactionContext = (u: unknown): u is Transaction.TransactionContext<Contract.Contract.Any, string> =>
+export const isTransactionContext = (u: unknown): u is Transaction.TransactionContext<Contract.Contract.Any> =>
   typeof u === "object" && u != null && TypeId in u;
 
 /** @internal */
