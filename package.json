@@ -29,6 +29,7 @@
     "deploy": "turbo run deploy",
     "deploy:core": "turbo run deploy --filter='!@midnight-ntwrk/testkit-*'",
     "build:markdown-docs": "typedoc --validation --plugin typedoc-plugin-markdown --options typedoc.json",
+    "license": "docker run -it --rm -v $(pwd):/github/workspace apache/skywalking-eyes header fix",
     "lint": "eslint",
     "lint:fix": "NODE_OPTIONS=--max-old-space-size=16192 eslint ./packages --fix",
     "commit": "git-cz",
