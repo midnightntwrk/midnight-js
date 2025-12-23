@@ -45,9 +45,9 @@ describe('ContractAdapter', () => {
     };
   });
 
-  describe('constructor', () => {
+  describe('factory method', () => {
     it('should create adapter with default config', () => {
-      const adapter = new ContractAdapter(mockDeployedContract);
+      const adapter = ContractAdapter.create(mockDeployedContract);
 
       expect(adapter.address).toBe('0x123456789');
       expect(adapter.deployTxData).toEqual({
@@ -60,14 +60,10 @@ describe('ContractAdapter', () => {
 
     it('should create adapter with custom config', () => {
       const config: AdapterConfig = {
-        logger: mockLogger,
-        retry: {
-          maxRetries: 5,
-          backoffMs: 2000
-        }
+        logger: mockLogger
       };
 
-      const adapter = new ContractAdapter(mockDeployedContract, config);
+      const adapter = ContractAdapter.create(mockDeployedContract, config);
 
       expect(adapter.address).toBe('0x123456789');
     });
@@ -75,7 +71,7 @@ describe('ContractAdapter', () => {
 
   describe('method proxying', () => {
     it('should proxy contract methods', async () => {
-      const adapter = new ContractAdapter(mockDeployedContract);
+      const adapter = ContractAdapter.create(mockDeployedContract);
 
       const result = await (adapter as any).increment();
 
@@ -84,7 +80,7 @@ describe('ContractAdapter', () => {
     });
 
     it('should pass arguments to proxied methods', async () => {
-      const adapter = new ContractAdapter(mockDeployedContract);
+      const adapter = ContractAdapter.create(mockDeployedContract);
 
       await (adapter as any).getValue();
 
@@ -94,7 +90,7 @@ describe('ContractAdapter', () => {
 
   describe('internal API access', () => {
     it('should provide access to internal callTx via internal property', () => {
-      const adapter = new ContractAdapter(mockDeployedContract);
+      const adapter = ContractAdapter.create(mockDeployedContract);
 
       // internal.callTx returns a proxy that wraps the original callTx
       expect((adapter as any).internal.callTx).toBeDefined();
@@ -102,7 +98,7 @@ describe('ContractAdapter', () => {
     });
 
     it('should provide access to deployTxData via internal property', () => {
-      const adapter = new ContractAdapter(mockDeployedContract);
+      const adapter = ContractAdapter.create(mockDeployedContract);
 
       expect((adapter as any).internal.deployTxData).toEqual({
         public: {
@@ -116,7 +112,7 @@ describe('ContractAdapter', () => {
   describe('logging', () => {
     it('should log method calls when logger is provided', async () => {
       const config: AdapterConfig = { logger: mockLogger };
-      const adapter = new ContractAdapter(mockDeployedContract, config);
+      const adapter = ContractAdapter.create(mockDeployedContract, config);
 
       await (adapter as any).increment();
 
@@ -137,7 +133,7 @@ describe('ContractAdapter', () => {
         new Error('Test error')
       );
 
-      const adapter = new ContractAdapter(mockDeployedContract, config);
+      const adapter = ContractAdapter.create(mockDeployedContract, config);
 
       await expect((adapter as any).increment()).rejects.toThrow();
 
@@ -154,7 +150,7 @@ describe('ContractAdapter', () => {
         new Error('Original error')
       );
 
-      const adapter = new ContractAdapter(mockDeployedContract);
+      const adapter = ContractAdapter.create(mockDeployedContract);
 
       try {
         await (adapter as any).increment();

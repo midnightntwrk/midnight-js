@@ -84,6 +84,19 @@ export type IsDefined<T> = T extends undefined ? false : true;
 export type NonNullish<T> = T extends null | undefined ? never : T;
 
 /**
+ * Makes an object indexable with string or symbol keys
+ * Useful for dynamic property access on typed objects
+ *
+ * @example
+ * ```typescript
+ * function getProperty<T>(obj: T, key: string | symbol): unknown {
+ *   return (obj as IndexableObject<T>)[key];
+ * }
+ * ```
+ */
+export type IndexableObject<T> = T & Record<string | symbol, unknown>;
+
+/**
  * Require at least one property from a type
  * Uses Prettify for better IDE type display
  */

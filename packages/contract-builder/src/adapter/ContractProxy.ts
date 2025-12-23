@@ -19,6 +19,7 @@
 
 import { MethodCallError } from '../errors/AdapterError.js';
 import type { DeployedContract, Logger } from '../types/contract-types.js';
+import type { IndexableObject } from '../types/type-utils.js';
 import { isFunction } from '../utils/type-helpers.js';
 
 /**
@@ -125,8 +126,8 @@ export function createContractProxy<TContract>(
         });
       }
 
-      // Forward other property access - use unknown as intermediate type to satisfy TypeScript
-      return (target as unknown as Record<string | symbol, unknown>)[prop];
+      // Forward other property access
+      return (target as IndexableObject<DeployedContract<TContract>>)[prop];
     }
   });
 

@@ -48,6 +48,7 @@ export type {
   ExtractPrivateStateFromWitness,
   FunctionProperties,
   FunctionPropertyNames,
+  IndexableObject,
   InferCircuits,
   InferContractInterface,
   InferImpureCircuits,

@@ -22,6 +22,7 @@ import { PrivateStateNotConfiguredError } from '../errors/PrivateStateError.js';
 import type { PrivateStateManager } from '../private-state/PrivateStateManager.js';
 import type { AdapterConfig, ContractAdapter as IContractAdapter } from '../types/adapter-types.js';
 import type { DeployedContract, DeployTxData } from '../types/contract-types.js';
+import type { IndexableObject } from '../types/type-utils.js';
 import { createContractProxy } from './ContractProxy.js';
 
 /**
@@ -35,7 +36,7 @@ export class ContractAdapter<TContract, TPrivateState = undefined> {
   private readonly proxy: DeployedContract<TContract>;
   private readonly privateStateManager?: PrivateStateManager<TPrivateState>;
 
-  constructor(
+  private constructor(
     private readonly deployedContract: DeployedContract<TContract>,
     private readonly config: AdapterConfig = {},
     options?: {
@@ -51,9 +52,28 @@ export class ContractAdapter<TContract, TPrivateState = undefined> {
       contract: deployedContract,
       logger: mergedConfig.logger
     });
+  }
 
-    // Return proxy to make this object behave like the contract
-    return this.createAdapterProxy() as unknown as ContractAdapter<TContract, TPrivateState>;
+  /**
+   * Create a new ContractAdapter instance
+   * @param deployedContract - The deployed contract to wrap
+   * @param config - Adapter configuration
+   * @param options - Additional options including private state manager
+   * @returns A proxied contract adapter instance
+   */
+  static create<TContract, TPrivateState = undefined>(
+    deployedContract: DeployedContract<TContract>,
+    config: AdapterConfig = {},
+    options?: {
+      privateStateManager?: PrivateStateManager<TPrivateState>;
+    }
+  ): IContractAdapter<TContract, TPrivateState> {
+    const instance = new ContractAdapter<TContract, TPrivateState>(
+      deployedContract,
+      config,
+      options
+    );
+    return instance.createAdapterProxy();
   }
 
   /**
@@ -105,6 +125,11 @@ export class ContractAdapter<TContract, TPrivateState = undefined> {
 
   /**
    * Creates a proxy that combines contract methods with adapter methods
+   *
+   * Note: The Proxy requires a type assertion because TypeScript cannot statically verify
+   * that the Proxy handler correctly implements all interface properties. The handler
+   * intercepts: address, deployTxData, internal, getPrivateState, setPrivateState,
+   * getPrivateStateId, and all contract methods from callTx/circuits/impureCircuits.
    */
   private createAdapterProxy(): IContractAdapter<TContract, TPrivateState> {
     // Capture references for use in proxy
@@ -112,7 +137,7 @@ export class ContractAdapter<TContract, TPrivateState = undefined> {
     const adapter = this;
     const deployedContract = this.deployedContract;
 
-    const adapterProxy = new Proxy(this.proxy, {
+    const handler: ProxyHandler<DeployedContract<TContract>> = {
       get(target: DeployedContract<TContract>, prop: string | symbol): unknown {
         // Handle address - extract from deployTxData.public.contractAddress
         if (prop === 'address') {
@@ -167,10 +192,19 @@ export class ContractAdapter<TContract, TPrivateState = undefined> {
         }
 
         // Forward to target
-        return (target as unknown as Record<string | symbol, unknown>)[prop];
+        return (target as IndexableObject<DeployedContract<TContract>>)[prop];
       }
-    });
+    };
 
+    // Create proxy with typed handler
+    const adapterProxy = new Proxy(this.proxy, handler);
+
+    /**
+     * Type assertion required: The ProxyHandler above intercepts all required properties
+     * (address, deployTxData, internal, private state methods, and contract methods),
+     * but TypeScript's static analysis cannot verify Proxy completeness.
+     * @ts-expect-error TS2352: Proxy types cannot be statically verified - this cast is safe
+     */
     return adapterProxy as unknown as IContractAdapter<TContract, TPrivateState>;
   }
 }

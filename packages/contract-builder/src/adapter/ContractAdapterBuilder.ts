@@ -43,7 +43,7 @@ import { createDefaultProviders } from '../providers/factory.js';
 import type { NetworkConfig, NetworkPreset, ProviderPresetConfig, WalletConfig } from '../providers/types.js';
 import type { AdapterConfig, ContractAdapter as IContractAdapter } from '../types/adapter-types.js';
 import type { ContractProviders, DeployedContract, Logger } from '../types/contract-types.js';
-import type { ContractInstance, DeployOptions, FindContractOptions } from '../types/external-contract-types.js';
+import type { ContractInstance, DeployContractFn, DeployOptions, FindContractOptions, FindDeployedContractFn } from '../types/external-contract-types.js';
 import type { ExtractLedgerFromWitness, ExtractPrivateStateFromWitness, InferContractInterface, InferLedgerFromContract, InferPrivateStateFromContract } from '../types/type-utils.js';
 import type { Witnesses } from '../types/witness-types.js';
 import { ContractAdapter } from './ContractAdapter.js';
@@ -303,8 +303,9 @@ export class ContractAdapterBuilder<TContract, TLedger = unknown, TPrivateState 
 
       const { deployContract } = await import('@midnight-ntwrk/midnight-js-contracts');
 
-      // Type assertion needed due to external library's complex overloads
-      const deployed = await (deployContract as unknown as (providers: ContractProviders, options: DeployOptions) => Promise<unknown>)(resolvedProviders, deployOptions);
+      // Use typed wrapper to avoid complex overload resolution
+      const typedDeployContract = deployContract as DeployContractFn;
+      const deployed = await typedDeployContract(resolvedProviders, deployOptions);
 
       this.logger?.info('Contract deployed successfully', {
         address: (deployed as { address: string }).address
@@ -314,9 +315,11 @@ export class ContractAdapterBuilder<TContract, TLedger = unknown, TPrivateState 
         logger: this.logger
       };
 
-      const adapter = new ContractAdapter<TContract, TPrivateState>(deployed as DeployedContract<TContract>, config, {
-        privateStateManager
-      }) as unknown as IContractAdapter<TContract, TPrivateState>;
+      const adapter = ContractAdapter.create<TContract, TPrivateState>(
+        deployed as DeployedContract<TContract>,
+        config,
+        { privateStateManager }
+      );
 
       return adapter;
     } catch (error) {
@@ -381,8 +384,9 @@ export class ContractAdapterBuilder<TContract, TLedger = unknown, TPrivateState 
         });
       }
 
-      // Type assertion needed due to external library's complex overloads
-      const connected = await (findDeployedContract as unknown as (providers: ContractProviders, options: FindContractOptions) => Promise<unknown>)(providers, findOptions);
+      // Use typed wrapper to avoid complex overload resolution
+      const typedFindDeployedContract = findDeployedContract as FindDeployedContractFn;
+      const connected = await typedFindDeployedContract(providers, findOptions);
 
       this.logger?.info('Connected to contract successfully', {
         address: (connected as { address: string }).address
@@ -392,9 +396,11 @@ export class ContractAdapterBuilder<TContract, TLedger = unknown, TPrivateState 
         logger: this.logger
       };
 
-      const adapter = new ContractAdapter<TContract, TPrivateState>(connected as DeployedContract<TContract>, config, {
-        privateStateManager
-      }) as unknown as IContractAdapter<TContract, TPrivateState>;
+      const adapter = ContractAdapter.create<TContract, TPrivateState>(
+        connected as DeployedContract<TContract>,
+        config,
+        { privateStateManager }
+      );
 
       return adapter;
     } catch (error) {

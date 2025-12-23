@@ -79,3 +79,23 @@ export interface FindContractOptions {
   privateStateId?: string;
   [key: string]: unknown;
 }
+
+/**
+ * Typed wrapper for deployContract function from @midnight-ntwrk/midnight-js-contracts
+ * Provides cleaner type signature avoiding complex overload resolution
+ * Returns unknown to avoid strict type checking on external library's return types
+ */
+export type DeployContractFn = (
+  providers: unknown,
+  options: DeployOptions
+) => Promise<unknown>;
+
+/**
+ * Typed wrapper for findDeployedContract function from @midnight-ntwrk/midnight-js-contracts
+ * Provides cleaner type signature avoiding complex overload resolution
+ * Returns unknown to avoid strict type checking on external library's return types
+ */
+export type FindDeployedContractFn = (
+  providers: unknown,
+  options: FindContractOptions
+) => Promise<unknown>;
