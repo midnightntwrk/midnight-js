@@ -36,9 +36,6 @@ export type {
 export type {
   DeployedContract,
   Logger,
-  MethodCallEvent,
-  MethodErrorEvent,
-  MethodSuccessEvent,
   RetryConfig} from './types/contract-types.js';
 export type {
   WitnessCallEvent,

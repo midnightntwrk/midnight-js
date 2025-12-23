@@ -60,34 +60,3 @@ export interface RetryConfig {
   backoffMs: number;
   exponentialBackoff?: boolean;
 }
-
-/**
- * Method call event emitted when a contract method is invoked
- */
-export interface MethodCallEvent {
-  methodName: string;
-  args: unknown[];
-  timestamp: number;
-}
-
-/**
- * Method success event emitted when a contract method completes successfully
- */
-export interface MethodSuccessEvent {
-  methodName: string;
-  args: unknown[];
-  result: unknown;
-  duration: number;
-  timestamp: number;
-}
-
-/**
- * Method error event emitted when a contract method fails
- */
-export interface MethodErrorEvent {
-  methodName: string;
-  args: unknown[];
-  error: unknown;
-  duration: number;
-  timestamp: number;
-}

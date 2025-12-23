@@ -126,31 +126,42 @@ export async function createDefaultProviders(
   // Get network config
   const networkConfig = normalizeNetworkConfig(normalizedConfig.network);
 
-  // Create providers based on environment
-  let providers: ContractProviders;
+  // Create infrastructure providers based on environment
+  let infrastructureProviders: Omit<ContractProviders, 'walletProvider' | 'midnightProvider'>;
 
   if (environment === 'nodejs') {
-    providers = await createNodeJSProviders(
+    infrastructureProviders = await createNodeJSProviders(
       networkConfig,
       normalizedConfig.wallet,
       logger
     );
   } else {
-    providers = await createBrowserProviders(
+    infrastructureProviders = await createBrowserProviders(
       networkConfig,
       normalizedConfig.wallet,
       logger
     );
   }
 
-  // Apply any custom provider overrides
-  if (normalizedConfig.providers) {
-    providers = {
-      ...providers,
-      ...normalizedConfig.providers
-    };
-    logger?.debug('Applied custom provider overrides');
+  // Merge with custom provider overrides (must include wallet and midnight providers)
+  if (!normalizedConfig.providers?.walletProvider || !normalizedConfig.providers?.midnightProvider) {
+    throw new Error(
+      'walletProvider and midnightProvider must be provided in provider overrides. ' +
+      'These cannot be auto-created and must come from your wallet implementation.'
+    );
   }
+
+  // TypeScript now knows these are defined after the check above
+  const { walletProvider, midnightProvider, ...otherProviders } = normalizedConfig.providers;
+
+  const providers: ContractProviders = {
+    ...infrastructureProviders,
+    walletProvider,
+    midnightProvider,
+    ...otherProviders
+  };
+
+  logger?.debug('Created complete providers with custom overrides');
 
   return providers;
 }
