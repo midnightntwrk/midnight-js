@@ -18,8 +18,6 @@
  * Uses fetch-zk-config-provider and other browser-compatible providers
  */
 
-import type { PrivateStateProvider } from '@midnight-ntwrk/midnight-js-types';
-
 import type { Logger } from '../types/contract-types.js';
 import type { ContractProviders, NetworkConfig, WalletConfig } from './types.js';
 

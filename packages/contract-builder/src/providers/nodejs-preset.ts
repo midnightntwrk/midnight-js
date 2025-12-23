@@ -17,9 +17,6 @@
  * Node.js provider preset
  * Uses node-zk-config-provider and other Node.js-specific providers
  */
-
-import type { PrivateStateProvider } from '@midnight-ntwrk/midnight-js-types';
-
 import type { Logger } from '../types/contract-types.js';
 import type { ContractProviders, NetworkConfig, WalletConfig } from './types.js';
 
