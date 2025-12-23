@@ -277,8 +277,6 @@ describe('Contract Adapter with Witnesses - Integration', () => {
 
   describe('debug mode', () => {
     it('should log state changes when debug is enabled', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-empty-function
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       mockProviders.privateStateProvider.get.mockResolvedValue({ privateCounter: 0 });
 
       const contractInstance = new mockContractClass(witnesses);
@@ -291,24 +289,21 @@ describe('Contract Adapter with Witnesses - Integration', () => {
           initialState: { privateCounter: 0 },
           debug: true
         })
+        .withLogger(mockLogger)
         .deploy(mockProviders);
 
       await contract.setPrivateState({ privateCounter: 10 });
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        '[PrivateState] State changed:',
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        'Private state changed',
         {
           from: { privateCounter: 0 },
           to: { privateCounter: 10 }
         }
       );
-
-      consoleSpy.mockRestore();
     });
 
     it('should use withPrivateStateDebug method', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-empty-function
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       mockProviders.privateStateProvider.get.mockResolvedValue({ privateCounter: 5 });
 
       const contractInstance = new mockContractClass(witnesses);
@@ -321,19 +316,18 @@ describe('Contract Adapter with Witnesses - Integration', () => {
           initialState: { privateCounter: 0 }
         })
         .withPrivateStateDebug(true)
+        .withLogger(mockLogger)
         .deploy(mockProviders);
 
       await contract.setPrivateState({ privateCounter: 20 });
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        '[PrivateState] State changed:',
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        'Private state changed',
         expect.objectContaining({
           from: { privateCounter: 5 },
           to: { privateCounter: 20 }
         })
       );
-
-      consoleSpy.mockRestore();
     });
   });
 

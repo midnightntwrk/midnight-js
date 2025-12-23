@@ -209,8 +209,6 @@ describe('PrivateStateManager', () => {
     });
 
     it('should log state changes with before/after when debug is enabled', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-empty-function
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
       mockProviders.privateStateProvider.get.mockResolvedValue({ privateCounter: 0 });
       const newState: CounterPrivateState = { privateCounter: 99 };
 
@@ -219,37 +217,30 @@ describe('PrivateStateManager', () => {
         debug: true
       };
 
-      const manager = new PrivateStateManager(config, mockProviders);
+      const manager = new PrivateStateManager(config, mockProviders, mockLogger);
 
       await manager.setState(newState);
 
-      expect(consoleSpy).toHaveBeenCalledWith(
-        '[PrivateState] State changed:',
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        'Private state changed',
         {
           from: { privateCounter: 0 },
           to: newState
         }
       );
-
-      consoleSpy.mockRestore();
     });
 
     it('should not log to console when debug is disabled', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-empty-function
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
       const config: PrivateStateConfig<CounterPrivateState> = {
         initialState: { privateCounter: 0 },
         debug: false
       };
 
-      const manager = new PrivateStateManager(config, mockProviders);
+      const manager = new PrivateStateManager(config, mockProviders, mockLogger);
 
       await manager.setState({ privateCounter: 99 });
 
-      expect(consoleSpy).not.toHaveBeenCalled();
-
-      consoleSpy.mockRestore();
+      expect(mockLogger.debug).not.toHaveBeenCalled();
     });
   });
 

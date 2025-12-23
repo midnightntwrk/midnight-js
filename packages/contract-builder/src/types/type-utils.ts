@@ -38,7 +38,7 @@ export type PartialKeys<T, K extends keyof T> = Prettify<Omit<T, K> & Partial<Pi
  * Extracts function property names from a type
  */
 export type FunctionPropertyNames<T> = {
-  [K in keyof T]: T[K] extends (...args: any[]) => any ? K : never;
+  [K in keyof T]: T[K] extends (...args: unknown[]) => unknown ? K : never;
 }[keyof T];
 
 /**
@@ -66,12 +66,12 @@ export type DeepReadonly<T> = {
 /**
  * Extract parameter types from a function
  */
-export type FunctionParams<T> = T extends (...args: infer P) => any ? P : never;
+export type FunctionParams<T> = T extends (...args: infer P) => unknown ? P : never;
 
 /**
  * Extract return type from a function
  */
-export type FunctionReturn<T> = T extends (...args: any[]) => infer R ? R : never;
+export type FunctionReturn<T> = T extends (...args: unknown[]) => infer R ? R : never;
 
 /**
  * Type guard to check if value is defined
@@ -182,11 +182,11 @@ export type InferImpureCircuits<T> = T extends { impureCircuits: infer C } ? C :
  * and returns a function with the remaining parameters
  */
 export type RemoveContextParameter<T> = T extends (
-  context: any,
+  context: unknown,
   ...args: infer P
 ) => infer R
   ? (...args: P) => R
-  : T extends (context: any) => infer R
+  : T extends (context: unknown) => infer R
     ? () => R
     : T;
 

@@ -17,7 +17,7 @@
  * Logger wrapper utilities
  */
 
-import type { Logger } from '../types/contract-types.js';
+import type { Logger, LoggerData } from '../types/contract-types.js';
 
 /**
  * No-op logger that discards all log messages
@@ -37,16 +37,16 @@ export const noopLogger: Logger = {
  * Console-based logger implementation
  */
 export const consoleLogger: Logger = {
-  info: (message: string, data?: any) => {
+  info: (message: string, data?: LoggerData) => {
     console.log(`[INFO] ${message}`, data ? data : '');
   },
-  warn: (message: string, data?: any) => {
+  warn: (message: string, data?: LoggerData) => {
     console.warn(`[WARN] ${message}`, data ? data : '');
   },
-  error: (message: string, data?: any) => {
+  error: (message: string, data?: LoggerData) => {
     console.error(`[ERROR] ${message}`, data ? data : '');
   },
-  debug: (message: string, data?: any) => {
+  debug: (message: string, data?: LoggerData) => {
     console.debug(`[DEBUG] ${message}`, data ? data : '');
   }
 };
@@ -56,9 +56,9 @@ export const consoleLogger: Logger = {
  */
 export function createPrefixedLogger(logger: Logger, prefix: string): Logger {
   return {
-    info: (message: string, data?: any) => logger.info(`[${prefix}] ${message}`, data),
-    warn: (message: string, data?: any) => logger.warn(`[${prefix}] ${message}`, data),
-    error: (message: string, data?: any) => logger.error(`[${prefix}] ${message}`, data),
-    debug: (message: string, data?: any) => logger.debug(`[${prefix}] ${message}`, data)
+    info: (message: string, data?: LoggerData) => logger.info(`[${prefix}] ${message}`, data),
+    warn: (message: string, data?: LoggerData) => logger.warn(`[${prefix}] ${message}`, data),
+    error: (message: string, data?: LoggerData) => logger.error(`[${prefix}] ${message}`, data),
+    debug: (message: string, data?: LoggerData) => logger.debug(`[${prefix}] ${message}`, data)
   };
 }

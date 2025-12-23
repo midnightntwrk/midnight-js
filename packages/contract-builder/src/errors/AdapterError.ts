@@ -58,20 +58,6 @@ export class MethodCallError extends AdapterError {
 }
 
 /**
- * Error thrown when retry logic exhausts all attempts
- */
-export class RetryExhaustedError extends AdapterError {
-  constructor(
-    message: string,
-    public readonly attempts: number,
-    cause?: Error
-  ) {
-    super(message, cause);
-    this.name = 'RetryExhaustedError';
-  }
-}
-
-/**
  * Error thrown when configuration is invalid
  */
 export class ConfigurationError extends AdapterError {

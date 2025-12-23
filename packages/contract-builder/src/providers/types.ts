@@ -91,18 +91,15 @@ export const NETWORK_PRESETS = {
     networkId: 'testnet',
     indexerUrl: 'https://indexer.testnet.midnight.network',
     nodeUrl: 'https://node.testnet.midnight.network',
-    zkConfigUrl: undefined
   },
   devnet: {
     networkId: 'devnet',
     indexerUrl: 'https://indexer.devnet.midnight.network',
     nodeUrl: 'https://node.devnet.midnight.network',
-    zkConfigUrl: undefined
   },
   local: {
     networkId: 'undeployed',
     indexerUrl: 'http://localhost:8080',
     nodeUrl: 'http://localhost:3000',
-    zkConfigUrl: 'http://localhost:8081'
   }
 } as const;

@@ -53,6 +53,7 @@ describe('WitnessInterceptor', () => {
 
       const intercepted = interceptor.createInterceptedWitnesses();
       const context: WitnessContext<any, CounterPrivateState> = {
+        contractAddress: '0xabc',
         ledger: {},
         privateState: { privateCounter: 0 }
       };
@@ -73,6 +74,7 @@ describe('WitnessInterceptor', () => {
       const intercepted = interceptor.createInterceptedWitnesses();
 
       const context: WitnessContext<any, CounterPrivateState> = {
+        contractAddress: '0xabc',
         ledger: {},
         privateState: { privateCounter: 5 }
       };
@@ -88,6 +90,7 @@ describe('WitnessInterceptor', () => {
       const intercepted = interceptor.createInterceptedWitnesses();
 
       const context: WitnessContext<any, CounterPrivateState> = {
+        contractAddress: '0xabc',
         ledger: {},
         privateState: { privateCounter: 0 }
       };
@@ -114,6 +117,7 @@ describe('WitnessInterceptor', () => {
 
       const intercepted = interceptor.createInterceptedWitnesses();
       const context: WitnessContext<any, CounterPrivateState> = {
+        contractAddress: '0xabc',
         ledger: {},
         privateState: { privateCounter: 0 }
       };
@@ -137,6 +141,7 @@ describe('WitnessInterceptor', () => {
       const intercepted = interceptor.createInterceptedWitnesses();
 
       const context: WitnessContext<any, CounterPrivateState> = {
+        contractAddress: '0xabc',
         ledger: {},
         privateState: { privateCounter: 0 }
       };
@@ -156,6 +161,7 @@ describe('WitnessInterceptor', () => {
       const intercepted = interceptor.createInterceptedWitnesses();
 
       const context: WitnessContext<any, CounterPrivateState> = {
+        contractAddress: '0xabc',
         ledger: {},
         privateState: { privateCounter: 0 }
       };
@@ -181,6 +187,7 @@ describe('WitnessInterceptor', () => {
       const intercepted = interceptor.createInterceptedWitnesses();
 
       const context: WitnessContext<any, CounterPrivateState> = {
+        contractAddress: '0xabc',
         ledger: {},
         privateState: { privateCounter: 0 }
       };
@@ -207,6 +214,7 @@ describe('WitnessInterceptor', () => {
 
       const intercepted = interceptor.createInterceptedWitnesses();
       const context: WitnessContext<any, CounterPrivateState> = {
+        contractAddress: '0xabc',
         ledger: {},
         privateState: { privateCounter: 0 }
       };

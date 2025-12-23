@@ -20,17 +20,17 @@ export type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
 import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
 
 // Define witness function and witnesses types based on compact-runtime's WitnessContext
-export type WitnessFunction<TLedger = any, TPrivateState = any> = (
+export type WitnessFunction<TLedger = unknown, TPrivateState = unknown> = (
   context: WitnessContext<TLedger, TPrivateState>
-) => [TPrivateState, any[]];
+) => [TPrivateState, unknown[]];
 
-export type Witnesses<TLedger = any, TPrivateState = any> = Record<
+export type Witnesses<TLedger = unknown, TPrivateState = unknown> = Record<
   string,
   WitnessFunction<TLedger, TPrivateState>
 >;
 
-export interface WitnessCallEvent<TPrivateState = any> {
+export interface WitnessCallEvent<TPrivateState = unknown> {
   witnessName: string;
-  context: WitnessContext<any, TPrivateState>;
-  result: [TPrivateState, any[]];
+  context: WitnessContext<unknown, TPrivateState>;
+  result: [TPrivateState, unknown[]];
 }

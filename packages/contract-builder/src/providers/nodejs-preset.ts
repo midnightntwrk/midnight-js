@@ -18,6 +18,7 @@
  * Uses node-zk-config-provider and other Node.js-specific providers
  */
 import type { Logger } from '../types/contract-types.js';
+import { createCommonProviders } from './base-preset.js';
 import type { ContractProviders, NetworkConfig, WalletConfig } from './types.js';
 
 /**
@@ -32,22 +33,9 @@ export async function createNodeJSProviders(
   logger?.info('Creating Node.js providers...', { network: network.networkId });
 
   try {
-    // Dynamically import Node.js-specific providers
     const { NodeZkConfigProvider } = await import(
       '@midnight-ntwrk/midnight-js-node-zk-config-provider'
     );
-
-    const { httpClientProofProvider } = await import(
-      '@midnight-ntwrk/midnight-js-http-client-proof-provider'
-    );
-
-    const { indexerPublicDataProvider } = await import(
-      '@midnight-ntwrk/midnight-js-indexer-public-data-provider'
-    );
-
-    const { levelPrivateStateProvider } = await import(
-      '@midnight-ntwrk/midnight-js-level-private-state-provider'
-      );
 
     const zkConfigProvider = new NodeZkConfigProvider(
       network.zkConfigUrl || './zk-config'
@@ -55,33 +43,14 @@ export async function createNodeJSProviders(
 
     logger?.debug('Created Node.js ZK config provider');
 
-    const privateStateProvider = levelPrivateStateProvider({
-      midnightDbName: '.midnight-private-state'
-    });
-
-    logger?.debug('Created Level private state provider');
-
-    const proofProvider = httpClientProofProvider(
-      network.proofServerUrl || network.nodeUrl
-    );
-
-    logger?.debug('Created HTTP client proof provider');
-
-    const indexerProvider = indexerPublicDataProvider(
-      network.indexerUrl,
-      network.indexerUrl.replace(/^http/, 'ws')
-    );
-
-    logger?.debug('Created indexer public data provider');
+    const commonProviders = await createCommonProviders(network, logger);
 
     logger?.info('Node.js providers created successfully');
 
     return {
-      privateStateProvider,
-      publicDataProvider: indexerProvider,
-      zkConfigProvider,
-      proofProvider
-    };
+      ...commonProviders,
+      zkConfigProvider
+    } as Omit<ContractProviders, 'walletProvider' | 'midnightProvider'>;
   } catch (error) {
     logger?.error('Failed to create Node.js providers', { error });
     throw new Error(

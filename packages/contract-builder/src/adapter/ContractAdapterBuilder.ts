@@ -205,6 +205,105 @@ export class ContractAdapterBuilder<TContract, TLedger = unknown, TPrivateState 
   }
 
   /**
+   * Resolves providers from either explicit parameter or configuration
+   */
+  private async resolveProviders(providers?: ContractProviders): Promise<ContractProviders> {
+    if (providers) {
+      this.logger?.debug('Using explicitly provided providers');
+      return providers;
+    }
+
+    if (!this.providersConfig) {
+      throw new DeploymentError(
+        'No providers configured. Either pass providers to deploy() or use withDefaultProviders()'
+      );
+    }
+
+    this.logger?.info('Creating default providers...', {
+      config: typeof this.providersConfig === 'string'
+        ? this.providersConfig
+        : 'networkId' in this.providersConfig
+          ? this.providersConfig.networkId
+          : 'custom'
+    });
+
+    let fullConfig = this.providersConfig;
+    if (typeof fullConfig === 'string' || 'networkId' in fullConfig) {
+      fullConfig = {
+        network: fullConfig,
+        wallet: this.walletConfig
+      } as ProviderPresetConfig;
+    } else if (this.walletConfig && !fullConfig.wallet) {
+      fullConfig = {
+        ...fullConfig,
+        wallet: this.walletConfig
+      };
+    }
+
+    const resolved = await createDefaultProviders(fullConfig, this.logger) as ContractProviders;
+    this.logger?.info('Default providers created successfully');
+    return resolved;
+  }
+
+  /**
+   * Attaches witnesses to the contract instance if configured
+   */
+  private attachWitnesses(contractInstance: ContractInstance): ContractInstance {
+    if (!this.witnesses || !this.witnessInterceptor) {
+      return contractInstance;
+    }
+
+    this.logger?.info('Attaching witnesses to contract...');
+
+    const interceptedWitnesses = this.witnessInterceptor.createInterceptedWitnesses();
+    const witnessManager = new WitnessManager<TLedger, TPrivateState>(
+      interceptedWitnesses,
+      (this.contractInstance as { constructor: new (witnesses: Witnesses<unknown, unknown>) => ContractInstance }).constructor
+    );
+    witnessManager.validate();
+    const attachedContract = witnessManager.attachToContract();
+
+    this.logger?.info('Witnesses attached successfully', {
+      witnesses: witnessManager.getWitnessNames()
+    });
+
+    return attachedContract;
+  }
+
+  /**
+   * Configures private state and returns deploy options and manager
+   */
+  private configurePrivateState(
+    resolvedProviders: ContractProviders
+  ): {
+    deployOptions: Partial<DeployOptions>;
+    privateStateManager?: PrivateStateManager<TPrivateState>;
+  } {
+    if (!this.privateStateConfig) {
+      return { deployOptions: {} };
+    }
+
+    this.logger?.info('Configuring private state...');
+
+    const privateStateManager = new PrivateStateManager(
+      this.privateStateConfig,
+      resolvedProviders,
+      this.logger
+    );
+
+    const deployOptions: Partial<DeployOptions> = {
+      privateStateId: privateStateManager.getStateId(),
+      initialPrivateState: privateStateManager.getInitialState()
+    };
+
+    this.logger?.info('Private state configured', {
+      stateId: deployOptions.privateStateId
+    });
+
+    return { deployOptions, privateStateManager };
+  }
+
+  /**
    * Deploy the contract with explicitly provided providers
    */
   async deploy(providers: ContractProviders): Promise<IContractAdapter<TContract, TPrivateState>>;
@@ -221,89 +320,17 @@ export class ContractAdapterBuilder<TContract, TLedger = unknown, TPrivateState 
     this.logger?.info('Deploying contract...');
 
     try {
-      // Resolve providers - either use provided or create default
-      let resolvedProviders: ContractProviders;
-
-      if (providers) {
-        // Use explicitly provided providers
-        resolvedProviders = providers;
-        this.logger?.debug('Using explicitly provided providers');
-      } else if (this.providersConfig) {
-        // Create default providers from config
-        this.logger?.info('Creating default providers...', {
-          config: typeof this.providersConfig === 'string'
-            ? this.providersConfig
-            : 'networkId' in this.providersConfig
-              ? this.providersConfig.networkId
-              : 'custom'
-        });
-
-        // Normalize config with wallet if provided
-        let fullConfig = this.providersConfig;
-        if (typeof fullConfig === 'string' || 'networkId' in fullConfig) {
-          // Convert to ProviderPresetConfig
-          fullConfig = {
-            network: fullConfig,
-            wallet: this.walletConfig
-          } as ProviderPresetConfig;
-        } else if (this.walletConfig && !fullConfig.wallet) {
-          fullConfig = {
-            ...fullConfig,
-            wallet: this.walletConfig
-          };
-        }
-
-        resolvedProviders = await createDefaultProviders(fullConfig, this.logger) as ContractProviders;
-        this.logger?.info('Default providers created successfully');
-      } else {
-        throw new DeploymentError(
-          'No providers configured. Either pass providers to deploy() or use withDefaultProviders()'
-        );
-      }
-
-      let contractInstance = this.contractInstance;
-
-      if (this.witnesses && this.witnessInterceptor) {
-        this.logger?.info('Attaching witnesses to contract...');
-
-        const interceptedWitnesses = this.witnessInterceptor.createInterceptedWitnesses();
-
-        const witnessManager = new WitnessManager<TLedger, TPrivateState>(
-          interceptedWitnesses,
-          (this.contractInstance as { constructor: new (witnesses: Witnesses<unknown, unknown>) => ContractInstance }).constructor
-        );
-        witnessManager.validate();
-        contractInstance = witnessManager.attachToContract();
-        this.logger?.info('Witnesses attached successfully', {
-          witnesses: witnessManager.getWitnessNames()
-        });
-      }
+      const resolvedProviders = await this.resolveProviders(providers);
+      const contractInstance = this.attachWitnesses(this.contractInstance);
+      const { deployOptions: privateStateOptions, privateStateManager } =
+        this.configurePrivateState(resolvedProviders);
 
       const deployOptions: DeployOptions = {
-        contract: contractInstance
+        contract: contractInstance,
+        ...privateStateOptions
       };
 
-      let privateStateManager: PrivateStateManager<TPrivateState> | undefined;
-
-      if (this.privateStateConfig) {
-        this.logger?.info('Configuring private state...');
-        privateStateManager = new PrivateStateManager(
-          this.privateStateConfig,
-          resolvedProviders,
-          this.logger
-        );
-
-        deployOptions.privateStateId = privateStateManager.getStateId();
-        deployOptions.initialPrivateState = privateStateManager.getInitialState();
-
-        this.logger?.info('Private state configured', {
-          stateId: deployOptions.privateStateId
-        });
-      }
-
       const { deployContract } = await import('@midnight-ntwrk/midnight-js-contracts');
-
-      // Use typed wrapper to avoid complex overload resolution
       const typedDeployContract = deployContract as DeployContractFn;
       const deployed = await typedDeployContract(resolvedProviders, deployOptions);
 
@@ -525,7 +552,7 @@ export function createContractAdapter<TContract, TLedger = unknown, TPrivateStat
  */
 export function createContractAdapter<
   TContractInstance extends ContractInstance,
-  W extends Witnesses<any, any>
+  W extends Witnesses<unknown, unknown>
 >(
   contractInstance: TContractInstance,
   witnesses: W

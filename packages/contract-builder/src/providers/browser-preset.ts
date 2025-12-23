@@ -19,6 +19,7 @@
  */
 
 import type { Logger } from '../types/contract-types.js';
+import { createCommonProviders } from './base-preset.js';
 import type { ContractProviders, NetworkConfig, WalletConfig } from './types.js';
 
 /**
@@ -33,58 +34,24 @@ export async function createBrowserProviders(
   logger?.info('Creating browser providers...', { network: network.networkId });
 
   try {
-    // Dynamically import browser-specific providers
     const { FetchZkConfigProvider } = await import(
       '@midnight-ntwrk/midnight-js-fetch-zk-config-provider'
     );
 
-    const { levelPrivateStateProvider } = await import(
-      '@midnight-ntwrk/midnight-js-level-private-state-provider'
-    );
-
-    const { httpClientProofProvider } = await import(
-      '@midnight-ntwrk/midnight-js-http-client-proof-provider'
-    );
-
-    const { indexerPublicDataProvider } = await import(
-      '@midnight-ntwrk/midnight-js-indexer-public-data-provider'
-    );
-
-    // Create ZK config provider for browser (fetches from URL)
     const zkConfigProvider = new FetchZkConfigProvider(
       network.zkConfigUrl || `${network.nodeUrl}/zk-config`
     );
 
     logger?.debug('Created fetch ZK config provider');
 
-    const privateStateProvider = levelPrivateStateProvider({
-      midnightDbName: '.midnight-private-state'
-    });
-
-    logger?.debug('Created browser private state provider');
-
-    const proofProvider = httpClientProofProvider(
-      network.proofServerUrl || network.nodeUrl
-    );
-
-    logger?.debug('Created HTTP client proof provider');
-
-    // Create indexer provider
-    const indexerProvider = indexerPublicDataProvider(
-      network.indexerUrl,
-      network.indexerUrl.replace(/^http/, 'ws')
-    );
-
-    logger?.debug('Created indexer public data provider');
+    const commonProviders = await createCommonProviders(network, logger);
 
     logger?.info('Browser providers created successfully');
 
     return {
-      privateStateProvider,
-      publicDataProvider: indexerProvider,
-      zkConfigProvider,
-      proofProvider
-    };
+      ...commonProviders,
+      zkConfigProvider
+    } as Omit<ContractProviders, 'walletProvider' | 'midnightProvider'>;
   } catch (error) {
     logger?.error('Failed to create browser providers', { error });
     throw new Error(

@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+import type { WitnessContext } from '../types/witness-types.js';
+
 export class WitnessError extends Error {
   constructor(message: string, public readonly cause?: Error) {
     super(message);
@@ -42,7 +44,7 @@ export class WitnessExecutionError extends WitnessError {
   constructor(
     message: string,
     public readonly witnessName: string,
-    public readonly context?: any,
+    public readonly context?: WitnessContext<unknown, unknown>,
     cause?: Error
   ) {
     super(message, cause);

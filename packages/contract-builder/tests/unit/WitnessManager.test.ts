@@ -99,7 +99,8 @@ describe('WitnessManager', () => {
         privateDecrement: 42 as any
       };
 
-      const manager = new WitnessManager(invalidWitnesses, mockContractClass);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const manager = new WitnessManager(invalidWitnesses as any, mockContractClass);
 
       expect(() => manager.validate()).toThrow(WitnessValidationError);
       expect(() => manager.validate()).toThrow('privateDecrement');
@@ -178,6 +179,7 @@ describe('WitnessManager', () => {
       const witness = manager.getWitness('privateIncrement');
 
       const context = {
+        contractAddress: '0xabc',
         ledger: {},
         privateState: { privateCounter: 5 }
       };

@@ -33,6 +33,7 @@ describe('ContractProxy', () => {
   describe('createContractProxy', () => {
     it('should proxy address property from deployTxData.public.contractAddress', () => {
       const mockContract = {
+        address: '0xshould-not-use-this',
         deployTxData: {
           public: {
             contractAddress: '0x123'
@@ -62,6 +63,7 @@ describe('ContractProxy', () => {
         txHash: '0xabc'
       };
       const mockContract = {
+        address: '0xshould-not-use-this',
         deployTxData: deployData,
         callTx: {}
       };
@@ -76,6 +78,7 @@ describe('ContractProxy', () => {
     it('should intercept and wrap callTx methods', async () => {
       const mockMethod = vi.fn().mockResolvedValue('result');
       const mockContract = {
+        address: '0xshould-not-use-this',
         deployTxData: {
           public: {
             contractAddress: '0x123'
@@ -100,6 +103,7 @@ describe('ContractProxy', () => {
     it('should log method calls when logger is provided', async () => {
       const mockMethod = vi.fn().mockResolvedValue('result');
       const mockContract = {
+        address: '0xshould-not-use-this',
         deployTxData: {
           public: {
             contractAddress: '0x123'
@@ -125,6 +129,7 @@ describe('ContractProxy', () => {
 
     it('should not intercept non-function properties', () => {
       const mockContract = {
+        address: '0xshould-not-use-this',
         deployTxData: {
           public: {
             contractAddress: '0x123'

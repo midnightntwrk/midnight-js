@@ -22,12 +22,37 @@ import type { Witnesses, WitnessFunction } from '../types/witness-types.js';
  */
 type ContractConstructor = new (witnesses: Witnesses<unknown, unknown>) => ContractInstance;
 
+/**
+ * Manages witness functions for contracts, providing validation and attachment capabilities.
+ *
+ * Witnesses are zero-knowledge proof functions that operate on private state.
+ * This manager validates witness functions and attaches them to contract instances.
+ *
+ * @typeParam TLedger - The ledger type for witness context
+ * @typeParam TPrivateState - The private state type
+ *
+ * @example
+ * ```typescript
+ * const manager = new WitnessManager(witnesses, ContractClass);
+ * manager.validate(); // Throws if witnesses are invalid
+ * const contractWithWitnesses = manager.attachToContract();
+ * ```
+ */
 export class WitnessManager<TLedger = unknown, TPrivateState = unknown> {
   constructor(
     private witnesses: Witnesses<TLedger, TPrivateState>,
     private contractClass: ContractConstructor
   ) {}
 
+  /**
+   * Validates all provided witnesses.
+   *
+   * Checks that:
+   * - At least one witness is provided
+   * - All witnesses are functions
+   *
+   * @throws {WitnessValidationError} If validation fails
+   */
   validate(): void {
     const providedWitnesses = Object.keys(this.witnesses);
 
@@ -44,6 +69,14 @@ export class WitnessManager<TLedger = unknown, TPrivateState = unknown> {
     }
   }
 
+  /**
+   * Attaches witnesses to a new contract instance.
+   *
+   * Creates a new instance of the contract class with the managed witnesses.
+   *
+   * @returns A new contract instance with witnesses attached
+   * @throws {WitnessAttachmentError} If attachment fails
+   */
   attachToContract(): ContractInstance {
     try {
       return new this.contractClass(this.witnesses as Witnesses<unknown, unknown>);
@@ -55,18 +88,40 @@ export class WitnessManager<TLedger = unknown, TPrivateState = unknown> {
     }
   }
 
+  /**
+   * Gets the names of all managed witnesses.
+   *
+   * @returns Array of witness names
+   */
   getWitnessNames(): string[] {
     return Object.keys(this.witnesses);
   }
 
+  /**
+   * Checks if a witness with the given name exists.
+   *
+   * @param name - The witness name to check
+   * @returns true if the witness exists, false otherwise
+   */
   hasWitness(name: string): boolean {
     return name in this.witnesses;
   }
 
+  /**
+   * Gets a specific witness function by name.
+   *
+   * @param name - The witness name to retrieve
+   * @returns The witness function, or undefined if not found
+   */
   getWitness(name: string): WitnessFunction<TLedger, TPrivateState> | undefined {
     return this.witnesses[name];
   }
 
+  /**
+   * Gets all managed witnesses.
+   *
+   * @returns Object containing all witnesses
+   */
   getWitnesses(): Witnesses<TLedger, TPrivateState> {
     return this.witnesses;
   }

@@ -170,21 +170,36 @@ export class ContractAdapter<TContract, TPrivateState = undefined> {
           return () => adapter.getPrivateStateId();
         }
 
-        // Forward to the proxied contract's callTx methods (direct access)
+        // Forward to the proxied contract's callTx methods
+        // Contract methods can be accessed in three different ways depending on the contract structure:
+        //
+        // 1. Direct method on callTx object (legacy contracts or manually created contracts)
+        //    Example: callTx.myMethod()
+        //
+        // 2. Via circuits property (for compiled Compact contracts with pure circuits)
+        //    Example: callTx.circuits.myMethod()
+        //    Compact compiler generates pure ZK circuits under this property
+        //
+        // 3. Via impureCircuits property (for compiled Compact contracts with impure circuits)
+        //    Example: callTx.impureCircuits.myMethod()
+        //    Compact compiler generates impure circuits (with side effects) under this property
+        //
+        // We check in this order of precedence to ensure backwards compatibility
+        // while supporting all contract compilation patterns from the Compact compiler
         const callTx = target.callTx;
         if (callTx && typeof callTx === 'object') {
-          // First check if the property exists directly on callTx
+          // Check 1: Direct property on callTx (highest precedence)
           if (prop in callTx) {
             return (callTx as Record<string | symbol, unknown>)[prop];
           }
 
-          // For compiled contracts, check if the property exists in the circuits object
+          // Check 2: Pure circuits from compiled contracts
           const circuits = (callTx as { circuits?: Record<string | symbol, unknown> }).circuits;
           if (circuits && typeof circuits === 'object' && prop in circuits) {
             return circuits[prop];
           }
 
-          // Also check impureCircuits as a fallback
+          // Check 3: Impure circuits from compiled contracts (lowest precedence)
           const impureCircuits = (callTx as { impureCircuits?: Record<string | symbol, unknown> }).impureCircuits;
           if (impureCircuits && typeof impureCircuits === 'object' && prop in impureCircuits) {
             return impureCircuits[prop];

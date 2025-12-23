@@ -32,6 +32,7 @@ describe('ContractAdapter', () => {
     };
 
     mockDeployedContract = {
+      address: '0x123456789',
       deployTxData: {
         public: {
           contractAddress: '0x123456789'

@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+import { type ContractProviders } from '@midnight-ntwrk/midnight-js-contracts';
+
 import type { PrivateStateConfig } from '../config/PrivateStateConfig.js';
 import { PrivateStateError, PrivateStateValidationError } from '../errors/PrivateStateError.js';
 import type { Logger } from '../types/contract-types.js';
@@ -24,7 +26,7 @@ export class PrivateStateManager<TPrivateState> {
 
   constructor(
     private config: PrivateStateConfig<TPrivateState>,
-    private providers: any,
+    private providers: ContractProviders,
     logger?: Logger
   ) {
     this.stateId = config.stateId || this.generateStateId();
@@ -38,7 +40,7 @@ export class PrivateStateManager<TPrivateState> {
     try {
       const state = await this.providers.privateStateProvider.get(this.stateId);
       this.log('Retrieved private state', { state });
-      return state;
+      return state as TPrivateState | null;
     } catch (error) {
       throw new PrivateStateError(
         `Failed to get private state: ${error instanceof Error ? error.message : String(error)}`,
@@ -60,7 +62,7 @@ export class PrivateStateManager<TPrivateState> {
       await this.providers.privateStateProvider.set(this.stateId, state);
 
       if (this.config.debug) {
-        console.log('[PrivateState] State changed:', {
+        this.logger?.debug('Private state changed', {
           from: oldState,
           to: state
         });
