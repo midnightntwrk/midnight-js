@@ -23,9 +23,7 @@ import type { AdapterConfig } from '../types/adapter-types.js';
  * Default adapter configuration
  */
 export const defaultAdapterConfig: AdapterConfig = {
-  logger: undefined,
-  retry: undefined,
-  errorHandler: undefined
+  logger: undefined
 };
 
 /**

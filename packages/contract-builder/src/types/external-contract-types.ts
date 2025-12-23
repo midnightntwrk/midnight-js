@@ -56,11 +56,6 @@ export type ContractError = Error | unknown;
 export type GenericFunction = (...args: unknown[]) => unknown;
 
 /**
- * Generic handler function that takes an error
- */
-export type ErrorHandler = (error: ContractError) => void;
-
-/**
  * Generic event data type - intentionally broad to accept all event types
  */
 export type EventData = unknown;

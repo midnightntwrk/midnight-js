@@ -28,7 +28,6 @@ import { createContractProxy } from './ContractProxy.js';
  * ContractAdapter wraps a deployed contract and provides:
  * - Automatic method proxying with interceptors
  * - Built-in error handling
- * - Retry logic for transient failures
  * - Logging integration
  * - Private state management (optional)
  */
@@ -50,9 +49,7 @@ export class ContractAdapter<TContract, TPrivateState = undefined> {
     // Create the proxy
     this.proxy = createContractProxy({
       contract: deployedContract,
-      logger: mergedConfig.logger,
-      retryConfig: mergedConfig.retry,
-      errorHandler: mergedConfig.errorHandler
+      logger: mergedConfig.logger
     });
 
     // Return proxy to make this object behave like the contract

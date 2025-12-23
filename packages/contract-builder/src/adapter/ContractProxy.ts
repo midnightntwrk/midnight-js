@@ -18,9 +18,7 @@
  */
 
 import { MethodCallError } from '../errors/AdapterError.js';
-import type { DeployedContract, Logger, RetryConfig } from '../types/contract-types.js';
-import type { ErrorHandler } from '../types/external-contract-types.js';
-import { withRetry } from '../utils/retry-logic.js';
+import type { DeployedContract, Logger } from '../types/contract-types.js';
 import { isFunction } from '../utils/type-helpers.js';
 
 /**
@@ -32,12 +30,6 @@ export interface ContractProxyOptions<TContract = unknown> {
 
   /** Optional logger */
   logger?: Logger;
-
-  /** Optional retry configuration */
-  retryConfig?: RetryConfig;
-
-  /** Optional custom error handler */
-  errorHandler?: ErrorHandler;
 }
 
 /**
@@ -45,8 +37,6 @@ export interface ContractProxyOptions<TContract = unknown> {
  */
 interface CallTxProxyOptions {
   logger?: Logger;
-  retryConfig?: RetryConfig;
-  errorHandler?: ErrorHandler;
 }
 
 /**
@@ -56,7 +46,7 @@ function createCallTxProxy<TCallTx = unknown>(
   callTx: TCallTx,
   options: CallTxProxyOptions
 ): TCallTx {
-  const { logger, retryConfig, errorHandler } = options;
+  const { logger } = options;
 
   return new Proxy(callTx as object, {
     get(target: object, methodName: string | symbol): unknown {
@@ -75,16 +65,8 @@ function createCallTxProxy<TCallTx = unknown>(
         logger?.info(`Calling contract method: ${methodNameStr}`, { args });
 
         try {
-          // Execute with retry if configured
           const methodFunc = originalMethod as (...args: unknown[]) => Promise<unknown>;
-          const result = retryConfig
-            ? await withRetry(
-                () => methodFunc.apply(target, args),
-                retryConfig,
-                logger,
-                `${methodNameStr}`
-              )
-            : await methodFunc.apply(target, args);
+          const result = await methodFunc.apply(target, args);
 
           const duration = Date.now() - startTime;
 
@@ -109,15 +91,6 @@ function createCallTxProxy<TCallTx = unknown>(
             duration: `${duration}ms`
           });
 
-          // Call custom error handler if provided
-          if (errorHandler) {
-            try {
-              errorHandler(methodError);
-            } catch (handlerError) {
-              logger?.error('Error handler threw an error', { error: handlerError });
-            }
-          }
-
           throw methodError;
         }
       };
@@ -131,7 +104,7 @@ function createCallTxProxy<TCallTx = unknown>(
 export function createContractProxy<TContract>(
   options: ContractProxyOptions<TContract>
 ): DeployedContract<TContract> {
-  const { contract, logger, retryConfig, errorHandler } = options;
+  const { contract, logger } = options;
 
   // Create a proxy that intercepts method calls
   const proxy = new Proxy(contract, {
@@ -148,9 +121,7 @@ export function createContractProxy<TContract>(
       // Handle callTx methods
       if (prop === 'callTx') {
         return createCallTxProxy(target.callTx, {
-          logger,
-          retryConfig,
-          errorHandler
+          logger
         });
       }
 

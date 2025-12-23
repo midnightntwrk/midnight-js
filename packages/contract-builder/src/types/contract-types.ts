@@ -51,12 +51,3 @@ export interface Logger {
   error(message: string, data?: LoggerData): void;
   debug(message: string, data?: LoggerData): void;
 }
-
-/**
- * Retry configuration for failed operations
- */
-export interface RetryConfig {
-  maxRetries: number;
-  backoffMs: number;
-  exponentialBackoff?: boolean;
-}

@@ -24,13 +24,15 @@ export type UnwrapPromise<T> = T extends Promise<infer U> ? U : T;
 
 /**
  * Makes specific keys required in a type
+ * Uses Prettify for better IDE type display
  */
-export type RequireKeys<T, K extends keyof T> = Omit<T, K> & Required<Pick<T, K>>;
+export type RequireKeys<T, K extends keyof T> = Prettify<Omit<T, K> & Required<Pick<T, K>>>;
 
 /**
  * Makes specific keys optional in a type
+ * Uses Prettify for better IDE type display
  */
-export type PartialKeys<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
+export type PartialKeys<T, K extends keyof T> = Prettify<Omit<T, K> & Partial<Pick<T, K>>>;
 
 /**
  * Extracts function property names from a type
@@ -83,11 +85,14 @@ export type NonNullish<T> = T extends null | undefined ? never : T;
 
 /**
  * Require at least one property from a type
+ * Uses Prettify for better IDE type display
  */
-export type RequireAtLeastOne<T, Keys extends keyof T = keyof T> = Pick<T, Exclude<keyof T, Keys>> &
-  {
-    [K in Keys]-?: Required<Pick<T, K>> & Partial<Pick<T, Exclude<Keys, K>>>;
-  }[Keys];
+export type RequireAtLeastOne<T, Keys extends keyof T = keyof T> = Prettify<
+  Pick<T, Exclude<keyof T, Keys>> &
+    {
+      [K in Keys]-?: Required<Pick<T, K>> & Partial<Pick<T, Exclude<Keys, K>>>;
+    }[Keys]
+>;
 
 /**
  * Prettify complex types for better IDE display
@@ -175,10 +180,11 @@ export type RemoveContextParameter<T> = T extends (
 /**
  * Transforms all circuit methods in a circuits interface by removing the context parameter
  * This makes circuit methods compatible with the ContractAdapter API
+ * Uses Prettify for better IDE type display
  */
-export type TransformCircuitMethods<T> = {
+export type TransformCircuitMethods<T> = Prettify<{
   [K in keyof T]: RemoveContextParameter<T[K]>;
-};
+}>;
 
 /**
  * Infers a contract interface from a compiled contract class

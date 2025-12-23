@@ -149,21 +149,6 @@ describe('ContractAdapter', () => {
   });
 
   describe('error handling', () => {
-    it('should call custom error handler on failure', async () => {
-      const errorHandler = vi.fn();
-      const config: AdapterConfig = { errorHandler };
-
-      mockDeployedContract.callTx.increment = vi.fn().mockRejectedValue(
-        new Error('Test error')
-      );
-
-      const adapter = new ContractAdapter(mockDeployedContract, config);
-
-      await expect((adapter as any).increment()).rejects.toThrow();
-
-      expect(errorHandler).toHaveBeenCalledWith(expect.any(Error));
-    });
-
     it('should wrap errors with method context', async () => {
       mockDeployedContract.callTx.increment = vi.fn().mockRejectedValue(
         new Error('Original error')
@@ -179,34 +164,6 @@ describe('ContractAdapter', () => {
         expect(error.message).toContain('increment');
         expect(error.message).toContain('failed');
       }
-    });
-  });
-
-  describe('retry logic', () => {
-    it('should retry failed operations when configured', async () => {
-      let attemptCount = 0;
-      mockDeployedContract.callTx.increment = vi.fn().mockImplementation(() => {
-        attemptCount++;
-        if (attemptCount < 3) {
-          return Promise.reject(new Error('Transient error'));
-        }
-        return Promise.resolve({ success: true });
-      });
-
-      const config: AdapterConfig = {
-        retry: {
-          maxRetries: 3,
-          backoffMs: 10,
-          exponentialBackoff: false
-        }
-      };
-
-      const adapter = new ContractAdapter(mockDeployedContract, config);
-
-      const result = await (adapter as any).increment();
-
-      expect(result).toEqual({ success: true });
-      expect(attemptCount).toBe(3);
     });
   });
 });

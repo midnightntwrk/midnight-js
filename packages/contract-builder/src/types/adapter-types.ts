@@ -20,7 +20,7 @@
  * Provides type-safe interfaces for contract adapters with full TypeScript inference
  */
 
-import type { DeployedContract, DeployTxData, Logger, RetryConfig } from './contract-types.js';
+import type { DeployedContract, DeployTxData, Logger } from './contract-types.js';
 import type { Prettify } from './type-utils.js';
 
 /**
@@ -28,20 +28,12 @@ import type { Prettify } from './type-utils.js';
  *
  * @remarks
  * This interface allows you to customize the behavior of the contract adapter including
- * logging, retry logic, and error handling.
+ * logging.
  *
  * @example
  * ```typescript
  * const config: AdapterConfig = {
- *   logger: consoleLogger,
- *   retry: {
- *     maxRetries: 3,
- *     backoffMs: 1000,
- *     exponentialBackoff: true
- *   },
- *   errorHandler: (error) => {
- *     console.error('Contract error:', error);
- *   }
+ *   logger: consoleLogger
  * };
  * ```
  */
@@ -51,19 +43,6 @@ export interface AdapterConfig {
    * @remarks Use this to integrate with your application's logging system
    */
   logger?: Logger;
-
-  /**
-   * Optional retry configuration for failed operations
-   * @remarks Configure automatic retries for transient failures
-   */
-  retry?: RetryConfig;
-
-  /**
-   * Optional custom error handler
-   * @param error - The error that occurred
-   * @remarks This handler is called for all errors, even if retries are configured
-   */
-  errorHandler?: (error: unknown) => void;
 }
 
 /**

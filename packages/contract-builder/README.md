@@ -8,7 +8,6 @@ The Contract Builder provides a fluent, developer-friendly interface for working
 
 - **Intuitive Fluent API** - Chain configuration methods for clean, readable code
 - **Automatic Type Inference** - Zero-boilerplate types from compiled contracts
-- **Automatic Retry Logic** - Configurable retry with exponential backoff
 - **Built-in Logging** - Integrated logging for debugging and monitoring
 - **Type Safety** - Full TypeScript support with complete type inference
 
@@ -35,7 +34,6 @@ const blockTimeInstance = new CompilerBlockTime.Contract({});
 const contract = await createContractAdapter(blockTimeInstance)
   .withDefaultProviders('testnet')  // That's it! Providers auto-configured
   .withLogger(consoleLogger)
-  .withRetry({ maxRetries: 3, backoffMs: 1000 })
   .deploy();  // No providers parameter needed!
 
 // Call contract methods
@@ -57,7 +55,6 @@ If you need more control, you can provide your own providers:
 // Deploy with custom providers
 const contract = await createContractAdapter(blockTimeInstance)
   .withLogger(logger)
-  .withRetry({ maxRetries: 3, backoffMs: 1000 })
   .deploy(customProviders);  // Pass providers explicitly
 ```
 
@@ -96,25 +93,6 @@ const contract = await createContractAdapter(instance)
 **Built-in loggers:**
 - `consoleLogger` - Logs to console with formatted output
 - `noopLogger` - Silent logger (no output)
-
-#### `.withRetry(config: RetryConfig)`
-
-Configures automatic retry for failed operations.
-
-```typescript
-const contract = await createContractAdapter(instance)
-  .withRetry({
-    maxRetries: 3,           // Maximum number of retry attempts
-    backoffMs: 1000,         // Initial backoff delay in milliseconds
-    exponentialBackoff: true // Use exponential backoff (default: true)
-  })
-  .deploy(providers);
-```
-
-**Retry Config:**
-- `maxRetries: number` - Number of retry attempts (default: 3)
-- `backoffMs: number` - Initial delay between retries in ms (default: 1000)
-- `exponentialBackoff?: boolean` - Use exponential backoff (default: true)
 
 #### `.withDefaultProviders(config, wallet?)`
 
@@ -211,11 +189,6 @@ import { createContractAdapter, consoleLogger } from '@midnight-ntwrk/contract-b
 const contract = await createContractAdapter(contractInstance)
   .withDefaultProviders('testnet', { seed: 'my-seed-phrase' })
   .withLogger(consoleLogger)
-  .withRetry({
-    maxRetries: 5,
-    backoffMs: 2000,
-    exponentialBackoff: true
-  })
   .deploy();  // No providers needed!
 
 // Use the contract
@@ -375,22 +348,9 @@ try {
   console.error('Call failed:', error);
   throw error;
 }
-
-// Manual retry logic
-let retries = 0;
-while (retries < 3) {
-  try {
-    await deployed.callTx.testBlockTimeLt(time);
-    break;
-  } catch (error) {
-    retries++;
-    if (retries === 3) throw error;
-    await sleep(1000 * Math.pow(2, retries));
-  }
-}
 ```
 
-**Lines of code: ~35 lines**
+**Lines of code: ~25 lines**
 
 ### After (with Contract Builder)
 
@@ -399,14 +359,13 @@ import { createContractAdapter } from '@midnight-ntwrk/contract-builder';
 
 const contract = await createContractAdapter(blockTimeInstance)
   .withLogger(consoleLogger)
-  .withRetry({ maxRetries: 3, backoffMs: 1000 })
   .deploy(providers);
 
 await contract.testBlockTimeLt(time);
 ```
 
-**Lines of code: ~7 lines**
-**Code reduction: 80%**
+**Lines of code: ~6 lines**
+**Code reduction: 76%**
 
 ## Migration Guide
 
@@ -448,7 +407,6 @@ await contract.myMethod(arg1, arg2);
 ```typescript
 const contract = await createContractAdapter(contractInstance)
   .withLogger(consoleLogger)        // Add logging
-  .withRetry({ maxRetries: 3 })     // Add retry logic
   .deploy(providers);
 ```
 
@@ -473,7 +431,6 @@ For issues and questions:
 **Core Features** - Complete
 - Core adapter functionality
 - Fluent API
-- Retry logic
 - Logging integration
 - Comprehensive tests
 

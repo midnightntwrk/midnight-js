@@ -18,7 +18,7 @@
  *
  * @packageDocumentation
  * Provides a fluent, type-safe builder interface for creating contract adapters
- * with optional witnesses, private state, logging, and retry logic.
+ * with optional witnesses, private state, and logging.
  *
  * @example
  * ```typescript
@@ -32,20 +32,18 @@
  *   .withWitnesses(witnesses)
  *   .withPrivateState({ initialState: { counter: 0 } })
  *   .withLogger(logger)
- *   .withRetry({ maxRetries: 3, backoffMs: 1000 })
  *   .deploy(providers);
  * ```
  */
 
 import type { PrivateStateConfig } from '../config/PrivateStateConfig.js';
-import { mergeRetryConfig } from '../config/RetryConfig.js';
 import { DeploymentError } from '../errors/AdapterError.js';
 import { PrivateStateManager } from '../private-state/PrivateStateManager.js';
 import { createDefaultProviders } from '../providers/factory.js';
 import type { NetworkConfig, NetworkPreset, ProviderPresetConfig, WalletConfig } from '../providers/types.js';
 import type { AdapterConfig, ContractAdapter as IContractAdapter } from '../types/adapter-types.js';
-import type { ContractProviders, DeployedContract, Logger, RetryConfig } from '../types/contract-types.js';
-import type { ContractInstance, DeployOptions, ErrorHandler, FindContractOptions } from '../types/external-contract-types.js';
+import type { ContractProviders, DeployedContract, Logger } from '../types/contract-types.js';
+import type { ContractInstance, DeployOptions, FindContractOptions } from '../types/external-contract-types.js';
 import type { ExtractLedgerFromWitness, ExtractPrivateStateFromWitness, InferContractInterface, InferLedgerFromContract, InferPrivateStateFromContract } from '../types/type-utils.js';
 import type { Witnesses } from '../types/witness-types.js';
 import { ContractAdapter } from './ContractAdapter.js';
@@ -66,16 +64,13 @@ import { WitnessManager } from './WitnessManager.js';
  * @example
  * ```typescript
  * const builder = new ContractAdapterBuilder(contractInstance)
- *   .withLogger(consoleLogger)
- *   .withRetry({ maxRetries: 3, backoffMs: 1000 });
+ *   .withLogger(consoleLogger);
  *
  * const adapter = await builder.deploy(providers);
  * ```
  */
 export class ContractAdapterBuilder<TContract, TLedger = unknown, TPrivateState = undefined> {
   private logger?: Logger;
-  private retryConfig?: RetryConfig;
-  private errorHandler?: ErrorHandler;
   private providersConfig?: NetworkPreset | NetworkConfig | ProviderPresetConfig;
   private walletConfig?: WalletConfig;
   private witnesses?: Witnesses<TLedger, TPrivateState>;
@@ -97,34 +92,6 @@ export class ContractAdapterBuilder<TContract, TLedger = unknown, TPrivateState 
    */
   withLogger(logger: Logger): this {
     this.logger = logger;
-    return this;
-  }
-
-  /**
-   * Configure retry logic for failed operations
-   *
-   * @param config - Retry configuration specifying max retries, backoff, etc.
-   * @returns The builder instance for method chaining
-   *
-   * @example
-   * ```typescript
-   * builder.withRetry({
-   *   maxRetries: 3,
-   *   backoffMs: 1000,
-   *   exponentialBackoff: true
-   * });
-   * ```
-   */
-  withRetry(config: RetryConfig): this {
-    this.retryConfig = mergeRetryConfig(config);
-    return this;
-  }
-
-  /**
-   * Configure a custom error handler
-   */
-  withErrorHandler(handler: ErrorHandler): this {
-    this.errorHandler = handler;
     return this;
   }
 
@@ -344,9 +311,7 @@ export class ContractAdapterBuilder<TContract, TLedger = unknown, TPrivateState 
       });
 
       const config: AdapterConfig = {
-        logger: this.logger,
-        retry: this.retryConfig,
-        errorHandler: this.errorHandler
+        logger: this.logger
       };
 
       const adapter = new ContractAdapter<TContract, TPrivateState>(deployed as DeployedContract<TContract>, config, {
@@ -424,9 +389,7 @@ export class ContractAdapterBuilder<TContract, TLedger = unknown, TPrivateState 
       });
 
       const config: AdapterConfig = {
-        logger: this.logger,
-        retry: this.retryConfig,
-        errorHandler: this.errorHandler
+        logger: this.logger
       };
 
       const adapter = new ContractAdapter<TContract, TPrivateState>(connected as DeployedContract<TContract>, config, {

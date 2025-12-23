@@ -35,8 +35,7 @@ export type {
 } from './types/adapter-types.js';
 export type {
   DeployedContract,
-  Logger,
-  RetryConfig} from './types/contract-types.js';
+  Logger} from './types/contract-types.js';
 export type {
   WitnessCallEvent,
   WitnessContext,
@@ -70,15 +69,13 @@ export type {
   ConnectWithPrivateStateOptions,
   PrivateStateConfig} from './config/PrivateStateConfig.js';
 export { DEFAULT_PRIVATE_STATE_CONFIG } from './config/PrivateStateConfig.js';
-export { calculateRetryDelay,defaultRetryConfig, mergeRetryConfig } from './config/RetryConfig.js';
 
 // Error exports
 export {
   AdapterError,
   ConfigurationError,
   DeploymentError,
-  MethodCallError,
-  RetryExhaustedError} from './errors/AdapterError.js';
+  MethodCallError} from './errors/AdapterError.js';
 export {
   PrivateStateError,
   PrivateStateNotConfiguredError,
@@ -91,7 +88,6 @@ export {
 
 // Utility exports
 export { consoleLogger, createPrefixedLogger,noopLogger } from './utils/logger-wrapper.js';
-export { withRetry } from './utils/retry-logic.js';
 export { isFunction, isObject, isPromise, safeStringify } from './utils/type-helpers.js';
 
 // Provider exports
