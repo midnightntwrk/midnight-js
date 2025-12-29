@@ -14,7 +14,12 @@
  */
 
 export {
-  DEFAULT_CONFIG,
-  httpClientProofProvider,
-  serializeTransactionPayload
+  DEFAULT_TIMEOUT,
+  httpClientProvingProvider as httpClientProofProvider,
+  type ProvingProviderConfig
 } from './http-client-proof-provider';
+export {
+  DEFAULT_CONFIG,
+  httpClientProofProvider as httpClientProofProviderLegacy,
+  serializeTransactionPayload
+} from './http-client-proof-provider-legacy';

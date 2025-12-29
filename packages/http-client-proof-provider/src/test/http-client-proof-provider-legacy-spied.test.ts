@@ -37,7 +37,7 @@ describe('Http Proof Server Proof Provider', () => {
       status: 500
     } as any);
 
-    const { httpClientProofProvider } = await import('../http-client-proof-provider');
+    const { httpClientProofProvider } = await import('../http-client-proof-provider-legacy');
     const unprovenTx = await getValidUnprovenTx();
     const proofProvider = httpClientProofProvider('http://notvalidendpoint:8080');
 
@@ -61,7 +61,7 @@ describe('Http Proof Server Proof Provider', () => {
       status: 500
     } as any);
 
-    const { httpClientProofProvider } = await import('../http-client-proof-provider');
+    const { httpClientProofProvider } = await import('../http-client-proof-provider-legacy');
     const unprovenTx = await getValidUnprovenTx();
     const proofProvider = httpClientProofProvider('http://notvalidendpoint:8080/');
 

@@ -14,25 +14,15 @@
  */
 
 import {
-  createProvingTransactionPayload,
+  createCheckPayload,
+  createProvingPayload,
+  parseCheckResult,
   type ProvingKeyMaterial,
-  Transaction,
-  type UnprovenTransaction
-} from '@midnight-ntwrk/ledger-v6';
-import type {
-  ProofProvider,
-  ProvenTransaction,
-  ProveTxConfig,
-  ZKConfig
-} from '@midnight-ntwrk/midnight-js-types';
-import { InvalidProtocolSchemeError } from '@midnight-ntwrk/midnight-js-types';
+  type ProvingProvider} from '@midnight-ntwrk/ledger-v6';
+import { InvalidProtocolSchemeError, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
 import fetch from 'cross-fetch';
 import fetchBuilder from 'fetch-retry';
-import _ from 'lodash';
 
-/**
- * configure fetch-retry with fetch and http error 500 & 503 backoff strategy.
- */
 const retryOptions = {
   retries: 3,
   retryDelay: (attempt: number) => 2 ** attempt * 1_000,
@@ -40,82 +30,77 @@ const retryOptions = {
 };
 const fetchRetry = fetchBuilder(fetch, retryOptions);
 
-const deserializePayload = (arrayBuffer: ArrayBuffer): ProvenTransaction => {
-  const bytes = new Uint8Array(arrayBuffer);
-  const transaction = Transaction.deserialize('signature', 'proof', 'pre-binding', bytes);
-  return transaction as ProvenTransaction;
-};
+const CHECK_PATH = '/check';
+const PROVE_PATH = '/prove';
 
-const PROVE_TX_PATH = '/prove-tx';
+export const DEFAULT_TIMEOUT = 300000;
 
-/**
- * The default configuration for the proof server client.
- */
-export const DEFAULT_CONFIG = {
-  /**
-   * The default timeout for prove requests.
-   */
-  timeout: 300000,
-  /**
-   * The default ZK configuration to use. It is overwritten with a proper ZK
-   * configuration only if a call transaction is being proven.
-   */
-  zkConfig: undefined
-};
-
-const getKeyMaterial = <K extends string>(zkConfig: ZKConfig<K>): ProvingKeyMaterial => {
+const getKeyMaterial = async <K extends string>(
+  zkConfigProvider: ZKConfigProvider<K>,
+  circuitId: K
+): Promise<ProvingKeyMaterial> => {
+  const zkConfig = await zkConfigProvider.get(circuitId);
   return {
-    proverKey: zkConfig.proverKey as Uint8Array,
-    verifierKey: zkConfig.verifierKey as Uint8Array,
-    ir: zkConfig.zkir as Uint8Array,
+    proverKey: new Uint8Array(zkConfig.proverKey),
+    verifierKey: new Uint8Array(zkConfig.verifierKey),
+    ir: new Uint8Array(zkConfig.zkir),
   };
+};
+
+const makeHttpRequest = async (url: URL, payload: Uint8Array, timeout: number): Promise<Uint8Array> => {
+  const response = await fetchRetry(url, {
+    method: 'POST',
+    body: payload.buffer as ArrayBuffer,
+    signal: AbortSignal.timeout(timeout)
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed Proof Server response: url="${response.url}", code="${response.status}", status="${response.statusText}"`
+    );
+  }
+
+  return new Uint8Array(await response.arrayBuffer());
+};
+
+export interface ProvingProviderConfig {
+  readonly timeout?: number;
 }
 
-export const serializeTransactionPayload = <K extends string>(unprovenTx: UnprovenTransaction, zkConfig?: ZKConfig<K>): Uint8Array => {
-  const map = new Map();
-  if(zkConfig) {
-    if (Array.isArray(zkConfig)) {
-      zkConfig.forEach((config) => map.set(config.circuitId, getKeyMaterial(config)));
-    } else {
-      map.set(zkConfig.circuitId, getKeyMaterial(zkConfig));
-    }
-  }
-  return createProvingTransactionPayload(unprovenTx, map);
-}
+export const httpClientProvingProvider = <K extends string>(
+  url: string,
+  zkConfigProvider: ZKConfigProvider<K>,
+  config?: ProvingProviderConfig
+): ProvingProvider => {
+  const checkUrl = new URL(CHECK_PATH, url);
+  const proveUrl = new URL(PROVE_PATH, url);
 
-/**
- * Creates a {@link ProofProvider} by creating a client for a running proof server.
- * Allows for HTTP and HTTPS. The data passed to 'proveTx' are intended to be
- * secret, so usage of this function should be heavily scrutinized.
- *
- * @param url The url of a running proof server.
- */
-export const httpClientProofProvider = <K extends string>(url: string): ProofProvider<K> => {
-  // To validate the url, we use the URL constructor
-  const urlObject = new URL(PROVE_TX_PATH, url);
-  if (urlObject.protocol !== 'http:' && urlObject.protocol !== 'https:') {
-    throw new InvalidProtocolSchemeError(urlObject.protocol, ['http:', 'https:']);
+  if (checkUrl.protocol !== 'http:' && checkUrl.protocol !== 'https:') {
+    throw new InvalidProtocolSchemeError(checkUrl.protocol, ['http:', 'https:']);
   }
-  return {
-    async proveTx(
-      unprovenTx: UnprovenTransaction,
-      partialProveTxConfig?: ProveTxConfig<K>
-    ): Promise<ProvenTransaction> {
-      const config = _.defaults(partialProveTxConfig, DEFAULT_CONFIG);
-      const requestBody = serializeTransactionPayload(unprovenTx, config.zkConfig).buffer as ArrayBuffer;
-      const response = await fetchRetry(urlObject, {
-        method: 'POST',
-        body: requestBody,
-        signal: AbortSignal.timeout(config.timeout)
-      });
-      // TODO: More sophisticated error handling
-      // TODO: Check that response is valid format (has arrayBuffer content-type)
-      if (!response.ok) {
-        throw new Error(
-          `Failed Proof Server response: url="${response.url}", code="${response.status}", status="${response.statusText}"`
-        );
-      }
-      return deserializePayload(await response.arrayBuffer());
+
+  if (proveUrl.protocol !== 'http:' && proveUrl.protocol !== 'https:') {
+    throw new InvalidProtocolSchemeError(proveUrl.protocol, ['http:', 'https:']);
+  }
+
+  const timeout = config?.timeout ?? DEFAULT_TIMEOUT;
+
+  return  {
+    async check(serializedPreimage: Uint8Array, keyLocation: string): Promise<(bigint | undefined)[]> {
+      const keyMaterial = await getKeyMaterial(zkConfigProvider, keyLocation as K);
+      const payload = createCheckPayload(serializedPreimage, keyMaterial.ir);
+      const result = await makeHttpRequest(checkUrl, payload, timeout);
+      return parseCheckResult(result);
+    },
+
+    async prove(
+      serializedPreimage: Uint8Array,
+      keyLocation: string,
+      overwriteBindingInput?: bigint
+    ): Promise<Uint8Array> {
+      const keyMaterial = await getKeyMaterial(zkConfigProvider, keyLocation as K);
+      const payload = createProvingPayload(serializedPreimage, overwriteBindingInput, keyMaterial);
+      return makeHttpRequest(proveUrl, payload, timeout);
     }
   };
 };
