@@ -29,12 +29,11 @@ import {
   createUnprovenCallTxFromInitialStates,
   createUnprovenDeployTxFromVerifierKeys
 } from '@midnight-ntwrk/midnight-js-contracts';
-import { DEFAULT_CONFIG, httpClientProofProviderLegacy, httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
+import { DEFAULT_CONFIG, httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
 import type { ProofProvider, ZKConfig } from '@midnight-ntwrk/midnight-js-types';
 import { getImpureCircuitIds } from '@midnight-ntwrk/midnight-js-types';
-import type { ProvingProvider } from '@midnight-ntwrk/ledger-v6';
 import {
   createLogger,
   DynamicProofServerContainer,
@@ -68,8 +67,8 @@ describe('Proof server integration', () => {
 
   beforeAll(async () => {
     proofServerContainer = await DynamicProofServerContainer.start(logger);
-    proofProvider = httpClientProofProviderLegacy(proofServerContainer.getUrl());
     zkConfigProvider = new NodeZkConfigProvider<CounterCircuits>(new CounterConfiguration().zkConfigPath);
+    proofProvider = httpClientProofProvider(proofServerContainer.getUrl(), zkConfigProvider);
     const coinPublicKey = sampleCoinPublicKey();
     const encryptionPublicKey = sampleEncryptionPublicKey();
     const signingKey = sampleSigningKey();
@@ -204,72 +203,5 @@ describe('Proof server integration', () => {
         expect(call.entryPoint).toEqual(circuitId);
       }
     });
-  });
-});
-
-describe('Proof server integration - V2 ProvingProvider', () => {
-  let proofServerContainer: ProofServerContainer;
-  let provingProvider: ProvingProvider;
-  let zkConfigProvider: NodeZkConfigProvider<CounterCircuits>;
-
-  beforeEach(() => {
-    logger.info(`Running test=${expect.getState().currentTestName}`);
-  });
-
-  beforeAll(async () => {
-    proofServerContainer = await DynamicProofServerContainer.start(logger);
-    zkConfigProvider = new NodeZkConfigProvider<CounterCircuits>(new CounterConfiguration().zkConfigPath);
-    provingProvider = httpClientProofProvider(proofServerContainer.getUrl(), zkConfigProvider);
-  });
-
-  afterAll(async () => {
-    await proofServerContainer.stop();
-  });
-
-  test('should successfully call check with valid serialized preimage', async () => {
-    const serializedPreimage = new Uint8Array([1, 2, 3, 4]);
-    const circuitId = 'increment';
-
-    const result = await provingProvider.check(serializedPreimage, circuitId);
-
-    expect(result).toBeDefined();
-    expect(Array.isArray(result)).toBe(true);
-  });
-
-  test('should successfully call prove with valid serialized preimage', async () => {
-    const serializedPreimage = new Uint8Array([1, 2, 3, 4]);
-    const circuitId = 'increment';
-
-    const result = await provingProvider.prove(serializedPreimage, circuitId);
-
-    expect(result).toBeDefined();
-    expect(result).toBeInstanceOf(Uint8Array);
-    expect(result.length).toBeGreaterThan(0);
-  });
-
-  test('should successfully call prove with overwriteBindingInput', async () => {
-    const serializedPreimage = new Uint8Array([1, 2, 3, 4]);
-    const circuitId = 'increment';
-    const overwriteBindingInput = BigInt(123);
-
-    const result = await provingProvider.prove(serializedPreimage, circuitId, overwriteBindingInput);
-
-    expect(result).toBeDefined();
-    expect(result).toBeInstanceOf(Uint8Array);
-    expect(result.length).toBeGreaterThan(0);
-  });
-
-  test('should throw error for invalid circuit ID in check', async () => {
-    const serializedPreimage = new Uint8Array([1, 2, 3, 4]);
-    const invalidCircuitId = 'invalid-circuit-id';
-
-    await expect(provingProvider.check(serializedPreimage, invalidCircuitId)).rejects.toThrow();
-  });
-
-  test('should throw error for invalid circuit ID in prove', async () => {
-    const serializedPreimage = new Uint8Array([1, 2, 3, 4]);
-    const invalidCircuitId = 'invalid-circuit-id';
-
-    await expect(provingProvider.prove(serializedPreimage, invalidCircuitId)).rejects.toThrow();
   });
 });
