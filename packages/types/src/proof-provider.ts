@@ -34,10 +34,14 @@ export interface ProveTxConfig<K extends string> {
    */
   readonly timeout?: number;
   /**
-   * The zero-knowledge configuration for the circuit that was called in `tx`.
-   * Undefined if `tx` is a deployment transaction.
+   * The zero-knowledge configuration for the circuit that was called in the given transaction.
+   * Undefined if the transaction is a deployment transaction.
+   *
+   * @remarks
+   * Where a transaction involves multiple circuits (e.g., when circuit calls are scoped to a transaction
+   * context), this may be an array of {@link ZKConfig}.
    */
-  readonly zkConfig?: ZKConfig<K>;
+  readonly zkConfig?: ZKConfig<K> | ZKConfig<K>[];
 }
 
 /**

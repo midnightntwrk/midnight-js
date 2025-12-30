@@ -28,6 +28,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from '../errors';
 import { submitCallTx, submitCallTxAsync } from '../submit-call-tx';
 import { submitTx, submitTxAsync } from '../submit-tx';
+import { withContractScopedTransaction } from '../transaction';
 import type { FinalizedCallTxData, UnsubmittedCallTxData } from '../tx-model';
 import { type CallTxOptions, createUnprovenCallTx } from '../unproven-call-tx';
 import {
@@ -107,7 +108,11 @@ describe('submit-call-tx', () => {
     result: FinalizedCallTxData<Contract, ImpureCircuitId>,
     options: CallTxOptions<Contract, ImpureCircuitId>
   ) => {
-    expect(createUnprovenCallTx).toHaveBeenCalledWith(mockProviders, options);
+    expect(createUnprovenCallTx).toHaveBeenCalledWith(
+      mockProviders, 
+      options,
+      expect.anything() // Ignore transaction context.
+    );
     expect(submitTx).toHaveBeenCalledWith(mockProviders, {
       unprovenTx: mockUnprovenCallTxData.private.unprovenTx,
       newCoins: mockUnprovenCallTxData.private.newCoins,
@@ -129,6 +134,18 @@ describe('submit-call-tx', () => {
         const { mockUnprovenCallTxData, mockFinalizedTxData } = setupSuccessfulMocks();
 
         const result = await submitCallTx(mockProviders, options);
+
+        verifySuccessfulCall(mockUnprovenCallTxData, mockFinalizedTxData, result, options);
+        expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
+      });
+
+      it('should successfully submit scoped call transaction', async () => {
+        const options = createBasicCallOptions();
+        const { mockUnprovenCallTxData, mockFinalizedTxData } = setupSuccessfulMocks();
+
+        const result = await withContractScopedTransaction(mockProviders, async (txCtx) => {
+          await submitCallTx(mockProviders, options, txCtx);
+        });
 
         verifySuccessfulCall(mockUnprovenCallTxData, mockFinalizedTxData, result, options);
         expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
@@ -159,6 +176,58 @@ describe('submit-call-tx', () => {
 
         expect(mockProviders.privateStateProvider.set).toHaveBeenCalledWith(mockPrivateStateId, nextPrivateState);
         verifySuccessfulCall(mockUnprovenCallTxData, mockFinalizedTxData, result, options);
+      });
+
+      it('should successfully submit scoped call transaction and update private state', async () => {
+        const nextPrivateState_1 = { newState: 'updated_1' } as PrivateState<Contract>;
+        const nextPrivateState_2 = { newState: 'updated_2' } as PrivateState<Contract>;
+        const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
+        const { mockFinalizedTxData } = setupSuccessfulMocks();
+
+        const mockUnprovenCallTxData_1 = createMockUnprovenCallTxData({
+          private: {
+            nextPrivateState: nextPrivateState_1,
+            input: {} as AlignedValue,
+            output: {} as AlignedValue,
+            privateTranscriptOutputs: [] as AlignedValue[],
+            result: '1',
+            nextZswapLocalState: mockZswapLocalState,
+            unprovenTx: mockUnprovenTx,
+            newCoins: [mockCoinInfo]
+          }
+        });
+        const mockUnprovenCallTxData_2 = createMockUnprovenCallTxData({
+          private: {
+            nextPrivateState: nextPrivateState_2,
+            input: {} as AlignedValue,
+            output: {} as AlignedValue,
+            privateTranscriptOutputs: [] as AlignedValue[],
+            result: '2',
+            nextZswapLocalState: mockZswapLocalState,
+            unprovenTx: mockUnprovenTx,
+            newCoins: [mockCoinInfo]
+          }
+        });        
+
+        const result = await withContractScopedTransaction(mockProviders, async (txCtx) => {
+          vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData_1);
+          const result_1 = await submitCallTx(mockProviders, options, txCtx);
+          expect(result_1.private.result).toBe('1');
+
+          vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData_2);
+          const result_2 = await submitCallTx(mockProviders, options, txCtx);
+          expect(result_2.private.result).toBe('2');
+        });
+
+        expect(mockProviders.privateStateProvider.set).toHaveBeenCalledWith(mockPrivateStateId, nextPrivateState_2);
+        expect(createUnprovenCallTx).toHaveBeenCalledWith(mockProviders, options, expect.anything());
+        expect(result).toEqual({
+          private: mockUnprovenCallTxData_2.private,
+          public: {
+            ...mockUnprovenCallTxData_2.public,
+            ...mockFinalizedTxData
+          }
+        });
       });
     });
 
@@ -197,6 +266,21 @@ describe('submit-call-tx', () => {
         vi.mocked(submitTx).mockResolvedValue(mockFailedTxData);
 
         await expect(submitCallTx(mockProviders, options)).rejects.toThrow(CallTxFailedError);
+        expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
+      });
+
+      it('should throw CallTxFailedError when scoped transaction fails with FailEntirely', async () => {
+        const options = createBasicCallOptions();
+        const mockUnprovenCallTxData = createFailedTxData();
+        const mockFailedTxData = createMockFinalizedTxData(FailEntirely);
+
+        vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+        vi.mocked(submitTx).mockResolvedValue(mockFailedTxData);
+
+        await expect(withContractScopedTransaction(mockProviders, async (txCtx) => {
+          await submitCallTx(mockProviders, options, txCtx);
+        })).rejects.toThrow(CallTxFailedError);
+
         expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
       });
 
@@ -331,7 +415,7 @@ describe('submit-call-tx', () => {
 
         const result = await submitCallTx(mockProviders, options);
 
-        expect(createUnprovenCallTx).toHaveBeenCalledWith(mockProviders, options);
+        expect(createUnprovenCallTx).toHaveBeenCalledWith(mockProviders, options, expect.anything());
         verifySuccessfulCall(mockUnprovenCallTxData, mockFinalizedTxData, result, options);
       });
     });

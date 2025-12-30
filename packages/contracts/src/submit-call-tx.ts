@@ -14,13 +14,15 @@
  */
 
 import type { Contract, ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
-import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
+import { type CallResult } from './call';
 import { type ContractProviders } from './contract-providers';
 import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from './errors';
+import * as Transaction from './internal/transaction';
 import type { SubmitTxProviders } from './submit-tx';
-import { submitTx, submitTxAsync } from './submit-tx';
+import { submitTxAsync } from './submit-tx';
+import { type TransactionContext } from './transaction';
 import type { FinalizedCallTxData, SubmittedCallTx } from './tx-model';
 import {
   type CallTxOptions,
@@ -43,7 +45,19 @@ export async function submitCallTx<C extends Contract, ICK extends ImpureCircuit
   options: CallTxOptionsWithPrivateStateId<C, ICK>
 ): Promise<FinalizedCallTxData<C, ICK>>;
 
-/**
+export async function submitCallTx<C extends Contract, ICK extends ImpureCircuitId<C>>(
+  providers: ContractProviders<C>,
+  options: CallTxOptionsWithPrivateStateId<C, ICK>,
+  transactionContext: TransactionContext<C, ICK>
+): Promise<CallResult<C, ICK>>;
+
+export async function submitCallTx<C extends Contract<undefined>, ICK extends ImpureCircuitId<C>>(
+  providers: SubmitTxProviders<C, ICK>,
+  options: CallTxOptionsBase<C, ICK>,
+  transactionContext: TransactionContext<C, ICK>
+): Promise<CallResult<C, ICK>>;
+
+ /**
  * Creates and submits a transaction for the invocation of a circuit on a given contract.
  *
  * ## Transaction Execution Phases
@@ -68,6 +82,8 @@ export async function submitCallTx<C extends Contract, ICK extends ImpureCircuit
  *
  * @param providers The providers used to manage the invocation lifecycle.
  * @param options Configuration.
+ * @param transactionContext Optional scoped transaction context to participate in an
+ *        existing transaction scope.
  *
  * @returns A `Promise` that resolves with the finalized transaction data for the invocation of
  *         `circuitId` on `contract` with the given `args`; or rejects with an error if the invocation fails.
@@ -77,8 +93,9 @@ export async function submitCallTx<C extends Contract, ICK extends ImpureCircuit
  */
 export async function submitCallTx<C extends Contract, ICK extends ImpureCircuitId<C>>(
   providers: SubmitCallTxProviders<C, ICK>,
-  options: CallTxOptions<C, ICK>
-): Promise<FinalizedCallTxData<C, ICK>> {
+  options: CallTxOptions<C, ICK>,
+  transactionContext?: TransactionContext<C, ICK>
+): Promise<FinalizedCallTxData<C, ICK> | CallResult<C, ICK>> {
   assertIsContractAddress(options.contractAddress);
   assertDefined(options.contract.impureCircuits[options.circuitId], `Circuit '${options.circuitId}' is undefined`);
 
@@ -89,29 +106,18 @@ export async function submitCallTx<C extends Contract, ICK extends ImpureCircuit
     throw new IncompleteCallTxPrivateStateConfig();
   }
 
-  const unprovenCallTxData = await createUnprovenCallTx(providers, options);
-
-  const finalizedTxData = await submitTx(providers, {
-    unprovenTx: unprovenCallTxData.private.unprovenTx,
-    newCoins: unprovenCallTxData.private.newCoins,
-    circuitId: options.circuitId
-  });
-
-  if (finalizedTxData.status !== SucceedEntirely) {
-    throw new CallTxFailedError(finalizedTxData, options.circuitId);
-  }
-
-  if (hasPrivateStateId && hasPrivateStateProvider) {
-    await providers.privateStateProvider.set(options.privateStateId, unprovenCallTxData.private.nextPrivateState);
-  }
-
-  return {
-    private: unprovenCallTxData.private,
-    public: {
-      ...unprovenCallTxData.public,
-      ...finalizedTxData
-    }
+  const callTxFn = async (txCtx: TransactionContext<C, ICK>) => {
+    Transaction.mergeUnsubmittedCallTxData(
+      txCtx,
+      options.circuitId,
+      await createUnprovenCallTx(providers, options, txCtx),
+      hasPrivateStateId ? options.privateStateId : undefined
+    );
   };
+
+  return transactionContext
+    ? Transaction.scoped(providers as ContractProviders<C, ICK>, callTxFn, transactionContext)
+    : Transaction.scoped(providers as ContractProviders<C, ICK>, callTxFn)
 }
 
 /**

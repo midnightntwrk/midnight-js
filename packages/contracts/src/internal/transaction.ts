@@ -1,0 +1,246 @@
+/*
+ * This file is part of midnight-js.
+ * Copyright (C) 2025 Midnight Foundation
+ * SPDX-License-Identifier: Apache-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { ZswapOffer as LedgerZswapOffer } from '@midnight-ntwrk/ledger-v6';
+import { type Contract, type ImpureCircuitId, type PrivateState,type PrivateStateId, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import { ChargedState,type ShieldedCoinInfo } from '@midnight-ntwrk/onchain-runtime-v1';
+
+import { type CallResult } from '../call';
+import { type ContractProviders } from '../contract-providers';
+import { CallTxFailedError } from '../errors';
+import { type ContractStates,type PublicContractStates } from '../get-states';
+import { submitTx, type SubmitTxOptions } from '../submit-tx';
+import type * as Transaction from '../transaction';
+import { type FinalizedCallTxData, type UnsubmittedCallTxData } from '../tx-model';
+
+/** @internal */
+export const TypeId: Transaction.TypeId = Symbol.for('@midnight-ntwrk/midnight-js#Transaction') as Transaction.TypeId;
+/** @internal */
+export const Submit = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/Submit');
+/** @internal */
+export const MergeUnsubmittedCallTxData = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/MergeUnsubmittedCallTxData');
+/** @internal */
+export const CacheStates = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/CacheStates');
+
+const mergeSubmitTxOptions = <ICK extends ImpureCircuitId>(
+  current: SubmitTxOptions<ICK> | undefined,
+  next: SubmitTxOptions<ICK>
+): SubmitTxOptions<ICK> => {
+  if (!current) {
+    return next;
+  }
+  const newCoins = [
+      ...(current.newCoins ?? []),
+      ...(next.newCoins ?? [])
+    ].reduce((map, coin) => {
+      const existing = map.get(coin.type);
+      if (existing) {
+        map.set(coin.type, { ...existing, value: existing.value + coin.value });
+      } else {
+        map.set(coin.type, { ...coin });
+      }
+      return map;
+    }, new Map<string, ShieldedCoinInfo>());
+  const circuitIds = new Set([
+      ...(Array.isArray(current.circuitId) ? current.circuitId! : [current.circuitId!]),
+      ...(Array.isArray(next.circuitId) ? next.circuitId! : [next.circuitId!])
+    ]);
+
+  return {
+    unprovenTx: current.unprovenTx.merge(next.unprovenTx),
+    newCoins: Array.from(newCoins.values()),
+    circuitId: Array.from(circuitIds)
+  };
+};
+
+/** @internal */
+export class TransactionContextImpl<
+  C extends Contract,
+  ICK extends ImpureCircuitId
+> implements Transaction.TransactionContext<C, ICK> {
+  readonly [TypeId]: Transaction.TypeId = TypeId;
+  readonly providers: ContractProviders<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  readonly options?: Transaction.ScopedTransactionOptions;
+
+  currentStates: ContractStates<PrivateState<C>> | PublicContractStates | undefined = undefined;
+  currentUnsubmittedCall: [callTxData: UnsubmittedCallTxData<C, ICK>, privateStateId?: PrivateStateId] | undefined;
+  submitTxOptions: SubmitTxOptions<ICK> | undefined = undefined;
+  
+  constructor(providers: ContractProviders<C, ICK>, options?: Transaction.ScopedTransactionOptions) {  
+    this.providers = providers;
+    this.options = options;
+  }
+
+  getCurrentStates(): ContractStates<PrivateState<C>> | PublicContractStates | undefined {
+    return this.currentStates;
+  }
+
+  getLastUnsubmittedCallTxDataToTransact(): [UnsubmittedCallTxData<C, ICK>, PrivateStateId?] | undefined {
+    return this.currentUnsubmittedCall;
+  }
+
+  async [Submit](): Promise<FinalizedCallTxData<C, ICK>> {
+    const [unprovenCallTxData, privateStateId] = this.getLastUnsubmittedCallTxDataToTransact() ?? [];
+    if (!unprovenCallTxData) {
+      throw new Error('No calls were submitted.');
+    }
+    const finalizedTxData = await submitTx(this.providers, this.submitTxOptions!);
+    if (finalizedTxData.status !== SucceedEntirely) {
+      throw new CallTxFailedError(finalizedTxData, this.submitTxOptions!.circuitId!);
+    }
+    if (privateStateId) {
+      await this.providers.privateStateProvider!.set(privateStateId, unprovenCallTxData.private.nextPrivateState);
+    }
+    return {
+      private: unprovenCallTxData.private,
+      public: {
+        ...unprovenCallTxData.public,
+        ...finalizedTxData
+      }
+    }
+  }
+
+  [CacheStates](states: ContractStates<PrivateState<C>> | PublicContractStates): void {
+    this.currentStates = states;
+  }
+
+  [MergeUnsubmittedCallTxData](circuitId: ICK, callData: UnsubmittedCallTxData<C, ICK>, privateStateId?: PrivateStateId): void {
+    this.currentUnsubmittedCall = [callData, privateStateId];
+    this.submitTxOptions = mergeSubmitTxOptions(
+      this.submitTxOptions,
+      {
+        unprovenTx: callData.private.unprovenTx,
+        newCoins: callData.private.newCoins,
+        circuitId
+       }
+    );
+    
+    // If there is no currently active state, then return...
+    if (!this.currentStates) return;
+
+    // ...otherwise apply the changes in `callData` to the cached state.
+    const privateState = callData.private.nextPrivateState;
+    const contractState = this.currentStates!.contractState;
+    contractState.data = new ChargedState(callData.public.nextContractState);
+    const [zswapChainState] = callData.private.unprovenTx.guaranteedOffer
+      ? this.currentStates!.zswapChainState.tryApply(LedgerZswapOffer.deserialize('pre-proof', callData.private.unprovenTx.guaranteedOffer!.serialize()))
+      : [this.currentStates!.zswapChainState];
+
+    this[CacheStates]({ contractState, zswapChainState, privateState });
+  }
+}
+
+/** @internal */
+export const mergeUnsubmittedCallTxData = <
+  C extends Contract,
+  ICK extends ImpureCircuitId<C>
+>(
+  txCtx: Transaction.TransactionContext<C, ICK>,
+  circuitId: ICK,
+  callData: UnsubmittedCallTxData<C, ICK>,
+  privateStateId?: PrivateStateId
+): void => {
+  txCtx[MergeUnsubmittedCallTxData](circuitId, callData, privateStateId);
+};
+
+/** @internal */
+export const isTransactionContext = (u: unknown): u is Transaction.TransactionContext<Contract> =>
+  typeof u === "object" && u != null && TypeId in u;
+
+/** @internal */
+export const scoped: {
+  <C extends Contract, ICK extends ImpureCircuitId<C>>(
+    providers: ContractProviders<C, ICK>,
+    fn: (txCtx: Transaction.TransactionContext<C, ICK>) => Promise<void>,
+    options?: Transaction.ScopedTransactionOptions,
+  ): Promise<FinalizedCallTxData<C, ICK>>,
+  <C extends Contract, ICK extends ImpureCircuitId<C>>(
+    providers: ContractProviders<C, ICK>,
+    fn: (txCtx: Transaction.TransactionContext<C, ICK>) => Promise<void>,
+    txCtx: Transaction.TransactionContext<C, ICK>,
+    options?: Transaction.ScopedTransactionOptions
+  ): Promise<CallResult<C, ICK>>
+} = async <
+  C extends Contract,
+  ICK extends ImpureCircuitId
+> (
+  providers: ContractProviders<C, ICK>,
+  fn: (txCtx: Transaction.TransactionContext<C, ICK>) => Promise<void>,
+  txCtxOrOptions?: Transaction.TransactionContext<C, ICK> | Transaction.ScopedTransactionOptions,
+  options?: Transaction.ScopedTransactionOptions
+): Promise<any> => { // eslint-disable-line @typescript-eslint/no-explicit-any
+  const outerTxCtx = isTransactionContext(txCtxOrOptions) ? txCtxOrOptions : undefined;
+  const txOptions = isTransactionContext(txCtxOrOptions)
+    ? options
+    : txCtxOrOptions as Transaction.ScopedTransactionOptions | undefined;
+  const innerTxCtx = outerTxCtx ?? new TransactionContextImpl<C, ICK>(providers, txOptions);
+
+  try {
+    await fn(innerTxCtx);
+  } catch (err: unknown) {
+    const execErr = new Error(
+      `Unexpected error executing scoped transaction '${options?.scopeName ?? '<unnamed>'}': ${String(err)}`,
+      { cause: err }
+    );
+    providers?.loggerProvider?.error?.call(
+      providers.loggerProvider,
+      execErr.message
+    );
+    throw execErr;
+  }
+  try {
+    // Only submit when there is no outer transaction context (i.e., no parent transaction context, meaning
+    // that this is the root transaction context).
+    if (!outerTxCtx) {
+      return await innerTxCtx[Submit]();
+    }
+
+    // ...otherwise, return the `CallResult` from the last submitted call within the scope of the transaction context.
+    const [unprovenCallTxData] = innerTxCtx.getLastUnsubmittedCallTxDataToTransact() ?? [];
+    if (!unprovenCallTxData) {
+      throw new Error('No calls were submitted.');
+    }
+    return {
+      public: {
+        nextContractState: unprovenCallTxData.public.nextContractState,
+        partitionedTranscript: unprovenCallTxData.public.partitionedTranscript,
+        publicTranscript: unprovenCallTxData.public.publicTranscript
+      },
+      private: {
+        input: unprovenCallTxData.private.input,
+        output: unprovenCallTxData.private.output,
+        privateTranscriptOutputs: unprovenCallTxData.private.privateTranscriptOutputs,
+        result: unprovenCallTxData.private.result,
+        nextPrivateState: unprovenCallTxData.private.nextPrivateState,
+        nextZswapLocalState: unprovenCallTxData.private.nextZswapLocalState
+      }
+    } as CallResult<C, ICK>;
+  } catch (err: unknown) {
+    // Rethrow known call transaction failures and errors occurring within an outer transaction context...
+    if (err instanceof CallTxFailedError || outerTxCtx) {
+      throw err;
+    }
+    // ...otherwise, wrap and rethrow errors occurring during submission at the root transaction context.
+    const submitErr = new Error(
+      `Unexpected error submitting scoped transaction '${options?.scopeName ?? '<unnamed>'}': ${String(err)}`,
+      { cause: err }
+    );
+    providers?.loggerProvider?.error?.call(
+      providers.loggerProvider,
+      submitErr.message
+    );
+    throw submitErr;
+  }
+};

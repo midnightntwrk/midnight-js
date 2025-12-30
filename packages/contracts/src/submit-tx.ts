@@ -55,8 +55,12 @@ export type SubmitTxOptions<ICK extends ImpureCircuitId> = {
   /**
    * A circuit identifier to use to fetch the ZK artifacts needed to prove the
    * transaction. Only defined if a call transaction is being submitted.
+   * 
+   * @remarks
+   * Where a transaction involves multiple circuits (e.g., when circuit calls are scoped to a transaction
+   * context), this may be an array of circuit IDs.
    */
-  readonly circuitId?: ICK;
+  readonly circuitId?: ICK | ICK[];
 }
 
 /**
@@ -69,7 +73,7 @@ export type SubmitTxProviders<C extends Contract, ICK extends ImpureCircuitId<C>
 >;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function logTransaction(circuitId: string | undefined, tx: Transaction<any, any, any>) {
+function logTransaction(circuitId: string | string[] | undefined, tx: Transaction<any, any, any>) {
   if (!__DEBUG__) {
     return;
   }
@@ -79,8 +83,10 @@ function logTransaction(circuitId: string | undefined, tx: Transaction<any, any,
     return;
   }
 
+  const circuitIds = Array.isArray(circuitId) ? circuitId.join('-') : circuitId ?? 'unknown-circuit';
+
   try {
-    console.log(`Submit tx: ${circuitId} : ${tx}`);
+    console.log(`Submit tx: ${circuitIds} : ${tx}`);
     const serialized = tx.serialize();
     const logsDir = path.join(process.cwd(), 'logs', 'transactions');
 
@@ -88,7 +94,7 @@ function logTransaction(circuitId: string | undefined, tx: Transaction<any, any,
       fs.mkdirSync(logsDir, { recursive: true });
     }
 
-    const filename = `tx-${Date.now()}-${circuitId}`;
+    const filename = `tx-${Date.now()}-${circuitIds}`;
     const filepath = path.join(logsDir, filename + '.bin');
     const filepathString = path.join(logsDir, filename + '.txt');
 
@@ -102,7 +108,7 @@ function logTransaction(circuitId: string | undefined, tx: Transaction<any, any,
 }
 
 async function proveTransaction<C extends Contract, ICK extends ImpureCircuitId<C>>(recipe: BalancedProvingRecipe, providers: SubmitTxProviders<C, ICK>, proveTxConfig: {
-  zkConfig: ZKConfig<ICK>
+  zkConfig: ZKConfig<ICK> | ZKConfig<ICK>[]
 } | undefined) {
   let toSubmit: ProvenTransaction;
   switch (recipe.type) {
@@ -136,7 +142,13 @@ async function submitTxCore<C extends Contract, ICK extends ImpureCircuitId<C>>(
   options: SubmitTxOptions<ICK>
 ): Promise<string> {
   const proveTxConfig = options.circuitId
-    ? { zkConfig: await providers.zkConfigProvider.get(options.circuitId) }
+    ? Array.isArray(options.circuitId)
+      ? { 
+          zkConfig: await Promise.all(options.circuitId.map((circuitId) => providers.zkConfigProvider.get(circuitId)))
+        }
+      : {
+          zkConfig: await providers.zkConfigProvider.get(options.circuitId)
+        }
     : undefined;
   const recipe = await providers.walletProvider.balanceTx(options.unprovenTx, options.newCoins);
   const toSubmit = await proveTransaction(recipe, providers, proveTxConfig);
