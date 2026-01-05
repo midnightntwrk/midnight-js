@@ -93,7 +93,7 @@
     "vitest": "^4.0.15"
   },
   "lint-staged": {
-    "*.ts,!compact-js/**/*.ts": "eslint --cache --fix"
+    "*.ts": "eslint --cache --fix"
   },
   "config": {
     "commitizen": {
