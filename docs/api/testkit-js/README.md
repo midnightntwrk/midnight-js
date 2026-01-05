@@ -71,12 +71,6 @@ Set of functions that simplify testing of DApps in Midnight
 
 ## Environment variables
 
-### Storage Password (Automatic Setup):
-- **MIDNIGHT_STORAGE_PASSWORD** is automatically set by testkit-js if not already defined
-- Default test value: `testkit-default-storage-password-for-testing-only`
-- This ensures encrypted storage works in test environments without manual configuration
-- For production or custom testing, set your own password before importing testkit-js
-
 ### Environment selection:
 - MN_TEST_ENVIRONMENT controls the environment to be used for testing. It can take one of these values:
    - undeployed

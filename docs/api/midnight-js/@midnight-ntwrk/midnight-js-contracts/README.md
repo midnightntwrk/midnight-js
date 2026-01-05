@@ -21,6 +21,7 @@
 ## Interfaces
 
 - [ContractMaintenanceTxInterface](interfaces/ContractMaintenanceTxInterface.md)
+- [TransactionContext](interfaces/TransactionContext.md)
 
 ## Type Aliases
 
@@ -65,6 +66,7 @@
 - [FindDeployedContractOptionsStorePrivateState](type-aliases/FindDeployedContractOptionsStorePrivateState.md)
 - [FoundContract](type-aliases/FoundContract.md)
 - [PublicContractStates](type-aliases/PublicContractStates.md)
+- [ScopedTransactionOptions](type-aliases/ScopedTransactionOptions.md)
 - [SubmittedCallTx](type-aliases/SubmittedCallTx.md)
 - [SubmitTxOptions](type-aliases/SubmitTxOptions.md)
 - [SubmitTxProviders](type-aliases/SubmitTxProviders.md)
@@ -78,6 +80,10 @@
 - [UnsubmittedDeployTxPrivateData](type-aliases/UnsubmittedDeployTxPrivateData.md)
 - [UnsubmittedDeployTxPublicData](type-aliases/UnsubmittedDeployTxPublicData.md)
 - [UnsubmittedTxData](type-aliases/UnsubmittedTxData.md)
+
+## Variables
+
+- [withContractScopedTransaction](variables/withContractScopedTransaction.md)
 
 ## Functions
 
