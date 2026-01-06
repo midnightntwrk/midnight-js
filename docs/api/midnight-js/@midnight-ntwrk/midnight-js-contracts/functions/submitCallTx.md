@@ -36,6 +36,11 @@ The providers used to manage the invocation lifecycle.
 
 Configuration.
 
+## Param
+
+Optional scoped transaction context to participate in an
+       existing transaction scope.
+
 ## Throws
 
 When transaction fails in either guaranteed or fallible phase.
@@ -96,3 +101,67 @@ When transaction fails in either guaranteed or fallible phase.
 ### Returns
 
 `Promise`\<[`FinalizedCallTxData`](../type-aliases/FinalizedCallTxData.md)\<`C`, `ICK`\>\>
+
+## Call Signature
+
+> **submitCallTx**\<`C`, `ICK`\>(`providers`, `options`, `transactionContext`): `Promise`\<[`CallResult`](../type-aliases/CallResult.md)\<`C`, `ICK`\>\>
+
+### Type Parameters
+
+#### C
+
+`C` *extends* `Contract`\<`any`, `Witnesses`\<`any`\>\>
+
+#### ICK
+
+`ICK` *extends* `string`
+
+### Parameters
+
+#### providers
+
+[`ContractProviders`](../type-aliases/ContractProviders.md)\<`C`\>
+
+#### options
+
+[`CallTxOptionsWithPrivateStateId`](../type-aliases/CallTxOptionsWithPrivateStateId.md)\<`C`, `ICK`\>
+
+#### transactionContext
+
+[`TransactionContext`](../interfaces/TransactionContext.md)\<`C`, `ICK`\>
+
+### Returns
+
+`Promise`\<[`CallResult`](../type-aliases/CallResult.md)\<`C`, `ICK`\>\>
+
+## Call Signature
+
+> **submitCallTx**\<`C`, `ICK`\>(`providers`, `options`, `transactionContext`): `Promise`\<[`CallResult`](../type-aliases/CallResult.md)\<`C`, `ICK`\>\>
+
+### Type Parameters
+
+#### C
+
+`C` *extends* `Contract`\<`undefined`, `Witnesses`\<`undefined`\>\>
+
+#### ICK
+
+`ICK` *extends* `string`
+
+### Parameters
+
+#### providers
+
+[`SubmitTxProviders`](../type-aliases/SubmitTxProviders.md)\<`C`, `ICK`\>
+
+#### options
+
+[`CallTxOptionsBase`](../type-aliases/CallTxOptionsBase.md)\<`C`, `ICK`\>
+
+#### transactionContext
+
+[`TransactionContext`](../interfaces/TransactionContext.md)\<`C`, `ICK`\>
+
+### Returns
+
+`Promise`\<[`CallResult`](../type-aliases/CallResult.md)\<`C`, `ICK`\>\>

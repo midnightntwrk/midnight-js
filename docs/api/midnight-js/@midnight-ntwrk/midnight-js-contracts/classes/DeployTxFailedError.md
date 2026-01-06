@@ -38,7 +38,7 @@ The finalization data of the deployment transaction that failed.
 
 ### circuitId?
 
-> `readonly` `optional` **circuitId**: `string`
+> `readonly` `optional` **circuitId**: `string` \| `string`[]
 
 The name of the circuit that was called to create the call
                  transaction that failed. Only defined if a call transaction
