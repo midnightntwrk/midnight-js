@@ -166,10 +166,10 @@ export const replaceAuthority = (newAuthority: SigningKey, contractState: Contra
   new ReplaceAuthority(contractMaintenanceAuthority(newAuthority, contractState));
 
 export const removeVerifierKey = (operation: string | Uint8Array): VerifierKeyRemove =>
-  new VerifierKeyRemove(operation, new ContractOperationVersion('v2'));
+  new VerifierKeyRemove(operation, new ContractOperationVersion('v3'));
 
 export const insertVerifierKey = (operation: string | Uint8Array, newVk: VerifierKey): VerifierKeyInsert =>
-  new VerifierKeyInsert(operation, new ContractOperationVersionedVerifierKey('v2', newVk));
+  new VerifierKeyInsert(operation, new ContractOperationVersionedVerifierKey('v3', newVk));
 
 // Utilities for unproven transactions for the single contract updates above.
 
