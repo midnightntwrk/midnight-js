@@ -17,6 +17,11 @@ The providers to use to create the call transaction.
 
 Configuration.
 
+## Param
+
+Optional scoped transaction context to participate in an
+       existing transaction scope.
+
 ## Throws
 
 IncompleteCallTxPrivateStateConfig If a `privateStateId` was given but a `privateStateProvider`
@@ -25,7 +30,7 @@ IncompleteCallTxPrivateStateConfig If a `privateStateId` was given but a `privat
 
 ## Call Signature
 
-> **createUnprovenCallTx**\<`C`, `ICK`\>(`providers`, `options`): `Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `ICK`\>\>
+> **createUnprovenCallTx**\<`C`, `ICK`\>(`providers`, `options`, `transactionContext?`): `Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `ICK`\>\>
 
 ### Type Parameters
 
@@ -47,13 +52,17 @@ IncompleteCallTxPrivateStateConfig If a `privateStateId` was given but a `privat
 
 [`CallOptionsWithArguments`](../type-aliases/CallOptionsWithArguments.md)\<`C`, `ICK`\>
 
+#### transactionContext?
+
+[`TransactionContext`](../interfaces/TransactionContext.md)\<`C`, `ICK`\>
+
 ### Returns
 
 `Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `ICK`\>\>
 
 ## Call Signature
 
-> **createUnprovenCallTx**\<`C`, `ICK`\>(`providers`, `options`): `Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `ICK`\>\>
+> **createUnprovenCallTx**\<`C`, `ICK`\>(`providers`, `options`, `transactionContext?`): `Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `ICK`\>\>
 
 ### Type Parameters
 
@@ -74,6 +83,10 @@ IncompleteCallTxPrivateStateConfig If a `privateStateId` was given but a `privat
 #### options
 
 [`CallTxOptionsWithPrivateStateId`](../type-aliases/CallTxOptionsWithPrivateStateId.md)\<`C`, `ICK`\>
+
+#### transactionContext?
+
+[`TransactionContext`](../interfaces/TransactionContext.md)\<`C`, `ICK`\>
 
 ### Returns
 
