@@ -42,10 +42,9 @@ import {
   type SignatureEnabled,
   type Signaturish,
   type TokenType,
-  type Transaction,
   type UnprovenTransaction,
   type ZswapChainState,
-  type ZswapSecretKeys
+  type ZswapSecretKeys,
 } from '@midnight-ntwrk/ledger-v7';
 import {
   type Contract,
@@ -54,6 +53,7 @@ import {
   type PrivateState,
   type PrivateStateId,
   SucceedEntirely,
+  type Transaction,
   type TxStatus,
   type VerifierKey,
   type Witnesses
@@ -127,6 +127,7 @@ export const createMockContract = (): Contract<undefined> => ({
 });
 
 export const createMockUnprovenTx = (): UnprovenTransaction => ({
+  addCalls: vi.fn(),
   eraseProofs: vi.fn(),
   identifiers: vi.fn(),
   merge: vi.fn(),
@@ -149,6 +150,7 @@ export const createMockUnprovenTx = (): UnprovenTransaction => ({
 });
 
 export const createMockProvenTx = (): Transaction<Signaturish, Proofish, Bindingish> => ({
+  addCalls: vi.fn(),
   eraseProofs: vi.fn(),
   identifiers: vi.fn().mockReturnValue(['test-tx-id']),
   merge: vi.fn(),
