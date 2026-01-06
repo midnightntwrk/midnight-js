@@ -58,4 +58,4 @@ export * from './providers';
 export * from './public-data-provider';
 export * from './wallet-provider';
 export * from './zk-config-provider';
-export { Transaction } from '@midnight-ntwrk/ledger-v6';
+export { Transaction } from '@midnight-ntwrk/ledger-v7';

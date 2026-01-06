@@ -18,7 +18,7 @@ import {
   type FinalizedTransaction,
   type Transaction,
   type UnprovenTransaction,
-} from '@midnight-ntwrk/ledger-v6';
+} from '@midnight-ntwrk/ledger-v7';
 import {
   BALANCE_TRANSACTION_TO_PROVE,
   type BalancedProvingRecipe,
@@ -55,7 +55,7 @@ export type SubmitTxOptions<ICK extends ImpureCircuitId> = {
   /**
    * A circuit identifier to use to fetch the ZK artifacts needed to prove the
    * transaction. Only defined if a call transaction is being submitted.
-   * 
+   *
    * @remarks
    * Where a transaction involves multiple circuits (e.g., when circuit calls are scoped to a transaction
    * context), this may be an array of circuit IDs.
@@ -143,7 +143,7 @@ async function submitTxCore<C extends Contract, ICK extends ImpureCircuitId<C>>(
 ): Promise<string> {
   const proveTxConfig = options.circuitId
     ? Array.isArray(options.circuitId)
-      ? { 
+      ? {
           zkConfig: await Promise.all(options.circuitId.map((circuitId) => providers.zkConfigProvider.get(circuitId)))
         }
       : {

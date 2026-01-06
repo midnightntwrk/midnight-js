@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { ZswapOffer as LedgerZswapOffer } from '@midnight-ntwrk/ledger-v6';
+import { ZswapOffer as LedgerZswapOffer } from '@midnight-ntwrk/ledger-v7';
 import { type Contract, type ImpureCircuitId, type PrivateState,type PrivateStateId, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { ChargedState,type ShieldedCoinInfo } from '@midnight-ntwrk/onchain-runtime-v2';
 

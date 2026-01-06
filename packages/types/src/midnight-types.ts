@@ -23,7 +23,7 @@ import {
   type Transaction,
   type TransactionHash,
   type TransactionId,
-} from '@midnight-ntwrk/ledger-v6';
+} from '@midnight-ntwrk/ledger-v7';
 
 /**
  * A type representing a prover key derived from a contract circuit.

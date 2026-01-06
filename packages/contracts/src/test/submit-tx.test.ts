@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { type ShieldedCoinInfo } from '@midnight-ntwrk/ledger-v6';
+import { type ShieldedCoinInfo } from '@midnight-ntwrk/ledger-v7';
 import type { ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 

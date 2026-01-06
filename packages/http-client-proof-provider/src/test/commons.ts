@@ -26,7 +26,7 @@ import {
   sampleEncryptionPublicKey,
   type UnprovenTransaction,
   ZswapChainState
-} from '@midnight-ntwrk/ledger-v6';
+} from '@midnight-ntwrk/ledger-v7';
 import { createUnprovenCallTxFromInitialStates } from '@midnight-ntwrk/midnight-js-contracts';
 import { createProverKey, createVerifierKey, createZKIR } from '@midnight-ntwrk/midnight-js-types';
 import fs from 'fs/promises';

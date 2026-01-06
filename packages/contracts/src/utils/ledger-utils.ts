@@ -43,7 +43,7 @@ import {
   VerifierKeyInsert,
   VerifierKeyRemove,
   type ZswapChainState
-} from '@midnight-ntwrk/ledger-v6';
+} from '@midnight-ntwrk/ledger-v7';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   type ImpureCircuitId,

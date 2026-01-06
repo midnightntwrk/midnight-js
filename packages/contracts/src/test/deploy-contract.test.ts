@@ -14,7 +14,7 @@
  */
 
 import { type ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
-import { type UnprovenTransaction } from '@midnight-ntwrk/ledger-v6';
+import { type UnprovenTransaction } from '@midnight-ntwrk/ledger-v7';
 import { type Contract, type PrivateState } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 

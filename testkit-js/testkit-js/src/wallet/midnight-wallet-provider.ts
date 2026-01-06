@@ -23,7 +23,7 @@ import {
   type TokenType,
   type UnprovenTransaction,
   ZswapSecretKeys
-} from '@midnight-ntwrk/ledger-v6';
+} from '@midnight-ntwrk/ledger-v7';
 import {
   type BalancedProvingRecipe,
   type MidnightProvider,
