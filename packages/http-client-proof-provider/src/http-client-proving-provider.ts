@@ -40,6 +40,7 @@ const getKeyMaterial = async <K extends string>(
   circuitId: K
 ): Promise<ProvingKeyMaterial> => {
   const zkConfig = await zkConfigProvider.get(circuitId);
+  console.log(`Fetched ZK config for circuitId="${circuitId}":`, zkConfig);
   return {
     proverKey: new Uint8Array(zkConfig.proverKey),
     verifierKey: new Uint8Array(zkConfig.verifierKey),
