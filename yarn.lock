@@ -3100,7 +3100,7 @@ __metadata:
     "@midnight-ntwrk/compact-runtime": "npm:0.11.0-rc.1"
     "@midnight-ntwrk/ledger-v6": "npm:6.1.0-alpha.6"
     "@midnight-ntwrk/onchain-runtime-v1": "npm:1.0.0-alpha.5"
-    "@midnight-ntwrk/wallet-sdk-facade": "npm:1.0.0-beta.12"
+    "@midnight-ntwrk/wallet-sdk-facade": "npm:1.0.0-beta.13"
     "@rollup/plugin-commonjs": "npm:^28.0.9"
     "@rollup/plugin-node-resolve": "npm:^16.0.3"
     "@rollup/plugin-replace": "npm:^6.0.3"
@@ -3242,39 +3242,39 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/wallet-sdk-dust-wallet@npm:1.0.0-beta.11":
-  version: 1.0.0-beta.11
-  resolution: "@midnight-ntwrk/wallet-sdk-dust-wallet@npm:1.0.0-beta.11::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-dust-wallet%2F1.0.0-beta.11%2Fa2f73c964f9a59cab2966b062363fed78bcee0a1"
+"@midnight-ntwrk/wallet-sdk-dust-wallet@npm:1.0.0-beta.12":
+  version: 1.0.0-beta.12
+  resolution: "@midnight-ntwrk/wallet-sdk-dust-wallet@npm:1.0.0-beta.12::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-dust-wallet%2F1.0.0-beta.12%2F7cffb19facf0eaa4d19ff13d90f1240985bb6bf7"
   dependencies:
     "@midnight-ntwrk/ledger-v6": "npm:6.1.0-alpha.6"
     "@midnight-ntwrk/wallet-sdk-abstractions": "npm:1.0.0-beta.9"
     "@midnight-ntwrk/wallet-sdk-address-format": "npm:3.0.0-beta.9"
     "@midnight-ntwrk/wallet-sdk-capabilities": "npm:3.0.0-beta.9"
     "@midnight-ntwrk/wallet-sdk-hd": "npm:3.0.0-beta.7"
-    "@midnight-ntwrk/wallet-sdk-indexer-client": "npm:1.0.0-beta.13"
+    "@midnight-ntwrk/wallet-sdk-indexer-client": "npm:1.0.0-beta.14"
     "@midnight-ntwrk/wallet-sdk-node-client": "npm:1.0.0-beta.10"
-    "@midnight-ntwrk/wallet-sdk-prover-client": "npm:1.0.0-beta.10"
-    "@midnight-ntwrk/wallet-sdk-shielded": "npm:1.0.0-beta.12"
-    "@midnight-ntwrk/wallet-sdk-utilities": "npm:1.0.0-beta.7"
+    "@midnight-ntwrk/wallet-sdk-prover-client": "npm:1.0.0-beta.11"
+    "@midnight-ntwrk/wallet-sdk-shielded": "npm:1.0.0-beta.13"
+    "@midnight-ntwrk/wallet-sdk-utilities": "npm:1.0.0-beta.8"
     effect: "npm:^3.17.3"
     rxjs: "npm:^7.5"
-  checksum: 10/bf0b837b869d97fc35d53111d5643942eb2d0951ba44a07f67c725da4e1c86a54c2fc3ad4e596dc4f6b40a459877cdf123128c12ef2c33ff962f8a3ae84f65c9
+  checksum: 10/3b3cc73c57dba8ed93279533d68275dd4f34332fc00a4d874250f71320a485bc37b94dcbc3a0f4f563da86ca0a2803b979bf17dca13a0eab0504be61b7f687cc
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/wallet-sdk-facade@npm:1.0.0-beta.12":
-  version: 1.0.0-beta.12
-  resolution: "@midnight-ntwrk/wallet-sdk-facade@npm:1.0.0-beta.12::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-facade%2F1.0.0-beta.12%2F56afbecb5f464ae8a43fb1d0ce70af2d7fe30f5a"
+"@midnight-ntwrk/wallet-sdk-facade@npm:1.0.0-beta.13":
+  version: 1.0.0-beta.13
+  resolution: "@midnight-ntwrk/wallet-sdk-facade@npm:1.0.0-beta.13::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-facade%2F1.0.0-beta.13%2Fadb21d182e59a5ac324086c69878ae00ca1d4b09"
   dependencies:
     "@midnight-ntwrk/ledger-v6": "npm:6.1.0-alpha.6"
     "@midnight-ntwrk/wallet-sdk-abstractions": "npm:1.0.0-beta.9"
     "@midnight-ntwrk/wallet-sdk-address-format": "npm:3.0.0-beta.9"
-    "@midnight-ntwrk/wallet-sdk-dust-wallet": "npm:1.0.0-beta.11"
+    "@midnight-ntwrk/wallet-sdk-dust-wallet": "npm:1.0.0-beta.12"
     "@midnight-ntwrk/wallet-sdk-hd": "npm:3.0.0-beta.7"
-    "@midnight-ntwrk/wallet-sdk-shielded": "npm:1.0.0-beta.12"
-    "@midnight-ntwrk/wallet-sdk-unshielded-wallet": "npm:1.0.0-beta.14"
+    "@midnight-ntwrk/wallet-sdk-shielded": "npm:1.0.0-beta.13"
+    "@midnight-ntwrk/wallet-sdk-unshielded-wallet": "npm:1.0.0-beta.15"
     rxjs: "npm:^7.5"
-  checksum: 10/4b65302d577a7dbe8c1343434b19cd2e9c1cf73cf7c39c3ae9c662320af272800a3af02a542f20f133cdd7c1b36a52e24d5940b4f2b77f43abda3d0d7985640f
+  checksum: 10/36886b7d8f3a67f15c355c90dd103c1344ae6993b62bed08afb73c487814971cb7a71b9886589a753e0e9b6ffe73a1c20918ddc11360764880ac4f7f3ba9bd59
   languageName: node
   linkType: hard
 
@@ -3289,19 +3289,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/wallet-sdk-indexer-client@npm:1.0.0-beta.13":
-  version: 1.0.0-beta.13
-  resolution: "@midnight-ntwrk/wallet-sdk-indexer-client@npm:1.0.0-beta.13::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-indexer-client%2F1.0.0-beta.13%2Fda11a811beb42ef7c9c1c87b1175834c4848731c"
+"@midnight-ntwrk/wallet-sdk-indexer-client@npm:1.0.0-beta.14":
+  version: 1.0.0-beta.14
+  resolution: "@midnight-ntwrk/wallet-sdk-indexer-client@npm:1.0.0-beta.14::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-indexer-client%2F1.0.0-beta.14%2Ffa729b691842ff198810a8743c65affad2c1bbe9"
   dependencies:
     "@effect/platform": "npm:^0.90.0"
     "@graphql-typed-document-node/core": "npm:^3.2.0"
     "@midnight-ntwrk/wallet-sdk-abstractions": "npm:1.0.0-beta.9"
-    "@midnight-ntwrk/wallet-sdk-utilities": "npm:1.0.0-beta.7"
+    "@midnight-ntwrk/wallet-sdk-utilities": "npm:1.0.0-beta.8"
     effect: "npm:^3.17.3"
     graphql: "npm:^16.11.0"
     graphql-http: "npm:^1.22.4"
     graphql-ws: "npm:^6.0.5"
-  checksum: 10/ad8b582ff00eb3b33601a2f8e3e17a6bd1cc8abd53bebc5cd9d95f0995998abfd31c41a442e81a26d77f74575d64c70a98fd39fc3e07d6bf1a63fd7d057beee8
+  checksum: 10/317fc14b4a776a5770170e803b702f1c38d485df47f11d340f4cf5c79a7509235d33c663eabd94c5cdffc10a325235f0ce3c882b8ebde9d980b5addcec1818cc
   languageName: node
   linkType: hard
 
@@ -3328,44 +3328,44 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/wallet-sdk-prover-client@npm:1.0.0-beta.10":
-  version: 1.0.0-beta.10
-  resolution: "@midnight-ntwrk/wallet-sdk-prover-client@npm:1.0.0-beta.10::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-prover-client%2F1.0.0-beta.10%2F700f3dee04a8daa67dfe43797aebcd79a686d734"
+"@midnight-ntwrk/wallet-sdk-prover-client@npm:1.0.0-beta.11":
+  version: 1.0.0-beta.11
+  resolution: "@midnight-ntwrk/wallet-sdk-prover-client@npm:1.0.0-beta.11::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-prover-client%2F1.0.0-beta.11%2F975f9e7b1043749410a83d729a0dd7134fcfc482"
   dependencies:
     "@effect/platform": "npm:^0.90.0"
     "@midnight-ntwrk/ledger-v6": "npm:6.1.0-alpha.6"
     "@midnight-ntwrk/wallet-sdk-abstractions": "npm:1.0.0-beta.9"
-    "@midnight-ntwrk/wallet-sdk-utilities": "npm:1.0.0-beta.7"
+    "@midnight-ntwrk/wallet-sdk-utilities": "npm:1.0.0-beta.8"
     effect: "npm:^3.17.3"
-  checksum: 10/b02b6b41aa5d930438dbfa81294d0b07aa3c339fe25646e14db0d13a525947eff1aca1247603a3d33bd039d2e7d63ea7ca6aa62f155774f0261164ab10cef2e1
+  checksum: 10/dc563a44ca8f8c95d5d6eb912d23501afd03e27fd859b125e1ba15bf796d6e1d3a6f267ed13628ac026cd143b3fa7f30bfdfa5a6ac31e80f365de77514105078
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/wallet-sdk-runtime@npm:1.0.0-beta.8":
-  version: 1.0.0-beta.8
-  resolution: "@midnight-ntwrk/wallet-sdk-runtime@npm:1.0.0-beta.8::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-runtime%2F1.0.0-beta.8%2F8da13169a64f4ed32b6da687e89419ed6dd2a922"
+"@midnight-ntwrk/wallet-sdk-runtime@npm:1.0.0-beta.9":
+  version: 1.0.0-beta.9
+  resolution: "@midnight-ntwrk/wallet-sdk-runtime@npm:1.0.0-beta.9::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-runtime%2F1.0.0-beta.9%2Ffe7945b8aca1c2baeb96dda8eacb5c196538273d"
   dependencies:
     "@midnight-ntwrk/wallet-sdk-abstractions": "npm:1.0.0-beta.9"
-    "@midnight-ntwrk/wallet-sdk-utilities": "npm:1.0.0-beta.7"
+    "@midnight-ntwrk/wallet-sdk-utilities": "npm:1.0.0-beta.8"
     effect: "npm:^3.17.3"
     rxjs: "npm:^7.5"
-  checksum: 10/ea6047ff437287b33c3a6cf29d40eecd55a8ffd878002f5965d2148f67b764e098906263a709365dd284fb0e6f28e7012ad3e2c9ede6b168e559898eb3554e6d
+  checksum: 10/8c10c56a0586c0a049feaed79fb666feeb557cca109464de52c0aaa4f7fa4cf30007c2e6ef55394a30d83d4b44e4423ddabb8fff78d0fe4e1a872b23ad293939
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/wallet-sdk-shielded@npm:1.0.0-beta.12":
-  version: 1.0.0-beta.12
-  resolution: "@midnight-ntwrk/wallet-sdk-shielded@npm:1.0.0-beta.12::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-shielded%2F1.0.0-beta.12%2Fad87dc989c2a4b4b7d49edaf249a37b2f613a1d8"
+"@midnight-ntwrk/wallet-sdk-shielded@npm:1.0.0-beta.13":
+  version: 1.0.0-beta.13
+  resolution: "@midnight-ntwrk/wallet-sdk-shielded@npm:1.0.0-beta.13::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-shielded%2F1.0.0-beta.13%2F3795eabebdadf7e87592d0ae78a4320e4281832b"
   dependencies:
     "@midnight-ntwrk/ledger-v6": "npm:6.1.0-alpha.6"
     "@midnight-ntwrk/wallet-sdk-abstractions": "npm:1.0.0-beta.9"
     "@midnight-ntwrk/wallet-sdk-address-format": "npm:3.0.0-beta.9"
     "@midnight-ntwrk/wallet-sdk-capabilities": "npm:3.0.0-beta.9"
-    "@midnight-ntwrk/wallet-sdk-indexer-client": "npm:1.0.0-beta.13"
+    "@midnight-ntwrk/wallet-sdk-indexer-client": "npm:1.0.0-beta.14"
     "@midnight-ntwrk/wallet-sdk-node-client": "npm:1.0.0-beta.10"
-    "@midnight-ntwrk/wallet-sdk-prover-client": "npm:1.0.0-beta.10"
-    "@midnight-ntwrk/wallet-sdk-runtime": "npm:1.0.0-beta.8"
-    "@midnight-ntwrk/wallet-sdk-utilities": "npm:1.0.0-beta.7"
+    "@midnight-ntwrk/wallet-sdk-prover-client": "npm:1.0.0-beta.11"
+    "@midnight-ntwrk/wallet-sdk-runtime": "npm:1.0.0-beta.9"
+    "@midnight-ntwrk/wallet-sdk-utilities": "npm:1.0.0-beta.8"
     "@scure/base": "npm:^1.1.9"
     effect: "npm:^3.17.3"
     isomorphic-ws: "npm:^5.0.0"
@@ -3373,7 +3373,7 @@ __metadata:
     rxjs: "npm:^7.5"
     scale-ts: "npm:^1.1.0"
     ws: "npm:^8.18.3"
-  checksum: 10/1c99325853928951ea61c08b58f40325f607e58d397b8a63dfebdb8bd74f845977e689191bfd42ffa3c12638ab466d37141179e690623f6ade139ea8ad8299e0
+  checksum: 10/c84ea07994497d71b44da67ea794f1c172ad4fa470eb67b138eb3428eb37b08fc5aa69f0686fb0e075130eb99b0c44ea8966ec2a288773fb85fafbdea6aa0ba6
   languageName: node
   linkType: hard
 
@@ -3386,33 +3386,33 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/wallet-sdk-unshielded-wallet@npm:1.0.0-beta.14":
-  version: 1.0.0-beta.14
-  resolution: "@midnight-ntwrk/wallet-sdk-unshielded-wallet@npm:1.0.0-beta.14::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-unshielded-wallet%2F1.0.0-beta.14%2Fe2b616c71cb5c5a881f709dc50821011cc549d49"
+"@midnight-ntwrk/wallet-sdk-unshielded-wallet@npm:1.0.0-beta.15":
+  version: 1.0.0-beta.15
+  resolution: "@midnight-ntwrk/wallet-sdk-unshielded-wallet@npm:1.0.0-beta.15::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-unshielded-wallet%2F1.0.0-beta.15%2F04a08c35408e4e61d7f5c0f14303076b7a832019"
   dependencies:
     "@midnight-ntwrk/ledger-v6": "npm:6.1.0-alpha.6"
     "@midnight-ntwrk/wallet-sdk-abstractions": "npm:1.0.0-beta.9"
     "@midnight-ntwrk/wallet-sdk-address-format": "npm:3.0.0-beta.9"
     "@midnight-ntwrk/wallet-sdk-capabilities": "npm:3.0.0-beta.9"
     "@midnight-ntwrk/wallet-sdk-hd": "npm:3.0.0-beta.7"
-    "@midnight-ntwrk/wallet-sdk-indexer-client": "npm:1.0.0-beta.13"
+    "@midnight-ntwrk/wallet-sdk-indexer-client": "npm:1.0.0-beta.14"
     "@midnight-ntwrk/wallet-sdk-unshielded-state": "npm:1.0.0-beta.11"
-    "@midnight-ntwrk/wallet-sdk-utilities": "npm:1.0.0-beta.7"
+    "@midnight-ntwrk/wallet-sdk-utilities": "npm:1.0.0-beta.8"
     effect: "npm:^3.17.3"
     rxjs: "npm:^7.5"
-  checksum: 10/cf7da5e25551ff10a3b2b7c819a70a4a886d78d74deccc84db035a5339a9dd56ecf42c14ca0216c85cffea398f62f8e0ac0bea91acbc1814b716bf26dd91e064
+  checksum: 10/b6e114d46d51f1faaa0eec9617c8c451e6e23fe89deb9565b370a179461574238099cc19aadfcac29de68f776b12feb40b6b4dd13e8da928b9a8d499035fedd1
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/wallet-sdk-utilities@npm:1.0.0-beta.7":
-  version: 1.0.0-beta.7
-  resolution: "@midnight-ntwrk/wallet-sdk-utilities@npm:1.0.0-beta.7::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-utilities%2F1.0.0-beta.7%2F9f2215eff2b5542e7299ee29f6e6d1f588dd0cb0"
+"@midnight-ntwrk/wallet-sdk-utilities@npm:1.0.0-beta.8":
+  version: 1.0.0-beta.8
+  resolution: "@midnight-ntwrk/wallet-sdk-utilities@npm:1.0.0-beta.8::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-utilities%2F1.0.0-beta.8%2F1e22dbcec8f5b7a0d507332fcdbb7e2224ff8fa9"
   dependencies:
     effect: "npm:^3.17.3"
     portfinder: "npm:^1.0.37"
     rxjs: "npm:^7.5"
-    testcontainers: "npm:^11.4.0"
-  checksum: 10/fb9db6ea17e7468a55310ce43a10b425e22f1439d954fe9a6b51dbd123f1e63e3900175b04d05890dbfbb1a3f5c99729548d4de2221ebd4d873c2630d40d844b
+    testcontainers: "npm:^11.8.1"
+  checksum: 10/58d1550e89577474e3be005a8962afcc24a34eb851d7ceec8145da57796a19cfe28ff4accb82d2ef5581703a809d57c88526218f076ec8c5511fab6cb041949d
   languageName: node
   linkType: hard
 
@@ -14343,7 +14343,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"testcontainers@npm:^11.2.0, testcontainers@npm:^11.4.0":
+"testcontainers@npm:^11.2.0":
   version: 11.8.1
   resolution: "testcontainers@npm:11.8.1"
   dependencies:

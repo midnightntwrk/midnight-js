@@ -20,10 +20,15 @@ Configuration for [submitTx](../functions/submitTx.md).
 
 ### circuitId?
 
-> `readonly` `optional` **circuitId**: `ICK`
+> `readonly` `optional` **circuitId**: `ICK` \| `ICK`[]
 
 A circuit identifier to use to fetch the ZK artifacts needed to prove the
 transaction. Only defined if a call transaction is being submitted.
+
+#### Remarks
+
+Where a transaction involves multiple circuits (e.g., when circuit calls are scoped to a transaction
+context), this may be an array of circuit IDs.
 
 ***
 
