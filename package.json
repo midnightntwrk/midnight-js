@@ -1,7 +1,7 @@
 {
   "name": "@midnight-ntwrk/midnight-js",
   "description": "Midnight application development framework",
-  "version": "3.0.0-alpha.12",
+  "version": "3.0.0-alpha.13",
   "packageManager": "yarn@4.10.3",
   "repository": "git@github.com:midnight-ntwrk/artifacts",
   "engines": {
