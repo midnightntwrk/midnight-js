@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { type ShieldedCoinInfo } from '@midnight-ntwrk/ledger-v6';
 import type { ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -152,7 +153,7 @@ describe('submit-tx', () => {
 
       it('should handle newCoins parameter', async () => {
         const mockRecipe = { type: 'TransactionToProve' as const, transaction: mockProvenTx };
-        const mockNewCoins = [{ coinId: 'coin1' }];
+        const mockNewCoins = [] as ShieldedCoinInfo[];
         const expectedTxId = 'test-tx-id-coins';
 
         mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue(mockRecipe);
@@ -161,7 +162,7 @@ describe('submit-tx', () => {
 
         const options: SubmitTxOptions<ImpureCircuitId> = {
           unprovenTx: mockUnprovenTx,
-          newCoins: mockNewCoins as any
+          newCoins: mockNewCoins
         };
 
         const result = await submitTxAsync(mockProviders, options);

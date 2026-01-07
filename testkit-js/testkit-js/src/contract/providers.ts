@@ -50,7 +50,8 @@ export const initializeMidnightProviders = <ICK extends string, PS>(
   return {
     privateStateProvider: levelPrivateStateProvider<PrivateStateId, PS>({
       privateStateStoreName: contractConfiguration.privateStateStoreName,
-      signingKeyStoreName: `${contractConfiguration.privateStateStoreName}-signing-keys`
+      signingKeyStoreName: `${contractConfiguration.privateStateStoreName}-signing-keys`,
+      privateStoragePasswordProvider: () => { return 'key-just-for-testing-here!' }
     }),
     publicDataProvider: indexerPublicDataProvider(environmentConfiguration.indexer, environmentConfiguration.indexerWS),
     zkConfigProvider: new NodeZkConfigProvider<ICK>(contractConfiguration.zkConfigPath),

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { getStoragePassword, StorageEncryption } from '../storage-encryption';
+import { getPasswordFromProvider, StorageEncryption } from '../storage-encryption';
 
 describe('StorageEncryption', () => {
   const testPassword = 'test-password-123';
@@ -72,34 +72,35 @@ describe('StorageEncryption', () => {
     });
   });
 
-  describe('getStoragePassword', () => {
-    const originalEnv = process.env.MIDNIGHT_STORAGE_PASSWORD;
+  describe('getPasswordFromProvider', () => {
+    test('throws error when password provider returns empty string', async () => {
+      const provider = () => '';
 
-    afterEach(() => {
-      if (originalEnv) {
-        process.env.MIDNIGHT_STORAGE_PASSWORD = originalEnv;
-      } else {
-        delete process.env.MIDNIGHT_STORAGE_PASSWORD;
-      }
+      await expect(getPasswordFromProvider(provider)).rejects.toThrow('Password is required');
     });
 
-    test('throws error when environment variable is not set', () => {
-      delete process.env.MIDNIGHT_STORAGE_PASSWORD;
+    test('throws error when password is too short', async () => {
+      const provider = () => 'short';
 
-      expect(() => getStoragePassword()).toThrow('MIDNIGHT_STORAGE_PASSWORD environment variable is required');
+      await expect(getPasswordFromProvider(provider)).rejects.toThrow('must be at least 16 characters long');
     });
 
-    test('throws error when password is too short', () => {
-      process.env.MIDNIGHT_STORAGE_PASSWORD = 'short';
-
-      expect(() => getStoragePassword()).toThrow('must be at least 16 characters long');
-    });
-
-    test('returns password when valid', () => {
+    test('returns password when valid', async () => {
       const validPassword = 'this-is-a-valid-password-123';
-      process.env.MIDNIGHT_STORAGE_PASSWORD = validPassword;
+      const provider = () => validPassword;
 
-      expect(getStoragePassword()).toBe(validPassword);
+      const result = await getPasswordFromProvider(provider);
+      expect(result).toBe(validPassword);
+    });
+
+    test('works with async provider', async () => {
+      const validPassword = 'this-is-a-valid-password-123';
+      const provider = async () => {
+        return Promise.resolve(validPassword);
+      };
+
+      const result = await getPasswordFromProvider(provider);
+      expect(result).toBe(validPassword);
     });
   });
 });

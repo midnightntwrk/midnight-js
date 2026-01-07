@@ -31,13 +31,11 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import { ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
 import { type WalletFacade } from '@midnight-ntwrk/wallet-sdk-facade';
-import { generateRandomSeed } from '@midnight-ntwrk/wallet-sdk-hd';
 import type { Logger } from 'pino';
 
 import { type EnvironmentConfiguration } from '@/index';
-import { getDustSeed, getShieldedSeed } from '@/wallet/wallet-seed-utils';
 
-import { WalletBuilder } from './wallet-builder';
+import { FluentWalletBuilder } from './fluent-wallet-builder';
 import { getInitialShieldedState, waitForFunds } from './wallet-utils';
 
 /**
@@ -103,18 +101,20 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     env: EnvironmentConfiguration,
     seed?: string | undefined
   ): Promise<MidnightWalletProvider> {
-    const walletSeed = seed ?? Buffer.from(generateRandomSeed()).toString('hex');
-    const wallet = await WalletBuilder.buildAndStartWallet(env, walletSeed);
+    const builder = FluentWalletBuilder.forEnvironment(env);
+    const { wallet, seeds } = seed
+      ? await builder.withSeed(seed).buildWithoutStarting()
+      : await builder.withRandomSeed().buildWithoutStarting();
+
     const initialState = await getInitialShieldedState(wallet.shielded);
-    logger.info(`Your wallet seed is: ${seed} and your address is: ${initialState.address.coinPublicKeyString()}`);
-    const shieldedSeed = getShieldedSeed(walletSeed);
-    const dustSeed = getDustSeed(walletSeed);
+    logger.info(`Your wallet seed is: ${seeds.masterSeed} and your address is: ${initialState.address.coinPublicKeyString()}`);
+
     return new MidnightWalletProvider(
       logger,
       env,
       wallet,
-      ZswapSecretKeys.fromSeed(shieldedSeed),
-      DustSecretKey.fromSeed(dustSeed)
+      ZswapSecretKeys.fromSeed(seeds.shielded),
+      DustSecretKey.fromSeed(seeds.dust)
     );
   }
 

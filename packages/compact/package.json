@@ -1,13 +1,16 @@
 {
   "name": "@midnight-ntwrk/midnight-js-compact",
   "description": "Compact fetcher",
-  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/midnight-ntwrk/artifacts.git"
+  },
   "author": "IOG",
   "engines": {
     "node": ">=22.0.0"
   },
   "license": "Apache-2.0",
-  "version": "3.0.0-alpha.7",
+  "version": "3.0.0-alpha.12",
   "type": "module",
   "bin": {
     "fetch-compactc": "dist/fetch-compact.mjs",

@@ -14,13 +14,15 @@
  */
 
 import type { Contract, ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
-import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
+import { type CallResult } from './call';
 import { type ContractProviders } from './contract-providers';
 import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from './errors';
+import * as Transaction from './internal/transaction';
 import type { SubmitTxProviders } from './submit-tx';
-import { submitTx, submitTxAsync } from './submit-tx';
+import { submitTxAsync } from './submit-tx';
+import { type TransactionContext } from './transaction';
 import type { FinalizedCallTxData, SubmittedCallTx } from './tx-model';
 import {
   type CallTxOptions,
@@ -43,19 +45,57 @@ export async function submitCallTx<C extends Contract, ICK extends ImpureCircuit
   options: CallTxOptionsWithPrivateStateId<C, ICK>
 ): Promise<FinalizedCallTxData<C, ICK>>;
 
-/**
+export async function submitCallTx<C extends Contract, ICK extends ImpureCircuitId<C>>(
+  providers: ContractProviders<C>,
+  options: CallTxOptionsWithPrivateStateId<C, ICK>,
+  transactionContext: TransactionContext<C, ICK>
+): Promise<CallResult<C, ICK>>;
+
+export async function submitCallTx<C extends Contract<undefined>, ICK extends ImpureCircuitId<C>>(
+  providers: SubmitTxProviders<C, ICK>,
+  options: CallTxOptionsBase<C, ICK>,
+  transactionContext: TransactionContext<C, ICK>
+): Promise<CallResult<C, ICK>>;
+
+ /**
  * Creates and submits a transaction for the invocation of a circuit on a given contract.
+ *
+ * ## Transaction Execution Phases
+ *
+ * Midnight transactions execute in two phases:
+ * 1. **Guaranteed phase**: If failure occurs, the transaction is NOT included in the blockchain
+ * 2. **Fallible phase**: If failure occurs, the transaction IS recorded on-chain as a partial success
+ *
+ * ## Failure Behavior
+ *
+ * **Guaranteed Phase Failure:**
+ * - Transaction is rejected and not included in the blockchain
+ * - `CallTxFailedError` is thrown with transaction data and circuit ID
+ * - Private state updates are NOT stored (state remains unchanged)
+ * - No on-chain record of the failed transaction
+ *
+ * **Fallible Phase Failure:**
+ * - Transaction is recorded on-chain with non-`SucceedEntirely` status
+ * - `CallTxFailedError` is thrown with transaction data and circuit ID
+ * - Private state updates are NOT stored (state remains unchanged)
+ * - Transaction appears in blockchain history as partial success
  *
  * @param providers The providers used to manage the invocation lifecycle.
  * @param options Configuration.
+ * @param transactionContext Optional scoped transaction context to participate in an
+ *        existing transaction scope.
  *
  * @returns A `Promise` that resolves with the finalized transaction data for the invocation of
  *         `circuitId` on `contract` with the given `args`; or rejects with an error if the invocation fails.
+ *
+ * @throws {CallTxFailedError} When transaction fails in either guaranteed or fallible phase.
+ *         The error contains the finalized transaction data and circuit ID for debugging.
  */
 export async function submitCallTx<C extends Contract, ICK extends ImpureCircuitId<C>>(
   providers: SubmitCallTxProviders<C, ICK>,
-  options: CallTxOptions<C, ICK>
-): Promise<FinalizedCallTxData<C, ICK>> {
+  options: CallTxOptions<C, ICK>,
+  transactionContext?: TransactionContext<C, ICK>
+): Promise<FinalizedCallTxData<C, ICK> | CallResult<C, ICK>> {
   assertIsContractAddress(options.contractAddress);
   assertDefined(options.contract.impureCircuits[options.circuitId], `Circuit '${options.circuitId}' is undefined`);
 
@@ -66,29 +106,18 @@ export async function submitCallTx<C extends Contract, ICK extends ImpureCircuit
     throw new IncompleteCallTxPrivateStateConfig();
   }
 
-  const unprovenCallTxData = await createUnprovenCallTx(providers, options);
-
-  const finalizedTxData = await submitTx(providers, {
-    unprovenTx: unprovenCallTxData.private.unprovenTx,
-    newCoins: unprovenCallTxData.private.newCoins,
-    circuitId: options.circuitId
-  });
-
-  if (finalizedTxData.status !== SucceedEntirely) {
-    throw new CallTxFailedError(finalizedTxData, options.circuitId);
-  }
-
-  if (hasPrivateStateId && hasPrivateStateProvider) {
-    await providers.privateStateProvider.set(options.privateStateId, unprovenCallTxData.private.nextPrivateState);
-  }
-
-  return {
-    private: unprovenCallTxData.private,
-    public: {
-      ...unprovenCallTxData.public,
-      ...finalizedTxData
-    }
+  const callTxFn = async (txCtx: TransactionContext<C, ICK>) => {
+    Transaction.mergeUnsubmittedCallTxData(
+      txCtx,
+      options.circuitId,
+      await createUnprovenCallTx(providers, options, txCtx),
+      hasPrivateStateId ? options.privateStateId : undefined
+    );
   };
+
+  return transactionContext
+    ? Transaction.scoped(providers as ContractProviders<C, ICK>, callTxFn, transactionContext)
+    : Transaction.scoped(providers as ContractProviders<C, ICK>, callTxFn)
 }
 
 /**
@@ -97,6 +126,33 @@ export async function submitCallTx<C extends Contract, ICK extends ImpureCircuit
  *
  * Unlike {@link submitCallTx}, this function does not wait for transaction finalization,
  * check transaction status, or update private state. The caller must handle these steps manually.
+ *
+ * ## Transaction Execution Phases
+ *
+ * Midnight transactions execute in two phases:
+ * 1. **Guaranteed phase**: If failure occurs, the transaction is NOT included in the blockchain
+ * 2. **Fallible phase**: If failure occurs, the transaction IS recorded on-chain as a partial success
+ *
+ * ## Manual Post-Submission Steps
+ *
+ * After calling this function, you must manually:
+ * 1. Watch for transaction finalization using `providers.publicDataProvider.watchForTxData(txId)`
+ * 2. Check transaction status (compare against `SucceedEntirely`)
+ * 3. Handle failures appropriately (throw errors, log, etc.)
+ * 4. Update private state if transaction succeeded and `privateStateId` was provided
+ *
+ * ## Failure Behavior (Manual Handling Required)
+ *
+ * **Guaranteed Phase Failure:**
+ * - Transaction is rejected and not included in the blockchain
+ * - `watchForTxData` may reject or return error status
+ * - You must NOT store private state updates
+ *
+ * **Fallible Phase Failure:**
+ * - Transaction is recorded on-chain with non-`SucceedEntirely` status
+ * - `watchForTxData` returns transaction data with failed status
+ * - You must NOT store private state updates
+ * - Transaction appears in blockchain history as partial success
  *
  * @param providers The providers used to manage the invocation lifecycle.
  * @param options Configuration.

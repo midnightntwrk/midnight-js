@@ -270,7 +270,7 @@ This project uses [Conventional Commits](https://www.conventionalcommits.org/). 
 ```
 
 **Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `ci`, `build`, `revert`  
-**Scopes:** `core`, `testkit`, `compact-js`, `platform-js`, `wallet`, `deps`, `config`
+**Scopes:** `core`, `testkit`, `wallet`, `deps`, `config`
 
 ### Making Commits
 
