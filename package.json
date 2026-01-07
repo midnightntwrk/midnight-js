@@ -30,8 +30,8 @@
     "lint": "eslint",
     "lint:fix": "NODE_OPTIONS=--max-old-space-size=16192 eslint ./packages --fix",
     "commit": "git-cz",
-    "changelog": "conventional-changelog -p conventionalcommits -i CHANGELOG.md -s",
-    "changelog:first": "conventional-changelog -p conventionalcommits -i CHANGELOG.md -s -r 0",
+    "changelog": "conventional-changelog --config .versionrc.json -i CHANGELOG.md -s",
+    "changelog:first": "conventional-changelog --config .versionrc.json -i CHANGELOG.md -s -r 0",
     "postinstall": "husky && patch-package",
     "prepublishOnly": "pinst --disable",
     "postpublish": "pinst --enable"
