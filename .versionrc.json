@@ -9,12 +9,13 @@
     {"type": "test", "section": "Tests"},
     {"type": "build", "section": "Build System"},
     {"type": "ci", "section": "Continuous Integration"},
-    {"type": "chore", "hidden": true},
+    {"type": "chore", "section": "Improvements"},
     {"type": "revert", "section": "Reverts"}
   ],
+  "releaseCount": 0,
   "commitUrlFormat": "https://github.com/midnightntwrk/midnight-js/commit/{{hash}}",
   "compareUrlFormat": "https://github.com/midnightntwrk/midnight-js/compare/{{previousTag}}...{{currentTag}}",
-  "issueUrlFormat": "https://github.com/midnightntwrk/midnight-js/issues/{{id}}",
+  "issueUrlFormat": "https://github.com/midnightntwrk/midnight-js/pull/{{id}}",
   "userUrlFormat": "https://github.com/{{user}}",
   "releaseCommitMessageFormat": "chore(release): release {{currentTag}}"
 }
