@@ -1,45 +1,67 @@
-## 3.0.0-alpha.13 (2026-01-07)
+# Changelog
 
-* docs: API documentation update (#369) ([7a2d84b](https://github.com/midnight-ntwrk/artifacts/commit/7a2d84b)), closes [#369](https://github.com/midnight-ntwrk/artifacts/issues/369)
-* docs: API documentation update (#378) ([696f959](https://github.com/midnight-ntwrk/artifacts/commit/696f959)), closes [#378](https://github.com/midnight-ntwrk/artifacts/issues/378)
-* docs: API documentation update (#381) ([5ba607b](https://github.com/midnight-ntwrk/artifacts/commit/5ba607b)), closes [#381](https://github.com/midnight-ntwrk/artifacts/issues/381)
-* docs: API documentation update (#382) ([581e42f](https://github.com/midnight-ntwrk/artifacts/commit/581e42f)), closes [#382](https://github.com/midnight-ntwrk/artifacts/issues/382)
-* docs: API documentation update (#394) ([ecfb2d0](https://github.com/midnight-ntwrk/artifacts/commit/ecfb2d0)), closes [#394](https://github.com/midnight-ntwrk/artifacts/issues/394)
-* docs: API documentation update (#413) ([d0d206d](https://github.com/midnight-ntwrk/artifacts/commit/d0d206d)), closes [#413](https://github.com/midnight-ntwrk/artifacts/issues/413)
-* docs: API documentation update (#417) ([082c77a](https://github.com/midnight-ntwrk/artifacts/commit/082c77a)), closes [#417](https://github.com/midnight-ntwrk/artifacts/issues/417)
-* chore: fix a release process and add release documentation (#399) ([8784088](https://github.com/midnight-ntwrk/artifacts/commit/8784088)), closes [#399](https://github.com/midnight-ntwrk/artifacts/issues/399)
-* chore: fix the documentation on encryption ([7cec0aa](https://github.com/midnight-ntwrk/artifacts/commit/7cec0aa))
-* chore: indexer-standalone:3.0.0-alpha.19 and midnight-node:0.18.0-rc.10 (#383) ([7d3a0fc](https://github.com/midnight-ntwrk/artifacts/commit/7d3a0fc)), closes [#383](https://github.com/midnight-ntwrk/artifacts/issues/383)
-* chore: merge release/v3.0.0-alpha.12 into main (#416) ([80de708](https://github.com/midnight-ntwrk/artifacts/commit/80de708)), closes [#416](https://github.com/midnight-ntwrk/artifacts/issues/416)
-* chore: Remove source code for Compact.js and Platform.js (#406) ([561c5fa](https://github.com/midnight-ntwrk/artifacts/commit/561c5fa)), closes [#406](https://github.com/midnight-ntwrk/artifacts/issues/406)
-* chore: tests linting issues - fix warnings ([5cfd89e](https://github.com/midnight-ntwrk/artifacts/commit/5cfd89e))
-* chore: tests linting issues - fix warnings ([b4ba6d3](https://github.com/midnight-ntwrk/artifacts/commit/b4ba6d3))
-* chore: update proof-server, indexer, and node images to latest alpha versions ([759a061](https://github.com/midnight-ntwrk/artifacts/commit/759a061))
-* chore: update wallet-sdk-facade and related dependencies to version 1.0.0-beta.13 ([d029a1e](https://github.com/midnight-ntwrk/artifacts/commit/d029a1e))
-* chore(deps): bump actions/cache from 4 to 5 (#385) ([1d4df6b](https://github.com/midnight-ntwrk/artifacts/commit/1d4df6b)), closes [#385](https://github.com/midnight-ntwrk/artifacts/issues/385)
-* chore(deps): bump actions/download-artifact from 6.0.0 to 7.0.0 (#386) ([4a42c64](https://github.com/midnight-ntwrk/artifacts/commit/4a42c64)), closes [#386](https://github.com/midnight-ntwrk/artifacts/issues/386)
-* chore(deps): bump EnricoMi/publish-unit-test-result-action (#401) ([9ea2c1b](https://github.com/midnight-ntwrk/artifacts/commit/9ea2c1b)), closes [#401](https://github.com/midnight-ntwrk/artifacts/issues/401)
-* chore(deps): bump mikepenz/action-junit-report from 6.0.1 to 6.1.0 (#409) ([0d39b4c](https://github.com/midnight-ntwrk/artifacts/commit/0d39b4c)), closes [#409](https://github.com/midnight-ntwrk/artifacts/issues/409)
-* chore(deps): bump peter-evans/create-pull-request from 6 to 8 (#387) ([0dcfe29](https://github.com/midnight-ntwrk/artifacts/commit/0dcfe29)), closes [#387](https://github.com/midnight-ntwrk/artifacts/issues/387)
-* chore(deps): update dependency express to v5.2.0 [security] (#363) ([e7bab3d](https://github.com/midnight-ntwrk/artifacts/commit/e7bab3d)), closes [#363](https://github.com/midnight-ntwrk/artifacts/issues/363)
-* chore(release): bump version to 3.0.0-alpha.10 (#379) ([ddeab79](https://github.com/midnight-ntwrk/artifacts/commit/ddeab79)), closes [#379](https://github.com/midnight-ntwrk/artifacts/issues/379)
-* chore(release): bump version to 3.0.0-alpha.11 (#393) ([b8a8908](https://github.com/midnight-ntwrk/artifacts/commit/b8a8908)), closes [#393](https://github.com/midnight-ntwrk/artifacts/issues/393)
-* chore(release): bump version to 3.0.0-alpha.9 (#365) ([5ef16e5](https://github.com/midnight-ntwrk/artifacts/commit/5ef16e5)), closes [#365](https://github.com/midnight-ntwrk/artifacts/issues/365)
-* feat: add a configurable password provider with wallet fallback ([c318cb4](https://github.com/midnight-ntwrk/artifacts/commit/c318cb4))
-* feat: bump compact compiler to 0.27.0 (#373) ([e45ac9d](https://github.com/midnight-ntwrk/artifacts/commit/e45ac9d)), closes [#373](https://github.com/midnight-ntwrk/artifacts/issues/373)
-* feat: enhance transaction documentation with execution phases and failure behavior ([a274ecc](https://github.com/midnight-ntwrk/artifacts/commit/a274ecc))
-* feat: enhance transaction handling documentation for indefinite waiting behavior ([69606e7](https://github.com/midnight-ntwrk/artifacts/commit/69606e7))
-* feat: enhance transaction handling documentation for indefinite waiting behavior ([944a242](https://github.com/midnight-ntwrk/artifacts/commit/944a242))
-* feat: fix the repository urls (#380) ([026b7a0](https://github.com/midnight-ntwrk/artifacts/commit/026b7a0)), closes [#380](https://github.com/midnight-ntwrk/artifacts/issues/380)
-* feat: move @midnight-ntwrk/midnight-js-compact to devDependencies (#361) ([b5771d1](https://github.com/midnight-ntwrk/artifacts/commit/b5771d1)), closes [#361](https://github.com/midnight-ntwrk/artifacts/issues/361)
-* feat: provider configuration tweaks ([9894f67](https://github.com/midnight-ntwrk/artifacts/commit/9894f67))
-* feat: Support contract calls within scoped transactions (#404) ([2968e77](https://github.com/midnight-ntwrk/artifacts/commit/2968e77)), closes [#404](https://github.com/midnight-ntwrk/artifacts/issues/404)
-* feat: update to latest version ([a705430](https://github.com/midnight-ntwrk/artifacts/commit/a705430))
-* fix: remove unnecessary networkId parameter from Dust.startWithSeed (#368) ([c0448a6](https://github.com/midnight-ntwrk/artifacts/commit/c0448a6)), closes [#368](https://github.com/midnight-ntwrk/artifacts/issues/368)
-* fix: update compact compiler version (#402) ([8312d09](https://github.com/midnight-ntwrk/artifacts/commit/8312d09)), closes [#402](https://github.com/midnight-ntwrk/artifacts/issues/402)
-* refactor: replace WalletBuilder with FluentWalletBuilder pattern (#376) ([0e1f175](https://github.com/midnight-ntwrk/artifacts/commit/0e1f175)), closes [#376](https://github.com/midnight-ntwrk/artifacts/issues/376)
+All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
+
+## [3.0.0-alpha.13](https://github.com/midnightntwrk/midnight-js/compare/v3.0.0-alpha.8...v3.0.0-alpha.13) (2026-01-08)
 
 
+### Features
+
+* add a configurable password provider with wallet fallback ([c318cb4](https://github.com/midnightntwrk/midnight-js/commit/c318cb450f083ba54aac5806bc9ae91a9f81997c))
+* bump compact compiler to 0.27.0 ([#373](https://github.com/midnightntwrk/midnight-js/pull/373)) ([e45ac9d](https://github.com/midnightntwrk/midnight-js/commit/e45ac9d7de4e8d5f8ab53f028f9af8168029f301))
+* enhance transaction documentation with execution phases and failure behavior ([a274ecc](https://github.com/midnightntwrk/midnight-js/commit/a274eccb9e6546277eded28c1aedcaee1e7b702e))
+* enhance transaction handling documentation for indefinite waiting behavior ([69606e7](https://github.com/midnightntwrk/midnight-js/commit/69606e7c8252ed9ae2b95022351cea49bfeb2f3d))
+* enhance transaction handling documentation for indefinite waiting behavior ([944a242](https://github.com/midnightntwrk/midnight-js/commit/944a24287a5ab8cb3e2be635b89d38664b8538b2))
+* fix the repository urls ([#380](https://github.com/midnightntwrk/midnight-js/pull/380)) ([026b7a0](https://github.com/midnightntwrk/midnight-js/commit/026b7a05c5e6025dc8a8830f314dbbaaa62e3898))
+* move @midnight-ntwrk/midnight-js-compact to devDependencies ([#361](https://github.com/midnightntwrk/midnight-js/pull/361)) ([b5771d1](https://github.com/midnightntwrk/midnight-js/commit/b5771d1f1399425e78f66ca04079994ae71d06fb))
+* provider configuration tweaks ([9894f67](https://github.com/midnightntwrk/midnight-js/commit/9894f67cf92349aa07730cf029ac1915a3750740))
+* Support contract calls within scoped transactions ([#404](https://github.com/midnightntwrk/midnight-js/pull/404)) ([2968e77](https://github.com/midnightntwrk/midnight-js/commit/2968e77b19bb3dbb5cc4b5de046bca4e1c22cf5f))
+* update to latest version ([a705430](https://github.com/midnightntwrk/midnight-js/commit/a70543067a1a4fcf31bc25533e2bd706dee5b784))
+
+
+### Bug Fixes
+
+* remove unnecessary networkId parameter from Dust.startWithSeed ([#368](https://github.com/midnightntwrk/midnight-js/pull/368)) ([c0448a6](https://github.com/midnightntwrk/midnight-js/commit/c0448a6c1a5ce3ceeb2ae1b38d1dead6be214785))
+* update compact compiler version ([#402](https://github.com/midnightntwrk/midnight-js/pull/402)) ([8312d09](https://github.com/midnightntwrk/midnight-js/commit/8312d09480ef1709a0fd78957f22fcd9c5438577))
+
+
+### Documentation
+
+* API documentation update ([#369](https://github.com/midnightntwrk/midnight-js/pull/369)) ([7a2d84b](https://github.com/midnightntwrk/midnight-js/commit/7a2d84b7387b0ef9f3157102b20c0bd52af3737b))
+* API documentation update ([#378](https://github.com/midnightntwrk/midnight-js/pull/378)) ([696f959](https://github.com/midnightntwrk/midnight-js/commit/696f959267f4d14420625cd459d929efbf88bdca))
+* API documentation update ([#381](https://github.com/midnightntwrk/midnight-js/pull/381)) ([5ba607b](https://github.com/midnightntwrk/midnight-js/commit/5ba607b8766f4a7c5ebace6524a1b3a3a0847904))
+* API documentation update ([#382](https://github.com/midnightntwrk/midnight-js/pull/382)) ([581e42f](https://github.com/midnightntwrk/midnight-js/commit/581e42f4c02fafd933f571ba123d450293c3587a))
+* API documentation update ([#394](https://github.com/midnightntwrk/midnight-js/pull/394)) ([ecfb2d0](https://github.com/midnightntwrk/midnight-js/commit/ecfb2d059e947845810249a5f519e48172744dd3))
+* API documentation update ([#413](https://github.com/midnightntwrk/midnight-js/pull/413)) ([d0d206d](https://github.com/midnightntwrk/midnight-js/commit/d0d206dba5692d85b6fd9e8ac0052d3372098dcf))
+* API documentation update ([#417](https://github.com/midnightntwrk/midnight-js/pull/417)) ([082c77a](https://github.com/midnightntwrk/midnight-js/commit/082c77a5b3d318585919cbc1daacfbbf4a8e331d))
+
+
+### Code Refactoring
+
+* replace WalletBuilder with FluentWalletBuilder pattern ([#376](https://github.com/midnightntwrk/midnight-js/pull/376)) ([0e1f175](https://github.com/midnightntwrk/midnight-js/commit/0e1f17540963a9ed7fbe6de71e440f24d55fdeeb))
+
+
+### Improvements
+
+* **deps:** bump actions/cache from 4 to 5 ([#385](https://github.com/midnightntwrk/midnight-js/pull/385)) ([1d4df6b](https://github.com/midnightntwrk/midnight-js/commit/1d4df6b21b4c0a7924e1eb1f2dc1f2cbb0c631a8))
+* **deps:** bump actions/download-artifact from 6.0.0 to 7.0.0 ([#386](https://github.com/midnightntwrk/midnight-js/pull/386)) ([4a42c64](https://github.com/midnightntwrk/midnight-js/commit/4a42c64b26f30f208b77c948300854a0d8012611))
+* **deps:** bump EnricoMi/publish-unit-test-result-action ([#401](https://github.com/midnightntwrk/midnight-js/pull/401)) ([9ea2c1b](https://github.com/midnightntwrk/midnight-js/commit/9ea2c1bd46f921ca59861782bf302037baa2c9de))
+* **deps:** bump mikepenz/action-junit-report from 6.0.1 to 6.1.0 ([#409](https://github.com/midnightntwrk/midnight-js/pull/409)) ([0d39b4c](https://github.com/midnightntwrk/midnight-js/commit/0d39b4c737aecaec6a6112778624776e6b1dc942))
+* **deps:** bump peter-evans/create-pull-request from 6 to 8 ([#387](https://github.com/midnightntwrk/midnight-js/pull/387)) ([0dcfe29](https://github.com/midnightntwrk/midnight-js/commit/0dcfe291772d852d56eddc8976213bfaa466c78f))
+* **deps:** update dependency express to v5.2.0 [security] ([#363](https://github.com/midnightntwrk/midnight-js/pull/363)) ([e7bab3d](https://github.com/midnightntwrk/midnight-js/commit/e7bab3d028001c03b69582869daed6577bb45fcb))
+* fix a release process and add release documentation ([#399](https://github.com/midnightntwrk/midnight-js/pull/399)) ([8784088](https://github.com/midnightntwrk/midnight-js/commit/8784088d007e852d27a0b82419b10e4f57901aff))
+* fix the documentation on encryption ([7cec0aa](https://github.com/midnightntwrk/midnight-js/commit/7cec0aa8b7500e94b4425d33a975a87495906522))
+* indexer-standalone:3.0.0-alpha.19 and midnight-node:0.18.0-rc.10 ([#383](https://github.com/midnightntwrk/midnight-js/pull/383)) ([7d3a0fc](https://github.com/midnightntwrk/midnight-js/commit/7d3a0fc8957ccfc1405f10eb2cc2b4c5168f9aaf))
+* merge release/v3.0.0-alpha.12 into main ([#416](https://github.com/midnightntwrk/midnight-js/pull/416)) ([80de708](https://github.com/midnightntwrk/midnight-js/commit/80de70853f09992094906f37b8d2d1ef24e4eb70))
+* **release:** bump version to 3.0.0-alpha.10 ([#379](https://github.com/midnightntwrk/midnight-js/pull/379)) ([ddeab79](https://github.com/midnightntwrk/midnight-js/commit/ddeab799f53f6f5091af43255dc6e90e16dadaaf))
+* **release:** bump version to 3.0.0-alpha.11 ([#393](https://github.com/midnightntwrk/midnight-js/pull/393)) ([b8a8908](https://github.com/midnightntwrk/midnight-js/commit/b8a89081da6c53502b5b580ebba06a2094a0f982))
+* **release:** bump version to 3.0.0-alpha.13 ([#419](https://github.com/midnightntwrk/midnight-js/pull/419)) ([f463218](https://github.com/midnightntwrk/midnight-js/commit/f463218aa131bc32f8a2fe8816d7b7b23fda5b9a))
+* **release:** bump version to 3.0.0-alpha.9 ([#365](https://github.com/midnightntwrk/midnight-js/pull/365)) ([5ef16e5](https://github.com/midnightntwrk/midnight-js/commit/5ef16e5fd0c0f59b9f8b0dee243a5c06a8ebb119))
+* Remove source code for Compact.js and Platform.js ([#406](https://github.com/midnightntwrk/midnight-js/pull/406)) ([561c5fa](https://github.com/midnightntwrk/midnight-js/commit/561c5fad532aa23eb6177366c154c6a356c48f20))
+* tests linting issues - fix warnings ([5cfd89e](https://github.com/midnightntwrk/midnight-js/commit/5cfd89ec3b7dc7619c64ae9b24c1c74f63b202dc))
+* tests linting issues - fix warnings ([b4ba6d3](https://github.com/midnightntwrk/midnight-js/commit/b4ba6d32d6ecdb5bf07b26689de62fc6a87e9c9c))
+* update proof-server, indexer, and node images to latest alpha versions ([759a061](https://github.com/midnightntwrk/midnight-js/commit/759a06151d0f72d392f2427590f0a6f6da35fcbe))
+* update wallet-sdk-facade and related dependencies to version 1.0.0-beta.13 ([d029a1e](https://github.com/midnightntwrk/midnight-js/commit/d029a1e1d765d881c056ee1583007cf049598d33))
 
 ## 3.0.0-alpha.12 (2026-01-06)
 
