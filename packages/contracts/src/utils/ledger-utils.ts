@@ -136,7 +136,7 @@ export const createUnprovenLedgerCallTx = (
 ): UnprovenTransaction => {
   const op = toLedgerContractState(initialContractState).operation(circuitId);
   assertDefined(op, `Operation '${circuitId}' is undefined for contract state ${initialContractState.toString(false)}`);
-  return Transaction.fromParts(
+  return Transaction.fromPartsRandomized(
     getNetworkId(),
     zswapStateToOffer(nextZswapLocalState, encryptionPublicKey, {
       contractAddress,

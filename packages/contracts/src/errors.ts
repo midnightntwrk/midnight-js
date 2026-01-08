@@ -28,7 +28,7 @@ export class TxFailedError extends Error {
    */
   constructor(
     public readonly finalizedTxData: FinalizedTxData,
-    public readonly circuitId?: ImpureCircuitId
+    public readonly circuitId?: ImpureCircuitId | ImpureCircuitId[]
   ) {
     super('Transaction failed');
     this.message = JSON.stringify(
@@ -63,7 +63,7 @@ export class CallTxFailedError extends TxFailedError {
    * @param finalizedTxData The finalization data of the call transaction that failed.
    * @param circuitId The name of the circuit that was called to build the transaction.
    */
-  constructor(finalizedTxData: FinalizedTxData, circuitId: ImpureCircuitId) {
+  constructor(finalizedTxData: FinalizedTxData, circuitId: ImpureCircuitId | ImpureCircuitId[]) {
     super(finalizedTxData, circuitId);
     this.name = 'CallTxFailedError';
   }

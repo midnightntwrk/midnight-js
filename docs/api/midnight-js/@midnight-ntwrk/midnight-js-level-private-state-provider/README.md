@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.5**](../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.13**](../../README.md)
 
 ***
 
@@ -6,9 +6,17 @@
 
 # @midnight-ntwrk/midnight-js-level-private-state-provider
 
+## Classes
+
+- [StorageEncryption](classes/StorageEncryption.md)
+
 ## Interfaces
 
 - [LevelPrivateStateProviderConfig](interfaces/LevelPrivateStateProviderConfig.md)
+
+## Type Aliases
+
+- [PrivateStoragePasswordProvider](type-aliases/PrivateStoragePasswordProvider.md)
 
 ## Variables
 

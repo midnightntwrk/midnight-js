@@ -38,11 +38,7 @@ module.exports = {
       1,
       'always',
       [
-        'core',
-        'testkit',
-        'compact-js',
-        'platform-js',
-        'wallet',
+        'testkit-js',
         'deps',
         'config',
         'release'

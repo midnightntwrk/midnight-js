@@ -1,8 +1,8 @@
-[**@midnight-ntwrk/testkit-js v3.0.0-alpha.5**](../README.md)
+[**@midnight-ntwrk/testkit-js v3.0.0-alpha.13**](../README.md)
 
 ***
 
-> **getInitialUnshieldedState**(`wallet`): `Promise`\<`State`\>
+> **getInitialUnshieldedState**(`wallet`): `Promise`\<`UnshieldedWalletState`\<`string`\>\>
 
 ## Parameters
 
@@ -12,4 +12,4 @@
 
 ## Returns
 
-`Promise`\<`State`\>
+`Promise`\<`UnshieldedWalletState`\<`string`\>\>

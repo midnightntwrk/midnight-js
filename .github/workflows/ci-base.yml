@@ -66,7 +66,7 @@ jobs:
         run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Cache Turbo and Yarn dependencies
-        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
         with:
           path: |
             **/node_modules
@@ -138,7 +138,7 @@ jobs:
             utils, ./packages/utils/coverage/coverage-summary.json
 
       - name: Publish Test Report
-        uses: mikepenz/action-junit-report@e08919a3b1fb83a78393dfb775a9c37f17d8eea6 # ratchet:mikepenz/action-junit-report@v5
+        uses: mikepenz/action-junit-report@a294a61c909bd8a4b563024a2faa28897fd53ebc # ratchet:mikepenz/action-junit-report@v5
         if: success() || failure()
         with:
           check_name: 'Unit Test Results (MidnightJS)'
@@ -146,7 +146,7 @@ jobs:
             **/test-report*.xml
 
       - name: Publish Test Summary Comment
-        uses: EnricoMi/publish-unit-test-result-action@34d7c956a59aed1bfebf31df77b8de55db9bbaaf # ratchet:EnricoMi/publish-unit-test-result-action@v2.21.0
+        uses: EnricoMi/publish-unit-test-result-action@27d65e188ec43221b20d26de30f4892fad91df2f # ratchet:EnricoMi/publish-unit-test-result-action@v2.22.0
         if: success() || failure()
         with:
           check_name: 'Unit Test Results - MidnightJS'
@@ -198,7 +198,7 @@ jobs:
         run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Cache Turbo and Yarn dependencies
-        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
         with:
           path: |
             **/node_modules
@@ -212,7 +212,7 @@ jobs:
         run: yarn install --immutable
 
       - name: Download build
-        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # ratchet:actions/download-artifact@v4
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # ratchet:actions/download-artifact@v4
         with:
           name: midnight-js-dist
           path: packages/

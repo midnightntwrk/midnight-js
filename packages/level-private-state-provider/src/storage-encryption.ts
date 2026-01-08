@@ -16,6 +16,8 @@
 import { Buffer } from 'buffer';
 import { createCipheriv, createDecipheriv, pbkdf2Sync, randomBytes } from 'crypto';
 
+export type PrivateStoragePasswordProvider = () => string | Promise<string>;
+
 const ALGORITHM = 'aes-256-gcm';
 const KEY_LENGTH = 32;
 const IV_LENGTH = 12;
@@ -104,25 +106,24 @@ export class StorageEncryption {
   }
 }
 
-export const getStoragePassword = (): string => {
-  const password = process.env.MIDNIGHT_STORAGE_PASSWORD;
-
+const validatePassword = (password: string): void => {
   if (!password) {
     throw new Error(
-      'MIDNIGHT_STORAGE_PASSWORD environment variable is required.\n' +
-      'Please set it to a strong, unique password:\n' +
-      '  export MIDNIGHT_STORAGE_PASSWORD="your-secure-password-here"\n\n' +
-      'For production environments, use a cryptographically secure password:\n' +
-      '  export MIDNIGHT_STORAGE_PASSWORD="$(openssl rand -base64 32)"'
+      'Password is required for private state encryption.\n' +
+      'Please provide a password via privateStoragePasswordProvider in the configuration.'
     );
   }
 
   if (password.length < 16) {
     throw new Error(
-      'MIDNIGHT_STORAGE_PASSWORD must be at least 16 characters long.\n' +
+      'Password must be at least 16 characters long.\n' +
       'Use a strong, randomly generated password for production.'
     );
   }
+};
 
+export const getPasswordFromProvider = async (provider: PrivateStoragePasswordProvider): Promise<string> => {
+  const password = await provider();
+  validatePassword(password);
   return password;
 };
