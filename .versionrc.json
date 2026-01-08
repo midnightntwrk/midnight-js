@@ -12,7 +12,7 @@
     {"type": "chore", "section": "Improvements"},
     {"type": "revert", "section": "Reverts"}
   ],
-  "releaseCount": 1,
+  "releaseCount": 0,
   "commitUrlFormat": "https://github.com/midnightntwrk/midnight-js/commit/{{hash}}",
   "compareUrlFormat": "https://github.com/midnightntwrk/midnight-js/compare/{{previousTag}}...{{currentTag}}",
   "issueUrlFormat": "https://github.com/midnightntwrk/midnight-js/pull/{{id}}",
