@@ -74,7 +74,7 @@ export const syncWallet = (wallet: WalletFacade, throttleTime = 2_000, timeout =
         const unshieldedBalances = state.unshielded.balances || {};
         const dustBalances = state.dust.walletBalance(new Date(Date.now())) || {};
 
-        logger.info(`Wallet balances after sync - Shielded: ${JSON.stringify(shieldedBalances)}, Unshielded: ${JSON.stringify(unshieldedBalances)}, Dust: ${dustBalances}`);
+        logger.info(`Wallet balances after sync - Shielded: ${JSON.stringify(shieldedBalances)}, Unshielded: ${JSON.stringify(unshieldedBalances)}, Dust: ${JSON.stringify(dustBalances)}`);
       }),
       Rx.timeout({
         each: timeout,
