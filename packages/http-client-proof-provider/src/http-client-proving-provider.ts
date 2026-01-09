@@ -117,7 +117,7 @@ export const httpClientProvingProvider = <K extends string>(
       const result = await makeHttpRequest(checkUrl, payload, timeout);
       console.log(`[check] HTTP request completed, parsing result`);
       const parsedResult = parseCheckResult(result);
-      console.log(`[check] Check completed successfully, result length: ${parsedResult.length}`);
+      console.log(`[check] Check completed successfully, result: ${parsedResult}`);
       return parsedResult;
     },
 
