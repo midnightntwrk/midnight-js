@@ -35,12 +35,9 @@ jobs:
             build
             revert
           scopes: |
-            core
-            testkit
-            compact-js
+            release
+            testkit-js
             midnight-js
-            platform-js
-            wallet
             deps
             config
           requireScope: false
