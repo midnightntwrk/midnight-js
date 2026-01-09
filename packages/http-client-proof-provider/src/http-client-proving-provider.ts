@@ -38,14 +38,19 @@ export const DEFAULT_TIMEOUT = 300000;
 const getKeyMaterial = async <K extends string>(
   zkConfigProvider: ZKConfigProvider<K>,
   circuitId: K
-): Promise<ProvingKeyMaterial> => {
-  const zkConfig = await zkConfigProvider.get(circuitId);
-  console.log(`Fetched ZK config for circuitId="${circuitId}":`, zkConfig);
-  return {
-    proverKey: new Uint8Array(zkConfig.proverKey),
-    verifierKey: new Uint8Array(zkConfig.verifierKey),
-    ir: new Uint8Array(zkConfig.zkir),
-  };
+): Promise<ProvingKeyMaterial | undefined> => {
+  try {
+    const zkConfig = await zkConfigProvider.get(circuitId);
+    console.log(`Fetched ZK config for circuitId="${circuitId}":`, zkConfig);
+    return {
+      proverKey: new Uint8Array(zkConfig.proverKey),
+      verifierKey: new Uint8Array(zkConfig.verifierKey),
+      ir: new Uint8Array(zkConfig.zkir),
+    };
+  } catch {
+    console.log(`ZK config not found for circuitId="${circuitId}", using built-in circuit on proof server`);
+    return undefined;
+  }
 };
 
 const makeHttpRequest = async (url: URL, payload: Uint8Array, timeout: number): Promise<Uint8Array> => {
@@ -107,7 +112,7 @@ export const httpClientProvingProvider = <K extends string>(
       console.log(`[check] Serialized preimage size: ${serializedPreimage.length} bytes`);
       const keyMaterial = await getKeyMaterial(zkConfigProvider, keyLocation as K);
       console.log(`[check] Got key material, creating check payload`);
-      const payload = createCheckPayload(serializedPreimage, keyMaterial.ir);
+      const payload = createCheckPayload(serializedPreimage, keyMaterial?.ir);
       console.log(`[check] Check payload created, size: ${payload.length} bytes`);
       const result = await makeHttpRequest(checkUrl, payload, timeout);
       console.log(`[check] HTTP request completed, parsing result`);
