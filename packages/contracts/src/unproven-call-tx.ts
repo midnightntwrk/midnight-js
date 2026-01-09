@@ -28,7 +28,9 @@ import type {
 import { call } from './call';
 import { type ContractProviders } from './contract-providers';
 import { IncompleteCallTxPrivateStateConfig } from './errors';
-import { getPublicStates, getStates } from './get-states';
+import { type ContractStates, getPublicStates, getStates, type PublicContractStates } from './get-states';
+import * as Transaction from './internal/transaction';
+import { type TransactionContext } from './transaction';
 import type { UnsubmittedCallTxData } from './tx-model';
 import { createUnprovenLedgerCallTx, encryptionPublicKeyForZswapState, zswapStateToNewCoins } from './utils';
 
@@ -154,6 +156,46 @@ const createCallOptions = <C extends Contract, ICK extends ImpureCircuitId<C>>(
   return callOptions as CallOptions<C, ICK>;
 };
 
+const getContractStates = async <C extends Contract, ICK extends ImpureCircuitId>(
+  providers: UnprovenCallTxProvidersWithPrivateState<C>,
+  options: CallTxOptionsWithPrivateStateId<C, ICK>,
+  transactionContext?: TransactionContext<C, ICK>
+): Promise<ContractStates<PrivateState<C>>> => {
+  const txCtxStates = transactionContext?.getCurrentStates();
+  if (txCtxStates) {
+    return txCtxStates as ContractStates<PrivateState<C>>;
+  }
+  const states = await getStates(
+    providers.publicDataProvider,
+    providers.privateStateProvider,
+    options.contractAddress,
+    options.privateStateId
+  );
+  if (transactionContext) {
+    transactionContext[Transaction.CacheStates](states);
+  }
+  return states;
+};
+
+const getContractPublicStates = async <C extends Contract, ICK extends ImpureCircuitId>(
+  providers: UnprovenCallTxProvidersBase,
+  options: CallTxOptionsBase<C, ICK>,
+  transactionContext?: TransactionContext<C, ICK>
+): Promise<PublicContractStates> => {
+  const txCtxStates = transactionContext?.getCurrentStates();
+  if (txCtxStates) {
+    return txCtxStates;
+  }
+  const states = await getPublicStates(
+    providers.publicDataProvider,
+    options.contractAddress
+  );
+  if (transactionContext) {
+    transactionContext[Transaction.CacheStates]({ ...states, privateState: undefined });
+  }
+  return states;
+};
+
 /**
  * The minimum set of providers needed to create a call transaction, the ZK
  * artifact provider and a wallet. By defining this type, users can choose to
@@ -179,12 +221,14 @@ export type UnprovenCallTxProviders<C extends Contract> =
 
 export async function createUnprovenCallTx<C extends Contract<undefined>, ICK extends ImpureCircuitId<C>>(
   providers: UnprovenCallTxProvidersBase,
-  options: CallTxOptionsBase<C, ICK>
+  options: CallTxOptionsBase<C, ICK>,
+  transactionContext?: TransactionContext<C, ICK>
 ): Promise<UnsubmittedCallTxData<C, ICK>>;
 
 export async function createUnprovenCallTx<C extends Contract, ICK extends ImpureCircuitId<C>>(
   providers: UnprovenCallTxProvidersWithPrivateState<C>,
-  options: CallTxOptionsWithPrivateStateId<C, ICK>
+  options: CallTxOptionsWithPrivateStateId<C, ICK>,
+  transactionContext?: TransactionContext<C, ICK>
 ): Promise<UnsubmittedCallTxData<C, ICK>>;
 
 /**
@@ -193,6 +237,8 @@ export async function createUnprovenCallTx<C extends Contract, ICK extends Impur
  *
  * @param providers The providers to use to create the call transaction.
  * @param options Configuration.
+ * @param transactionContext Optional scoped transaction context to participate in an
+ *        existing transaction scope.
  *
  * @returns A promise that contains all data produced by the circuit call and an unproven
  *          transaction assembled from the call result.
@@ -203,7 +249,8 @@ export async function createUnprovenCallTx<C extends Contract, ICK extends Impur
  */
 export async function createUnprovenCallTx<C extends Contract, ICK extends ImpureCircuitId<C>>(
   providers: UnprovenCallTxProviders<C>,
-  options: CallTxOptions<C, ICK>
+  options: CallTxOptions<C, ICK>,
+  transactionContext?: TransactionContext<C, ICK>
 ): Promise<UnsubmittedCallTxData<C, ICK>> {
   assertIsContractAddress(options.contractAddress);
   assertDefined(options.contract.impureCircuits[options.circuitId], `Circuit '${options.circuitId}' is undefined`);
@@ -216,12 +263,7 @@ export async function createUnprovenCallTx<C extends Contract, ICK extends Impur
   }
 
   if (hasPrivateStateId && hasPrivateStateProvider) {
-    const { zswapChainState, contractState, privateState } = await getStates(
-      providers.publicDataProvider,
-      providers.privateStateProvider,
-      options.contractAddress,
-      options.privateStateId
-    );
+    const { zswapChainState, contractState, privateState } = await getContractStates(providers, options, transactionContext);
     return createUnprovenCallTxFromInitialStates(
       createCallOptions(
         options,
@@ -235,10 +277,7 @@ export async function createUnprovenCallTx<C extends Contract, ICK extends Impur
     );
   }
 
-  const { zswapChainState, contractState } = await getPublicStates(
-    providers.publicDataProvider,
-    options.contractAddress
-  );
+  const { zswapChainState, contractState } = await getContractPublicStates(providers, options, transactionContext);
   return createUnprovenCallTxFromInitialStates(
     createCallOptions(
       options,

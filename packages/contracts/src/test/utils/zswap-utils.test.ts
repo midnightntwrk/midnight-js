@@ -469,6 +469,36 @@ describe('Zswap utilities', () => {
       expect(result!.transients.length).toBe(1); // transientCoinInfo
     });
 
+    test('offers can be applied', () => {
+      const recipient = sampleOne(arbitraryContractRecipient);
+      const { zswapChainState, nonMatchingInputs } = zswapChainStateWithNonMatchingInputs(recipient, [50n]);
+
+      const outputCoinInfo = sampleOne(arbitraryNativeCoinInfo);
+      const transientCoinInfo = sampleOne(arbitraryNativeCoinInfo);
+      const qualifiedTransientCoinInfo = { ...transientCoinInfo, mt_index: 1n };
+
+      const zswapState = {
+        currentIndex: 0n,
+        coinPublicKey: randomCoinPublicKey(),
+        inputs: [...nonMatchingInputs, qualifiedTransientCoinInfo],
+        outputs: [
+          { recipient, coinInfo: outputCoinInfo },
+          { recipient, coinInfo: transientCoinInfo }
+        ]
+      };
+
+      const addressAndChainStateTuple = {
+        contractAddress: recipient.right,
+        zswapChainState
+      };
+
+      const offer = zswapStateToOffer(zswapState, randomEncryptionPublicKey(), addressAndChainStateTuple);
+      expect(offer).toBeDefined();
+      const [newZswapChainState, commitments] = zswapChainState.tryApply(offer!);
+      expect(newZswapChainState).not.toBe(zswapChainState);
+      expect(commitments.size).toBe(2);
+    });
+
     test('should handle zero value outputs correctly', () => {
       const zeroValueOutput = {
         recipient: sampleOne(arbitraryContractRecipient),

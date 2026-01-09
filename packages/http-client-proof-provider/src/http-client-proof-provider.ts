@@ -63,18 +63,22 @@ export const DEFAULT_CONFIG = {
   zkConfig: undefined
 };
 
-const getKeyMaterial = <K extends string>(zkConfig?: ZKConfig<K>): ProvingKeyMaterial => {
+const getKeyMaterial = <K extends string>(zkConfig: ZKConfig<K>): ProvingKeyMaterial => {
   return {
-    proverKey: zkConfig?.proverKey as Uint8Array,
-    verifierKey: zkConfig?.verifierKey as Uint8Array,
-    ir: zkConfig?.zkir as Uint8Array,
+    proverKey: zkConfig.proverKey as Uint8Array,
+    verifierKey: zkConfig.verifierKey as Uint8Array,
+    ir: zkConfig.zkir as Uint8Array,
   };
 }
 
 export const serializeTransactionPayload = <K extends string>(unprovenTx: UnprovenTransaction, zkConfig?: ZKConfig<K>): Uint8Array => {
   const map = new Map();
   if(zkConfig) {
-    map.set(zkConfig?.circuitId, getKeyMaterial(zkConfig));
+    if (Array.isArray(zkConfig)) {
+      zkConfig.forEach((config) => map.set(config.circuitId, getKeyMaterial(config)));
+    } else {
+      map.set(zkConfig.circuitId, getKeyMaterial(zkConfig));
+    }
   }
   return createProvingTransactionPayload(unprovenTx, map);
 }

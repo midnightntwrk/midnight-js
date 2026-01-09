@@ -14,14 +14,14 @@
  */
 
 import type { ContractAddress, SigningKey } from '@midnight-ntwrk/compact-runtime';
-import type { PrivateStateId,PrivateStateProvider } from '@midnight-ntwrk/midnight-js-types';
+import type { PrivateStateId, PrivateStateProvider, WalletProvider } from '@midnight-ntwrk/midnight-js-types';
 import { type AbstractSublevel } from 'abstract-level';
 import { Buffer } from 'buffer';
 import { Level } from 'level';
 import _ from 'lodash';
 import * as superjson from 'superjson';
 
-import { getStoragePassword, StorageEncryption } from './storage-encryption';
+import { getPasswordFromProvider, type PrivateStoragePasswordProvider, StorageEncryption } from './storage-encryption';
 
 /**
  * The default name of the indexedDB database for Midnight.
@@ -54,6 +54,31 @@ export interface LevelPrivateStateProviderConfig {
    * The name of the object store containing signing keys.
    */
   readonly signingKeyStoreName: string;
+  /**
+   * Wallet provider used to get the encryption public key for password derivation.
+   * If privateStoragePasswordProvider is not provided, the wallet's encryption public key
+   * will be used as the password.
+   */
+  readonly walletProvider?: WalletProvider;
+  /**
+   * Provider function that returns the password used for encrypting private state.
+   * The password must be at least 16 characters long.
+   *
+   * If not provided, defaults to using walletProvider.getEncryptionPublicKey().
+   *
+   * @example
+   * ```typescript
+   * // Using default (wallet's encryption public key)
+   * { walletProvider: wallet }
+   *
+   * // Using custom password provider
+   * {
+   *   walletProvider: wallet,
+   *   privateStoragePasswordProvider: async () => await getUserPassword()
+   * }
+   * ```
+   */
+  readonly privateStoragePasswordProvider?: PrivateStoragePasswordProvider;
 }
 
 /**
@@ -106,8 +131,12 @@ const withSubLevel = async <K, V, A>(
 
 const METADATA_KEY = '__midnight_encryption_metadata__';
 
-const getOrCreateEncryption = async (dbName: string, levelName: string): Promise<StorageEncryption> => {
-  const password = getStoragePassword();
+const getOrCreateEncryption = async (
+  dbName: string,
+  levelName: string,
+  passwordProvider: PrivateStoragePasswordProvider
+): Promise<StorageEncryption> => {
+  const password = await getPasswordFromProvider(passwordProvider);
 
   return withSubLevel<string, string, StorageEncryption>(dbName, levelName, async (subLevel) => {
     try {
@@ -130,8 +159,13 @@ const getOrCreateEncryption = async (dbName: string, levelName: string): Promise
   });
 };
 
-const subLevelMaybeGet = async <K, V>(dbName: string, levelName: string, key: K): Promise<V | null> => {
-  const encryption = await getOrCreateEncryption(dbName, levelName);
+const subLevelMaybeGet = async <K, V>(
+  dbName: string,
+  levelName: string,
+  key: K,
+  passwordProvider: PrivateStoragePasswordProvider
+): Promise<V | null> => {
+  const encryption = await getOrCreateEncryption(dbName, levelName, passwordProvider);
 
   return withSubLevel<K, string, V | null>(dbName, levelName, async (subLevel) => {
     try {
@@ -172,56 +206,92 @@ const subLevelMaybeGet = async <K, V>(dbName: string, levelName: string, key: K)
 /**
  * Constructs an instance of {@link PrivateStateProvider} based on {@link Level} database.
  *
- * @param partialConfig Database configuration options.
+ * @param config Database configuration options.
  */
 export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
-  partialConfig: Partial<LevelPrivateStateProviderConfig> = {}
+  config: Partial<LevelPrivateStateProviderConfig>
 ): PrivateStateProvider<PSI, PS> => {
-  const config = _.defaults(partialConfig, DEFAULT_CONFIG);
+  const fullConfig = _.defaults(config, DEFAULT_CONFIG);
+
+  if (config.privateStoragePasswordProvider && config.walletProvider) {
+    throw new Error(
+      'Cannot provide both privateStoragePasswordProvider and walletProvider.\n' +
+      'Provide only one: walletProvider for default behavior, or privateStoragePasswordProvider for custom password.'
+    );
+  }
+
+  if (!config.privateStoragePasswordProvider && !config.walletProvider) {
+    throw new Error(
+      'Either privateStoragePasswordProvider or walletProvider must be provided.\n' +
+      'Provide walletProvider to use wallet encryption key, or privateStoragePasswordProvider for custom password.'
+    );
+  }
+
+  const passwordProvider: PrivateStoragePasswordProvider = config.privateStoragePasswordProvider ||
+    (() => config.walletProvider!.getEncryptionPublicKey());
+
   return {
     get(privateStateId: PSI): Promise<PS | null> {
-      return subLevelMaybeGet<PSI, PS>(config.midnightDbName, config.privateStateStoreName, privateStateId);
+      return subLevelMaybeGet<PSI, PS>(
+        fullConfig.midnightDbName,
+        fullConfig.privateStateStoreName,
+        privateStateId,
+        passwordProvider
+      );
     },
     remove(privateStateId: PSI): Promise<void> {
-      return withSubLevel<PSI, string, void>(config.midnightDbName, config.privateStateStoreName, (subLevel) =>
+      return withSubLevel<PSI, string, void>(fullConfig.midnightDbName, fullConfig.privateStateStoreName, (subLevel) =>
         subLevel.del(privateStateId)
       );
     },
     async set(privateStateId: PSI, state: PS): Promise<void> {
-      const encryption = await getOrCreateEncryption(config.midnightDbName, config.privateStateStoreName);
+      const encryption = await getOrCreateEncryption(
+        fullConfig.midnightDbName,
+        fullConfig.privateStateStoreName,
+        passwordProvider
+      );
       const serialized = superjson.stringify(state);
       const encrypted = encryption.encrypt(serialized);
 
-      return withSubLevel<PSI, string, void>(config.midnightDbName, config.privateStateStoreName, (subLevel) =>
+      return withSubLevel<PSI, string, void>(fullConfig.midnightDbName, fullConfig.privateStateStoreName, (subLevel) =>
         subLevel.put(privateStateId, encrypted)
       );
     },
     clear(): Promise<void> {
-      return withSubLevel(config.midnightDbName, config.privateStateStoreName, (subLevel) => subLevel.clear());
+      return withSubLevel(fullConfig.midnightDbName, fullConfig.privateStateStoreName, (subLevel) => subLevel.clear());
     },
     getSigningKey(address: ContractAddress): Promise<SigningKey | null> {
-      return subLevelMaybeGet<ContractAddress, SigningKey>(config.midnightDbName, config.signingKeyStoreName, address);
+      return subLevelMaybeGet<ContractAddress, SigningKey>(
+        fullConfig.midnightDbName,
+        fullConfig.signingKeyStoreName,
+        address,
+        passwordProvider
+      );
     },
     removeSigningKey(address: ContractAddress): Promise<void> {
       return withSubLevel<ContractAddress, string, void>(
-        config.midnightDbName,
-        config.signingKeyStoreName,
+        fullConfig.midnightDbName,
+        fullConfig.signingKeyStoreName,
         (subLevel) => subLevel.del(address)
       );
     },
     async setSigningKey(address: ContractAddress, signingKey: SigningKey): Promise<void> {
-      const encryption = await getOrCreateEncryption(config.midnightDbName, config.signingKeyStoreName);
+      const encryption = await getOrCreateEncryption(
+        fullConfig.midnightDbName,
+        fullConfig.signingKeyStoreName,
+        passwordProvider
+      );
       const serialized = superjson.stringify(signingKey);
       const encrypted = encryption.encrypt(serialized);
 
       return withSubLevel<ContractAddress, string, void>(
-        config.midnightDbName,
-        config.signingKeyStoreName,
+        fullConfig.midnightDbName,
+        fullConfig.signingKeyStoreName,
         (subLevel) => subLevel.put(address, encrypted)
       );
     },
     clearSigningKeys(): Promise<void> {
-      return withSubLevel(config.midnightDbName, config.signingKeyStoreName, (subLevel) => subLevel.clear());
+      return withSubLevel(fullConfig.midnightDbName, fullConfig.signingKeyStoreName, (subLevel) => subLevel.clear());
     }
   };
 };

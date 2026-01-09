@@ -16,8 +16,9 @@
 export {
   DEFAULT_CONFIG,
   levelPrivateStateProvider,
-  LevelPrivateStateProviderConfig} from './level-private-state-provider';
+  type LevelPrivateStateProviderConfig
+} from './level-private-state-provider';
 export {
-  getStoragePassword,
+  type PrivateStoragePasswordProvider,
   StorageEncryption
 } from './storage-encryption';

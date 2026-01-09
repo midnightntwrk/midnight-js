@@ -25,20 +25,25 @@ import {
   type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
+import { type CallResult } from './call';
 import { type ContractProviders } from './contract-providers';
 import { submitCallTx } from './submit-call-tx';
 import { submitInsertVerifierKeyTx } from './submit-insert-vk-tx';
 import { submitRemoveVerifierKeyTx } from './submit-remove-vk-tx';
 import { submitReplaceAuthorityTx } from './submit-replace-authority-tx';
+import * as Transaction from './transaction';
 import type { FinalizedCallTxData } from './tx-model';
-import type { CallTxOptions } from './unproven-call-tx';
+import type { CallTxOptions, CallTxOptionsWithPrivateStateId } from './unproven-call-tx';
 
 /**
  * A type that lifts each circuit defined in a contract to a function that builds
  * and submits a call transaction.
  */
 export type CircuitCallTxInterface<C extends Contract> = {
-  [ICK in ImpureCircuitId<C>]: (...args: CircuitParameters<C, ICK>) => Promise<FinalizedCallTxData<C, ICK>>;
+  [ICK in ImpureCircuitId<C>]: {
+    (...args: CircuitParameters<C, ICK>): Promise<FinalizedCallTxData<C, ICK>>,
+    (txCtx: Transaction.TransactionContext<C, ICK>, ...args: CircuitParameters<C, ICK>): Promise<CallResult<C, ICK>>
+  };
 };
 
 /**
@@ -79,8 +84,20 @@ export const createCircuitCallTxInterface = <C extends Contract>(
   return getImpureCircuitIds(contract).reduce(
     (acc, circuitId) => ({
       ...acc,
-      [circuitId]: (...args: CircuitParameters<C, typeof circuitId>) =>
-        submitCallTx(providers, createCallTxOptions(contract, circuitId, contractAddress, privateStateId, args))
+      [circuitId]: (...args: unknown[]) => {
+        const txCtx = args.length > 0 && Transaction.isTransactionContext(args[0]) ? args[0] : undefined;
+        const callArgs = !txCtx ? args : args as CircuitParameters<C, typeof circuitId>;
+        const callOptions = createCallTxOptions(
+          contract,
+          circuitId,
+          contractAddress,
+          privateStateId,
+          callArgs as CircuitParameters<C, typeof circuitId>
+        );
+        return txCtx
+          ? submitCallTx(providers, callOptions as CallTxOptionsWithPrivateStateId<C, typeof circuitId>, txCtx)
+          : submitCallTx(providers, callOptions)
+      }
     }),
     {}
   ) as CircuitCallTxInterface<C>;

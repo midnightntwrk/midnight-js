@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.5**](../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.13**](../../README.md)
 
 ***
 
@@ -21,6 +21,7 @@
 ## Interfaces
 
 - [ContractMaintenanceTxInterface](interfaces/ContractMaintenanceTxInterface.md)
+- [TransactionContext](interfaces/TransactionContext.md)
 
 ## Type Aliases
 
@@ -65,6 +66,8 @@
 - [FindDeployedContractOptionsStorePrivateState](type-aliases/FindDeployedContractOptionsStorePrivateState.md)
 - [FoundContract](type-aliases/FoundContract.md)
 - [PublicContractStates](type-aliases/PublicContractStates.md)
+- [ScopedTransactionOptions](type-aliases/ScopedTransactionOptions.md)
+- [SubmittedCallTx](type-aliases/SubmittedCallTx.md)
 - [SubmitTxOptions](type-aliases/SubmitTxOptions.md)
 - [SubmitTxProviders](type-aliases/SubmitTxProviders.md)
 - [UnprovenCallTxProvidersBase](type-aliases/UnprovenCallTxProvidersBase.md)
@@ -77,6 +80,10 @@
 - [UnsubmittedDeployTxPrivateData](type-aliases/UnsubmittedDeployTxPrivateData.md)
 - [UnsubmittedDeployTxPublicData](type-aliases/UnsubmittedDeployTxPublicData.md)
 - [UnsubmittedTxData](type-aliases/UnsubmittedTxData.md)
+
+## Variables
+
+- [withContractScopedTransaction](variables/withContractScopedTransaction.md)
 
 ## Functions
 
@@ -97,10 +104,12 @@
 - [getStates](functions/getStates.md)
 - [getUnshieldedBalances](functions/getUnshieldedBalances.md)
 - [submitCallTx](functions/submitCallTx.md)
+- [submitCallTxAsync](functions/submitCallTxAsync.md)
 - [submitDeployTx](functions/submitDeployTx.md)
 - [submitInsertVerifierKeyTx](functions/submitInsertVerifierKeyTx.md)
 - [submitRemoveVerifierKeyTx](functions/submitRemoveVerifierKeyTx.md)
 - [submitReplaceAuthorityTx](functions/submitReplaceAuthorityTx.md)
 - [submitTx](functions/submitTx.md)
+- [submitTxAsync](functions/submitTxAsync.md)
 - [verifierKeysEqual](functions/verifierKeysEqual.md)
 - [verifyContractState](functions/verifyContractState.md)
