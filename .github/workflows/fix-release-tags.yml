@@ -1,0 +1,85 @@
+name: Fix Release Tags
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  move-tag-to-main:
+    if: github.event.pull_request.merged == true && startsWith(github.event.pull_request.head.ref, 'release/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # ratchet:actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+      - name: Extract version from branch name
+        id: version
+        run: |
+          BRANCH_NAME="${{ github.event.pull_request.head.ref }}"
+          VERSION="${BRANCH_NAME#release/}"
+          echo "tag=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Detected version tag: ${VERSION}"
+
+      - name: Move tag to main merge commit
+        id: move_tag
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -e
+
+          # Get the merge commit SHA (current HEAD of main after merge)
+          MERGE_COMMIT=$(git rev-parse HEAD)
+          echo "Merge commit: ${MERGE_COMMIT}"
+
+          # Check if tag exists
+          if ! git rev-parse "${TAG}" >/dev/null 2>&1; then
+            echo "⚠️ Tag ${TAG} does not exist, skipping"
+            echo "success=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          OLD_COMMIT=$(git rev-parse "${TAG}")
+          echo "Tag ${TAG} currently points to: ${OLD_COMMIT}"
+
+          # Check if tag is already on main
+          if [ "${OLD_COMMIT}" = "${MERGE_COMMIT}" ]; then
+            echo "✓ Tag ${TAG} already points to merge commit"
+            echo "success=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Move the tag to the merge commit
+          git tag -f "${TAG}" "${MERGE_COMMIT}"
+          echo "Moved tag ${TAG} to merge commit: ${MERGE_COMMIT}"
+
+          # Push the updated tag
+          git push --force origin "${TAG}"
+          echo "✓ Tag ${TAG} successfully moved to main branch"
+          echo "success=true" >> $GITHUB_OUTPUT
+
+      - name: Comment on PR
+        if: steps.move_tag.outputs.success == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = '${{ steps.version.outputs.tag }}';
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `✅ Release tag \`${tag}\` has been automatically moved to the merge commit on \`main\` branch.\n\nThis ensures the tag is in main's ancestry for proper changelog generation.`
+            });
