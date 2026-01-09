@@ -115,7 +115,7 @@ export const httpClientProvingProvider = <K extends string>(
       const payload = createCheckPayload(serializedPreimage, keyMaterial?.ir);
       console.log(`[check] Check payload created, size: ${payload.length} bytes`);
       const result = await makeHttpRequest(checkUrl, payload, timeout);
-      console.log(`[check] HTTP request completed, parsing result`);
+      console.log(`[check] HTTP request completed, parsing result: ${result.toString()}`);
       const parsedResult = parseCheckResult(result);
       console.log(`[check] Check completed successfully, result: ${parsedResult}`);
       return parsedResult;
