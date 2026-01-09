@@ -111,14 +111,23 @@ export const httpClientProvingProvider = <K extends string>(
       console.log(`[check] Starting check for keyLocation="${keyLocation}"`);
       console.log(`[check] Serialized preimage size: ${serializedPreimage.length} bytes`);
       const keyMaterial = await getKeyMaterial(zkConfigProvider, keyLocation as K);
-      console.log(`[check] Got key material, creating check payload`);
+      console.log(`[check] Key material available: ${!!keyMaterial}, is built-in circuit: ${!keyMaterial}`);
+      console.log(`[check] Creating check payload with IR:`, keyMaterial?.ir ? 'present' : 'undefined');
       const payload = createCheckPayload(serializedPreimage, keyMaterial?.ir);
       console.log(`[check] Check payload created, size: ${payload.length} bytes`);
       const result = await makeHttpRequest(checkUrl, payload, timeout);
-      console.log(`[check] HTTP request completed, parsing result: ${result.toString()}`);
-      const parsedResult = parseCheckResult(result);
-      console.log(`[check] Check completed successfully, result: ${JSON.stringify(parsedResult)}`);
-      return parsedResult;
+      console.log(`[check] HTTP request completed, result size: ${result.length} bytes`);
+      console.log(`[check] Raw result bytes (first 100):`, Array.from(result.slice(0, 100)));
+      console.log(`[check] Attempting to parse result...`);
+      try {
+        const parsedResult = parseCheckResult(result);
+        console.log(`[check] Check completed successfully, result: ${JSON.stringify(parsedResult)}`);
+        return parsedResult;
+      } catch (error) {
+        console.error(`[check] Failed to parse result:`, error);
+        console.error(`[check] Full result bytes:`, Array.from(result));
+        throw error;
+      }
     },
 
     async prove(
