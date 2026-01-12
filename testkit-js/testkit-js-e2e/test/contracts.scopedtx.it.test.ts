@@ -142,7 +142,7 @@ describe('Scoped Transaction Contract Tests', () => {
     expect(counterValue2).toBeDefined();
     const ticker1 = counterValue1?.at(0);
     expect(counterValue2!).toEqual(ticker1! + 1n);
-    const ticker2 = counterValue1?.at(0);
+    const ticker2 = counterValue1?.at(1);
     expect(counterValue2!).toEqual(ticker2! + 5n);
 
     const counterPS = await api.getCounterPrivateState(providers, CounterPrivateStateId);
