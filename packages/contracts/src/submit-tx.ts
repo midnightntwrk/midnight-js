@@ -29,8 +29,8 @@ import {
   NOTHING_TO_PROVE,
   type NothingToProve,
   type ProvenTransaction,
+  type ProveTxConfig,
   TRANSACTION_TO_PROVE,
-  type ZKConfig
 } from '@midnight-ntwrk/midnight-js-types';
 import fs from 'fs';
 import path from 'path';
@@ -107,9 +107,7 @@ function logTransaction(circuitId: string | string[] | undefined, tx: Transactio
   }
 }
 
-async function proveTransaction<C extends Contract, ICK extends ImpureCircuitId<C>>(recipe: BalancedProvingRecipe, providers: SubmitTxProviders<C, ICK>, proveTxConfig: {
-  zkConfig: ZKConfig<ICK> | ZKConfig<ICK>[]
-} | undefined) {
+async function proveTransaction<C extends Contract, ICK extends ImpureCircuitId<C>>(recipe: BalancedProvingRecipe, providers: SubmitTxProviders<C, ICK>, proveTxConfig?: ProveTxConfig) {
   let toSubmit: ProvenTransaction;
   switch (recipe.type) {
     case TRANSACTION_TO_PROVE: {
@@ -141,17 +139,8 @@ async function submitTxCore<C extends Contract, ICK extends ImpureCircuitId<C>>(
   providers: SubmitTxProviders<C, ICK>,
   options: SubmitTxOptions<ICK>
 ): Promise<string> {
-  const proveTxConfig = options.circuitId
-    ? Array.isArray(options.circuitId)
-      ? {
-          zkConfig: await Promise.all(options.circuitId.map((circuitId) => providers.zkConfigProvider.get(circuitId)))
-        }
-      : {
-          zkConfig: await providers.zkConfigProvider.get(options.circuitId)
-        }
-    : undefined;
   const recipe = await providers.walletProvider.balanceTx(options.unprovenTx, options.newCoins);
-  const toSubmit = await proveTransaction(recipe, providers, proveTxConfig);
+  const toSubmit = await proveTransaction(recipe, providers);
   const bound = toSubmit.bind();
   if (__DEBUG__) {
     logTransaction(options.circuitId, bound);

@@ -67,7 +67,7 @@ export const httpClientProofProvider = <K extends string>(
   return {
     async proveTx(
       unprovenTx: UnprovenTransaction,
-      _partialProveTxConfig?: ProveTxConfig<K>
+      _partialProveTxConfig?: ProveTxConfig
     ): Promise<ProvenTransaction> {
       console.log('[httpClientProofProvider] proveTx called with unprovenTx:', unprovenTx);
       console.log('[httpClientProofProvider] partialProveTxConfig:', _partialProveTxConfig);

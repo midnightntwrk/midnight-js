@@ -37,18 +37,18 @@ export const DEFAULT_TIMEOUT = 300000;
 
 const getKeyMaterial = async <K extends string>(
   zkConfigProvider: ZKConfigProvider<K>,
-  circuitId: K
+  keyLocation: K
 ): Promise<ProvingKeyMaterial | undefined> => {
   try {
-    const zkConfig = await zkConfigProvider.get(circuitId);
-    console.log(`Fetched ZK config for circuitId="${circuitId}":`, zkConfig);
+    const zkConfig = await zkConfigProvider.get(keyLocation);
+    console.log(`Fetched ZK config for circuitId="${keyLocation}":`, zkConfig);
     return {
       proverKey: new Uint8Array(zkConfig.proverKey),
       verifierKey: new Uint8Array(zkConfig.verifierKey),
       ir: new Uint8Array(zkConfig.zkir),
     };
   } catch {
-    console.log(`ZK config not found for circuitId="${circuitId}", using built-in circuit on proof server`);
+    console.log(`ZK config not found for circuitId="${keyLocation}", using built-in circuit on proof server`);
     return undefined;
   }
 };
