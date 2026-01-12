@@ -2984,7 +2984,6 @@ __metadata:
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
-    prettify: "npm:^0.1.7"
     vitest: "npm:^4.0.0"
   languageName: unknown
   linkType: soft
@@ -5519,13 +5518,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"abbrev@npm:1":
-  version: 1.1.1
-  resolution: "abbrev@npm:1.1.1"
-  checksum: 10/2d882941183c66aa665118bafdab82b7a177e9add5eb2776c33e960a4f3c89cff88a1b38aba13a456de01d0dd9d66a8bea7c903268b21ea91dd1097e1e2e8243
-  languageName: node
-  linkType: hard
-
 "abbrev@npm:^2.0.0":
   version: 2.0.0
   resolution: "abbrev@npm:2.0.0"
@@ -6883,16 +6875,6 @@ __metadata:
     readable-stream: "npm:^3.0.2"
     typedarray: "npm:^0.0.6"
   checksum: 10/250e576d0617e7c58e1c4b2dd6fe69560f316d2c962a409f9f3aac794018499ddb31948b1e4296f217008e124cd5d526432097745157fe504b5d9f3dc469eadb
-  languageName: node
-  linkType: hard
-
-"config-chain@npm:~1.1.5":
-  version: 1.1.13
-  resolution: "config-chain@npm:1.1.13"
-  dependencies:
-    ini: "npm:^1.3.4"
-    proto-list: "npm:~1.2.1"
-  checksum: 10/83d22cabf709e7669f6870021c4d552e4fc02e9682702b726be94295f42ce76cfed00f70b2910ce3d6c9465d9758e191e28ad2e72ff4e3331768a90da6c1ef03
   languageName: node
   linkType: hard
 
@@ -11086,21 +11068,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"js-prettify@npm:~1.4.0":
-  version: 1.4.0
-  resolution: "js-prettify@npm:1.4.0"
-  dependencies:
-    config-chain: "npm:~1.1.5"
-    mkdirp: "npm:0.3.5"
-    nopt: "npm:~2.1.1"
-  bin:
-    css-beautify: ./js/bin/css-beautify.js
-    html-beautify: ./js/bin/html-beautify.js
-    js-beautify: ./js/bin/js-beautify.js
-  checksum: 10/47a1d07450cc1fd61a66d16e94eefe2f45e7a15d760c8dec95bbfa7d0ec680768b636e1c427d53117eba15c309831ff4b02a5d1b7d2fca71ac73ca19375df87b
-  languageName: node
-  linkType: hard
-
 "js-tokens@npm:^3.0.0 || ^4.0.0, js-tokens@npm:^4.0.0":
   version: 4.0.0
   resolution: "js-tokens@npm:4.0.0"
@@ -11569,13 +11536,6 @@ __metadata:
   version: 4.17.21
   resolution: "lodash@npm:4.17.21"
   checksum: 10/c08619c038846ea6ac754abd6dd29d2568aa705feb69339e836dfa8d8b09abbb2f859371e86863eda41848221f9af43714491467b5b0299122431e202bb0c532
-  languageName: node
-  linkType: hard
-
-"lodash@npm:~1.3.1":
-  version: 1.3.1
-  resolution: "lodash@npm:1.3.1"
-  checksum: 10/c699706a8fe9b5d85c48222c35d6c8c645ff72696045386576670d27bae3d3bb6a7489d6103cdcbba42232c37d5a2a9a259b91f7c77d9cdd4009fa882440e113
   languageName: node
   linkType: hard
 
@@ -12141,13 +12101,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"mkdirp@npm:0.3.5":
-  version: 0.3.5
-  resolution: "mkdirp@npm:0.3.5"
-  checksum: 10/7542dfb590d3a0c074a0ccf4aaa272334183cc6f06a732325e6875b2394786ab3b2fed1e3ee1ce79ddfb8cdfbeefc340aff075852853bc8b309f4d9d041a9b2b
-  languageName: node
-  linkType: hard
-
 "mkdirp@npm:^1.0.3, mkdirp@npm:^1.0.4":
   version: 1.0.4
   resolution: "mkdirp@npm:1.0.4"
@@ -12474,17 +12427,6 @@ __metadata:
   bin:
     nopt: bin/nopt.js
   checksum: 10/95a1f6dec8a81cd18cdc2fed93e6f0b4e02cf6bdb4501c848752c6e34f9883d9942f036a5e3b21a699047d8a448562d891e67492df68ec9c373e6198133337ae
-  languageName: node
-  linkType: hard
-
-"nopt@npm:~2.1.1":
-  version: 2.1.2
-  resolution: "nopt@npm:2.1.2"
-  dependencies:
-    abbrev: "npm:1"
-  bin:
-    nopt: ./bin/nopt.js
-  checksum: 10/43826df24f66cb9138726275602ca195ceef1e55b2f9a4b37f4b3606a10856b2df7bc69c4023df95819c8c2e6ef8bae7600d2cb2749869b056f34102b132f521
   languageName: node
   linkType: hard
 
@@ -13315,16 +13257,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"prettify@npm:^0.1.7":
-  version: 0.1.7
-  resolution: "prettify@npm:0.1.7"
-  dependencies:
-    js-prettify: "npm:~1.4.0"
-    lodash: "npm:~1.3.1"
-  checksum: 10/64f88a7d0f3ec7804b23c6183e58a99ab9da02836815634a373794dcbff0d1cef0fb6a1551933428bf1360211d73ff5e6f5a0427665e6fba4e26f6bbb23aa412
-  languageName: node
-  linkType: hard
-
 "proc-log@npm:^4.1.0, proc-log@npm:^4.2.0":
   version: 4.2.0
   resolution: "proc-log@npm:4.2.0"
@@ -13407,13 +13339,6 @@ __metadata:
   dependencies:
     mkdirp: "npm:^1.0.4"
   checksum: 10/0b41eb4136dc278ae0d97968ccce8de2d48d321655b319192e31f2424f1c6e052182204671e65aa8967216360cb3e7cbd9129830062e058fe9d6a1d74964c29a
-  languageName: node
-  linkType: hard
-
-"proto-list@npm:~1.2.1":
-  version: 1.2.4
-  resolution: "proto-list@npm:1.2.4"
-  checksum: 10/9cc3b46d613fa0d637033b225db1bc98e914c3c05864f7adc9bee728192e353125ef2e49f71129a413f6333951756000b0e54f299d921f02d3e9e370cc994100
   languageName: node
   linkType: hard
 
