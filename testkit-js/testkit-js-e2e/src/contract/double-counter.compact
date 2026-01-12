@@ -1,0 +1,22 @@
+import CompactStandardLibrary;
+
+export ledger ticker1: Counter;
+export ledger ticker2: Counter;
+
+witness privateCircuitCall(): [];
+
+export circuit increment1(amount: Uint<16>): [] {
+  ticker1.increment(disclose(amount));
+  privateCircuitCall();
+}
+
+export circuit increment2(amount: Uint<16>): [] {
+  ticker2.increment(disclose(amount));
+  privateCircuitCall();
+}
+
+export circuit reset(): [] {
+  ticker1.resetToDefault();
+  ticker2.resetToDefault();
+  privateCircuitCall();
+}

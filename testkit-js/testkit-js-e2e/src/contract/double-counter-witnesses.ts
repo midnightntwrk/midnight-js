@@ -13,11 +13,23 @@
  * limitations under the License.
  */
 
-export * as DoubleCounterWitnesses from './double-counter-witnesses.js';
-export * as CompilerBlockTime from './managed/block-time/contract/index.js';
-export * as CompiledCounter from './managed/counter/contract/index.js';
-export * as CompiledCounterClone from './managed/counter-clone/contract/index.js';
-export * as CompiledDoubleCounter from './managed/double-counter/contract/index.js';
-export * as CompiledSimple from './managed/simple/contract/index.js';
-export * as CompiledUnshielded from './managed/unshielded/contract/index.js';
-export * as CounterWitnesses from './witnesses.js';
+import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
+
+import type { Ledger } from './managed/double-counter/contract/index.js';
+
+export type CounterPrivateState = {
+  privateCounter: number;
+}
+
+export const createPrivateState = (privateCounter: number): CounterPrivateState => ({
+  privateCounter
+});
+
+export const createInitialPrivateState = (privateCounter: number) => createPrivateState(privateCounter);
+
+export const witnesses = {
+  privateCircuitCall: ({ privateState }: WitnessContext<Ledger, CounterPrivateState>): [CounterPrivateState, []] => [
+    { privateCounter: privateState.privateCounter + 1 },
+    []
+  ]
+};

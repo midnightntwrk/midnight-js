@@ -16,14 +16,14 @@
 import type { DeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
 import type { ImpureCircuitId, MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
 
-import { CompiledCounter } from './contract';
-import { type CounterPrivateState, createInitialPrivateState, witnesses } from './contract/witnesses';
+import { CompiledDoubleCounter } from './contract';
+import { type CounterPrivateState, createInitialPrivateState, witnesses } from './contract/double-counter-witnesses';
 
-export type CounterContract = CompiledCounter.Contract<CounterPrivateState>;
+export type DoubleCounterContract = CompiledDoubleCounter.Contract<CounterPrivateState>;
 
-export type DeployedCounterContract = DeployedContract<CounterContract>;
+export type DeployedCounterContract = DeployedContract<DoubleCounterContract>;
 
-export type CounterCircuits = ImpureCircuitId<CounterContract> & string;
+export type CounterCircuits = ImpureCircuitId<DoubleCounterContract> & string;
 
 export const CounterPrivateStateId = 'counterPrivateState';
 
@@ -31,4 +31,4 @@ export type CounterProviders = MidnightProviders<CounterCircuits, typeof Counter
 
 export const privateStateZero = createInitialPrivateState(0);
 
-export const createCounterContractInstance = (): CounterContract => new CompiledCounter.Contract(witnesses);
+export const createDoubleCounterContractInstance = (): DoubleCounterContract => new CompiledDoubleCounter.Contract(witnesses);

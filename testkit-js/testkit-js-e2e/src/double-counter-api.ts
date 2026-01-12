@@ -28,18 +28,19 @@ import type { Logger } from 'pino';
 import { WebSocket } from 'ws';
 
 import {
-  CompiledCounter,
+  CompiledDoubleCounter
 } from './contract';
-import { type CounterPrivateState, createInitialPrivateState } from './contract/witnesses';
-import { type CounterCloneContract, createCounterCloneContractInstance } from './counter-clone-types';
 import {
-  type CounterContract,
+  type CounterPrivateState,
+  createInitialPrivateState
+} from './contract/double-counter-witnesses';
+import {
   CounterPrivateStateId,
   type CounterProviders,
-  createCounterContractInstance,
-  type DeployedCounterContract
-} from './counter-types';
-import { createSimpleContractInstance, type SimpleContract } from './simple-types';
+  createDoubleCounterContractInstance,
+  type DeployedCounterContract,
+  type DoubleCounterContract
+} from './double-counter-types';
 
 export const currentDir = path.resolve(new URL(import.meta.url).pathname, '..');
 
@@ -54,36 +55,12 @@ export const setLogger = (_logger: Logger) => {
   logger = _logger;
 };
 
-export const CIRCUIT_ID_RESET = 'reset';
-export const CIRCUIT_ID_INCREMENT = 'increment';
-export const CIRCUIT_ID_DECREMENT = 'decrement';
-export const CONTRACT_CIRCUITS = ['decrement', 'increment', 'reset'];
-
 export class CounterConfiguration implements ContractConfiguration {
   readonly privateStateStoreName;
   readonly zkConfigPath;
   constructor(privateStateStoreName?: string, zkConfigPath?: string) {
     this.privateStateStoreName = privateStateStoreName || 'counter-private-state';
     this.zkConfigPath = zkConfigPath || path.resolve(currentDir, '..', 'dist', 'contract', 'managed', 'counter');
-  }
-}
-
-export class CounterCloneConfiguration implements ContractConfiguration {
-  readonly privateStateStoreName;
-  readonly zkConfigPath;
-  constructor(privateStateStoreName?: string, zkConfigPath?: string) {
-    this.privateStateStoreName = privateStateStoreName || 'counter-clone-private-state';
-    this.zkConfigPath =
-      zkConfigPath || path.resolve(currentDir, '..', 'dist', 'contract', 'managed', 'counter-clone');
-  }
-}
-
-export class SimpleConfiguration implements ContractConfiguration {
-  readonly privateStateStoreName;
-  readonly zkConfigPath;
-  constructor(privateStateStoreName?: string, zkConfigPath?: string) {
-    this.privateStateStoreName = privateStateStoreName || 'simple-private-state';
-    this.zkConfigPath = zkConfigPath || path.resolve(currentDir, '..', 'dist', 'contract', 'managed', 'simple');
   }
 }
 
@@ -100,21 +77,17 @@ export const getCounterPrivateState = async (
 export const getCounterLedgerState = async (
   providers: CounterProviders,
   contractAddress: ContractAddress
-): Promise<bigint | null> => {
+): Promise<bigint[] | null> => {
   assertIsContractAddress(contractAddress);
   logger.info('Checking contract ledger state...');
   const state = await providers.publicDataProvider
     .queryContractState(contractAddress)
-    .then((contractState) => (contractState != null ? CompiledCounter.ledger(contractState.data).round : null));
+    .then((contractState) => (contractState != null ? [ CompiledDoubleCounter.ledger(contractState.data).ticker1, CompiledDoubleCounter.ledger(contractState.data).ticker2 ] : null));
   logger.info(`Ledger state: ${state}`);
   return state;
 };
 
-export const simpleContractInstance: SimpleContract = createSimpleContractInstance();
-
-export const counterContractInstance: CounterContract = createCounterContractInstance();
-
-export const cloneContractInstance: CounterCloneContract = createCounterCloneContractInstance();
+export const doubleCounterContractInstance: DoubleCounterContract = createDoubleCounterContractInstance();
 
 export const deploy = async (
   providers: CounterProviders,
@@ -122,7 +95,7 @@ export const deploy = async (
 ): Promise<DeployedCounterContract> => {
   logger.info('Deploying counter contract...');
   const counterContract = await deployContract(providers, {
-    contract: counterContractInstance,
+    contract: doubleCounterContractInstance,
     privateStateId: CounterPrivateStateId,
     initialPrivateState: privateState
   });
@@ -130,15 +103,19 @@ export const deploy = async (
   return counterContract;
 };
 
-export const increment = async (counterContract: DeployedCounterContract): Promise<FinalizedTxData> => {
+export const increment1 = async (counterContract: DeployedCounterContract, value: bigint): Promise<FinalizedTxData> => {
   logger.info('Incrementing...');
-  const finalizedTxData = await counterContract.callTx.increment();
+  const finalizedTxData = await counterContract.callTx.increment1(value);
   logger.info(`Transaction ${finalizedTxData.public.txId} added in block ${finalizedTxData.public.blockHeight}`);
   return finalizedTxData.public;
 };
 
-export const randomCircuitId = (length = 32) =>
-  Array.from({ length }, () => 'abcdefghijklmnopqrstuvwxyz'.charAt(Math.floor(Math.random() * 26))).join('');
+export const increment2 = async (counterContract: DeployedCounterContract, value: bigint): Promise<FinalizedTxData> => {
+  logger.info('Incrementing...');
+  const finalizedTxData = await counterContract.callTx.increment2(value);
+  logger.info(`Transaction ${finalizedTxData.public.txId} added in block ${finalizedTxData.public.blockHeight}`);
+  return finalizedTxData.public;
+};
 
 const getConfigurationWithEmptyPrivateStore = () => {
   return new CounterConfiguration(`counter-private-store-${Date.now()}`);
