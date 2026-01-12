@@ -18,7 +18,7 @@ import {
   createProvingPayload,
   parseCheckResult,
   type ProvingKeyMaterial,
-  type ProvingProvider} from '@midnight-ntwrk/ledger-v6';
+  type ProvingProvider} from '@midnight-ntwrk/ledger-v7';
 import { InvalidProtocolSchemeError, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
 import fetch from 'cross-fetch';
 import fetchBuilder from 'fetch-retry';
