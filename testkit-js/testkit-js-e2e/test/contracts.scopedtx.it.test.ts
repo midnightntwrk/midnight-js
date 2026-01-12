@@ -103,7 +103,9 @@ describe('Scoped Transaction Contract Tests', () => {
     const counterValue2 = await api.getCounterLedgerState(providers, contractAddress);
     expect(counterValue2).toBeDefined();
     const ticker1 = counterValue1?.at(0);
-    expect(counterValue2!).toEqual(ticker1! + 2n);
+    expect(counterValue2!.at(0)!).toEqual(ticker1! + 2n);
+    const ticker2 = counterValue1?.at(1);
+    expect(counterValue2!.at(1)!).toEqual(ticker2!);
 
     const counterPS = await api.getCounterPrivateState(providers, CounterPrivateStateId);
     expect(counterPS).toBeDefined();
@@ -141,9 +143,9 @@ describe('Scoped Transaction Contract Tests', () => {
     const counterValue2 = await api.getCounterLedgerState(providers, contractAddress);
     expect(counterValue2).toBeDefined();
     const ticker1 = counterValue1?.at(0);
-    expect(counterValue2!).toEqual(ticker1! + 1n);
+    expect(counterValue2!.at(0)).toEqual(ticker1! + 1n);
     const ticker2 = counterValue1?.at(1);
-    expect(counterValue2!).toEqual(ticker2! + 5n);
+    expect(counterValue2!.at(1)).toEqual(ticker2! + 5n);
 
     const counterPS = await api.getCounterPrivateState(providers, CounterPrivateStateId);
     expect(counterPS).toBeDefined();
