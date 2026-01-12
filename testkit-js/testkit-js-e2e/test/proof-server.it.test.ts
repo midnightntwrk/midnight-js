@@ -59,6 +59,7 @@ describe('Proof server integration', () => {
   let unprovenDeployTx: UnprovenTransaction;
   let unprovenCallTx: UnprovenTransaction;
   let zkConfig: ZKConfig<CounterCircuits>;
+  let zkConfigProvider: NodeZkConfigProvider<CounterCircuits>;
 
   beforeEach(() => {
     logger.info(`Running test=${expect.getState().currentTestName}`);
@@ -66,8 +67,8 @@ describe('Proof server integration', () => {
 
   beforeAll(async () => {
     proofServerContainer = await DynamicProofServerContainer.start(logger);
-    proofProvider = httpClientProofProvider(proofServerContainer.getUrl());
-    const zkConfigProvider = new NodeZkConfigProvider<CounterCircuits>(new CounterConfiguration().zkConfigPath);
+    zkConfigProvider = new NodeZkConfigProvider<CounterCircuits>(new CounterConfiguration().zkConfigPath);
+    proofProvider = httpClientProofProvider(proofServerContainer.getUrl(), zkConfigProvider);
     const coinPublicKey = sampleCoinPublicKey();
     const encryptionPublicKey = sampleEncryptionPublicKey();
     const signingKey = sampleSigningKey();
@@ -153,7 +154,9 @@ describe('Proof server integration', () => {
    */
   test('should throw error for invalid ZKConfig circuitId', async () => {
     const invalidZkConfig = { ...zkConfig, circuitId: 'invalid' as CounterCircuits };
-    await expect(proofProvider.proveTx(unprovenCallTx, { zkConfig: invalidZkConfig })).rejects.toThrow('Bad Request');
+    await expect(proofProvider.proveTx(unprovenCallTx, { zkConfig: invalidZkConfig })).rejects.toThrow(
+      "'check' returned invalid type"
+    );
   });
 
   /**
@@ -165,7 +168,7 @@ describe('Proof server integration', () => {
    * @then Should throw Bad Request error for missing ZKConfig
    */
   test('should throw error for undefined ZKConfig', async () => {
-    await expect(proofProvider.proveTx(unprovenCallTx)).rejects.toThrow('Bad Request');
+    await expect(proofProvider.proveTx(unprovenCallTx)).rejects.toThrow("'check' returned invalid type");
   });
 
   const numTxsToProve = 5;
