@@ -2956,13 +2956,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/ledger-v7@npm:7.0.0-alpha.1":
-  version: 7.0.0-alpha.1
-  resolution: "@midnight-ntwrk/ledger-v7@npm:7.0.0-alpha.1::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fledger-v7%2F7.0.0-alpha.1%2F7c1dab41dc9fcd79febf1931c519de052eb1831c"
-  checksum: 10/85e6fa2d75ceb859341de479ccbfd5c2399f8182cb4b9392fea3e056c0d35f248699514f7adb29561d6d3d77a3cad8189071f484bfadeeeb98311ffbb0cab9b3
-  languageName: node
-  linkType: hard
-
 "@midnight-ntwrk/ledger-v7@npm:7.0.0-rc.1":
   version: 7.0.0-rc.1
   resolution: "@midnight-ntwrk/ledger-v7@npm:7.0.0-rc.1::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fledger-v7%2F7.0.0-rc.1%2Fdf696c4478e5f8346db0054af22d6dde35f58a85"
