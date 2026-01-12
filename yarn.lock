@@ -3157,13 +3157,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/onchain-runtime-v2@npm:^2.0.0-alpha.1":
-  version: 2.0.0-alpha.1
-  resolution: "@midnight-ntwrk/onchain-runtime-v2@npm:2.0.0-alpha.1::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fonchain-runtime-v2%2F2.0.0-alpha.1%2F641844d213c967fded5caba65222f036fe0c83ef"
-  checksum: 10/1ccfbe384175f1c4bb88ef12716aa40c7d48aee86ac7278ad212a74d1c15047a0b1d64f25ccd0df312afbf7c8c00437d5fb39899e41629532e95f955d50f37ae
-  languageName: node
-  linkType: hard
-
 "@midnight-ntwrk/testkit-js-e2e@workspace:testkit-js/testkit-js-e2e":
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/testkit-js-e2e@workspace:testkit-js/testkit-js-e2e"

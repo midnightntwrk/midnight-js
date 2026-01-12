@@ -90,7 +90,8 @@
     "vitest": "^4.0.15"
   },
   "resolutions": {
-    "@midnight-ntwrk/ledger-v7": "7.0.0-rc.1"
+    "@midnight-ntwrk/ledger-v7": "7.0.0-rc.1",
+    "@midnight-ntwrk/onchain-runtime-v2": "2.0.0-rc.1"
   },
   "lint-staged": {
     "*.ts": "eslint --cache --fix"
