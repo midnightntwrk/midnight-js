@@ -64,11 +64,9 @@ describe('submit-tx', () => {
 
       it('should successfully submit transaction with circuit ID', async () => {
         const circuitId = 'testCircuit' as ImpureCircuitId;
-        const mockZkConfig = { zkConfig: 'test-config' };
         const mockRecipe = { type: 'TransactionToProve' as const, transaction: mockProvenTx };
         const mockFinalizedTxData = createMockFinalizedTxData();
 
-        mockProviders.zkConfigProvider.get = vi.fn().mockResolvedValue(mockZkConfig);
         mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue(mockRecipe);
         mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue(mockProvenTx);
         mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue('test-tx-id');
@@ -81,9 +79,8 @@ describe('submit-tx', () => {
 
         const result = await submitTx(mockProviders, options);
 
-        expect(mockProviders.zkConfigProvider.get).toHaveBeenCalledWith(circuitId);
         expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(mockUnprovenTx, undefined);
-        expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith(mockProvenTx, { zkConfig: mockZkConfig });
+        expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith(mockProvenTx, undefined);
         expect(mockProviders.midnightProvider.submitTx).toHaveBeenCalled();
         expect(mockProviders.publicDataProvider.watchForTxData).toHaveBeenCalledWith('test-tx-id');
         expect(result).toBe(mockFinalizedTxData);
@@ -127,11 +124,9 @@ describe('submit-tx', () => {
 
       it('should submit transaction with circuit ID and return txId', async () => {
         const circuitId = 'testCircuit' as ImpureCircuitId;
-        const mockZkConfig = { zkConfig: 'test-config' };
         const mockRecipe = { type: 'TransactionToProve' as const, transaction: mockProvenTx };
         const expectedTxId = 'test-tx-id-with-circuit';
 
-        mockProviders.zkConfigProvider.get = vi.fn().mockResolvedValue(mockZkConfig);
         mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue(mockRecipe);
         mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue(mockProvenTx);
         mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue(expectedTxId);
@@ -143,9 +138,8 @@ describe('submit-tx', () => {
 
         const result = await submitTxAsync(mockProviders, options);
 
-        expect(mockProviders.zkConfigProvider.get).toHaveBeenCalledWith(circuitId);
         expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(mockUnprovenTx, undefined);
-        expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith(mockProvenTx, { zkConfig: mockZkConfig });
+        expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith(mockProvenTx, undefined);
         expect(mockProviders.midnightProvider.submitTx).toHaveBeenCalled();
         expect(mockProviders.publicDataProvider.watchForTxData).not.toHaveBeenCalled();
         expect(result).toBe(expectedTxId);
@@ -216,19 +210,25 @@ describe('submit-tx', () => {
         await expect(submitTxAsync(mockProviders, options)).rejects.toThrow('Network submission failed');
       });
 
-      it('should propagate zkConfigProvider errors', async () => {
+      it('should submit transaction successfully even without zkConfig', async () => {
         const circuitId = 'testCircuit' as ImpureCircuitId;
-        const configError = new Error('ZK config retrieval failed');
+        const expectedTxId = 'test-tx-id-fallback';
+        const mockRecipe = { type: 'TransactionToProve' as const, transaction: mockProvenTx };
 
-        mockProviders.zkConfigProvider.get = vi.fn().mockRejectedValue(configError);
+        mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue(mockRecipe);
+        mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue(mockProvenTx);
+        mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue(expectedTxId);
 
         const options: SubmitTxOptions<ImpureCircuitId> = {
           unprovenTx: mockUnprovenTx,
           circuitId
         };
 
-        await expect(submitTxAsync(mockProviders, options)).rejects.toThrow('ZK config retrieval failed');
-        expect(mockProviders.walletProvider.balanceTx).not.toHaveBeenCalled();
+        const result = await submitTxAsync(mockProviders, options);
+
+        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(mockUnprovenTx, undefined);
+        expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith(mockProvenTx, undefined);
+        expect(result).toBe(expectedTxId);
       });
     });
   });

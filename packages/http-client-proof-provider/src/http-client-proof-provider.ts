@@ -58,7 +58,7 @@ export const httpClientProofProvider = <K extends string>(
   url: string,
   zkConfigProvider: ZKConfigProvider<K>,
   config?: ProvingProviderConfig
-): ProofProvider<K> => {
+): ProofProvider => {
   console.log(`Creating HTTP Client Proof Provider with URL: ${url} and config:`, config);
   console.log(`Using ZK Config Provider:`, zkConfigProvider);
   const baseProvingProvider = httpClientProvingProvider(url, zkConfigProvider, config);
