@@ -82,3 +82,4 @@
 - [createVerifierKey](functions/createVerifierKey.md)
 - [createZKIR](functions/createZKIR.md)
 - [getImpureCircuitIds](functions/getImpureCircuitIds.md)
+- [zkConfigToProvingKeyMaterial](functions/zkConfigToProvingKeyMaterial.md)

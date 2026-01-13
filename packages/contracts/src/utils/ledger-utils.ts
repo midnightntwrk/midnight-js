@@ -43,7 +43,7 @@ import {
   VerifierKeyInsert,
   VerifierKeyRemove,
   type ZswapChainState
-} from '@midnight-ntwrk/ledger-v6';
+} from '@midnight-ntwrk/ledger-v7';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   type ImpureCircuitId,
@@ -166,10 +166,10 @@ export const replaceAuthority = (newAuthority: SigningKey, contractState: Contra
   new ReplaceAuthority(contractMaintenanceAuthority(newAuthority, contractState));
 
 export const removeVerifierKey = (operation: string | Uint8Array): VerifierKeyRemove =>
-  new VerifierKeyRemove(operation, new ContractOperationVersion('v2'));
+  new VerifierKeyRemove(operation, new ContractOperationVersion('v3'));
 
 export const insertVerifierKey = (operation: string | Uint8Array, newVk: VerifierKey): VerifierKeyInsert =>
-  new VerifierKeyInsert(operation, new ContractOperationVersionedVerifierKey('v2', newVk));
+  new VerifierKeyInsert(operation, new ContractOperationVersionedVerifierKey('v3', newVk));
 
 // Utilities for unproven transactions for the single contract updates above.
 

@@ -14,7 +14,7 @@
  */
 
 import { StateValue } from '@midnight-ntwrk/compact-runtime';
-import { type AlignedValue, type ContractAddress, type PartitionedTranscript } from '@midnight-ntwrk/ledger-v6';
+import { type AlignedValue, type ContractAddress, type PartitionedTranscript } from '@midnight-ntwrk/ledger-v7';
 import {
   type Contract,
   FailEntirely,
@@ -109,7 +109,7 @@ describe('submit-call-tx', () => {
     options: CallTxOptions<Contract, ImpureCircuitId>
   ) => {
     expect(createUnprovenCallTx).toHaveBeenCalledWith(
-      mockProviders, 
+      mockProviders,
       options,
       expect.anything() // Ignore transaction context.
     );
@@ -207,7 +207,7 @@ describe('submit-call-tx', () => {
             unprovenTx: mockUnprovenTx,
             newCoins: [mockCoinInfo]
           }
-        });        
+        });
 
         const result = await withContractScopedTransaction(mockProviders, async (txCtx) => {
           vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData_1);

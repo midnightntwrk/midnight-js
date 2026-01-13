@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { ZswapChainState } from '@midnight-ntwrk/ledger-v6';
+import type { ZswapChainState } from '@midnight-ntwrk/ledger-v7';
 import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 

@@ -50,7 +50,7 @@ export interface MidnightProviders<
   /**
    * Creates proven, unbalanced transactions.
    */
-  readonly proofProvider: ProofProvider<ICK>;
+  readonly proofProvider: ProofProvider;
   /**
    * Creates proven, balanced transactions.
    */

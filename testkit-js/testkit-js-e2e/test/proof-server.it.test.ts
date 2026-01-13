@@ -24,7 +24,7 @@ import {
   type UnprovenTransaction,
   WellFormedStrictness,
   ZswapChainState
-} from '@midnight-ntwrk/ledger-v6';
+} from '@midnight-ntwrk/ledger-v7';
 import {
   createUnprovenCallTxFromInitialStates,
   createUnprovenDeployTxFromVerifierKeys
@@ -32,7 +32,7 @@ import {
 import { DEFAULT_CONFIG, httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
-import type { ProofProvider, ZKConfig } from '@midnight-ntwrk/midnight-js-types';
+import type { ProofProvider } from '@midnight-ntwrk/midnight-js-types';
 import { getImpureCircuitIds } from '@midnight-ntwrk/midnight-js-types';
 import {
   createLogger,
@@ -58,7 +58,7 @@ describe('Proof server integration', () => {
   let proofProvider: ProofProvider<CounterCircuits>;
   let unprovenDeployTx: UnprovenTransaction;
   let unprovenCallTx: UnprovenTransaction;
-  let zkConfig: ZKConfig<CounterCircuits>;
+  let zkConfigProvider: NodeZkConfigProvider<CounterCircuits>;
 
   beforeEach(() => {
     logger.info(`Running test=${expect.getState().currentTestName}`);
@@ -66,8 +66,8 @@ describe('Proof server integration', () => {
 
   beforeAll(async () => {
     proofServerContainer = await DynamicProofServerContainer.start(logger);
-    proofProvider = httpClientProofProvider(proofServerContainer.getUrl());
-    const zkConfigProvider = new NodeZkConfigProvider<CounterCircuits>(new CounterConfiguration().zkConfigPath);
+    zkConfigProvider = new NodeZkConfigProvider<CounterCircuits>(new CounterConfiguration().zkConfigPath);
+    proofProvider = httpClientProofProvider(proofServerContainer.getUrl(), zkConfigProvider);
     const coinPublicKey = sampleCoinPublicKey();
     const encryptionPublicKey = sampleEncryptionPublicKey();
     const signingKey = sampleSigningKey();
@@ -96,7 +96,6 @@ describe('Proof server integration', () => {
       coinPublicKey,
       encryptionPublicKey
     ).private.unprovenTx;
-    zkConfig = await zkConfigProvider.get(circuitId);
   });
 
   afterAll(async () => {
@@ -119,7 +118,7 @@ describe('Proof server integration', () => {
     if (contractActions) {
       expect(contractActions[0]).toBeInstanceOf(ContractDeploy);
     }
-    const provenCallTx = await proofProvider.proveTx(unprovenCallTx, { zkConfig });
+    const provenCallTx = await proofProvider.proveTx(unprovenCallTx);
     expect(provenCallTx.intents?.size ?? 0).toEqual(1);
     const contractActionsCall = [...provenCallTx.intents!.entries()][0][1].actions;
     expect(contractActionsCall?.length).toEqual(1);
@@ -140,32 +139,8 @@ describe('Proof server integration', () => {
     const provenDeployTx = await proofProvider.proveTx(unprovenDeployTx);
     expect(() => provenDeployTx.wellFormed(ledgerState, strictness, new Date())).not.toThrow();
 
-    const provenCallTx = await proofProvider.proveTx(unprovenCallTx, { zkConfig });
+    const provenCallTx = await proofProvider.proveTx(unprovenCallTx);
     expect(() => provenCallTx.wellFormed(ledgerState, strictness, new Date())).not.toThrow();
-  });
-  /**
-   * Test error handling for invalid ZKConfig circuit ID.
-   *
-   * @given A proof provider and unproven call transaction
-   * @and Invalid ZKConfig with wrong circuit ID
-   * @when Attempting to prove transaction with invalid configuration
-   * @then Should throw Bad Request error for invalid circuit ID
-   */
-  test('should throw error for invalid ZKConfig circuitId', async () => {
-    const invalidZkConfig = { ...zkConfig, circuitId: 'invalid' as CounterCircuits };
-    await expect(proofProvider.proveTx(unprovenCallTx, { zkConfig: invalidZkConfig })).rejects.toThrow('Bad Request');
-  });
-
-  /**
-   * Test error handling for undefined ZKConfig.
-   *
-   * @given A proof provider and unproven call transaction
-   * @and No ZKConfig provided
-   * @when Attempting to prove transaction without configuration
-   * @then Should throw Bad Request error for missing ZKConfig
-   */
-  test('should throw error for undefined ZKConfig', async () => {
-    await expect(proofProvider.proveTx(unprovenCallTx)).rejects.toThrow('Bad Request');
   });
 
   const numTxsToProve = 5;
@@ -184,8 +159,7 @@ describe('Proof server integration', () => {
     const results = await Promise.all(
       [...Array(numTxsToProve)].map(() =>
         proofProvider.proveTx(unprovenCallTx, {
-          timeout,
-          zkConfig
+          timeout
         })
       )
     );

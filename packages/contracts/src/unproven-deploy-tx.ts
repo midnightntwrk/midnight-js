@@ -14,7 +14,7 @@
  */
 
 import type { CoinPublicKey,SigningKey } from '@midnight-ntwrk/compact-runtime';
-import type { EncPublicKey } from '@midnight-ntwrk/ledger-v6';
+import type { EncPublicKey } from '@midnight-ntwrk/ledger-v7';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   type Contract,

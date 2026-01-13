@@ -4,15 +4,11 @@
 
 [Midnight.js API Reference](../../../packages.md) / [@midnight-ntwrk/midnight-js-types](../README.md) / ProofProvider
 
-# Interface: ProofProvider\<K\>
+# Interface: ProofProvider
 
 Interface for a proof server running in a trusted environment.
 
-## Type Parameters
-
-### K
-
-`K` *extends* `string`
+## Type Param
 
 The type of the circuit ID used by the provider.
 
@@ -34,7 +30,7 @@ must be balanced using the [WalletProvider](WalletProvider.md) interface.
 
 ##### proveTxConfig?
 
-[`ProveTxConfig`](ProveTxConfig.md)\<`K`\>
+[`ProveTxConfig`](ProveTxConfig.md)
 
 The configuration for the proof request to the proof provider. Empty in case
                      a deploy transaction is being proved with no user-defined timeout.

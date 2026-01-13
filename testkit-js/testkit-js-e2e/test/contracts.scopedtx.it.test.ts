@@ -15,7 +15,7 @@
 
 
 
-import { type ContractAddress } from '@midnight-ntwrk/ledger-v6';
+import { type ContractAddress } from '@midnight-ntwrk/ledger-v7';
 import {
   type FinalizedDeployTxData,
   submitCallTx,  withContractScopedTransaction} from '@midnight-ntwrk/midnight-js-contracts';

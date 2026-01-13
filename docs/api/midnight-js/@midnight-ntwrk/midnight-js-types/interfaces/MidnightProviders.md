@@ -56,7 +56,7 @@ Manages the private state of a contract.
 
 ### proofProvider
 
-> `readonly` **proofProvider**: [`ProofProvider`](ProofProvider.md)\<`ICK`\>
+> `readonly` **proofProvider**: [`ProofProvider`](ProofProvider.md)
 
 Creates proven, unbalanced transactions.
 

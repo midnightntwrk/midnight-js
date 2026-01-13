@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { ZswapOffer as LedgerZswapOffer } from '@midnight-ntwrk/ledger-v6';
+import { ZswapOffer as LedgerZswapOffer } from '@midnight-ntwrk/ledger-v7';
 import { type Contract, type ImpureCircuitId, type PrivateState,type PrivateStateId, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import { ChargedState,type ShieldedCoinInfo } from '@midnight-ntwrk/onchain-runtime-v1';
+import { ChargedState,type ShieldedCoinInfo } from '@midnight-ntwrk/onchain-runtime-v2';
 
 import { type CallResult } from '../call';
 import { type ContractProviders } from '../contract-providers';
@@ -77,8 +77,8 @@ export class TransactionContextImpl<
   currentStates: ContractStates<PrivateState<C>> | PublicContractStates | undefined = undefined;
   currentUnsubmittedCall: [callTxData: UnsubmittedCallTxData<C, ICK>, privateStateId?: PrivateStateId] | undefined;
   submitTxOptions: SubmitTxOptions<ICK> | undefined = undefined;
-  
-  constructor(providers: ContractProviders<C, ICK>, options?: Transaction.ScopedTransactionOptions) {  
+
+  constructor(providers: ContractProviders<C, ICK>, options?: Transaction.ScopedTransactionOptions) {
     this.providers = providers;
     this.options = options;
   }
@@ -126,7 +126,7 @@ export class TransactionContextImpl<
         circuitId
        }
     );
-    
+
     // If there is no currently active state, then return...
     if (!this.currentStates) return;
 
