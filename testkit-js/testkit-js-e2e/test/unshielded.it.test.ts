@@ -49,7 +49,7 @@ class UnshieldedConfiguration implements ContractConfiguration {
   }
 
   get zkConfigPath(): string {
-    return path.resolve(__dirname, '../dist/contract/managed/unshielded');
+    return path.resolve(__dirname, '../dist/contract/compiled/unshielded');
   }
 }
 

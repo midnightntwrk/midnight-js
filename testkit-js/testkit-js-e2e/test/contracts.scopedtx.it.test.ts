@@ -17,9 +17,11 @@
 
 import { type ContractAddress } from '@midnight-ntwrk/ledger-v7';
 import {
+  type CallTxOptionsWithPrivateStateId,
   type FinalizedDeployTxData,
-  submitCallTx,  withContractScopedTransaction} from '@midnight-ntwrk/midnight-js-contracts';
-import { type ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
+  submitCallTx,
+  withContractScopedTransaction
+} from '@midnight-ntwrk/midnight-js-contracts';
 import type {
   EnvironmentConfiguration,
   MidnightWalletProvider,
@@ -84,10 +86,10 @@ describe('Scoped Transaction Contract Tests', () => {
     const privateState1 = await api.getCounterPrivateState(providers, CounterPrivateStateId);
     expect(privateState1).toBeDefined();
 
-    const callTxOptions = {
+    const callTxOptions: CallTxOptionsWithPrivateStateId<DoubleCounterContract, 'increment1'> = {
       contract: api.doubleCounterContractInstance,
       contractAddress,
-      circuitId: 'increment1' as ImpureCircuitId<DoubleCounterContract>,
+      circuitId: 'increment1',
       privateStateId: CounterPrivateStateId,
       args: [1n] as [bigint]
     };
@@ -120,17 +122,17 @@ describe('Scoped Transaction Contract Tests', () => {
     const privateState1 = await api.getCounterPrivateState(providers, CounterPrivateStateId);
     expect(privateState1).toBeDefined();
 
-    const callTxOptions1 = {
+    const callTxOptions1: CallTxOptionsWithPrivateStateId<DoubleCounterContract, 'increment1'> = {
       contract: api.doubleCounterContractInstance,
       contractAddress,
-      circuitId: 'increment1' as ImpureCircuitId<DoubleCounterContract>,
+      circuitId: 'increment1',
       privateStateId: CounterPrivateStateId,
       args: [1n] as [bigint]
-    };
-    const callTxOptions2 = {
+    } as CallTxOptionsWithPrivateStateId<DoubleCounterContract, 'increment1'>;
+    const callTxOptions2: CallTxOptionsWithPrivateStateId<DoubleCounterContract, 'increment2'> = {
       contract: api.doubleCounterContractInstance,
       contractAddress,
-      circuitId: 'increment2' as ImpureCircuitId<DoubleCounterContract>,
+      circuitId: 'increment2',
       privateStateId: CounterPrivateStateId,
       args: [5n] as [bigint]
     };
@@ -160,19 +162,18 @@ describe('Scoped Transaction Contract Tests', () => {
     const privateState1 = await api.getCounterPrivateState(providers, CounterPrivateStateId);
     expect(privateState1).toBeDefined();
 
-    const callTxOptions1 = {
+    const callTxOptions1: CallTxOptionsWithPrivateStateId<DoubleCounterContract, 'increment2'> = {
       contract: api.doubleCounterContractInstance,
       contractAddress,
-      circuitId: 'increment2' as ImpureCircuitId<DoubleCounterContract>,
+      circuitId: 'increment2',
       privateStateId: CounterPrivateStateId,
       args: [1n] as [bigint]
-    };
-    const callTxOptions2 = {
+     };
+    const callTxOptions2: CallTxOptionsWithPrivateStateId<DoubleCounterContract, 'reset'> = {
       contract: api.doubleCounterContractInstance,
       contractAddress,
-      circuitId: 'reset' as ImpureCircuitId<DoubleCounterContract>,
-      privateStateId: CounterPrivateStateId,
-      args: [5n] as [bigint]
+      circuitId: 'reset',
+      privateStateId: CounterPrivateStateId
     };
     const callTxData = await withContractScopedTransaction<DoubleCounterContract>(providers, async (txCtx) => {
       await submitCallTx(providers, callTxOptions1, txCtx);
