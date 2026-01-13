@@ -15,7 +15,7 @@
 
 import { type ProverKey, type VerifierKey, ZKConfigProvider, type ZKIR } from '@midnight-ntwrk/midnight-js-types';
 
-import { httpClientProvingProvider } from '../http-client-proof-provider';
+import { httpClientProvingProvider } from '../http-client-proving-provider';
 
 class MockZKConfigProvider extends ZKConfigProvider<'test-circuit'> {
   async getZKIR(_circuitId: 'test-circuit'): Promise<ZKIR> {

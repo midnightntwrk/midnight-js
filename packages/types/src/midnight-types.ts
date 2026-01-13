@@ -23,7 +23,7 @@ import {
   type Transaction,
   type TransactionHash,
   type TransactionId,
-} from '@midnight-ntwrk/ledger-v6';
+} from '@midnight-ntwrk/ledger-v7';
 
 /**
  * A type representing a prover key derived from a contract circuit.
@@ -103,6 +103,18 @@ export interface ZKConfig<K extends string> {
    * The zero-knowledge intermediate representation corresponding to {@link ZKConfig.circuitId}.
    */
   readonly zkir: ZKIR;
+}
+
+/**
+ * Converts a ZKConfig object to ProvingKeyMaterial format.
+ * @param zkConfig
+ */
+export const zkConfigToProvingKeyMaterial = <K extends string>(zkConfig: ZKConfig<K>) => {
+  return {
+    proverKey: zkConfig.proverKey,
+    verifierKey: zkConfig.verifierKey,
+    ir: zkConfig.zkir,
+  };
 }
 
 /**

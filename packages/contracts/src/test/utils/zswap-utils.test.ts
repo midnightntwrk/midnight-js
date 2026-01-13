@@ -28,7 +28,7 @@ import {
   shieldedToken,
   Transaction,
   ZswapChainState,
-  ZswapOffer} from '@midnight-ntwrk/ledger-v6';
+  ZswapOffer} from '@midnight-ntwrk/ledger-v7';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
@@ -517,7 +517,7 @@ describe('Zswap utilities', () => {
       expect(result!.outputs.length).toBe(1);
       expect(result!.inputs.length).toBe(0);
       expect(result!.transients.length).toBe(0);
-      expect(result!.deltas.get(nativeToken().raw), result!.toString()).toBe(0n);
+      expect(result!.deltas.get(nativeToken().raw), result!.toString()).toBe(undefined);
     });
 
     test('should handle zero value inputs with addressAndChainStateTuple correctly', () => {
@@ -542,7 +542,7 @@ describe('Zswap utilities', () => {
       expect(result!.inputs.length).toBe(1);
       expect(result!.outputs.length).toBe(0);
       expect(result!.transients.length).toBe(0);
-      expect(result!.deltas.get(nativeToken().raw), result!.toString()).toBe(0n);
+      expect(result!.deltas.get(nativeToken().raw), result!.toString()).toBe(undefined);
     });
 
     test('should create transient for single matching input-output pair', () => {

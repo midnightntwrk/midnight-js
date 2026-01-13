@@ -29,8 +29,6 @@ jobs:
     outputs:
       build_shared: ${{ steps.build-targets.outputs.shared }}
       build_mn_js: ${{ steps.build-targets.outputs.midnight-js }}
-      build_c_js: ${{ steps.build-targets.outputs.compact-js }}
-      build_p_js: ${{ steps.build-targets.outputs.platform-js }}
       build_t_js: ${{ steps.build-targets.outputs.testkit-js }}
 
     steps:
@@ -57,10 +55,6 @@ jobs:
               - '.github/workflows/**'
               - 'yarn.lock'
               - 'package.json'
-            compact-js:
-              - 'compact-js/**'
-            platform-js:
-              - 'platform-js/**'
             midnight-js:
               - 'packages/**'
             testkit-js:
@@ -77,30 +71,6 @@ jobs:
           github.event_name != 'schedule' &&
           (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch')
         }}
-    secrets: inherit
-
-  ci-compactjs:
-    needs: ci
-    name: Build Compact.js
-    with:
-      should_run: ${{ needs.ci.outputs.build_c_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
-      should_prerelease: ${{
-          github.event_name != 'schedule' &&
-          (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch')
-        }}
-    uses: ./.github/workflows/ci-compact-js.yml
-    secrets: inherit
-
-  ci-platformjs:
-    needs: ci
-    name: Build Platform.js
-    with:
-      should_run: ${{ needs.ci.outputs.build_p_js == 'true' || needs.ci.outputs.build_shared == 'true' }}
-      should_prerelease: ${{
-          github.event_name != 'schedule' &&
-          (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch')
-        }}
-    uses: ./.github/workflows/ci-platform-js.yml
     secrets: inherit
 
   ci-testkit:

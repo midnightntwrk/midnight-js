@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { type LedgerParameters } from '@midnight-ntwrk/ledger-v6';
+import { type LedgerParameters } from '@midnight-ntwrk/ledger-v7';
 import { type DefaultV1Configuration } from '@midnight-ntwrk/wallet-sdk-shielded/v1';
 
 import { type EnvironmentConfiguration } from '@/test-environment';

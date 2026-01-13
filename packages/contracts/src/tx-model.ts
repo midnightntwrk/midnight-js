@@ -14,7 +14,7 @@
  */
 
 import type { ContractAddress, ContractState, SigningKey,ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
-import { type ShieldedCoinInfo, type UnprovenTransaction } from '@midnight-ntwrk/ledger-v6';
+import { type ShieldedCoinInfo, type UnprovenTransaction } from '@midnight-ntwrk/ledger-v7';
 import type {
   Contract,
   FinalizedTxData,

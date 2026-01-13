@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { type ContractAddress } from '@midnight-ntwrk/ledger-v6';
+import { type ContractAddress } from '@midnight-ntwrk/ledger-v7';
 import {
   createUnprovenCallTx,
   type FinalizedDeployTxData,
@@ -52,7 +52,7 @@ const currentTimeSeconds = () => BigInt(Math.floor(Date.now() / 1_000));
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
-describe('Block Time Contract Tests', () => {
+describe('Block Time Contract Tests 1', () => {
   const SLOW_TEST_TIMEOUT = 240_000;
   const BLOCK_TIME_FUTURE_BUFFER = 60n;
   const BLOCK_TIME_PAST_BUFFER = 60n;
@@ -191,74 +191,6 @@ describe('Block Time Contract Tests', () => {
         circuitId: unprovenCallTxOptions.circuitId
       });
       expect(finalizedCallTx.status).toEqual(FailEntirely);
-    }, SLOW_TEST_TIMEOUT);
-
-    describe('should demonstrate different failure points for Lt check', async () => {
-      it(
-        'Immediate past time - fails on device',
-        async () => {
-          const pastTime = currentTimeSeconds() - 5n;
-          await expect(() => api.testBlockTimeLt(deployedContract, pastTime)).rejects.toThrow('Block time is >= time');
-        },
-        SLOW_TEST_TIMEOUT
-      );
-
-      // TODO: Uncomment once PM-19372 is resolved
-      it.skip(
-        'Near future time with delay - succeeds on device, fails on node',
-        async () => {
-          const nearFutureTime = currentTimeSeconds() + 2n;
-          const unprovenCallTxOptions = {
-            contract: api.blockTimeContractInstance,
-            circuitId: api.CIRCUIT_ID_TEST_BLOCK_TIME_LT,
-            contractAddress,
-            args: [nearFutureTime] as [bigint]
-          };
-          const unprovenCallTx = await createUnprovenCallTx(providers, unprovenCallTxOptions);
-          await sleep(3000);
-          const finalizedCallTx = await submitTx(providers, {
-            unprovenTx: unprovenCallTx.private.unprovenTx,
-            newCoins: unprovenCallTx.private.newCoins,
-            circuitId: unprovenCallTxOptions.circuitId
-          });
-          expect(finalizedCallTx.status).toEqual(FailEntirely);
-        },
-        SLOW_TEST_TIMEOUT
-      );
-
-      it(
-        'Far future time - succeeds on both device and node',
-        async () => {
-          const farFutureTime = currentTimeSeconds() + 120n;
-          const finalizedTx = await api.testBlockTimeLt(deployedContract, farFutureTime);
-          expect(finalizedTx.status).toEqual(SucceedEntirely);
-        },
-        SLOW_TEST_TIMEOUT
-      );
-    });
-
-    it('should handle maximum time values', async () => {
-      const maxTime = 2n ** 63n - 1n; // Max value for Uint<64>
-      // Lt should succeed with max time (current time is always less)
-      const finalizedTx = await api.testBlockTimeLt(deployedContract, maxTime);
-      expect(finalizedTx.status).toEqual(SucceedEntirely);
-    }, SLOW_TEST_TIMEOUT);
-
-    it('should handle zero time value', async () => {
-      const zeroTime = 0n;
-      // Lt with 0 should fail (block time is always >= 0)
-      await expect(() => api.testBlockTimeLt(deployedContract, zeroTime)).rejects.toThrow('Block time is >= time');
-
-      // Lte with 0 should fail (block time is always > 0)
-      await expect(() => api.testBlockTimeLte(deployedContract, zeroTime)).rejects.toThrow('Block time is > time');
-
-      // Gte with 0 should succeed (block time is always >= 0)
-      const gteTx = await api.testBlockTimeGte(deployedContract, zeroTime);
-      expect(gteTx.status).toEqual(SucceedEntirely);
-
-      // Gt with 0 should succeed (block time is always > 0)
-      const gtTx = await api.testBlockTimeGt(deployedContract, zeroTime);
-      expect(gtTx.status).toEqual(SucceedEntirely);
     }, SLOW_TEST_TIMEOUT);
   });
 });

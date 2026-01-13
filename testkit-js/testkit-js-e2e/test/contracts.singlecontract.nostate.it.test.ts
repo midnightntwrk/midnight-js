@@ -21,7 +21,7 @@ import {
   sampleSigningKey,
   type SigningKey
 } from '@midnight-ntwrk/compact-runtime';
-import { ZswapChainState } from '@midnight-ntwrk/ledger-v6';
+import { ZswapChainState } from '@midnight-ntwrk/ledger-v7';
 import {
   call,
   callContractConstructor,

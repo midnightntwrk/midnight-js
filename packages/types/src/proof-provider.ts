@@ -19,36 +19,25 @@ import {
   type SignatureEnabled,
   type Transaction,
   type UnprovenTransaction
-} from '@midnight-ntwrk/ledger-v6';
-
-import type { ZKConfig } from './midnight-types';
+} from '@midnight-ntwrk/ledger-v7';
 
 export type ProvenTransaction = Transaction<SignatureEnabled, Proof, PreBinding>;
 
 /**
  * The configuration for the proof request to the proof provider.
  */
-export interface ProveTxConfig<K extends string> {
+export interface ProveTxConfig {
   /**
    * The timeout for the request.
    */
   readonly timeout?: number;
-  /**
-   * The zero-knowledge configuration for the circuit that was called in the given transaction.
-   * Undefined if the transaction is a deployment transaction.
-   *
-   * @remarks
-   * Where a transaction involves multiple circuits (e.g., when circuit calls are scoped to a transaction
-   * context), this may be an array of {@link ZKConfig}.
-   */
-  readonly zkConfig?: ZKConfig<K> | ZKConfig<K>[];
 }
 
 /**
  * Interface for a proof server running in a trusted environment.
  * @typeParam K - The type of the circuit ID used by the provider.
  */
-export interface ProofProvider<K extends string> {
+export interface ProofProvider {
   /**
    * Creates call proofs for an unproven transaction. The resulting transaction is unbalanced and
    * must be balanced using the {@link WalletProvider} interface.
@@ -57,5 +46,5 @@ export interface ProofProvider<K extends string> {
    * @param proveTxConfig The configuration for the proof request to the proof provider. Empty in case
    *                      a deploy transaction is being proved with no user-defined timeout.
    */
-  proveTx(unprovenTx: UnprovenTransaction, proveTxConfig?: ProveTxConfig<K>): Promise<ProvenTransaction>;
+  proveTx(unprovenTx: UnprovenTransaction, proveTxConfig?: ProveTxConfig): Promise<ProvenTransaction>;
 }

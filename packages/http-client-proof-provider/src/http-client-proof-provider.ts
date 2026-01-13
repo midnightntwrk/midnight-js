@@ -13,94 +13,61 @@
  * limitations under the License.
  */
 
-import {
-  createCheckPayload,
-  createProvingPayload,
-  parseCheckResult,
-  type ProvingKeyMaterial,
-  type ProvingProvider} from '@midnight-ntwrk/ledger-v6';
-import { InvalidProtocolSchemeError, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
-import fetch from 'cross-fetch';
-import fetchBuilder from 'fetch-retry';
+import { CostModel, type ProvingProvider, type UnprovenTransaction } from '@midnight-ntwrk/ledger-v7';
+import type {
+  ProofProvider,
+  ProvenTransaction,
+  ProveTxConfig,
+  ZKConfigProvider
+} from '@midnight-ntwrk/midnight-js-types';
 
-const retryOptions = {
-  retries: 3,
-  retryDelay: (attempt: number) => 2 ** attempt * 1_000,
-  retryOn: [500, 503]
-};
-const fetchRetry = fetchBuilder(fetch, retryOptions);
+import { httpClientProvingProvider, type ProvingProviderConfig } from './http-client-proving-provider';
 
-const CHECK_PATH = '/check';
-const PROVE_PATH = '/prove';
-
-export const DEFAULT_TIMEOUT = 300000;
-
-const getKeyMaterial = async <K extends string>(
-  zkConfigProvider: ZKConfigProvider<K>,
-  circuitId: K
-): Promise<ProvingKeyMaterial> => {
-  const zkConfig = await zkConfigProvider.get(circuitId);
-  return {
-    proverKey: new Uint8Array(zkConfig.proverKey),
-    verifierKey: new Uint8Array(zkConfig.verifierKey),
-    ir: new Uint8Array(zkConfig.zkir),
-  };
+export const DEFAULT_CONFIG = {
+  timeout: 300000,
+  zkConfig: undefined
 };
 
-const makeHttpRequest = async (url: URL, payload: Uint8Array, timeout: number): Promise<Uint8Array> => {
-  const response = await fetchRetry(url, {
-    method: 'POST',
-    body: payload.buffer as ArrayBuffer,
-    signal: AbortSignal.timeout(timeout)
-  });
-
-  if (!response.ok) {
-    throw new Error(
-      `Failed Proof Server response: url="${response.url}", code="${response.status}", status="${response.statusText}"`
-    );
-  }
-
-  return new Uint8Array(await response.arrayBuffer());
-};
-
-export interface ProvingProviderConfig {
-  readonly timeout?: number;
-}
-
-export const httpClientProvingProvider = <K extends string>(
+/**
+ * Creates a high-level {@link ProofProvider} that implements transaction-level proving
+ * using the low-level circuit-by-circuit {@link ProvingProvider} as its foundation.
+ *
+ * This adapter bridges the gap between:
+ * - High-level ProofProvider interface (works with complete transactions)
+ * - Low-level ProvingProvider interface (works with individual circuits)
+ *
+ * @param url The URL of the proof server
+ * @param zkConfigProvider Provider for zero-knowledge configuration artifacts
+ * @param config Optional configuration for the underlying ProvingProvider
+ * @returns A ProofProvider instance that uses ProvingProvider internally
+ *
+ * @remarks
+ * **Architecture:**
+ * ```
+ * ProofProvider (Transaction-level)
+ *     ↓ (adapter)
+ * ProvingProvider (Circuit-level)
+ *     ↓ (HTTP client)
+ * Proof Server (/check, /prove endpoints)
+ * ```
+ *
+ * **Note:** The /prove-tx endpoint is NOT used. All proving is done through
+ * individual circuit operations using /check and /prove endpoints.
+ */
+export const httpClientProofProvider = <K extends string>(
   url: string,
   zkConfigProvider: ZKConfigProvider<K>,
   config?: ProvingProviderConfig
-): ProvingProvider => {
-  const checkUrl = new URL(CHECK_PATH, url);
-  const proveUrl = new URL(PROVE_PATH, url);
+): ProofProvider => {
+  const baseProvingProvider = httpClientProvingProvider(url, zkConfigProvider, config);
 
-  if (checkUrl.protocol !== 'http:' && checkUrl.protocol !== 'https:') {
-    throw new InvalidProtocolSchemeError(checkUrl.protocol, ['http:', 'https:']);
-  }
-
-  if (proveUrl.protocol !== 'http:' && proveUrl.protocol !== 'https:') {
-    throw new InvalidProtocolSchemeError(proveUrl.protocol, ['http:', 'https:']);
-  }
-
-  const timeout = config?.timeout ?? DEFAULT_TIMEOUT;
-
-  return  {
-    async check(serializedPreimage: Uint8Array, keyLocation: string): Promise<(bigint | undefined)[]> {
-      const keyMaterial = await getKeyMaterial(zkConfigProvider, keyLocation as K);
-      const payload = createCheckPayload(serializedPreimage, keyMaterial.ir);
-      const result = await makeHttpRequest(checkUrl, payload, timeout);
-      return parseCheckResult(result);
-    },
-
-    async prove(
-      serializedPreimage: Uint8Array,
-      keyLocation: string,
-      overwriteBindingInput?: bigint
-    ): Promise<Uint8Array> {
-      const keyMaterial = await getKeyMaterial(zkConfigProvider, keyLocation as K);
-      const payload = createProvingPayload(serializedPreimage, overwriteBindingInput, keyMaterial);
-      return makeHttpRequest(proveUrl, payload, timeout);
+  return {
+    async proveTx(
+      unprovenTx: UnprovenTransaction,
+      _partialProveTxConfig?: ProveTxConfig
+    ): Promise<ProvenTransaction> {
+      const costModel = CostModel.initialCostModel();
+      return unprovenTx.prove(baseProvingProvider, costModel);
     }
   };
 };

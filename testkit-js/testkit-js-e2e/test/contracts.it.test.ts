@@ -20,7 +20,7 @@ import {
   sampleContractAddress,
   sampleSigningKey
 } from '@midnight-ntwrk/compact-runtime';
-import { type ContractAddress, sampleCoinPublicKey, ZswapChainState } from '@midnight-ntwrk/ledger-v6';
+import { type ContractAddress, sampleCoinPublicKey, ZswapChainState } from '@midnight-ntwrk/ledger-v7';
 import {
   call,
   callContractConstructor,

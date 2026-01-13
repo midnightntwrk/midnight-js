@@ -17,7 +17,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
 import { type ContractAddress, sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
-import { type UnprovenTransaction } from '@midnight-ntwrk/ledger-v6';
+import { type UnprovenTransaction } from '@midnight-ntwrk/ledger-v7';
 import * as crypto from 'crypto';
 
 import { levelPrivateStateProvider } from '../index';
