@@ -23,7 +23,7 @@
   "author": "IOHK",
   "license": "Apache-2.0",
   "scripts": {
-    "clean": "rm -rf dist reports coverage logs tsconfig.build.tsbuildinfo .rollup.cache compiled midnight-level-db",
+    "clean": "rm -rf dist reports coverage logs tsconfig.build.tsbuildinfo .rollup.cache midnight-level-db src/contract/compiled",
     "build": "node ../../scripts/check-compiled.js src/contract/compiled && yarn build-core && yarn compact-copy",
     "build-core": "rollup -c rollup.config.mjs",
     "build-dev": "turbo build && yarn build",
