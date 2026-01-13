@@ -59,10 +59,8 @@ import {
 } from '@/constants';
 import {
   CompiledCounter,
-  type CounterPrivateState,
-  createInitialPrivateState,
-  createPrivateState,
 } from '@/contract';
+import { type CounterPrivateState, createInitialPrivateState, createPrivateState } from '@/contract/witnesses';
 import * as api from '@/counter-api';
 import {
   CIRCUIT_ID_INCREMENT,
