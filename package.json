@@ -38,10 +38,10 @@
   },
   "license": "Apache-2.0",
   "dependencies": {
-    "@midnight-ntwrk/compact-runtime": "0.11.0-rc.1",
-    "@midnight-ntwrk/ledger-v6": "6.1.0-alpha.6",
-    "@midnight-ntwrk/onchain-runtime-v1": "1.0.0-alpha.5",
-    "@midnight-ntwrk/wallet-sdk-facade": "1.0.0-beta.13"
+    "@midnight-ntwrk/compact-runtime": "0.14.0-rc.0",
+    "@midnight-ntwrk/ledger-v7": "7.0.0-rc.1",
+    "@midnight-ntwrk/onchain-runtime-v2": "2.0.0-rc.1",
+    "@midnight-ntwrk/wallet-sdk-facade": "1.0.0-beta.15"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.0.0",
