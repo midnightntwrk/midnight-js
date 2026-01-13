@@ -6,11 +6,16 @@
 
 # @midnight-ntwrk/midnight-js-http-client-proof-provider
 
+## Interfaces
+
+- [ProvingProviderConfig](interfaces/ProvingProviderConfig.md)
+
 ## Variables
 
 - [DEFAULT\_CONFIG](variables/DEFAULT_CONFIG.md)
+- [DEFAULT\_TIMEOUT](variables/DEFAULT_TIMEOUT.md)
 
 ## Functions
 
 - [httpClientProofProvider](functions/httpClientProofProvider.md)
-- [serializeTransactionPayload](functions/serializeTransactionPayload.md)
+- [httpClientProvingProvider](functions/httpClientProvingProvider.md)
