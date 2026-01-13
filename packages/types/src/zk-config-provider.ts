@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { ProverKey, VerifierKey, ZKConfig,ZKIR } from './midnight-types';
+import type { ProverKey, VerifierKey, ZKConfig, ZKIR } from './midnight-types';
 
 /**
  * A provider for zero-knowledge intermediate representations, prover keys, and verifier keys. All

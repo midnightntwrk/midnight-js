@@ -13,45 +13,11 @@
  * limitations under the License.
  */
 
-export {
-  CircuitParameters,
-  CircuitReturnType,
-  Contract,
-  getImpureCircuitIds,
-  ImpureCircuit,
-  ImpureCircuitId,
-  ImpureCircuits,
-  InitialStateParameters,
-  PrivateState,
-  Witness,
-  Witnesses
-} from './contract';
+export * from './contract';
 export * from './errors';
 export * from './logger-provider';
 export * from './midnight-provider';
-export {
-  BlockHash,
-  createProverKey,
-  createVerifierKey,
-  createZKIR,
-  FailEntirely,
-  FailFallible,
-  Fees,
-  FinalizedTxData,
-  ProverKey,
-  SegmentFail,
-  SegmentStatus,
-  SegmentSuccess,
-  SucceedEntirely,
-  TxStatus,
-  UnshieldedBalance,
-  UnshieldedBalances,
-  UnshieldedUtxo,
-  UnshieldedUtxos,
-  VerifierKey,
-  ZKConfig,
-  ZKIR
-} from './midnight-types';
+export * from './midnight-types';
 export * from './private-state-provider';
 export * from './proof-provider';
 export * from './providers';
