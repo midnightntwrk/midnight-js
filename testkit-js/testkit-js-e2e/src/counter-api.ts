@@ -29,10 +29,9 @@ import { WebSocket } from 'ws';
 
 import {
   CompiledCounter,
-  type CounterPrivateState,
-  createInitialPrivateState
 } from './contract';
-import { type CounterCloneContract,createCounterCloneContractInstance } from './counter-clone-types';
+import { type CounterPrivateState, createInitialPrivateState } from './contract/witnesses';
+import { type CounterCloneContract, createCounterCloneContractInstance } from './counter-clone-types';
 import {
   type CounterContract,
   CounterPrivateStateId,
@@ -65,7 +64,7 @@ export class CounterConfiguration implements ContractConfiguration {
   readonly zkConfigPath;
   constructor(privateStateStoreName?: string, zkConfigPath?: string) {
     this.privateStateStoreName = privateStateStoreName || 'counter-private-state';
-    this.zkConfigPath = zkConfigPath || path.resolve(currentDir, '..', 'dist', 'contract', 'managed', 'counter');
+    this.zkConfigPath = zkConfigPath || path.resolve(currentDir, '..', 'dist', 'contract', 'compiled', 'counter');
   }
 }
 
@@ -75,7 +74,7 @@ export class CounterCloneConfiguration implements ContractConfiguration {
   constructor(privateStateStoreName?: string, zkConfigPath?: string) {
     this.privateStateStoreName = privateStateStoreName || 'counter-clone-private-state';
     this.zkConfigPath =
-      zkConfigPath || path.resolve(currentDir, '..', 'dist', 'contract', 'managed', 'counter-clone');
+      zkConfigPath || path.resolve(currentDir, '..', 'dist', 'contract', 'compiled', 'counter-clone');
   }
 }
 
@@ -84,7 +83,7 @@ export class SimpleConfiguration implements ContractConfiguration {
   readonly zkConfigPath;
   constructor(privateStateStoreName?: string, zkConfigPath?: string) {
     this.privateStateStoreName = privateStateStoreName || 'simple-private-state';
-    this.zkConfigPath = zkConfigPath || path.resolve(currentDir, '..', 'dist', 'contract', 'managed', 'simple');
+    this.zkConfigPath = zkConfigPath || path.resolve(currentDir, '..', 'dist', 'contract', 'compiled', 'simple');
   }
 }
 

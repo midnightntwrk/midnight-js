@@ -1,0 +1,8 @@
+{
+  "version": 3,
+  "file": "index.cjs",
+  "sourceRoot": "../../../../../",
+  "sources": ["src/contract/simple.compact"],
+  "names": [],
+  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;EAAA;;;;;;;;;;MAIA,AAAA,IAEC;;;;;;;;;;;;;;;;;;;;;;OAAA;;;GACA;EAPD;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;IAEA;;;;;;;;;uDAA6B;;;;;;;GAK5B;EAHD,AAAA,OAEC;UADC,KAAK;IAAL;;;;;;;;;;2EAAA,KAAK;;;;sDAAA;;GACN;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;IAJD;qCAAA;;;;;;;;;;;wFAA6B;KAAA;;;;;;;;;;;;;;"
+}

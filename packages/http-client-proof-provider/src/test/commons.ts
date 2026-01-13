@@ -40,9 +40,9 @@ const CIRCUIT_ID = 'add';
 
 export const getValidZKConfig = async () => ({
   circuitId: CIRCUIT_ID,
-  proverKey: createProverKey(await fs.readFile(`${resourceDir}/managed/${CONTRACT}/keys/${CIRCUIT_ID}.prover`)),
-  verifierKey: createVerifierKey(await fs.readFile(`${resourceDir}/managed/${CONTRACT}/keys/${CIRCUIT_ID}.verifier`)),
-  zkir: createZKIR(await fs.readFile(`${resourceDir}/managed/${CONTRACT}/zkir/${CIRCUIT_ID}.bzkir`))
+  proverKey: createProverKey(await fs.readFile(`${resourceDir}/compiled/${CONTRACT}/keys/${CIRCUIT_ID}.prover`)),
+  verifierKey: createVerifierKey(await fs.readFile(`${resourceDir}/compiled/${CONTRACT}/keys/${CIRCUIT_ID}.verifier`)),
+  zkir: createZKIR(await fs.readFile(`${resourceDir}/compiled/${CONTRACT}/zkir/${CIRCUIT_ID}.bzkir`))
 });
 
 /**
@@ -50,7 +50,7 @@ export const getValidZKConfig = async () => ({
  * from the topic contract instead of binary data.
  */
 export const getValidUnprovenTx = async (): Promise<UnprovenTransaction> => {
-  const contractModule = await import(`${resourceDir}/managed/${CONTRACT}/contract/index.js`);
+  const contractModule = await import(`${resourceDir}/compiled/${CONTRACT}/contract/index.js`);
   const contract = new contractModule.Contract({});
   const coinPublicKey = sampleCoinPublicKey();
 
