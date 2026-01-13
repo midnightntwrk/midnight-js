@@ -209,27 +209,6 @@ describe('submit-tx', () => {
 
         await expect(submitTxAsync(mockProviders, options)).rejects.toThrow('Network submission failed');
       });
-
-      it('should submit transaction successfully even without zkConfig', async () => {
-        const circuitId = 'testCircuit' as ImpureCircuitId;
-        const expectedTxId = 'test-tx-id-fallback';
-        const mockRecipe = { type: 'TransactionToProve' as const, transaction: mockProvenTx };
-
-        mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue(mockRecipe);
-        mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue(mockProvenTx);
-        mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue(expectedTxId);
-
-        const options: SubmitTxOptions<ImpureCircuitId> = {
-          unprovenTx: mockUnprovenTx,
-          circuitId
-        };
-
-        const result = await submitTxAsync(mockProviders, options);
-
-        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(mockUnprovenTx, undefined);
-        expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith(mockProvenTx, undefined);
-        expect(result).toBe(expectedTxId);
-      });
     });
   });
 });

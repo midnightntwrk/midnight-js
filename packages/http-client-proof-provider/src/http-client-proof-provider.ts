@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { CostModel, type UnprovenTransaction } from '@midnight-ntwrk/ledger-v7';
+import { CostModel, type ProvingProvider, type UnprovenTransaction } from '@midnight-ntwrk/ledger-v7';
 import type {
   ProofProvider,
   ProvenTransaction,
@@ -59,24 +59,15 @@ export const httpClientProofProvider = <K extends string>(
   zkConfigProvider: ZKConfigProvider<K>,
   config?: ProvingProviderConfig
 ): ProofProvider => {
-  console.log(`Creating HTTP Client Proof Provider with URL: ${url} and config:`, config);
-  console.log(`Using ZK Config Provider:`, zkConfigProvider);
   const baseProvingProvider = httpClientProvingProvider(url, zkConfigProvider, config);
 
-  console.log(`Creating HTTP Client Provider:`, baseProvingProvider);
   return {
     async proveTx(
       unprovenTx: UnprovenTransaction,
       _partialProveTxConfig?: ProveTxConfig
     ): Promise<ProvenTransaction> {
-      console.log('[httpClientProofProvider] proveTx called with unprovenTx:', unprovenTx);
-      console.log('[httpClientProofProvider] partialProveTxConfig:', _partialProveTxConfig);
       const costModel = CostModel.initialCostModel();
-      console.log('[httpClientProofProvider] Created cost model:', costModel);
-      console.log('[httpClientProofProvider] Starting prove with baseProvingProvider');
-      const result = await unprovenTx.prove(baseProvingProvider, costModel);
-      console.log('[httpClientProofProvider] proveTx completed successfully');
-      return result;
+      return unprovenTx.prove(baseProvingProvider, costModel);
     }
   };
 };

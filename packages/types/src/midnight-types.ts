@@ -106,6 +106,18 @@ export interface ZKConfig<K extends string> {
 }
 
 /**
+ * Converts a ZKConfig object to ProvingKeyMaterial format.
+ * @param zkConfig
+ */
+export const zkConfigToProvingKeyMaterial = <K extends string>(zkConfig: ZKConfig<K>) => {
+  return {
+    proverKey: zkConfig.proverKey,
+    verifierKey: zkConfig.verifierKey,
+    ir: zkConfig.zkir,
+  };
+}
+
+/**
  * Indicates that the segment update is invalid.
  */
 export const SegmentFail = 'SegmentFail' as const;
