@@ -28,12 +28,13 @@ jobs:
 
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # ratchet:actions/checkout@v5
 
-      - name: Load environment variables
+      - name: Install direnv
+        run: curl -sfL https://direnv.net/install.sh | bash
+
+      - name: Load environment from .envrc
         run: |
-          export $(grep -v '^#' .github/env/global.env | xargs)
-          for var in $(cut -d= -f1 .github/env/global.env); do
-            echo "$var=${!var}" >> $GITHUB_ENV
-          done
+          direnv allow .
+          direnv export gha >> "$GITHUB_ENV"
 
       - name: Set up Node.js
         uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903  # ratchet:actions/setup-node@v4

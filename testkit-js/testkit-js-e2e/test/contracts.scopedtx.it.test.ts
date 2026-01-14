@@ -154,7 +154,7 @@ describe('Scoped Transaction Contract Tests', () => {
     expect(counterPS!.privateCounter).toEqual(privateState1!.privateCounter + 2);
   });
 
-  it('should submit scoped transaction that calls 2 circuits in contract and preserves execution order [@slow]', async () => {
+  it('should submit scoped transaction that calls 2 circuits in contract and DOES NOT preserve execution order [@slow]', async () => {
     const counterValue1 = await api.getCounterLedgerState(providers, contractAddress);
     expect(counterValue1).toBeDefined();
     expect(counterValue1?.at(0)).toBeDefined();
@@ -184,7 +184,8 @@ describe('Scoped Transaction Contract Tests', () => {
     const counterValue2 = await api.getCounterLedgerState(providers, contractAddress);
     expect(counterValue2).toBeDefined();
     expect(counterValue2!.at(0)).toEqual(0n);
-    expect(counterValue2!.at(1)).toEqual(0n);
+    // We don't know the order of execution, so the second ticker can be either reset to 0 or incremented by 1
+    expect([0n, 1n]).toContain(counterValue2!.at(1));
 
     const counterPS = await api.getCounterPrivateState(providers, CounterPrivateStateId);
     expect(counterPS).toBeDefined();

@@ -37,12 +37,13 @@ jobs:
 
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # ratchet:actions/checkout@v5
 
-      - name: Load environment variables
+      - name: Install direnv
+        run: curl -sfL https://direnv.net/install.sh | bash
+
+      - name: Load environment from .envrc
         run: |
-          export $(grep -v '^#' .github/env/global.env | xargs)
-          for var in $(cut -d= -f1 .github/env/global.env); do
-            echo "$var=${!var}" >> $GITHUB_ENV
-          done
+          direnv allow .
+          direnv export gha >> "$GITHUB_ENV"
 
       - name: Log in to GitHub Container registry
         uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # ratchet:docker/login-action@v3
@@ -169,12 +170,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # ratchet:actions/checkout@v5
 
-      - name: Load environment variables
+      - name: Install direnv
+        run: curl -sfL https://direnv.net/install.sh | bash
+
+      - name: Load environment from .envrc
         run: |
-          export $(grep -v '^#' .github/env/global.env | xargs)
-          for var in $(cut -d= -f1 .github/env/global.env); do
-            echo "$var=${!var}" >> $GITHUB_ENV
-          done
+          direnv allow .
+          direnv export gha >> "$GITHUB_ENV"
 
       - name: Log in to GitHub Container registry
         uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # ratchet:docker/login-action@v3
