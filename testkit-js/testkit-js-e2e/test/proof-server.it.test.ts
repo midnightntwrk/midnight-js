@@ -41,7 +41,7 @@ import {
 } from '@midnight-ntwrk/testkit-js';
 import path from 'path';
 
-import { createInitialPrivateState } from '@/contract';
+import { createInitialPrivateState } from '@/contract/witnesses';
 import * as api from '@/counter-api';
 import { CounterConfiguration, counterContractInstance } from '@/counter-api';
 import type { CounterCircuits } from '@/counter-types';
@@ -55,7 +55,7 @@ describe('Proof server integration', () => {
   const privateStateZero = createInitialPrivateState(0);
 
   let proofServerContainer: ProofServerContainer;
-  let proofProvider: ProofProvider<CounterCircuits>;
+  let proofProvider: ProofProvider;
   let unprovenDeployTx: UnprovenTransaction;
   let unprovenCallTx: UnprovenTransaction;
   let zkConfigProvider: NodeZkConfigProvider<CounterCircuits>;

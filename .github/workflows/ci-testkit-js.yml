@@ -128,7 +128,7 @@ jobs:
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # ratchet:actions/upload-artifact@v4
         with:
           name: e2e-tests-contracts
-          path: testkit-js/testkit-js-e2e/src/contract/managed
+          path: testkit-js/testkit-js-e2e/src/contract/compiled
 
       - name: Upload dist for it
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # ratchet:actions/upload-artifact@v4
@@ -302,7 +302,7 @@ jobs:
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
         with:
           name: e2e-tests-contracts
-          path: testkit-js/testkit-js-e2e/src/contract/managed
+          path: testkit-js/testkit-js-e2e/src/contract/compiled
 
       - name: Post-Install dependencies
         run: yarn postinstall

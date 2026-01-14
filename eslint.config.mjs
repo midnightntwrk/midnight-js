@@ -18,6 +18,7 @@ export default tseslint.config(
       '**/gen/**',
       '**/generated/**',
       '**/managed/**',
+      '**/compiled/**',
       '**/*.d.ts',
       '**/node_modules/**',
       '**/.yarn/**',
@@ -27,6 +28,7 @@ export default tseslint.config(
       '**/reports/**',
       '**/*.json',
       'packages/compact/src/run-compactc.cjs',
+      'scripts/**',
     ]
   },
   js.configs.recommended,
@@ -47,7 +49,8 @@ export default tseslint.config(
       'import/resolver': {
         typescript: {
           alwaysTryTypes: false,
-          project: ['tsconfig.json', 'packages/*/tsconfig.json', 'testkit-js/*/tsconfig.json']
+          project: ['tsconfig.json', 'packages/*/tsconfig.json', 'testkit-js/*/tsconfig.json'],
+          noWarnOnMultipleProjects: true
         }
       }
     },

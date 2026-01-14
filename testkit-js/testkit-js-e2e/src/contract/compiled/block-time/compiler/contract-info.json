@@ -1,0 +1,80 @@
+{
+  "circuits": [
+    {
+      "name": "testBlockTimeLt",
+      "pure": false,
+      "arguments": [
+        {
+          "name": "time",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 18446744073709551615
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "testBlockTimeGte",
+      "pure": false,
+      "arguments": [
+        {
+          "name": "time",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 18446744073709551615
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "testBlockTimeGt",
+      "pure": false,
+      "arguments": [
+        {
+          "name": "time",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 18446744073709551615
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    },
+    {
+      "name": "testBlockTimeLte",
+      "pure": false,
+      "arguments": [
+        {
+          "name": "time",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 18446744073709551615
+          }
+        }
+      ],
+      "result-type": {
+        "type-name": "Tuple",
+        "types": [
+        ]
+      }
+    }
+  ],
+  "witnesses": [
+  ],
+  "contracts": [
+  ]
+}

@@ -16,7 +16,8 @@
 import type { DeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
 import type { ImpureCircuitId, MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
 
-import { CompiledCounter, type CounterPrivateState, createInitialPrivateState, witnesses } from './contract';
+import { CompiledCounter } from './contract';
+import { type CounterPrivateState, createInitialPrivateState, witnesses } from './contract/witnesses';
 
 export type CounterContract = CompiledCounter.Contract<CounterPrivateState>;
 
