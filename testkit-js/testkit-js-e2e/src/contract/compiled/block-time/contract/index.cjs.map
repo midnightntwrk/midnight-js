@@ -1,0 +1,8 @@
+{
+  "version": 3,
+  "file": "index.cjs",
+  "sourceRoot": "../../../../../",
+  "sources": ["src/contract/block-time.compact", "compiler/standard-library.compact"],
+  "names": [],
+  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;EAAA;;;;;;;;;;MAEA,AAAA,eAEC;;;;;cAF8B,MAAc;;;;;;;;;;;;;;;;;;yCAAd,MAAc;;;;;;;;;iDAAd,MAAc;;;OAE5C;MAED,AAAA,gBAEC;;;;;cAF+B,MAAc;;;;;;;;;;;;;;;;;;yCAAd,MAAc;;;;;;;;;kDAAd,MAAc;;;OAE7C;MAED,AAAA,eAEC;;;;;cAF8B,MAAc;;;;;;;;;;;;;;;;;;yCAAd,MAAc;;;;;;;;;iDAAd,MAAc;;;OAE5C;MAED,AAAA,gBAEC;;;;;cAF+B,MAAc;;;;;;;;;;;;;;;;;;yCAAd,MAAc;;;;;;;;;kDAAd,MAAc;;;OAE7C;;;;;;;;GACA;EAjBD;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;GAiBC;EC+QD,AAAA,0CAA2B;mCAClB;;;;;;;;;;;wIAAyB;;;;;;EAGlC,AAAA,2CAA4B;2DACN;;EAGtB,AAAA,0CAA2B;mCAClB;;;;wIAA4B;;;;;;;;;;;;;EAGrC,AAAA,2CAA4B;2DACN;;ED3StB,AAAA,kBAEC,4BAF8B,MAAc;;;uDACR,MAAI;;GACxC;EAED,AAAA,mBAEC,4BAF+B,MAAc;;;wDACR,MAAI;;GACzC;EAED,AAAA,kBAEC,4BAF8B,MAAc;;;uDACR,MAAI;;GACxC;EAED,AAAA,mBAEC,4BAF+B,MAAc;;;wDACR,MAAI;;GACzC;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;"
+}

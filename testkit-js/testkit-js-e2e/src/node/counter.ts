@@ -35,7 +35,7 @@ export class CounterConfiguration implements ContractConfiguration {
   readonly zkConfigPath;
   constructor(privateStateStoreName?: string, zkConfigPath?: string) {
     this.privateStateStoreName = privateStateStoreName || 'counter-private-state';
-    this.zkConfigPath = zkConfigPath || path.resolve(currentDir, '..', 'dist', 'contract', 'managed', 'counter');
+    this.zkConfigPath = zkConfigPath || path.resolve(currentDir, '..', 'dist', 'contract', 'compiled', 'counter');
   }
 }
 

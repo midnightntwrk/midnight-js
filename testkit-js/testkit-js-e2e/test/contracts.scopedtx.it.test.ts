@@ -17,8 +17,11 @@
 
 import { type ContractAddress } from '@midnight-ntwrk/ledger-v7';
 import {
+  type CallTxOptionsWithPrivateStateId,
   type FinalizedDeployTxData,
-  submitCallTx,  withContractScopedTransaction} from '@midnight-ntwrk/midnight-js-contracts';
+  submitCallTx,
+  withContractScopedTransaction
+} from '@midnight-ntwrk/midnight-js-contracts';
 import type {
   EnvironmentConfiguration,
   MidnightWalletProvider,
@@ -29,18 +32,15 @@ import {
   initializeMidnightProviders} from '@midnight-ntwrk/testkit-js';
 import path from 'path';
 
-import * as api from '@/counter-api';
+import * as api from '@/double-counter-api';
+import { CounterConfiguration } from '@/double-counter-api';
 import {
-  CIRCUIT_ID_INCREMENT,
-  CounterConfiguration
-} from '@/counter-api';
-import {
-  type CounterContract,
   CounterPrivateStateId,
   type CounterProviders,
   type DeployedCounterContract,
+  type DoubleCounterContract,
   privateStateZero
-} from '@/counter-types';
+} from '@/double-counter-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `scoped_tx_contracts_${new Date().toISOString()}.log`)
@@ -48,7 +48,7 @@ const logger = createLogger(
 
 describe('Scoped Transaction Contract Tests', () => {
   let providers: CounterProviders;
-  let finalizedDeployTxData: FinalizedDeployTxData<CounterContract>;
+  let finalizedDeployTxData: FinalizedDeployTxData<DoubleCounterContract>;
   let deployedContract: DeployedCounterContract;
   let contractAddress: ContractAddress;
   let testEnvironment: TestEnvironment;
@@ -81,17 +81,19 @@ describe('Scoped Transaction Contract Tests', () => {
   it('should submit scoped transaction that calls circuit in contract [@slow]', async () => {
     const counterValue1 = await api.getCounterLedgerState(providers, contractAddress);
     expect(counterValue1).toBeDefined();
+    expect(counterValue1?.at(0)).toBeDefined();
 
     const privateState1 = await api.getCounterPrivateState(providers, CounterPrivateStateId);
     expect(privateState1).toBeDefined();
 
-    const callTxOptions = {
-      contract: api.counterContractInstance,
+    const callTxOptions: CallTxOptionsWithPrivateStateId<DoubleCounterContract, 'increment1'> = {
+      contract: api.doubleCounterContractInstance,
       contractAddress,
-      circuitId: CIRCUIT_ID_INCREMENT,
-      privateStateId: CounterPrivateStateId
-    } as const;
-    const callTxData = await withContractScopedTransaction<CounterContract>(
+      circuitId: 'increment1',
+      privateStateId: CounterPrivateStateId,
+      args: [1n] as [bigint]
+    };
+    const callTxData = await withContractScopedTransaction<DoubleCounterContract>(
       providers,
       async (txCtx) => {
         await submitCallTx(providers, callTxOptions, txCtx);
@@ -102,7 +104,87 @@ describe('Scoped Transaction Contract Tests', () => {
 
     const counterValue2 = await api.getCounterLedgerState(providers, contractAddress);
     expect(counterValue2).toBeDefined();
-    expect(counterValue2!).toEqual(counterValue1! + 2n);
+    const ticker1 = counterValue1?.at(0);
+    expect(counterValue2!.at(0)!).toEqual(ticker1! + 2n);
+    const ticker2 = counterValue1?.at(1);
+    expect(counterValue2!.at(1)!).toEqual(ticker2!);
+
+    const counterPS = await api.getCounterPrivateState(providers, CounterPrivateStateId);
+    expect(counterPS).toBeDefined();
+    expect(counterPS!.privateCounter).toEqual(privateState1!.privateCounter + 2);
+  });
+
+  it('should submit scoped transaction that calls 2 different circuits in contract [@slow]', async () => {
+    const counterValue1 = await api.getCounterLedgerState(providers, contractAddress);
+    expect(counterValue1).toBeDefined();
+    expect(counterValue1?.at(0)).toBeDefined();
+
+    const privateState1 = await api.getCounterPrivateState(providers, CounterPrivateStateId);
+    expect(privateState1).toBeDefined();
+
+    const callTxOptions1: CallTxOptionsWithPrivateStateId<DoubleCounterContract, 'increment1'> = {
+      contract: api.doubleCounterContractInstance,
+      contractAddress,
+      circuitId: 'increment1',
+      privateStateId: CounterPrivateStateId,
+      args: [1n] as [bigint]
+    } as CallTxOptionsWithPrivateStateId<DoubleCounterContract, 'increment1'>;
+    const callTxOptions2: CallTxOptionsWithPrivateStateId<DoubleCounterContract, 'increment2'> = {
+      contract: api.doubleCounterContractInstance,
+      contractAddress,
+      circuitId: 'increment2',
+      privateStateId: CounterPrivateStateId,
+      args: [5n] as [bigint]
+    };
+    const callTxData = await withContractScopedTransaction<DoubleCounterContract>(providers, async (txCtx) => {
+      await submitCallTx(providers, callTxOptions1, txCtx);
+      await submitCallTx(providers, callTxOptions2, txCtx);
+    });
+    expect(callTxData.private.nextPrivateState.privateCounter).toEqual(privateState1!.privateCounter + 2);
+
+    const counterValue2 = await api.getCounterLedgerState(providers, contractAddress);
+    expect(counterValue2).toBeDefined();
+    const ticker1 = counterValue1?.at(0);
+    expect(counterValue2!.at(0)).toEqual(ticker1! + 1n);
+    const ticker2 = counterValue1?.at(1);
+    expect(counterValue2!.at(1)).toEqual(ticker2! + 5n);
+
+    const counterPS = await api.getCounterPrivateState(providers, CounterPrivateStateId);
+    expect(counterPS).toBeDefined();
+    expect(counterPS!.privateCounter).toEqual(privateState1!.privateCounter + 2);
+  });
+
+  it('should submit scoped transaction that calls 2 circuits in contract and preserves execution order [@slow]', async () => {
+    const counterValue1 = await api.getCounterLedgerState(providers, contractAddress);
+    expect(counterValue1).toBeDefined();
+    expect(counterValue1?.at(0)).toBeDefined();
+
+    const privateState1 = await api.getCounterPrivateState(providers, CounterPrivateStateId);
+    expect(privateState1).toBeDefined();
+
+    const callTxOptions1: CallTxOptionsWithPrivateStateId<DoubleCounterContract, 'increment2'> = {
+      contract: api.doubleCounterContractInstance,
+      contractAddress,
+      circuitId: 'increment2',
+      privateStateId: CounterPrivateStateId,
+      args: [1n] as [bigint]
+     };
+    const callTxOptions2: CallTxOptionsWithPrivateStateId<DoubleCounterContract, 'reset'> = {
+      contract: api.doubleCounterContractInstance,
+      contractAddress,
+      circuitId: 'reset',
+      privateStateId: CounterPrivateStateId
+    };
+    const callTxData = await withContractScopedTransaction<DoubleCounterContract>(providers, async (txCtx) => {
+      await submitCallTx(providers, callTxOptions1, txCtx);
+      await submitCallTx(providers, callTxOptions2, txCtx);
+    });
+    expect(callTxData.private.nextPrivateState.privateCounter).toEqual(privateState1!.privateCounter + 2);
+
+    const counterValue2 = await api.getCounterLedgerState(providers, contractAddress);
+    expect(counterValue2).toBeDefined();
+    expect(counterValue2!.at(0)).toEqual(0n);
+    expect(counterValue2!.at(1)).toEqual(0n);
 
     const counterPS = await api.getCounterPrivateState(providers, CounterPrivateStateId);
     expect(counterPS).toBeDefined();

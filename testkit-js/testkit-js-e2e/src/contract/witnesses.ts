@@ -15,7 +15,7 @@
 
 import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
 
-import type { Ledger } from './managed/counter/contract/index.js';
+import type { Ledger } from './compiled/counter/contract/index.js';
 
 export type CounterPrivateState = {
   privateCounter: number;
