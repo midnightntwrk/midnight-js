@@ -184,9 +184,8 @@ describe('Scoped Transaction Contract Tests', () => {
     const counterValue2 = await api.getCounterLedgerState(providers, contractAddress);
     expect(counterValue2).toBeDefined();
     expect(counterValue2!.at(0)).toEqual(0n);
-    const ticker1 = counterValue1?.at(0);
     // We don't know the order of execution, so the second ticker can be either reset to 0 or incremented by 1
-    expect([0n, ticker1! + 1n]).toContain(counterValue2!.at(1));
+    expect([0n, 1n]).toContain(counterValue2!.at(1));
 
     const counterPS = await api.getCounterPrivateState(providers, CounterPrivateStateId);
     expect(counterPS).toBeDefined();
