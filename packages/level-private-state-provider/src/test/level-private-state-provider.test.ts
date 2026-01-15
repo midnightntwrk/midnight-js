@@ -28,6 +28,7 @@ import {
 import * as crypto from 'crypto';
 
 import { levelPrivateStateProvider } from '../index';
+import { StorageEncryption } from '../storage-encryption';
 
 describe('Level Private State Provider', (): void => {
   const TEST_PASSWORD = 'test-storage-password-for-unit-tests-only';
@@ -552,6 +553,224 @@ describe('Level Private State Provider', (): void => {
       await expect(
         db.importPrivateStates(exportData, { maxStates: 1 })
       ).rejects.toThrow(InvalidExportFormatError);
+    });
+
+    describe('malformed data edge cases', () => {
+      const VALID_PASSWORD = 'valid-password-for-test';
+
+      test('throws ExportDecryptionError for garbage base64 payload', async () => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+        const badExport: PrivateStateExport = {
+          format: 'midnight-private-state-export',
+          encryptedPayload: 'dGhpcyBpcyBub3QgdmFsaWQgZW5jcnlwdGVkIGRhdGE=', // "this is not valid encrypted data"
+          salt: '0'.repeat(64)
+        };
+
+        await expect(
+          db.importPrivateStates(badExport, { password: VALID_PASSWORD })
+        ).rejects.toThrow(ExportDecryptionError);
+      });
+
+      test('throws ExportDecryptionError for payload that decrypts to invalid JSON', async () => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+        // Create encryption with a known salt and encrypt non-JSON data
+        const salt = Buffer.from('0'.repeat(64), 'hex');
+        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
+        const notJson = encryption.encrypt('this is not JSON');
+
+        const badExport: PrivateStateExport = {
+          format: 'midnight-private-state-export',
+          encryptedPayload: notJson,
+          salt: salt.toString('hex')
+        };
+
+        await expect(
+          db.importPrivateStates(badExport, { password: VALID_PASSWORD })
+        ).rejects.toThrow(ExportDecryptionError);
+      });
+
+      test('throws ExportDecryptionError for payload with invalid structure (missing states)', async () => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+        const salt = Buffer.from('0'.repeat(64), 'hex');
+        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
+        // Valid JSON but missing required 'states' field
+        const invalidPayload = encryption.encrypt(JSON.stringify({
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          stateCount: 0
+          // missing 'states' field
+        }));
+
+        const badExport: PrivateStateExport = {
+          format: 'midnight-private-state-export',
+          encryptedPayload: invalidPayload,
+          salt: salt.toString('hex')
+        };
+
+        await expect(
+          db.importPrivateStates(badExport, { password: VALID_PASSWORD })
+        ).rejects.toThrow(ExportDecryptionError);
+      });
+
+      test('throws ExportDecryptionError for payload with invalid structure (missing version)', async () => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+        const salt = Buffer.from('0'.repeat(64), 'hex');
+        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
+        // Valid JSON but missing required 'version' field
+        const invalidPayload = encryption.encrypt(JSON.stringify({
+          exportedAt: new Date().toISOString(),
+          stateCount: 0,
+          states: {}
+        }));
+
+        const badExport: PrivateStateExport = {
+          format: 'midnight-private-state-export',
+          encryptedPayload: invalidPayload,
+          salt: salt.toString('hex')
+        };
+
+        await expect(
+          db.importPrivateStates(badExport, { password: VALID_PASSWORD })
+        ).rejects.toThrow(ExportDecryptionError);
+      });
+
+      test('throws ExportDecryptionError for stateCount mismatch', async () => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+        const salt = Buffer.from('0'.repeat(64), 'hex');
+        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
+        // stateCount says 5 but only 1 state present
+        const mismatchedPayload = encryption.encrypt(JSON.stringify({
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          stateCount: 5,
+          states: {
+            'test-id': '{"json":"value"}'
+          }
+        }));
+
+        const badExport: PrivateStateExport = {
+          format: 'midnight-private-state-export',
+          encryptedPayload: mismatchedPayload,
+          salt: salt.toString('hex')
+        };
+
+        await expect(
+          db.importPrivateStates(badExport, { password: VALID_PASSWORD })
+        ).rejects.toThrow(ExportDecryptionError);
+      });
+
+      test('throws InvalidExportFormatError for unsupported version', async () => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+        const salt = Buffer.from('0'.repeat(64), 'hex');
+        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
+        const unsupportedVersionPayload = encryption.encrypt(JSON.stringify({
+          version: 999,
+          exportedAt: new Date().toISOString(),
+          stateCount: 0,
+          states: {}
+        }));
+
+        const badExport: PrivateStateExport = {
+          format: 'midnight-private-state-export',
+          encryptedPayload: unsupportedVersionPayload,
+          salt: salt.toString('hex')
+        };
+
+        await expect(
+          db.importPrivateStates(badExport, { password: VALID_PASSWORD })
+        ).rejects.toThrow(InvalidExportFormatError);
+      });
+
+      test('throws error for state values that fail superjson.parse', async () => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+        const salt = Buffer.from('0'.repeat(64), 'hex');
+        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
+        // State value is not valid superjson
+        const invalidStatePayload = encryption.encrypt(JSON.stringify({
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          stateCount: 1,
+          states: {
+            'test-id': 'not valid superjson {{{' // Invalid superjson
+          }
+        }));
+
+        const badExport: PrivateStateExport = {
+          format: 'midnight-private-state-export',
+          encryptedPayload: invalidStatePayload,
+          salt: salt.toString('hex')
+        };
+
+        await expect(
+          db.importPrivateStates(badExport, { password: VALID_PASSWORD })
+        ).rejects.toThrow();
+      });
+
+      test('throws ExportDecryptionError for tampered encrypted payload', async () => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+        await db.set('stringValue', testStates.stringValue);
+
+        const exportData = await db.exportPrivateStates();
+
+        // Tamper with the encrypted payload (flip some bits)
+        const tamperedPayload = Buffer.from(exportData.encryptedPayload, 'base64');
+        tamperedPayload[tamperedPayload.length - 10] ^= 0xff;
+
+        const tamperedExport: PrivateStateExport = {
+          format: 'midnight-private-state-export',
+          encryptedPayload: tamperedPayload.toString('base64'),
+          salt: exportData.salt
+        };
+
+        await expect(db.importPrivateStates(tamperedExport)).rejects.toThrow(ExportDecryptionError);
+      });
+
+      test('throws InvalidExportFormatError for empty salt', async () => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+        const badExport: PrivateStateExport = {
+          format: 'midnight-private-state-export',
+          encryptedPayload: 'somebase64data',
+          salt: ''
+        };
+
+        await expect(
+          db.importPrivateStates(badExport, { password: VALID_PASSWORD })
+        ).rejects.toThrow(InvalidExportFormatError);
+      });
+
+      test('throws InvalidExportFormatError for salt with uppercase hex (validates exact format)', async () => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+        // Uppercase hex should still be valid (the regex allows both cases)
+        const uppercaseSalt = 'A'.repeat(64);
+        const salt = Buffer.from(uppercaseSalt, 'hex');
+        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
+        const validPayload = encryption.encrypt(JSON.stringify({
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          stateCount: 0,
+          states: {}
+        }));
+
+        const exportWithUppercase: PrivateStateExport = {
+          format: 'midnight-private-state-export',
+          encryptedPayload: validPayload,
+          salt: uppercaseSalt
+        };
+
+        // Should NOT throw for uppercase hex - it's valid
+        await expect(
+          db.importPrivateStates(exportWithUppercase, { password: VALID_PASSWORD })
+        ).resolves.toEqual({ imported: 0, skipped: 0, overwritten: 0 });
+      });
     });
   });
 });
