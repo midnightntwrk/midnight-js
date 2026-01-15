@@ -22,36 +22,32 @@ export type PrivateStateId = string;
 
 /**
  * Represents the exported private state data structure.
- * The data is always encrypted using the provided export password.
+ * All metadata is included in the encrypted payload to prevent tampering.
  */
 export interface PrivateStateExport {
   /**
-   * Version of the export format for backward compatibility.
+   * Format identifier. Must be 'midnight-private-state-export'.
    */
-  readonly version: 1;
+  readonly format: 'midnight-private-state-export';
 
   /**
-   * ISO 8601 timestamp of when the export was created.
-   */
-  readonly exportedAt: string;
-
-  /**
-   * Number of private state entries in the export.
-   */
-  readonly stateCount: number;
-
-  /**
-   * Encrypted payload containing the serialized private states.
+   * Encrypted payload containing version, metadata, and serialized private states.
    * Format: base64-encoded AES-256-GCM encrypted JSON.
    */
   readonly encryptedPayload: string;
 
   /**
-   * Salt used for key derivation (hex-encoded).
+   * Salt used for key derivation (hex-encoded, 32 bytes / 64 characters).
    * Required for decryption with the export password.
    */
   readonly salt: string;
 }
+
+/**
+ * Maximum number of states that can be exported/imported.
+ * This limit prevents memory exhaustion attacks.
+ */
+export const MAX_EXPORT_STATES = 10000;
 
 /**
  * Options for exporting private states.
@@ -63,6 +59,13 @@ export interface ExportPrivateStatesOptions {
    * If not provided, uses the storage password.
    */
   readonly password?: string;
+
+  /**
+   * Maximum number of states to export.
+   * Defaults to MAX_EXPORT_STATES (10000).
+   * Set to a lower value to limit memory usage.
+   */
+  readonly maxStates?: number;
 }
 
 /**
@@ -84,6 +87,13 @@ export interface ImportPrivateStatesOptions {
    * Default: 'error'
    */
   readonly conflictStrategy?: 'skip' | 'overwrite' | 'error';
+
+  /**
+   * Maximum number of states to import.
+   * Defaults to MAX_EXPORT_STATES (10000).
+   * Set to a lower value to limit memory usage.
+   */
+  readonly maxStates?: number;
 }
 
 /**
@@ -174,9 +184,9 @@ export interface PrivateStateProvider<PSI extends PrivateStateId = PrivateStateI
    *
    * NOTE: This does NOT export signing keys for security reasons.
    *
-   * @param options Export options including optional custom password.
+   * @param options Export options including optional custom password and state limit.
    * @returns A JSON-serializable export structure that can be saved or transmitted.
-   * @throws {PrivateStateExportError} If no states exist to export.
+   * @throws {PrivateStateExportError} If no states exist to export or limit exceeded.
    */
   exportPrivateStates(options?: ExportPrivateStatesOptions): Promise<PrivateStateExport>;
 
@@ -184,12 +194,11 @@ export interface PrivateStateProvider<PSI extends PrivateStateId = PrivateStateI
    * Import private states from a previously exported structure.
    *
    * @param exportData The export data structure to import.
-   * @param options Import options including password and conflict strategy.
+   * @param options Import options including password, conflict strategy, and state limit.
    * @returns Result indicating how many states were imported/skipped/overwritten.
-   * @throws {WrongExportPasswordError} If the password is incorrect.
-   * @throws {CorruptedExportDataError} If the export data is invalid or corrupted.
-   * @throws {UnsupportedExportVersionError} If the export version is not supported.
-   * @throws {ImportConflictError} If conflictStrategy is 'error' and state IDs already exist.
+   * @throws {ExportDecryptionError} If decryption fails (wrong password or corrupted data).
+   * @throws {InvalidExportFormatError} If the export format is invalid or unsupported.
+   * @throws {ImportConflictError} If conflictStrategy is 'error' and conflicts exist.
    */
   importPrivateStates(
     exportData: PrivateStateExport,

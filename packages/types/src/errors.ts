@@ -43,9 +43,8 @@ export class PrivateStateExportError extends Error {
  * Cause types for private state import errors.
  */
 export type PrivateStateImportErrorCause =
-  | 'wrong_password'
-  | 'corrupted_data'
-  | 'version_mismatch'
+  | 'decryption_failed'
+  | 'invalid_format'
   | 'conflict'
   | 'unknown';
 
@@ -63,44 +62,27 @@ export class PrivateStateImportError extends Error {
 }
 
 /**
- * Error thrown when the export password is incorrect during import.
+ * Error thrown when decryption of export data fails.
+ * This could be due to wrong password, corrupted data, or tampered content.
+ * The specific cause is intentionally not disclosed to prevent oracle attacks.
  */
-export class WrongExportPasswordError extends PrivateStateImportError {
+export class ExportDecryptionError extends PrivateStateImportError {
   constructor() {
     super(
       'Failed to decrypt export data. The password may be incorrect or the data may be corrupted.',
-      'wrong_password'
+      'decryption_failed'
     );
-    this.name = 'WrongExportPasswordError';
+    this.name = 'ExportDecryptionError';
   }
 }
 
 /**
- * Error thrown when the export data is corrupted or invalid.
+ * Error thrown when the export data format is invalid.
  */
-export class CorruptedExportDataError extends PrivateStateImportError {
-  constructor(details?: string) {
-    super(
-      `Export data is corrupted or invalid${details ? `: ${details}` : ''}`,
-      'corrupted_data'
-    );
-    this.name = 'CorruptedExportDataError';
-  }
-}
-
-/**
- * Error thrown when the export version is not supported.
- */
-export class UnsupportedExportVersionError extends PrivateStateImportError {
-  constructor(
-    public readonly foundVersion: number,
-    public readonly supportedVersions: number[]
-  ) {
-    super(
-      `Export version ${foundVersion} is not supported. Supported versions: ${supportedVersions.join(', ')}`,
-      'version_mismatch'
-    );
-    this.name = 'UnsupportedExportVersionError';
+export class InvalidExportFormatError extends PrivateStateImportError {
+  constructor(message = 'Invalid export format') {
+    super(message, 'invalid_format');
+    this.name = 'InvalidExportFormatError';
   }
 }
 
@@ -108,9 +90,9 @@ export class UnsupportedExportVersionError extends PrivateStateImportError {
  * Error thrown when import conflicts with existing data and conflictStrategy is 'error'.
  */
 export class ImportConflictError extends PrivateStateImportError {
-  constructor(public readonly conflictingIds: string[]) {
+  constructor(public readonly conflictCount: number) {
     super(
-      `Import conflicts with existing private states: ${conflictingIds.join(', ')}`,
+      `Import conflicts with ${conflictCount} existing private state${conflictCount === 1 ? '' : 's'}`,
       'conflict'
     );
     this.name = 'ImportConflictError';

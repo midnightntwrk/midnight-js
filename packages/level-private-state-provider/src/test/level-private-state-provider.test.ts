@@ -19,12 +19,11 @@ import * as path from 'node:path';
 import { type ContractAddress, sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
 import { type UnprovenTransaction } from '@midnight-ntwrk/ledger-v7';
 import {
-  CorruptedExportDataError,
+  ExportDecryptionError,
   ImportConflictError,
+  InvalidExportFormatError,
   type PrivateStateExport,
-  PrivateStateExportError,
-  UnsupportedExportVersionError,
-  WrongExportPasswordError
+  PrivateStateExportError
 } from '@midnight-ntwrk/midnight-js-types';
 import * as crypto from 'crypto';
 
@@ -288,11 +287,10 @@ describe('Level Private State Provider', (): void => {
 
       const exportData = await db.exportPrivateStates();
 
-      expect(exportData.version).toBe(1);
-      expect(exportData.stateCount).toBe(2);
+      expect(exportData.format).toBe('midnight-private-state-export');
       expect(typeof exportData.encryptedPayload).toBe('string');
       expect(typeof exportData.salt).toBe('string');
-      expect(exportData.exportedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+      expect(exportData.salt).toHaveLength(64); // 32 bytes as hex
 
       // Clear and reimport
       await db.clear();
@@ -318,7 +316,7 @@ describe('Level Private State Provider', (): void => {
       expect(await db.get('stringValue')).toEqual(testStates.stringValue);
     });
 
-    test('throws WrongExportPasswordError on wrong password', async () => {
+    test('throws ExportDecryptionError on wrong password', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
       await db.set('stringValue', testStates.stringValue);
 
@@ -327,13 +325,34 @@ describe('Level Private State Provider', (): void => {
 
       await expect(
         db.importPrivateStates(exportData, { password: 'wrong-password-12345' })
-      ).rejects.toThrow(WrongExportPasswordError);
+      ).rejects.toThrow(ExportDecryptionError);
     });
 
     test('throws PrivateStateExportError when no states to export', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
 
       await expect(db.exportPrivateStates()).rejects.toThrow(PrivateStateExportError);
+    });
+
+    test('throws PrivateStateExportError for short custom password', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      await db.set('stringValue', testStates.stringValue);
+
+      await expect(
+        db.exportPrivateStates({ password: 'short' })
+      ).rejects.toThrow(PrivateStateExportError);
+    });
+
+    test('throws PrivateStateExportError for short import password', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      await db.set('stringValue', testStates.stringValue);
+
+      const exportData = await db.exportPrivateStates({ password: EXPORT_PASSWORD });
+      await db.clear();
+
+      await expect(
+        db.importPrivateStates(exportData, { password: 'short' })
+      ).rejects.toThrow(PrivateStateExportError);
     });
 
     test('throws ImportConflictError when conflict strategy is error (default)', async () => {
@@ -343,6 +362,26 @@ describe('Level Private State Provider', (): void => {
       const exportData = await db.exportPrivateStates();
 
       await expect(db.importPrivateStates(exportData)).rejects.toThrow(ImportConflictError);
+    });
+
+    test('ImportConflictError contains count but not state IDs', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      await db.set('stringValue', testStates.stringValue);
+      await db.set('numberValue', testStates.numberValue);
+
+      const exportData = await db.exportPrivateStates();
+
+      try {
+        await db.importPrivateStates(exportData);
+        expect.fail('Should have thrown ImportConflictError');
+      } catch (error) {
+        expect(error).toBeInstanceOf(ImportConflictError);
+        const conflictError = error as ImportConflictError;
+        expect(conflictError.conflictCount).toBe(2);
+        // Verify the error message does NOT contain state IDs
+        expect(conflictError.message).not.toContain('stringValue');
+        expect(conflictError.message).not.toContain('numberValue');
+      }
     });
 
     test('skips conflicts when strategy is skip', async () => {
@@ -379,35 +418,59 @@ describe('Level Private State Provider', (): void => {
       expect(await db.get('stringValue')).toEqual(testStates.stringValue);
     });
 
-    test('throws UnsupportedExportVersionError for unknown version', async () => {
+    test('throws InvalidExportFormatError for wrong format identifier', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
 
       const badExport = {
-        version: 99,
-        exportedAt: new Date().toISOString(),
-        stateCount: 1,
+        format: 'wrong-format',
         encryptedPayload: 'invalid',
-        salt: 'abc123'
+        salt: '0'.repeat(64)
       };
 
       await expect(
         db.importPrivateStates(badExport as unknown as PrivateStateExport)
-      ).rejects.toThrow(UnsupportedExportVersionError);
+      ).rejects.toThrow(InvalidExportFormatError);
     });
 
-    test('throws CorruptedExportDataError for missing fields', async () => {
+    test('throws InvalidExportFormatError for missing fields', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
 
       const badExport = {
-        version: 1,
-        exportedAt: new Date().toISOString(),
-        stateCount: 1
+        format: 'midnight-private-state-export'
         // missing encryptedPayload and salt
       };
 
       await expect(
         db.importPrivateStates(badExport as unknown as PrivateStateExport)
-      ).rejects.toThrow(CorruptedExportDataError);
+      ).rejects.toThrow(InvalidExportFormatError);
+    });
+
+    test('throws InvalidExportFormatError for invalid salt length', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+      const badExport = {
+        format: 'midnight-private-state-export',
+        encryptedPayload: 'invalid',
+        salt: 'abc123' // too short
+      };
+
+      await expect(
+        db.importPrivateStates(badExport as unknown as PrivateStateExport)
+      ).rejects.toThrow(InvalidExportFormatError);
+    });
+
+    test('throws InvalidExportFormatError for invalid salt characters', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+      const badExport = {
+        format: 'midnight-private-state-export',
+        encryptedPayload: 'invalid',
+        salt: 'g'.repeat(64) // invalid hex
+      };
+
+      await expect(
+        db.importPrivateStates(badExport as unknown as PrivateStateExport)
+      ).rejects.toThrow(InvalidExportFormatError);
     });
 
     test('does NOT export signing keys', async () => {
@@ -418,14 +481,12 @@ describe('Level Private State Provider', (): void => {
 
       const exportData = await db.exportPrivateStates();
 
-      // Verify export only has 1 state (the private state, not signing key)
-      expect(exportData.stateCount).toBe(1);
-
       // Create new db instance, import, and verify signing key is NOT present
       await db.clear();
       await db.clearSigningKeys();
 
-      await db.importPrivateStates(exportData);
+      const result = await db.importPrivateStates(exportData);
+      expect(result.imported).toBe(1);
 
       expect(await db.get('stringValue')).toEqual(testStates.stringValue);
       expect(await db.getSigningKey('stringValue' as unknown as ContractAddress)).toBeNull();
@@ -468,6 +529,29 @@ describe('Level Private State Provider', (): void => {
       expect(await db.get('stringValue')).toEqual(testStates.stringValue);
       expect(await db.get('numberValue')).toEqual(testStates.numberValue);
       expect(await db.get('booleanValue')).toEqual(testStates.booleanValue);
+    });
+
+    test('enforces maxStates limit on export', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      await db.set('stringValue', testStates.stringValue);
+      await db.set('numberValue', testStates.numberValue);
+
+      await expect(
+        db.exportPrivateStates({ maxStates: 1 })
+      ).rejects.toThrow(PrivateStateExportError);
+    });
+
+    test('enforces maxStates limit on import', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      await db.set('stringValue', testStates.stringValue);
+      await db.set('numberValue', testStates.numberValue);
+
+      const exportData = await db.exportPrivateStates();
+      await db.clear();
+
+      await expect(
+        db.importPrivateStates(exportData, { maxStates: 1 })
+      ).rejects.toThrow(InvalidExportFormatError);
     });
   });
 });
