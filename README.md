@@ -132,15 +132,14 @@ autocompletion when using Midnight.js.
 
 ### Security
 
-* Should store and manipulate and store sensitive data, i.e.
+* Should store and manipulate sensitive data, i.e.
   contract private states, securely.
 
-> Midnight.js currently falls short of this goal; the default
-> `PrivateStateProvider` based on `LevelDb` does not encrypt data at rest. To
-> encrypt data, a password scheme would likely be necessary. But, requiring
-> the user to input a password any time an application they're using needs to
-> send a transaction would significantly degrade the UX. This issue should be
-> prioritized and resolved.
+The default `LevelPrivateStateProvider` encrypts all private state data at rest
+using AES-256-GCM with PBKDF2 key derivation (100,000 iterations). Encryption
+requires either a `walletProvider` (uses the wallet's encryption public key as
+the password) or a custom `privateStoragePasswordProvider` for applications that
+need explicit password control. Passwords must be at least 16 characters.
 
 # Architecture
 

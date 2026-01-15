@@ -18,6 +18,14 @@ import * as path from 'node:path';
 
 import { type ContractAddress, sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
 import { type UnprovenTransaction } from '@midnight-ntwrk/ledger-v7';
+import {
+  CorruptedExportDataError,
+  ImportConflictError,
+  type PrivateStateExport,
+  PrivateStateExportError,
+  UnsupportedExportVersionError,
+  WrongExportPasswordError
+} from '@midnight-ntwrk/midnight-js-types';
 import * as crypto from 'crypto';
 
 import { levelPrivateStateProvider } from '../index';
@@ -261,6 +269,205 @@ describe('Level Private State Provider', (): void => {
           privateStoragePasswordProvider: () => TEST_PASSWORD
         });
       }).toThrow('Cannot provide both privateStoragePasswordProvider and walletProvider');
+    });
+  });
+
+  describe('Export/Import', () => {
+    const EXPORT_PASSWORD = 'export-test-password-1234';
+
+    beforeEach(async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      await db.clear();
+      await db.clearSigningKeys();
+    });
+
+    test('exports and imports private states correctly', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      await db.set('stringValue', testStates.stringValue);
+      await db.set('objectValue', testStates.objectValue);
+
+      const exportData = await db.exportPrivateStates();
+
+      expect(exportData.version).toBe(1);
+      expect(exportData.stateCount).toBe(2);
+      expect(typeof exportData.encryptedPayload).toBe('string');
+      expect(typeof exportData.salt).toBe('string');
+      expect(exportData.exportedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+
+      // Clear and reimport
+      await db.clear();
+      const result = await db.importPrivateStates(exportData);
+
+      expect(result.imported).toBe(2);
+      expect(result.skipped).toBe(0);
+      expect(result.overwritten).toBe(0);
+
+      expect(await db.get('stringValue')).toEqual(testStates.stringValue);
+      expect(await db.get('objectValue')).toEqual(testStates.objectValue);
+    });
+
+    test('exports with custom password and imports with same password', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      await db.set('stringValue', testStates.stringValue);
+
+      const exportData = await db.exportPrivateStates({ password: EXPORT_PASSWORD });
+      await db.clear();
+
+      const result = await db.importPrivateStates(exportData, { password: EXPORT_PASSWORD });
+      expect(result.imported).toBe(1);
+      expect(await db.get('stringValue')).toEqual(testStates.stringValue);
+    });
+
+    test('throws WrongExportPasswordError on wrong password', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      await db.set('stringValue', testStates.stringValue);
+
+      const exportData = await db.exportPrivateStates({ password: EXPORT_PASSWORD });
+      await db.clear();
+
+      await expect(
+        db.importPrivateStates(exportData, { password: 'wrong-password-12345' })
+      ).rejects.toThrow(WrongExportPasswordError);
+    });
+
+    test('throws PrivateStateExportError when no states to export', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+      await expect(db.exportPrivateStates()).rejects.toThrow(PrivateStateExportError);
+    });
+
+    test('throws ImportConflictError when conflict strategy is error (default)', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      await db.set('stringValue', testStates.stringValue);
+
+      const exportData = await db.exportPrivateStates();
+
+      await expect(db.importPrivateStates(exportData)).rejects.toThrow(ImportConflictError);
+    });
+
+    test('skips conflicts when strategy is skip', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      await db.set('stringValue', testStates.stringValue);
+
+      const exportData = await db.exportPrivateStates();
+
+      // Modify the state
+      await db.set('stringValue', 'modified');
+
+      const result = await db.importPrivateStates(exportData, { conflictStrategy: 'skip' });
+
+      expect(result.skipped).toBe(1);
+      expect(result.imported).toBe(0);
+      expect(result.overwritten).toBe(0);
+      expect(await db.get('stringValue')).toBe('modified');
+    });
+
+    test('overwrites conflicts when strategy is overwrite', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      await db.set('stringValue', testStates.stringValue);
+
+      const exportData = await db.exportPrivateStates();
+
+      // Modify the state
+      await db.set('stringValue', 'modified');
+
+      const result = await db.importPrivateStates(exportData, { conflictStrategy: 'overwrite' });
+
+      expect(result.overwritten).toBe(1);
+      expect(result.imported).toBe(0);
+      expect(result.skipped).toBe(0);
+      expect(await db.get('stringValue')).toEqual(testStates.stringValue);
+    });
+
+    test('throws UnsupportedExportVersionError for unknown version', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+      const badExport = {
+        version: 99,
+        exportedAt: new Date().toISOString(),
+        stateCount: 1,
+        encryptedPayload: 'invalid',
+        salt: 'abc123'
+      };
+
+      await expect(
+        db.importPrivateStates(badExport as unknown as PrivateStateExport)
+      ).rejects.toThrow(UnsupportedExportVersionError);
+    });
+
+    test('throws CorruptedExportDataError for missing fields', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+      const badExport = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        stateCount: 1
+        // missing encryptedPayload and salt
+      };
+
+      await expect(
+        db.importPrivateStates(badExport as unknown as PrivateStateExport)
+      ).rejects.toThrow(CorruptedExportDataError);
+    });
+
+    test('does NOT export signing keys', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      await db.set('stringValue', testStates.stringValue);
+      const signingKey = sampleSigningKey();
+      await db.setSigningKey('stringValue' as unknown as ContractAddress, signingKey);
+
+      const exportData = await db.exportPrivateStates();
+
+      // Verify export only has 1 state (the private state, not signing key)
+      expect(exportData.stateCount).toBe(1);
+
+      // Create new db instance, import, and verify signing key is NOT present
+      await db.clear();
+      await db.clearSigningKeys();
+
+      await db.importPrivateStates(exportData);
+
+      expect(await db.get('stringValue')).toEqual(testStates.stringValue);
+      expect(await db.getSigningKey('stringValue' as unknown as ContractAddress)).toBeNull();
+    });
+
+    test('preserves complex types (Buffer, Uint8Array) through export/import', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      await db.set('bufferValue', testStates.bufferValue);
+      await db.set('uint8ArrayValue', testStates.uint8ArrayValue);
+      await db.set('objectValue', testStates.objectValue);
+
+      const exportData = await db.exportPrivateStates();
+      await db.clear();
+      await db.importPrivateStates(exportData);
+
+      expect(await db.get('bufferValue')).toEqual(testStates.bufferValue);
+      expect(await db.get('uint8ArrayValue')).toEqual(testStates.uint8ArrayValue);
+      expect(await db.get('objectValue')).toEqual(testStates.objectValue);
+    });
+
+    test('handles mixed import scenarios correctly', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      await db.set('stringValue', testStates.stringValue);
+      await db.set('numberValue', testStates.numberValue);
+
+      const exportData = await db.exportPrivateStates();
+
+      // Remove one, keep one, add one new
+      await db.remove('stringValue');
+      await db.set('booleanValue', testStates.booleanValue);
+
+      const result = await db.importPrivateStates(exportData, { conflictStrategy: 'skip' });
+
+      // stringValue should be imported (was removed)
+      // numberValue should be skipped (still exists)
+      expect(result.imported).toBe(1);
+      expect(result.skipped).toBe(1);
+      expect(result.overwritten).toBe(0);
+
+      expect(await db.get('stringValue')).toEqual(testStates.stringValue);
+      expect(await db.get('numberValue')).toEqual(testStates.numberValue);
+      expect(await db.get('booleanValue')).toEqual(testStates.booleanValue);
     });
   });
 });

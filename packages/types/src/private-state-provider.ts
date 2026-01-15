@@ -20,6 +20,92 @@ import type { ContractAddress,SigningKey } from '@midnight-ntwrk/compact-runtime
  */
 export type PrivateStateId = string;
 
+/**
+ * Represents the exported private state data structure.
+ * The data is always encrypted using the provided export password.
+ */
+export interface PrivateStateExport {
+  /**
+   * Version of the export format for backward compatibility.
+   */
+  readonly version: 1;
+
+  /**
+   * ISO 8601 timestamp of when the export was created.
+   */
+  readonly exportedAt: string;
+
+  /**
+   * Number of private state entries in the export.
+   */
+  readonly stateCount: number;
+
+  /**
+   * Encrypted payload containing the serialized private states.
+   * Format: base64-encoded AES-256-GCM encrypted JSON.
+   */
+  readonly encryptedPayload: string;
+
+  /**
+   * Salt used for key derivation (hex-encoded).
+   * Required for decryption with the export password.
+   */
+  readonly salt: string;
+}
+
+/**
+ * Options for exporting private states.
+ */
+export interface ExportPrivateStatesOptions {
+  /**
+   * Password used to encrypt the export.
+   * Must be at least 16 characters.
+   * If not provided, uses the storage password.
+   */
+  readonly password?: string;
+}
+
+/**
+ * Options for importing private states.
+ */
+export interface ImportPrivateStatesOptions {
+  /**
+   * Password used to decrypt the import.
+   * Must match the password used during export.
+   * If not provided, uses the storage password.
+   */
+  readonly password?: string;
+
+  /**
+   * How to handle conflicts when a private state ID already exists.
+   * - 'skip': Keep existing state, ignore imported state
+   * - 'overwrite': Replace existing state with imported state
+   * - 'error': Throw an error if any conflict is detected
+   * Default: 'error'
+   */
+  readonly conflictStrategy?: 'skip' | 'overwrite' | 'error';
+}
+
+/**
+ * Result of an import operation.
+ */
+export interface ImportPrivateStatesResult {
+  /**
+   * Number of states successfully imported.
+   */
+  readonly imported: number;
+
+  /**
+   * Number of states skipped due to conflicts (when conflictStrategy is 'skip').
+   */
+  readonly skipped: number;
+
+  /**
+   * Number of states that overwrote existing states (when conflictStrategy is 'overwrite').
+   */
+  readonly overwritten: number;
+}
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 /**
@@ -82,4 +168,31 @@ export interface PrivateStateProvider<PSI extends PrivateStateId = PrivateStateI
    * Remove all contract signing keys.
    */
   clearSigningKeys(): Promise<void>;
+
+  /**
+   * Export all private states as an encrypted JSON-serializable structure.
+   *
+   * NOTE: This does NOT export signing keys for security reasons.
+   *
+   * @param options Export options including optional custom password.
+   * @returns A JSON-serializable export structure that can be saved or transmitted.
+   * @throws {PrivateStateExportError} If no states exist to export.
+   */
+  exportPrivateStates(options?: ExportPrivateStatesOptions): Promise<PrivateStateExport>;
+
+  /**
+   * Import private states from a previously exported structure.
+   *
+   * @param exportData The export data structure to import.
+   * @param options Import options including password and conflict strategy.
+   * @returns Result indicating how many states were imported/skipped/overwritten.
+   * @throws {WrongExportPasswordError} If the password is incorrect.
+   * @throws {CorruptedExportDataError} If the export data is invalid or corrupted.
+   * @throws {UnsupportedExportVersionError} If the export version is not supported.
+   * @throws {ImportConflictError} If conflictStrategy is 'error' and state IDs already exist.
+   */
+  importPrivateStates(
+    exportData: PrivateStateExport,
+    options?: ImportPrivateStatesOptions
+  ): Promise<ImportPrivateStatesResult>;
 }
