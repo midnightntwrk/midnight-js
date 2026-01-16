@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.11**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Type Alias: CircuitCallTxInterface\<C\>
 
-> **CircuitCallTxInterface**\<`C`\> = `{ [ICK in ImpureCircuitId<C>]: (args: CircuitParameters<C, ICK>) => Promise<FinalizedCallTxData<C, ICK>> }`
+> **CircuitCallTxInterface**\<`C`\> = `{ [ICK in ImpureCircuitId<C>]: { (args: CircuitParameters<C, ICK>): Promise<FinalizedCallTxData<C, ICK>>; (txCtx: TransactionContext<C, ICK>, args: CircuitParameters<C, ICK>): Promise<CallResult<C, ICK>> } }`
 
 A type that lifts each circuit defined in a contract to a function that builds
 and submits a call transaction.

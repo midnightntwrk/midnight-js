@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.11**](../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.14**](../../README.md)
 
 ***
 
@@ -82,3 +82,4 @@
 - [createVerifierKey](functions/createVerifierKey.md)
 - [createZKIR](functions/createZKIR.md)
 - [getImpureCircuitIds](functions/getImpureCircuitIds.md)
+- [zkConfigToProvingKeyMaterial](functions/zkConfigToProvingKeyMaterial.md)

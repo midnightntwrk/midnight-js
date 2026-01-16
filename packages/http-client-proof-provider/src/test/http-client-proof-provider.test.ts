@@ -13,46 +13,59 @@
  * limitations under the License.
  */
 
-import type { BinaryLike } from 'crypto';
-import crypto from 'crypto';
+import { type ProverKey, type VerifierKey, ZKConfigProvider, type ZKIR } from '@midnight-ntwrk/midnight-js-types';
 
-import { httpClientProofProvider, serializeTransactionPayload } from '../http-client-proof-provider';
-import { getValidUnprovenTx, getValidZKConfig } from './commons';
+import { httpClientProvingProvider } from '../http-client-proving-provider';
 
-const createHash = (binaryLike: BinaryLike): string => {
-  return crypto.createHash('sha256').update(binaryLike).digest().toString('base64');
-};
+class MockZKConfigProvider extends ZKConfigProvider<'test-circuit'> {
+  async getZKIR(_circuitId: 'test-circuit'): Promise<ZKIR> {
+    return new Uint8Array([1, 2, 3]) as ZKIR;
+  }
 
-describe('Http Proof Server Proof Provider', () => {
-  test("'httpProofServerProofProvider' throws when 'url' does not start with 'http:' or 'https:'", () => {
-    expect(() => httpClientProofProvider('ws://localhost:8080')).toThrow(/Invalid protocol scheme: 'ws:'/);
+  async getProverKey(_circuitId: 'test-circuit'): Promise<ProverKey> {
+    return new Uint8Array([4, 5, 6]) as ProverKey;
+  }
+
+  async getVerifierKey(_circuitId: 'test-circuit'): Promise<VerifierKey> {
+    return new Uint8Array([7, 8, 9]) as VerifierKey;
+  }
+}
+
+describe('Http Client Proving Provider', () => {
+  test("'httpClientProvingProvider' throws when 'url' does not start with 'http:' or 'https:'", () => {
+    const zkConfigProvider = new MockZKConfigProvider();
+    expect(() => httpClientProvingProvider('ws://localhost:8080', zkConfigProvider)).toThrow(
+      /Invalid protocol scheme: 'ws:'/
+    );
   });
 
-  test("'serializePayload' produces deterministic output", async () => {
-    const zkConfig = await getValidZKConfig();
-    const unprovenTx = await getValidUnprovenTx();
-    const payload1 = serializeTransactionPayload(unprovenTx, zkConfig);
-    const payload2 = serializeTransactionPayload(unprovenTx, zkConfig);
-    expect(createHash(Buffer.from(payload1))).toEqual(createHash(Buffer.from(payload2)));
-    expect(payload1.byteLength).toBeGreaterThan(0);
+  test("'httpClientProvingProvider' accepts 'http:' protocol", () => {
+    const zkConfigProvider = new MockZKConfigProvider();
+    expect(() => httpClientProvingProvider('http://localhost:8080', zkConfigProvider)).not.toThrow();
   });
 
-  test('handles Uint8Array<ArrayBufferLike> correctly', async () => {
-    const zkConfig = await getValidZKConfig();
-    const unprovenTx = await getValidUnprovenTx();
-
-    const result = serializeTransactionPayload(unprovenTx, zkConfig);
-
-    expect(result).toBeInstanceOf(Uint8Array);
-    expect(result.byteLength).toBeGreaterThan(0);
+  test("'httpClientProvingProvider' accepts 'https:' protocol", () => {
+    const zkConfigProvider = new MockZKConfigProvider();
+    expect(() => httpClientProvingProvider('https://localhost:8080', zkConfigProvider)).not.toThrow();
   });
 
-  test('handles undefined zkConfig correctly', async () => {
-    const unprovenTx = await getValidUnprovenTx();
+  test("'httpClientProvingProvider' accepts URL with trailing slash", () => {
+    const zkConfigProvider = new MockZKConfigProvider();
+    expect(() => httpClientProvingProvider('http://localhost:8080/', zkConfigProvider)).not.toThrow();
+  });
 
-    const result = serializeTransactionPayload(unprovenTx, undefined);
+  test("'httpClientProvingProvider' accepts URL without trailing slash", () => {
+    const zkConfigProvider = new MockZKConfigProvider();
+    expect(() => httpClientProvingProvider('http://localhost:8080', zkConfigProvider)).not.toThrow();
+  });
 
-    expect(result).toBeInstanceOf(Uint8Array);
-    expect(result.byteLength).toBeGreaterThan(0);
+  test("'httpClientProvingProvider' returns ProvingProvider with check and prove methods", () => {
+    const zkConfigProvider = new MockZKConfigProvider();
+    const provider = httpClientProvingProvider('http://localhost:8080', zkConfigProvider);
+
+    expect(provider).toHaveProperty('check');
+    expect(provider).toHaveProperty('prove');
+    expect(typeof provider.check).toBe('function');
+    expect(typeof provider.prove).toBe('function');
   });
 });

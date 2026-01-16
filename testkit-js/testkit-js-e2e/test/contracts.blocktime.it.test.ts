@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { type ContractAddress } from '@midnight-ntwrk/ledger-v6';
+import { type ContractAddress } from '@midnight-ntwrk/ledger-v7';
 import {
   createUnprovenCallTx,
   type FinalizedDeployTxData,
@@ -53,7 +53,7 @@ const currentTimeSeconds = () => BigInt(Math.floor(Date.now() / 1_000));
 const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
-describe('Block Time Contract Tests', () => {
+describe('Block Time Contract Tests 1', () => {
   const SLOW_TEST_TIMEOUT = 240_000;
   const BLOCK_TIME_FUTURE_BUFFER = 60n;
   const BLOCK_TIME_PAST_BUFFER = 60n;

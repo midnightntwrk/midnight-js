@@ -15,7 +15,8 @@
 
 import type { Contract } from '@midnight-ntwrk/compact-js';
 
-import { CompiledCounterClone, type CounterPrivateState, witnesses } from './contract';
+import { CompiledCounterClone } from './contract';
+import { type CounterPrivateState, witnesses } from './contract/witnesses';
 
 export type CounterCloneContract = CompiledCounterClone.Contract<CounterPrivateState>;
 

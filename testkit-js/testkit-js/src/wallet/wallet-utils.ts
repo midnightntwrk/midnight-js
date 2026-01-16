@@ -13,17 +13,19 @@
  * limitations under the License.
  */
 
-import { shieldedToken, type TokenType } from '@midnight-ntwrk/ledger-v6';
+import { shieldedToken, type TokenType } from '@midnight-ntwrk/ledger-v7';
 import { type WalletFacade } from '@midnight-ntwrk/wallet-sdk-facade';
-import { ShieldedWallet } from '@midnight-ntwrk/wallet-sdk-shielded';
-import { type UnshieldedWallet } from '@midnight-ntwrk/wallet-sdk-unshielded-wallet';
+import { ShieldedWallet, type ShieldedWalletState } from '@midnight-ntwrk/wallet-sdk-shielded';
+import { type UnshieldedWallet, type UnshieldedWalletState } from '@midnight-ntwrk/wallet-sdk-unshielded-wallet';
 import * as Rx from 'rxjs';
 
 import { FaucetClient } from '@/client';
 import { type EnvironmentConfiguration } from '@/index';
 import { logger } from '@/logger';
 
-export const getInitialState = async (wallet: ShieldedWallet | UnshieldedWallet) => {
+export const getInitialState = async (
+  wallet: ShieldedWallet | UnshieldedWallet
+): Promise<ShieldedWalletState | UnshieldedWalletState> => {
   if (wallet instanceof ShieldedWallet) {
     return Rx.firstValueFrom((wallet as ShieldedWallet).state);
   } else {
@@ -31,12 +33,12 @@ export const getInitialState = async (wallet: ShieldedWallet | UnshieldedWallet)
   }
 };
 
-export const getInitialShieldedState = async (wallet: ShieldedWallet) => {
+export const getInitialShieldedState = async (wallet: ShieldedWallet): Promise<ShieldedWalletState> => {
   logger.info('Getting initial state of wallet...');
   return Rx.firstValueFrom(wallet.state);
 };
 
-export const getInitialUnshieldedState = async (wallet: UnshieldedWallet) => {
+export const getInitialUnshieldedState = async (wallet: UnshieldedWallet): Promise<UnshieldedWalletState> => {
   logger.info('Getting initial state of wallet...');
   return Rx.firstValueFrom(wallet.state);
 };
@@ -74,7 +76,7 @@ export const syncWallet = (wallet: WalletFacade, throttleTime = 2_000, timeout =
         const unshieldedBalances = state.unshielded.balances || {};
         const dustBalances = state.dust.walletBalance(new Date(Date.now())) || {};
 
-        logger.info(`Wallet balances after sync - Shielded: ${JSON.stringify(shieldedBalances)}, Unshielded: ${JSON.stringify(unshieldedBalances)}, Dust: ${dustBalances}`);
+        logger.info(`Wallet balances after sync - Shielded: ${JSON.stringify(shieldedBalances)}, Unshielded: ${JSON.stringify(unshieldedBalances)}, Dust: ${JSON.stringify(dustBalances)}`);
       }),
       Rx.timeout({
         each: timeout,

@@ -45,16 +45,16 @@ import {
   type SignatureEnabled,
   type Signaturish,
   type TokenType,
-  type Transaction,
   type UnprovenTransaction,
   type ZswapChainState,
-  type ZswapSecretKeys
-} from '@midnight-ntwrk/ledger-v6';
+  type ZswapSecretKeys,
+} from '@midnight-ntwrk/ledger-v7';
 import {
   type FinalizedTxData,
   type PrivateStateId,
   type ProverKey,
   SucceedEntirely,
+  type Transaction,
   type TxStatus,
   type VerifierKey,
   ZKConfigProvider,
@@ -185,6 +185,7 @@ export const createMockCompiledContract = (options?: Partial<MockContractClassOp
 }
 
 export const createMockUnprovenTx = (): UnprovenTransaction => ({
+  addCalls: vi.fn(),
   eraseProofs: vi.fn(),
   identifiers: vi.fn(),
   merge: vi.fn(),
@@ -207,6 +208,7 @@ export const createMockUnprovenTx = (): UnprovenTransaction => ({
 });
 
 export const createMockProvenTx = (): Transaction<Signaturish, Proofish, Bindingish> => ({
+  addCalls: vi.fn(),
   eraseProofs: vi.fn(),
   identifiers: vi.fn().mockReturnValue(['test-tx-id']),
   merge: vi.fn(),

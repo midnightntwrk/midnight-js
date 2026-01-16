@@ -19,7 +19,7 @@ import {
   emptyZswapLocalState,
   sampleSigningKey
 } from '@midnight-ntwrk/compact-runtime';
-import { type ContractAddress, ZswapChainState } from '@midnight-ntwrk/ledger-v6';
+import { type ContractAddress, ZswapChainState } from '@midnight-ntwrk/ledger-v7';
 import {
   ContractTypeError,
   createCircuitCallTxInterface,
@@ -56,11 +56,9 @@ import {
 } from '@/constants';
 import {
   CompiledCounter,
-  type CounterPrivateState,
-  createInitialPrivateState,
-  createPrivateState,
 } from '@/contract';
 import { CompiledCounterCloneContract,CompiledCounterContract, CompiledSimpleContract } from '@/contract';
+import { type CounterPrivateState, createInitialPrivateState, createPrivateState } from '@/contract/witnesses';
 import * as api from '@/counter-api';
 import {
   CIRCUIT_ID_INCREMENT,

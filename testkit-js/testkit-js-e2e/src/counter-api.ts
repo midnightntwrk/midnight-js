@@ -14,7 +14,7 @@
  */
 
 import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
-import type { ContractAddress } from '@midnight-ntwrk/ledger-v6';
+import type { ContractAddress } from '@midnight-ntwrk/ledger-v7';
 import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
 import type { FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
@@ -30,10 +30,9 @@ import { WebSocket } from 'ws';
 
 import {
   CompiledCounter,
-  type CounterPrivateState,
-  createInitialPrivateState
 } from './contract';
 import { CompiledCounterContract } from './contract';
+import { type CounterPrivateState, createInitialPrivateState } from './contract/witnesses';
 import {
   type CounterContract,
   CounterPrivateStateId,
@@ -66,7 +65,7 @@ export class CounterConfiguration implements ContractConfiguration {
   readonly zkConfigPath;
   constructor(privateStateStoreName?: string, zkConfigPath?: string) {
     this.privateStateStoreName = privateStateStoreName || 'counter-private-state';
-    this.zkConfigPath = zkConfigPath || path.resolve(currentDir, '..', 'dist', 'contract', 'managed', 'counter');
+    this.zkConfigPath = zkConfigPath || path.resolve(currentDir, '..', 'dist', 'contract', 'compiled', 'counter');
   }
 }
 
@@ -76,7 +75,7 @@ export class CounterCloneConfiguration implements ContractConfiguration {
   constructor(privateStateStoreName?: string, zkConfigPath?: string) {
     this.privateStateStoreName = privateStateStoreName || 'counter-clone-private-state';
     this.zkConfigPath =
-      zkConfigPath || path.resolve(currentDir, '..', 'dist', 'contract', 'managed', 'counter-clone');
+      zkConfigPath || path.resolve(currentDir, '..', 'dist', 'contract', 'compiled', 'counter-clone');
   }
 }
 
@@ -85,7 +84,7 @@ export class SimpleConfiguration implements ContractConfiguration {
   readonly zkConfigPath;
   constructor(privateStateStoreName?: string, zkConfigPath?: string) {
     this.privateStateStoreName = privateStateStoreName || 'simple-private-state';
-    this.zkConfigPath = zkConfigPath || path.resolve(currentDir, '..', 'dist', 'contract', 'managed', 'simple');
+    this.zkConfigPath = zkConfigPath || path.resolve(currentDir, '..', 'dist', 'contract', 'compiled', 'simple');
   }
 }
 

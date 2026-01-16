@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.11**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
 
 ***
 
@@ -56,7 +56,7 @@ Manages the private state of a contract.
 
 ### proofProvider
 
-> `readonly` **proofProvider**: [`ProofProvider`](ProofProvider.md)\<`ICK`\>
+> `readonly` **proofProvider**: [`ProofProvider`](ProofProvider.md)
 
 Creates proven, unbalanced transactions.
 

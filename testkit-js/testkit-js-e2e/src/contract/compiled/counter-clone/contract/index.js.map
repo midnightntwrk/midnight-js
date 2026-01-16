@@ -1,0 +1,8 @@
+{
+  "version": 3,
+  "file": "index.js",
+  "sourceRoot": "../../../../../",
+  "sources": ["src/contract/counter-clone.compact"],
+  "names": [],
+  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;EAAA;;;;;;;;;;;;;MAMA,AAAA,SAGC;;;;;;;;;;;;;;;;;;;;;;OAAA;MAED,AAAA,SAGC;;;;;cAHwB,QAAgB;;;;;;;;;;;;;;;;;;yCAAhB,QAAgB;;;;;;;sEAAhB,QAAgB;;;OAGxC;MAED,AAAA,KAGC;;;;;;;;;;;;;;;;;;;;;;OAAA;;;;;;;GACA;EApBD;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;IAEA;;;;;;;;;yEAA6B;;;;;;;GAkB5B;EAhBD,AAAA,mBAA+B;;0DAA/B,gBAA+B;;;;;;;;;;;;;;GAAA;EAE/B,AAAA,YAGC;UAFC,KAAK;IAAL;;;;;;;;;;6FAAA,KAAK;;;;wEAAA;;;GAEN;EAED,AAAA,YAGC,4BAHwB,QAAgB;IACvC;;;;;;;;;;6FAAyB,QAAM;;;;wEAA1B;;;GAEN;EAED,AAAA,QAGC;IAFC;;;;;;;;;yEAAK;;;GAEN;;;;;;;;;;;;;;;;IAjBD;qCAAA;;;;;;;;;;;0GAA6B;KAAA;;;;;;;;;;;;"
+}

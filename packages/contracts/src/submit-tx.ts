@@ -15,7 +15,7 @@
 
 import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
 import type { ShieldedCoinInfo } from '@midnight-ntwrk/compact-runtime';
-import { type FinalizedTransaction, type Transaction,type UnprovenTransaction } from '@midnight-ntwrk/ledger-v6';
+import { type FinalizedTransaction, type Transaction,type UnprovenTransaction } from '@midnight-ntwrk/ledger-v7';
 import {
   BALANCE_TRANSACTION_TO_PROVE,
   type BalancedProvingRecipe,
@@ -24,8 +24,8 @@ import {
   NOTHING_TO_PROVE,
   type NothingToProve,
   type ProvenTransaction,
-  TRANSACTION_TO_PROVE,
-  type ZKConfig} from '@midnight-ntwrk/midnight-js-types';
+  type ProveTxConfig,
+  TRANSACTION_TO_PROVE } from '@midnight-ntwrk/midnight-js-types';
 import fs from 'fs';
 import path from 'path';
 
@@ -49,7 +49,7 @@ export type SubmitTxOptions<ICK extends Contract.Contract.ImpureCircuitId<Contra
   /**
    * A circuit identifier to use to fetch the ZK artifacts needed to prove the
    * transaction. Only defined if a call transaction is being submitted.
-   * 
+   *
    * @remarks
    * Where a transaction involves multiple circuits (e.g., when circuit calls are scoped to a transaction
    * context), this may be an array of circuit IDs.
@@ -101,9 +101,7 @@ function logTransaction(circuitId: string | string[] | undefined, tx: Transactio
   }
 }
 
-async function proveTransaction<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(recipe: BalancedProvingRecipe, providers: SubmitTxProviders<C, ICK>, proveTxConfig: {
-  zkConfig: ZKConfig<ICK> | ZKConfig<ICK>[]
-} | undefined) {
+async function proveTransaction<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(recipe: BalancedProvingRecipe, providers: SubmitTxProviders<C, ICK>, proveTxConfig?: ProveTxConfig) {
   let toSubmit: ProvenTransaction;
   switch (recipe.type) {
     case TRANSACTION_TO_PROVE: {
@@ -135,17 +133,8 @@ async function submitTxCore<C extends Contract.Contract.Any, ICK extends Contrac
   providers: SubmitTxProviders<C, ICK>,
   options: SubmitTxOptions<ICK>
 ): Promise<string> {
-  const proveTxConfig = options.circuitId
-    ? Array.isArray(options.circuitId)
-      ? { 
-          zkConfig: await Promise.all(options.circuitId.map((circuitId) => providers.zkConfigProvider.get(circuitId)))
-        }
-      : {
-          zkConfig: await providers.zkConfigProvider.get(options.circuitId)
-        }
-    : undefined;
   const recipe = await providers.walletProvider.balanceTx(options.unprovenTx, options.newCoins);
-  const toSubmit = await proveTransaction(recipe, providers, proveTxConfig);
+  const toSubmit = await proveTransaction(recipe, providers);
   const bound = toSubmit.bind();
   if (__DEBUG__) {
     logTransaction(options.circuitId, bound);

@@ -37,12 +37,13 @@ jobs:
 
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # ratchet:actions/checkout@v5
 
-      - name: Load environment variables
+      - name: Install direnv
+        run: curl -sfL https://direnv.net/install.sh | bash
+
+      - name: Load environment from .envrc
         run: |
-          export $(grep -v '^#' .github/env/global.env | xargs)
-          for var in $(cut -d= -f1 .github/env/global.env); do
-            echo "$var=${!var}" >> $GITHUB_ENV
-          done
+          direnv allow .
+          direnv export gha >> "$GITHUB_ENV"
 
       - name: Log in to GitHub Container registry
         uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # ratchet:docker/login-action@v3
@@ -138,7 +139,7 @@ jobs:
             utils, ./packages/utils/coverage/coverage-summary.json
 
       - name: Publish Test Report
-        uses: mikepenz/action-junit-report@e08919a3b1fb83a78393dfb775a9c37f17d8eea6 # ratchet:mikepenz/action-junit-report@v5
+        uses: mikepenz/action-junit-report@a294a61c909bd8a4b563024a2faa28897fd53ebc # ratchet:mikepenz/action-junit-report@v5
         if: success() || failure()
         with:
           check_name: 'Unit Test Results (MidnightJS)'
@@ -146,7 +147,7 @@ jobs:
             **/test-report*.xml
 
       - name: Publish Test Summary Comment
-        uses: EnricoMi/publish-unit-test-result-action@34d7c956a59aed1bfebf31df77b8de55db9bbaaf # ratchet:EnricoMi/publish-unit-test-result-action@v2.21.0
+        uses: EnricoMi/publish-unit-test-result-action@27d65e188ec43221b20d26de30f4892fad91df2f # ratchet:EnricoMi/publish-unit-test-result-action@v2.22.0
         if: success() || failure()
         with:
           check_name: 'Unit Test Results - MidnightJS'
@@ -169,12 +170,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # ratchet:actions/checkout@v5
 
-      - name: Load environment variables
+      - name: Install direnv
+        run: curl -sfL https://direnv.net/install.sh | bash
+
+      - name: Load environment from .envrc
         run: |
-          export $(grep -v '^#' .github/env/global.env | xargs)
-          for var in $(cut -d= -f1 .github/env/global.env); do
-            echo "$var=${!var}" >> $GITHUB_ENV
-          done
+          direnv allow .
+          direnv export gha >> "$GITHUB_ENV"
 
       - name: Log in to GitHub Container registry
         uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # ratchet:docker/login-action@v3

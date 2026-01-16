@@ -48,6 +48,8 @@ header:
     - '.editorconfig'
     - '**/*.d.ts'
     - '**/generated/**'
+    - '**/compiled/**'
+    - '**/managed/**'
     - '**/auto-generated/**'
     - 'packages/*/src/gen/*.ts'
 

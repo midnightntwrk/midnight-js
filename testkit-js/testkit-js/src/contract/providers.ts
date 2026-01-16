@@ -47,6 +47,8 @@ export const initializeMidnightProviders = <ICK extends string, PS>(
   environmentConfiguration: EnvironmentConfiguration,
   contractConfiguration: ContractConfiguration
 ): MidnightProviders<ICK, PrivateStateId, PS> => {
+  const zkConfigProvider = new NodeZkConfigProvider<ICK>(contractConfiguration.zkConfigPath);
+
   return {
     privateStateProvider: levelPrivateStateProvider<PrivateStateId, PS>({
       privateStateStoreName: contractConfiguration.privateStateStoreName,
@@ -54,8 +56,8 @@ export const initializeMidnightProviders = <ICK extends string, PS>(
       privateStoragePasswordProvider: () => { return 'key-just-for-testing-here!' }
     }),
     publicDataProvider: indexerPublicDataProvider(environmentConfiguration.indexer, environmentConfiguration.indexerWS),
-    zkConfigProvider: new NodeZkConfigProvider<ICK>(contractConfiguration.zkConfigPath),
-    proofProvider: httpClientProofProvider(environmentConfiguration.proofServer),
+    zkConfigProvider,
+    proofProvider: httpClientProofProvider(environmentConfiguration.proofServer, zkConfigProvider),
     walletProvider: midnightWalletProvider,
     midnightProvider: midnightWalletProvider
   };

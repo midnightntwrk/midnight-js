@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.11**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
 
 ***
 
@@ -36,11 +36,11 @@ The finalization data of the transaction that failed.
 
 ##### circuitId?
 
-`string`
-
 The name of the circuit that was called to create the call
                  transaction that failed. Only defined if a call transaction
                  failed.
+
+`string` | `string`[]
 
 #### Returns
 
@@ -54,7 +54,7 @@ The name of the circuit that was called to create the call
 
 ### circuitId?
 
-> `readonly` `optional` **circuitId**: `string`
+> `readonly` `optional` **circuitId**: `string` \| `string`[]
 
 The name of the circuit that was called to create the call
                  transaction that failed. Only defined if a call transaction

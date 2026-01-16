@@ -16,7 +16,7 @@
 import { type CompiledContract, ContractExecutable } from '@midnight-ntwrk/compact-js';
 import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
 import type { SigningKey } from '@midnight-ntwrk/compact-runtime';
-import type { ContractAddress } from '@midnight-ntwrk/ledger-v6';
+import type { ContractAddress } from '@midnight-ntwrk/ledger-v7';
 import {
   type FinalizedTxData,
   type PrivateStateId,

@@ -1,7 +1,7 @@
 {
   "name": "@midnight-ntwrk/midnight-js",
   "description": "Midnight application development framework",
-  "version": "3.0.0-alpha.11",
+  "version": "3.0.0-alpha.14",
   "packageManager": "yarn@4.10.3",
   "repository": "git@github.com:midnight-ntwrk/artifacts",
   "engines": {
@@ -23,6 +23,7 @@
     "e2e": "turbo run e2e",
     "e2e-single": "turbo run e2e-single",
     "check": "turbo run check && yarn lint",
+    "typecheck:tests": "bash -c 'for pkg in packages/*/; do tsc --noEmit -p \"${pkg}tsconfig.json\" || exit 1; done'",
     "check:core": "turbo run check --filter='!@midnight-ntwrk/testkit-*' && yarn lint",
     "deploy": "turbo run deploy",
     "deploy:core": "turbo run deploy --filter='!@midnight-ntwrk/testkit-*'",
@@ -30,22 +31,18 @@
     "lint": "eslint",
     "lint:fix": "NODE_OPTIONS=--max-old-space-size=16192 eslint ./packages --fix",
     "commit": "git-cz",
-    "changelog": "conventional-changelog -p conventionalcommits -i CHANGELOG.md -s",
-    "changelog:first": "conventional-changelog -p conventionalcommits -i CHANGELOG.md -s -r 0",
+    "changelog": "commit-and-tag-version --skip.bump --skip.commit --skip.tag",
+    "changelog:first": "rm -f CHANGELOG.md && commit-and-tag-version --skip.bump --skip.commit --skip.tag --release-as $(node -p \"require('./package.json').version\")",
     "postinstall": "husky && patch-package",
     "prepublishOnly": "pinst --disable",
     "postpublish": "pinst --enable"
   },
   "license": "Apache-2.0",
-  "resolutions": {
-    "@midnight-ntwrk/ledger-v6": "6.1.0-alpha.5",
-    "@midnight-ntwrk/onchain-runtime-v1": "1.0.0-alpha.5"
-  },
   "dependencies": {
-    "@midnight-ntwrk/compact-runtime": "0.11.0-rc.1",
-    "@midnight-ntwrk/ledger-v6": "6.1.0-alpha.6",
-    "@midnight-ntwrk/onchain-runtime-v1": "1.0.0-alpha.5",
-    "@midnight-ntwrk/wallet-sdk-facade": "1.0.0-beta.12"
+    "@midnight-ntwrk/compact-runtime": "0.14.0-rc.0",
+    "@midnight-ntwrk/ledger-v7": "7.0.0-rc.1",
+    "@midnight-ntwrk/onchain-runtime-v2": "2.0.0-rc.1",
+    "@midnight-ntwrk/wallet-sdk-facade": "1.0.0-beta.15"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.0.0",
@@ -61,6 +58,7 @@
     "@types/node": "^24.0.0",
     "@vitest/coverage-v8": "^4.0.0",
     "@vitest/ui": "^4.0.0",
+    "commit-and-tag-version": "^12.6.1",
     "commitizen": "^4.3.0",
     "conventional-changelog-cli": "^5.0.0",
     "cz-conventional-changelog": "^3.3.0",
