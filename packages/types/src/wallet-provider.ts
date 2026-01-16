@@ -16,37 +16,11 @@
 import {
   type CoinPublicKey,
   type EncPublicKey,
-  type FinalizedTransaction,
   type ShieldedCoinInfo,
-  type UnprovenTransaction,
+  type UnprovenTransaction
 } from '@midnight-ntwrk/ledger-v7';
 
-export const TRANSACTION_TO_PROVE = 'TransactionToProve';
-export const BALANCE_TRANSACTION_TO_PROVE = 'BalanceTransactionToProve';
-export const NOTHING_TO_PROVE = 'NothingToProve';
-
-export type TransactionToProve = {
-  readonly type: typeof TRANSACTION_TO_PROVE;
-  readonly transaction: UnprovenTransaction;
-};
-
-export type BalanceTransactionToProve<TTransaction> = {
-  readonly type: typeof BALANCE_TRANSACTION_TO_PROVE;
-  readonly transactionToProve: UnprovenTransaction;
-  readonly transactionToBalance: TTransaction;
-};
-
-export type NothingToProve<TTransaction> = {
-  readonly type: typeof NOTHING_TO_PROVE;
-  readonly transaction: TTransaction;
-};
-
-export type ProvingRecipe<TTransaction> =
-  | TransactionToProve
-  | BalanceTransactionToProve<TTransaction>
-  | NothingToProve<TTransaction>;
-
-export type BalancedProvingRecipe = ProvingRecipe<UnprovenTransaction | FinalizedTransaction>;
+import { type ProvenTransaction } from './proof-provider';
 
 /**
  * Interface representing a WalletProvider that handles operations such as
@@ -60,7 +34,7 @@ export interface WalletProvider {
    * @param newCoins
    * @param ttl
    */
-  balanceTx(tx: UnprovenTransaction, newCoins?: ShieldedCoinInfo[], ttl?: Date): Promise<BalancedProvingRecipe>;
+  balanceTx(tx: ProvenTransaction, newCoins?: ShieldedCoinInfo[], ttl?: Date): Promise<UnprovenTransaction>;
 
   getCoinPublicKey(): CoinPublicKey;
 

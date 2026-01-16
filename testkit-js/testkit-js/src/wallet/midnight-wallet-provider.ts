@@ -24,11 +24,7 @@ import {
   type UnprovenTransaction,
   ZswapSecretKeys
 } from '@midnight-ntwrk/ledger-v7';
-import {
-  type BalancedProvingRecipe,
-  type MidnightProvider,
-  type WalletProvider
-} from '@midnight-ntwrk/midnight-js-types';
+import { type MidnightProvider, type ProvenTransaction, type WalletProvider } from '@midnight-ntwrk/midnight-js-types';
 import { ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
 import { type WalletFacade } from '@midnight-ntwrk/wallet-sdk-facade';
 import type { Logger } from 'pino';
@@ -72,11 +68,12 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
   }
 
   async balanceTx(
-    tx: UnprovenTransaction,
+    tx: ProvenTransaction,
     _newCoins: ShieldedCoinInfo[],
     ttl: Date = ttlOneHour()
-  ): Promise<BalancedProvingRecipe> {
-    return this.wallet.balanceTransaction(this.zswapSecretKeys, this.dustSecretKey, tx, ttl);
+  ): Promise<UnprovenTransaction> {
+    const balancedRecipe = await this.wallet.balanceFinalizedTransaction(this.zswapSecretKeys, this.dustSecretKey, tx.bind(), ttl);
+    return balancedRecipe.balancingTransaction;
   }
 
   submitTx(tx: FinalizedTransaction): Promise<string> {
@@ -107,7 +104,9 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
       : await builder.withRandomSeed().buildWithoutStarting();
 
     const initialState = await getInitialShieldedState(wallet.shielded);
-    logger.info(`Your wallet seed is: ${seeds.masterSeed} and your address is: ${initialState.address.coinPublicKeyString()}`);
+    logger.info(
+      `Your wallet seed is: ${seeds.masterSeed} and your address is: ${initialState.address.coinPublicKeyString()}`
+    );
 
     return new MidnightWalletProvider(
       logger,
