@@ -122,14 +122,14 @@ describe('Scoped Transaction Contract Tests', () => {
     expect(privateState1).toBeDefined();
 
     const callTxOptions1: CallTxOptionsWithPrivateStateId<DoubleCounterContract, 'increment1'> = {
-      contract: api.doubleCounterContractInstance,
+      compiledContract: CompiledDoubleCounterContract,
       contractAddress,
       circuitId: 'increment1',
       privateStateId: CounterPrivateStateId,
       args: [1n] as [bigint]
     } as CallTxOptionsWithPrivateStateId<DoubleCounterContract, 'increment1'>;
     const callTxOptions2: CallTxOptionsWithPrivateStateId<DoubleCounterContract, 'increment2'> = {
-      contract: api.doubleCounterContractInstance,
+      compiledContract: CompiledDoubleCounterContract,
       contractAddress,
       circuitId: 'increment2',
       privateStateId: CounterPrivateStateId,
@@ -162,14 +162,14 @@ describe('Scoped Transaction Contract Tests', () => {
     expect(privateState1).toBeDefined();
 
     const callTxOptions1: CallTxOptionsWithPrivateStateId<DoubleCounterContract, 'increment2'> = {
-      contract: api.doubleCounterContractInstance,
+      compiledContract: CompiledDoubleCounterContract,
       contractAddress,
       circuitId: 'increment2',
       privateStateId: CounterPrivateStateId,
       args: [1n] as [bigint]
      };
     const callTxOptions2: CallTxOptionsWithPrivateStateId<DoubleCounterContract, 'reset'> = {
-      contract: api.doubleCounterContractInstance,
+      compiledContract: CompiledDoubleCounterContract,
       contractAddress,
       circuitId: 'reset',
       privateStateId: CounterPrivateStateId

@@ -93,7 +93,7 @@ describe('Proof server integration', () => {
         initialPrivateState: unprovenDeployTxResult.private.initialPrivateState
       },
       encryptionPublicKey
-    ).private.unprovenTx);
+    )).private.unprovenTx;
   });
 
   afterAll(async () => {
