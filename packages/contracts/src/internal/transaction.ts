@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
+import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
 import { ZswapOffer as LedgerZswapOffer } from '@midnight-ntwrk/ledger-v7';
 import { type PrivateStateId, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { ChargedState,type ShieldedCoinInfo } from '@midnight-ntwrk/onchain-runtime-v2';
@@ -35,7 +35,7 @@ export const MergeUnsubmittedCallTxData = Symbol.for('@midnight-ntwrk/midnight-j
 /** @internal */
 export const CacheStates = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/CacheStates');
 
-const mergeSubmitTxOptions = <ICK extends Contract.Contract.ImpureCircuitId<Contract.Contract.Any>>(
+const mergeSubmitTxOptions = <ICK extends Contract.ImpureCircuitId<Contract.Any>>(
   current: SubmitTxOptions<ICK> | undefined,
   next: SubmitTxOptions<ICK>
 ): SubmitTxOptions<ICK> => {
@@ -68,14 +68,14 @@ const mergeSubmitTxOptions = <ICK extends Contract.Contract.ImpureCircuitId<Cont
 
 /** @internal */
 export class TransactionContextImpl<
-  C extends Contract.Contract.Any,
-  ICK extends Contract.Contract.ImpureCircuitId<C>
+  C extends Contract.Any,
+  ICK extends Contract.ImpureCircuitId<C>
 > implements Transaction.TransactionContext<C, ICK> {
   readonly [TypeId]: Transaction.TypeId = TypeId;
   readonly providers: ContractProviders<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   readonly options?: Transaction.ScopedTransactionOptions;
 
-  currentStates: ContractStates<Contract.Contract.PrivateState<C>> | PublicContractStates | undefined = undefined;
+  currentStates: ContractStates<Contract.PrivateState<C>> | PublicContractStates | undefined = undefined;
   currentUnsubmittedCall: [callTxData: UnsubmittedCallTxData<C, ICK>, privateStateId?: PrivateStateId] | undefined;
   submitTxOptions: SubmitTxOptions<ICK> | undefined = undefined;
 
@@ -84,7 +84,7 @@ export class TransactionContextImpl<
     this.options = options;
   }
 
-  getCurrentStates(): ContractStates<Contract.Contract.PrivateState<C>> | PublicContractStates | undefined {
+  getCurrentStates(): ContractStates<Contract.PrivateState<C>> | PublicContractStates | undefined {
     return this.currentStates;
   }
 
@@ -113,7 +113,7 @@ export class TransactionContextImpl<
     }
   }
 
-  [CacheStates](states: ContractStates<Contract.Contract.PrivateState<C>> | PublicContractStates): void {
+  [CacheStates](states: ContractStates<Contract.PrivateState<C>> | PublicContractStates): void {
     this.currentStates = states;
   }
 
@@ -145,8 +145,8 @@ export class TransactionContextImpl<
 
 /** @internal */
 export const mergeUnsubmittedCallTxData = <
-  C extends Contract.Contract.Any,
-  ICK extends Contract.Contract.ImpureCircuitId<C>
+  C extends Contract.Any,
+  ICK extends Contract.ImpureCircuitId<C>
 >(
   txCtx: Transaction.TransactionContext<C, ICK>,
   circuitId: ICK,
@@ -157,25 +157,25 @@ export const mergeUnsubmittedCallTxData = <
 };
 
 /** @internal */
-export const isTransactionContext = (u: unknown): u is Transaction.TransactionContext<Contract.Contract.Any> =>
+export const isTransactionContext = (u: unknown): u is Transaction.TransactionContext<Contract.Any> =>
   typeof u === "object" && u != null && TypeId in u;
 
 /** @internal */
 export const scoped: {
-  <C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
+  <C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
     providers: ContractProviders<C, ICK>,
     fn: (txCtx: Transaction.TransactionContext<C, ICK>) => Promise<void>,
     options?: Transaction.ScopedTransactionOptions,
   ): Promise<FinalizedCallTxData<C, ICK>>,
-  <C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
+  <C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
     providers: ContractProviders<C, ICK>,
     fn: (txCtx: Transaction.TransactionContext<C, ICK>) => Promise<void>,
     txCtx: Transaction.TransactionContext<C, ICK>,
     options?: Transaction.ScopedTransactionOptions
   ): Promise<CallResult<C, ICK>>
 } = async <
-  C extends Contract.Contract.Any,
-  ICK extends Contract.Contract.ImpureCircuitId<C>
+  C extends Contract.Any,
+  ICK extends Contract.ImpureCircuitId<C>
 > (
   providers: ContractProviders<C, ICK>,
   fn: (txCtx: Transaction.TransactionContext<C, ICK>) => Promise<void>,

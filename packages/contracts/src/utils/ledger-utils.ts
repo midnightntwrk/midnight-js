@@ -14,7 +14,7 @@
  */
 
 import { type CompiledContract, ContractExecutable } from '@midnight-ntwrk/compact-js';
-import * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
+import { type Contract, ImpureCircuitId, VerifierKey as ContractVerifierKey } from '@midnight-ntwrk/compact-js/effect/Contract';
 import {
   type AlignedValue,
   type CoinPublicKey,
@@ -85,7 +85,7 @@ export const createUnprovenLedgerDeployTx = (
 }
 
 export const createUnprovenLedgerCallTx = (
-  circuitId: Contract.Contract.ImpureCircuitId<Contract.Contract.Any>,
+  circuitId: Contract.ImpureCircuitId<Contract.Any>,
   contractAddress: ContractAddress,
   initialContractState: ContractState,
   zswapChainState: ZswapChainState,
@@ -135,7 +135,7 @@ export const unprovenTxFromContractUpdates = async (
   );
 };
 
-export const createUnprovenReplaceAuthorityTx = <C extends Contract.Contract.Any>(
+export const createUnprovenReplaceAuthorityTx = <C extends Contract.Any>(
   zkConfigProvider: ZKConfigProvider<string>,
   compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   contractAddress: ContractAddress,
@@ -161,7 +161,7 @@ export const createUnprovenReplaceAuthorityTx = <C extends Contract.Contract.Any
   });
 }
 
-export const createUnprovenRemoveVerifierKeyTx = <C extends Contract.Contract.Any>(
+export const createUnprovenRemoveVerifierKeyTx = <C extends Contract.Any>(
   zkConfigProvider: ZKConfigProvider<string>,
   compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   contractAddress: ContractAddress,
@@ -178,7 +178,7 @@ export const createUnprovenRemoveVerifierKeyTx = <C extends Contract.Contract.An
 
   return unprovenTxFromContractUpdates(async () => {
     return (await contractRuntime.runPromise(contractExec.removeContractOperation(
-      Contract.ImpureCircuitId(operation),
+      ImpureCircuitId(operation),
       {
         address: asContractAddress(contractAddress),
         contractState
@@ -187,7 +187,7 @@ export const createUnprovenRemoveVerifierKeyTx = <C extends Contract.Contract.An
   });
 }
 
-export const createUnprovenInsertVerifierKeyTx = <C extends Contract.Contract.Any>(
+export const createUnprovenInsertVerifierKeyTx = <C extends Contract.Any>(
   zkConfigProvider: ZKConfigProvider<string>,
   compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   contractAddress: ContractAddress,
@@ -205,8 +205,8 @@ export const createUnprovenInsertVerifierKeyTx = <C extends Contract.Contract.An
 
   return unprovenTxFromContractUpdates(async () => {
     return (await contractRuntime.runPromise(contractExec.addOrReplaceContractOperation(
-      Contract.ImpureCircuitId(operation),
-      Contract.VerifierKey(newVk),
+      ImpureCircuitId(operation),
+      ContractVerifierKey(newVk),
       {
         address: asContractAddress(contractAddress),
         contractState

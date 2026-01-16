@@ -14,7 +14,7 @@
  */
 
 import { ContractExecutable } from '@midnight-ntwrk/compact-js';
-import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
+import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
 import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type CallResult } from './call';
@@ -32,27 +32,27 @@ import {
   createUnprovenCallTx
 } from './unproven-call-tx';
 
-export type SubmitCallTxProviders<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>> =
+export type SubmitCallTxProviders<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> =
   | ContractProviders<C>
   | SubmitTxProviders<C, ICK>;
 
-export async function submitCallTx<C extends Contract.Contract<undefined>, ICK extends Contract.Contract.ImpureCircuitId<C>>(
+export async function submitCallTx<C extends Contract<undefined>, ICK extends Contract.ImpureCircuitId<C>>(
   providers: SubmitTxProviders<C, ICK>,
   options: CallTxOptionsBase<C, ICK>
 ): Promise<FinalizedCallTxData<C, ICK>>;
 
-export async function submitCallTx<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
+export async function submitCallTx<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   providers: ContractProviders<C>,
   options: CallTxOptionsWithPrivateStateId<C, ICK>
 ): Promise<FinalizedCallTxData<C, ICK>>;
 
-export async function submitCallTx<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
+export async function submitCallTx<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   providers: ContractProviders<C>,
   options: CallTxOptionsWithPrivateStateId<C, ICK>,
   transactionContext: TransactionContext<C, ICK>
 ): Promise<CallResult<C, ICK>>;
 
-export async function submitCallTx<C extends Contract.Contract<undefined>, ICK extends Contract.Contract.ImpureCircuitId<C>>(
+export async function submitCallTx<C extends Contract<undefined>, ICK extends Contract.ImpureCircuitId<C>>(
   providers: SubmitTxProviders<C, ICK>,
   options: CallTxOptionsBase<C, ICK>,
   transactionContext: TransactionContext<C, ICK>
@@ -92,7 +92,7 @@ export async function submitCallTx<C extends Contract.Contract<undefined>, ICK e
  * @throws {CallTxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data and circuit ID for debugging.
  */
-export async function submitCallTx<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
+export async function submitCallTx<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   providers: SubmitCallTxProviders<C, ICK>,
   options: CallTxOptions<C, ICK>,
   transactionContext?: TransactionContext<C, ICK>
@@ -188,7 +188,7 @@ export async function submitCallTx<C extends Contract.Contract.Any, ICK extends 
  * }
  * ```
  */
-export async function submitCallTxAsync<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
+export async function submitCallTxAsync<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   providers: SubmitCallTxProviders<C, ICK>,
   options: CallTxOptions<C, ICK>
 ): Promise<SubmittedCallTx<C, ICK>> {

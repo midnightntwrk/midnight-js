@@ -17,7 +17,7 @@ import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { CompiledContract } from '@midnight-ntwrk/compact-js';
-import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
+import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
 import {
   type CoinPublicKey,
   createConstructorContext,

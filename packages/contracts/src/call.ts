@@ -14,7 +14,7 @@
  */
 
 import type { CompiledContract  } from '@midnight-ntwrk/compact-js';
-import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
+import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
 import {
   type AlignedValue,
   type CoinPublicKey,
@@ -32,7 +32,7 @@ import {
 /**
  * Describes the target of a circuit invocation.
  */
-export type CallOptionsBase<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>> = {
+export type CallOptionsBase<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = {
   /**
    * The contract defining the circuit to call.
    */
@@ -52,14 +52,14 @@ export type CallOptionsBase<C extends Contract.Contract.Any, ICK extends Contrac
  * Conditional type that optionally adds the inferred circuit argument types to
  * the options for a circuit call.
  */
-export type CallOptionsWithArguments<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>> =
-  Contract.Contract.CircuitParameters<C, ICK> extends []
+export type CallOptionsWithArguments<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> =
+  Contract.CircuitParameters<C, ICK> extends []
     ? CallOptionsBase<C, ICK>
     : CallOptionsBase<C, ICK> & {
     /**
      * Arguments to pass to the circuit being called.
      */
-    readonly args: Contract.Contract.CircuitParameters<C, ICK>;
+    readonly args: Contract.CircuitParameters<C, ICK>;
   };
 
 /**
@@ -84,34 +84,34 @@ export type CallOptionsProviderDataDependencies = {
  * Call options with circuit arguments and data
  */
 export type CallOptionsWithProviderDataDependencies<
-  C extends Contract.Contract.Any,
-  ICK extends Contract.Contract.ImpureCircuitId<C>
+  C extends Contract.Any,
+  ICK extends Contract.ImpureCircuitId<C>
 > = CallOptionsWithArguments<C, ICK> & CallOptionsProviderDataDependencies;
 
 /**
  * Call options for contracts with private state.
  */
 export type CallOptionsWithPrivateState<
-  C extends Contract.Contract.Any,
-  ICK extends Contract.Contract.ImpureCircuitId<C>
+  C extends Contract.Any,
+  ICK extends Contract.ImpureCircuitId<C>
 > = CallOptionsWithProviderDataDependencies<C, ICK> & {
   /**
    * The private state to run the circuit against.
    */
-  readonly initialPrivateState: Contract.Contract.PrivateState<C>;
+  readonly initialPrivateState: Contract.PrivateState<C>;
 };
 
 /**
  * Call options for a given contract and circuit.
  */
-export type CallOptions<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>> =
+export type CallOptions<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> =
   | CallOptionsWithProviderDataDependencies<C, ICK>
   | CallOptionsWithPrivateState<C, ICK>;
 
 /**
  * The private (sensitive) portions of the call result.
  */
-export type CallResultPrivate<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>> = {
+export type CallResultPrivate<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = {
   /**
    * ZK representation of the circuit arguments.
    */
@@ -127,11 +127,11 @@ export type CallResultPrivate<C extends Contract.Contract.Any, ICK extends Contr
   /**
    * The JS representation of the input to the circuit.
    */
-  readonly result: Contract.Contract.CircuitReturnType<C, ICK>;
+  readonly result: Contract.CircuitReturnType<C, ICK>;
   /**
    * The private state resulting from executing the circuit.
    */
-  readonly nextPrivateState: Contract.Contract.PrivateState<C>;
+  readonly nextPrivateState: Contract.PrivateState<C>;
   /**
    * The Zswap local state resulting from executing the circuit.
    */
@@ -162,7 +162,7 @@ export type CallResultPublic = {
 /**
  * Contains all information resulting from circuit execution.
  */
-export type CallResult<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>> = {
+export type CallResult<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = {
   /**
    * The public/non-sensitive data produced by the circuit execution.
    */

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
+import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
 import { type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 
 import { type ContractProviders } from './contract-providers';
@@ -28,8 +28,8 @@ export type TypeId = typeof TypeId;
  * Encapsulates the context for managing a scoped contract transaction.
  */
 export interface TransactionContext<
-  C extends Contract.Contract.Any,
-  ICK extends Contract.Contract.ImpureCircuitId<C> = Contract.Contract.ImpureCircuitId<C>
+  C extends Contract.Any,
+  ICK extends Contract.ImpureCircuitId<C> = Contract.ImpureCircuitId<C>
 > {
   readonly [TypeId]: TypeId;
   readonly [Internal.Submit]: () => Promise<FinalizedCallTxData<C, ICK>>;
@@ -38,7 +38,7 @@ export interface TransactionContext<
     callData: UnsubmittedCallTxData<C, ICK>,
     privateStateId?: PrivateStateId
   ) => void;
-  readonly [Internal.CacheStates]: (states: ContractStates<Contract.Contract.PrivateState<C>> | PublicContractStates) => void;
+  readonly [Internal.CacheStates]: (states: ContractStates<Contract.PrivateState<C>> | PublicContractStates) => void;
 
   /**
    * Gets the current cached contract states within the transaction context.
@@ -49,7 +49,7 @@ export interface TransactionContext<
    * The returned states represent the unsubmitted _running_ state of the contract within the transaction context,
    * reflecting any unsubmitted circuit calls made to the contract during the scope of the transaction.
    */
-  getCurrentStates(): ContractStates<Contract.Contract.PrivateState<C>> | PublicContractStates | undefined;
+  getCurrentStates(): ContractStates<Contract.PrivateState<C>> | PublicContractStates | undefined;
 
   /**
    * Gets the last unsubmitted call transaction data.
@@ -76,7 +76,7 @@ export type ScopedTransactionOptions = {
  * @param u The value to check.
  * @returns `true` if `u` is a {@link TransactionContext}, otherwise `false`.
  */
-export const isTransactionContext: (u: unknown) => u is TransactionContext<Contract.Contract.Any> =
+export const isTransactionContext: (u: unknown) => u is TransactionContext<Contract.Any> =
   Internal.isTransactionContext;
 
   /**
@@ -93,8 +93,8 @@ export const isTransactionContext: (u: unknown) => u is TransactionContext<Contr
    * the function completes successfully. If `fn` throws an error, any unsubmitted circuit calls are discarded.
    */
 export const withContractScopedTransaction: <
-  C extends Contract.Contract.Any,
-  ICK extends Contract.Contract.ImpureCircuitId<C> = Contract.Contract.ImpureCircuitId<C>
+  C extends Contract.Any,
+  ICK extends Contract.ImpureCircuitId<C> = Contract.ImpureCircuitId<C>
 >(
   providers: ContractProviders<C, ICK>,
   fn: (txCtx: TransactionContext<C, ICK>) => Promise<void>,

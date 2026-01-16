@@ -14,7 +14,7 @@
  */
 
 import { ContractExecutable } from '@midnight-ntwrk/compact-js';
-import * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
+import { type Contract, ImpureCircuitId } from '@midnight-ntwrk/compact-js/effect/Contract';
 import type { CoinPublicKey, ContractState } from '@midnight-ntwrk/compact-runtime';
 import { type EncPublicKey,type ZswapChainState } from '@midnight-ntwrk/ledger-v7';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
@@ -36,13 +36,13 @@ import { type TransactionContext } from './transaction';
 import type { UnsubmittedCallTxData } from './tx-model';
 import { createUnprovenLedgerCallTx, encryptionPublicKeyForZswapState, zswapStateToNewCoins } from './utils';
 
-export function createUnprovenCallTxFromInitialStates<C extends Contract.Contract<undefined>, ICK extends Contract.Contract.ImpureCircuitId<C>>(
+export function createUnprovenCallTxFromInitialStates<C extends Contract<undefined>, ICK extends Contract.ImpureCircuitId<C>>(
   zkConfigProvider: ZKConfigProvider<string>,
   options: CallOptionsWithProviderDataDependencies<C, ICK>,
   walletEncryptionPublicKey: EncPublicKey
 ): Promise<UnsubmittedCallTxData<C, ICK>>;
 
-export function createUnprovenCallTxFromInitialStates<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
+export function createUnprovenCallTxFromInitialStates<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   zkConfigProvider: ZKConfigProvider<string>,
   options: CallOptionsWithPrivateState<C, ICK>,
   walletEncryptionPublicKey: EncPublicKey
@@ -58,7 +58,7 @@ export function createUnprovenCallTxFromInitialStates<C extends Contract.Contrac
  * @param walletEncryptionPublicKey
  * @returns Data produced by the circuit call and an unproven transaction assembled from the call result.
  */
-export async function createUnprovenCallTxFromInitialStates<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
+export async function createUnprovenCallTxFromInitialStates<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   zkConfigProvider: ZKConfigProvider<string>,
   options: CallOptions<C, ICK>,
   walletEncryptionPublicKey: EncPublicKey
@@ -79,7 +79,7 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.C
   const initialPrivateState = 'initialPrivateState' in options ? options.initialPrivateState : undefined;
   const args = ('args' in options ? options.args : []);
 
-  const exitResult = await contractRuntime.runPromiseExit(contractExec.circuit(Contract.ImpureCircuitId<C>(options.circuitId as any), { // eslint-disable-line @typescript-eslint/no-explicit-any
+  const exitResult = await contractRuntime.runPromiseExit(contractExec.circuit(ImpureCircuitId<C>(options.circuitId as any), { // eslint-disable-line @typescript-eslint/no-explicit-any
       address: ContractAddress(contractAddress),
       contractState: initialContractState,
       privateState: initialPrivateState
@@ -113,7 +113,7 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.C
       private: {
         input,
         output,
-        result: result as unknown as Contract.Contract.CircuitReturnType<C, ICK>,
+        result: result as unknown as Contract.CircuitReturnType<C, ICK>,
         nextPrivateState: privateState,
         nextZswapLocalState: zswapLocalState,
         privateTranscriptOutputs,
@@ -150,7 +150,7 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.C
 /**
  * Base type for configuration for a call transaction; identical to {@link CallOptionsWithArguments}.
  */
-export type CallTxOptionsBase<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>> = CallOptionsWithArguments<C, ICK>;
+export type CallTxOptionsBase<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = CallOptionsWithArguments<C, ICK>;
 
 /**
  * Call transaction options with the private state ID to use to store the new private
@@ -158,7 +158,7 @@ export type CallTxOptionsBase<C extends Contract.Contract.Any, ICK extends Contr
  * stored at the given private state ID, we don't need an 'initialPrivateState' like
  * in {@link DeployTxOptionsWithPrivateState}.
  */
-export type CallTxOptionsWithPrivateStateId<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>> = CallTxOptionsBase<
+export type CallTxOptionsWithPrivateStateId<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = CallTxOptionsBase<
   C,
   ICK
 > & {
@@ -171,16 +171,16 @@ export type CallTxOptionsWithPrivateStateId<C extends Contract.Contract.Any, ICK
 /**
  * Call transaction configuration.
  */
-export type CallTxOptions<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>> =
+export type CallTxOptions<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> =
   | CallTxOptionsBase<C, ICK>
   | CallTxOptionsWithPrivateStateId<C, ICK>;
 
-const createCallOptions = <C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
+const createCallOptions = <C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   callTxOptions: CallTxOptions<C, ICK>,
   coinPublicKey: CoinPublicKey,
   initialContractState: ContractState,
   initialZswapChainState: ZswapChainState,
-  initialPrivateState?: Contract.Contract.PrivateState<C>
+  initialPrivateState?: Contract.PrivateState<C>
 ): CallOptions<C, ICK> => {
   const callOptionsBase = {
     compiledContract: callTxOptions.compiledContract,
@@ -206,14 +206,14 @@ const createCallOptions = <C extends Contract.Contract.Any, ICK extends Contract
   return callOptions as CallOptions<C, ICK>;
 };
 
-const getContractStates = async <C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
+const getContractStates = async <C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   providers: UnprovenCallTxProvidersWithPrivateState<C>,
   options: CallTxOptionsWithPrivateStateId<C, ICK>,
   transactionContext?: TransactionContext<C, ICK>
-): Promise<ContractStates<Contract.Contract.PrivateState<C>>> => {
+): Promise<ContractStates<Contract.PrivateState<C>>> => {
   const txCtxStates = transactionContext?.getCurrentStates();
   if (txCtxStates) {
-    return txCtxStates as ContractStates<Contract.Contract.PrivateState<C>>;
+    return txCtxStates as ContractStates<Contract.PrivateState<C>>;
   }
   const states = await getStates(
     providers.publicDataProvider,
@@ -227,7 +227,7 @@ const getContractStates = async <C extends Contract.Contract.Any, ICK extends Co
   return states;
 };
 
-const getContractPublicStates = async <C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
+const getContractPublicStates = async <C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   providers: UnprovenCallTxProvidersBase,
   options: CallTxOptionsBase<C, ICK>,
   transactionContext?: TransactionContext<C, ICK>
@@ -259,23 +259,23 @@ export type UnprovenCallTxProvidersBase = Pick<ContractProviders, 'zkConfigProvi
  * state provider to store the new private state resulting from the circuit call -
  * only used when creating a call transaction for a contract with a private state.
  */
-export type UnprovenCallTxProvidersWithPrivateState<C extends Contract.Contract.Any> = UnprovenCallTxProvidersBase &
+export type UnprovenCallTxProvidersWithPrivateState<C extends Contract.Any> = UnprovenCallTxProvidersBase &
   Pick<ContractProviders<C>, 'privateStateProvider'>;
 
 /**
  * Providers needed to create a call transaction.
  */
-export type UnprovenCallTxProviders<C extends Contract.Contract.Any> =
+export type UnprovenCallTxProviders<C extends Contract.Any> =
   | UnprovenCallTxProvidersBase
   | UnprovenCallTxProvidersWithPrivateState<C>;
 
-export async function createUnprovenCallTx<C extends Contract.Contract<undefined>, ICK extends Contract.Contract.ImpureCircuitId<C>>(
+export async function createUnprovenCallTx<C extends Contract<undefined>, ICK extends Contract.ImpureCircuitId<C>>(
   providers: UnprovenCallTxProvidersBase,
   options: CallTxOptionsBase<C, ICK>,
   transactionContext?: TransactionContext<C, ICK>
 ): Promise<UnsubmittedCallTxData<C, ICK>>;
 
-export async function createUnprovenCallTx<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
+export async function createUnprovenCallTx<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   providers: UnprovenCallTxProvidersWithPrivateState<C>,
   options: CallTxOptionsWithPrivateStateId<C, ICK>,
   transactionContext?: TransactionContext<C, ICK>
@@ -297,7 +297,7 @@ export async function createUnprovenCallTx<C extends Contract.Contract.Any, ICK 
  *                                           was not. We assume that when a user gives a `privateStateId`,
  *                                           they want to update the private state store.
  */
-export async function createUnprovenCallTx<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
+export async function createUnprovenCallTx<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   providers: UnprovenCallTxProviders<C>,
   options: CallTxOptions<C, ICK>,
   transactionContext?: TransactionContext<C, ICK>

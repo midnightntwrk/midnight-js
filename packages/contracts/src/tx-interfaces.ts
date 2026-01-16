@@ -14,7 +14,7 @@
  */
 
 import { type CompiledContract, ContractExecutable } from '@midnight-ntwrk/compact-js';
-import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
+import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
 import type { SigningKey } from '@midnight-ntwrk/compact-runtime';
 import type { ContractAddress } from '@midnight-ntwrk/ledger-v7';
 import {
@@ -37,22 +37,22 @@ import type { CallTxOptions, CallTxOptionsWithPrivateStateId } from './unproven-
  * A type that lifts each circuit defined in a contract to a function that builds
  * and submits a call transaction.
  */
-export type CircuitCallTxInterface<C extends Contract.Contract.Any> = {
-  [ICK in Contract.Contract.ImpureCircuitId<C>]: {
-    (...args: Contract.Contract.CircuitParameters<C, ICK>): Promise<FinalizedCallTxData<C, ICK>>,
-    (txCtx: Transaction.TransactionContext<C, ICK>, ...args: Contract.Contract.CircuitParameters<C, ICK>): Promise<CallResult<C, ICK>>
+export type CircuitCallTxInterface<C extends Contract.Any> = {
+  [ICK in Contract.ImpureCircuitId<C>]: {
+    (...args: Contract.CircuitParameters<C, ICK>): Promise<FinalizedCallTxData<C, ICK>>,
+    (txCtx: Transaction.TransactionContext<C, ICK>, ...args: Contract.CircuitParameters<C, ICK>): Promise<CallResult<C, ICK>>
   };
 };
 
 /**
  * Creates a {@link CallTxOptions} object from various data.
  */
-export const createCallTxOptions = <C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
+export const createCallTxOptions = <C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   circuitId: ICK,
   contractAddress: ContractAddress,
   privateStateId: PrivateStateId | undefined,
-  args: Contract.Contract.CircuitParameters<C, ICK>
+  args: Contract.CircuitParameters<C, ICK>
 ): CallTxOptions<C, ICK> => {
   const callOptionsBase = {
     compiledContract,
@@ -72,7 +72,7 @@ export const createCallTxOptions = <C extends Contract.Contract.Any, ICK extends
  * @param contractAddress The ledger address of the contract.
  * @param privateStateId The identifier of the state of the witnesses of the contract.
  */
-export const createCircuitCallTxInterface = <C extends Contract.Contract.Any>(
+export const createCircuitCallTxInterface = <C extends Contract.Any>(
   providers: ContractProviders<C>,
   compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   contractAddress: ContractAddress,
@@ -84,13 +84,13 @@ export const createCircuitCallTxInterface = <C extends Contract.Contract.Any>(
       ...acc,
       [circuitId]: (...args: unknown[]) => {
         const txCtx = args.length > 0 && Transaction.isTransactionContext(args[0]) ? args[0] : undefined;
-        const callArgs = !txCtx ? args : args as Contract.Contract.CircuitParameters<C, typeof circuitId>;
+        const callArgs = !txCtx ? args : args as Contract.CircuitParameters<C, typeof circuitId>;
         const callOptions = createCallTxOptions(
           compiledContract,
           circuitId,
           contractAddress,
           privateStateId,
-          callArgs as Contract.Contract.CircuitParameters<C, typeof circuitId>
+          callArgs as Contract.CircuitParameters<C, typeof circuitId>
         );
         return txCtx
           ? submitCallTx(providers, callOptions as CallTxOptionsWithPrivateStateId<C, typeof circuitId>, txCtx)
@@ -128,7 +128,7 @@ export type CircuitMaintenanceTxInterface = {
  * @param contractAddress The address of the deployed contract for which this
  *                        interface is being created.
  */
-export const createCircuitMaintenanceTxInterface = <C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
+export const createCircuitMaintenanceTxInterface = <C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   providers: ContractProviders<C, ICK>,
   circuitId: ICK,
   compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -149,7 +149,7 @@ export const createCircuitMaintenanceTxInterface = <C extends Contract.Contract.
  * A set of maintenance transaction creation interfaces, one for each circuit defined in
  * a given contract, keyed by the circuit name.
  */
-export type CircuitMaintenanceTxInterfaces<C extends Contract.Contract.Any> = Record<Contract.Contract.ImpureCircuitId<C>, CircuitMaintenanceTxInterface>;
+export type CircuitMaintenanceTxInterfaces<C extends Contract.Any> = Record<Contract.ImpureCircuitId<C>, CircuitMaintenanceTxInterface>;
 
 /**
  * Creates a {@link CircuitMaintenanceTxInterfaces}.
@@ -158,7 +158,7 @@ export type CircuitMaintenanceTxInterfaces<C extends Contract.Contract.Any> = Re
  * @param contract The contract to use to execute circuits.
  * @param contractAddress The ledger address of the contract.
  */
-export const createCircuitMaintenanceTxInterfaces = <C extends Contract.Contract.Any>(
+export const createCircuitMaintenanceTxInterfaces = <C extends Contract.Any>(
   providers: ContractProviders<C>,
   compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   contractAddress: ContractAddress
@@ -193,7 +193,7 @@ export interface ContractMaintenanceTxInterface {
  * @param providers The providers to use to build transactions.
  * @param contractAddress The ledger address of the contract.
  */
-export const createContractMaintenanceTxInterface = <C extends Contract.Contract.Any>(
+export const createContractMaintenanceTxInterface = <C extends Contract.Any>(
   providers: ContractProviders,
   compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   contractAddress: ContractAddress

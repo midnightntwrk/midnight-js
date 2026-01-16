@@ -14,7 +14,7 @@
  */
 
 import type { CompiledContract } from '@midnight-ntwrk/compact-js';
-import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
+import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
 import type { ContractAddress } from '@midnight-ntwrk/ledger-v7';
 import {
   type FinalizedTxData,
@@ -70,11 +70,11 @@ import { createUnprovenInsertVerifierKeyTx } from './utils';
  *       along with keys in ZKConfigProvider. By default, artifacts for the latest version
  *       would be fetched to build transactions.
  */
-export const submitInsertVerifierKeyTx = async <C extends Contract.Contract.Any>(
+export const submitInsertVerifierKeyTx = async <C extends Contract.Any>(
   providers: ContractProviders,
   compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   contractAddress: ContractAddress,
-  circuitId: Contract.Contract.ImpureCircuitId<C>,
+  circuitId: Contract.ImpureCircuitId<C>,
   newVk: VerifierKey
 ): Promise<FinalizedTxData> => {
   assertIsContractAddress(contractAddress);

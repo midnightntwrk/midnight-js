@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
+import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
 import type { ShieldedCoinInfo } from '@midnight-ntwrk/compact-runtime';
 import { type FinalizedTransaction, type Transaction,type UnprovenTransaction } from '@midnight-ntwrk/ledger-v7';
 import {
@@ -36,7 +36,7 @@ declare const __DEBUG__: boolean;
 /**
  * Configuration for {@link submitTx}.
  */
-export type SubmitTxOptions<ICK extends Contract.Contract.ImpureCircuitId<Contract.Contract.Any>> = {
+export type SubmitTxOptions<ICK extends Contract.ImpureCircuitId<Contract.Any>> = {
   /**
    * The transaction to prove, balance, and submit.
    */
@@ -61,7 +61,7 @@ export type SubmitTxOptions<ICK extends Contract.Contract.ImpureCircuitId<Contra
  * Providers required to submit an unproven deployment transaction. Since {@link submitTx} doesn't
  * manipulate private state, the private state provider can be omitted.
  */
-export type SubmitTxProviders<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>> = Omit<
+export type SubmitTxProviders<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = Omit<
   ContractProviders<C, ICK>,
   'privateStateProvider'
 >;
@@ -101,7 +101,7 @@ function logTransaction(circuitId: string | string[] | undefined, tx: Transactio
   }
 }
 
-async function proveTransaction<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(recipe: BalancedProvingRecipe, providers: SubmitTxProviders<C, ICK>, proveTxConfig?: ProveTxConfig) {
+async function proveTransaction<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(recipe: BalancedProvingRecipe, providers: SubmitTxProviders<C, ICK>, proveTxConfig?: ProveTxConfig) {
   let toSubmit: ProvenTransaction;
   switch (recipe.type) {
     case TRANSACTION_TO_PROVE: {
@@ -129,7 +129,7 @@ async function proveTransaction<C extends Contract.Contract.Any, ICK extends Con
   return toSubmit;
 }
 
-async function submitTxCore<C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
+async function submitTxCore<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   providers: SubmitTxProviders<C, ICK>,
   options: SubmitTxOptions<ICK>
 ): Promise<string> {
@@ -180,7 +180,7 @@ async function submitTxCore<C extends Contract.Contract.Any, ICK extends Contrac
  * @returns A promise that resolves with the finalized transaction data for the invocation,
  *          or rejects if an error occurs along the way.
  */
-export const submitTx = async <C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
+export const submitTx = async <C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   providers: SubmitTxProviders<C, ICK>,
   options: SubmitTxOptions<ICK>
 ): Promise<FinalizedTxData> => {
@@ -200,7 +200,7 @@ export const submitTx = async <C extends Contract.Contract.Any, ICK extends Cont
  *          or rejects if an error occurs during preparation or submission.
  *          To watch for finalization, use providers.publicDataProvider.watchForTxData(txId).
  */
-export const submitTxAsync = async <C extends Contract.Contract.Any, ICK extends Contract.Contract.ImpureCircuitId<C>>(
+export const submitTxAsync = async <C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   providers: SubmitTxProviders<C, ICK>,
   options: SubmitTxOptions<ICK>
 ): Promise<string> => {

@@ -14,7 +14,7 @@
  */
 
 import type { CompiledContract } from '@midnight-ntwrk/compact-js';
-import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
+import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
 import type { ContractAddress, SigningKey } from '@midnight-ntwrk/ledger-v7';
 import { type FinalizedTxData, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
@@ -63,7 +63,7 @@ import { createUnprovenReplaceAuthorityTx } from './utils';
  *       3. Add additional authorities and maintain original key.
  */
 export const submitReplaceAuthorityTx =
-  <C extends Contract.Contract.Any>(
+  <C extends Contract.Any>(
     providers: ContractProviders,
     compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
     contractAddress: ContractAddress
