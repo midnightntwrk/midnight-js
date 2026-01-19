@@ -233,7 +233,7 @@ describe('Level Private State Provider', (): void => {
       const mockWallet = {
         getEncryptionPublicKey: () => TEST_PASSWORD,
         getCoinPublicKey: () => 'mock-coin-public-key',
-        balanceTx: async () => ({ type: 'NothingToProve' as const, transaction: {} as unknown as UnprovenTransaction })
+        balanceTx: async () => ({} as unknown as UnprovenTransaction)
       };
 
       const db = levelPrivateStateProvider<PID, PS>({ walletProvider: mockWallet });
@@ -252,7 +252,7 @@ describe('Level Private State Provider', (): void => {
       const mockWallet = {
         getEncryptionPublicKey: () => TEST_PASSWORD,
         getCoinPublicKey: () => 'mock-coin-public-key',
-        balanceTx: async () => ({ type: 'NothingToProve' as const, transaction: {} as unknown as UnprovenTransaction})
+        balanceTx: async () => ({} as unknown as UnprovenTransaction)
       };
 
       expect(() => {
