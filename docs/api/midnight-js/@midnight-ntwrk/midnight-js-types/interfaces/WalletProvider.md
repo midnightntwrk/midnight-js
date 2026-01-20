@@ -13,7 +13,7 @@ transaction balancing and finalization, and provides access to cryptographic sec
 
 ### balanceTx()
 
-> **balanceTx**(`tx`, `newCoins?`, `ttl?`): `Promise`\<[`BalancedProvingRecipe`](../type-aliases/BalancedProvingRecipe.md)\>
+> **balanceTx**(`tx`, `newCoins?`, `ttl?`): `Promise`\<`FinalizedTransaction`\>
 
 Balances a transaction
 
@@ -21,7 +21,7 @@ Balances a transaction
 
 ##### tx
 
-`UnprovenTransaction`
+[`UnboundTransaction`](../type-aliases/UnboundTransaction.md)
 
 The transaction to balance.
 
@@ -35,7 +35,7 @@ The transaction to balance.
 
 #### Returns
 
-`Promise`\<[`BalancedProvingRecipe`](../type-aliases/BalancedProvingRecipe.md)\>
+`Promise`\<`FinalizedTransaction`\>
 
 ***
 
