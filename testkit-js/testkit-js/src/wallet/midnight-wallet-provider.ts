@@ -23,7 +23,7 @@ import {
   type TokenType,
   ZswapSecretKeys
 } from '@midnight-ntwrk/ledger-v7';
-import { type MidnightProvider, type ProvenTransaction, type WalletProvider } from '@midnight-ntwrk/midnight-js-types';
+import { type MidnightProvider, type UnboundTransaction, type WalletProvider } from '@midnight-ntwrk/midnight-js-types';
 import { ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
 import { type WalletFacade } from '@midnight-ntwrk/wallet-sdk-facade';
 import type { Logger } from 'pino';
@@ -67,11 +67,12 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
   }
 
   async balanceTx(
-    tx: ProvenTransaction,
+    tx: UnboundTransaction,
     _newCoins: ShieldedCoinInfo[],
     ttl: Date = ttlOneHour()
   ): Promise<FinalizedTransaction> {
-    const balancedRecipe = await this.wallet.balanceFinalizedTransaction(this.zswapSecretKeys, this.dustSecretKey, tx.bind(), ttl);
+    const bound = tx.bind();
+    const balancedRecipe = await this.wallet.balanceFinalizedTransaction(this.zswapSecretKeys, this.dustSecretKey, bound, ttl);
     return this.wallet.finalizeRecipe(balancedRecipe);
   }
 
