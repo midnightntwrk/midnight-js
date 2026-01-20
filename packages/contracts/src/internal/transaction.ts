@@ -190,6 +190,9 @@ export const scoped: {
   try {
     await fn(innerTxCtx);
   } catch (err: unknown) {
+    if (outerTxCtx) {
+      throw err;
+    }
     const execErr = new Error(
       `Unexpected error executing scoped transaction '${options?.scopeName ?? '<unnamed>'}': ${String(err)}`,
       { cause: err }
