@@ -104,8 +104,7 @@ async function submitTxCore<C extends Contract, ICK extends ImpureCircuitId<C>>(
 ): Promise<string> {
   const provenTx = await providers.proofProvider.proveTx(options.unprovenTx);
   const transaction = await providers.walletProvider.balanceTx(provenTx, options.newCoins);
-  const provenTx2 = await providers.proofProvider.proveTx(transaction);
-  const toSubmit = provenTx2.bind();
+  const toSubmit = transaction.bind();
   if (__DEBUG__) {
     logTransaction(options.circuitId, toSubmit);
   }
