@@ -32,8 +32,6 @@
 ## Type Aliases
 
 - [All](type-aliases/All.md)
-- [BalancedProvingRecipe](type-aliases/BalancedProvingRecipe.md)
-- [BalanceTransactionToProve](type-aliases/BalanceTransactionToProve.md)
 - [BlockHash](type-aliases/BlockHash.md)
 - [BlockHashConfig](type-aliases/BlockHashConfig.md)
 - [BlockHeightConfig](type-aliases/BlockHeightConfig.md)
@@ -46,16 +44,13 @@
 - [ImpureCircuits](type-aliases/ImpureCircuits.md)
 - [InitialStateParameters](type-aliases/InitialStateParameters.md)
 - [Latest](type-aliases/Latest.md)
-- [NothingToProve](type-aliases/NothingToProve.md)
 - [PrivateState](type-aliases/PrivateState.md)
 - [PrivateStateId](type-aliases/PrivateStateId.md)
-- [ProvenTransaction](type-aliases/ProvenTransaction.md)
 - [ProverKey](type-aliases/ProverKey.md)
-- [ProvingRecipe](type-aliases/ProvingRecipe.md)
 - [SegmentStatus](type-aliases/SegmentStatus.md)
-- [TransactionToProve](type-aliases/TransactionToProve.md)
 - [TxIdConfig](type-aliases/TxIdConfig.md)
 - [TxStatus](type-aliases/TxStatus.md)
+- [UnboundTransaction](type-aliases/UnboundTransaction.md)
 - [UnshieldedBalance](type-aliases/UnshieldedBalance.md)
 - [UnshieldedBalances](type-aliases/UnshieldedBalances.md)
 - [UnshieldedUtxo](type-aliases/UnshieldedUtxo.md)
@@ -67,14 +62,11 @@
 
 ## Variables
 
-- [BALANCE\_TRANSACTION\_TO\_PROVE](variables/BALANCE_TRANSACTION_TO_PROVE.md)
 - [FailEntirely](variables/FailEntirely.md)
 - [FailFallible](variables/FailFallible.md)
-- [NOTHING\_TO\_PROVE](variables/NOTHING_TO_PROVE.md)
 - [SegmentFail](variables/SegmentFail.md)
 - [SegmentSuccess](variables/SegmentSuccess.md)
 - [SucceedEntirely](variables/SucceedEntirely.md)
-- [TRANSACTION\_TO\_PROVE](variables/TRANSACTION_TO_PROVE.md)
 
 ## Functions
 
