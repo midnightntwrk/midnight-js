@@ -2,7 +2,34 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
-## [3.0.0-alpha.14](https://github.com/midnightntwrk/midnight-js/compare/v3.0.0-alpha.12...v3.0.0-alpha.14) (2026-01-13)
+## [3.0.0-alpha.15](https://github.com/midnightntwrk/midnight-js/compare/v3.0.0-alpha.14...v3.0.0-alpha.15) (2026-01-21)
+
+
+### Features
+
+* add KeyMaterialProvider type for DApp connector compatibility ([#430](https://github.com/midnightntwrk/midnight-js/pull/430)) ([ce32335](https://github.com/midnightntwrk/midnight-js/commit/ce32335e2f2105906e412c16c6f02e346e2863df)), closes [#429](https://github.com/midnightntwrk/midnight-js/pull/429)
+
+
+### Documentation
+
+* API documentation update ([#427](https://github.com/midnightntwrk/midnight-js/pull/427)) ([a3d9114](https://github.com/midnightntwrk/midnight-js/commit/a3d9114681ddd5fd6c2864b209e18bd335a13972))
+* API documentation update ([#441](https://github.com/midnightntwrk/midnight-js/pull/441)) ([ebc39e6](https://github.com/midnightntwrk/midnight-js/commit/ebc39e68c409825d86a1e3a88be89dcec10d2f50))
+
+
+### Continuous Integration
+
+* remove custom compact version loading, replace with standard direnv ([#429](https://github.com/midnightntwrk/midnight-js/pull/429)) ([d6946eb](https://github.com/midnightntwrk/midnight-js/commit/d6946eb0ab1aab8c168b1f2f1ca41dbde3106413))
+
+
+### Improvements
+
+* add typechecking for tests ([#431](https://github.com/midnightntwrk/midnight-js/pull/431)) ([be765fd](https://github.com/midnightntwrk/midnight-js/commit/be765fda7f39f2d42d1d583d8addd56ccc8a5b7c))
+* **deps:** bump undici in the npm_and_yarn group across 1 directory ([#433](https://github.com/midnightntwrk/midnight-js/pull/433)) ([8153da1](https://github.com/midnightntwrk/midnight-js/commit/8153da137c668e2470579b95580ea3cdd82f6fb7))
+* optimize build time by conditionally skipping contract compilation ([#428](https://github.com/midnightntwrk/midnight-js/pull/428)) ([b4ad703](https://github.com/midnightntwrk/midnight-js/commit/b4ad703a4a5cea7b54ee41867ff97c7fd4e2ac2c))
+* update README - remove outdated encryption note and document AES-256-GCM support ([c4c512e](https://github.com/midnightntwrk/midnight-js/commit/c4c512e5578d79c7c50b66eea4f981e4a02f5ed7))
+* update wallet-sdk-facade to 1.0.0-beta.16 ([#437](https://github.com/midnightntwrk/midnight-js/pull/437)) ([163100d](https://github.com/midnightntwrk/midnight-js/commit/163100de5e5b8763cea89264e88b7b1a66bc46c8))
+
+## [3.0.0-alpha.14](https://github.com/midnightntwrk/midnight-js/compare/v3.0.0-alpha.13...v3.0.0-alpha.14) (2026-01-13)
 
 
 ### Features
@@ -12,7 +39,6 @@ All notable changes to this project will be documented in this file. See [commit
 
 ### Documentation
 
-* API documentation update ([#417](https://github.com/midnightntwrk/midnight-js/pull/417)) ([082c77a](https://github.com/midnightntwrk/midnight-js/commit/082c77a5b3d318585919cbc1daacfbbf4a8e331d))
 * API documentation update ([#420](https://github.com/midnightntwrk/midnight-js/pull/420)) ([0c9e4d7](https://github.com/midnightntwrk/midnight-js/commit/0c9e4d74d248b6200c899d1c3d05be0aa97a4a6b))
 * API documentation update ([#425](https://github.com/midnightntwrk/midnight-js/pull/425)) ([fa49615](https://github.com/midnightntwrk/midnight-js/commit/fa49615e25c869e006f7129373a2bd332549604b))
 
@@ -20,10 +46,22 @@ All notable changes to this project will be documented in this file. See [commit
 ### Improvements
 
 * add workflow to fix release tags on main branch after PR merge ([#423](https://github.com/midnightntwrk/midnight-js/pull/423)) ([6f88a4f](https://github.com/midnightntwrk/midnight-js/commit/6f88a4f57a0e329818109e94a641a9f63ed5ae1c))
-* **deps:** update dependency express to v5.2.0 [security] ([#363](https://github.com/midnightntwrk/midnight-js/pull/363)) ([e7bab3d](https://github.com/midnightntwrk/midnight-js/commit/e7bab3d028001c03b69582869daed6577bb45fcb))
 * **deps:** update dependency typescript-eslint to v8.48.0 ([#339](https://github.com/midnightntwrk/midnight-js/pull/339)) ([b6aae43](https://github.com/midnightntwrk/midnight-js/commit/b6aae43dedfdd3e3d09fabb2702d64c945577be9))
-* **release:** bump version to 3.0.0-alpha.13 ([#419](https://github.com/midnightntwrk/midnight-js/pull/419)) ([f463218](https://github.com/midnightntwrk/midnight-js/commit/f463218aa131bc32f8a2fe8816d7b7b23fda5b9a))
+* **release:** bump version to 3.0.0-alpha.14 ([5304b89](https://github.com/midnightntwrk/midnight-js/commit/5304b89cbead45115fd55c1d091cb493ef7e0eac))
 * update changelog generation commands + improve release configuration ([#421](https://github.com/midnightntwrk/midnight-js/pull/421)) ([36a36e3](https://github.com/midnightntwrk/midnight-js/commit/36a36e3c52e651f05103650887feb63d53c84995))
+
+## [3.0.0-alpha.13](https://github.com/midnightntwrk/midnight-js/compare/v3.0.0-alpha.12...v3.0.0-alpha.13) (2026-01-08)
+
+
+### Documentation
+
+* API documentation update ([#417](https://github.com/midnightntwrk/midnight-js/pull/417)) ([082c77a](https://github.com/midnightntwrk/midnight-js/commit/082c77a5b3d318585919cbc1daacfbbf4a8e331d))
+
+
+### Improvements
+
+* **deps:** update dependency express to v5.2.0 [security] ([#363](https://github.com/midnightntwrk/midnight-js/pull/363)) ([e7bab3d](https://github.com/midnightntwrk/midnight-js/commit/e7bab3d028001c03b69582869daed6577bb45fcb))
+* **release:** bump version to 3.0.0-alpha.13 ([#419](https://github.com/midnightntwrk/midnight-js/pull/419)) ([f463218](https://github.com/midnightntwrk/midnight-js/commit/f463218aa131bc32f8a2fe8816d7b7b23fda5b9a))
 
 ## [3.0.0-alpha.12](https://github.com/midnightntwrk/midnight-js/compare/v3.0.0-alpha.11...v3.0.0-alpha.12) (2026-01-07)
 
