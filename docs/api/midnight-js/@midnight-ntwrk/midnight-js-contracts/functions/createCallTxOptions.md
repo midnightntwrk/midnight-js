@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.15**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Function: createCallTxOptions()
 
-> **createCallTxOptions**\<`C`, `ICK`\>(`contract`, `circuitId`, `contractAddress`, `privateStateId`, `args`): [`CallTxOptions`](../type-aliases/CallTxOptions.md)\<`C`, `ICK`\>
+> **createCallTxOptions**\<`C`, `ICK`\>(`compiledContract`, `circuitId`, `contractAddress`, `privateStateId`, `args`): [`CallTxOptions`](../type-aliases/CallTxOptions.md)\<`C`, `ICK`\>
 
 Creates a [CallTxOptions](../type-aliases/CallTxOptions.md) object from various data.
 
@@ -14,7 +14,7 @@ Creates a [CallTxOptions](../type-aliases/CallTxOptions.md) object from various 
 
 ### C
 
-`C` *extends* `Contract`\<`any`, `Witnesses`\<`any`\>\>
+`C` *extends* `Any`
 
 ### ICK
 
@@ -22,9 +22,9 @@ Creates a [CallTxOptions](../type-aliases/CallTxOptions.md) object from various 
 
 ## Parameters
 
-### contract
+### compiledContract
 
-`C`
+`CompiledContract`\<`C`, `any`\>
 
 ### circuitId
 

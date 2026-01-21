@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.15**](../../../README.md)
 
 ***
 
@@ -14,7 +14,7 @@ Call options for contracts with private state.
 
 ### initialPrivateState
 
-> `readonly` **initialPrivateState**: `PrivateState`\<`C`\>
+> `readonly` **initialPrivateState**: `Contract.PrivateState`\<`C`\>
 
 The private state to run the circuit against.
 
@@ -22,8 +22,8 @@ The private state to run the circuit against.
 
 ### C
 
-`C` *extends* `Contract`
+`C` *extends* `Contract.Any`
 
 ### ICK
 
-`ICK` *extends* `ImpureCircuitId`\<`C`\>
+`ICK` *extends* `Contract.ImpureCircuitId`\<`C`\>

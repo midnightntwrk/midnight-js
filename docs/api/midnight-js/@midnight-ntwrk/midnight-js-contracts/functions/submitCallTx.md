@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.15**](../../../README.md)
 
 ***
 
@@ -82,7 +82,7 @@ When transaction fails in either guaranteed or fallible phase.
 
 #### C
 
-`C` *extends* `Contract`\<`any`, `Witnesses`\<`any`\>\>
+`C` *extends* `Any`
 
 #### ICK
 
@@ -110,7 +110,7 @@ When transaction fails in either guaranteed or fallible phase.
 
 #### C
 
-`C` *extends* `Contract`\<`any`, `Witnesses`\<`any`\>\>
+`C` *extends* `Any`
 
 #### ICK
 

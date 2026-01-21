@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.15**](../../../README.md)
 
 ***
 
@@ -25,7 +25,7 @@ Configuration.
 
 ## Call Signature
 
-> **createUnprovenDeployTxFromVerifierKeys**\<`C`\>(`verifierKeys`, `coinPublicKey`, `options`, `encryptionPublicKey`): [`UnsubmittedDeployTxData`](../type-aliases/UnsubmittedDeployTxData.md)\<`C`\>
+> **createUnprovenDeployTxFromVerifierKeys**\<`C`\>(`zkConfigProvider`, `coinPublicKey`, `options`, `encryptionPublicKey`): `Promise`\<[`UnsubmittedDeployTxData`](../type-aliases/UnsubmittedDeployTxData.md)\<`C`\>\>
 
 ### Type Parameters
 
@@ -35,9 +35,9 @@ Configuration.
 
 ### Parameters
 
-#### verifierKeys
+#### zkConfigProvider
 
-\[`ImpureCircuitId`\<`C`\>, `VerifierKey`\][]
+`ZKConfigProvider`\<`string`\>
 
 #### coinPublicKey
 
@@ -53,23 +53,23 @@ Configuration.
 
 ### Returns
 
-[`UnsubmittedDeployTxData`](../type-aliases/UnsubmittedDeployTxData.md)\<`C`\>
+`Promise`\<[`UnsubmittedDeployTxData`](../type-aliases/UnsubmittedDeployTxData.md)\<`C`\>\>
 
 ## Call Signature
 
-> **createUnprovenDeployTxFromVerifierKeys**\<`C`\>(`verifierKeys`, `coinPublicKey`, `options`, `encryptionPublicKey`): [`UnsubmittedDeployTxData`](../type-aliases/UnsubmittedDeployTxData.md)\<`C`\>
+> **createUnprovenDeployTxFromVerifierKeys**\<`C`\>(`zkConfigProvider`, `coinPublicKey`, `options`, `encryptionPublicKey`): `Promise`\<[`UnsubmittedDeployTxData`](../type-aliases/UnsubmittedDeployTxData.md)\<`C`\>\>
 
 ### Type Parameters
 
 #### C
 
-`C` *extends* `Contract`\<`any`, `Witnesses`\<`any`\>\>
+`C` *extends* `Any`
 
 ### Parameters
 
-#### verifierKeys
+#### zkConfigProvider
 
-\[`ImpureCircuitId`\<`C`\>, `VerifierKey`\][]
+`ZKConfigProvider`\<`string`\>
 
 #### coinPublicKey
 
@@ -85,4 +85,4 @@ Configuration.
 
 ### Returns
 
-[`UnsubmittedDeployTxData`](../type-aliases/UnsubmittedDeployTxData.md)\<`C`\>
+`Promise`\<[`UnsubmittedDeployTxData`](../type-aliases/UnsubmittedDeployTxData.md)\<`C`\>\>
