@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.15**](../../../README.md)
 
 ***
 
@@ -55,6 +55,20 @@ The function to use to execute queries.
 The endpoint to query for ZK artifacts.
 
 ## Methods
+
+### asKeyMaterialProvider()
+
+> **asKeyMaterialProvider**(): `KeyMaterialProvider`
+
+#### Returns
+
+`KeyMaterialProvider`
+
+#### Inherited from
+
+`ZKConfigProvider.asKeyMaterialProvider`
+
+***
 
 ### get()
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.15**](../../../README.md)
 
 ***
 
@@ -51,6 +51,20 @@ The path to the base directory containing the key and ZKIR subdirectories.
 The path to the base directory containing the key and ZKIR subdirectories.
 
 ## Methods
+
+### asKeyMaterialProvider()
+
+> **asKeyMaterialProvider**(): `KeyMaterialProvider`
+
+#### Returns
+
+`KeyMaterialProvider`
+
+#### Inherited from
+
+`ZKConfigProvider.asKeyMaterialProvider`
+
+***
 
 ### get()
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.15**](../../../README.md)
 
 ***
 
@@ -30,6 +30,16 @@ The type of the circuit ID used by the provider.
 `ZKConfigProvider`\<`K`\>
 
 ## Methods
+
+### asKeyMaterialProvider()
+
+> **asKeyMaterialProvider**(): [`KeyMaterialProvider`](../type-aliases/KeyMaterialProvider.md)
+
+#### Returns
+
+[`KeyMaterialProvider`](../type-aliases/KeyMaterialProvider.md)
+
+***
 
 ### get()
 

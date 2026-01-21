@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.15**](../../README.md)
 
 ***
 
@@ -43,6 +43,7 @@
 - [ImpureCircuitId](type-aliases/ImpureCircuitId.md)
 - [ImpureCircuits](type-aliases/ImpureCircuits.md)
 - [InitialStateParameters](type-aliases/InitialStateParameters.md)
+- [KeyMaterialProvider](type-aliases/KeyMaterialProvider.md)
 - [Latest](type-aliases/Latest.md)
 - [PrivateState](type-aliases/PrivateState.md)
 - [PrivateStateId](type-aliases/PrivateStateId.md)
