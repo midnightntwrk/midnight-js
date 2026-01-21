@@ -34,9 +34,11 @@ import { type ZKConfigProvider } from './zk-config-provider';
 const makeAdaptedReader = <C extends Contract.Contract<PS>, PS>(zkConfigProvider: ZKConfigProvider<string>) =>
   (compiledContract: CompiledContract.CompiledContract<C, PS>) =>
     Effect.gen(function* () { // eslint-disable-line require-yield
+      // TODO: Consider implementing the logic used in Compact.js (look at the contract manifest to determine
+      // if the circuit is verifiable). See PM-21376.
       const getVerifierKey = (impureCircuitId: Contract.ImpureCircuitId<C>) =>
         Effect.tryPromise({
-          try: () => zkConfigProvider.getVerifierKey(impureCircuitId).then(Contract.VerifierKey),
+          try: () => zkConfigProvider.getVerifierKey(impureCircuitId).then((verifierKey) => Option.some(Contract.VerifierKey(verifierKey))),
           catch: (err: unknown) => ZKConfigurationReadError.make(compiledContract.tag, impureCircuitId, 'verifier-key', err)
         });
       return {

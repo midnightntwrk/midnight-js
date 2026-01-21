@@ -16,6 +16,15 @@
 import type { ProverKey, VerifierKey, ZKConfig, ZKIR } from './midnight-types';
 
 /**
+ * DApp connector API type for key material retrieval
+ **/
+export type KeyMaterialProvider = {
+  getZKIR(circuitKeyLocation: string): Promise<Uint8Array>;
+  getProverKey(circuitKeyLocation: string): Promise<Uint8Array>;
+  getVerifierKey(circuitKeyLocation: string): Promise<Uint8Array>;
+};
+
+/**
  * A provider for zero-knowledge intermediate representations, prover keys, and verifier keys. All
  * three are used by the {@link ProofProvider} to create a proof for a call transaction. The implementation
  * of this provider depends on the runtime environment, since each environment has different conventions
@@ -65,5 +74,9 @@ export abstract class ZKConfigProvider<K extends string> {
       verifierKey: await this.getVerifierKey(circuitId),
       zkir: await this.getZKIR(circuitId)
     };
+  }
+
+  asKeyMaterialProvider(): KeyMaterialProvider {
+    return this as KeyMaterialProvider;
   }
 }

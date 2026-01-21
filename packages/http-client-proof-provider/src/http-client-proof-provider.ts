@@ -16,8 +16,8 @@
 import { CostModel, type ProvingProvider, type UnprovenTransaction } from '@midnight-ntwrk/ledger-v7';
 import type {
   ProofProvider,
-  ProvenTransaction,
   ProveTxConfig,
+  UnboundTransaction,
   ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
 
@@ -65,7 +65,7 @@ export const httpClientProofProvider = <K extends string>(
     async proveTx(
       unprovenTx: UnprovenTransaction,
       _partialProveTxConfig?: ProveTxConfig
-    ): Promise<ProvenTransaction> {
+    ): Promise<UnboundTransaction> {
       const costModel = CostModel.initialCostModel();
       return unprovenTx.prove(baseProvingProvider, costModel);
     }

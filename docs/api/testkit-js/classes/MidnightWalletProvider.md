@@ -44,7 +44,7 @@ Handles transaction balancing, submission, and wallet state management.
 
 ### balanceTx()
 
-> **balanceTx**(`tx`, `_newCoins`, `ttl`): `Promise`\<`BalancedProvingRecipe`\>
+> **balanceTx**(`tx`, `_newCoins`, `ttl`): `Promise`\<`FinalizedTransaction`\>
 
 Balances a transaction
 
@@ -52,7 +52,7 @@ Balances a transaction
 
 ##### tx
 
-`UnprovenTransaction`
+`UnboundTransaction`
 
 The transaction to balance.
 
@@ -66,7 +66,7 @@ The transaction to balance.
 
 #### Returns
 
-`Promise`\<`BalancedProvingRecipe`\>
+`Promise`\<`FinalizedTransaction`\>
 
 #### Implementation of
 

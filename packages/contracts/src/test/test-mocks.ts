@@ -267,12 +267,13 @@ export const createMockProviders = (): ContractProviders<Contract.Any, Contract.
     getZKIR: vi.fn(),
     getProverKey: vi.fn(),
     getVerifierKey: vi.fn(),
-    get: vi.fn()
-  },
+    get: vi.fn(),
+    asKeyMaterialProvider: vi.fn()
+},
   walletProvider: {
     balanceTx: vi.fn(),
     getCoinPublicKey: createMockCoinPublicKey,
-    getEncryptionPublicKey: createMockEncryptionPublicKey,
+    getEncryptionPublicKey: createMockEncryptionPublicKey
   },
   proofProvider: {
     proveTx: vi.fn()

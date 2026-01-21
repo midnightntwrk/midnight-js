@@ -21,7 +21,7 @@ import {
   type UnprovenTransaction
 } from '@midnight-ntwrk/ledger-v7';
 
-export type ProvenTransaction = Transaction<SignatureEnabled, Proof, PreBinding>;
+export type UnboundTransaction = Transaction<SignatureEnabled, Proof, PreBinding>;
 
 /**
  * The configuration for the proof request to the proof provider.
@@ -46,5 +46,5 @@ export interface ProofProvider {
    * @param proveTxConfig The configuration for the proof request to the proof provider. Empty in case
    *                      a deploy transaction is being proved with no user-defined timeout.
    */
-  proveTx(unprovenTx: UnprovenTransaction, proveTxConfig?: ProveTxConfig): Promise<ProvenTransaction>;
+  proveTx(unprovenTx: UnprovenTransaction, proveTxConfig?: ProveTxConfig): Promise<UnboundTransaction>;
 }

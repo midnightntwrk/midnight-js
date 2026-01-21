@@ -135,13 +135,6 @@ autocompletion when using Midnight.js.
 * Should store and manipulate and store sensitive data, i.e.
   contract private states, securely.
 
-> Midnight.js currently falls short of this goal; the default
-> `PrivateStateProvider` based on `LevelDb` does not encrypt data at rest. To
-> encrypt data, a password scheme would likely be necessary. But, requiring
-> the user to input a password any time an application they're using needs to
-> send a transaction would significantly degrade the UX. This issue should be
-> prioritized and resolved.
-
 # Architecture
 
 ## Structure
@@ -213,7 +206,7 @@ This is a yarn [workspaces](https://yarnpkg.com/features/workspaces/) project. A
 - `fetch-zk-config-provider` - Contains a [fetch](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) based cross-environment utility for retrieving zero-knowledge artifacts.
 - `network-id` - Contains utilities for setting the network id used by `ledger`, `zswap`, and `compact-runtime` dependencies.
 - `http-client-proof-provider` - Contains a cross-environment implementation of a proof-server client.
-- `level-private-state-provider` - Contains a cross-environment implementation of a persistent private state store based on [Level](https://github.com/Level/level).
+- `level-private-state-provider` - Contains a cross-environment implementation of an encrypted persistent private state store based on [Level](https://github.com/Level/level). Provides AES-256-GCM encryption for private states and signing keys.
 - `utils` - General utilities used in Midnight.js
 
 ## Development setup

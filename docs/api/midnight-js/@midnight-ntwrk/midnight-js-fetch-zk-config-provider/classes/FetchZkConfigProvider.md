@@ -56,6 +56,20 @@ The endpoint to query for ZK artifacts.
 
 ## Methods
 
+### asKeyMaterialProvider()
+
+> **asKeyMaterialProvider**(): `KeyMaterialProvider`
+
+#### Returns
+
+`KeyMaterialProvider`
+
+#### Inherited from
+
+`ZKConfigProvider.asKeyMaterialProvider`
+
+***
+
 ### get()
 
 > **get**(`circuitId`): `Promise`\<`ZKConfig`\<`K`\>\>
