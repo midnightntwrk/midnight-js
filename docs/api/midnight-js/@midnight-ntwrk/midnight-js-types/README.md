@@ -43,6 +43,7 @@
 - [ImpureCircuitId](type-aliases/ImpureCircuitId.md)
 - [ImpureCircuits](type-aliases/ImpureCircuits.md)
 - [InitialStateParameters](type-aliases/InitialStateParameters.md)
+- [KeyMaterialProvider](type-aliases/KeyMaterialProvider.md)
 - [Latest](type-aliases/Latest.md)
 - [PrivateState](type-aliases/PrivateState.md)
 - [PrivateStateId](type-aliases/PrivateStateId.md)

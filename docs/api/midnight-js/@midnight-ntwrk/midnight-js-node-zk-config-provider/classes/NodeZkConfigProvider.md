@@ -52,6 +52,20 @@ The path to the base directory containing the key and ZKIR subdirectories.
 
 ## Methods
 
+### asKeyMaterialProvider()
+
+> **asKeyMaterialProvider**(): `KeyMaterialProvider`
+
+#### Returns
+
+`KeyMaterialProvider`
+
+#### Inherited from
+
+`ZKConfigProvider.asKeyMaterialProvider`
+
+***
+
 ### get()
 
 > **get**(`circuitId`): `Promise`\<`ZKConfig`\<`K`\>\>

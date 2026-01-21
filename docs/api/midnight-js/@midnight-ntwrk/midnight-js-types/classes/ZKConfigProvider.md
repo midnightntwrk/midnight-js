@@ -31,6 +31,16 @@ The type of the circuit ID used by the provider.
 
 ## Methods
 
+### asKeyMaterialProvider()
+
+> **asKeyMaterialProvider**(): [`KeyMaterialProvider`](../type-aliases/KeyMaterialProvider.md)
+
+#### Returns
+
+[`KeyMaterialProvider`](../type-aliases/KeyMaterialProvider.md)
+
+***
+
 ### get()
 
 > **get**(`circuitId`): `Promise`\<[`ZKConfig`](../interfaces/ZKConfig.md)\<`K`\>\>
