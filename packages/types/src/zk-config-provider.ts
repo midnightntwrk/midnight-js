@@ -77,10 +77,6 @@ export abstract class ZKConfigProvider<K extends string> {
   }
 
   asKeyMaterialProvider(): KeyMaterialProvider {
-    return {
-      getZKIR: (circuitKeyLocation: string) => this.getZKIR(circuitKeyLocation as K),
-      getProverKey: (circuitKeyLocation: string) => this.getProverKey(circuitKeyLocation as K),
-      getVerifierKey: (circuitKeyLocation: string) => this.getVerifierKey(circuitKeyLocation as K)
-    };
+    return this as KeyMaterialProvider;
   }
 }
