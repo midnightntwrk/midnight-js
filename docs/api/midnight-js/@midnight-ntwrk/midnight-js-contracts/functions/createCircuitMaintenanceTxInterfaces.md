@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.15**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Function: createCircuitMaintenanceTxInterfaces()
 
-> **createCircuitMaintenanceTxInterfaces**\<`C`\>(`providers`, `contract`, `contractAddress`): [`CircuitMaintenanceTxInterfaces`](../type-aliases/CircuitMaintenanceTxInterfaces.md)\<`C`\>
+> **createCircuitMaintenanceTxInterfaces**\<`C`\>(`providers`, `compiledContract`, `contractAddress`): [`CircuitMaintenanceTxInterfaces`](../type-aliases/CircuitMaintenanceTxInterfaces.md)\<`C`\>
 
 Creates a [CircuitMaintenanceTxInterfaces](../type-aliases/CircuitMaintenanceTxInterfaces.md).
 
@@ -14,7 +14,7 @@ Creates a [CircuitMaintenanceTxInterfaces](../type-aliases/CircuitMaintenanceTxI
 
 ### C
 
-`C` *extends* `Contract`\<`any`, `Witnesses`\<`any`\>\>
+`C` *extends* `Any`
 
 ## Parameters
 
@@ -24,11 +24,9 @@ Creates a [CircuitMaintenanceTxInterfaces](../type-aliases/CircuitMaintenanceTxI
 
 The providers to use to build transactions.
 
-### contract
+### compiledContract
 
-`C`
-
-The contract to use to execute circuits.
+`CompiledContract`\<`C`, `any`\>
 
 ### contractAddress
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.15**](../../../README.md)
 
 ***
 
@@ -14,4 +14,4 @@ Contract constructor options including arguments and provider data.
 
 ### C
 
-`C` *extends* `Contract`
+`C` *extends* `Contract.Any`

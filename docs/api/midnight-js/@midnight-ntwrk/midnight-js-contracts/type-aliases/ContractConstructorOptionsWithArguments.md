@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.15**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Type Alias: ContractConstructorOptionsWithArguments\<C\>
 
-> **ContractConstructorOptionsWithArguments**\<`C`\> = `InitialStateParameters`\<`C`\> *extends* \[\] ? [`ContractConstructorOptionsBase`](ContractConstructorOptionsBase.md)\<`C`\> : [`ContractConstructorOptionsBase`](ContractConstructorOptionsBase.md)\<`C`\> & `object`
+> **ContractConstructorOptionsWithArguments**\<`C`\> = `Contract.InitializeParameters`\<`C`\> *extends* \[\] ? [`ContractConstructorOptionsBase`](ContractConstructorOptionsBase.md)\<`C`\> : [`ContractConstructorOptionsBase`](ContractConstructorOptionsBase.md)\<`C`\> & `object`
 
 Conditional type that optionally adds the inferred contract constructor argument types
 to the constructor options.
@@ -15,4 +15,4 @@ to the constructor options.
 
 ### C
 
-`C` *extends* `Contract`
+`C` *extends* `Contract.Any`

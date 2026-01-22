@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.15**](../../../README.md)
 
 ***
 
@@ -14,11 +14,11 @@ The private (sensitive) portions of the call result.
 
 ### C
 
-`C` *extends* `Contract`
+`C` *extends* `Contract.Any`
 
 ### ICK
 
-`ICK` *extends* `ImpureCircuitId`\<`C`\>
+`ICK` *extends* `Contract.ImpureCircuitId`\<`C`\>
 
 ## Properties
 
@@ -32,7 +32,7 @@ ZK representation of the circuit arguments.
 
 ### nextPrivateState
 
-> `readonly` **nextPrivateState**: `PrivateState`\<`C`\>
+> `readonly` **nextPrivateState**: `Contract.PrivateState`\<`C`\>
 
 The private state resulting from executing the circuit.
 
@@ -64,6 +64,6 @@ ZK representation of the circuit witness call results.
 
 ### result
 
-> `readonly` **result**: `CircuitReturnType`\<`C`, `ICK`\>
+> `readonly` **result**: `Contract.CircuitReturnType`\<`C`, `ICK`\>
 
 The JS representation of the input to the circuit.

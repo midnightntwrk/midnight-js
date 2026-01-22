@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.15**](../../../README.md)
 
 ***
 
@@ -12,7 +12,7 @@ Set of providers needed for transaction construction and submission.
 
 ### ICK
 
-`ICK` *extends* [`ImpureCircuitId`](../type-aliases/ImpureCircuitId.md) = [`ImpureCircuitId`](../type-aliases/ImpureCircuitId.md)
+`ICK` *extends* `Contract.ImpureCircuitId`\<`Contract.Any`\> = `Contract.ImpureCircuitId`\<`Contract.Any`\>
 
 A union of string literal types representing the callable circuits.
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.15**](../../../README.md)
 
 ***
 
@@ -43,7 +43,7 @@ finalization handling and timeout control.
 
 ### C
 
-`C` *extends* `Contract`\<`any`, `Witnesses`\<`any`\>\>
+`C` *extends* `Any`
 
 ### ICK
 

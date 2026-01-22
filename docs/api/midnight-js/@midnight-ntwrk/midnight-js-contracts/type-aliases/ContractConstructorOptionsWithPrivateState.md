@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.15**](../../../README.md)
 
 ***
 
@@ -15,7 +15,7 @@ the target of a circuit invocation.
 
 ### initialPrivateState
 
-> `readonly` **initialPrivateState**: `PrivateState`\<`C`\>
+> `readonly` **initialPrivateState**: `Contract.PrivateState`\<`C`\>
 
 The private state to run the circuit against.
 
@@ -23,4 +23,4 @@ The private state to run the circuit against.
 
 ### C
 
-`C` *extends* `Contract`
+`C` *extends* `Contract.Any`

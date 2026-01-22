@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v3.0.0-alpha.14**](../README.md)
+[**@midnight-ntwrk/testkit-js v3.0.0-alpha.15**](../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 ### C
 
-`C` *extends* `Contract`\<`any`, `Witnesses`\<`any`\>\>
+`C` *extends* `Any`
 
 ## Parameters
 

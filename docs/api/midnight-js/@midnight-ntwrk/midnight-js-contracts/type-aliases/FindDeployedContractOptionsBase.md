@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.15**](../../../README.md)
 
 ***
 
@@ -14,15 +14,15 @@ Base type for the configuration options for [findDeployedContract](../functions/
 
 ### C
 
-`C` *extends* `Contract`
+`C` *extends* `Contract.Any`
 
 ## Properties
 
-### contract
+### compiledContract
 
-> `readonly` **contract**: `C`
+> `readonly` **compiledContract**: `CompiledContract.CompiledContract`\<`C`, `any`\>
 
-The contract to use to execute circuits.
+The compiled contract to use to execute circuits.
 
 ***
 

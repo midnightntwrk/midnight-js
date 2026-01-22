@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.15**](../../../README.md)
 
 ***
 
@@ -54,7 +54,7 @@ DeployTxFailedError If the transaction is submitted successfully but produces an
 
 #### C
 
-`C` *extends* `Contract`\<`any`, `Witnesses`\<`any`\>\>
+`C` *extends* `Any`
 
 ### Parameters
 

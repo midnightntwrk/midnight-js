@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.15**](../../../README.md)
 
 ***
 
@@ -15,12 +15,12 @@ a given contract.
 
 ### C
 
-`C` *extends* `Contract` = `Contract`
+`C` *extends* `Contract.Any` = `Contract.Any`
 
 ### ICK
 
-`ICK` *extends* `ImpureCircuitId`\<`C`\> = `ImpureCircuitId`\<`C`\>
+`ICK` *extends* `Contract.ImpureCircuitId`\<`C`\> = `Contract.ImpureCircuitId`\<`C`\>
 
 ### PS
 
-`PS` = `PrivateState`\<`C`\>
+`PS` = `Contract.PrivateState`\<`C`\>

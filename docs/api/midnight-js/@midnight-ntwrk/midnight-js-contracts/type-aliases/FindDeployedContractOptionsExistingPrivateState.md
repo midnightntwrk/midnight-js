@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.15**](../../../README.md)
 
 ***
 
@@ -25,4 +25,4 @@ An identifier for the private state of the contract being found.
 
 ### C
 
-`C` *extends* `Contract`
+`C` *extends* `Contract.Any`

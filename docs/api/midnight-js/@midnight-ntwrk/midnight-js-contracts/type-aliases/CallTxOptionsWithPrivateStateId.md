@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.15**](../../../README.md)
 
 ***
 
@@ -25,8 +25,8 @@ The identifier for the private state of the contract.
 
 ### C
 
-`C` *extends* `Contract`
+`C` *extends* `Contract.Any`
 
 ### ICK
 
-`ICK` *extends* `ImpureCircuitId`\<`C`\>
+`ICK` *extends* `Contract.ImpureCircuitId`\<`C`\>
