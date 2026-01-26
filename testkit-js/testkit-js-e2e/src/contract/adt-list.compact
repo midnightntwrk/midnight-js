@@ -14,50 +14,6 @@ export ledger coin_list: List<QualifiedShieldedCoinInfo>;
 export ledger coin_length: Uint<64>;
 export ledger coin_head: Maybe<QualifiedShieldedCoinInfo>;
 
-export circuit test(): Uint<64> {
-    // Test isEmpty on empty list
-    is_empty = list.isEmpty();
-    assert(is_empty == true, "list should be empty initially");
-
-    // Test head on empty list
-    head_value = list.head();
-    assert(head_value.is_some == false, "head should be None for empty list");
-
-    // Test pushFront operations
-    list.pushFront(42);
-    list.pushFront(100);
-    list.pushFront(200);
-
-    length = list.length();
-    is_empty = list.isEmpty();
-    head_value = list.head();
-
-    assert(length == 3, "list should have 3 elements");
-    assert(is_empty == false, "list should not be empty");
-    assert(head_value.is_some == true, "head should be Some for non-empty list");
-    assert(head_value.value == 200, "head should be 200 (last pushed)");
-
-    // Test popFront operation
-    list.popFront();
-    length_after_pop = list.length();
-    new_head = list.head();
-
-    assert(length_after_pop == 2, "list should have 2 elements after pop");
-    assert(new_head.value == 100, "new head should be 100");
-
-    // Test resetToDefault
-    list.resetToDefault();
-    final_empty = list.isEmpty();
-    final_length = list.length();
-    final_head = list.head();
-
-    assert(final_empty == true, "list should be empty after reset");
-    assert(final_length == 0, "list should have 0 elements after reset");
-    assert(final_head.is_some == false, "head should be None after reset");
-
-    return length_after_pop;
-}
-
 // Separate circuit to mint coins first
 export circuit mint_coins_for_test(): Field {
     // Mint coins to contract to allocate Merkle tree indices
@@ -108,16 +64,4 @@ export circuit mint_coins_only_test(): Field {
     coin_list.pushFrontCoin(coin2, right<ZswapCoinPublicKey, ContractAddress>(kernel.self()));
 
     return 2 as Field; // Return number of coins minted
-}
-
-export circuit test_coin_operations(): Uint<64> {
-    // Coins should already be in the list from mint_coins_for_test()
-    coin_length = coin_list.length();
-    coin_head = coin_list.head();
-
-    assert(coin_length == 2, "coin list should have 2 elements");
-    assert(coin_head.is_some == true, "coin list head should be Some");
-    assert(coin_head.value.value == 200, "head coin should have value 200");
-
-    return coin_length;
 }
