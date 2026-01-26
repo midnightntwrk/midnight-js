@@ -42,6 +42,11 @@ export type ImpureCircuits<PS> = {
                     amount_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
   mintNativeTokens(context: __compactRuntime.CircuitContext<PS>,
                    amount_0: bigint): __compactRuntime.CircuitResults<PS, bigint>;
+  receiveNightTokens(context: __compactRuntime.CircuitContext<PS>,
+                     amount_0: bigint): __compactRuntime.CircuitResults<PS, []>;
+  sendNightTokensToUser(context: __compactRuntime.CircuitContext<PS>,
+                        amount_0: bigint,
+                        user_addr_0: { bytes: Uint8Array }): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type PureCircuits = {
@@ -86,6 +91,11 @@ export type Circuits<PS> = {
                     amount_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
   mintNativeTokens(context: __compactRuntime.CircuitContext<PS>,
                    amount_0: bigint): __compactRuntime.CircuitResults<PS, bigint>;
+  receiveNightTokens(context: __compactRuntime.CircuitContext<PS>,
+                     amount_0: bigint): __compactRuntime.CircuitResults<PS, []>;
+  sendNightTokensToUser(context: __compactRuntime.CircuitContext<PS>,
+                        amount_0: bigint,
+                        user_addr_0: { bytes: Uint8Array }): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type Ledger = {

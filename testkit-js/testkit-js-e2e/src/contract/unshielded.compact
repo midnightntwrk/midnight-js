@@ -51,3 +51,15 @@ export circuit mintNativeTokens(amount: Uint<64>): Uint<128> {
     kernel.mintShielded(disclose(domain), disclose(amount));
     return disclose(amount);
 }
+
+export circuit receiveNightTokens(amount: Uint<128>): [] {
+   receiveUnshielded(default<Bytes<32>>, disclose(amount));
+}
+
+export circuit sendNightTokensToUser(amount: Uint<64>, user_addr: UserAddress): [] {
+    sendUnshielded(
+        default<Bytes<32>>,
+        disclose(amount) as Uint<128>,
+        right<ContractAddress, UserAddress>(disclose(user_addr))
+    );
+}

@@ -26,7 +26,7 @@ import {
   type MidnightWalletProvider,
   type TestEnvironment
 } from '@midnight-ntwrk/testkit-js';
-import { afterAll, beforeAll, beforeEach,describe, test } from '@vitest/runner';
+import { afterAll, beforeAll, beforeEach, describe, test } from '@vitest/runner';
 import path from 'path';
 import { expect } from 'vitest';
 
@@ -62,6 +62,7 @@ describe('Unshielded tokens', () => {
   let providers: UnshieldedContractProviders;
   let contractAddress: ContractAddress;
   let contractConfiguration: UnshieldedConfiguration;
+  let unshieldedAddressBytes: Uint8Array;
 
   beforeEach(() => {
     logger.info(`Running test=${expect.getState().currentTestName}`);
@@ -84,6 +85,8 @@ describe('Unshielded tokens', () => {
     const deployedContract = await deployContract(providers, deployTxOptions);
     await expectSuccessfulDeployTx(providers, deployedContract.deployTxData, deployTxOptions);
     contractAddress = deployedContract.deployTxData.public.contractAddress;
+
+    unshieldedAddressBytes = new Uint8Array(Buffer.from((await wallet.wallet.unshielded.getAddress()).hexString, 'hex'));
 
     logger.info(`Deployed unshielded contract at address: ${contractAddress}`);
   });
@@ -199,14 +202,13 @@ describe('Unshielded tokens', () => {
   });
 
   test.skip('should send tokens to wallet', async () => {
-    const address = new Uint8Array(Buffer.from('0f09f9eb5538606c6490c0595b771ecb0c29ae71778f089a95e8465b84774aed', 'hex'));
     const sep = new Uint8Array(32).fill(0);
 
     const txData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
       circuitId: 'sendUnshieldedToUserTest' as UnshieldedContractCircuits,
-      args: [sep, 1_000_000n, { bytes: address } ]
+      args: [sep, 1_000_000n, { bytes: unshieldedAddressBytes } ]
     });
 
     expect(txData.public.status).toBe(SucceedEntirely);
@@ -225,6 +227,28 @@ describe('Unshielded tokens', () => {
       contractAddress,
       circuitId: 'mintNativeTokens' as UnshieldedContractCircuits,
       args: [1_000_000n]
+    });
+
+    expect(txData.public.status).toBe(SucceedEntirely);
+  });
+
+  test('should receive night tokens', async () => {
+    const txData = await submitCallTx(providers, {
+      compiledContract: CompiledUnshieldedContract,
+      contractAddress,
+      circuitId: 'receiveNightTokens' as UnshieldedContractCircuits,
+      args: [ 1_000n ]
+    });
+
+    expect(txData.public.status).toBe(SucceedEntirely);
+  });
+
+  test.only('should send night tokens', async () => {
+    const txData = await submitCallTx(providers, {
+      compiledContract: CompiledUnshieldedContract,
+      contractAddress,
+      circuitId: 'sendNightTokensToUser' as UnshieldedContractCircuits,
+      args: [1_000n, { bytes: unshieldedAddressBytes }]
     });
 
     expect(txData.public.status).toBe(SucceedEntirely);
