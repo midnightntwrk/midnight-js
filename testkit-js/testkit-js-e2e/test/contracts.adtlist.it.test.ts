@@ -62,7 +62,7 @@ describe('AdtList Contract Circuits', () => {
     logger.info(`Running test=${expect.getState().currentTestName}`);
   });
 
-  it.only('should call mint_coins_for_test circuit [@slow]', async () => {
+  it('should call mint_coins_for_test circuit [@slow]', async () => {
     const result = await deployedContract.callTx.mint_coins_only_test();
     expect(result.public.txId).toBeDefined();
   });
