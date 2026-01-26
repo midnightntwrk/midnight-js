@@ -60,7 +60,7 @@
 
 ### createUnshieldedWallet()
 
-> `static` **createUnshieldedWallet**(`config`, `seed`, `networkId`): `UnshieldedWallet`
+> `static` **createUnshieldedWallet**(`config`, `unshieldedKeystore`): `UnshieldedWallet`
 
 #### Parameters
 
@@ -68,13 +68,9 @@
 
 `DefaultV1Configuration`
 
-##### seed
+##### unshieldedKeystore
 
-`Uint8Array`
-
-##### networkId
-
-`NetworkId`
+`UnshieldedKeystore`
 
 #### Returns
 
