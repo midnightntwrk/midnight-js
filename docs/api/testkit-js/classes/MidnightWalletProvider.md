@@ -30,6 +30,12 @@ Handles transaction balancing, submission, and wallet state management.
 
 ***
 
+### unshieldedKeystore
+
+> `readonly` **unshieldedKeystore**: `UnshieldedKeystore`
+
+***
+
 ### wallet
 
 > `readonly` **wallet**: `WalletFacade`
@@ -184,7 +190,7 @@ The transaction identifier of the submitted transaction.
 
 ### withWallet()
 
-> `static` **withWallet**(`logger`, `env`, `wallet`, `zswapSecretKeys`, `dustSecretKey`): `Promise`\<`MidnightWalletProvider`\>
+> `static` **withWallet**(`logger`, `env`, `wallet`, `zswapSecretKeys`, `dustSecretKey`, `unshieldedKeystore`): `Promise`\<`MidnightWalletProvider`\>
 
 #### Parameters
 
@@ -207,6 +213,10 @@ The transaction identifier of the submitted transaction.
 ##### dustSecretKey
 
 `DustSecretKey`
+
+##### unshieldedKeystore
+
+`UnshieldedKeystore`
 
 #### Returns
 
