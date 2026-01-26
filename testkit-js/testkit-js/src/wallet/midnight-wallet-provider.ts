@@ -26,6 +26,7 @@ import {
 import { type MidnightProvider, type UnboundTransaction, type WalletProvider } from '@midnight-ntwrk/midnight-js-types';
 import { ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
 import { type WalletFacade } from '@midnight-ntwrk/wallet-sdk-facade';
+import { type UnshieldedKeystore } from '@midnight-ntwrk/wallet-sdk-unshielded-wallet';
 import type { Logger } from 'pino';
 
 import { type EnvironmentConfiguration } from '@/index';
@@ -41,6 +42,7 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
   logger: Logger;
   readonly env: EnvironmentConfiguration;
   readonly wallet: WalletFacade;
+  readonly unshieldedKeystore: UnshieldedKeystore;
   readonly zswapSecretKeys: ZswapSecretKeys;
   readonly dustSecretKey: DustSecretKey;
 
@@ -49,13 +51,15 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     environmentConfiguration: EnvironmentConfiguration,
     wallet: WalletFacade,
     zswapSecretKeys: ZswapSecretKeys,
-    dustSecretKey: DustSecretKey
+    dustSecretKey: DustSecretKey,
+    unshieldedKeystore: UnshieldedKeystore
   ) {
     this.logger = logger;
     this.env = environmentConfiguration;
     this.wallet = wallet;
     this.zswapSecretKeys = zswapSecretKeys;
     this.dustSecretKey = dustSecretKey;
+    this.unshieldedKeystore = unshieldedKeystore;
   }
 
   getCoinPublicKey(): CoinPublicKey {
@@ -72,8 +76,9 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     ttl: Date = ttlOneHour()
   ): Promise<FinalizedTransaction> {
     const bound = tx.bind();
-    const balancedRecipe = await this.wallet.balanceFinalizedTransaction(this.zswapSecretKeys, this.dustSecretKey, bound, ttl);
-    return this.wallet.finalizeRecipe(balancedRecipe);
+    const finalizedTransactionRecipe = await this.wallet.balanceFinalizedTransaction(this.zswapSecretKeys, this.dustSecretKey, bound, ttl);
+    finalizedTransactionRecipe.balancingTransaction = await this.wallet.signTransaction(finalizedTransactionRecipe.balancingTransaction, (payload) => this.unshieldedKeystore.signData(payload));
+    return this.wallet.finalizeRecipe(finalizedTransactionRecipe);
   }
 
   submitTx(tx: FinalizedTransaction): Promise<string> {
@@ -99,7 +104,7 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     seed?: string | undefined
   ): Promise<MidnightWalletProvider> {
     const builder = FluentWalletBuilder.forEnvironment(env);
-    const { wallet, seeds } = seed
+    const { wallet, seeds, keystore } = seed
       ? await builder.withSeed(seed).buildWithoutStarting()
       : await builder.withRandomSeed().buildWithoutStarting();
 
@@ -113,7 +118,8 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
       env,
       wallet,
       ZswapSecretKeys.fromSeed(seeds.shielded),
-      DustSecretKey.fromSeed(seeds.dust)
+      DustSecretKey.fromSeed(seeds.dust),
+      keystore
     );
   }
 
@@ -122,8 +128,9 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     env: EnvironmentConfiguration,
     wallet: WalletFacade,
     zswapSecretKeys: ZswapSecretKeys,
-    dustSecretKey: DustSecretKey
+    dustSecretKey: DustSecretKey,
+    unshieldedKeystore: UnshieldedKeystore
   ): Promise<MidnightWalletProvider> {
-    return new MidnightWalletProvider(logger, env, wallet, zswapSecretKeys, dustSecretKey);
+    return new MidnightWalletProvider(logger, env, wallet, zswapSecretKeys, dustSecretKey, unshieldedKeystore);
   }
 }

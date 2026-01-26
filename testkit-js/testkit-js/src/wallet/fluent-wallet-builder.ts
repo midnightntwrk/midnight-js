@@ -16,6 +16,7 @@
 import { type NetworkId } from '@midnight-ntwrk/wallet-sdk-abstractions';
 import { type WalletFacade } from '@midnight-ntwrk/wallet-sdk-facade';
 import { type DefaultV1Configuration } from '@midnight-ntwrk/wallet-sdk-shielded/v1';
+import { createKeystore, type UnshieldedKeystore } from '@midnight-ntwrk/wallet-sdk-unshielded-wallet';
 
 import { logger } from '@/logger';
 import { type EnvironmentConfiguration } from '@/test-environment/environment-configuration';
@@ -74,11 +75,12 @@ export class FluentWalletBuilder {
 
     logger.info(`Building wallet with configuration: ${JSON.stringify(this.config)}`);
 
+    const unshieldedKeystore = createKeystore(this.seeds.unshielded, this.networkId);
+
     const shieldedWallet = WalletFactory.createShieldedWallet(this.config, this.seeds.shielded);
     const unshieldedWallet = WalletFactory.createUnshieldedWallet(
       this.config,
-      this.seeds.unshielded,
-      this.networkId
+      unshieldedKeystore
     );
     const dustWallet = WalletFactory.createDustWallet(
       this.config,
@@ -94,6 +96,7 @@ export class FluentWalletBuilder {
   async buildWithoutStarting(): Promise<{
     wallet: WalletFacade;
     seeds: WalletSeeds;
+    keystore: UnshieldedKeystore;
   }> {
     if (!this.seeds) {
       logger.info('No seed provided, generating random seed');
@@ -103,11 +106,12 @@ export class FluentWalletBuilder {
 
     logger.info(`Building wallet without starting with configuration: ${JSON.stringify(this.config)}`);
 
+    const unshieldedKeystore = createKeystore(this.seeds.unshielded, this.networkId);
+
     const shieldedWallet = WalletFactory.createShieldedWallet(this.config, this.seeds.shielded);
     const unshieldedWallet = WalletFactory.createUnshieldedWallet(
       this.config,
-      this.seeds.unshielded,
-      this.networkId
+      unshieldedKeystore
     );
     const dustWallet = WalletFactory.createDustWallet(
       this.config,
@@ -119,7 +123,8 @@ export class FluentWalletBuilder {
 
     return {
       wallet: walletFacade,
-      seeds: this.seeds
+      seeds: this.seeds,
+      keystore: unshieldedKeystore
     };
   }
 }
