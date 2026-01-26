@@ -15,6 +15,7 @@
 
 import { CompiledContract } from '@midnight-ntwrk/compact-js';
 
+import * as CompiledAdtList from './compiled/adt_list/contract/index.js';
 import * as CompiledBlockTime from './compiled/block-time/contract/index.js';
 import * as CompiledCounter from './compiled/counter/contract/index.js';
 import * as CompiledCounterClone from './compiled/counter-clone/contract/index.js';
@@ -23,6 +24,12 @@ import * as CompiledSimple from './compiled/simple/contract/index.js';
 import * as CompiledUnshielded from './compiled/unshielded/contract/index.js';
 import * as DoubleCounterWitnesses from './double-counter-witnesses.js';
 import * as Witnesses from './witnesses.js';
+
+export const CompiledAdtListContract =
+  CompiledContract.make<CompiledAdtList.Contract>('AdtList', CompiledAdtList.Contract).pipe(
+    CompiledContract.withVacantWitnesses,
+    CompiledContract.withCompiledFileAssets('./compiled/adt_list')
+  );
 
 export const CompiledBlockTimeContract =
   CompiledContract.make<CompiledBlockTime.Contract>('BlockTime', CompiledBlockTime.Contract).pipe(
@@ -69,6 +76,7 @@ export const CompiledUnshieldedContract =
     CompiledContract.withCompiledFileAssets('./compiled/unshielded')
   );
 
+export * as CompiledAdtList from './compiled/adt_list/contract/index.js';
 export * as CompiledBlockTime from './compiled/block-time/contract/index.js';
 export * as CompiledCounter from './compiled/counter/contract/index.js';
 export * as CompiledCounterClone from './compiled/counter-clone/contract/index.js';
