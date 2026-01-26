@@ -16,11 +16,11 @@
 
 ### buildWithoutStarting()
 
-> **buildWithoutStarting**(): `Promise`\<\{ `seeds`: [`WalletSeeds`](WalletSeeds.md); `wallet`: `WalletFacade`; \}\>
+> **buildWithoutStarting**(): `Promise`\<\{ `keystore`: `UnshieldedKeystore`; `seeds`: [`WalletSeeds`](WalletSeeds.md); `wallet`: `WalletFacade`; \}\>
 
 #### Returns
 
-`Promise`\<\{ `seeds`: [`WalletSeeds`](WalletSeeds.md); `wallet`: `WalletFacade`; \}\>
+`Promise`\<\{ `keystore`: `UnshieldedKeystore`; `seeds`: [`WalletSeeds`](WalletSeeds.md); `wallet`: `WalletFacade`; \}\>
 
 ***
 
