@@ -211,7 +211,6 @@ export async function submitCallTxAsync<C extends Contract.Any, ICK extends Cont
 
   const txId = await submitTxAsync(providers, {
     unprovenTx: unprovenCallTxData.private.unprovenTx,
-    newCoins: unprovenCallTxData.private.newCoins,
     circuitId: options.circuitId
   });
 

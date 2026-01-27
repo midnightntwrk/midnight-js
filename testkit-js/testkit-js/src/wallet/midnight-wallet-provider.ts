@@ -18,7 +18,6 @@ import {
   DustSecretKey,
   type EncPublicKey,
   type FinalizedTransaction,
-  type ShieldedCoinInfo,
   shieldedToken,
   type TokenType,
   ZswapSecretKeys
@@ -72,7 +71,6 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
 
   async balanceTx(
     tx: UnboundTransaction,
-    _newCoins: ShieldedCoinInfo[],
     ttl: Date = ttlOneHour()
   ): Promise<FinalizedTransaction> {
     const bound = tx.bind();

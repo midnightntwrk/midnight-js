@@ -14,7 +14,6 @@
  */
 
 import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
-import type { ShieldedCoinInfo } from '@midnight-ntwrk/compact-runtime';
 import {
   type Transaction,
   type UnprovenTransaction,
@@ -39,11 +38,6 @@ export type SubmitTxOptions<ICK extends Contract.ImpureCircuitId<Contract.Any>> 
    * The transaction to prove, balance, and submit.
    */
   readonly unprovenTx: UnprovenTransaction;
-  /**
-   * Any new coins created during the construction of the transaction. Only defined
-   * if the transaction being submitted is a call or deploy transaction.
-   */
-  readonly newCoins?: ShieldedCoinInfo[];
   /**
    * A circuit identifier to use to fetch the ZK artifacts needed to prove the
    * transaction. Only defined if a call transaction is being submitted.
@@ -104,7 +98,7 @@ async function submitTxCore<C extends Contract.Any, ICK extends Contract.ImpureC
   options: SubmitTxOptions<ICK>
 ): Promise<string> {
   const provenTx = await providers.proofProvider.proveTx(options.unprovenTx);
-  const toSubmit = await providers.walletProvider.balanceTx(provenTx, options.newCoins);
+  const toSubmit = await providers.walletProvider.balanceTx(provenTx);
   if (__DEBUG__) {
     logTransaction(options.circuitId, toSubmit);
   }

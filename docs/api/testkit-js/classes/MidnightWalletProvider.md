@@ -50,7 +50,7 @@ Handles transaction balancing, submission, and wallet state management.
 
 ### balanceTx()
 
-> **balanceTx**(`tx`, `_newCoins`, `ttl`): `Promise`\<`FinalizedTransaction`\>
+> **balanceTx**(`tx`, `ttl`): `Promise`\<`FinalizedTransaction`\>
 
 Balances a transaction
 
@@ -61,10 +61,6 @@ Balances a transaction
 `UnboundTransaction`
 
 The transaction to balance.
-
-##### \_newCoins
-
-`ShieldedCoinInfo`[]
 
 ##### ttl
 

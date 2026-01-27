@@ -113,7 +113,6 @@ describe('submit-call-tx', () => {
     );
     expect(submitTx).toHaveBeenCalledWith(mockProviders, {
       unprovenTx: mockUnprovenCallTxData.private.unprovenTx,
-      newCoins: mockUnprovenCallTxData.private.newCoins,
       circuitId: 'testCircuit'
     });
     expect(result).toEqual({
@@ -376,7 +375,6 @@ describe('submit-call-tx', () => {
 
         expect(submitTx).toHaveBeenCalledWith(mockProviders, {
           unprovenTx: mockUnprovenCallTxData.private.unprovenTx,
-          newCoins: [],
           circuitId: 'testCircuit'
         });
         expect(result).toEqual({
@@ -434,7 +432,6 @@ describe('submit-call-tx', () => {
         expect(createUnprovenCallTx).toHaveBeenCalledWith(mockProviders, options);
         expect(submitTxAsync).toHaveBeenCalledWith(mockProviders, {
           unprovenTx: mockUnprovenCallTxData.private.unprovenTx,
-          newCoins: mockUnprovenCallTxData.private.newCoins,
           circuitId: 'testCircuit'
         });
         expect(result).toEqual({
@@ -546,7 +543,6 @@ describe('submit-call-tx', () => {
 
         expect(submitTxAsync).toHaveBeenCalledWith(mockProviders, {
           unprovenTx: mockUnprovenCallTxData.private.unprovenTx,
-          newCoins: [],
           circuitId: 'testCircuit'
         });
         expect(result.txId).toBe(mockTxId);

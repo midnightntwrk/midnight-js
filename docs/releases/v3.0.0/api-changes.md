@@ -57,7 +57,7 @@ interface MidnightProvider {
 **v2.1.0:**
 ```typescript
 interface WalletProvider {
-  balanceTx(tx: UnprovenTransaction): Promise<...>;
+  balanceTx(tx: UnprovenTransaction): Promise<BalancedProvingRecipe>;
 }
 ```
 
@@ -66,7 +66,6 @@ interface WalletProvider {
 interface WalletProvider {
   balanceTx(
     tx: UnboundTransaction,
-    newCoins?: ShieldedCoinInfo[],
     ttl?: Date
   ): Promise<FinalizedTransaction>;
 }
@@ -75,7 +74,7 @@ interface WalletProvider {
 **Breaking:**
 - Input type changed from `UnprovenTransaction` to `UnboundTransaction`
 - Return type changed to `FinalizedTransaction`
-- Added optional parameters: `newCoins` and `ttl`
+- Added optional `ttl` parameter
 - Wallet now handles proving internally
 
 #### Contract Call Signatures
@@ -287,8 +286,8 @@ interface CircuitContext {
   }
 
   interface WalletProvider {
--   balanceTx(tx: UnprovenTransaction): Promise<...>;
-+   balanceTx(tx: UnboundTransaction, newCoins?: ShieldedCoinInfo[], ttl?: Date): Promise<FinalizedTransaction>;
+-   balanceTx(tx: UnprovenTransaction): Promise<BalancedProvingRecipe>;
++   balanceTx(tx: UnboundTransaction, ttl?: Date): Promise<FinalizedTransaction>;
   }
 
 + type UnboundTransaction = Transaction<SignatureEnabled, Proof, PreBinding>;

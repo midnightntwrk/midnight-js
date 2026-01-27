@@ -17,7 +17,6 @@ import {
   type CoinPublicKey,
   type EncPublicKey,
   type FinalizedTransaction,
-  type ShieldedCoinInfo,
 } from '@midnight-ntwrk/ledger-v7';
 
 import { type UnboundTransaction } from './proof-provider';
@@ -31,10 +30,9 @@ export interface WalletProvider {
   /**
    * Balances a transaction
    * @param tx The transaction to balance.
-   * @param newCoins
    * @param ttl
    */
-  balanceTx(tx: UnboundTransaction, newCoins?: ShieldedCoinInfo[], ttl?: Date): Promise<FinalizedTransaction>;
+  balanceTx(tx: UnboundTransaction, ttl?: Date): Promise<FinalizedTransaction>;
 
   getCoinPublicKey(): CoinPublicKey;
 
