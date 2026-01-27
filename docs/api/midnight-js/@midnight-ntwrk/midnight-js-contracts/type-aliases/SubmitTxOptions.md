@@ -32,15 +32,6 @@ context), this may be an array of circuit IDs.
 
 ***
 
-### newCoins?
-
-> `readonly` `optional` **newCoins**: `ShieldedCoinInfo`[]
-
-Any new coins created during the construction of the transaction. Only defined
-if the transaction being submitted is a call or deploy transaction.
-
-***
-
 ### unprovenTx
 
 > `readonly` **unprovenTx**: `UnprovenTransaction`
