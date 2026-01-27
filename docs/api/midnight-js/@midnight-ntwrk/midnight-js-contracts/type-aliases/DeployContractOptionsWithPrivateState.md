@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.15**](../../../README.md)
 
 ***
 
@@ -15,7 +15,7 @@ only used if the contract being deployed has a private state.
 
 ### initialPrivateState
 
-> `readonly` **initialPrivateState**: `PrivateState`\<`C`\>
+> `readonly` **initialPrivateState**: `Contract.PrivateState`\<`C`\>
 
 The private state to run the circuit against.
 
@@ -29,4 +29,4 @@ An identifier for the private state of the contract being found.
 
 ### C
 
-`C` *extends* `Contract`
+`C` *extends* `Contract.Any`

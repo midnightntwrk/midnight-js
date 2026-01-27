@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.15**](../../README.md)
 
 ***
 
@@ -87,8 +87,6 @@
 
 ## Functions
 
-- [call](functions/call.md)
-- [callContractConstructor](functions/callContractConstructor.md)
 - [createCallTxOptions](functions/createCallTxOptions.md)
 - [createCircuitCallTxInterface](functions/createCircuitCallTxInterface.md)
 - [createCircuitMaintenanceTxInterface](functions/createCircuitMaintenanceTxInterface.md)

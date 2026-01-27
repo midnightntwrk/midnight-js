@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.15**](../../../README.md)
 
 ***
 
@@ -16,4 +16,4 @@ only used when creating a call transaction for a contract with a private state.
 
 ### C
 
-`C` *extends* `Contract`
+`C` *extends* `Contract.Any`

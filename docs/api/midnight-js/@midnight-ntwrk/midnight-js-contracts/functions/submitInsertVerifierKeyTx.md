@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.15**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Function: submitInsertVerifierKeyTx()
 
-> **submitInsertVerifierKeyTx**(`providers`, `contractAddress`, `circuitId`, `newVk`): `Promise`\<`FinalizedTxData`\>
+> **submitInsertVerifierKeyTx**\<`C`\>(`providers`, `compiledContract`, `contractAddress`, `circuitId`, `newVk`): `Promise`\<`FinalizedTxData`\>
 
 Constructs and submits a transaction that adds a new verifier key to the
 blockchain for the given circuit ID at the given contract address.
@@ -31,6 +31,12 @@ Midnight transactions execute in two phases:
 - Verifier key may be partially added but not usable
 - Transaction appears in blockchain history as partial success
 
+## Type Parameters
+
+### C
+
+`C` *extends* `Any`
+
 ## Parameters
 
 ### providers
@@ -38,6 +44,13 @@ Midnight transactions execute in two phases:
 [`ContractProviders`](../type-aliases/ContractProviders.md)
 
 The providers to use to manage the transaction lifecycle.
+
+### compiledContract
+
+`CompiledContract`\<`C`, `any`\>
+
+The compiled contract for which the maintenance authority
+                        should be updated.
 
 ### contractAddress
 
@@ -48,7 +61,7 @@ The address of the contract containing the circuit for which
 
 ### circuitId
 
-`string`
+`ImpureCircuitId`\<`C`\>
 
 The circuit for which the verifier key should be inserted.
 

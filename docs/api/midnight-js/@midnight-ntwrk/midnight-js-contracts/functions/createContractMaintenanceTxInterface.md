@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.15**](../../../README.md)
 
 ***
 
@@ -6,9 +6,15 @@
 
 # Function: createContractMaintenanceTxInterface()
 
-> **createContractMaintenanceTxInterface**(`providers`, `contractAddress`): [`ContractMaintenanceTxInterface`](../interfaces/ContractMaintenanceTxInterface.md)
+> **createContractMaintenanceTxInterface**\<`C`\>(`providers`, `compiledContract`, `contractAddress`): [`ContractMaintenanceTxInterface`](../interfaces/ContractMaintenanceTxInterface.md)
 
 Creates a [ContractMaintenanceTxInterface](../interfaces/ContractMaintenanceTxInterface.md).
+
+## Type Parameters
+
+### C
+
+`C` *extends* `Any`
 
 ## Parameters
 
@@ -17,6 +23,10 @@ Creates a [ContractMaintenanceTxInterface](../interfaces/ContractMaintenanceTxIn
 [`ContractProviders`](../type-aliases/ContractProviders.md)
 
 The providers to use to build transactions.
+
+### compiledContract
+
+`CompiledContract`\<`C`, `any`\>
 
 ### contractAddress
 

@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v3.0.0-alpha.14**](../README.md)
+[**@midnight-ntwrk/testkit-js v3.0.0-alpha.15**](../README.md)
 
 ***
 
@@ -16,11 +16,11 @@
 
 ### buildWithoutStarting()
 
-> **buildWithoutStarting**(): `Promise`\<\{ `seeds`: [`WalletSeeds`](WalletSeeds.md); `wallet`: `WalletFacade`; \}\>
+> **buildWithoutStarting**(): `Promise`\<\{ `keystore`: `UnshieldedKeystore`; `seeds`: [`WalletSeeds`](WalletSeeds.md); `wallet`: `WalletFacade`; \}\>
 
 #### Returns
 
-`Promise`\<\{ `seeds`: [`WalletSeeds`](WalletSeeds.md); `wallet`: `WalletFacade`; \}\>
+`Promise`\<\{ `keystore`: `UnshieldedKeystore`; `seeds`: [`WalletSeeds`](WalletSeeds.md); `wallet`: `WalletFacade`; \}\>
 
 ***
 

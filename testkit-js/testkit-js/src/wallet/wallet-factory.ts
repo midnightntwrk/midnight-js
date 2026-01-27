@@ -14,17 +14,15 @@
  */
 
 import { DustSecretKey, LedgerParameters, ZswapSecretKeys } from '@midnight-ntwrk/ledger-v7';
-import { type NetworkId } from '@midnight-ntwrk/wallet-sdk-abstractions';
 import { DustWallet } from '@midnight-ntwrk/wallet-sdk-dust-wallet';
 import { WalletFacade } from '@midnight-ntwrk/wallet-sdk-facade';
 import { ShieldedWallet } from '@midnight-ntwrk/wallet-sdk-shielded';
 import { type DefaultV1Configuration } from '@midnight-ntwrk/wallet-sdk-shielded/v1';
 import {
-  createKeystore,
   InMemoryTransactionHistoryStorage,
   PublicKey,
-  UnshieldedWallet
-} from '@midnight-ntwrk/wallet-sdk-unshielded-wallet';
+  type UnshieldedKeystore,
+  UnshieldedWallet} from '@midnight-ntwrk/wallet-sdk-unshielded-wallet';
 
 import { logger } from '@/logger';
 
@@ -48,14 +46,12 @@ export class WalletFactory {
 
   static createUnshieldedWallet(
     config: DefaultV1Configuration,
-    seed: Uint8Array,
-    networkId: NetworkId.NetworkId
+    unshieldedKeystore: UnshieldedKeystore,
   ): UnshieldedWallet {
-    const keystore = createKeystore(seed, networkId);
     return UnshieldedWallet({
       ...config,
       txHistoryStorage: new InMemoryTransactionHistoryStorage(),
-    }).startWithPublicKey(PublicKey.fromKeyStore(keystore));
+    }).startWithPublicKey(PublicKey.fromKeyStore(unshieldedKeystore));
   }
 
   static createDustWallet(

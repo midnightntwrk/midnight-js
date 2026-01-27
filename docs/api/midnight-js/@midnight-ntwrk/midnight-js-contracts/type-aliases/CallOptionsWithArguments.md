@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.15**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Type Alias: CallOptionsWithArguments\<C, ICK\>
 
-> **CallOptionsWithArguments**\<`C`, `ICK`\> = `CircuitParameters`\<`C`, `ICK`\> *extends* \[\] ? [`CallOptionsBase`](CallOptionsBase.md)\<`C`, `ICK`\> : [`CallOptionsBase`](CallOptionsBase.md)\<`C`, `ICK`\> & `object`
+> **CallOptionsWithArguments**\<`C`, `ICK`\> = `Contract.CircuitParameters`\<`C`, `ICK`\> *extends* \[\] ? [`CallOptionsBase`](CallOptionsBase.md)\<`C`, `ICK`\> : [`CallOptionsBase`](CallOptionsBase.md)\<`C`, `ICK`\> & `object`
 
 Conditional type that optionally adds the inferred circuit argument types to
 the options for a circuit call.
@@ -15,8 +15,8 @@ the options for a circuit call.
 
 ### C
 
-`C` *extends* `Contract`
+`C` *extends* `Contract.Any`
 
 ### ICK
 
-`ICK` *extends* `ImpureCircuitId`\<`C`\>
+`ICK` *extends* `Contract.ImpureCircuitId`\<`C`\>

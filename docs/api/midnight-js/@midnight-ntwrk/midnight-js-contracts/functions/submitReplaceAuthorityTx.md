@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.15**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Function: submitReplaceAuthorityTx()
 
-> **submitReplaceAuthorityTx**(`providers`, `contractAddress`): (`newAuthority`) => `Promise`\<`FinalizedTxData`\>
+> **submitReplaceAuthorityTx**\<`C`\>(`providers`, `compiledContract`, `contractAddress`): (`newAuthority`) => `Promise`\<`FinalizedTxData`\>
 
 Constructs and submits a transaction that replaces the maintenance
 authority stored on the blockchain for this contract. After the transaction is
@@ -34,6 +34,12 @@ Midnight transactions execute in two phases:
 - Contract authority on-chain may be partially updated but inconsistent
 - Transaction appears in blockchain history as partial success
 
+## Type Parameters
+
+### C
+
+`C` *extends* `Any`
+
 ## Parameters
 
 ### providers
@@ -41,6 +47,13 @@ Midnight transactions execute in two phases:
 [`ContractProviders`](../type-aliases/ContractProviders.md)
 
 The providers to use to manage the transaction lifecycle.
+
+### compiledContract
+
+`CompiledContract`\<`C`, `any`\>
+
+The compiled contract for which the maintenance authority
+                        should be updated.
 
 ### contractAddress
 

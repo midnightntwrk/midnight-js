@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.15**](../../../README.md)
 
 ***
 
@@ -14,12 +14,12 @@ Describes the target of a circuit invocation.
 
 ### C
 
-`C` *extends* `Contract`
+`C` *extends* `Contract.Any`
 
 ## Properties
 
-### contract
+### compiledContract
 
-> `readonly` **contract**: `C`
+> `readonly` **compiledContract**: `CompiledContract.CompiledContract`\<`C`, `any`\>
 
-The contract defining the circuit to call.
+The compiled contract defining the circuit to call.

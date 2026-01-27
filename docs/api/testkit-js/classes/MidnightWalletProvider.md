@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v3.0.0-alpha.14**](../README.md)
+[**@midnight-ntwrk/testkit-js v3.0.0-alpha.15**](../README.md)
 
 ***
 
@@ -27,6 +27,12 @@ Handles transaction balancing, submission, and wallet state management.
 ### logger
 
 > **logger**: `Logger`
+
+***
+
+### unshieldedKeystore
+
+> `readonly` **unshieldedKeystore**: `UnshieldedKeystore`
 
 ***
 
@@ -184,7 +190,7 @@ The transaction identifier of the submitted transaction.
 
 ### withWallet()
 
-> `static` **withWallet**(`logger`, `env`, `wallet`, `zswapSecretKeys`, `dustSecretKey`): `Promise`\<`MidnightWalletProvider`\>
+> `static` **withWallet**(`logger`, `env`, `wallet`, `zswapSecretKeys`, `dustSecretKey`, `unshieldedKeystore`): `Promise`\<`MidnightWalletProvider`\>
 
 #### Parameters
 
@@ -207,6 +213,10 @@ The transaction identifier of the submitted transaction.
 ##### dustSecretKey
 
 `DustSecretKey`
+
+##### unshieldedKeystore
+
+`UnshieldedKeystore`
 
 #### Returns
 

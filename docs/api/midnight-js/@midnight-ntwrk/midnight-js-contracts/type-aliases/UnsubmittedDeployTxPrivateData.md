@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0-alpha.15**](../../../README.md)
 
 ***
 
@@ -14,13 +14,13 @@ Base type for private data relevant to an unsubmitted deployment transaction.
 
 ### C
 
-`C` *extends* `Contract`
+`C` *extends* `Contract.Any`
 
 ## Properties
 
 ### initialPrivateState
 
-> `readonly` **initialPrivateState**: `PrivateState`\<`C`\>
+> `readonly` **initialPrivateState**: `Contract.PrivateState`\<`C`\>
 
 The initial private state of the contract deployed to the blockchain. This
 value is persisted if the transaction succeeds.
