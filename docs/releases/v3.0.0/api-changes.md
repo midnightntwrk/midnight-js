@@ -71,13 +71,11 @@ interface WalletProvider {
 }
 ```
 
-**Note:** `BalancedProvingRecipe` is a union type:
-```typescript
-type BalancedProvingRecipe = 
-  | TransactionToProve
-  | BalanceTransactionToProve<UnprovenTransaction | FinalizedTransaction>
-  | NothingToProve<UnprovenTransaction | FinalizedTransaction>;
-```
+**Breaking:**
+- Input type changed from `UnprovenTransaction` to `UnboundTransaction`
+- Return type changed to `FinalizedTransaction`
+- Added optional `ttl` parameter
+- Wallet now handles proving internally
 
 #### Contract Call Signatures
 
@@ -107,35 +105,18 @@ interface Contract<T> {
 
 ### Added Exports
 
-#### ProvingRecipe Types
+#### UnboundTransaction
 
 ```typescript
-export const TRANSACTION_TO_PROVE = 'TransactionToProve';
-export const BALANCE_TRANSACTION_TO_PROVE = 'BalanceTransactionToProve';
-export const NOTHING_TO_PROVE = 'NothingToProve';
+export type UnboundTransaction = Transaction<SignatureEnabled, Proof, PreBinding>;
+```
 
-export type TransactionToProve = {
-  readonly type: typeof TRANSACTION_TO_PROVE;
-  readonly transaction: UnprovenTransaction;
-};
+#### KeyMaterialProvider (#430)
 
-export type BalanceTransactionToProve<TTransaction> = {
-  readonly type: typeof BALANCE_TRANSACTION_TO_PROVE;
-  readonly transactionToProve: UnprovenTransaction;
-  readonly transactionToBalance: TTransaction;
-};
-
-export type NothingToProve<TTransaction> = {
-  readonly type: typeof NOTHING_TO_PROVE;
-  readonly transaction: TTransaction;
-};
-
-export type ProvingRecipe<TTransaction> =
-  | TransactionToProve
-  | BalanceTransactionToProve<TTransaction>
-  | NothingToProve<TTransaction>;
-
-export type BalancedProvingRecipe = ProvingRecipe<UnprovenTransaction | FinalizedTransaction>;
+```typescript
+interface ZkConfigProvider {
+  asKeyMaterialProvider(): KeyMaterialProvider;
+}
 ```
 
 #### PrivateStoragePasswordProvider
@@ -245,10 +226,9 @@ interface CircuitContext {
 // package.json
 {
   "dependencies": {
-    "@midnight-ntwrk/compact-runtime": "0.11.0-rc.1",
-    "@midnight-ntwrk/ledger-v6": "6.1.0-alpha.6",
-    "@midnight-ntwrk/onchain-runtime-v1": "1.0.0-alpha.5",
-    "@midnight-ntwrk/wallet-sdk-facade": "1.0.0-beta.12"
+    "@midnight-ntwrk/ledger-v7": "^7.x.x",  // upgraded from ledger-v6
+    "@midnight-ntwrk/wallet-sdk-facade": "1.0.0-beta.16",
+    "@midnight-ntwrk/compact-runtime": "^0.x.x"  // updated for Compact.js
   }
 }
 ```
@@ -262,7 +242,7 @@ interface CircuitContext {
 | Type | Change | Impact |
 |------|--------|--------|
 | `MidnightProvider.submitTx` | Return type `Promise<TransactionId>` | Must await |
-| `WalletProvider.balanceTx` | Returns `BalancedProvingRecipe` (union) | Type guard needed |
+| `WalletProvider.balanceTx` | Returns `FinalizedTransaction` (simplified) | Remove type guards |
 | `Contract.call.*` | All return `Promise` | Must await |
 | `LevelPrivateStateProvider` | Config required | Add auth config |
 | `networkId` | Enum → String (#125) | Use string literals |
@@ -271,11 +251,8 @@ interface CircuitContext {
 
 | Type | Package | Purpose |
 |------|---------|---------|
-| `TransactionToProve` | types | Transaction needs proving |
-| `BalanceTransactionToProve` | types | Transaction needs balancing |
-| `NothingToProve` | types | Transaction ready to submit |
-| `ProvingRecipe` | types | Union of above three |
-| `BalancedProvingRecipe` | types | Result from balanceTx |
+| `UnboundTransaction` | types | Input for balanceTx |
+| `KeyMaterialProvider` | types | DApp connector compatibility |
 | `PrivateStoragePasswordProvider` | types | Storage encryption |
 
 ### Removed Types
@@ -313,21 +290,11 @@ interface CircuitContext {
 +   balanceTx(tx: UnboundTransaction, ttl?: Date): Promise<FinalizedTransaction>;
   }
 
-+ type TransactionToProve = {
-+   readonly type: 'TransactionToProve';
-+   readonly transaction: UnprovenTransaction;
-+ };
++ type UnboundTransaction = Transaction<SignatureEnabled, Proof, PreBinding>;
 
-+ type BalanceTransactionToProve<TTransaction> = {
-+   readonly type: 'BalanceTransactionToProve';
-+   readonly transactionToProve: UnprovenTransaction;
-+   readonly transactionToBalance: TTransaction;
-+ };
-
-+ type NothingToProve<TTransaction> = {
-+   readonly type: 'NothingToProve';
-+   readonly transaction: TTransaction;
-+ };
++ interface ZkConfigProvider {
++   asKeyMaterialProvider(): KeyMaterialProvider;
++ }
 
 - enum NetworkId {
 -   Mainnet = 'mainnet',
