@@ -42,7 +42,7 @@ export const defaultContainersConfiguration: ContainersConfiguration = {
       node: {
         name: 'node',
         port: 9944,
-        waitStrategy: Wait.forListeningPorts()
+        waitStrategy: Wait.forLogMessage('BEEFY pallet available')
       },
       indexer: {
         name: 'indexer',

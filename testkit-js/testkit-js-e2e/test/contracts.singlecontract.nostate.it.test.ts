@@ -118,8 +118,10 @@ describe('Contracts API', () => {
     await testEnvironment.shutdown();
   });
 
-  beforeEach(() => {
+  beforeEach( async () => {
     logger.info(`Running test=${expect.getState().currentTestName}`);
+    // delay to avoid rate limiting issues
+    // await new Promise((resolve) => setTimeout(resolve, 1_000));
   });
 
   // /**
@@ -231,7 +233,7 @@ describe('Contracts API', () => {
         initialContractState: unprovenDeployTxResult.public.initialContractState,
         initialZswapChainState: new ZswapChainState()
       },
-      providers.walletProvider.zswapSecretKeys.encryptionPublicKey
+      providers.walletProvider.getEncryptionPublicKey()
     );
     expectSimpleContractCallTxData(coinPublicKey, 1n, unprovenCallTxData0);
 

@@ -1,4 +1,5 @@
-import { beforeAll, vi } from 'vitest';
+import { setTimeout } from 'node:timers/promises';
+import { beforeAll, beforeEach, vi } from 'vitest';
 import {
   createLogger,
   deleteDirectory,
@@ -29,6 +30,10 @@ beforeAll(async () => {
   );
   setContainersConfiguration(testKitContainersConfiguration);
   await deleteDirectory('../midnight-level-db');
+});
+
+beforeEach(async () => {
+  await setTimeout(1000);
 });
 
 const MINUTE = 60 * 1000;
