@@ -13,7 +13,7 @@ transaction balancing and finalization, and provides access to cryptographic sec
 
 ### balanceTx()
 
-> **balanceTx**(`tx`, `newCoins?`, `ttl?`): `Promise`\<`FinalizedTransaction`\>
+> **balanceTx**(`tx`, `ttl?`): `Promise`\<`FinalizedTransaction`\>
 
 Balances a transaction
 
@@ -24,10 +24,6 @@ Balances a transaction
 [`UnboundTransaction`](../type-aliases/UnboundTransaction.md)
 
 The transaction to balance.
-
-##### newCoins?
-
-`ShieldedCoinInfo`[]
 
 ##### ttl?
 

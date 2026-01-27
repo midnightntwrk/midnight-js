@@ -86,8 +86,7 @@ export async function submitDeployTx<C extends Contract.Any>(
 ): Promise<FinalizedDeployTxData<C>> {
   const unprovenDeployTxData = await createUnprovenDeployTx(providers, options);
   const finalizedTxData = await submitTx(providers, {
-    unprovenTx: unprovenDeployTxData.private.unprovenTx,
-    newCoins: unprovenDeployTxData.private.newCoins
+    unprovenTx: unprovenDeployTxData.private.unprovenTx
   });
   if (finalizedTxData.status !== SucceedEntirely) {
     throw new DeployTxFailedError(finalizedTxData);

@@ -65,10 +65,9 @@ interface WalletProvider {
 ```typescript
 interface WalletProvider {
   balanceTx(
-    tx: UnprovenTransaction, 
-    newCoins?: ShieldedCoinInfo[], 
+    tx: UnboundTransaction,
     ttl?: Date
-  ): Promise<BalancedProvingRecipe>;
+  ): Promise<FinalizedTransaction>;
 }
 ```
 
@@ -311,7 +310,7 @@ interface CircuitContext {
 
   interface WalletProvider {
 -   balanceTx(tx: UnprovenTransaction): Promise<BalancedProvingRecipe>;
-+   balanceTx(tx: UnprovenTransaction, newCoins?: ShieldedCoinInfo[], ttl?: Date): Promise<BalancedProvingRecipe>;
++   balanceTx(tx: UnboundTransaction, ttl?: Date): Promise<FinalizedTransaction>;
   }
 
 + type TransactionToProve = {
