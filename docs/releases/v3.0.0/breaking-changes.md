@@ -42,41 +42,30 @@ const provider = new LevelPrivateStateProvider({
 
 ---
 
-## 2. WalletProvider.balanceTx Return Type (#346)
+## 2. WalletProvider.balanceTx Signature Change
 
 ### Reason
-Support for new proving recipe types with better transaction handling.
+Simplified API - wallet now handles proving internally.
 
 ### Impact
-Return type is now `BalancedProvingRecipe` (union of three types).
+- Input type changed from `UnprovenTransaction` to `UnboundTransaction`
+- Return type changed to `FinalizedTransaction`
+- Added optional parameters: `newCoins` and `ttl`
 
 ### Before
 ```typescript
-const recipe: BalancedProvingRecipe<MyState> = 
-  await walletProvider.balanceTx(provingRecipe);
+const result = await walletProvider.balanceTx(unprovenTx);
 ```
 
 ### After
 ```typescript
-const recipe = await walletProvider.balanceTx(unprovenTx);
-
-// Check the recipe type
-if (recipe.type === 'TransactionToProve') {
-  // Needs proving
-  const provenTx = await prover.prove(recipe.transaction);
-} else if (recipe.type === 'BalanceTransactionToProve') {
-  // Needs balancing and proving
-  const provenTx = await prover.prove(recipe.transactionToProve);
-} else {
-  // NothingToProve - ready to submit
-  await provider.submitTx(recipe.transaction);
-}
+const finalizedTx = await walletProvider.balanceTx(unboundTx, newCoins, ttl);
+await midnightProvider.submitTx(finalizedTx);
 ```
 
 ### Migration Steps
-1. Update all `balanceTx` call sites
-2. Add type discrimination logic
-3. Handle all three recipe types appropriately
+1. Update all `balanceTx` call sites to use `UnboundTransaction` input
+2. Handle `FinalizedTransaction` return type directly
 
 ---
 
