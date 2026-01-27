@@ -2206,6 +2206,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@midnight-ntwrk/ledger-v7@npm:7.0.0":
+  version: 7.0.0
+  resolution: "@midnight-ntwrk/ledger-v7@npm:7.0.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fledger-v7%2F7.0.0%2F466eab1ed18f3272b511e5ee66a2e8431c4b41be"
+  checksum: 10/cd04c6cdfb2e15192c10c3beb4a3b65f5c6419eedb0f52f65d67cb50ae6ecb492a1fa96e76479f2db2796d89512d4290cf26de4424e47378c90c743529ddb82a
+  languageName: node
+  linkType: hard
+
 "@midnight-ntwrk/ledger-v7@npm:7.0.0-rc.1":
   version: 7.0.0-rc.1
   resolution: "@midnight-ntwrk/ledger-v7@npm:7.0.0-rc.1::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fledger-v7%2F7.0.0-rc.1%2Fdf696c4478e5f8346db0054af22d6dde35f58a85"
@@ -2358,8 +2365,8 @@ __metadata:
     "@effect/build-utils": "npm:^0.8.9"
     "@eslint/js": "npm:^9.30.1"
     "@midnight-ntwrk/compact-runtime": "npm:0.14.0-rc.0"
-    "@midnight-ntwrk/ledger-v7": "npm:7.0.0-rc.1"
-    "@midnight-ntwrk/onchain-runtime-v2": "npm:2.0.0-rc.1"
+    "@midnight-ntwrk/ledger-v7": "npm:7.0.0"
+    "@midnight-ntwrk/onchain-runtime-v2": "npm:2.0.0"
     "@midnight-ntwrk/wallet-sdk-facade": "npm:1.0.0-beta.16"
     "@rollup/plugin-commonjs": "npm:^28.0.9"
     "@rollup/plugin-node-resolve": "npm:^16.0.3"
@@ -2403,7 +2410,14 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@midnight-ntwrk/onchain-runtime-v2@npm:2.0.0-rc.1, @midnight-ntwrk/onchain-runtime-v2@npm:^2.0.0-alpha.1":
+"@midnight-ntwrk/onchain-runtime-v2@npm:2.0.0":
+  version: 2.0.0
+  resolution: "@midnight-ntwrk/onchain-runtime-v2@npm:2.0.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fonchain-runtime-v2%2F2.0.0%2F52b1b4c48af577d31a5ba21947d00b4832aeb5cf"
+  checksum: 10/71b2b5e2270ce36fbdb63c0bd531f09f2de9151b286b6c7389966279750080b300893aef973621e438a934f9274277181cdf9bdc1350abc0e244fa892a145b19
+  languageName: node
+  linkType: hard
+
+"@midnight-ntwrk/onchain-runtime-v2@npm:^2.0.0-alpha.1":
   version: 2.0.0-rc.1
   resolution: "@midnight-ntwrk/onchain-runtime-v2@npm:2.0.0-rc.1::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fonchain-runtime-v2%2F2.0.0-rc.1%2F1647426c0ad452b87d03657a27609d671cd731de"
   checksum: 10/88b7bf4fa34411776bdc24355f3e6717912cf800900cad6b4cbe082090c4e4bba1e16a984ebb9a6d103a103ade0c311da8036e060349f33dc7e8dff56672f0f1
@@ -2456,7 +2470,7 @@ __metadata:
   resolution: "@midnight-ntwrk/testkit-js@workspace:testkit-js/testkit-js"
   dependencies:
     "@midnight-ntwrk/compact-js": "npm:2.4.0-rc.10"
-    "@midnight-ntwrk/ledger-v7": "npm:7.0.0-rc.1"
+    "@midnight-ntwrk/ledger-v7": "npm:7.0.0"
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*"
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*"
