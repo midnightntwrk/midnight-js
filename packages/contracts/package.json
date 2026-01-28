@@ -27,7 +27,7 @@
     "deploy": "yarn npm publish"
   },
   "dependencies": {
-    "@midnight-ntwrk/compact-js": "2.4.0-rc.10",
+    "@midnight-ntwrk/compact-js": "2.4.0",
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
