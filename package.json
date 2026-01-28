@@ -39,10 +39,10 @@
   },
   "license": "Apache-2.0",
   "dependencies": {
-    "@midnight-ntwrk/compact-runtime": "0.14.0-rc.0",
+    "@midnight-ntwrk/compact-runtime": "0.14.0",
     "@midnight-ntwrk/ledger-v7": "7.0.0",
     "@midnight-ntwrk/onchain-runtime-v2": "2.0.0",
-    "@midnight-ntwrk/wallet-sdk-facade": "1.0.0-beta.16"
+    "@midnight-ntwrk/wallet-sdk-facade": "1.0.0-beta.17"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.0.0",
@@ -98,5 +98,9 @@
       "path": "cz-conventional-changelog"
     }
   },
-  "stableVersion": "3.0.0"
+  "stableVersion": "3.0.0",
+  "resolutions": {
+    "@midnight-ntwrk/ledger-v7": "7.0.0",
+    "@midnight-ntwrk/onchain-runtime-v2": "2.0.0"
+  }
 }
