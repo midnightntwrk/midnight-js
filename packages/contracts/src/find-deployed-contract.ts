@@ -255,6 +255,7 @@ export async function findDeployedContract<C extends Contract.Any>(
 ): Promise<FoundContract<C>> {
   const { compiledContract, contractAddress } = options;
   assertIsContractAddress(contractAddress);
+  providers.privateStateProvider.setContractAddress(contractAddress);
 
   const finalizedTxData = await providers.publicDataProvider.watchForDeployTxData(contractAddress);
 
