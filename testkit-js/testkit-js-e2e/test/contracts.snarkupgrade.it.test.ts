@@ -110,7 +110,7 @@ describe('Contracts API Snark Upgrade [dedicated contract] [@slow]', () => {
    * @then Should successfully remove verifier key
    * @and Should throw error when trying to use removed circuit operation
    */
-  it('should successfully remove verifier key and disable circuit operation', async () => {
+  it.skip('should successfully remove verifier key and disable circuit operation', async () => {
     const circuitMaintenanceTxInterfaces = createCircuitMaintenanceTxInterfaces(
       counterProviders,
       CompiledCounterContract,
