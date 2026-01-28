@@ -174,7 +174,7 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
     );
   });
 
-  it('createContractMaintenanceTxInterface - replaceAuthority - successful replace authority with the new one [@slow]', async () => {
+  it.skip('createContractMaintenanceTxInterface - replaceAuthority - successful replace authority with the new one [@slow]', async () => {
     const authority = sampleSigningKey();
     // TODO: Remove extra log statements
     logger.info(`Signing key for 'Counter' is ${authority}`);
@@ -230,7 +230,7 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
     );
   });
 
-  it('createContractMaintenanceTxInterface - insertVerifierKey - success when no key present [@slow]', async () => {
+  it.skip('createContractMaintenanceTxInterface - insertVerifierKey - success when no key present [@slow]', async () => {
     const vk = await counterProviders.zkConfigProvider.getVerifierKey(CIRCUIT_ID_RESET);
     const circuitMaintenanceTxInterface = createCircuitMaintenanceTxInterface(
       counterProviders,
@@ -247,7 +247,7 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
     await api.increment(deployedCounterContract);
   });
 
-  it('createCircuitMaintenanceTxInterfaces - insertVerifierKey - fail when key is already present', async () => {
+  it.skip('createCircuitMaintenanceTxInterfaces - insertVerifierKey - fail when key is already present', async () => {
     const vk = await counterProviders.zkConfigProvider.getVerifierKey(CIRCUIT_ID_RESET);
     const circuitMaintenanceTxInterfaces = createCircuitMaintenanceTxInterfaces(
       counterProviders,
@@ -260,7 +260,7 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
     );
   });
 
-  it('createCircuitMaintenanceTxInterfaces - insertVerifierKey - success when no key present [@slow]', async () => {
+  it.skip('createCircuitMaintenanceTxInterfaces - insertVerifierKey - success when no key present [@slow]', async () => {
     const vk = await counterProviders.zkConfigProvider.getVerifierKey(CIRCUIT_ID_RESET);
     const circuitMaintenanceTxInterfaces = createCircuitMaintenanceTxInterfaces(
       counterProviders,

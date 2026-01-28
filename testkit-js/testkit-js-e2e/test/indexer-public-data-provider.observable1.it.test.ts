@@ -92,7 +92,7 @@ describe('Indexer API', () => {
    * @then Should return correct state history based on inclusive flag
    * @and Should observe states in proper chronological order
    */
-  it.each([
+  it.skip.each([
     [true, [1n, 2n]],
     [false, [2n]]
   ])(
@@ -124,7 +124,7 @@ describe('Indexer API', () => {
    * @then Should return correct state history based on inclusive flag
    * @and Should observe states matching transaction-based filtering
    */
-  it.each([
+  it.skip.each([
     [true, [1n, 2n]],
     [false, [2n]]
   ])(

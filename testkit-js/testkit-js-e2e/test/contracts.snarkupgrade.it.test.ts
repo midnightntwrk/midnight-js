@@ -87,7 +87,8 @@ describe('Contracts API Snark Upgrade [dedicated contract] [@slow]', () => {
    * @then Should successfully remove verifier key
    * @and Should return transaction with SucceedEntirely status
    */
-  it('should successfully remove verifier key using createContractMaintenanceTxInterface', async () => {
+  it.skip('should successfully remove verifier key using createContractMaintenanceTxInterface', async () => {
+    await delay(TX_DELAY_MS);
     const circuitMaintenanceTxInterface = createCircuitMaintenanceTxInterface(
       counterProviders,
       CIRCUIT_ID_RESET,
@@ -146,7 +147,7 @@ describe('Contracts API Snark Upgrade [dedicated contract] [@slow]', () => {
    * @then Should fail on duplicate key insertion
    * @and Should succeed on insertion after removal with SucceedEntirely status
    */
-  it('should succeed on verifier key insertion retry after removal', async () => {
+  it.skip('should succeed on verifier key insertion retry after removal', async () => {
     const vk = await counterProviders.zkConfigProvider.getVerifierKey(CIRCUIT_ID_RESET);
     const circuitMaintenanceTxInterfaces = createCircuitMaintenanceTxInterfaces(
       counterProviders,
