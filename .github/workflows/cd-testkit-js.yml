@@ -79,7 +79,11 @@ jobs:
           version=$(jq -r '.v_info.version' version.testkitjs.json)
           preRelease=$(jq -r '.v_info.preRelease' version.testkitjs.json)
           tag=$(jq -r '.v_info.tag' version.testkitjs.json)
-          target_version="$version$preRelease.$commit_height"
+          if [ -z "$preRelease" ]; then
+            target_version="$version"
+          else
+            target_version="$version$preRelease.$commit_height"
+          fi
 
           echo "target_version=${target_version}" >> "$GITHUB_OUTPUT"
           echo "tag=${tag}" >> "$GITHUB_OUTPUT"
