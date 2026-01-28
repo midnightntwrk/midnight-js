@@ -116,7 +116,7 @@ URL of the proof generation server
 
 ### walletNetworkId
 
-> `readonly` **walletNetworkId**: `NetworkId`
+> `readonly` **walletNetworkId**: `string`
 
 Wallet Network identifier
 
