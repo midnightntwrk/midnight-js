@@ -24,6 +24,7 @@ import { levelPrivateStateProvider } from '../index';
 
 describe('Level Private State Provider', (): void => {
   const TEST_PASSWORD = 'test-storage-password-for-unit-tests-only';
+  const TEST_CONTRACT_ADDRESS = 'test-contract-address' as ContractAddress;
   const testConfig = {
     privateStoragePasswordProvider: () => TEST_PASSWORD
   };
@@ -72,6 +73,7 @@ describe('Level Private State Provider', (): void => {
 
   test("'get' returns null if key does not exist", async () => {
     const db = levelPrivateStateProvider<PID, PS>(testConfig);
+    db.setContractAddress(TEST_CONTRACT_ADDRESS);
     const value = await db.get('stringValue');
     expect(value).toBeNull();
   });
@@ -84,6 +86,7 @@ describe('Level Private State Provider', (): void => {
 
   async function testSetGet<K extends PID>(key: K): Promise<void> {
     const stateRepo = levelPrivateStateProvider<PID, PS>(testConfig);
+    stateRepo.setContractAddress(TEST_CONTRACT_ADDRESS);
     await stateRepo.set(key, testStates[key]);
     const value = await stateRepo.get(key);
     expect(value).toEqual(testStates[key]);
@@ -92,6 +95,7 @@ describe('Level Private State Provider', (): void => {
   test("'get' functions do not interfere", async () => {
     await testSetGet('booleanArrayValue');
     const db = levelPrivateStateProvider<PID, PS>(testConfig);
+    db.setContractAddress(TEST_CONTRACT_ADDRESS);
     const value = await db.getSigningKey('booleanArrayValue');
     expect(value).toBeNull();
   });
@@ -149,6 +153,7 @@ describe('Level Private State Provider', (): void => {
   test("'set' functions do not interfere", async () => {
     await testSetGet('booleanArrayValue');
     const db = levelPrivateStateProvider<PID, PS>(testConfig);
+    db.setContractAddress(TEST_CONTRACT_ADDRESS);
     await db.setSigningKey('booleanArrayValue', sampleSigningKey());
     const value = await db.get('booleanValue');
     expect(value).toEqual(testStates.booleanValue);
@@ -157,6 +162,7 @@ describe('Level Private State Provider', (): void => {
   test("'remove' deletes private states", async () => {
     await testSetGet('stringValue');
     const db = levelPrivateStateProvider<PID, PS>(testConfig);
+    db.setContractAddress(TEST_CONTRACT_ADDRESS);
     await db.remove('stringValue');
     const value = await db.get('stringValue');
     expect(value).toBeNull();
@@ -174,6 +180,7 @@ describe('Level Private State Provider', (): void => {
     await testSetGet('stringValue');
     await testSetGetSigningKey('stringValue');
     const db = levelPrivateStateProvider<PID, PS>(testConfig);
+    db.setContractAddress(TEST_CONTRACT_ADDRESS);
     await db.removeSigningKey('stringValue');
     const value = await db.get('stringValue');
     expect(value).toEqual(testStates.stringValue);
@@ -183,6 +190,7 @@ describe('Level Private State Provider', (): void => {
     await testSetGet('stringValue');
     await testSetGet('objectValue');
     const db = levelPrivateStateProvider<PID, PS>(testConfig);
+    db.setContractAddress(TEST_CONTRACT_ADDRESS);
     await db.clear();
     const value0 = await db.get('stringValue');
     expect(value0).toBeNull();
@@ -207,6 +215,7 @@ describe('Level Private State Provider', (): void => {
     await testSetGetSigningKey('stringValue');
     await testSetGetSigningKey('objectValue');
     const db = levelPrivateStateProvider<PID, PS>(testConfig);
+    db.setContractAddress(TEST_CONTRACT_ADDRESS);
     await db.clearSigningKeys();
     const value0 = await db.get('stringValue');
     expect(value0).toEqual(testStates.stringValue);
@@ -214,11 +223,11 @@ describe('Level Private State Provider', (): void => {
     expect(value2).toEqual(testStates.objectValue);
   });
 
-  test("'get' throws error on non-'LEVEL_NOT_FOUND_ERROR' codes", () => {
-    expect.assertions(1);
-    return levelPrivateStateProvider<PID, PS>(testConfig)
-      .get(null as unknown as PID)
-      .catch((e) => expect(e.code).toMatch('LEVEL_INVALID_KEY'));
+  test("'get' returns null for non-existent scoped key", async () => {
+    const db = levelPrivateStateProvider<PID, PS>(testConfig);
+    db.setContractAddress(TEST_CONTRACT_ADDRESS);
+    const value = await db.get('nonExistentKey' as PID);
+    expect(value).toBeNull();
   });
 
   test("'getSigningKey' throws error on non-'LEVEL_NOT_FOUND_ERROR' codes", () => {
@@ -237,6 +246,7 @@ describe('Level Private State Provider', (): void => {
       };
 
       const db = levelPrivateStateProvider<PID, PS>({ walletProvider: mockWallet });
+      db.setContractAddress(TEST_CONTRACT_ADDRESS);
       await db.set('stringValue', testStates.stringValue);
       const value = await db.get('stringValue');
       expect(value).toEqual(testStates.stringValue);
@@ -261,6 +271,112 @@ describe('Level Private State Provider', (): void => {
           privateStoragePasswordProvider: () => TEST_PASSWORD
         });
       }).toThrow('Cannot provide both privateStoragePasswordProvider and walletProvider');
+    });
+  });
+
+  describe('Contract address scoping', () => {
+    const CONTRACT_ADDRESS_A = 'contract-address-a' as ContractAddress;
+    const CONTRACT_ADDRESS_B = 'contract-address-b' as ContractAddress;
+
+    test('throws error when get is called without setContractAddress', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      await expect(db.get('stringValue')).rejects.toThrow(
+        'Contract address not set. Call setContractAddress() before accessing private state.'
+      );
+    });
+
+    test('throws error when set is called without setContractAddress', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      await expect(db.set('stringValue', testStates.stringValue)).rejects.toThrow(
+        'Contract address not set. Call setContractAddress() before accessing private state.'
+      );
+    });
+
+    test('throws error when remove is called without setContractAddress', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      await expect(db.remove('stringValue')).rejects.toThrow(
+        'Contract address not set. Call setContractAddress() before accessing private state.'
+      );
+    });
+
+    test('throws error when clear is called without setContractAddress', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      await expect(db.clear()).rejects.toThrow(
+        'Contract address not set. Call setContractAddress() before accessing private state.'
+      );
+    });
+
+    test('allows operations after setContractAddress is called', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      db.setContractAddress(CONTRACT_ADDRESS_A);
+      await db.set('stringValue', testStates.stringValue);
+      const value = await db.get('stringValue');
+      expect(value).toEqual(testStates.stringValue);
+    });
+
+    test('provides namespace isolation between different contract addresses', async () => {
+      const dbA = levelPrivateStateProvider<PID, PS>(testConfig);
+      dbA.setContractAddress(CONTRACT_ADDRESS_A);
+      await dbA.set('stringValue', 'value-from-contract-a');
+
+      const dbB = levelPrivateStateProvider<PID, PS>(testConfig);
+      dbB.setContractAddress(CONTRACT_ADDRESS_B);
+      await dbB.set('stringValue', 'value-from-contract-b');
+
+      const valueA = await dbA.get('stringValue');
+      const valueB = await dbB.get('stringValue');
+
+      expect(valueA).toEqual('value-from-contract-a');
+      expect(valueB).toEqual('value-from-contract-b');
+    });
+
+    test('same stateId with different contract addresses are independent', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+      db.setContractAddress(CONTRACT_ADDRESS_A);
+      await db.set('numberValue', 100);
+
+      db.setContractAddress(CONTRACT_ADDRESS_B);
+      const valueBeforeSet = await db.get('numberValue');
+      expect(valueBeforeSet).toBeNull();
+
+      await db.set('numberValue', 200);
+
+      db.setContractAddress(CONTRACT_ADDRESS_A);
+      const valueA = await db.get('numberValue');
+      expect(valueA).toEqual(100);
+
+      db.setContractAddress(CONTRACT_ADDRESS_B);
+      const valueB = await db.get('numberValue');
+      expect(valueB).toEqual(200);
+    });
+
+    test('remove only affects the current contract address scope', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+      db.setContractAddress(CONTRACT_ADDRESS_A);
+      await db.set('booleanValue', true);
+
+      db.setContractAddress(CONTRACT_ADDRESS_B);
+      await db.set('booleanValue', false);
+
+      db.setContractAddress(CONTRACT_ADDRESS_A);
+      await db.remove('booleanValue');
+
+      const valueA = await db.get('booleanValue');
+      expect(valueA).toBeNull();
+
+      db.setContractAddress(CONTRACT_ADDRESS_B);
+      const valueB = await db.get('booleanValue');
+      expect(valueB).toEqual(false);
+    });
+
+    test('signing key operations do not require setContractAddress', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      const signingKey = sampleSigningKey();
+      await db.setSigningKey(CONTRACT_ADDRESS_A, signingKey);
+      const value = await db.getSigningKey(CONTRACT_ADDRESS_A);
+      expect(value).toEqual(signingKey);
     });
   });
 });

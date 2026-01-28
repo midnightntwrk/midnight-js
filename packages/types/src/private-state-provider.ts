@@ -30,6 +30,15 @@ export type PrivateStateId = string;
  */
 export interface PrivateStateProvider<PSI extends PrivateStateId = PrivateStateId, PS = any> {
   /**
+   * Set the contract address for scoping private state operations.
+   * Must be called before any get/set/remove operations on private states.
+   * This provides namespace isolation between different contracts.
+   *
+   * @param address The contract address to scope operations to.
+   */
+  setContractAddress(address: ContractAddress): void;
+
+  /**
    * Store the given private state at the given private state ID.
    *
    * @param privateStateId The private state identifier.
