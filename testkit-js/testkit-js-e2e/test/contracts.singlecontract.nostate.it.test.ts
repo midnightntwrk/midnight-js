@@ -231,7 +231,7 @@ describe('Contracts API', () => {
         initialContractState: unprovenDeployTxResult.public.initialContractState,
         initialZswapChainState: new ZswapChainState()
       },
-      providers.walletProvider.zswapSecretKeys.encryptionPublicKey
+      providers.walletProvider.getEncryptionPublicKey()
     );
     expectSimpleContractCallTxData(coinPublicKey, 1n, unprovenCallTxData0);
 

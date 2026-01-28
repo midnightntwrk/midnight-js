@@ -32,7 +32,7 @@ import {
 import path from 'path';
 
 import { VERY_SLOW_TEST_TIMEOUT } from '@/constants';
-import { type CounterPrivateState } from '@/contract';
+import { type CounterPrivateState } from '@/contract/witnesses';
 import * as api from '@/counter-api';
 import {
   CIRCUIT_ID_RESET,
