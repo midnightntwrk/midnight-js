@@ -112,6 +112,10 @@ export async function submitCallTx<C extends Contract.Any, ICK extends Contract.
     throw new IncompleteCallTxPrivateStateConfig();
   }
 
+  if (hasPrivateStateProvider) {
+    providers.privateStateProvider.setContractAddress(options.contractAddress);
+  }
+
   const callTxFn = async (txCtx: TransactionContext<C, ICK>) => {
     Transaction.mergeUnsubmittedCallTxData(
       txCtx,
@@ -205,6 +209,10 @@ export async function submitCallTxAsync<C extends Contract.Any, ICK extends Cont
 
   if (hasPrivateStateId && !hasPrivateStateProvider) {
     throw new IncompleteCallTxPrivateStateConfig();
+  }
+
+  if (hasPrivateStateProvider) {
+    providers.privateStateProvider.setContractAddress(options.contractAddress);
   }
 
   const unprovenCallTxData = await createUnprovenCallTx(providers, options);
