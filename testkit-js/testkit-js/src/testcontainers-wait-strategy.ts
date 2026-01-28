@@ -56,8 +56,11 @@ export class DelayedWaitStrategy implements WaitStrategy {
   ) {}
 
   async waitUntilReady(...args: Parameters<WaitStrategy['waitUntilReady']>): Promise<void> {
+    console.log(`[DelayedWaitStrategy] Starting ${this.delayMs}ms delay before health check...`);
     await new Promise((resolve) => setTimeout(resolve, this.delayMs));
+    console.log(`[DelayedWaitStrategy] Delay complete, now checking health...`);
     await this.delegate.waitUntilReady(...args);
+    console.log(`[DelayedWaitStrategy] Health check passed`);
   }
 
   withStartupTimeout(startupTimeoutMs: number): this {

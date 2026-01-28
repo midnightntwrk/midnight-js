@@ -29,9 +29,12 @@ import type {
 import { createLogger, getTestEnvironment } from '@midnight-ntwrk/testkit-js';
 import path from 'path';
 
+import { TX_DELAY_MS } from '@/constants';
 import * as api from '@/counter-api';
 import { CIRCUIT_ID_RESET, CompiledCounterContract } from '@/counter-api';
 import { type CounterProviders } from '@/counter-types';
+
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_snark_upgrade_${new Date().toISOString()}.log`)
@@ -154,6 +157,7 @@ describe('Contracts API Snark Upgrade [dedicated contract] [@slow]', () => {
       `Circuit 'reset' is already defined for contract at address '${contractAddress}'`
     );
     await circuitMaintenanceTxInterfaces.reset.removeVerifierKey();
+    await delay(TX_DELAY_MS);
     const finalizedTxData = await circuitMaintenanceTxInterfaces.reset.insertVerifierKey(vk);
 
     expect(finalizedTxData.status).toEqual(SucceedEntirely);

@@ -48,9 +48,12 @@ import {
   type TestEnvironment} from '@midnight-ntwrk/testkit-js';
 import path from 'path';
 
+import { TX_DELAY_MS } from '@/constants';
 import { CompiledSimple } from '@/contract';
 import * as api from '@/counter-api';
 import type { SimpleContract, SimpleProviders } from '@/simple-types';
+
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_nostate_${new Date().toISOString()}.log`)
@@ -292,6 +295,7 @@ describe('Contracts API', () => {
       contractAddress: deployTxData.public.contractAddress,
       circuitId: 'noop'
     } as const;
+    await delay(TX_DELAY_MS);
     const callTxData = await submitCallTx(reducedProviders, callTxOptions);
     await expectSuccessfulCallTx(providers, callTxData, callTxOptions);
 
