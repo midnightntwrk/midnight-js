@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-level-private-state-provider",
-  "version": "3.0.0-alpha.15",
+  "version": "4.0.0",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -36,6 +36,5 @@
   },
   "devDependencies": {
     "@types/lodash": "^4.17.19"
-  },
-  "stableVersion": "3.0.0"
+  }
 }
