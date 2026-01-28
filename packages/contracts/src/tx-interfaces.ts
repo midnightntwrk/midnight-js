@@ -79,6 +79,7 @@ export const createCircuitCallTxInterface = <C extends Contract.Any>(
   privateStateId: PrivateStateId | undefined
 ): CircuitCallTxInterface<C> => {
   assertIsContractAddress(contractAddress);
+  providers.privateStateProvider.setContractAddress(contractAddress);
   return ContractExecutable.make(compiledContract).getImpureCircuitIds().reduce(
     (acc, circuitId) => ({
       ...acc,
