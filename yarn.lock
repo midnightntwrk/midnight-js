@@ -2403,7 +2403,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@midnight-ntwrk/onchain-runtime-v2@npm:2.0.0":
+"@midnight-ntwrk/onchain-runtime-v2@npm:2.0.0, @midnight-ntwrk/onchain-runtime-v2@npm:^2.0.0":
   version: 2.0.0
   resolution: "@midnight-ntwrk/onchain-runtime-v2@npm:2.0.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fonchain-runtime-v2%2F2.0.0%2F52b1b4c48af577d31a5ba21947d00b4832aeb5cf"
   checksum: 10/71b2b5e2270ce36fbdb63c0bd531f09f2de9151b286b6c7389966279750080b300893aef973621e438a934f9274277181cdf9bdc1350abc0e244fa892a145b19
@@ -6842,17 +6842,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"effect@npm:^3.19.14":
-  version: 3.19.14
-  resolution: "effect@npm:3.19.14"
-  dependencies:
-    "@standard-schema/spec": "npm:^1.0.0"
-    fast-check: "npm:^3.23.1"
-  checksum: 10/b9dbcdf15a2f60da8f88fef79a893dcef45e88e35217f3ff207c302565fca37aaabc0f83f280adbd44096b2d18809d659193f7fce126d3e51342289220b8168e
-  languageName: node
-  linkType: hard
-
-"effect@npm:^3.19.15":
+"effect@npm:3.19.15":
   version: 3.19.15
   resolution: "effect@npm:3.19.15"
   dependencies:
