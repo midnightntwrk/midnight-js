@@ -16,7 +16,7 @@
 import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
 import { ZswapOffer as LedgerZswapOffer } from '@midnight-ntwrk/ledger-v7';
 import { type PrivateStateId, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import { ChargedState,type ShieldedCoinInfo } from '@midnight-ntwrk/onchain-runtime-v2';
+import { ChargedState } from '@midnight-ntwrk/onchain-runtime-v2';
 
 import { type CallResult } from '../call';
 import { type ContractProviders } from '../contract-providers';
@@ -42,18 +42,6 @@ const mergeSubmitTxOptions = <ICK extends Contract.ImpureCircuitId<Contract.Any>
   if (!current) {
     return next;
   }
-  const newCoins = [
-      ...(current.newCoins ?? []),
-      ...(next.newCoins ?? [])
-    ].reduce((map, coin) => {
-      const existing = map.get(coin.type);
-      if (existing) {
-        map.set(coin.type, { ...existing, value: existing.value + coin.value });
-      } else {
-        map.set(coin.type, { ...coin });
-      }
-      return map;
-    }, new Map<string, ShieldedCoinInfo>());
   const circuitIds = new Set([
       ...(Array.isArray(current.circuitId) ? current.circuitId! : [current.circuitId!]),
       ...(Array.isArray(next.circuitId) ? next.circuitId! : [next.circuitId!])
@@ -61,7 +49,6 @@ const mergeSubmitTxOptions = <ICK extends Contract.ImpureCircuitId<Contract.Any>
 
   return {
     unprovenTx: current.unprovenTx.merge(next.unprovenTx),
-    newCoins: Array.from(newCoins.values()),
     circuitId: Array.from(circuitIds)
   };
 };
@@ -123,7 +110,6 @@ export class TransactionContextImpl<
       this.submitTxOptions,
       {
         unprovenTx: callData.private.unprovenTx,
-        newCoins: callData.private.newCoins,
         circuitId
        }
     );

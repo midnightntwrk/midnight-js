@@ -76,8 +76,7 @@ describe('submit-deploy-tx', () => {
 
         expect(createUnprovenDeployTx).toHaveBeenCalledWith(mockProviders, options);
         expect(submitTx).toHaveBeenCalledWith(mockProviders, {
-          unprovenTx: mockUnprovenDeployTxData.private.unprovenTx,
-          newCoins: mockUnprovenDeployTxData.private.newCoins
+          unprovenTx: mockUnprovenDeployTxData.private.unprovenTx
         });
         expect(mockProviders.privateStateProvider.setSigningKey).toHaveBeenCalledWith(
           mockContractAddress,
@@ -302,8 +301,7 @@ describe('submit-deploy-tx', () => {
         const result = await submitDeployTx(mockProviders, options);
 
         expect(submitTx).toHaveBeenCalledWith(mockProviders, {
-          unprovenTx: mockUnprovenTx,
-          newCoins: []
+          unprovenTx: mockUnprovenTx
         });
         expect(result).toEqual({
           private: mockUnprovenDeployTxData.private,

@@ -14,7 +14,6 @@
  */
 
 import type { Contract } from '@midnight-ntwrk/compact-js';
-import { type ShieldedCoinInfo } from '@midnight-ntwrk/ledger-v7';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { submitTx, submitTxAsync, type SubmitTxOptions } from '../submit-tx';
@@ -55,7 +54,7 @@ describe('submit-tx', () => {
         const result = await submitTx(mockProviders, options);
 
         expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith(mockUnprovenTx);
-        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(mockProvenTx, undefined);
+        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(mockProvenTx);
         expect(mockProviders.midnightProvider.submitTx).toHaveBeenCalled();
         expect(mockProviders.publicDataProvider.watchForTxData).toHaveBeenCalledWith('test-tx-id');
         expect(result).toBe(mockFinalizedTxData);
@@ -78,7 +77,7 @@ describe('submit-tx', () => {
         const result = await submitTx(mockProviders, options);
 
         expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith(mockUnprovenTx);
-        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(mockProvenTx, undefined);
+        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(mockProvenTx);
         expect(mockProviders.midnightProvider.submitTx).toHaveBeenCalled();
         expect(mockProviders.publicDataProvider.watchForTxData).toHaveBeenCalledWith('test-tx-id');
         expect(result).toBe(mockFinalizedTxData);
@@ -113,7 +112,7 @@ describe('submit-tx', () => {
         const result = await submitTxAsync(mockProviders, options);
 
         expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith(mockUnprovenTx);
-        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(mockProvenTx, undefined);
+        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(mockProvenTx);
         expect(mockProviders.midnightProvider.submitTx).toHaveBeenCalled();
         expect(mockProviders.publicDataProvider.watchForTxData).not.toHaveBeenCalled();
         expect(result).toBe(expectedTxId);
@@ -135,31 +134,12 @@ describe('submit-tx', () => {
         const result = await submitTxAsync(mockProviders, options);
 
         expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith(mockUnprovenTx);
-        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(mockProvenTx, undefined);
+        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(mockProvenTx);
         expect(mockProviders.midnightProvider.submitTx).toHaveBeenCalled();
         expect(mockProviders.publicDataProvider.watchForTxData).not.toHaveBeenCalled();
         expect(result).toBe(expectedTxId);
       });
 
-      it('should handle newCoins parameter', async () => {
-        const mockNewCoins = [] as ShieldedCoinInfo[];
-        const expectedTxId = 'test-tx-id-coins';
-
-        mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue(mockProvenTx);
-        mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue(mockProvenTx);
-        mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue(expectedTxId);
-
-        const options: SubmitTxOptions<Contract.ImpureCircuitId<Contract.Any>> = {
-          unprovenTx: mockUnprovenTx,
-          newCoins: mockNewCoins
-        };
-
-        const result = await submitTxAsync(mockProviders, options);
-
-        expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith(mockUnprovenTx);
-        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(mockProvenTx, mockNewCoins);
-        expect(result).toBe(expectedTxId);
-      });
     });
 
     describe('error handling', () => {

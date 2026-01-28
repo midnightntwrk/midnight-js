@@ -67,27 +67,14 @@ const provider = new LevelPrivateStateProvider({
 
 #### v2.1.0
 ```typescript
-const recipe = await walletProvider.balanceTx(unprovenTx);
-const proof = await prover.prove(recipe);
+const result = await walletProvider.balanceTx(unprovenTx);
 ```
 
 #### v3.0.0
 ```typescript
-const recipe = await walletProvider.balanceTx(unprovenTx);
-
-// Handle all three recipe types
-if (recipe.type === 'TransactionToProve') {
-  // Needs proving
-  const provenTx = await prover.prove(recipe.transaction);
-  await midnightProvider.submitTx(provenTx);
-} else if (recipe.type === 'BalanceTransactionToProve') {
-  // Needs balancing and proving
-  const provenTx = await prover.prove(recipe.transactionToProve);
-  await midnightProvider.submitTx(provenTx);
-} else {
-  // NothingToProve - ready to submit
-  await midnightProvider.submitTx(recipe.transaction);
-}
+// Wallet handles proving internally, returns FinalizedTransaction
+const finalizedTx = await walletProvider.balanceTx(unboundTx, newCoins, ttl);
+await midnightProvider.submitTx(finalizedTx);
 ```
 
 ### Step 5: Make Transaction Submission Async
@@ -228,17 +215,11 @@ async function transfer(
 
 ### Issue 1: Type Errors on walletProvider.balanceTx
 
-**Solution:** Handle all three recipe types:
+**Solution:** Update to use the new signature:
 ```typescript
-const recipe = await walletProvider.balanceTx(unprovenTx);
-
-if (recipe.type === 'TransactionToProve') {
-  // Handle TransactionToProve
-} else if (recipe.type === 'BalanceTransactionToProve') {
-  // Handle BalanceTransactionToProve
-} else {
-  // Handle NothingToProve
-}
+// v3.0.0 - use UnboundTransaction input, get FinalizedTransaction output
+const finalizedTx = await walletProvider.balanceTx(unboundTx, newCoins, ttl);
+await midnightProvider.submitTx(finalizedTx);
 ```
 
 ### Issue 2: Missing await on submitTx

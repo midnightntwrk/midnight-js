@@ -120,61 +120,103 @@ const data = await provider.get('key');
 
 ---
 
-## 4. BalancedProvingRecipe Types (#320)
+## 4. Compact.js Integration (#370)
 
-Enhanced proving recipe system with three distinct types.
+All contract interfacing is now executed via Compact.js.
 
-### TypeScript Signatures
-```typescript
-export const TRANSACTION_TO_PROVE = 'TransactionToProve';
-export const BALANCE_TRANSACTION_TO_PROVE = 'BalanceTransactionToProve';
-export const NOTHING_TO_PROVE = 'NothingToProve';
-
-export type TransactionToProve = {
-  readonly type: typeof TRANSACTION_TO_PROVE;
-  readonly transaction: UnprovenTransaction;
-};
-
-export type BalanceTransactionToProve<TTransaction> = {
-  readonly type: typeof BALANCE_TRANSACTION_TO_PROVE;
-  readonly transactionToProve: UnprovenTransaction;
-  readonly transactionToBalance: TTransaction;
-};
-
-export type NothingToProve<TTransaction> = {
-  readonly type: typeof NOTHING_TO_PROVE;
-  readonly transaction: TTransaction;
-};
-
-export type ProvingRecipe<TTransaction> =
-  | TransactionToProve
-  | BalanceTransactionToProve<TTransaction>
-  | NothingToProve<TTransaction>;
-
-export type BalancedProvingRecipe = ProvingRecipe<UnprovenTransaction | FinalizedTransaction>;
-```
+### Benefits
+- Improved type safety with Compact.js runtime
+- Better integration between TypeScript and Compact contracts
+- Simplified contract interaction patterns
 
 ### Usage
 ```typescript
-const recipe = await walletProvider.balanceTx(unprovenTx);
+import { Contract } from '@midnight-ntwrk/midnight-js-contracts';
 
-if (recipe.type === TRANSACTION_TO_PROVE) {
-  console.log('Transaction needs proving');
-  const provenTx = await prover.prove(recipe.transaction);
-  await midnightProvider.submitTx(provenTx);
-} else if (recipe.type === BALANCE_TRANSACTION_TO_PROVE) {
-  console.log('Transaction needs balancing and proving');
-  const provenTx = await prover.prove(recipe.transactionToProve);
-  await midnightProvider.submitTx(provenTx);
-} else {
-  console.log('Transaction ready to submit');
-  await midnightProvider.submitTx(recipe.transaction);
-}
+// Contract types are now generated via Compact.js
+const contract = new Contract<MyContractType>(contractAddress);
+const result = await contract.call.myCircuit(args);
 ```
 
 ---
 
-## 5. Compact Compiler 0.27.0 (#373)
+## 5. Ledger v7 Support (#414)
+
+Updated to ledger-v7 with new proving provider.
+
+### TypeScript Signature
+```typescript
+import { httpClientProvingProvider } from '@midnight-ntwrk/http-client-proof-provider';
+
+function httpClientProvingProvider(proverServerUri: string): ProvingProvider;
+```
+
+### Usage
+```typescript
+const provingProvider = httpClientProvingProvider('http://localhost:6300');
+```
+
+### Benefits
+- Enhanced proving capabilities
+- Improved performance
+- Better error handling
+
+---
+
+## 6. Scoped Transactions (#404)
+
+New utility for batching multiple circuit calls into a single transaction.
+
+### TypeScript Signature
+```typescript
+async function withContractScopedTransaction<T>(
+  providers: ContractProviders,
+  fn: (scope: TransactionScope) => Promise<T>
+): Promise<T>;
+```
+
+### Usage
+```typescript
+import { withContractScopedTransaction } from '@midnight-ntwrk/midnight-js-contracts';
+
+const result = await withContractScopedTransaction(providers, async (scope) => {
+  await scope.call(contract, 'circuit1', [arg1]);
+  await scope.call(contract, 'circuit2', [arg2]);
+  // All calls are batched into a single transaction
+  return someResult;
+});
+```
+
+### Benefits
+- Atomic multi-circuit operations
+- Reduced transaction overhead
+- Cleaner code for complex workflows
+
+---
+
+## 7. KeyMaterialProvider Type (#430)
+
+New type for DApp connector compatibility.
+
+### TypeScript Signature
+```typescript
+interface ZkConfigProvider {
+  asKeyMaterialProvider(): KeyMaterialProvider;
+}
+```
+
+### Usage
+```typescript
+const keyMaterialProvider = zkConfigProvider.asKeyMaterialProvider();
+```
+
+### Benefits
+- DApp connector integration
+- Standardized key material handling
+
+---
+
+## 8. Compact Compiler Update (#402)
 
 Updated Compact compiler with enhanced features.
 
@@ -319,7 +361,7 @@ console.log('Transaction ID:', callResult.txId);
 
 ---
 
-## 10. Transaction TTL Support (#125)
+## 13. Transaction TTL Support (#125)
 
 Configure transaction time-to-live via `balanceTx` for expiry management.
 
@@ -327,24 +369,24 @@ Configure transaction time-to-live via `balanceTx` for expiry management.
 ```typescript
 interface WalletProvider {
   balanceTx(
-    tx: UnprovenTransaction, 
-    newCoins?: ShieldedCoinInfo[], 
+    tx: UnboundTransaction,
+    newCoins?: ShieldedCoinInfo[],
     ttl?: Date  // Optional expiry time
-  ): Promise<BalancedProvingRecipe>;
+  ): Promise<FinalizedTransaction>;
 }
 ```
 
 ### Usage
 ```typescript
 // Set 10-minute TTL
-const recipe = await walletProvider.balanceTx(
-  unprovenTx,
+const finalizedTx = await walletProvider.balanceTx(
+  unboundTx,
   newCoins,
   new Date(Date.now() + 10 * 60 * 1000) // 10 minutes from now
 );
 
 // No TTL (default)
-const recipe = await walletProvider.balanceTx(unprovenTx);
+const finalizedTx = await walletProvider.balanceTx(unboundTx);
 ```
 
 ### Benefits
@@ -361,7 +403,10 @@ const recipe = await walletProvider.balanceTx(unprovenTx);
 | Password Provider | ❌ | ✅ |
 | Async Transactions | ❌ | ✅ |
 | Storage Encryption | ❌ | ✅ |
-| Proving Recipe Types | ❌ | ✅ (3 types) |
+| Compact.js Integration | ❌ | ✅ |
+| Ledger v7 | ❌ | ✅ |
+| Scoped Transactions | ❌ | ✅ |
+| KeyMaterialProvider | ❌ | ✅ |
 | Uint8Array Results | ❌ | ✅ |
 | ESM/CJS Support | Partial | ✅ |
 | Unshielded Tokens | ❌ | ✅ |

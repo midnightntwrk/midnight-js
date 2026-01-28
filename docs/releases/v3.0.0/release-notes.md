@@ -30,20 +30,16 @@ const provider = new LevelPrivateStateProvider({
 });
 ```
 
-### WalletProvider.balanceTx Return Type (#346)
-Return type is now `BalancedProvingRecipe` (union of three types).
+### WalletProvider.balanceTx Signature Change
+Signature simplified with wallet handling proving internally.
+
+- **Before:** `balanceTx(tx: UnprovenTransaction) → Promise<...>`
+- **After:** `balanceTx(tx: UnboundTransaction, newCoins?, ttl?) → Promise<FinalizedTransaction>`
 
 ```typescript
-const recipe = await walletProvider.balanceTx(unprovenTx);
-
-if (recipe.type === 'TransactionToProve') {
-  const provenTx = await prover.prove(recipe.transaction);
-} else if (recipe.type === 'BalanceTransactionToProve') {
-  const provenTx = await prover.prove(recipe.transactionToProve);
-} else {
-  // NothingToProve
-  await provider.submitTx(recipe.transaction);
-}
+// v3.0.0 - Simplified workflow
+const finalizedTx = await walletProvider.balanceTx(unboundTx, newCoins, ttl);
+await midnightProvider.submitTx(finalizedTx);
 ```
 
 ### MidnightProvider.submitTx Now Async (#348)
@@ -128,13 +124,41 @@ const result = await contractInstance.call.myMethod(params);
 ### Storage Encryption
 AES-256-GCM encryption for private state storage.
 
-### BalancedProvingRecipe Types (#320)
-Enhanced proving recipe system with three types:
-- `TransactionToProve` - requires proving
-- `BalanceTransactionToProve` - requires balancing and proving
-- `NothingToProve` - ready to submit
+### Compact.js Integration (#370)
+All contract interfacing is now executed via Compact.js, providing improved type safety and runtime integration.
 
-### Compact Compiler 0.27.0 (#373)
+### Ledger v7 Support (#414)
+Updated to ledger-v7 with new `httpClientProvingProvider` for enhanced proving capabilities.
+
+```typescript
+import { httpClientProvingProvider } from '@midnight-ntwrk/http-client-proof-provider';
+
+const provingProvider = httpClientProvingProvider(proverServerUri);
+```
+
+### Scoped Transactions (#404)
+New `withContractScopedTransaction` utility for batching multiple circuit calls into a single transaction.
+
+```typescript
+import { withContractScopedTransaction } from '@midnight-ntwrk/midnight-js-contracts';
+
+const result = await withContractScopedTransaction(providers, async (scope) => {
+  await scope.call(contract, 'circuit1', [arg1]);
+  await scope.call(contract, 'circuit2', [arg2]);
+  // All calls submitted as single transaction
+});
+```
+
+### KeyMaterialProvider Type (#430)
+New type for DApp connector compatibility.
+
+```typescript
+interface ZkConfigProvider {
+  asKeyMaterialProvider(): KeyMaterialProvider;
+}
+```
+
+### Compact Compiler Update (#402)
 Updated to latest Compact compiler version.
 
 ### Unshielded Token Support (#125)
@@ -171,10 +195,9 @@ const recipe = await walletProvider.balanceTx(
 ## Dependencies
 
 ### Runtime Dependencies Updated
-- `@midnight-ntwrk/compact-runtime`: 0.11.0-rc.1
-- `@midnight-ntwrk/ledger-v6`: 6.1.0-alpha.6
-- `@midnight-ntwrk/onchain-runtime-v1`: 1.0.0-alpha.5
-- `@midnight-ntwrk/wallet-sdk-facade`: 1.0.0-beta.12
+- `@midnight-ntwrk/ledger-v7` (upgraded from ledger-v6)
+- `@midnight-ntwrk/wallet-sdk-facade`: 1.0.0-beta.16
+- `@midnight-ntwrk/compact-runtime`: updated for Compact.js integration
 
 ## Documentation
 
