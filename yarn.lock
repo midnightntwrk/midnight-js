@@ -607,7 +607,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/platform@npm:^0.90.0, @effect/platform@npm:^0.90.2":
+"@effect/platform@npm:^0.90.0":
   version: 0.90.10
   resolution: "@effect/platform@npm:0.90.10"
   dependencies:
@@ -2333,7 +2333,7 @@ __metadata:
   resolution: "@midnight-ntwrk/midnight-js-types@workspace:packages/types"
   dependencies:
     "@midnight-ntwrk/compact-js": "npm:2.4.0"
-    "@midnight-ntwrk/platform-js": "npm:^2.1.0"
+    "@midnight-ntwrk/platform-js": "npm:2.2.0"
     rxjs: "npm:^7.5.0"
   languageName: unknown
   linkType: soft
@@ -2410,17 +2410,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/platform-js@npm:^2.1.0":
-  version: 2.1.0
-  resolution: "@midnight-ntwrk/platform-js@npm:2.1.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fplatform-js%2F2.1.0%2F577acf7c614a77b9374a4de04b7315960f485330"
-  dependencies:
-    "@effect/platform": "npm:^0.90.2"
-    effect: "npm:^3.17.7"
-  checksum: 10/69617060b9b1161127bf38576a0cb08fb16f8a87117db1ca66d3d9c55678b02d5bd5ee71edd05fd4db6084c2ba7b100cf014b25fb771ed739744937049c4d288
-  languageName: node
-  linkType: hard
-
-"@midnight-ntwrk/platform-js@npm:^2.2.0":
+"@midnight-ntwrk/platform-js@npm:2.2.0, @midnight-ntwrk/platform-js@npm:^2.2.0":
   version: 2.2.0
   resolution: "@midnight-ntwrk/platform-js@npm:2.2.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fplatform-js%2F2.2.0%2F0981b2e57c03949a65e53d0cea849fb12ef108a8"
   dependencies:
@@ -6852,7 +6842,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"effect@npm:^3.17.7, effect@npm:^3.19.14":
+"effect@npm:^3.19.14":
   version: 3.19.14
   resolution: "effect@npm:3.19.14"
   dependencies:
