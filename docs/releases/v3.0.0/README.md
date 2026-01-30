@@ -40,23 +40,17 @@
 
 ### Before (v2.1.0)
 ```typescript
-const provider = new LevelPrivateStateProvider({
-  storeDirectory: './data'
-});
-
+const provider = new LevelPrivateStateProvider({ midnightDbName: 'midnight-db' });
 const txId = midnightProvider.submitTx(tx);
-const result = await walletProvider.balanceTx(unprovenTx);
 ```
 
 ### After (v3.0.0)
 ```typescript
-const provider = new LevelPrivateStateProvider({
-  storeDirectory: './data',
-  passwordProvider: async () => process.env.PASSWORD!
-});
+import { levelPrivateStateProvider } from '@midnight-ntwrk/level-private-state-provider';
 
+const provider = levelPrivateStateProvider({ walletProvider: myWallet });
 const txId = await midnightProvider.submitTx(tx);
-const finalizedTx = await walletProvider.balanceTx(unboundTx, newCoins, ttl);
+const finalizedTx = await walletProvider.balanceTx(unboundTx, ttl);
 ```
 
 ## Requirements

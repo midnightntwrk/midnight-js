@@ -16,6 +16,8 @@
 import path from 'path';
 import { Wait } from 'testcontainers';
 
+import { WaitStrategies } from '@/testcontainers-wait-strategy';
+
 import type { ContainersConfiguration } from './configuration-types';
 
 const currentWorkingDir = path.resolve(`${process.cwd()}`);
@@ -42,7 +44,7 @@ export const defaultContainersConfiguration: ContainersConfiguration = {
       node: {
         name: 'node',
         port: 9944,
-        waitStrategy: Wait.forListeningPorts()
+        waitStrategy: WaitStrategies.forDelayedStrategy(20_000, Wait.forHealthCheck())
       },
       indexer: {
         name: 'indexer',

@@ -100,12 +100,14 @@ describe('unproven-deploy-tx', () => {
         args: ['deploy-arg']
       };
 
-      await expect(createUnprovenDeployTxFromVerifierKeys(
-        createMockZKConfigProvider(),
-        createMockCoinPublicKey(),
-        options,
-        encryptionPublicKey
-      )).rejects.toThrow('FAIL');
+      await expect(
+        createUnprovenDeployTxFromVerifierKeys(
+          createMockZKConfigProvider(),
+          createMockCoinPublicKey(),
+          options,
+          encryptionPublicKey
+        )
+      ).rejects.toThrow('FAIL');
     });
   });
 

@@ -19,29 +19,20 @@ interface LevelPrivateStateProviderConfig {
 
 ### Usage
 ```typescript
-import { LevelPrivateStateProvider } from '@midnight-ntwrk/level-private-state-provider';
+import { levelPrivateStateProvider } from '@midnight-ntwrk/level-private-state-provider';
 
-// Basic password provider
-const provider = new LevelPrivateStateProvider({
-  midnightDbName: 'midnight-db',
-  privateStateStoreName: 'private-states',
-  signingKeyStoreName: 'signing-keys',
+// Option 1: Using wallet provider
+const provider = levelPrivateStateProvider({
+  walletProvider: myWalletProvider
+});
+
+// Option 2: Using password provider
+const provider = levelPrivateStateProvider({
   privateStoragePasswordProvider: async () => process.env.STORAGE_PASSWORD!
 });
-
-// With environment-based selection
-const provider = new LevelPrivateStateProvider({
-  midnightDbName: 'midnight-db',
-  privateStateStoreName: 'private-states',
-  signingKeyStoreName: 'signing-keys',
-  privateStoragePasswordProvider: async () => {
-    if (process.env.NODE_ENV === 'production') {
-      return await fetchFromSecretManager();
-    }
-    return 'dev-password';
-  }
-});
 ```
+
+**Note:** Use `walletProvider` OR `privateStoragePasswordProvider`, not both.
 
 ### Benefits
 - Decouples storage encryption from wallet
@@ -100,11 +91,10 @@ AES-256-GCM encryption for private state storage.
 
 ### Usage
 ```typescript
-const provider = new LevelPrivateStateProvider({
-  midnightDbName: 'encrypted-db',
-  privateStateStoreName: 'private-states',
-  signingKeyStoreName: 'signing-keys',
-  privateStoragePasswordProvider: async () => crypto.randomBytes(32).toString('hex')
+import { levelPrivateStateProvider } from '@midnight-ntwrk/level-private-state-provider';
+
+const provider = levelPrivateStateProvider({
+  privateStoragePasswordProvider: async () => process.env.STORAGE_PASSWORD!
 });
 
 // Storage is automatically encrypted/decrypted
@@ -122,20 +112,86 @@ const data = await provider.get('key');
 
 ## 4. Compact.js Integration (#370)
 
-All contract interfacing is now executed via Compact.js.
+All contract interfacing is now executed via Compact.js, introducing a new fluent API for defining and deploying contracts.
 
 ### Benefits
 - Improved type safety with Compact.js runtime
 - Better integration between TypeScript and Compact contracts
+- Fluent builder pattern for contract configuration
+- Proper typing for witnesses with `WitnessContext`
 - Simplified contract interaction patterns
 
-### Usage
-```typescript
-import { Contract } from '@midnight-ntwrk/midnight-js-contracts';
+### CompiledContract Builder API
 
-// Contract types are now generated via Compact.js
-const contract = new Contract<MyContractType>(contractAddress);
-const result = await contract.call.myCircuit(args);
+The new `CompiledContract` namespace provides a builder pattern for creating typed contract definitions:
+
+```typescript
+import { CompiledContract } from '@midnight-ntwrk/compact-js';
+import type { Contract } from '@midnight-ntwrk/compact-js';
+import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
+import * as CompiledCounter from './compiled/counter/contract/index.js';
+import type { Ledger } from './compiled/counter/contract/index.js';
+
+// 1. Define private state type
+type CounterPrivateState = {
+  privateCounter: number;
+};
+
+// 2. Define witnesses with WitnessContext for proper typing
+const witnesses = {
+  privateIncrement: ({
+    privateState
+  }: WitnessContext<Ledger, CounterPrivateState>): [CounterPrivateState, []] => [
+    { privateCounter: privateState.privateCounter + 1 },
+    []
+  ]
+};
+
+// 3. Create compiled contract using fluent API
+const CompiledCounterContract = CompiledContract.make<
+  CompiledCounter.Contract<CounterPrivateState>
+>('Counter', CompiledCounter.Contract<CounterPrivateState>).pipe(
+  CompiledContract.withWitnesses(witnesses),
+  CompiledContract.withCompiledFileAssets('./compiled/counter')
+);
+
+// 4. For contracts without witnesses, use withVacantWitnesses
+const CompiledSimpleContract = CompiledContract.make<
+  CompiledSimple.Contract
+>('Simple', CompiledSimple.Contract).pipe(
+  CompiledContract.withVacantWitnesses,
+  CompiledContract.withCompiledFileAssets('./compiled/simple')
+);
+```
+
+### Contract Deployment
+
+```typescript
+import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
+
+// Deploy using the compiled contract
+const deployed = await deployContract(providers, {
+  compiledContract: CompiledCounterContract,
+  privateStateId: 'counterPrivateState',
+  initialPrivateState: { privateCounter: 0 }
+});
+
+// Access contract address
+const { contractAddress } = deployed.deployTxData.public;
+
+// Call contract methods
+const result = await deployed.callTx.increment();
+console.log(`Transaction: ${result.public.txId}`);
+```
+
+### Type Utilities
+
+```typescript
+import type { Contract } from '@midnight-ntwrk/compact-js';
+
+// Extract circuit identifiers from contract type
+type CounterCircuits = Contract.ImpureCircuitId<CounterContract> & string;
+// Result: 'increment' | 'decrement' | 'reset'
 ```
 
 ---
@@ -335,22 +391,19 @@ async function submitCallTx<C extends Contract, ICK extends ImpureCircuitId<C>>(
 
 ### Usage
 ```typescript
-import { submitDeployTx, submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
+import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
 
-// Deploy a contract
-const deployResult = await submitDeployTx(providers, {
-  contract: myContract,
-  initialState: { balance: 0n }
+// Deploy and get deployed contract interface
+const deployed = await deployContract(providers, {
+  compiledContract: MyCompiledContract,
+  privateStateId: 'myState',
+  initialPrivateState: { balance: 0n }
 });
 
-// Call a contract method
-const callResult = await submitCallTx(providers, {
-  contract: myContract,
-  circuit: 'transfer',
-  args: [fromAddress, toAddress, amount]
-});
+// Call via deployed contract
+const result = await deployed.callTx.transfer(fromAddress, toAddress, amount);
 
-console.log('Transaction ID:', callResult.txId);
+console.log('Transaction ID:', result.public.txId);
 ```
 
 ### Benefits
@@ -370,7 +423,6 @@ Configure transaction time-to-live via `balanceTx` for expiry management.
 interface WalletProvider {
   balanceTx(
     tx: UnboundTransaction,
-    newCoins?: ShieldedCoinInfo[],
     ttl?: Date  // Optional expiry time
   ): Promise<FinalizedTransaction>;
 }
@@ -381,7 +433,6 @@ interface WalletProvider {
 // Set 10-minute TTL
 const finalizedTx = await walletProvider.balanceTx(
   unboundTx,
-  newCoins,
   new Date(Date.now() + 10 * 60 * 1000) // 10 minutes from now
 );
 

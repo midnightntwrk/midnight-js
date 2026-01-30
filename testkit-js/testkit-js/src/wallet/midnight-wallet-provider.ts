@@ -74,9 +74,9 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     ttl: Date = ttlOneHour()
   ): Promise<FinalizedTransaction> {
     const bound = tx.bind();
-    const finalizedTransactionRecipe = await this.wallet.balanceFinalizedTransaction(this.zswapSecretKeys, this.dustSecretKey, bound, ttl);
-    finalizedTransactionRecipe.balancingTransaction = await this.wallet.signTransaction(finalizedTransactionRecipe.balancingTransaction, (payload) => this.unshieldedKeystore.signData(payload));
-    return this.wallet.finalizeRecipe(finalizedTransactionRecipe);
+    const finalizedTransactionRecipe = await this.wallet.balanceFinalizedTransaction(bound, { shieldedSecretKeys: this.zswapSecretKeys, dustSecretKey: this.dustSecretKey}, { ttl });
+    const signed = await this.wallet.signRecipe(finalizedTransactionRecipe, (payload) => this.unshieldedKeystore.signData(payload));
+    return this.wallet.finalizeRecipe(signed);
   }
 
   submitTx(tx: FinalizedTransaction): Promise<string> {
