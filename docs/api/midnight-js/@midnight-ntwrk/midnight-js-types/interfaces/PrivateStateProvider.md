@@ -154,6 +154,28 @@ The private state to store.
 
 ***
 
+### setContractAddress()
+
+> **setContractAddress**(`address`): `void`
+
+Set the contract address for scoping private state operations.
+Must be called before any get/set/remove operations on private states.
+This provides namespace isolation between different contracts.
+
+#### Parameters
+
+##### address
+
+`string`
+
+The contract address to scope operations to.
+
+#### Returns
+
+`void`
+
+***
+
 ### setSigningKey()
 
 > **setSigningKey**(`address`, `signingKey`): `Promise`\<`void`\>
