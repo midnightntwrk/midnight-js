@@ -10,23 +10,17 @@
 Authentication now requires explicit configuration.
 
 - **Before:** `new LevelPrivateStateProvider(config)`
-- **After:** Must provide `walletProvider` OR `privateStoragePasswordProvider`
+- **After:** `levelPrivateStateProvider({ walletProvider })` OR `levelPrivateStateProvider({ privateStoragePasswordProvider })`
 
 ```typescript
-// Option 1: Wallet provider
-const provider = new LevelPrivateStateProvider({
-  midnightDbName: 'midnight-db',
-  privateStateStoreName: 'private-states',
-  signingKeyStoreName: 'signing-keys',
-  walletProvider: myWalletProvider
-});
+import { levelPrivateStateProvider } from '@midnight-ntwrk/level-private-state-provider';
 
-// Option 2: Password provider (new)
-const provider = new LevelPrivateStateProvider({
-  midnightDbName: 'midnight-db',
-  privateStateStoreName: 'private-states',
-  signingKeyStoreName: 'signing-keys',
-  privateStoragePasswordProvider: async () => 'my-secure-password'
+// Option 1: Wallet provider
+const provider = levelPrivateStateProvider({ walletProvider: myWalletProvider });
+
+// Option 2: Password provider
+const provider = levelPrivateStateProvider({
+  privateStoragePasswordProvider: async () => process.env.STORAGE_PASSWORD!
 });
 ```
 
@@ -34,11 +28,10 @@ const provider = new LevelPrivateStateProvider({
 Signature simplified with wallet handling proving internally.
 
 - **Before:** `balanceTx(tx: UnprovenTransaction) → Promise<...>`
-- **After:** `balanceTx(tx: UnboundTransaction, newCoins?, ttl?) → Promise<FinalizedTransaction>`
+- **After:** `balanceTx(tx: UnboundTransaction, ttl?) → Promise<FinalizedTransaction>`
 
 ```typescript
-// v3.0.0 - Simplified workflow
-const finalizedTx = await walletProvider.balanceTx(unboundTx, newCoins, ttl);
+const finalizedTx = await walletProvider.balanceTx(unboundTx, ttl);
 await midnightProvider.submitTx(finalizedTx);
 ```
 
@@ -57,17 +50,18 @@ const txId = await midnightProvider.submitTx(tx);
 ```
 
 ### Transaction Workflow (#125)
-Use high-level submission functions for better workflow.
+Use `deployContract` with `compiledContract` for deployment.
 
 ```typescript
-// v3.0.0 - Use submitDeployTx or submitCallTx
-import { submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
+import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
 
-const result = await submitCallTx(providers, {
-  contract: myContract,
-  circuit: 'myCircuit',
-  args: [arg1, arg2]
+const deployed = await deployContract(providers, {
+  compiledContract: MyCompiledContract,
+  privateStateId: 'myState',
+  initialPrivateState: { ... }
 });
+
+const result = await deployed.callTx.myCircuit(args);
 ```
 
 ### ZswapOffer Return Type (#125)
@@ -104,13 +98,10 @@ config.networkId = 'testnet-02';
 Add password provider with wallet fallback for encrypted storage.
 
 ```typescript
-const provider = new LevelPrivateStateProvider({
-  midnightDbName: 'midnight-db',
-  privateStateStoreName: 'private-states',
-  signingKeyStoreName: 'signing-keys',
-  privateStoragePasswordProvider: async () => {
-    return process.env.STORAGE_PASSWORD || 'fallback-password';
-  }
+import { levelPrivateStateProvider } from '@midnight-ntwrk/level-private-state-provider';
+
+const provider = levelPrivateStateProvider({
+  privateStoragePasswordProvider: async () => process.env.STORAGE_PASSWORD!
 });
 ```
 
@@ -174,9 +165,8 @@ const balances = await provider.queryUnshieldedBalances(contractAddress);
 Configure transaction time-to-live via `balanceTx`.
 
 ```typescript
-const recipe = await walletProvider.balanceTx(
-  unprovenTx,
-  newCoins,
+const finalizedTx = await walletProvider.balanceTx(
+  unboundTx,
   new Date(Date.now() + 10 * 60 * 1000) // 10 min TTL
 );
 ```
