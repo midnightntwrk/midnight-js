@@ -91,6 +91,7 @@ export async function submitDeployTx<C extends Contract.Any>(
   if (finalizedTxData.status !== SucceedEntirely) {
     throw new DeployTxFailedError(finalizedTxData);
   }
+  providers.privateStateProvider.setContractAddress(unprovenDeployTxData.public.contractAddress);
   if ('privateStateId' in options) {
     await providers.privateStateProvider.set(options.privateStateId, unprovenDeployTxData.private.initialPrivateState);
   }

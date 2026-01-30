@@ -44,24 +44,20 @@ const provider = new LevelPrivateStateProvider({
 
 #### v3.0.0
 ```typescript
-import { LevelPrivateStateProvider } from '@midnight-ntwrk/level-private-state-provider';
+import { levelPrivateStateProvider } from '@midnight-ntwrk/level-private-state-provider';
 
 // Option A: Use wallet provider
-const provider = new LevelPrivateStateProvider({
-  midnightDbName: 'midnight-db',
-  privateStateStoreName: 'private-states',
-  signingKeyStoreName: 'signing-keys',
+const provider = levelPrivateStateProvider({
   walletProvider: myWalletProvider
 });
 
-// Option B: Use password provider (recommended)
-const provider = new LevelPrivateStateProvider({
-  midnightDbName: 'midnight-db',
-  privateStateStoreName: 'private-states',
-  signingKeyStoreName: 'signing-keys',
+// Option B: Use password provider
+const provider = levelPrivateStateProvider({
   privateStoragePasswordProvider: async () => process.env.STORAGE_PASSWORD!
 });
 ```
+
+**Note:** Pick one of `walletProvider` or `privateStoragePasswordProvider`, not both.
 
 ### Step 4: Update WalletProvider.balanceTx Calls
 
@@ -73,7 +69,7 @@ const result = await walletProvider.balanceTx(unprovenTx);
 #### v3.0.0
 ```typescript
 // Wallet handles proving internally, returns FinalizedTransaction
-const finalizedTx = await walletProvider.balanceTx(unboundTx, newCoins, ttl);
+const finalizedTx = await walletProvider.balanceTx(unboundTx, ttl);
 await midnightProvider.submitTx(finalizedTx);
 ```
 
@@ -109,7 +105,81 @@ const result = await myContract.call.transfer(from, to, amount);
 processResult(result);
 ```
 
-### Step 7: Use High-Level Transaction Functions
+### Step 7: Migrate to Compact.js Contract Pattern (#370)
+
+This is a **major change**. Contracts are now defined using the `CompiledContract` builder from `@midnight-ntwrk/compact-js`.
+
+#### v2.1.0
+```typescript
+import { Contract } from '@midnight-ntwrk/midnight-js-contracts';
+import CounterContract from './contract';
+
+const witnesses = {
+  privateIncrement: (privateState) => [
+    { privateCounter: privateState.privateCounter + 1 },
+    []
+  ]
+};
+
+const contract = new Contract(CounterContract, witnesses);
+const deployed = await deployContract(providers, {
+  contract,
+  privateStateKey: 'counterPrivateState',
+  initialPrivateState: { privateCounter: 0 }
+});
+```
+
+#### v3.0.0
+```typescript
+import { CompiledContract } from '@midnight-ntwrk/compact-js';
+import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
+import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
+import * as CompiledCounter from './compiled/counter/contract/index.js';
+import type { Ledger } from './compiled/counter/contract/index.js';
+
+// 1. Define private state type
+type CounterPrivateState = {
+  privateCounter: number;
+};
+
+// 2. Define witnesses with WitnessContext for proper typing
+const witnesses = {
+  privateIncrement: ({
+    privateState
+  }: WitnessContext<Ledger, CounterPrivateState>): [CounterPrivateState, []] => [
+    { privateCounter: privateState.privateCounter + 1 },
+    []
+  ]
+};
+
+// 3. Create compiled contract using fluent API
+const CompiledCounterContract = CompiledContract.make<
+  CompiledCounter.Contract<CounterPrivateState>
+>('Counter', CompiledCounter.Contract<CounterPrivateState>).pipe(
+  CompiledContract.withWitnesses(witnesses),
+  CompiledContract.withCompiledFileAssets('./compiled/counter')
+);
+
+// 4. Deploy using new API
+const deployed = await deployContract(providers, {
+  compiledContract: CompiledCounterContract,
+  privateStateId: 'counterPrivateState',
+  initialPrivateState: { privateCounter: 0 }
+});
+
+// 5. Call contract methods
+const result = await deployed.callTx.increment();
+```
+
+**Key changes:**
+- Import `CompiledContract` from `@midnight-ntwrk/compact-js`
+- Import `WitnessContext` from `@midnight-ntwrk/compact-runtime`
+- Use `CompiledContract.make().pipe()` to build contract definition
+- Witnesses now use `WitnessContext<Ledger, PrivateState>` for typing
+- `deployContract` uses `compiledContract` instead of `contract`
+- `deployContract` uses `privateStateId` instead of `privateStateKey`
+
+### Step 8: Use High-Level Transaction Functions
 
 #### v2.1.0
 ```typescript
@@ -120,25 +190,20 @@ const txId = await provider.submitTx(tx);
 
 #### v3.0.0
 ```typescript
-// Use submitDeployTx for deployments
-import { submitDeployTx } from '@midnight-ntwrk/midnight-js-contracts';
+// Use deployContract with compiledContract
+import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
 
-const result = await submitDeployTx(providers, {
-  contract: myContract,
-  initialState: { /* ... */ }
+const deployed = await deployContract(providers, {
+  compiledContract: MyCompiledContract,
+  privateStateId: 'myState',
+  initialPrivateState: { ... }
 });
 
-// Use submitCallTx for contract calls
-import { submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
-
-const result = await submitCallTx(providers, {
-  contract: myContract,
-  circuit: 'myCircuit',
-  args: [arg1, arg2]
-});
+// Call via deployed contract
+const result = await deployed.callTx.myCircuit(arg1, arg2);
 ```
 
-### Step 8: Update networkId Usage (#125)
+### Step 9: Update networkId Usage (#125)
 
 #### v2.1.0
 ```typescript
@@ -186,29 +251,28 @@ function transfer(from: string, to: string, amount: bigint) {
 ### After (v3.0.0)
 
 ```typescript
-import { LevelPrivateStateProvider } from '@midnight-ntwrk/level-private-state-provider';
-import { submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
+import { levelPrivateStateProvider } from '@midnight-ntwrk/level-private-state-provider';
+import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
+import { CompiledContract } from '@midnight-ntwrk/compact-js';
 
-const provider = new LevelPrivateStateProvider({
-  midnightDbName: 'midnight-db',
-  privateStateStoreName: 'private-states',
-  signingKeyStoreName: 'signing-keys',
+const provider = levelPrivateStateProvider({
   privateStoragePasswordProvider: async () => process.env.STORAGE_PASSWORD!
 });
 
-async function transfer(
-  from: string, 
-  to: string, 
-  amount: bigint
-): Promise<TransactionId> {
-  const result = await submitCallTx(providers, {
-    contract: myContract,
-    circuit: 'transfer',
-    args: [from, to, amount]
-  });
-  
-  return result.txId;
-}
+// Create compiled contract
+const MyCompiledContract = CompiledContract.make<...>(...).pipe(
+  CompiledContract.withWitnesses(witnesses),
+  CompiledContract.withCompiledFileAssets('./compiled/my-contract')
+);
+
+// Deploy and call
+const deployed = await deployContract(providers, {
+  compiledContract: MyCompiledContract,
+  privateStateId: 'myState',
+  initialPrivateState: { ... }
+});
+
+const result = await deployed.callTx.transfer(from, to, amount);
 ```
 
 ## Common Issues and Solutions
@@ -217,8 +281,7 @@ async function transfer(
 
 **Solution:** Update to use the new signature:
 ```typescript
-// v3.0.0 - use UnboundTransaction input, get FinalizedTransaction output
-const finalizedTx = await walletProvider.balanceTx(unboundTx, newCoins, ttl);
+const finalizedTx = await walletProvider.balanceTx(unboundTx, ttl);
 await midnightProvider.submitTx(finalizedTx);
 ```
 
@@ -233,11 +296,10 @@ const txId = await midnightProvider.submitTx(tx);
 
 **Solution:**
 ```typescript
-const provider = new LevelPrivateStateProvider({
-  midnightDbName: 'midnight-db',
-  privateStateStoreName: 'private-states',
-  signingKeyStoreName: 'signing-keys',
-  privateStoragePasswordProvider: async () => 'your-password'
+import { levelPrivateStateProvider } from '@midnight-ntwrk/level-private-state-provider';
+
+const provider = levelPrivateStateProvider({
+  walletProvider: myWallet  // OR privateStoragePasswordProvider
 });
 ```
 

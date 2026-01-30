@@ -253,6 +253,7 @@ export const createMockProviders = (): ContractProviders<Contract.Any, Contract.
     unshieldedBalancesObservable: vi.fn()
   },
   privateStateProvider: {
+    setContractAddress: vi.fn(),
     get: vi.fn(),
     set: vi.fn(),
     getSigningKey: vi.fn(),

@@ -30,10 +30,25 @@ export const inMemoryPrivateStateProvider = <
   PSI extends PrivateStateId,
   PS extends Contract.PrivateState<Contract.Any>
 >(): PrivateStateProvider<PSI, PS> => {
-  const record = new Map<PSI, PS>();
+  const record = new Map<string, PS>();
   const signingKeys = {} as Record<ContractAddress, SigningKey>;
+  let contractAddress: ContractAddress | null = null;
+
+  const getScopedKey = (key: PSI): string => {
+    if (contractAddress === null) {
+      throw new Error('Contract address not set. Call setContractAddress() before accessing private state.');
+    }
+    return `${contractAddress}:${key}`;
+  };
 
   return {
+    /**
+     * Sets the contract address for scoping private state operations.
+     * @param {ContractAddress} address - The contract address to scope operations to.
+     */
+    setContractAddress(address: ContractAddress): void {
+      contractAddress = address;
+    },
     /**
      * Sets the private state for a given key.
      * @param {PSI} key - The key for the private state.
@@ -41,7 +56,7 @@ export const inMemoryPrivateStateProvider = <
      * @returns {Promise<void>} A promise that resolves when the state is set.
      */
     set(key: PSI, state: PS): Promise<void> {
-      record.set(key, state);
+      record.set(getScopedKey(key), state);
       return Promise.resolve();
     },
     /**
@@ -50,7 +65,7 @@ export const inMemoryPrivateStateProvider = <
      * @returns {Promise<PS | null>} A promise that resolves to the private state or null if not found.
      */
     get(key: PSI): Promise<PS | null> {
-      const value = record.get(key) ?? null;
+      const value = record.get(getScopedKey(key)) ?? null;
       return Promise.resolve(value);
     },
     /**
@@ -59,7 +74,7 @@ export const inMemoryPrivateStateProvider = <
      * @returns {Promise<void>} A promise that resolves when the state is removed.
      */
     remove(key: PSI): Promise<void> {
-      record.delete(key);
+      record.delete(getScopedKey(key));
       return Promise.resolve();
     },
     /**
@@ -67,35 +82,38 @@ export const inMemoryPrivateStateProvider = <
      * @returns {Promise<void>} A promise that resolves when all states are cleared.
      */
     clear(): Promise<void> {
+      if (contractAddress === null) {
+        throw new Error('Contract address not set. Call setContractAddress() before accessing private state.');
+      }
       record.clear();
       return Promise.resolve();
     },
     /**
      * Sets the signing key for a given contract address.
-     * @param {ContractAddress} contractAddress - The contract address.
+     * @param {ContractAddress} address - The contract address.
      * @param {SigningKey} signingKey - The signing key to set.
      * @returns {Promise<void>} A promise that resolves when the signing key is set.
      */
-    setSigningKey(contractAddress: ContractAddress, signingKey: SigningKey): Promise<void> {
-      signingKeys[contractAddress] = signingKey;
+    setSigningKey(address: ContractAddress, signingKey: SigningKey): Promise<void> {
+      signingKeys[address] = signingKey;
       return Promise.resolve();
     },
     /**
      * Gets the signing key for a given contract address.
-     * @param {ContractAddress} contractAddress - The contract address.
+     * @param {ContractAddress} address - The contract address.
      * @returns {Promise<SigningKey | null>} A promise that resolves to the signing key or null if not found.
      */
-    getSigningKey(contractAddress: ContractAddress): Promise<SigningKey | null> {
-      const value = signingKeys[contractAddress] ?? null;
+    getSigningKey(address: ContractAddress): Promise<SigningKey | null> {
+      const value = signingKeys[address] ?? null;
       return Promise.resolve(value);
     },
     /**
      * Removes the signing key for a given contract address.
-     * @param {ContractAddress} contractAddress - The contract address.
+     * @param {ContractAddress} address - The contract address.
      * @returns {Promise<void>} A promise that resolves when the signing key is removed.
      */
-    removeSigningKey(contractAddress: ContractAddress): Promise<void> {
-      delete signingKeys[contractAddress];
+    removeSigningKey(address: ContractAddress): Promise<void> {
+      delete signingKeys[address];
       return Promise.resolve();
     },
     /**
@@ -103,8 +121,8 @@ export const inMemoryPrivateStateProvider = <
      * @returns {Promise<void>} A promise that resolves when all signing keys are cleared.
      */
     clearSigningKeys(): Promise<void> {
-      Object.keys(signingKeys).forEach((contractAddress) => {
-        delete signingKeys[contractAddress];
+      Object.keys(signingKeys).forEach((addr) => {
+        delete signingKeys[addr];
       });
       return Promise.resolve();
     }

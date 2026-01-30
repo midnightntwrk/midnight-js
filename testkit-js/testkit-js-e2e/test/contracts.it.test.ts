@@ -100,6 +100,7 @@ describe('Contracts API', () => {
 
   beforeEach(() => {
     logger.info(`Running test=${expect.getState().currentTestName}`);
+    providers.privateStateProvider.setContractAddress(contractAddress);
   });
 
   beforeAll(async () => {

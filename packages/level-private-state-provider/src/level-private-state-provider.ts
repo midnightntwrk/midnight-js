@@ -230,21 +230,36 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
   const passwordProvider: PrivateStoragePasswordProvider = config.privateStoragePasswordProvider ||
     (() => config.walletProvider!.getEncryptionPublicKey());
 
+  let contractAddress: ContractAddress | null = null;
+
+  const getScopedKey = (privateStateId: PSI): string => {
+    if (contractAddress === null) {
+      throw new Error('Contract address not set. Call setContractAddress() before accessing private state.');
+    }
+    return `${contractAddress}:${privateStateId}`;
+  };
+
   return {
-    get(privateStateId: PSI): Promise<PS | null> {
-      return subLevelMaybeGet<PSI, PS>(
+    setContractAddress(address: ContractAddress): void {
+      contractAddress = address;
+    },
+    async get(privateStateId: PSI): Promise<PS | null> {
+      const scopedKey = getScopedKey(privateStateId);
+      return subLevelMaybeGet<string, PS>(
         fullConfig.midnightDbName,
         fullConfig.privateStateStoreName,
-        privateStateId,
+        scopedKey,
         passwordProvider
       );
     },
-    remove(privateStateId: PSI): Promise<void> {
-      return withSubLevel<PSI, string, void>(fullConfig.midnightDbName, fullConfig.privateStateStoreName, (subLevel) =>
-        subLevel.del(privateStateId)
+    async remove(privateStateId: PSI): Promise<void> {
+      const scopedKey = getScopedKey(privateStateId);
+      return withSubLevel<string, string, void>(fullConfig.midnightDbName, fullConfig.privateStateStoreName, (subLevel) =>
+        subLevel.del(scopedKey)
       );
     },
     async set(privateStateId: PSI, state: PS): Promise<void> {
+      const scopedKey = getScopedKey(privateStateId);
       const encryption = await getOrCreateEncryption(
         fullConfig.midnightDbName,
         fullConfig.privateStateStoreName,
@@ -253,11 +268,14 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       const serialized = superjson.stringify(state);
       const encrypted = encryption.encrypt(serialized);
 
-      return withSubLevel<PSI, string, void>(fullConfig.midnightDbName, fullConfig.privateStateStoreName, (subLevel) =>
-        subLevel.put(privateStateId, encrypted)
+      return withSubLevel<string, string, void>(fullConfig.midnightDbName, fullConfig.privateStateStoreName, (subLevel) =>
+        subLevel.put(scopedKey, encrypted)
       );
     },
-    clear(): Promise<void> {
+    async clear(): Promise<void> {
+      if (contractAddress === null) {
+        throw new Error('Contract address not set. Call setContractAddress() before accessing private state.');
+      }
       return withSubLevel(fullConfig.midnightDbName, fullConfig.privateStateStoreName, (subLevel) => subLevel.clear());
     },
     getSigningKey(address: ContractAddress): Promise<SigningKey | null> {
