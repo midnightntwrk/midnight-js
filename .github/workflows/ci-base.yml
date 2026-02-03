@@ -46,7 +46,7 @@ jobs:
           direnv export gha >> "$GITHUB_ENV"
 
       - name: Log in to GitHub Container registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # ratchet:docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # ratchet:docker/login-action@v3
         with:
           registry: 'https://ghcr.io'
           username: ${{ github.actor }}
@@ -139,7 +139,7 @@ jobs:
             utils, ./packages/utils/coverage/coverage-summary.json
 
       - name: Publish Test Report
-        uses: mikepenz/action-junit-report@a294a61c909bd8a4b563024a2faa28897fd53ebc # ratchet:mikepenz/action-junit-report@v5
+        uses: mikepenz/action-junit-report@74626db7353a25a20a72816467ebf035f674c5f8 # ratchet:mikepenz/action-junit-report@v5
         if: success() || failure()
         with:
           check_name: 'Unit Test Results (MidnightJS)'
@@ -179,7 +179,7 @@ jobs:
           direnv export gha >> "$GITHUB_ENV"
 
       - name: Log in to GitHub Container registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # ratchet:docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # ratchet:docker/login-action@v3
         with:
           registry: 'https://ghcr.io'
           username: ${{ github.actor }}
