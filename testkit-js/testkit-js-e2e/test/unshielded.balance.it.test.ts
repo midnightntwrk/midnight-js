@@ -52,9 +52,10 @@ class UnshieldedConfiguration implements ContractConfiguration {
   }
 }
 
+const MINT_AMOUNT = 1_000_000n;
 describe('Unshielded tokens', () => {
-  const TEST_TOKEN_AMOUNT = 1_000_000n;
-  const TEST_DOMAIN_SEP = new Uint8Array(32).fill(1);
+  const NOT_MINTED_DOMAIN_SEPARATOR = new Uint8Array(32).fill(2);
+  const MINT_DOMAIN_SEPARATOR = new Uint8Array(32).fill(1);
 
   let testEnvironment: TestEnvironment;
   let wallet: MidnightWalletProvider;
@@ -86,29 +87,21 @@ describe('Unshielded tokens', () => {
     contractAddress = deployedContract.deployTxData.public.contractAddress;
 
     logger.info(`Deployed unshielded contract at address: ${contractAddress}`);
+
+    logger.info('Minting tokens');
+    const mintTxData = await submitCallTx(providers, {
+      compiledContract: CompiledUnshieldedContract,
+      contractAddress,
+      circuitId: 'mintNativeTokens' as UnshieldedContractCircuits,
+      args: [MINT_AMOUNT]
+    });
+
+    expect(mintTxData.public.status).toBe(SucceedEntirely);
+
   });
 
   afterAll(async () => {
     await testEnvironment.shutdown();
-  });
-
-  test('should mint tokens', async () => {
-    const mintTxData = await submitCallTx(providers, {
-      compiledContract: CompiledUnshieldedContract,
-      contractAddress,
-      circuitId: 'mintToSelfReceive' as UnshieldedContractCircuits,
-      args: [TEST_DOMAIN_SEP, TEST_TOKEN_AMOUNT]
-    });
-
-    expect(mintTxData.public.status).toBe(SucceedEntirely);
-    expect(mintTxData.public.unshielded).toBeDefined();
-
-    const created = mintTxData.public.unshielded.created;
-    const spent = mintTxData.public.unshielded.spent;
-    expect(created.length).toEqual(0);
-    expect(spent.length).toEqual(0);
-
-    logger.info(`Minted token: ${JSON.stringify(mintTxData)}`);
   });
 
   test('should get balance of tokens - 0 value', async () => {
@@ -116,11 +109,29 @@ describe('Unshielded tokens', () => {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
       circuitId: 'getUnshieldedBalanceTest' as UnshieldedContractCircuits,
-      args: [TEST_DOMAIN_SEP]
+      args: [NOT_MINTED_DOMAIN_SEPARATOR]
     });
 
     expect(txData.public.status).toBe(SucceedEntirely);
     expect(txData.private.result).toEqual(0n);
+    expect(txData.public.unshielded).toBeDefined();
+
+    const spent = txData.public.unshielded.spent;
+    const created = txData.public.unshielded.created;
+    expect(spent.length).toEqual(0);
+    expect(created.length).toEqual(0);
+  });
+
+  test('should get balance of tokens - minted amount', async () => {
+    const txData = await submitCallTx(providers, {
+      compiledContract: CompiledUnshieldedContract,
+      contractAddress,
+      circuitId: 'getUnshieldedBalanceTest' as UnshieldedContractCircuits,
+      args: [MINT_DOMAIN_SEPARATOR]
+    });
+
+    expect(txData.public.status).toBe(SucceedEntirely);
+    expect(txData.private.result).toEqual(MINT_AMOUNT);
     expect(txData.public.unshielded).toBeDefined();
 
     const spent = txData.public.unshielded.spent;
@@ -134,7 +145,7 @@ describe('Unshielded tokens', () => {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
       circuitId: 'getUnshieldedBalanceGtTest' as UnshieldedContractCircuits,
-      args: [TEST_DOMAIN_SEP, 1n]
+      args: [MINT_DOMAIN_SEPARATOR, MINT_AMOUNT]
     });
 
     expect(txData.public.status).toBe(SucceedEntirely);
@@ -149,26 +160,15 @@ describe('Unshielded tokens', () => {
 
 
   test('should get balance of tokens - greater than - true', async () => {
-    logger.info('Minting tokens for greater than test');
-    const mintTxData = await submitCallTx(providers, {
-      compiledContract: CompiledUnshieldedContract,
-      contractAddress,
-      circuitId: 'mintNativeTokens' as UnshieldedContractCircuits,
-      args: [1_000_000n]
-    });
-
-    expect(mintTxData.public.status).toBe(SucceedEntirely);
-
-    logger.info(`Now testing greater than`);
     const txData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
       circuitId: 'getUnshieldedBalanceGtTest' as UnshieldedContractCircuits,
-      args: [TEST_DOMAIN_SEP, 1n]
+      args: [MINT_DOMAIN_SEPARATOR, MINT_AMOUNT - 1n]
     });
 
     expect(txData.public.status).toBe(SucceedEntirely);
-    expect(txData.private.result).toEqual(false);
+    expect(txData.private.result).toEqual(true);
     expect(txData.public.unshielded).toBeDefined();
 
     const spent = txData.public.unshielded.spent;
@@ -182,7 +182,7 @@ describe('Unshielded tokens', () => {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
       circuitId: 'getUnshieldedBalanceLtTest' as UnshieldedContractCircuits,
-      args: [TEST_DOMAIN_SEP, 0n]
+      args: [MINT_DOMAIN_SEPARATOR, MINT_AMOUNT - 1n]
     });
 
     expect(txData.public.status).toBe(SucceedEntirely);
@@ -201,7 +201,7 @@ describe('Unshielded tokens', () => {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
       circuitId: 'getUnshieldedBalanceLtTest' as UnshieldedContractCircuits,
-      args: [TEST_DOMAIN_SEP, 1n]
+      args: [MINT_DOMAIN_SEPARATOR, MINT_AMOUNT + 1n]
     });
 
     expect(txData.public.status).toBe(SucceedEntirely);
@@ -212,70 +212,5 @@ describe('Unshielded tokens', () => {
     const created = txData.public.unshielded.created;
     expect(spent.length).toEqual(0);
     expect(created.length).toEqual(0);
-  });
-
-  //only temporary, next PR will re-enable with proper setup
-  test.skip('should receive tokens - invalid', async () => {
-    await expect(() =>
-      submitCallTx(providers, {
-        compiledContract: CompiledUnshieldedContract,
-        contractAddress,
-        circuitId: 'receiveUnshieldedTest' as UnshieldedContractCircuits,
-        args: [TEST_DOMAIN_SEP, TEST_TOKEN_AMOUNT]
-      })
-    ).rejects.toThrow('Insufficient Funds: could not balance 0101010101010101010101010101010101010101010101010101010101010101');
-  });
-
-  //BUG: 21219
-  test.skip('should receive tokens - wallet', async () => {
-    const sep = new Uint8Array(32).fill(0);
-
-    const txData = await submitCallTx(providers, {
-      compiledContract: CompiledUnshieldedContract,
-      contractAddress,
-      circuitId: 'receiveUnshieldedTest' as UnshieldedContractCircuits,
-      args: [sep, TEST_TOKEN_AMOUNT]
-    });
-
-    expect(txData.public.status).toBe(SucceedEntirely);
-    expect(txData.private.result).toEqual([]);
-    expect(txData.public.unshielded).toBeDefined();
-
-    const spent = txData.public.unshielded.spent;
-    const created = txData.public.unshielded.created;
-    expect(spent.length).toEqual(1);
-    expect(created.length).toEqual(1);
-  });
-
-  test.skip('should send tokens to wallet', async () => {
-    const address = new Uint8Array(Buffer.from('0f09f9eb5538606c6490c0595b771ecb0c29ae71778f089a95e8465b84774aed', 'hex'));
-    const sep = new Uint8Array(32).fill(0);
-
-    const txData = await submitCallTx(providers, {
-      compiledContract: CompiledUnshieldedContract,
-      contractAddress,
-      circuitId: 'sendUnshieldedToUserTest' as UnshieldedContractCircuits,
-      args: [sep, 1_000_000n, { bytes: address } ]
-    });
-
-    expect(txData.public.status).toBe(SucceedEntirely);
-    expect(txData.private.result).toEqual(0n);
-    expect(txData.public.unshielded).toBeDefined();
-
-    const spent = txData.public.unshielded.spent;
-    const created = txData.public.unshielded.created;
-    expect(spent.length).toEqual(0);
-    expect(created.length).toEqual(0);
-  });
-
-  test('should mint native tokens', async () => {
-    const txData = await submitCallTx(providers, {
-      compiledContract: CompiledUnshieldedContract,
-      contractAddress,
-      circuitId: 'mintNativeTokens' as UnshieldedContractCircuits,
-      args: [1_000_000n]
-    });
-
-    expect(txData.public.status).toBe(SucceedEntirely);
   });
 });
