@@ -13,14 +13,12 @@
  * limitations under the License.
  */
 
+import { type CompiledContract,type Contract } from '@midnight-ntwrk/compact-js';
 import { StateValue } from '@midnight-ntwrk/compact-runtime';
 import { type AlignedValue, type ContractAddress, type PartitionedTranscript } from '@midnight-ntwrk/ledger-v7';
 import {
-  type Contract,
   FailEntirely,
   type FinalizedTxData,
-  type ImpureCircuitId,
-  type PrivateState,
   type PrivateStateId
 } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -33,7 +31,7 @@ import type { FinalizedCallTxData, UnsubmittedCallTxData } from '../tx-model';
 import { type CallTxOptions, createUnprovenCallTx } from '../unproven-call-tx';
 import {
   createMockCoinInfo,
-  createMockContract,
+  createMockCompiledContract,
   createMockContractAddress,
   createMockFinalizedTxData,
   createMockPrivateStateId,
@@ -44,7 +42,7 @@ import {
 } from './test-mocks';
 
 describe('submit-call-tx', () => {
-  let mockContract: Contract<undefined>;
+  let mockCompiledContract: CompiledContract.CompiledContract<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   let mockContractAddress: ReturnType<typeof createMockContractAddress>;
   let mockZswapLocalState: ReturnType<typeof createMockZswapLocalState>;
   let mockPrivateStateId: PrivateStateId;
@@ -54,7 +52,7 @@ describe('submit-call-tx', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockContract = createMockContract();
+    mockCompiledContract = createMockCompiledContract();
     mockContractAddress = createMockContractAddress();
     mockZswapLocalState = createMockZswapLocalState();
     mockPrivateStateId = createMockPrivateStateId();
@@ -66,10 +64,10 @@ describe('submit-call-tx', () => {
     vi.mock('../submit-tx');
   });
 
-  const createBasicCallOptions = (overrides: Partial<CallTxOptions<Contract, ImpureCircuitId>> = {}) => ({
-    contract: mockContract,
+  const createBasicCallOptions = (overrides: Partial<CallTxOptions<Contract.Any, Contract.ImpureCircuitId<Contract.Any>>> = {}) => ({
+    compiledContract: mockCompiledContract,
     contractAddress: mockContractAddress,
-    circuitId: 'testCircuit' as ImpureCircuitId,
+    circuitId: 'testCircuit' as Contract.ImpureCircuitId<Contract.Any>,
     args: ['arg1', 'arg2'],
     ...overrides
   });
@@ -84,7 +82,7 @@ describe('submit-call-tx', () => {
     return { mockUnprovenCallTxData, mockFinalizedTxData };
   };
 
-  const createFailedTxData = (): UnsubmittedCallTxData<Contract, ImpureCircuitId> => ({
+  const createFailedTxData = (): UnsubmittedCallTxData<Contract.Any, Contract.ImpureCircuitId<Contract.Any>> => ({
     public: {
       nextContractState: StateValue.newNull(),
       publicTranscript: [],
@@ -103,10 +101,10 @@ describe('submit-call-tx', () => {
   });
 
   const verifySuccessfulCall = (
-    mockUnprovenCallTxData: UnsubmittedCallTxData<Contract, ImpureCircuitId>,
+    mockUnprovenCallTxData: UnsubmittedCallTxData<Contract.Any, Contract.ImpureCircuitId<Contract.Any>>,
     mockFinalizedTxData: FinalizedTxData,
-    result: FinalizedCallTxData<Contract, ImpureCircuitId>,
-    options: CallTxOptions<Contract, ImpureCircuitId>
+    result: FinalizedCallTxData<Contract.Any, Contract.ImpureCircuitId<Contract.Any>>,
+    options: CallTxOptions<Contract.Any, Contract.ImpureCircuitId<Contract.Any>>
   ) => {
     expect(createUnprovenCallTx).toHaveBeenCalledWith(
       mockProviders,
@@ -115,7 +113,6 @@ describe('submit-call-tx', () => {
     );
     expect(submitTx).toHaveBeenCalledWith(mockProviders, {
       unprovenTx: mockUnprovenCallTxData.private.unprovenTx,
-      newCoins: mockUnprovenCallTxData.private.newCoins,
       circuitId: 'testCircuit'
     });
     expect(result).toEqual({
@@ -154,7 +151,7 @@ describe('submit-call-tx', () => {
 
     describe('successful call with private state ID', () => {
       it('should successfully submit call transaction and update private state', async () => {
-        const nextPrivateState = { newState: 'updated' } as PrivateState<Contract>;
+        const nextPrivateState = { newState: 'updated' } as Contract.PrivateState<Contract.Any>;
         const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
         const { mockFinalizedTxData } = setupSuccessfulMocks();
 
@@ -179,8 +176,8 @@ describe('submit-call-tx', () => {
       });
 
       it('should successfully submit scoped call transaction and update private state', async () => {
-        const nextPrivateState_1 = { newState: 'updated_1' } as PrivateState<Contract>;
-        const nextPrivateState_2 = { newState: 'updated_2' } as PrivateState<Contract>;
+        const nextPrivateState_1 = { newState: 'updated_1' } as Contract.PrivateState<Contract.Any>;
+        const nextPrivateState_2 = { newState: 'updated_2' } as Contract.PrivateState<Contract.Any>;
         const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
         const { mockFinalizedTxData } = setupSuccessfulMocks();
 
@@ -285,7 +282,7 @@ describe('submit-call-tx', () => {
       });
 
       it('should include failure data and circuit ID in CallTxFailedError', async () => {
-        const circuitId = 'testCircuit' as ImpureCircuitId<Contract>;
+        const circuitId = 'testCircuit' as Contract.ImpureCircuitId<Contract.Any>;
         const options = createBasicCallOptions({ circuitId });
         const mockUnprovenCallTxData = createFailedTxData();
         const mockFailedTxData = createMockFinalizedTxData(FailEntirely);
@@ -312,7 +309,7 @@ describe('submit-call-tx', () => {
       });
 
       it('should validate circuit exists in contract', async () => {
-        const options = createBasicCallOptions({ circuitId: 'nonExistentCircuit' as ImpureCircuitId });
+        const options = createBasicCallOptions({ circuitId: 'nonExistentCircuit' as Contract.ImpureCircuitId<Contract.Any> });
 
         await expect(submitCallTx(mockProviders, options)).rejects.toThrow("Circuit 'nonExistentCircuit' is undefined");
       });
@@ -378,7 +375,6 @@ describe('submit-call-tx', () => {
 
         expect(submitTx).toHaveBeenCalledWith(mockProviders, {
           unprovenTx: mockUnprovenCallTxData.private.unprovenTx,
-          newCoins: [],
           circuitId: 'testCircuit'
         });
         expect(result).toEqual({
@@ -436,7 +432,6 @@ describe('submit-call-tx', () => {
         expect(createUnprovenCallTx).toHaveBeenCalledWith(mockProviders, options);
         expect(submitTxAsync).toHaveBeenCalledWith(mockProviders, {
           unprovenTx: mockUnprovenCallTxData.private.unprovenTx,
-          newCoins: mockUnprovenCallTxData.private.newCoins,
           circuitId: 'testCircuit'
         });
         expect(result).toEqual({
@@ -496,7 +491,7 @@ describe('submit-call-tx', () => {
       });
 
       it('should validate circuit exists in contract', async () => {
-        const options = createBasicCallOptions({ circuitId: 'nonExistentCircuit' as ImpureCircuitId });
+        const options = createBasicCallOptions({ circuitId: 'nonExistentCircuit' as Contract.ImpureCircuitId<Contract.Any> });
 
         await expect(submitCallTxAsync(mockProviders, options)).rejects.toThrow("Circuit 'nonExistentCircuit' is undefined");
       });
@@ -548,7 +543,6 @@ describe('submit-call-tx', () => {
 
         expect(submitTxAsync).toHaveBeenCalledWith(mockProviders, {
           unprovenTx: mockUnprovenCallTxData.private.unprovenTx,
-          newCoins: [],
           circuitId: 'testCircuit'
         });
         expect(result.txId).toBe(mockTxId);
@@ -558,7 +552,7 @@ describe('submit-call-tx', () => {
       it('should return callTxData with all private state information', async () => {
         const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
         const mockTxId = 'test-tx-id-full-data';
-        const nextPrivateState = { complexState: 'data' } as PrivateState<Contract>;
+        const nextPrivateState = { complexState: 'data' } as Contract.PrivateState<Contract.Any>;
 
         const mockUnprovenCallTxData = createMockUnprovenCallTxData({
           private: {

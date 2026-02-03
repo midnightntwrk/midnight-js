@@ -28,7 +28,8 @@ import type { Logger } from 'pino';
 import { WebSocket } from 'ws';
 
 import {
-  CompiledDoubleCounter
+  CompiledDoubleCounter,
+  CompiledDoubleCounterContract
 } from './contract';
 import {
   type CounterPrivateState,
@@ -95,7 +96,7 @@ export const deploy = async (
 ): Promise<DeployedCounterContract> => {
   logger.info('Deploying counter contract...');
   const counterContract = await deployContract(providers, {
-    contract: doubleCounterContractInstance,
+    compiledContract: CompiledDoubleCounterContract,
     privateStateId: CounterPrivateStateId,
     initialPrivateState: privateState
   });

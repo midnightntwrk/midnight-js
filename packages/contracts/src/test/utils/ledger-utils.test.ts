@@ -32,32 +32,28 @@ import {
   unshieldedToken,
   ZswapChainState
 } from '@midnight-ntwrk/ledger-v7';
-import { createVerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
 
 import {
-  contractMaintenanceAuthority,
   createUnprovenLedgerCallTx,
   createUnprovenRemoveVerifierKeyTx,
   createUnprovenReplaceAuthorityTx,
   fromLedgerContractState,
-  insertVerifierKey,
-  removeVerifierKey,
-  replaceAuthority,
   toLedgerContractState,
   toLedgerQueryContext,
   unprovenTxFromContractUpdates} from '../../utils';
+import { createMockCompiledContract,createMockZKConfigProvider } from '../test-mocks';
 
 describe('ledger-utils', () => {
+  const mockZKProvider = createMockZKConfigProvider();
+  const mockCompiledContract = createMockCompiledContract();
   const dummySigningKey = sampleSigningKey();
   const dummySigningKey2 = sampleSigningKey();
   const dummyContractState = new CompactContractState();
-  const dummyContractState2 = new CompactContractState();
   const dummyContractAddress = sampleContractAddress();
   const dummyEncPublicKey = sampleEncryptionPublicKey();
-  // Generate a concrete Uint8Array for use as a verifier key
-  const verifierKey = createVerifierKey(new Uint8Array(32));
+  const dummyCPK = sampleCoinPublicKey();
 
   it('toLedgerContractState and fromLedgerContractState are inverses', () => {
     const ledgerState = toLedgerContractState(dummyContractState);
@@ -74,37 +70,9 @@ describe('ledger-utils', () => {
     // WASM Error
   });
 
-  it('contractMaintenanceAuthority returns a valid authority', () => {
-    const authority = contractMaintenanceAuthority(dummySigningKey, dummyContractState);
-    expect(authority.threshold).toBe(1);
-    expect(authority.committee.length).toBe(1);
-    expect(authority.counter).toBe(1n);
-  });
-
-  it('replaceAuthority returns a ReplaceAuthority', () => {
-    const ra = replaceAuthority(dummySigningKey, dummyContractState);
-    expect(ra).toBeDefined();
-    expect(ra.authority.threshold).toBe(1);
-  });
-
-  it('removeVerifierKey returns a VerifierKeyRemove', () => {
-    const vkRemove = removeVerifierKey('op');
-    expect(vkRemove).toBeDefined();
-    expect(vkRemove.operation).toBe('op');
-  });
-
-  it.skip('insertVerifierKey returns a VerifierKeyInsert', () => {
-    const vkInsert = insertVerifierKey('op', verifierKey);
-    expect(vkInsert).toBeDefined();
-    expect(vkInsert.operation).toBe('op');
-  });
-
-  it('unprovenTxFromContractUpdates returns an UnprovenTransaction', () => {
-    const tx = unprovenTxFromContractUpdates(
-      dummyContractAddress,
-      [replaceAuthority(dummySigningKey, dummyContractState)],
-      dummyContractState2,
-      dummySigningKey2
+  it('unprovenTxFromContractUpdates returns an UnprovenTransaction', async () => {
+    const tx = await unprovenTxFromContractUpdates(
+      () => Promise.resolve(new MaintenanceUpdate(dummyContractAddress, [], 1n))
     );
     expect(tx).toBeInstanceOf(Transaction);
   });
@@ -175,83 +143,29 @@ describe('ledger-utils', () => {
     expect(tx).toBeInstanceOf(Transaction);
   });
 
-  it('createUnprovenReplaceAuthorityTx returns an UnprovenTransaction', () => {
-    const tx = createUnprovenReplaceAuthorityTx(
+  it('createUnprovenReplaceAuthorityTx returns an UnprovenTransaction', async () => {
+    const tx = await createUnprovenReplaceAuthorityTx(
+      mockZKProvider,
+      mockCompiledContract,
       dummyContractAddress,
       dummySigningKey,
       dummyContractState,
-      dummySigningKey2
+      dummySigningKey2,
+      dummyCPK
     );
     expect(tx).toBeInstanceOf(Transaction);
   });
 
-  it('createUnprovenRemoveVerifierKeyTx returns an UnprovenTransaction', () => {
-    const tx = createUnprovenRemoveVerifierKeyTx(dummyContractAddress, 'op', dummyContractState, dummySigningKey);
-    expect(tx).toBeInstanceOf(Transaction);
-  });
-
-  it('contractMaintenanceAuthority without contract state starts at 0', () => {
-    const authority = contractMaintenanceAuthority(dummySigningKey);
-
-    expect(authority.counter).toBe(0n);
-    expect(authority.threshold).toBe(1);
-    expect(authority.committee.length).toBe(1);
-  });
-
-  it('removeVerifierKey with Uint8Array operation', () => {
-    const opBytes = new Uint8Array([1, 2, 3, 4]);
-    const vkRemove = removeVerifierKey(opBytes);
-    expect(vkRemove).toBeDefined();
-    expect(vkRemove.operation).toBeDefined();
-  });
-
-  it('removeVerifierKey with string operation', () => {
-    const vkRemove = removeVerifierKey('string-operation');
-    expect(vkRemove).toBeDefined();
-    expect(vkRemove.operation).toBe('string-operation');
-  });
-
-  it('creates unproven tx with multiple updates', () => {
-    const updates = [
-      replaceAuthority(dummySigningKey, dummyContractState),
-      removeVerifierKey('circuit1')
-    ];
-
-    const tx = unprovenTxFromContractUpdates(
+  it('createUnprovenRemoveVerifierKeyTx returns an UnprovenTransaction', async () => {
+    const tx = await createUnprovenRemoveVerifierKeyTx(
+      mockZKProvider,
+      mockCompiledContract,
       dummyContractAddress,
-      updates,
-      dummyContractState2,
-      dummySigningKey2
+      'op',
+      dummyContractState,
+      dummySigningKey,
+      dummyCPK
     );
-
     expect(tx).toBeInstanceOf(Transaction);
-    expect(tx.intents?.get(1)?.actions.at(0), tx.toString()).toBeInstanceOf(MaintenanceUpdate);
-    expect((tx.intents?.get(1)?.actions.at(0) as MaintenanceUpdate).updates.length).toEqual(2);
-  });
-
-  it('createUnprovenRemoveVerifierKeyTx with Uint8Array operation', () => {
-    const opBytes = new Uint8Array([5, 6, 7, 8]);
-    const tx = createUnprovenRemoveVerifierKeyTx(dummyContractAddress, opBytes, dummyContractState, dummySigningKey);
-    expect(tx).toBeInstanceOf(Transaction);
-  });
-
-  it('replaceAuthority with different contract states', () => {
-    const ra1 = replaceAuthority(dummySigningKey, dummyContractState);
-    const ra2 = replaceAuthority(dummySigningKey2, dummyContractState2);
-
-    expect(ra1).toBeDefined();
-    expect(ra2).toBeDefined();
-    expect(ra1.authority.threshold).toBe(1);
-    expect(ra2.authority.threshold).toBe(1);
-  });
-
-  it('contractMaintenanceAuthority handles different signing keys', () => {
-    const authority1 = contractMaintenanceAuthority(dummySigningKey);
-    const authority2 = contractMaintenanceAuthority(dummySigningKey2);
-
-    expect(authority1).toBeDefined();
-    expect(authority2).toBeDefined();
-    expect(authority1.threshold).toBe(authority2.threshold);
-    expect(authority1.committee.length).toBe(authority2.committee.length);
   });
 });

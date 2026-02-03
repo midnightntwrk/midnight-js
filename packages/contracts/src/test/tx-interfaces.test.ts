@@ -21,10 +21,10 @@ import {
   createCircuitCallTxInterface,
   createCircuitMaintenanceTxInterface,
   createCircuitMaintenanceTxInterfaces,
-  createContractMaintenanceTxInterface
+  createContractMaintenanceTxInterface,
 } from '../tx-interfaces';
 import {
-  createMockContract,
+  createMockCompiledContract,
   createMockContractAddress,
   createMockFinalizedTxData,
   createMockPrivateStateId,
@@ -37,7 +37,7 @@ vi.mock('../submit-remove-vk-tx');
 vi.mock('../submit-replace-authority-tx');
 
 describe('tx-interfaces', () => {
-  let mockContract: ReturnType<typeof createMockContract>;
+  let mockCompiledContract: ReturnType<typeof createMockCompiledContract>;
   let mockProviders: ReturnType<typeof createMockProviders>;
   let mockContractAddress: ReturnType<typeof createMockContractAddress>;
   let mockPrivateStateId: ReturnType<typeof createMockPrivateStateId>;
@@ -46,7 +46,7 @@ describe('tx-interfaces', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockContract = createMockContract();
+    mockCompiledContract = createMockCompiledContract();
     mockProviders = createMockProviders();
     mockContractAddress = createMockContractAddress();
     mockPrivateStateId = createMockPrivateStateId();
@@ -57,15 +57,15 @@ describe('tx-interfaces', () => {
     it('should create call tx options without args', () => {
       const circuitId = 'testCircuit';
       const options = createCallTxOptions(
-        mockContract,
+        mockCompiledContract,
         circuitId,
         mockContractAddress,
         undefined,
-        []
+        [] as never
       );
 
       expect(options).toEqual({
-        contract: mockContract,
+        compiledContract: mockCompiledContract,
         circuitId,
         contractAddress: mockContractAddress
       });
@@ -75,15 +75,15 @@ describe('tx-interfaces', () => {
       const circuitId = 'testCircuit';
       const args = ['arg1', 'arg2'];
       const options = createCallTxOptions(
-        mockContract,
+        mockCompiledContract,
         circuitId,
         mockContractAddress,
         undefined,
-        args as never[]
+        args as never
       );
 
       expect(options).toEqual({
-        contract: mockContract,
+        compiledContract: mockCompiledContract,
         circuitId,
         contractAddress: mockContractAddress,
         args
@@ -94,15 +94,15 @@ describe('tx-interfaces', () => {
       const circuitId = 'testCircuit';
       const args = ['arg1'];
       const options = createCallTxOptions(
-        mockContract,
+        mockCompiledContract,
         circuitId,
         mockContractAddress,
         mockPrivateStateId,
-        args as never[]
+        args as never
       );
 
       expect(options).toEqual({
-        contract: mockContract,
+        compiledContract: mockCompiledContract,
         circuitId,
         contractAddress: mockContractAddress,
         privateStateId: mockPrivateStateId,
@@ -115,7 +115,7 @@ describe('tx-interfaces', () => {
     it('should create circuit call interface without private state', () => {
       const callInterface = createCircuitCallTxInterface(
         mockProviders,
-        mockContract,
+        mockCompiledContract,
         mockContractAddress,
         undefined
       );
@@ -127,7 +127,7 @@ describe('tx-interfaces', () => {
     it('should create circuit call interface with private state', () => {
       const callInterface = createCircuitCallTxInterface(
         mockProviders,
-        mockContract,
+        mockCompiledContract,
         mockContractAddress,
         mockPrivateStateId
       );
@@ -143,6 +143,7 @@ describe('tx-interfaces', () => {
       const maintenanceInterface = createCircuitMaintenanceTxInterface(
         mockProviders,
         circuitId,
+        mockCompiledContract,
         mockContractAddress
       );
 
@@ -157,6 +158,7 @@ describe('tx-interfaces', () => {
       const maintenanceInterface = createCircuitMaintenanceTxInterface(
         mockProviders,
         circuitId,
+        mockCompiledContract,
         mockContractAddress
       );
 
@@ -165,7 +167,12 @@ describe('tx-interfaces', () => {
 
       const result = await maintenanceInterface.removeVerifierKey();
 
-      expect(submitRemoveVerifierKeyTx).toHaveBeenCalledWith(mockProviders, mockContractAddress, circuitId);
+      expect(submitRemoveVerifierKeyTx).toHaveBeenCalledWith(
+        mockProviders,
+        mockCompiledContract,
+        mockContractAddress,
+        circuitId
+      );
       expect(result).toBe(mockFinalizedTxData);
     });
 
@@ -175,6 +182,7 @@ describe('tx-interfaces', () => {
       const maintenanceInterface = createCircuitMaintenanceTxInterface(
         mockProviders,
         circuitId,
+        mockCompiledContract,
         mockContractAddress
       );
 
@@ -185,6 +193,7 @@ describe('tx-interfaces', () => {
 
       expect(submitInsertVerifierKeyTx).toHaveBeenCalledWith(
         mockProviders,
+        mockCompiledContract,
         mockContractAddress,
         circuitId,
         mockVerifierKey
@@ -197,7 +206,7 @@ describe('tx-interfaces', () => {
     it('should create maintenance interfaces for all circuits', () => {
       const interfaces = createCircuitMaintenanceTxInterfaces(
         mockProviders,
-        mockContract,
+        mockCompiledContract,
         mockContractAddress
       );
 
@@ -211,6 +220,7 @@ describe('tx-interfaces', () => {
     it('should create contract maintenance interface', () => {
       const contractInterface = createContractMaintenanceTxInterface(
         mockProviders,
+        mockCompiledContract,
         mockContractAddress
       );
 

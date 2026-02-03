@@ -13,12 +13,14 @@
  * limitations under the License.
  */
 
+import { type CompiledContract, ContractExecutable } from '@midnight-ntwrk/compact-js';
+import { type Contract, ImpureCircuitId, VerifierKey as ContractVerifierKey } from '@midnight-ntwrk/compact-js/effect/Contract';
 import {
   type AlignedValue,
+  type CoinPublicKey,
   type ContractAddress,
   ContractState,
   type QueryContext,
-  signatureVerifyingKey,
   type SigningKey,
   type ZswapLocalState} from '@midnight-ntwrk/compact-runtime';
 import {
@@ -26,29 +28,24 @@ import {
   communicationCommitmentRandomness,
   ContractCallPrototype,
   ContractDeploy,
-  ContractMaintenanceAuthority,
-  ContractOperationVersion,
-  ContractOperationVersionedVerifierKey,
   ContractState as LedgerContractState,
   type EncPublicKey,
   Intent,
-  MaintenanceUpdate,
+  type MaintenanceUpdate,
   type PartitionedTranscript,
   QueryContext as LedgerQueryContext,
-  ReplaceAuthority,
-  signData,
-  type SingleUpdate,
   StateValue as LedgerStateValue,
   type UnprovenTransaction,
-  VerifierKeyInsert,
-  VerifierKeyRemove,
   type ZswapChainState
 } from '@midnight-ntwrk/ledger-v7';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
-  type ImpureCircuitId,
+  asContractAddress,
+  asEffectOption,
+  makeContractExecutableRuntime,
   Transaction,
-  type VerifierKey
+  type VerifierKey,
+  type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
 
@@ -69,47 +66,12 @@ export const toLedgerQueryContext = (queryContext: QueryContext): LedgerQueryCon
   return ledgerQueryContext;
 }
 
-const addVerifierKeys = (verifierKeys: [ImpureCircuitId, VerifierKey][], contractState: LedgerContractState): void => {
-  verifierKeys.forEach(([impureCircuitId, verifierKey]) => {
-    const operation = contractState.operation(impureCircuitId);
-    assertDefined(
-      operation,
-      `Circuit '${impureCircuitId}' is undefined for contract state ${contractState.toString(false)}`
-    );
-    // TODO: Remove mutability
-    operation.verifierKey = verifierKey;
-    contractState.setOperation(impureCircuitId, operation);
-  });
-};
-
-export const contractMaintenanceAuthority = (
-  sk: SigningKey,
-  contractState?: ContractState
-): ContractMaintenanceAuthority => {
-  const svk = signatureVerifyingKey(sk);
-  const threshold = 1;
-  return new ContractMaintenanceAuthority(
-    [svk],
-    threshold,
-    contractState ? contractState.maintenanceAuthority.counter + 1n : 0n
-  );
-};
-
-const addMaintenanceAuthority = (sk: SigningKey, contractState: LedgerContractState): void => {
-  contractState.maintenanceAuthority = contractMaintenanceAuthority(sk);
-};
-
 export const createUnprovenLedgerDeployTx = (
-  verifierKeys: [ImpureCircuitId, VerifierKey][],
-  sk: SigningKey,
   contractState: ContractState,
   zswapLocalState: ZswapLocalState,
   encryptionPublicKey: EncPublicKey
 ): [ContractAddress, ContractState, UnprovenTransaction] => {
-  const ledgerContractState = toLedgerContractState(contractState);
-  addVerifierKeys(verifierKeys, ledgerContractState);
-  addMaintenanceAuthority(sk, ledgerContractState);
-  const contractDeploy = new ContractDeploy(ledgerContractState);
+  const contractDeploy = new ContractDeploy(toLedgerContractState(contractState));
   return [
     contractDeploy.address,
     fromLedgerContractState(contractDeploy.initialState),
@@ -120,10 +82,10 @@ export const createUnprovenLedgerDeployTx = (
       Intent.new(ttlOneHour()).addDeploy(contractDeploy)
     )
   ];
-};
+}
 
 export const createUnprovenLedgerCallTx = (
-  circuitId: ImpureCircuitId,
+  circuitId: Contract.ImpureCircuitId<Contract.Any>,
   contractAddress: ContractAddress,
   initialContractState: ContractState,
   zswapChainState: ZswapChainState,
@@ -160,68 +122,95 @@ export const createUnprovenLedgerCallTx = (
   );
 };
 
-// Utilities for creating single contract updates.
-
-export const replaceAuthority = (newAuthority: SigningKey, contractState: ContractState): ReplaceAuthority =>
-  new ReplaceAuthority(contractMaintenanceAuthority(newAuthority, contractState));
-
-export const removeVerifierKey = (operation: string | Uint8Array): VerifierKeyRemove =>
-  new VerifierKeyRemove(operation, new ContractOperationVersion('v3'));
-
-export const insertVerifierKey = (operation: string | Uint8Array, newVk: VerifierKey): VerifierKeyInsert =>
-  new VerifierKeyInsert(operation, new ContractOperationVersionedVerifierKey('v3', newVk));
-
 // Utilities for unproven transactions for the single contract updates above.
 
-export const unprovenTxFromContractUpdates = (
-  contractAddress: ContractAddress,
-  updates: SingleUpdate[],
-  contractState: ContractState,
-  sk: SigningKey
-): UnprovenTransaction => {
-  const maintenanceUpdate = new MaintenanceUpdate(contractAddress, updates, contractState.maintenanceAuthority.counter);
-  // 'idx' is '0n' because Midnight.js currently only supports single-party maintenance update authorities
-  const idx = 0n;
-  const signedMaintenanceUpdate = maintenanceUpdate.addSignature(idx, signData(sk, maintenanceUpdate.dataToSign));
+export const unprovenTxFromContractUpdates = async (
+  updateAndSignFn: () => Promise<MaintenanceUpdate>
+): Promise<UnprovenTransaction> => {
   return Transaction.fromParts(
     getNetworkId(),
     undefined,
     undefined,
-    Intent.new(ttlOneHour()).addMaintenanceUpdate(signedMaintenanceUpdate)
+    Intent.new(ttlOneHour()).addMaintenanceUpdate(await updateAndSignFn())
   );
 };
 
-export const createUnprovenReplaceAuthorityTx = (
+export const createUnprovenReplaceAuthorityTx = <C extends Contract.Any>(
+  zkConfigProvider: ZKConfigProvider<string>,
+  compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   contractAddress: ContractAddress,
   newAuthority: SigningKey,
   contractState: ContractState,
-  currentAuthority: SigningKey
-): UnprovenTransaction =>
-  unprovenTxFromContractUpdates(
-    contractAddress,
-    [replaceAuthority(newAuthority, contractState)],
-    contractState,
-    currentAuthority
-  );
+  currentAuthority: SigningKey,
+  coinPublicKey: CoinPublicKey,
+): Promise<UnprovenTransaction> => {
+  const contractExec = ContractExecutable.make(compiledContract);
+  const contractRuntime = makeContractExecutableRuntime(zkConfigProvider, {
+    coinPublicKey,
+    signingKey: currentAuthority
+  });
 
-export const createUnprovenRemoveVerifierKeyTx = (
+  return unprovenTxFromContractUpdates(async () => {
+    return (await contractRuntime.runPromise(contractExec.replaceContractMaintenanceAuthority(
+      asEffectOption(newAuthority),
+      {
+        address: asContractAddress(contractAddress),
+        contractState
+      }
+    ))).public.maintenanceUpdate
+  });
+}
+
+export const createUnprovenRemoveVerifierKeyTx = <C extends Contract.Any>(
+  zkConfigProvider: ZKConfigProvider<string>,
+  compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   contractAddress: ContractAddress,
-  operation: string | Uint8Array,
+  operation: string,
   contractState: ContractState,
-  currentAuthority: SigningKey
-): UnprovenTransaction =>
-  unprovenTxFromContractUpdates(contractAddress, [removeVerifierKey(operation)], contractState, currentAuthority);
+  currentAuthority: SigningKey,
+  coinPublicKey: CoinPublicKey,
+): Promise<UnprovenTransaction> => {
+  const contractExec = ContractExecutable.make(compiledContract);
+  const contractRuntime = makeContractExecutableRuntime(zkConfigProvider, {
+    coinPublicKey,
+    signingKey: currentAuthority
+  });
 
-export const createUnprovenInsertVerifierKeyTx = (
+  return unprovenTxFromContractUpdates(async () => {
+    return (await contractRuntime.runPromise(contractExec.removeContractOperation(
+      ImpureCircuitId(operation),
+      {
+        address: asContractAddress(contractAddress),
+        contractState
+      }
+    ))).public.maintenanceUpdate
+  });
+}
+
+export const createUnprovenInsertVerifierKeyTx = <C extends Contract.Any>(
+  zkConfigProvider: ZKConfigProvider<string>,
+  compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   contractAddress: ContractAddress,
-  operation: string | Uint8Array,
+  operation: string,
   newVk: VerifierKey,
   contractState: ContractState,
-  currentAuthority: SigningKey
-): UnprovenTransaction =>
-  unprovenTxFromContractUpdates(
-    contractAddress,
-    [insertVerifierKey(operation, newVk)],
-    contractState,
-    currentAuthority
-  );
+  currentAuthority: SigningKey,
+  coinPublicKey: CoinPublicKey,
+): Promise<UnprovenTransaction> => {
+  const contractExec = ContractExecutable.make(compiledContract);
+  const contractRuntime = makeContractExecutableRuntime(zkConfigProvider, {
+    coinPublicKey,
+    signingKey: currentAuthority
+  });
+
+  return unprovenTxFromContractUpdates(async () => {
+    return (await contractRuntime.runPromise(contractExec.addOrReplaceContractOperation(
+      ImpureCircuitId(operation),
+      ContractVerifierKey(newVk),
+      {
+        address: asContractAddress(contractAddress),
+        contractState
+      }
+    ))).public.maintenanceUpdate
+  });
+}

@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+import type { CompiledContract } from '@midnight-ntwrk/compact-js';
+import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
 import type { ContractAddress, SigningKey } from '@midnight-ntwrk/ledger-v7';
 import { type FinalizedTxData, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
@@ -50,6 +52,8 @@ import { createUnprovenReplaceAuthorityTx } from './utils';
  * - Transaction appears in blockchain history as partial success
  *
  * @param providers The providers to use to manage the transaction lifecycle.
+ * @param compiledContract The compiled contract for which the maintenance authority
+ *                         should be updated.
  * @param contractAddress The address of the contract for which the maintenance
  *                        authority should be updated.
  *
@@ -59,7 +63,11 @@ import { createUnprovenReplaceAuthorityTx } from './utils';
  *       3. Add additional authorities and maintain original key.
  */
 export const submitReplaceAuthorityTx =
-  (providers: ContractProviders, contractAddress: ContractAddress) =>
+  <C extends Contract.Any>(
+    providers: ContractProviders,
+    compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
+    contractAddress: ContractAddress
+  ) =>
   /**
    * @param newAuthority The signing key of the new contract maintenance authority.
    *
@@ -75,7 +83,15 @@ export const submitReplaceAuthorityTx =
     assertDefined(contractState, `No contract state found on chain for contract address '${contractAddress}'`);
     const currentAuthority = await providers.privateStateProvider.getSigningKey(contractAddress);
     assertDefined(currentAuthority, `Signing key for contract address '${contractAddress}' not found`);
-    const unprovenTx = createUnprovenReplaceAuthorityTx(contractAddress, newAuthority, contractState, currentAuthority);
+    const unprovenTx = await createUnprovenReplaceAuthorityTx(
+      providers.zkConfigProvider,
+      compiledContract,
+      contractAddress,
+      newAuthority,
+      contractState,
+      currentAuthority,
+      providers.walletProvider.getCoinPublicKey()
+    );
     const submitTxResult = await submitTx(providers, { unprovenTx });
     if (submitTxResult.status !== SucceedEntirely) {
       throw new ReplaceMaintenanceAuthorityTxFailedError(submitTxResult);

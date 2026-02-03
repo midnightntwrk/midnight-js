@@ -16,19 +16,28 @@
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { CompiledContract } from '@midnight-ntwrk/compact-js';
+import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
 import {
-  type ConstructorContext,
-  emptyZswapLocalState
-} from '@midnight-ntwrk/compact-runtime';
+  type CoinPublicKey,
+  createConstructorContext,
+  emptyZswapLocalState,
+  sampleSigningKey} from '@midnight-ntwrk/compact-runtime';
 import {
   sampleCoinPublicKey,
   sampleContractAddress,
   sampleEncryptionPublicKey,
-  type UnprovenTransaction,
-  ZswapChainState
-} from '@midnight-ntwrk/ledger-v7';
-import { createUnprovenCallTxFromInitialStates } from '@midnight-ntwrk/midnight-js-contracts';
-import { createProverKey, createVerifierKey, createZKIR } from '@midnight-ntwrk/midnight-js-types';
+  type UnprovenTransaction,  ZswapChainState} from '@midnight-ntwrk/ledger-v7';
+import { createUnprovenCallTxFromInitialStates, createUnprovenDeployTxFromVerifierKeys } from '@midnight-ntwrk/midnight-js-contracts';
+import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { createProverKey,
+  createVerifierKey,
+  createZKIR,
+  type ProverKey,
+  type VerifierKey,
+  ZKConfigProvider,
+  type ZKIR } from '@midnight-ntwrk/midnight-js-types';
+import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import fs from 'fs/promises';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
@@ -45,40 +54,92 @@ export const getValidZKConfig = async () => ({
   zkir: createZKIR(await fs.readFile(`${resourceDir}/compiled/${CONTRACT}/zkir/${CIRCUIT_ID}.bzkir`))
 });
 
+const createMockContractClass = (contractModule: any, coinPublicKey: CoinPublicKey) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+  return class {
+    constructor(witnesses: Contract.Witnesses<any>) { // eslint-disable-line @typescript-eslint/no-explicit-any
+      const contract = new contractModule.Contract({});
+
+      this.witnesses = witnesses;
+      this.initialState = (ctx: any) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
+        currentContractState: contract.initialState(
+          createConstructorContext(
+            undefined,
+            parseCoinPublicKeyToHex(coinPublicKey, getNetworkId())
+          )
+        ).currentContractState,
+        currentPrivateState: { test: 'mock-private-state' },
+        currentZswapLocalState: emptyZswapLocalState(ctx.initialZswapLocalState.coinPublicKey)
+      });
+      this.circuits = contract.circuits;
+      this.impureCircuits = this.circuits;
+    }
+    initialState;
+    circuits;
+    impureCircuits;
+    witnesses;
+  }
+}
+
+export const createMockCompiledContract = (contractModule: any, coinPublicKey: CoinPublicKey): CompiledContract.CompiledContract<any, unknown, never> => { // eslint-disable-line @typescript-eslint/no-explicit-any
+  return CompiledContract.make(CONTRACT, createMockContractClass(contractModule, coinPublicKey) as any).pipe( // eslint-disable-line @typescript-eslint/no-explicit-any
+    CompiledContract.withVacantWitnesses
+  ) as unknown as CompiledContract.CompiledContract<any, unknown, never>; // eslint-disable-line @typescript-eslint/no-explicit-any
+}
+
+const createMockZKConfigProvider = (): ZKConfigProvider<string> => {
+  return new (class extends ZKConfigProvider<string> {
+    async getZKIR(_: string): Promise<ZKIR> {
+      const config = await getValidZKConfig();
+      return Promise.resolve(config.zkir);
+    }
+    async getProverKey(_: string): Promise<ProverKey> {
+      const config = await getValidZKConfig();
+      return Promise.resolve(config.proverKey);
+    }
+    async getVerifierKey(_: string): Promise<VerifierKey> {
+      const config = await getValidZKConfig();
+      return Promise.resolve(config.verifierKey);
+    }
+  })();
+};
+
 /**
  * Creates a valid UnprovenTransaction for testing using proper object construction
  * from the topic contract instead of binary data.
  */
 export const getValidUnprovenTx = async (): Promise<UnprovenTransaction> => {
-  const contractModule = await import(`${resourceDir}/compiled/${CONTRACT}/contract/index.js`);
-  const contract = new contractModule.Contract({});
+  const mockZKConfigProvider = createMockZKConfigProvider();
+  const contractModule = await import(`${resourceDir}/managed/${CONTRACT}/contract/index.js`);
   const coinPublicKey = sampleCoinPublicKey();
+  const mockCompiledContract = createMockCompiledContract(contractModule, coinPublicKey);
+  const encryptionPublicKey = sampleEncryptionPublicKey();
 
-  const constructorResult = contract.initialState(
+  const deploy = await createUnprovenDeployTxFromVerifierKeys(
+    mockZKConfigProvider,
+    coinPublicKey,
     {
-      initialPrivateState: undefined,
-      initialZswapLocalState: emptyZswapLocalState(coinPublicKey)
-    } as ConstructorContext<undefined>
+      compiledContract: mockCompiledContract,
+      signingKey: sampleSigningKey()
+    },
+    encryptionPublicKey
   );
 
-  const initialContractState = constructorResult.currentContractState;
 
   const callOptions = {
-    contract,
+    compiledContract: mockCompiledContract,
     circuitId: CIRCUIT_ID,
     contractAddress: sampleContractAddress(),
     coinPublicKey,
-    initialContractState,
+    initialContractState: deploy.public.initialContractState,
     initialZswapChainState: new ZswapChainState(),
     arguments: []
   };
 
-  const result = createUnprovenCallTxFromInitialStates(
+  const result = await createUnprovenCallTxFromInitialStates(
+    createMockZKConfigProvider(),
     callOptions,
-    coinPublicKey,
-    sampleEncryptionPublicKey()
+    encryptionPublicKey
   );
 
   return result.private.unprovenTx;
 };
-

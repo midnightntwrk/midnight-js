@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v3.0.0-alpha.14**](../README.md)
+[**@midnight-ntwrk/testkit-js v3.0.0**](../README.md)
 
 ***
 
@@ -60,7 +60,7 @@
 
 ### createUnshieldedWallet()
 
-> `static` **createUnshieldedWallet**(`config`, `seed`, `networkId`): `UnshieldedWallet`
+> `static` **createUnshieldedWallet**(`config`, `unshieldedKeystore`): `UnshieldedWallet`
 
 #### Parameters
 
@@ -68,13 +68,9 @@
 
 `DefaultV1Configuration`
 
-##### seed
+##### unshieldedKeystore
 
-`Uint8Array`
-
-##### networkId
-
-`NetworkId`
+`UnshieldedKeystore`
 
 #### Returns
 

@@ -1,5 +1,5 @@
 import * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
-__compactRuntime.checkRuntimeVersion('0.14.0-rc.0');
+__compactRuntime.checkRuntimeVersion('0.14.0');
 
 const _descriptor_0 = new __compactRuntime.CompactTypeUnsignedInteger(65535n, 2);
 
@@ -190,7 +190,7 @@ export class Contract {
                                                  value: __compactRuntime.StateValue.newCell({ value: _descriptor_1.toValue(0n),
                                                                                               alignment: _descriptor_1.alignment() }).encode() } },
                                        { ins: { cached: false, n: 1 } }]);
-    state_0.data = context.currentQueryContext.state;
+    state_0.data = new __compactRuntime.ChargedState(context.currentQueryContext.state.state);
     return {
       currentContractState: state_0,
       currentPrivateState: context.currentPrivateState,

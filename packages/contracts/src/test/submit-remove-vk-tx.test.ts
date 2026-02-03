@@ -19,6 +19,8 @@ import { submitRemoveVerifierKeyTx } from '../submit-remove-vk-tx';
 import { submitTx } from '../submit-tx';
 import { createUnprovenRemoveVerifierKeyTx } from '../utils';
 import {
+  createMockCoinPublicKey,
+  createMockCompiledContract,
   createMockContractAddress,
   createMockContractState,
   createMockFinalizedTxData,
@@ -32,19 +34,23 @@ vi.mock('../utils');
 
 describe('submitRemoveVerifierKeyTx', () => {
   let mockProviders: ReturnType<typeof createMockProviders>;
+  let mockCompiledContract: ReturnType<typeof createMockCompiledContract>;
   let mockContractAddress: ReturnType<typeof createMockContractAddress>;
   let mockContractState: ReturnType<typeof createMockContractState>;
   let mockSigningKey: ReturnType<typeof createMockSigningKey>;
-  let mockUnprovenTx: ReturnType<typeof createMockUnprovenTx>;
+  let mockCoinPublicKey: ReturnType<typeof createMockCoinPublicKey>;
+  let mockUnprovenTx: Promise<ReturnType<typeof createMockUnprovenTx>>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     
     mockProviders = createMockProviders();
+    mockCompiledContract = createMockCompiledContract();
     mockContractAddress = createMockContractAddress();
     mockContractState = createMockContractState();
     mockSigningKey = createMockSigningKey();
-    mockUnprovenTx = createMockUnprovenTx();
+    mockCoinPublicKey = createMockCoinPublicKey();
+    mockUnprovenTx = Promise.resolve(createMockUnprovenTx());
   });
 
   describe('happy path', () => {
@@ -55,6 +61,7 @@ describe('submitRemoveVerifierKeyTx', () => {
 
       mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockSigningKey);
+      mockProviders.walletProvider.getCoinPublicKey = vi.fn().mockReturnValue(mockCoinPublicKey);
       mockContractState.operation = vi.fn().mockReturnValue(mockOperation);
       
       vi.mocked(createUnprovenRemoveVerifierKeyTx).mockReturnValue(mockUnprovenTx);
@@ -62,6 +69,7 @@ describe('submitRemoveVerifierKeyTx', () => {
 
       const result = await submitRemoveVerifierKeyTx(
         mockProviders,
+        mockCompiledContract,
         mockContractAddress,
         circuitId
       );
@@ -70,12 +78,15 @@ describe('submitRemoveVerifierKeyTx', () => {
       expect(mockProviders.privateStateProvider.getSigningKey).toHaveBeenCalledWith(mockContractAddress);
       expect(mockContractState.operation).toHaveBeenCalledWith(circuitId);
       expect(createUnprovenRemoveVerifierKeyTx).toHaveBeenCalledWith(
+        mockProviders.zkConfigProvider,
+        mockCompiledContract,
         mockContractAddress,
         circuitId,
         mockContractState,
-        mockSigningKey
+        mockSigningKey,
+        mockCoinPublicKey
       );
-      expect(submitTx).toHaveBeenCalledWith(mockProviders, { unprovenTx: mockUnprovenTx });
+      expect(submitTx).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
       expect(result).toBe(mockFinalizedTxData);
     });
   });
@@ -97,7 +108,7 @@ describe('submitRemoveVerifierKeyTx', () => {
       vi.mocked(submitTx).mockResolvedValue(failedTxData);
 
       await expect(
-        submitRemoveVerifierKeyTx(mockProviders, mockContractAddress, circuitId)
+        submitRemoveVerifierKeyTx(mockProviders, mockCompiledContract, mockContractAddress, circuitId)
       ).rejects.toThrow(RemoveVerifierKeyTxFailedError);
     });
   });

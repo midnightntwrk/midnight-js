@@ -13,7 +13,63 @@
  * limitations under the License.
  */
 
-export * as CompilerBlockTime from './compiled/block-time/contract/index.js';
+import { CompiledContract } from '@midnight-ntwrk/compact-js';
+
+import * as CompiledBlockTime from './compiled/block-time/contract/index.js';
+import * as CompiledCounter from './compiled/counter/contract/index.js';
+import * as CompiledCounterClone from './compiled/counter-clone/contract/index.js';
+import * as CompiledDoubleCounter from './compiled/double-counter/contract/index.js';
+import * as CompiledSimple from './compiled/simple/contract/index.js';
+import * as CompiledUnshielded from './compiled/unshielded/contract/index.js';
+import * as DoubleCounterWitnesses from './double-counter-witnesses.js';
+import * as Witnesses from './witnesses.js';
+
+export const CompiledBlockTimeContract =
+  CompiledContract.make<CompiledBlockTime.Contract>('BlockTime', CompiledBlockTime.Contract).pipe(
+    CompiledContract.withVacantWitnesses,
+    CompiledContract.withCompiledFileAssets('./compiled/block-time')
+  );
+
+export const CompiledCounterContract =
+  CompiledContract.make<CompiledCounter.Contract<Witnesses.CounterPrivateState>>(
+    'Counter',
+    CompiledCounter.Contract<Witnesses.CounterPrivateState>
+  ).pipe(
+    CompiledContract.withWitnesses(Witnesses.witnesses),
+    CompiledContract.withCompiledFileAssets('./compiled/counter')
+  );
+
+export const CompiledCounterCloneContract =
+  CompiledContract.make<CompiledCounterClone.Contract<Witnesses.CounterPrivateState>>(
+    'CounterClone',
+    CompiledCounterClone.Contract<Witnesses.CounterPrivateState>
+  ).pipe(
+    CompiledContract.withWitnesses(Witnesses.witnesses),
+    CompiledContract.withCompiledFileAssets('./compiled/counter-clone')
+  );
+
+export const CompiledDoubleCounterContract =
+  CompiledContract.make<CompiledDoubleCounter.Contract<Witnesses.CounterPrivateState>>(
+    'DoubleCounter',
+    CompiledDoubleCounter.Contract<Witnesses.CounterPrivateState>
+  ).pipe(
+    CompiledContract.withWitnesses(DoubleCounterWitnesses.witnesses),
+    CompiledContract.withCompiledFileAssets('./compiled/counter-clone')
+  );
+
+export const CompiledSimpleContract =
+  CompiledContract.make<CompiledSimple.Contract>('BlockTime', CompiledSimple.Contract).pipe(
+    CompiledContract.withVacantWitnesses,
+    CompiledContract.withCompiledFileAssets('./compiled/simple')
+  );
+
+export const CompiledUnshieldedContract =
+  CompiledContract.make<CompiledUnshielded.Contract>('BlockTime', CompiledUnshielded.Contract).pipe(
+    CompiledContract.withVacantWitnesses,
+    CompiledContract.withCompiledFileAssets('./compiled/unshielded')
+  );
+
+export * as CompiledBlockTime from './compiled/block-time/contract/index.js';
 export * as CompiledCounter from './compiled/counter/contract/index.js';
 export * as CompiledCounterClone from './compiled/counter-clone/contract/index.js';
 export * as CompiledDoubleCounter from './compiled/double-counter/contract/index.js';

@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
+import type { Contract } from '@midnight-ntwrk/compact-js';
 import type { DeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
-import type { ImpureCircuitId, MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
+import type { MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
 
 import { CompiledDoubleCounter } from './contract';
 import { type CounterPrivateState, createInitialPrivateState, witnesses } from './contract/double-counter-witnesses';
@@ -23,7 +24,7 @@ export type DoubleCounterContract = CompiledDoubleCounter.Contract<CounterPrivat
 
 export type DeployedCounterContract = DeployedContract<DoubleCounterContract>;
 
-export type CounterCircuits = ImpureCircuitId<DoubleCounterContract> & string;
+export type CounterCircuits = Contract.ImpureCircuitId<DoubleCounterContract>;;
 
 export const CounterPrivateStateId = 'counterPrivateState';
 

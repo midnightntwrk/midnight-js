@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
 import type { ContractAddress } from '@midnight-ntwrk/ledger-v7';
 import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
 import type { FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
@@ -30,16 +31,16 @@ import { WebSocket } from 'ws';
 import {
   CompiledCounter,
 } from './contract';
+import { CompiledCounterContract } from './contract';
 import { type CounterPrivateState, createInitialPrivateState } from './contract/witnesses';
-import { type CounterCloneContract, createCounterCloneContractInstance } from './counter-clone-types';
 import {
   type CounterContract,
   CounterPrivateStateId,
   type CounterProviders,
-  createCounterContractInstance,
   type DeployedCounterContract
 } from './counter-types';
-import { createSimpleContractInstance, type SimpleContract } from './simple-types';
+
+export { CompiledCounterCloneContract, CompiledCounterContract, CompiledSimpleContract } from './contract';
 
 export const currentDir = path.resolve(new URL(import.meta.url).pathname, '..');
 
@@ -110,19 +111,13 @@ export const getCounterLedgerState = async (
   return state;
 };
 
-export const simpleContractInstance: SimpleContract = createSimpleContractInstance();
-
-export const counterContractInstance: CounterContract = createCounterContractInstance();
-
-export const cloneContractInstance: CounterCloneContract = createCounterCloneContractInstance();
-
 export const deploy = async (
   providers: CounterProviders,
   privateState: CounterPrivateState
 ): Promise<DeployedCounterContract> => {
   logger.info('Deploying counter contract...');
   const counterContract = await deployContract(providers, {
-    contract: counterContractInstance,
+    compiledContract: CompiledCounterContract,
     privateStateId: CounterPrivateStateId,
     initialPrivateState: privateState
   });
@@ -138,7 +133,7 @@ export const increment = async (counterContract: DeployedCounterContract): Promi
 };
 
 export const randomCircuitId = (length = 32) =>
-  Array.from({ length }, () => 'abcdefghijklmnopqrstuvwxyz'.charAt(Math.floor(Math.random() * 26))).join('');
+  Array.from({ length }, () => 'abcdefghijklmnopqrstuvwxyz'.charAt(Math.floor(Math.random() * 26))).join('') as Contract.ImpureCircuitId<CounterContract>;
 
 const getConfigurationWithEmptyPrivateStore = () => {
   return new CounterConfiguration(`counter-private-store-${Date.now()}`);

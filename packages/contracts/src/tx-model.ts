@@ -13,13 +13,11 @@
  * limitations under the License.
  */
 
+import { type Contract } from '@midnight-ntwrk/compact-js';
 import type { ContractAddress, ContractState, SigningKey,ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
 import { type ShieldedCoinInfo, type UnprovenTransaction } from '@midnight-ntwrk/ledger-v7';
 import type {
-  Contract,
-  FinalizedTxData,
-  ImpureCircuitId,
-  PrivateState
+  FinalizedTxData
 } from '@midnight-ntwrk/midnight-js-types';
 
 import type { CallResult } from './call';
@@ -55,7 +53,7 @@ export type UnsubmittedDeployTxPublicData = {
 /**
  * Base type for private data relevant to an unsubmitted deployment transaction.
  */
-export type UnsubmittedDeployTxPrivateData<C extends Contract> = {
+export type UnsubmittedDeployTxPrivateData<C extends Contract.Any> = {
   /**
    * The signing key that was added as the deployed contract's maintenance authority.
    */
@@ -64,13 +62,13 @@ export type UnsubmittedDeployTxPrivateData<C extends Contract> = {
    * The initial private state of the contract deployed to the blockchain. This
    * value is persisted if the transaction succeeds.
    */
-  readonly initialPrivateState: PrivateState<C>;
+  readonly initialPrivateState: Contract.PrivateState<C>;
 }
 
 /**
  * Base type for data relevant to an unsubmitted deployment transaction.
  */
-export type UnsubmittedDeployTxDataBase<C extends Contract> = {
+export type UnsubmittedDeployTxDataBase<C extends Contract.Any> = {
   /**
    * The public data (data that will be revealed upon tx submission) relevant to the deployment transaction.
    */
@@ -84,7 +82,7 @@ export type UnsubmittedDeployTxDataBase<C extends Contract> = {
 /**
  * Data for an unsubmitted deployment transaction.
  */
-export type UnsubmittedDeployTxData<C extends Contract> = UnsubmittedDeployTxDataBase<C> & {
+export type UnsubmittedDeployTxData<C extends Contract.Any> = UnsubmittedDeployTxDataBase<C> & {
   /**
    * The data of this transaction that is only visible on the user device.
    */
@@ -100,7 +98,7 @@ export type UnsubmittedDeployTxData<C extends Contract> = UnsubmittedDeployTxDat
 /**
  * Data for a finalized deploy transaction submitted in this process.
  */
-export type FinalizedDeployTxDataBase<C extends Contract> = UnsubmittedDeployTxDataBase<C> & {
+export type FinalizedDeployTxDataBase<C extends Contract.Any> = UnsubmittedDeployTxDataBase<C> & {
   /**
    * The data of this transaction that is visible on the blockchain.
    */
@@ -110,7 +108,7 @@ export type FinalizedDeployTxDataBase<C extends Contract> = UnsubmittedDeployTxD
 /**
  * Data for a finalized deploy transaction submitted in this process.
  */
-export type FinalizedDeployTxData<C extends Contract> = UnsubmittedDeployTxData<C> & {
+export type FinalizedDeployTxData<C extends Contract.Any> = UnsubmittedDeployTxData<C> & {
   /**
    * The data of this transaction that is visible on the blockchain.
    */
@@ -120,7 +118,7 @@ export type FinalizedDeployTxData<C extends Contract> = UnsubmittedDeployTxData<
 /**
  * Data for an unsubmitted call transaction.
  */
-export type UnsubmittedCallTxData<C extends Contract, ICK extends ImpureCircuitId<C>> = CallResult<C, ICK> & {
+export type UnsubmittedCallTxData<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = CallResult<C, ICK> & {
   /**
    * Private data relevant to this call transaction.
    */
@@ -130,7 +128,7 @@ export type UnsubmittedCallTxData<C extends Contract, ICK extends ImpureCircuitI
 /**
  * Data for a submitted, finalized call transaction.
  */
-export type FinalizedCallTxData<C extends Contract, ICK extends ImpureCircuitId<C>> = UnsubmittedCallTxData<C, ICK> & {
+export type FinalizedCallTxData<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = UnsubmittedCallTxData<C, ICK> & {
   /**
    * Public data relevant to this call transaction.
    */
@@ -141,7 +139,7 @@ export type FinalizedCallTxData<C extends Contract, ICK extends ImpureCircuitId<
  * Data returned from an asynchronous call transaction submission.
  * Contains the transaction ID and call transaction data without waiting for finalization.
  */
-export type SubmittedCallTx<C extends Contract, ICK extends ImpureCircuitId<C>> = {
+export type SubmittedCallTx<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = {
   /**
    * The transaction ID returned from submission.
    */

@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
+import type { Contract } from '@midnight-ntwrk/compact-js';
 import type { ContractState } from '@midnight-ntwrk/compact-runtime';
-import type { FinalizedTxData, ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
+import type { FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
 
 /**
  * An error indicating that a transaction submitted to a consensus node failed.
@@ -28,7 +29,7 @@ export class TxFailedError extends Error {
    */
   constructor(
     public readonly finalizedTxData: FinalizedTxData,
-    public readonly circuitId?: ImpureCircuitId | ImpureCircuitId[]
+    public readonly circuitId?: Contract.ImpureCircuitId<Contract.Any> | Contract.ImpureCircuitId<Contract.Any>[]
   ) {
     super('Transaction failed');
     this.message = JSON.stringify(
@@ -63,7 +64,10 @@ export class CallTxFailedError extends TxFailedError {
    * @param finalizedTxData The finalization data of the call transaction that failed.
    * @param circuitId The name of the circuit that was called to build the transaction.
    */
-  constructor(finalizedTxData: FinalizedTxData, circuitId: ImpureCircuitId | ImpureCircuitId[]) {
+  constructor(
+    finalizedTxData: FinalizedTxData,
+    circuitId: Contract.ImpureCircuitId<Contract.Any> | Contract.ImpureCircuitId<Contract.Any>[]
+  ) {
     super(finalizedTxData, circuitId);
     this.name = 'CallTxFailedError';
   }
@@ -87,7 +91,7 @@ export class ContractTypeError extends TypeError {
    */
   constructor(
     readonly contractState: ContractState,
-    readonly circuitIds: ImpureCircuitId[]
+    readonly circuitIds: Contract.ImpureCircuitId<Contract.Any>[]
   ) {
     super(
       `Following operations: ${circuitIds.join(

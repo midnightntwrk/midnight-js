@@ -13,47 +13,31 @@
  * limitations under the License.
  */
 
+import type { CompiledContract  } from '@midnight-ntwrk/compact-js';
+import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
 import {
   type AlignedValue,
-  type CircuitContext,
   type CoinPublicKey,
   type ContractAddress,
   type ContractState,
-  CostModel,
-  decodeZswapLocalState,
-  emptyZswapLocalState,
   type Op,
-  QueryContext,
   type StateValue,
   type ZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
 import {
-  LedgerParameters,
   type PartitionedTranscript,
-  partitionTranscripts,
-  PreTranscript,
   type ZswapChainState
 } from '@midnight-ntwrk/ledger-v7';
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import type {
-  CircuitParameters,
-  CircuitReturnType,
-  Contract,
-  ImpureCircuitId,
-  PrivateState
-} from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
-
-import { toLedgerQueryContext } from './utils';
 
 /**
  * Describes the target of a circuit invocation.
  */
-export type CallOptionsBase<C extends Contract, ICK extends ImpureCircuitId<C>> = {
+export type CallOptionsBase<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = {
   /**
    * The contract defining the circuit to call.
    */
-  readonly contract: C;
+  readonly compiledContract: CompiledContract.CompiledContract<C, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  
   /**
    * The identifier of the circuit to call.
    */
@@ -68,14 +52,14 @@ export type CallOptionsBase<C extends Contract, ICK extends ImpureCircuitId<C>> 
  * Conditional type that optionally adds the inferred circuit argument types to
  * the options for a circuit call.
  */
-export type CallOptionsWithArguments<C extends Contract, ICK extends ImpureCircuitId<C>> =
-  CircuitParameters<C, ICK> extends []
+export type CallOptionsWithArguments<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> =
+  Contract.CircuitParameters<C, ICK> extends []
     ? CallOptionsBase<C, ICK>
     : CallOptionsBase<C, ICK> & {
     /**
      * Arguments to pass to the circuit being called.
      */
-    readonly args: CircuitParameters<C, ICK>;
+    readonly args: Contract.CircuitParameters<C, ICK>;
   };
 
 /**
@@ -100,34 +84,34 @@ export type CallOptionsProviderDataDependencies = {
  * Call options with circuit arguments and data
  */
 export type CallOptionsWithProviderDataDependencies<
-  C extends Contract,
-  ICK extends ImpureCircuitId<C>
+  C extends Contract.Any,
+  ICK extends Contract.ImpureCircuitId<C>
 > = CallOptionsWithArguments<C, ICK> & CallOptionsProviderDataDependencies;
 
 /**
  * Call options for contracts with private state.
  */
 export type CallOptionsWithPrivateState<
-  C extends Contract,
-  ICK extends ImpureCircuitId<C>
+  C extends Contract.Any,
+  ICK extends Contract.ImpureCircuitId<C>
 > = CallOptionsWithProviderDataDependencies<C, ICK> & {
   /**
    * The private state to run the circuit against.
    */
-  readonly initialPrivateState: PrivateState<C>;
+  readonly initialPrivateState: Contract.PrivateState<C>;
 };
 
 /**
  * Call options for a given contract and circuit.
  */
-export type CallOptions<C extends Contract, ICK extends ImpureCircuitId<C>> =
+export type CallOptions<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> =
   | CallOptionsWithProviderDataDependencies<C, ICK>
   | CallOptionsWithPrivateState<C, ICK>;
 
 /**
  * The private (sensitive) portions of the call result.
  */
-export type CallResultPrivate<C extends Contract, ICK extends ImpureCircuitId<C>> = {
+export type CallResultPrivate<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = {
   /**
    * ZK representation of the circuit arguments.
    */
@@ -143,11 +127,11 @@ export type CallResultPrivate<C extends Contract, ICK extends ImpureCircuitId<C>
   /**
    * The JS representation of the input to the circuit.
    */
-  readonly result: CircuitReturnType<C, ICK>;
+  readonly result: Contract.CircuitReturnType<C, ICK>;
   /**
    * The private state resulting from executing the circuit.
    */
-  readonly nextPrivateState: PrivateState<C>;
+  readonly nextPrivateState: Contract.PrivateState<C>;
   /**
    * The Zswap local state resulting from executing the circuit.
    */
@@ -178,7 +162,7 @@ export type CallResultPublic = {
 /**
  * Contains all information resulting from circuit execution.
  */
-export type CallResult<C extends Contract, ICK extends ImpureCircuitId<C>> = {
+export type CallResult<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = {
   /**
    * The public/non-sensitive data produced by the circuit execution.
    */
@@ -187,75 +171,4 @@ export type CallResult<C extends Contract, ICK extends ImpureCircuitId<C>> = {
    * The private/sensitive data produced by the circuit execution.
    */
   readonly private: CallResultPrivate<C, ICK>;
-};
-
-const partitionTranscript = (
-  initialTxContext: QueryContext,
-  finalTxContext: QueryContext,
-  publicTranscript: Op<AlignedValue>[]
-): PartitionedTranscript => {
-  const partitionedTranscripts = partitionTranscripts(
-    [
-      new PreTranscript(
-        Array.from(finalTxContext.comIndices).reduce(
-          (queryContext, entry) => queryContext.insertCommitment(...entry),
-          toLedgerQueryContext(initialTxContext)
-        ),
-        publicTranscript
-      )
-    ],
-    LedgerParameters.initialParameters()
-  );
-  if (partitionedTranscripts.length !== 1) {
-    throw new Error(`Expected one transcript partition pair, received: ${partitionedTranscripts.length}`);
-  }
-  return partitionedTranscripts[0]!;
-};
-
-/**
- * Calls a circuit in the given contract according to the given configuration.
- *
- * @param options Configuration.
- */
-export const call = <C extends Contract, ICK extends ImpureCircuitId<C>>(
-  options: CallOptions<C, ICK>
-): CallResult<C, ICK> => {
-  const { contract, circuitId, contractAddress, coinPublicKey, initialContractState } = options;
-  const circuit = contract.impureCircuits[circuitId];
-  assertDefined(circuit, `Circuit '${circuitId}' is not defined`);
-  const initialTxContext = new QueryContext(initialContractState.data, contractAddress);
-  initialTxContext.block = {
-    ...initialTxContext.block,
-    secondsSinceEpoch: BigInt(Math.floor(Date.now() / 1_000)),
-  }
-  const { result, context, proofData } = circuit(
-    {
-      //TODO: validate this originalState
-      originalState: initialContractState,
-      currentPrivateState: 'initialPrivateState' in options ? options.initialPrivateState : undefined,
-      currentQueryContext: initialTxContext,
-      currentZswapLocalState: emptyZswapLocalState(parseCoinPublicKeyToHex(coinPublicKey, getNetworkId())),
-      costModel: CostModel.initialCostModel(),
-    } as CircuitContext<C>,
-    ...('args' in options ? options.args : [])
-  );
-  return {
-    public: {
-      nextContractState: context.currentQueryContext.state.state,
-      publicTranscript: proofData.publicTranscript,
-      partitionedTranscript: partitionTranscript(
-        initialTxContext,
-        context.currentQueryContext,
-        proofData.publicTranscript
-      )
-    },
-    private: {
-      result,
-      input: proofData.input,
-      output: proofData.output,
-      privateTranscriptOutputs: proofData.privateTranscriptOutputs,
-      nextPrivateState: context.currentPrivateState,
-      nextZswapLocalState: decodeZswapLocalState(context.currentZswapLocalState)
-    }
-  };
 };

@@ -38,7 +38,9 @@ const config: CodegenConfig = {
           Instant: 'number',
           HexEncoded: 'string',
           ViewingKey: 'string',
-          UnshieldedAddress: 'string'
+          UnshieldedAddress: 'string',
+          CardanoRewardAddress: 'string',
+          DustAddress: 'string'
         },
         namingConvention: {
           transformUnderscore: true

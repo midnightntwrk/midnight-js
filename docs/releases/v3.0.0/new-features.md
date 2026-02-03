@@ -19,29 +19,20 @@ interface LevelPrivateStateProviderConfig {
 
 ### Usage
 ```typescript
-import { LevelPrivateStateProvider } from '@midnight-ntwrk/level-private-state-provider';
+import { levelPrivateStateProvider } from '@midnight-ntwrk/level-private-state-provider';
 
-// Basic password provider
-const provider = new LevelPrivateStateProvider({
-  midnightDbName: 'midnight-db',
-  privateStateStoreName: 'private-states',
-  signingKeyStoreName: 'signing-keys',
+// Option 1: Using wallet provider
+const provider = levelPrivateStateProvider({
+  walletProvider: myWalletProvider
+});
+
+// Option 2: Using password provider
+const provider = levelPrivateStateProvider({
   privateStoragePasswordProvider: async () => process.env.STORAGE_PASSWORD!
 });
-
-// With environment-based selection
-const provider = new LevelPrivateStateProvider({
-  midnightDbName: 'midnight-db',
-  privateStateStoreName: 'private-states',
-  signingKeyStoreName: 'signing-keys',
-  privateStoragePasswordProvider: async () => {
-    if (process.env.NODE_ENV === 'production') {
-      return await fetchFromSecretManager();
-    }
-    return 'dev-password';
-  }
-});
 ```
+
+**Note:** Use `walletProvider` OR `privateStoragePasswordProvider`, not both.
 
 ### Benefits
 - Decouples storage encryption from wallet
@@ -100,11 +91,10 @@ AES-256-GCM encryption for private state storage.
 
 ### Usage
 ```typescript
-const provider = new LevelPrivateStateProvider({
-  midnightDbName: 'encrypted-db',
-  privateStateStoreName: 'private-states',
-  signingKeyStoreName: 'signing-keys',
-  privateStoragePasswordProvider: async () => crypto.randomBytes(32).toString('hex')
+import { levelPrivateStateProvider } from '@midnight-ntwrk/level-private-state-provider';
+
+const provider = levelPrivateStateProvider({
+  privateStoragePasswordProvider: async () => process.env.STORAGE_PASSWORD!
 });
 
 // Storage is automatically encrypted/decrypted
@@ -120,61 +110,169 @@ const data = await provider.get('key');
 
 ---
 
-## 4. BalancedProvingRecipe Types (#320)
+## 4. Compact.js Integration (#370)
 
-Enhanced proving recipe system with three distinct types.
+All contract interfacing is now executed via Compact.js, introducing a new fluent API for defining and deploying contracts.
 
-### TypeScript Signatures
+### Benefits
+- Improved type safety with Compact.js runtime
+- Better integration between TypeScript and Compact contracts
+- Fluent builder pattern for contract configuration
+- Proper typing for witnesses with `WitnessContext`
+- Simplified contract interaction patterns
+
+### CompiledContract Builder API
+
+The new `CompiledContract` namespace provides a builder pattern for creating typed contract definitions:
+
 ```typescript
-export const TRANSACTION_TO_PROVE = 'TransactionToProve';
-export const BALANCE_TRANSACTION_TO_PROVE = 'BalanceTransactionToProve';
-export const NOTHING_TO_PROVE = 'NothingToProve';
+import { CompiledContract } from '@midnight-ntwrk/compact-js';
+import type { Contract } from '@midnight-ntwrk/compact-js';
+import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
+import * as CompiledCounter from './compiled/counter/contract/index.js';
+import type { Ledger } from './compiled/counter/contract/index.js';
 
-export type TransactionToProve = {
-  readonly type: typeof TRANSACTION_TO_PROVE;
-  readonly transaction: UnprovenTransaction;
+// 1. Define private state type
+type CounterPrivateState = {
+  privateCounter: number;
 };
 
-export type BalanceTransactionToProve<TTransaction> = {
-  readonly type: typeof BALANCE_TRANSACTION_TO_PROVE;
-  readonly transactionToProve: UnprovenTransaction;
-  readonly transactionToBalance: TTransaction;
+// 2. Define witnesses with WitnessContext for proper typing
+const witnesses = {
+  privateIncrement: ({
+    privateState
+  }: WitnessContext<Ledger, CounterPrivateState>): [CounterPrivateState, []] => [
+    { privateCounter: privateState.privateCounter + 1 },
+    []
+  ]
 };
 
-export type NothingToProve<TTransaction> = {
-  readonly type: typeof NOTHING_TO_PROVE;
-  readonly transaction: TTransaction;
-};
+// 3. Create compiled contract using fluent API
+const CompiledCounterContract = CompiledContract.make<
+  CompiledCounter.Contract<CounterPrivateState>
+>('Counter', CompiledCounter.Contract<CounterPrivateState>).pipe(
+  CompiledContract.withWitnesses(witnesses),
+  CompiledContract.withCompiledFileAssets('./compiled/counter')
+);
 
-export type ProvingRecipe<TTransaction> =
-  | TransactionToProve
-  | BalanceTransactionToProve<TTransaction>
-  | NothingToProve<TTransaction>;
-
-export type BalancedProvingRecipe = ProvingRecipe<UnprovenTransaction | FinalizedTransaction>;
+// 4. For contracts without witnesses, use withVacantWitnesses
+const CompiledSimpleContract = CompiledContract.make<
+  CompiledSimple.Contract
+>('Simple', CompiledSimple.Contract).pipe(
+  CompiledContract.withVacantWitnesses,
+  CompiledContract.withCompiledFileAssets('./compiled/simple')
+);
 ```
 
-### Usage
-```typescript
-const recipe = await walletProvider.balanceTx(unprovenTx);
+### Contract Deployment
 
-if (recipe.type === TRANSACTION_TO_PROVE) {
-  console.log('Transaction needs proving');
-  const provenTx = await prover.prove(recipe.transaction);
-  await midnightProvider.submitTx(provenTx);
-} else if (recipe.type === BALANCE_TRANSACTION_TO_PROVE) {
-  console.log('Transaction needs balancing and proving');
-  const provenTx = await prover.prove(recipe.transactionToProve);
-  await midnightProvider.submitTx(provenTx);
-} else {
-  console.log('Transaction ready to submit');
-  await midnightProvider.submitTx(recipe.transaction);
-}
+```typescript
+import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
+
+// Deploy using the compiled contract
+const deployed = await deployContract(providers, {
+  compiledContract: CompiledCounterContract,
+  privateStateId: 'counterPrivateState',
+  initialPrivateState: { privateCounter: 0 }
+});
+
+// Access contract address
+const { contractAddress } = deployed.deployTxData.public;
+
+// Call contract methods
+const result = await deployed.callTx.increment();
+console.log(`Transaction: ${result.public.txId}`);
+```
+
+### Type Utilities
+
+```typescript
+import type { Contract } from '@midnight-ntwrk/compact-js';
+
+// Extract circuit identifiers from contract type
+type CounterCircuits = Contract.ImpureCircuitId<CounterContract> & string;
+// Result: 'increment' | 'decrement' | 'reset'
 ```
 
 ---
 
-## 5. Compact Compiler 0.27.0 (#373)
+## 5. Ledger v7 Support (#414)
+
+Updated to ledger-v7 with new proving provider.
+
+### TypeScript Signature
+```typescript
+import { httpClientProvingProvider } from '@midnight-ntwrk/http-client-proof-provider';
+
+function httpClientProvingProvider(proverServerUri: string): ProvingProvider;
+```
+
+### Usage
+```typescript
+const provingProvider = httpClientProvingProvider('http://localhost:6300');
+```
+
+### Benefits
+- Enhanced proving capabilities
+- Improved performance
+- Better error handling
+
+---
+
+## 6. Scoped Transactions (#404)
+
+New utility for batching multiple circuit calls into a single transaction.
+
+### TypeScript Signature
+```typescript
+async function withContractScopedTransaction<T>(
+  providers: ContractProviders,
+  fn: (scope: TransactionScope) => Promise<T>
+): Promise<T>;
+```
+
+### Usage
+```typescript
+import { withContractScopedTransaction } from '@midnight-ntwrk/midnight-js-contracts';
+
+const result = await withContractScopedTransaction(providers, async (scope) => {
+  await scope.call(contract, 'circuit1', [arg1]);
+  await scope.call(contract, 'circuit2', [arg2]);
+  // All calls are batched into a single transaction
+  return someResult;
+});
+```
+
+### Benefits
+- Atomic multi-circuit operations
+- Reduced transaction overhead
+- Cleaner code for complex workflows
+
+---
+
+## 7. KeyMaterialProvider Type (#430)
+
+New type for DApp connector compatibility.
+
+### TypeScript Signature
+```typescript
+interface ZkConfigProvider {
+  asKeyMaterialProvider(): KeyMaterialProvider;
+}
+```
+
+### Usage
+```typescript
+const keyMaterialProvider = zkConfigProvider.asKeyMaterialProvider();
+```
+
+### Benefits
+- DApp connector integration
+- Standardized key material handling
+
+---
+
+## 8. Compact Compiler Update (#402)
 
 Updated Compact compiler with enhanced features.
 
@@ -293,22 +391,19 @@ async function submitCallTx<C extends Contract, ICK extends ImpureCircuitId<C>>(
 
 ### Usage
 ```typescript
-import { submitDeployTx, submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
+import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
 
-// Deploy a contract
-const deployResult = await submitDeployTx(providers, {
-  contract: myContract,
-  initialState: { balance: 0n }
+// Deploy and get deployed contract interface
+const deployed = await deployContract(providers, {
+  compiledContract: MyCompiledContract,
+  privateStateId: 'myState',
+  initialPrivateState: { balance: 0n }
 });
 
-// Call a contract method
-const callResult = await submitCallTx(providers, {
-  contract: myContract,
-  circuit: 'transfer',
-  args: [fromAddress, toAddress, amount]
-});
+// Call via deployed contract
+const result = await deployed.callTx.transfer(fromAddress, toAddress, amount);
 
-console.log('Transaction ID:', callResult.txId);
+console.log('Transaction ID:', result.public.txId);
 ```
 
 ### Benefits
@@ -319,7 +414,7 @@ console.log('Transaction ID:', callResult.txId);
 
 ---
 
-## 10. Transaction TTL Support (#125)
+## 13. Transaction TTL Support (#125)
 
 Configure transaction time-to-live via `balanceTx` for expiry management.
 
@@ -327,24 +422,22 @@ Configure transaction time-to-live via `balanceTx` for expiry management.
 ```typescript
 interface WalletProvider {
   balanceTx(
-    tx: UnprovenTransaction, 
-    newCoins?: ShieldedCoinInfo[], 
+    tx: UnboundTransaction,
     ttl?: Date  // Optional expiry time
-  ): Promise<BalancedProvingRecipe>;
+  ): Promise<FinalizedTransaction>;
 }
 ```
 
 ### Usage
 ```typescript
 // Set 10-minute TTL
-const recipe = await walletProvider.balanceTx(
-  unprovenTx,
-  newCoins,
+const finalizedTx = await walletProvider.balanceTx(
+  unboundTx,
   new Date(Date.now() + 10 * 60 * 1000) // 10 minutes from now
 );
 
 // No TTL (default)
-const recipe = await walletProvider.balanceTx(unprovenTx);
+const finalizedTx = await walletProvider.balanceTx(unboundTx);
 ```
 
 ### Benefits
@@ -361,7 +454,10 @@ const recipe = await walletProvider.balanceTx(unprovenTx);
 | Password Provider | ❌ | ✅ |
 | Async Transactions | ❌ | ✅ |
 | Storage Encryption | ❌ | ✅ |
-| Proving Recipe Types | ❌ | ✅ (3 types) |
+| Compact.js Integration | ❌ | ✅ |
+| Ledger v7 | ❌ | ✅ |
+| Scoped Transactions | ❌ | ✅ |
+| KeyMaterialProvider | ❌ | ✅ |
 | Uint8Array Results | ❌ | ✅ |
 | ESM/CJS Support | Partial | ✅ |
 | Unshielded Tokens | ❌ | ✅ |

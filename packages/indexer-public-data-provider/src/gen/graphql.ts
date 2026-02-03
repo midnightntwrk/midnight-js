@@ -14,6 +14,8 @@ export type Scalars = {
   Boolean: { input: boolean; output: boolean; }
   Int: { input: number; output: number; }
   Float: { input: number; output: number; }
+  CardanoRewardAddress: { input: string; output: string; }
+  DustAddress: { input: string; output: string; }
   HexEncoded: { input: string; output: string; }
   Unit: { input: null; output: null; }
   UnshieldedAddress: { input: string; output: string; }
@@ -34,6 +36,8 @@ export type Block = {
   readonly parent: Maybe<Block>;
   /** The protocol version. */
   readonly protocolVersion: Scalars['Int']['output'];
+  /** The system parameters (governance) at this block height. */
+  readonly systemParameters: SystemParameters;
   /** The UNIX timestamp. */
   readonly timestamp: Scalars['Int']['output'];
   /** The transactions within this block. */
@@ -132,6 +136,28 @@ export type ContractUpdate = ContractAction & {
   readonly zswapState: Scalars['HexEncoded']['output'];
 };
 
+/** The D-parameter controlling validator committee composition. */
+export type DParameter = {
+  /** Number of permissioned candidates. */
+  readonly numPermissionedCandidates: Scalars['Int']['output'];
+  /** Number of registered candidates. */
+  readonly numRegisteredCandidates: Scalars['Int']['output'];
+};
+
+/** D-parameter change record for history queries. */
+export type DParameterChange = {
+  /** The hex-encoded block hash where this parameter became effective. */
+  readonly blockHash: Scalars['HexEncoded']['output'];
+  /** The block height where this parameter became effective. */
+  readonly blockHeight: Scalars['Int']['output'];
+  /** Number of permissioned candidates. */
+  readonly numPermissionedCandidates: Scalars['Int']['output'];
+  /** Number of registered candidates. */
+  readonly numRegisteredCandidates: Scalars['Int']['output'];
+  /** The UNIX timestamp when this parameter became effective. */
+  readonly timestamp: Scalars['Int']['output'];
+};
+
 export type DustGenerationDtimeUpdate = DustLedgerEvent & {
   /** The ID of this dust ledger event. */
   readonly id: Scalars['Int']['output'];
@@ -141,20 +167,26 @@ export type DustGenerationDtimeUpdate = DustLedgerEvent & {
   readonly raw: Scalars['HexEncoded']['output'];
 };
 
-/** DUST generation status for a specific Cardano stake key. */
+/** DUST generation status for a specific Cardano reward address. */
 export type DustGenerationStatus = {
-  /** The hex-encoded Cardano stake key. */
-  readonly cardanoStakeKey: Scalars['HexEncoded']['output'];
-  /** Current DUST capacity. */
+  /** The Bech32-encoded Cardano reward address (e.g., stake_test1... or stake1...). */
+  readonly cardanoRewardAddress: Scalars['CardanoRewardAddress']['output'];
+  /** Current generated DUST capacity in SPECK. */
   readonly currentCapacity: Scalars['String']['output'];
-  /** The hex-encoded associated DUST address if registered. */
-  readonly dustAddress: Maybe<Scalars['HexEncoded']['output']>;
-  /** Generation rate in Specks per second. */
+  /** The Bech32m-encoded associated DUST address if registered. */
+  readonly dustAddress: Maybe<Scalars['DustAddress']['output']>;
+  /** DUST generation rate in SPECK per second. */
   readonly generationRate: Scalars['String']['output'];
-  /** NIGHT balance backing generation. */
+  /** Maximum DUST capacity in SPECK. */
+  readonly maxCapacity: Scalars['String']['output'];
+  /** NIGHT balance backing generation in STAR. */
   readonly nightBalance: Scalars['String']['output'];
-  /** Whether this stake key is registered. */
+  /** Whether this reward address is registered. */
   readonly registered: Scalars['Boolean']['output'];
+  /** Cardano UTXO output index for update/unregister operations. */
+  readonly utxoOutputIndex: Maybe<Scalars['Int']['output']>;
+  /** Cardano UTXO transaction hash for update/unregister operations. */
+  readonly utxoTxHash: Maybe<Scalars['HexEncoded']['output']>;
 };
 
 export type DustInitialUtxo = DustLedgerEvent & {
@@ -221,8 +253,12 @@ export type Query = {
   readonly block: Maybe<Block>;
   /** Find a contract action for the given address and optional offset. */
   readonly contractAction: Maybe<ContractAction>;
-  /** Get DUST generation status for specific Cardano stake keys. */
+  /** Get the full history of D-parameter changes for governance auditability. */
+  readonly dParameterHistory: ReadonlyArray<DParameterChange>;
+  /** Get DUST generation status for specific Cardano reward addresses. */
   readonly dustGenerationStatus: ReadonlyArray<DustGenerationStatus>;
+  /** Get the full history of Terms and Conditions changes for governance auditability. */
+  readonly termsAndConditionsHistory: ReadonlyArray<TermsAndConditionsChange>;
   /** Find transactions for the given offset. */
   readonly transactions: ReadonlyArray<Transaction>;
 };
@@ -240,7 +276,7 @@ export type QueryContractActionArgs = {
 
 
 export type QueryDustGenerationStatusArgs = {
-  cardanoStakeKeys: ReadonlyArray<Scalars['HexEncoded']['input']>;
+  cardanoRewardAddresses: ReadonlyArray<Scalars['CardanoRewardAddress']['input']>;
 };
 
 
@@ -390,6 +426,14 @@ export type SubscriptionZswapLedgerEventsArgs = {
   id: InputMaybe<Scalars['Int']['input']>;
 };
 
+/** System parameters at a specific block height. */
+export type SystemParameters = {
+  /** The D-parameter controlling validator committee composition. */
+  readonly dParameter: DParameter;
+  /** The current Terms and Conditions, if any have been set. */
+  readonly termsAndConditions: Maybe<TermsAndConditions>;
+};
+
 /** A system Midnight transaction. */
 export type SystemTransaction = Transaction & {
   /** The block for this transaction. */
@@ -412,6 +456,28 @@ export type SystemTransaction = Transaction & {
   readonly unshieldedSpentOutputs: ReadonlyArray<UnshieldedUtxo>;
   /** Zswap ledger events of this transaction. */
   readonly zswapLedgerEvents: ReadonlyArray<ZswapLedgerEvent>;
+};
+
+/** Terms and Conditions agreement. */
+export type TermsAndConditions = {
+  /** The hex-encoded hash of the Terms and Conditions document. */
+  readonly hash: Scalars['HexEncoded']['output'];
+  /** The URL where the Terms and Conditions can be found. */
+  readonly url: Scalars['String']['output'];
+};
+
+/** Terms and Conditions change record for history queries. */
+export type TermsAndConditionsChange = {
+  /** The hex-encoded block hash where this T&C version became effective. */
+  readonly blockHash: Scalars['HexEncoded']['output'];
+  /** The block height where this T&C version became effective. */
+  readonly blockHeight: Scalars['Int']['output'];
+  /** The hex-encoded hash of the Terms and Conditions document. */
+  readonly hash: Scalars['HexEncoded']['output'];
+  /** The UNIX timestamp when this T&C version became effective. */
+  readonly timestamp: Scalars['Int']['output'];
+  /** The URL where the Terms and Conditions can be found. */
+  readonly url: Scalars['String']['output'];
 };
 
 /** A Midnight transaction. */

@@ -65,20 +65,17 @@ interface WalletProvider {
 ```typescript
 interface WalletProvider {
   balanceTx(
-    tx: UnprovenTransaction, 
-    newCoins?: ShieldedCoinInfo[], 
+    tx: UnboundTransaction,
     ttl?: Date
-  ): Promise<BalancedProvingRecipe>;
+  ): Promise<FinalizedTransaction>;
 }
 ```
 
-**Note:** `BalancedProvingRecipe` is a union type:
-```typescript
-type BalancedProvingRecipe = 
-  | TransactionToProve
-  | BalanceTransactionToProve<UnprovenTransaction | FinalizedTransaction>
-  | NothingToProve<UnprovenTransaction | FinalizedTransaction>;
-```
+**Breaking:**
+- Input type changed from `UnprovenTransaction` to `UnboundTransaction`
+- Return type changed to `FinalizedTransaction`
+- Added optional `ttl` parameter
+- Wallet now handles proving internally
 
 #### Contract Call Signatures
 
@@ -108,35 +105,18 @@ interface Contract<T> {
 
 ### Added Exports
 
-#### ProvingRecipe Types
+#### UnboundTransaction
 
 ```typescript
-export const TRANSACTION_TO_PROVE = 'TransactionToProve';
-export const BALANCE_TRANSACTION_TO_PROVE = 'BalanceTransactionToProve';
-export const NOTHING_TO_PROVE = 'NothingToProve';
+export type UnboundTransaction = Transaction<SignatureEnabled, Proof, PreBinding>;
+```
 
-export type TransactionToProve = {
-  readonly type: typeof TRANSACTION_TO_PROVE;
-  readonly transaction: UnprovenTransaction;
-};
+#### KeyMaterialProvider (#430)
 
-export type BalanceTransactionToProve<TTransaction> = {
-  readonly type: typeof BALANCE_TRANSACTION_TO_PROVE;
-  readonly transactionToProve: UnprovenTransaction;
-  readonly transactionToBalance: TTransaction;
-};
-
-export type NothingToProve<TTransaction> = {
-  readonly type: typeof NOTHING_TO_PROVE;
-  readonly transaction: TTransaction;
-};
-
-export type ProvingRecipe<TTransaction> =
-  | TransactionToProve
-  | BalanceTransactionToProve<TTransaction>
-  | NothingToProve<TTransaction>;
-
-export type BalancedProvingRecipe = ProvingRecipe<UnprovenTransaction | FinalizedTransaction>;
+```typescript
+interface ZkConfigProvider {
+  asKeyMaterialProvider(): KeyMaterialProvider;
+}
 ```
 
 #### PrivateStoragePasswordProvider
@@ -150,6 +130,55 @@ export type PrivateStoragePasswordProvider = () => Promise<string>;
 ## Package: @midnight-ntwrk/midnight-js-contracts
 
 ### Modified Exports
+
+#### deployContract (#370)
+
+The `deployContract` function now accepts a `CompiledContract` from `@midnight-ntwrk/compact-js` instead of raw contract definitions.
+
+**v2.1.0:**
+```typescript
+import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
+
+const deployed = await deployContract(providers, {
+  contract: MyContract,
+  privateStateKey: 'myPrivateState',
+  initialPrivateState: { counter: 0 }
+});
+```
+
+**v3.0.0:**
+```typescript
+import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
+import { CompiledContract } from '@midnight-ntwrk/compact-js';
+import * as CompiledMyContract from './compiled/my-contract/contract/index.js';
+import { witnesses, type MyPrivateState } from './witnesses';
+
+// First, create the compiled contract
+const MyCompiledContract = CompiledContract.make<
+  CompiledMyContract.Contract<MyPrivateState>
+>('MyContract', CompiledMyContract.Contract<MyPrivateState>).pipe(
+  CompiledContract.withWitnesses(witnesses),
+  CompiledContract.withCompiledFileAssets('./compiled/my-contract')
+);
+
+// Then deploy using the new API
+const deployed = await deployContract(providers, {
+  compiledContract: MyCompiledContract,
+  privateStateId: 'myPrivateState',
+  initialPrivateState: { counter: 0 }
+});
+
+// Access the contract address
+const { contractAddress } = deployed.deployTxData.public;
+
+// Call contract methods
+const result = await deployed.callTx.increment();
+```
+
+**Breaking:**
+- `contract` option replaced with `compiledContract`
+- `privateStateKey` option replaced with `privateStateId`
+- Requires `CompiledContract` from `@midnight-ntwrk/compact-js`
 
 #### submitDeployTx
 
@@ -198,14 +227,136 @@ Indexer schema updated to support unshielded token data and NIGHT token queries.
 
 ---
 
-## Package: @midnight-ntwrk/compact
+## Package: @midnight-ntwrk/compact-js (#370)
 
-### Removed Exports
+### New Package
+
+`@midnight-ntwrk/compact-js` is a new package that provides a fluent API for working with compiled Compact contracts. This is a **major change** in how contracts are defined and used.
+
+### CompiledContract Factory
+
+The `CompiledContract` namespace provides a builder pattern for creating typed contract definitions.
+
+#### CompiledContract.make
+
+```typescript
+function make<C extends Contract>(
+  name: string,
+  contractConstructor: new (...args: any[]) => C
+): CompiledContractBuilder<C>;
+```
+
+#### CompiledContract.withWitnesses
+
+```typescript
+function withWitnesses<C extends Contract, W extends Witnesses<C>>(
+  witnesses: W
+): (builder: CompiledContractBuilder<C>) => CompiledContractBuilder<C>;
+```
+
+#### CompiledContract.withVacantWitnesses
+
+```typescript
+function withVacantWitnesses<C extends Contract>(
+  builder: CompiledContractBuilder<C>
+): CompiledContractBuilder<C>;
+```
+
+#### CompiledContract.withCompiledFileAssets
+
+```typescript
+function withCompiledFileAssets(
+  path: string
+): (builder: CompiledContractBuilder<C>) => CompiledContract<C>;
+```
+
+### Contract Type Utilities
+
+```typescript
+namespace Contract {
+  type ImpureCircuitId<C> = /* circuit identifiers for contract C */;
+}
+```
+
+### Usage Example
+
+**v2.1.0:**
+```typescript
+import { Contract } from '@midnight-ntwrk/midnight-js-contracts';
+import CounterContract from './contract';
+
+const contract = new Contract(CounterContract, witnesses);
+```
+
+**v3.0.0:**
+```typescript
+import { CompiledContract } from '@midnight-ntwrk/compact-js';
+import type { Contract } from '@midnight-ntwrk/compact-js';
+import * as CompiledCounter from './compiled/counter/contract/index.js';
+import { witnesses, type CounterPrivateState } from './witnesses';
+
+// Create compiled contract with fluent API
+export const CompiledCounterContract = CompiledContract.make<
+  CompiledCounter.Contract<CounterPrivateState>
+>('Counter', CompiledCounter.Contract<CounterPrivateState>).pipe(
+  CompiledContract.withWitnesses(witnesses),
+  CompiledContract.withCompiledFileAssets('./compiled/counter')
+);
+
+// For contracts without witnesses
+export const CompiledSimpleContract = CompiledContract.make<
+  CompiledSimple.Contract
+>('Simple', CompiledSimple.Contract).pipe(
+  CompiledContract.withVacantWitnesses,
+  CompiledContract.withCompiledFileAssets('./compiled/simple')
+);
+
+// Extract circuit types
+type CounterCircuits = Contract.ImpureCircuitId<CounterContract> & string;
+```
+
+---
+
+## Package: @midnight-ntwrk/compact-runtime
+
+### Modified Exports
+
+#### WitnessContext
+
+**v3.0.0** introduces `WitnessContext` type for defining witnesses with proper typing:
+
+```typescript
+import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
+import type { Ledger } from './compiled/counter/contract/index.js';
+
+type CounterPrivateState = {
+  privateCounter: number;
+};
+
+export const witnesses = {
+  privateIncrement: ({
+    privateState
+  }: WitnessContext<Ledger, CounterPrivateState>): [CounterPrivateState, []] => [
+    { privateCounter: privateState.privateCounter + 1 },
+    []
+  ]
+};
+```
+
+**Key points:**
+- `WitnessContext<Ledger, PrivateState>` provides typed access to ledger and private state
+- Witness functions return a tuple: `[NewPrivateState, OutputArgs]`
+- The `Ledger` type is imported from the compiled contract output
+
+### Added Exports
 
 #### createCircuitContext
 
-**Removed from:** `@midnight-ntwrk/compact`  
-**Moved to:** `@midnight-ntwrk/compact-runtime`
+**Moved from:** `@midnight-ntwrk/compact`
+
+```typescript
+function createCircuitContext(): CircuitContext;
+```
 
 **Migration:**
 ```typescript
@@ -214,18 +365,6 @@ import { createCircuitContext } from '@midnight-ntwrk/compact';
 
 // After
 import { createCircuitContext } from '@midnight-ntwrk/compact-runtime';
-```
-
----
-
-## Package: @midnight-ntwrk/compact-runtime
-
-### Added Exports
-
-#### createCircuitContext
-
-```typescript
-function createCircuitContext(): CircuitContext;
 ```
 
 #### parseCircuitResult
@@ -246,10 +385,10 @@ interface CircuitContext {
 // package.json
 {
   "dependencies": {
-    "@midnight-ntwrk/compact-runtime": "0.11.0-rc.1",
-    "@midnight-ntwrk/ledger-v6": "6.1.0-alpha.6",
-    "@midnight-ntwrk/onchain-runtime-v1": "1.0.0-alpha.5",
-    "@midnight-ntwrk/wallet-sdk-facade": "1.0.0-beta.12"
+    "@midnight-ntwrk/compact-js": "^x.x.x",       // NEW: Contract builder API
+    "@midnight-ntwrk/compact-runtime": "^0.x.x",  // Updated: WitnessContext, createCircuitContext
+    "@midnight-ntwrk/ledger-v7": "^7.x.x",        // Upgraded from ledger-v6
+    "@midnight-ntwrk/wallet-sdk-facade": "1.0.0"
   }
 }
 ```
@@ -263,21 +402,23 @@ interface CircuitContext {
 | Type | Change | Impact |
 |------|--------|--------|
 | `MidnightProvider.submitTx` | Return type `Promise<TransactionId>` | Must await |
-| `WalletProvider.balanceTx` | Returns `BalancedProvingRecipe` (union) | Type guard needed |
+| `WalletProvider.balanceTx` | Returns `FinalizedTransaction` (simplified) | Remove type guards |
 | `Contract.call.*` | All return `Promise` | Must await |
 | `LevelPrivateStateProvider` | Config required | Add auth config |
 | `networkId` | Enum → String (#125) | Use string literals |
+| `deployContract` options | `contract` → `compiledContract`, `privateStateKey` → `privateStateId` | Use Compact.js pattern |
 
 ### New Types
 
 | Type | Package | Purpose |
 |------|---------|---------|
-| `TransactionToProve` | types | Transaction needs proving |
-| `BalanceTransactionToProve` | types | Transaction needs balancing |
-| `NothingToProve` | types | Transaction ready to submit |
-| `ProvingRecipe` | types | Union of above three |
-| `BalancedProvingRecipe` | types | Result from balanceTx |
+| `UnboundTransaction` | types | Input for balanceTx |
+| `KeyMaterialProvider` | types | DApp connector compatibility |
 | `PrivateStoragePasswordProvider` | types | Storage encryption |
+| `CompiledContract` | compact-js | Builder for contract definitions |
+| `CompiledContractBuilder` | compact-js | Intermediate builder type |
+| `Contract.ImpureCircuitId` | compact-js | Circuit identifier extraction |
+| `WitnessContext` | compact-runtime | Typed witness context |
 
 ### Removed Types
 
@@ -311,24 +452,14 @@ interface CircuitContext {
 
   interface WalletProvider {
 -   balanceTx(tx: UnprovenTransaction): Promise<BalancedProvingRecipe>;
-+   balanceTx(tx: UnprovenTransaction, newCoins?: ShieldedCoinInfo[], ttl?: Date): Promise<BalancedProvingRecipe>;
++   balanceTx(tx: UnboundTransaction, ttl?: Date): Promise<FinalizedTransaction>;
   }
 
-+ type TransactionToProve = {
-+   readonly type: 'TransactionToProve';
-+   readonly transaction: UnprovenTransaction;
-+ };
++ type UnboundTransaction = Transaction<SignatureEnabled, Proof, PreBinding>;
 
-+ type BalanceTransactionToProve<TTransaction> = {
-+   readonly type: 'BalanceTransactionToProve';
-+   readonly transactionToProve: UnprovenTransaction;
-+   readonly transactionToBalance: TTransaction;
-+ };
-
-+ type NothingToProve<TTransaction> = {
-+   readonly type: 'NothingToProve';
-+   readonly transaction: TTransaction;
-+ };
++ interface ZkConfigProvider {
++   asKeyMaterialProvider(): KeyMaterialProvider;
++ }
 
 - enum NetworkId {
 -   Mainnet = 'mainnet',

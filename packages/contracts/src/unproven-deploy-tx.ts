@@ -13,29 +13,28 @@
  * limitations under the License.
  */
 
+import { ContractExecutable } from '@midnight-ntwrk/compact-js';
+import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
 import type { CoinPublicKey,SigningKey } from '@midnight-ntwrk/compact-runtime';
 import type { EncPublicKey } from '@midnight-ntwrk/ledger-v7';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
-  type Contract,
-  type ImpureCircuitId,
-  type PrivateState,
+  exitResultOrError,
+  makeContractExecutableRuntime,
   type PrivateStateId,
-  type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
-import { getImpureCircuitIds } from '@midnight-ntwrk/midnight-js-types';
+  type ZKConfigProvider
+} from '@midnight-ntwrk/midnight-js-types';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
-import type { ContractConstructorOptions, ContractConstructorOptionsWithArguments } from './call-constructor';
-import { callContractConstructor } from './call-constructor';
+import type { ContractConstructorOptionsWithArguments } from './call-constructor';
 import { type ContractProviders } from './contract-providers';
-import { type DeployTxOptions } from './submit-deploy-tx';
 import type { UnsubmittedDeployTxData } from './tx-model';
 import { createUnprovenLedgerDeployTx, zswapStateToNewCoins } from './utils';
 
 /**
  * Base type for deploy transaction configuration.
  */
-export type DeployTxOptionsBase<C extends Contract> = ContractConstructorOptionsWithArguments<C> & {
+export type DeployTxOptionsBase<C extends Contract.Any> = ContractConstructorOptionsWithArguments<C> & {
   /**
    * The signing key to add as the to-be-deployed contract's maintenance authority.
    */
@@ -49,11 +48,11 @@ export type DeployTxOptionsBase<C extends Contract> = ContractConstructorOptions
  * to save private state (and therefore doesn't need a private state ID) but does need to supply an
  * initial private state to run the contract constructor against.
  */
-export type DeployTxOptionsWithPrivateState<C extends Contract> = DeployTxOptionsBase<C> & {
+export type DeployTxOptionsWithPrivateState<C extends Contract.Any> = DeployTxOptionsBase<C> & {
   /**
    * The private state to run the contract constructor against.
    */
-  readonly initialPrivateState: PrivateState<C>;
+  readonly initialPrivateState: Contract.PrivateState<C>;
 };
 
 /**
@@ -61,7 +60,7 @@ export type DeployTxOptionsWithPrivateState<C extends Contract> = DeployTxOption
  * configuration is used when a deployment transaction is created and an initial private
  * state needs to be stored, as is the case in {@link submitDeployTx}.
  */
-export type DeployTxOptionsWithPrivateStateId<C extends Contract> = DeployTxOptionsWithPrivateState<C> & {
+export type DeployTxOptionsWithPrivateStateId<C extends Contract.Any> = DeployTxOptionsWithPrivateState<C> & {
   /**
    * The identifier for the private state of the contract.
    */
@@ -71,51 +70,21 @@ export type DeployTxOptionsWithPrivateStateId<C extends Contract> = DeployTxOpti
 /**
  * Configuration for creating unproven deploy transactions.
  */
-export type UnprovenDeployTxOptions<C extends Contract> = DeployTxOptionsBase<C> | DeployTxOptionsWithPrivateState<C>;
-
-const createContractConstructorOptions = <C extends Contract>(
-  deployTxOptions: DeployTxOptions<C>,
-  coinPublicKey: CoinPublicKey
-): ContractConstructorOptions<C> => {
-  const constructorOptionsBase = {
-    contract: deployTxOptions.contract
-  };
-  const constructorOptionsWithArguments =
-    'args' in deployTxOptions
-      ? {
-          ...constructorOptionsBase,
-          args: deployTxOptions.args
-        }
-      : constructorOptionsBase;
-  const constructorOptionsWithProviderDataDependencies = {
-    ...constructorOptionsWithArguments,
-    coinPublicKey
-  };
-  const constructorOptions =
-    'initialPrivateState' in deployTxOptions
-      ? {
-          ...constructorOptionsWithProviderDataDependencies,
-          initialPrivateState: deployTxOptions.initialPrivateState
-        }
-      : constructorOptionsWithProviderDataDependencies;
-  return constructorOptions as ContractConstructorOptions<C>;
-};
-
-
+export type UnprovenDeployTxOptions<C extends Contract.Any> = DeployTxOptionsBase<C> | DeployTxOptionsWithPrivateState<C>;
 
 export function createUnprovenDeployTxFromVerifierKeys<C extends Contract<undefined>>(
-  verifierKeys: [ImpureCircuitId<C>, VerifierKey][],
+  zkConfigProvider: ZKConfigProvider<string>,
   coinPublicKey: CoinPublicKey,
   options: DeployTxOptionsBase<C>,
   encryptionPublicKey: EncPublicKey
-): UnsubmittedDeployTxData<C>;
+): Promise<UnsubmittedDeployTxData<C>>;
 
-export function createUnprovenDeployTxFromVerifierKeys<C extends Contract>(
-  verifierKeys: [ImpureCircuitId<C>, VerifierKey][],
+export function createUnprovenDeployTxFromVerifierKeys<C extends Contract.Any>(
+  zkConfigProvider: ZKConfigProvider<string>,
   coinPublicKey: CoinPublicKey,
   options: DeployTxOptionsWithPrivateState<C>,
   encryptionPublicKey: EncPublicKey
-): UnsubmittedDeployTxData<C>;
+): Promise<UnsubmittedDeployTxData<C>>;
 
 /**
  * Calls a contract constructor and creates an unbalanced, unproven, unsubmitted, deploy transaction
@@ -128,42 +97,61 @@ export function createUnprovenDeployTxFromVerifierKeys<C extends Contract>(
  * @returns Data produced by the contract constructor call and an unproven deployment transaction
  *          assembled from the contract constructor result.
  */
-export function createUnprovenDeployTxFromVerifierKeys<C extends Contract>(
-  verifierKeys: [ImpureCircuitId<C>, VerifierKey][],
+export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.Any>(
+  zkConfigProvider: ZKConfigProvider<string>,
   coinPublicKey: CoinPublicKey,
   options: UnprovenDeployTxOptions<C>,
   encryptionPublicKey: EncPublicKey
-): UnsubmittedDeployTxData<C> {
-  const { nextContractState, nextPrivateState, nextZswapLocalState } = callContractConstructor(
-    createContractConstructorOptions(options, coinPublicKey)
-  );
-  const [contractAddress, initialContractState, unprovenTx] = createUnprovenLedgerDeployTx(
-    verifierKeys,
-    options.signingKey,
-    nextContractState,
-    nextZswapLocalState,
-    encryptionPublicKey
-  );
-  return {
-    public: {
-      contractAddress,
-      initialContractState
-    },
-    private: {
-      signingKey: options.signingKey,
-      initialPrivateState: nextPrivateState,
-      initialZswapState: nextZswapLocalState,
-      unprovenTx,
-      newCoins: zswapStateToNewCoins(coinPublicKey, nextZswapLocalState)
-    }
-  };
+): Promise<UnsubmittedDeployTxData<C>> {
+  const contractExec = ContractExecutable.make(options.compiledContract);
+  const contractRuntime = makeContractExecutableRuntime(zkConfigProvider, {
+    coinPublicKey: coinPublicKey,
+    signingKey: options.signingKey
+  });
+  const initialPrivateState = 'initialPrivateState' in options ? options.initialPrivateState : undefined;
+  const args = ('args' in options ? options.args : []) as Contract.InitializeParameters<C>;
+  const exitResult = await contractRuntime.runPromiseExit(contractExec.initialize(initialPrivateState, ...args));
+  try {
+    const {
+      public: { contractState },
+      private: {
+        privateState,
+        signingKey,
+        zswapLocalState
+      }
+    } = exitResultOrError(exitResult);
+    const [contractAddress, initialContractState, unprovenTx] = createUnprovenLedgerDeployTx(
+      contractState,
+      zswapLocalState,
+      encryptionPublicKey
+    );
+
+    return {
+      public: {
+        contractAddress,
+        initialContractState
+      },
+      private: {
+        signingKey,
+        initialPrivateState: privateState,
+        initialZswapState: zswapLocalState,
+        unprovenTx,
+        newCoins: zswapStateToNewCoins(coinPublicKey, zswapLocalState)
+      }
+    };
+  } catch (error: unknown) {
+    // Report CompactError messages as they are, otherwise re-throw the error.
+    if ((error as any)?.['_tag'] !== 'ContractRuntimeError') throw error; // eslint-disable-line @typescript-eslint/no-explicit-any
+    if ((error as any)?.cause.name !== 'CompactError') throw error; // eslint-disable-line @typescript-eslint/no-explicit-any
+    throw new Error((error as any)?.cause.message); // eslint-disable-line @typescript-eslint/no-explicit-any
+  }
 }
 
 /**
  * Providers needed to create an unproven deployment transactions, just the ZK artifact
  * provider and a wallet.
  */
-export type UnprovenDeployTxProviders<C extends Contract> = Pick<
+export type UnprovenDeployTxProviders<C extends Contract.Any> = Pick<
   ContractProviders<C>,
   'zkConfigProvider' | 'walletProvider'
 >;
@@ -173,7 +161,7 @@ export async function createUnprovenDeployTx<C extends Contract<undefined>>(
   options: DeployTxOptionsBase<C>
 ): Promise<UnsubmittedDeployTxData<C>>;
 
-export async function createUnprovenDeployTx<C extends Contract>(
+export async function createUnprovenDeployTx<C extends Contract.Any>(
   providers: UnprovenDeployTxProviders<C>,
   options: DeployTxOptionsWithPrivateState<C>
 ): Promise<UnsubmittedDeployTxData<C>>;
@@ -188,13 +176,12 @@ export async function createUnprovenDeployTx<C extends Contract>(
  * @returns A promise that contains all data produced by the constructor call and an unproven
  *          transaction assembled from the constructor result.
  */
-export async function createUnprovenDeployTx<C extends Contract>(
+export async function createUnprovenDeployTx<C extends Contract.Any>(
   providers: UnprovenDeployTxProviders<C>,
   options: UnprovenDeployTxOptions<C>
 ): Promise<UnsubmittedDeployTxData<C>> {
-  const verifierKeys = await providers.zkConfigProvider.getVerifierKeys(getImpureCircuitIds(options.contract));
   return createUnprovenDeployTxFromVerifierKeys(
-    verifierKeys,
+    providers.zkConfigProvider,
     parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), getNetworkId()),
     options,
     providers.walletProvider.getEncryptionPublicKey()

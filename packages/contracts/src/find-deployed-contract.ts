@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { type CompiledContract, type Contract, ContractExecutable } from '@midnight-ntwrk/compact-js';
 import {
   type ContractAddress,
   type ContractState,
@@ -20,10 +21,6 @@ import {
   type SigningKey
 } from '@midnight-ntwrk/compact-runtime';
 import {
-  type Contract,
-  getImpureCircuitIds,
-  type ImpureCircuitId,
-  type PrivateState,
   type PrivateStateId,
   type PrivateStateProvider,
   type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
@@ -41,9 +38,9 @@ import {
 } from './tx-interfaces';
 import type { FinalizedDeployTxDataBase } from './tx-model';
 
-const setOrGetInitialSigningKey = async (
+const setOrGetInitialSigningKey = async <C extends Contract.Any>(
   privateStateProvider: PrivateStateProvider,
-  options: FindDeployedContractOptions<Contract>
+  options: FindDeployedContractOptions<C>
 ): Promise<SigningKey> => {
   if (options.signingKey) {
     await privateStateProvider.setSigningKey(options.contractAddress, options.signingKey);
@@ -58,10 +55,10 @@ const setOrGetInitialSigningKey = async (
   return freshSigningKey;
 };
 
-const setOrGetInitialPrivateState = async <C extends Contract>(
-  privateStateProvider: PrivateStateProvider<PrivateStateId, PrivateState<C>>,
+const setOrGetInitialPrivateState = async <C extends Contract.Any>(
+  privateStateProvider: PrivateStateProvider<PrivateStateId, Contract.PrivateState<C>>,
   options: FindDeployedContractOptions<C>
-): Promise<PrivateState<C>> => {
+): Promise<Contract.PrivateState<C>> => {
   /**
    * If both 'privateStateId' and 'initialPrivateState' are defined,
    * then 'initialPrivateState' is stored in private state provider at 'privateStateId'.
@@ -97,7 +94,7 @@ const setOrGetInitialPrivateState = async <C extends Contract>(
   }
   // Cast to 'PrivateState<C>' because if we've reached this point, the private state of
   // the contract should be 'undefined'.
-  return undefined as PrivateState<C>;
+  return undefined as Contract.PrivateState<C>;
 };
 
 /**
@@ -118,7 +115,7 @@ export const verifierKeysEqual = (a: Uint8Array, b: Uint8Array): boolean =>
  * @throws ContractTypeError When one or more of the local and deployed verifier keys do not match.
  */
 export const verifyContractState = (
-  verifierKeys: [ImpureCircuitId, VerifierKey][],
+  verifierKeys: [Contract.ImpureCircuitId<Contract.Any>, VerifierKey][],
   contractState: ContractState
 ): void => {
   const mismatchedCircuitIds = verifierKeys.reduce(
@@ -137,11 +134,12 @@ export const verifyContractState = (
 /**
  * Base type for the configuration options for {@link findDeployedContract}.
  */
-export type FindDeployedContractOptionsBase<C extends Contract> = {
+export type FindDeployedContractOptionsBase<C extends Contract.Any> = {
   /**
-   * The contract to use to execute circuits.
+   * The compiled contract to use to execute circuits.
    */
-  readonly contract: C;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  readonly compiledContract: CompiledContract.CompiledContract<C, any>;
   /**
    * The address of a previously deployed contract.
    */
@@ -164,7 +162,7 @@ export type FindDeployedContractOptionsBase<C extends Contract> = {
  * the intention is to overwrite the private state currently stored at the given
  * private state ID.
  */
-export type FindDeployedContractOptionsExistingPrivateState<C extends Contract> = FindDeployedContractOptionsBase<C> & {
+export type FindDeployedContractOptionsExistingPrivateState<C extends Contract.Any> = FindDeployedContractOptionsBase<C> & {
   /**
    * An identifier for the private state of the contract being found.
    */
@@ -177,20 +175,20 @@ export type FindDeployedContractOptionsExistingPrivateState<C extends Contract> 
  * the intention is to overwrite the private state currently stored at the given
  * private state ID.
  */
-export type FindDeployedContractOptionsStorePrivateState<C extends Contract> =
+export type FindDeployedContractOptionsStorePrivateState<C extends Contract.Any> =
   FindDeployedContractOptionsExistingPrivateState<C> & {
     /**
      * For types of contract that make no use of private state and or witnesses that operate upon it, this
      * property may be `undefined`. Otherwise, the value provided via this property should be same initial
      * state that was used when calling {@link deployContract}.
      */
-    readonly initialPrivateState: PrivateState<C>;
+    readonly initialPrivateState: Contract.PrivateState<C>;
   };
 
 /**
  * Configuration for {@link findDeployedContract}.
  */
-export type FindDeployedContractOptions<C extends Contract> =
+export type FindDeployedContractOptions<C extends Contract.Any> =
   | FindDeployedContractOptionsBase<C>
   | FindDeployedContractOptionsExistingPrivateState<C>
   | FindDeployedContractOptionsStorePrivateState<C>;
@@ -198,7 +196,7 @@ export type FindDeployedContractOptions<C extends Contract> =
 /**
  * Base type for a deployed contract that has been found on the blockchain.
  */
-export type FoundContract<C extends Contract> = {
+export type FoundContract<C extends Contract.Any> = {
   /**
    * Data for the finalized deploy transaction corresponding to this contract.
    */
@@ -220,16 +218,16 @@ export type FoundContract<C extends Contract> = {
 }
 
 export async function findDeployedContract<C extends Contract<undefined>>(
-  providers: ContractProviders<C, ImpureCircuitId<C>, unknown>,
+  providers: ContractProviders<C, Contract.ImpureCircuitId<C>, unknown>,
   options: FindDeployedContractOptionsBase<C>
 ): Promise<FoundContract<C>>;
 
-export async function findDeployedContract<C extends Contract>(
+export async function findDeployedContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
   options: FindDeployedContractOptionsExistingPrivateState<C>
 ): Promise<FoundContract<C>>;
 
-export async function findDeployedContract<C extends Contract>(
+export async function findDeployedContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
   options: FindDeployedContractOptionsStorePrivateState<C>
 ): Promise<FoundContract<C>>;
@@ -251,12 +249,13 @@ export async function findDeployedContract<C extends Contract>(
  * @throws IncompleteFindContractPrivateStateConfig If an `initialPrivateState` is given but no
  *                                                  `privateStateId` is given to store it under.
  */
-export async function findDeployedContract<C extends Contract>(
+export async function findDeployedContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
   options: FindDeployedContractOptions<C>
 ): Promise<FoundContract<C>> {
-  const { contract, contractAddress } = options;
+  const { compiledContract, contractAddress } = options;
   assertIsContractAddress(contractAddress);
+  providers.privateStateProvider.setContractAddress(contractAddress);
 
   const finalizedTxData = await providers.publicDataProvider.watchForDeployTxData(contractAddress);
 
@@ -266,7 +265,9 @@ export async function findDeployedContract<C extends Contract>(
   const currentContractState = await providers.publicDataProvider.queryContractState(contractAddress);
   assertDefined(currentContractState, `No contract deployed at contract address '${contractAddress}'`);
 
-  const verifierKeys = await providers.zkConfigProvider.getVerifierKeys(getImpureCircuitIds(contract));
+  const verifierKeys = await providers.zkConfigProvider.getVerifierKeys(
+    ContractExecutable.make(compiledContract).getImpureCircuitIds()
+  );
   verifyContractState(verifierKeys, currentContractState);
 
   const signingKey = await setOrGetInitialSigningKey(providers.privateStateProvider, options);
@@ -286,11 +287,11 @@ export async function findDeployedContract<C extends Contract>(
     },
     callTx: createCircuitCallTxInterface(
       providers,
-      contract,
+      compiledContract,
       contractAddress,
       'privateStateId' in options ? options.privateStateId : undefined
     ),
-    circuitMaintenanceTx: createCircuitMaintenanceTxInterfaces(providers, contract, contractAddress),
-    contractMaintenanceTx: createContractMaintenanceTxInterface(providers, contractAddress)
+    circuitMaintenanceTx: createCircuitMaintenanceTxInterfaces(providers, compiledContract, contractAddress),
+    contractMaintenanceTx: createContractMaintenanceTxInterface(providers, compiledContract, contractAddress)
   };
 }

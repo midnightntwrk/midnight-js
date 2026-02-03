@@ -16,51 +16,41 @@
 
 1. **LevelPrivateStateProvider** - Must provide `walletProvider` OR `passwordProvider` (#342, #346)
 2. **Async Transactions** - `submitTx` now returns `Promise<TransactionId>` (#348)
-3. **WalletProvider.balanceTx** - Returns discriminated union (#346)
+3. **WalletProvider.balanceTx** - Signature changed to return `FinalizedTransaction`
 4. **Unproven Transaction Types** - New transaction workflow (#125)
 5. **ZswapOffer Changes** - Empty offers no longer allowed (#125)
 6. **networkId Type** - Changed from enum to string (#125)
 
-## New Features (10)
+## New Features
 
 1. Configurable password provider
 2. Async transaction handling (#348)
 3. AES-256-GCM storage encryption
-4. BalanceTransactionToProve type (#320)
-5. Compact compiler 0.27.0 (#373)
-6. Uint8Array circuit results (#268)
-7. Fixed ESM/CJS support
-8. Unshielded token support (NIGHT) (#125)
-9. Unproven transaction types (#125)
-10. Transaction TTL configuration (#125)
+4. Compact.js Integration (#370)
+5. Ledger v7 Support (#414)
+6. Scoped Transactions (#404)
+7. KeyMaterialProvider Type (#430)
+8. Compact compiler update (#402)
+9. Uint8Array circuit results (#268)
+10. Fixed ESM/CJS support
+11. Unshielded token support (NIGHT) (#125)
+12. Transaction TTL configuration (#125)
 
 ## Quick Migration
 
 ### Before (v2.1.0)
 ```typescript
-const provider = new LevelPrivateStateProvider({
-  storeDirectory: './data'
-});
-
+const provider = new LevelPrivateStateProvider({ midnightDbName: 'midnight-db' });
 const txId = midnightProvider.submitTx(tx);
-const recipe = await walletProvider.balanceTx(provingRecipe);
 ```
 
 ### After (v3.0.0)
 ```typescript
-const provider = new LevelPrivateStateProvider({
-  storeDirectory: './data',
-  passwordProvider: async () => process.env.PASSWORD!
-});
+import { levelPrivateStateProvider } from '@midnight-ntwrk/level-private-state-provider';
 
+const provider = levelPrivateStateProvider({ walletProvider: myWallet });
 const txId = await midnightProvider.submitTx(tx);
-
-const result = await walletProvider.balanceTx(provingRecipe);
-if ('type' in result && result.type === 'BalanceTransactionToProve') {
-  // Handle balance transaction
-} else {
-  // Handle proving recipe
-}
+const finalizedTx = await walletProvider.balanceTx(unboundTx, ttl);
 ```
 
 ## Requirements
@@ -73,10 +63,9 @@ if ('type' in result && result.type === 'BalanceTransactionToProve') {
 
 ```json
 {
-  "@midnight-ntwrk/compact-runtime": "0.11.0-rc.1",
-  "@midnight-ntwrk/ledger-v6": "6.1.0-alpha.6",
-  "@midnight-ntwrk/onchain-runtime-v1": "1.0.0-alpha.5",
-  "@midnight-ntwrk/wallet-sdk-facade": "1.0.0-beta.12"
+  "@midnight-ntwrk/ledger-v7": "^7.x.x",
+  "@midnight-ntwrk/wallet-sdk-facade": "1.0.0-beta.16",
+  "@midnight-ntwrk/compact-runtime": "^0.x.x"
 }
 ```
 

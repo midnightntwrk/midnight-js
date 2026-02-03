@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
-import type { ImpureCircuitId, MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
+import type { Contract } from '@midnight-ntwrk/compact-js';
+import type { MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
 
 import { CompiledSimple } from './contract';
 
 export type SimpleContract = CompiledSimple.Contract<undefined>;
 
-export type SimpleCircuits = ImpureCircuitId<SimpleContract>;
+export type SimpleCircuits = Contract.ImpureCircuitId<SimpleContract>;
 
 export type SimpleProviders = MidnightProviders<SimpleCircuits>;
 

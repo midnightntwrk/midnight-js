@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0**](../../../README.md)
 
 ***
 
@@ -16,7 +16,7 @@ The type of the circuit ID used by the provider.
 
 ### proveTx()
 
-> **proveTx**(`unprovenTx`, `proveTxConfig?`): `Promise`\<[`ProvenTransaction`](../type-aliases/ProvenTransaction.md)\>
+> **proveTx**(`unprovenTx`, `proveTxConfig?`): `Promise`\<[`UnboundTransaction`](../type-aliases/UnboundTransaction.md)\>
 
 Creates call proofs for an unproven transaction. The resulting transaction is unbalanced and
 must be balanced using the [WalletProvider](WalletProvider.md) interface.
@@ -37,4 +37,4 @@ The configuration for the proof request to the proof provider. Empty in case
 
 #### Returns
 
-`Promise`\<[`ProvenTransaction`](../type-aliases/ProvenTransaction.md)\>
+`Promise`\<[`UnboundTransaction`](../type-aliases/UnboundTransaction.md)\>

@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v3.0.0-alpha.14**](../README.md)
+[**@midnight-ntwrk/testkit-js v3.0.0**](../README.md)
 
 ***
 
@@ -30,6 +30,12 @@ Handles transaction balancing, submission, and wallet state management.
 
 ***
 
+### unshieldedKeystore
+
+> `readonly` **unshieldedKeystore**: `UnshieldedKeystore`
+
+***
+
 ### wallet
 
 > `readonly` **wallet**: `WalletFacade`
@@ -44,7 +50,7 @@ Handles transaction balancing, submission, and wallet state management.
 
 ### balanceTx()
 
-> **balanceTx**(`tx`, `_newCoins`, `ttl`): `Promise`\<`BalancedProvingRecipe`\>
+> **balanceTx**(`tx`, `ttl`): `Promise`\<`FinalizedTransaction`\>
 
 Balances a transaction
 
@@ -52,13 +58,9 @@ Balances a transaction
 
 ##### tx
 
-`UnprovenTransaction`
+`UnboundTransaction`
 
 The transaction to balance.
-
-##### \_newCoins
-
-`ShieldedCoinInfo`[]
 
 ##### ttl
 
@@ -66,7 +68,7 @@ The transaction to balance.
 
 #### Returns
 
-`Promise`\<`BalancedProvingRecipe`\>
+`Promise`\<`FinalizedTransaction`\>
 
 #### Implementation of
 
@@ -184,7 +186,7 @@ The transaction identifier of the submitted transaction.
 
 ### withWallet()
 
-> `static` **withWallet**(`logger`, `env`, `wallet`, `zswapSecretKeys`, `dustSecretKey`): `Promise`\<`MidnightWalletProvider`\>
+> `static` **withWallet**(`logger`, `env`, `wallet`, `zswapSecretKeys`, `dustSecretKey`, `unshieldedKeystore`): `Promise`\<`MidnightWalletProvider`\>
 
 #### Parameters
 
@@ -207,6 +209,10 @@ The transaction identifier of the submitted transaction.
 ##### dustSecretKey
 
 `DustSecretKey`
+
+##### unshieldedKeystore
+
+`UnshieldedKeystore`
 
 #### Returns
 

@@ -13,106 +13,122 @@
  * limitations under the License.
  */
 
-import type {
-  CircuitContext,
-  CircuitResults,
-  ConstructorContext,
-  ConstructorResult,
-  WitnessContext} from '@midnight-ntwrk/compact-runtime';
+import { type CompiledContract, Contract, type ContractExecutable, ContractExecutableRuntime, 
+  ZKConfiguration, ZKConfigurationReadError } from '@midnight-ntwrk/compact-js/effect';
+import { ContractAddress } from '@midnight-ntwrk/platform-js';
+import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
+import { Cause, type ConfigError, ConfigProvider, Effect, Exit,Layer, Option } from 'effect';
+import { type ManagedRuntime } from 'effect/ManagedRuntime';
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
-/**
- * A circuit which affects the public state.
- *
- * @typeParam PS - The private state modified by the contract witnesses.
- */
-export type ImpureCircuit<PS> = (context: CircuitContext<PS>, ...args: any[]) => CircuitResults<PS, any>;
+import { type ZKConfigProvider } from './zk-config-provider';
 
 /**
- * A collection of impure circuits defined in a contract.
+ * Creates a ZK configuration reader by adapting a given {@link ZKConfigProvider}.
  *
- * @typeParam PS - The private state modified by the contract witnesses.
+ * @param zkConfigProvider The {@link ZKConfigProvider} that is to be adapted.
+ * @returns A {@link ZKConfiguration.ZKConfiguration.Reader | ZKConfiguration.Reader} that reads from
+ * `zkConfigProvider`.
+ *
+ * @internal
  */
-export type ImpureCircuits<PS> = Record<string, ImpureCircuit<PS>>;
+const makeAdaptedReader = <C extends Contract.Contract<PS>, PS>(zkConfigProvider: ZKConfigProvider<string>) =>
+  (compiledContract: CompiledContract.CompiledContract<C, PS>) =>
+    Effect.gen(function* () { // eslint-disable-line require-yield
+      // TODO: Consider implementing the logic used in Compact.js (look at the contract manifest to determine
+      // if the circuit is verifiable). See PM-21376.
+      const getVerifierKey = (impureCircuitId: Contract.ImpureCircuitId<C>) =>
+        Effect.tryPromise({
+          try: () => zkConfigProvider.getVerifierKey(impureCircuitId).then((verifierKey) => Option.some(Contract.VerifierKey(verifierKey))),
+          catch: (err: unknown) => ZKConfigurationReadError.make(compiledContract.tag, impureCircuitId, 'verifier-key', err)
+        });
+      return {
+        getVerifierKey,
+        getVerifierKeys: (impureCircuitIds) =>
+          Effect.forEach(
+            impureCircuitIds,
+            (impureCircuitId) =>
+              getVerifierKey(impureCircuitId).pipe(
+                Effect.map((verifierKey) => [impureCircuitId, verifierKey] as const)
+              ),
+            { concurrency: 'unbounded', discard: false }
+          )
+      } satisfies ZKConfiguration.ZKConfiguration.Reader<C, PS>
+    });
+
+const makeAdaptedRuntimeLayer = (zkConfigProvider: ZKConfigProvider<string>, configMap: Map<string, string>) =>
+  Layer.mergeAll(
+    Layer.succeed(
+      ZKConfiguration.ZKConfiguration,
+      ZKConfiguration.ZKConfiguration.of({
+        createReader: makeAdaptedReader(zkConfigProvider)
+      })
+    ),
+    Configuration.layer
+  ).pipe(
+    Layer.provide(
+      Layer.setConfigProvider(ConfigProvider.fromMap(configMap, { pathDelim: '_' }).pipe(ConfigProvider.constantCase))
+    )
+  );
 
 /**
- * A type representing a witness in a contract.
- *
- * @typeParam PS - The private state modified by the witness.
+ * Options for use when constructing a Compact.js contract executable runtime.
  */
-export type Witness<PS> = (context: WitnessContext<any, PS>, ...rest: any[]) => [PS, any];
+export type ContractExecutableRuntimeOptions = {
+  /** The current user's ZSwap public key. */
+  readonly coinPublicKey: string;
 
-/**
- * A type representing all of a contract's witnesses.
- *
- * @typeParam PS - The private state modified by the contract witnesses.
- */
-export type Witnesses<PS = any> = Record<string, Witness<PS>>;
-
-/**
- * Interface for a contract. The data types defined in this file are generic shapes for the artifacts
- * produced by the `compact` compiler. In other words, this `Contract` interface should match the shape
- * of any `Contract` class produced by `compact`. Midnight.js uses it for generic constraints.
- *
- * @typeParam PS - The private state modified by the contract witnesses.
- * @typeParam W - The contract witnesses type.
- */
-export interface Contract<PS = any, W extends Witnesses<PS> = Witnesses<PS>> {
-  /**
-   * The private oracle of the contract.
-   */
-  readonly witnesses: W;
-  /**
-   * The impure circuits defined in a contract. These circuits can be used to create call transactions.
-   */
-  readonly impureCircuits: ImpureCircuits<PS>;
-
-  /**
-   * Constructs the initial public state of the public oracle of a contract. This is used during
-   * deployment transaction construction.
-   */
-  initialState(context: ConstructorContext<PS>, ...args: any[]): ConstructorResult<PS>;
+  /** The signing key to add as the to-be-deployed contract's maintenance authority. */
+  readonly signingKey?: string;
 }
 
 /**
- * A union over the impure circuit identifiers of a contract.
+ * Constructs an Effect managed runtime configured to execute contract executables.
  *
- * @typeParam C The contract type for which we would like impure circuit IDs.
+ * @param zkConfigProvider The {@link ZKConfigProvider} that is to be adapted.
+ * @param options Values that will be mapped into and made available within the constructed runtime.
+ * @returns An Effect {@link ManagedRuntime} that can be used to execute {@link ContractExecutable} instances.
  */
-export type ImpureCircuitId<C extends Contract = Contract> = keyof C['impureCircuits'] & string;
+export const makeContractExecutableRuntime:
+  (zkConfigProvider: ZKConfigProvider<string>, options: ContractExecutableRuntimeOptions) => ManagedRuntime<ContractExecutable.ContractExecutable.Context, ConfigError.ConfigError> =
+  (zkConfigProvider, options) => {
+    let config: readonly [string, string][] = [['KEYS_COIN_PUBLIC', options.coinPublicKey]];
+    if (options.signingKey) {
+      config = config.concat([['KEYS_SIGNING', options.signingKey]])
+    }
+    return ContractExecutableRuntime.make(makeAdaptedRuntimeLayer(zkConfigProvider, new Map(config)));
+  };
 
 /**
- * Extracts the private state of a contract.
+ * Unwraps an Effect `Exit` instance, returning its value if it is successful, or throwing the error contained
+ * within it.
+ * 
+ * @param exit The source Effect `Exit` instance.
+ * @returns The value from `exit` if it is successful, otherwise throws the error contained within it.
+ */
+export const exitResultOrError: <A, E>(exit: Exit.Exit<A, E>) => A =
+  (exit) => Exit.match(exit, {
+    onSuccess: (a) => a,
+    onFailure: (cause) => {
+      if (Cause.isFailType(cause)) throw cause.error;
+      throw new Error(`Unexpected error: ${Cause.pretty(cause)}`);
+    }
+  });
+
+/**
+ * Wraps an object into an `Option.some`.
  *
- * @typeParam C The contract for which we would like the private state.
+ * @param obj The value that should be wrapped into an `Option`.
+ * @returns An `Option.some` for `obj`.
  */
-export type PrivateState<C extends Contract> = C extends Contract<infer PS> ? PS : never;
+export const asEffectOption = <T>(obj: unknown): Option.Option<T> => {
+  return Option.some(obj) as Option.Option<T>;
+}
 
 /**
- * Typesafe version of `Object.keys(contract.impureCircuits)`.
+ * Constructs a branded contract address from a given string value.
  *
- * @param contract The contract having impure circuits for which we want ids.
- *
- * @typeParam C The contract type for which we would like impure circuit IDs.
+ * @param address A string value representing a contract address.
+ * @returns A {@link ContractAddress.ContractAddress | ContractAddress} constructed from `address`.
  */
-export const getImpureCircuitIds = <C extends Contract>(contract: C): ImpureCircuitId<C>[] =>
-  Object.keys(contract.impureCircuits) as ImpureCircuitId<C>[];
-
-/**
- * The parameter types of the circuits in a contract.
- */
-export type CircuitParameters<C extends Contract, K extends ImpureCircuitId<C>> =
-  Parameters<C['impureCircuits'][K]> extends [CircuitContext<any>, ...infer A] ? A : never;
-
-/**
- * The return types of the circuits in a contract.
- */
-export type CircuitReturnType<C extends Contract, K extends ImpureCircuitId<C>> =
-  ReturnType<C['impureCircuits'][K]> extends CircuitResults<any, infer U> ? U : never;
-
-/**
- * The parameter type of the public state constructor.
- */
-export type InitialStateParameters<C extends Contract> =
-  Parameters<C['initialState']> extends [ConstructorContext<any>, ...infer A] ? A : never;
+export const asContractAddress = (address: string): ContractAddress.ContractAddress =>
+  ContractAddress.ContractAddress(address);

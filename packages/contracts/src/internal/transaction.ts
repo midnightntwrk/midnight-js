@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
+import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
 import { ZswapOffer as LedgerZswapOffer } from '@midnight-ntwrk/ledger-v7';
-import { type Contract, type ImpureCircuitId, type PrivateState,type PrivateStateId, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import { ChargedState,type ShieldedCoinInfo } from '@midnight-ntwrk/onchain-runtime-v2';
+import { type PrivateStateId, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import { ChargedState } from '@midnight-ntwrk/onchain-runtime-v2';
 
 import { type CallResult } from '../call';
 import { type ContractProviders } from '../contract-providers';
@@ -34,25 +35,13 @@ export const MergeUnsubmittedCallTxData = Symbol.for('@midnight-ntwrk/midnight-j
 /** @internal */
 export const CacheStates = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/CacheStates');
 
-const mergeSubmitTxOptions = <ICK extends ImpureCircuitId>(
+const mergeSubmitTxOptions = <ICK extends Contract.ImpureCircuitId<Contract.Any>>(
   current: SubmitTxOptions<ICK> | undefined,
   next: SubmitTxOptions<ICK>
 ): SubmitTxOptions<ICK> => {
   if (!current) {
     return next;
   }
-  const newCoins = [
-      ...(current.newCoins ?? []),
-      ...(next.newCoins ?? [])
-    ].reduce((map, coin) => {
-      const existing = map.get(coin.type);
-      if (existing) {
-        map.set(coin.type, { ...existing, value: existing.value + coin.value });
-      } else {
-        map.set(coin.type, { ...coin });
-      }
-      return map;
-    }, new Map<string, ShieldedCoinInfo>());
   const circuitIds = new Set([
       ...(Array.isArray(current.circuitId) ? current.circuitId! : [current.circuitId!]),
       ...(Array.isArray(next.circuitId) ? next.circuitId! : [next.circuitId!])
@@ -60,21 +49,20 @@ const mergeSubmitTxOptions = <ICK extends ImpureCircuitId>(
 
   return {
     unprovenTx: current.unprovenTx.merge(next.unprovenTx),
-    newCoins: Array.from(newCoins.values()),
     circuitId: Array.from(circuitIds)
   };
 };
 
 /** @internal */
 export class TransactionContextImpl<
-  C extends Contract,
-  ICK extends ImpureCircuitId
+  C extends Contract.Any,
+  ICK extends Contract.ImpureCircuitId<C>
 > implements Transaction.TransactionContext<C, ICK> {
   readonly [TypeId]: Transaction.TypeId = TypeId;
   readonly providers: ContractProviders<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   readonly options?: Transaction.ScopedTransactionOptions;
 
-  currentStates: ContractStates<PrivateState<C>> | PublicContractStates | undefined = undefined;
+  currentStates: ContractStates<Contract.PrivateState<C>> | PublicContractStates | undefined = undefined;
   currentUnsubmittedCall: [callTxData: UnsubmittedCallTxData<C, ICK>, privateStateId?: PrivateStateId] | undefined;
   submitTxOptions: SubmitTxOptions<ICK> | undefined = undefined;
 
@@ -83,7 +71,7 @@ export class TransactionContextImpl<
     this.options = options;
   }
 
-  getCurrentStates(): ContractStates<PrivateState<C>> | PublicContractStates | undefined {
+  getCurrentStates(): ContractStates<Contract.PrivateState<C>> | PublicContractStates | undefined {
     return this.currentStates;
   }
 
@@ -112,7 +100,7 @@ export class TransactionContextImpl<
     }
   }
 
-  [CacheStates](states: ContractStates<PrivateState<C>> | PublicContractStates): void {
+  [CacheStates](states: ContractStates<Contract.PrivateState<C>> | PublicContractStates): void {
     this.currentStates = states;
   }
 
@@ -122,7 +110,6 @@ export class TransactionContextImpl<
       this.submitTxOptions,
       {
         unprovenTx: callData.private.unprovenTx,
-        newCoins: callData.private.newCoins,
         circuitId
        }
     );
@@ -144,8 +131,8 @@ export class TransactionContextImpl<
 
 /** @internal */
 export const mergeUnsubmittedCallTxData = <
-  C extends Contract,
-  ICK extends ImpureCircuitId<C>
+  C extends Contract.Any,
+  ICK extends Contract.ImpureCircuitId<C>
 >(
   txCtx: Transaction.TransactionContext<C, ICK>,
   circuitId: ICK,
@@ -156,25 +143,25 @@ export const mergeUnsubmittedCallTxData = <
 };
 
 /** @internal */
-export const isTransactionContext = (u: unknown): u is Transaction.TransactionContext<Contract> =>
+export const isTransactionContext = (u: unknown): u is Transaction.TransactionContext<Contract.Any> =>
   typeof u === "object" && u != null && TypeId in u;
 
 /** @internal */
 export const scoped: {
-  <C extends Contract, ICK extends ImpureCircuitId<C>>(
+  <C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
     providers: ContractProviders<C, ICK>,
     fn: (txCtx: Transaction.TransactionContext<C, ICK>) => Promise<void>,
     options?: Transaction.ScopedTransactionOptions,
   ): Promise<FinalizedCallTxData<C, ICK>>,
-  <C extends Contract, ICK extends ImpureCircuitId<C>>(
+  <C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
     providers: ContractProviders<C, ICK>,
     fn: (txCtx: Transaction.TransactionContext<C, ICK>) => Promise<void>,
     txCtx: Transaction.TransactionContext<C, ICK>,
     options?: Transaction.ScopedTransactionOptions
   ): Promise<CallResult<C, ICK>>
 } = async <
-  C extends Contract,
-  ICK extends ImpureCircuitId
+  C extends Contract.Any,
+  ICK extends Contract.ImpureCircuitId<C>
 > (
   providers: ContractProviders<C, ICK>,
   fn: (txCtx: Transaction.TransactionContext<C, ICK>) => Promise<void>,

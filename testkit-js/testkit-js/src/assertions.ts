@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import type { Contract } from '@midnight-ntwrk/compact-js';
 import type { StateValue } from '@midnight-ntwrk/compact-runtime';
 import type { Bindingish, Proofish, Signaturish, Transaction } from '@midnight-ntwrk/ledger-v7';
 import type {
@@ -24,11 +25,8 @@ import type {
   FinalizedDeployTxDataBase
 } from '@midnight-ntwrk/midnight-js-contracts';
 import {
-  type Contract,
   type FinalizedTxData,
-  type ImpureCircuitId,
   type MidnightProviders,
-  type PrivateState,
   type PrivateStateId,
   SucceedEntirely
 } from '@midnight-ntwrk/midnight-js-types';
@@ -41,7 +39,7 @@ export const txsEqual = <S extends Signaturish, P extends Proofish, B extends Bi
   return a.toString(false) === b.toString(false);
 };
 
-export const expectFoundAndDeployedTxPublicDataEqual = <C extends Contract>(
+export const expectFoundAndDeployedTxPublicDataEqual = <C extends Contract.Any>(
   deployTxData: FinalizedDeployTxData<C>,
   foundDeployTxData: FinalizedDeployTxDataBase<C>
 ): void => {
@@ -57,7 +55,7 @@ export const expectFoundAndDeployedTxPublicDataEqual = <C extends Contract>(
   expect(txsEqual(deployTxData.public.tx, foundDeployTxData.public.tx)).toBeTruthy();
 };
 
-export const expectFoundAndDeployedTxPrivateDataEqual = <C extends Contract>(
+export const expectFoundAndDeployedTxPrivateDataEqual = <C extends Contract.Any>(
   deployTxData: FinalizedDeployTxData<C>,
   foundDeployTxData: FinalizedDeployTxDataBase<C>
 ): void => {
@@ -66,7 +64,7 @@ export const expectFoundAndDeployedTxPrivateDataEqual = <C extends Contract>(
   expect(deployTxData.private.initialPrivateState).toEqual(foundDeployTxData.private.initialPrivateState);
 };
 
-export const expectFoundAndDeployedTxDataEqual = <C extends Contract>(
+export const expectFoundAndDeployedTxDataEqual = <C extends Contract.Any>(
   deployTxData: FinalizedDeployTxData<C>,
   foundDeployTxData: FinalizedDeployTxDataBase<C>
 ): void => {
@@ -74,12 +72,12 @@ export const expectFoundAndDeployedTxDataEqual = <C extends Contract>(
   expectFoundAndDeployedTxPrivateDataEqual(deployTxData, foundDeployTxData);
 };
 
-export const expectFoundAndDeployedStatesEqual = async <C extends Contract>(
-  providers: MidnightProviders<ImpureCircuitId<C>, PrivateStateId, PrivateState<C> | unknown>,
+export const expectFoundAndDeployedStatesEqual = async <C extends Contract.Any>(
+  providers: MidnightProviders<Contract.ImpureCircuitId<C>, PrivateStateId, Contract.PrivateState<C> | unknown>,
   deployTxData: FinalizedDeployTxData<C>,
   foundDeployTxData: FinalizedDeployTxDataBase<C>,
   privateStateId?: PrivateStateId,
-  initialPrivateState?: PrivateState<C>
+  initialPrivateState?: Contract.PrivateState<C>
 ): Promise<void> => {
   const deployedLedgerState = await providers.publicDataProvider.queryContractState(
     deployTxData.public.contractAddress
@@ -104,8 +102,8 @@ export const expectSuccessfulTxData = (finalizedTxData: FinalizedTxData): void =
   expect(finalizedTxData.blockHash).toBeTruthy();
 };
 
-export const expectSuccessfulDeployTx = async <C extends Contract>(
-  providers: MidnightProviders<ImpureCircuitId<C>, PrivateStateId, PrivateState<C> | unknown>,
+export const expectSuccessfulDeployTx = async <C extends Contract.Any>(
+  providers: MidnightProviders<Contract.ImpureCircuitId<C>, PrivateStateId, Contract.PrivateState<C> | unknown>,
   deployTxData: FinalizedDeployTxData<C>,
   deployTxOptions?: DeployContractOptions<C> | DeployTxOptions<C>
 ): Promise<void> => {
@@ -137,11 +135,11 @@ export const expectSuccessfulDeployTx = async <C extends Contract>(
   }
 };
 
-export const expectSuccessfulCallTx = async <C extends Contract, ICK extends ImpureCircuitId<C>>(
-  providers: MidnightProviders<ImpureCircuitId<C>, PrivateStateId, PrivateState<C> | unknown>,
+export const expectSuccessfulCallTx = async <C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
+  providers: MidnightProviders<Contract.ImpureCircuitId<C>, PrivateStateId, Contract.PrivateState<C> | unknown>,
   callTxData: FinalizedCallTxData<C, ICK>,
   callTxOptions?: CallTxOptions<C, ICK>,
-  nextPrivateState?: PrivateState<C>
+  nextPrivateState?: Contract.PrivateState<C>
 ): Promise<void> => {
   expectSuccessfulTxData(callTxData.public);
   expect(callTxData.public.nextContractState).toBeTruthy();

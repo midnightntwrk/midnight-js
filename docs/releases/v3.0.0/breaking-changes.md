@@ -17,22 +17,20 @@ const provider = new LevelPrivateStateProvider({
 
 ### After
 ```typescript
+import { levelPrivateStateProvider } from '@midnight-ntwrk/level-private-state-provider';
+
 // Option 1: Using wallet provider
-const provider = new LevelPrivateStateProvider({
-  midnightDbName: 'midnight-db',
-  privateStateStoreName: 'private-states',
-  signingKeyStoreName: 'signing-keys',
+const provider = levelPrivateStateProvider({
   walletProvider: myWalletProvider
 });
 
 // Option 2: Using password provider
-const provider = new LevelPrivateStateProvider({
-  midnightDbName: 'midnight-db',
-  privateStateStoreName: 'private-states',
-  signingKeyStoreName: 'signing-keys',
+const provider = levelPrivateStateProvider({
   privateStoragePasswordProvider: async () => process.env.STORAGE_PASSWORD!
 });
 ```
+
+**Note:** Cannot provide both `walletProvider` and `privateStoragePasswordProvider` - pick one.
 
 ### Migration Steps
 1. Identify all `LevelPrivateStateProvider` instances
@@ -42,41 +40,30 @@ const provider = new LevelPrivateStateProvider({
 
 ---
 
-## 2. WalletProvider.balanceTx Return Type (#346)
+## 2. WalletProvider.balanceTx Signature Change
 
 ### Reason
-Support for new proving recipe types with better transaction handling.
+Simplified API - wallet now handles proving internally.
 
 ### Impact
-Return type is now `BalancedProvingRecipe` (union of three types).
+- Input type changed from `UnprovenTransaction` to `UnboundTransaction`
+- Return type changed to `FinalizedTransaction`
+- Added optional `ttl` parameter
 
 ### Before
 ```typescript
-const recipe: BalancedProvingRecipe<MyState> = 
-  await walletProvider.balanceTx(provingRecipe);
+const result = await walletProvider.balanceTx(unprovenTx);
 ```
 
 ### After
 ```typescript
-const recipe = await walletProvider.balanceTx(unprovenTx);
-
-// Check the recipe type
-if (recipe.type === 'TransactionToProve') {
-  // Needs proving
-  const provenTx = await prover.prove(recipe.transaction);
-} else if (recipe.type === 'BalanceTransactionToProve') {
-  // Needs balancing and proving
-  const provenTx = await prover.prove(recipe.transactionToProve);
-} else {
-  // NothingToProve - ready to submit
-  await provider.submitTx(recipe.transaction);
-}
+const finalizedTx = await walletProvider.balanceTx(unboundTx, ttl);
+await midnightProvider.submitTx(finalizedTx);
 ```
 
 ### Migration Steps
-1. Update all `balanceTx` call sites
-2. Add type discrimination logic
-3. Handle all three recipe types appropriately
+1. Update all `balanceTx` call sites to use `UnboundTransaction` input
+2. Handle `FinalizedTransaction` return type directly
 
 ---
 
@@ -115,7 +102,7 @@ async function submitTransaction(tx: FinalizedTransaction): Promise<TransactionI
 ## 4. Transaction Workflow Changes (#125)
 
 ### Reason
-Ledger v6 introduces improved transaction workflow with proving recipes.
+Ledger v7 introduces improved transaction workflow with proving recipes.
 
 ### Impact
 Transaction submission now uses high-level functions that handle the proving workflow internally.
@@ -130,21 +117,23 @@ const txId = await provider.submitTx(tx);
 
 ### After
 ```typescript
-// v3.0.0 - Integrated workflow with submitDeployTx/submitCallTx
-import { submitCallTx } from '@midnight-ntwrk/midnight-js-contracts';
+import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
 
-const result = await submitCallTx(providers, {
-  contract: myContract,
-  circuit: 'myCircuit',
-  args: [arg1, arg2]
+const deployed = await deployContract(providers, {
+  compiledContract: MyCompiledContract,
+  privateStateId: 'myState',
+  initialPrivateState: { ... }
 });
+
+// Call via deployed contract
+const result = await deployed.callTx.myCircuit(args);
 ```
 
 ### Migration Steps
-1. Use `submitDeployTx()` for contract deployment
-2. Use `submitCallTx()` for contract calls
-3. These functions handle proving internally
-4. No manual transaction creation needed
+1. Create `CompiledContract` using `make().pipe()` pattern
+2. Use `deployContract()` with `compiledContract` option
+3. Call circuits via `deployed.callTx.circuitName()`
+4. Proving is handled internally
 
 ---
 
@@ -218,6 +207,53 @@ const config = {
 1. Remove `NetworkId` enum imports
 2. Replace enum values with string literals
 3. Update type annotations from `NetworkId` to `string`
+
+---
+
+## 7. Compact.js Contract Integration (#370)
+
+### Reason
+All contract interfacing now uses `@midnight-ntwrk/compact-js` for improved type safety.
+
+### Impact
+- `deployContract` options changed: `contract` → `compiledContract`, `privateStateKey` → `privateStateId`
+- Contracts must be built using `CompiledContract.make().pipe()` pattern
+- Witnesses require `WitnessContext` typing from `@midnight-ntwrk/compact-runtime`
+
+### Before
+```typescript
+const deployed = await deployContract(providers, {
+  contract: MyContract,
+  privateStateKey: 'myState',
+  initialPrivateState: { counter: 0 }
+});
+```
+
+### After
+```typescript
+import { CompiledContract } from '@midnight-ntwrk/compact-js';
+import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
+import * as Compiled from './compiled/my-contract/contract/index.js';
+
+const MyCompiledContract = CompiledContract.make<Compiled.Contract<MyState>>(
+  'MyContract', Compiled.Contract<MyState>
+).pipe(
+  CompiledContract.withWitnesses(witnesses),
+  CompiledContract.withCompiledFileAssets('./compiled/my-contract')
+);
+
+const deployed = await deployContract(providers, {
+  compiledContract: MyCompiledContract,
+  privateStateId: 'myState',
+  initialPrivateState: { counter: 0 }
+});
+```
+
+### Migration Steps
+1. Install `@midnight-ntwrk/compact-js`
+2. Update witnesses to use `WitnessContext<Ledger, PrivateState>` typing
+3. Create `CompiledContract` using `make().pipe()` pattern
+4. Update `deployContract` calls: `contract` → `compiledContract`, `privateStateKey` → `privateStateId`
 
 ---
 

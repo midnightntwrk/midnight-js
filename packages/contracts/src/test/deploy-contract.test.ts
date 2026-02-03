@@ -13,16 +13,17 @@
  * limitations under the License.
  */
 
+import { type Contract } from '@midnight-ntwrk/compact-js';
 import { type ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
 import { type UnprovenTransaction } from '@midnight-ntwrk/ledger-v7';
-import { type Contract, type PrivateState } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type ContractProviders } from '../contract-providers';
 import { deployContract, type DeployContractOptionsBase, type DeployedContract } from '../deploy-contract';
 import { type UnsubmittedDeployTxData } from '../tx-model';
 import {
-  createMockContract, createMockContractState,
+  createMockCompiledContract,
+  createMockContractState,
   createMockFinalizedTxData,
   createMockPrivateStateId,
   createMockProviders,
@@ -41,11 +42,11 @@ vi.mock('../tx-interfaces', () => ({
 
 describe('deployContract', () => {
   let mockSubmitDeployTx: ReturnType<typeof vi.fn>;
-  let mockDeployTxData: UnsubmittedDeployTxData<Contract>;
+  let mockDeployTxData: UnsubmittedDeployTxData<Contract.Any>;
   let providers: ContractProviders;
-  let baseOptions: DeployContractOptionsBase<Contract>;
+  let baseOptions: DeployContractOptionsBase<Contract.Any>;
 
-  const createMockDeployTxData = (initialPrivateState?: PrivateState<Contract>): UnsubmittedDeployTxData<Contract> => ({
+  const createMockDeployTxData = (initialPrivateState?: Contract.PrivateState<Contract.Any>): UnsubmittedDeployTxData<Contract.Any> => ({
     public: {
       ...createMockFinalizedTxData(),
       contractAddress: 'mock-contract-address',
@@ -60,7 +61,7 @@ describe('deployContract', () => {
     }
   });
 
-  const assertDeployResult = (result: DeployedContract<Contract>, deployTxData: UnsubmittedDeployTxData<Contract>) => {
+  const assertDeployResult = (result: DeployedContract<Contract.Any>, deployTxData: UnsubmittedDeployTxData<Contract.Any>) => {
     expect(result).toBeDefined();
     expect(result.deployTxData).toBe(deployTxData);
     expect(result.callTx).toBeDefined();
@@ -76,7 +77,7 @@ describe('deployContract', () => {
 
     providers = createMockProviders();
     baseOptions = {
-      contract: createMockContract(),
+      compiledContract: createMockCompiledContract(),
       args: ['deploy-arg']
     };
   });
@@ -91,7 +92,7 @@ describe('deployContract', () => {
     expect(mockSubmitDeployTx).toHaveBeenCalledWith(
       providers,
       expect.objectContaining({
-        contract: baseOptions.contract,
+        compiledContract: baseOptions.compiledContract,
         args: baseOptions.args,
         signingKey: expect.not.stringMatching(createMockSigningKey())
       })
@@ -111,7 +112,7 @@ describe('deployContract', () => {
     expect(mockSubmitDeployTx).toHaveBeenCalledWith(
       providers,
       expect.objectContaining({
-        contract: options.contract,
+        compiledContract: baseOptions.compiledContract,
         signingKey,
         args: options.args
       })
@@ -135,7 +136,7 @@ describe('deployContract', () => {
     expect(mockSubmitDeployTx).toHaveBeenCalledWith(
       providers,
       expect.objectContaining({
-        contract: options.contract,
+        compiledContract: baseOptions.compiledContract,
         privateStateId: options.privateStateId,
         initialPrivateState,
         args: options.args,
@@ -163,7 +164,7 @@ describe('deployContract', () => {
     expect(mockSubmitDeployTx).toHaveBeenCalledWith(
       providers,
       expect.objectContaining({
-        contract: options.contract,
+        compiledContract: baseOptions.compiledContract,
         signingKey,
         privateStateId: options.privateStateId,
         initialPrivateState,

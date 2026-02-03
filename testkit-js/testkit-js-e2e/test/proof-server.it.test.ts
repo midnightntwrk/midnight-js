@@ -33,7 +33,6 @@ import { DEFAULT_CONFIG, httpClientProofProvider } from '@midnight-ntwrk/midnigh
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
 import type { ProofProvider } from '@midnight-ntwrk/midnight-js-types';
-import { getImpureCircuitIds } from '@midnight-ntwrk/midnight-js-types';
 import {
   createLogger,
   DynamicProofServerContainer,
@@ -43,7 +42,7 @@ import path from 'path';
 
 import { createInitialPrivateState } from '@/contract/witnesses';
 import * as api from '@/counter-api';
-import { CounterConfiguration, counterContractInstance } from '@/counter-api';
+import { CounterConfiguration } from '@/counter-api';
 import type { CounterCircuits } from '@/counter-types';
 
 const logger = createLogger(
@@ -71,21 +70,21 @@ describe('Proof server integration', () => {
     const coinPublicKey = sampleCoinPublicKey();
     const encryptionPublicKey = sampleEncryptionPublicKey();
     const signingKey = sampleSigningKey();
-    const verifierKeys = await zkConfigProvider.getVerifierKeys(getImpureCircuitIds(counterContractInstance));
-    const unprovenDeployTxResult = createUnprovenDeployTxFromVerifierKeys(
-      verifierKeys,
+    const unprovenDeployTxResult = await createUnprovenDeployTxFromVerifierKeys(
+      zkConfigProvider,
       coinPublicKey,
       {
-        contract: api.counterContractInstance,
+        compiledContract: api.CompiledCounterContract,
         initialPrivateState: privateStateZero,
         signingKey
       },
       encryptionPublicKey
     );
     unprovenDeployTx = unprovenDeployTxResult.private.unprovenTx!;
-    unprovenCallTx = createUnprovenCallTxFromInitialStates(
+    unprovenCallTx = (await createUnprovenCallTxFromInitialStates(
+      zkConfigProvider,
       {
-        contract: api.counterContractInstance,
+        compiledContract: api.CompiledCounterContract,
         circuitId,
         contractAddress: unprovenDeployTxResult.public.contractAddress,
         coinPublicKey,
@@ -93,9 +92,8 @@ describe('Proof server integration', () => {
         initialZswapChainState: new ZswapChainState(),
         initialPrivateState: unprovenDeployTxResult.private.initialPrivateState
       },
-      coinPublicKey,
       encryptionPublicKey
-    ).private.unprovenTx;
+    )).private.unprovenTx;
   });
 
   afterAll(async () => {

@@ -6,7 +6,10 @@ import replace from '@rollup/plugin-replace';
 import dts from 'rollup-plugin-dts';
 
 export function createRollupConfig(packageJson) {
-  const external = [/node_modules/, /^@midnight-ntwrk\/midnight-js-(.*)$/];
+  const external = [
+    /node_modules/,
+    /^@midnight-ntwrk\/midnight-js-(.*)$/
+  ];
 
   return [
     {

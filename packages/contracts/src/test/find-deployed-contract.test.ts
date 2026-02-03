@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-import { type Contract } from '@midnight-ntwrk/midnight-js-types';
+import { type Contract } from '@midnight-ntwrk/compact-js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { findDeployedContract, type FoundContract } from '../find-deployed-contract';
 import {
-  createMockContract,
+  createMockCompiledContract,
   createMockContractAddress,
   createMockContractState,
   createMockFinalizedTxData,
@@ -46,7 +46,7 @@ vi.mock('@midnight-ntwrk/midnight-js-types', async (importOriginal) => {
 describe('findDeployedContract', () => {
   let providers: ReturnType<typeof createMockProviders>;
   let contractAddress: ReturnType<typeof createMockContractAddress>;
-  let contract: ReturnType<typeof createMockContract>;
+  let compiledContract: ReturnType<typeof createMockCompiledContract>;
   let finalizedTxData: ReturnType<typeof createMockFinalizedTxData>;
   let contractState: ReturnType<typeof createMockContractState>;
   let verifierKeys: ReturnType<typeof createMockVerifierKeys>;
@@ -58,7 +58,7 @@ describe('findDeployedContract', () => {
     vi.mocked(providers.zkConfigProvider.getVerifierKeys).mockResolvedValue(verifierKeys);
   };
 
-  const expectBasicResult = (result: FoundContract<Contract>) => {
+  const expectBasicResult = (result: FoundContract<Contract.Any>) => {
     expect(result).toBeDefined();
     expect(result.deployTxData).toBeDefined();
     expect(result.deployTxData.public.contractAddress).toBe(contractAddress);
@@ -78,7 +78,7 @@ describe('findDeployedContract', () => {
   beforeEach(() => {
     providers = createMockProviders();
     contractAddress = createMockContractAddress();
-    contract = createMockContract();
+    compiledContract = createMockCompiledContract();
     finalizedTxData = createMockFinalizedTxData();
     contractState = createMockContractState();
     verifierKeys = createMockVerifierKeys();
@@ -91,7 +91,7 @@ describe('findDeployedContract', () => {
     vi.mocked(providers.privateStateProvider.setSigningKey).mockResolvedValue(undefined);
 
     const options = {
-      contract,
+      compiledContract,
       contractAddress
     };
 
@@ -106,7 +106,7 @@ describe('findDeployedContract', () => {
     vi.mocked(providers.privateStateProvider.setSigningKey).mockResolvedValue(undefined);
 
     const options = {
-      contract,
+      compiledContract,
       contractAddress,
       signingKey
     };
@@ -127,7 +127,7 @@ describe('findDeployedContract', () => {
     vi.mocked(providers.privateStateProvider.get).mockResolvedValue(existingPrivateState);
 
     const options = {
-      contract,
+      compiledContract,
       contractAddress,
       privateStateId
     };
@@ -148,7 +148,7 @@ describe('findDeployedContract', () => {
     vi.mocked(providers.privateStateProvider.set).mockResolvedValue(undefined);
 
     const options = {
-      contract,
+      compiledContract,
       contractAddress,
       privateStateId,
       initialPrivateState
@@ -166,7 +166,7 @@ describe('findDeployedContract', () => {
     vi.mocked(providers.privateStateProvider.getSigningKey).mockResolvedValue(existingSigningKey);
 
     const options = {
-      contract,
+      compiledContract,
       contractAddress
     };
 
@@ -183,7 +183,7 @@ describe('findDeployedContract', () => {
     vi.mocked(providers.publicDataProvider.queryDeployContractState).mockResolvedValue(null);
 
     const options = {
-      contract,
+      compiledContract,
       contractAddress
     };
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0**](../../../README.md)
 
 ***
 
@@ -151,6 +151,28 @@ The private state to store.
 #### Returns
 
 `Promise`\<`void`\>
+
+***
+
+### setContractAddress()
+
+> **setContractAddress**(`address`): `void`
+
+Set the contract address for scoping private state operations.
+Must be called before any get/set/remove operations on private states.
+This provides namespace isolation between different contracts.
+
+#### Parameters
+
+##### address
+
+`string`
+
+The contract address to scope operations to.
+
+#### Returns
+
+`void`
 
 ***
 

@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-import type { Contract, ImpureCircuitId } from '@midnight-ntwrk/midnight-js-types';
+import { ContractExecutable } from '@midnight-ntwrk/compact-js';
+import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
 import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type CallResult } from './call';
@@ -31,27 +32,27 @@ import {
   createUnprovenCallTx
 } from './unproven-call-tx';
 
-export type SubmitCallTxProviders<C extends Contract, ICK extends ImpureCircuitId<C>> =
+export type SubmitCallTxProviders<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> =
   | ContractProviders<C>
   | SubmitTxProviders<C, ICK>;
 
-export async function submitCallTx<C extends Contract<undefined>, ICK extends ImpureCircuitId<C>>(
+export async function submitCallTx<C extends Contract<undefined>, ICK extends Contract.ImpureCircuitId<C>>(
   providers: SubmitTxProviders<C, ICK>,
   options: CallTxOptionsBase<C, ICK>
 ): Promise<FinalizedCallTxData<C, ICK>>;
 
-export async function submitCallTx<C extends Contract, ICK extends ImpureCircuitId<C>>(
+export async function submitCallTx<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   providers: ContractProviders<C>,
   options: CallTxOptionsWithPrivateStateId<C, ICK>
 ): Promise<FinalizedCallTxData<C, ICK>>;
 
-export async function submitCallTx<C extends Contract, ICK extends ImpureCircuitId<C>>(
+export async function submitCallTx<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   providers: ContractProviders<C>,
   options: CallTxOptionsWithPrivateStateId<C, ICK>,
   transactionContext: TransactionContext<C, ICK>
 ): Promise<CallResult<C, ICK>>;
 
-export async function submitCallTx<C extends Contract<undefined>, ICK extends ImpureCircuitId<C>>(
+export async function submitCallTx<C extends Contract<undefined>, ICK extends Contract.ImpureCircuitId<C>>(
   providers: SubmitTxProviders<C, ICK>,
   options: CallTxOptionsBase<C, ICK>,
   transactionContext: TransactionContext<C, ICK>
@@ -91,19 +92,28 @@ export async function submitCallTx<C extends Contract<undefined>, ICK extends Im
  * @throws {CallTxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data and circuit ID for debugging.
  */
-export async function submitCallTx<C extends Contract, ICK extends ImpureCircuitId<C>>(
+export async function submitCallTx<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   providers: SubmitCallTxProviders<C, ICK>,
   options: CallTxOptions<C, ICK>,
   transactionContext?: TransactionContext<C, ICK>
 ): Promise<FinalizedCallTxData<C, ICK> | CallResult<C, ICK>> {
   assertIsContractAddress(options.contractAddress);
-  assertDefined(options.contract.impureCircuits[options.circuitId], `Circuit '${options.circuitId}' is undefined`);
+  assertDefined(
+    ContractExecutable.make(options.compiledContract)
+      .getImpureCircuitIds()
+      .find((circuitId) => circuitId as unknown as ICK === options.circuitId),
+    `Circuit '${options.circuitId}' is undefined`
+  );
 
   const hasPrivateStateProvider = 'privateStateProvider' in providers;
   const hasPrivateStateId = 'privateStateId' in options;
 
   if (hasPrivateStateId && !hasPrivateStateProvider) {
     throw new IncompleteCallTxPrivateStateConfig();
+  }
+
+  if (hasPrivateStateProvider) {
+    providers.privateStateProvider.setContractAddress(options.contractAddress);
   }
 
   const callTxFn = async (txCtx: TransactionContext<C, ICK>) => {
@@ -182,12 +192,17 @@ export async function submitCallTx<C extends Contract, ICK extends ImpureCircuit
  * }
  * ```
  */
-export async function submitCallTxAsync<C extends Contract, ICK extends ImpureCircuitId<C>>(
+export async function submitCallTxAsync<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
   providers: SubmitCallTxProviders<C, ICK>,
   options: CallTxOptions<C, ICK>
 ): Promise<SubmittedCallTx<C, ICK>> {
   assertIsContractAddress(options.contractAddress);
-  assertDefined(options.contract.impureCircuits[options.circuitId], `Circuit '${options.circuitId}' is undefined`);
+  assertDefined(
+    ContractExecutable.make(options.compiledContract)
+      .getImpureCircuitIds()
+      .find((circuitId) => circuitId as unknown as ICK === options.circuitId),
+    `Circuit '${options.circuitId}' is undefined`
+  );
 
   const hasPrivateStateProvider = 'privateStateProvider' in providers;
   const hasPrivateStateId = 'privateStateId' in options;
@@ -196,11 +211,14 @@ export async function submitCallTxAsync<C extends Contract, ICK extends ImpureCi
     throw new IncompleteCallTxPrivateStateConfig();
   }
 
+  if (hasPrivateStateProvider) {
+    providers.privateStateProvider.setContractAddress(options.contractAddress);
+  }
+
   const unprovenCallTxData = await createUnprovenCallTx(providers, options);
 
   const txId = await submitTxAsync(providers, {
     unprovenTx: unprovenCallTxData.private.unprovenTx,
-    newCoins: unprovenCallTxData.private.newCoins,
     circuitId: options.circuitId
   });
 

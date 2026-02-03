@@ -13,8 +13,10 @@
  * limitations under the License.
  */
 
+import type { CompiledContract } from '@midnight-ntwrk/compact-js';
+import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
 import type { ContractAddress } from '@midnight-ntwrk/ledger-v7';
-import { type FinalizedTxData, type ImpureCircuitId,SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import { type FinalizedTxData,SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
@@ -47,6 +49,8 @@ import { createUnprovenRemoveVerifierKeyTx } from './utils';
  * - Transaction appears in blockchain history as partial success
  *
  * @param providers The providers to use to manage the transaction lifecycle.
+ * @param compiledContract The compiled contract for which the maintenance authority
+ *                         should be updated.
  * @param contractAddress The address of the contract containing the circuit for which
  *                        the verifier key should be removed.
  * @param circuitId The circuit for which the verifier key should be removed.
@@ -62,10 +66,11 @@ import { createUnprovenRemoveVerifierKeyTx } from './utils';
  *       along with keys in ZKConfigProvider. By default, artifacts for the latest version
  *       would be fetched to build transactions.
  */
-export const submitRemoveVerifierKeyTx = async (
+export const submitRemoveVerifierKeyTx = async <C extends Contract.Any>(
   providers: ContractProviders,
+  compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   contractAddress: ContractAddress,
-  circuitId: ImpureCircuitId
+  circuitId: Contract.ImpureCircuitId<C>
 ): Promise<FinalizedTxData> => {
   assertIsContractAddress(contractAddress);
   const contractState = await providers.publicDataProvider.queryContractState(contractAddress);
@@ -76,7 +81,15 @@ export const submitRemoveVerifierKeyTx = async (
   );
   const signingKey = await providers.privateStateProvider.getSigningKey(contractAddress);
   assertDefined(signingKey, `Signing key for contract address '${contractAddress}' not found`);
-  const unprovenTx = createUnprovenRemoveVerifierKeyTx(contractAddress, circuitId, contractState, signingKey);
+  const unprovenTx = await createUnprovenRemoveVerifierKeyTx(
+    providers.zkConfigProvider,
+    compiledContract,
+    contractAddress, 
+    circuitId, 
+    contractState, 
+    signingKey,
+    providers.walletProvider.getCoinPublicKey()
+  );
   const submitTxResult = await submitTx(providers, { unprovenTx });
   if (submitTxResult.status !== SucceedEntirely) {
     throw new RemoveVerifierKeyTxFailedError(submitTxResult);

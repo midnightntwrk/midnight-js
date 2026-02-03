@@ -14,7 +14,6 @@
  */
 
 export {
-  call,
   CallOptions,
   CallOptionsBase,
   CallOptionsProviderDataDependencies,
@@ -26,7 +25,6 @@ export {
   CallResultPublic
 } from './call';
 export {
-  callContractConstructor,
   ContractConstructorOptions,
   ContractConstructorOptionsBase,
   ContractConstructorOptionsProviderDataDependencies,

@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
+import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
 import { sampleSigningKey, type SigningKey } from '@midnight-ntwrk/compact-runtime';
-import type { Contract, ImpureCircuitId, PrivateState, PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
+import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 
 import type { ContractConstructorOptionsWithArguments } from './call-constructor';
 import { type ContractProviders } from './contract-providers';
@@ -33,7 +34,7 @@ import type { FinalizedDeployTxData } from './tx-model';
  * now optional, since {@link deployContract} will generate a fresh signing key
  * in the event that `signingKey` is undefined.
  */
-export type DeployContractOptionsBase<C extends Contract> = ContractConstructorOptionsWithArguments<C> & {
+export type DeployContractOptionsBase<C extends Contract.Any> = ContractConstructorOptionsWithArguments<C> & {
   /**
    * The signing key to add as the to-be-deployed contract's maintenance authority.
    * If undefined, a new signing key is sampled and used as the CMA then stored
@@ -48,7 +49,7 @@ export type DeployContractOptionsBase<C extends Contract> = ContractConstructorO
  * {@link deployContract} base options with information needed to store private states;
  * only used if the contract being deployed has a private state.
  */
-export type DeployContractOptionsWithPrivateState<C extends Contract> = DeployContractOptionsBase<C> & {
+export type DeployContractOptionsWithPrivateState<C extends Contract.Any> = DeployContractOptionsBase<C> & {
   /**
    * An identifier for the private state of the contract being found.
    */
@@ -56,20 +57,20 @@ export type DeployContractOptionsWithPrivateState<C extends Contract> = DeployCo
   /**
    * The private state to run the circuit against.
    */
-  readonly initialPrivateState: PrivateState<C>;
+  readonly initialPrivateState: Contract.PrivateState<C>;
 };
 
 /**
  * Configuration for {@link deployContract}.
  */
-export type DeployContractOptions<C extends Contract> =
+export type DeployContractOptions<C extends Contract.Any> =
   | DeployContractOptionsBase<C>
   | DeployContractOptionsWithPrivateState<C>;
 
 /**
  * Interface for a contract that has been deployed to the blockchain.
  */
-export type DeployedContract<C extends Contract> = FoundContract<C> & {
+export type DeployedContract<C extends Contract.Any> = FoundContract<C> & {
   /**
    * Data resulting from the deployment transaction that created this contract. The information in a
    * {@link deployTxData} contains additional private information that does not
@@ -79,7 +80,7 @@ export type DeployedContract<C extends Contract> = FoundContract<C> & {
   readonly deployTxData: FinalizedDeployTxData<C>;
 };
 
-const createDeployTxOptions = <C extends Contract>(
+const createDeployTxOptions = <C extends Contract.Any>(
   deployContractOptions: DeployContractOptions<C>
 ): DeployTxOptions<C> => {
   const deployTxOptionsBase = {
@@ -97,11 +98,11 @@ const createDeployTxOptions = <C extends Contract>(
 };
 
 export async function deployContract<C extends Contract<undefined>>(
-  providers: ContractProviders<C, ImpureCircuitId<C>, unknown>,
+  providers: ContractProviders<C, Contract.ImpureCircuitId<C>, unknown>,
   options: DeployContractOptionsBase<C>
 ): Promise<DeployedContract<C>>;
 
-export async function deployContract<C extends Contract>(
+export async function deployContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
   options: DeployContractOptionsWithPrivateState<C>
 ): Promise<DeployedContract<C>>;
@@ -116,7 +117,7 @@ export async function deployContract<C extends Contract>(
  * @throws DeployTxFailedError If the transaction is submitted successfully but produces an error
  *                             when executed by the node.
  */
-export async function deployContract<C extends Contract>(
+export async function deployContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
   options: DeployContractOptions<C>
 ): Promise<DeployedContract<C>> {
@@ -125,15 +126,19 @@ export async function deployContract<C extends Contract>(
     deployTxData,
     callTx: createCircuitCallTxInterface(
       providers,
-      options.contract,
+      options.compiledContract,
       deployTxData.public.contractAddress,
       'privateStateId' in options ? options.privateStateId : undefined
     ),
     circuitMaintenanceTx: createCircuitMaintenanceTxInterfaces(
       providers,
-      options.contract,
+      options.compiledContract,
       deployTxData.public.contractAddress
     ),
-    contractMaintenanceTx: createContractMaintenanceTxInterface(providers, deployTxData.public.contractAddress)
+    contractMaintenanceTx: createContractMaintenanceTxInterface(
+      providers,
+      options.compiledContract,
+      deployTxData.public.contractAddress
+    )
   };
 }

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0-alpha.14**](../../../README.md)
+[**Midnight.js API Reference v3.0.0**](../../../README.md)
 
 ***
 
@@ -14,7 +14,7 @@ Configuration for [submitTx](../functions/submitTx.md).
 
 ### ICK
 
-`ICK` *extends* `ImpureCircuitId`
+`ICK` *extends* `Contract.ImpureCircuitId`\<`Contract.Any`\>
 
 ## Properties
 
@@ -29,15 +29,6 @@ transaction. Only defined if a call transaction is being submitted.
 
 Where a transaction involves multiple circuits (e.g., when circuit calls are scoped to a transaction
 context), this may be an array of circuit IDs.
-
-***
-
-### newCoins?
-
-> `readonly` `optional` **newCoins**: `ShieldedCoinInfo`[]
-
-Any new coins created during the construction of the transaction. Only defined
-if the transaction being submitted is a call or deploy transaction.
 
 ***
 

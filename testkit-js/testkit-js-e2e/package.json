@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/testkit-js-e2e",
-  "version": "3.0.0-alpha.13",
+  "version": "3.0.0",
   "description": "E2E tests for Midnight JS packages",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -42,6 +42,7 @@
     "deploy": "yarn npm publish"
   },
   "dependencies": {
+    "@midnight-ntwrk/compact-js": "2.4.0",
     "@midnight-ntwrk/midnight-js-compact": "workspace:*",
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*",
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*",
