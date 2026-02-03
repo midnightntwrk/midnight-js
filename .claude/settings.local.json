@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh pr checks:*)",
+      "Bash(gh run view:*)",
+      "Bash(gh api:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(yarn turbo lint:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(yarn eslint:*)",
+      "Bash(npx turbo lint:*)",
+      "Bash(npx turbo build:*)"
+    ]
+  }
+}

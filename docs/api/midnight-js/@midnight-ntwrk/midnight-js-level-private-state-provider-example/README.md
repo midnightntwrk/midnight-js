@@ -2,9 +2,13 @@
 
 ***
 
-[Midnight.js API Reference](../../packages.md) / @midnight-ntwrk/midnight-js-level-private-state-provider
+[Midnight.js API Reference](../../packages.md) / @midnight-ntwrk/midnight-js-level-private-state-provider-example
 
-# @midnight-ntwrk/midnight-js-level-private-state-provider
+# @midnight-ntwrk/midnight-js-level-private-state-provider-example
+
+> ⚠️ **WARNING: NOT FOR COMMERCIAL USE. PROVIDED AS AN EXAMPLE IMPLEMENTATION.**
+>
+> This package uses browser localStorage or Node.js file storage. Losing private state by clearing browser cache could be financially ruinous.
 
 ## Classes
 

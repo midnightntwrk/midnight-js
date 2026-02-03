@@ -1,6 +1,8 @@
 {
-  "name": "@midnight-ntwrk/midnight-js-level-private-state-provider",
+  "name": "@midnight-ntwrk/midnight-js-level-private-state-provider-example",
   "version": "3.0.0",
+  "description": "NOT FOR COMMERCIAL USE. PROVIDED AS AN EXAMPLE IMPLEMENTATION. Uses browser localStorage or Node.js file storage - losing private state by clearing browser cache could be financially ruinous.",
+  "deprecated": "This package is deprecated. It uses browser localStorage or Node.js file storage which is not suitable for production use. Losing private state (contract state/keys) by clearing browser cache could be financially ruinous.",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",

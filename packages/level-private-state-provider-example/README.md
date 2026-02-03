@@ -1,5 +1,17 @@
+# ⚠️ WARNING: NOT FOR COMMERCIAL USE
+
+> **THIS IS AN EXAMPLE IMPLEMENTATION ONLY**
+>
+> This package uses browser localStorage or Node.js file storage for persisting private state.
+>
+> **RISK:** Losing private state (contract state/keys) by clearing your browser cache or deleting local files could be **financially ruinous** to an individual.
+>
+> **DO NOT use this in production applications.** This package is provided solely as a reference implementation for developers to understand the PrivateStateProvider interface.
+
+---
+
 # What is this?
-An implementation of a private state provider that works with LevelDB compatible data stores.
+An example implementation of a private state provider that works with LevelDB compatible data stores.
 
 This package provides **encrypted storage** for private states and signing keys using AES-256-GCM encryption.
 
