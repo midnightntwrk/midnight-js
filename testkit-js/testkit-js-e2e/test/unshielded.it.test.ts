@@ -129,7 +129,7 @@ describe('Unshielded tokens', () => {
     expect(created.length).toEqual(0);
   });
 
-  test('should get balance of tokens - greater than', async () => {
+  test('should get balance of tokens - greater than - false', async () => {
     const txData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
@@ -147,11 +147,60 @@ describe('Unshielded tokens', () => {
     expect(created.length).toEqual(0);
   });
 
-  test('should get balance of tokens - less than', async () => {
+
+  test('should get balance of tokens - greater than - true', async () => {
+    logger.info('Minting tokens for greater than test');
+    const mintTxData = await submitCallTx(providers, {
+      compiledContract: CompiledUnshieldedContract,
+      contractAddress,
+      circuitId: 'mintNativeTokens' as UnshieldedContractCircuits,
+      args: [1_000_000n]
+    });
+
+    expect(mintTxData.public.status).toBe(SucceedEntirely);
+
+    logger.info(`Now testing greater than`);
     const txData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
       circuitId: 'getUnshieldedBalanceGtTest' as UnshieldedContractCircuits,
+      args: [TEST_DOMAIN_SEP, 1n]
+    });
+
+    expect(txData.public.status).toBe(SucceedEntirely);
+    expect(txData.private.result).toEqual(false);
+    expect(txData.public.unshielded).toBeDefined();
+
+    const spent = txData.public.unshielded.spent;
+    const created = txData.public.unshielded.created;
+    expect(spent.length).toEqual(0);
+    expect(created.length).toEqual(0);
+  });
+
+  test('should get balance of tokens - less than - false', async () => {
+    const txData = await submitCallTx(providers, {
+      compiledContract: CompiledUnshieldedContract,
+      contractAddress,
+      circuitId: 'getUnshieldedBalanceLtTest' as UnshieldedContractCircuits,
+      args: [TEST_DOMAIN_SEP, 0n]
+    });
+
+    expect(txData.public.status).toBe(SucceedEntirely);
+    expect(txData.private.result).toEqual(false);
+    expect(txData.public.unshielded).toBeDefined();
+
+    const spent = txData.public.unshielded.spent;
+    const created = txData.public.unshielded.created;
+    expect(spent.length).toEqual(0);
+    expect(created.length).toEqual(0);
+  });
+
+
+  test('should get balance of tokens - less than - true', async () => {
+    const txData = await submitCallTx(providers, {
+      compiledContract: CompiledUnshieldedContract,
+      contractAddress,
+      circuitId: 'getUnshieldedBalanceLtTest' as UnshieldedContractCircuits,
       args: [TEST_DOMAIN_SEP, 1n]
     });
 
