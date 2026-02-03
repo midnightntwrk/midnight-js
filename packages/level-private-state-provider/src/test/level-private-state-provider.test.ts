@@ -393,12 +393,14 @@ describe('Level Private State Provider', (): void => {
 
     beforeEach(async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      db.setContractAddress(TEST_CONTRACT_ADDRESS);
       await db.clear();
       await db.clearSigningKeys();
     });
 
     test('exports and imports private states correctly', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      db.setContractAddress(TEST_CONTRACT_ADDRESS);
       await db.set('stringValue', testStates.stringValue);
       await db.set('objectValue', testStates.objectValue);
 
@@ -423,6 +425,7 @@ describe('Level Private State Provider', (): void => {
 
     test('exports with custom password and imports with same password', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      db.setContractAddress(TEST_CONTRACT_ADDRESS);
       await db.set('stringValue', testStates.stringValue);
 
       const exportData = await db.exportPrivateStates({ password: EXPORT_PASSWORD });
@@ -435,6 +438,7 @@ describe('Level Private State Provider', (): void => {
 
     test('throws ExportDecryptionError on wrong password', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      db.setContractAddress(TEST_CONTRACT_ADDRESS);
       await db.set('stringValue', testStates.stringValue);
 
       const exportData = await db.exportPrivateStates({ password: EXPORT_PASSWORD });
@@ -453,6 +457,7 @@ describe('Level Private State Provider', (): void => {
 
     test('throws PrivateStateExportError for short custom password', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      db.setContractAddress(TEST_CONTRACT_ADDRESS);
       await db.set('stringValue', testStates.stringValue);
 
       await expect(
@@ -462,6 +467,7 @@ describe('Level Private State Provider', (): void => {
 
     test('throws PrivateStateExportError for short import password', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      db.setContractAddress(TEST_CONTRACT_ADDRESS);
       await db.set('stringValue', testStates.stringValue);
 
       const exportData = await db.exportPrivateStates({ password: EXPORT_PASSWORD });
@@ -474,6 +480,7 @@ describe('Level Private State Provider', (): void => {
 
     test('throws ImportConflictError when conflict strategy is error (default)', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      db.setContractAddress(TEST_CONTRACT_ADDRESS);
       await db.set('stringValue', testStates.stringValue);
 
       const exportData = await db.exportPrivateStates();
@@ -483,6 +490,7 @@ describe('Level Private State Provider', (): void => {
 
     test('ImportConflictError contains count but not state IDs', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      db.setContractAddress(TEST_CONTRACT_ADDRESS);
       await db.set('stringValue', testStates.stringValue);
       await db.set('numberValue', testStates.numberValue);
 
@@ -503,6 +511,7 @@ describe('Level Private State Provider', (): void => {
 
     test('skips conflicts when strategy is skip', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      db.setContractAddress(TEST_CONTRACT_ADDRESS);
       await db.set('stringValue', testStates.stringValue);
 
       const exportData = await db.exportPrivateStates();
@@ -520,6 +529,7 @@ describe('Level Private State Provider', (): void => {
 
     test('overwrites conflicts when strategy is overwrite', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      db.setContractAddress(TEST_CONTRACT_ADDRESS);
       await db.set('stringValue', testStates.stringValue);
 
       const exportData = await db.exportPrivateStates();
@@ -592,6 +602,7 @@ describe('Level Private State Provider', (): void => {
 
     test('does NOT export signing keys', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      db.setContractAddress(TEST_CONTRACT_ADDRESS);
       await db.set('stringValue', testStates.stringValue);
       const signingKey = sampleSigningKey();
       await db.setSigningKey('stringValue' as unknown as ContractAddress, signingKey);
@@ -611,6 +622,7 @@ describe('Level Private State Provider', (): void => {
 
     test('preserves complex types (Buffer, Uint8Array) through export/import', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      db.setContractAddress(TEST_CONTRACT_ADDRESS);
       await db.set('bufferValue', testStates.bufferValue);
       await db.set('uint8ArrayValue', testStates.uint8ArrayValue);
       await db.set('objectValue', testStates.objectValue);
@@ -626,6 +638,7 @@ describe('Level Private State Provider', (): void => {
 
     test('handles mixed import scenarios correctly', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      db.setContractAddress(TEST_CONTRACT_ADDRESS);
       await db.set('stringValue', testStates.stringValue);
       await db.set('numberValue', testStates.numberValue);
 
@@ -650,6 +663,7 @@ describe('Level Private State Provider', (): void => {
 
     test('enforces maxStates limit on export', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      db.setContractAddress(TEST_CONTRACT_ADDRESS);
       await db.set('stringValue', testStates.stringValue);
       await db.set('numberValue', testStates.numberValue);
 
@@ -660,6 +674,7 @@ describe('Level Private State Provider', (): void => {
 
     test('enforces maxStates limit on import', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      db.setContractAddress(TEST_CONTRACT_ADDRESS);
       await db.set('stringValue', testStates.stringValue);
       await db.set('numberValue', testStates.numberValue);
 
@@ -831,6 +846,7 @@ describe('Level Private State Provider', (): void => {
 
       test('throws ExportDecryptionError for tampered encrypted payload', async () => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
+        db.setContractAddress(TEST_CONTRACT_ADDRESS);
         await db.set('stringValue', testStates.stringValue);
 
         const exportData = await db.exportPrivateStates();

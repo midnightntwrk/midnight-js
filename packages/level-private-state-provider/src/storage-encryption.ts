@@ -29,11 +29,6 @@ const ENCRYPTION_VERSION = 1;
 const VERSION_PREFIX_LENGTH = 1;
 const HEADER_LENGTH = VERSION_PREFIX_LENGTH + SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH;
 
-export interface EncryptionMetadata {
-  salt: Buffer;
-  version: number;
-}
-
 export class StorageEncryption {
   private readonly encryptionKey: Buffer;
   private readonly salt: Buffer;

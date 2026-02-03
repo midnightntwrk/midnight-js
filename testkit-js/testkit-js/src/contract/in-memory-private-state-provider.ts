@@ -93,7 +93,7 @@ const decrypt = (encryptedData: string, password: string, expectedSalt: Buffer):
   }
 
   const key = deriveKey(password, salt);
-  const decipher = createDecipheriv(ALGORITHM, key, iv);
+  const decipher = createDecipheriv(ALGORITHM, key, iv, { authTagLength: AUTH_TAG_LENGTH });
   decipher.setAuthTag(authTag);
 
   const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
