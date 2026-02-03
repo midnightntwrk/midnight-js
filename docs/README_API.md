@@ -26,4 +26,4 @@ contains a number of utilities that are unique to it:
 - `fetch-zk-config-provider` - Contains a [fetch](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) based cross-environment utility for retrieving zero-knowledge artifacts.
 - `network-id` - Contains utilities for setting the network id used by `ledger`, `zswap`, and `compact-runtime` dependencies.
 - `http-client-proof-provider` - Contains a cross-environment implementation of a proof-server client.
-- `level-private-state-provider` - Contains a cross-environment implementation of a persistent private state store based on [Level](https://github.com/Level/level).
+- `level-private-state-provider-example` - **EXAMPLE ONLY - NOT FOR COMMERCIAL USE.** Contains a cross-environment implementation of an encrypted persistent private state store based on [Level](https://github.com/Level/level). Uses browser localStorage or Node.js file storage - losing private state by clearing browser cache could be financially ruinous.
