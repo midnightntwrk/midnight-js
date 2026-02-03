@@ -451,6 +451,7 @@ describe('Level Private State Provider', (): void => {
 
     test('throws PrivateStateExportError when no states to export', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
       await expect(db.exportPrivateStates()).rejects.toThrow(PrivateStateExportError);
     });
@@ -547,6 +548,7 @@ describe('Level Private State Provider', (): void => {
 
     test('throws InvalidExportFormatError for wrong format identifier', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
       const badExport = {
         format: 'wrong-format',
@@ -561,6 +563,7 @@ describe('Level Private State Provider', (): void => {
 
     test('throws InvalidExportFormatError for missing fields', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
       const badExport = {
         format: 'midnight-private-state-export'
@@ -574,6 +577,7 @@ describe('Level Private State Provider', (): void => {
 
     test('throws InvalidExportFormatError for invalid salt length', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
       const badExport = {
         format: 'midnight-private-state-export',
@@ -588,6 +592,7 @@ describe('Level Private State Provider', (): void => {
 
     test('throws InvalidExportFormatError for invalid salt characters', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
       const badExport = {
         format: 'midnight-private-state-export',
@@ -691,6 +696,7 @@ describe('Level Private State Provider', (): void => {
 
       test('throws ExportDecryptionError for garbage base64 payload', async () => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
+        db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         const badExport: PrivateStateExport = {
           format: 'midnight-private-state-export',
@@ -705,6 +711,7 @@ describe('Level Private State Provider', (): void => {
 
       test('throws ExportDecryptionError for payload that decrypts to invalid JSON', async () => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
+        db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         // Create encryption with a known salt and encrypt non-JSON data
         const salt = Buffer.from('0'.repeat(64), 'hex');
@@ -724,6 +731,7 @@ describe('Level Private State Provider', (): void => {
 
       test('throws ExportDecryptionError for payload with invalid structure (missing states)', async () => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
+        db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
         const encryption = new StorageEncryption(VALID_PASSWORD, salt);
@@ -748,6 +756,7 @@ describe('Level Private State Provider', (): void => {
 
       test('throws ExportDecryptionError for payload with invalid structure (missing version)', async () => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
+        db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
         const encryption = new StorageEncryption(VALID_PASSWORD, salt);
@@ -771,6 +780,7 @@ describe('Level Private State Provider', (): void => {
 
       test('throws ExportDecryptionError for stateCount mismatch', async () => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
+        db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
         const encryption = new StorageEncryption(VALID_PASSWORD, salt);
@@ -797,6 +807,7 @@ describe('Level Private State Provider', (): void => {
 
       test('throws InvalidExportFormatError for unsupported version', async () => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
+        db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
         const encryption = new StorageEncryption(VALID_PASSWORD, salt);
@@ -820,6 +831,7 @@ describe('Level Private State Provider', (): void => {
 
       test('throws error for state values that fail superjson.parse', async () => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
+        db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
         const encryption = new StorageEncryption(VALID_PASSWORD, salt);
@@ -866,6 +878,7 @@ describe('Level Private State Provider', (): void => {
 
       test('throws InvalidExportFormatError for empty salt', async () => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
+        db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         const badExport: PrivateStateExport = {
           format: 'midnight-private-state-export',
@@ -880,6 +893,7 @@ describe('Level Private State Provider', (): void => {
 
       test('throws InvalidExportFormatError for salt with uppercase hex (validates exact format)', async () => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
+        db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         // Uppercase hex should still be valid (the regex allows both cases)
         const uppercaseSalt = 'A'.repeat(64);

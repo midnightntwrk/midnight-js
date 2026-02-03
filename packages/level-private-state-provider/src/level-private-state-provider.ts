@@ -401,6 +401,10 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
     },
 
     async exportPrivateStates(options?: ExportPrivateStatesOptions): Promise<PrivateStateExport> {
+      if (contractAddress === null) {
+        throw new Error('Contract address not set. Call setContractAddress() before exporting private states.');
+      }
+
       const maxStates = options?.maxStates ?? MAX_EXPORT_STATES;
 
       // Validate custom password if provided
@@ -412,11 +416,21 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       const exportPassword = options?.password ?? await getPasswordFromProvider(passwordProvider);
 
       // Get all private states (not signing keys)
-      const states = await getAllEntries<PSI, PS>(
+      const allStates = await getAllEntries<string, PS>(
         fullConfig.midnightDbName,
         fullConfig.privateStateStoreName,
         passwordProvider
       );
+
+      // Filter and extract only states for the current contract address
+      const prefix = `${contractAddress}:`;
+      const states = new Map<PSI, PS>();
+      for (const [scopedKey, value] of allStates.entries()) {
+        if (scopedKey.startsWith(prefix)) {
+          const rawStateId = scopedKey.slice(prefix.length) as PSI;
+          states.set(rawStateId, value);
+        }
+      }
 
       if (states.size === 0) {
         throw new PrivateStateExportError('No private states to export');
@@ -454,6 +468,10 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       exportData: PrivateStateExport,
       options?: ImportPrivateStatesOptions
     ): Promise<ImportPrivateStatesResult> {
+      if (contractAddress === null) {
+        throw new Error('Contract address not set. Call setContractAddress() before importing private states.');
+      }
+
       const conflictStrategy = options?.conflictStrategy ?? 'error';
       const maxStates = options?.maxStates ?? MAX_EXPORT_STATES;
 
@@ -507,6 +525,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
         );
       }
 
+      // stateIds are raw state IDs (not scoped with contract address)
       const stateIds = Object.keys(payload.states) as PSI[];
 
       // Validate state count matches and is within limits
@@ -521,14 +540,15 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       }
 
       // Check for conflicts if strategy is 'error'
+      // Use this.get() which properly scopes the state IDs
       if (conflictStrategy === 'error') {
-        const existingStates = await getAllEntries<PSI, PS>(
-          fullConfig.midnightDbName,
-          fullConfig.privateStateStoreName,
-          passwordProvider
-        );
-
-        const conflictCount = stateIds.filter((id) => existingStates.has(id)).length;
+        let conflictCount = 0;
+        for (const stateId of stateIds) {
+          const existing = await this.get(stateId);
+          if (existing !== null) {
+            conflictCount++;
+          }
+        }
         if (conflictCount > 0) {
           throw new ImportConflictError(conflictCount);
         }
