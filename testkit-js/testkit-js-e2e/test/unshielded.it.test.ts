@@ -129,7 +129,7 @@ describe('Unshielded tokens', () => {
     expect(created.length).toEqual(0);
   });
 
-  test.skip('should get balance of tokens - greater than', async () => {
+  test('should get balance of tokens - greater than', async () => {
     const txData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
@@ -147,7 +147,7 @@ describe('Unshielded tokens', () => {
     expect(created.length).toEqual(0);
   });
 
-  test.skip('should get balance of tokens - less than', async () => {
+  test('should get balance of tokens - less than', async () => {
     const txData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
