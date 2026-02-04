@@ -6,10 +6,6 @@
 
 # @midnight-ntwrk/midnight-js-level-private-state-provider-example
 
-> ⚠️ **WARNING: NOT FOR COMMERCIAL USE. PROVIDED AS AN EXAMPLE IMPLEMENTATION.**
->
-> This package uses browser localStorage or Node.js file storage. Losing private state by clearing browser cache could be financially ruinous.
-
 ## Classes
 
 - [StorageEncryption](classes/StorageEncryption.md)

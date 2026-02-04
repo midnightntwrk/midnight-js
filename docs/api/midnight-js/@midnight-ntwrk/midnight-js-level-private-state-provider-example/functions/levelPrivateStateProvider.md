@@ -2,7 +2,7 @@
 
 ***
 
-[Midnight.js API Reference](../../../packages.md) / [@midnight-ntwrk/midnight-js-level-private-state-provider](../README.md) / levelPrivateStateProvider
+[Midnight.js API Reference](../../../packages.md) / [@midnight-ntwrk/midnight-js-level-private-state-provider-example](../README.md) / levelPrivateStateProvider
 
 # Function: levelPrivateStateProvider()
 
