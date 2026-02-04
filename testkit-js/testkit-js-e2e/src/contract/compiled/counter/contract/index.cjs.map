@@ -1,8 +1,0 @@
-{
-  "version": 3,
-  "file": "index.cjs",
-  "sourceRoot": "../../../../../",
-  "sources": ["src/contract/counter.compact"],
-  "names": [],
-  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;EAAA;;;;;;;;;;;;;MAMA,AAAA,SAGC;;;;;;;;;;;;;;;;;;;;;;OAAA;MAED,AAAA,SAGC;;;;;cAHwB,QAAgB;;;;;;;;;;;;;;;;;;yCAAhB,QAAgB;;;;;;;sEAAhB,QAAgB;;;OAGxC;MAED,AAAA,KAGC;;;;;;;;;;;;;;;;;;;;;;OAAA;;;;;;;GACA;EApBD;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;IAEA;;;;;;;;;uDAA6B;;;;;;;GAkB5B;EAhBD,AAAA,mBAA+B;;0DAA/B,gBAA+B;;;;;;;;;;;;;;GAAA;EAE/B,AAAA,YAGC;UAFC,KAAK;IAAL;;;;;;;;;;2EAAA,KAAK;;;;sDAAA;;;GAEN;EAED,AAAA,YAGC,4BAHwB,QAAgB;IACvC;;;;;;;;;;2EAAyB,QAAM;;;;sDAA1B;;;GAEN;EAED,AAAA,QAGC;IAFC;;;;;;;;;uDAAK;;;GAEN;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;IAjBD;qCAAA;;;;;;;;;;;wFAA6B;KAAA;;;;;;;;;;;;;;;;"
-}

@@ -1,0 +1,6 @@
+import CompactStandardLibrary;
+
+export circuit mintShieldedTokens(domainSep: Bytes<32>, amount: Uint<64>): Uint<128> {
+    kernel.mintShielded(disclose(domainSep), disclose(amount));
+    return disclose(amount);
+}

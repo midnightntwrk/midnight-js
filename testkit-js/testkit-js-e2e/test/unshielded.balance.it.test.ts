@@ -88,11 +88,11 @@ describe('Unshielded tokens - balance', () => {
 
     logger.info(`Deployed unshielded contract at address: ${contractAddress}`);
 
-    logger.info('Minting tokens');
+    logger.info('Minting and receiving tokens');
     const mintTxData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
-      circuitId: 'mintUnshieldedToSelfTest' as UnshieldedContractCircuits,
+      circuitId: 'mintUnshieldedToSelfAndReceiveTest' as UnshieldedContractCircuits,
       args: [MINT_DOMAIN_SEPARATOR, MINT_AMOUNT]
     });
 
