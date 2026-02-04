@@ -30,38 +30,38 @@ import { afterAll, beforeAll, beforeEach,describe, test } from '@vitest/runner';
 import path from 'path';
 import { expect } from 'vitest';
 
-import { CompiledUnshieldedContract } from '@/contract';
+import { CompiledShieldedContract } from '@/contract';
 import {
-  type UnshieldedContractCircuits,
-  type UnshieldedContractProviders
-} from '@/unshielded-types';
+  type ShieldedContractCircuits,
+  type ShieldedContractProviders
+} from '@/shielded-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `shielded_${new Date().toISOString()}.log`)
 );
 
-class UnshieldedConfiguration implements ContractConfiguration {
+class ShieldedConfiguration implements ContractConfiguration {
   constructor(private suffix = Date.now().toString()) {}
 
   get privateStateStoreName(): string {
-    return `unshielded-private-store-${this.suffix}`;
+    return `shielded-private-store-${this.suffix}`;
   }
 
   get zkConfigPath(): string {
-    return path.resolve(__dirname, '../dist/contract/compiled/unshielded');
+    return path.resolve(__dirname, '../dist/contract/compiled/shielded');
   }
 }
 
-describe('Unshielded tokens', () => {
+describe('Shielded tokens', () => {
   const MINT_AMOUNT = 1_000_000n;
   const DOMAIN_SEPARATOR = new Uint8Array(32).fill(1);
 
   let testEnvironment: TestEnvironment;
   let wallet: MidnightWalletProvider;
   let environmentConfiguration: EnvironmentConfiguration;
-  let providers: UnshieldedContractProviders;
+  let providers: ShieldedContractProviders;
   let contractAddress: ContractAddress;
-  let contractConfiguration: UnshieldedConfiguration;
+  let contractConfiguration: ShieldedConfiguration;
 
   beforeEach(() => {
     logger.info(`Running test=${expect.getState().currentTestName}`);
@@ -71,12 +71,12 @@ describe('Unshielded tokens', () => {
     testEnvironment = getTestEnvironment(logger);
     environmentConfiguration = await testEnvironment.start();
     wallet = await testEnvironment.getMidnightWalletProvider();
-    contractConfiguration = new UnshieldedConfiguration();
+    contractConfiguration = new ShieldedConfiguration();
 
     providers = initializeMidnightProviders(wallet, environmentConfiguration, contractConfiguration);
 
     const deployTxOptions = {
-      compiledContract: CompiledUnshieldedContract,
+      compiledContract: CompiledShieldedContract,
       signingKey: sampleSigningKey(),
       initialPrivateState: undefined
     };
@@ -85,19 +85,7 @@ describe('Unshielded tokens', () => {
     await expectSuccessfulDeployTx(providers, deployedContract.deployTxData, deployTxOptions);
     contractAddress = deployedContract.deployTxData.public.contractAddress;
 
-    logger.info(`Deployed unshielded contract at address: ${contractAddress}`);
-
-    logger.info('Minting tokens');
-    const mintTxData = await submitCallTx(providers, {
-      compiledContract: CompiledUnshieldedContract,
-      contractAddress,
-      circuitId: 'mintUnshieldedToSelfAndReceiveTest' as UnshieldedContractCircuits,
-      args: [DOMAIN_SEPARATOR, MINT_AMOUNT]
-    });
-
-    expect(mintTxData.public.status).toBe(SucceedEntirely);
-
-    logger.info(`Minted initial tokens: ${JSON.stringify(mintTxData)}`);
+    logger.info(`Deployed Shielded contract at address: ${contractAddress}`);
   });
 
   afterAll(async () => {
@@ -105,11 +93,11 @@ describe('Unshielded tokens', () => {
   });
 
   describe('shielded tokens', async () => {
-    test('should mint tokens with same color', async () => {
+    test('should mint tokens', async () => {
       const txData = await submitCallTx(providers, {
-        compiledContract: CompiledUnshieldedContract,
+        compiledContract: CompiledShieldedContract,
         contractAddress,
-        circuitId: 'mintShieldedTokens' as UnshieldedContractCircuits,
+        circuitId: 'mintShieldedTokens' as ShieldedContractCircuits,
         args: [DOMAIN_SEPARATOR, MINT_AMOUNT]
       });
 
