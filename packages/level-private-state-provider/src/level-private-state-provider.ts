@@ -14,7 +14,20 @@
  */
 
 import type { ContractAddress, SigningKey } from '@midnight-ntwrk/compact-runtime';
-import type { PrivateStateId, PrivateStateProvider, WalletProvider } from '@midnight-ntwrk/midnight-js-types';
+import {
+  ExportDecryptionError,
+  type ExportPrivateStatesOptions,
+  ImportConflictError,
+  type ImportPrivateStatesOptions,
+  type ImportPrivateStatesResult,
+  InvalidExportFormatError,
+  MAX_EXPORT_STATES,
+  type PrivateStateExport,
+  PrivateStateExportError,
+  type PrivateStateId,
+  type PrivateStateProvider,
+  type WalletProvider
+} from '@midnight-ntwrk/midnight-js-types';
 import { type AbstractSublevel } from 'abstract-level';
 import { Buffer } from 'buffer';
 import { Level } from 'level';
@@ -201,6 +214,81 @@ const subLevelMaybeGet = async <K, V>(
   });
 };
 
+/**
+ * Iterate all key-value pairs in a sublevel, excluding metadata keys.
+ */
+const getAllEntries = async <K extends string, V>(
+  dbName: string,
+  levelName: string,
+  passwordProvider: PrivateStoragePasswordProvider
+): Promise<Map<K, V>> => {
+  const encryption = await getOrCreateEncryption(dbName, levelName, passwordProvider);
+
+  return withSubLevel<K, string, Map<K, V>>(dbName, levelName, async (subLevel) => {
+    const entries = new Map<K, V>();
+
+    for await (const [key, encryptedValue] of subLevel.iterator()) {
+      // Skip metadata key
+      if (key === METADATA_KEY) {
+        continue;
+      }
+
+      let decryptedValue: string;
+
+      if (StorageEncryption.isEncrypted(encryptedValue)) {
+        decryptedValue = encryption.decrypt(encryptedValue);
+      } else {
+        // Legacy unencrypted data
+        decryptedValue = encryptedValue;
+      }
+
+      const value = superjson.parse<V>(decryptedValue);
+      entries.set(key as K, value);
+    }
+
+    return entries;
+  });
+};
+
+/**
+ * Internal structure of the decrypted export payload.
+ * Includes metadata to ensure it's authenticated by the encryption.
+ */
+interface PrivateStatePayload<PSI extends PrivateStateId = PrivateStateId> {
+  readonly version: number;
+  readonly exportedAt: string;
+  readonly stateCount: number;
+  readonly states: Record<PSI, string>;
+}
+
+const CURRENT_EXPORT_VERSION = 1;
+const SUPPORTED_EXPORT_VERSIONS = [1];
+const EXPECTED_SALT_LENGTH = 64; // 32 bytes as hex
+const MIN_PASSWORD_LENGTH = 16;
+
+/**
+ * Validates a custom password meets minimum requirements.
+ */
+const validateExportPassword = (password: string): void => {
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    throw new PrivateStateExportError(
+      `Password must be at least ${MIN_PASSWORD_LENGTH} characters`
+    );
+  }
+};
+
+/**
+ * Validates the salt format and length.
+ */
+const validateSalt = (salt: string): void => {
+  if (salt.length !== EXPECTED_SALT_LENGTH) {
+    throw new InvalidExportFormatError('Invalid salt length');
+  }
+  if (!/^[0-9a-fA-F]+$/.test(salt)) {
+    throw new InvalidExportFormatError('Invalid salt format');
+  }
+};
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 /**
@@ -310,6 +398,190 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
     },
     clearSigningKeys(): Promise<void> {
       return withSubLevel(fullConfig.midnightDbName, fullConfig.signingKeyStoreName, (subLevel) => subLevel.clear());
+    },
+
+    async exportPrivateStates(options?: ExportPrivateStatesOptions): Promise<PrivateStateExport> {
+      if (contractAddress === null) {
+        throw new Error('Contract address not set. Call setContractAddress() before exporting private states.');
+      }
+
+      const maxStates = options?.maxStates ?? MAX_EXPORT_STATES;
+
+      // Validate custom password if provided
+      if (options?.password !== undefined) {
+        validateExportPassword(options.password);
+      }
+
+      // Determine export password - use provided password or storage password
+      const exportPassword = options?.password ?? await getPasswordFromProvider(passwordProvider);
+
+      // Get all private states (not signing keys)
+      const allStates = await getAllEntries<string, PS>(
+        fullConfig.midnightDbName,
+        fullConfig.privateStateStoreName,
+        passwordProvider
+      );
+
+      // Filter and extract only states for the current contract address
+      const prefix = `${contractAddress}:`;
+      const states = new Map<PSI, PS>();
+      for (const [scopedKey, value] of allStates.entries()) {
+        if (scopedKey.startsWith(prefix)) {
+          const rawStateId = scopedKey.slice(prefix.length) as PSI;
+          states.set(rawStateId, value);
+        }
+      }
+
+      if (states.size === 0) {
+        throw new PrivateStateExportError('No private states to export');
+      }
+
+      if (states.size > maxStates) {
+        throw new PrivateStateExportError(
+          `Too many states to export (${states.size}). Maximum allowed: ${maxStates}`
+        );
+      }
+
+      // Serialize states using superjson (to preserve types like BigInt, Buffer, etc.)
+      // Include metadata in the encrypted payload to ensure it's authenticated
+      const payload: PrivateStatePayload<PSI> = {
+        version: CURRENT_EXPORT_VERSION,
+        exportedAt: new Date().toISOString(),
+        stateCount: states.size,
+        states: Object.fromEntries(
+          Array.from(states.entries()).map(([key, value]) => [key, superjson.stringify(value)])
+        ) as Record<PSI, string>
+      };
+
+      // Create new encryption instance for export (different salt from storage)
+      const exportEncryption = new StorageEncryption(exportPassword);
+      const encryptedPayload = exportEncryption.encrypt(JSON.stringify(payload));
+
+      return {
+        format: 'midnight-private-state-export',
+        encryptedPayload,
+        salt: exportEncryption.getSalt().toString('hex')
+      };
+    },
+
+    async importPrivateStates(
+      exportData: PrivateStateExport,
+      options?: ImportPrivateStatesOptions
+    ): Promise<ImportPrivateStatesResult> {
+      if (contractAddress === null) {
+        throw new Error('Contract address not set. Call setContractAddress() before importing private states.');
+      }
+
+      const conflictStrategy = options?.conflictStrategy ?? 'error';
+      const maxStates = options?.maxStates ?? MAX_EXPORT_STATES;
+
+      // Validate format identifier
+      if (exportData.format !== 'midnight-private-state-export') {
+        throw new InvalidExportFormatError('Unrecognized export format');
+      }
+
+      // Validate structure
+      if (!exportData.encryptedPayload || !exportData.salt) {
+        throw new InvalidExportFormatError('Missing required fields');
+      }
+
+      // Validate salt format
+      validateSalt(exportData.salt);
+
+      // Validate custom password if provided
+      if (options?.password !== undefined) {
+        validateExportPassword(options.password);
+      }
+
+      // Determine import password - use provided password or storage password
+      const importPassword = options?.password ?? await getPasswordFromProvider(passwordProvider);
+
+      // Decrypt the payload - use single generic error to prevent oracle attacks
+      let payload: PrivateStatePayload<PSI>;
+      try {
+        const salt = Buffer.from(exportData.salt, 'hex');
+        const importEncryption = new StorageEncryption(importPassword, salt);
+        const decryptedJson = importEncryption.decrypt(exportData.encryptedPayload);
+        payload = JSON.parse(decryptedJson);
+      } catch {
+        // Single generic error - don't reveal whether password was wrong or data was corrupted
+        throw new ExportDecryptionError();
+      }
+
+      // Validate payload structure (metadata is now inside encrypted payload)
+      if (
+        !payload.states ||
+        typeof payload.states !== 'object' ||
+        typeof payload.version !== 'number' ||
+        typeof payload.stateCount !== 'number'
+      ) {
+        throw new ExportDecryptionError();
+      }
+
+      // Validate version from authenticated payload
+      if (!SUPPORTED_EXPORT_VERSIONS.includes(payload.version)) {
+        throw new InvalidExportFormatError(
+          `Export version ${payload.version} is not supported. Supported versions: ${SUPPORTED_EXPORT_VERSIONS.join(', ')}`
+        );
+      }
+
+      // stateIds are raw state IDs (not scoped with contract address)
+      const stateIds = Object.keys(payload.states) as PSI[];
+
+      // Validate state count matches and is within limits
+      if (stateIds.length !== payload.stateCount) {
+        throw new ExportDecryptionError();
+      }
+
+      if (stateIds.length > maxStates) {
+        throw new InvalidExportFormatError(
+          `Too many states in export (${stateIds.length}). Maximum allowed: ${maxStates}`
+        );
+      }
+
+      // Check for conflicts if strategy is 'error'
+      // Use this.get() which properly scopes the state IDs
+      if (conflictStrategy === 'error') {
+        let conflictCount = 0;
+        for (const stateId of stateIds) {
+          const existing = await this.get(stateId);
+          if (existing !== null) {
+            conflictCount++;
+          }
+        }
+        if (conflictCount > 0) {
+          throw new ImportConflictError(conflictCount);
+        }
+      }
+
+      // Import states
+      let imported = 0;
+      let skipped = 0;
+      let overwritten = 0;
+
+      for (const stateId of stateIds) {
+        const serializedState = payload.states[stateId];
+        const existingState = await this.get(stateId);
+
+        if (existingState !== null) {
+          if (conflictStrategy === 'skip') {
+            skipped++;
+            continue;
+          } else if (conflictStrategy === 'overwrite') {
+            overwritten++;
+          }
+        }
+
+        // Deserialize and store the state
+        const state = superjson.parse<PS>(serializedState);
+        await this.set(stateId, state);
+
+        if (existingState === null) {
+          imported++;
+        }
+      }
+
+      return { imported, skipped, overwritten };
     }
   };
 };

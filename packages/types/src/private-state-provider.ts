@@ -20,6 +20,102 @@ import type { ContractAddress,SigningKey } from '@midnight-ntwrk/compact-runtime
  */
 export type PrivateStateId = string;
 
+/**
+ * Represents the exported private state data structure.
+ * All metadata is included in the encrypted payload to prevent tampering.
+ */
+export interface PrivateStateExport {
+  /**
+   * Format identifier. Must be 'midnight-private-state-export'.
+   */
+  readonly format: 'midnight-private-state-export';
+
+  /**
+   * Encrypted payload containing version, metadata, and serialized private states.
+   * Format: base64-encoded AES-256-GCM encrypted JSON.
+   */
+  readonly encryptedPayload: string;
+
+  /**
+   * Salt used for key derivation (hex-encoded, 32 bytes / 64 characters).
+   * Required for decryption with the export password.
+   */
+  readonly salt: string;
+}
+
+/**
+ * Maximum number of states that can be exported/imported.
+ * This limit prevents memory exhaustion attacks.
+ */
+export const MAX_EXPORT_STATES = 10000;
+
+/**
+ * Options for exporting private states.
+ */
+export interface ExportPrivateStatesOptions {
+  /**
+   * Password used to encrypt the export.
+   * Must be at least 16 characters.
+   * If not provided, uses the storage password.
+   */
+  readonly password?: string;
+
+  /**
+   * Maximum number of states to export.
+   * Defaults to MAX_EXPORT_STATES (10000).
+   * Set to a lower value to limit memory usage.
+   */
+  readonly maxStates?: number;
+}
+
+/**
+ * Options for importing private states.
+ */
+export interface ImportPrivateStatesOptions {
+  /**
+   * Password used to decrypt the import.
+   * Must match the password used during export.
+   * If not provided, uses the storage password.
+   */
+  readonly password?: string;
+
+  /**
+   * How to handle conflicts when a private state ID already exists.
+   * - 'skip': Keep existing state, ignore imported state
+   * - 'overwrite': Replace existing state with imported state
+   * - 'error': Throw an error if any conflict is detected
+   * Default: 'error'
+   */
+  readonly conflictStrategy?: 'skip' | 'overwrite' | 'error';
+
+  /**
+   * Maximum number of states to import.
+   * Defaults to MAX_EXPORT_STATES (10000).
+   * Set to a lower value to limit memory usage.
+   */
+  readonly maxStates?: number;
+}
+
+/**
+ * Result of an import operation.
+ */
+export interface ImportPrivateStatesResult {
+  /**
+   * Number of states successfully imported.
+   */
+  readonly imported: number;
+
+  /**
+   * Number of states skipped due to conflicts (when conflictStrategy is 'skip').
+   */
+  readonly skipped: number;
+
+  /**
+   * Number of states that overwrote existing states (when conflictStrategy is 'overwrite').
+   */
+  readonly overwritten: number;
+}
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 /**
@@ -91,4 +187,30 @@ export interface PrivateStateProvider<PSI extends PrivateStateId = PrivateStateI
    * Remove all contract signing keys.
    */
   clearSigningKeys(): Promise<void>;
+
+  /**
+   * Export all private states as an encrypted JSON-serializable structure.
+   *
+   * NOTE: This does NOT export signing keys for security reasons.
+   *
+   * @param options Export options including optional custom password and state limit.
+   * @returns A JSON-serializable export structure that can be saved or transmitted.
+   * @throws {PrivateStateExportError} If no states exist to export or limit exceeded.
+   */
+  exportPrivateStates(options?: ExportPrivateStatesOptions): Promise<PrivateStateExport>;
+
+  /**
+   * Import private states from a previously exported structure.
+   *
+   * @param exportData The export data structure to import.
+   * @param options Import options including password, conflict strategy, and state limit.
+   * @returns Result indicating how many states were imported/skipped/overwritten.
+   * @throws {ExportDecryptionError} If decryption fails (wrong password or corrupted data).
+   * @throws {InvalidExportFormatError} If the export format is invalid or unsupported.
+   * @throws {ImportConflictError} If conflictStrategy is 'error' and conflicts exist.
+   */
+  importPrivateStates(
+    exportData: PrivateStateExport,
+    options?: ImportPrivateStatesOptions
+  ): Promise<ImportPrivateStatesResult>;
 }

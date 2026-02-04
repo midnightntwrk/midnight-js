@@ -261,7 +261,9 @@ export const createMockProviders = (): ContractProviders<Contract.Any, Contract.
     remove: vi.fn(),
     clear: vi.fn(),
     clearSigningKeys: vi.fn(),
-    removeSigningKey: vi.fn()
+    removeSigningKey: vi.fn(),
+    exportPrivateStates: vi.fn(),
+    importPrivateStates: vi.fn()
   },
   zkConfigProvider: {
     getVerifierKeys: vi.fn(),

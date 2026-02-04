@@ -28,3 +28,73 @@ export class InvalidProtocolSchemeError extends Error {
     super(`Invalid protocol scheme: '${invalidScheme}'. Allowable schemes are one of: ${allowableSchemes.join(',')}`);
   }
 }
+
+/**
+ * An error thrown when exporting private states fails.
+ */
+export class PrivateStateExportError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'PrivateStateExportError';
+  }
+}
+
+/**
+ * Cause types for private state import errors.
+ */
+export type PrivateStateImportErrorCause =
+  | 'decryption_failed'
+  | 'invalid_format'
+  | 'conflict'
+  | 'unknown';
+
+/**
+ * Base error thrown when importing private states fails.
+ */
+export class PrivateStateImportError extends Error {
+  constructor(
+    message: string,
+    public readonly cause?: PrivateStateImportErrorCause
+  ) {
+    super(message);
+    this.name = 'PrivateStateImportError';
+  }
+}
+
+/**
+ * Error thrown when decryption of export data fails.
+ * This could be due to wrong password, corrupted data, or tampered content.
+ * The specific cause is intentionally not disclosed to prevent oracle attacks.
+ */
+export class ExportDecryptionError extends PrivateStateImportError {
+  constructor() {
+    super(
+      'Failed to decrypt export data. The password may be incorrect or the data may be corrupted.',
+      'decryption_failed'
+    );
+    this.name = 'ExportDecryptionError';
+  }
+}
+
+/**
+ * Error thrown when the export data format is invalid.
+ */
+export class InvalidExportFormatError extends PrivateStateImportError {
+  constructor(message = 'Invalid export format') {
+    super(message, 'invalid_format');
+    this.name = 'InvalidExportFormatError';
+  }
+}
+
+/**
+ * Error thrown when import conflicts with existing data and conflictStrategy is 'error'.
+ */
+export class ImportConflictError extends PrivateStateImportError {
+  constructor(public readonly conflictCount: number) {
+    super(
+      `Import conflicts with ${conflictCount} existing private state${conflictCount === 1 ? '' : 's'}`,
+      'conflict'
+    );
+    this.name = 'ImportConflictError';
+  }
+}

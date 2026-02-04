@@ -12,15 +12,24 @@
 
 ## Classes
 
+- [ExportDecryptionError](classes/ExportDecryptionError.md)
+- [ImportConflictError](classes/ImportConflictError.md)
+- [InvalidExportFormatError](classes/InvalidExportFormatError.md)
 - [InvalidProtocolSchemeError](classes/InvalidProtocolSchemeError.md)
+- [PrivateStateExportError](classes/PrivateStateExportError.md)
+- [PrivateStateImportError](classes/PrivateStateImportError.md)
 - [ZKConfigProvider](classes/ZKConfigProvider.md)
 
 ## Interfaces
 
+- [ExportPrivateStatesOptions](interfaces/ExportPrivateStatesOptions.md)
 - [FinalizedTxData](interfaces/FinalizedTxData.md)
+- [ImportPrivateStatesOptions](interfaces/ImportPrivateStatesOptions.md)
+- [ImportPrivateStatesResult](interfaces/ImportPrivateStatesResult.md)
 - [LoggerProvider](interfaces/LoggerProvider.md)
 - [MidnightProvider](interfaces/MidnightProvider.md)
 - [MidnightProviders](interfaces/MidnightProviders.md)
+- [PrivateStateExport](interfaces/PrivateStateExport.md)
 - [PrivateStateProvider](interfaces/PrivateStateProvider.md)
 - [ProofProvider](interfaces/ProofProvider.md)
 - [ProveTxConfig](interfaces/ProveTxConfig.md)
@@ -40,6 +49,7 @@
 - [KeyMaterialProvider](type-aliases/KeyMaterialProvider.md)
 - [Latest](type-aliases/Latest.md)
 - [PrivateStateId](type-aliases/PrivateStateId.md)
+- [PrivateStateImportErrorCause](type-aliases/PrivateStateImportErrorCause.md)
 - [ProverKey](type-aliases/ProverKey.md)
 - [SegmentStatus](type-aliases/SegmentStatus.md)
 - [TxIdConfig](type-aliases/TxIdConfig.md)
@@ -58,6 +68,7 @@
 - [FailEntirely](variables/FailEntirely.md)
 - [FailFallible](variables/FailFallible.md)
 - [makeContractExecutableRuntime](variables/makeContractExecutableRuntime.md)
+- [MAX\_EXPORT\_STATES](variables/MAX_EXPORT_STATES.md)
 - [SegmentFail](variables/SegmentFail.md)
 - [SegmentSuccess](variables/SegmentSuccess.md)
 - [SucceedEntirely](variables/SucceedEntirely.md)
