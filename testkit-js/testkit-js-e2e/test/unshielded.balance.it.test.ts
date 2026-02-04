@@ -52,10 +52,10 @@ class UnshieldedConfiguration implements ContractConfiguration {
   }
 }
 
-const MINT_AMOUNT = 1_000_000n;
-describe('Unshielded tokens', () => {
+describe('Unshielded tokens - balance', () => {
   const NOT_MINTED_DOMAIN_SEPARATOR = new Uint8Array(32).fill(2);
   const MINT_DOMAIN_SEPARATOR = new Uint8Array(32).fill(1);
+  const MINT_AMOUNT = 1_000_000n;
 
   let testEnvironment: TestEnvironment;
   let wallet: MidnightWalletProvider;
@@ -98,6 +98,7 @@ describe('Unshielded tokens', () => {
 
     expect(mintTxData.public.status).toBe(SucceedEntirely);
 
+    logger.info(`Minted initial tokens: ${JSON.stringify(mintTxData)}`);
   });
 
   afterAll(async () => {
