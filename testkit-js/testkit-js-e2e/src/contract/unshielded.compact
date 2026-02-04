@@ -1,11 +1,5 @@
 import CompactStandardLibrary;
 
-export ledger domain = pad(32, "simple:test:coin");
-
-constructor {
- domain = pad(32, "simple:test:coin");
-}
-
 // mint and receive unshielded tokens to self, this MUST be called together
 export circuit mintUnshieldedToSelfAndReceiveTest(domainSep: Bytes<32>, amount: Uint<64>): Bytes<32> {
   const color = mintUnshieldedToken(disclose(domainSep), disclose(amount), left<ContractAddress, UserAddress>(kernel.self()));
