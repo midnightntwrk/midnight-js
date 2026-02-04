@@ -86,6 +86,18 @@ describe('Unshielded tokens', () => {
     contractAddress = deployedContract.deployTxData.public.contractAddress;
 
     logger.info(`Deployed unshielded contract at address: ${contractAddress}`);
+
+    logger.info('Minting tokens');
+    const mintTxData = await submitCallTx(providers, {
+      compiledContract: CompiledUnshieldedContract,
+      contractAddress,
+      circuitId: 'mintUnshieldedToSelfTest' as UnshieldedContractCircuits,
+      args: [DOMAIN_SEPARATOR, MINT_AMOUNT]
+    });
+
+    expect(mintTxData.public.status).toBe(SucceedEntirely);
+
+    logger.info(`Minted initial tokens: ${JSON.stringify(mintTxData)}`);
   });
 
   afterAll(async () => {
@@ -94,11 +106,13 @@ describe('Unshielded tokens', () => {
 
   describe('custom color', () => {
     test('should mint tokens', async () => {
+      const ANOTHER_DOMAIN_SEPARATOR = new Uint8Array(32).fill(2);
+
       const mintTxData = await submitCallTx(providers, {
         compiledContract: CompiledUnshieldedContract,
         contractAddress,
-        circuitId: 'mintToSelfReceive' as UnshieldedContractCircuits,
-        args: [DOMAIN_SEPARATOR, MINT_AMOUNT]
+        circuitId: 'mintUnshieldedToSelfTest' as UnshieldedContractCircuits,
+        args: [ANOTHER_DOMAIN_SEPARATOR, MINT_AMOUNT]
       });
 
       expect(mintTxData.public.status).toBe(SucceedEntirely);
@@ -106,7 +120,7 @@ describe('Unshielded tokens', () => {
 
       const created = mintTxData.public.unshielded.created;
       const spent = mintTxData.public.unshielded.spent;
-      expect(created.length).toEqual(0);
+      expect(created.length).toEqual(1);
       expect(spent.length).toEqual(0);
 
       logger.info(`Minted token: ${JSON.stringify(mintTxData)}`);
