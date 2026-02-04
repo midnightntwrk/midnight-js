@@ -53,7 +53,6 @@ class UnshieldedConfiguration implements ContractConfiguration {
 }
 
 describe('Unshielded tokens - balance', () => {
-  const NOT_MINTED_DOMAIN_SEPARATOR = new Uint8Array(32).fill(2);
   const MINT_DOMAIN_SEPARATOR = new Uint8Array(32).fill(1);
   const MINT_AMOUNT = 1_000_000n;
 
@@ -63,6 +62,7 @@ describe('Unshielded tokens - balance', () => {
   let providers: UnshieldedContractProviders;
   let contractAddress: ContractAddress;
   let contractConfiguration: UnshieldedConfiguration;
+  let mintedTokenColor: Uint8Array;
 
   beforeEach(() => {
     logger.info(`Running test=${expect.getState().currentTestName}`);
@@ -97,6 +97,7 @@ describe('Unshielded tokens - balance', () => {
     });
 
     expect(mintTxData.public.status).toBe(SucceedEntirely);
+    mintedTokenColor = mintTxData.private.result as Uint8Array;
 
     logger.info(`Minted initial tokens: ${JSON.stringify(mintTxData)}`);
   });
@@ -106,11 +107,12 @@ describe('Unshielded tokens - balance', () => {
   });
 
   test('should get balance of tokens - 0 value', async () => {
+    const notMintedTokens = new Uint8Array(32).fill(2);
     const txData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
       circuitId: 'getUnshieldedBalanceTest' as UnshieldedContractCircuits,
-      args: [NOT_MINTED_DOMAIN_SEPARATOR]
+      args: [notMintedTokens]
     });
 
     expect(txData.public.status).toBe(SucceedEntirely);
@@ -128,7 +130,7 @@ describe('Unshielded tokens - balance', () => {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
       circuitId: 'getUnshieldedBalanceTest' as UnshieldedContractCircuits,
-      args: [MINT_DOMAIN_SEPARATOR]
+      args: [mintedTokenColor]
     });
 
     expect(txData.public.status).toBe(SucceedEntirely);
@@ -146,7 +148,7 @@ describe('Unshielded tokens - balance', () => {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
       circuitId: 'getUnshieldedBalanceGtTest' as UnshieldedContractCircuits,
-      args: [MINT_DOMAIN_SEPARATOR, MINT_AMOUNT]
+      args: [mintedTokenColor, MINT_AMOUNT]
     });
 
     expect(txData.public.status).toBe(SucceedEntirely);
@@ -165,7 +167,7 @@ describe('Unshielded tokens - balance', () => {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
       circuitId: 'getUnshieldedBalanceGtTest' as UnshieldedContractCircuits,
-      args: [MINT_DOMAIN_SEPARATOR, MINT_AMOUNT - 1n]
+      args: [mintedTokenColor, MINT_AMOUNT - 1n]
     });
 
     expect(txData.public.status).toBe(SucceedEntirely);
@@ -183,7 +185,7 @@ describe('Unshielded tokens - balance', () => {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
       circuitId: 'getUnshieldedBalanceLtTest' as UnshieldedContractCircuits,
-      args: [MINT_DOMAIN_SEPARATOR, MINT_AMOUNT - 1n]
+      args: [mintedTokenColor, MINT_AMOUNT - 1n]
     });
 
     expect(txData.public.status).toBe(SucceedEntirely);
@@ -202,7 +204,7 @@ describe('Unshielded tokens - balance', () => {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
       circuitId: 'getUnshieldedBalanceLtTest' as UnshieldedContractCircuits,
-      args: [MINT_DOMAIN_SEPARATOR, MINT_AMOUNT + 1n]
+      args: [mintedTokenColor, MINT_AMOUNT + 1n]
     });
 
     expect(txData.public.status).toBe(SucceedEntirely);

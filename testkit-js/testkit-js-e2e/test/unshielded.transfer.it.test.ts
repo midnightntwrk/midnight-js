@@ -62,6 +62,7 @@ describe('Unshielded tokens', () => {
   let providers: UnshieldedContractProviders;
   let contractAddress: ContractAddress;
   let contractConfiguration: UnshieldedConfiguration;
+  let mintedTokensColor: Uint8Array;
 
   beforeEach(() => {
     logger.info(`Running test=${expect.getState().currentTestName}`);
@@ -96,6 +97,7 @@ describe('Unshielded tokens', () => {
     });
 
     expect(mintTxData.public.status).toBe(SucceedEntirely);
+    mintedTokensColor = mintTxData.private.result as Uint8Array;
 
     logger.info(`Minted initial tokens: ${JSON.stringify(mintTxData)}`);
   });
@@ -131,7 +133,7 @@ describe('Unshielded tokens', () => {
         compiledContract: CompiledUnshieldedContract,
         contractAddress,
         circuitId: 'receiveUnshieldedTest' as UnshieldedContractCircuits,
-        args: [DOMAIN_SEPARATOR, MINT_AMOUNT]
+        args: [mintedTokensColor, MINT_AMOUNT]
       });
 
       expect(txData.public.status).toBe(SucceedEntirely);
