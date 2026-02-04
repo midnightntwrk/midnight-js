@@ -110,75 +110,76 @@ describe('Unshielded tokens', () => {
     await testEnvironment.shutdown();
   });
 
-  describe('custom color', () => {
-    test('should mint different tokens', async () => {
-      const ANOTHER_DOMAIN_SEPARATOR = new Uint8Array(32).fill(2);
+  test('should mint different tokens', async () => {
+    const ANOTHER_DOMAIN_SEPARATOR = new Uint8Array(32).fill(2);
 
-      const mintTxData = await submitCallTx(providers, {
-        compiledContract: CompiledUnshieldedContract,
-        contractAddress,
-        circuitId: 'mintUnshieldedToSelfAndReceiveTest' as UnshieldedContractCircuits,
-        args: [ANOTHER_DOMAIN_SEPARATOR, MINT_AMOUNT]
-      });
-
-      expect(mintTxData.public.status).toBe(SucceedEntirely);
-      expect(mintTxData.public.unshielded).toBeDefined();
-      expect(mintTxData.private.result).toBeInstanceOf(Uint8Array);
-      expect(mintTxData.private.result).toHaveLength(32);
-
-      const created = mintTxData.public.unshielded.created;
-      const spent = mintTxData.public.unshielded.spent;
-      expect(created.length).toEqual(0);
-      expect(spent.length).toEqual(0);
+    const mintTxData = await submitCallTx(providers, {
+      compiledContract: CompiledUnshieldedContract,
+      contractAddress,
+      circuitId: 'mintUnshieldedToSelfAndReceiveTest' as UnshieldedContractCircuits,
+      args: [ANOTHER_DOMAIN_SEPARATOR, MINT_AMOUNT]
     });
 
-    test('should receive tokens - invalid', async () => {
-      await expect(() =>
-        submitCallTx(providers, {
-          compiledContract: CompiledUnshieldedContract,
-          contractAddress,
-          circuitId: 'receiveUnshieldedTest' as UnshieldedContractCircuits,
-          args: [DOMAIN_SEPARATOR, MINT_AMOUNT]
-        })
-      ).rejects.toThrow('InsufficientFunds: Insufficient funds');
-    });
+    expect(mintTxData.public.status).toBe(SucceedEntirely);
+    expect(mintTxData.public.unshielded).toBeDefined();
+    expect(mintTxData.private.result).toBeInstanceOf(Uint8Array);
+    expect(mintTxData.private.result).toHaveLength(32);
 
-    //need to first move tokens to wallet to be able to receive them back
-    test.skip('should receive tokens from wallet', async () => {
-      const txData = await submitCallTx(providers, {
+    const created = mintTxData.public.unshielded.created;
+    const spent = mintTxData.public.unshielded.spent;
+    expect(created.length).toEqual(0);
+    expect(spent.length).toEqual(0);
+  });
+
+  test('should receive tokens - invalid', async () => {
+    await expect(() =>
+      submitCallTx(providers, {
         compiledContract: CompiledUnshieldedContract,
         contractAddress,
         circuitId: 'receiveUnshieldedTest' as UnshieldedContractCircuits,
-        args: [mintedTokensColor, MINT_AMOUNT / 10n]
-      });
+        args: [DOMAIN_SEPARATOR, MINT_AMOUNT]
+      })
+    ).rejects.toThrow('InsufficientFunds: Insufficient funds');
+  });
 
-      expect(txData.public.status).toBe(SucceedEntirely);
-      expect(txData.private.result).toEqual([]);
-      expect(txData.public.unshielded).toBeDefined();
-
-      const spent = txData.public.unshielded.spent;
-      const created = txData.public.unshielded.created;
-      expect(spent.length).toEqual(1);
-      expect(created.length).toEqual(1);
+  //need to first move tokens to wallet to be able to receive them back
+  test.skip('should receive tokens from wallet', async () => {
+    const txData = await submitCallTx(providers, {
+      compiledContract: CompiledUnshieldedContract,
+      contractAddress,
+      circuitId: 'receiveUnshieldedTest' as UnshieldedContractCircuits,
+      args: [mintedTokensColor, MINT_AMOUNT / 10n]
     });
 
-    //need to validate
-    test.skip('should send tokens to wallet', async () => {
-      const txData = await submitCallTx(providers, {
-        compiledContract: CompiledUnshieldedContract,
-        contractAddress,
-        circuitId: 'sendUnshieldedToUserTest' as UnshieldedContractCircuits,
-        args: [mintedTokensColor, MINT_AMOUNT/10n, { bytes: unshieldedAddressBytes }]
-      });
+    expect(txData.public.status).toBe(SucceedEntirely);
+    expect(txData.private.result).toEqual([]);
+    expect(txData.public.unshielded).toBeDefined();
 
-      expect(txData.public.status).toBe(SucceedEntirely);
-      expect(txData.private.result).toEqual(0n);
-      expect(txData.public.unshielded).toBeDefined();
+    const spent = txData.public.unshielded.spent;
+    const created = txData.public.unshielded.created;
+    expect(spent.length).toEqual(1);
+    expect(created.length).toEqual(1);
+  });
 
-      const spent = txData.public.unshielded.spent;
-      const created = txData.public.unshielded.created;
-      expect(spent.length).toEqual(0);
-      expect(created.length).toEqual(0);
+  //need to validate
+  test.skip('should send tokens to wallet', async () => {
+    const txData = await submitCallTx(providers, {
+      compiledContract: CompiledUnshieldedContract,
+      contractAddress,
+      circuitId: 'sendUnshieldedToUserTest' as UnshieldedContractCircuits,
+      args: [mintedTokensColor, MINT_AMOUNT/10n, { bytes: unshieldedAddressBytes }]
     });
-  })
+
+    expect(txData.public.status).toBe(SucceedEntirely);
+    expect(txData.private.result).toEqual(0n);
+    expect(txData.public.unshielded).toBeDefined();
+
+    const spent = txData.public.unshielded.spent;
+    const created = txData.public.unshielded.created;
+    expect(spent.length).toEqual(0);
+    expect(created.length).toEqual(0);
+  });
+
+  test.todo('should transfer night from wallet to contract - receiveNightTokens');
+  test.todo('should transfer night to wallet - sendNightTokensToUser');
 });

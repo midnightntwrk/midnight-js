@@ -92,16 +92,14 @@ describe('Shielded tokens', () => {
     await testEnvironment.shutdown();
   });
 
-  describe('shielded tokens', async () => {
-    test('should mint tokens', async () => {
-      const txData = await submitCallTx(providers, {
-        compiledContract: CompiledShieldedContract,
-        contractAddress,
-        circuitId: 'mintShieldedTokens' as ShieldedContractCircuits,
-        args: [DOMAIN_SEPARATOR, MINT_AMOUNT]
-      });
-
-      expect(txData.public.status).toBe(SucceedEntirely);
+  test('should mint tokens', async () => {
+    const txData = await submitCallTx(providers, {
+      compiledContract: CompiledShieldedContract,
+      contractAddress,
+      circuitId: 'mintShieldedTokens' as ShieldedContractCircuits,
+      args: [DOMAIN_SEPARATOR, MINT_AMOUNT]
     });
-  })
+
+    expect(txData.public.status).toBe(SucceedEntirely);
+  });
 });
