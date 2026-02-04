@@ -92,8 +92,8 @@ describe('Unshielded tokens', () => {
     const mintTxData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
-      circuitId: 'mintNativeTokens' as UnshieldedContractCircuits,
-      args: [MINT_AMOUNT]
+      circuitId: 'mintUnshieldedToSelfTest' as UnshieldedContractCircuits,
+      args: [MINT_DOMAIN_SEPARATOR, MINT_AMOUNT]
     });
 
     expect(mintTxData.public.status).toBe(SucceedEntirely);
