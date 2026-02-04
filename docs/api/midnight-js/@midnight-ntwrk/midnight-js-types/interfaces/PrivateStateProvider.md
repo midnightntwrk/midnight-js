@@ -48,6 +48,34 @@ Remove all contract signing keys.
 
 ***
 
+### exportPrivateStates()
+
+> **exportPrivateStates**(`options?`): `Promise`\<[`PrivateStateExport`](PrivateStateExport.md)\>
+
+Export all private states as an encrypted JSON-serializable structure.
+
+NOTE: This does NOT export signing keys for security reasons.
+
+#### Parameters
+
+##### options?
+
+[`ExportPrivateStatesOptions`](ExportPrivateStatesOptions.md)
+
+Export options including optional custom password and state limit.
+
+#### Returns
+
+`Promise`\<[`PrivateStateExport`](PrivateStateExport.md)\>
+
+A JSON-serializable export structure that can be saved or transmitted.
+
+#### Throws
+
+If no states exist to export or limit exceeded.
+
+***
+
 ### get()
 
 > **get**(`privateStateId`): `Promise`\<`PS` \| `null`\>
@@ -85,6 +113,46 @@ The address of the contract for which to get the signing key.
 #### Returns
 
 `Promise`\<`string` \| `null`\>
+
+***
+
+### importPrivateStates()
+
+> **importPrivateStates**(`exportData`, `options?`): `Promise`\<[`ImportPrivateStatesResult`](ImportPrivateStatesResult.md)\>
+
+Import private states from a previously exported structure.
+
+#### Parameters
+
+##### exportData
+
+[`PrivateStateExport`](PrivateStateExport.md)
+
+The export data structure to import.
+
+##### options?
+
+[`ImportPrivateStatesOptions`](ImportPrivateStatesOptions.md)
+
+Import options including password, conflict strategy, and state limit.
+
+#### Returns
+
+`Promise`\<[`ImportPrivateStatesResult`](ImportPrivateStatesResult.md)\>
+
+Result indicating how many states were imported/skipped/overwritten.
+
+#### Throws
+
+If decryption fails (wrong password or corrupted data).
+
+#### Throws
+
+If the export format is invalid or unsupported.
+
+#### Throws
+
+If conflictStrategy is 'error' and conflicts exist.
 
 ***
 
