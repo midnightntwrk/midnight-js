@@ -4,13 +4,13 @@ export type Witnesses<PS> = {
 }
 
 export type ImpureCircuits<PS> = {
-  mintUnshieldedToSelfTest(context: __compactRuntime.CircuitContext<PS>,
-                           domainSep_0: Uint8Array,
-                           amount_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
-  mintUnshieldedToContractTest(context: __compactRuntime.CircuitContext<PS>,
-                               domainSep_0: Uint8Array,
-                               address_0: { bytes: Uint8Array },
-                               amount_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  mintUnshieldedToSelfAndReceiveTest(context: __compactRuntime.CircuitContext<PS>,
+                                     domainSep_0: Uint8Array,
+                                     amount_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  mintUnshieldedToContractAndReceiveTest(context: __compactRuntime.CircuitContext<PS>,
+                                         domainSep_0: Uint8Array,
+                                         address_0: { bytes: Uint8Array },
+                                         amount_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
   mintUnshieldedToUserTest(context: __compactRuntime.CircuitContext<PS>,
                            domainSep_0: Uint8Array,
                            address_0: { bytes: Uint8Array },
@@ -37,24 +37,24 @@ export type ImpureCircuits<PS> = {
   getUnshieldedBalanceLtTest(context: __compactRuntime.CircuitContext<PS>,
                              color_0: Uint8Array,
                              amount_0: bigint): __compactRuntime.CircuitResults<PS, boolean>;
-  mintToSelfReceive(context: __compactRuntime.CircuitContext<PS>,
-                    domainSep_0: Uint8Array,
-                    amount_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
-  mintNativeTokens(context: __compactRuntime.CircuitContext<PS>,
-                   amount_0: bigint): __compactRuntime.CircuitResults<PS, bigint>;
+  receiveNightTokens(context: __compactRuntime.CircuitContext<PS>,
+                     amount_0: bigint): __compactRuntime.CircuitResults<PS, []>;
+  sendNightTokensToUser(context: __compactRuntime.CircuitContext<PS>,
+                        amount_0: bigint,
+                        user_addr_0: { bytes: Uint8Array }): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type PureCircuits = {
 }
 
 export type Circuits<PS> = {
-  mintUnshieldedToSelfTest(context: __compactRuntime.CircuitContext<PS>,
-                           domainSep_0: Uint8Array,
-                           amount_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
-  mintUnshieldedToContractTest(context: __compactRuntime.CircuitContext<PS>,
-                               domainSep_0: Uint8Array,
-                               address_0: { bytes: Uint8Array },
-                               amount_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  mintUnshieldedToSelfAndReceiveTest(context: __compactRuntime.CircuitContext<PS>,
+                                     domainSep_0: Uint8Array,
+                                     amount_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  mintUnshieldedToContractAndReceiveTest(context: __compactRuntime.CircuitContext<PS>,
+                                         domainSep_0: Uint8Array,
+                                         address_0: { bytes: Uint8Array },
+                                         amount_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
   mintUnshieldedToUserTest(context: __compactRuntime.CircuitContext<PS>,
                            domainSep_0: Uint8Array,
                            address_0: { bytes: Uint8Array },
@@ -81,11 +81,11 @@ export type Circuits<PS> = {
   getUnshieldedBalanceLtTest(context: __compactRuntime.CircuitContext<PS>,
                              color_0: Uint8Array,
                              amount_0: bigint): __compactRuntime.CircuitResults<PS, boolean>;
-  mintToSelfReceive(context: __compactRuntime.CircuitContext<PS>,
-                    domainSep_0: Uint8Array,
-                    amount_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
-  mintNativeTokens(context: __compactRuntime.CircuitContext<PS>,
-                   amount_0: bigint): __compactRuntime.CircuitResults<PS, bigint>;
+  receiveNightTokens(context: __compactRuntime.CircuitContext<PS>,
+                     amount_0: bigint): __compactRuntime.CircuitResults<PS, []>;
+  sendNightTokensToUser(context: __compactRuntime.CircuitContext<PS>,
+                        amount_0: bigint,
+                        user_addr_0: { bytes: Uint8Array }): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type Ledger = {

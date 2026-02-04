@@ -1,7 +1,7 @@
 {
   "circuits": [
     {
-      "name": "mintUnshieldedToSelfTest",
+      "name": "mintUnshieldedToSelfAndReceiveTest",
       "pure": false,
       "arguments": [
         {
@@ -25,7 +25,7 @@
       }
     },
     {
-      "name": "mintUnshieldedToContractTest",
+      "name": "mintUnshieldedToContractAndReceiveTest",
       "pure": false,
       "arguments": [
         {
@@ -300,31 +300,25 @@
       }
     },
     {
-      "name": "mintToSelfReceive",
+      "name": "receiveNightTokens",
       "pure": false,
       "arguments": [
-        {
-          "name": "domainSep",
-          "type": {
-            "type-name": "Bytes",
-            "length": 32
-          }
-        },
         {
           "name": "amount",
           "type": {
             "type-name": "Uint",
-            "maxval": 18446744073709551615
+            "maxval": 340282366920938463463374607431768211455
           }
         }
       ],
       "result-type": {
-        "type-name": "Bytes",
-        "length": 32
+        "type-name": "Tuple",
+        "types": [
+        ]
       }
     },
     {
-      "name": "mintNativeTokens",
+      "name": "sendNightTokensToUser",
       "pure": false,
       "arguments": [
         {
@@ -333,11 +327,28 @@
             "type-name": "Uint",
             "maxval": 18446744073709551615
           }
+        },
+        {
+          "name": "user_addr",
+          "type": {
+            "type-name": "Struct",
+            "name": "UserAddress",
+            "elements": [
+              {
+                "name": "bytes",
+                "type": {
+                  "type-name": "Bytes",
+                  "length": 32
+                }
+              }
+            ]
+          }
         }
       ],
       "result-type": {
-        "type-name": "Uint",
-        "maxval": 340282366920938463463374607431768211455
+        "type-name": "Tuple",
+        "types": [
+        ]
       }
     }
   ],

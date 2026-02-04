@@ -1,11 +1,17 @@
 import CompactStandardLibrary;
 
-export circuit mintUnshieldedToSelfTest(domainSep: Bytes<32>, amount: Uint<64>): Bytes<32> {
-  return mintUnshieldedToken(disclose(domainSep), disclose(amount), left<ContractAddress, UserAddress>(kernel.self()));
+// mint and receive unshielded tokens to self, this MUST be called together
+export circuit mintUnshieldedToSelfAndReceiveTest(domainSep: Bytes<32>, amount: Uint<64>): Bytes<32> {
+  const color = mintUnshieldedToken(disclose(domainSep), disclose(amount), left<ContractAddress, UserAddress>(kernel.self()));
+  receiveUnshielded(color, disclose(amount) as Uint<128>);
+  return color;
 }
 
-export circuit mintUnshieldedToContractTest(domainSep: Bytes<32>, address: ContractAddress, amount: Uint<64>): Bytes<32> {
-  return mintUnshieldedToken(disclose(domainSep), disclose(amount), left<ContractAddress, UserAddress>(disclose(address)));
+// mint and receive unshielded tokens to self, this MUST be called together
+export circuit mintUnshieldedToContractAndReceiveTest(domainSep: Bytes<32>, address: ContractAddress, amount: Uint<64>): Bytes<32> {
+  const color = mintUnshieldedToken(disclose(domainSep), disclose(amount), left<ContractAddress, UserAddress>(disclose(address)));
+  receiveUnshielded(color, disclose(amount) as Uint<128>);
+  return color;
 }
 
 export circuit mintUnshieldedToUserTest(domainSep: Bytes<32>, address: UserAddress, amount: Uint<64>): Bytes<32> {
@@ -40,14 +46,14 @@ export circuit getUnshieldedBalanceLtTest(color: Bytes<32>, amount: Uint<128>): 
   return unshieldedBalanceLt(disclose(color), disclose(amount));
 }
 
-export circuit mintToSelfReceive(domainSep: Bytes<32>, amount: Uint<64>): Bytes<32> {
-  const color = mintUnshieldedToken(disclose(domainSep), disclose(amount), left<ContractAddress, UserAddress>(kernel.self()));
-  receiveUnshielded(color, disclose(amount) as Uint<128>);
-  return color;
+export circuit receiveNightTokens(amount: Uint<128>): [] {
+   receiveUnshielded(default<Bytes<32>>, disclose(amount));
 }
 
-export circuit mintNativeTokens(amount: Uint<64>): Uint<128> {
-    const domain = pad(32, "simple:shielded:native");
-    kernel.mintShielded(disclose(domain), disclose(amount));
-    return disclose(amount);
+export circuit sendNightTokensToUser(amount: Uint<64>, user_addr: UserAddress): [] {
+    sendUnshielded(
+        default<Bytes<32>>,
+        disclose(amount) as Uint<128>,
+        right<ContractAddress, UserAddress>(disclose(user_addr))
+    );
 }

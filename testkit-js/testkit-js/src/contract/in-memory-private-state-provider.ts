@@ -17,8 +17,103 @@ import type { Contract } from '@midnight-ntwrk/compact-js';
 import type { SigningKey } from '@midnight-ntwrk/compact-runtime';
 import type { ContractAddress } from '@midnight-ntwrk/ledger-v7';
 import {
+  ExportDecryptionError,
+  type ExportPrivateStatesOptions,
+  ImportConflictError,
+  type ImportPrivateStatesOptions,
+  type ImportPrivateStatesResult,
+  InvalidExportFormatError,
+  MAX_EXPORT_STATES,
+  type PrivateStateExport,
+  PrivateStateExportError,
   type PrivateStateId,
-  type PrivateStateProvider} from '@midnight-ntwrk/midnight-js-types';
+  type PrivateStateProvider
+} from '@midnight-ntwrk/midnight-js-types';
+import { createCipheriv, createDecipheriv, pbkdf2Sync, randomBytes } from 'crypto';
+
+const ALGORITHM = 'aes-256-gcm';
+const KEY_LENGTH = 32;
+const IV_LENGTH = 12;
+const AUTH_TAG_LENGTH = 16;
+const SALT_LENGTH = 32;
+const PBKDF2_ITERATIONS = 100000;
+const ENCRYPTION_VERSION = 1;
+const MIN_PASSWORD_LENGTH = 16;
+const EXPECTED_SALT_LENGTH = 64;
+
+const CURRENT_EXPORT_VERSION = 1;
+const SUPPORTED_EXPORT_VERSIONS = [1];
+
+interface PrivateStatePayload<PSI extends PrivateStateId = PrivateStateId> {
+  readonly version: number;
+  readonly exportedAt: string;
+  readonly stateCount: number;
+  readonly states: Record<PSI, string>;
+}
+
+const deriveKey = (password: string, salt: Buffer): Buffer => {
+  return pbkdf2Sync(password, salt, PBKDF2_ITERATIONS, KEY_LENGTH, 'sha256');
+};
+
+const encrypt = (data: string, password: string, salt: Buffer): string => {
+  const key = deriveKey(password, salt);
+  const plaintext = Buffer.from(data, 'utf-8');
+  const iv = randomBytes(IV_LENGTH);
+  const cipher = createCipheriv(ALGORITHM, key, iv);
+
+  const encrypted = Buffer.concat([cipher.update(plaintext), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+
+  const version = Buffer.from([ENCRYPTION_VERSION]);
+  const result = Buffer.concat([version, salt, iv, authTag, encrypted]);
+
+  return result.toString('base64');
+};
+
+const decrypt = (encryptedData: string, password: string, expectedSalt: Buffer): string => {
+  const data = Buffer.from(encryptedData, 'base64');
+  const headerLength = 1 + SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH;
+
+  if (data.length < headerLength) {
+    throw new Error('Invalid encrypted data: too short');
+  }
+
+  const version = data[0];
+  if (version !== ENCRYPTION_VERSION) {
+    throw new Error(`Unsupported encryption version: ${version}`);
+  }
+
+  const salt = data.subarray(1, 1 + SALT_LENGTH);
+  const iv = data.subarray(1 + SALT_LENGTH, 1 + SALT_LENGTH + IV_LENGTH);
+  const authTag = data.subarray(1 + SALT_LENGTH + IV_LENGTH, 1 + SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH);
+  const encrypted = data.subarray(headerLength);
+
+  if (!expectedSalt.equals(salt)) {
+    throw new Error('Salt mismatch');
+  }
+
+  const key = deriveKey(password, salt);
+  const decipher = createDecipheriv(ALGORITHM, key, iv, { authTagLength: AUTH_TAG_LENGTH });
+  decipher.setAuthTag(authTag);
+
+  const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+  return decrypted.toString('utf-8');
+};
+
+const validateExportPassword = (password: string): void => {
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    throw new PrivateStateExportError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+  }
+};
+
+const validateSalt = (salt: string): void => {
+  if (salt.length !== EXPECTED_SALT_LENGTH) {
+    throw new InvalidExportFormatError('Invalid salt length');
+  }
+  if (!/^[0-9a-fA-F]+$/.test(salt)) {
+    throw new InvalidExportFormatError('Invalid salt format');
+  }
+};
 
 /**
  * A simple in-memory implementation of private state provider. Makes it easy to capture and rewrite private state from deploy.
@@ -125,6 +220,147 @@ export const inMemoryPrivateStateProvider = <
         delete signingKeys[addr];
       });
       return Promise.resolve();
+    },
+    /**
+     * Exports all private states as an encrypted JSON-serializable structure.
+     * @param {ExportPrivateStatesOptions} options - Export options including password.
+     * @returns {Promise<PrivateStateExport>} A promise that resolves to the export structure.
+     */
+    async exportPrivateStates(options?: ExportPrivateStatesOptions): Promise<PrivateStateExport> {
+      const maxStates = options?.maxStates ?? MAX_EXPORT_STATES;
+
+      if (!options?.password) {
+        throw new PrivateStateExportError('Password is required for in-memory provider export');
+      }
+
+      validateExportPassword(options.password);
+
+      if (record.size === 0) {
+        throw new PrivateStateExportError('No private states to export');
+      }
+
+      if (record.size > maxStates) {
+        throw new PrivateStateExportError(
+          `Too many states to export (${record.size}). Maximum allowed: ${maxStates}`
+        );
+      }
+
+      const payload: PrivateStatePayload<PSI> = {
+        version: CURRENT_EXPORT_VERSION,
+        exportedAt: new Date().toISOString(),
+        stateCount: record.size,
+        states: Object.fromEntries(
+          Array.from(record.entries()).map(([key, value]) => [key, JSON.stringify(value)])
+        ) as Record<PSI, string>
+      };
+
+      const salt = randomBytes(SALT_LENGTH);
+      const encryptedPayload = encrypt(JSON.stringify(payload), options.password, salt);
+
+      return {
+        format: 'midnight-private-state-export',
+        encryptedPayload,
+        salt: salt.toString('hex')
+      };
+    },
+    /**
+     * Imports private states from a previously exported structure.
+     * @param {PrivateStateExport} exportData - The export data structure to import.
+     * @param {ImportPrivateStatesOptions} options - Import options including password and conflict strategy.
+     * @returns {Promise<ImportPrivateStatesResult>} A promise that resolves to the import result.
+     */
+    async importPrivateStates(
+      exportData: PrivateStateExport,
+      options?: ImportPrivateStatesOptions
+    ): Promise<ImportPrivateStatesResult> {
+      const conflictStrategy = options?.conflictStrategy ?? 'error';
+      const maxStates = options?.maxStates ?? MAX_EXPORT_STATES;
+
+      if (exportData.format !== 'midnight-private-state-export') {
+        throw new InvalidExportFormatError('Unrecognized export format');
+      }
+
+      if (!exportData.encryptedPayload || !exportData.salt) {
+        throw new InvalidExportFormatError('Missing required fields');
+      }
+
+      validateSalt(exportData.salt);
+
+      if (!options?.password) {
+        throw new InvalidExportFormatError('Password is required for in-memory provider import');
+      }
+
+      validateExportPassword(options.password);
+
+      let payload: PrivateStatePayload<PSI>;
+      try {
+        const salt = Buffer.from(exportData.salt, 'hex');
+        const decryptedJson = decrypt(exportData.encryptedPayload, options.password, salt);
+        payload = JSON.parse(decryptedJson);
+      } catch {
+        throw new ExportDecryptionError();
+      }
+
+      if (
+        !payload.states ||
+        typeof payload.states !== 'object' ||
+        typeof payload.version !== 'number' ||
+        typeof payload.stateCount !== 'number'
+      ) {
+        throw new ExportDecryptionError();
+      }
+
+      if (!SUPPORTED_EXPORT_VERSIONS.includes(payload.version)) {
+        throw new InvalidExportFormatError(
+          `Export version ${payload.version} is not supported. Supported versions: ${SUPPORTED_EXPORT_VERSIONS.join(', ')}`
+        );
+      }
+
+      const stateIds = Object.keys(payload.states) as PSI[];
+
+      if (stateIds.length !== payload.stateCount) {
+        throw new ExportDecryptionError();
+      }
+
+      if (stateIds.length > maxStates) {
+        throw new InvalidExportFormatError(
+          `Too many states in export (${stateIds.length}). Maximum allowed: ${maxStates}`
+        );
+      }
+
+      if (conflictStrategy === 'error') {
+        const conflictCount = stateIds.filter((id) => record.has(id as string)).length;
+        if (conflictCount > 0) {
+          throw new ImportConflictError(conflictCount);
+        }
+      }
+
+      let imported = 0;
+      let skipped = 0;
+      let overwritten = 0;
+
+      for (const stateId of stateIds) {
+        const serializedState = payload.states[stateId];
+        const existingState = record.get(stateId as string);
+
+        if (existingState !== undefined) {
+          if (conflictStrategy === 'skip') {
+            skipped++;
+            continue;
+          } else if (conflictStrategy === 'overwrite') {
+            overwritten++;
+          }
+        }
+
+        const state = JSON.parse(serializedState) as PS;
+        record.set(stateId as string, state);
+
+        if (existingState === undefined) {
+          imported++;
+        }
+      }
+
+      return { imported, skipped, overwritten };
     }
   };
 };
