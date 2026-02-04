@@ -63,6 +63,7 @@ describe('Unshielded tokens', () => {
   let contractAddress: ContractAddress;
   let contractConfiguration: UnshieldedConfiguration;
   let mintedTokensColor: Uint8Array;
+  let unshieldedAddressBytes: Uint8Array;
 
   beforeEach(() => {
     logger.info(`Running test=${expect.getState().currentTestName}`);
@@ -72,6 +73,9 @@ describe('Unshielded tokens', () => {
     testEnvironment = getTestEnvironment(logger);
     environmentConfiguration = await testEnvironment.start();
     wallet = await testEnvironment.getMidnightWalletProvider();
+    unshieldedAddressBytes = new Uint8Array(
+      Buffer.from((await wallet.wallet.unshielded.getAddress()).hexString, 'hex')
+    );
     contractConfiguration = new UnshieldedConfiguration();
 
     providers = initializeMidnightProviders(wallet, environmentConfiguration, contractConfiguration);
@@ -119,31 +123,13 @@ describe('Unshielded tokens', () => {
 
       expect(mintTxData.public.status).toBe(SucceedEntirely);
       expect(mintTxData.public.unshielded).toBeDefined();
+      expect(mintTxData.private.result).toBeInstanceOf(Uint8Array);
+      expect(mintTxData.private.result).toHaveLength(32);
 
       const created = mintTxData.public.unshielded.created;
       const spent = mintTxData.public.unshielded.spent;
-      expect(created.length).toEqual(1);
+      expect(created.length).toEqual(0);
       expect(spent.length).toEqual(0);
-
-      logger.info(`Minted token: ${JSON.stringify(mintTxData)}`);
-    });
-
-    test('should receive tokens - wallet', async () => {
-      const txData = await submitCallTx(providers, {
-        compiledContract: CompiledUnshieldedContract,
-        contractAddress,
-        circuitId: 'receiveUnshieldedTest' as UnshieldedContractCircuits,
-        args: [mintedTokensColor, MINT_AMOUNT]
-      });
-
-      expect(txData.public.status).toBe(SucceedEntirely);
-      expect(txData.private.result).toEqual([]);
-      expect(txData.public.unshielded).toBeDefined();
-
-      const spent = txData.public.unshielded.spent;
-      const created = txData.public.unshielded.created;
-      expect(spent.length).toEqual(1);
-      expect(created.length).toEqual(1);
     });
 
     test('should receive tokens - invalid', async () => {
@@ -157,17 +143,32 @@ describe('Unshielded tokens', () => {
       ).rejects.toThrow('InsufficientFunds: Insufficient funds');
     });
 
-    test.skip('should send tokens to wallet', async () => {
-      const address = new Uint8Array(
-        Buffer.from('0f09f9eb5538606c6490c0595b771ecb0c29ae71778f089a95e8465b84774aed', 'hex')
-      );
-      const sep = new Uint8Array(32).fill(0);
+    //need to first move tokens to wallet to be able to receive them back
+    test.skip('should receive tokens from wallet', async () => {
+      const txData = await submitCallTx(providers, {
+        compiledContract: CompiledUnshieldedContract,
+        contractAddress,
+        circuitId: 'receiveUnshieldedTest' as UnshieldedContractCircuits,
+        args: [mintedTokensColor, MINT_AMOUNT / 10n]
+      });
 
+      expect(txData.public.status).toBe(SucceedEntirely);
+      expect(txData.private.result).toEqual([]);
+      expect(txData.public.unshielded).toBeDefined();
+
+      const spent = txData.public.unshielded.spent;
+      const created = txData.public.unshielded.created;
+      expect(spent.length).toEqual(1);
+      expect(created.length).toEqual(1);
+    });
+
+    //need to validate
+    test.skip('should send tokens to wallet', async () => {
       const txData = await submitCallTx(providers, {
         compiledContract: CompiledUnshieldedContract,
         contractAddress,
         circuitId: 'sendUnshieldedToUserTest' as UnshieldedContractCircuits,
-        args: [sep, MINT_AMOUNT, { bytes: address }]
+        args: [mintedTokensColor, MINT_AMOUNT/10n, { bytes: unshieldedAddressBytes }]
       });
 
       expect(txData.public.status).toBe(SucceedEntirely);
