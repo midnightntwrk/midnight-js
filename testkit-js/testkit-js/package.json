@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/testkit-js",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Testing kit for Midnight JS packages",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -65,6 +65,5 @@
   },
   "files": [
     "dist/"
-  ],
-  "stableVersion": "3.0.0"
+  ]
 }
