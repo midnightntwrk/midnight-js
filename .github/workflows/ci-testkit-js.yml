@@ -196,18 +196,15 @@ jobs:
         id: vars
         run: |
           calculatedSha=$(git rev-parse --short ${{ github.sha }})
-          version=$(jq -r '.v_info.version' version.testkitjs.json)
-          preRelease=$(jq -r '.v_info.preRelease' version.testkitjs.json)
-          tag=$(jq -r '.v_info.tag' version.testkitjs.json)
-          targetVersion="$version$preRelease.g$calculatedSha"
+          currentVersion=$(jq -r .version package.json)
+          targetVersion="$currentVersion-pre.$calculatedSha"
           echo "target_version=$targetVersion" >> $GITHUB_OUTPUT
-          echo "tag=$tag" >> $GITHUB_OUTPUT
 
       - name: Bump versions
         run: yarn workspaces foreach -R --from "./testkit-js/*" --exclude "./packages/*" version ${{ steps.vars.outputs.target_version }}
 
       - name: Publish packages
-        run: yarn deploy ${{ inputs.yarn_filter }} --cache-dir ./turbo -- --tag ${{ steps.vars.outputs.tag }}
+        run: yarn deploy ${{ inputs.yarn_filter }} --cache-dir ./turbo -- --tag ${{ steps.vars.outputs.target_version }}
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
