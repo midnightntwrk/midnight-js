@@ -204,8 +204,9 @@ jobs:
         run: yarn workspaces foreach -R --from "./testkit-js/*" --exclude "./packages/*" version ${{ steps.vars.outputs.target_version }}
 
       - name: Publish packages
-        run: yarn deploy ${{ inputs.yarn_filter }} --cache-dir ./turbo -- --tag pre
+        run: yarn deploy "$YARN_FILTER" --cache-dir ./turbo -- --tag pre
         env:
+          YARN_FILTER: ${{ inputs.yarn_filter }}
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
