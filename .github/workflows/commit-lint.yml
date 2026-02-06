@@ -30,5 +30,8 @@ jobs:
         run: npx commitlint --last --verbose
 
       - name: Validate PR commits
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
+          npx commitlint --from "$BASE_SHA" --to "$HEAD_SHA" --verbose

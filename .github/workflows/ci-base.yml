@@ -79,28 +79,35 @@ jobs:
 
       - name: Install dependencies
         run: |
-          ${{ inputs.yarn_install }}
+          $YARN_INSTALL
+        env:
+          YARN_INSTALL: ${{ inputs.yarn_install }}
 
       - name: Run build
-        run: yarn build ${{ inputs.yarn_filter }} --cache-dir ./turbo
+        run: yarn build "$YARN_FILTER" --cache-dir ./turbo
         env:
+          YARN_FILTER: ${{ inputs.yarn_filter }}
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Run linter
         if: ${{ inputs.yarn_lint_paths != '' }}
-        run: yarn lint -- ${{ inputs.yarn_lint_paths }}
+        run: yarn lint -- "$YARN_LINT_PATHS"
+        env:
+          YARN_LINT_PATHS: ${{ inputs.yarn_lint_paths }}
 
       - name: Run tests
         run: |
-          yarn test ${{ inputs.yarn_filter }} --concurrency 1 --cache-dir ./turbo
+          yarn test "$YARN_FILTER" --concurrency 1 --cache-dir ./turbo
         env:
+          YARN_FILTER: ${{ inputs.yarn_filter }}
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Integration tests
         if: ${{ !contains(github.event.head_commit.message, '[skip_it]') }}
         run: |
-          yarn it ${{ inputs.yarn_filter }} --concurrency 1 --cache-dir ./turbo
+          yarn it "$YARN_FILTER" --concurrency 1 --cache-dir ./turbo
         env:
+          YARN_FILTER: ${{ inputs.yarn_filter }}
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Aggregate coverage reports
