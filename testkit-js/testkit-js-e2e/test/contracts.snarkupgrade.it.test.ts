@@ -29,12 +29,9 @@ import type {
 import { createLogger, getTestEnvironment } from '@midnight-ntwrk/testkit-js';
 import path from 'path';
 
-import { TX_DELAY_MS } from '@/constants';
 import * as api from '@/counter-api';
 import { CIRCUIT_ID_RESET, CompiledCounterContract } from '@/counter-api';
 import { type CounterProviders } from '@/counter-types';
-
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_snark_upgrade_${new Date().toISOString()}.log`)
@@ -61,7 +58,6 @@ describe('Contracts API Snark Upgrade [dedicated contract] [@slow]', () => {
   beforeEach(async () => {
     logger.info(`Running test=${expect.getState().currentTestName}`);
     ({ counterProviders, contractAddress } = await api.deployCounterContract(wallet, environmentConfiguration));
-    await delay(TX_DELAY_MS);
   });
 
   /**
@@ -73,7 +69,7 @@ describe('Contracts API Snark Upgrade [dedicated contract] [@slow]', () => {
    * @then Should successfully remove verifier key
    * @and Should return transaction with SucceedEntirely status
    */
-  it('should successfully remove verifier key using submitRemoveVerifierKeyTx', async () => {
+  test('should successfully remove verifier key using submitRemoveVerifierKeyTx', async () => {
     const finalizedTxData = await submitRemoveVerifierKeyTx(counterProviders, CompiledCounterContract, contractAddress, CIRCUIT_ID_RESET);
 
     expect(finalizedTxData.status).toEqual(SucceedEntirely);
@@ -88,8 +84,7 @@ describe('Contracts API Snark Upgrade [dedicated contract] [@slow]', () => {
    * @then Should successfully remove verifier key
    * @and Should return transaction with SucceedEntirely status
    */
-  it.skip('should successfully remove verifier key using createContractMaintenanceTxInterface', async () => {
-    await delay(TX_DELAY_MS);
+  test.skip('should successfully remove verifier key using createContractMaintenanceTxInterface', async () => {
     const circuitMaintenanceTxInterface = createCircuitMaintenanceTxInterface(
       counterProviders,
       CIRCUIT_ID_RESET,
@@ -111,7 +106,7 @@ describe('Contracts API Snark Upgrade [dedicated contract] [@slow]', () => {
    * @then Should successfully remove verifier key
    * @and Should throw error when trying to use removed circuit operation
    */
-  it.skip('should successfully remove verifier key and disable circuit operation', async () => {
+  test.skip('should successfully remove verifier key and disable circuit operation', async () => {
     const circuitMaintenanceTxInterfaces = createCircuitMaintenanceTxInterfaces(
       counterProviders,
       CompiledCounterContract,
@@ -148,7 +143,7 @@ describe('Contracts API Snark Upgrade [dedicated contract] [@slow]', () => {
    * @then Should fail on duplicate key insertion
    * @and Should succeed on insertion after removal with SucceedEntirely status
    */
-  it.skip('should succeed on verifier key insertion retry after removal', async () => {
+  test.skip('should succeed on verifier key insertion retry after removal', async () => {
     const vk = await counterProviders.zkConfigProvider.getVerifierKey(CIRCUIT_ID_RESET);
     const circuitMaintenanceTxInterfaces = createCircuitMaintenanceTxInterfaces(
       counterProviders,
@@ -159,7 +154,6 @@ describe('Contracts API Snark Upgrade [dedicated contract] [@slow]', () => {
       `Circuit 'reset' is already defined for contract at address '${contractAddress}'`
     );
     await circuitMaintenanceTxInterfaces.reset.removeVerifierKey();
-    await delay(TX_DELAY_MS);
     const finalizedTxData = await circuitMaintenanceTxInterfaces.reset.insertVerifierKey(vk);
 
     expect(finalizedTxData.status).toEqual(SucceedEntirely);
@@ -175,7 +169,7 @@ describe('Contracts API Snark Upgrade [dedicated contract] [@slow]', () => {
    * @then Should fail with error about increment circuit already being defined
    * @and Should properly validate circuit-key correspondence
    */
-  it.skip('should fail when inserting verifier key for wrong circuit after removal', async () => {
+  test.skip('should fail when inserting verifier key for wrong circuit after removal', async () => {
     const vk = await counterProviders.zkConfigProvider.getVerifierKey(CIRCUIT_ID_RESET);
     const circuitMaintenanceTxInterfaces = createCircuitMaintenanceTxInterfaces(
       counterProviders,

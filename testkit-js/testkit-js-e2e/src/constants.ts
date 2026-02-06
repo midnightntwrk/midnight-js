@@ -18,7 +18,6 @@ import { sampleContractAddress } from '@midnight-ntwrk/compact-runtime';
 export const MINUTE = 60_000;
 export const SLOW_TEST_TIMEOUT = 6 * MINUTE;
 export const VERY_SLOW_TEST_TIMEOUT = 10 * MINUTE;
-export const TX_DELAY_MS = 250;
 
 export const UNDEPLOYED_CONTRACT_ADDRESS = sampleContractAddress();
 export const INVALID_CONTRACT_ADDRESS_TOO_LONG = `00${sampleContractAddress()}`;

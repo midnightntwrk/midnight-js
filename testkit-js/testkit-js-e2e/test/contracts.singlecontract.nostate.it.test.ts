@@ -48,12 +48,9 @@ import {
   type TestEnvironment} from '@midnight-ntwrk/testkit-js';
 import path from 'path';
 
-import { TX_DELAY_MS } from '@/constants';
 import { CompiledSimple } from '@/contract';
 import * as api from '@/counter-api';
 import type { SimpleContract, SimpleProviders } from '@/simple-types';
-
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_nostate_${new Date().toISOString()}.log`)
@@ -134,7 +131,7 @@ describe('Contracts API', () => {
   //  * @then Should correctly initialize contract state without private state
   //  * @and Should maintain proper ledger state and local state consistency
   //  */
-  // it('should execute constructor and circuits of contracts with no private state', () => {
+  // test('should execute constructor and circuits of contracts with no private state', () => {
   //   const { coinPublicKey } = providers.walletProvider.zswapSecretKeys;
   //   const constructorResult = callContractConstructor({
   //     contract: api.simpleContractInstance,
@@ -168,7 +165,7 @@ describe('Contracts API', () => {
    * @and Should execute circuit operations successfully
    * @and Should validate error handling for invalid private state configuration
    */
-  it('should deploy and find contracts with no private state [@slow]', async () => {
+  test('should deploy and find contracts with no private state [@slow]', async () => {
     const deployedSimpleContract = await deployContract(providers, {
       compiledContract: api.CompiledSimpleContract
     });
@@ -215,7 +212,7 @@ describe('Contracts API', () => {
    * @and Should handle reduced providers correctly for stateless contracts
    * @and Should validate error for mismatched private state configuration
    */
-  it('should create unproven call and deploy transactions for contract with no private state', async () => {
+  test('should create unproven call and deploy transactions for contract with no private state', async () => {
     const signingKey = sampleSigningKey();
     const coinPublicKey = providers.walletProvider.getCoinPublicKey();
     const unprovenDeployTxResult = await createUnprovenDeployTx(providers, {
@@ -278,16 +275,14 @@ describe('Contracts API', () => {
    * @and Should successfully submit call transaction without private state provider
    * @and Should validate error for mismatched private state configuration
    */
-  it.skip('should submit deploy and call transactions for contracts with no private state [@slow]', async () => {
+  test.skip('should submit deploy and call transactions for contracts with no private state [@slow]', async () => {
     // Need to deploy fresh contract to test 'submitDeployTx' independently
-    await delay(TX_DELAY_MS);
     const deployTxOptions = {
       compiledContract: api.CompiledSimpleContract,
       signingKey: sampleSigningKey()
     };
     const deployTxData = await submitDeployTx(providers, deployTxOptions);
     await expectSuccessfulDeployTx(providers, deployTxData, deployTxOptions);
-    await delay(TX_DELAY_MS);
 
     // If there is no private state ID, we should be able to leave out the private state provider
 
@@ -299,7 +294,6 @@ describe('Contracts API', () => {
     } as const;
     const callTxData = await submitCallTx(reducedProviders, callTxOptions);
     await expectSuccessfulCallTx(providers, callTxData, callTxOptions);
-    await delay(TX_DELAY_MS);
 
     // If there is a private state ID, we should not be able to leave out the private state provider
     const expandedCallTxOptions = { privateStateId: 'random', ...callTxOptions };

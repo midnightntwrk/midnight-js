@@ -89,19 +89,19 @@ describe('Block Time Contract Tests 1', () => {
   });
 
   describe('blockTimeLt tests', () => {
-    it('should succeed when both device time and node time are less than future time', async () => {
+    test('should succeed when both device time and node time are less than future time', async () => {
       const futureTime = currentTimeSeconds() + BLOCK_TIME_FUTURE_BUFFER;
       const finalizedTx = await api.testBlockTimeLt(deployedContract, futureTime);
       expect(finalizedTx.status).toEqual(SucceedEntirely);
     }, SLOW_TEST_TIMEOUT);
 
-    it('should fail immediately on device when device time is already past the check time', async () => {
+    test('should fail immediately on device when device time is already past the check time', async () => {
       const pastTime = currentTimeSeconds() - 10n;
       await expect(() => api.testBlockTimeLt(deployedContract, pastTime)).rejects.toThrow('Block time is >= time');
     });
 
     // TODO: Uncomment once PM-19372 is resolved
-    it.skip('should succeed on device but fail on node when submission is delayed', async () => {
+    test.skip('should succeed on device but fail on node when submission is delayed', async () => {
       const futureTime = currentTimeSeconds() + 3n; // Only 3 seconds in future
       const unprovenCallTxOptions = {
         compiledContract: CompiledBlockTimeContract,
@@ -120,18 +120,18 @@ describe('Block Time Contract Tests 1', () => {
       expect(finalizedCallTx.status).toEqual(FailEntirely);
     }, SLOW_TEST_TIMEOUT);
 
-    it('should succeed when both device time and node time are greater than past time', async () => {
+    test('should succeed when both device time and node time are greater than past time', async () => {
       const pastTime = currentTimeSeconds() - BLOCK_TIME_PAST_BUFFER;
       const finalizedTx = await api.testBlockTimeGte(deployedContract, pastTime);
       expect(finalizedTx.status).toEqual(SucceedEntirely);
     }, SLOW_TEST_TIMEOUT);
 
-    it('should fail immediately on device when device time is less than check time', async () => {
+    test('should fail immediately on device when device time is less than check time', async () => {
       const futureTime = currentTimeSeconds() + BLOCK_TIME_FUTURE_BUFFER;
       await expect(() => api.testBlockTimeGte(deployedContract, futureTime)).rejects.toThrow('Block time is < time');
     });
 
-    it('should succeed even with submission delay when checking past time', async () => {
+    test('should succeed even with submission delay when checking past time', async () => {
       const pastTime = currentTimeSeconds() - 30n;
       const unprovenCallTxOptions = {
         compiledContract: CompiledBlockTimeContract,
@@ -150,30 +150,30 @@ describe('Block Time Contract Tests 1', () => {
       expect(finalizedCallTx.status).toEqual(SucceedEntirely);
     }, SLOW_TEST_TIMEOUT);
 
-    it('should succeed when both device time and node time are greater than past time', async () => {
+    test('should succeed when both device time and node time are greater than past time', async () => {
       const pastTime = currentTimeSeconds() - BLOCK_TIME_PAST_BUFFER;
       const finalizedTx = await api.testBlockTimeGt(deployedContract, pastTime);
       expect(finalizedTx.status).toEqual(SucceedEntirely);
     }, SLOW_TEST_TIMEOUT);
 
-    it('should fail when device time is not greater than check time', async () => {
+    test('should fail when device time is not greater than check time', async () => {
       const futureTime = currentTimeSeconds() + BLOCK_TIME_FUTURE_BUFFER;
       await expect(() => api.testBlockTimeGt(deployedContract, futureTime)).rejects.toThrow('Block time is <= time');
     });
 
-    it('should succeed when both device time and node time are less than or equal to future time', async () => {
+    test('should succeed when both device time and node time are less than or equal to future time', async () => {
       const futureTime = currentTimeSeconds() + BLOCK_TIME_FUTURE_BUFFER;
       const finalizedTx = await api.testBlockTimeLte(deployedContract, futureTime);
       expect(finalizedTx.status).toEqual(SucceedEntirely);
     }, SLOW_TEST_TIMEOUT);
 
-    it('should fail immediately on device when device time exceeds check time', async () => {
+    test('should fail immediately on device when device time exceeds check time', async () => {
       const pastTime = currentTimeSeconds() - BLOCK_TIME_PAST_BUFFER;
       await expect(() => api.testBlockTimeLte(deployedContract, pastTime)).rejects.toThrow('Block time is > time');
     });
 
     // TODO: Uncomment once PM-19372 is resolved
-    it.skip('should succeed on device but fail on node when submission delay causes time to exceed threshold', async () => {
+    test.skip('should succeed on device but fail on node when submission delay causes time to exceed threshold', async () => {
       const futureTime = currentTimeSeconds() + 2n; // Only 2 seconds in future
       const unprovenCallTxOptions = {
         compiledContract: CompiledBlockTimeContract,
@@ -192,7 +192,7 @@ describe('Block Time Contract Tests 1', () => {
     }, SLOW_TEST_TIMEOUT);
 
     describe('should demonstrate different failure points for Lt check', async () => {
-      it(
+      test(
         'Immediate past time - fails on device',
         async () => {
           const pastTime = currentTimeSeconds() - 5n;
@@ -202,7 +202,7 @@ describe('Block Time Contract Tests 1', () => {
       );
 
       // TODO: Uncomment once PM-19372 is resolved
-      it.skip(
+      test.skip(
         'Near future time with delay - succeeds on device, fails on node',
         async () => {
           const nearFutureTime = currentTimeSeconds() + 2n;
@@ -223,7 +223,7 @@ describe('Block Time Contract Tests 1', () => {
         SLOW_TEST_TIMEOUT
       );
 
-      it(
+      test(
         'Far future time - succeeds on both device and node',
         async () => {
           const farFutureTime = currentTimeSeconds() + 120n;
@@ -234,14 +234,14 @@ describe('Block Time Contract Tests 1', () => {
       );
     });
 
-    it('should handle maximum time values', async () => {
+    test('should handle maximum time values', async () => {
       const maxTime = 2n ** 63n - 1n; // Max value for Uint<64>
       // Lt should succeed with max time (current time is always less)
       const finalizedTx = await api.testBlockTimeLt(deployedContract, maxTime);
       expect(finalizedTx.status).toEqual(SucceedEntirely);
     }, SLOW_TEST_TIMEOUT);
 
-    it('should handle zero time value', async () => {
+    test('should handle zero time value', async () => {
       const zeroTime = 0n;
       // Lt with 0 should fail (block time is always >= 0)
       await expect(() => api.testBlockTimeLt(deployedContract, zeroTime)).rejects.toThrow('Block time is >= time');

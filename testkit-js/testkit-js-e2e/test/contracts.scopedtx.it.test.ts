@@ -71,7 +71,7 @@ describe('Scoped Transaction Contract Tests', () => {
     await testEnvironment.shutdown();
   });
 
-  it('should submit scoped transaction that calls circuit in contract [@slow]', async () => {
+  test('should submit scoped transaction that calls circuit in contract [@slow]', async () => {
     const counterValue1 = await api.getCounterLedgerState(providers, contractAddress);
     expect(counterValue1).toBeDefined();
     expect(counterValue1?.at(0)).toBeDefined();
@@ -104,7 +104,7 @@ describe('Scoped Transaction Contract Tests', () => {
     expect(counterPS!.privateCounter).toEqual(privateState1!.privateCounter + 2);
   });
 
-  it('should submit scoped transaction that calls 2 different circuits in contract [@slow]', async () => {
+  test('should submit scoped transaction that calls 2 different circuits in contract [@slow]', async () => {
     const counterValue1 = await api.getCounterLedgerState(providers, contractAddress);
     expect(counterValue1).toBeDefined();
     expect(counterValue1?.at(0)).toBeDefined();
@@ -144,7 +144,7 @@ describe('Scoped Transaction Contract Tests', () => {
     expect(counterPS!.privateCounter).toEqual(privateState1!.privateCounter + 2);
   });
 
-  it('should submit scoped transaction that calls 2 circuits in contract and DOES NOT preserve execution order [@slow]', async () => {
+  test('should submit scoped transaction that calls 2 circuits in contract and DOES NOT preserve execution order [@slow]', async () => {
     const counterValue1 = await api.getCounterLedgerState(providers, contractAddress);
     expect(counterValue1).toBeDefined();
     expect(counterValue1?.at(0)).toBeDefined();
@@ -182,7 +182,7 @@ describe('Scoped Transaction Contract Tests', () => {
     expect(counterPS!.privateCounter).toEqual(privateState1!.privateCounter + 2);
   });
 
-  it('should not submit scoped transaction when one circuit call fails [@slow]', async () => {
+  test('should not submit scoped transaction when one circuit call fails [@slow]', async () => {
     const aboveMaxValue = 65535n + 1n;
     const counterValue1 = await api.getCounterLedgerState(providers, contractAddress);
     expect(counterValue1?.at(0)).toBeDefined();

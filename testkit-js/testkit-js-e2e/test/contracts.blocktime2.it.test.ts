@@ -90,7 +90,7 @@ describe('Block Time Contract Tests 2', () => {
 
   describe('blockTimeLt tests', () => {
     describe('should demonstrate different failure points for Lt check', async () => {
-      it(
+      test(
         'Immediate past time - fails on device',
         async () => {
           const pastTime = currentTimeSeconds() - 5n;
@@ -100,7 +100,7 @@ describe('Block Time Contract Tests 2', () => {
       );
 
       // TODO: Uncomment once PM-19372 is resolved
-      it.skip(
+      test.skip(
         'Near future time with delay - succeeds on device, fails on node',
         async () => {
           const nearFutureTime = currentTimeSeconds() + 2n;
@@ -121,7 +121,7 @@ describe('Block Time Contract Tests 2', () => {
         SLOW_TEST_TIMEOUT
       );
 
-      it(
+      test(
         'Far future time - succeeds on both device and node',
         async () => {
           const farFutureTime = currentTimeSeconds() + 120n;
@@ -132,14 +132,14 @@ describe('Block Time Contract Tests 2', () => {
       );
     });
 
-    it('should handle maximum time values', async () => {
+    test('should handle maximum time values', async () => {
       const maxTime = 2n ** 63n - 1n; // Max value for Uint<64>
       // Lt should succeed with max time (current time is always less)
       const finalizedTx = await api.testBlockTimeLt(deployedContract, maxTime);
       expect(finalizedTx.status).toEqual(SucceedEntirely);
     }, SLOW_TEST_TIMEOUT);
 
-    it('should handle zero time value', async () => {
+    test('should handle zero time value', async () => {
       const zeroTime = 0n;
       // Lt with 0 should fail (block time is always >= 0)
       await expect(() => api.testBlockTimeLt(deployedContract, zeroTime)).rejects.toThrow('Block time is >= time');

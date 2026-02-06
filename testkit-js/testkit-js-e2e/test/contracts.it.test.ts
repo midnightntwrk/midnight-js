@@ -131,7 +131,7 @@ describe('Contracts API', () => {
    * @then Should properly set up transaction data with correct state initialization
    * @and Should maintain consistent state values and transaction structure
    */
-  it('should create unproven call and deploy transactions for contract with private state', async () => {
+  test('should create unproven call and deploy transactions for contract with private state', async () => {
     const signingKey = sampleSigningKey();
     const unprovenDeployTxResult = await createUnprovenDeployTx(providers, {
       compiledContract: CompiledCounterContract,
@@ -182,7 +182,7 @@ describe('Contracts API', () => {
    * @then Should successfully deploy contract and return valid deployment data
    * @and Should validate deployment transaction completion
    */
-  it('should deploy contract on the chain [@slow]', async () => {
+  test('should deploy contract on the chain [@slow]', async () => {
     const deployTxOptions = {
       compiledContract: CompiledCounterContract,
       privateStateId: CounterPrivateStateId,
@@ -201,7 +201,7 @@ describe('Contracts API', () => {
    * @then Should return deployed contract with matching transaction data
    * @and Should maintain state consistency between found and deployed contract
    */
-  it('should return deployed contract if it exists on specific address', async () => {
+  test('should return deployed contract if it exists on specific address', async () => {
     const foundContract = await findDeployedContract(providers, {
       compiledContract: CompiledCounterContract,
       contractAddress,
@@ -227,7 +227,7 @@ describe('Contracts API', () => {
    * @then Should return deployed contract with matching transaction data
    * @and Should maintain state consistency without initial private state
    */
-  it('should return deployed contract if it exists on specific address without initialPrivateState', async () => {
+  test('should return deployed contract if it exists on specific address without initialPrivateState', async () => {
     const foundContract = await findDeployedContract(providers, {
       compiledContract: CompiledCounterContract,
       contractAddress,
@@ -250,7 +250,7 @@ describe('Contracts API', () => {
    * @when Finding the deployed contract with invalid address
    * @then Should throw error with specific message about byte length
    */
-  it('should throw error if contract address has wrong format - length', async () => {
+  test('should throw error if contract address has wrong format - length', async () => {
     await expect(
       findDeployedContract(providers, {
         compiledContract: CompiledCounterContract,
@@ -269,7 +269,7 @@ describe('Contracts API', () => {
    * @then Should return deployed contract with matching transaction data
    * @and Should validate state consistency despite empty local store
    */
-  it('should return deployed contract if it exists on specific address with initialPrivateState and empty local private state store', async () => {
+  test('should return deployed contract if it exists on specific address with initialPrivateState and empty local private state store', async () => {
     const providersLocal = initializeMidnightProviders<CounterCircuits, CounterPrivateState>(
       wallet,
       environmentConfiguration,
@@ -301,7 +301,7 @@ describe('Contracts API', () => {
    * @then Should return deployed contract with updated private state
    * @and Should maintain public data consistency while updating private data
    */
-  it('should return deployed contract if it exists on specific address with different initialPrivateState', async () => {
+  test('should return deployed contract if it exists on specific address with different initialPrivateState', async () => {
     const privateStateLocal = createInitialPrivateState(5);
     const foundContract = await findDeployedContract(providers, {
       compiledContract: CompiledCounterContract,
@@ -329,7 +329,7 @@ describe('Contracts API', () => {
    * @then Should wait indefinitely without timing out
    * @and Should not resolve within the waiting timeout period
    */
-  it('should wait indefinitely until contract exists on specific address [@slow]', async () => {
+  test('should wait indefinitely until contract exists on specific address [@slow]', async () => {
     const contractPromise = findDeployedContract(providers, {
       compiledContract: CompiledCounterContract,
       contractAddress: UNDEPLOYED_CONTRACT_ADDRESS,
@@ -351,7 +351,7 @@ describe('Contracts API', () => {
    * @when Finding deployed contract with incompatible contract type
    * @then Should throw ContractTypeError for mismatched circuit IDs
    */
-  it('should throw for incompatible contract types that differ by circuit ids', async () => {
+  test('should throw for incompatible contract types that differ by circuit ids', async () => {
     const providersLocal = initializeMidnightProviders<SimpleCircuits, unknown>(
       wallet,
       environmentConfiguration,
@@ -376,7 +376,7 @@ describe('Contracts API', () => {
    * @when Finding deployed contract with same shape but different keys
    * @then Should throw ContractTypeError for mismatched verifier keys
    */
-  it('should throw for incompatible contract types with same shape but different verifier keys', async () => {
+  test('should throw for incompatible contract types with same shape but different verifier keys', async () => {
     const providersLocal = initializeMidnightProviders<CounterCloneCircuits, CounterPrivateState>(
       wallet,
       environmentConfiguration,
@@ -404,7 +404,7 @@ describe('Contracts API', () => {
    * @then Should properly update both ledger and private state values
    * @and Should return successful transaction status for all operations
    */
-  it(
+  test(
     'should return contract interface and execute circuit operations [@slow]',
     async () => {
       const contractCircuitsInterface = createCircuitCallTxInterface(
@@ -465,7 +465,7 @@ describe('Contracts API', () => {
    * @then Should throw error about missing public state
    * @and Should fail for all circuit operations consistently
    */
-  it('should throw error on undefined public state at wrong address', async () => {
+  test('should throw error on undefined public state at wrong address', async () => {
     const contractCircuitsInterface = createCircuitCallTxInterface(
       providers,
       CompiledCounterContract,
@@ -493,7 +493,7 @@ describe('Contracts API', () => {
    * @then Should successfully deploy and validate transaction
    * @and Should enable subsequent call transactions on deployed contract
    */
-  it('should submit a deploy transaction [@slow]', async () => {
+  test('should submit a deploy transaction [@slow]', async () => {
     const signingKey = sampleSigningKey();
     const deployTxOptions = {
       compiledContract: CompiledCounterContract,
@@ -522,7 +522,7 @@ describe('Contracts API', () => {
    * @then Should successfully execute and update contract state
    * @and Should increment counter value by one and update private state
    */
-  it('should submit transaction that calls circuit in contract [@slow]', async () => {
+  test('should submit transaction that calls circuit in contract [@slow]', async () => {
     const counterValue1 = await api.getCounterLedgerState(providers, contractAddress);
     expect(counterValue1).toBeDefined();
 
@@ -557,7 +557,7 @@ describe('Contracts API', () => {
    * @then Should throw error about missing private state
    * @and Should reference specific private state ID in error message
    */
-  it('should throw error if private state is undefined', async () => {
+  test('should throw error if private state is undefined', async () => {
     const providersLocal = initializeMidnightProviders<CounterCircuits, CounterPrivateState>(
       wallet,
       environmentConfiguration,
@@ -583,7 +583,7 @@ describe('Contracts API', () => {
    * @then Should throw error about missing public state
    * @and Should reference specific contract address in error message
    */
-  it('should throw error if public state is undefined', async () => {
+  test('should throw error if public state is undefined', async () => {
     await expect(
       submitCallTx(providers, {
         compiledContract: CompiledCounterContract,
@@ -603,7 +603,7 @@ describe('Contracts API', () => {
    * @then Should throw error about incomplete byte in input string
    * @and Should reference the invalid address in error message
    */
-  it('should throw error if contract address has wrong format - not hex', async () => {
+  test('should throw error if contract address has wrong format - not hex', async () => {
     await expect(
       submitCallTx(providers, {
         compiledContract: CompiledCounterContract,
@@ -623,7 +623,7 @@ describe('Contracts API', () => {
    * @then Should return latest observed state independent of chain state
    * @and Should maintain state consistency during observations
    */
-  it('should return the latest observed state of a deployed contract and is independent of the chain state', async () => {
+  test('should return the latest observed state of a deployed contract and is independent of the chain state', async () => {
     await api.increment(deployedContract);
     const counterValue1 = await api.getCounterLedgerState(providers, contractAddress);
     expect(counterValue1).toBeDefined();
@@ -648,7 +648,7 @@ describe('Contracts API', () => {
    * @then Should wait indefinitely until stopped and return last contract state
    * @and Should return valid ContractState instance when timeout occurs
    */
-  it('should wait indefinitely until state change, if stopped returns last contract state [@slow]', async () => {
+  test('should wait indefinitely until state change, if stopped returns last contract state [@slow]', async () => {
     const counterValue1 = await api.getCounterLedgerState(providers, contractAddress);
     const contractPromise = providers.publicDataProvider.watchForContractState(
       deployedContract.deployTxData.public.contractAddress

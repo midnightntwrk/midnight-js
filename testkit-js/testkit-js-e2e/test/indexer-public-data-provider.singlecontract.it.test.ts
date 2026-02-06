@@ -70,7 +70,7 @@ describe('Indexer API', () => {
     await testEnvironment.shutdown();
   });
 
-  it('queryDeployContractState - should return a contract state equivalent to the initial contract state produced during deployment construction', async () => {
+  test('queryDeployContractState - should return a contract state equivalent to the initial contract state produced during deployment construction', async () => {
     const state = await publicDataProvider.queryDeployContractState(finalizedDeployTxData.public.contractAddress);
 
     expect(state).not.toBeNull();
@@ -84,7 +84,7 @@ describe('Indexer API', () => {
     }
   });
 
-  it('queryContractState - should return the current contract state of a deployed contract', async () => {
+  test('queryContractState - should return the current contract state of a deployed contract', async () => {
     const state = await publicDataProvider.queryContractState(finalizedDeployTxData.public.contractAddress);
 
     expect(state).not.toBeNull();
@@ -94,7 +94,7 @@ describe('Indexer API', () => {
     }
   });
 
-  it('queryContractState - should return the current contract state of a deployed contract at defined block height', async () => {
+  test('queryContractState - should return the current contract state of a deployed contract at defined block height', async () => {
     const state = await publicDataProvider.queryContractState(finalizedDeployTxData.public.contractAddress, {
       type: 'blockHeight',
       blockHeight: incrementedTxData.blockHeight
@@ -107,7 +107,7 @@ describe('Indexer API', () => {
     }
   });
 
-  it('queryContractState - should return the current contract state of a deployed contract at defined block hash', async () => {
+  test('queryContractState - should return the current contract state of a deployed contract at defined block hash', async () => {
     const state = await publicDataProvider.queryContractState(finalizedDeployTxData.public.contractAddress, {
       type: 'blockHash',
       blockHash: incrementedTxData.blockHash
@@ -120,11 +120,11 @@ describe('Indexer API', () => {
     }
   });
 
-  it('queryContractState - should return null on no contract at contract address', async () => {
+  test('queryContractState - should return null on no contract at contract address', async () => {
     await expect(publicDataProvider.queryContractState(UNDEPLOYED_CONTRACT_ADDRESS)).resolves.toBeNull();
   });
 
-  it('queryZSwapAndContractState - should return the current ZSwap chain state and contract state of a deployed contract', async () => {
+  test('queryZSwapAndContractState - should return the current ZSwap chain state and contract state of a deployed contract', async () => {
     const state = await publicDataProvider.queryZSwapAndContractState(finalizedDeployTxData.public.contractAddress);
 
     expect(state).not.toBeNull();
@@ -137,11 +137,11 @@ describe('Indexer API', () => {
     }
   });
 
-  it('queryZSwapAndContractState - should return null on no contract at contract address', async () => {
+  test('queryZSwapAndContractState - should return null on no contract at contract address', async () => {
     await expect(publicDataProvider.queryZSwapAndContractState(UNDEPLOYED_CONTRACT_ADDRESS)).resolves.toBeNull();
   });
 
-  it('watchForDeployTxData - should return the data of the transaction containing the deployment of the contract with the given address', async () => {
+  test('watchForDeployTxData - should return the data of the transaction containing the deployment of the contract with the given address', async () => {
     const finalizedTxData = await publicDataProvider.watchForDeployTxData(finalizedDeployTxData.public.contractAddress);
 
     expect(finalizedTxData.status).toEqual(SucceedEntirely);
@@ -151,7 +151,7 @@ describe('Indexer API', () => {
     expect(finalizedTxData.blockHeight).toEqual(finalizedDeployTxData.public.blockHeight);
   });
 
-  it('watchForTxData - should return the data of the transaction containing the contract call with the given transaction id', async () => {
+  test('watchForTxData - should return the data of the transaction containing the contract call with the given transaction id', async () => {
     const finalizedTxData = await publicDataProvider.watchForTxData(incrementedTxData.txId);
 
     expect(finalizedTxData.status).toEqual(SucceedEntirely);
@@ -166,7 +166,7 @@ describe('Indexer API', () => {
     expect(finalizedTxData.blockHeight).not.toEqual(finalizedDeployTxData.public.blockHeight);
   });
 
-  it('watchForContractState - should immediately return the current state of a deployed contract', async () => {
+  test('watchForContractState - should immediately return the current state of a deployed contract', async () => {
     const state = await publicDataProvider.watchForContractState(finalizedDeployTxData.public.contractAddress);
 
     expect(state).not.toBeNull();

@@ -33,7 +33,7 @@ import {
   type TestEnvironment} from '@midnight-ntwrk/testkit-js';
 import path from 'path';
 
-import { TX_DELAY_MS, UNDEPLOYED_CONTRACT_ADDRESS } from '@/constants';
+import { UNDEPLOYED_CONTRACT_ADDRESS } from '@/constants';
 import * as api from '@/counter-api';
 import {
   CIRCUIT_ID_DECREMENT,
@@ -43,8 +43,6 @@ import {
   SimpleConfiguration
 } from '@/counter-api';
 import { type CounterProviders, type DeployedCounterContract } from '@/counter-types';
-
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_snark_upgrade_${new Date().toISOString()}.log`)
@@ -85,14 +83,14 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
     logger.info(`Running test=${expect.getState().currentTestName}`);
   });
 
-  it('submitReplaceAuthorityTx - successful replace authority with new key[@slow]', async () => {
+  test('submitReplaceAuthorityTx - successful replace authority with new key[@slow]', async () => {
     const newAuthority = sampleSigningKey();
     const finalizedTxData = await submitReplaceAuthorityTx(counterProviders, CompiledCounterContract, contractAddress)(newAuthority);
 
     expect(finalizedTxData.status).toEqual(SucceedEntirely);
   });
 
-  it('submitReplaceAuthorityTx - successful replace authority with same key [@slow]', async () => {
+  test('submitReplaceAuthorityTx - successful replace authority with same key [@slow]', async () => {
     const authority = await counterProviders.privateStateProvider.getSigningKey(contractAddress);
     expect(authority).not.toBeNull();
     if (authority) {
@@ -102,7 +100,7 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
     }
   });
 
-  it('submitReplaceAuthorityTx - should fail on replace contract that is not deployed to contract address', async () => {
+  test('submitReplaceAuthorityTx - should fail on replace contract that is not deployed to contract address', async () => {
     const authority = sampleSigningKey();
 
     await expect(submitReplaceAuthorityTx(counterProviders, CompiledCounterContract, UNDEPLOYED_CONTRACT_ADDRESS)(authority)).rejects.toThrow(
@@ -110,7 +108,7 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
     );
   });
 
-  it('submitReplaceAuthorityTx - should fail when signing key for contract address does not exist', async () => {
+  test('submitReplaceAuthorityTx - should fail when signing key for contract address does not exist', async () => {
     const authority = sampleSigningKey();
 
     await expect(submitReplaceAuthorityTx(counterCloneContractProviders, CompiledCounterContract, contractAddress)(authority)).rejects.toThrow(
@@ -118,7 +116,7 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
     );
   });
 
-  it('submitInsertVerifierKeyTx - should fail on invalid verifier key', async () => {
+  test('submitInsertVerifierKeyTx - should fail on invalid verifier key', async () => {
     const vk = new Uint8Array(1) as VerifierKey;
 
     await expect(submitInsertVerifierKeyTx(counterProviders, CompiledCounterContract, contractAddress, CIRCUIT_ID_RESET, vk)).rejects.toThrow(
@@ -126,7 +124,7 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
     );
   });
 
-  it('submitInsertVerifierKeyTx - successful insert on not present circuitId [@slow]', async () => {
+  test('submitInsertVerifierKeyTx - successful insert on not present circuitId [@slow]', async () => {
     const vk = await counterProviders.zkConfigProvider.getVerifierKey(CIRCUIT_ID_RESET);
     const finalizedTxData = await submitInsertVerifierKeyTx(
       counterProviders,
@@ -139,7 +137,7 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
     expect(finalizedTxData.status).toEqual(SucceedEntirely);
   });
 
-  it('submitInsertVerifierKeyTx - should fail on contract not present on contract address', async () => {
+  test('submitInsertVerifierKeyTx - should fail on contract not present on contract address', async () => {
     const vk = await counterProviders.zkConfigProvider.getVerifierKey(CIRCUIT_ID_RESET);
 
     await expect(
@@ -147,7 +145,7 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
     ).rejects.toThrow(`No contract state found on chain for contract address '${UNDEPLOYED_CONTRACT_ADDRESS}'`);
   });
 
-  it('submitInsertVerifierKeyTx - should fail on providers for different contract with different API', async () => {
+  test('submitInsertVerifierKeyTx - should fail on providers for different contract with different API', async () => {
     const vk = await counterProviders.zkConfigProvider.getVerifierKey(CIRCUIT_ID_RESET);
 
     await expect(
@@ -155,28 +153,27 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
     ).rejects.toThrow(`No contract state found on chain for contract address '${UNDEPLOYED_CONTRACT_ADDRESS}'`);
   });
 
-  it('submitRemoveVerifierKeyTx - should fail on not present circuitId', async () => {
+  test('submitRemoveVerifierKeyTx - should fail on not present circuitId', async () => {
     const circuitId = api.randomCircuitId();
     await expect(submitRemoveVerifierKeyTx(counterProviders, CompiledCounterContract, contractAddress, circuitId)).rejects.toThrow(
       `Circuit '${circuitId}' not found for contract at address '${contractAddress}'`
     );
   });
 
-  it('submitRemoveVerifierKeyTx - should fail on contract not present on contract address', async () => {
+  test('submitRemoveVerifierKeyTx - should fail on contract not present on contract address', async () => {
     await expect(
       submitRemoveVerifierKeyTx(counterProviders, CompiledCounterContract, UNDEPLOYED_CONTRACT_ADDRESS, CIRCUIT_ID_RESET)
     ).rejects.toThrow(`No contract state found on chain for contract address '${UNDEPLOYED_CONTRACT_ADDRESS}'`);
   });
 
-  it('submitRemoveVerifierKeyTx - should fail on providers for different contract with different API ', async () => {
+  test('submitRemoveVerifierKeyTx - should fail on providers for different contract with different API ', async () => {
     await expect(submitRemoveVerifierKeyTx(simpleContractProviders, CompiledCounterContract, contractAddress, CIRCUIT_ID_RESET)).rejects.toThrow(
       `Signing key for contract address '${contractAddress}' not found`
     );
   });
 
-  it.skip('createContractMaintenanceTxInterface - replaceAuthority - successful replace authority with the new one [@slow]', async () => {
+  test.skip('createContractMaintenanceTxInterface - replaceAuthority - successful replace authority with the new one [@slow]', async () => {
     const authority = sampleSigningKey();
-    // TODO: Remove extra log statements
     logger.info(`Signing key for 'Counter' is ${authority}`);
     const contractMaintenanceTxInterface = createContractMaintenanceTxInterface(counterProviders, CompiledCounterContract, contractAddress);
     const finalizedTxData = await contractMaintenanceTxInterface.replaceAuthority(authority);
@@ -184,13 +181,12 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
     expect(finalizedTxData.status).toEqual(SucceedEntirely);
 
     logger.info('Remove key');
-    await delay(TX_DELAY_MS);
     const finalizedTxData1 = await submitRemoveVerifierKeyTx(counterProviders, CompiledCounterContract, contractAddress, CIRCUIT_ID_DECREMENT);
 
     expect(finalizedTxData1.status).toEqual(SucceedEntirely);
   });
 
-  it('createContractMaintenanceTxInterface - replaceAuthority - successful replace authority with the same one [@slow]', async () => {
+  test('createContractMaintenanceTxInterface - replaceAuthority - successful replace authority with the same one [@slow]', async () => {
     const authority = await counterProviders.privateStateProvider.getSigningKey(contractAddress);
     logger.info(`Signing key for 'Counter' is ${authority}`);
     if (authority) {
@@ -201,7 +197,7 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
     }
   });
 
-  it('createContractMaintenanceTxInterface - replaceAuthority - should fail on contract not present on contract address', async () => {
+  test('createContractMaintenanceTxInterface - replaceAuthority - should fail on contract not present on contract address', async () => {
     const authority = await counterProviders.privateStateProvider.getSigningKey(contractAddress);
     if (authority) {
       const contractMaintenanceTxInterface = createContractMaintenanceTxInterface(
@@ -216,7 +212,7 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
     }
   });
 
-  it('createContractMaintenanceTxInterface - insertVerifierKey - fail when key is still present', async () => {
+  test('createContractMaintenanceTxInterface - insertVerifierKey - fail when key is still present', async () => {
     const vk = await counterProviders.zkConfigProvider.getVerifierKey(CIRCUIT_ID_RESET);
     const circuitMaintenanceTxInterface = createCircuitMaintenanceTxInterface(
       counterProviders,
@@ -230,7 +226,7 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
     );
   });
 
-  it.skip('createContractMaintenanceTxInterface - insertVerifierKey - success when no key present [@slow]', async () => {
+  test.skip('createContractMaintenanceTxInterface - insertVerifierKey - success when no key present [@slow]', async () => {
     const vk = await counterProviders.zkConfigProvider.getVerifierKey(CIRCUIT_ID_RESET);
     const circuitMaintenanceTxInterface = createCircuitMaintenanceTxInterface(
       counterProviders,
@@ -239,15 +235,13 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
       contractAddress
     );
     await circuitMaintenanceTxInterface.removeVerifierKey();
-    await delay(TX_DELAY_MS);
     const finalizedTxData = await circuitMaintenanceTxInterface.insertVerifierKey(vk);
 
     expect(finalizedTxData.status).toEqual(SucceedEntirely);
-    await delay(TX_DELAY_MS);
     await api.increment(deployedCounterContract);
   });
 
-  it.skip('createCircuitMaintenanceTxInterfaces - insertVerifierKey - fail when key is already present', async () => {
+  test.skip('createCircuitMaintenanceTxInterfaces - insertVerifierKey - fail when key is already present', async () => {
     const vk = await counterProviders.zkConfigProvider.getVerifierKey(CIRCUIT_ID_RESET);
     const circuitMaintenanceTxInterfaces = createCircuitMaintenanceTxInterfaces(
       counterProviders,
@@ -260,7 +254,7 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
     );
   });
 
-  it.skip('createCircuitMaintenanceTxInterfaces - insertVerifierKey - success when no key present [@slow]', async () => {
+  test.skip('createCircuitMaintenanceTxInterfaces - insertVerifierKey - success when no key present [@slow]', async () => {
     const vk = await counterProviders.zkConfigProvider.getVerifierKey(CIRCUIT_ID_RESET);
     const circuitMaintenanceTxInterfaces = createCircuitMaintenanceTxInterfaces(
       counterProviders,
@@ -268,15 +262,13 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
       contractAddress
     );
     await circuitMaintenanceTxInterfaces.reset.removeVerifierKey();
-    await delay(TX_DELAY_MS);
     const finalizedTxData = await circuitMaintenanceTxInterfaces.reset.insertVerifierKey(vk);
 
     expect(finalizedTxData.status).toEqual(SucceedEntirely);
-    await delay(TX_DELAY_MS);
     await api.increment(deployedCounterContract);
   });
 
-  it('createCircuitMaintenanceTxInterfaces - removeVerifierKey - should fail on contract not present on contract address', async () => {
+  test('createCircuitMaintenanceTxInterfaces - removeVerifierKey - should fail on contract not present on contract address', async () => {
     const circuitMaintenanceTxInterfaces = createCircuitMaintenanceTxInterfaces(
       counterProviders,
       CompiledCounterContract,

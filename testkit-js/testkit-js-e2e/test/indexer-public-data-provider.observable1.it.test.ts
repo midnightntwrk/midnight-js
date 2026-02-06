@@ -24,13 +24,11 @@ import {
 import path from 'path';
 import { type Observable, toArray } from 'rxjs';
 
-import { SLOW_TEST_TIMEOUT, TX_DELAY_MS, VERY_SLOW_TEST_TIMEOUT } from '@/constants';
+import { SLOW_TEST_TIMEOUT, VERY_SLOW_TEST_TIMEOUT } from '@/constants';
 import { CompiledCounter } from '@/contract';
 import * as api from '@/counter-api';
 import { CONTRACT_CIRCUITS, CounterConfiguration } from '@/counter-api';
 import { type CounterProviders, type DeployedCounterContract, privateStateZero } from '@/counter-types';
-
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `indexer_${new Date().toISOString()}.log`)
@@ -64,7 +62,6 @@ describe('Indexer API', () => {
   beforeEach(async () => {
     logger.info(`Running test=${expect.getState().currentTestName}`);
     deployedContractObserved = await api.deploy(providers, privateStateZero);
-    await delay(TX_DELAY_MS);
     incrementFinalizedTxData = await api.increment(deployedContractObserved);
   });
 
@@ -92,7 +89,7 @@ describe('Indexer API', () => {
    * @then Should return correct state history based on inclusive flag
    * @and Should observe states in proper chronological order
    */
-  it.skip.each([
+  test.skip.each([
     [true, [1n, 2n]],
     [false, [2n]]
   ])(
@@ -106,8 +103,7 @@ describe('Indexer API', () => {
           inclusive
         }
       );
-      await delay(TX_DELAY_MS);
-      await api.increment(deployedContractObserved);
+        await api.increment(deployedContractObserved);
 
       expectObservedContractStatesToEqual(observable$, expectedStates);
     },
@@ -124,7 +120,7 @@ describe('Indexer API', () => {
    * @then Should return correct state history based on inclusive flag
    * @and Should observe states matching transaction-based filtering
    */
-  it.skip.each([
+  test.skip.each([
     [true, [1n, 2n]],
     [false, [2n]]
   ])(
@@ -134,8 +130,7 @@ describe('Indexer API', () => {
         deployedContractObserved.deployTxData.public.contractAddress,
         { type: 'txId', txId: incrementFinalizedTxData.txId, inclusive }
       );
-      await delay(TX_DELAY_MS);
-      await api.increment(deployedContractObserved);
+        await api.increment(deployedContractObserved);
 
       expectObservedContractStatesToEqual(observable$, expectedStates);
     },
