@@ -25,11 +25,6 @@ on:
         description: Install phase command line
         required: false
         default: 'yarn install --immutable'
-      yarn_filter:
-        type: string
-        description: Optional filter to include when running Yarn (i.e., --filter=...)
-        required: false
-        default: '--filter="./testkit-js/*"'
       yarn_lint_paths:
         type: string
         description: Optional paths to include when running 'yarn lint'' (i.e., ./packages)
@@ -121,7 +116,7 @@ jobs:
 
       - name: Run tests
         run: |
-          yarn test ${{ inputs.yarn_filter }} --cache-dir ./turbo
+          yarn test --filter="./testkit-js/*" --cache-dir ./turbo
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
@@ -204,7 +199,7 @@ jobs:
         run: yarn workspaces foreach -R --from "./testkit-js/*" --exclude "./packages/*" version ${{ steps.vars.outputs.target_version }}
 
       - name: Publish packages
-        run: yarn deploy ${{ inputs.yarn_filter }} --cache-dir ./turbo -- --tag pre
+        run: yarn deploy --filter="./testkit-js/*" --cache-dir ./turbo -- --tag pre
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
@@ -305,7 +300,7 @@ jobs:
 
       - name: Run e2e tests - ${{ matrix.test-file }}
         if: ${{ !contains(github.event.head_commit.message, '[skip_it]') }}
-        run: yarn e2e-single ${{ inputs.yarn_filter }} --concurrency 1 --cache-dir ./turbo
+        run: yarn e2e-single --filter="./testkit-js/*" --concurrency 1 --cache-dir ./turbo
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           MN_TEST_ENVIRONMENT: ${{ inputs.network }}
