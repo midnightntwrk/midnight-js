@@ -20,11 +20,6 @@ on:
       should_prerelease:
         required: true
         type: string
-      yarn_install:
-        type: string
-        description: Install phase command line
-        required: false
-        default: 'yarn install --immutable'
       yarn_filter:
         type: string
         description: Optional filter to include when running Yarn (i.e., --filter=...)
@@ -44,16 +39,6 @@ on:
         description: Midnight network to use (testnet/devnet/undeployed)
         required: true
         default: 'undeployed'
-      allure_upload:
-        type: boolean
-        description: Should upload e2e tests results to allure server
-        required: false
-        default: false
-      allure_project_id:
-        type: string
-        description: Allure project id
-        required: false
-        default: midnight-js-main
 
 concurrency:
   group: TK-JS-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -109,9 +94,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          $YARN_INSTALL
-        env:
-          YARN_INSTALL: ${{ inputs.yarn_install }}
+          yarn install --immutable
 
       - name: Run build
         run: yarn build "$YARN_FILTER" --cache-dir ./turbo
