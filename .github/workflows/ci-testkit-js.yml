@@ -97,21 +97,17 @@ jobs:
           yarn install --immutable
 
       - name: Run build
-        run: yarn build "$YARN_FILTER" --cache-dir ./turbo
+        run: yarn build ${{ inputs.yarn_filter }} --cache-dir ./turbo
         env:
-          YARN_FILTER: ${{ inputs.yarn_filter }}
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Run linter
-        run: yarn lint -- "$YARN_LINT_PATHS"
-        env:
-          YARN_LINT_PATHS: ${{ inputs.yarn_lint_paths }}
+        run: yarn lint -- ${{ inputs.yarn_lint_paths }}
 
       - name: Run tests
         run: |
-          yarn test "$YARN_FILTER" --cache-dir ./turbo
+          yarn test ${{ inputs.yarn_filter }} --cache-dir ./turbo
         env:
-          YARN_FILTER: ${{ inputs.yarn_filter }}
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Upload compiled contracts
@@ -196,10 +192,8 @@ jobs:
         run: yarn workspaces foreach -R --from "./testkit-js/*" --exclude "./packages/*" version ${{ steps.vars.outputs.target_version }}
 
       - name: Publish packages
-        run: yarn deploy "$YARN_FILTER" --cache-dir ./turbo -- --tag "$NPM_TAG"
+        run: yarn deploy ${{ inputs.yarn_filter }} --cache-dir ./turbo -- --tag ${{ steps.vars.outputs.tag }}
         env:
-          YARN_FILTER: ${{ inputs.yarn_filter }}
-          NPM_TAG: ${{ steps.vars.outputs.tag }}
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
@@ -299,9 +293,8 @@ jobs:
 
       - name: Run e2e tests - ${{ matrix.test-file }}
         if: ${{ !contains(github.event.head_commit.message, '[skip_it]') }}
-        run: yarn e2e-single "$YARN_FILTER" --concurrency 1 --cache-dir ./turbo
+        run: yarn e2e-single ${{ inputs.yarn_filter }} --concurrency 1 --cache-dir ./turbo
         env:
-          YARN_FILTER: ${{ inputs.yarn_filter }}
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           MN_TEST_ENVIRONMENT: ${{ inputs.network }}
           MN_TEST_FILE: ${{ matrix.test-file }}
