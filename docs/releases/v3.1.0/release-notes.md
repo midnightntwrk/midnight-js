@@ -4,16 +4,6 @@
 **Previous Version:** v3.0.0
 **Node.js Requirement:** >=22
 
-## Important Deprecation Notice
-
-### @midnight-ntwrk/midnight-js-level-private-state-provider (#487)
-
-This package is now **deprecated** and marked as **NOT FOR COMMERCIAL USE**.
-
-**WARNING:** This package is provided as an example implementation only. It uses browser localStorage or Node.js file storage - **losing private state by clearing browser cache could be financially ruinous**.
-
-The package remains available for development and testing purposes but should not be used in production environments.
-
 ## Features
 
 ### Private State Import/Export (#435)
@@ -92,7 +82,6 @@ Fixed an issue where `TransactionContext` was incorrectly included in circuit ca
 
 ## Links
 
-- [Breaking Changes Details](./breaking-changes.md)
 - [New Features Guide](./new-features.md)
 - [Migration Guide](./migration-guide.md)
 - [API Changes Reference](./api-changes.md)

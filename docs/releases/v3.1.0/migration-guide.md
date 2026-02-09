@@ -4,13 +4,6 @@
 
 - Node.js 22 or higher
 - TypeScript 5.0 or higher
-- Review [Breaking Changes](./breaking-changes.md)
-
-## Important Notice
-
-`@midnight-ntwrk/midnight-js-level-private-state-provider` is now **deprecated** and marked as **NOT FOR COMMERCIAL USE**.
-
-This package uses browser localStorage or Node.js file storage - **losing private state by clearing browser cache could be financially ruinous**.
 
 ## Step-by-Step Migration
 
@@ -22,29 +15,16 @@ yarn add @midnight-ntwrk/midnight-js-level-private-state-provider@3.1.0
 yarn add @midnight-ntwrk/midnight-js-contracts@3.1.0
 ```
 
-### Step 2: Acknowledge Deprecation Warning
+### Step 2: (Optional) Use New Export/Import Features
 
-When installing, you will see a deprecation warning:
-
-```
-npm WARN deprecated @midnight-ntwrk/midnight-js-level-private-state-provider:
-This package is deprecated. It uses browser localStorage or Node.js file storage
-which is not suitable for production use.
-```
-
-**For development/testing:** You may continue using the package.
-**For production:** Plan to implement a custom `PrivateStateProvider`.
-
-### Step 3: (Optional) Use New Export/Import Features
-
-The new import/export functionality can help mitigate data loss risks:
+The new import/export functionality enables backup and restore of private state:
 
 ```typescript
 import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
 
 const provider = levelPrivateStateProvider({ walletProvider });
 
-// Backup private state regularly
+// Backup private state
 const backup = await provider.exportPrivateStates();
 saveToSecureStorage(backup);
 
@@ -53,7 +33,7 @@ const backupData = loadFromSecureStorage();
 await provider.importPrivateStates(backupData, { onConflict: 'skip' });
 ```
 
-### Step 4: Contract Address Scoping (Automatic)
+### Step 3: Contract Address Scoping (Automatic)
 
 Contract address scoping is now automatic. No changes needed to your code:
 
@@ -100,7 +80,7 @@ const privateStateProvider = levelPrivateStateProvider({
   walletProvider: myWalletProvider
 });
 
-// NEW: Regularly backup private state to mitigate data loss risks
+// NEW: Backup private state
 const backup = await privateStateProvider.exportPrivateStates();
 saveToSecureStorage(backup);
 
@@ -114,58 +94,9 @@ const deployed = await deployContract(providers, {
 const result = await deployed.callTx.increment();
 ```
 
-## Planning for Production
-
-If you are planning to move to production, you should implement a custom `PrivateStateProvider`:
-
-```typescript
-import type { PrivateStateProvider } from '@midnight-ntwrk/midnight-js-types';
-
-class ProductionPrivateStateProvider implements PrivateStateProvider {
-  constructor(private database: Database) {}
-
-  async get<T>(key: string): Promise<T | undefined> {
-    // Implement with proper database storage
-  }
-
-  async set<T>(key: string, value: T): Promise<void> {
-    // Implement with proper database storage
-  }
-
-  async delete(key: string): Promise<void> {
-    // Implement with proper database storage
-  }
-
-  async clear(): Promise<void> {
-    // Implement with proper database storage
-  }
-
-  setContractAddress(address: ContractAddress): void {
-    // Implement contract scoping
-  }
-
-  async exportPrivateStates(options?: ExportOptions): Promise<EncryptedExport> {
-    // Implement export functionality
-  }
-
-  async importPrivateStates(data: EncryptedExport, options?: ImportOptions): Promise<ImportResult> {
-    // Implement import functionality
-  }
-}
-```
-
 ## Common Issues and Solutions
 
-### Issue 1: Deprecation Warning
-
-**Warning:**
-```
-npm WARN deprecated @midnight-ntwrk/midnight-js-level-private-state-provider
-```
-
-**Solution:** This is expected. The package is marked as not for commercial use. For development/testing, you can continue using it.
-
-### Issue 2: Export Password Too Short
+### Issue 1: Export Password Too Short
 
 **Error:**
 ```
@@ -179,7 +110,7 @@ const backup = await provider.exportPrivateStates({
 });
 ```
 
-### Issue 3: Import Conflict Error
+### Issue 2: Import Conflict Error
 
 **Error:**
 ```

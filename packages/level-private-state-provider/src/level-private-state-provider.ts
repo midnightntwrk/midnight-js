@@ -294,6 +294,13 @@ const validateSalt = (salt: string): void => {
 /**
  * Constructs an instance of {@link PrivateStateProvider} based on {@link Level} database.
  *
+ * ⚠️ WARNING
+ *
+ * RISK: This provider lacks a recovery mechanism.
+ * Clearing browser cache or deleting local files permanently destroys the private state (contract state/keys).
+ * For assets with real-world value, this may result in irreversible financial loss.
+ * DO NOT use for production applications requiring data persistence.
+ *
  * @param config Database configuration options.
  */
 export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(

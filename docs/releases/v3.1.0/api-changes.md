@@ -2,12 +2,6 @@
 
 ## Package: @midnight-ntwrk/midnight-js-level-private-state-provider
 
-### Deprecation Notice
-
-This package is now **deprecated** and marked as **NOT FOR COMMERCIAL USE**.
-
-**WARNING:** This package uses browser localStorage or Node.js file storage - losing private state by clearing browser cache could be financially ruinous.
-
 ### Added Exports
 
 #### exportPrivateStates
@@ -192,7 +186,6 @@ type CircuitCallArgs<C, K> = CircuitArgs<C, K>; // Fixed
 ### @midnight-ntwrk/midnight-js-level-private-state-provider
 
 ```diff
-+ // Package is now deprecated - NOT FOR COMMERCIAL USE
 
   interface PrivateStateProvider {
     get<T>(key: string): Promise<T | undefined>;

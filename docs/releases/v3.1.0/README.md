@@ -7,16 +7,9 @@
 ## Quick Links
 
 - [Release Notes](./release-notes.md) - High-level changelog
-- [Breaking Changes](./breaking-changes.md) - Detailed breaking changes
 - [New Features](./new-features.md) - Complete feature documentation
 - [Migration Guide](./migration-guide.md) - Step-by-step upgrade
 - [API Changes](./api-changes.md) - Complete API reference
-
-## Important Deprecation Notice
-
-`@midnight-ntwrk/midnight-js-level-private-state-provider` is now **deprecated** and marked as **NOT FOR COMMERCIAL USE**.
-
-This package is provided as an example implementation only. It uses browser localStorage or Node.js file storage - **losing private state by clearing browser cache could be financially ruinous**.
 
 ## New Features
 

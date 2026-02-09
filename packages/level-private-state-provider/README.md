@@ -1,13 +1,9 @@
-# ⚠️ WARNING: NOT FOR COMMERCIAL USE
+# ⚠️ WARNING
 
-> **THIS IS AN EXAMPLE IMPLEMENTATION ONLY**
->
-> This package uses browser localStorage or Node.js file storage for persisting private state.
->
-> **RISK:** Losing private state (contract state/keys) by clearing your browser cache or deleting local files could be **financially ruinous** to an individual.
->
-> **DO NOT use this in production applications.** This package is provided solely as a reference implementation for developers to understand the PrivateStateProvider interface.
-
+> RISK: This provider lacks a recovery mechanism. 
+> Clearing browser cache or deleting local files permanently destroys the private state (contract state/keys). 
+> For assets with real-world value, this may result in irreversible financial loss. 
+> DO NOT use for production applications requiring data persistence.
 ---
 
 # What is this?
