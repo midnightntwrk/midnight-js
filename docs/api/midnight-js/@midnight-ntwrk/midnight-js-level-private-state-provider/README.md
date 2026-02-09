@@ -2,9 +2,9 @@
 
 ***
 
-[Midnight.js API Reference](../../packages.md) / @midnight-ntwrk/midnight-js-level-private-state-provider-example
+[Midnight.js API Reference](../../packages.md) / @midnight-ntwrk/midnight-js-level-private-state-provider
 
-# @midnight-ntwrk/midnight-js-level-private-state-provider-example
+# @midnight-ntwrk/midnight-js-level-private-state-provider
 
 ## Classes
 

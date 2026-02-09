@@ -2341,9 +2341,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@midnight-ntwrk/midnight-js-level-private-state-provider-example@workspace:*, @midnight-ntwrk/midnight-js-level-private-state-provider-example@workspace:packages/level-private-state-provider-example":
+"@midnight-ntwrk/midnight-js-level-private-state-provider@workspace:*, @midnight-ntwrk/midnight-js-level-private-state-provider@workspace:packages/level-private-state-provider":
   version: 0.0.0-use.local
-  resolution: "@midnight-ntwrk/midnight-js-level-private-state-provider-example@workspace:packages/level-private-state-provider-example"
+  resolution: "@midnight-ntwrk/midnight-js-level-private-state-provider@workspace:packages/level-private-state-provider"
   dependencies:
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@types/lodash": "npm:^4.17.19"
@@ -2514,7 +2514,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*"
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*"
     "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "workspace:*"
-    "@midnight-ntwrk/midnight-js-level-private-state-provider-example": "workspace:*"
+    "@midnight-ntwrk/midnight-js-level-private-state-provider": "workspace:*"
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
     "@midnight-ntwrk/midnight-js-node-zk-config-provider": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
