@@ -4,26 +4,15 @@
 **Previous Version:** v3.0.0
 **Node.js Requirement:** >=22
 
-## Breaking Changes
+## Important Deprecation Notice
 
-### Package Rename: level-private-state-provider (#496)
+### @midnight-ntwrk/midnight-js-level-private-state-provider (#487)
 
-The example package has been promoted to production-ready status.
+This package is now **deprecated** and marked as **NOT FOR COMMERCIAL USE**.
 
-- **Before:** `@midnight-ntwrk/level-private-state-provider-example`
-- **After:** `@midnight-ntwrk/level-private-state-provider`
+**WARNING:** This package is provided as an example implementation only. It uses browser localStorage or Node.js file storage - **losing private state by clearing browser cache could be financially ruinous**.
 
-```typescript
-// Before
-import { levelPrivateStateProvider } from '@midnight-ntwrk/level-private-state-provider-example';
-
-// After
-import { levelPrivateStateProvider } from '@midnight-ntwrk/level-private-state-provider';
-```
-
-### Deprecation: midnight-js-level-private-state-provider (#487)
-
-The `@midnight-ntwrk/midnight-js-level-private-state-provider` package is now deprecated. Migrate to `@midnight-ntwrk/level-private-state-provider`.
+The package remains available for development and testing purposes but should not be used in production environments.
 
 ## Features
 
@@ -32,7 +21,7 @@ The `@midnight-ntwrk/midnight-js-level-private-state-provider` package is now de
 New `exportPrivateStates()` and `importPrivateStates()` methods enable backup and restore of encrypted private state data.
 
 ```typescript
-import { levelPrivateStateProvider } from '@midnight-ntwrk/level-private-state-provider';
+import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
 
 const provider = levelPrivateStateProvider({ walletProvider });
 
@@ -59,7 +48,6 @@ await provider.importPrivateStates(exportData, {
 Private state operations are now scoped by contract address, ensuring namespace isolation across contracts.
 
 ```typescript
-// Automatic scoping in contract operations
 const deployed = await deployContract(providers, {
   compiledContract: MyContract,
   privateStateId: 'myState',
@@ -104,5 +92,8 @@ Fixed an issue where `TransactionContext` was incorrectly included in circuit ca
 
 ## Links
 
+- [Breaking Changes Details](./breaking-changes.md)
+- [New Features Guide](./new-features.md)
+- [Migration Guide](./migration-guide.md)
+- [API Changes Reference](./api-changes.md)
 - [GitHub Repository](https://github.com/midnightntwrk/midnight-js)
-- [Previous Release Notes (v3.0.0)](../v3.0.0/release-notes.md)
