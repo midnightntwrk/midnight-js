@@ -2,6 +2,54 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [3.1.0](https://github.com/midnightntwrk/midnight-js/compare/v3.0.0...v3.1.0) (2026-02-09)
+
+
+### Features
+
+* add contract address scoping for private state operations ([#470](https://github.com/midnightntwrk/midnight-js/pull/470)) ([d828642](https://github.com/midnightntwrk/midnight-js/commit/d828642b6efa3e5b2904c80ead26a573cab88035))
+* integrate `@midnight-ntwrk/compact-js` for contract building and deployment ([49623fb](https://github.com/midnightntwrk/midnight-js/commit/49623fbea0aaeef87a4247b51619b0db9fb62291))
+* **midnight-js:** add import/export functionality to private-state-provider ([#435](https://github.com/midnightntwrk/midnight-js/pull/435)) ([ac82edc](https://github.com/midnightntwrk/midnight-js/commit/ac82edc371870a7e011370a639767ca53b265d63))
+
+
+### Bug Fixes
+
+* Ensure `TransactionContext` is not included in circuit call arguments ([#497](https://github.com/midnightntwrk/midnight-js/pull/497)) ([ca28c3f](https://github.com/midnightntwrk/midnight-js/commit/ca28c3f1bc190219a1c9d25edabd7c8e3a338a93))
+
+
+### Documentation
+
+* add v3.1.0 release notes ([#500](https://github.com/midnightntwrk/midnight-js/pull/500)) ([7aa68c3](https://github.com/midnightntwrk/midnight-js/commit/7aa68c31b962d4a2a6853188b5b64044f5ac3d92))
+* API documentation update ([#477](https://github.com/midnightntwrk/midnight-js/pull/477)) ([16f00ee](https://github.com/midnightntwrk/midnight-js/commit/16f00ee36d316e5d05a21b9512ffd9deb4cef603))
+* API documentation update ([#482](https://github.com/midnightntwrk/midnight-js/pull/482)) ([40197d5](https://github.com/midnightntwrk/midnight-js/commit/40197d5f5e8877566c0fe5322562619042f9a547))
+* API documentation update ([#488](https://github.com/midnightntwrk/midnight-js/pull/488)) ([35b0dc6](https://github.com/midnightntwrk/midnight-js/commit/35b0dc69d9d217d48f88caec9999151664aefcb3))
+* API documentation update ([#489](https://github.com/midnightntwrk/midnight-js/pull/489)) ([6b69452](https://github.com/midnightntwrk/midnight-js/commit/6b694522d45f4b3ac1bda2b5ac8b9d3817df46d1))
+* update v3.0.0 docs to reflect `deployContract` API changes ([2a7d914](https://github.com/midnightntwrk/midnight-js/commit/2a7d9147de145c2b56ac8024df943cca01ed2b51))
+
+
+### Code Refactoring
+
+* rename `level-private-state-provider-example` package to `level-private-state-provider` ([#496](https://github.com/midnightntwrk/midnight-js/pull/496)) ([bd2c1f6](https://github.com/midnightntwrk/midnight-js/commit/bd2c1f61d53e78f3164e7f2b5a70c85e26649778))
+
+
+### Tests
+
+* replace `it` with `test` in all test files for consistency and remove unused constants ([#491](https://github.com/midnightntwrk/midnight-js/pull/491)) ([aecd82c](https://github.com/midnightntwrk/midnight-js/commit/aecd82ce749f432c31fd369e690cd7a6835a2340))
+
+
+### Improvements
+
+* bump `indexer` and `node` images in `testkit-js` to latest versions ([#490](https://github.com/midnightntwrk/midnight-js/pull/490)) ([35b6f7b](https://github.com/midnightntwrk/midnight-js/commit/35b6f7b274fbb8faf2fbe32e9f48ae732ccb127f))
+* deprecate `@midnight-ntwrk/midnight-js-level-private-state-provider` ([#487](https://github.com/midnightntwrk/midnight-js/pull/487)) ([4f6f735](https://github.com/midnightntwrk/midnight-js/commit/4f6f7350060ff7ffc0fa4dd37ddc4119deecb9e8))
+* **deps:** bump actions/github-script from 7 to 8 ([#438](https://github.com/midnightntwrk/midnight-js/pull/438)) ([3241bc4](https://github.com/midnightntwrk/midnight-js/commit/3241bc4153a186313536b638ce61211429c64c59))
+* **deps:** bump docker/login-action from 3.6.0 to 3.7.0 ([#483](https://github.com/midnightntwrk/midnight-js/pull/483)) ([bde755b](https://github.com/midnightntwrk/midnight-js/commit/bde755b438179c66272be36ba845705e1381d1f6))
+* **deps:** bump mikepenz/action-junit-report from 6.1.0 to 6.2.0 ([#484](https://github.com/midnightntwrk/midnight-js/pull/484)) ([f9938a8](https://github.com/midnightntwrk/midnight-js/commit/f9938a8b5f826ec851fbf67ddad83cb59f0a17f2))
+* **deps:** bump tar in the npm_and_yarn group across 1 directory ([#476](https://github.com/midnightntwrk/midnight-js/pull/476)) ([e1348a5](https://github.com/midnightntwrk/midnight-js/commit/e1348a57326ebb322f1785bd11c64299e081cedf))
+* handle empty `preRelease` in target version calculation in CD workflow ([#478](https://github.com/midnightntwrk/midnight-js/pull/478)) ([641fa5a](https://github.com/midnightntwrk/midnight-js/commit/641fa5a5b5733802fb283d67c373531909a9493a))
+* multiple libraries updates + yarn update to 4.12.0 ([#485](https://github.com/midnightntwrk/midnight-js/pull/485)) ([d5d7129](https://github.com/midnightntwrk/midnight-js/commit/d5d7129f9b5135c5e88a1ae207ef887711642fb7))
+* refactor tokens tests ([#486](https://github.com/midnightntwrk/midnight-js/pull/486)) ([bb03570](https://github.com/midnightntwrk/midnight-js/commit/bb035704b0180f21cae127b45173e9d095d48768))
+* remove deprecated TestKit.js CD workflow ([#492](https://github.com/midnightntwrk/midnight-js/pull/492)) ([9840d93](https://github.com/midnightntwrk/midnight-js/commit/9840d93033f33f100d21d6df31383bbb6e2ee428))
+
 ## [3.0.0](https://github.com/midnightntwrk/midnight-js/compare/v3.0.0-alpha.15...v3.0.0) (2026-01-28)
 
 
@@ -23,6 +71,7 @@ All notable changes to this project will be documented in this file. See [commit
 
 ### Improvements
 
+* **release:** bump version to 3.0.0 ([#475](https://github.com/midnightntwrk/midnight-js/pull/475)) ([8fbe81f](https://github.com/midnightntwrk/midnight-js/commit/8fbe81fd728b18221019ec4845ab4c630805ac2d))
 * remove `newCoins` parameter and related logic from `balanceTx` method and update affected tests, docs, and types ([#466](https://github.com/midnightntwrk/midnight-js/pull/466)) ([f300457](https://github.com/midnightntwrk/midnight-js/commit/f300457f737cda060828f67c9b4d9659c485c555))
 * remove unused `signTx` method from `midnight-wallet-provider` and update `balanceTx` logic to sign balancing transactions ([cead765](https://github.com/midnightntwrk/midnight-js/commit/cead7651543bac99b7090849e2bebe405aed8141))
 * skip failing e2e tests in indexer and contracts modules ([#472](https://github.com/midnightntwrk/midnight-js/pull/472)) ([36e6c8c](https://github.com/midnightntwrk/midnight-js/commit/36e6c8c493ffcf6eef1816a9842e5ce2a5f9b9c7))
