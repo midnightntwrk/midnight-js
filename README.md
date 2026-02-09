@@ -155,7 +155,7 @@ The elements of the diagram roughly correspond to these packages:
 |----------------------|----------------------------------------------------------|
 | `Contracts`            | @midnight-ntwrk/midnight-js-contracts                    |
 | `PublicDataProvider`   | @midnight-ntwrk/midnight-js-contracts                    |
-| `PrivateStateProvider` | @midnight-ntwrk/midnight-js-level-private-state-provider-example |
+| `PrivateStateProvider` | @midnight-ntwrk/midnight-js-level-private-state-provider |
 | `ProofProvider`        | @midnight-ntwrk/midnight-js-http-client-proof-provider   |
 | `ZKConfigProvider`     | @midnight-ntwrk/midnight-js-fetch-zk-config-provider     |
 | `DappConnector`        | @midnight-ntwrk/dapp-connector-api                       |
@@ -212,7 +212,7 @@ This is a yarn [workspaces](https://yarnpkg.com/features/workspaces/) project. A
 - `fetch-zk-config-provider` - Contains a [fetch](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) based cross-environment utility for retrieving zero-knowledge artifacts.
 - `network-id` - Contains utilities for setting the network id used by `ledger`, `zswap`, and `compact-runtime` dependencies.
 - `http-client-proof-provider` - Contains a cross-environment implementation of a proof-server client.
-- `level-private-state-provider-example` - **EXAMPLE ONLY - NOT FOR COMMERCIAL USE.** Contains a cross-environment implementation of an encrypted persistent private state store based on [Level](https://github.com/Level/level). Uses browser localStorage or Node.js file storage - losing private state by clearing browser cache could be financially ruinous.
+- `level-private-state-provider` - **EXAMPLE ONLY - NOT FOR COMMERCIAL USE.** Contains a cross-environment implementation of an encrypted persistent private state store based on [Level](https://github.com/Level/level). Uses browser localStorage or Node.js file storage - losing private state by clearing browser cache could be financially ruinous.
 - `utils` - General utilities used in Midnight.js
 
 ## Development setup

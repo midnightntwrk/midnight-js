@@ -38,7 +38,7 @@
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*",
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*",
     "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "workspace:*",
-    "@midnight-ntwrk/midnight-js-level-private-state-provider-example": "workspace:*",
+    "@midnight-ntwrk/midnight-js-level-private-state-provider": "workspace:*",
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
     "@midnight-ntwrk/midnight-js-node-zk-config-provider": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
