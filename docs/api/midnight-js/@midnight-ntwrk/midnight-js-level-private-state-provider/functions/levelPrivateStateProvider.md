@@ -10,6 +10,13 @@
 
 Constructs an instance of PrivateStateProvider based on Level database.
 
+⚠️ WARNING
+
+RISK: This provider lacks a recovery mechanism.
+Clearing browser cache or deleting local files permanently destroys the private state (contract state/keys).
+For assets with real-world value, this may result in irreversible financial loss.
+DO NOT use for production applications requiring data persistence.
+
 ## Type Parameters
 
 ### PSI
