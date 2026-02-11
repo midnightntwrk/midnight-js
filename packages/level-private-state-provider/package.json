@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-level-private-state-provider",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Private state provider implementation that uses browser localStorage or Node.js file storage",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -37,6 +37,5 @@
   },
   "devDependencies": {
     "@types/lodash": "^4.17.19"
-  },
-  "stableVersion": "3.0.0"
+  }
 }
