@@ -96,6 +96,18 @@ describe('httpClientProvingProvider', () => {
       expect(() => httpClientProvingProvider('https://localhost', mockZkConfigProvider)).not.toThrow();
     });
 
+    it('should preserve path segments in URL when constructing check and prove endpoints', () => {
+      const urlWithPath = 'https://example.com/midnight/zk/preprod/APIKEY/';
+      const provider = httpClientProvingProvider(urlWithPath, mockZkConfigProvider);
+      expect(provider).toBeDefined();
+    });
+
+    it('should append trailing slash to base URL if missing', () => {
+      const urlWithPathNoSlash = 'https://example.com/midnight/zk/preprod/APIKEY';
+      const provider = httpClientProvingProvider(urlWithPathNoSlash, mockZkConfigProvider);
+      expect(provider).toBeDefined();
+    });
+
     it('should use default timeout when config not provided', () => {
       const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider);
       expect(provider).toBeDefined();
@@ -172,6 +184,21 @@ describe('httpClientProvingProvider', () => {
           body: payload.buffer
         })
       );
+    });
+
+    it('should preserve base URL path segments in check endpoint', async () => {
+      const urlWithPath = 'https://example.com/midnight/zkpaas/testnet/abc123/';
+      const provider = httpClientProvingProvider(urlWithPath, mockZkConfigProvider);
+      const serializedPreimage = new Uint8Array([1, 2, 3]);
+      const payload = new Uint8Array([20, 21, 22]);
+
+      vi.mocked(ledger.createCheckPayload).mockReturnValue(payload);
+      vi.mocked(ledger.parseCheckResult).mockReturnValue([undefined]);
+
+      await provider.check(serializedPreimage, 'test-circuit');
+
+      const calledUrl = mockFetchRetry.mock.calls[0][0] as URL;
+      expect(calledUrl.href).toBe('https://example.com/midnight/zkpaas/testnet/abc123/check');
     });
 
     it('should use configured timeout for check request', async () => {
@@ -305,6 +332,20 @@ describe('httpClientProvingProvider', () => {
           body: payload.buffer
         })
       );
+    });
+
+    it('should preserve base URL path segments in prove endpoint', async () => {
+      const urlWithPath = 'https://example.com/midnight/zkpaas/testnet/abc123/';
+      const provider = httpClientProvingProvider(urlWithPath, mockZkConfigProvider);
+      const serializedPreimage = new Uint8Array([1, 2, 3]);
+      const payload = new Uint8Array([30, 31, 32]);
+
+      vi.mocked(ledger.createProvingPayload).mockReturnValue(payload);
+
+      await provider.prove(serializedPreimage, 'test-circuit');
+
+      const calledUrl = mockFetchRetry.mock.calls[0][0] as URL;
+      expect(calledUrl.href).toBe('https://example.com/midnight/zkpaas/testnet/abc123/prove');
     });
 
     it('should return proof bytes from response', async () => {

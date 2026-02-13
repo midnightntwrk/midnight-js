@@ -33,6 +33,12 @@ const fetchRetry = fetchBuilder(fetch, retryOptions);
 const CHECK_PATH = '/check';
 const PROVE_PATH = '/prove';
 
+const resolveEndpointUrl = (base: string, path: string): URL => {
+  const url = new URL(base);
+  url.pathname = url.pathname.replace(/\/+$/, '') + path;
+  return url;
+};
+
 export const DEFAULT_TIMEOUT = 300000;
 
 const getKeyMaterial = async <K extends string>(
@@ -72,8 +78,8 @@ export const httpClientProvingProvider = <K extends string>(
   zkConfigProvider: ZKConfigProvider<K>,
   config?: ProvingProviderConfig
 ): ProvingProvider => {
-  const checkUrl = new URL(CHECK_PATH, url);
-  const proveUrl = new URL(PROVE_PATH, url);
+  const checkUrl = resolveEndpointUrl(url, CHECK_PATH);
+  const proveUrl = resolveEndpointUrl(url, PROVE_PATH);
 
   if (checkUrl.protocol !== 'http:' && checkUrl.protocol !== 'https:') {
     throw new InvalidProtocolSchemeError(checkUrl.protocol, ['http:', 'https:']);
