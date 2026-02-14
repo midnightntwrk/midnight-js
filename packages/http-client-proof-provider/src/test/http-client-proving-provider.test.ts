@@ -96,18 +96,6 @@ describe('httpClientProvingProvider', () => {
       expect(() => httpClientProvingProvider('https://localhost', mockZkConfigProvider)).not.toThrow();
     });
 
-    it('should preserve path segments in URL when constructing check and prove endpoints', () => {
-      const urlWithPath = 'https://example.com/midnight/zk/preprod/APIKEY/';
-      const provider = httpClientProvingProvider(urlWithPath, mockZkConfigProvider);
-      expect(provider).toBeDefined();
-    });
-
-    it('should append trailing slash to base URL if missing', () => {
-      const urlWithPathNoSlash = 'https://example.com/midnight/zk/preprod/APIKEY';
-      const provider = httpClientProvingProvider(urlWithPathNoSlash, mockZkConfigProvider);
-      expect(provider).toBeDefined();
-    });
-
     it('should use default timeout when config not provided', () => {
       const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider);
       expect(provider).toBeDefined();

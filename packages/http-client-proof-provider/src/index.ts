@@ -70,3 +70,5 @@ export {
   httpClientProvingProvider,
   type ProvingProviderConfig
 } from './http-client-proving-provider';
+
+export { resolveEndpointUrl } from './resolve-endpoint-url';

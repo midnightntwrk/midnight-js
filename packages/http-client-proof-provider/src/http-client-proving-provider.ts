@@ -30,14 +30,10 @@ const retryOptions = {
 };
 const fetchRetry = fetchBuilder(fetch, retryOptions);
 
+import { resolveEndpointUrl } from './resolve-endpoint-url';
+
 const CHECK_PATH = '/check';
 const PROVE_PATH = '/prove';
-
-const resolveEndpointUrl = (base: string, path: string): URL => {
-  const url = new URL(base);
-  url.pathname = url.pathname.replace(/\/+$/, '') + path;
-  return url;
-};
 
 export const DEFAULT_TIMEOUT = 300000;
 
