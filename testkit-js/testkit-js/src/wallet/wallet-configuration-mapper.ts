@@ -14,7 +14,8 @@
  */
 
 import { type LedgerParameters } from '@midnight-ntwrk/ledger-v7';
-import { type DefaultV1Configuration } from '@midnight-ntwrk/wallet-sdk-shielded/v1';
+import { type DefaultConfiguration } from '@midnight-ntwrk/wallet-sdk-facade';
+import { InMemoryTransactionHistoryStorage } from '@midnight-ntwrk/wallet-sdk-unshielded-wallet';
 
 import { type EnvironmentConfiguration } from '@/test-environment';
 
@@ -26,14 +27,19 @@ export interface MapperOptions {
 
 export function mapEnvironmentToConfiguration(
   env: EnvironmentConfiguration,
-): DefaultV1Configuration {
+): DefaultConfiguration {
   return {
     indexerClientConnection: {
       indexerHttpUrl: env.indexer,
       indexerWsUrl: env.indexerWS,
     },
     provingServerUrl: new URL(env.proofServer),
-    relayURL: new URL(env.nodeWS),
     networkId: env.walletNetworkId,
+    relayURL: new URL(env.nodeWS),
+    txHistoryStorage: new InMemoryTransactionHistoryStorage(),
+    costParameters: {
+      additionalFeeOverhead: 500_000_000_000_000_000_000n,
+      feeBlocksMargin: 5,
+    },
   };
 }

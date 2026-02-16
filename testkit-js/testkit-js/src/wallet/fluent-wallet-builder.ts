@@ -14,8 +14,7 @@
  */
 
 import { type NetworkId } from '@midnight-ntwrk/wallet-sdk-abstractions';
-import { type WalletFacade } from '@midnight-ntwrk/wallet-sdk-facade';
-import { type DefaultV1Configuration } from '@midnight-ntwrk/wallet-sdk-shielded/v1';
+import { type DefaultConfiguration, type WalletFacade } from '@midnight-ntwrk/wallet-sdk-facade';
 import { createKeystore, type UnshieldedKeystore } from '@midnight-ntwrk/wallet-sdk-unshielded-wallet';
 
 import { logger } from '@/logger';
@@ -26,7 +25,7 @@ import { WalletSeeds } from '@/wallet/wallet-seed';
 
 export class FluentWalletBuilder {
   private constructor(
-    private readonly config: DefaultV1Configuration,
+    private readonly config: DefaultConfiguration,
     private readonly networkId: NetworkId.NetworkId,
     private seeds?: WalletSeeds,
     private dustOptions: DustWalletOptions = DEFAULT_DUST_OPTIONS
@@ -88,7 +87,7 @@ export class FluentWalletBuilder {
       this.dustOptions
     );
 
-    const walletFacade = WalletFactory.createWalletFacade(shieldedWallet, unshieldedWallet, dustWallet);
+    const walletFacade = await WalletFactory.createWalletFacade(this.config, shieldedWallet, unshieldedWallet, dustWallet);
 
     return WalletFactory.startWalletFacade(walletFacade, this.seeds.shielded, this.seeds.dust);
   }
@@ -119,7 +118,7 @@ export class FluentWalletBuilder {
       this.dustOptions
     );
 
-    const walletFacade = WalletFactory.createWalletFacade(shieldedWallet, unshieldedWallet, dustWallet);
+    const walletFacade = await WalletFactory.createWalletFacade(this.config, shieldedWallet, unshieldedWallet, dustWallet);
 
     return {
       wallet: walletFacade,
