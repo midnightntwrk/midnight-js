@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-utils",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Shared utilities for MidnightJS modules",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -34,6 +34,5 @@
   },
   "devDependencies": {
     "@types/node": "^24.0.0"
-  },
-  "stableVersion": "3.0.0"
+  }
 }
