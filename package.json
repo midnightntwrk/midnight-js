@@ -85,7 +85,7 @@
     "tstyche": "^4.3.0",
     "turbo": "^2.8.2",
     "typedoc": "^0.28.5",
-    "typedoc-plugin-markdown": "4.9.0",
+    "typedoc-plugin-markdown": "4.10.0",
     "typescript": "^5.8.2",
     "typescript-eslint": "^8.35.1",
     "vitest": "^4.0.18"
