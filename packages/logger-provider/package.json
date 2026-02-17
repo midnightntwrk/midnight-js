@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-logger-provider",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "MidnightJS module for configuring an application specific pino logger",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -30,6 +30,5 @@
   },
   "files": [
     "dist/"
-  ],
-  "stableVersion": "3.0.0"
+  ]
 }

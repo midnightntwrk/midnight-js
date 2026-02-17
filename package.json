@@ -1,7 +1,7 @@
 {
   "name": "@midnight-ntwrk/midnight-js",
   "description": "Midnight application development framework",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "packageManager": "yarn@4.12.0",
   "repository": "git@github.com:midnight-ntwrk/artifacts",
   "engines": {
@@ -69,7 +69,7 @@
     "eslint-plugin-prettier": "^5.5.5",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "eslint-plugin-unused-imports": "^4.4.1",
-    "glob": "^11.0.3",
+    "glob": "^13.0.4",
     "husky": "^9.1.7",
     "jsdom": "^27.0.0",
     "lint-staged": "^16.2.7",
@@ -98,7 +98,6 @@
       "path": "cz-conventional-changelog"
     }
   },
-  "stableVersion": "3.0.0",
   "resolutions": {
     "effect": "3.19.15",
     "@midnight-ntwrk/ledger-v7": "7.0.1"

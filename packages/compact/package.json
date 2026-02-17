@@ -10,7 +10,7 @@
     "node": ">=22.0.0"
   },
   "license": "Apache-2.0",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "type": "module",
   "bin": {
     "fetch-compactc": "dist/fetch-compact.mjs",
@@ -30,6 +30,5 @@
   },
   "files": [
     "dist/"
-  ],
-  "stableVersion": "3.0.0"
+  ]
 }
