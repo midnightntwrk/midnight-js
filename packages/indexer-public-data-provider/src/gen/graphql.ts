@@ -62,6 +62,17 @@ export type CollapsedMerkleTree = {
   readonly update: Scalars['HexEncoded']['output'];
 };
 
+/** Committee member for an epoch. */
+export type CommitteeMember = {
+  readonly auraPubkeyHex: Maybe<Scalars['String']['output']>;
+  readonly epochNo: Scalars['Int']['output'];
+  readonly expectedSlots: Scalars['Int']['output'];
+  readonly poolIdHex: Maybe<Scalars['String']['output']>;
+  readonly position: Scalars['Int']['output'];
+  readonly sidechainPubkeyHex: Scalars['String']['output'];
+  readonly spoSkHex: Maybe<Scalars['String']['output']>;
+};
+
 /** A contract action. */
 export type ContractAction = {
   readonly address: Scalars['HexEncoded']['output'];
@@ -163,6 +174,8 @@ export type DustGenerationDtimeUpdate = DustLedgerEvent & {
   readonly id: Scalars['Int']['output'];
   /** The maximum ID of all dust ledger events. */
   readonly maxId: Scalars['Int']['output'];
+  /** The protocol version. */
+  readonly protocolVersion: Scalars['Int']['output'];
   /** The hex-encoded serialized event. */
   readonly raw: Scalars['HexEncoded']['output'];
 };
@@ -196,6 +209,8 @@ export type DustInitialUtxo = DustLedgerEvent & {
   readonly maxId: Scalars['Int']['output'];
   /** The dust output. */
   readonly output: DustOutput;
+  /** The protocol version. */
+  readonly protocolVersion: Scalars['Int']['output'];
   /** The hex-encoded serialized event. */
   readonly raw: Scalars['HexEncoded']['output'];
 };
@@ -204,6 +219,7 @@ export type DustInitialUtxo = DustLedgerEvent & {
 export type DustLedgerEvent = {
   readonly id: Scalars['Int']['output'];
   readonly maxId: Scalars['Int']['output'];
+  readonly protocolVersion: Scalars['Int']['output'];
   readonly raw: Scalars['HexEncoded']['output'];
 };
 
@@ -218,8 +234,35 @@ export type DustSpendProcessed = DustLedgerEvent & {
   readonly id: Scalars['Int']['output'];
   /** The maximum ID of all dust ledger events. */
   readonly maxId: Scalars['Int']['output'];
+  /** The protocol version. */
+  readonly protocolVersion: Scalars['Int']['output'];
   /** The hex-encoded serialized event. */
   readonly raw: Scalars['HexEncoded']['output'];
+};
+
+/** Current epoch information. */
+export type EpochInfo = {
+  readonly durationSeconds: Scalars['Int']['output'];
+  readonly elapsedSeconds: Scalars['Int']['output'];
+  readonly epochNo: Scalars['Int']['output'];
+};
+
+/** SPO performance for an epoch. */
+export type EpochPerf = {
+  readonly epochNo: Scalars['Int']['output'];
+  readonly expected: Scalars['Int']['output'];
+  readonly identityLabel: Maybe<Scalars['String']['output']>;
+  readonly poolIdHex: Maybe<Scalars['String']['output']>;
+  readonly produced: Scalars['Int']['output'];
+  readonly spoSkHex: Scalars['String']['output'];
+  readonly stakeSnapshot: Maybe<Scalars['String']['output']>;
+  readonly validatorClass: Maybe<Scalars['String']['output']>;
+};
+
+/** First valid epoch for an SPO identity. */
+export type FirstValidEpoch = {
+  readonly firstValidEpoch: Scalars['Int']['output'];
+  readonly idKey: Scalars['String']['output'];
 };
 
 export type Mutation = {
@@ -244,19 +287,79 @@ export type ParamChange = DustLedgerEvent & {
   readonly id: Scalars['Int']['output'];
   /** The maximum ID of all dust ledger events. */
   readonly maxId: Scalars['Int']['output'];
+  /** The protocol version. */
+  readonly protocolVersion: Scalars['Int']['output'];
   /** The hex-encoded serialized event. */
   readonly raw: Scalars['HexEncoded']['output'];
+};
+
+/** Pool metadata from Cardano. */
+export type PoolMetadata = {
+  readonly hexId: Maybe<Scalars['String']['output']>;
+  readonly homepageUrl: Maybe<Scalars['String']['output']>;
+  readonly logoUrl: Maybe<Scalars['String']['output']>;
+  readonly name: Maybe<Scalars['String']['output']>;
+  readonly poolIdHex: Scalars['String']['output'];
+  readonly ticker: Maybe<Scalars['String']['output']>;
+};
+
+/** Presence event for an SPO in an epoch. */
+export type PresenceEvent = {
+  readonly epochNo: Scalars['Int']['output'];
+  readonly idKey: Scalars['String']['output'];
+  readonly source: Scalars['String']['output'];
+  readonly status: Maybe<Scalars['String']['output']>;
 };
 
 export type Query = {
   /** Find a block for the given optional offset; if not present, the latest block is returned. */
   readonly block: Maybe<Block>;
+  /** Get committee membership for an epoch. */
+  readonly committee: ReadonlyArray<CommitteeMember>;
   /** Find a contract action for the given address and optional offset. */
   readonly contractAction: Maybe<ContractAction>;
+  /** Get current epoch information. */
+  readonly currentEpochInfo: Maybe<EpochInfo>;
   /** Get the full history of D-parameter changes for governance auditability. */
   readonly dParameterHistory: ReadonlyArray<DParameterChange>;
   /** Get DUST generation status for specific Cardano reward addresses. */
   readonly dustGenerationStatus: ReadonlyArray<DustGenerationStatus>;
+  /** Get epoch performance for all SPOs. */
+  readonly epochPerformance: ReadonlyArray<EpochPerf>;
+  /** Get epoch utilization (produced/expected ratio). */
+  readonly epochUtilization: Maybe<Scalars['Float']['output']>;
+  /** Get pool metadata by pool ID. */
+  readonly poolMetadata: Maybe<PoolMetadata>;
+  /** List pool metadata with pagination. */
+  readonly poolMetadataList: ReadonlyArray<PoolMetadata>;
+  /** Get first valid epoch for each SPO identity. */
+  readonly registeredFirstValidEpochs: ReadonlyArray<FirstValidEpoch>;
+  /** Get raw presence events for an epoch range. */
+  readonly registeredPresence: ReadonlyArray<PresenceEvent>;
+  /** Get registration statistics for an epoch range. */
+  readonly registeredSpoSeries: ReadonlyArray<RegisteredStat>;
+  /** Get cumulative registration totals for an epoch range. */
+  readonly registeredTotalsSeries: ReadonlyArray<RegisteredTotals>;
+  /** Get SPO with metadata by pool ID. */
+  readonly spoByPoolId: Maybe<Spo>;
+  /** Get composite SPO data (identity + metadata + performance). */
+  readonly spoCompositeByPoolId: Maybe<SpoComposite>;
+  /** Get total count of SPOs. */
+  readonly spoCount: Maybe<Scalars['Int']['output']>;
+  /** List SPO identities with pagination. */
+  readonly spoIdentities: ReadonlyArray<SpoIdentity>;
+  /** Get SPO identity by pool ID. */
+  readonly spoIdentityByPoolId: Maybe<SpoIdentity>;
+  /** List SPOs with optional search. */
+  readonly spoList: ReadonlyArray<Spo>;
+  /** Get SPO performance by SPO key. */
+  readonly spoPerformanceBySpoSk: ReadonlyArray<EpochPerf>;
+  /** Get latest SPO performance entries. */
+  readonly spoPerformanceLatest: ReadonlyArray<EpochPerf>;
+  /** Get stake distribution with search and ordering. */
+  readonly stakeDistribution: ReadonlyArray<StakeShare>;
+  /** Get SPO identifiers ordered by performance. */
+  readonly stakePoolOperators: ReadonlyArray<Scalars['String']['output']>;
   /** Get the full history of Terms and Conditions changes for governance auditability. */
   readonly termsAndConditionsHistory: ReadonlyArray<TermsAndConditionsChange>;
   /** Find transactions for the given offset. */
@@ -266,6 +369,11 @@ export type Query = {
 
 export type QueryBlockArgs = {
   offset: InputMaybe<BlockOffset>;
+};
+
+
+export type QueryCommitteeArgs = {
+  epoch: Scalars['Int']['input'];
 };
 
 
@@ -280,8 +388,126 @@ export type QueryDustGenerationStatusArgs = {
 };
 
 
+export type QueryEpochPerformanceArgs = {
+  epoch: Scalars['Int']['input'];
+  limit: InputMaybe<Scalars['Int']['input']>;
+  offset: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryEpochUtilizationArgs = {
+  epoch: Scalars['Int']['input'];
+};
+
+
+export type QueryPoolMetadataArgs = {
+  poolIdHex: Scalars['String']['input'];
+};
+
+
+export type QueryPoolMetadataListArgs = {
+  limit: InputMaybe<Scalars['Int']['input']>;
+  offset: InputMaybe<Scalars['Int']['input']>;
+  withNameOnly: InputMaybe<Scalars['Boolean']['input']>;
+};
+
+
+export type QueryRegisteredFirstValidEpochsArgs = {
+  uptoEpoch: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryRegisteredPresenceArgs = {
+  fromEpoch: Scalars['Int']['input'];
+  toEpoch: Scalars['Int']['input'];
+};
+
+
+export type QueryRegisteredSpoSeriesArgs = {
+  fromEpoch: Scalars['Int']['input'];
+  toEpoch: Scalars['Int']['input'];
+};
+
+
+export type QueryRegisteredTotalsSeriesArgs = {
+  fromEpoch: Scalars['Int']['input'];
+  toEpoch: Scalars['Int']['input'];
+};
+
+
+export type QuerySpoByPoolIdArgs = {
+  poolIdHex: Scalars['String']['input'];
+};
+
+
+export type QuerySpoCompositeByPoolIdArgs = {
+  poolIdHex: Scalars['String']['input'];
+};
+
+
+export type QuerySpoIdentitiesArgs = {
+  limit: InputMaybe<Scalars['Int']['input']>;
+  offset: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QuerySpoIdentityByPoolIdArgs = {
+  poolIdHex: Scalars['String']['input'];
+};
+
+
+export type QuerySpoListArgs = {
+  limit: InputMaybe<Scalars['Int']['input']>;
+  offset: InputMaybe<Scalars['Int']['input']>;
+  search: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QuerySpoPerformanceBySpoSkArgs = {
+  limit: InputMaybe<Scalars['Int']['input']>;
+  offset: InputMaybe<Scalars['Int']['input']>;
+  spoSkHex: Scalars['String']['input'];
+};
+
+
+export type QuerySpoPerformanceLatestArgs = {
+  limit: InputMaybe<Scalars['Int']['input']>;
+  offset: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryStakeDistributionArgs = {
+  limit: InputMaybe<Scalars['Int']['input']>;
+  offset: InputMaybe<Scalars['Int']['input']>;
+  orderByStakeDesc: InputMaybe<Scalars['Boolean']['input']>;
+  search: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryStakePoolOperatorsArgs = {
+  limit: InputMaybe<Scalars['Int']['input']>;
+};
+
+
 export type QueryTransactionsArgs = {
   offset: TransactionOffset;
+};
+
+/** Registration statistics for an epoch. */
+export type RegisteredStat = {
+  readonly dparam: Maybe<Scalars['Float']['output']>;
+  readonly epochNo: Scalars['Int']['output'];
+  readonly federatedInvalidCount: Scalars['Int']['output'];
+  readonly federatedValidCount: Scalars['Int']['output'];
+  readonly registeredInvalidCount: Scalars['Int']['output'];
+  readonly registeredValidCount: Scalars['Int']['output'];
+};
+
+/** Cumulative registration totals for an epoch. */
+export type RegisteredTotals = {
+  readonly epochNo: Scalars['Int']['output'];
+  readonly newlyRegistered: Scalars['Int']['output'];
+  readonly totalRegistered: Scalars['Int']['output'];
 };
 
 /** A regular Midnight transaction. */
@@ -364,6 +590,66 @@ export type ShieldedTransactionsProgress = {
    * zero means that no relevant transactions have been indexed for the subscribing wallet.
    */
   readonly highestRelevantEndIndex: Scalars['Int']['output'];
+};
+
+/** SPO with optional metadata. */
+export type Spo = {
+  readonly auraPubkeyHex: Maybe<Scalars['String']['output']>;
+  readonly homepageUrl: Maybe<Scalars['String']['output']>;
+  readonly logoUrl: Maybe<Scalars['String']['output']>;
+  readonly name: Maybe<Scalars['String']['output']>;
+  readonly poolIdHex: Scalars['String']['output'];
+  readonly sidechainPubkeyHex: Scalars['String']['output'];
+  readonly ticker: Maybe<Scalars['String']['output']>;
+  readonly validatorClass: Scalars['String']['output'];
+};
+
+/** Composite SPO data (identity + metadata + performance). */
+export type SpoComposite = {
+  readonly identity: Maybe<SpoIdentity>;
+  readonly metadata: Maybe<PoolMetadata>;
+  readonly performance: ReadonlyArray<EpochPerf>;
+};
+
+/** SPO identity information. */
+export type SpoIdentity = {
+  readonly auraPubkeyHex: Maybe<Scalars['String']['output']>;
+  readonly mainchainPubkeyHex: Scalars['String']['output'];
+  readonly poolIdHex: Scalars['String']['output'];
+  readonly sidechainPubkeyHex: Scalars['String']['output'];
+  readonly validatorClass: Scalars['String']['output'];
+};
+
+/**
+ * Stake share information for an SPO.
+ *
+ * Values are sourced from mainchain pool data (e.g., Blockfrost) and keyed by Cardano pool_id.
+ */
+export type StakeShare = {
+  /** Current active stake in lovelace. */
+  readonly activeStake: Maybe<Scalars['String']['output']>;
+  /** Declared pledge in lovelace. */
+  readonly declaredPledge: Maybe<Scalars['String']['output']>;
+  /** Pool homepage URL from metadata. */
+  readonly homepageUrl: Maybe<Scalars['String']['output']>;
+  /** Number of live delegators. */
+  readonly liveDelegators: Maybe<Scalars['Int']['output']>;
+  /** Current live pledge in lovelace. */
+  readonly livePledge: Maybe<Scalars['String']['output']>;
+  /** Saturation ratio (0.0 to 1.0+). */
+  readonly liveSaturation: Maybe<Scalars['Float']['output']>;
+  /** Current live stake in lovelace. */
+  readonly liveStake: Maybe<Scalars['String']['output']>;
+  /** Pool logo URL from metadata. */
+  readonly logoUrl: Maybe<Scalars['String']['output']>;
+  /** Pool name from metadata. */
+  readonly name: Maybe<Scalars['String']['output']>;
+  /** Cardano pool ID (56-character hex string). */
+  readonly poolIdHex: Scalars['String']['output'];
+  /** Stake share as a fraction of total stake. */
+  readonly stakeShare: Maybe<Scalars['Float']['output']>;
+  /** Pool ticker from metadata. */
+  readonly ticker: Maybe<Scalars['String']['output']>;
 };
 
 export type Subscription = {
@@ -574,6 +860,8 @@ export type ZswapLedgerEvent = {
   readonly id: Scalars['Int']['output'];
   /** The maximum ID of all zswap ledger events. */
   readonly maxId: Scalars['Int']['output'];
+  /** The protocol version. */
+  readonly protocolVersion: Scalars['Int']['output'];
   /** The hex-encoded serialized event. */
   readonly raw: Scalars['HexEncoded']['output'];
 };
