@@ -40,9 +40,9 @@
   "license": "Apache-2.0",
   "dependencies": {
     "@midnight-ntwrk/compact-runtime": "0.14.0",
-    "@midnight-ntwrk/ledger-v7": "7.0.0",
+    "@midnight-ntwrk/ledger-v7": "7.0.1",
     "@midnight-ntwrk/onchain-runtime-v2": "2.0.0",
-    "@midnight-ntwrk/wallet-sdk-facade": "1.0.0"
+    "@midnight-ntwrk/wallet-sdk-facade": "2.0.0-rc.1"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.4.1",
@@ -68,7 +68,7 @@
     "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-prettier": "^5.5.5",
     "eslint-plugin-simple-import-sort": "^12.1.1",
-    "eslint-plugin-unused-imports": "^4.3.0",
+    "eslint-plugin-unused-imports": "^4.4.1",
     "glob": "^11.0.3",
     "husky": "^9.1.7",
     "jsdom": "^27.0.0",
@@ -85,7 +85,7 @@
     "tstyche": "^4.3.0",
     "turbo": "^2.8.2",
     "typedoc": "^0.28.5",
-    "typedoc-plugin-markdown": "4.9.0",
+    "typedoc-plugin-markdown": "4.10.0",
     "typescript": "^5.8.2",
     "typescript-eslint": "^8.35.1",
     "vitest": "^4.0.18"
@@ -99,6 +99,7 @@
     }
   },
   "resolutions": {
-    "effect": "3.19.15"
+    "effect": "3.19.15",
+    "@midnight-ntwrk/ledger-v7": "7.0.1"
   }
 }

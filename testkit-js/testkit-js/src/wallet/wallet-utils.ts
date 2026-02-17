@@ -15,8 +15,8 @@
 
 import { shieldedToken, type TokenType } from '@midnight-ntwrk/ledger-v7';
 import { type WalletFacade } from '@midnight-ntwrk/wallet-sdk-facade';
-import { ShieldedWallet, type ShieldedWalletState } from '@midnight-ntwrk/wallet-sdk-shielded';
-import { type UnshieldedWallet, type UnshieldedWalletState } from '@midnight-ntwrk/wallet-sdk-unshielded-wallet';
+import { type ShieldedWalletAPI, type ShieldedWalletState } from '@midnight-ntwrk/wallet-sdk-shielded';
+import { type UnshieldedWalletAPI, type UnshieldedWalletState } from '@midnight-ntwrk/wallet-sdk-unshielded-wallet';
 import * as Rx from 'rxjs';
 
 import { FaucetClient } from '@/client';
@@ -24,21 +24,17 @@ import { type EnvironmentConfiguration } from '@/index';
 import { logger } from '@/logger';
 
 export const getInitialState = async (
-  wallet: ShieldedWallet | UnshieldedWallet
+  wallet: ShieldedWalletAPI | UnshieldedWalletAPI
 ): Promise<ShieldedWalletState | UnshieldedWalletState> => {
-  if (wallet instanceof ShieldedWallet) {
-    return Rx.firstValueFrom((wallet as ShieldedWallet).state);
-  } else {
-    return Rx.firstValueFrom((wallet as UnshieldedWallet).state);
-  }
+  return Rx.firstValueFrom(wallet.state as Rx.Observable<ShieldedWalletState | UnshieldedWalletState>);
 };
 
-export const getInitialShieldedState = async (wallet: ShieldedWallet): Promise<ShieldedWalletState> => {
+export const getInitialShieldedState = async (wallet: ShieldedWalletAPI): Promise<ShieldedWalletState> => {
   logger.info('Getting initial state of wallet...');
   return Rx.firstValueFrom(wallet.state);
 };
 
-export const getInitialUnshieldedState = async (wallet: UnshieldedWallet): Promise<UnshieldedWalletState> => {
+export const getInitialUnshieldedState = async (wallet: UnshieldedWalletAPI): Promise<UnshieldedWalletState> => {
   logger.info('Getting initial state of wallet...');
   return Rx.firstValueFrom(wallet.state);
 };
@@ -74,7 +70,7 @@ export const syncWallet = (wallet: WalletFacade, throttleTime = 2_000, timeout =
       Rx.tap((state) => {
         const shieldedBalances = state.shielded.balances || {};
         const unshieldedBalances = state.unshielded.balances || {};
-        const dustBalances = state.dust.walletBalance(new Date(Date.now())) || {};
+        const dustBalances = state.dust.balance(new Date(Date.now())) || {};
 
         logger.info(`Wallet balances after sync - Shielded: ${JSON.stringify(shieldedBalances)}, Unshielded: ${JSON.stringify(unshieldedBalances)}, Dust: ${JSON.stringify(dustBalances)}`);
       }),
