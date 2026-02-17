@@ -39,7 +39,9 @@ module.exports = {
       'always',
       [
         'testkit-js',
+        'midnight-js',
         'deps',
+        'deps-dev',
         'config',
         'release'
       ]

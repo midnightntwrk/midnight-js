@@ -39,6 +39,7 @@ jobs:
             testkit-js
             midnight-js
             deps
+            deps-dev
             config
           requireScope: false
           subjectPattern: ^(?=.*\S).+$
