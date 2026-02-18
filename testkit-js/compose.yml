@@ -39,7 +39,7 @@ services:
         condition: service_healthy
 
   node:
-    image: 'ghcr.io/midnight-ntwrk/midnight-node:0.22.0-rc.3'
+    image: 'ghcr.io/midnight-ntwrk/midnight-node:0.22.0-rc.2'
     container_name: node_$TESTCONTAINERS_UID
     ports:
       - '9944'
