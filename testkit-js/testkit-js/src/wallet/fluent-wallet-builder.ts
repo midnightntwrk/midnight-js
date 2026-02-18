@@ -56,6 +56,21 @@ export class FluentWalletBuilder {
     return this;
   }
 
+  withMnemonic(mnemonic: string): FluentWalletBuilder {
+    if (!mnemonic || mnemonic.trim().length === 0) {
+      throw new Error('Mnemonic cannot be empty');
+    }
+
+    this.seeds = WalletSeeds.fromMnemonic(mnemonic);
+    return this;
+  }
+
+  withTestWallet(): FluentWalletBuilder {
+    this.seeds = WalletSeeds.testWallet();
+    logger.info('Using test wallet with known mnemonic');
+    return this;
+  }
+
   withDustOptions(options: DustWalletOptions): FluentWalletBuilder {
     if (!options) {
       throw new Error('Dust options cannot be null or undefined');
