@@ -15,6 +15,10 @@
 
 import { HDWallet, Roles } from '@midnight-ntwrk/wallet-sdk-hd';
 import { generateRandomSeed } from '@midnight-ntwrk/wallet-sdk-hd';
+import { mnemonicToSeedSync } from '@scure/bip39';
+
+export const TEST_MNEMONIC =
+  'abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon diesel';
 
 type Role = typeof Roles.Zswap | typeof Roles.NightExternal | typeof Roles.Dust;
 
@@ -78,5 +82,17 @@ export class WalletSeeds {
   static generateRandom(): WalletSeeds {
     const randomSeed = Buffer.from(generateRandomSeed()).toString('hex');
     return WalletSeeds.fromMasterSeed(randomSeed);
+  }
+
+  static fromMnemonic(mnemonic: string): WalletSeeds {
+    if (!mnemonic || mnemonic.trim().length === 0) {
+      throw new Error('Mnemonic cannot be empty');
+    }
+    const seed = Buffer.from(mnemonicToSeedSync(mnemonic)).toString('hex');
+    return WalletSeeds.fromMasterSeed(seed);
+  }
+
+  static testWallet(): WalletSeeds {
+    return WalletSeeds.fromMnemonic(TEST_MNEMONIC);
   }
 }
