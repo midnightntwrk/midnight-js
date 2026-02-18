@@ -1335,17 +1335,20 @@ describe('Level Private State Provider', (): void => {
   describe('Browser Warning', () => {
     const globalRecord = globalThis as Record<string, unknown>;
     let originalWindow: unknown;
+    let originalDocument: unknown;
     let originalSessionStorage: unknown;
     let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
 
     beforeEach(() => {
       originalWindow = globalRecord.window;
+      originalDocument = globalRecord.document;
       originalSessionStorage = globalRecord.sessionStorage;
       consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(vi.fn());
     });
 
     afterEach(() => {
       globalRecord.window = originalWindow;
+      globalRecord.document = originalDocument;
       globalRecord.sessionStorage = originalSessionStorage;
       consoleWarnSpy.mockRestore();
     });
@@ -1356,6 +1359,7 @@ describe('Level Private State Provider', (): void => {
         setItem: vi.fn()
       };
       globalRecord.window = {};
+      globalRecord.document = {};
       globalRecord.sessionStorage = mockSessionStorage;
 
       levelPrivateStateProvider<PID, PS>(testConfig);
@@ -1371,6 +1375,16 @@ describe('Level Private State Provider', (): void => {
 
     test('does not show warning in Node.js environment', () => {
       delete globalRecord.window;
+      delete globalRecord.document;
+
+      levelPrivateStateProvider<PID, PS>(testConfig);
+
+      expect(consoleWarnSpy).not.toHaveBeenCalled();
+    });
+
+    test('does not show warning when only window exists (e.g., jsdom)', () => {
+      globalRecord.window = {};
+      delete globalRecord.document;
 
       levelPrivateStateProvider<PID, PS>(testConfig);
 
@@ -1383,6 +1397,7 @@ describe('Level Private State Provider', (): void => {
         setItem: vi.fn()
       };
       globalRecord.window = {};
+      globalRecord.document = {};
       globalRecord.sessionStorage = mockSessionStorage;
 
       levelPrivateStateProvider<PID, PS>(testConfig);
@@ -1398,6 +1413,7 @@ describe('Level Private State Provider', (): void => {
         setItem: vi.fn()
       };
       globalRecord.window = {};
+      globalRecord.document = {};
       globalRecord.sessionStorage = mockSessionStorage;
 
       expect(() => levelPrivateStateProvider<PID, PS>(testConfig)).not.toThrow();

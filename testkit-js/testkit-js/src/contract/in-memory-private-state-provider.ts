@@ -136,6 +136,10 @@ const validateSalt = (salt: string): void => {
 
 /**
  * A simple in-memory implementation of private state provider. Makes it easy to capture and rewrite private state from deploy.
+ *
+ * Note: Unlike `levelPrivateStateProvider`, this provider has no storage password configured.
+ * Therefore, export/import operations always require an explicit password in the options.
+ *
  * @template PSI - Type of the private state identifier.
  * @template PS - Type of the private state.
  * @returns {PrivateStateProvider<PSI, PS>} An in-memory private state provider.

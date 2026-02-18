@@ -320,9 +320,12 @@ const validateSigningKeyExportPassword = (password: string): void => {
 const BROWSER_WARNING_KEY = '__midnight_browser_warning_shown__';
 
 const isBrowserEnvironment = (): boolean => {
+  const global = globalThis as Record<string, unknown>;
   return typeof globalThis !== 'undefined' &&
     'window' in globalThis &&
-    (globalThis as Record<string, unknown>).window !== undefined;
+    global.window !== undefined &&
+    'document' in globalThis &&
+    global.document !== undefined;
 };
 
 const getSessionStorage = (): Storage | undefined => {
