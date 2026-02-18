@@ -40,6 +40,16 @@ export class PrivateStateExportError extends Error {
 }
 
 /**
+ * An error thrown when exporting signing keys fails.
+ */
+export class SigningKeyExportError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SigningKeyExportError';
+  }
+}
+
+/**
  * Cause types for private state import errors.
  */
 export type PrivateStateImportErrorCause =

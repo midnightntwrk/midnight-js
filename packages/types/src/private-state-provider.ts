@@ -116,6 +116,102 @@ export interface ImportPrivateStatesResult {
   readonly overwritten: number;
 }
 
+/**
+ * Represents the exported signing key data structure.
+ * All metadata is included in the encrypted payload to prevent tampering.
+ */
+export interface SigningKeyExport {
+  /**
+   * Format identifier. Must be 'midnight-signing-key-export'.
+   */
+  readonly format: 'midnight-signing-key-export';
+
+  /**
+   * Encrypted payload containing version, metadata, and signing keys.
+   * Format: base64-encoded AES-256-GCM encrypted JSON.
+   */
+  readonly encryptedPayload: string;
+
+  /**
+   * Salt used for key derivation (hex-encoded, 32 bytes / 64 characters).
+   * Required for decryption with the export password.
+   */
+  readonly salt: string;
+}
+
+/**
+ * Maximum number of signing keys that can be exported/imported.
+ * This limit prevents memory exhaustion attacks.
+ */
+export const MAX_EXPORT_SIGNING_KEYS = 10000;
+
+/**
+ * Options for exporting signing keys.
+ */
+export interface ExportSigningKeysOptions {
+  /**
+   * Password used to encrypt the export.
+   * Must be at least 16 characters.
+   * If not provided, uses the storage password.
+   */
+  readonly password?: string;
+
+  /**
+   * Maximum number of keys to export.
+   * Defaults to MAX_EXPORT_SIGNING_KEYS (10000).
+   * Set to a lower value to limit memory usage.
+   */
+  readonly maxKeys?: number;
+}
+
+/**
+ * Options for importing signing keys.
+ */
+export interface ImportSigningKeysOptions {
+  /**
+   * Password used to decrypt the import.
+   * Must match the password used during export.
+   * If not provided, uses the storage password.
+   */
+  readonly password?: string;
+
+  /**
+   * How to handle conflicts when a signing key already exists for an address.
+   * - 'skip': Keep existing key, ignore imported key
+   * - 'overwrite': Replace existing key with imported key
+   * - 'error': Throw an error if any conflict is detected
+   * Default: 'error'
+   */
+  readonly conflictStrategy?: 'skip' | 'overwrite' | 'error';
+
+  /**
+   * Maximum number of keys to import.
+   * Defaults to MAX_EXPORT_SIGNING_KEYS (10000).
+   * Set to a lower value to limit memory usage.
+   */
+  readonly maxKeys?: number;
+}
+
+/**
+ * Result of a signing key import operation.
+ */
+export interface ImportSigningKeysResult {
+  /**
+   * Number of keys successfully imported.
+   */
+  readonly imported: number;
+
+  /**
+   * Number of keys skipped due to conflicts (when conflictStrategy is 'skip').
+   */
+  readonly skipped: number;
+
+  /**
+   * Number of keys that overwrote existing keys (when conflictStrategy is 'overwrite').
+   */
+  readonly overwritten: number;
+}
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 /**
@@ -213,4 +309,28 @@ export interface PrivateStateProvider<PSI extends PrivateStateId = PrivateStateI
     exportData: PrivateStateExport,
     options?: ImportPrivateStatesOptions
   ): Promise<ImportPrivateStatesResult>;
+
+  /**
+   * Export all signing keys as an encrypted JSON-serializable structure.
+   *
+   * @param options Export options including optional custom password and key limit.
+   * @returns A JSON-serializable export structure that can be saved or transmitted.
+   * @throws {SigningKeyExportError} If no keys exist to export or limit exceeded.
+   */
+  exportSigningKeys(options?: ExportSigningKeysOptions): Promise<SigningKeyExport>;
+
+  /**
+   * Import signing keys from a previously exported structure.
+   *
+   * @param exportData The export data structure to import.
+   * @param options Import options including password, conflict strategy, and key limit.
+   * @returns Result indicating how many keys were imported/skipped/overwritten.
+   * @throws {ExportDecryptionError} If decryption fails (wrong password or corrupted data).
+   * @throws {InvalidExportFormatError} If the export format is invalid or unsupported.
+   * @throws {ImportConflictError} If conflictStrategy is 'error' and conflicts exist.
+   */
+  importSigningKeys(
+    exportData: SigningKeyExport,
+    options?: ImportSigningKeysOptions
+  ): Promise<ImportSigningKeysResult>;
 }
