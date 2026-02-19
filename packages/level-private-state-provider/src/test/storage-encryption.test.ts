@@ -13,11 +13,20 @@
  * limitations under the License.
  */
 
+import { Buffer } from 'buffer';
+
 import { getPasswordFromProvider, StorageEncryption } from '../storage-encryption';
 
 describe('StorageEncryption', () => {
-  const testPassword = 'test-password-123';
+  const testPassword = 'Test-Password-123!';
   const testData = 'sensitive data that needs encryption';
+
+  const V1_FIXTURES = {
+    password: 'Test-Password-123!',
+    plaintext: 'sensitive data for v1 migration test',
+    encrypted: 'AYse8BxWbiRb618I8CQKwLJoGyzx0zddBBQ3LORO2wBSgi/4kHm3CqznHcvmSNPw5Y0wW9XDhweunjM/zyq8cHVQYoS53gzsFYEae5imclcA03IJN2Rr5Gf+z1GNd5J5Vg==',
+    salt: '8b1ef01c566e245beb5f08f0240ac0b2681b2cf1d3375d0414372ce44edb0052'
+  };
 
   describe('encrypt and decrypt', () => {
     test('successfully encrypts and decrypts data', () => {
@@ -63,12 +72,49 @@ describe('StorageEncryption', () => {
 
   describe('error handling', () => {
     test('throws on wrong password', () => {
-      const encryption1 = new StorageEncryption('password1');
+      const encryption1 = new StorageEncryption('Correct-Pass-123!');
       const encrypted = encryption1.encrypt(testData);
 
-      const encryption2 = new StorageEncryption('password2', encryption1.getSalt());
+      const encryption2 = new StorageEncryption('Wrong-Password-1!', encryption1.getSalt());
 
       expect(() => encryption2.decrypt(encrypted)).toThrow();
+    });
+  });
+
+  describe('version migration', () => {
+    test('decrypts v1 encrypted data with 100k iterations', () => {
+      const salt = Buffer.from(V1_FIXTURES.salt, 'hex');
+      const encryption = new StorageEncryption(V1_FIXTURES.password, salt);
+
+      const decrypted = encryption.decrypt(V1_FIXTURES.encrypted);
+
+      expect(decrypted).toBe(V1_FIXTURES.plaintext);
+    });
+
+    test('new encryption uses version 2', () => {
+      const encryption = new StorageEncryption(testPassword);
+
+      const encrypted = encryption.encrypt(testData);
+      const buffer = Buffer.from(encrypted, 'base64');
+
+      expect(buffer[0]).toBe(2);
+    });
+
+    test('v2 encrypted data can be decrypted', () => {
+      const encryption = new StorageEncryption(testPassword);
+
+      const encrypted = encryption.encrypt(testData);
+      const decrypted = encryption.decrypt(encrypted);
+
+      expect(decrypted).toBe(testData);
+    });
+
+    test('detects encryption version correctly', () => {
+      expect(StorageEncryption.getVersion(V1_FIXTURES.encrypted)).toBe(1);
+
+      const encryption = new StorageEncryption(testPassword);
+      const v2Encrypted = encryption.encrypt(testData);
+      expect(StorageEncryption.getVersion(v2Encrypted)).toBe(2);
     });
   });
 
@@ -86,7 +132,7 @@ describe('StorageEncryption', () => {
     });
 
     test('returns password when valid', async () => {
-      const validPassword = 'this-is-a-valid-password-123';
+      const validPassword = 'Valid-Password-123!';
       const provider = () => validPassword;
 
       const result = await getPasswordFromProvider(provider);
@@ -94,13 +140,141 @@ describe('StorageEncryption', () => {
     });
 
     test('works with async provider', async () => {
-      const validPassword = 'this-is-a-valid-password-123';
+      const validPassword = 'Valid-Password-123!';
       const provider = async () => {
         return Promise.resolve(validPassword);
       };
 
       const result = await getPasswordFromProvider(provider);
       expect(result).toBe(validPassword);
+    });
+
+    describe('character class requirements', () => {
+      test('rejects password with only lowercase letters', async () => {
+        const provider = () => 'abcdefghijklmnopqr';
+
+        await expect(getPasswordFromProvider(provider)).rejects.toThrow(
+          'Password must contain at least 3 of: uppercase letters, lowercase letters, digits, special characters'
+        );
+      });
+
+      test('rejects password with only uppercase letters', async () => {
+        const provider = () => 'ABCDEFGHIJKLMNOPQR';
+
+        await expect(getPasswordFromProvider(provider)).rejects.toThrow(
+          'Password must contain at least 3 of: uppercase letters, lowercase letters, digits, special characters'
+        );
+      });
+
+      test('rejects password with only digits', async () => {
+        const provider = () => '1234567890123456';
+
+        await expect(getPasswordFromProvider(provider)).rejects.toThrow(
+          'Password must contain at least 3 of: uppercase letters, lowercase letters, digits, special characters'
+        );
+      });
+
+      test('rejects password with only two character classes (lowercase + digits)', async () => {
+        const provider = () => 'abcdefgh12345678';
+
+        await expect(getPasswordFromProvider(provider)).rejects.toThrow(
+          'Password must contain at least 3 of: uppercase letters, lowercase letters, digits, special characters'
+        );
+      });
+
+      test('accepts password with three character classes (lowercase + uppercase + digits)', async () => {
+        const provider = () => 'aXbYcZ1m2n3p4q5r';
+
+        const result = await getPasswordFromProvider(provider);
+        expect(result).toBe('aXbYcZ1m2n3p4q5r');
+      });
+
+      test('accepts password with three character classes (lowercase + uppercase + special)', async () => {
+        const provider = () => 'aXbYcZ!@mNpQ#$rS';
+
+        const result = await getPasswordFromProvider(provider);
+        expect(result).toBe('aXbYcZ!@mNpQ#$rS');
+      });
+
+      test('accepts password with all four character classes', async () => {
+        const provider = () => 'aX1!bY2@cZ3#mN4$';
+
+        const result = await getPasswordFromProvider(provider);
+        expect(result).toBe('aX1!bY2@cZ3#mN4$');
+      });
+    });
+
+    describe('repeated character requirements', () => {
+      test('rejects password with more than 3 consecutive identical characters', async () => {
+        const provider = () => 'Paaaa-ssword-1!!';
+
+        await expect(getPasswordFromProvider(provider)).rejects.toThrow(
+          'Password contains too many repeated characters'
+        );
+      });
+
+      test('rejects password of all identical characters', async () => {
+        const provider = () => '1111111111111111';
+
+        await expect(getPasswordFromProvider(provider)).rejects.toThrow(
+          'Password contains too many repeated characters'
+        );
+      });
+
+      test('accepts password with exactly 3 consecutive identical characters', async () => {
+        const provider = () => 'Paaa-ssword-123!';
+
+        const result = await getPasswordFromProvider(provider);
+        expect(result).toBe('Paaa-ssword-123!');
+      });
+    });
+
+    describe('sequential pattern requirements', () => {
+      test('rejects password with ascending numeric sequence', async () => {
+        const provider = () => 'Password-123456!';
+
+        await expect(getPasswordFromProvider(provider)).rejects.toThrow(
+          'Password contains sequential patterns'
+        );
+      });
+
+      test('rejects password with descending numeric sequence', async () => {
+        const provider = () => 'Password-654321!';
+
+        await expect(getPasswordFromProvider(provider)).rejects.toThrow(
+          'Password contains sequential patterns'
+        );
+      });
+
+      test('rejects password with ascending letter sequence', async () => {
+        const provider = () => 'Password-abcdef!';
+
+        await expect(getPasswordFromProvider(provider)).rejects.toThrow(
+          'Password contains sequential patterns'
+        );
+      });
+
+      test('rejects password with descending letter sequence', async () => {
+        const provider = () => 'Password-fedcba!';
+
+        await expect(getPasswordFromProvider(provider)).rejects.toThrow(
+          'Password contains sequential patterns'
+        );
+      });
+
+      test('accepts password with non-sequential characters', async () => {
+        const provider = () => 'Xk9$mP2!qR7@nL4#';
+
+        const result = await getPasswordFromProvider(provider);
+        expect(result).toBe('Xk9$mP2!qR7@nL4#');
+      });
+
+      test('accepts password with short sequences (3 chars is ok)', async () => {
+        const provider = () => 'Pass-abc-XYZ-12!';
+
+        const result = await getPasswordFromProvider(provider);
+        expect(result).toBe('Pass-abc-XYZ-12!');
+      });
     });
   });
 });

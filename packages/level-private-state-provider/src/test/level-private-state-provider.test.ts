@@ -31,7 +31,7 @@ import { levelPrivateStateProvider } from '../index';
 import { StorageEncryption } from '../storage-encryption';
 
 describe('Level Private State Provider', (): void => {
-  const TEST_PASSWORD = 'test-storage-password-for-unit-tests-only';
+  const TEST_PASSWORD = 'Test-Storage-Pass8!';
   const TEST_CONTRACT_ADDRESS = 'test-contract-address' as ContractAddress;
   const testConfig = {
     privateStoragePasswordProvider: () => TEST_PASSWORD
@@ -389,7 +389,7 @@ describe('Level Private State Provider', (): void => {
   });
 
   describe('Export/Import', () => {
-    const EXPORT_PASSWORD = 'export-test-password-1234';
+    const EXPORT_PASSWORD = 'Export-Test-Pass8!';
 
     beforeEach(async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
@@ -445,7 +445,7 @@ describe('Level Private State Provider', (): void => {
       await db.clear();
 
       await expect(
-        db.importPrivateStates(exportData, { password: 'wrong-password-12345' })
+        db.importPrivateStates(exportData, { password: 'Wrong-Pass8-Test!!' })
       ).rejects.toThrow(ExportDecryptionError);
     });
 
@@ -692,7 +692,7 @@ describe('Level Private State Provider', (): void => {
     });
 
     describe('malformed data edge cases', () => {
-      const VALID_PASSWORD = 'valid-password-for-test';
+      const VALID_PASSWORD = 'Valid-Pass8-Test!';
 
       test('throws ExportDecryptionError for garbage base64 payload', async () => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
