@@ -779,7 +779,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
           }
         }
         if (conflictCount > 0) {
-          throw new ImportConflictError(conflictCount);
+          throw new ImportConflictError(conflictCount, 'signing key');
         }
       }
 

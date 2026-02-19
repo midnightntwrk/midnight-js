@@ -495,7 +495,7 @@ export const inMemoryPrivateStateProvider = <
       if (conflictStrategy === 'error') {
         const conflictCount = addresses.filter((addr) => signingKeys[addr] !== undefined).length;
         if (conflictCount > 0) {
-          throw new ImportConflictError(conflictCount);
+          throw new ImportConflictError(conflictCount, 'signing key');
         }
       }
 
