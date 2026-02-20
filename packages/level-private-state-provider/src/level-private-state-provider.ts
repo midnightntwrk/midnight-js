@@ -25,8 +25,7 @@ import {
   type PrivateStateExport,
   PrivateStateExportError,
   type PrivateStateId,
-  type PrivateStateProvider,
-  type WalletProvider
+  type PrivateStateProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import { type AbstractSublevel } from 'abstract-level';
 import { Buffer } from 'buffer';
@@ -52,7 +51,7 @@ export const MN_LDB_DEFAULT_PRIS_STORE_NAME = 'private-states';
 export const MN_LDB_DEFAULT_KEY_STORE_NAME = 'signing-keys';
 
 /**
- * Optional properties for the indexedDB based private state provider configuration.
+ * Configuration properties for the LevelDB based private state provider.
  */
 export interface LevelPrivateStateProviderConfig {
   /**
@@ -68,30 +67,20 @@ export interface LevelPrivateStateProviderConfig {
    */
   readonly signingKeyStoreName: string;
   /**
-   * Wallet provider used to get the encryption public key for password derivation.
-   * If privateStoragePasswordProvider is not provided, the wallet's encryption public key
-   * will be used as the password.
-   */
-  readonly walletProvider?: WalletProvider;
-  /**
    * Provider function that returns the password used for encrypting private state.
    * The password must be at least 16 characters long.
    *
-   * If not provided, defaults to using walletProvider.getEncryptionPublicKey().
+   * SECURITY: Use a strong, secret password. Never use public key material
+   * or other non-secret values as the password source.
    *
    * @example
    * ```typescript
-   * // Using default (wallet's encryption public key)
-   * { walletProvider: wallet }
-   *
-   * // Using custom password provider
    * {
-   *   walletProvider: wallet,
-   *   privateStoragePasswordProvider: async () => await getUserPassword()
+   *   privateStoragePasswordProvider: async () => await getSecretPassword()
    * }
    * ```
    */
-  readonly privateStoragePasswordProvider?: PrivateStoragePasswordProvider;
+  readonly privateStoragePasswordProvider: PrivateStoragePasswordProvider;
 }
 
 /**
@@ -304,26 +293,18 @@ const validateSalt = (salt: string): void => {
  * @param config Database configuration options.
  */
 export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
-  config: Partial<LevelPrivateStateProviderConfig>
+  config: Partial<LevelPrivateStateProviderConfig> & Pick<LevelPrivateStateProviderConfig, 'privateStoragePasswordProvider'>
 ): PrivateStateProvider<PSI, PS> => {
   const fullConfig = _.defaults(config, DEFAULT_CONFIG);
 
-  if (config.privateStoragePasswordProvider && config.walletProvider) {
+  if (!config.privateStoragePasswordProvider) {
     throw new Error(
-      'Cannot provide both privateStoragePasswordProvider and walletProvider.\n' +
-      'Provide only one: walletProvider for default behavior, or privateStoragePasswordProvider for custom password.'
+      'privateStoragePasswordProvider is required.\n' +
+      'Provide a function that returns a strong, secret password (minimum 16 characters).'
     );
   }
 
-  if (!config.privateStoragePasswordProvider && !config.walletProvider) {
-    throw new Error(
-      'Either privateStoragePasswordProvider or walletProvider must be provided.\n' +
-      'Provide walletProvider to use wallet encryption key, or privateStoragePasswordProvider for custom password.'
-    );
-  }
-
-  const passwordProvider: PrivateStoragePasswordProvider = config.privateStoragePasswordProvider ||
-    (() => config.walletProvider!.getEncryptionPublicKey());
+  const passwordProvider: PrivateStoragePasswordProvider = config.privateStoragePasswordProvider;
 
   let contractAddress: ContractAddress | null = null;
 

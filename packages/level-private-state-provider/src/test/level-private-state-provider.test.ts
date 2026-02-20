@@ -17,7 +17,6 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
 import { type ContractAddress, sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
-import { type FinalizedTransaction } from '@midnight-ntwrk/ledger-v7';
 import {
   ExportDecryptionError,
   ImportConflictError,
@@ -246,39 +245,19 @@ describe('Level Private State Provider', (): void => {
   });
 
   describe('Password provider configuration', () => {
-    test('uses wallet encryption public key when only walletProvider is provided', async () => {
-      const mockWallet = {
-        getEncryptionPublicKey: () => TEST_PASSWORD,
-        getCoinPublicKey: () => 'mock-coin-public-key',
-        balanceTx: async () => ({} as unknown as FinalizedTransaction)
-      };
+    test('throws error when privateStoragePasswordProvider is not provided', () => {
+      expect(() => {
+        // @ts-expect-error - intentionally testing missing required field
+        levelPrivateStateProvider<PID, PS>({});
+      }).toThrow('privateStoragePasswordProvider is required');
+    });
 
-      const db = levelPrivateStateProvider<PID, PS>({ walletProvider: mockWallet });
+    test('works correctly when privateStoragePasswordProvider is provided', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
       db.setContractAddress(TEST_CONTRACT_ADDRESS);
       await db.set('stringValue', testStates.stringValue);
       const value = await db.get('stringValue');
       expect(value).toEqual(testStates.stringValue);
-    });
-
-    test('throws error when neither walletProvider nor privateStoragePasswordProvider is provided', () => {
-      expect(() => {
-        levelPrivateStateProvider<PID, PS>({});
-      }).toThrow('Either privateStoragePasswordProvider or walletProvider must be provided');
-    });
-
-    test('throws error when both privateStoragePasswordProvider and walletProvider are provided', () => {
-      const mockWallet = {
-        getEncryptionPublicKey: () => TEST_PASSWORD,
-        getCoinPublicKey: () => 'mock-coin-public-key',
-        balanceTx: async () => ({} as unknown as FinalizedTransaction)
-      };
-
-      expect(() => {
-        levelPrivateStateProvider<PID, PS>({
-          walletProvider: mockWallet,
-          privateStoragePasswordProvider: () => TEST_PASSWORD
-        });
-      }).toThrow('Cannot provide both privateStoragePasswordProvider and walletProvider');
     });
   });
 
