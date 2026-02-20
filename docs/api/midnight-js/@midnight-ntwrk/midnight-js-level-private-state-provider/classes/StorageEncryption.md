@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0**](../../../README.md)
+[**Midnight.js API Reference v3.1.0**](../../../README.md)
 
 ***
 
@@ -67,6 +67,22 @@
 #### Returns
 
 `Buffer`
+
+***
+
+### getVersion()
+
+> `static` **getVersion**(`encryptedData`): `number`
+
+#### Parameters
+
+##### encryptedData
+
+`string`
+
+#### Returns
+
+`number`
 
 ***
 

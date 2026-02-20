@@ -1,8 +1,8 @@
-[**@midnight-ntwrk/testkit-js v3.0.0**](../README.md)
+[**@midnight-ntwrk/testkit-js v3.1.0**](../README.md)
 
 ***
 
-> **syncWallet**(`wallet`, `throttleTime`, `timeout`): `Promise`\<`FacadeState`\>
+> **syncWallet**(`wallet`, `throttleTime?`, `timeout?`): `Promise`\<`FacadeState`\>
 
 ## Parameters
 
@@ -10,11 +10,11 @@
 
 `WalletFacade`
 
-### throttleTime
+### throttleTime?
 
 `number` = `2_000`
 
-### timeout
+### timeout?
 
 `number` = `90_000`
 

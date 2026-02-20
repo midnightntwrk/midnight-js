@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0**](../../../README.md)
+[**Midnight.js API Reference v3.1.0**](../../../README.md)
 
 ***
 
@@ -33,7 +33,7 @@ The name of the object store containing private states.
 Provider function that returns the password used for encrypting private state.
 The password must be at least 16 characters long.
 
-**SECURITY**: Use a strong, secret password. Never use public key material
+SECURITY: Use a strong, secret password. Never use public key material
 or other non-secret values as the password source.
 
 #### Example

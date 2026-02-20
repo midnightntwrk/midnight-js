@@ -1,8 +1,8 @@
-[**@midnight-ntwrk/testkit-js v3.0.0**](../README.md)
+[**@midnight-ntwrk/testkit-js v3.1.0**](../README.md)
 
 ***
 
-> **waitForFunds**(`wallet`, `env`, `tokenType`, `fundFromFaucet`): `Promise`\<`bigint` \| `FacadeState`\>
+> **waitForFunds**(`wallet`, `env`, `tokenType?`, `fundFromFaucet?`): `Promise`\<`bigint` \| `FacadeState`\>
 
 ## Parameters
 
@@ -14,11 +14,11 @@
 
 [`EnvironmentConfiguration`](../interfaces/EnvironmentConfiguration.md)
 
-### tokenType
+### tokenType?
 
 `TokenType` = `...`
 
-### fundFromFaucet
+### fundFromFaucet?
 
 `boolean` = `false`
 

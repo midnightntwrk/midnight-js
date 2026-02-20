@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v3.0.0**](../README.md)
+[**@midnight-ntwrk/testkit-js v3.1.0**](../README.md)
 
 ***
 
@@ -16,7 +16,7 @@
 
 ### createDustWallet()
 
-> `static` **createDustWallet**(`config`, `seed`, `dustOptions`): `DustWallet`
+> `static` **createDustWallet**(`config`, `seed`, `dustOptions?`): `DustWalletAPI`
 
 #### Parameters
 
@@ -28,19 +28,19 @@
 
 `Uint8Array`
 
-##### dustOptions
+##### dustOptions?
 
 [`DustWalletOptions`](../interfaces/DustWalletOptions.md) = `DEFAULT_DUST_OPTIONS`
 
 #### Returns
 
-`DustWallet`
+`DustWalletAPI`
 
 ***
 
 ### createShieldedWallet()
 
-> `static` **createShieldedWallet**(`config`, `seed`): `ShieldedWallet`
+> `static` **createShieldedWallet**(`config`, `seed`): `ShieldedWalletAPI`
 
 #### Parameters
 
@@ -54,13 +54,13 @@
 
 #### Returns
 
-`ShieldedWallet`
+`ShieldedWalletAPI`
 
 ***
 
 ### createUnshieldedWallet()
 
-> `static` **createUnshieldedWallet**(`config`, `unshieldedKeystore`): `UnshieldedWallet`
+> `static` **createUnshieldedWallet**(`config`, `unshieldedKeystore`): `UnshieldedWalletAPI`
 
 #### Parameters
 
@@ -74,31 +74,35 @@
 
 #### Returns
 
-`UnshieldedWallet`
+`UnshieldedWalletAPI`
 
 ***
 
 ### createWalletFacade()
 
-> `static` **createWalletFacade**(`shieldedWallet`, `unshieldedWallet`, `dustWallet`): `WalletFacade`
+> `static` **createWalletFacade**(`config`, `shieldedWallet`, `unshieldedWallet`, `dustWallet`): `Promise`\<`WalletFacade`\>
 
 #### Parameters
 
+##### config
+
+`DefaultConfiguration`
+
 ##### shieldedWallet
 
-`ShieldedWallet`
+`ShieldedWalletAPI`
 
 ##### unshieldedWallet
 
-`UnshieldedWallet`
+`UnshieldedWalletAPI`
 
 ##### dustWallet
 
-`DustWallet`
+`DustWalletAPI`
 
 #### Returns
 
-`WalletFacade`
+`Promise`\<`WalletFacade`\>
 
 ***
 

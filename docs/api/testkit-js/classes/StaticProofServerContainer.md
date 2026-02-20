@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v3.0.0**](../README.md)
+[**@midnight-ntwrk/testkit-js v3.1.0**](../README.md)
 
 ***
 
@@ -13,13 +13,13 @@ Used for connecting to an existing proof server instance.
 
 ### Constructor
 
-> **new StaticProofServerContainer**(`port`): `StaticProofServerContainer`
+> **new StaticProofServerContainer**(`port?`): `StaticProofServerContainer`
 
 Creates a new StaticProofServerContainer instance.
 
 #### Parameters
 
-##### port
+##### port?
 
 `number` = `6300`
 

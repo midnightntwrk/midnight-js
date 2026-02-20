@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0**](../../../README.md)
+[**Midnight.js API Reference v3.1.0**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Function: indexerPublicDataProvider()
 
-> **indexerPublicDataProvider**(`queryURL`, `subscriptionURL`, `webSocketImpl`): `PublicDataProvider`
+> **indexerPublicDataProvider**(`queryURL`, `subscriptionURL`, `webSocketImpl?`): `PublicDataProvider`
 
 Constructs a PublicDataProvider based on an ApolloClient.
 
@@ -24,7 +24,7 @@ The URL of a GraphQL server query endpoint.
 
 The URL of a GraphQL server subscription (websocket) endpoint.
 
-### webSocketImpl
+### webSocketImpl?
 
 *typeof* `WebSocket` = `ws.WebSocket`
 

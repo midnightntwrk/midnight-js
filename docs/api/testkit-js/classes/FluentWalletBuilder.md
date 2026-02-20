@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v3.0.0**](../README.md)
+[**@midnight-ntwrk/testkit-js v3.1.0**](../README.md)
 
 ***
 
@@ -40,6 +40,22 @@
 
 ***
 
+### withMnemonic()
+
+> **withMnemonic**(`mnemonic`): `FluentWalletBuilder`
+
+#### Parameters
+
+##### mnemonic
+
+`string`
+
+#### Returns
+
+`FluentWalletBuilder`
+
+***
+
 ### withRandomSeed()
 
 > **withRandomSeed**(): `FluentWalletBuilder`
@@ -59,6 +75,16 @@
 ##### seed
 
 `string`
+
+#### Returns
+
+`FluentWalletBuilder`
+
+***
+
+### withTestWallet()
+
+> **withTestWallet**(): `FluentWalletBuilder`
 
 #### Returns
 

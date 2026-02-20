@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0**](../../../README.md)
+[**Midnight.js API Reference v3.1.0**](../../../README.md)
 
 ***
 
@@ -31,7 +31,7 @@ DO NOT use for production applications requiring data persistence.
 
 ### config
 
-`Partial`\<[`LevelPrivateStateProviderConfig`](../interfaces/LevelPrivateStateProviderConfig.md)\>
+`Partial`\<[`LevelPrivateStateProviderConfig`](../interfaces/LevelPrivateStateProviderConfig.md)\> & `Pick`\<[`LevelPrivateStateProviderConfig`](../interfaces/LevelPrivateStateProviderConfig.md), `"privateStoragePasswordProvider"`\>
 
 Database configuration options.
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0**](../../../README.md)
+[**Midnight.js API Reference v3.1.0**](../../../README.md)
 
 ***
 
@@ -22,7 +22,7 @@ Retrieves ZK artifacts from a remote source.
 
 ### Constructor
 
-> **new FetchZkConfigProvider**\<`K`\>(`baseURL`, `fetchFunc`): `FetchZkConfigProvider`\<`K`\>
+> **new FetchZkConfigProvider**\<`K`\>(`baseURL`, `fetchFunc?`): `FetchZkConfigProvider`\<`K`\>
 
 #### Parameters
 
@@ -32,7 +32,7 @@ Retrieves ZK artifacts from a remote source.
 
 The endpoint to query for ZK artifacts.
 
-##### fetchFunc
+##### fetchFunc?
 
 \{(`input`, `init?`): `Promise`\<`Response`\>; (`input`, `init?`): `Promise`\<`Response`\>; \}
 
