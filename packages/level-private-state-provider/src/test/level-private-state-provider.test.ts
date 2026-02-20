@@ -22,9 +22,12 @@ import {
   ImportConflictError,
   InvalidExportFormatError,
   type PrivateStateExport,
-  PrivateStateExportError
+  PrivateStateExportError,
+  type SigningKeyExport,
+  SigningKeyExportError
 } from '@midnight-ntwrk/midnight-js-types';
 import * as crypto from 'crypto';
+import { vi } from 'vitest';
 
 import { levelPrivateStateProvider } from '../index';
 import { StorageEncryption } from '../storage-encryption';
@@ -896,6 +899,504 @@ describe('Level Private State Provider', (): void => {
           db.importPrivateStates(exportWithUppercase, { password: VALID_PASSWORD })
         ).resolves.toEqual({ imported: 0, skipped: 0, overwritten: 0 });
       });
+    });
+  });
+
+  describe('Signing Key Export/Import', () => {
+    const EXPORT_PASSWORD = 'export-test-password-1234';
+    const CONTRACT_ADDRESS_1 = 'contract-address-1' as ContractAddress;
+    const CONTRACT_ADDRESS_2 = 'contract-address-2' as ContractAddress;
+
+    beforeEach(async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      db.setContractAddress(TEST_CONTRACT_ADDRESS);
+      await db.clear();
+      await db.clearSigningKeys();
+    });
+
+    test('exports and imports signing keys correctly', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      const signingKey1 = sampleSigningKey();
+      const signingKey2 = sampleSigningKey();
+      await db.setSigningKey(CONTRACT_ADDRESS_1, signingKey1);
+      await db.setSigningKey(CONTRACT_ADDRESS_2, signingKey2);
+
+      const exportData = await db.exportSigningKeys();
+
+      expect(exportData.format).toBe('midnight-signing-key-export');
+      expect(typeof exportData.encryptedPayload).toBe('string');
+      expect(typeof exportData.salt).toBe('string');
+      expect(exportData.salt).toHaveLength(64);
+
+      await db.clearSigningKeys();
+      const result = await db.importSigningKeys(exportData);
+
+      expect(result.imported).toBe(2);
+      expect(result.skipped).toBe(0);
+      expect(result.overwritten).toBe(0);
+
+      expect(await db.getSigningKey(CONTRACT_ADDRESS_1)).toEqual(signingKey1);
+      expect(await db.getSigningKey(CONTRACT_ADDRESS_2)).toEqual(signingKey2);
+    });
+
+    test('exports with custom password and imports with same password', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      const signingKey = sampleSigningKey();
+      await db.setSigningKey(CONTRACT_ADDRESS_1, signingKey);
+
+      const exportData = await db.exportSigningKeys({ password: EXPORT_PASSWORD });
+      await db.clearSigningKeys();
+
+      const result = await db.importSigningKeys(exportData, { password: EXPORT_PASSWORD });
+      expect(result.imported).toBe(1);
+      expect(await db.getSigningKey(CONTRACT_ADDRESS_1)).toEqual(signingKey);
+    });
+
+    test('throws ExportDecryptionError on wrong password', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      const signingKey = sampleSigningKey();
+      await db.setSigningKey(CONTRACT_ADDRESS_1, signingKey);
+
+      const exportData = await db.exportSigningKeys({ password: EXPORT_PASSWORD });
+      await db.clearSigningKeys();
+
+      await expect(
+        db.importSigningKeys(exportData, { password: 'wrong-password-12345' })
+      ).rejects.toThrow(ExportDecryptionError);
+    });
+
+    test('throws SigningKeyExportError when no keys to export', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+      await expect(db.exportSigningKeys()).rejects.toThrow(SigningKeyExportError);
+    });
+
+    test('throws SigningKeyExportError for short custom password', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      const signingKey = sampleSigningKey();
+      await db.setSigningKey(CONTRACT_ADDRESS_1, signingKey);
+
+      await expect(
+        db.exportSigningKeys({ password: 'short' })
+      ).rejects.toThrow(SigningKeyExportError);
+    });
+
+    test('throws SigningKeyExportError for short import password', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      const signingKey = sampleSigningKey();
+      await db.setSigningKey(CONTRACT_ADDRESS_1, signingKey);
+
+      const exportData = await db.exportSigningKeys({ password: EXPORT_PASSWORD });
+      await db.clearSigningKeys();
+
+      await expect(
+        db.importSigningKeys(exportData, { password: 'short' })
+      ).rejects.toThrow(SigningKeyExportError);
+    });
+
+    test('throws ImportConflictError when conflict strategy is error (default)', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      const signingKey = sampleSigningKey();
+      await db.setSigningKey(CONTRACT_ADDRESS_1, signingKey);
+
+      const exportData = await db.exportSigningKeys();
+
+      await expect(db.importSigningKeys(exportData)).rejects.toThrow(ImportConflictError);
+    });
+
+    test('ImportConflictError contains count but not addresses', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      await db.setSigningKey(CONTRACT_ADDRESS_1, sampleSigningKey());
+      await db.setSigningKey(CONTRACT_ADDRESS_2, sampleSigningKey());
+
+      const exportData = await db.exportSigningKeys();
+
+      try {
+        await db.importSigningKeys(exportData);
+        expect.fail('Should have thrown ImportConflictError');
+      } catch (error) {
+        expect(error).toBeInstanceOf(ImportConflictError);
+        const conflictError = error as ImportConflictError;
+        expect(conflictError.conflictCount).toBe(2);
+        expect(conflictError.message).not.toContain('contract-address-1');
+        expect(conflictError.message).not.toContain('contract-address-2');
+      }
+    });
+
+    test('skips conflicts when strategy is skip', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      const originalKey = sampleSigningKey();
+      await db.setSigningKey(CONTRACT_ADDRESS_1, originalKey);
+
+      const exportData = await db.exportSigningKeys();
+
+      const newKey = sampleSigningKey();
+      await db.removeSigningKey(CONTRACT_ADDRESS_1);
+      await db.setSigningKey(CONTRACT_ADDRESS_1, newKey);
+
+      const result = await db.importSigningKeys(exportData, { conflictStrategy: 'skip' });
+
+      expect(result.skipped).toBe(1);
+      expect(result.imported).toBe(0);
+      expect(result.overwritten).toBe(0);
+      expect(await db.getSigningKey(CONTRACT_ADDRESS_1)).toEqual(newKey);
+    });
+
+    test('overwrites conflicts when strategy is overwrite', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      const originalKey = sampleSigningKey();
+      await db.setSigningKey(CONTRACT_ADDRESS_1, originalKey);
+
+      const exportData = await db.exportSigningKeys();
+
+      const newKey = sampleSigningKey();
+      await db.removeSigningKey(CONTRACT_ADDRESS_1);
+      await db.setSigningKey(CONTRACT_ADDRESS_1, newKey);
+
+      const result = await db.importSigningKeys(exportData, { conflictStrategy: 'overwrite' });
+
+      expect(result.overwritten).toBe(1);
+      expect(result.imported).toBe(0);
+      expect(result.skipped).toBe(0);
+      expect(await db.getSigningKey(CONTRACT_ADDRESS_1)).toEqual(originalKey);
+    });
+
+    test('throws InvalidExportFormatError for wrong format identifier', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+      const badExport = {
+        format: 'wrong-format',
+        encryptedPayload: 'invalid',
+        salt: '0'.repeat(64)
+      };
+
+      await expect(
+        db.importSigningKeys(badExport as unknown as SigningKeyExport)
+      ).rejects.toThrow(InvalidExportFormatError);
+    });
+
+    test('throws InvalidExportFormatError for missing fields', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+      const badExport = {
+        format: 'midnight-signing-key-export'
+      };
+
+      await expect(
+        db.importSigningKeys(badExport as unknown as SigningKeyExport)
+      ).rejects.toThrow(InvalidExportFormatError);
+    });
+
+    test('throws InvalidExportFormatError for invalid salt length', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+      const badExport = {
+        format: 'midnight-signing-key-export',
+        encryptedPayload: 'invalid',
+        salt: 'abc123'
+      };
+
+      await expect(
+        db.importSigningKeys(badExport as unknown as SigningKeyExport)
+      ).rejects.toThrow(InvalidExportFormatError);
+    });
+
+    test('throws InvalidExportFormatError for invalid salt characters', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+      const badExport = {
+        format: 'midnight-signing-key-export',
+        encryptedPayload: 'invalid',
+        salt: 'g'.repeat(64)
+      };
+
+      await expect(
+        db.importSigningKeys(badExport as unknown as SigningKeyExport)
+      ).rejects.toThrow(InvalidExportFormatError);
+    });
+
+    test('enforces maxKeys limit on export', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      await db.setSigningKey(CONTRACT_ADDRESS_1, sampleSigningKey());
+      await db.setSigningKey(CONTRACT_ADDRESS_2, sampleSigningKey());
+
+      await expect(
+        db.exportSigningKeys({ maxKeys: 1 })
+      ).rejects.toThrow(SigningKeyExportError);
+    });
+
+    test('enforces maxKeys limit on import', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      await db.setSigningKey(CONTRACT_ADDRESS_1, sampleSigningKey());
+      await db.setSigningKey(CONTRACT_ADDRESS_2, sampleSigningKey());
+
+      const exportData = await db.exportSigningKeys();
+      await db.clearSigningKeys();
+
+      await expect(
+        db.importSigningKeys(exportData, { maxKeys: 1 })
+      ).rejects.toThrow(InvalidExportFormatError);
+    });
+
+    test('handles mixed import scenarios correctly', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      const key1 = sampleSigningKey();
+      const key2 = sampleSigningKey();
+      await db.setSigningKey(CONTRACT_ADDRESS_1, key1);
+      await db.setSigningKey(CONTRACT_ADDRESS_2, key2);
+
+      const exportData = await db.exportSigningKeys();
+
+      await db.removeSigningKey(CONTRACT_ADDRESS_1);
+      const key3 = sampleSigningKey();
+      const CONTRACT_ADDRESS_3 = 'contract-address-3' as ContractAddress;
+      await db.setSigningKey(CONTRACT_ADDRESS_3, key3);
+
+      const result = await db.importSigningKeys(exportData, { conflictStrategy: 'skip' });
+
+      expect(result.imported).toBe(1);
+      expect(result.skipped).toBe(1);
+      expect(result.overwritten).toBe(0);
+
+      expect(await db.getSigningKey(CONTRACT_ADDRESS_1)).toEqual(key1);
+      expect(await db.getSigningKey(CONTRACT_ADDRESS_2)).toEqual(key2);
+      expect(await db.getSigningKey(CONTRACT_ADDRESS_3)).toEqual(key3);
+    });
+
+    describe('malformed data edge cases', () => {
+      const VALID_PASSWORD = 'valid-password-for-test';
+
+      test('throws ExportDecryptionError for garbage base64 payload', async () => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+        const badExport: SigningKeyExport = {
+          format: 'midnight-signing-key-export',
+          encryptedPayload: 'dGhpcyBpcyBub3QgdmFsaWQgZW5jcnlwdGVkIGRhdGE=',
+          salt: '0'.repeat(64)
+        };
+
+        await expect(
+          db.importSigningKeys(badExport, { password: VALID_PASSWORD })
+        ).rejects.toThrow(ExportDecryptionError);
+      });
+
+      test('throws ExportDecryptionError for payload that decrypts to invalid JSON', async () => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+        const salt = Buffer.from('0'.repeat(64), 'hex');
+        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
+        const notJson = encryption.encrypt('this is not JSON');
+
+        const badExport: SigningKeyExport = {
+          format: 'midnight-signing-key-export',
+          encryptedPayload: notJson,
+          salt: salt.toString('hex')
+        };
+
+        await expect(
+          db.importSigningKeys(badExport, { password: VALID_PASSWORD })
+        ).rejects.toThrow(ExportDecryptionError);
+      });
+
+      test('throws ExportDecryptionError for payload with invalid structure (missing keys)', async () => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+        const salt = Buffer.from('0'.repeat(64), 'hex');
+        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
+        const invalidPayload = encryption.encrypt(JSON.stringify({
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          keyCount: 0
+        }));
+
+        const badExport: SigningKeyExport = {
+          format: 'midnight-signing-key-export',
+          encryptedPayload: invalidPayload,
+          salt: salt.toString('hex')
+        };
+
+        await expect(
+          db.importSigningKeys(badExport, { password: VALID_PASSWORD })
+        ).rejects.toThrow(ExportDecryptionError);
+      });
+
+      test('throws ExportDecryptionError for payload with invalid structure (missing version)', async () => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+        const salt = Buffer.from('0'.repeat(64), 'hex');
+        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
+        const invalidPayload = encryption.encrypt(JSON.stringify({
+          exportedAt: new Date().toISOString(),
+          keyCount: 0,
+          keys: {}
+        }));
+
+        const badExport: SigningKeyExport = {
+          format: 'midnight-signing-key-export',
+          encryptedPayload: invalidPayload,
+          salt: salt.toString('hex')
+        };
+
+        await expect(
+          db.importSigningKeys(badExport, { password: VALID_PASSWORD })
+        ).rejects.toThrow(ExportDecryptionError);
+      });
+
+      test('throws ExportDecryptionError for keyCount mismatch', async () => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+        const salt = Buffer.from('0'.repeat(64), 'hex');
+        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
+        const mismatchedPayload = encryption.encrypt(JSON.stringify({
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          keyCount: 5,
+          keys: {
+            'test-address': { sk: 'test' }
+          }
+        }));
+
+        const badExport: SigningKeyExport = {
+          format: 'midnight-signing-key-export',
+          encryptedPayload: mismatchedPayload,
+          salt: salt.toString('hex')
+        };
+
+        await expect(
+          db.importSigningKeys(badExport, { password: VALID_PASSWORD })
+        ).rejects.toThrow(ExportDecryptionError);
+      });
+
+      test('throws InvalidExportFormatError for unsupported version', async () => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+
+        const salt = Buffer.from('0'.repeat(64), 'hex');
+        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
+        const unsupportedVersionPayload = encryption.encrypt(JSON.stringify({
+          version: 999,
+          exportedAt: new Date().toISOString(),
+          keyCount: 0,
+          keys: {}
+        }));
+
+        const badExport: SigningKeyExport = {
+          format: 'midnight-signing-key-export',
+          encryptedPayload: unsupportedVersionPayload,
+          salt: salt.toString('hex')
+        };
+
+        await expect(
+          db.importSigningKeys(badExport, { password: VALID_PASSWORD })
+        ).rejects.toThrow(InvalidExportFormatError);
+      });
+
+      test('throws ExportDecryptionError for tampered encrypted payload', async () => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+        const signingKey = sampleSigningKey();
+        await db.setSigningKey(CONTRACT_ADDRESS_1, signingKey);
+
+        const exportData = await db.exportSigningKeys();
+
+        const tamperedPayload = Buffer.from(exportData.encryptedPayload, 'base64');
+        tamperedPayload[tamperedPayload.length - 10] ^= 0xff;
+
+        const tamperedExport: SigningKeyExport = {
+          format: 'midnight-signing-key-export',
+          encryptedPayload: tamperedPayload.toString('base64'),
+          salt: exportData.salt
+        };
+
+        await expect(db.importSigningKeys(tamperedExport)).rejects.toThrow(ExportDecryptionError);
+      });
+    });
+  });
+
+  describe('Browser Warning', () => {
+    const globalRecord = globalThis as Record<string, unknown>;
+    let originalWindow: unknown;
+    let originalDocument: unknown;
+    let originalSessionStorage: unknown;
+    let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      originalWindow = globalRecord.window;
+      originalDocument = globalRecord.document;
+      originalSessionStorage = globalRecord.sessionStorage;
+      consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(vi.fn());
+    });
+
+    afterEach(() => {
+      globalRecord.window = originalWindow;
+      globalRecord.document = originalDocument;
+      globalRecord.sessionStorage = originalSessionStorage;
+      consoleWarnSpy.mockRestore();
+    });
+
+    test('shows warning in browser environment', () => {
+      const mockSessionStorage = {
+        getItem: vi.fn().mockReturnValue(null),
+        setItem: vi.fn()
+      };
+      globalRecord.window = {};
+      globalRecord.document = {};
+      globalRecord.sessionStorage = mockSessionStorage;
+
+      levelPrivateStateProvider<PID, PS>(testConfig);
+
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('MIDNIGHT: Private state and signing keys')
+      );
+      expect(mockSessionStorage.setItem).toHaveBeenCalledWith(
+        '__midnight_browser_warning_shown__',
+        'true'
+      );
+    });
+
+    test('does not show warning in Node.js environment', () => {
+      delete globalRecord.window;
+      delete globalRecord.document;
+
+      levelPrivateStateProvider<PID, PS>(testConfig);
+
+      expect(consoleWarnSpy).not.toHaveBeenCalled();
+    });
+
+    test('does not show warning when only window exists (e.g., jsdom)', () => {
+      globalRecord.window = {};
+      delete globalRecord.document;
+
+      levelPrivateStateProvider<PID, PS>(testConfig);
+
+      expect(consoleWarnSpy).not.toHaveBeenCalled();
+    });
+
+    test('shows warning only once per session', () => {
+      const mockSessionStorage = {
+        getItem: vi.fn().mockReturnValue('true'),
+        setItem: vi.fn()
+      };
+      globalRecord.window = {};
+      globalRecord.document = {};
+      globalRecord.sessionStorage = mockSessionStorage;
+
+      levelPrivateStateProvider<PID, PS>(testConfig);
+
+      expect(consoleWarnSpy).not.toHaveBeenCalled();
+    });
+
+    test('handles sessionStorage errors gracefully', () => {
+      const mockSessionStorage = {
+        getItem: vi.fn().mockImplementation(() => {
+          throw new Error('Storage error');
+        }),
+        setItem: vi.fn()
+      };
+      globalRecord.window = {};
+      globalRecord.document = {};
+      globalRecord.sessionStorage = mockSessionStorage;
+
+      expect(() => levelPrivateStateProvider<PID, PS>(testConfig)).not.toThrow();
+      expect(consoleWarnSpy).toHaveBeenCalled();
     });
   });
 });

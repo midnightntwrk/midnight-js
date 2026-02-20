@@ -17,15 +17,21 @@ import type { ContractAddress, SigningKey } from '@midnight-ntwrk/compact-runtim
 import {
   ExportDecryptionError,
   type ExportPrivateStatesOptions,
+  type ExportSigningKeysOptions,
   ImportConflictError,
   type ImportPrivateStatesOptions,
   type ImportPrivateStatesResult,
+  type ImportSigningKeysOptions,
+  type ImportSigningKeysResult,
   InvalidExportFormatError,
+  MAX_EXPORT_SIGNING_KEYS,
   MAX_EXPORT_STATES,
   type PrivateStateExport,
   PrivateStateExportError,
   type PrivateStateId,
-  type PrivateStateProvider
+  type PrivateStateProvider,
+  type SigningKeyExport,
+  SigningKeyExportError
 } from '@midnight-ntwrk/midnight-js-types';
 import { type AbstractSublevel } from 'abstract-level';
 import { Buffer } from 'buffer';
@@ -250,6 +256,17 @@ interface PrivateStatePayload<PSI extends PrivateStateId = PrivateStateId> {
   readonly states: Record<PSI, string>;
 }
 
+/**
+ * Internal structure of the decrypted signing key export payload.
+ * Includes metadata to ensure it's authenticated by the encryption.
+ */
+interface SigningKeyPayload {
+  readonly version: number;
+  readonly exportedAt: string;
+  readonly keyCount: number;
+  readonly keys: Record<ContractAddress, SigningKey>;
+}
+
 const CURRENT_EXPORT_VERSION = 1;
 const SUPPORTED_EXPORT_VERSIONS = [1];
 const EXPECTED_SALT_LENGTH = 64; // 32 bytes as hex
@@ -276,6 +293,64 @@ const validateSalt = (salt: string): void => {
   if (!/^[0-9a-fA-F]+$/.test(salt)) {
     throw new InvalidExportFormatError('Invalid salt format');
   }
+};
+
+/**
+ * Validates a custom signing key export password meets minimum requirements.
+ */
+const validateSigningKeyExportPassword = (password: string): void => {
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    throw new SigningKeyExportError(
+      `Password must be at least ${MIN_PASSWORD_LENGTH} characters`
+    );
+  }
+};
+
+const BROWSER_WARNING_KEY = '__midnight_browser_warning_shown__';
+
+const isBrowserEnvironment = (): boolean => {
+  const global = globalThis as Record<string, unknown>;
+  return typeof globalThis !== 'undefined' &&
+    'window' in globalThis &&
+    global.window !== undefined &&
+    'document' in globalThis &&
+    global.document !== undefined;
+};
+
+const getSessionStorage = (): Storage | undefined => {
+  if (typeof globalThis !== 'undefined' && 'sessionStorage' in globalThis) {
+    return (globalThis as Record<string, unknown>).sessionStorage as Storage | undefined;
+  }
+  return undefined;
+};
+
+/**
+ * Shows a warning about browser storage risks.
+ * Only shows once per session using sessionStorage.
+ */
+const showBrowserWarning = (): void => {
+  if (!isBrowserEnvironment()) {
+    return;
+  }
+
+  try {
+    const storage = getSessionStorage();
+    if (storage) {
+      if (storage.getItem(BROWSER_WARNING_KEY)) {
+        return;
+      }
+      storage.setItem(BROWSER_WARNING_KEY, 'true');
+    }
+  } catch {
+    // sessionStorage may be unavailable in some contexts
+  }
+
+  console.warn(
+    `⚠️ MIDNIGHT: Private state and signing keys are stored in browser storage.\n` +
+    `Clearing browser cache or storage will permanently destroy this data.\n` +
+    `For assets with real-world value, this may result in irreversible financial loss.\n` +
+    `Use exportPrivateStates() and exportSigningKeys() to create backups.`
+  );
 };
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -305,6 +380,8 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
   }
 
   const passwordProvider: PrivateStoragePasswordProvider = config.privateStoragePasswordProvider;
+
+  showBrowserWarning();
 
   let contractAddress: ContractAddress | null = null;
 
@@ -565,6 +642,148 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
         await this.set(stateId, state);
 
         if (existingState === null) {
+          imported++;
+        }
+      }
+
+      return { imported, skipped, overwritten };
+    },
+
+    async exportSigningKeys(options?: ExportSigningKeysOptions): Promise<SigningKeyExport> {
+      const maxKeys = options?.maxKeys ?? MAX_EXPORT_SIGNING_KEYS;
+
+      if (options?.password !== undefined) {
+        validateSigningKeyExportPassword(options.password);
+      }
+
+      const exportPassword = options?.password ?? await getPasswordFromProvider(passwordProvider);
+
+      const allKeys = await getAllEntries<ContractAddress, SigningKey>(
+        fullConfig.midnightDbName,
+        fullConfig.signingKeyStoreName,
+        passwordProvider
+      );
+
+      if (allKeys.size === 0) {
+        throw new SigningKeyExportError('No signing keys to export');
+      }
+
+      if (allKeys.size > maxKeys) {
+        throw new SigningKeyExportError(
+          `Too many keys to export (${allKeys.size}). Maximum allowed: ${maxKeys}`
+        );
+      }
+
+      const payload: SigningKeyPayload = {
+        version: CURRENT_EXPORT_VERSION,
+        exportedAt: new Date().toISOString(),
+        keyCount: allKeys.size,
+        keys: Object.fromEntries(allKeys.entries()) as Record<ContractAddress, SigningKey>
+      };
+
+      const exportEncryption = new StorageEncryption(exportPassword);
+      const encryptedPayload = exportEncryption.encrypt(JSON.stringify(payload));
+
+      return {
+        format: 'midnight-signing-key-export',
+        encryptedPayload,
+        salt: exportEncryption.getSalt().toString('hex')
+      };
+    },
+
+    async importSigningKeys(
+      exportData: SigningKeyExport,
+      options?: ImportSigningKeysOptions
+    ): Promise<ImportSigningKeysResult> {
+      const conflictStrategy = options?.conflictStrategy ?? 'error';
+      const maxKeys = options?.maxKeys ?? MAX_EXPORT_SIGNING_KEYS;
+
+      if (exportData.format !== 'midnight-signing-key-export') {
+        throw new InvalidExportFormatError('Unrecognized export format');
+      }
+
+      if (!exportData.encryptedPayload || !exportData.salt) {
+        throw new InvalidExportFormatError('Missing required fields');
+      }
+
+      validateSalt(exportData.salt);
+
+      if (options?.password !== undefined) {
+        validateSigningKeyExportPassword(options.password);
+      }
+
+      const importPassword = options?.password ?? await getPasswordFromProvider(passwordProvider);
+
+      let payload: SigningKeyPayload;
+      try {
+        const salt = Buffer.from(exportData.salt, 'hex');
+        const importEncryption = new StorageEncryption(importPassword, salt);
+        const decryptedJson = importEncryption.decrypt(exportData.encryptedPayload);
+        payload = JSON.parse(decryptedJson);
+      } catch {
+        throw new ExportDecryptionError();
+      }
+
+      if (
+        !payload.keys ||
+        typeof payload.keys !== 'object' ||
+        typeof payload.version !== 'number' ||
+        typeof payload.keyCount !== 'number'
+      ) {
+        throw new ExportDecryptionError();
+      }
+
+      if (!SUPPORTED_EXPORT_VERSIONS.includes(payload.version)) {
+        throw new InvalidExportFormatError(
+          `Export version ${payload.version} is not supported. Supported versions: ${SUPPORTED_EXPORT_VERSIONS.join(', ')}`
+        );
+      }
+
+      const addresses = Object.keys(payload.keys) as ContractAddress[];
+
+      if (addresses.length !== payload.keyCount) {
+        throw new ExportDecryptionError();
+      }
+
+      if (addresses.length > maxKeys) {
+        throw new InvalidExportFormatError(
+          `Too many keys in export (${addresses.length}). Maximum allowed: ${maxKeys}`
+        );
+      }
+
+      if (conflictStrategy === 'error') {
+        let conflictCount = 0;
+        for (const address of addresses) {
+          const existing = await this.getSigningKey(address);
+          if (existing !== null) {
+            conflictCount++;
+          }
+        }
+        if (conflictCount > 0) {
+          throw new ImportConflictError(conflictCount, 'signing key');
+        }
+      }
+
+      let imported = 0;
+      let skipped = 0;
+      let overwritten = 0;
+
+      for (const address of addresses) {
+        const signingKey = payload.keys[address];
+        const existingKey = await this.getSigningKey(address);
+
+        if (existingKey !== null) {
+          if (conflictStrategy === 'skip') {
+            skipped++;
+            continue;
+          } else if (conflictStrategy === 'overwrite') {
+            overwritten++;
+          }
+        }
+
+        await this.setSigningKey(address, signingKey);
+
+        if (existingKey === null) {
           imported++;
         }
       }

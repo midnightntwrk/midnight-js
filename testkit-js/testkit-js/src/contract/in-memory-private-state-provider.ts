@@ -19,15 +19,21 @@ import type { ContractAddress } from '@midnight-ntwrk/ledger-v7';
 import {
   ExportDecryptionError,
   type ExportPrivateStatesOptions,
+  type ExportSigningKeysOptions,
   ImportConflictError,
   type ImportPrivateStatesOptions,
   type ImportPrivateStatesResult,
+  type ImportSigningKeysOptions,
+  type ImportSigningKeysResult,
   InvalidExportFormatError,
+  MAX_EXPORT_SIGNING_KEYS,
   MAX_EXPORT_STATES,
   type PrivateStateExport,
   PrivateStateExportError,
   type PrivateStateId,
-  type PrivateStateProvider
+  type PrivateStateProvider,
+  type SigningKeyExport,
+  SigningKeyExportError
 } from '@midnight-ntwrk/midnight-js-types';
 import { createCipheriv, createDecipheriv, pbkdf2Sync, randomBytes } from 'crypto';
 
@@ -49,6 +55,13 @@ interface PrivateStatePayload<PSI extends PrivateStateId = PrivateStateId> {
   readonly exportedAt: string;
   readonly stateCount: number;
   readonly states: Record<PSI, string>;
+}
+
+interface SigningKeyPayload {
+  readonly version: number;
+  readonly exportedAt: string;
+  readonly keyCount: number;
+  readonly keys: Record<ContractAddress, SigningKey>;
 }
 
 const deriveKey = (password: string, salt: Buffer): Buffer => {
@@ -106,6 +119,12 @@ const validateExportPassword = (password: string): void => {
   }
 };
 
+const validateSigningKeyExportPassword = (password: string): void => {
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    throw new SigningKeyExportError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+  }
+};
+
 const validateSalt = (salt: string): void => {
   if (salt.length !== EXPECTED_SALT_LENGTH) {
     throw new InvalidExportFormatError('Invalid salt length');
@@ -117,6 +136,10 @@ const validateSalt = (salt: string): void => {
 
 /**
  * A simple in-memory implementation of private state provider. Makes it easy to capture and rewrite private state from deploy.
+ *
+ * Note: Unlike `levelPrivateStateProvider`, this provider has no storage password configured.
+ * Therefore, export/import operations always require an explicit password in the options.
+ *
  * @template PSI - Type of the private state identifier.
  * @template PS - Type of the private state.
  * @returns {PrivateStateProvider<PSI, PS>} An in-memory private state provider.
@@ -356,6 +379,146 @@ export const inMemoryPrivateStateProvider = <
         record.set(stateId as string, state);
 
         if (existingState === undefined) {
+          imported++;
+        }
+      }
+
+      return { imported, skipped, overwritten };
+    },
+    /**
+     * Exports all signing keys as an encrypted JSON-serializable structure.
+     * @param {ExportSigningKeysOptions} options - Export options including password.
+     * @returns {Promise<SigningKeyExport>} A promise that resolves to the export structure.
+     */
+    async exportSigningKeys(options?: ExportSigningKeysOptions): Promise<SigningKeyExport> {
+      const maxKeys = options?.maxKeys ?? MAX_EXPORT_SIGNING_KEYS;
+
+      if (!options?.password) {
+        throw new SigningKeyExportError('Password is required for in-memory provider export');
+      }
+
+      validateSigningKeyExportPassword(options.password);
+
+      const keyCount = Object.keys(signingKeys).length;
+
+      if (keyCount === 0) {
+        throw new SigningKeyExportError('No signing keys to export');
+      }
+
+      if (keyCount > maxKeys) {
+        throw new SigningKeyExportError(
+          `Too many keys to export (${keyCount}). Maximum allowed: ${maxKeys}`
+        );
+      }
+
+      const payload: SigningKeyPayload = {
+        version: CURRENT_EXPORT_VERSION,
+        exportedAt: new Date().toISOString(),
+        keyCount,
+        keys: { ...signingKeys }
+      };
+
+      const salt = randomBytes(SALT_LENGTH);
+      const encryptedPayload = encrypt(JSON.stringify(payload), options.password, salt);
+
+      return {
+        format: 'midnight-signing-key-export',
+        encryptedPayload,
+        salt: salt.toString('hex')
+      };
+    },
+    /**
+     * Imports signing keys from a previously exported structure.
+     * @param {SigningKeyExport} exportData - The export data structure to import.
+     * @param {ImportSigningKeysOptions} options - Import options including password and conflict strategy.
+     * @returns {Promise<ImportSigningKeysResult>} A promise that resolves to the import result.
+     */
+    async importSigningKeys(
+      exportData: SigningKeyExport,
+      options?: ImportSigningKeysOptions
+    ): Promise<ImportSigningKeysResult> {
+      const conflictStrategy = options?.conflictStrategy ?? 'error';
+      const maxKeys = options?.maxKeys ?? MAX_EXPORT_SIGNING_KEYS;
+
+      if (exportData.format !== 'midnight-signing-key-export') {
+        throw new InvalidExportFormatError('Unrecognized export format');
+      }
+
+      if (!exportData.encryptedPayload || !exportData.salt) {
+        throw new InvalidExportFormatError('Missing required fields');
+      }
+
+      validateSalt(exportData.salt);
+
+      if (!options?.password) {
+        throw new InvalidExportFormatError('Password is required for in-memory provider import');
+      }
+
+      validateSigningKeyExportPassword(options.password);
+
+      let payload: SigningKeyPayload;
+      try {
+        const salt = Buffer.from(exportData.salt, 'hex');
+        const decryptedJson = decrypt(exportData.encryptedPayload, options.password, salt);
+        payload = JSON.parse(decryptedJson);
+      } catch {
+        throw new ExportDecryptionError();
+      }
+
+      if (
+        !payload.keys ||
+        typeof payload.keys !== 'object' ||
+        typeof payload.version !== 'number' ||
+        typeof payload.keyCount !== 'number'
+      ) {
+        throw new ExportDecryptionError();
+      }
+
+      if (!SUPPORTED_EXPORT_VERSIONS.includes(payload.version)) {
+        throw new InvalidExportFormatError(
+          `Export version ${payload.version} is not supported. Supported versions: ${SUPPORTED_EXPORT_VERSIONS.join(', ')}`
+        );
+      }
+
+      const addresses = Object.keys(payload.keys) as ContractAddress[];
+
+      if (addresses.length !== payload.keyCount) {
+        throw new ExportDecryptionError();
+      }
+
+      if (addresses.length > maxKeys) {
+        throw new InvalidExportFormatError(
+          `Too many keys in export (${addresses.length}). Maximum allowed: ${maxKeys}`
+        );
+      }
+
+      if (conflictStrategy === 'error') {
+        const conflictCount = addresses.filter((addr) => signingKeys[addr] !== undefined).length;
+        if (conflictCount > 0) {
+          throw new ImportConflictError(conflictCount, 'signing key');
+        }
+      }
+
+      let imported = 0;
+      let skipped = 0;
+      let overwritten = 0;
+
+      for (const address of addresses) {
+        const signingKey = payload.keys[address];
+        const existingKey = signingKeys[address];
+
+        if (existingKey !== undefined) {
+          if (conflictStrategy === 'skip') {
+            skipped++;
+            continue;
+          } else if (conflictStrategy === 'overwrite') {
+            overwritten++;
+          }
+        }
+
+        signingKeys[address] = signingKey;
+
+        if (existingKey === undefined) {
           imported++;
         }
       }
