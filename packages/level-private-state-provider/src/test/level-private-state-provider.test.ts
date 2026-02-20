@@ -17,7 +17,6 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
 import { type ContractAddress, sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
-import { type FinalizedTransaction } from '@midnight-ntwrk/ledger-v7';
 import {
   ExportDecryptionError,
   ImportConflictError,
@@ -34,7 +33,7 @@ import { levelPrivateStateProvider } from '../index';
 import { StorageEncryption } from '../storage-encryption';
 
 describe('Level Private State Provider', (): void => {
-  const TEST_PASSWORD = 'test-storage-password-for-unit-tests-only';
+  const TEST_PASSWORD = 'Test-Storage-Pass8!';
   const TEST_CONTRACT_ADDRESS = 'test-contract-address' as ContractAddress;
   const testConfig = {
     privateStoragePasswordProvider: () => TEST_PASSWORD
@@ -249,39 +248,19 @@ describe('Level Private State Provider', (): void => {
   });
 
   describe('Password provider configuration', () => {
-    test('uses wallet encryption public key when only walletProvider is provided', async () => {
-      const mockWallet = {
-        getEncryptionPublicKey: () => TEST_PASSWORD,
-        getCoinPublicKey: () => 'mock-coin-public-key',
-        balanceTx: async () => ({} as unknown as FinalizedTransaction)
-      };
+    test('throws error when privateStoragePasswordProvider is not provided', () => {
+      expect(() => {
+        // @ts-expect-error - intentionally testing missing required field
+        levelPrivateStateProvider<PID, PS>({});
+      }).toThrow('privateStoragePasswordProvider is required');
+    });
 
-      const db = levelPrivateStateProvider<PID, PS>({ walletProvider: mockWallet });
+    test('works correctly when privateStoragePasswordProvider is provided', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
       db.setContractAddress(TEST_CONTRACT_ADDRESS);
       await db.set('stringValue', testStates.stringValue);
       const value = await db.get('stringValue');
       expect(value).toEqual(testStates.stringValue);
-    });
-
-    test('throws error when neither walletProvider nor privateStoragePasswordProvider is provided', () => {
-      expect(() => {
-        levelPrivateStateProvider<PID, PS>({});
-      }).toThrow('Either privateStoragePasswordProvider or walletProvider must be provided');
-    });
-
-    test('throws error when both privateStoragePasswordProvider and walletProvider are provided', () => {
-      const mockWallet = {
-        getEncryptionPublicKey: () => TEST_PASSWORD,
-        getCoinPublicKey: () => 'mock-coin-public-key',
-        balanceTx: async () => ({} as unknown as FinalizedTransaction)
-      };
-
-      expect(() => {
-        levelPrivateStateProvider<PID, PS>({
-          walletProvider: mockWallet,
-          privateStoragePasswordProvider: () => TEST_PASSWORD
-        });
-      }).toThrow('Cannot provide both privateStoragePasswordProvider and walletProvider');
     });
   });
 
@@ -392,7 +371,7 @@ describe('Level Private State Provider', (): void => {
   });
 
   describe('Export/Import', () => {
-    const EXPORT_PASSWORD = 'export-test-password-1234';
+    const EXPORT_PASSWORD = 'Export-Test-Pass8!';
 
     beforeEach(async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
@@ -448,7 +427,7 @@ describe('Level Private State Provider', (): void => {
       await db.clear();
 
       await expect(
-        db.importPrivateStates(exportData, { password: 'wrong-password-12345' })
+        db.importPrivateStates(exportData, { password: 'Wrong-Pass8-Test!!' })
       ).rejects.toThrow(ExportDecryptionError);
     });
 
@@ -695,7 +674,7 @@ describe('Level Private State Provider', (): void => {
     });
 
     describe('malformed data edge cases', () => {
-      const VALID_PASSWORD = 'valid-password-for-test';
+      const VALID_PASSWORD = 'Valid-Pass8-Test!';
 
       test('throws ExportDecryptionError for garbage base64 payload', async () => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);

@@ -6,7 +6,7 @@
 
 # Interface: LevelPrivateStateProviderConfig
 
-Optional properties for the indexedDB based private state provider configuration.
+Configuration properties for the LevelDB based private state provider.
 
 ## Properties
 
@@ -26,25 +26,21 @@ The name of the object store containing private states.
 
 ***
 
-### privateStoragePasswordProvider?
+### privateStoragePasswordProvider
 
-> `readonly` `optional` **privateStoragePasswordProvider**: [`PrivateStoragePasswordProvider`](../type-aliases/PrivateStoragePasswordProvider.md)
+> `readonly` **privateStoragePasswordProvider**: [`PrivateStoragePasswordProvider`](../type-aliases/PrivateStoragePasswordProvider.md)
 
 Provider function that returns the password used for encrypting private state.
 The password must be at least 16 characters long.
 
-If not provided, defaults to using walletProvider.getEncryptionPublicKey().
+**SECURITY**: Use a strong, secret password. Never use public key material
+or other non-secret values as the password source.
 
 #### Example
 
 ```typescript
-// Using default (wallet's encryption public key)
-{ walletProvider: wallet }
-
-// Using custom password provider
 {
-  walletProvider: wallet,
-  privateStoragePasswordProvider: async () => await getUserPassword()
+  privateStoragePasswordProvider: async () => await getSecretPassword()
 }
 ```
 
@@ -55,13 +51,3 @@ If not provided, defaults to using walletProvider.getEncryptionPublicKey().
 > `readonly` **signingKeyStoreName**: `string`
 
 The name of the object store containing signing keys.
-
-***
-
-### walletProvider?
-
-> `readonly` `optional` **walletProvider**: `WalletProvider`
-
-Wallet provider used to get the encryption public key for password derivation.
-If privateStoragePasswordProvider is not provided, the wallet's encryption public key
-will be used as the password.
