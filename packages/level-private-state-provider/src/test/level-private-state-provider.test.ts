@@ -1399,5 +1399,136 @@ describe('Level Private State Provider', (): void => {
       expect(consoleWarnSpy).toHaveBeenCalled();
     });
   });
+
+  describe('Salt Consistency (Race Condition Prevention)', () => {
+    const SALT_TEST_DB = 'midnight-salt-test-db';
+    const SALT_CONTRACT_ADDRESS = 'salt-test-contract' as ContractAddress;
+
+    afterEach(async () => {
+      await fs.rm(path.join('.', SALT_TEST_DB), { recursive: true, force: true });
+    });
+
+    test('multiple sequential operations maintain consistent salt for private states', async () => {
+      const config = {
+        midnightDbName: SALT_TEST_DB,
+        privateStoragePasswordProvider: () => TEST_PASSWORD
+      };
+
+      for (let i = 0; i < 5; i++) {
+        const db = levelPrivateStateProvider<string, string>(config);
+        db.setContractAddress(SALT_CONTRACT_ADDRESS);
+        await db.set(`key-${i}`, `value-${i}`);
+      }
+
+      const verifyDb = levelPrivateStateProvider<string, string>(config);
+      verifyDb.setContractAddress(SALT_CONTRACT_ADDRESS);
+      for (let i = 0; i < 5; i++) {
+        const value = await verifyDb.get(`key-${i}`);
+        expect(value).toBe(`value-${i}`);
+      }
+    });
+
+    test('multiple sequential operations maintain consistent salt for signing keys', async () => {
+      const config = {
+        midnightDbName: SALT_TEST_DB,
+        privateStoragePasswordProvider: () => TEST_PASSWORD
+      };
+
+      const signingKeys = Array.from({ length: 5 }, () => sampleSigningKey());
+
+      for (let i = 0; i < 5; i++) {
+        const db = levelPrivateStateProvider<string, string>(config);
+        await db.setSigningKey(`address-${i}` as ContractAddress, signingKeys[i]);
+      }
+
+      const verifyDb = levelPrivateStateProvider<string, string>(config);
+      for (let i = 0; i < 5; i++) {
+        const key = await verifyDb.getSigningKey(`address-${i}` as ContractAddress);
+        expect(key).toEqual(signingKeys[i]);
+      }
+    });
+
+    test('operations after clear() create new consistent salt', async () => {
+      const config = {
+        midnightDbName: SALT_TEST_DB,
+        privateStoragePasswordProvider: () => TEST_PASSWORD
+      };
+
+      const db = levelPrivateStateProvider<string, string>(config);
+      db.setContractAddress(SALT_CONTRACT_ADDRESS);
+      await db.set('initial-key', 'initial-value');
+
+      await db.clear();
+
+      for (let i = 0; i < 3; i++) {
+        const freshDb = levelPrivateStateProvider<string, string>(config);
+        freshDb.setContractAddress(SALT_CONTRACT_ADDRESS);
+        await freshDb.set(`post-clear-${i}`, `value-${i}`);
+      }
+
+      const verifyDb = levelPrivateStateProvider<string, string>(config);
+      verifyDb.setContractAddress(SALT_CONTRACT_ADDRESS);
+      for (let i = 0; i < 3; i++) {
+        const value = await verifyDb.get(`post-clear-${i}`);
+        expect(value).toBe(`value-${i}`);
+      }
+    });
+
+    test('mixed operations on private states and signing keys use separate consistent salts', async () => {
+      const config = {
+        midnightDbName: SALT_TEST_DB,
+        privateStoragePasswordProvider: () => TEST_PASSWORD
+      };
+
+      const signingKey = sampleSigningKey();
+
+      const db1 = levelPrivateStateProvider<string, string>(config);
+      db1.setContractAddress(SALT_CONTRACT_ADDRESS);
+      await db1.set('state-1', 'value-1');
+
+      const db2 = levelPrivateStateProvider<string, string>(config);
+      await db2.setSigningKey('key-address-1' as ContractAddress, signingKey);
+
+      const db3 = levelPrivateStateProvider<string, string>(config);
+      db3.setContractAddress(SALT_CONTRACT_ADDRESS);
+      await db3.set('state-2', 'value-2');
+
+      const db4 = levelPrivateStateProvider<string, string>(config);
+      await db4.setSigningKey('key-address-2' as ContractAddress, signingKey);
+
+      const verifyDb = levelPrivateStateProvider<string, string>(config);
+      verifyDb.setContractAddress(SALT_CONTRACT_ADDRESS);
+
+      expect(await verifyDb.get('state-1')).toBe('value-1');
+      expect(await verifyDb.get('state-2')).toBe('value-2');
+      expect(await verifyDb.getSigningKey('key-address-1' as ContractAddress)).toEqual(signingKey);
+      expect(await verifyDb.getSigningKey('key-address-2' as ContractAddress)).toEqual(signingKey);
+    });
+
+    test('operations after clearSigningKeys() create new consistent salt for signing keys', async () => {
+      const config = {
+        midnightDbName: SALT_TEST_DB,
+        privateStoragePasswordProvider: () => TEST_PASSWORD
+      };
+
+      const signingKey1 = sampleSigningKey();
+      const db = levelPrivateStateProvider<string, string>(config);
+      await db.setSigningKey('initial-address' as ContractAddress, signingKey1);
+
+      await db.clearSigningKeys();
+
+      const signingKeys = Array.from({ length: 3 }, () => sampleSigningKey());
+      for (let i = 0; i < 3; i++) {
+        const freshDb = levelPrivateStateProvider<string, string>(config);
+        await freshDb.setSigningKey(`post-clear-${i}` as ContractAddress, signingKeys[i]);
+      }
+
+      const verifyDb = levelPrivateStateProvider<string, string>(config);
+      for (let i = 0; i < 3; i++) {
+        const key = await verifyDb.getSigningKey(`post-clear-${i}` as ContractAddress);
+        expect(key).toEqual(signingKeys[i]);
+      }
+    });
+  });
 });
 
