@@ -2273,10 +2273,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/ledger-v7@npm:7.0.1":
-  version: 7.0.1
-  resolution: "@midnight-ntwrk/ledger-v7@npm:7.0.1::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fledger-v7%2F7.0.1%2Fbebaac1baf0856ce7d16954225fc77a38aae4588"
-  checksum: 10/93e30833c03546bd67ed10aff81b3b06814dd407826a4a90229fa2d846719570afb6d16779c312419b79e47d475962797905dc9a332a3b3e1772575e2de7930e
+"@midnight-ntwrk/ledger-v7@npm:7.0.2":
+  version: 7.0.2
+  resolution: "@midnight-ntwrk/ledger-v7@npm:7.0.2::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fledger-v7%2F7.0.2%2Fd8903b69451424b0b00483a27cb0be696e343565"
+  checksum: 10/2afb66d482a145eebb9a765c1d4dc0971e038befa130d6b129381f86137129f149a67e38a3732b79d94664dd8513c9512a9d3f0a2ea3a9f00495321b86dde4d5
   languageName: node
   linkType: hard
 
@@ -2474,13 +2474,6 @@ __metadata:
   version: 2.0.1
   resolution: "@midnight-ntwrk/onchain-runtime-v2@npm:2.0.1::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fonchain-runtime-v2%2F2.0.1%2F5dab8161d2461f86ed7c1e7d1482deca368ea146"
   checksum: 10/40ffba7809ecbf9e7e4fd98e7e025922ba72ff667d15f7737b9a2b913558688f19552ef40a63a1379b348a4e5c85e4257f6f485d6b09d15c2b5e4ca0149613b0
-  languageName: node
-  linkType: hard
-
-"@midnight-ntwrk/onchain-runtime-v2@npm:^2.0.0":
-  version: 2.0.0
-  resolution: "@midnight-ntwrk/onchain-runtime-v2@npm:2.0.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fonchain-runtime-v2%2F2.0.0%2F52b1b4c48af577d31a5ba21947d00b4832aeb5cf"
-  checksum: 10/71b2b5e2270ce36fbdb63c0bd531f09f2de9151b286b6c7389966279750080b300893aef973621e438a934f9274277181cdf9bdc1350abc0e244fa892a145b19
   languageName: node
   linkType: hard
 

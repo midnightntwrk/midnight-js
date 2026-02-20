@@ -100,6 +100,7 @@
   },
   "resolutions": {
     "effect": "3.19.15",
-    "@midnight-ntwrk/ledger-v7": "7.0.1"
+    "@midnight-ntwrk/ledger-v7": "7.0.2",
+    "@midnight-ntwrk/onchain-runtime-v2": "2.0.1"
   }
 }
