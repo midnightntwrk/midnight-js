@@ -23,23 +23,39 @@ const KEY_LENGTH = 32;
 const IV_LENGTH = 12;
 const AUTH_TAG_LENGTH = 16;
 const SALT_LENGTH = 32;
-const PBKDF2_ITERATIONS = 100000;
-const ENCRYPTION_VERSION = 1;
+const PBKDF2_ITERATIONS_V1 = 100000;
+const PBKDF2_ITERATIONS_V2 = 600000;
+const ENCRYPTION_VERSION_V1 = 1;
+const ENCRYPTION_VERSION_V2 = 2;
+const CURRENT_ENCRYPTION_VERSION = ENCRYPTION_VERSION_V2;
 
 const VERSION_PREFIX_LENGTH = 1;
 const HEADER_LENGTH = VERSION_PREFIX_LENGTH + SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH;
 
+const getIterationsForVersion = (version: number): number => {
+  switch (version) {
+    case ENCRYPTION_VERSION_V1:
+      return PBKDF2_ITERATIONS_V1;
+    case ENCRYPTION_VERSION_V2:
+      return PBKDF2_ITERATIONS_V2;
+    default:
+      throw new Error(`Unsupported encryption version: ${version}`);
+  }
+};
+
 export class StorageEncryption {
   private readonly encryptionKey: Buffer;
   private readonly salt: Buffer;
+  private readonly password: string;
 
   constructor(password: string, existingSalt?: Buffer) {
+    this.password = password;
     this.salt = existingSalt ?? randomBytes(SALT_LENGTH);
-    this.encryptionKey = this.deriveKey(password, this.salt);
+    this.encryptionKey = this.deriveKey(password, this.salt, PBKDF2_ITERATIONS_V2);
   }
 
-  private deriveKey(password: string, salt: Buffer): Buffer {
-    return pbkdf2Sync(password, salt, PBKDF2_ITERATIONS, KEY_LENGTH, 'sha256');
+  private deriveKey(password: string, salt: Buffer, iterations: number): Buffer {
+    return pbkdf2Sync(password, salt, iterations, KEY_LENGTH, 'sha256');
   }
 
   encrypt(data: string): string {
@@ -50,7 +66,7 @@ export class StorageEncryption {
     const encrypted = Buffer.concat([cipher.update(plaintext), cipher.final()]);
     const authTag = cipher.getAuthTag();
 
-    const version = Buffer.from([ENCRYPTION_VERSION]);
+    const version = Buffer.from([CURRENT_ENCRYPTION_VERSION]);
     const result = Buffer.concat([version, this.salt, iv, authTag, encrypted]);
 
     return result.toString('base64');
@@ -64,7 +80,7 @@ export class StorageEncryption {
     }
 
     const version = data[0];
-    if (version !== ENCRYPTION_VERSION) {
+    if (version !== ENCRYPTION_VERSION_V1 && version !== ENCRYPTION_VERSION_V2) {
       throw new Error(`Unsupported encryption version: ${version}`);
     }
 
@@ -80,7 +96,12 @@ export class StorageEncryption {
       throw new Error('Salt mismatch: data was encrypted with a different password');
     }
 
-    const decipher = createDecipheriv(ALGORITHM, this.encryptionKey, iv);
+    const iterations = getIterationsForVersion(version);
+    const decryptionKey = version === CURRENT_ENCRYPTION_VERSION
+      ? this.encryptionKey
+      : this.deriveKey(this.password, salt, iterations);
+
+    const decipher = createDecipheriv(ALGORITHM, decryptionKey, iv, { authTagLength: AUTH_TAG_LENGTH });
     decipher.setAuthTag(authTag);
 
     const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
@@ -90,10 +111,20 @@ export class StorageEncryption {
   static isEncrypted(data: string): boolean {
     try {
       const buffer = Buffer.from(data, 'base64');
-      return buffer.length >= HEADER_LENGTH && buffer[0] === ENCRYPTION_VERSION;
+      const version = buffer[0];
+      return buffer.length >= HEADER_LENGTH &&
+        (version === ENCRYPTION_VERSION_V1 || version === ENCRYPTION_VERSION_V2);
     } catch {
       return false;
     }
+  }
+
+  static getVersion(encryptedData: string): number {
+    const buffer = Buffer.from(encryptedData, 'base64');
+    if (buffer.length < 1) {
+      throw new Error('Invalid encrypted data: too short');
+    }
+    return buffer[0];
   }
 
   getSalt(): Buffer {
@@ -101,18 +132,96 @@ export class StorageEncryption {
   }
 }
 
+const MIN_PASSWORD_LENGTH = 16;
+const MIN_CHARACTER_CLASSES = 3;
+const MAX_CONSECUTIVE_REPEATED = 3;
+const MIN_SEQUENTIAL_LENGTH = 4;
+
+const countCharacterClasses = (password: string): number => {
+  let count = 0;
+  if (/[a-z]/.test(password)) count++;
+  if (/[A-Z]/.test(password)) count++;
+  if (/[0-9]/.test(password)) count++;
+  if (/[^a-zA-Z0-9]/.test(password)) count++;
+  return count;
+};
+
+const hasRepeatedCharacters = (password: string): boolean => {
+  let consecutiveCount = 1;
+  for (let i = 1; i < password.length; i++) {
+    if (password[i] === password[i - 1]) {
+      consecutiveCount++;
+      if (consecutiveCount > MAX_CONSECUTIVE_REPEATED) {
+        return true;
+      }
+    } else {
+      consecutiveCount = 1;
+    }
+  }
+  return false;
+};
+
+const hasSequentialPattern = (password: string): boolean => {
+  const lowerPassword = password.toLowerCase();
+
+  for (let i = 0; i <= lowerPassword.length - MIN_SEQUENTIAL_LENGTH; i++) {
+    let ascendingCount = 1;
+    let descendingCount = 1;
+
+    for (let j = 1; j < MIN_SEQUENTIAL_LENGTH; j++) {
+      const currentCode = lowerPassword.charCodeAt(i + j);
+      const prevCode = lowerPassword.charCodeAt(i + j - 1);
+
+      if (currentCode === prevCode + 1) {
+        ascendingCount++;
+      } else {
+        ascendingCount = 1;
+      }
+
+      if (currentCode === prevCode - 1) {
+        descendingCount++;
+      } else {
+        descendingCount = 1;
+      }
+
+      if (ascendingCount >= MIN_SEQUENTIAL_LENGTH || descendingCount >= MIN_SEQUENTIAL_LENGTH) {
+        return true;
+      }
+    }
+  }
+  return false;
+};
+
 const validatePassword = (password: string): void => {
   if (!password) {
     throw new Error(
       'Password is required for private state encryption.\n' +
-      'Please provide a password via privateStoragePasswordProvider in the configuration.'
+        'Please provide a password via privateStoragePasswordProvider in the configuration.'
     );
   }
 
-  if (password.length < 16) {
+  if (password.length < MIN_PASSWORD_LENGTH) {
     throw new Error(
-      'Password must be at least 16 characters long.\n' +
-      'Use a strong, randomly generated password for production.'
+      `Password must be at least ${MIN_PASSWORD_LENGTH} characters long. Current length: ${password.length}`
+    );
+  }
+
+  if (hasRepeatedCharacters(password)) {
+    throw new Error(
+      `Password contains too many repeated characters (more than ${MAX_CONSECUTIVE_REPEATED} identical in a row)`
+    );
+  }
+
+  const characterClasses = countCharacterClasses(password);
+  if (characterClasses < MIN_CHARACTER_CLASSES) {
+    throw new Error(
+      `Password must contain at least ${MIN_CHARACTER_CLASSES} of: uppercase letters, lowercase letters, digits, special characters. Found: ${characterClasses}`
+    );
+  }
+
+  if (hasSequentialPattern(password)) {
+    throw new Error(
+      "Password contains sequential patterns (e.g., '1234', 'abcd'). Use a more random password"
     );
   }
 };
