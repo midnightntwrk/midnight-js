@@ -281,6 +281,7 @@ export const decryptValue = (
   password: string
 ): string => {
   if (!StorageEncryption.isEncrypted(encryptedValue)) {
+    console.debug('MIDNIGHT: Encountered unencrypted data during decryption - passing through as-is');
     return encryptedValue;
   }
 

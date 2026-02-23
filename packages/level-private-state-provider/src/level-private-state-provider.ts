@@ -241,15 +241,26 @@ const invalidateEncryptionCacheForDb = (dbName: string, privateStateStoreName: s
   encryptionCache.delete(signingKeyKey);
 };
 
+const DEFAULT_LOCK_TIMEOUT_MS = 300000; // 5 minutes
+
 const withPasswordRotationLock = async <T>(
   lockKey: string,
-  operation: () => Promise<T>
+  operation: () => Promise<T>,
+  timeoutMs: number = DEFAULT_LOCK_TIMEOUT_MS
 ): Promise<T> => {
+  const startWait = Date.now();
+
   while (passwordRotationLocks.has(lockKey)) {
+    if (Date.now() - startWait > timeoutMs) {
+      throw new Error(
+        `Timed out waiting for password rotation lock on "${lockKey}". ` +
+          `Another rotation may be stuck or taking longer than ${timeoutMs}ms.`
+      );
+    }
     await passwordRotationLocks.get(lockKey);
   }
 
-  let resolve: (() => void) | undefined;
+  let resolve!: () => void;
   const lockPromise = new Promise<void>((r) => {
     resolve = r;
   });
@@ -259,13 +270,25 @@ const withPasswordRotationLock = async <T>(
     return await operation();
   } finally {
     passwordRotationLocks.delete(lockKey);
-    resolve?.();
+    resolve();
   }
 };
 
-const waitForRotationLock = async (dbName: string, levelName: string): Promise<void> => {
+const waitForRotationLock = async (
+  dbName: string,
+  levelName: string,
+  timeoutMs: number = DEFAULT_LOCK_TIMEOUT_MS
+): Promise<void> => {
   const lockKey = `${dbName}:${levelName}`;
+  const startWait = Date.now();
+
   while (passwordRotationLocks.has(lockKey)) {
+    if (Date.now() - startWait > timeoutMs) {
+      throw new Error(
+        `Timed out waiting for password rotation to complete on "${lockKey}". ` +
+          `The rotation may be stuck or taking longer than ${timeoutMs}ms.`
+      );
+    }
     await passwordRotationLocks.get(lockKey);
   }
 };
@@ -593,8 +616,11 @@ const showBrowserWarning = (): void => {
       }
       storage.setItem(BROWSER_WARNING_KEY, 'true');
     }
-  } catch {
-    // sessionStorage may be unavailable in some contexts
+  } catch (error: unknown) {
+    console.debug(
+      'MIDNIGHT: Could not access sessionStorage for warning deduplication:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
   }
 
   console.warn(
