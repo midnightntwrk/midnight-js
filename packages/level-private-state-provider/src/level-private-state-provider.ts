@@ -35,6 +35,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import { type AbstractSublevel } from 'abstract-level';
 import { Buffer } from 'buffer';
+import { randomBytes } from 'crypto';
 import { Level } from 'level';
 import _ from 'lodash';
 import * as superjson from 'superjson';
@@ -139,32 +140,55 @@ const withSubLevel = async <K, V, A>(
 
 const METADATA_KEY = '__midnight_encryption_metadata__';
 
+const encryptionInitPromises = new Map<string, Promise<Buffer>>();
+
+const getOrCreateSalt = async (dbName: string, levelName: string): Promise<Buffer> => {
+  const lockKey = `${dbName}:${levelName}`;
+
+  const existingPromise = encryptionInitPromises.get(lockKey);
+  if (existingPromise) {
+    return existingPromise;
+  }
+
+  const initPromise = withSubLevel<string, string, Buffer>(dbName, levelName, async (subLevel) => {
+    try {
+      const metadataJson = await subLevel.get(METADATA_KEY);
+      if (metadataJson) {
+        const metadata = JSON.parse(metadataJson);
+        return Buffer.from(metadata.salt, 'hex');
+      }
+    } catch (error: unknown) {
+      if (!(error && typeof error === 'object' && 'code' in error && error.code === 'LEVEL_NOT_FOUND')) {
+        throw error;
+      }
+    }
+
+    const salt = randomBytes(32);
+    const metadata = {
+      salt: salt.toString('hex'),
+      version: 1
+    };
+    await subLevel.put(METADATA_KEY, JSON.stringify(metadata));
+    return salt;
+  });
+
+  encryptionInitPromises.set(lockKey, initPromise);
+
+  try {
+    return await initPromise;
+  } finally {
+    encryptionInitPromises.delete(lockKey);
+  }
+};
+
 const getOrCreateEncryption = async (
   dbName: string,
   levelName: string,
   passwordProvider: PrivateStoragePasswordProvider
 ): Promise<StorageEncryption> => {
   const password = await getPasswordFromProvider(passwordProvider);
-
-  return withSubLevel<string, string, StorageEncryption>(dbName, levelName, async (subLevel) => {
-    try {
-      const metadataJson = await subLevel.get(METADATA_KEY);
-      if (!metadataJson) {
-        throw new Error('Metadata not found');
-      }
-      const metadata = JSON.parse(metadataJson);
-      const salt = Buffer.from(metadata.salt, 'hex');
-      return new StorageEncryption(password, salt);
-    } catch {
-      const encryption = new StorageEncryption(password);
-      const metadata = {
-        salt: encryption.getSalt().toString('hex'),
-        version: 1
-      };
-      await subLevel.put(METADATA_KEY, JSON.stringify(metadata));
-      return encryption;
-    }
-  });
+  const salt = await getOrCreateSalt(dbName, levelName);
+  return new StorageEncryption(password, salt);
 };
 
 const subLevelMaybeGet = async <K, V>(
