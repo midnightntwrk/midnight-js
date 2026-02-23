@@ -27,6 +27,8 @@ import {
   SigningKeyExportError
 } from '@midnight-ntwrk/midnight-js-types';
 import * as crypto from 'crypto';
+import { Level } from 'level';
+import * as superjson from 'superjson';
 import { vi } from 'vitest';
 
 import { levelPrivateStateProvider } from '../index';
@@ -1788,6 +1790,76 @@ describe('Level Private State Provider', (): void => {
         await expect(
           db.changePassword(() => OLD_PASSWORD, () => 'short')
         ).rejects.toThrow();
+      });
+
+      test('migrates V1-encrypted data to V2 during rotation', async () => {
+        const V1_MIGRATION_DB = 'midnight-v1-migration-test-db';
+        const PRIVATE_STATE_STORE = 'private-states';
+        const METADATA_KEY = '__midnight_encryption_metadata__';
+
+        await fs.rm(path.join('.', V1_MIGRATION_DB), { recursive: true, force: true });
+
+        const salt = crypto.randomBytes(32);
+        const iv = crypto.randomBytes(12);
+        const testValue = superjson.stringify('v1-test-value');
+
+        const key = crypto.pbkdf2Sync(OLD_PASSWORD, salt, 100000, 32, 'sha256');
+        const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+        const encrypted = Buffer.concat([cipher.update(testValue, 'utf-8'), cipher.final()]);
+        const authTag = cipher.getAuthTag();
+
+        const version = Buffer.from([1]);
+        const v1EncryptedData = Buffer.concat([version, salt, iv, authTag, encrypted]).toString('base64');
+
+        const level = new Level(V1_MIGRATION_DB, { createIfMissing: true });
+        const subLevel = level.sublevel(PRIVATE_STATE_STORE, { valueEncoding: 'utf-8' });
+
+        try {
+          await level.open();
+          await subLevel.open();
+
+          const metadata = { salt: salt.toString('hex'), version: 1 };
+          await subLevel.put(METADATA_KEY, JSON.stringify(metadata));
+          await subLevel.put(`${ROTATION_CONTRACT_ADDRESS}:v1-key`, v1EncryptedData);
+        } finally {
+          await subLevel.close();
+          await level.close();
+        }
+
+        let currentPassword = OLD_PASSWORD;
+        const config = {
+          midnightDbName: V1_MIGRATION_DB,
+          privateStoragePasswordProvider: () => currentPassword
+        };
+
+        const db = levelPrivateStateProvider<string, string>(config);
+        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
+
+        const valueBefore = await db.get('v1-key');
+        expect(valueBefore).toBe('v1-test-value');
+
+        await db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD);
+        currentPassword = NEW_PASSWORD;
+
+        const valueAfter = await db.get('v1-key');
+        expect(valueAfter).toBe('v1-test-value');
+
+        const levelAfter = new Level(V1_MIGRATION_DB, { createIfMissing: false });
+        const subLevelAfter = levelAfter.sublevel(PRIVATE_STATE_STORE, { valueEncoding: 'utf-8' });
+
+        try {
+          await levelAfter.open();
+          await subLevelAfter.open();
+
+          const encryptedAfter = await subLevelAfter.get(`${ROTATION_CONTRACT_ADDRESS}:v1-key`);
+          const bufferAfter = Buffer.from(encryptedAfter, 'base64');
+          expect(bufferAfter[0]).toBe(2);
+        } finally {
+          await subLevelAfter.close();
+          await levelAfter.close();
+        }
+
+        await fs.rm(path.join('.', V1_MIGRATION_DB), { recursive: true, force: true });
       });
     });
 

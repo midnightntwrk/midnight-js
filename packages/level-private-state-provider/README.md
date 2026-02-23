@@ -75,11 +75,14 @@ await provider.changeSigningKeysPassword(
 - Verifies old password can decrypt existing data before migration
 - Re-encrypts all data in the store with new password
 - Invalidates encryption cache after successful rotation
+- Concurrent access protection: read/write operations wait for rotation to complete
+- Automatic V1→V2 encryption format migration during rotation
 
 **Important notes:**
 - For `changePassword()`, you must call `setContractAddress()` first
 - Both passwords must meet the minimum requirements (16+ characters, 3+ character classes)
 - The operation reads all data into memory before writing (suitable for typical use cases)
+- `changePassword()` re-encrypts ALL data in the private state store (not just the current contract's data) because all entries share the same encryption salt. This is by design to maintain encryption consistency.
 
 ### Encryption Caching
 

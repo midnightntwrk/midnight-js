@@ -142,6 +142,8 @@ const METADATA_KEY = '__midnight_encryption_metadata__';
 
 const encryptionInitPromises = new Map<string, Promise<Buffer>>();
 
+const passwordRotationLocks = new Map<string, Promise<void>>();
+
 interface EncryptionCacheEntry {
   encryption: StorageEncryption;
   saltHex: string;
@@ -229,12 +231,44 @@ const invalidateEncryptionCacheForDb = (dbName: string, privateStateStoreName: s
   encryptionCache.delete(signingKeyKey);
 };
 
+const withPasswordRotationLock = async <T>(
+  lockKey: string,
+  operation: () => Promise<T>
+): Promise<T> => {
+  const existingLock = passwordRotationLocks.get(lockKey);
+  if (existingLock) {
+    await existingLock;
+  }
+
+  let resolve: () => void;
+  const lockPromise = new Promise<void>((r) => {
+    resolve = r;
+  });
+  passwordRotationLocks.set(lockKey, lockPromise);
+
+  try {
+    return await operation();
+  } finally {
+    passwordRotationLocks.delete(lockKey);
+    resolve!();
+  }
+};
+
+const waitForRotationLock = async (dbName: string, levelName: string): Promise<void> => {
+  const lockKey = `${dbName}:${levelName}`;
+  const existingLock = passwordRotationLocks.get(lockKey);
+  if (existingLock) {
+    await existingLock;
+  }
+};
+
 const subLevelMaybeGet = async <K, V>(
   dbName: string,
   levelName: string,
   key: K,
   passwordProvider: PrivateStoragePasswordProvider
 ): Promise<V | null> => {
+  await waitForRotationLock(dbName, levelName);
   const encryption = await getOrCreateEncryption(dbName, levelName, passwordProvider);
 
   return withSubLevel<K, string, V | null>(dbName, levelName, async (subLevel) => {
@@ -287,6 +321,7 @@ const getAllEntries = async <K extends string, V>(
   levelName: string,
   passwordProvider: PrivateStoragePasswordProvider
 ): Promise<Map<K, V>> => {
+  await waitForRotationLock(dbName, levelName);
   const encryption = await getOrCreateEncryption(dbName, levelName, passwordProvider);
 
   return withSubLevel<K, string, Map<K, V>>(dbName, levelName, async (subLevel) => {
@@ -507,6 +542,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       );
     },
     async set(privateStateId: PSI, state: PS): Promise<void> {
+      await waitForRotationLock(fullConfig.midnightDbName, fullConfig.privateStateStoreName);
       const scopedKey = getScopedKey(privateStateId);
       const encryption = await getOrCreateEncryption(
         fullConfig.midnightDbName,
@@ -542,6 +578,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       );
     },
     async setSigningKey(address: ContractAddress, signingKey: SigningKey): Promise<void> {
+      await waitForRotationLock(fullConfig.midnightDbName, fullConfig.signingKeyStoreName);
       const encryption = await getOrCreateEncryption(
         fullConfig.midnightDbName,
         fullConfig.signingKeyStoreName,
@@ -894,117 +931,125 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
         throw new Error('Contract address not set. Call setContractAddress() before changing password.');
       }
 
-      const oldPassword = await getPasswordFromProvider(oldPasswordProvider);
-      const newPassword = await getPasswordFromProvider(newPasswordProvider);
+      const lockKey = `${fullConfig.midnightDbName}:${fullConfig.privateStateStoreName}`;
 
-      const salt = await getOrCreateSalt(fullConfig.midnightDbName, fullConfig.privateStateStoreName);
-      const oldEncryption = new StorageEncryption(oldPassword, salt);
-      const newEncryption = new StorageEncryption(newPassword);
-      const newSalt = newEncryption.getSalt();
+      return withPasswordRotationLock(lockKey, async () => {
+        const oldPassword = await getPasswordFromProvider(oldPasswordProvider);
+        const newPassword = await getPasswordFromProvider(newPasswordProvider);
 
-      const prefix = `${contractAddress}:`;
+        const salt = await getOrCreateSalt(fullConfig.midnightDbName, fullConfig.privateStateStoreName);
+        const oldEncryption = new StorageEncryption(oldPassword, salt);
+        const newEncryption = new StorageEncryption(newPassword);
+        const newSalt = newEncryption.getSalt();
 
-      await withSubLevel<string, string, void>(
-        fullConfig.midnightDbName,
-        fullConfig.privateStateStoreName,
-        async (subLevel) => {
-          const entriesToMigrate: { key: string; decryptedValue: string }[] = [];
-          let hasCurrentContractData = false;
+        const prefix = `${contractAddress}:`;
 
-          for await (const [key, encryptedValue] of subLevel.iterator()) {
-            if (key === METADATA_KEY) continue;
+        await withSubLevel<string, string, void>(
+          fullConfig.midnightDbName,
+          fullConfig.privateStateStoreName,
+          async (subLevel) => {
+            const entriesToMigrate: { key: string; decryptedValue: string }[] = [];
+            let hasCurrentContractData = false;
 
-            const decryptedValue = decryptValue(encryptedValue, oldEncryption, oldPassword);
+            for await (const [key, encryptedValue] of subLevel.iterator()) {
+              if (key === METADATA_KEY) continue;
 
-            if (key.startsWith(prefix)) {
-              hasCurrentContractData = true;
+              const decryptedValue = decryptValue(encryptedValue, oldEncryption, oldPassword);
+
+              if (key.startsWith(prefix)) {
+                hasCurrentContractData = true;
+              }
+
+              entriesToMigrate.push({ key, decryptedValue });
             }
 
-            entriesToMigrate.push({ key, decryptedValue });
+            if (!hasCurrentContractData) {
+              return;
+            }
+
+            const operations: { type: 'put'; key: string; value: string }[] = entriesToMigrate.map(
+              ({ key, decryptedValue }) => ({
+                type: 'put',
+                key,
+                value: newEncryption.encrypt(decryptedValue)
+              })
+            );
+
+            const metadata = {
+              salt: newSalt.toString('hex'),
+              version: 1
+            };
+            operations.push({ type: 'put', key: METADATA_KEY, value: JSON.stringify(metadata) });
+
+            await subLevel.batch(operations);
           }
+        );
 
-          if (!hasCurrentContractData) {
-            return;
-          }
-
-          const operations: { type: 'put'; key: string; value: string }[] = entriesToMigrate.map(
-            ({ key, decryptedValue }) => ({
-              type: 'put',
-              key,
-              value: newEncryption.encrypt(decryptedValue)
-            })
-          );
-
-          const metadata = {
-            salt: newSalt.toString('hex'),
-            version: 1
-          };
-          operations.push({ type: 'put', key: METADATA_KEY, value: JSON.stringify(metadata) });
-
-          await subLevel.batch(operations);
-        }
-      );
-
-      invalidateEncryptionCacheForDb(
-        fullConfig.midnightDbName,
-        fullConfig.privateStateStoreName,
-        fullConfig.signingKeyStoreName
-      );
+        invalidateEncryptionCacheForDb(
+          fullConfig.midnightDbName,
+          fullConfig.privateStateStoreName,
+          fullConfig.signingKeyStoreName
+        );
+      });
     },
 
     async changeSigningKeysPassword(
       oldPasswordProvider: PrivateStoragePasswordProvider,
       newPasswordProvider: PrivateStoragePasswordProvider
     ): Promise<void> {
-      const oldPassword = await getPasswordFromProvider(oldPasswordProvider);
-      const newPassword = await getPasswordFromProvider(newPasswordProvider);
+      const lockKey = `${fullConfig.midnightDbName}:${fullConfig.signingKeyStoreName}`;
 
-      const salt = await getOrCreateSalt(fullConfig.midnightDbName, fullConfig.signingKeyStoreName);
-      const oldEncryption = new StorageEncryption(oldPassword, salt);
-      const newEncryption = new StorageEncryption(newPassword);
-      const newSalt = newEncryption.getSalt();
+      return withPasswordRotationLock(lockKey, async () => {
+        const oldPassword = await getPasswordFromProvider(oldPasswordProvider);
+        const newPassword = await getPasswordFromProvider(newPasswordProvider);
 
-      await withSubLevel<string, string, void>(
-        fullConfig.midnightDbName,
-        fullConfig.signingKeyStoreName,
-        async (subLevel) => {
-          const entriesToMigrate: { key: string; decryptedValue: string }[] = [];
+        const salt = await getOrCreateSalt(fullConfig.midnightDbName, fullConfig.signingKeyStoreName);
+        const oldEncryption = new StorageEncryption(oldPassword, salt);
+        const newEncryption = new StorageEncryption(newPassword);
+        const newSalt = newEncryption.getSalt();
 
-          for await (const [key, encryptedValue] of subLevel.iterator()) {
-            if (key === METADATA_KEY) continue;
+        await withSubLevel<string, string, void>(
+          fullConfig.midnightDbName,
+          fullConfig.signingKeyStoreName,
+          async (subLevel) => {
+            const entriesToMigrate: { key: string; decryptedValue: string }[] = [];
 
-            const decryptedValue = decryptValue(encryptedValue, oldEncryption, oldPassword);
+            for await (const [key, encryptedValue] of subLevel.iterator()) {
+              if (key === METADATA_KEY) continue;
 
-            entriesToMigrate.push({ key, decryptedValue });
+              const decryptedValue = decryptValue(encryptedValue, oldEncryption, oldPassword);
+
+              entriesToMigrate.push({ key, decryptedValue });
+            }
+
+            if (entriesToMigrate.length === 0) {
+              return;
+            }
+
+            const operations: { type: 'put'; key: string; value: string }[] = entriesToMigrate.map(
+              ({ key, decryptedValue }) => ({
+                type: 'put',
+                key,
+                value: newEncryption.encrypt(decryptedValue)
+              })
+            );
+
+            const metadata = {
+              salt: newSalt.toString('hex'),
+              version: 1
+            };
+            operations.push({ type: 'put', key: METADATA_KEY, value: JSON.stringify(metadata) });
+
+            await subLevel.batch(operations);
           }
+        );
 
-          if (entriesToMigrate.length === 0) {
-            return;
-          }
-
-          const operations: { type: 'put'; key: string; value: string }[] = entriesToMigrate.map(
-            ({ key, decryptedValue }) => ({
-              type: 'put',
-              key,
-              value: newEncryption.encrypt(decryptedValue)
-            })
-          );
-
-          const metadata = {
-            salt: newSalt.toString('hex'),
-            version: 1
-          };
-          operations.push({ type: 'put', key: METADATA_KEY, value: JSON.stringify(metadata) });
-
-          await subLevel.batch(operations);
-        }
-      );
-
-      invalidateEncryptionCacheForDb(
-        fullConfig.midnightDbName,
-        fullConfig.privateStateStoreName,
-        fullConfig.signingKeyStoreName
-      );
+        invalidateEncryptionCacheForDb(
+          fullConfig.midnightDbName,
+          fullConfig.privateStateStoreName,
+          fullConfig.signingKeyStoreName
+        );
+      });
     },
 
     invalidateEncryptionCache(): void {
