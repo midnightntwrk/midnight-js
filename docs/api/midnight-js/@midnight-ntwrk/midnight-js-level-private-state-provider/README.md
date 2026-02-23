@@ -13,6 +13,8 @@
 ## Interfaces
 
 - [LevelPrivateStateProviderConfig](interfaces/LevelPrivateStateProviderConfig.md)
+- [PasswordRotationOptions](interfaces/PasswordRotationOptions.md)
+- [PasswordRotationResult](interfaces/PasswordRotationResult.md)
 
 ## Type Aliases
 
@@ -24,4 +26,5 @@
 
 ## Functions
 
+- [decryptValue](functions/decryptValue.md)
 - [levelPrivateStateProvider](functions/levelPrivateStateProvider.md)

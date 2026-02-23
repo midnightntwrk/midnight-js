@@ -6,7 +6,7 @@
 
 # Function: levelPrivateStateProvider()
 
-> **levelPrivateStateProvider**\<`PSI`, `PS`\>(`config`): `PrivateStateProvider`\<`PSI`, `PS`\>
+> **levelPrivateStateProvider**\<`PSI`, `PS`\>(`config`): `PrivateStateProvider`\<`PSI`, `PS`\> & `object`
 
 Constructs an instance of PrivateStateProvider based on Level database.
 
@@ -37,4 +37,4 @@ Database configuration options.
 
 ## Returns
 
-`PrivateStateProvider`\<`PSI`, `PS`\>
+`PrivateStateProvider`\<`PSI`, `PS`\> & `object`
