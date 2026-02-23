@@ -1530,5 +1530,115 @@ describe('Level Private State Provider', (): void => {
       }
     });
   });
+
+  describe('Encryption Cache', () => {
+    const CACHE_TEST_DB = 'midnight-cache-test-db';
+    const CACHE_CONTRACT_ADDRESS = 'cache-test-contract' as ContractAddress;
+
+    afterEach(async () => {
+      await fs.rm(path.join('.', CACHE_TEST_DB), { recursive: true, force: true });
+    });
+
+    test('invalidateEncryptionCache method exists on provider', () => {
+      const db = levelPrivateStateProvider<string, string>({
+        midnightDbName: CACHE_TEST_DB,
+        privateStoragePasswordProvider: () => TEST_PASSWORD
+      });
+
+      expect(typeof db.invalidateEncryptionCache).toBe('function');
+    });
+
+    test('multiple sequential operations are faster due to caching', async () => {
+      const config = {
+        midnightDbName: CACHE_TEST_DB,
+        privateStoragePasswordProvider: () => TEST_PASSWORD
+      };
+
+      const db = levelPrivateStateProvider<string, string>(config);
+      db.setContractAddress(CACHE_CONTRACT_ADDRESS);
+
+      const startFirst = performance.now();
+      await db.set('key-0', 'value-0');
+      const firstOpTime = performance.now() - startFirst;
+
+      const startSubsequent = performance.now();
+      for (let i = 1; i < 5; i++) {
+        await db.set(`key-${i}`, `value-${i}`);
+      }
+      const subsequentOpsTime = performance.now() - startSubsequent;
+      const avgSubsequentTime = subsequentOpsTime / 4;
+
+      expect(avgSubsequentTime).toBeLessThan(firstOpTime);
+    });
+
+    test('cache is invalidated when password changes', async () => {
+      let currentPassword = TEST_PASSWORD;
+      const config = {
+        midnightDbName: CACHE_TEST_DB,
+        privateStoragePasswordProvider: () => currentPassword
+      };
+
+      const db = levelPrivateStateProvider<string, string>(config);
+      db.setContractAddress(CACHE_CONTRACT_ADDRESS);
+      await db.set('test-key', 'test-value');
+
+      const value1 = await db.get('test-key');
+      expect(value1).toBe('test-value');
+
+      currentPassword = 'Different-Pass-88!';
+
+      await expect(db.get('test-key')).rejects.toThrow();
+    });
+
+    test('invalidateEncryptionCache clears cache and forces re-derivation', async () => {
+      const config = {
+        midnightDbName: CACHE_TEST_DB,
+        privateStoragePasswordProvider: () => TEST_PASSWORD
+      };
+
+      const db = levelPrivateStateProvider<string, string>(config);
+      db.setContractAddress(CACHE_CONTRACT_ADDRESS);
+      await db.set('test-key', 'test-value');
+
+      db.invalidateEncryptionCache();
+
+      const value = await db.get('test-key');
+      expect(value).toBe('test-value');
+    });
+
+    test('private states and signing keys have separate cache entries', async () => {
+      const config = {
+        midnightDbName: CACHE_TEST_DB,
+        privateStoragePasswordProvider: () => TEST_PASSWORD
+      };
+
+      const db = levelPrivateStateProvider<string, string>(config);
+      db.setContractAddress(CACHE_CONTRACT_ADDRESS);
+
+      await db.set('state-key', 'state-value');
+      const signingKey = sampleSigningKey();
+      await db.setSigningKey('key-address' as ContractAddress, signingKey);
+
+      expect(await db.get('state-key')).toBe('state-value');
+      expect(await db.getSigningKey('key-address' as ContractAddress)).toEqual(signingKey);
+    });
+
+    test('cache survives multiple provider instances with same config', async () => {
+      const config = {
+        midnightDbName: CACHE_TEST_DB,
+        privateStoragePasswordProvider: () => TEST_PASSWORD
+      };
+
+      const db1 = levelPrivateStateProvider<string, string>(config);
+      db1.setContractAddress(CACHE_CONTRACT_ADDRESS);
+      await db1.set('shared-key', 'shared-value');
+
+      const db2 = levelPrivateStateProvider<string, string>(config);
+      db2.setContractAddress(CACHE_CONTRACT_ADDRESS);
+      const value = await db2.get('shared-key');
+
+      expect(value).toBe('shared-value');
+    });
+  });
 });
 

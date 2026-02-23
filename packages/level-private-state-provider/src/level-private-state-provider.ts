@@ -142,6 +142,13 @@ const METADATA_KEY = '__midnight_encryption_metadata__';
 
 const encryptionInitPromises = new Map<string, Promise<Buffer>>();
 
+interface EncryptionCacheEntry {
+  encryption: StorageEncryption;
+  saltHex: string;
+}
+
+const encryptionCache = new Map<string, EncryptionCacheEntry>();
+
 const getOrCreateSalt = async (dbName: string, levelName: string): Promise<Buffer> => {
   const lockKey = `${dbName}:${levelName}`;
 
@@ -186,9 +193,26 @@ const getOrCreateEncryption = async (
   levelName: string,
   passwordProvider: PrivateStoragePasswordProvider
 ): Promise<StorageEncryption> => {
+  const cacheKey = `${dbName}:${levelName}`;
   const password = await getPasswordFromProvider(passwordProvider);
   const salt = await getOrCreateSalt(dbName, levelName);
-  return new StorageEncryption(password, salt);
+  const saltHex = salt.toString('hex');
+
+  const cached = encryptionCache.get(cacheKey);
+  if (cached && cached.saltHex === saltHex && cached.encryption.verifyPassword(password)) {
+    return cached.encryption;
+  }
+
+  const encryption = new StorageEncryption(password, salt);
+  encryptionCache.set(cacheKey, { encryption, saltHex });
+  return encryption;
+};
+
+const invalidateEncryptionCacheForDb = (dbName: string, privateStateStoreName: string, signingKeyStoreName: string): void => {
+  const privateStateKey = `${dbName}:${privateStateStoreName}`;
+  const signingKeyKey = `${dbName}:${signingKeyStoreName}`;
+  encryptionCache.delete(privateStateKey);
+  encryptionCache.delete(signingKeyKey);
 };
 
 const subLevelMaybeGet = async <K, V>(
@@ -210,7 +234,15 @@ const subLevelMaybeGet = async <K, V>(
       let decryptedValue: string;
 
       if (StorageEncryption.isEncrypted(encryptedValue)) {
-        decryptedValue = encryption.decrypt(encryptedValue);
+        const version = StorageEncryption.getVersion(encryptedValue);
+        if (version === 1) {
+          const password = await getPasswordFromProvider(passwordProvider);
+          decryptedValue = encryption.decryptWithPassword(encryptedValue, password);
+          const reEncrypted = encryption.encrypt(decryptedValue);
+          await subLevel.put(key, reEncrypted);
+        } else {
+          decryptedValue = encryption.decrypt(encryptedValue);
+        }
       } else {
         decryptedValue = encryptedValue;
         const reEncrypted = encryption.encrypt(encryptedValue);
@@ -245,9 +277,9 @@ const getAllEntries = async <K extends string, V>(
 
   return withSubLevel<K, string, Map<K, V>>(dbName, levelName, async (subLevel) => {
     const entries = new Map<K, V>();
+    let password: string | null = null;
 
     for await (const [key, encryptedValue] of subLevel.iterator()) {
-      // Skip metadata key
       if (key === METADATA_KEY) {
         continue;
       }
@@ -255,9 +287,16 @@ const getAllEntries = async <K extends string, V>(
       let decryptedValue: string;
 
       if (StorageEncryption.isEncrypted(encryptedValue)) {
-        decryptedValue = encryption.decrypt(encryptedValue);
+        const version = StorageEncryption.getVersion(encryptedValue);
+        if (version === 1) {
+          if (password === null) {
+            password = await getPasswordFromProvider(passwordProvider);
+          }
+          decryptedValue = encryption.decryptWithPassword(encryptedValue, password);
+        } else {
+          decryptedValue = encryption.decrypt(encryptedValue);
+        }
       } else {
-        // Legacy unencrypted data
         decryptedValue = encryptedValue;
       }
 
@@ -393,7 +432,7 @@ const showBrowserWarning = (): void => {
  */
 export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
   config: Partial<LevelPrivateStateProviderConfig> & Pick<LevelPrivateStateProviderConfig, 'privateStoragePasswordProvider'>
-): PrivateStateProvider<PSI, PS> => {
+): PrivateStateProvider<PSI, PS> & { invalidateEncryptionCache(): void } => {
   const fullConfig = _.defaults(config, DEFAULT_CONFIG);
 
   if (!config.privateStoragePasswordProvider) {
@@ -813,6 +852,14 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       }
 
       return { imported, skipped, overwritten };
+    },
+
+    invalidateEncryptionCache(): void {
+      invalidateEncryptionCacheForDb(
+        fullConfig.midnightDbName,
+        fullConfig.privateStateStoreName,
+        fullConfig.signingKeyStoreName
+      );
     }
   };
 };
