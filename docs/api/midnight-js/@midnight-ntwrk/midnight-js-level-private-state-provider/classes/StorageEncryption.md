@@ -44,6 +44,26 @@
 
 ***
 
+### decryptWithPassword()
+
+> **decryptWithPassword**(`encryptedData`, `password`): `string`
+
+#### Parameters
+
+##### encryptedData
+
+`string`
+
+##### password
+
+`string`
+
+#### Returns
+
+`string`
+
+***
+
 ### encrypt()
 
 > **encrypt**(`data`): `string`
@@ -67,6 +87,22 @@
 #### Returns
 
 `Buffer`
+
+***
+
+### verifyPassword()
+
+> **verifyPassword**(`password`): `boolean`
+
+#### Parameters
+
+##### password
+
+`string`
+
+#### Returns
+
+`boolean`
 
 ***
 
