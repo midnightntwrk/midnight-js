@@ -16,7 +16,9 @@
 export {
   DEFAULT_CONFIG,
   levelPrivateStateProvider,
-  type LevelPrivateStateProviderConfig
+  type LevelPrivateStateProviderConfig,
+  type PasswordRotationOptions,
+  type PasswordRotationResult
 } from './level-private-state-provider';
 export {
   decryptValue,
