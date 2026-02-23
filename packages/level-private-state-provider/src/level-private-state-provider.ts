@@ -147,16 +147,16 @@ const encryptionInitPromises = new Map<string, Promise<Buffer>>();
 const passwordRotationLocks = new Map<string, Promise<void>>();
 
 export interface PasswordRotationResult {
-  entriesMigrated: number;
+  readonly entriesMigrated: number;
 }
 
 export interface PasswordRotationOptions {
-  maxEntries?: number;
+  readonly maxEntries?: number;
 }
 
 interface EncryptionCacheEntry {
-  encryption: StorageEncryption;
-  saltHex: string;
+  readonly encryption: StorageEncryption;
+  readonly saltHex: string;
 }
 
 /**
@@ -265,20 +265,31 @@ const withPasswordRotationLock = async <T>(
 
 const waitForRotationLock = async (dbName: string, levelName: string): Promise<void> => {
   const lockKey = `${dbName}:${levelName}`;
-  const existingLock = passwordRotationLocks.get(lockKey);
-  if (existingLock) {
-    await existingLock;
+  while (passwordRotationLocks.has(lockKey)) {
+    await passwordRotationLocks.get(lockKey);
   }
 };
 
 interface RotateStorePasswordParams {
-  dbName: string;
-  storeName: string;
-  oldPasswordProvider: PrivateStoragePasswordProvider;
-  newPasswordProvider: PrivateStoragePasswordProvider;
-  maxEntries: number;
-  shouldProceed?: (key: string) => boolean;
+  readonly dbName: string;
+  readonly storeName: string;
+  readonly oldPasswordProvider: PrivateStoragePasswordProvider;
+  readonly newPasswordProvider: PrivateStoragePasswordProvider;
+  readonly maxEntries: number;
+  readonly shouldProceed?: (key: string) => boolean;
 }
+
+const isDecryptionError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  return (
+    message.includes('unsupported state') ||
+    message.includes('salt mismatch') ||
+    message.includes('invalid encrypted data') ||
+    message.includes('bad decrypt') ||
+    message.includes('unable to authenticate')
+  );
+};
 
 const rotateStorePassword = async (
   params: RotateStorePasswordParams
@@ -297,32 +308,49 @@ const rotateStorePassword = async (
     dbName,
     storeName,
     async (subLevel) => {
-      let entryCount = 0;
-      let firstEntry: { key: string; encryptedValue: string } | null = null;
+      const entriesToMigrate: { key: string; decryptedValue: string }[] = [];
       let hasMatchingData = false;
+      let firstEntryValidated = false;
 
       for await (const [key, encryptedValue] of subLevel.iterator()) {
         if (key === METADATA_KEY) continue;
 
-        entryCount++;
-
-        if (entryCount > maxEntries) {
+        if (entriesToMigrate.length >= maxEntries) {
           throw new Error(
-            `Entry count (${entryCount}) exceeds maximum allowed (${maxEntries}). ` +
+            `Entry count exceeds maximum allowed (${maxEntries}). ` +
             `Use the maxEntries option to increase the limit if needed.`
           );
-        }
-
-        if (firstEntry === null) {
-          firstEntry = { key, encryptedValue };
         }
 
         if (shouldProceed && shouldProceed(key)) {
           hasMatchingData = true;
         }
+
+        if (!firstEntryValidated) {
+          try {
+            decryptValue(encryptedValue, oldEncryption, oldPassword);
+          } catch (error: unknown) {
+            if (isDecryptionError(error)) {
+              throw new Error('Old password is incorrect: failed to decrypt existing data');
+            }
+            throw error;
+          }
+          firstEntryValidated = true;
+        }
+
+        try {
+          const decryptedValue = decryptValue(encryptedValue, oldEncryption, oldPassword);
+          entriesToMigrate.push({ key, decryptedValue });
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          throw new Error(
+            `Failed to decrypt entry "${key}": ${errorMessage}. ` +
+            `Successfully processed ${entriesToMigrate.length} entries before failure.`
+          );
+        }
       }
 
-      if (entryCount === 0) {
+      if (entriesToMigrate.length === 0) {
         return { entriesMigrated: 0 };
       }
 
@@ -330,30 +358,19 @@ const rotateStorePassword = async (
         return { entriesMigrated: 0 };
       }
 
-      if (firstEntry !== null) {
+      const operations: { type: 'put'; key: string; value: string }[] = [];
+      for (const { key, decryptedValue } of entriesToMigrate) {
         try {
-          decryptValue(firstEntry.encryptedValue, oldEncryption, oldPassword);
-        } catch {
-          throw new Error('Old password is incorrect: failed to decrypt existing data');
+          const encryptedValue = newEncryption.encrypt(decryptedValue);
+          operations.push({ type: 'put', key, value: encryptedValue });
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          throw new Error(
+            `Failed to re-encrypt entry "${key}": ${errorMessage}. ` +
+            `Original data is still encrypted with old password.`
+          );
         }
       }
-
-      const entriesToMigrate: { key: string; decryptedValue: string }[] = [];
-
-      for await (const [key, encryptedValue] of subLevel.iterator()) {
-        if (key === METADATA_KEY) continue;
-
-        const decryptedValue = decryptValue(encryptedValue, oldEncryption, oldPassword);
-        entriesToMigrate.push({ key, decryptedValue });
-      }
-
-      const operations: { type: 'put'; key: string; value: string }[] = entriesToMigrate.map(
-        ({ key, decryptedValue }) => ({
-          type: 'put',
-          key,
-          value: newEncryption.encrypt(decryptedValue)
-        })
-      );
 
       const metadata = {
         salt: newSalt.toString('hex'),
@@ -361,7 +378,16 @@ const rotateStorePassword = async (
       };
       operations.push({ type: 'put', key: METADATA_KEY, value: JSON.stringify(metadata) });
 
-      await subLevel.batch(operations);
+      try {
+        await subLevel.batch(operations);
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        throw new Error(
+          `Failed to write re-encrypted data: ${errorMessage}. ` +
+          `Your data may be in an inconsistent state. ` +
+          `Keep both old and new passwords until you can verify data integrity.`
+        );
+      }
 
       return { entriesMigrated: entriesToMigrate.length };
     }

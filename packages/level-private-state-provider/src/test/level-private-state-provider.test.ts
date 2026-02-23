@@ -2092,6 +2092,101 @@ describe('Level Private State Provider', (): void => {
         expect(key1).toBeNull();
         expect(key2).toEqual(signingKey2);
       });
+
+      test('get waits for rotation lock before executing', async () => {
+        let currentPassword = OLD_PASSWORD;
+        const config = {
+          midnightDbName: ROTATION_TEST_DB,
+          privateStoragePasswordProvider: () => currentPassword
+        };
+
+        const db = levelPrivateStateProvider<string, string>(config);
+        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
+        await db.set('key1', 'value1');
+
+        const rotationPromise = db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD);
+        currentPassword = NEW_PASSWORD;
+        const getPromise = db.get('key1');
+
+        await rotationPromise;
+        const value = await getPromise;
+
+        expect(value).toBe('value1');
+      });
+
+      test('set waits for rotation lock before executing', async () => {
+        let currentPassword = OLD_PASSWORD;
+        const config = {
+          midnightDbName: ROTATION_TEST_DB,
+          privateStoragePasswordProvider: () => currentPassword
+        };
+
+        const db = levelPrivateStateProvider<string, string>(config);
+        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
+        await db.set('key1', 'value1');
+
+        const rotationPromise = db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD);
+        currentPassword = NEW_PASSWORD;
+        const setPromise = db.set('key2', 'value2');
+
+        await rotationPromise;
+        await setPromise;
+
+        const value1 = await db.get('key1');
+        const value2 = await db.get('key2');
+
+        expect(value1).toBe('value1');
+        expect(value2).toBe('value2');
+      });
+
+      test('getSigningKey waits for rotation lock before executing', async () => {
+        let currentPassword = OLD_PASSWORD;
+        const config = {
+          midnightDbName: ROTATION_TEST_DB,
+          privateStoragePasswordProvider: () => currentPassword
+        };
+
+        const signingKey = sampleSigningKey();
+
+        const db = levelPrivateStateProvider<string, string>(config);
+        await db.setSigningKey('addr1' as ContractAddress, signingKey);
+
+        const rotationPromise = db.changeSigningKeysPassword(() => OLD_PASSWORD, () => NEW_PASSWORD);
+        currentPassword = NEW_PASSWORD;
+        const getPromise = db.getSigningKey('addr1' as ContractAddress);
+
+        await rotationPromise;
+        const key = await getPromise;
+
+        expect(key).toEqual(signingKey);
+      });
+
+      test('setSigningKey waits for rotation lock before executing', async () => {
+        let currentPassword = OLD_PASSWORD;
+        const config = {
+          midnightDbName: ROTATION_TEST_DB,
+          privateStoragePasswordProvider: () => currentPassword
+        };
+
+        const signingKey1 = sampleSigningKey();
+        const signingKey2 = sampleSigningKey();
+
+        const db = levelPrivateStateProvider<string, string>(config);
+        await db.setSigningKey('addr1' as ContractAddress, signingKey1);
+
+        const rotationPromise = db.changeSigningKeysPassword(() => OLD_PASSWORD, () => NEW_PASSWORD);
+        currentPassword = NEW_PASSWORD;
+        const setPromise = db.setSigningKey('addr2' as ContractAddress, signingKey2);
+
+        await rotationPromise;
+        await setPromise;
+
+        const key1 = await db.getSigningKey('addr1' as ContractAddress);
+        const key2 = await db.getSigningKey('addr2' as ContractAddress);
+
+        expect(key1).toEqual(signingKey1);
+        expect(key2).toEqual(signingKey2);
+      });
     });
 
     describe('Memory Limit', () => {
