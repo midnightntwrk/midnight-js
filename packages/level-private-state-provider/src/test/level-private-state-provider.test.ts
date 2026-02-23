@@ -1852,7 +1852,8 @@ describe('Level Private State Provider', (): void => {
           await subLevelAfter.open();
 
           const encryptedAfter = await subLevelAfter.get(`${ROTATION_CONTRACT_ADDRESS}:v1-key`);
-          const bufferAfter = Buffer.from(encryptedAfter, 'base64');
+          expect(encryptedAfter).toBeDefined();
+          const bufferAfter = Buffer.from(encryptedAfter as string, 'base64');
           expect(bufferAfter[0]).toBe(2);
         } finally {
           await subLevelAfter.close();
