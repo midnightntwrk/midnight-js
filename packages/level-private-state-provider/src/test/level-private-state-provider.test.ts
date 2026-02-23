@@ -1641,5 +1641,258 @@ describe('Level Private State Provider', (): void => {
       expect(value).toBe('shared-value');
     });
   });
+
+  describe('Password Rotation', () => {
+    const ROTATION_TEST_DB = 'midnight-rotation-test-db';
+    const ROTATION_CONTRACT_ADDRESS = 'rotation-test-contract' as ContractAddress;
+    const OLD_PASSWORD = 'Old-Password-Test8!';
+    const NEW_PASSWORD = 'New-Password-Test8!';
+
+    afterEach(async () => {
+      await fs.rm(path.join('.', ROTATION_TEST_DB), { recursive: true, force: true });
+    });
+
+    describe('changePassword', () => {
+      test('changePassword method exists on provider', () => {
+        const db = levelPrivateStateProvider<string, string>({
+          midnightDbName: ROTATION_TEST_DB,
+          privateStoragePasswordProvider: () => OLD_PASSWORD
+        });
+
+        expect(typeof db.changePassword).toBe('function');
+      });
+
+      test('throws error when contract address not set', async () => {
+        const db = levelPrivateStateProvider<string, string>({
+          midnightDbName: ROTATION_TEST_DB,
+          privateStoragePasswordProvider: () => OLD_PASSWORD
+        });
+
+        await expect(
+          db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD)
+        ).rejects.toThrow('Contract address not set');
+      });
+
+      test('successfully rotates password for private states', async () => {
+        let currentPassword = OLD_PASSWORD;
+        const config = {
+          midnightDbName: ROTATION_TEST_DB,
+          privateStoragePasswordProvider: () => currentPassword
+        };
+
+        const db = levelPrivateStateProvider<string, string>(config);
+        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
+        await db.set('key1', 'value1');
+        await db.set('key2', 'value2');
+
+        await db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD);
+
+        currentPassword = NEW_PASSWORD;
+
+        const value1 = await db.get('key1');
+        const value2 = await db.get('key2');
+        expect(value1).toBe('value1');
+        expect(value2).toBe('value2');
+      });
+
+      test('throws error when old password is incorrect', async () => {
+        const config = {
+          midnightDbName: ROTATION_TEST_DB,
+          privateStoragePasswordProvider: () => OLD_PASSWORD
+        };
+
+        const db = levelPrivateStateProvider<string, string>(config);
+        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
+        await db.set('key1', 'value1');
+
+        await expect(
+          db.changePassword(() => 'Wrong-Password-88!', () => NEW_PASSWORD)
+        ).rejects.toThrow();
+
+        const value = await db.get('key1');
+        expect(value).toBe('value1');
+      });
+
+      test('handles empty database gracefully', async () => {
+        const config = {
+          midnightDbName: ROTATION_TEST_DB,
+          privateStoragePasswordProvider: () => OLD_PASSWORD
+        };
+
+        const db = levelPrivateStateProvider<string, string>(config);
+        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
+
+        await expect(
+          db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD)
+        ).resolves.not.toThrow();
+      });
+
+      test('re-encrypts all contracts data in sublevel to prevent data loss', async () => {
+        const OTHER_CONTRACT = 'other-contract' as ContractAddress;
+        let currentPassword = OLD_PASSWORD;
+        const config = {
+          midnightDbName: ROTATION_TEST_DB,
+          privateStoragePasswordProvider: () => currentPassword
+        };
+
+        const db = levelPrivateStateProvider<string, string>(config);
+
+        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
+        await db.set('key1', 'value1');
+
+        db.setContractAddress(OTHER_CONTRACT);
+        await db.set('other-key', 'other-value');
+
+        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
+        await db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD);
+
+        currentPassword = NEW_PASSWORD;
+        const value1 = await db.get('key1');
+        expect(value1).toBe('value1');
+
+        db.setContractAddress(OTHER_CONTRACT);
+        const otherValue = await db.get('other-key');
+        expect(otherValue).toBe('other-value');
+      });
+
+      test('invalidates encryption cache after rotation', async () => {
+        let currentPassword = OLD_PASSWORD;
+        const config = {
+          midnightDbName: ROTATION_TEST_DB,
+          privateStoragePasswordProvider: () => currentPassword
+        };
+
+        const db = levelPrivateStateProvider<string, string>(config);
+        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
+        await db.set('key1', 'value1');
+
+        await db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD);
+        currentPassword = NEW_PASSWORD;
+
+        const freshDb = levelPrivateStateProvider<string, string>(config);
+        freshDb.setContractAddress(ROTATION_CONTRACT_ADDRESS);
+        const value = await freshDb.get('key1');
+        expect(value).toBe('value1');
+      });
+
+      test('validates new password meets requirements', async () => {
+        const config = {
+          midnightDbName: ROTATION_TEST_DB,
+          privateStoragePasswordProvider: () => OLD_PASSWORD
+        };
+
+        const db = levelPrivateStateProvider<string, string>(config);
+        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
+        await db.set('key1', 'value1');
+
+        await expect(
+          db.changePassword(() => OLD_PASSWORD, () => 'short')
+        ).rejects.toThrow();
+      });
+    });
+
+    describe('changeSigningKeysPassword', () => {
+      test('changeSigningKeysPassword method exists on provider', () => {
+        const db = levelPrivateStateProvider<string, string>({
+          midnightDbName: ROTATION_TEST_DB,
+          privateStoragePasswordProvider: () => OLD_PASSWORD
+        });
+
+        expect(typeof db.changeSigningKeysPassword).toBe('function');
+      });
+
+      test('successfully rotates password for signing keys', async () => {
+        let currentPassword = OLD_PASSWORD;
+        const config = {
+          midnightDbName: ROTATION_TEST_DB,
+          privateStoragePasswordProvider: () => currentPassword
+        };
+
+        const signingKey1 = sampleSigningKey();
+        const signingKey2 = sampleSigningKey();
+
+        const db = levelPrivateStateProvider<string, string>(config);
+        await db.setSigningKey('address1' as ContractAddress, signingKey1);
+        await db.setSigningKey('address2' as ContractAddress, signingKey2);
+
+        await db.changeSigningKeysPassword(() => OLD_PASSWORD, () => NEW_PASSWORD);
+
+        currentPassword = NEW_PASSWORD;
+
+        const key1 = await db.getSigningKey('address1' as ContractAddress);
+        const key2 = await db.getSigningKey('address2' as ContractAddress);
+        expect(key1).toEqual(signingKey1);
+        expect(key2).toEqual(signingKey2);
+      });
+
+      test('throws error when old password is incorrect', async () => {
+        const config = {
+          midnightDbName: ROTATION_TEST_DB,
+          privateStoragePasswordProvider: () => OLD_PASSWORD
+        };
+
+        const signingKey = sampleSigningKey();
+        const db = levelPrivateStateProvider<string, string>(config);
+        await db.setSigningKey('address1' as ContractAddress, signingKey);
+
+        await expect(
+          db.changeSigningKeysPassword(() => 'Wrong-Password-88!', () => NEW_PASSWORD)
+        ).rejects.toThrow();
+
+        const key = await db.getSigningKey('address1' as ContractAddress);
+        expect(key).toEqual(signingKey);
+      });
+
+      test('handles empty signing keys gracefully', async () => {
+        const config = {
+          midnightDbName: ROTATION_TEST_DB,
+          privateStoragePasswordProvider: () => OLD_PASSWORD
+        };
+
+        const db = levelPrivateStateProvider<string, string>(config);
+
+        await expect(
+          db.changeSigningKeysPassword(() => OLD_PASSWORD, () => NEW_PASSWORD)
+        ).resolves.not.toThrow();
+      });
+
+      test('does not require contract address to be set', async () => {
+        let currentPassword = OLD_PASSWORD;
+        const config = {
+          midnightDbName: ROTATION_TEST_DB,
+          privateStoragePasswordProvider: () => currentPassword
+        };
+
+        const signingKey = sampleSigningKey();
+        const db = levelPrivateStateProvider<string, string>(config);
+        await db.setSigningKey('address1' as ContractAddress, signingKey);
+
+        await db.changeSigningKeysPassword(() => OLD_PASSWORD, () => NEW_PASSWORD);
+        currentPassword = NEW_PASSWORD;
+
+        const key = await db.getSigningKey('address1' as ContractAddress);
+        expect(key).toEqual(signingKey);
+      });
+
+      test('invalidates encryption cache after rotation', async () => {
+        let currentPassword = OLD_PASSWORD;
+        const config = {
+          midnightDbName: ROTATION_TEST_DB,
+          privateStoragePasswordProvider: () => currentPassword
+        };
+
+        const signingKey = sampleSigningKey();
+        const db = levelPrivateStateProvider<string, string>(config);
+        await db.setSigningKey('address1' as ContractAddress, signingKey);
+
+        await db.changeSigningKeysPassword(() => OLD_PASSWORD, () => NEW_PASSWORD);
+        currentPassword = NEW_PASSWORD;
+
+        const freshDb = levelPrivateStateProvider<string, string>(config);
+        const key = await freshDb.getSigningKey('address1' as ContractAddress);
+        expect(key).toEqual(signingKey);
+      });
+    });
+  });
 });
 

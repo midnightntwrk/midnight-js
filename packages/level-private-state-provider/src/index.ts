@@ -19,6 +19,7 @@ export {
   type LevelPrivateStateProviderConfig
 } from './level-private-state-provider';
 export {
+  decryptValue,
   type PrivateStoragePasswordProvider,
   StorageEncryption
 } from './storage-encryption';
