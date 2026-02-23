@@ -147,6 +147,14 @@ interface EncryptionCacheEntry {
   saltHex: string;
 }
 
+/**
+ * Module-level cache for StorageEncryption instances, keyed by `${dbName}:${levelName}`.
+ * This cache avoids repeated PBKDF2 key derivation (600,000 iterations) on each operation.
+ *
+ * Note: This cache has no size limit. For typical usage with a small number of
+ * database/level combinations, this is acceptable. If using dynamic db/level names,
+ * call `invalidateEncryptionCache()` to prevent unbounded growth.
+ */
 const encryptionCache = new Map<string, EncryptionCacheEntry>();
 
 const getOrCreateSalt = async (dbName: string, levelName: string): Promise<Buffer> => {
@@ -194,15 +202,21 @@ const getOrCreateEncryption = async (
   passwordProvider: PrivateStoragePasswordProvider
 ): Promise<StorageEncryption> => {
   const cacheKey = `${dbName}:${levelName}`;
-  const password = await getPasswordFromProvider(passwordProvider);
   const salt = await getOrCreateSalt(dbName, levelName);
   const saltHex = salt.toString('hex');
 
   const cached = encryptionCache.get(cacheKey);
-  if (cached && cached.saltHex === saltHex && cached.encryption.verifyPassword(password)) {
-    return cached.encryption;
+  if (cached && cached.saltHex === saltHex) {
+    const password = await getPasswordFromProvider(passwordProvider);
+    if (cached.encryption.verifyPassword(password)) {
+      return cached.encryption;
+    }
+    const encryption = new StorageEncryption(password, salt);
+    encryptionCache.set(cacheKey, { encryption, saltHex });
+    return encryption;
   }
 
+  const password = await getPasswordFromProvider(passwordProvider);
   const encryption = new StorageEncryption(password, salt);
   encryptionCache.set(cacheKey, { encryption, saltHex });
   return encryption;
@@ -285,6 +299,7 @@ const getAllEntries = async <K extends string, V>(
       }
 
       let decryptedValue: string;
+      let needsReEncryption = false;
 
       if (StorageEncryption.isEncrypted(encryptedValue)) {
         const version = StorageEncryption.getVersion(encryptedValue);
@@ -293,11 +308,18 @@ const getAllEntries = async <K extends string, V>(
             password = await getPasswordFromProvider(passwordProvider);
           }
           decryptedValue = encryption.decryptWithPassword(encryptedValue, password);
+          needsReEncryption = true;
         } else {
           decryptedValue = encryption.decrypt(encryptedValue);
         }
       } else {
         decryptedValue = encryptedValue;
+        needsReEncryption = true;
+      }
+
+      if (needsReEncryption) {
+        const reEncrypted = encryption.encrypt(decryptedValue);
+        await subLevel.put(key, reEncrypted);
       }
 
       const value = superjson.parse<V>(decryptedValue);

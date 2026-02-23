@@ -1548,7 +1548,8 @@ describe('Level Private State Provider', (): void => {
       expect(typeof db.invalidateEncryptionCache).toBe('function');
     });
 
-    test('multiple sequential operations are faster due to caching', async () => {
+    test('encryption instance is reused for multiple operations (caching works)', async () => {
+      const verifyPasswordSpy = vi.spyOn(StorageEncryption.prototype, 'verifyPassword');
       const config = {
         midnightDbName: CACHE_TEST_DB,
         privateStoragePasswordProvider: () => TEST_PASSWORD
@@ -1557,18 +1558,18 @@ describe('Level Private State Provider', (): void => {
       const db = levelPrivateStateProvider<string, string>(config);
       db.setContractAddress(CACHE_CONTRACT_ADDRESS);
 
-      const startFirst = performance.now();
       await db.set('key-0', 'value-0');
-      const firstOpTime = performance.now() - startFirst;
+      expect(verifyPasswordSpy).not.toHaveBeenCalled();
 
-      const startSubsequent = performance.now();
-      for (let i = 1; i < 5; i++) {
-        await db.set(`key-${i}`, `value-${i}`);
-      }
-      const subsequentOpsTime = performance.now() - startSubsequent;
-      const avgSubsequentTime = subsequentOpsTime / 4;
+      await db.set('key-1', 'value-1');
+      expect(verifyPasswordSpy).toHaveBeenCalledTimes(1);
+      expect(verifyPasswordSpy).toHaveLastReturnedWith(true);
 
-      expect(avgSubsequentTime).toBeLessThan(firstOpTime);
+      await db.set('key-2', 'value-2');
+      expect(verifyPasswordSpy).toHaveBeenCalledTimes(2);
+      expect(verifyPasswordSpy).toHaveLastReturnedWith(true);
+
+      verifyPasswordSpy.mockRestore();
     });
 
     test('cache is invalidated when password changes', async () => {
