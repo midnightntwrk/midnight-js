@@ -14,7 +14,6 @@
  */
 
 import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
-import { ZswapOffer as LedgerZswapOffer } from '@midnight-ntwrk/ledger-v7';
 import { type PrivateStateId, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { ChargedState } from '@midnight-ntwrk/onchain-runtime-v2';
 
@@ -120,10 +119,9 @@ export class TransactionContextImpl<
     // ...otherwise apply the changes in `callData` to the cached state.
     const privateState = callData.private.nextPrivateState;
     const contractState = this.currentStates!.contractState;
+    const zswapChainState = this.currentStates!.zswapChainState; // Preserve the current Zswap chain state.
+
     contractState.data = new ChargedState(callData.public.nextContractState);
-    const [zswapChainState] = callData.private.unprovenTx.guaranteedOffer
-      ? this.currentStates!.zswapChainState.tryApply(LedgerZswapOffer.deserialize('pre-proof', callData.private.unprovenTx.guaranteedOffer!.serialize()))
-      : [this.currentStates!.zswapChainState];
 
     this[CacheStates]({ contractState, zswapChainState, privateState });
   }
