@@ -2362,13 +2362,11 @@ __metadata:
   resolution: "@midnight-ntwrk/midnight-js-level-private-state-provider@workspace:packages/level-private-state-provider"
   dependencies:
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
-    "@types/lodash": "npm:^4.17.19"
     abstract-level: "npm:^3.0.0"
     buffer: "npm:^6.0.3"
     fp-ts: "npm:^2.16.1"
     io-ts: "npm:^2.2.20"
     level: "npm:^10.0.0"
-    lodash: "npm:^4.17.23"
     superjson: "npm:^2.0.0"
   languageName: unknown
   linkType: soft

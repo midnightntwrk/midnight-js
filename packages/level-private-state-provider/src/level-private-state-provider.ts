@@ -37,7 +37,6 @@ import { type AbstractSublevel } from 'abstract-level';
 import { Buffer } from 'buffer';
 import { createHash, randomBytes } from 'crypto';
 import { Level } from 'level';
-import _ from 'lodash';
 import * as superjson from 'superjson';
 
 import { decryptValue, getPasswordFromProvider, type PrivateStoragePasswordProvider, StorageEncryption } from './storage-encryption';
@@ -686,7 +685,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
     options?: PasswordRotationOptions
   ): Promise<PasswordRotationResult>;
 } => {
-  const fullConfig = _.defaults(config, DEFAULT_CONFIG);
+  const fullConfig = { ...DEFAULT_CONFIG, ...config };
 
   if (!config.privateStoragePasswordProvider) {
     throw new Error(
@@ -1286,7 +1285,7 @@ const migrateSublevel = async (
 export const migrateToAccountScoped = async (
   config: Partial<LevelPrivateStateProviderConfig> & Pick<LevelPrivateStateProviderConfig, 'accountId'>
 ): Promise<MigrationResult> => {
-  const fullConfig = _.defaults(config, DEFAULT_CONFIG);
+  const fullConfig = { ...DEFAULT_CONFIG, ...config };
 
   if (!config.accountId || config.accountId.trim().length === 0) {
     throw new Error('accountId is required for migration');
