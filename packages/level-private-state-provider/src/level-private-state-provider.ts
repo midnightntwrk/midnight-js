@@ -132,7 +132,7 @@ superjson.registerCustom<Buffer, string>(
   'buffer'
 );
 
-const ACCOUNT_ID_HASH_LENGTH = 16;
+const ACCOUNT_ID_HASH_LENGTH = 32;
 
 const hashAccountId = (accountId: string): string => {
   return createHash('sha256').update(accountId).digest('hex').substring(0, ACCOUNT_ID_HASH_LENGTH);
@@ -1211,19 +1211,53 @@ const migrateSublevel = async (
       valueEncoding: 'utf-8'
     });
 
-    await oldSubLevel.open();
-    await newSubLevel.open();
+    try {
+      await oldSubLevel.open();
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(
+        `Failed to open source sublevel "${oldLevelName}": ${errorMessage}. ` +
+        `Ensure no other process is accessing the database.`
+      );
+    }
+
+    try {
+      await newSubLevel.open();
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(
+        `Failed to open target sublevel "${newLevelName}": ${errorMessage}. ` +
+        `Ensure no other process is accessing the database.`
+      );
+    }
 
     let count = 0;
     const operations: { type: 'put'; key: string; value: string }[] = [];
 
-    for await (const [key, value] of oldSubLevel.iterator()) {
-      operations.push({ type: 'put', key, value });
-      count++;
+    try {
+      for await (const [key, value] of oldSubLevel.iterator()) {
+        operations.push({ type: 'put', key, value });
+        count++;
+      }
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(
+        `Failed to read data from source sublevel "${oldLevelName}" after ${count} entries: ${errorMessage}. ` +
+        `Migration incomplete. Source data is unchanged.`
+      );
     }
 
     if (operations.length > 0) {
-      await newSubLevel.batch(operations);
+      try {
+        await newSubLevel.batch(operations);
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        throw new Error(
+          `Failed to write ${operations.length} entries to target sublevel "${newLevelName}": ${errorMessage}. ` +
+          `Migration incomplete. Target sublevel may contain partial data. ` +
+          `Source data at "${oldLevelName}" is unchanged.`
+        );
+      }
     }
 
     await newSubLevel.close();
@@ -1231,7 +1265,11 @@ const migrateSublevel = async (
 
     return count;
   } finally {
-    await level.close();
+    try {
+      await level.close();
+    } catch {
+      // Don't mask the original error - just ignore the close failure
+    }
   }
 };
 
@@ -1263,17 +1301,38 @@ export const migrateToAccountScoped = async (
     config.accountId
   );
 
-  const privateStatesMigrated = await migrateSublevel(
-    fullConfig.midnightDbName,
-    fullConfig.privateStateStoreName,
-    scopedPrivateStateLevelName
-  );
+  let privateStatesMigrated = 0;
 
-  const signingKeysMigrated = await migrateSublevel(
-    fullConfig.midnightDbName,
-    fullConfig.signingKeyStoreName,
-    scopedSigningKeyLevelName
-  );
+  try {
+    privateStatesMigrated = await migrateSublevel(
+      fullConfig.midnightDbName,
+      fullConfig.privateStateStoreName,
+      scopedPrivateStateLevelName
+    );
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(
+      `Migration failed during private states copy: ${errorMessage}. ` +
+      `No data has been migrated. Source data is unchanged.`
+    );
+  }
+
+  let signingKeysMigrated = 0;
+
+  try {
+    signingKeysMigrated = await migrateSublevel(
+      fullConfig.midnightDbName,
+      fullConfig.signingKeyStoreName,
+      scopedSigningKeyLevelName
+    );
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(
+      `Migration failed during signing keys copy: ${errorMessage}. ` +
+      `WARNING: ${privateStatesMigrated} private states were already migrated to scoped location. ` +
+      `Signing keys remain at original location. Manual intervention may be required.`
+    );
+  }
 
   return { privateStatesMigrated, signingKeysMigrated };
 };

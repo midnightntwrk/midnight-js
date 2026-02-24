@@ -1817,7 +1817,7 @@ describe('Level Private State Provider', (): void => {
         const V1_MIGRATION_DB = 'midnight-v1-migration-test-db';
         const PRIVATE_STATE_STORE = 'private-states';
         const METADATA_KEY = '__midnight_encryption_metadata__';
-        const hashedAccountId = crypto.createHash('sha256').update(TEST_ACCOUNT_ID).digest('hex').substring(0, 16);
+        const hashedAccountId = crypto.createHash('sha256').update(TEST_ACCOUNT_ID).digest('hex').substring(0, 32);
         const SCOPED_PRIVATE_STATE_STORE = `${PRIVATE_STATE_STORE}:${hashedAccountId}`;
 
         await fs.rm(path.join('.', V1_MIGRATION_DB), { recursive: true, force: true });
@@ -2422,6 +2422,88 @@ describe('Level Private State Provider', (): void => {
         });
       }).toThrow('accountId is required');
     });
+
+    test('clear() only affects data for the specific account', async () => {
+      const config1 = {
+        midnightDbName: ISOLATION_TEST_DB,
+        privateStoragePasswordProvider: () => TEST_PASSWORD,
+        accountId: ACCOUNT_1
+      };
+      const config2 = {
+        midnightDbName: ISOLATION_TEST_DB,
+        privateStoragePasswordProvider: () => TEST_PASSWORD,
+        accountId: ACCOUNT_2
+      };
+
+      const db1 = levelPrivateStateProvider<string, string>(config1);
+      const db2 = levelPrivateStateProvider<string, string>(config2);
+
+      db1.setContractAddress(TEST_CONTRACT_ADDRESS);
+      db2.setContractAddress(TEST_CONTRACT_ADDRESS);
+
+      await db1.set('key1', 'value1');
+      await db2.set('key2', 'value2');
+
+      await db1.clear();
+
+      const value1 = await db1.get('key1');
+      const value2 = await db2.get('key2');
+
+      expect(value1).toBeNull();
+      expect(value2).toBe('value2');
+    });
+
+    test('clearSigningKeys() only affects data for the specific account', async () => {
+      const config1 = {
+        midnightDbName: ISOLATION_TEST_DB,
+        privateStoragePasswordProvider: () => TEST_PASSWORD,
+        accountId: ACCOUNT_1
+      };
+      const config2 = {
+        midnightDbName: ISOLATION_TEST_DB,
+        privateStoragePasswordProvider: () => TEST_PASSWORD,
+        accountId: ACCOUNT_2
+      };
+
+      const db1 = levelPrivateStateProvider<string, string>(config1);
+      const db2 = levelPrivateStateProvider<string, string>(config2);
+
+      const signingKey1 = sampleSigningKey();
+      const signingKey2 = sampleSigningKey();
+
+      await db1.setSigningKey(TEST_CONTRACT_ADDRESS, signingKey1);
+      await db2.setSigningKey(TEST_CONTRACT_ADDRESS, signingKey2);
+
+      await db1.clearSigningKeys();
+
+      const key1 = await db1.getSigningKey(TEST_CONTRACT_ADDRESS);
+      const key2 = await db2.getSigningKey(TEST_CONTRACT_ADDRESS);
+
+      expect(key1).toBeNull();
+      expect(key2).toEqual(signingKey2);
+    });
+
+    test('same accountId produces same scoped storage path consistently', async () => {
+      const accountId = 'consistent-wallet-address';
+
+      const db1 = levelPrivateStateProvider<string, string>({
+        midnightDbName: ISOLATION_TEST_DB,
+        privateStoragePasswordProvider: () => TEST_PASSWORD,
+        accountId
+      });
+      db1.setContractAddress(TEST_CONTRACT_ADDRESS);
+      await db1.set('consistency-key', 'value1');
+
+      const db2 = levelPrivateStateProvider<string, string>({
+        midnightDbName: ISOLATION_TEST_DB,
+        privateStoragePasswordProvider: () => TEST_PASSWORD,
+        accountId
+      });
+      db2.setContractAddress(TEST_CONTRACT_ADDRESS);
+
+      const value = await db2.get('consistency-key');
+      expect(value).toBe('value1');
+    });
   });
 
   describe('migrateToAccountScoped', () => {
@@ -2556,6 +2638,94 @@ describe('Level Private State Provider', (): void => {
 
       const value = await db.get('migrated-key');
       expect(value).toBe('migrated-value');
+    });
+
+    test('migration is idempotent - running twice does not corrupt data', async () => {
+      const level = new Level(MIGRATION_TEST_DB, { createIfMissing: true });
+      const unscopedSubLevel = level.sublevel<string, string>('private-states', {
+        valueEncoding: 'utf-8'
+      });
+
+      const encryption = new StorageEncryption(TEST_PASSWORD);
+      const CONTRACT_ADDR = 'test-contract' as ContractAddress;
+      const METADATA_KEY = '__midnight_encryption_metadata__';
+
+      try {
+        await level.open();
+        await unscopedSubLevel.open();
+
+        const metadata = { salt: encryption.getSalt().toString('hex'), version: 2 };
+        await unscopedSubLevel.put(METADATA_KEY, JSON.stringify(metadata));
+        await unscopedSubLevel.put(
+          `${CONTRACT_ADDR}:idempotent-key`,
+          encryption.encrypt(superjson.stringify('idempotent-value'))
+        );
+      } finally {
+        await unscopedSubLevel.close();
+        await level.close();
+      }
+
+      const result1 = await migrateToAccountScoped({
+        midnightDbName: MIGRATION_TEST_DB,
+        accountId: MIGRATION_ACCOUNT_ID
+      });
+
+      const result2 = await migrateToAccountScoped({
+        midnightDbName: MIGRATION_TEST_DB,
+        accountId: MIGRATION_ACCOUNT_ID
+      });
+
+      expect(result1.privateStatesMigrated).toBe(2);
+      expect(result2.privateStatesMigrated).toBe(2);
+
+      const db = levelPrivateStateProvider<string, string>({
+        midnightDbName: MIGRATION_TEST_DB,
+        privateStoragePasswordProvider: () => TEST_PASSWORD,
+        accountId: MIGRATION_ACCOUNT_ID
+      });
+      db.setContractAddress(CONTRACT_ADDR);
+
+      const value = await db.get('idempotent-key');
+      expect(value).toBe('idempotent-value');
+    });
+
+    test('preserves original unscoped data after migration', async () => {
+      const level = new Level(MIGRATION_TEST_DB, { createIfMissing: true });
+      const unscopedSubLevel = level.sublevel<string, string>('private-states', {
+        valueEncoding: 'utf-8'
+      });
+
+      const encryption = new StorageEncryption(TEST_PASSWORD);
+      const originalEncryptedValue = encryption.encrypt(superjson.stringify('original-value'));
+
+      try {
+        await level.open();
+        await unscopedSubLevel.open();
+        await unscopedSubLevel.put('original-key', originalEncryptedValue);
+      } finally {
+        await unscopedSubLevel.close();
+        await level.close();
+      }
+
+      await migrateToAccountScoped({
+        midnightDbName: MIGRATION_TEST_DB,
+        accountId: MIGRATION_ACCOUNT_ID
+      });
+
+      const levelAfter = new Level(MIGRATION_TEST_DB, { createIfMissing: false });
+      const unscopedAfter = levelAfter.sublevel<string, string>('private-states', {
+        valueEncoding: 'utf-8'
+      });
+
+      try {
+        await levelAfter.open();
+        await unscopedAfter.open();
+        const originalValue = await unscopedAfter.get('original-key');
+        expect(originalValue).toBe(originalEncryptedValue);
+      } finally {
+        await unscopedAfter.close();
+        await levelAfter.close();
+      }
     });
   });
 });
