@@ -154,3 +154,24 @@ export class IncompleteFindContractPrivateStateConfig extends Error {
     this.message = "'initialPrivateState' was defined for contract find while 'privateStateId' was undefined";
   }
 }
+
+/**
+ * An error indicating that a scoped transaction attempted to use cached states
+ * with a different contract address or private state ID than the one originally cached.
+ * This prevents silent state mismatches when batching calls to different contracts.
+ */
+export class ScopedTransactionIdentityMismatchError extends Error {
+  constructor(
+    readonly cached: { contractAddress: string; privateStateId?: string },
+    readonly requested: { contractAddress: string; privateStateId?: string }
+  ) {
+    super('Scoped transaction identity mismatch');
+    this.name = 'ScopedTransactionIdentityMismatchError';
+    this.message =
+      `Cannot use cached states from contract '${cached.contractAddress}'` +
+      (cached.privateStateId ? ` (privateStateId: '${cached.privateStateId}')` : '') +
+      ` for contract '${requested.contractAddress}'` +
+      (requested.privateStateId ? ` (privateStateId: '${requested.privateStateId}')` : '') +
+      '. Scoped transactions must target the same contract and private state identity.';
+  }
+}

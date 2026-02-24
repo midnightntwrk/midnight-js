@@ -211,7 +211,8 @@ const getContractStates = async <C extends Contract.Any, ICK extends Contract.Im
   options: CallTxOptionsWithPrivateStateId<C, ICK>,
   transactionContext?: TransactionContext<C, ICK>
 ): Promise<ContractStates<Contract.PrivateState<C>>> => {
-  const txCtxStates = transactionContext?.getCurrentStates();
+  const identity = { contractAddress: options.contractAddress, privateStateId: options.privateStateId };
+  const txCtxStates = transactionContext?.[Transaction.GetCurrentStatesForIdentity](identity);
   if (txCtxStates) {
     return txCtxStates as ContractStates<Contract.PrivateState<C>>;
   }
@@ -222,7 +223,7 @@ const getContractStates = async <C extends Contract.Any, ICK extends Contract.Im
     options.privateStateId
   );
   if (transactionContext) {
-    transactionContext[Transaction.CacheStates](states);
+    transactionContext[Transaction.CacheStates](states, identity);
   }
   return states;
 };
@@ -232,7 +233,8 @@ const getContractPublicStates = async <C extends Contract.Any, ICK extends Contr
   options: CallTxOptionsBase<C, ICK>,
   transactionContext?: TransactionContext<C, ICK>
 ): Promise<PublicContractStates> => {
-  const txCtxStates = transactionContext?.getCurrentStates();
+  const identity = { contractAddress: options.contractAddress };
+  const txCtxStates = transactionContext?.[Transaction.GetCurrentStatesForIdentity](identity);
   if (txCtxStates) {
     return txCtxStates;
   }
@@ -241,7 +243,7 @@ const getContractPublicStates = async <C extends Contract.Any, ICK extends Contr
     options.contractAddress
   );
   if (transactionContext) {
-    transactionContext[Transaction.CacheStates]({ ...states, privateState: undefined });
+    transactionContext[Transaction.CacheStates]({ ...states, privateState: undefined }, identity);
   }
   return states;
 };
