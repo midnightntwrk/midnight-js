@@ -1,13 +1,13 @@
 # ⚠️ WARNING
 
-> RISK: This provider lacks a recovery mechanism. 
-> Clearing browser cache or deleting local files permanently destroys the private state (contract state/keys). 
-> For assets with real-world value, this may result in irreversible financial loss. 
+> RISK: This provider lacks a recovery mechanism.
+> Clearing browser cache or deleting local files permanently destroys the private state (contract state/keys).
+> For assets with real-world value, this may result in irreversible financial loss.
 > DO NOT use for production applications requiring data persistence.
 ---
 
 # What is this?
-An example implementation of a private state provider that works with LevelDB compatible data stores.
+An implementation of a private state provider that works with LevelDB compatible data stores.
 
 This package provides **encrypted storage** for private states and signing keys using AES-256-GCM encryption.
 
@@ -28,23 +28,99 @@ const provider = levelPrivateStateProvider({
 
 The `accountId` parameter is **required** and scopes all storage operations to prevent cross-account data access. Use the wallet address or any unique identifier for the account.
 
+## Architecture
+
+### Storage Structure
+
+```
+LevelDB (midnight-level-db)
+├── private-states:{hashedAccountId}   ← Account-scoped private state sublevel
+│   ├── __midnight_encryption_metadata__  (salt, version)
+│   └── {contractAddress}:{privateStateId}  (encrypted state data)
+│
+└── signing-keys:{hashedAccountId}     ← Account-scoped signing key sublevel
+    ├── __midnight_encryption_metadata__  (salt, version)
+    └── {contractAddress}  (encrypted signing key)
+```
+
+### Data Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                levelPrivateStateProvider()                      │
+│                                                                 │
+│  ┌──────────────┐    ┌──────────────────┐    ┌───────────────┐  │
+│  │ Password     │───►│ StorageEncryption│◄───│ Encryption    │  │
+│  │ Provider     │    │ (PBKDF2 + AES)   │    │ Cache         │  │
+│  └──────────────┘    └──────────────────┘    └───────────────┘  │
+│          │                    │                     ▲           │
+│          │                    ▼                     │           │
+│          │           ┌──────────────────┐           │           │
+│          │           │ withSubLevel()   │───────────┘           │
+│          │           │ (LevelDB wrapper)│                       │
+│          │           └──────────────────┘                       │
+│          │                    │                                 │
+│          ▼                    ▼                                 │
+│  ┌──────────────┐    ┌──────────────────┐                       │
+│  │ Rotation     │    │ Account-scoped   │                       │
+│  │ Lock         │    │ Sublevels        │                       │
+│  └──────────────┘    └──────────────────┘                       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Key Components
+
+| Component | Description |
+|-----------|-------------|
+| `levelPrivateStateProvider()` | Factory function returning PrivateStateProvider instance |
+| `StorageEncryption` | AES-256-GCM encryption with PBKDF2 key derivation |
+| `encryptionCache` | Module-level cache avoiding repeated key derivation |
+| `passwordRotationLocks` | Concurrent access protection during password changes |
+| `superjson` | Type-preserving serialization (Buffer, BigInt, Uint8Array) |
+
+## Configuration
+
+```typescript
+interface LevelPrivateStateProviderConfig {
+  midnightDbName?: string;           // Default: 'midnight-level-db'
+  privateStateStoreName?: string;    // Default: 'private-states'
+  signingKeyStoreName?: string;      // Default: 'signing-keys'
+  privateStoragePasswordProvider: PrivateStoragePasswordProvider;  // Required
+  accountId: string;                 // Required
+}
+```
+
 ## Security
 
 ### Account Isolation
 
-Each account's data is stored in a separate namespace, preventing one account from accessing another's private states or signing keys. The `accountId` is hashed using SHA-256 before being used in storage paths, so wallet addresses are not exposed in the storage layer.
+Each account's data is stored in a separate namespace, preventing one account from accessing another's private states or signing keys. The `accountId` is hashed using SHA-256 (first 32 hex characters) before being used in storage paths, so wallet addresses are not exposed in the storage layer.
 
 ### Encryption at Rest
 
 **All data is encrypted by default** using AES-256-GCM with PBKDF2 key derivation.
 
-### Security Features
+### Encryption Specification
 
-- **AES-256-GCM**: Industry-standard authenticated encryption
-- **PBKDF2**: 600,000 iterations with random salt per database
-- **Mandatory Password**: By default data is encrypted with wallets encryption key, developer can override this behavior 
-- **Password Validation**: Minimum 16 character length enforced
-- **Automatic Migration**: Existing unencrypted data is automatically encrypted on first access
+| Parameter | Value |
+|-----------|-------|
+| Algorithm | AES-256-GCM |
+| Key Derivation | PBKDF2-SHA256 |
+| Iterations (V2) | 600,000 |
+| Iterations (V1) | 100,000 (legacy, auto-migrates) |
+| Salt Length | 32 bytes |
+| IV Length | 12 bytes |
+| Auth Tag Length | 16 bytes |
+| Encoding | Base64 |
+
+### Password Requirements
+
+| Requirement | Value |
+|-------------|-------|
+| Minimum length | 16 characters |
+| Character classes | 3+ of: uppercase, lowercase, digits, special |
+| Consecutive repeats | Max 3 identical characters |
+| Sequential patterns | Not allowed (e.g., '1234', 'abcd') |
 
 ### Data Protection
 
@@ -98,7 +174,7 @@ await provider.changeSigningKeysPassword(
 
 **Important notes:**
 - For `changePassword()`, you must call `setContractAddress()` first
-- Both passwords must meet the minimum requirements (16+ characters, 3+ character classes)
+- Both passwords must meet the password requirements above
 - The operation reads all data into memory before writing (suitable for typical use cases)
 - `changePassword()` re-encrypts ALL data in the private state store (not just the current contract's data) because all entries share the same encryption salt. This is by design to maintain encryption consistency.
 
@@ -136,12 +212,44 @@ provider.invalidateEncryptionCache();
 
 **Note:** The cache has no size limit. For typical usage with a small number of database/store combinations, this is acceptable. If using dynamic database names, call `invalidateEncryptionCache()` periodically to prevent unbounded memory growth.
 
-### Error Handling
+## Export & Import
 
-If the password is too short (< 16 characters):
+The provider supports exporting and importing private states and signing keys for backup or migration purposes.
+
+### Export Private States
+
+```typescript
+const exportData = await provider.exportPrivateStates({
+  password: 'export-password'  // Optional: uses storage password if not provided
+});
+
+// exportData contains: { salt, encryptedStates, stateCount }
 ```
-Error: Password must be at least 16 characters long.
-Use a strong, randomly generated password for production.
+
+### Import Private States
+
+```typescript
+const result = await provider.importPrivateStates(exportData, {
+  password: 'export-password',      // Must match export password
+  conflictStrategy: 'skip'          // 'skip' | 'overwrite' | 'error'
+});
+
+console.log(`Imported ${result.statesImported} states`);
+```
+
+### Export/Import Signing Keys
+
+```typescript
+// Export
+const keyExport = await provider.exportSigningKeys({
+  password: 'export-password'
+});
+
+// Import
+const result = await provider.importSigningKeys(keyExport, {
+  password: 'export-password',
+  conflictStrategy: 'skip'
+});
 ```
 
 ## Migration from Unscoped Storage
@@ -163,6 +271,70 @@ console.log(`Migrated ${result.signingKeysMigrated} signing keys`);
 - The migration **copies** data to the new scoped location but **preserves** the original data for safe rollback
 - Running migration multiple times is safe but will re-copy all data
 - After confirming successful migration, you may manually clear the old unscoped data to free storage space
+
+## API Reference
+
+### Provider Methods
+
+| Method | Description |
+|--------|-------------|
+| `get(privateStateId)` | Get private state by ID |
+| `set(privateStateId, state)` | Store private state |
+| `remove(privateStateId)` | Remove private state |
+| `clear()` | Clear all private states for current contract |
+| `setContractAddress(address)` | Set current contract context |
+| `getSigningKey(address)` | Get signing key for contract |
+| `setSigningKey(address, key)` | Store signing key |
+| `removeSigningKey(address)` | Remove signing key |
+| `clearSigningKeys()` | Clear all signing keys |
+| `exportPrivateStates(options?)` | Export encrypted states |
+| `importPrivateStates(data, options?)` | Import encrypted states |
+| `exportSigningKeys(options?)` | Export encrypted keys |
+| `importSigningKeys(data, options?)` | Import encrypted keys |
+| `changePassword(oldProvider, newProvider)` | Rotate private state password |
+| `changeSigningKeysPassword(oldProvider, newProvider)` | Rotate signing key password |
+| `invalidateEncryptionCache()` | Clear cached encryption keys |
+
+### Exported Utilities
+
+```typescript
+import {
+  levelPrivateStateProvider,
+  migrateToAccountScoped,
+  StorageEncryption,
+  decryptValue,
+  DEFAULT_CONFIG,
+  type LevelPrivateStateProviderConfig,
+  type PrivateStoragePasswordProvider,
+  type PasswordRotationResult,
+  type PasswordRotationOptions,
+  type MigrationResult
+} from '@midnight-ntwrk/midnight-js-level-private-state-provider';
+```
+
+## Error Handling
+
+### Password Errors
+
+```
+Error: Password must be at least 16 characters long. Current length: X
+Error: Password must contain at least 3 of: uppercase letters, lowercase letters, digits, special characters
+Error: Password contains too many repeated characters (more than 3 identical in a row)
+Error: Password contains sequential patterns (e.g., '1234', 'abcd')
+```
+
+### Rotation Errors
+
+```
+Error: Timed out waiting for password rotation lock on "{key}". Another rotation may be stuck or taking longer than 300000ms.
+```
+
+### Decryption Errors
+
+```
+Error: Salt mismatch: data was encrypted with a different password
+Error: Unsupported encryption version: X
+```
 
 # Agree to Terms
 By downloading and using this image, you agree to [Midnight's Terms and Conditions](https://midnight.network/static/terms.pdf), which includes the [Privacy Policy](https://midnight.network/static/privacy-policy.pdf).
