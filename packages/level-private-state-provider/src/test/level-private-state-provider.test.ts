@@ -31,14 +31,16 @@ import { Level } from 'level';
 import * as superjson from 'superjson';
 import { vi } from 'vitest';
 
-import { levelPrivateStateProvider } from '../index';
+import { levelPrivateStateProvider, migrateToAccountScoped } from '../index';
 import { StorageEncryption } from '../storage-encryption';
 
 describe('Level Private State Provider', (): void => {
   const TEST_PASSWORD = 'Test-Storage-Pass8!';
   const TEST_CONTRACT_ADDRESS = 'test-contract-address' as ContractAddress;
+  const TEST_ACCOUNT_ID = 'test-wallet-address-123';
   const testConfig = {
-    privateStoragePasswordProvider: () => TEST_PASSWORD
+    privateStoragePasswordProvider: () => TEST_PASSWORD,
+    accountId: TEST_ACCOUNT_ID
   };
 
   afterAll(async () => {
@@ -1413,7 +1415,8 @@ describe('Level Private State Provider', (): void => {
     test('multiple sequential operations maintain consistent salt for private states', async () => {
       const config = {
         midnightDbName: SALT_TEST_DB,
-        privateStoragePasswordProvider: () => TEST_PASSWORD
+        privateStoragePasswordProvider: () => TEST_PASSWORD,
+        accountId: TEST_ACCOUNT_ID
       };
 
       for (let i = 0; i < 5; i++) {
@@ -1433,7 +1436,8 @@ describe('Level Private State Provider', (): void => {
     test('multiple sequential operations maintain consistent salt for signing keys', async () => {
       const config = {
         midnightDbName: SALT_TEST_DB,
-        privateStoragePasswordProvider: () => TEST_PASSWORD
+        privateStoragePasswordProvider: () => TEST_PASSWORD,
+        accountId: TEST_ACCOUNT_ID
       };
 
       const signingKeys = Array.from({ length: 5 }, () => sampleSigningKey());
@@ -1453,7 +1457,8 @@ describe('Level Private State Provider', (): void => {
     test('operations after clear() create new consistent salt', async () => {
       const config = {
         midnightDbName: SALT_TEST_DB,
-        privateStoragePasswordProvider: () => TEST_PASSWORD
+        privateStoragePasswordProvider: () => TEST_PASSWORD,
+        accountId: TEST_ACCOUNT_ID
       };
 
       const db = levelPrivateStateProvider<string, string>(config);
@@ -1479,7 +1484,8 @@ describe('Level Private State Provider', (): void => {
     test('mixed operations on private states and signing keys use separate consistent salts', async () => {
       const config = {
         midnightDbName: SALT_TEST_DB,
-        privateStoragePasswordProvider: () => TEST_PASSWORD
+        privateStoragePasswordProvider: () => TEST_PASSWORD,
+        accountId: TEST_ACCOUNT_ID
       };
 
       const signingKey = sampleSigningKey();
@@ -1510,7 +1516,8 @@ describe('Level Private State Provider', (): void => {
     test('operations after clearSigningKeys() create new consistent salt for signing keys', async () => {
       const config = {
         midnightDbName: SALT_TEST_DB,
-        privateStoragePasswordProvider: () => TEST_PASSWORD
+        privateStoragePasswordProvider: () => TEST_PASSWORD,
+        accountId: TEST_ACCOUNT_ID
       };
 
       const signingKey1 = sampleSigningKey();
@@ -1544,7 +1551,8 @@ describe('Level Private State Provider', (): void => {
     test('invalidateEncryptionCache method exists on provider', () => {
       const db = levelPrivateStateProvider<string, string>({
         midnightDbName: CACHE_TEST_DB,
-        privateStoragePasswordProvider: () => TEST_PASSWORD
+        privateStoragePasswordProvider: () => TEST_PASSWORD,
+        accountId: TEST_ACCOUNT_ID
       });
 
       expect(typeof db.invalidateEncryptionCache).toBe('function');
@@ -1554,7 +1562,8 @@ describe('Level Private State Provider', (): void => {
       const verifyPasswordSpy = vi.spyOn(StorageEncryption.prototype, 'verifyPassword');
       const config = {
         midnightDbName: CACHE_TEST_DB,
-        privateStoragePasswordProvider: () => TEST_PASSWORD
+        privateStoragePasswordProvider: () => TEST_PASSWORD,
+        accountId: TEST_ACCOUNT_ID
       };
 
       const db = levelPrivateStateProvider<string, string>(config);
@@ -1578,7 +1587,8 @@ describe('Level Private State Provider', (): void => {
       let currentPassword = TEST_PASSWORD;
       const config = {
         midnightDbName: CACHE_TEST_DB,
-        privateStoragePasswordProvider: () => currentPassword
+        privateStoragePasswordProvider: () => currentPassword,
+        accountId: TEST_ACCOUNT_ID
       };
 
       const db = levelPrivateStateProvider<string, string>(config);
@@ -1596,7 +1606,8 @@ describe('Level Private State Provider', (): void => {
     test('invalidateEncryptionCache clears cache and forces re-derivation', async () => {
       const config = {
         midnightDbName: CACHE_TEST_DB,
-        privateStoragePasswordProvider: () => TEST_PASSWORD
+        privateStoragePasswordProvider: () => TEST_PASSWORD,
+        accountId: TEST_ACCOUNT_ID
       };
 
       const db = levelPrivateStateProvider<string, string>(config);
@@ -1612,7 +1623,8 @@ describe('Level Private State Provider', (): void => {
     test('private states and signing keys have separate cache entries', async () => {
       const config = {
         midnightDbName: CACHE_TEST_DB,
-        privateStoragePasswordProvider: () => TEST_PASSWORD
+        privateStoragePasswordProvider: () => TEST_PASSWORD,
+        accountId: TEST_ACCOUNT_ID
       };
 
       const db = levelPrivateStateProvider<string, string>(config);
@@ -1629,7 +1641,8 @@ describe('Level Private State Provider', (): void => {
     test('cache survives multiple provider instances with same config', async () => {
       const config = {
         midnightDbName: CACHE_TEST_DB,
-        privateStoragePasswordProvider: () => TEST_PASSWORD
+        privateStoragePasswordProvider: () => TEST_PASSWORD,
+        accountId: TEST_ACCOUNT_ID
       };
 
       const db1 = levelPrivateStateProvider<string, string>(config);
@@ -1658,7 +1671,8 @@ describe('Level Private State Provider', (): void => {
       test('changePassword method exists on provider', () => {
         const db = levelPrivateStateProvider<string, string>({
           midnightDbName: ROTATION_TEST_DB,
-          privateStoragePasswordProvider: () => OLD_PASSWORD
+          privateStoragePasswordProvider: () => OLD_PASSWORD,
+          accountId: TEST_ACCOUNT_ID
         });
 
         expect(typeof db.changePassword).toBe('function');
@@ -1667,7 +1681,8 @@ describe('Level Private State Provider', (): void => {
       test('throws error when contract address not set', async () => {
         const db = levelPrivateStateProvider<string, string>({
           midnightDbName: ROTATION_TEST_DB,
-          privateStoragePasswordProvider: () => OLD_PASSWORD
+          privateStoragePasswordProvider: () => OLD_PASSWORD,
+          accountId: TEST_ACCOUNT_ID
         });
 
         await expect(
@@ -1679,7 +1694,8 @@ describe('Level Private State Provider', (): void => {
         let currentPassword = OLD_PASSWORD;
         const config = {
           midnightDbName: ROTATION_TEST_DB,
-          privateStoragePasswordProvider: () => currentPassword
+          privateStoragePasswordProvider: () => currentPassword,
+          accountId: TEST_ACCOUNT_ID
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
@@ -1700,7 +1716,8 @@ describe('Level Private State Provider', (): void => {
       test('throws error when old password is incorrect', async () => {
         const config = {
           midnightDbName: ROTATION_TEST_DB,
-          privateStoragePasswordProvider: () => OLD_PASSWORD
+          privateStoragePasswordProvider: () => OLD_PASSWORD,
+          accountId: TEST_ACCOUNT_ID
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
@@ -1718,7 +1735,8 @@ describe('Level Private State Provider', (): void => {
       test('handles empty database gracefully', async () => {
         const config = {
           midnightDbName: ROTATION_TEST_DB,
-          privateStoragePasswordProvider: () => OLD_PASSWORD
+          privateStoragePasswordProvider: () => OLD_PASSWORD,
+          accountId: TEST_ACCOUNT_ID
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
@@ -1734,7 +1752,8 @@ describe('Level Private State Provider', (): void => {
         let currentPassword = OLD_PASSWORD;
         const config = {
           midnightDbName: ROTATION_TEST_DB,
-          privateStoragePasswordProvider: () => currentPassword
+          privateStoragePasswordProvider: () => currentPassword,
+          accountId: TEST_ACCOUNT_ID
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
@@ -1761,7 +1780,8 @@ describe('Level Private State Provider', (): void => {
         let currentPassword = OLD_PASSWORD;
         const config = {
           midnightDbName: ROTATION_TEST_DB,
-          privateStoragePasswordProvider: () => currentPassword
+          privateStoragePasswordProvider: () => currentPassword,
+          accountId: TEST_ACCOUNT_ID
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
@@ -1780,7 +1800,8 @@ describe('Level Private State Provider', (): void => {
       test('validates new password meets requirements', async () => {
         const config = {
           midnightDbName: ROTATION_TEST_DB,
-          privateStoragePasswordProvider: () => OLD_PASSWORD
+          privateStoragePasswordProvider: () => OLD_PASSWORD,
+          accountId: TEST_ACCOUNT_ID
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
@@ -1796,6 +1817,8 @@ describe('Level Private State Provider', (): void => {
         const V1_MIGRATION_DB = 'midnight-v1-migration-test-db';
         const PRIVATE_STATE_STORE = 'private-states';
         const METADATA_KEY = '__midnight_encryption_metadata__';
+        const hashedAccountId = crypto.createHash('sha256').update(TEST_ACCOUNT_ID).digest('hex').substring(0, 16);
+        const SCOPED_PRIVATE_STATE_STORE = `${PRIVATE_STATE_STORE}:${hashedAccountId}`;
 
         await fs.rm(path.join('.', V1_MIGRATION_DB), { recursive: true, force: true });
 
@@ -1812,7 +1835,7 @@ describe('Level Private State Provider', (): void => {
         const v1EncryptedData = Buffer.concat([version, salt, iv, authTag, encrypted]).toString('base64');
 
         const level = new Level(V1_MIGRATION_DB, { createIfMissing: true });
-        const subLevel = level.sublevel(PRIVATE_STATE_STORE, { valueEncoding: 'utf-8' });
+        const subLevel = level.sublevel(SCOPED_PRIVATE_STATE_STORE, { valueEncoding: 'utf-8' });
 
         try {
           await level.open();
@@ -1829,7 +1852,8 @@ describe('Level Private State Provider', (): void => {
         let currentPassword = OLD_PASSWORD;
         const config = {
           midnightDbName: V1_MIGRATION_DB,
-          privateStoragePasswordProvider: () => currentPassword
+          privateStoragePasswordProvider: () => currentPassword,
+          accountId: TEST_ACCOUNT_ID
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
@@ -1845,7 +1869,7 @@ describe('Level Private State Provider', (): void => {
         expect(valueAfter).toBe('v1-test-value');
 
         const levelAfter = new Level(V1_MIGRATION_DB, { createIfMissing: false });
-        const subLevelAfter = levelAfter.sublevel(PRIVATE_STATE_STORE, { valueEncoding: 'utf-8' });
+        const subLevelAfter = levelAfter.sublevel(SCOPED_PRIVATE_STATE_STORE, { valueEncoding: 'utf-8' });
 
         try {
           await levelAfter.open();
@@ -1868,7 +1892,8 @@ describe('Level Private State Provider', (): void => {
       test('changeSigningKeysPassword method exists on provider', () => {
         const db = levelPrivateStateProvider<string, string>({
           midnightDbName: ROTATION_TEST_DB,
-          privateStoragePasswordProvider: () => OLD_PASSWORD
+          privateStoragePasswordProvider: () => OLD_PASSWORD,
+          accountId: TEST_ACCOUNT_ID
         });
 
         expect(typeof db.changeSigningKeysPassword).toBe('function');
@@ -1878,7 +1903,8 @@ describe('Level Private State Provider', (): void => {
         let currentPassword = OLD_PASSWORD;
         const config = {
           midnightDbName: ROTATION_TEST_DB,
-          privateStoragePasswordProvider: () => currentPassword
+          privateStoragePasswordProvider: () => currentPassword,
+          accountId: TEST_ACCOUNT_ID
         };
 
         const signingKey1 = sampleSigningKey();
@@ -1901,7 +1927,8 @@ describe('Level Private State Provider', (): void => {
       test('throws error when old password is incorrect', async () => {
         const config = {
           midnightDbName: ROTATION_TEST_DB,
-          privateStoragePasswordProvider: () => OLD_PASSWORD
+          privateStoragePasswordProvider: () => OLD_PASSWORD,
+          accountId: TEST_ACCOUNT_ID
         };
 
         const signingKey = sampleSigningKey();
@@ -1919,7 +1946,8 @@ describe('Level Private State Provider', (): void => {
       test('handles empty signing keys gracefully', async () => {
         const config = {
           midnightDbName: ROTATION_TEST_DB,
-          privateStoragePasswordProvider: () => OLD_PASSWORD
+          privateStoragePasswordProvider: () => OLD_PASSWORD,
+          accountId: TEST_ACCOUNT_ID
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
@@ -1933,7 +1961,8 @@ describe('Level Private State Provider', (): void => {
         let currentPassword = OLD_PASSWORD;
         const config = {
           midnightDbName: ROTATION_TEST_DB,
-          privateStoragePasswordProvider: () => currentPassword
+          privateStoragePasswordProvider: () => currentPassword,
+          accountId: TEST_ACCOUNT_ID
         };
 
         const signingKey = sampleSigningKey();
@@ -1951,7 +1980,8 @@ describe('Level Private State Provider', (): void => {
         let currentPassword = OLD_PASSWORD;
         const config = {
           midnightDbName: ROTATION_TEST_DB,
-          privateStoragePasswordProvider: () => currentPassword
+          privateStoragePasswordProvider: () => currentPassword,
+          accountId: TEST_ACCOUNT_ID
         };
 
         const signingKey = sampleSigningKey();
@@ -1971,7 +2001,8 @@ describe('Level Private State Provider', (): void => {
       test('changePassword returns entriesMigrated count', async () => {
         const config = {
           midnightDbName: ROTATION_TEST_DB,
-          privateStoragePasswordProvider: () => OLD_PASSWORD
+          privateStoragePasswordProvider: () => OLD_PASSWORD,
+          accountId: TEST_ACCOUNT_ID
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
@@ -1988,7 +2019,8 @@ describe('Level Private State Provider', (): void => {
       test('changePassword returns zero for empty database', async () => {
         const config = {
           midnightDbName: ROTATION_TEST_DB,
-          privateStoragePasswordProvider: () => OLD_PASSWORD
+          privateStoragePasswordProvider: () => OLD_PASSWORD,
+          accountId: TEST_ACCOUNT_ID
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
@@ -2002,7 +2034,8 @@ describe('Level Private State Provider', (): void => {
       test('changeSigningKeysPassword returns entriesMigrated count', async () => {
         const config = {
           midnightDbName: ROTATION_TEST_DB,
-          privateStoragePasswordProvider: () => OLD_PASSWORD
+          privateStoragePasswordProvider: () => OLD_PASSWORD,
+          accountId: TEST_ACCOUNT_ID
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
@@ -2022,7 +2055,8 @@ describe('Level Private State Provider', (): void => {
         const THIRD_PASSWORD = 'Third-Password-100!';
         const config = {
           midnightDbName: ROTATION_TEST_DB,
-          privateStoragePasswordProvider: () => currentPassword
+          privateStoragePasswordProvider: () => currentPassword,
+          accountId: TEST_ACCOUNT_ID
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
@@ -2044,7 +2078,8 @@ describe('Level Private State Provider', (): void => {
         let currentPassword = OLD_PASSWORD;
         const config = {
           midnightDbName: ROTATION_TEST_DB,
-          privateStoragePasswordProvider: () => currentPassword
+          privateStoragePasswordProvider: () => currentPassword,
+          accountId: TEST_ACCOUNT_ID
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
@@ -2070,7 +2105,8 @@ describe('Level Private State Provider', (): void => {
         let currentPassword = OLD_PASSWORD;
         const config = {
           midnightDbName: ROTATION_TEST_DB,
-          privateStoragePasswordProvider: () => currentPassword
+          privateStoragePasswordProvider: () => currentPassword,
+          accountId: TEST_ACCOUNT_ID
         };
 
         const signingKey1 = sampleSigningKey();
@@ -2098,7 +2134,8 @@ describe('Level Private State Provider', (): void => {
         let currentPassword = OLD_PASSWORD;
         const config = {
           midnightDbName: ROTATION_TEST_DB,
-          privateStoragePasswordProvider: () => currentPassword
+          privateStoragePasswordProvider: () => currentPassword,
+          accountId: TEST_ACCOUNT_ID
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
@@ -2119,7 +2156,8 @@ describe('Level Private State Provider', (): void => {
         let currentPassword = OLD_PASSWORD;
         const config = {
           midnightDbName: ROTATION_TEST_DB,
-          privateStoragePasswordProvider: () => currentPassword
+          privateStoragePasswordProvider: () => currentPassword,
+          accountId: TEST_ACCOUNT_ID
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
@@ -2144,7 +2182,8 @@ describe('Level Private State Provider', (): void => {
         let currentPassword = OLD_PASSWORD;
         const config = {
           midnightDbName: ROTATION_TEST_DB,
-          privateStoragePasswordProvider: () => currentPassword
+          privateStoragePasswordProvider: () => currentPassword,
+          accountId: TEST_ACCOUNT_ID
         };
 
         const signingKey = sampleSigningKey();
@@ -2166,7 +2205,8 @@ describe('Level Private State Provider', (): void => {
         let currentPassword = OLD_PASSWORD;
         const config = {
           midnightDbName: ROTATION_TEST_DB,
-          privateStoragePasswordProvider: () => currentPassword
+          privateStoragePasswordProvider: () => currentPassword,
+          accountId: TEST_ACCOUNT_ID
         };
 
         const signingKey1 = sampleSigningKey();
@@ -2194,7 +2234,8 @@ describe('Level Private State Provider', (): void => {
       test('throws error when entry count exceeds maxEntries option', async () => {
         const config = {
           midnightDbName: ROTATION_TEST_DB,
-          privateStoragePasswordProvider: () => OLD_PASSWORD
+          privateStoragePasswordProvider: () => OLD_PASSWORD,
+          accountId: TEST_ACCOUNT_ID
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
@@ -2217,7 +2258,8 @@ describe('Level Private State Provider', (): void => {
       test('changeSigningKeysPassword throws error when entry count exceeds limit', async () => {
         const config = {
           midnightDbName: ROTATION_TEST_DB,
-          privateStoragePasswordProvider: () => OLD_PASSWORD
+          privateStoragePasswordProvider: () => OLD_PASSWORD,
+          accountId: TEST_ACCOUNT_ID
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
@@ -2241,7 +2283,8 @@ describe('Level Private State Provider', (): void => {
       test('fails fast with incorrect old password before iterating all entries', async () => {
         const config = {
           midnightDbName: ROTATION_TEST_DB,
-          privateStoragePasswordProvider: () => OLD_PASSWORD
+          privateStoragePasswordProvider: () => OLD_PASSWORD,
+          accountId: TEST_ACCOUNT_ID
         };
 
         const db = levelPrivateStateProvider<string, string>(config);
@@ -2259,7 +2302,8 @@ describe('Level Private State Provider', (): void => {
       test('changeSigningKeysPassword fails fast with incorrect old password', async () => {
         const config = {
           midnightDbName: ROTATION_TEST_DB,
-          privateStoragePasswordProvider: () => OLD_PASSWORD
+          privateStoragePasswordProvider: () => OLD_PASSWORD,
+          accountId: TEST_ACCOUNT_ID
         };
 
         const signingKey = sampleSigningKey();
@@ -2273,6 +2317,245 @@ describe('Level Private State Provider', (): void => {
         const key = await db.getSigningKey('addr1' as ContractAddress);
         expect(key).toEqual(signingKey);
       });
+    });
+  });
+
+  describe('Account Isolation', () => {
+    const ISOLATION_TEST_DB = 'midnight-isolation-test-db';
+    const ACCOUNT_1 = 'wallet-address-account-1';
+    const ACCOUNT_2 = 'wallet-address-account-2';
+
+    beforeEach(async () => {
+      await fs.rm(path.join('.', ISOLATION_TEST_DB), { recursive: true, force: true });
+    });
+
+    afterAll(async () => {
+      await fs.rm(path.join('.', ISOLATION_TEST_DB), { recursive: true, force: true });
+    });
+
+    test('different accountIds have completely isolated private state storage', async () => {
+      const config1 = {
+        midnightDbName: ISOLATION_TEST_DB,
+        privateStoragePasswordProvider: () => TEST_PASSWORD,
+        accountId: ACCOUNT_1
+      };
+      const config2 = {
+        midnightDbName: ISOLATION_TEST_DB,
+        privateStoragePasswordProvider: () => TEST_PASSWORD,
+        accountId: ACCOUNT_2
+      };
+
+      const db1 = levelPrivateStateProvider<string, string>(config1);
+      const db2 = levelPrivateStateProvider<string, string>(config2);
+
+      db1.setContractAddress(TEST_CONTRACT_ADDRESS);
+      db2.setContractAddress(TEST_CONTRACT_ADDRESS);
+
+      await db1.set('shared-key', 'value-from-account-1');
+      await db2.set('shared-key', 'value-from-account-2');
+
+      const value1 = await db1.get('shared-key');
+      const value2 = await db2.get('shared-key');
+
+      expect(value1).toBe('value-from-account-1');
+      expect(value2).toBe('value-from-account-2');
+    });
+
+    test('different accountIds have completely isolated signing key storage', async () => {
+      const config1 = {
+        midnightDbName: ISOLATION_TEST_DB,
+        privateStoragePasswordProvider: () => TEST_PASSWORD,
+        accountId: ACCOUNT_1
+      };
+      const config2 = {
+        midnightDbName: ISOLATION_TEST_DB,
+        privateStoragePasswordProvider: () => TEST_PASSWORD,
+        accountId: ACCOUNT_2
+      };
+
+      const db1 = levelPrivateStateProvider<string, string>(config1);
+      const db2 = levelPrivateStateProvider<string, string>(config2);
+
+      const signingKey1 = sampleSigningKey();
+      const signingKey2 = sampleSigningKey();
+
+      await db1.setSigningKey(TEST_CONTRACT_ADDRESS, signingKey1);
+      await db2.setSigningKey(TEST_CONTRACT_ADDRESS, signingKey2);
+
+      const key1 = await db1.getSigningKey(TEST_CONTRACT_ADDRESS);
+      const key2 = await db2.getSigningKey(TEST_CONTRACT_ADDRESS);
+
+      expect(key1).toEqual(signingKey1);
+      expect(key2).toEqual(signingKey2);
+      expect(key1).not.toEqual(key2);
+    });
+
+    test('account 2 cannot read data from account 1', async () => {
+      const config1 = {
+        midnightDbName: ISOLATION_TEST_DB,
+        privateStoragePasswordProvider: () => TEST_PASSWORD,
+        accountId: ACCOUNT_1
+      };
+      const config2 = {
+        midnightDbName: ISOLATION_TEST_DB,
+        privateStoragePasswordProvider: () => TEST_PASSWORD,
+        accountId: ACCOUNT_2
+      };
+
+      const db1 = levelPrivateStateProvider<string, string>(config1);
+      const db2 = levelPrivateStateProvider<string, string>(config2);
+
+      db1.setContractAddress(TEST_CONTRACT_ADDRESS);
+      db2.setContractAddress(TEST_CONTRACT_ADDRESS);
+
+      await db1.set('account1-only-key', 'secret-value');
+
+      const valueFromAccount2 = await db2.get('account1-only-key');
+      expect(valueFromAccount2).toBeNull();
+    });
+
+    test('throws error for whitespace-only accountId', () => {
+      expect(() => {
+        levelPrivateStateProvider<string, string>({
+          privateStoragePasswordProvider: () => TEST_PASSWORD,
+          accountId: '   '
+        });
+      }).toThrow('accountId is required');
+    });
+  });
+
+  describe('migrateToAccountScoped', () => {
+    const MIGRATION_TEST_DB = 'midnight-migration-test-db';
+    const MIGRATION_ACCOUNT_ID = 'migration-test-account';
+
+    beforeEach(async () => {
+      await fs.rm(path.join('.', MIGRATION_TEST_DB), { recursive: true, force: true });
+    });
+
+    afterAll(async () => {
+      await fs.rm(path.join('.', MIGRATION_TEST_DB), { recursive: true, force: true });
+    });
+
+    test('migrates private states from unscoped to scoped sublevel', async () => {
+      const level = new Level(MIGRATION_TEST_DB, { createIfMissing: true });
+      const unscopedSubLevel = level.sublevel<string, string>('private-states', {
+        valueEncoding: 'utf-8'
+      });
+
+      try {
+        await level.open();
+        await unscopedSubLevel.open();
+
+        const encryption = new StorageEncryption(TEST_PASSWORD);
+        await unscopedSubLevel.put('contract1:state1', encryption.encrypt(superjson.stringify('value1')));
+        await unscopedSubLevel.put('contract1:state2', encryption.encrypt(superjson.stringify('value2')));
+      } finally {
+        await unscopedSubLevel.close();
+        await level.close();
+      }
+
+      const result = await migrateToAccountScoped({
+        midnightDbName: MIGRATION_TEST_DB,
+        accountId: MIGRATION_ACCOUNT_ID
+      });
+
+      expect(result.privateStatesMigrated).toBe(2);
+      expect(result.signingKeysMigrated).toBe(0);
+    });
+
+    test('migrates signing keys from unscoped to scoped sublevel', async () => {
+      const level = new Level(MIGRATION_TEST_DB, { createIfMissing: true });
+      const unscopedSubLevel = level.sublevel<string, string>('signing-keys', {
+        valueEncoding: 'utf-8'
+      });
+
+      try {
+        await level.open();
+        await unscopedSubLevel.open();
+
+        const encryption = new StorageEncryption(TEST_PASSWORD);
+        await unscopedSubLevel.put('contract1', encryption.encrypt(superjson.stringify({ key: 'data' })));
+      } finally {
+        await unscopedSubLevel.close();
+        await level.close();
+      }
+
+      const result = await migrateToAccountScoped({
+        midnightDbName: MIGRATION_TEST_DB,
+        accountId: MIGRATION_ACCOUNT_ID
+      });
+
+      expect(result.privateStatesMigrated).toBe(0);
+      expect(result.signingKeysMigrated).toBe(1);
+    });
+
+    test('returns zero counts when no data to migrate', async () => {
+      const result = await migrateToAccountScoped({
+        midnightDbName: MIGRATION_TEST_DB,
+        accountId: MIGRATION_ACCOUNT_ID
+      });
+
+      expect(result.privateStatesMigrated).toBe(0);
+      expect(result.signingKeysMigrated).toBe(0);
+    });
+
+    test('throws error for missing accountId', async () => {
+      await expect(
+        migrateToAccountScoped({
+          midnightDbName: MIGRATION_TEST_DB,
+          accountId: ''
+        })
+      ).rejects.toThrow('accountId is required for migration');
+    });
+
+    test('throws error for whitespace-only accountId', async () => {
+      await expect(
+        migrateToAccountScoped({
+          midnightDbName: MIGRATION_TEST_DB,
+          accountId: '   '
+        })
+      ).rejects.toThrow('accountId is required for migration');
+    });
+
+    test('migrated data is accessible via scoped provider', async () => {
+      const level = new Level(MIGRATION_TEST_DB, { createIfMissing: true });
+      const unscopedSubLevel = level.sublevel<string, string>('private-states', {
+        valueEncoding: 'utf-8'
+      });
+
+      const encryption = new StorageEncryption(TEST_PASSWORD);
+      const CONTRACT_ADDR = 'test-contract' as ContractAddress;
+      const METADATA_KEY = '__midnight_encryption_metadata__';
+
+      try {
+        await level.open();
+        await unscopedSubLevel.open();
+
+        const metadata = { salt: encryption.getSalt().toString('hex'), version: 2 };
+        await unscopedSubLevel.put(METADATA_KEY, JSON.stringify(metadata));
+        await unscopedSubLevel.put(
+          `${CONTRACT_ADDR}:migrated-key`,
+          encryption.encrypt(superjson.stringify('migrated-value'))
+        );
+      } finally {
+        await unscopedSubLevel.close();
+        await level.close();
+      }
+
+      await migrateToAccountScoped({
+        midnightDbName: MIGRATION_TEST_DB,
+        accountId: MIGRATION_ACCOUNT_ID
+      });
+
+      const db = levelPrivateStateProvider<string, string>({
+        midnightDbName: MIGRATION_TEST_DB,
+        privateStoragePasswordProvider: () => TEST_PASSWORD,
+        accountId: MIGRATION_ACCOUNT_ID
+      });
+      db.setContractAddress(CONTRACT_ADDR);
+
+      const value = await db.get('migrated-key');
+      expect(value).toBe('migrated-value');
     });
   });
 });

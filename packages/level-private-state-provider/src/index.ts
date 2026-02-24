@@ -17,6 +17,8 @@ export {
   DEFAULT_CONFIG,
   levelPrivateStateProvider,
   type LevelPrivateStateProviderConfig,
+  migrateToAccountScoped,
+  type MigrationResult,
   type PasswordRotationOptions,
   type PasswordRotationResult
 } from './level-private-state-provider';

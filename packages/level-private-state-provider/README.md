@@ -15,7 +15,24 @@ This package was created for the [Midnight network](https://midnight.network).
 
 Please visit the [Midnight Developer Hub](https://midnight.network/developer-hub) to learn more.
 
+## Usage
+
+```typescript
+import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
+
+const provider = levelPrivateStateProvider({
+  privateStoragePasswordProvider: () => 'your-secure-password-here',
+  accountId: walletAddress // Required: unique identifier for the account/wallet
+});
+```
+
+The `accountId` parameter is **required** and scopes all storage operations to prevent cross-account data access. Use the wallet address or any unique identifier for the account.
+
 ## Security
+
+### Account Isolation
+
+Each account's data is stored in a separate namespace, preventing one account from accessing another's private states or signing keys. The `accountId` is hashed using SHA-256 before being used in storage paths, so wallet addresses are not exposed in the storage layer.
 
 ### Encryption at Rest
 
@@ -51,7 +68,8 @@ The provider supports secure password rotation for both private states and signi
 
 ```typescript
 const provider = levelPrivateStateProvider({
-  privateStoragePasswordProvider: () => currentPassword
+  privateStoragePasswordProvider: () => currentPassword,
+  accountId: walletAddress
 });
 
 // Set contract address first (required for private state rotation)
@@ -95,7 +113,8 @@ The provider caches derived encryption keys to avoid expensive PBKDF2 key deriva
 
 ```typescript
 const provider = levelPrivateStateProvider({
-  privateStoragePasswordProvider: () => password
+  privateStoragePasswordProvider: () => password,
+  accountId: walletAddress
 });
 
 // All these operations benefit from caching
@@ -124,6 +143,26 @@ If the password is too short (< 16 characters):
 Error: Password must be at least 16 characters long.
 Use a strong, randomly generated password for production.
 ```
+
+## Migration from Unscoped Storage
+
+If you have existing data from a previous version without account scoping, use the `migrateToAccountScoped` function to migrate data to the new account-scoped location:
+
+```typescript
+import { migrateToAccountScoped } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
+
+const result = await migrateToAccountScoped({
+  accountId: walletAddress
+});
+
+console.log(`Migrated ${result.privateStatesMigrated} private states`);
+console.log(`Migrated ${result.signingKeysMigrated} signing keys`);
+```
+
+**Important notes:**
+- The migration **copies** data to the new scoped location but **preserves** the original data for safe rollback
+- Running migration multiple times is safe but will re-copy all data
+- After confirming successful migration, you may manually clear the old unscoped data to free storage space
 
 # Agree to Terms
 By downloading and using this image, you agree to [Midnight's Terms and Conditions](https://midnight.network/static/terms.pdf), which includes the [Privacy Policy](https://midnight.network/static/privacy-policy.pdf).

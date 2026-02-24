@@ -49,11 +49,15 @@ export const initializeMidnightProviders = <ICK extends string, PS>(
 ): MidnightProviders<ICK, PrivateStateId, PS> => {
   const zkConfigProvider = new NodeZkConfigProvider<ICK>(contractConfiguration.zkConfigPath);
 
+  const coinPublicKey = midnightWalletProvider.getCoinPublicKey();
+  const accountId = Buffer.from(coinPublicKey).toString('hex');
+
   return {
     privateStateProvider: levelPrivateStateProvider<PrivateStateId, PS>({
       privateStateStoreName: contractConfiguration.privateStateStoreName,
       signingKeyStoreName: `${contractConfiguration.privateStateStoreName}-signing-keys`,
-      privateStoragePasswordProvider: () => { return 'Answer to the Ultimate Question of Life, the Universe, and Everything!'; }
+      privateStoragePasswordProvider: () => { return 'Answer to the Ultimate Question of Life, the Universe, and Everything!'; },
+      accountId
     }),
     publicDataProvider: indexerPublicDataProvider(environmentConfiguration.indexer, environmentConfiguration.indexerWS),
     zkConfigProvider,

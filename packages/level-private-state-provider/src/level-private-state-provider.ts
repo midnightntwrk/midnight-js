@@ -35,7 +35,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import { type AbstractSublevel } from 'abstract-level';
 import { Buffer } from 'buffer';
-import { randomBytes } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 import { Level } from 'level';
 import _ from 'lodash';
 import * as superjson from 'superjson';
@@ -88,6 +88,21 @@ export interface LevelPrivateStateProviderConfig {
    * ```
    */
   readonly privateStoragePasswordProvider: PrivateStoragePasswordProvider;
+  /**
+   * Account identifier used to scope storage. This ensures data isolation
+   * between different accounts/wallets using the same database.
+   *
+   * The accountId is hashed (SHA-256, first 16 chars) before being used
+   * in storage paths, so any unique identifier can be used (e.g., wallet address).
+   *
+   * @example
+   * ```typescript
+   * {
+   *   accountId: walletAddress
+   * }
+   * ```
+   */
+  readonly accountId: string;
 }
 
 /**
@@ -116,6 +131,17 @@ superjson.registerCustom<Buffer, string>(
   },
   'buffer'
 );
+
+const ACCOUNT_ID_HASH_LENGTH = 16;
+
+const hashAccountId = (accountId: string): string => {
+  return createHash('sha256').update(accountId).digest('hex').substring(0, ACCOUNT_ID_HASH_LENGTH);
+};
+
+const getScopedLevelName = (baseLevelName: string, accountId: string): string => {
+  const hashedAccountId = hashAccountId(accountId);
+  return `${baseLevelName}:${hashedAccountId}`;
+};
 
 const withSubLevel = async <K, V, A>(
   dbName: string,
@@ -646,7 +672,7 @@ const showBrowserWarning = (): void => {
  * @param config Database configuration options.
  */
 export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
-  config: Partial<LevelPrivateStateProviderConfig> & Pick<LevelPrivateStateProviderConfig, 'privateStoragePasswordProvider'>
+  config: Partial<LevelPrivateStateProviderConfig> & Pick<LevelPrivateStateProviderConfig, 'privateStoragePasswordProvider' | 'accountId'>
 ): PrivateStateProvider<PSI, PS> & {
   invalidateEncryptionCache(): void;
   changePassword(
@@ -669,7 +695,17 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
     );
   }
 
+  if (!config.accountId || config.accountId.trim().length === 0) {
+    throw new Error(
+      'accountId is required.\n' +
+      'Provide an account identifier (e.g., wallet address) to scope storage and prevent cross-account data access.'
+    );
+  }
+
   const passwordProvider: PrivateStoragePasswordProvider = config.privateStoragePasswordProvider;
+
+  const scopedPrivateStateLevelName = getScopedLevelName(fullConfig.privateStateStoreName, config.accountId);
+  const scopedSigningKeyLevelName = getScopedLevelName(fullConfig.signingKeyStoreName, config.accountId);
 
   showBrowserWarning();
 
@@ -690,30 +726,30 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       const scopedKey = getScopedKey(privateStateId);
       return subLevelMaybeGet<string, PS>(
         fullConfig.midnightDbName,
-        fullConfig.privateStateStoreName,
+        scopedPrivateStateLevelName,
         scopedKey,
         passwordProvider
       );
     },
     async remove(privateStateId: PSI): Promise<void> {
-      await waitForRotationLock(fullConfig.midnightDbName, fullConfig.privateStateStoreName);
+      await waitForRotationLock(fullConfig.midnightDbName, scopedPrivateStateLevelName);
       const scopedKey = getScopedKey(privateStateId);
-      return withSubLevel<string, string, void>(fullConfig.midnightDbName, fullConfig.privateStateStoreName, (subLevel) =>
+      return withSubLevel<string, string, void>(fullConfig.midnightDbName, scopedPrivateStateLevelName, (subLevel) =>
         subLevel.del(scopedKey)
       );
     },
     async set(privateStateId: PSI, state: PS): Promise<void> {
-      await waitForRotationLock(fullConfig.midnightDbName, fullConfig.privateStateStoreName);
+      await waitForRotationLock(fullConfig.midnightDbName, scopedPrivateStateLevelName);
       const scopedKey = getScopedKey(privateStateId);
       const encryption = await getOrCreateEncryption(
         fullConfig.midnightDbName,
-        fullConfig.privateStateStoreName,
+        scopedPrivateStateLevelName,
         passwordProvider
       );
       const serialized = superjson.stringify(state);
       const encrypted = encryption.encrypt(serialized);
 
-      return withSubLevel<string, string, void>(fullConfig.midnightDbName, fullConfig.privateStateStoreName, (subLevel) =>
+      return withSubLevel<string, string, void>(fullConfig.midnightDbName, scopedPrivateStateLevelName, (subLevel) =>
         subLevel.put(scopedKey, encrypted)
       );
     },
@@ -721,29 +757,29 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       if (contractAddress === null) {
         throw new Error('Contract address not set. Call setContractAddress() before accessing private state.');
       }
-      return withSubLevel(fullConfig.midnightDbName, fullConfig.privateStateStoreName, (subLevel) => subLevel.clear());
+      return withSubLevel(fullConfig.midnightDbName, scopedPrivateStateLevelName, (subLevel) => subLevel.clear());
     },
     getSigningKey(address: ContractAddress): Promise<SigningKey | null> {
       return subLevelMaybeGet<ContractAddress, SigningKey>(
         fullConfig.midnightDbName,
-        fullConfig.signingKeyStoreName,
+        scopedSigningKeyLevelName,
         address,
         passwordProvider
       );
     },
     async removeSigningKey(address: ContractAddress): Promise<void> {
-      await waitForRotationLock(fullConfig.midnightDbName, fullConfig.signingKeyStoreName);
+      await waitForRotationLock(fullConfig.midnightDbName, scopedSigningKeyLevelName);
       return withSubLevel<ContractAddress, string, void>(
         fullConfig.midnightDbName,
-        fullConfig.signingKeyStoreName,
+        scopedSigningKeyLevelName,
         (subLevel) => subLevel.del(address)
       );
     },
     async setSigningKey(address: ContractAddress, signingKey: SigningKey): Promise<void> {
-      await waitForRotationLock(fullConfig.midnightDbName, fullConfig.signingKeyStoreName);
+      await waitForRotationLock(fullConfig.midnightDbName, scopedSigningKeyLevelName);
       const encryption = await getOrCreateEncryption(
         fullConfig.midnightDbName,
-        fullConfig.signingKeyStoreName,
+        scopedSigningKeyLevelName,
         passwordProvider
       );
       const serialized = superjson.stringify(signingKey);
@@ -751,12 +787,12 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
 
       return withSubLevel<ContractAddress, string, void>(
         fullConfig.midnightDbName,
-        fullConfig.signingKeyStoreName,
+        scopedSigningKeyLevelName,
         (subLevel) => subLevel.put(address, encrypted)
       );
     },
     clearSigningKeys(): Promise<void> {
-      return withSubLevel(fullConfig.midnightDbName, fullConfig.signingKeyStoreName, (subLevel) => subLevel.clear());
+      return withSubLevel(fullConfig.midnightDbName, scopedSigningKeyLevelName, (subLevel) => subLevel.clear());
     },
 
     async exportPrivateStates(options?: ExportPrivateStatesOptions): Promise<PrivateStateExport> {
@@ -777,7 +813,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       // Get all private states (not signing keys)
       const allStates = await getAllEntries<string, PS>(
         fullConfig.midnightDbName,
-        fullConfig.privateStateStoreName,
+        scopedPrivateStateLevelName,
         passwordProvider
       );
 
@@ -954,7 +990,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
 
       const allKeys = await getAllEntries<ContractAddress, SigningKey>(
         fullConfig.midnightDbName,
-        fullConfig.signingKeyStoreName,
+        scopedSigningKeyLevelName,
         passwordProvider
       );
 
@@ -1094,13 +1130,13 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
         throw new Error('Contract address not set. Call setContractAddress() before changing password.');
       }
 
-      const lockKey = `${fullConfig.midnightDbName}:${fullConfig.privateStateStoreName}`;
+      const lockKey = `${fullConfig.midnightDbName}:${scopedPrivateStateLevelName}`;
       const prefix = `${contractAddress}:`;
 
       return withPasswordRotationLock(lockKey, async () => {
         const result = await rotateStorePassword({
           dbName: fullConfig.midnightDbName,
-          storeName: fullConfig.privateStateStoreName,
+          storeName: scopedPrivateStateLevelName,
           oldPasswordProvider,
           newPasswordProvider,
           maxEntries: options?.maxEntries ?? DEFAULT_MAX_ROTATION_ENTRIES,
@@ -1109,8 +1145,8 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
 
         invalidateEncryptionCacheForDb(
           fullConfig.midnightDbName,
-          fullConfig.privateStateStoreName,
-          fullConfig.signingKeyStoreName
+          scopedPrivateStateLevelName,
+          scopedSigningKeyLevelName
         );
 
         return result;
@@ -1122,12 +1158,12 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       newPasswordProvider: PrivateStoragePasswordProvider,
       options?: PasswordRotationOptions
     ): Promise<PasswordRotationResult> {
-      const lockKey = `${fullConfig.midnightDbName}:${fullConfig.signingKeyStoreName}`;
+      const lockKey = `${fullConfig.midnightDbName}:${scopedSigningKeyLevelName}`;
 
       return withPasswordRotationLock(lockKey, async () => {
         const result = await rotateStorePassword({
           dbName: fullConfig.midnightDbName,
-          storeName: fullConfig.signingKeyStoreName,
+          storeName: scopedSigningKeyLevelName,
           oldPasswordProvider,
           newPasswordProvider,
           maxEntries: options?.maxEntries ?? DEFAULT_MAX_ROTATION_ENTRIES
@@ -1135,8 +1171,8 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
 
         invalidateEncryptionCacheForDb(
           fullConfig.midnightDbName,
-          fullConfig.privateStateStoreName,
-          fullConfig.signingKeyStoreName
+          scopedPrivateStateLevelName,
+          scopedSigningKeyLevelName
         );
 
         return result;
@@ -1146,9 +1182,98 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
     invalidateEncryptionCache(): void {
       invalidateEncryptionCacheForDb(
         fullConfig.midnightDbName,
-        fullConfig.privateStateStoreName,
-        fullConfig.signingKeyStoreName
+        scopedPrivateStateLevelName,
+        scopedSigningKeyLevelName
       );
     }
   };
+};
+
+export interface MigrationResult {
+  readonly privateStatesMigrated: number;
+  readonly signingKeysMigrated: number;
+}
+
+const migrateSublevel = async (
+  dbName: string,
+  oldLevelName: string,
+  newLevelName: string
+): Promise<number> => {
+  const level = new Level(dbName, { createIfMissing: true });
+
+  try {
+    await level.open();
+
+    const oldSubLevel = level.sublevel<string, string>(oldLevelName, {
+      valueEncoding: 'utf-8'
+    });
+    const newSubLevel = level.sublevel<string, string>(newLevelName, {
+      valueEncoding: 'utf-8'
+    });
+
+    await oldSubLevel.open();
+    await newSubLevel.open();
+
+    let count = 0;
+    const operations: { type: 'put'; key: string; value: string }[] = [];
+
+    for await (const [key, value] of oldSubLevel.iterator()) {
+      operations.push({ type: 'put', key, value });
+      count++;
+    }
+
+    if (operations.length > 0) {
+      await newSubLevel.batch(operations);
+    }
+
+    await newSubLevel.close();
+    await oldSubLevel.close();
+
+    return count;
+  } finally {
+    await level.close();
+  }
+};
+
+/**
+ * Migrates existing unscoped private state and signing key data to account-scoped sublevels.
+ *
+ * This function copies data from the legacy unscoped locations to the new account-scoped
+ * locations. The original data is preserved (not deleted) to allow for safe rollback if needed.
+ * To remove old data after successful migration, manually clear the unscoped sublevels.
+ *
+ * Note: Running this function multiple times is safe but will re-copy all data, overwriting
+ * any changes made in the scoped location since the last migration.
+ */
+export const migrateToAccountScoped = async (
+  config: Partial<LevelPrivateStateProviderConfig> & Pick<LevelPrivateStateProviderConfig, 'accountId'>
+): Promise<MigrationResult> => {
+  const fullConfig = _.defaults(config, DEFAULT_CONFIG);
+
+  if (!config.accountId || config.accountId.trim().length === 0) {
+    throw new Error('accountId is required for migration');
+  }
+
+  const scopedPrivateStateLevelName = getScopedLevelName(
+    fullConfig.privateStateStoreName,
+    config.accountId
+  );
+  const scopedSigningKeyLevelName = getScopedLevelName(
+    fullConfig.signingKeyStoreName,
+    config.accountId
+  );
+
+  const privateStatesMigrated = await migrateSublevel(
+    fullConfig.midnightDbName,
+    fullConfig.privateStateStoreName,
+    scopedPrivateStateLevelName
+  );
+
+  const signingKeysMigrated = await migrateSublevel(
+    fullConfig.midnightDbName,
+    fullConfig.signingKeyStoreName,
+    scopedSigningKeyLevelName
+  );
+
+  return { privateStatesMigrated, signingKeysMigrated };
 };
