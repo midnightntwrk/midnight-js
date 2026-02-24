@@ -14,7 +14,7 @@
  */
 
 import { Buffer } from 'buffer';
-import { createCipheriv, createDecipheriv, pbkdf2Sync, randomBytes } from 'crypto';
+import { createCipheriv, createDecipheriv, createHash, pbkdf2Sync, randomBytes, timingSafeEqual } from 'crypto';
 
 export type PrivateStoragePasswordProvider = () => string | Promise<string>;
 
@@ -32,6 +32,36 @@ const CURRENT_ENCRYPTION_VERSION = ENCRYPTION_VERSION_V2;
 const VERSION_PREFIX_LENGTH = 1;
 const HEADER_LENGTH = VERSION_PREFIX_LENGTH + SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH;
 
+interface EncryptedComponents {
+  version: number;
+  salt: Buffer;
+  iv: Buffer;
+  authTag: Buffer;
+  encrypted: Buffer;
+}
+
+const extractEncryptedComponents = (data: Buffer): EncryptedComponents => {
+  if (data.length < HEADER_LENGTH) {
+    throw new Error('Invalid encrypted data: too short');
+  }
+
+  const version = data[0];
+  if (version !== ENCRYPTION_VERSION_V1 && version !== ENCRYPTION_VERSION_V2) {
+    throw new Error(`Unsupported encryption version: ${version}`);
+  }
+
+  return {
+    version,
+    salt: data.subarray(VERSION_PREFIX_LENGTH, VERSION_PREFIX_LENGTH + SALT_LENGTH),
+    iv: data.subarray(VERSION_PREFIX_LENGTH + SALT_LENGTH, VERSION_PREFIX_LENGTH + SALT_LENGTH + IV_LENGTH),
+    authTag: data.subarray(
+      VERSION_PREFIX_LENGTH + SALT_LENGTH + IV_LENGTH,
+      VERSION_PREFIX_LENGTH + SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH
+    ),
+    encrypted: data.subarray(HEADER_LENGTH)
+  };
+};
+
 const getIterationsForVersion = (version: number): number => {
   switch (version) {
     case ENCRYPTION_VERSION_V1:
@@ -43,19 +73,29 @@ const getIterationsForVersion = (version: number): number => {
   }
 };
 
+const hashPassword = (password: string): string => {
+  return createHash('sha256').update(password).digest('hex');
+};
+
 export class StorageEncryption {
   private readonly encryptionKey: Buffer;
   private readonly salt: Buffer;
-  private readonly password: string;
+  private readonly passwordHash: string;
 
   constructor(password: string, existingSalt?: Buffer) {
-    this.password = password;
     this.salt = existingSalt ?? randomBytes(SALT_LENGTH);
     this.encryptionKey = this.deriveKey(password, this.salt, PBKDF2_ITERATIONS_V2);
+    this.passwordHash = hashPassword(password);
   }
 
   private deriveKey(password: string, salt: Buffer, iterations: number): Buffer {
     return pbkdf2Sync(password, salt, iterations, KEY_LENGTH, 'sha256');
+  }
+
+  verifyPassword(password: string): boolean {
+    const inputHash = Buffer.from(hashPassword(password), 'hex');
+    const storedHash = Buffer.from(this.passwordHash, 'hex');
+    return timingSafeEqual(inputHash, storedHash);
   }
 
   encrypt(data: string): string {
@@ -74,23 +114,26 @@ export class StorageEncryption {
 
   decrypt(encryptedData: string): string {
     const data = Buffer.from(encryptedData, 'base64');
+    const { version, salt, iv, authTag, encrypted } = extractEncryptedComponents(data);
 
-    if (data.length < HEADER_LENGTH) {
-      throw new Error('Invalid encrypted data: too short');
+    if (version === ENCRYPTION_VERSION_V1) {
+      throw new Error('V1 encrypted data requires password for decryption. Use decryptWithPassword() instead.');
     }
 
-    const version = data[0];
-    if (version !== ENCRYPTION_VERSION_V1 && version !== ENCRYPTION_VERSION_V2) {
-      throw new Error(`Unsupported encryption version: ${version}`);
+    if (!this.salt.equals(salt)) {
+      throw new Error('Salt mismatch: data was encrypted with a different password');
     }
 
-    const salt = data.subarray(VERSION_PREFIX_LENGTH, VERSION_PREFIX_LENGTH + SALT_LENGTH);
-    const iv = data.subarray(VERSION_PREFIX_LENGTH + SALT_LENGTH, VERSION_PREFIX_LENGTH + SALT_LENGTH + IV_LENGTH);
-    const authTag = data.subarray(
-      VERSION_PREFIX_LENGTH + SALT_LENGTH + IV_LENGTH,
-      VERSION_PREFIX_LENGTH + SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH
-    );
-    const encrypted = data.subarray(HEADER_LENGTH);
+    const decipher = createDecipheriv(ALGORITHM, this.encryptionKey, iv, { authTagLength: AUTH_TAG_LENGTH });
+    decipher.setAuthTag(authTag);
+
+    const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+    return decrypted.toString('utf-8');
+  }
+
+  decryptWithPassword(encryptedData: string, password: string): string {
+    const data = Buffer.from(encryptedData, 'base64');
+    const { version, salt, iv, authTag, encrypted } = extractEncryptedComponents(data);
 
     if (!this.salt.equals(salt)) {
       throw new Error('Salt mismatch: data was encrypted with a different password');
@@ -99,7 +142,7 @@ export class StorageEncryption {
     const iterations = getIterationsForVersion(version);
     const decryptionKey = version === CURRENT_ENCRYPTION_VERSION
       ? this.encryptionKey
-      : this.deriveKey(this.password, salt, iterations);
+      : this.deriveKey(password, salt, iterations);
 
     const decipher = createDecipheriv(ALGORITHM, decryptionKey, iv, { authTagLength: AUTH_TAG_LENGTH });
     decipher.setAuthTag(authTag);
@@ -230,4 +273,21 @@ export const getPasswordFromProvider = async (provider: PrivateStoragePasswordPr
   const password = await provider();
   validatePassword(password);
   return password;
+};
+
+export const decryptValue = (
+  encryptedValue: string,
+  encryption: StorageEncryption,
+  password: string
+): string => {
+  if (!StorageEncryption.isEncrypted(encryptedValue)) {
+    console.debug('MIDNIGHT: Encountered unencrypted data during decryption - passing through as-is');
+    return encryptedValue;
+  }
+
+  const version = StorageEncryption.getVersion(encryptedValue);
+  if (version === 1) {
+    return encryption.decryptWithPassword(encryptedValue, password);
+  }
+  return encryption.decrypt(encryptedValue);
 };

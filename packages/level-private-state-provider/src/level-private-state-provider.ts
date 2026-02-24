@@ -40,7 +40,7 @@ import { Level } from 'level';
 import _ from 'lodash';
 import * as superjson from 'superjson';
 
-import { getPasswordFromProvider, type PrivateStoragePasswordProvider, StorageEncryption } from './storage-encryption';
+import { decryptValue, getPasswordFromProvider, type PrivateStoragePasswordProvider, StorageEncryption } from './storage-encryption';
 
 /**
  * The default name of the indexedDB database for Midnight.
@@ -140,7 +140,34 @@ const withSubLevel = async <K, V, A>(
 
 const METADATA_KEY = '__midnight_encryption_metadata__';
 
+const DEFAULT_MAX_ROTATION_ENTRIES = 10000;
+
 const encryptionInitPromises = new Map<string, Promise<Buffer>>();
+
+const passwordRotationLocks = new Map<string, Promise<void>>();
+
+export interface PasswordRotationResult {
+  readonly entriesMigrated: number;
+}
+
+export interface PasswordRotationOptions {
+  readonly maxEntries?: number;
+}
+
+interface EncryptionCacheEntry {
+  readonly encryption: StorageEncryption;
+  readonly saltHex: string;
+}
+
+/**
+ * Module-level cache for StorageEncryption instances, keyed by `${dbName}:${levelName}`.
+ * This cache avoids repeated PBKDF2 key derivation (600,000 iterations) on each operation.
+ *
+ * Note: This cache has no size limit. For typical usage with a small number of
+ * database/level combinations, this is acceptable. If using dynamic db/level names,
+ * call `invalidateEncryptionCache()` to prevent unbounded growth.
+ */
+const encryptionCache = new Map<string, EncryptionCacheEntry>();
 
 const getOrCreateSalt = async (dbName: string, levelName: string): Promise<Buffer> => {
   const lockKey = `${dbName}:${levelName}`;
@@ -186,9 +213,208 @@ const getOrCreateEncryption = async (
   levelName: string,
   passwordProvider: PrivateStoragePasswordProvider
 ): Promise<StorageEncryption> => {
-  const password = await getPasswordFromProvider(passwordProvider);
+  const cacheKey = `${dbName}:${levelName}`;
   const salt = await getOrCreateSalt(dbName, levelName);
-  return new StorageEncryption(password, salt);
+  const saltHex = salt.toString('hex');
+
+  const cached = encryptionCache.get(cacheKey);
+  if (cached && cached.saltHex === saltHex) {
+    const password = await getPasswordFromProvider(passwordProvider);
+    if (cached.encryption.verifyPassword(password)) {
+      return cached.encryption;
+    }
+    const encryption = new StorageEncryption(password, salt);
+    encryptionCache.set(cacheKey, { encryption, saltHex });
+    return encryption;
+  }
+
+  const password = await getPasswordFromProvider(passwordProvider);
+  const encryption = new StorageEncryption(password, salt);
+  encryptionCache.set(cacheKey, { encryption, saltHex });
+  return encryption;
+};
+
+const invalidateEncryptionCacheForDb = (dbName: string, privateStateStoreName: string, signingKeyStoreName: string): void => {
+  const privateStateKey = `${dbName}:${privateStateStoreName}`;
+  const signingKeyKey = `${dbName}:${signingKeyStoreName}`;
+  encryptionCache.delete(privateStateKey);
+  encryptionCache.delete(signingKeyKey);
+};
+
+const DEFAULT_LOCK_TIMEOUT_MS = 300000; // 5 minutes
+
+const withPasswordRotationLock = async <T>(
+  lockKey: string,
+  operation: () => Promise<T>,
+  timeoutMs: number = DEFAULT_LOCK_TIMEOUT_MS
+): Promise<T> => {
+  const startWait = Date.now();
+
+  while (passwordRotationLocks.has(lockKey)) {
+    if (Date.now() - startWait > timeoutMs) {
+      throw new Error(
+        `Timed out waiting for password rotation lock on "${lockKey}". ` +
+          `Another rotation may be stuck or taking longer than ${timeoutMs}ms.`
+      );
+    }
+    await passwordRotationLocks.get(lockKey);
+  }
+
+  let resolve!: () => void;
+  const lockPromise = new Promise<void>((r) => {
+    resolve = r;
+  });
+  passwordRotationLocks.set(lockKey, lockPromise);
+
+  try {
+    return await operation();
+  } finally {
+    passwordRotationLocks.delete(lockKey);
+    resolve();
+  }
+};
+
+const waitForRotationLock = async (
+  dbName: string,
+  levelName: string,
+  timeoutMs: number = DEFAULT_LOCK_TIMEOUT_MS
+): Promise<void> => {
+  const lockKey = `${dbName}:${levelName}`;
+  const startWait = Date.now();
+
+  while (passwordRotationLocks.has(lockKey)) {
+    if (Date.now() - startWait > timeoutMs) {
+      throw new Error(
+        `Timed out waiting for password rotation to complete on "${lockKey}". ` +
+          `The rotation may be stuck or taking longer than ${timeoutMs}ms.`
+      );
+    }
+    await passwordRotationLocks.get(lockKey);
+  }
+};
+
+interface RotateStorePasswordParams {
+  readonly dbName: string;
+  readonly storeName: string;
+  readonly oldPasswordProvider: PrivateStoragePasswordProvider;
+  readonly newPasswordProvider: PrivateStoragePasswordProvider;
+  readonly maxEntries: number;
+  readonly shouldProceed?: (key: string) => boolean;
+}
+
+const isDecryptionError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  return (
+    message.includes('unsupported state') ||
+    message.includes('salt mismatch') ||
+    message.includes('invalid encrypted data') ||
+    message.includes('bad decrypt') ||
+    message.includes('unable to authenticate')
+  );
+};
+
+const rotateStorePassword = async (
+  params: RotateStorePasswordParams
+): Promise<PasswordRotationResult> => {
+  const { dbName, storeName, oldPasswordProvider, newPasswordProvider, maxEntries, shouldProceed } = params;
+
+  const oldPassword = await getPasswordFromProvider(oldPasswordProvider);
+  const newPassword = await getPasswordFromProvider(newPasswordProvider);
+
+  const salt = await getOrCreateSalt(dbName, storeName);
+  const oldEncryption = new StorageEncryption(oldPassword, salt);
+  const newEncryption = new StorageEncryption(newPassword);
+  const newSalt = newEncryption.getSalt();
+
+  return withSubLevel<string, string, PasswordRotationResult>(
+    dbName,
+    storeName,
+    async (subLevel) => {
+      const entriesToMigrate: { key: string; decryptedValue: string }[] = [];
+      let hasMatchingData = false;
+      let firstEntryValidated = false;
+
+      for await (const [key, encryptedValue] of subLevel.iterator()) {
+        if (key === METADATA_KEY) continue;
+
+        if (entriesToMigrate.length >= maxEntries) {
+          throw new Error(
+            `Entry count exceeds maximum allowed (${maxEntries}). ` +
+            `Use the maxEntries option to increase the limit if needed.`
+          );
+        }
+
+        if (shouldProceed && shouldProceed(key)) {
+          hasMatchingData = true;
+        }
+
+        if (!firstEntryValidated) {
+          try {
+            decryptValue(encryptedValue, oldEncryption, oldPassword);
+          } catch (error: unknown) {
+            if (isDecryptionError(error)) {
+              throw new Error('Old password is incorrect: failed to decrypt existing data');
+            }
+            throw error;
+          }
+          firstEntryValidated = true;
+        }
+
+        try {
+          const decryptedValue = decryptValue(encryptedValue, oldEncryption, oldPassword);
+          entriesToMigrate.push({ key, decryptedValue });
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          throw new Error(
+            `Failed to decrypt entry "${key}": ${errorMessage}. ` +
+            `Successfully processed ${entriesToMigrate.length} entries before failure.`
+          );
+        }
+      }
+
+      if (entriesToMigrate.length === 0) {
+        return { entriesMigrated: 0 };
+      }
+
+      if (shouldProceed && !hasMatchingData) {
+        return { entriesMigrated: 0 };
+      }
+
+      const operations: { type: 'put'; key: string; value: string }[] = [];
+      for (const { key, decryptedValue } of entriesToMigrate) {
+        try {
+          const encryptedValue = newEncryption.encrypt(decryptedValue);
+          operations.push({ type: 'put', key, value: encryptedValue });
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          throw new Error(
+            `Failed to re-encrypt entry "${key}": ${errorMessage}. ` +
+            `Original data is still encrypted with old password.`
+          );
+        }
+      }
+
+      const metadata = {
+        salt: newSalt.toString('hex'),
+        version: 1
+      };
+      operations.push({ type: 'put', key: METADATA_KEY, value: JSON.stringify(metadata) });
+
+      try {
+        await subLevel.batch(operations);
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        throw new Error(
+          `Failed to write re-encrypted data: ${errorMessage}. ` +
+          `Your data may be in an inconsistent state. ` +
+          `Keep both old and new passwords until you can verify data integrity.`
+        );
+      }
+
+      return { entriesMigrated: entriesToMigrate.length };
+    }
+  );
 };
 
 const subLevelMaybeGet = async <K, V>(
@@ -197,6 +423,7 @@ const subLevelMaybeGet = async <K, V>(
   key: K,
   passwordProvider: PrivateStoragePasswordProvider
 ): Promise<V | null> => {
+  await waitForRotationLock(dbName, levelName);
   const encryption = await getOrCreateEncryption(dbName, levelName, passwordProvider);
 
   return withSubLevel<K, string, V | null>(dbName, levelName, async (subLevel) => {
@@ -210,7 +437,15 @@ const subLevelMaybeGet = async <K, V>(
       let decryptedValue: string;
 
       if (StorageEncryption.isEncrypted(encryptedValue)) {
-        decryptedValue = encryption.decrypt(encryptedValue);
+        const version = StorageEncryption.getVersion(encryptedValue);
+        if (version === 1) {
+          const password = await getPasswordFromProvider(passwordProvider);
+          decryptedValue = encryption.decryptWithPassword(encryptedValue, password);
+          const reEncrypted = encryption.encrypt(decryptedValue);
+          await subLevel.put(key, reEncrypted);
+        } else {
+          decryptedValue = encryption.decrypt(encryptedValue);
+        }
       } else {
         decryptedValue = encryptedValue;
         const reEncrypted = encryption.encrypt(encryptedValue);
@@ -241,24 +476,40 @@ const getAllEntries = async <K extends string, V>(
   levelName: string,
   passwordProvider: PrivateStoragePasswordProvider
 ): Promise<Map<K, V>> => {
+  await waitForRotationLock(dbName, levelName);
   const encryption = await getOrCreateEncryption(dbName, levelName, passwordProvider);
 
   return withSubLevel<K, string, Map<K, V>>(dbName, levelName, async (subLevel) => {
     const entries = new Map<K, V>();
+    let password: string | null = null;
 
     for await (const [key, encryptedValue] of subLevel.iterator()) {
-      // Skip metadata key
       if (key === METADATA_KEY) {
         continue;
       }
 
       let decryptedValue: string;
+      let needsReEncryption = false;
 
       if (StorageEncryption.isEncrypted(encryptedValue)) {
-        decryptedValue = encryption.decrypt(encryptedValue);
+        const version = StorageEncryption.getVersion(encryptedValue);
+        if (version === 1) {
+          if (password === null) {
+            password = await getPasswordFromProvider(passwordProvider);
+          }
+          decryptedValue = encryption.decryptWithPassword(encryptedValue, password);
+          needsReEncryption = true;
+        } else {
+          decryptedValue = encryption.decrypt(encryptedValue);
+        }
       } else {
-        // Legacy unencrypted data
         decryptedValue = encryptedValue;
+        needsReEncryption = true;
+      }
+
+      if (needsReEncryption) {
+        const reEncrypted = encryption.encrypt(decryptedValue);
+        await subLevel.put(key, reEncrypted);
       }
 
       const value = superjson.parse<V>(decryptedValue);
@@ -365,8 +616,11 @@ const showBrowserWarning = (): void => {
       }
       storage.setItem(BROWSER_WARNING_KEY, 'true');
     }
-  } catch {
-    // sessionStorage may be unavailable in some contexts
+  } catch (error: unknown) {
+    console.debug(
+      'MIDNIGHT: Could not access sessionStorage for warning deduplication:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
   }
 
   console.warn(
@@ -393,7 +647,19 @@ const showBrowserWarning = (): void => {
  */
 export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
   config: Partial<LevelPrivateStateProviderConfig> & Pick<LevelPrivateStateProviderConfig, 'privateStoragePasswordProvider'>
-): PrivateStateProvider<PSI, PS> => {
+): PrivateStateProvider<PSI, PS> & {
+  invalidateEncryptionCache(): void;
+  changePassword(
+    oldPasswordProvider: PrivateStoragePasswordProvider,
+    newPasswordProvider: PrivateStoragePasswordProvider,
+    options?: PasswordRotationOptions
+  ): Promise<PasswordRotationResult>;
+  changeSigningKeysPassword(
+    oldPasswordProvider: PrivateStoragePasswordProvider,
+    newPasswordProvider: PrivateStoragePasswordProvider,
+    options?: PasswordRotationOptions
+  ): Promise<PasswordRotationResult>;
+} => {
   const fullConfig = _.defaults(config, DEFAULT_CONFIG);
 
   if (!config.privateStoragePasswordProvider) {
@@ -430,12 +696,14 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       );
     },
     async remove(privateStateId: PSI): Promise<void> {
+      await waitForRotationLock(fullConfig.midnightDbName, fullConfig.privateStateStoreName);
       const scopedKey = getScopedKey(privateStateId);
       return withSubLevel<string, string, void>(fullConfig.midnightDbName, fullConfig.privateStateStoreName, (subLevel) =>
         subLevel.del(scopedKey)
       );
     },
     async set(privateStateId: PSI, state: PS): Promise<void> {
+      await waitForRotationLock(fullConfig.midnightDbName, fullConfig.privateStateStoreName);
       const scopedKey = getScopedKey(privateStateId);
       const encryption = await getOrCreateEncryption(
         fullConfig.midnightDbName,
@@ -463,7 +731,8 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
         passwordProvider
       );
     },
-    removeSigningKey(address: ContractAddress): Promise<void> {
+    async removeSigningKey(address: ContractAddress): Promise<void> {
+      await waitForRotationLock(fullConfig.midnightDbName, fullConfig.signingKeyStoreName);
       return withSubLevel<ContractAddress, string, void>(
         fullConfig.midnightDbName,
         fullConfig.signingKeyStoreName,
@@ -471,6 +740,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       );
     },
     async setSigningKey(address: ContractAddress, signingKey: SigningKey): Promise<void> {
+      await waitForRotationLock(fullConfig.midnightDbName, fullConfig.signingKeyStoreName);
       const encryption = await getOrCreateEncryption(
         fullConfig.midnightDbName,
         fullConfig.signingKeyStoreName,
@@ -813,6 +1083,72 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       }
 
       return { imported, skipped, overwritten };
+    },
+
+    async changePassword(
+      oldPasswordProvider: PrivateStoragePasswordProvider,
+      newPasswordProvider: PrivateStoragePasswordProvider,
+      options?: PasswordRotationOptions
+    ): Promise<PasswordRotationResult> {
+      if (contractAddress === null) {
+        throw new Error('Contract address not set. Call setContractAddress() before changing password.');
+      }
+
+      const lockKey = `${fullConfig.midnightDbName}:${fullConfig.privateStateStoreName}`;
+      const prefix = `${contractAddress}:`;
+
+      return withPasswordRotationLock(lockKey, async () => {
+        const result = await rotateStorePassword({
+          dbName: fullConfig.midnightDbName,
+          storeName: fullConfig.privateStateStoreName,
+          oldPasswordProvider,
+          newPasswordProvider,
+          maxEntries: options?.maxEntries ?? DEFAULT_MAX_ROTATION_ENTRIES,
+          shouldProceed: (key) => key.startsWith(prefix)
+        });
+
+        invalidateEncryptionCacheForDb(
+          fullConfig.midnightDbName,
+          fullConfig.privateStateStoreName,
+          fullConfig.signingKeyStoreName
+        );
+
+        return result;
+      });
+    },
+
+    async changeSigningKeysPassword(
+      oldPasswordProvider: PrivateStoragePasswordProvider,
+      newPasswordProvider: PrivateStoragePasswordProvider,
+      options?: PasswordRotationOptions
+    ): Promise<PasswordRotationResult> {
+      const lockKey = `${fullConfig.midnightDbName}:${fullConfig.signingKeyStoreName}`;
+
+      return withPasswordRotationLock(lockKey, async () => {
+        const result = await rotateStorePassword({
+          dbName: fullConfig.midnightDbName,
+          storeName: fullConfig.signingKeyStoreName,
+          oldPasswordProvider,
+          newPasswordProvider,
+          maxEntries: options?.maxEntries ?? DEFAULT_MAX_ROTATION_ENTRIES
+        });
+
+        invalidateEncryptionCacheForDb(
+          fullConfig.midnightDbName,
+          fullConfig.privateStateStoreName,
+          fullConfig.signingKeyStoreName
+        );
+
+        return result;
+      });
+    },
+
+    invalidateEncryptionCache(): void {
+      invalidateEncryptionCacheForDb(
+        fullConfig.midnightDbName,
+        fullConfig.privateStateStoreName,
+        fullConfig.signingKeyStoreName
+      );
     }
   };
 };

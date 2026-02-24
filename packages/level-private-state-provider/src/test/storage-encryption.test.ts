@@ -82,11 +82,11 @@ describe('StorageEncryption', () => {
   });
 
   describe('version migration', () => {
-    test('decrypts v1 encrypted data with 100k iterations', () => {
+    test('decrypts v1 encrypted data with 100k iterations using decryptWithPassword', () => {
       const salt = Buffer.from(V1_FIXTURES.salt, 'hex');
       const encryption = new StorageEncryption(V1_FIXTURES.password, salt);
 
-      const decrypted = encryption.decrypt(V1_FIXTURES.encrypted);
+      const decrypted = encryption.decryptWithPassword(V1_FIXTURES.encrypted, V1_FIXTURES.password);
 
       expect(decrypted).toBe(V1_FIXTURES.plaintext);
     });
@@ -115,6 +115,57 @@ describe('StorageEncryption', () => {
       const encryption = new StorageEncryption(testPassword);
       const v2Encrypted = encryption.encrypt(testData);
       expect(StorageEncryption.getVersion(v2Encrypted)).toBe(2);
+    });
+
+    test('decrypt throws when V1 data is encountered without password', () => {
+      const salt = Buffer.from(V1_FIXTURES.salt, 'hex');
+      const encryption = new StorageEncryption(V1_FIXTURES.password, salt);
+
+      expect(() => encryption.decrypt(V1_FIXTURES.encrypted)).toThrow(
+        'V1 encrypted data requires password for decryption'
+      );
+    });
+
+    test('decryptWithPassword works for V2 data as well', () => {
+      const encryption = new StorageEncryption(testPassword);
+
+      const encrypted = encryption.encrypt(testData);
+      const decrypted = encryption.decryptWithPassword(encrypted, testPassword);
+
+      expect(decrypted).toBe(testData);
+    });
+  });
+
+  describe('password verification', () => {
+    test('verifyPassword returns true for correct password', () => {
+      const encryption = new StorageEncryption(testPassword);
+
+      expect(encryption.verifyPassword(testPassword)).toBe(true);
+    });
+
+    test('verifyPassword returns false for incorrect password', () => {
+      const encryption = new StorageEncryption(testPassword);
+
+      expect(encryption.verifyPassword('Wrong-Password-1!')).toBe(false);
+    });
+
+    test('verifyPassword is case-sensitive', () => {
+      const encryption = new StorageEncryption(testPassword);
+
+      expect(encryption.verifyPassword(testPassword.toLowerCase())).toBe(false);
+      expect(encryption.verifyPassword(testPassword.toUpperCase())).toBe(false);
+    });
+
+    test('password is not stored in plaintext', () => {
+      const encryption = new StorageEncryption(testPassword);
+
+      const encryptionAsRecord = encryption as unknown as Record<string, unknown>;
+      const allValues = Object.values(encryptionAsRecord);
+      const hasPlaintextPassword = allValues.some(
+        (value) => value === testPassword
+      );
+
+      expect(hasPlaintextPassword).toBe(false);
     });
   });
 
