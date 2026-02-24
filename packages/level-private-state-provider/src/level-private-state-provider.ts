@@ -92,7 +92,7 @@ export interface LevelPrivateStateProviderConfig {
    * Account identifier used to scope storage. This ensures data isolation
    * between different accounts/wallets using the same database.
    *
-   * The accountId is hashed (SHA-256, first 16 chars) before being used
+   * The accountId is hashed (SHA-256, first 32 chars) before being used
    * in storage paths, so any unique identifier can be used (e.g., wallet address).
    *
    * @example
