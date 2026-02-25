@@ -4,13 +4,13 @@ export type Witnesses<PS> = {
 }
 
 export type ImpureCircuits<PS> = {
-  mintUnshieldedToSelfAndReceiveTest(context: __compactRuntime.CircuitContext<PS>,
-                                     domainSep_0: Uint8Array,
-                                     amount_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
-  mintUnshieldedToContractAndReceiveTest(context: __compactRuntime.CircuitContext<PS>,
-                                         domainSep_0: Uint8Array,
-                                         address_0: { bytes: Uint8Array },
-                                         amount_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  mintUnshieldedToSelfTest(context: __compactRuntime.CircuitContext<PS>,
+                           domainSep_0: Uint8Array,
+                           amount_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  mintUnshieldedToContractTest(context: __compactRuntime.CircuitContext<PS>,
+                               domainSep_0: Uint8Array,
+                               address_0: { bytes: Uint8Array },
+                               amount_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
   mintUnshieldedToUserTest(context: __compactRuntime.CircuitContext<PS>,
                            domainSep_0: Uint8Array,
                            address_0: { bytes: Uint8Array },
@@ -48,13 +48,13 @@ export type PureCircuits = {
 }
 
 export type Circuits<PS> = {
-  mintUnshieldedToSelfAndReceiveTest(context: __compactRuntime.CircuitContext<PS>,
-                                     domainSep_0: Uint8Array,
-                                     amount_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
-  mintUnshieldedToContractAndReceiveTest(context: __compactRuntime.CircuitContext<PS>,
-                                         domainSep_0: Uint8Array,
-                                         address_0: { bytes: Uint8Array },
-                                         amount_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  mintUnshieldedToSelfTest(context: __compactRuntime.CircuitContext<PS>,
+                           domainSep_0: Uint8Array,
+                           amount_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  mintUnshieldedToContractTest(context: __compactRuntime.CircuitContext<PS>,
+                               domainSep_0: Uint8Array,
+                               address_0: { bytes: Uint8Array },
+                               amount_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
   mintUnshieldedToUserTest(context: __compactRuntime.CircuitContext<PS>,
                            domainSep_0: Uint8Array,
                            address_0: { bytes: Uint8Array },

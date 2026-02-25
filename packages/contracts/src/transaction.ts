@@ -38,13 +38,19 @@ export interface TransactionContext<
     callData: UnsubmittedCallTxData<C, ICK>,
     privateStateId?: PrivateStateId
   ) => void;
-  readonly [Internal.CacheStates]: (states: ContractStates<Contract.PrivateState<C>> | PublicContractStates) => void;
+  readonly [Internal.CacheStates]: (
+    states: ContractStates<Contract.PrivateState<C>> | PublicContractStates,
+    identity: Internal.CachedStateIdentity
+  ) => void;
+  readonly [Internal.GetCurrentStatesForIdentity]: (
+    identity: Internal.CachedStateIdentity
+  ) => ContractStates<Contract.PrivateState<C>> | PublicContractStates | undefined;
 
   /**
    * Gets the current cached contract states within the transaction context.
    *
    * @return A cached {@link ContractStates} instance, or `undefined` if circuit calls are yet to be made.
-   * 
+   *
    * @remarks
    * The returned states represent the unsubmitted _running_ state of the contract within the transaction context,
    * reflecting any unsubmitted circuit calls made to the contract during the scope of the transaction.

@@ -19,11 +19,23 @@ import { ChargedState } from '@midnight-ntwrk/onchain-runtime-v2';
 
 import { type CallResult } from '../call';
 import { type ContractProviders } from '../contract-providers';
-import { CallTxFailedError } from '../errors';
+import { CallTxFailedError, ScopedTransactionIdentityMismatchError } from '../errors';
 import { type ContractStates,type PublicContractStates } from '../get-states';
 import { submitTx, type SubmitTxOptions } from '../submit-tx';
 import type * as Transaction from '../transaction';
 import { type FinalizedCallTxData, type UnsubmittedCallTxData } from '../tx-model';
+
+/** @internal */
+export interface CachedStateIdentity {
+  readonly contractAddress: string;
+  readonly privateStateId?: PrivateStateId;
+}
+
+/** @internal */
+export interface CachedStatesWithIdentity<PS> {
+  readonly identity: CachedStateIdentity;
+  readonly states: ContractStates<PS> | PublicContractStates;
+}
 
 /** @internal */
 export const TypeId: Transaction.TypeId = Symbol.for('@midnight-ntwrk/midnight-js#Transaction') as Transaction.TypeId;
@@ -33,6 +45,8 @@ export const Submit = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/Submit
 export const MergeUnsubmittedCallTxData = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/MergeUnsubmittedCallTxData');
 /** @internal */
 export const CacheStates = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/CacheStates');
+/** @internal */
+export const GetCurrentStatesForIdentity = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/GetCurrentStatesForIdentity');
 
 const mergeSubmitTxOptions = <ICK extends Contract.ImpureCircuitId<Contract.Any>>(
   current: SubmitTxOptions<ICK> | undefined,
@@ -61,7 +75,7 @@ export class TransactionContextImpl<
   readonly providers: ContractProviders<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   readonly options?: Transaction.ScopedTransactionOptions;
 
-  currentStates: ContractStates<Contract.PrivateState<C>> | PublicContractStates | undefined = undefined;
+  cachedStates: CachedStatesWithIdentity<Contract.PrivateState<C>> | undefined = undefined;
   currentUnsubmittedCall: [callTxData: UnsubmittedCallTxData<C, ICK>, privateStateId?: PrivateStateId] | undefined;
   submitTxOptions: SubmitTxOptions<ICK> | undefined = undefined;
 
@@ -70,8 +84,29 @@ export class TransactionContextImpl<
     this.options = options;
   }
 
+  /**
+   * @deprecated This method bypasses identity validation and may return states from a different
+   * contract or private state ID than expected. Use {@link GetCurrentStatesForIdentity} instead
+   * for validated access to cached states within scoped transactions.
+   */
   getCurrentStates(): ContractStates<Contract.PrivateState<C>> | PublicContractStates | undefined {
-    return this.currentStates;
+    return this.cachedStates?.states;
+  }
+
+  [GetCurrentStatesForIdentity](
+    identity: CachedStateIdentity
+  ): ContractStates<Contract.PrivateState<C>> | PublicContractStates | undefined {
+    if (!this.cachedStates) {
+      return undefined;
+    }
+    const cached = this.cachedStates.identity;
+    if (cached.contractAddress !== identity.contractAddress || cached.privateStateId !== identity.privateStateId) {
+      throw new ScopedTransactionIdentityMismatchError(
+        { contractAddress: cached.contractAddress, privateStateId: cached.privateStateId },
+        { contractAddress: identity.contractAddress, privateStateId: identity.privateStateId }
+      );
+    }
+    return this.cachedStates.states;
   }
 
   getLastUnsubmittedCallTxDataToTransact(): [UnsubmittedCallTxData<C, ICK>, PrivateStateId?] | undefined {
@@ -99,8 +134,8 @@ export class TransactionContextImpl<
     }
   }
 
-  [CacheStates](states: ContractStates<Contract.PrivateState<C>> | PublicContractStates): void {
-    this.currentStates = states;
+  [CacheStates](states: ContractStates<Contract.PrivateState<C>> | PublicContractStates, identity: CachedStateIdentity): void {
+    this.cachedStates = { states, identity };
   }
 
   [MergeUnsubmittedCallTxData](circuitId: ICK, callData: UnsubmittedCallTxData<C, ICK>, privateStateId?: PrivateStateId): void {
@@ -113,17 +148,17 @@ export class TransactionContextImpl<
        }
     );
 
-    // If there is no currently active state, then return...
-    if (!this.currentStates) return;
+    // If there is no currently cached state, then return...
+    if (!this.cachedStates) return;
 
-    // ...otherwise apply the changes in `callData` to the cached state.
+    // ...otherwise apply the changes in `callData` to the cached state, preserving the identity.
     const privateState = callData.private.nextPrivateState;
-    const contractState = this.currentStates!.contractState;
-    const zswapChainState = this.currentStates!.zswapChainState; // Preserve the current Zswap chain state.
+    const contractState = this.cachedStates.states.contractState;
+    const zswapChainState = this.cachedStates.states.zswapChainState; // Preserve the current Zswap chain state.
 
     contractState.data = new ChargedState(callData.public.nextContractState);
 
-    this[CacheStates]({ contractState, zswapChainState, privateState });
+    this[CacheStates]({ contractState, zswapChainState, privateState }, this.cachedStates.identity);
   }
 }
 

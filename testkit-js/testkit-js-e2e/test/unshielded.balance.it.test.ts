@@ -92,7 +92,7 @@ describe('Unshielded tokens - balance', () => {
     const mintTxData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
-      circuitId: 'mintUnshieldedToSelfAndReceiveTest' as UnshieldedContractCircuits,
+      circuitId: 'mintUnshieldedToSelfTest' as UnshieldedContractCircuits,
       args: [MINT_DOMAIN_SEPARATOR, MINT_AMOUNT]
     });
 

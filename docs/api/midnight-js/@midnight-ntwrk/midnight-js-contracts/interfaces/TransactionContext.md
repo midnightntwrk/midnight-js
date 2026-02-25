@@ -22,7 +22,7 @@ Encapsulates the context for managing a scoped contract transaction.
 
 ### \[CacheStates\]()
 
-> `readonly` **\[CacheStates\]**: (`states`) => `void`
+> `readonly` **\[CacheStates\]**: (`states`, `identity`) => `void`
 
 #### Parameters
 
@@ -30,9 +30,29 @@ Encapsulates the context for managing a scoped contract transaction.
 
 [`PublicContractStates`](../type-aliases/PublicContractStates.md) | [`ContractStates`](../type-aliases/ContractStates.md)\<`PrivateState`\<`C`\>\>
 
+##### identity
+
+`CachedStateIdentity`
+
 #### Returns
 
 `void`
+
+***
+
+### \[GetCurrentStatesForIdentity\]()
+
+> `readonly` **\[GetCurrentStatesForIdentity\]**: (`identity`) => [`PublicContractStates`](../type-aliases/PublicContractStates.md) \| [`ContractStates`](../type-aliases/ContractStates.md)\<`PrivateState`\<`C`\>\> \| `undefined`
+
+#### Parameters
+
+##### identity
+
+`CachedStateIdentity`
+
+#### Returns
+
+[`PublicContractStates`](../type-aliases/PublicContractStates.md) \| [`ContractStates`](../type-aliases/ContractStates.md)\<`PrivateState`\<`C`\>\> \| `undefined`
 
 ***
 

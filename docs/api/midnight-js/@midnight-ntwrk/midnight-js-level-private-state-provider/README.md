@@ -13,6 +13,7 @@
 ## Interfaces
 
 - [LevelPrivateStateProviderConfig](interfaces/LevelPrivateStateProviderConfig.md)
+- [MigrationResult](interfaces/MigrationResult.md)
 - [PasswordRotationOptions](interfaces/PasswordRotationOptions.md)
 - [PasswordRotationResult](interfaces/PasswordRotationResult.md)
 
@@ -28,3 +29,4 @@
 
 - [decryptValue](functions/decryptValue.md)
 - [levelPrivateStateProvider](functions/levelPrivateStateProvider.md)
+- [migrateToAccountScoped](functions/migrateToAccountScoped.md)

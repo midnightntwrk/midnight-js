@@ -42,7 +42,9 @@ jobs:
           fetch-depth: 0
 
       - name: Install direnv
-        run: curl -sfL https://direnv.net/install.sh | bash
+        run: curl -sfL https://direnv.net/install.sh | DIRENV_GITHUB_API_TOKEN=$GITHUB_TOKEN  bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Load environment from .envrc
         run: |

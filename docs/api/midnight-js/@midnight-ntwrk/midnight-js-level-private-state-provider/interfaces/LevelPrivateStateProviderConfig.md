@@ -10,6 +10,26 @@ Configuration properties for the LevelDB based private state provider.
 
 ## Properties
 
+### accountId
+
+> `readonly` **accountId**: `string`
+
+Account identifier used to scope storage. This ensures data isolation
+between different accounts/wallets using the same database.
+
+The accountId is hashed (SHA-256, first 32 chars) before being used
+in storage paths, so any unique identifier can be used (e.g., wallet address).
+
+#### Example
+
+```typescript
+{
+  accountId: walletAddress
+}
+```
+
+***
+
 ### midnightDbName
 
 > `readonly` **midnightDbName**: `string`
