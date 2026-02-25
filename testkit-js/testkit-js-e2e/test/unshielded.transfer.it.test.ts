@@ -96,7 +96,7 @@ describe('Unshielded tokens', () => {
     const mintTxData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
-      circuitId: 'mintUnshieldedToSelfAndReceiveTest' as UnshieldedContractCircuits,
+      circuitId: 'mintUnshieldedToSelfTest' as UnshieldedContractCircuits,
       args: [DOMAIN_SEPARATOR, MINT_AMOUNT]
     });
 
@@ -116,7 +116,7 @@ describe('Unshielded tokens', () => {
     const mintTxData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
-      circuitId: 'mintUnshieldedToSelfAndReceiveTest' as UnshieldedContractCircuits,
+      circuitId: 'mintUnshieldedToSelfTest' as UnshieldedContractCircuits,
       args: [ANOTHER_DOMAIN_SEPARATOR, MINT_AMOUNT]
     });
 

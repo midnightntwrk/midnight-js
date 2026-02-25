@@ -4,7 +4,7 @@
   "runtime-version": "0.14.0",
   "circuits": [
     {
-      "name": "mintUnshieldedToSelfAndReceiveTest",
+      "name": "mintUnshieldedToSelfTest",
       "pure": false,
       "proof": true,
       "arguments": [
@@ -29,7 +29,7 @@
       }
     },
     {
-      "name": "mintUnshieldedToContractAndReceiveTest",
+      "name": "mintUnshieldedToContractTest",
       "pure": false,
       "proof": true,
       "arguments": [

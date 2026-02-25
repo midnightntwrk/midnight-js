@@ -93,29 +93,29 @@ export class Contract {
     }
     this.witnesses = witnesses_0;
     this.circuits = {
-      mintUnshieldedToSelfAndReceiveTest: (...args_1) => {
+      mintUnshieldedToSelfTest: (...args_1) => {
         if (args_1.length !== 3) {
-          throw new __compactRuntime.CompactError(`mintUnshieldedToSelfAndReceiveTest: expected 3 arguments (as invoked from Typescript), received ${args_1.length}`);
+          throw new __compactRuntime.CompactError(`mintUnshieldedToSelfTest: expected 3 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
         const contextOrig_0 = args_1[0];
         const domainSep_0 = args_1[1];
         const amount_0 = args_1[2];
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
-          __compactRuntime.typeError('mintUnshieldedToSelfAndReceiveTest',
+          __compactRuntime.typeError('mintUnshieldedToSelfTest',
                                      'argument 1 (as invoked from Typescript)',
                                      'unshielded.compact line 3 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(domainSep_0.buffer instanceof ArrayBuffer && domainSep_0.BYTES_PER_ELEMENT === 1 && domainSep_0.length === 32)) {
-          __compactRuntime.typeError('mintUnshieldedToSelfAndReceiveTest',
+          __compactRuntime.typeError('mintUnshieldedToSelfTest',
                                      'argument 1 (argument 2 as invoked from Typescript)',
                                      'unshielded.compact line 3 char 1',
                                      'Bytes<32>',
                                      domainSep_0)
         }
         if (!(typeof(amount_0) === 'bigint' && amount_0 >= 0n && amount_0 <= 18446744073709551615n)) {
-          __compactRuntime.typeError('mintUnshieldedToSelfAndReceiveTest',
+          __compactRuntime.typeError('mintUnshieldedToSelfTest',
                                      'argument 2 (argument 3 as invoked from Typescript)',
                                      'unshielded.compact line 3 char 1',
                                      'Uint<0..18446744073709551616>',
@@ -131,44 +131,44 @@ export class Contract {
           publicTranscript: [],
           privateTranscriptOutputs: []
         };
-        const result_0 = this._mintUnshieldedToSelfAndReceiveTest_0(context,
-                                                                    partialProofData,
-                                                                    domainSep_0,
-                                                                    amount_0);
+        const result_0 = this._mintUnshieldedToSelfTest_0(context,
+                                                          partialProofData,
+                                                          domainSep_0,
+                                                          amount_0);
         partialProofData.output = { value: _descriptor_1.toValue(result_0), alignment: _descriptor_1.alignment() };
         return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
       },
-      mintUnshieldedToContractAndReceiveTest: (...args_1) => {
+      mintUnshieldedToContractTest: (...args_1) => {
         if (args_1.length !== 4) {
-          throw new __compactRuntime.CompactError(`mintUnshieldedToContractAndReceiveTest: expected 4 arguments (as invoked from Typescript), received ${args_1.length}`);
+          throw new __compactRuntime.CompactError(`mintUnshieldedToContractTest: expected 4 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
         const contextOrig_0 = args_1[0];
         const domainSep_0 = args_1[1];
         const address_0 = args_1[2];
         const amount_0 = args_1[3];
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
-          __compactRuntime.typeError('mintUnshieldedToContractAndReceiveTest',
+          __compactRuntime.typeError('mintUnshieldedToContractTest',
                                      'argument 1 (as invoked from Typescript)',
                                      'unshielded.compact line 8 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(domainSep_0.buffer instanceof ArrayBuffer && domainSep_0.BYTES_PER_ELEMENT === 1 && domainSep_0.length === 32)) {
-          __compactRuntime.typeError('mintUnshieldedToContractAndReceiveTest',
+          __compactRuntime.typeError('mintUnshieldedToContractTest',
                                      'argument 1 (argument 2 as invoked from Typescript)',
                                      'unshielded.compact line 8 char 1',
                                      'Bytes<32>',
                                      domainSep_0)
         }
         if (!(typeof(address_0) === 'object' && address_0.bytes.buffer instanceof ArrayBuffer && address_0.bytes.BYTES_PER_ELEMENT === 1 && address_0.bytes.length === 32)) {
-          __compactRuntime.typeError('mintUnshieldedToContractAndReceiveTest',
+          __compactRuntime.typeError('mintUnshieldedToContractTest',
                                      'argument 2 (argument 3 as invoked from Typescript)',
                                      'unshielded.compact line 8 char 1',
                                      'struct ContractAddress<bytes: Bytes<32>>',
                                      address_0)
         }
         if (!(typeof(amount_0) === 'bigint' && amount_0 >= 0n && amount_0 <= 18446744073709551615n)) {
-          __compactRuntime.typeError('mintUnshieldedToContractAndReceiveTest',
+          __compactRuntime.typeError('mintUnshieldedToContractTest',
                                      'argument 3 (argument 4 as invoked from Typescript)',
                                      'unshielded.compact line 8 char 1',
                                      'Uint<0..18446744073709551616>',
@@ -184,11 +184,11 @@ export class Contract {
           publicTranscript: [],
           privateTranscriptOutputs: []
         };
-        const result_0 = this._mintUnshieldedToContractAndReceiveTest_0(context,
-                                                                        partialProofData,
-                                                                        domainSep_0,
-                                                                        address_0,
-                                                                        amount_0);
+        const result_0 = this._mintUnshieldedToContractTest_0(context,
+                                                              partialProofData,
+                                                              domainSep_0,
+                                                              address_0,
+                                                              amount_0);
         partialProofData.output = { value: _descriptor_1.toValue(result_0), alignment: _descriptor_1.alignment() };
         return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
       },
@@ -653,8 +653,8 @@ export class Contract {
       }
     };
     this.impureCircuits = {
-      mintUnshieldedToSelfAndReceiveTest: this.circuits.mintUnshieldedToSelfAndReceiveTest,
-      mintUnshieldedToContractAndReceiveTest: this.circuits.mintUnshieldedToContractAndReceiveTest,
+      mintUnshieldedToSelfTest: this.circuits.mintUnshieldedToSelfTest,
+      mintUnshieldedToContractTest: this.circuits.mintUnshieldedToContractTest,
       mintUnshieldedToUserTest: this.circuits.mintUnshieldedToUserTest,
       sendUnshieldedToSelfTest: this.circuits.sendUnshieldedToSelfTest,
       sendUnshieldedToContractTest: this.circuits.sendUnshieldedToContractTest,
@@ -684,8 +684,8 @@ export class Contract {
     const state_0 = new __compactRuntime.ContractState();
     let stateValue_0 = __compactRuntime.StateValue.newArray();
     state_0.data = new __compactRuntime.ChargedState(stateValue_0);
-    state_0.setOperation('mintUnshieldedToSelfAndReceiveTest', new __compactRuntime.ContractOperation());
-    state_0.setOperation('mintUnshieldedToContractAndReceiveTest', new __compactRuntime.ContractOperation());
+    state_0.setOperation('mintUnshieldedToSelfTest', new __compactRuntime.ContractOperation());
+    state_0.setOperation('mintUnshieldedToContractTest', new __compactRuntime.ContractOperation());
     state_0.setOperation('mintUnshieldedToUserTest', new __compactRuntime.ContractOperation());
     state_0.setOperation('sendUnshieldedToSelfTest', new __compactRuntime.ContractOperation());
     state_0.setOperation('sendUnshieldedToContractTest', new __compactRuntime.ContractOperation());
@@ -1120,10 +1120,7 @@ export class Contract {
                                                        rand_0);
     return result_0;
   }
-  _mintUnshieldedToSelfAndReceiveTest_0(context,
-                                        partialProofData,
-                                        domainSep_0,
-                                        amount_0)
+  _mintUnshieldedToSelfTest_0(context, partialProofData, domainSep_0, amount_0)
   {
     const color_0 = this._mintUnshieldedToken_0(context,
                                                 partialProofData,
@@ -1143,11 +1140,11 @@ export class Contract {
                                                                                                                                    result: undefined } }]).value)));
     return color_0;
   }
-  _mintUnshieldedToContractAndReceiveTest_0(context,
-                                            partialProofData,
-                                            domainSep_0,
-                                            address_0,
-                                            amount_0)
+  _mintUnshieldedToContractTest_0(context,
+                                  partialProofData,
+                                  domainSep_0,
+                                  address_0,
+                                  amount_0)
   {
     const color_0 = this._mintUnshieldedToken_0(context,
                                                 partialProofData,
