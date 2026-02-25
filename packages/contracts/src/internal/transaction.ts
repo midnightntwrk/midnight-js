@@ -84,6 +84,11 @@ export class TransactionContextImpl<
     this.options = options;
   }
 
+  /**
+   * @deprecated This method bypasses identity validation and may return states from a different
+   * contract or private state ID than expected. Use {@link GetCurrentStatesForIdentity} instead
+   * for validated access to cached states within scoped transactions.
+   */
   getCurrentStates(): ContractStates<Contract.PrivateState<C>> | PublicContractStates | undefined {
     return this.cachedStates?.states;
   }

@@ -23,8 +23,10 @@ import {
   type CachedStateIdentity,
   CacheStates,
   GetCurrentStatesForIdentity,
-  TransactionContextImpl} from '../internal/transaction';
-import { createMockContractAddress, createMockContractState,createMockProviders } from './test-mocks';
+  MergeUnsubmittedCallTxData,
+  TransactionContextImpl
+} from '../internal/transaction';
+import { createMockContractAddress, createMockContractState, createMockProviders, createMockUnprovenCallTxData } from './test-mocks';
 
 describe('TransactionContextImpl identity validation', () => {
   let mockProviders: ReturnType<typeof createMockProviders>;
@@ -196,6 +198,59 @@ describe('TransactionContextImpl identity validation', () => {
       const result = txCtx.getCurrentStates();
 
       expect(result).toBe(mockStates);
+    });
+  });
+
+  describe('MergeUnsubmittedCallTxData identity preservation', () => {
+    it('should preserve original identity after merging call data', () => {
+      const contractAddress = createMockContractAddress();
+      const privateStateId = 'test-private-state-id' as PrivateStateId;
+      const identity: CachedStateIdentity = { contractAddress, privateStateId };
+      const mockStates = createMockStates();
+      const mockCallData = createMockUnprovenCallTxData();
+
+      txCtx[CacheStates](mockStates, identity);
+      txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData, privateStateId);
+
+      const result = txCtx[GetCurrentStatesForIdentity](identity);
+
+      expect(result).toBeDefined();
+      expect(result?.privateState).toBe(mockCallData.private.nextPrivateState);
+    });
+
+    it('should allow GetCurrentStatesForIdentity with same identity after multiple merges', () => {
+      const contractAddress = createMockContractAddress();
+      const privateStateId = 'test-private-state-id' as PrivateStateId;
+      const identity: CachedStateIdentity = { contractAddress, privateStateId };
+      const mockStates = createMockStates();
+      const mockCallData1 = createMockUnprovenCallTxData({ private: { nextPrivateState: { call: 1 } } });
+      const mockCallData2 = createMockUnprovenCallTxData({ private: { nextPrivateState: { call: 2 } } });
+
+      txCtx[CacheStates](mockStates, identity);
+      txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData1, privateStateId);
+      txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData2, privateStateId);
+
+      const result = txCtx[GetCurrentStatesForIdentity](identity);
+
+      expect(result).toBeDefined();
+      expect(result?.privateState).toEqual({ call: 2 });
+    });
+
+    it('should throw when requesting with different identity after merge', () => {
+      const contractAddress1 = createMockContractAddress();
+      const contractAddress2 = createMockContractAddress();
+      const privateStateId = 'test-private-state-id' as PrivateStateId;
+      const cachedIdentity: CachedStateIdentity = { contractAddress: contractAddress1, privateStateId };
+      const differentIdentity: CachedStateIdentity = { contractAddress: contractAddress2, privateStateId };
+      const mockStates = createMockStates();
+      const mockCallData = createMockUnprovenCallTxData();
+
+      txCtx[CacheStates](mockStates, cachedIdentity);
+      txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData, privateStateId);
+
+      expect(() => txCtx[GetCurrentStatesForIdentity](differentIdentity)).toThrow(
+        ScopedTransactionIdentityMismatchError
+      );
     });
   });
 });

@@ -15,7 +15,7 @@
 
 import type { Contract } from '@midnight-ntwrk/compact-js';
 import type { ContractState } from '@midnight-ntwrk/compact-runtime';
-import type { FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
+import type { FinalizedTxData, PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 
 /**
  * An error indicating that a transaction submitted to a consensus node failed.
@@ -162,8 +162,8 @@ export class IncompleteFindContractPrivateStateConfig extends Error {
  */
 export class ScopedTransactionIdentityMismatchError extends Error {
   constructor(
-    readonly cached: { contractAddress: string; privateStateId?: string },
-    readonly requested: { contractAddress: string; privateStateId?: string }
+    readonly cached: { contractAddress: string; privateStateId?: PrivateStateId },
+    readonly requested: { contractAddress: string; privateStateId?: PrivateStateId }
   ) {
     super('Scoped transaction identity mismatch');
     this.name = 'ScopedTransactionIdentityMismatchError';
