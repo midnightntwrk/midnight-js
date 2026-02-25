@@ -15,7 +15,7 @@ services:
       start_period: 10s
 
   indexer:
-    image: 'ghcr.io/midnight-ntwrk/indexer-standalone:3.1.0-rc.3'
+    image: 'ghcr.io/midnight-ntwrk/indexer-standalone:3.1.0'
     container_name: indexer_$TESTCONTAINERS_UID
     ports:
       - '8088'
