@@ -28,8 +28,6 @@ jobs:
       should_run: true
       should_prerelease: false
       network: undeployed
-      allure_upload: false
-      allure_project_id: midnight-js-main
     secrets: inherit
 
   cd-release:
