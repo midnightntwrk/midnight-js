@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0**](../../../README.md)
+[**Midnight.js API Reference v3.1.0**](../../../README.md)
 
 ***
 
@@ -76,6 +76,32 @@ If no states exist to export or limit exceeded.
 
 ***
 
+### exportSigningKeys()
+
+> **exportSigningKeys**(`options?`): `Promise`\<[`SigningKeyExport`](SigningKeyExport.md)\>
+
+Export all signing keys as an encrypted JSON-serializable structure.
+
+#### Parameters
+
+##### options?
+
+[`ExportSigningKeysOptions`](ExportSigningKeysOptions.md)
+
+Export options including optional custom password and key limit.
+
+#### Returns
+
+`Promise`\<[`SigningKeyExport`](SigningKeyExport.md)\>
+
+A JSON-serializable export structure that can be saved or transmitted.
+
+#### Throws
+
+If no keys exist to export or limit exceeded.
+
+***
+
 ### get()
 
 > **get**(`privateStateId`): `Promise`\<`PS` \| `null`\>
@@ -141,6 +167,46 @@ Import options including password, conflict strategy, and state limit.
 `Promise`\<[`ImportPrivateStatesResult`](ImportPrivateStatesResult.md)\>
 
 Result indicating how many states were imported/skipped/overwritten.
+
+#### Throws
+
+If decryption fails (wrong password or corrupted data).
+
+#### Throws
+
+If the export format is invalid or unsupported.
+
+#### Throws
+
+If conflictStrategy is 'error' and conflicts exist.
+
+***
+
+### importSigningKeys()
+
+> **importSigningKeys**(`exportData`, `options?`): `Promise`\<[`ImportSigningKeysResult`](ImportSigningKeysResult.md)\>
+
+Import signing keys from a previously exported structure.
+
+#### Parameters
+
+##### exportData
+
+[`SigningKeyExport`](SigningKeyExport.md)
+
+The export data structure to import.
+
+##### options?
+
+[`ImportSigningKeysOptions`](ImportSigningKeysOptions.md)
+
+Import options including password, conflict strategy, and key limit.
+
+#### Returns
+
+`Promise`\<[`ImportSigningKeysResult`](ImportSigningKeysResult.md)\>
+
+Result indicating how many keys were imported/skipped/overwritten.
 
 #### Throws
 

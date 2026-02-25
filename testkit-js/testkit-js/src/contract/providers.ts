@@ -15,7 +15,7 @@
 
 import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
-import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider-example';
+import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
 import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
 import { type MidnightProviders, type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 
@@ -49,11 +49,15 @@ export const initializeMidnightProviders = <ICK extends string, PS>(
 ): MidnightProviders<ICK, PrivateStateId, PS> => {
   const zkConfigProvider = new NodeZkConfigProvider<ICK>(contractConfiguration.zkConfigPath);
 
+  const coinPublicKey = midnightWalletProvider.getCoinPublicKey();
+  const accountId = Buffer.from(coinPublicKey).toString('hex');
+
   return {
     privateStateProvider: levelPrivateStateProvider<PrivateStateId, PS>({
       privateStateStoreName: contractConfiguration.privateStateStoreName,
       signingKeyStoreName: `${contractConfiguration.privateStateStoreName}-signing-keys`,
-      privateStoragePasswordProvider: () => { return 'key-just-for-testing-here!' }
+      privateStoragePasswordProvider: () => { return 'Answer to the Ultimate Question of Life, the Universe, and Everything!'; },
+      accountId
     }),
     publicDataProvider: indexerPublicDataProvider(environmentConfiguration.indexer, environmentConfiguration.indexerWS),
     zkConfigProvider,

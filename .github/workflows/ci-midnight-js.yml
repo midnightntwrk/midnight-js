@@ -44,7 +44,9 @@ jobs:
           fetch-depth: 0
 
       - name: Install direnv
-        run: curl -sfL https://direnv.net/install.sh | bash
+        run: curl -sfL https://direnv.net/install.sh | DIRENV_GITHUB_API_TOKEN=$GITHUB_TOKEN  bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Load environment from .envrc
         run: |
@@ -66,7 +68,7 @@ jobs:
         run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Cache Turbo and Yarn dependencies
-        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: |
             **/node_modules
@@ -95,6 +97,6 @@ jobs:
         run: yarn workspaces foreach --all version ${{ steps.vars.outputs.target_version }}
 
       - name: Publish packages
-        run: yarn deploy --filter="./packages/*" --cache-dir ./turbo -- --tag ${{ steps.vars.outputs.target_version }}
+        run: yarn deploy --filter="./packages/*" --cache-dir ./turbo -- --tag pre
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}

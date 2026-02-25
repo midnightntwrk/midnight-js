@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-http-client-proof-provider",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Implementation of proof provider based on the Midnight ledger proof server",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -37,11 +37,10 @@
     "@midnight-ntwrk/midnight-js-utils": "workspace:*",
     "cross-fetch": "^4.1.0",
     "fetch-retry": "^6.0.0",
-    "lodash": "^4.17.21"
+    "lodash": "^4.17.23"
   },
   "devDependencies": {
     "@midnight-ntwrk/midnight-js-compact": "workspace:*",
     "@types/lodash": "^4.17.19"
-  },
-  "stableVersion": "3.0.0"
+  }
 }

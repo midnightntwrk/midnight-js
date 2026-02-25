@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v3.0.0**](../README.md)
+[**@midnight-ntwrk/testkit-js v3.1.0**](../README.md)
 
 ***
 
@@ -44,9 +44,35 @@
 
 ***
 
+### fromMnemonic()
+
+> `static` **fromMnemonic**(`mnemonic`): `WalletSeeds`
+
+#### Parameters
+
+##### mnemonic
+
+`string`
+
+#### Returns
+
+`WalletSeeds`
+
+***
+
 ### generateRandom()
 
 > `static` **generateRandom**(): `WalletSeeds`
+
+#### Returns
+
+`WalletSeeds`
+
+***
+
+### testWallet()
+
+> `static` **testWallet**(): `WalletSeeds`
 
 #### Returns
 

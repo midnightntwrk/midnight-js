@@ -40,6 +40,16 @@ export class PrivateStateExportError extends Error {
 }
 
 /**
+ * An error thrown when exporting signing keys fails.
+ */
+export class SigningKeyExportError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SigningKeyExportError';
+  }
+}
+
+/**
  * Cause types for private state import errors.
  */
 export type PrivateStateImportErrorCause =
@@ -90,9 +100,12 @@ export class InvalidExportFormatError extends PrivateStateImportError {
  * Error thrown when import conflicts with existing data and conflictStrategy is 'error'.
  */
 export class ImportConflictError extends PrivateStateImportError {
-  constructor(public readonly conflictCount: number) {
+  constructor(
+    public readonly conflictCount: number,
+    entityName = 'private state'
+  ) {
     super(
-      `Import conflicts with ${conflictCount} existing private state${conflictCount === 1 ? '' : 's'}`,
+      `Import conflicts with ${conflictCount} existing ${entityName}${conflictCount === 1 ? '' : 's'}`,
       'conflict'
     );
     this.name = 'ImportConflictError';

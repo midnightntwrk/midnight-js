@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v3.0.0**](README.md)
+[**@midnight-ntwrk/testkit-js v3.1.0**](README.md)
 
 ***
 
@@ -49,6 +49,7 @@
 - [latestContainersConfiguration](variables/latestContainersConfiguration.md)
 - [logger](variables/logger.md)
 - [MINUTE](variables/MINUTE.md)
+- [TEST\_MNEMONIC](variables/TEST_MNEMONIC.md)
 
 ## Functions
 

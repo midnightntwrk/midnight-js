@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0**](../../../README.md)
+[**Midnight.js API Reference v3.1.0**](../../../README.md)
 
 ***
 
@@ -16,11 +16,11 @@ Error thrown when the export data format is invalid.
 
 ### Constructor
 
-> **new InvalidExportFormatError**(`message`): `InvalidExportFormatError`
+> **new InvalidExportFormatError**(`message?`): `InvalidExportFormatError`
 
 #### Parameters
 
-##### message
+##### message?
 
 `string` = `'Invalid export format'`
 

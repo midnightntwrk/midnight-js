@@ -85,7 +85,7 @@ export const createCircuitCallTxInterface = <C extends Contract.Any>(
       ...acc,
       [circuitId]: (...args: unknown[]) => {
         const txCtx = args.length > 0 && Transaction.isTransactionContext(args[0]) ? args[0] : undefined;
-        const callArgs = !txCtx ? args : args as Contract.CircuitParameters<C, typeof circuitId>;
+        const callArgs = txCtx ? args.slice(1) : args;
         const callOptions = createCallTxOptions(
           compiledContract,
           circuitId,

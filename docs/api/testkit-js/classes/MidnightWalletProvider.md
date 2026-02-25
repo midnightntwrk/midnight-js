@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v3.0.0**](../README.md)
+[**@midnight-ntwrk/testkit-js v3.1.0**](../README.md)
 
 ***
 
@@ -50,7 +50,7 @@ Handles transaction balancing, submission, and wallet state management.
 
 ### balanceTx()
 
-> **balanceTx**(`tx`, `ttl`): `Promise`\<`FinalizedTransaction`\>
+> **balanceTx**(`tx`, `ttl?`): `Promise`\<`FinalizedTransaction`\>
 
 Balances a transaction
 
@@ -62,7 +62,7 @@ Balances a transaction
 
 The transaction to balance.
 
-##### ttl
+##### ttl?
 
 `Date` = `...`
 
@@ -106,15 +106,15 @@ The transaction to balance.
 
 ### start()
 
-> **start**(`waitForFundsInWallet`, `tokenType`): `Promise`\<`void`\>
+> **start**(`waitForFundsInWallet?`, `tokenType?`): `Promise`\<`void`\>
 
 #### Parameters
 
-##### waitForFundsInWallet
+##### waitForFundsInWallet?
 
 `boolean` = `true`
 
-##### tokenType
+##### tokenType?
 
 `TokenType` = `...`
 

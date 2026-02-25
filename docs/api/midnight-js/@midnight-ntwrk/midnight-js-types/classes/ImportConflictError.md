@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0**](../../../README.md)
+[**Midnight.js API Reference v3.1.0**](../../../README.md)
 
 ***
 
@@ -16,13 +16,17 @@ Error thrown when import conflicts with existing data and conflictStrategy is 'e
 
 ### Constructor
 
-> **new ImportConflictError**(`conflictCount`): `ImportConflictError`
+> **new ImportConflictError**(`conflictCount`, `entityName?`): `ImportConflictError`
 
 #### Parameters
 
 ##### conflictCount
 
 `number`
+
+##### entityName?
+
+`string` = `'private state'`
 
 #### Returns
 

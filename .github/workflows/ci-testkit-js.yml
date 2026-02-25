@@ -53,7 +53,9 @@ jobs:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # ratchet:actions/checkout@v5
 
       - name: Install direnv
-        run: curl -sfL https://direnv.net/install.sh | bash
+        run: curl -sfL https://direnv.net/install.sh | DIRENV_GITHUB_API_TOKEN=$GITHUB_TOKEN  bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Load environment from .envrc
         run: |
@@ -82,7 +84,7 @@ jobs:
         run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Cache Turbo and Yarn dependencies
-        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: |
             **/node_modules
@@ -106,7 +108,7 @@ jobs:
 
       - name: Run tests
         run: |
-          yarn test ${{ inputs.yarn_filter }} --cache-dir ./turbo
+          yarn test --filter="./testkit-js/*" --cache-dir ./turbo
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
@@ -138,7 +140,9 @@ jobs:
           fetch-depth: 0
 
       - name: Install direnv
-        run: curl -sfL https://direnv.net/install.sh | bash
+        run: curl -sfL https://direnv.net/install.sh | DIRENV_GITHUB_API_TOKEN=$GITHUB_TOKEN  bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Load environment from .envrc
         run: |
@@ -161,7 +165,7 @@ jobs:
           yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Cache Turbo and Yarn dependencies
-        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: |
             **/node_modules
@@ -181,18 +185,15 @@ jobs:
         id: vars
         run: |
           calculatedSha=$(git rev-parse --short ${{ github.sha }})
-          version=$(jq -r '.v_info.version' version.testkitjs.json)
-          preRelease=$(jq -r '.v_info.preRelease' version.testkitjs.json)
-          tag=$(jq -r '.v_info.tag' version.testkitjs.json)
-          targetVersion="$version$preRelease.g$calculatedSha"
+          currentVersion=$(jq -r .version package.json)
+          targetVersion="$currentVersion-pre.$calculatedSha"
           echo "target_version=$targetVersion" >> $GITHUB_OUTPUT
-          echo "tag=$tag" >> $GITHUB_OUTPUT
 
       - name: Bump versions
         run: yarn workspaces foreach -R --from "./testkit-js/*" --exclude "./packages/*" version ${{ steps.vars.outputs.target_version }}
 
       - name: Publish packages
-        run: yarn deploy ${{ inputs.yarn_filter }} --cache-dir ./turbo -- --tag ${{ steps.vars.outputs.tag }}
+        run: yarn deploy --filter="./testkit-js/*" --cache-dir ./turbo -- --tag pre
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
@@ -228,7 +229,9 @@ jobs:
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # ratchet:actions/checkout@v5
 
       - name: Install direnv
-        run: curl -sfL https://direnv.net/install.sh | bash
+        run: curl -sfL https://direnv.net/install.sh | DIRENV_GITHUB_API_TOKEN=$GITHUB_TOKEN  bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Load environment from .envrc
         run: |
@@ -257,7 +260,7 @@ jobs:
         run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Cache Turbo and Yarn dependencies
-        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: |
             **/node_modules
@@ -293,7 +296,7 @@ jobs:
 
       - name: Run e2e tests - ${{ matrix.test-file }}
         if: ${{ !contains(github.event.head_commit.message, '[skip_it]') }}
-        run: yarn e2e-single ${{ inputs.yarn_filter }} --concurrency 1 --cache-dir ./turbo
+        run: yarn e2e-single --filter="./testkit-js/*" --concurrency 1 --cache-dir ./turbo
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           MN_TEST_ENVIRONMENT: ${{ inputs.network }}

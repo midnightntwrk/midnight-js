@@ -169,7 +169,7 @@ describe('Contracts API Snark Upgrade [@slow][@smoke]', () => {
         await counterProviders.privateStateProvider.setSigningKey(contractAddress, oldAuthority);
 
         await expect(submitRemoveVerifierKeyTx(counterProviders, CompiledCounterContract, contractAddress, CIRCUIT_ID_RESET)).rejects.toThrow(
-          'Transaction submission error: Transaction submission failed'
+          'Transaction submission error'
         );
       }
     },

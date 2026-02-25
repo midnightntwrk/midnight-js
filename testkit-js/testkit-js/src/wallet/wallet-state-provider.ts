@@ -15,8 +15,8 @@
 
 import fs from 'node:fs';
 
-import { type ShieldedWallet } from '@midnight-ntwrk/wallet-sdk-shielded';
-import { type UnshieldedWallet } from '@midnight-ntwrk/wallet-sdk-unshielded-wallet';
+import { type ShieldedWalletAPI } from '@midnight-ntwrk/wallet-sdk-shielded';
+import { type UnshieldedWalletAPI } from '@midnight-ntwrk/wallet-sdk-unshielded-wallet';
 import { type Logger } from 'pino';
 
 import { getEnvVarEnvironment } from '@/env-vars';
@@ -74,10 +74,10 @@ export class WalletSaveStateProvider {
 
   /**
    * Saves the wallet state to a compressed file
-   * @param {ShieldedWallet | UnshieldedWallet} wallet - The wallet instance to save state from
+   * @param {ShieldedWalletAPI | UnshieldedWalletAPI} wallet - The wallet instance to save state from
    * @returns {Promise<void>} A promise that resolves when the save is complete
    */
-  async save(wallet: ShieldedWallet | UnshieldedWallet): Promise<void> {
+  async save(wallet: ShieldedWalletAPI | UnshieldedWalletAPI): Promise<void> {
     this.logger.info(`Saving state in ${this.filePath}`);
     try {
       fs.mkdirSync(this.directoryPath, { recursive: true });

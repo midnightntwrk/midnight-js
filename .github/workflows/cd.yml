@@ -21,15 +21,30 @@ jobs:
       should_prerelease: false
     secrets: inherit
 
+  ci-testkitjs:
+    name: Run CI for Testkit.js
+    uses: ./.github/workflows/ci-testkit-js.yml
+    with:
+      should_run: true
+      should_prerelease: false
+      network: undeployed
+      allure_upload: false
+      allure_project_id: midnight-js-main
+    secrets: inherit
+
   cd-release:
     runs-on: ubuntu-latest
-    needs: ci-midnightjs
+    needs: [ci-midnightjs, ci-testkitjs]
     steps:
 
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # ratchet:actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Install direnv
-        run: curl -sfL https://direnv.net/install.sh | bash
+        run: curl -sfL https://direnv.net/install.sh | DIRENV_GITHUB_API_TOKEN=$GITHUB_TOKEN  bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Load environment from .envrc
         run: |
@@ -51,7 +66,7 @@ jobs:
         run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Cache Turbo and Yarn dependencies
-        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: |
             **/node_modules
@@ -95,6 +110,7 @@ jobs:
         with:
           filters: |
             midnight-js: 'packages/**'
+            testkit-js: 'testkit-js/**'
 
       - name: Validate Packages Before Publishing
         if: steps.changes.outputs.midnight-js == 'true'
@@ -120,3 +136,28 @@ jobs:
           body_path: release_notes.md
           draft: false
           prerelease: false
+
+      - name: Extract version number
+        id: version
+        run: |
+          # Remove 'v' prefix from tag to get version number
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "number=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Bump testkit-js versions
+        if: steps.changes.outputs.testkit-js == 'true'
+        run: yarn workspaces foreach -R --from "./testkit-js/*" --exclude "./packages/*" version ${{ steps.version.outputs.number }}
+
+      - name: Validate testkit-js Packages Before Publishing
+        if: steps.changes.outputs.testkit-js == 'true'
+        uses: ./.github/actions/validate-packages
+        with:
+          workspace-path: './testkit-js'
+
+      - name: Publish testkit-js packages
+        if: steps.changes.outputs.testkit-js == 'true'
+        run: |
+          yarn deploy --filter="./testkit-js/*" --cache-dir ./turbo --concurrency=1
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}

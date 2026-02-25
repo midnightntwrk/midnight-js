@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v3.0.0**](../README.md)
+[**@midnight-ntwrk/testkit-js v3.1.0**](../README.md)
 
 ***
 
@@ -152,17 +152,17 @@ If trying to inject proof server container when starting new environment
 
 ### startMidnightWalletProviders()
 
-> **startMidnightWalletProviders**(`amount`, `seeds`): `Promise`\<[`MidnightWalletProvider`](MidnightWalletProvider.md)[]\>
+> **startMidnightWalletProviders**(`amount?`, `seeds?`): `Promise`\<[`MidnightWalletProvider`](MidnightWalletProvider.md)[]\>
 
 Creates and starts the specified number of wallet providers
 
 #### Parameters
 
-##### amount
+##### amount?
 
 `number` = `1`
 
-##### seeds
+##### seeds?
 
 `string`[] | `undefined`
 

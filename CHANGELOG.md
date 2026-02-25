@@ -2,6 +2,55 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [3.1.0](https://github.com/midnightntwrk/midnight-js/compare/v3.0.0...v3.1.0) (2026-02-11)
+
+
+### Features
+
+* add contract address scoping for private state operations ([#470](https://github.com/midnightntwrk/midnight-js/pull/470)) ([d828642](https://github.com/midnightntwrk/midnight-js/commit/d828642b6efa3e5b2904c80ead26a573cab88035))
+* integrate `@midnight-ntwrk/compact-js` for contract building and deployment ([49623fb](https://github.com/midnightntwrk/midnight-js/commit/49623fbea0aaeef87a4247b51619b0db9fb62291))
+* **midnight-js:** add import/export functionality to private-state-provider ([#435](https://github.com/midnightntwrk/midnight-js/pull/435)) ([ac82edc](https://github.com/midnightntwrk/midnight-js/commit/ac82edc371870a7e011370a639767ca53b265d63))
+
+
+### Bug Fixes
+
+* Ensure `TransactionContext` is not included in circuit call arguments ([#497](https://github.com/midnightntwrk/midnight-js/pull/497)) ([ca28c3f](https://github.com/midnightntwrk/midnight-js/commit/ca28c3f1bc190219a1c9d25edabd7c8e3a338a93))
+
+
+### Documentation
+
+* add v3.1.0 release notes ([#500](https://github.com/midnightntwrk/midnight-js/pull/500)) ([7aa68c3](https://github.com/midnightntwrk/midnight-js/commit/7aa68c31b962d4a2a6853188b5b64044f5ac3d92))
+* API documentation update ([#477](https://github.com/midnightntwrk/midnight-js/pull/477)) ([16f00ee](https://github.com/midnightntwrk/midnight-js/commit/16f00ee36d316e5d05a21b9512ffd9deb4cef603))
+* API documentation update ([#482](https://github.com/midnightntwrk/midnight-js/pull/482)) ([40197d5](https://github.com/midnightntwrk/midnight-js/commit/40197d5f5e8877566c0fe5322562619042f9a547))
+* API documentation update ([#488](https://github.com/midnightntwrk/midnight-js/pull/488)) ([35b0dc6](https://github.com/midnightntwrk/midnight-js/commit/35b0dc69d9d217d48f88caec9999151664aefcb3))
+* API documentation update ([#489](https://github.com/midnightntwrk/midnight-js/pull/489)) ([6b69452](https://github.com/midnightntwrk/midnight-js/commit/6b694522d45f4b3ac1bda2b5ac8b9d3817df46d1))
+* clean up `level-private-state-provider` README ([#502](https://github.com/midnightntwrk/midnight-js/pull/502)) ([54b73e0](https://github.com/midnightntwrk/midnight-js/commit/54b73e0a414c92453744863eb04631efb9419dae))
+* update v3.0.0 docs to reflect `deployContract` API changes ([2a7d914](https://github.com/midnightntwrk/midnight-js/commit/2a7d9147de145c2b56ac8024df943cca01ed2b51))
+
+
+### Code Refactoring
+
+* rename `level-private-state-provider-example` package to `level-private-state-provider` ([#496](https://github.com/midnightntwrk/midnight-js/pull/496)) ([bd2c1f6](https://github.com/midnightntwrk/midnight-js/commit/bd2c1f61d53e78f3164e7f2b5a70c85e26649778))
+
+
+### Tests
+
+* replace `it` with `test` in all test files for consistency and remove unused constants ([#491](https://github.com/midnightntwrk/midnight-js/pull/491)) ([aecd82c](https://github.com/midnightntwrk/midnight-js/commit/aecd82ce749f432c31fd369e690cd7a6835a2340))
+
+
+### Improvements
+
+* bump `indexer` and `node` images in `testkit-js` to latest versions ([#490](https://github.com/midnightntwrk/midnight-js/pull/490)) ([35b6f7b](https://github.com/midnightntwrk/midnight-js/commit/35b6f7b274fbb8faf2fbe32e9f48ae732ccb127f))
+* deprecate `@midnight-ntwrk/midnight-js-level-private-state-provider` ([#487](https://github.com/midnightntwrk/midnight-js/pull/487)) ([4f6f735](https://github.com/midnightntwrk/midnight-js/commit/4f6f7350060ff7ffc0fa4dd37ddc4119deecb9e8))
+* **deps:** bump actions/github-script from 7 to 8 ([#438](https://github.com/midnightntwrk/midnight-js/pull/438)) ([3241bc4](https://github.com/midnightntwrk/midnight-js/commit/3241bc4153a186313536b638ce61211429c64c59))
+* **deps:** bump docker/login-action from 3.6.0 to 3.7.0 ([#483](https://github.com/midnightntwrk/midnight-js/pull/483)) ([bde755b](https://github.com/midnightntwrk/midnight-js/commit/bde755b438179c66272be36ba845705e1381d1f6))
+* **deps:** bump mikepenz/action-junit-report from 6.1.0 to 6.2.0 ([#484](https://github.com/midnightntwrk/midnight-js/pull/484)) ([f9938a8](https://github.com/midnightntwrk/midnight-js/commit/f9938a8b5f826ec851fbf67ddad83cb59f0a17f2))
+* **deps:** bump tar in the npm_and_yarn group across 1 directory ([#476](https://github.com/midnightntwrk/midnight-js/pull/476)) ([e1348a5](https://github.com/midnightntwrk/midnight-js/commit/e1348a57326ebb322f1785bd11c64299e081cedf))
+* handle empty `preRelease` in target version calculation in CD workflow ([#478](https://github.com/midnightntwrk/midnight-js/pull/478)) ([641fa5a](https://github.com/midnightntwrk/midnight-js/commit/641fa5a5b5733802fb283d67c373531909a9493a))
+* multiple libraries updates + yarn update to 4.12.0 ([#485](https://github.com/midnightntwrk/midnight-js/pull/485)) ([d5d7129](https://github.com/midnightntwrk/midnight-js/commit/d5d7129f9b5135c5e88a1ae207ef887711642fb7))
+* refactor tokens tests ([#486](https://github.com/midnightntwrk/midnight-js/pull/486)) ([bb03570](https://github.com/midnightntwrk/midnight-js/commit/bb035704b0180f21cae127b45173e9d095d48768))
+* remove deprecated TestKit.js CD workflow ([#492](https://github.com/midnightntwrk/midnight-js/pull/492)) ([9840d93](https://github.com/midnightntwrk/midnight-js/commit/9840d93033f33f100d21d6df31383bbb6e2ee428))
+
 ## [3.0.0](https://github.com/midnightntwrk/midnight-js/compare/v3.0.0-alpha.15...v3.0.0) (2026-01-28)
 
 
@@ -23,6 +72,7 @@ All notable changes to this project will be documented in this file. See [commit
 
 ### Improvements
 
+* **release:** bump version to 3.0.0 ([#475](https://github.com/midnightntwrk/midnight-js/pull/475)) ([8fbe81f](https://github.com/midnightntwrk/midnight-js/commit/8fbe81fd728b18221019ec4845ab4c630805ac2d))
 * remove `newCoins` parameter and related logic from `balanceTx` method and update affected tests, docs, and types ([#466](https://github.com/midnightntwrk/midnight-js/pull/466)) ([f300457](https://github.com/midnightntwrk/midnight-js/commit/f300457f737cda060828f67c9b4d9659c485c555))
 * remove unused `signTx` method from `midnight-wallet-provider` and update `balanceTx` logic to sign balancing transactions ([cead765](https://github.com/midnightntwrk/midnight-js/commit/cead7651543bac99b7090849e2bebe405aed8141))
 * skip failing e2e tests in indexer and contracts modules ([#472](https://github.com/midnightntwrk/midnight-js/pull/472)) ([36e6c8c](https://github.com/midnightntwrk/midnight-js/commit/36e6c8c493ffcf6eef1816a9842e5ce2a5f9b9c7))
@@ -82,92 +132,38 @@ All notable changes to this project will be documented in this file. See [commit
 * **release:** bump version to 3.0.0-alpha.14 ([5304b89](https://github.com/midnightntwrk/midnight-js/commit/5304b89cbead45115fd55c1d091cb493ef7e0eac))
 * update changelog generation commands + improve release configuration ([#421](https://github.com/midnightntwrk/midnight-js/pull/421)) ([36a36e3](https://github.com/midnightntwrk/midnight-js/commit/36a36e3c52e651f05103650887feb63d53c84995))
 
-## [3.0.0-alpha.13](https://github.com/midnightntwrk/midnight-js/compare/v3.0.0-alpha.12...v3.0.0-alpha.13) (2026-01-08)
-
-
-### Documentation
-
-* API documentation update ([#417](https://github.com/midnightntwrk/midnight-js/pull/417)) ([082c77a](https://github.com/midnightntwrk/midnight-js/commit/082c77a5b3d318585919cbc1daacfbbf4a8e331d))
-
-
-### Improvements
-
-* **deps:** update dependency express to v5.2.0 [security] ([#363](https://github.com/midnightntwrk/midnight-js/pull/363)) ([e7bab3d](https://github.com/midnightntwrk/midnight-js/commit/e7bab3d028001c03b69582869daed6577bb45fcb))
-* **release:** bump version to 3.0.0-alpha.13 ([#419](https://github.com/midnightntwrk/midnight-js/pull/419)) ([f463218](https://github.com/midnightntwrk/midnight-js/commit/f463218aa131bc32f8a2fe8816d7b7b23fda5b9a))
-
-## [3.0.0-alpha.12](https://github.com/midnightntwrk/midnight-js/compare/v3.0.0-alpha.11...v3.0.0-alpha.12) (2026-01-07)
-
-
-### Features
-
-* Support contract calls within scoped transactions ([#404](https://github.com/midnightntwrk/midnight-js/pull/404)) ([2968e77](https://github.com/midnightntwrk/midnight-js/commit/2968e77b19bb3dbb5cc4b5de046bca4e1c22cf5f))
-
-
-### Bug Fixes
-
-* update compact compiler version ([#402](https://github.com/midnightntwrk/midnight-js/pull/402)) ([8312d09](https://github.com/midnightntwrk/midnight-js/commit/8312d09480ef1709a0fd78957f22fcd9c5438577))
-
-
-### Documentation
-
-* API documentation update ([#394](https://github.com/midnightntwrk/midnight-js/pull/394)) ([ecfb2d0](https://github.com/midnightntwrk/midnight-js/commit/ecfb2d059e947845810249a5f519e48172744dd3))
-* API documentation update ([#413](https://github.com/midnightntwrk/midnight-js/pull/413)) ([d0d206d](https://github.com/midnightntwrk/midnight-js/commit/d0d206dba5692d85b6fd9e8ac0052d3372098dcf))
-
-
-### Improvements
-
-* **deps:** bump actions/download-artifact from 6.0.0 to 7.0.0 ([#386](https://github.com/midnightntwrk/midnight-js/pull/386)) ([4a42c64](https://github.com/midnightntwrk/midnight-js/commit/4a42c64b26f30f208b77c948300854a0d8012611))
-* **deps:** bump EnricoMi/publish-unit-test-result-action ([#401](https://github.com/midnightntwrk/midnight-js/pull/401)) ([9ea2c1b](https://github.com/midnightntwrk/midnight-js/commit/9ea2c1bd46f921ca59861782bf302037baa2c9de))
-* **deps:** bump mikepenz/action-junit-report from 6.0.1 to 6.1.0 ([#409](https://github.com/midnightntwrk/midnight-js/pull/409)) ([0d39b4c](https://github.com/midnightntwrk/midnight-js/commit/0d39b4c737aecaec6a6112778624776e6b1dc942))
-* **deps:** bump peter-evans/create-pull-request from 6 to 8 ([#387](https://github.com/midnightntwrk/midnight-js/pull/387)) ([0dcfe29](https://github.com/midnightntwrk/midnight-js/commit/0dcfe291772d852d56eddc8976213bfaa466c78f))
-* fix a release process and add release documentation ([#399](https://github.com/midnightntwrk/midnight-js/pull/399)) ([8784088](https://github.com/midnightntwrk/midnight-js/commit/8784088d007e852d27a0b82419b10e4f57901aff))
-* fix the documentation on encryption ([7cec0aa](https://github.com/midnightntwrk/midnight-js/commit/7cec0aa8b7500e94b4425d33a975a87495906522))
-* merge release/v3.0.0-alpha.12 into main ([#416](https://github.com/midnightntwrk/midnight-js/pull/416)) ([80de708](https://github.com/midnightntwrk/midnight-js/commit/80de70853f09992094906f37b8d2d1ef24e4eb70))
-* Remove source code for Compact.js and Platform.js ([#406](https://github.com/midnightntwrk/midnight-js/pull/406)) ([561c5fa](https://github.com/midnightntwrk/midnight-js/commit/561c5fad532aa23eb6177366c154c6a356c48f20))
-* tests linting issues - fix warnings ([5cfd89e](https://github.com/midnightntwrk/midnight-js/commit/5cfd89ec3b7dc7619c64ae9b24c1c74f63b202dc))
-* tests linting issues - fix warnings ([b4ba6d3](https://github.com/midnightntwrk/midnight-js/commit/b4ba6d32d6ecdb5bf07b26689de62fc6a87e9c9c))
-* update wallet-sdk-facade and related dependencies to version 1.0.0-beta.13 ([d029a1e](https://github.com/midnightntwrk/midnight-js/commit/d029a1e1d765d881c056ee1583007cf049598d33))
-
-## [3.0.0-alpha.11](https://github.com/midnightntwrk/midnight-js/compare/v3.0.0-alpha.10...v3.0.0-alpha.11) (2025-12-17)
+## [3.0.0-alpha.13](https://github.com/midnightntwrk/midnight-js/compare/v3.0.0-alpha.8...v3.0.0-alpha.13) (2026-01-08)
 
 
 ### Features
 
 * add a configurable password provider with wallet fallback ([c318cb4](https://github.com/midnightntwrk/midnight-js/commit/c318cb450f083ba54aac5806bc9ae91a9f81997c))
-* fix the repository urls ([#380](https://github.com/midnightntwrk/midnight-js/pull/380)) ([026b7a0](https://github.com/midnightntwrk/midnight-js/commit/026b7a05c5e6025dc8a8830f314dbbaaa62e3898))
-* provider configuration tweaks ([9894f67](https://github.com/midnightntwrk/midnight-js/commit/9894f67cf92349aa07730cf029ac1915a3750740))
-
-
-### Documentation
-
-* API documentation update ([#381](https://github.com/midnightntwrk/midnight-js/pull/381)) ([5ba607b](https://github.com/midnightntwrk/midnight-js/commit/5ba607b8766f4a7c5ebace6524a1b3a3a0847904))
-* API documentation update ([#382](https://github.com/midnightntwrk/midnight-js/pull/382)) ([581e42f](https://github.com/midnightntwrk/midnight-js/commit/581e42f4c02fafd933f571ba123d450293c3587a))
-
-
-### Improvements
-
-* **deps:** bump actions/cache from 4 to 5 ([#385](https://github.com/midnightntwrk/midnight-js/pull/385)) ([1d4df6b](https://github.com/midnightntwrk/midnight-js/commit/1d4df6b21b4c0a7924e1eb1f2dc1f2cbb0c631a8))
-* indexer-standalone:3.0.0-alpha.19 and midnight-node:0.18.0-rc.10 ([#383](https://github.com/midnightntwrk/midnight-js/pull/383)) ([7d3a0fc](https://github.com/midnightntwrk/midnight-js/commit/7d3a0fc8957ccfc1405f10eb2cc2b4c5168f9aaf))
-* **release:** bump version to 3.0.0-alpha.11 ([#393](https://github.com/midnightntwrk/midnight-js/pull/393)) ([b8a8908](https://github.com/midnightntwrk/midnight-js/commit/b8a89081da6c53502b5b580ebba06a2094a0f982))
-
-## [3.0.0-alpha.10](https://github.com/midnightntwrk/midnight-js/compare/v3.0.0-alpha.9...v3.0.0-alpha.10) (2025-12-12)
-
-
-### Features
-
 * bump compact compiler to 0.27.0 ([#373](https://github.com/midnightntwrk/midnight-js/pull/373)) ([e45ac9d](https://github.com/midnightntwrk/midnight-js/commit/e45ac9d7de4e8d5f8ab53f028f9af8168029f301))
+* enhance transaction documentation with execution phases and failure behavior ([a274ecc](https://github.com/midnightntwrk/midnight-js/commit/a274eccb9e6546277eded28c1aedcaee1e7b702e))
+* enhance transaction handling documentation for indefinite waiting behavior ([69606e7](https://github.com/midnightntwrk/midnight-js/commit/69606e7c8252ed9ae2b95022351cea49bfeb2f3d))
+* enhance transaction handling documentation for indefinite waiting behavior ([944a242](https://github.com/midnightntwrk/midnight-js/commit/944a24287a5ab8cb3e2be635b89d38664b8538b2))
+* fix the repository urls ([#380](https://github.com/midnightntwrk/midnight-js/pull/380)) ([026b7a0](https://github.com/midnightntwrk/midnight-js/commit/026b7a05c5e6025dc8a8830f314dbbaaa62e3898))
+* move @midnight-ntwrk/midnight-js-compact to devDependencies ([#361](https://github.com/midnightntwrk/midnight-js/pull/361)) ([b5771d1](https://github.com/midnightntwrk/midnight-js/commit/b5771d1f1399425e78f66ca04079994ae71d06fb))
+* provider configuration tweaks ([9894f67](https://github.com/midnightntwrk/midnight-js/commit/9894f67cf92349aa07730cf029ac1915a3750740))
+* Support contract calls within scoped transactions ([#404](https://github.com/midnightntwrk/midnight-js/pull/404)) ([2968e77](https://github.com/midnightntwrk/midnight-js/commit/2968e77b19bb3dbb5cc4b5de046bca4e1c22cf5f))
 * update to latest version ([a705430](https://github.com/midnightntwrk/midnight-js/commit/a70543067a1a4fcf31bc25533e2bd706dee5b784))
 
 
 ### Bug Fixes
 
 * remove unnecessary networkId parameter from Dust.startWithSeed ([#368](https://github.com/midnightntwrk/midnight-js/pull/368)) ([c0448a6](https://github.com/midnightntwrk/midnight-js/commit/c0448a6c1a5ce3ceeb2ae1b38d1dead6be214785))
+* update compact compiler version ([#402](https://github.com/midnightntwrk/midnight-js/pull/402)) ([8312d09](https://github.com/midnightntwrk/midnight-js/commit/8312d09480ef1709a0fd78957f22fcd9c5438577))
 
 
 ### Documentation
 
 * API documentation update ([#369](https://github.com/midnightntwrk/midnight-js/pull/369)) ([7a2d84b](https://github.com/midnightntwrk/midnight-js/commit/7a2d84b7387b0ef9f3157102b20c0bd52af3737b))
 * API documentation update ([#378](https://github.com/midnightntwrk/midnight-js/pull/378)) ([696f959](https://github.com/midnightntwrk/midnight-js/commit/696f959267f4d14420625cd459d929efbf88bdca))
+* API documentation update ([#381](https://github.com/midnightntwrk/midnight-js/pull/381)) ([5ba607b](https://github.com/midnightntwrk/midnight-js/commit/5ba607b8766f4a7c5ebace6524a1b3a3a0847904))
+* API documentation update ([#382](https://github.com/midnightntwrk/midnight-js/pull/382)) ([581e42f](https://github.com/midnightntwrk/midnight-js/commit/581e42f4c02fafd933f571ba123d450293c3587a))
+* API documentation update ([#394](https://github.com/midnightntwrk/midnight-js/pull/394)) ([ecfb2d0](https://github.com/midnightntwrk/midnight-js/commit/ecfb2d059e947845810249a5f519e48172744dd3))
+* API documentation update ([#413](https://github.com/midnightntwrk/midnight-js/pull/413)) ([d0d206d](https://github.com/midnightntwrk/midnight-js/commit/d0d206dba5692d85b6fd9e8ac0052d3372098dcf))
+* API documentation update ([#417](https://github.com/midnightntwrk/midnight-js/pull/417)) ([082c77a](https://github.com/midnightntwrk/midnight-js/commit/082c77a5b3d318585919cbc1daacfbbf4a8e331d))
 
 
 ### Code Refactoring
@@ -177,23 +173,25 @@ All notable changes to this project will be documented in this file. See [commit
 
 ### Improvements
 
+* **deps:** bump actions/cache from 4 to 5 ([#385](https://github.com/midnightntwrk/midnight-js/pull/385)) ([1d4df6b](https://github.com/midnightntwrk/midnight-js/commit/1d4df6b21b4c0a7924e1eb1f2dc1f2cbb0c631a8))
+* **deps:** bump actions/download-artifact from 6.0.0 to 7.0.0 ([#386](https://github.com/midnightntwrk/midnight-js/pull/386)) ([4a42c64](https://github.com/midnightntwrk/midnight-js/commit/4a42c64b26f30f208b77c948300854a0d8012611))
+* **deps:** bump EnricoMi/publish-unit-test-result-action ([#401](https://github.com/midnightntwrk/midnight-js/pull/401)) ([9ea2c1b](https://github.com/midnightntwrk/midnight-js/commit/9ea2c1bd46f921ca59861782bf302037baa2c9de))
+* **deps:** bump mikepenz/action-junit-report from 6.0.1 to 6.1.0 ([#409](https://github.com/midnightntwrk/midnight-js/pull/409)) ([0d39b4c](https://github.com/midnightntwrk/midnight-js/commit/0d39b4c737aecaec6a6112778624776e6b1dc942))
+* **deps:** bump peter-evans/create-pull-request from 6 to 8 ([#387](https://github.com/midnightntwrk/midnight-js/pull/387)) ([0dcfe29](https://github.com/midnightntwrk/midnight-js/commit/0dcfe291772d852d56eddc8976213bfaa466c78f))
+* **deps:** update dependency express to v5.2.0 [security] ([#363](https://github.com/midnightntwrk/midnight-js/pull/363)) ([e7bab3d](https://github.com/midnightntwrk/midnight-js/commit/e7bab3d028001c03b69582869daed6577bb45fcb))
+* fix a release process and add release documentation ([#399](https://github.com/midnightntwrk/midnight-js/pull/399)) ([8784088](https://github.com/midnightntwrk/midnight-js/commit/8784088d007e852d27a0b82419b10e4f57901aff))
+* fix the documentation on encryption ([7cec0aa](https://github.com/midnightntwrk/midnight-js/commit/7cec0aa8b7500e94b4425d33a975a87495906522))
+* indexer-standalone:3.0.0-alpha.19 and midnight-node:0.18.0-rc.10 ([#383](https://github.com/midnightntwrk/midnight-js/pull/383)) ([7d3a0fc](https://github.com/midnightntwrk/midnight-js/commit/7d3a0fc8957ccfc1405f10eb2cc2b4c5168f9aaf))
+* merge release/v3.0.0-alpha.12 into main ([#416](https://github.com/midnightntwrk/midnight-js/pull/416)) ([80de708](https://github.com/midnightntwrk/midnight-js/commit/80de70853f09992094906f37b8d2d1ef24e4eb70))
 * **release:** bump version to 3.0.0-alpha.10 ([#379](https://github.com/midnightntwrk/midnight-js/pull/379)) ([ddeab79](https://github.com/midnightntwrk/midnight-js/commit/ddeab799f53f6f5091af43255dc6e90e16dadaaf))
-
-## [3.0.0-alpha.9](https://github.com/midnightntwrk/midnight-js/compare/v3.0.0-alpha.8...v3.0.0-alpha.9) (2025-12-03)
-
-
-### Features
-
-* enhance transaction documentation with execution phases and failure behavior ([a274ecc](https://github.com/midnightntwrk/midnight-js/commit/a274eccb9e6546277eded28c1aedcaee1e7b702e))
-* enhance transaction handling documentation for indefinite waiting behavior ([69606e7](https://github.com/midnightntwrk/midnight-js/commit/69606e7c8252ed9ae2b95022351cea49bfeb2f3d))
-* enhance transaction handling documentation for indefinite waiting behavior ([944a242](https://github.com/midnightntwrk/midnight-js/commit/944a24287a5ab8cb3e2be635b89d38664b8538b2))
-* move @midnight-ntwrk/midnight-js-compact to devDependencies ([#361](https://github.com/midnightntwrk/midnight-js/pull/361)) ([b5771d1](https://github.com/midnightntwrk/midnight-js/commit/b5771d1f1399425e78f66ca04079994ae71d06fb))
-
-
-### Improvements
-
+* **release:** bump version to 3.0.0-alpha.11 ([#393](https://github.com/midnightntwrk/midnight-js/pull/393)) ([b8a8908](https://github.com/midnightntwrk/midnight-js/commit/b8a89081da6c53502b5b580ebba06a2094a0f982))
+* **release:** bump version to 3.0.0-alpha.13 ([#419](https://github.com/midnightntwrk/midnight-js/pull/419)) ([f463218](https://github.com/midnightntwrk/midnight-js/commit/f463218aa131bc32f8a2fe8816d7b7b23fda5b9a))
 * **release:** bump version to 3.0.0-alpha.9 ([#365](https://github.com/midnightntwrk/midnight-js/pull/365)) ([5ef16e5](https://github.com/midnightntwrk/midnight-js/commit/5ef16e5fd0c0f59b9f8b0dee243a5c06a8ebb119))
+* Remove source code for Compact.js and Platform.js ([#406](https://github.com/midnightntwrk/midnight-js/pull/406)) ([561c5fa](https://github.com/midnightntwrk/midnight-js/commit/561c5fad532aa23eb6177366c154c6a356c48f20))
+* tests linting issues - fix warnings ([5cfd89e](https://github.com/midnightntwrk/midnight-js/commit/5cfd89ec3b7dc7619c64ae9b24c1c74f63b202dc))
+* tests linting issues - fix warnings ([b4ba6d3](https://github.com/midnightntwrk/midnight-js/commit/b4ba6d32d6ecdb5bf07b26689de62fc6a87e9c9c))
 * update proof-server, indexer, and node images to latest alpha versions ([759a061](https://github.com/midnightntwrk/midnight-js/commit/759a06151d0f72d392f2427590f0a6f6da35fcbe))
+* update wallet-sdk-facade and related dependencies to version 1.0.0-beta.13 ([d029a1e](https://github.com/midnightntwrk/midnight-js/commit/d029a1e1d765d881c056ee1583007cf049598d33))
 
 ## [3.0.0-alpha.8](https://github.com/midnightntwrk/midnight-js/compare/v3.0.0-alpha.7...v3.0.0-alpha.8) (2025-12-01)
 
@@ -229,74 +227,20 @@ All notable changes to this project will be documented in this file. See [commit
 * update license to Apache-2.0 and adjust run-compactc path in package.json ([adf794d](https://github.com/midnightntwrk/midnight-js/commit/adf794d1082d5403d53d13f9cd97fcc95a7698cf))
 * update run-compactc path in yarn.lock to point to dist ([05eb923](https://github.com/midnightntwrk/midnight-js/commit/05eb9234967113d0c480eeb717180a5a9e00f6ee))
 
-## [3.0.0-alpha.6](https://github.com/midnightntwrk/midnight-js/compare/v3.0.0-alpha.5...v3.0.0-alpha.6) (2025-11-26)
-
-
-### Features
-
-* update @midnight-ntwrk/wallet-sdk-facade to 1.0.0-beta.10 ([8d5136f](https://github.com/midnightntwrk/midnight-js/commit/8d5136fd244cc88d476b9bbcda3a82946aadad27))
-
-
-### Bug Fixes
-
-* cleaner types in wallet provider ([#346](https://github.com/midnightntwrk/midnight-js/pull/346)) ([e08e655](https://github.com/midnightntwrk/midnight-js/commit/e08e6559724bfb54778d95085629e6c17757541a))
-
-
-### Improvements
-
-* **deps:** bump actions/checkout from 5 to 6 ([#341](https://github.com/midnightntwrk/midnight-js/pull/341)) ([002ea41](https://github.com/midnightntwrk/midnight-js/commit/002ea41514a0af708d653732757a8f6e71c355a7))
-* **deps:** bump body-parser ([#351](https://github.com/midnightntwrk/midnight-js/pull/351)) ([f9177fa](https://github.com/midnightntwrk/midnight-js/commit/f9177fa266551619d5384d3babc116597cc3871b))
-* **release:** bump version to 3.0.0-alpha.6 ([82c64d9](https://github.com/midnightntwrk/midnight-js/commit/82c64d9785136bd106f412b05d0fcbd414d2ed10))
-
-## [3.0.0-alpha.5](https://github.com/midnightntwrk/midnight-js/compare/v3.0.0-alpha.4...v3.0.0-alpha.5) (2025-11-24)
-
-
-### Features
-
-* clean wallet provider ([#342](https://github.com/midnightntwrk/midnight-js/pull/342)) ([f3f2601](https://github.com/midnightntwrk/midnight-js/commit/f3f260193168c658fbd7fbeb8f9e68a213d08fa2))
-
-
-### Improvements
-
-* **release:** bump version to 3.0.0-alpha.5 ([#345](https://github.com/midnightntwrk/midnight-js/pull/345)) ([6f2736c](https://github.com/midnightntwrk/midnight-js/commit/6f2736cbeead41016401eed7940583c1d78e7f85))
-
-## [3.0.0-alpha.4](https://github.com/midnightntwrk/midnight-js/compare/v3.0.0-alpha.3...v3.0.0-alpha.4) (2025-11-21)
-
-
-### Features
-
-* handle BalanceTransactionToProve ([#320](https://github.com/midnightntwrk/midnight-js/pull/320)) ([ccb24ca](https://github.com/midnightntwrk/midnight-js/commit/ccb24cab95cf0e77f23a66682e79c1a8d09286d0))
-
-
-### Improvements
-
-* **deps:** bump @babel/helpers ([#323](https://github.com/midnightntwrk/midnight-js/pull/323)) ([accc449](https://github.com/midnightntwrk/midnight-js/commit/accc4492e5000fb198a5e68149c8d77246c5fe72))
-* **deps:** update dependency @effect/experimental to v0.57.3 ([#321](https://github.com/midnightntwrk/midnight-js/pull/321)) ([9cf1c39](https://github.com/midnightntwrk/midnight-js/commit/9cf1c39c4cc6b592395b6bd0e8afc1c9c5dae74b))
-* **deps:** update dependency @effect/experimental to v0.57.4 ([#331](https://github.com/midnightntwrk/midnight-js/pull/331)) ([caf7cab](https://github.com/midnightntwrk/midnight-js/commit/caf7cab855487fec134b5a355eb574c2d6afa2f3))
-* **deps:** update dependency @effect/rpc to v0.72.2 ([#332](https://github.com/midnightntwrk/midnight-js/pull/332)) ([0955da1](https://github.com/midnightntwrk/midnight-js/commit/0955da1b8fe58a63c4c2431fd1f0cd1a1463a0e4))
-* **deps:** update dependency @effect/workflow to ^0.12.0 ([#310](https://github.com/midnightntwrk/midnight-js/pull/310)) ([5890e15](https://github.com/midnightntwrk/midnight-js/commit/5890e152af62a6c2a6f80a0671eb9ef21ddf7a9d))
-* **deps:** update dependency @tsconfig/node24 to v24.0.3 ([#324](https://github.com/midnightntwrk/midnight-js/pull/324)) ([0fb07fe](https://github.com/midnightntwrk/midnight-js/commit/0fb07fe3a845d9e716e26c8b9f0b121aa06aa29d))
-* **deps:** update dependency glob to v11.1.0 [security] ([#322](https://github.com/midnightntwrk/midnight-js/pull/322)) ([c47d222](https://github.com/midnightntwrk/midnight-js/commit/c47d2224a2b0eda22079c11a5c37772168cab665))
-* **deps:** update dependency lint-staged to v16.2.7 ([#330](https://github.com/midnightntwrk/midnight-js/pull/330)) ([5ef8afb](https://github.com/midnightntwrk/midnight-js/commit/5ef8afb6f1b5883a455887330ef55f9a6225ad14))
-* **deps:** update dependency rollup to v4.53.3 ([#327](https://github.com/midnightntwrk/midnight-js/pull/327)) ([fcba43c](https://github.com/midnightntwrk/midnight-js/commit/fcba43ca01ef5dd6716f37702e8c4aa34b1e4a55))
-* **deps:** update dependency testcontainers to v11.8.1 ([#328](https://github.com/midnightntwrk/midnight-js/pull/328)) ([ed6173b](https://github.com/midnightntwrk/midnight-js/commit/ed6173b65b31e53e093761b73f71ba51f2ce984c))
-* **deps:** update vitest monorepo to v4.0.10 ([#313](https://github.com/midnightntwrk/midnight-js/pull/313)) ([56d4304](https://github.com/midnightntwrk/midnight-js/commit/56d430497bb0eec76df91e6c5d61062ead9f1b60))
-* indexer-standalone:3.0.0-alpha.10 ([1f53a0a](https://github.com/midnightntwrk/midnight-js/commit/1f53a0aebae0a248b35feefeb5e48179f70d6ddb))
-* indexer-standalone:3.0.0-alpha.11 ([b4f5347](https://github.com/midnightntwrk/midnight-js/commit/b4f53474f1d92eb5df9155eec8ff14e29daf0d83))
-* midnight-node:0.18.0-rc.6 ([11af678](https://github.com/midnightntwrk/midnight-js/commit/11af678fd99cd933ce189a0ffbe567e22af0182a))
-* **release:** bump version to 3.0.0-alpha.4 ([#335](https://github.com/midnightntwrk/midnight-js/pull/335)) ([fd89509](https://github.com/midnightntwrk/midnight-js/commit/fd8950947630fd4c1d1ac22a7b840edef115bc38))
-* tweak testkit-js default configuration ([f2ef937](https://github.com/midnightntwrk/midnight-js/commit/f2ef9370ce7d803fe41ceedb8e28818b3a76df01))
-
-## [3.0.0-alpha.3](https://github.com/midnightntwrk/midnight-js/compare/v3.0.0-alpha.2...v3.0.0-alpha.3) (2025-11-17)
+## [3.0.0-alpha.6](https://github.com/midnightntwrk/midnight-js/compare/v3.0.0-alpha.1...v3.0.0-alpha.6) (2025-11-26)
 
 
 ### Features
 
 * automated indexer schema update ([bd287f7](https://github.com/midnightntwrk/midnight-js/commit/bd287f7865ee15d17dfa09b77a5f2b24d2a1d703))
+* change assertions ([1e7db4e](https://github.com/midnightntwrk/midnight-js/commit/1e7db4e7bfb70f5a1c4c97db37f91289eea7afcc))
+* clean wallet provider ([#342](https://github.com/midnightntwrk/midnight-js/pull/342)) ([f3f2601](https://github.com/midnightntwrk/midnight-js/commit/f3f260193168c658fbd7fbeb8f9e68a213d08fa2))
 * delta should be undefined if balance is 0 ([0b0bf30](https://github.com/midnightntwrk/midnight-js/commit/0b0bf305d1802bad6a905741eec28ea4bf067f89))
 * fix broken api docs generation ([e7bfafd](https://github.com/midnightntwrk/midnight-js/commit/e7bfafd2389ab970dfd7b1f32ab6556417dd6748))
 * fix docs generation ([9c700c0](https://github.com/midnightntwrk/midnight-js/commit/9c700c056e595aedfa0015df332d892c13838764))
+* fix esm and cjs packaging ([3d224d4](https://github.com/midnightntwrk/midnight-js/commit/3d224d4d0c690beb1d107eaffb17974dadd1cc1e))
 * fix workflows - replace istanbul with nyc ([e79010d](https://github.com/midnightntwrk/midnight-js/commit/e79010dbdca5541ce468dd76e84114d955631cfd))
+* handle BalanceTransactionToProve ([#320](https://github.com/midnightntwrk/midnight-js/pull/320)) ([ccb24ca](https://github.com/midnightntwrk/midnight-js/commit/ccb24cab95cf0e77f23a66682e79c1a8d09286d0))
 * lockfile ([3a2e77e](https://github.com/midnightntwrk/midnight-js/commit/3a2e77e518f5d9939d16967f9fadc5fc8c056d99))
 * release 3.0.0-alpha.3 ([#318](https://github.com/midnightntwrk/midnight-js/pull/318)) ([585edd2](https://github.com/midnightntwrk/midnight-js/commit/585edd273e48f1f2d0f321d399cd52c82d9b7a7d))
 * release script ([#308](https://github.com/midnightntwrk/midnight-js/pull/308)) ([19d918c](https://github.com/midnightntwrk/midnight-js/commit/19d918c751b34fa425f037ec8ebef91f2ed2d861))
@@ -304,74 +248,84 @@ All notable changes to this project will be documented in this file. See [commit
 * remove obsolete steps from the release script ([#317](https://github.com/midnightntwrk/midnight-js/pull/317)) ([bbd5dd7](https://github.com/midnightntwrk/midnight-js/commit/bbd5dd76e5ce676a57e5bfced038741f66fb2a15))
 * replace compactc ([0fb103e](https://github.com/midnightntwrk/midnight-js/commit/0fb103efe3301be3e6e484c9f5adc81f64b4add2))
 * replace compactc ([90f579f](https://github.com/midnightntwrk/midnight-js/commit/90f579feb6a697676a489027438e7ebd3f7ee162))
+* update @midnight-ntwrk/wallet-sdk-facade to 1.0.0-beta.10 ([8d5136f](https://github.com/midnightntwrk/midnight-js/commit/8d5136fd244cc88d476b9bbcda3a82946aadad27))
+* update cd workflow ([#265](https://github.com/midnightntwrk/midnight-js/pull/265)) ([df3a423](https://github.com/midnightntwrk/midnight-js/commit/df3a423200a11b23a7a44de68fd4cd97daabbea9))
+* update components ([1f06ec0](https://github.com/midnightntwrk/midnight-js/commit/1f06ec0f7750307903438aba24aa30c52128793b))
+* update indexer TxId mapping ([9ed2fef](https://github.com/midnightntwrk/midnight-js/commit/9ed2fefdfe77be7f278ea6e7ef26157fd0d754af))
+* update mock ([afb9bdf](https://github.com/midnightntwrk/midnight-js/commit/afb9bdf4e2cf78a60883f748d533b80fcb844d8f))
 * update node imports and tweak config ([034a4cb](https://github.com/midnightntwrk/midnight-js/commit/034a4cb802381760bbf79f48b5e689d02513ff2c))
+* update submit tx ([7ceba12](https://github.com/midnightntwrk/midnight-js/commit/7ceba126eb7081de2d3451fb8843ccb844e36273))
+* update tests ([6d46777](https://github.com/midnightntwrk/midnight-js/commit/6d467779a185534f409e8e0a441d2b164da0ff25))
+* update the FinalizedTxData to store all transaction identifiers ([df58c30](https://github.com/midnightntwrk/midnight-js/commit/df58c3043563c395ed2c8617882df9d8aaed26ac))
 * update wallet ([#297](https://github.com/midnightntwrk/midnight-js/pull/297)) ([3b2f5dc](https://github.com/midnightntwrk/midnight-js/commit/3b2f5dce21e78aeb4b58a85b591bb0ce9cad5a44))
+
+
+### Bug Fixes
+
+* cleaner types in wallet provider ([#346](https://github.com/midnightntwrk/midnight-js/pull/346)) ([e08e655](https://github.com/midnightntwrk/midnight-js/commit/e08e6559724bfb54778d95085629e6c17757541a))
+* **deps:** update dependency superjson to v2.2.5 ([#276](https://github.com/midnightntwrk/midnight-js/pull/276)) ([18d26ec](https://github.com/midnightntwrk/midnight-js/commit/18d26ec9158a69d35aa72235c2d7bc5e25e83487))
 
 
 ### Improvements
 
+* **deps:** bump @babel/helpers ([#323](https://github.com/midnightntwrk/midnight-js/pull/323)) ([accc449](https://github.com/midnightntwrk/midnight-js/commit/accc4492e5000fb198a5e68149c8d77246c5fe72))
 * **deps:** bump actions/checkout from 4 to 5 ([#288](https://github.com/midnightntwrk/midnight-js/pull/288)) ([2f583a6](https://github.com/midnightntwrk/midnight-js/commit/2f583a6495cc934054507c954aa352ea5e6274ec))
+* **deps:** bump actions/checkout from 5 to 6 ([#341](https://github.com/midnightntwrk/midnight-js/pull/341)) ([002ea41](https://github.com/midnightntwrk/midnight-js/commit/002ea41514a0af708d653732757a8f6e71c355a7))
 * **deps:** bump actions/setup-node from 4 to 6 ([#287](https://github.com/midnightntwrk/midnight-js/pull/287)) ([31416b6](https://github.com/midnightntwrk/midnight-js/commit/31416b6161790208d50ba7644a5b4aeffb563ca0))
+* **deps:** bump actions/upload-artifact from 4.4.3 to 5.0.0 ([#255](https://github.com/midnightntwrk/midnight-js/pull/255)) ([1946bdd](https://github.com/midnightntwrk/midnight-js/commit/1946bdda9e5b49fec79898bfa30043a759fe0960))
+* **deps:** bump body-parser ([#351](https://github.com/midnightntwrk/midnight-js/pull/351)) ([f9177fa](https://github.com/midnightntwrk/midnight-js/commit/f9177fa266551619d5384d3babc116597cc3871b))
+* **deps:** bump ctrf-io/github-test-reporter from 1.0.25 to 1.0.26 ([#269](https://github.com/midnightntwrk/midnight-js/pull/269)) ([ce3ee9a](https://github.com/midnightntwrk/midnight-js/commit/ce3ee9a74213544695a47aa6747e57daae4c24a6))
+* **deps:** bump EnricoMi/publish-unit-test-result-action ([#271](https://github.com/midnightntwrk/midnight-js/pull/271)) ([2fc8ab7](https://github.com/midnightntwrk/midnight-js/commit/2fc8ab7be53286dbb7e8a3b11b390e100bba309a))
 * **deps:** bump js-yaml in the npm_and_yarn group across 1 directory ([#307](https://github.com/midnightntwrk/midnight-js/pull/307)) ([002595a](https://github.com/midnightntwrk/midnight-js/commit/002595a46bc9db3b40fd08633ef267139f1c4b3c))
+* **deps:** bump mikepenz/action-junit-report from 6.0.0 to 6.0.1 ([#270](https://github.com/midnightntwrk/midnight-js/pull/270)) ([095db97](https://github.com/midnightntwrk/midnight-js/commit/095db978f4860dd420d313e5e354511d9ca7382f))
+* **deps:** update actions/github-script action to v8 ([#260](https://github.com/midnightntwrk/midnight-js/pull/260)) ([05d59ee](https://github.com/midnightntwrk/midnight-js/commit/05d59ee071e84b531d88a39affb442353bd074fe))
 * **deps:** update dependency @effect/experimental to ^0.57.0 ([#283](https://github.com/midnightntwrk/midnight-js/pull/283)) ([2a07c17](https://github.com/midnightntwrk/midnight-js/commit/2a07c171c0c9af114bd206a37c963e4252ce8bd4))
 * **deps:** update dependency @effect/experimental to v0.57.1 ([#293](https://github.com/midnightntwrk/midnight-js/pull/293)) ([ac23fd6](https://github.com/midnightntwrk/midnight-js/commit/ac23fd6b5146b524b581a24f8cef195593ae1cf6))
+* **deps:** update dependency @effect/experimental to v0.57.3 ([#321](https://github.com/midnightntwrk/midnight-js/pull/321)) ([9cf1c39](https://github.com/midnightntwrk/midnight-js/commit/9cf1c39c4cc6b592395b6bd0e8afc1c9c5dae74b))
+* **deps:** update dependency @effect/experimental to v0.57.4 ([#331](https://github.com/midnightntwrk/midnight-js/pull/331)) ([caf7cab](https://github.com/midnightntwrk/midnight-js/commit/caf7cab855487fec134b5a355eb574c2d6afa2f3))
 * **deps:** update dependency @effect/platform-node-shared to ^0.53.0 ([#285](https://github.com/midnightntwrk/midnight-js/pull/285)) ([5e39e51](https://github.com/midnightntwrk/midnight-js/commit/5e39e518705e0c9a427d4da8bb6c0bce265766e3))
 * **deps:** update dependency @effect/rpc to ^0.72.0 ([#286](https://github.com/midnightntwrk/midnight-js/pull/286)) ([97f4499](https://github.com/midnightntwrk/midnight-js/commit/97f44998c1fa85f11f7e661df56ad27c84b3ece8))
+* **deps:** update dependency @effect/rpc to v0.72.2 ([#332](https://github.com/midnightntwrk/midnight-js/pull/332)) ([0955da1](https://github.com/midnightntwrk/midnight-js/commit/0955da1b8fe58a63c4c2431fd1f0cd1a1463a0e4))
 * **deps:** update dependency @effect/sql to ^0.48.0 ([#305](https://github.com/midnightntwrk/midnight-js/pull/305)) ([fcca1cf](https://github.com/midnightntwrk/midnight-js/commit/fcca1cf9253ddfa1076dcad8ef57c066639e65b3))
 * **deps:** update dependency @effect/vitest to ^0.27.0 ([#306](https://github.com/midnightntwrk/midnight-js/pull/306)) ([d71fc79](https://github.com/midnightntwrk/midnight-js/commit/d71fc795820b5d358ba10555b3138384dc099280))
+* **deps:** update dependency @effect/workflow to ^0.12.0 ([#310](https://github.com/midnightntwrk/midnight-js/pull/310)) ([5890e15](https://github.com/midnightntwrk/midnight-js/commit/5890e152af62a6c2a6f80a0671eb9ef21ddf7a9d))
+* **deps:** update dependency @fast-check/vitest to v0.2.3 ([#273](https://github.com/midnightntwrk/midnight-js/pull/273)) ([6c0bcd2](https://github.com/midnightntwrk/midnight-js/commit/6c0bcd2ca1d1908fcf452bc2791cfbfec49769d5))
 * **deps:** update dependency @tsconfig/node22 to v22.0.3 ([#294](https://github.com/midnightntwrk/midnight-js/pull/294)) ([a796bba](https://github.com/midnightntwrk/midnight-js/commit/a796bba54efac08321c428f866523797b87ffc26))
 * **deps:** update dependency @tsconfig/node22 to v22.0.3 ([#299](https://github.com/midnightntwrk/midnight-js/pull/299)) ([e9fb568](https://github.com/midnightntwrk/midnight-js/commit/e9fb568029fb383ed2f8f4be11a985fe8afb6c16))
+* **deps:** update dependency @tsconfig/node24 to v24.0.3 ([#324](https://github.com/midnightntwrk/midnight-js/pull/324)) ([0fb07fe](https://github.com/midnightntwrk/midnight-js/commit/0fb07fe3a845d9e716e26c8b9f0b121aa06aa29d))
+* **deps:** update dependency @types/express to v5.0.5 ([#258](https://github.com/midnightntwrk/midnight-js/pull/258)) ([5163a92](https://github.com/midnightntwrk/midnight-js/commit/5163a92c97e33df0de133fe5d64f5ff03c5fc68a))
 * **deps:** update dependency @types/node to v24.10.1 ([#289](https://github.com/midnightntwrk/midnight-js/pull/289)) ([6e85b88](https://github.com/midnightntwrk/midnight-js/commit/6e85b886789c9ca2278d01c1744c227f1eeae6ae))
 * **deps:** update dependency @types/node to v24.10.1 ([#300](https://github.com/midnightntwrk/midnight-js/pull/300)) ([38a6171](https://github.com/midnightntwrk/midnight-js/commit/38a617134593a4e66fce9139970979b1dd6304dc))
+* **deps:** update dependency allure-vitest to v3.4.2 ([#274](https://github.com/midnightntwrk/midnight-js/pull/274)) ([cd15b40](https://github.com/midnightntwrk/midnight-js/commit/cd15b4091973b97349c07f2999541047c77da1e0))
+* **deps:** update dependency axios to v1.13.1 ([#257](https://github.com/midnightntwrk/midnight-js/pull/257)) ([7cc7f95](https://github.com/midnightntwrk/midnight-js/commit/7cc7f95d32debf94bacb799c3a7cf2d46ed1ee52))
 * **deps:** update dependency axios to v1.13.2 ([#278](https://github.com/midnightntwrk/midnight-js/pull/278)) ([47b4852](https://github.com/midnightntwrk/midnight-js/commit/47b48528b45fc3ac09a6f6f3410b1ff129784cd3))
+* **deps:** update dependency glob to v11.1.0 [security] ([#322](https://github.com/midnightntwrk/midnight-js/pull/322)) ([c47d222](https://github.com/midnightntwrk/midnight-js/commit/c47d2224a2b0eda22079c11a5c37772168cab665))
 * **deps:** update dependency jsdom to v27.2.0 ([#311](https://github.com/midnightntwrk/midnight-js/pull/311)) ([e078405](https://github.com/midnightntwrk/midnight-js/commit/e07840538d060136325ff05a6b9fe251f7205c00))
+* **deps:** update dependency lint-staged to v16.2.7 ([#330](https://github.com/midnightntwrk/midnight-js/pull/330)) ([5ef8afb](https://github.com/midnightntwrk/midnight-js/commit/5ef8afb6f1b5883a455887330ef55f9a6225ad14))
+* **deps:** update dependency node to v24 ([#259](https://github.com/midnightntwrk/midnight-js/pull/259)) ([e7d1a0f](https://github.com/midnightntwrk/midnight-js/commit/e7d1a0fc39dd008832f17afe15d46194b3f77f4f))
 * **deps:** update dependency node to v24.11.1 ([#290](https://github.com/midnightntwrk/midnight-js/pull/290)) ([0cab0c1](https://github.com/midnightntwrk/midnight-js/commit/0cab0c1315d2f3d6f0d2fdc23f3c0eaa3d5a8396))
+* **deps:** update dependency pino to v10 ([#245](https://github.com/midnightntwrk/midnight-js/pull/245)) ([773ee91](https://github.com/midnightntwrk/midnight-js/commit/773ee91f427ff524c294e810f08c00512298ec57))
+* **deps:** update dependency rollup to v4.53.3 ([#327](https://github.com/midnightntwrk/midnight-js/pull/327)) ([fcba43c](https://github.com/midnightntwrk/midnight-js/commit/fcba43ca01ef5dd6716f37702e8c4aa34b1e4a55))
+* **deps:** update dependency testcontainers to v11.8.1 ([#328](https://github.com/midnightntwrk/midnight-js/pull/328)) ([ed6173b](https://github.com/midnightntwrk/midnight-js/commit/ed6173b65b31e53e093761b73f71ba51f2ce984c))
+* **deps:** update dependency typescript-eslint to v8.46.3 ([#275](https://github.com/midnightntwrk/midnight-js/pull/275)) ([b5feb2e](https://github.com/midnightntwrk/midnight-js/commit/b5feb2e67a85cf9cb8804ca214f46c21a9a4ef3f))
 * **deps:** update dependency typescript-eslint to v8.46.4 ([#291](https://github.com/midnightntwrk/midnight-js/pull/291)) ([325f10b](https://github.com/midnightntwrk/midnight-js/commit/325f10b950ad5cbabdda7b94e0c43c61f261fa81))
 * **deps:** update dependency typescript-eslint to v8.46.4 ([#301](https://github.com/midnightntwrk/midnight-js/pull/301)) ([e6ae05e](https://github.com/midnightntwrk/midnight-js/commit/e6ae05e7dbdf39757de0fc1afa311e3a568d99c1))
 * **deps:** update graphqlcodegenerator monorepo ([#292](https://github.com/midnightntwrk/midnight-js/pull/292)) ([59458d6](https://github.com/midnightntwrk/midnight-js/commit/59458d6f4586d232f67c994b4325575104cff323))
 * **deps:** update graphqlcodegenerator monorepo (major) ([#246](https://github.com/midnightntwrk/midnight-js/pull/246)) ([cece16c](https://github.com/midnightntwrk/midnight-js/commit/cece16c8b07a23c0751f5ab3924290ee4a0b4f44))
 * **deps:** update graphqlcodegenerator monorepo to v5.1.3 ([#298](https://github.com/midnightntwrk/midnight-js/pull/298)) ([643111f](https://github.com/midnightntwrk/midnight-js/commit/643111fa3c5cdbd25774746cdc0d60cab3eec9ba))
 * **deps:** update vitest monorepo to v4 ([bf72e9a](https://github.com/midnightntwrk/midnight-js/commit/bf72e9acd7514410433821653bb0eec67d719274))
+* **deps:** update vitest monorepo to v4.0.10 ([#313](https://github.com/midnightntwrk/midnight-js/pull/313)) ([56d4304](https://github.com/midnightntwrk/midnight-js/commit/56d430497bb0eec76df91e6c5d61062ead9f1b60))
 * **deps:** update vitest monorepo to v4.0.9 ([#303](https://github.com/midnightntwrk/midnight-js/pull/303)) ([6d3e9b9](https://github.com/midnightntwrk/midnight-js/commit/6d3e9b9e7f80e7b8326a7f8ee1e8a5eb5057de57))
-
-## [3.0.0-alpha.2](https://github.com/midnightntwrk/midnight-js/compare/v3.0.0-alpha.1...v3.0.0-alpha.2) (2025-11-05)
-
-
-### Features
-
-* change assertions ([1e7db4e](https://github.com/midnightntwrk/midnight-js/commit/1e7db4e7bfb70f5a1c4c97db37f91289eea7afcc))
-* fix esm and cjs packaging ([3d224d4](https://github.com/midnightntwrk/midnight-js/commit/3d224d4d0c690beb1d107eaffb17974dadd1cc1e))
-* update cd workflow ([#265](https://github.com/midnightntwrk/midnight-js/pull/265)) ([df3a423](https://github.com/midnightntwrk/midnight-js/commit/df3a423200a11b23a7a44de68fd4cd97daabbea9))
-* update components ([1f06ec0](https://github.com/midnightntwrk/midnight-js/commit/1f06ec0f7750307903438aba24aa30c52128793b))
-* update indexer TxId mapping ([9ed2fef](https://github.com/midnightntwrk/midnight-js/commit/9ed2fefdfe77be7f278ea6e7ef26157fd0d754af))
-* update mock ([afb9bdf](https://github.com/midnightntwrk/midnight-js/commit/afb9bdf4e2cf78a60883f748d533b80fcb844d8f))
-* update submit tx ([7ceba12](https://github.com/midnightntwrk/midnight-js/commit/7ceba126eb7081de2d3451fb8843ccb844e36273))
-* update tests ([6d46777](https://github.com/midnightntwrk/midnight-js/commit/6d467779a185534f409e8e0a441d2b164da0ff25))
-* update the FinalizedTxData to store all transaction identifiers ([df58c30](https://github.com/midnightntwrk/midnight-js/commit/df58c3043563c395ed2c8617882df9d8aaed26ac))
-
-
-### Bug Fixes
-
-* **deps:** update dependency superjson to v2.2.5 ([#276](https://github.com/midnightntwrk/midnight-js/pull/276)) ([18d26ec](https://github.com/midnightntwrk/midnight-js/commit/18d26ec9158a69d35aa72235c2d7bc5e25e83487))
-
-
-### Improvements
-
-* **deps:** bump actions/upload-artifact from 4.4.3 to 5.0.0 ([#255](https://github.com/midnightntwrk/midnight-js/pull/255)) ([1946bdd](https://github.com/midnightntwrk/midnight-js/commit/1946bdda9e5b49fec79898bfa30043a759fe0960))
-* **deps:** bump ctrf-io/github-test-reporter from 1.0.25 to 1.0.26 ([#269](https://github.com/midnightntwrk/midnight-js/pull/269)) ([ce3ee9a](https://github.com/midnightntwrk/midnight-js/commit/ce3ee9a74213544695a47aa6747e57daae4c24a6))
-* **deps:** bump EnricoMi/publish-unit-test-result-action ([#271](https://github.com/midnightntwrk/midnight-js/pull/271)) ([2fc8ab7](https://github.com/midnightntwrk/midnight-js/commit/2fc8ab7be53286dbb7e8a3b11b390e100bba309a))
-* **deps:** bump mikepenz/action-junit-report from 6.0.0 to 6.0.1 ([#270](https://github.com/midnightntwrk/midnight-js/pull/270)) ([095db97](https://github.com/midnightntwrk/midnight-js/commit/095db978f4860dd420d313e5e354511d9ca7382f))
-* **deps:** update actions/github-script action to v8 ([#260](https://github.com/midnightntwrk/midnight-js/pull/260)) ([05d59ee](https://github.com/midnightntwrk/midnight-js/commit/05d59ee071e84b531d88a39affb442353bd074fe))
-* **deps:** update dependency @fast-check/vitest to v0.2.3 ([#273](https://github.com/midnightntwrk/midnight-js/pull/273)) ([6c0bcd2](https://github.com/midnightntwrk/midnight-js/commit/6c0bcd2ca1d1908fcf452bc2791cfbfec49769d5))
-* **deps:** update dependency @types/express to v5.0.5 ([#258](https://github.com/midnightntwrk/midnight-js/pull/258)) ([5163a92](https://github.com/midnightntwrk/midnight-js/commit/5163a92c97e33df0de133fe5d64f5ff03c5fc68a))
-* **deps:** update dependency allure-vitest to v3.4.2 ([#274](https://github.com/midnightntwrk/midnight-js/pull/274)) ([cd15b40](https://github.com/midnightntwrk/midnight-js/commit/cd15b4091973b97349c07f2999541047c77da1e0))
-* **deps:** update dependency axios to v1.13.1 ([#257](https://github.com/midnightntwrk/midnight-js/pull/257)) ([7cc7f95](https://github.com/midnightntwrk/midnight-js/commit/7cc7f95d32debf94bacb799c3a7cf2d46ed1ee52))
-* **deps:** update dependency node to v24 ([#259](https://github.com/midnightntwrk/midnight-js/pull/259)) ([e7d1a0f](https://github.com/midnightntwrk/midnight-js/commit/e7d1a0fc39dd008832f17afe15d46194b3f77f4f))
-* **deps:** update dependency pino to v10 ([#245](https://github.com/midnightntwrk/midnight-js/pull/245)) ([773ee91](https://github.com/midnightntwrk/midnight-js/commit/773ee91f427ff524c294e810f08c00512298ec57))
-* **deps:** update dependency typescript-eslint to v8.46.3 ([#275](https://github.com/midnightntwrk/midnight-js/pull/275)) ([b5feb2e](https://github.com/midnightntwrk/midnight-js/commit/b5feb2e67a85cf9cb8804ca214f46c21a9a4ef3f))
+* indexer-standalone:3.0.0-alpha.10 ([1f53a0a](https://github.com/midnightntwrk/midnight-js/commit/1f53a0aebae0a248b35feefeb5e48179f70d6ddb))
+* indexer-standalone:3.0.0-alpha.11 ([b4f5347](https://github.com/midnightntwrk/midnight-js/commit/b4f53474f1d92eb5df9155eec8ff14e29daf0d83))
+* midnight-node:0.18.0-rc.6 ([11af678](https://github.com/midnightntwrk/midnight-js/commit/11af678fd99cd933ce189a0ffbe567e22af0182a))
 * **release:** bump version to 3.0.0-alpha.2 ([#279](https://github.com/midnightntwrk/midnight-js/pull/279)) ([6ba77cc](https://github.com/midnightntwrk/midnight-js/commit/6ba77cca12ab3ee1158739c0eb3a83a42521dbff))
+* **release:** bump version to 3.0.0-alpha.4 ([#335](https://github.com/midnightntwrk/midnight-js/pull/335)) ([fd89509](https://github.com/midnightntwrk/midnight-js/commit/fd8950947630fd4c1d1ac22a7b840edef115bc38))
+* **release:** bump version to 3.0.0-alpha.5 ([#345](https://github.com/midnightntwrk/midnight-js/pull/345)) ([6f2736c](https://github.com/midnightntwrk/midnight-js/commit/6f2736cbeead41016401eed7940583c1d78e7f85))
+* **release:** bump version to 3.0.0-alpha.6 ([82c64d9](https://github.com/midnightntwrk/midnight-js/commit/82c64d9785136bd106f412b05d0fcbd414d2ed10))
+* tweak testkit-js default configuration ([f2ef937](https://github.com/midnightntwrk/midnight-js/commit/f2ef9370ce7d803fe41ceedb8e28818b3a76df01))
 
-## [3.0.0-alpha.1](https://github.com/midnightntwrk/midnight-js/compare/v2.1.0...v3.0.0-alpha.1) (2025-10-29)
+## [3.0.0-alpha.1](https://github.com/midnightntwrk/midnight-js/compare/4fa5b3bf798ed082ba311998cd54bee7f8e349d1...v3.0.0-alpha.1) (2025-10-29)
 
 
 ### Features
@@ -379,7 +333,10 @@ All notable changes to this project will be documented in this file. See [commit
 * "Undeployed" typo ([b816a8e](https://github.com/midnightntwrk/midnight-js/commit/b816a8efbf02a4051c8003a0a7390eadc510bbcf))
 * add docs for testkit-js ([2ab6dd4](https://github.com/midnightntwrk/midnight-js/commit/2ab6dd46d3fb358045fa6449c8e5ceb16ace5f36))
 * add unshielded address parsing ([5144503](https://github.com/midnightntwrk/midnight-js/commit/51445037e67028ea8d31a2c1cd1280a5b88627a7))
+* **compact-js:** Add contract maintenance operations to `ContractExecutable` ([#182](https://github.com/midnightntwrk/midnight-js/pull/182)) ([4c06f48](https://github.com/midnightntwrk/midnight-js/commit/4c06f48adc97952e1b62b86bc3b7d8e997aa8477))
 * **compact-js:** change import of json5 ([#243](https://github.com/midnightntwrk/midnight-js/pull/243)) ([8d87ccd](https://github.com/midnightntwrk/midnight-js/commit/8d87ccd48544b93407b111701f79fef31c43a710))
+* daily scans of main ([d04c1b3](https://github.com/midnightntwrk/midnight-js/commit/d04c1b3337af02c63b2f0afb788259605d938bc7))
+* fix and update checkmarx ([f87f615](https://github.com/midnightntwrk/midnight-js/commit/f87f615106fd17a81161a1138558d1bd387a2b88))
 * fix docs api flow ([e1f5b10](https://github.com/midnightntwrk/midnight-js/commit/e1f5b10c53297421b806829b036554e1a3edc28c))
 * fix prerelease workflow ([#242](https://github.com/midnightntwrk/midnight-js/pull/242)) ([7934d2a](https://github.com/midnightntwrk/midnight-js/commit/7934d2a314eaa1affd058a32af18b951622a13f0))
 * fix publint ([cad1a9f](https://github.com/midnightntwrk/midnight-js/commit/cad1a9f03eb207dc18a2b568feda8dcd735f2f6f))
@@ -388,8 +345,11 @@ All notable changes to this project will be documented in this file. See [commit
 * less code now action is public ([25e975a](https://github.com/midnightntwrk/midnight-js/commit/25e975a8bd1bc0ccbe6acbc6974dbaf47dc509a9))
 * lockfile ([9d05a65](https://github.com/midnightntwrk/midnight-js/commit/9d05a655893b35338010f76f260dff819ee02b79))
 * **midnight-js:** Migration to ledger 6 and add Unshielded Tokens ([#125](https://github.com/midnightntwrk/midnight-js/pull/125)) ([aec8321](https://github.com/midnightntwrk/midnight-js/commit/aec83218a8c6218412e98bb1b03832257351a4f8)), closes [#126](https://github.com/midnightntwrk/midnight-js/pull/126) [#127](https://github.com/midnightntwrk/midnight-js/pull/127) [#129](https://github.com/midnightntwrk/midnight-js/pull/129) [#130](https://github.com/midnightntwrk/midnight-js/pull/130)
+* Platform.js and Compact.js ([#80](https://github.com/midnightntwrk/midnight-js/pull/80)) ([3a02d96](https://github.com/midnightntwrk/midnight-js/commit/3a02d96d633ea687bda03f1c416cf291ddbfddc1))
 * point to fork friendly action. Caution: uses pull_request_target. ([77e361d](https://github.com/midnightntwrk/midnight-js/commit/77e361de7eeaec1b4a4be0e2813622463175c9bc))
 * resolve esm compatibility issue ([#241](https://github.com/midnightntwrk/midnight-js/pull/241)) ([3acb59b](https://github.com/midnightntwrk/midnight-js/commit/3acb59be62d1fbb2711d221ac2e3a8c2a4f54a42))
+* schedule checkmarx daily (at midnight of couese) and allow manual kick off of workflow ([7bed270](https://github.com/midnightntwrk/midnight-js/commit/7bed270f8d45fccf92a3c0f33201a9c3ccb32eda))
+* turn on dependabot ([9d37dc3](https://github.com/midnightntwrk/midnight-js/commit/9d37dc389016c317057c7d2ae5c7d52972a997d0))
 * update CHANGELOG.md ([af6c18e](https://github.com/midnightntwrk/midnight-js/commit/af6c18e15ac5f03a6cf91a39e90dd8facd70dcd3))
 * update ci ([85d0e36](https://github.com/midnightntwrk/midnight-js/commit/85d0e36664413580a64bc344b6c22bbc2e57c132))
 * update indexer and node docker images ([d03f1e5](https://github.com/midnightntwrk/midnight-js/commit/d03f1e5f3c8cddbd93160c7787ae6a87a87be964))
@@ -402,76 +362,6 @@ All notable changes to this project will be documented in this file. See [commit
 * update wallet and remove workarounds ([c73eb95](https://github.com/midnightntwrk/midnight-js/commit/c73eb959c14ae03200de6f4d637831b6ca9e88f3))
 * update wf ([6aec674](https://github.com/midnightntwrk/midnight-js/commit/6aec674e6e5372062ae2665cf296d242c848193a))
 * update workflow ([dd8ca6b](https://github.com/midnightntwrk/midnight-js/commit/dd8ca6b370a79f77ea6fb9197d6c046f9c05a2bc))
-
-
-### Bug Fixes
-
-* **deps:** update dependency @midnight-ntwrk/ledger to v6.1.0-alpha.4 ([#225](https://github.com/midnightntwrk/midnight-js/pull/225)) ([de32378](https://github.com/midnightntwrk/midnight-js/commit/de32378557a12fe4bd5ea9f9002485a87c170fdc))
-* **deps:** update dependency @scure/base to v1.2.6 ([#240](https://github.com/midnightntwrk/midnight-js/pull/240)) ([63664b8](https://github.com/midnightntwrk/midnight-js/commit/63664b8ee0251a3b03e7ea6d76836148e50a89e7))
-* **deps:** update dependency @scure/base to v2 ([#248](https://github.com/midnightntwrk/midnight-js/pull/248)) ([a92d34b](https://github.com/midnightntwrk/midnight-js/commit/a92d34b2c25df3e217baaaad549e65e6f800c151))
-* **deps:** update dependency superjson to v2.2.3 ([#229](https://github.com/midnightntwrk/midnight-js/pull/229)) ([9584f7c](https://github.com/midnightntwrk/midnight-js/commit/9584f7cb3e850b2d15732ce4820956b728804093))
-* point to updated action: include upload of results. ([9affa42](https://github.com/midnightntwrk/midnight-js/commit/9affa4280b93f1d4d79b098d9fb61ab0de51ebe4))
-
-
-### Code Refactoring
-
-* **compact-js:** Add type handling for array types in `transformParams` ([#192](https://github.com/midnightntwrk/midnight-js/pull/192)) ([6a76ef6](https://github.com/midnightntwrk/midnight-js/commit/6a76ef682daccbb647d5a2ea30345c910bcf9679))
-* **compact-js:** Report type name for literal and reference types ([#188](https://github.com/midnightntwrk/midnight-js/pull/188)) ([9c18c13](https://github.com/midnightntwrk/midnight-js/commit/9c18c1343fc29cb2478820ef7fcc55ff6881940c))
-
-
-### Improvements
-
-* **deps:** bump actions/download-artifact from 5.0.0 to 6.0.0 ([#254](https://github.com/midnightntwrk/midnight-js/pull/254)) ([e94ef4e](https://github.com/midnightntwrk/midnight-js/commit/e94ef4e6512a6308dd1e364c81e1ebce3de71edb))
-* **deps:** bump actions/setup-node from 5.0.0 to 6.0.0 ([#218](https://github.com/midnightntwrk/midnight-js/pull/218)) ([cdb1ad5](https://github.com/midnightntwrk/midnight-js/commit/cdb1ad51f5e93e51a164027cf2845fee379de75c))
-* **deps:** bump ctrf-io/github-test-reporter from 1.0.22 to 1.0.25 ([#207](https://github.com/midnightntwrk/midnight-js/pull/207)) ([b7aee79](https://github.com/midnightntwrk/midnight-js/commit/b7aee79a90bc5e34bfad595eb303e674c9ff0642))
-* **deps:** bump mikepenz/action-junit-report from 5.6.2 to 6.0.0 ([#208](https://github.com/midnightntwrk/midnight-js/pull/208)) ([ffcab76](https://github.com/midnightntwrk/midnight-js/commit/ffcab761a32285c0ddd22eb29595912065cc24ee))
-* **deps:** update commitlint monorepo to v20 ([#234](https://github.com/midnightntwrk/midnight-js/pull/234)) ([8b46863](https://github.com/midnightntwrk/midnight-js/commit/8b46863b90708f8d845bbd7ffd8aa6bbe998a5ae))
-* **deps:** update dependency @effect/cluster to ^0.50.0 ([#190](https://github.com/midnightntwrk/midnight-js/pull/190)) ([b7a151f](https://github.com/midnightntwrk/midnight-js/commit/b7a151f6371794f8fa630927c5db15ddd67d78dd))
-* **deps:** update dependency @effect/cluster to v0.50.6 ([#215](https://github.com/midnightntwrk/midnight-js/pull/215)) ([62be37a](https://github.com/midnightntwrk/midnight-js/commit/62be37ae2f89aa7562198c06286c96d53cda10df))
-* **deps:** update dependency @effect/platform-node to ^0.98.0 ([#195](https://github.com/midnightntwrk/midnight-js/pull/195)) ([478428d](https://github.com/midnightntwrk/midnight-js/commit/478428d648a5b6f729d1de27070a7beb7cbea806))
-* **deps:** update dependency @effect/platform-node to v0.98.4 ([#216](https://github.com/midnightntwrk/midnight-js/pull/216)) ([b7c6427](https://github.com/midnightntwrk/midnight-js/commit/b7c64271ed54d80e066dd3fecebfda0811e9154a))
-* **deps:** update dependency @effect/platform-node-shared to v0.51.6 ([#220](https://github.com/midnightntwrk/midnight-js/pull/220)) ([48e4845](https://github.com/midnightntwrk/midnight-js/commit/48e48457d5184767cd5af7e05478aabc46647446))
-* **deps:** update dependency @effect/rpc to ^0.71.0 ([#197](https://github.com/midnightntwrk/midnight-js/pull/197)) ([ed15a22](https://github.com/midnightntwrk/midnight-js/commit/ed15a22bbbad97be083b6e4f977267d0b19e6b4a))
-* **deps:** update dependency @effect/rpc to v0.71.1 ([#221](https://github.com/midnightntwrk/midnight-js/pull/221)) ([a59e94d](https://github.com/midnightntwrk/midnight-js/commit/a59e94d5aae083c0b2bc89ae704b29b2958f5135))
-* **deps:** update dependency @effect/sql to ^0.46.0 ([#201](https://github.com/midnightntwrk/midnight-js/pull/201)) ([19e4843](https://github.com/midnightntwrk/midnight-js/commit/19e4843023e4ea0618dc19c3ac501ccfad167cc1))
-* **deps:** update dependency @effect/vitest to ^0.26.0 ([#203](https://github.com/midnightntwrk/midnight-js/pull/203)) ([1ad7534](https://github.com/midnightntwrk/midnight-js/commit/1ad75343cd51b3c73b9c310059e0ef657a67f7e3))
-* **deps:** update dependency @effect/workflow to v0.11.5 ([#222](https://github.com/midnightntwrk/midnight-js/pull/222)) ([77db47e](https://github.com/midnightntwrk/midnight-js/commit/77db47e61a2a20aa8cdad27ad66a384bdfa1f33c))
-* **deps:** update dependency @rollup/plugin-commonjs to v28.0.8 ([#223](https://github.com/midnightntwrk/midnight-js/pull/223)) ([d726ed0](https://github.com/midnightntwrk/midnight-js/commit/d726ed08f6617db24ac25b648a1eb7dc50217d99))
-* **deps:** update dependency @rollup/plugin-commonjs to v28.0.9 ([#250](https://github.com/midnightntwrk/midnight-js/pull/250)) ([9c4a0c3](https://github.com/midnightntwrk/midnight-js/commit/9c4a0c380c3ca29bc432f3b6ff0b2007a9add920))
-* **deps:** update dependency @rollup/plugin-node-resolve to v16.0.3 ([#210](https://github.com/midnightntwrk/midnight-js/pull/210)) ([6f169ce](https://github.com/midnightntwrk/midnight-js/commit/6f169cea8de056597ad2f751e18a1f1d7783bd45))
-* **deps:** update dependency @rollup/plugin-typescript to v12.3.0 ([#244](https://github.com/midnightntwrk/midnight-js/pull/244)) ([dc34be4](https://github.com/midnightntwrk/midnight-js/commit/dc34be48ded32a0bc476ef147988e707ecf24b31))
-* **deps:** update dependency @types/express to v5.0.4 ([#249](https://github.com/midnightntwrk/midnight-js/pull/249)) ([ade95a9](https://github.com/midnightntwrk/midnight-js/commit/ade95a97bfa9356a21b82b6dab9e71c6018401a6))
-* **deps:** update dependency @types/node to v22.18.12 ([#202](https://github.com/midnightntwrk/midnight-js/pull/202)) ([7505c36](https://github.com/midnightntwrk/midnight-js/commit/7505c360390104094fe8b1703816217c65b7bced))
-* **deps:** update dependency allure-vitest to v3.4.1 ([#204](https://github.com/midnightntwrk/midnight-js/pull/204)) ([e46603c](https://github.com/midnightntwrk/midnight-js/commit/e46603cadc731ae6f2d7cf082153a4cedb9ec2d8))
-* **deps:** update dependency eslint-plugin-unused-imports to v4.3.0 ([#226](https://github.com/midnightntwrk/midnight-js/pull/226)) ([0f2ee49](https://github.com/midnightntwrk/midnight-js/commit/0f2ee4940c28004d047211c4117462ecd93d5b33))
-* **deps:** update dependency jsdom to v27 ([#235](https://github.com/midnightntwrk/midnight-js/pull/235)) ([7560020](https://github.com/midnightntwrk/midnight-js/commit/756002037d92d5277e041901bb792f8035b24de3))
-* **deps:** update dependency lint-staged to v16.2.4 ([#205](https://github.com/midnightntwrk/midnight-js/pull/205)) ([9c087e1](https://github.com/midnightntwrk/midnight-js/commit/9c087e16d17c02e53ecc613d553eab4829b7c45f))
-* **deps:** update dependency lint-staged to v16.2.5 ([#224](https://github.com/midnightntwrk/midnight-js/pull/224)) ([4e2c00c](https://github.com/midnightntwrk/midnight-js/commit/4e2c00c41ac95635f8bf455364b30a9da116cfc7))
-* **deps:** update dependency lint-staged to v16.2.6 ([#236](https://github.com/midnightntwrk/midnight-js/pull/236)) ([ee57827](https://github.com/midnightntwrk/midnight-js/commit/ee57827e664851759c25e2c263d871a5e20851f7))
-* **deps:** update dependency node to v22.21.0 ([#211](https://github.com/midnightntwrk/midnight-js/pull/211)) ([3d87606](https://github.com/midnightntwrk/midnight-js/commit/3d87606f853f8877b203f30005d2bb738e42ee90))
-* **deps:** update dependency pino to v9.14.0 ([#212](https://github.com/midnightntwrk/midnight-js/pull/212)) ([43ca947](https://github.com/midnightntwrk/midnight-js/commit/43ca947e475d7876b9e695d2259c07ca0983b63d))
-* **deps:** update dependency pino-pretty to v13.1.2 ([#194](https://github.com/midnightntwrk/midnight-js/pull/194)) ([365f1f3](https://github.com/midnightntwrk/midnight-js/commit/365f1f378bd6a81b2bc137069d3df7772fd16ca2))
-* **deps:** update dependency rollup to v4.52.5 ([#213](https://github.com/midnightntwrk/midnight-js/pull/213)) ([dfed54a](https://github.com/midnightntwrk/midnight-js/commit/dfed54a0d838db4b4fa6276cef282aedc221e5ec))
-* **deps:** update dependency testcontainers to v11.7.1 ([#227](https://github.com/midnightntwrk/midnight-js/pull/227)) ([d7bb098](https://github.com/midnightntwrk/midnight-js/commit/d7bb09869cb3f191a6840110e7b99b664493253e))
-* **deps:** update dependency testcontainers to v11.7.2 ([#228](https://github.com/midnightntwrk/midnight-js/pull/228)) ([6fbbf82](https://github.com/midnightntwrk/midnight-js/commit/6fbbf8289a82d5e76777987ac5366101a5fa914c))
-* **deps:** update dependency typedoc to v0.28.14 ([#200](https://github.com/midnightntwrk/midnight-js/pull/200)) ([a886000](https://github.com/midnightntwrk/midnight-js/commit/a886000f16eb2a1551ad0ee30b6ce074c531f97a))
-* **deps:** update dependency typedoc-plugin-markdown to v4.9.0 ([#230](https://github.com/midnightntwrk/midnight-js/pull/230)) ([6b07140](https://github.com/midnightntwrk/midnight-js/commit/6b07140a1d095854334f16a8ce27d70f6c2e9fb9))
-* **deps:** update dependency typescript-eslint to v8.46.2 ([#231](https://github.com/midnightntwrk/midnight-js/pull/231)) ([2b974d8](https://github.com/midnightntwrk/midnight-js/commit/2b974d842ebb33ca60e3701a3a1e780407af3edc))
-* **deps:** update eslint monorepo to v9.38.0 ([#232](https://github.com/midnightntwrk/midnight-js/pull/232)) ([f585086](https://github.com/midnightntwrk/midnight-js/commit/f5850866e25aed986b0ec7c0dd10bf33d04d7c15))
-* Integrate Compact.js 2.3, Platform.js 2.1 ([#214](https://github.com/midnightntwrk/midnight-js/pull/214)) ([fa7ca01](https://github.com/midnightntwrk/midnight-js/commit/fa7ca01cb6735e83ee96ee5dd265ead1bd6ed9f1))
-* **release:** bump midnight-js and testkit-js packages to 3.0.0-alpha.1 ([d0380ef](https://github.com/midnightntwrk/midnight-js/commit/d0380ef027ea29aa77a2738b94767f146c86cf35))
-
-## [2.1.0](https://github.com/midnightntwrk/midnight-js/compare/4fa5b3bf798ed082ba311998cd54bee7f8e349d1...v2.1.0) (2025-10-10)
-
-
-### Features
-
-* **compact-js:** Add contract maintenance operations to `ContractExecutable` ([#182](https://github.com/midnightntwrk/midnight-js/pull/182)) ([4c06f48](https://github.com/midnightntwrk/midnight-js/commit/4c06f48adc97952e1b62b86bc3b7d8e997aa8477))
-* daily scans of main ([d04c1b3](https://github.com/midnightntwrk/midnight-js/commit/d04c1b3337af02c63b2f0afb788259605d938bc7))
-* fix and update checkmarx ([f87f615](https://github.com/midnightntwrk/midnight-js/commit/f87f615106fd17a81161a1138558d1bd387a2b88))
-* Platform.js and Compact.js ([#80](https://github.com/midnightntwrk/midnight-js/pull/80)) ([3a02d96](https://github.com/midnightntwrk/midnight-js/commit/3a02d96d633ea687bda03f1c416cf291ddbfddc1))
-* schedule checkmarx daily (at midnight of couese) and allow manual kick off of workflow ([7bed270](https://github.com/midnightntwrk/midnight-js/commit/7bed270f8d45fccf92a3c0f33201a9c3ccb32eda))
-* turn on dependabot ([9d37dc3](https://github.com/midnightntwrk/midnight-js/commit/9d37dc389016c317057c7d2ae5c7d52972a997d0))
 * upgrade checkout action to latest version and pin to hash ([a4d2878](https://github.com/midnightntwrk/midnight-js/commit/a4d2878d05e6a6c93c65712db0ce44ea0d74e853))
 * upgrade checkout action to latest version and pin to hash ([71c3777](https://github.com/midnightntwrk/midnight-js/commit/71c37772a9b694801bd4fda3a8a4ab6c222058ab))
 * use latest checkmarx action ([a960114](https://github.com/midnightntwrk/midnight-js/commit/a960114068575169b6d75edbe36169983dd20a86))
@@ -485,9 +375,14 @@ All notable changes to this project will be documented in this file. See [commit
 * **deps:** update dependency @effect/cli to v0.69.2 ([#108](https://github.com/midnightntwrk/midnight-js/pull/108)) ([45a4812](https://github.com/midnightntwrk/midnight-js/commit/45a4812d4daa5a22103dbc56817d244a3b2b467c))
 * **deps:** update dependency @effect/platform to v0.90.10 ([#109](https://github.com/midnightntwrk/midnight-js/pull/109)) ([fcd9156](https://github.com/midnightntwrk/midnight-js/commit/fcd9156745ff8d399d48a51057830d1159ddf9cd))
 * **deps:** update dependency @midnight-ntwrk/ledger to v6.1.0-alpha.3 ([c8b51a0](https://github.com/midnightntwrk/midnight-js/commit/c8b51a0667e12d433abfa5e1ae142d2f48ac5a07))
+* **deps:** update dependency @midnight-ntwrk/ledger to v6.1.0-alpha.4 ([#225](https://github.com/midnightntwrk/midnight-js/pull/225)) ([de32378](https://github.com/midnightntwrk/midnight-js/commit/de32378557a12fe4bd5ea9f9002485a87c170fdc))
+* **deps:** update dependency @scure/base to v1.2.6 ([#240](https://github.com/midnightntwrk/midnight-js/pull/240)) ([63664b8](https://github.com/midnightntwrk/midnight-js/commit/63664b8ee0251a3b03e7ea6d76836148e50a89e7))
+* **deps:** update dependency @scure/base to v2 ([#248](https://github.com/midnightntwrk/midnight-js/pull/248)) ([a92d34b](https://github.com/midnightntwrk/midnight-js/commit/a92d34b2c25df3e217baaaad549e65e6f800c151))
 * **deps:** update dependency abstract-level to v3.1.1 ([#181](https://github.com/midnightntwrk/midnight-js/pull/181)) ([bfbbb8a](https://github.com/midnightntwrk/midnight-js/commit/bfbbb8a359fdc6d38acc09df398e7cb441430ef6))
 * **deps:** update dependency effect to v3.17.14 ([#111](https://github.com/midnightntwrk/midnight-js/pull/111)) ([4b1bff2](https://github.com/midnightntwrk/midnight-js/commit/4b1bff288a515fadd8d1260eab73198253712f5e))
 * **deps:** update dependency fp-ts to v2.16.11 ([#75](https://github.com/midnightntwrk/midnight-js/pull/75)) ([5567fd1](https://github.com/midnightntwrk/midnight-js/commit/5567fd14004d73d839ebcb233bc0ff1a783cf90e))
+* **deps:** update dependency superjson to v2.2.3 ([#229](https://github.com/midnightntwrk/midnight-js/pull/229)) ([9584f7c](https://github.com/midnightntwrk/midnight-js/commit/9584f7cb3e850b2d15732ce4820956b728804093))
+* point to updated action: include upload of results. ([9affa42](https://github.com/midnightntwrk/midnight-js/commit/9affa4280b93f1d4d79b098d9fb61ab0de51ebe4))
 * **testkit:** update healthcheck parameters for improved reliability ([#169](https://github.com/midnightntwrk/midnight-js/pull/169)) ([713f5e8](https://github.com/midnightntwrk/midnight-js/commit/713f5e861171ade5f6a1bf1b1f4c6a1ad3d92b32))
 
 
@@ -496,6 +391,12 @@ All notable changes to this project will be documented in this file. See [commit
 * acknowledge original co-authors from repository migration ([0c34ecf](https://github.com/midnightntwrk/midnight-js/commit/0c34ecf1660280e3cecfc781ba7f239f68456920))
 * acknowledge original co-authors from repository migration ([8bf34b9](https://github.com/midnightntwrk/midnight-js/commit/8bf34b92172f9b53929abb48d13181517d9c3866))
 * acknowledge original co-authors from repository migration ([363527a](https://github.com/midnightntwrk/midnight-js/commit/363527aeb9b5857ffd2f43388a6444caf2033ece))
+
+
+### Code Refactoring
+
+* **compact-js:** Add type handling for array types in `transformParams` ([#192](https://github.com/midnightntwrk/midnight-js/pull/192)) ([6a76ef6](https://github.com/midnightntwrk/midnight-js/commit/6a76ef682daccbb647d5a2ea30345c910bcf9679))
+* **compact-js:** Report type name for literal and reference types ([#188](https://github.com/midnightntwrk/midnight-js/pull/188)) ([9c18c13](https://github.com/midnightntwrk/midnight-js/commit/9c18c1343fc29cb2478820ef7fcc55ff6881940c))
 
 
 ### Improvements
@@ -507,55 +408,94 @@ All notable changes to this project will be documented in this file. See [commit
 * **compact-js:** Ensure that unshielded inputs, outputs, and spends are included in the public transcript ([#171](https://github.com/midnightntwrk/midnight-js/pull/171)) ([7699071](https://github.com/midnightntwrk/midnight-js/commit/7699071c468efdf9c092a0d37490757a268362fc))
 * **compact-js:** Refactor command and CLI option usage ([#157](https://github.com/midnightntwrk/midnight-js/pull/157)) ([2df3189](https://github.com/midnightntwrk/midnight-js/commit/2df31895205b5962ef5ebea703d614c1a0113b1c))
 * conventional commits ([#154](https://github.com/midnightntwrk/midnight-js/pull/154)) ([f562ac1](https://github.com/midnightntwrk/midnight-js/commit/f562ac1f33d34b632448fa8c0f5ea613b05272af))
+* **deps:** bump actions/download-artifact from 5.0.0 to 6.0.0 ([#254](https://github.com/midnightntwrk/midnight-js/pull/254)) ([e94ef4e](https://github.com/midnightntwrk/midnight-js/commit/e94ef4e6512a6308dd1e364c81e1ebce3de71edb))
 * **deps:** bump actions/github-script from 7.1.0 to 8.0.0 ([#174](https://github.com/midnightntwrk/midnight-js/pull/174)) ([a606204](https://github.com/midnightntwrk/midnight-js/commit/a606204526db3667a0c5d2e6c9afe15faa5c08ef))
 * **deps:** bump actions/setup-node from 4.1.0 to 5.0.0 ([#120](https://github.com/midnightntwrk/midnight-js/pull/120)) ([e445cfc](https://github.com/midnightntwrk/midnight-js/commit/e445cfc91ce5df0445d86094741749533a8865b6))
+* **deps:** bump actions/setup-node from 5.0.0 to 6.0.0 ([#218](https://github.com/midnightntwrk/midnight-js/pull/218)) ([cdb1ad5](https://github.com/midnightntwrk/midnight-js/commit/cdb1ad51f5e93e51a164027cf2845fee379de75c))
 * **deps:** bump apache/skywalking-eyes ([#138](https://github.com/midnightntwrk/midnight-js/pull/138)) ([1c61af3](https://github.com/midnightntwrk/midnight-js/commit/1c61af3739855dac9a465311015be7d264f90d6b))
+* **deps:** bump ctrf-io/github-test-reporter from 1.0.22 to 1.0.25 ([#207](https://github.com/midnightntwrk/midnight-js/pull/207)) ([b7aee79](https://github.com/midnightntwrk/midnight-js/commit/b7aee79a90bc5e34bfad595eb303e674c9ff0642))
 * **deps:** bump docker/login-action from 3.3.0 to 3.5.0 ([#121](https://github.com/midnightntwrk/midnight-js/pull/121)) ([4604977](https://github.com/midnightntwrk/midnight-js/commit/4604977fde992e9449e633bd12eab242b8de0685))
 * **deps:** bump docker/login-action from 3.5.0 to 3.6.0 ([#176](https://github.com/midnightntwrk/midnight-js/pull/176)) ([0b8182a](https://github.com/midnightntwrk/midnight-js/commit/0b8182a36eb1ea10fad240d1ede2e567261bf619))
+* **deps:** bump mikepenz/action-junit-report from 5.6.2 to 6.0.0 ([#208](https://github.com/midnightntwrk/midnight-js/pull/208)) ([ffcab76](https://github.com/midnightntwrk/midnight-js/commit/ffcab761a32285c0ddd22eb29595912065cc24ee))
 * **deps:** bump MishaKav/jest-coverage-comment from 1.0.28 to 1.0.29 ([#175](https://github.com/midnightntwrk/midnight-js/pull/175)) ([262874d](https://github.com/midnightntwrk/midnight-js/commit/262874da2537a876f1671368fc78020b1e135950))
 * **deps:** bump tar-fs from 2.1.3 to 2.1.4 in the npm_and_yarn group across 1 directory ([#160](https://github.com/midnightntwrk/midnight-js/pull/160)) ([1dcde4c](https://github.com/midnightntwrk/midnight-js/commit/1dcde4c657e43cd1de131b32b4174a4c44de16c9))
 * **deps:** bump vite in the npm_and_yarn group across 1 directory ([#128](https://github.com/midnightntwrk/midnight-js/pull/128)) ([e86d9d4](https://github.com/midnightntwrk/midnight-js/commit/e86d9d4dfa9443509c2f67acd71316b0c8d17e34))
 * **deps:** remove outdated @opentelemetry/semantic-conventions entry from yarn.lock ([#158](https://github.com/midnightntwrk/midnight-js/pull/158)) ([cbbfdf3](https://github.com/midnightntwrk/midnight-js/commit/cbbfdf33b1646b8b6de37e1e904d3d03d90e7a71))
+* **deps:** update commitlint monorepo to v20 ([#234](https://github.com/midnightntwrk/midnight-js/pull/234)) ([8b46863](https://github.com/midnightntwrk/midnight-js/commit/8b46863b90708f8d845bbd7ffd8aa6bbe998a5ae))
 * **deps:** update dependency @d2t/vitest-ctrf-json-reporter to v1.2.0 ([#76](https://github.com/midnightntwrk/midnight-js/pull/76)) ([54d3e6e](https://github.com/midnightntwrk/midnight-js/commit/54d3e6e81de076a95f2cab6a067ea3462d6d4590))
 * **deps:** update dependency @d2t/vitest-ctrf-json-reporter to v1.3.0 ([#163](https://github.com/midnightntwrk/midnight-js/pull/163)) ([c4b0515](https://github.com/midnightntwrk/midnight-js/commit/c4b051521be393d8793678e33e03bbff19360744))
 * **deps:** update dependency @effect/cluster to ^0.49.0 ([#164](https://github.com/midnightntwrk/midnight-js/pull/164)) ([6a5189c](https://github.com/midnightntwrk/midnight-js/commit/6a5189c988d6e8a337c07a78ddcfd91f7c7556c4))
+* **deps:** update dependency @effect/cluster to ^0.50.0 ([#190](https://github.com/midnightntwrk/midnight-js/pull/190)) ([b7a151f](https://github.com/midnightntwrk/midnight-js/commit/b7a151f6371794f8fa630927c5db15ddd67d78dd))
 * **deps:** update dependency @effect/cluster to v0.49.6 ([#177](https://github.com/midnightntwrk/midnight-js/pull/177)) ([98ddc2a](https://github.com/midnightntwrk/midnight-js/commit/98ddc2a634dcee74b7f1a07ead09c32d709aef67))
+* **deps:** update dependency @effect/cluster to v0.50.6 ([#215](https://github.com/midnightntwrk/midnight-js/pull/215)) ([62be37a](https://github.com/midnightntwrk/midnight-js/commit/62be37ae2f89aa7562198c06286c96d53cda10df))
 * **deps:** update dependency @effect/experimental to ^0.55.0 ([#165](https://github.com/midnightntwrk/midnight-js/pull/165)) ([c4cb7df](https://github.com/midnightntwrk/midnight-js/commit/c4cb7df524b2c204750bf9ec731e1da597d85127))
 * **deps:** update dependency @effect/experimental to ^0.56.0 ([#191](https://github.com/midnightntwrk/midnight-js/pull/191)) ([3b36604](https://github.com/midnightntwrk/midnight-js/commit/3b366040a2492b0e12640b949f114d44faa42846))
 * **deps:** update dependency @effect/experimental to v0.54.6 ([#105](https://github.com/midnightntwrk/midnight-js/pull/105)) ([20fd087](https://github.com/midnightntwrk/midnight-js/commit/20fd087bbe83f884f70367359660033027188cc7))
+* **deps:** update dependency @effect/platform-node to ^0.98.0 ([#195](https://github.com/midnightntwrk/midnight-js/pull/195)) ([478428d](https://github.com/midnightntwrk/midnight-js/commit/478428d648a5b6f729d1de27070a7beb7cbea806))
+* **deps:** update dependency @effect/platform-node to v0.98.4 ([#216](https://github.com/midnightntwrk/midnight-js/pull/216)) ([b7c6427](https://github.com/midnightntwrk/midnight-js/commit/b7c64271ed54d80e066dd3fecebfda0811e9154a))
 * **deps:** update dependency @effect/platform-node-shared to ^0.50.0 ([#167](https://github.com/midnightntwrk/midnight-js/pull/167)) ([156cc67](https://github.com/midnightntwrk/midnight-js/commit/156cc6770097172cea6dd7bc717f1d025edb99b0))
+* **deps:** update dependency @effect/platform-node-shared to v0.51.6 ([#220](https://github.com/midnightntwrk/midnight-js/pull/220)) ([48e4845](https://github.com/midnightntwrk/midnight-js/commit/48e48457d5184767cd5af7e05478aabc46647446))
+* **deps:** update dependency @effect/rpc to ^0.71.0 ([#197](https://github.com/midnightntwrk/midnight-js/pull/197)) ([ed15a22](https://github.com/midnightntwrk/midnight-js/commit/ed15a22bbbad97be083b6e4f977267d0b19e6b4a))
+* **deps:** update dependency @effect/rpc to v0.71.1 ([#221](https://github.com/midnightntwrk/midnight-js/pull/221)) ([a59e94d](https://github.com/midnightntwrk/midnight-js/commit/a59e94d5aae083c0b2bc89ae704b29b2958f5135))
+* **deps:** update dependency @effect/sql to ^0.46.0 ([#201](https://github.com/midnightntwrk/midnight-js/pull/201)) ([19e4843](https://github.com/midnightntwrk/midnight-js/commit/19e4843023e4ea0618dc19c3ac501ccfad167cc1))
 * **deps:** update dependency @effect/sql to v0.44.2 ([#106](https://github.com/midnightntwrk/midnight-js/pull/106)) ([2b712a4](https://github.com/midnightntwrk/midnight-js/commit/2b712a4526534a0fb1e6ba80a61e6c3b56aa2c0a))
+* **deps:** update dependency @effect/vitest to ^0.26.0 ([#203](https://github.com/midnightntwrk/midnight-js/pull/203)) ([1ad7534](https://github.com/midnightntwrk/midnight-js/commit/1ad75343cd51b3c73b9c310059e0ef657a67f7e3))
+* **deps:** update dependency @effect/workflow to v0.11.5 ([#222](https://github.com/midnightntwrk/midnight-js/pull/222)) ([77db47e](https://github.com/midnightntwrk/midnight-js/commit/77db47e61a2a20aa8cdad27ad66a384bdfa1f33c))
+* **deps:** update dependency @rollup/plugin-commonjs to v28.0.8 ([#223](https://github.com/midnightntwrk/midnight-js/pull/223)) ([d726ed0](https://github.com/midnightntwrk/midnight-js/commit/d726ed08f6617db24ac25b648a1eb7dc50217d99))
+* **deps:** update dependency @rollup/plugin-commonjs to v28.0.9 ([#250](https://github.com/midnightntwrk/midnight-js/pull/250)) ([9c4a0c3](https://github.com/midnightntwrk/midnight-js/commit/9c4a0c380c3ca29bc432f3b6ff0b2007a9add920))
 * **deps:** update dependency @rollup/plugin-node-resolve to v16.0.2 ([#186](https://github.com/midnightntwrk/midnight-js/pull/186)) ([b2b1ea8](https://github.com/midnightntwrk/midnight-js/commit/b2b1ea84d720fc29851ccbd9024ad40199c7d984))
+* **deps:** update dependency @rollup/plugin-node-resolve to v16.0.3 ([#210](https://github.com/midnightntwrk/midnight-js/pull/210)) ([6f169ce](https://github.com/midnightntwrk/midnight-js/commit/6f169cea8de056597ad2f751e18a1f1d7783bd45))
+* **deps:** update dependency @rollup/plugin-typescript to v12.3.0 ([#244](https://github.com/midnightntwrk/midnight-js/pull/244)) ([dc34be4](https://github.com/midnightntwrk/midnight-js/commit/dc34be48ded32a0bc476ef147988e707ecf24b31))
+* **deps:** update dependency @types/express to v5.0.4 ([#249](https://github.com/midnightntwrk/midnight-js/pull/249)) ([ade95a9](https://github.com/midnightntwrk/midnight-js/commit/ade95a97bfa9356a21b82b6dab9e71c6018401a6))
 * **deps:** update dependency @types/node to v22.18.0 ([#77](https://github.com/midnightntwrk/midnight-js/pull/77)) ([aa69d17](https://github.com/midnightntwrk/midnight-js/commit/aa69d17a1cff281af1b7ae58bc6e1c54b3643358))
+* **deps:** update dependency @types/node to v22.18.12 ([#202](https://github.com/midnightntwrk/midnight-js/pull/202)) ([7505c36](https://github.com/midnightntwrk/midnight-js/commit/7505c360390104094fe8b1703816217c65b7bced))
 * **deps:** update dependency @types/node to v22.18.6 ([#132](https://github.com/midnightntwrk/midnight-js/pull/132)) ([81a9625](https://github.com/midnightntwrk/midnight-js/commit/81a9625e82120772855450b7bf21250c3ac02125))
 * **deps:** update dependency @types/node to v22.18.8 ([#178](https://github.com/midnightntwrk/midnight-js/pull/178)) ([a51d3ce](https://github.com/midnightntwrk/midnight-js/commit/a51d3ce9bb534ed8b0c54d0fb3225b0f214823aa))
 * **deps:** update dependency @types/node to v22.18.9 ([#189](https://github.com/midnightntwrk/midnight-js/pull/189)) ([a727ec0](https://github.com/midnightntwrk/midnight-js/commit/a727ec02ab1f2b73e9c762a4f1c4f67d30e9ba67))
+* **deps:** update dependency allure-vitest to v3.4.1 ([#204](https://github.com/midnightntwrk/midnight-js/pull/204)) ([e46603c](https://github.com/midnightntwrk/midnight-js/commit/e46603cadc731ae6f2d7cf082153a4cedb9ec2d8))
 * **deps:** update dependency axios to v1.12.0 [security] ([#134](https://github.com/midnightntwrk/midnight-js/pull/134)) ([72be53f](https://github.com/midnightntwrk/midnight-js/commit/72be53fef90a38ee96b8400e5ea4f1795c593a12))
+* **deps:** update dependency eslint-plugin-unused-imports to v4.3.0 ([#226](https://github.com/midnightntwrk/midnight-js/pull/226)) ([0f2ee49](https://github.com/midnightntwrk/midnight-js/commit/0f2ee4940c28004d047211c4117462ecd93d5b33))
+* **deps:** update dependency jsdom to v27 ([#235](https://github.com/midnightntwrk/midnight-js/pull/235)) ([7560020](https://github.com/midnightntwrk/midnight-js/commit/756002037d92d5277e041901bb792f8035b24de3))
 * **deps:** update dependency lint-staged to v16.1.6 ([#71](https://github.com/midnightntwrk/midnight-js/pull/71)) ([220f3eb](https://github.com/midnightntwrk/midnight-js/commit/220f3eb8af124431b458d82924e9698b833348cf))
+* **deps:** update dependency lint-staged to v16.2.4 ([#205](https://github.com/midnightntwrk/midnight-js/pull/205)) ([9c087e1](https://github.com/midnightntwrk/midnight-js/commit/9c087e16d17c02e53ecc613d553eab4829b7c45f))
+* **deps:** update dependency lint-staged to v16.2.5 ([#224](https://github.com/midnightntwrk/midnight-js/pull/224)) ([4e2c00c](https://github.com/midnightntwrk/midnight-js/commit/4e2c00c41ac95635f8bf455364b30a9da116cfc7))
+* **deps:** update dependency lint-staged to v16.2.6 ([#236](https://github.com/midnightntwrk/midnight-js/pull/236)) ([ee57827](https://github.com/midnightntwrk/midnight-js/commit/ee57827e664851759c25e2c263d871a5e20851f7))
 * **deps:** update dependency node to v22.19.0 ([#78](https://github.com/midnightntwrk/midnight-js/pull/78)) ([914529c](https://github.com/midnightntwrk/midnight-js/commit/914529cc4f25fc8f0163dc88661febc3a4cbc192))
+* **deps:** update dependency node to v22.21.0 ([#211](https://github.com/midnightntwrk/midnight-js/pull/211)) ([3d87606](https://github.com/midnightntwrk/midnight-js/commit/3d87606f853f8877b203f30005d2bb738e42ee90))
 * **deps:** update dependency patch-package to v8.0.1 ([#179](https://github.com/midnightntwrk/midnight-js/pull/179)) ([eea3885](https://github.com/midnightntwrk/midnight-js/commit/eea388524bf721339b2bd446e684f6d1bc42f515))
+* **deps:** update dependency pino to v9.14.0 ([#212](https://github.com/midnightntwrk/midnight-js/pull/212)) ([43ca947](https://github.com/midnightntwrk/midnight-js/commit/43ca947e475d7876b9e695d2259c07ca0983b63d))
 * **deps:** update dependency pino to v9.9.1 ([#83](https://github.com/midnightntwrk/midnight-js/pull/83)) ([bb84a97](https://github.com/midnightntwrk/midnight-js/commit/bb84a97ed73b4a6be5b29761f9377092d9c48602))
 * **deps:** update dependency pino-pretty to v13.1.1 ([#84](https://github.com/midnightntwrk/midnight-js/pull/84)) ([357fdb6](https://github.com/midnightntwrk/midnight-js/commit/357fdb62c52e1fe6e25606e4b22d44c03d754103))
+* **deps:** update dependency pino-pretty to v13.1.2 ([#194](https://github.com/midnightntwrk/midnight-js/pull/194)) ([365f1f3](https://github.com/midnightntwrk/midnight-js/commit/365f1f378bd6a81b2bc137069d3df7772fd16ca2))
 * **deps:** update dependency rollup to v4.50.0 ([#85](https://github.com/midnightntwrk/midnight-js/pull/85)) ([d885af8](https://github.com/midnightntwrk/midnight-js/commit/d885af87840a8e2dcd10407c6980ca14ce59bc71))
 * **deps:** update dependency rollup to v4.50.2 ([#147](https://github.com/midnightntwrk/midnight-js/pull/147)) ([9a9cf98](https://github.com/midnightntwrk/midnight-js/commit/9a9cf9824584efdfbdcecd8dec40586b198fb947))
+* **deps:** update dependency rollup to v4.52.5 ([#213](https://github.com/midnightntwrk/midnight-js/pull/213)) ([dfed54a](https://github.com/midnightntwrk/midnight-js/commit/dfed54a0d838db4b4fa6276cef282aedc221e5ec))
 * **deps:** update dependency testcontainers to v11.5.1 ([#86](https://github.com/midnightntwrk/midnight-js/pull/86)) ([3c50c19](https://github.com/midnightntwrk/midnight-js/commit/3c50c19deded56f5d3c8388a67306b0e2402680b))
+* **deps:** update dependency testcontainers to v11.7.1 ([#227](https://github.com/midnightntwrk/midnight-js/pull/227)) ([d7bb098](https://github.com/midnightntwrk/midnight-js/commit/d7bb09869cb3f191a6840110e7b99b664493253e))
+* **deps:** update dependency testcontainers to v11.7.2 ([#228](https://github.com/midnightntwrk/midnight-js/pull/228)) ([6fbbf82](https://github.com/midnightntwrk/midnight-js/commit/6fbbf8289a82d5e76777987ac5366101a5fa914c))
 * **deps:** update dependency turbo to v2.5.6 ([#72](https://github.com/midnightntwrk/midnight-js/pull/72)) ([71f0072](https://github.com/midnightntwrk/midnight-js/commit/71f00729b453a4aee7983cbe44af4033758cc948))
 * **deps:** update dependency turbo to v2.5.8 ([#161](https://github.com/midnightntwrk/midnight-js/pull/161)) ([d5e854c](https://github.com/midnightntwrk/midnight-js/commit/d5e854c6ce28e731120a7686d6c8acd0cea115b3))
 * **deps:** update dependency typedoc to v0.28.12 ([#73](https://github.com/midnightntwrk/midnight-js/pull/73)) ([2b31332](https://github.com/midnightntwrk/midnight-js/commit/2b31332c3f70254f3a330c12239a06ff33133f87))
 * **deps:** update dependency typedoc to v0.28.13 ([#152](https://github.com/midnightntwrk/midnight-js/pull/152)) ([f1a7bf3](https://github.com/midnightntwrk/midnight-js/commit/f1a7bf3b23572091c1ca908eae9b76dca8f5cf18))
+* **deps:** update dependency typedoc to v0.28.14 ([#200](https://github.com/midnightntwrk/midnight-js/pull/200)) ([a886000](https://github.com/midnightntwrk/midnight-js/commit/a886000f16eb2a1551ad0ee30b6ce074c531f97a))
 * **deps:** update dependency typedoc-plugin-markdown to v4.8.1 ([#89](https://github.com/midnightntwrk/midnight-js/pull/89)) ([f79bebc](https://github.com/midnightntwrk/midnight-js/commit/f79bebcc8dca1d2357de2ac44fdb41bf121211a3))
+* **deps:** update dependency typedoc-plugin-markdown to v4.9.0 ([#230](https://github.com/midnightntwrk/midnight-js/pull/230)) ([6b07140](https://github.com/midnightntwrk/midnight-js/commit/6b07140a1d095854334f16a8ce27d70f6c2e9fb9))
 * **deps:** update dependency typescript to v5.9.2 ([#90](https://github.com/midnightntwrk/midnight-js/pull/90)) ([5b5dc3d](https://github.com/midnightntwrk/midnight-js/commit/5b5dc3d7d1ddeeab8e623fb3c3d27243f1fc0bb3))
 * **deps:** update dependency typescript to v5.9.3 ([#183](https://github.com/midnightntwrk/midnight-js/pull/183)) ([b96170d](https://github.com/midnightntwrk/midnight-js/commit/b96170d86a5883d5cd2115390f21683fe244b282))
 * **deps:** update dependency typescript-eslint to v8.42.0 ([#91](https://github.com/midnightntwrk/midnight-js/pull/91)) ([ec535c8](https://github.com/midnightntwrk/midnight-js/commit/ec535c81809ff06dd759022dd9dfc6e25cd8e020))
+* **deps:** update dependency typescript-eslint to v8.46.2 ([#231](https://github.com/midnightntwrk/midnight-js/pull/231)) ([2b974d8](https://github.com/midnightntwrk/midnight-js/commit/2b974d842ebb33ca60e3701a3a1e780407af3edc))
 * **deps:** update eslint monorepo to v9.34.0 ([#92](https://github.com/midnightntwrk/midnight-js/pull/92)) ([7ad8965](https://github.com/midnightntwrk/midnight-js/commit/7ad8965f6b35248bca27b508d59d90dc10b19c97))
+* **deps:** update eslint monorepo to v9.38.0 ([#232](https://github.com/midnightntwrk/midnight-js/pull/232)) ([f585086](https://github.com/midnightntwrk/midnight-js/commit/f5850866e25aed986b0ec7c0dd10bf33d04d7c15))
 * **deps:** update yarn to v4.10.0 ([#107](https://github.com/midnightntwrk/midnight-js/pull/107)) ([5a907a6](https://github.com/midnightntwrk/midnight-js/commit/5a907a64c22de4904e66be850fb18cb4ab702536))
 * **deps:** update yarn to v4.10.3 ([#162](https://github.com/midnightntwrk/midnight-js/pull/162)) ([034a4b9](https://github.com/midnightntwrk/midnight-js/commit/034a4b98cd9122ea40bd22a6065f42da10eab97a))
 * **deps:** update yarn to v4.9.4 ([#74](https://github.com/midnightntwrk/midnight-js/pull/74)) ([e978c67](https://github.com/midnightntwrk/midnight-js/commit/e978c67b9ce54df462aa059b180d79e7a64127df))
 * enhance commitlint configuration for better validation ([#184](https://github.com/midnightntwrk/midnight-js/pull/184)) ([a7659a2](https://github.com/midnightntwrk/midnight-js/commit/a7659a2b7a6b3983c82419fffb319a96b8f938d9))
+* Integrate Compact.js 2.3, Platform.js 2.1 ([#214](https://github.com/midnightntwrk/midnight-js/pull/214)) ([fa7ca01](https://github.com/midnightntwrk/midnight-js/commit/fa7ca01cb6735e83ee96ee5dd265ead1bd6ed9f1))
 * multlple compactc versions support ([#63](https://github.com/midnightntwrk/midnight-js/pull/63)) ([dd8071b](https://github.com/midnightntwrk/midnight-js/commit/dd8071b0423c4a998188b684b6fa39015bb7b712))
 * package validation ([#156](https://github.com/midnightntwrk/midnight-js/pull/156)) ([bcf83fa](https://github.com/midnightntwrk/midnight-js/commit/bcf83fae9dcd58c07922d76ae00368daf444f895))
 * refactor tests to exclude edge cases from pbt ([#142](https://github.com/midnightntwrk/midnight-js/pull/142)) ([7edd198](https://github.com/midnightntwrk/midnight-js/commit/7edd1985012ac1b45081f21ef5e0614b5e56106b))
 * release v2.1.0 ([0ddc623](https://github.com/midnightntwrk/midnight-js/commit/0ddc62367b7f0d3c9065e480f829c148b8d7c91e))
+* **release:** bump midnight-js and testkit-js packages to 3.0.0-alpha.1 ([d0380ef](https://github.com/midnightntwrk/midnight-js/commit/d0380ef027ea29aa77a2738b94767f146c86cf35))
 * **testkit-js:** change way e2e tests are executed ([#148](https://github.com/midnightntwrk/midnight-js/pull/148)) ([918dab0](https://github.com/midnightntwrk/midnight-js/commit/918dab0fb3f192acf7c2b0b8eea175c94217ef27))
 * update CHANGELOG for version 2.1.0 with new features, changes, and security updates ([46071cc](https://github.com/midnightntwrk/midnight-js/commit/46071ccf25ed8322a53555445d049009e9db2a59))
 * update commitlint configuration for subject and type rules ([#168](https://github.com/midnightntwrk/midnight-js/pull/168)) ([a2f2956](https://github.com/midnightntwrk/midnight-js/commit/a2f295695f1060966deca827fdc8c6d3ffaac0c1))

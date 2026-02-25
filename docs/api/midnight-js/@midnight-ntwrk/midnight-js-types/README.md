@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.0.0**](../../README.md)
+[**Midnight.js API Reference v3.1.0**](../../README.md)
 
 ***
 
@@ -18,14 +18,18 @@
 - [InvalidProtocolSchemeError](classes/InvalidProtocolSchemeError.md)
 - [PrivateStateExportError](classes/PrivateStateExportError.md)
 - [PrivateStateImportError](classes/PrivateStateImportError.md)
+- [SigningKeyExportError](classes/SigningKeyExportError.md)
 - [ZKConfigProvider](classes/ZKConfigProvider.md)
 
 ## Interfaces
 
 - [ExportPrivateStatesOptions](interfaces/ExportPrivateStatesOptions.md)
+- [ExportSigningKeysOptions](interfaces/ExportSigningKeysOptions.md)
 - [FinalizedTxData](interfaces/FinalizedTxData.md)
 - [ImportPrivateStatesOptions](interfaces/ImportPrivateStatesOptions.md)
 - [ImportPrivateStatesResult](interfaces/ImportPrivateStatesResult.md)
+- [ImportSigningKeysOptions](interfaces/ImportSigningKeysOptions.md)
+- [ImportSigningKeysResult](interfaces/ImportSigningKeysResult.md)
 - [LoggerProvider](interfaces/LoggerProvider.md)
 - [MidnightProvider](interfaces/MidnightProvider.md)
 - [MidnightProviders](interfaces/MidnightProviders.md)
@@ -34,6 +38,7 @@
 - [ProofProvider](interfaces/ProofProvider.md)
 - [ProveTxConfig](interfaces/ProveTxConfig.md)
 - [PublicDataProvider](interfaces/PublicDataProvider.md)
+- [SigningKeyExport](interfaces/SigningKeyExport.md)
 - [WalletProvider](interfaces/WalletProvider.md)
 - [ZKConfig](interfaces/ZKConfig.md)
 
@@ -68,6 +73,7 @@
 - [FailEntirely](variables/FailEntirely.md)
 - [FailFallible](variables/FailFallible.md)
 - [makeContractExecutableRuntime](variables/makeContractExecutableRuntime.md)
+- [MAX\_EXPORT\_SIGNING\_KEYS](variables/MAX_EXPORT_SIGNING_KEYS.md)
 - [MAX\_EXPORT\_STATES](variables/MAX_EXPORT_STATES.md)
 - [SegmentFail](variables/SegmentFail.md)
 - [SegmentSuccess](variables/SegmentSuccess.md)

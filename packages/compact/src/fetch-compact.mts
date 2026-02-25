@@ -5,7 +5,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as process from 'node:process';
 
-import { parseArgs, printHelp,shouldSkipDownload } from './fetch-utils.js';
+import { parseArgs, printHelp, shouldSkipDownload } from './fetch-utils.js';
 import { VersionManager } from './version-manager.js';
 
 console.log('Fetching Compactc...');
@@ -63,20 +63,10 @@ const currentPlatform = process.platform;
 const currentCpu = process.arch;
 
 const fetchCompact = async (): Promise<void> => {
-  const githubToken = process.env['GITHUB_TOKEN'];
-
-  if (githubToken == undefined || githubToken == '') {
-    throw new Error(`No GitHub token present. Expected GITHUB_TOKEN env var to be present`);
-  }
-
   type Release = { assets_url: string }
-  const urlString = `https://api.github.com/repos/midnight-ntwrk/artifacts/releases/tags/compactc-v${compactcVersion}`;
+  const urlString = `https://api.github.com/repos/midnightntwrk/compact/releases/tags/compactc-v${compactcVersion}`;
   console.log(`Trying to fetch release from: ${urlString}`);
-  const release: Release = await fetch(urlString, {
-    headers: {
-      Authorization: `Bearer ${githubToken}`
-    }
-  }).then((r) => {
+  const release: Release = await fetch(urlString).then((r) => {
     if (r.ok) {
       return r.json() as unknown as Release;
     } else {
@@ -86,11 +76,7 @@ const fetchCompact = async (): Promise<void> => {
   });
 
   type Asset = { name: string; url: string }
-  const assets: Asset[] = await fetch(release.assets_url, {
-    headers: {
-      Authorization: `Bearer ${githubToken}`
-    }
-  }).then((r) => r.json() as unknown as Asset[]);
+  const assets: Asset[] = await fetch(release.assets_url).then((r) => r.json() as unknown as Asset[]);
 
   const platformToAssetSuffix = (): string => {
     if (currentPlatform === 'darwin') {
@@ -102,7 +88,13 @@ const fetchCompact = async (): Promise<void> => {
         throw new Error(`Unexpected platform architecture combination: platform=${currentPlatform}, architecture=${currentCpu}`);
       }
     } else if (currentPlatform === 'linux') {
-      return 'x86_64-unknown-linux-musl';
+      if (currentCpu === 'arm64') {
+        return 'aarch64-unknown-linux-musl';
+      } else if (currentCpu === 'x64') {
+        return 'x86_64-unknown-linux-musl';
+      } else {
+        throw new Error(`Unexpected platform architecture combination: platform=${currentPlatform}, architecture=${currentCpu}`);
+      }
     } else {
       throw new Error(`Unsupported platform: ${currentPlatform}`);
     }
@@ -117,7 +109,6 @@ const fetchCompact = async (): Promise<void> => {
 
   const assetData = await fetch(asset.url, {
     headers: {
-      Authorization: `Bearer ${githubToken}`,
       Accept: 'application/octet-stream'
     }
   }).then(async (response) => {

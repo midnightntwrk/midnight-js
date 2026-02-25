@@ -33,7 +33,9 @@ jobs:
       - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # ratchet:actions/checkout@v5
 
       - name: Install direnv
-        run: curl -sfL https://direnv.net/install.sh | bash
+        run: curl -sfL https://direnv.net/install.sh | DIRENV_GITHUB_API_TOKEN=$GITHUB_TOKEN  bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Load environment from .envrc
         run: |
@@ -62,7 +64,7 @@ jobs:
         run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Cache Turbo and Yarn dependencies
-        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: |
             **/node_modules
@@ -128,7 +130,7 @@ jobs:
             fetch-zk-config-provider, ./packages/fetch-zk-config-provider/coverage/coverage-summary.json
             http-client-proof-provider, ./packages/http-client-proof-provider/coverage/coverage-summary.json
             indexer-public-data-provider, ./packages/indexer-public-data-provider/coverage/coverage-summary.json
-            level-private-state-provider-example, ./packages/level-private-state-provider-example/coverage/coverage-summary.json
+            level-private-state-provider, ./packages/level-private-state-provider/coverage/coverage-summary.json
             logger-provider, ./packages/logger-provider/coverage/coverage-summary.json
             node-zk-config-provider, ./packages/node-zk-config-provider/coverage/coverage-summary.json
             utils, ./packages/utils/coverage/coverage-summary.json
@@ -166,7 +168,9 @@ jobs:
         uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # ratchet:actions/checkout@v5
 
       - name: Install direnv
-        run: curl -sfL https://direnv.net/install.sh | bash
+        run: curl -sfL https://direnv.net/install.sh | DIRENV_GITHUB_API_TOKEN=$GITHUB_TOKEN  bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Load environment from .envrc
         run: |
@@ -195,7 +199,7 @@ jobs:
         run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Cache Turbo and Yarn dependencies
-        uses: actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: |
             **/node_modules
