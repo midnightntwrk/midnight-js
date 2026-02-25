@@ -1,16 +1,15 @@
 import CompactStandardLibrary;
 
-// mint and receive unshielded tokens to self, this MUST be called together
-export circuit mintUnshieldedToSelfAndReceiveTest(domainSep: Bytes<32>, amount: Uint<64>): Bytes<32> {
+export circuit mintUnshieldedToSelfTest(domainSep: Bytes<32>, amount: Uint<64>): Bytes<32> {
   const color = mintUnshieldedToken(disclose(domainSep), disclose(amount), left<ContractAddress, UserAddress>(kernel.self()));
-  receiveUnshielded(color, disclose(amount) as Uint<128>);
   return color;
 }
 
-// mint and receive unshielded tokens to self, this MUST be called together
-export circuit mintUnshieldedToContractAndReceiveTest(domainSep: Bytes<32>, address: ContractAddress, amount: Uint<64>): Bytes<32> {
+export circuit mintUnshieldedToContractTest(domainSep: Bytes<32>, address: ContractAddress, amount: Uint<64>): Bytes<32> {
   const color = mintUnshieldedToken(disclose(domainSep), disclose(amount), left<ContractAddress, UserAddress>(disclose(address)));
-  receiveUnshielded(color, disclose(amount) as Uint<128>);
+  if (disclose(address) != kernel.self()) {
+    receiveUnshielded(color, disclose(amount) as Uint<128>);
+  }
   return color;
 }
 
