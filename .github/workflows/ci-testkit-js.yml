@@ -20,11 +20,11 @@ on:
       should_prerelease:
         required: true
         type: string
-      yarn_install:
+      yarn_filter:
         type: string
-        description: Install phase command line
+        description: Optional filter to include when running Yarn (i.e., --filter=...)
         required: false
-        default: 'yarn install --immutable'
+        default: '--filter="./testkit-js/*"'
       yarn_lint_paths:
         type: string
         description: Optional paths to include when running 'yarn lint'' (i.e., ./packages)
@@ -39,16 +39,6 @@ on:
         description: Midnight network to use (testnet/devnet/undeployed)
         required: true
         default: 'undeployed'
-      allure_upload:
-        type: boolean
-        description: Should upload e2e tests results to allure server
-        required: false
-        default: false
-      allure_project_id:
-        type: string
-        description: Allure project id
-        required: false
-        default: midnight-js-main
 
 concurrency:
   group: TK-JS-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -106,7 +96,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          ${{ inputs.yarn_install }}
+          yarn install --immutable
 
       - name: Run build
         run: yarn build ${{ inputs.yarn_filter }} --cache-dir ./turbo

@@ -28,8 +28,9 @@ jobs:
 
       - name: Extract version from branch name
         id: version
+        env:
+          BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
         run: |
-          BRANCH_NAME="${{ github.event.pull_request.head.ref }}"
           VERSION="${BRANCH_NAME#release/}"
           echo "tag=${VERSION}" >> $GITHUB_OUTPUT
           echo "Detected version tag: ${VERSION}"

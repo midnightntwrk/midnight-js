@@ -1,4 +1,9 @@
 name: Publish updated API documentation
+
+permissions:
+  contents: read
+  pull-requests: write
+
 env:
   MIDNIGHTBOT_PACKAGES_WRITE: ${{ secrets.MIDNIGHTBOT_PACKAGES_WRITE }}
 on:
@@ -111,5 +116,6 @@ jobs:
         if: steps.set_update.outputs.UPDATE == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          NEW_BRANCH: ${{ steps.set_update.outputs.NEW_BRANCH }}
         run: |
-          gh pr create --base main --head ${{ steps.set_update.outputs.NEW_BRANCH }} --title "docs: API documentation update" --body "Update API documentation - created by Midnight CI Github Action"
+          gh pr create --base main --head "$NEW_BRANCH" --title "docs: API documentation update" --body "Update API documentation - created by Midnight CI Github Action"

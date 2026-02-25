@@ -12,11 +12,6 @@ on:
   workflow_dispatch:
   workflow_call:
     inputs:
-      yarn_install:
-        type: string
-        description: Install phase command line
-        required: false
-        default: 'yarn install --immutable'
       yarn_filter:
         type: string
         description: Optional filter to include when running Yarn (i.e., --filter=...)
@@ -81,7 +76,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          ${{ inputs.yarn_install }}
+          yarn install --immutable
 
       - name: Run build
         run: yarn build ${{ inputs.yarn_filter }} --cache-dir ./turbo
