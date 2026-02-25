@@ -212,10 +212,10 @@ describe('TransactionContextImpl identity validation', () => {
       txCtx[CacheStates](mockStates, identity);
       txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData, privateStateId);
 
-      const result = txCtx[GetCurrentStatesForIdentity](identity);
+      const result = txCtx[GetCurrentStatesForIdentity](identity) as ContractStates<Contract.PrivateState<Contract.Any>>;
 
       expect(result).toBeDefined();
-      expect(result?.privateState).toBe(mockCallData.private.nextPrivateState);
+      expect(result.privateState).toBe(mockCallData.private.nextPrivateState);
     });
 
     it('should allow GetCurrentStatesForIdentity with same identity after multiple merges', () => {
@@ -223,17 +223,18 @@ describe('TransactionContextImpl identity validation', () => {
       const privateStateId = 'test-private-state-id' as PrivateStateId;
       const identity: CachedStateIdentity = { contractAddress, privateStateId };
       const mockStates = createMockStates();
-      const mockCallData1 = createMockUnprovenCallTxData({ private: { nextPrivateState: { call: 1 } } });
-      const mockCallData2 = createMockUnprovenCallTxData({ private: { nextPrivateState: { call: 2 } } });
+      const mockCallData1 = createMockUnprovenCallTxData();
+      const mockCallData2 = createMockUnprovenCallTxData();
+      mockCallData2.private.nextPrivateState = { call: 2 };
 
       txCtx[CacheStates](mockStates, identity);
       txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData1, privateStateId);
       txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData2, privateStateId);
 
-      const result = txCtx[GetCurrentStatesForIdentity](identity);
+      const result = txCtx[GetCurrentStatesForIdentity](identity) as ContractStates<Contract.PrivateState<Contract.Any>>;
 
       expect(result).toBeDefined();
-      expect(result?.privateState).toEqual({ call: 2 });
+      expect(result.privateState).toEqual({ call: 2 });
     });
 
     it('should throw when requesting with different identity after merge', () => {
