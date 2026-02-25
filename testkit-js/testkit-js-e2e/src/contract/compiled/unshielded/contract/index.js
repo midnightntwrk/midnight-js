@@ -103,21 +103,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('mintUnshieldedToSelfAndReceiveTest',
                                      'argument 1 (as invoked from Typescript)',
-                                     'unshielded.compact line 4 char 1',
+                                     'unshielded.compact line 3 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(domainSep_0.buffer instanceof ArrayBuffer && domainSep_0.BYTES_PER_ELEMENT === 1 && domainSep_0.length === 32)) {
           __compactRuntime.typeError('mintUnshieldedToSelfAndReceiveTest',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'unshielded.compact line 4 char 1',
+                                     'unshielded.compact line 3 char 1',
                                      'Bytes<32>',
                                      domainSep_0)
         }
         if (!(typeof(amount_0) === 'bigint' && amount_0 >= 0n && amount_0 <= 18446744073709551615n)) {
           __compactRuntime.typeError('mintUnshieldedToSelfAndReceiveTest',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'unshielded.compact line 4 char 1',
+                                     'unshielded.compact line 3 char 1',
                                      'Uint<0..18446744073709551616>',
                                      amount_0)
         }
@@ -149,28 +149,28 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('mintUnshieldedToContractAndReceiveTest',
                                      'argument 1 (as invoked from Typescript)',
-                                     'unshielded.compact line 11 char 1',
+                                     'unshielded.compact line 8 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(domainSep_0.buffer instanceof ArrayBuffer && domainSep_0.BYTES_PER_ELEMENT === 1 && domainSep_0.length === 32)) {
           __compactRuntime.typeError('mintUnshieldedToContractAndReceiveTest',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'unshielded.compact line 11 char 1',
+                                     'unshielded.compact line 8 char 1',
                                      'Bytes<32>',
                                      domainSep_0)
         }
         if (!(typeof(address_0) === 'object' && address_0.bytes.buffer instanceof ArrayBuffer && address_0.bytes.BYTES_PER_ELEMENT === 1 && address_0.bytes.length === 32)) {
           __compactRuntime.typeError('mintUnshieldedToContractAndReceiveTest',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'unshielded.compact line 11 char 1',
+                                     'unshielded.compact line 8 char 1',
                                      'struct ContractAddress<bytes: Bytes<32>>',
                                      address_0)
         }
         if (!(typeof(amount_0) === 'bigint' && amount_0 >= 0n && amount_0 <= 18446744073709551615n)) {
           __compactRuntime.typeError('mintUnshieldedToContractAndReceiveTest',
                                      'argument 3 (argument 4 as invoked from Typescript)',
-                                     'unshielded.compact line 11 char 1',
+                                     'unshielded.compact line 8 char 1',
                                      'Uint<0..18446744073709551616>',
                                      amount_0)
         }
@@ -203,28 +203,28 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('mintUnshieldedToUserTest',
                                      'argument 1 (as invoked from Typescript)',
-                                     'unshielded.compact line 17 char 1',
+                                     'unshielded.compact line 13 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(domainSep_0.buffer instanceof ArrayBuffer && domainSep_0.BYTES_PER_ELEMENT === 1 && domainSep_0.length === 32)) {
           __compactRuntime.typeError('mintUnshieldedToUserTest',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'unshielded.compact line 17 char 1',
+                                     'unshielded.compact line 13 char 1',
                                      'Bytes<32>',
                                      domainSep_0)
         }
         if (!(typeof(address_0) === 'object' && address_0.bytes.buffer instanceof ArrayBuffer && address_0.bytes.BYTES_PER_ELEMENT === 1 && address_0.bytes.length === 32)) {
           __compactRuntime.typeError('mintUnshieldedToUserTest',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'unshielded.compact line 17 char 1',
+                                     'unshielded.compact line 13 char 1',
                                      'struct UserAddress<bytes: Bytes<32>>',
                                      address_0)
         }
         if (!(typeof(amount_0) === 'bigint' && amount_0 >= 0n && amount_0 <= 18446744073709551615n)) {
           __compactRuntime.typeError('mintUnshieldedToUserTest',
                                      'argument 3 (argument 4 as invoked from Typescript)',
-                                     'unshielded.compact line 17 char 1',
+                                     'unshielded.compact line 13 char 1',
                                      'Uint<0..18446744073709551616>',
                                      amount_0)
         }
@@ -256,21 +256,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('sendUnshieldedToSelfTest',
                                      'argument 1 (as invoked from Typescript)',
-                                     'unshielded.compact line 21 char 1',
+                                     'unshielded.compact line 17 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(color_0.buffer instanceof ArrayBuffer && color_0.BYTES_PER_ELEMENT === 1 && color_0.length === 32)) {
           __compactRuntime.typeError('sendUnshieldedToSelfTest',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'unshielded.compact line 21 char 1',
+                                     'unshielded.compact line 17 char 1',
                                      'Bytes<32>',
                                      color_0)
         }
         if (!(typeof(amount_0) === 'bigint' && amount_0 >= 0n && amount_0 <= 340282366920938463463374607431768211455n)) {
           __compactRuntime.typeError('sendUnshieldedToSelfTest',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'unshielded.compact line 21 char 1',
+                                     'unshielded.compact line 17 char 1',
                                      'Uint<0..340282366920938463463374607431768211456>',
                                      amount_0)
         }
@@ -302,28 +302,28 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('sendUnshieldedToContractTest',
                                      'argument 1 (as invoked from Typescript)',
-                                     'unshielded.compact line 25 char 1',
+                                     'unshielded.compact line 21 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(color_0.buffer instanceof ArrayBuffer && color_0.BYTES_PER_ELEMENT === 1 && color_0.length === 32)) {
           __compactRuntime.typeError('sendUnshieldedToContractTest',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'unshielded.compact line 25 char 1',
+                                     'unshielded.compact line 21 char 1',
                                      'Bytes<32>',
                                      color_0)
         }
         if (!(typeof(amount_0) === 'bigint' && amount_0 >= 0n && amount_0 <= 340282366920938463463374607431768211455n)) {
           __compactRuntime.typeError('sendUnshieldedToContractTest',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'unshielded.compact line 25 char 1',
+                                     'unshielded.compact line 21 char 1',
                                      'Uint<0..340282366920938463463374607431768211456>',
                                      amount_0)
         }
         if (!(typeof(address_0) === 'object' && address_0.bytes.buffer instanceof ArrayBuffer && address_0.bytes.BYTES_PER_ELEMENT === 1 && address_0.bytes.length === 32)) {
           __compactRuntime.typeError('sendUnshieldedToContractTest',
                                      'argument 3 (argument 4 as invoked from Typescript)',
-                                     'unshielded.compact line 25 char 1',
+                                     'unshielded.compact line 21 char 1',
                                      'struct ContractAddress<bytes: Bytes<32>>',
                                      address_0)
         }
@@ -356,28 +356,28 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('sendUnshieldedToUserTest',
                                      'argument 1 (as invoked from Typescript)',
-                                     'unshielded.compact line 29 char 1',
+                                     'unshielded.compact line 25 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(color_0.buffer instanceof ArrayBuffer && color_0.BYTES_PER_ELEMENT === 1 && color_0.length === 32)) {
           __compactRuntime.typeError('sendUnshieldedToUserTest',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'unshielded.compact line 29 char 1',
+                                     'unshielded.compact line 25 char 1',
                                      'Bytes<32>',
                                      color_0)
         }
         if (!(typeof(amount_0) === 'bigint' && amount_0 >= 0n && amount_0 <= 340282366920938463463374607431768211455n)) {
           __compactRuntime.typeError('sendUnshieldedToUserTest',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'unshielded.compact line 29 char 1',
+                                     'unshielded.compact line 25 char 1',
                                      'Uint<0..340282366920938463463374607431768211456>',
                                      amount_0)
         }
         if (!(typeof(address_0) === 'object' && address_0.bytes.buffer instanceof ArrayBuffer && address_0.bytes.BYTES_PER_ELEMENT === 1 && address_0.bytes.length === 32)) {
           __compactRuntime.typeError('sendUnshieldedToUserTest',
                                      'argument 3 (argument 4 as invoked from Typescript)',
-                                     'unshielded.compact line 29 char 1',
+                                     'unshielded.compact line 25 char 1',
                                      'struct UserAddress<bytes: Bytes<32>>',
                                      address_0)
         }
@@ -409,21 +409,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('receiveUnshieldedTest',
                                      'argument 1 (as invoked from Typescript)',
-                                     'unshielded.compact line 33 char 1',
+                                     'unshielded.compact line 29 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(color_0.buffer instanceof ArrayBuffer && color_0.BYTES_PER_ELEMENT === 1 && color_0.length === 32)) {
           __compactRuntime.typeError('receiveUnshieldedTest',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'unshielded.compact line 33 char 1',
+                                     'unshielded.compact line 29 char 1',
                                      'Bytes<32>',
                                      color_0)
         }
         if (!(typeof(amount_0) === 'bigint' && amount_0 >= 0n && amount_0 <= 340282366920938463463374607431768211455n)) {
           __compactRuntime.typeError('receiveUnshieldedTest',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'unshielded.compact line 33 char 1',
+                                     'unshielded.compact line 29 char 1',
                                      'Uint<0..340282366920938463463374607431768211456>',
                                      amount_0)
         }
@@ -453,14 +453,14 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('getUnshieldedBalanceTest',
                                      'argument 1 (as invoked from Typescript)',
-                                     'unshielded.compact line 37 char 1',
+                                     'unshielded.compact line 33 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(color_0.buffer instanceof ArrayBuffer && color_0.BYTES_PER_ELEMENT === 1 && color_0.length === 32)) {
           __compactRuntime.typeError('getUnshieldedBalanceTest',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'unshielded.compact line 37 char 1',
+                                     'unshielded.compact line 33 char 1',
                                      'Bytes<32>',
                                      color_0)
         }
@@ -490,21 +490,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('getUnshieldedBalanceGtTest',
                                      'argument 1 (as invoked from Typescript)',
-                                     'unshielded.compact line 41 char 1',
+                                     'unshielded.compact line 37 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(color_0.buffer instanceof ArrayBuffer && color_0.BYTES_PER_ELEMENT === 1 && color_0.length === 32)) {
           __compactRuntime.typeError('getUnshieldedBalanceGtTest',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'unshielded.compact line 41 char 1',
+                                     'unshielded.compact line 37 char 1',
                                      'Bytes<32>',
                                      color_0)
         }
         if (!(typeof(amount_0) === 'bigint' && amount_0 >= 0n && amount_0 <= 340282366920938463463374607431768211455n)) {
           __compactRuntime.typeError('getUnshieldedBalanceGtTest',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'unshielded.compact line 41 char 1',
+                                     'unshielded.compact line 37 char 1',
                                      'Uint<0..340282366920938463463374607431768211456>',
                                      amount_0)
         }
@@ -535,21 +535,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('getUnshieldedBalanceLtTest',
                                      'argument 1 (as invoked from Typescript)',
-                                     'unshielded.compact line 45 char 1',
+                                     'unshielded.compact line 41 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(color_0.buffer instanceof ArrayBuffer && color_0.BYTES_PER_ELEMENT === 1 && color_0.length === 32)) {
           __compactRuntime.typeError('getUnshieldedBalanceLtTest',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'unshielded.compact line 45 char 1',
+                                     'unshielded.compact line 41 char 1',
                                      'Bytes<32>',
                                      color_0)
         }
         if (!(typeof(amount_0) === 'bigint' && amount_0 >= 0n && amount_0 <= 340282366920938463463374607431768211455n)) {
           __compactRuntime.typeError('getUnshieldedBalanceLtTest',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'unshielded.compact line 45 char 1',
+                                     'unshielded.compact line 41 char 1',
                                      'Uint<0..340282366920938463463374607431768211456>',
                                      amount_0)
         }
@@ -579,14 +579,14 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('receiveNightTokens',
                                      'argument 1 (as invoked from Typescript)',
-                                     'unshielded.compact line 49 char 1',
+                                     'unshielded.compact line 45 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(typeof(amount_0) === 'bigint' && amount_0 >= 0n && amount_0 <= 340282366920938463463374607431768211455n)) {
           __compactRuntime.typeError('receiveNightTokens',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'unshielded.compact line 49 char 1',
+                                     'unshielded.compact line 45 char 1',
                                      'Uint<0..340282366920938463463374607431768211456>',
                                      amount_0)
         }
@@ -616,21 +616,21 @@ export class Contract {
         if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
           __compactRuntime.typeError('sendNightTokensToUser',
                                      'argument 1 (as invoked from Typescript)',
-                                     'unshielded.compact line 53 char 1',
+                                     'unshielded.compact line 49 char 1',
                                      'CircuitContext',
                                      contextOrig_0)
         }
         if (!(typeof(amount_0) === 'bigint' && amount_0 >= 0n && amount_0 <= 18446744073709551615n)) {
           __compactRuntime.typeError('sendNightTokensToUser',
                                      'argument 1 (argument 2 as invoked from Typescript)',
-                                     'unshielded.compact line 53 char 1',
+                                     'unshielded.compact line 49 char 1',
                                      'Uint<0..18446744073709551616>',
                                      amount_0)
         }
         if (!(typeof(user_addr_0) === 'object' && user_addr_0.bytes.buffer instanceof ArrayBuffer && user_addr_0.bytes.BYTES_PER_ELEMENT === 1 && user_addr_0.bytes.length === 32)) {
           __compactRuntime.typeError('sendNightTokensToUser',
                                      'argument 2 (argument 3 as invoked from Typescript)',
-                                     'unshielded.compact line 53 char 1',
+                                     'unshielded.compact line 49 char 1',
                                      'struct UserAddress<bytes: Bytes<32>>',
                                      user_addr_0)
         }
@@ -1141,7 +1141,6 @@ export class Contract {
                                                                                                                                                    alignment: _descriptor_9.alignment() } }] } },
                                                                                                                         { popeq: { cached: true,
                                                                                                                                    result: undefined } }]).value)));
-    this._receiveUnshielded_0(context, partialProofData, color_0, amount_0);
     return color_0;
   }
   _mintUnshieldedToContractAndReceiveTest_0(context,
@@ -1155,7 +1154,6 @@ export class Contract {
                                                 domainSep_0,
                                                 amount_0,
                                                 this._left_0(address_0));
-    this._receiveUnshielded_0(context, partialProofData, color_0, amount_0);
     return color_0;
   }
   _mintUnshieldedToUserTest_0(context,
