@@ -31,7 +31,7 @@ DO NOT use for production applications requiring data persistence.
 
 ### config
 
-`Partial`\<[`LevelPrivateStateProviderConfig`](../interfaces/LevelPrivateStateProviderConfig.md)\> & `Pick`\<[`LevelPrivateStateProviderConfig`](../interfaces/LevelPrivateStateProviderConfig.md), `"privateStoragePasswordProvider"`\>
+`Partial`\<[`LevelPrivateStateProviderConfig`](../interfaces/LevelPrivateStateProviderConfig.md)\> & `Pick`\<[`LevelPrivateStateProviderConfig`](../interfaces/LevelPrivateStateProviderConfig.md), `"privateStoragePasswordProvider"` \| `"accountId"`\>
 
 Database configuration options.
 
