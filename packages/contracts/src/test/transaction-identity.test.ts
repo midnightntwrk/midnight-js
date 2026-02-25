@@ -225,7 +225,6 @@ describe('TransactionContextImpl identity validation', () => {
       const mockStates = createMockStates();
       const mockCallData1 = createMockUnprovenCallTxData();
       const mockCallData2 = createMockUnprovenCallTxData();
-      mockCallData2.private.nextPrivateState = { call: 2 };
 
       txCtx[CacheStates](mockStates, identity);
       txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData1, privateStateId);
@@ -234,7 +233,7 @@ describe('TransactionContextImpl identity validation', () => {
       const result = txCtx[GetCurrentStatesForIdentity](identity) as ContractStates<Contract.PrivateState<Contract.Any>>;
 
       expect(result).toBeDefined();
-      expect(result.privateState).toEqual({ call: 2 });
+      expect(result.privateState).toBe(mockCallData2.private.nextPrivateState);
     });
 
     it('should throw when requesting with different identity after merge', () => {
