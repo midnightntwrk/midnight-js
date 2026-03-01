@@ -144,7 +144,7 @@ jobs:
             **/test-report*.xml
 
       - name: Publish Test Summary Comment
-        uses: EnricoMi/publish-unit-test-result-action@27d65e188ec43221b20d26de30f4892fad91df2f # ratchet:EnricoMi/publish-unit-test-result-action@v2.22.0
+        uses: EnricoMi/publish-unit-test-result-action@c950f6fb443cb5af20a377fd0dfaa78838901040 # ratchet:EnricoMi/publish-unit-test-result-action@v2.23.0
         if: success() || failure()
         with:
           check_name: 'Unit Test Results - MidnightJS'
