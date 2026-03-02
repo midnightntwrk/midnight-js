@@ -94,7 +94,7 @@ describe('Indexer API', () => {
    * @then Should return correct state history based on inclusive flag
    * @and Should observe states in proper chronological order from block height
    */
-  test.skip.each([
+  test.each([
     [true, [1n, 2n]],
     [false, [2n]]
   ])(
@@ -126,7 +126,7 @@ describe('Indexer API', () => {
    * @and Should return recent history for 'latest' configuration
    * @and Should observe states matching the configuration type requirements
    */
-  test.skip.each([
+  test.each([
     [
       'should return the entire history of states of the contract with the given address',
       { type: 'all' } as All,

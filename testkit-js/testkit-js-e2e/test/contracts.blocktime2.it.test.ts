@@ -100,7 +100,7 @@ describe('Block Time Contract Tests 2', () => {
       );
 
       // TODO: Uncomment once PM-19372 is resolved
-      test.skip(
+      test(
         'Near future time with delay - succeeds on device, fails on node',
         async () => {
           const nearFutureTime = currentTimeSeconds() + 2n;
