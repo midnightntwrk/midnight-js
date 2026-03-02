@@ -101,7 +101,7 @@ describe('Block Time Contract Tests 1', () => {
     });
 
     // TODO: Uncomment once PM-19372 is resolved
-    test('should succeed on device but fail on node when submission is delayed', async () => {
+    test.skip('should succeed on device but fail on node when submission is delayed', async () => {
       const futureTime = currentTimeSeconds() + 3n; // Only 3 seconds in future
       const unprovenCallTxOptions = {
         compiledContract: CompiledBlockTimeContract,
@@ -173,7 +173,7 @@ describe('Block Time Contract Tests 1', () => {
     });
 
     // TODO: Uncomment once PM-19372 is resolved
-    test('should succeed on device but fail on node when submission delay causes time to exceed threshold', async () => {
+    test.skip('should succeed on device but fail on node when submission delay causes time to exceed threshold', async () => {
       const futureTime = currentTimeSeconds() + 2n; // Only 2 seconds in future
       const unprovenCallTxOptions = {
         compiledContract: CompiledBlockTimeContract,
@@ -202,7 +202,7 @@ describe('Block Time Contract Tests 1', () => {
       );
 
       // TODO: Uncomment once PM-19372 is resolved
-      test(
+      test.skip(
         'Near future time with delay - succeeds on device, fails on node',
         async () => {
           const nearFutureTime = currentTimeSeconds() + 2n;

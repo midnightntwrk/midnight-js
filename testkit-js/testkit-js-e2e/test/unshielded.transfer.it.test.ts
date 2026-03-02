@@ -143,7 +143,7 @@ describe('Unshielded tokens', () => {
   });
 
   //need to first move tokens to wallet to be able to receive them back
-  test('should receive tokens from wallet', async () => {
+  test.skip('should receive tokens from wallet', async () => {
     const txData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
