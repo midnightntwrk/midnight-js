@@ -1,305 +1,276 @@
 # Midnight.js
 
-## Introduction
+TypeScript application development framework for the Midnight blockchain. Similar to [Web3.js](https://web3js.org/) for Ethereum or [polkadot.js](https://polkadot.js.org/) for Polkadot.
 
-Midnight.js is a Typescript-based application development framework for the
-Midnight blockchain. Similar to [Web3.js](https://web3js.org/) for Ethereum or
-[polkadot.js](https://polkadot.js.org/) for Polkadot, it provides utilities for:
+## Installation
+
+```bash
+yarn add @midnight-ntwrk/midnight-js-contracts @midnight-ntwrk/midnight-js-types
+```
+
+## Quick Start
+
+```typescript
+import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
+import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
+import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+
+// Set network
+setNetworkId('testnet');
+
+// Configure providers
+const providers = {
+  privateStateProvider: levelPrivateStateProvider({
+    privateStoragePasswordProvider: () => 'your-secure-password',
+    accountId: 'user-wallet-address'
+  }),
+  publicDataProvider: indexerPublicDataProvider(
+    'https://indexer.example.com/graphql',
+    'wss://indexer.example.com/graphql'
+  ),
+  // ... zkConfigProvider, proofProvider, walletProvider, midnightProvider
+};
+
+// Deploy a contract
+const deployed = await deployContract(providers, {
+  compiledContract: myContract,
+  privateStateId: 'my-state',
+  initialPrivateState: { counter: 0n }
+});
+
+// Call a circuit
+const result = await deployed.callTx.increment();
+```
+
+## Features
+
+### Standard Blockchain Operations
 
 - Creating and submitting transactions
 - Interacting with wallets
-- Querying for block and contract state information
+- Querying block and contract state
 - Subscribing to chain events
 
-Because of the privacy-preserving properties of the Midnight system, Midnight.js
-also contains several unique utilities:
+### Privacy-Preserving Utilities
 
 - Executing smart contracts locally
 - Incorporating private state into contract execution
 - Persisting, querying, and updating private state
 - Creating and verifying zero-knowledge proofs
 
-Midnight.js orchestrates all required interactions among the various Midnight
-system APIs needed to create and submit a transaction to the Midnight
-blockchain. These APIs include an indexer, a proof server, a private state
-store, a Midnight node, a wallet, the ledger, the Compact contract runtime, and
-a cryptographic artifact (proving key, verifying key, and ZKIR) repository. It
-provides default implementations for each of the aforementioned APIs, e.g. a
-GraphQL client for the indexer.
+## Packages
 
-### Contracts
+| Package | Description |
+| ------- | ----------- |
+| [@midnight-ntwrk/midnight-js-types](packages/types) | Shared types, interfaces, and provider contracts |
+| [@midnight-ntwrk/midnight-js-contracts](packages/contracts) | Contract deployment and interaction utilities |
+| [@midnight-ntwrk/midnight-js-indexer-public-data-provider](packages/indexer-public-data-provider) | GraphQL-based blockchain data provider |
+| [@midnight-ntwrk/midnight-js-level-private-state-provider](packages/level-private-state-provider) | Encrypted LevelDB private state storage |
+| [@midnight-ntwrk/midnight-js-http-client-proof-provider](packages/http-client-proof-provider) | HTTP client for proof server |
+| [@midnight-ntwrk/midnight-js-fetch-zk-config-provider](packages/fetch-zk-config-provider) | Browser-based ZK artifact retrieval |
+| [@midnight-ntwrk/midnight-js-node-zk-config-provider](packages/node-zk-config-provider) | Node.js filesystem-based ZK artifact retrieval |
+| [@midnight-ntwrk/midnight-js-network-id](packages/network-id) | Network identifier management |
+| [@midnight-ntwrk/midnight-js-logger-provider](packages/logger-provider) | Pino logger wrapper for diagnostics |
+| [@midnight-ntwrk/midnight-js-compact](packages/compact) | Compact compiler manager |
+| [@midnight-ntwrk/midnight-js-utils](packages/utils) | General utility functions |
 
-> This section assumes the reader has a working understanding of the Compact
-> language.
+## Architecture
 
-When a user compiles a Compact smart contract with compactc, they obtain two
-files:
-
-1. A JavaScript file
-2. A
-   TypeScript [declaration file](https://www.typescriptlang.org/docs/handbook/2/type-declarations.html)
-
-The JavaScript file contains:
-
-- The execution logic for each circuit in the source contract
-- Logic for constructing the contract’s initial state
-- Utilities for converting on-chain contract state into a JavaScript
-  representation
-
-Midnight.js uses this file at run time to execute circuits. The circuit
-execution results are then used to create transactions.
-
-> The term _runtime_ is often used to describe the JS executable for a
-> contract. This is distinct from the package `@midnight-ntwrk/compact-runtime`,
-> which provides the utilities each executable uses.
-
-The TypeScript declaration file contains:
-
-- A type definition for the contract, named `Contract`
-- A type definition for any circuits defined within the contract
-- A type definition for all required witnesses, named `Witnesses`
-- A type definition for the contract’s on-chain state, named `Ledger`
-
-If the user’s Compact source code includes `witness` declarations, the
-generated TypeScript declaration file defines a `Witnesses` type as a non-empty
-object with a generic type parameter `PS`, representing the private state that
-witnesses modify during circuit execution. The user must supply an
-implementation of `Witnesses` to a `Contract` and execute a circuit.
-
-Midnight.js uses the TS declaration file at compile time to ensure the contract
-is consumed in a type-safe manner. For example, Midnight.js infers circuit
-argument and return types from the TS declaration file then uses them as generic
-constraints in various utility functions.
-
-### Objectives and Requirements
-
-This section lists a set of design considerations and requirements for
-Midnight.js.
-
-#### Type-Safety
-
-* Should preserve a contract's circuit argument/return types and
-  user defined types, e.g. `PS` and `Witnesses` types, throughout its
-  data model, interfaces, and utility functions.
-* Should attempt to infer types, e.g. `infer`, in its functions and data model
-  instead of introducing additional generic parameters.
-* Should use the least restrictive generic constraints necessary for type safety
-  in its functions and data model.
-* Should use `any` only for user-supplied types that are truly
-  unconstrained. It should not use `any` merely to “fix” compilation issues.
-* Should not require its users to manually specify concrete types for
-  generic parameters in most scenarios.
-* Should employ branded types to distinguish domain concepts that
-  share the same in-code representation, e.g. `HexString` vs. `string`.
-
-In general, these guidelines maximize compile-time checks and enable intuitive
-autocompletion when using Midnight.js.
-
-#### Modularity
-
-* Should allow users to provide custom implementations of API
-  clients to transaction construction utilities. This is currently accomplished
-  via the "provider" pattern.
-* Should collect commonly used types into a single package, e.g.
-  `@midnight-ntwrk/midnight-js-types`, to standardize types across applications
-  and promote programming to interfaces instead of concrete types.
-
-#### Interoperability
-
-* Should be as _isomorphic_ as possible. It should largely work in
-  both browser and Node.js environments.
-* Should allow dApps to run against different Midnight networks,
-  e.g. TestNet vs MainNet.
-
-### Reusability
-
-* Should build high-level features, e.g. transaction construction,
-  from low-level utility functions, and it should export both the high-level
-  features and low-level functions. This allows users to assemble their own
-  high-level features from the set of basic capabilities Midnight.js exposes.
-* Should provide a default implementation of each API client needed
-  to construct or submit a transaction.
-* Should place each API client implementation in a separate package.
-  This ensures users can select only the package they need for their
-  application.
-
-### Usability
-
-* Should aim to minimize the boilerplate required to set up a dApp.
-  This includes reducing the ceremony required to configure API clients.
-* Should supply common sense default settings to avoid common application errors,
-  e.g. subscribing to an indexer stream that causes the application to hang indefinitely.
-
-### Security
-
-* Should store and manipulate sensitive data, i.e.
-  contract private states, securely.
-
-The default `LevelPrivateStateProvider` encrypts all private state data at rest
-using AES-256-GCM with PBKDF2 key derivation (100,000 iterations). Encryption
-requires either a `walletProvider` (uses the wallet's encryption public key as
-the password) or a custom `privateStoragePasswordProvider` for applications that
-need explicit password control. Passwords must be at least 16 characters.
-
-# Architecture
-
-## Structure
-
-The following diagram is a Midnight.js-centric deployment diagram for the Midnight system.
+### Deployment Diagram
 
 ![](./docs/image/deployment-diagram.png)
 
-The elements of the diagram roughly correspond to these packages:
+| Element | Package |
+| ------- | ------- |
+| Contracts | @midnight-ntwrk/midnight-js-contracts |
+| PublicDataProvider | @midnight-ntwrk/midnight-js-indexer-public-data-provider |
+| PrivateStateProvider | @midnight-ntwrk/midnight-js-level-private-state-provider |
+| ProofProvider | @midnight-ntwrk/midnight-js-http-client-proof-provider |
+| ZKConfigProvider | @midnight-ntwrk/midnight-js-fetch-zk-config-provider |
+| DappConnector | @midnight-ntwrk/dapp-connector-api |
+| Wallet | @midnight-ntwrk/wallet |
+| Ledger | @midnight-ntwrk/ledger |
+| Compact Runtime | @midnight-ntwrk/compact-runtime |
+| Impact VM | @midnight-ntwrk/onchain-runtime |
 
-| Element              | Package                                                  |
-|----------------------|----------------------------------------------------------|
-| `Contracts`            | @midnight-ntwrk/midnight-js-contracts                    |
-| `PublicDataProvider`   | @midnight-ntwrk/midnight-js-contracts                    |
-| `PrivateStateProvider` | @midnight-ntwrk/midnight-js-level-private-state-provider |
-| `ProofProvider`        | @midnight-ntwrk/midnight-js-http-client-proof-provider   |
-| `ZKConfigProvider`     | @midnight-ntwrk/midnight-js-fetch-zk-config-provider     |
-| `DappConnector`        | @midnight-ntwrk/dapp-connector-api                       |
-| `Wallet`               | @midnight-ntwrk/wallet                                   |
-| `Ledger`               | @midnight-ntwrk/ledger                                   |
-| `Compact Runtime`      | @midnight-ntwrk/compact-runtime                          |
-| `Impact VM`            | @midnight-ntwrk/onchain-runtime                          |
-
-The `Contracts` element contains utilities that the web page uses to create and
-submit transactions. Each of the clients in `Midnight.js` are concrete instances
-of the provider interfaces defined in the `@midnight-ntwrk/midnight-js-types` package.
-
-The dark arrow from `GUI` to `Web Page` indicates that the GUI for a given application may depend
-on any of the packages in Midnight.js. The dashed arrow from `compactc` to `Contract` indicates
-that the application developer has run `compactc` on a Compact source file `foo.compact` and produced an executable, `foo.js`.
-The `Contracts` element uses the `foo.js` and `witnesses.js` programs stored on the web server to execute circuits and create unproven transactions,
-and it uses the `Prover Keys`, `Verifier Keys`, and `ZKIRs` to prove those transactions. `Midnight.js` does not depend on `UI Components` because
-UI components are created using Midnight.js.
-
-There are two additional things to note about this diagram:
-
-1. `Ledger` and `Compact Runtime` both depend on the `Impact VM` (on-chain runtime).
-2. `Midnight.js` and `Substrate Node` both depend on the `Ledger`.
-
-The first fact allows us to "rehearse" a circuit call (which involves running Impact VM) in
-such a way that the execution can be replayed on the node. The second fact allows us to create
-a transaction from the result of the circuit rehearsal that the node will accept.
-
-Finally, note that `NodeProvider` depends on the `DappConnector`. This is because we used
-the wallet to balance and submit transactions.
-
-## Behavior
-
-The following is a sequence diagram for the construction of a typical call transaction.
+### Transaction Flow
 
 ![](./docs/image/call-tx-build-sequence-diagram.png)
 
-# Glossary
+## Providers
 
-- Witness - A private computation performed only on the end user's device. The name
-  and type signature of a witness is declared in Compact source. The application
-  developer them provides a TypeScript implementation of that witness to use
-  for circuit execution.
-- Private state - The state updated by a witness and stored on the end user's device.
+Midnight.js uses a provider pattern for modularity. Each provider implements an interface from `@midnight-ntwrk/midnight-js-types`:
 
-## Package structure
+```typescript
+interface MidnightProviders {
+  privateStateProvider: PrivateStateProvider;  // Private state storage
+  publicDataProvider: PublicDataProvider;      // Blockchain queries
+  zkConfigProvider: ZKConfigProvider;          // ZK artifact retrieval
+  proofProvider: ProofProvider;                // ZK proof generation
+  walletProvider: WalletProvider;              // Transaction balancing
+  midnightProvider: MidnightProvider;          // Transaction submission
+  loggerProvider?: LoggerProvider;             // Optional logging
+}
+```
 
-This is a yarn [workspaces](https://yarnpkg.com/features/workspaces/) project. All packages live in the [`packages`](packages) directory:
+## Contracts
 
-- `types` - Contains types and interfaces common to all other packages.
-- `contracts` - Contains utilities for interacting with Midnight smart contracts.
-- `indexer-public-data-provider` - Contains a cross-environment implementation of a Midnight indexer client.
-- `node-zk-config-provider` - Contains a file system based Node.js utility for retrieving zero-knowledge artifacts.
-- `fetch-zk-config-provider` - Contains a [fetch](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) based cross-environment utility for retrieving zero-knowledge artifacts.
-- `network-id` - Contains utilities for setting the network id used by `ledger`, `zswap`, and `compact-runtime` dependencies.
-- `http-client-proof-provider` - Contains a cross-environment implementation of a proof-server client.
-- `level-private-state-provider` - Contains a cross-environment implementation of an encrypted persistent private state store based on [Level](https://github.com/Level/level).
-- `utils` - General utilities used in Midnight.js
+Compiling a Compact smart contract with `compactc` produces a JavaScript file (circuit execution logic) and a TypeScript declaration file (type definitions). Midnight.js uses these to execute circuits locally and create type-safe transactions. See [Contract Compilation Details](#contract-compilation-details) for more.
 
-## Development setup
+## Security
 
-### 1. Nvm
+The `LevelPrivateStateProvider` encrypts all private state data at rest using:
 
-To start developing, first install [nvm](https://https://github.com/nvm-sh/nvm). Then [direnv](https://direnv.net) is
-optional, but strongly recommended.
+| Parameter | Value |
+| --------- | ----- |
+| Algorithm | AES-256-GCM |
+| Key Derivation | PBKDF2-SHA256 |
+| Iterations | 600,000 |
+| Password Minimum | 16 characters |
 
-If you're using `direnv`, only the first time you will need to do:
-```shell
+## Development
+
+### Prerequisites
+
+- [nvm](https://github.com/nvm-sh/nvm)
+- [direnv](https://direnv.net) (optional, recommended)
+
+### Setup
+
+```bash
+# If using direnv
 direnv allow
-```
-After that, `yarn` should be available in your path.
 
-### Build
-
-Remember to install the dependencies after cloning:
-```shell
+# Install dependencies
 yarn install
-```
 
-Build:
-```shell
+# Build
 yarn build
-```
 
-### Format code
-
-```sh
-yarn lint:fix 
-```
-
-### Tests
-
-The following command runs the tests and generates code coverage report, which is available within `coverage` directory.
-```sh
+# Test
 yarn test
+
+# Lint
+yarn lint:fix
 ```
+
+### Available Scripts
+
+| Script | Description |
+| ------ | ----------- |
+| `yarn build` | Build all packages |
+| `yarn test` | Run all tests |
+| `yarn lint` | Run ESLint |
+| `yarn lint:fix` | Fix linting issues |
+| `yarn commit` | Interactive conventional commit |
+| `yarn changelog` | Generate/update CHANGELOG.md |
 
 ## Contributing
 
-All new features must branch off the default branch `main`.
-
-It's recommended to enable automatic `eslint` formatting in your text editor
-upon save, in order to avoid CI errors due to incorrect format.
-
-### Commit Message Format
-
-This project uses [Conventional Commits](https://www.conventionalcommits.org/). Please format your commit messages as:
+Branch off `main` for all new features. Use [Conventional Commits](https://www.conventionalcommits.org/):
 
 ```
 <type>[optional scope]: <description>
 ```
 
-**Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `ci`, `build`, `revert`  
+**Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `ci`, `build`, `revert`
+
 **Scopes:** `core`, `testkit`, `wallet`, `deps`, `config`
-
-### Making Commits
-
-```bash
-# Interactive commit (recommended)
-yarn commit
-
-# Manual commit
-git commit -m "feat(core): add new feature"
-```
 
 ### Git Hooks
 
 - `pre-commit`: Runs lint-staged
-- `commit-msg`: Validates commit message format  
+- `commit-msg`: Validates commit message format
 - `pre-push`: Runs full check suite
 
-## Release a new version
+## Glossary
 
-### 1. Generate changelog
+| Term | Description |
+| ---- | ----------- |
+| Witness | Private computation performed on the end user's device |
+| Private State | State updated by witnesses, stored on user's device |
+| Circuit | Smart contract function that can be executed and proven |
+| ZKIR | Zero-Knowledge Intermediate Representation |
+
+## Detailed
+
+### Design Objectives
+
+#### Type-Safety
+
+- Preserves contract circuit argument/return types and user-defined types (`PS`, `Witnesses`) throughout the data model
+- Infers types using `infer` instead of introducing additional generic parameters
+- Uses least restrictive generic constraints necessary for type safety
+- Uses `any` only for truly unconstrained user-supplied types, not to fix compilation issues
+- Does not require manual specification of concrete types for generic parameters in most scenarios
+- Employs branded types to distinguish domain concepts sharing the same representation (e.g., `HexString` vs `string`)
+
+#### Modularity
+
+- Allows custom implementations of API clients via the "provider" pattern
+- Collects commonly used types in `@midnight-ntwrk/midnight-js-types` to standardize across applications
+
+#### Interoperability
+
+- Isomorphic design supporting both browser and Node.js environments
+- Supports different Midnight networks (TestNet, MainNet)
+
+#### Reusability
+
+- Builds high-level features from low-level utility functions, exporting both
+- Provides default implementation for each API client
+- Places each API client in a separate package for selective installation
+
+#### Usability
+
+- Minimizes boilerplate required to set up a dApp
+- Supplies common sense defaults to avoid application errors
+
+### Contract Compilation Details
+
+> This section assumes familiarity with the Compact language.
+
+When compiling a Compact smart contract with `compactc`, the **JavaScript file** contains:
+
+- Execution logic for each circuit in the source contract
+- Logic for constructing the contract's initial state
+- Utilities for converting on-chain contract state into JavaScript representation
+
+The **TypeScript declaration file** contains:
+
+- Type definition for the contract (`Contract`)
+- Type definitions for circuits defined within the contract
+- Type definition for required witnesses (`Witnesses`)
+- Type definition for on-chain state (`Ledger`)
+
+If the Compact source includes `witness` declarations, the `Witnesses` type is a non-empty object with a generic type parameter `PS` representing the private state that witnesses modify during circuit execution.
+
+> The term _runtime_ describes the JS executable for a contract, distinct from `@midnight-ntwrk/compact-runtime` which provides utilities each executable uses.
+
+### Architecture Details
+
+The `Contracts` element contains utilities for creating and submitting transactions. All clients are concrete instances of provider interfaces defined in `@midnight-ntwrk/midnight-js-types`.
+
+Key relationships:
+- `Ledger` and `Compact Runtime` both depend on `Impact VM` (on-chain runtime)
+- `Midnight.js` and `Substrate Node` both depend on `Ledger`
+
+This allows "rehearsing" circuit calls (running Impact VM) such that execution can be replayed on the node, and creating transactions from rehearsal results that the node accepts.
+
+### Release Process
+
+#### 1. Generate changelog
 ```bash
 yarn changelog  # Updates CHANGELOG.md with new entries
 ```
 
-### 2. Update versions
+#### 2. Update versions
 ```bash
 yarn workspaces foreach --all version $VERSION
 ```
 
-### 3. Commit and tag
+#### 3. Commit and tag
 ```bash
 git add .
 git commit -m "chore: release v$VERSION"
@@ -307,18 +278,15 @@ git tag v$VERSION
 git push origin v$VERSION  # Triggers CD workflow
 ```
 
-## Available Scripts
+Use [GitHub Releases](https://github.com/midnightntwrk/midnight-js/releases/new) to create a tag following the pattern `vX.Y.Z`.
 
-### Development
-- `yarn commit` - Interactive conventional commit prompt
-- `yarn build` - Build all packages
-- `yarn test` - Run all tests
-- `yarn lint` - Run ESLint
-- `yarn lint:fix` - Fix linting issues
+## Resources
 
-### Release
-- `yarn changelog` - Generate/update CHANGELOG.md
-- `yarn changelog:first` - Generate complete changelog from git history
+- [Midnight Network](https://midnight.network)
+- [Developer Hub](https://midnight.network/developer-hub)
 
-After that, use the [Releases](https://github.com/input-output-hk/midnight-js/releases/new) feature
-from GitHub to create a tag with a name following the pattern `vX.Y.Z`.
+## Terms & License
+
+By using this package, you agree to [Midnight's Terms and Conditions](https://midnight.network/static/terms.pdf) and [Privacy Policy](https://midnight.network/static/privacy-policy.pdf).
+
+Licensed under [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0).

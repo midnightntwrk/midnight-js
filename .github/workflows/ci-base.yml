@@ -50,7 +50,7 @@ jobs:
           password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # ratchet:actions/setup-node@v4
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # ratchet:actions/setup-node@v4
         with:
           always-auth: true
           registry-url: https://npm.pkg.github.com/
@@ -144,7 +144,7 @@ jobs:
             **/test-report*.xml
 
       - name: Publish Test Summary Comment
-        uses: EnricoMi/publish-unit-test-result-action@27d65e188ec43221b20d26de30f4892fad91df2f # ratchet:EnricoMi/publish-unit-test-result-action@v2.22.0
+        uses: EnricoMi/publish-unit-test-result-action@c950f6fb443cb5af20a377fd0dfaa78838901040 # ratchet:EnricoMi/publish-unit-test-result-action@v2.23.0
         if: success() || failure()
         with:
           check_name: 'Unit Test Results - MidnightJS'
@@ -185,7 +185,7 @@ jobs:
           password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # ratchet:actions/setup-node@v4
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # ratchet:actions/setup-node@v4
         with:
           always-auth: true
           registry-url: https://npm.pkg.github.com/
