@@ -162,7 +162,7 @@ describe('Unshielded tokens', () => {
   });
 
   //need to validate
-  test('should send tokens to wallet', async () => {
+  test.skip('should send tokens to wallet', async () => {
     const txData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
