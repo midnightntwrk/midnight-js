@@ -1,16 +1,71 @@
-# What is this?
-A `ZKConfigProvider` implementation that reads proving and verifying keys and ZK intermediate
-representation, in a Node.js environment.
+# Node ZK Config Provider
 
-This package was created for the [Midnight network](https://midnight.network). 
+ZK configuration provider that reads proving keys, verifier keys, and ZK intermediate representation from the local filesystem. Designed for Node.js environments.
 
-Please visit the [Midnight Developer Hub](https://midnight.network/developer-hub) to learn more.
+## Installation
 
-# Use only in Midnight test environments
-Image exclusively for Midnight test environments use.  
+```bash
+yarn add @midnight-ntwrk/midnight-js-node-zk-config-provider
+```
 
-# Agree to Terms
-By downloading and using this image, you agree to [Midnight’s Terms and Conditions](https://midnight.network/static/terms.pdf), which includes the [Privacy Policy](https://midnight.network/static/privacy-policy.pdf).
+## Quick Start
 
-# License
-The software provided herein is licensed under the [Apache License V2.0](http://www.apache.org/licenses/LICENSE-2.0).
+```typescript
+import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
+
+const zkConfigProvider = new NodeZkConfigProvider('/path/to/zk-artifacts');
+
+const proverKey = await zkConfigProvider.getProverKey('myCircuit');
+const verifierKey = await zkConfigProvider.getVerifierKey('myCircuit');
+const zkir = await zkConfigProvider.getZKIR('myCircuit');
+```
+
+## Configuration
+
+| Parameter   | Required | Description                                |
+| ----------- | -------- | ------------------------------------------ |
+| `directory` | ✓        | Base directory path for ZK artifact files  |
+
+## API
+
+### NodeZkConfigProvider
+
+```typescript
+class NodeZkConfigProvider<K extends string> extends ZKConfigProvider<K> {
+  constructor(directory: string);
+
+  getProverKey(circuitId: K): Promise<ProverKey>;
+  getVerifierKey(circuitId: K): Promise<VerifierKey>;
+  getZKIR(circuitId: K): Promise<ZKIR>;
+}
+```
+
+## Directory Structure
+
+The provider expects the following directory structure:
+
+```
+{directory}/
+├── keys/
+│   ├── {circuitId}.prover      # Prover key (binary)
+│   └── {circuitId}.verifier    # Verifier key (binary)
+└── zkir/
+    └── {circuitId}.bzkir       # ZK intermediate representation (binary)
+```
+
+## Exports
+
+```typescript
+import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
+```
+
+## Resources
+
+- [Midnight Network](https://midnight.network)
+- [Developer Hub](https://midnight.network/developer-hub)
+
+## Terms & License
+
+By using this package, you agree to [Midnight's Terms and Conditions](https://midnight.network/static/terms.pdf) and [Privacy Policy](https://midnight.network/static/privacy-policy.pdf).
+
+Licensed under [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0).
