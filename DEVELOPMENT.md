@@ -118,8 +118,8 @@ yarn vitest --coverage
 Integration tests require Docker Compose with proof-server, indexer, and node services.
 
 ```bash
-# Start required services (from testkit-js directory)
-cd testkit-js/testkit-js
+# Start required services
+cd testkit-js
 docker compose up -d
 
 # Run integration tests
@@ -184,7 +184,7 @@ Create `.vscode/launch.json`:
 1. Create directory under `packages/`
 2. Copy structure from existing package (e.g., `network-id`)
 3. Update `package.json` with correct name and dependencies
-4. Add to root `tsconfig.json` references
+4. Add to `tsconfig.base.json` references if needed
 5. Build to verify: `yarn turbo run build --filter=@midnight-ntwrk/midnight-js-<name>`
 
 ### Updating Dependencies
@@ -196,8 +196,8 @@ yarn up <package>
 # Update all dependencies
 yarn up
 
-# Check for outdated
-yarn outdated
+# Interactive dependency upgrade
+yarn upgrade-interactive
 ```
 
 ### Clean Rebuild
@@ -266,7 +266,7 @@ The repository uses Husky for git hooks:
 |------|--------|
 | `pre-commit` | Runs ESLint on staged `.ts` files |
 | `commit-msg` | Validates conventional commit format |
-| `pre-push` | Runs full lint and typecheck |
+| `pre-push` | Runs lint and test file typecheck |
 
 ### Bypassing Hooks (Use Sparingly)
 

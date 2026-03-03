@@ -161,9 +161,6 @@ yarn vitest --testTimeout=180000
 ```bash
 # Run with verbose output
 yarn vitest --reporter=verbose
-
-# Check for hanging async operations
-yarn vitest --detectOpenHandles
 ```
 
 ## Git Hook Issues
