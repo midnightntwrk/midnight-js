@@ -42,7 +42,7 @@ setNetworkId(id: NetworkId): void
 ```
 
 **Parameters:**
-- `id` - Network identifier string (e.g., `'testnet'`, `'mainnet'`)
+- `id` - Network identifier string (e.g., `'testnet'`)
 
 ### getNetworkId
 
@@ -62,14 +62,11 @@ Type alias for network identifiers.
 type NetworkId = string;
 ```
 
-## Common Network Values
+## Default Value
 
-| Network | ID | Description |
-|---------|-----|-------------|
-| TestNet | `testnet` | Public test network |
-| MainNet | `mainnet` | Production network |
-| DevNet | `devnet` | Development network |
-| Undeployed | `undeployed` | Default before configuration |
+The default network ID is `'undeployed'`. This value should be changed at application startup before any blockchain operations.
+
+`NetworkId` is a `string` type alias, so any string value is valid. The value you use should match the network you're connecting to (e.g., `'testnet'`).
 
 ## Usage Patterns
 
@@ -102,24 +99,6 @@ const network = process.env.MIDNIGHT_NETWORK || 'testnet';
 setNetworkId(network);
 ```
 
-### Multi-Network Applications
-
-For applications supporting multiple networks, set the network ID based on user selection:
-
-```typescript
-import { setNetworkId, getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-
-function switchNetwork(newNetwork: string) {
-  const currentNetwork = getNetworkId();
-
-  if (currentNetwork !== newNetwork) {
-    setNetworkId(newNetwork);
-    // Reinitialize providers for new network
-    reinitializeProviders();
-  }
-}
-```
-
 ## Error Handling
 
 ### Forgetting to Set Network ID
@@ -147,7 +126,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-network-id';
 ```
 
-## Detailed
+## Implementation Details
 
 ### Module-Level State
 
@@ -164,13 +143,12 @@ This ensures:
 
 ### Integration with Other Packages
 
-The network ID is consumed by:
+Within this monorepo, the network ID is consumed by:
 
 | Package | Usage |
 |---------|-------|
-| `@midnight-ntwrk/compact-runtime` | Transaction building |
-| `@midnight-ntwrk/ledger` | Address derivation |
-| `@midnight-ntwrk/midnight-js-contracts` | Contract deployment |
+| `@midnight-ntwrk/midnight-js-contracts` | Transaction building and contract deployment |
+| `@midnight-ntwrk/midnight-js-utils` | Type imports |
 
 These packages call `getNetworkId()` internally, so setting it once affects the entire application.
 

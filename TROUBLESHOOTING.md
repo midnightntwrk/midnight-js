@@ -26,7 +26,7 @@ nvm install
 
 **Solution:**
 ```bash
-nvm install 24
+nvm install
 nvm use
 ```
 
@@ -83,7 +83,7 @@ If you prefer not to use direnv, manually set environment:
 
 ```bash
 export COMPACTC_VERSION=0.29.0
-nvm use 24
+nvm use
 git config --local commit.gpgSign true
 git config --local tag.gpgSign true
 ```
@@ -138,7 +138,15 @@ NODE_OPTIONS=--max-old-space-size=8192 yarn build
 
 **Cause:** Integration tests require Docker services running.
 
-Start Docker desktop
+**Solution:**
+```bash
+# Start Docker and required services
+cd testkit-js
+docker compose up -d
+
+# Verify services are healthy
+docker compose ps
+```
 
 ### Vitest Timeout Errors
 
@@ -303,7 +311,7 @@ export COMPACTC_VERSION=0.29.0
 
 **Solution:**
 ```bash
-cd testkit-js/testkit-js
+cd testkit-js
 
 # Check logs
 docker compose logs <service-name>

@@ -1,13 +1,13 @@
 # Development Guide
 
-Guide for developing and contributing to Midnight.js.
+Guide for local development environment setup and IDE configuration. For basic commands, see [CLAUDE.md](./CLAUDE.md). For code style and testing patterns, see [AGENTS.md](./AGENTS.md). For project structure, see [llms.txt](./llms.txt).
 
 ## Prerequisites
 
 | Tool | Required | Purpose |
 |------|----------|---------|
 | [nvm](https://github.com/nvm-sh/nvm) | Yes | Node.js version management |
-| [Yarn](https://yarnpkg.com/) | Yes | Package manager (v4.12.0, managed by corepack) |
+| [Yarn](https://yarnpkg.com/) | Yes | Package manager (managed by corepack, see `package.json`) |
 | [direnv](https://direnv.net/) | No | Automatic environment setup |
 | [Docker](https://www.docker.com/) | No | Required only for integration tests |
 
@@ -34,86 +34,7 @@ yarn build
 yarn test
 ```
 
-## Repository Structure
-
-```
-midnight-js/
-├── packages/                    # Core library packages
-│   ├── types/                   # Shared types and interfaces
-│   ├── contracts/               # Contract deployment utilities
-│   ├── utils/                   # General utilities
-│   ├── network-id/              # Network identifier management
-│   ├── logger-provider/         # Logging infrastructure
-│   ├── level-private-state-provider/   # Encrypted state storage
-│   ├── indexer-public-data-provider/   # Blockchain data queries
-│   ├── http-client-proof-provider/     # Proof server client
-│   ├── fetch-zk-config-provider/       # Browser ZK config
-│   ├── node-zk-config-provider/        # Node.js ZK config
-│   └── compact/                 # Compact compiler manager
-├── testkit-js/                  # Test utilities and infrastructure
-│   ├── testkit-js/              # Test helpers and mocks
-│   └── testkit-js-e2e/          # End-to-end tests
-├── docs/                        # Documentation assets
-└── turbo.json                   # Turborepo configuration
-```
-
-## Working on Individual Packages
-
-### Build a Single Package
-
-```bash
-# Build specific package and its dependencies
-yarn turbo run build --filter=@midnight-ntwrk/midnight-js-contracts
-
-# Build package without dependencies (faster, use when deps unchanged)
-yarn turbo run build --filter=@midnight-ntwrk/midnight-js-contracts --only
-```
-
-### Test a Single Package
-
-```bash
-# Run tests for specific package
-yarn turbo run test --filter=@midnight-ntwrk/midnight-js-utils
-
-# Run tests in watch mode (from package directory)
-cd packages/utils
-yarn vitest --watch
-```
-
-### Lint a Single Package
-
-```bash
-# Lint specific package
-yarn eslint packages/utils
-```
-
-## Test Modes
-
-| Command | Scope | Docker Required |
-|---------|-------|-----------------|
-| `yarn test` | All unit tests | No |
-| `yarn test:unit` | Core packages only | No |
-| `yarn it` | Integration tests | Yes |
-| `yarn e2e` | End-to-end tests | Yes |
-
-### Running Unit Tests
-
-```bash
-# All packages
-yarn test
-
-# Core packages only (excludes testkit)
-yarn test:unit
-
-# Single package
-yarn turbo run test --filter=@midnight-ntwrk/midnight-js-contracts
-
-# With coverage
-cd packages/contracts
-yarn vitest --coverage
-```
-
-### Running Integration Tests
+## Integration Tests with Docker
 
 Integration tests require Docker Compose with proof-server, indexer, and node services.
 
@@ -122,18 +43,16 @@ Integration tests require Docker Compose with proof-server, indexer, and node se
 cd testkit-js
 docker compose up -d
 
-# Run integration tests
+# Verify services are healthy
+docker compose ps
+
+# Run integration tests (from root)
+cd ..
 yarn it
 
 # Stop services
+cd testkit-js
 docker compose down
-```
-
-### Running Tests in Watch Mode
-
-```bash
-cd packages/utils
-yarn vitest --watch
 ```
 
 ## Debug Configuration
