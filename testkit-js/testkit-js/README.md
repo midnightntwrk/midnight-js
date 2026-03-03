@@ -70,14 +70,14 @@ Set of functions that simplify testing of DApps in Midnight
 ### Environment selection:
 - MN_TEST_ENVIRONMENT controls the environment to be used for testing. It can take one of these values:
    - undeployed
-   - devnet
+   - qanet
    - preview
    - preprod
    - env-var-remote
 
 If **MN_TEST_ENVIRONMENT** is not set, the default value will be `undeployed`.
 If **MN_TEST_ENVIRONMENT** is set to `undeployed`, the testing environment will be deployed locally using Docker.
-If **MN_TEST_ENVIRONMENT** is set to `devnet`, `preview`, `preprod`, or `env-var-remote` the testing environment will be the corresponding live network, with proof server setup using predefined NETWORK_ID.
+If **MN_TEST_ENVIRONMENT** is set to `qanet`, `preview`, `preprod`, or `env-var-remote` the testing environment will be the corresponding live network, with proof server setup using predefined NETWORK_ID.
 If **MN_TEST_ENVIRONMENT** is set to `env-var-remote`, below environment variables must be set:
   - *MN_TEST_NETWORK_ID* - Proof server NETWORK_ID
   - *MN_TEST_INDEXER* - Indexer URL
@@ -109,10 +109,10 @@ environmentConfiguration = await testEnvironment.start();
 
 ```shell
 # Example: Set the environment variable before initializing the test environment
-MN_TEST_ENVIRONMENT='devnet'; yarn test
+MN_TEST_ENVIRONMENT='preview'; yarn test
 ```
 
-This allows you to easily switch between predefined environments like `devnet`, `testnet`, and others.
+This allows you to easily switch between predefined environments like `qanet`, `preview`, `preprod`, and others.
 Default (undefined) value is `undeployed` which will deploy the testing environment locally using Docker.
 
 ---
@@ -217,8 +217,8 @@ This demonstrates how to handle cases where the wallet limit is exceeded.
 Here's an example of integrating with the proof server:
 
 ```typescript
-// Example: Start a proof server with networkd ID = testnet and ID = 123
-const proofServer = await DynamicProofServerContainer.start(logger, '123', 'testnet');
+// Example: Start a proof server with network ID = preview and ID = 123
+const proofServer = await DynamicProofServerContainer.start(logger, '123', 'preview');
 
 //stop the proof server
 await proofServer.stop();
