@@ -1,28 +1,6 @@
-# AI Agent Guidelines for Midnight.js
+# Contributor Guide for Midnight.js
 
-This document provides guidance for AI coding assistants working with the Midnight.js codebase.
-
-## Project Context
-
-Midnight.js is a TypeScript SDK for the Midnight blockchain - a privacy-focused network using zero-knowledge proofs. The SDK enables developers to build dApps that combine public blockchain operations with private local computation.
-
-**Key Domain Concepts:**
-- Zero-knowledge proofs for privacy
-- Encrypted local state management
-- Smart contract deployment and interaction
-- Transaction lifecycle (unproven → proven → balanced → submitted → finalized)
-
-## Tech Stack
-
-| Tool | Version | Purpose |
-|------|---------|---------|
-| TypeScript | 5.8.x | Language |
-| Node.js | >=22 | Runtime |
-| Yarn | 4.x | Package manager |
-| Turbo | 2.8.x | Monorepo orchestration |
-| Vitest | 4.x | Testing framework |
-| ESLint | 9.x | Linting |
-| Rollup | 4.x | Bundling |
+Code style, testing patterns, and development workflows. For API reference and usage examples, see [llms.txt](./llms.txt).
 
 ## Code Style
 
@@ -44,8 +22,6 @@ interface Config {
 // ✅ Prefer union types over enums for simple cases
 type TxStatus = 'pending' | 'confirmed' | 'failed';
 
-// ✅ Use Result pattern for operations that can fail
-type Result<T, E> = { success: true; value: T } | { success: false; error: E };
 ```
 
 ### Naming Conventions
@@ -77,21 +53,9 @@ const MAX_RETRY_ATTEMPTS = 3;
 
 ### Provider Pattern
 
-All capabilities are abstracted into pluggable providers. See `packages/types/src/` for full interface definitions.
+All capabilities are abstracted into pluggable providers. Use factory functions to create them; see [llms.txt](./llms.txt) for full API examples and `packages/types/src/` for interface definitions.
 
-```typescript
-// ✅ Use factory functions to create providers
-import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
-
-const provider = levelPrivateStateProvider({
-  privateStoragePasswordProvider: () => password,
-  accountId: walletAddress
-});
-
-// ✅ Providers implement interfaces from @midnight-ntwrk/midnight-js-types
-// Key methods: set(), get(), remove(), clear()
-// Plus: setSigningKey(), exportPrivateStates(), importPrivateStates()
-```
+Key `PrivateStateProvider` methods: `set()`, `get()`, `remove()`, `clear()`, `setSigningKey()`, `exportPrivateStates()`, `importPrivateStates()`.
 
 ### Error Handling
 
@@ -295,21 +259,14 @@ yarn test --coverage
 
 ## Build and Lint
 
-```bash
-# Build all packages
-yarn build
+See [CLAUDE.md](./CLAUDE.md) for basic build/test/lint commands. Additional useful variants:
 
+```bash
 # Build specific package
 yarn build --filter=@midnight-ntwrk/midnight-js-contracts
 
-# Lint check
-yarn lint
-
-# Lint fix
-yarn lint:fix
-
 # Type check
-yarn typecheck
+yarn typecheck:tests
 ```
 
 ## Commit Guidelines
@@ -348,12 +305,6 @@ When adding dependencies:
 ### Useful Commands
 
 ```bash
-# Check for circular dependencies
-yarn madge --circular packages/*/src
-
-# Analyze bundle size
-yarn analyze
-
 # Run single test file
 yarn test packages/contracts/src/__tests__/deploy.test.ts
 ```

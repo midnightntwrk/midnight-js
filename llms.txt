@@ -181,9 +181,11 @@ import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
-import { fetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
+import { FetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
 
 setNetworkId('testnet');
+
+const zkConfigProvider = new FetchZkConfigProvider(zkArtifactsUrl);
 
 const providers: MidnightProviders = {
   privateStateProvider: levelPrivateStateProvider({
@@ -191,7 +193,7 @@ const providers: MidnightProviders = {
     accountId: walletAddress
   }),
   publicDataProvider: indexerPublicDataProvider(queryUrl, subscriptionUrl),
-  zkConfigProvider: fetchZkConfigProvider(zkArtifactsUrl),
+  zkConfigProvider,
   proofProvider: httpClientProofProvider(proofServerUrl, zkConfigProvider),
   walletProvider,    // from @midnight-ntwrk/wallet-sdk-facade
   midnightProvider   // from @midnight-ntwrk/wallet-sdk-facade
@@ -207,7 +209,8 @@ const testEnv = getTestEnvironment(logger);
 const config = await testEnv.start();
 
 const wallet = await testEnv.getMidnightWalletProvider();
-const providers = initializeMidnightProviders(wallet, config);
+const contractConfig = { zkConfigPath: '/path/to/zk', privateStateStoreName: 'test' };
+const providers = initializeMidnightProviders(wallet, config, contractConfig);
 
 // Run tests...
 
@@ -246,16 +249,6 @@ midnight-js/
 │   └── testkit-js-e2e/
 ├── package.json
 └── turbo.json
-```
-
-## Build Commands
-
-```bash
-yarn build      # Build all packages
-yarn test       # Run all tests
-yarn lint       # Check code style
-yarn lint:fix   # Auto-fix linting
-yarn e2e        # Run E2E tests
 ```
 
 ## External Dependencies

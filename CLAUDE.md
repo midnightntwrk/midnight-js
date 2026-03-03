@@ -68,5 +68,5 @@ catch { /* silent */ }
 
 ## Detailed Guidelines
 
-- [AGENTS.md](./AGENTS.md) - Architecture patterns, testing, package guidelines
-- [llms.txt](./llms.txt) - API reference and provider documentation
+- [AGENTS.md](./AGENTS.md) - Contributor guide: code style, testing, patterns, workflows
+- [llms.txt](./llms.txt) - API reference: packages, interfaces, usage examples
