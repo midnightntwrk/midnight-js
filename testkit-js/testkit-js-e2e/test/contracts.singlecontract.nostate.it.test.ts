@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025 Midnight Foundation
+ * Copyright (C) 2025-2026 Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -275,7 +275,7 @@ describe('Contracts API', () => {
    * @and Should successfully submit call transaction without private state provider
    * @and Should validate error for mismatched private state configuration
    */
-  test.skip('should submit deploy and call transactions for contracts with no private state [@slow]', async () => {
+  test('should submit deploy and call transactions for contracts with no private state [@slow]', async () => {
     // Need to deploy fresh contract to test 'submitDeployTx' independently
     const deployTxOptions = {
       compiledContract: api.CompiledSimpleContract,

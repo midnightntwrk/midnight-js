@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025 Midnight Foundation
+ * Copyright (C) 2025-2026 Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -379,6 +379,64 @@ describe('httpClientProvingProvider', () => {
           signal: expect.any(AbortSignal)
         })
       );
+    });
+  });
+
+  describe('URL configuration', () => {
+    it('should preserve path prefix in URL', async () => {
+      const urlWithPath = 'http://localhost:8080/api/v1';
+      const provider = httpClientProvingProvider(urlWithPath, mockZkConfigProvider);
+      const serializedPreimage = new Uint8Array([1, 2, 3]);
+
+      vi.mocked(ledger.createCheckPayload).mockReturnValue(new Uint8Array([20, 21, 22]));
+      vi.mocked(ledger.parseCheckResult).mockReturnValue([undefined]);
+
+      await provider.check(serializedPreimage, 'test-circuit');
+
+      const calledUrl = mockFetchRetry.mock.calls[0][0] as URL;
+      expect(calledUrl.pathname).toBe('/api/v1/check');
+    });
+
+    it('should preserve query parameters in URL', async () => {
+      const urlWithQuery = 'http://localhost:8080?token=secret123';
+      const provider = httpClientProvingProvider(urlWithQuery, mockZkConfigProvider);
+      const serializedPreimage = new Uint8Array([1, 2, 3]);
+
+      vi.mocked(ledger.createCheckPayload).mockReturnValue(new Uint8Array([20, 21, 22]));
+      vi.mocked(ledger.parseCheckResult).mockReturnValue([undefined]);
+
+      await provider.check(serializedPreimage, 'test-circuit');
+
+      const calledUrl = mockFetchRetry.mock.calls[0][0] as URL;
+      expect(calledUrl.search).toBe('?token=secret123');
+    });
+
+    it('should preserve both path and query parameters', async () => {
+      const urlWithPathAndQuery = 'http://localhost:8080/api/v1?token=secret&env=test';
+      const provider = httpClientProvingProvider(urlWithPathAndQuery, mockZkConfigProvider);
+      const serializedPreimage = new Uint8Array([1, 2, 3]);
+
+      vi.mocked(ledger.createProvingPayload).mockReturnValue(new Uint8Array([30, 31, 32]));
+
+      await provider.prove(serializedPreimage, 'test-circuit');
+
+      const calledUrl = mockFetchRetry.mock.calls[0][0] as URL;
+      expect(calledUrl.pathname).toBe('/api/v1/prove');
+      expect(calledUrl.search).toBe('?token=secret&env=test');
+    });
+
+    it('should handle trailing slash in base URL', async () => {
+      const urlWithTrailingSlash = 'http://localhost:8080/api/v1/';
+      const provider = httpClientProvingProvider(urlWithTrailingSlash, mockZkConfigProvider);
+      const serializedPreimage = new Uint8Array([1, 2, 3]);
+
+      vi.mocked(ledger.createCheckPayload).mockReturnValue(new Uint8Array([20, 21, 22]));
+      vi.mocked(ledger.parseCheckResult).mockReturnValue([undefined]);
+
+      await provider.check(serializedPreimage, 'test-circuit');
+
+      const calledUrl = mockFetchRetry.mock.calls[0][0] as URL;
+      expect(calledUrl.pathname).toBe('/api/v1/check');
     });
   });
 });

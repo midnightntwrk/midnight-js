@@ -1,15 +1,70 @@
-# What is this?
-A utility package for setting the network ID of runtime and ledger WASM API.
+# Network ID
 
-This package was created for the [Midnight network](https://midnight.network).
+Global network identifier management for Midnight.js runtime and ledger WASM API.
 
-Please visit the [Midnight Developer Hub](https://midnight.network/developer-hub) to learn more.
+## Installation
 
-# Use only in Midnight test environments
-Image exclusively for Midnight test environments use.  
+```bash
+yarn add @midnight-ntwrk/midnight-js-network-id
+```
 
-# Agree to Terms
-By downloading and using this image, you agree to [Midnight’s Terms and Conditions](https://midnight.network/static/terms.pdf), which includes the [Privacy Policy](https://midnight.network/static/privacy-policy.pdf).
+## Quick Start
 
-# License
-The software provided herein is licensed under the [Apache License V2.0](http://www.apache.org/licenses/LICENSE-2.0).
+```typescript
+import { setNetworkId, getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+
+// Set the network ID (typically done once at app startup)
+setNetworkId('testnet');
+
+// Retrieve current network ID
+const networkId = getNetworkId(); // 'testnet'
+```
+
+## API
+
+### setNetworkId
+
+Sets the global network identifier. Should be called once at application startup.
+
+```typescript
+setNetworkId(id: NetworkId): void
+```
+
+### getNetworkId
+
+Retrieves the currently set global network identifier.
+
+```typescript
+getNetworkId(): NetworkId
+```
+
+### NetworkId
+
+```typescript
+type NetworkId = string;
+```
+
+## Default Value
+
+The default network ID is `'undeployed'` until explicitly set.
+
+## Exports
+
+```typescript
+import {
+  setNetworkId,
+  getNetworkId,
+  type NetworkId
+} from '@midnight-ntwrk/midnight-js-network-id';
+```
+
+## Resources
+
+- [Midnight Network](https://midnight.network)
+- [Developer Hub](https://midnight.network/developer-hub)
+
+## Terms & License
+
+By using this package, you agree to [Midnight's Terms and Conditions](https://midnight.network/static/terms.pdf) and [Privacy Policy](https://midnight.network/static/privacy-policy.pdf).
+
+Licensed under [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0).
