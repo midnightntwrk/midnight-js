@@ -77,24 +77,20 @@ const MAX_RETRY_ATTEMPTS = 3;
 
 ### Provider Pattern
 
-All capabilities are abstracted into pluggable providers:
+All capabilities are abstracted into pluggable providers. See `packages/types/src/` for full interface definitions.
 
 ```typescript
-// ✅ Implement provider interfaces
-interface PrivateStateProvider {
-  get<T>(id: string): Promise<T | undefined>;
-  set<T>(id: string, state: T): Promise<void>;
-  remove(id: string): Promise<void>;
-}
+// ✅ Use factory functions to create providers
+import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
 
-// ✅ Factory functions for provider creation
-function levelPrivateStateProvider(options: Options): PrivateStateProvider {
-  return {
-    get: async (id) => { /* ... */ },
-    set: async (id, state) => { /* ... */ },
-    remove: async (id) => { /* ... */ }
-  };
-}
+const provider = levelPrivateStateProvider({
+  privateStoragePasswordProvider: () => password,
+  accountId: walletAddress
+});
+
+// ✅ Providers implement interfaces from @midnight-ntwrk/midnight-js-types
+// Key methods: set(), get(), remove(), clear()
+// Plus: setSigningKey(), exportPrivateStates(), importPrivateStates()
 ```
 
 ### Error Handling
