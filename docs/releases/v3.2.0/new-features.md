@@ -1,6 +1,35 @@
 # New Features v3.2.0
 
-## 1. Multi-Version Encryption (#530)
+## 1. Enhanced URL Handling in HTTP Client Proving Provider (#575)
+
+The `httpClientProvingProvider` now properly handles URLs with existing paths and query parameters.
+
+### Problem Solved
+Previously, when providing a URL with an existing path (e.g., `https://prover.example.com/api/v1/`), the path would be overwritten by the endpoint paths (`/check`, `/prove`). Now the paths are correctly appended.
+
+### Usage
+```typescript
+import { httpClientProvingProvider } from '@midnight-ntwrk/http-client-proof-provider';
+
+// URLs with paths are now handled correctly
+const provider = httpClientProvingProvider(
+  'https://prover.example.com/api/v1/',
+  zkConfigProvider
+);
+
+// Results in endpoints:
+// - https://prover.example.com/api/v1/check
+// - https://prover.example.com/api/v1/prove
+```
+
+### Trailing Slash Handling
+The implementation normalizes trailing slashes to prevent double slashes:
+- `https://example.com/api/` → `https://example.com/api/check`
+- `https://example.com/api` → `https://example.com/api/check`
+
+---
+
+## 2. Multi-Version Encryption (#530)
 
 Enhanced encryption with versioned format and increased security.
 
@@ -20,7 +49,7 @@ V1-encrypted data is automatically migrated to V2 when read or during password r
 
 ---
 
-## 2. Signing Key Export/Import (#526)
+## 3. Signing Key Export/Import (#526)
 
 Export and import signing keys with AES-256-GCM encryption.
 
@@ -59,7 +88,7 @@ interface SigningKeyExport {
 
 ---
 
-## 3. Private State Export/Import (#526)
+## 4. Private State Export/Import (#526)
 
 Export and import private states with the same security features.
 
@@ -93,7 +122,7 @@ interface PrivateStateExport {
 
 ---
 
-## 4. Secure Password Rotation (#542)
+## 5. Secure Password Rotation (#542)
 
 Rotate encryption passwords with atomic batch writes and automatic V1 to V2 migration.
 
@@ -139,7 +168,7 @@ interface PasswordRotationResult {
 
 ---
 
-## 5. Account-Scoped Storage Isolation (#545)
+## 6. Account-Scoped Storage Isolation (#545)
 
 Each account gets isolated storage namespaces for enhanced security and data separation.
 
@@ -178,7 +207,7 @@ console.log(`Signing keys migrated: ${result.signingKeysMigrated}`);
 
 ---
 
-## 6. Encryption Cache Management (#538)
+## 7. Encryption Cache Management (#538)
 
 Encryption keys are cached to avoid repeated PBKDF2 derivation (600,000 iterations).
 
@@ -194,7 +223,7 @@ Cache is automatically invalidated:
 
 ---
 
-## 7. Scoped Transaction Identity Validation (#555)
+## 8. Scoped Transaction Identity Validation (#555)
 
 Prevents silent state mismatches when batching contract calls.
 
@@ -221,7 +250,7 @@ await withContractScopedTransaction(providers, async (scope) => {
 
 ---
 
-## 8. Mnemonic-Based Wallet in Testkit (#524)
+## 9. Mnemonic-Based Wallet in Testkit (#524)
 
 New helpers for creating wallets from mnemonics in test environments.
 
@@ -250,7 +279,7 @@ const wallet = fromMnemonic('your mnemonic phrase here');
 
 ---
 
-## 9. Browser Storage Warning (#526)
+## 10. Browser Storage Warning (#526)
 
 Automatic console warning when using LevelDB in browser environments.
 

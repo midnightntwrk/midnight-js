@@ -1,6 +1,6 @@
 # Release Notes v3.2.0
 
-**Release Date:** February 26, 2026
+**Release Date:** March 3, 2026
 **Previous Version:** v3.1.0
 **Node.js Requirement:** >=22
 
@@ -75,6 +75,18 @@ The `authToken` parameter has been removed from compact fetch operations. Authen
 - Pinned workflow dependencies
 
 ## Features
+
+### Enhanced URL Handling in HTTP Client Proving Provider (#575)
+The `httpClientProvingProvider` now properly handles URLs with existing paths and query parameters. Previously, URLs with paths would be incorrectly overwritten.
+
+```typescript
+// Now works correctly with URLs containing paths
+const provider = httpClientProvingProvider(
+  'https://prover.example.com/api/v1/', // Path is preserved
+  zkConfigProvider
+);
+// Endpoints: /api/v1/check, /api/v1/prove
+```
 
 ### Signing Key Export/Import (#526)
 Export and import signing keys with password protection and conflict resolution.
@@ -177,6 +189,7 @@ Updated wallet state provider to use `ShieldedWalletAPI` and `UnshieldedWalletAP
 
 ### Development Dependencies Updated
 - `@rollup/plugin-commonjs`: 29.0.0
+- `@graphql-codegen/typescript-operations`: Updated (#539)
 - `testcontainers`: 11.12.0
 - `glob`: 13.0.4
 - `typedoc-plugin-markdown`: 4.10.0
@@ -185,13 +198,23 @@ Updated wallet state provider to use `ShieldedWalletAPI` and `UnshieldedWalletAP
 - `tar`: Updated for security fixes
 - `lodash`: 4.17.23 (then removed in #556)
 - `actions/cache`: 5.0.3
+- `actions/setup-node`: 6.2.0
+- `peter-evans/create-pull-request`: 8.1.0
+- `MishaKav/jest-coverage-comment`: 1.0.30
+
+## Testing
+
+- Added comprehensive integration tests for Level Private State Provider export/import functionality (#578)
 
 ## Documentation
 
 - Comprehensive README update for `levelPrivateStateProvider` (#563)
+- README updates for various Midnight.js modules with installation and usage details (#576)
+- HTTP client proof provider documentation with usage examples (#575)
 - API documentation updates (#504, #531, #544, #557, #559)
 - Storage architecture and data flow diagrams
 - Password requirements and security specifications
+- Updated `compact` references to `compactc` (#580)
 
 ## Links
 

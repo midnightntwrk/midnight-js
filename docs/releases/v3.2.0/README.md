@@ -1,6 +1,6 @@
 # midnight-js v3.2.0 Release Documentation
 
-**Release Date:** February 26, 2026
+**Release Date:** March 3, 2026
 **Previous Version:** v3.1.0
 **Migration Complexity:** Medium
 
@@ -27,13 +27,14 @@
 6. Scoped transaction identity validation (#555)
 7. CI/CD shell injection fixes (#493)
 
-## New Features (5)
+## New Features (6)
 
-1. Signing key export/import with encryption (#526)
-2. Private state export/import with conflict resolution (#526)
-3. Password rotation APIs for states and keys (#542)
-4. Account migration support (#545)
-5. Mnemonic-based wallet generation in testkit (#524)
+1. Enhanced URL handling in HTTP client proving provider (#575)
+2. Signing key export/import with encryption (#526)
+3. Private state export/import with conflict resolution (#526)
+4. Password rotation APIs for states and keys (#542)
+5. Account migration support (#545)
+6. Mnemonic-based wallet generation in testkit (#524)
 
 ## Quick Migration
 
@@ -97,5 +98,5 @@ const provider = levelPrivateStateProvider({
 
 ---
 
-**Last Updated:** February 26, 2026
+**Last Updated:** March 3, 2026
 **License:** Apache-2.0
