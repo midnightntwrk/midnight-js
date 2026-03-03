@@ -2274,9 +2274,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/compact-js@npm:2.4.0":
-  version: 2.4.0
-  resolution: "@midnight-ntwrk/compact-js@npm:2.4.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-js%2F2.4.0%2F6105e6a98f3ab939e6551a8ef3cee547972ac660"
+"@midnight-ntwrk/compact-js@npm:2.4.3":
+  version: 2.4.3
+  resolution: "@midnight-ntwrk/compact-js@npm:2.4.3::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-js%2F2.4.3%2F73d3f05cbd25f9e46616cf4b0a88c3e1384ce3f8"
   dependencies:
     "@effect/platform": "npm:^0.94.2"
     "@midnight-ntwrk/compact-runtime": "npm:0.14.0"
@@ -2284,7 +2284,7 @@ __metadata:
     "@midnight-ntwrk/platform-js": "npm:^2.2.0"
     effect: "npm:^3.19.15"
     tslib: "npm:^2.8.1"
-  checksum: 10/6314a062472d6dac6da11395714461cbdbc7399f875108dbb6928198ae24a0d62b1deaa3c258855e1fc5f33915d0bf56bceee4059abe7a46a7b41af42c42596b
+  checksum: 10/63b6922ecd5734f1ecb91677b7969fcb4185139d6a7d091fbe9e3b4abc5275238245dc56ee657a6eec0ff997d349e2f4e76344b141cc9e88df4fdadb649bab85
   languageName: node
   linkType: hard
 
@@ -2324,7 +2324,7 @@ __metadata:
   resolution: "@midnight-ntwrk/midnight-js-contracts@workspace:packages/contracts"
   dependencies:
     "@fast-check/vitest": "npm:^0.2.1"
-    "@midnight-ntwrk/compact-js": "npm:2.4.0"
+    "@midnight-ntwrk/compact-js": "npm:2.4.3"
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
@@ -2423,7 +2423,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-types@workspace:packages/types"
   dependencies:
-    "@midnight-ntwrk/compact-js": "npm:2.4.0"
+    "@midnight-ntwrk/compact-js": "npm:2.4.3"
     "@midnight-ntwrk/platform-js": "npm:2.2.0"
     rxjs: "npm:^7.5.0"
   languageName: unknown
@@ -2516,7 +2516,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/testkit-js-e2e@workspace:testkit-js/testkit-js-e2e"
   dependencies:
-    "@midnight-ntwrk/compact-js": "npm:2.4.0"
+    "@midnight-ntwrk/compact-js": "npm:2.4.3"
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*"
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*"
@@ -2548,7 +2548,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/testkit-js@workspace:testkit-js/testkit-js"
   dependencies:
-    "@midnight-ntwrk/compact-js": "npm:2.4.0"
+    "@midnight-ntwrk/compact-js": "npm:2.4.3"
     "@midnight-ntwrk/ledger-v7": "npm:7.0.0"
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*"
