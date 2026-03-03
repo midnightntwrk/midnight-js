@@ -28,13 +28,19 @@ print_usage() {
   echo "Usage: $0 <version> [--execute] [--with-tests]"
   echo ""
   echo "Options:"
-  echo "  --execute     Actually execute commands (default: dry-run)"
+  echo "  --execute     Execute full release including git operations (default: dry-run)"
   echo "  --with-tests  Run build and tests before release"
   echo ""
+  echo "Dry-run mode (default):"
+  echo "  - Updates version in all package.json files"
+  echo "  - Generates changelog"
+  echo "  - Does NOT create branch, commit, tag, or push"
+  echo "  - Allows you to review changes with 'git diff' before proceeding"
+  echo ""
   echo "Example:"
-  echo "  $0 3.0.0-alpha.2                    # Dry-run mode"
-  echo "  $0 3.0.0-alpha.2 --execute          # Execute release"
-  echo "  $0 3.0.0-alpha.2 --execute --with-tests  # Execute with tests"
+  echo "  $0 3.0.0-alpha.2                    # Dry-run: make file changes only"
+  echo "  $0 3.0.0-alpha.2 --execute          # Full release with git operations"
+  echo "  $0 3.0.0-alpha.2 --execute --with-tests  # Full release with tests"
 }
 
 log_info() {
@@ -57,6 +63,12 @@ execute_or_log() {
     log_info "Executing: $cmd"
     eval "$cmd"
   fi
+}
+
+execute_local() {
+  local cmd="$1"
+  log_info "Executing: $cmd"
+  eval "$cmd"
 }
 
 if [ $# -lt 1 ]; then
@@ -86,7 +98,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [ "$DRY_RUN" = true ]; then
-  log_warn "Running in DRY-RUN mode. Use --execute to actually run commands."
+  log_warn "Running in DRY-RUN mode. File changes will be made, but NO git operations."
 fi
 
 log_info "Target version: $NEW_VERSION"
@@ -103,27 +115,22 @@ if [ -n "$(git status --porcelain)" ]; then
 fi
 
 log_info "Step 1: Update version in root package.json"
-execute_or_log "yarn version $NEW_VERSION"
+execute_local "npm pkg set version=$NEW_VERSION"
 
 log_info "Step 2: Update versions in packages/* workspaces"
 PACKAGES=$(yarn workspaces list --json | jq -r 'select(.location | startswith("packages/")) | .name')
 for pkg in $PACKAGES; do
-  execute_or_log "yarn workspace $pkg version $NEW_VERSION"
+  execute_local "npm pkg set version=$NEW_VERSION -w $pkg"
 done
 
 log_info "Step 3: Update versions in testkit-js/* workspaces"
 TESTKIT_PACKAGES=$(yarn workspaces list --json | jq -r 'select(.location | startswith("testkit-js/")) | .name')
 for pkg in $TESTKIT_PACKAGES; do
-  execute_or_log "yarn workspace $pkg version $NEW_VERSION"
+  execute_local "npm pkg set version=$NEW_VERSION -w $pkg"
 done
 
 log_info "Step 4: Generate changelog"
-if [ "$DRY_RUN" = false ]; then
-  CHANGELOG_OUTPUT=$(yarn changelog 2>&1)
-  log_info "Changelog generated"
-else
-  execute_or_log "yarn changelog"
-fi
+execute_local "yarn changelog"
 
 if [ "$RUN_TESTS" = true ]; then
   log_info "Step 5: Build and test"
@@ -150,5 +157,9 @@ execute_or_log "git push origin v$NEW_VERSION"
 log_info "Release process completed successfully!"
 
 if [ "$DRY_RUN" = true ]; then
-  log_warn "This was a DRY-RUN. Run with --execute to perform actual release."
+  echo ""
+  log_warn "DRY-RUN completed. File changes were made but NO git operations were performed."
+  log_info "Review changes with: git diff"
+  log_info "To discard changes: git checkout ."
+  log_info "To proceed with release: $0 $NEW_VERSION --execute"
 fi
