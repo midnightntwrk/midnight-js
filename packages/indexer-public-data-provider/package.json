@@ -44,7 +44,7 @@
     "@graphql-codegen/cli": "^6.0.0",
     "@graphql-codegen/client-preset": "^5.0.0",
     "@graphql-codegen/typescript": "^5.0.0",
-    "@graphql-codegen/typescript-operations": "^5.0.0",
+    "@graphql-codegen/typescript-operations": "^5.0.8",
     "@types/ws": "^8.18.0"
   },
   "files": [
