@@ -1,0 +1,305 @@
+# Development Guide
+
+Guide for developing and contributing to Midnight.js.
+
+## Prerequisites
+
+| Tool | Required | Purpose |
+|------|----------|---------|
+| [nvm](https://github.com/nvm-sh/nvm) | Yes | Node.js version management |
+| [Yarn](https://yarnpkg.com/) | Yes | Package manager (v4.12.0, managed by corepack) |
+| [direnv](https://direnv.net/) | No | Automatic environment setup |
+| [Docker](https://www.docker.com/) | No | Required only for integration tests |
+
+## Initial Setup
+
+```bash
+# 1. Clone and enter repository
+git clone git@github.com:midnightntwrk/midnight-js.git
+cd midnight-js
+
+# 2. Use correct Node version
+nvm use
+
+# 3. (Optional) Enable direnv for automatic environment
+direnv allow
+
+# 4. Install dependencies
+yarn install
+
+# 5. Build all packages
+yarn build
+
+# 6. Verify setup
+yarn test
+```
+
+## Repository Structure
+
+```
+midnight-js/
+├── packages/                    # Core library packages
+│   ├── types/                   # Shared types and interfaces
+│   ├── contracts/               # Contract deployment utilities
+│   ├── utils/                   # General utilities
+│   ├── network-id/              # Network identifier management
+│   ├── logger-provider/         # Logging infrastructure
+│   ├── level-private-state-provider/   # Encrypted state storage
+│   ├── indexer-public-data-provider/   # Blockchain data queries
+│   ├── http-client-proof-provider/     # Proof server client
+│   ├── fetch-zk-config-provider/       # Browser ZK config
+│   ├── node-zk-config-provider/        # Node.js ZK config
+│   └── compact/                 # Compact compiler manager
+├── testkit-js/                  # Test utilities and infrastructure
+│   ├── testkit-js/              # Test helpers and mocks
+│   └── testkit-js-e2e/          # End-to-end tests
+├── docs/                        # Documentation assets
+└── turbo.json                   # Turborepo configuration
+```
+
+## Working on Individual Packages
+
+### Build a Single Package
+
+```bash
+# Build specific package and its dependencies
+yarn turbo run build --filter=@midnight-ntwrk/midnight-js-contracts
+
+# Build package without dependencies (faster, use when deps unchanged)
+yarn turbo run build --filter=@midnight-ntwrk/midnight-js-contracts --only
+```
+
+### Test a Single Package
+
+```bash
+# Run tests for specific package
+yarn turbo run test --filter=@midnight-ntwrk/midnight-js-utils
+
+# Run tests in watch mode (from package directory)
+cd packages/utils
+yarn vitest --watch
+```
+
+### Lint a Single Package
+
+```bash
+# Lint specific package
+yarn eslint packages/utils
+```
+
+## Test Modes
+
+| Command | Scope | Docker Required |
+|---------|-------|-----------------|
+| `yarn test` | All unit tests | No |
+| `yarn test:unit` | Core packages only | No |
+| `yarn it` | Integration tests | Yes |
+| `yarn e2e` | End-to-end tests | Yes |
+
+### Running Unit Tests
+
+```bash
+# All packages
+yarn test
+
+# Core packages only (excludes testkit)
+yarn test:unit
+
+# Single package
+yarn turbo run test --filter=@midnight-ntwrk/midnight-js-contracts
+
+# With coverage
+cd packages/contracts
+yarn vitest --coverage
+```
+
+### Running Integration Tests
+
+Integration tests require Docker Compose with proof-server, indexer, and node services.
+
+```bash
+# Start required services (from testkit-js directory)
+cd testkit-js/testkit-js
+docker compose up -d
+
+# Run integration tests
+yarn it
+
+# Stop services
+docker compose down
+```
+
+### Running Tests in Watch Mode
+
+```bash
+cd packages/utils
+yarn vitest --watch
+```
+
+## Debug Configuration
+
+### VS Code
+
+Create `.vscode/launch.json`:
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug Current Test File",
+      "autoAttachChildProcesses": true,
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+      "program": "${workspaceRoot}/node_modules/vitest/vitest.mjs",
+      "args": ["run", "${relativeFile}"],
+      "smartStep": true,
+      "console": "integratedTerminal"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Debug All Tests in Package",
+      "autoAttachChildProcesses": true,
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"],
+      "program": "${workspaceRoot}/node_modules/vitest/vitest.mjs",
+      "args": ["run", "--dir", "${fileDirname}/.."],
+      "smartStep": true,
+      "console": "integratedTerminal"
+    }
+  ]
+}
+```
+
+### WebStorm / IntelliJ
+
+1. Right-click on test file → "Debug"
+2. Or create Run Configuration: `Node.js` → Script: `node_modules/vitest/vitest.mjs` → Args: `run path/to/test.ts`
+
+## Common Development Tasks
+
+### Adding a New Package
+
+1. Create directory under `packages/`
+2. Copy structure from existing package (e.g., `network-id`)
+3. Update `package.json` with correct name and dependencies
+4. Add to root `tsconfig.json` references
+5. Build to verify: `yarn turbo run build --filter=@midnight-ntwrk/midnight-js-<name>`
+
+### Updating Dependencies
+
+```bash
+# Update single dependency
+yarn up <package>
+
+# Update all dependencies
+yarn up
+
+# Check for outdated
+yarn outdated
+```
+
+### Clean Rebuild
+
+```bash
+# Clean all build artifacts
+yarn clean
+
+# Full clean rebuild
+yarn clean-build
+```
+
+### Typecheck Without Building
+
+```bash
+# Check all packages
+yarn turbo run check
+
+# Check test files
+yarn typecheck:tests
+```
+
+## Turborepo Commands
+
+### Filtering
+
+```bash
+# Single package
+yarn turbo run build --filter=@midnight-ntwrk/midnight-js-utils
+
+# Packages matching pattern
+yarn turbo run build --filter='@midnight-ntwrk/midnight-js-*-provider'
+
+# Exclude packages
+yarn turbo run build --filter='!@midnight-ntwrk/testkit-*'
+
+# Package and dependencies
+yarn turbo run build --filter=@midnight-ntwrk/midnight-js-contracts...
+
+# Package and dependents
+yarn turbo run build --filter=...@midnight-ntwrk/midnight-js-types
+```
+
+### Caching
+
+```bash
+# Force rebuild (ignore cache)
+yarn turbo run build --force
+
+# View cache status
+yarn turbo run build --dry-run
+```
+
+### Dependency Graph
+
+```bash
+# Visualize package dependencies
+yarn turbo run build --graph
+```
+
+## Git Hooks
+
+The repository uses Husky for git hooks:
+
+| Hook | Action |
+|------|--------|
+| `pre-commit` | Runs ESLint on staged `.ts` files |
+| `commit-msg` | Validates conventional commit format |
+| `pre-push` | Runs full lint and typecheck |
+
+### Bypassing Hooks (Use Sparingly)
+
+```bash
+# Skip pre-commit
+git commit --no-verify -m "message"
+
+# Skip pre-push
+git push --no-verify
+```
+
+### GPG Signing
+
+The repository requires signed commits. direnv configures this automatically. Manual setup:
+
+```bash
+git config --local commit.gpgSign true
+git config --local tag.gpgSign true
+```
+
+## Environment Variables
+
+| Variable | Purpose | Set By |
+|----------|---------|--------|
+| `COMPACTC_VERSION` | Compact compiler version | direnv |
+| `NODE_VERSION` | Node.js version | nvm |
+
+Without direnv, set manually:
+
+```bash
+export COMPACTC_VERSION=0.29.0
+```
+
+## Troubleshooting
+
+See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for common issues and solutions.
