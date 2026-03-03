@@ -415,3 +415,11 @@ interface FetchCompactOptions {
 -   authToken?: string;
   }
 ```
+
+### @midnight-ntwrk/http-client-proof-provider
+
+```diff
+  // URL handling improved - paths are now preserved (#575)
+  // Before: new URL('/check', 'https://example.com/api/') → 'https://example.com/check'
+  // After:  buildEndpointUrl('https://example.com/api/', '/check') → 'https://example.com/api/check'
+```
