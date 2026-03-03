@@ -94,7 +94,7 @@ describe('Contracts API Snark Upgrade [@slow][@smoke]', () => {
    *
    * @smoke Test validates complete verifier key replacement workflow
    */
-  test.skip(
+  test(
     'should update verifier keys from one contract to another [@smoke]',
     async () => {
       const circuitMaintenanceTxInterfaces = createCircuitMaintenanceTxInterfaces(

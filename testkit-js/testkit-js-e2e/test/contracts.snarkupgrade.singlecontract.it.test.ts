@@ -172,7 +172,7 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
     );
   });
 
-  test.skip('createContractMaintenanceTxInterface - replaceAuthority - successful replace authority with the new one [@slow]', async () => {
+  test('createContractMaintenanceTxInterface - replaceAuthority - successful replace authority with the new one [@slow]', async () => {
     const authority = sampleSigningKey();
     logger.info(`Signing key for 'Counter' is ${authority}`);
     const contractMaintenanceTxInterface = createContractMaintenanceTxInterface(counterProviders, CompiledCounterContract, contractAddress);
@@ -226,7 +226,7 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
     );
   });
 
-  test.skip('createContractMaintenanceTxInterface - insertVerifierKey - success when no key present [@slow]', async () => {
+  test('createContractMaintenanceTxInterface - insertVerifierKey - success when no key present [@slow]', async () => {
     const vk = await counterProviders.zkConfigProvider.getVerifierKey(CIRCUIT_ID_RESET);
     const circuitMaintenanceTxInterface = createCircuitMaintenanceTxInterface(
       counterProviders,
@@ -241,7 +241,7 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
     await api.increment(deployedCounterContract);
   });
 
-  test.skip('createCircuitMaintenanceTxInterfaces - insertVerifierKey - fail when key is already present', async () => {
+  test('createCircuitMaintenanceTxInterfaces - insertVerifierKey - fail when key is already present', async () => {
     const vk = await counterProviders.zkConfigProvider.getVerifierKey(CIRCUIT_ID_RESET);
     const circuitMaintenanceTxInterfaces = createCircuitMaintenanceTxInterfaces(
       counterProviders,
@@ -254,7 +254,7 @@ describe('Contracts API Snark Upgrade [single contract]', () => {
     );
   });
 
-  test.skip('createCircuitMaintenanceTxInterfaces - insertVerifierKey - success when no key present [@slow]', async () => {
+  test('createCircuitMaintenanceTxInterfaces - insertVerifierKey - success when no key present [@slow]', async () => {
     const vk = await counterProviders.zkConfigProvider.getVerifierKey(CIRCUIT_ID_RESET);
     const circuitMaintenanceTxInterfaces = createCircuitMaintenanceTxInterfaces(
       counterProviders,
