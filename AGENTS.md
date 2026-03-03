@@ -73,30 +73,6 @@ const MAX_RETRY_ATTEMPTS = 3;
 // deploy-contract.ts
 ```
 
-### Functional Patterns
-
-This codebase uses fp-ts for functional programming:
-
-```typescript
-import * as E from 'fp-ts/Either';
-import * as TE from 'fp-ts/TaskEither';
-import { pipe } from 'fp-ts/function';
-
-// ✅ Use pipe for composition
-const result = pipe(
-  input,
-  E.map(transform),
-  E.chain(validate),
-  E.fold(handleError, handleSuccess)
-);
-
-// ✅ Use TaskEither for async operations that can fail
-const fetchData: TE.TaskEither<Error, Data> = pipe(
-  TE.tryCatch(() => fetch(url), toError),
-  TE.chain(parseResponse)
-);
-```
-
 ## Architecture Patterns
 
 ### Provider Pattern
@@ -399,7 +375,6 @@ Before implementing, clarify:
 ## Resources
 
 - [TypeScript Handbook](https://www.typescriptlang.org/docs/)
-- [fp-ts Documentation](https://gcanti.github.io/fp-ts/)
 - [RxJS Guide](https://rxjs.dev/guide/overview)
 - [Vitest Documentation](https://vitest.dev/)
 - [Conventional Commits](https://www.conventionalcommits.org/)

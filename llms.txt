@@ -6,7 +6,6 @@ Midnight.js provides comprehensive tools for deploying and interacting with smar
 
 ## Quick Facts
 
-- **Version:** 3.2.0-rc.1
 - **License:** Apache 2.0
 - **Language:** TypeScript
 - **Runtime:** Node.js >=22, Browser
@@ -73,7 +72,7 @@ MidnightProviders
 
 ### Private State Security
 - Encryption: AES-256-GCM
-- Key derivation: PBKDF2-SHA256 (600,000 iterations)
+- Key derivation: PBKDF2-SHA256 (V2: 600,000 iterations; V1: 100,000 for legacy data)
 - Account-scoped isolation per wallet address
 
 ## Transaction Flow
@@ -138,15 +137,12 @@ const provider = levelPrivateStateProvider({
   accountId: 'wallet-address'
 });
 
-// CRUD operations
+// CRUD operations (PrivateStateProvider interface)
 await provider.set(privateStateId, state);
 const state = await provider.get(privateStateId);
 await provider.remove(privateStateId);
 
-// Password rotation
-await provider.changePassword(() => 'old', () => 'new');
-
-// Export/Import
+// Export/Import (PrivateStateProvider interface)
 const exported = await provider.exportPrivateStates();
 await provider.importPrivateStates(exported, { conflictStrategy: 'skip' });
 ```
@@ -276,7 +272,6 @@ yarn e2e        # Run E2E tests
 - graphql-ws - GraphQL subscriptions
 - level - LevelDB storage
 - superjson - Type-preserving serialization
-- fp-ts / io-ts - Functional utilities
 
 ## Security Notes
 
@@ -299,5 +294,5 @@ yarn e2e        # Run E2E tests
 
 ## Links
 
-- Repository: https://github.com/midnight-ntwrk/midnight-js
+- Repository: https://github.com/midnightntwrk/midnight-js
 - License: Apache 2.0
