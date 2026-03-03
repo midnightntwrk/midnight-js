@@ -379,7 +379,7 @@ const rotateStorePassword = async (
             decryptValue(encryptedValue, oldEncryption, oldPassword);
           } catch (error: unknown) {
             if (isDecryptionError(error)) {
-              throw new Error('Old password is incorrect: failed to decrypt existing data');
+              throw new Error('Old password is incorrect: failed to decrypt existing data', { cause: error });
             }
             throw error;
           }
@@ -393,7 +393,8 @@ const rotateStorePassword = async (
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
           throw new Error(
             `Failed to decrypt entry "${key}": ${errorMessage}. ` +
-            `Successfully processed ${entriesToMigrate.length} entries before failure.`
+            `Successfully processed ${entriesToMigrate.length} entries before failure.`,
+            { cause: error }
           );
         }
       }
@@ -415,7 +416,8 @@ const rotateStorePassword = async (
           const errorMessage = error instanceof Error ? error.message : 'Unknown error';
           throw new Error(
             `Failed to re-encrypt entry "${key}": ${errorMessage}. ` +
-            `Original data is still encrypted with old password.`
+            `Original data is still encrypted with old password.`,
+            { cause: error }
           );
         }
       }
@@ -433,7 +435,8 @@ const rotateStorePassword = async (
         throw new Error(
           `Failed to write re-encrypted data: ${errorMessage}. ` +
           `Your data may be in an inconsistent state. ` +
-          `Keep both old and new passwords until you can verify data integrity.`
+          `Keep both old and new passwords until you can verify data integrity.`,
+          { cause: error }
         );
       }
 
@@ -1216,7 +1219,8 @@ const migrateSublevel = async (
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       throw new Error(
         `Failed to open source sublevel "${oldLevelName}": ${errorMessage}. ` +
-        `Ensure no other process is accessing the database.`
+        `Ensure no other process is accessing the database.`,
+        { cause: error }
       );
     }
 
@@ -1226,7 +1230,8 @@ const migrateSublevel = async (
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       throw new Error(
         `Failed to open target sublevel "${newLevelName}": ${errorMessage}. ` +
-        `Ensure no other process is accessing the database.`
+        `Ensure no other process is accessing the database.`,
+        { cause: error }
       );
     }
 
@@ -1242,7 +1247,8 @@ const migrateSublevel = async (
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       throw new Error(
         `Failed to read data from source sublevel "${oldLevelName}" after ${count} entries: ${errorMessage}. ` +
-        `Migration incomplete. Source data is unchanged.`
+        `Migration incomplete. Source data is unchanged.`,
+        { cause: error }
       );
     }
 
@@ -1254,7 +1260,8 @@ const migrateSublevel = async (
         throw new Error(
           `Failed to write ${operations.length} entries to target sublevel "${newLevelName}": ${errorMessage}. ` +
           `Migration incomplete. Target sublevel may contain partial data. ` +
-          `Source data at "${oldLevelName}" is unchanged.`
+          `Source data at "${oldLevelName}" is unchanged.`,
+          { cause: error }
         );
       }
     }
@@ -1300,7 +1307,7 @@ export const migrateToAccountScoped = async (
     config.accountId
   );
 
-  let privateStatesMigrated = 0;
+  let privateStatesMigrated: number;
 
   try {
     privateStatesMigrated = await migrateSublevel(
@@ -1312,11 +1319,12 @@ export const migrateToAccountScoped = async (
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     throw new Error(
       `Migration failed during private states copy: ${errorMessage}. ` +
-      `No data has been migrated. Source data is unchanged.`
+      `No data has been migrated. Source data is unchanged.`,
+      { cause: error }
     );
   }
 
-  let signingKeysMigrated = 0;
+  let signingKeysMigrated: number;
 
   try {
     signingKeysMigrated = await migrateSublevel(
@@ -1329,7 +1337,8 @@ export const migrateToAccountScoped = async (
     throw new Error(
       `Migration failed during signing keys copy: ${errorMessage}. ` +
       `WARNING: ${privateStatesMigrated} private states were already migrated to scoped location. ` +
-      `Signing keys remain at original location. Manual intervention may be required.`
+      `Signing keys remain at original location. Manual intervention may be required.`,
+      { cause: error }
     );
   }
 

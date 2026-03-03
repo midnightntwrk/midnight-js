@@ -143,7 +143,7 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
     // Report CompactError messages as they are, otherwise re-throw the error.
     if ((error as any)?.['_tag'] !== 'ContractRuntimeError') throw error; // eslint-disable-line @typescript-eslint/no-explicit-any
     if ((error as any)?.cause.name !== 'CompactError') throw error; // eslint-disable-line @typescript-eslint/no-explicit-any
-    throw new Error((error as any)?.cause.message); // eslint-disable-line @typescript-eslint/no-explicit-any
+    throw new Error((error as any)?.cause.message, { cause: error }); // eslint-disable-line @typescript-eslint/no-explicit-any
   }
 }
 
