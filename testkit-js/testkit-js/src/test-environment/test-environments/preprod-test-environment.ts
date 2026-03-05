@@ -20,13 +20,13 @@ import type { EnvironmentConfiguration } from '@/test-environment';
 import { RemoteTestEnvironment } from './remote-test-environment';
 
 /**
- * Test environment configuration for the Midnight testnet network.
- * Provides URLs and endpoints for testnet services.
+ * Test environment configuration for the Midnight preprod network.
+ * Provides URLs and endpoints for preprod network services.
  */
-export class Testnet2TestEnvironment extends RemoteTestEnvironment {
+export class PreprodTestEnvironment extends RemoteTestEnvironment {
   /**
-   * Returns the configuration for the testnet environment services.
-   * @returns {EnvironmentConfiguration} Object containing URLs for testnet services:
+   * Returns the configuration for the preprod environment services.
+   * @returns {EnvironmentConfiguration} Object containing URLs for preprod services:
    * - indexer: GraphQL API endpoint for the indexer
    * - indexerWS: WebSocket endpoint for the indexer
    * - node: RPC endpoint for the blockchain node
@@ -36,12 +36,12 @@ export class Testnet2TestEnvironment extends RemoteTestEnvironment {
   getEnvironmentConfiguration(): EnvironmentConfiguration {
     return {
       walletNetworkId: NetworkId.NetworkId.TestNet,
-      networkId: 'testnet-02',
-      indexer: 'https://indexer.testnet-02.midnight.network/api/v3/graphql',
-      indexerWS: 'wss://indexer.testnet-02.midnight.network/api/v3/graphql/ws',
-      node: 'https://rpc.testnet-02.midnight.network',
-      nodeWS: 'wss://rpc.testnet-02.midnight.network',
-      faucet: 'https://faucet.testnet-02.midnight.network/api/request-tokens',
+      networkId: 'preprod',
+      indexer: 'https://indexer.preprod.midnight.network/api/v3/graphql',
+      indexerWS: 'wss://indexer.preprod.midnight.network/api/v3/graphql/ws',
+      node: 'https://rpc.preprod.midnight.network',
+      nodeWS: 'wss://rpc.preprod.midnight.network',
+      faucet: 'https://faucet.preprod.midnight.network/api/request-tokens',
       proofServer: this.proofServerContainer?.getUrl()
     };
   }
