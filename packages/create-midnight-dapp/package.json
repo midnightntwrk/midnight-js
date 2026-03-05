@@ -1,0 +1,38 @@
+{
+  "name": "@midnight-ntwrk/create-midnight-dapp",
+  "description": "CLI tool for scaffolding Midnight dApps",
+  "version": "3.2.0-rc.2",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/midnight-ntwrk/artifacts.git"
+  },
+  "author": "IOG",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "type": "module",
+  "bin": "dist/cli.mjs",
+  "scripts": {
+    "clean": "rm -rf dist tsconfig.build.tsbuildinfo",
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "lint": "eslint ./src",
+    "deploy": "yarn npm publish"
+  },
+  "dependencies": {
+    "commander": "^14.0.3",
+    "picocolors": "^1.1.1",
+    "prompts": "^2.4.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/prompts": "^2.4.9",
+    "typescript": "^5.8.2",
+    "vitest": "^4.0.18"
+  },
+  "files": [
+    "dist/",
+    "templates/"
+  ]
+}

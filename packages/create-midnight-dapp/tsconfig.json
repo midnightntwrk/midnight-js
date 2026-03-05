@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "esModuleInterop": true,
+    "moduleResolution": "nodenext",
+    "module": "NodeNext",
+    "types": ["node"]
+  },
+  "include": [
+    "./src/**/*.mts",
+    "./src/**/*.ts"
+  ]
+}
