@@ -14,7 +14,8 @@
  */
 
 import { type ContractState, StateValue } from '@midnight-ntwrk/compact-runtime';
-import { describe, expect, it, vi } from 'vitest';
+import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createUnprovenCallTx, createUnprovenCallTxFromInitialStates } from '../unproven-call-tx';
 import { createUnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
@@ -50,6 +51,10 @@ vi.mock('../utils', () => ({
 }));
 
 describe('unproven-call-tx', () => {
+  beforeAll(() => {
+    setNetworkId('testnet');
+  });
+
   let initialContractState: Promise<ContractState> | null = null;
   const getInitialContractState = async () => {
     const _ = async () => {
