@@ -1,6 +1,6 @@
 # Release Notes v3.2.0
 
-**Release Date:** March 3, 2026
+**Release Date:** March 5, 2026
 **Previous Version:** v3.1.0
 **Node.js Requirement:** >=22
 
@@ -162,7 +162,31 @@ const testWallet = new FluentWalletBuilder()
 ### Browser Storage Warning (#526)
 Automatic warning when using LevelDB storage in browser environments, alerting users to data persistence risks.
 
+### Testkit Test Environments (#592)
+Added support for preprod and preview test environments in testkit-js. Developers can now easily configure tests against different Midnight network environments using the `MN_TEST_ENVIRONMENT` variable.
+
+```typescript
+import { getTestEnvironment, createLogger } from '@midnight-ntwrk/testkit-js';
+
+const logger = createLogger();
+const testEnvironment = getTestEnvironment(logger);
+const config = await testEnvironment.start();
+
+// config provides: indexer, indexerWS, node, nodeWS, faucet, proofServer
+```
+
+```bash
+# Run tests against preprod network
+MN_TEST_ENVIRONMENT='preprod' yarn test
+
+# Run tests against preview network
+MN_TEST_ENVIRONMENT='preview' yarn test
+```
+
 ## Bug Fixes
+
+### WASM Payload Buffer Copy (#596)
+Fixed a critical issue where `payload.buffer` on a WASM subarray view was returning the entire WASM linear memory heap instead of the referenced bytes. This was sending megabytes of unrelated memory to the proof server, causing parse failures like `BadInput("Unsupported ZKIR version")` or corrupt field values. The fix replaces `payload.buffer` with `new Uint8Array(payload)` which copies only the view's bytes.
 
 ### Zswap Chain State Handling (#543)
 Fixed an issue where the initial Zswap chain state was incorrectly merged instead of being reused, potentially causing state inconsistencies.
@@ -205,9 +229,11 @@ Updated wallet state provider to use `ShieldedWalletAPI` and `UnshieldedWalletAP
 ## Testing
 
 - Added comprehensive integration tests for Level Private State Provider export/import functionality (#578)
+- Added test environments for preprod and preview networks in testkit (#592)
 
 ## Documentation
 
+- Added llms.txt, AGENTS.md, and CLAUDE.md for AI agent guidance (#579)
 - Comprehensive README update for `levelPrivateStateProvider` (#563)
 - README updates for various Midnight.js modules with installation and usage details (#576)
 - HTTP client proof provider documentation with usage examples (#575)
