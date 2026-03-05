@@ -56,7 +56,7 @@ const getKeyMaterial = async <K extends string>(
 const makeHttpRequest = async (url: URL, payload: Uint8Array, timeout: number): Promise<Uint8Array> => {
   const response = await fetchRetry(url, {
     method: 'POST',
-    body: payload.buffer as ArrayBuffer,
+    body: new Uint8Array(payload),
     signal: AbortSignal.timeout(timeout)
   });
 
