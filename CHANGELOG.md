@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [3.2.0-rc.3](https://github.com/midnightntwrk/midnight-js/compare/v3.2.0-rc.2...v3.2.0-rc.3) (2026-03-05)
+
+
+### Bug Fixes
+
+* **http-client-proof-provider:** copy WASM payload bytes before sending to proof server ([#596](https://github.com/midnightntwrk/midnight-js/pull/596)) ([0922ce0](https://github.com/midnightntwrk/midnight-js/commit/0922ce0802de96ffe6d518ffb50c5a049aeab45c))
+
+
+### Improvements
+
+* **testkit-js:** add test environments ([#592](https://github.com/midnightntwrk/midnight-js/pull/592)) ([349bd16](https://github.com/midnightntwrk/midnight-js/commit/349bd16e2422b074f8644a3ec98e7999288c81ad))
+
 ## [3.2.0-rc.2](https://github.com/midnightntwrk/midnight-js/compare/v3.2.0-rc.1...v3.2.0-rc.2) (2026-03-03)
 
 
@@ -37,6 +49,7 @@ All notable changes to this project will be documented in this file. See [commit
 * **deps:** bump peter-evans/create-pull-request from 8.0.0 to 8.1.0 ([#547](https://github.com/midnightntwrk/midnight-js/pull/547)) ([c6203f6](https://github.com/midnightntwrk/midnight-js/commit/c6203f678939e027e017620cddc4dea851953726))
 * **deps:** bump the npm_and_yarn group across 1 directory with 2 updates ([#537](https://github.com/midnightntwrk/midnight-js/pull/537)) ([e1ffaf6](https://github.com/midnightntwrk/midnight-js/commit/e1ffaf6499bd25d94587e3b3f41a7814f9bc5102))
 * enhance release script with detailed usage instructions and improve dry-run feedback ([#567](https://github.com/midnightntwrk/midnight-js/pull/567)) ([b6800fb](https://github.com/midnightntwrk/midnight-js/commit/b6800fb38e1732046845cecbc17e46ddb0320c94))
+* **release:** bump version to 3.2.0-rc.2 ([#591](https://github.com/midnightntwrk/midnight-js/pull/591)) ([fbc94aa](https://github.com/midnightntwrk/midnight-js/commit/fbc94aa462a07a442b85718c6d203b0a73a211a5))
 * update docker images and enable tests ([#577](https://github.com/midnightntwrk/midnight-js/pull/577)) ([25d1a99](https://github.com/midnightntwrk/midnight-js/commit/25d1a9974e07c3c886e5fb0f51324641cfc863d5))
 * update eslint to 10.0.2 ([#587](https://github.com/midnightntwrk/midnight-js/pull/587)) ([74fbbf4](https://github.com/midnightntwrk/midnight-js/commit/74fbbf4e3ac4f37c9be587575b1d9f090d7baa39))
 
