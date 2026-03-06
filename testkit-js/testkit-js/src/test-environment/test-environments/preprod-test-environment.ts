@@ -35,7 +35,7 @@ export class PreprodTestEnvironment extends RemoteTestEnvironment {
    */
   getEnvironmentConfiguration(): EnvironmentConfiguration {
     return {
-      walletNetworkId: NetworkId.NetworkId.TestNet,
+      walletNetworkId: NetworkId.NetworkId.PreProd,
       networkId: 'preprod',
       indexer: 'https://indexer.preprod.midnight.network/api/v3/graphql',
       indexerWS: 'wss://indexer.preprod.midnight.network/api/v3/graphql/ws',
