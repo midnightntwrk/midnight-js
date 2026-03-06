@@ -1,6 +1,6 @@
 # Network ID
 
-Global network identifier management for Midnight.js runtime and ledger WASM API.
+Global network identifier management for Midnight.js applications. Required by the runtime and ledger WASM APIs to operate on the correct network.
 
 ## Installation
 
@@ -13,12 +13,23 @@ yarn add @midnight-ntwrk/midnight-js-network-id
 ```typescript
 import { setNetworkId, getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 
-// Set the network ID (typically done once at app startup)
+// Set the network ID at application startup (required before any chain operations)
 setNetworkId('testnet');
 
 // Retrieve current network ID
 const networkId = getNetworkId(); // 'testnet'
 ```
+
+## Why Network ID Matters
+
+The network identifier configures:
+
+- **Transaction serialization** - Different networks may use different formats
+- **Address derivation** - Addresses are network-specific
+- **Contract deployment** - Contracts are deployed to specific networks
+- **ZK proof generation** - Proofs are bound to network parameters
+
+Setting the wrong network ID causes transactions to be rejected or addresses to be invalid.
 
 ## API
 
@@ -29,6 +40,9 @@ Sets the global network identifier. Should be called once at application startup
 ```typescript
 setNetworkId(id: NetworkId): void
 ```
+
+**Parameters:**
+- `id` - Network identifier string (e.g., `'testnet'`)
 
 ### getNetworkId
 
@@ -41,6 +55,8 @@ getNetworkId(): NetworkId
 **Throws:** `Error` if `setNetworkId()` has not been called.
 
 ### NetworkId
+
+Type alias for network identifiers.
 
 ```typescript
 type NetworkId = string;
@@ -63,6 +79,32 @@ import {
   type NetworkId
 } from '@midnight-ntwrk/midnight-js-network-id';
 ```
+
+## Implementation Details
+
+### Module-Level State
+
+The network ID is stored as module-level state, preserved by the JavaScript module system:
+
+```typescript
+let currentNetworkId: NetworkId = 'undeployed';
+```
+
+This ensures:
+- Single source of truth across the application
+- Consistent behavior with WASM dependencies
+- No need for dependency injection
+
+### Integration with Other Packages
+
+Within this monorepo, the network ID is consumed by:
+
+| Package | Usage |
+|---------|-------|
+| `@midnight-ntwrk/midnight-js-contracts` | Transaction building and contract deployment |
+| `@midnight-ntwrk/midnight-js-utils` | Type imports |
+
+These packages call `getNetworkId()` internally, so setting it once affects the entire application.
 
 ## Resources
 
