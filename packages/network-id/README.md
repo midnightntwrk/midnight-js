@@ -38,15 +38,21 @@ Retrieves the currently set global network identifier.
 getNetworkId(): NetworkId
 ```
 
+**Throws:** `Error` if `setNetworkId()` has not been called.
+
 ### NetworkId
 
 ```typescript
 type NetworkId = string;
 ```
 
-## Default Value
+## Important
 
-The default network ID is `'undeployed'` until explicitly set.
+The network ID **must** be configured before using any SDK functionality. Calling `getNetworkId()` before `setNetworkId()` will throw:
+
+```
+Error: Network ID has not been configured. Call setNetworkId() before any wallet or contract operation.
+```
 
 ## Exports
 
