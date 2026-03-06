@@ -292,3 +292,56 @@ Consider implementing a backup/export strategy for important data.
 
 ### Environment Detection
 The warning triggers when both `window` and `document` are defined, indicating a browser environment.
+
+---
+
+## 11. Testkit Test Environments (#592)
+
+Configurable test environments for testing against different Midnight networks.
+
+### Available Environments
+
+The environment is selected via the `MN_TEST_ENVIRONMENT` variable:
+- `undeployed` (default) - Local Docker environment
+- `preview` - Preview network
+- `preprod` - Pre-production network
+- `qanet` - QA network
+- `env-var-remote` - Custom endpoints via environment variables
+
+### Basic Usage
+```typescript
+import { getTestEnvironment, createLogger } from '@midnight-ntwrk/testkit-js';
+
+const logger = createLogger();
+const testEnvironment = getTestEnvironment(logger);
+
+// Start the environment and get configuration
+const config = await testEnvironment.start();
+
+// Get wallet provider
+const wallet = await testEnvironment.getMidnightWalletProvider();
+
+// Shutdown when done
+await testEnvironment.shutdown();
+```
+
+### Running Tests Against Different Networks
+```bash
+# Run against preprod network
+MN_TEST_ENVIRONMENT='preprod' yarn test
+
+# Run against preview network
+MN_TEST_ENVIRONMENT='preview' yarn test
+
+# Run against local Docker environment (default)
+yarn test
+```
+
+### Environment Configuration
+Each environment provides preconfigured endpoints:
+- `indexer` - GraphQL API endpoint
+- `indexerWS` - WebSocket endpoint
+- `node` - RPC endpoint for blockchain node
+- `nodeWS` - WebSocket endpoint for node
+- `faucet` - API endpoint for test tokens
+- `proofServer` - URL for proof generation
