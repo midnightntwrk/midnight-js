@@ -1,0 +1,291 @@
+# Midnight.js
+
+> TypeScript SDK for building privacy-preserving dApps on the Midnight blockchain
+
+Midnight.js provides comprehensive tools for deploying and interacting with smart contracts, managing private state with encryption, generating zero-knowledge proofs, and submitting transactions to the Midnight network.
+
+## Quick Facts
+
+- **License:** Apache 2.0
+- **Language:** TypeScript
+- **Runtime:** Node.js >=22, Browser
+- **Build System:** Turbo monorepo, Yarn workspaces
+- **Testing:** Vitest
+
+## Architecture
+
+Midnight.js uses a **modular provider pattern** where each capability is pluggable:
+
+```
+MidnightProviders
+├── privateStateProvider   - Local encrypted state storage
+├── publicDataProvider     - Blockchain data queries (GraphQL)
+├── zkConfigProvider       - ZK artifact retrieval
+├── proofProvider          - ZK proof generation
+├── walletProvider         - Transaction balancing & signing
+├── midnightProvider       - Transaction submission
+└── loggerProvider         - Optional diagnostics
+```
+
+## Packages
+
+### Core (packages/*)
+
+| Package | Purpose |
+|---------|---------|
+| `@midnight-ntwrk/midnight-js-types` | Shared types, interfaces, provider contracts |
+| `@midnight-ntwrk/midnight-js-contracts` | Contract deployment, interaction, transaction submission |
+| `@midnight-ntwrk/midnight-js-indexer-public-data-provider` | GraphQL-based blockchain data provider |
+| `@midnight-ntwrk/midnight-js-level-private-state-provider` | Encrypted LevelDB storage for private state |
+| `@midnight-ntwrk/midnight-js-http-client-proof-provider` | HTTP client for proof server |
+| `@midnight-ntwrk/midnight-js-fetch-zk-config-provider` | Browser-based ZK artifact provider |
+| `@midnight-ntwrk/midnight-js-node-zk-config-provider` | Node.js filesystem ZK artifact provider |
+| `@midnight-ntwrk/midnight-js-network-id` | Network identifier management |
+| `@midnight-ntwrk/midnight-js-logger-provider` | Pino logger wrapper |
+| `@midnight-ntwrk/midnight-js-utils` | Shared utilities (hex, bech32m, assertions) |
+| `@midnight-ntwrk/midnight-js-compact` | Compact compiler manager |
+
+### Testing (testkit-js/*)
+
+| Package | Purpose |
+|---------|---------|
+| `@midnight-ntwrk/testkit-js` | Testing infrastructure, Docker environments, wallet management |
+| `@midnight-ntwrk/testkit-js-e2e` | E2E test suite and guidelines |
+
+## Key Concepts
+
+### Contract Types
+- **Circuit**: Smart contract function that executes locally and generates proofs
+- **Witness**: Private computation on end-user's device
+- **Private State**: User-local state (not on-chain), updated by circuits
+- **Ledger/Public State**: On-chain contract state
+
+### ZK Artifacts
+- **ProverKey**: Binary for creating proofs
+- **VerifierKey**: Binary for on-chain verification
+- **ZKIR**: Zero-Knowledge Intermediate Representation
+
+### Transaction Status
+- `SucceedEntirely` - All segments succeeded
+- `FailFallible` - Guaranteed portion succeeded, fallible failed
+- `FailEntirely` - Transaction invalid
+
+### Private State Security
+- Encryption: AES-256-GCM
+- Key derivation: PBKDF2-SHA256 (V2: 600,000 iterations; V1: 100,000 for legacy data)
+- Account-scoped isolation per wallet address
+
+## Transaction Flow
+
+```
+1. Create unproven transaction (local circuit execution)
+2. Generate proofs via ProofProvider
+3. Balance transaction via WalletProvider
+4. Submit via MidnightProvider
+5. Wait for finalization via PublicDataProvider
+```
+
+## Main APIs
+
+### Contract Deployment
+
+```typescript
+import { deployContract, findDeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
+
+// Deploy new contract
+const deployed = await deployContract(providers, {
+  compiledContract,
+  privateStateId: 'my-state',
+  initialPrivateState: { counter: 0n }
+});
+
+// Find existing contract
+const existing = await findDeployedContract(providers, {
+  compiledContract,
+  contractAddress,
+  privateStateId: 'my-state'
+});
+
+// Call circuit
+const result = await deployed.callTx.increment();
+```
+
+### State Queries
+
+```typescript
+import { getStates, getPublicStates, getUnshieldedBalances } from '@midnight-ntwrk/midnight-js-contracts';
+
+// Query states
+const states = await getStates(providers, contractAddress, privateStateId);
+const publicStates = await getPublicStates(providers, contractAddress);
+const balances = await getUnshieldedBalances(providers, contractAddress);
+
+// Watch for changes (polling)
+providers.publicDataProvider.watchForContractState(address);
+
+// Subscribe (real-time)
+providers.publicDataProvider.contractStateObservable(address, config);
+```
+
+### Private State Management
+
+```typescript
+import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
+
+const provider = levelPrivateStateProvider({
+  privateStoragePasswordProvider: () => 'secure-password',
+  accountId: 'wallet-address'
+});
+
+// CRUD operations (PrivateStateProvider interface)
+await provider.set(privateStateId, state);
+const state = await provider.get(privateStateId);
+await provider.remove(privateStateId);
+
+// Export/Import (PrivateStateProvider interface)
+const exported = await provider.exportPrivateStates();
+await provider.importPrivateStates(exported, { conflictStrategy: 'skip' });
+```
+
+### Proof Generation
+
+```typescript
+import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
+
+const proofProvider = httpClientProofProvider(
+  'http://localhost:6300',
+  zkConfigProvider
+);
+
+const provenTx = await proofProvider.proveTx(unprovenTx);
+```
+
+### Network Setup
+
+```typescript
+import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+
+setNetworkId('testnet');
+
+const publicDataProvider = indexerPublicDataProvider(
+  'https://indexer.example.com/graphql',    // HTTP endpoint
+  'wss://indexer.example.com/graphql'        // WebSocket endpoint
+);
+```
+
+## Provider Setup Example
+
+```typescript
+import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
+import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
+import { FetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
+
+setNetworkId('testnet');
+
+const zkConfigProvider = new FetchZkConfigProvider(zkArtifactsUrl);
+
+const providers: MidnightProviders = {
+  privateStateProvider: levelPrivateStateProvider({
+    privateStoragePasswordProvider: () => password,
+    accountId: walletAddress
+  }),
+  publicDataProvider: indexerPublicDataProvider(queryUrl, subscriptionUrl),
+  zkConfigProvider,
+  proofProvider: httpClientProofProvider(proofServerUrl, zkConfigProvider),
+  walletProvider,    // from @midnight-ntwrk/wallet-sdk-facade
+  midnightProvider   // from @midnight-ntwrk/wallet-sdk-facade
+};
+```
+
+## Testing
+
+```typescript
+import { getTestEnvironment, initializeMidnightProviders } from '@midnight-ntwrk/testkit-js';
+
+const testEnv = getTestEnvironment(logger);
+const config = await testEnv.start();
+
+const wallet = await testEnv.getMidnightWalletProvider();
+const contractConfig = { zkConfigPath: '/path/to/zk', privateStateStoreName: 'test' };
+const providers = initializeMidnightProviders(wallet, config, contractConfig);
+
+// Run tests...
+
+await testEnv.shutdown();
+```
+
+### Environment Variables
+
+| Variable | Values |
+|----------|--------|
+| `MN_TEST_ENVIRONMENT` | `undeployed`, `devnet`, `testnet`, `env-var-remote` |
+| `MN_TEST_WALLET_SEED` | Specific seed phrase (optional) |
+| `MN_TEST_NETWORK_ID` | Network identifier |
+| `MN_TEST_INDEXER` | Custom indexer URL |
+| `MN_TEST_NODE` | Custom node URL |
+| `MN_TEST_FAUCET` | Custom faucet URL |
+
+## Project Structure
+
+```
+midnight-js/
+├── packages/                          # Core packages
+│   ├── types/                         # Shared types
+│   ├── contracts/                     # Contract utilities
+│   ├── indexer-public-data-provider/  # GraphQL provider
+│   ├── level-private-state-provider/  # Encrypted storage
+│   ├── http-client-proof-provider/    # Proof HTTP client
+│   ├── fetch-zk-config-provider/      # Browser ZK provider
+│   ├── node-zk-config-provider/       # Node.js ZK provider
+│   ├── network-id/                    # Network management
+│   ├── logger-provider/               # Logging
+│   ├── utils/                         # Utilities
+│   └── compact/                       # Compiler tools
+├── testkit-js/                        # Testing infrastructure
+│   ├── testkit-js/
+│   └── testkit-js-e2e/
+├── package.json
+└── turbo.json
+```
+
+## External Dependencies
+
+### Midnight Packages
+- `@midnight-ntwrk/compact-js` - Compact language runtime
+- `@midnight-ntwrk/ledger-v7` - Ledger types
+- `@midnight-ntwrk/onchain-runtime-v2` - On-chain VM
+- `@midnight-ntwrk/compact-runtime` - Circuit execution
+- `@midnight-ntwrk/wallet-sdk-facade` - Wallet integration
+
+### Key Libraries
+- Apollo Client - GraphQL
+- graphql-ws - GraphQL subscriptions
+- level - LevelDB storage
+- superjson - Type-preserving serialization
+
+## Security Notes
+
+1. **Private State**: Encrypted at rest (AES-256-GCM), account-scoped isolation
+2. **Password Requirements**: Minimum 16 characters with complexity
+3. **Data Persistence Warning**: No built-in recovery mechanism; backup strategy required for production
+4. **Account Isolation**: Wallet address SHA-256 hashed for storage paths
+
+## Glossary
+
+| Term | Definition |
+|------|------------|
+| Witness | Private computation on end-user's device |
+| Private State | Local state updated by witnesses (not on-chain) |
+| Circuit | Smart contract function with proof generation |
+| ZKIR | Zero-Knowledge Intermediate Representation |
+| Prover Key | Binary for creating proofs |
+| Verifier Key | Binary for on-chain verification |
+| Segment | Transaction portion with individual status |
+
+## Links
+
+- Repository: https://github.com/midnightntwrk/midnight-js
+- License: Apache 2.0

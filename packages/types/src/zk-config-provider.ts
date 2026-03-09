@@ -33,25 +33,25 @@ export type KeyMaterialProvider = {
  */
 export abstract class ZKConfigProvider<K extends string> {
   /**
-   * Retrieves the zero-knowledge intermediate representation produced by `compact` compiler for the given circuit.
+   * Retrieves the zero-knowledge intermediate representation produced by `compactc` compiler for the given circuit.
    * @param circuitId The circuit ID of the ZKIR to retrieve.
    */
   abstract getZKIR(circuitId: K): Promise<ZKIR>;
 
   /**
-   * Retrieves the prover key produced by `compact` compiler for the given circuit.
+   * Retrieves the prover key produced by `compactc` compiler for the given circuit.
    * @param circuitId The circuit ID of the prover key to retrieve.
    */
   abstract getProverKey(circuitId: K): Promise<ProverKey>;
 
   /**
-   * Retrieves the verifier key produced by `compact` compiler for the given circuit.
+   * Retrieves the verifier key produced by `compactc` compiler for the given circuit.
    * @param circuitId The circuit ID of the verifier key to retrieve.
    */
   abstract getVerifierKey(circuitId: K): Promise<VerifierKey>;
 
   /**
-   * Retrieves the verifier keys produced by `compact` compiler for the given circuits.
+   * Retrieves the verifier keys produced by `compactc` compiler for the given circuits.
    * @param circuitIds The circuit IDs of the verifier keys to retrieve.
    */
   async getVerifierKeys(circuitIds: K[]): Promise<[K, VerifierKey][]> {
@@ -64,7 +64,7 @@ export abstract class ZKConfigProvider<K extends string> {
   }
 
   /**
-   * Retrieves all zero-knowledge artifacts produced by `compact` compiler for the given circuit.
+   * Retrieves all zero-knowledge artifacts produced by `compactc` compiler for the given circuit.
    * @param circuitId The circuit ID of the artifacts to retrieve.
    */
   async get(circuitId: K): Promise<ZKConfig<K>> {

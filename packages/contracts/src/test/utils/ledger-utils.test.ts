@@ -32,8 +32,10 @@ import {
   unshieldedToken,
   ZswapChainState
 } from '@midnight-ntwrk/ledger-v7';
+import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
+import { beforeAll } from 'vitest';
 
 import {
   createUnprovenLedgerCallTx,
@@ -46,6 +48,10 @@ import {
 import { createMockCompiledContract,createMockZKConfigProvider } from '../test-mocks';
 
 describe('ledger-utils', () => {
+  beforeAll(() => {
+    setNetworkId('testnet');
+  });
+
   const mockZKProvider = createMockZKConfigProvider();
   const mockCompiledContract = createMockCompiledContract();
   const dummySigningKey = sampleSigningKey();
