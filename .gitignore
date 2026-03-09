@@ -27,3 +27,4 @@ logs
 .DS_Store
 
 midnight-concurrent-test-db
+.claude

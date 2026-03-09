@@ -16,7 +16,7 @@
 import { type NetworkId } from './network-id';
 
 // Module level state that will be preserved by the JavaScript module system.
-let currentNetworkId: NetworkId = 'undeployed';
+let currentNetworkId: NetworkId | undefined;
 
 /**
  * Sets the global network identifier.
@@ -31,7 +31,15 @@ export const setNetworkId = (id: NetworkId): void => {
  * Retrieves the currently set global network identifier.
  *
  * @returns The currently set {@link NetworkId}.
+ * @throws {Error} If {@link setNetworkId} has not been called.
  */
-export const getNetworkId = (): NetworkId => currentNetworkId;
+export const getNetworkId = (): NetworkId => {
+  if (currentNetworkId === undefined) {
+    throw new Error(
+      'Network ID has not been configured. Call setNetworkId() before any wallet or contract operation.'
+    );
+  }
+  return currentNetworkId;
+};
 
 export * from './network-id';

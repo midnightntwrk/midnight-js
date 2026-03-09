@@ -23,8 +23,9 @@ import {
 import {
   EnvVarRemoteTestEnvironment,
   LocalTestEnvironment,
-  QanetTestEnvironment,
-  Testnet2TestEnvironment} from '@/test-environment/test-environments';
+  PreprodTestEnvironment,
+  PreviewTestEnvironment,
+  QanetTestEnvironment} from '@/test-environment/test-environments';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `ut_${new Date().toISOString().replace(/:/g, '-')}.log`)
@@ -41,7 +42,8 @@ describe('[Unit tests] Testing API', () => {
   it.each([
     ['local environment reference', undefined, LocalTestEnvironment],
     ['qanet environment reference', 'qanet', QanetTestEnvironment],
-    ['testnet2 environment reference', 'testnet-02', Testnet2TestEnvironment]
+    ['preview environment reference', 'preview', PreviewTestEnvironment],
+    ['preprod environment reference', 'preprod', PreprodTestEnvironment]
   ])('test environment should return %s', async (_, envVar, expectedInstance) => {
     process.env.MN_TEST_ENVIRONMENT = envVar;
     expect(getTestEnvironment(logger)).toBeInstanceOf(expectedInstance);

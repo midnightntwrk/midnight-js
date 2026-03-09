@@ -316,6 +316,31 @@ class FluentWalletBuilder {
 }
 ```
 
+### Test Environment Classes (#592)
+
+```typescript
+class PreprodTestEnvironment extends RemoteTestEnvironment {
+  getEnvironmentConfiguration(): EnvironmentConfiguration;
+}
+
+class PreviewTestEnvironment extends RemoteTestEnvironment {
+  getEnvironmentConfiguration(): EnvironmentConfiguration;
+}
+
+interface EnvironmentConfiguration {
+  readonly walletNetworkId: NetworkId;
+  readonly networkId: string;
+  readonly indexer: string;
+  readonly indexerWS: string;
+  readonly node: string;
+  readonly nodeWS: string;
+  readonly faucet: string;
+  readonly proofServer?: string;
+}
+```
+
+**Usage:** Set `MN_TEST_ENVIRONMENT='preprod'` or `MN_TEST_ENVIRONMENT='preview'` before calling `getTestEnvironment(logger)`.
+
 ---
 
 ## Package: @midnight-ntwrk/compact
@@ -405,6 +430,8 @@ interface FetchCompactOptions {
 + function fromMnemonic(mnemonic: string): Wallet;
 + FluentWalletBuilder.withMnemonic(mnemonic: string): FluentWalletBuilder;
 + FluentWalletBuilder.withTestWallet(): FluentWalletBuilder;
++ class PreprodTestEnvironment extends RemoteTestEnvironment { ... }
++ class PreviewTestEnvironment extends RemoteTestEnvironment { ... }
 ```
 
 ### @midnight-ntwrk/compact
@@ -414,4 +441,12 @@ interface FetchCompactOptions {
     uri: string;
 -   authToken?: string;
   }
+```
+
+### @midnight-ntwrk/http-client-proof-provider
+
+```diff
+  // URL handling improved - paths are now preserved (#575)
+  // Before: new URL('/check', 'https://example.com/api/') → 'https://example.com/check'
+  // After:  buildEndpointUrl('https://example.com/api/', '/check') → 'https://example.com/api/check'
 ```

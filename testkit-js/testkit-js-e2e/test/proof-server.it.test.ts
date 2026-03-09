@@ -30,7 +30,7 @@ import {
   createUnprovenDeployTxFromVerifierKeys
 } from '@midnight-ntwrk/midnight-js-contracts';
 import { DEFAULT_CONFIG, httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { getNetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
 import type { ProofProvider } from '@midnight-ntwrk/midnight-js-types';
 import {
@@ -64,6 +64,7 @@ describe('Proof server integration', () => {
   });
 
   beforeAll(async () => {
+    setNetworkId('undeployed');
     proofServerContainer = await DynamicProofServerContainer.start(logger);
     zkConfigProvider = new NodeZkConfigProvider<CounterCircuits>(new CounterConfiguration().zkConfigPath);
     proofProvider = httpClientProofProvider(proofServerContainer.getUrl(), zkConfigProvider);

@@ -169,7 +169,7 @@ describe('httpClientProvingProvider', () => {
         new URL('/check', mockUrl),
         expect.objectContaining({
           method: 'POST',
-          body: payload.buffer
+          body: new Uint8Array(payload)
         })
       );
     });
@@ -302,7 +302,7 @@ describe('httpClientProvingProvider', () => {
         new URL('/prove', mockUrl),
         expect.objectContaining({
           method: 'POST',
-          body: payload.buffer
+          body: new Uint8Array(payload)
         })
       );
     });

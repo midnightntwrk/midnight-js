@@ -135,6 +135,111 @@ describe('tx-interfaces', () => {
       expect(callInterface).toHaveProperty('testCircuit');
       expect(typeof callInterface.testCircuit).toBe('function');
     });
+
+    it('should call submitCallTx without args when no arguments provided', async () => {
+      const { submitCallTx } = await import('../submit-call-tx');
+      vi.mocked(submitCallTx).mockResolvedValue(mockFinalizedTxData as never);
+
+      const callInterface = createCircuitCallTxInterface(
+        mockProviders,
+        mockCompiledContract,
+        mockContractAddress,
+        undefined
+      );
+
+      await (callInterface.testCircuit as (...args: unknown[]) => Promise<unknown>)();
+
+      expect(submitCallTx).toHaveBeenCalledWith(
+        mockProviders,
+        expect.objectContaining({
+          compiledContract: mockCompiledContract,
+          circuitId: 'testCircuit',
+          contractAddress: mockContractAddress
+        })
+      );
+      expect(submitCallTx).toHaveBeenCalledWith(
+        mockProviders,
+        expect.not.objectContaining({ args: expect.anything() })
+      );
+    });
+
+    it('should pass circuit arguments through to submitCallTx', async () => {
+      const { submitCallTx } = await import('../submit-call-tx');
+      vi.mocked(submitCallTx).mockResolvedValue(mockFinalizedTxData as never);
+
+      const callInterface = createCircuitCallTxInterface(
+        mockProviders,
+        mockCompiledContract,
+        mockContractAddress,
+        undefined
+      );
+
+      await (callInterface.testCircuit as (...args: unknown[]) => Promise<unknown>)('arg1', 'arg2');
+
+      expect(submitCallTx).toHaveBeenCalledWith(
+        mockProviders,
+        expect.objectContaining({
+          args: ['arg1', 'arg2']
+        })
+      );
+    });
+
+    it('should strip TransactionContext from circuit call arguments', async () => {
+      const { submitCallTx } = await import('../submit-call-tx');
+      const { TransactionContextImpl } = await import('../internal/transaction');
+      vi.mocked(submitCallTx).mockResolvedValue({ result: vi.fn() } as never);
+
+      const txCtx = new TransactionContextImpl(mockProviders);
+
+      const callInterface = createCircuitCallTxInterface(
+        mockProviders,
+        mockCompiledContract,
+        mockContractAddress,
+        mockPrivateStateId
+      );
+
+      await (callInterface.testCircuit as (...args: unknown[]) => Promise<unknown>)(txCtx, 'arg1', 'arg2');
+
+      expect(submitCallTx).toHaveBeenCalledWith(
+        mockProviders,
+        expect.objectContaining({
+          args: ['arg1', 'arg2']
+        }),
+        txCtx
+      );
+    });
+
+    it('should not include TransactionContext in args when it is the only argument', async () => {
+      const { submitCallTx } = await import('../submit-call-tx');
+      const { TransactionContextImpl } = await import('../internal/transaction');
+      vi.mocked(submitCallTx).mockResolvedValue({ result: vi.fn() } as never);
+
+      const txCtx = new TransactionContextImpl(mockProviders);
+
+      const callInterface = createCircuitCallTxInterface(
+        mockProviders,
+        mockCompiledContract,
+        mockContractAddress,
+        mockPrivateStateId
+      );
+
+      await (callInterface.testCircuit as (...args: unknown[]) => Promise<unknown>)(txCtx);
+
+      expect(submitCallTx).toHaveBeenCalledWith(
+        mockProviders,
+        expect.objectContaining({
+          compiledContract: mockCompiledContract,
+          circuitId: 'testCircuit',
+          contractAddress: mockContractAddress
+        }),
+        txCtx
+      );
+      expect(submitCallTx).toHaveBeenCalledWith(
+        mockProviders,
+        expect.not.objectContaining({ args: expect.anything() }),
+        txCtx
+      );
+    });
   });
 
   describe('createCircuitMaintenanceTxInterface', () => {

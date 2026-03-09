@@ -22,8 +22,9 @@ import { type TestEnvironment } from '@/test-environment/test-environments/test-
 import {
   EnvVarRemoteTestEnvironment,
   LocalTestEnvironment,
+  PreprodTestEnvironment,
+  PreviewTestEnvironment,
   QanetTestEnvironment,
-  Testnet2TestEnvironment,
 } from './test-environments';
 
 /**
@@ -35,9 +36,12 @@ export const getTestEnvironment = (logger: Logger): TestEnvironment => {
   const testEnv = getEnvVarEnvironment().toLowerCase();
   let env;
   switch (testEnv) {
-    case 'testnet':
-    case 'testnet-02':
-      env = new Testnet2TestEnvironment(logger);
+    case 'preview':
+      env = new PreviewTestEnvironment(logger);
+      setNetworkId('test');
+      break;
+    case 'preprod':
+      env = new PreprodTestEnvironment(logger);
       setNetworkId('test');
       break;
     case 'qanet':
