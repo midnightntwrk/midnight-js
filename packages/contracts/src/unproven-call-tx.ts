@@ -16,7 +16,7 @@
 import { ContractExecutable } from '@midnight-ntwrk/compact-js';
 import { type Contract, ImpureCircuitId } from '@midnight-ntwrk/compact-js/effect/Contract';
 import type { CoinPublicKey, ContractState } from '@midnight-ntwrk/compact-runtime';
-import { type EncPublicKey,type ZswapChainState } from '@midnight-ntwrk/ledger-v7';
+import { type EncPublicKey,type ZswapChainState } from '@midnight-ntwrk/ledger-v8';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { exitResultOrError, makeContractExecutableRuntime, type PrivateStateId, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';

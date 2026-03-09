@@ -27,7 +27,7 @@ import {
   sampleCoinPublicKey,
   sampleContractAddress,
   sampleEncryptionPublicKey,
-  type UnprovenTransaction,  ZswapChainState} from '@midnight-ntwrk/ledger-v7';
+  type UnprovenTransaction,  ZswapChainState} from '@midnight-ntwrk/ledger-v8';
 import { createUnprovenCallTxFromInitialStates, createUnprovenDeployTxFromVerifierKeys } from '@midnight-ntwrk/midnight-js-contracts';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { createProverKey,

@@ -14,7 +14,7 @@
  */
 
 import type { ContractState } from '@midnight-ntwrk/compact-runtime';
-import type { ContractAddress, ZswapChainState } from '@midnight-ntwrk/ledger-v7';
+import type { ContractAddress, ZswapChainState } from '@midnight-ntwrk/ledger-v8';
 import type { PrivateStateId,PrivateStateProvider, PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 

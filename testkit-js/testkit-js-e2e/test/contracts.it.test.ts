@@ -19,7 +19,7 @@ import {
   emptyZswapLocalState,
   sampleSigningKey
 } from '@midnight-ntwrk/compact-runtime';
-import { type ContractAddress, ZswapChainState } from '@midnight-ntwrk/ledger-v7';
+import { type ContractAddress, ZswapChainState } from '@midnight-ntwrk/ledger-v8';
 import {
   ContractTypeError,
   createCircuitCallTxInterface,

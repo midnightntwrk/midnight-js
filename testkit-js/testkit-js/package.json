@@ -33,7 +33,7 @@
   },
   "dependencies": {
     "@midnight-ntwrk/compact-js": "2.4.3",
-    "@midnight-ntwrk/ledger-v7": "7.0.0",
+    "@midnight-ntwrk/ledger-v8": "8.0.0-rc.5",
     "@midnight-ntwrk/midnight-js-compact": "workspace:*",
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*",
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*",

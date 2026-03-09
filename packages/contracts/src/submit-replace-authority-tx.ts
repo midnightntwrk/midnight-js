@@ -15,7 +15,7 @@
 
 import type { CompiledContract } from '@midnight-ntwrk/compact-js';
 import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
-import type { ContractAddress, SigningKey } from '@midnight-ntwrk/ledger-v7';
+import type { ContractAddress, SigningKey } from '@midnight-ntwrk/ledger-v8';
 import { type FinalizedTxData, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 

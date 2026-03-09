@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import * as ledger from '@midnight-ntwrk/ledger-v7';
+import * as ledger from '@midnight-ntwrk/ledger-v8';
 import {
   InvalidProtocolSchemeError,
   type ProverKey,
@@ -38,8 +38,8 @@ vi.mock('fetch-retry', () => ({
   default: () => mockFetchRetry
 }));
 
-vi.mock('@midnight-ntwrk/ledger-v7', async () => {
-  const actual = await vi.importActual('@midnight-ntwrk/ledger-v7');
+vi.mock('@midnight-ntwrk/ledger-v8', async () => {
+  const actual = await vi.importActual('@midnight-ntwrk/ledger-v8');
   return {
     ...actual,
     createCheckPayload: vi.fn(),

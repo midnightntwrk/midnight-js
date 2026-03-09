@@ -19,7 +19,7 @@ import {
   type SignatureEnabled,
   type Transaction,
   type UnprovenTransaction
-} from '@midnight-ntwrk/ledger-v7';
+} from '@midnight-ntwrk/ledger-v8';
 
 export type UnboundTransaction = Transaction<SignatureEnabled, Proof, PreBinding>;
 

@@ -14,7 +14,7 @@
  */
 
 import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
-import type { ContractAddress } from '@midnight-ntwrk/ledger-v7';
+import type { ContractAddress } from '@midnight-ntwrk/ledger-v8';
 import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
 import type { FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';

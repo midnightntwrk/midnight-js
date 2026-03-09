@@ -27,7 +27,7 @@ import {
 import {
   type PartitionedTranscript,
   type ZswapChainState
-} from '@midnight-ntwrk/ledger-v7';
+} from '@midnight-ntwrk/ledger-v8';
 
 /**
  * Describes the target of a circuit invocation.

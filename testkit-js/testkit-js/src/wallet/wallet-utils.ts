@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { shieldedToken, type TokenType } from '@midnight-ntwrk/ledger-v7';
+import { shieldedToken, type TokenType } from '@midnight-ntwrk/ledger-v8';
 import { type WalletFacade } from '@midnight-ntwrk/wallet-sdk-facade';
 import { type ShieldedWalletAPI, type ShieldedWalletState } from '@midnight-ntwrk/wallet-sdk-shielded';
 import { type UnshieldedWalletAPI, type UnshieldedWalletState } from '@midnight-ntwrk/wallet-sdk-unshielded-wallet';

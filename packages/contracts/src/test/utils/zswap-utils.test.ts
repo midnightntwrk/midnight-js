@@ -28,7 +28,7 @@ import {
   shieldedToken,
   Transaction,
   ZswapChainState,
-  ZswapOffer} from '@midnight-ntwrk/ledger-v7';
+  ZswapOffer} from '@midnight-ntwrk/ledger-v8';
 import { getNetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';

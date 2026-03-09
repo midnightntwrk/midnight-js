@@ -36,7 +36,7 @@ import {
 vi.mock('../unproven-deploy-tx');
 vi.mock('../submit-tx');
 vi.mock('@midnight-ntwrk/compact-runtime');
-vi.mock('@midnight-ntwrk/ledger-v7');
+vi.mock('@midnight-ntwrk/ledger-v8');
 
 describe('submit-deploy-tx', () => {
   let mockCompiledContract: CompiledContract.CompiledContract<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any

@@ -24,7 +24,7 @@ import {
   type UnprovenTransaction,
   WellFormedStrictness,
   ZswapChainState
-} from '@midnight-ntwrk/ledger-v7';
+} from '@midnight-ntwrk/ledger-v8';
 import {
   createUnprovenCallTxFromInitialStates,
   createUnprovenDeployTxFromVerifierKeys

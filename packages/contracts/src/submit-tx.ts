@@ -17,7 +17,7 @@ import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
 import {
   type Transaction,
   type UnprovenTransaction,
-} from '@midnight-ntwrk/ledger-v7';
+} from '@midnight-ntwrk/ledger-v8';
 import {
   // type Contract,
   type FinalizedTxData,

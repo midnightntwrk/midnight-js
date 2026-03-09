@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { type ContractAddress } from '@midnight-ntwrk/ledger-v7';
+import { type ContractAddress } from '@midnight-ntwrk/ledger-v8';
 import {
   type CallTxOptionsWithPrivateStateId,
   type FinalizedDeployTxData,

@@ -15,7 +15,7 @@
 
 import { type CompiledContract,type Contract } from '@midnight-ntwrk/compact-js';
 import { StateValue } from '@midnight-ntwrk/compact-runtime';
-import { type AlignedValue, type ContractAddress, type PartitionedTranscript } from '@midnight-ntwrk/ledger-v7';
+import { type AlignedValue, type ContractAddress, type PartitionedTranscript } from '@midnight-ntwrk/ledger-v8';
 import {
   FailEntirely,
   type FinalizedTxData,

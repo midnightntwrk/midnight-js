@@ -48,7 +48,7 @@ import {
   type UnprovenTransaction,
   type ZswapChainState,
   type ZswapSecretKeys,
-} from '@midnight-ntwrk/ledger-v7';
+} from '@midnight-ntwrk/ledger-v8';
 import {
   type FinalizedTxData,
   type PrivateStateId,

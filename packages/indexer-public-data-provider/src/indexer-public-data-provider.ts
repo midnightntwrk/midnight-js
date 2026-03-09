@@ -29,8 +29,8 @@ import {
   type RawTokenType,
   type SignatureEnabled,
   type TransactionId
-} from '@midnight-ntwrk/ledger-v7';
-import { Transaction as LedgerTransaction, ZswapChainState } from '@midnight-ntwrk/ledger-v7';
+} from '@midnight-ntwrk/ledger-v8';
+import { Transaction as LedgerTransaction, ZswapChainState } from '@midnight-ntwrk/ledger-v8';
 import type {
   BlockHashConfig,
   BlockHeightConfig,

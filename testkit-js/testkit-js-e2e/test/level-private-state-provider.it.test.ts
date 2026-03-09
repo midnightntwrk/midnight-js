@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { ContractAddress } from '@midnight-ntwrk/ledger-v7';
+import type { ContractAddress } from '@midnight-ntwrk/ledger-v8';
 import { createCircuitCallTxInterface, deployContract } from '@midnight-ntwrk/midnight-js-contracts';
 import type { PrivateStateExport, SigningKeyExport } from '@midnight-ntwrk/midnight-js-types';
 import type { EnvironmentConfiguration, MidnightWalletProvider, TestEnvironment } from '@midnight-ntwrk/testkit-js';

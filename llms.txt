@@ -255,8 +255,8 @@ midnight-js/
 
 ### Midnight Packages
 - `@midnight-ntwrk/compact-js` - Compact language runtime
-- `@midnight-ntwrk/ledger-v7` - Ledger types
-- `@midnight-ntwrk/onchain-runtime-v2` - On-chain VM
+- `@midnight-ntwrk/ledger-v8` - Ledger types
+- `@midnight-ntwrk/onchain-runtime-v3` - On-chain VM
 - `@midnight-ntwrk/compact-runtime` - Circuit execution
 - `@midnight-ntwrk/wallet-sdk-facade` - Wallet integration
 

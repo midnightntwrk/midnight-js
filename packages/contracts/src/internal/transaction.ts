@@ -15,7 +15,7 @@
 
 import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
 import { type PrivateStateId, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import { ChargedState } from '@midnight-ntwrk/onchain-runtime-v2';
+import { ChargedState } from '@midnight-ntwrk/onchain-runtime-v3';
 
 import { type CallResult } from '../call';
 import { type ContractProviders } from '../contract-providers';

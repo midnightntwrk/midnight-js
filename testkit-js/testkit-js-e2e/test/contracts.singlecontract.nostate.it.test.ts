@@ -20,7 +20,7 @@ import {
   sampleSigningKey,
   type SigningKey
 } from '@midnight-ntwrk/compact-runtime';
-import { ZswapChainState } from '@midnight-ntwrk/ledger-v7';
+import { ZswapChainState } from '@midnight-ntwrk/ledger-v8';
 import {
   type CallResult,
   createUnprovenCallTx,
