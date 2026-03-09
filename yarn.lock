@@ -2322,6 +2322,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@midnight-ntwrk/compact-runtime@npm:0.14.102":
+  version: 0.14.102
+  resolution: "@midnight-ntwrk/compact-runtime@npm:0.14.102::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-runtime%2F0.14.102%2Fb2ce6c73ee4fbfbbf874628d1e4347032a94f58f"
+  dependencies:
+    "@midnight-ntwrk/onchain-runtime-v3": "npm:^3.0.0-rc.1"
+    "@types/object-inspect": "npm:^1.8.1"
+    object-inspect: "npm:^1.12.3"
+  checksum: 10/ac7ecb21ac240762417510a587b16a32576305736a424d07369e99d8d2f743d224fdd17b4f6196b51d8c5f13b0584385365460c2ad0291518cf9681aa6ef0c8f
+  languageName: node
+  linkType: hard
+
 "@midnight-ntwrk/ledger-v7@npm:7.0.0":
   version: 7.0.0
   resolution: "@midnight-ntwrk/ledger-v7@npm:7.0.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fledger-v7%2F7.0.0%2F466eab1ed18f3272b511e5ee66a2e8431c4b41be"
@@ -2485,7 +2496,7 @@ __metadata:
     "@d2t/vitest-ctrf-json-reporter": "npm:^1.3.0"
     "@effect/build-utils": "npm:^0.8.9"
     "@eslint/js": "npm:^10.0.1"
-    "@midnight-ntwrk/compact-runtime": "npm:0.14.0"
+    "@midnight-ntwrk/compact-runtime": "npm:0.14.102"
     "@midnight-ntwrk/ledger-v8": "npm:8.0.0-rc.5"
     "@midnight-ntwrk/onchain-runtime-v3": "npm:3.0.0-rc.1"
     "@midnight-ntwrk/wallet-sdk-facade": "npm:2.0.0-rc.2"
