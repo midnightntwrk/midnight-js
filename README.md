@@ -133,13 +133,13 @@ The `LevelPrivateStateProvider` encrypts all private state data at rest using:
 
 ### Prerequisites
 
-- [nvm](https://github.com/nvm-sh/nvm)
-- [direnv](https://direnv.net) (optional, recommended)
+- [nvm](https://github.com/nvm-sh/nvm) - Node.js version management
+- [direnv](https://direnv.net) (optional) - Automatically sets `COMPACTC_VERSION`, activates Node via nvm, and configures GPG signing
 
 ### Setup
 
 ```bash
-# If using direnv
+# If using direnv (sets environment automatically)
 direnv allow
 
 # Install dependencies
@@ -165,6 +165,11 @@ yarn lint:fix
 | `yarn lint:fix` | Fix linting issues |
 | `yarn commit` | Interactive conventional commit |
 | `yarn changelog` | Generate/update CHANGELOG.md |
+
+### Further Reading
+
+- **[DEVELOPMENT.md](./DEVELOPMENT.md)** - Detailed guide for working on packages, debugging, and Turborepo commands
+- **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** - Common issues and solutions
 
 ## Contributing
 

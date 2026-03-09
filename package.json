@@ -42,7 +42,7 @@
     "@midnight-ntwrk/compact-runtime": "0.14.0",
     "@midnight-ntwrk/ledger-v7": "7.0.0",
     "@midnight-ntwrk/onchain-runtime-v2": "2.0.1",
-    "@midnight-ntwrk/wallet-sdk-facade": "2.0.0-rc.2"
+    "@midnight-ntwrk/wallet-sdk-facade": "2.0.0-rc.3"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.4.1",
@@ -71,7 +71,7 @@
     "eslint-plugin-unused-imports": "^4.4.1",
     "glob": "^13.0.6",
     "husky": "^9.1.7",
-    "jsdom": "^27.0.0",
+    "jsdom": "^28.1.0",
     "lint-staged": "^16.2.7",
     "patch-package": "^8.0.1",
     "pinst": "^3.0.0",

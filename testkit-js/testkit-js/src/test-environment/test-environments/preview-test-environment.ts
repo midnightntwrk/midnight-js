@@ -35,7 +35,7 @@ export class PreviewTestEnvironment extends RemoteTestEnvironment {
    */
   getEnvironmentConfiguration(): EnvironmentConfiguration {
     return {
-      walletNetworkId: NetworkId.NetworkId.TestNet,
+      walletNetworkId: NetworkId.NetworkId.Preview,
       networkId: 'preview',
       indexer: 'https://indexer.preview.midnight.network/api/v3/graphql',
       indexerWS: 'wss://indexer.preview.midnight.network/api/v3/graphql/ws',

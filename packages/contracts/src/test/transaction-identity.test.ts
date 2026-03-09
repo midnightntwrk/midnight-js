@@ -236,6 +236,40 @@ describe('TransactionContextImpl identity validation', () => {
       expect(result.privateState).toBe(mockCallData2.private.nextPrivateState);
     });
 
+    it('should preserve the original zswapChainState without modification after merge', () => {
+      const contractAddress = createMockContractAddress();
+      const privateStateId = 'test-private-state-id' as PrivateStateId;
+      const identity: CachedStateIdentity = { contractAddress, privateStateId };
+      const mockStates = createMockStates();
+      const originalZswapChainState = mockStates.zswapChainState;
+      const mockCallData = createMockUnprovenCallTxData();
+
+      txCtx[CacheStates](mockStates, identity);
+      txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData, privateStateId);
+
+      const result = txCtx[GetCurrentStatesForIdentity](identity) as ContractStates<Contract.PrivateState<Contract.Any>>;
+
+      expect(result.zswapChainState).toBe(originalZswapChainState);
+    });
+
+    it('should preserve the original zswapChainState across multiple merges', () => {
+      const contractAddress = createMockContractAddress();
+      const privateStateId = 'test-private-state-id' as PrivateStateId;
+      const identity: CachedStateIdentity = { contractAddress, privateStateId };
+      const mockStates = createMockStates();
+      const originalZswapChainState = mockStates.zswapChainState;
+      const mockCallData1 = createMockUnprovenCallTxData();
+      const mockCallData2 = createMockUnprovenCallTxData();
+
+      txCtx[CacheStates](mockStates, identity);
+      txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData1, privateStateId);
+      txCtx[MergeUnsubmittedCallTxData]('testCircuit', mockCallData2, privateStateId);
+
+      const result = txCtx[GetCurrentStatesForIdentity](identity) as ContractStates<Contract.PrivateState<Contract.Any>>;
+
+      expect(result.zswapChainState).toBe(originalZswapChainState);
+    });
+
     it('should throw when requesting with different identity after merge', () => {
       const contractAddress1 = createMockContractAddress();
       const contractAddress2 = createMockContractAddress();
