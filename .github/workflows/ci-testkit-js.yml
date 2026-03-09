@@ -50,7 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # ratchet:actions/checkout@v5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # ratchet:actions/checkout@v5
 
       - name: Install direnv
         run: curl -sfL https://direnv.net/install.sh | DIRENV_GITHUB_API_TOKEN=$GITHUB_TOKEN  bash
@@ -135,7 +135,7 @@ jobs:
     needs: ci
     if: inputs.should_prerelease == 'true'
     steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # ratchet:actions/checkout@v5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # ratchet:actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -204,7 +204,7 @@ jobs:
     outputs:
       test-files: ${{ steps.generate-matrix.outputs.test-files }}
     steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # ratchet:actions/checkout@v5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # ratchet:actions/checkout@v5
 
       - name: Generate test matrix
         id: generate-matrix
@@ -226,7 +226,7 @@ jobs:
     steps:
 
       - name: Checkout code
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # ratchet:actions/checkout@v5
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # ratchet:actions/checkout@v5
 
       - name: Install direnv
         run: curl -sfL https://direnv.net/install.sh | DIRENV_GITHUB_API_TOKEN=$GITHUB_TOKEN  bash
@@ -317,7 +317,7 @@ jobs:
     steps:
 
       - name: Checkout code
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # ratchet:actions/checkout@v5
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # ratchet:actions/checkout@v5
 
       - name: Download Test Results
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # ratchet:actions/download-artifact@v4
