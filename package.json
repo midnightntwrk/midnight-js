@@ -76,7 +76,7 @@
     "patch-package": "^8.0.1",
     "pinst": "^3.0.0",
     "prettier": "^3.8.1",
-    "rollup": "^4.57.1",
+    "rollup": "^4.59.0",
     "rollup-plugin-dts": "^6.3.0",
     "rxjs": "^7.8.2",
     "shx": "^0.4.0",
