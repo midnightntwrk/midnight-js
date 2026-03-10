@@ -43,6 +43,7 @@
     "@midnight-ntwrk/midnight-js-node-zk-config-provider": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
     "@midnight-ntwrk/midnight-js-utils": "workspace:*",
+    "@midnight-ntwrk/wallet-sdk-hd": "3.0.1",
     "buffer": "^6.0.3",
     "cross-fetch": "^4.0.0",
     "rxjs": "^7.8.1",

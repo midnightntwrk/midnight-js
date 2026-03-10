@@ -42,7 +42,7 @@
     "@midnight-ntwrk/compact-runtime": "0.14.0",
     "@midnight-ntwrk/ledger-v7": "7.0.0",
     "@midnight-ntwrk/onchain-runtime-v2": "2.0.1",
-    "@midnight-ntwrk/wallet-sdk-facade": "2.0.0-rc.3"
+    "@midnight-ntwrk/wallet-sdk-facade": "2.0.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.4.1",
