@@ -36,7 +36,7 @@
     "dist/"
   ],
   "devDependencies": {
-    "@fast-check/vitest": "^0.2.1",
+    "@fast-check/vitest": "^0.3.0",
     "vitest": "^4.0.0"
   }
 }
