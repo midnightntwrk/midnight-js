@@ -62,9 +62,13 @@ const targetFile = path.resolve(packageDir, `compactc-${compactcVersion}.zip`);
 const currentPlatform = process.platform;
 const currentCpu = process.arch;
 
+const compactRepo = process.env.COMPACT_REPO || 'LFDT-Minokawa/compact';
+const compactTagPrefix = process.env.COMPACT_TAG_PREFIX || 'v';
+const compactDockerImage = process.env.COMPACT_DOCKER_IMAGE || 'ghcr.io/midnight-ntwrk/compactc';
+
 const fetchCompact = async (): Promise<void> => {
   type Release = { assets_url: string }
-  const urlString = `https://api.github.com/repos/midnightntwrk/compact/releases/tags/compactc-v${compactcVersion}`;
+  const urlString = `https://api.github.com/repos/${compactRepo}/releases/tags/${compactTagPrefix}${compactcVersion}`;
   console.log(`Trying to fetch release from: ${urlString}`);
   const release: Release = await fetch(urlString).then((r) => {
     if (r.ok) {
@@ -140,7 +144,7 @@ const fetchCompact = async (): Promise<void> => {
 
 const fetchDockerImage = () => {
   console.log('Fetching Compact docker image...');
-  const dockerImage = `ghcr.io/midnight-ntwrk/compactc:v${compactcVersion}`;
+  const dockerImage = `${compactDockerImage}:v${compactcVersion}`;
   const child = childProcess.exec(`docker pull ${dockerImage}`);
   child.on('exit', (code, signal) => {
     console.log(`Child process exited with code ${code}`);
