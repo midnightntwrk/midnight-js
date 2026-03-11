@@ -194,6 +194,12 @@ Fixed an issue where the initial Zswap chain state was incorrectly merged instea
 ### Lodash Dependency Removed (#556)
 Removed lodash dependency and replaced usage with native object spread, reducing bundle size and eliminating a dependency.
 
+### Fail Fast on Unset Network ID (#604)
+Network ID validation now fails immediately with a clear error message when the network ID is not set, instead of silently proceeding and causing cryptic failures downstream.
+
+### TransactionContext Excluded from Circuit Call Arguments
+Fixed an issue where `TransactionContext` was incorrectly included in circuit call arguments, which could cause unexpected behavior in contract interactions.
+
 ### Direnv Installation Auth (#562)
 Fixed direnv installation to use `GITHUB_TOKEN` for authentication, resolving CI failures.
 
@@ -208,14 +214,19 @@ Updated wallet state provider to use `ShieldedWalletAPI` and `UnshieldedWalletAP
 ## Dependencies
 
 ### Runtime Dependencies Updated
-- `@midnight-ntwrk/wallet-sdk-facade`: 2.0.0-rc.2
+- `@midnight-ntwrk/wallet-sdk-facade`: 2.0.0
+- `@midnight-ntwrk/compact-js`: 2.4.3
 - `@midnight-ntwrk/compactc`: 0.29.0
 
 ### Development Dependencies Updated
+- `@fast-check/vitest`: 0.3.0
 - `@rollup/plugin-commonjs`: 29.0.0
 - `@graphql-codegen/typescript-operations`: Updated (#539)
 - `testcontainers`: 11.12.0
+- `tstyche`: 6.2.0
+- `jsdom`: 28.1.0
 - `glob`: 13.0.4
+- `fast-xml-parser`: Updated (#617)
 - `typedoc-plugin-markdown`: 4.10.0
 - `eslint-plugin-unused-imports`: 4.4.1
 - `axios`: Updated for security fixes
@@ -241,6 +252,8 @@ Updated wallet state provider to use `ShieldedWalletAPI` and `UnshieldedWalletAP
 - Storage architecture and data flow diagrams
 - Password requirements and security specifications
 - Updated `compact` references to `compactc` (#580)
+- Added containers configuration section to testkit-js README (#613)
+- Added development documentation (#590)
 
 ## Links
 
