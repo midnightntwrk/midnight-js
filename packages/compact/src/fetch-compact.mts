@@ -63,7 +63,7 @@ const currentPlatform = process.platform;
 const currentCpu = process.arch;
 
 const compactRepo = process.env.COMPACT_REPO || 'midnight-ntwrk/artifacts';
-const compactTagPrefix = process.env.COMPACT_TAG_PREFIX || 'compact-v';
+const compactTagPrefix = process.env.COMPACT_TAG_PREFIX || 'compactc-v';
 const compactDockerImage = process.env.COMPACT_DOCKER_IMAGE || 'ghcr.io/midnight-ntwrk/compactc';
 
 const fetchCompact = async (): Promise<void> => {
