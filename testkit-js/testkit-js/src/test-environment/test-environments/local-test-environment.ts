@@ -56,8 +56,8 @@ export class LocalTestConfiguration implements EnvironmentConfiguration {
   constructor({ indexer, node, proofServer }: ComponentPortsConfiguration) {
     this.walletNetworkId = NetworkId.NetworkId.Undeployed;
     this.networkId = 'undeployed';
-    this.indexer = `http://127.0.0.1:${indexer}/api/v3/graphql`;
-    this.indexerWS = `ws://127.0.0.1:${indexer}/api/v3/graphql/ws`;
+    this.indexer = `http://127.0.0.1:${indexer}/api/v4/graphql`;
+    this.indexerWS = `ws://127.0.0.1:${indexer}/api/v4/graphql/ws`;
     this.node = `http://127.0.0.1:${node}`;
     this.nodeWS = `ws://127.0.0.1:${node}`;
     this.proofServer = `http://127.0.0.1:${proofServer}`;

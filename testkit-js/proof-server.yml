@@ -1,6 +1,6 @@
 services:
   proof-server:
-    image: 'ghcr.io/midnight-ntwrk/proof-server:7.0.0'
+    image: 'ghcr.io/midnight-ntwrk/proof-server:8.0.0-rc.5'
     container_name: "proof-server_$TESTCONTAINERS_UID"
     command: [ 'midnight-proof-server --verbose' ]
     ports:

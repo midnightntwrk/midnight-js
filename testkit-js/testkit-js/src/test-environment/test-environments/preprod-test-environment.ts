@@ -37,8 +37,8 @@ export class PreprodTestEnvironment extends RemoteTestEnvironment {
     return {
       walletNetworkId: NetworkId.NetworkId.PreProd,
       networkId: 'preprod',
-      indexer: 'https://indexer.preprod.midnight.network/api/v3/graphql',
-      indexerWS: 'wss://indexer.preprod.midnight.network/api/v3/graphql/ws',
+      indexer: 'https://indexer.preprod.midnight.network/api/v4/graphql',
+      indexerWS: 'wss://indexer.preprod.midnight.network/api/v4/graphql/ws',
       node: 'https://rpc.preprod.midnight.network',
       nodeWS: 'wss://rpc.preprod.midnight.network',
       faucet: 'https://faucet.preprod.midnight.network/api/request-tokens',
