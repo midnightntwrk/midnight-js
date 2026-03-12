@@ -30,7 +30,7 @@ import { createMockContractAddress, createMockContractState, createMockProviders
 
 describe('TransactionContextImpl identity validation', () => {
   let mockProviders: ReturnType<typeof createMockProviders>;
-  let txCtx: TransactionContextImpl<Contract.Any, Contract.ImpureCircuitId<Contract.Any>>;
+  let txCtx: TransactionContextImpl<Contract.Any, Contract.ProvableCircuitId<Contract.Any>>;
 
   const createMockStates = (): ContractStates<Contract.PrivateState<Contract.Any>> => ({
     contractState: createMockContractState(),

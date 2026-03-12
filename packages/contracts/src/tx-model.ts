@@ -118,7 +118,7 @@ export type FinalizedDeployTxData<C extends Contract.Any> = UnsubmittedDeployTxD
 /**
  * Data for an unsubmitted call transaction.
  */
-export type UnsubmittedCallTxData<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = CallResult<C, ICK> & {
+export type UnsubmittedCallTxData<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = CallResult<C, PCK> & {
   /**
    * Private data relevant to this call transaction.
    */
@@ -128,7 +128,7 @@ export type UnsubmittedCallTxData<C extends Contract.Any, ICK extends Contract.I
 /**
  * Data for a submitted, finalized call transaction.
  */
-export type FinalizedCallTxData<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = UnsubmittedCallTxData<C, ICK> & {
+export type FinalizedCallTxData<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = UnsubmittedCallTxData<C, PCK> & {
   /**
    * Public data relevant to this call transaction.
    */
@@ -139,7 +139,7 @@ export type FinalizedCallTxData<C extends Contract.Any, ICK extends Contract.Imp
  * Data returned from an asynchronous call transaction submission.
  * Contains the transaction ID and call transaction data without waiting for finalization.
  */
-export type SubmittedCallTx<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = {
+export type SubmittedCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = {
   /**
    * The transaction ID returned from submission.
    */
@@ -147,5 +147,5 @@ export type SubmittedCallTx<C extends Contract.Any, ICK extends Contract.ImpureC
   /**
    * The unproven call transaction data including private state.
    */
-  readonly callTxData: UnsubmittedCallTxData<C, ICK>;
+  readonly callTxData: UnsubmittedCallTxData<C, PCK>;
 };

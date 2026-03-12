@@ -27,7 +27,7 @@ import { createUnprovenDeployTx } from './unproven-deploy-tx';
  * Providers necessary to submit a deployment transaction - all providers.
  */
 export type SubmitDeployTxProviders<C extends Contract.Any> =
-  | ContractProviders<C, Contract.ImpureCircuitId<C>, unknown>
+  | ContractProviders<C, Contract.ProvableCircuitId<C>, unknown>
   | ContractProviders<C>;
 
 /**
@@ -36,7 +36,7 @@ export type SubmitDeployTxProviders<C extends Contract.Any> =
 export type DeployTxOptions<C extends Contract.Any> = DeployTxOptionsBase<C> | DeployTxOptionsWithPrivateStateId<C>;
 
 export async function submitDeployTx<C extends Contract<undefined>>(
-  providers: ContractProviders<C, Contract.ImpureCircuitId<C>, unknown>,
+  providers: ContractProviders<C, Contract.ProvableCircuitId<C>, unknown>,
   options: DeployTxOptionsBase<C>
 ): Promise<FinalizedDeployTxData<C>>;
 

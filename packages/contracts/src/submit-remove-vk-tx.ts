@@ -70,7 +70,7 @@ export const submitRemoveVerifierKeyTx = async <C extends Contract.Any>(
   providers: ContractProviders,
   compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   contractAddress: ContractAddress,
-  circuitId: Contract.ImpureCircuitId<C>
+  circuitId: Contract.ProvableCircuitId<C>
 ): Promise<FinalizedTxData> => {
   assertIsContractAddress(contractAddress);
   const contractState = await providers.publicDataProvider.queryContractState(contractAddress);
@@ -84,9 +84,9 @@ export const submitRemoveVerifierKeyTx = async <C extends Contract.Any>(
   const unprovenTx = await createUnprovenRemoveVerifierKeyTx(
     providers.zkConfigProvider,
     compiledContract,
-    contractAddress, 
-    circuitId, 
-    contractState, 
+    contractAddress,
+    circuitId,
+    contractState,
     signingKey,
     providers.walletProvider.getCoinPublicKey()
   );

@@ -26,12 +26,12 @@ import type { ZKConfigProvider } from './zk-config-provider';
 /**
  * Set of providers needed for transaction construction and submission.
  *
- * @typeParam ICK - A union of string literal types representing the callable circuits.
+ * @typeParam PCK - A union of string literal types representing the callable circuits.
  * @typeParam PSI - Parameter indicating the private state ID, sometimes a union of string literals.
  * @typeParam PS - Parameter indicating the private state type stored, sometimes a union of private state types.
  */
 export interface MidnightProviders<
-  ICK extends Contract.ImpureCircuitId<Contract.Any> = Contract.ImpureCircuitId<Contract.Any>,
+  PCK extends Contract.ProvableCircuitId<Contract.Any> = Contract.ProvableCircuitId<Contract.Any>,
   PSI extends PrivateStateId = PrivateStateId,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   PS = any
@@ -47,7 +47,7 @@ export interface MidnightProviders<
   /**
    * Retrieves the ZK artifacts of a contract needed to create proofs.
    */
-  readonly zkConfigProvider: ZKConfigProvider<ICK>;
+  readonly zkConfigProvider: ZKConfigProvider<PCK>;
   /**
    * Creates proven, unbalanced transactions.
    */

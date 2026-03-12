@@ -25,6 +25,6 @@ import type {
  */
 export type ContractProviders<
   C extends Contract.Any = Contract.Any,
-  ICK extends Contract.ImpureCircuitId<C> = Contract.ImpureCircuitId<C>,
+  PCK extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>,
   PS = Contract.PrivateState<C>
-> = MidnightProviders<ICK, PrivateStateId, PS>;
+> = MidnightProviders<PCK, PrivateStateId, PS>;

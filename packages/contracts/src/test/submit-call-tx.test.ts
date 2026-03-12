@@ -64,10 +64,10 @@ describe('submit-call-tx', () => {
     vi.mock('../submit-tx');
   });
 
-  const createBasicCallOptions = (overrides: Partial<CallTxOptions<Contract.Any, Contract.ImpureCircuitId<Contract.Any>>> = {}) => ({
+  const createBasicCallOptions = (overrides: Partial<CallTxOptions<Contract.Any, Contract.ProvableCircuitId<Contract.Any>>> = {}) => ({
     compiledContract: mockCompiledContract,
     contractAddress: mockContractAddress,
-    circuitId: 'testCircuit' as Contract.ImpureCircuitId<Contract.Any>,
+    circuitId: 'testCircuit' as Contract.ProvableCircuitId<Contract.Any>,
     args: ['arg1', 'arg2'],
     ...overrides
   });
@@ -82,7 +82,7 @@ describe('submit-call-tx', () => {
     return { mockUnprovenCallTxData, mockFinalizedTxData };
   };
 
-  const createFailedTxData = (): UnsubmittedCallTxData<Contract.Any, Contract.ImpureCircuitId<Contract.Any>> => ({
+  const createFailedTxData = (): UnsubmittedCallTxData<Contract.Any, Contract.ProvableCircuitId<Contract.Any>> => ({
     public: {
       nextContractState: StateValue.newNull(),
       publicTranscript: [],
@@ -101,10 +101,10 @@ describe('submit-call-tx', () => {
   });
 
   const verifySuccessfulCall = (
-    mockUnprovenCallTxData: UnsubmittedCallTxData<Contract.Any, Contract.ImpureCircuitId<Contract.Any>>,
+    mockUnprovenCallTxData: UnsubmittedCallTxData<Contract.Any, Contract.ProvableCircuitId<Contract.Any>>,
     mockFinalizedTxData: FinalizedTxData,
-    result: FinalizedCallTxData<Contract.Any, Contract.ImpureCircuitId<Contract.Any>>,
-    options: CallTxOptions<Contract.Any, Contract.ImpureCircuitId<Contract.Any>>
+    result: FinalizedCallTxData<Contract.Any, Contract.ProvableCircuitId<Contract.Any>>,
+    options: CallTxOptions<Contract.Any, Contract.ProvableCircuitId<Contract.Any>>
   ) => {
     expect(createUnprovenCallTx).toHaveBeenCalledWith(
       mockProviders,
@@ -282,7 +282,7 @@ describe('submit-call-tx', () => {
       });
 
       it('should include failure data and circuit ID in CallTxFailedError', async () => {
-        const circuitId = 'testCircuit' as Contract.ImpureCircuitId<Contract.Any>;
+        const circuitId = 'testCircuit' as Contract.ProvableCircuitId<Contract.Any>;
         const options = createBasicCallOptions({ circuitId });
         const mockUnprovenCallTxData = createFailedTxData();
         const mockFailedTxData = createMockFinalizedTxData(FailEntirely);
@@ -309,7 +309,7 @@ describe('submit-call-tx', () => {
       });
 
       it('should validate circuit exists in contract', async () => {
-        const options = createBasicCallOptions({ circuitId: 'nonExistentCircuit' as Contract.ImpureCircuitId<Contract.Any> });
+        const options = createBasicCallOptions({ circuitId: 'nonExistentCircuit' as Contract.ProvableCircuitId<Contract.Any> });
 
         await expect(submitCallTx(mockProviders, options)).rejects.toThrow("Circuit 'nonExistentCircuit' is undefined");
       });
@@ -491,7 +491,7 @@ describe('submit-call-tx', () => {
       });
 
       it('should validate circuit exists in contract', async () => {
-        const options = createBasicCallOptions({ circuitId: 'nonExistentCircuit' as Contract.ImpureCircuitId<Contract.Any> });
+        const options = createBasicCallOptions({ circuitId: 'nonExistentCircuit' as Contract.ProvableCircuitId<Contract.Any> });
 
         await expect(submitCallTxAsync(mockProviders, options)).rejects.toThrow("Circuit 'nonExistentCircuit' is undefined");
       });

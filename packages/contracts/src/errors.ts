@@ -29,7 +29,7 @@ export class TxFailedError extends Error {
    */
   constructor(
     public readonly finalizedTxData: FinalizedTxData,
-    public readonly circuitId?: Contract.ImpureCircuitId<Contract.Any> | Contract.ImpureCircuitId<Contract.Any>[]
+    public readonly circuitId?: Contract.ProvableCircuitId<Contract.Any> | Contract.ProvableCircuitId<Contract.Any>[]
   ) {
     super('Transaction failed');
     this.message = JSON.stringify(
@@ -66,7 +66,7 @@ export class CallTxFailedError extends TxFailedError {
    */
   constructor(
     finalizedTxData: FinalizedTxData,
-    circuitId: Contract.ImpureCircuitId<Contract.Any> | Contract.ImpureCircuitId<Contract.Any>[]
+    circuitId: Contract.ProvableCircuitId<Contract.Any> | Contract.ProvableCircuitId<Contract.Any>[]
   ) {
     super(finalizedTxData, circuitId);
     this.name = 'CallTxFailedError';
@@ -91,7 +91,7 @@ export class ContractTypeError extends TypeError {
    */
   constructor(
     readonly contractState: ContractState,
-    readonly circuitIds: Contract.ImpureCircuitId<Contract.Any>[]
+    readonly circuitIds: Contract.ProvableCircuitId<Contract.Any>[]
   ) {
     super(
       `Following operations: ${circuitIds.join(

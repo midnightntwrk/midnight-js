@@ -236,7 +236,7 @@ export const createMockCoinInfo = (): ShieldedCoinInfo => ({
   value: 0n
 });
 
-export const createMockProviders = (): ContractProviders<Contract.Any, Contract.ImpureCircuitId<Contract.Any>, Contract.PrivateState<Contract.Any>> => ({
+export const createMockProviders = (): ContractProviders<Contract.Any, Contract.ProvableCircuitId<Contract.Any>, Contract.PrivateState<Contract.Any>> => ({
   midnightProvider: {
     submitTx: vi.fn()
   },
@@ -323,7 +323,7 @@ export const createMockUnprovenDeployTxData = (overrides: Partial<UnsubmittedDep
   ...overrides
 });
 
-export const createMockUnprovenCallTxData = (overrides: Partial<UnsubmittedCallTxData<Contract.Any, Contract.ImpureCircuitId<Contract.Any>>> = {}): UnsubmittedCallTxData<Contract.Any, Contract.ImpureCircuitId<Contract.Any>> => ({
+export const createMockUnprovenCallTxData = (overrides: Partial<UnsubmittedCallTxData<Contract.Any, Contract.ProvableCircuitId<Contract.Any>>> = {}): UnsubmittedCallTxData<Contract.Any, Contract.ProvableCircuitId<Contract.Any>> => ({
     public: {
       nextContractState: StateValue.newNull(),
       publicTranscript: [
@@ -345,7 +345,7 @@ export const createMockUnprovenCallTxData = (overrides: Partial<UnsubmittedCallT
     }
 });
 
-export const createMockCallOptions = (overrides: Partial<CallOptions<Contract.Any, Contract.ImpureCircuitId<Contract.Any>>> = {}): CallOptions<Contract.Any, Contract.ImpureCircuitId<Contract.Any>> => ({
+export const createMockCallOptions = (overrides: Partial<CallOptions<Contract.Any, Contract.ProvableCircuitId<Contract.Any>>> = {}): CallOptions<Contract.Any, Contract.ProvableCircuitId<Contract.Any>> => ({
   compiledContract: createMockCompiledContract(),
   circuitId: 'testCircuit',
   args: [] as never[],
@@ -356,7 +356,7 @@ export const createMockCallOptions = (overrides: Partial<CallOptions<Contract.An
   ...overrides
 });
 
-export const createMockCallOptionsWithPrivateState = (overrides: Partial<CallOptionsWithPrivateState<Contract.Any, Contract.ImpureCircuitId<Contract.Any>>> = {}): CallOptionsWithPrivateState<Contract.Any, Contract.ImpureCircuitId<Contract.Any>> => ({
+export const createMockCallOptionsWithPrivateState = (overrides: Partial<CallOptionsWithPrivateState<Contract.Any, Contract.ProvableCircuitId<Contract.Any>>> = {}): CallOptionsWithPrivateState<Contract.Any, Contract.ProvableCircuitId<Contract.Any>> => ({
   ...createMockCallOptions(),
   initialPrivateState: { test: 'private-state' },
   ...overrides

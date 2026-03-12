@@ -38,22 +38,22 @@ import type { CallTxOptions, CallTxOptionsWithPrivateStateId } from './unproven-
  * and submits a call transaction.
  */
 export type CircuitCallTxInterface<C extends Contract.Any> = {
-  [ICK in Contract.ImpureCircuitId<C>]: {
-    (...args: Contract.CircuitParameters<C, ICK>): Promise<FinalizedCallTxData<C, ICK>>,
-    (txCtx: Transaction.TransactionContext<C, ICK>, ...args: Contract.CircuitParameters<C, ICK>): Promise<CallResult<C, ICK>>
+  [PCK in Contract.ProvableCircuitId<C>]: {
+    (...args: Contract.CircuitParameters<C, PCK>): Promise<FinalizedCallTxData<C, PCK>>,
+    (txCtx: Transaction.TransactionContext<C, PCK>, ...args: Contract.CircuitParameters<C, PCK>): Promise<CallResult<C, PCK>>
   };
 };
 
 /**
  * Creates a {@link CallTxOptions} object from various data.
  */
-export const createCallTxOptions = <C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
+export const createCallTxOptions = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
-  circuitId: ICK,
+  circuitId: PCK,
   contractAddress: ContractAddress,
   privateStateId: PrivateStateId | undefined,
-  args: Contract.CircuitParameters<C, ICK>
-): CallTxOptions<C, ICK> => {
+  args: Contract.CircuitParameters<C, PCK>
+): CallTxOptions<C, PCK> => {
   const callOptionsBase = {
     compiledContract,
     circuitId,
@@ -61,7 +61,7 @@ export const createCallTxOptions = <C extends Contract.Any, ICK extends Contract
   };
   const callTxOptionsBase = args.length !== 0 ? { ...callOptionsBase, args } : callOptionsBase;
   const callTxOptions = privateStateId ? { ...callTxOptionsBase, privateStateId } : callTxOptionsBase;
-  return callTxOptions as CallTxOptions<C, ICK>;
+  return callTxOptions as CallTxOptions<C, PCK>;
 };
 
 /**
@@ -80,7 +80,7 @@ export const createCircuitCallTxInterface = <C extends Contract.Any>(
 ): CircuitCallTxInterface<C> => {
   assertIsContractAddress(contractAddress);
   providers.privateStateProvider.setContractAddress(contractAddress);
-  return ContractExecutable.make(compiledContract).getImpureCircuitIds().reduce(
+  return ContractExecutable.make(compiledContract).getProvableCircuitIds().reduce(
     (acc, circuitId) => ({
       ...acc,
       [circuitId]: (...args: unknown[]) => {
@@ -129,9 +129,9 @@ export type CircuitMaintenanceTxInterface = {
  * @param contractAddress The address of the deployed contract for which this
  *                        interface is being created.
  */
-export const createCircuitMaintenanceTxInterface = <C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
-  providers: ContractProviders<C, ICK>,
-  circuitId: ICK,
+export const createCircuitMaintenanceTxInterface = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  providers: ContractProviders<C, PCK>,
+  circuitId: PCK,
   compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   contractAddress: ContractAddress
 ): CircuitMaintenanceTxInterface => {
@@ -150,7 +150,7 @@ export const createCircuitMaintenanceTxInterface = <C extends Contract.Any, ICK 
  * A set of maintenance transaction creation interfaces, one for each circuit defined in
  * a given contract, keyed by the circuit name.
  */
-export type CircuitMaintenanceTxInterfaces<C extends Contract.Any> = Record<Contract.ImpureCircuitId<C>, CircuitMaintenanceTxInterface>;
+export type CircuitMaintenanceTxInterfaces<C extends Contract.Any> = Record<Contract.ProvableCircuitId<C>, CircuitMaintenanceTxInterface>;
 
 /**
  * Creates a {@link CircuitMaintenanceTxInterfaces}.
@@ -165,7 +165,7 @@ export const createCircuitMaintenanceTxInterfaces = <C extends Contract.Any>(
   contractAddress: ContractAddress
 ): CircuitMaintenanceTxInterfaces<C> => {
   assertIsContractAddress(contractAddress);
-  return ContractExecutable.make(compiledContract).getImpureCircuitIds().reduce(
+  return ContractExecutable.make(compiledContract).getProvableCircuitIds().reduce(
     (acc, circuitId) => ({
       ...acc,
       [circuitId]: createCircuitMaintenanceTxInterface(providers, circuitId, compiledContract, contractAddress)

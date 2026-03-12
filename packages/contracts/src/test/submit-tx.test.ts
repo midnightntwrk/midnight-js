@@ -47,7 +47,7 @@ describe('submit-tx', () => {
         mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue('test-tx-id');
         mockProviders.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(mockFinalizedTxData);
 
-        const options: SubmitTxOptions<Contract.ImpureCircuitId<Contract.Any>> = {
+        const options: SubmitTxOptions<Contract.ProvableCircuitId<Contract.Any>> = {
           unprovenTx: mockUnprovenTx,
         };
 
@@ -61,7 +61,7 @@ describe('submit-tx', () => {
       });
 
       it('should successfully submit transaction with circuit ID', async () => {
-        const circuitId = 'testCircuit' as Contract.ImpureCircuitId<Contract.Any>;
+        const circuitId = 'testCircuit' as Contract.ProvableCircuitId<Contract.Any>;
         const mockFinalizedTxData = createMockFinalizedTxData();
 
         mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue(mockProvenTx);
@@ -69,7 +69,7 @@ describe('submit-tx', () => {
         mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue('test-tx-id');
         mockProviders.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(mockFinalizedTxData);
 
-        const options: SubmitTxOptions<Contract.ImpureCircuitId<Contract.Any>> = {
+        const options: SubmitTxOptions<Contract.ProvableCircuitId<Contract.Any>> = {
           unprovenTx: mockUnprovenTx,
           circuitId
         };
@@ -105,7 +105,7 @@ describe('submit-tx', () => {
         mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue(mockProvenTx);
         mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue(expectedTxId);
 
-        const options: SubmitTxOptions<Contract.ImpureCircuitId<Contract.Any>> = {
+        const options: SubmitTxOptions<Contract.ProvableCircuitId<Contract.Any>> = {
           unprovenTx: mockUnprovenTx,
         };
 
@@ -119,14 +119,14 @@ describe('submit-tx', () => {
       });
 
       it('should submit transaction with circuit ID and return txId', async () => {
-        const circuitId = 'testCircuit' as Contract.ImpureCircuitId<Contract.Any>;
+        const circuitId = 'testCircuit' as Contract.ProvableCircuitId<Contract.Any>;
         const expectedTxId = 'test-tx-id-with-circuit';
 
         mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue(mockProvenTx);
         mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue(mockProvenTx);
         mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue(expectedTxId);
 
-        const options: SubmitTxOptions<Contract.ImpureCircuitId<Contract.Any>> = {
+        const options: SubmitTxOptions<Contract.ProvableCircuitId<Contract.Any>> = {
           unprovenTx: mockUnprovenTx,
           circuitId
         };
@@ -148,7 +148,7 @@ describe('submit-tx', () => {
         mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue(mockProvenTx);
         mockProviders.walletProvider.balanceTx = vi.fn().mockRejectedValue(balanceError);
 
-        const options: SubmitTxOptions<Contract.ImpureCircuitId<Contract.Any>> = {
+        const options: SubmitTxOptions<Contract.ProvableCircuitId<Contract.Any>> = {
           unprovenTx: mockUnprovenTx,
         };
 
@@ -163,7 +163,7 @@ describe('submit-tx', () => {
         mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue(mockProvenTx);
         mockProviders.proofProvider.proveTx = vi.fn().mockRejectedValue(proveError);
 
-        const options: SubmitTxOptions<Contract.ImpureCircuitId<Contract.Any>> = {
+        const options: SubmitTxOptions<Contract.ProvableCircuitId<Contract.Any>> = {
           unprovenTx: mockUnprovenTx,
         };
 
@@ -178,7 +178,7 @@ describe('submit-tx', () => {
         mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue(mockProvenTx);
         mockProviders.midnightProvider.submitTx = vi.fn().mockRejectedValue(submitError);
 
-        const options: SubmitTxOptions<Contract.ImpureCircuitId<Contract.Any>> = {
+        const options: SubmitTxOptions<Contract.ProvableCircuitId<Contract.Any>> = {
           unprovenTx: mockUnprovenTx,
         };
 

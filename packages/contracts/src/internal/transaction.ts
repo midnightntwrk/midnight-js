@@ -48,10 +48,10 @@ export const CacheStates = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/C
 /** @internal */
 export const GetCurrentStatesForIdentity = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/GetCurrentStatesForIdentity');
 
-const mergeSubmitTxOptions = <ICK extends Contract.ImpureCircuitId<Contract.Any>>(
-  current: SubmitTxOptions<ICK> | undefined,
-  next: SubmitTxOptions<ICK>
-): SubmitTxOptions<ICK> => {
+const mergeSubmitTxOptions = <PCK extends Contract.ProvableCircuitId<Contract.Any>>(
+  current: SubmitTxOptions<PCK> | undefined,
+  next: SubmitTxOptions<PCK>
+): SubmitTxOptions<PCK> => {
   if (!current) {
     return next;
   }
@@ -69,17 +69,17 @@ const mergeSubmitTxOptions = <ICK extends Contract.ImpureCircuitId<Contract.Any>
 /** @internal */
 export class TransactionContextImpl<
   C extends Contract.Any,
-  ICK extends Contract.ImpureCircuitId<C>
-> implements Transaction.TransactionContext<C, ICK> {
+  PCK extends Contract.ProvableCircuitId<C>
+> implements Transaction.TransactionContext<C, PCK> {
   readonly [TypeId]: Transaction.TypeId = TypeId;
   readonly providers: ContractProviders<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   readonly options?: Transaction.ScopedTransactionOptions;
 
   cachedStates: CachedStatesWithIdentity<Contract.PrivateState<C>> | undefined = undefined;
-  currentUnsubmittedCall: [callTxData: UnsubmittedCallTxData<C, ICK>, privateStateId?: PrivateStateId] | undefined;
-  submitTxOptions: SubmitTxOptions<ICK> | undefined = undefined;
+  currentUnsubmittedCall: [callTxData: UnsubmittedCallTxData<C, PCK>, privateStateId?: PrivateStateId] | undefined;
+  submitTxOptions: SubmitTxOptions<PCK> | undefined = undefined;
 
-  constructor(providers: ContractProviders<C, ICK>, options?: Transaction.ScopedTransactionOptions) {
+  constructor(providers: ContractProviders<C, PCK>, options?: Transaction.ScopedTransactionOptions) {
     this.providers = providers;
     this.options = options;
   }
@@ -109,11 +109,11 @@ export class TransactionContextImpl<
     return this.cachedStates.states;
   }
 
-  getLastUnsubmittedCallTxDataToTransact(): [UnsubmittedCallTxData<C, ICK>, PrivateStateId?] | undefined {
+  getLastUnsubmittedCallTxDataToTransact(): [UnsubmittedCallTxData<C, PCK>, PrivateStateId?] | undefined {
     return this.currentUnsubmittedCall;
   }
 
-  async [Submit](): Promise<FinalizedCallTxData<C, ICK>> {
+  async [Submit](): Promise<FinalizedCallTxData<C, PCK>> {
     const [unprovenCallTxData, privateStateId] = this.getLastUnsubmittedCallTxDataToTransact() ?? [];
     if (!unprovenCallTxData) {
       throw new Error('No calls were submitted.');
@@ -138,7 +138,7 @@ export class TransactionContextImpl<
     this.cachedStates = { states, identity };
   }
 
-  [MergeUnsubmittedCallTxData](circuitId: ICK, callData: UnsubmittedCallTxData<C, ICK>, privateStateId?: PrivateStateId): void {
+  [MergeUnsubmittedCallTxData](circuitId: PCK, callData: UnsubmittedCallTxData<C, PCK>, privateStateId?: PrivateStateId): void {
     this.currentUnsubmittedCall = [callData, privateStateId];
     this.submitTxOptions = mergeSubmitTxOptions(
       this.submitTxOptions,
@@ -165,11 +165,11 @@ export class TransactionContextImpl<
 /** @internal */
 export const mergeUnsubmittedCallTxData = <
   C extends Contract.Any,
-  ICK extends Contract.ImpureCircuitId<C>
+  PCK extends Contract.ProvableCircuitId<C>
 >(
-  txCtx: Transaction.TransactionContext<C, ICK>,
-  circuitId: ICK,
-  callData: UnsubmittedCallTxData<C, ICK>,
+  txCtx: Transaction.TransactionContext<C, PCK>,
+  circuitId: PCK,
+  callData: UnsubmittedCallTxData<C, PCK>,
   privateStateId?: PrivateStateId
 ): void => {
   txCtx[MergeUnsubmittedCallTxData](circuitId, callData, privateStateId);
@@ -181,31 +181,31 @@ export const isTransactionContext = (u: unknown): u is Transaction.TransactionCo
 
 /** @internal */
 export const scoped: {
-  <C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
-    providers: ContractProviders<C, ICK>,
-    fn: (txCtx: Transaction.TransactionContext<C, ICK>) => Promise<void>,
+  <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+    providers: ContractProviders<C, PCK>,
+    fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
     options?: Transaction.ScopedTransactionOptions,
-  ): Promise<FinalizedCallTxData<C, ICK>>,
-  <C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
-    providers: ContractProviders<C, ICK>,
-    fn: (txCtx: Transaction.TransactionContext<C, ICK>) => Promise<void>,
-    txCtx: Transaction.TransactionContext<C, ICK>,
+  ): Promise<FinalizedCallTxData<C, PCK>>,
+  <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+    providers: ContractProviders<C, PCK>,
+    fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
+    txCtx: Transaction.TransactionContext<C, PCK>,
     options?: Transaction.ScopedTransactionOptions
-  ): Promise<CallResult<C, ICK>>
+  ): Promise<CallResult<C, PCK>>
 } = async <
   C extends Contract.Any,
-  ICK extends Contract.ImpureCircuitId<C>
+  PCK extends Contract.ProvableCircuitId<C>
 > (
-  providers: ContractProviders<C, ICK>,
-  fn: (txCtx: Transaction.TransactionContext<C, ICK>) => Promise<void>,
-  txCtxOrOptions?: Transaction.TransactionContext<C, ICK> | Transaction.ScopedTransactionOptions,
+  providers: ContractProviders<C, PCK>,
+  fn: (txCtx: Transaction.TransactionContext<C, PCK>) => Promise<void>,
+  txCtxOrOptions?: Transaction.TransactionContext<C, PCK> | Transaction.ScopedTransactionOptions,
   options?: Transaction.ScopedTransactionOptions
 ): Promise<any> => { // eslint-disable-line @typescript-eslint/no-explicit-any
   const outerTxCtx = isTransactionContext(txCtxOrOptions) ? txCtxOrOptions : undefined;
   const txOptions = isTransactionContext(txCtxOrOptions)
     ? options
     : txCtxOrOptions as Transaction.ScopedTransactionOptions | undefined;
-  const innerTxCtx = outerTxCtx ?? new TransactionContextImpl<C, ICK>(providers, txOptions);
+  const innerTxCtx = outerTxCtx ?? new TransactionContextImpl<C, PCK>(providers, txOptions);
 
   try {
     await fn(innerTxCtx);
@@ -249,7 +249,7 @@ export const scoped: {
         nextPrivateState: unprovenCallTxData.private.nextPrivateState,
         nextZswapLocalState: unprovenCallTxData.private.nextZswapLocalState
       }
-    } as CallResult<C, ICK>;
+    } as CallResult<C, PCK>;
   } catch (err: unknown) {
     // Rethrow known call transaction failures and errors occurring within an outer transaction context...
     if (err instanceof CallTxFailedError || outerTxCtx) {

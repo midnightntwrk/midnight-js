@@ -32,16 +32,16 @@ import {
 /**
  * Describes the target of a circuit invocation.
  */
-export type CallOptionsBase<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = {
+export type CallOptionsBase<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = {
   /**
    * The contract defining the circuit to call.
    */
   readonly compiledContract: CompiledContract.CompiledContract<C, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
-  
+
   /**
    * The identifier of the circuit to call.
    */
-  readonly circuitId: ICK;
+  readonly circuitId: PCK;
   /**
    * The address of the contract being executed.
    */
@@ -52,14 +52,14 @@ export type CallOptionsBase<C extends Contract.Any, ICK extends Contract.ImpureC
  * Conditional type that optionally adds the inferred circuit argument types to
  * the options for a circuit call.
  */
-export type CallOptionsWithArguments<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> =
-  Contract.CircuitParameters<C, ICK> extends []
-    ? CallOptionsBase<C, ICK>
-    : CallOptionsBase<C, ICK> & {
+export type CallOptionsWithArguments<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> =
+  Contract.CircuitParameters<C, PCK> extends []
+    ? CallOptionsBase<C, PCK>
+    : CallOptionsBase<C, PCK> & {
     /**
      * Arguments to pass to the circuit being called.
      */
-    readonly args: Contract.CircuitParameters<C, ICK>;
+    readonly args: Contract.CircuitParameters<C, PCK>;
   };
 
 /**
@@ -85,16 +85,16 @@ export type CallOptionsProviderDataDependencies = {
  */
 export type CallOptionsWithProviderDataDependencies<
   C extends Contract.Any,
-  ICK extends Contract.ImpureCircuitId<C>
-> = CallOptionsWithArguments<C, ICK> & CallOptionsProviderDataDependencies;
+  PCK extends Contract.ProvableCircuitId<C>
+> = CallOptionsWithArguments<C, PCK> & CallOptionsProviderDataDependencies;
 
 /**
  * Call options for contracts with private state.
  */
 export type CallOptionsWithPrivateState<
   C extends Contract.Any,
-  ICK extends Contract.ImpureCircuitId<C>
-> = CallOptionsWithProviderDataDependencies<C, ICK> & {
+  PCK extends Contract.ProvableCircuitId<C>
+> = CallOptionsWithProviderDataDependencies<C, PCK> & {
   /**
    * The private state to run the circuit against.
    */
@@ -104,14 +104,14 @@ export type CallOptionsWithPrivateState<
 /**
  * Call options for a given contract and circuit.
  */
-export type CallOptions<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> =
-  | CallOptionsWithProviderDataDependencies<C, ICK>
-  | CallOptionsWithPrivateState<C, ICK>;
+export type CallOptions<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> =
+  | CallOptionsWithProviderDataDependencies<C, PCK>
+  | CallOptionsWithPrivateState<C, PCK>;
 
 /**
  * The private (sensitive) portions of the call result.
  */
-export type CallResultPrivate<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = {
+export type CallResultPrivate<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = {
   /**
    * ZK representation of the circuit arguments.
    */
@@ -127,7 +127,7 @@ export type CallResultPrivate<C extends Contract.Any, ICK extends Contract.Impur
   /**
    * The JS representation of the input to the circuit.
    */
-  readonly result: Contract.CircuitReturnType<C, ICK>;
+  readonly result: Contract.CircuitReturnType<C, PCK>;
   /**
    * The private state resulting from executing the circuit.
    */
@@ -162,7 +162,7 @@ export type CallResultPublic = {
 /**
  * Contains all information resulting from circuit execution.
  */
-export type CallResult<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = {
+export type CallResult<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = {
   /**
    * The public/non-sensitive data produced by the circuit execution.
    */
@@ -170,5 +170,5 @@ export type CallResult<C extends Contract.Any, ICK extends Contract.ImpureCircui
   /**
    * The private/sensitive data produced by the circuit execution.
    */
-  readonly private: CallResultPrivate<C, ICK>;
+  readonly private: CallResultPrivate<C, PCK>;
 };

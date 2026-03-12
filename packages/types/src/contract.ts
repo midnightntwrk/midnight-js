@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { type CompiledContract, Contract, type ContractExecutable, ContractExecutableRuntime, 
+import { type CompiledContract, Contract, type ContractExecutable, ContractExecutableRuntime,
   ZKConfiguration, ZKConfigurationReadError } from '@midnight-ntwrk/compact-js/effect';
 import { ContractAddress } from '@midnight-ntwrk/platform-js';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
@@ -36,19 +36,19 @@ const makeAdaptedReader = <C extends Contract.Contract<PS>, PS>(zkConfigProvider
     Effect.gen(function* () { // eslint-disable-line require-yield
       // TODO: Consider implementing the logic used in Compact.js (look at the contract manifest to determine
       // if the circuit is verifiable). See PM-21376.
-      const getVerifierKey = (impureCircuitId: Contract.ImpureCircuitId<C>) =>
+      const getVerifierKey = (provableCircuitId: Contract.ProvableCircuitId<C>) =>
         Effect.tryPromise({
-          try: () => zkConfigProvider.getVerifierKey(impureCircuitId).then((verifierKey) => Option.some(Contract.VerifierKey(verifierKey))),
-          catch: (err: unknown) => ZKConfigurationReadError.make(compiledContract.tag, impureCircuitId, 'verifier-key', err)
+          try: () => zkConfigProvider.getVerifierKey(provableCircuitId).then((verifierKey) => Option.some(Contract.VerifierKey(verifierKey))),
+          catch: (err: unknown) => ZKConfigurationReadError.make(compiledContract.tag, provableCircuitId, 'verifier-key', err)
         });
       return {
         getVerifierKey,
-        getVerifierKeys: (impureCircuitIds) =>
+        getVerifierKeys: (provableCircuitIds) =>
           Effect.forEach(
-            impureCircuitIds,
-            (impureCircuitId) =>
-              getVerifierKey(impureCircuitId).pipe(
-                Effect.map((verifierKey) => [impureCircuitId, verifierKey] as const)
+            provableCircuitIds,
+            (provableCircuitId) =>
+              getVerifierKey(provableCircuitId).pipe(
+                Effect.map((verifierKey) => [provableCircuitId, verifierKey] as const)
               ),
             { concurrency: 'unbounded', discard: false }
           )
@@ -101,7 +101,7 @@ export const makeContractExecutableRuntime:
 /**
  * Unwraps an Effect `Exit` instance, returning its value if it is successful, or throwing the error contained
  * within it.
- * 
+ *
  * @param exit The source Effect `Exit` instance.
  * @returns The value from `exit` if it is successful, otherwise throws the error contained within it.
  */

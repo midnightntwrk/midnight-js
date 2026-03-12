@@ -29,13 +29,13 @@ export type TypeId = typeof TypeId;
  */
 export interface TransactionContext<
   C extends Contract.Any,
-  ICK extends Contract.ImpureCircuitId<C> = Contract.ImpureCircuitId<C>
+  PCK extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>
 > {
   readonly [TypeId]: TypeId;
-  readonly [Internal.Submit]: () => Promise<FinalizedCallTxData<C, ICK>>;
+  readonly [Internal.Submit]: () => Promise<FinalizedCallTxData<C, PCK>>;
   readonly [Internal.MergeUnsubmittedCallTxData]: (
-    circuitId: ICK,
-    callData: UnsubmittedCallTxData<C, ICK>,
+    circuitId: PCK,
+    callData: UnsubmittedCallTxData<C, PCK>,
     privateStateId?: PrivateStateId
   ) => void;
   readonly [Internal.CacheStates]: (
@@ -63,7 +63,7 @@ export interface TransactionContext<
    * @return A tuple containing an {@link UnsubmittedCallTxData} instance, and an optional private state
    * ID, or `undefined` if circuit calls are yet to be made.
    */
-  getLastUnsubmittedCallTxDataToTransact(): [UnsubmittedCallTxData<C, ICK>, PrivateStateId?] | undefined;
+  getLastUnsubmittedCallTxDataToTransact(): [UnsubmittedCallTxData<C, PCK>, PrivateStateId?] | undefined;
 }
 
 /**
@@ -93,17 +93,17 @@ export const isTransactionContext: (u: unknown) => u is TransactionContext<Contr
    * @param options Optional transaction scope options.
    * @returns A `Promise` that resolves with the finalized transaction data of the single transaction
    * created for all circuit calls made within `fn`.
-   * 
+   *
    * @remarks
    * Where `fn` make circuit calls, these are batched together and submitted as a single transaction when
    * the function completes successfully. If `fn` throws an error, any unsubmitted circuit calls are discarded.
    */
 export const withContractScopedTransaction: <
   C extends Contract.Any,
-  ICK extends Contract.ImpureCircuitId<C> = Contract.ImpureCircuitId<C>
+  PCK extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>
 >(
-  providers: ContractProviders<C, ICK>,
-  fn: (txCtx: TransactionContext<C, ICK>) => Promise<void>,
+  providers: ContractProviders<C, PCK>,
+  fn: (txCtx: TransactionContext<C, PCK>) => Promise<void>,
   options?: ScopedTransactionOptions
-) => Promise<FinalizedCallTxData<C, ICK>> =
+) => Promise<FinalizedCallTxData<C, PCK>> =
   async(providers, fn, options?) =>  Internal.scoped(providers, fn, options);

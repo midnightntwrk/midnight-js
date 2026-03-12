@@ -39,7 +39,7 @@ vi.mock('@midnight-ntwrk/midnight-js-types', async (importOriginal) => {
   const actual = await importOriginal() as any;
   return {
     ...actual,
-    getImpureCircuitIds: vi.fn().mockReturnValue(['testCircuit'])
+    getProvableCircuitIds: vi.fn().mockReturnValue(['testCircuit'])
   };
 });
 

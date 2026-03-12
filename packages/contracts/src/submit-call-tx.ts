@@ -32,31 +32,31 @@ import {
   createUnprovenCallTx
 } from './unproven-call-tx';
 
-export type SubmitCallTxProviders<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> =
+export type SubmitCallTxProviders<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> =
   | ContractProviders<C>
-  | SubmitTxProviders<C, ICK>;
+  | SubmitTxProviders<C, PCK>;
 
-export async function submitCallTx<C extends Contract<undefined>, ICK extends Contract.ImpureCircuitId<C>>(
-  providers: SubmitTxProviders<C, ICK>,
-  options: CallTxOptionsBase<C, ICK>
-): Promise<FinalizedCallTxData<C, ICK>>;
+export async function submitCallTx<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
+  providers: SubmitTxProviders<C, PCK>,
+  options: CallTxOptionsBase<C, PCK>
+): Promise<FinalizedCallTxData<C, PCK>>;
 
-export async function submitCallTx<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
+export async function submitCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: ContractProviders<C>,
-  options: CallTxOptionsWithPrivateStateId<C, ICK>
-): Promise<FinalizedCallTxData<C, ICK>>;
+  options: CallTxOptionsWithPrivateStateId<C, PCK>
+): Promise<FinalizedCallTxData<C, PCK>>;
 
-export async function submitCallTx<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
+export async function submitCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: ContractProviders<C>,
-  options: CallTxOptionsWithPrivateStateId<C, ICK>,
-  transactionContext: TransactionContext<C, ICK>
-): Promise<CallResult<C, ICK>>;
+  options: CallTxOptionsWithPrivateStateId<C, PCK>,
+  transactionContext: TransactionContext<C, PCK>
+): Promise<CallResult<C, PCK>>;
 
-export async function submitCallTx<C extends Contract<undefined>, ICK extends Contract.ImpureCircuitId<C>>(
-  providers: SubmitTxProviders<C, ICK>,
-  options: CallTxOptionsBase<C, ICK>,
-  transactionContext: TransactionContext<C, ICK>
-): Promise<CallResult<C, ICK>>;
+export async function submitCallTx<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
+  providers: SubmitTxProviders<C, PCK>,
+  options: CallTxOptionsBase<C, PCK>,
+  transactionContext: TransactionContext<C, PCK>
+): Promise<CallResult<C, PCK>>;
 
  /**
  * Creates and submits a transaction for the invocation of a circuit on a given contract.
@@ -92,16 +92,16 @@ export async function submitCallTx<C extends Contract<undefined>, ICK extends Co
  * @throws {CallTxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data and circuit ID for debugging.
  */
-export async function submitCallTx<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
-  providers: SubmitCallTxProviders<C, ICK>,
-  options: CallTxOptions<C, ICK>,
-  transactionContext?: TransactionContext<C, ICK>
-): Promise<FinalizedCallTxData<C, ICK> | CallResult<C, ICK>> {
+export async function submitCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  providers: SubmitCallTxProviders<C, PCK>,
+  options: CallTxOptions<C, PCK>,
+  transactionContext?: TransactionContext<C, PCK>
+): Promise<FinalizedCallTxData<C, PCK> | CallResult<C, PCK>> {
   assertIsContractAddress(options.contractAddress);
   assertDefined(
     ContractExecutable.make(options.compiledContract)
-      .getImpureCircuitIds()
-      .find((circuitId) => circuitId as unknown as ICK === options.circuitId),
+      .getProvableCircuitIds()
+      .find((circuitId) => circuitId as unknown as PCK === options.circuitId),
     `Circuit '${options.circuitId}' is undefined`
   );
 
@@ -116,7 +116,7 @@ export async function submitCallTx<C extends Contract.Any, ICK extends Contract.
     providers.privateStateProvider.setContractAddress(options.contractAddress);
   }
 
-  const callTxFn = async (txCtx: TransactionContext<C, ICK>) => {
+  const callTxFn = async (txCtx: TransactionContext<C, PCK>) => {
     Transaction.mergeUnsubmittedCallTxData(
       txCtx,
       options.circuitId,
@@ -126,8 +126,8 @@ export async function submitCallTx<C extends Contract.Any, ICK extends Contract.
   };
 
   return transactionContext
-    ? Transaction.scoped(providers as ContractProviders<C, ICK>, callTxFn, transactionContext)
-    : Transaction.scoped(providers as ContractProviders<C, ICK>, callTxFn)
+    ? Transaction.scoped(providers as ContractProviders<C, PCK>, callTxFn, transactionContext)
+    : Transaction.scoped(providers as ContractProviders<C, PCK>, callTxFn)
 }
 
 /**
@@ -192,15 +192,15 @@ export async function submitCallTx<C extends Contract.Any, ICK extends Contract.
  * }
  * ```
  */
-export async function submitCallTxAsync<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
-  providers: SubmitCallTxProviders<C, ICK>,
-  options: CallTxOptions<C, ICK>
-): Promise<SubmittedCallTx<C, ICK>> {
+export async function submitCallTxAsync<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  providers: SubmitCallTxProviders<C, PCK>,
+  options: CallTxOptions<C, PCK>
+): Promise<SubmittedCallTx<C, PCK>> {
   assertIsContractAddress(options.contractAddress);
   assertDefined(
     ContractExecutable.make(options.compiledContract)
-      .getImpureCircuitIds()
-      .find((circuitId) => circuitId as unknown as ICK === options.circuitId),
+      .getProvableCircuitIds()
+      .find((circuitId) => circuitId as unknown as PCK === options.circuitId),
     `Circuit '${options.circuitId}' is undefined`
   );
 
