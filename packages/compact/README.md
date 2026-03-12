@@ -55,10 +55,13 @@ yarn run-compactc <input-file> <output-dir> [options]
 
 ### Environment Variables
 
-| Variable          | Description                                                      |
-| ----------------- | ---------------------------------------------------------------- |
-| `COMPACTC_VERSION`| Version to fetch/run (required if `--version` not provided)      |
-| `COMPACT_HOME`    | Custom Compact installation path (skips managed versions)        |
+| Variable              | Description                                                      | Default                          |
+| --------------------- | ---------------------------------------------------------------- | -------------------------------- |
+| `COMPACTC_VERSION`    | Version to fetch/run (required if `--version` not provided)      | -                                |
+| `COMPACT_HOME`        | Custom Compact installation path (skips managed versions)        | -                                |
+| `COMPACT_REPO`        | GitHub repository for downloading the compiler                   | `LFDT-Minokawa/compact`         |
+| `COMPACT_TAG_PREFIX`  | Release tag prefix prepended to the version                      | `v`                              |
+| `COMPACT_DOCKER_IMAGE`| Docker image for unsupported platforms                           | `ghcr.io/midnight-ntwrk/compactc`|
 
 ### Platform Support
 

@@ -2,6 +2,50 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [3.2.0](https://github.com/midnightntwrk/midnight-js/compare/v3.2.0-rc.3...v3.2.0) (2026-03-11)
+
+
+### Documentation
+
+* add containers configuration section to testkit-js README ([#613](https://github.com/midnightntwrk/midnight-js/pull/613)) ([435413f](https://github.com/midnightntwrk/midnight-js/commit/435413fb66663523d71c5bb3e29f8e984bd0bee3))
+
+
+### Improvements
+
+* **ci:** bump gha plugins ([#616](https://github.com/midnightntwrk/midnight-js/pull/616)) ([ddbf7ee](https://github.com/midnightntwrk/midnight-js/commit/ddbf7eed6b9b76c133577f8b23dc003d2cd6667c))
+* compact fetcher - location change ([#624](https://github.com/midnightntwrk/midnight-js/pull/624)) ([cb50a2f](https://github.com/midnightntwrk/midnight-js/commit/cb50a2fd6aa3bb94e8ec25eee5d90f048d129339))
+* **deps-dev:** bump @fast-check/vitest from 0.2.4 to 0.3.0 ([#619](https://github.com/midnightntwrk/midnight-js/pull/619)) ([d0ac78f](https://github.com/midnightntwrk/midnight-js/commit/d0ac78ff921d088e412f94c7f0cb9a7a5c13a5bf))
+* **deps-dev:** bump tstyche from 4.3.0 to 6.2.0 ([#593](https://github.com/midnightntwrk/midnight-js/pull/593)) ([f591ac7](https://github.com/midnightntwrk/midnight-js/commit/f591ac70dcad1e6b5327237b3464965b8d186f22))
+* **deps:** bump dev dependencies ([#615](https://github.com/midnightntwrk/midnight-js/pull/615)) ([aa14a2b](https://github.com/midnightntwrk/midnight-js/commit/aa14a2b0914e41de235cb9283b6038b21ec118de))
+* **deps:** bump fast-xml-parser ([#617](https://github.com/midnightntwrk/midnight-js/pull/617)) ([f358802](https://github.com/midnightntwrk/midnight-js/commit/f358802a308a98022178cb0175a0c6941b702abb))
+* update default location for downloading the compactc ([#625](https://github.com/midnightntwrk/midnight-js/pull/625)) ([3430acf](https://github.com/midnightntwrk/midnight-js/commit/3430acf44557def7b62f23be7341e3b892f96141))
+* update wallet-sdk to 2.0.0 ([#614](https://github.com/midnightntwrk/midnight-js/pull/614)) ([47b7855](https://github.com/midnightntwrk/midnight-js/commit/47b78556be2cfb9ea792226bfbb141081692052a))
+
+## [3.2.0-rc.3](https://github.com/midnightntwrk/midnight-js/compare/v3.2.0-rc.2...v3.2.0-rc.3) (2026-03-10)
+
+
+### Bug Fixes
+
+* ensure TransactionContext is not included in circuit call arguments ([d90d462](https://github.com/midnightntwrk/midnight-js/commit/d90d4621d48287292d3c875ec177e72637cbc111))
+* fail fast on unset network id ([#604](https://github.com/midnightntwrk/midnight-js/pull/604)) ([dffc2da](https://github.com/midnightntwrk/midnight-js/commit/dffc2da00ea6f38240eae35b6e28356ed303fd42))
+* **http-client-proof-provider:** copy WASM payload bytes before sending to proof server ([#596](https://github.com/midnightntwrk/midnight-js/pull/596)) ([0922ce0](https://github.com/midnightntwrk/midnight-js/commit/0922ce0802de96ffe6d518ffb50c5a049aeab45c))
+
+
+### Documentation
+
+* add development docs ([#590](https://github.com/midnightntwrk/midnight-js/pull/590)) ([0767aaf](https://github.com/midnightntwrk/midnight-js/commit/0767aaf0a0f77404d60347097e9f2c4ec675f4f2))
+* update release notes for v3.2.0 ([#600](https://github.com/midnightntwrk/midnight-js/pull/600)) ([fec7cf1](https://github.com/midnightntwrk/midnight-js/commit/fec7cf1fca243409845640d800f212752e25b44c)), closes [#596](https://github.com/midnightntwrk/midnight-js/pull/596) [#592](https://github.com/midnightntwrk/midnight-js/pull/592) [#579](https://github.com/midnightntwrk/midnight-js/pull/579)
+
+
+### Improvements
+
+* **deps-dev:** bump jsdom from 27.4.0 to 28.1.0 ([#594](https://github.com/midnightntwrk/midnight-js/pull/594)) ([018b64f](https://github.com/midnightntwrk/midnight-js/commit/018b64f424a90762dbd25003d2d33b4f8011172f))
+* **deps:** bump @midnight-ntwrk/compact-js from 2.4.0 to 2.4.3 ([#595](https://github.com/midnightntwrk/midnight-js/pull/595)) ([87d0c77](https://github.com/midnightntwrk/midnight-js/commit/87d0c77c8d949910be227b6d9dadce4ee74b3fdb))
+* **deps:** bump mikepenz/action-junit-report from 6.2.0 to 6.3.1 ([#583](https://github.com/midnightntwrk/midnight-js/pull/583)) ([8e06284](https://github.com/midnightntwrk/midnight-js/commit/8e06284ba5f057617411d6e1016651747b471591))
+* **release:** bump version to 3.2.0-rc.3 ([#609](https://github.com/midnightntwrk/midnight-js/pull/609)) ([c1dc8f6](https://github.com/midnightntwrk/midnight-js/commit/c1dc8f674323015d69e0716653bb61a48d417fd8))
+* **testkit-js:** add test environments ([#592](https://github.com/midnightntwrk/midnight-js/pull/592)) ([349bd16](https://github.com/midnightntwrk/midnight-js/commit/349bd16e2422b074f8644a3ec98e7999288c81ad))
+* update to wallet-sdk-facade-2.0.0-rc.3 ([#608](https://github.com/midnightntwrk/midnight-js/pull/608)) ([2d44ce5](https://github.com/midnightntwrk/midnight-js/commit/2d44ce5d3574e2eb37332c039dc69f65fd9fe30c))
+
 ## [3.2.0-rc.2](https://github.com/midnightntwrk/midnight-js/compare/v3.2.0-rc.1...v3.2.0-rc.2) (2026-03-03)
 
 
@@ -37,6 +81,7 @@ All notable changes to this project will be documented in this file. See [commit
 * **deps:** bump peter-evans/create-pull-request from 8.0.0 to 8.1.0 ([#547](https://github.com/midnightntwrk/midnight-js/pull/547)) ([c6203f6](https://github.com/midnightntwrk/midnight-js/commit/c6203f678939e027e017620cddc4dea851953726))
 * **deps:** bump the npm_and_yarn group across 1 directory with 2 updates ([#537](https://github.com/midnightntwrk/midnight-js/pull/537)) ([e1ffaf6](https://github.com/midnightntwrk/midnight-js/commit/e1ffaf6499bd25d94587e3b3f41a7814f9bc5102))
 * enhance release script with detailed usage instructions and improve dry-run feedback ([#567](https://github.com/midnightntwrk/midnight-js/pull/567)) ([b6800fb](https://github.com/midnightntwrk/midnight-js/commit/b6800fb38e1732046845cecbc17e46ddb0320c94))
+* **release:** bump version to 3.2.0-rc.2 ([#591](https://github.com/midnightntwrk/midnight-js/pull/591)) ([fbc94aa](https://github.com/midnightntwrk/midnight-js/commit/fbc94aa462a07a442b85718c6d203b0a73a211a5))
 * update docker images and enable tests ([#577](https://github.com/midnightntwrk/midnight-js/pull/577)) ([25d1a99](https://github.com/midnightntwrk/midnight-js/commit/25d1a9974e07c3c886e5fb0f51324641cfc863d5))
 * update eslint to 10.0.2 ([#587](https://github.com/midnightntwrk/midnight-js/pull/587)) ([74fbbf4](https://github.com/midnightntwrk/midnight-js/commit/74fbbf4e3ac4f37c9be587575b1d9f090d7baa39))
 

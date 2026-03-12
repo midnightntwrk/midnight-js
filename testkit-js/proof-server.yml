@@ -2,6 +2,7 @@ services:
   proof-server:
     image: 'ghcr.io/midnight-ntwrk/proof-server:7.0.0'
     container_name: "proof-server_$TESTCONTAINERS_UID"
+    command: [ 'midnight-proof-server --verbose' ]
     ports:
       - "0:6300"
     environment:

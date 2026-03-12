@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/testkit-js",
-  "version": "3.2.0-rc.2",
+  "version": "3.2.0",
   "description": "Testing kit for Midnight JS packages",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -43,6 +43,7 @@
     "@midnight-ntwrk/midnight-js-node-zk-config-provider": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
     "@midnight-ntwrk/midnight-js-utils": "workspace:*",
+    "@midnight-ntwrk/wallet-sdk-hd": "3.0.1",
     "buffer": "^6.0.3",
     "cross-fetch": "^4.0.0",
     "rxjs": "^7.8.1",
