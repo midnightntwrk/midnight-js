@@ -32,12 +32,12 @@ import {
 /**
  * Describes the target of a circuit invocation.
  */
-export type CallOptionsBase<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = {
+export interface CallOptionsBase<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> {
   /**
    * The contract defining the circuit to call.
    */
   readonly compiledContract: CompiledContract.CompiledContract<C, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
-  
+
   /**
    * The identifier of the circuit to call.
    */
@@ -46,7 +46,7 @@ export type CallOptionsBase<C extends Contract.Any, ICK extends Contract.ImpureC
    * The address of the contract being executed.
    */
   readonly contractAddress: ContractAddress;
-};
+}
 
 /**
  * Conditional type that optionally adds the inferred circuit argument types to
@@ -65,7 +65,7 @@ export type CallOptionsWithArguments<C extends Contract.Any, ICK extends Contrac
 /**
  * Data retrieved via providers that should be included in the call options.
  */
-export type CallOptionsProviderDataDependencies = {
+export interface CallOptionsProviderDataDependencies {
   /**
    * The Zswap public key of the current user.
    */
@@ -78,7 +78,7 @@ export type CallOptionsProviderDataDependencies = {
    * The initial public Zswap state of the contract to run the circuit against.
    */
   readonly initialZswapChainState: ZswapChainState;
-};
+}
 
 /**
  * Call options with circuit arguments and data
@@ -111,7 +111,7 @@ export type CallOptions<C extends Contract.Any, ICK extends Contract.ImpureCircu
 /**
  * The private (sensitive) portions of the call result.
  */
-export type CallResultPrivate<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = {
+export interface CallResultPrivate<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> {
   /**
    * ZK representation of the circuit arguments.
    */
@@ -136,12 +136,12 @@ export type CallResultPrivate<C extends Contract.Any, ICK extends Contract.Impur
    * The Zswap local state resulting from executing the circuit.
    */
   readonly nextZswapLocalState: ZswapLocalState;
-};
+}
 
 /**
  * The public portions of the call result.
  */
-export type CallResultPublic = {
+export interface CallResultPublic {
   /**
    * The public state resulting from executing the circuit.
    */
@@ -157,12 +157,12 @@ export type CallResultPublic = {
    * can fail without invalidating the transaction, as long as the guaranteed section succeeds.
    */
   readonly partitionedTranscript: PartitionedTranscript;
-};
+}
 
 /**
  * Contains all information resulting from circuit execution.
  */
-export type CallResult<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = {
+export interface CallResult<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> {
   /**
    * The public/non-sensitive data produced by the circuit execution.
    */
@@ -171,4 +171,4 @@ export type CallResult<C extends Contract.Any, ICK extends Contract.ImpureCircui
    * The private/sensitive data produced by the circuit execution.
    */
   readonly private: CallResultPrivate<C, ICK>;
-};
+}
