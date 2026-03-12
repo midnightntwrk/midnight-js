@@ -28,7 +28,7 @@ import { SLOW_TEST_TIMEOUT, VERY_SLOW_TEST_TIMEOUT } from '@/constants';
 import { CompiledCounter } from '@/contract';
 import * as api from '@/counter-api';
 import { CONTRACT_CIRCUITS, CounterConfiguration } from '@/counter-api';
-import { type CounterProviders, type DeployedCounterContract, privateStateZero } from '@/counter-types';
+import { type CounterProviders, type DeployedCounterContract, privateStateZero } from '@/types/counter-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `indexer_${new Date().toISOString()}.log`)

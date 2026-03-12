@@ -15,12 +15,12 @@
 
 import type { Contract } from '@midnight-ntwrk/compact-js';
 
-import { CompiledCounterClone } from './contract';
-import { type CounterPrivateState, witnesses } from './contract/witnesses';
+import { CompiledCounterClone } from '../contract';
+import { type CounterPrivateState, witnesses } from '../contract/witnesses';
 
 export type CounterCloneContract = CompiledCounterClone.Contract<CounterPrivateState>;
 
-export type CounterCloneCircuits = Contract.ImpureCircuitId<CounterCloneContract>;
+export type CounterCloneCircuit = Contract.ProvableCircuitId<CounterCloneContract>;
 
 export const CounterClonePrivateStateId = 'counterClonePrivateState';
 

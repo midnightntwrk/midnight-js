@@ -32,9 +32,9 @@ import { expect } from 'vitest';
 
 import { CompiledShieldedContract } from '@/contract';
 import {
-  type ShieldedContractCircuits,
+  type ShieldedContractCircuit,
   type ShieldedContractProviders
-} from '@/shielded-types';
+} from '@/types/shielded-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `shielded_${new Date().toISOString()}.log`)
@@ -96,7 +96,7 @@ describe('Shielded tokens', () => {
     const txData = await submitCallTx(providers, {
       compiledContract: CompiledShieldedContract,
       contractAddress,
-      circuitId: 'mintShieldedTokens' as ShieldedContractCircuits,
+      circuitId: 'mintShieldedTokens' as ShieldedContractCircuit,
       args: [DOMAIN_SEPARATOR, MINT_AMOUNT]
     });
 

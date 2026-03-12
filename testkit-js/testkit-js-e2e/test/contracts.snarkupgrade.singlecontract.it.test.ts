@@ -42,7 +42,7 @@ import {
   CounterCloneConfiguration,
   SimpleConfiguration
 } from '@/counter-api';
-import { type CounterProviders, type DeployedCounterContract } from '@/counter-types';
+import { type CounterProviders, type DeployedCounterContract } from '@/types/counter-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_snark_upgrade_${new Date().toISOString()}.log`)

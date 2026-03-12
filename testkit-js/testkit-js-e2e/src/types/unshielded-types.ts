@@ -14,16 +14,14 @@
  */
 
 import type { Contract } from '@midnight-ntwrk/compact-js';
-import type { DeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
 import type { MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
 
-import type { CompiledBlockTime } from './contract';
+import { CompiledUnshielded } from '../contract';
 
-export type BlockTimeContract = CompiledBlockTime.Contract<undefined>;
+export type UnshieldedContract = CompiledUnshielded.Contract<undefined>;
 
-export type BlockTimeCircuits = Contract.ImpureCircuitId<BlockTimeContract> & string;
+export type UnshieldedContractCircuit = Contract.ProvableCircuitId<UnshieldedContract>;
 
-export type BlockTimeProviders = MidnightProviders<BlockTimeCircuits, string, undefined>;
+export type UnshieldedContractProviders = MidnightProviders<UnshieldedContractCircuit>;
 
-export type DeployedBlockTimeContract = DeployedContract<BlockTimeContract>;
-
+export const createUnshieldedContract = () : UnshieldedContract => new CompiledUnshielded.Contract({});

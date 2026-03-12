@@ -32,9 +32,9 @@ import { expect } from 'vitest';
 
 import { CompiledUnshieldedContract } from '@/contract';
 import {
-  type UnshieldedContractCircuits,
+  type UnshieldedContractCircuit,
   type UnshieldedContractProviders
-} from '@/unshielded-types';
+} from '@/types/unshielded-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `unshielded_${new Date().toISOString()}.log`)
@@ -92,7 +92,7 @@ describe('Unshielded tokens - balance', () => {
     const mintTxData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
-      circuitId: 'mintUnshieldedToSelfTest' as UnshieldedContractCircuits,
+      circuitId: 'mintUnshieldedToSelfTest' as UnshieldedContractCircuit,
       args: [MINT_DOMAIN_SEPARATOR, MINT_AMOUNT]
     });
 
@@ -111,7 +111,7 @@ describe('Unshielded tokens - balance', () => {
     const txData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
-      circuitId: 'getUnshieldedBalanceTest' as UnshieldedContractCircuits,
+      circuitId: 'getUnshieldedBalanceTest' as UnshieldedContractCircuit,
       args: [notMintedTokens]
     });
 
@@ -129,7 +129,7 @@ describe('Unshielded tokens - balance', () => {
     const txData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
-      circuitId: 'getUnshieldedBalanceTest' as UnshieldedContractCircuits,
+      circuitId: 'getUnshieldedBalanceTest' as UnshieldedContractCircuit,
       args: [mintedTokenColor]
     });
 
@@ -147,7 +147,7 @@ describe('Unshielded tokens - balance', () => {
     const txData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
-      circuitId: 'getUnshieldedBalanceGtTest' as UnshieldedContractCircuits,
+      circuitId: 'getUnshieldedBalanceGtTest' as UnshieldedContractCircuit,
       args: [mintedTokenColor, MINT_AMOUNT]
     });
 
@@ -166,7 +166,7 @@ describe('Unshielded tokens - balance', () => {
     const txData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
-      circuitId: 'getUnshieldedBalanceGtTest' as UnshieldedContractCircuits,
+      circuitId: 'getUnshieldedBalanceGtTest' as UnshieldedContractCircuit,
       args: [mintedTokenColor, MINT_AMOUNT - 1n]
     });
 
@@ -184,7 +184,7 @@ describe('Unshielded tokens - balance', () => {
     const txData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
-      circuitId: 'getUnshieldedBalanceLtTest' as UnshieldedContractCircuits,
+      circuitId: 'getUnshieldedBalanceLtTest' as UnshieldedContractCircuit,
       args: [mintedTokenColor, MINT_AMOUNT - 1n]
     });
 
@@ -203,7 +203,7 @@ describe('Unshielded tokens - balance', () => {
     const txData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
-      circuitId: 'getUnshieldedBalanceLtTest' as UnshieldedContractCircuits,
+      circuitId: 'getUnshieldedBalanceLtTest' as UnshieldedContractCircuit,
       args: [mintedTokenColor, MINT_AMOUNT + 1n]
     });
 

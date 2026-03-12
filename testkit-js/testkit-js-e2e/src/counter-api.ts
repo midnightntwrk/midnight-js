@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import type * as Contract from '@midnight-ntwrk/compact-js/effect/Contract';
 import type { ContractAddress } from '@midnight-ntwrk/ledger-v8';
 import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
 import type { FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
@@ -34,11 +33,11 @@ import {
 import { CompiledCounterContract } from './contract';
 import { type CounterPrivateState, createInitialPrivateState } from './contract/witnesses';
 import {
-  type CounterContract,
+  type CounterCircuit,
   CounterPrivateStateId,
   type CounterProviders,
   type DeployedCounterContract
-} from './counter-types';
+} from './types/counter-types';
 
 export { CompiledCounterCloneContract, CompiledCounterContract, CompiledSimpleContract } from './contract';
 
@@ -133,7 +132,7 @@ export const increment = async (counterContract: DeployedCounterContract): Promi
 };
 
 export const randomCircuitId = (length = 32) =>
-  Array.from({ length }, () => 'abcdefghijklmnopqrstuvwxyz'.charAt(Math.floor(Math.random() * 26))).join('') as Contract.ImpureCircuitId<CounterContract>;
+  Array.from({ length }, () => 'abcdefghijklmnopqrstuvwxyz'.charAt(Math.floor(Math.random() * 26))).join('') as CounterCircuit;
 
 const getConfigurationWithEmptyPrivateStore = () => {
   return new CounterConfiguration(`counter-private-store-${Date.now()}`);

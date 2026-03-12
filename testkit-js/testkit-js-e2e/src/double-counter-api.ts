@@ -41,7 +41,7 @@ import {
   createDoubleCounterContractInstance,
   type DeployedCounterContract,
   type DoubleCounterContract
-} from './double-counter-types';
+} from './types/double-counter-types';
 
 export const currentDir = path.resolve(new URL(import.meta.url).pathname, '..');
 

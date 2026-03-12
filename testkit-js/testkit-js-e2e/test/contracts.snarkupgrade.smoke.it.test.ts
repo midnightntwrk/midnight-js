@@ -40,8 +40,8 @@ import {
   CompiledCounterContract,
   CounterCloneConfiguration
 } from '@/counter-api';
-import { CounterClonePrivateStateId } from '@/counter-clone-types';
-import { type CounterProviders } from '@/counter-types';
+import { CounterClonePrivateStateId } from '@/types/counter-clone-types';
+import { type CounterProviders } from '@/types/counter-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_snark_upgrade_${new Date().toISOString()}.log`)

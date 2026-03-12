@@ -16,12 +16,12 @@
 import type { Contract } from '@midnight-ntwrk/compact-js';
 import type { MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
 
-import { CompiledSimple } from './contract';
+import { CompiledSimple } from '../contract';
 
 export type SimpleContract = CompiledSimple.Contract<undefined>;
 
-export type SimpleCircuits = Contract.ImpureCircuitId<SimpleContract>;
+export type SimpleCircuit = Contract.ProvableCircuitId<SimpleContract>;
 
-export type SimpleProviders = MidnightProviders<SimpleCircuits>;
+export type SimpleProviders = MidnightProviders<SimpleCircuit>;
 
 export const createSimpleContractInstance = (): SimpleContract => new CompiledSimple.Contract({});

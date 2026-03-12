@@ -33,7 +33,7 @@ import {
   type DeployedCounterContract,
   type DoubleCounterContract,
   privateStateZero
-} from '@/double-counter-types';
+} from '@/types/double-counter-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `scoped_tx_contracts_${new Date().toISOString()}.log`)

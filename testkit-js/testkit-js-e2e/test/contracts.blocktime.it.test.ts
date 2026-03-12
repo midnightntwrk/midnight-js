@@ -34,12 +34,12 @@ import path from 'path';
 
 import * as api from '@/block-time-api';
 import { BlockTimeConfiguration } from '@/block-time-api';
+import { CompiledBlockTimeContract } from '@/contract';
 import {
   type BlockTimeContract,
   type BlockTimeProviders,
   type DeployedBlockTimeContract
-} from '@/block-time-types';
-import { CompiledBlockTimeContract } from '@/contract';
+} from '@/types/block-time-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `block_time_${new Date().toISOString()}.log`)

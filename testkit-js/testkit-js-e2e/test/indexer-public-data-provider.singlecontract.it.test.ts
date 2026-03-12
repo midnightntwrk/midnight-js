@@ -32,7 +32,7 @@ import {
   type CounterProviders,
   type DeployedCounterContract,
   privateStateZero
-} from '@/counter-types';
+} from '@/types/counter-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `indexer_${new Date().toISOString()}.log`)

@@ -43,7 +43,7 @@ import path from 'path';
 import { createInitialPrivateState } from '@/contract/witnesses';
 import * as api from '@/counter-api';
 import { CounterConfiguration } from '@/counter-api';
-import type { CounterCircuits } from '@/counter-types';
+import type { CounterCircuit } from '@/types/counter-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `proof_server_${new Date().toISOString()}.log`)
@@ -57,7 +57,7 @@ describe('Proof server integration', () => {
   let proofProvider: ProofProvider;
   let unprovenDeployTx: UnprovenTransaction;
   let unprovenCallTx: UnprovenTransaction;
-  let zkConfigProvider: NodeZkConfigProvider<CounterCircuits>;
+  let zkConfigProvider: NodeZkConfigProvider<CounterCircuit>;
 
   beforeEach(() => {
     logger.info(`Running test=${expect.getState().currentTestName}`);
@@ -66,7 +66,7 @@ describe('Proof server integration', () => {
   beforeAll(async () => {
     setNetworkId('undeployed');
     proofServerContainer = await DynamicProofServerContainer.start(logger);
-    zkConfigProvider = new NodeZkConfigProvider<CounterCircuits>(new CounterConfiguration().zkConfigPath);
+    zkConfigProvider = new NodeZkConfigProvider<CounterCircuit>(new CounterConfiguration().zkConfigPath);
     proofProvider = httpClientProofProvider(proofServerContainer.getUrl(), zkConfigProvider);
     const coinPublicKey = sampleCoinPublicKey();
     const encryptionPublicKey = sampleEncryptionPublicKey();

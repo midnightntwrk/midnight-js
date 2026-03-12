@@ -32,9 +32,9 @@ import { expect } from 'vitest';
 
 import { CompiledUnshieldedContract } from '@/contract';
 import {
-  type UnshieldedContractCircuits,
+  type UnshieldedContractCircuit,
   type UnshieldedContractProviders
-} from '@/unshielded-types';
+} from '@/types/unshielded-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `unshielded_${new Date().toISOString()}.log`)
@@ -96,7 +96,7 @@ describe('Unshielded tokens', () => {
     const mintTxData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
-      circuitId: 'mintUnshieldedToSelfTest' as UnshieldedContractCircuits,
+      circuitId: 'mintUnshieldedToSelfTest' as UnshieldedContractCircuit,
       args: [DOMAIN_SEPARATOR, MINT_AMOUNT]
     });
 
@@ -116,7 +116,7 @@ describe('Unshielded tokens', () => {
     const mintTxData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
-      circuitId: 'mintUnshieldedToSelfTest' as UnshieldedContractCircuits,
+      circuitId: 'mintUnshieldedToSelfTest' as UnshieldedContractCircuit,
       args: [ANOTHER_DOMAIN_SEPARATOR, MINT_AMOUNT]
     });
 
@@ -136,7 +136,7 @@ describe('Unshielded tokens', () => {
       submitCallTx(providers, {
         compiledContract: CompiledUnshieldedContract,
         contractAddress,
-        circuitId: 'receiveUnshieldedTest' as UnshieldedContractCircuits,
+        circuitId: 'receiveUnshieldedTest' as UnshieldedContractCircuit,
         args: [DOMAIN_SEPARATOR, MINT_AMOUNT]
       })
     ).rejects.toThrow('InsufficientFunds: Insufficient funds');
@@ -147,7 +147,7 @@ describe('Unshielded tokens', () => {
     const txData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
-      circuitId: 'receiveUnshieldedTest' as UnshieldedContractCircuits,
+      circuitId: 'receiveUnshieldedTest' as UnshieldedContractCircuit,
       args: [mintedTokensColor, MINT_AMOUNT / 10n]
     });
 
@@ -166,7 +166,7 @@ describe('Unshielded tokens', () => {
     const txData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
-      circuitId: 'sendUnshieldedToUserTest' as UnshieldedContractCircuits,
+      circuitId: 'sendUnshieldedToUserTest' as UnshieldedContractCircuit,
       args: [mintedTokensColor, MINT_AMOUNT/10n, { bytes: unshieldedAddressBytes }]
     });
 
