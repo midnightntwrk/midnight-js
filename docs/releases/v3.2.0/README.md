@@ -68,7 +68,8 @@ const provider = levelPrivateStateProvider({
 
 ```json
 {
-  "@midnight-ntwrk/wallet-sdk-facade": "2.0.0-rc.2",
+  "@midnight-ntwrk/wallet-sdk-facade": "2.0.0",
+  "@midnight-ntwrk/compact-js": "2.4.3",
   "@midnight-ntwrk/compactc": "0.29.0"
 }
 ```
@@ -99,5 +100,5 @@ const provider = levelPrivateStateProvider({
 
 ---
 
-**Last Updated:** March 5, 2026
+**Last Updated:** March 11, 2026
 **License:** Apache-2.0
