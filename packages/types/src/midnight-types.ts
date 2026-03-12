@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import type { Contract } from '@midnight-ntwrk/compact-js';
 import {
   type Binding,
   type ContractAddress,
@@ -24,6 +25,10 @@ import {
   type TransactionHash,
   type TransactionId,
 } from '@midnight-ntwrk/ledger-v8';
+
+export type AnyProvableCircuitId = Contract.ProvableCircuitId<Contract.Any>;
+
+export type AnyPrivateState = Contract.PrivateState<Contract.Any>;
 
 /**
  * A type representing a prover key derived from a contract circuit.

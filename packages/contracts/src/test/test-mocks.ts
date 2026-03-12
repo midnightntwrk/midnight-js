@@ -50,6 +50,8 @@ import {
   type ZswapSecretKeys,
 } from '@midnight-ntwrk/ledger-v8';
 import {
+  type AnyPrivateState,
+  type AnyProvableCircuitId,
   type FinalizedTxData,
   type PrivateStateId,
   type ProverKey,
@@ -148,8 +150,9 @@ const defaultMockContractClassOptions: MockContractClassOptions = {
 const createMockContractClass = (options?: Partial<MockContractClassOptions>) => {
   const finalOptions = { ...defaultMockContractClassOptions, ...options } as MockContractClassOptions;
   return class {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     constructor(witnesses: Contract.Witnesses<any>) {
-       
+
       if (finalOptions.constructorErrorMessage) {
         throw new CompactError(finalOptions.constructorErrorMessage);
       }
@@ -237,7 +240,7 @@ export const createMockCoinInfo = (): ShieldedCoinInfo => ({
   value: 0n
 });
 
-export const createMockProviders = (): ContractProviders<Contract.Any, Contract.ProvableCircuitId<Contract.Any>, Contract.PrivateState<Contract.Any>> => ({
+export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvableCircuitId, AnyPrivateState> => ({
   midnightProvider: {
     submitTx: vi.fn()
   },
@@ -324,7 +327,7 @@ export const createMockUnprovenDeployTxData = (overrides: Partial<UnsubmittedDep
   ...overrides
 });
 
-export const createMockUnprovenCallTxData = (overrides: Partial<UnsubmittedCallTxData<Contract.Any, Contract.ProvableCircuitId<Contract.Any>>> = {}): UnsubmittedCallTxData<Contract.Any, Contract.ProvableCircuitId<Contract.Any>> => ({
+export const createMockUnprovenCallTxData = (overrides: Partial<UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId>> = {}): UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId> => ({
     public: {
       nextContractState: StateValue.newNull(),
       publicTranscript: [
@@ -346,7 +349,7 @@ export const createMockUnprovenCallTxData = (overrides: Partial<UnsubmittedCallT
     }
 });
 
-export const createMockCallOptions = (overrides: Partial<CallOptions<Contract.Any, Contract.ProvableCircuitId<Contract.Any>>> = {}): CallOptions<Contract.Any, Contract.ProvableCircuitId<Contract.Any>> => ({
+export const createMockCallOptions = (overrides: Partial<CallOptions<Contract.Any, AnyProvableCircuitId>> = {}): CallOptions<Contract.Any, AnyProvableCircuitId> => ({
   compiledContract: createMockCompiledContract(),
   circuitId: 'testCircuit',
   args: [] as never[],
@@ -357,7 +360,7 @@ export const createMockCallOptions = (overrides: Partial<CallOptions<Contract.An
   ...overrides
 });
 
-export const createMockCallOptionsWithPrivateState = (overrides: Partial<CallOptionsWithPrivateState<Contract.Any, Contract.ProvableCircuitId<Contract.Any>>> = {}): CallOptionsWithPrivateState<Contract.Any, Contract.ProvableCircuitId<Contract.Any>> => ({
+export const createMockCallOptionsWithPrivateState = (overrides: Partial<CallOptionsWithPrivateState<Contract.Any, AnyProvableCircuitId>> = {}): CallOptionsWithPrivateState<Contract.Any, AnyProvableCircuitId> => ({
   ...createMockCallOptions(),
   initialPrivateState: { test: 'private-state' },
   ...overrides

@@ -21,6 +21,7 @@ import {
   type SigningKey
 } from '@midnight-ntwrk/compact-runtime';
 import {
+  type AnyProvableCircuitId,
   type PrivateStateId,
   type PrivateStateProvider,
   type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
@@ -115,7 +116,7 @@ export const verifierKeysEqual = (a: Uint8Array, b: Uint8Array): boolean =>
  * @throws ContractTypeError When one or more of the local and deployed verifier keys do not match.
  */
 export const verifyContractState = (
-  verifierKeys: [Contract.ProvableCircuitId<Contract.Any>, VerifierKey][],
+  verifierKeys: [AnyProvableCircuitId, VerifierKey][],
   contractState: ContractState
 ): void => {
   const mismatchedCircuitIds = verifierKeys.reduce(

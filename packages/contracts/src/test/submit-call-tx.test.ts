@@ -13,10 +13,12 @@
  * limitations under the License.
  */
 
-import { type CompiledContract,type Contract } from '@midnight-ntwrk/compact-js';
+import { type CompiledContract, type Contract } from '@midnight-ntwrk/compact-js';
 import { StateValue } from '@midnight-ntwrk/compact-runtime';
 import { type AlignedValue, type ContractAddress, type PartitionedTranscript } from '@midnight-ntwrk/ledger-v8';
 import {
+  type AnyPrivateState,
+  type AnyProvableCircuitId,
   FailEntirely,
   type FinalizedTxData,
   type PrivateStateId
@@ -64,10 +66,10 @@ describe('submit-call-tx', () => {
     vi.mock('../submit-tx');
   });
 
-  const createBasicCallOptions = (overrides: Partial<CallTxOptions<Contract.Any, Contract.ProvableCircuitId<Contract.Any>>> = {}) => ({
+  const createBasicCallOptions = (overrides: Partial<CallTxOptions<Contract.Any, AnyProvableCircuitId>> = {}) => ({
     compiledContract: mockCompiledContract,
     contractAddress: mockContractAddress,
-    circuitId: 'testCircuit' as Contract.ProvableCircuitId<Contract.Any>,
+    circuitId: 'testCircuit' as AnyProvableCircuitId,
     args: ['arg1', 'arg2'],
     ...overrides
   });
@@ -82,7 +84,7 @@ describe('submit-call-tx', () => {
     return { mockUnprovenCallTxData, mockFinalizedTxData };
   };
 
-  const createFailedTxData = (): UnsubmittedCallTxData<Contract.Any, Contract.ProvableCircuitId<Contract.Any>> => ({
+  const createFailedTxData = (): UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId> => ({
     public: {
       nextContractState: StateValue.newNull(),
       publicTranscript: [],
@@ -101,10 +103,10 @@ describe('submit-call-tx', () => {
   });
 
   const verifySuccessfulCall = (
-    mockUnprovenCallTxData: UnsubmittedCallTxData<Contract.Any, Contract.ProvableCircuitId<Contract.Any>>,
+    mockUnprovenCallTxData: UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId>,
     mockFinalizedTxData: FinalizedTxData,
-    result: FinalizedCallTxData<Contract.Any, Contract.ProvableCircuitId<Contract.Any>>,
-    options: CallTxOptions<Contract.Any, Contract.ProvableCircuitId<Contract.Any>>
+    result: FinalizedCallTxData<Contract.Any, AnyProvableCircuitId>,
+    options: CallTxOptions<Contract.Any, AnyProvableCircuitId>
   ) => {
     expect(createUnprovenCallTx).toHaveBeenCalledWith(
       mockProviders,
@@ -151,7 +153,7 @@ describe('submit-call-tx', () => {
 
     describe('successful call with private state ID', () => {
       it('should successfully submit call transaction and update private state', async () => {
-        const nextPrivateState = { newState: 'updated' } as Contract.PrivateState<Contract.Any>;
+        const nextPrivateState = { newState: 'updated' } as AnyPrivateState;
         const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
         const { mockFinalizedTxData } = setupSuccessfulMocks();
 
@@ -176,8 +178,8 @@ describe('submit-call-tx', () => {
       });
 
       it('should successfully submit scoped call transaction and update private state', async () => {
-        const nextPrivateState_1 = { newState: 'updated_1' } as Contract.PrivateState<Contract.Any>;
-        const nextPrivateState_2 = { newState: 'updated_2' } as Contract.PrivateState<Contract.Any>;
+        const nextPrivateState_1 = { newState: 'updated_1' } as AnyPrivateState;
+        const nextPrivateState_2 = { newState: 'updated_2' } as AnyPrivateState;
         const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
         const { mockFinalizedTxData } = setupSuccessfulMocks();
 
@@ -282,7 +284,7 @@ describe('submit-call-tx', () => {
       });
 
       it('should include failure data and circuit ID in CallTxFailedError', async () => {
-        const circuitId = 'testCircuit' as Contract.ProvableCircuitId<Contract.Any>;
+        const circuitId = 'testCircuit' as AnyProvableCircuitId;
         const options = createBasicCallOptions({ circuitId });
         const mockUnprovenCallTxData = createFailedTxData();
         const mockFailedTxData = createMockFinalizedTxData(FailEntirely);
@@ -309,7 +311,7 @@ describe('submit-call-tx', () => {
       });
 
       it('should validate circuit exists in contract', async () => {
-        const options = createBasicCallOptions({ circuitId: 'nonExistentCircuit' as Contract.ProvableCircuitId<Contract.Any> });
+        const options = createBasicCallOptions({ circuitId: 'nonExistentCircuit' as AnyProvableCircuitId });
 
         await expect(submitCallTx(mockProviders, options)).rejects.toThrow("Circuit 'nonExistentCircuit' is undefined");
       });
@@ -491,7 +493,7 @@ describe('submit-call-tx', () => {
       });
 
       it('should validate circuit exists in contract', async () => {
-        const options = createBasicCallOptions({ circuitId: 'nonExistentCircuit' as Contract.ProvableCircuitId<Contract.Any> });
+        const options = createBasicCallOptions({ circuitId: 'nonExistentCircuit' as AnyProvableCircuitId });
 
         await expect(submitCallTxAsync(mockProviders, options)).rejects.toThrow("Circuit 'nonExistentCircuit' is undefined");
       });
@@ -552,7 +554,7 @@ describe('submit-call-tx', () => {
       it('should return callTxData with all private state information', async () => {
         const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
         const mockTxId = 'test-tx-id-full-data';
-        const nextPrivateState = { complexState: 'data' } as Contract.PrivateState<Contract.Any>;
+        const nextPrivateState = { complexState: 'data' } as AnyPrivateState;
 
         const mockUnprovenCallTxData = createMockUnprovenCallTxData({
           private: {

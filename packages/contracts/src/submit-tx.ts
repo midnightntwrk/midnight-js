@@ -19,6 +19,7 @@ import {
   type UnprovenTransaction,
 } from '@midnight-ntwrk/ledger-v8';
 import {
+  type AnyProvableCircuitId,
   type FinalizedTxData,
 } from '@midnight-ntwrk/midnight-js-types';
 import fs from 'fs';
@@ -31,7 +32,7 @@ declare const __DEBUG__: boolean;
 /**
  * Configuration for {@link submitTx}.
  */
-export type SubmitTxOptions<PCK extends Contract.ProvableCircuitId<Contract.Any>> = {
+export type SubmitTxOptions<PCK extends AnyProvableCircuitId> = {
   /**
    * The transaction to prove, balance, and submit.
    */

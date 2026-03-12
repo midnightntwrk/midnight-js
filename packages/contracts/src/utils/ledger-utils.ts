@@ -40,6 +40,7 @@ import {
 } from '@midnight-ntwrk/ledger-v8';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
+  type AnyProvableCircuitId,
   asContractAddress,
   asEffectOption,
   makeContractExecutableRuntime,
@@ -85,7 +86,7 @@ export const createUnprovenLedgerDeployTx = (
 }
 
 export const createUnprovenLedgerCallTx = (
-  circuitId: Contract.ProvableCircuitId<Contract.Any>,
+  circuitId: AnyProvableCircuitId,
   contractAddress: ContractAddress,
   initialContractState: ContractState,
   zswapChainState: ZswapChainState,

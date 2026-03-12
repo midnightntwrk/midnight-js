@@ -14,7 +14,7 @@
  */
 
 import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
-import { type PrivateStateId, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
+import { type AnyProvableCircuitId, type PrivateStateId, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { ChargedState } from '@midnight-ntwrk/onchain-runtime-v3';
 
 import { type CallResult } from '../call';
@@ -48,7 +48,7 @@ export const CacheStates = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/C
 /** @internal */
 export const GetCurrentStatesForIdentity = Symbol.for('@midnight-ntwrk/midnight-js#Transaction/GetCurrentStatesForIdentity');
 
-const mergeSubmitTxOptions = <PCK extends Contract.ProvableCircuitId<Contract.Any>>(
+const mergeSubmitTxOptions = <PCK extends AnyProvableCircuitId>(
   current: SubmitTxOptions<PCK> | undefined,
   next: SubmitTxOptions<PCK>
 ): SubmitTxOptions<PCK> => {
@@ -233,6 +233,7 @@ export const scoped: {
     // ...otherwise, return the `CallResult` from the last submitted call within the scope of the transaction context.
     const [unprovenCallTxData] = innerTxCtx.getLastUnsubmittedCallTxDataToTransact() ?? [];
     if (!unprovenCallTxData) {
+      //disable-next-line: no-throw-literal
       throw new Error('No calls were submitted.');
     }
     return {

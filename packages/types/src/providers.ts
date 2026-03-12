@@ -13,10 +13,9 @@
  * limitations under the License.
  */
 
-import type { Contract } from '@midnight-ntwrk/compact-js';
-
 import type { LoggerProvider } from './logger-provider';
 import type { MidnightProvider } from './midnight-provider';
+import type { AnyProvableCircuitId } from './midnight-types';
 import type { PrivateStateId, PrivateStateProvider } from './private-state-provider';
 import type { ProofProvider } from './proof-provider';
 import type { PublicDataProvider } from './public-data-provider';
@@ -31,7 +30,7 @@ import type { ZKConfigProvider } from './zk-config-provider';
  * @typeParam PS - Parameter indicating the private state type stored, sometimes a union of private state types.
  */
 export interface MidnightProviders<
-  PCK extends Contract.ProvableCircuitId<Contract.Any> = Contract.ProvableCircuitId<Contract.Any>,
+  PCK extends AnyProvableCircuitId = AnyProvableCircuitId,
   PSI extends PrivateStateId = PrivateStateId,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   PS = any

@@ -16,6 +16,7 @@
 import { type Contract } from '@midnight-ntwrk/compact-js';
 import { type ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
 import { type UnprovenTransaction } from '@midnight-ntwrk/ledger-v8';
+import type { AnyPrivateState } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type ContractProviders } from '../contract-providers';
@@ -46,7 +47,7 @@ describe('deployContract', () => {
   let providers: ContractProviders;
   let baseOptions: DeployContractOptionsBase<Contract.Any>;
 
-  const createMockDeployTxData = (initialPrivateState?: Contract.PrivateState<Contract.Any>): UnsubmittedDeployTxData<Contract.Any> => ({
+  const createMockDeployTxData = (initialPrivateState?: AnyPrivateState): UnsubmittedDeployTxData<Contract.Any> => ({
     public: {
       ...createMockFinalizedTxData(),
       contractAddress: 'mock-contract-address',
