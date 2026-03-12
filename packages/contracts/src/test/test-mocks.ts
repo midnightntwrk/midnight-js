@@ -148,7 +148,8 @@ const defaultMockContractClassOptions: MockContractClassOptions = {
 const createMockContractClass = (options?: Partial<MockContractClassOptions>) => {
   const finalOptions = { ...defaultMockContractClassOptions, ...options } as MockContractClassOptions;
   return class {
-    constructor(witnesses: Contract.Witnesses<any>) { // eslint-disable-line @typescript-eslint/no-explicit-any
+    constructor(witnesses: Contract.Witnesses<any>) {
+       
       if (finalOptions.constructorErrorMessage) {
         throw new CompactError(finalOptions.constructorErrorMessage);
       }
@@ -166,13 +167,13 @@ const createMockContractClass = (options?: Partial<MockContractClassOptions>) =>
       this.circuits = {
         testCircuit: finalOptions.testCircuit
       };
-      this.impureCircuits = this.circuits;
+      this.provableCircuits = this.circuits;
     }
     initialState;
     circuits;
-    impureCircuits;
+    provableCircuits;
     witnesses;
-  }
+  };
 }
 
 export const createMockContract = (options?: Partial<MockContractClassOptions>): Contract<undefined> =>
