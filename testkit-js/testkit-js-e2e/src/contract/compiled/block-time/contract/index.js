@@ -1,5 +1,5 @@
 import * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
-__compactRuntime.checkRuntimeVersion('0.14.0');
+__compactRuntime.checkRuntimeVersion('0.15.0');
 
 const _descriptor_0 = new __compactRuntime.CompactTypeUnsignedInteger(18446744073709551615n, 8);
 
@@ -203,6 +203,12 @@ export class Contract {
       }
     };
     this.impureCircuits = {
+      testBlockTimeLt: this.circuits.testBlockTimeLt,
+      testBlockTimeGte: this.circuits.testBlockTimeGte,
+      testBlockTimeGt: this.circuits.testBlockTimeGt,
+      testBlockTimeLte: this.circuits.testBlockTimeLte
+    };
+    this.provableCircuits = {
       testBlockTimeLt: this.circuits.testBlockTimeLt,
       testBlockTimeGte: this.circuits.testBlockTimeGte,
       testBlockTimeGt: this.circuits.testBlockTimeGt,

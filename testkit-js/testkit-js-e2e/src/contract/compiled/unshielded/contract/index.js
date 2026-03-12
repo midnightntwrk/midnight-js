@@ -1,5 +1,5 @@
 import * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
-__compactRuntime.checkRuntimeVersion('0.14.0');
+__compactRuntime.checkRuntimeVersion('0.15.0');
 
 const _descriptor_0 = new __compactRuntime.CompactTypeUnsignedInteger(18446744073709551615n, 8);
 
@@ -653,6 +653,20 @@ export class Contract {
       }
     };
     this.impureCircuits = {
+      mintUnshieldedToSelfTest: this.circuits.mintUnshieldedToSelfTest,
+      mintUnshieldedToContractTest: this.circuits.mintUnshieldedToContractTest,
+      mintUnshieldedToUserTest: this.circuits.mintUnshieldedToUserTest,
+      sendUnshieldedToSelfTest: this.circuits.sendUnshieldedToSelfTest,
+      sendUnshieldedToContractTest: this.circuits.sendUnshieldedToContractTest,
+      sendUnshieldedToUserTest: this.circuits.sendUnshieldedToUserTest,
+      receiveUnshieldedTest: this.circuits.receiveUnshieldedTest,
+      getUnshieldedBalanceTest: this.circuits.getUnshieldedBalanceTest,
+      getUnshieldedBalanceGtTest: this.circuits.getUnshieldedBalanceGtTest,
+      getUnshieldedBalanceLtTest: this.circuits.getUnshieldedBalanceLtTest,
+      receiveNightTokens: this.circuits.receiveNightTokens,
+      sendNightTokensToUser: this.circuits.sendNightTokensToUser
+    };
+    this.provableCircuits = {
       mintUnshieldedToSelfTest: this.circuits.mintUnshieldedToSelfTest,
       mintUnshieldedToContractTest: this.circuits.mintUnshieldedToContractTest,
       mintUnshieldedToUserTest: this.circuits.mintUnshieldedToUserTest,

@@ -9,6 +9,12 @@ export type ImpureCircuits<PS> = {
                      amount_0: bigint): __compactRuntime.CircuitResults<PS, bigint>;
 }
 
+export type ProvableCircuits<PS> = {
+  mintShieldedTokens(context: __compactRuntime.CircuitContext<PS>,
+                     domainSep_0: Uint8Array,
+                     amount_0: bigint): __compactRuntime.CircuitResults<PS, bigint>;
+}
+
 export type PureCircuits = {
 }
 
@@ -29,6 +35,7 @@ export declare class Contract<PS = any, W extends Witnesses<PS> = Witnesses<PS>>
   witnesses: W;
   circuits: Circuits<PS>;
   impureCircuits: ImpureCircuits<PS>;
+  provableCircuits: ProvableCircuits<PS>;
   constructor(witnesses: W);
   initialState(context: __compactRuntime.ConstructorContext<PS>): __compactRuntime.ConstructorResult<PS>;
 }

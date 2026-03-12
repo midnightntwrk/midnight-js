@@ -44,6 +44,47 @@ export type ImpureCircuits<PS> = {
                         user_addr_0: { bytes: Uint8Array }): __compactRuntime.CircuitResults<PS, []>;
 }
 
+export type ProvableCircuits<PS> = {
+  mintUnshieldedToSelfTest(context: __compactRuntime.CircuitContext<PS>,
+                           domainSep_0: Uint8Array,
+                           amount_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  mintUnshieldedToContractTest(context: __compactRuntime.CircuitContext<PS>,
+                               domainSep_0: Uint8Array,
+                               address_0: { bytes: Uint8Array },
+                               amount_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  mintUnshieldedToUserTest(context: __compactRuntime.CircuitContext<PS>,
+                           domainSep_0: Uint8Array,
+                           address_0: { bytes: Uint8Array },
+                           amount_0: bigint): __compactRuntime.CircuitResults<PS, Uint8Array>;
+  sendUnshieldedToSelfTest(context: __compactRuntime.CircuitContext<PS>,
+                           color_0: Uint8Array,
+                           amount_0: bigint): __compactRuntime.CircuitResults<PS, []>;
+  sendUnshieldedToContractTest(context: __compactRuntime.CircuitContext<PS>,
+                               color_0: Uint8Array,
+                               amount_0: bigint,
+                               address_0: { bytes: Uint8Array }): __compactRuntime.CircuitResults<PS, []>;
+  sendUnshieldedToUserTest(context: __compactRuntime.CircuitContext<PS>,
+                           color_0: Uint8Array,
+                           amount_0: bigint,
+                           address_0: { bytes: Uint8Array }): __compactRuntime.CircuitResults<PS, []>;
+  receiveUnshieldedTest(context: __compactRuntime.CircuitContext<PS>,
+                        color_0: Uint8Array,
+                        amount_0: bigint): __compactRuntime.CircuitResults<PS, []>;
+  getUnshieldedBalanceTest(context: __compactRuntime.CircuitContext<PS>,
+                           color_0: Uint8Array): __compactRuntime.CircuitResults<PS, bigint>;
+  getUnshieldedBalanceGtTest(context: __compactRuntime.CircuitContext<PS>,
+                             color_0: Uint8Array,
+                             amount_0: bigint): __compactRuntime.CircuitResults<PS, boolean>;
+  getUnshieldedBalanceLtTest(context: __compactRuntime.CircuitContext<PS>,
+                             color_0: Uint8Array,
+                             amount_0: bigint): __compactRuntime.CircuitResults<PS, boolean>;
+  receiveNightTokens(context: __compactRuntime.CircuitContext<PS>,
+                     amount_0: bigint): __compactRuntime.CircuitResults<PS, []>;
+  sendNightTokensToUser(context: __compactRuntime.CircuitContext<PS>,
+                        amount_0: bigint,
+                        user_addr_0: { bytes: Uint8Array }): __compactRuntime.CircuitResults<PS, []>;
+}
+
 export type PureCircuits = {
 }
 
@@ -99,6 +140,7 @@ export declare class Contract<PS = any, W extends Witnesses<PS> = Witnesses<PS>>
   witnesses: W;
   circuits: Circuits<PS>;
   impureCircuits: ImpureCircuits<PS>;
+  provableCircuits: ProvableCircuits<PS>;
   constructor(witnesses: W);
   initialState(context: __compactRuntime.ConstructorContext<PS>): __compactRuntime.ConstructorResult<PS>;
 }

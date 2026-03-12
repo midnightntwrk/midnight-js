@@ -1,5 +1,5 @@
 import * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
-__compactRuntime.checkRuntimeVersion('0.14.0');
+__compactRuntime.checkRuntimeVersion('0.15.0');
 
 const _descriptor_0 = new __compactRuntime.CompactTypeBytes(32);
 
@@ -104,6 +104,9 @@ export class Contract {
       }
     };
     this.impureCircuits = {
+      mintShieldedTokens: this.circuits.mintShieldedTokens
+    };
+    this.provableCircuits = {
       mintShieldedTokens: this.circuits.mintShieldedTokens
     };
   }
