@@ -62,8 +62,8 @@ const targetFile = path.resolve(packageDir, `compactc-${compactcVersion}.zip`);
 const currentPlatform = process.platform;
 const currentCpu = process.arch;
 
-const compactRepo = process.env.COMPACT_REPO || 'LFDT-Minokawa/compact';
-const compactTagPrefix = process.env.COMPACT_TAG_PREFIX || 'v';
+const compactRepo = process.env.COMPACT_REPO || 'midnight-ntwrk/artifacts';
+const compactTagPrefix = process.env.COMPACT_TAG_PREFIX || 'compactc-v';
 const compactDockerImage = process.env.COMPACT_DOCKER_IMAGE || 'ghcr.io/midnight-ntwrk/compactc';
 
 const fetchCompact = async (): Promise<void> => {
