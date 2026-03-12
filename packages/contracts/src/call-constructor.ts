@@ -23,7 +23,7 @@ import {
 /**
  * Describes the target of a circuit invocation.
  */
-export type ContractConstructorOptionsBase<C extends Contract.Any> = {
+export interface ContractConstructorOptionsBase<C extends Contract.Any> {
   /**
    * The compiled contract defining the circuit to call.
    */
@@ -47,7 +47,7 @@ export type ContractConstructorOptionsWithArguments<C extends Contract.Any> =
 /**
  * Data retrieved via providers that should be included in the constructor call options.
  */
-export type ContractConstructorOptionsProviderDataDependencies = {
+export interface ContractConstructorOptionsProviderDataDependencies {
   /**
    * The current user's ZSwap public key.
    */
@@ -83,7 +83,7 @@ export type ContractConstructorOptions<C extends Contract.Any> =
 /**
  * The updated states resulting from executing a contract constructor.
  */
-export type ContractConstructorResult<C extends Contract.Any> = {
+export interface ContractConstructorResult<C extends Contract.Any> {
   /**
    * The public state resulting from executing the contract constructor.
    */
