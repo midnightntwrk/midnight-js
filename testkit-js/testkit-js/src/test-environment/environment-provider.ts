@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025 Midnight Foundation
+ * Copyright (C) 2025-2026 Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -22,8 +22,9 @@ import { type TestEnvironment } from '@/test-environment/test-environments/test-
 import {
   EnvVarRemoteTestEnvironment,
   LocalTestEnvironment,
+  PreprodTestEnvironment,
+  PreviewTestEnvironment,
   QanetTestEnvironment,
-  Testnet2TestEnvironment,
 } from './test-environments';
 
 /**
@@ -35,9 +36,12 @@ export const getTestEnvironment = (logger: Logger): TestEnvironment => {
   const testEnv = getEnvVarEnvironment().toLowerCase();
   let env;
   switch (testEnv) {
-    case 'testnet':
-    case 'testnet-02':
-      env = new Testnet2TestEnvironment(logger);
+    case 'preview':
+      env = new PreviewTestEnvironment(logger);
+      setNetworkId('test');
+      break;
+    case 'preprod':
+      env = new PreprodTestEnvironment(logger);
       setNetworkId('test');
       break;
     case 'qanet':

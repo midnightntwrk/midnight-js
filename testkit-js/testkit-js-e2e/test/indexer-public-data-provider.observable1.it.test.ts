@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025 Midnight Foundation
+ * Copyright (C) 2025-2026 Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -89,7 +89,7 @@ describe('Indexer API', () => {
    * @then Should return correct state history based on inclusive flag
    * @and Should observe states in proper chronological order
    */
-  test.skip.each([
+  test.each([
     [true, [1n, 2n]],
     [false, [2n]]
   ])(
@@ -120,7 +120,7 @@ describe('Indexer API', () => {
    * @then Should return correct state history based on inclusive flag
    * @and Should observe states matching transaction-based filtering
    */
-  test.skip.each([
+  test.each([
     [true, [1n, 2n]],
     [false, [2n]]
   ])(

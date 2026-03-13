@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025 Midnight Foundation
+ * Copyright (C) 2025-2026 Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -39,6 +39,7 @@ import {
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
+import { beforeAll } from 'vitest';
 
 import {
   createUnprovenLedgerCallTx,
@@ -52,6 +53,10 @@ import {
 import { createMockCompiledContract,createMockZKConfigProvider } from '../test-mocks';
 
 describe('ledger-utils', () => {
+  beforeAll(() => {
+    setNetworkId('testnet');
+  });
+
   const mockZKProvider = createMockZKConfigProvider();
   const mockCompiledContract = createMockCompiledContract();
   const dummySigningKey = sampleSigningKey();

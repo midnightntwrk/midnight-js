@@ -20,11 +20,11 @@ on:
       should_prerelease:
         required: true
         type: string
-      yarn_install:
+      yarn_filter:
         type: string
-        description: Install phase command line
+        description: Optional filter to include when running Yarn (i.e., --filter=...)
         required: false
-        default: 'yarn install --immutable'
+        default: '--filter="./testkit-js/*"'
       yarn_lint_paths:
         type: string
         description: Optional paths to include when running 'yarn lint'' (i.e., ./packages)
@@ -39,16 +39,6 @@ on:
         description: Midnight network to use (testnet/devnet/undeployed)
         required: true
         default: 'undeployed'
-      allure_upload:
-        type: boolean
-        description: Should upload e2e tests results to allure server
-        required: false
-        default: false
-      allure_project_id:
-        type: string
-        description: Allure project id
-        required: false
-        default: midnight-js-main
 
 concurrency:
   group: TK-JS-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -60,7 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # ratchet:actions/checkout@v5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # ratchet:actions/checkout@v6
 
       - name: Install direnv
         run: curl -sfL https://direnv.net/install.sh | DIRENV_GITHUB_API_TOKEN=$GITHUB_TOKEN  bash
@@ -73,14 +63,14 @@ jobs:
           direnv export gha >> "$GITHUB_ENV"
 
       - name: Log in to GitHub Container registry
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # ratchet:docker/login-action@v3
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # ratchet:docker/login-action@v4
         with:
           registry: 'https://ghcr.io'
           username: ${{ github.actor }}
           password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # ratchet:actions/setup-node@v4
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # ratchet:actions/setup-node@v6
         with:
           always-auth: true
           registry-url: https://npm.pkg.github.com/
@@ -106,7 +96,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          ${{ inputs.yarn_install }}
+          yarn install --immutable
 
       - name: Run build
         run: yarn build ${{ inputs.yarn_filter }} --cache-dir ./turbo
@@ -123,19 +113,19 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Upload compiled contracts
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # ratchet:actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # ratchet:actions/upload-artifact@v7
         with:
           name: e2e-tests-contracts
           path: testkit-js/testkit-js-e2e/src/contract/compiled
 
       - name: Upload dist for it
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # ratchet:actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # ratchet:actions/upload-artifact@v7
         with:
           name: midnight-js-dist-testkit
           path: packages/*/dist/
 
       - name: Upload dist for it
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # ratchet:actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # ratchet:actions/upload-artifact@v7
         with:
           name: testkit-dist
           path: testkit-js/*/dist/
@@ -145,7 +135,7 @@ jobs:
     needs: ci
     if: inputs.should_prerelease == 'true'
     steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # ratchet:actions/checkout@v5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # ratchet:actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -160,7 +150,7 @@ jobs:
           direnv export gha >> "$GITHUB_ENV"
 
       - name: Set up Node.js
-        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # ratchet:actions/setup-node@v4
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # ratchet:actions/setup-node@v6
         with:
           always-auth: true
           registry-url: https://npm.pkg.github.com/
@@ -214,7 +204,7 @@ jobs:
     outputs:
       test-files: ${{ steps.generate-matrix.outputs.test-files }}
     steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # ratchet:actions/checkout@v5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # ratchet:actions/checkout@v6
 
       - name: Generate test matrix
         id: generate-matrix
@@ -236,7 +226,7 @@ jobs:
     steps:
 
       - name: Checkout code
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # ratchet:actions/checkout@v5
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # ratchet:actions/checkout@v6
 
       - name: Install direnv
         run: curl -sfL https://direnv.net/install.sh | DIRENV_GITHUB_API_TOKEN=$GITHUB_TOKEN  bash
@@ -249,14 +239,14 @@ jobs:
           direnv export gha >> "$GITHUB_ENV"
 
       - name: Log in to GitHub Container registry
-        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # ratchet:docker/login-action@v3
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # ratchet:docker/login-action@v4
         with:
           registry: 'https://ghcr.io'
           username: ${{ github.actor }}
           password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # ratchet:actions/setup-node@v4
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # ratchet:actions/setup-node@v6
         with:
           always-auth: true
           registry-url: https://npm.pkg.github.com/
@@ -284,19 +274,19 @@ jobs:
         run: yarn install --immutable
 
       - name: Download build
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # ratchet:actions/download-artifact@v4
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # ratchet:actions/download-artifact@v8
         with:
           name: midnight-js-dist-testkit
           path: packages/
 
       - name: Download testkit build
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # ratchet:actions/download-artifact@v4
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # ratchet:actions/download-artifact@v8
         with:
           name: testkit-dist
           path: testkit-js/
 
       - name: Download contracts
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # ratchet:actions/download-artifact@v8
         with:
           name: e2e-tests-contracts
           path: testkit-js/testkit-js-e2e/src/contract/compiled
@@ -313,7 +303,7 @@ jobs:
           MN_TEST_FILE: ${{ matrix.test-file }}
 
       - name: Upload Test Results
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # ratchet:actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # ratchet:actions/upload-artifact@v7
         if: always()
         with:
           name: test-results-${{ matrix.test-file }}
@@ -327,10 +317,10 @@ jobs:
     steps:
 
       - name: Checkout code
-        uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # ratchet:actions/checkout@v5
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # ratchet:actions/checkout@v6
 
       - name: Download Test Results
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # ratchet:actions/download-artifact@v4
+        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # ratchet:actions/download-artifact@v8
         with:
           pattern: test-results-*
           path: test-results
@@ -362,7 +352,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
       - name: Upload Test Results
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # ratchet:actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # ratchet:actions/upload-artifact@v7
         if: always()
         with:
           name: test-results-ctrf-summary
@@ -381,7 +371,7 @@ jobs:
           fi
 
       - name: Upload Test Results
-        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # ratchet:actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # ratchet:actions/upload-artifact@v7
         if: always()
         with:
           name: test-results-junit-summary

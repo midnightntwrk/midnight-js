@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025 Midnight Foundation
+ * Copyright (C) 2025-2026 Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -143,7 +143,7 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
     // Report CompactError messages as they are, otherwise re-throw the error.
     if ((error as any)?.['_tag'] !== 'ContractRuntimeError') throw error; // eslint-disable-line @typescript-eslint/no-explicit-any
     if ((error as any)?.cause.name !== 'CompactError') throw error; // eslint-disable-line @typescript-eslint/no-explicit-any
-    throw new Error((error as any)?.cause.message); // eslint-disable-line @typescript-eslint/no-explicit-any
+    throw new Error((error as any)?.cause.message, { cause: error }); // eslint-disable-line @typescript-eslint/no-explicit-any
   }
 }
 

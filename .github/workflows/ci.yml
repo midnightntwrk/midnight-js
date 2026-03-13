@@ -32,12 +32,12 @@ jobs:
       build_t_js: ${{ steps.build-targets.outputs.testkit-js }}
 
     steps:
-      - uses: actions/checkout@1af3b93b6815bc44a9784bd300feb67ff0d1eeb3  # ratchet:actions/checkout@v5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # ratchet:actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Set up Node.js
-        uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903 # ratchet:actions/setup-node@v4
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # ratchet:actions/setup-node@v6
         with:
           always-auth: true
           registry-url: https://npm.pkg.github.com/
@@ -83,7 +83,5 @@ jobs:
           (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch')
         }}
       network: undeployed
-      allure_upload: true
-      allure_project_id: midnight-js-main
     uses: ./.github/workflows/ci-testkit-js.yml
     secrets: inherit

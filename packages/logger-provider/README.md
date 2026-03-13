@@ -1,21 +1,92 @@
-# What is this?
-This enables DApp developers to provide an implementation specific [pino](https://getpino.io/#/) logger Midnight.js will use for reporting low level diagnostics. The provided logger must not use custom levels. If no logger is provided, Midnight.js will run silently.
+# Logger Provider
 
-Log messages will be done as follows:
-- `debug`: External calls to APIs.
-- `trace`: Internal diagnostics.
+Configurable [pino](https://getpino.io/) logger wrapper for Midnight.js diagnostics and debugging.
 
+## Installation
 
-This package was created for the [Midnight network](https://midnight.network).
+```bash
+yarn add @midnight-ntwrk/midnight-js-logger-provider
+```
 
+## Quick Start
 
-Please visit the [Midnight Developer Hub](https://midnight.network/developer-hub) to learn more.
+```typescript
+import pino from 'pino';
+import { LoggerProvider } from '@midnight-ntwrk/midnight-js-logger-provider';
 
-# Use only in Midnight test environments
-Image exclusively for Midnight test environments use.  
+const logger = new LoggerProvider(pino({ level: 'debug' }));
 
-# Agree to Terms
-By downloading and using this image, you agree to [Midnight’s Terms and Conditions](https://midnight.network/static/terms.pdf), which includes the [Privacy Policy](https://midnight.network/static/privacy-policy.pdf).
+logger.debug('External API call', { endpoint: '/api/data' });
+logger.trace('Internal diagnostic', { state: 'processing' });
+```
 
-# License
-The software provided herein is licensed under the [Apache License V2.0](http://www.apache.org/licenses/LICENSE-2.0).
+## Log Levels
+
+Midnight.js uses the following log levels:
+
+| Level   | Usage                        |
+| ------- | ---------------------------- |
+| `trace` | Internal diagnostics         |
+| `debug` | External API calls           |
+| `info`  | General information          |
+| `warn`  | Warning conditions           |
+| `error` | Error conditions             |
+| `fatal` | Critical failures            |
+
+## API
+
+### LoggerProvider
+
+```typescript
+class LoggerProvider {
+  constructor(logger: Logger);
+
+  info(...args: unknown[]): void;
+  error(...args: unknown[]): void;
+  warn(...args: unknown[]): void;
+  debug(...args: unknown[]): void;
+  trace(...args: unknown[]): void;
+  fatal(...args: unknown[]): void;
+  isLevelEnabled(level: LogLevel): boolean;
+}
+```
+
+## Usage with Midnight Providers
+
+```typescript
+import pino from 'pino';
+import { LoggerProvider } from '@midnight-ntwrk/midnight-js-logger-provider';
+
+const loggerProvider = new LoggerProvider(
+  pino({
+    level: 'trace',
+    transport: {
+      target: 'pino-pretty'
+    }
+  })
+);
+
+// Use with Midnight providers
+const providers = {
+  loggerProvider,
+  // ... other providers
+};
+```
+
+## Exports
+
+```typescript
+import { LoggerProvider } from '@midnight-ntwrk/midnight-js-logger-provider';
+```
+
+## Resources
+
+- [Midnight Network](https://midnight.network)
+- [Developer Hub](https://midnight.network/developer-hub)
+- [Pino Logger](https://getpino.io/)
+
+## Terms & License
+
+By using this package, you agree to [Midnight's Terms and Conditions](https://midnight.network/static/terms.pdf) and [Privacy Policy](https://midnight.network/static/privacy-policy.pdf).
+
+Licensed under [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0).

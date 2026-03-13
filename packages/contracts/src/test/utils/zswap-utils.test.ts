@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025 Midnight Foundation
+ * Copyright (C) 2025-2026 Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -29,10 +29,10 @@ import {
   Transaction,
   ZswapChainState,
   ZswapOffer} from '@midnight-ntwrk/ledger-v7';
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { getNetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
-import { expect } from 'vitest';
+import { beforeAll, expect } from 'vitest';
 
 import {
   createZswapOutput,
@@ -123,6 +123,10 @@ const withZeroMtIndex = (coinInfos: ShieldedCoinInfo[]): QualifiedShieldedCoinIn
   coinInfos.map((coin) => ({ ...coin, mt_index: 0n }));
 
 describe('Zswap utilities', () => {
+  beforeAll(() => {
+    setNetworkId('testnet');
+  });
+
   test("should work with instanceof on 'Uint8Array' and 'Buffer'", () => {
     expect(randomBytes(32) instanceof Uint8Array).toBe(true);
     expect(randomBytes(32) instanceof Buffer).toBe(true);

@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025 Midnight Foundation
+ * Copyright (C) 2025-2026 Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-import { describe, expect, it, vi } from 'vitest';
+import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createUnprovenDeployTx, createUnprovenDeployTxFromVerifierKeys } from '../unproven-deploy-tx';
 import {
@@ -39,6 +40,10 @@ vi.mock('../utils', () => ({
 }));
 
 describe('unproven-deploy-tx', () => {
+  beforeAll(() => {
+    setNetworkId('testnet');
+  });
+
   describe('createUnprovenDeployTxFromVerifierKeys', () => {
     it('should create unproven deploy tx from verifier keys without private state', async () => {
       const encryptionPublicKey = createMockEncryptionPublicKey();

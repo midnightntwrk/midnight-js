@@ -70,7 +70,7 @@ The path to the base directory containing the key and ZKIR subdirectories.
 
 > **get**(`circuitId`): `Promise`\<`ZKConfig`\<`K`\>\>
 
-Retrieves all zero-knowledge artifacts produced by `compact` compiler for the given circuit.
+Retrieves all zero-knowledge artifacts produced by `compactc` compiler for the given circuit.
 
 #### Parameters
 
@@ -138,7 +138,7 @@ ZKConfigProvider.getVerifierKey
 
 > **getVerifierKeys**(`circuitIds`): `Promise`\<\[`K`, `VerifierKey`\][]\>
 
-Retrieves the verifier keys produced by `compact` compiler for the given circuits.
+Retrieves the verifier keys produced by `compactc` compiler for the given circuits.
 
 #### Parameters
 

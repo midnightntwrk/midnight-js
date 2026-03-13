@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-contracts",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "description": "MidnightJS module for interacting with contracts",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -27,7 +27,7 @@
     "deploy": "yarn npm publish"
   },
   "dependencies": {
-    "@midnight-ntwrk/compact-js": "2.4.0",
+    "@midnight-ntwrk/compact-js": "2.4.3",
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
@@ -36,7 +36,7 @@
     "dist/"
   ],
   "devDependencies": {
-    "@fast-check/vitest": "^0.2.1",
+    "@fast-check/vitest": "^0.3.0",
     "vitest": "^4.0.0"
   }
 }
