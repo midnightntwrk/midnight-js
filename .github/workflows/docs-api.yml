@@ -92,6 +92,7 @@ jobs:
             git config --global user.name "Midnight CI GitHub Action"
             BRANCH=api-docs/merge-prs/`date +'%Y-%m-%dT%H%M%S'`
             git checkout -b $BRANCH
+            git remote set-url origin "https://$GH_TOKEN@github.com/${{ github.repository }}.git"
             git push -u origin $BRANCH
             echo "UPDATE=true" >> $GITHUB_OUTPUT
             echo "NEW_BRANCH=$BRANCH" >> $GITHUB_OUTPUT
