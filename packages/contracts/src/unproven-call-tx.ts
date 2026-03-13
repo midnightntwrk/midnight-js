@@ -261,8 +261,8 @@ export type UnprovenCallTxProvidersBase = Pick<ContractProviders, 'zkConfigProvi
  * state provider to store the new private state resulting from the circuit call -
  * only used when creating a call transaction for a contract with a private state.
  */
-export type UnprovenCallTxProvidersWithPrivateState<C extends Contract.Any> = UnprovenCallTxProvidersBase &
-  Pick<ContractProviders<C>, 'privateStateProvider'>;
+export interface UnprovenCallTxProvidersWithPrivateState<C extends Contract.Any>
+  extends UnprovenCallTxProvidersBase, Pick<ContractProviders<C>, 'privateStateProvider'> {}
 
 /**
  * Providers needed to create a call transaction.
