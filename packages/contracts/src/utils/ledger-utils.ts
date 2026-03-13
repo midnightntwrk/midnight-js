@@ -64,7 +64,7 @@ import { zswapStateToOffer } from './zswap-utils';
  * Contract-addressed spends are satisfied by the transcript's `unshielded_inputs`
  * effects and do not need offer outputs.
  */
-const extractUserAddressedOutputs = (transcript: Transcript<AlignedValue> | undefined): UtxoOutput[] => {
+export const extractUserAddressedOutputs = (transcript: Transcript<AlignedValue> | undefined): UtxoOutput[] => {
   if (!transcript) return [];
 
   const outputs: UtxoOutput[] = [];
