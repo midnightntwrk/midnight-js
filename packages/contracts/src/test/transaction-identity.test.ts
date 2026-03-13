@@ -14,6 +14,7 @@
  */
 
 import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
+import { LedgerParameters } from '@midnight-ntwrk/ledger-v8';
 import type { AnyPrivateState, AnyProvableCircuitId, PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it } from 'vitest';
 
@@ -35,12 +36,14 @@ describe('TransactionContextImpl identity validation', () => {
   const createMockStates = (): ContractStates<AnyPrivateState> => ({
     contractState: createMockContractState(),
     zswapChainState: { test: 'mock-zswap-chain-state' } as never,
-    privateState: { mockPrivateState: true } as AnyPrivateState
+    privateState: { mockPrivateState: true } as AnyPrivateState,
+    ledgerParameters: LedgerParameters.initialParameters()
   });
 
   const createMockPublicStates = (): PublicContractStates => ({
     contractState: createMockContractState(),
-    zswapChainState: { test: 'mock-zswap-chain-state' } as never
+    zswapChainState: { test: 'mock-zswap-chain-state' } as never,
+    ledgerParameters: LedgerParameters.initialParameters()
   });
 
   beforeEach(() => {
