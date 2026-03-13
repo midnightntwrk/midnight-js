@@ -20,12 +20,12 @@ import type {
   FinalizedTxData
 } from '@midnight-ntwrk/midnight-js-types';
 
-import type { CallResult } from './call';
+import type { CallResult, CallResultPrivate, CallResultPublic } from './call';
 
 /**
  * Data relevant to any unsubmitted transaction.
  */
-export type UnsubmittedTxData = {
+export interface UnsubmittedTxData {
   /**
    * The unproven ledger transaction produced.
    */
@@ -39,7 +39,7 @@ export type UnsubmittedTxData = {
 /**
  * Base type for public data relevant to an unsubmitted deployment transaction.
  */
-export type UnsubmittedDeployTxPublicData = {
+export interface UnsubmittedDeployTxPublicData {
   /**
    * The ledger address of the contract that was deployed.
    */
@@ -53,7 +53,7 @@ export type UnsubmittedDeployTxPublicData = {
 /**
  * Base type for private data relevant to an unsubmitted deployment transaction.
  */
-export type UnsubmittedDeployTxPrivateData<C extends Contract.Any> = {
+export interface UnsubmittedDeployTxPrivateData<C extends Contract.Any> {
   /**
    * The signing key that was added as the deployed contract's maintenance authority.
    */
@@ -68,7 +68,7 @@ export type UnsubmittedDeployTxPrivateData<C extends Contract.Any> = {
 /**
  * Base type for data relevant to an unsubmitted deployment transaction.
  */
-export type UnsubmittedDeployTxDataBase<C extends Contract.Any> = {
+export interface UnsubmittedDeployTxDataBase<C extends Contract.Any> {
   /**
    * The public data (data that will be revealed upon tx submission) relevant to the deployment transaction.
    */
@@ -80,66 +80,88 @@ export type UnsubmittedDeployTxDataBase<C extends Contract.Any> = {
 }
 
 /**
+ * Full private data for an unsubmitted deployment transaction, combining the base private data
+ * with transaction data and the initial Zswap state.
+ */
+export interface UnsubmittedDeployTxPrivateDataFull<C extends Contract.Any>
+  extends UnsubmittedDeployTxPrivateData<C>, UnsubmittedTxData {
+  readonly initialZswapState: ZswapLocalState;
+}
+
+/**
  * Data for an unsubmitted deployment transaction.
  */
-export type UnsubmittedDeployTxData<C extends Contract.Any> = UnsubmittedDeployTxDataBase<C> & {
+export interface UnsubmittedDeployTxData<C extends Contract.Any> extends UnsubmittedDeployTxDataBase<C> {
   /**
    * The data of this transaction that is only visible on the user device.
    */
-  readonly private: UnsubmittedTxData & {
-    /**
-     * The Zswap state produced as a result of running the contract constructor. Useful for when
-     * inputs or outputs are created in the contract constructor.
-     */
-    readonly initialZswapState: ZswapLocalState;
-  };
-};
+  readonly private: UnsubmittedDeployTxPrivateDataFull<C>;
+}
+
+/**
+ * Public data for a finalized deployment transaction, combining the base public data
+ * with finalization data.
+ */
+export interface FinalizedDeployTxPublicData extends UnsubmittedDeployTxPublicData, FinalizedTxData {}
 
 /**
  * Data for a finalized deploy transaction submitted in this process.
  */
-export type FinalizedDeployTxDataBase<C extends Contract.Any> = UnsubmittedDeployTxDataBase<C> & {
+export interface FinalizedDeployTxDataBase<C extends Contract.Any> extends UnsubmittedDeployTxDataBase<C> {
   /**
    * The data of this transaction that is visible on the blockchain.
    */
-  readonly public: FinalizedTxData;
-};
+  readonly public: FinalizedDeployTxPublicData;
+}
 
 /**
  * Data for a finalized deploy transaction submitted in this process.
  */
-export type FinalizedDeployTxData<C extends Contract.Any> = UnsubmittedDeployTxData<C> & {
+export interface FinalizedDeployTxData<C extends Contract.Any> extends UnsubmittedDeployTxData<C> {
   /**
    * The data of this transaction that is visible on the blockchain.
    */
-  readonly public: FinalizedTxData;
-};
+  readonly public: FinalizedDeployTxPublicData;
+}
+
+/**
+ * Private data for an unsubmitted call transaction, combining the call result private data
+ * with transaction data.
+ */
+export interface UnsubmittedCallTxPrivateData<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>
+  extends CallResultPrivate<C, ICK>, UnsubmittedTxData {}
 
 /**
  * Data for an unsubmitted call transaction.
  */
-export type UnsubmittedCallTxData<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = CallResult<C, ICK> & {
+export interface UnsubmittedCallTxData<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> extends CallResult<C, ICK> {
   /**
    * Private data relevant to this call transaction.
    */
-  readonly private: UnsubmittedTxData;
-};
+  readonly private: UnsubmittedCallTxPrivateData<C, ICK>;
+}
+
+/**
+ * Public data for a finalized call transaction, combining the call result public data
+ * with finalization data.
+ */
+export interface FinalizedCallTxPublicData extends CallResultPublic, FinalizedTxData {}
 
 /**
  * Data for a submitted, finalized call transaction.
  */
-export type FinalizedCallTxData<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = UnsubmittedCallTxData<C, ICK> & {
+export interface FinalizedCallTxData<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> extends UnsubmittedCallTxData<C, ICK> {
   /**
    * Public data relevant to this call transaction.
    */
-  readonly public: FinalizedTxData;
-};
+  readonly public: FinalizedCallTxPublicData;
+}
 
 /**
  * Data returned from an asynchronous call transaction submission.
  * Contains the transaction ID and call transaction data without waiting for finalization.
  */
-export type SubmittedCallTx<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> = {
+export interface SubmittedCallTx<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> {
   /**
    * The transaction ID returned from submission.
    */
@@ -148,4 +170,4 @@ export type SubmittedCallTx<C extends Contract.Any, ICK extends Contract.ImpureC
    * The unproven call transaction data including private state.
    */
   readonly callTxData: UnsubmittedCallTxData<C, ICK>;
-};
+}
