@@ -290,6 +290,11 @@ export const CONTRACT_AND_ZSWAP_STATE_QUERY = gql(
     contractAction(address: $address, offset: $offset) {
       state
       zswapState
+      transaction {
+        block {
+          ledgerParameters
+        }
+      }
     }
   }`
 );

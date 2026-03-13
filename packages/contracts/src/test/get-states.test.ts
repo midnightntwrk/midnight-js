@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { ZswapChainState } from '@midnight-ntwrk/ledger-v8';
+import type { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/ledger-v8';
 import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -30,6 +30,7 @@ describe('get-states', () => {
   let mockContractAddress: ReturnType<typeof createMockContractAddress>;
   let mockContractState: ReturnType<typeof createMockContractState>;
   let mockZswapChainState: ZswapChainState;
+  let mockLedgerParameters: LedgerParameters;
   let mockPrivateStateId: PrivateStateId;
   let mockPrivateState: { test: string };
 
@@ -40,6 +41,7 @@ describe('get-states', () => {
     mockContractAddress = createMockContractAddress();
     mockContractState = createMockContractState();
     mockZswapChainState = {} as ZswapChainState;
+    mockLedgerParameters = {} as LedgerParameters;
     mockPrivateStateId = createMockPrivateStateId();
     mockPrivateState = { test: 'mock-private-state' };
   });
@@ -48,7 +50,7 @@ describe('get-states', () => {
     describe('happy path', () => {
       it('should successfully retrieve public states', async () => {
         mockProviders.publicDataProvider.queryZSwapAndContractState = vi.fn()
-          .mockResolvedValue([mockZswapChainState, mockContractState]);
+          .mockResolvedValue([mockZswapChainState, mockContractState, mockLedgerParameters]);
 
         const result = await getPublicStates(mockProviders.publicDataProvider, mockContractAddress);
 
@@ -56,7 +58,8 @@ describe('get-states', () => {
           .toHaveBeenCalledWith(mockContractAddress);
         expect(result).toEqual({
           zswapChainState: mockZswapChainState,
-          contractState: mockContractState
+          contractState: mockContractState,
+          ledgerParameters: mockLedgerParameters
         });
       });
     });
@@ -66,7 +69,7 @@ describe('get-states', () => {
     describe('happy path', () => {
       it('should successfully retrieve all states', async () => {
         mockProviders.publicDataProvider.queryZSwapAndContractState = vi.fn()
-          .mockResolvedValue([mockZswapChainState, mockContractState]);
+          .mockResolvedValue([mockZswapChainState, mockContractState, mockLedgerParameters]);
         mockProviders.privateStateProvider.get = vi.fn().mockResolvedValue(mockPrivateState);
 
         const result = await getStates(
@@ -82,6 +85,7 @@ describe('get-states', () => {
         expect(result).toEqual({
           zswapChainState: mockZswapChainState,
           contractState: mockContractState,
+          ledgerParameters: mockLedgerParameters,
           privateState: mockPrivateState
         });
       });
