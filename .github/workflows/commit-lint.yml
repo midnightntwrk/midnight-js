@@ -23,15 +23,15 @@ jobs:
 
       - name: Install dependency
         run: |
-          npm install -g @commitlint/config-conventional
+          npm install -g @commitlint/cli@19.8.1 @commitlint/config-conventional@19.8.1
 
       - name: Validate current commit (last commit) with commitlint
         if: github.event_name == 'push'
-        run: npx commitlint --last --verbose
+        run: commitlint --last --verbose
 
       - name: Validate PR commits
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          npx commitlint --from "$BASE_SHA" --to "$HEAD_SHA" --verbose
+          commitlint --from "$BASE_SHA" --to "$HEAD_SHA" --verbose
