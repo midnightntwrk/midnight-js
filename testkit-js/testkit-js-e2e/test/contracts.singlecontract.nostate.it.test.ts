@@ -20,7 +20,7 @@ import {
   sampleSigningKey,
   type SigningKey
 } from '@midnight-ntwrk/compact-runtime';
-import { ZswapChainState } from '@midnight-ntwrk/ledger-v8';
+import { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/ledger-v8';
 import {
   type CallResult,
   createUnprovenCallTx,
@@ -229,7 +229,8 @@ describe('Contracts API', () => {
         contractAddress: unprovenDeployTxResult.public.contractAddress,
         coinPublicKey,
         initialContractState: unprovenDeployTxResult.public.initialContractState,
-        initialZswapChainState: new ZswapChainState()
+        initialZswapChainState: new ZswapChainState(),
+        ledgerParameters: LedgerParameters.initialParameters()
       },
       providers.walletProvider.getEncryptionPublicKey()
     );

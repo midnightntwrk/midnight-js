@@ -19,7 +19,7 @@ import {
   emptyZswapLocalState,
   sampleSigningKey
 } from '@midnight-ntwrk/compact-runtime';
-import { type ContractAddress, ZswapChainState } from '@midnight-ntwrk/ledger-v8';
+import { type ContractAddress, LedgerParameters, ZswapChainState } from '@midnight-ntwrk/ledger-v8';
 import {
   ContractTypeError,
   createCircuitCallTxInterface,
@@ -158,7 +158,8 @@ describe('Contracts API', () => {
         coinPublicKey: providers.walletProvider.getCoinPublicKey(),
         initialPrivateState: createPrivateState(1),
         initialContractState: unprovenDeployTxResult.public.initialContractState,
-        initialZswapChainState: new ZswapChainState()
+        initialZswapChainState: new ZswapChainState(),
+        ledgerParameters: LedgerParameters.initialParameters()
       },
       providers.walletProvider.getEncryptionPublicKey()
     );
