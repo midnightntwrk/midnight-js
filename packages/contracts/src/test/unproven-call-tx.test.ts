@@ -14,6 +14,7 @@
  */
 
 import { type ContractState, StateValue } from '@midnight-ntwrk/compact-runtime';
+import { LedgerParameters } from '@midnight-ntwrk/ledger-v8';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
@@ -136,7 +137,8 @@ describe('unproven-call-tx', () => {
 
       mockGetPublicStates.mockResolvedValue({
         zswapChainState: { test: 'zswap-chain-state' },
-        contractState: await getInitialContractState()
+        contractState: await getInitialContractState(),
+        ledgerParameters: LedgerParameters.initialParameters()
       });
 
       const providers = {
@@ -170,7 +172,8 @@ describe('unproven-call-tx', () => {
       mockGetStates.mockResolvedValue({
         zswapChainState: { test: 'zswap-chain-state' },
         contractState: await getInitialContractState(),
-        privateState: { test: 'private-state' }
+        privateState: { test: 'private-state' },
+        ledgerParameters: LedgerParameters.initialParameters()
       });
 
       const providers = {

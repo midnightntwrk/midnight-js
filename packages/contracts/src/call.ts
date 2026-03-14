@@ -80,9 +80,9 @@ export type CallOptionsProviderDataDependencies = {
    */
   readonly initialZswapChainState: ZswapChainState;
   /**
-   * The optional ledger parameters to use when executing the circuit.
+   * The ledger parameters to use when executing the circuit.
    */
-  readonly ledgerParameters?: LedgerParameters;
+  readonly ledgerParameters: LedgerParameters;
 };
 
 /**

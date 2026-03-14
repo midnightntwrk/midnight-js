@@ -34,6 +34,7 @@ import {
   type DustSecretKey,
   type EncPublicKey,
   type EncryptionSecretKey,
+  LedgerParameters,
   type PartitionedTranscript,
   type Proof,
   type Proofish,
@@ -357,6 +358,7 @@ export const createMockCallOptions = (overrides: Partial<CallOptions<Contract.An
   coinPublicKey: createMockCoinPublicKey(),
   initialContractState: createMockContractState(),
   initialZswapChainState: {} as ZswapChainState,
+  ledgerParameters: LedgerParameters.initialParameters(),
   ...overrides
 });
 

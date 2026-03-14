@@ -514,7 +514,9 @@ const indexerPublicDataProviderInternal = (
         ? [
             deserializeZswapState(maybeContractStates.zswapState),
             deserializeContractState(maybeContractStates.state),
-            deserializeLedgerParameters(maybeContractStates.transaction.block.ledgerParameters)
+            maybeContractStates.transaction?.block?.ledgerParameters
+              ? deserializeLedgerParameters(maybeContractStates.transaction.block.ledgerParameters)
+              : LedgerParameters.initialParameters()
           ]
         : null;
     },
