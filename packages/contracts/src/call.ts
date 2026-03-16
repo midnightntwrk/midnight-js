@@ -25,6 +25,7 @@ import {
   type ZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
 import {
+  type LedgerParameters,
   type PartitionedTranscript,
   type ZswapChainState
 } from '@midnight-ntwrk/ledger-v8';
@@ -78,6 +79,10 @@ export type CallOptionsProviderDataDependencies = {
    * The initial public Zswap state of the contract to run the circuit against.
    */
   readonly initialZswapChainState: ZswapChainState;
+  /**
+   * The ledger parameters to use when executing the circuit.
+   */
+  readonly ledgerParameters: LedgerParameters;
 };
 
 /**

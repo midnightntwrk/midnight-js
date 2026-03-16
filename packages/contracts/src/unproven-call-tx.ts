@@ -16,7 +16,7 @@
 import { ContractExecutable } from '@midnight-ntwrk/compact-js';
 import { type Contract, ProvableCircuitId } from '@midnight-ntwrk/compact-js/effect/Contract';
 import type { CoinPublicKey, ContractState } from '@midnight-ntwrk/compact-runtime';
-import { type EncPublicKey,type ZswapChainState } from '@midnight-ntwrk/ledger-v8';
+import { type EncPublicKey, type LedgerParameters, type ZswapChainState } from '@midnight-ntwrk/ledger-v8';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { exitResultOrError, makeContractExecutableRuntime, type PrivateStateId, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
@@ -63,7 +63,7 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
   options: CallOptions<C, PCK>,
   walletEncryptionPublicKey: EncPublicKey
 ): Promise<UnsubmittedCallTxData<C, PCK>> {
-  const { compiledContract, contractAddress, coinPublicKey, initialContractState, initialZswapChainState } = options;
+  const { compiledContract, contractAddress, coinPublicKey, initialContractState, initialZswapChainState, ledgerParameters } = options;
   assertIsContractAddress(contractAddress);
   assertDefined(
     ContractExecutable.make(options.compiledContract)
@@ -82,7 +82,8 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
   const exitResult = await contractRuntime.runPromiseExit(contractExec.circuit(ProvableCircuitId<C>(options.circuitId as any), { // eslint-disable-line @typescript-eslint/no-explicit-any
       address: ContractAddress(contractAddress),
       contractState: initialContractState,
-      privateState: initialPrivateState
+      privateState: initialPrivateState,
+      ledgerParameters
     },
     ...args as any // eslint-disable-line @typescript-eslint/no-explicit-any
   ));
@@ -178,6 +179,7 @@ export type CallTxOptions<C extends Contract.Any, PCK extends Contract.ProvableC
 const createCallOptions = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   callTxOptions: CallTxOptions<C, PCK>,
   coinPublicKey: CoinPublicKey,
+  ledgerParameters: LedgerParameters,
   initialContractState: ContractState,
   initialZswapChainState: ZswapChainState,
   initialPrivateState?: Contract.PrivateState<C>
@@ -198,7 +200,8 @@ const createCallOptions = <C extends Contract.Any, PCK extends Contract.Provable
     ...callOptionsWithArguments,
     coinPublicKey: parseCoinPublicKeyToHex(coinPublicKey, getNetworkId()),
     initialContractState,
-    initialZswapChainState
+    initialZswapChainState,
+    ledgerParameters
   };
   const callOptions = initialPrivateState
     ? { ...callOptionsBaseWithProviderDataDependencies, initialPrivateState }
@@ -320,12 +323,13 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
   }
 
   if (hasPrivateStateId && hasPrivateStateProvider) {
-    const { zswapChainState, contractState, privateState } = await getContractStates(providers, options, transactionContext);
+    const { zswapChainState, contractState, privateState, ledgerParameters } = await getContractStates(providers, options, transactionContext);
     return createUnprovenCallTxFromInitialStates(
       providers.zkConfigProvider,
       createCallOptions(
         options,
         parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), getNetworkId()),
+        ledgerParameters,
         contractState,
         zswapChainState,
         privateState
@@ -334,12 +338,13 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
     );
   }
 
-  const { zswapChainState, contractState } = await getContractPublicStates(providers, options, transactionContext);
+  const { zswapChainState, contractState, ledgerParameters } = await getContractPublicStates(providers, options, transactionContext);
   return createUnprovenCallTxFromInitialStates(
     providers.zkConfigProvider,
     createCallOptions(
       options,
       parseCoinPublicKeyToHex(providers.walletProvider.getCoinPublicKey(), getNetworkId()),
+      ledgerParameters,
       contractState,
       zswapChainState
     ),

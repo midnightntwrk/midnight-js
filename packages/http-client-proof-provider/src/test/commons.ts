@@ -24,10 +24,13 @@ import {
   emptyZswapLocalState,
   sampleSigningKey} from '@midnight-ntwrk/compact-runtime';
 import {
+  LedgerParameters,
   sampleCoinPublicKey,
   sampleContractAddress,
   sampleEncryptionPublicKey,
-  type UnprovenTransaction,  ZswapChainState} from '@midnight-ntwrk/ledger-v8';
+  type UnprovenTransaction,
+  ZswapChainState
+} from '@midnight-ntwrk/ledger-v8';
 import { createUnprovenCallTxFromInitialStates, createUnprovenDeployTxFromVerifierKeys } from '@midnight-ntwrk/midnight-js-contracts';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { createProverKey,
@@ -132,6 +135,7 @@ export const getValidUnprovenTx = async (): Promise<UnprovenTransaction> => {
     coinPublicKey,
     initialContractState: deploy.public.initialContractState,
     initialZswapChainState: new ZswapChainState(),
+    ledgerParameters: LedgerParameters.initialParameters(),
     arguments: []
   };
 

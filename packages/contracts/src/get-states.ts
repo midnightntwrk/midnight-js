@@ -14,7 +14,7 @@
  */
 
 import type { ContractState } from '@midnight-ntwrk/compact-runtime';
-import type { ContractAddress, ZswapChainState } from '@midnight-ntwrk/ledger-v8';
+import type { ContractAddress, LedgerParameters, ZswapChainState } from '@midnight-ntwrk/ledger-v8';
 import type { PrivateStateId,PrivateStateProvider, PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
@@ -30,6 +30,10 @@ export type PublicContractStates = {
    * The (public) ledger state of a contract.
    */
   readonly contractState: ContractState;
+  /**
+   * The ledger parameters in effect on the block associated with the contract state.
+   */
+  readonly ledgerParameters: LedgerParameters;
 }
 
 /**
@@ -57,8 +61,8 @@ export const getPublicStates = async (
   assertIsContractAddress(contractAddress);
   const zswapAndContractState = await publicDataProvider.queryZSwapAndContractState(contractAddress);
   assertDefined(zswapAndContractState, `No public state found at contract address '${contractAddress}'`);
-  const [zswapChainState, contractState] = zswapAndContractState;
-  return { contractState, zswapChainState };
+  const [zswapChainState, contractState, ledgerParameters] = zswapAndContractState;
+  return { contractState, zswapChainState, ledgerParameters };
 };
 
 /**

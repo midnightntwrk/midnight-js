@@ -155,10 +155,11 @@ export class TransactionContextImpl<
     const privateState = callData.private.nextPrivateState;
     const contractState = this.cachedStates.states.contractState;
     const zswapChainState = this.cachedStates.states.zswapChainState; // Preserve the current Zswap chain state.
+    const ledgerParameters = this.cachedStates.states.ledgerParameters; // Preserve the current ledger parameters.
 
     contractState.data = new ChargedState(callData.public.nextContractState);
 
-    this[CacheStates]({ contractState, zswapChainState, privateState }, this.cachedStates.identity);
+    this[CacheStates]({ contractState, zswapChainState, ledgerParameters, privateState }, this.cachedStates.identity);
   }
 }
 

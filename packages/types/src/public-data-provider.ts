@@ -14,7 +14,7 @@
  */
 
 import type { ContractState } from '@midnight-ntwrk/compact-runtime';
-import type { ContractAddress, TransactionId, ZswapChainState } from '@midnight-ntwrk/ledger-v8';
+import type { ContractAddress, LedgerParameters, TransactionId, ZswapChainState } from '@midnight-ntwrk/ledger-v8';
 import type { Observable } from 'rxjs';
 
 import type { FinalizedTxData, UnshieldedBalances } from './midnight-types';
@@ -103,8 +103,9 @@ export interface PublicDataProvider {
   ): Promise<ContractState | null>;
 
   /**
-   * Retrieves the zswap chain state (token balances) and the contract state of the contract at the
-   * given address. Both states are retrieved in a single query to ensure consistency between the two.
+   * Retrieves the zswap chain state (token balances), the contract state of the contract at the
+   * given address, and the ledger parameters in effect on the associated block. Both states are
+   * retrieved in a single query to ensure consistency between the two.
    * Immediately returns null if no matching data is found.
    * @param contractAddress The address of the contract of interest.
    * @param config The configuration of the query.
@@ -113,7 +114,7 @@ export interface PublicDataProvider {
   queryZSwapAndContractState(
     contractAddress: ContractAddress,
     config?: BlockHeightConfig | BlockHashConfig
-  ): Promise<[ZswapChainState, ContractState] | null>;
+  ): Promise<[ZswapChainState, ContractState, LedgerParameters] | null>;
 
   /**
    * Retrieves the contract state included in the deployment of the contract at the given contract address.

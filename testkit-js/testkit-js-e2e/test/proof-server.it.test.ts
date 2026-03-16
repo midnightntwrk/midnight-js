@@ -17,6 +17,7 @@ import { sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
 import {
   ContractCall,
   ContractDeploy,
+  LedgerParameters,
   LedgerState,
   type Proof,
   sampleCoinPublicKey,
@@ -91,7 +92,8 @@ describe('Proof server integration', () => {
         coinPublicKey,
         initialContractState: unprovenDeployTxResult.public.initialContractState,
         initialZswapChainState: new ZswapChainState(),
-        initialPrivateState: unprovenDeployTxResult.private.initialPrivateState
+        initialPrivateState: unprovenDeployTxResult.private.initialPrivateState,
+        ledgerParameters: LedgerParameters.initialParameters()
       },
       encryptionPublicKey
     )).private.unprovenTx;

@@ -30,7 +30,7 @@ import {
   type SignatureEnabled,
   type TransactionId
 } from '@midnight-ntwrk/ledger-v8';
-import { Transaction as LedgerTransaction, ZswapChainState } from '@midnight-ntwrk/ledger-v8';
+import { LedgerParameters,Transaction as LedgerTransaction, ZswapChainState } from '@midnight-ntwrk/ledger-v8';
 import type {
   BlockHashConfig,
   BlockHeightConfig,
@@ -124,6 +124,9 @@ const deserializeZswapState = (s: string): ZswapChainState =>
 
 const deserializeTransaction = (s: string): LedgerTransaction<SignatureEnabled, Proof, Binding> =>
   LedgerTransaction.deserialize('signature', 'proof', 'binding', toByteArray(s));
+
+const deserializeLedgerParameters = (s: string): LedgerParameters =>
+  LedgerParameters.deserialize(toByteArray(s));
 
 const zenToRx = <T>(zenObservable: Zen.Observable<T>): Rx.Observable<T> =>
   new Rx.Observable((subscriber) => zenObservable.subscribe(subscriber));
@@ -487,7 +490,7 @@ const indexerPublicDataProviderInternal = (
     async queryZSwapAndContractState(
       address: ContractAddress,
       config?: BlockHeightConfig | BlockHashConfig
-    ): Promise<[ZswapChainState, ContractState] | null> {
+    ): Promise<[ZswapChainState, ContractState, LedgerParameters] | null> {
       let offset;
       if (config) {
         offset = {
@@ -508,7 +511,13 @@ const indexerPublicDataProviderInternal = (
         .then(maybeThrowErrors)
         .then((queryResult) => queryResult.data.contractAction);
       return maybeContractStates
-        ? [deserializeZswapState(maybeContractStates.zswapState), deserializeContractState(maybeContractStates.state)]
+        ? [
+            deserializeZswapState(maybeContractStates.zswapState),
+            deserializeContractState(maybeContractStates.state),
+            maybeContractStates.transaction?.block?.ledgerParameters
+              ? deserializeLedgerParameters(maybeContractStates.transaction.block.ledgerParameters)
+              : LedgerParameters.initialParameters()
+          ]
         : null;
     },
     async queryUnshieldedBalances(
@@ -775,7 +784,7 @@ export const indexerPublicDataProvider = (
     queryZSwapAndContractState(
       contractAddress: ContractAddress,
       config?: BlockHeightConfig | BlockHashConfig
-    ): Promise<[ZswapChainState, ContractState] | null> {
+    ): Promise<[ZswapChainState, ContractState, LedgerParameters] | null> {
       assertIsContractAddress(contractAddress);
       return publicDataProvider.queryZSwapAndContractState(contractAddress, config);
     },
