@@ -63,7 +63,7 @@
     "@types/ws": "^8.18.1",
     "@vitest/runner": "^4.0.0",
     "allure-commandline": "^2.34.1",
-    "allure-js-commons": "^3.3.0",
+    "allure-js-commons": "^3.6.0",
     "allure-vitest": "^3.3.0",
     "axios": "^1.13.5",
     "pino": "^10.0.0",
