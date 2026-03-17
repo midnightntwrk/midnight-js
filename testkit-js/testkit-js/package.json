@@ -33,7 +33,7 @@
   },
   "dependencies": {
     "@midnight-ntwrk/compact-js": "2.5.0-rc.1",
-    "@midnight-ntwrk/ledger-v8": "8.0.0-rc.5",
+    "@midnight-ntwrk/ledger-v8": "8.0.2",
     "@midnight-ntwrk/midnight-js-compact": "workspace:*",
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*",
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*",
@@ -53,7 +53,7 @@
     "@types/ws": "^8.18.1",
     "@vitest/runner": "^4.0.0",
     "allure-commandline": "^2.34.1",
-    "allure-js-commons": "^3.3.0",
+    "allure-js-commons": "^3.6.0",
     "allure-vitest": "^3.3.0",
     "axios": "^1.13.5",
     "pino": "^10.0.0",

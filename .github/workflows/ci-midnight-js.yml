@@ -56,7 +56,6 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # ratchet:actions/setup-node@v6
         with:
-          always-auth: true
           registry-url: https://npm.pkg.github.com/
           scope: '@midnight-ntwrk'
           node-version-file: '.nvmrc'

@@ -72,7 +72,6 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # ratchet:actions/setup-node@v6
         with:
-          always-auth: true
           registry-url: https://npm.pkg.github.com/
           scope: '@midnight-ntwrk'
           node-version-file: '.nvmrc'
@@ -152,7 +151,6 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # ratchet:actions/setup-node@v6
         with:
-          always-auth: true
           registry-url: https://npm.pkg.github.com/
           scope: '@midnight-ntwrk'
           node-version-file: '.nvmrc'
@@ -248,7 +246,6 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # ratchet:actions/setup-node@v6
         with:
-          always-auth: true
           registry-url: https://npm.pkg.github.com/
           scope: '@midnight-ntwrk'
           node-version-file: '.nvmrc'
@@ -274,19 +271,19 @@ jobs:
         run: yarn install --immutable
 
       - name: Download build
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # ratchet:actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # ratchet:actions/download-artifact@v8
         with:
           name: midnight-js-dist-testkit
           path: packages/
 
       - name: Download testkit build
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # ratchet:actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # ratchet:actions/download-artifact@v8
         with:
           name: testkit-dist
           path: testkit-js/
 
       - name: Download contracts
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # ratchet:actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # ratchet:actions/download-artifact@v8
         with:
           name: e2e-tests-contracts
           path: testkit-js/testkit-js-e2e/src/contract/compiled
@@ -320,10 +317,28 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # ratchet:actions/checkout@v6
 
       - name: Download Test Results
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # ratchet:actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # ratchet:actions/download-artifact@v8
         with:
           pattern: test-results-*
           path: test-results
+
+      - name: Generate Allure Report
+        if: always()
+        run: |
+          mkdir -p allure-results
+          find test-results -path '*/allure-results-*/*' -exec cp {} allure-results/ \;
+          if [ "$(ls -A allure-results)" ]; then
+            npx allure-commandline generate allure-results --clean -o allure-report
+          else
+            echo "No Allure results found"
+          fi
+
+      - name: Upload Allure Report
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # ratchet:actions/upload-artifact@v7
+        if: always()
+        with:
+          name: allure-report
+          path: allure-report/
 
       - name: Merge CTRF Results
         if: always()
