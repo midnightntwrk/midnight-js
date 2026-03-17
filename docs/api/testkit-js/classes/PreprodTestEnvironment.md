@@ -2,8 +2,8 @@
 
 ***
 
-Test environment configuration for the Midnight QA network.
-Provides URLs and endpoints for QA network services.
+Test environment configuration for the Midnight preprod network.
+Provides URLs and endpoints for preprod network services.
 
 ## Extends
 
@@ -13,7 +13,7 @@ Provides URLs and endpoints for QA network services.
 
 ### Constructor
 
-> **new QanetTestEnvironment**(`logger`): `QanetTestEnvironment`
+> **new PreprodTestEnvironment**(`logger`): `PreprodTestEnvironment`
 
 Creates a new TestEnvironment instance.
 
@@ -27,7 +27,7 @@ Logger instance for recording operations
 
 #### Returns
 
-`QanetTestEnvironment`
+`PreprodTestEnvironment`
 
 #### Inherited from
 
@@ -39,13 +39,13 @@ Logger instance for recording operations
 
 > **getEnvironmentConfiguration**(): [`EnvironmentConfiguration`](../interfaces/EnvironmentConfiguration.md)
 
-Returns the configuration for the QA network environment services.
+Returns the configuration for the preprod environment services.
 
 #### Returns
 
 [`EnvironmentConfiguration`](../interfaces/EnvironmentConfiguration.md)
 
-Object containing URLs for QA network services:
+Object containing URLs for preprod services:
 - indexer: GraphQL API endpoint for the indexer
 - indexerWS: WebSocket endpoint for the indexer
 - node: RPC endpoint for the blockchain node

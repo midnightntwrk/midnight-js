@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.1.0**](../../../README.md)
+[**Midnight.js API Reference v3.2.0**](../../../README.md)
 
 ***
 
@@ -118,10 +118,11 @@ The configuration of the query.
 
 ### queryZSwapAndContractState()
 
-> **queryZSwapAndContractState**(`contractAddress`, `config?`): `Promise`\<\[`ZswapChainState`, `ContractState`\] \| `null`\>
+> **queryZSwapAndContractState**(`contractAddress`, `config?`): `Promise`\<\[`ZswapChainState`, `ContractState`, `LedgerParameters`\] \| `null`\>
 
-Retrieves the zswap chain state (token balances) and the contract state of the contract at the
-given address. Both states are retrieved in a single query to ensure consistency between the two.
+Retrieves the zswap chain state (token balances), the contract state of the contract at the
+given address, and the ledger parameters in effect on the associated block. Both states are
+retrieved in a single query to ensure consistency between the two.
 Immediately returns null if no matching data is found.
 
 #### Parameters
@@ -141,7 +142,7 @@ The configuration of the query.
 
 #### Returns
 
-`Promise`\<\[`ZswapChainState`, `ContractState`\] \| `null`\>
+`Promise`\<\[`ZswapChainState`, `ContractState`, `LedgerParameters`\] \| `null`\>
 
 ***
 

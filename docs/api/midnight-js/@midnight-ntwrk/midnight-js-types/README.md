@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.1.0**](../../README.md)
+[**Midnight.js API Reference v3.2.0**](../../README.md)
 
 ***
 
@@ -45,6 +45,8 @@
 ## Type Aliases
 
 - [All](type-aliases/All.md)
+- [AnyPrivateState](type-aliases/AnyPrivateState.md)
+- [AnyProvableCircuitId](type-aliases/AnyProvableCircuitId.md)
 - [BlockHash](type-aliases/BlockHash.md)
 - [BlockHashConfig](type-aliases/BlockHashConfig.md)
 - [BlockHeightConfig](type-aliases/BlockHeightConfig.md)

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.1.0**](../../../README.md)
+[**Midnight.js API Reference v3.2.0**](../../../README.md)
 
 ***
 
@@ -19,7 +19,7 @@ Configuration.
 
 ## Call Signature
 
-> **createUnprovenCallTxFromInitialStates**\<`C`, `ICK`\>(`zkConfigProvider`, `options`, `walletEncryptionPublicKey`): `Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `ICK`\>\>
+> **createUnprovenCallTxFromInitialStates**\<`C`, `PCK`\>(`zkConfigProvider`, `options`, `walletEncryptionPublicKey`): `Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
 
 ### Type Parameters
 
@@ -27,9 +27,9 @@ Configuration.
 
 `C` *extends* `Contract`\<`undefined`, `Witnesses`\<`undefined`\>\>
 
-#### ICK
+#### PCK
 
-`ICK` *extends* `string`
+`PCK` *extends* `string`
 
 ### Parameters
 
@@ -39,7 +39,7 @@ Configuration.
 
 #### options
 
-[`CallOptionsWithProviderDataDependencies`](../type-aliases/CallOptionsWithProviderDataDependencies.md)\<`C`, `ICK`\>
+[`CallOptionsWithProviderDataDependencies`](../type-aliases/CallOptionsWithProviderDataDependencies.md)\<`C`, `PCK`\>
 
 #### walletEncryptionPublicKey
 
@@ -47,11 +47,11 @@ Configuration.
 
 ### Returns
 
-`Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `ICK`\>\>
+`Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
 
 ## Call Signature
 
-> **createUnprovenCallTxFromInitialStates**\<`C`, `ICK`\>(`zkConfigProvider`, `options`, `walletEncryptionPublicKey`): `Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `ICK`\>\>
+> **createUnprovenCallTxFromInitialStates**\<`C`, `PCK`\>(`zkConfigProvider`, `options`, `walletEncryptionPublicKey`): `Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
 
 ### Type Parameters
 
@@ -59,9 +59,9 @@ Configuration.
 
 `C` *extends* `Any`
 
-#### ICK
+#### PCK
 
-`ICK` *extends* `string`
+`PCK` *extends* `string`
 
 ### Parameters
 
@@ -71,7 +71,7 @@ Configuration.
 
 #### options
 
-[`CallOptionsWithPrivateState`](../type-aliases/CallOptionsWithPrivateState.md)\<`C`, `ICK`\>
+[`CallOptionsWithPrivateState`](../type-aliases/CallOptionsWithPrivateState.md)\<`C`, `PCK`\>
 
 #### walletEncryptionPublicKey
 
@@ -79,4 +79,4 @@ Configuration.
 
 ### Returns
 
-`Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `ICK`\>\>
+`Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
