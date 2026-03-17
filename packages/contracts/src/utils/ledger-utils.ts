@@ -20,8 +20,8 @@ import {
   type CoinPublicKey,
   type ContractAddress,
   ContractState,
+  createCircuitContext,
   type Op,
-  QueryContext as CompactQueryContext,
   type QueryContext,
   type SigningKey,
   type ZswapLocalState} from '@midnight-ntwrk/compact-runtime';
@@ -99,14 +99,14 @@ export const createUnprovenLedgerCallTx = (
   output: AlignedValue,
   nextZswapLocalState: ZswapLocalState,
   encryptionPublicKey: EncPublicKey,
-  ledgerParameters: LedgerParameters
+  ledgerParameters: LedgerParameters,
+  coinPublicKey: CoinPublicKey
 ): UnprovenTransaction => {
-  const ledgerContractState = toLedgerContractState(initialContractState);
-  const op = ledgerContractState.operation(circuitId);
+  const op = toLedgerContractState(initialContractState).operation(circuitId);
   assertDefined(op, `Operation '${circuitId}' is undefined for contract state ${initialContractState.toString(false)}`);
 
-  const compactQueryContext = new CompactQueryContext(initialContractState.data, contractAddress);
-  const queryContext = toLedgerQueryContext(compactQueryContext);
+  const initialQueryContext = createCircuitContext(contractAddress, coinPublicKey, initialContractState, undefined).currentQueryContext;
+  const queryContext = toLedgerQueryContext(initialQueryContext);
   const preTranscript = new PreTranscript(queryContext, publicTranscript);
 
   const call = new PrePartitionContractCall(

@@ -120,7 +120,8 @@ describe('ledger-utils', () => {
       alignedValue,
       nextZswapLocalState,
       dummyEncPublicKey,
-      LedgerParameters.initialParameters()
+      LedgerParameters.initialParameters(),
+      dummyCPK
     );
     expect(tx).toBeInstanceOf(Transaction);
   });
