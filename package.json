@@ -88,6 +88,11 @@
   "resolutions": {
     "effect": "3.19.15",
     "@midnight-ntwrk/ledger-v8": "8.0.2",
-    "@midnight-ntwrk/onchain-runtime-v3": "3.0.0"
+    "@midnight-ntwrk/onchain-runtime-v3": "3.0.0",
+    "undici": ">=7.24.0",
+    "tar": ">=7.5.11",
+    "fast-xml-parser": ">=5.3.8",
+    "minimatch": ">=10.2.3",
+    "rollup": ">=4.59.0"
   }
 }
