@@ -38,10 +38,10 @@
   },
   "license": "Apache-2.0",
   "dependencies": {
-    "@midnight-ntwrk/compact-runtime": "0.15.0-rc.0",
+    "@midnight-ntwrk/compact-runtime": "0.15.0-rc.1",
     "@midnight-ntwrk/ledger-v8": "8.0.2",
     "@midnight-ntwrk/onchain-runtime-v3": "3.0.0",
-    "@midnight-ntwrk/wallet-sdk-facade": "3.0.0-canary.20260313125526-07ea767"
+    "@midnight-ntwrk/wallet-sdk-facade": "3.0.0-canary.20260316145323-850d057"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.4.3",
