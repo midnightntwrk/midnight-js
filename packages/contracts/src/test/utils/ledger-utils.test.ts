@@ -17,6 +17,7 @@ import {
   type AlignedValue,
   ContractOperation,
   ContractState as CompactContractState,
+  type Op,
   QueryContext
 } from '@midnight-ntwrk/compact-runtime';
 import {
@@ -124,6 +125,89 @@ describe('ledger-utils', () => {
       dummyCPK
     );
     expect(tx).toBeInstanceOf(Transaction);
+  });
+
+  it('createUnprovenLedgerCallTx with non-empty publicTranscript produces a valid Transaction', () => {
+    const circuitId = 'nonEmptyTranscriptTx';
+    const contractState = new CompactContractState();
+    const contractOperation = new ContractOperation();
+
+    contractState.setOperation(circuitId, contractOperation);
+
+    const alignedValue: AlignedValue = {
+      value: [new Uint8Array()],
+      alignment: [
+        {
+          tag: 'atom',
+          value: { tag: 'field' }
+        }
+      ]
+    };
+
+    const publicTranscript: Op<AlignedValue>[] = [{ noop: { n: 5 } }];
+
+    const contractAddress = sampleContractAddress();
+    const zswapChainState = new ZswapChainState();
+    const privateTranscriptOutputs: AlignedValue[] = [];
+    const nextZswapLocalState = {
+      outputs: [],
+      inputs: [],
+      coinPublicKey: sampleCoinPublicKey(),
+      currentIndex: 0n
+    };
+
+    const tx = createUnprovenLedgerCallTx(
+      circuitId,
+      contractAddress,
+      contractState,
+      zswapChainState,
+      publicTranscript,
+      privateTranscriptOutputs,
+      alignedValue,
+      alignedValue,
+      nextZswapLocalState,
+      dummyEncPublicKey,
+      LedgerParameters.initialParameters(),
+      dummyCPK
+    );
+    expect(tx).toBeInstanceOf(Transaction);
+  });
+
+  it('createUnprovenLedgerCallTx throws when circuitId has no registered operation', () => {
+    const unregisteredCircuitId = 'unregisteredCircuit';
+    const contractState = new CompactContractState();
+
+    const alignedValue: AlignedValue = {
+      value: [new Uint8Array()],
+      alignment: [
+        {
+          tag: 'atom',
+          value: { tag: 'field' }
+        }
+      ]
+    };
+
+    expect(() =>
+      createUnprovenLedgerCallTx(
+        unregisteredCircuitId,
+        sampleContractAddress(),
+        contractState,
+        new ZswapChainState(),
+        [],
+        [],
+        alignedValue,
+        alignedValue,
+        {
+          outputs: [],
+          inputs: [],
+          coinPublicKey: sampleCoinPublicKey(),
+          currentIndex: 0n
+        },
+        dummyEncPublicKey,
+        LedgerParameters.initialParameters(),
+        dummyCPK
+      )
+    ).toThrow(`Operation '${unregisteredCircuitId}' is undefined`);
   });
 
   it('createUnprovenReplaceAuthorityTx returns an UnprovenTransaction', async () => {
