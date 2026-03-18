@@ -93,24 +93,33 @@ const isRegularTransaction = (
   return 'identifiers' in tx && 'hash' in tx && Array.isArray(tx.identifiers);
 };
 
-const maybeThrowGraphQLErrors = <A, R extends FetchResult<A> | ApolloQueryResult<A>>(result: R): R => {
-  if (result.errors && result.errors.length > 0) {
-    throw new IndexerFormattedError(result.errors);
-  }
-  return result;
-};
-
-const maybeThrowApolloError = <A>(result: ApolloQueryResult<A>): ApolloQueryResult<A> => {
+const maybeThrowQueryError = <R extends { error?: { message: string } }>(result: R): R => {
   if (result.error) {
     throw new Error(result.error.message);
   }
   return result;
 };
 
-const maybeThrowErrors = <A>(queryResult: ApolloQueryResult<A>): ApolloQueryResult<A> => {
-  maybeThrowApolloError(queryResult);
-  return maybeThrowGraphQLErrors(queryResult);
-};
+const withCompleteQueryData = <A>(): Rx.OperatorFunction<ApolloQueryResult<A>, A> =>
+  Rx.pipe(
+    Rx.filter((result: ApolloQueryResult<A>) => {
+      if (result.error) throw new Error(result.error.message);
+      return result.dataState === 'complete';
+    }),
+    // Safe: dataState === 'complete' guarantees data is Complete<A> which defaults to A
+    Rx.map((result: ApolloQueryResult<A>) => result.data as A)
+  );
+
+const withValidFetchData = <A>(): Rx.OperatorFunction<FetchResult<A>, NonNullable<A>> =>
+  Rx.pipe(
+    Rx.map((result: FetchResult<A>) => {
+      if (result.errors && result.errors.length > 0) {
+        throw new IndexerFormattedError(result.errors);
+      }
+      return result.data;
+    }),
+    Rx.filter((data): data is NonNullable<A> => data != null)
+  );
 
 const toByteArray = (s: string): Buffer => Buffer.from(s, 'hex');
 
@@ -152,9 +161,9 @@ const blockOffsetToBlock$ = (apolloClient: ApolloClient) => (offset: InputMaybe<
       fetchPolicy: 'no-cache'
     })
     .pipe(
-      Rx.map(maybeThrowGraphQLErrors),
-      Rx.map((fetchResult) => {
-        const blocks = fetchResult.data!.blocks!;
+      withValidFetchData(),
+      Rx.map((data) => {
+        const blocks = data.blocks!;
         return {
           hash: blocks.hash,
           height: blocks.height,
@@ -185,10 +194,10 @@ const transactionIdToTransaction$ =
         nextFetchPolicy: 'no-cache'
       })
       .pipe(
-        Rx.map(maybeThrowErrors),
-        Rx.filter((maybeQueryResult) => maybeQueryResult.data.transactions.length !== 0),
-        Rx.map((maybeQueryResult) => ({
-          height: maybeQueryResult.data.transactions[0]!.block.height
+        withCompleteQueryData(),
+        Rx.filter((data) => data.transactions.length !== 0),
+        Rx.map((data) => ({
+          height: data.transactions[0]!.block.height
         })),
         Rx.concatMap(blockOffsetToBlock$(apolloClient)),
         Rx.concatMap(({ transactions }) => Rx.from(transactions))
@@ -286,10 +295,10 @@ const contractAddressToLatestBlockOffset$ =
         nextFetchPolicy: 'no-cache'
       })
       .pipe(
-        Rx.map(maybeThrowErrors),
-        Rx.filter((maybeQueryResult) => maybeQueryResult.data.contractAction !== null),
-        Rx.map((queryResult) => {
-          const contract = queryResult.data.contractAction as ExcludeEmptyAndNull<
+        withCompleteQueryData(),
+        Rx.filter((data) => data.contractAction !== null),
+        Rx.map((data) => {
+          const contract = data.contractAction as ExcludeEmptyAndNull<
             LatestContractTxBlockHeightQueryQuery['contractAction']
           >;
           return contract.transaction.block.height;
@@ -313,8 +322,8 @@ const blockOffsetToContractState$ =
         fetchPolicy: 'no-cache'
       })
       .pipe(
-        Rx.map(maybeThrowGraphQLErrors),
-        Rx.map((queryResult) => queryResult.data!.contractActions!.state),
+        withValidFetchData(),
+        Rx.map((data) => data.contractActions!.state),
         Rx.map(deserializeContractState)
       );
 
@@ -335,9 +344,9 @@ const waitForContractToAppear =
         nextFetchPolicy: 'no-cache'
       })
       .pipe(
-        Rx.map(maybeThrowErrors),
-        Rx.filter((maybeQueryResult) => maybeQueryResult.data.contractAction !== null),
-        Rx.map((queryResult) => queryResult.data.contractAction!.state),
+        withCompleteQueryData(),
+        Rx.filter((data) => data.contractAction !== null),
+        Rx.map((data) => data.contractAction!.state),
         Rx.take(1)
       );
 
@@ -354,8 +363,8 @@ const waitForBlockToAppear = (apolloClient: ApolloClient) => (offset: InputMaybe
       nextFetchPolicy: 'no-cache'
     })
     .pipe(
-      Rx.map(maybeThrowErrors),
-      Rx.filter((fetchResult) => fetchResult.data.block !== null),
+      withCompleteQueryData(),
+      Rx.filter((data) => data.block !== null),
       Rx.take(1)
     );
 
@@ -373,10 +382,10 @@ const waitForUnshieldedBalancesToAppear =
         nextFetchPolicy: 'no-cache'
       })
       .pipe(
-        Rx.map(maybeThrowErrors),
-        Rx.filter((maybeQueryResult) => maybeQueryResult.data.contractAction !== null),
-        Rx.map((queryResult) => {
-          const contractAction = queryResult.data.contractAction!;
+        withCompleteQueryData(),
+        Rx.filter((data) => data.contractAction !== null),
+        Rx.map((data) => {
+          const contractAction = data.contractAction!;
           if ('unshieldedBalances' in contractAction) {
             return contractAction.unshieldedBalances;
           }
@@ -402,9 +411,9 @@ const blockOffsetToUnshieldedBalances$ =
         fetchPolicy: 'no-cache'
       })
       .pipe(
-        Rx.map(maybeThrowGraphQLErrors),
-        Rx.map((queryResult) => {
-          const contractAction = queryResult.data!.contractActions!;
+        withValidFetchData(),
+        Rx.map((data) => {
+          const contractAction = data.contractActions!;
           if ('unshieldedBalances' in contractAction) {
             return contractAction.unshieldedBalances;
           }
@@ -479,7 +488,7 @@ const indexerPublicDataProviderInternal = (
           },
           fetchPolicy: 'no-cache'
         })
-        .then(maybeThrowErrors)
+        .then(maybeThrowQueryError)
         .then((queryResult) => queryResult.data?.contractAction?.state ?? null);
       return maybeContractState ? deserializeContractState(maybeContractState) : null;
     },
@@ -504,8 +513,8 @@ const indexerPublicDataProviderInternal = (
           },
           fetchPolicy: 'no-cache'
         })
-        .then(maybeThrowErrors)
-        .then((queryResult) => queryResult.data.contractAction);
+        .then(maybeThrowQueryError)
+        .then((queryResult) => queryResult.data?.contractAction);
       return maybeContractStates
         ? [
             deserializeZswapState(maybeContractStates.zswapState),
@@ -537,9 +546,9 @@ const indexerPublicDataProviderInternal = (
           },
           fetchPolicy: 'no-cache'
         })
-        .then(maybeThrowErrors)
+        .then(maybeThrowQueryError)
         .then((queryResult) => {
-          const contractAction = queryResult.data.contractAction;
+          const contractAction = queryResult.data?.contractAction;
           if (!contractAction) {
             return null;
           }
@@ -563,7 +572,7 @@ const indexerPublicDataProviderInternal = (
           fetchPolicy: 'no-cache'
         })
         .then((queryResult) => {
-          if (queryResult.data.contractAction) {
+          if (queryResult.data?.contractAction) {
             const contract = queryResult.data.contractAction as ExcludeEmptyAndNull<
               DeployContractStateTxQueryQuery['contractAction']
             >;
@@ -599,10 +608,10 @@ const indexerPublicDataProviderInternal = (
             nextFetchPolicy: 'no-cache'
           })
           .pipe(
-            Rx.filter((maybeQueryResult) => maybeQueryResult.data.contractAction !== null),
-            Rx.map(maybeThrowErrors),
-            Rx.map((queryResults) => {
-              const contract = queryResults.data.contractAction as ExcludeEmptyAndNull<
+            withCompleteQueryData(),
+            Rx.filter((data) => data.contractAction !== null),
+            Rx.map((data) => {
+              const contract = data.contractAction as ExcludeEmptyAndNull<
                 DeployTxQueryQuery['contractAction']
               >;
 
@@ -647,9 +656,9 @@ const indexerPublicDataProviderInternal = (
             nextFetchPolicy: 'no-cache'
           })
           .pipe(
-            Rx.map(maybeThrowErrors),
-            Rx.filter((maybeQueryResult) => maybeQueryResult.data.transactions.length !== 0),
-            Rx.map((queryResult) => queryResult.data.transactions[0]!),
+            withCompleteQueryData(),
+            Rx.filter((data) => data.transactions.length !== 0),
+            Rx.map((data) => data.transactions[0]!),
             Rx.filter(isRegularTransaction),
             Rx.map(
               (transaction: RegularTransaction): FinalizedTxData => ({
