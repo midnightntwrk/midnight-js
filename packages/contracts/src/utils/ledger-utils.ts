@@ -20,25 +20,25 @@ import {
   type CoinPublicKey,
   type ContractAddress,
   ContractState,
+  createCircuitContext,
+  type Op,
   type QueryContext,
   type SigningKey,
   type ZswapLocalState} from '@midnight-ntwrk/compact-runtime';
 import {
   ChargedState,
   communicationCommitmentRandomness,
-  ContractCallPrototype,
   ContractDeploy,
   ContractState as LedgerContractState,
   type EncPublicKey,
   Intent,
+  type LedgerParameters,
   type MaintenanceUpdate,
-  type PartitionedTranscript,
+  PrePartitionContractCall,
+  PreTranscript,
   QueryContext as LedgerQueryContext,
   StateValue as LedgerStateValue,
-  type Transcript,
   type UnprovenTransaction,
-  UnshieldedOffer,
-  type UtxoOutput,
   type ZswapChainState
 } from '@midnight-ntwrk/ledger-v8';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
@@ -54,32 +54,6 @@ import {
 import { assertDefined, ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
 
 import { zswapStateToOffer } from './zswap-utils';
-
-/**
- * Extracts user-addressed {@link UtxoOutput} entries from a transcript's
- * {@link Effects.claimedUnshieldedSpends claimedUnshieldedSpends}. These outputs
- * must be included in the Intent's {@link UnshieldedOffer} so that the ledger
- * validator's `real_unshielded_spends` subset check passes for user-addressed
- * `sendUnshielded` operations.
- *
- * Contract-addressed spends are satisfied by the transcript's `unshielded_inputs`
- * effects and do not need offer outputs.
- */
-export const extractUserAddressedOutputs = (transcript: Transcript<AlignedValue> | undefined): UtxoOutput[] => {
-  if (!transcript) return [];
-
-  const outputs: UtxoOutput[] = [];
-  for (const [[tokenType, publicAddress], value] of transcript.effects.claimedUnshieldedSpends) {
-    if (publicAddress.tag === 'user' && tokenType.tag !== 'dust') {
-      outputs.push({
-        value,
-        owner: publicAddress.address,
-        type: tokenType.raw
-      });
-    }
-  }
-  return outputs;
-};
 
 export const toLedgerContractState = (contractState: ContractState): LedgerContractState =>
   LedgerContractState.deserialize(contractState.serialize());
@@ -119,44 +93,33 @@ export const createUnprovenLedgerCallTx = (
   contractAddress: ContractAddress,
   initialContractState: ContractState,
   zswapChainState: ZswapChainState,
-  partitionedTranscript: PartitionedTranscript,
+  publicTranscript: Op<AlignedValue>[],
   privateTranscriptOutputs: AlignedValue[],
   input: AlignedValue,
   output: AlignedValue,
   nextZswapLocalState: ZswapLocalState,
-  encryptionPublicKey: EncPublicKey
+  encryptionPublicKey: EncPublicKey,
+  ledgerParameters: LedgerParameters,
+  coinPublicKey: CoinPublicKey
 ): UnprovenTransaction => {
   const op = toLedgerContractState(initialContractState).operation(circuitId);
   assertDefined(op, `Operation '${circuitId}' is undefined for contract state ${initialContractState.toString(false)}`);
 
-  const intent = Intent.new(ttlOneHour()).addCall(
-    new ContractCallPrototype(
-      contractAddress,
-      circuitId,
-      op,
-      partitionedTranscript[0],
-      partitionedTranscript[1],
-      privateTranscriptOutputs,
-      input,
-      output,
-      communicationCommitmentRandomness(),
-      circuitId
-    )
+  const initialQueryContext = createCircuitContext(contractAddress, coinPublicKey, initialContractState, undefined).currentQueryContext;
+  const queryContext = toLedgerQueryContext(initialQueryContext);
+  const preTranscript = new PreTranscript(queryContext, publicTranscript);
+
+  const call = new PrePartitionContractCall(
+    contractAddress,
+    circuitId,
+    op,
+    preTranscript,
+    privateTranscriptOutputs,
+    input,
+    output,
+    communicationCommitmentRandomness(),
+    circuitId
   );
-
-  // Attach UnshieldedOffers for user-addressed claimedUnshieldedSpends.
-  // When a Compact circuit calls sendUnshielded to a user address, the ledger
-  // validator requires matching UtxoOutput entries in the Intent's UnshieldedOffer.
-  // Without these, the real_unshielded_spends subset check fails (error 139).
-  const guaranteedOutputs = extractUserAddressedOutputs(partitionedTranscript[0]);
-  if (guaranteedOutputs.length > 0) {
-    intent.guaranteedUnshieldedOffer = UnshieldedOffer.new([], guaranteedOutputs, []);
-  }
-
-  const fallibleOutputs = extractUserAddressedOutputs(partitionedTranscript[1]);
-  if (fallibleOutputs.length > 0) {
-    intent.fallibleUnshieldedOffer = UnshieldedOffer.new([], fallibleOutputs, []);
-  }
 
   return Transaction.fromPartsRandomized(
     getNetworkId(),
@@ -164,8 +127,12 @@ export const createUnprovenLedgerCallTx = (
       contractAddress,
       zswapChainState
     }),
-    undefined,
-    intent
+    undefined
+  ).addCalls(
+    { tag: 'random' },
+    [call],
+    ledgerParameters,
+    ttlOneHour()
   );
 };
 

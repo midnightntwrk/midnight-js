@@ -2218,6 +2218,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@midnight-ntwrk/compact-runtime@npm:0.15.0":
+  version: 0.15.0
+  resolution: "@midnight-ntwrk/compact-runtime@npm:0.15.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-runtime%2F0.15.0%2F399021d6e35d3cf25e4bc4ba56f19d5396bbe167"
+  dependencies:
+    "@midnight-ntwrk/onchain-runtime-v3": "npm:^3.0.0"
+    "@types/object-inspect": "npm:^1.8.1"
+    object-inspect: "npm:^1.12.3"
+  checksum: 10/12ac86a114a404386037547a6eb021694537c0636d24d281b101c5be75e3f5703bad9e0bbcc7ea2a39a96e167d200860049a9957dbb4dbdeb585c3fba696909c
+  languageName: node
+  linkType: hard
+
 "@midnight-ntwrk/compact-runtime@npm:0.15.0-rc.0":
   version: 0.15.0-rc.0
   resolution: "@midnight-ntwrk/compact-runtime@npm:0.15.0-rc.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-runtime%2F0.15.0-rc.0%2F40d4fcdaa9724ec57d223ad2e6a7c577b5d953b1"
@@ -2305,7 +2316,7 @@ __metadata:
     buffer: "npm:^6.0.3"
     cross-fetch: "npm:^4.1.0"
     graphql: "npm:^16.8.0"
-    graphql-ws: "npm:^6.0.0"
+    graphql-ws: "npm:^6.0.7"
     isomorphic-ws: "npm:^5.0.0"
     rxjs: "npm:^7.5.0"
     ws: "npm:^8.14.2"
@@ -2377,10 +2388,10 @@ __metadata:
     "@commitlint/config-conventional": "npm:^20.4.3"
     "@d2t/vitest-ctrf-json-reporter": "npm:^1.3.0"
     "@eslint/js": "npm:^10.0.1"
-    "@midnight-ntwrk/compact-runtime": "npm:0.15.0-rc.0"
+    "@midnight-ntwrk/compact-runtime": "npm:0.15.0"
     "@midnight-ntwrk/ledger-v8": "npm:8.0.2"
     "@midnight-ntwrk/onchain-runtime-v3": "npm:3.0.0"
-    "@midnight-ntwrk/wallet-sdk-facade": "npm:3.0.0-canary.20260313125526-07ea767"
+    "@midnight-ntwrk/wallet-sdk-facade": "npm:3.0.0-rc.0"
     "@rollup/plugin-commonjs": "npm:^29.0.2"
     "@rollup/plugin-node-resolve": "npm:^16.0.3"
     "@rollup/plugin-replace": "npm:^6.0.3"
@@ -2452,14 +2463,14 @@ __metadata:
     "@types/ws": "npm:^8.18.1"
     "@vitest/runner": "npm:^4.0.0"
     allure-commandline: "npm:^2.34.1"
-    allure-js-commons: "npm:^3.3.0"
+    allure-js-commons: "npm:^3.6.0"
     allure-vitest: "npm:^3.3.0"
     axios: "npm:^1.13.5"
     buffer: "npm:^6.0.3"
     cross-fetch: "npm:^4.0.0"
     pino: "npm:^10.0.0"
     pino-pretty: "npm:^13.0.0"
-    rimraf: "npm:^6.1.2"
+    rimraf: "npm:^6.1.3"
     rxjs: "npm:^7.8.2"
     vite-tsconfig-paths: "npm:^5.1.4"
     vitest: "npm:^4.0.0"
@@ -2472,7 +2483,7 @@ __metadata:
   resolution: "@midnight-ntwrk/testkit-js@workspace:testkit-js/testkit-js"
   dependencies:
     "@midnight-ntwrk/compact-js": "npm:2.5.0-rc.1"
-    "@midnight-ntwrk/ledger-v8": "npm:8.0.0-rc.5"
+    "@midnight-ntwrk/ledger-v8": "npm:8.0.2"
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*"
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*"
@@ -2486,7 +2497,7 @@ __metadata:
     "@types/ws": "npm:^8.18.1"
     "@vitest/runner": "npm:^4.0.0"
     allure-commandline: "npm:^2.34.1"
-    allure-js-commons: "npm:^3.3.0"
+    allure-js-commons: "npm:^3.6.0"
     allure-vitest: "npm:^3.3.0"
     axios: "npm:^1.13.5"
     buffer: "npm:^6.0.3"
@@ -2511,63 +2522,64 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/wallet-sdk-address-format@npm:3.1.0-canary.20260313125526-07ea767":
-  version: 3.1.0-canary.20260313125526-07ea767
-  resolution: "@midnight-ntwrk/wallet-sdk-address-format@npm:3.1.0-canary.20260313125526-07ea767::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-address-format%2F3.1.0-canary.20260313125526-07ea767%2Fbe2d585b95ffd9718cba4c47f2cbd2904757b8a0"
+"@midnight-ntwrk/wallet-sdk-address-format@npm:3.1.0-rc.0, @midnight-ntwrk/wallet-sdk-address-format@npm:^3.1.0-rc.0":
+  version: 3.1.0-rc.0
+  resolution: "@midnight-ntwrk/wallet-sdk-address-format@npm:3.1.0-rc.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-address-format%2F3.1.0-rc.0%2F4d964fc9686139bc64281edf592845b2a8c6f947"
   dependencies:
-    "@midnight-ntwrk/ledger-v8": "npm:^8.0.0-rc.5"
+    "@midnight-ntwrk/ledger-v8": "npm:^8.0.2"
     "@scure/base": "npm:^2.0.0"
     "@subsquid/scale-codec": "npm:^4.0.1"
-  checksum: 10/19e60e3028a120ea651da997491d42d71f536de1f4a184126b53f03d3bce9fdd51ef612106a51b43fe2cc86f178e04acb7f7e9676ac5d67a07ca5ad7049783f6
+  checksum: 10/7ef4f10aa7041519c5732bf1dff3301d465505212ae6a9ccc62f70332de9238471dffa75e512286670d54fff7c9e056c345e4b798e638066c5bc04be317da3b6
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/wallet-sdk-capabilities@npm:3.2.0-canary.20260313125526-07ea767":
-  version: 3.2.0-canary.20260313125526-07ea767
-  resolution: "@midnight-ntwrk/wallet-sdk-capabilities@npm:3.2.0-canary.20260313125526-07ea767::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-capabilities%2F3.2.0-canary.20260313125526-07ea767%2F508b281a3751379b6bcec8967a5175bfbf8484c3"
+"@midnight-ntwrk/wallet-sdk-capabilities@npm:3.2.0-rc.0, @midnight-ntwrk/wallet-sdk-capabilities@npm:^3.2.0-rc.0":
+  version: 3.2.0-rc.0
+  resolution: "@midnight-ntwrk/wallet-sdk-capabilities@npm:3.2.0-rc.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-capabilities%2F3.2.0-rc.0%2F7e6e42596bdda256ab7f10905b1df1c61d627194"
   dependencies:
-    "@midnight-ntwrk/ledger-v8": "npm:^8.0.0-rc.5"
+    "@midnight-ntwrk/ledger-v8": "npm:^8.0.2"
     "@midnight-ntwrk/wallet-sdk-abstractions": "npm:^2.0.0"
-    "@midnight-ntwrk/wallet-sdk-indexer-client": "npm:1.2.0-canary.20260313125526-07ea767"
-    "@midnight-ntwrk/wallet-sdk-node-client": "npm:1.1.0-canary.20260313125526-07ea767"
-    "@midnight-ntwrk/wallet-sdk-prover-client": "npm:1.2.0-canary.20260313125526-07ea767"
-    "@midnight-ntwrk/wallet-sdk-utilities": "npm:1.1.0-canary.20260313125526-07ea767"
+    "@midnight-ntwrk/wallet-sdk-indexer-client": "npm:^1.2.0-rc.0"
+    "@midnight-ntwrk/wallet-sdk-node-client": "npm:^1.1.0-rc.0"
+    "@midnight-ntwrk/wallet-sdk-prover-client": "npm:^1.2.0-rc.0"
+    "@midnight-ntwrk/wallet-sdk-utilities": "npm:^1.1.0-rc.0"
     "@midnight-ntwrk/zkir-v2": "npm:^2.1.0"
     effect: "npm:^3.19.19"
     rxjs: "npm:^7.8.2"
-  checksum: 10/165563223475c0c7134394e944167fd5bbd6369dae0ffb5b277fd5c43f87005a6c734a77fa8a63ddce1f733c5df0a914428d618d5d9ab71f4d36a50a3d10da65
+  checksum: 10/7d321cf77668353ea359f5a97df1ba39034349074cb57edae7180ed37131b11a18960bebf7fa5642dac280d791f77c7be8aeed3bd58e64482f31c2c39d5d7fc1
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/wallet-sdk-dust-wallet@npm:3.0.0-canary.20260313125526-07ea767":
-  version: 3.0.0-canary.20260313125526-07ea767
-  resolution: "@midnight-ntwrk/wallet-sdk-dust-wallet@npm:3.0.0-canary.20260313125526-07ea767::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-dust-wallet%2F3.0.0-canary.20260313125526-07ea767%2F565e73f8b4397bf88f06647c3cd7890f24336d94"
+"@midnight-ntwrk/wallet-sdk-dust-wallet@npm:^3.0.0-rc.0":
+  version: 3.0.0-rc.0
+  resolution: "@midnight-ntwrk/wallet-sdk-dust-wallet@npm:3.0.0-rc.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-dust-wallet%2F3.0.0-rc.0%2F2268a3cf9644c85621e9713f99241437520b2361"
   dependencies:
-    "@midnight-ntwrk/ledger-v8": "npm:^8.0.0-rc.5"
+    "@midnight-ntwrk/ledger-v8": "npm:^8.0.2"
     "@midnight-ntwrk/wallet-sdk-abstractions": "npm:2.0.0"
-    "@midnight-ntwrk/wallet-sdk-address-format": "npm:3.1.0-canary.20260313125526-07ea767"
-    "@midnight-ntwrk/wallet-sdk-capabilities": "npm:3.2.0-canary.20260313125526-07ea767"
-    "@midnight-ntwrk/wallet-sdk-indexer-client": "npm:1.2.0-canary.20260313125526-07ea767"
-    "@midnight-ntwrk/wallet-sdk-runtime": "npm:1.0.2-canary.20260313125526-07ea767"
-    "@midnight-ntwrk/wallet-sdk-utilities": "npm:1.1.0-canary.20260313125526-07ea767"
+    "@midnight-ntwrk/wallet-sdk-address-format": "npm:3.1.0-rc.0"
+    "@midnight-ntwrk/wallet-sdk-capabilities": "npm:3.2.0-rc.0"
+    "@midnight-ntwrk/wallet-sdk-indexer-client": "npm:1.2.0-rc.0"
+    "@midnight-ntwrk/wallet-sdk-runtime": "npm:1.0.2-rc.0"
+    "@midnight-ntwrk/wallet-sdk-utilities": "npm:1.1.0-rc.0"
     effect: "npm:^3.19.19"
     rxjs: "npm:^7.8.2"
-  checksum: 10/3c45cbb598b9f6c20b391596011863a5359f8cddef024d287fd1cbf8ce941a76838a706e73c85378a91653a0969256fa1fb56d4b3d23ce6cb291a5058feb1272
+  checksum: 10/c8ecc7b3c6596c97a69264c05971616c4ee6d9eeaeeb71f6839b2f586e133209f2a0442fdf47103e139df59a00a66876d4e6511963385303c3c7ea54fb99f4db
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/wallet-sdk-facade@npm:3.0.0-canary.20260313125526-07ea767":
-  version: 3.0.0-canary.20260313125526-07ea767
-  resolution: "@midnight-ntwrk/wallet-sdk-facade@npm:3.0.0-canary.20260313125526-07ea767::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-facade%2F3.0.0-canary.20260313125526-07ea767%2F6675a74c577e6ed1c26720d7c719d05850e4a150"
+"@midnight-ntwrk/wallet-sdk-facade@npm:3.0.0-rc.0":
+  version: 3.0.0-rc.0
+  resolution: "@midnight-ntwrk/wallet-sdk-facade@npm:3.0.0-rc.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-facade%2F3.0.0-rc.0%2F9dd25a63fd4087dad9d537f56b9c9ad02b9daf69"
   dependencies:
-    "@midnight-ntwrk/ledger-v8": "npm:^8.0.0-rc.5"
-    "@midnight-ntwrk/wallet-sdk-address-format": "npm:3.1.0-canary.20260313125526-07ea767"
-    "@midnight-ntwrk/wallet-sdk-capabilities": "npm:3.2.0-canary.20260313125526-07ea767"
-    "@midnight-ntwrk/wallet-sdk-dust-wallet": "npm:3.0.0-canary.20260313125526-07ea767"
-    "@midnight-ntwrk/wallet-sdk-shielded": "npm:2.1.0-canary.20260313125526-07ea767"
-    "@midnight-ntwrk/wallet-sdk-unshielded-wallet": "npm:2.1.0-canary.20260313125526-07ea767"
+    "@midnight-ntwrk/ledger-v8": "npm:^8.0.2"
+    "@midnight-ntwrk/wallet-sdk-address-format": "npm:^3.1.0-rc.0"
+    "@midnight-ntwrk/wallet-sdk-capabilities": "npm:^3.2.0-rc.0"
+    "@midnight-ntwrk/wallet-sdk-dust-wallet": "npm:^3.0.0-rc.0"
+    "@midnight-ntwrk/wallet-sdk-indexer-client": "npm:^1.2.0-rc.0"
+    "@midnight-ntwrk/wallet-sdk-shielded": "npm:^2.1.0-rc.0"
+    "@midnight-ntwrk/wallet-sdk-unshielded-wallet": "npm:^2.1.0-rc.0"
     rxjs: "npm:^7.8.2"
-  checksum: 10/1b4ae44c31aedeba637398ac7c58a417c1dc8eb0d8686b2cac130a33d7b39d76488ee9bed75bfad51c60dff9140adf3bee388c786ae851dfcb4be8af56ab5ddc
+  checksum: 10/b58e971449a83e36ced6e1a9ac1775e2d0f18c9e856d402cfad2f63e108aeea18b34082991f110052263df4d7e955818e2abab3b1ac034c6139f5ca15f3c797f
   languageName: node
   linkType: hard
 
@@ -2581,103 +2593,103 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/wallet-sdk-indexer-client@npm:1.2.0-canary.20260313125526-07ea767":
-  version: 1.2.0-canary.20260313125526-07ea767
-  resolution: "@midnight-ntwrk/wallet-sdk-indexer-client@npm:1.2.0-canary.20260313125526-07ea767::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-indexer-client%2F1.2.0-canary.20260313125526-07ea767%2Fe54c86ae6607f15860e529c1d05ef754b8a83c89"
+"@midnight-ntwrk/wallet-sdk-indexer-client@npm:1.2.0-rc.0, @midnight-ntwrk/wallet-sdk-indexer-client@npm:^1.2.0-rc.0":
+  version: 1.2.0-rc.0
+  resolution: "@midnight-ntwrk/wallet-sdk-indexer-client@npm:1.2.0-rc.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-indexer-client%2F1.2.0-rc.0%2F76e7188458594968cf1da394e18186040c1e0745"
   dependencies:
     "@graphql-typed-document-node/core": "npm:^3.2.0"
-    "@midnight-ntwrk/wallet-sdk-utilities": "npm:1.1.0-canary.20260313125526-07ea767"
+    "@midnight-ntwrk/wallet-sdk-utilities": "npm:1.1.0-rc.0"
     effect: "npm:^3.19.19"
     graphql: "npm:^16.13.0"
     graphql-http: "npm:^1.22.4"
     graphql-ws: "npm:^6.0.7"
-  checksum: 10/053d98cb579942a0297da3a1e0cdb6ef07cb6c947d79e8f80a03c99435f2fac30f21958e63bd8d8911733c96208375a1e546adc25564dc5830a69cf2cbe8c26f
+  checksum: 10/3c31fda680509f149f27c8b7597efa4a5ac486ec2d17d833481681eab2fd50c1d361bff1e864f97f4608affeee4e77d055d6d266d3bf5b62041b17b1dd760e07
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/wallet-sdk-node-client@npm:1.1.0-canary.20260313125526-07ea767":
-  version: 1.1.0-canary.20260313125526-07ea767
-  resolution: "@midnight-ntwrk/wallet-sdk-node-client@npm:1.1.0-canary.20260313125526-07ea767::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-node-client%2F1.1.0-canary.20260313125526-07ea767%2F549f8f01b6029d5b7b4602c33be412220d379024"
+"@midnight-ntwrk/wallet-sdk-node-client@npm:^1.1.0-rc.0":
+  version: 1.1.0-rc.0
+  resolution: "@midnight-ntwrk/wallet-sdk-node-client@npm:1.1.0-rc.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-node-client%2F1.1.0-rc.0%2Fe390ca5368a8a4931ea2ba3c21339ab39329ea09"
   dependencies:
     "@midnight-ntwrk/wallet-sdk-abstractions": "npm:2.0.0"
-    "@midnight-ntwrk/wallet-sdk-utilities": "npm:1.1.0-canary.20260313125526-07ea767"
+    "@midnight-ntwrk/wallet-sdk-utilities": "npm:1.1.0-rc.0"
     "@polkadot/api": "npm:^16.5.4"
     "@polkadot/types": "npm:^16.5.4"
     "@polkadot/util": "npm:^14.0.1"
     "@types/bn.js": "npm:^5.2.0"
     bn.js: "npm:^5.2.3"
     effect: "npm:^3.19.19"
-  checksum: 10/59fec26920bab092c143406769690256bf26e7ca8f08cf4440267c99711f769524d32c411f50c11be0549ecb43e9f53f085ab5b215b22a931668da8ef8db94f5
+  checksum: 10/34dca64519c96a6878ed59b78ec56a07002275339625703f7e84570d3df0708bbda93f157d51f96baa772f8073d91b0f76079bf00798a7e7b329f1b107da5388
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/wallet-sdk-prover-client@npm:1.2.0-canary.20260313125526-07ea767":
-  version: 1.2.0-canary.20260313125526-07ea767
-  resolution: "@midnight-ntwrk/wallet-sdk-prover-client@npm:1.2.0-canary.20260313125526-07ea767::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-prover-client%2F1.2.0-canary.20260313125526-07ea767%2Fd5dd405aae8f6c8186bc26531c7cabbced897718"
+"@midnight-ntwrk/wallet-sdk-prover-client@npm:^1.2.0-rc.0":
+  version: 1.2.0-rc.0
+  resolution: "@midnight-ntwrk/wallet-sdk-prover-client@npm:1.2.0-rc.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-prover-client%2F1.2.0-rc.0%2F5f2f64a111e9e1facb22d4d17832fa1b9bd75880"
   dependencies:
     "@effect/platform": "npm:^0.94.5"
-    "@midnight-ntwrk/ledger-v8": "npm:^8.0.0-rc.5"
-    "@midnight-ntwrk/wallet-sdk-utilities": "npm:1.1.0-canary.20260313125526-07ea767"
+    "@midnight-ntwrk/ledger-v8": "npm:^8.0.2"
+    "@midnight-ntwrk/wallet-sdk-utilities": "npm:1.1.0-rc.0"
     "@midnight-ntwrk/zkir-v2": "npm:2.1.0"
     effect: "npm:^3.19.19"
     web-worker: "npm:^1.5.0"
-  checksum: 10/51fdaf336cae233211d8f5727a2774ee252c5c890c292dbe4c06ac6f623c93c836cb2f31bb64073f78506eaa35ac4ef7ba0896cf85945c90d81e40c049afd830
+  checksum: 10/e6744aaeff437499a3df0db144f2af7f171e3b609daef872985890f012de695a70e15236b6f1bfe33c91671a56063bbcc856b543e503250e3432f18c9ac10daa
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/wallet-sdk-runtime@npm:1.0.2-canary.20260313125526-07ea767":
-  version: 1.0.2-canary.20260313125526-07ea767
-  resolution: "@midnight-ntwrk/wallet-sdk-runtime@npm:1.0.2-canary.20260313125526-07ea767::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-runtime%2F1.0.2-canary.20260313125526-07ea767%2Fcb9b0afed3359c1259f3feb04dd9dea0b1cfbf26"
+"@midnight-ntwrk/wallet-sdk-runtime@npm:1.0.2-rc.0":
+  version: 1.0.2-rc.0
+  resolution: "@midnight-ntwrk/wallet-sdk-runtime@npm:1.0.2-rc.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-runtime%2F1.0.2-rc.0%2F5482a65888d80be62658f820965e681f536cfe11"
   dependencies:
     "@midnight-ntwrk/wallet-sdk-abstractions": "npm:2.0.0"
-    "@midnight-ntwrk/wallet-sdk-utilities": "npm:1.1.0-canary.20260313125526-07ea767"
+    "@midnight-ntwrk/wallet-sdk-utilities": "npm:1.1.0-rc.0"
     effect: "npm:^3.19.19"
     rxjs: "npm:^7.8.2"
-  checksum: 10/f0a3e393b1c6bf4ef5e1c64b0c16de79c6482e819739483f49173c847adffd5676038ba94e288cb4ece41c749bed8910227d5b68da2a557e4a59a11ed627b3b7
+  checksum: 10/2f4b7415078b1ae0611c6d40be7393b253e2fa5f6f536f304c5b4733a371bc696df2b12a2adc66219db7c53d3ffef9fa63aedfd5c00a306ce7e1a082722d080c
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/wallet-sdk-shielded@npm:2.1.0-canary.20260313125526-07ea767":
-  version: 2.1.0-canary.20260313125526-07ea767
-  resolution: "@midnight-ntwrk/wallet-sdk-shielded@npm:2.1.0-canary.20260313125526-07ea767::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-shielded%2F2.1.0-canary.20260313125526-07ea767%2F7fe1100a1c323c61866b99a993ed130c2af66032"
+"@midnight-ntwrk/wallet-sdk-shielded@npm:^2.1.0-rc.0":
+  version: 2.1.0-rc.0
+  resolution: "@midnight-ntwrk/wallet-sdk-shielded@npm:2.1.0-rc.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-shielded%2F2.1.0-rc.0%2F42b0432b0b9be01105b29ff1d4f26a1924d1bbb7"
   dependencies:
-    "@midnight-ntwrk/ledger-v8": "npm:^8.0.0-rc.5"
+    "@midnight-ntwrk/ledger-v8": "npm:^8.0.2"
     "@midnight-ntwrk/wallet-sdk-abstractions": "npm:2.0.0"
-    "@midnight-ntwrk/wallet-sdk-address-format": "npm:3.1.0-canary.20260313125526-07ea767"
-    "@midnight-ntwrk/wallet-sdk-capabilities": "npm:3.2.0-canary.20260313125526-07ea767"
-    "@midnight-ntwrk/wallet-sdk-indexer-client": "npm:1.2.0-canary.20260313125526-07ea767"
-    "@midnight-ntwrk/wallet-sdk-runtime": "npm:1.0.2-canary.20260313125526-07ea767"
-    "@midnight-ntwrk/wallet-sdk-utilities": "npm:1.1.0-canary.20260313125526-07ea767"
+    "@midnight-ntwrk/wallet-sdk-address-format": "npm:3.1.0-rc.0"
+    "@midnight-ntwrk/wallet-sdk-capabilities": "npm:3.2.0-rc.0"
+    "@midnight-ntwrk/wallet-sdk-indexer-client": "npm:1.2.0-rc.0"
+    "@midnight-ntwrk/wallet-sdk-runtime": "npm:1.0.2-rc.0"
+    "@midnight-ntwrk/wallet-sdk-utilities": "npm:1.1.0-rc.0"
     effect: "npm:^3.19.19"
     rxjs: "npm:^7.8.2"
-  checksum: 10/7f0ff5ef504db38e9f9a81c117fcfcbb74475b4f072740cafdfe53743590310169e3b872240649594e1161cd44458256609ca6729225a76d52dd2b56bd1b8dab
+  checksum: 10/6e9e76e8c68a5ffad3f02673853d450b3ad06ffc4b073ac406fb9a5a0acd0e927586d574fc2b5942c390ceb7d79648d188e79ad7f6a9f87ad640b864dddeea71
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/wallet-sdk-unshielded-wallet@npm:2.1.0-canary.20260313125526-07ea767":
-  version: 2.1.0-canary.20260313125526-07ea767
-  resolution: "@midnight-ntwrk/wallet-sdk-unshielded-wallet@npm:2.1.0-canary.20260313125526-07ea767::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-unshielded-wallet%2F2.1.0-canary.20260313125526-07ea767%2F63da1c27aeb0e2f21e6d0988fdfbe3ee41ecda7b"
+"@midnight-ntwrk/wallet-sdk-unshielded-wallet@npm:^2.1.0-rc.0":
+  version: 2.1.0-rc.0
+  resolution: "@midnight-ntwrk/wallet-sdk-unshielded-wallet@npm:2.1.0-rc.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-unshielded-wallet%2F2.1.0-rc.0%2F98599cd501ceb7dc65a1c9982b88d898ee1d7df9"
   dependencies:
-    "@midnight-ntwrk/ledger-v8": "npm:^8.0.0-rc.5"
+    "@midnight-ntwrk/ledger-v8": "npm:^8.0.2"
     "@midnight-ntwrk/wallet-sdk-abstractions": "npm:2.0.0"
-    "@midnight-ntwrk/wallet-sdk-address-format": "npm:3.1.0-canary.20260313125526-07ea767"
-    "@midnight-ntwrk/wallet-sdk-capabilities": "npm:3.2.0-canary.20260313125526-07ea767"
-    "@midnight-ntwrk/wallet-sdk-indexer-client": "npm:1.2.0-canary.20260313125526-07ea767"
-    "@midnight-ntwrk/wallet-sdk-runtime": "npm:1.0.2-canary.20260313125526-07ea767"
-    "@midnight-ntwrk/wallet-sdk-utilities": "npm:1.1.0-canary.20260313125526-07ea767"
+    "@midnight-ntwrk/wallet-sdk-address-format": "npm:3.1.0-rc.0"
+    "@midnight-ntwrk/wallet-sdk-capabilities": "npm:3.2.0-rc.0"
+    "@midnight-ntwrk/wallet-sdk-indexer-client": "npm:1.2.0-rc.0"
+    "@midnight-ntwrk/wallet-sdk-runtime": "npm:1.0.2-rc.0"
+    "@midnight-ntwrk/wallet-sdk-utilities": "npm:1.1.0-rc.0"
     effect: "npm:^3.19.19"
     rxjs: "npm:^7.8.2"
-  checksum: 10/f09de1dd14a70e5f516151ae08ef695f8dafa7bbe7bcd570fad0810a2f948b4caaf933ae459552931a23c75ce9f5580cb6f2f7a639c12a837eeb9e1dd9623c4c
+  checksum: 10/271d6cca6550aee209940757de1f84f7efac7a5e8b3b6765337501ba502d2d1421ea94796984ead207f657ceba27747f17e3f717dcc0511b93f0131fad25b08d
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/wallet-sdk-utilities@npm:1.1.0-canary.20260313125526-07ea767":
-  version: 1.1.0-canary.20260313125526-07ea767
-  resolution: "@midnight-ntwrk/wallet-sdk-utilities@npm:1.1.0-canary.20260313125526-07ea767::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-utilities%2F1.1.0-canary.20260313125526-07ea767%2Ff5448a9b8ccf0d4993e8325e10765c5a8c6696e6"
+"@midnight-ntwrk/wallet-sdk-utilities@npm:1.1.0-rc.0, @midnight-ntwrk/wallet-sdk-utilities@npm:^1.1.0-rc.0":
+  version: 1.1.0-rc.0
+  resolution: "@midnight-ntwrk/wallet-sdk-utilities@npm:1.1.0-rc.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-utilities%2F1.1.0-rc.0%2Fb4b2cbc9a9da13928267d43302db6661b111c27b"
   dependencies:
     effect: "npm:^3.19.19"
     rxjs: "npm:^7.8.2"
-  checksum: 10/1016d6e06b95fc4b1a85ee84b86eb009653692c82a42c8743ba92546435ae7f215be4923da2e8079a6fbe535bbb5af3ea1e002696045763705e03471777f28b8
+  checksum: 10/7d7e3793f427b99235a91953fe5a9e3dd6b9af0db88af5e0697f7194eae98f076daa4825384863705f2aa89cde38698783700e6abbe4a151e50c864f1e68bffd
   languageName: node
   linkType: hard
 
@@ -3496,24 +3508,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@rollup/rollup-android-arm-eabi@npm:4.55.1":
-  version: 4.55.1
-  resolution: "@rollup/rollup-android-arm-eabi@npm:4.55.1"
-  conditions: os=android & cpu=arm
-  languageName: node
-  linkType: hard
-
 "@rollup/rollup-android-arm-eabi@npm:4.59.0":
   version: 4.59.0
   resolution: "@rollup/rollup-android-arm-eabi@npm:4.59.0"
   conditions: os=android & cpu=arm
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-android-arm64@npm:4.55.1":
-  version: 4.55.1
-  resolution: "@rollup/rollup-android-arm64@npm:4.55.1"
-  conditions: os=android & cpu=arm64
   languageName: node
   linkType: hard
 
@@ -3524,24 +3522,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@rollup/rollup-darwin-arm64@npm:4.55.1":
-  version: 4.55.1
-  resolution: "@rollup/rollup-darwin-arm64@npm:4.55.1"
-  conditions: os=darwin & cpu=arm64
-  languageName: node
-  linkType: hard
-
 "@rollup/rollup-darwin-arm64@npm:4.59.0":
   version: 4.59.0
   resolution: "@rollup/rollup-darwin-arm64@npm:4.59.0"
   conditions: os=darwin & cpu=arm64
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-darwin-x64@npm:4.55.1":
-  version: 4.55.1
-  resolution: "@rollup/rollup-darwin-x64@npm:4.55.1"
-  conditions: os=darwin & cpu=x64
   languageName: node
   linkType: hard
 
@@ -3552,24 +3536,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@rollup/rollup-freebsd-arm64@npm:4.55.1":
-  version: 4.55.1
-  resolution: "@rollup/rollup-freebsd-arm64@npm:4.55.1"
-  conditions: os=freebsd & cpu=arm64
-  languageName: node
-  linkType: hard
-
 "@rollup/rollup-freebsd-arm64@npm:4.59.0":
   version: 4.59.0
   resolution: "@rollup/rollup-freebsd-arm64@npm:4.59.0"
   conditions: os=freebsd & cpu=arm64
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-freebsd-x64@npm:4.55.1":
-  version: 4.55.1
-  resolution: "@rollup/rollup-freebsd-x64@npm:4.55.1"
-  conditions: os=freebsd & cpu=x64
   languageName: node
   linkType: hard
 
@@ -3580,24 +3550,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@rollup/rollup-linux-arm-gnueabihf@npm:4.55.1":
-  version: 4.55.1
-  resolution: "@rollup/rollup-linux-arm-gnueabihf@npm:4.55.1"
-  conditions: os=linux & cpu=arm & libc=glibc
-  languageName: node
-  linkType: hard
-
 "@rollup/rollup-linux-arm-gnueabihf@npm:4.59.0":
   version: 4.59.0
   resolution: "@rollup/rollup-linux-arm-gnueabihf@npm:4.59.0"
   conditions: os=linux & cpu=arm & libc=glibc
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-linux-arm-musleabihf@npm:4.55.1":
-  version: 4.55.1
-  resolution: "@rollup/rollup-linux-arm-musleabihf@npm:4.55.1"
-  conditions: os=linux & cpu=arm & libc=musl
   languageName: node
   linkType: hard
 
@@ -3608,24 +3564,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@rollup/rollup-linux-arm64-gnu@npm:4.55.1":
-  version: 4.55.1
-  resolution: "@rollup/rollup-linux-arm64-gnu@npm:4.55.1"
-  conditions: os=linux & cpu=arm64 & libc=glibc
-  languageName: node
-  linkType: hard
-
 "@rollup/rollup-linux-arm64-gnu@npm:4.59.0":
   version: 4.59.0
   resolution: "@rollup/rollup-linux-arm64-gnu@npm:4.59.0"
   conditions: os=linux & cpu=arm64 & libc=glibc
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-linux-arm64-musl@npm:4.55.1":
-  version: 4.55.1
-  resolution: "@rollup/rollup-linux-arm64-musl@npm:4.55.1"
-  conditions: os=linux & cpu=arm64 & libc=musl
   languageName: node
   linkType: hard
 
@@ -3636,24 +3578,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@rollup/rollup-linux-loong64-gnu@npm:4.55.1":
-  version: 4.55.1
-  resolution: "@rollup/rollup-linux-loong64-gnu@npm:4.55.1"
-  conditions: os=linux & cpu=loong64 & libc=glibc
-  languageName: node
-  linkType: hard
-
 "@rollup/rollup-linux-loong64-gnu@npm:4.59.0":
   version: 4.59.0
   resolution: "@rollup/rollup-linux-loong64-gnu@npm:4.59.0"
   conditions: os=linux & cpu=loong64 & libc=glibc
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-linux-loong64-musl@npm:4.55.1":
-  version: 4.55.1
-  resolution: "@rollup/rollup-linux-loong64-musl@npm:4.55.1"
-  conditions: os=linux & cpu=loong64 & libc=musl
   languageName: node
   linkType: hard
 
@@ -3664,24 +3592,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@rollup/rollup-linux-ppc64-gnu@npm:4.55.1":
-  version: 4.55.1
-  resolution: "@rollup/rollup-linux-ppc64-gnu@npm:4.55.1"
-  conditions: os=linux & cpu=ppc64 & libc=glibc
-  languageName: node
-  linkType: hard
-
 "@rollup/rollup-linux-ppc64-gnu@npm:4.59.0":
   version: 4.59.0
   resolution: "@rollup/rollup-linux-ppc64-gnu@npm:4.59.0"
   conditions: os=linux & cpu=ppc64 & libc=glibc
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-linux-ppc64-musl@npm:4.55.1":
-  version: 4.55.1
-  resolution: "@rollup/rollup-linux-ppc64-musl@npm:4.55.1"
-  conditions: os=linux & cpu=ppc64 & libc=musl
   languageName: node
   linkType: hard
 
@@ -3692,24 +3606,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@rollup/rollup-linux-riscv64-gnu@npm:4.55.1":
-  version: 4.55.1
-  resolution: "@rollup/rollup-linux-riscv64-gnu@npm:4.55.1"
-  conditions: os=linux & cpu=riscv64 & libc=glibc
-  languageName: node
-  linkType: hard
-
 "@rollup/rollup-linux-riscv64-gnu@npm:4.59.0":
   version: 4.59.0
   resolution: "@rollup/rollup-linux-riscv64-gnu@npm:4.59.0"
   conditions: os=linux & cpu=riscv64 & libc=glibc
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-linux-riscv64-musl@npm:4.55.1":
-  version: 4.55.1
-  resolution: "@rollup/rollup-linux-riscv64-musl@npm:4.55.1"
-  conditions: os=linux & cpu=riscv64 & libc=musl
   languageName: node
   linkType: hard
 
@@ -3720,24 +3620,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@rollup/rollup-linux-s390x-gnu@npm:4.55.1":
-  version: 4.55.1
-  resolution: "@rollup/rollup-linux-s390x-gnu@npm:4.55.1"
-  conditions: os=linux & cpu=s390x & libc=glibc
-  languageName: node
-  linkType: hard
-
 "@rollup/rollup-linux-s390x-gnu@npm:4.59.0":
   version: 4.59.0
   resolution: "@rollup/rollup-linux-s390x-gnu@npm:4.59.0"
   conditions: os=linux & cpu=s390x & libc=glibc
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-linux-x64-gnu@npm:4.55.1":
-  version: 4.55.1
-  resolution: "@rollup/rollup-linux-x64-gnu@npm:4.55.1"
-  conditions: os=linux & cpu=x64 & libc=glibc
   languageName: node
   linkType: hard
 
@@ -3748,24 +3634,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@rollup/rollup-linux-x64-musl@npm:4.55.1":
-  version: 4.55.1
-  resolution: "@rollup/rollup-linux-x64-musl@npm:4.55.1"
-  conditions: os=linux & cpu=x64 & libc=musl
-  languageName: node
-  linkType: hard
-
 "@rollup/rollup-linux-x64-musl@npm:4.59.0":
   version: 4.59.0
   resolution: "@rollup/rollup-linux-x64-musl@npm:4.59.0"
   conditions: os=linux & cpu=x64 & libc=musl
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-openbsd-x64@npm:4.55.1":
-  version: 4.55.1
-  resolution: "@rollup/rollup-openbsd-x64@npm:4.55.1"
-  conditions: os=openbsd & cpu=x64
   languageName: node
   linkType: hard
 
@@ -3776,24 +3648,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@rollup/rollup-openharmony-arm64@npm:4.55.1":
-  version: 4.55.1
-  resolution: "@rollup/rollup-openharmony-arm64@npm:4.55.1"
-  conditions: os=openharmony & cpu=arm64
-  languageName: node
-  linkType: hard
-
 "@rollup/rollup-openharmony-arm64@npm:4.59.0":
   version: 4.59.0
   resolution: "@rollup/rollup-openharmony-arm64@npm:4.59.0"
   conditions: os=openharmony & cpu=arm64
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-win32-arm64-msvc@npm:4.55.1":
-  version: 4.55.1
-  resolution: "@rollup/rollup-win32-arm64-msvc@npm:4.55.1"
-  conditions: os=win32 & cpu=arm64
   languageName: node
   linkType: hard
 
@@ -3804,13 +3662,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@rollup/rollup-win32-ia32-msvc@npm:4.55.1":
-  version: 4.55.1
-  resolution: "@rollup/rollup-win32-ia32-msvc@npm:4.55.1"
-  conditions: os=win32 & cpu=ia32
-  languageName: node
-  linkType: hard
-
 "@rollup/rollup-win32-ia32-msvc@npm:4.59.0":
   version: 4.59.0
   resolution: "@rollup/rollup-win32-ia32-msvc@npm:4.59.0"
@@ -3818,23 +3669,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@rollup/rollup-win32-x64-gnu@npm:4.55.1":
-  version: 4.55.1
-  resolution: "@rollup/rollup-win32-x64-gnu@npm:4.55.1"
-  conditions: os=win32 & cpu=x64
-  languageName: node
-  linkType: hard
-
 "@rollup/rollup-win32-x64-gnu@npm:4.59.0":
   version: 4.59.0
   resolution: "@rollup/rollup-win32-x64-gnu@npm:4.59.0"
-  conditions: os=win32 & cpu=x64
-  languageName: node
-  linkType: hard
-
-"@rollup/rollup-win32-x64-msvc@npm:4.55.1":
-  version: 4.55.1
-  resolution: "@rollup/rollup-win32-x64-msvc@npm:4.55.1"
   conditions: os=win32 & cpu=x64
   languageName: node
   linkType: hard
@@ -5046,7 +4883,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"allure-js-commons@npm:3.4.5, allure-js-commons@npm:^3.3.0":
+"allure-js-commons@npm:3.4.5":
   version: 3.4.5
   resolution: "allure-js-commons@npm:3.4.5"
   dependencies:
@@ -5057,6 +4894,20 @@ __metadata:
     allure-playwright:
       optional: true
   checksum: 10/3d8b784b20613e62951eef21ecca7fd3076ed9e4143b7e9aa3c8eab4db16e675e03b40e59382f2f34bbe678ce866b7095ff03ac4ee5714fd1b86e3a0e94bf3e0
+  languageName: node
+  linkType: hard
+
+"allure-js-commons@npm:^3.6.0":
+  version: 3.6.0
+  resolution: "allure-js-commons@npm:3.6.0"
+  dependencies:
+    md5: "npm:^2.3.0"
+  peerDependencies:
+    allure-playwright: 3.6.0
+  peerDependenciesMeta:
+    allure-playwright:
+      optional: true
+  checksum: 10/6fbd5ccd9b3e0b8a46f2839b415d72017713315f038fb8772bd8afa18a5d546ea8cda93e3000bec03814c6259570b37db28af18f34efd96d7e00f25a6927969e
   languageName: node
   linkType: hard
 
@@ -5380,13 +5231,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"balanced-match@npm:^1.0.0":
-  version: 1.0.2
-  resolution: "balanced-match@npm:1.0.2"
-  checksum: 10/9706c088a283058a8a99e0bf91b0a2f75497f185980d9ffa8b304de1d9e58ebda7c72c07ebf01dadedaac5b2907b2c6f566f660d62bd336c3468e960403b9d65
-  languageName: node
-  linkType: hard
-
 "balanced-match@npm:^4.0.2":
   version: 4.0.2
   resolution: "balanced-match@npm:4.0.2"
@@ -5534,25 +5378,6 @@ __metadata:
     raw-body: "npm:^3.0.1"
     type-is: "npm:^2.0.1"
   checksum: 10/69671f67d4d5ae5974593901a92d639757231da1725ed6de4d35e86cde9ce7650afdf1cd28df9b6f7892ea7f9eb03ccb30c70fe27d679275ae4cb4aae5ce1b21
-  languageName: node
-  linkType: hard
-
-"brace-expansion@npm:^1.1.7":
-  version: 1.1.12
-  resolution: "brace-expansion@npm:1.1.12"
-  dependencies:
-    balanced-match: "npm:^1.0.0"
-    concat-map: "npm:0.0.1"
-  checksum: 10/12cb6d6310629e3048cadb003e1aca4d8c9bb5c67c3c321bafdd7e7a50155de081f78ea3e0ed92ecc75a9015e784f301efc8132383132f4f7904ad1ac529c562
-  languageName: node
-  linkType: hard
-
-"brace-expansion@npm:^2.0.1":
-  version: 2.0.2
-  resolution: "brace-expansion@npm:2.0.2"
-  dependencies:
-    balanced-match: "npm:^1.0.0"
-  checksum: 10/01dff195e3646bc4b0d27b63d9bab84d2ebc06121ff5013ad6e5356daa5a9d6b60fa26cf73c74797f2dc3fbec112af13578d51f75228c1112b26c790a87b0488
   languageName: node
   linkType: hard
 
@@ -6035,13 +5860,6 @@ __metadata:
     normalize-path: "npm:^3.0.0"
     readable-stream: "npm:^4.0.0"
   checksum: 10/78e3ba10aeef919a1c5bbac21e120f3e1558a31b2defebbfa1635274fc7f7e8a3a0ee748a06249589acd0b33a0d58144b8238ff77afc3220f8d403a96fcc13aa
-  languageName: node
-  linkType: hard
-
-"concat-map@npm:0.0.1":
-  version: 0.0.1
-  resolution: "concat-map@npm:0.0.1"
-  checksum: 10/9680699c8e2b3af0ae22592cb764acaf973f292a7b71b8a06720233011853a58e256c89216a10cbe889727532fd77f8bcd49a760cedfde271b8e006c20e079f2
   languageName: node
   linkType: hard
 
@@ -6721,10 +6539,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"diff@npm:^4.0.1":
-  version: 4.0.2
-  resolution: "diff@npm:4.0.2"
-  checksum: 10/ec09ec2101934ca5966355a229d77afcad5911c92e2a77413efda5455636c4cf2ce84057e2d7715227a2eeeda04255b849bd3ae3a4dd22eb22e86e76456df069
+"diff@npm:>=4.0.4":
+  version: 8.0.3
+  resolution: "diff@npm:8.0.3"
+  checksum: 10/52f957e1fa53db4616ff5f4811b92b22b97a160c12a2f86f22debd4181227b0f6751aa8fd711d6a8fcf4618acb13b86bc702e6d9d6d6ed82acfd00c9cb26ace2
   languageName: node
   linkType: hard
 
@@ -7639,14 +7457,25 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fast-xml-parser@npm:^5.2.5":
-  version: 5.3.6
-  resolution: "fast-xml-parser@npm:5.3.6"
+"fast-xml-builder@npm:^1.1.4":
+  version: 1.1.4
+  resolution: "fast-xml-builder@npm:1.1.4"
   dependencies:
+    path-expression-matcher: "npm:^1.1.3"
+  checksum: 10/32937866aaf5a90e69d1f4ee6e15e875248d5b5d2afd70277e9e8323074de4980cef24575a591b8e43c29f405d5f12377b3bad3842dc412b0c5c17a3eaee4b6b
+  languageName: node
+  linkType: hard
+
+"fast-xml-parser@npm:>=5.3.8":
+  version: 5.5.6
+  resolution: "fast-xml-parser@npm:5.5.6"
+  dependencies:
+    fast-xml-builder: "npm:^1.1.4"
+    path-expression-matcher: "npm:^1.1.3"
     strnum: "npm:^2.1.2"
   bin:
     fxparser: src/cli/cli.js
-  checksum: 10/03527ab0bdf49d960fdc8f6088cd0715c052e06b68b39459da87b1a1fbb3439a855b2d83cbf3c400e983b8e668b396296b072a4dd5c63403cf1e618c9326b6df
+  checksum: 10/91a42a0cf99c83b0e721ceef9c189509e96c91c1875901c6ce6017f78ad25284f646a77a541e96ee45a15c2f13b7780d090c906c3ec3f262db03e7feb1e62315
   languageName: node
   linkType: hard
 
@@ -8166,7 +7995,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"glob@npm:^13.0.6":
+"glob@npm:^13.0.3, glob@npm:^13.0.6":
   version: 13.0.6
   resolution: "glob@npm:13.0.6"
   dependencies:
@@ -8276,7 +8105,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"graphql-ws@npm:^6.0.0, graphql-ws@npm:^6.0.6":
+"graphql-ws@npm:^6.0.6":
   version: 6.0.6
   resolution: "graphql-ws@npm:6.0.6"
   peerDependencies:
@@ -8566,10 +8395,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"immutable@npm:~3.7.6":
-  version: 3.7.6
-  resolution: "immutable@npm:3.7.6"
-  checksum: 10/4f2cc2e0b6839befa2ea9d3ca478971a88ca78cb66c2b077416e5d5203f8e168bffb78284dd45fe1b427a4a8ac37194dfa3cd3e50b39529a00cca387bd6ac955
+"immutable@npm:>=3.8.3":
+  version: 5.1.5
+  resolution: "immutable@npm:5.1.5"
+  checksum: 10/7aec2740239772ec8e92e793c991bd809203a97694f4ff3a18e50e28f9a6b02393ad033d87b458037bdf8c0ea37d4446d640e825f6171df3405cf6cf300ce028
   languageName: node
   linkType: hard
 
@@ -9948,48 +9777,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"minimatch@npm:^10.1.1":
-  version: 10.2.1
-  resolution: "minimatch@npm:10.2.1"
-  dependencies:
-    brace-expansion: "npm:^5.0.2"
-  checksum: 10/d41c195ee1f2c70a75641088e36d0fa5fa286cb6fe48558e6d3bf3d95f640eda453c217707215389b12234df12175f65f338c0b841b36b0125177dbd6a80d026
-  languageName: node
-  linkType: hard
-
-"minimatch@npm:^10.2.2, minimatch@npm:^10.2.4":
+"minimatch@npm:>=10.2.3":
   version: 10.2.4
   resolution: "minimatch@npm:10.2.4"
   dependencies:
     brace-expansion: "npm:^5.0.2"
   checksum: 10/aea4874e521c55bb60744685bbffe3d152e5460f84efac3ea936e6bbe2ceba7deb93345fec3f9bb17f7b6946776073a64d40ae32bf5f298ad690308121068a1f
-  languageName: node
-  linkType: hard
-
-"minimatch@npm:^3.0.4, minimatch@npm:^3.1.2":
-  version: 3.1.5
-  resolution: "minimatch@npm:3.1.5"
-  dependencies:
-    brace-expansion: "npm:^1.1.7"
-  checksum: 10/b11a7ee5773cd34c1a0c8436cdbe910901018fb4b6cb47aa508a18d567f6efd2148507959e35fba798389b161b8604a2d704ccef751ea36bd4582f9852b7d63f
-  languageName: node
-  linkType: hard
-
-"minimatch@npm:^5.1.0":
-  version: 5.1.6
-  resolution: "minimatch@npm:5.1.6"
-  dependencies:
-    brace-expansion: "npm:^2.0.1"
-  checksum: 10/126b36485b821daf96d33b5c821dac600cc1ab36c87e7a532594f9b1652b1fa89a1eebcaad4dff17c764dce1a7ac1531327f190fed5f97d8f6e5f889c116c429
-  languageName: node
-  linkType: hard
-
-"minimatch@npm:^9.0.4, minimatch@npm:^9.0.5":
-  version: 9.0.5
-  resolution: "minimatch@npm:9.0.5"
-  dependencies:
-    brace-expansion: "npm:^2.0.1"
-  checksum: 10/dd6a8927b063aca6d910b119e1f2df6d2ce7d36eab91de83167dd136bb85e1ebff97b0d3de1cb08bd1f7e018ca170b4962479fefab5b2a69e2ae12cb2edc8348
   languageName: node
   linkType: hard
 
@@ -10767,6 +10560,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"path-expression-matcher@npm:^1.1.3":
+  version: 1.1.3
+  resolution: "path-expression-matcher@npm:1.1.3"
+  checksum: 10/9a607d0bf9807cf86b0a29fb4263f0c00285c13bedafb6ad3efc8bc87ae878da2faf657a9138ac918726cb19f147235a0ca695aec3e4ea1ee04641b6520e6c9e
+  languageName: node
+  linkType: hard
+
 "path-key@npm:^3.1.0":
   version: 3.1.1
   resolution: "path-key@npm:3.1.1"
@@ -11499,15 +11299,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"rimraf@npm:^6.1.2":
-  version: 6.1.2
-  resolution: "rimraf@npm:6.1.2"
+"rimraf@npm:^6.1.3":
+  version: 6.1.3
+  resolution: "rimraf@npm:6.1.3"
   dependencies:
-    glob: "npm:^13.0.0"
+    glob: "npm:^13.0.3"
     package-json-from-dist: "npm:^1.0.1"
   bin:
     rimraf: dist/esm/bin.mjs
-  checksum: 10/add8e566fe903f59d7b55c6c2382320c48302778640d1951baf247b3b451af496c2dee7195c204a8c646fd6327feadd1f5b61ce68c1362d4898075a726d83cc6
+  checksum: 10/dd98ec2ad7cd2cccae1c7110754d472eac8edb2bab8a8b057dce04edfe1433dab246a889b3fd85a66c78ca81caa1429caa0e736c7647f6832b04fd5d4dfb8ab8
   languageName: node
   linkType: hard
 
@@ -11527,97 +11327,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"rollup@npm:^4.43.0":
-  version: 4.55.1
-  resolution: "rollup@npm:4.55.1"
-  dependencies:
-    "@rollup/rollup-android-arm-eabi": "npm:4.55.1"
-    "@rollup/rollup-android-arm64": "npm:4.55.1"
-    "@rollup/rollup-darwin-arm64": "npm:4.55.1"
-    "@rollup/rollup-darwin-x64": "npm:4.55.1"
-    "@rollup/rollup-freebsd-arm64": "npm:4.55.1"
-    "@rollup/rollup-freebsd-x64": "npm:4.55.1"
-    "@rollup/rollup-linux-arm-gnueabihf": "npm:4.55.1"
-    "@rollup/rollup-linux-arm-musleabihf": "npm:4.55.1"
-    "@rollup/rollup-linux-arm64-gnu": "npm:4.55.1"
-    "@rollup/rollup-linux-arm64-musl": "npm:4.55.1"
-    "@rollup/rollup-linux-loong64-gnu": "npm:4.55.1"
-    "@rollup/rollup-linux-loong64-musl": "npm:4.55.1"
-    "@rollup/rollup-linux-ppc64-gnu": "npm:4.55.1"
-    "@rollup/rollup-linux-ppc64-musl": "npm:4.55.1"
-    "@rollup/rollup-linux-riscv64-gnu": "npm:4.55.1"
-    "@rollup/rollup-linux-riscv64-musl": "npm:4.55.1"
-    "@rollup/rollup-linux-s390x-gnu": "npm:4.55.1"
-    "@rollup/rollup-linux-x64-gnu": "npm:4.55.1"
-    "@rollup/rollup-linux-x64-musl": "npm:4.55.1"
-    "@rollup/rollup-openbsd-x64": "npm:4.55.1"
-    "@rollup/rollup-openharmony-arm64": "npm:4.55.1"
-    "@rollup/rollup-win32-arm64-msvc": "npm:4.55.1"
-    "@rollup/rollup-win32-ia32-msvc": "npm:4.55.1"
-    "@rollup/rollup-win32-x64-gnu": "npm:4.55.1"
-    "@rollup/rollup-win32-x64-msvc": "npm:4.55.1"
-    "@types/estree": "npm:1.0.8"
-    fsevents: "npm:~2.3.2"
-  dependenciesMeta:
-    "@rollup/rollup-android-arm-eabi":
-      optional: true
-    "@rollup/rollup-android-arm64":
-      optional: true
-    "@rollup/rollup-darwin-arm64":
-      optional: true
-    "@rollup/rollup-darwin-x64":
-      optional: true
-    "@rollup/rollup-freebsd-arm64":
-      optional: true
-    "@rollup/rollup-freebsd-x64":
-      optional: true
-    "@rollup/rollup-linux-arm-gnueabihf":
-      optional: true
-    "@rollup/rollup-linux-arm-musleabihf":
-      optional: true
-    "@rollup/rollup-linux-arm64-gnu":
-      optional: true
-    "@rollup/rollup-linux-arm64-musl":
-      optional: true
-    "@rollup/rollup-linux-loong64-gnu":
-      optional: true
-    "@rollup/rollup-linux-loong64-musl":
-      optional: true
-    "@rollup/rollup-linux-ppc64-gnu":
-      optional: true
-    "@rollup/rollup-linux-ppc64-musl":
-      optional: true
-    "@rollup/rollup-linux-riscv64-gnu":
-      optional: true
-    "@rollup/rollup-linux-riscv64-musl":
-      optional: true
-    "@rollup/rollup-linux-s390x-gnu":
-      optional: true
-    "@rollup/rollup-linux-x64-gnu":
-      optional: true
-    "@rollup/rollup-linux-x64-musl":
-      optional: true
-    "@rollup/rollup-openbsd-x64":
-      optional: true
-    "@rollup/rollup-openharmony-arm64":
-      optional: true
-    "@rollup/rollup-win32-arm64-msvc":
-      optional: true
-    "@rollup/rollup-win32-ia32-msvc":
-      optional: true
-    "@rollup/rollup-win32-x64-gnu":
-      optional: true
-    "@rollup/rollup-win32-x64-msvc":
-      optional: true
-    fsevents:
-      optional: true
-  bin:
-    rollup: dist/bin/rollup
-  checksum: 10/392a8bb68ce492d5f8f59d9420b448e76b2550152482a61688617c1c9c52f8f61162478cfe44f2c6a647e82b0a5e7d61e1ac1f2701ca4d48f4acd231df7bd84a
-  languageName: node
-  linkType: hard
-
-"rollup@npm:^4.59.0":
+"rollup@npm:>=4.59.0":
   version: 4.59.0
   resolution: "rollup@npm:4.59.0"
   dependencies:
@@ -12602,16 +12312,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tar@npm:^7.5.2":
-  version: 7.5.9
-  resolution: "tar@npm:7.5.9"
+"tar@npm:>=7.5.11":
+  version: 7.5.11
+  resolution: "tar@npm:7.5.11"
   dependencies:
     "@isaacs/fs-minipass": "npm:^4.0.0"
     chownr: "npm:^3.0.0"
     minipass: "npm:^7.1.2"
     minizlib: "npm:^3.1.0"
     yallist: "npm:^5.0.0"
-  checksum: 10/1213cdde9c22d6acf8809ba5d2a025212ce3517bc99c4a4c6981b7dc0489bf3b164db9c826c9517680889194c9ba57448c8ff0da35eca9a60bb7689bf0b3897d
+  checksum: 10/fb2e77ee858a73936c68e066f4a602d428d6f812e6da0cc1e14a41f99498e4f7fd3535e355fa15157240a5538aa416026cfa6306bb0d1d1c1abf314b1f878e9a
   languageName: node
   linkType: hard
 
@@ -13239,10 +12949,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"undici@npm:^7.21.0, undici@npm:^7.22.0":
-  version: 7.22.0
-  resolution: "undici@npm:7.22.0"
-  checksum: 10/a7a1813ba4b74c0d46cc8dd160386202c05699ffc487c5d882cf40e6d2435c8d6faff3b8f8675d09bd1ef0386e370675c26b59b9a8c8b3f17b9f82a42236a927
+"undici@npm:>=7.24.0":
+  version: 7.24.4
+  resolution: "undici@npm:7.24.4"
+  checksum: 10/747e76e0fd685ae1bb6fc1a2ebce0caca4ee8bd5599a77da36a3f94eac146987a9547bdbec7a74d18c0776df8ad348dccb4209901ca83fc4076f560de0d5dc7a
   languageName: node
   linkType: hard
 
