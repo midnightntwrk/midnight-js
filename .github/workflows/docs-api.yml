@@ -19,14 +19,14 @@ jobs:
     steps:
 
       - name: Setup api.github.com credentials
-        uses: extractions/netrc@f6f1722d05ce2890aa86fd9654565b1214ac53a4 # ratchet:extractions/netrc@v2
+        uses: extractions/netrc@c3879108aae6b4ed5c4eb60854ae04f06d2f2f68 # ratchet:extractions/netrc@v3
         with:
           machine: api.github.com
           username: ${{ secrets.GH_USERNAME }}
           password: ${{ secrets.GH_PASSWORD }}
 
       - name: Setup github.com credentials
-        uses: extractions/netrc@f6f1722d05ce2890aa86fd9654565b1214ac53a4 # ratchet:extractions/netrc@v2
+        uses: extractions/netrc@c3879108aae6b4ed5c4eb60854ae04f06d2f2f68 # ratchet:extractions/netrc@v3
         with:
           machine: github.com
           username: ${{ secrets.GH_USERNAME }}
@@ -48,7 +48,6 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # ratchet:actions/setup-node@v6
         with:
-          always-auth: true
           registry-url: https://npm.pkg.github.com/
           scope: '@midnight-ntwrk'
           node-version-file: '.nvmrc'

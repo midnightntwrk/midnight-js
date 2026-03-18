@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.2.0**](../../README.md)
+[**Midnight.js API Reference v4.0.0-rc.1**](../../README.md)
 
 ***
 
@@ -85,6 +85,7 @@
 
 - [asContractAddress](functions/asContractAddress.md)
 - [asEffectOption](functions/asEffectOption.md)
+- [createProofProvider](functions/createProofProvider.md)
 - [createProverKey](functions/createProverKey.md)
 - [createVerifierKey](functions/createVerifierKey.md)
 - [createZKIR](functions/createZKIR.md)

@@ -15,7 +15,7 @@
 
 import { ContractExecutable } from '@midnight-ntwrk/compact-js';
 import { type Contract, ProvableCircuitId } from '@midnight-ntwrk/compact-js/effect/Contract';
-import type { CoinPublicKey, ContractState } from '@midnight-ntwrk/compact-runtime';
+import { type CoinPublicKey, type ContractState } from '@midnight-ntwrk/compact-runtime';
 import { type EncPublicKey, type LedgerParameters, type ZswapChainState } from '@midnight-ntwrk/ledger-v8';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { exitResultOrError, makeContractExecutableRuntime, type PrivateStateId, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
@@ -52,9 +52,9 @@ export function createUnprovenCallTxFromInitialStates<C extends Contract.Any, PC
  * Calls a circuit using the provided initial `states` and creates an unbalanced,
  * unproven, unsubmitted, call transaction.
  *
+ * @param zkConfigProvider
  * @param options Configuration.
  *
- * @param walletCoinPublicKey
  * @param walletEncryptionPublicKey
  * @returns Data produced by the circuit call and an unproven transaction assembled from the call result.
  */
@@ -123,7 +123,7 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
           contractAddress,
           initialContractState,
           initialZswapChainState,
-          partitionedTranscript,
+          publicTranscript,
           privateTranscriptOutputs,
           input,
           output,
@@ -132,7 +132,9 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
             zswapLocalState,
             options.coinPublicKey,
             walletEncryptionPublicKey
-          )
+          ),
+          ledgerParameters,
+          coinPublicKey
         ),
         newCoins: zswapStateToNewCoins(
           parseCoinPublicKeyToHex(coinPublicKey, getNetworkId()),

@@ -14,8 +14,10 @@
  */
 
 import {
+  CostModel,
   type PreBinding,
   type Proof,
+  type ProvingProvider,
   type SignatureEnabled,
   type Transaction,
   type UnprovenTransaction
@@ -48,3 +50,20 @@ export interface ProofProvider {
    */
   proveTx(unprovenTx: UnprovenTransaction, proveTxConfig?: ProveTxConfig): Promise<UnboundTransaction>;
 }
+
+/**
+ * Creates a {@link ProofProvider} from a {@link ProvingProvider}.
+ * The returned provider proves transactions using the initial cost model.
+ *
+ * @param provingProvider - The underlying proving provider used to generate proofs.
+ * @param costModel - Optional cost model to use for proof generation. Defaults to the initial cost model if not provided.
+ * @returns A {@link ProofProvider} that delegates proof generation to the given proving provider.
+ */
+export const createProofProvider = (
+  provingProvider: ProvingProvider,
+  costModel: CostModel = CostModel.initialCostModel()
+): ProofProvider => ({
+  async proveTx(unprovenTx: UnprovenTransaction): Promise<UnboundTransaction> {
+    return unprovenTx.prove(provingProvider, costModel);
+  }
+});

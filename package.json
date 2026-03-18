@@ -1,7 +1,7 @@
 {
   "name": "@midnight-ntwrk/midnight-js",
   "description": "Midnight application development framework",
-  "version": "3.2.0",
+  "version": "4.0.0-rc.1",
   "packageManager": "yarn@4.12.0",
   "repository": "git@github.com:midnight-ntwrk/artifacts",
   "engines": {
@@ -38,10 +38,10 @@
   },
   "license": "Apache-2.0",
   "dependencies": {
-    "@midnight-ntwrk/compact-runtime": "0.15.0-rc.1",
+    "@midnight-ntwrk/compact-runtime": "0.15.0",
     "@midnight-ntwrk/ledger-v8": "8.0.3-rc.1",
     "@midnight-ntwrk/onchain-runtime-v3": "3.0.0",
-    "@midnight-ntwrk/wallet-sdk-facade": "3.0.0-canary.20260316145323-850d057"
+    "@midnight-ntwrk/wallet-sdk-facade": "3.0.0-rc.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.4.3",
@@ -71,9 +71,9 @@
     "pinst": "^3.0.0",
     "prettier": "^3.8.1",
     "rollup": "^4.59.0",
-    "rollup-plugin-dts": "^6.3.0",
+    "rollup-plugin-dts": "^6.4.0",
     "rxjs": "^7.8.2",
-    "testcontainers": "^11.12.0",
+    "testcontainers": "^11.13.0",
     "tstyche": "^6.2.0",
     "turbo": "^2.8.15",
     "typedoc": "^0.28.17",
@@ -88,6 +88,13 @@
   "resolutions": {
     "effect": "3.19.15",
     "@midnight-ntwrk/ledger-v8": "8.0.3-rc.1",
-    "@midnight-ntwrk/onchain-runtime-v3": "3.0.0"
+    "@midnight-ntwrk/onchain-runtime-v3": "3.0.0",
+    "undici": ">=7.24.0",
+    "tar": ">=7.5.11",
+    "fast-xml-parser": ">=5.3.8",
+    "minimatch": ">=10.2.3",
+    "rollup": ">=4.59.0",
+    "immutable": ">=3.8.3",
+    "diff": ">=4.0.4"
   }
 }

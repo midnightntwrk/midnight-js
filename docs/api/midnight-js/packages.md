@@ -1,18 +1,18 @@
-[**Midnight.js API Reference v3.2.0**](README.md)
+[**Midnight.js API Reference v4.0.0-rc.1**](README.md)
 
 ***
 
-# Midnight.js API Reference v3.2.0
+# Midnight.js API Reference v4.0.0-rc.1
 
 ## Packages
 
-- [@midnight-ntwrk/midnight-js-contracts - v3.2.0](@midnight-ntwrk/midnight-js-contracts/README.md)
-- [@midnight-ntwrk/midnight-js-fetch-zk-config-provider - v3.2.0](@midnight-ntwrk/midnight-js-fetch-zk-config-provider/README.md)
-- [@midnight-ntwrk/midnight-js-http-client-proof-provider - v3.2.0](@midnight-ntwrk/midnight-js-http-client-proof-provider/README.md)
-- [@midnight-ntwrk/midnight-js-indexer-public-data-provider - v3.2.0](@midnight-ntwrk/midnight-js-indexer-public-data-provider/README.md)
-- [@midnight-ntwrk/midnight-js-level-private-state-provider - v3.2.0](@midnight-ntwrk/midnight-js-level-private-state-provider/README.md)
-- [@midnight-ntwrk/midnight-js-logger-provider - v3.2.0](@midnight-ntwrk/midnight-js-logger-provider/README.md)
-- [@midnight-ntwrk/midnight-js-network-id - v3.2.0](@midnight-ntwrk/midnight-js-network-id/README.md)
-- [@midnight-ntwrk/midnight-js-node-zk-config-provider - v3.2.0](@midnight-ntwrk/midnight-js-node-zk-config-provider/README.md)
-- [@midnight-ntwrk/midnight-js-types - v3.2.0](@midnight-ntwrk/midnight-js-types/README.md)
-- [@midnight-ntwrk/midnight-js-utils - v3.2.0](@midnight-ntwrk/midnight-js-utils/README.md)
+- [@midnight-ntwrk/midnight-js-contracts - v4.0.0-rc.1](@midnight-ntwrk/midnight-js-contracts/README.md)
+- [@midnight-ntwrk/midnight-js-fetch-zk-config-provider - v4.0.0-rc.1](@midnight-ntwrk/midnight-js-fetch-zk-config-provider/README.md)
+- [@midnight-ntwrk/midnight-js-http-client-proof-provider - v4.0.0-rc.1](@midnight-ntwrk/midnight-js-http-client-proof-provider/README.md)
+- [@midnight-ntwrk/midnight-js-indexer-public-data-provider - v4.0.0-rc.1](@midnight-ntwrk/midnight-js-indexer-public-data-provider/README.md)
+- [@midnight-ntwrk/midnight-js-level-private-state-provider - v4.0.0-rc.1](@midnight-ntwrk/midnight-js-level-private-state-provider/README.md)
+- [@midnight-ntwrk/midnight-js-logger-provider - v4.0.0-rc.1](@midnight-ntwrk/midnight-js-logger-provider/README.md)
+- [@midnight-ntwrk/midnight-js-network-id - v4.0.0-rc.1](@midnight-ntwrk/midnight-js-network-id/README.md)
+- [@midnight-ntwrk/midnight-js-node-zk-config-provider - v4.0.0-rc.1](@midnight-ntwrk/midnight-js-node-zk-config-provider/README.md)
+- [@midnight-ntwrk/midnight-js-types - v4.0.0-rc.1](@midnight-ntwrk/midnight-js-types/README.md)
+- [@midnight-ntwrk/midnight-js-utils - v4.0.0-rc.1](@midnight-ntwrk/midnight-js-utils/README.md)
