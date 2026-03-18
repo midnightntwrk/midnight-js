@@ -2,7 +2,44 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
-## [3.2.0](https://github.com/midnightntwrk/midnight-js/compare/v3.2.0-rc.3...v3.2.0) (2026-03-11)
+## [4.0.0-rc.1](https://github.com/midnightntwrk/midnight-js/compare/v3.2.0...v4.0.0-rc.1) (2026-03-18)
+
+
+### Features
+
+* [PM-22110] Flow `LedgerParameters` like public state data ([#633](https://github.com/midnightntwrk/midnight-js/pull/633)) ([f3fc5cc](https://github.com/midnightntwrk/midnight-js/commit/f3fc5cc9b27f0b6062e75d7b53839e4a486f2aee))
+* update to ledger v8 ([#607](https://github.com/midnightntwrk/midnight-js/pull/607)) ([3ce66bd](https://github.com/midnightntwrk/midnight-js/commit/3ce66bda14d6f2251cb688850247403b89c2adf1))
+
+
+### Bug Fixes
+
+* Attach unshielded offers for user-addressed claim unshielded spends ([#558](https://github.com/midnightntwrk/midnight-js/pull/558)) ([e5e52f1](https://github.com/midnightntwrk/midnight-js/commit/e5e52f14f93122bb4974432a4315ed670b04c023))
+
+
+### Documentation
+
+* API documentation update ([#641](https://github.com/midnightntwrk/midnight-js/pull/641)) ([59dd1b2](https://github.com/midnightntwrk/midnight-js/commit/59dd1b209be78714d755bed11d2101f9d06edc42))
+* release notes 4.0.0 ([#637](https://github.com/midnightntwrk/midnight-js/pull/637)) ([8558abf](https://github.com/midnightntwrk/midnight-js/commit/8558abff4f3a38cc97c7a7ef9885c715fc3e4484))
+* update release notes for 3.2.0 ([#623](https://github.com/midnightntwrk/midnight-js/pull/623)) ([001425f](https://github.com/midnightntwrk/midnight-js/commit/001425f792dedca090f92dc98122e8945688f6e2))
+
+
+### Continuous Integration
+
+* update ci ([#632](https://github.com/midnightntwrk/midnight-js/pull/632)) ([fc7cd5d](https://github.com/midnightntwrk/midnight-js/commit/fc7cd5d222b4c69eb600ebf8474afcbe9b519c31))
+* update permissions for api docs workflow ([#639](https://github.com/midnightntwrk/midnight-js/pull/639)) ([dd4a792](https://github.com/midnightntwrk/midnight-js/commit/dd4a792b70782f0937212ff565b1dad31a2fdaed))
+
+
+### Improvements
+
+* immutable and diff security patch ([#649](https://github.com/midnightntwrk/midnight-js/pull/649)) ([7cd594d](https://github.com/midnightntwrk/midnight-js/commit/7cd594d4f6087698977c8b6b2a098bdd847a6b7b))
+* security dependencies update ([#640](https://github.com/midnightntwrk/midnight-js/pull/640)) ([2897175](https://github.com/midnightntwrk/midnight-js/commit/2897175f40f4af1c960cc3c5ea35d4ebfc101522))
+* update @midnight-ntwrk/ledger-v8 to 8.0.2 ([#631](https://github.com/midnightntwrk/midnight-js/pull/631)) ([e4706d2](https://github.com/midnightntwrk/midnight-js/commit/e4706d225b4f01266fee7590f58bc060e1571e88))
+* update compactc to 0.30.0 and @midnight-ntwrk/wallet-sdk-facade to 3.0.0-rc.0 and @midnight-ntwrk/compact-runtime to 0.15.0 ([#651](https://github.com/midnightntwrk/midnight-js/pull/651)) ([4560fcb](https://github.com/midnightntwrk/midnight-js/commit/4560fcb0a8e1c5b05e4e5d2d25a7add1e9d70fff))
+* update defaults for midnight-js-compact ([#630](https://github.com/midnightntwrk/midnight-js/pull/630)) ([cd43e8c](https://github.com/midnightntwrk/midnight-js/commit/cd43e8c405b6c34549792c0442c1a4577f6b26cf))
+* update wallet-sdk, compact-runtime and compactc to latest versions ([#638](https://github.com/midnightntwrk/midnight-js/pull/638)) ([0853673](https://github.com/midnightntwrk/midnight-js/commit/0853673dc7ae761867a7f82f33cb90121fce76f2))
+* use add calls to build transaction ([#648](https://github.com/midnightntwrk/midnight-js/pull/648)) ([83c9fe6](https://github.com/midnightntwrk/midnight-js/commit/83c9fe6fc262070790710590e875384b229547bb))
+
+## [3.2.0](https://github.com/midnightntwrk/midnight-js/compare/v3.2.0-rc.3...v3.2.0) (2026-03-12)
 
 
 ### Documentation
@@ -18,6 +55,7 @@ All notable changes to this project will be documented in this file. See [commit
 * **deps-dev:** bump tstyche from 4.3.0 to 6.2.0 ([#593](https://github.com/midnightntwrk/midnight-js/pull/593)) ([f591ac7](https://github.com/midnightntwrk/midnight-js/commit/f591ac70dcad1e6b5327237b3464965b8d186f22))
 * **deps:** bump dev dependencies ([#615](https://github.com/midnightntwrk/midnight-js/pull/615)) ([aa14a2b](https://github.com/midnightntwrk/midnight-js/commit/aa14a2b0914e41de235cb9283b6038b21ec118de))
 * **deps:** bump fast-xml-parser ([#617](https://github.com/midnightntwrk/midnight-js/pull/617)) ([f358802](https://github.com/midnightntwrk/midnight-js/commit/f358802a308a98022178cb0175a0c6941b702abb))
+* **release:** bump version to 3.2.0 ([#626](https://github.com/midnightntwrk/midnight-js/pull/626)) ([860c4f1](https://github.com/midnightntwrk/midnight-js/commit/860c4f1332881f72a722d3b11292d91d7d0373f6))
 * update default location for downloading the compactc ([#625](https://github.com/midnightntwrk/midnight-js/pull/625)) ([3430acf](https://github.com/midnightntwrk/midnight-js/commit/3430acf44557def7b62f23be7341e3b892f96141))
 * update wallet-sdk to 2.0.0 ([#614](https://github.com/midnightntwrk/midnight-js/pull/614)) ([47b7855](https://github.com/midnightntwrk/midnight-js/commit/47b78556be2cfb9ea792226bfbb141081692052a))
 

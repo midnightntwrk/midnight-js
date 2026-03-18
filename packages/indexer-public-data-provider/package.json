@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-indexer-public-data-provider",
-  "version": "3.2.0",
+  "version": "4.0.0-rc.1",
   "description": "Implementation of public data provider based on the Midnight Pub-sub indexer",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
