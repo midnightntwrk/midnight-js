@@ -74,11 +74,11 @@ const createMockContractClass = (contractModule: any, coinPublicKey: CoinPublicK
         currentZswapLocalState: emptyZswapLocalState(ctx.initialZswapLocalState.coinPublicKey)
       });
       this.circuits = contract.circuits;
-      this.impureCircuits = this.circuits;
+      this.provableCircuits = this.circuits;
     }
     initialState;
     circuits;
-    impureCircuits;
+    provableCircuits;
     witnesses;
   }
 }
