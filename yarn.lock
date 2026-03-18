@@ -98,7 +98,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@babel/code-frame@npm:^7.0.0, @babel/code-frame@npm:^7.27.1, @babel/code-frame@npm:^7.28.6":
+"@babel/code-frame@npm:^7.0.0, @babel/code-frame@npm:^7.28.6":
   version: 7.28.6
   resolution: "@babel/code-frame@npm:7.28.6"
   dependencies:
@@ -106,6 +106,17 @@ __metadata:
     js-tokens: "npm:^4.0.0"
     picocolors: "npm:^1.1.1"
   checksum: 10/93e7ed9e039e3cb661bdb97c26feebafacc6ec13d745881dae5c7e2708f579475daebe7a3b5d23b183bb940b30744f52f4a5bcb65b4df03b79d82fcb38495784
+  languageName: node
+  linkType: hard
+
+"@babel/code-frame@npm:^7.29.0":
+  version: 7.29.0
+  resolution: "@babel/code-frame@npm:7.29.0"
+  dependencies:
+    "@babel/helper-validator-identifier": "npm:^7.28.5"
+    js-tokens: "npm:^4.0.0"
+    picocolors: "npm:^1.1.1"
+  checksum: 10/199e15ff89007dd30675655eec52481cb245c9fdf4f81e4dc1f866603b0217b57aff25f5ffa0a95bbc8e31eb861695330cd7869ad52cc211aa63016320ef72c5
   languageName: node
   linkType: hard
 
@@ -2422,9 +2433,9 @@ __metadata:
     pinst: "npm:^3.0.0"
     prettier: "npm:^3.8.1"
     rollup: "npm:^4.59.0"
-    rollup-plugin-dts: "npm:^6.3.0"
+    rollup-plugin-dts: "npm:^6.4.0"
     rxjs: "npm:^7.8.2"
-    testcontainers: "npm:^11.12.0"
+    testcontainers: "npm:^11.13.0"
     tstyche: "npm:^6.2.0"
     turbo: "npm:^2.8.15"
     typedoc: "npm:^0.28.17"
@@ -2471,7 +2482,7 @@ __metadata:
     "@vitest/runner": "npm:^4.0.0"
     allure-commandline: "npm:^2.34.1"
     allure-js-commons: "npm:^3.6.0"
-    allure-vitest: "npm:^3.3.0"
+    allure-vitest: "npm:^3.6.0"
     axios: "npm:^1.13.5"
     buffer: "npm:^6.0.3"
     cross-fetch: "npm:^4.0.0"
@@ -2505,7 +2516,7 @@ __metadata:
     "@vitest/runner": "npm:^4.0.0"
     allure-commandline: "npm:^2.34.1"
     allure-js-commons: "npm:^3.6.0"
-    allure-vitest: "npm:^3.3.0"
+    allure-vitest: "npm:^3.6.0"
     axios: "npm:^1.13.5"
     buffer: "npm:^6.0.3"
     cross-fetch: "npm:^4.0.0"
@@ -4890,21 +4901,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"allure-js-commons@npm:3.4.5":
-  version: 3.4.5
-  resolution: "allure-js-commons@npm:3.4.5"
-  dependencies:
-    md5: "npm:^2.3.0"
-  peerDependencies:
-    allure-playwright: 3.4.5
-  peerDependenciesMeta:
-    allure-playwright:
-      optional: true
-  checksum: 10/3d8b784b20613e62951eef21ecca7fd3076ed9e4143b7e9aa3c8eab4db16e675e03b40e59382f2f34bbe678ce866b7095ff03ac4ee5714fd1b86e3a0e94bf3e0
-  languageName: node
-  linkType: hard
-
-"allure-js-commons@npm:^3.6.0":
+"allure-js-commons@npm:3.6.0, allure-js-commons@npm:^3.6.0":
   version: 3.6.0
   resolution: "allure-js-commons@npm:3.6.0"
   dependencies:
@@ -4918,15 +4915,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"allure-vitest@npm:^3.3.0":
-  version: 3.4.5
-  resolution: "allure-vitest@npm:3.4.5"
+"allure-vitest@npm:^3.6.0":
+  version: 3.6.0
+  resolution: "allure-vitest@npm:3.6.0"
   dependencies:
-    allure-js-commons: "npm:3.4.5"
+    allure-js-commons: "npm:3.6.0"
   peerDependencies:
     "@vitest/runner": ">=1.3.0"
     vitest: ">=1.3.0"
-  checksum: 10/1a69a0108c58593ed885bbb6c435f3365f83cbfe1ef096aeb83cc770141567fe6fa945719e54fad38a2699e5c9f153138e4ae8398edb7fc43ff4945bf9ec0b23
+  checksum: 10/4cc54ee0c9699e2306cd1794c5342b21c8a23658752823f33894ef89160c43e7607f7ab77d3842bb1159f7da353e42f0041ab0f636583abf901e4a30724e49c0
   languageName: node
   linkType: hard
 
@@ -6562,12 +6559,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"docker-compose@npm:^1.3.1":
-  version: 1.3.1
-  resolution: "docker-compose@npm:1.3.1"
+"docker-compose@npm:^1.3.2":
+  version: 1.3.2
+  resolution: "docker-compose@npm:1.3.2"
   dependencies:
     yaml: "npm:^2.2.2"
-  checksum: 10/39e0e4b96c0dea8c88df9770a4d102a9e2437ad0af5f5f28a9f88fbf164eb4fb81fde0d8740500bd451abafab74072e5d5cfa35cc85254722bbe2b7dbc7c033a
+  checksum: 10/4ba2d2090c4df3a3d3c8fd2dc086ddbddbc9f1079ab0c60b65fc9b7f7d0bac2ebb6ea366cc7324162a9d1eb85be1c8809f892cd9a2e46dfc994222f1bb3cdd95
   languageName: node
   linkType: hard
 
@@ -11276,19 +11273,22 @@ __metadata:
   languageName: node
   linkType: hard
 
-"rollup-plugin-dts@npm:^6.3.0":
-  version: 6.3.0
-  resolution: "rollup-plugin-dts@npm:6.3.0"
+"rollup-plugin-dts@npm:^6.4.0":
+  version: 6.4.0
+  resolution: "rollup-plugin-dts@npm:6.4.0"
   dependencies:
-    "@babel/code-frame": "npm:^7.27.1"
+    "@babel/code-frame": "npm:^7.29.0"
+    "@jridgewell/remapping": "npm:^2.3.5"
+    "@jridgewell/sourcemap-codec": "npm:^1.5.5"
+    convert-source-map: "npm:^2.0.0"
     magic-string: "npm:^0.30.21"
   peerDependencies:
     rollup: ^3.29.4 || ^4
-    typescript: ^4.5 || ^5.0
+    typescript: ^4.5 || ^5.0 || ^6.0
   dependenciesMeta:
     "@babel/code-frame":
       optional: true
-  checksum: 10/1b2b25126eee0c4e7f59d82ee5850b0c5779a1a0bb77d677798e20a3d29dba76d1a19a73300ed5b20aab02f6888ecc4209a95b07f6cc9c1b80af14bdcbeda5b9
+  checksum: 10/19a39cc19a4f67f4d6e0b8fee57baf1b6e669d05ab7a345cce3f8df1424d5cba33805dee0a1362ee29515ca8126b4441ef1c8bcb98935e751da8189f97d977a8
   languageName: node
   linkType: hard
 
@@ -12229,9 +12229,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tar-fs@npm:^3.1.1":
-  version: 3.1.1
-  resolution: "tar-fs@npm:3.1.1"
+"tar-fs@npm:^3.1.2":
+  version: 3.1.2
+  resolution: "tar-fs@npm:3.1.2"
   dependencies:
     bare-fs: "npm:^4.0.1"
     bare-path: "npm:^3.0.0"
@@ -12242,7 +12242,7 @@ __metadata:
       optional: true
     bare-path:
       optional: true
-  checksum: 10/f7f7540b563e10541dc0b95f710c68fc1fccde0c1177b4d3bab2023c6d18da19d941a8697fdc1abff54914b71b6e5f2dfb0455572b5c8993b2ab76571cbbc923
+  checksum: 10/b358fb7061eebb42bfa6f122cf62d1bdd40dc619117863f3b59eeaa4f880dc03707014905bdb592e77176703d9045956d1ba27adda4458805f9f7cbf62015cbd
   languageName: node
   linkType: hard
 
@@ -12283,9 +12283,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"testcontainers@npm:^11.12.0":
-  version: 11.12.0
-  resolution: "testcontainers@npm:11.12.0"
+"testcontainers@npm:^11.13.0":
+  version: 11.13.0
+  resolution: "testcontainers@npm:11.13.0"
   dependencies:
     "@balena/dockerignore": "npm:^1.0.2"
     "@types/dockerode": "npm:^4.0.1"
@@ -12293,16 +12293,16 @@ __metadata:
     async-lock: "npm:^1.4.1"
     byline: "npm:^5.0.0"
     debug: "npm:^4.4.3"
-    docker-compose: "npm:^1.3.1"
+    docker-compose: "npm:^1.3.2"
     dockerode: "npm:^4.0.9"
     get-port: "npm:^7.1.0"
     proper-lockfile: "npm:^4.1.2"
     properties-reader: "npm:^3.0.1"
     ssh-remote-port-forward: "npm:^1.0.4"
-    tar-fs: "npm:^3.1.1"
+    tar-fs: "npm:^3.1.2"
     tmp: "npm:^0.2.5"
-    undici: "npm:^7.22.0"
-  checksum: 10/d15ebc0be1c09192c4c26060bfec2f7ad2cf338624bed4a1ca2d548419853e54ea7deb8cd21cca21d55976552f09a00093ab7be822017e045f4c29e09b7e9ba2
+    undici: "npm:^7.24.3"
+  checksum: 10/92ebd000e28146e134556cdf7e37bea9d90124a7ee217052f20400e5b4690e1161153e2d25f6c49a100b782570f83f816d66513a6a5092d4631724e3ce674daa
   languageName: node
   linkType: hard
 
