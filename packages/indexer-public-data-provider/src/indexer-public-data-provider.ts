@@ -13,13 +13,12 @@
  * limitations under the License.
  */
 
-import { ApolloClient, InMemoryCache } from '@apollo/client/core/core.cjs';
-import type { ApolloQueryResult, FetchResult, NormalizedCacheObject } from '@apollo/client/core/index.js';
-import { from,split } from '@apollo/client/link/core/core.cjs';
-import { createHttpLink } from '@apollo/client/link/http/http.cjs';
-import { RetryLink } from '@apollo/client/link/retry/retry.cjs';
-import { GraphQLWsLink } from '@apollo/client/link/subscriptions/subscriptions.cjs';
-import { getMainDefinition } from '@apollo/client/utilities/utilities.cjs';
+import type { ApolloQueryResult, FetchResult } from '@apollo/client/core';
+import { ApolloClient, from, InMemoryCache, split } from '@apollo/client/core';
+import { HttpLink } from '@apollo/client/link/http';
+import { RetryLink } from '@apollo/client/link/retry';
+import { GraphQLWsLink } from '@apollo/client/link/subscriptions';
+import { getMainDefinition } from '@apollo/client/utilities';
 import { ContractState } from '@midnight-ntwrk/compact-runtime';
 import {
   type Binding,
@@ -55,7 +54,6 @@ import fetch from 'cross-fetch';
 import { createClient } from 'graphql-ws';
 import * as ws from 'isomorphic-ws';
 import * as Rx from 'rxjs';
-import type * as Zen from 'zen-observable-ts';
 
 import { IndexerFormattedError } from './errors';
 import {
@@ -128,9 +126,6 @@ const deserializeTransaction = (s: string): LedgerTransaction<SignatureEnabled, 
 const deserializeLedgerParameters = (s: string): LedgerParameters =>
   LedgerParameters.deserialize(toByteArray(s));
 
-const zenToRx = <T>(zenObservable: Zen.Observable<T>): Rx.Observable<T> =>
-  new Rx.Observable((subscriber) => zenObservable.subscribe(subscriber));
-
 /**
  * The default time (in milliseconds) to wait between queries when polling.
  */
@@ -147,18 +142,18 @@ type Block = {
 }
 
 // Assumes that the block exists.
-const blockOffsetToBlock$ = (apolloClient: ApolloClient<NormalizedCacheObject>) => (offset: InputMaybe<BlockOffset>) =>
-  zenToRx(
-    apolloClient
-      .subscribe({
-        query: TXS_FROM_BLOCK_SUB,
-        variables: {
-          offset
-        },
-        fetchPolicy: 'no-cache'
-      })
-      .map(maybeThrowGraphQLErrors)
-      .map((fetchResult) => {
+const blockOffsetToBlock$ = (apolloClient: ApolloClient) => (offset: InputMaybe<BlockOffset>) =>
+  apolloClient
+    .subscribe({
+      query: TXS_FROM_BLOCK_SUB,
+      variables: {
+        offset
+      },
+      fetchPolicy: 'no-cache'
+    })
+    .pipe(
+      Rx.map(maybeThrowGraphQLErrors),
+      Rx.map((fetchResult) => {
         const blocks = fetchResult.data!.blocks!;
         return {
           hash: blocks.hash,
@@ -174,31 +169,30 @@ const blockOffsetToBlock$ = (apolloClient: ApolloClient<NormalizedCacheObject>) 
             }))
         };
       })
-  );
+    );
 
 const transactionIdToTransaction$ =
-  (apolloClient: ApolloClient<NormalizedCacheObject>) => (identifier: TransactionId) =>
-    zenToRx(
-      apolloClient
-        .watchQuery({
-          query: TX_ID_QUERY,
-          variables: {
-            offset: { identifier }
-          },
-          pollInterval: DEFAULT_POLL_INTERVAL,
-          fetchPolicy: 'no-cache',
-          initialFetchPolicy: 'no-cache',
-          nextFetchPolicy: 'no-cache'
-        })
-        .map(maybeThrowErrors)
-        .filter((maybeQueryResult) => maybeQueryResult.data.transactions.length !== 0)
-        .map((maybeQueryResult) => ({
+  (apolloClient: ApolloClient) => (identifier: TransactionId) =>
+    apolloClient
+      .watchQuery({
+        query: TX_ID_QUERY,
+        variables: {
+          offset: { identifier }
+        },
+        pollInterval: DEFAULT_POLL_INTERVAL,
+        fetchPolicy: 'no-cache',
+        initialFetchPolicy: 'no-cache',
+        nextFetchPolicy: 'no-cache'
+      })
+      .pipe(
+        Rx.map(maybeThrowErrors),
+        Rx.filter((maybeQueryResult) => maybeQueryResult.data.transactions.length !== 0),
+        Rx.map((maybeQueryResult) => ({
           height: maybeQueryResult.data.transactions[0]!.block.height
-        }))
-    ).pipe(
-      Rx.concatMap(blockOffsetToBlock$(apolloClient)),
-      Rx.concatMap(({ transactions }) => Rx.from(transactions))
-    );
+        })),
+        Rx.concatMap(blockOffsetToBlock$(apolloClient)),
+        Rx.concatMap(({ transactions }) => Rx.from(transactions))
+      );
 
 type Transaction = {
   hash: string;
@@ -279,80 +273,60 @@ const blockToContractState$ = (contractAddress: ContractAddress) => (block: Bloc
   );
 
 const contractAddressToLatestBlockOffset$ =
-  (apolloClient: ApolloClient<NormalizedCacheObject>) => (contractAddress: ContractAddress) =>
-    zenToRx(
-      apolloClient
-        .watchQuery({
-          query: LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY,
-          variables: {
-            address: contractAddress
-          },
-          pollInterval: DEFAULT_POLL_INTERVAL,
-          fetchPolicy: 'no-cache',
-          initialFetchPolicy: 'no-cache',
-          nextFetchPolicy: 'no-cache'
-        })
-        .map(maybeThrowErrors)
-        .filter((maybeQueryResult) => maybeQueryResult.data.contractAction !== null)
-        .map((queryResult) => {
+  (apolloClient: ApolloClient) => (contractAddress: ContractAddress) =>
+    apolloClient
+      .watchQuery({
+        query: LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY,
+        variables: {
+          address: contractAddress
+        },
+        pollInterval: DEFAULT_POLL_INTERVAL,
+        fetchPolicy: 'no-cache',
+        initialFetchPolicy: 'no-cache',
+        nextFetchPolicy: 'no-cache'
+      })
+      .pipe(
+        Rx.map(maybeThrowErrors),
+        Rx.filter((maybeQueryResult) => maybeQueryResult.data.contractAction !== null),
+        Rx.map((queryResult) => {
           const contract = queryResult.data.contractAction as ExcludeEmptyAndNull<
             LatestContractTxBlockHeightQueryQuery['contractAction']
           >;
           return contract.transaction.block.height;
-        })
-    ).pipe(
-      Rx.take(1),
-      Rx.map((height) => ({ height }))
-    );
+        }),
+        Rx.take(1),
+        Rx.map((height) => ({ height }))
+      );
 
 // Assumes block already exists
 const blockOffsetToContractState$ =
-  (apolloClient: ApolloClient<NormalizedCacheObject>) =>
+  (apolloClient: ApolloClient) =>
   (contractAddress: ContractAddress) =>
   (offset: InputMaybe<BlockOffset>) =>
-    zenToRx(
-      apolloClient
-        .subscribe({
-          query: CONTRACT_STATE_SUB,
-          variables: {
-            address: contractAddress,
-            offset
-          },
-          fetchPolicy: 'no-cache'
-        })
-        .map(maybeThrowGraphQLErrors)
-        .map((queryResult) => queryResult.data!.contractActions!.state)
-        .map(deserializeContractState)
-    );
+    apolloClient
+      .subscribe({
+        query: CONTRACT_STATE_SUB,
+        variables: {
+          address: contractAddress,
+          offset
+        },
+        fetchPolicy: 'no-cache'
+      })
+      .pipe(
+        Rx.map(maybeThrowGraphQLErrors),
+        Rx.map((queryResult) => queryResult.data!.contractActions!.state),
+        Rx.map(deserializeContractState)
+      );
 
 const waitForContractToAppear =
-  (apolloClient: ApolloClient<NormalizedCacheObject>) =>
+  (apolloClient: ApolloClient) =>
   (contractAddress: ContractAddress) =>
   (offset: InputMaybe<ContractActionOffset>) =>
-    zenToRx(
-      apolloClient
-        .watchQuery({
-          query: CONTRACT_STATE_QUERY,
-          variables: {
-            address: contractAddress,
-            offset
-          },
-          pollInterval: DEFAULT_POLL_INTERVAL,
-          fetchPolicy: 'no-cache',
-          initialFetchPolicy: 'no-cache',
-          nextFetchPolicy: 'no-cache'
-        })
-        .map(maybeThrowErrors)
-        .filter((maybeQueryResult) => maybeQueryResult.data.contractAction !== null)
-        .map((queryResult) => queryResult.data.contractAction!.state)
-    ).pipe(Rx.take(1));
-
-const waitForBlockToAppear = (apolloClient: ApolloClient<NormalizedCacheObject>) => (offset: InputMaybe<BlockOffset>) =>
-  zenToRx(
     apolloClient
       .watchQuery({
-        query: BLOCK_QUERY,
+        query: CONTRACT_STATE_QUERY,
         variables: {
+          address: contractAddress,
           offset
         },
         pollInterval: DEFAULT_POLL_INTERVAL,
@@ -360,27 +334,48 @@ const waitForBlockToAppear = (apolloClient: ApolloClient<NormalizedCacheObject>)
         initialFetchPolicy: 'no-cache',
         nextFetchPolicy: 'no-cache'
       })
-      .map(maybeThrowErrors)
-      .filter((fetchResult) => fetchResult.data.block !== null)
-  ).pipe(Rx.take(1));
+      .pipe(
+        Rx.map(maybeThrowErrors),
+        Rx.filter((maybeQueryResult) => maybeQueryResult.data.contractAction !== null),
+        Rx.map((queryResult) => queryResult.data.contractAction!.state),
+        Rx.take(1)
+      );
+
+const waitForBlockToAppear = (apolloClient: ApolloClient) => (offset: InputMaybe<BlockOffset>) =>
+  apolloClient
+    .watchQuery({
+      query: BLOCK_QUERY,
+      variables: {
+        offset
+      },
+      pollInterval: DEFAULT_POLL_INTERVAL,
+      fetchPolicy: 'no-cache',
+      initialFetchPolicy: 'no-cache',
+      nextFetchPolicy: 'no-cache'
+    })
+    .pipe(
+      Rx.map(maybeThrowErrors),
+      Rx.filter((fetchResult) => fetchResult.data.block !== null),
+      Rx.take(1)
+    );
 
 const waitForUnshieldedBalancesToAppear =
-  (apolloClient: ApolloClient<NormalizedCacheObject>) => (contractAddress: ContractAddress) =>
-    zenToRx(
-      apolloClient
-        .watchQuery({
-          query: UNSHIELDED_BALANCE_QUERY,
-          variables: {
-            address: contractAddress
-          },
-          pollInterval: DEFAULT_POLL_INTERVAL,
-          fetchPolicy: 'no-cache',
-          initialFetchPolicy: 'no-cache',
-          nextFetchPolicy: 'no-cache'
-        })
-        .map(maybeThrowErrors)
-        .filter((maybeQueryResult) => maybeQueryResult.data.contractAction !== null)
-        .map((queryResult) => {
+  (apolloClient: ApolloClient) => (contractAddress: ContractAddress) =>
+    apolloClient
+      .watchQuery({
+        query: UNSHIELDED_BALANCE_QUERY,
+        variables: {
+          address: contractAddress
+        },
+        pollInterval: DEFAULT_POLL_INTERVAL,
+        fetchPolicy: 'no-cache',
+        initialFetchPolicy: 'no-cache',
+        nextFetchPolicy: 'no-cache'
+      })
+      .pipe(
+        Rx.map(maybeThrowErrors),
+        Rx.filter((maybeQueryResult) => maybeQueryResult.data.contractAction !== null),
+        Rx.map((queryResult) => {
           const contractAction = queryResult.data.contractAction!;
           if ('unshieldedBalances' in contractAction) {
             return contractAction.unshieldedBalances;
@@ -389,25 +384,26 @@ const waitForUnshieldedBalancesToAppear =
             return contractAction.deploy.unshieldedBalances;
           }
           return [];
-        })
-    ).pipe(Rx.take(1));
+        }),
+        Rx.take(1)
+      );
 
 const blockOffsetToUnshieldedBalances$ =
-  (apolloClient: ApolloClient<NormalizedCacheObject>) =>
+  (apolloClient: ApolloClient) =>
   (contractAddress: ContractAddress) =>
   (offset: InputMaybe<BlockOffset>) =>
-    zenToRx(
-      apolloClient
-        .subscribe({
-          query: UNSHIELDED_BALANCE_SUB,
-          variables: {
-            address: contractAddress,
-            offset
-          },
-          fetchPolicy: 'no-cache'
-        })
-        .map(maybeThrowGraphQLErrors)
-        .map((queryResult) => {
+    apolloClient
+      .subscribe({
+        query: UNSHIELDED_BALANCE_SUB,
+        variables: {
+          address: contractAddress,
+          offset
+        },
+        fetchPolicy: 'no-cache'
+      })
+      .pipe(
+        Rx.map(maybeThrowGraphQLErrors),
+        Rx.map((queryResult) => {
           const contractAction = queryResult.data!.contractActions!;
           if ('unshieldedBalances' in contractAction) {
             return contractAction.unshieldedBalances;
@@ -416,9 +412,9 @@ const blockOffsetToUnshieldedBalances$ =
             return contractAction.deploy.unshieldedBalances;
           }
           return [];
-        })
-        .map(toUnshieldedBalances)
-    );
+        }),
+        Rx.map(toUnshieldedBalances)
+      );
 
 const indexerPublicDataProviderInternal = (
   queryURL: string,
@@ -436,7 +432,7 @@ const indexerPublicDataProviderInternal = (
     throw new InvalidProtocolSchemeError(subscriptionURLObj.protocol, ['ws:', 'wss:']);
   }
   // Construct the Apollo client.
-  const link = createHttpLink({ fetch, uri: queryURL });
+  const link = new HttpLink({ fetch, uri: queryURL });
   // Retry link with exponential backoff.
   const retryLink = new RetryLink({
     delay: {
@@ -591,29 +587,29 @@ const indexerPublicDataProviderInternal = (
     },
     async watchForDeployTxData(contractAddress: ContractAddress): Promise<FinalizedTxData> {
       return Rx.firstValueFrom(
-        zenToRx(
-          apolloClient
-            .watchQuery({
-              query: DEPLOY_TX_QUERY,
-              variables: {
-                address: contractAddress
-              },
-              pollInterval: DEFAULT_POLL_INTERVAL,
-              fetchPolicy: 'no-cache',
-              initialFetchPolicy: 'no-cache',
-              nextFetchPolicy: 'no-cache'
-            })
-            .filter((maybeQueryResult) => maybeQueryResult.data.contractAction !== null)
-            .map(maybeThrowErrors)
-            .map((queryResults) => {
+        apolloClient
+          .watchQuery({
+            query: DEPLOY_TX_QUERY,
+            variables: {
+              address: contractAddress
+            },
+            pollInterval: DEFAULT_POLL_INTERVAL,
+            fetchPolicy: 'no-cache',
+            initialFetchPolicy: 'no-cache',
+            nextFetchPolicy: 'no-cache'
+          })
+          .pipe(
+            Rx.filter((maybeQueryResult) => maybeQueryResult.data.contractAction !== null),
+            Rx.map(maybeThrowErrors),
+            Rx.map((queryResults) => {
               const contract = queryResults.data.contractAction as ExcludeEmptyAndNull<
                 DeployTxQueryQuery['contractAction']
               >;
 
               return 'deploy' in contract ? contract.deploy.transaction : contract.transaction;
-            })
-            .filter(isRegularTransaction)
-            .map(
+            }),
+            Rx.filter(isRegularTransaction),
+            Rx.map(
               (transaction: RegularTransaction): FinalizedTxData => ({
                 tx: deserializeTransaction(transaction.raw),
                 status: toTxStatus(transaction.transactionResult),
@@ -636,26 +632,26 @@ const indexerPublicDataProviderInternal = (
                 },
               })
             )
-        )
+          )
       );
     },
     async watchForTxData(txId: TransactionId): Promise<FinalizedTxData> {
       return Rx.firstValueFrom(
-        zenToRx(
-          apolloClient
-            .watchQuery({
-              query: TX_ID_QUERY,
-              variables: { offset: { identifier: txId } },
-              pollInterval: DEFAULT_POLL_INTERVAL,
-              fetchPolicy: 'no-cache',
-              initialFetchPolicy: 'no-cache',
-              nextFetchPolicy: 'no-cache'
-            })
-            .map(maybeThrowErrors)
-            .filter((maybeQueryResult) => maybeQueryResult.data.transactions.length !== 0)
-            .map((queryResult) => queryResult.data.transactions[0]!)
-            .filter(isRegularTransaction)
-            .map(
+        apolloClient
+          .watchQuery({
+            query: TX_ID_QUERY,
+            variables: { offset: { identifier: txId } },
+            pollInterval: DEFAULT_POLL_INTERVAL,
+            fetchPolicy: 'no-cache',
+            initialFetchPolicy: 'no-cache',
+            nextFetchPolicy: 'no-cache'
+          })
+          .pipe(
+            Rx.map(maybeThrowErrors),
+            Rx.filter((maybeQueryResult) => maybeQueryResult.data.transactions.length !== 0),
+            Rx.map((queryResult) => queryResult.data.transactions[0]!),
+            Rx.filter(isRegularTransaction),
+            Rx.map(
               (transaction: RegularTransaction): FinalizedTxData => ({
                 tx: deserializeTransaction(transaction.raw),
                 status: toTxStatus(transaction.transactionResult),
@@ -676,7 +672,7 @@ const indexerPublicDataProviderInternal = (
                 }
               })
             )
-        )
+          )
       );
     },
     contractStateObservable(
