@@ -2477,7 +2477,7 @@ __metadata:
     "@vitest/runner": "npm:^4.0.0"
     allure-commandline: "npm:^2.34.1"
     allure-js-commons: "npm:^3.6.0"
-    allure-vitest: "npm:^3.3.0"
+    allure-vitest: "npm:^3.6.0"
     axios: "npm:^1.13.5"
     buffer: "npm:^6.0.3"
     cross-fetch: "npm:^4.0.0"
@@ -2511,7 +2511,7 @@ __metadata:
     "@vitest/runner": "npm:^4.0.0"
     allure-commandline: "npm:^2.34.1"
     allure-js-commons: "npm:^3.6.0"
-    allure-vitest: "npm:^3.3.0"
+    allure-vitest: "npm:^3.6.0"
     axios: "npm:^1.13.5"
     buffer: "npm:^6.0.3"
     cross-fetch: "npm:^4.0.0"
@@ -4896,21 +4896,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"allure-js-commons@npm:3.4.5":
-  version: 3.4.5
-  resolution: "allure-js-commons@npm:3.4.5"
-  dependencies:
-    md5: "npm:^2.3.0"
-  peerDependencies:
-    allure-playwright: 3.4.5
-  peerDependenciesMeta:
-    allure-playwright:
-      optional: true
-  checksum: 10/3d8b784b20613e62951eef21ecca7fd3076ed9e4143b7e9aa3c8eab4db16e675e03b40e59382f2f34bbe678ce866b7095ff03ac4ee5714fd1b86e3a0e94bf3e0
-  languageName: node
-  linkType: hard
-
-"allure-js-commons@npm:^3.6.0":
+"allure-js-commons@npm:3.6.0, allure-js-commons@npm:^3.6.0":
   version: 3.6.0
   resolution: "allure-js-commons@npm:3.6.0"
   dependencies:
@@ -4924,15 +4910,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"allure-vitest@npm:^3.3.0":
-  version: 3.4.5
-  resolution: "allure-vitest@npm:3.4.5"
+"allure-vitest@npm:^3.6.0":
+  version: 3.6.0
+  resolution: "allure-vitest@npm:3.6.0"
   dependencies:
-    allure-js-commons: "npm:3.4.5"
+    allure-js-commons: "npm:3.6.0"
   peerDependencies:
     "@vitest/runner": ">=1.3.0"
     vitest: ">=1.3.0"
-  checksum: 10/1a69a0108c58593ed885bbb6c435f3365f83cbfe1ef096aeb83cc770141567fe6fa945719e54fad38a2699e5c9f153138e4ae8398edb7fc43ff4945bf9ec0b23
+  checksum: 10/4cc54ee0c9699e2306cd1794c5342b21c8a23658752823f33894ef89160c43e7607f7ab77d3842bb1159f7da353e42f0041ab0f636583abf901e4a30724e49c0
   languageName: node
   linkType: hard
 
