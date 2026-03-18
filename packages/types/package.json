@@ -29,8 +29,8 @@
     "dist/"
   ],
   "dependencies": {
-    "@midnight-ntwrk/compact-js": "2.5.0-rc.1",
-    "@midnight-ntwrk/platform-js": "2.2.2",
+    "@midnight-ntwrk/compact-js": "2.5.0-rc.3",
+    "@midnight-ntwrk/platform-js": "2.2.4",
     "rxjs": "^7.5.0"
   }
 }
