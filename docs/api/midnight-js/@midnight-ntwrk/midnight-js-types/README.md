@@ -85,6 +85,7 @@
 
 - [asContractAddress](functions/asContractAddress.md)
 - [asEffectOption](functions/asEffectOption.md)
+- [createProofProvider](functions/createProofProvider.md)
 - [createProverKey](functions/createProverKey.md)
 - [createVerifierKey](functions/createVerifierKey.md)
 - [createZKIR](functions/createZKIR.md)
