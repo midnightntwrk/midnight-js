@@ -56,10 +56,14 @@ export interface ProofProvider {
  * The returned provider proves transactions using the initial cost model.
  *
  * @param provingProvider - The underlying proving provider used to generate proofs.
+ * @param costModel - Optional cost model to use for proof generation. Defaults to the initial cost model if not provided.
  * @returns A {@link ProofProvider} that delegates proof generation to the given proving provider.
  */
-export const createProofProvider = (provingProvider: ProvingProvider): ProofProvider => ({
+export const createProofProvider = (
+  provingProvider: ProvingProvider,
+  costModel: CostModel = CostModel.initialCostModel()
+): ProofProvider => ({
   async proveTx(unprovenTx: UnprovenTransaction): Promise<UnboundTransaction> {
-    return unprovenTx.prove(provingProvider, CostModel.initialCostModel());
+    return unprovenTx.prove(provingProvider, costModel);
   }
 });
