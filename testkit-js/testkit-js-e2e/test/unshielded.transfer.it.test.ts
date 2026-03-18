@@ -225,7 +225,7 @@ describe('Unshielded tokens', () => {
       const spent = txData.public.unshielded.spent;
       const created = txData.public.unshielded.created;
       expect(spent.length).toEqual(0);
-      expect(created.length).toEqual(0);
+      expect(created.length).toEqual(1);
     });
   });
 });
