@@ -118,6 +118,60 @@ const options: CallOptionsProviderDataDependencies = {
 
 ---
 
+## 4. Transaction Building Refactored to `addCalls` API (#648)
+
+### Reason
+The ledger v8 API provides a higher-level `addCalls` method on `Transaction` that handles unshielded offer construction automatically via `PrePartitionContractCall`. This removes the need for manual `Intent` construction and the `extractUserAddressedOutputs` workaround.
+
+### Impact
+- `createUnprovenLedgerCallTx` signature changed: `partitionedTranscript` replaced with `publicTranscript`, added `ledgerParameters` and `coinPublicKey` parameters
+- `extractUserAddressedOutputs` has been removed from `@midnight-ntwrk/midnight-js-contracts`
+
+### Before
+```typescript
+import { createUnprovenLedgerCallTx, extractUserAddressedOutputs } from '@midnight-ntwrk/midnight-js-contracts';
+
+const tx = createUnprovenLedgerCallTx(
+  circuitId,
+  contractAddress,
+  initialContractState,
+  zswapChainState,
+  partitionedTranscript,  // PartitionedTranscript
+  privateTranscriptOutputs,
+  input,
+  output,
+  nextZswapLocalState,
+  encryptionPublicKey
+);
+```
+
+### After
+```typescript
+import { createUnprovenLedgerCallTx } from '@midnight-ntwrk/midnight-js-contracts';
+
+const tx = createUnprovenLedgerCallTx(
+  circuitId,
+  contractAddress,
+  initialContractState,
+  zswapChainState,
+  publicTranscript,       // Op<AlignedValue>[]
+  privateTranscriptOutputs,
+  input,
+  output,
+  nextZswapLocalState,
+  encryptionPublicKey,
+  ledgerParameters,       // NEW - required
+  coinPublicKey           // NEW - required
+);
+```
+
+### Migration Steps
+1. Replace `partitionedTranscript` with `publicTranscript` (the public ops array)
+2. Add `ledgerParameters` and `coinPublicKey` parameters to all `createUnprovenLedgerCallTx` call sites
+3. Remove all usages of `extractUserAddressedOutputs` - unshielded offers are now handled automatically by the `addCalls` API
+
+---
+
 ## Common Migration Issues
 
 ### Error: "Module '@midnight-ntwrk/ledger-v7' not found"
@@ -134,3 +188,9 @@ const options: CallOptionsProviderDataDependencies = {
 
 ### Error: "Type '[ZswapChainState, ContractState]' is not assignable to type '[ZswapChainState, ContractState, LedgerParameters]'"
 **Solution:** If you implement `PublicDataProvider`, update `queryZSwapAndContractState` to return a 3-tuple including `LedgerParameters`.
+
+### Error: "Module has no exported member 'extractUserAddressedOutputs'"
+**Solution:** Remove all usages of `extractUserAddressedOutputs`. Unshielded offer handling is now managed automatically by the ledger's `addCalls` API.
+
+### Error: "Expected 12 arguments, but got 10" (createUnprovenLedgerCallTx)
+**Solution:** Add `ledgerParameters` and `coinPublicKey` as the last two parameters to `createUnprovenLedgerCallTx` calls, and replace `partitionedTranscript` with `publicTranscript`.

@@ -93,3 +93,35 @@ const circuitIds = ContractExecutable.make(compiledContract).getProvableCircuitI
 export type AnyProvableCircuitId = Contract.ProvableCircuitId<Contract.Any>;
 export type AnyPrivateState = Contract.PrivateState<Contract.Any>;
 ```
+
+---
+
+## 3. `createProofProvider` Factory Function (#636)
+
+A new utility function exported from `@midnight-ntwrk/midnight-js-types` that simplifies creating a `ProofProvider` from a `ProvingProvider`. It wraps the proving provider with an optional `CostModel`, defaulting to the initial cost model.
+
+### Usage
+
+```typescript
+import { createProofProvider } from '@midnight-ntwrk/midnight-js-types';
+import { type ProvingProvider, CostModel } from '@midnight-ntwrk/ledger-v8';
+
+// Uses CostModel.initialCostModel() by default
+const proofProvider = createProofProvider(provingProvider);
+
+// With a custom cost model
+const proofProvider = createProofProvider(provingProvider, customCostModel);
+```
+
+### API
+
+```typescript
+export const createProofProvider = (
+  provingProvider: ProvingProvider,
+  costModel: CostModel = CostModel.initialCostModel()
+): ProofProvider => ({
+  async proveTx(unprovenTx: UnprovenTransaction): Promise<UnboundTransaction> {
+    return unprovenTx.prove(provingProvider, costModel);
+  }
+});
+```
