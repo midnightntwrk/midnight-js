@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [4.0.0-rc.2](https://github.com/midnightntwrk/midnight-js/compare/v4.0.0-rc.1...v4.0.0-rc.2) (2026-03-19)
+
+
+### Documentation
+
+* API documentation update ([#655](https://github.com/midnightntwrk/midnight-js/pull/655)) ([06d58db](https://github.com/midnightntwrk/midnight-js/commit/06d58dba0659df287d1bb8aeba9d0a48e2323a50))
+* API documentation update ([#664](https://github.com/midnightntwrk/midnight-js/pull/664)) ([13f5823](https://github.com/midnightntwrk/midnight-js/commit/13f58230be2d212413e32a24026e5d48f1e7e356))
+
+
+### Tests
+
+* add night wallet transfer tests ([#646](https://github.com/midnightntwrk/midnight-js/pull/646)) ([6d10ea3](https://github.com/midnightntwrk/midnight-js/commit/6d10ea35d40174e54b5d15a7799a49bbc483f023))
+
+
+### Improvements
+
+* proof provider adapter ([#636](https://github.com/midnightntwrk/midnight-js/pull/636)) ([a45a182](https://github.com/midnightntwrk/midnight-js/commit/a45a18268e229eae4d64fe4ec2182127d448f2da))
+* update @midnight-ntwrk/compact-js to 2.5.0-rc.3 and platform-js to 2.2.4 ([#663](https://github.com/midnightntwrk/midnight-js/pull/663)) ([f5fb7b1](https://github.com/midnightntwrk/midnight-js/commit/f5fb7b1c0dd1e4e22d30d8b4aa3664ef6822a3a6))
+* update dev dependencies ([#665](https://github.com/midnightntwrk/midnight-js/pull/665)) ([cc895a3](https://github.com/midnightntwrk/midnight-js/commit/cc895a38ba5a5793ce345e658c5ce4de488fa14f))
+* update docker images to latest versions ([#654](https://github.com/midnightntwrk/midnight-js/pull/654)) ([35f15ed](https://github.com/midnightntwrk/midnight-js/commit/35f15ed8b69628d9aec5ed7744b843593bee6641))
+
 ## [4.0.0-rc.1](https://github.com/midnightntwrk/midnight-js/compare/v3.2.0...v4.0.0-rc.1) (2026-03-18)
 
 
@@ -32,6 +53,7 @@ All notable changes to this project will be documented in this file. See [commit
 ### Improvements
 
 * immutable and diff security patch ([#649](https://github.com/midnightntwrk/midnight-js/pull/649)) ([7cd594d](https://github.com/midnightntwrk/midnight-js/commit/7cd594d4f6087698977c8b6b2a098bdd847a6b7b))
+* **release:** bump version to 4.0.0-rc.1 ([#653](https://github.com/midnightntwrk/midnight-js/pull/653)) ([333dab7](https://github.com/midnightntwrk/midnight-js/commit/333dab754fe2a5165d2148806bdacf151d057f30))
 * security dependencies update ([#640](https://github.com/midnightntwrk/midnight-js/pull/640)) ([2897175](https://github.com/midnightntwrk/midnight-js/commit/2897175f40f4af1c960cc3c5ea35d4ebfc101522))
 * update @midnight-ntwrk/ledger-v8 to 8.0.2 ([#631](https://github.com/midnightntwrk/midnight-js/pull/631)) ([e4706d2](https://github.com/midnightntwrk/midnight-js/commit/e4706d225b4f01266fee7590f58bc060e1571e88))
 * update compactc to 0.30.0 and @midnight-ntwrk/wallet-sdk-facade to 3.0.0-rc.0 and @midnight-ntwrk/compact-runtime to 0.15.0 ([#651](https://github.com/midnightntwrk/midnight-js/pull/651)) ([4560fcb](https://github.com/midnightntwrk/midnight-js/commit/4560fcb0a8e1c5b05e4e5d2d25a7add1e9d70fff))

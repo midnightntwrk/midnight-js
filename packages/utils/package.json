@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-utils",
-  "version": "4.0.0-rc.1",
+  "version": "4.0.0-rc.2",
   "description": "Shared utilities for MidnightJS modules",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
