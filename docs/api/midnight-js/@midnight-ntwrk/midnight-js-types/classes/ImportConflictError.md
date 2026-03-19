@@ -40,7 +40,7 @@ Error thrown when import conflicts with existing data and conflictStrategy is 'e
 
 ### cause?
 
-> `readonly` `optional` **cause**: [`PrivateStateImportErrorCause`](../type-aliases/PrivateStateImportErrorCause.md)
+> `readonly` `optional` **cause?**: [`PrivateStateImportErrorCause`](../type-aliases/PrivateStateImportErrorCause.md)
 
 #### Inherited from
 

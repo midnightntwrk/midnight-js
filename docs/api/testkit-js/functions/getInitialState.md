@@ -8,7 +8,7 @@
 
 ### wallet
 
-`ShieldedWalletAPI` | `UnshieldedWalletAPI`
+`ShieldedWalletAPI` \| `UnshieldedWalletAPI`
 
 ## Returns
 

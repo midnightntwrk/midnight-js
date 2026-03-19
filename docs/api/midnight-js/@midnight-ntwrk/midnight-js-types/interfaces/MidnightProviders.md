@@ -32,7 +32,7 @@ Parameter indicating the private state type stored, sometimes a union of private
 
 ### loggerProvider?
 
-> `readonly` `optional` **loggerProvider**: [`LoggerProvider`](LoggerProvider.md)
+> `readonly` `optional` **loggerProvider?**: [`LoggerProvider`](LoggerProvider.md)
 
 An optional logger that provides utilities for logging at given levels.
 
