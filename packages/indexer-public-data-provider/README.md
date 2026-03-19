@@ -54,11 +54,11 @@ queryDeployContractState(
   contractAddress: ContractAddress
 ): Promise<ContractState | null>
 
-// Query contract and ZSwap state together
+// Query contract and ZSwap state together (returns LedgerParameters as third element)
 queryZSwapAndContractState(
   contractAddress: ContractAddress,
   config?: BlockHeightConfig | BlockHashConfig
-): Promise<[ZswapChainState, ContractState] | null>
+): Promise<[ZswapChainState, ContractState, LedgerParameters] | null>
 
 // Query unshielded token balances
 queryUnshieldedBalances(

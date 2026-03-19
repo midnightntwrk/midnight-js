@@ -28,10 +28,10 @@ import {
 The main provider interface required for transaction construction and submission:
 
 ```typescript
-interface MidnightProviders<ICK, PSI, PS> {
+interface MidnightProviders<PCK, PSI, PS> {
   privateStateProvider: PrivateStateProvider<PSI, PS>;  // Private state management
   publicDataProvider: PublicDataProvider;               // Blockchain data queries
-  zkConfigProvider: ZKConfigProvider<ICK>;              // ZK artifact retrieval
+  zkConfigProvider: ZKConfigProvider<PCK>;              // ZK artifact retrieval
   proofProvider: ProofProvider;                         // ZK proof generation
   walletProvider: WalletProvider;                       // Transaction balancing
   midnightProvider: MidnightProvider;                   // Transaction submission
@@ -211,6 +211,9 @@ import {
   ExportDecryptionError,
   InvalidExportFormatError,
   ImportConflictError,
+
+  // Factory functions
+  createProofProvider,
 
   // Re-exports
   Transaction

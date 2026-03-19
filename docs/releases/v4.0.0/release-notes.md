@@ -51,6 +51,13 @@ const callOptions: CallOptionsProviderDataDependencies = {
 };
 ```
 
+### Transaction Building Refactored to Use `addCalls` API (#648)
+The internal transaction construction in `createUnprovenLedgerCallTx` has been refactored. The function now uses the ledger v8 `addCalls` API with `PrePartitionContractCall` instead of the deprecated `ContractCallPrototype` and manual `Intent` construction. The `extractUserAddressedOutputs` utility has been removed as unshielded offer handling is now managed by the ledger's `addCalls` API.
+
+- `createUnprovenLedgerCallTx` signature now requires `ledgerParameters` and `coinPublicKey` parameters
+- `extractUserAddressedOutputs` has been removed
+- `partitionedTranscript` parameter replaced with `publicTranscript` (`Op<AlignedValue>[]`)
+
 ## Features
 
 ### LedgerParameters Flow Through Circuit Execution (#633)
@@ -82,26 +89,52 @@ const result = await createUnprovenCallTxFromInitialStates(
 ### Ledger v8 Support (#607)
 The SDK now targets ledger v8, bringing support for provable circuits (renamed from impure circuits) and updated indexer v4 compatibility. All contract compilation outputs have been regenerated for ledger v8 compatibility.
 
+### `createProofProvider` Factory Function (#636)
+A new `createProofProvider` utility is exported from `@midnight-ntwrk/midnight-js-types` that creates a `ProofProvider` from a `ProvingProvider`. This simplifies proof provider setup by wrapping the underlying proving provider with an optional cost model.
+
+```typescript
+import { createProofProvider } from '@midnight-ntwrk/midnight-js-types';
+
+// Uses initial cost model by default
+const proofProvider = createProofProvider(provingProvider);
+
+// Or with a custom cost model
+const proofProvider = createProofProvider(provingProvider, customCostModel);
+```
+
 ## Bug Fixes
 
 ### Unshielded Offers for User-Addressed Claim Unshielded Spends (#558)
 Fixed an issue where unshielded offers were not correctly attached for user-addressed claim unshielded spends. The `findUnshieldedOffers` function in ledger-utils now properly handles the matching of unshielded outputs, ensuring correct transaction construction for claim operations.
 
+## Tests
+
+### Night Wallet Transfer Tests (#646)
+Added integration tests for night wallet unshielded transfers, including `balanceUnboundTransaction` usage validation.
+
 ## Dependencies
 
 ### Runtime Dependencies Updated
 - `@midnight-ntwrk/ledger-v7` replaced with `@midnight-ntwrk/ledger-v8` 8.0.2
-- `@midnight-ntwrk/wallet-sdk-facade`: Updated for ledger v8 compatibility
-- `@midnight-ntwrk/compact-js`: Updated for provable circuit support
+- `@midnight-ntwrk/wallet-sdk-facade`: Updated to 3.0.0-rc.0
+- `@midnight-ntwrk/compact-js`: Updated to 2.5.0-rc.3
+- `@midnight-ntwrk/compact-runtime`: Updated to 0.15.0
+- `@midnight-ntwrk/platform-js`: Updated to 2.2.4
+- `compactc`: Updated to 0.30.0
+
+### Security Patches
+- Patched `immutable` and `diff` packages (#649)
+- Security dependencies update (#640)
 
 ### Infrastructure Updated
 - Indexer updated to v4
 - Proof server images updated for ledger v8
-- Docker compose configurations updated
+- Docker compose images updated to latest versions (#654)
 
 ## Documentation
 
 - Updated release notes for 3.2.0 (#623)
+- API documentation updates (#641, #655, #664)
 
 ## Links
 

@@ -129,7 +129,51 @@ const result = await createUnprovenCallTxFromInitialStates(zkConfigProvider, {
 
 If you use `createUnprovenCallTx` (the high-level API), ledger parameters are fetched and passed automatically - no changes needed.
 
-## Step 6: Recompile Contracts
+## Step 6: Update `createUnprovenLedgerCallTx` Call Sites (#648)
+
+If you call `createUnprovenLedgerCallTx` directly, the signature has changed.
+
+**Before (v3.2.0):**
+```typescript
+import { createUnprovenLedgerCallTx, extractUserAddressedOutputs } from '@midnight-ntwrk/midnight-js-contracts';
+
+const tx = createUnprovenLedgerCallTx(
+  circuitId,
+  contractAddress,
+  initialContractState,
+  zswapChainState,
+  partitionedTranscript,
+  privateTranscriptOutputs,
+  input,
+  output,
+  nextZswapLocalState,
+  encryptionPublicKey
+);
+```
+
+**After (v4.0.0):**
+```typescript
+import { createUnprovenLedgerCallTx } from '@midnight-ntwrk/midnight-js-contracts';
+
+const tx = createUnprovenLedgerCallTx(
+  circuitId,
+  contractAddress,
+  initialContractState,
+  zswapChainState,
+  publicTranscript,        // Op<AlignedValue>[] instead of PartitionedTranscript
+  privateTranscriptOutputs,
+  input,
+  output,
+  nextZswapLocalState,
+  encryptionPublicKey,
+  ledgerParameters,        // NEW - required
+  coinPublicKey            // NEW - required
+);
+```
+
+Also remove all usages of `extractUserAddressedOutputs` - unshielded offer handling is now automatic.
+
+## Step 7: Recompile Contracts
 
 All compiled contract artifacts need to be regenerated for ledger v8 compatibility:
 
@@ -137,7 +181,7 @@ All compiled contract artifacts need to be regenerated for ledger v8 compatibili
 yarn build
 ```
 
-## Step 7: Update Infrastructure
+## Step 8: Update Infrastructure
 
 - Update indexer to v4
 - Update proof server containers to ledger v8 compatible versions
@@ -165,6 +209,14 @@ Add `ledgerParameters` to your call options object. Get it from `queryZSwapAndCo
 
 Update your destructuring of `queryZSwapAndContractState` results to include the third element.
 
+### Error: "Module has no exported member 'extractUserAddressedOutputs'"
+
+Remove all usages. Unshielded offer handling is now managed automatically by the ledger's `addCalls` API.
+
+### Error: "Expected 12 arguments, but got 10" (createUnprovenLedgerCallTx)
+
+Add `ledgerParameters` and `coinPublicKey` as the last two parameters, and replace `partitionedTranscript` with `publicTranscript`.
+
 ## Rollback Plan
 
 If rollback is needed:
@@ -172,5 +224,6 @@ If rollback is needed:
 2. Revert import paths from `ledger-v8` to `ledger-v7`
 3. Revert `ProvableCircuitId` to `ImpureCircuitId`
 4. Remove `ledgerParameters` from call options
-5. Revert infrastructure to previous indexer and proof server versions
-6. Recompile contracts for ledger v7
+5. Revert `createUnprovenLedgerCallTx` to use `partitionedTranscript` and restore `extractUserAddressedOutputs`
+6. Revert infrastructure to previous indexer and proof server versions
+7. Recompile contracts for ledger v7
