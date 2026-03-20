@@ -32,7 +32,7 @@ The specific cause is intentionally not disclosed to prevent oracle attacks.
 
 ### cause?
 
-> `readonly` `optional` **cause**: [`PrivateStateImportErrorCause`](../type-aliases/PrivateStateImportErrorCause.md)
+> `readonly` `optional` **cause?**: [`PrivateStateImportErrorCause`](../type-aliases/PrivateStateImportErrorCause.md)
 
 #### Inherited from
 

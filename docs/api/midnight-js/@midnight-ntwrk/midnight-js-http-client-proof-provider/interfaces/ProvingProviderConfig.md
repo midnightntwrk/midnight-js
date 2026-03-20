@@ -10,4 +10,4 @@
 
 ### timeout?
 
-> `readonly` `optional` **timeout**: `number`
+> `readonly` `optional` **timeout?**: `number`

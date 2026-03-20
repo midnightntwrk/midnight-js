@@ -10,7 +10,7 @@ Generates a filename for the wallet state file based on environment and optional
 
 ### seed
 
-`string` | `undefined`
+`string` \| `undefined`
 
 ## Returns
 
