@@ -21,12 +21,16 @@ import {
   QueryContext
 } from '@midnight-ntwrk/compact-runtime';
 import {
+  ChargedState,
+  ContractOperation as LedgerContractOperation,
+  ContractState as LedgerContractState,
   LedgerParameters,
   MaintenanceUpdate,
   sampleCoinPublicKey,
   sampleContractAddress,
   sampleEncryptionPublicKey,
   sampleSigningKey,
+  StateValue,
   Transaction,
   ZswapChainState
 } from '@midnight-ntwrk/ledger-v8';
@@ -40,7 +44,8 @@ import {
   fromLedgerContractState,
   toLedgerContractState,
   toLedgerQueryContext,
-  unprovenTxFromContractUpdates} from '../../utils';
+  unprovenTxFromContractUpdates
+} from '../../utils';
 import { createMockCompiledContract,createMockZKConfigProvider } from '../test-mocks';
 
 describe('ledger-utils', () => {
@@ -121,8 +126,7 @@ describe('ledger-utils', () => {
       alignedValue,
       nextZswapLocalState,
       dummyEncPublicKey,
-      LedgerParameters.initialParameters(),
-      dummyCPK
+      LedgerParameters.initialParameters()
     );
     expect(tx).toBeInstanceOf(Transaction);
   });
@@ -167,8 +171,7 @@ describe('ledger-utils', () => {
       alignedValue,
       nextZswapLocalState,
       dummyEncPublicKey,
-      LedgerParameters.initialParameters(),
-      dummyCPK
+      LedgerParameters.initialParameters()
     );
     expect(tx).toBeInstanceOf(Transaction);
   });
@@ -204,10 +207,53 @@ describe('ledger-utils', () => {
           currentIndex: 0n
         },
         dummyEncPublicKey,
-        LedgerParameters.initialParameters(),
-        dummyCPK
+        LedgerParameters.initialParameters()
       )
     ).toThrow(`Operation '${unregisteredCircuitId}' is undefined`);
+  });
+
+  it('createUnprovenLedgerCallTx succeeds with contract state containing cells', () => {
+    const circuitId = 'cellStateTx';
+    const contractOperation = new LedgerContractOperation();
+
+    const cellValue: AlignedValue = {
+      value: [new Uint8Array([1, 2, 3])],
+      alignment: [{ tag: 'atom', value: { tag: 'field' } }]
+    };
+    const stateWithCells = StateValue.newArray()
+      .arrayPush(StateValue.newCell(cellValue))
+      .arrayPush(StateValue.newCell(cellValue));
+
+    const ledgerState = new LedgerContractState();
+    ledgerState.setOperation(circuitId, contractOperation);
+    ledgerState.data = new ChargedState(stateWithCells);
+
+    const contractState = fromLedgerContractState(ledgerState);
+
+    const alignedValue: AlignedValue = {
+      value: [new Uint8Array()],
+      alignment: [{ tag: 'atom', value: { tag: 'field' } }]
+    };
+
+    const tx = createUnprovenLedgerCallTx(
+      circuitId,
+      sampleContractAddress(),
+      contractState,
+      new ZswapChainState(),
+      [],
+      [],
+      alignedValue,
+      alignedValue,
+      {
+        outputs: [],
+        inputs: [],
+        coinPublicKey: sampleCoinPublicKey(),
+        currentIndex: 0n
+      },
+      dummyEncPublicKey,
+      LedgerParameters.initialParameters()
+    );
+    expect(tx).toBeInstanceOf(Transaction);
   });
 
   it('createUnprovenReplaceAuthorityTx returns an UnprovenTransaction', async () => {
