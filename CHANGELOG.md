@@ -2,6 +2,32 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [4.0.1](https://github.com/midnightntwrk/midnight-js/compare/v4.0.0-rc.2...v4.0.1) (2026-03-20)
+
+
+### Bug Fixes
+
+* use lossless binary path for QueryContext in createUnprovenLedgerCallTx ([#689](https://github.com/midnightntwrk/midnight-js/pull/689)) ([d559365](https://github.com/midnightntwrk/midnight-js/commit/d55936569034617a0978be41e5e591a14754b5df))
+
+
+### Documentation
+
+* API documentation update ([#671](https://github.com/midnightntwrk/midnight-js/pull/671)) ([34194a3](https://github.com/midnightntwrk/midnight-js/commit/34194a365eae10ae91798bc0b443784f560eaf58))
+* API documentation update ([#676](https://github.com/midnightntwrk/midnight-js/pull/676)) ([677aeda](https://github.com/midnightntwrk/midnight-js/commit/677aeda02c64e027ef001e5bbcc45b5d40c83f51))
+* API documentation update ([#687](https://github.com/midnightntwrk/midnight-js/pull/687)) ([56c7cf1](https://github.com/midnightntwrk/midnight-js/commit/56c7cf179dfca2995306224c51c689b66f65d52c))
+* release notes 4.0.0 update ([#669](https://github.com/midnightntwrk/midnight-js/pull/669)) ([2215864](https://github.com/midnightntwrk/midnight-js/commit/22158642c29b137f18b44c3b4e81ba2c1cfdb0b1))
+
+
+### Improvements
+
+* **deps-dev:** bump jsdom from 28.1.0 to 29.0.0 ([#674](https://github.com/midnightntwrk/midnight-js/pull/674)) ([7816a5f](https://github.com/midnightntwrk/midnight-js/commit/7816a5f7151d21a523476d14180137dfae959e39))
+* **deps-dev:** bump turbo from 2.8.18 to 2.8.19 ([#675](https://github.com/midnightntwrk/midnight-js/pull/675)) ([536e518](https://github.com/midnightntwrk/midnight-js/commit/536e51842d5f2771d7f8d50910b0a45356708d43))
+* **deps-dev:** bump typedoc-plugin-markdown from 4.10.0 to 4.11.0 ([#673](https://github.com/midnightntwrk/midnight-js/pull/673)) ([3a0f301](https://github.com/midnightntwrk/midnight-js/commit/3a0f301822fe7a897f72c6dacf2b458138c24252))
+* **deps:** bump @midnight-ntwrk/wallet-sdk-facade ([#680](https://github.com/midnightntwrk/midnight-js/pull/680)) ([2c165ec](https://github.com/midnightntwrk/midnight-js/commit/2c165ec83c4c8455e80dc9565dc604f3cd9eedd4))
+* **release:** bump version to 4.0.0-rc.2 ([#677](https://github.com/midnightntwrk/midnight-js/pull/677)) ([06f31a2](https://github.com/midnightntwrk/midnight-js/commit/06f31a292557fb79d63d0653fe5c14e5ecfafb56))
+* set location in compactc to official releases channel ([#672](https://github.com/midnightntwrk/midnight-js/pull/672)) ([f1c4092](https://github.com/midnightntwrk/midnight-js/commit/f1c4092e50a859ef0cab2a547d9eebe4340632a7))
+* update to stable component versions ([#684](https://github.com/midnightntwrk/midnight-js/pull/684)) ([42a23af](https://github.com/midnightntwrk/midnight-js/commit/42a23af0f7d8abc10976d7eaa82025410704d2c9))
+
 ## [4.0.0-rc.2](https://github.com/midnightntwrk/midnight-js/compare/v4.0.0-rc.1...v4.0.0-rc.2) (2026-03-19)
 
 
