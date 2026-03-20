@@ -53,10 +53,11 @@ const getKeyMaterial = async <K extends string>(
   }
 };
 
-const makeHttpRequest = async (url: URL, payload: Uint8Array, timeout: number): Promise<Uint8Array> => {
+const makeHttpRequest = async (url: URL, payload: Uint8Array, timeout: number, headers: Record<string, string> = {}): Promise<Uint8Array> => {
   const response = await fetchRetry(url, {
     method: 'POST',
     body: new Uint8Array(payload),
+    headers: { 'Content-Type': 'application/octet-stream', ...headers },
     signal: AbortSignal.timeout(timeout)
   });
 
@@ -71,6 +72,7 @@ const makeHttpRequest = async (url: URL, payload: Uint8Array, timeout: number): 
 
 export interface ProvingProviderConfig {
   readonly timeout?: number;
+  readonly headers?: Record<string, string>;
 }
 
 export const httpClientProvingProvider = <K extends string>(
@@ -90,12 +92,13 @@ export const httpClientProvingProvider = <K extends string>(
   }
 
   const timeout = config?.timeout ?? DEFAULT_TIMEOUT;
+  const headers = config?.headers ?? {};
 
   return  {
     async check(serializedPreimage: Uint8Array, keyLocation: string): Promise<(bigint | undefined)[]> {
       const keyMaterial = await getKeyMaterial(zkConfigProvider, keyLocation as K);
       const payload = createCheckPayload(serializedPreimage, keyMaterial?.ir);
-      const result = await makeHttpRequest(checkUrl, payload, timeout);
+      const result = await makeHttpRequest(checkUrl, payload, timeout, headers);
       return parseCheckResult(result);
     },
 
@@ -106,7 +109,7 @@ export const httpClientProvingProvider = <K extends string>(
     ): Promise<Uint8Array> {
       const keyMaterial = await getKeyMaterial(zkConfigProvider, keyLocation as K);
       const payload = createProvingPayload(serializedPreimage, overwriteBindingInput, keyMaterial);
-      return makeHttpRequest(proveUrl, payload, timeout);
+      return makeHttpRequest(proveUrl, payload, timeout, headers);
     }
   };
 };
