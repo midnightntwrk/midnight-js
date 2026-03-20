@@ -20,22 +20,19 @@ import {
   type CoinPublicKey,
   type ContractAddress,
   ContractState,
-  createCircuitContext,
-  type Op,
   type QueryContext,
   type SigningKey,
   type ZswapLocalState} from '@midnight-ntwrk/compact-runtime';
 import {
   ChargedState,
   communicationCommitmentRandomness,
+  ContractCallPrototype,
   ContractDeploy,
   ContractState as LedgerContractState,
   type EncPublicKey,
   Intent,
-  type LedgerParameters,
   type MaintenanceUpdate,
-  PrePartitionContractCall,
-  PreTranscript,
+  type PartitionedTranscript,
   QueryContext as LedgerQueryContext,
   StateValue as LedgerStateValue,
   type UnprovenTransaction,
@@ -93,27 +90,24 @@ export const createUnprovenLedgerCallTx = (
   contractAddress: ContractAddress,
   initialContractState: ContractState,
   zswapChainState: ZswapChainState,
-  publicTranscript: Op<AlignedValue>[],
+  partitionedTranscript: PartitionedTranscript,
   privateTranscriptOutputs: AlignedValue[],
   input: AlignedValue,
   output: AlignedValue,
   nextZswapLocalState: ZswapLocalState,
-  encryptionPublicKey: EncPublicKey,
-  ledgerParameters: LedgerParameters,
-  coinPublicKey: CoinPublicKey
+  encryptionPublicKey: EncPublicKey
 ): UnprovenTransaction => {
   const op = toLedgerContractState(initialContractState).operation(circuitId);
   assertDefined(op, `Operation '${circuitId}' is undefined for contract state ${initialContractState.toString(false)}`);
 
-  const initialQueryContext = createCircuitContext(contractAddress, coinPublicKey, initialContractState, undefined).currentQueryContext;
-  const queryContext = toLedgerQueryContext(initialQueryContext);
-  const preTranscript = new PreTranscript(queryContext, publicTranscript);
+  const [guaranteedTranscript, fallibleTranscript] = partitionedTranscript;
 
-  const call = new PrePartitionContractCall(
+  const call = new ContractCallPrototype(
     contractAddress,
     circuitId,
     op,
-    preTranscript,
+    guaranteedTranscript,
+    fallibleTranscript,
     privateTranscriptOutputs,
     input,
     output,
@@ -127,12 +121,8 @@ export const createUnprovenLedgerCallTx = (
       contractAddress,
       zswapChainState
     }),
-    undefined
-  ).addCalls(
-    { tag: 'random' },
-    [call],
-    ledgerParameters,
-    ttlOneHour()
+    undefined,
+    Intent.new(ttlOneHour()).addCall(call)
   );
 };
 

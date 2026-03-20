@@ -21,8 +21,8 @@ import {
   QueryContext
 } from '@midnight-ntwrk/compact-runtime';
 import {
-  LedgerParameters,
   MaintenanceUpdate,
+  type PartitionedTranscript,
   sampleCoinPublicKey,
   sampleContractAddress,
   sampleEncryptionPublicKey,
@@ -83,6 +83,36 @@ describe('ledger-utils', () => {
     expect(tx).toBeInstanceOf(Transaction);
   });
 
+  const emptyEffects = {
+    claimedNullifiers: [],
+    claimedShieldedReceives: [],
+    claimedShieldedSpends: [],
+    claimedContractCalls: [],
+    shieldedMints: new Map<string, bigint>(),
+    unshieldedMints: new Map<string, bigint>(),
+    unshieldedInputs: new Map(),
+    unshieldedOutputs: new Map(),
+    claimedUnshieldedSpends: new Map()
+  };
+
+  const createEmptyPartitionedTranscript = (): PartitionedTranscript => [
+    {
+      gas: { readTime: 0n, computeTime: 0n, bytesWritten: 0n, bytesDeleted: 0n },
+      effects: emptyEffects,
+      program: [] as Op<AlignedValue>[]
+    },
+    undefined
+  ];
+
+  const createPartitionedTranscriptWithProgram = (program: Op<AlignedValue>[]): PartitionedTranscript => [
+    {
+      gas: { readTime: 0n, computeTime: 0n, bytesWritten: 0n, bytesDeleted: 0n },
+      effects: emptyEffects,
+      program
+    },
+    undefined
+  ];
+
   it('createUnprovenLedgerCallTx returns an UnprovenTransaction', () => {
     const circuitId = 'unProvenLedgerTx';
     const contractState = dummyContractState;
@@ -115,19 +145,17 @@ describe('ledger-utils', () => {
       contractAddress,
       contractState,
       zswapChainState,
-      [],
+      createEmptyPartitionedTranscript(),
       privateTranscriptOutputs,
       alignedValue,
       alignedValue,
       nextZswapLocalState,
-      dummyEncPublicKey,
-      LedgerParameters.initialParameters(),
-      dummyCPK
+      dummyEncPublicKey
     );
     expect(tx).toBeInstanceOf(Transaction);
   });
 
-  it('createUnprovenLedgerCallTx with non-empty publicTranscript produces a valid Transaction', () => {
+  it('createUnprovenLedgerCallTx with non-empty partitionedTranscript produces a valid Transaction', () => {
     const circuitId = 'nonEmptyTranscriptTx';
     const contractState = new CompactContractState();
     const contractOperation = new ContractOperation();
@@ -144,8 +172,6 @@ describe('ledger-utils', () => {
       ]
     };
 
-    const publicTranscript: Op<AlignedValue>[] = [{ noop: { n: 5 } }];
-
     const contractAddress = sampleContractAddress();
     const zswapChainState = new ZswapChainState();
     const privateTranscriptOutputs: AlignedValue[] = [];
@@ -161,14 +187,12 @@ describe('ledger-utils', () => {
       contractAddress,
       contractState,
       zswapChainState,
-      publicTranscript,
+      createPartitionedTranscriptWithProgram([{ noop: { n: 5 } }]),
       privateTranscriptOutputs,
       alignedValue,
       alignedValue,
       nextZswapLocalState,
-      dummyEncPublicKey,
-      LedgerParameters.initialParameters(),
-      dummyCPK
+      dummyEncPublicKey
     );
     expect(tx).toBeInstanceOf(Transaction);
   });
@@ -193,7 +217,7 @@ describe('ledger-utils', () => {
         sampleContractAddress(),
         contractState,
         new ZswapChainState(),
-        [],
+        createEmptyPartitionedTranscript(),
         [],
         alignedValue,
         alignedValue,
@@ -203,9 +227,7 @@ describe('ledger-utils', () => {
           coinPublicKey: sampleCoinPublicKey(),
           currentIndex: 0n
         },
-        dummyEncPublicKey,
-        LedgerParameters.initialParameters(),
-        dummyCPK
+        dummyEncPublicKey
       )
     ).toThrow(`Operation '${unregisteredCircuitId}' is undefined`);
   });
