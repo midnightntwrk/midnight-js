@@ -32,8 +32,8 @@
     "deploy": "yarn npm publish"
   },
   "dependencies": {
-    "@midnight-ntwrk/compact-js": "2.5.0-rc.3",
-    "@midnight-ntwrk/ledger-v8": "8.0.3-rc.1",
+    "@midnight-ntwrk/compact-js": "2.5.0",
+    "@midnight-ntwrk/ledger-v8": "8.0.3",
     "@midnight-ntwrk/midnight-js-compact": "workspace:*",
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*",
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*",
