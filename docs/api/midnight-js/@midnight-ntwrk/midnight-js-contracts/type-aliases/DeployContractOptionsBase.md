@@ -17,7 +17,7 @@ in the event that `signingKey` is undefined.
 
 ### signingKey?
 
-> `readonly` `optional` **signingKey**: `SigningKey`
+> `readonly` `optional` **signingKey?**: `SigningKey`
 
 The signing key to add as the to-be-deployed contract's maintenance authority.
 If undefined, a new signing key is sampled and used as the CMA then stored

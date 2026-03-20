@@ -94,9 +94,9 @@ Saves the wallet state to a compressed file
 
 ##### wallet
 
-The wallet instance to save state from
+`ShieldedWalletAPI` \| `UnshieldedWalletAPI`
 
-`ShieldedWalletAPI` | `UnshieldedWalletAPI`
+The wallet instance to save state from
 
 #### Returns
 

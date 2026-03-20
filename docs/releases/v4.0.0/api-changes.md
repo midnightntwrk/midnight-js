@@ -60,6 +60,15 @@ export type AnyProvableCircuitId = Contract.ProvableCircuitId<Contract.Any>;
 export type AnyPrivateState = Contract.PrivateState<Contract.Any>;
 ```
 
+#### `createProofProvider`
+
+```typescript
+export const createProofProvider = (
+  provingProvider: ProvingProvider,
+  costModel?: CostModel
+): ProofProvider;
+```
+
 ---
 
 ## Package: @midnight-ntwrk/midnight-js-contracts
@@ -242,6 +251,15 @@ export type PublicContractStates = {
 
 - ImpureCircuitId<C>(options.circuitId)
 + ProvableCircuitId<C>(options.circuitId)
+
+  createUnprovenLedgerCallTx:
+- partitionedTranscript: PartitionedTranscript
++ publicTranscript: Op<AlignedValue>[]
++ ledgerParameters: LedgerParameters  (new parameter)
++ coinPublicKey: CoinPublicKey         (new parameter)
+
+- export { extractUserAddressedOutputs }
++ (removed)
 ```
 
 ### @midnight-ntwrk/indexer-public-data-provider

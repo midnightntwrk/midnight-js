@@ -164,7 +164,7 @@ Creates and starts the specified number of wallet providers
 
 ##### seeds?
 
-`string`[] | `undefined`
+`string`[] \| `undefined`
 
 #### Returns
 

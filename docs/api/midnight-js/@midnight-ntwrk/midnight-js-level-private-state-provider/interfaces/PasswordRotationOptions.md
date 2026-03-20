@@ -10,4 +10,4 @@
 
 ### maxEntries?
 
-> `readonly` `optional` **maxEntries**: `number`
+> `readonly` `optional` **maxEntries?**: `number`

@@ -38,9 +38,9 @@ The ledger address of the contract.
 
 ### privateStateId
 
-The identifier of the state of the witnesses of the contract.
+`string` \| `undefined`
 
-`string` | `undefined`
+The identifier of the state of the witnesses of the contract.
 
 ## Returns
 

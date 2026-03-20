@@ -22,7 +22,7 @@
 
 ### deployTxOptions?
 
-`DeployContractOptions`\<`C`\> | `DeployTxOptions`\<`C`\>
+`DeployContractOptions`\<`C`\> \| `DeployTxOptions`\<`C`\>
 
 ## Returns
 

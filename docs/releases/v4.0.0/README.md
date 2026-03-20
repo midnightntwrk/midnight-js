@@ -12,16 +12,18 @@
 - [Migration Guide](./migration-guide.md) - Step-by-step upgrade
 - [API Changes](./api-changes.md) - Complete API reference
 
-## Breaking Changes (3)
+## Breaking Changes (4)
 
 1. **Ledger v7 to v8 upgrade** - `ImpureCircuitId` renamed to `ProvableCircuitId` across all APIs (#607)
 2. **`queryZSwapAndContractState` return type changed** - Now returns `LedgerParameters` as third tuple element (#633)
 3. **`CallOptionsProviderDataDependencies` requires `ledgerParameters`** - New required field for circuit execution (#633)
+4. **Transaction building refactored to `addCalls` API** - `createUnprovenLedgerCallTx` signature changed, `extractUserAddressedOutputs` removed (#648)
 
-## New Features (2)
+## New Features (3)
 
 1. LedgerParameters flow through circuit execution (#633)
 2. Ledger v8 support with provable circuits (#607)
+3. `createProofProvider` factory function for simplified proof provider setup (#636)
 
 ## Quick Migration
 
@@ -58,11 +60,13 @@ const [zswapState, contractState, ledgerParameters] = await provider.queryZSwapA
 - [ ] All `ImpureCircuitId` references updated to `ProvableCircuitId`
 - [ ] All `queryZSwapAndContractState` call sites destructure 3-tuple
 - [ ] All `createUnprovenCallTxFromInitialStates` calls include `ledgerParameters`
+- [ ] All `createUnprovenLedgerCallTx` call sites updated for new signature
+- [ ] All `extractUserAddressedOutputs` usages removed
 - [ ] Unit tests pass
 - [ ] Integration tests pass
 - [ ] E2E tests pass
 
 ---
 
-**Last Updated:** March 17, 2026
+**Last Updated:** March 19, 2026
 **License:** Apache-2.0

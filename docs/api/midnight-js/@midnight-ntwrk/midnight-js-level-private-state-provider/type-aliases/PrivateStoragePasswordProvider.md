@@ -4,7 +4,7 @@
 
 [Midnight.js API Reference](../../../packages.md) / [@midnight-ntwrk/midnight-js-level-private-state-provider](../README.md) / PrivateStoragePasswordProvider
 
-# Type Alias: PrivateStoragePasswordProvider()
+# Type Alias: PrivateStoragePasswordProvider
 
 > **PrivateStoragePasswordProvider** = () => `string` \| `Promise`\<`string`\>
 
