@@ -20,7 +20,7 @@ Encapsulates the context for managing a scoped contract transaction.
 
 ## Properties
 
-### \[CacheStates\]()
+### \[CacheStates\]
 
 > `readonly` **\[CacheStates\]**: (`states`, `identity`) => `void`
 
@@ -28,7 +28,7 @@ Encapsulates the context for managing a scoped contract transaction.
 
 ##### states
 
-[`PublicContractStates`](../type-aliases/PublicContractStates.md) | [`ContractStates`](../type-aliases/ContractStates.md)\<`PrivateState`\<`C`\>\>
+[`PublicContractStates`](../type-aliases/PublicContractStates.md) \| [`ContractStates`](../type-aliases/ContractStates.md)\<`PrivateState`\<`C`\>\>
 
 ##### identity
 
@@ -40,7 +40,7 @@ Encapsulates the context for managing a scoped contract transaction.
 
 ***
 
-### \[GetCurrentStatesForIdentity\]()
+### \[GetCurrentStatesForIdentity\]
 
 > `readonly` **\[GetCurrentStatesForIdentity\]**: (`identity`) => [`PublicContractStates`](../type-aliases/PublicContractStates.md) \| [`ContractStates`](../type-aliases/ContractStates.md)\<`PrivateState`\<`C`\>\> \| `undefined`
 
@@ -56,7 +56,7 @@ Encapsulates the context for managing a scoped contract transaction.
 
 ***
 
-### \[MergeUnsubmittedCallTxData\]()
+### \[MergeUnsubmittedCallTxData\]
 
 > `readonly` **\[MergeUnsubmittedCallTxData\]**: (`circuitId`, `callData`, `privateStateId?`) => `void`
 
@@ -80,7 +80,7 @@ Encapsulates the context for managing a scoped contract transaction.
 
 ***
 
-### \[Submit\]()
+### \[Submit\]
 
 > `readonly` **\[Submit\]**: () => `Promise`\<[`FinalizedCallTxData`](../type-aliases/FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 

@@ -36,7 +36,7 @@ The address of a previously deployed contract.
 
 ### signingKey?
 
-> `readonly` `optional` **signingKey**: `SigningKey`
+> `readonly` `optional` **signingKey?**: `SigningKey`
 
 The signing key to use to perform contract maintenance updates. If defined, the given signing
 key is stored for this contract address. This is useful when someone has already added the given signing

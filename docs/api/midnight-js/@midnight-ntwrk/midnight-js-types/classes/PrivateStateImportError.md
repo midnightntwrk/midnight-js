@@ -46,7 +46,7 @@ Base error thrown when importing private states fails.
 
 ### cause?
 
-> `readonly` `optional` **cause**: [`PrivateStateImportErrorCause`](../type-aliases/PrivateStateImportErrorCause.md)
+> `readonly` `optional` **cause?**: [`PrivateStateImportErrorCause`](../type-aliases/PrivateStateImportErrorCause.md)
 
 #### Inherited from
 
