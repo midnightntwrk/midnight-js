@@ -23,6 +23,7 @@ import {
 import {
   LedgerParameters,
   MaintenanceUpdate,
+  QueryContext as LedgerQueryContext,
   sampleCoinPublicKey,
   sampleContractAddress,
   sampleEncryptionPublicKey,
@@ -121,8 +122,7 @@ describe('ledger-utils', () => {
       alignedValue,
       nextZswapLocalState,
       dummyEncPublicKey,
-      LedgerParameters.initialParameters(),
-      dummyCPK
+      LedgerParameters.initialParameters()
     );
     expect(tx).toBeInstanceOf(Transaction);
   });
@@ -167,8 +167,7 @@ describe('ledger-utils', () => {
       alignedValue,
       nextZswapLocalState,
       dummyEncPublicKey,
-      LedgerParameters.initialParameters(),
-      dummyCPK
+      LedgerParameters.initialParameters()
     );
     expect(tx).toBeInstanceOf(Transaction);
   });
@@ -204,10 +203,49 @@ describe('ledger-utils', () => {
           currentIndex: 0n
         },
         dummyEncPublicKey,
-        LedgerParameters.initialParameters(),
-        dummyCPK
+        LedgerParameters.initialParameters()
       )
     ).toThrow(`Operation '${unregisteredCircuitId}' is undefined`);
+  });
+
+  it('createUnprovenLedgerCallTx uses lossless binary path for state (regression)', () => {
+    const circuitId = 'binaryPathTx';
+    const contractState = new CompactContractState();
+    const contractOperation = new ContractOperation();
+    contractState.setOperation(circuitId, contractOperation);
+
+    const contractAddress = sampleContractAddress();
+
+    // Verify the binary serialization path produces a valid LedgerQueryContext
+    const ledgerContractState = toLedgerContractState(contractState);
+    const queryContext = new LedgerQueryContext(ledgerContractState.data, contractAddress);
+    expect(queryContext.address).toEqual(contractAddress);
+
+    // Verify createUnprovenLedgerCallTx succeeds using this path
+    const alignedValue: AlignedValue = {
+      value: [new Uint8Array()],
+      alignment: [{ tag: 'atom', value: { tag: 'field' } }]
+    };
+
+    const tx = createUnprovenLedgerCallTx(
+      circuitId,
+      contractAddress,
+      contractState,
+      new ZswapChainState(),
+      [],
+      [],
+      alignedValue,
+      alignedValue,
+      {
+        outputs: [],
+        inputs: [],
+        coinPublicKey: sampleCoinPublicKey(),
+        currentIndex: 0n
+      },
+      dummyEncPublicKey,
+      LedgerParameters.initialParameters()
+    );
+    expect(tx).toBeInstanceOf(Transaction);
   });
 
   it('createUnprovenReplaceAuthorityTx returns an UnprovenTransaction', async () => {
