@@ -29,7 +29,7 @@
     "test": "yarn ut",
     "ut": "DEBUG='testcontainers:compose' NODE_OPTIONS=--experimental-vm-modules vitest --config vitest.package.ut.config.ts run",
     "it": "docker compose -f ../compose.yml pull && DEBUG='testcontainers:compose' NODE_OPTIONS=--experimental-vm-modules vitest --config vitest.package.it.config.ts run",
-    "deploy": "yarn npm publish"
+    "deploy": "yarn npm publish --tolerate-republish"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-js": "2.5.0",

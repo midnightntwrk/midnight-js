@@ -40,7 +40,7 @@
     "compact-block-time": "run-compactc src/contract/block-time.compact ./src/contract/compiled/block-time",
     "compact-unshielded": "run-compactc src/contract/unshielded.compact ./src/contract/compiled/unshielded",
     "compact-shielded": "run-compactc src/contract/shielded.compact ./src/contract/compiled/shielded",
-    "deploy": "yarn npm publish"
+    "deploy": "yarn npm publish --tolerate-republish"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-js": "2.5.0",

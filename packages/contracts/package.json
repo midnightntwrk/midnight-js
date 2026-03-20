@@ -24,7 +24,7 @@
     "build": "rollup -c rollup.config.mjs",
     "test": "vitest run",
     "test-no-utils": "vitest run --exclude src/test/*.test.ts",
-    "deploy": "yarn npm publish"
+    "deploy": "yarn npm publish --tolerate-republish"
   },
   "dependencies": {
     "@midnight-ntwrk/compact-js": "2.5.0",
