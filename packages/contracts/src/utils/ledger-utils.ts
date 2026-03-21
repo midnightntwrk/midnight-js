@@ -20,24 +20,25 @@ import {
   type CoinPublicKey,
   type ContractAddress,
   ContractState,
-  type Op,
   type QueryContext,
   type SigningKey,
   type ZswapLocalState} from '@midnight-ntwrk/compact-runtime';
 import {
   ChargedState,
   communicationCommitmentRandomness,
+  ContractCallPrototype,
   ContractDeploy,
   ContractState as LedgerContractState,
   type EncPublicKey,
   Intent,
-  type LedgerParameters,
   type MaintenanceUpdate,
-  PrePartitionContractCall,
-  PreTranscript,
+  type PartitionedTranscript,
   QueryContext as LedgerQueryContext,
   StateValue as LedgerStateValue,
+  type Transcript,
   type UnprovenTransaction,
+  UnshieldedOffer,
+  type UtxoOutput,
   type ZswapChainState
 } from '@midnight-ntwrk/ledger-v8';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
@@ -87,43 +88,63 @@ export const createUnprovenLedgerDeployTx = (
   ];
 }
 
+export const extractUserAddressedOutputs = (
+  transcript: Transcript<AlignedValue> | undefined
+): UtxoOutput[] => {
+  if (!transcript) return [];
+
+  const outputs: UtxoOutput[] = [];
+  for (const [[tokenType, publicAddress], value] of transcript.effects.claimedUnshieldedSpends) {
+    if (publicAddress.tag === 'user' && tokenType.tag !== 'dust') {
+      outputs.push({
+        value,
+        owner: publicAddress.address,
+        type: tokenType.raw
+      });
+    }
+  }
+  return outputs;
+};
+
 export const createUnprovenLedgerCallTx = (
   circuitId: AnyProvableCircuitId,
   contractAddress: ContractAddress,
   initialContractState: ContractState,
   zswapChainState: ZswapChainState,
-  publicTranscript: Op<AlignedValue>[],
+  partitionedTranscript: PartitionedTranscript,
   privateTranscriptOutputs: AlignedValue[],
   input: AlignedValue,
   output: AlignedValue,
   nextZswapLocalState: ZswapLocalState,
-  encryptionPublicKey: EncPublicKey,
-  ledgerParameters: LedgerParameters
+  encryptionPublicKey: EncPublicKey
 ): UnprovenTransaction => {
-  const ledgerContractState = toLedgerContractState(initialContractState);
-  const op = ledgerContractState.operation(circuitId);
+  const op = toLedgerContractState(initialContractState).operation(circuitId);
   assertDefined(op, `Operation '${circuitId}' is undefined for contract state ${initialContractState.toString(false)}`);
 
-  const queryContext = new LedgerQueryContext(ledgerContractState.data, contractAddress);
-  queryContext.block = {
-    ...queryContext.block,
-    balance: ledgerContractState.balance,
-    ownAddress: contractAddress,
-    secondsSinceEpoch: BigInt(Math.floor(Date.now() / 1_000)),
-  };
-  const preTranscript = new PreTranscript(queryContext, publicTranscript);
-
-  const call = new PrePartitionContractCall(
-    contractAddress,
-    circuitId,
-    op,
-    preTranscript,
-    privateTranscriptOutputs,
-    input,
-    output,
-    communicationCommitmentRandomness(),
-    circuitId
+  const intent = Intent.new(ttlOneHour()).addCall(
+    new ContractCallPrototype(
+      contractAddress,
+      circuitId,
+      op,
+      partitionedTranscript[0],
+      partitionedTranscript[1],
+      privateTranscriptOutputs,
+      input,
+      output,
+      communicationCommitmentRandomness(),
+      circuitId
+    )
   );
+
+  const guaranteedOutputs = extractUserAddressedOutputs(partitionedTranscript[0]);
+  if (guaranteedOutputs.length > 0) {
+    intent.guaranteedUnshieldedOffer = UnshieldedOffer.new([], guaranteedOutputs, []);
+  }
+
+  const fallibleOutputs = extractUserAddressedOutputs(partitionedTranscript[1]);
+  if (fallibleOutputs.length > 0) {
+    intent.fallibleUnshieldedOffer = UnshieldedOffer.new([], fallibleOutputs, []);
+  }
 
   return Transaction.fromPartsRandomized(
     getNetworkId(),
@@ -131,12 +152,8 @@ export const createUnprovenLedgerCallTx = (
       contractAddress,
       zswapChainState
     }),
-    undefined
-  ).addCalls(
-    { tag: 'random' },
-    [call],
-    ledgerParameters,
-    ttlOneHour()
+    undefined,
+    intent
   );
 };
 

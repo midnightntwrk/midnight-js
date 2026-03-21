@@ -1,0 +1,8 @@
+{
+  "version": 3,
+  "file": "index.js",
+  "sourceRoot": "../../",
+  "sources": ["shielded-map.compact", "compiler/standard-library.compact"],
+  "names": [],
+  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;EAAA;;;;;;;;;;;;;MAOA,AAAA,OAKC;;;;;cALsB,MAAsB;;;;;;;;;;;;;;;;;;yCAAtB,MAAsB;;;;;;;oEAAtB,MAAsB;;;OAK5C;;;;GACA;EAbD;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;IAEA;;;;;;;;;yEAA+B;IAC/B;;;;;;;;;yEAAgD;;;;;;;GAU/C;EC4BD,AAAA,SAA2B;yEACqC;;EAgHhE,AAAA,8CAA+B;UACvB,oDAAuD;;;;;;;;;;;;yDAC3C,QAAM;UACxB,+BAA4C,QAAM;IAAlD;;;;;;;;;;;2HAAA;;;;;;;;EA8FF,AAAA,kBACE,QACA;;;0CAKU;8CACI;;sCACJ;sCAAoB;sCAAuB;;EApQvD,AAAA,kBAAA;qEAAA;;;EAAA,AAAA,gDAAA,QAAA;;wDAAA;wDAAA;;;;;;;EDKA,AAAA,QAAoB;;0DAApB,KAAoB;;;;;;;;;;;;;;GAAA;EAEpB,AAAA,UAKC,4BALsB,MAAsB;uDAClB,MAAI;UAC7B,KAAM,yCAAsE;;;;;;;;;;;6HAAM;gDAAxD,MAAI,EAA9B,KAAM,IAAN;;;;;;;;;0LAA0B,MAAI;;0LAA9B,KAAM;;;;;;;;;;;wLAAoB,MAAI;;;;;;uHAAxB;UACN,KAAO;IAAP;;;;;;;;;;6FAAA,KAAO;;;;wEAAA;;;GAER;;;;;;;;;;;;;;;;IAVD;qCAAA;;;;;;;;;;;0GAA+B;KAAA;IAC/B;qCAAA;;;;;;;;;;;0GAAgD;KAAA;;;;;;;;;;"
+}

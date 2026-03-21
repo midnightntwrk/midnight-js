@@ -17,18 +17,18 @@ import {
   type AlignedValue,
   ContractOperation,
   ContractState as CompactContractState,
-  type Op,
+  createCircuitContext,
   QueryContext
 } from '@midnight-ntwrk/compact-runtime';
 import {
-  LedgerParameters,
   MaintenanceUpdate,
-  QueryContext as LedgerQueryContext,
+  type PartitionedTranscript,
   sampleCoinPublicKey,
   sampleContractAddress,
   sampleEncryptionPublicKey,
   sampleSigningKey,
   Transaction,
+  type Transcript,
   ZswapChainState
 } from '@midnight-ntwrk/ledger-v8';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
@@ -43,6 +43,8 @@ import {
   toLedgerQueryContext,
   unprovenTxFromContractUpdates} from '../../utils';
 import { createMockCompiledContract,createMockZKConfigProvider } from '../test-mocks';
+
+const emptyTranscript: PartitionedTranscript = [undefined, undefined];
 
 describe('ledger-utils', () => {
   beforeAll(() => {
@@ -73,8 +75,6 @@ describe('ledger-utils', () => {
     const queryContext = new QueryContext(dummyContractState.data, dummyContractAddress);
     const ledgerQueryContext = toLedgerQueryContext(queryContext);
     expect(ledgerQueryContext.address).toEqual(queryContext.address);
-    // RuntimeError: unreachable
-    // WASM Error
   });
 
   it('unprovenTxFromContractUpdates returns an UnprovenTransaction', async () => {
@@ -116,58 +116,12 @@ describe('ledger-utils', () => {
       contractAddress,
       contractState,
       zswapChainState,
-      [],
+      emptyTranscript,
       privateTranscriptOutputs,
       alignedValue,
       alignedValue,
       nextZswapLocalState,
-      dummyEncPublicKey,
-      LedgerParameters.initialParameters()
-    );
-    expect(tx).toBeInstanceOf(Transaction);
-  });
-
-  it('createUnprovenLedgerCallTx with non-empty publicTranscript produces a valid Transaction', () => {
-    const circuitId = 'nonEmptyTranscriptTx';
-    const contractState = new CompactContractState();
-    const contractOperation = new ContractOperation();
-
-    contractState.setOperation(circuitId, contractOperation);
-
-    const alignedValue: AlignedValue = {
-      value: [new Uint8Array()],
-      alignment: [
-        {
-          tag: 'atom',
-          value: { tag: 'field' }
-        }
-      ]
-    };
-
-    const publicTranscript: Op<AlignedValue>[] = [{ noop: { n: 5 } }];
-
-    const contractAddress = sampleContractAddress();
-    const zswapChainState = new ZswapChainState();
-    const privateTranscriptOutputs: AlignedValue[] = [];
-    const nextZswapLocalState = {
-      outputs: [],
-      inputs: [],
-      coinPublicKey: sampleCoinPublicKey(),
-      currentIndex: 0n
-    };
-
-    const tx = createUnprovenLedgerCallTx(
-      circuitId,
-      contractAddress,
-      contractState,
-      zswapChainState,
-      publicTranscript,
-      privateTranscriptOutputs,
-      alignedValue,
-      alignedValue,
-      nextZswapLocalState,
-      dummyEncPublicKey,
-      LedgerParameters.initialParameters()
+      dummyEncPublicKey
     );
     expect(tx).toBeInstanceOf(Transaction);
   });
@@ -192,7 +146,7 @@ describe('ledger-utils', () => {
         sampleContractAddress(),
         contractState,
         new ZswapChainState(),
-        [],
+        emptyTranscript,
         [],
         alignedValue,
         alignedValue,
@@ -202,50 +156,55 @@ describe('ledger-utils', () => {
           coinPublicKey: sampleCoinPublicKey(),
           currentIndex: 0n
         },
-        dummyEncPublicKey,
-        LedgerParameters.initialParameters()
+        dummyEncPublicKey
       )
     ).toThrow(`Operation '${unregisteredCircuitId}' is undefined`);
   });
 
-  it('createUnprovenLedgerCallTx uses lossless binary path for state (regression)', () => {
-    const circuitId = 'binaryPathTx';
-    const contractState = new CompactContractState();
-    const contractOperation = new ContractOperation();
-    contractState.setOperation(circuitId, contractOperation);
+  describe('createUnprovenLedgerCallTx with receiveShielded (issue #686)', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let shieldedContract: any;
+    let shieldedInitialState: CompactContractState;
+    const shieldedAddr = sampleContractAddress();
+    const shieldedCpk = sampleCoinPublicKey();
 
-    const contractAddress = sampleContractAddress();
+    beforeAll(async () => {
+      const mod = await import('../resources/shielded-map-compiled/contract/index.js');
+      shieldedContract = new mod.Contract({ dummy: (ctx: { privateState: undefined }) => [ctx.privateState, []] });
+      const emptyZswap = { coinPublicKey: shieldedCpk, outputs: [], inputs: [], currentIndex: 0n };
+      const initResult = shieldedContract.initialState({ initialPrivateState: undefined, initialZswapLocalState: emptyZswap });
+      shieldedInitialState = initResult.currentContractState;
+    });
 
-    // Verify the binary serialization path produces a valid LedgerQueryContext
-    const ledgerContractState = toLedgerContractState(contractState);
-    const queryContext = new LedgerQueryContext(ledgerContractState.data, contractAddress);
-    expect(queryContext.address).toEqual(contractAddress);
+    it('succeeds with deposit circuit that calls receiveShielded', () => {
+      const coin = { nonce: new Uint8Array(32).fill(1), color: new Uint8Array(32).fill(2), value: 100n };
+      const ctx = createCircuitContext(shieldedAddr, shieldedCpk, shieldedInitialState, undefined);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { proofData, context } = (shieldedContract.circuits as any).deposit(ctx, coin);
 
-    // Verify createUnprovenLedgerCallTx succeeds using this path
-    const alignedValue: AlignedValue = {
-      value: [new Uint8Array()],
-      alignment: [{ tag: 'atom', value: { tag: 'field' } }]
-    };
+      // Build partitioned transcript from the circuit execution
+      // The circuit produces publicTranscript ops; we need to wrap them as a guaranteed Transcript
+      const transcript: Transcript<AlignedValue> = {
+        gas: context.gasCost,
+        effects: context.currentQueryContext.effects,
+        program: proofData.publicTranscript
+      };
+      const partitioned: PartitionedTranscript = [transcript, undefined];
 
-    const tx = createUnprovenLedgerCallTx(
-      circuitId,
-      contractAddress,
-      contractState,
-      new ZswapChainState(),
-      [],
-      [],
-      alignedValue,
-      alignedValue,
-      {
-        outputs: [],
-        inputs: [],
-        coinPublicKey: sampleCoinPublicKey(),
-        currentIndex: 0n
-      },
-      dummyEncPublicKey,
-      LedgerParameters.initialParameters()
-    );
-    expect(tx).toBeInstanceOf(Transaction);
+      const tx = createUnprovenLedgerCallTx(
+        'deposit',
+        shieldedAddr,
+        shieldedInitialState,
+        new ZswapChainState(),
+        partitioned,
+        proofData.privateTranscriptOutputs,
+        proofData.input,
+        proofData.output,
+        { outputs: [], inputs: [], coinPublicKey: shieldedCpk, currentIndex: 0n },
+        dummyEncPublicKey
+      );
+      expect(tx).toBeInstanceOf(Transaction);
+    });
   });
 
   it('createUnprovenReplaceAuthorityTx returns an UnprovenTransaction', async () => {
