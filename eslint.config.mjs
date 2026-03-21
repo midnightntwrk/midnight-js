@@ -19,7 +19,6 @@ export default tseslint.config(
       '**/generated/**',
       '**/managed/**',
       '**/compiled/**',
-      '**/test/resources/**',
       '**/*.d.ts',
       '**/node_modules/**',
       '**/.yarn/**',

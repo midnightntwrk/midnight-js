@@ -169,7 +169,7 @@ describe('ledger-utils', () => {
     const shieldedCpk = sampleCoinPublicKey();
 
     beforeAll(async () => {
-      const mod = await import('../resources/shielded-map-compiled/contract/index.js');
+      const mod = await import('../resources/compiled/shielded-map/contract/index.js');
       shieldedContract = new mod.Contract({ dummy: (ctx: { privateState: undefined }) => [ctx.privateState, []] });
       const emptyZswap = { coinPublicKey: shieldedCpk, outputs: [], inputs: [], currentIndex: 0n };
       const initResult = shieldedContract.initialState({ initialPrivateState: undefined, initialZswapLocalState: emptyZswap });
