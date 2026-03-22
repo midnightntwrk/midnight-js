@@ -1,15 +1,15 @@
-# Migration Guide v3.2.0 to v4.0.0
+# Migration Guide v3.2.0 to v4.0.1
 
 ## Overview
 
-This guide covers migrating from midnight-js v3.2.0 to v4.0.0. The major change is the upgrade from ledger v7 to ledger v8, which renames "impure circuits" to "provable circuits" and introduces `LedgerParameters` flow through circuit execution.
+This guide covers migrating from midnight-js v3.2.0 to v4.0.1. The major change is the upgrade from ledger v7 to ledger v8, which renames "impure circuits" to "provable circuits" and introduces `LedgerParameters` flow through circuit execution.
 
 ## Step 1: Update Dependencies
 
 ```bash
-yarn upgrade @midnight-ntwrk/midnight-js-types@^4.0.0
-yarn upgrade @midnight-ntwrk/midnight-js-contracts@^4.0.0
-yarn upgrade @midnight-ntwrk/indexer-public-data-provider@^4.0.0
+yarn upgrade @midnight-ntwrk/midnight-js-types@^4.0.1
+yarn upgrade @midnight-ntwrk/midnight-js-contracts@^4.0.1
+yarn upgrade @midnight-ntwrk/indexer-public-data-provider@^4.0.1
 ```
 
 Replace `@midnight-ntwrk/ledger-v7` with `@midnight-ntwrk/ledger-v8` in your `package.json`:
@@ -31,7 +31,7 @@ Replace all imports from `ledger-v7` with `ledger-v8`.
 import { type ContractAddress, type ZswapChainState } from '@midnight-ntwrk/ledger-v7';
 ```
 
-**After (v4.0.0):**
+**After (v4.0.1):**
 ```typescript
 import { type ContractAddress, type LedgerParameters, type ZswapChainState } from '@midnight-ntwrk/ledger-v8';
 ```
@@ -47,7 +47,7 @@ import { type Contract } from '@midnight-ntwrk/compact-js';
 type MyCircuitId = Contract.ImpureCircuitId<MyContract>;
 ```
 
-**After (v4.0.0):**
+**After (v4.0.1):**
 ```typescript
 import { type Contract } from '@midnight-ntwrk/compact-js';
 
@@ -61,7 +61,7 @@ type MyCircuitId = Contract.ProvableCircuitId<MyContract>;
 const ids = ContractExecutable.make(compiledContract).getImpureCircuitIds();
 ```
 
-**After (v4.0.0):**
+**After (v4.0.1):**
 ```typescript
 const ids = ContractExecutable.make(compiledContract).getProvableCircuitIds();
 ```
@@ -90,7 +90,7 @@ if (result) {
 }
 ```
 
-**After (v4.0.0):**
+**After (v4.0.1):**
 ```typescript
 const result = await publicDataProvider.queryZSwapAndContractState(address);
 if (result) {
@@ -114,7 +114,7 @@ const result = await createUnprovenCallTxFromInitialStates(zkConfigProvider, {
 }, walletEncryptionPublicKey);
 ```
 
-**After (v4.0.0):**
+**After (v4.0.1):**
 ```typescript
 const result = await createUnprovenCallTxFromInitialStates(zkConfigProvider, {
   compiledContract,
@@ -151,7 +151,7 @@ const tx = createUnprovenLedgerCallTx(
 );
 ```
 
-**After (v4.0.0):**
+**After (v4.0.1):**
 ```typescript
 import { createUnprovenLedgerCallTx } from '@midnight-ntwrk/midnight-js-contracts';
 

@@ -1,4 +1,4 @@
-# Release Notes v4.0.0
+# Release Notes v4.0.1
 
 **Release Date:** March 17, 2026
 **Previous Version:** v3.2.0
@@ -17,7 +17,7 @@ All ledger imports have been upgraded from `@midnight-ntwrk/ledger-v7` to `@midn
 import { type ContractAddress } from '@midnight-ntwrk/ledger-v7';
 type CircuitId = Contract.ImpureCircuitId<MyContract>;
 
-// v4.0.0
+// v4.0.1
 import { type ContractAddress } from '@midnight-ntwrk/ledger-v8';
 type CircuitId = Contract.ProvableCircuitId<MyContract>;
 ```
@@ -33,7 +33,7 @@ The return type now includes `LedgerParameters` as a third tuple element.
 const result = await provider.queryZSwapAndContractState(address);
 const [zswapState, contractState] = result;
 
-// v4.0.0
+// v4.0.1
 const result = await provider.queryZSwapAndContractState(address);
 const [zswapState, contractState, ledgerParameters] = result;
 ```
@@ -42,7 +42,7 @@ const [zswapState, contractState, ledgerParameters] = result;
 The `ledgerParameters` field is now required when constructing call options for circuit execution.
 
 ```typescript
-// v4.0.0
+// v4.0.1
 const callOptions: CallOptionsProviderDataDependencies = {
   coinPublicKey,
   initialContractState,

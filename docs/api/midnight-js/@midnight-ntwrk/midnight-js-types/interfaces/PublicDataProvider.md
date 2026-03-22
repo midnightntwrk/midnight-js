@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v4.0.0-rc.2**](../../../README.md)
+[**Midnight.js API Reference v4.0.1**](../../../README.md)
 
 ***
 
@@ -57,10 +57,10 @@ The address of the contract of interest.
 
 ##### config?
 
-[`BlockHeightConfig`](../type-aliases/BlockHeightConfig.md) \| [`BlockHashConfig`](../type-aliases/BlockHashConfig.md)
-
 The configuration of the query.
               If `undefined` returns the latest states.
+
+[`BlockHeightConfig`](../type-aliases/BlockHeightConfig.md) | [`BlockHashConfig`](../type-aliases/BlockHashConfig.md)
 
 #### Returns
 
@@ -105,10 +105,10 @@ The address of the contract of interest.
 
 ##### config?
 
-[`BlockHeightConfig`](../type-aliases/BlockHeightConfig.md) \| [`BlockHashConfig`](../type-aliases/BlockHashConfig.md)
-
 The configuration of the query.
               If `undefined` returns the latest states.
+
+[`BlockHeightConfig`](../type-aliases/BlockHeightConfig.md) | [`BlockHashConfig`](../type-aliases/BlockHashConfig.md)
 
 #### Returns
 
@@ -135,10 +135,10 @@ The address of the contract of interest.
 
 ##### config?
 
-[`BlockHeightConfig`](../type-aliases/BlockHeightConfig.md) \| [`BlockHashConfig`](../type-aliases/BlockHashConfig.md)
-
 The configuration of the query.
               If `undefined` returns the latest states.
+
+[`BlockHeightConfig`](../type-aliases/BlockHeightConfig.md) | [`BlockHashConfig`](../type-aliases/BlockHashConfig.md)
 
 #### Returns
 

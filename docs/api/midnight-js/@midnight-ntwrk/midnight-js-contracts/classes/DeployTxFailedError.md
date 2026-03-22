@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v4.0.0-rc.2**](../../../README.md)
+[**Midnight.js API Reference v4.0.1**](../../../README.md)
 
 ***
 
@@ -38,7 +38,7 @@ The finalization data of the deployment transaction that failed.
 
 ### circuitId?
 
-> `readonly` `optional` **circuitId?**: `string` \| `string`[]
+> `readonly` `optional` **circuitId**: `string` \| `string`[]
 
 The name of the circuit that was called to create the call
                  transaction that failed. Only defined if a call transaction

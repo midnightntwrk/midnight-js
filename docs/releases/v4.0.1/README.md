@@ -1,4 +1,4 @@
-# midnight-js v4.0.0 Release Documentation
+# midnight-js v4.0.1 Release Documentation
 
 **Release Date:** March 17, 2026
 **Previous Version:** v3.2.0
@@ -38,7 +38,7 @@ type MyCircuit = Contract.ImpureCircuitId<MyContract>;
 const [zswapState, contractState] = await provider.queryZSwapAndContractState(address);
 ```
 
-### After (v4.0.0)
+### After (v4.0.1)
 ```typescript
 import { type ContractAddress } from '@midnight-ntwrk/ledger-v8';
 

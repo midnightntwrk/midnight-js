@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v4.0.0-rc.2**](../../../README.md)
+[**Midnight.js API Reference v4.0.1**](../../../README.md)
 
 ***
 
@@ -14,6 +14,6 @@ Options for use when creating scoped transactions.
 
 ### scopeName?
 
-> `readonly` `optional` **scopeName?**: `string`
+> `readonly` `optional` **scopeName**: `string`
 
 An optional name for the transaction scope.

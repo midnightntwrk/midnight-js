@@ -1,4 +1,4 @@
-# New Features v4.0.0
+# New Features v4.0.1
 
 ## 1. LedgerParameters Flow Through Circuit Execution (#633)
 

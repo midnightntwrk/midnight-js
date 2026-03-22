@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v4.0.0-rc.2**](../../../README.md)
+[**Midnight.js API Reference v4.0.1**](../../../README.md)
 
 ***
 
@@ -12,6 +12,6 @@ The configuration for the proof request to the proof provider.
 
 ### timeout?
 
-> `readonly` `optional` **timeout?**: `number`
+> `readonly` `optional` **timeout**: `number`
 
 The timeout for the request.

@@ -1,4 +1,4 @@
-# Breaking Changes v4.0.0
+# Breaking Changes v4.0.1
 
 ## 1. Ledger v7 to v8: `ImpureCircuitId` Renamed to `ProvableCircuitId` (#607)
 
