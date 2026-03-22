@@ -4,7 +4,7 @@
 
 [Midnight.js API Reference](../../../packages.md) / [@midnight-ntwrk/midnight-js-types](../README.md) / makeContractExecutableRuntime
 
-# Variable: makeContractExecutableRuntime()
+# Variable: makeContractExecutableRuntime
 
 > `const` **makeContractExecutableRuntime**: (`zkConfigProvider`, `options`) => [`ManagedRuntime`](#)\<`ContractExecutable.ContractExecutable.Context`, `ConfigError.ConfigError`\>
 

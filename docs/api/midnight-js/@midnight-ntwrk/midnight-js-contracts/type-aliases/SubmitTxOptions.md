@@ -20,7 +20,7 @@ Configuration for [submitTx](../functions/submitTx.md).
 
 ### circuitId?
 
-> `readonly` `optional` **circuitId**: `PCK` \| `PCK`[]
+> `readonly` `optional` **circuitId?**: `PCK` \| `PCK`[]
 
 A circuit identifier to use to fetch the ZK artifacts needed to prove the
 transaction. Only defined if a call transaction is being submitted.
