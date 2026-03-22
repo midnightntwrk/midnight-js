@@ -26,6 +26,10 @@ The `createUnprovenLedgerCallTx` signature in v4.0.2 matches the v3.2.0 signatur
 
 All other v4.0.0 breaking changes remain valid: ledger v7-to-v8 migration (#607), `queryZSwapAndContractState` 3-tuple (#633), and `CallOptionsProviderDataDependencies` requiring `ledgerParameters` (#633).
 
+### Rehash `ZswapChainState` before spending from Merkle tree
+
+`ZswapInput.newContractOwned` in ledger-v8 requires the chain state's Merkle tree to be rehashed before validating coin inclusion proofs. The `zswapStateToOffer` function now calls `postBlockUpdate()` on the chain state before constructing inputs. Without this, contracts that spend coins deposited in a prior transaction (e.g., Seabattle `join_p2` calling `mergeCoinImmediate` on a coin from `join_p1`) fail with `"attempted to spend from a Merkle tree that was not rehashed"`.
+
 ### Fix `CompactError` propagation in `createUnprovenDeployTxFromVerifierKeys`
 
 The error handler in `createUnprovenDeployTxFromVerifierKeys` only checked for `ContractRuntimeError` when unwrapping errors from the contract runtime. The `compact-js` dependency now wraps `initialState` errors as `ContractConfigurationError`. Updated the handler to recognize both `ContractRuntimeError` and `ContractConfigurationError`, so `CompactError` messages propagate correctly to callers.
