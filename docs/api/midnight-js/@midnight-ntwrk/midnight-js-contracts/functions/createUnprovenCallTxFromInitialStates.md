@@ -35,7 +35,7 @@ Configuration.
 
 #### zkConfigProvider
 
-`ZKConfigProvider`\<`string`\>
+[`ZKConfigProvider`](#)\<`string`\>
 
 #### options
 
@@ -67,7 +67,7 @@ Configuration.
 
 #### zkConfigProvider
 
-`ZKConfigProvider`\<`string`\>
+[`ZKConfigProvider`](#)\<`string`\>
 
 #### options
 

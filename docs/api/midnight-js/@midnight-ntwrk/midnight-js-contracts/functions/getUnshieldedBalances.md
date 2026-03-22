@@ -14,7 +14,7 @@ Fetches the unshielded balances associated with a specific contract address.
 
 ### publicDataProvider
 
-`PublicDataProvider`
+[`PublicDataProvider`](#)
 
 The provider to use to fetch the unshielded balances from the blockchain.
 

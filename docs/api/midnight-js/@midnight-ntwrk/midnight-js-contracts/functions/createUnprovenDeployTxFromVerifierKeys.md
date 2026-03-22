@@ -37,7 +37,7 @@ Configuration.
 
 #### zkConfigProvider
 
-`ZKConfigProvider`\<`string`\>
+[`ZKConfigProvider`](#)\<`string`\>
 
 #### coinPublicKey
 
@@ -69,7 +69,7 @@ Configuration.
 
 #### zkConfigProvider
 
-`ZKConfigProvider`\<`string`\>
+[`ZKConfigProvider`](#)\<`string`\>
 
 #### coinPublicKey
 

@@ -14,7 +14,7 @@ Base type for public data relevant to an unsubmitted deployment transaction.
 
 ### contractAddress
 
-> `readonly` **contractAddress**: `ContractAddress`
+> `readonly` **contractAddress**: [`ContractAddress`](#)
 
 The ledger address of the contract that was deployed.
 

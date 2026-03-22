@@ -28,7 +28,7 @@ The compiled contract to use to execute circuits.
 
 ### contractAddress
 
-> `readonly` **contractAddress**: `ContractAddress`
+> `readonly` **contractAddress**: [`ContractAddress`](#)
 
 The address of a previously deployed contract.
 

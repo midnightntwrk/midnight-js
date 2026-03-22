@@ -10,7 +10,7 @@ Retrieves ZK artifacts from a remote source.
 
 ## Extends
 
-- `ZKConfigProvider`\<`K`\>
+- [`ZKConfigProvider`](#)\<`K`\>
 
 ## Type Parameters
 

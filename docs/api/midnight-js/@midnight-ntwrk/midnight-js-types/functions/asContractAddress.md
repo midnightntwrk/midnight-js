@@ -6,7 +6,7 @@
 
 # Function: asContractAddress()
 
-> **asContractAddress**(`address`): `ContractAddress`
+> **asContractAddress**(`address`): [`ContractAddress`](#)
 
 Constructs a branded contract address from a given string value.
 
@@ -20,6 +20,6 @@ A string value representing a contract address.
 
 ## Returns
 
-`ContractAddress`
+[`ContractAddress`](#)
 
-A ContractAddress.ContractAddress \| ContractAddress constructed from `address`.
+A [ContractAddress](#) constructed from `address`.

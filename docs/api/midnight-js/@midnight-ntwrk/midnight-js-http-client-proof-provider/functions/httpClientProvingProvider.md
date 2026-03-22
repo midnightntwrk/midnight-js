@@ -6,7 +6,7 @@
 
 # Function: httpClientProvingProvider()
 
-> **httpClientProvingProvider**\<`K`\>(`url`, `zkConfigProvider`, `config?`): `ProvingProvider`
+> **httpClientProvingProvider**\<`K`\>(`url`, `zkConfigProvider`, `config?`): [`ProvingProvider`](#)
 
 ## Type Parameters
 
@@ -22,7 +22,7 @@
 
 ### zkConfigProvider
 
-`ZKConfigProvider`\<`K`\>
+[`ZKConfigProvider`](#)\<`K`\>
 
 ### config?
 
@@ -30,4 +30,4 @@
 
 ## Returns
 
-`ProvingProvider`
+[`ProvingProvider`](#)

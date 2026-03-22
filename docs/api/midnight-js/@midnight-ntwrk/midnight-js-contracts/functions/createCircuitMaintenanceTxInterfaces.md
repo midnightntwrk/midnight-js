@@ -28,6 +28,8 @@ The providers to use to build transactions.
 
 `CompiledContract`\<`C`, `any`\>
 
+The contract to use to execute circuits.
+
 ### contractAddress
 
 `string`

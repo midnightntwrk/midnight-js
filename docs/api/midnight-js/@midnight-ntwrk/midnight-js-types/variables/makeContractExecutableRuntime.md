@@ -6,7 +6,7 @@
 
 # Variable: makeContractExecutableRuntime()
 
-> `const` **makeContractExecutableRuntime**: (`zkConfigProvider`, `options`) => `ManagedRuntime`\<`ContractExecutable.ContractExecutable.Context`, `ConfigError.ConfigError`\>
+> `const` **makeContractExecutableRuntime**: (`zkConfigProvider`, `options`) => [`ManagedRuntime`](#)\<`ContractExecutable.ContractExecutable.Context`, `ConfigError.ConfigError`\>
 
 Constructs an Effect managed runtime configured to execute contract executables.
 
@@ -26,6 +26,6 @@ Values that will be mapped into and made available within the constructed runtim
 
 ## Returns
 
-`ManagedRuntime`\<`ContractExecutable.ContractExecutable.Context`, `ConfigError.ConfigError`\>
+[`ManagedRuntime`](#)\<`ContractExecutable.ContractExecutable.Context`, `ConfigError.ConfigError`\>
 
-An Effect ManagedRuntime that can be used to execute ContractExecutable instances.
+An Effect [ManagedRuntime](#) that can be used to execute [ContractExecutable](#) instances.

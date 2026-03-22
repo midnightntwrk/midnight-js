@@ -40,6 +40,6 @@ The contract defining the circuit to call.
 
 ### contractAddress
 
-> `readonly` **contractAddress**: `ContractAddress`
+> `readonly` **contractAddress**: [`ContractAddress`](#)
 
 The address of the contract being executed.

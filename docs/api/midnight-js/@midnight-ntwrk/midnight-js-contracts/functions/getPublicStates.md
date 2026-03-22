@@ -14,7 +14,7 @@ Fetches only the public visible (Zswap and ledger) states of a contract.
 
 ### publicDataProvider
 
-`PublicDataProvider`
+[`PublicDataProvider`](#)
 
 The provider to use to fetch the public states (Zswap and ledger)
                           from the blockchain.
