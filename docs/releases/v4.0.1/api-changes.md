@@ -256,7 +256,7 @@ export type PublicContractStates = {
 - partitionedTranscript: PartitionedTranscript
 + publicTranscript: Op<AlignedValue>[]
 + ledgerParameters: LedgerParameters  (new parameter)
-+ coinPublicKey: CoinPublicKey         (new parameter)
+- coinPublicKey: CoinPublicKey         (removed - QueryContext now uses lossless binary path)
 
 - export { extractUserAddressedOutputs }
 + (removed)

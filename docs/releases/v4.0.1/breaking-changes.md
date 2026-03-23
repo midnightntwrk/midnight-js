@@ -118,13 +118,14 @@ const options: CallOptionsProviderDataDependencies = {
 
 ---
 
-## 4. Transaction Building Refactored to `addCalls` API (#648)
+## 4. Transaction Building Refactored to `addCalls` API (#648, #689)
 
 ### Reason
-The ledger v8 API provides a higher-level `addCalls` method on `Transaction` that handles unshielded offer construction automatically via `PrePartitionContractCall`. This removes the need for manual `Intent` construction and the `extractUserAddressedOutputs` workaround.
+The ledger v8 API provides a higher-level `addCalls` method on `Transaction` that handles unshielded offer construction automatically via `PrePartitionContractCall`. This removes the need for manual `Intent` construction and the `extractUserAddressedOutputs` workaround. Additionally, the QueryContext construction was replaced with a lossless binary serialization path (#689), removing the need for the `coinPublicKey` parameter.
 
 ### Impact
-- `createUnprovenLedgerCallTx` signature changed: `partitionedTranscript` replaced with `publicTranscript`, added `ledgerParameters` and `coinPublicKey` parameters
+- `createUnprovenLedgerCallTx` signature changed: `partitionedTranscript` replaced with `publicTranscript`, added `ledgerParameters` parameter
+- `coinPublicKey` parameter is no longer needed (QueryContext is constructed via `toLedgerContractState` + `LedgerQueryContext` constructor)
 - `extractUserAddressedOutputs` has been removed from `@midnight-ntwrk/midnight-js-contracts`
 
 ### Before
@@ -160,15 +161,15 @@ const tx = createUnprovenLedgerCallTx(
   output,
   nextZswapLocalState,
   encryptionPublicKey,
-  ledgerParameters,       // NEW - required
-  coinPublicKey           // NEW - required
+  ledgerParameters        // NEW - required
 );
 ```
 
 ### Migration Steps
 1. Replace `partitionedTranscript` with `publicTranscript` (the public ops array)
-2. Add `ledgerParameters` and `coinPublicKey` parameters to all `createUnprovenLedgerCallTx` call sites
-3. Remove all usages of `extractUserAddressedOutputs` - unshielded offers are now handled automatically by the `addCalls` API
+2. Add `ledgerParameters` parameter to all `createUnprovenLedgerCallTx` call sites
+3. Remove `coinPublicKey` if previously passed to `createUnprovenLedgerCallTx`
+4. Remove all usages of `extractUserAddressedOutputs` - unshielded offers are now handled automatically by the `addCalls` API
 
 ---
 
@@ -192,5 +193,5 @@ const tx = createUnprovenLedgerCallTx(
 ### Error: "Module has no exported member 'extractUserAddressedOutputs'"
 **Solution:** Remove all usages of `extractUserAddressedOutputs`. Unshielded offer handling is now managed automatically by the ledger's `addCalls` API.
 
-### Error: "Expected 12 arguments, but got 10" (createUnprovenLedgerCallTx)
-**Solution:** Add `ledgerParameters` and `coinPublicKey` as the last two parameters to `createUnprovenLedgerCallTx` calls, and replace `partitionedTranscript` with `publicTranscript`.
+### Error: "Expected 11 arguments, but got 10" (createUnprovenLedgerCallTx)
+**Solution:** Add `ledgerParameters` as the last parameter to `createUnprovenLedgerCallTx` calls, and replace `partitionedTranscript` with `publicTranscript`.
