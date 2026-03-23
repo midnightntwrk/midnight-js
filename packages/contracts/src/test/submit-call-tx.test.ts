@@ -630,7 +630,7 @@ describe('submit-call-tx', () => {
         expect(result.callTxData).toEqual(mockUnprovenCallTxData);
       });
 
-      it('should return data enabling manual FailFallible detection after finalization', async () => {
+      it('should return sufficient data for caller to detect and handle FailFallible after manual finalization', async () => {
         const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
         const mockTxId = 'test-tx-id-fail-fallible';
         const nextPrivateState = { state: 'should-not-persist' } as AnyPrivateState;
@@ -650,10 +650,14 @@ describe('submit-call-tx', () => {
         vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
         vi.mocked(submitTxAsync).mockResolvedValue(mockTxId);
 
-        const result = await submitCallTxAsync(mockProviders, options);
+        const { txId, callTxData } = await submitCallTxAsync(mockProviders, options);
 
-        expect(result.txId).toBe(mockTxId);
-        expect(result.callTxData.private.nextPrivateState).toEqual(nextPrivateState);
+        const mockFailFallibleFinalization = createMockFinalizedTxData(FailFallible);
+        vi.mocked(mockProviders.publicDataProvider.watchForTxData).mockResolvedValue(mockFailFallibleFinalization);
+        const finalizedData = await mockProviders.publicDataProvider.watchForTxData(txId);
+
+        expect(finalizedData.status).toBe(FailFallible);
+        expect(callTxData.private.nextPrivateState).toEqual(nextPrivateState);
         expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
       });
 
@@ -713,8 +717,9 @@ describe('submit-call-tx', () => {
 
       try {
         await submitCallTx(mockProviders, options);
-        expect.fail('Expected an error to be thrown');
+        expect.fail('Expected CallTxFailedError to be thrown');
       } catch (error) {
+        expect(error).toBeInstanceOf(CallTxFailedError);
         const finalizedTxData = (error as CallTxFailedError).finalizedTxData;
         expect(finalizedTxData.status).toBe(FailFallible);
         expect(finalizedTxData.unshielded.created).toHaveLength(2);
