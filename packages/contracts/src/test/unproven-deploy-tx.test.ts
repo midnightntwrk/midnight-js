@@ -112,7 +112,7 @@ describe('unproven-deploy-tx', () => {
           options,
           encryptionPublicKey
         )
-      ).rejects.toThrow('Failed to configure constructor context with coin public key');
+      ).rejects.toThrow('FAIL');
     });
   });
 

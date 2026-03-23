@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/testkit-js-e2e",
-  "version": "4.0.0-rc.2",
+  "version": "4.0.1",
   "description": "E2E tests for Midnight JS packages",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -40,10 +40,10 @@
     "compact-block-time": "run-compactc src/contract/block-time.compact ./src/contract/compiled/block-time",
     "compact-unshielded": "run-compactc src/contract/unshielded.compact ./src/contract/compiled/unshielded",
     "compact-shielded": "run-compactc src/contract/shielded.compact ./src/contract/compiled/shielded",
-    "deploy": "yarn npm publish"
+    "deploy": "yarn npm publish --tolerate-republish"
   },
   "dependencies": {
-    "@midnight-ntwrk/compact-js": "2.5.0-rc.3",
+    "@midnight-ntwrk/compact-js": "2.5.0",
     "@midnight-ntwrk/midnight-js-compact": "workspace:*",
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*",
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*",

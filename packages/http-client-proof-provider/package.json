@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-http-client-proof-provider",
-  "version": "4.0.0-rc.2",
+  "version": "4.0.1",
   "description": "Implementation of proof provider based on the Midnight ledger proof server",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -25,7 +25,7 @@
     "compact-simple": "run-compactc src/test/resources/simple.compact ./src/test/resources/compiled/simple",
     "build": "node ../../scripts/check-compiled.js src/test/resources/compiled && rollup -c rollup.config.mjs",
     "test": "vitest run",
-    "deploy": "yarn npm publish"
+    "deploy": "yarn npm publish --tolerate-republish"
   },
   "files": [
     "dist/"

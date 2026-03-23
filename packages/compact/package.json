@@ -10,7 +10,7 @@
     "node": ">=22.0.0"
   },
   "license": "Apache-2.0",
-  "version": "4.0.0-rc.2",
+  "version": "4.0.1",
   "type": "module",
   "bin": {
     "fetch-compactc": "dist/fetch-compact.mjs",
@@ -21,7 +21,7 @@
     "build": "tsc -p tsconfig.build.json && cp src/run-compactc.cjs dist/",
     "lint": "eslint ./src",
     "typecheck": "tsc -p tsconfig.json",
-    "deploy": "yarn npm publish"
+    "deploy": "yarn npm publish --tolerate-republish"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

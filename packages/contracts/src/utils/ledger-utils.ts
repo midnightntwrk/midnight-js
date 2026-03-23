@@ -20,7 +20,6 @@ import {
   type CoinPublicKey,
   type ContractAddress,
   ContractState,
-  createCircuitContext,
   type Op,
   type QueryContext,
   type SigningKey,
@@ -99,14 +98,19 @@ export const createUnprovenLedgerCallTx = (
   output: AlignedValue,
   nextZswapLocalState: ZswapLocalState,
   encryptionPublicKey: EncPublicKey,
-  ledgerParameters: LedgerParameters,
-  coinPublicKey: CoinPublicKey
+  ledgerParameters: LedgerParameters
 ): UnprovenTransaction => {
-  const op = toLedgerContractState(initialContractState).operation(circuitId);
+  const ledgerContractState = toLedgerContractState(initialContractState);
+  const op = ledgerContractState.operation(circuitId);
   assertDefined(op, `Operation '${circuitId}' is undefined for contract state ${initialContractState.toString(false)}`);
 
-  const initialQueryContext = createCircuitContext(contractAddress, coinPublicKey, initialContractState, undefined).currentQueryContext;
-  const queryContext = toLedgerQueryContext(initialQueryContext);
+  const queryContext = new LedgerQueryContext(ledgerContractState.data, contractAddress);
+  queryContext.block = {
+    ...queryContext.block,
+    balance: ledgerContractState.balance,
+    ownAddress: contractAddress,
+    secondsSinceEpoch: BigInt(Math.floor(Date.now() / 1_000)),
+  };
   const preTranscript = new PreTranscript(queryContext, publicTranscript);
 
   const call = new PrePartitionContractCall(
