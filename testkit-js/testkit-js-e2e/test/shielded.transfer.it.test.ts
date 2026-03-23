@@ -104,15 +104,19 @@ describe('Shielded tokens', () => {
   });
 
   test('should deposit shielded coin via receiveShielded (issue #686)', async () => {
+    const userKey = wallet.getCoinPublicKey();
+
+    // Step 1: Mint shielded tokens to the wallet
     const mintTxData = await submitCallTx(providers, {
       compiledContract: CompiledShieldedContract,
       contractAddress,
-      circuitId: 'mintShieldedTokens' as ShieldedContractCircuit,
-      args: [DOMAIN_SEPARATOR, MINT_AMOUNT]
+      circuitId: 'mintShieldedToUser' as ShieldedContractCircuit,
+      args: [DOMAIN_SEPARATOR, MINT_AMOUNT, userKey]
     });
 
     expect(mintTxData.public.status).toBe(SucceedEntirely);
 
+    // Step 2: Deposit a shielded coin into the contract via receiveShielded
     const coin = {
       nonce: new Uint8Array(32).fill(1),
       color: DOMAIN_SEPARATOR,

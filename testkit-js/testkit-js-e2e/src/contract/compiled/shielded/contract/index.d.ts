@@ -7,6 +7,13 @@ export type ImpureCircuits<PS> = {
   mintShieldedTokens(context: __compactRuntime.CircuitContext<PS>,
                      domainSep_0: Uint8Array,
                      amount_0: bigint): __compactRuntime.CircuitResults<PS, bigint>;
+  mintShieldedToUser(context: __compactRuntime.CircuitContext<PS>,
+                     domainSep_0: Uint8Array,
+                     amount_0: bigint,
+                     userKey_0: { bytes: Uint8Array }): __compactRuntime.CircuitResults<PS, { nonce: Uint8Array,
+                                                                                              color: Uint8Array,
+                                                                                              value: bigint
+                                                                                            }>;
   depositShielded(context: __compactRuntime.CircuitContext<PS>,
                   coin_0: { nonce: Uint8Array, color: Uint8Array, value: bigint
                           }): __compactRuntime.CircuitResults<PS, []>;
@@ -16,6 +23,13 @@ export type ProvableCircuits<PS> = {
   mintShieldedTokens(context: __compactRuntime.CircuitContext<PS>,
                      domainSep_0: Uint8Array,
                      amount_0: bigint): __compactRuntime.CircuitResults<PS, bigint>;
+  mintShieldedToUser(context: __compactRuntime.CircuitContext<PS>,
+                     domainSep_0: Uint8Array,
+                     amount_0: bigint,
+                     userKey_0: { bytes: Uint8Array }): __compactRuntime.CircuitResults<PS, { nonce: Uint8Array,
+                                                                                              color: Uint8Array,
+                                                                                              value: bigint
+                                                                                            }>;
   depositShielded(context: __compactRuntime.CircuitContext<PS>,
                   coin_0: { nonce: Uint8Array, color: Uint8Array, value: bigint
                           }): __compactRuntime.CircuitResults<PS, []>;
@@ -28,6 +42,13 @@ export type Circuits<PS> = {
   mintShieldedTokens(context: __compactRuntime.CircuitContext<PS>,
                      domainSep_0: Uint8Array,
                      amount_0: bigint): __compactRuntime.CircuitResults<PS, bigint>;
+  mintShieldedToUser(context: __compactRuntime.CircuitContext<PS>,
+                     domainSep_0: Uint8Array,
+                     amount_0: bigint,
+                     userKey_0: { bytes: Uint8Array }): __compactRuntime.CircuitResults<PS, { nonce: Uint8Array,
+                                                                                              color: Uint8Array,
+                                                                                              value: bigint
+                                                                                            }>;
   depositShielded(context: __compactRuntime.CircuitContext<PS>,
                   coin_0: { nonce: Uint8Array, color: Uint8Array, value: bigint
                           }): __compactRuntime.CircuitResults<PS, []>;
