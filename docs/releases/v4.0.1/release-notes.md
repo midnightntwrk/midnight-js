@@ -1,6 +1,6 @@
 # Release Notes v4.0.1
 
-**Release Date:** March 17, 2026
+**Release Date:** March 20, 2026
 **Previous Version:** v3.2.0
 **Node.js Requirement:** >=22
 
@@ -54,9 +54,10 @@ const callOptions: CallOptionsProviderDataDependencies = {
 ### Transaction Building Refactored to Use `addCalls` API (#648)
 The internal transaction construction in `createUnprovenLedgerCallTx` has been refactored. The function now uses the ledger v8 `addCalls` API with `PrePartitionContractCall` instead of the deprecated `ContractCallPrototype` and manual `Intent` construction. The `extractUserAddressedOutputs` utility has been removed as unshielded offer handling is now managed by the ledger's `addCalls` API.
 
-- `createUnprovenLedgerCallTx` signature now requires `ledgerParameters` and `coinPublicKey` parameters
+- `createUnprovenLedgerCallTx` signature now requires `ledgerParameters` parameter
 - `extractUserAddressedOutputs` has been removed
 - `partitionedTranscript` parameter replaced with `publicTranscript` (`Op<AlignedValue>[]`)
+- `coinPublicKey` parameter removed (QueryContext is now constructed using lossless binary serialization path instead of `createCircuitContext`)
 
 ## Features
 
@@ -104,8 +105,11 @@ const proofProvider = createProofProvider(provingProvider, customCostModel);
 
 ## Bug Fixes
 
+### Lossless Binary Path for QueryContext in `createUnprovenLedgerCallTx` (#689)
+Fixed a lossy encode/decode cycle through `toLedgerQueryContext` that caused "expected a cell, received null" errors for contracts with non-trivial ledger state (bounded Merkle trees, complex cells). Replaced with the binary serialization path (`toLedgerContractState` + `LedgerQueryContext` constructor) which is proven lossless throughout the codebase. This also removed the `coinPublicKey` parameter from `createUnprovenLedgerCallTx`.
+
 ### Unshielded Offers for User-Addressed Claim Unshielded Spends (#558)
-Fixed an issue where unshielded offers were not correctly attached for user-addressed claim unshielded spends. The `findUnshieldedOffers` function in ledger-utils now properly handles the matching of unshielded outputs, ensuring correct transaction construction for claim operations.
+Fixed an issue where unshielded offers were not correctly attached for user-addressed claim unshielded spends. The `extractUserAddressedOutputs` function in ledger-utils was updated to properly handle the matching of unshielded outputs, ensuring correct transaction construction for claim operations. This function was later removed in #648 as unshielded offer handling is now managed by the ledger's `addCalls` API.
 
 ## Tests
 
