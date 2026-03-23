@@ -36,7 +36,7 @@ export class TxFailedError extends Error {
         ...(circuitId && { circuitId }),
         ...finalizedTxData
       },
-      null,
+      (_key, value) => typeof value === 'bigint' ? value.toString() : value,
       '\t'
     );
   }
