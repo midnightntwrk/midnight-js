@@ -8,6 +8,12 @@
 
 ## Properties
 
+### headers?
+
+> `readonly` `optional` **headers?**: `Record`\<`string`, `string`\>
+
+***
+
 ### timeout?
 
-> `readonly` `optional` **timeout**: `number`
+> `readonly` `optional` **timeout?**: `number`

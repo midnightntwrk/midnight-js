@@ -20,9 +20,9 @@ Asserts that the given value is null or undefined.
 
 ### value
 
-The value to test for nullability.
+`A` \| `null` \| `undefined`
 
-`A` | `null` | `undefined`
+The value to test for nullability.
 
 ### message?
 
