@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v4.0.0-rc.2**](../../../README.md)
+[**Midnight.js API Reference v4.0.1**](../../../README.md)
 
 ***
 
@@ -40,6 +40,6 @@ The contract defining the circuit to call.
 
 ### contractAddress
 
-> `readonly` **contractAddress**: `ContractAddress`
+> `readonly` **contractAddress**: [`ContractAddress`](#)
 
 The address of the contract being executed.

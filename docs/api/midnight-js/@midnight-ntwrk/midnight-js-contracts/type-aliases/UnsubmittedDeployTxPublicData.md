@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v4.0.0-rc.2**](../../../README.md)
+[**Midnight.js API Reference v4.0.1**](../../../README.md)
 
 ***
 
@@ -14,7 +14,7 @@ Base type for public data relevant to an unsubmitted deployment transaction.
 
 ### contractAddress
 
-> `readonly` **contractAddress**: `ContractAddress`
+> `readonly` **contractAddress**: [`ContractAddress`](#)
 
 The ledger address of the contract that was deployed.
 

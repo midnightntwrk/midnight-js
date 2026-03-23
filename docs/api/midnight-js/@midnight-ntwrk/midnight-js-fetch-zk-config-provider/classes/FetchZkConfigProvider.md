@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v4.0.0-rc.2**](../../../README.md)
+[**Midnight.js API Reference v4.0.1**](../../../README.md)
 
 ***
 
@@ -10,7 +10,7 @@ Retrieves ZK artifacts from a remote source.
 
 ## Extends
 
-- `ZKConfigProvider`\<`K`\>
+- [`ZKConfigProvider`](#)\<`K`\>
 
 ## Type Parameters
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v4.0.0-rc.2**](../../../README.md)
+[**Midnight.js API Reference v4.0.1**](../../../README.md)
 
 ***
 
@@ -21,14 +21,14 @@ to the given identifier using the given providers.
 
 ### publicDataProvider
 
-`PublicDataProvider`
+[`PublicDataProvider`](#)
 
 The provider to use to fetch the public states (Zswap and ledger)
                           from the blockchain.
 
 ### privateStateProvider
 
-`PrivateStateProvider`\<`string`, `PS`\>
+[`PrivateStateProvider`](#)\<`string`, `PS`\>
 
 The provider to use to fetch the private state.
 

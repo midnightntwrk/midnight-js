@@ -1,5 +1,10 @@
 {
   "extends": ["../../typedoc.base.json"],
   "readme": "none",
-  "entryPoints": ["src/index.ts"]
+  "entryPoints": ["src/index.ts"],
+  "intentionallyNotExported": [
+    "TypeId",
+    "SubmitCallTxProviders",
+    "CachedStateIdentity"
+  ]
 }

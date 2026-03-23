@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v4.0.0-rc.2**](../../../README.md)
+[**Midnight.js API Reference v4.0.1**](../../../README.md)
 
 ***
 
@@ -8,14 +8,14 @@
 
 > **createProofProvider**(`provingProvider`, `costModel?`): [`ProofProvider`](../interfaces/ProofProvider.md)
 
-Creates a [ProofProvider](../interfaces/ProofProvider.md) from a ProvingProvider.
+Creates a [ProofProvider](../interfaces/ProofProvider.md) from a [ProvingProvider](#).
 The returned provider proves transactions using the initial cost model.
 
 ## Parameters
 
 ### provingProvider
 
-`ProvingProvider`
+[`ProvingProvider`](#)
 
 The underlying proving provider used to generate proofs.
 

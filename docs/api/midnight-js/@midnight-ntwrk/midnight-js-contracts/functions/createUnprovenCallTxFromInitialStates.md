@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v4.0.0-rc.2**](../../../README.md)
+[**Midnight.js API Reference v4.0.1**](../../../README.md)
 
 ***
 
@@ -35,7 +35,7 @@ Configuration.
 
 #### zkConfigProvider
 
-`ZKConfigProvider`\<`string`\>
+[`ZKConfigProvider`](#)\<`string`\>
 
 #### options
 
@@ -67,7 +67,7 @@ Configuration.
 
 #### zkConfigProvider
 
-`ZKConfigProvider`\<`string`\>
+[`ZKConfigProvider`](#)\<`string`\>
 
 #### options
 

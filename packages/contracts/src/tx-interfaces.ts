@@ -156,7 +156,7 @@ export type CircuitMaintenanceTxInterfaces<C extends Contract.Any> = Record<Cont
  * Creates a {@link CircuitMaintenanceTxInterfaces}.
  *
  * @param providers The providers to use to build transactions.
- * @param contract The contract to use to execute circuits.
+ * @param compiledContract The contract to use to execute circuits.
  * @param contractAddress The ledger address of the contract.
  */
 export const createCircuitMaintenanceTxInterfaces = <C extends Contract.Any>(

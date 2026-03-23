@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v4.0.0-rc.2**](../../../README.md)
+[**Midnight.js API Reference v4.0.1**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Class: LoggerProvider
 
-Implementation of LoggerProvider that returns a Logger instance.
+Implementation of LoggerProvider that returns a [Logger](#) instance.
 
 ## Constructors
 
@@ -18,7 +18,7 @@ Implementation of LoggerProvider that returns a Logger instance.
 
 ##### logger
 
-`Logger`
+[`Logger`](#)
 
 #### Returns
 
