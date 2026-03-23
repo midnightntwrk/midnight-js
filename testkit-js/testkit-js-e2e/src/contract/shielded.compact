@@ -4,3 +4,7 @@ export circuit mintShieldedTokens(domainSep: Bytes<32>, amount: Uint<64>): Uint<
     kernel.mintShielded(disclose(domainSep), disclose(amount));
     return disclose(amount);
 }
+
+export circuit depositShielded(coin: ShieldedCoinInfo): [] {
+    receiveShielded(disclose(coin));
+}

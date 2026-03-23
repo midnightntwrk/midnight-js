@@ -1,8 +1,8 @@
 {
   "version": 3,
   "file": "index.js",
-  "sourceRoot": "../../../../../",
-  "sources": ["src/contract/shielded.compact"],
+  "sourceRoot": "../../../../../../../",
+  "sources": ["testkit-js/testkit-js-e2e/src/contract/shielded.compact", "compiler/standard-library.compact"],
   "names": [],
-  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;EAAA;;;;;;;;;;MAEA,AAAA,kBAGC;;;;;cAHiC,WAAoB;cAAE,QAAgB;;;;;;;;;;;;;;;;;;;;;;;;;yCAAtC,WAAoB,+BAAE,QAAgB;;;;;;;;;oDAAtC,WAAoB;oDAAE,QAAgB;;;OAGvE;;;;;;;;GACA;EAND;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;GAMC;EAJD,AAAA,qBAGC,4BAHiC,WAAoB,EAAE,QAAgB;WACpE;;;;;;;;;;;kIAA6B,WAAS;;;;;;kIAAY,QAAM;;;;;;;;;;;;kEAAlD;WACU,QAAM;GACzB;;;;;;;;;;;;;;;;;;;;;;;;;"
+  "mappings": ";;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;EAAA;;;;;;;;;;MAEA,AAAA,kBAGC;;;;;cAHiC,WAAoB;cAAE,QAAgB;;;;;;;;;;;;;;;;;;;;;;;;;yCAAtC,WAAoB,+BAAE,QAAgB;;;;;;;;;oDAAtC,WAAoB;oDAAE,QAAgB;;;OAGvE;MAED,AAAA,eAEC;;;;;cAF8B,MAAsB;;;;;;;;;;;;;;;;;;yCAAtB,MAAsB;;;;;;;;;iDAAtB,MAAsB;;;OAEpD;;;;;;;;;;GACA;EAVD;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;GAUC;EC+BD,AAAA,SAA2B;yEACqC;;EAgHhE,AAAA,8CAA+B;UACvB,oDAAuD;;;;;;;;;;;;yDAC3C,QAAM;UACxB,+BAA4C,QAAM;IAAlD;;;;;;;;;;;2HAAA;;;;;;;;EA8FF,AAAA,kBACE,QACA;;;0CAKU;8CACI;;sCACJ;sCAAoB;sCAAuB;;EApQvD,AAAA,kBAAA;oEAAA;;;EAAA,AAAA,gDAAA,QAAA;;wDAAA;wDAAA;;;;;;;EDEA,AAAA,qBAGC,4BAHiC,WAAoB,EAAE,QAAgB;WACpE;;;;;;;;;;;kIAA6B,WAAS;;;;;;kIAAY,QAAM;;;;;;;;;;;;kEAAlD;WACU,QAAM;GACzB;EAED,AAAA,kBAEC,4BAF8B,MAAsB;uDACxB,MAAI;GAChC;;;;;;;;;;;;;;;;;;;;;;;;;"
 }

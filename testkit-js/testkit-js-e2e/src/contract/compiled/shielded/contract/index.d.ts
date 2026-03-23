@@ -7,12 +7,18 @@ export type ImpureCircuits<PS> = {
   mintShieldedTokens(context: __compactRuntime.CircuitContext<PS>,
                      domainSep_0: Uint8Array,
                      amount_0: bigint): __compactRuntime.CircuitResults<PS, bigint>;
+  depositShielded(context: __compactRuntime.CircuitContext<PS>,
+                  coin_0: { nonce: Uint8Array, color: Uint8Array, value: bigint
+                          }): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type ProvableCircuits<PS> = {
   mintShieldedTokens(context: __compactRuntime.CircuitContext<PS>,
                      domainSep_0: Uint8Array,
                      amount_0: bigint): __compactRuntime.CircuitResults<PS, bigint>;
+  depositShielded(context: __compactRuntime.CircuitContext<PS>,
+                  coin_0: { nonce: Uint8Array, color: Uint8Array, value: bigint
+                          }): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type PureCircuits = {
@@ -22,6 +28,9 @@ export type Circuits<PS> = {
   mintShieldedTokens(context: __compactRuntime.CircuitContext<PS>,
                      domainSep_0: Uint8Array,
                      amount_0: bigint): __compactRuntime.CircuitResults<PS, bigint>;
+  depositShielded(context: __compactRuntime.CircuitContext<PS>,
+                  coin_0: { nonce: Uint8Array, color: Uint8Array, value: bigint
+                          }): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type Ledger = {

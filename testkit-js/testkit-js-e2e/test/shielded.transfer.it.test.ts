@@ -102,4 +102,21 @@ describe('Shielded tokens', () => {
 
     expect(txData.public.status).toBe(SucceedEntirely);
   });
+
+  test('should deposit shielded coin via receiveShielded (issue #686)', async () => {
+    const coin = {
+      nonce: new Uint8Array(32).fill(1),
+      color: DOMAIN_SEPARATOR,
+      value: 100n
+    };
+
+    const txData = await submitCallTx(providers, {
+      compiledContract: CompiledShieldedContract,
+      contractAddress,
+      circuitId: 'depositShielded' as ShieldedContractCircuit,
+      args: [coin]
+    });
+
+    expect(txData.public.status).toBe(SucceedEntirely);
+  });
 });
