@@ -120,13 +120,20 @@ describe('Shielded tokens', () => {
 
     expect(mintTxData.public.status).toBe(SucceedEntirely);
 
+    // Parse the ShieldedSendResult to get the actual coin color
+    const result = mintTxData.private.result as {
+      change: { is_some: boolean; value: { nonce: Uint8Array; color: Uint8Array; value: bigint } };
+      sent: { nonce: Uint8Array; color: Uint8Array; value: bigint };
+    };
+
     // Wait for wallet to sync and discover the new shielded coins
     await syncWallet(wallet.wallet);
 
     // Step 2: Deposit a shielded coin into the contract via receiveShielded
+    // The color must come from the mint result, not the domain separator
     const coin = {
       nonce: new Uint8Array(32).fill(1),
-      color: DOMAIN_SEPARATOR,
+      color: result.sent.color,
       value: 100n
     };
 
