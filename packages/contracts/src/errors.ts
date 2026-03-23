@@ -36,7 +36,11 @@ export class TxFailedError extends Error {
         ...(circuitId && { circuitId }),
         ...finalizedTxData
       },
-      (_key, value) => typeof value === 'bigint' ? value.toString() : value,
+      (_key, value) => {
+        if (typeof value === 'bigint') return value.toString();
+        if (value instanceof Map) return Object.fromEntries(value);
+        return value;
+      },
       '\t'
     );
   }
