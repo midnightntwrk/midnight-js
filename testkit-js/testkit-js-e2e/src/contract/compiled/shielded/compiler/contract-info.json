@@ -29,7 +29,7 @@
       }
     },
     {
-      "name": "mintShieldedToUser",
+      "name": "mintAndSendShielded",
       "pure": false,
       "proof": true,
       "arguments": [
@@ -41,14 +41,21 @@
           }
         },
         {
-          "name": "amount",
+          "name": "mintValue",
           "type": {
             "type-name": "Uint",
             "maxval": 18446744073709551615
           }
         },
         {
-          "name": "userKey",
+          "name": "mintNonce",
+          "type": {
+            "type-name": "Bytes",
+            "length": 32
+          }
+        },
+        {
+          "name": "publicKey",
           "type": {
             "type-name": "Struct",
             "name": "ZswapCoinPublicKey",
@@ -62,31 +69,92 @@
               }
             ]
           }
+        },
+        {
+          "name": "sendValue",
+          "type": {
+            "type-name": "Uint",
+            "maxval": 340282366920938463463374607431768211455
+          }
         }
       ],
       "result-type": {
         "type-name": "Struct",
-        "name": "ShieldedCoinInfo",
+        "name": "ShieldedSendResult",
         "elements": [
           {
-            "name": "nonce",
+            "name": "change",
             "type": {
-              "type-name": "Bytes",
-              "length": 32
+              "type-name": "Struct",
+              "name": "Maybe",
+              "elements": [
+                {
+                  "name": "is_some",
+                  "type": {
+                    "type-name": "Boolean"
+                  }
+                },
+                {
+                  "name": "value",
+                  "type": {
+                    "type-name": "Struct",
+                    "name": "ShieldedCoinInfo",
+                    "elements": [
+                      {
+                        "name": "nonce",
+                        "type": {
+                          "type-name": "Bytes",
+                          "length": 32
+                        }
+                      },
+                      {
+                        "name": "color",
+                        "type": {
+                          "type-name": "Bytes",
+                          "length": 32
+                        }
+                      },
+                      {
+                        "name": "value",
+                        "type": {
+                          "type-name": "Uint",
+                          "maxval": 340282366920938463463374607431768211455
+                        }
+                      }
+                    ]
+                  }
+                }
+              ]
             }
           },
           {
-            "name": "color",
+            "name": "sent",
             "type": {
-              "type-name": "Bytes",
-              "length": 32
-            }
-          },
-          {
-            "name": "value",
-            "type": {
-              "type-name": "Uint",
-              "maxval": 340282366920938463463374607431768211455
+              "type-name": "Struct",
+              "name": "ShieldedCoinInfo",
+              "elements": [
+                {
+                  "name": "nonce",
+                  "type": {
+                    "type-name": "Bytes",
+                    "length": 32
+                  }
+                },
+                {
+                  "name": "color",
+                  "type": {
+                    "type-name": "Bytes",
+                    "length": 32
+                  }
+                },
+                {
+                  "name": "value",
+                  "type": {
+                    "type-name": "Uint",
+                    "maxval": 340282366920938463463374607431768211455
+                  }
+                }
+              ]
             }
           }
         ]

@@ -5,13 +5,10 @@ export circuit mintShieldedTokens(domainSep: Bytes<32>, amount: Uint<64>): Uint<
     return disclose(amount);
 }
 
-export circuit mintShieldedToUser(domainSep: Bytes<32>, amount: Uint<64>, userKey: ZswapCoinPublicKey): ShieldedCoinInfo {
-    return mintShieldedToken(
-        disclose(domainSep),
-        disclose(amount),
-        evolveNonce(0 as Uint<128>, disclose(domainSep)),
-        left<ZswapCoinPublicKey, ContractAddress>(disclose(userKey))
-    );
+export circuit mintAndSendShielded(domainSep: Bytes<32>, mintValue: Uint<64>, mintNonce: Bytes<32>, publicKey: ZswapCoinPublicKey, sendValue: Uint<128>): ShieldedSendResult {
+    const coin = mintShieldedToken(disclose(domainSep), disclose(mintValue), disclose(mintNonce), right<ZswapCoinPublicKey, ContractAddress>(kernel.self()));
+    const qualified = QualifiedShieldedCoinInfo { nonce: coin.nonce, color: coin.color, value: coin.value, mt_index: 0 as Uint<64> };
+    return sendShielded(qualified, left<ZswapCoinPublicKey, ContractAddress>(disclose(publicKey)), disclose(sendValue));
 }
 
 export circuit depositShielded(coin: ShieldedCoinInfo): [] {

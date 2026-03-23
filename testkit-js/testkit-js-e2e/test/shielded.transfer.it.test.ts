@@ -105,13 +105,15 @@ describe('Shielded tokens', () => {
 
   test('should deposit shielded coin via receiveShielded (issue #686)', async () => {
     const userKey = wallet.getCoinPublicKey();
+    const mintNonce = new Uint8Array(32).fill(42);
 
-    // Step 1: Mint shielded tokens to the wallet
+    // Step 1: Mint shielded tokens to self, then sendShielded to wallet
+    // (matches midnight-wallet-dapp's mintAndSendShielded pattern)
     const mintTxData = await submitCallTx(providers, {
       compiledContract: CompiledShieldedContract,
       contractAddress,
-      circuitId: 'mintShieldedToUser' as ShieldedContractCircuit,
-      args: [DOMAIN_SEPARATOR, MINT_AMOUNT, userKey]
+      circuitId: 'mintAndSendShielded' as ShieldedContractCircuit,
+      args: [DOMAIN_SEPARATOR, MINT_AMOUNT, mintNonce, userKey, MINT_AMOUNT]
     });
 
     expect(mintTxData.public.status).toBe(SucceedEntirely);
