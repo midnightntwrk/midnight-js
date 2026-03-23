@@ -24,6 +24,7 @@ import {
   getTestEnvironment,
   initializeMidnightProviders,
   type MidnightWalletProvider,
+  syncWallet,
   type TestEnvironment
 } from '@midnight-ntwrk/testkit-js';
 import { afterAll, beforeAll, beforeEach,describe, test } from '@vitest/runner';
@@ -118,6 +119,9 @@ describe('Shielded tokens', () => {
     });
 
     expect(mintTxData.public.status).toBe(SucceedEntirely);
+
+    // Wait for wallet to sync and discover the new shielded coins
+    await syncWallet(wallet.wallet);
 
     // Step 2: Deposit a shielded coin into the contract via receiveShielded
     const coin = {
