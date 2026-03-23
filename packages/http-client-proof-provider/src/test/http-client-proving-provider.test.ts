@@ -346,6 +346,67 @@ describe('httpClientProvingProvider', () => {
     });
   });
 
+  describe('custom headers', () => {
+    it('should include custom headers in check requests', async () => {
+      const customHeaders = { 'X-API-Key': 'my-secret-key', 'Authorization': 'Bearer token123' };
+      const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider, { headers: customHeaders });
+      const serializedPreimage = new Uint8Array([1, 2, 3]);
+
+      vi.mocked(ledger.createCheckPayload).mockReturnValue(new Uint8Array([20, 21, 22]));
+      vi.mocked(ledger.parseCheckResult).mockReturnValue([undefined]);
+
+      await provider.check(serializedPreimage, 'test-circuit');
+
+      expect(mockFetchRetry).toHaveBeenCalledWith(
+        expect.any(URL),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Content-Type': 'application/octet-stream',
+            'X-API-Key': 'my-secret-key',
+            'Authorization': 'Bearer token123'
+          })
+        })
+      );
+    });
+
+    it('should include custom headers in prove requests', async () => {
+      const customHeaders = { 'X-API-Key': 'my-secret-key' };
+      const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider, { headers: customHeaders });
+      const serializedPreimage = new Uint8Array([1, 2, 3]);
+
+      vi.mocked(ledger.createProvingPayload).mockReturnValue(new Uint8Array([30, 31, 32]));
+
+      await provider.prove(serializedPreimage, 'test-circuit');
+
+      expect(mockFetchRetry).toHaveBeenCalledWith(
+        expect.any(URL),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'Content-Type': 'application/octet-stream',
+            'X-API-Key': 'my-secret-key'
+          })
+        })
+      );
+    });
+
+    it('should send Content-Type header even without custom headers', async () => {
+      const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider);
+      const serializedPreimage = new Uint8Array([1, 2, 3]);
+
+      vi.mocked(ledger.createCheckPayload).mockReturnValue(new Uint8Array([20, 21, 22]));
+      vi.mocked(ledger.parseCheckResult).mockReturnValue([undefined]);
+
+      await provider.check(serializedPreimage, 'test-circuit');
+
+      expect(mockFetchRetry).toHaveBeenCalledWith(
+        expect.any(URL),
+        expect.objectContaining({
+          headers: { 'Content-Type': 'application/octet-stream' }
+        })
+      );
+    });
+  });
+
   describe('timeout configuration', () => {
     it('should use default timeout when not specified', async () => {
       const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider);

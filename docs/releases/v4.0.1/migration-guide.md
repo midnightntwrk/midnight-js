@@ -129,7 +129,7 @@ const result = await createUnprovenCallTxFromInitialStates(zkConfigProvider, {
 
 If you use `createUnprovenCallTx` (the high-level API), ledger parameters are fetched and passed automatically - no changes needed.
 
-## Step 6: Update `createUnprovenLedgerCallTx` Call Sites (#648)
+## Step 6: Update `createUnprovenLedgerCallTx` Call Sites (#648, #689)
 
 If you call `createUnprovenLedgerCallTx` directly, the signature has changed.
 
@@ -166,8 +166,7 @@ const tx = createUnprovenLedgerCallTx(
   output,
   nextZswapLocalState,
   encryptionPublicKey,
-  ledgerParameters,        // NEW - required
-  coinPublicKey            // NEW - required
+  ledgerParameters         // NEW - required
 );
 ```
 
@@ -213,9 +212,9 @@ Update your destructuring of `queryZSwapAndContractState` results to include the
 
 Remove all usages. Unshielded offer handling is now managed automatically by the ledger's `addCalls` API.
 
-### Error: "Expected 12 arguments, but got 10" (createUnprovenLedgerCallTx)
+### Error: "Expected 11 arguments, but got 10" (createUnprovenLedgerCallTx)
 
-Add `ledgerParameters` and `coinPublicKey` as the last two parameters, and replace `partitionedTranscript` with `publicTranscript`.
+Add `ledgerParameters` as the last parameter, and replace `partitionedTranscript` with `publicTranscript`.
 
 ## Rollback Plan
 

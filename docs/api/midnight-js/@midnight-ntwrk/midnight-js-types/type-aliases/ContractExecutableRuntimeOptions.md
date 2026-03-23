@@ -22,6 +22,6 @@ The current user's ZSwap public key.
 
 ### signingKey?
 
-> `readonly` `optional` **signingKey**: `string`
+> `readonly` `optional` **signingKey?**: `string`
 
 The signing key to add as the to-be-deployed contract's maintenance authority.

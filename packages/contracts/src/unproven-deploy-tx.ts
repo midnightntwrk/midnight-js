@@ -141,7 +141,8 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
     };
   } catch (error: unknown) {
     // Report CompactError messages as they are, otherwise re-throw the error.
-    if ((error as any)?.['_tag'] !== 'ContractRuntimeError') throw error; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const tag = (error as any)?.['_tag']; // eslint-disable-line @typescript-eslint/no-explicit-any
+    if (tag !== 'ContractRuntimeError' && tag !== 'ContractConfigurationError') throw error;
     if ((error as any)?.cause.name !== 'CompactError') throw error; // eslint-disable-line @typescript-eslint/no-explicit-any
     throw new Error((error as any)?.cause.message, { cause: error }); // eslint-disable-line @typescript-eslint/no-explicit-any
   }

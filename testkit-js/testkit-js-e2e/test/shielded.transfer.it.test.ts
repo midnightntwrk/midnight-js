@@ -24,6 +24,7 @@ import {
   getTestEnvironment,
   initializeMidnightProviders,
   type MidnightWalletProvider,
+  syncWallet,
   type TestEnvironment
 } from '@midnight-ntwrk/testkit-js';
 import { afterAll, beforeAll, beforeEach,describe, test } from '@vitest/runner';
@@ -98,6 +99,49 @@ describe('Shielded tokens', () => {
       contractAddress,
       circuitId: 'mintShieldedTokens' as ShieldedContractCircuit,
       args: [DOMAIN_SEPARATOR, MINT_AMOUNT]
+    });
+
+    expect(txData.public.status).toBe(SucceedEntirely);
+  });
+
+  test('should deposit shielded coin via receiveShielded (issue #686)', async () => {
+    const userKeyHex = wallet.getCoinPublicKey();
+    const userKeyBytes = new Uint8Array(Buffer.from(userKeyHex, 'hex'));
+    const mintNonce = new Uint8Array(32).fill(42);
+
+    // Step 1: Mint shielded tokens to self, then sendShielded to wallet
+    // (matches midnight-wallet-dapp's mintAndSendShielded pattern)
+    const mintTxData = await submitCallTx(providers, {
+      compiledContract: CompiledShieldedContract,
+      contractAddress,
+      circuitId: 'mintAndSendShielded' as ShieldedContractCircuit,
+      args: [DOMAIN_SEPARATOR, MINT_AMOUNT, mintNonce, { bytes: userKeyBytes }, MINT_AMOUNT]
+    });
+
+    expect(mintTxData.public.status).toBe(SucceedEntirely);
+
+    // Parse the ShieldedSendResult to get the actual coin color
+    const result = mintTxData.private.result as {
+      change: { is_some: boolean; value: { nonce: Uint8Array; color: Uint8Array; value: bigint } };
+      sent: { nonce: Uint8Array; color: Uint8Array; value: bigint };
+    };
+
+    // Wait for wallet to sync and discover the new shielded coins
+    await syncWallet(wallet.wallet);
+
+    // Step 2: Deposit a shielded coin into the contract via receiveShielded
+    // The color must come from the mint result, not the domain separator
+    const coin = {
+      nonce: new Uint8Array(32).fill(1),
+      color: result.sent.color,
+      value: 100n
+    };
+
+    const txData = await submitCallTx(providers, {
+      compiledContract: CompiledShieldedContract,
+      contractAddress,
+      circuitId: 'depositShielded' as ShieldedContractCircuit,
+      args: [coin]
     });
 
     expect(txData.public.status).toBe(SucceedEntirely);

@@ -148,6 +148,7 @@ export const zswapStateToOffer = (
   );
   const unprovenInputs = new Map<string, UnprovenInput>();
   const unprovenTransients = new Map<string, UnprovenTransient>();
+  const rehashedChainState = addressAndChainStateTuple?.zswapChainState.postBlockUpdate(new Date());
   zswapLocalState.inputs.forEach((qualifiedCoinInfo) => {
     const serializedCoinInfo =  serializeQualifiedShieldedCoinInfo(qualifiedCoinInfo);
     const unprovenOutput = unprovenOutputs.get(serializedCoinInfo);
@@ -159,6 +160,7 @@ export const zswapStateToOffer = (
       unprovenOutputs.delete(serializedCoinInfo);
     } else {
       assertDefined(addressAndChainStateTuple, `Only outputs or transients are expected when no chain state is provided`);
+      assertDefined(rehashedChainState, `Only outputs or transients are expected when no chain state is provided`);
       assertIsContractAddress(addressAndChainStateTuple.contractAddress);
       unprovenInputs.set(
         serializedCoinInfo,
@@ -166,7 +168,7 @@ export const zswapStateToOffer = (
           qualifiedCoinInfo,
           DEFAULT_SEGMENT_NUMBER,
           addressAndChainStateTuple.contractAddress,
-          addressAndChainStateTuple.zswapChainState
+          rehashedChainState
         )
       );
     }
