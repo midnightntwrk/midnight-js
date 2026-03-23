@@ -443,6 +443,31 @@ describe('Zswap utilities', () => {
       expect(result!.transients.length).toBe(0);
     });
 
+    test('should handle inputs from chain state that has not been explicitly rehashed', () => {
+      const recipient = sampleOne(arbitraryContractRecipient);
+      const coinInfo = createShieldedCoinInfo(shieldedToken().raw, 100n);
+      const output = createZswapOutput({ coinInfo, recipient }, randomEncryptionPublicKey());
+      const proofErasedOffer = Transaction.fromParts(
+        getNetworkId(), ZswapOffer.fromOutput(output, nativeToken().raw, 100n)
+      ).eraseProofs().guaranteedOffer!;
+      const [chainStateNoRehash, mtIndices] = new ZswapChainState().tryApply(proofErasedOffer);
+      const qualifiedCoin = { ...coinInfo, mt_index: mtIndices.get(output.commitment)! };
+
+      const zswapState = {
+        currentIndex: 0n,
+        coinPublicKey: randomCoinPublicKey(),
+        inputs: [qualifiedCoin],
+        outputs: []
+      };
+
+      const result = zswapStateToOffer(zswapState, randomEncryptionPublicKey(), {
+        contractAddress: recipient.right,
+        zswapChainState: chainStateNoRehash
+      });
+      expect(result).toBeDefined();
+      expect(result!.inputs.length).toBe(1);
+    });
+
     test('should handle mixed inputs, outputs, and transients', () => {
       const recipient = sampleOne(arbitraryContractRecipient);
       const { zswapChainState, nonMatchingInputs } = zswapChainStateWithNonMatchingInputs(recipient, [50n]);

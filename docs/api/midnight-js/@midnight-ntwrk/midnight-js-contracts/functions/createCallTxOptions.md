@@ -36,7 +36,7 @@ Creates a [CallTxOptions](../type-aliases/CallTxOptions.md) object from various 
 
 ### privateStateId
 
-`string` | `undefined`
+`string` \| `undefined`
 
 ### args
 

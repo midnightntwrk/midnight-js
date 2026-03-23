@@ -14,6 +14,6 @@ Options for use when creating scoped transactions.
 
 ### scopeName?
 
-> `readonly` `optional` **scopeName**: `string`
+> `readonly` `optional` **scopeName?**: `string`
 
 An optional name for the transaction scope.

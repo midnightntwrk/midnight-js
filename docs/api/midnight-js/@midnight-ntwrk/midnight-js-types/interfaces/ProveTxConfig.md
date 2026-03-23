@@ -12,6 +12,6 @@ The configuration for the proof request to the proof provider.
 
 ### timeout?
 
-> `readonly` `optional` **timeout**: `number`
+> `readonly` `optional` **timeout?**: `number`
 
 The timeout for the request.

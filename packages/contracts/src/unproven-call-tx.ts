@@ -123,7 +123,7 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
           contractAddress,
           initialContractState,
           initialZswapChainState,
-          publicTranscript,
+          partitionedTranscript,
           privateTranscriptOutputs,
           input,
           output,
@@ -132,8 +132,7 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
             zswapLocalState,
             options.coinPublicKey,
             walletEncryptionPublicKey
-          ),
-          ledgerParameters
+          )
         ),
         newCoins: zswapStateToNewCoins(
           parseCoinPublicKeyToHex(coinPublicKey, getNetworkId()),

@@ -36,7 +36,7 @@ Error thrown when the export data format is invalid.
 
 ### cause?
 
-> `readonly` `optional` **cause**: [`PrivateStateImportErrorCause`](../type-aliases/PrivateStateImportErrorCause.md)
+> `readonly` `optional` **cause?**: [`PrivateStateImportErrorCause`](../type-aliases/PrivateStateImportErrorCause.md)
 
 #### Inherited from
 

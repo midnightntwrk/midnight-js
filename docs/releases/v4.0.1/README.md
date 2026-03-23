@@ -1,6 +1,6 @@
 # midnight-js v4.0.1 Release Documentation
 
-**Release Date:** March 17, 2026
+**Release Date:** March 20, 2026
 **Previous Version:** v3.2.0
 **Migration Complexity:** High
 
@@ -17,7 +17,7 @@
 1. **Ledger v7 to v8 upgrade** - `ImpureCircuitId` renamed to `ProvableCircuitId` across all APIs (#607)
 2. **`queryZSwapAndContractState` return type changed** - Now returns `LedgerParameters` as third tuple element (#633)
 3. **`CallOptionsProviderDataDependencies` requires `ledgerParameters`** - New required field for circuit execution (#633)
-4. **Transaction building refactored to `addCalls` API** - `createUnprovenLedgerCallTx` signature changed, `extractUserAddressedOutputs` removed (#648)
+4. **Transaction building refactored to `addCalls` API** - `createUnprovenLedgerCallTx` signature changed, `extractUserAddressedOutputs` removed (#648, #689)
 
 ## New Features (3)
 
@@ -60,7 +60,7 @@ const [zswapState, contractState, ledgerParameters] = await provider.queryZSwapA
 - [ ] All `ImpureCircuitId` references updated to `ProvableCircuitId`
 - [ ] All `queryZSwapAndContractState` call sites destructure 3-tuple
 - [ ] All `createUnprovenCallTxFromInitialStates` calls include `ledgerParameters`
-- [ ] All `createUnprovenLedgerCallTx` call sites updated for new signature
+- [ ] All `createUnprovenLedgerCallTx` call sites updated for new signature (11 params, `ledgerParameters` is the last)
 - [ ] All `extractUserAddressedOutputs` usages removed
 - [ ] Unit tests pass
 - [ ] Integration tests pass
@@ -68,5 +68,5 @@ const [zswapState, contractState, ledgerParameters] = await provider.queryZSwapA
 
 ---
 
-**Last Updated:** March 19, 2026
+**Last Updated:** March 23, 2026
 **License:** Apache-2.0
