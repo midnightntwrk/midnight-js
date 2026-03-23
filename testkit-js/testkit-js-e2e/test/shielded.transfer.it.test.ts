@@ -113,7 +113,7 @@ describe('Shielded tokens', () => {
       compiledContract: CompiledShieldedContract,
       contractAddress,
       circuitId: 'mintAndSendShielded' as ShieldedContractCircuit,
-      args: [DOMAIN_SEPARATOR, MINT_AMOUNT, mintNonce, userKey, MINT_AMOUNT]
+      args: [DOMAIN_SEPARATOR, MINT_AMOUNT, mintNonce, { bytes: userKey }, MINT_AMOUNT]
     });
 
     expect(mintTxData.public.status).toBe(SucceedEntirely);
