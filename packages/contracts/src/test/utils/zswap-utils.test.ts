@@ -333,8 +333,12 @@ describe('Zswap utilities', () => {
           const delta = unprovenOffer!.deltas.get(nativeToken().raw);
           if (addressAndChainStateTuple) {
             const expectedDelta = expectedInputsSum - expectedOutputsSum;
-            if (expectedInputCount > 0 && expectedOutputCount > 0 && expectedDelta !== 0n) {
-              expect(delta).toBe(expectedDelta);
+            if (expectedInputCount > 0 && expectedOutputCount > 0) {
+              if (expectedDelta !== 0n) {
+                expect(delta).toBe(expectedDelta);
+              } else {
+                expect(delta).toBeUndefined();
+              }
             } else if (expectedInputCount > 0 && expectedInputsSum !== 0n) {
               expect(delta).toBe(expectedInputsSum);
             } else if (expectedOutputCount > 0 && expectedOutputsSum !== 0n) {
