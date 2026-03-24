@@ -2,7 +2,33 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
-## [4.0.1](https://github.com/midnightntwrk/midnight-js/compare/v4.0.0-rc.2...v4.0.1) (2026-03-20)
+## [4.0.2](https://github.com/midnightntwrk/midnight-js/compare/v4.0.1...v4.0.2) (2026-03-24)
+
+
+### Bug Fixes
+
+* **contracts:** replace error as-any casts with type guard ([#712](https://github.com/midnightntwrk/midnight-js/pull/712)) ([2a895cf](https://github.com/midnightntwrk/midnight-js/commit/2a895cf052890f59924cdd52007de640a3e7e603))
+* fallible offer error reporting bugs ([#705](https://github.com/midnightntwrk/midnight-js/pull/705)) ([f2685dd](https://github.com/midnightntwrk/midnight-js/commit/f2685dda9e26b38aa2d08babcbe07a6d84a7e91b))
+* fallible offer error reporting bugs ([#705](https://github.com/midnightntwrk/midnight-js/pull/705)) ([878c586](https://github.com/midnightntwrk/midnight-js/commit/878c586122b52288a66703101f152de75557ad15))
+* pin upload-sarif-github-action to latest SHA ([71c9837](https://github.com/midnightntwrk/midnight-js/commit/71c9837ad3d614611ef6c99f38192ace90a8e0e8))
+* replace shell string interpolation with safe argument arrays in compact CLI tools ([#711](https://github.com/midnightntwrk/midnight-js/pull/711)) ([c50ffec](https://github.com/midnightntwrk/midnight-js/commit/c50ffecd9b2b5ac601ea551d5db653f483d03fab))
+* revert createUnprovenLedgerCallTx to ContractCallPrototype approach ([#695](https://github.com/midnightntwrk/midnight-js/pull/695)) ([675bef7](https://github.com/midnightntwrk/midnight-js/commit/675bef7c9475d0d192ca171001545c7e701e5e5f)), closes [#648](https://github.com/midnightntwrk/midnight-js/pull/648) [#686](https://github.com/midnightntwrk/midnight-js/pull/686) [#686](https://github.com/midnightntwrk/midnight-js/pull/686) [#686](https://github.com/midnightntwrk/midnight-js/pull/686)
+
+
+### Documentation
+
+* API documentation update ([#703](https://github.com/midnightntwrk/midnight-js/pull/703)) ([2b3a2bf](https://github.com/midnightntwrk/midnight-js/commit/2b3a2bf029092870684c47f3e223e852ae34ffee))
+* release note for 4.0.1 ([#698](https://github.com/midnightntwrk/midnight-js/pull/698)) ([866d225](https://github.com/midnightntwrk/midnight-js/commit/866d225e1df7c47e3215448b5a14c6503039b350))
+* update release and API docs from v4.0.0 to v4.0.1 ([#696](https://github.com/midnightntwrk/midnight-js/pull/696)) ([4f81cd1](https://github.com/midnightntwrk/midnight-js/commit/4f81cd1b876b09d2a1700186b52b3c373b13c24c))
+
+
+### Improvements
+
+* add basic fallible tests and bugfix for fallible errors ([#704](https://github.com/midnightntwrk/midnight-js/pull/704)) ([44d956b](https://github.com/midnightntwrk/midnight-js/commit/44d956b46e2ea1cbbdd4c02e6788c23716a1633c))
+* add headers handling to http-client-proof-provider and fix ci ([#685](https://github.com/midnightntwrk/midnight-js/pull/685)) ([e97d99c](https://github.com/midnightntwrk/midnight-js/commit/e97d99cb9877ea5a330efea0d1a8c3ea8b2a6fe0))
+* remove dead code from zswap-utils offer construction ([#710](https://github.com/midnightntwrk/midnight-js/pull/710)) ([b9f1912](https://github.com/midnightntwrk/midnight-js/commit/b9f19129dc19498c1a4247030e9ec3b6624aff42))
+
+## [4.0.1](https://github.com/midnightntwrk/midnight-js/compare/v4.0.0-rc.2...v4.0.1) (2026-03-21)
 
 
 ### Bug Fixes
@@ -25,6 +51,7 @@ All notable changes to this project will be documented in this file. See [commit
 * **deps-dev:** bump typedoc-plugin-markdown from 4.10.0 to 4.11.0 ([#673](https://github.com/midnightntwrk/midnight-js/pull/673)) ([3a0f301](https://github.com/midnightntwrk/midnight-js/commit/3a0f301822fe7a897f72c6dacf2b458138c24252))
 * **deps:** bump @midnight-ntwrk/wallet-sdk-facade ([#680](https://github.com/midnightntwrk/midnight-js/pull/680)) ([2c165ec](https://github.com/midnightntwrk/midnight-js/commit/2c165ec83c4c8455e80dc9565dc604f3cd9eedd4))
 * **release:** bump version to 4.0.0-rc.2 ([#677](https://github.com/midnightntwrk/midnight-js/pull/677)) ([06f31a2](https://github.com/midnightntwrk/midnight-js/commit/06f31a292557fb79d63d0653fe5c14e5ecfafb56))
+* **release:** bump version to v4.0.1 ([#692](https://github.com/midnightntwrk/midnight-js/pull/692)) ([02d11c7](https://github.com/midnightntwrk/midnight-js/commit/02d11c7f92af81debc1431a91301d25131b781a8))
 * set location in compactc to official releases channel ([#672](https://github.com/midnightntwrk/midnight-js/pull/672)) ([f1c4092](https://github.com/midnightntwrk/midnight-js/commit/f1c4092e50a859ef0cab2a547d9eebe4340632a7))
 * update to stable component versions ([#684](https://github.com/midnightntwrk/midnight-js/pull/684)) ([42a23af](https://github.com/midnightntwrk/midnight-js/commit/42a23af0f7d8abc10976d7eaa82025410704d2c9))
 
