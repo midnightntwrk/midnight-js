@@ -16,6 +16,21 @@
 import type { ContractState } from '@midnight-ntwrk/compact-runtime';
 import type { AnyProvableCircuitId, FinalizedTxData, PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 
+interface EffectContractError {
+  readonly _tag: string;
+  readonly cause: { readonly name: string; readonly message: string };
+}
+
+export const isEffectContractError = (error: unknown): error is EffectContractError =>
+  typeof error === 'object' &&
+  error !== null &&
+  '_tag' in error &&
+  'cause' in error &&
+  typeof (error as Record<string, unknown>).cause === 'object' &&
+  (error as Record<string, unknown>).cause !== null &&
+  'name' in ((error as Record<string, unknown>).cause as object) &&
+  'message' in ((error as Record<string, unknown>).cause as object);
+
 /**
  * An error indicating that a transaction submitted to a consensus node failed.
  */

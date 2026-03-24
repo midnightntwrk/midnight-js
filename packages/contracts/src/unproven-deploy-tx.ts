@@ -28,6 +28,7 @@ import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import type { ContractConstructorOptionsWithArguments } from './call-constructor';
 import { type ContractProviders } from './contract-providers';
+import { isEffectContractError } from './errors';
 import type { UnsubmittedDeployTxData } from './tx-model';
 import { createUnprovenLedgerDeployTx, zswapStateToNewCoins } from './utils';
 
@@ -140,11 +141,10 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
       }
     };
   } catch (error: unknown) {
-    // Report CompactError messages as they are, otherwise re-throw the error.
-    const tag = (error as any)?.['_tag']; // eslint-disable-line @typescript-eslint/no-explicit-any
-    if (tag !== 'ContractRuntimeError' && tag !== 'ContractConfigurationError') throw error;
-    if ((error as any)?.cause.name !== 'CompactError') throw error; // eslint-disable-line @typescript-eslint/no-explicit-any
-    throw new Error((error as any)?.cause.message, { cause: error }); // eslint-disable-line @typescript-eslint/no-explicit-any
+    if (!isEffectContractError(error)) throw error;
+    if (error._tag !== 'ContractRuntimeError' && error._tag !== 'ContractConfigurationError') throw error;
+    if (error.cause.name !== 'CompactError') throw error;
+    throw new Error(error.cause.message, { cause: error });
   }
 }
 
