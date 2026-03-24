@@ -163,6 +163,18 @@ describe('Zswap utilities', () => {
       })
     ));
 
+  test('serializeCoinInfo produces plain string fields for type and nonce, not __uint8Array_val__ wrappers', () =>
+    fc.assert(
+      fc.property(arbitraryCoinInfo, (coinInfo) => {
+        const serialized = serializeCoinInfo(coinInfo);
+        const parsed = JSON.parse(serialized);
+        expect(typeof parsed.type).toBe('string');
+        expect(typeof parsed.nonce).toBe('string');
+        expect(parsed).not.toHaveProperty('color');
+        expect(parsed.value).toHaveProperty('__big_int_val__');
+      })
+    ));
+
   test("should produce the original value without 'mt_index' when serializing 'QualifiedShieldedCoinInfo' then deserializing 'CoinInfo'", () =>
     fc.assert(
       fc.property(arbitraryQualifiedShieldedCoinInfo, (qualifiedCoinInfo) => {
