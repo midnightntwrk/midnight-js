@@ -3,7 +3,6 @@
 const childProcess = require('child_process');
 const path = require('path');
 const fs = require('fs');
-const { exec } = require("node:child_process");
 
 const [_node, _script, ...args] = process.argv;
 const COMPACT_HOME_ENV = process.env.COMPACT_HOME;
@@ -77,19 +76,15 @@ if (checkOs() === 'docker') {
   }
   const dockerImage = `ghcr.io/midnight-ntwrk/compactc:v${currentVersion}`;
 
-  const argsCompact = args
-    .map(arg => arg.startsWith('-') ? arg : `/compact/${arg}`)
-    .join(' ');
+  const argsCompact = args.map(arg => arg.startsWith('-') ? arg : `/compact/${arg}`);
 
   const containerName = 'compactc-docker';
 
   const argsDocker = [
-    'run', '--name', containerName, '--rm', '-v', `${currentDir}:/compact`, `${dockerImage}`, `"compactc ${argsCompact}"`
+    'run', '--name', containerName, '--rm', '-v', `${currentDir}:/compact`, dockerImage, 'compactc', ...argsCompact
   ];
 
-  const dockerCommand = `docker ${argsDocker.join(" ")}`;
-
-  child = exec(dockerCommand);
+  child = childProcess.spawn('docker', argsDocker);
 
   child.on('exit', (code, signal) => {
     console.log(`Child process exited with code ${code}`);

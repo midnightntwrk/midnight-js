@@ -133,8 +133,8 @@ const fetchCompact = async (): Promise<void> => {
   fs.rmSync(targetCompactDir, { force: true, recursive: true });
   fs.mkdirSync(targetCompactDir, { recursive: true });
 
-  childProcess.execSync(`unzip ${targetFile} -d ${targetCompactDir}`);
-  childProcess.execSync(`chmod -R +w ${targetCompactDir}`);
+  childProcess.spawnSync('unzip', [targetFile, '-d', targetCompactDir], { stdio: 'inherit' });
+  childProcess.spawnSync('chmod', ['-R', '+w', targetCompactDir], { stdio: 'inherit' });
   console.log(`Compact extracted to ${targetCompactDir}`);
 
   fs.rmSync(targetFile);
@@ -145,7 +145,7 @@ const fetchCompact = async (): Promise<void> => {
 const fetchDockerImage = () => {
   console.log('Fetching Compact docker image...');
   const dockerImage = `${compactDockerImage}:v${compactcVersion}`;
-  const child = childProcess.exec(`docker pull ${dockerImage}`);
+  const child = childProcess.spawn('docker', ['pull', dockerImage]);
   child.on('exit', (code, signal) => {
     console.log(`Child process exited with code ${code}`);
     if (code === 0) {
