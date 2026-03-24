@@ -112,11 +112,7 @@ export const unprovenOfferFromMap = <U extends UnprovenInput | UnprovenOutput | 
     return undefined;
   }
 
-  const offers = Array.from(map, (entry) => unprovenOfferFromCoinInfo(entry, f)).filter((offer) => offer != null);
-
-  if (offers.length === 0) {
-    return undefined;
-  }
+  const offers = Array.from(map, (entry) => unprovenOfferFromCoinInfo(entry, f));
 
   return offers.reduce((acc, curr) => acc.merge(curr));
 };
