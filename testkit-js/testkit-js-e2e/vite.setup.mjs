@@ -1,7 +1,7 @@
 import { beforeAll, vi } from 'vitest';
 import {
   createLogger,
-  deleteDirectory,
+  tryDeleteDirectory,
   defaultContainersConfiguration,
   setContainersConfiguration
 } from '@midnight-ntwrk/testkit-js';
@@ -28,7 +28,7 @@ beforeAll(async () => {
     'Setting up container configuration to use pinned component versions'
   );
   setContainersConfiguration(testKitContainersConfiguration);
-  await deleteDirectory('../midnight-level-db');
+  await tryDeleteDirectory('../midnight-level-db');
 });
 
 const MINUTE = 60 * 1000;

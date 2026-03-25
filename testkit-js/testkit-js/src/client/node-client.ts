@@ -20,7 +20,7 @@ import type { BlockHash } from '@midnight-ntwrk/midnight-js-types';
 import axios, { type AxiosResponse } from 'axios';
 import type { Logger } from 'pino';
 
-import { extractHostnameAndPort } from '@/utils';
+import { buildUrlWithPath } from '@/utils';
 
 /**
  * Client for interacting with a Midnight node's JSON-RPC API
@@ -45,16 +45,10 @@ export class NodeClient {
    * @returns {Promise<AxiosResponse | void>} A promise that resolves to the response of the health check or logs an error if the request fails.
    */
   async health() {
-    const url = `https://${extractHostnameAndPort(this.nodeURL)}/health`;
-    return axios
-      .get(url, { timeout: 1000 })
-      .then((r) => {
-        this.logger.info(`Connected to node ${url}: ${JSON.stringify(r.data)}`);
-        return r;
-      })
-      .catch((error) => {
-        this.logger.warn(`Failed to connect to node at '${url}'`, error);
-      });
+    const url = buildUrlWithPath(this.nodeURL, '/health');
+    const response = await axios.get(url, { timeout: 1000 });
+    this.logger.info(`Connected to node ${url}: ${JSON.stringify(response.data)}`);
+    return response;
   }
 
   /**
@@ -129,7 +123,7 @@ export class NodeClient {
    */
   async ledgerStateBlob(blockHash: BlockHash): Promise<Uint8Array> {
     this.logger.info(`Fetching ledger state at block hash '${blockHash}'`);
-    const result = await this.jsonRPC('midnight_getLedgerState', []);
+    const result = await this.jsonRPC('midnight_getLedgerState', [blockHash]);
     if (result === '') {
       throw new Error(`No ledger state found at block hash '${blockHash}'`);
     }
@@ -144,7 +138,7 @@ export class NodeClient {
    */
   async ledgerVersion(blockHash: BlockHash): Promise<string> {
     this.logger.info(`Fetching ledger version at block hash '${blockHash}'`);
-    const result = await this.jsonRPC('midnight_ledgerVersion', []);
+    const result = await this.jsonRPC('midnight_ledgerVersion', [blockHash]);
     if (result === '') {
       throw new Error(`No ledger version found at block hash '${blockHash}'`);
     }

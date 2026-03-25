@@ -13,14 +13,24 @@
  * limitations under the License.
  */
 
-declare global {
-  interface BigInt {
-    toJSON(): string;
-  }
-}
+import '@/wallet/bigint-serialization';
 
-BigInt.prototype.toJSON = function () {
-  return this.toString();
-};
+describe('[Unit tests] BigInt serialization', () => {
+  it('should serialize BigInt values that exceed Number.MAX_SAFE_INTEGER without precision loss', () => {
+    const large = 500_000_000_000_000_000_000n;
 
-export {};
+    const serialized = JSON.stringify({ value: large });
+    const parsed = JSON.parse(serialized);
+
+    expect(parsed.value).toBe('500000000000000000000');
+  });
+
+  it('should serialize small BigInt values as strings for consistency', () => {
+    const small = 42n;
+
+    const serialized = JSON.stringify({ value: small });
+    const parsed = JSON.parse(serialized);
+
+    expect(parsed.value).toBe('42');
+  });
+});

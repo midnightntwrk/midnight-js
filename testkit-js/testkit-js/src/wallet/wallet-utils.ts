@@ -87,7 +87,7 @@ export const waitForFunds = async (
   env: EnvironmentConfiguration,
   tokenType: TokenType = shieldedToken(),
   fundFromFaucet = false
-) => {
+): Promise<bigint> => {
   const initialState = await getInitialShieldedState(wallet.shielded);
   logger.info(`Your wallet address is: ${initialState.address.coinPublicKeyString()}, waiting for funds...`);
   if (fundFromFaucet && env.faucet) {
@@ -96,9 +96,12 @@ export const waitForFunds = async (
   }
   const initialBalance = initialState.balances[tokenType.tag];
   if (initialBalance === undefined || initialBalance === 0n) {
-    logger.info(`Your wallet balance is: 0`);
-    logger.info(`Waiting to receive tokens...`);
-    return syncWallet(wallet);
+    logger.info('Your wallet balance is: 0, waiting to receive tokens...');
+    const syncedState = await syncWallet(wallet);
+    const syncedBalance = syncedState.shielded.balances[tokenType.tag] ?? 0n;
+    logger.info(`Your wallet balance after sync is: ${syncedBalance}`);
+    return syncedBalance;
   }
+  logger.info(`Your wallet balance is: ${initialBalance}`);
   return initialBalance;
 };

@@ -41,7 +41,7 @@ export const delay = (ms: number) => {
  * @returns {Promise<void>} A promise that resolves when the directory is deleted
  * @private
  */
-export const deleteDirectory = async (dirPath: string) => {
+export const tryDeleteDirectory = async (dirPath: string) => {
   try {
     const resolvedPath = path.resolve(dirPath);
     await rm(resolvedPath, { recursive: true, force: true });
@@ -55,10 +55,7 @@ export const deleteDirectory = async (dirPath: string) => {
   }
 };
 
-export const extractHostnameAndPort = (url: string): string => {
-  const { hostname, port } = new URL(url);
-  if (port !== '') {
-    return `${hostname}:${port}`;
-  }
-  return hostname;
+export const buildUrlWithPath = (baseUrl: string, urlPath: string): string => {
+  const url = new URL(baseUrl);
+  return `${url.protocol}//${url.host}${urlPath}`;
 };

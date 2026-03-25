@@ -87,7 +87,7 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     await this.wallet.start(this.zswapSecretKeys, this.dustSecretKey);
     if (waitForFundsInWallet) {
       const balance = await waitForFunds(this.wallet, this.env, tokenType, true);
-      this.logger.info(`Your wallet balance is: ${JSON.stringify(balance)}`);
+      this.logger.info(`Your wallet balance is: ${balance}`);
     }
   }
 

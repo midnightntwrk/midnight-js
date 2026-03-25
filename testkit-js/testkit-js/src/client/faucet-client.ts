@@ -16,7 +16,7 @@
 import axios from 'axios';
 import type { Logger } from 'pino';
 
-import { extractHostnameAndPort } from '@/utils';
+import { buildUrlWithPath } from '@/utils';
 
 /**
  * Client for interacting with the Midnight faucet service.
@@ -42,16 +42,10 @@ export class FaucetClient {
    * @returns {Promise<AxiosResponse | void>} A promise that resolves to the response of the health check or logs an error if the request fails
    */
   async health() {
-    const url = `https://${extractHostnameAndPort(this.faucetUrl)}/api/health`;
-    return axios
-      .get(url, { timeout: 1000 })
-      .then((r) => {
-        this.logger.info(`Connected to faucet ${url}: ${JSON.stringify(r.data)}`);
-        return r;
-      })
-      .catch((error) => {
-        this.logger.warn(`Failed to connect to faucet service at '${url}'`, error);
-      });
+    const url = buildUrlWithPath(this.faucetUrl, '/api/health');
+    const response = await axios.get(url, { timeout: 1000 });
+    this.logger.info(`Connected to faucet ${url}: ${JSON.stringify(response.data)}`);
+    return response;
   }
 
   /**
@@ -63,27 +57,19 @@ export class FaucetClient {
    */
   async requestTokens(walletAddress: string): Promise<void> {
     this.logger.info(`Requesting tokens from '${this.faucetUrl}' for address: '${walletAddress}'`);
-    try {
-      const response = await axios.post(
-        this.faucetUrl,
-        {
-          address: walletAddress,
-          captchaToken: 'XXXX.DUMMY.TOKEN.XXXX'
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'x-turnstile-token': process.env.TURNSTILE_HEADER ?? ''
-          }
+    const response = await axios.post(
+      this.faucetUrl,
+      {
+        address: walletAddress,
+        captchaToken: 'XXXX.DUMMY.TOKEN.XXXX'
+      },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'x-turnstile-token': process.env.TURNSTILE_HEADER ?? ''
         }
-      );
-      this.logger.info(`Faucet response: ${response.statusText}`);
-    } catch (error) {
-      if (error instanceof Error) {
-        this.logger.error(`Error requesting tokens: ${error.message}`);
-      } else {
-        this.logger.error(`Error requesting tokens`);
       }
-    }
+    );
+    this.logger.info(`Faucet response: ${response.statusText}`);
   }
 }
