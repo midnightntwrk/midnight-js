@@ -2,11 +2,15 @@
 
 ***
 
-> **extractHostnameAndPort**(`url`): `string`
+> **buildUrlWithPath**(`baseUrl`, `urlPath`): `string`
 
 ## Parameters
 
-### url
+### baseUrl
+
+`string`
+
+### urlPath
 
 `string`
 

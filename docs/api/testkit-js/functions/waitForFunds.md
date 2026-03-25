@@ -2,7 +2,7 @@
 
 ***
 
-> **waitForFunds**(`wallet`, `env`, `tokenType?`, `fundFromFaucet?`): `Promise`\<`bigint` \| `FacadeState`\>
+> **waitForFunds**(`wallet`, `env`, `tokenType?`, `fundFromFaucet?`): `Promise`\<`bigint`\>
 
 ## Parameters
 
@@ -24,4 +24,4 @@
 
 ## Returns
 
-`Promise`\<`bigint` \| `FacadeState`\>
+`Promise`\<`bigint`\>

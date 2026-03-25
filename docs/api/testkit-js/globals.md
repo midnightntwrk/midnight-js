@@ -54,6 +54,7 @@
 
 ## Functions
 
+- [buildUrlWithPath](functions/buildUrlWithPath.md)
 - [createDefaultTestLogger](functions/createDefaultTestLogger.md)
 - [createLogger](functions/createLogger.md)
 - [delay](functions/delay.md)
@@ -64,7 +65,6 @@
 - [expectSuccessfulCallTx](functions/expectSuccessfulCallTx.md)
 - [expectSuccessfulDeployTx](functions/expectSuccessfulDeployTx.md)
 - [expectSuccessfulTxData](functions/expectSuccessfulTxData.md)
-- [extractHostnameAndPort](functions/extractHostnameAndPort.md)
 - [getContainersConfiguration](functions/getContainersConfiguration.md)
 - [getDustSeed](functions/getDustSeed.md)
 - [getInitialShieldedState](functions/getInitialShieldedState.md)
