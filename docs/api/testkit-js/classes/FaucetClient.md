@@ -41,14 +41,14 @@ Logger instance for recording operations
 
 ### health()
 
-> **health**(): `Promise`\<`void` \| `AxiosResponse`\<`any`, `any`, \{ \}\>\>
+> **health**(): `Promise`\<`AxiosResponse`\<`any`, `any`, \{ \}\>\>
 
 Checks the health status of the faucet service.
 Makes a GET request to the health endpoint of the faucet service.
 
 #### Returns
 
-`Promise`\<`void` \| `AxiosResponse`\<`any`, `any`, \{ \}\>\>
+`Promise`\<`AxiosResponse`\<`any`, `any`, \{ \}\>\>
 
 A promise that resolves to the response of the health check or logs an error if the request fails
 
