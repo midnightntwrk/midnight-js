@@ -92,9 +92,10 @@ describe('Unshielded cross-wallet transfer (issue #720)', () => {
     await testEnvironment.shutdown();
   });
 
-  test('should send night tokens from contract to a different wallet address', async () => {
-    // Arrange
-    const wallet2AddressBytes = new Uint8Array(
+  let wallet2AddressBytes: Uint8Array;
+
+  beforeAll(async () => {
+    wallet2AddressBytes = new Uint8Array(
       Buffer.from((await wallet2.wallet.unshielded.getAddress()).hexString, 'hex')
     );
 
@@ -104,8 +105,9 @@ describe('Unshielded cross-wallet transfer (issue #720)', () => {
       circuitId: 'receiveNightTokens' as UnshieldedContractCircuit,
       args: [FUND_AMOUNT]
     });
+  });
 
-    // Act
+  test('should send night tokens to different wallet via right<>(disclose(addr))', async () => {
     const txData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
@@ -113,7 +115,19 @@ describe('Unshielded cross-wallet transfer (issue #720)', () => {
       args: [SEND_AMOUNT, { bytes: wallet2AddressBytes }]
     });
 
-    // Assert
+    expect(txData.public.status).toBe(SucceedEntirely);
+    expect(txData.public.unshielded).toBeDefined();
+    expect(txData.public.unshielded.created.length).toEqual(1);
+  });
+
+  test('should send night tokens to different wallet via disclose(recipient) (issue #720)', async () => {
+    const txData = await submitCallTx(providers, {
+      compiledContract: CompiledUnshieldedContract,
+      contractAddress,
+      circuitId: 'sendNightTokensToRecipient' as UnshieldedContractCircuit,
+      args: [SEND_AMOUNT, { is_left: false, left: { bytes: new Uint8Array(32) }, right: { bytes: wallet2AddressBytes } }]
+    });
+
     expect(txData.public.status).toBe(SucceedEntirely);
     expect(txData.public.unshielded).toBeDefined();
     expect(txData.public.unshielded.created.length).toEqual(1);

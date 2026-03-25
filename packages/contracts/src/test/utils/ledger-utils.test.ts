@@ -22,6 +22,7 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import {
   feeToken,
+  Intent,
   MaintenanceUpdate,
   type PartitionedTranscript,
   type PublicAddress,
@@ -34,7 +35,9 @@ import {
   type TokenType,
   Transaction,
   type Transcript,
+  UnshieldedOffer,
   unshieldedToken,
+  type UtxoOutput,
   ZswapChainState
 } from '@midnight-ntwrk/ledger-v8';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
@@ -492,6 +495,52 @@ describe('ledger-utils', () => {
       expect(intent!.fallibleUnshieldedOffer).toBeDefined();
       expect(intent!.fallibleUnshieldedOffer!.outputs).toHaveLength(1);
       expect(intent!.fallibleUnshieldedOffer!.outputs[0].value).toBe(200n);
+    });
+  });
+
+  describe('UnshieldedOffer.new() preserves owner addresses (issue #720)', () => {
+    it('preserves the owner address in a single output', () => {
+      const userAddress = sampleUserAddress();
+      const tokenType = unshieldedToken();
+      const output: UtxoOutput = { value: 1_000n, owner: userAddress, type: tokenType.raw };
+
+      const offer = UnshieldedOffer.new([], [output], []);
+
+      expect(offer.outputs).toHaveLength(1);
+      expect(offer.outputs[0].owner).toBe(userAddress);
+      expect(offer.outputs[0].value).toBe(1_000n);
+      expect(offer.outputs[0].type).toBe(tokenType.raw);
+    });
+
+    it('preserves distinct owner addresses across multiple outputs', () => {
+      const address1 = sampleUserAddress();
+      const address2 = sampleUserAddress();
+      const tokenType = unshieldedToken();
+
+      const outputs: UtxoOutput[] = [
+        { value: 500n, owner: address1, type: tokenType.raw },
+        { value: 300n, owner: address2, type: tokenType.raw }
+      ];
+
+      const offer = UnshieldedOffer.new([], outputs, []);
+
+      expect(offer.outputs).toHaveLength(2);
+      const owners = offer.outputs.map((o) => o.owner);
+      expect(owners).toContain(address1);
+      expect(owners).toContain(address2);
+    });
+
+    it('preserves owner address after attaching to intent fallibleUnshieldedOffer', () => {
+      const userAddress = sampleUserAddress();
+      const tokenType = unshieldedToken();
+      const output: UtxoOutput = { value: 1_000n, owner: userAddress, type: tokenType.raw };
+      const offer = UnshieldedOffer.new([], [output], []);
+
+      const intent = Intent.new(new Date(Date.now() + 3_600_000));
+      intent.fallibleUnshieldedOffer = offer;
+
+      expect(intent.fallibleUnshieldedOffer).toBeDefined();
+      expect(intent.fallibleUnshieldedOffer!.outputs[0].owner).toBe(userAddress);
     });
   });
 });

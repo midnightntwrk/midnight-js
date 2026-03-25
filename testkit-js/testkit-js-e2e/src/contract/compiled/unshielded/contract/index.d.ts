@@ -42,6 +42,12 @@ export type ImpureCircuits<PS> = {
   sendNightTokensToUser(context: __compactRuntime.CircuitContext<PS>,
                         amount_0: bigint,
                         user_addr_0: { bytes: Uint8Array }): __compactRuntime.CircuitResults<PS, []>;
+  sendNightTokensToRecipient(context: __compactRuntime.CircuitContext<PS>,
+                             amount_0: bigint,
+                             recipient_0: { is_left: boolean,
+                                            left: { bytes: Uint8Array },
+                                            right: { bytes: Uint8Array }
+                                          }): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type ProvableCircuits<PS> = {
@@ -83,6 +89,12 @@ export type ProvableCircuits<PS> = {
   sendNightTokensToUser(context: __compactRuntime.CircuitContext<PS>,
                         amount_0: bigint,
                         user_addr_0: { bytes: Uint8Array }): __compactRuntime.CircuitResults<PS, []>;
+  sendNightTokensToRecipient(context: __compactRuntime.CircuitContext<PS>,
+                             amount_0: bigint,
+                             recipient_0: { is_left: boolean,
+                                            left: { bytes: Uint8Array },
+                                            right: { bytes: Uint8Array }
+                                          }): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type PureCircuits = {
@@ -127,6 +139,12 @@ export type Circuits<PS> = {
   sendNightTokensToUser(context: __compactRuntime.CircuitContext<PS>,
                         amount_0: bigint,
                         user_addr_0: { bytes: Uint8Array }): __compactRuntime.CircuitResults<PS, []>;
+  sendNightTokensToRecipient(context: __compactRuntime.CircuitContext<PS>,
+                             amount_0: bigint,
+                             recipient_0: { is_left: boolean,
+                                            left: { bytes: Uint8Array },
+                                            right: { bytes: Uint8Array }
+                                          }): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type Ledger = {

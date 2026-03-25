@@ -56,3 +56,11 @@ export circuit sendNightTokensToUser(amount: Uint<64>, user_addr: UserAddress): 
         right<ContractAddress, UserAddress>(disclose(user_addr))
     );
 }
+
+export circuit sendNightTokensToRecipient(amount: Uint<64>, recipient: Either<ContractAddress, UserAddress>): [] {
+    sendUnshielded(
+        disclose(nativeToken()),
+        disclose(amount) as Uint<128>,
+        disclose(recipient)
+    );
+}
