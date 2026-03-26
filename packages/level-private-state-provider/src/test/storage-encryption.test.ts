@@ -15,7 +15,7 @@
 
 import { Buffer } from 'buffer';
 
-import { getPasswordFromProvider, StorageEncryption } from '../storage-encryption';
+import { constantTimeEqual, getPasswordFromProvider, StorageEncryption } from '../storage-encryption';
 
 describe('StorageEncryption', () => {
   const testPassword = 'Test-Password-123!';
@@ -167,6 +167,17 @@ describe('StorageEncryption', () => {
 
       expect(hasPlaintextPassword).toBe(false);
     });
+  });
+
+  test('constantTimeEqual returns expected results for matching/mismatched buffers', () => {
+    const a = Buffer.from([1, 2, 3, 4, 5]);
+    const b = Buffer.from([1, 2, 3, 4, 5]);
+    const c = Buffer.from([1, 2, 3, 4, 6]);
+    const d = Buffer.from([1, 2, 3, 4]);
+
+    expect(constantTimeEqual(a, b)).toBe(true);
+    expect(constantTimeEqual(a, c)).toBe(false);
+    expect(constantTimeEqual(a, d)).toBe(false);
   });
 
   describe('getPasswordFromProvider', () => {

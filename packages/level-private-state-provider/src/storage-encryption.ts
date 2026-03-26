@@ -14,7 +14,8 @@
  */
 
 import { Buffer } from 'buffer';
-import { createCipheriv, createDecipheriv, createHash, pbkdf2Sync, randomBytes, timingSafeEqual } from 'crypto';
+import { createCipheriv, createDecipheriv, createHash, pbkdf2Sync, randomBytes } from 'crypto';
+import * as nodeCrypto from 'crypto';
 
 export type PrivateStoragePasswordProvider = () => string | Promise<string>;
 
@@ -77,6 +78,37 @@ const hashPassword = (password: string): string => {
   return createHash('sha256').update(password).digest('hex');
 };
 
+export const constantTimeEqual = (a: Buffer | Uint8Array, b: Buffer | Uint8Array): boolean => {
+  const aBuf = Buffer.isBuffer(a) ? a : Buffer.from(a);
+  const bBuf = Buffer.isBuffer(b) ? b : Buffer.from(b);
+
+  if (aBuf.length !== bBuf.length) {
+    return false;
+  }
+
+  let result = 0;
+  for (let i = 0; i < aBuf.length; i++) {
+    result |= aBuf[i] ^ bBuf[i];
+  }
+  return result === 0;
+};
+
+const timingSafeEquals = (a: Buffer | Uint8Array, b: Buffer | Uint8Array): boolean => {
+  const aBuf = Buffer.isBuffer(a) ? a : Buffer.from(a);
+  const bBuf = Buffer.isBuffer(b) ? b : Buffer.from(b);
+
+  if (aBuf.length !== bBuf.length) {
+    return false;
+  }
+
+  if ('timingSafeEqual' in nodeCrypto && typeof nodeCrypto.timingSafeEqual === 'function') {
+    // Use Node's native timingSafeEqual and let any errors propagate.
+    return nodeCrypto.timingSafeEqual(aBuf, bBuf);
+  }
+
+  return constantTimeEqual(aBuf, bBuf);
+};
+
 export class StorageEncryption {
   private readonly encryptionKey: Buffer;
   private readonly salt: Buffer;
@@ -95,7 +127,7 @@ export class StorageEncryption {
   verifyPassword(password: string): boolean {
     const inputHash = Buffer.from(hashPassword(password), 'hex');
     const storedHash = Buffer.from(this.passwordHash, 'hex');
-    return timingSafeEqual(inputHash, storedHash);
+    return timingSafeEquals(inputHash, storedHash);
   }
 
   encrypt(data: string): string {
