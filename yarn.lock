@@ -1877,6 +1877,14 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@midnight-ntwrk/midnight-js-dapp-connector-proof-provider@workspace:packages/dapp-connector-proof-provider":
+  version: 0.0.0-use.local
+  resolution: "@midnight-ntwrk/midnight-js-dapp-connector-proof-provider@workspace:packages/dapp-connector-proof-provider"
+  dependencies:
+    "@midnight-ntwrk/midnight-js-types": "workspace:*"
+  languageName: unknown
+  linkType: soft
+
 "@midnight-ntwrk/midnight-js-fetch-zk-config-provider@workspace:packages/fetch-zk-config-provider":
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-fetch-zk-config-provider@workspace:packages/fetch-zk-config-provider"
