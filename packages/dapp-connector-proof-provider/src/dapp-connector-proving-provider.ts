@@ -13,12 +13,10 @@
  * limitations under the License.
  */
 
-import type { ProvingProvider } from '@midnight-ntwrk/ledger-v8';
-import type { KeyMaterialProvider, ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
+import type { ProvingProvider, WalletConnectedAPI } from '@midnight-ntwrk/dapp-connector-api';
+import type { ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
 
-export type DAppConnectorProvingAPI = {
-  getProvingProvider(keyMaterialProvider: KeyMaterialProvider): Promise<ProvingProvider>;
-};
+export type DAppConnectorProvingAPI = Pick<WalletConnectedAPI, 'getProvingProvider'>;
 
 export const dappConnectorProvingProvider = async <K extends string>(
   api: DAppConnectorProvingAPI,
