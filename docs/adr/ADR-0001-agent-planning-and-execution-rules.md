@@ -95,6 +95,22 @@ Engineer + AI ──▶ ADR (draft)
    findings. If implementation reveals a new decision is
    needed, it raises an issue for a human.
 
+### Lightweight path
+
+Not every change needs the full ADR/AID cycle. Engineers may
+skip it at their judgement. When skipping, include a one-line
+justification in the PR description explaining why an ADR was
+not needed.
+
+Examples of reasonable justifications:
+
+- "Bug fix — no architectural decision involved"
+- "Dependency patch update — no behaviour change"
+- "Typo/docs correction"
+
+If a reviewer disagrees, they can request an ADR before
+approving the PR.
+
 ## Constraints
 
 - MUST: Use MADR-compatible format for all ADRs
@@ -117,9 +133,9 @@ Engineer + AI ──▶ ADR (draft)
 - Scope creep is structurally prevented
 - Any agent can pick up an AID — not dependent on context
   from the drafting agent
+- Lightweight path avoids unnecessary overhead for small changes
 
 ### Negative
 
-- Overhead for small changes — lightweight work may not
-  warrant a full ADR/AID cycle
-- Three approval gates could slow down urgent work
+- Judgement-based lightweight path relies on engineer discipline
+- Reviewers must be willing to push back when an ADR is warranted
