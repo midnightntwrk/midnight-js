@@ -2032,6 +2032,17 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@midnight-ntwrk/midnight-js@workspace:packages/midnight-js":
+  version: 0.0.0-use.local
+  resolution: "@midnight-ntwrk/midnight-js@workspace:packages/midnight-js"
+  dependencies:
+    "@midnight-ntwrk/midnight-js-contracts": "workspace:*"
+    "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
+    "@midnight-ntwrk/midnight-js-types": "workspace:*"
+    "@midnight-ntwrk/midnight-js-utils": "workspace:*"
+  languageName: unknown
+  linkType: soft
+
 "@midnight-ntwrk/onchain-runtime-v3@npm:3.0.0":
   version: 3.0.0
   resolution: "@midnight-ntwrk/onchain-runtime-v3@npm:3.0.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fonchain-runtime-v3%2F3.0.0%2F6b9ddf0dc09c8040175e5b40433bf0ff79425d72"
