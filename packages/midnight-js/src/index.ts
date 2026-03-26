@@ -12,3 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+export * as contracts from '@midnight-ntwrk/midnight-js-contracts';
+export * as networkId from '@midnight-ntwrk/midnight-js-network-id';
+export * as types from '@midnight-ntwrk/midnight-js-types';
+export * as utils from '@midnight-ntwrk/midnight-js-utils';
