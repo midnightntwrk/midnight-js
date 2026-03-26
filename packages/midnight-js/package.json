@@ -13,6 +13,38 @@
       },
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
+    },
+    "./contracts": {
+      "types": {
+        "import": "./dist/contracts.d.mts",
+        "require": "./dist/contracts.d.cts"
+      },
+      "import": "./dist/contracts.mjs",
+      "require": "./dist/contracts.cjs"
+    },
+    "./network-id": {
+      "types": {
+        "import": "./dist/network-id.d.mts",
+        "require": "./dist/network-id.d.cts"
+      },
+      "import": "./dist/network-id.mjs",
+      "require": "./dist/network-id.cjs"
+    },
+    "./types": {
+      "types": {
+        "import": "./dist/types.d.mts",
+        "require": "./dist/types.d.cts"
+      },
+      "import": "./dist/types.mjs",
+      "require": "./dist/types.cjs"
+    },
+    "./utils": {
+      "types": {
+        "import": "./dist/utils.d.mts",
+        "require": "./dist/utils.d.cts"
+      },
+      "import": "./dist/utils.mjs",
+      "require": "./dist/utils.cjs"
     }
   },
   "repository": "git@github.com:midnight-ntwrk/artifacts",

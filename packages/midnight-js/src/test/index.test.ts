@@ -15,7 +15,11 @@
 
 import { describe, expect, it } from 'vitest';
 
+import * as contracts from '../contracts';
 import * as midnightJs from '../index';
+import * as networkId from '../network-id';
+import * as types from '../types';
+import * as utils from '../utils';
 
 describe('barrel exports', () => {
   it('should export contracts namespace', () => {
@@ -43,5 +47,34 @@ describe('barrel exports', () => {
     const exportedKeys = Object.keys(midnightJs);
     expect(exportedKeys).toEqual(expect.arrayContaining(['contracts', 'networkId', 'types', 'utils']));
     expect(exportedKeys).toHaveLength(4);
+  });
+});
+
+describe('sub-path exports', () => {
+  it('should export contracts sub-path with same members as namespace', () => {
+    expect(contracts).toBeDefined();
+    const namespaceKeys = Object.keys(midnightJs.contracts);
+    const subpathKeys = Object.keys(contracts);
+    expect(subpathKeys).toEqual(expect.arrayContaining(namespaceKeys));
+  });
+
+  it('should export network-id sub-path with setNetworkId and getNetworkId', () => {
+    expect(networkId).toBeDefined();
+    expect(typeof networkId.setNetworkId).toBe('function');
+    expect(typeof networkId.getNetworkId).toBe('function');
+  });
+
+  it('should export types sub-path with same members as namespace', () => {
+    expect(types).toBeDefined();
+    const namespaceKeys = Object.keys(midnightJs.types);
+    const subpathKeys = Object.keys(types);
+    expect(subpathKeys).toEqual(expect.arrayContaining(namespaceKeys));
+  });
+
+  it('should export utils sub-path with same members as namespace', () => {
+    expect(utils).toBeDefined();
+    const namespaceKeys = Object.keys(midnightJs.utils);
+    const subpathKeys = Object.keys(utils);
+    expect(subpathKeys).toEqual(expect.arrayContaining(namespaceKeys));
   });
 });

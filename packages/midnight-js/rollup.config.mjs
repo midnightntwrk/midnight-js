@@ -13,7 +13,49 @@
  * limitations under the License.
  */
 
-import { createRollupConfig } from '../../build-tools/rollup.config.factory.mjs';
-import packageJson from './package.json' with { type: 'json' };
+import resolve from '@rollup/plugin-node-resolve';
+import typescript from '@rollup/plugin-typescript';
+import commonjs from '@rollup/plugin-commonjs';
+import replace from '@rollup/plugin-replace';
+import dts from 'rollup-plugin-dts';
 
-export default createRollupConfig(packageJson);
+const external = [/node_modules/, /^@midnight-ntwrk\/midnight-js-(.*)$/];
+
+const entries = [
+  { input: 'src/index.ts', name: 'index' },
+  { input: 'src/contracts.ts', name: 'contracts' },
+  { input: 'src/network-id.ts', name: 'network-id' },
+  { input: 'src/types.ts', name: 'types' },
+  { input: 'src/utils.ts', name: 'utils' },
+];
+
+export default entries.flatMap(({ input, name }) => [
+  {
+    input,
+    output: [
+      { file: `dist/${name}.mjs`, format: 'esm', sourcemap: true },
+      { file: `dist/${name}.cjs`, format: 'cjs', sourcemap: true },
+    ],
+    plugins: [
+      resolve(),
+      replace({
+        // eslint-disable-next-line no-undef
+        __DEBUG__: JSON.stringify(process.env.CI !== 'true'),
+        preventAssignment: true,
+      }),
+      typescript({ tsconfig: './tsconfig.build.json', composite: false }),
+      commonjs(),
+    ],
+    external,
+  },
+  {
+    input,
+    output: [
+      { file: `dist/${name}.d.mts`, format: 'esm' },
+      { file: `dist/${name}.d.cts`, format: 'cjs' },
+      { file: `dist/${name}.d.ts`, format: 'esm' },
+    ],
+    plugins: [dts()],
+    external,
+  },
+]);
