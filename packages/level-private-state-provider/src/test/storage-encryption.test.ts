@@ -15,7 +15,7 @@
 
 import { Buffer } from 'buffer';
 
-import { constantTimeEqual, getPasswordFromProvider, StorageEncryption } from '../storage-encryption';
+import { getPasswordFromProvider, StorageEncryption, timingSafeEqual } from '../storage-encryption';
 
 describe('StorageEncryption', () => {
   const testPassword = 'Test-Password-123!';
@@ -169,15 +169,46 @@ describe('StorageEncryption', () => {
     });
   });
 
-  test('constantTimeEqual returns expected results for matching/mismatched buffers', () => {
+  test('timingSafeEqual returns expected results for matching/mismatched buffers', () => {
     const a = Buffer.from([1, 2, 3, 4, 5]);
     const b = Buffer.from([1, 2, 3, 4, 5]);
     const c = Buffer.from([1, 2, 3, 4, 6]);
     const d = Buffer.from([1, 2, 3, 4]);
 
-    expect(constantTimeEqual(a, b)).toBe(true);
-    expect(constantTimeEqual(a, c)).toBe(false);
-    expect(constantTimeEqual(a, d)).toBe(false);
+    expect(timingSafeEqual(a, b)).toBe(true);
+    expect(timingSafeEqual(a, c)).toBe(false);
+    expect(timingSafeEqual(a, d)).toBe(false);
+  });
+
+  test('timingSafeEqual works with Uint8Array inputs', () => {
+    const a = new Uint8Array([1, 2, 3, 4, 5]);
+    const b = new Uint8Array([1, 2, 3, 4, 5]);
+    const c = new Uint8Array([1, 2, 3, 4, 6]);
+    const d = new Uint8Array([1, 2, 3, 4]);
+
+    expect(timingSafeEqual(a, b)).toBe(true);
+    expect(timingSafeEqual(a, c)).toBe(false);
+    expect(timingSafeEqual(a, d)).toBe(false);
+  });
+
+  test('timingSafeEqual returns true for empty buffers', () => {
+    const a = Buffer.from([]);
+    const b = Buffer.from([]);
+    expect(timingSafeEqual(a, b)).toBe(true);
+  });
+
+  test('timingSafeEqual fallback is used if native is missing', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const crypto = require('crypto');
+    const orig = crypto.timingSafeEqual;
+    crypto.timingSafeEqual = undefined;
+    // Use dynamic import to force re-evaluation
+    return import('../storage-encryption').then(mod => {
+      const a = Buffer.from([1, 2, 3]);
+      const b = Buffer.from([1, 2, 3]);
+      expect(mod.timingSafeEqual(a, b)).toBe(true);
+      crypto.timingSafeEqual = orig;
+    });
   });
 
   describe('getPasswordFromProvider', () => {
