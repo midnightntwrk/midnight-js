@@ -54,7 +54,7 @@
   "author": "IOHK",
   "license": "Apache-2.0",
   "scripts": {
-    "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache",
+    "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
     "build": "rollup -c rollup.config.mjs",
     "test": "vitest run --passWithNoTests",
     "deploy": "yarn npm publish --tolerate-republish"
