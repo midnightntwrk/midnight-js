@@ -2099,7 +2099,7 @@ __metadata:
     "@midnight-ntwrk/testkit-js": "workspace:*"
     "@types/ws": "npm:^8.18.1"
     "@vitest/runner": "npm:^4.0.0"
-    allure-commandline: "npm:^2.34.1"
+    allure-commandline: "npm:^2.38.1"
     allure-js-commons: "npm:^3.6.0"
     allure-vitest: "npm:^3.6.0"
     axios: "npm:^1.13.5"
@@ -2133,7 +2133,7 @@ __metadata:
     "@midnight-ntwrk/wallet-sdk-hd": "npm:3.0.1"
     "@types/ws": "npm:^8.18.1"
     "@vitest/runner": "npm:^4.0.0"
-    allure-commandline: "npm:^2.34.1"
+    allure-commandline: "npm:^2.38.1"
     allure-js-commons: "npm:^3.6.0"
     allure-vitest: "npm:^3.6.0"
     axios: "npm:^1.13.5"
@@ -4607,12 +4607,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"allure-commandline@npm:^2.34.1":
-  version: 2.38.0
-  resolution: "allure-commandline@npm:2.38.0"
+"allure-commandline@npm:^2.38.1":
+  version: 2.38.1
+  resolution: "allure-commandline@npm:2.38.1"
   bin:
     allure: bin/allure
-  checksum: 10/1d06ab8bd99c61b2fe059fa033d6812d3318fb55921ca1fc75c4f0e2526506b7a9bcf396dbfcfc94c11bb7a8b003564fbdd21f756936d3321a36dce6eae84108
+  checksum: 10/b7c16344e7b4e524e6e6c5b63dbfc9de43a8283f0de179c227d29c63db097285d8f00dfb0eefa11dc1990da5aa3fbe0f79be83ddc96b2610ef6807b0463bfe4d
   languageName: node
   linkType: hard
 
