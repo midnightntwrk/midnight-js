@@ -30,7 +30,7 @@ import type { ContractConstructorOptionsWithArguments } from './call-constructor
 import { type ContractProviders } from './contract-providers';
 import { isEffectContractError } from './errors';
 import type { UnsubmittedDeployTxData } from './tx-model';
-import { createUnprovenLedgerDeployTx, zswapStateToNewCoins } from './utils';
+import { createEncryptionPublicKeyResolver, createUnprovenLedgerDeployTx, zswapStateToNewCoins } from './utils';
 
 /**
  * Base type for deploy transaction configuration.
@@ -121,10 +121,11 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
         zswapLocalState
       }
     } = exitResultOrError(exitResult);
+    const resolver = createEncryptionPublicKeyResolver(coinPublicKey, encryptionPublicKey);
     const [contractAddress, initialContractState, unprovenTx] = createUnprovenLedgerDeployTx(
       contractState,
       zswapLocalState,
-      encryptionPublicKey
+      resolver
     );
 
     return {

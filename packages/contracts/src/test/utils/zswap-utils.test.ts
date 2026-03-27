@@ -35,10 +35,15 @@ import { randomBytes } from 'crypto';
 import { beforeAll, expect } from 'vitest';
 
 import {
+  BURN_ENCRYPTION_PUBLIC_KEY,
+  createEncryptionPublicKeyResolver,
   createZswapOutput,
   deserializeCoinInfo,
+  type EncryptionPublicKeyResolver,
+  encryptionPublicKeyResolverForZswapState,
   serializeCoinInfo,
   serializeQualifiedShieldedCoinInfo,
+  SHIELDED_BURN_COIN_PUBLIC_KEY,
   zswapStateToNewCoins,
   zswapStateToOffer
 } from '../../utils';
@@ -218,7 +223,8 @@ describe('Zswap utilities', () => {
     const nonMatchingInputs: QualifiedShieldedCoinInfo[] = [];
     const zswapChainState = values.reduce((prevZSwapChainState, value) => {
       const coinInfo = createShieldedCoinInfo(shieldedToken().raw, value);
-      const output = createZswapOutput({ coinInfo, recipient }, randomEncryptionPublicKey());
+      const constantResolver: EncryptionPublicKeyResolver = () => randomEncryptionPublicKey();
+      const output = createZswapOutput({ coinInfo, recipient }, constantResolver);
       const proofErasedOffer = Transaction.fromParts(
         getNetworkId(), ZswapOffer.fromOutput(output, nativeToken().raw, value)
       ).eraseProofs().guaranteedOffer;
@@ -462,7 +468,8 @@ describe('Zswap utilities', () => {
     test('should handle inputs from chain state that has not been explicitly rehashed', () => {
       const recipient = sampleOne(arbitraryContractRecipient);
       const coinInfo = createShieldedCoinInfo(shieldedToken().raw, 100n);
-      const output = createZswapOutput({ coinInfo, recipient }, randomEncryptionPublicKey());
+      const constantResolver: EncryptionPublicKeyResolver = () => randomEncryptionPublicKey();
+      const output = createZswapOutput({ coinInfo, recipient }, constantResolver);
       const proofErasedOffer = Transaction.fromParts(
         getNetworkId(), ZswapOffer.fromOutput(output, nativeToken().raw, 100n)
       ).eraseProofs().guaranteedOffer!;
@@ -706,6 +713,181 @@ describe('Zswap utilities', () => {
       expect(result!.outputs.length).toBe(1);
       expect(result!.transients.length).toBe(0);
       expect(result!.deltas.get(nativeToken().raw), result!.toString()).toBe(undefined);
+    });
+  });
+
+  describe('createEncryptionPublicKeyResolver', () => {
+    test('should return wallet encryption key for wallet coin public key', () => {
+      const walletCpk = sampleCoinPublicKey();
+      const walletEpk = sampleEncryptionPublicKey();
+      const resolver = createEncryptionPublicKeyResolver(walletCpk, walletEpk);
+
+      expect(resolver(walletCpk)).toBe(walletEpk);
+    });
+
+    test('should return burn encryption key for burn address', () => {
+      const walletCpk = sampleCoinPublicKey();
+      const walletEpk = sampleEncryptionPublicKey();
+      const resolver = createEncryptionPublicKeyResolver(walletCpk, walletEpk);
+
+      expect(resolver(SHIELDED_BURN_COIN_PUBLIC_KEY)).toBe(BURN_ENCRYPTION_PUBLIC_KEY);
+    });
+
+    test('should return additional mapping for known third-party key', () => {
+      const walletCpk = sampleCoinPublicKey();
+      const walletEpk = sampleEncryptionPublicKey();
+      const thirdPartyCpk = sampleCoinPublicKey();
+      const thirdPartyEpk = sampleEncryptionPublicKey();
+      const mappings = new Map([[thirdPartyCpk, thirdPartyEpk]]);
+      const resolver = createEncryptionPublicKeyResolver(walletCpk, walletEpk, mappings);
+
+      expect(resolver(thirdPartyCpk)).toBe(thirdPartyEpk);
+    });
+
+    test('should return undefined for unknown coin public key', () => {
+      const walletCpk = sampleCoinPublicKey();
+      const walletEpk = sampleEncryptionPublicKey();
+      const resolver = createEncryptionPublicKeyResolver(walletCpk, walletEpk);
+      const unknownCpk = sampleCoinPublicKey();
+
+      expect(resolver(unknownCpk)).toBeUndefined();
+    });
+  });
+
+  describe('createZswapOutput with resolver', () => {
+    test('should use burn encryption key for burn address recipient', () => {
+      const coinInfo = createShieldedCoinInfo(nativeToken().raw, 100n);
+      const burnRecipient: Recipient = {
+        is_left: true,
+        left: SHIELDED_BURN_COIN_PUBLIC_KEY,
+        right: sampleContractAddress()
+      };
+      const walletCpk = sampleCoinPublicKey();
+      const walletEpk = sampleEncryptionPublicKey();
+      const resolver = createEncryptionPublicKeyResolver(walletCpk, walletEpk);
+
+      const output = createZswapOutput({ coinInfo, recipient: burnRecipient }, resolver);
+      expect(output).toBeDefined();
+    });
+
+    test('should use wallet encryption key for wallet recipient', () => {
+      const walletCpk = sampleCoinPublicKey();
+      const walletEpk = sampleEncryptionPublicKey();
+      const coinInfo = createShieldedCoinInfo(nativeToken().raw, 100n);
+      const walletRecipient: Recipient = {
+        is_left: true,
+        left: walletCpk,
+        right: sampleContractAddress()
+      };
+      const resolver = createEncryptionPublicKeyResolver(walletCpk, walletEpk);
+
+      const output = createZswapOutput({ coinInfo, recipient: walletRecipient }, resolver);
+      expect(output).toBeDefined();
+    });
+
+    test('should throw for unknown recipient when resolver returns undefined', () => {
+      const walletCpk = sampleCoinPublicKey();
+      const walletEpk = sampleEncryptionPublicKey();
+      const unknownCpk = sampleCoinPublicKey();
+      const coinInfo = createShieldedCoinInfo(nativeToken().raw, 100n);
+      const unknownRecipient: Recipient = {
+        is_left: true,
+        left: unknownCpk,
+        right: sampleContractAddress()
+      };
+      const resolver = createEncryptionPublicKeyResolver(walletCpk, walletEpk);
+
+      expect(() => createZswapOutput({ coinInfo, recipient: unknownRecipient }, resolver)).toThrowError(
+        /Unable to resolve encryption public key/
+      );
+    });
+
+    test('should not require encryption key for contract-owned outputs', () => {
+      const coinInfo = createShieldedCoinInfo(nativeToken().raw, 100n);
+      const contractRecipient: Recipient = {
+        is_left: false,
+        left: sampleCoinPublicKey(),
+        right: sampleContractAddress()
+      };
+      const resolver: EncryptionPublicKeyResolver = () => undefined;
+
+      const output = createZswapOutput({ coinInfo, recipient: contractRecipient }, resolver);
+      expect(output).toBeDefined();
+    });
+  });
+
+  describe('zswapStateToOffer with resolver', () => {
+    test('should handle mixed wallet and burn outputs', () => {
+      const walletCpk = sampleCoinPublicKey();
+      const walletEpk = sampleEncryptionPublicKey();
+      const resolver = createEncryptionPublicKeyResolver(walletCpk, walletEpk);
+
+      const walletOutput = {
+        recipient: { is_left: true, left: walletCpk, right: sampleContractAddress() } as Recipient,
+        coinInfo: createShieldedCoinInfo(nativeToken().raw, 50n)
+      };
+      const burnOutput = {
+        recipient: { is_left: true, left: SHIELDED_BURN_COIN_PUBLIC_KEY, right: sampleContractAddress() } as Recipient,
+        coinInfo: createShieldedCoinInfo(nativeToken().raw, 50n)
+      };
+
+      const zswapState = {
+        currentIndex: 0n,
+        coinPublicKey: walletCpk,
+        inputs: [],
+        outputs: [walletOutput, burnOutput]
+      };
+
+      const result = zswapStateToOffer(zswapState, resolver);
+      expect(result).toBeDefined();
+      expect(result!.outputs.length).toBe(2);
+    });
+
+    test('should maintain backward compatibility with plain EncPublicKey string', () => {
+      const output = randomOutputData();
+      const zswapState = {
+        currentIndex: 0n,
+        coinPublicKey: sampleCoinPublicKey(),
+        inputs: [],
+        outputs: [output]
+      };
+
+      const result = zswapStateToOffer(zswapState, sampleEncryptionPublicKey());
+      expect(result).toBeDefined();
+      expect(result!.outputs.length).toBe(1);
+    });
+  });
+
+  describe('encryptionPublicKeyResolverForZswapState', () => {
+    test('should return a resolver when coin public keys match', () => {
+      const walletCpk = sampleCoinPublicKey();
+      const walletEpk = sampleEncryptionPublicKey();
+      const zswapState = {
+        currentIndex: 0n,
+        coinPublicKey: walletCpk,
+        inputs: [],
+        outputs: []
+      };
+
+      const resolver = encryptionPublicKeyResolverForZswapState(zswapState, walletCpk, walletEpk);
+      expect(resolver(walletCpk)).toBe(walletEpk);
+      expect(resolver(SHIELDED_BURN_COIN_PUBLIC_KEY)).toBe(BURN_ENCRYPTION_PUBLIC_KEY);
+    });
+
+    test('should throw when coin public keys do not match', () => {
+      const walletCpk = sampleCoinPublicKey();
+      const walletEpk = sampleEncryptionPublicKey();
+      const differentCpk = sampleCoinPublicKey();
+      const zswapState = {
+        currentIndex: 0n,
+        coinPublicKey: differentCpk,
+        inputs: [],
+        outputs: []
+      };
+
+      expect(() => encryptionPublicKeyResolverForZswapState(zswapState, walletCpk, walletEpk)).toThrowError(
+        /Unsupported coin/
+      );
     });
   });
 });
