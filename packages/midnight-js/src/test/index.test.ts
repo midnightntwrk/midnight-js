@@ -53,28 +53,29 @@ describe('barrel exports', () => {
 describe('sub-path exports', () => {
   it('should export contracts sub-path with same members as namespace', () => {
     expect(contracts).toBeDefined();
-    const namespaceKeys = Object.keys(midnightJs.contracts);
-    const subpathKeys = Object.keys(contracts);
-    expect(subpathKeys).toEqual(expect.arrayContaining(namespaceKeys));
+    const namespaceKeys = Object.keys(midnightJs.contracts).sort();
+    const subpathKeys = Object.keys(contracts).sort();
+    expect(subpathKeys).toEqual(namespaceKeys);
   });
 
-  it('should export network-id sub-path with setNetworkId and getNetworkId', () => {
+  it('should export network-id sub-path with same members as namespace', () => {
     expect(networkId).toBeDefined();
-    expect(typeof networkId.setNetworkId).toBe('function');
-    expect(typeof networkId.getNetworkId).toBe('function');
+    const namespaceKeys = Object.keys(midnightJs.networkId).sort();
+    const subpathKeys = Object.keys(networkId).sort();
+    expect(subpathKeys).toEqual(namespaceKeys);
   });
 
   it('should export types sub-path with same members as namespace', () => {
     expect(types).toBeDefined();
-    const namespaceKeys = Object.keys(midnightJs.types);
-    const subpathKeys = Object.keys(types);
-    expect(subpathKeys).toEqual(expect.arrayContaining(namespaceKeys));
+    const namespaceKeys = Object.keys(midnightJs.types).sort();
+    const subpathKeys = Object.keys(types).sort();
+    expect(subpathKeys).toEqual(namespaceKeys);
   });
 
   it('should export utils sub-path with same members as namespace', () => {
     expect(utils).toBeDefined();
-    const namespaceKeys = Object.keys(midnightJs.utils);
-    const subpathKeys = Object.keys(utils);
-    expect(subpathKeys).toEqual(expect.arrayContaining(namespaceKeys));
+    const namespaceKeys = Object.keys(midnightJs.utils).sort();
+    const subpathKeys = Object.keys(utils).sort();
+    expect(subpathKeys).toEqual(namespaceKeys);
   });
 });

@@ -63,6 +63,9 @@
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
   },
+  "devDependencies": {
+    "vitest": "^4.0.0"
+  },
   "files": [
     "dist/"
   ]

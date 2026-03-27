@@ -16,7 +16,6 @@
 import resolve from '@rollup/plugin-node-resolve';
 import typescript from '@rollup/plugin-typescript';
 import commonjs from '@rollup/plugin-commonjs';
-import replace from '@rollup/plugin-replace';
 import dts from 'rollup-plugin-dts';
 
 const external = [/node_modules/, /^@midnight-ntwrk\/midnight-js-(.*)$/];
@@ -38,11 +37,6 @@ export default entries.flatMap(({ input, name }) => [
     ],
     plugins: [
       resolve(),
-      replace({
-        // eslint-disable-next-line no-undef
-        __DEBUG__: JSON.stringify(process.env.CI !== 'true'),
-        preventAssignment: true,
-      }),
       typescript({ tsconfig: './tsconfig.build.json', composite: false }),
       commonjs(),
     ],
