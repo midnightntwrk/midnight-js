@@ -2040,6 +2040,13 @@ __metadata:
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
+    "@rollup/plugin-commonjs": "npm:^29.0.2"
+    "@rollup/plugin-node-resolve": "npm:^16.0.3"
+    "@rollup/plugin-typescript": "npm:^12.3.0"
+    rollup: "npm:^4.59.0"
+    rollup-plugin-dts: "npm:^6.4.0"
+    typescript: "npm:^5.9.3"
+    vitest: "npm:^4.0.0"
   languageName: unknown
   linkType: soft
 

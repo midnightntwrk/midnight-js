@@ -64,6 +64,12 @@
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
   },
   "devDependencies": {
+    "@rollup/plugin-commonjs": "^29.0.2",
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-typescript": "^12.3.0",
+    "rollup": "^4.59.0",
+    "rollup-plugin-dts": "^6.4.0",
+    "typescript": "^5.9.3",
     "vitest": "^4.0.0"
   },
   "files": [
