@@ -1844,6 +1844,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@midnight-ntwrk/dapp-connector-api@npm:4.0.1":
+  version: 4.0.1
+  resolution: "@midnight-ntwrk/dapp-connector-api@npm:4.0.1::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fdapp-connector-api%2F4.0.1%2F4f3a240704d9993e59b93eba6f2f16c047cf4542"
+  checksum: 10/b5a2fe117390ea40d5d1030a600351400624532169f2beeaa2fa130935c27110e3743fb8f9028d2541ae466e6e168a79efcfd45aaf1bf87a8ca8340bbcf53814
+  languageName: node
+  linkType: hard
+
 "@midnight-ntwrk/ledger-v8@npm:8.0.3":
   version: 8.0.3
   resolution: "@midnight-ntwrk/ledger-v8@npm:8.0.3::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fledger-v8%2F8.0.3%2F47e343bc08f4c94162a2f12322e0e0a958743613"
@@ -1874,6 +1881,16 @@ __metadata:
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     vitest: "npm:^4.0.0"
+  languageName: unknown
+  linkType: soft
+
+"@midnight-ntwrk/midnight-js-dapp-connector-proof-provider@workspace:packages/dapp-connector-proof-provider":
+  version: 0.0.0-use.local
+  resolution: "@midnight-ntwrk/midnight-js-dapp-connector-proof-provider@workspace:packages/dapp-connector-proof-provider"
+  dependencies:
+    "@midnight-ntwrk/dapp-connector-api": "npm:4.0.1"
+    "@midnight-ntwrk/ledger-v8": "npm:8.0.3"
+    "@midnight-ntwrk/midnight-js-types": "workspace:*"
   languageName: unknown
   linkType: soft
 

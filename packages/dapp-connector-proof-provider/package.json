@@ -1,0 +1,38 @@
+{
+  "name": "@midnight-ntwrk/midnight-js-dapp-connector-proof-provider",
+  "version": "4.0.2",
+  "description": "Implementation of proof provider leveraging the DApp Connector's proving API",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": {
+        "import": "./dist/index.d.mts",
+        "require": "./dist/index.d.cts"
+      },
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "packageManager": "yarn@4.10.3",
+  "author": "IOHK",
+  "license": "Apache-2.0",
+  "scripts": {
+    "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
+    "build": "rollup -c rollup.config.mjs",
+    "test": "vitest run",
+    "deploy": "yarn npm publish --tolerate-republish"
+  },
+  "files": [
+    "dist/"
+  ],
+  "dependencies": {
+    "@midnight-ntwrk/dapp-connector-api": "4.0.1",
+    "@midnight-ntwrk/midnight-js-types": "workspace:*"
+  },
+  "devDependencies": {
+    "@midnight-ntwrk/ledger-v8": "8.0.3"
+  }
+}
