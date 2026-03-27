@@ -2,6 +2,37 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [4.0.3](https://github.com/midnightntwrk/midnight-js/compare/v4.0.2...v4.0.3) (2026-03-27)
+
+
+### Features
+
+* add barrel package @midnight-ntwrk/midnight-js ([#735](https://github.com/midnightntwrk/midnight-js/pull/735)) ([0bd075c](https://github.com/midnightntwrk/midnight-js/commit/0bd075c5b4f27bef598a0d419a56096749189d44))
+* add dapp-connector-proof-provider package ([#732](https://github.com/midnightntwrk/midnight-js/pull/732)) ([5add6b0](https://github.com/midnightntwrk/midnight-js/commit/5add6b0cafdb75ed91417f3614bd38c25bfe9fed)), closes [#635](https://github.com/midnightntwrk/midnight-js/pull/635)
+
+
+### Bug Fixes
+
+* **testkit-js:** fix 15 bugs covering missing assertions, swallowed errors, and stale env vars ([#721](https://github.com/midnightntwrk/midnight-js/pull/721)) ([3a5bd21](https://github.com/midnightntwrk/midnight-js/commit/3a5bd2164ddf341774115764315f36b632797f1a))
+
+
+### Documentation
+
+* add release notes for v4.0.2 ([#717](https://github.com/midnightntwrk/midnight-js/pull/717)) ([84671fa](https://github.com/midnightntwrk/midnight-js/commit/84671fa337828ece709a2bd7e92229ff8e7fb89d))
+* API documentation update ([#716](https://github.com/midnightntwrk/midnight-js/pull/716)) ([69a21c1](https://github.com/midnightntwrk/midnight-js/commit/69a21c1f8fb1e52b8e10667ab72f30a581950f15))
+* API documentation update ([#728](https://github.com/midnightntwrk/midnight-js/pull/728)) ([bfb30e5](https://github.com/midnightntwrk/midnight-js/commit/bfb30e5adad3098a2ca316063d00d03568324f36))
+* API documentation update ([#739](https://github.com/midnightntwrk/midnight-js/pull/739)) ([45e0503](https://github.com/midnightntwrk/midnight-js/commit/45e0503e6d71efbe792175646924aa41ba550d87))
+
+
+### Tests
+
+* issue 720 ([#727](https://github.com/midnightntwrk/midnight-js/pull/727)) ([64eb9c7](https://github.com/midnightntwrk/midnight-js/commit/64eb9c75fcc877e965594f615e671c3004a14cac))
+
+
+### Improvements
+
+* **deps:** consolidate dependency updates ([#740](https://github.com/midnightntwrk/midnight-js/pull/740)) ([6ac46da](https://github.com/midnightntwrk/midnight-js/commit/6ac46dadaa2dcdd7ad143b55d9858461b61a623c))
+
 ## [4.0.2](https://github.com/midnightntwrk/midnight-js/compare/v4.0.1...v4.0.2) (2026-03-24)
 
 
@@ -26,6 +57,7 @@ All notable changes to this project will be documented in this file. See [commit
 
 * add basic fallible tests and bugfix for fallible errors ([#704](https://github.com/midnightntwrk/midnight-js/pull/704)) ([44d956b](https://github.com/midnightntwrk/midnight-js/commit/44d956b46e2ea1cbbdd4c02e6788c23716a1633c))
 * add headers handling to http-client-proof-provider and fix ci ([#685](https://github.com/midnightntwrk/midnight-js/pull/685)) ([e97d99c](https://github.com/midnightntwrk/midnight-js/commit/e97d99cb9877ea5a330efea0d1a8c3ea8b2a6fe0))
+* **release:** bump version to 4.0.2 ([#715](https://github.com/midnightntwrk/midnight-js/pull/715)) ([00225c3](https://github.com/midnightntwrk/midnight-js/commit/00225c3a96e7c237f3261fa1885fb22efb450389))
 * remove dead code from zswap-utils offer construction ([#710](https://github.com/midnightntwrk/midnight-js/pull/710)) ([b9f1912](https://github.com/midnightntwrk/midnight-js/commit/b9f19129dc19498c1a4247030e9ec3b6624aff42))
 
 ## [4.0.1](https://github.com/midnightntwrk/midnight-js/compare/v4.0.0-rc.2...v4.0.1) (2026-03-21)
