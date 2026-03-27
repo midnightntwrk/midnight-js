@@ -18,10 +18,23 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    pool: 'threads',
     environment: 'node',
     globals: true,
     include: ['**/test/**/*.test.ts'],
     exclude: ['node_modules', 'dist'],
+    coverage: {
+      provider: 'v8',
+      enabled: true,
+      clean: true,
+      include: ['src/**/*.ts'],
+      exclude: ['**/test/**'],
+      reporter: ['clover', 'json', 'json-summary', 'lcov', 'text'],
+      reportsDirectory: './coverage',
+    },
+    reporters: [
+      'default',
+      ['junit', { outputFile: `reports/report/test-report.xml` }],
+      ['html', { outputFile: `reports/report/test-report.html` }],
+    ],
   },
 });

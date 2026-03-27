@@ -13,9 +13,7 @@
  * limitations under the License.
  */
 
-import resolve from '@rollup/plugin-node-resolve';
 import typescript from '@rollup/plugin-typescript';
-import commonjs from '@rollup/plugin-commonjs';
 import dts from 'rollup-plugin-dts';
 
 const external = [/node_modules/, /^@midnight-ntwrk\/midnight-js-(.*)$/];
@@ -36,9 +34,7 @@ export default entries.flatMap(({ input, name }) => [
       { file: `dist/${name}.cjs`, format: 'cjs', sourcemap: true },
     ],
     plugins: [
-      resolve(),
       typescript({ tsconfig: './tsconfig.build.json', composite: false }),
-      commonjs(),
     ],
     external,
   },
