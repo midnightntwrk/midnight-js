@@ -52,8 +52,12 @@ export type EncryptionPublicKeyResolver = (coinPublicKey: CoinPublicKey) => EncP
 /** Zero-initialized CoinPublicKey — the well-known shielded burn address from Compact's `shieldedBurnAddress()`. */
 export const SHIELDED_BURN_COIN_PUBLIC_KEY: CoinPublicKey = '0'.repeat(64);
 
-/** Encryption key for burn outputs. Coins sent here are unspendable, so the value is irrelevant — zeros for determinism. */
-export const BURN_ENCRYPTION_PUBLIC_KEY: EncPublicKey = '0'.repeat(64);
+/**
+ * Encryption key for burn outputs. Coins sent here are unspendable (null coin secret key),
+ * so the specific key doesn't matter — but it must be a valid Jubjub curve point.
+ * Derived via SHA-256("midnight:burn-encryption-key:{i}") with i=9 (first valid point).
+ */
+export const BURN_ENCRYPTION_PUBLIC_KEY: EncPublicKey = 'f5b9fa49d3c4f06582dab6ba45c85f6b1927873105b4c8cf363b9b57ca910f65';
 
 /**
  * Creates a resolver that maps CoinPublicKey to EncPublicKey for output encryption.
