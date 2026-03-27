@@ -1967,43 +1967,9 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@midnight-ntwrk/midnight-js-network-id@workspace:*, @midnight-ntwrk/midnight-js-network-id@workspace:packages/network-id":
+"@midnight-ntwrk/midnight-js-monorepo@workspace:.":
   version: 0.0.0-use.local
-  resolution: "@midnight-ntwrk/midnight-js-network-id@workspace:packages/network-id"
-  languageName: unknown
-  linkType: soft
-
-"@midnight-ntwrk/midnight-js-node-zk-config-provider@workspace:*, @midnight-ntwrk/midnight-js-node-zk-config-provider@workspace:packages/node-zk-config-provider":
-  version: 0.0.0-use.local
-  resolution: "@midnight-ntwrk/midnight-js-node-zk-config-provider@workspace:packages/node-zk-config-provider"
-  dependencies:
-    "@midnight-ntwrk/midnight-js-types": "workspace:*"
-  languageName: unknown
-  linkType: soft
-
-"@midnight-ntwrk/midnight-js-types@workspace:*, @midnight-ntwrk/midnight-js-types@workspace:packages/types":
-  version: 0.0.0-use.local
-  resolution: "@midnight-ntwrk/midnight-js-types@workspace:packages/types"
-  dependencies:
-    "@midnight-ntwrk/compact-js": "npm:2.5.0"
-    "@midnight-ntwrk/platform-js": "npm:2.2.4"
-    rxjs: "npm:^7.5.0"
-  languageName: unknown
-  linkType: soft
-
-"@midnight-ntwrk/midnight-js-utils@workspace:*, @midnight-ntwrk/midnight-js-utils@workspace:packages/utils":
-  version: 0.0.0-use.local
-  resolution: "@midnight-ntwrk/midnight-js-utils@workspace:packages/utils"
-  dependencies:
-    "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
-    "@scure/base": "npm:^2.0.0"
-    "@types/node": "npm:^24.0.0"
-  languageName: unknown
-  linkType: soft
-
-"@midnight-ntwrk/midnight-js@workspace:.":
-  version: 0.0.0-use.local
-  resolution: "@midnight-ntwrk/midnight-js@workspace:."
+  resolution: "@midnight-ntwrk/midnight-js-monorepo@workspace:."
   dependencies:
     "@commitlint/cli": "npm:^20.4.3"
     "@commitlint/config-conventional": "npm:^20.4.3"
@@ -2046,6 +2012,56 @@ __metadata:
     typescript: "npm:^5.9.3"
     typescript-eslint: "npm:^8.57.0"
     vitest: "npm:^4.0.18"
+  languageName: unknown
+  linkType: soft
+
+"@midnight-ntwrk/midnight-js-network-id@workspace:*, @midnight-ntwrk/midnight-js-network-id@workspace:packages/network-id":
+  version: 0.0.0-use.local
+  resolution: "@midnight-ntwrk/midnight-js-network-id@workspace:packages/network-id"
+  languageName: unknown
+  linkType: soft
+
+"@midnight-ntwrk/midnight-js-node-zk-config-provider@workspace:*, @midnight-ntwrk/midnight-js-node-zk-config-provider@workspace:packages/node-zk-config-provider":
+  version: 0.0.0-use.local
+  resolution: "@midnight-ntwrk/midnight-js-node-zk-config-provider@workspace:packages/node-zk-config-provider"
+  dependencies:
+    "@midnight-ntwrk/midnight-js-types": "workspace:*"
+  languageName: unknown
+  linkType: soft
+
+"@midnight-ntwrk/midnight-js-types@workspace:*, @midnight-ntwrk/midnight-js-types@workspace:packages/types":
+  version: 0.0.0-use.local
+  resolution: "@midnight-ntwrk/midnight-js-types@workspace:packages/types"
+  dependencies:
+    "@midnight-ntwrk/compact-js": "npm:2.5.0"
+    "@midnight-ntwrk/platform-js": "npm:2.2.4"
+    rxjs: "npm:^7.5.0"
+  languageName: unknown
+  linkType: soft
+
+"@midnight-ntwrk/midnight-js-utils@workspace:*, @midnight-ntwrk/midnight-js-utils@workspace:packages/utils":
+  version: 0.0.0-use.local
+  resolution: "@midnight-ntwrk/midnight-js-utils@workspace:packages/utils"
+  dependencies:
+    "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
+    "@scure/base": "npm:^2.0.0"
+    "@types/node": "npm:^24.0.0"
+  languageName: unknown
+  linkType: soft
+
+"@midnight-ntwrk/midnight-js@workspace:packages/midnight-js":
+  version: 0.0.0-use.local
+  resolution: "@midnight-ntwrk/midnight-js@workspace:packages/midnight-js"
+  dependencies:
+    "@midnight-ntwrk/midnight-js-contracts": "workspace:*"
+    "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
+    "@midnight-ntwrk/midnight-js-types": "workspace:*"
+    "@midnight-ntwrk/midnight-js-utils": "workspace:*"
+    "@rollup/plugin-typescript": "npm:^12.3.0"
+    rollup: "npm:^4.59.0"
+    rollup-plugin-dts: "npm:^6.4.0"
+    typescript: "npm:^5.9.3"
+    vitest: "npm:^4.0.0"
   languageName: unknown
   linkType: soft
 
