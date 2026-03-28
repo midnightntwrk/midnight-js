@@ -10,6 +10,8 @@ TypeScript SDK for building privacy-preserving dApps on the Midnight blockchain.
 | [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) | Common issues and solutions |
 | [CONTRIBUTING.md](./CONTRIBUTING.md) | Contribution process, license header requirements |
 
+IMPORTANT: Use GitNexus tools (impact analysis, context, query) before modifying code. See GitNexus section below.
+
 ## Key People
 
 | Person | Role | Reviews for |
