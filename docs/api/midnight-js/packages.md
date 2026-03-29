@@ -6,7 +6,9 @@
 
 ## Packages
 
+- [@midnight-ntwrk/midnight-js](@midnight-ntwrk/midnight-js/README.md)
 - [@midnight-ntwrk/midnight-js-contracts - v4.0.2](@midnight-ntwrk/midnight-js-contracts/README.md)
+- [@midnight-ntwrk/midnight-js-dapp-connector-proof-provider - v4.0.2](@midnight-ntwrk/midnight-js-dapp-connector-proof-provider/README.md)
 - [@midnight-ntwrk/midnight-js-fetch-zk-config-provider - v4.0.2](@midnight-ntwrk/midnight-js-fetch-zk-config-provider/README.md)
 - [@midnight-ntwrk/midnight-js-http-client-proof-provider - v4.0.2](@midnight-ntwrk/midnight-js-http-client-proof-provider/README.md)
 - [@midnight-ntwrk/midnight-js-indexer-public-data-provider - v4.0.2](@midnight-ntwrk/midnight-js-indexer-public-data-provider/README.md)

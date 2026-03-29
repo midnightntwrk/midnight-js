@@ -63,7 +63,7 @@ jobs:
         run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Cache Turbo and Yarn dependencies
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
         with:
           path: |
             **/node_modules
@@ -126,11 +126,13 @@ jobs:
           unique-id-for-comment: 'midnightjs-coverage'
           multiple-files: |
             contracts, ./packages/contracts/coverage/coverage-summary.json
+            dapp-connector-proof-provider, ./packages/contracts/coverage/coverage-summary.json
             fetch-zk-config-provider, ./packages/fetch-zk-config-provider/coverage/coverage-summary.json
             http-client-proof-provider, ./packages/http-client-proof-provider/coverage/coverage-summary.json
             indexer-public-data-provider, ./packages/indexer-public-data-provider/coverage/coverage-summary.json
             level-private-state-provider, ./packages/level-private-state-provider/coverage/coverage-summary.json
             logger-provider, ./packages/logger-provider/coverage/coverage-summary.json
+            midnight-js, ./packages/midnight-js/coverage/coverage-summary.json
             node-zk-config-provider, ./packages/node-zk-config-provider/coverage/coverage-summary.json
             utils, ./packages/utils/coverage/coverage-summary.json
 
@@ -197,7 +199,7 @@ jobs:
         run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Cache Turbo and Yarn dependencies
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
+        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
         with:
           path: |
             **/node_modules

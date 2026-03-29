@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-indexer-public-data-provider",
-  "version": "4.0.2",
+  "version": "4.0.3",
   "description": "Implementation of public data provider based on the Midnight Pub-sub indexer",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -16,7 +16,7 @@
     }
   },
   "repository": "git@github.com:midnight-ntwrk/artifacts",
-  "packageManager": "yarn@4.10.3",
+  "packageManager": "yarn@4.12.0",
   "author": "IOHK",
   "license": "Apache-2.0",
   "scripts": {
