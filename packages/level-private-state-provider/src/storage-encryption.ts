@@ -83,7 +83,7 @@ const hashPassword = (password: string): string => {
 
 const constantTimeBufferEqual = (aBuf: Buffer, bBuf: Buffer): boolean => {
   if (aBuf.length !== bBuf.length) {
-    return false;
+    throw new RangeError('Input buffers must have the same byte length');
   }
   let result = 0;
   for (let i = 0; i < aBuf.length; i++) {
@@ -100,7 +100,7 @@ const constantTimeBufferEqual = (aBuf: Buffer, bBuf: Buffer): boolean => {
  * @returns `true` if the buffers are equal, `false` otherwise.
  * 
  * @remarks
- * If the inputs differ in length, false is returned immediately (not constant-time for length mismatch).
+ * If the inputs differ in length, an error is thrown (not constant-time for length mismatch).
  * This matches the Node.js native timingSafeEqual behavior (which throws on length mismatch).
  *
  * For fixed-length buffers (e.g., hashes), this is safe. For variable-length buffers, callers should be
@@ -109,9 +109,6 @@ const constantTimeBufferEqual = (aBuf: Buffer, bBuf: Buffer): boolean => {
 export const timingSafeEqual = (a: Buffer | Uint8Array, b: Buffer | Uint8Array): boolean => {
   const aBuf = Buffer.isBuffer(a) ? a : Buffer.from(a);
   const bBuf = Buffer.isBuffer(b) ? b : Buffer.from(b);
-  if (aBuf.length !== bBuf.length) {
-    return false;
-  }
   if (HAS_NATIVE_TIMINGSAFEEQUAL) {
     // Use the native `timingSafeEqual` function and let any errors propagate.
     return crypto.timingSafeEqual(aBuf, bBuf);

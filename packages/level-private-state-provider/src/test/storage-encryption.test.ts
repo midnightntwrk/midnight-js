@@ -173,22 +173,32 @@ describe('StorageEncryption', () => {
     const a = Buffer.from([1, 2, 3, 4, 5]);
     const b = Buffer.from([1, 2, 3, 4, 5]);
     const c = Buffer.from([1, 2, 3, 4, 6]);
-    const d = Buffer.from([1, 2, 3, 4]);
 
     expect(timingSafeEqual(a, b)).toBe(true);
     expect(timingSafeEqual(a, c)).toBe(false);
-    expect(timingSafeEqual(a, d)).toBe(false);
   });
 
   test('timingSafeEqual works with Uint8Array inputs', () => {
     const a = new Uint8Array([1, 2, 3, 4, 5]);
     const b = new Uint8Array([1, 2, 3, 4, 5]);
     const c = new Uint8Array([1, 2, 3, 4, 6]);
-    const d = new Uint8Array([1, 2, 3, 4]);
 
     expect(timingSafeEqual(a, b)).toBe(true);
     expect(timingSafeEqual(a, c)).toBe(false);
-    expect(timingSafeEqual(a, d)).toBe(false);
+  });
+
+  test('timingSafeEqual throws error for buffers of different lengths', () => {
+    const a = Buffer.from([1, 2, 3]);
+    const b = Buffer.from([1, 2, 3, 4]);
+
+    expect(() => timingSafeEqual(a, b)).toThrow('Input buffers must have the same byte length');
+  });
+
+  test('timingSafeEqual throws error for Uint8Array of different lengths', () => {
+    const a = new Uint8Array([1, 2, 3]);
+    const b = new Uint8Array([1, 2, 3, 4]);
+
+    expect(() => timingSafeEqual(a, b)).toThrow('Input buffers must have the same byte length');
   });
 
   test('timingSafeEqual returns true for empty buffers', () => {
