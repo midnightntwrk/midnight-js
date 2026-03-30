@@ -27,9 +27,8 @@ import {
   syncWallet,
   type TestEnvironment
 } from '@midnight-ntwrk/testkit-js';
-import { afterAll, beforeAll, beforeEach,describe, test } from '@vitest/runner';
 import path from 'path';
-import { expect } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 
 import { CompiledShieldedContract } from '@/contract';
 import {
