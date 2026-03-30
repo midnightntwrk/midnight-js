@@ -14,7 +14,8 @@
  */
 
 import { Buffer } from 'buffer';
-import { createCipheriv, createDecipheriv, createHash, pbkdf2Sync, randomBytes, timingSafeEqual } from 'crypto';
+import { createCipheriv, createDecipheriv, createHash, pbkdf2Sync, randomBytes } from 'crypto';
+import * as crypto from 'crypto';
 
 export type PrivateStoragePasswordProvider = () => string | Promise<string>;
 
@@ -31,6 +32,9 @@ const CURRENT_ENCRYPTION_VERSION = ENCRYPTION_VERSION_V2;
 
 const VERSION_PREFIX_LENGTH = 1;
 const HEADER_LENGTH = VERSION_PREFIX_LENGTH + SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH;
+
+const HAS_NATIVE_TIMINGSAFEEQUAL =
+  'timingSafeEqual' in crypto && typeof crypto.timingSafeEqual === 'function';
 
 interface EncryptedComponents {
   version: number;
@@ -76,6 +80,42 @@ const getIterationsForVersion = (version: number): number => {
 const hashPassword = (password: string): string => {
   return createHash('sha256').update(password).digest('hex');
 };
+
+const constantTimeBufferEqual = (aBuf: Buffer, bBuf: Buffer): boolean => {
+  if (aBuf.length !== bBuf.length) {
+    throw new RangeError('Input buffers must have the same byte length');
+  }
+  let result = 0;
+  for (let i = 0; i < aBuf.length; i++) {
+    result |= aBuf[i] ^ bBuf[i];
+  }
+  return result === 0;
+};
+
+/**
+ * Compares two Buffers or Uint8Arrays in constant time.
+ *
+ * @param a - First buffer to compare.
+ * @param b - Second buffer to compare.
+ * @returns `true` if the buffers are equal, `false` otherwise.
+ * 
+ * @remarks
+ * If the inputs differ in length, an error is thrown (not constant-time for length mismatch).
+ * This matches the Node.js native timingSafeEqual behavior (which throws on length mismatch).
+ *
+ * For fixed-length buffers (e.g., hashes), this is safe. For variable-length buffers, callers should be
+ * aware of potential timing leakage.
+ */
+export const timingSafeEqual = (a: Buffer | Uint8Array, b: Buffer | Uint8Array): boolean => {
+  const aBuf = Buffer.isBuffer(a) ? a : Buffer.from(a);
+  const bBuf = Buffer.isBuffer(b) ? b : Buffer.from(b);
+  if (HAS_NATIVE_TIMINGSAFEEQUAL) {
+    // Use the native `timingSafeEqual` function and let any errors propagate.
+    return crypto.timingSafeEqual(aBuf, bBuf);
+  }
+  return constantTimeBufferEqual(aBuf, bBuf);
+};
+
 
 export class StorageEncryption {
   private readonly encryptionKey: Buffer;

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v4.0.2**](../../../README.md)
+[**Midnight.js API Reference v4.0.3**](../../../README.md)
 
 ***
 
@@ -7,3 +7,10 @@
 # Type Alias: DAppConnectorProvingAPI
 
 > **DAppConnectorProvingAPI** = `Pick`\<`WalletConnectedAPI`, `"getProvingProvider"`\>
+
+Minimal interface required from the DApp Connector wallet.
+
+## Remarks
+
+Picks only WalletConnectedAPI.getProvingProvider \| getProvingProvider from the full
+wallet API, allowing loose coupling between the SDK and the wallet implementation.

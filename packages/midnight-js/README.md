@@ -1,9 +1,3 @@
-[**Midnight.js API Reference v4.0.3**](../../README.md)
-
-***
-
-[Midnight.js API Reference](../../packages.md) / @midnight-ntwrk/midnight-js
-
 # Midnight.js
 
 Barrel package that provides a single entry point to the core components of Midnight.js. Import all core modules from one package instead of installing them individually.
