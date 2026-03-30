@@ -4,7 +4,7 @@
 
 # Midnight.js
 
-TypeScript SDK for building privacy-preserving dApps on the Midnight blockchain.
+TypeScript framework for building privacy-preserving dApps on the Midnight blockchain.
 
 Midnight.js provides tools for deploying and interacting with smart contracts, managing encrypted private state, generating zero-knowledge proofs, and submitting transactions to the Midnight network.
 
