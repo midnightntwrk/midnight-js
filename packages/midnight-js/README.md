@@ -1,6 +1,6 @@
 # Midnight.js
 
-Barrel package that provides a single entry point to the core Midnight.js SDK. Import all core modules from one package instead of installing them individually.
+Barrel package that provides a single entry point to the core components of Midnight.js. Import all core modules from one package instead of installing them individually.
 
 ## Installation
 
