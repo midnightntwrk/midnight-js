@@ -149,6 +149,7 @@ import {
   migrateToAccountScoped,
   StorageEncryption,
   decryptValue,
+  timingSafeEqual,
   DEFAULT_CONFIG,
   type LevelPrivateStateProviderConfig,
   type PrivateStoragePasswordProvider,
@@ -156,6 +157,13 @@ import {
   type MigrationResult
 } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
 ```
+
+---
+
+### `timingSafeEqual`
+
+Compares two `Buffer`s or `Uint8Array`s in constant time. If the inputs differ in length, returns false immediately (not constant-time for length mismatch). This matches the Node.js native `timingSafeEqual` behavior (which throws on length mismatch). For fixed-length buffers (e.g., hashes), this is safe. When used with variable-length buffers, you should be aware of potential timing leakage.
+
 
 ## Detailed
 

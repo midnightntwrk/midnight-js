@@ -16,8 +16,28 @@
 import type { ProvingProvider, WalletConnectedAPI } from '@midnight-ntwrk/dapp-connector-api';
 import type { ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
 
+/**
+ * Minimal interface required from the DApp Connector wallet.
+ *
+ * @remarks
+ * Picks only {@link WalletConnectedAPI.getProvingProvider | getProvingProvider} from the full
+ * wallet API, allowing loose coupling between the SDK and the wallet implementation.
+ */
 export type DAppConnectorProvingAPI = Pick<WalletConnectedAPI, 'getProvingProvider'>;
 
+/**
+ * Obtains a {@link ProvingProvider} from the DApp Connector wallet.
+ *
+ * @remarks
+ * Extracts key material from the given `zkConfigProvider` and passes it to the wallet's
+ * `getProvingProvider` method. Use this when you need direct, circuit-level access to the
+ * wallet's proving capabilities without cost model integration.
+ *
+ * @typeParam K - Union of circuit identifier strings defined by the contract.
+ * @param api - DApp Connector wallet API exposing `getProvingProvider`.
+ * @param zkConfigProvider - Provider that supplies ZK configuration artifacts and key material.
+ * @returns A {@link ProvingProvider} backed by the wallet.
+ */
 export const dappConnectorProvingProvider = async <K extends string>(
   api: DAppConnectorProvingAPI,
   zkConfigProvider: ZKConfigProvider<K>,
