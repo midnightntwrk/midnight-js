@@ -1,5 +1,12 @@
 # Midnight.js
 
+[![CI](https://github.com/midnightntwrk/midnight-js/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/midnightntwrk/midnight-js/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![GitHub Release](https://img.shields.io/github/v/release/midnightntwrk/midnight-js?logo=github)](https://github.com/midnightntwrk/midnight-js/releases)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/midnightntwrk/midnight-js/pulls)
+
 TypeScript application development framework for the Midnight blockchain. Similar to [Web3.js](https://web3js.org/) for Ethereum or [polkadot.js](https://polkadot.js.org/) for Polkadot.
 
 ## Installation
