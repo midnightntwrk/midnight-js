@@ -21,7 +21,7 @@ import type { ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
  *
  * @remarks
  * Picks only {@link WalletConnectedAPI.getProvingProvider | getProvingProvider} from the full
- * wallet API, allowing loose coupling between the SDK and the wallet implementation.
+ * wallet API, allowing loose coupling between the framework and the wallet implementation.
  */
 export type DAppConnectorProvingAPI = Pick<WalletConnectedAPI, 'getProvingProvider'>;
 

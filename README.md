@@ -63,8 +63,10 @@ const result = await deployed.callTx.increment();
 
 | Package | Description |
 | ------- | ----------- |
+| [@midnight-ntwrk/midnight-js](packages/midnight-js) | Barrel package for Midnight.js core framework |
 | [@midnight-ntwrk/midnight-js-types](packages/types) | Shared types, interfaces, and provider contracts |
 | [@midnight-ntwrk/midnight-js-contracts](packages/contracts) | Contract deployment and interaction utilities |
+| [@midnight-ntwrk/midnight-js-dapp-connector-proof-provider](packages/dapp-connector-proof-provider) | Proof provider delegating to DApp Connector wallet |
 | [@midnight-ntwrk/midnight-js-indexer-public-data-provider](packages/indexer-public-data-provider) | GraphQL-based blockchain data provider |
 | [@midnight-ntwrk/midnight-js-level-private-state-provider](packages/level-private-state-provider) | Encrypted LevelDB private state storage |
 | [@midnight-ntwrk/midnight-js-http-client-proof-provider](packages/http-client-proof-provider) | HTTP client for proof server |
@@ -86,7 +88,7 @@ const result = await deployed.callTx.increment();
 | Contracts | @midnight-ntwrk/midnight-js-contracts |
 | PublicDataProvider | @midnight-ntwrk/midnight-js-indexer-public-data-provider |
 | PrivateStateProvider | @midnight-ntwrk/midnight-js-level-private-state-provider |
-| ProofProvider | @midnight-ntwrk/midnight-js-http-client-proof-provider |
+| ProofProvider | @midnight-ntwrk/midnight-js-http-client-proof-provider or @midnight-ntwrk/midnight-js-dapp-connector-proof-provider |
 | ZKConfigProvider | @midnight-ntwrk/midnight-js-fetch-zk-config-provider |
 | DappConnector | @midnight-ntwrk/dapp-connector-api |
 | Wallet | @midnight-ntwrk/wallet |
