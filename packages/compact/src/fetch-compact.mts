@@ -66,7 +66,7 @@ const compactRepo = process.env.COMPACT_REPO || 'midnightntwrk/compact';
 const compactTagPrefix = process.env.COMPACT_TAG_PREFIX || 'compactc-v';
 const compactDockerImage = process.env.COMPACT_DOCKER_IMAGE || 'ghcr.io/midnight-ntwrk/compactc';
 const githubToken = process.env.GITHUB_TOKEN;
-const authHeaders: HeadersInit = githubToken ? { Authorization: `Bearer ${githubToken}` } : {};
+const authHeaders: Record<string, string> = githubToken ? { Authorization: `Bearer ${githubToken}` } : {};
 
 const fetchCompact = async (): Promise<void> => {
   type Release = { assets_url: string }
