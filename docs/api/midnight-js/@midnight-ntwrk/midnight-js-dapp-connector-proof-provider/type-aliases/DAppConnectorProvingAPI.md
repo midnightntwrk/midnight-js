@@ -13,4 +13,4 @@ Minimal interface required from the DApp Connector wallet.
 ## Remarks
 
 Picks only WalletConnectedAPI.getProvingProvider \| getProvingProvider from the full
-wallet API, allowing loose coupling between the SDK and the wallet implementation.
+wallet API, allowing loose coupling between the framework and the wallet implementation.
