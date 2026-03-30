@@ -2002,7 +2002,7 @@ __metadata:
     pinst: "npm:^3.0.0"
     prettier: "npm:^3.8.1"
     rollup: "npm:^4.59.0"
-    rollup-plugin-dts: "npm:^6.4.0"
+    rollup-plugin-dts: "npm:^6.4.1"
     rxjs: "npm:^7.8.2"
     testcontainers: "npm:^11.13.0"
     tstyche: "npm:^6.2.0"
@@ -2059,7 +2059,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     "@rollup/plugin-typescript": "npm:^12.3.0"
     rollup: "npm:^4.59.0"
-    rollup-plugin-dts: "npm:^6.4.0"
+    rollup-plugin-dts: "npm:^6.4.1"
     typescript: "npm:^5.9.3"
     vitest: "npm:^4.0.0"
   languageName: unknown
@@ -10859,9 +10859,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"rollup-plugin-dts@npm:^6.4.0":
-  version: 6.4.0
-  resolution: "rollup-plugin-dts@npm:6.4.0"
+"rollup-plugin-dts@npm:^6.4.1":
+  version: 6.4.1
+  resolution: "rollup-plugin-dts@npm:6.4.1"
   dependencies:
     "@babel/code-frame": "npm:^7.29.0"
     "@jridgewell/remapping": "npm:^2.3.5"
@@ -10874,7 +10874,7 @@ __metadata:
   dependenciesMeta:
     "@babel/code-frame":
       optional: true
-  checksum: 10/19a39cc19a4f67f4d6e0b8fee57baf1b6e669d05ab7a345cce3f8df1424d5cba33805dee0a1362ee29515ca8126b4441ef1c8bcb98935e751da8189f97d977a8
+  checksum: 10/a18685fde4c59339cacb47e084ff589b39fc680d186b496b83197370295002f748066e3c9c62ced2eca1af0bca77d3096bb24905c40c0478a6d845d63531293d
   languageName: node
   linkType: hard
 
