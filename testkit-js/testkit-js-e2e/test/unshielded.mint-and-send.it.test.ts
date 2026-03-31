@@ -36,14 +36,14 @@ import {
 } from '@/types/unshielded-types';
 
 const logger = createLogger(
-  path.resolve(`${process.cwd()}`, 'logs', 'tests', `unshielded_${new Date().toISOString()}.log`)
+  path.resolve(`${process.cwd()}`, 'logs', 'tests', `unshielded_mint_and_send_${new Date().toISOString()}.log`)
 );
 
 class UnshieldedConfiguration implements ContractConfiguration {
   constructor(private suffix = Date.now().toString()) {}
 
   get privateStateStoreName(): string {
-    return `unshielded-private-store-${this.suffix}`;
+    return `unshielded-mint-send-store-${this.suffix}`;
   }
 
   get zkConfigPath(): string {
@@ -51,17 +51,16 @@ class UnshieldedConfiguration implements ContractConfiguration {
   }
 }
 
-describe('Unshielded tokens - balance', () => {
-  const MINT_DOMAIN_SEPARATOR = new Uint8Array(32).fill(1);
+describe('Unshielded tokens - mint and send variants', () => {
   const MINT_AMOUNT = 1_000_000n;
+  const DOMAIN_SEPARATOR = new Uint8Array(32).fill(1);
 
   let testEnvironment: TestEnvironment;
   let wallet: MidnightWalletProvider;
   let environmentConfiguration: EnvironmentConfiguration;
   let providers: UnshieldedContractProviders;
   let contractAddress: ContractAddress;
-  let contractConfiguration: UnshieldedConfiguration;
-  let mintedTokenColor: Uint8Array;
+  let unshieldedAddressBytes: Uint8Array;
 
   beforeEach(() => {
     logger.info(`Running test=${expect.getState().currentTestName}`);
@@ -71,9 +70,11 @@ describe('Unshielded tokens - balance', () => {
     testEnvironment = getTestEnvironment(logger);
     environmentConfiguration = await testEnvironment.start();
     wallet = await testEnvironment.getMidnightWalletProvider();
-    contractConfiguration = new UnshieldedConfiguration();
+    unshieldedAddressBytes = new Uint8Array(
+      Buffer.from((await wallet.wallet.unshielded.getAddress()).hexString, 'hex')
+    );
 
-    providers = initializeMidnightProviders(wallet, environmentConfiguration, contractConfiguration);
+    providers = initializeMidnightProviders(wallet, environmentConfiguration, new UnshieldedConfiguration());
 
     const deployTxOptions = {
       compiledContract: CompiledUnshieldedContract,
@@ -86,133 +87,95 @@ describe('Unshielded tokens - balance', () => {
     contractAddress = deployedContract.deployTxData.public.contractAddress;
 
     logger.info(`Deployed unshielded contract at address: ${contractAddress}`);
-
-    logger.info('Minting and receiving tokens');
-    const mintTxData = await submitCallTx(providers, {
-      compiledContract: CompiledUnshieldedContract,
-      contractAddress,
-      circuitId: 'mintUnshieldedToSelfTest' as UnshieldedContractCircuit,
-      args: [MINT_DOMAIN_SEPARATOR, MINT_AMOUNT]
-    });
-
-    expect(mintTxData.public.status).toBe(SucceedEntirely);
-    mintedTokenColor = mintTxData.private.result as Uint8Array;
-
-    logger.info(`Minted initial tokens: ${JSON.stringify(mintTxData)}`);
   });
 
   afterAll(async () => {
     await testEnvironment.shutdown();
   });
 
-  test('should get balance of tokens - 0 value', async () => {
-    const notMintedTokens = new Uint8Array(32).fill(2);
+  test('should mint tokens to contract address (self)', async () => {
     const txData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
-      circuitId: 'getUnshieldedBalanceTest' as UnshieldedContractCircuit,
-      args: [notMintedTokens]
+      circuitId: 'mintUnshieldedToContractTest' as UnshieldedContractCircuit,
+      args: [DOMAIN_SEPARATOR, { bytes: new Uint8Array(Buffer.from(contractAddress, 'hex')) }, MINT_AMOUNT]
     });
 
     expect(txData.public.status).toBe(SucceedEntirely);
-    expect(txData.private.result).toEqual(0n);
+    expect(txData.private.result).toBeInstanceOf(Uint8Array);
+    expect(txData.private.result).toHaveLength(32);
     expect(txData.public.unshielded).toBeDefined();
 
-    const spent = txData.public.unshielded.spent;
     const created = txData.public.unshielded.created;
-    expect(spent.length).toEqual(0);
+    const spent = txData.public.unshielded.spent;
     expect(created.length).toEqual(0);
+    expect(spent.length).toEqual(0);
   });
 
-  test('should get balance of tokens - minted amount', async () => {
+  test('should mint tokens to user address', async () => {
     const txData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
-      circuitId: 'getUnshieldedBalanceTest' as UnshieldedContractCircuit,
-      args: [mintedTokenColor]
+      circuitId: 'mintUnshieldedToUserTest' as UnshieldedContractCircuit,
+      args: [DOMAIN_SEPARATOR, { bytes: unshieldedAddressBytes }, MINT_AMOUNT]
     });
 
     expect(txData.public.status).toBe(SucceedEntirely);
-    expect(txData.private.result).toEqual(MINT_AMOUNT);
+    expect(txData.private.result).toBeInstanceOf(Uint8Array);
+    expect(txData.private.result).toHaveLength(32);
     expect(txData.public.unshielded).toBeDefined();
 
-    const spent = txData.public.unshielded.spent;
     const created = txData.public.unshielded.created;
-    expect(spent.length).toEqual(0);
-    expect(created.length).toEqual(0);
+    expect(created.length).toEqual(1);
   });
 
-  test('should get balance of tokens - greater than - false', async () => {
+  test('should send tokens to self', async () => {
+    const mintTxData = await submitCallTx(providers, {
+      compiledContract: CompiledUnshieldedContract,
+      contractAddress,
+      circuitId: 'mintUnshieldedToSelfTest' as UnshieldedContractCircuit,
+      args: [DOMAIN_SEPARATOR, MINT_AMOUNT]
+    });
+    const color = mintTxData.private.result as Uint8Array;
+
     const txData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
-      circuitId: 'getUnshieldedBalanceGtTest' as UnshieldedContractCircuit,
-      args: [mintedTokenColor, MINT_AMOUNT]
+      circuitId: 'sendUnshieldedToSelfTest' as UnshieldedContractCircuit,
+      args: [color, MINT_AMOUNT / 10n]
     });
 
     expect(txData.public.status).toBe(SucceedEntirely);
-    expect(txData.private.result).toEqual(false);
     expect(txData.public.unshielded).toBeDefined();
 
-    const spent = txData.public.unshielded.spent;
     const created = txData.public.unshielded.created;
-    expect(spent.length).toEqual(0);
+    const spent = txData.public.unshielded.spent;
     expect(created.length).toEqual(0);
+    expect(spent.length).toEqual(0);
   });
 
+  test('should send tokens to contract address (self)', async () => {
+    const mintTxData = await submitCallTx(providers, {
+      compiledContract: CompiledUnshieldedContract,
+      contractAddress,
+      circuitId: 'mintUnshieldedToSelfTest' as UnshieldedContractCircuit,
+      args: [DOMAIN_SEPARATOR, MINT_AMOUNT]
+    });
+    const color = mintTxData.private.result as Uint8Array;
 
-  test('should get balance of tokens - greater than - true', async () => {
     const txData = await submitCallTx(providers, {
       compiledContract: CompiledUnshieldedContract,
       contractAddress,
-      circuitId: 'getUnshieldedBalanceGtTest' as UnshieldedContractCircuit,
-      args: [mintedTokenColor, MINT_AMOUNT - 1n]
+      circuitId: 'sendUnshieldedToContractTest' as UnshieldedContractCircuit,
+      args: [color, MINT_AMOUNT / 10n, { bytes: new Uint8Array(Buffer.from(contractAddress, 'hex')) }]
     });
 
     expect(txData.public.status).toBe(SucceedEntirely);
-    expect(txData.private.result).toEqual(true);
     expect(txData.public.unshielded).toBeDefined();
 
-    const spent = txData.public.unshielded.spent;
     const created = txData.public.unshielded.created;
-    expect(spent.length).toEqual(0);
-    expect(created.length).toEqual(0);
-  });
-
-  test('should get balance of tokens - less than - false', async () => {
-    const txData = await submitCallTx(providers, {
-      compiledContract: CompiledUnshieldedContract,
-      contractAddress,
-      circuitId: 'getUnshieldedBalanceLtTest' as UnshieldedContractCircuit,
-      args: [mintedTokenColor, MINT_AMOUNT - 1n]
-    });
-
-    expect(txData.public.status).toBe(SucceedEntirely);
-    expect(txData.private.result).toEqual(false);
-    expect(txData.public.unshielded).toBeDefined();
-
     const spent = txData.public.unshielded.spent;
-    const created = txData.public.unshielded.created;
-    expect(spent.length).toEqual(0);
     expect(created.length).toEqual(0);
-  });
-
-
-  test('should get balance of tokens - less than - true', async () => {
-    const txData = await submitCallTx(providers, {
-      compiledContract: CompiledUnshieldedContract,
-      contractAddress,
-      circuitId: 'getUnshieldedBalanceLtTest' as UnshieldedContractCircuit,
-      args: [mintedTokenColor, MINT_AMOUNT + 1n]
-    });
-
-    expect(txData.public.status).toBe(SucceedEntirely);
-    expect(txData.private.result).toEqual(true);
-    expect(txData.public.unshielded).toBeDefined();
-
-    const spent = txData.public.unshielded.spent;
-    const created = txData.public.unshielded.created;
     expect(spent.length).toEqual(0);
-    expect(created.length).toEqual(0);
   });
 });

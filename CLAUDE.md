@@ -1,6 +1,6 @@
 # Midnight.js
 
-TypeScript SDK for building privacy-preserving dApps on the Midnight blockchain.
+TypeScript framework for building privacy-preserving dApps on the Midnight blockchain.
 
 ## Tech Stack
 
@@ -14,7 +14,7 @@ TypeScript SDK for building privacy-preserving dApps on the Midnight blockchain.
 ## Project Structure
 
 ```
-packages/           # Core SDK packages
+packages/           # Core framework packages
 testkit-js/         # Testing infrastructure
 build-tools/        # Build configuration
 ```

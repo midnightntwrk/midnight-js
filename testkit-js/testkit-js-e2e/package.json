@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/testkit-js-e2e",
-  "version": "4.0.2",
+  "version": "4.0.3",
   "description": "E2E tests for Midnight JS packages",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -70,7 +70,7 @@
     "pino-pretty": "^13.0.0",
     "rxjs": "^7.8.2",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^4.0.0"
+    "vitest": "^4.1.2"
   },
   "files": [
     "dist/"
