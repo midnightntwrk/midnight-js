@@ -14,6 +14,7 @@
  */
 
 import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
+import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/ledger-v8';
 import { type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 
 import { type ContractProviders } from './contract-providers';
@@ -47,6 +48,14 @@ export interface TransactionContext<
   ) => ContractStates<Contract.PrivateState<C>> | PublicContractStates | undefined;
 
   /**
+   * Gets the additional scoped {@link CoinPublicKey} to {@link EncPublicKey} mappings.
+   * 
+   * @return A `ReadonlyMap`<{@link CoinPublicKey}, {@link EncPublicKey}> instance, or `undefined` if no additional
+   * mappings were specified for the current transaction context.
+   */
+  getAdditionalMappings(): ReadonlyMap<CoinPublicKey, EncPublicKey> | undefined;
+
+  /**
    * Gets the current cached contract states within the transaction context.
    *
    * @return A cached {@link ContractStates} instance, or `undefined` if circuit calls are yet to be made.
@@ -74,6 +83,12 @@ export type ScopedTransactionOptions = {
    * An optional name for the transaction scope.
    */
   readonly scopeName?: string;
+
+  /**
+   * An optional mapping of {@link CoinPublicKey} to {@link EncPublicKey} that can be used to resolve encryption
+   * keys for coins created during circuit execution.
+   */
+  readonly additionalCoinEncPublicKeyMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>;
 }
 
 /**

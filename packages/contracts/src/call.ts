@@ -25,6 +25,7 @@ import {
   type ZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
 import {
+  type EncPublicKey,
   type LedgerParameters,
   type PartitionedTranscript,
   type ZswapChainState
@@ -34,6 +35,12 @@ import {
  * Describes the target of a circuit invocation.
  */
 export type CallOptionsBase<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = {
+  /**
+   * An optional mapping of {@link CoinPublicKey} to {@link EncPublicKey} that can be used to resolve encryption
+   * keys for coins created during circuit execution.
+   */
+  readonly additionalCoinEncPublicKeyMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>;
+
   /**
    * The contract defining the circuit to call.
    */

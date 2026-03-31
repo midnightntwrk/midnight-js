@@ -66,7 +66,7 @@ export const BURN_ENCRYPTION_PUBLIC_KEY: EncPublicKey = 'f5b9fa49d3c4f06582dab6b
 export const createEncryptionPublicKeyResolver = (
   walletCoinPublicKey: CoinPublicKey,
   walletEncryptionPublicKey: EncPublicKey,
-  additionalMappings?: ReadonlyMap<string, EncPublicKey>
+  additionalCoinEncPublicKeyMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>
 ): EncryptionPublicKeyResolver => {
   const networkId = getNetworkId();
   const normalizedWalletCpk = parseCoinPublicKeyToHex(walletCoinPublicKey, networkId);
@@ -83,7 +83,7 @@ export const createEncryptionPublicKeyResolver = (
       return BURN_ENCRYPTION_PUBLIC_KEY;
     }
 
-    return additionalMappings?.get(normalizedCpk);
+    return additionalCoinEncPublicKeyMappings?.get(normalizedCpk);
   };
 };
 
@@ -260,7 +260,7 @@ export const encryptionPublicKeyResolverForZswapState = (
   zswapState: ZswapLocalState,
   walletCoinPublicKey: CoinPublicKey,
   walletEncryptionPublicKey: EncPublicKey,
-  additionalMappings?: ReadonlyMap<string, EncPublicKey>
+  additionalCoinEncPublicKeyMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>
 ): EncryptionPublicKeyResolver => {
   const networkId = getNetworkId();
   const walletCpkHex = parseCoinPublicKeyToHex(walletCoinPublicKey, networkId);
@@ -273,6 +273,6 @@ export const encryptionPublicKeyResolverForZswapState = (
   return createEncryptionPublicKeyResolver(
     walletCoinPublicKey,
     walletEncryptionPublicKey,
-    additionalMappings
+    additionalCoinEncPublicKeyMappings
   );
 };
