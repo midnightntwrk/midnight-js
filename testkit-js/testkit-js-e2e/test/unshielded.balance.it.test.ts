@@ -215,4 +215,52 @@ describe('Unshielded tokens - balance', () => {
     expect(spent.length).toEqual(0);
     expect(created.length).toEqual(0);
   });
+
+  test('should get balance of tokens - greater than or equal - true (equal)', async () => {
+    const txData = await submitCallTx(providers, {
+      compiledContract: CompiledUnshieldedContract,
+      contractAddress,
+      circuitId: 'getUnshieldedBalanceGteTest' as UnshieldedContractCircuit,
+      args: [mintedTokenColor, MINT_AMOUNT]
+    });
+
+    expect(txData.public.status).toBe(SucceedEntirely);
+    expect(txData.private.result).toEqual(true);
+  });
+
+  test('should get balance of tokens - greater than or equal - false', async () => {
+    const txData = await submitCallTx(providers, {
+      compiledContract: CompiledUnshieldedContract,
+      contractAddress,
+      circuitId: 'getUnshieldedBalanceGteTest' as UnshieldedContractCircuit,
+      args: [mintedTokenColor, MINT_AMOUNT + 1n]
+    });
+
+    expect(txData.public.status).toBe(SucceedEntirely);
+    expect(txData.private.result).toEqual(false);
+  });
+
+  test('should get balance of tokens - less than or equal - true (equal)', async () => {
+    const txData = await submitCallTx(providers, {
+      compiledContract: CompiledUnshieldedContract,
+      contractAddress,
+      circuitId: 'getUnshieldedBalanceLteTest' as UnshieldedContractCircuit,
+      args: [mintedTokenColor, MINT_AMOUNT]
+    });
+
+    expect(txData.public.status).toBe(SucceedEntirely);
+    expect(txData.private.result).toEqual(true);
+  });
+
+  test('should get balance of tokens - less than or equal - false', async () => {
+    const txData = await submitCallTx(providers, {
+      compiledContract: CompiledUnshieldedContract,
+      contractAddress,
+      circuitId: 'getUnshieldedBalanceLteTest' as UnshieldedContractCircuit,
+      args: [mintedTokenColor, MINT_AMOUNT - 1n]
+    });
+
+    expect(txData.public.status).toBe(SucceedEntirely);
+    expect(txData.private.result).toEqual(false);
+  });
 });
