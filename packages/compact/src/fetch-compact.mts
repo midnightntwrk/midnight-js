@@ -65,12 +65,14 @@ const currentCpu = process.arch;
 const compactRepo = process.env.COMPACT_REPO || 'midnightntwrk/compact';
 const compactTagPrefix = process.env.COMPACT_TAG_PREFIX || 'compactc-v';
 const compactDockerImage = process.env.COMPACT_DOCKER_IMAGE || 'ghcr.io/midnight-ntwrk/compactc';
+const githubToken = process.env.GITHUB_TOKEN;
+const authHeaders: Record<string, string> = githubToken ? { Authorization: `Bearer ${githubToken}` } : {};
 
 const fetchCompact = async (): Promise<void> => {
   type Release = { assets_url: string }
   const urlString = `https://api.github.com/repos/${compactRepo}/releases/tags/${compactTagPrefix}${compactcVersion}`;
   console.log(`Trying to fetch release from: ${urlString}`);
-  const release: Release = await fetch(urlString).then((r) => {
+  const release: Release = await fetch(urlString, { headers: authHeaders }).then((r) => {
     if (r.ok) {
       return r.json() as unknown as Release;
     } else {
@@ -80,7 +82,7 @@ const fetchCompact = async (): Promise<void> => {
   });
 
   type Asset = { name: string; url: string }
-  const assets: Asset[] = await fetch(release.assets_url).then((r) => r.json() as unknown as Asset[]);
+  const assets: Asset[] = await fetch(release.assets_url, { headers: authHeaders }).then((r) => r.json() as unknown as Asset[]);
 
   const platformToAssetSuffix = (): string => {
     if (currentPlatform === 'darwin') {
@@ -113,6 +115,7 @@ const fetchCompact = async (): Promise<void> => {
 
   const assetData = await fetch(asset.url, {
     headers: {
+      ...authHeaders,
       Accept: 'application/octet-stream'
     }
   }).then(async (response) => {
