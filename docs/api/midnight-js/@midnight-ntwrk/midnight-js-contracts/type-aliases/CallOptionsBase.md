@@ -22,6 +22,15 @@ Describes the target of a circuit invocation.
 
 ## Properties
 
+### additionalCoinEncPublicKeyMappings?
+
+> `readonly` `optional` **additionalCoinEncPublicKeyMappings?**: `ReadonlyMap`\<`CoinPublicKey`, `EncPublicKey`\>
+
+An optional mapping of CoinPublicKey to EncPublicKey that can be used to resolve encryption
+keys for coins created during circuit execution.
+
+***
+
 ### circuitId
 
 > `readonly` **circuitId**: `PCK`

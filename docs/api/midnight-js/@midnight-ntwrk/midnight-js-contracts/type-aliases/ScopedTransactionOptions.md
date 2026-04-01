@@ -12,6 +12,15 @@ Options for use when creating scoped transactions.
 
 ## Properties
 
+### additionalCoinEncPublicKeyMappings?
+
+> `readonly` `optional` **additionalCoinEncPublicKeyMappings?**: `ReadonlyMap`\<`CoinPublicKey`, `EncPublicKey`\>
+
+An optional mapping of CoinPublicKey to EncPublicKey that can be used to resolve encryption
+keys for coins created during circuit execution.
+
+***
+
 ### scopeName?
 
 > `readonly` `optional` **scopeName?**: `string`
