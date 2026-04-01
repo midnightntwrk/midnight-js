@@ -3,28 +3,6 @@ __compactRuntime.checkRuntimeVersion('0.15.0');
 
 const _descriptor_0 = new __compactRuntime.CompactTypeBytes(32);
 
-const _descriptor_1 = new __compactRuntime.CompactTypeUnsignedInteger(340282366920938463463374607431768211455n, 16);
-
-class _ShieldedCoinInfo_0 {
-  alignment() {
-    return _descriptor_0.alignment().concat(_descriptor_0.alignment().concat(_descriptor_1.alignment()));
-  }
-  fromValue(value_0) {
-    return {
-      nonce: _descriptor_0.fromValue(value_0),
-      color: _descriptor_0.fromValue(value_0),
-      value: _descriptor_1.fromValue(value_0)
-    }
-  }
-  toValue(value_0) {
-    return _descriptor_0.toValue(value_0.nonce).concat(_descriptor_0.toValue(value_0.color).concat(_descriptor_1.toValue(value_0.value)));
-  }
-}
-
-const _descriptor_2 = new _ShieldedCoinInfo_0();
-
-const _descriptor_3 = new __compactRuntime.CompactTypeUnsignedInteger(18446744073709551615n, 8);
-
 class _ContractAddress_0 {
   alignment() {
     return _descriptor_0.alignment();
@@ -39,7 +17,9 @@ class _ContractAddress_0 {
   }
 }
 
-const _descriptor_4 = new _ContractAddress_0();
+const _descriptor_1 = new _ContractAddress_0();
+
+const _descriptor_2 = new __compactRuntime.CompactTypeUnsignedInteger(18446744073709551615n, 8);
 
 class _ZswapCoinPublicKey_0 {
   alignment() {
@@ -55,22 +35,42 @@ class _ZswapCoinPublicKey_0 {
   }
 }
 
-const _descriptor_5 = new _ZswapCoinPublicKey_0();
+const _descriptor_3 = new _ZswapCoinPublicKey_0();
 
-const _descriptor_6 = __compactRuntime.CompactTypeBoolean;
+const _descriptor_4 = new __compactRuntime.CompactTypeUnsignedInteger(340282366920938463463374607431768211455n, 16);
 
-class _Maybe_0 {
+const _descriptor_5 = __compactRuntime.CompactTypeBoolean;
+
+class _ShieldedCoinInfo_0 {
   alignment() {
-    return _descriptor_6.alignment().concat(_descriptor_2.alignment());
+    return _descriptor_0.alignment().concat(_descriptor_0.alignment().concat(_descriptor_4.alignment()));
   }
   fromValue(value_0) {
     return {
-      is_some: _descriptor_6.fromValue(value_0),
-      value: _descriptor_2.fromValue(value_0)
+      nonce: _descriptor_0.fromValue(value_0),
+      color: _descriptor_0.fromValue(value_0),
+      value: _descriptor_4.fromValue(value_0)
     }
   }
   toValue(value_0) {
-    return _descriptor_6.toValue(value_0.is_some).concat(_descriptor_2.toValue(value_0.value));
+    return _descriptor_0.toValue(value_0.nonce).concat(_descriptor_0.toValue(value_0.color).concat(_descriptor_4.toValue(value_0.value)));
+  }
+}
+
+const _descriptor_6 = new _ShieldedCoinInfo_0();
+
+class _Maybe_0 {
+  alignment() {
+    return _descriptor_5.alignment().concat(_descriptor_6.alignment());
+  }
+  fromValue(value_0) {
+    return {
+      is_some: _descriptor_5.fromValue(value_0),
+      value: _descriptor_6.fromValue(value_0)
+    }
+  }
+  toValue(value_0) {
+    return _descriptor_5.toValue(value_0.is_some).concat(_descriptor_6.toValue(value_0.value));
   }
 }
 
@@ -78,98 +78,98 @@ const _descriptor_7 = new _Maybe_0();
 
 class _ShieldedSendResult_0 {
   alignment() {
-    return _descriptor_7.alignment().concat(_descriptor_2.alignment());
+    return _descriptor_7.alignment().concat(_descriptor_6.alignment());
   }
   fromValue(value_0) {
     return {
       change: _descriptor_7.fromValue(value_0),
-      sent: _descriptor_2.fromValue(value_0)
+      sent: _descriptor_6.fromValue(value_0)
     }
   }
   toValue(value_0) {
-    return _descriptor_7.toValue(value_0.change).concat(_descriptor_2.toValue(value_0.sent));
+    return _descriptor_7.toValue(value_0.change).concat(_descriptor_6.toValue(value_0.sent));
   }
 }
 
 const _descriptor_8 = new _ShieldedSendResult_0();
 
+class _Either_0 {
+  alignment() {
+    return _descriptor_5.alignment().concat(_descriptor_3.alignment().concat(_descriptor_1.alignment()));
+  }
+  fromValue(value_0) {
+    return {
+      is_left: _descriptor_5.fromValue(value_0),
+      left: _descriptor_3.fromValue(value_0),
+      right: _descriptor_1.fromValue(value_0)
+    }
+  }
+  toValue(value_0) {
+    return _descriptor_5.toValue(value_0.is_left).concat(_descriptor_3.toValue(value_0.left).concat(_descriptor_1.toValue(value_0.right)));
+  }
+}
+
+const _descriptor_9 = new _Either_0();
+
+const _descriptor_10 = __compactRuntime.CompactTypeField;
+
 class _QualifiedShieldedCoinInfo_0 {
   alignment() {
-    return _descriptor_0.alignment().concat(_descriptor_0.alignment().concat(_descriptor_1.alignment().concat(_descriptor_3.alignment())));
+    return _descriptor_0.alignment().concat(_descriptor_0.alignment().concat(_descriptor_4.alignment().concat(_descriptor_2.alignment())));
   }
   fromValue(value_0) {
     return {
       nonce: _descriptor_0.fromValue(value_0),
       color: _descriptor_0.fromValue(value_0),
-      value: _descriptor_1.fromValue(value_0),
-      mt_index: _descriptor_3.fromValue(value_0)
+      value: _descriptor_4.fromValue(value_0),
+      mt_index: _descriptor_2.fromValue(value_0)
     }
   }
   toValue(value_0) {
-    return _descriptor_0.toValue(value_0.nonce).concat(_descriptor_0.toValue(value_0.color).concat(_descriptor_1.toValue(value_0.value).concat(_descriptor_3.toValue(value_0.mt_index))));
+    return _descriptor_0.toValue(value_0.nonce).concat(_descriptor_0.toValue(value_0.color).concat(_descriptor_4.toValue(value_0.value).concat(_descriptor_2.toValue(value_0.mt_index))));
   }
 }
 
-const _descriptor_9 = new _QualifiedShieldedCoinInfo_0();
+const _descriptor_11 = new _QualifiedShieldedCoinInfo_0();
 
-class _Either_0 {
-  alignment() {
-    return _descriptor_6.alignment().concat(_descriptor_5.alignment().concat(_descriptor_4.alignment()));
-  }
-  fromValue(value_0) {
-    return {
-      is_left: _descriptor_6.fromValue(value_0),
-      left: _descriptor_5.fromValue(value_0),
-      right: _descriptor_4.fromValue(value_0)
-    }
-  }
-  toValue(value_0) {
-    return _descriptor_6.toValue(value_0.is_left).concat(_descriptor_5.toValue(value_0.left).concat(_descriptor_4.toValue(value_0.right)));
-  }
-}
+const _descriptor_12 = new __compactRuntime.CompactTypeVector(2, _descriptor_0);
 
-const _descriptor_10 = new _Either_0();
+const _descriptor_13 = new __compactRuntime.CompactTypeVector(2, _descriptor_10);
 
-const _descriptor_11 = __compactRuntime.CompactTypeField;
-
-const _descriptor_12 = new __compactRuntime.CompactTypeBytes(21);
+const _descriptor_14 = new __compactRuntime.CompactTypeBytes(21);
 
 class _CoinPreimage_0 {
   alignment() {
-    return _descriptor_12.alignment().concat(_descriptor_2.alignment().concat(_descriptor_6.alignment().concat(_descriptor_0.alignment())));
+    return _descriptor_14.alignment().concat(_descriptor_6.alignment().concat(_descriptor_5.alignment().concat(_descriptor_0.alignment())));
   }
   fromValue(value_0) {
     return {
-      domain_sep: _descriptor_12.fromValue(value_0),
-      info: _descriptor_2.fromValue(value_0),
-      dataType: _descriptor_6.fromValue(value_0),
+      domain_sep: _descriptor_14.fromValue(value_0),
+      info: _descriptor_6.fromValue(value_0),
+      dataType: _descriptor_5.fromValue(value_0),
       data: _descriptor_0.fromValue(value_0)
     }
   }
   toValue(value_0) {
-    return _descriptor_12.toValue(value_0.domain_sep).concat(_descriptor_2.toValue(value_0.info).concat(_descriptor_6.toValue(value_0.dataType).concat(_descriptor_0.toValue(value_0.data))));
+    return _descriptor_14.toValue(value_0.domain_sep).concat(_descriptor_6.toValue(value_0.info).concat(_descriptor_5.toValue(value_0.dataType).concat(_descriptor_0.toValue(value_0.data))));
   }
 }
 
-const _descriptor_13 = new _CoinPreimage_0();
-
-const _descriptor_14 = new __compactRuntime.CompactTypeVector(2, _descriptor_0);
-
-const _descriptor_15 = new __compactRuntime.CompactTypeVector(2, _descriptor_11);
+const _descriptor_15 = new _CoinPreimage_0();
 
 class _Either_1 {
   alignment() {
-    return _descriptor_6.alignment().concat(_descriptor_0.alignment().concat(_descriptor_0.alignment()));
+    return _descriptor_5.alignment().concat(_descriptor_0.alignment().concat(_descriptor_0.alignment()));
   }
   fromValue(value_0) {
     return {
-      is_left: _descriptor_6.fromValue(value_0),
+      is_left: _descriptor_5.fromValue(value_0),
       left: _descriptor_0.fromValue(value_0),
       right: _descriptor_0.fromValue(value_0)
     }
   }
   toValue(value_0) {
-    return _descriptor_6.toValue(value_0.is_left).concat(_descriptor_0.toValue(value_0.left).concat(_descriptor_0.toValue(value_0.right)));
+    return _descriptor_5.toValue(value_0.is_left).concat(_descriptor_0.toValue(value_0.left).concat(_descriptor_0.toValue(value_0.right)));
   }
 }
 
@@ -220,8 +220,8 @@ export class Contract {
         const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost() };
         const partialProofData = {
           input: {
-            value: _descriptor_0.toValue(domainSep_0).concat(_descriptor_3.toValue(amount_0)),
-            alignment: _descriptor_0.alignment().concat(_descriptor_3.alignment())
+            value: _descriptor_0.toValue(domainSep_0).concat(_descriptor_2.toValue(amount_0)),
+            alignment: _descriptor_0.alignment().concat(_descriptor_2.alignment())
           },
           output: undefined,
           publicTranscript: [],
@@ -231,7 +231,7 @@ export class Contract {
                                                     partialProofData,
                                                     domainSep_0,
                                                     amount_0);
-        partialProofData.output = { value: _descriptor_1.toValue(result_0), alignment: _descriptor_1.alignment() };
+        partialProofData.output = { value: _descriptor_4.toValue(result_0), alignment: _descriptor_4.alignment() };
         return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
       },
       mintAndSendShielded: (...args_1) => {
@@ -289,8 +289,8 @@ export class Contract {
         const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost() };
         const partialProofData = {
           input: {
-            value: _descriptor_0.toValue(domainSep_0).concat(_descriptor_3.toValue(mintValue_0).concat(_descriptor_0.toValue(mintNonce_0).concat(_descriptor_5.toValue(publicKey_0).concat(_descriptor_1.toValue(sendValue_0))))),
-            alignment: _descriptor_0.alignment().concat(_descriptor_3.alignment().concat(_descriptor_0.alignment().concat(_descriptor_5.alignment().concat(_descriptor_1.alignment()))))
+            value: _descriptor_0.toValue(domainSep_0).concat(_descriptor_2.toValue(mintValue_0).concat(_descriptor_0.toValue(mintNonce_0).concat(_descriptor_3.toValue(publicKey_0).concat(_descriptor_4.toValue(sendValue_0))))),
+            alignment: _descriptor_0.alignment().concat(_descriptor_2.alignment().concat(_descriptor_0.alignment().concat(_descriptor_3.alignment().concat(_descriptor_4.alignment()))))
           },
           output: undefined,
           publicTranscript: [],
@@ -329,8 +329,8 @@ export class Contract {
         const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost() };
         const partialProofData = {
           input: {
-            value: _descriptor_2.toValue(coin_0),
-            alignment: _descriptor_2.alignment()
+            value: _descriptor_6.toValue(coin_0),
+            alignment: _descriptor_6.alignment()
           },
           output: undefined,
           publicTranscript: [],
@@ -341,17 +341,156 @@ export class Contract {
                                                  coin_0);
         partialProofData.output = { value: [], alignment: [] };
         return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
+      },
+      mintAndSendImmediateShielded: (...args_1) => {
+        if (args_1.length !== 6) {
+          throw new __compactRuntime.CompactError(`mintAndSendImmediateShielded: expected 6 arguments (as invoked from Typescript), received ${args_1.length}`);
+        }
+        const contextOrig_0 = args_1[0];
+        const domainSep_0 = args_1[1];
+        const mintValue_0 = args_1[2];
+        const mintNonce_0 = args_1[3];
+        const publicKey_0 = args_1[4];
+        const sendValue_0 = args_1[5];
+        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+          __compactRuntime.typeError('mintAndSendImmediateShielded',
+                                     'argument 1 (as invoked from Typescript)',
+                                     'shielded.compact line 18 char 1',
+                                     'CircuitContext',
+                                     contextOrig_0)
+        }
+        if (!(domainSep_0.buffer instanceof ArrayBuffer && domainSep_0.BYTES_PER_ELEMENT === 1 && domainSep_0.length === 32)) {
+          __compactRuntime.typeError('mintAndSendImmediateShielded',
+                                     'argument 1 (argument 2 as invoked from Typescript)',
+                                     'shielded.compact line 18 char 1',
+                                     'Bytes<32>',
+                                     domainSep_0)
+        }
+        if (!(typeof(mintValue_0) === 'bigint' && mintValue_0 >= 0n && mintValue_0 <= 18446744073709551615n)) {
+          __compactRuntime.typeError('mintAndSendImmediateShielded',
+                                     'argument 2 (argument 3 as invoked from Typescript)',
+                                     'shielded.compact line 18 char 1',
+                                     'Uint<0..18446744073709551616>',
+                                     mintValue_0)
+        }
+        if (!(mintNonce_0.buffer instanceof ArrayBuffer && mintNonce_0.BYTES_PER_ELEMENT === 1 && mintNonce_0.length === 32)) {
+          __compactRuntime.typeError('mintAndSendImmediateShielded',
+                                     'argument 3 (argument 4 as invoked from Typescript)',
+                                     'shielded.compact line 18 char 1',
+                                     'Bytes<32>',
+                                     mintNonce_0)
+        }
+        if (!(typeof(publicKey_0) === 'object' && publicKey_0.bytes.buffer instanceof ArrayBuffer && publicKey_0.bytes.BYTES_PER_ELEMENT === 1 && publicKey_0.bytes.length === 32)) {
+          __compactRuntime.typeError('mintAndSendImmediateShielded',
+                                     'argument 4 (argument 5 as invoked from Typescript)',
+                                     'shielded.compact line 18 char 1',
+                                     'struct ZswapCoinPublicKey<bytes: Bytes<32>>',
+                                     publicKey_0)
+        }
+        if (!(typeof(sendValue_0) === 'bigint' && sendValue_0 >= 0n && sendValue_0 <= 340282366920938463463374607431768211455n)) {
+          __compactRuntime.typeError('mintAndSendImmediateShielded',
+                                     'argument 5 (argument 6 as invoked from Typescript)',
+                                     'shielded.compact line 18 char 1',
+                                     'Uint<0..340282366920938463463374607431768211456>',
+                                     sendValue_0)
+        }
+        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost() };
+        const partialProofData = {
+          input: {
+            value: _descriptor_0.toValue(domainSep_0).concat(_descriptor_2.toValue(mintValue_0).concat(_descriptor_0.toValue(mintNonce_0).concat(_descriptor_3.toValue(publicKey_0).concat(_descriptor_4.toValue(sendValue_0))))),
+            alignment: _descriptor_0.alignment().concat(_descriptor_2.alignment().concat(_descriptor_0.alignment().concat(_descriptor_3.alignment().concat(_descriptor_4.alignment()))))
+          },
+          output: undefined,
+          publicTranscript: [],
+          privateTranscriptOutputs: []
+        };
+        const result_0 = this._mintAndSendImmediateShielded_0(context,
+                                                              partialProofData,
+                                                              domainSep_0,
+                                                              mintValue_0,
+                                                              mintNonce_0,
+                                                              publicKey_0,
+                                                              sendValue_0);
+        partialProofData.output = { value: _descriptor_8.toValue(result_0), alignment: _descriptor_8.alignment() };
+        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
+      },
+      mintAndBurnShielded: (...args_1) => {
+        if (args_1.length !== 5) {
+          throw new __compactRuntime.CompactError(`mintAndBurnShielded: expected 5 arguments (as invoked from Typescript), received ${args_1.length}`);
+        }
+        const contextOrig_0 = args_1[0];
+        const domainSep_0 = args_1[1];
+        const mintValue_0 = args_1[2];
+        const mintNonce_0 = args_1[3];
+        const burnValue_0 = args_1[4];
+        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+          __compactRuntime.typeError('mintAndBurnShielded',
+                                     'argument 1 (as invoked from Typescript)',
+                                     'shielded.compact line 23 char 1',
+                                     'CircuitContext',
+                                     contextOrig_0)
+        }
+        if (!(domainSep_0.buffer instanceof ArrayBuffer && domainSep_0.BYTES_PER_ELEMENT === 1 && domainSep_0.length === 32)) {
+          __compactRuntime.typeError('mintAndBurnShielded',
+                                     'argument 1 (argument 2 as invoked from Typescript)',
+                                     'shielded.compact line 23 char 1',
+                                     'Bytes<32>',
+                                     domainSep_0)
+        }
+        if (!(typeof(mintValue_0) === 'bigint' && mintValue_0 >= 0n && mintValue_0 <= 18446744073709551615n)) {
+          __compactRuntime.typeError('mintAndBurnShielded',
+                                     'argument 2 (argument 3 as invoked from Typescript)',
+                                     'shielded.compact line 23 char 1',
+                                     'Uint<0..18446744073709551616>',
+                                     mintValue_0)
+        }
+        if (!(mintNonce_0.buffer instanceof ArrayBuffer && mintNonce_0.BYTES_PER_ELEMENT === 1 && mintNonce_0.length === 32)) {
+          __compactRuntime.typeError('mintAndBurnShielded',
+                                     'argument 3 (argument 4 as invoked from Typescript)',
+                                     'shielded.compact line 23 char 1',
+                                     'Bytes<32>',
+                                     mintNonce_0)
+        }
+        if (!(typeof(burnValue_0) === 'bigint' && burnValue_0 >= 0n && burnValue_0 <= 340282366920938463463374607431768211455n)) {
+          __compactRuntime.typeError('mintAndBurnShielded',
+                                     'argument 4 (argument 5 as invoked from Typescript)',
+                                     'shielded.compact line 23 char 1',
+                                     'Uint<0..340282366920938463463374607431768211456>',
+                                     burnValue_0)
+        }
+        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost() };
+        const partialProofData = {
+          input: {
+            value: _descriptor_0.toValue(domainSep_0).concat(_descriptor_2.toValue(mintValue_0).concat(_descriptor_0.toValue(mintNonce_0).concat(_descriptor_4.toValue(burnValue_0)))),
+            alignment: _descriptor_0.alignment().concat(_descriptor_2.alignment().concat(_descriptor_0.alignment().concat(_descriptor_4.alignment())))
+          },
+          output: undefined,
+          publicTranscript: [],
+          privateTranscriptOutputs: []
+        };
+        const result_0 = this._mintAndBurnShielded_0(context,
+                                                     partialProofData,
+                                                     domainSep_0,
+                                                     mintValue_0,
+                                                     mintNonce_0,
+                                                     burnValue_0);
+        partialProofData.output = { value: _descriptor_8.toValue(result_0), alignment: _descriptor_8.alignment() };
+        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
       }
     };
     this.impureCircuits = {
       mintShieldedTokens: this.circuits.mintShieldedTokens,
       mintAndSendShielded: this.circuits.mintAndSendShielded,
-      depositShielded: this.circuits.depositShielded
+      depositShielded: this.circuits.depositShielded,
+      mintAndSendImmediateShielded: this.circuits.mintAndSendImmediateShielded,
+      mintAndBurnShielded: this.circuits.mintAndBurnShielded
     };
     this.provableCircuits = {
       mintShieldedTokens: this.circuits.mintShieldedTokens,
       mintAndSendShielded: this.circuits.mintAndSendShielded,
-      depositShielded: this.circuits.depositShielded
+      depositShielded: this.circuits.depositShielded,
+      mintAndSendImmediateShielded: this.circuits.mintAndSendImmediateShielded,
+      mintAndBurnShielded: this.circuits.mintAndBurnShielded
     };
   }
   initialState(...args_0) {
@@ -374,6 +513,8 @@ export class Contract {
     state_0.setOperation('mintShieldedTokens', new __compactRuntime.ContractOperation());
     state_0.setOperation('mintAndSendShielded', new __compactRuntime.ContractOperation());
     state_0.setOperation('depositShielded', new __compactRuntime.ContractOperation());
+    state_0.setOperation('mintAndSendImmediateShielded', new __compactRuntime.ContractOperation());
+    state_0.setOperation('mintAndBurnShielded', new __compactRuntime.ContractOperation());
     const context = __compactRuntime.createCircuitContext(__compactRuntime.dummyContractAddress(), constructorContext_0.initialZswapLocalState.coinPublicKey, state_0.data, constructorContext_0.initialPrivateState);
     const partialProofData = {
       input: { value: [], alignment: [] },
@@ -414,7 +555,7 @@ export class Contract {
     const coin_0 = { nonce: nonce_0,
                      color:
                        this._tokenType_0(domain_sep_0,
-                                         _descriptor_4.fromValue(__compactRuntime.queryLedgerState(context,
+                                         _descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
                                                                                                    partialProofData,
                                                                                                    [
                                                                                                     { dup: { n: 2 } },
@@ -444,8 +585,8 @@ export class Contract {
                                        { dup: { n: 1 } },
                                        'member',
                                        { push: { storage: false,
-                                                 value: __compactRuntime.StateValue.newCell({ value: _descriptor_3.toValue(value_0),
-                                                                                              alignment: _descriptor_3.alignment() }).encode() } },
+                                                 value: __compactRuntime.StateValue.newCell({ value: _descriptor_2.toValue(value_0),
+                                                                                              alignment: _descriptor_2.alignment() }).encode() } },
                                        { swap: { n: 0 } },
                                        'neg',
                                        { branch: { skip: 4 } },
@@ -479,7 +620,7 @@ export class Contract {
     if (!recipient_0.is_left
         &&
         this._equal_0(recipient_0.right.bytes,
-                      _descriptor_4.fromValue(__compactRuntime.queryLedgerState(context,
+                      _descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
                                                                                 partialProofData,
                                                                                 [
                                                                                  { dup: { n: 2 } },
@@ -512,8 +653,11 @@ export class Contract {
     }
     return coin_0;
   }
+  _shieldedBurnAddress_0() {
+    return this._left_0({ bytes: new Uint8Array(32) });
+  }
   _receiveShielded_0(context, partialProofData, coin_0) {
-    const recipient_0 = this._right_0(_descriptor_4.fromValue(__compactRuntime.queryLedgerState(context,
+    const recipient_0 = this._right_0(_descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
                                                                                                 partialProofData,
                                                                                                 [
                                                                                                  { dup: { n: 2 } },
@@ -547,7 +691,7 @@ export class Contract {
     return [];
   }
   _sendShielded_0(context, partialProofData, input_0, recipient_0, value_0) {
-    const selfAddr_0 = _descriptor_4.fromValue(__compactRuntime.queryLedgerState(context,
+    const selfAddr_0 = _descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
                                                                                  partialProofData,
                                                                                  [
                                                                                   { dup: { n: 2 } },
@@ -686,8 +830,22 @@ export class Contract {
       return { change: this._some_0(changeCoin_0), sent: output_0 };
     }
   }
+  _sendImmediateShielded_0(context, partialProofData, input_0, target_0, value_0)
+  {
+    return this._sendShielded_0(context,
+                                partialProofData,
+                                this._upcastQualifiedCoin_0(input_0),
+                                target_0,
+                                value_0);
+  }
   _downcastQualifiedCoin_0(coin_0) {
     return { nonce: coin_0.nonce, color: coin_0.color, value: coin_0.value };
+  }
+  _upcastQualifiedCoin_0(coin_0) {
+    return { nonce: coin_0.nonce,
+             color: coin_0.color,
+             value: coin_0.value,
+             mt_index: 0n };
   }
   _coinCommitment_0(coin_0, recipient_0) {
     return this._persistentHash_0({ domain_sep:
@@ -707,15 +865,15 @@ export class Contract {
                                     data: addr_0.bytes });
   }
   _transientHash_0(value_0) {
-    const result_0 = __compactRuntime.transientHash(_descriptor_15, value_0);
+    const result_0 = __compactRuntime.transientHash(_descriptor_13, value_0);
     return result_0;
   }
   _persistentHash_0(value_0) {
-    const result_0 = __compactRuntime.persistentHash(_descriptor_13, value_0);
+    const result_0 = __compactRuntime.persistentHash(_descriptor_15, value_0);
     return result_0;
   }
   _persistentCommit_0(value_0, rand_0) {
-    const result_0 = __compactRuntime.persistentCommit(_descriptor_14,
+    const result_0 = __compactRuntime.persistentCommit(_descriptor_12,
                                                        value_0,
                                                        rand_0);
     return result_0;
@@ -764,8 +922,8 @@ export class Contract {
                                               { dup: { n: 1 } },
                                               'member',
                                               { push: { storage: false,
-                                                        value: __compactRuntime.StateValue.newCell({ value: _descriptor_3.toValue(amount_0),
-                                                                                                     alignment: _descriptor_3.alignment() }).encode() } },
+                                                        value: __compactRuntime.StateValue.newCell({ value: _descriptor_2.toValue(amount_0),
+                                                                                                     alignment: _descriptor_2.alignment() }).encode() } },
                                               { swap: { n: 0 } },
                                               'neg',
                                               { branch: { skip: 4 } },
@@ -792,7 +950,7 @@ export class Contract {
                                              domainSep_0,
                                              mintValue_0,
                                              mintNonce_0,
-                                             this._right_0(_descriptor_4.fromValue(__compactRuntime.queryLedgerState(context,
+                                             this._right_0(_descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
                                                                                                                      partialProofData,
                                                                                                                      [
                                                                                                                       { dup: { n: 2 } },
@@ -816,6 +974,67 @@ export class Contract {
   }
   _depositShielded_0(context, partialProofData, coin_0) {
     this._receiveShielded_0(context, partialProofData, coin_0); return [];
+  }
+  _mintAndSendImmediateShielded_0(context,
+                                  partialProofData,
+                                  domainSep_0,
+                                  mintValue_0,
+                                  mintNonce_0,
+                                  publicKey_0,
+                                  sendValue_0)
+  {
+    const coin_0 = this._mintShieldedToken_0(context,
+                                             partialProofData,
+                                             domainSep_0,
+                                             mintValue_0,
+                                             mintNonce_0,
+                                             this._right_0(_descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
+                                                                                                                     partialProofData,
+                                                                                                                     [
+                                                                                                                      { dup: { n: 2 } },
+                                                                                                                      { idx: { cached: true,
+                                                                                                                               pushPath: false,
+                                                                                                                               path: [
+                                                                                                                                      { tag: 'value',
+                                                                                                                                        value: { value: _descriptor_17.toValue(0n),
+                                                                                                                                                 alignment: _descriptor_17.alignment() } }] } },
+                                                                                                                      { popeq: { cached: true,
+                                                                                                                                 result: undefined } }]).value)));
+    return this._sendImmediateShielded_0(context,
+                                         partialProofData,
+                                         coin_0,
+                                         this._left_0(publicKey_0),
+                                         sendValue_0);
+  }
+  _mintAndBurnShielded_0(context,
+                         partialProofData,
+                         domainSep_0,
+                         mintValue_0,
+                         mintNonce_0,
+                         burnValue_0)
+  {
+    const coin_0 = this._mintShieldedToken_0(context,
+                                             partialProofData,
+                                             domainSep_0,
+                                             mintValue_0,
+                                             mintNonce_0,
+                                             this._right_0(_descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
+                                                                                                                     partialProofData,
+                                                                                                                     [
+                                                                                                                      { dup: { n: 2 } },
+                                                                                                                      { idx: { cached: true,
+                                                                                                                               pushPath: false,
+                                                                                                                               path: [
+                                                                                                                                      { tag: 'value',
+                                                                                                                                        value: { value: _descriptor_17.toValue(0n),
+                                                                                                                                                 alignment: _descriptor_17.alignment() } }] } },
+                                                                                                                      { popeq: { cached: true,
+                                                                                                                                 result: undefined } }]).value)));
+    return this._sendImmediateShielded_0(context,
+                                         partialProofData,
+                                         coin_0,
+                                         this._shieldedBurnAddress_0(),
+                                         burnValue_0);
   }
   _equal_0(x0, y0) {
     if (!x0.every((x, i) => y0[i] === x)) { return false; }

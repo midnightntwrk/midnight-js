@@ -14,3 +14,13 @@ export circuit mintAndSendShielded(domainSep: Bytes<32>, mintValue: Uint<64>, mi
 export circuit depositShielded(coin: ShieldedCoinInfo): [] {
     receiveShielded(disclose(coin));
 }
+
+export circuit mintAndSendImmediateShielded(domainSep: Bytes<32>, mintValue: Uint<64>, mintNonce: Bytes<32>, publicKey: ZswapCoinPublicKey, sendValue: Uint<128>): ShieldedSendResult {
+    const coin = mintShieldedToken(disclose(domainSep), disclose(mintValue), disclose(mintNonce), right<ZswapCoinPublicKey, ContractAddress>(kernel.self()));
+    return sendImmediateShielded(coin, left<ZswapCoinPublicKey, ContractAddress>(disclose(publicKey)), disclose(sendValue));
+}
+
+export circuit mintAndBurnShielded(domainSep: Bytes<32>, mintValue: Uint<64>, mintNonce: Bytes<32>, burnValue: Uint<128>): ShieldedSendResult {
+    const coin = mintShieldedToken(disclose(domainSep), disclose(mintValue), disclose(mintNonce), right<ZswapCoinPublicKey, ContractAddress>(kernel.self()));
+    return sendImmediateShielded(coin, shieldedBurnAddress(), disclose(burnValue));
+}
