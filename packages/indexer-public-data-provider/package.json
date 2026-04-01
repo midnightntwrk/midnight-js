@@ -33,7 +33,7 @@
     "@midnight-ntwrk/midnight-js-utils": "workspace:*",
     "buffer": "^6.0.3",
     "cross-fetch": "^4.1.0",
-    "graphql": "^16.8.0",
+    "graphql": "^16.13.2",
     "graphql-ws": "^6.0.7",
     "isomorphic-ws": "^5.0.0",
     "rxjs": "^7.5.0",
