@@ -1,5 +1,7 @@
 # Breaking Changes v4.0.4
 
+> **Note:** v4.0.3 was not published due to release pipeline issues. This release includes all changes from both v4.0.3 and v4.0.4.
+
 v4.0.4 introduces **no breaking changes**. All new APIs are additive and backward compatible.
 
 ## Backward Compatibility
@@ -9,7 +11,7 @@ v4.0.4 introduces **no breaking changes**. All new APIs are additive and backwar
 The second parameter of `zswapStateToOffer` changed from `EncPublicKey` to `EncPublicKey | EncryptionPublicKeyResolver`. When a plain `EncPublicKey` is passed, it is wrapped in a resolver that returns that key for all recipients -- preserving the existing behavior exactly.
 
 ```typescript
-// v4.0.3 -- still works in v4.0.4
+// v4.0.2 -- still works in v4.0.4
 const offer = zswapStateToOffer(zswapLocalState, encryptionPublicKey);
 
 // v4.0.4 -- new resolver-based usage

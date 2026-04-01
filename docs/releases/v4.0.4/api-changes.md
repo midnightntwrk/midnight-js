@@ -1,5 +1,62 @@
 # API Changes Reference v4.0.4
 
+> **Note:** v4.0.3 was not published due to release pipeline issues. This release includes all changes from both v4.0.3 and v4.0.4.
+
+## Package: @midnight-ntwrk/midnight-js (NEW)
+
+Barrel package providing unified imports. All exports are re-exports from existing packages.
+
+```typescript
+// Namespace exports
+export * as contracts from '@midnight-ntwrk/midnight-js-contracts';
+export * as networkId from '@midnight-ntwrk/midnight-js-network-id';
+export * as types from '@midnight-ntwrk/midnight-js-types';
+export * as utils from '@midnight-ntwrk/midnight-js-utils';
+```
+
+Sub-path exports available at:
+- `@midnight-ntwrk/midnight-js/contracts`
+- `@midnight-ntwrk/midnight-js/network-id`
+- `@midnight-ntwrk/midnight-js/types`
+- `@midnight-ntwrk/midnight-js/utils`
+
+## Package: @midnight-ntwrk/midnight-js-dapp-connector-proof-provider (NEW)
+
+### Exports
+
+#### `dappConnectorProofProvider` (function)
+
+```typescript
+export const dappConnectorProofProvider = async <K extends string>(
+  api: DAppConnectorProvingAPI,
+  zkConfigProvider: ZKConfigProvider<K>,
+  costModel: CostModel,
+): Promise<ProofProvider>;
+```
+
+Creates a `ProofProvider` from a DApp Connector wallet API, enabling wallet-delegated proving.
+
+#### `dappConnectorProvingProvider` (function)
+
+```typescript
+export const dappConnectorProvingProvider = async <K extends string>(
+  api: DAppConnectorProvingAPI,
+  zkConfigProvider: ZKConfigProvider<K>,
+): Promise<ProvingProvider>;
+```
+
+Lower-level function that creates just the `ProvingProvider`.
+
+#### `DAppConnectorProvingAPI` (type)
+
+```typescript
+export type DAppConnectorProvingAPI = Pick<WalletConnectedAPI, 'getProvingProvider'>;
+```
+
+Type alias for the minimal wallet API surface needed for proving.
+
+---
+
 ## Package: @midnight-ntwrk/midnight-js-contracts
 
 ### New Exports
@@ -60,7 +117,7 @@ Creates a resolver from a `ZswapLocalState`, validating that the state's coin pu
 
 #### `zswapStateToOffer` -- parameter type widened
 
-**v4.0.3:**
+**v4.0.2:**
 ```typescript
 export const zswapStateToOffer = (
   zswapLocalState: ZswapLocalState,
@@ -78,11 +135,11 @@ export const zswapStateToOffer = (
 ): UnprovenOffer | undefined;
 ```
 
-**Non-breaking:** Passing an `EncPublicKey` is still supported and behaves identically to v4.0.3.
+**Non-breaking:** Passing an `EncPublicKey` is still supported and behaves identically to v4.0.2.
 
 #### `createZswapOutput` -- parameter type changed (internal)
 
-**v4.0.3:**
+**v4.0.2:**
 ```typescript
 export const createZswapOutput = (
   output: { coinInfo: ShieldedCoinInfo; recipient: Recipient },
@@ -161,6 +218,23 @@ The fetch function now reads the `GITHUB_TOKEN` environment variable to authenti
 ---
 
 ## Complete API Diff by Package
+
+### @midnight-ntwrk/midnight-js (NEW)
+
+```diff
++ export * as contracts from '@midnight-ntwrk/midnight-js-contracts'
++ export * as networkId from '@midnight-ntwrk/midnight-js-network-id'
++ export * as types from '@midnight-ntwrk/midnight-js-types'
++ export * as utils from '@midnight-ntwrk/midnight-js-utils'
+```
+
+### @midnight-ntwrk/midnight-js-dapp-connector-proof-provider (NEW)
+
+```diff
++ export const dappConnectorProofProvider: (api, zkConfigProvider, costModel) => Promise<ProofProvider>
++ export const dappConnectorProvingProvider: (api, zkConfigProvider) => Promise<ProvingProvider>
++ export type DAppConnectorProvingAPI = Pick<WalletConnectedAPI, 'getProvingProvider'>
+```
 
 ### @midnight-ntwrk/midnight-js-contracts
 

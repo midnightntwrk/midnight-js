@@ -1,8 +1,52 @@
 # Release Notes v4.0.4
 
 **Release Date:** April 1, 2026
-**Previous Version:** v4.0.3
+**Previous Version:** v4.0.2
 **Node.js Requirement:** >=22
+
+> **Note:** v4.0.3 was not published due to release pipeline issues. This release includes all changes from both v4.0.3 and v4.0.4.
+
+## New Packages
+
+### `@midnight-ntwrk/midnight-js` -- barrel package (#735)
+
+A single import point that re-exports core midnight-js packages under namespaces. Provider packages are intentionally excluded to keep the barrel lightweight and avoid pulling in heavy HTTP/filesystem dependencies.
+
+**Namespace imports:**
+```typescript
+import { contracts, networkId, types, utils } from '@midnight-ntwrk/midnight-js';
+```
+
+**Sub-path imports:**
+```typescript
+import { deployContract } from '@midnight-ntwrk/midnight-js/contracts';
+import { setNetworkId } from '@midnight-ntwrk/midnight-js/network-id';
+```
+
+Re-exports from:
+- `@midnight-ntwrk/midnight-js-contracts` as `contracts`
+- `@midnight-ntwrk/midnight-js-network-id` as `networkId`
+- `@midnight-ntwrk/midnight-js-types` as `types`
+- `@midnight-ntwrk/midnight-js-utils` as `utils`
+
+### `@midnight-ntwrk/midnight-js-dapp-connector-proof-provider` (#732)
+
+Wraps the DApp Connector's `getProvingProvider` API into midnight-js's `ProofProvider` interface, enabling wallet-delegated proving without a standalone proof server.
+
+```typescript
+import { dappConnectorProofProvider } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
+
+const proofProvider = await dappConnectorProofProvider(
+  walletConnectedAPI,
+  zkConfigProvider,
+  costModel
+);
+```
+
+Exports:
+- `dappConnectorProofProvider` -- creates a full `ProofProvider` from a DApp Connector wallet API
+- `dappConnectorProvingProvider` -- creates just the `ProvingProvider` (lower-level)
+- `DAppConnectorProvingAPI` -- type alias for `Pick<WalletConnectedAPI, 'getProvingProvider'>`
 
 ## Security
 
@@ -41,23 +85,38 @@ The per-recipient encryption key resolver is exposed through the high-level APIs
 - `ScopedTransactionOptions` -- new optional `additionalCoinEncPublicKeyMappings` field for scoped transactions
 - `TransactionContext` -- new `getAdditionalMappings()` method to retrieve scoped mappings
 
+## Bug Fixes (testkit-js)
+
+### Fix 15 bugs covering missing assertions, swallowed errors, and stale env vars (#721)
+
+Comprehensive bug fix across testkit-js:
+- Added missing assertion matchers in `expectSuccessfulDeployTx` and `expectSuccessfulCallTx`
+- Fixed swallowed errors in client modules (`faucet-client`, `indexer-client`, `node-client`, `proof-server-client`)
+- Fixed stale environment variable reads in `env-vars.ts`
+- Fixed error handling in `fluent-wallet-builder` and `wallet-state-provider`
+- Fixed `bigint-serialization` edge cases
+- Added comprehensive unit tests for all fixed areas
+
 ## Tests
 
 - Add e2e tests for std library token functions (#772)
 - Add unshielded mint and send variant e2e tests (#766)
 - Enable custom color token e2e tests (#765)
+- Add test for issue #720 (#727)
 
 ## Documentation
 
-- API documentation update (#777, #764, #750)
+- API documentation updates (#777, #764, #750, #739, #728, #716)
 - Add documentation for `dapp-connector-proof-provider` and `midnight-js` packages (#751)
 - Add README and TSDoc for `dapp-connector-proof-provider` and `midnight-js` (#741)
 - Add badges to README (#743)
 
 ## Dependencies
 
+- Consolidate dependency updates: eslint 10.1.0, jsdom 29.0.1, turbo 2.8.20, typedoc 0.28.18, allure-commandline 2.38.1 (#740)
 - Aggregate dependency updates: typescript-eslint 8.57.2, vitest 4.1.2, @vitest/ui 4.1.2, @vitest/coverage-v8 4.1.2, turbo 2.8.21, rollup-plugin-dts 6.4.1 (#759)
 - Bump npm_and_yarn group with 3 updates (#746)
+- Bump actions/cache to v5.0.4, ctrf-io/github-test-reporter to v1.0.27 (#740)
 - Add dependabot cooldown of 7 days to all package ecosystems (#767)
 
 ## Links
@@ -66,5 +125,6 @@ The per-recipient encryption key resolver is exposed through the high-level APIs
 - [New Features Guide](./new-features.md)
 - [Migration Guide](./migration-guide.md)
 - [API Changes Reference](./api-changes.md)
-- [v4.0.3 Release Notes](../v4.0.3/release-notes.md)
+- [v4.0.2 Release Notes](../v4.0.2/release-notes.md)
 - [GitHub Issue #742](https://github.com/midnightntwrk/midnight-js/issues/742)
+- [GitHub Issue #635](https://github.com/midnightntwrk/midnight-js/issues/635)

@@ -1,6 +1,80 @@
 # New Features v4.0.4
 
-## 1. Per-Recipient Encryption Keys (#745)
+> **Note:** v4.0.3 was not published due to release pipeline issues. This release includes all changes from both v4.0.3 and v4.0.4.
+
+## 1. Barrel Package `@midnight-ntwrk/midnight-js` (#735)
+
+A new convenience package that re-exports all core midnight-js packages under a single import. Provider packages are intentionally excluded to keep the barrel lightweight.
+
+### Namespace Imports
+
+```typescript
+import { contracts, networkId, types, utils } from '@midnight-ntwrk/midnight-js';
+
+const contract = await contracts.deployContract(providers, options);
+networkId.setNetworkId('testnet');
+```
+
+### Sub-path Imports
+
+For tree-shaking and direct access:
+
+```typescript
+import { deployContract } from '@midnight-ntwrk/midnight-js/contracts';
+import { setNetworkId } from '@midnight-ntwrk/midnight-js/network-id';
+import type { PrivateStateId } from '@midnight-ntwrk/midnight-js/types';
+import { createBalancedTransaction } from '@midnight-ntwrk/midnight-js/utils';
+```
+
+### What's Included
+
+| Namespace | Source Package |
+|-----------|---------------|
+| `contracts` | `@midnight-ntwrk/midnight-js-contracts` |
+| `networkId` | `@midnight-ntwrk/midnight-js-network-id` |
+| `types` | `@midnight-ntwrk/midnight-js-types` |
+| `utils` | `@midnight-ntwrk/midnight-js-utils` |
+
+Provider packages (`http-client-proof-provider`, `level-private-state-provider`, etc.) are **not** included -- import them directly.
+
+---
+
+## 2. DApp Connector Proof Provider (#732)
+
+A new package `@midnight-ntwrk/midnight-js-dapp-connector-proof-provider` that bridges the DApp Connector wallet API with midnight-js's `ProofProvider` interface. This enables wallet-delegated proving -- the wallet handles proof generation instead of requiring a standalone proof server.
+
+### Usage
+
+```typescript
+import { dappConnectorProofProvider } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
+
+// walletAPI is a WalletConnectedAPI from the DApp Connector
+const proofProvider = await dappConnectorProofProvider(
+  walletAPI,
+  zkConfigProvider,
+  costModel
+);
+
+// Use proofProvider wherever ProofProvider is expected
+const providers = {
+  proofProvider,
+  // ...other providers
+};
+```
+
+### Lower-Level API
+
+If you only need the `ProvingProvider` (without cost model wrapping):
+
+```typescript
+import { dappConnectorProvingProvider } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
+
+const provingProvider = await dappConnectorProvingProvider(walletAPI, zkConfigProvider);
+```
+
+---
+
+## 3. Per-Recipient Encryption Keys (#745)
 
 ### Problem
 
@@ -86,7 +160,7 @@ export const BURN_ENCRYPTION_PUBLIC_KEY: EncPublicKey =
 
 ---
 
-## 2. Browser Crypto Fallback (#737)
+## 4. Browser Crypto Fallback (#737)
 
 The `level-private-state-provider` package now works in browser contexts without requiring a `crypto.timingSafeEqual` polyfill.
 
@@ -98,7 +172,7 @@ No code changes required. Browser builds that previously required a polyfill for
 
 ---
 
-## 3. GitHub Token for Compact Fetch (#760)
+## 5. GitHub Token for Compact Fetch (#760)
 
 The compact fetch utility now supports a `GITHUB_TOKEN` environment variable for GitHub API authentication.
 
