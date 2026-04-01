@@ -53,7 +53,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
 
-import { zswapStateToOffer } from './zswap-utils';
+import { type EncryptionPublicKeyResolver, zswapStateToOffer } from './zswap-utils';
 
 export const toLedgerContractState = (contractState: ContractState): LedgerContractState =>
   LedgerContractState.deserialize(contractState.serialize());
@@ -73,7 +73,7 @@ export const toLedgerQueryContext = (queryContext: QueryContext): LedgerQueryCon
 export const createUnprovenLedgerDeployTx = (
   contractState: ContractState,
   zswapLocalState: ZswapLocalState,
-  encryptionPublicKey: EncPublicKey
+  encryptionPublicKey: EncPublicKey | EncryptionPublicKeyResolver
 ): [ContractAddress, ContractState, UnprovenTransaction] => {
   const contractDeploy = new ContractDeploy(toLedgerContractState(contractState));
   return [
@@ -116,7 +116,7 @@ export const createUnprovenLedgerCallTx = (
   input: AlignedValue,
   output: AlignedValue,
   nextZswapLocalState: ZswapLocalState,
-  encryptionPublicKey: EncPublicKey
+  encryptionPublicKey: EncPublicKey | EncryptionPublicKeyResolver
 ): UnprovenTransaction => {
   const op = toLedgerContractState(initialContractState).operation(circuitId);
   assertDefined(op, `Operation '${circuitId}' is undefined for contract state ${initialContractState.toString(false)}`);

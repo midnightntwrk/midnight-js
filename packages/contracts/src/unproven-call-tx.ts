@@ -34,7 +34,7 @@ import { type ContractStates, getPublicStates, getStates, type PublicContractSta
 import * as Transaction from './internal/transaction';
 import { type TransactionContext } from './transaction';
 import type { UnsubmittedCallTxData } from './tx-model';
-import { createUnprovenLedgerCallTx, encryptionPublicKeyForZswapState, zswapStateToNewCoins } from './utils';
+import { createUnprovenLedgerCallTx, encryptionPublicKeyResolverForZswapState, zswapStateToNewCoins } from './utils';
 
 export function createUnprovenCallTxFromInitialStates<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
   zkConfigProvider: ZKConfigProvider<string>,
@@ -128,10 +128,11 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
           input,
           output,
           zswapLocalState,
-          encryptionPublicKeyForZswapState(
+          encryptionPublicKeyResolverForZswapState(
             zswapLocalState,
             options.coinPublicKey,
-            walletEncryptionPublicKey
+            walletEncryptionPublicKey,
+            options.additionalCoinEncPublicKeyMappings
           )
         ),
         newCoins: zswapStateToNewCoins(
@@ -184,6 +185,7 @@ const createCallOptions = <C extends Contract.Any, PCK extends Contract.Provable
   initialPrivateState?: Contract.PrivateState<C>
 ): CallOptions<C, PCK> => {
   const callOptionsBase = {
+    additionalCoinEncPublicKeyMappings: callTxOptions.additionalCoinEncPublicKeyMappings,
     compiledContract: callTxOptions.compiledContract,
     contractAddress: callTxOptions.contractAddress,
     circuitId: callTxOptions.circuitId
