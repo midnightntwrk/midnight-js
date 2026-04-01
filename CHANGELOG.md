@@ -2,7 +2,39 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
-## [4.0.3](https://github.com/midnightntwrk/midnight-js/compare/v4.0.2...v4.0.3) (2026-03-27)
+## [4.0.4](https://github.com/midnightntwrk/midnight-js/compare/v4.0.3...v4.0.4) (2026-04-01)
+
+
+### Bug Fixes
+
+* add option to use a github token for compact fetch ([#760](https://github.com/midnightntwrk/midnight-js/pull/760)) ([fa7430d](https://github.com/midnightntwrk/midnight-js/commit/fa7430d7fb30dcf401f1bdd77e7c4b2552abc9df))
+* **midnight-js:** use per-recipient encryption keys in zswap output creation ([#745](https://github.com/midnightntwrk/midnight-js/pull/745)) ([f760edf](https://github.com/midnightntwrk/midnight-js/commit/f760edf8aa200b10154f4521cfc11620c0043ee5)), closes [midnightntwrk/midnight-js#742](https://github.com/midnightntwrk/midnight-js/pull/742) [#773](https://github.com/midnightntwrk/midnight-js/pull/773)
+* Support Browser builds when `crypto.timingSafeEqual` is missing ([#737](https://github.com/midnightntwrk/midnight-js/pull/737)) ([c70b8b4](https://github.com/midnightntwrk/midnight-js/commit/c70b8b4736744b7b54c2f09e2b292821d674f3c8))
+
+
+### Documentation
+
+* add badges to README ([#743](https://github.com/midnightntwrk/midnight-js/pull/743)) ([fe8723f](https://github.com/midnightntwrk/midnight-js/commit/fe8723f6537db7cae22ed776a15d2ee8ad753692))
+* add documentation for dapp-connector-proof-provider and midnight-js packages ([#751](https://github.com/midnightntwrk/midnight-js/pull/751)) ([01d4e05](https://github.com/midnightntwrk/midnight-js/commit/01d4e05794ed09a1a9e334156c9fdad9e136a6eb))
+* add README and TSDoc for dapp-connector-proof-provider and midnight-js ([#741](https://github.com/midnightntwrk/midnight-js/pull/741)) ([92c0783](https://github.com/midnightntwrk/midnight-js/commit/92c0783f2ee40f5e7e4f2ac9af1b7878074ec1d8))
+* API documentation update ([#750](https://github.com/midnightntwrk/midnight-js/pull/750)) ([97d4df7](https://github.com/midnightntwrk/midnight-js/commit/97d4df788ba19bcd8a363e9a7e77a53d8a7e6483))
+* API documentation update ([#764](https://github.com/midnightntwrk/midnight-js/pull/764)) ([bda224e](https://github.com/midnightntwrk/midnight-js/commit/bda224e6d5c34ef50d705af66f18d7397aafd348))
+* API documentation update ([#777](https://github.com/midnightntwrk/midnight-js/pull/777)) ([3bb01cb](https://github.com/midnightntwrk/midnight-js/commit/3bb01cb9c3587d98fd20c7e0bcda1b7a5fe4d85e))
+
+
+### Tests
+
+* enable custom color token e2e tests ([#765](https://github.com/midnightntwrk/midnight-js/pull/765)) ([41e7e05](https://github.com/midnightntwrk/midnight-js/commit/41e7e05748eb68533afe06867389280082489399))
+* **testkit-js:** add e2e tests for std library token functions ([#772](https://github.com/midnightntwrk/midnight-js/pull/772)) ([04b9f7b](https://github.com/midnightntwrk/midnight-js/commit/04b9f7be0415e4e1461eac146c200acd6a23c802))
+* **testkit-js:** add unshielded mint and send variant e2e tests ([#766](https://github.com/midnightntwrk/midnight-js/pull/766)) ([331c06f](https://github.com/midnightntwrk/midnight-js/commit/331c06f5beb7d169d4f4885f144a6ad2f311e4ef))
+
+
+### Improvements
+
+* **deps-dev:** aggregate dependency updates ([#759](https://github.com/midnightntwrk/midnight-js/pull/759)) ([47f6d2e](https://github.com/midnightntwrk/midnight-js/commit/47f6d2e8cd661ef1f1f2092ece5ac8321c2c7f86))
+* **deps:** bump the npm_and_yarn group across 1 directory with 3 updates ([#746](https://github.com/midnightntwrk/midnight-js/pull/746)) ([41764ba](https://github.com/midnightntwrk/midnight-js/commit/41764baba425408f8d83f680ab40b1ef6b4a4fdf))
+
+## [4.0.3](https://github.com/midnightntwrk/midnight-js/compare/v4.0.2...v4.0.3) (2026-03-28)
 
 
 ### Features
@@ -32,6 +64,7 @@ All notable changes to this project will be documented in this file. See [commit
 ### Improvements
 
 * **deps:** consolidate dependency updates ([#740](https://github.com/midnightntwrk/midnight-js/pull/740)) ([6ac46da](https://github.com/midnightntwrk/midnight-js/commit/6ac46dadaa2dcdd7ad143b55d9858461b61a623c))
+* **release:** bump version to 4.0.3 ([#744](https://github.com/midnightntwrk/midnight-js/pull/744)) ([7f25a8a](https://github.com/midnightntwrk/midnight-js/commit/7f25a8a40075d2bf51e09774c3fbcf5c7652718a))
 
 ## [4.0.2](https://github.com/midnightntwrk/midnight-js/compare/v4.0.1...v4.0.2) (2026-03-24)
 

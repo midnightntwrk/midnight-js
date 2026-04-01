@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-node-zk-config-provider",
-  "version": "4.0.3",
+  "version": "4.0.4",
   "description": "MidnightJS module for reading proving and verifying keys and ZK intermediate representation",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
