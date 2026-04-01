@@ -26,6 +26,37 @@ export type ImpureCircuits<PS> = {
   depositShielded(context: __compactRuntime.CircuitContext<PS>,
                   coin_0: { nonce: Uint8Array, color: Uint8Array, value: bigint
                           }): __compactRuntime.CircuitResults<PS, []>;
+  mintAndSendImmediateShielded(context: __compactRuntime.CircuitContext<PS>,
+                               domainSep_0: Uint8Array,
+                               mintValue_0: bigint,
+                               mintNonce_0: Uint8Array,
+                               publicKey_0: { bytes: Uint8Array },
+                               sendValue_0: bigint): __compactRuntime.CircuitResults<PS, { change: { is_some: boolean,
+                                                                                                     value: { nonce: Uint8Array,
+                                                                                                              color: Uint8Array,
+                                                                                                              value: bigint
+                                                                                                            }
+                                                                                                   },
+                                                                                           sent: { nonce: Uint8Array,
+                                                                                                   color: Uint8Array,
+                                                                                                   value: bigint
+                                                                                                 }
+                                                                                         }>;
+  mintAndBurnShielded(context: __compactRuntime.CircuitContext<PS>,
+                      domainSep_0: Uint8Array,
+                      mintValue_0: bigint,
+                      mintNonce_0: Uint8Array,
+                      burnValue_0: bigint): __compactRuntime.CircuitResults<PS, { change: { is_some: boolean,
+                                                                                            value: { nonce: Uint8Array,
+                                                                                                     color: Uint8Array,
+                                                                                                     value: bigint
+                                                                                                   }
+                                                                                          },
+                                                                                  sent: { nonce: Uint8Array,
+                                                                                          color: Uint8Array,
+                                                                                          value: bigint
+                                                                                        }
+                                                                                }>;
 }
 
 export type ProvableCircuits<PS> = {
@@ -51,6 +82,37 @@ export type ProvableCircuits<PS> = {
   depositShielded(context: __compactRuntime.CircuitContext<PS>,
                   coin_0: { nonce: Uint8Array, color: Uint8Array, value: bigint
                           }): __compactRuntime.CircuitResults<PS, []>;
+  mintAndSendImmediateShielded(context: __compactRuntime.CircuitContext<PS>,
+                               domainSep_0: Uint8Array,
+                               mintValue_0: bigint,
+                               mintNonce_0: Uint8Array,
+                               publicKey_0: { bytes: Uint8Array },
+                               sendValue_0: bigint): __compactRuntime.CircuitResults<PS, { change: { is_some: boolean,
+                                                                                                     value: { nonce: Uint8Array,
+                                                                                                              color: Uint8Array,
+                                                                                                              value: bigint
+                                                                                                            }
+                                                                                                   },
+                                                                                           sent: { nonce: Uint8Array,
+                                                                                                   color: Uint8Array,
+                                                                                                   value: bigint
+                                                                                                 }
+                                                                                         }>;
+  mintAndBurnShielded(context: __compactRuntime.CircuitContext<PS>,
+                      domainSep_0: Uint8Array,
+                      mintValue_0: bigint,
+                      mintNonce_0: Uint8Array,
+                      burnValue_0: bigint): __compactRuntime.CircuitResults<PS, { change: { is_some: boolean,
+                                                                                            value: { nonce: Uint8Array,
+                                                                                                     color: Uint8Array,
+                                                                                                     value: bigint
+                                                                                                   }
+                                                                                          },
+                                                                                  sent: { nonce: Uint8Array,
+                                                                                          color: Uint8Array,
+                                                                                          value: bigint
+                                                                                        }
+                                                                                }>;
 }
 
 export type PureCircuits = {
@@ -79,6 +141,37 @@ export type Circuits<PS> = {
   depositShielded(context: __compactRuntime.CircuitContext<PS>,
                   coin_0: { nonce: Uint8Array, color: Uint8Array, value: bigint
                           }): __compactRuntime.CircuitResults<PS, []>;
+  mintAndSendImmediateShielded(context: __compactRuntime.CircuitContext<PS>,
+                               domainSep_0: Uint8Array,
+                               mintValue_0: bigint,
+                               mintNonce_0: Uint8Array,
+                               publicKey_0: { bytes: Uint8Array },
+                               sendValue_0: bigint): __compactRuntime.CircuitResults<PS, { change: { is_some: boolean,
+                                                                                                     value: { nonce: Uint8Array,
+                                                                                                              color: Uint8Array,
+                                                                                                              value: bigint
+                                                                                                            }
+                                                                                                   },
+                                                                                           sent: { nonce: Uint8Array,
+                                                                                                   color: Uint8Array,
+                                                                                                   value: bigint
+                                                                                                 }
+                                                                                         }>;
+  mintAndBurnShielded(context: __compactRuntime.CircuitContext<PS>,
+                      domainSep_0: Uint8Array,
+                      mintValue_0: bigint,
+                      mintNonce_0: Uint8Array,
+                      burnValue_0: bigint): __compactRuntime.CircuitResults<PS, { change: { is_some: boolean,
+                                                                                            value: { nonce: Uint8Array,
+                                                                                                     color: Uint8Array,
+                                                                                                     value: bigint
+                                                                                                   }
+                                                                                          },
+                                                                                  sent: { nonce: Uint8Array,
+                                                                                          color: Uint8Array,
+                                                                                          value: bigint
+                                                                                        }
+                                                                                }>;
 }
 
 export type Ledger = {

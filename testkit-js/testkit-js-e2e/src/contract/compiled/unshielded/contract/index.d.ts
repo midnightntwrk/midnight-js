@@ -37,6 +37,12 @@ export type ImpureCircuits<PS> = {
   getUnshieldedBalanceLtTest(context: __compactRuntime.CircuitContext<PS>,
                              color_0: Uint8Array,
                              amount_0: bigint): __compactRuntime.CircuitResults<PS, boolean>;
+  getUnshieldedBalanceGteTest(context: __compactRuntime.CircuitContext<PS>,
+                              color_0: Uint8Array,
+                              amount_0: bigint): __compactRuntime.CircuitResults<PS, boolean>;
+  getUnshieldedBalanceLteTest(context: __compactRuntime.CircuitContext<PS>,
+                              color_0: Uint8Array,
+                              amount_0: bigint): __compactRuntime.CircuitResults<PS, boolean>;
   receiveNightTokens(context: __compactRuntime.CircuitContext<PS>,
                      amount_0: bigint): __compactRuntime.CircuitResults<PS, []>;
   sendNightTokensToUser(context: __compactRuntime.CircuitContext<PS>,
@@ -84,6 +90,12 @@ export type ProvableCircuits<PS> = {
   getUnshieldedBalanceLtTest(context: __compactRuntime.CircuitContext<PS>,
                              color_0: Uint8Array,
                              amount_0: bigint): __compactRuntime.CircuitResults<PS, boolean>;
+  getUnshieldedBalanceGteTest(context: __compactRuntime.CircuitContext<PS>,
+                              color_0: Uint8Array,
+                              amount_0: bigint): __compactRuntime.CircuitResults<PS, boolean>;
+  getUnshieldedBalanceLteTest(context: __compactRuntime.CircuitContext<PS>,
+                              color_0: Uint8Array,
+                              amount_0: bigint): __compactRuntime.CircuitResults<PS, boolean>;
   receiveNightTokens(context: __compactRuntime.CircuitContext<PS>,
                      amount_0: bigint): __compactRuntime.CircuitResults<PS, []>;
   sendNightTokensToUser(context: __compactRuntime.CircuitContext<PS>,
@@ -134,6 +146,12 @@ export type Circuits<PS> = {
   getUnshieldedBalanceLtTest(context: __compactRuntime.CircuitContext<PS>,
                              color_0: Uint8Array,
                              amount_0: bigint): __compactRuntime.CircuitResults<PS, boolean>;
+  getUnshieldedBalanceGteTest(context: __compactRuntime.CircuitContext<PS>,
+                              color_0: Uint8Array,
+                              amount_0: bigint): __compactRuntime.CircuitResults<PS, boolean>;
+  getUnshieldedBalanceLteTest(context: __compactRuntime.CircuitContext<PS>,
+                              color_0: Uint8Array,
+                              amount_0: bigint): __compactRuntime.CircuitResults<PS, boolean>;
   receiveNightTokens(context: __compactRuntime.CircuitContext<PS>,
                      amount_0: bigint): __compactRuntime.CircuitResults<PS, []>;
   sendNightTokensToUser(context: __compactRuntime.CircuitContext<PS>,
