@@ -96,6 +96,21 @@ Encapsulates the context for managing a scoped contract transaction.
 
 ## Methods
 
+### getAdditionalMappings()
+
+> **getAdditionalMappings**(): `ReadonlyMap`\<`string`, `string`\> \| `undefined`
+
+Gets the additional scoped CoinPublicKey to EncPublicKey mappings.
+
+#### Returns
+
+`ReadonlyMap`\<`string`, `string`\> \| `undefined`
+
+A `ReadonlyMap`<CoinPublicKey, EncPublicKey> instance, or `undefined` if no additional
+mappings were specified for the current transaction context.
+
+***
+
 ### getCurrentStates()
 
 > **getCurrentStates**(): [`PublicContractStates`](../type-aliases/PublicContractStates.md) \| [`ContractStates`](../type-aliases/ContractStates.md)\<`PrivateState`\<`C`\>\> \| `undefined`

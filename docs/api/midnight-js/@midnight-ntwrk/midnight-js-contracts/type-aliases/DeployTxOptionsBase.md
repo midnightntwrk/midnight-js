@@ -12,6 +12,14 @@ Base type for deploy transaction configuration.
 
 ## Type Declaration
 
+### additionalCoinEncPublicKeyMappings?
+
+> `readonly` `optional` **additionalCoinEncPublicKeyMappings?**: `ReadonlyMap`\<`CoinPublicKey`, `EncPublicKey`\>
+
+An optional mapping of CoinPublicKey to EncPublicKey that can be used to resolve encryption
+keys for coins created in the contract constructor. This is useful in cases where the constructor creates
+outputs to addresses that don't belong to the current user.
+
 ### signingKey
 
 > `readonly` **signingKey**: `SigningKey`
