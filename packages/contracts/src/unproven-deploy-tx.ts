@@ -37,6 +37,13 @@ import { createEncryptionPublicKeyResolver, createUnprovenLedgerDeployTx, zswapS
  */
 export type DeployTxOptionsBase<C extends Contract.Any> = ContractConstructorOptionsWithArguments<C> & {
   /**
+   * An optional mapping of {@link CoinPublicKey} to {@link EncPublicKey} that can be used to resolve encryption
+   * keys for coins created in the contract constructor. This is useful in cases where the constructor creates
+   * outputs to addresses that don't belong to the current user.
+   */
+  readonly additionalCoinEncPublicKeyMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>;
+
+  /**
    * The signing key to add as the to-be-deployed contract's maintenance authority.
    */
   readonly signingKey: SigningKey;
@@ -121,7 +128,7 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
         zswapLocalState
       }
     } = exitResultOrError(exitResult);
-    const resolver = createEncryptionPublicKeyResolver(coinPublicKey, encryptionPublicKey);
+    const resolver = createEncryptionPublicKeyResolver(coinPublicKey, encryptionPublicKey, options.additionalCoinEncPublicKeyMappings);
     const [contractAddress, initialContractState, unprovenTx] = createUnprovenLedgerDeployTx(
       contractState,
       zswapLocalState,

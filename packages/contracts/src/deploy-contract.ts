@@ -15,6 +15,7 @@
 
 import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
 import { sampleSigningKey, type SigningKey } from '@midnight-ntwrk/compact-runtime';
+import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/ledger-v8';
 import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 
 import type { ContractConstructorOptionsWithArguments } from './call-constructor';
@@ -35,6 +36,13 @@ import type { FinalizedDeployTxData } from './tx-model';
  * in the event that `signingKey` is undefined.
  */
 export type DeployContractOptionsBase<C extends Contract.Any> = ContractConstructorOptionsWithArguments<C> & {
+  /**
+   * An optional mapping of {@link CoinPublicKey} to {@link EncPublicKey} that can be used to resolve encryption
+   * keys for coins created in the contract constructor. This is useful in cases where the constructor creates
+   * outputs to addresses that don't belong to the current user.
+   */
+  readonly additionalCoinEncPublicKeyMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>;
+
   /**
    * The signing key to add as the to-be-deployed contract's maintenance authority.
    * If undefined, a new signing key is sampled and used as the CMA then stored

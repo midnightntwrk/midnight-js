@@ -66,11 +66,21 @@ export const BURN_ENCRYPTION_PUBLIC_KEY: EncPublicKey = 'f5b9fa49d3c4f06582dab6b
 export const createEncryptionPublicKeyResolver = (
   walletCoinPublicKey: CoinPublicKey,
   walletEncryptionPublicKey: EncPublicKey,
-  additionalMappings?: ReadonlyMap<string, EncPublicKey>
+  additionalCoinEncPublicKeyMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>
 ): EncryptionPublicKeyResolver => {
   const networkId = getNetworkId();
   const normalizedWalletCpk = parseCoinPublicKeyToHex(walletCoinPublicKey, networkId);
   const normalizedWalletEpk = parseEncPublicKeyToHex(walletEncryptionPublicKey, networkId);
+
+  // Ensure additional mappings are normalized to hex as well, for consistent lookup.
+  const normalizedAdditionalMappings = additionalCoinEncPublicKeyMappings
+    ? new Map(
+        Array.from(additionalCoinEncPublicKeyMappings, ([k, v]) => [
+          parseCoinPublicKeyToHex(k, networkId),
+          parseEncPublicKeyToHex(v, networkId)
+        ])
+      )
+    : undefined;
 
   return (coinPublicKey: CoinPublicKey): EncPublicKey | undefined => {
     const normalizedCpk = parseCoinPublicKeyToHex(coinPublicKey, networkId);
@@ -83,7 +93,7 @@ export const createEncryptionPublicKeyResolver = (
       return BURN_ENCRYPTION_PUBLIC_KEY;
     }
 
-    return additionalMappings?.get(normalizedCpk);
+    return normalizedAdditionalMappings?.get(normalizedCpk);
   };
 };
 
@@ -260,7 +270,7 @@ export const encryptionPublicKeyResolverForZswapState = (
   zswapState: ZswapLocalState,
   walletCoinPublicKey: CoinPublicKey,
   walletEncryptionPublicKey: EncPublicKey,
-  additionalMappings?: ReadonlyMap<string, EncPublicKey>
+  additionalCoinEncPublicKeyMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>
 ): EncryptionPublicKeyResolver => {
   const networkId = getNetworkId();
   const walletCpkHex = parseCoinPublicKeyToHex(walletCoinPublicKey, networkId);
@@ -273,6 +283,6 @@ export const encryptionPublicKeyResolverForZswapState = (
   return createEncryptionPublicKeyResolver(
     walletCoinPublicKey,
     walletEncryptionPublicKey,
-    additionalMappings
+    additionalCoinEncPublicKeyMappings
   );
 };

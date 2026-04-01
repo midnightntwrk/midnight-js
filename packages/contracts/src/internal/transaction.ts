@@ -14,6 +14,7 @@
  */
 
 import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
+import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/ledger-v8';
 import { type AnyProvableCircuitId, type PrivateStateId, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { ChargedState } from '@midnight-ntwrk/onchain-runtime-v3';
 
@@ -84,6 +85,10 @@ export class TransactionContextImpl<
     this.options = options;
   }
 
+  getAdditionalMappings(): ReadonlyMap<CoinPublicKey, EncPublicKey> | undefined {
+    return this.options?.additionalCoinEncPublicKeyMappings;
+  }
+  
   /**
    * @deprecated This method bypasses identity validation and may return states from a different
    * contract or private state ID than expected. Use {@link GetCurrentStatesForIdentity} instead

@@ -16,7 +16,7 @@
 import { type CompiledContract, ContractExecutable } from '@midnight-ntwrk/compact-js';
 import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
 import type { SigningKey } from '@midnight-ntwrk/compact-runtime';
-import type { ContractAddress } from '@midnight-ntwrk/ledger-v8';
+import type { CoinPublicKey, ContractAddress, EncPublicKey } from '@midnight-ntwrk/ledger-v8';
 import {
   type FinalizedTxData,
   type PrivateStateId,
@@ -52,9 +52,11 @@ export const createCallTxOptions = <C extends Contract.Any, PCK extends Contract
   circuitId: PCK,
   contractAddress: ContractAddress,
   privateStateId: PrivateStateId | undefined,
+  additionalCoinEncPublicKeyMappings: ReadonlyMap<CoinPublicKey, EncPublicKey> | undefined,
   args: Contract.CircuitParameters<C, PCK>
 ): CallTxOptions<C, PCK> => {
   const callOptionsBase = {
+    additionalCoinEncPublicKeyMappings,
     compiledContract,
     circuitId,
     contractAddress
@@ -91,6 +93,7 @@ export const createCircuitCallTxInterface = <C extends Contract.Any>(
           circuitId,
           contractAddress,
           privateStateId,
+          txCtx?.getAdditionalMappings(),
           callArgs as Contract.CircuitParameters<C, typeof circuitId>
         );
         return txCtx

@@ -131,7 +131,8 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
           encryptionPublicKeyResolverForZswapState(
             zswapLocalState,
             options.coinPublicKey,
-            walletEncryptionPublicKey
+            walletEncryptionPublicKey,
+            options.additionalCoinEncPublicKeyMappings
           )
         ),
         newCoins: zswapStateToNewCoins(
@@ -184,6 +185,7 @@ const createCallOptions = <C extends Contract.Any, PCK extends Contract.Provable
   initialPrivateState?: Contract.PrivateState<C>
 ): CallOptions<C, PCK> => {
   const callOptionsBase = {
+    additionalCoinEncPublicKeyMappings: callTxOptions.additionalCoinEncPublicKeyMappings,
     compiledContract: callTxOptions.compiledContract,
     contractAddress: callTxOptions.contractAddress,
     circuitId: callTxOptions.circuitId
