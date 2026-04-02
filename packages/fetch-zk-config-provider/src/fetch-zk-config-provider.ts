@@ -77,10 +77,7 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
     }
     const contentType = response.headers.get('content-type') ?? '';
     if (contentType.includes('text/html')) {
-      throw new Error(
-        `Expected ZK artifact, but received text/html from ${fullUrl}. ` +
-        `This usually means the file does not exist and the server returned an SPA fallback page.`
-      );
+      throw new Error(`Expected ZK artifact, but received text/html from ${fullUrl}. This usually means the file does not exist and the server returned an SPA fallback page.`);
     }
     // The compiler can't infer that this return value is well-typed, so I cast to 'any'
     /* eslint-disable @typescript-eslint/no-explicit-any */
