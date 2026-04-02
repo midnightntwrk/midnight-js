@@ -30,6 +30,25 @@ jobs:
           fetch-depth: 0
 
       - name: Check DCO sign-off
-        uses: dco-org/dco-action@v1
-        with:
-          require-sign-off: true
+        run: |
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+
+          missing=()
+          while IFS= read -r sha; do
+            msg=$(git log -1 --format="%B" "$sha")
+            if ! echo "$msg" | grep -qE "^Signed-off-by: .+ <.+>"; then
+              missing+=("$sha $(git log -1 --format='%s' $sha)")
+            fi
+          done < <(git log --format="%H" "$base..$head")
+
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "The following commits are missing a Signed-off-by trailer:"
+            printf '  %s\n' "${missing[@]}"
+            echo ""
+            echo "Please sign off your commits with: git commit -s"
+            echo "To fix existing commits: git rebase --signoff HEAD~${#missing[@]}"
+            exit 1
+          fi
+
+          echo "All commits are signed off."
