@@ -33,9 +33,10 @@ import {
   type SigningKeyExport,
   SigningKeyExportError
 } from '@midnight-ntwrk/midnight-js-types';
+import { sha256 } from '@noble/hashes/sha256.js';
+import { bytesToHex, randomBytes, utf8ToBytes } from '@noble/hashes/utils.js';
 import { type AbstractSublevel } from 'abstract-level';
 import { Buffer } from 'buffer';
-import { createHash, randomBytes } from 'crypto';
 import { Level } from 'level';
 import * as superjson from 'superjson';
 
@@ -134,7 +135,7 @@ superjson.registerCustom<Buffer, string>(
 const ACCOUNT_ID_HASH_LENGTH = 32;
 
 const hashAccountId = (accountId: string): string => {
-  return createHash('sha256').update(accountId).digest('hex').substring(0, ACCOUNT_ID_HASH_LENGTH);
+  return bytesToHex(sha256(utf8ToBytes(accountId))).substring(0, ACCOUNT_ID_HASH_LENGTH);
 };
 
 const getScopedLevelName = (baseLevelName: string, accountId: string): string => {
@@ -215,7 +216,7 @@ const getOrCreateSalt = async (dbName: string, levelName: string): Promise<Buffe
       }
     }
 
-    const salt = randomBytes(32);
+    const salt = Buffer.from(randomBytes(32));
     const metadata = {
       salt: salt.toString('hex'),
       version: 1
