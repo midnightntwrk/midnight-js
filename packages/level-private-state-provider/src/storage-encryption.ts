@@ -14,8 +14,10 @@
  */
 
 import { Buffer } from 'buffer';
-import { createCipheriv, createDecipheriv, createHash, pbkdf2Sync, randomBytes } from 'crypto';
-import * as crypto from 'crypto';
+import { gcm } from '@noble/ciphers/aes.js';
+import { pbkdf2 } from '@noble/hashes/pbkdf2.js';
+import { sha256 } from '@noble/hashes/sha2.js';
+import { bytesToHex, randomBytes, utf8ToBytes } from '@noble/hashes/utils.js';
 
 export type PrivateStoragePasswordProvider = () => string | Promise<string>;
 
@@ -32,9 +34,6 @@ const CURRENT_ENCRYPTION_VERSION = ENCRYPTION_VERSION_V2;
 
 const VERSION_PREFIX_LENGTH = 1;
 const HEADER_LENGTH = VERSION_PREFIX_LENGTH + SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH;
-
-const HAS_NATIVE_TIMINGSAFEEQUAL =
-  'timingSafeEqual' in crypto && typeof crypto.timingSafeEqual === 'function';
 
 interface EncryptedComponents {
   version: number;
@@ -78,8 +77,10 @@ const getIterationsForVersion = (version: number): number => {
 };
 
 const hashPassword = (password: string): string => {
-  return createHash('sha256').update(password).digest('hex');
+  return bytesToHex(sha256(utf8ToBytes(password)));
 };
+
+const toBytes = (value: Uint8Array | Buffer): Uint8Array => Uint8Array.from(value);
 
 const constantTimeBufferEqual = (aBuf: Buffer, bBuf: Buffer): boolean => {
   if (aBuf.length !== bBuf.length) {
@@ -109,10 +110,6 @@ const constantTimeBufferEqual = (aBuf: Buffer, bBuf: Buffer): boolean => {
 export const timingSafeEqual = (a: Buffer | Uint8Array, b: Buffer | Uint8Array): boolean => {
   const aBuf = Buffer.isBuffer(a) ? a : Buffer.from(a);
   const bBuf = Buffer.isBuffer(b) ? b : Buffer.from(b);
-  if (HAS_NATIVE_TIMINGSAFEEQUAL) {
-    // Use the native `timingSafeEqual` function and let any errors propagate.
-    return crypto.timingSafeEqual(aBuf, bBuf);
-  }
   return constantTimeBufferEqual(aBuf, bBuf);
 };
 
@@ -123,13 +120,18 @@ export class StorageEncryption {
   private readonly passwordHash: string;
 
   constructor(password: string, existingSalt?: Buffer) {
-    this.salt = existingSalt ?? randomBytes(SALT_LENGTH);
+    this.salt = existingSalt ?? Buffer.from(randomBytes(SALT_LENGTH));
     this.encryptionKey = this.deriveKey(password, this.salt, PBKDF2_ITERATIONS_V2);
     this.passwordHash = hashPassword(password);
   }
 
   private deriveKey(password: string, salt: Buffer, iterations: number): Buffer {
-    return pbkdf2Sync(password, salt, iterations, KEY_LENGTH, 'sha256');
+    return Buffer.from(
+      pbkdf2(sha256, utf8ToBytes(password), toBytes(salt), {
+        c: iterations,
+        dkLen: KEY_LENGTH
+      })
+    );
   }
 
   verifyPassword(password: string): boolean {
@@ -140,11 +142,10 @@ export class StorageEncryption {
 
   encrypt(data: string): string {
     const plaintext = Buffer.from(data, 'utf-8');
-    const iv = randomBytes(IV_LENGTH);
-    const cipher = createCipheriv(ALGORITHM, this.encryptionKey, iv);
-
-    const encrypted = Buffer.concat([cipher.update(plaintext), cipher.final()]);
-    const authTag = cipher.getAuthTag();
+    const iv = Buffer.from(randomBytes(IV_LENGTH));
+    const encryptedWithTag = Buffer.from(gcm(toBytes(this.encryptionKey), toBytes(iv)).encrypt(toBytes(plaintext)));
+    const encrypted = encryptedWithTag.subarray(0, encryptedWithTag.length - AUTH_TAG_LENGTH);
+    const authTag = encryptedWithTag.subarray(encryptedWithTag.length - AUTH_TAG_LENGTH);
 
     const version = Buffer.from([CURRENT_ENCRYPTION_VERSION]);
     const result = Buffer.concat([version, this.salt, iv, authTag, encrypted]);
@@ -163,11 +164,7 @@ export class StorageEncryption {
     if (!this.salt.equals(salt)) {
       throw new Error('Salt mismatch: data was encrypted with a different password');
     }
-
-    const decipher = createDecipheriv(ALGORITHM, this.encryptionKey, iv, { authTagLength: AUTH_TAG_LENGTH });
-    decipher.setAuthTag(authTag);
-
-    const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+    const decrypted = Buffer.from(gcm(toBytes(this.encryptionKey), toBytes(iv)).decrypt(toBytes(Buffer.concat([encrypted, authTag]))));
     return decrypted.toString('utf-8');
   }
 
@@ -183,11 +180,7 @@ export class StorageEncryption {
     const decryptionKey = version === CURRENT_ENCRYPTION_VERSION
       ? this.encryptionKey
       : this.deriveKey(password, salt, iterations);
-
-    const decipher = createDecipheriv(ALGORITHM, decryptionKey, iv, { authTagLength: AUTH_TAG_LENGTH });
-    decipher.setAuthTag(authTag);
-
-    const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+    const decrypted = Buffer.from(gcm(toBytes(decryptionKey), toBytes(iv)).decrypt(toBytes(Buffer.concat([encrypted, authTag]))));
     return decrypted.toString('utf-8');
   }
 
