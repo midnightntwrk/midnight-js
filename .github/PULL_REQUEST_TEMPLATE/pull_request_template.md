@@ -6,9 +6,9 @@
 
 <!-- Please check all the boxes that apply to your pull request. -->
 
+- [ ] All commits are signed off (`git commit -s`) for the [DCO](https://developercertificate.org/)
 - [ ] Useful pull request description
 - [ ] Tests are provided (if possible)
-- [ ] All commits are signed off (`git commit -s`) for the [DCO](https://developercertificate.org/)
 - [ ] Key commits have useful messages
 - [ ] All check jobs of the CI have succeeded
 - [ ] Self-reviewed the diff

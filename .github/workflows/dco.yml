@@ -20,19 +20,27 @@ on:
     branches:
       - '**'
 
+permissions:
+  contents: read
+
 jobs:
   dco:
     name: DCO Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # ratchet:actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Check DCO sign-off
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          base="${{ github.event.pull_request.base.sha }}"
-          head="${{ github.event.pull_request.head.sha }}"
+          set -euo pipefail
+
+          base="$BASE_SHA"
+          head="$HEAD_SHA"
 
           missing=()
           while IFS= read -r sha; do
@@ -40,7 +48,7 @@ jobs:
             if ! echo "$msg" | grep -qE "^Signed-off-by: .+ <.+>"; then
               missing+=("$sha $(git log -1 --format='%s' $sha)")
             fi
-          done < <(git log --format="%H" "$base..$head")
+          done < <(git log --no-merges --format="%H" "$base..$head")
 
           if [ ${#missing[@]} -gt 0 ]; then
             echo "The following commits are missing a Signed-off-by trailer:"
