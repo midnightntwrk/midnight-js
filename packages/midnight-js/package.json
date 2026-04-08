@@ -67,9 +67,9 @@
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.3.0",
-    "rollup": "^4.59.0",
+    "rollup": "^4.60.0",
     "rollup-plugin-dts": "^6.4.1",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.2",
     "vitest": "^4.1.2"
   },
   "files": [

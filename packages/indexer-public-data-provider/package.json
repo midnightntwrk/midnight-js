@@ -37,7 +37,7 @@
     "graphql-ws": "^6.0.7",
     "isomorphic-ws": "^5.0.0",
     "rxjs": "^7.5.0",
-    "ws": "^8.14.2",
+    "ws": "^8.20.0",
     "zen-observable-ts": "^1.1.0"
   },
   "devDependencies": {
