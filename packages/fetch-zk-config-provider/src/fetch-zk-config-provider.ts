@@ -68,18 +68,23 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
     ext: typeof ZKIR_EXT | typeof PROVER_EXT | typeof VERIFIER_EXT,
     responseType: T
   ): Promise<T extends 'text' ? string : Uint8Array> {
-    const response = await this.fetchFunc(`${this.baseURL}/${url}/${circuitId}${ext}`, {
+    const fullUrl = `${this.baseURL}/${url}/${circuitId}${ext}`;
+    const response = await this.fetchFunc(fullUrl, {
       method: 'GET'
     });
-    if (response.ok) {
-      // The compiler can't infer that this return value is well-typed, so I cast to 'any'
-      /* eslint-disable @typescript-eslint/no-explicit-any */
-      return responseType === 'text'
-        ? ((await response.text()) as any)
-        : ((await response.arrayBuffer().then((arrayBuffer) => new Uint8Array(arrayBuffer))) as any);
-      /* eslint-enable @typescript-eslint/no-explicit-any */
+    if (!response.ok) {
+      throw new Error(`Failed to fetch ZK artifact from ${fullUrl}: ${response.status} ${response.statusText}`);
     }
-    throw new Error(response.statusText);
+    const contentType = response.headers.get('content-type') ?? '';
+    if (contentType.includes('text/html')) {
+      throw new Error(`Expected ZK artifact, but received text/html from ${fullUrl}. This usually means the file does not exist and the server returned an SPA fallback page.`);
+    }
+    // The compiler can't infer that this return value is well-typed, so I cast to 'any'
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    return responseType === 'text'
+      ? ((await response.text()) as any)
+      : ((await response.arrayBuffer().then((arrayBuffer) => new Uint8Array(arrayBuffer))) as any);
+    /* eslint-enable @typescript-eslint/no-explicit-any */
   }
 
   getProverKey(circuitId: K): Promise<ProverKey> {
