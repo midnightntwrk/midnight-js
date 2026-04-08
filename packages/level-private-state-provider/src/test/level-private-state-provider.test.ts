@@ -701,8 +701,8 @@ describe('Level Private State Provider', (): void => {
 
         // Create encryption with a known salt and encrypt non-JSON data
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
-        const notJson = encryption.encrypt('this is not JSON');
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, salt);
+        const notJson = await encryption.encrypt('this is not JSON');
 
         const badExport: PrivateStateExport = {
           format: 'midnight-private-state-export',
@@ -720,9 +720,9 @@ describe('Level Private State Provider', (): void => {
         db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, salt);
         // Valid JSON but missing required 'states' field
-        const invalidPayload = encryption.encrypt(JSON.stringify({
+        const invalidPayload = await encryption.encrypt(JSON.stringify({
           version: 1,
           exportedAt: new Date().toISOString(),
           stateCount: 0
@@ -745,9 +745,9 @@ describe('Level Private State Provider', (): void => {
         db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, salt);
         // Valid JSON but missing required 'version' field
-        const invalidPayload = encryption.encrypt(JSON.stringify({
+        const invalidPayload = await encryption.encrypt(JSON.stringify({
           exportedAt: new Date().toISOString(),
           stateCount: 0,
           states: {}
@@ -769,9 +769,9 @@ describe('Level Private State Provider', (): void => {
         db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, salt);
         // stateCount says 5 but only 1 state present
-        const mismatchedPayload = encryption.encrypt(JSON.stringify({
+        const mismatchedPayload = await encryption.encrypt(JSON.stringify({
           version: 1,
           exportedAt: new Date().toISOString(),
           stateCount: 5,
@@ -796,8 +796,8 @@ describe('Level Private State Provider', (): void => {
         db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
-        const unsupportedVersionPayload = encryption.encrypt(JSON.stringify({
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, salt);
+        const unsupportedVersionPayload = await encryption.encrypt(JSON.stringify({
           version: 999,
           exportedAt: new Date().toISOString(),
           stateCount: 0,
@@ -820,9 +820,9 @@ describe('Level Private State Provider', (): void => {
         db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, salt);
         // State value is not valid superjson
-        const invalidStatePayload = encryption.encrypt(JSON.stringify({
+        const invalidStatePayload = await encryption.encrypt(JSON.stringify({
           version: 1,
           exportedAt: new Date().toISOString(),
           stateCount: 1,
@@ -884,8 +884,8 @@ describe('Level Private State Provider', (): void => {
         // Uppercase hex should still be valid (the regex allows both cases)
         const uppercaseSalt = 'A'.repeat(64);
         const salt = Buffer.from(uppercaseSalt, 'hex');
-        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
-        const validPayload = encryption.encrypt(JSON.stringify({
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, salt);
+        const validPayload = await encryption.encrypt(JSON.stringify({
           version: 1,
           exportedAt: new Date().toISOString(),
           stateCount: 0,
@@ -1188,8 +1188,8 @@ describe('Level Private State Provider', (): void => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
-        const notJson = encryption.encrypt('this is not JSON');
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, salt);
+        const notJson = await encryption.encrypt('this is not JSON');
 
         const badExport: SigningKeyExport = {
           format: 'midnight-signing-key-export',
@@ -1206,8 +1206,8 @@ describe('Level Private State Provider', (): void => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
-        const invalidPayload = encryption.encrypt(JSON.stringify({
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, salt);
+        const invalidPayload = await encryption.encrypt(JSON.stringify({
           version: 1,
           exportedAt: new Date().toISOString(),
           keyCount: 0
@@ -1228,8 +1228,8 @@ describe('Level Private State Provider', (): void => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
-        const invalidPayload = encryption.encrypt(JSON.stringify({
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, salt);
+        const invalidPayload = await encryption.encrypt(JSON.stringify({
           exportedAt: new Date().toISOString(),
           keyCount: 0,
           keys: {}
@@ -1250,8 +1250,8 @@ describe('Level Private State Provider', (): void => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
-        const mismatchedPayload = encryption.encrypt(JSON.stringify({
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, salt);
+        const mismatchedPayload = await encryption.encrypt(JSON.stringify({
           version: 1,
           exportedAt: new Date().toISOString(),
           keyCount: 5,
@@ -1275,8 +1275,8 @@ describe('Level Private State Provider', (): void => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
-        const unsupportedVersionPayload = encryption.encrypt(JSON.stringify({
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, salt);
+        const unsupportedVersionPayload = await encryption.encrypt(JSON.stringify({
           version: 999,
           exportedAt: new Date().toISOString(),
           keyCount: 0,
@@ -1574,11 +1574,11 @@ describe('Level Private State Provider', (): void => {
 
       await db.set('key-1', 'value-1');
       expect(verifyPasswordSpy).toHaveBeenCalledTimes(1);
-      expect(verifyPasswordSpy).toHaveLastReturnedWith(true);
+      await expect(verifyPasswordSpy).toHaveLastResolvedWith(true);
 
       await db.set('key-2', 'value-2');
       expect(verifyPasswordSpy).toHaveBeenCalledTimes(2);
-      expect(verifyPasswordSpy).toHaveLastReturnedWith(true);
+      await expect(verifyPasswordSpy).toHaveLastResolvedWith(true);
 
       verifyPasswordSpy.mockRestore();
     });
@@ -2528,9 +2528,9 @@ describe('Level Private State Provider', (): void => {
         await level.open();
         await unscopedSubLevel.open();
 
-        const encryption = new StorageEncryption(TEST_PASSWORD);
-        await unscopedSubLevel.put('contract1:state1', encryption.encrypt(superjson.stringify('value1')));
-        await unscopedSubLevel.put('contract1:state2', encryption.encrypt(superjson.stringify('value2')));
+        const encryption = await StorageEncryption.create(TEST_PASSWORD);
+        await unscopedSubLevel.put('contract1:state1', await encryption.encrypt(superjson.stringify('value1')));
+        await unscopedSubLevel.put('contract1:state2', await encryption.encrypt(superjson.stringify('value2')));
       } finally {
         await unscopedSubLevel.close();
         await level.close();
@@ -2555,8 +2555,8 @@ describe('Level Private State Provider', (): void => {
         await level.open();
         await unscopedSubLevel.open();
 
-        const encryption = new StorageEncryption(TEST_PASSWORD);
-        await unscopedSubLevel.put('contract1', encryption.encrypt(superjson.stringify({ key: 'data' })));
+        const encryption = await StorageEncryption.create(TEST_PASSWORD);
+        await unscopedSubLevel.put('contract1', await encryption.encrypt(superjson.stringify({ key: 'data' })));
       } finally {
         await unscopedSubLevel.close();
         await level.close();
@@ -2605,7 +2605,7 @@ describe('Level Private State Provider', (): void => {
         valueEncoding: 'utf-8'
       });
 
-      const encryption = new StorageEncryption(TEST_PASSWORD);
+      const encryption = await StorageEncryption.create(TEST_PASSWORD);
       const CONTRACT_ADDR = 'test-contract' as ContractAddress;
       const METADATA_KEY = '__midnight_encryption_metadata__';
 
@@ -2617,7 +2617,7 @@ describe('Level Private State Provider', (): void => {
         await unscopedSubLevel.put(METADATA_KEY, JSON.stringify(metadata));
         await unscopedSubLevel.put(
           `${CONTRACT_ADDR}:migrated-key`,
-          encryption.encrypt(superjson.stringify('migrated-value'))
+          await encryption.encrypt(superjson.stringify('migrated-value'))
         );
       } finally {
         await unscopedSubLevel.close();
@@ -2646,7 +2646,7 @@ describe('Level Private State Provider', (): void => {
         valueEncoding: 'utf-8'
       });
 
-      const encryption = new StorageEncryption(TEST_PASSWORD);
+      const encryption = await StorageEncryption.create(TEST_PASSWORD);
       const CONTRACT_ADDR = 'test-contract' as ContractAddress;
       const METADATA_KEY = '__midnight_encryption_metadata__';
 
@@ -2658,7 +2658,7 @@ describe('Level Private State Provider', (): void => {
         await unscopedSubLevel.put(METADATA_KEY, JSON.stringify(metadata));
         await unscopedSubLevel.put(
           `${CONTRACT_ADDR}:idempotent-key`,
-          encryption.encrypt(superjson.stringify('idempotent-value'))
+          await encryption.encrypt(superjson.stringify('idempotent-value'))
         );
       } finally {
         await unscopedSubLevel.close();
@@ -2695,8 +2695,8 @@ describe('Level Private State Provider', (): void => {
         valueEncoding: 'utf-8'
       });
 
-      const encryption = new StorageEncryption(TEST_PASSWORD);
-      const originalEncryptedValue = encryption.encrypt(superjson.stringify('original-value'));
+      const encryption = await StorageEncryption.create(TEST_PASSWORD);
+      const originalEncryptedValue = await encryption.encrypt(superjson.stringify('original-value'));
 
       try {
         await level.open();

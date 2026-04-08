@@ -204,12 +204,12 @@ export class StorageEncryption {
   }
 
   async encrypt(data: string): Promise<string> {
-    const plaintext = Buffer.from(data, 'utf-8');
+    const plaintext = new TextEncoder().encode(data);
     const iv = getRandomBytes(IV_LENGTH);
     const { ciphertext, authTag } = await aesGcmEncrypt(this.encryptionKey, iv, plaintext);
 
-    const version = Buffer.from([CURRENT_ENCRYPTION_VERSION]);
-    const result = Buffer.concat([version, Buffer.from(this.salt), Buffer.from(iv), Buffer.from(authTag), Buffer.from(ciphertext)]);
+    const version = new Uint8Array([CURRENT_ENCRYPTION_VERSION]);
+    const result = Buffer.concat([version, this.salt, iv, authTag, ciphertext]);
 
     return result.toString('base64');
   }
