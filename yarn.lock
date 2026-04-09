@@ -1933,10 +1933,8 @@ __metadata:
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
-    "@types/lodash": "npm:^4.17.19"
     cross-fetch: "npm:^4.1.0"
     fetch-retry: "npm:^6.0.0"
-    lodash: "npm:^4.17.23"
   languageName: unknown
   linkType: soft
 
@@ -1971,8 +1969,6 @@ __metadata:
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     abstract-level: "npm:^3.0.0"
     buffer: "npm:^6.0.3"
-    fp-ts: "npm:^2.16.1"
-    io-ts: "npm:^2.2.20"
     level: "npm:^10.0.0"
     superjson: "npm:^2.0.0"
   languageName: unknown
@@ -2063,7 +2059,6 @@ __metadata:
   resolution: "@midnight-ntwrk/midnight-js-utils@workspace:packages/utils"
   dependencies:
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
-    "@scure/base": "npm:^2.0.0"
     "@types/node": "npm:^24.0.0"
   languageName: unknown
   linkType: soft
@@ -3893,13 +3888,6 @@ __metadata:
   version: 0.0.29
   resolution: "@types/json5@npm:0.0.29"
   checksum: 10/4e5aed58cabb2bbf6f725da13421aa50a49abb6bc17bfab6c31b8774b073fa7b50d557c61f961a09a85f6056151190f8ac95f13f5b48136ba5841f7d4484ec56
-  languageName: node
-  linkType: hard
-
-"@types/lodash@npm:^4.17.19":
-  version: 4.17.24
-  resolution: "@types/lodash@npm:4.17.24"
-  checksum: 10/0f2082565f60f9787eefc046edc38458054512be5a8b3584ef0bad5fd9e85d0ab55ec5a1fbfae1ed6ba015cf1f9e837d5fb4da1f99fc60b8f74b2a46146fb00f
   languageName: node
   linkType: hard
 
@@ -7234,13 +7222,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fp-ts@npm:^2.16.1":
-  version: 2.16.11
-  resolution: "fp-ts@npm:2.16.11"
-  checksum: 10/4c034326728c43a28b3a0f3a88c1218bca13c69ee3c420ab7a52636aa0d68cb68990308e72d93b3e5cc952e998019f7e3ba16389bb1ecc0174574536c29d3ab3
-  languageName: node
-  linkType: hard
-
 "fresh@npm:^2.0.0":
   version: 2.0.0
   resolution: "fresh@npm:2.0.0"
@@ -7953,15 +7934,6 @@ __metadata:
   dependencies:
     loose-envify: "npm:^1.0.0"
   checksum: 10/cc3182d793aad82a8d1f0af697b462939cb46066ec48bbf1707c150ad5fad6406137e91a262022c269702e01621f35ef60269f6c0d7fd178487959809acdfb14
-  languageName: node
-  linkType: hard
-
-"io-ts@npm:^2.2.20":
-  version: 2.2.22
-  resolution: "io-ts@npm:2.2.22"
-  peerDependencies:
-    fp-ts: ^2.5.0
-  checksum: 10/c5eb8ca848f6e9586b5430773c62c8577902a6ca621349339e4d238c9ac4aba8df8de3e4d4317ff6593dcf38eb804445e0a5ba87afd7a2b8d29344ea9b6dc151
   languageName: node
   linkType: hard
 
@@ -8984,7 +8956,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"lodash@npm:^4.17.15, lodash@npm:^4.17.23, lodash@npm:~4.17.0":
+"lodash@npm:^4.17.15, lodash@npm:~4.17.0":
   version: 4.17.23
   resolution: "lodash@npm:4.17.23"
   checksum: 10/82504c88250f58da7a5a4289f57a4f759c44946c005dd232821c7688b5fcfbf4a6268f6a6cdde4b792c91edd2f3b5398c1d2a0998274432cff76def48735e233
