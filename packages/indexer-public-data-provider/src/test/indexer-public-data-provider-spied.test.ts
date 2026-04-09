@@ -16,12 +16,12 @@
 import { vi } from 'vitest';
 
 // Dynamically load the package to be able to mock its dependencies.
-const mockLinkHttp = await import('@apollo/client/link/http/http.cjs');
+const mockLinkHttp = await import('@apollo/client/link/http');
 const mockGraphqlWS = await import('graphql-ws');
-const mockApolloCore = await import('@apollo/client/core/core.cjs');
+const mockApolloCore = await import('@apollo/client/core');
 
 // Define the mocks.
-const mockCreateHttpLink = vi.fn();
+const mockHttpLink = vi.fn();
 const mockFrom = vi.fn();
 const mockCreateClient = vi.fn();
 
@@ -32,13 +32,13 @@ vi.doMock('graphql-ws', () => ({
   createClient: mockCreateClient
 }));
 
-vi.doMock('@apollo/client/link/http/http.cjs', () => ({
+vi.doMock('@apollo/client/link/http', () => ({
   __esModule: true,
   ...mockLinkHttp,
-  createHttpLink: mockCreateHttpLink
+  HttpLink: mockHttpLink
 }));
 
-vi.doMock('@apollo/client/core/core.cjs', () => ({
+vi.doMock('@apollo/client/core', () => ({
   __esModule: true,
   ...mockApolloCore,
   from: mockFrom
@@ -58,7 +58,7 @@ describe.skip('indexerPublicDataProvider', () => {
     // Dynamically load the function so jest can mock its dependencies.
     const { indexerPublicDataProvider } = await import('../indexer-public-data-provider');
     const provider = indexerPublicDataProvider(queryURL, subscriptionURL);
-    expect(mockCreateHttpLink).toHaveBeenCalledWith(expect.objectContaining({ uri: queryURL }));
+    expect(mockHttpLink).toHaveBeenCalledWith(expect.objectContaining({ uri: queryURL }));
     expect(mockCreateClient).toHaveBeenCalledWith(expect.objectContaining({ url: subscriptionURL }));
     expect(provider).toBeDefined();
   });
@@ -67,7 +67,7 @@ describe.skip('indexerPublicDataProvider', () => {
     // Dynamically load the function so jest can mock its dependencies.
     const { indexerPublicDataProvider } = await import('../indexer-public-data-provider');
     const provider = indexerPublicDataProvider(queryOrigin, subscriptionWithWs);
-    expect(mockCreateHttpLink).toHaveBeenCalledWith(expect.objectContaining({ uri: queryURL }));
+    expect(mockHttpLink).toHaveBeenCalledWith(expect.objectContaining({ uri: queryURL }));
     expect(mockCreateClient).toHaveBeenCalledWith(expect.objectContaining({ url: subscriptionURL }));
     expect(provider).toBeDefined();
   });
