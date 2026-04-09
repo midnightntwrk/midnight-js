@@ -1614,7 +1614,7 @@ describe('Level Private State Provider', (): void => {
       db.setContractAddress(CACHE_CONTRACT_ADDRESS);
       await db.set('test-key', 'test-value');
 
-      db.invalidateEncryptionCache();
+      await db.invalidateEncryptionCache();
 
       const value = await db.get('test-key');
       expect(value).toBe('test-value');

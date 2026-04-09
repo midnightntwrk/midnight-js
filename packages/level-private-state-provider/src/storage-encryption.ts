@@ -30,6 +30,19 @@ const CURRENT_ENCRYPTION_VERSION = ENCRYPTION_VERSION_V2;
 const VERSION_PREFIX_LENGTH = 1;
 const HEADER_LENGTH = VERSION_PREFIX_LENGTH + SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH;
 
+export const assertWebCryptoAvailable = (): void => {
+  if (typeof globalThis.crypto === 'undefined') {
+    throw new Error(
+      'Web Crypto API is not available. Ensure you are running in Node.js >= 15 or a browser with Web Crypto support.'
+    );
+  }
+  if (typeof globalThis.crypto.subtle === 'undefined') {
+    throw new Error(
+      'Web Crypto subtle API is not available. In browsers, this requires a secure context (HTTPS or localhost).'
+    );
+  }
+};
+
 const getRandomBytes = (length: number): Uint8Array => {
   return globalThis.crypto.getRandomValues(new Uint8Array(length));
 };
@@ -190,6 +203,7 @@ export class StorageEncryption {
   }
 
   static async create(password: string, existingSalt?: Buffer | Uint8Array): Promise<StorageEncryption> {
+    assertWebCryptoAvailable();
     const salt = existingSalt ? new Uint8Array(existingSalt) : getRandomBytes(SALT_LENGTH);
     const passwordBytes = new TextEncoder().encode(password);
     const encryptionKey = await pbkdf2(passwordBytes, salt, PBKDF2_ITERATIONS_V2, KEY_LENGTH);
@@ -381,7 +395,7 @@ export const decryptValue = async (
   password: string
 ): Promise<string> => {
   if (!StorageEncryption.isEncrypted(encryptedValue)) {
-    console.debug('MIDNIGHT: Encountered unencrypted data during decryption - passing through as-is');
+    console.warn('MIDNIGHT: Encountered unencrypted data during decryption - passing through as-is. This may indicate data corruption or a migration issue.');
     return encryptedValue;
   }
 

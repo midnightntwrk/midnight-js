@@ -15,7 +15,7 @@
 
 import { Buffer } from 'buffer';
 
-import { getPasswordFromProvider, StorageEncryption, timingSafeEqual } from '../storage-encryption';
+import { decryptValue, getPasswordFromProvider, StorageEncryption, timingSafeEqual } from '../storage-encryption';
 
 describe('StorageEncryption', () => {
   const testPassword = 'Test-Password-123!';
@@ -78,6 +78,69 @@ describe('StorageEncryption', () => {
       const encryption2 = await StorageEncryption.create('Wrong-Password-1!', encryption1.getSalt());
 
       await expect(encryption2.decrypt(encrypted)).rejects.toThrow();
+    });
+
+    test('rejects tampered ciphertext', async () => {
+      const encryption = await StorageEncryption.create(testPassword);
+      const encrypted = await encryption.encrypt(testData);
+
+      const buffer = Buffer.from(encrypted, 'base64');
+      buffer[buffer.length - 1] ^= 0xff;
+      const tampered = buffer.toString('base64');
+
+      await expect(encryption.decrypt(tampered)).rejects.toThrow();
+    });
+  });
+
+  describe('create with Uint8Array salt', () => {
+    test('produces working encryption with Uint8Array salt', async () => {
+      const salt = new Uint8Array(32);
+      globalThis.crypto.getRandomValues(salt);
+
+      const encryption = await StorageEncryption.create(testPassword, salt);
+      const encrypted = await encryption.encrypt(testData);
+      const decrypted = await encryption.decrypt(encrypted);
+
+      expect(decrypted).toBe(testData);
+    });
+
+    test('Uint8Array salt produces same results as Buffer salt', async () => {
+      const rawBytes = new Uint8Array(32);
+      globalThis.crypto.getRandomValues(rawBytes);
+
+      const encryptionFromUint8 = await StorageEncryption.create(testPassword, rawBytes);
+      const encryptionFromBuffer = await StorageEncryption.create(testPassword, Buffer.from(rawBytes));
+
+      expect(encryptionFromUint8.getSalt()).toEqual(encryptionFromBuffer.getSalt());
+    });
+  });
+
+  describe('decryptValue', () => {
+    test('passes through unencrypted data as-is', async () => {
+      const encryption = await StorageEncryption.create(testPassword);
+      const plaintext = 'not-encrypted-data';
+
+      const result = await decryptValue(plaintext, encryption, testPassword);
+
+      expect(result).toBe(plaintext);
+    });
+
+    test('decrypts V2 encrypted data', async () => {
+      const encryption = await StorageEncryption.create(testPassword);
+      const encrypted = await encryption.encrypt(testData);
+
+      const result = await decryptValue(encrypted, encryption, testPassword);
+
+      expect(result).toBe(testData);
+    });
+
+    test('decrypts V1 encrypted data with password', async () => {
+      const salt = Buffer.from(V1_FIXTURES.salt, 'hex');
+      const encryption = await StorageEncryption.create(V1_FIXTURES.password, salt);
+
+      const result = await decryptValue(V1_FIXTURES.encrypted, encryption, V1_FIXTURES.password);
+
+      expect(result).toBe(V1_FIXTURES.plaintext);
     });
   });
 

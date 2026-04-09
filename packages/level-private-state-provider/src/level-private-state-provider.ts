@@ -38,7 +38,7 @@ import { Buffer } from 'buffer';
 import { Level } from 'level';
 import * as superjson from 'superjson';
 
-import { decryptValue, getPasswordFromProvider, type PrivateStoragePasswordProvider, StorageEncryption } from './storage-encryption';
+import { assertWebCryptoAvailable, decryptValue, getPasswordFromProvider, type PrivateStoragePasswordProvider, StorageEncryption } from './storage-encryption';
 
 /**
  * The default name of the indexedDB database for Midnight.
@@ -133,6 +133,7 @@ superjson.registerCustom<Buffer, string>(
 const ACCOUNT_ID_HASH_LENGTH = 32;
 
 const hashAccountId = async (accountId: string): Promise<string> => {
+  assertWebCryptoAvailable();
   const data = new TextEncoder().encode(accountId);
   const hashBuffer = await globalThis.crypto.subtle.digest('SHA-256', data);
   return Buffer.from(new Uint8Array(hashBuffer)).toString('hex').substring(0, ACCOUNT_ID_HASH_LENGTH);
@@ -330,6 +331,11 @@ interface RotateStorePasswordParams {
 
 const isDecryptionError = (error: unknown): boolean => {
   if (!(error instanceof Error)) return false;
+
+  if ('name' in error && error.name === 'OperationError') {
+    return true;
+  }
+
   const message = error.message.toLowerCase();
   return (
     message.includes('unsupported state') ||
@@ -708,15 +714,17 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
 
   const passwordProvider: PrivateStoragePasswordProvider = config.privateStoragePasswordProvider;
 
-  let scopedPrivateStateLevelName: string | null = null;
-  let scopedSigningKeyLevelName: string | null = null;
+  let scopedNamesPromise: Promise<{ privateState: string; signingKey: string }> | null = null;
 
-  const getScopedNames = async (): Promise<{ privateState: string; signingKey: string }> => {
-    if (scopedPrivateStateLevelName === null || scopedSigningKeyLevelName === null) {
-      scopedPrivateStateLevelName = await getScopedLevelName(fullConfig.privateStateStoreName, config.accountId);
-      scopedSigningKeyLevelName = await getScopedLevelName(fullConfig.signingKeyStoreName, config.accountId);
+  const getScopedNames = (): Promise<{ privateState: string; signingKey: string }> => {
+    if (scopedNamesPromise === null) {
+      scopedNamesPromise = (async () => {
+        const privateState = await getScopedLevelName(fullConfig.privateStateStoreName, config.accountId);
+        const signingKey = await getScopedLevelName(fullConfig.signingKeyStoreName, config.accountId);
+        return { privateState, signingKey };
+      })();
     }
-    return { privateState: scopedPrivateStateLevelName, signingKey: scopedSigningKeyLevelName };
+    return scopedNamesPromise;
   };
 
   showBrowserWarning();
@@ -919,7 +927,10 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
         const importEncryption = await StorageEncryption.create(importPassword, salt);
         const decryptedJson = await importEncryption.decrypt(exportData.encryptedPayload);
         payload = JSON.parse(decryptedJson);
-      } catch {
+      } catch (error: unknown) {
+        if (error instanceof TypeError && error.message.includes('subtle')) {
+          throw new Error('Web Crypto subtle API is not available. In browsers, this requires a secure context (HTTPS or localhost).', { cause: error });
+        }
         // Single generic error - don't reveal whether password was wrong or data was corrupted
         throw new ExportDecryptionError();
       }
@@ -1072,7 +1083,10 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
         const importEncryption = await StorageEncryption.create(importPassword, salt);
         const decryptedJson = await importEncryption.decrypt(exportData.encryptedPayload);
         payload = JSON.parse(decryptedJson);
-      } catch {
+      } catch (error: unknown) {
+        if (error instanceof TypeError && error.message.includes('subtle')) {
+          throw new Error('Web Crypto subtle API is not available. In browsers, this requires a secure context (HTTPS or localhost).', { cause: error });
+        }
         throw new ExportDecryptionError();
       }
 
@@ -1205,6 +1219,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
 
     async invalidateEncryptionCache(): Promise<void> {
       const { privateState, signingKey } = await getScopedNames();
+      scopedNamesPromise = null;
       invalidateEncryptionCacheForDb(
         fullConfig.midnightDbName,
         privateState,
