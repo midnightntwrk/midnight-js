@@ -217,6 +217,7 @@ const getOrCreateSalt = async (dbName: string, levelName: string): Promise<Buffe
       }
     }
 
+    assertWebCryptoAvailable();
     const salt = Buffer.from(globalThis.crypto.getRandomValues(new Uint8Array(32)));
     const metadata = {
       salt: salt.toString('hex'),
@@ -342,8 +343,7 @@ const isDecryptionError = (error: unknown): boolean => {
     message.includes('salt mismatch') ||
     message.includes('invalid encrypted data') ||
     message.includes('bad decrypt') ||
-    message.includes('unable to authenticate') ||
-    message.includes('operation failed for an operation-specific reason')
+    message.includes('unable to authenticate')
   );
 };
 
@@ -722,7 +722,10 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
         const privateState = await getScopedLevelName(fullConfig.privateStateStoreName, config.accountId);
         const signingKey = await getScopedLevelName(fullConfig.signingKeyStoreName, config.accountId);
         return { privateState, signingKey };
-      })();
+      })().catch((error: unknown) => {
+        scopedNamesPromise = null;
+        throw error;
+      });
     }
     return scopedNamesPromise;
   };
@@ -927,10 +930,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
         const importEncryption = await StorageEncryption.create(importPassword, salt);
         const decryptedJson = await importEncryption.decrypt(exportData.encryptedPayload);
         payload = JSON.parse(decryptedJson);
-      } catch (error: unknown) {
-        if (error instanceof TypeError && error.message.includes('subtle')) {
-          throw new Error('Web Crypto subtle API is not available. In browsers, this requires a secure context (HTTPS or localhost).', { cause: error });
-        }
+      } catch {
         // Single generic error - don't reveal whether password was wrong or data was corrupted
         throw new ExportDecryptionError();
       }
@@ -1083,10 +1083,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
         const importEncryption = await StorageEncryption.create(importPassword, salt);
         const decryptedJson = await importEncryption.decrypt(exportData.encryptedPayload);
         payload = JSON.parse(decryptedJson);
-      } catch (error: unknown) {
-        if (error instanceof TypeError && error.message.includes('subtle')) {
-          throw new Error('Web Crypto subtle API is not available. In browsers, this requires a secure context (HTTPS or localhost).', { cause: error });
-        }
+      } catch {
         throw new ExportDecryptionError();
       }
 
@@ -1218,13 +1215,16 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
     },
 
     async invalidateEncryptionCache(): Promise<void> {
-      const { privateState, signingKey } = await getScopedNames();
+      const cachedPromise = scopedNamesPromise;
       scopedNamesPromise = null;
-      invalidateEncryptionCacheForDb(
-        fullConfig.midnightDbName,
-        privateState,
-        signingKey
-      );
+      if (cachedPromise) {
+        try {
+          const { privateState, signingKey } = await cachedPromise;
+          invalidateEncryptionCacheForDb(fullConfig.midnightDbName, privateState, signingKey);
+        } catch {
+          // Names were never resolved, so no cache entries to invalidate
+        }
+      }
     }
   };
 };
