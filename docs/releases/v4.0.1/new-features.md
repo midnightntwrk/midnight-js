@@ -1,4 +1,4 @@
-# New Features v4.0.0
+# New Features v4.0.1
 
 ## 1. LedgerParameters Flow Through Circuit Execution (#633)
 
@@ -72,7 +72,7 @@ interface PublicContractStates {
 
 ## 2. Ledger v8 with Provable Circuits (#607)
 
-The SDK now targets ledger v8, which renames "impure circuits" to "provable circuits" for better semantic clarity. This is a terminology change reflecting that these circuits produce ZK proofs.
+The framework now targets ledger v8, which renames "impure circuits" to "provable circuits" for better semantic clarity. This is a terminology change reflecting that these circuits produce ZK proofs.
 
 ### Usage
 
@@ -92,4 +92,36 @@ const circuitIds = ContractExecutable.make(compiledContract).getProvableCircuitI
 // From @midnight-ntwrk/midnight-js-types
 export type AnyProvableCircuitId = Contract.ProvableCircuitId<Contract.Any>;
 export type AnyPrivateState = Contract.PrivateState<Contract.Any>;
+```
+
+---
+
+## 3. `createProofProvider` Factory Function (#636)
+
+A new utility function exported from `@midnight-ntwrk/midnight-js-types` that simplifies creating a `ProofProvider` from a `ProvingProvider`. It wraps the proving provider with an optional `CostModel`, defaulting to the initial cost model.
+
+### Usage
+
+```typescript
+import { createProofProvider } from '@midnight-ntwrk/midnight-js-types';
+import { type ProvingProvider, CostModel } from '@midnight-ntwrk/ledger-v8';
+
+// Uses CostModel.initialCostModel() by default
+const proofProvider = createProofProvider(provingProvider);
+
+// With a custom cost model
+const proofProvider = createProofProvider(provingProvider, customCostModel);
+```
+
+### API
+
+```typescript
+export const createProofProvider = (
+  provingProvider: ProvingProvider,
+  costModel: CostModel = CostModel.initialCostModel()
+): ProofProvider => ({
+  async proveTx(unprovenTx: UnprovenTransaction): Promise<UnboundTransaction> {
+    return unprovenTx.prove(provingProvider, costModel);
+  }
+});
 ```

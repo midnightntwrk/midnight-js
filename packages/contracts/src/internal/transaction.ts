@@ -14,6 +14,7 @@
  */
 
 import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
+import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/ledger-v8';
 import { type AnyProvableCircuitId, type PrivateStateId, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { ChargedState } from '@midnight-ntwrk/onchain-runtime-v3';
 
@@ -84,6 +85,10 @@ export class TransactionContextImpl<
     this.options = options;
   }
 
+  getAdditionalMappings(): ReadonlyMap<CoinPublicKey, EncPublicKey> | undefined {
+    return this.options?.additionalCoinEncPublicKeyMappings;
+  }
+  
   /**
    * @deprecated This method bypasses identity validation and may return states from a different
    * contract or private state ID than expected. Use {@link GetCurrentStatesForIdentity} instead
@@ -215,7 +220,7 @@ export const scoped: {
       throw err;
     }
     const execErr = new Error(
-      `Unexpected error executing scoped transaction '${options?.scopeName ?? '<unnamed>'}': ${String(err)}`,
+      `Unexpected error executing scoped transaction '${txOptions?.scopeName ?? '<unnamed>'}': ${String(err)}`,
       { cause: err }
     );
     providers?.loggerProvider?.error?.call(
@@ -259,7 +264,7 @@ export const scoped: {
     }
     // ...otherwise, wrap and rethrow errors occurring during submission at the root transaction context.
     const submitErr = new Error(
-      `Unexpected error submitting scoped transaction '${options?.scopeName ?? '<unnamed>'}': ${String(err)}`,
+      `Unexpected error submitting scoped transaction '${txOptions?.scopeName ?? '<unnamed>'}': ${String(err)}`,
       { cause: err }
     );
     providers?.loggerProvider?.error?.call(

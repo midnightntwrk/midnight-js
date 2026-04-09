@@ -28,13 +28,21 @@ import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import type { ContractConstructorOptionsWithArguments } from './call-constructor';
 import { type ContractProviders } from './contract-providers';
+import { isEffectContractError } from './errors';
 import type { UnsubmittedDeployTxData } from './tx-model';
-import { createUnprovenLedgerDeployTx, zswapStateToNewCoins } from './utils';
+import { createEncryptionPublicKeyResolver, createUnprovenLedgerDeployTx, zswapStateToNewCoins } from './utils';
 
 /**
  * Base type for deploy transaction configuration.
  */
 export type DeployTxOptionsBase<C extends Contract.Any> = ContractConstructorOptionsWithArguments<C> & {
+  /**
+   * An optional mapping of {@link CoinPublicKey} to {@link EncPublicKey} that can be used to resolve encryption
+   * keys for coins created in the contract constructor. This is useful in cases where the constructor creates
+   * outputs to addresses that don't belong to the current user.
+   */
+  readonly additionalCoinEncPublicKeyMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>;
+
   /**
    * The signing key to add as the to-be-deployed contract's maintenance authority.
    */
@@ -120,10 +128,11 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
         zswapLocalState
       }
     } = exitResultOrError(exitResult);
+    const resolver = createEncryptionPublicKeyResolver(coinPublicKey, encryptionPublicKey, options.additionalCoinEncPublicKeyMappings);
     const [contractAddress, initialContractState, unprovenTx] = createUnprovenLedgerDeployTx(
       contractState,
       zswapLocalState,
-      encryptionPublicKey
+      resolver
     );
 
     return {
@@ -140,10 +149,10 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
       }
     };
   } catch (error: unknown) {
-    // Report CompactError messages as they are, otherwise re-throw the error.
-    if ((error as any)?.['_tag'] !== 'ContractRuntimeError') throw error; // eslint-disable-line @typescript-eslint/no-explicit-any
-    if ((error as any)?.cause.name !== 'CompactError') throw error; // eslint-disable-line @typescript-eslint/no-explicit-any
-    throw new Error((error as any)?.cause.message, { cause: error }); // eslint-disable-line @typescript-eslint/no-explicit-any
+    if (!isEffectContractError(error)) throw error;
+    if (error._tag !== 'ContractRuntimeError' && error._tag !== 'ContractConfigurationError') throw error;
+    if (error.cause.name !== 'CompactError') throw error;
+    throw new Error(error.cause.message, { cause: error });
   }
 }
 

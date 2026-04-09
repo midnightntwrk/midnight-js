@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v4.0.0-rc.1**](../README.md)
+[**@midnight-ntwrk/testkit-js v4.0.4**](../README.md)
 
 ***
 
@@ -94,9 +94,9 @@ Saves the wallet state to a compressed file
 
 ##### wallet
 
-The wallet instance to save state from
+`ShieldedWalletAPI` \| `UnshieldedWalletAPI`
 
-`ShieldedWalletAPI` | `UnshieldedWalletAPI`
+The wallet instance to save state from
 
 #### Returns
 

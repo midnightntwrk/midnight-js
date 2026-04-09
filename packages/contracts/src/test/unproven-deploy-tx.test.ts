@@ -36,6 +36,7 @@ vi.mock('../utils', () => ({
     { test: 'initial-contract-state' },
     { test: 'unproven-tx' }
   ]),
+  createEncryptionPublicKeyResolver: vi.fn().mockReturnValue(() => 'encrypted-key'),
   zswapStateToNewCoins: vi.fn().mockReturnValue([{ test: 'coin' }])
 }));
 
@@ -112,7 +113,7 @@ describe('unproven-deploy-tx', () => {
           options,
           encryptionPublicKey
         )
-      ).rejects.toThrow('Failed to configure constructor context with coin public key');
+      ).rejects.toThrow('FAIL');
     });
   });
 

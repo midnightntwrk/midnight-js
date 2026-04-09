@@ -208,6 +208,20 @@ yarn test --coverage
 - Implement retry logic for transient failures
 - Respect timeout configurations
 
+### @midnight-ntwrk/midnight-js-dapp-connector-proof-provider
+
+- Delegates proving to DApp Connector wallet
+- Two abstraction levels: high-level (`dappConnectorProofProvider`) and low-level (`dappConnectorProvingProvider`)
+- Minimal interface coupling via `Pick<WalletConnectedAPI, 'getProvingProvider'>`
+- Proving provider is obtained once during setup and cached — do not re-obtain per call
+
+### @midnight-ntwrk/midnight-js
+
+- Barrel package re-exporting core modules (contracts, networkId, types, utils)
+- Namespace exports via `index.ts` and sub-path exports for tree-shaking
+- Changes to this package should only be structural (adding/removing re-exports)
+- When adding a new core package, add both namespace export and sub-path export
+
 ## Common Tasks
 
 ### Adding a New Function to a Package

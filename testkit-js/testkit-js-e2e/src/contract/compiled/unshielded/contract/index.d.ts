@@ -37,11 +37,23 @@ export type ImpureCircuits<PS> = {
   getUnshieldedBalanceLtTest(context: __compactRuntime.CircuitContext<PS>,
                              color_0: Uint8Array,
                              amount_0: bigint): __compactRuntime.CircuitResults<PS, boolean>;
+  getUnshieldedBalanceGteTest(context: __compactRuntime.CircuitContext<PS>,
+                              color_0: Uint8Array,
+                              amount_0: bigint): __compactRuntime.CircuitResults<PS, boolean>;
+  getUnshieldedBalanceLteTest(context: __compactRuntime.CircuitContext<PS>,
+                              color_0: Uint8Array,
+                              amount_0: bigint): __compactRuntime.CircuitResults<PS, boolean>;
   receiveNightTokens(context: __compactRuntime.CircuitContext<PS>,
                      amount_0: bigint): __compactRuntime.CircuitResults<PS, []>;
   sendNightTokensToUser(context: __compactRuntime.CircuitContext<PS>,
                         amount_0: bigint,
                         user_addr_0: { bytes: Uint8Array }): __compactRuntime.CircuitResults<PS, []>;
+  sendNightTokensToRecipient(context: __compactRuntime.CircuitContext<PS>,
+                             amount_0: bigint,
+                             recipient_0: { is_left: boolean,
+                                            left: { bytes: Uint8Array },
+                                            right: { bytes: Uint8Array }
+                                          }): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type ProvableCircuits<PS> = {
@@ -78,11 +90,23 @@ export type ProvableCircuits<PS> = {
   getUnshieldedBalanceLtTest(context: __compactRuntime.CircuitContext<PS>,
                              color_0: Uint8Array,
                              amount_0: bigint): __compactRuntime.CircuitResults<PS, boolean>;
+  getUnshieldedBalanceGteTest(context: __compactRuntime.CircuitContext<PS>,
+                              color_0: Uint8Array,
+                              amount_0: bigint): __compactRuntime.CircuitResults<PS, boolean>;
+  getUnshieldedBalanceLteTest(context: __compactRuntime.CircuitContext<PS>,
+                              color_0: Uint8Array,
+                              amount_0: bigint): __compactRuntime.CircuitResults<PS, boolean>;
   receiveNightTokens(context: __compactRuntime.CircuitContext<PS>,
                      amount_0: bigint): __compactRuntime.CircuitResults<PS, []>;
   sendNightTokensToUser(context: __compactRuntime.CircuitContext<PS>,
                         amount_0: bigint,
                         user_addr_0: { bytes: Uint8Array }): __compactRuntime.CircuitResults<PS, []>;
+  sendNightTokensToRecipient(context: __compactRuntime.CircuitContext<PS>,
+                             amount_0: bigint,
+                             recipient_0: { is_left: boolean,
+                                            left: { bytes: Uint8Array },
+                                            right: { bytes: Uint8Array }
+                                          }): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type PureCircuits = {
@@ -122,11 +146,23 @@ export type Circuits<PS> = {
   getUnshieldedBalanceLtTest(context: __compactRuntime.CircuitContext<PS>,
                              color_0: Uint8Array,
                              amount_0: bigint): __compactRuntime.CircuitResults<PS, boolean>;
+  getUnshieldedBalanceGteTest(context: __compactRuntime.CircuitContext<PS>,
+                              color_0: Uint8Array,
+                              amount_0: bigint): __compactRuntime.CircuitResults<PS, boolean>;
+  getUnshieldedBalanceLteTest(context: __compactRuntime.CircuitContext<PS>,
+                              color_0: Uint8Array,
+                              amount_0: bigint): __compactRuntime.CircuitResults<PS, boolean>;
   receiveNightTokens(context: __compactRuntime.CircuitContext<PS>,
                      amount_0: bigint): __compactRuntime.CircuitResults<PS, []>;
   sendNightTokensToUser(context: __compactRuntime.CircuitContext<PS>,
                         amount_0: bigint,
                         user_addr_0: { bytes: Uint8Array }): __compactRuntime.CircuitResults<PS, []>;
+  sendNightTokensToRecipient(context: __compactRuntime.CircuitContext<PS>,
+                             amount_0: bigint,
+                             recipient_0: { is_left: boolean,
+                                            left: { bytes: Uint8Array },
+                                            right: { bytes: Uint8Array }
+                                          }): __compactRuntime.CircuitResults<PS, []>;
 }
 
 export type Ledger = {

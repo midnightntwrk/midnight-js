@@ -17,31 +17,46 @@ import {
   type AlignedValue,
   ContractOperation,
   ContractState as CompactContractState,
-  type Op,
+  createCircuitContext,
   QueryContext
 } from '@midnight-ntwrk/compact-runtime';
 import {
-  LedgerParameters,
+  feeToken,
+  Intent,
   MaintenanceUpdate,
+  type PartitionedTranscript,
+  type PublicAddress,
   sampleCoinPublicKey,
   sampleContractAddress,
   sampleEncryptionPublicKey,
   sampleSigningKey,
+  sampleUserAddress,
+  shieldedToken,
+  type TokenType,
   Transaction,
+  type Transcript,
+  UnshieldedOffer,
+  unshieldedToken,
+  type UtxoOutput,
   ZswapChainState
 } from '@midnight-ntwrk/ledger-v8';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { toHex } from '@midnight-ntwrk/midnight-js-utils';
+import { randomBytes } from 'crypto';
 import { beforeAll } from 'vitest';
 
 import {
   createUnprovenLedgerCallTx,
   createUnprovenRemoveVerifierKeyTx,
   createUnprovenReplaceAuthorityTx,
+  extractUserAddressedOutputs,
   fromLedgerContractState,
   toLedgerContractState,
   toLedgerQueryContext,
   unprovenTxFromContractUpdates} from '../../utils';
 import { createMockCompiledContract,createMockZKConfigProvider } from '../test-mocks';
+
+const emptyTranscript: PartitionedTranscript = [undefined, undefined];
 
 describe('ledger-utils', () => {
   beforeAll(() => {
@@ -72,8 +87,6 @@ describe('ledger-utils', () => {
     const queryContext = new QueryContext(dummyContractState.data, dummyContractAddress);
     const ledgerQueryContext = toLedgerQueryContext(queryContext);
     expect(ledgerQueryContext.address).toEqual(queryContext.address);
-    // RuntimeError: unreachable
-    // WASM Error
   });
 
   it('unprovenTxFromContractUpdates returns an UnprovenTransaction', async () => {
@@ -115,60 +128,12 @@ describe('ledger-utils', () => {
       contractAddress,
       contractState,
       zswapChainState,
-      [],
+      emptyTranscript,
       privateTranscriptOutputs,
       alignedValue,
       alignedValue,
       nextZswapLocalState,
-      dummyEncPublicKey,
-      LedgerParameters.initialParameters(),
-      dummyCPK
-    );
-    expect(tx).toBeInstanceOf(Transaction);
-  });
-
-  it('createUnprovenLedgerCallTx with non-empty publicTranscript produces a valid Transaction', () => {
-    const circuitId = 'nonEmptyTranscriptTx';
-    const contractState = new CompactContractState();
-    const contractOperation = new ContractOperation();
-
-    contractState.setOperation(circuitId, contractOperation);
-
-    const alignedValue: AlignedValue = {
-      value: [new Uint8Array()],
-      alignment: [
-        {
-          tag: 'atom',
-          value: { tag: 'field' }
-        }
-      ]
-    };
-
-    const publicTranscript: Op<AlignedValue>[] = [{ noop: { n: 5 } }];
-
-    const contractAddress = sampleContractAddress();
-    const zswapChainState = new ZswapChainState();
-    const privateTranscriptOutputs: AlignedValue[] = [];
-    const nextZswapLocalState = {
-      outputs: [],
-      inputs: [],
-      coinPublicKey: sampleCoinPublicKey(),
-      currentIndex: 0n
-    };
-
-    const tx = createUnprovenLedgerCallTx(
-      circuitId,
-      contractAddress,
-      contractState,
-      zswapChainState,
-      publicTranscript,
-      privateTranscriptOutputs,
-      alignedValue,
-      alignedValue,
-      nextZswapLocalState,
-      dummyEncPublicKey,
-      LedgerParameters.initialParameters(),
-      dummyCPK
+      dummyEncPublicKey
     );
     expect(tx).toBeInstanceOf(Transaction);
   });
@@ -193,7 +158,7 @@ describe('ledger-utils', () => {
         sampleContractAddress(),
         contractState,
         new ZswapChainState(),
-        [],
+        emptyTranscript,
         [],
         alignedValue,
         alignedValue,
@@ -203,11 +168,55 @@ describe('ledger-utils', () => {
           coinPublicKey: sampleCoinPublicKey(),
           currentIndex: 0n
         },
-        dummyEncPublicKey,
-        LedgerParameters.initialParameters(),
-        dummyCPK
+        dummyEncPublicKey
       )
     ).toThrow(`Operation '${unregisteredCircuitId}' is undefined`);
+  });
+
+  describe('createUnprovenLedgerCallTx with receiveShielded (issue #686)', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let shieldedContract: any;
+    let shieldedInitialState: CompactContractState;
+    const shieldedAddr = sampleContractAddress();
+    const shieldedCpk = sampleCoinPublicKey();
+
+    beforeAll(async () => {
+      const mod = await import('../resources/compiled/shielded-map/contract/index.js');
+      shieldedContract = new mod.Contract({ dummy: (ctx: { privateState: undefined }) => [ctx.privateState, []] });
+      const emptyZswap = { coinPublicKey: shieldedCpk, outputs: [], inputs: [], currentIndex: 0n };
+      const initResult = shieldedContract.initialState({ initialPrivateState: undefined, initialZswapLocalState: emptyZswap });
+      shieldedInitialState = initResult.currentContractState;
+    });
+
+    it('succeeds with deposit circuit that calls receiveShielded', () => {
+      const coin = { nonce: new Uint8Array(32).fill(1), color: new Uint8Array(32).fill(2), value: 100n };
+      const ctx = createCircuitContext(shieldedAddr, shieldedCpk, shieldedInitialState, undefined);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { proofData, context } = (shieldedContract.circuits as any).deposit(ctx, coin);
+
+      // Build partitioned transcript from the circuit execution
+      // The circuit produces publicTranscript ops; we need to wrap them as a guaranteed Transcript
+      const transcript: Transcript<AlignedValue> = {
+        gas: context.gasCost,
+        effects: context.currentQueryContext.effects,
+        program: proofData.publicTranscript
+      };
+      const partitioned: PartitionedTranscript = [transcript, undefined];
+
+      const tx = createUnprovenLedgerCallTx(
+        'deposit',
+        shieldedAddr,
+        shieldedInitialState,
+        new ZswapChainState(),
+        partitioned,
+        proofData.privateTranscriptOutputs,
+        proofData.input,
+        proofData.output,
+        { outputs: [], inputs: [], coinPublicKey: shieldedCpk, currentIndex: 0n },
+        dummyEncPublicKey
+      );
+      expect(tx).toBeInstanceOf(Transaction);
+    });
   });
 
   it('createUnprovenReplaceAuthorityTx returns an UnprovenTransaction', async () => {
@@ -234,5 +243,304 @@ describe('ledger-utils', () => {
       dummyCPK
     );
     expect(tx).toBeInstanceOf(Transaction);
+  });
+
+  const makeTranscript = (
+    claimedUnshieldedSpends: Map<[TokenType, PublicAddress], bigint>
+  ): Transcript<AlignedValue> => ({
+    gas: { readTime: 0n, computeTime: 0n, bytesWritten: 0n, bytesDeleted: 0n },
+    effects: {
+      claimedNullifiers: [toHex(randomBytes(32))],
+      claimedShieldedReceives: [toHex(randomBytes(32))],
+      claimedShieldedSpends: [toHex(randomBytes(32))],
+      claimedContractCalls: [],
+      shieldedMints: new Map(),
+      unshieldedInputs: new Map(),
+      unshieldedOutputs: new Map(),
+      unshieldedMints: new Map(),
+      claimedUnshieldedSpends
+    },
+    program: ['new', { noop: { n: 5 } }]
+  });
+
+  describe('extractUserAddressedOutputs', () => {
+    it('returns empty array when transcript is undefined', () => {
+      const result = extractUserAddressedOutputs(undefined);
+
+      expect(result).toEqual([]);
+    });
+
+    it('returns empty array when claimedUnshieldedSpends is empty', () => {
+      const transcript = makeTranscript(new Map());
+
+      const result = extractUserAddressedOutputs(transcript);
+
+      expect(result).toEqual([]);
+    });
+
+    it('returns output for user-addressed unshielded token spend', () => {
+      const userAddress = sampleUserAddress();
+      const tokenType = unshieldedToken();
+      const amount = 100n;
+      const transcript = makeTranscript(
+        new Map([[[tokenType, { tag: 'user', address: userAddress } as PublicAddress], amount]])
+      );
+
+      const result = extractUserAddressedOutputs(transcript);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        value: amount,
+        owner: userAddress,
+        type: tokenType.raw
+      });
+    });
+
+    it('returns output for user-addressed shielded token spend', () => {
+      const userAddress = sampleUserAddress();
+      const tokenType = shieldedToken();
+      const amount = 50n;
+      const transcript = makeTranscript(
+        new Map([[[tokenType, { tag: 'user', address: userAddress } as PublicAddress], amount]])
+      );
+
+      const result = extractUserAddressedOutputs(transcript);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        value: amount,
+        owner: userAddress,
+        type: tokenType.raw
+      });
+    });
+
+    it('filters out contract-addressed spends', () => {
+      const contractAddr = sampleContractAddress();
+      const tokenType = unshieldedToken();
+      const transcript = makeTranscript(
+        new Map([[[tokenType, { tag: 'contract', address: contractAddr } as PublicAddress], 100n]])
+      );
+
+      const result = extractUserAddressedOutputs(transcript);
+
+      expect(result).toEqual([]);
+    });
+
+    it('filters out dust token spends even for user addresses', () => {
+      const userAddress = sampleUserAddress();
+      const dustTokenType = feeToken();
+      const transcript = makeTranscript(
+        new Map([[[dustTokenType, { tag: 'user', address: userAddress } as PublicAddress], 100n]])
+      );
+
+      const result = extractUserAddressedOutputs(transcript);
+
+      expect(result).toEqual([]);
+    });
+
+    it('returns only user-addressed non-dust outputs from mixed spends', () => {
+      const userAddress1 = sampleUserAddress();
+      const userAddress2 = sampleUserAddress();
+      const contractAddr = sampleContractAddress();
+      const unshieldedTok = unshieldedToken();
+      const shieldedTok = shieldedToken();
+      const dustTok = feeToken();
+
+      const transcript = makeTranscript(
+        new Map([
+          [[unshieldedTok, { tag: 'user', address: userAddress1 } as PublicAddress], 100n],
+          [[shieldedTok, { tag: 'user', address: userAddress2 } as PublicAddress], 200n],
+          [[unshieldedTok, { tag: 'contract', address: contractAddr } as PublicAddress], 300n],
+          [[dustTok, { tag: 'user', address: userAddress1 } as PublicAddress], 400n]
+        ])
+      );
+
+      const result = extractUserAddressedOutputs(transcript);
+
+      expect(result).toHaveLength(2);
+      expect(result).toEqual(
+        expect.arrayContaining([
+          { value: 100n, owner: userAddress1, type: unshieldedTok.raw },
+          { value: 200n, owner: userAddress2, type: shieldedTok.raw }
+        ])
+      );
+    });
+  });
+
+  describe('createUnprovenLedgerCallTx unshielded offers', () => {
+    const circuitId = 'unshieldedOfferTx';
+    const alignedValue: AlignedValue = {
+      value: [new Uint8Array()],
+      alignment: [{ tag: 'atom', value: { tag: 'field' } }]
+    };
+    const privateTranscriptOutputs: AlignedValue[] = [];
+    const nextZswapLocalState = {
+      outputs: [],
+      inputs: [],
+      coinPublicKey: sampleCoinPublicKey(),
+      currentIndex: 0n
+    };
+
+    const callTxWithTranscripts = (
+      guaranteed: Transcript<AlignedValue> | undefined,
+      fallible: Transcript<AlignedValue> | undefined
+    ) => {
+      const contractState = new CompactContractState();
+      contractState.setOperation(circuitId, new ContractOperation());
+      const contractAddress = sampleContractAddress();
+
+      return createUnprovenLedgerCallTx(
+        circuitId,
+        contractAddress,
+        contractState,
+        new ZswapChainState(),
+        [guaranteed, fallible] as PartitionedTranscript,
+        privateTranscriptOutputs,
+        alignedValue,
+        alignedValue,
+        nextZswapLocalState,
+        dummyEncPublicKey
+      );
+    };
+
+    it('does not attach unshielded offers when transcripts are undefined', () => {
+      const tx = callTxWithTranscripts(undefined, undefined);
+
+      expect(tx).toBeInstanceOf(Transaction);
+      const intent = tx.intents?.values().next().value;
+      expect(intent).toBeDefined();
+      expect(intent!.guaranteedUnshieldedOffer).toBeUndefined();
+      expect(intent!.fallibleUnshieldedOffer).toBeUndefined();
+    });
+
+    it('attaches guaranteedUnshieldedOffer when guaranteed transcript has user-addressed spends', () => {
+      const userAddress = sampleUserAddress();
+      const tokenType = unshieldedToken();
+      const amount = 500n;
+      const guaranteed = makeTranscript(
+        new Map([[[tokenType, { tag: 'user', address: userAddress } as PublicAddress], amount]])
+      );
+      const fallible = makeTranscript(new Map());
+
+      const tx = callTxWithTranscripts(guaranteed, fallible);
+
+      expect(tx).toBeInstanceOf(Transaction);
+      const intent = tx.intents?.values().next().value;
+      expect(intent).toBeDefined();
+      expect(intent!.guaranteedUnshieldedOffer).toBeDefined();
+      expect(intent!.guaranteedUnshieldedOffer!.outputs).toHaveLength(1);
+      expect(intent!.guaranteedUnshieldedOffer!.outputs[0]).toEqual({
+        value: amount,
+        owner: userAddress,
+        type: tokenType.raw
+      });
+    });
+
+    it('attaches fallibleUnshieldedOffer when fallible transcript has user-addressed spends', () => {
+      const userAddress = sampleUserAddress();
+      const tokenType = unshieldedToken();
+      const amount = 750n;
+      const guaranteed = makeTranscript(new Map());
+      const fallible = makeTranscript(
+        new Map([[[tokenType, { tag: 'user', address: userAddress } as PublicAddress], amount]])
+      );
+
+      const tx = callTxWithTranscripts(guaranteed, fallible);
+
+      expect(tx).toBeInstanceOf(Transaction);
+      const intent = tx.intents?.values().next().value;
+      expect(intent).toBeDefined();
+      expect(intent!.fallibleUnshieldedOffer).toBeDefined();
+      expect(intent!.fallibleUnshieldedOffer!.outputs).toHaveLength(1);
+      expect(intent!.fallibleUnshieldedOffer!.outputs[0]).toEqual({
+        value: amount,
+        owner: userAddress,
+        type: tokenType.raw
+      });
+    });
+
+    it('does not attach unshielded offers when only contract-addressed spends exist', () => {
+      const contractAddr = sampleContractAddress();
+      const tokenType = unshieldedToken();
+      const transcript = makeTranscript(
+        new Map([[[tokenType, { tag: 'contract', address: contractAddr } as PublicAddress], 100n]])
+      );
+
+      const tx = callTxWithTranscripts(transcript, transcript);
+
+      expect(tx).toBeInstanceOf(Transaction);
+      const intent = tx.intents?.values().next().value;
+      expect(intent).toBeDefined();
+      expect(intent!.guaranteedUnshieldedOffer).toBeUndefined();
+      expect(intent!.fallibleUnshieldedOffer).toBeUndefined();
+    });
+
+    it('attaches offers to both guaranteed and fallible when both have user-addressed spends', () => {
+      const userAddress1 = sampleUserAddress();
+      const userAddress2 = sampleUserAddress();
+      const tokenType = unshieldedToken();
+      const guaranteed = makeTranscript(
+        new Map([[[tokenType, { tag: 'user', address: userAddress1 } as PublicAddress], 100n]])
+      );
+      const fallible = makeTranscript(
+        new Map([[[tokenType, { tag: 'user', address: userAddress2 } as PublicAddress], 200n]])
+      );
+
+      const tx = callTxWithTranscripts(guaranteed, fallible);
+
+      const intent = tx.intents?.values().next().value;
+      expect(intent!.guaranteedUnshieldedOffer).toBeDefined();
+      expect(intent!.guaranteedUnshieldedOffer!.outputs).toHaveLength(1);
+      expect(intent!.guaranteedUnshieldedOffer!.outputs[0].value).toBe(100n);
+      expect(intent!.fallibleUnshieldedOffer).toBeDefined();
+      expect(intent!.fallibleUnshieldedOffer!.outputs).toHaveLength(1);
+      expect(intent!.fallibleUnshieldedOffer!.outputs[0].value).toBe(200n);
+    });
+  });
+
+  describe('UnshieldedOffer.new() preserves owner addresses (issue #720)', () => {
+    it('preserves the owner address in a single output', () => {
+      const userAddress = sampleUserAddress();
+      const tokenType = unshieldedToken();
+      const output: UtxoOutput = { value: 1_000n, owner: userAddress, type: tokenType.raw };
+
+      const offer = UnshieldedOffer.new([], [output], []);
+
+      expect(offer.outputs).toHaveLength(1);
+      expect(offer.outputs[0].owner).toBe(userAddress);
+      expect(offer.outputs[0].value).toBe(1_000n);
+      expect(offer.outputs[0].type).toBe(tokenType.raw);
+    });
+
+    it('preserves distinct owner addresses across multiple outputs', () => {
+      const address1 = sampleUserAddress();
+      const address2 = sampleUserAddress();
+      const tokenType = unshieldedToken();
+
+      const outputs: UtxoOutput[] = [
+        { value: 500n, owner: address1, type: tokenType.raw },
+        { value: 300n, owner: address2, type: tokenType.raw }
+      ];
+
+      const offer = UnshieldedOffer.new([], outputs, []);
+
+      expect(offer.outputs).toHaveLength(2);
+      const owners = offer.outputs.map((o) => o.owner);
+      expect(owners).toContain(address1);
+      expect(owners).toContain(address2);
+    });
+
+    it('preserves owner address after attaching to intent fallibleUnshieldedOffer', () => {
+      const userAddress = sampleUserAddress();
+      const tokenType = unshieldedToken();
+      const output: UtxoOutput = { value: 1_000n, owner: userAddress, type: tokenType.raw };
+      const offer = UnshieldedOffer.new([], [output], []);
+
+      const intent = Intent.new(new Date(Date.now() + 3_600_000));
+      intent.fallibleUnshieldedOffer = offer;
+
+      expect(intent.fallibleUnshieldedOffer).toBeDefined();
+      expect(intent.fallibleUnshieldedOffer!.outputs[0].owner).toBe(userAddress);
+    });
   });
 });

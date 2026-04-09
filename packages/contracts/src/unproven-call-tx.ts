@@ -29,12 +29,12 @@ import type {
   CallOptionsWithProviderDataDependencies
 } from './call';
 import { type ContractProviders } from './contract-providers';
-import { IncompleteCallTxPrivateStateConfig } from './errors';
+import { IncompleteCallTxPrivateStateConfig, isEffectContractError } from './errors';
 import { type ContractStates, getPublicStates, getStates, type PublicContractStates } from './get-states';
 import * as Transaction from './internal/transaction';
 import { type TransactionContext } from './transaction';
 import type { UnsubmittedCallTxData } from './tx-model';
-import { createUnprovenLedgerCallTx, encryptionPublicKeyForZswapState, zswapStateToNewCoins } from './utils';
+import { createUnprovenLedgerCallTx, encryptionPublicKeyResolverForZswapState, zswapStateToNewCoins } from './utils';
 
 export function createUnprovenCallTxFromInitialStates<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
   zkConfigProvider: ZKConfigProvider<string>,
@@ -123,18 +123,17 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
           contractAddress,
           initialContractState,
           initialZswapChainState,
-          publicTranscript,
+          partitionedTranscript,
           privateTranscriptOutputs,
           input,
           output,
           zswapLocalState,
-          encryptionPublicKeyForZswapState(
+          encryptionPublicKeyResolverForZswapState(
             zswapLocalState,
             options.coinPublicKey,
-            walletEncryptionPublicKey
-          ),
-          ledgerParameters,
-          coinPublicKey
+            walletEncryptionPublicKey,
+            options.additionalCoinEncPublicKeyMappings
+          )
         ),
         newCoins: zswapStateToNewCoins(
           parseCoinPublicKeyToHex(coinPublicKey, getNetworkId()),
@@ -143,10 +142,9 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
       }
     };
   } catch (error: unknown) {
-    // Report CompactError messages as they are, otherwise re-throw the error.
-    if ((error as any)?.['_tag'] !== 'ContractRuntimeError') throw error; // eslint-disable-line @typescript-eslint/no-explicit-any
-    if ((error as any)?.cause.name !== 'CompactError') throw error; // eslint-disable-line @typescript-eslint/no-explicit-any
-    throw new Error((error as any)?.cause.message, { cause: error }); // eslint-disable-line @typescript-eslint/no-explicit-any
+    if (!isEffectContractError(error) || error._tag !== 'ContractRuntimeError') throw error;
+    if (error.cause.name !== 'CompactError') throw error;
+    throw new Error(error.cause.message, { cause: error });
   }
 }
 
@@ -187,6 +185,7 @@ const createCallOptions = <C extends Contract.Any, PCK extends Contract.Provable
   initialPrivateState?: Contract.PrivateState<C>
 ): CallOptions<C, PCK> => {
   const callOptionsBase = {
+    additionalCoinEncPublicKeyMappings: callTxOptions.additionalCoinEncPublicKeyMappings,
     compiledContract: callTxOptions.compiledContract,
     contractAddress: callTxOptions.contractAddress,
     circuitId: callTxOptions.circuitId

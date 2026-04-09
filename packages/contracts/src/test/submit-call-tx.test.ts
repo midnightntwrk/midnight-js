@@ -15,13 +15,16 @@
 
 import { type CompiledContract, type Contract } from '@midnight-ntwrk/compact-js';
 import { StateValue } from '@midnight-ntwrk/compact-runtime';
-import { type AlignedValue, type ContractAddress, type PartitionedTranscript } from '@midnight-ntwrk/ledger-v8';
+import { type AlignedValue, type ContractAddress, type IntentHash, type PartitionedTranscript, type RawTokenType } from '@midnight-ntwrk/ledger-v8';
 import {
   type AnyPrivateState,
   type AnyProvableCircuitId,
   FailEntirely,
+  FailFallible,
   type FinalizedTxData,
-  type PrivateStateId
+  type PrivateStateId,
+  SegmentFail,
+  SegmentSuccess
 } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -301,6 +304,82 @@ describe('submit-call-tx', () => {
           expect((error as CallTxFailedError).circuitId).toEqual(circuitId);
         }
       });
+
+      it('should throw CallTxFailedError when transaction fails with FailFallible', async () => {
+        const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
+        const mockUnprovenCallTxData = createFailedTxData();
+        const mockFailedTxData = createMockFinalizedTxData(FailFallible);
+
+        vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+        vi.mocked(submitTx).mockResolvedValue(mockFailedTxData);
+
+        await expect(submitCallTx(mockProviders, options)).rejects.toThrow(CallTxFailedError);
+        expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
+      });
+
+      it('should throw CallTxFailedError when scoped transaction fails with FailFallible', async () => {
+        const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
+        const mockUnprovenCallTxData = createFailedTxData();
+        const mockFailedTxData = createMockFinalizedTxData(FailFallible);
+
+        vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+        vi.mocked(submitTx).mockResolvedValue(mockFailedTxData);
+
+        await expect(withContractScopedTransaction(mockProviders, async (txCtx) => {
+          await submitCallTx(mockProviders, options, txCtx);
+        })).rejects.toThrow(CallTxFailedError);
+
+        expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
+      });
+
+      it('should expose FailFallible status in CallTxFailedError finalizedTxData', async () => {
+        const circuitId = 'testCircuit' as AnyProvableCircuitId;
+        const options = createBasicCallOptions({ circuitId });
+        const mockUnprovenCallTxData = createFailedTxData();
+        const mockFailedTxData = createMockFinalizedTxData(FailFallible);
+
+        vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+        vi.mocked(submitTx).mockResolvedValue(mockFailedTxData);
+
+        try {
+          await submitCallTx(mockProviders, options);
+          expect.fail('Expected CallTxFailedError to be thrown');
+        } catch (error) {
+          expect(error).toBeInstanceOf(CallTxFailedError);
+          const callError = error as CallTxFailedError;
+          expect(callError.finalizedTxData.status).toBe(FailFallible);
+          expect(callError.finalizedTxData).toEqual(mockFailedTxData);
+          expect(callError.circuitId).toEqual(circuitId);
+        }
+      });
+
+      it('should preserve segmentStatusMap in CallTxFailedError for FailFallible', async () => {
+        const circuitId = 'testCircuit' as AnyProvableCircuitId;
+        const options = createBasicCallOptions({ circuitId });
+        const mockUnprovenCallTxData = createFailedTxData();
+        const segmentStatusMap = new Map([
+          [0, SegmentSuccess],
+          [1, SegmentFail]
+        ]);
+        const mockFailedTxData: FinalizedTxData = {
+          ...createMockFinalizedTxData(FailFallible),
+          segmentStatusMap
+        };
+
+        vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+        vi.mocked(submitTx).mockResolvedValue(mockFailedTxData);
+
+        try {
+          await submitCallTx(mockProviders, options);
+          expect.fail('Expected CallTxFailedError to be thrown');
+        } catch (error) {
+          expect(error).toBeInstanceOf(CallTxFailedError);
+          const callError = error as CallTxFailedError;
+          expect(callError.finalizedTxData.segmentStatusMap).toBeDefined();
+          expect(callError.finalizedTxData.segmentStatusMap!.get(0)).toBe(SegmentSuccess);
+          expect(callError.finalizedTxData.segmentStatusMap!.get(1)).toBe(SegmentFail);
+        }
+      });
     });
 
     describe('validation checks', () => {
@@ -551,6 +630,37 @@ describe('submit-call-tx', () => {
         expect(result.callTxData).toEqual(mockUnprovenCallTxData);
       });
 
+      it('should return sufficient data for caller to detect and handle FailFallible after manual finalization', async () => {
+        const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
+        const mockTxId = 'test-tx-id-fail-fallible';
+        const nextPrivateState = { state: 'should-not-persist' } as AnyPrivateState;
+
+        const mockUnprovenCallTxData = createMockUnprovenCallTxData({
+          private: {
+            nextPrivateState,
+            input: {} as AlignedValue,
+            output: {} as AlignedValue,
+            privateTranscriptOutputs: [] as AlignedValue[],
+            result: vi.fn(),
+            nextZswapLocalState: mockZswapLocalState,
+            unprovenTx: mockUnprovenTx,
+            newCoins: [mockCoinInfo]
+          }
+        });
+        vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+        vi.mocked(submitTxAsync).mockResolvedValue(mockTxId);
+
+        const { txId, callTxData } = await submitCallTxAsync(mockProviders, options);
+
+        const mockFailFallibleFinalization = createMockFinalizedTxData(FailFallible);
+        vi.mocked(mockProviders.publicDataProvider.watchForTxData).mockResolvedValue(mockFailFallibleFinalization);
+        const finalizedData = await mockProviders.publicDataProvider.watchForTxData(txId);
+
+        expect(finalizedData.status).toBe(FailFallible);
+        expect(callTxData.private.nextPrivateState).toEqual(nextPrivateState);
+        expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
+      });
+
       it('should return callTxData with all private state information', async () => {
         const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
         const mockTxId = 'test-tx-id-full-data';
@@ -576,6 +686,50 @@ describe('submit-call-tx', () => {
         expect(result.callTxData.private.nextPrivateState).toEqual(nextPrivateState);
         expect(result.callTxData).toEqual(mockUnprovenCallTxData);
       });
+    });
+  });
+
+  describe('FailFallible with unshielded outputs', () => {
+    it('should preserve guaranteed unshielded outputs in FinalizedTxData when fallible portion fails', async () => {
+      const options = createBasicCallOptions();
+      const mockUnprovenCallTxData = createMockUnprovenCallTxData();
+      const guaranteedUnshieldedOutputs = {
+        created: [
+          { owner: createMockContractAddress(), tokenType: 'night-token' as RawTokenType, intentHash: 'intent-1' as IntentHash, value: 100n },
+          { owner: createMockContractAddress(), tokenType: 'night-token' as RawTokenType, intentHash: 'intent-2' as IntentHash, value: 50n }
+        ],
+        spent: [
+          { owner: createMockContractAddress(), tokenType: 'night-token' as RawTokenType, intentHash: 'intent-3' as IntentHash, value: 200n }
+        ]
+      };
+      const segmentStatusMap = new Map([
+        [0, SegmentSuccess],
+        [1, SegmentFail]
+      ]);
+      const mockFailedTxData: FinalizedTxData = {
+        ...createMockFinalizedTxData(FailFallible),
+        segmentStatusMap,
+        unshielded: guaranteedUnshieldedOutputs
+      };
+
+      vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+      vi.mocked(submitTx).mockResolvedValue(mockFailedTxData);
+
+      try {
+        await submitCallTx(mockProviders, options);
+        expect.fail('Expected CallTxFailedError to be thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(CallTxFailedError);
+        const finalizedTxData = (error as CallTxFailedError).finalizedTxData;
+        expect(finalizedTxData.status).toBe(FailFallible);
+        expect(finalizedTxData.unshielded.created).toHaveLength(2);
+        expect(finalizedTxData.unshielded.created[0].value).toBe(100n);
+        expect(finalizedTxData.unshielded.created[1].value).toBe(50n);
+        expect(finalizedTxData.unshielded.spent).toHaveLength(1);
+        expect(finalizedTxData.unshielded.spent[0].value).toBe(200n);
+        expect(finalizedTxData.segmentStatusMap!.get(0)).toBe(SegmentSuccess);
+        expect(finalizedTxData.segmentStatusMap!.get(1)).toBe(SegmentFail);
+      }
     });
   });
 });

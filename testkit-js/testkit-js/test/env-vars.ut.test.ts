@@ -16,7 +16,7 @@
 import path from 'path';
 import { WebSocket } from 'ws';
 
-import { getEnvVarWalletSeeds } from '@/env-vars';
+import { getEnvVarWalletSeeds, getMnTestIndexer } from '@/env-vars';
 import { createLogger } from '@/logger';
 
 const logger = createLogger(
@@ -26,24 +26,45 @@ const logger = createLogger(
 // @ts-expect-error: It's needed to enable WebSocket usage through apollo
 globalThis.WebSocket = WebSocket;
 
-describe.concurrent('[Unit tests] EnvVars Testing API', () => {
+describe('[Unit tests] EnvVars Testing API', () => {
+  const originalEnv = { ...process.env };
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+  });
+
   beforeEach(() => {
     logger.info(`Starting test... ${expect.getState().currentTestName}`);
   });
 
   it('should return wallet seeds from MN_TEST_WALLET_SEED', () => {
     process.env.MN_TEST_WALLET_SEED = '111,222';
+
     expect(getEnvVarWalletSeeds()).toEqual(['111', '222']);
-    delete process.env.MN_TEST_WALLET_SEED;
   });
 
   it('should return wallet seeds from TEST_WALLET_SEED', () => {
     process.env.TEST_WALLET_SEED = '333';
+
     expect(getEnvVarWalletSeeds()).toEqual(['333']);
-    delete process.env.TEST_WALLET_SEED;
   });
 
   it('should return undefined when no wallet seeds are set', () => {
+    delete process.env.MN_TEST_WALLET_SEED;
+    delete process.env.TEST_WALLET_SEED;
+
     expect(getEnvVarWalletSeeds()).toEqual(undefined);
+  });
+
+  it('getMnTestIndexer should read env var at call time, not import time', () => {
+    process.env.MN_TEST_INDEXER = 'https://late-set.example.com';
+
+    expect(getMnTestIndexer()).toBe('https://late-set.example.com');
+  });
+
+  it('getMnTestIndexer should return undefined when not set', () => {
+    delete process.env.MN_TEST_INDEXER;
+
+    expect(getMnTestIndexer()).toBeUndefined();
   });
 });

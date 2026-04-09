@@ -45,6 +45,14 @@ export circuit getUnshieldedBalanceLtTest(color: Bytes<32>, amount: Uint<128>): 
   return unshieldedBalanceLt(disclose(color), disclose(amount));
 }
 
+export circuit getUnshieldedBalanceGteTest(color: Bytes<32>, amount: Uint<128>): Boolean {
+  return unshieldedBalanceGte(disclose(color), disclose(amount));
+}
+
+export circuit getUnshieldedBalanceLteTest(color: Bytes<32>, amount: Uint<128>): Boolean {
+  return unshieldedBalanceLte(disclose(color), disclose(amount));
+}
+
 export circuit receiveNightTokens(amount: Uint<128>): [] {
    receiveUnshielded(default<Bytes<32>>, disclose(amount));
 }
@@ -54,5 +62,13 @@ export circuit sendNightTokensToUser(amount: Uint<64>, user_addr: UserAddress): 
         default<Bytes<32>>,
         disclose(amount) as Uint<128>,
         right<ContractAddress, UserAddress>(disclose(user_addr))
+    );
+}
+
+export circuit sendNightTokensToRecipient(amount: Uint<64>, recipient: Either<ContractAddress, UserAddress>): [] {
+    sendUnshielded(
+        disclose(nativeToken()),
+        disclose(amount) as Uint<128>,
+        disclose(recipient)
     );
 }

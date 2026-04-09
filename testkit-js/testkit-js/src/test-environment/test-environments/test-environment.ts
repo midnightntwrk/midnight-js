@@ -30,7 +30,6 @@ export abstract class TestEnvironment {
   /** Unique identifier for this test environment instance */
   protected readonly uid: string;
 
-  protected readonly envConfiguration: EnvironmentConfiguration;
   /**
    * Creates a new TestEnvironment instance.
    * @param {Logger} logger - Logger instance for recording operations

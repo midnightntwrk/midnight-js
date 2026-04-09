@@ -64,7 +64,7 @@ type NetworkId = string;
 
 ## Important
 
-The network ID **must** be configured before using any SDK functionality. Calling `getNetworkId()` before `setNetworkId()` will throw:
+The network ID **must** be configured before using any framework functionality. Calling `getNetworkId()` before `setNetworkId()` will throw:
 
 ```
 Error: Network ID has not been configured. Call setNetworkId() before any wallet or contract operation.

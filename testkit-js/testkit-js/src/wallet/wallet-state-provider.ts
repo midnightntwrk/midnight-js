@@ -79,22 +79,14 @@ export class WalletSaveStateProvider {
    */
   async save(wallet: ShieldedWalletAPI | UnshieldedWalletAPI): Promise<void> {
     this.logger.info(`Saving state in ${this.filePath}`);
-    try {
-      fs.mkdirSync(this.directoryPath, { recursive: true });
-      const serializedState = await wallet.serializeState();
-      try {
-        const tempFile = `${this.filePath.replaceAll('.gz', '')}`;
-        fs.writeFileSync(tempFile, serializedState);
-        this.logger.info(`File '${tempFile}' written successfully.`);
-        await new GzipFile(tempFile, `${this.filePath.replaceAll('.gz', '')}.gz`).compress();
-        fs.rmSync(tempFile);
-        this.logger.info(`File '${this.filePath}' written successfully.`);
-      } catch (err) {
-        this.logger.error(`Error writing file '${this.filePath}': ${err instanceof Error ? err.message : String(err)}`);
-      }
-    } catch (e) {
-      this.logger.warn(e instanceof Error ? e.message : String(e));
-    }
+    fs.mkdirSync(this.directoryPath, { recursive: true });
+    const serializedState = await wallet.serializeState();
+    const tempFile = this.filePath.endsWith('.gz') ? this.filePath.slice(0, -3) : this.filePath;
+    fs.writeFileSync(tempFile, serializedState);
+    this.logger.info(`File '${tempFile}' written successfully.`);
+    await new GzipFile(tempFile, `${tempFile}.gz`).compress();
+    fs.rmSync(tempFile);
+    this.logger.info(`File '${this.filePath}' written successfully.`);
   }
 
   /**

@@ -35,6 +35,12 @@ const logger = createLogger(
 globalThis.WebSocket = WebSocket;
 
 describe('[Unit tests] Testing API', () => {
+  const originalEnv = { ...process.env };
+
+  afterEach(() => {
+    process.env = { ...originalEnv };
+  });
+
   beforeEach(() => {
     logger.info(`Starting test... ${expect.getState().currentTestName}`);
   });
@@ -61,6 +67,10 @@ describe('[Unit tests] Testing API', () => {
 
   it('should fail on wrong MN_TEST_NETWORK_ID for env var remote test environment', () => {
     process.env.MN_TEST_ENVIRONMENT = 'env-var-remote';
+    process.env.MN_TEST_INDEXER = 'https://test.url';
+    process.env.MN_TEST_INDEXER_WS = 'wss://test.url';
+    process.env.MN_TEST_NODE = 'http://test.url';
+    process.env.MN_TEST_NODE_WS = 'ws://test.url';
     delete process.env.MN_TEST_NETWORK_ID;
     expect(() => getTestEnvironment(logger)).toThrow(`Environment variable 'MN_TEST_NETWORK_ID' is required`);
   });

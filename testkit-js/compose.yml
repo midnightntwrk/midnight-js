@@ -1,6 +1,6 @@
 services:
   proof-server:
-    image: 'ghcr.io/midnight-ntwrk/proof-server:8.0.2'
+    image: 'ghcr.io/midnight-ntwrk/proof-server:8.0.3'
     container_name: proof-server_$TESTCONTAINERS_UID
     command: ['midnight-proof-server --verbose']
     ports:
@@ -39,7 +39,7 @@ services:
         condition: service_healthy
 
   node:
-    image: 'ghcr.io/midnight-ntwrk/midnight-node:0.22.0-rc.11'
+    image: 'ghcr.io/midnight-ntwrk/midnight-node:0.22.1'
     container_name: node_$TESTCONTAINERS_UID
     ports:
       - '9944'

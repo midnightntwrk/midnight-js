@@ -16,13 +16,13 @@
 import { type NetworkId } from '@midnight-ntwrk/wallet-sdk-abstractions';
 
 import {
-  MN_TEST_FAUCET,
-  MN_TEST_INDEXER,
-  MN_TEST_INDEXER_WS,
-  MN_TEST_NETWORK_ID,
-  MN_TEST_NODE,
-  MN_TEST_NODE_WS,
-  MN_TEST_WALLET_NETWORK_ID
+  getMnTestFaucet,
+  getMnTestIndexer,
+  getMnTestIndexerWs,
+  getMnTestNetworkId,
+  getMnTestNode,
+  getMnTestNodeWs,
+  getMnTestWalletNetworkId
 } from '@/env-vars';
 import { MissingEnvironmentVariable } from '@/errors';
 import type { EnvironmentConfiguration } from '@/test-environment';
@@ -59,13 +59,13 @@ export class EnvVarRemoteTestEnvironment extends RemoteTestEnvironment {
       }
     });
     return {
-      walletNetworkId: MN_TEST_WALLET_NETWORK_ID as NetworkId.NetworkId,
-      networkId: MN_TEST_NETWORK_ID as string,
-      indexer: MN_TEST_INDEXER as string,
-      indexerWS: MN_TEST_INDEXER_WS as string,
-      node: MN_TEST_NODE as string,
-      nodeWS: MN_TEST_NODE_WS as string,
-      faucet: MN_TEST_FAUCET,
+      walletNetworkId: getMnTestWalletNetworkId() as NetworkId.NetworkId,
+      networkId: getMnTestNetworkId() as string,
+      indexer: getMnTestIndexer() as string,
+      indexerWS: getMnTestIndexerWs() as string,
+      node: getMnTestNode() as string,
+      nodeWS: getMnTestNodeWs() as string,
+      faucet: getMnTestFaucet(),
       proofServer: this.proofServerContainer?.getUrl()
     };
   }

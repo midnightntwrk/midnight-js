@@ -23,10 +23,10 @@ export const getEnvVarWalletSeeds = () => {
   const envSeeds = process.env.MN_TEST_WALLET_SEED || process.env.TEST_WALLET_SEED;
   return envSeeds ? envSeeds.split(',') : undefined;
 };
-export const MN_TEST_INDEXER = process.env.MN_TEST_INDEXER;
-export const MN_TEST_INDEXER_WS = process.env.MN_TEST_INDEXER_WS;
-export const MN_TEST_NODE = process.env.MN_TEST_NODE;
-export const MN_TEST_NODE_WS = process.env.MN_TEST_NODE_WS;
-export const MN_TEST_FAUCET = process.env.MN_TEST_FAUCET;
-export const MN_TEST_NETWORK_ID = process.env.MN_TEST_NETWORK_ID;
-export const MN_TEST_WALLET_NETWORK_ID = process.env.MN_TEST_WALLET_NETWORK_ID;
+export const getMnTestIndexer = () => process.env.MN_TEST_INDEXER;
+export const getMnTestIndexerWs = () => process.env.MN_TEST_INDEXER_WS;
+export const getMnTestNode = () => process.env.MN_TEST_NODE;
+export const getMnTestNodeWs = () => process.env.MN_TEST_NODE_WS;
+export const getMnTestFaucet = () => process.env.MN_TEST_FAUCET;
+export const getMnTestNetworkId = () => process.env.MN_TEST_NETWORK_ID;
+export const getMnTestWalletNetworkId = () => process.env.MN_TEST_WALLET_NETWORK_ID;

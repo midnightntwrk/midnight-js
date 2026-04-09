@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v4.0.0-rc.1**](../../../README.md)
+[**Midnight.js API Reference v4.0.4**](../../../README.md)
 
 ***
 
@@ -22,6 +22,15 @@ Describes the target of a circuit invocation.
 
 ## Properties
 
+### additionalCoinEncPublicKeyMappings?
+
+> `readonly` `optional` **additionalCoinEncPublicKeyMappings?**: `ReadonlyMap`\<`CoinPublicKey`, `EncPublicKey`\>
+
+An optional mapping of CoinPublicKey to EncPublicKey that can be used to resolve encryption
+keys for coins created during circuit execution.
+
+***
+
 ### circuitId
 
 > `readonly` **circuitId**: `PCK`
@@ -40,6 +49,6 @@ The contract defining the circuit to call.
 
 ### contractAddress
 
-> `readonly` **contractAddress**: `ContractAddress`
+> `readonly` **contractAddress**: [`ContractAddress`](#)
 
 The address of the contract being executed.

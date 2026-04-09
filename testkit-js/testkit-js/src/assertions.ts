@@ -112,7 +112,7 @@ export const expectSuccessfulDeployTx = async <C extends Contract.Any>(
   const deployedLedgerState = await providers.publicDataProvider.queryContractState(
     deployTxData.public.contractAddress
   );
-  expect(stateValueEqual(deployTxData.public.initialContractState.data.state, deployedLedgerState!.data.state));
+  expect(stateValueEqual(deployTxData.public.initialContractState.data.state, deployedLedgerState!.data.state)).toBeTruthy();
   expect(deployTxData.public.initialContractState).toBeTruthy();
 
   // Checks that the signing key and private state passed in the deploy configuration
@@ -143,7 +143,7 @@ export const expectSuccessfulCallTx = async <C extends Contract.Any, PCK extends
 ): Promise<void> => {
   expectSuccessfulTxData(callTxData.public);
   expect(callTxData.public.nextContractState).toBeTruthy();
-  expect(callTxData.private.nextZswapLocalState);
+  expect(callTxData.private.nextZswapLocalState).toBeTruthy();
   if (callTxOptions) {
     if ('privateStateId' in callTxOptions) {
       const storedPrivateState = await providers.privateStateProvider.get(callTxOptions.privateStateId);

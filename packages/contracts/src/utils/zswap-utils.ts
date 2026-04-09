@@ -33,7 +33,6 @@ import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   assertDefined,
   assertIsContractAddress,
-  fromHex,
   parseCoinPublicKeyToHex,
   parseEncPublicKeyToHex
 } from '@midnight-ntwrk/midnight-js-utils';
@@ -43,6 +42,60 @@ import {
 // will change with work on Unshielded Tokens and I believe the Ledger will come with utility that will inform
 // the segment numbers.
 const DEFAULT_SEGMENT_NUMBER = 0;
+
+/**
+ * Resolves a CoinPublicKey to the corresponding EncPublicKey for output encryption.
+ * Returns undefined if the key cannot be resolved.
+ */
+export type EncryptionPublicKeyResolver = (coinPublicKey: CoinPublicKey) => EncPublicKey | undefined;
+
+/** Zero-initialized CoinPublicKey — the well-known shielded burn address from Compact's `shieldedBurnAddress()`. */
+export const SHIELDED_BURN_COIN_PUBLIC_KEY: CoinPublicKey = '0'.repeat(64);
+
+/**
+ * Encryption key for burn outputs. Coins sent here are unspendable (null coin secret key),
+ * so the specific key doesn't matter — but it must be a valid Jubjub curve point.
+ * Derived via SHA-256("midnight:burn-encryption-key:{i}") with i=9 (first valid point).
+ */
+export const BURN_ENCRYPTION_PUBLIC_KEY: EncPublicKey = 'f5b9fa49d3c4f06582dab6ba45c85f6b1927873105b4c8cf363b9b57ca910f65';
+
+/**
+ * Creates a resolver that maps CoinPublicKey to EncPublicKey for output encryption.
+ * Handles the wallet's own key, the well-known burn address, and optional additional mappings.
+ */
+export const createEncryptionPublicKeyResolver = (
+  walletCoinPublicKey: CoinPublicKey,
+  walletEncryptionPublicKey: EncPublicKey,
+  additionalCoinEncPublicKeyMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>
+): EncryptionPublicKeyResolver => {
+  const networkId = getNetworkId();
+  const normalizedWalletCpk = parseCoinPublicKeyToHex(walletCoinPublicKey, networkId);
+  const normalizedWalletEpk = parseEncPublicKeyToHex(walletEncryptionPublicKey, networkId);
+
+  // Ensure additional mappings are normalized to hex as well, for consistent lookup.
+  const normalizedAdditionalMappings = additionalCoinEncPublicKeyMappings
+    ? new Map(
+        Array.from(additionalCoinEncPublicKeyMappings, ([k, v]) => [
+          parseCoinPublicKeyToHex(k, networkId),
+          parseEncPublicKeyToHex(v, networkId)
+        ])
+      )
+    : undefined;
+
+  return (coinPublicKey: CoinPublicKey): EncPublicKey | undefined => {
+    const normalizedCpk = parseCoinPublicKeyToHex(coinPublicKey, networkId);
+
+    if (normalizedCpk === normalizedWalletCpk) {
+      return normalizedWalletEpk;
+    }
+
+    if (normalizedCpk === SHIELDED_BURN_COIN_PUBLIC_KEY) {
+      return BURN_ENCRYPTION_PUBLIC_KEY;
+    }
+
+    return normalizedAdditionalMappings?.get(normalizedCpk);
+  };
+};
 
 export const checkKeys = (coinInfo: ShieldedCoinInfo): void =>
   Object.keys(coinInfo).forEach((key) => {
@@ -71,22 +124,9 @@ export const deserializeCoinInfo = (coinInfo: string): ShieldedCoinInfo => {
       value != null &&
       typeof value === 'object' &&
       '__big_int_val__' in value &&
-
       typeof value.__big_int_val__ === 'string'
     ) {
-
       return BigInt(value.__big_int_val__);
-    }
-    if (
-      (key === 'color' || key === 'nonce') &&
-      value != null &&
-      typeof value === 'object' &&
-      '__uint8Array_val__' in value &&
-
-      typeof value.__uint8Array_val__ === 'string'
-    ) {
-
-      return fromHex(value.__uint8Array_val__);
     }
     return value;
   });
@@ -102,13 +142,21 @@ export const createZswapOutput = (
     coinInfo: ShieldedCoinInfo;
     recipient: Recipient;
   },
-  encryptionPublicKey: EncPublicKey,
+  encryptionPublicKeyResolver: EncryptionPublicKeyResolver,
   segmentNumber = 0
-): UnprovenOutput =>
-  // TBD need to confirm segment number and wallet encryptionPublicKey usage.
-  recipient.is_left
-    ? ZswapOutput.new(coinInfo, segmentNumber, recipient.left, encryptionPublicKey)
-    : ZswapOutput.newContractOwned(coinInfo, segmentNumber, recipient.right);
+): UnprovenOutput => {
+  if (!recipient.is_left) {
+    return ZswapOutput.newContractOwned(coinInfo, segmentNumber, recipient.right);
+  }
+  const encryptionPublicKey = encryptionPublicKeyResolver(recipient.left);
+  if (!encryptionPublicKey) {
+    throw new Error(
+      `Unable to resolve encryption public key for recipient ${recipient.left}. ` +
+      `Provide a mapping via the encryptionPublicKeyResolver.`
+    );
+  }
+  return ZswapOutput.new(coinInfo, segmentNumber, recipient.left, encryptionPublicKey);
+};
 
 const unprovenOfferFromCoinInfo = <U extends UnprovenInput | UnprovenOutput | UnprovenTransient>(
   [coinInfo, unproven]: [string, U],
@@ -126,28 +174,30 @@ export const unprovenOfferFromMap = <U extends UnprovenInput | UnprovenOutput | 
     return undefined;
   }
 
-  const offers = Array.from(map, (entry) => unprovenOfferFromCoinInfo(entry, f)).filter((offer) => offer != null);
-
-  if (offers.length === 0) {
-    return undefined;
-  }
+  const offers = Array.from(map, (entry) => unprovenOfferFromCoinInfo(entry, f));
 
   return offers.reduce((acc, curr) => acc.merge(curr));
 };
 
 export const zswapStateToOffer = (
   zswapLocalState: ZswapLocalState,
-  encryptionPublicKey: EncPublicKey,
+  encryptionPublicKeyOrResolver: EncPublicKey | EncryptionPublicKeyResolver,
   addressAndChainStateTuple?: { contractAddress: ContractAddress; zswapChainState: ZswapChainState }
 ): UnprovenOffer | undefined => {
+  const resolver: EncryptionPublicKeyResolver =
+    typeof encryptionPublicKeyOrResolver === 'function'
+      ? encryptionPublicKeyOrResolver
+      : () => encryptionPublicKeyOrResolver;
+
   const unprovenOutputs = new Map<string, UnprovenOutput>(
     zswapLocalState.outputs.map((output) => [
       serializeCoinInfo(output.coinInfo),
-      createZswapOutput(output, encryptionPublicKey, DEFAULT_SEGMENT_NUMBER)
+      createZswapOutput(output, resolver, DEFAULT_SEGMENT_NUMBER)
     ])
   );
   const unprovenInputs = new Map<string, UnprovenInput>();
   const unprovenTransients = new Map<string, UnprovenTransient>();
+  const rehashedChainState = addressAndChainStateTuple?.zswapChainState.postBlockUpdate(new Date());
   zswapLocalState.inputs.forEach((qualifiedCoinInfo) => {
     const serializedCoinInfo =  serializeQualifiedShieldedCoinInfo(qualifiedCoinInfo);
     const unprovenOutput = unprovenOutputs.get(serializedCoinInfo);
@@ -159,6 +209,7 @@ export const zswapStateToOffer = (
       unprovenOutputs.delete(serializedCoinInfo);
     } else {
       assertDefined(addressAndChainStateTuple, `Only outputs or transients are expected when no chain state is provided`);
+      assertDefined(rehashedChainState, `Only outputs or transients are expected when no chain state is provided`);
       assertIsContractAddress(addressAndChainStateTuple.contractAddress);
       unprovenInputs.set(
         serializedCoinInfo,
@@ -166,7 +217,7 @@ export const zswapStateToOffer = (
           qualifiedCoinInfo,
           DEFAULT_SEGMENT_NUMBER,
           addressAndChainStateTuple.contractAddress,
-          addressAndChainStateTuple.zswapChainState
+          rehashedChainState
         )
       );
     }
@@ -208,4 +259,30 @@ export const encryptionPublicKeyForZswapState = (
   }
 
   return parseEncPublicKeyToHex(walletEncryptionPublicKey, networkId);
+};
+
+/**
+ * Creates an EncryptionPublicKeyResolver for a ZswapLocalState, validating that the
+ * state's coin public key matches the wallet's. Handles the burn address and optional
+ * additional recipient mappings.
+ */
+export const encryptionPublicKeyResolverForZswapState = (
+  zswapState: ZswapLocalState,
+  walletCoinPublicKey: CoinPublicKey,
+  walletEncryptionPublicKey: EncPublicKey,
+  additionalCoinEncPublicKeyMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>
+): EncryptionPublicKeyResolver => {
+  const networkId = getNetworkId();
+  const walletCpkHex = parseCoinPublicKeyToHex(walletCoinPublicKey, networkId);
+  const localCpkHex = parseCoinPublicKeyToHex(zswapState.coinPublicKey, networkId);
+
+  if (localCpkHex !== walletCpkHex) {
+    throw new Error('Unable to lookup encryption public key (Unsupported coin)');
+  }
+
+  return createEncryptionPublicKeyResolver(
+    walletCoinPublicKey,
+    walletEncryptionPublicKey,
+    additionalCoinEncPublicKeyMappings
+  );
 };

@@ -1,4 +1,4 @@
-# API Changes Reference v4.0.0
+# API Changes Reference v4.0.1
 
 ## Package: @midnight-ntwrk/midnight-js-types
 
@@ -15,7 +15,7 @@ export interface MidnightProviders<
 >
 ```
 
-**v4.0.0:**
+**v4.0.1:**
 ```typescript
 export interface MidnightProviders<
   PCK extends AnyProvableCircuitId = AnyProvableCircuitId,
@@ -36,7 +36,7 @@ queryZSwapAndContractState(
 ): Promise<[ZswapChainState, ContractState] | null>;
 ```
 
-**v4.0.0:**
+**v4.0.1:**
 ```typescript
 queryZSwapAndContractState(
   contractAddress: ContractAddress,
@@ -60,6 +60,15 @@ export type AnyProvableCircuitId = Contract.ProvableCircuitId<Contract.Any>;
 export type AnyPrivateState = Contract.PrivateState<Contract.Any>;
 ```
 
+#### `createProofProvider`
+
+```typescript
+export const createProofProvider = (
+  provingProvider: ProvingProvider,
+  costModel?: CostModel
+): ProofProvider;
+```
+
 ---
 
 ## Package: @midnight-ntwrk/midnight-js-contracts
@@ -73,7 +82,7 @@ export type AnyPrivateState = Contract.PrivateState<Contract.Any>;
 export type CallOptionsBase<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>
 ```
 
-**v4.0.0:**
+**v4.0.1:**
 ```typescript
 export type CallOptionsBase<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>
 ```
@@ -85,7 +94,7 @@ export type CallOptionsBase<C extends Contract.Any, PCK extends Contract.Provabl
 export type CallOptionsWithArguments<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>
 ```
 
-**v4.0.0:**
+**v4.0.1:**
 ```typescript
 export type CallOptionsWithArguments<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>
 ```
@@ -101,7 +110,7 @@ export type CallOptionsProviderDataDependencies = {
 };
 ```
 
-**v4.0.0:**
+**v4.0.1:**
 ```typescript
 export type CallOptionsProviderDataDependencies = {
   readonly coinPublicKey: string;
@@ -120,7 +129,7 @@ export type CallOptionsProviderDataDependencies = {
 export type CallOptionsWithProviderDataDependencies<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>
 ```
 
-**v4.0.0:**
+**v4.0.1:**
 ```typescript
 export type CallOptionsWithProviderDataDependencies<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>
 ```
@@ -132,7 +141,7 @@ export type CallOptionsWithProviderDataDependencies<C extends Contract.Any, PCK 
 export type CallOptionsWithPrivateState<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>
 ```
 
-**v4.0.0:**
+**v4.0.1:**
 ```typescript
 export type CallOptionsWithPrivateState<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>
 ```
@@ -144,7 +153,7 @@ export type CallOptionsWithPrivateState<C extends Contract.Any, PCK extends Cont
 export type CallOptions<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>
 ```
 
-**v4.0.0:**
+**v4.0.1:**
 ```typescript
 export type CallOptions<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>
 ```
@@ -157,7 +166,7 @@ export type CallResult<C extends Contract.Any, ICK extends Contract.ImpureCircui
 export type CallResultPrivate<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>
 ```
 
-**v4.0.0:**
+**v4.0.1:**
 ```typescript
 export type CallResult<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>
 export type CallResultPrivate<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>
@@ -172,7 +181,7 @@ export type CircuitCallTxInterface<C extends Contract.Any> = {
 };
 ```
 
-**v4.0.0:**
+**v4.0.1:**
 ```typescript
 export type CircuitCallTxInterface<C extends Contract.Any> = {
   [PCK in Contract.ProvableCircuitId<C>]: { ... };
@@ -186,7 +195,7 @@ export type CircuitCallTxInterface<C extends Contract.Any> = {
 export type CircuitMaintenanceTxInterfaces<C extends Contract.Any> = Record<Contract.ImpureCircuitId<C>, CircuitMaintenanceTxInterface>;
 ```
 
-**v4.0.0:**
+**v4.0.1:**
 ```typescript
 export type CircuitMaintenanceTxInterfaces<C extends Contract.Any> = Record<Contract.ProvableCircuitId<C>, CircuitMaintenanceTxInterface>;
 ```
@@ -201,7 +210,7 @@ export type PublicContractStates = {
 };
 ```
 
-**v4.0.0:**
+**v4.0.1:**
 ```typescript
 export type PublicContractStates = {
   readonly zswapChainState: ZswapChainState;
@@ -242,6 +251,15 @@ export type PublicContractStates = {
 
 - ImpureCircuitId<C>(options.circuitId)
 + ProvableCircuitId<C>(options.circuitId)
+
+  createUnprovenLedgerCallTx:
+- partitionedTranscript: PartitionedTranscript
++ publicTranscript: Op<AlignedValue>[]
++ ledgerParameters: LedgerParameters  (new parameter)
+- coinPublicKey: CoinPublicKey         (removed - QueryContext now uses lossless binary path)
+
+- export { extractUserAddressedOutputs }
++ (removed)
 ```
 
 ### @midnight-ntwrk/indexer-public-data-provider

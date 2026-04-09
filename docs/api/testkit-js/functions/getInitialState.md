@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v4.0.0-rc.1**](../README.md)
+[**@midnight-ntwrk/testkit-js v4.0.4**](../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 ### wallet
 
-`ShieldedWalletAPI` | `UnshieldedWalletAPI`
+`ShieldedWalletAPI` \| `UnshieldedWalletAPI`
 
 ## Returns
 
