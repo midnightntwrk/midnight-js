@@ -18,6 +18,7 @@ export {
   type CryptoBackendType,
 } from './crypto-backend';
 export {
+  type DatabaseLevel,
   DEFAULT_CONFIG,
   type LevelFactory,
   levelPrivateStateProvider,
