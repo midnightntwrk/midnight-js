@@ -31,7 +31,7 @@ import { Level } from 'level';
 import * as superjson from 'superjson';
 import { vi } from 'vitest';
 
-import { levelPrivateStateProvider, migrateToAccountScoped } from '../index';
+import { type DatabaseLevel, levelPrivateStateProvider, migrateToAccountScoped } from '../index';
 import { StorageEncryption } from '../storage-encryption';
 
 describe('Level Private State Provider', (): void => {
@@ -2725,6 +2725,64 @@ describe('Level Private State Provider', (): void => {
       } finally {
         await unscopedAfter.close();
         await levelAfter.close();
+      }
+    });
+  });
+
+  describe('levelFactory', () => {
+    const FACTORY_DB_NAME = 'test-custom-factory-db';
+
+    afterAll(async () => {
+      await fs.rm(path.join('.', FACTORY_DB_NAME), { recursive: true, force: true });
+    });
+
+    const createLevel = (dbName: string): DatabaseLevel =>
+      new Level(dbName, { createIfMissing: true }) as DatabaseLevel;
+
+    test('custom levelFactory is invoked on get/set operations', async () => {
+      const factory = vi.fn(createLevel);
+      const db = levelPrivateStateProvider<PID, PS>({
+        ...testConfig,
+        midnightDbName: FACTORY_DB_NAME,
+        levelFactory: factory,
+      });
+      db.setContractAddress(TEST_CONTRACT_ADDRESS);
+
+      await db.set('stringValue', 'value');
+      await db.get('stringValue');
+
+      expect(factory).toHaveBeenCalled();
+      expect(factory.mock.calls.every(([name]) => name === FACTORY_DB_NAME)).toBe(true);
+    });
+
+    test('set/get roundtrip works with custom levelFactory', async () => {
+      const db = levelPrivateStateProvider<PID, PS>({
+        ...testConfig,
+        midnightDbName: FACTORY_DB_NAME,
+        levelFactory: createLevel,
+      });
+      db.setContractAddress(TEST_CONTRACT_ADDRESS);
+
+      await db.set('numberValue', 42);
+      const value = await db.get('numberValue');
+      expect(value).toBe(42);
+    });
+
+    test('migrateToAccountScoped uses custom levelFactory', async () => {
+      const migrationDbName = 'test-migration-factory-db';
+      const factory = vi.fn(createLevel);
+
+      try {
+        await migrateToAccountScoped({
+          accountId: TEST_ACCOUNT_ID,
+          midnightDbName: migrationDbName,
+          levelFactory: factory,
+        });
+
+        expect(factory).toHaveBeenCalled();
+        expect(factory.mock.calls.every(([name]) => name === migrationDbName)).toBe(true);
+      } finally {
+        await fs.rm(path.join('.', migrationDbName), { recursive: true, force: true });
       }
     });
   });
