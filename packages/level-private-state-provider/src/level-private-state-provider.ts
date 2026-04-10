@@ -346,6 +346,7 @@ const isDecryptionError = (error: unknown): boolean => {
     message.includes('salt mismatch') ||
     message.includes('invalid encrypted data') ||
     message.includes('bad decrypt') ||
+    message.includes('invalid tag') ||
     message.includes('unable to authenticate')
   );
 };
