@@ -86,7 +86,7 @@ import {
 type IsEmptyObject<T> = keyof T extends never ? true : false;
 type ExcludeEmptyAndNull<T> = T extends null ? never : IsEmptyObject<T> extends true ? never : T;
 
-const isRegularTransaction = (
+export const isRegularTransaction = (
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   tx: any
 ): tx is RegularTransaction & { hash: string; identifiers: string[] } => {
@@ -217,7 +217,7 @@ const transactionToContractState$ =
       Rx.map((pair) => deserializeContractState(pair[1].state))
     );
 
-const toTxStatus = (transactionResult: TransactionResult): TxStatus => {
+export const toTxStatus = (transactionResult: TransactionResult): TxStatus => {
   const result = transactionResult.status;
   const map = {
     'FAILURE': FailEntirely,
@@ -230,10 +230,10 @@ const toTxStatus = (transactionResult: TransactionResult): TxStatus => {
   throw new Error(`Unexpected 'status' value ${result}`);
 };
 
-const toSegmentStatus = (success: boolean): SegmentStatus =>
+export const toSegmentStatus = (success: boolean): SegmentStatus =>
   success ? SegmentSuccess : SegmentFail;
 
-const toSegmentStatusMap = (transactionResult: TransactionResult): Map<number, SegmentStatus> | undefined => {
+export const toSegmentStatusMap = (transactionResult: TransactionResult): Map<number, SegmentStatus> | undefined => {
   if (transactionResult.status !== 'PARTIAL_SUCCESS') {
     return undefined;
   }
