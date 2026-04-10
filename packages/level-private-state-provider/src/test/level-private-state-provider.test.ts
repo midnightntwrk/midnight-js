@@ -701,7 +701,7 @@ describe('Level Private State Provider', (): void => {
 
         // Create encryption with a known salt and encrypt non-JSON data
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = await StorageEncryption.create(VALID_PASSWORD, salt);
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
         const notJson = await encryption.encrypt('this is not JSON');
 
         const badExport: PrivateStateExport = {
@@ -720,7 +720,7 @@ describe('Level Private State Provider', (): void => {
         db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = await StorageEncryption.create(VALID_PASSWORD, salt);
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
         // Valid JSON but missing required 'states' field
         const invalidPayload = await encryption.encrypt(JSON.stringify({
           version: 1,
@@ -745,7 +745,7 @@ describe('Level Private State Provider', (): void => {
         db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = await StorageEncryption.create(VALID_PASSWORD, salt);
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
         // Valid JSON but missing required 'version' field
         const invalidPayload = await encryption.encrypt(JSON.stringify({
           exportedAt: new Date().toISOString(),
@@ -769,7 +769,7 @@ describe('Level Private State Provider', (): void => {
         db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = await StorageEncryption.create(VALID_PASSWORD, salt);
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
         // stateCount says 5 but only 1 state present
         const mismatchedPayload = await encryption.encrypt(JSON.stringify({
           version: 1,
@@ -796,7 +796,7 @@ describe('Level Private State Provider', (): void => {
         db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = await StorageEncryption.create(VALID_PASSWORD, salt);
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
         const unsupportedVersionPayload = await encryption.encrypt(JSON.stringify({
           version: 999,
           exportedAt: new Date().toISOString(),
@@ -820,7 +820,7 @@ describe('Level Private State Provider', (): void => {
         db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = await StorageEncryption.create(VALID_PASSWORD, salt);
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
         // State value is not valid superjson
         const invalidStatePayload = await encryption.encrypt(JSON.stringify({
           version: 1,
@@ -884,7 +884,7 @@ describe('Level Private State Provider', (): void => {
         // Uppercase hex should still be valid (the regex allows both cases)
         const uppercaseSalt = 'A'.repeat(64);
         const salt = Buffer.from(uppercaseSalt, 'hex');
-        const encryption = await StorageEncryption.create(VALID_PASSWORD, salt);
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
         const validPayload = await encryption.encrypt(JSON.stringify({
           version: 1,
           exportedAt: new Date().toISOString(),
@@ -1188,7 +1188,7 @@ describe('Level Private State Provider', (): void => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = await StorageEncryption.create(VALID_PASSWORD, salt);
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
         const notJson = await encryption.encrypt('this is not JSON');
 
         const badExport: SigningKeyExport = {
@@ -1206,7 +1206,7 @@ describe('Level Private State Provider', (): void => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = await StorageEncryption.create(VALID_PASSWORD, salt);
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
         const invalidPayload = await encryption.encrypt(JSON.stringify({
           version: 1,
           exportedAt: new Date().toISOString(),
@@ -1228,7 +1228,7 @@ describe('Level Private State Provider', (): void => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = await StorageEncryption.create(VALID_PASSWORD, salt);
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
         const invalidPayload = await encryption.encrypt(JSON.stringify({
           exportedAt: new Date().toISOString(),
           keyCount: 0,
@@ -1250,7 +1250,7 @@ describe('Level Private State Provider', (): void => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = await StorageEncryption.create(VALID_PASSWORD, salt);
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
         const mismatchedPayload = await encryption.encrypt(JSON.stringify({
           version: 1,
           exportedAt: new Date().toISOString(),
@@ -1275,7 +1275,7 @@ describe('Level Private State Provider', (): void => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = await StorageEncryption.create(VALID_PASSWORD, salt);
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
         const unsupportedVersionPayload = await encryption.encrypt(JSON.stringify({
           version: 999,
           exportedAt: new Date().toISOString(),
