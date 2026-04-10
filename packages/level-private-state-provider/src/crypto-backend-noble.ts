@@ -1,0 +1,53 @@
+import { gcm } from '@noble/ciphers/aes.js';
+import { pbkdf2 as noblePbkdf2 } from '@noble/hashes/pbkdf2.js';
+import { sha256 as nobleSha256 } from '@noble/hashes/sha2.js';
+import { randomBytes as nobleRandomBytes } from '@noble/hashes/utils.js';
+
+import type { CryptoBackend } from './crypto-backend';
+
+const AUTH_TAG_LENGTH = 16;
+
+export class NobleCryptoBackend implements CryptoBackend {
+  randomBytes(length: number): Uint8Array {
+    return nobleRandomBytes(length);
+  }
+
+  async sha256(data: Uint8Array): Promise<Uint8Array> {
+    return nobleSha256(data);
+  }
+
+  async pbkdf2(
+    password: Uint8Array,
+    salt: Uint8Array,
+    iterations: number,
+    keyLength: number,
+  ): Promise<Uint8Array> {
+    return noblePbkdf2(nobleSha256, password, salt, {
+      c: iterations,
+      dkLen: keyLength,
+    });
+  }
+
+  async aesGcmEncrypt(
+    key: Uint8Array,
+    iv: Uint8Array,
+    plaintext: Uint8Array,
+  ): Promise<{ ciphertext: Uint8Array; authTag: Uint8Array }> {
+    const encryptedWithTag = gcm(key, iv).encrypt(plaintext);
+    const ciphertext = encryptedWithTag.slice(0, encryptedWithTag.length - AUTH_TAG_LENGTH);
+    const authTag = encryptedWithTag.slice(encryptedWithTag.length - AUTH_TAG_LENGTH);
+    return { ciphertext, authTag };
+  }
+
+  async aesGcmDecrypt(
+    key: Uint8Array,
+    iv: Uint8Array,
+    ciphertext: Uint8Array,
+    authTag: Uint8Array,
+  ): Promise<Uint8Array> {
+    const combined = new Uint8Array(ciphertext.length + authTag.length);
+    combined.set(ciphertext, 0);
+    combined.set(authTag, ciphertext.length);
+    return gcm(key, iv).decrypt(combined);
+  }
+}
