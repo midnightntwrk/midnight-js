@@ -804,20 +804,20 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
         (subLevel) => subLevel.del(address)
       );
     },
-    async setSigningKey(address: ContractAddress, signingKeyValue: SigningKey): Promise<void> {
-      const { signingKey } = await getScopedNames();
-      await waitForRotationLock(fullConfig.midnightDbName, signingKey);
+    async setSigningKey(address: ContractAddress, signingKey: SigningKey): Promise<void> {
+      const { signingKey: signingKeyLevelName } = await getScopedNames();
+      await waitForRotationLock(fullConfig.midnightDbName, signingKeyLevelName);
       const encryption = await getOrCreateEncryption(
         fullConfig.midnightDbName,
-        signingKey,
+        signingKeyLevelName,
         passwordProvider
       );
-      const serialized = superjson.stringify(signingKeyValue);
+      const serialized = superjson.stringify(signingKey);
       const encrypted = await encryption.encrypt(serialized);
 
       return withSubLevel<ContractAddress, string, void>(
         fullConfig.midnightDbName,
-        signingKey,
+        signingKeyLevelName,
         (subLevel) => subLevel.put(address, encrypted)
       );
     },

@@ -236,7 +236,7 @@ export class StorageEncryption {
       throw new Error('V1 encrypted data requires password for decryption. Use decryptWithPassword() instead.');
     }
 
-    if (!Buffer.from(this.salt).equals(salt)) {
+    if (!timingSafeEqual(Buffer.from(this.salt), salt)) {
       throw new Error('Salt mismatch: data was encrypted with a different password');
     }
 
@@ -248,7 +248,7 @@ export class StorageEncryption {
     const data = Buffer.from(encryptedData, 'base64');
     const { version, salt, iv, authTag, encrypted } = extractEncryptedComponents(data);
 
-    if (!Buffer.from(this.salt).equals(salt)) {
+    if (!timingSafeEqual(Buffer.from(this.salt), salt)) {
       throw new Error('Salt mismatch: data was encrypted with a different password');
     }
 
@@ -395,7 +395,7 @@ export const decryptValue = async (
   password: string
 ): Promise<string> => {
   if (!StorageEncryption.isEncrypted(encryptedValue)) {
-    console.warn('MIDNIGHT: Encountered unencrypted data during decryption - passing through as-is. This may indicate data corruption or a migration issue.');
+    console.debug('MIDNIGHT: Encountered unencrypted data during decryption - passing through as-is');
     return encryptedValue;
   }
 
