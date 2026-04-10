@@ -75,7 +75,7 @@ describe('StorageEncryption', () => {
       const encryption1 = await StorageEncryption.create('Correct-Pass-123!');
       const encrypted = await encryption1.encrypt(testData);
 
-      const encryption2 = await StorageEncryption.create('Wrong-Password-1!', encryption1.getSalt());
+      const encryption2 = await StorageEncryption.create('Wrong-Password-1!', { existingSalt: encryption1.getSalt() });
 
       await expect(encryption2.decrypt(encrypted)).rejects.toThrow();
     });
@@ -97,7 +97,7 @@ describe('StorageEncryption', () => {
       const salt = new Uint8Array(32);
       globalThis.crypto.getRandomValues(salt);
 
-      const encryption = await StorageEncryption.create(testPassword, salt);
+      const encryption = await StorageEncryption.create(testPassword, { existingSalt: salt });
       const encrypted = await encryption.encrypt(testData);
       const decrypted = await encryption.decrypt(encrypted);
 
@@ -108,8 +108,8 @@ describe('StorageEncryption', () => {
       const rawBytes = new Uint8Array(32);
       globalThis.crypto.getRandomValues(rawBytes);
 
-      const encryptionFromUint8 = await StorageEncryption.create(testPassword, rawBytes);
-      const encryptionFromBuffer = await StorageEncryption.create(testPassword, Buffer.from(rawBytes));
+      const encryptionFromUint8 = await StorageEncryption.create(testPassword, { existingSalt: rawBytes });
+      const encryptionFromBuffer = await StorageEncryption.create(testPassword, { existingSalt: Buffer.from(rawBytes) });
 
       expect(encryptionFromUint8.getSalt()).toEqual(encryptionFromBuffer.getSalt());
     });
@@ -136,7 +136,7 @@ describe('StorageEncryption', () => {
 
     test('decrypts V1 encrypted data with password', async () => {
       const salt = Buffer.from(V1_FIXTURES.salt, 'hex');
-      const encryption = await StorageEncryption.create(V1_FIXTURES.password, salt);
+      const encryption = await StorageEncryption.create(V1_FIXTURES.password, { existingSalt: salt });
 
       const result = await decryptValue(V1_FIXTURES.encrypted, encryption, V1_FIXTURES.password);
 
@@ -147,7 +147,7 @@ describe('StorageEncryption', () => {
   describe('version migration', () => {
     test('decrypts v1 encrypted data with 100k iterations using decryptWithPassword', async () => {
       const salt = Buffer.from(V1_FIXTURES.salt, 'hex');
-      const encryption = await StorageEncryption.create(V1_FIXTURES.password, salt);
+      const encryption = await StorageEncryption.create(V1_FIXTURES.password, { existingSalt: salt });
 
       const decrypted = await encryption.decryptWithPassword(V1_FIXTURES.encrypted, V1_FIXTURES.password);
 
@@ -182,7 +182,7 @@ describe('StorageEncryption', () => {
 
     test('decrypt throws when V1 data is encountered without password', async () => {
       const salt = Buffer.from(V1_FIXTURES.salt, 'hex');
-      const encryption = await StorageEncryption.create(V1_FIXTURES.password, salt);
+      const encryption = await StorageEncryption.create(V1_FIXTURES.password, { existingSalt: salt });
 
       await expect(encryption.decrypt(V1_FIXTURES.encrypted)).rejects.toThrow(
         'V1 encrypted data requires password for decryption'
