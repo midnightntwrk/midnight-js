@@ -105,7 +105,10 @@ export interface LevelPrivateStateProviderConfig {
    */
   readonly accountId: string;
   readonly cryptoBackend?: CryptoBackendType;
+  readonly levelFactory?: LevelFactory;
 }
+
+export type LevelFactory = (dbName: string) => Level;
 
 /**
  * The default configuration for the level database.
@@ -146,14 +149,16 @@ const getScopedLevelName = (baseLevelName: string, accountId: string): string =>
   return `${baseLevelName}:${hashedAccountId}`;
 };
 
+const defaultLevelFactory: LevelFactory = (dbName: string) =>
+  new Level(dbName, { createIfMissing: true });
+
 const withSubLevel = async <K, V, A>(
   dbName: string,
   levelName: string,
-  thunk: (subLevel: AbstractSublevel<Level, string | Uint8Array | Buffer, K, V>) => Promise<A>
+  thunk: (subLevel: AbstractSublevel<Level, string | Uint8Array | Buffer, K, V>) => Promise<A>,
+  createLevel: LevelFactory = defaultLevelFactory,
 ): Promise<A> => {
-  const level = new Level(dbName, {
-    createIfMissing: true
-  });
+  const level = createLevel(dbName);
   const subLevel = level.sublevel<K, V>(levelName, {
     valueEncoding: 'utf-8'
   });
@@ -198,7 +203,7 @@ interface EncryptionCacheEntry {
  */
 const encryptionCache = new Map<string, EncryptionCacheEntry>();
 
-const getOrCreateSalt = async (dbName: string, levelName: string): Promise<Buffer> => {
+const getOrCreateSalt = async (dbName: string, levelName: string, createLevel: LevelFactory = defaultLevelFactory): Promise<Buffer> => {
   const lockKey = `${dbName}:${levelName}`;
 
   const existingPromise = encryptionInitPromises.get(lockKey);
@@ -226,7 +231,7 @@ const getOrCreateSalt = async (dbName: string, levelName: string): Promise<Buffe
     };
     await subLevel.put(METADATA_KEY, JSON.stringify(metadata));
     return salt;
-  });
+  }, createLevel);
 
   encryptionInitPromises.set(lockKey, initPromise);
 
@@ -241,10 +246,11 @@ const getOrCreateEncryption = async (
   dbName: string,
   levelName: string,
   passwordProvider: PrivateStoragePasswordProvider,
-  cryptoBackend?: CryptoBackendType
+  cryptoBackend?: CryptoBackendType,
+  createLevel: LevelFactory = defaultLevelFactory,
 ): Promise<StorageEncryption> => {
   const cacheKey = `${dbName}:${levelName}`;
-  const salt = await getOrCreateSalt(dbName, levelName);
+  const salt = await getOrCreateSalt(dbName, levelName, createLevel);
   const saltHex = salt.toString('hex');
 
   const cached = encryptionCache.get(cacheKey);
@@ -331,6 +337,7 @@ interface RotateStorePasswordParams {
   readonly maxEntries: number;
   readonly shouldProceed?: (key: string) => boolean;
   readonly cryptoBackend?: CryptoBackendType;
+  readonly createLevel?: LevelFactory;
 }
 
 const isDecryptionError = (error: unknown): boolean => {
@@ -354,12 +361,13 @@ const isDecryptionError = (error: unknown): boolean => {
 const rotateStorePassword = async (
   params: RotateStorePasswordParams
 ): Promise<PasswordRotationResult> => {
-  const { dbName, storeName, oldPasswordProvider, newPasswordProvider, maxEntries, shouldProceed, cryptoBackend } = params;
+  const { dbName, storeName, oldPasswordProvider, newPasswordProvider, maxEntries, shouldProceed, cryptoBackend, createLevel: lvlFactory } = params;
+  const lvlCreate = lvlFactory ?? defaultLevelFactory;
 
   const oldPassword = await getPasswordFromProvider(oldPasswordProvider);
   const newPassword = await getPasswordFromProvider(newPasswordProvider);
 
-  const salt = await getOrCreateSalt(dbName, storeName);
+  const salt = await getOrCreateSalt(dbName, storeName, lvlCreate);
   const oldEncryption = await StorageEncryption.create(oldPassword, { existingSalt: salt, cryptoBackend });
   const newEncryption = await StorageEncryption.create(newPassword, { cryptoBackend });
   const newSalt = newEncryption.getSalt();
@@ -453,7 +461,8 @@ const rotateStorePassword = async (
       }
 
       return { entriesMigrated: entriesToMigrate.length };
-    }
+    },
+    lvlCreate,
   );
 };
 
@@ -462,10 +471,11 @@ const subLevelMaybeGet = async <K, V>(
   levelName: string,
   key: K,
   passwordProvider: PrivateStoragePasswordProvider,
-  cryptoBackend?: CryptoBackendType
+  cryptoBackend?: CryptoBackendType,
+  createLevel: LevelFactory = defaultLevelFactory,
 ): Promise<V | null> => {
   await waitForRotationLock(dbName, levelName);
-  const encryption = await getOrCreateEncryption(dbName, levelName, passwordProvider, cryptoBackend);
+  const encryption = await getOrCreateEncryption(dbName, levelName, passwordProvider, cryptoBackend, createLevel);
 
   return withSubLevel<K, string, V | null>(dbName, levelName, async (subLevel) => {
     try {
@@ -506,7 +516,7 @@ const subLevelMaybeGet = async <K, V>(
       }
       throw error;
     }
-  });
+  }, createLevel);
 };
 
 /**
@@ -516,10 +526,11 @@ const getAllEntries = async <K extends string, V>(
   dbName: string,
   levelName: string,
   passwordProvider: PrivateStoragePasswordProvider,
-  cryptoBackend?: CryptoBackendType
+  cryptoBackend?: CryptoBackendType,
+  createLevel: LevelFactory = defaultLevelFactory,
 ): Promise<Map<K, V>> => {
   await waitForRotationLock(dbName, levelName);
-  const encryption = await getOrCreateEncryption(dbName, levelName, passwordProvider, cryptoBackend);
+  const encryption = await getOrCreateEncryption(dbName, levelName, passwordProvider, cryptoBackend, createLevel);
 
   return withSubLevel<K, string, Map<K, V>>(dbName, levelName, async (subLevel) => {
     const entries = new Map<K, V>();
@@ -559,7 +570,7 @@ const getAllEntries = async <K extends string, V>(
     }
 
     return entries;
-  });
+  }, createLevel);
 };
 
 /**
@@ -720,6 +731,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
 
   const passwordProvider: PrivateStoragePasswordProvider = config.privateStoragePasswordProvider;
   const cryptoBackend = config.cryptoBackend;
+  const createLevel = fullConfig.levelFactory ?? defaultLevelFactory;
 
   const scopedNames = {
     privateState: getScopedLevelName(fullConfig.privateStateStoreName, config.accountId),
@@ -749,7 +761,8 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
         privateState,
         scopedKey,
         passwordProvider,
-        cryptoBackend
+        cryptoBackend,
+        createLevel,
       );
     },
     async remove(privateStateId: PSI): Promise<void> {
@@ -757,7 +770,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       await waitForRotationLock(fullConfig.midnightDbName, privateState);
       const scopedKey = getScopedKey(privateStateId);
       return withSubLevel<string, string, void>(fullConfig.midnightDbName, privateState, (subLevel) =>
-        subLevel.del(scopedKey)
+        subLevel.del(scopedKey), createLevel,
       );
     },
     async set(privateStateId: PSI, state: PS): Promise<void> {
@@ -768,13 +781,14 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
         fullConfig.midnightDbName,
         privateState,
         passwordProvider,
-        cryptoBackend
+        cryptoBackend,
+        createLevel,
       );
       const serialized = superjson.stringify(state);
       const encrypted = await encryption.encrypt(serialized);
 
       return withSubLevel<string, string, void>(fullConfig.midnightDbName, privateState, (subLevel) =>
-        subLevel.put(scopedKey, encrypted)
+        subLevel.put(scopedKey, encrypted), createLevel,
       );
     },
     async clear(): Promise<void> {
@@ -782,7 +796,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
         throw new Error('Contract address not set. Call setContractAddress() before accessing private state.');
       }
       const { privateState } = scopedNames;
-      return withSubLevel(fullConfig.midnightDbName, privateState, (subLevel) => subLevel.clear());
+      return withSubLevel(fullConfig.midnightDbName, privateState, (subLevel) => subLevel.clear(), createLevel);
     },
     async getSigningKey(address: ContractAddress): Promise<SigningKey | null> {
       const { signingKey } = scopedNames;
@@ -791,7 +805,8 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
         signingKey,
         address,
         passwordProvider,
-        cryptoBackend
+        cryptoBackend,
+        createLevel,
       );
     },
     async removeSigningKey(address: ContractAddress): Promise<void> {
@@ -800,7 +815,8 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       return withSubLevel<ContractAddress, string, void>(
         fullConfig.midnightDbName,
         signingKey,
-        (subLevel) => subLevel.del(address)
+        (subLevel) => subLevel.del(address),
+        createLevel,
       );
     },
     async setSigningKey(address: ContractAddress, signingKey: SigningKey): Promise<void> {
@@ -811,6 +827,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
         signingKeyLevelName,
         passwordProvider,
         cryptoBackend,
+        createLevel,
       );
       const serialized = superjson.stringify(signingKey);
       const encrypted = await encryption.encrypt(serialized);
@@ -818,12 +835,13 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       return withSubLevel<ContractAddress, string, void>(
         fullConfig.midnightDbName,
         signingKeyLevelName,
-        (subLevel) => subLevel.put(address, encrypted)
+        (subLevel) => subLevel.put(address, encrypted),
+        createLevel,
       );
     },
     async clearSigningKeys(): Promise<void> {
       const { signingKey } = scopedNames;
-      return withSubLevel(fullConfig.midnightDbName, signingKey, (subLevel) => subLevel.clear());
+      return withSubLevel(fullConfig.midnightDbName, signingKey, (subLevel) => subLevel.clear(), createLevel);
     },
 
     async exportPrivateStates(options?: ExportPrivateStatesOptions): Promise<PrivateStateExport> {
@@ -847,7 +865,8 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
         fullConfig.midnightDbName,
         privateState,
         passwordProvider,
-        cryptoBackend
+        cryptoBackend,
+        createLevel,
       );
 
       // Filter and extract only states for the current contract address
@@ -1026,7 +1045,8 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
         fullConfig.midnightDbName,
         scopedSigningKey,
         passwordProvider,
-        cryptoBackend
+        cryptoBackend,
+        createLevel,
       );
 
       if (allKeys.size === 0) {
@@ -1177,7 +1197,8 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
           newPasswordProvider,
           maxEntries: options?.maxEntries ?? DEFAULT_MAX_ROTATION_ENTRIES,
           shouldProceed: (key) => key.startsWith(prefix),
-          cryptoBackend
+          cryptoBackend,
+          createLevel: createLevel,
         });
 
         invalidateEncryptionCacheForDb(
@@ -1205,7 +1226,8 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
           oldPasswordProvider,
           newPasswordProvider,
           maxEntries: options?.maxEntries ?? DEFAULT_MAX_ROTATION_ENTRIES,
-          cryptoBackend
+          cryptoBackend,
+          createLevel: createLevel,
         });
 
         invalidateEncryptionCacheForDb(
@@ -1233,9 +1255,10 @@ export interface MigrationResult {
 const migrateSublevel = async (
   dbName: string,
   oldLevelName: string,
-  newLevelName: string
+  newLevelName: string,
+  createLevel: LevelFactory = defaultLevelFactory,
 ): Promise<number> => {
-  const level = new Level(dbName, { createIfMissing: true });
+  const level = createLevel(dbName);
 
   try {
     await level.open();
@@ -1327,6 +1350,7 @@ export const migrateToAccountScoped = async (
   config: Partial<LevelPrivateStateProviderConfig> & Pick<LevelPrivateStateProviderConfig, 'accountId'>
 ): Promise<MigrationResult> => {
   const fullConfig = { ...DEFAULT_CONFIG, ...config };
+  const lvlCreate = fullConfig.levelFactory ?? defaultLevelFactory;
 
   if (!config.accountId || config.accountId.trim().length === 0) {
     throw new Error('accountId is required for migration');
@@ -1347,7 +1371,8 @@ export const migrateToAccountScoped = async (
     privateStatesMigrated = await migrateSublevel(
       fullConfig.midnightDbName,
       fullConfig.privateStateStoreName,
-      scopedPrivateStateLevelName
+      scopedPrivateStateLevelName,
+      lvlCreate,
     );
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -1364,7 +1389,8 @@ export const migrateToAccountScoped = async (
     signingKeysMigrated = await migrateSublevel(
       fullConfig.midnightDbName,
       fullConfig.signingKeyStoreName,
-      scopedSigningKeyLevelName
+      scopedSigningKeyLevelName,
+      lvlCreate,
     );
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';

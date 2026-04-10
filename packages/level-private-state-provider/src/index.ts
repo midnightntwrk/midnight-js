@@ -19,6 +19,7 @@ export {
 } from './crypto-backend';
 export {
   DEFAULT_CONFIG,
+  type LevelFactory,
   levelPrivateStateProvider,
   type LevelPrivateStateProviderConfig,
   migrateToAccountScoped,
