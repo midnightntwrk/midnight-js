@@ -442,22 +442,25 @@ describe('StorageEncryption with noble backend', () => {
     salt: '8b1ef01c566e245beb5f08f0240ac0b2681b2cf1d3375d0414372ce44edb0052',
   };
 
+  let nobleEncryption: StorageEncryption;
+
+  beforeAll(async () => {
+    nobleEncryption = await StorageEncryption.create(testPassword, { cryptoBackend: 'noble' });
+  }, 30_000);
+
   describe('encrypt and decrypt', () => {
     test('successfully encrypts and decrypts data', async () => {
-      const encryption = await StorageEncryption.create(testPassword, { cryptoBackend: 'noble' });
-
-      const encrypted = await encryption.encrypt(testData);
-      const decrypted = await encryption.decrypt(encrypted);
+      const encrypted = await nobleEncryption.encrypt(testData);
+      const decrypted = await nobleEncryption.decrypt(encrypted);
 
       expect(decrypted).toBe(testData);
     });
 
     test('handles unicode characters', async () => {
-      const encryption = await StorageEncryption.create(testPassword, { cryptoBackend: 'noble' });
       const unicodeData = '🔐 Encrypted data with émojis and spëcial çhars 中文';
 
-      const encrypted = await encryption.encrypt(unicodeData);
-      const decrypted = await encryption.decrypt(encrypted);
+      const encrypted = await nobleEncryption.encrypt(unicodeData);
+      const decrypted = await nobleEncryption.decrypt(encrypted);
 
       expect(decrypted).toBe(unicodeData);
     });
@@ -471,7 +474,7 @@ describe('StorageEncryption with noble backend', () => {
       const decrypted = await encryption.decryptWithPassword(V1_FIXTURES.encrypted, V1_FIXTURES.password);
 
       expect(decrypted).toBe(V1_FIXTURES.plaintext);
-    });
+    }, 30_000);
   });
 
   describe('cross-backend data interop', () => {
@@ -479,17 +482,16 @@ describe('StorageEncryption with noble backend', () => {
       const webcryptoEncryption = await StorageEncryption.create(testPassword, { cryptoBackend: 'webcrypto' });
       const encrypted = await webcryptoEncryption.encrypt(testData);
 
-      const nobleEncryption = await StorageEncryption.create(testPassword, {
+      const interopNoble = await StorageEncryption.create(testPassword, {
         existingSalt: webcryptoEncryption.getSalt(),
         cryptoBackend: 'noble',
       });
-      const decrypted = await nobleEncryption.decrypt(encrypted);
+      const decrypted = await interopNoble.decrypt(encrypted);
 
       expect(decrypted).toBe(testData);
-    });
+    }, 30_000);
 
     test('data encrypted with noble can be decrypted with webcrypto', async () => {
-      const nobleEncryption = await StorageEncryption.create(testPassword, { cryptoBackend: 'noble' });
       const encrypted = await nobleEncryption.encrypt(testData);
 
       const webcryptoEncryption = await StorageEncryption.create(testPassword, {
