@@ -430,3 +430,75 @@ describe('StorageEncryption', () => {
     });
   });
 });
+
+describe('StorageEncryption with noble backend', () => {
+  const testPassword = 'Test-Password-123!';
+  const testData = 'sensitive data that needs encryption';
+
+  const V1_FIXTURES = {
+    password: 'Test-Password-123!',
+    plaintext: 'sensitive data for v1 migration test',
+    encrypted: 'AYse8BxWbiRb618I8CQKwLJoGyzx0zddBBQ3LORO2wBSgi/4kHm3CqznHcvmSNPw5Y0wW9XDhweunjM/zyq8cHVQYoS53gzsFYEae5imclcA03IJN2Rr5Gf+z1GNd5J5Vg==',
+    salt: '8b1ef01c566e245beb5f08f0240ac0b2681b2cf1d3375d0414372ce44edb0052',
+  };
+
+  describe('encrypt and decrypt', () => {
+    test('successfully encrypts and decrypts data', async () => {
+      const encryption = await StorageEncryption.create(testPassword, { cryptoBackend: 'noble' });
+
+      const encrypted = await encryption.encrypt(testData);
+      const decrypted = await encryption.decrypt(encrypted);
+
+      expect(decrypted).toBe(testData);
+    });
+
+    test('handles unicode characters', async () => {
+      const encryption = await StorageEncryption.create(testPassword, { cryptoBackend: 'noble' });
+      const unicodeData = '🔐 Encrypted data with émojis and spëcial çhars 中文';
+
+      const encrypted = await encryption.encrypt(unicodeData);
+      const decrypted = await encryption.decrypt(encrypted);
+
+      expect(decrypted).toBe(unicodeData);
+    });
+  });
+
+  describe('V1 backward compatibility', () => {
+    test('decrypts V1 encrypted data using decryptWithPassword', async () => {
+      const salt = Buffer.from(V1_FIXTURES.salt, 'hex');
+      const encryption = await StorageEncryption.create(V1_FIXTURES.password, { existingSalt: salt, cryptoBackend: 'noble' });
+
+      const decrypted = await encryption.decryptWithPassword(V1_FIXTURES.encrypted, V1_FIXTURES.password);
+
+      expect(decrypted).toBe(V1_FIXTURES.plaintext);
+    });
+  });
+
+  describe('cross-backend data interop', () => {
+    test('data encrypted with webcrypto can be decrypted with noble', async () => {
+      const webcryptoEncryption = await StorageEncryption.create(testPassword, { cryptoBackend: 'webcrypto' });
+      const encrypted = await webcryptoEncryption.encrypt(testData);
+
+      const nobleEncryption = await StorageEncryption.create(testPassword, {
+        existingSalt: webcryptoEncryption.getSalt(),
+        cryptoBackend: 'noble',
+      });
+      const decrypted = await nobleEncryption.decrypt(encrypted);
+
+      expect(decrypted).toBe(testData);
+    });
+
+    test('data encrypted with noble can be decrypted with webcrypto', async () => {
+      const nobleEncryption = await StorageEncryption.create(testPassword, { cryptoBackend: 'noble' });
+      const encrypted = await nobleEncryption.encrypt(testData);
+
+      const webcryptoEncryption = await StorageEncryption.create(testPassword, {
+        existingSalt: nobleEncryption.getSalt(),
+        cryptoBackend: 'webcrypto',
+      });
+      const decrypted = await webcryptoEncryption.decrypt(encrypted);
+
+      expect(decrypted).toBe(testData);
+    });
+  });
+});
