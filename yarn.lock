@@ -1890,7 +1890,6 @@ __metadata:
   resolution: "@midnight-ntwrk/midnight-js-contracts@workspace:packages/contracts"
   dependencies:
     "@fast-check/vitest": "npm:^0.3.0"
-    "@midnight-ntwrk/compact-js": "npm:2.5.0"
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
@@ -1904,7 +1903,6 @@ __metadata:
   resolution: "@midnight-ntwrk/midnight-js-dapp-connector-proof-provider@workspace:packages/dapp-connector-proof-provider"
   dependencies:
     "@midnight-ntwrk/dapp-connector-api": "npm:4.0.1"
-    "@midnight-ntwrk/ledger-v8": "npm:8.0.3"
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
   languageName: unknown
@@ -2068,9 +2066,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-types@workspace:packages/types"
   dependencies:
-    "@midnight-ntwrk/compact-js": "npm:2.5.0"
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
-    "@midnight-ntwrk/platform-js": "npm:2.2.4"
     rxjs: "npm:^7.5.0"
   languageName: unknown
   linkType: soft
@@ -2124,7 +2120,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/testkit-js-e2e@workspace:testkit-js/testkit-js-e2e"
   dependencies:
-    "@midnight-ntwrk/compact-js": "npm:2.5.0"
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*"
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*"
@@ -2157,8 +2152,6 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/testkit-js@workspace:testkit-js/testkit-js"
   dependencies:
-    "@midnight-ntwrk/compact-js": "npm:2.5.0"
-    "@midnight-ntwrk/ledger-v8": "npm:8.0.3"
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*"
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*"
