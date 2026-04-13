@@ -29,6 +29,7 @@
   "dependencies": {
     "@apollo/client": "^4.1.6",
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
+    "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
     "@midnight-ntwrk/midnight-js-utils": "workspace:*",
     "buffer": "^6.0.3",

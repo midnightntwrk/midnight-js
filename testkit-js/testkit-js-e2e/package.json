@@ -50,6 +50,7 @@
     "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "workspace:*",
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
     "@midnight-ntwrk/midnight-js-node-zk-config-provider": "workspace:*",
+    "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
     "@midnight-ntwrk/midnight-js-utils": "workspace:*",
     "@midnight-ntwrk/testkit-js": "workspace:*",

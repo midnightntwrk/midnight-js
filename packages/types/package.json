@@ -30,6 +30,7 @@
   ],
   "dependencies": {
     "@midnight-ntwrk/compact-js": "2.5.0",
+    "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
     "@midnight-ntwrk/platform-js": "2.2.4",
     "rxjs": "^7.5.0"
   }

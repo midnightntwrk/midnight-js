@@ -1892,6 +1892,7 @@ __metadata:
     "@fast-check/vitest": "npm:^0.3.0"
     "@midnight-ntwrk/compact-js": "npm:2.5.0"
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
+    "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     vitest: "npm:^4.1.2"
@@ -1904,6 +1905,7 @@ __metadata:
   dependencies:
     "@midnight-ntwrk/dapp-connector-api": "npm:4.0.1"
     "@midnight-ntwrk/ledger-v8": "npm:8.0.3"
+    "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
   languageName: unknown
   linkType: soft
@@ -1926,6 +1928,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*"
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
+    "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     "@types/lodash": "npm:^4.17.19"
@@ -1945,6 +1948,7 @@ __metadata:
     "@graphql-codegen/typescript": "npm:^5.0.0"
     "@graphql-codegen/typescript-operations": "npm:^5.0.8"
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
+    "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     "@types/ws": "npm:^8.18.0"
@@ -1962,6 +1966,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-level-private-state-provider@workspace:packages/level-private-state-provider"
   dependencies:
+    "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     abstract-level: "npm:^3.0.0"
     buffer: "npm:^6.0.3"
@@ -2042,11 +2047,29 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@midnight-ntwrk/midnight-js-protocol@workspace:*, @midnight-ntwrk/midnight-js-protocol@workspace:packages/protocol":
+  version: 0.0.0-use.local
+  resolution: "@midnight-ntwrk/midnight-js-protocol@workspace:packages/protocol"
+  dependencies:
+    "@midnight-ntwrk/compact-js": "npm:2.5.0"
+    "@midnight-ntwrk/compact-runtime": "npm:0.15.0"
+    "@midnight-ntwrk/ledger-v8": "npm:8.0.3"
+    "@midnight-ntwrk/onchain-runtime-v3": "npm:3.0.0"
+    "@midnight-ntwrk/platform-js": "npm:2.2.4"
+    "@rollup/plugin-typescript": "npm:^12.3.0"
+    rollup: "npm:^4.60.0"
+    rollup-plugin-dts: "npm:^6.4.1"
+    typescript: "npm:^6.0.2"
+    vitest: "npm:^4.1.2"
+  languageName: unknown
+  linkType: soft
+
 "@midnight-ntwrk/midnight-js-types@workspace:*, @midnight-ntwrk/midnight-js-types@workspace:packages/types":
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-types@workspace:packages/types"
   dependencies:
     "@midnight-ntwrk/compact-js": "npm:2.5.0"
+    "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@midnight-ntwrk/platform-js": "npm:2.2.4"
     rxjs: "npm:^7.5.0"
   languageName: unknown
@@ -2057,6 +2080,7 @@ __metadata:
   resolution: "@midnight-ntwrk/midnight-js-utils@workspace:packages/utils"
   dependencies:
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
+    "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@scure/base": "npm:^2.0.0"
     "@types/node": "npm:^24.0.0"
   languageName: unknown
@@ -2107,6 +2131,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "workspace:*"
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
     "@midnight-ntwrk/midnight-js-node-zk-config-provider": "workspace:*"
+    "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     "@midnight-ntwrk/testkit-js": "workspace:*"
@@ -2141,6 +2166,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-level-private-state-provider": "workspace:*"
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
     "@midnight-ntwrk/midnight-js-node-zk-config-provider": "workspace:*"
+    "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     "@midnight-ntwrk/wallet-sdk-hd": "npm:3.0.1"
