@@ -133,7 +133,7 @@ export default tseslint.config(
             },
             {
               group: ['@midnight-ntwrk/platform-js', '@midnight-ntwrk/platform-js/*'],
-              message: 'Import from @midnight-ntwrk/midnight-js-protocol/platform instead. Only packages/protocol/src/ may import from platform-js directly.'
+              message: 'Import from @midnight-ntwrk/midnight-js-protocol/platform-js instead. Only packages/protocol/src/ may import from platform-js directly.'
             }
           ]
         }

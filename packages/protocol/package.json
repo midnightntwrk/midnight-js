@@ -62,7 +62,7 @@
       "import": "./dist/onchain-runtime.mjs",
       "require": "./dist/onchain-runtime.cjs"
     },
-    "./platform": {
+    "./platform-js": {
       "types": {
         "import": "./dist/platform.d.mts",
         "require": "./dist/platform.d.cts"
@@ -70,7 +70,7 @@
       "import": "./dist/platform.mjs",
       "require": "./dist/platform.cjs"
     },
-    "./platform/effect/Configuration": {
+    "./platform-js/effect/Configuration": {
       "types": {
         "import": "./dist/platform-effect-configuration.d.mts",
         "require": "./dist/platform-effect-configuration.d.cts"
@@ -78,7 +78,7 @@
       "import": "./dist/platform-effect-configuration.mjs",
       "require": "./dist/platform-effect-configuration.cjs"
     },
-    "./platform/effect/ContractAddress": {
+    "./platform-js/effect/ContractAddress": {
       "types": {
         "import": "./dist/platform-effect-contract-address.d.mts",
         "require": "./dist/platform-effect-contract-address.d.cts"
