@@ -14,7 +14,8 @@
  */
 
 import { fc } from '@fast-check/vitest';
-import { type Recipient } from '@midnight-ntwrk/compact-runtime';
+import { getNetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { type Recipient } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
   type CoinPublicKey,
   createShieldedCoinInfo,
@@ -28,8 +29,7 @@ import {
   shieldedToken,
   Transaction,
   ZswapChainState,
-  ZswapOffer} from '@midnight-ntwrk/ledger-v8';
-import { getNetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+  ZswapOffer} from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
 import { beforeAll, expect } from 'vitest';

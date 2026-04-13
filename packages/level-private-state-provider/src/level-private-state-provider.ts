@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { ContractAddress, SigningKey } from '@midnight-ntwrk/compact-runtime';
+import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
   ExportDecryptionError,
   type ExportPrivateStatesOptions,

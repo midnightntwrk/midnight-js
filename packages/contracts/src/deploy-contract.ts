@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
-import { sampleSigningKey, type SigningKey } from '@midnight-ntwrk/compact-runtime';
-import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/ledger-v8';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import { sampleSigningKey, type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 
 import type { ContractConstructorOptionsWithArguments } from './call-constructor';

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { type Contract } from '@midnight-ntwrk/compact-js';
+import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { findDeployedContract, type FoundContract } from '../find-deployed-contract';

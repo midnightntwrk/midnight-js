@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { Contract } from '@midnight-ntwrk/compact-js';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 
 import { CompiledCounterClone } from '../contract';
 import { type CounterPrivateState, witnesses } from '../contract/witnesses';

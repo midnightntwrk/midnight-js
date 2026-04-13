@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-import { type Recipient, type ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
+import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { type Recipient, type ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
   type CoinPublicKey,
   type ContractAddress,
@@ -28,8 +29,7 @@ import {
   ZswapInput,
   ZswapOffer,
   ZswapOutput,
-  ZswapTransient} from '@midnight-ntwrk/ledger-v8';
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+  ZswapTransient} from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   assertDefined,
   assertIsContractAddress,

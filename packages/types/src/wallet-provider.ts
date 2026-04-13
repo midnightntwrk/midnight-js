@@ -17,7 +17,7 @@ import {
   type CoinPublicKey,
   type EncPublicKey,
   type FinalizedTransaction,
-} from '@midnight-ntwrk/ledger-v8';
+} from '@midnight-ntwrk/midnight-js-protocol/ledger';
 
 import { type UnboundTransaction } from './proof-provider';
 

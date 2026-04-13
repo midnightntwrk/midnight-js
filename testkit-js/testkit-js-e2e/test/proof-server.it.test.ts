@@ -13,7 +13,14 @@
  * limitations under the License.
  */
 
-import { sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
+import {
+  createUnprovenCallTxFromInitialStates,
+  createUnprovenDeployTxFromVerifierKeys
+} from '@midnight-ntwrk/midnight-js-contracts';
+import { DEFAULT_CONFIG, httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
+import { getNetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
+import { sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
   ContractCall,
   ContractDeploy,
@@ -25,14 +32,7 @@ import {
   type UnprovenTransaction,
   WellFormedStrictness,
   ZswapChainState
-} from '@midnight-ntwrk/ledger-v8';
-import {
-  createUnprovenCallTxFromInitialStates,
-  createUnprovenDeployTxFromVerifierKeys
-} from '@midnight-ntwrk/midnight-js-contracts';
-import { DEFAULT_CONFIG, httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
-import { getNetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
+} from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { ProofProvider } from '@midnight-ntwrk/midnight-js-types';
 import {
   createLogger,
