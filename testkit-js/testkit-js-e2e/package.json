@@ -65,7 +65,7 @@
     "allure-commandline": "^2.38.1",
     "allure-js-commons": "^3.6.0",
     "allure-vitest": "^3.6.0",
-    "axios": "^1.13.5",
+    "axios": "^1.15.0",
     "pino": "^10.0.0",
     "pino-pretty": "^13.0.0",
     "rxjs": "^7.8.2",
