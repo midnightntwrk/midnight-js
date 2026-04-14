@@ -21,7 +21,7 @@ import {
   type SignatureEnabled,
   type Transaction,
   type UnprovenTransaction
-} from '@midnight-ntwrk/ledger-v8';
+} from '@midnight-ntwrk/midnight-js-protocol/ledger';
 
 export type UnboundTransaction = Transaction<SignatureEnabled, Proof, PreBinding>;
 

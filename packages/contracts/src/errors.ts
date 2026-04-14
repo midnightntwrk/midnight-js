@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { ContractState } from '@midnight-ntwrk/compact-runtime';
+import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { AnyProvableCircuitId, FinalizedTxData, PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 
 interface EffectContractError {

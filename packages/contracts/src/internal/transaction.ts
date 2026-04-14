@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
-import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/ledger-v8';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import type { CoinPublicKey, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { ChargedState } from '@midnight-ntwrk/midnight-js-protocol/onchain-runtime';
 import { type AnyProvableCircuitId, type PrivateStateId, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import { ChargedState } from '@midnight-ntwrk/onchain-runtime-v3';
 
 import { type CallResult } from '../call';
 import { type ContractProviders } from '../contract-providers';

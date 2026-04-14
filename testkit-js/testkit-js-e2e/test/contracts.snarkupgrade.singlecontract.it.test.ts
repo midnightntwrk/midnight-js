@@ -13,8 +13,6 @@
  * limitations under the License.
  */
 
-import { sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
-import type { ContractAddress } from '@midnight-ntwrk/ledger-v8';
 import {
   createCircuitMaintenanceTxInterface,
   createCircuitMaintenanceTxInterfaces,
@@ -23,6 +21,8 @@ import {
   submitRemoveVerifierKeyTx,
   submitReplaceAuthorityTx
 } from '@midnight-ntwrk/midnight-js-contracts';
+import { sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { SucceedEntirely, type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import {
   createLogger,

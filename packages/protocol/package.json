@@ -1,0 +1,119 @@
+{
+  "name": "@midnight-ntwrk/midnight-js-protocol",
+  "version": "4.0.4",
+  "description": "Protocol type re-exports for midnight-js framework",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": {
+        "import": "./dist/index.d.mts",
+        "require": "./dist/index.d.cts"
+      },
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./ledger": {
+      "types": {
+        "import": "./dist/ledger.d.mts",
+        "require": "./dist/ledger.d.cts"
+      },
+      "import": "./dist/ledger.mjs",
+      "require": "./dist/ledger.cjs"
+    },
+    "./compact-runtime": {
+      "types": {
+        "import": "./dist/compact-runtime.d.mts",
+        "require": "./dist/compact-runtime.d.cts"
+      },
+      "import": "./dist/compact-runtime.mjs",
+      "require": "./dist/compact-runtime.cjs"
+    },
+    "./compact-js": {
+      "types": {
+        "import": "./dist/compact-js.d.mts",
+        "require": "./dist/compact-js.d.cts"
+      },
+      "import": "./dist/compact-js.mjs",
+      "require": "./dist/compact-js.cjs"
+    },
+    "./compact-js/effect": {
+      "types": {
+        "import": "./dist/compact-js-effect.d.mts",
+        "require": "./dist/compact-js-effect.d.cts"
+      },
+      "import": "./dist/compact-js-effect.mjs",
+      "require": "./dist/compact-js-effect.cjs"
+    },
+    "./compact-js/effect/Contract": {
+      "types": {
+        "import": "./dist/compact-js-effect-contract.d.mts",
+        "require": "./dist/compact-js-effect-contract.d.cts"
+      },
+      "import": "./dist/compact-js-effect-contract.mjs",
+      "require": "./dist/compact-js-effect-contract.cjs"
+    },
+    "./onchain-runtime": {
+      "types": {
+        "import": "./dist/onchain-runtime.d.mts",
+        "require": "./dist/onchain-runtime.d.cts"
+      },
+      "import": "./dist/onchain-runtime.mjs",
+      "require": "./dist/onchain-runtime.cjs"
+    },
+    "./platform-js": {
+      "types": {
+        "import": "./dist/platform.d.mts",
+        "require": "./dist/platform.d.cts"
+      },
+      "import": "./dist/platform.mjs",
+      "require": "./dist/platform.cjs"
+    },
+    "./platform-js/effect/Configuration": {
+      "types": {
+        "import": "./dist/platform-effect-configuration.d.mts",
+        "require": "./dist/platform-effect-configuration.d.cts"
+      },
+      "import": "./dist/platform-effect-configuration.mjs",
+      "require": "./dist/platform-effect-configuration.cjs"
+    },
+    "./platform-js/effect/ContractAddress": {
+      "types": {
+        "import": "./dist/platform-effect-contract-address.d.mts",
+        "require": "./dist/platform-effect-contract-address.d.cts"
+      },
+      "import": "./dist/platform-effect-contract-address.mjs",
+      "require": "./dist/platform-effect-contract-address.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "packageManager": "yarn@4.12.0",
+  "author": "IOHK",
+  "license": "Apache-2.0",
+  "scripts": {
+    "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
+    "build": "rollup -c rollup.config.mjs",
+    "lint": "eslint src/",
+    "deploy": "yarn npm publish --tolerate-republish"
+  },
+  "files": [
+    "dist/"
+  ],
+  "dependencies": {
+    "@midnight-ntwrk/compact-js": "2.5.0",
+    "@midnight-ntwrk/compact-runtime": "0.15.0",
+    "@midnight-ntwrk/ledger-v8": "8.0.3",
+    "@midnight-ntwrk/onchain-runtime-v3": "3.0.0",
+    "@midnight-ntwrk/platform-js": "2.2.4"
+  },
+  "devDependencies": {
+    "@rollup/plugin-typescript": "^12.3.0",
+    "rollup": "^4.60.0",
+    "rollup-plugin-dts": "^6.4.1",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.2"
+  }
+}

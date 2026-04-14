@@ -114,10 +114,46 @@ export default tseslint.config(
             {
               group: ['**/dist/**', './dist/**', '../dist/**'],
               message: 'Direct imports from dist folders are not allowed. Use source files instead.'
+            },
+            {
+              group: ['@midnight-ntwrk/ledger-v*'],
+              message: 'Import from @midnight-ntwrk/midnight-js-protocol/ledger instead. Only packages/protocol/src/ may import from ledger directly.'
+            },
+            {
+              group: ['@midnight-ntwrk/compact-runtime'],
+              message: 'Import from @midnight-ntwrk/midnight-js-protocol/compact-runtime instead. Only packages/protocol/src/ may import from compact-runtime directly.'
+            },
+            {
+              group: ['@midnight-ntwrk/compact-js', '@midnight-ntwrk/compact-js/*'],
+              message: 'Import from @midnight-ntwrk/midnight-js-protocol/compact-js instead. Only packages/protocol/src/ may import from compact-js directly.'
+            },
+            {
+              group: ['@midnight-ntwrk/onchain-runtime-v*'],
+              message: 'Import from @midnight-ntwrk/midnight-js-protocol/onchain-runtime instead. Only packages/protocol/src/ may import from onchain-runtime directly.'
+            },
+            {
+              group: ['@midnight-ntwrk/platform-js', '@midnight-ntwrk/platform-js/*'],
+              message: 'Import from @midnight-ntwrk/midnight-js-protocol/platform-js instead. Only packages/protocol/src/ may import from platform-js directly.'
             }
           ]
         }
       ],
+    }
+  },
+  {
+    files: ['packages/protocol/src/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/dist/**', './dist/**', '../dist/**'],
+              message: 'Direct imports from dist folders are not allowed. Use source files instead.'
+            }
+          ]
+        }
+      ]
     }
   },
   prettierConfig

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { CostModel } from '@midnight-ntwrk/ledger-v8';
+import type { CostModel } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { createProofProvider, type ProofProvider, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
 
 import { type DAppConnectorProvingAPI, dappConnectorProvingProvider } from './dapp-connector-proving-provider';

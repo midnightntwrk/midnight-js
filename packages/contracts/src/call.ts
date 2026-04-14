@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { CompiledContract  } from '@midnight-ntwrk/compact-js';
-import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
+import type { CompiledContract  } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import {
   type AlignedValue,
   type CoinPublicKey,
@@ -23,13 +23,13 @@ import {
   type Op,
   type StateValue,
   type ZswapLocalState
-} from '@midnight-ntwrk/compact-runtime';
+} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
   type EncPublicKey,
   type LedgerParameters,
   type PartitionedTranscript,
   type ZswapChainState
-} from '@midnight-ntwrk/ledger-v8';
+} from '@midnight-ntwrk/midnight-js-protocol/ledger';
 
 /**
  * Describes the target of a circuit invocation.

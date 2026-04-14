@@ -19,7 +19,7 @@ import { HttpLink } from '@apollo/client/link/http';
 import { RetryLink } from '@apollo/client/link/retry';
 import { GraphQLWsLink } from '@apollo/client/link/subscriptions';
 import { getMainDefinition } from '@apollo/client/utilities';
-import { ContractState } from '@midnight-ntwrk/compact-runtime';
+import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
   type Binding,
   type ContractAddress,
@@ -28,8 +28,8 @@ import {
   type RawTokenType,
   type SignatureEnabled,
   type TransactionId
-} from '@midnight-ntwrk/ledger-v8';
-import { LedgerParameters,Transaction as LedgerTransaction, ZswapChainState } from '@midnight-ntwrk/ledger-v8';
+} from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { LedgerParameters,Transaction as LedgerTransaction, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type {
   BlockHashConfig,
   BlockHeightConfig,

@@ -14,13 +14,6 @@
  */
 
 import {
-  ContractState,
-  decodeZswapLocalState,
-  emptyZswapLocalState,
-  sampleSigningKey
-} from '@midnight-ntwrk/compact-runtime';
-import { type ContractAddress, LedgerParameters, ZswapChainState } from '@midnight-ntwrk/ledger-v8';
-import {
   ContractTypeError,
   createCircuitCallTxInterface,
   createUnprovenCallTxFromInitialStates,
@@ -31,6 +24,13 @@ import {
   submitCallTx,
   submitDeployTx} from '@midnight-ntwrk/midnight-js-contracts';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import {
+  ContractState,
+  decodeZswapLocalState,
+  emptyZswapLocalState,
+  sampleSigningKey
+} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { type ContractAddress, LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import type {

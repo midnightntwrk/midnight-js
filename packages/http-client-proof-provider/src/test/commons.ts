@@ -16,13 +16,15 @@
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { CompiledContract } from '@midnight-ntwrk/compact-js';
-import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
+import { createUnprovenCallTxFromInitialStates, createUnprovenDeployTxFromVerifierKeys } from '@midnight-ntwrk/midnight-js-contracts';
+import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import {
   type CoinPublicKey,
   createConstructorContext,
   emptyZswapLocalState,
-  sampleSigningKey} from '@midnight-ntwrk/compact-runtime';
+  sampleSigningKey} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
   LedgerParameters,
   sampleCoinPublicKey,
@@ -30,9 +32,7 @@ import {
   sampleEncryptionPublicKey,
   type UnprovenTransaction,
   ZswapChainState
-} from '@midnight-ntwrk/ledger-v8';
-import { createUnprovenCallTxFromInitialStates, createUnprovenDeployTxFromVerifierKeys } from '@midnight-ntwrk/midnight-js-contracts';
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+} from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { createProverKey,
   createVerifierKey,
   createZKIR,

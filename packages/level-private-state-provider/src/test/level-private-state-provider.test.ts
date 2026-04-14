@@ -16,7 +16,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
-import { type ContractAddress, sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
+import { type ContractAddress, sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
   ExportDecryptionError,
   ImportConflictError,
