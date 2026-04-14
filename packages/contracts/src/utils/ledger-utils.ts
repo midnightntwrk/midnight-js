@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-import { type CompiledContract, ContractExecutable } from '@midnight-ntwrk/compact-js';
-import { type Contract, ProvableCircuitId, VerifierKey as ContractVerifierKey } from '@midnight-ntwrk/compact-js/effect/Contract';
+import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { type CompiledContract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import { type Contract, ProvableCircuitId, VerifierKey as ContractVerifierKey } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import {
   type AlignedValue,
   type CoinPublicKey,
@@ -22,7 +23,7 @@ import {
   ContractState,
   type QueryContext,
   type SigningKey,
-  type ZswapLocalState} from '@midnight-ntwrk/compact-runtime';
+  type ZswapLocalState} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
   ChargedState,
   communicationCommitmentRandomness,
@@ -40,8 +41,7 @@ import {
   UnshieldedOffer,
   type UtxoOutput,
   type ZswapChainState
-} from '@midnight-ntwrk/ledger-v8';
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+} from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type AnyProvableCircuitId,
   asContractAddress,
@@ -53,7 +53,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
 
-import { zswapStateToOffer } from './zswap-utils';
+import { type EncryptionPublicKeyResolver, zswapStateToOffer } from './zswap-utils';
 
 export const toLedgerContractState = (contractState: ContractState): LedgerContractState =>
   LedgerContractState.deserialize(contractState.serialize());
@@ -73,7 +73,7 @@ export const toLedgerQueryContext = (queryContext: QueryContext): LedgerQueryCon
 export const createUnprovenLedgerDeployTx = (
   contractState: ContractState,
   zswapLocalState: ZswapLocalState,
-  encryptionPublicKey: EncPublicKey
+  encryptionPublicKey: EncPublicKey | EncryptionPublicKeyResolver
 ): [ContractAddress, ContractState, UnprovenTransaction] => {
   const contractDeploy = new ContractDeploy(toLedgerContractState(contractState));
   return [
@@ -116,7 +116,7 @@ export const createUnprovenLedgerCallTx = (
   input: AlignedValue,
   output: AlignedValue,
   nextZswapLocalState: ZswapLocalState,
-  encryptionPublicKey: EncPublicKey
+  encryptionPublicKey: EncPublicKey | EncryptionPublicKeyResolver
 ): UnprovenTransaction => {
   const op = toLedgerContractState(initialContractState).operation(circuitId);
   assertDefined(op, `Operation '${circuitId}' is undefined for contract state ${initialContractState.toString(false)}`);

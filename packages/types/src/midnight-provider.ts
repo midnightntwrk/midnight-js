@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { FinalizedTransaction, TransactionId } from '@midnight-ntwrk/ledger-v8';
+import type { FinalizedTransaction, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 
 /**
  * Interface for Midnight transaction submission logic. It could be implemented, e.g., by a wallet,

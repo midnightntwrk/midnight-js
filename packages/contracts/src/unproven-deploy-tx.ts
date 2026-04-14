@@ -13,11 +13,11 @@
  * limitations under the License.
  */
 
-import { ContractExecutable } from '@midnight-ntwrk/compact-js';
-import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
-import type { CoinPublicKey,SigningKey } from '@midnight-ntwrk/compact-runtime';
-import type { EncPublicKey } from '@midnight-ntwrk/ledger-v8';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import type { CoinPublicKey,SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   exitResultOrError,
   makeContractExecutableRuntime,
@@ -30,12 +30,19 @@ import type { ContractConstructorOptionsWithArguments } from './call-constructor
 import { type ContractProviders } from './contract-providers';
 import { isEffectContractError } from './errors';
 import type { UnsubmittedDeployTxData } from './tx-model';
-import { createUnprovenLedgerDeployTx, zswapStateToNewCoins } from './utils';
+import { createEncryptionPublicKeyResolver, createUnprovenLedgerDeployTx, zswapStateToNewCoins } from './utils';
 
 /**
  * Base type for deploy transaction configuration.
  */
 export type DeployTxOptionsBase<C extends Contract.Any> = ContractConstructorOptionsWithArguments<C> & {
+  /**
+   * An optional mapping of {@link CoinPublicKey} to {@link EncPublicKey} that can be used to resolve encryption
+   * keys for coins created in the contract constructor. This is useful in cases where the constructor creates
+   * outputs to addresses that don't belong to the current user.
+   */
+  readonly additionalCoinEncPublicKeyMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>;
+
   /**
    * The signing key to add as the to-be-deployed contract's maintenance authority.
    */
@@ -121,10 +128,11 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
         zswapLocalState
       }
     } = exitResultOrError(exitResult);
+    const resolver = createEncryptionPublicKeyResolver(coinPublicKey, encryptionPublicKey, options.additionalCoinEncPublicKeyMappings);
     const [contractAddress, initialContractState, unprovenTx] = createUnprovenLedgerDeployTx(
       contractState,
       zswapLocalState,
-      encryptionPublicKey
+      resolver
     );
 
     return {

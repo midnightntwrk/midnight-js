@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-import { type ContractAddress } from '@midnight-ntwrk/ledger-v8';
 import {
   createUnprovenCallTx,
   type FinalizedDeployTxData,
   submitTx
 } from '@midnight-ntwrk/midnight-js-contracts';
+import { type ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { FailEntirely, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import type {
   EnvironmentConfiguration,

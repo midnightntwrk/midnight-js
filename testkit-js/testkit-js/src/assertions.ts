@@ -13,9 +13,6 @@
  * limitations under the License.
  */
 
-import type { Contract } from '@midnight-ntwrk/compact-js';
-import type { StateValue } from '@midnight-ntwrk/compact-runtime';
-import type { Bindingish, Proofish, Signaturish, Transaction } from '@midnight-ntwrk/ledger-v8';
 import type {
   CallTxOptions,
   DeployContractOptions,
@@ -24,6 +21,9 @@ import type {
   FinalizedDeployTxData,
   FinalizedDeployTxDataBase
 } from '@midnight-ntwrk/midnight-js-contracts';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import type { StateValue } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { Bindingish, Proofish, Signaturish, Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type FinalizedTxData,
   type MidnightProviders,

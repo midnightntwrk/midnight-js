@@ -7,7 +7,7 @@
 ## Breaking Changes
 
 ### Ledger v7 to v8 Migration (#607)
-All ledger imports have been upgraded from `@midnight-ntwrk/ledger-v7` to `@midnight-ntwrk/ledger-v8`. The concept of "impure circuits" has been renamed to "provable circuits" throughout the SDK.
+All ledger imports have been upgraded from `@midnight-ntwrk/ledger-v7` to `@midnight-ntwrk/ledger-v8`. The concept of "impure circuits" has been renamed to "provable circuits" throughout the framework.
 
 - **Before:** `Contract.ImpureCircuitId<C>`
 - **After:** `Contract.ProvableCircuitId<C>`
@@ -88,7 +88,7 @@ const result = await createUnprovenCallTxFromInitialStates(
 ```
 
 ### Ledger v8 Support (#607)
-The SDK now targets ledger v8, bringing support for provable circuits (renamed from impure circuits) and updated indexer v4 compatibility. All contract compilation outputs have been regenerated for ledger v8 compatibility.
+The framework now targets ledger v8, bringing support for provable circuits (renamed from impure circuits) and updated indexer v4 compatibility. All contract compilation outputs have been regenerated for ledger v8 compatibility.
 
 ### `createProofProvider` Factory Function (#636)
 A new `createProofProvider` utility is exported from `@midnight-ntwrk/midnight-js-types` that creates a `ProofProvider` from a `ProvingProvider`. This simplifies proof provider setup by wrapping the underlying proving provider with an optional cost model.

@@ -39,7 +39,7 @@ describe('Fetch ZK config Provider', () => {
       res.send(verifierKey);
     });
     app.get('/zkir/set_topic.bzkir', (_, res) => {
-      res.send(zkir);
+      res.type('application/octet-stream').send(zkir);
     });
     server = app.listen();
     const serverAddress = server.address();
@@ -81,5 +81,73 @@ describe('Fetch ZK config Provider', () => {
 
   test('throws on invalid url', () => {
     expect(() => new FetchZkConfigProvider('ws://localhost:5000')).toThrow(/^Invalid protocol scheme: 'ws:'/);
+  });
+
+  describe('rejects HTML responses from SPA fallback', () => {
+    let spaServer: Server;
+    let spaServerURL: string;
+
+    beforeAll(() => {
+      const app = express();
+      app.use((_, res) => {
+        res.type('text/html').send('<html><body>SPA fallback</body></html>');
+      });
+      spaServer = app.listen();
+      const addr = spaServer.address();
+      if (addr === null) {
+        throw new Error('Expected server address to be defined');
+      } else if (typeof addr === 'object') {
+        spaServerURL = `http://localhost:${addr.port}`;
+      }
+    });
+
+    afterAll(() => {
+      spaServer.close();
+    });
+
+    test('rejects HTML response when fetching prover key', async () => {
+      const provider = new FetchZkConfigProvider(spaServerURL);
+      await expect(provider.getProverKey('nonexistent')).rejects.toThrow(/text\/html/);
+      await expect(provider.getProverKey('nonexistent')).rejects.toThrow(/nonexistent/);
+    });
+
+    test('rejects HTML response when fetching verifier key', async () => {
+      const provider = new FetchZkConfigProvider(spaServerURL);
+      await expect(provider.getVerifierKey('nonexistent')).rejects.toThrow(/text\/html/);
+    });
+
+    test('rejects HTML response when fetching ZKIR', async () => {
+      const provider = new FetchZkConfigProvider(spaServerURL);
+      await expect(provider.getZKIR('nonexistent')).rejects.toThrow(/text\/html/);
+    });
+  });
+
+  describe('includes URL and status in error for failed requests', () => {
+    let errorServer: Server;
+    let errorServerURL: string;
+
+    beforeAll(() => {
+      const app = express();
+      app.use((_, res) => {
+        res.status(404).send('Not Found');
+      });
+      errorServer = app.listen();
+      const addr = errorServer.address();
+      if (addr === null) {
+        throw new Error('Expected server address to be defined');
+      } else if (typeof addr === 'object') {
+        errorServerURL = `http://localhost:${addr.port}`;
+      }
+    });
+
+    afterAll(() => {
+      errorServer.close();
+    });
+
+    test('error includes URL and status code for non-ok response', async () => {
+      const provider = new FetchZkConfigProvider(errorServerURL);
+      await expect(provider.getProverKey('missing_circuit')).rejects.toThrow(/missing_circuit/);
+      await expect(provider.getProverKey('missing_circuit')).rejects.toThrow(/404/);
+    });
   });
 });

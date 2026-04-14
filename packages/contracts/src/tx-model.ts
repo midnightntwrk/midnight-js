@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { type Contract } from '@midnight-ntwrk/compact-js';
-import type { ContractAddress, ContractState, SigningKey,ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
-import { type ShieldedCoinInfo, type UnprovenTransaction } from '@midnight-ntwrk/ledger-v8';
+import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import type { ContractAddress, ContractState, SigningKey,ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { type ShieldedCoinInfo, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type {
   FinalizedTxData
 } from '@midnight-ntwrk/midnight-js-types';
