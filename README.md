@@ -12,7 +12,7 @@ TypeScript application development framework for the Midnight blockchain. Simila
 ## Installation
 
 ```bash
-yarn add @midnight-ntwrk/midnight-js-contracts @midnight-ntwrk/midnight-js-types
+yarn add @midnight-ntwrk/midnight-js-contracts @midnight-ntwrk/midnight-js-protocol
 ```
 
 ## Quick Start
@@ -82,6 +82,7 @@ const result = await deployed.callTx.increment();
 | [@midnight-ntwrk/midnight-js-network-id](packages/network-id) | Network identifier management |
 | [@midnight-ntwrk/midnight-js-logger-provider](packages/logger-provider) | Pino logger wrapper for diagnostics |
 | [@midnight-ntwrk/midnight-js-compact](packages/compact) | Compact compiler manager |
+| [@midnight-ntwrk/midnight-js-protocol](packages/protocol) | Version-agnostic re-exports of Midnight protocol packages |
 | [@midnight-ntwrk/midnight-js-utils](packages/utils) | General utility functions |
 
 ## Architecture

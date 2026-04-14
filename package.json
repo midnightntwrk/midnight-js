@@ -83,7 +83,7 @@
     "vitest": "^4.1.2"
   },
   "lint-staged": {
-    "*.ts": "eslint --cache --fix"
+    "*.ts": "eslint --cache"
   },
   "resolutions": {
     "effect": "3.19.15",
