@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { ContractExecutable } from '@midnight-ntwrk/compact-js';
-import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
+import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type CallResult } from './call';

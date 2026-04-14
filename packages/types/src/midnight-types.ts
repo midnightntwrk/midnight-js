@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { Contract } from '@midnight-ntwrk/compact-js';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import {
   type Binding,
   type ContractAddress,
@@ -24,7 +24,7 @@ import {
   type Transaction,
   type TransactionHash,
   type TransactionId,
-} from '@midnight-ntwrk/ledger-v8';
+} from '@midnight-ntwrk/midnight-js-protocol/ledger';
 
 export type AnyProvableCircuitId = Contract.ProvableCircuitId<Contract.Any>;
 

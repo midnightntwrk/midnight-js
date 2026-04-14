@@ -26,6 +26,7 @@
     "deploy": "yarn npm publish --tolerate-republish"
   },
   "dependencies": {
+    "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
     "abstract-level": "^3.0.0",
     "buffer": "^6.0.3",

@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
-import { LedgerParameters } from '@midnight-ntwrk/ledger-v8';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { AnyPrivateState, AnyProvableCircuitId, PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it } from 'vitest';
 

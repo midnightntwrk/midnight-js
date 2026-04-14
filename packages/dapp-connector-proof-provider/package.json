@@ -30,9 +30,7 @@
   ],
   "dependencies": {
     "@midnight-ntwrk/dapp-connector-api": "4.0.1",
+    "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
-  },
-  "devDependencies": {
-    "@midnight-ntwrk/ledger-v8": "8.0.3"
   }
 }

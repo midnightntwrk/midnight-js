@@ -13,13 +13,14 @@
  * limitations under the License.
  */
 
+import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   type AlignedValue,
   ContractOperation,
   ContractState as CompactContractState,
   createCircuitContext,
   QueryContext
-} from '@midnight-ntwrk/compact-runtime';
+} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
   feeToken,
   Intent,
@@ -39,8 +40,7 @@ import {
   unshieldedToken,
   type UtxoOutput,
   ZswapChainState
-} from '@midnight-ntwrk/ledger-v8';
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+} from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
 import { beforeAll } from 'vitest';

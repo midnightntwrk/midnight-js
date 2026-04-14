@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import { type CompiledContract, ContractExecutable } from '@midnight-ntwrk/compact-js';
-import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
-import type { SigningKey } from '@midnight-ntwrk/compact-runtime';
-import type { CoinPublicKey, ContractAddress, EncPublicKey } from '@midnight-ntwrk/ledger-v8';
+import { type CompiledContract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { CoinPublicKey, ContractAddress, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type FinalizedTxData,
   type PrivateStateId,

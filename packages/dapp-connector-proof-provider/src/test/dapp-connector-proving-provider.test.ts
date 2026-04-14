@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { ProvingProvider } from '@midnight-ntwrk/ledger-v8';
+import type { ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { KeyMaterialProvider, ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 

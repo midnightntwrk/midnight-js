@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { type Contract } from '@midnight-ntwrk/compact-js';
+import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 
 import { type ContractProviders } from './contract-providers';

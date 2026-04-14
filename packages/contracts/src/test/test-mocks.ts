@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { CompiledContract } from '@midnight-ntwrk/compact-js';
-import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
+import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import {
   assert as compactAssert,
   ChargedState,
@@ -24,7 +24,7 @@ import {
   sampleSigningKey,
   type SigningKey,
   StateValue,
-  type ZswapLocalState} from '@midnight-ntwrk/compact-runtime';
+  type ZswapLocalState} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
   type AlignedValue,
   type Binding,
@@ -49,7 +49,7 @@ import {
   type UnprovenTransaction,
   type ZswapChainState,
   type ZswapSecretKeys,
-} from '@midnight-ntwrk/ledger-v8';
+} from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type AnyPrivateState,
   type AnyProvableCircuitId,

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { CostModel, ProvingProvider, UnprovenTransaction } from '@midnight-ntwrk/ledger-v8';
+import type { CostModel, ProvingProvider, UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { KeyMaterialProvider, UnboundTransaction, ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 

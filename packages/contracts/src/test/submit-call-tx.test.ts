@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { type CompiledContract, type Contract } from '@midnight-ntwrk/compact-js';
-import { StateValue } from '@midnight-ntwrk/compact-runtime';
-import { type AlignedValue, type ContractAddress, type IntentHash, type PartitionedTranscript, type RawTokenType } from '@midnight-ntwrk/ledger-v8';
+import { type CompiledContract, type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import { StateValue } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { type AlignedValue, type ContractAddress, type IntentHash, type PartitionedTranscript, type RawTokenType } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type AnyPrivateState,
   type AnyProvableCircuitId,

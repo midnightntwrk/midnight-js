@@ -14,12 +14,9 @@
  */
 
 import { Buffer } from 'buffer';
-import { createCipheriv, createDecipheriv, createHash, pbkdf2Sync, randomBytes } from 'crypto';
-import * as crypto from 'crypto';
 
 export type PrivateStoragePasswordProvider = () => string | Promise<string>;
 
-const ALGORITHM = 'aes-256-gcm';
 const KEY_LENGTH = 32;
 const IV_LENGTH = 12;
 const AUTH_TAG_LENGTH = 16;
@@ -33,8 +30,87 @@ const CURRENT_ENCRYPTION_VERSION = ENCRYPTION_VERSION_V2;
 const VERSION_PREFIX_LENGTH = 1;
 const HEADER_LENGTH = VERSION_PREFIX_LENGTH + SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH;
 
-const HAS_NATIVE_TIMINGSAFEEQUAL =
-  'timingSafeEqual' in crypto && typeof crypto.timingSafeEqual === 'function';
+export const assertWebCryptoAvailable = (): void => {
+  if (typeof globalThis.crypto === 'undefined') {
+    throw new Error(
+      'Web Crypto API is not available. Ensure you are running in Node.js >= 15 or a browser with Web Crypto support.'
+    );
+  }
+  if (typeof globalThis.crypto.subtle === 'undefined') {
+    throw new Error(
+      'Web Crypto subtle API is not available. In browsers, this requires a secure context (HTTPS or localhost).'
+    );
+  }
+};
+
+const getRandomBytes = (length: number): Uint8Array => {
+  return globalThis.crypto.getRandomValues(new Uint8Array(length));
+};
+
+const sha256 = async (data: Uint8Array): Promise<Uint8Array> => {
+  const hashBuffer = await globalThis.crypto.subtle.digest('SHA-256', data);
+  return new Uint8Array(hashBuffer);
+};
+
+const pbkdf2 = async (
+  password: Uint8Array,
+  salt: Uint8Array,
+  iterations: number,
+  keyLength: number
+): Promise<Uint8Array> => {
+  const baseKey = await globalThis.crypto.subtle.importKey(
+    'raw',
+    password,
+    'PBKDF2',
+    false,
+    ['deriveBits']
+  );
+  const derived = await globalThis.crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
+    baseKey,
+    keyLength * 8
+  );
+  return new Uint8Array(derived);
+};
+
+const aesGcmEncrypt = async (
+  key: Uint8Array,
+  iv: Uint8Array,
+  plaintext: Uint8Array
+): Promise<{ ciphertext: Uint8Array; authTag: Uint8Array }> => {
+  const cryptoKey = await globalThis.crypto.subtle.importKey(
+    'raw', key, 'AES-GCM', false, ['encrypt']
+  );
+  const result = await globalThis.crypto.subtle.encrypt(
+    { name: 'AES-GCM', iv, tagLength: AUTH_TAG_LENGTH * 8 },
+    cryptoKey,
+    plaintext
+  );
+  const resultBytes = new Uint8Array(result);
+  const ciphertext = resultBytes.slice(0, resultBytes.length - AUTH_TAG_LENGTH);
+  const authTag = resultBytes.slice(resultBytes.length - AUTH_TAG_LENGTH);
+  return { ciphertext, authTag };
+};
+
+const aesGcmDecrypt = async (
+  key: Uint8Array,
+  iv: Uint8Array,
+  ciphertext: Uint8Array,
+  authTag: Uint8Array
+): Promise<Uint8Array> => {
+  const cryptoKey = await globalThis.crypto.subtle.importKey(
+    'raw', key, 'AES-GCM', false, ['decrypt']
+  );
+  const combined = new Uint8Array(ciphertext.length + authTag.length);
+  combined.set(ciphertext, 0);
+  combined.set(authTag, ciphertext.length);
+  const result = await globalThis.crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv, tagLength: AUTH_TAG_LENGTH * 8 },
+    cryptoKey,
+    combined
+  );
+  return new Uint8Array(result);
+};
 
 interface EncryptedComponents {
   version: number;
@@ -77,8 +153,10 @@ const getIterationsForVersion = (version: number): number => {
   }
 };
 
-const hashPassword = (password: string): string => {
-  return createHash('sha256').update(password).digest('hex');
+const hashPassword = async (password: string): Promise<string> => {
+  const data = new TextEncoder().encode(password);
+  const hash = await sha256(data);
+  return Buffer.from(hash).toString('hex');
 };
 
 const constantTimeBufferEqual = (aBuf: Buffer, bBuf: Buffer): boolean => {
@@ -98,7 +176,7 @@ const constantTimeBufferEqual = (aBuf: Buffer, bBuf: Buffer): boolean => {
  * @param a - First buffer to compare.
  * @param b - Second buffer to compare.
  * @returns `true` if the buffers are equal, `false` otherwise.
- * 
+ *
  * @remarks
  * If the inputs differ in length, an error is thrown (not constant-time for length mismatch).
  * This matches the Node.js native timingSafeEqual behavior (which throws on length mismatch).
@@ -109,50 +187,48 @@ const constantTimeBufferEqual = (aBuf: Buffer, bBuf: Buffer): boolean => {
 export const timingSafeEqual = (a: Buffer | Uint8Array, b: Buffer | Uint8Array): boolean => {
   const aBuf = Buffer.isBuffer(a) ? a : Buffer.from(a);
   const bBuf = Buffer.isBuffer(b) ? b : Buffer.from(b);
-  if (HAS_NATIVE_TIMINGSAFEEQUAL) {
-    // Use the native `timingSafeEqual` function and let any errors propagate.
-    return crypto.timingSafeEqual(aBuf, bBuf);
-  }
   return constantTimeBufferEqual(aBuf, bBuf);
 };
 
 
 export class StorageEncryption {
-  private readonly encryptionKey: Buffer;
-  private readonly salt: Buffer;
+  private readonly encryptionKey: Uint8Array;
+  private readonly salt: Uint8Array;
   private readonly passwordHash: string;
 
-  constructor(password: string, existingSalt?: Buffer) {
-    this.salt = existingSalt ?? randomBytes(SALT_LENGTH);
-    this.encryptionKey = this.deriveKey(password, this.salt, PBKDF2_ITERATIONS_V2);
-    this.passwordHash = hashPassword(password);
+  private constructor(encryptionKey: Uint8Array, salt: Uint8Array, passwordHash: string) {
+    this.encryptionKey = encryptionKey;
+    this.salt = salt;
+    this.passwordHash = passwordHash;
   }
 
-  private deriveKey(password: string, salt: Buffer, iterations: number): Buffer {
-    return pbkdf2Sync(password, salt, iterations, KEY_LENGTH, 'sha256');
+  static async create(password: string, existingSalt?: Buffer | Uint8Array): Promise<StorageEncryption> {
+    assertWebCryptoAvailable();
+    const salt = existingSalt ? new Uint8Array(existingSalt) : getRandomBytes(SALT_LENGTH);
+    const passwordBytes = new TextEncoder().encode(password);
+    const encryptionKey = await pbkdf2(passwordBytes, salt, PBKDF2_ITERATIONS_V2, KEY_LENGTH);
+    const passwordHash = await hashPassword(password);
+    return new StorageEncryption(encryptionKey, salt, passwordHash);
   }
 
-  verifyPassword(password: string): boolean {
-    const inputHash = Buffer.from(hashPassword(password), 'hex');
+  async verifyPassword(password: string): Promise<boolean> {
+    const inputHash = Buffer.from(await hashPassword(password), 'hex');
     const storedHash = Buffer.from(this.passwordHash, 'hex');
     return timingSafeEqual(inputHash, storedHash);
   }
 
-  encrypt(data: string): string {
-    const plaintext = Buffer.from(data, 'utf-8');
-    const iv = randomBytes(IV_LENGTH);
-    const cipher = createCipheriv(ALGORITHM, this.encryptionKey, iv);
+  async encrypt(data: string): Promise<string> {
+    const plaintext = new TextEncoder().encode(data);
+    const iv = getRandomBytes(IV_LENGTH);
+    const { ciphertext, authTag } = await aesGcmEncrypt(this.encryptionKey, iv, plaintext);
 
-    const encrypted = Buffer.concat([cipher.update(plaintext), cipher.final()]);
-    const authTag = cipher.getAuthTag();
-
-    const version = Buffer.from([CURRENT_ENCRYPTION_VERSION]);
-    const result = Buffer.concat([version, this.salt, iv, authTag, encrypted]);
+    const version = new Uint8Array([CURRENT_ENCRYPTION_VERSION]);
+    const result = Buffer.concat([version, this.salt, iv, authTag, ciphertext]);
 
     return result.toString('base64');
   }
 
-  decrypt(encryptedData: string): string {
+  async decrypt(encryptedData: string): Promise<string> {
     const data = Buffer.from(encryptedData, 'base64');
     const { version, salt, iv, authTag, encrypted } = extractEncryptedComponents(data);
 
@@ -160,35 +236,33 @@ export class StorageEncryption {
       throw new Error('V1 encrypted data requires password for decryption. Use decryptWithPassword() instead.');
     }
 
-    if (!this.salt.equals(salt)) {
+    if (!timingSafeEqual(Buffer.from(this.salt), salt)) {
       throw new Error('Salt mismatch: data was encrypted with a different password');
     }
 
-    const decipher = createDecipheriv(ALGORITHM, this.encryptionKey, iv, { authTagLength: AUTH_TAG_LENGTH });
-    decipher.setAuthTag(authTag);
-
-    const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
-    return decrypted.toString('utf-8');
+    const decrypted = await aesGcmDecrypt(this.encryptionKey, iv, encrypted, authTag);
+    return Buffer.from(decrypted).toString('utf-8');
   }
 
-  decryptWithPassword(encryptedData: string, password: string): string {
+  async decryptWithPassword(encryptedData: string, password: string): Promise<string> {
     const data = Buffer.from(encryptedData, 'base64');
     const { version, salt, iv, authTag, encrypted } = extractEncryptedComponents(data);
 
-    if (!this.salt.equals(salt)) {
+    if (!timingSafeEqual(Buffer.from(this.salt), salt)) {
       throw new Error('Salt mismatch: data was encrypted with a different password');
     }
 
     const iterations = getIterationsForVersion(version);
-    const decryptionKey = version === CURRENT_ENCRYPTION_VERSION
-      ? this.encryptionKey
-      : this.deriveKey(password, salt, iterations);
+    let decryptionKey: Uint8Array;
+    if (version === CURRENT_ENCRYPTION_VERSION) {
+      decryptionKey = this.encryptionKey;
+    } else {
+      const passwordBytes = new TextEncoder().encode(password);
+      decryptionKey = await pbkdf2(passwordBytes, salt, iterations, KEY_LENGTH);
+    }
 
-    const decipher = createDecipheriv(ALGORITHM, decryptionKey, iv, { authTagLength: AUTH_TAG_LENGTH });
-    decipher.setAuthTag(authTag);
-
-    const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
-    return decrypted.toString('utf-8');
+    const decrypted = await aesGcmDecrypt(decryptionKey, iv, encrypted, authTag);
+    return Buffer.from(decrypted).toString('utf-8');
   }
 
   static isEncrypted(data: string): boolean {
@@ -211,7 +285,7 @@ export class StorageEncryption {
   }
 
   getSalt(): Buffer {
-    return this.salt;
+    return Buffer.from(this.salt);
   }
 }
 
@@ -315,11 +389,11 @@ export const getPasswordFromProvider = async (provider: PrivateStoragePasswordPr
   return password;
 };
 
-export const decryptValue = (
+export const decryptValue = async (
   encryptedValue: string,
   encryption: StorageEncryption,
   password: string
-): string => {
+): Promise<string> => {
   if (!StorageEncryption.isEncrypted(encryptedValue)) {
     console.debug('MIDNIGHT: Encountered unencrypted data during decryption - passing through as-is');
     return encryptedValue;

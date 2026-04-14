@@ -6,7 +6,7 @@
 
 # Function: decryptValue()
 
-> **decryptValue**(`encryptedValue`, `encryption`, `password`): `string`
+> **decryptValue**(`encryptedValue`, `encryption`, `password`): `Promise`\<`string`\>
 
 ## Parameters
 
@@ -24,4 +24,4 @@
 
 ## Returns
 
-`string`
+`Promise`\<`string`\>

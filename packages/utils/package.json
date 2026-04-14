@@ -29,7 +29,8 @@
     "dist/"
   ],
   "dependencies": {
-    "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
+    "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
+    "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.0.0"
