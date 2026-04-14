@@ -12,7 +12,7 @@ TypeScript application development framework for the Midnight blockchain. Simila
 ## Installation
 
 ```bash
-yarn add @midnight-ntwrk/midnight-js-contracts @midnight-ntwrk/midnight-js-protocol
+yarn add @midnight-ntwrk/midnight-js
 ```
 
 ## Quick Start
