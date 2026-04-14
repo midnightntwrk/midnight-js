@@ -28,6 +28,8 @@
   "dependencies": {
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
+    "@noble/ciphers": "^2.0.0",
+    "@noble/hashes": "^2.0.0",
     "abstract-level": "^3.0.0",
     "buffer": "^6.0.3",
     "fp-ts": "^2.16.1",
