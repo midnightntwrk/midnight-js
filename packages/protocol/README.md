@@ -1,9 +1,3 @@
-[**Midnight.js API Reference v4.0.4**](../../README.md)
-
-***
-
-[Midnight.js API Reference](../../packages.md) / @midnight-ntwrk/midnight-js-protocol
-
 # Protocol
 
 Version-agnostic re-exports of Midnight protocol packages. Decouples framework consumers from specific protocol version numbers, so that protocol upgrades require changes only in this package.

@@ -37,11 +37,9 @@
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
     "@midnight-ntwrk/midnight-js-utils": "workspace:*",
     "cross-fetch": "^4.1.0",
-    "fetch-retry": "^6.0.0",
-    "lodash": "^4.17.23"
+    "fetch-retry": "^6.0.0"
   },
   "devDependencies": {
-    "@midnight-ntwrk/midnight-js-compact": "workspace:*",
-    "@types/lodash": "^4.17.19"
+    "@midnight-ntwrk/midnight-js-compact": "workspace:*"
   }
 }

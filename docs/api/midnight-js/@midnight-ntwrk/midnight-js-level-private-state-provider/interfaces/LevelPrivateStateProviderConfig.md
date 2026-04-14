@@ -30,6 +30,18 @@ in storage paths, so any unique identifier can be used (e.g., wallet address).
 
 ***
 
+### cryptoBackend?
+
+> `readonly` `optional` **cryptoBackend?**: [`CryptoBackendType`](../type-aliases/CryptoBackendType.md)
+
+***
+
+### levelFactory?
+
+> `readonly` `optional` **levelFactory?**: [`LevelFactory`](../type-aliases/LevelFactory.md)
+
+***
+
 ### midnightDbName
 
 > `readonly` **midnightDbName**: `string`

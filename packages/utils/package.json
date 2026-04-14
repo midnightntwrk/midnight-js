@@ -30,8 +30,7 @@
   ],
   "dependencies": {
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
-    "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
-    "@scure/base": "^2.0.0"
+    "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.0.0"
