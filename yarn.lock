@@ -2020,7 +2020,7 @@ __metadata:
     rxjs: "npm:^7.8.2"
     testcontainers: "npm:^11.13.0"
     tstyche: "npm:^6.2.0"
-    turbo: "npm:^2.8.21"
+    turbo: "npm:^2.9.5"
     typedoc: "npm:^0.28.18"
     typedoc-plugin-markdown: "npm:4.11.0"
     typescript: "npm:^6.0.2"
@@ -3730,44 +3730,44 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@turbo/darwin-64@npm:2.8.21":
-  version: 2.8.21
-  resolution: "@turbo/darwin-64@npm:2.8.21"
+"@turbo/darwin-64@npm:2.9.6":
+  version: 2.9.6
+  resolution: "@turbo/darwin-64@npm:2.9.6"
   conditions: os=darwin & cpu=x64
   languageName: node
   linkType: hard
 
-"@turbo/darwin-arm64@npm:2.8.21":
-  version: 2.8.21
-  resolution: "@turbo/darwin-arm64@npm:2.8.21"
+"@turbo/darwin-arm64@npm:2.9.6":
+  version: 2.9.6
+  resolution: "@turbo/darwin-arm64@npm:2.9.6"
   conditions: os=darwin & cpu=arm64
   languageName: node
   linkType: hard
 
-"@turbo/linux-64@npm:2.8.21":
-  version: 2.8.21
-  resolution: "@turbo/linux-64@npm:2.8.21"
+"@turbo/linux-64@npm:2.9.6":
+  version: 2.9.6
+  resolution: "@turbo/linux-64@npm:2.9.6"
   conditions: os=linux & cpu=x64
   languageName: node
   linkType: hard
 
-"@turbo/linux-arm64@npm:2.8.21":
-  version: 2.8.21
-  resolution: "@turbo/linux-arm64@npm:2.8.21"
+"@turbo/linux-arm64@npm:2.9.6":
+  version: 2.9.6
+  resolution: "@turbo/linux-arm64@npm:2.9.6"
   conditions: os=linux & cpu=arm64
   languageName: node
   linkType: hard
 
-"@turbo/windows-64@npm:2.8.21":
-  version: 2.8.21
-  resolution: "@turbo/windows-64@npm:2.8.21"
+"@turbo/windows-64@npm:2.9.6":
+  version: 2.9.6
+  resolution: "@turbo/windows-64@npm:2.9.6"
   conditions: os=win32 & cpu=x64
   languageName: node
   linkType: hard
 
-"@turbo/windows-arm64@npm:2.8.21":
-  version: 2.8.21
-  resolution: "@turbo/windows-arm64@npm:2.8.21"
+"@turbo/windows-arm64@npm:2.9.6":
+  version: 2.9.6
+  resolution: "@turbo/windows-arm64@npm:2.9.6"
   conditions: os=win32 & cpu=arm64
   languageName: node
   linkType: hard
@@ -12132,16 +12132,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"turbo@npm:^2.8.21":
-  version: 2.8.21
-  resolution: "turbo@npm:2.8.21"
+"turbo@npm:^2.9.5":
+  version: 2.9.6
+  resolution: "turbo@npm:2.9.6"
   dependencies:
-    "@turbo/darwin-64": "npm:2.8.21"
-    "@turbo/darwin-arm64": "npm:2.8.21"
-    "@turbo/linux-64": "npm:2.8.21"
-    "@turbo/linux-arm64": "npm:2.8.21"
-    "@turbo/windows-64": "npm:2.8.21"
-    "@turbo/windows-arm64": "npm:2.8.21"
+    "@turbo/darwin-64": "npm:2.9.6"
+    "@turbo/darwin-arm64": "npm:2.9.6"
+    "@turbo/linux-64": "npm:2.9.6"
+    "@turbo/linux-arm64": "npm:2.9.6"
+    "@turbo/windows-64": "npm:2.9.6"
+    "@turbo/windows-arm64": "npm:2.9.6"
   dependenciesMeta:
     "@turbo/darwin-64":
       optional: true
@@ -12157,7 +12157,7 @@ __metadata:
       optional: true
   bin:
     turbo: bin/turbo
-  checksum: 10/f7f6e391b9babae5da3275e7c63cad481c4362b0559b8769739f43d6cec216458924482b8635744cdda5ed4916e06db2f4fd847a6203de3c8095ecac0d8a6d5d
+  checksum: 10/e2378f55c12029bed600b9080e3d40805431f11ed2c79a9fd57176fb18b75fd85f3bc1fc69ef2f601fb65fc6a4bf19c169f4102590bd47173b66c81a729c789a
   languageName: node
   linkType: hard
 
