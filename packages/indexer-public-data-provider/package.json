@@ -35,7 +35,7 @@
     "buffer": "^6.0.3",
     "cross-fetch": "^4.1.0",
     "graphql": "^16.13.2",
-    "graphql-ws": "^6.0.7",
+    "graphql-ws": "^6.0.8",
     "isomorphic-ws": "^5.0.0",
     "rxjs": "^7.5.0",
     "ws": "^8.20.0"
