@@ -12,14 +12,6 @@ TypeScript framework for building privacy-preserving dApps on the Midnight block
 
 IMPORTANT: Use GitNexus tools (impact analysis, context, query) before modifying code. See GitNexus section below.
 
-## Key People
-
-| Person | Role | Reviews for |
-|--------|------|-------------|
-| **Szymon Paluchowski** (sp-io) | Co-owner, primary developer | His code patterns are authoritative for TypeScript style in this repo |
-| **Tim Roberts** (timjroberts) | Co-owner, technical reviewer | API surface design, sub-path exports, public interface shape |
-| **Adam Reynolds** (adamreynolds-io) | Engineering manager, lead reviewer | Architectural clarity, dead code, test assertion quality, security. Blocks on: `any` casts, one-directional assertions, copy-pasted boilerplate, swallowed errors |
-
 ## Architecture
 
 Provider pattern — 7 pluggable providers (interfaces in `packages/types/src/`):
