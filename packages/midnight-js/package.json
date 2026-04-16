@@ -62,12 +62,13 @@
   "dependencies": {
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*",
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
+    "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.3.0",
-    "rollup": "^4.60.0",
+    "rollup": "^4.60.1",
     "rollup-plugin-dts": "^6.4.1",
     "typescript": "^6.0.2",
     "vitest": "^4.1.2"

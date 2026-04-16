@@ -70,12 +70,12 @@
     "lint-staged": "^16.3.3",
     "pinst": "^3.0.0",
     "prettier": "^3.8.1",
-    "rollup": "^4.60.0",
+    "rollup": "^4.60.1",
     "rollup-plugin-dts": "^6.4.1",
     "rxjs": "^7.8.2",
     "testcontainers": "^11.13.0",
     "tstyche": "^6.2.0",
-    "turbo": "^2.8.21",
+    "turbo": "^2.9.5",
     "typedoc": "^0.28.18",
     "typedoc-plugin-markdown": "4.11.0",
     "typescript": "^6.0.2",
@@ -83,7 +83,7 @@
     "vitest": "^4.1.2"
   },
   "lint-staged": {
-    "*.ts": "eslint --cache --fix"
+    "*.ts": "eslint --cache"
   },
   "resolutions": {
     "effect": "3.19.15",

@@ -14,16 +14,23 @@
  */
 
 export {
+  type CryptoBackend,
+  type CryptoBackendType,
+} from './crypto-backend';
+export {
+  type DatabaseLevel,
   DEFAULT_CONFIG,
+  type LevelFactory,
   levelPrivateStateProvider,
   type LevelPrivateStateProviderConfig,
   migrateToAccountScoped,
   type MigrationResult,
   type PasswordRotationOptions,
-  type PasswordRotationResult
+  type PasswordRotationResult,
 } from './level-private-state-provider';
 export {
   decryptValue,
   type PrivateStoragePasswordProvider,
-  StorageEncryption
+  StorageEncryption,
+  type StorageEncryptionOptions,
 } from './storage-encryption';
