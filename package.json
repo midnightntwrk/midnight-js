@@ -2,7 +2,7 @@
   "name": "@midnight-ntwrk/midnight-js-monorepo",
   "description": "Midnight application development framework",
   "version": "4.0.4",
-  "packageManager": "yarn@4.12.0",
+  "packageManager": "yarn@4.13.0",
   "repository": "git@github.com:midnight-ntwrk/artifacts",
   "engines": {
     "node": ">=22"
@@ -54,8 +54,8 @@
     "@rollup/plugin-typescript": "^12.3.0",
     "@tsconfig/node24": "^24.0.4",
     "@types/node": "^24.0.0",
-    "@vitest/coverage-v8": "^4.1.2",
-    "@vitest/ui": "^4.1.2",
+    "@vitest/coverage-v8": "^4.1.4",
+    "@vitest/ui": "^4.1.4",
     "commit-and-tag-version": "^12.6.1",
     "eslint": "^10.1.0",
     "eslint-config-prettier": "^10.1.8",
@@ -77,10 +77,10 @@
     "tstyche": "^6.2.0",
     "turbo": "^2.9.5",
     "typedoc": "^0.28.18",
-    "typedoc-plugin-markdown": "4.11.0",
+    "typedoc-plugin-markdown": "^4.11.0",
     "typescript": "^6.0.2",
     "typescript-eslint": "^8.57.2",
-    "vitest": "^4.1.2"
+    "vitest": "^4.1.4"
   },
   "lint-staged": {
     "*.ts": "eslint --cache"
