@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { Contract } from '@midnight-ntwrk/compact-js';
 import type { DeployedContract } from '@midnight-ntwrk/midnight-js-contracts';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
 
 import { CompiledDoubleCounter } from '../contract';

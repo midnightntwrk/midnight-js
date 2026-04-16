@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-dapp-connector-proof-provider",
-  "version": "4.0.2",
+  "version": "4.0.4",
   "description": "Implementation of proof provider leveraging the DApp Connector's proving API",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -30,9 +30,7 @@
   ],
   "dependencies": {
     "@midnight-ntwrk/dapp-connector-api": "4.0.1",
+    "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
-  },
-  "devDependencies": {
-    "@midnight-ntwrk/ledger-v8": "8.0.3"
   }
 }

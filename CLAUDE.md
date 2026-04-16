@@ -1,6 +1,6 @@
 # Midnight.js — Contributor Guide
 
-TypeScript SDK for building privacy-preserving dApps on the Midnight blockchain. Turbo monorepo, 15 packages, Yarn 4, Node 22.
+TypeScript framework for building privacy-preserving dApps on the Midnight blockchain.
 
 | File | What it covers |
 |------|---------------|
@@ -35,12 +35,12 @@ MidnightProviders
 └── loggerProvider          Optional diagnostics (Pino)
 ```
 
-Transaction flow:
+Directories:
 
 ```
-UnprovenTransaction → ProofProvider.proveTx() → UnboundTransaction
-  → WalletProvider.balanceTx() → FinalizedTransaction
-  → MidnightProvider.submitTx() → TransactionId
+packages/           # Core framework packages
+testkit-js/         # Testing infrastructure
+build-tools/        # Build configuration
 ```
 
 Package layers (each layer depends on the one above):
@@ -54,6 +54,14 @@ testkit-js, testkit-js-e2e                     ← testing infrastructure
 ```
 
 IMPORTANT: `types/` defines all provider interfaces. Changing it breaks every package downstream.
+
+Transaction flow:
+
+```
+UnprovenTransaction → ProofProvider.proveTx() → UnboundTransaction
+  → WalletProvider.balanceTx() → FinalizedTransaction
+  → MidnightProvider.submitTx() → TransactionId
+```
 
 ## CI Pipeline & PR Gates
 

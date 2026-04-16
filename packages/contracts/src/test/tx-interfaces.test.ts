@@ -61,6 +61,7 @@ describe('tx-interfaces', () => {
         circuitId,
         mockContractAddress,
         undefined,
+        undefined,
         [] as never
       );
 
@@ -78,6 +79,7 @@ describe('tx-interfaces', () => {
         mockCompiledContract,
         circuitId,
         mockContractAddress,
+        undefined,
         undefined,
         args as never
       );
@@ -98,6 +100,7 @@ describe('tx-interfaces', () => {
         circuitId,
         mockContractAddress,
         mockPrivateStateId,
+        undefined,
         args as never
       );
 

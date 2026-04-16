@@ -15,7 +15,7 @@
 
 import { Buffer } from 'buffer';
 
-import { getPasswordFromProvider, StorageEncryption } from '../storage-encryption';
+import { decryptValue, getPasswordFromProvider, StorageEncryption, timingSafeEqual } from '../storage-encryption';
 
 describe('StorageEncryption', () => {
   const testPassword = 'Test-Password-123!';
@@ -29,135 +29,198 @@ describe('StorageEncryption', () => {
   };
 
   describe('encrypt and decrypt', () => {
-    test('successfully encrypts and decrypts data', () => {
-      const encryption = new StorageEncryption(testPassword);
+    test('successfully encrypts and decrypts data', async () => {
+      const encryption = await StorageEncryption.create(testPassword);
 
-      const encrypted = encryption.encrypt(testData);
-      const decrypted = encryption.decrypt(encrypted);
+      const encrypted = await encryption.encrypt(testData);
+      const decrypted = await encryption.decrypt(encrypted);
 
       expect(decrypted).toBe(testData);
       expect(decrypted).not.toBe(encrypted);
     });
 
-    test('produces different ciphertext for same plaintext', () => {
-      const encryption = new StorageEncryption(testPassword);
+    test('produces different ciphertext for same plaintext', async () => {
+      const encryption = await StorageEncryption.create(testPassword);
 
-      const encrypted1 = encryption.encrypt(testData);
-      const encrypted2 = encryption.encrypt(testData);
+      const encrypted1 = await encryption.encrypt(testData);
+      const encrypted2 = await encryption.encrypt(testData);
 
       expect(encrypted1).not.toBe(encrypted2);
-      expect(encryption.decrypt(encrypted1)).toBe(testData);
-      expect(encryption.decrypt(encrypted2)).toBe(testData);
+      expect(await encryption.decrypt(encrypted1)).toBe(testData);
+      expect(await encryption.decrypt(encrypted2)).toBe(testData);
     });
 
-    test('handles empty string', () => {
-      const encryption = new StorageEncryption(testPassword);
+    test('handles empty string', async () => {
+      const encryption = await StorageEncryption.create(testPassword);
 
-      const encrypted = encryption.encrypt('');
-      const decrypted = encryption.decrypt(encrypted);
+      const encrypted = await encryption.encrypt('');
+      const decrypted = await encryption.decrypt(encrypted);
 
       expect(decrypted).toBe('');
     });
 
-    test('handles unicode characters', () => {
-      const encryption = new StorageEncryption(testPassword);
+    test('handles unicode characters', async () => {
+      const encryption = await StorageEncryption.create(testPassword);
       const unicodeData = '🔐 Encrypted data with émojis and spëcial çhars 中文';
 
-      const encrypted = encryption.encrypt(unicodeData);
-      const decrypted = encryption.decrypt(encrypted);
+      const encrypted = await encryption.encrypt(unicodeData);
+      const decrypted = await encryption.decrypt(encrypted);
 
       expect(decrypted).toBe(unicodeData);
     });
   });
 
   describe('error handling', () => {
-    test('throws on wrong password', () => {
-      const encryption1 = new StorageEncryption('Correct-Pass-123!');
-      const encrypted = encryption1.encrypt(testData);
+    test('throws on wrong password', async () => {
+      const encryption1 = await StorageEncryption.create('Correct-Pass-123!');
+      const encrypted = await encryption1.encrypt(testData);
 
-      const encryption2 = new StorageEncryption('Wrong-Password-1!', encryption1.getSalt());
+      const encryption2 = await StorageEncryption.create('Wrong-Password-1!', { existingSalt: encryption1.getSalt() });
 
-      expect(() => encryption2.decrypt(encrypted)).toThrow();
+      await expect(encryption2.decrypt(encrypted)).rejects.toThrow();
+    });
+
+    test('rejects tampered ciphertext', async () => {
+      const encryption = await StorageEncryption.create(testPassword);
+      const encrypted = await encryption.encrypt(testData);
+
+      const buffer = Buffer.from(encrypted, 'base64');
+      buffer[buffer.length - 1] ^= 0xff;
+      const tampered = buffer.toString('base64');
+
+      await expect(encryption.decrypt(tampered)).rejects.toThrow();
+    });
+  });
+
+  describe('create with Uint8Array salt', () => {
+    test('produces working encryption with Uint8Array salt', async () => {
+      const salt = new Uint8Array(32);
+      globalThis.crypto.getRandomValues(salt);
+
+      const encryption = await StorageEncryption.create(testPassword, { existingSalt: salt });
+      const encrypted = await encryption.encrypt(testData);
+      const decrypted = await encryption.decrypt(encrypted);
+
+      expect(decrypted).toBe(testData);
+    });
+
+    test('Uint8Array salt produces same results as Buffer salt', async () => {
+      const rawBytes = new Uint8Array(32);
+      globalThis.crypto.getRandomValues(rawBytes);
+
+      const encryptionFromUint8 = await StorageEncryption.create(testPassword, { existingSalt: rawBytes });
+      const encryptionFromBuffer = await StorageEncryption.create(testPassword, { existingSalt: Buffer.from(rawBytes) });
+
+      expect(encryptionFromUint8.getSalt()).toEqual(encryptionFromBuffer.getSalt());
+    });
+  });
+
+  describe('decryptValue', () => {
+    test('passes through unencrypted data as-is', async () => {
+      const encryption = await StorageEncryption.create(testPassword);
+      const plaintext = 'not-encrypted-data';
+
+      const result = await decryptValue(plaintext, encryption, testPassword);
+
+      expect(result).toBe(plaintext);
+    });
+
+    test('decrypts V2 encrypted data', async () => {
+      const encryption = await StorageEncryption.create(testPassword);
+      const encrypted = await encryption.encrypt(testData);
+
+      const result = await decryptValue(encrypted, encryption, testPassword);
+
+      expect(result).toBe(testData);
+    });
+
+    test('decrypts V1 encrypted data with password', async () => {
+      const salt = Buffer.from(V1_FIXTURES.salt, 'hex');
+      const encryption = await StorageEncryption.create(V1_FIXTURES.password, { existingSalt: salt });
+
+      const result = await decryptValue(V1_FIXTURES.encrypted, encryption, V1_FIXTURES.password);
+
+      expect(result).toBe(V1_FIXTURES.plaintext);
     });
   });
 
   describe('version migration', () => {
-    test('decrypts v1 encrypted data with 100k iterations using decryptWithPassword', () => {
+    test('decrypts v1 encrypted data with 100k iterations using decryptWithPassword', async () => {
       const salt = Buffer.from(V1_FIXTURES.salt, 'hex');
-      const encryption = new StorageEncryption(V1_FIXTURES.password, salt);
+      const encryption = await StorageEncryption.create(V1_FIXTURES.password, { existingSalt: salt });
 
-      const decrypted = encryption.decryptWithPassword(V1_FIXTURES.encrypted, V1_FIXTURES.password);
+      const decrypted = await encryption.decryptWithPassword(V1_FIXTURES.encrypted, V1_FIXTURES.password);
 
       expect(decrypted).toBe(V1_FIXTURES.plaintext);
     });
 
-    test('new encryption uses version 2', () => {
-      const encryption = new StorageEncryption(testPassword);
+    test('new encryption uses version 2', async () => {
+      const encryption = await StorageEncryption.create(testPassword);
 
-      const encrypted = encryption.encrypt(testData);
+      const encrypted = await encryption.encrypt(testData);
       const buffer = Buffer.from(encrypted, 'base64');
 
       expect(buffer[0]).toBe(2);
     });
 
-    test('v2 encrypted data can be decrypted', () => {
-      const encryption = new StorageEncryption(testPassword);
+    test('v2 encrypted data can be decrypted', async () => {
+      const encryption = await StorageEncryption.create(testPassword);
 
-      const encrypted = encryption.encrypt(testData);
-      const decrypted = encryption.decrypt(encrypted);
+      const encrypted = await encryption.encrypt(testData);
+      const decrypted = await encryption.decrypt(encrypted);
 
       expect(decrypted).toBe(testData);
     });
 
-    test('detects encryption version correctly', () => {
+    test('detects encryption version correctly', async () => {
       expect(StorageEncryption.getVersion(V1_FIXTURES.encrypted)).toBe(1);
 
-      const encryption = new StorageEncryption(testPassword);
-      const v2Encrypted = encryption.encrypt(testData);
+      const encryption = await StorageEncryption.create(testPassword);
+      const v2Encrypted = await encryption.encrypt(testData);
       expect(StorageEncryption.getVersion(v2Encrypted)).toBe(2);
     });
 
-    test('decrypt throws when V1 data is encountered without password', () => {
+    test('decrypt throws when V1 data is encountered without password', async () => {
       const salt = Buffer.from(V1_FIXTURES.salt, 'hex');
-      const encryption = new StorageEncryption(V1_FIXTURES.password, salt);
+      const encryption = await StorageEncryption.create(V1_FIXTURES.password, { existingSalt: salt });
 
-      expect(() => encryption.decrypt(V1_FIXTURES.encrypted)).toThrow(
+      await expect(encryption.decrypt(V1_FIXTURES.encrypted)).rejects.toThrow(
         'V1 encrypted data requires password for decryption'
       );
     });
 
-    test('decryptWithPassword works for V2 data as well', () => {
-      const encryption = new StorageEncryption(testPassword);
+    test('decryptWithPassword works for V2 data as well', async () => {
+      const encryption = await StorageEncryption.create(testPassword);
 
-      const encrypted = encryption.encrypt(testData);
-      const decrypted = encryption.decryptWithPassword(encrypted, testPassword);
+      const encrypted = await encryption.encrypt(testData);
+      const decrypted = await encryption.decryptWithPassword(encrypted, testPassword);
 
       expect(decrypted).toBe(testData);
     });
   });
 
   describe('password verification', () => {
-    test('verifyPassword returns true for correct password', () => {
-      const encryption = new StorageEncryption(testPassword);
+    test('verifyPassword returns true for correct password', async () => {
+      const encryption = await StorageEncryption.create(testPassword);
 
-      expect(encryption.verifyPassword(testPassword)).toBe(true);
+      expect(await encryption.verifyPassword(testPassword)).toBe(true);
     });
 
-    test('verifyPassword returns false for incorrect password', () => {
-      const encryption = new StorageEncryption(testPassword);
+    test('verifyPassword returns false for incorrect password', async () => {
+      const encryption = await StorageEncryption.create(testPassword);
 
-      expect(encryption.verifyPassword('Wrong-Password-1!')).toBe(false);
+      expect(await encryption.verifyPassword('Wrong-Password-1!')).toBe(false);
     });
 
-    test('verifyPassword is case-sensitive', () => {
-      const encryption = new StorageEncryption(testPassword);
+    test('verifyPassword is case-sensitive', async () => {
+      const encryption = await StorageEncryption.create(testPassword);
 
-      expect(encryption.verifyPassword(testPassword.toLowerCase())).toBe(false);
-      expect(encryption.verifyPassword(testPassword.toUpperCase())).toBe(false);
+      expect(await encryption.verifyPassword(testPassword.toLowerCase())).toBe(false);
+      expect(await encryption.verifyPassword(testPassword.toUpperCase())).toBe(false);
     });
 
-    test('password is not stored in plaintext', () => {
-      const encryption = new StorageEncryption(testPassword);
+    test('password is not stored in plaintext', async () => {
+      const encryption = await StorageEncryption.create(testPassword);
 
       const encryptionAsRecord = encryption as unknown as Record<string, unknown>;
       const allValues = Object.values(encryptionAsRecord);
@@ -167,6 +230,44 @@ describe('StorageEncryption', () => {
 
       expect(hasPlaintextPassword).toBe(false);
     });
+  });
+
+  test('timingSafeEqual returns expected results for matching/mismatched buffers', () => {
+    const a = Buffer.from([1, 2, 3, 4, 5]);
+    const b = Buffer.from([1, 2, 3, 4, 5]);
+    const c = Buffer.from([1, 2, 3, 4, 6]);
+
+    expect(timingSafeEqual(a, b)).toBe(true);
+    expect(timingSafeEqual(a, c)).toBe(false);
+  });
+
+  test('timingSafeEqual works with Uint8Array inputs', () => {
+    const a = new Uint8Array([1, 2, 3, 4, 5]);
+    const b = new Uint8Array([1, 2, 3, 4, 5]);
+    const c = new Uint8Array([1, 2, 3, 4, 6]);
+
+    expect(timingSafeEqual(a, b)).toBe(true);
+    expect(timingSafeEqual(a, c)).toBe(false);
+  });
+
+  test('timingSafeEqual throws error for buffers of different lengths', () => {
+    const a = Buffer.from([1, 2, 3]);
+    const b = Buffer.from([1, 2, 3, 4]);
+
+    expect(() => timingSafeEqual(a, b)).toThrow('Input buffers must have the same byte length');
+  });
+
+  test('timingSafeEqual throws error for Uint8Array of different lengths', () => {
+    const a = new Uint8Array([1, 2, 3]);
+    const b = new Uint8Array([1, 2, 3, 4]);
+
+    expect(() => timingSafeEqual(a, b)).toThrow('Input buffers must have the same byte length');
+  });
+
+  test('timingSafeEqual returns true for empty buffers', () => {
+    const a = Buffer.from([]);
+    const b = Buffer.from([]);
+    expect(timingSafeEqual(a, b)).toBe(true);
   });
 
   describe('getPasswordFromProvider', () => {
@@ -326,6 +427,80 @@ describe('StorageEncryption', () => {
         const result = await getPasswordFromProvider(provider);
         expect(result).toBe('Pass-abc-XYZ-12!');
       });
+    });
+  });
+});
+
+describe('StorageEncryption with noble backend', () => {
+  const testPassword = 'Test-Password-123!';
+  const testData = 'sensitive data that needs encryption';
+
+  const V1_FIXTURES = {
+    password: 'Test-Password-123!',
+    plaintext: 'sensitive data for v1 migration test',
+    encrypted: 'AYse8BxWbiRb618I8CQKwLJoGyzx0zddBBQ3LORO2wBSgi/4kHm3CqznHcvmSNPw5Y0wW9XDhweunjM/zyq8cHVQYoS53gzsFYEae5imclcA03IJN2Rr5Gf+z1GNd5J5Vg==',
+    salt: '8b1ef01c566e245beb5f08f0240ac0b2681b2cf1d3375d0414372ce44edb0052',
+  };
+
+  let nobleEncryption: StorageEncryption;
+
+  beforeAll(async () => {
+    nobleEncryption = await StorageEncryption.create(testPassword, { cryptoBackend: 'noble' });
+  }, 30_000);
+
+  describe('encrypt and decrypt', () => {
+    test('successfully encrypts and decrypts data', async () => {
+      const encrypted = await nobleEncryption.encrypt(testData);
+      const decrypted = await nobleEncryption.decrypt(encrypted);
+
+      expect(decrypted).toBe(testData);
+    });
+
+    test('handles unicode characters', async () => {
+      const unicodeData = '🔐 Encrypted data with émojis and spëcial çhars 中文';
+
+      const encrypted = await nobleEncryption.encrypt(unicodeData);
+      const decrypted = await nobleEncryption.decrypt(encrypted);
+
+      expect(decrypted).toBe(unicodeData);
+    });
+  });
+
+  describe('V1 backward compatibility', () => {
+    test('decrypts V1 encrypted data using decryptWithPassword', async () => {
+      const salt = Buffer.from(V1_FIXTURES.salt, 'hex');
+      const encryption = await StorageEncryption.create(V1_FIXTURES.password, { existingSalt: salt, cryptoBackend: 'noble' });
+
+      const decrypted = await encryption.decryptWithPassword(V1_FIXTURES.encrypted, V1_FIXTURES.password);
+
+      expect(decrypted).toBe(V1_FIXTURES.plaintext);
+    }, 30_000);
+  });
+
+  describe('cross-backend data interop', () => {
+    test('data encrypted with webcrypto can be decrypted with noble', async () => {
+      const webcryptoEncryption = await StorageEncryption.create(testPassword, { cryptoBackend: 'webcrypto' });
+      const encrypted = await webcryptoEncryption.encrypt(testData);
+
+      const interopNoble = await StorageEncryption.create(testPassword, {
+        existingSalt: webcryptoEncryption.getSalt(),
+        cryptoBackend: 'noble',
+      });
+      const decrypted = await interopNoble.decrypt(encrypted);
+
+      expect(decrypted).toBe(testData);
+    }, 30_000);
+
+    test('data encrypted with noble can be decrypted with webcrypto', async () => {
+      const encrypted = await nobleEncryption.encrypt(testData);
+
+      const webcryptoEncryption = await StorageEncryption.create(testPassword, {
+        existingSalt: nobleEncryption.getSalt(),
+        cryptoBackend: 'webcrypto',
+      });
+      const decrypted = await webcryptoEncryption.decrypt(encrypted);
+
+      expect(decrypted).toBe(testData);
     });
   });
 });

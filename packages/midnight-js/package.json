@@ -1,7 +1,7 @@
 {
   "name": "@midnight-ntwrk/midnight-js",
-  "version": "4.0.2",
-  "description": "Barrel package for Midnight.js core SDK",
+  "version": "4.0.4",
+  "description": "Barrel package for Midnight.js core framework",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -62,15 +62,16 @@
   "dependencies": {
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*",
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
+    "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.3.0",
-    "rollup": "^4.59.0",
-    "rollup-plugin-dts": "^6.4.0",
-    "typescript": "^5.9.3",
-    "vitest": "^4.0.0"
+    "rollup": "^4.60.0",
+    "rollup-plugin-dts": "^6.4.1",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.2"
   },
   "files": [
     "dist/"

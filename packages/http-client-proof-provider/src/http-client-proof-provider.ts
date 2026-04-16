@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { CostModel, type ProvingProvider, type UnprovenTransaction } from '@midnight-ntwrk/ledger-v8';
+import { CostModel, type ProvingProvider, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type {
   ProofProvider,
   ProveTxConfig,

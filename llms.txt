@@ -1,6 +1,6 @@
 # Midnight.js
 
-> TypeScript SDK for building privacy-preserving dApps on the Midnight blockchain
+> TypeScript framework for building privacy-preserving dApps on the Midnight blockchain
 
 Midnight.js provides comprehensive tools for deploying and interacting with smart contracts, managing private state with encryption, generating zero-knowledge proofs, and submitting transactions to the Midnight network.
 
@@ -33,8 +33,10 @@ MidnightProviders
 
 | Package | Purpose |
 |---------|---------|
+| `@midnight-ntwrk/midnight-js` | Barrel package for Midnight.js core framework |
 | `@midnight-ntwrk/midnight-js-types` | Shared types, interfaces, provider contracts |
 | `@midnight-ntwrk/midnight-js-contracts` | Contract deployment, interaction, transaction submission |
+| `@midnight-ntwrk/midnight-js-dapp-connector-proof-provider` | Proof provider delegating to DApp Connector wallet |
 | `@midnight-ntwrk/midnight-js-indexer-public-data-provider` | GraphQL-based blockchain data provider |
 | `@midnight-ntwrk/midnight-js-level-private-state-provider` | Encrypted LevelDB storage for private state |
 | `@midnight-ntwrk/midnight-js-http-client-proof-provider` | HTTP client for proof server |
@@ -160,6 +162,45 @@ const proofProvider = httpClientProofProvider(
 const provenTx = await proofProvider.proveTx(unprovenTx);
 ```
 
+### DApp Connector Proof Generation
+
+```typescript
+import { dappConnectorProofProvider } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
+
+// High-level: transaction proving via DApp Connector wallet
+const proofProvider = await dappConnectorProofProvider(
+  walletConnectedAPI,   // from @midnight-ntwrk/dapp-connector-api
+  zkConfigProvider,
+  costModel
+);
+
+const provenTx = await proofProvider.proveTx(unprovenTx);
+```
+
+```typescript
+import { dappConnectorProvingProvider } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
+
+// Low-level: circuit proving via DApp Connector wallet
+const provingProvider = await dappConnectorProvingProvider(
+  walletConnectedAPI,
+  zkConfigProvider
+);
+```
+
+### Barrel Package
+
+```typescript
+// Single import for all core modules
+import { contracts, networkId, types, utils } from '@midnight-ntwrk/midnight-js';
+
+networkId.setNetworkId('testnet');
+const deployed = await contracts.deployContract(providers, options);
+
+// Or use sub-path imports for tree-shaking
+import { deployContract } from '@midnight-ntwrk/midnight-js/contracts';
+import { setNetworkId } from '@midnight-ntwrk/midnight-js/network-id';
+```
+
 ### Network Setup
 
 ```typescript
@@ -233,8 +274,10 @@ await testEnv.shutdown();
 ```
 midnight-js/
 ├── packages/                          # Core packages
+│   ├── midnight-js/                   # Barrel package (core framework)
 │   ├── types/                         # Shared types
 │   ├── contracts/                     # Contract utilities
+│   ├── dapp-connector-proof-provider/ # DApp Connector proof provider
 │   ├── indexer-public-data-provider/  # GraphQL provider
 │   ├── level-private-state-provider/  # Encrypted storage
 │   ├── http-client-proof-provider/    # Proof HTTP client

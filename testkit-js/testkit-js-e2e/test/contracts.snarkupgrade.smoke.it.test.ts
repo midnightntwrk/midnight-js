@@ -13,14 +13,14 @@
  * limitations under the License.
  */
 
-import { sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
-import type { ContractAddress } from '@midnight-ntwrk/ledger-v8';
 import {
   createCircuitMaintenanceTxInterfaces,
   findDeployedContract,
   submitRemoveVerifierKeyTx,
   submitReplaceAuthorityTx
 } from '@midnight-ntwrk/midnight-js-contracts';
+import { sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import {
   createLogger,

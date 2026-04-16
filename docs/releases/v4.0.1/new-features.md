@@ -72,7 +72,7 @@ interface PublicContractStates {
 
 ## 2. Ledger v8 with Provable Circuits (#607)
 
-The SDK now targets ledger v8, which renames "impure circuits" to "provable circuits" for better semantic clarity. This is a terminology change reflecting that these circuits produce ZK proofs.
+The framework now targets ledger v8, which renames "impure circuits" to "provable circuits" for better semantic clarity. This is a terminology change reflecting that these circuits produce ZK proofs.
 
 ### Usage
 

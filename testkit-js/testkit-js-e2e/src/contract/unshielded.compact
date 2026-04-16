@@ -45,6 +45,14 @@ export circuit getUnshieldedBalanceLtTest(color: Bytes<32>, amount: Uint<128>): 
   return unshieldedBalanceLt(disclose(color), disclose(amount));
 }
 
+export circuit getUnshieldedBalanceGteTest(color: Bytes<32>, amount: Uint<128>): Boolean {
+  return unshieldedBalanceGte(disclose(color), disclose(amount));
+}
+
+export circuit getUnshieldedBalanceLteTest(color: Bytes<32>, amount: Uint<128>): Boolean {
+  return unshieldedBalanceLte(disclose(color), disclose(amount));
+}
+
 export circuit receiveNightTokens(amount: Uint<128>): [] {
    receiveUnshielded(default<Bytes<32>>, disclose(amount));
 }

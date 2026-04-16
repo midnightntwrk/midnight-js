@@ -36,6 +36,7 @@ vi.mock('../utils', () => ({
     { test: 'initial-contract-state' },
     { test: 'unproven-tx' }
   ]),
+  createEncryptionPublicKeyResolver: vi.fn().mockReturnValue(() => 'encrypted-key'),
   zswapStateToNewCoins: vi.fn().mockReturnValue([{ test: 'coin' }])
 }));
 

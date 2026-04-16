@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-import { type CompiledContract, type Contract, ContractExecutable } from '@midnight-ntwrk/compact-js';
+import { type CompiledContract, type Contract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import {
   type ContractAddress,
   type ContractState,
   sampleSigningKey,
   type SigningKey
-} from '@midnight-ntwrk/compact-runtime';
+} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
   type AnyProvableCircuitId,
   type PrivateStateId,

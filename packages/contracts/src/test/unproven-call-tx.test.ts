@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { type ContractState, StateValue } from '@midnight-ntwrk/compact-runtime';
-import { LedgerParameters } from '@midnight-ntwrk/ledger-v8';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { type ContractState, StateValue } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createUnprovenCallTx, createUnprovenCallTxFromInitialStates } from '../unproven-call-tx';
@@ -47,7 +47,8 @@ vi.mock('../utils', () => ({
       { test: 'unproven-tx' }
     ]),
     createUnprovenLedgerCallTx: vi.fn().mockReturnValue({ test: 'unproven-tx' }),
-    encryptionPublicKeyForZswapState: vi.fn().mockReturnValue('encrypted-key'),
+    createEncryptionPublicKeyResolver: vi.fn().mockReturnValue(() => 'encrypted-key'),
+    encryptionPublicKeyResolverForZswapState: vi.fn().mockReturnValue(() => 'encrypted-key'),
     zswapStateToNewCoins: vi.fn().mockReturnValue([{ test: 'coin' }])
 }));
 

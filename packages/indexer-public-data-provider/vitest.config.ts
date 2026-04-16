@@ -28,7 +28,7 @@ export default defineConfig({
       enabled: true,
       clean: true,
       include: ['src/**/*.ts'],
-      exclude: ['**/test/**'],
+      exclude: ['**/test/**', 'src/gen/**'],
       reporter: ['clover', 'json', 'json-summary', 'lcov', 'text'],
       reportsDirectory: './coverage'
     },

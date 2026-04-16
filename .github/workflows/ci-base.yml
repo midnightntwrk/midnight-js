@@ -137,7 +137,7 @@ jobs:
             utils, ./packages/utils/coverage/coverage-summary.json
 
       - name: Publish Test Report
-        uses: mikepenz/action-junit-report@49b2ca06f62aa7ef83ae6769a2179271e160d8e4 # ratchet:mikepenz/action-junit-report@v6
+        uses: mikepenz/action-junit-report@bccf2e31636835cf0874589931c4116687171386 # ratchet:mikepenz/action-junit-report@v6
         if: success() || failure()
         with:
           check_name: 'Unit Test Results (MidnightJS)'

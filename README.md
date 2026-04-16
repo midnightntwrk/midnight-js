@@ -1,11 +1,18 @@
 # Midnight.js
 
+[![CI](https://github.com/midnightntwrk/midnight-js/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/midnightntwrk/midnight-js/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![GitHub Release](https://img.shields.io/github/v/release/midnightntwrk/midnight-js?logo=github)](https://github.com/midnightntwrk/midnight-js/releases)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/midnightntwrk/midnight-js/pulls)
+
 TypeScript application development framework for the Midnight blockchain. Similar to [Web3.js](https://web3js.org/) for Ethereum or [polkadot.js](https://polkadot.js.org/) for Polkadot.
 
 ## Installation
 
 ```bash
-yarn add @midnight-ntwrk/midnight-js-contracts @midnight-ntwrk/midnight-js-types
+yarn add @midnight-ntwrk/midnight-js
 ```
 
 ## Quick Start
@@ -63,8 +70,10 @@ const result = await deployed.callTx.increment();
 
 | Package | Description |
 | ------- | ----------- |
+| [@midnight-ntwrk/midnight-js](packages/midnight-js) | Barrel package for Midnight.js core framework |
 | [@midnight-ntwrk/midnight-js-types](packages/types) | Shared types, interfaces, and provider contracts |
 | [@midnight-ntwrk/midnight-js-contracts](packages/contracts) | Contract deployment and interaction utilities |
+| [@midnight-ntwrk/midnight-js-dapp-connector-proof-provider](packages/dapp-connector-proof-provider) | Proof provider delegating to DApp Connector wallet |
 | [@midnight-ntwrk/midnight-js-indexer-public-data-provider](packages/indexer-public-data-provider) | GraphQL-based blockchain data provider |
 | [@midnight-ntwrk/midnight-js-level-private-state-provider](packages/level-private-state-provider) | Encrypted LevelDB private state storage |
 | [@midnight-ntwrk/midnight-js-http-client-proof-provider](packages/http-client-proof-provider) | HTTP client for proof server |
@@ -73,6 +82,7 @@ const result = await deployed.callTx.increment();
 | [@midnight-ntwrk/midnight-js-network-id](packages/network-id) | Network identifier management |
 | [@midnight-ntwrk/midnight-js-logger-provider](packages/logger-provider) | Pino logger wrapper for diagnostics |
 | [@midnight-ntwrk/midnight-js-compact](packages/compact) | Compact compiler manager |
+| [@midnight-ntwrk/midnight-js-protocol](packages/protocol) | Version-agnostic re-exports of Midnight protocol packages |
 | [@midnight-ntwrk/midnight-js-utils](packages/utils) | General utility functions |
 
 ## Architecture
@@ -86,7 +96,7 @@ const result = await deployed.callTx.increment();
 | Contracts | @midnight-ntwrk/midnight-js-contracts |
 | PublicDataProvider | @midnight-ntwrk/midnight-js-indexer-public-data-provider |
 | PrivateStateProvider | @midnight-ntwrk/midnight-js-level-private-state-provider |
-| ProofProvider | @midnight-ntwrk/midnight-js-http-client-proof-provider |
+| ProofProvider | @midnight-ntwrk/midnight-js-http-client-proof-provider or @midnight-ntwrk/midnight-js-dapp-connector-proof-provider |
 | ZKConfigProvider | @midnight-ntwrk/midnight-js-fetch-zk-config-provider |
 | DappConnector | @midnight-ntwrk/dapp-connector-api |
 | Wallet | @midnight-ntwrk/wallet |

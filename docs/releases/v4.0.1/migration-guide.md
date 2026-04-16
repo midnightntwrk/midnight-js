@@ -68,7 +68,7 @@ const ids = ContractExecutable.make(compiledContract).getProvableCircuitIds();
 
 ### 3.3 Update Generic Parameters (Optional)
 
-For consistency with the SDK codebase, rename generic parameters from `ICK` to `PCK`:
+For consistency with the framework codebase, rename generic parameters from `ICK` to `PCK`:
 
 ```typescript
 // Before
@@ -219,7 +219,7 @@ Add `ledgerParameters` as the last parameter, and replace `partitionedTranscript
 ## Rollback Plan
 
 If rollback is needed:
-1. Revert `package.json` dependencies to use `@midnight-ntwrk/ledger-v7` and v3.2.0 SDK packages
+1. Revert `package.json` dependencies to use `@midnight-ntwrk/ledger-v7` and v3.2.0 framework packages
 2. Revert import paths from `ledger-v8` to `ledger-v7`
 3. Revert `ProvableCircuitId` to `ImpureCircuitId`
 4. Remove `ledgerParameters` from call options
