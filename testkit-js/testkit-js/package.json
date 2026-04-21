@@ -32,6 +32,7 @@
     "deploy": "yarn npm publish --tolerate-republish"
   },
   "dependencies": {
+    "@midnight-ntwrk/dapp-connector-api": "4.0.1",
     "@midnight-ntwrk/midnight-js-compact": "workspace:*",
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*",
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*",
@@ -42,7 +43,10 @@
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
     "@midnight-ntwrk/midnight-js-utils": "workspace:*",
+    "@midnight-ntwrk/wallet-sdk-address-format": "3.1.0",
     "@midnight-ntwrk/wallet-sdk-hd": "3.0.1",
+    "@midnight-ntwrk/wallet-sdk-prover-client": "^1.2.0",
+    "@midnight-ntwrk/zkir-v2": "2.1.0",
     "buffer": "^6.0.3",
     "cross-fetch": "^4.0.0",
     "rxjs": "^7.8.1",

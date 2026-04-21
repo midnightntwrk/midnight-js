@@ -1899,7 +1899,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@midnight-ntwrk/midnight-js-dapp-connector-proof-provider@workspace:packages/dapp-connector-proof-provider":
+"@midnight-ntwrk/midnight-js-dapp-connector-proof-provider@workspace:*, @midnight-ntwrk/midnight-js-dapp-connector-proof-provider@workspace:packages/dapp-connector-proof-provider":
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-dapp-connector-proof-provider@workspace:packages/dapp-connector-proof-provider"
   dependencies:
@@ -2123,6 +2123,7 @@ __metadata:
   dependencies:
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*"
+    "@midnight-ntwrk/midnight-js-dapp-connector-proof-provider": "workspace:*"
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*"
     "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "workspace:*"
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
@@ -2153,6 +2154,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/testkit-js@workspace:testkit-js/testkit-js"
   dependencies:
+    "@midnight-ntwrk/dapp-connector-api": "npm:4.0.1"
     "@midnight-ntwrk/midnight-js-compact": "workspace:*"
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*"
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*"
@@ -2163,7 +2165,10 @@ __metadata:
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
+    "@midnight-ntwrk/wallet-sdk-address-format": "npm:3.1.0"
     "@midnight-ntwrk/wallet-sdk-hd": "npm:3.0.1"
+    "@midnight-ntwrk/wallet-sdk-prover-client": "npm:^1.2.0"
+    "@midnight-ntwrk/zkir-v2": "npm:2.1.0"
     "@types/ws": "npm:^8.18.1"
     "@vitest/runner": "npm:^4.1.1"
     allure-commandline: "npm:^2.38.1"
