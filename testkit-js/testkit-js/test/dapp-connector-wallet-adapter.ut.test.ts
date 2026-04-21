@@ -40,10 +40,24 @@ vi.mock('@midnight-ntwrk/zkir-v2', () => ({
 }));
 
 vi.mock('@midnight-ntwrk/wallet-sdk-prover-client/effect', () => ({
-  makeDefaultKeyMaterialProvider: vi.fn().mockReturnValue({
-    lookupKey: vi.fn().mockResolvedValue({ ir: new Uint8Array(), proverKey: new Uint8Array(), verifierKey: new Uint8Array() }),
-    getParams: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3])),
-  }),
+  WasmProver: {
+    makeDefaultKeyMaterialProvider: vi.fn().mockReturnValue({
+      lookupKey: vi.fn().mockResolvedValue({ ir: new Uint8Array(), proverKey: new Uint8Array(), verifierKey: new Uint8Array() }),
+      getParams: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3])),
+    }),
+  },
+}));
+
+vi.mock('@midnight-ntwrk/midnight-js-protocol/ledger', () => ({
+  Transaction: {
+    deserialize: vi.fn(),
+  },
+}));
+
+vi.mock('@midnight-ntwrk/midnight-js-utils', () => ({
+  fromHex: vi.fn().mockReturnValue(new Uint8Array()),
+  toHex: vi.fn().mockReturnValue('aabb'),
+  ttlOneHour: vi.fn().mockReturnValue(new Date('2026-01-01T00:00:00Z')),
 }));
 
 const mockShieldedState = {
@@ -93,12 +107,11 @@ const mockEnvironmentConfiguration: EnvironmentConfiguration = {
 };
 
 const mockWalletProvider = {
-  wallet: mockWalletFacade,
-  unshieldedKeystore: mockUnshieldedKeystore,
+  wallet: mockWalletFacade as MidnightWalletProvider['wallet'],
+  unshieldedKeystore: mockUnshieldedKeystore as MidnightWalletProvider['unshieldedKeystore'],
   zswapSecretKeys: {} as MidnightWalletProvider['zswapSecretKeys'],
   dustSecretKey: { publicKey: 12345n } as MidnightWalletProvider['dustSecretKey'],
-  env: mockEnvironmentConfiguration,
-} as unknown as MidnightWalletProvider;
+};
 
 describe('[Unit tests] DAppConnectorWalletAdapter', () => {
   let adapter: DAppConnectorWalletAdapter;
@@ -241,6 +254,66 @@ describe('[Unit tests] DAppConnectorWalletAdapter', () => {
     });
   });
 
+  describe('balanceUnsealedTransaction', () => {
+    it('should deserialize as preBinding, balance, sign, finalize, and return hex transaction', async () => {
+      const { Transaction } = await import('@midnight-ntwrk/midnight-js-protocol/ledger');
+      mockWalletFacade.balanceUnboundTransaction.mockResolvedValue({});
+      mockWalletFacade.signRecipe.mockResolvedValue({});
+      mockWalletFacade.finalizeRecipe.mockResolvedValue({ serialize: () => new Uint8Array() });
+
+      const result = await adapter.balanceUnsealedTransaction('abcd');
+
+      expect(Transaction.deserialize).toHaveBeenCalledWith('signature', 'proof', 'preBinding', expect.any(Uint8Array));
+      expect(mockWalletFacade.balanceUnboundTransaction).toHaveBeenCalled();
+      expect(mockWalletFacade.balanceUnboundTransaction.mock.calls[0][2]).toEqual(
+        expect.objectContaining({ tokenKindsToBalance: 'all' }),
+      );
+      expect(result).toEqual({ tx: 'aabb' });
+    });
+
+    it('should exclude fees from balancing when payFees is false', async () => {
+      mockWalletFacade.balanceUnboundTransaction.mockResolvedValue({});
+      mockWalletFacade.signRecipe.mockResolvedValue({});
+      mockWalletFacade.finalizeRecipe.mockResolvedValue({ serialize: () => new Uint8Array() });
+
+      await adapter.balanceUnsealedTransaction('abcd', { payFees: false });
+
+      expect(mockWalletFacade.balanceUnboundTransaction).toHaveBeenCalled();
+      expect(mockWalletFacade.balanceUnboundTransaction.mock.calls[0][2]).toEqual(
+        expect.objectContaining({ tokenKindsToBalance: ['shielded', 'unshielded'] }),
+      );
+    });
+  });
+
+  describe('balanceSealedTransaction', () => {
+    it('should deserialize as binding, balance finalized, sign, finalize, and return hex transaction', async () => {
+      const { Transaction } = await import('@midnight-ntwrk/midnight-js-protocol/ledger');
+      mockWalletFacade.balanceFinalizedTransaction.mockResolvedValue({});
+      mockWalletFacade.signRecipe.mockResolvedValue({});
+      mockWalletFacade.finalizeRecipe.mockResolvedValue({ serialize: () => new Uint8Array() });
+
+      const result = await adapter.balanceSealedTransaction('abcd');
+
+      expect(Transaction.deserialize).toHaveBeenCalledWith('signature', 'proof', 'binding', expect.any(Uint8Array));
+      expect(mockWalletFacade.balanceFinalizedTransaction).toHaveBeenCalled();
+      expect(mockWalletFacade.balanceFinalizedTransaction.mock.calls[0][2]).toEqual(
+        expect.objectContaining({ tokenKindsToBalance: 'all' }),
+      );
+      expect(result).toEqual({ tx: 'aabb' });
+    });
+  });
+
+  describe('submitTransaction', () => {
+    it('should deserialize as binding and submit to wallet', async () => {
+      const { Transaction } = await import('@midnight-ntwrk/midnight-js-protocol/ledger');
+
+      await adapter.submitTransaction('abcd');
+
+      expect(Transaction.deserialize).toHaveBeenCalledWith('signature', 'proof', 'binding', expect.anything());
+      expect(mockWalletFacade.submitTransaction).toHaveBeenCalled();
+    });
+  });
+
   describe('getProvingProvider', () => {
     it('should return a ProvingProvider by adapting KeyMaterialProvider types', async () => {
       const { provingProvider: createLocalProvingProvider } = await import('@midnight-ntwrk/zkir-v2');
@@ -266,7 +339,7 @@ describe('[Unit tests] DAppConnectorWalletAdapter', () => {
 
     it('should try dApp keys first in lookupKey, then fall back to default provider', async () => {
       const { provingProvider: createLocalProvingProvider } = await import('@midnight-ntwrk/zkir-v2');
-      const { makeDefaultKeyMaterialProvider } = await import('@midnight-ntwrk/wallet-sdk-prover-client/effect');
+      const { WasmProver } = await import('@midnight-ntwrk/wallet-sdk-prover-client/effect');
 
       const failingDAppKMP = {
         getZKIR: vi.fn().mockRejectedValue(new Error('not found')),
@@ -278,7 +351,7 @@ describe('[Unit tests] DAppConnectorWalletAdapter', () => {
 
       const zkirProviderArg = vi.mocked(createLocalProvingProvider).mock.calls[0][0];
       const keyMaterial = await zkirProviderArg.lookupKey('midnight/zswap/spend');
-      const defaultProvider = vi.mocked(makeDefaultKeyMaterialProvider).mock.results[0].value;
+      const defaultProvider = vi.mocked(WasmProver.makeDefaultKeyMaterialProvider).mock.results[0].value;
 
       expect(defaultProvider.lookupKey).toHaveBeenCalledWith('midnight/zswap/spend');
       expect(keyMaterial).toBeDefined();

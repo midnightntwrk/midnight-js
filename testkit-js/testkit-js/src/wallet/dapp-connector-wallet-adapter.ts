@@ -31,7 +31,7 @@ import { Transaction as LedgerTransaction } from '@midnight-ntwrk/midnight-js-pr
 import { fromHex, toHex, ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
 import { DustAddress, MidnightBech32m } from '@midnight-ntwrk/wallet-sdk-address-format';
 import type { BalancingRecipe } from '@midnight-ntwrk/wallet-sdk-facade';
-import { makeDefaultKeyMaterialProvider } from '@midnight-ntwrk/wallet-sdk-prover-client/effect';
+import { WasmProver } from '@midnight-ntwrk/wallet-sdk-prover-client/effect';
 import {
   type KeyMaterialProvider as ZkirKeyMaterialProvider,
   provingProvider as createLocalProvingProvider,
@@ -43,11 +43,14 @@ import type { EnvironmentConfiguration } from '@/test-environment/environment-co
 import type { MidnightWalletProvider } from './midnight-wallet-provider';
 
 export class DAppConnectorWalletAdapter implements ConnectedAPI {
-  private readonly walletProvider: MidnightWalletProvider;
+  private readonly walletProvider: Pick<MidnightWalletProvider, 'wallet' | 'unshieldedKeystore' | 'zswapSecretKeys' | 'dustSecretKey'>;
   private readonly environmentConfiguration: EnvironmentConfiguration;
   private cachedDefaultKeyMaterialProvider?: ZkirKeyMaterialProvider;
 
-  constructor(walletProvider: MidnightWalletProvider, environmentConfiguration: EnvironmentConfiguration) {
+  constructor(
+    walletProvider: Pick<MidnightWalletProvider, 'wallet' | 'unshieldedKeystore' | 'zswapSecretKeys' | 'dustSecretKey'>,
+    environmentConfiguration: EnvironmentConfiguration,
+  ) {
     this.walletProvider = walletProvider;
     this.environmentConfiguration = environmentConfiguration;
   }
@@ -141,8 +144,8 @@ export class DAppConnectorWalletAdapter implements ConnectedAPI {
     const signature = this.walletProvider.unshieldedKeystore.signData(bytes);
     return {
       data,
-      signature: String(signature),
-      verifyingKey: String(this.walletProvider.unshieldedKeystore.getPublicKey()),
+      signature,
+      verifyingKey: this.walletProvider.unshieldedKeystore.getPublicKey(),
     };
   }
 
@@ -157,7 +160,8 @@ export class DAppConnectorWalletAdapter implements ConnectedAPI {
             keyMaterialProvider.getVerifierKey(keyLocation),
           ]);
           return { ir, proverKey, verifierKey };
-        } catch {
+        } catch (error) {
+          console.debug(`DApp key material lookup failed for '${keyLocation}', falling back to default provider`, error);
           return defaultProvider.lookupKey(keyLocation);
         }
       },
@@ -221,7 +225,7 @@ export class DAppConnectorWalletAdapter implements ConnectedAPI {
   }
 
   private getDefaultKeyMaterialProvider(): ZkirKeyMaterialProvider {
-    this.cachedDefaultKeyMaterialProvider ??= makeDefaultKeyMaterialProvider();
+    this.cachedDefaultKeyMaterialProvider ??= WasmProver.makeDefaultKeyMaterialProvider();
     return this.cachedDefaultKeyMaterialProvider;
   }
 }
