@@ -79,19 +79,20 @@ describe('DApp Connector Proving', () => {
 
     const coinPublicKey = wallet.getCoinPublicKey();
     const accountId = Buffer.from(coinPublicKey).toString('hex');
+    const storeSuffix = Date.now();
 
     const providers: SimpleProviders = {
       privateStateProvider: levelPrivateStateProvider<PrivateStateId, undefined>({
-        privateStateStoreName: `dapp-connector-proving-test-${Date.now()}`,
-        signingKeyStoreName: `dapp-connector-proving-test-${Date.now()}-signing-keys`,
+        privateStateStoreName: `dapp-connector-proving-test-${storeSuffix}`,
+        signingKeyStoreName: `dapp-connector-proving-test-${storeSuffix}-signing-keys`,
         privateStoragePasswordProvider: () => 'test-password',
         accountId,
       }),
       publicDataProvider: indexerPublicDataProvider(environmentConfiguration.indexer, environmentConfiguration.indexerWS),
       zkConfigProvider,
       proofProvider,
-      walletProvider: walletAdapter,
-      midnightProvider: walletAdapter,
+      walletProvider: wallet,
+      midnightProvider: wallet,
     };
 
     const deployedContract = await deployContract(providers, {
