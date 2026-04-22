@@ -85,7 +85,7 @@ describe('DApp Connector Proving', () => {
       privateStateProvider: levelPrivateStateProvider<PrivateStateId, undefined>({
         privateStateStoreName: `dapp-connector-proving-test-${storeSuffix}`,
         signingKeyStoreName: `dapp-connector-proving-test-${storeSuffix}-signing-keys`,
-        privateStoragePasswordProvider: () => 'test-password',
+        privateStoragePasswordProvider: () => 'test-password-1234',
         accountId,
       }),
       publicDataProvider: indexerPublicDataProvider(environmentConfiguration.indexer, environmentConfiguration.indexerWS),
