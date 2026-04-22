@@ -37,6 +37,10 @@ Additional subpaths: `./compact-js/effect`, `./compact-js/effect-contract`, `./p
 
 Security update to axios in testkit-js packages, addressing known vulnerabilities.
 
+### Fix critical protobufjs vulnerability (#854)
+
+Bumps `protobufjs` from 7.5.4 to 7.5.5, fixing CVE-2026-41242 (arbitrary code execution via `__proto__` poisoning in Message constructor and invalid characters in type names).
+
 ## Features
 
 ### CryptoBackend abstraction with Noble fallback (#827)
