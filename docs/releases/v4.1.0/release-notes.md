@@ -62,16 +62,16 @@ New exports from `@midnight-ntwrk/midnight-js-level-private-state-provider`:
 
 ### Injectable levelFactory for React Native support (#827)
 
-`LevelPrivateStateProviderConfig` now accepts an optional `levelFactory` function, enabling React Native adapters that extend `AbstractLevel` to be used instead of the default Node.js `Level`.
+`LevelPrivateStateProviderConfig` now accepts an optional `levelFactory` function, enabling any `AbstractLevel`-compatible storage backend to be used instead of the default Node.js `Level`. This unblocks React Native consumers — for example, using [`react-native-leveldb-level-adapter`](https://www.npmjs.com/package/react-native-leveldb-level-adapter) which provides an `AbstractLevel` adapter over native LevelDB bindings via JSI.
 
 ```typescript
-import { levelPrivateStateProvider, type LevelFactory } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
-
-const customLevelFactory: LevelFactory = (dbName) => new MyReactNativeLevel(dbName);
+import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
+import { SKReactNativeLevel } from 'react-native-leveldb-level-adapter';
 
 const provider = await levelPrivateStateProvider({
   // ...
-  levelFactory: customLevelFactory,
+  cryptoBackend: 'noble',
+  levelFactory: (dbName) => new SKReactNativeLevel(dbName),
 });
 ```
 
