@@ -263,7 +263,7 @@ describe('[Unit tests] DAppConnectorWalletAdapter', () => {
 
       const result = await adapter.balanceUnsealedTransaction('abcd');
 
-      expect(Transaction.deserialize).toHaveBeenCalledWith('signature', 'proof', 'preBinding', expect.any(Uint8Array));
+      expect(Transaction.deserialize).toHaveBeenCalledWith('signature', 'proof', 'pre-binding', expect.any(Uint8Array));
       expect(mockWalletFacade.balanceUnboundTransaction).toHaveBeenCalled();
       expect(mockWalletFacade.balanceUnboundTransaction.mock.calls[0][2]).toEqual(
         expect.objectContaining({ tokenKindsToBalance: 'all' }),

@@ -41,7 +41,7 @@
     "@midnight-ntwrk/compact-runtime": "0.15.0",
     "@midnight-ntwrk/ledger-v8": "8.0.3",
     "@midnight-ntwrk/onchain-runtime-v3": "3.0.0",
-    "@midnight-ntwrk/wallet-sdk-facade": "3.0.0"
+    "@midnight-ntwrk/wallet-sdk": "1.0.0"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.4.3",
@@ -86,7 +86,7 @@
     "*.ts": "eslint --cache"
   },
   "resolutions": {
-    "effect": "3.19.15",
+    "effect": "3.20.0",
     "@midnight-ntwrk/ledger-v8": "8.0.3",
     "@midnight-ntwrk/onchain-runtime-v3": "3.0.0",
     "undici": ">=7.24.0",

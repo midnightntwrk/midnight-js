@@ -27,7 +27,7 @@ import type {
   TokenType,
   WalletConnectedAPI,
 } from '@midnight-ntwrk/dapp-connector-api';
-import { Transaction as LedgerTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { type Binding, type PreBinding, type Proof, type SignatureEnabled, Transaction as LedgerTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { fromHex, toHex, ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
 import { DustAddress, MidnightBech32m } from '@midnight-ntwrk/wallet-sdk-address-format';
 import type { BalancingRecipe } from '@midnight-ntwrk/wallet-sdk-facade';
@@ -102,8 +102,8 @@ export class DAppConnectorWalletAdapter implements ConnectedAPI {
   }
 
   async balanceUnsealedTransaction(tx: string, options?: { payFees?: boolean }): Promise<{ tx: string }> {
-    const unboundTx = LedgerTransaction.deserialize('signature', 'proof', 'preBinding', fromHex(tx));
-    const tokenKindsToBalance = options?.payFees === false ? (['shielded', 'unshielded'] as const) : ('all' as const);
+    const unboundTx = LedgerTransaction.deserialize<SignatureEnabled, Proof, PreBinding>('signature', 'proof', 'pre-binding', fromHex(tx));
+    const tokenKindsToBalance = options?.payFees === false ? (['shielded', 'unshielded'] as ('shielded' | 'unshielded')[]) : ('all' as const);
     const recipe = await this.walletProvider.wallet.balanceUnboundTransaction(
       unboundTx,
       this.secretKeys(),
@@ -113,8 +113,8 @@ export class DAppConnectorWalletAdapter implements ConnectedAPI {
   }
 
   async balanceSealedTransaction(tx: string, options?: { payFees?: boolean }): Promise<{ tx: string }> {
-    const finalizedTx = LedgerTransaction.deserialize('signature', 'proof', 'binding', fromHex(tx));
-    const tokenKindsToBalance = options?.payFees === false ? (['shielded', 'unshielded'] as const) : ('all' as const);
+    const finalizedTx = LedgerTransaction.deserialize<SignatureEnabled, Proof, Binding>('signature', 'proof', 'binding', fromHex(tx));
+    const tokenKindsToBalance = options?.payFees === false ? (['shielded', 'unshielded'] as ('shielded' | 'unshielded')[]) : ('all' as const);
     const recipe = await this.walletProvider.wallet.balanceFinalizedTransaction(
       finalizedTx,
       this.secretKeys(),
@@ -124,7 +124,7 @@ export class DAppConnectorWalletAdapter implements ConnectedAPI {
   }
 
   async submitTransaction(tx: string): Promise<void> {
-    const finalizedTx = LedgerTransaction.deserialize('signature', 'proof', 'binding', fromHex(tx));
+    const finalizedTx = LedgerTransaction.deserialize<SignatureEnabled, Proof, Binding>('signature', 'proof', 'binding', fromHex(tx));
     await this.walletProvider.wallet.submitTransaction(finalizedTx);
   }
 
