@@ -22,8 +22,6 @@ import {
   type AnyProvableCircuitId,
   type FinalizedTxData,
 } from '@midnight-ntwrk/midnight-js-types';
-import fs from 'fs';
-import path from 'path';
 
 import { type ContractProviders } from './contract-providers';
 
@@ -73,20 +71,8 @@ function logTransaction(circuitId: string | string[] | undefined, tx: Transactio
   try {
     console.log(`Submit tx: ${circuitIds} : ${tx}`);
     const serialized = tx.serialize();
-    const logsDir = path.join(process.cwd(), 'logs', 'transactions');
 
-    if (!fs.existsSync(logsDir)) {
-      fs.mkdirSync(logsDir, { recursive: true });
-    }
-
-    const filename = `tx-${Date.now()}-${circuitIds}`;
-    const filepath = path.join(logsDir, filename + '.bin');
-    const filepathString = path.join(logsDir, filename + '.txt');
-
-    fs.writeFileSync(filepath, serialized);
-    fs.writeFileSync(filepathString, tx.toString());
-
-    console.log(`Transaction serialized and written to: ${filepath}`);
+    console.log(`Serialized tx has length ${serialized.length}`);
   } catch (error) {
     console.error('Failed to write debug transaction logs:', error instanceof Error ? error.message : String(error));
   }
