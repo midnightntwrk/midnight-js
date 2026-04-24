@@ -14,9 +14,7 @@
  */
 
 import { shieldedToken, type TokenType } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { type WalletFacade } from '@midnight-ntwrk/wallet-sdk-facade';
-import { type ShieldedWalletAPI, type ShieldedWalletState } from '@midnight-ntwrk/wallet-sdk-shielded';
-import { type UnshieldedWalletAPI, type UnshieldedWalletState } from '@midnight-ntwrk/wallet-sdk-unshielded-wallet';
+import { type ShieldedWalletAPI, type ShieldedWalletState, type UnshieldedWalletAPI, type UnshieldedWalletState, type WalletFacade } from '@midnight-ntwrk/wallet-sdk';
 import * as Rx from 'rxjs';
 
 import { FaucetClient } from '@/client';

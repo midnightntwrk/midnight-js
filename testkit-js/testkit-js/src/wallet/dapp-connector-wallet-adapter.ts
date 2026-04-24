@@ -29,8 +29,7 @@ import type {
 } from '@midnight-ntwrk/dapp-connector-api';
 import { type Binding, type PreBinding, type Proof, type SignatureEnabled, Transaction as LedgerTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { fromHex, toHex, ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
-import { DustAddress, MidnightBech32m } from '@midnight-ntwrk/wallet-sdk-address-format';
-import type { BalancingRecipe } from '@midnight-ntwrk/wallet-sdk-facade';
+import { type BalancingRecipe, DustAddress, MidnightBech32m } from '@midnight-ntwrk/wallet-sdk';
 import { WasmProver } from '@midnight-ntwrk/wallet-sdk-prover-client/effect';
 import {
   type KeyMaterialProvider as ZkirKeyMaterialProvider,

@@ -14,8 +14,7 @@
  */
 
 import { type LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { InMemoryTransactionHistoryStorage } from '@midnight-ntwrk/wallet-sdk-abstractions';
-import { type DefaultConfiguration, mergeWalletEntries,WalletEntrySchema } from '@midnight-ntwrk/wallet-sdk-facade';
+import { type DefaultConfiguration, InMemoryTransactionHistoryStorage, mergeWalletEntries, WalletEntrySchema } from '@midnight-ntwrk/wallet-sdk';
 
 import { type EnvironmentConfiguration } from '@/test-environment';
 
