@@ -16,7 +16,9 @@
 import { DustSecretKey, LedgerParameters, ZswapSecretKeys } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type DefaultConfiguration,
+  type DefaultDustConfiguration,
   type DefaultShieldedConfiguration,
+  type DefaultUnshieldedConfiguration,
   DustWallet,
   type DustWalletAPI,
   InMemoryTransactionHistoryStorage,
@@ -52,7 +54,7 @@ export class WalletFactory {
   }
 
   static createUnshieldedWallet(
-    config: DefaultShieldedConfiguration,
+    config: DefaultUnshieldedConfiguration,
     unshieldedKeystore: UnshieldedKeystore,
   ): UnshieldedWalletAPI {
     return UnshieldedWallet({
@@ -62,7 +64,7 @@ export class WalletFactory {
   }
 
   static createDustWallet(
-    config: DefaultShieldedConfiguration,
+    config: DefaultDustConfiguration,
     seed: Uint8Array,
     dustOptions: DustWalletOptions = DEFAULT_DUST_OPTIONS
   ): DustWalletAPI {
