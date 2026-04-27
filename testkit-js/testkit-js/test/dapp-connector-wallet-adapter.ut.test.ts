@@ -39,6 +39,14 @@ vi.mock('@midnight-ntwrk/zkir-v2', () => ({
   } satisfies ZkirProvingProvider),
 }));
 
+vi.mock('@midnight-ntwrk/wallet-sdk-prover-client/effect', () => ({
+  WasmProver: {
+    makeDefaultKeyMaterialProvider: vi.fn().mockReturnValue({
+      lookupKey: vi.fn().mockResolvedValue({ ir: new Uint8Array(), proverKey: new Uint8Array(), verifierKey: new Uint8Array() }),
+      getParams: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3])),
+    }),
+  },
+}));
 
 vi.mock('@midnight-ntwrk/midnight-js-protocol/ledger', () => ({
   Transaction: {
@@ -351,6 +359,23 @@ describe('[Unit tests] DAppConnectorWalletAdapter', () => {
         proverKey: new Uint8Array([20]),
         verifierKey: new Uint8Array([30]),
       });
+    });
+
+    it('should delegate getParams to default provider', async () => {
+      const { provingProvider: createLocalProvingProvider } = await import('@midnight-ntwrk/zkir-v2');
+
+      const mockDAppKMP = {
+        getZKIR: vi.fn(),
+        getProverKey: vi.fn(),
+        getVerifierKey: vi.fn(),
+      };
+
+      await adapter.getProvingProvider(mockDAppKMP);
+
+      const zkirProviderArg = vi.mocked(createLocalProvingProvider).mock.calls[0][0];
+      const params = await zkirProviderArg.getParams(16);
+
+      expect(params).toEqual(new Uint8Array([1, 2, 3]));
     });
   });
 });
