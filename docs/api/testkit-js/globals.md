@@ -4,6 +4,8 @@
 
 ## Classes
 
+- [DAppConnectorInitialAPI](classes/DAppConnectorInitialAPI.md)
+- [DAppConnectorWalletAdapter](classes/DAppConnectorWalletAdapter.md)
 - [DynamicProofServerContainer](classes/DynamicProofServerContainer.md)
 - [EnvVarRemoteTestEnvironment](classes/EnvVarRemoteTestEnvironment.md)
 - [FaucetClient](classes/FaucetClient.md)
