@@ -14,16 +14,24 @@
  */
 
 import { DustSecretKey, LedgerParameters, ZswapSecretKeys } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { DustWallet, type DustWalletAPI } from '@midnight-ntwrk/wallet-sdk-dust-wallet';
-import { type DefaultConfiguration, WalletFacade } from '@midnight-ntwrk/wallet-sdk-facade';
-import { ShieldedWallet, type ShieldedWalletAPI } from '@midnight-ntwrk/wallet-sdk-shielded';
-import { type DefaultV1Configuration } from '@midnight-ntwrk/wallet-sdk-shielded/v1';
 import {
+  type DefaultConfiguration,
+  type DefaultDustConfiguration,
+  type DefaultShieldedConfiguration,
+  type DefaultUnshieldedConfiguration,
+  DustWallet,
+  type DustWalletAPI,
   InMemoryTransactionHistoryStorage,
+  mergeWalletEntries,
   PublicKey,
+  ShieldedWallet,
+  type ShieldedWalletAPI,
   type UnshieldedKeystore,
   UnshieldedWallet,
-  type UnshieldedWalletAPI} from '@midnight-ntwrk/wallet-sdk-unshielded-wallet';
+  type UnshieldedWalletAPI,
+  WalletEntrySchema,
+  WalletFacade,
+} from '@midnight-ntwrk/wallet-sdk';
 
 import { logger } from '@/logger';
 
@@ -40,23 +48,23 @@ export const DEFAULT_DUST_OPTIONS: DustWalletOptions = {
 };
 
 export class WalletFactory {
-  static createShieldedWallet(config: DefaultV1Configuration, seed: Uint8Array): ShieldedWalletAPI {
+  static createShieldedWallet(config: DefaultShieldedConfiguration, seed: Uint8Array): ShieldedWalletAPI {
     const Shielded = ShieldedWallet(config);
     return Shielded.startWithSeed(seed);
   }
 
   static createUnshieldedWallet(
-    config: DefaultV1Configuration,
+    config: DefaultUnshieldedConfiguration,
     unshieldedKeystore: UnshieldedKeystore,
   ): UnshieldedWalletAPI {
     return UnshieldedWallet({
       ...config,
-      txHistoryStorage: new InMemoryTransactionHistoryStorage(),
+      txHistoryStorage: new InMemoryTransactionHistoryStorage(WalletEntrySchema, mergeWalletEntries),
     }).startWithPublicKey(PublicKey.fromKeyStore(unshieldedKeystore));
   }
 
   static createDustWallet(
-    config: DefaultV1Configuration,
+    config: DefaultDustConfiguration,
     seed: Uint8Array,
     dustOptions: DustWalletOptions = DEFAULT_DUST_OPTIONS
   ): DustWalletAPI {
@@ -99,7 +107,7 @@ export class WalletFactory {
   }
 
   static async restoreShieldedWallet(
-    config: DefaultV1Configuration,
+    config: DefaultShieldedConfiguration,
     serializedState: string
   ): Promise<ShieldedWallet> {
     return ShieldedWallet(config).restore(serializedState);

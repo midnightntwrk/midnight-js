@@ -20,7 +20,7 @@ import type { EnvironmentConfiguration } from '@/test-environment/environment-co
 import { DAppConnectorWalletAdapter } from '@/wallet/dapp-connector-wallet-adapter';
 import type { MidnightWalletProvider } from '@/wallet/midnight-wallet-provider';
 
-vi.mock('@midnight-ntwrk/wallet-sdk-address-format', () => ({
+vi.mock('@midnight-ntwrk/wallet-sdk/address-format', () => ({
   MidnightBech32m: {
     encode: vi.fn().mockReturnValue({ asString: () => 'mn1shielded-bech32m-address' }),
   },
@@ -167,7 +167,7 @@ describe('[Unit tests] DAppConnectorWalletAdapter', () => {
 
   describe('getShieldedAddresses', () => {
     it('should return Bech32m-encoded address and key strings from wallet state', async () => {
-      const { MidnightBech32m } = await import('@midnight-ntwrk/wallet-sdk-address-format');
+      const { MidnightBech32m } = await import('@midnight-ntwrk/wallet-sdk/address-format');
 
       const result = await adapter.getShieldedAddresses();
 
@@ -191,7 +191,7 @@ describe('[Unit tests] DAppConnectorWalletAdapter', () => {
 
   describe('getDustAddress', () => {
     it('should return encoded dust address from DustSecretKey public key', async () => {
-      const { DustAddress } = await import('@midnight-ntwrk/wallet-sdk-address-format');
+      const { DustAddress } = await import('@midnight-ntwrk/wallet-sdk/address-format');
 
       const result = await adapter.getDustAddress();
 
@@ -263,7 +263,7 @@ describe('[Unit tests] DAppConnectorWalletAdapter', () => {
 
       const result = await adapter.balanceUnsealedTransaction('abcd');
 
-      expect(Transaction.deserialize).toHaveBeenCalledWith('signature', 'proof', 'preBinding', expect.any(Uint8Array));
+      expect(Transaction.deserialize).toHaveBeenCalledWith('signature', 'proof', 'pre-binding', expect.any(Uint8Array));
       expect(mockWalletFacade.balanceUnboundTransaction).toHaveBeenCalled();
       expect(mockWalletFacade.balanceUnboundTransaction.mock.calls[0][2]).toEqual(
         expect.objectContaining({ tokenKindsToBalance: 'all' }),
@@ -337,24 +337,28 @@ describe('[Unit tests] DAppConnectorWalletAdapter', () => {
       expect(result.prove).toBeDefined();
     });
 
-    it('should try dApp keys first in lookupKey, then fall back to default provider', async () => {
+    it('should resolve key material from DApp provider in lookupKey', async () => {
       const { provingProvider: createLocalProvingProvider } = await import('@midnight-ntwrk/zkir-v2');
-      const { WasmProver } = await import('@midnight-ntwrk/wallet-sdk-prover-client/effect');
 
-      const failingDAppKMP = {
-        getZKIR: vi.fn().mockRejectedValue(new Error('not found')),
-        getProverKey: vi.fn().mockRejectedValue(new Error('not found')),
-        getVerifierKey: vi.fn().mockRejectedValue(new Error('not found')),
+      const mockDAppKMP = {
+        getZKIR: vi.fn().mockResolvedValue(new Uint8Array([10])),
+        getProverKey: vi.fn().mockResolvedValue(new Uint8Array([20])),
+        getVerifierKey: vi.fn().mockResolvedValue(new Uint8Array([30])),
       };
 
-      await adapter.getProvingProvider(failingDAppKMP);
+      await adapter.getProvingProvider(mockDAppKMP);
 
       const zkirProviderArg = vi.mocked(createLocalProvingProvider).mock.calls[0][0];
       const keyMaterial = await zkirProviderArg.lookupKey('midnight/zswap/spend');
-      const defaultProvider = vi.mocked(WasmProver.makeDefaultKeyMaterialProvider).mock.results[0].value;
 
-      expect(defaultProvider.lookupKey).toHaveBeenCalledWith('midnight/zswap/spend');
-      expect(keyMaterial).toBeDefined();
+      expect(mockDAppKMP.getZKIR).toHaveBeenCalledWith('midnight/zswap/spend');
+      expect(mockDAppKMP.getProverKey).toHaveBeenCalledWith('midnight/zswap/spend');
+      expect(mockDAppKMP.getVerifierKey).toHaveBeenCalledWith('midnight/zswap/spend');
+      expect(keyMaterial).toEqual({
+        ir: new Uint8Array([10]),
+        proverKey: new Uint8Array([20]),
+        verifierKey: new Uint8Array([30]),
+      });
     });
 
     it('should delegate getParams to default provider', async () => {

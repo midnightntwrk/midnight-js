@@ -24,8 +24,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { type MidnightProvider, type UnboundTransaction, type WalletProvider } from '@midnight-ntwrk/midnight-js-types';
 import { ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
-import { type WalletFacade } from '@midnight-ntwrk/wallet-sdk-facade';
-import { type UnshieldedKeystore } from '@midnight-ntwrk/wallet-sdk-unshielded-wallet';
+import { type UnshieldedKeystore, type WalletFacade } from '@midnight-ntwrk/wallet-sdk';
 import type { Logger } from 'pino';
 
 import { type EnvironmentConfiguration } from '@/index';
