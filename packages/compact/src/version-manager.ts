@@ -59,7 +59,8 @@ export class VersionManager {
   removeVersion(version: string): void {
     const managedDir = path.resolve(this.packageDir, 'managed');
     const versionDir = this.getVersionDir(version);
-    if (path.relative(managedDir, versionDir).startsWith('..')) {
+    const rel = path.relative(managedDir, versionDir);
+    if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
       throw new Error(`Invalid version: ${JSON.stringify(version)}`);
     }
     fs.rmSync(versionDir, { recursive: true, force: true });

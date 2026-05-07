@@ -63,7 +63,8 @@ export class NodeZkConfigProvider<K extends string> extends ZKConfigProvider<K> 
     assertSafeName(circuitId, 'circuitId');
     const baseDir = path.resolve(this.directory, subDir);
     const target = path.resolve(baseDir, circuitId + ext);
-    if (path.relative(baseDir, target).startsWith('..')) {
+    const rel = path.relative(baseDir, target);
+    if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
       throw new Error(`Invalid circuitId: ${JSON.stringify(circuitId)}`);
     }
     return fs.readFile(target);

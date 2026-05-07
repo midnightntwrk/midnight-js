@@ -81,4 +81,18 @@ describe('Node ZK config Provider', () => {
       await expect(provider.getZKIR(target)).rejects.toThrow(/Invalid circuitId/);
     });
   });
+
+  describe('accepts unusual but safe circuitId names', () => {
+    const provider = new NodeZkConfigProvider(resourceDir);
+
+    test.each([
+      '..foo',
+      '..foo..',
+      'foo..bar',
+      '...'
+    ])('getProverKey lets %s reach the filesystem (no false-positive containment reject)', async (circuitId) => {
+      const target = circuitId as unknown as 'set_topic';
+      await expect(provider.getProverKey(target)).rejects.toThrow(/ENOENT/);
+    });
+  });
 });
