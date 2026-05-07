@@ -2041,6 +2041,7 @@ __metadata:
   resolution: "@midnight-ntwrk/midnight-js-node-zk-config-provider@workspace:packages/node-zk-config-provider"
   dependencies:
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
+    "@midnight-ntwrk/midnight-js-utils": "workspace:*"
   languageName: unknown
   linkType: soft
 
