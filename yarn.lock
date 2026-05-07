@@ -1914,6 +1914,7 @@ __metadata:
   resolution: "@midnight-ntwrk/midnight-js-fetch-zk-config-provider@workspace:packages/fetch-zk-config-provider"
   dependencies:
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
+    "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     "@types/express": "npm:^5.0.0"
     cross-fetch: "npm:^4.1.0"
     express: "npm:^5.0.0"
