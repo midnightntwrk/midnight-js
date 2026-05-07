@@ -1876,6 +1876,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-compact@workspace:packages/compact"
   dependencies:
+    "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     "@types/node": "npm:^24.0.0"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^6.0.2"

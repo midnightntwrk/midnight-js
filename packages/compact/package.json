@@ -32,5 +32,8 @@
   },
   "files": [
     "dist/"
-  ]
+  ],
+  "dependencies": {
+    "@midnight-ntwrk/midnight-js-utils": "workspace:*"
+  }
 }
