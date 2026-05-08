@@ -53,7 +53,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
 
-import { type EncryptionPublicKeyResolver, zswapStateToOffer } from './zswap-utils';
+import { type EncryptionPublicKeyResolver, zswapStateToOffer, zswapStateToSegmentedOffer } from './zswap-utils';
 
 export const toLedgerContractState = (contractState: ContractState): LedgerContractState =>
   LedgerContractState.deserialize(contractState.serialize());
@@ -146,13 +146,17 @@ export const createUnprovenLedgerCallTx = (
     intent.fallibleUnshieldedOffer = UnshieldedOffer.new([], fallibleOutputs, []);
   }
 
+  const segmentedOffers = zswapStateToSegmentedOffer(
+    nextZswapLocalState,
+    encryptionPublicKey,
+    { contractAddress, zswapChainState },
+    partitionedTranscript
+  );
+
   return Transaction.fromPartsRandomized(
     getNetworkId(),
-    zswapStateToOffer(nextZswapLocalState, encryptionPublicKey, {
-      contractAddress,
-      zswapChainState
-    }),
-    undefined,
+    segmentedOffers.guaranteed,
+    segmentedOffers.fallible,
     intent
   );
 };
