@@ -1065,9 +1065,11 @@ describe('Zswap utilities', () => {
       // Act
       const result = zswapStateToSegmentedOffer(zswapState, () => epk, undefined, partitioned);
       // Assert: existing behaviour preserved — pre-fix code would also have placed it here.
+      const expectedCommitment = coinCommitment(coinInfo, recipientCpk);
       expect(result.guaranteed).toBeDefined();
       expect(result.fallible).toBeUndefined();
       expect(result.guaranteed!.outputs.length).toBe(1);
+      expect(result.guaranteed!.outputs[0]!.commitment).toBe(expectedCommitment);
     });
 
     it('routes a wallet-owned input to the segment whose claimedShieldedSpends contains its commitment', () => {

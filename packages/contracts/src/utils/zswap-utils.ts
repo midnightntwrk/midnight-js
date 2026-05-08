@@ -290,10 +290,9 @@ export const encryptionPublicKeyResolverForZswapState = (
   );
 };
 
-// Local aliases for the two segment IDs used by zswapStateToSegmentedOffer.
-// GUARANTEED_SEGMENT_NUMBER intentionally duplicates DEFAULT_SEGMENT_NUMBER (0) above
-// rather than reusing it: the deploy-path constant has its own contract (see comment
-// on DEFAULT_SEGMENT_NUMBER) that is not the same as "the guaranteed segment".
+// Segment IDs used by zswapStateToSegmentedOffer. DEFAULT_SEGMENT_NUMBER above
+// also equals 0 — deploys are guaranteed-only so the values coincide — but the
+// two constants document distinct contracts and are kept separate.
 const GUARANTEED_SEGMENT_NUMBER = 0;
 const FALLIBLE_SEGMENT_NUMBER = 1;
 
@@ -378,6 +377,8 @@ export const zswapStateToSegmentedOffer = (
     if (output.recipient.is_left) {
       commitment = coinCommitment(output.coinInfo, output.recipient.left);
     } else {
+      // coinCommitment only accepts CoinPublicKey; for contract-owned coins we build a
+      // throwaway output to read its commitment (segment-independent — see segment-spike).
       commitment = ZswapOutput.newContractOwned(output.coinInfo, GUARANTEED_SEGMENT_NUMBER, output.recipient.right).commitment;
     }
     const segment = segmentForCommitment(commitment, partitionedTranscript, 'claimedShieldedReceives');
