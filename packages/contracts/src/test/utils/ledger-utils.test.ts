@@ -284,15 +284,12 @@ describe('ledger-utils', () => {
       // Assert — the produced transaction must place the output in the fallible offer,
       // not the guaranteed one. This is the entire point of the fix.
       const fallible = tx.fallibleOffer;
-      const guaranteed = tx.guaranteedOffer;
       expect(fallible).toBeDefined();
       expect(fallible!.size).toBe(1);
       const [[, fallibleOffer]] = Array.from(fallible!.entries());
       expect(fallibleOffer.outputs.map((o) => o.commitment)).toContain(commitment);
-      // The guaranteed side should not have the LP commitment.
-      if (guaranteed) {
-        expect(guaranteed.outputs.map((o) => o.commitment)).not.toContain(commitment);
-      }
+      // The guaranteed side should be empty: no outputs were placed there.
+      expect(tx.guaranteedOffer === undefined || tx.guaranteedOffer.outputs.length === 0).toBe(true);
     });
 
     it('keeps a guaranteed-segment user-bound output in the guaranteed offer', () => {
@@ -332,7 +329,7 @@ describe('ledger-utils', () => {
       // Assert
       expect(tx.guaranteedOffer).toBeDefined();
       expect(tx.guaranteedOffer!.outputs.map((o) => o.commitment)).toContain(commitment);
-      expect(tx.fallibleOffer === undefined || tx.fallibleOffer.size === 0).toBe(true);
+      expect(tx.fallibleOffer).toBeUndefined();
     });
   });
 
