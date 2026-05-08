@@ -16,9 +16,12 @@
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { type Recipient, type ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
+  type CoinCommitment,
+  coinCommitment,
   type CoinPublicKey,
   type ContractAddress,
   type EncPublicKey,
+  type PartitionedTranscript,
   type QualifiedShieldedCoinInfo,
   type ShieldedCoinInfo,
   type UnprovenInput,
@@ -285,4 +288,124 @@ export const encryptionPublicKeyResolverForZswapState = (
     walletEncryptionPublicKey,
     additionalCoinEncPublicKeyMappings
   );
+};
+
+const GUARANTEED_SEGMENT_NUMBER = 0;
+const FALLIBLE_SEGMENT_NUMBER = 1;
+
+type SegmentBucket = {
+  outputs: Map<string, UnprovenOutput>;
+  inputs: Map<string, UnprovenInput>;
+  transients: Map<string, UnprovenTransient>;
+};
+
+const emptyBucket = (): SegmentBucket => ({
+  outputs: new Map(),
+  inputs: new Map(),
+  transients: new Map()
+});
+
+const segmentForCommitment = (
+  commitment: CoinCommitment,
+  partitionedTranscript: PartitionedTranscript,
+  field: 'claimedShieldedReceives' | 'claimedShieldedSpends'
+): 0 | 1 => {
+  const [guaranteed, fallible] = partitionedTranscript;
+  if (guaranteed?.effects[field].includes(commitment)) return GUARANTEED_SEGMENT_NUMBER;
+  if (fallible?.effects[field].includes(commitment)) return FALLIBLE_SEGMENT_NUMBER;
+  // Defensive default: callers that pass [undefined, undefined] (deploy path,
+  // existing tests) or transcripts with empty effects keep the pre-fix
+  // behaviour of placing coins in the guaranteed section.
+  return GUARANTEED_SEGMENT_NUMBER;
+};
+
+const bucketToOffer = (bucket: SegmentBucket): UnprovenOffer | undefined => {
+  const inputsOffer = unprovenOfferFromMap(bucket.inputs, ZswapOffer.fromInput);
+  const outputsOffer = unprovenOfferFromMap(bucket.outputs, ZswapOffer.fromOutput);
+  const transientsOffer = unprovenOfferFromMap(bucket.transients, ZswapOffer.fromTransient);
+
+  const offers = [inputsOffer, outputsOffer, transientsOffer].filter((offer) => offer != null);
+
+  if (offers.length === 0) return undefined;
+  if (offers.length === 1) return offers[0];
+  return offers.reduce((acc, curr) => acc.merge(curr));
+};
+
+/**
+ * Builds segment-aware {@link UnprovenOffer}s from a {@link ZswapLocalState}.
+ *
+ * Each output / input / transient in the local state is matched against the
+ * commitment sets in `partitionedTranscript[i].effects.claimedShieldedReceives`
+ * (for receives) and `claimedShieldedSpends` (for spends), then placed in the
+ * guaranteed (segment 0) or fallible (segment 1) bucket accordingly. Both
+ * resulting offers are returned and intended to be passed through to
+ * `Transaction.fromPartsRandomized`'s `guaranteed` and `fallible` parameters.
+ *
+ * Mirrors the existing unshielded handling in `createUnprovenLedgerCallTx`
+ * (see ledger-utils.ts) and fixes
+ * https://github.com/midnightntwrk/midnight-js/issues/876.
+ *
+ * For the deploy path (no contract call, no transcript) keep using the
+ * single-offer {@link zswapStateToOffer}.
+ */
+export const zswapStateToSegmentedOffer = (
+  zswapLocalState: ZswapLocalState,
+  encryptionPublicKeyOrResolver: EncPublicKey | EncryptionPublicKeyResolver,
+  addressAndChainStateTuple: { contractAddress: ContractAddress; zswapChainState: ZswapChainState } | undefined,
+  partitionedTranscript: PartitionedTranscript
+): { guaranteed: UnprovenOffer | undefined; fallible: UnprovenOffer | undefined } => {
+  const resolver: EncryptionPublicKeyResolver =
+    typeof encryptionPublicKeyOrResolver === 'function'
+      ? encryptionPublicKeyOrResolver
+      : () => encryptionPublicKeyOrResolver;
+
+  const buckets: Record<0 | 1, SegmentBucket> = {
+    [GUARANTEED_SEGMENT_NUMBER]: emptyBucket(),
+    [FALLIBLE_SEGMENT_NUMBER]: emptyBucket()
+  };
+
+  const rehashedChainState = addressAndChainStateTuple?.zswapChainState.postBlockUpdate(new Date());
+
+  for (const output of zswapLocalState.outputs) {
+    const probe = createZswapOutput(output, resolver, GUARANTEED_SEGMENT_NUMBER);
+    const segment = segmentForCommitment(probe.commitment, partitionedTranscript, 'claimedShieldedReceives');
+    const finalOutput = output.recipient.is_left
+      ? createZswapOutput(output, resolver, segment)
+      : ZswapOutput.newContractOwned(output.coinInfo, segment, output.recipient.right);
+    buckets[segment].outputs.set(serializeCoinInfo(output.coinInfo), finalOutput);
+  }
+
+  for (const qualifiedCoinInfo of zswapLocalState.inputs) {
+    const serializedCoinInfo = serializeQualifiedShieldedCoinInfo(qualifiedCoinInfo);
+    const { mt_index: _mtIndex, ...coinInfoForCommit } = qualifiedCoinInfo;
+    const inputCommitment = coinCommitment(coinInfoForCommit, zswapLocalState.coinPublicKey);
+    const segment = segmentForCommitment(inputCommitment, partitionedTranscript, 'claimedShieldedSpends');
+
+    const candidateOutput = buckets[segment].outputs.get(serializedCoinInfo);
+    if (candidateOutput) {
+      buckets[segment].transients.set(
+        serializedCoinInfo,
+        ZswapTransient.newFromContractOwnedOutput(qualifiedCoinInfo, segment, candidateOutput)
+      );
+      buckets[segment].outputs.delete(serializedCoinInfo);
+    } else {
+      assertDefined(addressAndChainStateTuple, `Only outputs or transients are expected when no chain state is provided`);
+      assertDefined(rehashedChainState, `Only outputs or transients are expected when no chain state is provided`);
+      assertIsContractAddress(addressAndChainStateTuple.contractAddress);
+      buckets[segment].inputs.set(
+        serializedCoinInfo,
+        ZswapInput.newContractOwned(
+          qualifiedCoinInfo,
+          segment,
+          addressAndChainStateTuple.contractAddress,
+          rehashedChainState
+        )
+      );
+    }
+  }
+
+  return {
+    guaranteed: bucketToOffer(buckets[GUARANTEED_SEGMENT_NUMBER]),
+    fallible: bucketToOffer(buckets[FALLIBLE_SEGMENT_NUMBER])
+  };
 };
