@@ -78,17 +78,21 @@ describe('Zswap segment spike (#876)', () => {
     // we don't assert its specific value — only that exactly one bucket exists
     // and it carries our fallible output.
     const [[fallibleSegmentId, placedFallible]] = Array.from(tx.fallibleOffer!.entries());
-    expect(typeof fallibleSegmentId).toBe('number');
+    expect(Number.isInteger(fallibleSegmentId) && fallibleSegmentId >= 0).toBe(true);
     expect(placedFallible.outputs.length).toBe(1);
+    // tx.guaranteedOffer is a single ZswapOffer (not a Map keyed by segment ID).
     expect(tx.guaranteedOffer!.outputs.length).toBe(1);
   });
 
-  it('passes segment === undefined to ZswapOutput.new — accepted by ledger', () => {
+  it('passes segment === undefined to ZswapOutput.new — accepted, and commitment is still readable', () => {
     // Arrange
     const cpk = sampleCoinPublicKey();
     const epk = sampleEncryptionPublicKey();
     const coin = createShieldedCoinInfo(nativeToken().raw, 100n);
-    // Act + Assert: must not throw
-    expect(() => ZswapOutput.new(coin, undefined, cpk, epk)).not.toThrow();
+    // Act
+    const output = ZswapOutput.new(coin, undefined, cpk, epk);
+    // Assert: a future ledger that silently nulls .commitment when segment is
+    // undefined would break the matching logic in zswapStateToSegmentedOffer.
+    expect(output.commitment).toBe(coinCommitment(coin, cpk));
   });
 });
