@@ -1101,7 +1101,7 @@ describe('Zswap utilities', () => {
       const result = zswapStateToSegmentedOffer(
         zswapState,
         randomEncryptionPublicKey(),
-        { contractAddress: contractRecipient.right, zswapChainState: chainState.postBlockUpdate(new Date()) },
+        { contractAddress: contractRecipient.right, zswapChainState: chainState },
         partitioned
       );
       // Assert

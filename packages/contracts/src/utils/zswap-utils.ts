@@ -290,6 +290,10 @@ export const encryptionPublicKeyResolverForZswapState = (
   );
 };
 
+// Local aliases for the two segment IDs used by zswapStateToSegmentedOffer.
+// GUARANTEED_SEGMENT_NUMBER intentionally duplicates DEFAULT_SEGMENT_NUMBER (0) above
+// rather than reusing it: the deploy-path constant has its own contract (see comment
+// on DEFAULT_SEGMENT_NUMBER) that is not the same as "the guaranteed segment".
 const GUARANTEED_SEGMENT_NUMBER = 0;
 const FALLIBLE_SEGMENT_NUMBER = 1;
 
@@ -366,9 +370,17 @@ export const zswapStateToSegmentedOffer = (
 
   const rehashedChainState = addressAndChainStateTuple?.zswapChainState.postBlockUpdate(new Date());
 
+  // Outputs: build with the resolved segment so the proof binds to the right value.
+  // For user-bound coins, derive the commitment directly via coinCommitment to
+  // avoid invoking the encryption-key resolver twice.
   for (const output of zswapLocalState.outputs) {
-    const probe = createZswapOutput(output, resolver, GUARANTEED_SEGMENT_NUMBER);
-    const segment = segmentForCommitment(probe.commitment, partitionedTranscript, 'claimedShieldedReceives');
+    let commitment: CoinCommitment;
+    if (output.recipient.is_left) {
+      commitment = coinCommitment(output.coinInfo, output.recipient.left);
+    } else {
+      commitment = ZswapOutput.newContractOwned(output.coinInfo, GUARANTEED_SEGMENT_NUMBER, output.recipient.right).commitment;
+    }
+    const segment = segmentForCommitment(commitment, partitionedTranscript, 'claimedShieldedReceives');
     const finalOutput = output.recipient.is_left
       ? createZswapOutput(output, resolver, segment)
       : ZswapOutput.newContractOwned(output.coinInfo, segment, output.recipient.right);
