@@ -16,14 +16,17 @@
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { type Recipient, type ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
+  type AlignedValue,
   type CoinCommitment,
   coinCommitment,
   type CoinPublicKey,
   type ContractAddress,
   type EncPublicKey,
+  type Nullifier,
   type PartitionedTranscript,
   type QualifiedShieldedCoinInfo,
   type ShieldedCoinInfo,
+  type Transcript,
   type UnprovenInput,
   type UnprovenOffer,
   type UnprovenOutput,
@@ -238,26 +241,49 @@ const emptyBucket = (): SegmentBucket => ({
   transients: new Map()
 });
 
-const segmentForCommitment = (
-  commitment: CoinCommitment,
+type SegmentMatchPredicate = (transcript: Transcript<AlignedValue>) => boolean;
+
+const segmentForMatch = (
+  matches: SegmentMatchPredicate,
   partitionedTranscript: PartitionedTranscript,
-  field: 'claimedShieldedReceives' | 'claimedShieldedSpends'
+  errorContext: string
 ): 0 | 1 => {
   const [guaranteed, fallible] = partitionedTranscript;
-  if (guaranteed?.effects[field].includes(commitment)) return GUARANTEED_SEGMENT_NUMBER;
-  if (fallible?.effects[field].includes(commitment)) return FALLIBLE_SEGMENT_NUMBER;
-  // Both transcript halves were provided but neither lists this commitment.
+  if (guaranteed !== undefined && matches(guaranteed)) return GUARANTEED_SEGMENT_NUMBER;
+  if (fallible !== undefined && matches(fallible)) return FALLIBLE_SEGMENT_NUMBER;
+  // Both transcript halves were provided but neither matches.
   // Surface it loudly: a silent fall-through to segment 0 would re-introduce
-  // the exact failure mode this function exists to fix.
+  // the exact failure mode these helpers exist to fix.
   if (guaranteed !== undefined && fallible !== undefined) {
     throw new Error(
-      `Shielded commitment ${commitment} not present in either segment of the partitioned transcript ` +
-        `(field=${field}). Local zswap state does not match the contract's declared effects.`
+      `${errorContext} not present in either segment of the partitioned transcript. ` +
+        `Local zswap state does not match the contract's declared effects.`
     );
   }
   // No segment information available (no-transcript callers) — place in guaranteed.
   return GUARANTEED_SEGMENT_NUMBER;
 };
+
+const segmentForCommitmentInFields = (
+  commitment: CoinCommitment,
+  partitionedTranscript: PartitionedTranscript,
+  fields: ('claimedShieldedReceives' | 'claimedShieldedSpends')[]
+): 0 | 1 =>
+  segmentForMatch(
+    (t) => fields.some((f) => t.effects[f].includes(commitment)),
+    partitionedTranscript,
+    `Shielded commitment ${commitment} (fields=${fields.join('|')})`
+  );
+
+const segmentForNullifier = (
+  nullifier: Nullifier,
+  partitionedTranscript: PartitionedTranscript
+): 0 | 1 =>
+  segmentForMatch(
+    (t) => t.effects.claimedNullifiers.includes(nullifier),
+    partitionedTranscript,
+    `Shielded nullifier ${nullifier}`
+  );
 
 const bucketToOffer = (bucket: SegmentBucket): UnprovenOffer | undefined => {
   const inputsOffer = unprovenOfferFromMap(bucket.inputs, ZswapOffer.fromInput);
@@ -274,17 +300,17 @@ const bucketToOffer = (bucket: SegmentBucket): UnprovenOffer | undefined => {
 /**
  * Builds segment-aware {@link UnprovenOffer}s from a {@link ZswapLocalState}.
  *
- * Each output / input / transient in the local state is matched against the
- * commitment sets in `partitionedTranscript[i].effects.claimedShieldedReceives`
- * (for receives) and `claimedShieldedSpends` (for spends), then placed in the
- * guaranteed (segment 0) or fallible (segment 1) bucket accordingly. Both
- * resulting offers are returned and intended to be passed through to
- * `Transaction.fromPartsRandomized`'s `guaranteed` and `fallible` parameters.
+ * Routing matches the ledger's reference implementation
+ * (`midnight-ledger/ledger/src/construct.rs`):
+ * - Outputs: commitment ∈ `claimedShieldedReceives ∪ claimedShieldedSpends`.
+ * - Inputs: nullifier ∈ `claimedNullifiers`.
+ * - Transients: input and matching output must agree on segment; cross-segment
+ *   pairing is rejected as a local-state / transcript inconsistency.
  *
- * When both transcript halves are provided and a commitment matches neither,
- * this function throws. When at least one transcript half is `undefined`
- * (no-transcript callers), unmatched commitments fall back to the guaranteed
- * segment for backwards compatibility — see {@link zswapStateToOffer}.
+ * When both transcript halves are provided and an item matches neither, this
+ * function throws. When at least one transcript half is `undefined`
+ * (no-transcript callers), unmatched items fall back to the guaranteed segment
+ * for backwards compatibility — see {@link zswapStateToOffer}.
  */
 export const zswapStateToSegmentedOffer = (
   zswapLocalState: ZswapLocalState,
@@ -313,7 +339,12 @@ export const zswapStateToSegmentedOffer = (
     const commitment = output.recipient.is_left
       ? coinCommitment(output.coinInfo, output.recipient.left)
       : ZswapOutput.newContractOwned(output.coinInfo, GUARANTEED_SEGMENT_NUMBER, output.recipient.right).commitment;
-    const segment = segmentForCommitment(commitment, partitionedTranscript, 'claimedShieldedReceives');
+    // Ledger routes outputs by union of receives ∪ spends — user-bound outputs
+    // appear in `claimedShieldedSpends`, contract-owned in `claimedShieldedReceives`.
+    const segment = segmentForCommitmentInFields(commitment, partitionedTranscript, [
+      'claimedShieldedReceives',
+      'claimedShieldedSpends'
+    ]);
     const finalOutput = output.recipient.is_left
       ? createZswapOutput(output, resolver, segment)
       : ZswapOutput.newContractOwned(output.coinInfo, segment, output.recipient.right);
@@ -322,40 +353,65 @@ export const zswapStateToSegmentedOffer = (
 
   for (const qualifiedCoinInfo of zswapLocalState.inputs) {
     const serializedCoinInfo = serializeQualifiedShieldedCoinInfo(qualifiedCoinInfo);
-    const { mt_index: _mtIndex, ...coinInfoForCommit } = qualifiedCoinInfo;
-    const inputCommitment = coinCommitment(coinInfoForCommit, zswapLocalState.coinPublicKey);
-    const segment = segmentForCommitment(inputCommitment, partitionedTranscript, 'claimedShieldedSpends');
 
-    // Same-segment transient lookup: the ledger's accounting pairs a spend with its
-    // matching receive within the same segment, so we only search the segment chosen
-    // for the spend.
-    const candidateOutput = buckets[segment].outputs.get(serializedCoinInfo);
-    if (candidateOutput) {
-      buckets[segment].transients.set(
-        serializedCoinInfo,
-        ZswapTransient.newFromContractOwnedOutput(qualifiedCoinInfo, segment, candidateOutput)
-      );
-      buckets[segment].outputs.delete(serializedCoinInfo);
-    } else {
-      assertDefined(
-        addressAndChainStateTuple,
-        `Wallet-owned input routed to segment ${segment} but no chain state was provided for ZswapInput.newContractOwned`
-      );
-      assertDefined(
-        rehashedChainState,
-        `Wallet-owned input routed to segment ${segment} but no chain state was provided for ZswapInput.newContractOwned`
-      );
-      assertIsContractAddress(addressAndChainStateTuple.contractAddress);
-      buckets[segment].inputs.set(
-        serializedCoinInfo,
-        ZswapInput.newContractOwned(
-          qualifiedCoinInfo,
-          segment,
-          addressAndChainStateTuple.contractAddress,
-          rehashedChainState
-        )
+    // Transient detection: a matching output in either segment pairs with this
+    // input. The transient inherits the output's segment, which the output loop
+    // chose via commitment-union routing — canonical per the ledger.
+    const guaranteedCandidate = buckets[GUARANTEED_SEGMENT_NUMBER].outputs.get(serializedCoinInfo);
+    const fallibleCandidate = buckets[FALLIBLE_SEGMENT_NUMBER].outputs.get(serializedCoinInfo);
+
+    if (guaranteedCandidate !== undefined && fallibleCandidate !== undefined) {
+      throw new Error(
+        `Ambiguous transient: outputs with serialized coin info ${serializedCoinInfo} ` +
+          `exist in both segments — wallet-owned input cannot pair unambiguously.`
       );
     }
+
+    if (guaranteedCandidate !== undefined || fallibleCandidate !== undefined) {
+      const transientSegment: 0 | 1 =
+        guaranteedCandidate !== undefined ? GUARANTEED_SEGMENT_NUMBER : FALLIBLE_SEGMENT_NUMBER;
+      const candidateOutput = (guaranteedCandidate ?? fallibleCandidate)!;
+      buckets[transientSegment].transients.set(
+        serializedCoinInfo,
+        ZswapTransient.newFromContractOwnedOutput(qualifiedCoinInfo, transientSegment, candidateOutput)
+      );
+      buckets[transientSegment].outputs.delete(serializedCoinInfo);
+      continue;
+    }
+
+    // Non-transient input: route by nullifier (requires chain state to probe).
+    assertDefined(
+      addressAndChainStateTuple,
+      `Wallet-owned input requires a chain state for ZswapInput.newContractOwned`
+    );
+    assertDefined(
+      rehashedChainState,
+      `Wallet-owned input requires a chain state for ZswapInput.newContractOwned`
+    );
+    assertIsContractAddress(addressAndChainStateTuple.contractAddress);
+
+    // Probe segment 0 to obtain the nullifier — pinned segment-independent by
+    // the invariant test in zswap-utils.test.ts. The probe doubles as the
+    // guaranteed-segment construction when routing settles on segment 0.
+    const probeInput = ZswapInput.newContractOwned(
+      qualifiedCoinInfo,
+      GUARANTEED_SEGMENT_NUMBER,
+      addressAndChainStateTuple.contractAddress,
+      rehashedChainState
+    );
+    const segment = segmentForNullifier(probeInput.nullifier, partitionedTranscript);
+
+    buckets[segment].inputs.set(
+      serializedCoinInfo,
+      segment === GUARANTEED_SEGMENT_NUMBER
+        ? probeInput
+        : ZswapInput.newContractOwned(
+            qualifiedCoinInfo,
+            segment,
+            addressAndChainStateTuple.contractAddress,
+            rehashedChainState
+          )
+    );
   }
 
   return {
