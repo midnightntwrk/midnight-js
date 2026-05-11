@@ -2136,7 +2136,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     "@midnight-ntwrk/testkit-js": "workspace:*"
     "@types/ws": "npm:^8.18.1"
-    "@vitest/runner": "npm:^4.1.1"
+    "@vitest/runner": "npm:^4.1.5"
     allure-commandline: "npm:^2.38.1"
     allure-js-commons: "npm:^3.6.0"
     allure-vitest: "npm:^3.6.0"
@@ -2171,7 +2171,7 @@ __metadata:
     "@midnight-ntwrk/wallet-sdk": "npm:1.0.0"
     "@midnight-ntwrk/zkir-v2": "npm:2.1.0"
     "@types/ws": "npm:^8.18.1"
-    "@vitest/runner": "npm:^4.1.1"
+    "@vitest/runner": "npm:^4.1.5"
     allure-commandline: "npm:^2.38.1"
     allure-js-commons: "npm:^3.6.0"
     allure-vitest: "npm:^3.6.0"
@@ -4408,13 +4408,32 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vitest/runner@npm:4.1.2, @vitest/runner@npm:^4.1.1":
+"@vitest/pretty-format@npm:4.1.6":
+  version: 4.1.6
+  resolution: "@vitest/pretty-format@npm:4.1.6"
+  dependencies:
+    tinyrainbow: "npm:^3.1.0"
+  checksum: 10/28dc121181fdf619e4a9ea4a3279a63974e54567fc59f82462d3b11d4b72d893cd7966f8a7c1a9365c62eae6dee4c6fb08353074486f708aee50b80462d0bd37
+  languageName: node
+  linkType: hard
+
+"@vitest/runner@npm:4.1.2":
   version: 4.1.2
   resolution: "@vitest/runner@npm:4.1.2"
   dependencies:
     "@vitest/utils": "npm:4.1.2"
     pathe: "npm:^2.0.3"
   checksum: 10/13fd019a63ee3225420474cbd1ca0ae7c5c2dcdd241f2a958ca45731c10de36131f15303ae8ab1196133ec4e955b7c6de658c7b5e19736d550f310c8195fa9b2
+  languageName: node
+  linkType: hard
+
+"@vitest/runner@npm:^4.1.5":
+  version: 4.1.6
+  resolution: "@vitest/runner@npm:4.1.6"
+  dependencies:
+    "@vitest/utils": "npm:4.1.6"
+    pathe: "npm:^2.0.3"
+  checksum: 10/0e175bb61b10ca6cb79a0734a45b3d8b1570806078d53b4f2aa7dbfabd10307c9566460ee8f263a34ac909e8481da614551eee28eaff834fbecd86b4902b845b
   languageName: node
   linkType: hard
 
@@ -4462,6 +4481,17 @@ __metadata:
     convert-source-map: "npm:^2.0.0"
     tinyrainbow: "npm:^3.1.0"
   checksum: 10/854decf0eb639758d012c9aa53c3d7aed547e37c05ece6704d5f53035be77f704a24973ed95089926e1768c0b55902d42c4438660788e7a0f0e80d0fda1c713b
+  languageName: node
+  linkType: hard
+
+"@vitest/utils@npm:4.1.6":
+  version: 4.1.6
+  resolution: "@vitest/utils@npm:4.1.6"
+  dependencies:
+    "@vitest/pretty-format": "npm:4.1.6"
+    convert-source-map: "npm:^2.0.0"
+    tinyrainbow: "npm:^3.1.0"
+  checksum: 10/a81506e9f167389e771503ba5bee91a61cd4f09ac386867815b65c12c9c236051fab6450d686c69b41e3fd028461d0195ee4c4ae47fd22ead649716ddb7777b3
   languageName: node
   linkType: hard
 
