@@ -937,10 +937,6 @@ describe('Zswap utilities', () => {
   });
 
   describe('ledger-assumed invariants underlying zswapStateToSegmentedOffer', () => {
-    // If this assumption breaks, zswapStateToSegmentedOffer's probe-then-rebuild
-    // (build a throwaway output with segment 0 to read .commitment, then route by
-    // matching that commitment against partitionedTranscript, then rebuild the
-    // final output with the resolved segment) silently misroutes coins.
     it('coinCommitment(coin, cpk) equals ZswapOutput.new(coin, anySegment, ...).commitment for segments 0 and 1', () => {
       // Arrange
       const cpk = sampleCoinPublicKey();
@@ -953,6 +949,17 @@ describe('Zswap utilities', () => {
       // Assert
       expect(commitmentFromHelper).toBe(commitmentSeg0);
       expect(commitmentFromHelper).toBe(commitmentSeg1);
+    });
+
+    it('ZswapOutput.newContractOwned(coin, segment, addr).commitment is segment-independent', () => {
+      // Arrange
+      const coin = createShieldedCoinInfo(nativeToken().raw, 100n);
+      const contractAddress = sampleContractAddress();
+      // Act
+      const commitmentSeg0 = ZswapOutput.newContractOwned(coin, 0, contractAddress).commitment;
+      const commitmentSeg1 = ZswapOutput.newContractOwned(coin, 1, contractAddress).commitment;
+      // Assert
+      expect(commitmentSeg0).toBe(commitmentSeg1);
     });
   });
 
@@ -987,7 +994,7 @@ describe('Zswap utilities', () => {
       expect(result).toEqual({ guaranteed: undefined, fallible: undefined });
     });
 
-    it('places a user-bound output into the fallible offer when its commitment is in partitionedTranscript[1].claimedShieldedReceives (regression #876)', () => {
+    it('places a user-bound output into the fallible offer when its commitment is in partitionedTranscript[1].claimedShieldedReceives', () => {
       // Arrange
       const recipientCpk = sampleCoinPublicKey();
       const walletCpk = sampleCoinPublicKey();
@@ -1070,8 +1077,8 @@ describe('Zswap utilities', () => {
       expect(result.fallible!.outputs.map((o) => o.commitment)).toEqual([fCommitment]);
     });
 
-    it('falls back to the guaranteed offer when a commitment is in neither segment (defensive default)', () => {
-      // Arrange — a transcript that mentions no shielded effects at all
+    it('throws when both transcript halves are defined and the commitment matches neither', () => {
+      // Arrange
       const recipientCpk = sampleCoinPublicKey();
       const walletCpk = sampleCoinPublicKey();
       const epk = sampleEncryptionPublicKey();
@@ -1083,9 +1090,28 @@ describe('Zswap utilities', () => {
         inputs: [],
         outputs: [{ coinInfo, recipient: { is_left: true, left: recipientCpk, right: sampleContractAddress() } }]
       };
+      // Act + Assert
+      expect(() => zswapStateToSegmentedOffer(zswapState, () => epk, undefined, partitioned)).toThrow(
+        /not present in either segment/
+      );
+    });
+
+    it('falls back to the guaranteed offer when at least one transcript half is undefined (no-transcript callers)', () => {
+      // Arrange
+      const recipientCpk = sampleCoinPublicKey();
+      const walletCpk = sampleCoinPublicKey();
+      const epk = sampleEncryptionPublicKey();
+      const coinInfo = createShieldedCoinInfo(nativeToken().raw, 100n);
+      const partitioned: PartitionedTranscript = [undefined, undefined];
+      const zswapState = {
+        currentIndex: 0n,
+        coinPublicKey: walletCpk,
+        inputs: [],
+        outputs: [{ coinInfo, recipient: { is_left: true, left: recipientCpk, right: sampleContractAddress() } }]
+      };
       // Act
       const result = zswapStateToSegmentedOffer(zswapState, () => epk, undefined, partitioned);
-      // Assert: existing behaviour preserved — pre-fix code would also have placed it here.
+      // Assert
       const expectedCommitment = coinCommitment(coinInfo, recipientCpk);
       expect(result.guaranteed).toBeDefined();
       expect(result.fallible).toBeUndefined();
@@ -1093,21 +1119,52 @@ describe('Zswap utilities', () => {
       expect(result.guaranteed!.outputs[0]!.commitment).toBe(expectedCommitment);
     });
 
-    it('routes a wallet-owned input to the segment whose claimedShieldedSpends contains its commitment', () => {
-      // Arrange — set up a contract chain state with a coin we will spend
+    it('routes a contract-owned output to the fallible offer when its commitment is in partitionedTranscript[1]', () => {
+      // Arrange
       const walletCpk = sampleCoinPublicKey();
-      const contractRecipient = sampleOne(arbitraryContractRecipient);
-      const coinInfo = createShieldedCoinInfo(shieldedToken().raw, 500n);
+      const contractAddress = sampleContractAddress();
+      const coinInfo = createShieldedCoinInfo(nativeToken().raw, 300n);
+      const probeCommitment = ZswapOutput.newContractOwned(coinInfo, 0, contractAddress).commitment;
+      const partitioned: PartitionedTranscript = [
+        makeTranscript([], []),
+        makeTranscript([probeCommitment], [])
+      ];
+      const zswapState = {
+        currentIndex: 0n,
+        coinPublicKey: walletCpk,
+        inputs: [],
+        outputs: [{ coinInfo, recipient: { is_left: false, left: sampleCoinPublicKey(), right: contractAddress } }]
+      };
+      // Act
+      const result = zswapStateToSegmentedOffer(zswapState, randomEncryptionPublicKey(), undefined, partitioned);
+      // Assert
+      expect(result.guaranteed).toBeUndefined();
+      expect(result.fallible).toBeDefined();
+      expect(result.fallible!.outputs.length).toBe(1);
+      expect(result.fallible!.outputs[0]!.commitment).toBe(probeCommitment);
+    });
+
+    const seedChainStateWithCoin = (
+      coinInfo: ShieldedCoinInfo,
+      contractRecipient: Recipient
+    ): { chainState: ZswapChainState; qualifiedCoin: QualifiedShieldedCoinInfo } => {
       const constantResolver: EncryptionPublicKeyResolver = () => randomEncryptionPublicKey();
       const output = createZswapOutput({ coinInfo, recipient: contractRecipient }, constantResolver);
       const seedTx = Transaction.fromParts(
         getNetworkId(),
-        ZswapOffer.fromOutput(output, shieldedToken().raw, 500n)
+        ZswapOffer.fromOutput(output, coinInfo.type, coinInfo.value)
       ).eraseProofs();
       const [chainState, mtIndices] = new ZswapChainState().tryApply(seedTx.guaranteedOffer!);
       const qualifiedCoin = { ...coinInfo, mt_index: mtIndices.get(output.commitment)! };
-      // For input matching: drop mt_index and compute commitment from
-      // (ShieldedCoinInfo, walletCoinPublicKey).
+      return { chainState, qualifiedCoin };
+    };
+
+    it('routes a wallet-owned input to the fallible offer when its commitment is in partitionedTranscript[1].claimedShieldedSpends', () => {
+      // Arrange
+      const walletCpk = sampleCoinPublicKey();
+      const contractRecipient = sampleOne(arbitraryContractRecipient);
+      const coinInfo = createShieldedCoinInfo(shieldedToken().raw, 500n);
+      const { chainState, qualifiedCoin } = seedChainStateWithCoin(coinInfo, contractRecipient);
       const { mt_index: _mtIndex, ...coinInfoForCommit } = qualifiedCoin;
       const inputCommitment = coinCommitment(coinInfoForCommit, walletCpk);
       const partitioned: PartitionedTranscript = [
@@ -1131,6 +1188,38 @@ describe('Zswap utilities', () => {
       expect(result.guaranteed).toBeUndefined();
       expect(result.fallible).toBeDefined();
       expect(result.fallible!.inputs.length).toBe(1);
+    });
+
+    it('routes a wallet-owned input to the guaranteed offer when its commitment is in partitionedTranscript[0].claimedShieldedSpends', () => {
+      // Arrange — same coin/state as the fallible case, but with the spend listed in segment 0.
+      // Proves the segment routing actually depends on the transcript, not a default.
+      const walletCpk = sampleCoinPublicKey();
+      const contractRecipient = sampleOne(arbitraryContractRecipient);
+      const coinInfo = createShieldedCoinInfo(shieldedToken().raw, 500n);
+      const { chainState, qualifiedCoin } = seedChainStateWithCoin(coinInfo, contractRecipient);
+      const { mt_index: _mtIndex, ...coinInfoForCommit } = qualifiedCoin;
+      const inputCommitment = coinCommitment(coinInfoForCommit, walletCpk);
+      const partitioned: PartitionedTranscript = [
+        makeTranscript([], [inputCommitment]),
+        makeTranscript([], [])
+      ];
+      const zswapState = {
+        currentIndex: 0n,
+        coinPublicKey: walletCpk,
+        inputs: [qualifiedCoin],
+        outputs: []
+      };
+      // Act
+      const result = zswapStateToSegmentedOffer(
+        zswapState,
+        randomEncryptionPublicKey(),
+        { contractAddress: contractRecipient.right, zswapChainState: chainState },
+        partitioned
+      );
+      // Assert
+      expect(result.fallible).toBeUndefined();
+      expect(result.guaranteed).toBeDefined();
+      expect(result.guaranteed!.inputs.length).toBe(1);
     });
   });
 

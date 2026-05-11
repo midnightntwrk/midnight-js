@@ -223,7 +223,7 @@ describe('ledger-utils', () => {
     });
   });
 
-  describe('createUnprovenLedgerCallTx shielded segment routing (regression #876)', () => {
+  describe('createUnprovenLedgerCallTx shielded segment routing', () => {
     const circuitId = 'addLiquidity';
     const alignedValue: AlignedValue = {
       value: [new Uint8Array()],
@@ -247,7 +247,7 @@ describe('ledger-utils', () => {
     });
 
     it('routes a user-bound shielded mint from a fallible op into the fallible Zswap offer', () => {
-      // Arrange — a user-bound LP-style coin minted in the fallible segment.
+      // Arrange
       const walletCpk = sampleCoinPublicKey();
       const recipientCpk = sampleCoinPublicKey();
       const epk = sampleEncryptionPublicKey();
@@ -281,14 +281,12 @@ describe('ledger-utils', () => {
         () => epk
       );
 
-      // Assert — the produced transaction must place the output in the fallible offer,
-      // not the guaranteed one. This is the entire point of the fix.
+      // Assert
       const fallible = tx.fallibleOffer;
       expect(fallible).toBeDefined();
       expect(fallible!.size).toBe(1);
       const [[, fallibleOffer]] = Array.from(fallible!.entries());
-      expect(fallibleOffer.outputs.map((o) => o.commitment)).toContain(commitment);
-      // The guaranteed side should be empty: no outputs were placed there.
+      expect(fallibleOffer.outputs.map((o) => o.commitment)).toEqual([commitment]);
       expect(tx.guaranteedOffer === undefined || tx.guaranteedOffer.outputs.length === 0).toBe(true);
     });
 
