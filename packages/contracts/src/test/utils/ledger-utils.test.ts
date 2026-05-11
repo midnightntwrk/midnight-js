@@ -411,7 +411,12 @@ describe('ledger-utils', () => {
       expect(fallible!.size).toBe(1);
       const [[, fallibleOffer]] = Array.from(fallible!.entries());
       expect(fallibleOffer.inputs.map((i) => i.nullifier)).toEqual([nullifier]);
-      expect(tx.guaranteedOffer === undefined || tx.guaranteedOffer.size === 0).toBe(true);
+      expect(
+        tx.guaranteedOffer === undefined ||
+          (tx.guaranteedOffer.inputs.length === 0 &&
+            tx.guaranteedOffer.outputs.length === 0 &&
+            tx.guaranteedOffer.transients.length === 0)
+      ).toBe(true);
     });
 
     it('routes a user-bound output via claimedShieldedSpends only (union with receives matches ledger v8)', () => {
@@ -457,7 +462,12 @@ describe('ledger-utils', () => {
       expect(fallible!.size).toBe(1);
       const [[, fallibleOffer]] = Array.from(fallible!.entries());
       expect(fallibleOffer.outputs.map((o) => o.commitment)).toEqual([commitment]);
-      expect(tx.guaranteedOffer === undefined || tx.guaranteedOffer.size === 0).toBe(true);
+      expect(
+        tx.guaranteedOffer === undefined ||
+          (tx.guaranteedOffer.inputs.length === 0 &&
+            tx.guaranteedOffer.outputs.length === 0 &&
+            tx.guaranteedOffer.transients.length === 0)
+      ).toBe(true);
     });
 
     it('pairs a same-coin input and contract-owned output into a fallible-segment transient', () => {

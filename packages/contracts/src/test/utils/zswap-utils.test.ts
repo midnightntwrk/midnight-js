@@ -21,6 +21,7 @@ import {
   type CoinCommitment,
   coinCommitment,
   type CoinPublicKey,
+  type ContractAddress,
   createShieldedCoinInfo,
   nativeToken,
   type PartitionedTranscript,
