@@ -34,7 +34,8 @@ import {
   Transaction,
   type Transcript,
   ZswapChainState,
-  ZswapOffer
+  ZswapOffer,
+  ZswapOutput
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { parseEncPublicKeyToHex, toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
@@ -932,6 +933,26 @@ describe('Zswap utilities', () => {
       const resolver = createEncryptionPublicKeyResolver(walletCpk, walletEpk, mappings);
 
       expect(resolver(SHIELDED_BURN_COIN_PUBLIC_KEY)).toBe(BURN_ENCRYPTION_PUBLIC_KEY);
+    });
+  });
+
+  describe('ledger-assumed invariants underlying zswapStateToSegmentedOffer', () => {
+    // If this assumption breaks, zswapStateToSegmentedOffer's probe-then-rebuild
+    // (build a throwaway output with segment 0 to read .commitment, then route by
+    // matching that commitment against partitionedTranscript, then rebuild the
+    // final output with the resolved segment) silently misroutes coins.
+    it('coinCommitment(coin, cpk) equals ZswapOutput.new(coin, anySegment, ...).commitment for segments 0 and 1', () => {
+      // Arrange
+      const cpk = sampleCoinPublicKey();
+      const epk = sampleEncryptionPublicKey();
+      const coin = createShieldedCoinInfo(nativeToken().raw, 100n);
+      // Act
+      const commitmentFromHelper = coinCommitment(coin, cpk);
+      const commitmentSeg0 = ZswapOutput.new(coin, 0, cpk, epk).commitment;
+      const commitmentSeg1 = ZswapOutput.new(coin, 1, cpk, epk).commitment;
+      // Assert
+      expect(commitmentFromHelper).toBe(commitmentSeg0);
+      expect(commitmentFromHelper).toBe(commitmentSeg1);
     });
   });
 
