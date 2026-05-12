@@ -16,10 +16,13 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
+import { assertSemVer } from '@midnight-ntwrk/midnight-js-utils';
+
 export class VersionManager {
   constructor(private packageDir: string) {}
 
   getVersionDir(version: string): string {
+    assertSemVer(version, 'version');
     return path.resolve(this.packageDir, 'managed', version);
   }
 
@@ -31,7 +34,7 @@ export class VersionManager {
 
   listVersions(): string[] {
     const managedDir = path.resolve(this.packageDir, 'managed');
-    
+
     if (!fs.existsSync(managedDir)) {
       return [];
     }
@@ -39,7 +42,13 @@ export class VersionManager {
     return fs.readdirSync(managedDir, { withFileTypes: true })
       .filter(dirent => dirent.isDirectory())
       .map(dirent => dirent.name)
-      .filter(version => this.versionExists(version))
+      .filter((version) => {
+        try {
+          return this.versionExists(version);
+        } catch {
+          return false;
+        }
+      })
       .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
   }
 
@@ -48,14 +57,19 @@ export class VersionManager {
   }
 
   removeVersion(version: string): void {
+    const managedDir = path.resolve(this.packageDir, 'managed');
     const versionDir = this.getVersionDir(version);
+    const rel = path.relative(managedDir, versionDir);
+    if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
+      throw new Error(`Invalid version: ${JSON.stringify(version)}`);
+    }
     fs.rmSync(versionDir, { recursive: true, force: true });
   }
 
   cleanupOldVersions(keepCount: number): void {
     const versions = this.listVersions();
     const toRemove = versions.slice(0, -keepCount);
-    
+
     toRemove.forEach(version => this.removeVersion(version));
   }
 

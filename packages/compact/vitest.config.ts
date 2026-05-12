@@ -13,8 +13,19 @@
  * limitations under the License.
  */
 
-export * from './assertion-utils';
-export * from './date-utils';
-export * from './hex-utils';
-export * from './security-utils';
-export * from './type-utils';
+/// <reference types="vitest" />
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    environment: 'node',
+    globals: true,
+    include: ['**/test/**/*.test.ts'],
+    exclude: ['node_modules', 'dist'],
+    reporters: [
+      'default',
+      ['junit', { outputFile: `reports/report/test-report.xml` }],
+      ['html', { outputFile: `reports/report/test-report.html` }],
+    ],
+  },
+});

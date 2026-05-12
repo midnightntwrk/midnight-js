@@ -14,8 +14,7 @@
  */
 
 import { type LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { type DefaultConfiguration } from '@midnight-ntwrk/wallet-sdk-facade';
-import { InMemoryTransactionHistoryStorage } from '@midnight-ntwrk/wallet-sdk-unshielded-wallet';
+import { type DefaultConfiguration, InMemoryTransactionHistoryStorage, mergeWalletEntries, WalletEntrySchema } from '@midnight-ntwrk/wallet-sdk';
 
 import { type EnvironmentConfiguration } from '@/test-environment';
 
@@ -36,7 +35,7 @@ export function mapEnvironmentToConfiguration(
     provingServerUrl: new URL(env.proofServer),
     networkId: env.walletNetworkId,
     relayURL: new URL(env.nodeWS),
-    txHistoryStorage: new InMemoryTransactionHistoryStorage(),
+    txHistoryStorage: new InMemoryTransactionHistoryStorage(WalletEntrySchema, mergeWalletEntries),
     costParameters: {
       additionalFeeOverhead: 500_000_000_000_000_000_000n,
       feeBlocksMargin: 5,

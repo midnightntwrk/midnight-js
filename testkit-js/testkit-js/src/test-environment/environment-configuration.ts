@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { type NetworkId } from '@midnight-ntwrk/wallet-sdk-abstractions';
+import { type NetworkId } from '@midnight-ntwrk/wallet-sdk';
 
 /**
  * Configuration interface for the test environment services

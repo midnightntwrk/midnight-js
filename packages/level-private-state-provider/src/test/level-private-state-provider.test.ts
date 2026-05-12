@@ -1657,6 +1657,41 @@ describe('Level Private State Provider', (): void => {
     });
   });
 
+  describe('Encryption Cache Invalidation', () => {
+    const INVALIDATE_TEST_DB = 'midnight-invalidate-test-db';
+    const INVALIDATE_CONTRACT_ADDRESS = 'invalidate-test-contract' as ContractAddress;
+
+    afterEach(async () => {
+      await fs.rm(path.join('.', INVALIDATE_TEST_DB), { recursive: true, force: true });
+    });
+
+    test('operations after invalidateEncryptionCache re-derive the encryption instance', async () => {
+      // Guards against a regression where invalidate is a no-op: after
+      // clearing the cache, the next operation must actually call
+      // StorageEncryption.create again rather than silently reusing a stale
+      // entry.
+      const createSpy = vi.spyOn(StorageEncryption, 'create');
+      try {
+        const config = {
+          midnightDbName: INVALIDATE_TEST_DB,
+          privateStoragePasswordProvider: () => TEST_PASSWORD,
+          accountId: TEST_ACCOUNT_ID
+        };
+        const db = levelPrivateStateProvider<string, string>(config);
+        db.setContractAddress(INVALIDATE_CONTRACT_ADDRESS);
+        await db.set('key', 'value');
+
+        const callsBeforeInvalidate = createSpy.mock.calls.length;
+        await db.invalidateEncryptionCache();
+        await db.get('key');
+
+        expect(createSpy.mock.calls.length).toBe(callsBeforeInvalidate + 1);
+      } finally {
+        createSpy.mockRestore();
+      }
+    });
+  });
+
   describe('Password Rotation', () => {
     const ROTATION_TEST_DB = 'midnight-rotation-test-db';
     const ROTATION_CONTRACT_ADDRESS = 'rotation-test-contract' as ContractAddress;

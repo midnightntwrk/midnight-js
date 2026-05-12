@@ -15,9 +15,6 @@
 
 import { WalletSeeds } from '@/wallet/wallet-seed';
 
-vi.mock('@midnight-ntwrk/wallet-sdk-facade');
-vi.mock('@midnight-ntwrk/wallet-sdk-unshielded-wallet');
-
 describe('[Unit tests] FluentWalletBuilder seed immutability', () => {
   it('WalletSeeds.generateRandom produces unique seeds each time', () => {
     const seeds1 = WalletSeeds.generateRandom();

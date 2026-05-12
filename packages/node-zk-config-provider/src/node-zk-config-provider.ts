@@ -15,6 +15,7 @@
 
 import type { ProverKey, VerifierKey, ZKIR } from '@midnight-ntwrk/midnight-js-types';
 import { createProverKey, createVerifierKey, createZKIR, ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
+import { assertSafeName } from '@midnight-ntwrk/midnight-js-utils';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
@@ -58,8 +59,15 @@ export class NodeZkConfigProvider<K extends string> extends ZKConfigProvider<K> 
    * @param ext The file extension of the file to read.
    * @private
    */
-  private readFile(subDir: string, circuitId: K, ext: string): Promise<Buffer> {
-    return fs.readFile(path.join(this.directory, subDir, circuitId + ext));
+  private async readFile(subDir: string, circuitId: K, ext: string): Promise<Buffer> {
+    assertSafeName(circuitId, 'circuitId');
+    const baseDir = path.resolve(this.directory, subDir);
+    const target = path.resolve(baseDir, circuitId + ext);
+    const rel = path.relative(baseDir, target);
+    if (rel === '..' || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel)) {
+      throw new Error(`Invalid circuitId: ${JSON.stringify(circuitId)}`);
+    }
+    return fs.readFile(target);
   }
 
   /**

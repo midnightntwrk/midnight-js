@@ -15,6 +15,8 @@
 
 import './bigint-serialization';
 
+export * from './dapp-connector-initial-api';
+export * from './dapp-connector-wallet-adapter';
 export * from './fluent-wallet-builder';
 export * from './gzip-file';
 export * from './midnight-wallet-provider';

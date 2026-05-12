@@ -21,14 +21,19 @@
     "build": "tsc -p tsconfig.build.json && cp src/run-compactc.cjs dist/",
     "lint": "eslint ./src",
     "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
     "deploy": "yarn npm publish --tolerate-republish"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
     "ts-node": "^10.9.2",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.2"
   },
   "files": [
     "dist/"
-  ]
+  ],
+  "dependencies": {
+    "@midnight-ntwrk/midnight-js-utils": "workspace:*"
+  }
 }

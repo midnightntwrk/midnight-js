@@ -47,7 +47,52 @@ describe('Node ZK config Provider', () => {
 
   test('throws on relative path', async () => {
     await expect(async () => new NodeZkConfigProvider('.').getVerifierKey('set_topic')).rejects.toThrowError(
-      "ENOENT: no such file or directory, open 'keys/set_topic.verifier'"
+      /ENOENT: no such file or directory, open '.*keys\/set_topic\.verifier'/
     );
+  });
+
+  describe('rejects unsafe circuitId', () => {
+    const provider = new NodeZkConfigProvider(resourceDir);
+
+    test.each([
+      '..',
+      '.',
+      '../../etc/passwd',
+      '../keys/set_topic',
+      '/absolute/path',
+      'foo/bar',
+      'foo\\bar',
+      '',
+      'foo bar'
+    ])('getProverKey rejects %s', async (circuitId) => {
+      // Arrange
+      const target = circuitId as unknown as 'set_topic';
+      // Act + Assert
+      await expect(provider.getProverKey(target)).rejects.toThrow(/Invalid circuitId/);
+    });
+
+    test('getVerifierKey rejects "../etc/passwd"', async () => {
+      const target = '../etc/passwd' as unknown as 'set_topic';
+      await expect(provider.getVerifierKey(target)).rejects.toThrow(/Invalid circuitId/);
+    });
+
+    test('getZKIR rejects ".."', async () => {
+      const target = '..' as unknown as 'set_topic';
+      await expect(provider.getZKIR(target)).rejects.toThrow(/Invalid circuitId/);
+    });
+  });
+
+  describe('accepts unusual but safe circuitId names', () => {
+    const provider = new NodeZkConfigProvider(resourceDir);
+
+    test.each([
+      '..foo',
+      '..foo..',
+      'foo..bar',
+      '...'
+    ])('getProverKey lets %s reach the filesystem (no false-positive containment reject)', async (circuitId) => {
+      const target = circuitId as unknown as 'set_topic';
+      await expect(provider.getProverKey(target)).rejects.toThrow(/ENOENT/);
+    });
   });
 });

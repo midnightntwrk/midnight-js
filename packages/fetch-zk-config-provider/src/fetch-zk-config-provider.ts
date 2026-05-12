@@ -20,6 +20,7 @@ import {
   createZKIR,
   InvalidProtocolSchemeError,
   ZKConfigProvider} from '@midnight-ntwrk/midnight-js-types';
+import { assertSafeName } from '@midnight-ntwrk/midnight-js-utils';
 import { fetch } from 'cross-fetch';
 
 /**
@@ -68,7 +69,9 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
     ext: typeof ZKIR_EXT | typeof PROVER_EXT | typeof VERIFIER_EXT,
     responseType: T
   ): Promise<T extends 'text' ? string : Uint8Array> {
-    const fullUrl = `${this.baseURL}/${url}/${circuitId}${ext}`;
+    assertSafeName(circuitId, 'circuitId');
+    const base = this.baseURL.endsWith('/') ? this.baseURL : `${this.baseURL}/`;
+    const fullUrl = new URL(`${url}/${encodeURIComponent(circuitId)}${ext}`, base).toString();
     const response = await this.fetchFunc(fullUrl, {
       method: 'GET'
     });
@@ -79,7 +82,6 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
     if (contentType.includes('text/html')) {
       throw new Error(`Expected ZK artifact, but received text/html from ${fullUrl}. This usually means the file does not exist and the server returned an SPA fallback page.`);
     }
-    // The compiler can't infer that this return value is well-typed, so I cast to 'any'
     /* eslint-disable @typescript-eslint/no-explicit-any */
     return responseType === 'text'
       ? ((await response.text()) as any)

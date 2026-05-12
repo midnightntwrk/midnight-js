@@ -83,6 +83,42 @@ describe('Fetch ZK config Provider', () => {
     expect(() => new FetchZkConfigProvider('ws://localhost:5000')).toThrow(/^Invalid protocol scheme: 'ws:'/);
   });
 
+  describe('rejects unsafe circuitId before issuing the request', () => {
+    const FETCH_NEVER = (() => {
+      throw new Error('fetch must not be called for invalid circuitId');
+    }) as unknown as typeof fetch;
+
+    test.each([
+      '..',
+      '.',
+      '../../etc/passwd',
+      '/etc/passwd',
+      'foo/bar',
+      'foo\\bar',
+      '%2e%2e%2fpasswd',
+      '',
+      'foo bar'
+    ])('getProverKey rejects %s without calling fetch', async (circuitId) => {
+      // Arrange
+      const provider = new FetchZkConfigProvider(serverURL, FETCH_NEVER);
+      const target = circuitId as unknown as 'set_topic';
+      // Act + Assert
+      await expect(provider.getProverKey(target)).rejects.toThrow(/Invalid circuitId/);
+    });
+
+    test('getVerifierKey rejects "../etc/passwd" without calling fetch', async () => {
+      const provider = new FetchZkConfigProvider(serverURL, FETCH_NEVER);
+      const target = '../etc/passwd' as unknown as 'set_topic';
+      await expect(provider.getVerifierKey(target)).rejects.toThrow(/Invalid circuitId/);
+    });
+
+    test('getZKIR rejects ".." without calling fetch', async () => {
+      const provider = new FetchZkConfigProvider(serverURL, FETCH_NEVER);
+      const target = '..' as unknown as 'set_topic';
+      await expect(provider.getZKIR(target)).rejects.toThrow(/Invalid circuitId/);
+    });
+  });
+
   describe('rejects HTML responses from SPA fallback', () => {
     let spaServer: Server;
     let spaServerURL: string;

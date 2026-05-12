@@ -97,6 +97,7 @@
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
     "build": "rollup -c rollup.config.mjs",
     "lint": "eslint src/",
+    "test": "vitest run",
     "deploy": "yarn npm publish --tolerate-republish"
   },
   "files": [
@@ -111,6 +112,8 @@
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.3.0",
+    "@vitest/coverage-v8": "^4.1.2",
+    "eslint": "^10.1.0",
     "rollup": "^4.60.1",
     "rollup-plugin-dts": "^6.4.1",
     "typescript": "^6.0.2",
