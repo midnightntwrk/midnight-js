@@ -13,9 +13,14 @@
  * limitations under the License.
  */
 
+import { createHash } from 'node:crypto';
+
 import { Buffer } from 'buffer';
 
 import { decryptValue, getPasswordFromProvider, StorageEncryption, timingSafeEqual } from '../storage-encryption';
+
+const getInstanceFieldValues = (encryption: StorageEncryption): unknown[] =>
+  Object.values(encryption as unknown as Record<string, unknown>);
 
 describe('StorageEncryption', () => {
   const testPassword = 'Test-Password-123!';
@@ -197,6 +202,15 @@ describe('StorageEncryption', () => {
 
       expect(decrypted).toBe(testData);
     });
+
+    test('decryptWithPassword rejects V1 data when password is wrong', async () => {
+      const salt = Buffer.from(V1_FIXTURES.salt, 'hex');
+      const encryption = await StorageEncryption.create(V1_FIXTURES.password, { existingSalt: salt });
+
+      await expect(
+        encryption.decryptWithPassword(V1_FIXTURES.encrypted, 'Wrong-Password-1!')
+      ).rejects.toThrow();
+    });
   });
 
   describe('password verification', () => {
@@ -222,13 +236,40 @@ describe('StorageEncryption', () => {
     test('password is not stored in plaintext', async () => {
       const encryption = await StorageEncryption.create(testPassword);
 
-      const encryptionAsRecord = encryption as unknown as Record<string, unknown>;
-      const allValues = Object.values(encryptionAsRecord);
-      const hasPlaintextPassword = allValues.some(
+      const hasPlaintextPassword = getInstanceFieldValues(encryption).some(
         (value) => value === testPassword
       );
 
       expect(hasPlaintextPassword).toBe(false);
+    });
+
+    test('does not retain a fast hash of the password', async () => {
+      const encryption = await StorageEncryption.create(testPassword);
+      const fastHashHex = createHash('sha256').update(testPassword).digest('hex');
+      const fastHashBytes = Buffer.from(fastHashHex, 'hex');
+
+      const leaksFastHash = getInstanceFieldValues(encryption).some((value) => {
+        if (typeof value === 'string') {
+          return value === fastHashHex;
+        }
+        if (value instanceof Uint8Array) {
+          return value.length === fastHashBytes.length && timingSafeEqual(value, fastHashBytes);
+        }
+        return false;
+      });
+
+      expect(leaksFastHash).toBe(false);
+    });
+
+    test('verifyPassword rejects when the salt is the same but password differs', async () => {
+      const encryption = await StorageEncryption.create(testPassword);
+
+      const other = await StorageEncryption.create('Wrong-Password-1!', {
+        existingSalt: encryption.getSalt()
+      });
+
+      expect(await other.verifyPassword(testPassword)).toBe(false);
+      expect(await encryption.verifyPassword('Wrong-Password-1!')).toBe(false);
     });
   });
 

@@ -78,10 +78,14 @@ const getIterationsForVersion = (version: number): number => {
   }
 };
 
-const hashPassword = async (backend: CryptoBackend, password: string): Promise<string> => {
-  const data = new TextEncoder().encode(password);
-  const hash = await backend.sha256(data);
-  return Buffer.from(hash).toString('hex');
+const deriveEncryptionKey = async (
+  backend: CryptoBackend,
+  password: string,
+  salt: Uint8Array,
+  iterations: number,
+): Promise<Uint8Array> => {
+  const passwordBytes = new TextEncoder().encode(password);
+  return backend.pbkdf2(passwordBytes, salt, iterations, KEY_LENGTH);
 };
 
 const constantTimeBufferEqual = (aBuf: Buffer, bBuf: Buffer): boolean => {
@@ -119,29 +123,24 @@ export const timingSafeEqual = (a: Buffer | Uint8Array, b: Buffer | Uint8Array):
 export class StorageEncryption {
   private readonly encryptionKey: Uint8Array;
   private readonly salt: Uint8Array;
-  private readonly passwordHash: string;
   private readonly backend: CryptoBackend;
 
-  private constructor(encryptionKey: Uint8Array, salt: Uint8Array, passwordHash: string, backend: CryptoBackend) {
+  private constructor(encryptionKey: Uint8Array, salt: Uint8Array, backend: CryptoBackend) {
     this.encryptionKey = encryptionKey;
     this.salt = salt;
-    this.passwordHash = passwordHash;
     this.backend = backend;
   }
 
   static async create(password: string, options?: StorageEncryptionOptions): Promise<StorageEncryption> {
     const backend = resolveCryptoBackend(options?.cryptoBackend);
     const salt = options?.existingSalt ? new Uint8Array(options.existingSalt) : backend.randomBytes(SALT_LENGTH);
-    const passwordBytes = new TextEncoder().encode(password);
-    const encryptionKey = await backend.pbkdf2(passwordBytes, salt, PBKDF2_ITERATIONS_V2, KEY_LENGTH);
-    const passwordHash = await hashPassword(backend, password);
-    return new StorageEncryption(encryptionKey, salt, passwordHash, backend);
+    const encryptionKey = await deriveEncryptionKey(backend, password, salt, PBKDF2_ITERATIONS_V2);
+    return new StorageEncryption(encryptionKey, salt, backend);
   }
 
   async verifyPassword(password: string): Promise<boolean> {
-    const inputHash = Buffer.from(await hashPassword(this.backend, password), 'hex');
-    const storedHash = Buffer.from(this.passwordHash, 'hex');
-    return timingSafeEqual(inputHash, storedHash);
+    const candidateKey = await deriveEncryptionKey(this.backend, password, this.salt, PBKDF2_ITERATIONS_V2);
+    return timingSafeEqual(candidateKey, this.encryptionKey);
   }
 
   async encrypt(data: string): Promise<string> {
@@ -180,13 +179,9 @@ export class StorageEncryption {
     }
 
     const iterations = getIterationsForVersion(version);
-    let decryptionKey: Uint8Array;
-    if (version === CURRENT_ENCRYPTION_VERSION) {
-      decryptionKey = this.encryptionKey;
-    } else {
-      const passwordBytes = new TextEncoder().encode(password);
-      decryptionKey = await this.backend.pbkdf2(passwordBytes, salt, iterations, KEY_LENGTH);
-    }
+    const decryptionKey = version === CURRENT_ENCRYPTION_VERSION
+      ? this.encryptionKey
+      : await deriveEncryptionKey(this.backend, password, salt, iterations);
 
     const decrypted = await this.backend.aesGcmDecrypt(decryptionKey, iv, encrypted, authTag);
     return Buffer.from(decrypted).toString('utf-8');
