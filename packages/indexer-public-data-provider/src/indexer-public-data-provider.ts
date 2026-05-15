@@ -163,7 +163,10 @@ const blockOffsetToBlock$ = (apolloClient: ApolloClient) => (offset: InputMaybe<
     .pipe(
       withValidFetchData(),
       Rx.map((data) => {
-        const blocks = data.blocks!;
+        const blocks = data.blocks;
+        if (!blocks) {
+          throw new IndexerFormattedError([{ message: 'Expected blocks in txsFromBlock subscription data' }]);
+        }
         return {
           hash: blocks.hash,
           height: blocks.height,
