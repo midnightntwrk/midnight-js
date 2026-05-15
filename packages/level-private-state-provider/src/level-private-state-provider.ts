@@ -624,11 +624,12 @@ const validateSalt = (salt: string): void => {
 };
 
 /**
- * Validates a custom signing key export password meets minimum requirements.
+ * Validates a password meets minimum requirements.
+ * Used for both export and import password validation.
  */
-const validateSigningKeyExportPassword = (password: string): void => {
+const validatePassword = (password: string): void => {
   if (password.length < MIN_PASSWORD_LENGTH) {
-    throw new SigningKeyExportError(
+    throw new Error(
       `Password must be at least ${MIN_PASSWORD_LENGTH} characters`
     );
   }
@@ -1000,7 +1001,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       const maxKeys = options?.maxKeys ?? MAX_EXPORT_SIGNING_KEYS;
 
       if (options?.password !== undefined) {
-        validateSigningKeyExportPassword(options.password);
+        validatePassword(options.password);
       }
 
       const exportPassword = options?.password ?? await getPasswordFromProvider(passwordProvider);
@@ -1053,7 +1054,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       validateSalt(exportData.salt);
 
       if (options?.password !== undefined) {
-        validateSigningKeyExportPassword(options.password);
+        validatePassword(options.password);
       }
 
       const importPassword = options?.password ?? await getPasswordFromProvider(passwordProvider);
