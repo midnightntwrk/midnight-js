@@ -624,11 +624,11 @@ const validateSalt = (salt: string): void => {
 };
 
 /**
- * Validates a custom signing key export password meets minimum requirements.
+ * Validates a password meets minimum requirements..
  */
-const validateSigningKeyExportPassword = (password: string): void => {
+const validatePassword = (password: string): void => {
   if (password.length < MIN_PASSWORD_LENGTH) {
-    throw new SigningKeyExportError(
+    throw new Error(
       `Password must be at least ${MIN_PASSWORD_LENGTH} characters`
     );
   }
@@ -1000,7 +1000,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       const maxKeys = options?.maxKeys ?? MAX_EXPORT_SIGNING_KEYS;
 
       if (options?.password !== undefined) {
-        validateSigningKeyExportPassword(options.password);
+        validatePassword(options.password);
       }
 
       const exportPassword = options?.password ?? await getPasswordFromProvider(passwordProvider);
@@ -1009,11 +1009,11 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       const allKeys = await getAllEntries<ContractAddress, SigningKey>(ctx, scopedSigningKey, passwordProvider);
 
       if (allKeys.size === 0) {
-        throw new SigningKeyExportError('No signing keys to export');
+        throw new Error('No signing keys to export');
       }
 
       if (allKeys.size > maxKeys) {
-        throw new SigningKeyExportError(
+        throw new Error(
           `Too many keys to export (${allKeys.size}). Maximum allowed: ${maxKeys}`
         );
       }
@@ -1053,7 +1053,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       validateSalt(exportData.salt);
 
       if (options?.password !== undefined) {
-        validateSigningKeyExportPassword(options.password);
+        validatePassword(options.password);
       }
 
       const importPassword = options?.password ?? await getPasswordFromProvider(passwordProvider);
