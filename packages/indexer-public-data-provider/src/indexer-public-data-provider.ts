@@ -708,7 +708,6 @@ const indexerPublicDataProviderInternal = (
       }
       const offset = config.type === 'blockHash' ? { hash: config.blockHash } : { height: config.blockHeight };
       const blocks = waitForBlockToAppear(apolloClient)(offset).pipe(
-        Rx.filter(isRegularTransaction),
         Rx.concatMap(() => blockOffsetToBlock$(apolloClient)(offset))
       );
       const maybeShortenedBlocks =
