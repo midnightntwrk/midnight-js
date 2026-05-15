@@ -124,6 +124,12 @@ export type FinalizedDeployTxData<C extends Contract.Any> = UnsubmittedDeployTxD
 
 /**
  * Data for an unsubmitted call transaction.
+ *
+ * @remarks
+ * **Privacy-sensitive type.** The `private` field (of type `UnsubmittedTxData`)
+ * contains an `unprovenTx` with zero-knowledge proof inputs. Application code
+ * must not log, serialize, or transmit this type without filtering the
+ * `private` field.
  */
 export type UnsubmittedCallTxData<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = CallResult<C, PCK> & {
   /**
@@ -134,6 +140,13 @@ export type UnsubmittedCallTxData<C extends Contract.Any, PCK extends Contract.P
 
 /**
  * Data for a submitted, finalized call transaction.
+ *
+ * @remarks
+ * **Privacy-sensitive type.** This type contains a `callTxData.private.unprovenTx`
+ * field (inherited from `UnsubmittedCallTxData` → `UnsubmittedTxData`) which
+ * references zero-knowledge proof inputs. Application code must not log,
+ * serialize, or transmit instances of this type without explicitly filtering
+ * the `callTxData` field first.
  */
 export type FinalizedCallTxData<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = UnsubmittedCallTxData<C, PCK> & {
   /**
@@ -145,6 +158,12 @@ export type FinalizedCallTxData<C extends Contract.Any, PCK extends Contract.Pro
 /**
  * Data returned from an asynchronous call transaction submission.
  * Contains the transaction ID and call transaction data without waiting for finalization.
+ *
+ * @remarks
+ * **Privacy-sensitive type.** The `callTxData` field contains an
+ * `UnprovenTransaction` (via `UnsubmittedCallTxData.private.unprovenTx`)
+ * with zero-knowledge proof inputs. Do not log, serialize, or transmit
+ * this type without filtering `callTxData` explicitly.
  */
 export type SubmittedCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = {
   /**
