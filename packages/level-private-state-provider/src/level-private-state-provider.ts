@@ -801,6 +801,12 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       );
     },
     async setSigningKey(address: ContractAddress, signingKey: SigningKey): Promise<void> {
+      if (!signingKey) {
+        throw new Error('signingKey must not be null or undefined');
+      }
+      if (typeof signingKey !== 'object') {
+        throw new Error('signingKey must be an object, got: ' + typeof signingKey);
+      }
       const { signingKey: signingKeyLevelName } = scopedNames;
       await waitForRotationLock(ctx.dbName, signingKeyLevelName);
       const encryption = await getOrCreateEncryption(ctx, signingKeyLevelName, passwordProvider);
