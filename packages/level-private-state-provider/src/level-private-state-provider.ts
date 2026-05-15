@@ -853,13 +853,15 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
 
       const maxStates = options?.maxStates ?? MAX_EXPORT_STATES;
 
-      // Validate custom password if provided
+      // Validate password — custom or storage fallback must meet minimum requirements
+      let exportPassword: string;
       if (options?.password !== undefined) {
-        validateExportPassword(options.password);
+        validatePassword(options.password);
+        exportPassword = options.password;
+      } else {
+        exportPassword = await getPasswordFromProvider(passwordProvider);
+        validatePassword(exportPassword);
       }
-
-      // Determine export password - use provided password or storage password
-      const exportPassword = options?.password ?? await getPasswordFromProvider(passwordProvider);
 
       // Get all private states (not signing keys)
       const { privateState } = scopedNames;
@@ -1030,11 +1032,14 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
     async exportSigningKeys(options?: ExportSigningKeysOptions): Promise<SigningKeyExport> {
       const maxKeys = options?.maxKeys ?? MAX_EXPORT_SIGNING_KEYS;
 
+      let exportPassword: string;
       if (options?.password !== undefined) {
         validatePassword(options.password);
+        exportPassword = options.password;
+      } else {
+        exportPassword = await getPasswordFromProvider(passwordProvider);
+        validatePassword(exportPassword);
       }
-
-      const exportPassword = options?.password ?? await getPasswordFromProvider(passwordProvider);
 
       const { signingKey: scopedSigningKey } = scopedNames;
       const allKeys = await getAllEntries<ContractAddress, SigningKey>(ctx, scopedSigningKey, passwordProvider);

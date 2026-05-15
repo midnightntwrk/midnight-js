@@ -451,10 +451,23 @@ const indexerPublicDataProviderInternal = (
   if (queryURLObj.protocol !== 'http:' && queryURLObj.protocol !== 'https:') {
     throw new InvalidProtocolSchemeError(queryURLObj.protocol, ['http:', 'https:']);
   }
+  if (queryURLObj.protocol === 'http:' && queryURLObj.hostname !== 'localhost' && queryURLObj.hostname !== '127.0.0.1') {
+    console.warn(
+      `[IndexerPublicDataProvider] WARNING: Using plain HTTP for "${queryURL}" — ` +
+      `sensitive data (contract states, transaction payloads) may be transmitted unencrypted. ` +
+      `Use HTTPS for non-localhost hosts.`
+    );
+  }
   const subscriptionURLObj = new URL(subscriptionURL);
 
   if (subscriptionURLObj.protocol !== 'ws:' && subscriptionURLObj.protocol !== 'wss:') {
     throw new InvalidProtocolSchemeError(subscriptionURLObj.protocol, ['ws:', 'wss:']);
+  }
+  if (subscriptionURLObj.protocol === 'ws:' && subscriptionURLObj.hostname !== 'localhost' && subscriptionURLObj.hostname !== '127.0.0.1') {
+    console.warn(
+      `[IndexerPublicDataProvider] WARNING: Using plain WebSocket (ws://) for "${subscriptionURL}" — ` +
+      `sensitive data may be transmitted unencrypted. Use WSS for non-localhost hosts.`
+    );
   }
   // Construct the Apollo client.
   const link = new HttpLink({ fetch, uri: queryURL });
