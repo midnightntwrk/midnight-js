@@ -746,34 +746,39 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
 
   let contractAddress: ContractAddress | null = null;
 
-  const getScopedKey = (privateStateId: PSI): string => {
-    if (contractAddress === null) {
-      throw new Error('Contract address not set. Call setContractAddress() before accessing private state.');
-    }
-    return `${contractAddress}:${privateStateId}`;
-  };
-
   return {
     setContractAddress(address: ContractAddress): void {
       contractAddress = address;
     },
     async get(privateStateId: PSI): Promise<PS | null> {
       const { privateState } = scopedNames;
-      const scopedKey = getScopedKey(privateStateId);
+      const address = contractAddress;
+      if (address === null) {
+        throw new Error('Contract address not set. Call setContractAddress() before accessing private state.');
+      }
+      const scopedKey = `${address}:${privateStateId}`;
       return subLevelMaybeGet<string, PS>(ctx, privateState, scopedKey, passwordProvider);
     },
     async remove(privateStateId: PSI): Promise<void> {
+      const address = contractAddress;
+      if (address === null) {
+        throw new Error('Contract address not set. Call setContractAddress() before accessing private state.');
+      }
       const { privateState } = scopedNames;
       await waitForRotationLock(ctx.dbName, privateState);
-      const scopedKey = getScopedKey(privateStateId);
+      const scopedKey = `${address}:${privateStateId}`;
       return withSubLevel<string, string, void>(ctx, privateState, (subLevel) =>
         subLevel.del(scopedKey),
       );
     },
     async set(privateStateId: PSI, state: PS): Promise<void> {
+      const address = contractAddress;
+      if (address === null) {
+        throw new Error('Contract address not set. Call setContractAddress() before accessing private state.');
+      }
       const { privateState } = scopedNames;
       await waitForRotationLock(ctx.dbName, privateState);
-      const scopedKey = getScopedKey(privateStateId);
+      const scopedKey = `${address}:${privateStateId}`;
       const encryption = await getOrCreateEncryption(ctx, privateState, passwordProvider);
       const serialized = superjson.stringify(state);
       const encrypted = await encryption.encrypt(serialized);
