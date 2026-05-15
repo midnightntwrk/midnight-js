@@ -24,6 +24,8 @@ export class IndexerFormattedError extends Error {
    * @param cause An array of GraphQL errors that occurred during the server-side execution.
    */
   constructor(public readonly cause: readonly GraphQLFormattedError[]) {
-    super(`Indexer GraphQL error(s):\n${cause.reduce((acc, c, idx) => `${idx + 1}. ${c.message}:\n\t${acc}`, '')}`);
+    super(
+      `Indexer GraphQL error(s):\n${cause.map((c, idx) => `${idx + 1}. ${c.message}`).join('\n\t')}`,
+    );
   }
 }
