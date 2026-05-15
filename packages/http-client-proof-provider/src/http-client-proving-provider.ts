@@ -44,13 +44,9 @@ export const DEFAULT_TIMEOUT = 300000;
 const getKeyMaterial = async <K extends string>(
   zkConfigProvider: ZKConfigProvider<K>,
   keyLocation: K
-): Promise<ProvingKeyMaterial | undefined> => {
-  try {
-    const zkConfig = await zkConfigProvider.get(keyLocation);
-    return zkConfigToProvingKeyMaterial(zkConfig);
-  } catch {
-    return undefined;
-  }
+): Promise<ProvingKeyMaterial> => {
+  const zkConfig = await zkConfigProvider.get(keyLocation);
+  return zkConfigToProvingKeyMaterial(zkConfig);
 };
 
 const makeHttpRequest = async (url: URL, payload: Uint8Array, timeout: number, headers: Record<string, string> = {}): Promise<Uint8Array> => {
@@ -97,7 +93,7 @@ export const httpClientProvingProvider = <K extends string>(
   return  {
     async check(serializedPreimage: Uint8Array, keyLocation: string): Promise<(bigint | undefined)[]> {
       const keyMaterial = await getKeyMaterial(zkConfigProvider, keyLocation as K);
-      const payload = createCheckPayload(serializedPreimage, keyMaterial?.ir);
+      const payload = createCheckPayload(serializedPreimage, keyMaterial.ir);
       const result = await makeHttpRequest(checkUrl, payload, timeout, headers);
       return parseCheckResult(result);
     },
