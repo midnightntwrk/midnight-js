@@ -242,6 +242,11 @@ export interface PrivateStateProvider<PSI extends PrivateStateId = PrivateStateI
    * Retrieve the private state at the given private state ID.
    *
    * @param privateStateId The private state identifier.
+   *
+   * **Null semantics:**
+   * Returns `null` when the key is absent from the underlying store OR when the
+   * stored value deserializes to `undefined`. Both conditions mean "no usable value."
+   * Callers can treat `null` uniformly — it is safe to treat as "not found."
    */
   get(privateStateId: PSI): Promise<PS | null>;
 
@@ -269,6 +274,10 @@ export interface PrivateStateProvider<PSI extends PrivateStateId = PrivateStateI
    * Retrieve the signing key for a contract.
    *
    * @param address The address of the contract for which to get the signing key.
+   *
+   * **Null semantics:**
+   * Returns `null` when the signing key is absent from the store. Treat `null` uniformly —
+   * it means "no signing key is stored for this contract."
    */
   getSigningKey(address: ContractAddress): Promise<SigningKey | null>;
 

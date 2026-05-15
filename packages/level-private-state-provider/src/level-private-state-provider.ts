@@ -702,6 +702,25 @@ const showBrowserWarning = (): void => {
 export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
   config: Partial<LevelPrivateStateProviderConfig> & Pick<LevelPrivateStateProviderConfig, 'privateStoragePasswordProvider' | 'accountId'>
 ): PrivateStateProvider<PSI, PS> & {
+  /**
+   * Clears PBKDF2-derived AES encryption keys from the in-memory cache.
+   *
+   * **When to call:**
+   * - Before user logout or session end
+   * - When switching accounts
+   * - After a prolonged idle period
+   *
+   * **Guarantees provided:**
+   * - Removes cached keys from this provider instance's memory
+   * - Prevents unbounded growth of the encryption cache map
+   *
+   * **Guarantees NOT provided (JS runtime limitation):**
+   * - Does not overwrite the memory cells (data may still be accessible via memory forensics)
+   * - Does not clear keys cached by other provider instances
+   * - Does not invalidate keys used by pending in-flight operations
+   *
+   * Call this method as part of your application's memory-hygiene and session-cleanup flows.
+   */
   invalidateEncryptionCache(): Promise<void>;
   changePassword(
     oldPasswordProvider: PrivateStoragePasswordProvider,

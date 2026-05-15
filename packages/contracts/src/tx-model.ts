@@ -24,6 +24,13 @@ import type { CallResult } from './call';
 
 /**
  * Data relevant to any unsubmitted transaction.
+ *
+ * ⚠️ **Privacy Notice:** The `unprovenTx` field contains a `UnprovenTransaction`
+ * which references zero-knowledge proof inputs (private state, secret keys, and
+ * transaction witnesses). Application code that logs, serializes, or transmits
+ * `UnsubmittedTxData` or any containing type must filter or redact `unprovenTx`
+ * before doing so. See `packages/contracts/src/` for privacy-sensitive field
+ * locations.
  */
 export type UnsubmittedTxData = {
   /**
