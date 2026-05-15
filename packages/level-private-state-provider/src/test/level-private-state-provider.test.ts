@@ -1782,6 +1782,79 @@ describe('Level Private State Provider', (): void => {
         ).resolves.not.toThrow();
       });
 
+      // The sublevel name format mirrors getScopedLevelName in level-private-state-provider.ts (sha256 hex prefix sliced to ACCOUNT_ID_HASH_LENGTH).
+      const buildScopedSublevelName = (accountId: string): string =>
+        `private-states:${crypto.createHash('sha256').update(accountId).digest('hex').substring(0, 32)}`;
+
+      test('aborts rotation when sublevel contains an unencrypted entry', async () => {
+        const config = {
+          midnightDbName: ROTATION_TEST_DB,
+          privateStoragePasswordProvider: () => OLD_PASSWORD,
+          accountId: TEST_ACCOUNT_ID
+        };
+
+        const db = levelPrivateStateProvider<string, string>(config);
+        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
+        await db.set('key1', 'value1');
+        await db.set('key2', 'value2');
+
+        const sublevelName = buildScopedSublevelName(TEST_ACCOUNT_ID);
+        const plaintextKey = `${ROTATION_CONTRACT_ADDRESS}:plaintext-entry`;
+
+        const directLevel = new Level(ROTATION_TEST_DB, { createIfMissing: true });
+        const directSublevel = directLevel.sublevel<string, string>(sublevelName, { valueEncoding: 'utf-8' });
+        await directLevel.open();
+        await directSublevel.open();
+        await directSublevel.put(plaintextKey, 'this-is-not-encrypted');
+        await directSublevel.close();
+        await directLevel.close();
+
+        await expect(
+          db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD)
+        ).rejects.toThrow(/Failed to decrypt entry.*Unrecognized or unencrypted data/);
+
+        const value1 = await db.get('key1');
+        const value2 = await db.get('key2');
+        expect(value1).toBe('value1');
+        expect(value2).toBe('value2');
+      });
+
+      test('propagates raw error when first iterated entry is unencrypted', async () => {
+        const config = {
+          midnightDbName: ROTATION_TEST_DB,
+          privateStoragePasswordProvider: () => OLD_PASSWORD,
+          accountId: TEST_ACCOUNT_ID
+        };
+
+        const db = levelPrivateStateProvider<string, string>(config);
+        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
+        await db.set('key1', 'value1');
+        await db.set('key2', 'value2');
+
+        const sublevelName = buildScopedSublevelName(TEST_ACCOUNT_ID);
+        // Lex-sort before ROTATION_CONTRACT_ADDRESS so iterator hits this first.
+        const plaintextKey = 'aaa-contract:plaintext-first';
+
+        const directLevel = new Level(ROTATION_TEST_DB, { createIfMissing: true });
+        const directSublevel = directLevel.sublevel<string, string>(sublevelName, { valueEncoding: 'utf-8' });
+        await directLevel.open();
+        await directSublevel.open();
+        await directSublevel.put(plaintextKey, 'this-is-not-encrypted');
+        await directSublevel.close();
+        await directLevel.close();
+
+        // First-entry path at rotateStorePassword: isDecryptionError returns false for the new message,
+        // so the error propagates raw (not wrapped by "Failed to decrypt entry" nor "Old password is incorrect").
+        await expect(
+          db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD)
+        ).rejects.toThrow(/^Unrecognized or unencrypted data encountered during decryption$/);
+
+        const value1 = await db.get('key1');
+        const value2 = await db.get('key2');
+        expect(value1).toBe('value1');
+        expect(value2).toBe('value2');
+      });
+
       test('re-encrypts all contracts data in sublevel to prevent data loss', async () => {
         const OTHER_CONTRACT = 'other-contract' as ContractAddress;
         let currentPassword = OLD_PASSWORD;
