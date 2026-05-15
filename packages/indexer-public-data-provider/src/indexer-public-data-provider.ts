@@ -323,7 +323,12 @@ const blockOffsetToContractState$ =
       })
       .pipe(
         withValidFetchData(),
-        Rx.map((data) => data.contractActions!.state),
+        Rx.map((data) => {
+          if (!data.contractActions) {
+            throw new Error('contractStateUpdated subscription returned null contractActions');
+          }
+          return data.contractActions.state;
+        }),
         Rx.map(deserializeContractState)
       );
 
@@ -346,7 +351,12 @@ const waitForContractToAppear =
       .pipe(
         withCompleteQueryData(),
         Rx.filter((data) => data.contractAction !== null),
-        Rx.map((data) => data.contractAction!.state),
+        Rx.map((data) => {
+          if (!data.contractAction) {
+            throw new Error('contractActionQuery returned null contractAction');
+          }
+          return data.contractAction.state;
+        }),
         Rx.take(1)
       );
 
@@ -385,7 +395,10 @@ const waitForUnshieldedBalancesToAppear =
         withCompleteQueryData(),
         Rx.filter((data) => data.contractAction !== null),
         Rx.map((data) => {
-          const contractAction = data.contractAction!;
+          const contractAction = data.contractAction;
+          if (!contractAction) {
+            throw new Error('contractAction subscription returned null contractAction');
+          }
           if ('unshieldedBalances' in contractAction) {
             return contractAction.unshieldedBalances;
           }
@@ -413,7 +426,10 @@ const blockOffsetToUnshieldedBalances$ =
       .pipe(
         withValidFetchData(),
         Rx.map((data) => {
-          const contractAction = data.contractActions!;
+          const contractAction = data.contractActions;
+          if (!contractAction) {
+            throw new Error('contractActions subscription returned null contractActions');
+          }
           if ('unshieldedBalances' in contractAction) {
             return contractAction.unshieldedBalances;
           }
