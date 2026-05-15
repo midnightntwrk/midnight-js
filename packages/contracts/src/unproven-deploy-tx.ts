@@ -151,7 +151,7 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
   } catch (error: unknown) {
     if (!isEffectContractError(error)) throw error;
     if (error._tag !== 'ContractRuntimeError' && error._tag !== 'ContractConfigurationError') throw error;
-    if (error.cause.name !== 'CompactError') throw error;
+    if (error.cause?.name !== 'CompactError') throw error;
     throw new Error(error.cause.message, { cause: error });
   }
 }

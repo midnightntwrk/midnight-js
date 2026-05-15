@@ -143,7 +143,7 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
     };
   } catch (error: unknown) {
     if (!isEffectContractError(error) || error._tag !== 'ContractRuntimeError') throw error;
-    if (error.cause.name !== 'CompactError') throw error;
+    if (error.cause?.name !== 'CompactError') throw error;
     throw new Error(error.cause.message, { cause: error });
   }
 }
