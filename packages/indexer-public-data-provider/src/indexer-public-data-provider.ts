@@ -103,7 +103,7 @@ const maybeThrowQueryError = <R extends { error?: { message: string } }>(result:
 const withCompleteQueryData = <A>(): Rx.OperatorFunction<ApolloQueryResult<A>, A> =>
   Rx.pipe(
     Rx.filter((result: ApolloQueryResult<A>) => {
-      if (result.error) throw new Error(result.error.message);
+      if (result.error) throw result.error;
       return result.dataState === 'complete';
     }),
     // Safe: dataState === 'complete' guarantees data is Complete<A> which defaults to A
