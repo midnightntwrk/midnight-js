@@ -317,8 +317,9 @@ export const decryptValue = async (
   password: string
 ): Promise<string> => {
   if (!StorageEncryption.isEncrypted(encryptedValue)) {
-    console.debug('MIDNIGHT: Encountered unencrypted data during decryption - passing through as-is');
-    return encryptedValue;
+    throw new Error(
+      'Unrecognized or unencrypted data encountered during decryption'
+    );
   }
 
   const version = StorageEncryption.getVersion(encryptedValue);

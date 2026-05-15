@@ -121,13 +121,13 @@ describe('StorageEncryption', () => {
   });
 
   describe('decryptValue', () => {
-    test('passes through unencrypted data as-is', async () => {
+    test('throws on unrecognized or unencrypted data', async () => {
       const encryption = await StorageEncryption.create(testPassword);
       const plaintext = 'not-encrypted-data';
 
-      const result = await decryptValue(plaintext, encryption, testPassword);
-
-      expect(result).toBe(plaintext);
+      await expect(decryptValue(plaintext, encryption, testPassword)).rejects.toThrow(
+        'Unrecognized or unencrypted data encountered during decryption'
+      );
     });
 
     test('decrypts V2 encrypted data', async () => {
