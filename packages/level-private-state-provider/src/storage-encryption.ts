@@ -188,14 +188,10 @@ export class StorageEncryption {
   }
 
   static isEncrypted(data: string): boolean {
-    try {
-      const buffer = Buffer.from(data, 'base64');
-      const version = buffer[0];
-      return buffer.length >= HEADER_LENGTH &&
-        (version === ENCRYPTION_VERSION_V1 || version === ENCRYPTION_VERSION_V2);
-    } catch {
-      return false;
-    }
+    const buffer = Buffer.from(data, 'base64');
+    const version = buffer[0];
+    return buffer.length >= HEADER_LENGTH &&
+      (version === ENCRYPTION_VERSION_V1 || version === ENCRYPTION_VERSION_V2);
   }
 
   static getVersion(encryptedData: string): number {
