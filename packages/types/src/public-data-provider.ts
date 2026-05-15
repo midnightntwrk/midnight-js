@@ -204,3 +204,14 @@ export interface PublicDataProvider {
    */
   unshieldedBalancesObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<UnshieldedBalances>;
 }
+
+export interface Disposable {
+  /**
+   * Closes the provider and releases all resources, including WebSocket connections.
+   * Call this when the provider is no longer needed to prevent connection leaks.
+   *
+   * After calling `close()`, the provider should not be used. Create a new instance
+   * if you need to re-establish connections.
+   */
+  close(): void | Promise<void>;
+}

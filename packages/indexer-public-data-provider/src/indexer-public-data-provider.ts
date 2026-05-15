@@ -471,18 +471,24 @@ const indexerPublicDataProviderInternal = (
   });
   // Combine the retry link with the HTTP link to form the final link.
   const apolloLink = from([retryLink, link]);
+  const wsClient = createClient({ url: subscriptionURL, webSocketImpl });
+  const wsLink = new GraphQLWsLink(wsClient);
   const apolloClient = new ApolloClient({
     link: split(
       ({ query }) => {
         const definition = getMainDefinition(query);
         return definition.kind === 'OperationDefinition' && definition.operation === 'subscription';
       },
-      new GraphQLWsLink(createClient({ url: subscriptionURL, webSocketImpl })),
+      wsLink,
       apolloLink
     ),
     cache: new InMemoryCache()
   });
   return {
+    close(): void {
+      apolloClient.stop();
+      wsClient.dispose();
+    },
     async queryContractState(
       address: ContractAddress,
       config?: BlockHeightConfig | BlockHashConfig
