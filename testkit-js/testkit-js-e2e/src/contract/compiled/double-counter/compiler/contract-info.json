@@ -1,7 +1,7 @@
 {
-  "compiler-version": "0.30.0",
-  "language-version": "0.22.0",
-  "runtime-version": "0.15.0",
+  "compiler-version": "0.31.0",
+  "language-version": "0.23.0",
+  "runtime-version": "0.16.0",
   "circuits": [
     {
       "name": "increment1",
@@ -67,5 +67,19 @@
     }
   ],
   "contracts": [
+  ],
+  "ledger": [
+    {
+      "name": "ticker1",
+      "index": 0,
+      "exported": true,
+      "storage": "Counter"
+    },
+    {
+      "name": "ticker2",
+      "index": 1,
+      "exported": true,
+      "storage": "Counter"
+    }
   ]
 }
