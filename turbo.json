@@ -47,6 +47,9 @@
       "outputLogs": "new-only",
       "dependsOn": ["build", "test"]
     },
+    "compact": {
+      "cache": false
+    },
     "deploy": {
       "cache": false,
       "dependsOn": ["build"]
