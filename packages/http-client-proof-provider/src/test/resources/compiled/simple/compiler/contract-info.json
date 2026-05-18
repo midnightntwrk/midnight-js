@@ -1,8 +1,12 @@
 {
+  "compiler-version": "0.31.0",
+  "language-version": "0.23.0",
+  "runtime-version": "0.16.0",
   "circuits": [
     {
       "name": "add",
       "pure": false,
+      "proof": true,
       "arguments": [
       ],
       "result-type": {
@@ -15,5 +19,13 @@
   "witnesses": [
   ],
   "contracts": [
+  ],
+  "ledger": [
+    {
+      "name": "round",
+      "index": 0,
+      "exported": true,
+      "storage": "Counter"
+    }
   ]
 }

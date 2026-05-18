@@ -1892,6 +1892,7 @@ __metadata:
   resolution: "@midnight-ntwrk/midnight-js-contracts@workspace:packages/contracts"
   dependencies:
     "@fast-check/vitest": "npm:^0.3.0"
+    "@midnight-ntwrk/midnight-js-compact": "workspace:*"
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
