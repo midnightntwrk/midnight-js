@@ -14,10 +14,10 @@ The migration is transparent for `levelPrivateStateProvider` consumers -- the pr
 
 ## 2. CryptoBackend Abstraction with Noble Fallback (#827)
 
-A pluggable `CryptoBackend` interface abstracts the cryptographic primitives used by `StorageEncryption`. Two implementations are provided:
+A pluggable `CryptoBackend` interface abstracts the cryptographic primitives used by `StorageEncryption`. Two backends ship with the package and are selected via the `cryptoBackend` config string — the concrete classes themselves are internal and are not exported from the package barrel:
 
-- **WebCryptoCryptoBackend** -- delegates to `globalThis.crypto.subtle` (default when available)
-- **NobleCryptoBackend** -- pure-JS implementation using `@noble/ciphers` (AES-256-GCM) and `@noble/hashes` (SHA-256, PBKDF2)
+- **`'webcrypto'`** -- delegates to `globalThis.crypto.subtle` (default when available)
+- **`'noble'`** -- pure-JS implementation using `@noble/ciphers` (AES-256-GCM) and `@noble/hashes` (SHA-256, PBKDF2)
 
 Auto-resolution: WebCrypto is preferred when `crypto.subtle` is available; Noble is used as fallback (e.g., React Native without a secure context).
 
@@ -97,11 +97,11 @@ New `@midnight-ntwrk/midnight-js-protocol` package wraps all 5 external protocol
 | `./compact-runtime` | `@midnight-ntwrk/compact-runtime` |
 | `./compact-js` | `@midnight-ntwrk/compact-js` |
 | `./compact-js/effect` | `@midnight-ntwrk/compact-js/effect` |
-| `./compact-js/effect-contract` | `@midnight-ntwrk/compact-js/effect-contract` |
+| `./compact-js/effect/Contract` | `@midnight-ntwrk/compact-js/effect/Contract` |
 | `./onchain-runtime` | `@midnight-ntwrk/onchain-runtime-v3` |
 | `./platform-js` | `@midnight-ntwrk/platform-js` |
-| `./platform-js/effect-configuration` | `@midnight-ntwrk/platform-js/effect-configuration` |
-| `./platform-js/effect-contract-address` | `@midnight-ntwrk/platform-js/effect-contract-address` |
+| `./platform-js/effect/Configuration` | `@midnight-ntwrk/platform-js/effect/Configuration` |
+| `./platform-js/effect/ContractAddress` | `@midnight-ntwrk/platform-js/effect/ContractAddress` |
 
 ### Usage
 
@@ -132,9 +132,39 @@ New testing infrastructure that enables e2e testing of wallet-delegated proving 
 ```typescript
 import { DAppConnectorWalletAdapter, DAppConnectorInitialAPI } from '@midnight-ntwrk/testkit-js';
 
-const walletAdapter = new DAppConnectorWalletAdapter(walletProvider);
+const walletAdapter = new DAppConnectorWalletAdapter(walletProvider, environmentConfiguration);
 const initialAPI = new DAppConnectorInitialAPI(walletAdapter, expectedNetworkId);
+// Optional 3rd arg overrides defaults: { rdns, name, icon, apiVersion }
 
 // Use with dapp-connector-proof-provider in e2e tests
 const proofProvider = await dappConnectorProofProvider(walletAdapter, zkConfigProvider, costModel);
+```
+
+---
+
+## 6. `assertSafeName` and `assertSemVer` utilities (#875)
+
+Two pure string validators land in `@midnight-ntwrk/midnight-js-utils` (re-exported as `security-utils`). Both are used internally to lock down path-traversal-prone inputs in the ZK providers and `VersionManager`, and are available to dApp code that needs to validate user-controlled filesystem / URL segments.
+
+### API
+
+```typescript
+import { assertSafeName, assertSemVer, MAX_SAFE_NAME_LENGTH } from '@midnight-ntwrk/midnight-js-utils';
+
+assertSafeName(name: string, label: string): void;
+assertSemVer(version: string, label: string): void;
+```
+
+- `assertSafeName` rejects empty strings, anything longer than `MAX_SAFE_NAME_LENGTH` (255), and names containing path separators, NUL, or traversal payloads (`..`, leading dots that compose into traversal).
+- `assertSemVer` rejects anything that does not match a strict semver-like grammar.
+
+### Usage
+
+```typescript
+import { assertSafeName } from '@midnight-ntwrk/midnight-js-utils';
+
+function loadArtifact(circuitId: string) {
+  assertSafeName(circuitId, 'circuitId');
+  return fs.readFileSync(path.join(artifactDir, circuitId));
+}
 ```
