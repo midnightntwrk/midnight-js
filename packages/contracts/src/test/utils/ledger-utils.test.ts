@@ -13,25 +13,33 @@
  * limitations under the License.
  */
 
-import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { getNetworkId,setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   type AlignedValue,
   ContractOperation,
   ContractState as CompactContractState,
   createCircuitContext,
-  QueryContext
+  QueryContext,
+  type Recipient
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
+  type CoinCommitment,
+  coinCommitment,
+  type ContractAddress,
+  createShieldedCoinInfo,
   feeToken,
   Intent,
   MaintenanceUpdate,
+  nativeToken,
   type PartitionedTranscript,
   type PublicAddress,
+  type QualifiedShieldedCoinInfo,
   sampleCoinPublicKey,
   sampleContractAddress,
   sampleEncryptionPublicKey,
   sampleSigningKey,
   sampleUserAddress,
+  type ShieldedCoinInfo,
   shieldedToken,
   type TokenType,
   Transaction,
@@ -39,7 +47,10 @@ import {
   UnshieldedOffer,
   unshieldedToken,
   type UtxoOutput,
-  ZswapChainState
+  ZswapChainState,
+  ZswapInput,
+  ZswapOffer,
+  ZswapOutput
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
@@ -49,6 +60,8 @@ import {
   createUnprovenLedgerCallTx,
   createUnprovenRemoveVerifierKeyTx,
   createUnprovenReplaceAuthorityTx,
+  createZswapOutput,
+  type EncryptionPublicKeyResolver,
   extractUserAddressedOutputs,
   fromLedgerContractState,
   toLedgerContractState,
@@ -216,6 +229,283 @@ describe('ledger-utils', () => {
         dummyEncPublicKey
       );
       expect(tx).toBeInstanceOf(Transaction);
+    });
+  });
+
+  describe('createUnprovenLedgerCallTx shielded segment routing', () => {
+    const circuitId = 'addLiquidity';
+    const alignedValue: AlignedValue = {
+      value: [new Uint8Array()],
+      alignment: [{ tag: 'atom', value: { tag: 'field' } }]
+    };
+
+    const makeTranscript = (
+      claimedShieldedReceives: CoinCommitment[] = [],
+      claimedShieldedSpends: CoinCommitment[] = [],
+      claimedNullifiers: string[] = []
+    ): Transcript<AlignedValue> => ({
+      gas: { readTime: 0n, computeTime: 0n, bytesWritten: 0n, bytesDeleted: 0n },
+      effects: {
+        claimedNullifiers,
+        claimedShieldedReceives,
+        claimedShieldedSpends,
+        claimedContractCalls: [],
+        shieldedMints: new Map(),
+        unshieldedInputs: new Map(),
+        unshieldedOutputs: new Map(),
+        unshieldedMints: new Map(),
+        claimedUnshieldedSpends: new Map()
+      },
+      program: ['new', { noop: { n: 5 } }]
+    });
+
+    const makeTranscriptWithReceives = (claimedShieldedReceives: CoinCommitment[]): Transcript<AlignedValue> =>
+      makeTranscript(claimedShieldedReceives);
+
+    const seedContractCoin = (
+      coinInfo: ShieldedCoinInfo,
+      contractAddress: ContractAddress
+    ): { chainState: ZswapChainState; qualifiedCoin: QualifiedShieldedCoinInfo } => {
+      const recipient: Recipient = { is_left: false, left: sampleCoinPublicKey(), right: contractAddress };
+      const constantResolver: EncryptionPublicKeyResolver = () => sampleEncryptionPublicKey();
+      const output = createZswapOutput({ coinInfo, recipient }, constantResolver);
+      const seedTx = Transaction.fromParts(
+        getNetworkId(),
+        ZswapOffer.fromOutput(output, coinInfo.type, coinInfo.value)
+      ).eraseProofs();
+      const [chainState, mtIndices] = new ZswapChainState().tryApply(seedTx.guaranteedOffer!);
+      const qualifiedCoin: QualifiedShieldedCoinInfo = { ...coinInfo, mt_index: mtIndices.get(output.commitment)! };
+      return { chainState, qualifiedCoin };
+    };
+
+    const probeNullifier = (
+      qualifiedCoin: QualifiedShieldedCoinInfo,
+      chainState: ZswapChainState,
+      contractAddress: ContractAddress
+    ): string =>
+      ZswapInput.newContractOwned(qualifiedCoin, 0, contractAddress, chainState.postBlockUpdate(new Date())).nullifier;
+
+    it('routes a user-bound shielded output from a fallible op into the fallible Zswap offer', () => {
+      // Arrange
+      const walletCpk = sampleCoinPublicKey();
+      const recipientCpk = sampleCoinPublicKey();
+      const epk = sampleEncryptionPublicKey();
+      const coinInfo = createShieldedCoinInfo(nativeToken().raw, 4967n);
+      const commitment = coinCommitment(coinInfo, recipientCpk);
+      const partitioned: PartitionedTranscript = [
+        makeTranscriptWithReceives([]),
+        makeTranscriptWithReceives([commitment])
+      ];
+
+      const contractState = new CompactContractState();
+      contractState.setOperation(circuitId, new ContractOperation());
+      const contractAddress = sampleContractAddress();
+
+      // Act
+      const tx = createUnprovenLedgerCallTx(
+        circuitId,
+        contractAddress,
+        contractState,
+        new ZswapChainState(),
+        partitioned,
+        [],
+        alignedValue,
+        alignedValue,
+        {
+          currentIndex: 0n,
+          coinPublicKey: walletCpk,
+          inputs: [],
+          outputs: [{ coinInfo, recipient: { is_left: true, left: recipientCpk, right: contractAddress } }]
+        },
+        () => epk
+      );
+
+      // Assert
+      const fallible = tx.fallibleOffer;
+      expect(fallible).toBeDefined();
+      expect(fallible!.size).toBe(1);
+      const [[, fallibleOffer]] = Array.from(fallible!.entries());
+      expect(fallibleOffer.outputs.map((o) => o.commitment)).toEqual([commitment]);
+      expect(tx.guaranteedOffer).toBeUndefined();
+    });
+
+    it('keeps a guaranteed-segment user-bound output in the guaranteed offer', () => {
+      // Arrange
+      const walletCpk = sampleCoinPublicKey();
+      const recipientCpk = sampleCoinPublicKey();
+      const epk = sampleEncryptionPublicKey();
+      const coinInfo = createShieldedCoinInfo(nativeToken().raw, 100n);
+      const commitment = coinCommitment(coinInfo, recipientCpk);
+      const partitioned: PartitionedTranscript = [
+        makeTranscriptWithReceives([commitment]),
+        undefined
+      ];
+      const contractState = new CompactContractState();
+      contractState.setOperation(circuitId, new ContractOperation());
+      const contractAddress = sampleContractAddress();
+
+      // Act
+      const tx = createUnprovenLedgerCallTx(
+        circuitId,
+        contractAddress,
+        contractState,
+        new ZswapChainState(),
+        partitioned,
+        [],
+        alignedValue,
+        alignedValue,
+        {
+          currentIndex: 0n,
+          coinPublicKey: walletCpk,
+          inputs: [],
+          outputs: [{ coinInfo, recipient: { is_left: true, left: recipientCpk, right: contractAddress } }]
+        },
+        () => epk
+      );
+
+      // Assert
+      expect(tx.guaranteedOffer).toBeDefined();
+      expect(tx.guaranteedOffer!.outputs.map((o) => o.commitment)).toEqual([commitment]);
+      expect(tx.fallibleOffer).toBeUndefined();
+    });
+
+    it('routes a wallet-owned input into the fallible offer when its nullifier is in fallible claimedNullifiers (regression #876)', () => {
+      // Arrange — emulates a contract circuit that spends a previously-deposited coin
+      // in the fallible segment. Per ledger v8 (construct.rs:148-156), the contract
+      // populates claimedNullifiers (not claimedShieldedSpends) with the input's
+      // nullifier. The fix must route inputs by nullifier match.
+      const walletCpk = sampleCoinPublicKey();
+      const contractAddress = sampleContractAddress();
+      const coinInfo = createShieldedCoinInfo(shieldedToken().raw, 500n);
+      const { chainState, qualifiedCoin } = seedContractCoin(coinInfo, contractAddress);
+      const nullifier = probeNullifier(qualifiedCoin, chainState, contractAddress);
+      const partitioned: PartitionedTranscript = [
+        makeTranscript([], [], []),
+        makeTranscript([], [], [nullifier])
+      ];
+      const contractState = new CompactContractState();
+      contractState.setOperation(circuitId, new ContractOperation());
+
+      // Act
+      const tx = createUnprovenLedgerCallTx(
+        circuitId,
+        contractAddress,
+        contractState,
+        chainState,
+        partitioned,
+        [],
+        alignedValue,
+        alignedValue,
+        {
+          currentIndex: 0n,
+          coinPublicKey: walletCpk,
+          inputs: [qualifiedCoin],
+          outputs: []
+        },
+        sampleEncryptionPublicKey()
+      );
+
+      // Assert
+      const fallible = tx.fallibleOffer;
+      expect(fallible).toBeDefined();
+      expect(fallible!.size).toBe(1);
+      const [[, fallibleOffer]] = Array.from(fallible!.entries());
+      expect(fallibleOffer.inputs.map((i) => i.nullifier)).toEqual([nullifier]);
+      expect(tx.guaranteedOffer).toBeUndefined();
+    });
+
+    it('routes a user-bound output via claimedShieldedSpends only (union with receives matches ledger v8)', () => {
+      // Arrange — a contract sending a shielded coin to a user populates the output's
+      // commitment in claimedShieldedSpends, not claimedShieldedReceives (per ledger
+      // construct.rs:158-170 and token_vault_shielded.rs:478-480 withdrawal pattern).
+      // The fix must check the union of both fields.
+      const walletCpk = sampleCoinPublicKey();
+      const recipientCpk = sampleCoinPublicKey();
+      const epk = sampleEncryptionPublicKey();
+      const coinInfo = createShieldedCoinInfo(nativeToken().raw, 750n);
+      const commitment = coinCommitment(coinInfo, recipientCpk);
+      const partitioned: PartitionedTranscript = [
+        makeTranscript([], [], []),
+        makeTranscript([], [commitment], [])
+      ];
+      const contractState = new CompactContractState();
+      contractState.setOperation(circuitId, new ContractOperation());
+      const contractAddress = sampleContractAddress();
+
+      // Act
+      const tx = createUnprovenLedgerCallTx(
+        circuitId,
+        contractAddress,
+        contractState,
+        new ZswapChainState(),
+        partitioned,
+        [],
+        alignedValue,
+        alignedValue,
+        {
+          currentIndex: 0n,
+          coinPublicKey: walletCpk,
+          inputs: [],
+          outputs: [{ coinInfo, recipient: { is_left: true, left: recipientCpk, right: contractAddress } }]
+        },
+        () => epk
+      );
+
+      // Assert
+      const fallible = tx.fallibleOffer;
+      expect(fallible).toBeDefined();
+      expect(fallible!.size).toBe(1);
+      const [[, fallibleOffer]] = Array.from(fallible!.entries());
+      expect(fallibleOffer.outputs.map((o) => o.commitment)).toEqual([commitment]);
+      expect(tx.guaranteedOffer).toBeUndefined();
+    });
+
+    it('pairs a same-coin input and contract-owned output into a fallible-segment transient', () => {
+      // Arrange — exercises the merge pattern from token_vault_shielded.rs:310-319:
+      // a contract consumes a coin (nullifier in fallible) and re-emits it back to
+      // itself (commitment in fallible receives). Should produce one transient, no
+      // dangling input or output.
+      const walletCpk = sampleCoinPublicKey();
+      const contractAddress = sampleContractAddress();
+      const coinInfo = createShieldedCoinInfo(shieldedToken().raw, 1000n);
+      const { chainState, qualifiedCoin } = seedContractCoin(coinInfo, contractAddress);
+      const nullifier = probeNullifier(qualifiedCoin, chainState, contractAddress);
+      const outputCommitment = ZswapOutput.newContractOwned(coinInfo, 0, contractAddress).commitment;
+      const partitioned: PartitionedTranscript = [
+        makeTranscript([], [], []),
+        makeTranscript([outputCommitment], [], [nullifier])
+      ];
+      const contractState = new CompactContractState();
+      contractState.setOperation(circuitId, new ContractOperation());
+
+      // Act
+      const tx = createUnprovenLedgerCallTx(
+        circuitId,
+        contractAddress,
+        contractState,
+        chainState,
+        partitioned,
+        [],
+        alignedValue,
+        alignedValue,
+        {
+          currentIndex: 0n,
+          coinPublicKey: walletCpk,
+          inputs: [qualifiedCoin],
+          outputs: [{ coinInfo, recipient: { is_left: false, left: sampleCoinPublicKey(), right: contractAddress } }]
+        },
+        sampleEncryptionPublicKey()
+      );
+
+      // Assert
+      const fallible = tx.fallibleOffer;
+      expect(fallible).toBeDefined();
+      expect(fallible!.size).toBe(1);
+      const [[, fallibleOffer]] = Array.from(fallible!.entries());
+      expect(fallibleOffer.inputs.length).toBe(0);
+      expect(fallibleOffer.outputs.length).toBe(0);
+      expect(fallibleOffer.transients.length).toBe(1);
+      expect(fallibleOffer.transients[0]!.nullifier).toBe(nullifier);
     });
   });
 
