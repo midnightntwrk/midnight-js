@@ -121,13 +121,21 @@ describe('StorageEncryption', () => {
   });
 
   describe('decryptValue', () => {
-    test('passes through unencrypted data as-is', async () => {
+    test('throws on unrecognized or unencrypted data', async () => {
       const encryption = await StorageEncryption.create(testPassword);
       const plaintext = 'not-encrypted-data';
 
-      const result = await decryptValue(plaintext, encryption, testPassword);
+      await expect(decryptValue(plaintext, encryption, testPassword)).rejects.toThrow(
+        'Unrecognized or unencrypted data encountered during decryption'
+      );
+    });
 
-      expect(result).toBe(plaintext);
+    test('throws on empty string input', async () => {
+      const encryption = await StorageEncryption.create(testPassword);
+
+      await expect(decryptValue('', encryption, testPassword)).rejects.toThrow(
+        'Unrecognized or unencrypted data encountered during decryption'
+      );
     });
 
     test('decrypts V2 encrypted data', async () => {
@@ -146,6 +154,20 @@ describe('StorageEncryption', () => {
       const result = await decryptValue(V1_FIXTURES.encrypted, encryption, V1_FIXTURES.password);
 
       expect(result).toBe(V1_FIXTURES.plaintext);
+    });
+  });
+
+  describe('isEncrypted', () => {
+    test('returns false for empty string without throwing', () => {
+      expect(StorageEncryption.isEncrypted('')).toBe(false);
+    });
+
+    test('returns false for invalid base64 input without throwing', () => {
+      expect(StorageEncryption.isEncrypted('!!!not-base64$$$')).toBe(false);
+    });
+
+    test('returns false for plaintext that decodes to a too-short buffer', () => {
+      expect(StorageEncryption.isEncrypted('short')).toBe(false);
     });
   });
 
