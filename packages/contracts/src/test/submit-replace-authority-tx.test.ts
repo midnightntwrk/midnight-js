@@ -89,7 +89,7 @@ describe('submitReplaceAuthorityTx', () => {
 
   describe('error scenarios', () => {
     it('should throw ReplaceMaintenanceAuthorityTxFailedError when transaction fails', async () => {
-      const { ReplaceMaintenanceAuthorityTxFailedError } = await import('../errors');
+      const { ReplaceMaintenanceAuthorityTxFailedError } = await import('../governance/errors');
       const { FailEntirely } = await import('@midnight-ntwrk/midnight-js-types');
       
       const failedTxData = createMockFinalizedTxData(FailEntirely);

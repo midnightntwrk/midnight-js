@@ -97,7 +97,7 @@ describe('submitInsertVerifierKeyTx', () => {
 
   describe('error scenarios', () => {
     it('should throw InsertVerifierKeyTxFailedError when transaction fails', async () => {
-      const { InsertVerifierKeyTxFailedError } = await import('../errors');
+      const { InsertVerifierKeyTxFailedError } = await import('../governance/errors');
       const { FailEntirely } = await import('@midnight-ntwrk/midnight-js-types');
       
       const circuitId = 'testCircuit';

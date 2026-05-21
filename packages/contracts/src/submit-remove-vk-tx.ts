@@ -20,7 +20,7 @@ import { type FinalizedTxData,SucceedEntirely } from '@midnight-ntwrk/midnight-j
 import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
-import { RemoveVerifierKeyTxFailedError } from './errors';
+import { RemoveVerifierKeyTxFailedError } from './governance/errors';
 import { submitTx } from './submit-tx';
 import { createUnprovenRemoveVerifierKeyTx } from './utils';
 

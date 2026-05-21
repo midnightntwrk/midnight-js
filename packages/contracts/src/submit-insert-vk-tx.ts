@@ -23,7 +23,7 @@ import {
 import { assertDefined, assertIsContractAddress, assertUndefined } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
-import { InsertVerifierKeyTxFailedError } from './errors';
+import { InsertVerifierKeyTxFailedError } from './governance/errors';
 import { submitTx } from './submit-tx';
 import { createUnprovenInsertVerifierKeyTx } from './utils';
 

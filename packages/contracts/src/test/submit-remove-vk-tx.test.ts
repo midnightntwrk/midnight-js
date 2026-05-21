@@ -93,7 +93,7 @@ describe('submitRemoveVerifierKeyTx', () => {
 
   describe('error scenarios', () => {
     it('should throw RemoveVerifierKeyTxFailedError when transaction fails', async () => {
-      const { RemoveVerifierKeyTxFailedError } = await import('../errors');
+      const { RemoveVerifierKeyTxFailedError } = await import('../governance/errors');
       const { FailEntirely } = await import('@midnight-ntwrk/midnight-js-types');
       
       const circuitId = 'testCircuit';

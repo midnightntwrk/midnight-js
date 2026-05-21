@@ -120,36 +120,6 @@ export class ContractTypeError extends TypeError {
 }
 
 /**
- * An error indicating that a contract maintenance authority replacement transaction failed.
- */
-export class ReplaceMaintenanceAuthorityTxFailedError extends TxFailedError {
-  constructor(finalizedTxData: FinalizedTxData) {
-    super(finalizedTxData);
-    this.name = 'ReplaceMaintenanceAuthorityTxFailedError';
-  }
-}
-
-/**
- * An error indicating that a verifier key removal transaction failed.
- */
-export class RemoveVerifierKeyTxFailedError extends TxFailedError {
-  constructor(finalizedTxData: FinalizedTxData) {
-    super(finalizedTxData);
-    this.name = 'RemoveVerifierKeyTxFailedError';
-  }
-}
-
-/**
- * An error indicating that a verifier key insertion transaction failed.
- */
-export class InsertVerifierKeyTxFailedError extends TxFailedError {
-  constructor(finalizedTxData: FinalizedTxData) {
-    super(finalizedTxData);
-    this.name = 'InsertVerifierKeyTxFailedError';
-  }
-}
-
-/**
  * An error indicating that a private state ID was specified for a call transaction while a private
  * state provider was not. We want to let the user know so that they aren't under the impression the
  * private state of a contract was updated when it wasn't.

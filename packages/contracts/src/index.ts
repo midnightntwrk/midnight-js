@@ -46,9 +46,6 @@ export {
   DeployTxFailedError,
   IncompleteCallTxPrivateStateConfig,
   IncompleteFindContractPrivateStateConfig,
-  InsertVerifierKeyTxFailedError,
-  RemoveVerifierKeyTxFailedError,
-  ReplaceMaintenanceAuthorityTxFailedError,
   TxFailedError} from './errors';
 export {
   findDeployedContract,
@@ -61,6 +58,10 @@ export {
   verifyContractState} from './find-deployed-contract';
 export { ContractStates,getPublicStates, getStates, PublicContractStates } from './get-states';
 export { getUnshieldedBalances } from './get-unshielded-balances';
+export {
+  InsertVerifierKeyTxFailedError,
+  RemoveVerifierKeyTxFailedError,
+  ReplaceMaintenanceAuthorityTxFailedError} from './governance/errors';
 export { submitCallTx, submitCallTxAsync } from './submit-call-tx';
 export { DeployTxOptions,submitDeployTx } from './submit-deploy-tx';
 export { submitInsertVerifierKeyTx } from './submit-insert-vk-tx';
