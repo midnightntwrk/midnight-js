@@ -59,19 +59,19 @@ export {
 export { ContractStates,getPublicStates, getStates, PublicContractStates } from './get-states';
 export { getUnshieldedBalances } from './get-unshielded-balances';
 export {
-  InsertVerifierKeyTxFailedError,
-  RemoveVerifierKeyTxFailedError,
-  ReplaceMaintenanceAuthorityTxFailedError} from './governance/errors';
-export { submitInsertVerifierKeyTx } from './governance/submit-insert-vk-tx';
-export { submitRemoveVerifierKeyTx } from './governance/submit-remove-vk-tx';
-export { submitReplaceAuthorityTx } from './governance/submit-replace-authority-tx';
-export {
   CircuitMaintenanceTxInterface,
   CircuitMaintenanceTxInterfaces,
   ContractMaintenanceTxInterface,
   createCircuitMaintenanceTxInterface,
   createCircuitMaintenanceTxInterfaces,
-  createContractMaintenanceTxInterface} from './governance/tx-interfaces';
+  createContractMaintenanceTxInterface,
+  InsertVerifierKeyTxFailedError,
+  RemoveVerifierKeyTxFailedError,
+  ReplaceMaintenanceAuthorityTxFailedError,
+  submitInsertVerifierKeyTx,
+  submitRemoveVerifierKeyTx,
+  submitReplaceAuthorityTx
+} from './governance';
 export { submitCallTx, submitCallTxAsync } from './submit-call-tx';
 export { DeployTxOptions,submitDeployTx } from './submit-deploy-tx';
 export { submitTx, submitTxAsync, SubmitTxOptions, SubmitTxProviders } from './submit-tx';
