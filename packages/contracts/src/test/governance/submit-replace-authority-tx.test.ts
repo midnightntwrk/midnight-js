@@ -15,9 +15,9 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createUnprovenRemoveVerifierKeyTx } from '../governance/unproven-tx';
-import { submitRemoveVerifierKeyTx } from '../submit-remove-vk-tx';
-import { submitTx } from '../submit-tx';
+import { submitReplaceAuthorityTx } from '../../governance/submit-replace-authority-tx';
+import { createUnprovenReplaceAuthorityTx } from '../../governance/unproven-tx';
+import { submitTx } from '../../submit-tx';
 import {
   createMockCoinPublicKey,
   createMockCompiledContract,
@@ -27,18 +27,19 @@ import {
   createMockProviders,
   createMockSigningKey,
   createMockUnprovenTx
-} from './test-mocks';
+} from '../test-mocks';
 
-vi.mock('../submit-tx');
-vi.mock('../governance/unproven-tx');
+vi.mock('../../submit-tx');
+vi.mock('../../governance/unproven-tx');
 
-describe('submitRemoveVerifierKeyTx', () => {
+describe('submitReplaceAuthorityTx', () => {
   let mockProviders: ReturnType<typeof createMockProviders>;
   let mockCompiledContract: ReturnType<typeof createMockCompiledContract>;
   let mockContractAddress: ReturnType<typeof createMockContractAddress>;
   let mockContractState: ReturnType<typeof createMockContractState>;
-  let mockSigningKey: ReturnType<typeof createMockSigningKey>;
   let mockCoinPublicKey: ReturnType<typeof createMockCoinPublicKey>;
+  let mockCurrentAuthority: ReturnType<typeof createMockSigningKey>;
+  let mockNewAuthority: ReturnType<typeof createMockSigningKey>;
   let mockUnprovenTx: Promise<ReturnType<typeof createMockUnprovenTx>>;
 
   beforeEach(() => {
@@ -48,68 +49,61 @@ describe('submitRemoveVerifierKeyTx', () => {
     mockCompiledContract = createMockCompiledContract();
     mockContractAddress = createMockContractAddress();
     mockContractState = createMockContractState();
-    mockSigningKey = createMockSigningKey();
     mockCoinPublicKey = createMockCoinPublicKey();
+    mockCurrentAuthority = createMockSigningKey();
+    mockNewAuthority = createMockSigningKey();
     mockUnprovenTx = Promise.resolve(createMockUnprovenTx());
   });
 
   describe('happy path', () => {
-    it('should successfully submit remove verifier key transaction', async () => {
-      const circuitId = 'testCircuit';
+    it('should successfully submit replace authority transaction and update signing key', async () => {
       const mockFinalizedTxData = createMockFinalizedTxData();
-      const mockOperation = { verifierKey: new Uint8Array(32) };
 
       mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
-      mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockSigningKey);
+      mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockCurrentAuthority);
+      mockProviders.privateStateProvider.setSigningKey = vi.fn().mockResolvedValue(undefined);
       mockProviders.walletProvider.getCoinPublicKey = vi.fn().mockReturnValue(mockCoinPublicKey);
-      mockContractState.operation = vi.fn().mockReturnValue(mockOperation);
       
-      vi.mocked(createUnprovenRemoveVerifierKeyTx).mockReturnValue(mockUnprovenTx);
+      vi.mocked(createUnprovenReplaceAuthorityTx).mockReturnValue(mockUnprovenTx);
       vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
 
-      const result = await submitRemoveVerifierKeyTx(
-        mockProviders,
-        mockCompiledContract,
-        mockContractAddress,
-        circuitId
-      );
+      const replaceAuthorityFn = submitReplaceAuthorityTx(mockProviders, mockCompiledContract, mockContractAddress);
+      const result = await replaceAuthorityFn(mockNewAuthority);
 
       expect(mockProviders.publicDataProvider.queryContractState).toHaveBeenCalledWith(mockContractAddress);
       expect(mockProviders.privateStateProvider.getSigningKey).toHaveBeenCalledWith(mockContractAddress);
-      expect(mockContractState.operation).toHaveBeenCalledWith(circuitId);
-      expect(createUnprovenRemoveVerifierKeyTx).toHaveBeenCalledWith(
+      expect(createUnprovenReplaceAuthorityTx).toHaveBeenCalledWith(
         mockProviders.zkConfigProvider,
         mockCompiledContract,
         mockContractAddress,
-        circuitId,
+        mockNewAuthority,
         mockContractState,
-        mockSigningKey,
+        mockCurrentAuthority,
         mockCoinPublicKey
       );
       expect(submitTx).toHaveBeenCalledWith(mockProviders, { unprovenTx: await mockUnprovenTx });
+      expect(mockProviders.privateStateProvider.setSigningKey).toHaveBeenCalledWith(mockContractAddress, mockNewAuthority);
       expect(result).toBe(mockFinalizedTxData);
     });
   });
 
   describe('error scenarios', () => {
-    it('should throw RemoveVerifierKeyTxFailedError when transaction fails', async () => {
-      const { RemoveVerifierKeyTxFailedError } = await import('../governance/errors');
+    it('should throw ReplaceMaintenanceAuthorityTxFailedError when transaction fails', async () => {
+      const { ReplaceMaintenanceAuthorityTxFailedError } = await import('../../governance/errors');
       const { FailEntirely } = await import('@midnight-ntwrk/midnight-js-types');
       
-      const circuitId = 'testCircuit';
       const failedTxData = createMockFinalizedTxData(FailEntirely);
-      const mockOperation = { verifierKey: new Uint8Array(32) };
 
       mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
-      mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockSigningKey);
-      mockContractState.operation = vi.fn().mockReturnValue(mockOperation);
+      mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockCurrentAuthority);
+      mockProviders.privateStateProvider.setSigningKey = vi.fn().mockResolvedValue(undefined);
       
-      vi.mocked(createUnprovenRemoveVerifierKeyTx).mockReturnValue(mockUnprovenTx);
+      vi.mocked(createUnprovenReplaceAuthorityTx).mockReturnValue(mockUnprovenTx);
       vi.mocked(submitTx).mockResolvedValue(failedTxData);
 
-      await expect(
-        submitRemoveVerifierKeyTx(mockProviders, mockCompiledContract, mockContractAddress, circuitId)
-      ).rejects.toThrow(RemoveVerifierKeyTxFailedError);
+      const replaceAuthorityFn = submitReplaceAuthorityTx(mockProviders, mockCompiledContract, mockContractAddress);
+      
+      await expect(replaceAuthorityFn(mockNewAuthority)).rejects.toThrow(ReplaceMaintenanceAuthorityTxFailedError);
     });
   });
 });

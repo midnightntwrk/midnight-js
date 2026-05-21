@@ -25,10 +25,10 @@ import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type CallResult } from './call';
 import { type ContractProviders } from './contract-providers';
+import { submitInsertVerifierKeyTx } from './governance/submit-insert-vk-tx';
+import { submitRemoveVerifierKeyTx } from './governance/submit-remove-vk-tx';
+import { submitReplaceAuthorityTx } from './governance/submit-replace-authority-tx';
 import { submitCallTx } from './submit-call-tx';
-import { submitInsertVerifierKeyTx } from './submit-insert-vk-tx';
-import { submitRemoveVerifierKeyTx } from './submit-remove-vk-tx';
-import { submitReplaceAuthorityTx } from './submit-replace-authority-tx';
 import * as Transaction from './transaction';
 import type { FinalizedCallTxData } from './tx-model';
 import type { CallTxOptions, CallTxOptionsWithPrivateStateId } from './unproven-call-tx';

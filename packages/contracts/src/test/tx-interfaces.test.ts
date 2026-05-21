@@ -32,9 +32,9 @@ import {
 } from './test-mocks';
 
 vi.mock('../submit-call-tx');
-vi.mock('../submit-insert-vk-tx');
-vi.mock('../submit-remove-vk-tx');
-vi.mock('../submit-replace-authority-tx');
+vi.mock('../governance/submit-insert-vk-tx');
+vi.mock('../governance/submit-remove-vk-tx');
+vi.mock('../governance/submit-replace-authority-tx');
 
 describe('tx-interfaces', () => {
   let mockCompiledContract: ReturnType<typeof createMockCompiledContract>;
@@ -270,7 +270,7 @@ describe('tx-interfaces', () => {
         mockContractAddress
       );
 
-      const { submitRemoveVerifierKeyTx } = await import('../submit-remove-vk-tx');
+      const { submitRemoveVerifierKeyTx } = await import('../governance/submit-remove-vk-tx');
       vi.mocked(submitRemoveVerifierKeyTx).mockResolvedValue(mockFinalizedTxData);
 
       const result = await maintenanceInterface.removeVerifierKey();
@@ -294,7 +294,7 @@ describe('tx-interfaces', () => {
         mockContractAddress
       );
 
-      const { submitInsertVerifierKeyTx } = await import('../submit-insert-vk-tx');
+      const { submitInsertVerifierKeyTx } = await import('../governance/submit-insert-vk-tx');
       vi.mocked(submitInsertVerifierKeyTx).mockResolvedValue(mockFinalizedTxData);
 
       const result = await maintenanceInterface.insertVerifierKey(mockVerifierKey);

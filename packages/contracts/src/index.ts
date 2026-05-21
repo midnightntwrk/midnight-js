@@ -62,11 +62,11 @@ export {
   InsertVerifierKeyTxFailedError,
   RemoveVerifierKeyTxFailedError,
   ReplaceMaintenanceAuthorityTxFailedError} from './governance/errors';
+export { submitInsertVerifierKeyTx } from './governance/submit-insert-vk-tx';
+export { submitRemoveVerifierKeyTx } from './governance/submit-remove-vk-tx';
+export { submitReplaceAuthorityTx } from './governance/submit-replace-authority-tx';
 export { submitCallTx, submitCallTxAsync } from './submit-call-tx';
 export { DeployTxOptions,submitDeployTx } from './submit-deploy-tx';
-export { submitInsertVerifierKeyTx } from './submit-insert-vk-tx';
-export { submitRemoveVerifierKeyTx } from './submit-remove-vk-tx';
-export { submitReplaceAuthorityTx } from './submit-replace-authority-tx';
 export { submitTx, submitTxAsync, SubmitTxOptions, SubmitTxProviders } from './submit-tx';
 export { ScopedTransactionOptions, TransactionContext, withContractScopedTransaction } from './transaction';
 export {
