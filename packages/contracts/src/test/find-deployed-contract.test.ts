@@ -29,7 +29,10 @@ import {
 } from './test-mocks';
 
 vi.mock('../tx-interfaces', () => ({
-  createCircuitCallTxInterface: vi.fn().mockReturnValue({ call: 'mock-call-interface' }),
+  createCircuitCallTxInterface: vi.fn().mockReturnValue({ call: 'mock-call-interface' })
+}));
+
+vi.mock('../governance/tx-interfaces', () => ({
   createCircuitMaintenanceTxInterfaces: vi.fn().mockReturnValue({ maintenance: 'mock-maintenance-interfaces' }),
   createContractMaintenanceTxInterface: vi.fn().mockReturnValue({ contractMaintenance: 'mock-contract-maintenance' })
 }));

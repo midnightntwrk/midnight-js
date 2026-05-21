@@ -65,20 +65,21 @@ export {
 export { submitInsertVerifierKeyTx } from './governance/submit-insert-vk-tx';
 export { submitRemoveVerifierKeyTx } from './governance/submit-remove-vk-tx';
 export { submitReplaceAuthorityTx } from './governance/submit-replace-authority-tx';
+export {
+  CircuitMaintenanceTxInterface,
+  CircuitMaintenanceTxInterfaces,
+  ContractMaintenanceTxInterface,
+  createCircuitMaintenanceTxInterface,
+  createCircuitMaintenanceTxInterfaces,
+  createContractMaintenanceTxInterface} from './governance/tx-interfaces';
 export { submitCallTx, submitCallTxAsync } from './submit-call-tx';
 export { DeployTxOptions,submitDeployTx } from './submit-deploy-tx';
 export { submitTx, submitTxAsync, SubmitTxOptions, SubmitTxProviders } from './submit-tx';
 export { ScopedTransactionOptions, TransactionContext, withContractScopedTransaction } from './transaction';
 export {
   CircuitCallTxInterface,
-  CircuitMaintenanceTxInterface,
-  CircuitMaintenanceTxInterfaces,
-  ContractMaintenanceTxInterface,
   createCallTxOptions,
-  createCircuitCallTxInterface,
-  createCircuitMaintenanceTxInterface,
-  createCircuitMaintenanceTxInterfaces,
-  createContractMaintenanceTxInterface} from './tx-interfaces';
+  createCircuitCallTxInterface} from './tx-interfaces';
 export {
   FinalizedCallTxData,
   FinalizedDeployTxData,
