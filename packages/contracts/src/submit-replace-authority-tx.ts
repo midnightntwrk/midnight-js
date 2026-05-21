@@ -21,8 +21,8 @@ import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight
 
 import { type ContractProviders } from './contract-providers';
 import { ReplaceMaintenanceAuthorityTxFailedError } from './governance/errors';
+import { createUnprovenReplaceAuthorityTx } from './governance/unproven-tx';
 import { submitTx } from './submit-tx';
-import { createUnprovenReplaceAuthorityTx } from './utils';
 
 /**
  * Constructs and submits a transaction that replaces the maintenance

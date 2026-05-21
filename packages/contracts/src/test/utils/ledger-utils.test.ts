@@ -29,7 +29,6 @@ import {
   createShieldedCoinInfo,
   feeToken,
   Intent,
-  MaintenanceUpdate,
   nativeToken,
   type PartitionedTranscript,
   type PublicAddress,
@@ -37,7 +36,6 @@ import {
   sampleCoinPublicKey,
   sampleContractAddress,
   sampleEncryptionPublicKey,
-  sampleSigningKey,
   sampleUserAddress,
   type ShieldedCoinInfo,
   shieldedToken,
@@ -58,17 +56,12 @@ import { beforeAll } from 'vitest';
 
 import {
   createUnprovenLedgerCallTx,
-  createUnprovenRemoveVerifierKeyTx,
-  createUnprovenReplaceAuthorityTx,
   createZswapOutput,
   type EncryptionPublicKeyResolver,
   extractUserAddressedOutputs,
   fromLedgerContractState,
   toLedgerContractState,
-  toLedgerQueryContext,
-  unprovenTxFromContractUpdates} from '../../utils';
-import { createMockCompiledContract,createMockZKConfigProvider } from '../test-mocks';
-
+  toLedgerQueryContext} from '../../utils';
 const emptyTranscript: PartitionedTranscript = [undefined, undefined];
 
 describe('ledger-utils', () => {
@@ -76,14 +69,9 @@ describe('ledger-utils', () => {
     setNetworkId('testnet');
   });
 
-  const mockZKProvider = createMockZKConfigProvider();
-  const mockCompiledContract = createMockCompiledContract();
-  const dummySigningKey = sampleSigningKey();
-  const dummySigningKey2 = sampleSigningKey();
   const dummyContractState = new CompactContractState();
   const dummyContractAddress = sampleContractAddress();
   const dummyEncPublicKey = sampleEncryptionPublicKey();
-  const dummyCPK = sampleCoinPublicKey();
 
   beforeAll(() => {
     setNetworkId('undeployed');
@@ -100,13 +88,6 @@ describe('ledger-utils', () => {
     const queryContext = new QueryContext(dummyContractState.data, dummyContractAddress);
     const ledgerQueryContext = toLedgerQueryContext(queryContext);
     expect(ledgerQueryContext.address).toEqual(queryContext.address);
-  });
-
-  it('unprovenTxFromContractUpdates returns an UnprovenTransaction', async () => {
-    const tx = await unprovenTxFromContractUpdates(
-      () => Promise.resolve(new MaintenanceUpdate(dummyContractAddress, [], 1n))
-    );
-    expect(tx).toBeInstanceOf(Transaction);
   });
 
   it('createUnprovenLedgerCallTx returns an UnprovenTransaction', () => {
@@ -507,32 +488,6 @@ describe('ledger-utils', () => {
       expect(fallibleOffer.transients.length).toBe(1);
       expect(fallibleOffer.transients[0]!.nullifier).toBe(nullifier);
     });
-  });
-
-  it('createUnprovenReplaceAuthorityTx returns an UnprovenTransaction', async () => {
-    const tx = await createUnprovenReplaceAuthorityTx(
-      mockZKProvider,
-      mockCompiledContract,
-      dummyContractAddress,
-      dummySigningKey,
-      dummyContractState,
-      dummySigningKey2,
-      dummyCPK
-    );
-    expect(tx).toBeInstanceOf(Transaction);
-  });
-
-  it('createUnprovenRemoveVerifierKeyTx returns an UnprovenTransaction', async () => {
-    const tx = await createUnprovenRemoveVerifierKeyTx(
-      mockZKProvider,
-      mockCompiledContract,
-      dummyContractAddress,
-      'op',
-      dummyContractState,
-      dummySigningKey,
-      dummyCPK
-    );
-    expect(tx).toBeInstanceOf(Transaction);
   });
 
   const makeTranscript = (

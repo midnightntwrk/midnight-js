@@ -21,8 +21,8 @@ import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight
 
 import { type ContractProviders } from './contract-providers';
 import { RemoveVerifierKeyTxFailedError } from './governance/errors';
+import { createUnprovenRemoveVerifierKeyTx } from './governance/unproven-tx';
 import { submitTx } from './submit-tx';
-import { createUnprovenRemoveVerifierKeyTx } from './utils';
 
 /**
  * Constructs and submits a transaction that removes the current verifier key stored

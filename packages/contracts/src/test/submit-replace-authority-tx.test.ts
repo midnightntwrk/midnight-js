@@ -15,9 +15,9 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createUnprovenReplaceAuthorityTx } from '../governance/unproven-tx';
 import { submitReplaceAuthorityTx } from '../submit-replace-authority-tx';
 import { submitTx } from '../submit-tx';
-import { createUnprovenReplaceAuthorityTx } from '../utils';
 import {
   createMockCoinPublicKey,
   createMockCompiledContract,
@@ -30,7 +30,7 @@ import {
 } from './test-mocks';
 
 vi.mock('../submit-tx');
-vi.mock('../utils');
+vi.mock('../governance/unproven-tx');
 
 describe('submitReplaceAuthorityTx', () => {
   let mockProviders: ReturnType<typeof createMockProviders>;

@@ -24,8 +24,8 @@ import { assertDefined, assertIsContractAddress, assertUndefined } from '@midnig
 
 import { type ContractProviders } from './contract-providers';
 import { InsertVerifierKeyTxFailedError } from './governance/errors';
+import { createUnprovenInsertVerifierKeyTx } from './governance/unproven-tx';
 import { submitTx } from './submit-tx';
-import { createUnprovenInsertVerifierKeyTx } from './utils';
 
 /**
  * Constructs and submits a transaction that adds a new verifier key to the

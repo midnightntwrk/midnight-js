@@ -16,9 +16,9 @@
 import { type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createUnprovenInsertVerifierKeyTx } from '../governance/unproven-tx';
 import { submitInsertVerifierKeyTx } from '../submit-insert-vk-tx';
 import { submitTx } from '../submit-tx';
-import { createUnprovenInsertVerifierKeyTx } from '../utils';
 import {
   createMockCoinPublicKey,
   createMockCompiledContract,
@@ -31,7 +31,7 @@ import {
 } from './test-mocks';
 
 vi.mock('../submit-tx');
-vi.mock('../utils');
+vi.mock('../governance/unproven-tx');
 
 describe('submitInsertVerifierKeyTx', () => {
   let mockProviders: ReturnType<typeof createMockProviders>;
