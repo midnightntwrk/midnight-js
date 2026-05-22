@@ -62,6 +62,12 @@ describe('isRegularTransaction', () => {
   test('returns false for empty object', () => {
     expect(isRegularTransaction({})).toBe(false);
   });
+
+  test('returns false for a block query result shape', () => {
+    const blockQueryResult = { block: { height: 1000, hash: '0xabc' } };
+
+    expect(isRegularTransaction(blockQueryResult)).toBe(false);
+  });
 });
 
 describe('toTxStatus', () => {
