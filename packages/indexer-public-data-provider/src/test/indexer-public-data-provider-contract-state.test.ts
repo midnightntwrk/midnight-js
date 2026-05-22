@@ -24,17 +24,18 @@ import { BLOCK_QUERY, TXS_FROM_BLOCK_SUB } from '../query-definitions';
 
 type BlockQueryData = { block: { height: number; hash: string } | null };
 
-// Apollo's ObservableQuery is a class with private fields; structural typing of an
-// Rx.Observable is the cleanest test seam available without injecting a custom
-// ApolloLink into the provider's internal client construction.
-const buildBlockQueryEmission = (data: BlockQueryData): ObservableQuery<BlockQueryData> =>
+// Apollo's ObservableQuery is a class with private fields and an invariant
+// TData generic; structural typing of an Rx.Observable widened to `unknown` is
+// the cleanest test seam available without injecting a custom ApolloLink into
+// the provider's internal client construction.
+const buildBlockQueryEmission = (data: BlockQueryData): ObservableQuery<unknown> =>
   Rx.of({
     data: data.block !== null ? data : undefined,
     dataState: data.block !== null ? 'complete' : 'empty',
     loading: false,
     networkStatus: 7,
     partial: false
-  }) as unknown as ObservableQuery<BlockQueryData>;
+  }) as unknown as ObservableQuery<unknown>;
 
 describe('contractStateObservable - block offset configs', () => {
   const queryURL = 'http://localhost:4000/api/v1/graphql';
@@ -59,9 +60,11 @@ describe('contractStateObservable - block offset configs', () => {
       .spyOn(ApolloClient.prototype, 'watchQuery')
       .mockReturnValue(buildBlockQueryEmission({ block: { height: 1000, hash: '0xabc' } }));
 
+    // SubscriptionObservable adds a `restart` method on top of rxjs Observable.
+    // Test mock never emits, so the extra method is unreachable.
     subscribeSpy = vi
       .spyOn(ApolloClient.prototype, 'subscribe')
-      .mockReturnValue(Rx.NEVER);
+      .mockReturnValue(Rx.NEVER as unknown as ReturnType<ApolloClient['subscribe']>);
   });
 
   afterEach(() => {
