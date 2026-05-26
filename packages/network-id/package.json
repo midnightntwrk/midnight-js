@@ -27,5 +27,8 @@
   },
   "files": [
     "dist/"
-  ]
+  ],
+  "devDependencies": {
+    "vitest": "^4.1.2"
+  }
 }

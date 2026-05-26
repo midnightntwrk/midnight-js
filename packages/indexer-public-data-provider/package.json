@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "@apollo/client": "^4.1.6",
+    "@graphql-typed-document-node/core": "^3.2.0",
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
@@ -45,7 +46,8 @@
     "@graphql-codegen/client-preset": "^5.0.0",
     "@graphql-codegen/typescript": "^5.0.0",
     "@graphql-codegen/typescript-operations": "^5.0.8",
-    "@types/ws": "^8.18.0"
+    "@types/ws": "^8.18.0",
+    "vitest": "^4.1.2"
   },
   "files": [
     "dist/"

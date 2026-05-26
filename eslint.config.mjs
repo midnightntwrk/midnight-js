@@ -104,7 +104,22 @@ export default tseslint.config(
       'import/no-default-export': 'off',
       'import/extensions': 'off',
       'import/no-unresolved': 'error',
-      'import/no-extraneous-dependencies': 'off',
+      'import/no-extraneous-dependencies': [
+        'error',
+        {
+          devDependencies: [
+            '**/test/**',
+            '**/__tests__/**',
+            '**/*.test.ts',
+            '**/*.spec.ts',
+            '**/rollup.config.*',
+            '**/vitest.config.*',
+            '**/vitest.*.config.*'
+          ],
+          optionalDependencies: false,
+          peerDependencies: true
+        }
+      ],
       'max-classes-per-file': 'off',
       'lines-between-class-members': 'off',
       'no-restricted-imports': [

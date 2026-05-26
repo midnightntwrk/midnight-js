@@ -26,7 +26,12 @@
     "deploy": "yarn npm publish --tolerate-republish"
   },
   "dependencies": {
-    "@midnight-ntwrk/midnight-js-types": "workspace:*"
+    "@midnight-ntwrk/midnight-js-types": "workspace:*",
+    "pino": "^10.0.0"
+  },
+  "devDependencies": {
+    "pino-pretty": "^13.0.0",
+    "vitest": "^4.1.2"
   },
   "files": [
     "dist/"

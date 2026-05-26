@@ -40,6 +40,7 @@
     "fetch-retry": "^6.0.0"
   },
   "devDependencies": {
-    "@midnight-ntwrk/midnight-js-compact": "workspace:*"
+    "@midnight-ntwrk/midnight-js-compact": "workspace:*",
+    "vitest": "^4.1.2"
   }
 }

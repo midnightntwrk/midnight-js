@@ -92,7 +92,8 @@
     "undici": ">=7.24.0",
     "tar": ">=7.5.11",
     "fast-xml-parser": ">=5.3.8",
-    "minimatch": ">=10.2.3",
+    "eslint-plugin-import/minimatch": "3.1.2",
+    "minimatch": ">=9.0.5",
     "rollup": ">=4.59.0",
     "immutable": ">=3.8.3",
     "diff": ">=4.0.4"
