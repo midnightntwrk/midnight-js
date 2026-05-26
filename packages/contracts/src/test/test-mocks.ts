@@ -191,6 +191,8 @@ export const createMockCompiledContract = (options?: Partial<MockContractClassOp
 
 export const createMockUnprovenTx = (): UnprovenTransaction => ({
   addCalls: vi.fn(),
+  addZswapOffer: vi.fn(),
+  addIntent: vi.fn(),
   eraseProofs: vi.fn(),
   identifiers: vi.fn(),
   merge: vi.fn(),
@@ -214,6 +216,8 @@ export const createMockUnprovenTx = (): UnprovenTransaction => ({
 
 export const createMockProvenTx = (): Transaction<Signaturish, Proofish, Bindingish> => ({
   addCalls: vi.fn(),
+  addZswapOffer: vi.fn(),
+  addIntent: vi.fn(),
   eraseProofs: vi.fn(),
   identifiers: vi.fn().mockReturnValue(['test-tx-id']),
   merge: vi.fn(),
