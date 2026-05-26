@@ -2,6 +2,87 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [4.1.0](https://github.com/midnightntwrk/midnight-js/compare/v4.0.4...v4.1.0) (2026-05-20)
+
+
+### Features
+
+* crypto backend abstraction with noble fallback ([#827](https://github.com/midnightntwrk/midnight-js/pull/827)) ([578d5f2](https://github.com/midnightntwrk/midnight-js/commit/578d5f243f73d1376aefd6182aae84a6dc95fd50))
+* introduce Protocol ACL package ([#832](https://github.com/midnightntwrk/midnight-js/pull/832)) ([9f83e8a](https://github.com/midnightntwrk/midnight-js/commit/9f83e8a796252b031d01732736f8973132bcbb67))
+* **testkit-js:** add DAppConnectorWalletAdapter and DAppConnectorInitialAPI ([#855](https://github.com/midnightntwrk/midnight-js/pull/855)) ([c7ab8c1](https://github.com/midnightntwrk/midnight-js/commit/c7ab8c106ea79767f0f72759553bedcfa7cfbc87))
+* web crypto migration ([#798](https://github.com/midnightntwrk/midnight-js/pull/798)) ([2a31be3](https://github.com/midnightntwrk/midnight-js/commit/2a31be30d90f99af2c33ffcf4684dc31f32a1f23))
+
+
+### Bug Fixes
+
+* **midnight-js:** block path traversal in ZK providers and VersionManager ([#875](https://github.com/midnightntwrk/midnight-js/pull/875)) ([0a2172b](https://github.com/midnightntwrk/midnight-js/commit/0a2172bfd2f86ea39f1f3b1fb66f0029d10b36dd)), closes [shieldedtech/shielded-security-engineering#270](https://github.com/midnightntwrk/midnight-js/pull/270) [shieldedtech/shielded-security-engineering#270](https://github.com/midnightntwrk/midnight-js/pull/270) [shieldedtech/shielded-security-engineering#270](https://github.com/midnightntwrk/midnight-js/pull/270) [shieldedtech/shielded-security-engineering#270](https://github.com/midnightntwrk/midnight-js/pull/270)
+* **midnight-js:** correctly handle falsy values in assertDefined and assertUndefined ([#900](https://github.com/midnightntwrk/midnight-js/pull/900)) ([997d1df](https://github.com/midnightntwrk/midnight-js/commit/997d1dfc89356125a50406e42fee020bd764f040)), closes [#806](https://github.com/midnightntwrk/midnight-js/pull/806)
+* **midnight-js:** fail closed in decryptValue on unrecognized data ([#885](https://github.com/midnightntwrk/midnight-js/pull/885)) ([ab71ae9](https://github.com/midnightntwrk/midnight-js/commit/ab71ae9818b63f67b2dd8692d0ee5e025d99a4a3))
+* **midnight-js:** reject HTML responses in FetchZkConfigProvider ([#785](https://github.com/midnightntwrk/midnight-js/pull/785)) ([e50d5e4](https://github.com/midnightntwrk/midnight-js/commit/e50d5e44b418ddf5ad1a3569285157164d4c6347)), closes [#782](https://github.com/midnightntwrk/midnight-js/pull/782) [#782](https://github.com/midnightntwrk/midnight-js/pull/782)
+* **midnight-js:** remove fs/path imports from contracts submit-tx ([#869](https://github.com/midnightntwrk/midnight-js/pull/869)) ([956c3a2](https://github.com/midnightntwrk/midnight-js/commit/956c3a2e071fb68a3742a28677791a02aedd013f)), closes [#864](https://github.com/midnightntwrk/midnight-js/pull/864)
+* **midnight-js:** replace SHA-256 password verifier with PBKDF2 ([#883](https://github.com/midnightntwrk/midnight-js/pull/883)) ([43d0558](https://github.com/midnightntwrk/midnight-js/commit/43d0558a32c7b05cf8b84e14f1d15dd0ae5ec0da)), closes [shielded-security-engineering#272](https://github.com/midnightntwrk/midnight-js/pull/272)
+* **midnight-js:** route shielded coins to correct segment ([#876](https://github.com/midnightntwrk/midnight-js/pull/876)) ([#877](https://github.com/midnightntwrk/midnight-js/pull/877)) ([3f00642](https://github.com/midnightntwrk/midnight-js/commit/3f0064245e81de1d60807a1ae4bd12ee5c7b6a2e)), closes [#878](https://github.com/midnightntwrk/midnight-js/pull/878)
+
+
+### Documentation
+
+* add protocol package README and update main README ([#835](https://github.com/midnightntwrk/midnight-js/pull/835)) ([f5d8ad6](https://github.com/midnightntwrk/midnight-js/commit/f5d8ad69daaf163f96b0cd0575d41ae5275a5768))
+* add release notes for v4.0.4 ([#780](https://github.com/midnightntwrk/midnight-js/pull/780)) ([8850e9a](https://github.com/midnightntwrk/midnight-js/commit/8850e9a0d7b58727e4a1817205343132d1d2d307))
+* add release notes for v4.1.0 ([#860](https://github.com/midnightntwrk/midnight-js/pull/860)) ([8f94440](https://github.com/midnightntwrk/midnight-js/commit/8f94440484104c386e6d6325a06159179c3ac131))
+* API documentation update ([#784](https://github.com/midnightntwrk/midnight-js/pull/784)) ([69554de](https://github.com/midnightntwrk/midnight-js/commit/69554de960c48d742f32e44b4f6202681fea87f0))
+* API documentation update ([#826](https://github.com/midnightntwrk/midnight-js/pull/826)) ([80137f1](https://github.com/midnightntwrk/midnight-js/commit/80137f1f276685fb481af339c1f5e64750c9fc57))
+* API documentation update ([#833](https://github.com/midnightntwrk/midnight-js/pull/833)) ([5a12631](https://github.com/midnightntwrk/midnight-js/commit/5a12631844ab24037f66fc54676b63dd67dab821))
+* API documentation update ([#841](https://github.com/midnightntwrk/midnight-js/pull/841)) ([8326cdd](https://github.com/midnightntwrk/midnight-js/commit/8326cdd1e551f5e91e6a42cf22b579aa0da03b2d))
+* API documentation update ([#846](https://github.com/midnightntwrk/midnight-js/pull/846)) ([461681d](https://github.com/midnightntwrk/midnight-js/commit/461681d5640b9e2b30c665d553538f7182c76b63))
+* API documentation update ([#866](https://github.com/midnightntwrk/midnight-js/pull/866)) ([18320d1](https://github.com/midnightntwrk/midnight-js/commit/18320d1458729ee4ce5008bb037e69ccf22b8356))
+* API documentation update ([#884](https://github.com/midnightntwrk/midnight-js/pull/884)) ([f156a26](https://github.com/midnightntwrk/midnight-js/commit/f156a2602b742f3fb774fd70ee08d7dc37a81aa8))
+* **midnight-js:** rewrite CLAUDE.md as contributor guide ([#747](https://github.com/midnightntwrk/midnight-js/pull/747)) ([87cc154](https://github.com/midnightntwrk/midnight-js/commit/87cc1546cfe47cf882089b8fb968ce78e71151d5))
+* refresh v4.1.0 release notes for post-[#860](https://github.com/midnightntwrk/midnight-js/pull/860) changes ([#904](https://github.com/midnightntwrk/midnight-js/pull/904)) ([e97b292](https://github.com/midnightntwrk/midnight-js/commit/e97b292364ecf1a9870aa790ac79bf19349517c2)), closes [#883](https://github.com/midnightntwrk/midnight-js/pull/883) [#875](https://github.com/midnightntwrk/midnight-js/pull/875) [#900](https://github.com/midnightntwrk/midnight-js/pull/900) [#869](https://github.com/midnightntwrk/midnight-js/pull/869) [#902](https://github.com/midnightntwrk/midnight-js/pull/902) [#862](https://github.com/midnightntwrk/midnight-js/pull/862) [#879](https://github.com/midnightntwrk/midnight-js/pull/879) [#878](https://github.com/midnightntwrk/midnight-js/pull/878) [#854](https://github.com/midnightntwrk/midnight-js/pull/854)
+
+
+### Styles
+
+* **contracts:** apply formatter pass to zswap-utils tests ([adb687e](https://github.com/midnightntwrk/midnight-js/commit/adb687efb4ecc2b9eb3229c6fa9bc9ddbb064724))
+
+
+### Tests
+
+* cover encryption key resolver and dapp-connector error paths ([79002c1](https://github.com/midnightntwrk/midnight-js/commit/79002c152c97d3e02c43c1a63659b301ff3daa05)), closes [#745](https://github.com/midnightntwrk/midnight-js/pull/745) [#732](https://github.com/midnightntwrk/midnight-js/pull/732)
+* **midnight-js:** add shell-injection regression suite for compact CLI ([0efb6ff](https://github.com/midnightntwrk/midnight-js/commit/0efb6ff97b6a3b8b744d9cb840146a9f7c2cd2de)), closes [#711](https://github.com/midnightntwrk/midnight-js/pull/711)
+* **midnight-js:** address code review feedback on [#848](https://github.com/midnightntwrk/midnight-js/pull/848) ([1334806](https://github.com/midnightntwrk/midnight-js/commit/13348062125154a8e08a41dae126e764b68544da))
+* **midnight-js:** address code review feedback on [#848](https://github.com/midnightntwrk/midnight-js/pull/848) ([2e3387e](https://github.com/midnightntwrk/midnight-js/commit/2e3387e2f1eaf8260871b2b725ecbc790241b2ef))
+* **midnight-js:** guard invalidate-and-re-derive in level-private-state ([0f7e8e0](https://github.com/midnightntwrk/midnight-js/commit/0f7e8e0e42a71b900545a44054839870643299b7)), closes [#538](https://github.com/midnightntwrk/midnight-js/pull/538) [#798](https://github.com/midnightntwrk/midnight-js/pull/798)
+* **midnight-js:** improve indexer-public-data-provider coverage ([#801](https://github.com/midnightntwrk/midnight-js/pull/801)) ([9bbf069](https://github.com/midnightntwrk/midnight-js/commit/9bbf06998e06966934c4618465df2a375775d755))
+* **midnight-js:** prune low-value tests from resolver and dapp-connector suites ([620f251](https://github.com/midnightntwrk/midnight-js/commit/620f251eea2a72ecc37e5d8a403fad16f5b779bf)), closes [#745](https://github.com/midnightntwrk/midnight-js/pull/745)
+* **protocol:** add ACL structural and ESLint rule tests ([150b5a6](https://github.com/midnightntwrk/midnight-js/commit/150b5a661f643a420d7192e8050a2653c9df4d0d)), closes [#832](https://github.com/midnightntwrk/midnight-js/pull/832)
+
+
+### Continuous Integration
+
+* stabilize CD tests and limit e2e parallel runners ([#906](https://github.com/midnightntwrk/midnight-js/pull/906)) ([28db5a4](https://github.com/midnightntwrk/midnight-js/commit/28db5a42a2c211a68aed3b776db5617adff3acb6))
+
+
+### Improvements
+
+* bump @apollo/client from 3.14.0 to 4.1.6 ([#666](https://github.com/midnightntwrk/midnight-js/pull/666)) ([a21b461](https://github.com/midnightntwrk/midnight-js/commit/a21b46151660cb470d2d92133be4063265cbf173))
+* **deps-dev:** bump rollup from 4.59.0 to 4.60.1 ([#797](https://github.com/midnightntwrk/midnight-js/pull/797)) ([5ee9d70](https://github.com/midnightntwrk/midnight-js/commit/5ee9d7053671ac183cc068bea6096374abedf726))
+* **deps-dev:** bump turbo from 2.8.21 to 2.9.5 ([#845](https://github.com/midnightntwrk/midnight-js/pull/845)) ([dcfa423](https://github.com/midnightntwrk/midnight-js/commit/dcfa42377645177dd0cae05eb08c4deafd3a32aa))
+* **deps:** bump ctrf-io/github-test-reporter from 1.0.27 to 1.0.28 ([#793](https://github.com/midnightntwrk/midnight-js/pull/793)) ([66e3afa](https://github.com/midnightntwrk/midnight-js/commit/66e3afac40e27b9c5d509966fe9c9c4e97cc9902))
+* **deps:** bump docker/login-action from 4.0.0 to 4.1.0 ([#836](https://github.com/midnightntwrk/midnight-js/pull/836)) ([8aa1d91](https://github.com/midnightntwrk/midnight-js/commit/8aa1d91edbb607e5acf946c5e4ed53b4dcd3b65d))
+* **deps:** bump graphql from 16.13.1 to 16.13.2 ([#778](https://github.com/midnightntwrk/midnight-js/pull/778)) ([a63d393](https://github.com/midnightntwrk/midnight-js/commit/a63d3931276c57137dbcf3f1aeb672cab63cea64))
+* **deps:** bump graphql-ws from 6.0.7 to 6.0.8 ([#796](https://github.com/midnightntwrk/midnight-js/pull/796)) ([e600664](https://github.com/midnightntwrk/midnight-js/commit/e60066423052ab2adf853467ce2494dc92713b37))
+* **deps:** bump mikepenz/action-junit-report from 6.3.1 to 6.4.0 ([#792](https://github.com/midnightntwrk/midnight-js/pull/792)) ([e061e28](https://github.com/midnightntwrk/midnight-js/commit/e061e288706f523f5c113d955e873f1d24371e83))
+* **deps:** bump the npm_and_yarn group across 1 directory with 2 updates ([#791](https://github.com/midnightntwrk/midnight-js/pull/791)) ([8933ae3](https://github.com/midnightntwrk/midnight-js/commit/8933ae392da23e45ade158bd68ee02d3627e4025))
+* **deps:** bump the npm_and_yarn group across 1 directory with 2 updates ([#854](https://github.com/midnightntwrk/midnight-js/pull/854)) ([4204db0](https://github.com/midnightntwrk/midnight-js/commit/4204db0245ad59cbbaee259db6b4334a5078c86c))
+* **deps:** bump typescript, rollup, ws, and @vitest/runner ([#776](https://github.com/midnightntwrk/midnight-js/pull/776)) ([7fd3542](https://github.com/midnightntwrk/midnight-js/commit/7fd354266c40546924ebe0c2f35ddf648cb33801)), closes [#768](https://github.com/midnightntwrk/midnight-js/pull/768) [#769](https://github.com/midnightntwrk/midnight-js/pull/769) [#770](https://github.com/midnightntwrk/midnight-js/pull/770) [#771](https://github.com/midnightntwrk/midnight-js/pull/771)
+* **deps:** upgrade wallet-sdk-facade to wallet-sdk barrel v1.0.0 ([#862](https://github.com/midnightntwrk/midnight-js/pull/862)) ([5900b28](https://github.com/midnightntwrk/midnight-js/commit/5900b285041a427e2776e181811168e4bf4a6bea))
+* **midnight-js:** add protocol as dependency of barrel package ([#842](https://github.com/midnightntwrk/midnight-js/pull/842)) ([05c6b0f](https://github.com/midnightntwrk/midnight-js/commit/05c6b0f0e3aa015c8a37574587cb2b5adea11417))
+* **midnight-js:** remove unused deps ([#800](https://github.com/midnightntwrk/midnight-js/pull/800)) ([886a86e](https://github.com/midnightntwrk/midnight-js/commit/886a86e37d05f24d86adee5aa9735c600ff602b5))
+* **midnight-js:** update yarn.lock for protocol and compact devDeps ([04774fd](https://github.com/midnightntwrk/midnight-js/commit/04774fde5b341aa7451ed7c1e7d5b0fc3439dd41))
+* update compactc to 0.31.0 and dependencies ([#902](https://github.com/midnightntwrk/midnight-js/pull/902)) ([42324f2](https://github.com/midnightntwrk/midnight-js/commit/42324f215a55a230cdf597db4a33d96940e50bb1))
+* update indexer and node images to match current preview ([#879](https://github.com/midnightntwrk/midnight-js/pull/879)) ([c9e96d1](https://github.com/midnightntwrk/midnight-js/commit/c9e96d1de41fe8f5ea3657006777471c96151a61))
+* update yarn to 4.14.1 ([#878](https://github.com/midnightntwrk/midnight-js/pull/878)) ([60e2e56](https://github.com/midnightntwrk/midnight-js/commit/60e2e565714e27193850d9331f87ea6c64f7eb2f))
+
 ## [4.0.4](https://github.com/midnightntwrk/midnight-js/compare/v4.0.3...v4.0.4) (2026-04-01)
 
 
@@ -33,6 +114,7 @@ All notable changes to this project will be documented in this file. See [commit
 
 * **deps-dev:** aggregate dependency updates ([#759](https://github.com/midnightntwrk/midnight-js/pull/759)) ([47f6d2e](https://github.com/midnightntwrk/midnight-js/commit/47f6d2e8cd661ef1f1f2092ece5ac8321c2c7f86))
 * **deps:** bump the npm_and_yarn group across 1 directory with 3 updates ([#746](https://github.com/midnightntwrk/midnight-js/pull/746)) ([41764ba](https://github.com/midnightntwrk/midnight-js/commit/41764baba425408f8d83f680ab40b1ef6b4a4fdf))
+* **release:** bump version to 4.0.4 ([#779](https://github.com/midnightntwrk/midnight-js/pull/779)) ([03374bb](https://github.com/midnightntwrk/midnight-js/commit/03374bb929426e86c900bbf46f955c733440c83f))
 
 ## [4.0.3](https://github.com/midnightntwrk/midnight-js/compare/v4.0.2...v4.0.3) (2026-03-28)
 

@@ -13,11 +13,12 @@
  * limitations under the License.
  */
 
+import { type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { submitRemoveVerifierKeyTx } from '../submit-remove-vk-tx';
-import { submitTx } from '../submit-tx';
-import { createUnprovenRemoveVerifierKeyTx } from '../utils';
+import { submitInsertVerifierKeyTx } from '../../governance/submit-insert-vk-tx';
+import { createUnprovenInsertVerifierKeyTx } from '../../governance/unproven-tx';
+import { submitTx } from '../../submit-tx';
 import {
   createMockCoinPublicKey,
   createMockCompiledContract,
@@ -27,12 +28,12 @@ import {
   createMockProviders,
   createMockSigningKey,
   createMockUnprovenTx
-} from './test-mocks';
+} from '../test-mocks';
 
-vi.mock('../submit-tx');
-vi.mock('../utils');
+vi.mock('../../submit-tx');
+vi.mock('../../governance/unproven-tx');
 
-describe('submitRemoveVerifierKeyTx', () => {
+describe('submitInsertVerifierKeyTx', () => {
   let mockProviders: ReturnType<typeof createMockProviders>;
   let mockCompiledContract: ReturnType<typeof createMockCompiledContract>;
   let mockContractAddress: ReturnType<typeof createMockContractAddress>;
@@ -40,6 +41,7 @@ describe('submitRemoveVerifierKeyTx', () => {
   let mockSigningKey: ReturnType<typeof createMockSigningKey>;
   let mockCoinPublicKey: ReturnType<typeof createMockCoinPublicKey>;
   let mockUnprovenTx: Promise<ReturnType<typeof createMockUnprovenTx>>;
+  let mockVerifierKey: VerifierKey;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -51,37 +53,39 @@ describe('submitRemoveVerifierKeyTx', () => {
     mockSigningKey = createMockSigningKey();
     mockCoinPublicKey = createMockCoinPublicKey();
     mockUnprovenTx = Promise.resolve(createMockUnprovenTx());
+    mockVerifierKey = new Uint8Array(32) as VerifierKey;
   });
 
   describe('happy path', () => {
-    it('should successfully submit remove verifier key transaction', async () => {
+    it('should successfully submit insert verifier key transaction', async () => {
       const circuitId = 'testCircuit';
       const mockFinalizedTxData = createMockFinalizedTxData();
-      const mockOperation = { verifierKey: new Uint8Array(32) };
 
       mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockSigningKey);
       mockProviders.walletProvider.getCoinPublicKey = vi.fn().mockReturnValue(mockCoinPublicKey);
-      mockContractState.operation = vi.fn().mockReturnValue(mockOperation);
+      mockContractState.operation = vi.fn().mockReturnValue(undefined);
       
-      vi.mocked(createUnprovenRemoveVerifierKeyTx).mockReturnValue(mockUnprovenTx);
+      vi.mocked(createUnprovenInsertVerifierKeyTx).mockReturnValue(mockUnprovenTx);
       vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
 
-      const result = await submitRemoveVerifierKeyTx(
+      const result = await submitInsertVerifierKeyTx(
         mockProviders,
         mockCompiledContract,
         mockContractAddress,
-        circuitId
+        circuitId,
+        mockVerifierKey
       );
 
       expect(mockProviders.publicDataProvider.queryContractState).toHaveBeenCalledWith(mockContractAddress);
       expect(mockProviders.privateStateProvider.getSigningKey).toHaveBeenCalledWith(mockContractAddress);
       expect(mockContractState.operation).toHaveBeenCalledWith(circuitId);
-      expect(createUnprovenRemoveVerifierKeyTx).toHaveBeenCalledWith(
+      expect(createUnprovenInsertVerifierKeyTx).toHaveBeenCalledWith(
         mockProviders.zkConfigProvider,
         mockCompiledContract,
         mockContractAddress,
         circuitId,
+        mockVerifierKey,
         mockContractState,
         mockSigningKey,
         mockCoinPublicKey
@@ -92,24 +96,23 @@ describe('submitRemoveVerifierKeyTx', () => {
   });
 
   describe('error scenarios', () => {
-    it('should throw RemoveVerifierKeyTxFailedError when transaction fails', async () => {
-      const { RemoveVerifierKeyTxFailedError } = await import('../errors');
+    it('should throw InsertVerifierKeyTxFailedError when transaction fails', async () => {
+      const { InsertVerifierKeyTxFailedError } = await import('../../governance/errors');
       const { FailEntirely } = await import('@midnight-ntwrk/midnight-js-types');
       
       const circuitId = 'testCircuit';
       const failedTxData = createMockFinalizedTxData(FailEntirely);
-      const mockOperation = { verifierKey: new Uint8Array(32) };
 
       mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockSigningKey);
-      mockContractState.operation = vi.fn().mockReturnValue(mockOperation);
+      mockContractState.operation = vi.fn().mockReturnValue(undefined);
       
-      vi.mocked(createUnprovenRemoveVerifierKeyTx).mockReturnValue(mockUnprovenTx);
+      vi.mocked(createUnprovenInsertVerifierKeyTx).mockReturnValue(mockUnprovenTx);
       vi.mocked(submitTx).mockResolvedValue(failedTxData);
 
       await expect(
-        submitRemoveVerifierKeyTx(mockProviders, mockCompiledContract, mockContractAddress, circuitId)
-      ).rejects.toThrow(RemoveVerifierKeyTxFailedError);
+        submitInsertVerifierKeyTx(mockProviders, mockCompiledContract, mockContractAddress, circuitId, mockVerifierKey)
+      ).rejects.toThrow(InsertVerifierKeyTxFailedError);
     });
   });
 });

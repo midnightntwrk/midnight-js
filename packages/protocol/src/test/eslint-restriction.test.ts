@@ -16,7 +16,7 @@
 import { resolve } from 'node:path';
 
 import { ESLint, type Linter } from 'eslint';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 const MONOREPO_ROOT = resolve(__dirname, '../../../..');
 const CONFIG_FILE = resolve(MONOREPO_ROOT, 'eslint.config.mjs');
@@ -44,6 +44,15 @@ const lintRestricted = async (code: string, filePath: string): Promise<Linter.Li
   const [result] = await eslint.lintText(code, { filePath });
   return result.messages.filter((m) => m.ruleId === RULE_ID);
 };
+
+// The first `lintText` call pays a one-time cost: loading the root ESLint
+// config, instantiating plugins, and warming `eslint-import-resolver-typescript`
+// which reads every `tsconfig.json` across the monorepo. Under parallel CI
+// load that can exceed the 5s per-test default. Warming once in a hook keeps
+// individual tests fast and deterministic.
+beforeAll(async () => {
+  await eslint.lintText(importStatement('@midnight-ntwrk/ledger-v8'), { filePath: CONSUMER_PATH });
+}, 60_000);
 
 describe('Protocol ACL: no-restricted-imports rule', () => {
   describe('flags direct imports from consumer packages', () => {

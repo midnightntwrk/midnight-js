@@ -16,17 +16,20 @@
 import type { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { type FinalizedTxData,SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
+import {
+  type FinalizedTxData,
+  SucceedEntirely,
+  type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
+import { assertDefined, assertIsContractAddress, assertUndefined } from '@midnight-ntwrk/midnight-js-utils';
 
-import { type ContractProviders } from './contract-providers';
-import { RemoveVerifierKeyTxFailedError } from './errors';
-import { submitTx } from './submit-tx';
-import { createUnprovenRemoveVerifierKeyTx } from './utils';
+import { type ContractProviders } from '../contract-providers';
+import { submitTx } from '../submit-tx';
+import { InsertVerifierKeyTxFailedError } from './errors';
+import { createUnprovenInsertVerifierKeyTx } from './unproven-tx';
 
 /**
- * Constructs and submits a transaction that removes the current verifier key stored
- * on the blockchain for the given circuit ID at the given contract address.
+ * Constructs and submits a transaction that adds a new verifier key to the
+ * blockchain for the given circuit ID at the given contract address.
  *
  * ## Transaction Execution Phases
  *
@@ -38,27 +41,28 @@ import { createUnprovenRemoveVerifierKeyTx } from './utils';
  *
  * **Guaranteed Phase Failure:**
  * - Transaction is rejected and not included in the blockchain
- * - `RemoveVerifierKeyTxFailedError` is thrown with transaction data
- * - Verifier key remains on the contract (unchanged)
+ * - `InsertVerifierKeyTxFailedError` is thrown with transaction data
+ * - Verifier key is NOT added to the contract
  * - No on-chain record of the failed transaction
  *
  * **Fallible Phase Failure:**
  * - Transaction is recorded on-chain with non-`SucceedEntirely` status
- * - `RemoveVerifierKeyTxFailedError` is thrown with transaction data
- * - Verifier key may be partially removed but contract state is inconsistent
+ * - `InsertVerifierKeyTxFailedError` is thrown with transaction data
+ * - Verifier key may be partially added but not usable
  * - Transaction appears in blockchain history as partial success
  *
  * @param providers The providers to use to manage the transaction lifecycle.
  * @param compiledContract The compiled contract for which the maintenance authority
  *                         should be updated.
  * @param contractAddress The address of the contract containing the circuit for which
- *                        the verifier key should be removed.
- * @param circuitId The circuit for which the verifier key should be removed.
+ *                        the verifier key should be inserted.
+ * @param circuitId The circuit for which the verifier key should be inserted.
+ * @param newVk The new verifier key for the circuit.
  *
  * @returns A promise that resolves with the finalized transaction data, or rejects if
  *          an error occurs along the way.
  *
- * @throws {RemoveVerifierKeyTxFailedError} When transaction fails in either guaranteed or fallible phase.
+ * @throws {InsertVerifierKeyTxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data for debugging.
  *
  * TODO: We'll likely want to modify ZKConfigProvider provider so that the verifier keys are
@@ -66,33 +70,35 @@ import { createUnprovenRemoveVerifierKeyTx } from './utils';
  *       along with keys in ZKConfigProvider. By default, artifacts for the latest version
  *       would be fetched to build transactions.
  */
-export const submitRemoveVerifierKeyTx = async <C extends Contract.Any>(
+export const submitInsertVerifierKeyTx = async <C extends Contract.Any>(
   providers: ContractProviders,
   compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
   contractAddress: ContractAddress,
-  circuitId: Contract.ProvableCircuitId<C>
+  circuitId: Contract.ProvableCircuitId<C>,
+  newVk: VerifierKey
 ): Promise<FinalizedTxData> => {
   assertIsContractAddress(contractAddress);
   const contractState = await providers.publicDataProvider.queryContractState(contractAddress);
   assertDefined(contractState, `No contract state found on chain for contract address '${contractAddress}'`);
-  assertDefined(
+  assertUndefined(
     contractState.operation(circuitId),
-    `Circuit '${circuitId}' not found for contract at address '${contractAddress}'`
+    `Circuit '${circuitId}' is already defined for contract at address '${contractAddress}'`
   );
   const signingKey = await providers.privateStateProvider.getSigningKey(contractAddress);
   assertDefined(signingKey, `Signing key for contract address '${contractAddress}' not found`);
-  const unprovenTx = await createUnprovenRemoveVerifierKeyTx(
+  const unprovenTx = await createUnprovenInsertVerifierKeyTx(
     providers.zkConfigProvider,
     compiledContract,
     contractAddress,
     circuitId,
+    newVk,
     contractState,
     signingKey,
     providers.walletProvider.getCoinPublicKey()
   );
   const submitTxResult = await submitTx(providers, { unprovenTx });
   if (submitTxResult.status !== SucceedEntirely) {
-    throw new RemoveVerifierKeyTxFailedError(submitTxResult);
+    throw new InsertVerifierKeyTxFailedError(submitTxResult);
   }
   return submitTxResult;
 };

@@ -15,9 +15,9 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { submitReplaceAuthorityTx } from '../submit-replace-authority-tx';
-import { submitTx } from '../submit-tx';
-import { createUnprovenReplaceAuthorityTx } from '../utils';
+import { submitReplaceAuthorityTx } from '../../governance/submit-replace-authority-tx';
+import { createUnprovenReplaceAuthorityTx } from '../../governance/unproven-tx';
+import { submitTx } from '../../submit-tx';
 import {
   createMockCoinPublicKey,
   createMockCompiledContract,
@@ -27,10 +27,10 @@ import {
   createMockProviders,
   createMockSigningKey,
   createMockUnprovenTx
-} from './test-mocks';
+} from '../test-mocks';
 
-vi.mock('../submit-tx');
-vi.mock('../utils');
+vi.mock('../../submit-tx');
+vi.mock('../../governance/unproven-tx');
 
 describe('submitReplaceAuthorityTx', () => {
   let mockProviders: ReturnType<typeof createMockProviders>;
@@ -89,7 +89,7 @@ describe('submitReplaceAuthorityTx', () => {
 
   describe('error scenarios', () => {
     it('should throw ReplaceMaintenanceAuthorityTxFailedError when transaction fails', async () => {
-      const { ReplaceMaintenanceAuthorityTxFailedError } = await import('../errors');
+      const { ReplaceMaintenanceAuthorityTxFailedError } = await import('../../governance/errors');
       const { FailEntirely } = await import('@midnight-ntwrk/midnight-js-types');
       
       const failedTxData = createMockFinalizedTxData(FailEntirely);

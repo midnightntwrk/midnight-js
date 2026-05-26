@@ -19,10 +19,10 @@ import type { ContractAddress, SigningKey } from '@midnight-ntwrk/midnight-js-pr
 import { type FinalizedTxData, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
-import { type ContractProviders } from './contract-providers';
+import { type ContractProviders } from '../contract-providers';
+import { submitTx } from '../submit-tx';
 import { ReplaceMaintenanceAuthorityTxFailedError } from './errors';
-import { submitTx } from './submit-tx';
-import { createUnprovenReplaceAuthorityTx } from './utils';
+import { createUnprovenReplaceAuthorityTx } from './unproven-tx';
 
 /**
  * Constructs and submits a transaction that replaces the maintenance

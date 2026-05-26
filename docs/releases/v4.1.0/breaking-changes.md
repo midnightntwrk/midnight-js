@@ -38,7 +38,7 @@ const isValid = await encryption.verifyPassword(password);
 ### Migration Steps
 
 1. Replace all `new StorageEncryption(password)` with `await StorageEncryption.create(password)`
-2. Replace all `new StorageEncryption(password, { existingSalt })` with `await StorageEncryption.create(password, { existingSalt })`
+2. Replace all `new StorageEncryption(password, existingSalt)` (positional `Buffer`) with `await StorageEncryption.create(password, { existingSalt })` (options object)
 3. Add `await` before every `encrypt()`, `decrypt()`, `decryptWithPassword()`, and `verifyPassword()` call
 4. Add `await` before `invalidateEncryptionCache()` calls (return type changed from `void` to `Promise<void>`)
 5. Convert synchronous `.toThrow()` test assertions to `await .rejects.toThrow()`
@@ -68,7 +68,7 @@ An ESLint rule is added that blocks direct imports from these packages.
 import { type Transaction, type UnbalancedTransaction } from '@midnight-ntwrk/ledger-v8';
 import { type ContractAddress } from '@midnight-ntwrk/compact-runtime';
 import { Contract } from '@midnight-ntwrk/compact-js';
-import { createEffectContract } from '@midnight-ntwrk/compact-js/effect-contract';
+import { createContract } from '@midnight-ntwrk/compact-js/effect/Contract';
 import { type Resource } from '@midnight-ntwrk/onchain-runtime-v3';
 import { type NetworkId } from '@midnight-ntwrk/platform-js';
 ```
@@ -79,7 +79,7 @@ import { type NetworkId } from '@midnight-ntwrk/platform-js';
 import { type Transaction, type UnbalancedTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { type ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
-import { createEffectContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect-contract';
+import { createContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import { type Resource } from '@midnight-ntwrk/midnight-js-protocol/onchain-runtime';
 import { type NetworkId } from '@midnight-ntwrk/midnight-js-protocol/platform-js';
 ```
@@ -95,11 +95,11 @@ import { type NetworkId } from '@midnight-ntwrk/midnight-js-protocol/platform-js
 | `@midnight-ntwrk/compact-runtime` | `@midnight-ntwrk/midnight-js-protocol/compact-runtime` |
 | `@midnight-ntwrk/compact-js` | `@midnight-ntwrk/midnight-js-protocol/compact-js` |
 | `@midnight-ntwrk/compact-js/effect` | `@midnight-ntwrk/midnight-js-protocol/compact-js/effect` |
-| `@midnight-ntwrk/compact-js/effect-contract` | `@midnight-ntwrk/midnight-js-protocol/compact-js/effect-contract` |
+| `@midnight-ntwrk/compact-js/effect/Contract` | `@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract` |
 | `@midnight-ntwrk/onchain-runtime-v3` | `@midnight-ntwrk/midnight-js-protocol/onchain-runtime` |
 | `@midnight-ntwrk/platform-js` | `@midnight-ntwrk/midnight-js-protocol/platform-js` |
-| `@midnight-ntwrk/platform-js/effect-configuration` | `@midnight-ntwrk/midnight-js-protocol/platform-js/effect-configuration` |
-| `@midnight-ntwrk/platform-js/effect-contract-address` | `@midnight-ntwrk/midnight-js-protocol/platform-js/effect-contract-address` |
+| `@midnight-ntwrk/platform-js/effect/Configuration` | `@midnight-ntwrk/midnight-js-protocol/platform-js/effect/Configuration` |
+| `@midnight-ntwrk/platform-js/effect/ContractAddress` | `@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress` |
 
 3. Remove direct protocol package dependencies from your `package.json`
 4. Run `yarn lint` to verify no direct imports remain

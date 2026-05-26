@@ -30,12 +30,14 @@ import { assertDefined, assertIsContractAddress, toHex } from '@midnight-ntwrk/m
 import { type ContractProviders } from './contract-providers';
 import { ContractTypeError, IncompleteFindContractPrivateStateConfig } from './errors';
 import {
-  type CircuitCallTxInterface,
   type CircuitMaintenanceTxInterfaces,
   type ContractMaintenanceTxInterface,
-  createCircuitCallTxInterface,
   createCircuitMaintenanceTxInterfaces,
   createContractMaintenanceTxInterface
+} from './governance/tx-interfaces';
+import {
+  type CircuitCallTxInterface,
+  createCircuitCallTxInterface
 } from './tx-interfaces';
 import type { FinalizedDeployTxDataBase } from './tx-model';
 

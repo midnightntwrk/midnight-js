@@ -219,6 +219,7 @@ jobs:
     timeout-minutes: ${{ inputs.build_timeout }}
     strategy:
       fail-fast: false
+      max-parallel: 6
       matrix:
         test-file: ${{ fromJson(needs.generate-test-matrix.outputs.test-files) }}
     steps:
