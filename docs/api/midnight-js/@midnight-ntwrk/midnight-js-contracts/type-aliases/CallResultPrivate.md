@@ -79,4 +79,4 @@ ZK representation of the circuit witness call results.
 
 > `readonly` **result**: `Contract.CircuitReturnType`\<`C`, `PCK`\>
 
-The JS representation of the input to the circuit.
+The JS representation of the value returned by the circuit.

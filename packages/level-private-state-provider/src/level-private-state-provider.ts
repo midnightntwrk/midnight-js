@@ -753,6 +753,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
   };
 
   return {
+    /** {@inheritDoc PrivateStateProvider.setContractAddress} */
     setContractAddress(address: ContractAddress): void {
       contractAddress = address;
     },
@@ -762,6 +763,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       const scopedKey = getScopedKey(privateStateId);
       return subLevelMaybeGet<string, PS>(ctx, privateState, scopedKey, passwordProvider);
     },
+    /** {@inheritDoc PrivateStateProvider.remove} */
     async remove(privateStateId: PSI): Promise<void> {
       const { privateState } = scopedNames;
       await waitForRotationLock(ctx.dbName, privateState);
@@ -770,6 +772,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
         subLevel.del(scopedKey),
       );
     },
+    /** {@inheritDoc PrivateStateProvider.set} */
     async set(privateStateId: PSI, state: PS): Promise<void> {
       const { privateState } = scopedNames;
       await waitForRotationLock(ctx.dbName, privateState);
@@ -782,6 +785,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
         subLevel.put(scopedKey, encrypted),
       );
     },
+    /** {@inheritDoc PrivateStateProvider.clear} */
     async clear(): Promise<void> {
       if (contractAddress === null) {
         throw new Error('Contract address not set. Call setContractAddress() before accessing private state.');
@@ -794,6 +798,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       const { signingKey } = scopedNames;
       return subLevelMaybeGet<ContractAddress, SigningKey>(ctx, signingKey, address, passwordProvider);
     },
+    /** {@inheritDoc PrivateStateProvider.removeSigningKey} */
     async removeSigningKey(address: ContractAddress): Promise<void> {
       const { signingKey } = scopedNames;
       await waitForRotationLock(ctx.dbName, signingKey);
@@ -801,6 +806,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
         subLevel.del(address),
       );
     },
+    /** {@inheritDoc PrivateStateProvider.setSigningKey} */
     async setSigningKey(address: ContractAddress, signingKey: SigningKey): Promise<void> {
       const { signingKey: signingKeyLevelName } = scopedNames;
       await waitForRotationLock(ctx.dbName, signingKeyLevelName);
@@ -812,11 +818,13 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
         subLevel.put(address, encrypted),
       );
     },
+    /** {@inheritDoc PrivateStateProvider.clearSigningKeys} */
     async clearSigningKeys(): Promise<void> {
       const { signingKey } = scopedNames;
       return withSubLevel(ctx, signingKey, (subLevel) => subLevel.clear());
     },
 
+    /** {@inheritDoc PrivateStateProvider.exportPrivateStates} */
     async exportPrivateStates(options?: ExportPrivateStatesOptions): Promise<PrivateStateExport> {
       if (contractAddress === null) {
         throw new Error('Contract address not set. Call setContractAddress() before exporting private states.');
@@ -878,6 +886,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       };
     },
 
+    /** {@inheritDoc PrivateStateProvider.importPrivateStates} */
     async importPrivateStates(
       exportData: PrivateStateExport,
       options?: ImportPrivateStatesOptions
@@ -998,6 +1007,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       return { imported, skipped, overwritten };
     },
 
+    /** {@inheritDoc PrivateStateProvider.exportSigningKeys} */
     async exportSigningKeys(options?: ExportSigningKeysOptions): Promise<SigningKeyExport> {
       const maxKeys = options?.maxKeys ?? MAX_EXPORT_SIGNING_KEYS;
 
@@ -1037,6 +1047,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       };
     },
 
+    /** {@inheritDoc PrivateStateProvider.importSigningKeys} */
     async importSigningKeys(
       exportData: SigningKeyExport,
       options?: ImportSigningKeysOptions
@@ -1193,6 +1204,12 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
      * Clears the cached encryption key from process memory.
      *
      * @remarks
+     * This method is only available on the object returned by
+     * {@link levelPrivateStateProvider}; it is not part of the
+     * {@link PrivateStateProvider} interface contract. Code that needs to
+     * call it must hold a reference to the level-provider value rather than
+     * to the interface.
+     *
      * The provider caches the PBKDF2-derived AES key in memory after the first
      * read or write, because re-deriving it on every operation (600,000
      * iterations) would be prohibitively slow. Call this method when the

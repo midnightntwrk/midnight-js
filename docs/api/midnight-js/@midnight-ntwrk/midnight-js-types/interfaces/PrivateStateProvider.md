@@ -136,8 +136,9 @@ If `setContractAddress` has not been called prior to invocation.
 #### Throws
 
 If the password returned by the configured password provider does
-  not satisfy the minimum strength policy (validation is performed lazily
-  on first access).
+  not satisfy the minimum strength policy. Validation runs on every
+  invocation against the password returned by the provider — it is not
+  cached.
 
 #### Throws
 
@@ -148,8 +149,9 @@ If decryption of the stored value fails (wrong password, salt
 
 #### Throws
 
-If a concurrent password rotation does not release its lock within
-  the configured timeout.
+If a concurrent password rotation does not release its lock
+  within the internal default timeout (5 minutes on the read path; the
+  read path does not expose a configuration knob).
 
 #### Throws
 
@@ -185,8 +187,9 @@ The stored signing key, or `null` if either:
 #### Throws
 
 If the password returned by the configured password provider does
-  not satisfy the minimum strength policy (validation is performed lazily
-  on first access).
+  not satisfy the minimum strength policy. Validation runs on every
+  invocation against the password returned by the provider — it is not
+  cached.
 
 #### Throws
 
@@ -197,8 +200,9 @@ If decryption of the stored value fails (wrong password, salt
 
 #### Throws
 
-If a concurrent password rotation does not release its lock within
-  the configured timeout.
+If a concurrent password rotation does not release its lock
+  within the internal default timeout (5 minutes on the read path; the
+  read path does not expose a configuration knob).
 
 #### Throws
 

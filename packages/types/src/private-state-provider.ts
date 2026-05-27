@@ -253,14 +253,16 @@ export interface PrivateStateProvider<PSI extends PrivateStateId = PrivateStateI
    *
    * @throws If `setContractAddress` has not been called prior to invocation.
    * @throws If the password returned by the configured password provider does
-   *   not satisfy the minimum strength policy (validation is performed lazily
-   *   on first access).
+   *   not satisfy the minimum strength policy. Validation runs on every
+   *   invocation against the password returned by the provider — it is not
+   *   cached.
    * @throws If decryption of the stored value fails (wrong password, salt
    *   mismatch, unsupported encryption version, or authentication tag
    *   mismatch). Decryption errors are propagated to the caller and do **not**
    *   collapse to `null`.
-   * @throws If a concurrent password rotation does not release its lock within
-   *   the configured timeout.
+   * @throws If a concurrent password rotation does not release its lock
+   *   within the internal default timeout (5 minutes on the read path; the
+   *   read path does not expose a configuration knob).
    * @throws Underlying store I/O errors are propagated unchanged.
    */
   get(privateStateId: PSI): Promise<PS | null>;
@@ -297,14 +299,16 @@ export interface PrivateStateProvider<PSI extends PrivateStateId = PrivateStateI
    *   value".
    *
    * @throws If the password returned by the configured password provider does
-   *   not satisfy the minimum strength policy (validation is performed lazily
-   *   on first access).
+   *   not satisfy the minimum strength policy. Validation runs on every
+   *   invocation against the password returned by the provider — it is not
+   *   cached.
    * @throws If decryption of the stored value fails (wrong password, salt
    *   mismatch, unsupported encryption version, or authentication tag
    *   mismatch). Decryption errors are propagated to the caller and do **not**
    *   collapse to `null`.
-   * @throws If a concurrent password rotation does not release its lock within
-   *   the configured timeout.
+   * @throws If a concurrent password rotation does not release its lock
+   *   within the internal default timeout (5 minutes on the read path; the
+   *   read path does not expose a configuration knob).
    * @throws Underlying store I/O errors are propagated unchanged.
    *
    * @remarks

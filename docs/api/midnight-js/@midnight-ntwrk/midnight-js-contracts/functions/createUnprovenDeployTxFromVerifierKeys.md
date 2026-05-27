@@ -23,6 +23,13 @@ Configuration.
 
 ## Param
 
+## Remarks
+
+The returned [UnsubmittedDeployTxData](../type-aliases/UnsubmittedDeployTxData.md) is privacy-sensitive and
+carries the unproven transaction, signing key, initial private state, and
+initial Zswap state. See that type for handling guidance before logging,
+serializing, or transmitting the result.
+
 ## Call Signature
 
 > **createUnprovenDeployTxFromVerifierKeys**\<`C`\>(`zkConfigProvider`, `coinPublicKey`, `options`, `encryptionPublicKey`): `Promise`\<[`UnsubmittedDeployTxData`](../type-aliases/UnsubmittedDeployTxData.md)\<`C`\>\>

@@ -149,7 +149,7 @@ export type CallResultPrivate<C extends Contract.Any, PCK extends Contract.Prova
    */
   readonly privateTranscriptOutputs: AlignedValue[];
   /**
-   * The JS representation of the input to the circuit.
+   * The JS representation of the value returned by the circuit.
    */
   readonly result: Contract.CircuitReturnType<C, PCK>;
   /**

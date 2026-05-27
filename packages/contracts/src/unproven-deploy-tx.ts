@@ -104,6 +104,12 @@ export function createUnprovenDeployTxFromVerifierKeys<C extends Contract.Any>(
  * @param encryptionPublicKey
  * @returns Data produced by the contract constructor call and an unproven deployment transaction
  *          assembled from the contract constructor result.
+ *
+ * @remarks
+ * The returned {@link UnsubmittedDeployTxData} is privacy-sensitive and
+ * carries the unproven transaction, signing key, initial private state, and
+ * initial Zswap state. See that type for handling guidance before logging,
+ * serializing, or transmitting the result.
  */
 export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.Any>(
   zkConfigProvider: ZKConfigProvider<string>,
@@ -184,6 +190,12 @@ export async function createUnprovenDeployTx<C extends Contract.Any>(
  *
  * @returns A promise that contains all data produced by the constructor call and an unproven
  *          transaction assembled from the constructor result.
+ *
+ * @remarks
+ * The returned {@link UnsubmittedDeployTxData} is privacy-sensitive and
+ * carries the unproven transaction, signing key, initial private state, and
+ * initial Zswap state. See that type for handling guidance before logging,
+ * serializing, or transmitting the result.
  */
 export async function createUnprovenDeployTx<C extends Contract.Any>(
   providers: UnprovenDeployTxProviders<C>,
