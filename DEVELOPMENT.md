@@ -230,7 +230,7 @@ The testkit has **two independent axes** of configuration. Do not conflate them:
 | Axis | Variable | Values | What it controls |
 |------|----------|--------|------------------|
 | Live test target | `MN_TEST_ENVIRONMENT` | `undeployed`, `qanet`, `preview`, `preprod`, `env-var-remote` | Where tests run against — local docker stack or a deployed network |
-| Docker image versions | `TESTKIT_DOCKER_ENV` | `qanet`, `preview`, `preprod`, `mainnet`, `devnet` | Which image tags the *local* docker stack uses (only relevant when `MN_TEST_ENVIRONMENT=undeployed`, plus the proof-server image in remote modes) |
+| Docker image versions | `TESTKIT_DOCKER_ENV` | `qanet`, `preview`, `preprod`, `mainnet`, `devnet` | Which image tags the locally-launched containers use. `MN_TEST_ENVIRONMENT=undeployed` runs the full local stack and uses all three image tags; remote modes (`qanet`/`preview`/`preprod`/`env-var-remote`) still launch a local proof-server and consume `PROOF_SERVER_VERSION` |
 
 Both happen to use overlapping names (`qanet`/`preview`/`preprod`) because the env files bundle the image versions deployed to those live networks. `mainnet` and `devnet` exist as image-version sets only — the test framework does not run against live mainnet or devnet.
 

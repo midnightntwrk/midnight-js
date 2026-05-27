@@ -81,15 +81,17 @@ Infrastructure Components
 
 | Environment | Use Case | Infrastructure | Limitations |
 |-------------|----------|----------------|-------------|
-| `undeployed` | Development | Docker Compose | 4 wallets max |
-| `devnet/testnet` | Integration | Live networks | Network dependent |
-| `env-var-remote` | Custom | User-defined | Requires all env vars |
+| `undeployed` (default) | Development | Local Docker Compose stack | 4 wallets max |
+| `qanet` | Integration | Live QA network | Network dependent |
+| `preview` | Integration | Live preview network | Network dependent |
+| `preprod` | Integration | Live preprod network | Network dependent |
+| `env-var-remote` | Custom | User-defined endpoints | Requires `MN_TEST_INDEXER` / `MN_TEST_NODE` / `MN_TEST_FAUCET` |
 
 ### Environment Variables
 
 ```bash
 # Primary Configuration
-MN_TEST_ENVIRONMENT=undeployed|devnet|testnet|env-var-remote
+MN_TEST_ENVIRONMENT=undeployed|qanet|preview|preprod|env-var-remote
 MN_TEST_WALLET_SEED="optional-seed-phrase"
 
 # Custom Environment (when env-var-remote)
@@ -105,10 +107,10 @@ MN_TEST_FAUCET="http://custom-faucet:3087"
 `compose.yml` and `proof-server.yml` resolve their image tags from env vars sourced from `testkit-js/env/<TESTKIT_DOCKER_ENV>.env`:
 
 ```bash
-TESTKIT_DOCKER_ENV            # qanet|preview|preprod|mainnet|devnet (default: preprod)
-PROOF_SERVER_VERSION    # proof-server image tag
-INDEXER_VERSION         # indexer-standalone image tag
-MIDNIGHT_NODE_VERSION   # midnight-node image tag
+TESTKIT_DOCKER_ENV     # qanet|preview|preprod|mainnet|devnet (default: preprod)
+PROOF_SERVER_VERSION   # proof-server image tag
+INDEXER_VERSION        # indexer-standalone image tag
+MIDNIGHT_NODE_VERSION  # midnight-node image tag
 ```
 
 With direnv these are exported automatically. To switch envs: `TESTKIT_DOCKER_ENV=qanet direnv reload`. See [DEVELOPMENT.md](../../DEVELOPMENT.md#testkit-environment-selection) for details.
@@ -119,8 +121,8 @@ With direnv these are exported automatically. To switch envs: `TESTKIT_DOCKER_EN
 # Local development
 yarn e2e
 
-# Testnet integration
-MN_TEST_ENVIRONMENT=testnet yarn e2e
+# Live network integration (preview / preprod / qanet)
+MN_TEST_ENVIRONMENT=preview yarn e2e
 
 # Custom environment
 MN_TEST_ENVIRONMENT=env-var-remote \
@@ -326,7 +328,7 @@ yarn e2e-debug             # Debug output
 
 ### Key Environment Variables  
 ```bash
-MN_TEST_ENVIRONMENT        # Optional network id: undeployed|devnet|testnet|env-var-remote
+MN_TEST_ENVIRONMENT        # Optional network id: undeployed|qanet|preview|preprod|env-var-remote
 MN_TEST_WALLET_SEED        # Optional wallet seed
 ```
 
