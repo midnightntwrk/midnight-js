@@ -37,12 +37,6 @@
     "postpublish": "pinst --enable"
   },
   "license": "Apache-2.0",
-  "dependencies": {
-    "@midnight-ntwrk/compact-runtime": "0.16.0",
-    "@midnight-ntwrk/ledger-v8": "8.0.3",
-    "@midnight-ntwrk/onchain-runtime-v3": "3.0.0",
-    "@midnight-ntwrk/wallet-sdk": "1.0.0"
-  },
   "devDependencies": {
     "@commitlint/cli": "^20.4.3",
     "@commitlint/config-conventional": "^20.4.3",
@@ -65,18 +59,13 @@
     "eslint-plugin-prettier": "^5.5.5",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "eslint-plugin-unused-imports": "^4.4.1",
-    "glob": "^13.0.6",
     "husky": "^9.1.7",
-    "jsdom": "^29.0.1",
     "lint-staged": "^16.3.3",
     "pinst": "^3.0.0",
     "prettier": "^3.8.1",
     "rollup": "^4.60.1",
     "rollup-plugin-dts": "^6.4.1",
-    "rxjs": "^7.8.2",
     "semver": "^7.8.1",
-    "testcontainers": "^11.13.0",
-    "tstyche": "^6.2.0",
     "turbo": "^2.9.5",
     "typedoc": "^0.28.18",
     "typedoc-plugin-markdown": "4.11.0",
