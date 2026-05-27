@@ -1218,7 +1218,15 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
      * - user logout
      * - session timeout
      * - app lock / screen lock
-     * - before persisting application state to disk for backup
+     * - before producing any in-process snapshot that could capture
+     *   heap contents (e.g., a debug heap dump or core dump)
+     *
+     * This method does **not** protect on-disk backups of the LevelDB store:
+     * the encrypted store is already on disk, the in-memory key is not part
+     * of the backup, and clearing the cache before copying the database
+     * files changes nothing about the resulting backup. To produce a
+     * portable, separately-passworded backup, use
+     * {@link PrivateStateProvider.exportPrivateStates} instead.
      *
      * Subsequent operations will request the password from the configured
      * provider and re-derive the key on first access.

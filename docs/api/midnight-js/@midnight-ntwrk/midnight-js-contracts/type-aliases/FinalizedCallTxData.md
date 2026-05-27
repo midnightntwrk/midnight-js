@@ -39,4 +39,6 @@ transmitting — destructure only the non-sensitive fields (`public.txId`,
 object.
 
 The framework deliberately exposes these references to support retry,
-replay, monitoring, and debug workflows.
+replay, debug, and redacted-telemetry workflows — raw transmission to
+observability platforms (log shippers, error reporters, analytics) is
+not an intended use.
