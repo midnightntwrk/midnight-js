@@ -17,6 +17,8 @@ export const MAX_SAFE_NAME_LENGTH = 255;
 
 const SAFE_NAME_PATTERN = /^[a-zA-Z0-9._-]+$/;
 const SEMVER_PATTERN = /^\d+\.\d+\.\d+(?:-[A-Za-z0-9._-]+)?$/;
+const LOOPBACK_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1', '[::1]']);
+const INSECURE_SCHEMES = new Set(['http:', 'ws:']);
 
 /**
  * Asserts that `name` is safe to use as a single path segment or URL path
@@ -57,4 +59,40 @@ export function assertSemVer(version: string, label: string): void {
   if (!SEMVER_PATTERN.test(version)) {
     throw new Error(`Invalid ${label}: ${JSON.stringify(version)}`);
   }
+}
+
+/**
+ * Emits a `console.warn` when `url` uses an unencrypted scheme (`http:` or `ws:`)
+ * targeting a non-loopback host. No-op for encrypted schemes (`https:`, `wss:`),
+ * other schemes, and unparseable input.
+ *
+ * Intended to be called once at provider-factory construction time so
+ * misconfigured remote endpoints surface immediately rather than after sensitive
+ * payloads are transmitted in clear text. As a diagnostic helper it never throws —
+ * an unparseable URL will produce errors through other channels (the protocol
+ * checks at every call site already throw `InvalidProtocolSchemeError`), and
+ * crashing the factory from a warning helper would be worse than silence.
+ *
+ * @param url   An absolute URL string to inspect (e.g. `https://indexer.example/graphql`).
+ * @param label Human-readable label used in the warning (e.g. "indexer query URL").
+ */
+export function warnIfInsecureRemoteUrl(url: string, label: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return;
+  }
+  if (!INSECURE_SCHEMES.has(parsed.protocol)) {
+    return;
+  }
+  if (LOOPBACK_HOSTNAMES.has(parsed.hostname)) {
+    return;
+  }
+  const scheme = parsed.protocol.replace(/:$/, '');
+  const secureReplacement = scheme === 'http' ? 'https://' : 'wss://';
+  console.warn(
+    `midnight-js: ${label} uses unencrypted ${scheme}:// for non-loopback host '${parsed.hostname}'; ` +
+      `sensitive data may be transmitted in clear text. Use ${secureReplacement} in production.`
+  );
 }
