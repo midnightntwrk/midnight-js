@@ -73,6 +73,10 @@ Infrastructure Components
 
 ## Environment Configuration
 
+> **Two independent axes.** Don't conflate them:
+> - `MN_TEST_ENVIRONMENT` — **where** tests run (`undeployed` local stack, or a live network: `qanet` / `preview` / `preprod` / `env-var-remote`).
+> - `MIDNIGHT_ENV` — **which docker image versions** the local stack uses (`qanet` / `preview` / `preprod` / `mainnet` / `devnet`). The image-version sets `mainnet` and `devnet` exist only as version bundles; the test framework does not run against live mainnet or devnet.
+
 ### Environment Types
 
 | Environment | Use Case | Infrastructure | Limitations |
