@@ -75,7 +75,7 @@ Infrastructure Components
 
 > **Two independent axes.** Don't conflate them:
 > - `MN_TEST_ENVIRONMENT` — **where** tests run (`undeployed` local stack, or a live network: `qanet` / `preview` / `preprod` / `env-var-remote`).
-> - `MIDNIGHT_ENV` — **which docker image versions** the local stack uses (`qanet` / `preview` / `preprod` / `mainnet` / `devnet`). The image-version sets `mainnet` and `devnet` exist only as version bundles; the test framework does not run against live mainnet or devnet.
+> - `TESTKIT_DOCKER_ENV` — **which docker image versions** the local stack uses (`qanet` / `preview` / `preprod` / `mainnet` / `devnet`). The image-version sets `mainnet` and `devnet` exist only as version bundles; the test framework does not run against live mainnet or devnet.
 
 ### Environment Types
 
@@ -102,16 +102,16 @@ MN_TEST_FAUCET="http://custom-faucet:3087"
 
 ### Docker image versions
 
-`compose.yml` and `proof-server.yml` resolve their image tags from env vars sourced from `testkit-js/env/<MIDNIGHT_ENV>.env`:
+`compose.yml` and `proof-server.yml` resolve their image tags from env vars sourced from `testkit-js/env/<TESTKIT_DOCKER_ENV>.env`:
 
 ```bash
-MIDNIGHT_ENV            # qanet|preview|preprod|mainnet|devnet (default: preview)
+TESTKIT_DOCKER_ENV            # qanet|preview|preprod|mainnet|devnet (default: preview)
 PROOF_SERVER_VERSION    # proof-server image tag
 INDEXER_VERSION         # indexer-standalone image tag
 MIDNIGHT_NODE_VERSION   # midnight-node image tag
 ```
 
-With direnv these are exported automatically. To switch envs: `MIDNIGHT_ENV=qanet direnv reload`. See [DEVELOPMENT.md](../../DEVELOPMENT.md#testkit-environment-selection) for details.
+With direnv these are exported automatically. To switch envs: `TESTKIT_DOCKER_ENV=qanet direnv reload`. See [DEVELOPMENT.md](../../DEVELOPMENT.md#testkit-environment-selection) for details.
 
 ### Usage Examples
 
@@ -300,7 +300,7 @@ it('should complete operation [@slow]', async () => {
 #### Environment Setup
 ```bash
 # Ensure Docker is running and image-version env vars are set
-# (direnv exports them from testkit-js/env/<MIDNIGHT_ENV>.env; otherwise source manually)
+# (direnv exports them from testkit-js/env/<TESTKIT_DOCKER_ENV>.env; otherwise source manually)
 docker compose -f compose.yml pull
 yarn e2e
 ```

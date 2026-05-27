@@ -39,9 +39,9 @@ on:
         description: Midnight network to use (testnet/devnet/undeployed)
         required: true
         default: 'undeployed'
-      midnight_env:
+      testkit_docker_env:
         type: string
-        description: Docker image version set sourced from testkit-js/env/<midnight_env>.env (qanet|preview|preprod|mainnet|devnet). Empty falls back to the .envrc default.
+        description: Docker image version set sourced from testkit-js/env/<testkit_docker_env>.env (qanet|preview|preprod|mainnet|devnet). Empty falls back to the .envrc default.
         required: false
         default: ''
 
@@ -64,7 +64,7 @@ jobs:
 
       - name: Load environment from .envrc
         env:
-          MIDNIGHT_ENV: ${{ inputs.midnight_env }}
+          TESTKIT_DOCKER_ENV: ${{ inputs.testkit_docker_env }}
         run: |
           direnv allow .
           direnv export gha >> "$GITHUB_ENV"
@@ -152,7 +152,7 @@ jobs:
 
       - name: Load environment from .envrc
         env:
-          MIDNIGHT_ENV: ${{ inputs.midnight_env }}
+          TESTKIT_DOCKER_ENV: ${{ inputs.testkit_docker_env }}
         run: |
           direnv allow .
           direnv export gha >> "$GITHUB_ENV"
@@ -243,7 +243,7 @@ jobs:
 
       - name: Load environment from .envrc
         env:
-          MIDNIGHT_ENV: ${{ inputs.midnight_env }}
+          TESTKIT_DOCKER_ENV: ${{ inputs.testkit_docker_env }}
         run: |
           direnv allow .
           direnv export gha >> "$GITHUB_ENV"

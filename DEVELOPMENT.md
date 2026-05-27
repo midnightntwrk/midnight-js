@@ -212,10 +212,10 @@ git config --local tag.gpgSign true
 |----------|---------|--------|
 | `COMPACTC_VERSION` | Compact compiler version | direnv |
 | `NODE_VERSION` | Node.js version | nvm |
-| `MIDNIGHT_ENV` | Selects which **docker image version set** the local testkit stack uses (`qanet`, `preview`, `preprod`, `mainnet`, `devnet`). Defaults to `preview`. Does **not** select a live network — see `MN_TEST_ENVIRONMENT`. | direnv / shell |
-| `PROOF_SERVER_VERSION` | Proof-server docker image tag used by testkit compose files | `testkit-js/env/<MIDNIGHT_ENV>.env` |
-| `INDEXER_VERSION` | Indexer-standalone docker image tag used by testkit compose files | `testkit-js/env/<MIDNIGHT_ENV>.env` |
-| `MIDNIGHT_NODE_VERSION` | Midnight-node docker image tag used by testkit compose files | `testkit-js/env/<MIDNIGHT_ENV>.env` |
+| `TESTKIT_DOCKER_ENV` | Selects which **docker image version set** the local testkit stack uses (`qanet`, `preview`, `preprod`, `mainnet`, `devnet`). Defaults to `preview`. Does **not** select a live network — see `MN_TEST_ENVIRONMENT`. | direnv / shell |
+| `PROOF_SERVER_VERSION` | Proof-server docker image tag used by testkit compose files | `testkit-js/env/<TESTKIT_DOCKER_ENV>.env` |
+| `INDEXER_VERSION` | Indexer-standalone docker image tag used by testkit compose files | `testkit-js/env/<TESTKIT_DOCKER_ENV>.env` |
+| `MIDNIGHT_NODE_VERSION` | Midnight-node docker image tag used by testkit compose files | `testkit-js/env/<TESTKIT_DOCKER_ENV>.env` |
 
 Without direnv, set manually:
 
@@ -230,15 +230,15 @@ The testkit has **two independent axes** of configuration. Do not conflate them:
 | Axis | Variable | Values | What it controls |
 |------|----------|--------|------------------|
 | Live test target | `MN_TEST_ENVIRONMENT` | `undeployed`, `qanet`, `preview`, `preprod`, `env-var-remote` | Where tests run against — local docker stack or a deployed network |
-| Docker image versions | `MIDNIGHT_ENV` | `qanet`, `preview`, `preprod`, `mainnet`, `devnet` | Which image tags the *local* docker stack uses (only relevant when `MN_TEST_ENVIRONMENT=undeployed`, plus the proof-server image in remote modes) |
+| Docker image versions | `TESTKIT_DOCKER_ENV` | `qanet`, `preview`, `preprod`, `mainnet`, `devnet` | Which image tags the *local* docker stack uses (only relevant when `MN_TEST_ENVIRONMENT=undeployed`, plus the proof-server image in remote modes) |
 
 Both happen to use overlapping names (`qanet`/`preview`/`preprod`) because the env files bundle the image versions deployed to those live networks. `mainnet` and `devnet` exist as image-version sets only — the test framework does not run against live mainnet or devnet.
 
-`testkit-js/compose.yml` and `testkit-js/proof-server.yml` resolve their image tags from `PROOF_SERVER_VERSION`, `INDEXER_VERSION`, and `MIDNIGHT_NODE_VERSION`. The active env file is picked by `MIDNIGHT_ENV`:
+`testkit-js/compose.yml` and `testkit-js/proof-server.yml` resolve their image tags from `PROOF_SERVER_VERSION`, `INDEXER_VERSION`, and `MIDNIGHT_NODE_VERSION`. The active env file is picked by `TESTKIT_DOCKER_ENV`:
 
 ```bash
-MIDNIGHT_ENV=qanet direnv reload     # use qanet image versions
-MIDNIGHT_ENV=mainnet direnv reload   # use mainnet image versions
+TESTKIT_DOCKER_ENV=qanet direnv reload     # use qanet image versions
+TESTKIT_DOCKER_ENV=mainnet direnv reload   # use mainnet image versions
 ```
 
 To override versions without changing the env, source the file manually before running docker compose:
