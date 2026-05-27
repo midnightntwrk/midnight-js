@@ -86,6 +86,9 @@ jobs:
         if: ${{ inputs.yarn_lint_paths != '' }}
         run: yarn lint -- ${{ inputs.yarn_lint_paths }}
 
+      - name: Check dependency constraints
+        run: yarn constraints
+
       - name: Run tests
         run: |
           yarn test ${{ inputs.yarn_filter }} --concurrency 1 --cache-dir ./turbo
