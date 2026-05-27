@@ -242,6 +242,26 @@ export interface PrivateStateProvider<PSI extends PrivateStateId = PrivateStateI
    * Retrieve the private state at the given private state ID.
    *
    * @param privateStateId The private state identifier.
+   * @returns The stored private state, or `null` if either:
+   *   - the key is absent from the underlying store, or
+   *   - the stored value deserializes to `undefined`.
+   *
+   *   Callers should treat both `null` outcomes equivalently as "no usable
+   *   value". The provider does not distinguish between an absent key and an
+   *   explicitly-undefined stored value; if the distinction matters for your
+   *   application, store a sentinel value instead.
+   *
+   * @throws If `setContractAddress` has not been called prior to invocation.
+   * @throws If the password returned by the configured password provider does
+   *   not satisfy the minimum strength policy (validation is performed lazily
+   *   on first access).
+   * @throws If decryption of the stored value fails (wrong password, salt
+   *   mismatch, unsupported encryption version, or authentication tag
+   *   mismatch). Decryption errors are propagated to the caller and do **not**
+   *   collapse to `null`.
+   * @throws If a concurrent password rotation does not release its lock within
+   *   the configured timeout.
+   * @throws Underlying store I/O errors are propagated unchanged.
    */
   get(privateStateId: PSI): Promise<PS | null>;
 
@@ -269,6 +289,28 @@ export interface PrivateStateProvider<PSI extends PrivateStateId = PrivateStateI
    * Retrieve the signing key for a contract.
    *
    * @param address The address of the contract for which to get the signing key.
+   * @returns The stored signing key, or `null` if either:
+   *   - no signing key is stored for the given address, or
+   *   - the stored value deserializes to `undefined`.
+   *
+   *   Callers should treat both `null` outcomes equivalently as "no usable
+   *   value".
+   *
+   * @throws If the password returned by the configured password provider does
+   *   not satisfy the minimum strength policy (validation is performed lazily
+   *   on first access).
+   * @throws If decryption of the stored value fails (wrong password, salt
+   *   mismatch, unsupported encryption version, or authentication tag
+   *   mismatch). Decryption errors are propagated to the caller and do **not**
+   *   collapse to `null`.
+   * @throws If a concurrent password rotation does not release its lock within
+   *   the configured timeout.
+   * @throws Underlying store I/O errors are propagated unchanged.
+   *
+   * @remarks
+   * Unlike {@link PrivateStateProvider.get}, this method does **not** require
+   * {@link PrivateStateProvider.setContractAddress} to have been called first —
+   * the contract address is supplied as an argument.
    */
   getSigningKey(address: ContractAddress): Promise<SigningKey | null>;
 

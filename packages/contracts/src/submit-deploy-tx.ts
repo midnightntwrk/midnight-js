@@ -79,6 +79,12 @@ export async function submitDeployTx<C extends Contract.Any>(
  *
  * @throws {DeployTxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data for debugging.
+ *
+ * @remarks
+ * The returned {@link FinalizedDeployTxData} is privacy-sensitive and carries
+ * the unproven transaction, signing key, and initial private state. See that
+ * type for handling guidance before logging, serializing, or transmitting the
+ * result.
  */
 export async function submitDeployTx<C extends Contract.Any>(
   providers: SubmitDeployTxProviders<C>,

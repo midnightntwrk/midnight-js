@@ -32,3 +32,12 @@ inputs or outputs are created in the contract constructor.
 ### C
 
 `C` *extends* `Contract.Any`
+
+## Remarks
+
+**Privacy-sensitive type.** Extends [UnsubmittedDeployTxDataBase](UnsubmittedDeployTxDataBase.md) and
+further embeds [UnsubmittedTxData](UnsubmittedTxData.md) (carrying the
+`UnprovenTransaction`) plus the contract constructor's
+`initialZswapState` under the `private` field. When logging, serializing,
+or transmitting, read only the `public` field or destructure specific
+non-sensitive fields — never spread or stringify the whole object.

@@ -120,6 +120,41 @@ The private state identifier.
 
 `Promise`\<`PS` \| `null`\>
 
+The stored private state, or `null` if either:
+  - the key is absent from the underlying store, or
+  - the stored value deserializes to `undefined`.
+
+  Callers should treat both `null` outcomes equivalently as "no usable
+  value". The provider does not distinguish between an absent key and an
+  explicitly-undefined stored value; if the distinction matters for your
+  application, store a sentinel value instead.
+
+#### Throws
+
+If `setContractAddress` has not been called prior to invocation.
+
+#### Throws
+
+If the password returned by the configured password provider does
+  not satisfy the minimum strength policy (validation is performed lazily
+  on first access).
+
+#### Throws
+
+If decryption of the stored value fails (wrong password, salt
+  mismatch, unsupported encryption version, or authentication tag
+  mismatch). Decryption errors are propagated to the caller and do **not**
+  collapse to `null`.
+
+#### Throws
+
+If a concurrent password rotation does not release its lock within
+  the configured timeout.
+
+#### Throws
+
+Underlying store I/O errors are propagated unchanged.
+
 ***
 
 ### getSigningKey()
@@ -139,6 +174,41 @@ The address of the contract for which to get the signing key.
 #### Returns
 
 `Promise`\<`string` \| `null`\>
+
+The stored signing key, or `null` if either:
+  - no signing key is stored for the given address, or
+  - the stored value deserializes to `undefined`.
+
+  Callers should treat both `null` outcomes equivalently as "no usable
+  value".
+
+#### Throws
+
+If the password returned by the configured password provider does
+  not satisfy the minimum strength policy (validation is performed lazily
+  on first access).
+
+#### Throws
+
+If decryption of the stored value fails (wrong password, salt
+  mismatch, unsupported encryption version, or authentication tag
+  mismatch). Decryption errors are propagated to the caller and do **not**
+  collapse to `null`.
+
+#### Throws
+
+If a concurrent password rotation does not release its lock within
+  the configured timeout.
+
+#### Throws
+
+Underlying store I/O errors are propagated unchanged.
+
+#### Remarks
+
+Unlike [PrivateStateProvider.get](#get), this method does **not** require
+[PrivateStateProvider.setContractAddress](#setcontractaddress) to have been called first —
+the contract address is supplied as an argument.
 
 ***
 

@@ -10,6 +10,16 @@
 
 Base type for private data relevant to an unsubmitted deployment transaction.
 
+## Remarks
+
+**Privacy-sensitive type.** The `signingKey` field carries the contract's
+maintenance authority, and `initialPrivateState` carries application-defined
+private state that the zero-knowledge proofs were designed to keep
+confidential.
+
+Application code should not log, serialize, or transmit instances of this
+type without explicit field filtering.
+
 ## Type Parameters
 
 ### C

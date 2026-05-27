@@ -27,3 +27,16 @@ Public data relevant to this call transaction.
 ### PCK
 
 `PCK` *extends* `Contract.ProvableCircuitId`\<`C`\>
+
+## Remarks
+
+**Privacy-sensitive type.** Inherits [UnsubmittedCallTxData](UnsubmittedCallTxData.md)'s
+`private` field, which transitively carries the `UnprovenTransaction`,
+new shielded coins, ZK inputs/outputs, the private transcript outputs, and
+the next private state. Treat as confidential when logging, serializing, or
+transmitting — destructure only the non-sensitive fields (`public.txId`,
+`public.blockHeight`, etc.) rather than spreading or stringifying the whole
+object.
+
+The framework deliberately exposes these references to support retry,
+replay, monitoring, and debug workflows.

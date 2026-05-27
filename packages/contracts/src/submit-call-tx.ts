@@ -91,6 +91,12 @@ export async function submitCallTx<C extends Contract<undefined>, PCK extends Co
  *
  * @throws {CallTxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data and circuit ID for debugging.
+ *
+ * @remarks
+ * The returned {@link FinalizedCallTxData} (and the {@link CallResult} variant)
+ * is privacy-sensitive and carries the unproven transaction and private
+ * state. See those types for handling guidance before logging, serializing,
+ * or transmitting the result.
  */
 export async function submitCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: SubmitCallTxProviders<C, PCK>,

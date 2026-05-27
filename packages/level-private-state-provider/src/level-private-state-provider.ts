@@ -756,6 +756,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
     setContractAddress(address: ContractAddress): void {
       contractAddress = address;
     },
+    /** {@inheritDoc PrivateStateProvider.get} */
     async get(privateStateId: PSI): Promise<PS | null> {
       const { privateState } = scopedNames;
       const scopedKey = getScopedKey(privateStateId);
@@ -788,6 +789,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       const { privateState } = scopedNames;
       return withSubLevel(ctx, privateState, (subLevel) => subLevel.clear());
     },
+    /** {@inheritDoc PrivateStateProvider.getSigningKey} */
     async getSigningKey(address: ContractAddress): Promise<SigningKey | null> {
       const { signingKey } = scopedNames;
       return subLevelMaybeGet<ContractAddress, SigningKey>(ctx, signingKey, address, passwordProvider);
@@ -1187,6 +1189,32 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       });
     },
 
+    /**
+     * Clears the cached encryption key from process memory.
+     *
+     * @remarks
+     * The provider caches the PBKDF2-derived AES key in memory after the first
+     * read or write, because re-deriving it on every operation (600,000
+     * iterations) would be prohibitively slow. Call this method when the
+     * application reaches a logical security boundary — for example:
+     *
+     * - user logout
+     * - session timeout
+     * - app lock / screen lock
+     * - before persisting application state to disk for backup
+     *
+     * Subsequent operations will request the password from the configured
+     * provider and re-derive the key on first access.
+     *
+     * **Limitations.** JavaScript does not guarantee immediate erasure of
+     * memory due to immutable strings, non-deterministic garbage collection,
+     * and V8 runtime internals (string interning, JIT artifacts, function
+     * call stack copies). This method removes the application-level cache
+     * reference, but residual copies of key material may remain in runtime
+     * memory until reclaimed by GC. For threat models requiring cryptographic
+     * memory hygiene at the OS level, use a hardware-backed key store outside
+     * the JavaScript runtime.
+     */
     async invalidateEncryptionCache(): Promise<void> {
       const { privateState, signingKey } = scopedNames;
       invalidateEncryptionCacheForDb(ctx.dbName, privateState, signingKey);
