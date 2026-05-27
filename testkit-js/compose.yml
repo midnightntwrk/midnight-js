@@ -1,6 +1,6 @@
 services:
   proof-server:
-    image: 'ghcr.io/midnight-ntwrk/proof-server:8.0.3'
+    image: "ghcr.io/midnight-ntwrk/proof-server:${PROOF_SERVER_VERSION}"
     container_name: proof-server_$TESTCONTAINERS_UID
     command: ['midnight-proof-server --verbose']
     ports:
@@ -15,7 +15,7 @@ services:
       start_period: 10s
 
   indexer:
-    image: 'ghcr.io/midnight-ntwrk/indexer-standalone:4.0.2'
+    image: "ghcr.io/midnight-ntwrk/indexer-standalone:${INDEXER_VERSION}"
     container_name: indexer_$TESTCONTAINERS_UID
     ports:
       - '8088'
@@ -27,6 +27,7 @@ services:
       APP__INFRA__PUB_SUB__PASSWORD: 'indexer'
       APP__INFRA__LEDGER_STATE_STORAGE__PASSWORD: 'indexer'
       APP__INFRA__SECRET: '303132333435363738393031323334353637383930313233343536373839303132'
+      APP__INFRA__SPO_NODE__BLOCKFROST_ID: 'dummy-not-using-spo'
 
     healthcheck:
       test: ['CMD-SHELL', 'cat /var/run/indexer-standalone/running']
@@ -39,7 +40,7 @@ services:
         condition: service_healthy
 
   node:
-    image: 'ghcr.io/midnight-ntwrk/midnight-node:0.22.5'
+    image: "ghcr.io/midnight-ntwrk/midnight-node:${MIDNIGHT_NODE_VERSION}"
     container_name: node_$TESTCONTAINERS_UID
     ports:
       - '9944'

@@ -212,11 +212,31 @@ git config --local tag.gpgSign true
 |----------|---------|--------|
 | `COMPACTC_VERSION` | Compact compiler version | direnv |
 | `NODE_VERSION` | Node.js version | nvm |
+| `MIDNIGHT_ENV` | Selects testkit env file (`qanet`, `preview`, `preprod`, `mainnet`, `devnet`). Defaults to `preview`. | direnv / shell |
+| `PROOF_SERVER_VERSION` | Proof-server docker image tag used by testkit compose files | `testkit-js/env/<MIDNIGHT_ENV>.env` |
+| `INDEXER_VERSION` | Indexer-standalone docker image tag used by testkit compose files | `testkit-js/env/<MIDNIGHT_ENV>.env` |
+| `MIDNIGHT_NODE_VERSION` | Midnight-node docker image tag used by testkit compose files | `testkit-js/env/<MIDNIGHT_ENV>.env` |
 
 Without direnv, set manually:
 
 ```bash
 export COMPACTC_VERSION=0.29.0
+```
+
+### Testkit environment selection
+
+`testkit-js/compose.yml` and `testkit-js/proof-server.yml` resolve their image tags from `PROOF_SERVER_VERSION`, `INDEXER_VERSION`, and `MIDNIGHT_NODE_VERSION`. The active env file is picked by `MIDNIGHT_ENV`:
+
+```bash
+MIDNIGHT_ENV=qanet direnv reload     # switch to qanet
+MIDNIGHT_ENV=mainnet direnv reload   # switch to mainnet
+```
+
+To override versions without changing the env, source the file manually before running docker compose:
+
+```bash
+set -a; . testkit-js/env/preprod.env; set +a
+docker compose -f testkit-js/compose.yml up
 ```
 
 ## Troubleshooting

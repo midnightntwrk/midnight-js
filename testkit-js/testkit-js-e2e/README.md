@@ -96,6 +96,19 @@ MN_TEST_NODE="http://custom-node:3086"
 MN_TEST_FAUCET="http://custom-faucet:3087"
 ```
 
+### Docker image versions
+
+`compose.yml` and `proof-server.yml` resolve their image tags from env vars sourced from `testkit-js/env/<MIDNIGHT_ENV>.env`:
+
+```bash
+MIDNIGHT_ENV            # qanet|preview|preprod|mainnet|devnet (default: preview)
+PROOF_SERVER_VERSION    # proof-server image tag
+INDEXER_VERSION         # indexer-standalone image tag
+MIDNIGHT_NODE_VERSION   # midnight-node image tag
+```
+
+With direnv these are exported automatically. To switch envs: `MIDNIGHT_ENV=qanet direnv reload`. See [DEVELOPMENT.md](../../DEVELOPMENT.md#testkit-environment-selection) for details.
+
 ### Usage Examples
 
 ```bash
@@ -264,7 +277,8 @@ DEBUG='testcontainers:containers' yarn e2e-debug
 # View logs
 tail -f packages/testing/logs/tests/latest.log
 
-# Check container status
+# Check container status (requires PROOF_SERVER_VERSION / INDEXER_VERSION / MIDNIGHT_NODE_VERSION
+# to be exported — direnv handles this; otherwise source the relevant env file first)
 docker compose -f compose.yml ps
 docker compose -f compose.yml logs proof-server
 ```
@@ -281,7 +295,8 @@ it('should complete operation [@slow]', async () => {
 
 #### Environment Setup
 ```bash
-# Ensure Docker is running and pull latest images
+# Ensure Docker is running and image-version env vars are set
+# (direnv exports them from testkit-js/env/<MIDNIGHT_ENV>.env; otherwise source manually)
 docker compose -f compose.yml pull
 yarn e2e
 ```
