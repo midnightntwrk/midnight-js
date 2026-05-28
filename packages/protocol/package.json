@@ -112,11 +112,11 @@
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.3.0",
-    "@vitest/coverage-v8": "^4.1.2",
-    "eslint": "^10.1.0",
-    "rollup": "^4.60.1",
+    "@vitest/coverage-v8": "^4.1.7",
+    "eslint": "^10.4.0",
+    "rollup": "^4.60.4",
     "rollup-plugin-dts": "^6.4.1",
-    "typescript": "^6.0.2",
-    "vitest": "^4.1.2"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.7"
   }
 }

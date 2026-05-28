@@ -27,7 +27,7 @@
     "deploy": "yarn npm publish --tolerate-republish"
   },
   "dependencies": {
-    "@apollo/client": "^4.1.6",
+    "@apollo/client": "^4.2.0",
     "@graphql-typed-document-node/core": "^3.2.0",
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
@@ -35,7 +35,7 @@
     "@midnight-ntwrk/midnight-js-utils": "workspace:*",
     "buffer": "^6.0.3",
     "cross-fetch": "^4.1.0",
-    "graphql": "^16.13.2",
+    "graphql": "^16.14.0",
     "graphql-ws": "^6.0.8",
     "isomorphic-ws": "^5.0.0",
     "rxjs": "^7.8.2",
@@ -47,7 +47,7 @@
     "@graphql-codegen/typescript": "^5.0.0",
     "@graphql-codegen/typescript-operations": "^5.0.8",
     "@types/ws": "^8.18.1",
-    "vitest": "^4.1.2"
+    "vitest": "^4.1.7"
   },
   "files": [
     "dist/"

@@ -29,14 +29,14 @@
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
     "@midnight-ntwrk/midnight-js-utils": "workspace:*",
-    "@noble/ciphers": "^2.0.0",
-    "@noble/hashes": "^2.0.0",
-    "abstract-level": "^3.0.0",
+    "@noble/ciphers": "^2.2.0",
+    "@noble/hashes": "^2.2.0",
+    "abstract-level": "^3.1.1",
     "buffer": "^6.0.3",
     "level": "^10.0.0",
-    "superjson": "^2.0.0"
+    "superjson": "^2.2.6"
   },
   "devDependencies": {
-    "vitest": "^4.1.2"
+    "vitest": "^4.1.7"
   }
 }

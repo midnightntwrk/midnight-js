@@ -41,6 +41,6 @@
   },
   "devDependencies": {
     "@midnight-ntwrk/midnight-js-compact": "workspace:*",
-    "vitest": "^4.1.2"
+    "vitest": "^4.1.7"
   }
 }
