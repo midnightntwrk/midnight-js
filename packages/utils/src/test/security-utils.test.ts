@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, type MockInstance, vi } from 'vitest';
 
-import { assertSafeName, assertSemVer, MAX_SAFE_NAME_LENGTH } from '../security-utils';
+import { assertSafeName, assertSemVer, MAX_SAFE_NAME_LENGTH, warnIfInsecureRemoteUrl } from '../security-utils';
 
 describe('assertSafeName', () => {
   describe('accepts valid names', () => {
@@ -127,5 +127,109 @@ describe('assertSemVer', () => {
     it('includes the label in the error', () => {
       expect(() => assertSemVer('not-a-version', 'compactc version')).toThrow(/Invalid compactc version/);
     });
+  });
+});
+
+describe('warnIfInsecureRemoteUrl', () => {
+  let warnSpy: MockInstance<typeof console.warn>;
+
+  beforeEach(() => {
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
+
+  describe('does not warn for encrypted schemes', () => {
+    it.each([
+      'https://example.com',
+      'https://indexer.testnet.midnight.network/graphql',
+      'wss://example.com',
+      'wss://indexer.testnet.midnight.network/graphql'
+    ])('does not warn for %s', (url) => {
+      warnIfInsecureRemoteUrl(url, 'test URL');
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('does not warn for unknown schemes', () => {
+    it.each([
+      'file:///tmp/foo',
+      'ftp://example.com',
+      'data:text/plain,hello'
+    ])('does not warn for %s', (url) => {
+      warnIfInsecureRemoteUrl(url, 'test URL');
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('does not warn for malformed input', () => {
+    it.each([
+      'not a url',
+      '',
+      '://missing-scheme'
+    ])('does not throw and does not warn for %s', (url) => {
+      expect(() => warnIfInsecureRemoteUrl(url, 'test URL')).not.toThrow();
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('does not warn for loopback hosts on plain schemes', () => {
+    it.each([
+      'http://localhost:8080/graphql',
+      'http://localhost/',
+      'http://127.0.0.1/',
+      'http://127.0.0.1:6300/check',
+      'http://[::1]/',
+      'http://[::1]:8080/graphql',
+      'ws://localhost:8080/',
+      'ws://127.0.0.1/',
+      'ws://[::1]/'
+    ])('does not warn for %s', (url) => {
+      warnIfInsecureRemoteUrl(url, 'test URL');
+      expect(warnSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('warns for non-loopback hosts on plain schemes', () => {
+    it.each([
+      'http://indexer.testnet.midnight.network',
+      'http://indexer.testnet.midnight.network/graphql',
+      'http://proof.testnet.midnight.network/',
+      'http://192.168.1.5',
+      'http://10.0.0.1/',
+      'ws://indexer.testnet.midnight.network',
+      'ws://indexer.testnet.midnight.network/graphql'
+    ])('warns for %s', (url) => {
+      warnIfInsecureRemoteUrl(url, 'test URL');
+      expect(warnSpy).toHaveBeenCalledOnce();
+    });
+  });
+
+  it('warning includes the supplied label and the host', () => {
+    warnIfInsecureRemoteUrl('http://indexer.testnet.midnight.network/graphql', 'indexer query URL');
+    expect(warnSpy).toHaveBeenCalledOnce();
+    const message = String(warnSpy.mock.calls[0][0]);
+    expect(message).toContain('indexer query URL');
+    expect(message).toContain('indexer.testnet.midnight.network');
+  });
+
+  it('warning for http:// suggests https:// as the secure replacement', () => {
+    warnIfInsecureRemoteUrl('http://indexer.testnet.midnight.network', 'indexer query URL');
+    expect(warnSpy).toHaveBeenCalledOnce();
+    const message = String(warnSpy.mock.calls[0][0]);
+    expect(message).toContain('http://');
+    expect(message).toContain('https://');
+    expect(message).not.toContain('wss://');
+  });
+
+  it('warning for ws:// suggests wss:// as the secure replacement', () => {
+    warnIfInsecureRemoteUrl('ws://indexer.testnet.midnight.network', 'indexer subscription URL');
+    expect(warnSpy).toHaveBeenCalledOnce();
+    const message = String(warnSpy.mock.calls[0][0]);
+    expect(message).toContain('ws://');
+    expect(message).toContain('wss://');
+    expect(message).not.toContain('https://');
   });
 });

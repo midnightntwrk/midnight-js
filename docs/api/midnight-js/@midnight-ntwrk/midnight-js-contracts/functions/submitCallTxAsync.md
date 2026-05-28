@@ -72,6 +72,12 @@ Configuration.
 A `Promise` that resolves with the transaction ID and call transaction data immediately after submission;
         or rejects with an error if the submission fails.
 
+## Remarks
+
+The returned [SubmittedCallTx](../type-aliases/SubmittedCallTx.md) is privacy-sensitive and carries the
+unproven transaction and private state via `callTxData`. See that type for
+handling guidance before logging, serializing, or transmitting the result.
+
 ## Example
 
 ```typescript

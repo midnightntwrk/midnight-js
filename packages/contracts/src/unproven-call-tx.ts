@@ -57,6 +57,12 @@ export function createUnprovenCallTxFromInitialStates<C extends Contract.Any, PC
  *
  * @param walletEncryptionPublicKey
  * @returns Data produced by the circuit call and an unproven transaction assembled from the call result.
+ *
+ * @remarks
+ * The returned {@link UnsubmittedCallTxData} is privacy-sensitive and carries
+ * the unproven transaction, ZK inputs/outputs, and next private state. See
+ * that type for handling guidance before logging, serializing, or
+ * transmitting the result.
  */
 export async function createUnprovenCallTxFromInitialStates<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   zkConfigProvider: ZKConfigProvider<string>,
@@ -302,6 +308,12 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
  * @throws IncompleteCallTxPrivateStateConfig If a `privateStateId` was given but a `privateStateProvider`
  *                                           was not. We assume that when a user gives a `privateStateId`,
  *                                           they want to update the private state store.
+ *
+ * @remarks
+ * The returned {@link UnsubmittedCallTxData} is privacy-sensitive and carries
+ * the unproven transaction, ZK inputs/outputs, and next private state. See
+ * that type for handling guidance before logging, serializing, or
+ * transmitting the result.
  */
 export async function createUnprovenCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: UnprovenCallTxProviders<C>,
