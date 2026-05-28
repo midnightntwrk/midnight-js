@@ -15,7 +15,6 @@
 
 import { createHash } from 'node:crypto';
 
-import { PasswordValidationError, validatePassword } from '@midnight-ntwrk/midnight-js-utils';
 import { Buffer } from 'buffer';
 
 import { decryptValue, getPasswordFromProvider, StorageEncryption, timingSafeEqual } from '../storage-encryption';
@@ -491,62 +490,6 @@ describe('StorageEncryption', () => {
         const result = await getPasswordFromProvider(provider);
         expect(result).toBe('Pass-abc-XYZ-12!');
       });
-    });
-  });
-
-  describe('validatePassword', () => {
-    test('throws PasswordValidationError with reason "missing" for empty password', () => {
-      try {
-        validatePassword('');
-        expect.fail('Expected throw');
-      } catch (error) {
-        expect(error).toBeInstanceOf(PasswordValidationError);
-        expect((error as PasswordValidationError).reason).toBe('missing');
-      }
-    });
-
-    test('throws PasswordValidationError with reason "too_short"', () => {
-      try {
-        validatePassword('short');
-        expect.fail('Expected throw');
-      } catch (error) {
-        expect(error).toBeInstanceOf(PasswordValidationError);
-        expect((error as PasswordValidationError).reason).toBe('too_short');
-      }
-    });
-
-    test('throws PasswordValidationError with reason "repeated_characters"', () => {
-      try {
-        validatePassword('aaaaaaaaaaaaaaaa');
-        expect.fail('Expected throw');
-      } catch (error) {
-        expect(error).toBeInstanceOf(PasswordValidationError);
-        expect((error as PasswordValidationError).reason).toBe('repeated_characters');
-      }
-    });
-
-    test('throws PasswordValidationError with reason "insufficient_classes"', () => {
-      try {
-        validatePassword('abcdefghjkmnpqrs');
-        expect.fail('Expected throw');
-      } catch (error) {
-        expect(error).toBeInstanceOf(PasswordValidationError);
-        expect((error as PasswordValidationError).reason).toBe('insufficient_classes');
-      }
-    });
-
-    test('throws PasswordValidationError with reason "sequential_pattern"', () => {
-      try {
-        validatePassword('Password-123456!');
-        expect.fail('Expected throw');
-      } catch (error) {
-        expect(error).toBeInstanceOf(PasswordValidationError);
-        expect((error as PasswordValidationError).reason).toBe('sequential_pattern');
-      }
-    });
-
-    test('accepts a compliant password', () => {
-      expect(() => validatePassword('Xk9$mP2!qR7@nL4#')).not.toThrow();
     });
   });
 });

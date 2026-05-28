@@ -26,7 +26,7 @@ import {
   type SigningKeyExport,
   SigningKeyExportError
 } from '@midnight-ntwrk/midnight-js-types';
-import { PasswordValidationError } from '@midnight-ntwrk/midnight-js-utils';
+import { PasswordValidationError,type PasswordValidationFailure } from '@midnight-ntwrk/midnight-js-utils';
 import * as crypto from 'crypto';
 import { Level } from 'level';
 import * as superjson from 'superjson';
@@ -34,6 +34,28 @@ import { vi } from 'vitest';
 
 import { type DatabaseLevel, levelPrivateStateProvider, migrateToAccountScoped } from '../index';
 import { StorageEncryption } from '../storage-encryption';
+
+const captureError = async (action: () => Promise<unknown>): Promise<unknown> => {
+  try {
+    await action();
+  } catch (error) {
+    return error;
+  }
+  return undefined;
+};
+
+const expectPasswordValidationCause = (
+  error: unknown,
+  reason: PasswordValidationFailure
+): void => {
+  expect(error).toBeInstanceOf(Error);
+  if (error instanceof Error) {
+    expect(error.cause).toBeInstanceOf(PasswordValidationError);
+    if (error.cause instanceof PasswordValidationError) {
+      expect(error.cause.reason).toBe(reason);
+    }
+  }
+};
 
 describe('Level Private State Provider', (): void => {
   const TEST_PASSWORD = 'Test-Storage-Pass8!';
@@ -467,16 +489,7 @@ describe('Level Private State Provider', (): void => {
     });
 
     describe('strict password policy on export/import', () => {
-      const captureError = async (action: () => Promise<unknown>): Promise<unknown> => {
-        try {
-          await action();
-        } catch (error) {
-          return error;
-        }
-        return undefined;
-      };
-
-      test.each([
+      test.each<[PasswordValidationFailure, string]>([
         ['too_short', 'short'],
         ['repeated_characters', 'aaaaaaaaaaaaaaaa'],
         ['insufficient_classes', 'abcdefghjkmnpqrs'],
@@ -491,11 +504,10 @@ describe('Level Private State Provider', (): void => {
         );
 
         expect(error).toBeInstanceOf(PrivateStateExportError);
-        expect((error as PrivateStateExportError).cause).toBeInstanceOf(PasswordValidationError);
-        expect(((error as PrivateStateExportError).cause as PasswordValidationError).reason).toBe(reason);
+        expectPasswordValidationCause(error, reason);
       });
 
-      test.each([
+      test.each<[PasswordValidationFailure, string]>([
         ['too_short', 'short'],
         ['repeated_characters', 'aaaaaaaaaaaaaaaa'],
         ['insufficient_classes', 'abcdefghjkmnpqrs'],
@@ -512,8 +524,7 @@ describe('Level Private State Provider', (): void => {
         );
 
         expect(error).toBeInstanceOf(PrivateStateExportError);
-        expect((error as PrivateStateExportError).cause).toBeInstanceOf(PasswordValidationError);
-        expect(((error as PrivateStateExportError).cause as PasswordValidationError).reason).toBe(reason);
+        expectPasswordValidationCause(error, reason);
       });
     });
 
@@ -1051,16 +1062,7 @@ describe('Level Private State Provider', (): void => {
     });
 
     describe('strict password policy on signing keys export/import', () => {
-      const captureError = async (action: () => Promise<unknown>): Promise<unknown> => {
-        try {
-          await action();
-        } catch (error) {
-          return error;
-        }
-        return undefined;
-      };
-
-      test.each([
+      test.each<[PasswordValidationFailure, string]>([
         ['too_short', 'short'],
         ['repeated_characters', 'aaaaaaaaaaaaaaaa'],
         ['insufficient_classes', 'abcdefghjkmnpqrs'],
@@ -1074,11 +1076,10 @@ describe('Level Private State Provider', (): void => {
         );
 
         expect(error).toBeInstanceOf(SigningKeyExportError);
-        expect((error as SigningKeyExportError).cause).toBeInstanceOf(PasswordValidationError);
-        expect(((error as SigningKeyExportError).cause as PasswordValidationError).reason).toBe(reason);
+        expectPasswordValidationCause(error, reason);
       });
 
-      test.each([
+      test.each<[PasswordValidationFailure, string]>([
         ['too_short', 'short'],
         ['repeated_characters', 'aaaaaaaaaaaaaaaa'],
         ['insufficient_classes', 'abcdefghjkmnpqrs'],
@@ -1094,8 +1095,7 @@ describe('Level Private State Provider', (): void => {
         );
 
         expect(error).toBeInstanceOf(SigningKeyExportError);
-        expect((error as SigningKeyExportError).cause).toBeInstanceOf(PasswordValidationError);
-        expect(((error as SigningKeyExportError).cause as PasswordValidationError).reason).toBe(reason);
+        expectPasswordValidationCause(error, reason);
       });
     });
 
