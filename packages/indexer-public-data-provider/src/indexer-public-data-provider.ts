@@ -48,7 +48,7 @@ import {
   SegmentFail,
   SegmentSuccess,
   SucceedEntirely} from '@midnight-ntwrk/midnight-js-types';
-import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
+import { assertIsContractAddress, warnIfInsecureRemoteUrl } from '@midnight-ntwrk/midnight-js-utils';
 import { Buffer } from 'buffer';
 import fetch from 'cross-fetch';
 import { createClient } from 'graphql-ws';
@@ -440,6 +440,8 @@ const indexerPublicDataProviderInternal = (
   if (subscriptionURLObj.protocol !== 'ws:' && subscriptionURLObj.protocol !== 'wss:') {
     throw new InvalidProtocolSchemeError(subscriptionURLObj.protocol, ['ws:', 'wss:']);
   }
+  warnIfInsecureRemoteUrl(queryURL, 'indexer query URL');
+  warnIfInsecureRemoteUrl(subscriptionURL, 'indexer subscription URL');
   // Construct the Apollo client.
   const link = new HttpLink({ fetch, uri: queryURL });
   // Retry link with exponential backoff.

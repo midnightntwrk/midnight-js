@@ -122,6 +122,18 @@ export type CallOptions<C extends Contract.Any, PCK extends Contract.ProvableCir
 
 /**
  * The private (sensitive) portions of the call result.
+ *
+ * @remarks
+ * **Privacy-sensitive type.** Every field on this type carries data the
+ * zero-knowledge proofs were designed to keep confidential: the ZK-aligned
+ * circuit input/output, the private transcript outputs from witness calls,
+ * the JS-typed circuit result, the next private state, and the next Zswap
+ * local state.
+ *
+ * Application code must not log, serialize, or transmit instances of this
+ * type. If a non-sensitive subset of the call result is needed (for example,
+ * the JS `result` value alone), extract that field explicitly rather than
+ * passing the whole object across a trust boundary.
  */
 export type CallResultPrivate<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = {
   /**
@@ -137,7 +149,7 @@ export type CallResultPrivate<C extends Contract.Any, PCK extends Contract.Prova
    */
   readonly privateTranscriptOutputs: AlignedValue[];
   /**
-   * The JS representation of the input to the circuit.
+   * The JS representation of the value returned by the circuit.
    */
   readonly result: Contract.CircuitReturnType<C, PCK>;
   /**
@@ -173,6 +185,13 @@ export type CallResultPublic = {
 
 /**
  * Contains all information resulting from circuit execution.
+ *
+ * @remarks
+ * **Privacy-sensitive type.** The `private` field is a
+ * {@link CallResultPrivate} carrying ZK-confidential data. Treat the whole
+ * object as confidential when logging, serializing, or transmitting — read
+ * only the `public` field or destructure specific non-sensitive fields rather
+ * than spreading or stringifying the whole object.
  */
 export type CallResult<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = {
   /**

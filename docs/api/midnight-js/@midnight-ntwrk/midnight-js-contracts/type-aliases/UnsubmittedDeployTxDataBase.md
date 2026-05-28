@@ -10,6 +10,14 @@
 
 Base type for data relevant to an unsubmitted deployment transaction.
 
+## Remarks
+
+**Privacy-sensitive type.** Transitively contains
+[UnsubmittedDeployTxPrivateData](UnsubmittedDeployTxPrivateData.md) via the `private` field (signing key
+and initial private state). When logging, serializing, or transmitting,
+read only the `public` field or destructure specific non-sensitive fields
+— never spread or stringify the whole object.
+
 ## Type Parameters
 
 ### C

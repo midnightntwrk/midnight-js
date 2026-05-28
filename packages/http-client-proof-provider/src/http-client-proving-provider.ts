@@ -20,6 +20,7 @@ import {
   type ProvingKeyMaterial,
   type ProvingProvider} from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { InvalidProtocolSchemeError, type ZKConfigProvider, zkConfigToProvingKeyMaterial } from '@midnight-ntwrk/midnight-js-types';
+import { warnIfInsecureRemoteUrl } from '@midnight-ntwrk/midnight-js-utils';
 import fetch from 'cross-fetch';
 import fetchBuilder from 'fetch-retry';
 
@@ -90,6 +91,8 @@ export const httpClientProvingProvider = <K extends string>(
   if (proveUrl.protocol !== 'http:' && proveUrl.protocol !== 'https:') {
     throw new InvalidProtocolSchemeError(proveUrl.protocol, ['http:', 'https:']);
   }
+
+  warnIfInsecureRemoteUrl(url, 'proof server URL');
 
   const timeout = config?.timeout ?? DEFAULT_TIMEOUT;
   const headers = config?.headers ?? {};

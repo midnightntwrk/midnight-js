@@ -33,8 +33,8 @@ export class InvalidProtocolSchemeError extends Error {
  * An error thrown when exporting private states fails.
  */
 export class PrivateStateExportError extends Error {
-  constructor(message: string) {
-    super(message);
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
     this.name = 'PrivateStateExportError';
   }
 }
@@ -43,8 +43,8 @@ export class PrivateStateExportError extends Error {
  * An error thrown when exporting signing keys fails.
  */
 export class SigningKeyExportError extends Error {
-  constructor(message: string) {
-    super(message);
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
     this.name = 'SigningKeyExportError';
   }
 }

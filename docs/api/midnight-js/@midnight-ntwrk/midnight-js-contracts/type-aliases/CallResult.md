@@ -10,6 +10,14 @@
 
 Contains all information resulting from circuit execution.
 
+## Remarks
+
+**Privacy-sensitive type.** The `private` field is a
+[CallResultPrivate](CallResultPrivate.md) carrying ZK-confidential data. Treat the whole
+object as confidential when logging, serializing, or transmitting — read
+only the `public` field or destructure specific non-sensitive fields rather
+than spreading or stringifying the whole object.
+
 ## Type Parameters
 
 ### C

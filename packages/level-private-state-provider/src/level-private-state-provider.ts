@@ -33,6 +33,7 @@ import {
   type SigningKeyExport,
   SigningKeyExportError
 } from '@midnight-ntwrk/midnight-js-types';
+import { validatePassword } from '@midnight-ntwrk/midnight-js-utils';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex, randomBytes } from '@noble/hashes/utils.js';
 import { type AbstractLevel, type AbstractSublevel } from 'abstract-level';
@@ -41,7 +42,12 @@ import { Level } from 'level';
 import * as superjson from 'superjson';
 
 import type { CryptoBackendType } from './crypto-backend';
-import { decryptValue, getPasswordFromProvider, type PrivateStoragePasswordProvider, StorageEncryption } from './storage-encryption';
+import {
+  decryptValue,
+  getPasswordFromProvider,
+  type PrivateStoragePasswordProvider,
+  StorageEncryption
+} from './storage-encryption';
 
 /**
  * The default name of the indexedDB database for Midnight.
@@ -76,7 +82,20 @@ export interface LevelPrivateStateProviderConfig {
   readonly signingKeyStoreName: string;
   /**
    * Provider function that returns the password used for encrypting private state.
-   * The password must be at least 16 characters long.
+   *
+   * The password must satisfy the strength policy enforced by `validatePassword`
+   * from `@midnight-ntwrk/midnight-js-utils`:
+   * - minimum 16 characters
+   * - at least 3 of: uppercase, lowercase, digits, special characters
+   * - no more than 3 consecutive identical characters
+   * - no sequential patterns of length 4+ (e.g. `1234`, `abcd`)
+   *
+   * The same policy is applied to custom passwords passed to
+   * {@link PrivateStateProvider.exportPrivateStates} / `exportSigningKeys` and
+   * their `importPrivateStates` / `importSigningKeys` counterparts. Violations
+   * surface as `PasswordValidationError` on storage paths, or wrapped as
+   * `PrivateStateExportError` / `SigningKeyExportError` (with `cause`) on
+   * export/import paths.
    *
    * SECURITY: Use a strong, secret password. Never use public key material
    * or other non-secret values as the password source.
@@ -598,39 +617,31 @@ interface SigningKeyPayload {
 const CURRENT_EXPORT_VERSION = 1;
 const SUPPORTED_EXPORT_VERSIONS = [1];
 const EXPECTED_SALT_LENGTH = 64; // 32 bytes as hex
-const MIN_PASSWORD_LENGTH = 16;
 
-/**
- * Validates a custom password meets minimum requirements.
- */
 const validateExportPassword = (password: string): void => {
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    throw new PrivateStateExportError(
-      `Password must be at least ${MIN_PASSWORD_LENGTH} characters`
-    );
+  try {
+    validatePassword(password);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Invalid export password';
+    throw new PrivateStateExportError(message, { cause: error });
   }
 };
 
-/**
- * Validates the salt format and length.
- */
+const validateSigningKeyExportPassword = (password: string): void => {
+  try {
+    validatePassword(password);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Invalid export password';
+    throw new SigningKeyExportError(message, { cause: error });
+  }
+};
+
 const validateSalt = (salt: string): void => {
   if (salt.length !== EXPECTED_SALT_LENGTH) {
     throw new InvalidExportFormatError('Invalid salt length');
   }
   if (!/^[0-9a-fA-F]+$/.test(salt)) {
     throw new InvalidExportFormatError('Invalid salt format');
-  }
-};
-
-/**
- * Validates a custom signing key export password meets minimum requirements.
- */
-const validateSigningKeyExportPassword = (password: string): void => {
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    throw new SigningKeyExportError(
-      `Password must be at least ${MIN_PASSWORD_LENGTH} characters`
-    );
   }
 };
 
@@ -753,14 +764,17 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
   };
 
   return {
+    /** {@inheritDoc PrivateStateProvider.setContractAddress} */
     setContractAddress(address: ContractAddress): void {
       contractAddress = address;
     },
+    /** {@inheritDoc PrivateStateProvider.get} */
     async get(privateStateId: PSI): Promise<PS | null> {
       const { privateState } = scopedNames;
       const scopedKey = getScopedKey(privateStateId);
       return subLevelMaybeGet<string, PS>(ctx, privateState, scopedKey, passwordProvider);
     },
+    /** {@inheritDoc PrivateStateProvider.remove} */
     async remove(privateStateId: PSI): Promise<void> {
       const { privateState } = scopedNames;
       await waitForRotationLock(ctx.dbName, privateState);
@@ -769,6 +783,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
         subLevel.del(scopedKey),
       );
     },
+    /** {@inheritDoc PrivateStateProvider.set} */
     async set(privateStateId: PSI, state: PS): Promise<void> {
       const { privateState } = scopedNames;
       await waitForRotationLock(ctx.dbName, privateState);
@@ -781,6 +796,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
         subLevel.put(scopedKey, encrypted),
       );
     },
+    /** {@inheritDoc PrivateStateProvider.clear} */
     async clear(): Promise<void> {
       if (contractAddress === null) {
         throw new Error('Contract address not set. Call setContractAddress() before accessing private state.');
@@ -788,10 +804,12 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       const { privateState } = scopedNames;
       return withSubLevel(ctx, privateState, (subLevel) => subLevel.clear());
     },
+    /** {@inheritDoc PrivateStateProvider.getSigningKey} */
     async getSigningKey(address: ContractAddress): Promise<SigningKey | null> {
       const { signingKey } = scopedNames;
       return subLevelMaybeGet<ContractAddress, SigningKey>(ctx, signingKey, address, passwordProvider);
     },
+    /** {@inheritDoc PrivateStateProvider.removeSigningKey} */
     async removeSigningKey(address: ContractAddress): Promise<void> {
       const { signingKey } = scopedNames;
       await waitForRotationLock(ctx.dbName, signingKey);
@@ -799,6 +817,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
         subLevel.del(address),
       );
     },
+    /** {@inheritDoc PrivateStateProvider.setSigningKey} */
     async setSigningKey(address: ContractAddress, signingKey: SigningKey): Promise<void> {
       const { signingKey: signingKeyLevelName } = scopedNames;
       await waitForRotationLock(ctx.dbName, signingKeyLevelName);
@@ -810,11 +829,13 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
         subLevel.put(address, encrypted),
       );
     },
+    /** {@inheritDoc PrivateStateProvider.clearSigningKeys} */
     async clearSigningKeys(): Promise<void> {
       const { signingKey } = scopedNames;
       return withSubLevel(ctx, signingKey, (subLevel) => subLevel.clear());
     },
 
+    /** {@inheritDoc PrivateStateProvider.exportPrivateStates} */
     async exportPrivateStates(options?: ExportPrivateStatesOptions): Promise<PrivateStateExport> {
       if (contractAddress === null) {
         throw new Error('Contract address not set. Call setContractAddress() before exporting private states.');
@@ -876,6 +897,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       };
     },
 
+    /** {@inheritDoc PrivateStateProvider.importPrivateStates} */
     async importPrivateStates(
       exportData: PrivateStateExport,
       options?: ImportPrivateStatesOptions
@@ -996,6 +1018,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       return { imported, skipped, overwritten };
     },
 
+    /** {@inheritDoc PrivateStateProvider.exportSigningKeys} */
     async exportSigningKeys(options?: ExportSigningKeysOptions): Promise<SigningKeyExport> {
       const maxKeys = options?.maxKeys ?? MAX_EXPORT_SIGNING_KEYS;
 
@@ -1035,6 +1058,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       };
     },
 
+    /** {@inheritDoc PrivateStateProvider.importSigningKeys} */
     async importSigningKeys(
       exportData: SigningKeyExport,
       options?: ImportSigningKeysOptions
@@ -1187,6 +1211,46 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       });
     },
 
+    /**
+     * Clears the cached encryption key from process memory.
+     *
+     * @remarks
+     * This method is only available on the object returned by
+     * {@link levelPrivateStateProvider}; it is not part of the
+     * {@link PrivateStateProvider} interface contract. Code that needs to
+     * call it must hold a reference to the level-provider value rather than
+     * to the interface.
+     *
+     * The provider caches the PBKDF2-derived AES key in memory after the first
+     * read or write, because re-deriving it on every operation (600,000
+     * iterations) would be prohibitively slow. Call this method when the
+     * application reaches a logical security boundary — for example:
+     *
+     * - user logout
+     * - session timeout
+     * - app lock / screen lock
+     * - before producing any in-process snapshot that could capture
+     *   heap contents (e.g., a debug heap dump or core dump)
+     *
+     * This method does **not** protect on-disk backups of the LevelDB store:
+     * the encrypted store is already on disk, the in-memory key is not part
+     * of the backup, and clearing the cache before copying the database
+     * files changes nothing about the resulting backup. To produce a
+     * portable, separately-passworded backup, use
+     * {@link PrivateStateProvider.exportPrivateStates} instead.
+     *
+     * Subsequent operations will request the password from the configured
+     * provider and re-derive the key on first access.
+     *
+     * **Limitations.** JavaScript does not guarantee immediate erasure of
+     * memory due to immutable strings, non-deterministic garbage collection,
+     * and V8 runtime internals (string interning, JIT artifacts, function
+     * call stack copies). This method removes the application-level cache
+     * reference, but residual copies of key material may remain in runtime
+     * memory until reclaimed by GC. For threat models requiring cryptographic
+     * memory hygiene at the OS level, use a hardware-backed key store outside
+     * the JavaScript runtime.
+     */
     async invalidateEncryptionCache(): Promise<void> {
       const { privateState, signingKey } = scopedNames;
       invalidateEncryptionCacheForDb(ctx.dbName, privateState, signingKey);

@@ -16,5 +16,6 @@
 export * from './assertion-utils';
 export * from './date-utils';
 export * from './hex-utils';
+export * from './password-validation';
 export * from './security-utils';
 export * from './type-utils';

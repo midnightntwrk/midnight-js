@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { validatePassword } from '@midnight-ntwrk/midnight-js-utils';
 import { Buffer } from 'buffer';
 
 import { type CryptoBackend, type CryptoBackendType, resolveCryptoBackend } from './crypto-backend';
@@ -206,100 +207,6 @@ export class StorageEncryption {
     return Buffer.from(this.salt);
   }
 }
-
-const MIN_PASSWORD_LENGTH = 16;
-const MIN_CHARACTER_CLASSES = 3;
-const MAX_CONSECUTIVE_REPEATED = 3;
-const MIN_SEQUENTIAL_LENGTH = 4;
-
-const countCharacterClasses = (password: string): number => {
-  let count = 0;
-  if (/[a-z]/.test(password)) count++;
-  if (/[A-Z]/.test(password)) count++;
-  if (/[0-9]/.test(password)) count++;
-  if (/[^a-zA-Z0-9]/.test(password)) count++;
-  return count;
-};
-
-const hasRepeatedCharacters = (password: string): boolean => {
-  let consecutiveCount = 1;
-  for (let i = 1; i < password.length; i++) {
-    if (password[i] === password[i - 1]) {
-      consecutiveCount++;
-      if (consecutiveCount > MAX_CONSECUTIVE_REPEATED) {
-        return true;
-      }
-    } else {
-      consecutiveCount = 1;
-    }
-  }
-  return false;
-};
-
-const hasSequentialPattern = (password: string): boolean => {
-  const lowerPassword = password.toLowerCase();
-
-  for (let i = 0; i <= lowerPassword.length - MIN_SEQUENTIAL_LENGTH; i++) {
-    let ascendingCount = 1;
-    let descendingCount = 1;
-
-    for (let j = 1; j < MIN_SEQUENTIAL_LENGTH; j++) {
-      const currentCode = lowerPassword.charCodeAt(i + j);
-      const prevCode = lowerPassword.charCodeAt(i + j - 1);
-
-      if (currentCode === prevCode + 1) {
-        ascendingCount++;
-      } else {
-        ascendingCount = 1;
-      }
-
-      if (currentCode === prevCode - 1) {
-        descendingCount++;
-      } else {
-        descendingCount = 1;
-      }
-
-      if (ascendingCount >= MIN_SEQUENTIAL_LENGTH || descendingCount >= MIN_SEQUENTIAL_LENGTH) {
-        return true;
-      }
-    }
-  }
-  return false;
-};
-
-const validatePassword = (password: string): void => {
-  if (!password) {
-    throw new Error(
-      'Password is required for private state encryption.\n' +
-        'Please provide a password via privateStoragePasswordProvider in the configuration.'
-    );
-  }
-
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    throw new Error(
-      `Password must be at least ${MIN_PASSWORD_LENGTH} characters long. Current length: ${password.length}`
-    );
-  }
-
-  if (hasRepeatedCharacters(password)) {
-    throw new Error(
-      `Password contains too many repeated characters (more than ${MAX_CONSECUTIVE_REPEATED} identical in a row)`
-    );
-  }
-
-  const characterClasses = countCharacterClasses(password);
-  if (characterClasses < MIN_CHARACTER_CLASSES) {
-    throw new Error(
-      `Password must contain at least ${MIN_CHARACTER_CLASSES} of: uppercase letters, lowercase letters, digits, special characters. Found: ${characterClasses}`
-    );
-  }
-
-  if (hasSequentialPattern(password)) {
-    throw new Error(
-      "Password contains sequential patterns (e.g., '1234', 'abcd'). Use a more random password"
-    );
-  }
-};
 
 export const getPasswordFromProvider = async (provider: PrivateStoragePasswordProvider): Promise<string> => {
   const password = await provider();
