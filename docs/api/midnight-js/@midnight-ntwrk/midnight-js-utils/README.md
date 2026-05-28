@@ -6,13 +6,22 @@
 
 # @midnight-ntwrk/midnight-js-utils
 
+## Classes
+
+- [PasswordValidationError](classes/PasswordValidationError.md)
+
 ## Type Aliases
 
 - [ParsedHexString](type-aliases/ParsedHexString.md)
+- [PasswordValidationFailure](type-aliases/PasswordValidationFailure.md)
 
 ## Variables
 
+- [MAX\_CONSECUTIVE\_REPEATED](variables/MAX_CONSECUTIVE_REPEATED.md)
 - [MAX\_SAFE\_NAME\_LENGTH](variables/MAX_SAFE_NAME_LENGTH.md)
+- [MIN\_CHARACTER\_CLASSES](variables/MIN_CHARACTER_CLASSES.md)
+- [MIN\_PASSWORD\_LENGTH](variables/MIN_PASSWORD_LENGTH.md)
+- [MIN\_SEQUENTIAL\_LENGTH](variables/MIN_SEQUENTIAL_LENGTH.md)
 
 ## Functions
 
@@ -29,3 +38,5 @@
 - [parseHex](functions/parseHex.md)
 - [toHex](functions/toHex.md)
 - [ttlOneHour](functions/ttlOneHour.md)
+- [validatePassword](functions/validatePassword.md)
+- [warnIfInsecureRemoteUrl](functions/warnIfInsecureRemoteUrl.md)

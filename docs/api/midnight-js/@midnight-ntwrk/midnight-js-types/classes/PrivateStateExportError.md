@@ -16,13 +16,17 @@ An error thrown when exporting private states fails.
 
 ### Constructor
 
-> **new PrivateStateExportError**(`message`): `PrivateStateExportError`
+> **new PrivateStateExportError**(`message`, `options?`): `PrivateStateExportError`
 
 #### Parameters
 
 ##### message
 
 `string`
+
+##### options?
+
+`ErrorOptions`
 
 #### Returns
 
