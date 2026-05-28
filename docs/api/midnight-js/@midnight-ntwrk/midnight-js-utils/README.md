@@ -29,3 +29,4 @@
 - [parseHex](functions/parseHex.md)
 - [toHex](functions/toHex.md)
 - [ttlOneHour](functions/ttlOneHour.md)
+- [warnIfInsecureRemoteUrl](functions/warnIfInsecureRemoteUrl.md)
