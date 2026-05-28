@@ -16,13 +16,17 @@ An error thrown when exporting signing keys fails.
 
 ### Constructor
 
-> **new SigningKeyExportError**(`message`): `SigningKeyExportError`
+> **new SigningKeyExportError**(`message`, `options?`): `SigningKeyExportError`
 
 #### Parameters
 
 ##### message
 
 `string`
+
+##### options?
+
+`ErrorOptions`
 
 #### Returns
 
