@@ -47,7 +47,7 @@
     "@midnight-ntwrk/wallet-sdk-prover-client": "^1.2.1",
     "@midnight-ntwrk/zkir-v2": "2.1.0",
     "@scure/bip39": "^2.0.1",
-    "axios": "^1.15.0",
+    "axios": "^1.16.1",
     "buffer": "^6.0.3",
     "cross-fetch": "^4.1.0",
     "pino": "^10.0.0",
