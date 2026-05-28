@@ -17,6 +17,13 @@ Configuration.
 
 ## Param
 
+## Remarks
+
+The returned [UnsubmittedCallTxData](../type-aliases/UnsubmittedCallTxData.md) is privacy-sensitive and carries
+the unproven transaction, ZK inputs/outputs, and next private state. See
+that type for handling guidance before logging, serializing, or
+transmitting the result.
+
 ## Call Signature
 
 > **createUnprovenCallTxFromInitialStates**\<`C`, `PCK`\>(`zkConfigProvider`, `options`, `walletEncryptionPublicKey`): `Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>

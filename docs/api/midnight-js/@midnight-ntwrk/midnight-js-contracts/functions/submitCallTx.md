@@ -46,6 +46,13 @@ Optional scoped transaction context to participate in an
 When transaction fails in either guaranteed or fallible phase.
         The error contains the finalized transaction data and circuit ID for debugging.
 
+## Remarks
+
+The returned [FinalizedCallTxData](../type-aliases/FinalizedCallTxData.md) (and the [CallResult](../type-aliases/CallResult.md) variant)
+is privacy-sensitive and carries the unproven transaction and private
+state. See those types for handling guidance before logging, serializing,
+or transmitting the result.
+
 ## Call Signature
 
 > **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`FinalizedCallTxData`](../type-aliases/FinalizedCallTxData.md)\<`C`, `PCK`\>\>

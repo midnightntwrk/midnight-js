@@ -44,6 +44,13 @@ Configuration.
 When transaction fails in either guaranteed or fallible phase.
         The error contains the finalized transaction data for debugging.
 
+## Remarks
+
+The returned [FinalizedDeployTxData](../type-aliases/FinalizedDeployTxData.md) is privacy-sensitive and carries
+the unproven transaction, signing key, and initial private state. See that
+type for handling guidance before logging, serializing, or transmitting the
+result.
+
 ## Call Signature
 
 > **submitDeployTx**\<`C`\>(`providers`, `options`): `Promise`\<[`FinalizedDeployTxData`](../type-aliases/FinalizedDeployTxData.md)\<`C`\>\>

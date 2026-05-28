@@ -10,6 +10,20 @@
 
 Data relevant to any unsubmitted transaction.
 
+## Remarks
+
+**Privacy-sensitive type.** Every field on this type is private: the
+`unprovenTx` field carries the `UnprovenTransaction` that the underlying
+zero-knowledge proofs were designed to keep confidential, and `newCoins`
+includes shielded coin material that must not leak.
+
+Application code must not log, serialize, or transmit instances of this
+type. The framework deliberately exposes these references to support
+retry, replay, debug, and redacted-telemetry workflows that require
+access to the underlying transaction structure — raw transmission to
+observability platforms (log shippers, error reporters, analytics) is
+not an intended use.
+
 ## Properties
 
 ### newCoins
