@@ -112,7 +112,7 @@ export const validatePassword = (password: string): void => {
 
   if (password.length < MIN_PASSWORD_LENGTH) {
     throw new PasswordValidationError(
-      `Password must be at least ${MIN_PASSWORD_LENGTH} characters long. Current length: ${password.length}`,
+      `Password is shorter than ${MIN_PASSWORD_LENGTH} characters`,
       'too_short'
     );
   }

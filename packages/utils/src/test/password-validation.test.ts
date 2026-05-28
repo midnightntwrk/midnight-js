@@ -37,14 +37,15 @@ describe('validatePassword', () => {
       }
     });
 
-    it('reports the actual password length for "too_short"', () => {
+    it('does not leak actual password length in the "too_short" message', () => {
       try {
         validatePassword('short');
         expect.fail('Expected PasswordValidationError to be thrown');
       } catch (error) {
         expect(error).toBeInstanceOf(PasswordValidationError);
         if (error instanceof PasswordValidationError) {
-          expect(error.message).toContain('Current length: 5');
+          expect(error.message).not.toMatch(/length/i);
+          expect(error.message).not.toContain('5');
         }
       }
     });
