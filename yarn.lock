@@ -1859,6 +1859,7 @@ __metadata:
   dependencies:
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
+    "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     "@noble/ciphers": "npm:^2.0.0"
     "@noble/hashes": "npm:^2.0.0"
     abstract-level: "npm:^3.0.0"

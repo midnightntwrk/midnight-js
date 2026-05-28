@@ -26,6 +26,7 @@ import {
   type SigningKeyExport,
   SigningKeyExportError
 } from '@midnight-ntwrk/midnight-js-types';
+import { PasswordValidationError } from '@midnight-ntwrk/midnight-js-utils';
 import * as crypto from 'crypto';
 import { Level } from 'level';
 import * as superjson from 'superjson';
@@ -463,6 +464,57 @@ describe('Level Private State Provider', (): void => {
       await expect(
         db.importPrivateStates(exportData, { password: 'short' })
       ).rejects.toThrow(PrivateStateExportError);
+    });
+
+    describe('strict password policy on export/import', () => {
+      const captureError = async (action: () => Promise<unknown>): Promise<unknown> => {
+        try {
+          await action();
+        } catch (error) {
+          return error;
+        }
+        return undefined;
+      };
+
+      test.each([
+        ['too_short', 'short'],
+        ['repeated_characters', 'aaaaaaaaaaaaaaaa'],
+        ['insufficient_classes', 'abcdefghjkmnpqrs'],
+        ['sequential_pattern', 'Password-123456!']
+      ])('exportPrivateStates rejects weak password (%s)', async (reason, weakPassword) => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+        db.setContractAddress(TEST_CONTRACT_ADDRESS);
+        await db.set('stringValue', testStates.stringValue);
+
+        const error = await captureError(() =>
+          db.exportPrivateStates({ password: weakPassword })
+        );
+
+        expect(error).toBeInstanceOf(PrivateStateExportError);
+        expect((error as PrivateStateExportError).cause).toBeInstanceOf(PasswordValidationError);
+        expect(((error as PrivateStateExportError).cause as PasswordValidationError).reason).toBe(reason);
+      });
+
+      test.each([
+        ['too_short', 'short'],
+        ['repeated_characters', 'aaaaaaaaaaaaaaaa'],
+        ['insufficient_classes', 'abcdefghjkmnpqrs'],
+        ['sequential_pattern', 'Password-123456!']
+      ])('importPrivateStates rejects weak password (%s)', async (reason, weakPassword) => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+        db.setContractAddress(TEST_CONTRACT_ADDRESS);
+        await db.set('stringValue', testStates.stringValue);
+        const exportData = await db.exportPrivateStates({ password: EXPORT_PASSWORD });
+        await db.clear();
+
+        const error = await captureError(() =>
+          db.importPrivateStates(exportData, { password: weakPassword })
+        );
+
+        expect(error).toBeInstanceOf(PrivateStateExportError);
+        expect((error as PrivateStateExportError).cause).toBeInstanceOf(PasswordValidationError);
+        expect(((error as PrivateStateExportError).cause as PasswordValidationError).reason).toBe(reason);
+      });
     });
 
     test('throws ImportConflictError when conflict strategy is error (default)', async () => {
@@ -907,7 +959,7 @@ describe('Level Private State Provider', (): void => {
   });
 
   describe('Signing Key Export/Import', () => {
-    const EXPORT_PASSWORD = 'export-test-password-1234';
+    const EXPORT_PASSWORD = 'Sk-Export-Test-Pass9!';
     const CONTRACT_ADDRESS_1 = 'contract-address-1' as ContractAddress;
     const CONTRACT_ADDRESS_2 = 'contract-address-2' as ContractAddress;
 
@@ -965,7 +1017,7 @@ describe('Level Private State Provider', (): void => {
       await db.clearSigningKeys();
 
       await expect(
-        db.importSigningKeys(exportData, { password: 'wrong-password-12345' })
+        db.importSigningKeys(exportData, { password: 'Wrong-Pass8-Test!!' })
       ).rejects.toThrow(ExportDecryptionError);
     });
 
@@ -996,6 +1048,55 @@ describe('Level Private State Provider', (): void => {
       await expect(
         db.importSigningKeys(exportData, { password: 'short' })
       ).rejects.toThrow(SigningKeyExportError);
+    });
+
+    describe('strict password policy on signing keys export/import', () => {
+      const captureError = async (action: () => Promise<unknown>): Promise<unknown> => {
+        try {
+          await action();
+        } catch (error) {
+          return error;
+        }
+        return undefined;
+      };
+
+      test.each([
+        ['too_short', 'short'],
+        ['repeated_characters', 'aaaaaaaaaaaaaaaa'],
+        ['insufficient_classes', 'abcdefghjkmnpqrs'],
+        ['sequential_pattern', 'Password-123456!']
+      ])('exportSigningKeys rejects weak password (%s)', async (reason, weakPassword) => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+        await db.setSigningKey(CONTRACT_ADDRESS_1, sampleSigningKey());
+
+        const error = await captureError(() =>
+          db.exportSigningKeys({ password: weakPassword })
+        );
+
+        expect(error).toBeInstanceOf(SigningKeyExportError);
+        expect((error as SigningKeyExportError).cause).toBeInstanceOf(PasswordValidationError);
+        expect(((error as SigningKeyExportError).cause as PasswordValidationError).reason).toBe(reason);
+      });
+
+      test.each([
+        ['too_short', 'short'],
+        ['repeated_characters', 'aaaaaaaaaaaaaaaa'],
+        ['insufficient_classes', 'abcdefghjkmnpqrs'],
+        ['sequential_pattern', 'Password-123456!']
+      ])('importSigningKeys rejects weak password (%s)', async (reason, weakPassword) => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+        await db.setSigningKey(CONTRACT_ADDRESS_1, sampleSigningKey());
+        const exportData = await db.exportSigningKeys({ password: EXPORT_PASSWORD });
+        await db.clearSigningKeys();
+
+        const error = await captureError(() =>
+          db.importSigningKeys(exportData, { password: weakPassword })
+        );
+
+        expect(error).toBeInstanceOf(SigningKeyExportError);
+        expect((error as SigningKeyExportError).cause).toBeInstanceOf(PasswordValidationError);
+        expect(((error as SigningKeyExportError).cause as PasswordValidationError).reason).toBe(reason);
+      });
     });
 
     test('throws ImportConflictError when conflict strategy is error (default)', async () => {
@@ -1168,7 +1269,7 @@ describe('Level Private State Provider', (): void => {
     });
 
     describe('malformed data edge cases', () => {
-      const VALID_PASSWORD = 'valid-password-for-test';
+      const VALID_PASSWORD = 'Valid-Pass9-Test!@';
 
       test('throws ExportDecryptionError for garbage base64 payload', async () => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);

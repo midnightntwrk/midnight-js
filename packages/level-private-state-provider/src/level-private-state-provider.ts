@@ -33,6 +33,7 @@ import {
   type SigningKeyExport,
   SigningKeyExportError
 } from '@midnight-ntwrk/midnight-js-types';
+import { validatePassword } from '@midnight-ntwrk/midnight-js-utils';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex, randomBytes } from '@noble/hashes/utils.js';
 import { type AbstractLevel, type AbstractSublevel } from 'abstract-level';
@@ -41,7 +42,12 @@ import { Level } from 'level';
 import * as superjson from 'superjson';
 
 import type { CryptoBackendType } from './crypto-backend';
-import { decryptValue, getPasswordFromProvider, type PrivateStoragePasswordProvider, StorageEncryption } from './storage-encryption';
+import {
+  decryptValue,
+  getPasswordFromProvider,
+  type PrivateStoragePasswordProvider,
+  StorageEncryption
+} from './storage-encryption';
 
 /**
  * The default name of the indexedDB database for Midnight.
@@ -598,39 +604,31 @@ interface SigningKeyPayload {
 const CURRENT_EXPORT_VERSION = 1;
 const SUPPORTED_EXPORT_VERSIONS = [1];
 const EXPECTED_SALT_LENGTH = 64; // 32 bytes as hex
-const MIN_PASSWORD_LENGTH = 16;
 
-/**
- * Validates a custom password meets minimum requirements.
- */
 const validateExportPassword = (password: string): void => {
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    throw new PrivateStateExportError(
-      `Password must be at least ${MIN_PASSWORD_LENGTH} characters`
-    );
+  try {
+    validatePassword(password);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Invalid export password';
+    throw new PrivateStateExportError(message, { cause: error });
   }
 };
 
-/**
- * Validates the salt format and length.
- */
+const validateSigningKeyExportPassword = (password: string): void => {
+  try {
+    validatePassword(password);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Invalid export password';
+    throw new SigningKeyExportError(message, { cause: error });
+  }
+};
+
 const validateSalt = (salt: string): void => {
   if (salt.length !== EXPECTED_SALT_LENGTH) {
     throw new InvalidExportFormatError('Invalid salt length');
   }
   if (!/^[0-9a-fA-F]+$/.test(salt)) {
     throw new InvalidExportFormatError('Invalid salt format');
-  }
-};
-
-/**
- * Validates a custom signing key export password meets minimum requirements.
- */
-const validateSigningKeyExportPassword = (password: string): void => {
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    throw new SigningKeyExportError(
-      `Password must be at least ${MIN_PASSWORD_LENGTH} characters`
-    );
   }
 };
 
