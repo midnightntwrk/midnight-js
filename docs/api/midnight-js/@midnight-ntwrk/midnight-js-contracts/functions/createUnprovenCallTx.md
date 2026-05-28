@@ -28,6 +28,13 @@ IncompleteCallTxPrivateStateConfig If a `privateStateId` was given but a `privat
                                           was not. We assume that when a user gives a `privateStateId`,
                                           they want to update the private state store.
 
+## Remarks
+
+The returned [UnsubmittedCallTxData](../type-aliases/UnsubmittedCallTxData.md) is privacy-sensitive and carries
+the unproven transaction, ZK inputs/outputs, and next private state. See
+that type for handling guidance before logging, serializing, or
+transmitting the result.
+
 ## Call Signature
 
 > **createUnprovenCallTx**\<`C`, `PCK`\>(`providers`, `options`, `transactionContext?`): `Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>

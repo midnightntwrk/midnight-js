@@ -11,6 +11,15 @@
 Data returned from an asynchronous call transaction submission.
 Contains the transaction ID and call transaction data without waiting for finalization.
 
+## Remarks
+
+**Privacy-sensitive type.** The `callTxData` field carries
+[UnsubmittedCallTxData](UnsubmittedCallTxData.md) and transitively the `UnprovenTransaction`
+and the call's private state. Treat as confidential when logging,
+serializing, or transmitting — read only `txId` or destructure specific
+non-sensitive fields rather than spreading or stringifying the whole
+object.
+
 ## Type Parameters
 
 ### C

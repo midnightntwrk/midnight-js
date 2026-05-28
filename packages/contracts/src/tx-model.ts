@@ -24,6 +24,19 @@ import type { CallResult } from './call';
 
 /**
  * Data relevant to any unsubmitted transaction.
+ *
+ * @remarks
+ * **Privacy-sensitive type.** Every field on this type is private: the
+ * `unprovenTx` field carries the `UnprovenTransaction` that the underlying
+ * zero-knowledge proofs were designed to keep confidential, and `newCoins`
+ * includes shielded coin material that must not leak.
+ *
+ * Application code must not log, serialize, or transmit instances of this
+ * type. The framework deliberately exposes these references to support
+ * retry, replay, debug, and redacted-telemetry workflows that require
+ * access to the underlying transaction structure — raw transmission to
+ * observability platforms (log shippers, error reporters, analytics) is
+ * not an intended use.
  */
 export type UnsubmittedTxData = {
   /**
@@ -52,6 +65,17 @@ export type UnsubmittedDeployTxPublicData = {
 
 /**
  * Base type for private data relevant to an unsubmitted deployment transaction.
+ *
+ * @remarks
+ * **Privacy-sensitive type.** The `signingKey` field carries the contract's
+ * maintenance authority, and `initialPrivateState` carries application-defined
+ * private state that the zero-knowledge proofs were designed to keep
+ * confidential. Every field on this type is private.
+ *
+ * Application code must not log, serialize, or transmit instances of this
+ * type. If a non-sensitive identifier derived from the deployment is needed,
+ * compute it explicitly outside this type rather than passing the whole
+ * object across a trust boundary.
  */
 export type UnsubmittedDeployTxPrivateData<C extends Contract.Any> = {
   /**
@@ -67,6 +91,13 @@ export type UnsubmittedDeployTxPrivateData<C extends Contract.Any> = {
 
 /**
  * Base type for data relevant to an unsubmitted deployment transaction.
+ *
+ * @remarks
+ * **Privacy-sensitive type.** Transitively contains
+ * {@link UnsubmittedDeployTxPrivateData} via the `private` field (signing key
+ * and initial private state). When logging, serializing, or transmitting,
+ * read only the `public` field or destructure specific non-sensitive fields
+ * — never spread or stringify the whole object.
  */
 export type UnsubmittedDeployTxDataBase<C extends Contract.Any> = {
   /**
@@ -81,6 +112,14 @@ export type UnsubmittedDeployTxDataBase<C extends Contract.Any> = {
 
 /**
  * Data for an unsubmitted deployment transaction.
+ *
+ * @remarks
+ * **Privacy-sensitive type.** Extends {@link UnsubmittedDeployTxDataBase} and
+ * further embeds {@link UnsubmittedTxData} (carrying the
+ * `UnprovenTransaction`) plus the contract constructor's
+ * `initialZswapState` under the `private` field. When logging, serializing,
+ * or transmitting, read only the `public` field or destructure specific
+ * non-sensitive fields — never spread or stringify the whole object.
  */
 export type UnsubmittedDeployTxData<C extends Contract.Any> = UnsubmittedDeployTxDataBase<C> & {
   /**
@@ -97,6 +136,13 @@ export type UnsubmittedDeployTxData<C extends Contract.Any> = UnsubmittedDeployT
 
 /**
  * Data for a finalized deploy transaction submitted in this process.
+ *
+ * @remarks
+ * **Privacy-sensitive type.** Inherits {@link UnsubmittedDeployTxDataBase}'s
+ * `private` field (signing key, initial private state). Treat as confidential
+ * when logging, serializing, or transmitting — destructure only the
+ * non-sensitive fields (`public.txId`, `public.blockHeight`, etc.) rather
+ * than spreading or stringifying the whole object.
  */
 export type FinalizedDeployTxDataBase<C extends Contract.Any> = UnsubmittedDeployTxDataBase<C> & {
   /**
@@ -107,6 +153,20 @@ export type FinalizedDeployTxDataBase<C extends Contract.Any> = UnsubmittedDeplo
 
 /**
  * Data for a finalized deploy transaction submitted in this process.
+ *
+ * @remarks
+ * **Privacy-sensitive type.** Inherits {@link UnsubmittedDeployTxData}'s
+ * `private` field, which transitively carries the `UnprovenTransaction`,
+ * `newCoins`, signing key, initial private state, and `initialZswapState`.
+ * Treat as confidential when logging, serializing, or transmitting —
+ * destructure only the non-sensitive fields (`public.txId`,
+ * `public.blockHeight`, etc.) rather than spreading or stringifying the whole
+ * object.
+ *
+ * The framework deliberately exposes these references to support retry,
+ * replay, debug, and redacted-telemetry workflows — raw transmission to
+ * observability platforms (log shippers, error reporters, analytics) is
+ * not an intended use.
  */
 export type FinalizedDeployTxData<C extends Contract.Any> = UnsubmittedDeployTxData<C> & {
   /**
@@ -117,6 +177,15 @@ export type FinalizedDeployTxData<C extends Contract.Any> = UnsubmittedDeployTxD
 
 /**
  * Data for an unsubmitted call transaction.
+ *
+ * @remarks
+ * **Privacy-sensitive type.** Intersects {@link CallResult} (whose `private`
+ * field exposes ZK inputs/outputs, the private transcript outputs, and the
+ * next private state) with an additional {@link UnsubmittedTxData} under
+ * `private` (carrying the `UnprovenTransaction` and new shielded
+ * coins). Treat as confidential when logging, serializing, or transmitting —
+ * destructure specific non-sensitive fields rather than spreading or
+ * stringifying the whole object.
  */
 export type UnsubmittedCallTxData<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = CallResult<C, PCK> & {
   /**
@@ -127,6 +196,20 @@ export type UnsubmittedCallTxData<C extends Contract.Any, PCK extends Contract.P
 
 /**
  * Data for a submitted, finalized call transaction.
+ *
+ * @remarks
+ * **Privacy-sensitive type.** Inherits {@link UnsubmittedCallTxData}'s
+ * `private` field, which transitively carries the `UnprovenTransaction`,
+ * new shielded coins, ZK inputs/outputs, the private transcript outputs, and
+ * the next private state. Treat as confidential when logging, serializing, or
+ * transmitting — destructure only the non-sensitive fields (`public.txId`,
+ * `public.blockHeight`, etc.) rather than spreading or stringifying the whole
+ * object.
+ *
+ * The framework deliberately exposes these references to support retry,
+ * replay, debug, and redacted-telemetry workflows — raw transmission to
+ * observability platforms (log shippers, error reporters, analytics) is
+ * not an intended use.
  */
 export type FinalizedCallTxData<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = UnsubmittedCallTxData<C, PCK> & {
   /**
@@ -138,6 +221,14 @@ export type FinalizedCallTxData<C extends Contract.Any, PCK extends Contract.Pro
 /**
  * Data returned from an asynchronous call transaction submission.
  * Contains the transaction ID and call transaction data without waiting for finalization.
+ *
+ * @remarks
+ * **Privacy-sensitive type.** The `callTxData` field carries
+ * {@link UnsubmittedCallTxData} and transitively the `UnprovenTransaction`
+ * and the call's private state. Treat as confidential when logging,
+ * serializing, or transmitting — read only `txId` or destructure specific
+ * non-sensitive fields rather than spreading or stringifying the whole
+ * object.
  */
 export type SubmittedCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = {
   /**
