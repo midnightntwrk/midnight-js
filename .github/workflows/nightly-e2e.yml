@@ -1,0 +1,40 @@
+name: Nightly E2E
+
+# Runs the testkit-js e2e suite nightly against the local docker stack,
+# rotating the docker image version set (TESTKIT_DOCKER_ENV) across all five
+# environments defined in testkit-js/env/. MN_TEST_ENVIRONMENT stays at
+# 'undeployed' for every matrix entry — we are not testing against live
+# networks here, only verifying the suite works against each image-version
+# combination.
+
+on:
+  schedule:
+    - cron: '0 2 * * *'   # 02:00 UTC daily
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: read
+  id-token: write
+  packages: write
+  checks: write
+  pull-requests: write
+
+concurrency:
+  group: nightly-e2e
+  cancel-in-progress: false
+
+jobs:
+  e2e:
+    name: e2e (${{ matrix.image_versions }})
+    strategy:
+      fail-fast: false
+      matrix:
+        image_versions: [qanet, preview, preprod, mainnet, devnet]
+    uses: ./.github/workflows/ci-testkit-js.yml
+    with:
+      should_run: 'true'
+      should_prerelease: 'false'
+      network: 'undeployed'
+      testkit_docker_env: ${{ matrix.image_versions }}
+    secrets: inherit
