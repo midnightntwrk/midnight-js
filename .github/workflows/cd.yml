@@ -86,20 +86,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
-      - name: Extract release notes
-        id: release_notes
-        run: |
-          VERSION=${GITHUB_REF#refs/tags/}
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+      - name: Extract release version
+        id: release_version
+        run: echo "version=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
 
-          # Extract release notes from CHANGELOG.md for this version
-          awk "/^## .*$VERSION/,/^## /{if(/^## .*$VERSION/) found=1; else if(/^## / && found) exit; if(found && !/^## .*$VERSION/) print}" CHANGELOG.md > release_notes.md
-
-          # If no release notes found, use commit messages since last tag
-          if [ ! -s release_notes.md ]; then
-            echo "### Changes" > release_notes.md
-            git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 HEAD^)..HEAD >> release_notes.md
-          fi
+      - name: Build release notes
+        id: changelog
+        uses: mikepenz/release-changelog-builder-action@348e88fab4c37338b1e803ceb2d4a7a5db6c0833 # ratchet:mikepenz/release-changelog-builder-action@v6.2.2
+        with:
+          configuration: .github/release-changelog-builder-config.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Determine Build Targets
         uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # ratchet:dorny/paths-filter@v4.0.1
@@ -128,9 +125,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.release_notes.outputs.version }}
-          name: Release ${{ steps.release_notes.outputs.version }}
-          body_path: release_notes.md
+          tag_name: ${{ steps.release_version.outputs.version }}
+          name: Release ${{ steps.release_version.outputs.version }}
+          body: ${{ steps.changelog.outputs.changelog }}
           draft: false
           prerelease: false
           make_latest: 'true'
