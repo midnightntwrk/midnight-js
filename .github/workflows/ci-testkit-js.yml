@@ -46,7 +46,7 @@ on:
         default: ''
 
 concurrency:
-  group: TK-JS-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: TK-JS-${{ github.workflow }}-${{ inputs.testkit_docker_env || 'default' }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
