@@ -63,7 +63,7 @@ jobs:
         run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Cache Turbo and Yarn dependencies
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # ratchet:actions/cache@v5.0.5
         with:
           path: |
             **/node_modules
@@ -122,6 +122,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
+      - name: Verify release notes exist
+        if: steps.changes.outputs.midnight-js == 'true'
+        run: test -s release_notes.md || { echo "::error::release_notes.md missing or empty"; exit 1; }
+
       - name: Create GitHub Release
         if: steps.changes.outputs.midnight-js == 'true'
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # ratchet:softprops/action-gh-release@v2
@@ -133,6 +137,7 @@ jobs:
           body_path: release_notes.md
           draft: false
           prerelease: false
+          make_latest: 'true'
 
       - name: Extract version number
         id: version
