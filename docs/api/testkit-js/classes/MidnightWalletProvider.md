@@ -106,17 +106,13 @@ The transaction to balance.
 
 ### start()
 
-> **start**(`waitForFundsInWallet?`, `tokenType?`): `Promise`\<`void`\>
+> **start**(`waitForFundsInWallet?`): `Promise`\<`void`\>
 
 #### Parameters
 
 ##### waitForFundsInWallet?
 
 `boolean` = `true`
-
-##### tokenType?
-
-`TokenType` = `...`
 
 #### Returns
 
