@@ -2082,7 +2082,7 @@ __metadata:
     pino: "npm:^10.3.1"
     pino-pretty: "npm:^13.1.3"
     rxjs: "npm:^7.8.2"
-    testcontainers: "npm:^11.13.0"
+    testcontainers: "npm:^12.0.0"
     typedoc: "npm:^0.28.19"
     typedoc-plugin-markdown: "npm:4.11.0"
     vite-tsconfig-paths: "npm:^5.1.4"
@@ -6241,39 +6241,38 @@ __metadata:
   languageName: node
   linkType: hard
 
-"docker-compose@npm:^1.3.2":
-  version: 1.3.2
-  resolution: "docker-compose@npm:1.3.2"
+"docker-compose@npm:^1.4.2":
+  version: 1.4.2
+  resolution: "docker-compose@npm:1.4.2"
   dependencies:
     yaml: "npm:^2.2.2"
-  checksum: 10/4ba2d2090c4df3a3d3c8fd2dc086ddbddbc9f1079ab0c60b65fc9b7f7d0bac2ebb6ea366cc7324162a9d1eb85be1c8809f892cd9a2e46dfc994222f1bb3cdd95
+  checksum: 10/def0c2da93e29a65315525a17e3e7bf47a8fc6918b45cac4468f0b3aa33cc286d5b33c4dd31101ff76d901ac4f2644771fc8b0c2b0c08d4f60791cd83106efb5
   languageName: node
   linkType: hard
 
-"docker-modem@npm:^5.0.6":
-  version: 5.0.6
-  resolution: "docker-modem@npm:5.0.6"
+"docker-modem@npm:^5.0.7":
+  version: 5.0.7
+  resolution: "docker-modem@npm:5.0.7"
   dependencies:
     debug: "npm:^4.1.1"
     readable-stream: "npm:^3.5.0"
     split-ca: "npm:^1.0.1"
     ssh2: "npm:^1.15.0"
-  checksum: 10/4977797814c29205f0762215f2e3e26600986bb65139018ff6840ff4c596e5d19f3002be1abcc5e73e3828870bb73bab28275a6458ad027ed56ab61fca014b6d
+  checksum: 10/8c0dc9908e10fbc91c35b187fc6a67a0dcbe4b33a2198dfa67cd8304e0f2452325e1639215674d6e441731d0bf27f06339550f6c3767585b877601d2f16e43e2
   languageName: node
   linkType: hard
 
-"dockerode@npm:^4.0.9":
-  version: 4.0.9
-  resolution: "dockerode@npm:4.0.9"
+"dockerode@npm:^5.0.0":
+  version: 5.0.0
+  resolution: "dockerode@npm:5.0.0"
   dependencies:
     "@balena/dockerignore": "npm:^1.0.2"
     "@grpc/grpc-js": "npm:^1.11.1"
     "@grpc/proto-loader": "npm:^0.7.13"
-    docker-modem: "npm:^5.0.6"
+    docker-modem: "npm:^5.0.7"
     protobufjs: "npm:^7.3.2"
     tar-fs: "npm:^2.1.4"
-    uuid: "npm:^10.0.0"
-  checksum: 10/58bb4f39652de88212c008d1156ab679ac561508ada0a86db4c2fc75dc13d40c0ba1afb725a28e0c899c93a76ad822b332e4d5207c36b8b929bae5730d0bd791
+  checksum: 10/1480304e8300745c2606519f74d42ef1c1d804b8289023841e165031e70816909727f95ae7b2ce2cc3789168cb8f57b246c6f339c7f6551e574c1ad1f1307499
   languageName: node
   linkType: hard
 
@@ -7388,10 +7387,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"get-port@npm:^7.1.0":
-  version: 7.1.0
-  resolution: "get-port@npm:7.1.0"
-  checksum: 10/f4d23b43026124007663a899578cc87ff37bfcf645c5c72651e9810ebafc759857784e409fb8e0ada9b90e5c5db089b0ae2f5f6b49fba1ce2e0aff86094ab17d
+"get-port@npm:^7.2.0":
+  version: 7.2.0
+  resolution: "get-port@npm:7.2.0"
+  checksum: 10/f8785ccdcc52b1e03f1b1de3fcd46dbc41fe4079e234f2727c3e154ca76bb94318fb0d341daa28a6c87eff24ad4016eaa8b1b4e26eff0d6a2196dd1c1ffc63a1
   languageName: node
   linkType: hard
 
@@ -11812,9 +11811,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"testcontainers@npm:^11.13.0":
-  version: 11.13.0
-  resolution: "testcontainers@npm:11.13.0"
+"testcontainers@npm:^12.0.0":
+  version: 12.0.0
+  resolution: "testcontainers@npm:12.0.0"
   dependencies:
     "@balena/dockerignore": "npm:^1.0.2"
     "@types/dockerode": "npm:^4.0.1"
@@ -11822,16 +11821,16 @@ __metadata:
     async-lock: "npm:^1.4.1"
     byline: "npm:^5.0.0"
     debug: "npm:^4.4.3"
-    docker-compose: "npm:^1.3.2"
-    dockerode: "npm:^4.0.9"
-    get-port: "npm:^7.1.0"
+    docker-compose: "npm:^1.4.2"
+    dockerode: "npm:^5.0.0"
+    get-port: "npm:^7.2.0"
     proper-lockfile: "npm:^4.1.2"
     properties-reader: "npm:^3.0.1"
     ssh-remote-port-forward: "npm:^1.0.4"
     tar-fs: "npm:^3.1.2"
     tmp: "npm:^0.2.5"
-    undici: "npm:^7.24.3"
-  checksum: 10/92ebd000e28146e134556cdf7e37bea9d90124a7ee217052f20400e5b4690e1161153e2d25f6c49a100b782570f83f816d66513a6a5092d4631724e3ce674daa
+    undici: "npm:^7.24.7"
+  checksum: 10/87be045544ddf672ddfe23349ebd37e7fbd4214bf721b97d2785fb757918156dde241c771b5abf5eb9baf2a903c8293a9bcdc3c7a3c749f67cfe5d1983bc9e1c
   languageName: node
   linkType: hard
 
@@ -12465,15 +12464,6 @@ __metadata:
   version: 1.0.2
   resolution: "util-deprecate@npm:1.0.2"
   checksum: 10/474acf1146cb2701fe3b074892217553dfcf9a031280919ba1b8d651a068c9b15d863b7303cb15bd00a862b498e6cf4ad7b4a08fb134edd5a6f7641681cb54a2
-  languageName: node
-  linkType: hard
-
-"uuid@npm:>=11.1.1 <12.0.0":
-  version: 11.1.1
-  resolution: "uuid@npm:11.1.1"
-  bin:
-    uuid: dist/esm/bin/uuid
-  checksum: 10/16411d3dc12a08d6691616c09a75e66a7f900ba1beef6628a76fe0602f82fae2ee537b564d0b7bc95c24f58d059ca9b58c75a1e806118efb50e17822ff00ddd2
   languageName: node
   linkType: hard
 
