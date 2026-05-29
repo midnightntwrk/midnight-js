@@ -14,7 +14,12 @@
  */
 
 import { type LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { type DefaultConfiguration, InMemoryTransactionHistoryStorage, mergeWalletEntries, WalletEntrySchema } from '@midnight-ntwrk/wallet-sdk';
+import {
+  type DefaultConfiguration,
+  InMemoryTransactionHistoryStorage,
+  mergeWalletEntries,
+  WalletEntrySchema
+} from '@midnight-ntwrk/wallet-sdk';
 
 import { type EnvironmentConfiguration } from '@/test-environment';
 
@@ -24,21 +29,18 @@ export interface MapperOptions {
   readonly ledgerParams?: LedgerParameters;
 }
 
-export function mapEnvironmentToConfiguration(
-  env: EnvironmentConfiguration,
-): DefaultConfiguration {
+export function mapEnvironmentToConfiguration(env: EnvironmentConfiguration): DefaultConfiguration {
   return {
     indexerClientConnection: {
       indexerHttpUrl: env.indexer,
-      indexerWsUrl: env.indexerWS,
+      indexerWsUrl: env.indexerWS
     },
     provingServerUrl: new URL(env.proofServer),
     networkId: env.walletNetworkId,
     relayURL: new URL(env.nodeWS),
     txHistoryStorage: new InMemoryTransactionHistoryStorage(WalletEntrySchema, mergeWalletEntries),
     costParameters: {
-      additionalFeeOverhead: 500_000_000_000_000_000_000n,
-      feeBlocksMargin: 5,
-    },
+      feeBlocksMargin: 5
+    }
   };
 }

@@ -60,12 +60,13 @@ export class FaucetClient {
     const response = await axios.post(
       this.faucetUrl,
       {
-        address: walletAddress,
-        captchaToken: 'XXXX.DUMMY.TOKEN.XXXX'
+        recipientAddress: walletAddress,
+        amount: '1000'
       },
       {
         headers: {
           'Content-Type': 'application/json',
+          'X-Captcha-Token': 'XXXX.DUMMY.TOKEN.XXXX',
           'x-turnstile-token': process.env.TURNSTILE_HEADER ?? ''
         }
       }
