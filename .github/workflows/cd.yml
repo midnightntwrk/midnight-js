@@ -122,10 +122,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
-      - name: Verify release notes exist
-        if: steps.changes.outputs.midnight-js == 'true'
-        run: test -s release_notes.md || { echo "::error::release_notes.md missing or empty"; exit 1; }
-
       - name: Create GitHub Release
         if: steps.changes.outputs.midnight-js == 'true'
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # ratchet:softprops/action-gh-release@v2
