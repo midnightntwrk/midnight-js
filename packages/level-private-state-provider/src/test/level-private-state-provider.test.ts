@@ -1414,6 +1414,90 @@ describe('Level Private State Provider', (): void => {
         await expect(db.importSigningKeys(tamperedExport)).rejects.toThrow(ExportDecryptionError);
       });
     });
+
+    describe('signingKey value validation', () => {
+      const VALID_PASSWORD = 'Valid-Pass9-Test!@';
+
+      const buildBadExport = async (keys: Record<string, unknown>): Promise<SigningKeyExport> => {
+        const salt = Buffer.from('0'.repeat(64), 'hex');
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
+        const encryptedPayload = await encryption.encrypt(JSON.stringify({
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          keyCount: Object.keys(keys).length,
+          keys
+        }));
+        return {
+          format: 'midnight-signing-key-export',
+          encryptedPayload,
+          salt: salt.toString('hex')
+        };
+      };
+
+      test.each([
+        ['null',            { [CONTRACT_ADDRESS_1]: null }],
+        ['object',          { [CONTRACT_ADDRESS_1]: { sk: 'deadbeef' } }],
+        ['number',          { [CONTRACT_ADDRESS_1]: 12345 }],
+        ['boolean',         { [CONTRACT_ADDRESS_1]: true }],
+        ['array',           { [CONTRACT_ADDRESS_1]: ['deadbeef'] }],
+        ['empty string',    { [CONTRACT_ADDRESS_1]: '' }],
+        ['non-hex chars',   { [CONTRACT_ADDRESS_1]: 'zz'.repeat(8) }],
+        ['odd hex length',  { [CONTRACT_ADDRESS_1]: 'abcde' }],
+        ['shorter than version prefix', { [CONTRACT_ADDRESS_1]: 'ab' }]
+      ])('importSigningKeys rejects %s signingKey value with InvalidExportFormatError', async (_reason, keys) => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+        const badExport = await buildBadExport(keys as Record<string, unknown>);
+
+        await expect(
+          db.importSigningKeys(badExport, { password: VALID_PASSWORD })
+        ).rejects.toThrow(InvalidExportFormatError);
+      });
+
+      test.each([
+        ['invalid value last',  { [CONTRACT_ADDRESS_1]: sampleSigningKey(), [CONTRACT_ADDRESS_2]: null }],
+        ['invalid value first', { [CONTRACT_ADDRESS_1]: null,               [CONTRACT_ADDRESS_2]: sampleSigningKey() }]
+      ])('importSigningKeys is atomic: %s leaves all keys unwritten', async (_reason, keys) => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+        const badExport = await buildBadExport(keys as Record<string, unknown>);
+
+        await expect(
+          db.importSigningKeys(badExport, { password: VALID_PASSWORD })
+        ).rejects.toThrow(InvalidExportFormatError);
+
+        expect(await db.getSigningKey(CONTRACT_ADDRESS_1)).toBeNull();
+        expect(await db.getSigningKey(CONTRACT_ADDRESS_2)).toBeNull();
+      });
+
+      test('importSigningKeys atomicity: existing keys are not overwritten when a later value is invalid', async () => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+        const original = sampleSigningKey();
+        await db.setSigningKey(CONTRACT_ADDRESS_1, original);
+
+        const replacement = sampleSigningKey();
+        const badExport = await buildBadExport({
+          [CONTRACT_ADDRESS_1]: replacement,
+          [CONTRACT_ADDRESS_2]: { sk: 'not-a-string' }
+        });
+
+        await expect(
+          db.importSigningKeys(badExport, { password: VALID_PASSWORD, conflictStrategy: 'overwrite' })
+        ).rejects.toThrow(InvalidExportFormatError);
+
+        expect(await db.getSigningKey(CONTRACT_ADDRESS_1)).toEqual(original);
+        expect(await db.getSigningKey(CONTRACT_ADDRESS_2)).toBeNull();
+      });
+
+      test('importSigningKeys accepts well-formed lowercase hex with version prefix', async () => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+        const wellFormed = '0102030a1b2c3d4e5f';
+        const goodExport = await buildBadExport({ [CONTRACT_ADDRESS_1]: wellFormed });
+
+        const result = await db.importSigningKeys(goodExport, { password: VALID_PASSWORD });
+
+        expect(result.imported).toBe(1);
+        expect(await db.getSigningKey(CONTRACT_ADDRESS_1)).toEqual(wellFormed);
+      });
+    });
   });
 
   describe('Browser Warning', () => {

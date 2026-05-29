@@ -134,6 +134,17 @@ const validateSalt = (salt: string): void => {
   }
 };
 
+const SIGNING_KEY_MIN_HEX_LENGTH = 6;
+
+const validateSigningKeyValue = (value: unknown): void => {
+  if (typeof value !== 'string'
+    || value.length < SIGNING_KEY_MIN_HEX_LENGTH
+    || value.length % 2 !== 0
+    || !/^[0-9a-fA-F]+$/.test(value)) {
+    throw new InvalidExportFormatError('Invalid signing key value');
+  }
+};
+
 /**
  * A simple in-memory implementation of private state provider. Makes it easy to capture and rewrite private state from deploy.
  *
@@ -490,6 +501,10 @@ export const inMemoryPrivateStateProvider = <
         throw new InvalidExportFormatError(
           `Too many keys in export (${addresses.length}). Maximum allowed: ${maxKeys}`
         );
+      }
+
+      for (const address of addresses) {
+        validateSigningKeyValue(payload.keys[address]);
       }
 
       if (conflictStrategy === 'error') {
