@@ -22,7 +22,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expect, test } from 'vitest';
 
-import { IndexerFormattedError } from '../errors';
+import { IndexerError, IndexerFormattedError } from '../errors';
 import type { TransactionResult } from '../gen/graphql';
 import {
   type IndexerUtxo,
@@ -204,22 +204,25 @@ describe('toUnshieldedBalances', () => {
 });
 
 describe('IndexerFormattedError', () => {
-  test('formats single GraphQL error', () => {
+  test('formats single GraphQL error with header and numbered prefix', () => {
     const error = new IndexerFormattedError([{ message: 'Something went wrong' }]);
 
     expect(error).toBeInstanceOf(Error);
-    expect(error.message).toContain('Indexer GraphQL error(s)');
-    expect(error.message).toContain('Something went wrong');
+    expect(error).toBeInstanceOf(IndexerError);
+    expect(error.name).toBe('IndexerFormattedError');
+    expect(error.message).toBe('Indexer GraphQL error(s):\n\t1. Something went wrong');
   });
 
-  test('formats multiple GraphQL errors', () => {
+  test('lists multiple GraphQL errors in original order separated by tab-newline', () => {
     const error = new IndexerFormattedError([
       { message: 'First error' },
-      { message: 'Second error' }
+      { message: 'Second error' },
+      { message: 'Third error' }
     ]);
 
-    expect(error.message).toContain('First error');
-    expect(error.message).toContain('Second error');
+    expect(error.message).toBe(
+      'Indexer GraphQL error(s):\n\t1. First error\n\t2. Second error\n\t3. Third error'
+    );
   });
 
   test('preserves cause array', () => {

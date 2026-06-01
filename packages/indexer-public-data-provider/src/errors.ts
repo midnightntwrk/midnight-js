@@ -16,14 +16,22 @@
 import type { GraphQLFormattedError } from 'graphql';
 
 /**
+ * Base class for all errors raised by the indexer public data provider.
+ * Consumers can catch any indexer error with a single `instanceof IndexerError` check.
+ */
+export abstract class IndexerError extends Error {}
+
+/**
  * An error describing the causes of error that occurred during server-side execution of
  * a query against the Indexer.
  */
-export class IndexerFormattedError extends Error {
+export class IndexerFormattedError extends IndexerError {
   /**
    * @param cause An array of GraphQL errors that occurred during the server-side execution.
    */
   constructor(public readonly cause: readonly GraphQLFormattedError[]) {
-    super(`Indexer GraphQL error(s):\n${cause.reduce((acc, c, idx) => `${idx + 1}. ${c.message}:\n\t${acc}`, '')}`);
+    const formatted = cause.map((c, idx) => `${idx + 1}. ${c.message}`).join('\n\t');
+    super(`Indexer GraphQL error(s):\n\t${formatted}`);
+    this.name = 'IndexerFormattedError';
   }
 }
