@@ -24,16 +24,21 @@ export abstract class IndexerError extends Error {}
 /**
  * Raised when a GraphQL response includes one or more `GraphQLFormattedError`
  * entries. Aggregates all server-side errors into a single numbered message
- * and exposes the original array via {@link cause}.
+ * and exposes the original array via {@link errors}.
+ *
+ * The field is named `errors` (not `cause`) because the standard ES2022
+ * `Error.cause` slot is contractually a single underlying error, not a
+ * peer collection. Reusing `cause` would confuse Node's `util.inspect`
+ * causal chain, Sentry, and other structured loggers.
  *
  * Transport-level and other Apollo failures are reported via {@link IndexerQueryError}.
  */
 export class IndexerFormattedError extends IndexerError {
   /**
-   * @param cause The GraphQL errors reported by the server.
+   * @param errors The GraphQL errors reported by the server.
    */
-  constructor(public readonly cause: readonly GraphQLFormattedError[]) {
-    const formatted = cause.map((c, idx) => `${idx + 1}. ${c.message}`).join('\n\t');
+  constructor(public readonly errors: readonly GraphQLFormattedError[]) {
+    const formatted = errors.map((e, idx) => `${idx + 1}. ${e.message}`).join('\n\t');
     super(`Indexer GraphQL error(s):\n\t${formatted}`);
     this.name = 'IndexerFormattedError';
   }

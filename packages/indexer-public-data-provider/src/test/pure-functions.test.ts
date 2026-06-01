@@ -240,12 +240,13 @@ describe('IndexerFormattedError', () => {
     );
   });
 
-  test('preserves cause array', () => {
-    const causes = [{ message: 'err1' }, { message: 'err2' }];
+  test('exposes the underlying errors array', () => {
+    const graphqlErrors = [{ message: 'err1' }, { message: 'err2' }];
 
-    const error = new IndexerFormattedError(causes);
+    const error = new IndexerFormattedError(graphqlErrors);
 
-    expect(error.cause).toBe(causes);
+    expect(error.errors).toBe(graphqlErrors);
+    expect(error.cause).toBeUndefined();
   });
 });
 
