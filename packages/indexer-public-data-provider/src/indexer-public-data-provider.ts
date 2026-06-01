@@ -58,6 +58,7 @@ import * as Rx from 'rxjs';
 import {
   IndexerDataError,
   IndexerFormattedError,
+  IndexerProviderConfigError,
   IndexerQueryError,
   IndexerSubscriptionDataError
 } from './errors';
@@ -756,7 +757,9 @@ const indexerPublicDataProviderInternal = (
       config: ContractStateObservableConfig = { type: 'latest' }
     ): Rx.Observable<UnshieldedBalances> {
       if (config.type === 'txId') {
-        throw new Error('txId configuration not supported for unshielded balances observable');
+        throw new IndexerProviderConfigError(
+          'txId configuration not supported for unshielded balances observable'
+        );
       }
       if (config.type === 'latest') {
         return contractAddressToLatestBlockOffset$(apolloClient)(contractAddress).pipe(

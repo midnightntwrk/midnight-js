@@ -26,6 +26,7 @@ import {
   IndexerDataError,
   IndexerError,
   IndexerFormattedError,
+  IndexerProviderConfigError,
   IndexerQueryError,
   IndexerSubscriptionDataError
 } from '../errors';
@@ -283,5 +284,16 @@ describe('IndexerDataError', () => {
     expect(error).toBeInstanceOf(IndexerError);
     expect(error.name).toBe('IndexerDataError');
     expect(error.message).toBe('Indexer returned malformed payload');
+  });
+});
+
+describe('IndexerProviderConfigError', () => {
+  test('exposes message and name', () => {
+    const error = new IndexerProviderConfigError('Unsupported observable mode: txId');
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toBeInstanceOf(IndexerError);
+    expect(error.name).toBe('IndexerProviderConfigError');
+    expect(error.message).toBe('Unsupported observable mode: txId');
   });
 });

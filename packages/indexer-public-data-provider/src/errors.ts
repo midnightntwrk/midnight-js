@@ -85,3 +85,16 @@ export class IndexerSubscriptionDataError extends IndexerError {
     this.name = 'IndexerSubscriptionDataError';
   }
 }
+
+/**
+ * An error raised when the consumer passes a configuration that the indexer
+ * provider does not support (e.g. an observable mode that cannot be served
+ * by the indexer's query surface). Signals API misuse, not server-side
+ * issues — separate semantic category from {@link IndexerDataError}.
+ */
+export class IndexerProviderConfigError extends IndexerError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'IndexerProviderConfigError';
+  }
+}
