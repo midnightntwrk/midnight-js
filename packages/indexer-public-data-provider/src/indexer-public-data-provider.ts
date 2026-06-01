@@ -99,6 +99,11 @@ export const isRegularTransaction = (
   return 'identifiers' in tx && 'hash' in tx && Array.isArray(tx.identifiers);
 };
 
+const hasContractAction = <T extends { contractAction?: unknown }>(
+  data: T
+): data is T & { contractAction: NonNullable<T['contractAction']> } =>
+  data.contractAction != null;
+
 const maybeThrowQueryError = <R extends { error?: { message: string } }>(result: R): R => {
   if (result.error) {
     throw new IndexerQueryError(result.error.message, { cause: result.error });
@@ -406,8 +411,8 @@ const waitForContractToAppear =
       })
       .pipe(
         withCompleteQueryData(),
-        Rx.filter((data) => data.contractAction !== null),
-        Rx.map((data) => data.contractAction!.state),
+        Rx.filter(hasContractAction),
+        Rx.map((data) => data.contractAction.state),
         Rx.take(1)
       );
 
@@ -444,9 +449,9 @@ const waitForUnshieldedBalancesToAppear =
       })
       .pipe(
         withCompleteQueryData(),
-        Rx.filter((data) => data.contractAction !== null),
+        Rx.filter(hasContractAction),
         Rx.map((data) => {
-          const contractAction = data.contractAction!;
+          const { contractAction } = data;
           if ('unshieldedBalances' in contractAction) {
             return contractAction.unshieldedBalances;
           }
