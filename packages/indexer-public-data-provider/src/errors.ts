@@ -40,9 +40,14 @@ export class IndexerFormattedError extends IndexerError {
 }
 
 /**
- * An error raised when an Apollo query or fetch returns a transport-level or
- * GraphQL-level error. Preserves the original Apollo error via `Error.cause`
- * so consumers can inspect network details, GraphQL errors, and the original stack.
+ * An error raised when an Apollo query or fetch fails at the transport layer
+ * (network failure, malformed response, Apollo client error) — distinct from
+ * the case where the server returns a well-formed response containing
+ * `GraphQLFormattedError` entries, which is reported via
+ * {@link IndexerFormattedError}.
+ *
+ * Preserves the original Apollo error via `Error.cause` so consumers can
+ * inspect network details and the original stack.
  */
 export class IndexerQueryError extends IndexerError {
   constructor(message: string, options?: ErrorOptions) {
@@ -52,19 +57,76 @@ export class IndexerQueryError extends IndexerError {
 }
 
 /**
+ * Discriminated context describing the specific way indexer-returned data
+ * failed to satisfy the provider's expectations. The `kind` tag lets
+ * consumers branch on the failure mode without parsing the error message.
+ */
+export type IndexerDataErrorContext =
+  | { kind: 'unknown-status'; value: string }
+  | { kind: 'missing-contract-action'; contractAddress: string }
+  | {
+      kind: 'missing-identifier';
+      contractAddress: string;
+      actionIndex: number;
+      identifiersLength: number;
+    };
+
+/**
  * An error raised when indexer-returned data is structurally inconsistent
  * with the provider's expectations: unknown enum values, broken referential
  * integrity between related rows, or missing relations the schema implies
  * should be present.
  *
- * Distinct from {@link IndexerSubscriptionDataError} (which reports a missing
- * top-level field on a subscription payload) and {@link IndexerFormattedError}
- * (which reports errors the server explicitly returned).
+ * Distinct from:
+ * - {@link IndexerSubscriptionDataError} — missing top-level field on a
+ *   subscription payload (server returned `null`/`undefined` for a field).
+ * - {@link IndexerFormattedError} — errors the server explicitly returned
+ *   as `GraphQLFormattedError` entries.
+ * - {@link IndexerQueryError} — transport / Apollo failure before data is
+ *   parsed.
+ *
+ * Construct via the static factory methods to ensure the message and
+ * {@link context} stay in sync.
  */
 export class IndexerDataError extends IndexerError {
-  constructor(message: string) {
-    super(message);
+  constructor(public readonly context: IndexerDataErrorContext) {
+    super(IndexerDataError.formatMessage(context));
     this.name = 'IndexerDataError';
+  }
+
+  static unknownStatus(value: string): IndexerDataError {
+    return new IndexerDataError({ kind: 'unknown-status', value });
+  }
+
+  static missingContractAction(contractAddress: string): IndexerDataError {
+    return new IndexerDataError({ kind: 'missing-contract-action', contractAddress });
+  }
+
+  static missingIdentifier(
+    contractAddress: string,
+    actionIndex: number,
+    identifiersLength: number
+  ): IndexerDataError {
+    return new IndexerDataError({
+      kind: 'missing-identifier',
+      contractAddress,
+      actionIndex,
+      identifiersLength
+    });
+  }
+
+  private static formatMessage(context: IndexerDataErrorContext): string {
+    switch (context.kind) {
+      case 'unknown-status':
+        return `Unexpected transaction status value: ${context.value}`;
+      case 'missing-contract-action':
+        return `Deploy transaction does not contain a contract action for address ${context.contractAddress}`;
+      case 'missing-identifier':
+        return (
+          `Transaction missing identifier for contract action at address ${context.contractAddress}` +
+          ` (actionIndex=${context.actionIndex}, identifiers.length=${context.identifiersLength})`
+        );
+    }
   }
 }
 

@@ -99,8 +99,13 @@ describe('toTxStatus', () => {
   test('throws IndexerDataError for unknown status', () => {
     const result = { status: 'UNKNOWN', segments: null } as unknown as TransactionResult;
 
-    expect(() => toTxStatus(result)).toThrow(IndexerDataError);
-    expect(() => toTxStatus(result)).toThrow("Unexpected transaction status value: UNKNOWN");
+    let thrown: unknown;
+    try { toTxStatus(result); } catch (e) { thrown = e; }
+
+    expect(thrown).toBeInstanceOf(IndexerDataError);
+    const error = thrown as IndexerDataError;
+    expect(error.context).toEqual({ kind: 'unknown-status', value: 'UNKNOWN' });
+    expect(error.message).toBe('Unexpected transaction status value: UNKNOWN');
   });
 });
 
@@ -277,13 +282,37 @@ describe('IndexerSubscriptionDataError', () => {
 });
 
 describe('IndexerDataError', () => {
-  test('exposes message and name', () => {
-    const error = new IndexerDataError('Indexer returned malformed payload');
+  test('unknownStatus factory builds discriminated context and derived message', () => {
+    const error = IndexerDataError.unknownStatus('WEIRD');
 
     expect(error).toBeInstanceOf(Error);
     expect(error).toBeInstanceOf(IndexerError);
     expect(error.name).toBe('IndexerDataError');
-    expect(error.message).toBe('Indexer returned malformed payload');
+    expect(error.context).toEqual({ kind: 'unknown-status', value: 'WEIRD' });
+    expect(error.message).toBe('Unexpected transaction status value: WEIRD');
+  });
+
+  test('missingContractAction factory builds discriminated context and derived message', () => {
+    const error = IndexerDataError.missingContractAction('0xabc');
+
+    expect(error.context).toEqual({ kind: 'missing-contract-action', contractAddress: '0xabc' });
+    expect(error.message).toBe(
+      'Deploy transaction does not contain a contract action for address 0xabc'
+    );
+  });
+
+  test('missingIdentifier factory captures address, index and identifiers length', () => {
+    const error = IndexerDataError.missingIdentifier('0xabc', -1, 3);
+
+    expect(error.context).toEqual({
+      kind: 'missing-identifier',
+      contractAddress: '0xabc',
+      actionIndex: -1,
+      identifiersLength: 3
+    });
+    expect(error.message).toBe(
+      'Transaction missing identifier for contract action at address 0xabc (actionIndex=-1, identifiers.length=3)'
+    );
   });
 });
 

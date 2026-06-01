@@ -236,7 +236,7 @@ export const toTxStatus = (transactionResult: TransactionResult): TxStatus => {
   if (result === 'FAILURE' || result === 'PARTIAL_SUCCESS' || result === 'SUCCESS') {
     return map[result];
   }
-  throw new IndexerDataError(`Unexpected transaction status value: ${result}`);
+  throw IndexerDataError.unknownStatus(result);
 };
 
 export const toSegmentStatus = (success: boolean): SegmentStatus =>
@@ -603,9 +603,7 @@ const indexerPublicDataProviderInternal = (
               ({ address }) => address === contractAddress
             );
             if (!deployAction) {
-              throw new IndexerDataError(
-                `Deploy transaction does not contain a contract action for address ${contractAddress}`
-              );
+              throw IndexerDataError.missingContractAction(contractAddress);
             }
             return deployAction.state;
           }
@@ -653,8 +651,10 @@ const indexerPublicDataProviderInternal = (
               );
               const txId = actionIndex >= 0 ? transaction.identifiers[actionIndex] : undefined;
               if (txId === undefined) {
-                throw new IndexerDataError(
-                  `Transaction missing identifier for contract action at address ${contractAddress}`
+                throw IndexerDataError.missingIdentifier(
+                  contractAddress,
+                  actionIndex,
+                  transaction.identifiers.length
                 );
               }
               return {
