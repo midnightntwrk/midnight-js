@@ -32,7 +32,9 @@ try {
 }
 ```
 
-**Action required only if:** your code catches `IndexerFormattedError` and reads the GraphQL-error array off the instance. Find-and-replace `err.cause` → `err.errors` at those call sites. A handful of TypeScript compile errors will surface them automatically.
+**Action required only if:** your code catches `IndexerFormattedError` and reads the GraphQL-error array off the instance. Find-and-replace `err.cause` → `err.errors` at those call sites.
+
+TypeScript flags every call site **where the caught value is narrowed to `IndexerFormattedError`** (`if (e instanceof IndexerFormattedError) { e.cause }` becomes a compile error). If your code reads `err.cause` after narrowing to just `Error`, both v4.1.0 and v4.1.1 typecheck — but v4.1.1 returns `undefined` at that read. `grep` for `err.cause` in any `catch` block that handles indexer paths to find these silent-undefined cases.
 
 Also new in #937 (additive, non-breaking — covered in [api-changes.md](./api-changes.md)):
 
@@ -79,6 +81,6 @@ The connection itself is **not** blocked — the warning is informational. Loopb
 
 ## Common Migration Issues
 
-Only one — the `IndexerFormattedError.cause` → `.errors` rename. TypeScript will surface every affected call site at compile time.
+Only one — the `IndexerFormattedError.cause` → `.errors` rename. TypeScript flags it when the caught value is narrowed to `IndexerFormattedError`; otherwise grep for `err.cause` in indexer-related `catch` blocks (see section 1 above).
 
 If you observe a previously-working flow throwing in v4.1.1, it is almost certainly one of the four behaviour changes above — see the `Action required only if` notes for each.

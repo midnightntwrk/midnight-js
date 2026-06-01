@@ -14,7 +14,7 @@
 
 ## Breaking Changes (1)
 
-- **`IndexerFormattedError.cause` renamed to `.errors`** — the GraphQL-error array carried by `IndexerFormattedError` has moved off the ES2022 `Error.cause` slot (which is contractually a single underlying error) onto a dedicated `.errors` field. Catch sites that read `err.cause` must migrate to `err.errors`. TypeScript surfaces every affected call site at compile time (#937)
+- **`IndexerFormattedError.cause` renamed to `.errors`** — the GraphQL-error array carried by `IndexerFormattedError` has moved off the ES2022 `Error.cause` slot (which is contractually a single underlying error) onto a dedicated `.errors` field. Catch sites that read `err.cause` must migrate to `err.errors`. TypeScript flags this at compile time when the caught value is narrowed to `IndexerFormattedError`; broader catches that narrow only to `Error` need a manual grep (#937)
 
 ## Notable Behaviour Changes
 
@@ -40,12 +40,25 @@
 
 ## Quick Migration
 
-Most consumers need only the dependency bump. If you `catch` `IndexerFormattedError` and read the GraphQL-error array, rename `.cause` to `.errors`:
+Most consumers need only the dependency bump:
 
 ```bash
 yarn upgrade @midnight-ntwrk/midnight-js@4.1.1
 yarn install
 ```
+
+If you `catch` `IndexerFormattedError` and narrow the caught value to that type, rename `.cause` to `.errors`:
+
+```diff
+  } catch (e) {
+    if (e instanceof IndexerFormattedError) {
+-     console.error('GraphQL errors:', e.cause);
++     console.error('GraphQL errors:', e.errors);
+    }
+  }
+```
+
+See [migration-guide.md](./migration-guide.md) for caveats around broader `catch` shapes.
 
 ## Requirements
 
@@ -54,7 +67,8 @@ yarn install
 
 ## Testing Checklist
 
-- [ ] TypeScript compilation passes (the `IndexerFormattedError.cause` → `.errors` rename surfaces affected call sites here)
+- [ ] TypeScript compilation passes (the `IndexerFormattedError.cause` → `.errors` rename surfaces narrowed-catch call sites here)
+- [ ] Grep for `err.cause` in any `catch` block that handles indexer paths — broader catches that don't narrow to `IndexerFormattedError` typecheck under v4.1.1 but silently return `undefined`
 - [ ] Unit tests pass
 - [ ] Integration tests pass
 - [ ] If catching `IndexerFormattedError`: rename reads of `err.cause` to `err.errors`

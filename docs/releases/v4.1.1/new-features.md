@@ -1,6 +1,9 @@
 # New Features v4.1.1
 
-v4.1.1 is a patch release and ships **no new features in the publicly consumed midnight-js packages**. The additions below are confined to `testkit-js` (testing infrastructure) and do not affect dApps depending on `@midnight-ntwrk/midnight-js` or its sub-packages.
+v4.1.1 is a patch release. There are no new product features — the additions in this release fall into two categories:
+
+- **`testkit-js` (testing infrastructure)** — compose-image parameterisation and `qanet` support. These do not affect dApps depending on `@midnight-ntwrk/midnight-js` or its sub-packages.
+- **Additive exports in publicly consumed packages** — helper utilities in `@midnight-ntwrk/midnight-js-utils` (`validatePassword`, `warnIfInsecureRemoteUrl`) and a new error hierarchy in `@midnight-ntwrk/midnight-js-indexer-public-data-provider` (`IndexerError` and its five subclasses). These ride along with bug fixes — every v4.1.0 import continues to work, and the new exports are optional.
 
 ## testkit-js: Parameterised compose image versions + nightly e2e matrix (#917)
 
@@ -85,3 +88,69 @@ try {
 ```
 
 Useful for surfacing the exact policy violation in a dApp UI before attempting export/import.
+
+## Indexer error hierarchy in `@midnight-ntwrk/midnight-js-indexer-public-data-provider` (#937)
+
+A coherent set of typed errors replaces the previous mix of generic `new Error(...)` throws and non-null-assertion crashes. Every error this provider raises is now a subclass of a new abstract `IndexerError`, so consumers can catch the full surface with one `instanceof` check.
+
+```typescript
+import {
+  IndexerError,
+  IndexerFormattedError,
+  IndexerQueryError,
+  IndexerDataError,
+  IndexerSubscriptionDataError,
+  IndexerProviderConfigError
+} from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+```
+
+The hierarchy:
+
+```
+IndexerError (abstract)
+├── IndexerFormattedError         GraphQL errors returned by server (errors[])
+├── IndexerQueryError             Apollo transport / query failure (cause preserved)
+├── IndexerSubscriptionDataError  Missing top-level field in subscription payload
+├── IndexerDataError              Structurally inconsistent indexer response (discriminated context)
+│     ├── kind: 'unknown-status'
+│     ├── kind: 'missing-contract-action'
+│     └── kind: 'missing-identifier'
+└── IndexerProviderConfigError    Consumer passed unsupported configuration
+```
+
+Two supporting types are also exported:
+
+- `IndexerDataErrorContext` — the discriminated union carried by `IndexerDataError.context`. Lets you branch on the failure mode without parsing error messages.
+- `IndexerSubscriptionField` — a literal union (`'blocks' | 'contractActions'`) for `IndexerSubscriptionDataError.missingField`.
+
+Example: distinguish transport failures from server-returned errors:
+
+```typescript
+try {
+  await indexer.queryDeployContractState(address);
+} catch (e) {
+  if (e instanceof IndexerFormattedError) {
+    // server returned GraphQLFormattedError entries
+    log.warn('indexer reported errors', { errors: e.errors });
+  } else if (e instanceof IndexerQueryError) {
+    // Apollo / transport failure; original error preserved on e.cause
+    log.error('indexer transport failure', { cause: e.cause });
+  } else if (e instanceof IndexerDataError) {
+    // structurally inconsistent indexer response
+    switch (e.context.kind) {
+      case 'missing-contract-action': /* … */ break;
+      case 'missing-identifier':       /* … */ break;
+      case 'unknown-status':           /* … */ break;
+    }
+  } else if (e instanceof IndexerError) {
+    // future-proof catch-all under the same umbrella
+    log.error('indexer error', { error: e });
+  } else {
+    throw e;
+  }
+}
+```
+
+This is purely additive. Code that catches `Error` (or lets indexer errors bubble) continues to work — the new types are opt-in narrowing helpers, not a required refactor.
+
+**One related breaking change:** `IndexerFormattedError.cause` is renamed to `.errors`. See [breaking-changes.md](./breaking-changes.md) for the rationale and the rename diff.

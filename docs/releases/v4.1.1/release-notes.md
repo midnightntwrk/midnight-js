@@ -10,7 +10,7 @@ v4.1.1 is a patch release: hardening and correctness fixes across `@midnight-ntw
 
 ### `IndexerFormattedError.cause` renamed to `.errors` (#937)
 
-The `GraphQLFormattedError[]` array carried by `IndexerFormattedError` has been moved off the ES2022 `Error.cause` slot — which is contractually a single underlying error — onto a dedicated `.errors` field. Catch sites that read `err.cause` on this class must migrate to `err.errors`. TypeScript surfaces every affected call site at compile time.
+The `GraphQLFormattedError[]` array carried by `IndexerFormattedError` has been moved off the ES2022 `Error.cause` slot — which is contractually a single underlying error — onto a dedicated `.errors` field. Catch sites that read `err.cause` on this class must migrate to `err.errors`. TypeScript flags this at compile time **when the caught value is narrowed to `IndexerFormattedError`**; broader catches that only narrow to `Error` will silently read `undefined`.
 
 See [breaking-changes.md](./breaking-changes.md) for the full rationale and a before/after snippet.
 
@@ -94,8 +94,6 @@ IndexerError (abstract)
 │     └── kind: 'missing-identifier'
 └── IndexerProviderConfigError    Consumer passed unsupported configuration
 ```
-
-Closes #823, #822, #821.
 
 ### Emit contract state for `blockHeight` / `blockHash` configs (#911)
 

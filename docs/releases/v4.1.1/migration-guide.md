@@ -2,7 +2,7 @@
 
 **Migration complexity:** Minimal — one error-field rename. Otherwise drop-in.
 
-v4.1.1 is a patch release. The only required code change is for consumers that catch `IndexerFormattedError` and read its GraphQL-error array: that field has moved from `.cause` to `.errors`. TypeScript surfaces every affected call site at compile time. All other v4.1.0 imports continue to work identically.
+v4.1.1 is a patch release. The only required code change is for consumers that catch `IndexerFormattedError` and read its GraphQL-error array: that field has moved from `.cause` to `.errors`. TypeScript flags this at compile time **only** when the caught value is narrowed to `IndexerFormattedError` (a broader `catch (e) { if (e instanceof Error) e.cause }` typechecks under both versions but silently reads `undefined` in v4.1.1). All other v4.1.0 imports continue to work identically — see Step 3 for the rename and Step 2 for a grep hint.
 
 ## Step 1 — Bump the dependency
 
@@ -31,7 +31,7 @@ yarn lint
 yarn test
 ```
 
-If your test suite passed against v4.1.0, it will pass against v4.1.1 **unless** you catch `IndexerFormattedError` and read `err.cause` — TypeScript will flag those sites as the only signature change in the public API. See Step 3 below.
+If your test suite passed against v4.1.0, it will pass against v4.1.1 **unless** you catch `IndexerFormattedError` (narrowed to the subclass) and read `err.cause` — TypeScript flags those reads as the only signature change in the public API. For broader catches that only narrow to `Error`, grep for `err.cause` in any `catch` block that handles indexer paths — that read returns `undefined` in v4.1.1 without a compile error. See Step 3 below.
 
 ## Step 3 (conditional) — Rename `IndexerFormattedError.cause` → `.errors`
 
