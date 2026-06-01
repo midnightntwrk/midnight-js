@@ -31,11 +31,11 @@ import {
   IndexerQueryError,
   IndexerSubscriptionDataError
 } from '../errors';
-import type { RegularTransaction, TransactionResult } from '../gen/graphql';
+import type { TransactionResult } from '../gen/graphql';
 import {
+  correlateDeployTxId,
   type IndexerUtxo,
   isRegularTransaction,
-  toFinalizedDeployTxData,
   toSegmentStatus,
   toSegmentStatusMap,
   toTxStatus,
@@ -284,23 +284,28 @@ describe('IndexerSubscriptionDataError', () => {
   });
 });
 
-describe('toFinalizedDeployTxData', () => {
+describe('correlateDeployTxId', () => {
   const targetAddress = '0xdeadbeef' as ContractAddress;
 
-  // Tests exercise only the contractActions/identifiers correlation; other
-  // RegularTransaction fields are unreachable from the throw path so the
-  // helper accepts a loose shape and narrows once at the return.
-  const minimalTx = (fields: { contractActions: { address: string }[]; identifiers: string[] }): RegularTransaction =>
-    fields as unknown as RegularTransaction;
+  test('returns the identifier at the index of the matching contract action', () => {
+    const txId = correlateDeployTxId(
+      targetAddress,
+      [{ address: '0xaaaa' }, { address: targetAddress }, { address: '0xbbbb' }],
+      ['id-a', 'id-target', 'id-b']
+    );
+
+    expect(txId).toBe('id-target');
+  });
 
   test('throws missing-identifier with actionIndex=-1 when no contract action matches', () => {
-    const transaction = minimalTx({
-      contractActions: [{ address: '0xaaaa' }, { address: '0xbbbb' }],
-      identifiers: ['id-a', 'id-b']
-    });
-
     let thrown: unknown;
-    try { toFinalizedDeployTxData(targetAddress, transaction); } catch (e) { thrown = e; }
+    try {
+      correlateDeployTxId(
+        targetAddress,
+        [{ address: '0xaaaa' }, { address: '0xbbbb' }],
+        ['id-a', 'id-b']
+      );
+    } catch (e) { thrown = e; }
 
     expect(thrown).toBeInstanceOf(IndexerDataError);
     const error = thrown as IndexerDataError;
@@ -313,13 +318,14 @@ describe('toFinalizedDeployTxData', () => {
   });
 
   test('throws missing-identifier when contractAction matches but identifier slot is undefined', () => {
-    const transaction = minimalTx({
-      contractActions: [{ address: '0xaaaa' }, { address: targetAddress }],
-      identifiers: ['id-a']
-    });
-
     let thrown: unknown;
-    try { toFinalizedDeployTxData(targetAddress, transaction); } catch (e) { thrown = e; }
+    try {
+      correlateDeployTxId(
+        targetAddress,
+        [{ address: '0xaaaa' }, { address: targetAddress }],
+        ['id-a']
+      );
+    } catch (e) { thrown = e; }
 
     expect(thrown).toBeInstanceOf(IndexerDataError);
     const error = thrown as IndexerDataError;

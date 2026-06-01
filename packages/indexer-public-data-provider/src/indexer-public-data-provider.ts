@@ -284,48 +284,50 @@ export const toUnshieldedBalances = (contractBalances: readonly ContractBalance[
   contractBalances.map(transformContractBalanceToUnshieldedBalance);
 
 /**
- * Builds a {@link FinalizedTxData} for a deploy transaction by correlating
- * the contract action at {@link contractAddress} with the transaction's
- * identifier at the same index. Throws an {@link IndexerDataError} if the
- * deploy lacks an action for the address, or if the action's identifier
- * slot is missing — both indicate that the indexer's contract-action /
- * identifier rows are out of sync for this transaction.
+ * Correlates a contract action at `contractAddress` with the transaction's
+ * identifier at the same positional index. Throws {@link IndexerDataError}
+ * when the deploy lacks an action for the address, or when the
+ * corresponding identifier slot is missing — both indicate that the
+ * indexer's contract-action / identifier rows are out of sync.
+ *
+ * Exported for unit testing the correlation in isolation. Production
+ * callers should go through {@link PublicDataProvider.watchForDeployTxData}.
  */
-export const toFinalizedDeployTxData = (
+export const correlateDeployTxId = (
+  contractAddress: ContractAddress,
+  contractActions: readonly { readonly address: string }[],
+  identifiers: readonly string[]
+): string => {
+  const actionIndex = contractActions.findIndex(({ address }) => address === contractAddress);
+  const txId = actionIndex >= 0 ? identifiers[actionIndex] : undefined;
+  if (txId === undefined) {
+    throw IndexerDataError.missingIdentifier(contractAddress, actionIndex, identifiers.length);
+  }
+  return txId;
+};
+
+const toFinalizedDeployTxData = (
   contractAddress: ContractAddress,
   transaction: RegularTransaction
-): FinalizedTxData => {
-  const actionIndex = transaction.contractActions.findIndex(
-    ({ address }) => address === contractAddress
-  );
-  const txId = actionIndex >= 0 ? transaction.identifiers[actionIndex] : undefined;
-  if (txId === undefined) {
-    throw IndexerDataError.missingIdentifier(
-      contractAddress,
-      actionIndex,
-      transaction.identifiers.length
-    );
+): FinalizedTxData => ({
+  tx: deserializeTransaction(transaction.raw),
+  status: toTxStatus(transaction.transactionResult),
+  txId: correlateDeployTxId(contractAddress, transaction.contractActions, transaction.identifiers),
+  identifiers: transaction.identifiers,
+  txHash: transaction.hash,
+  blockHeight: transaction.block.height,
+  blockHash: transaction.block.hash,
+  blockTimestamp: transaction.block.timestamp,
+  blockAuthor: transaction.block.author,
+  segmentStatusMap: toSegmentStatusMap(transaction.transactionResult),
+  unshielded: toUnshieldedUtxos(transaction.unshieldedCreatedOutputs, transaction.unshieldedSpentOutputs),
+  indexerId: transaction.id,
+  protocolVersion: transaction.protocolVersion,
+  fees: {
+    estimatedFees: transaction.fees.estimatedFees,
+    paidFees: transaction.fees.paidFees
   }
-  return {
-    tx: deserializeTransaction(transaction.raw),
-    status: toTxStatus(transaction.transactionResult),
-    txId,
-    identifiers: transaction.identifiers,
-    txHash: transaction.hash,
-    blockHeight: transaction.block.height,
-    blockHash: transaction.block.hash,
-    blockTimestamp: transaction.block.timestamp,
-    blockAuthor: transaction.block.author,
-    segmentStatusMap: toSegmentStatusMap(transaction.transactionResult),
-    unshielded: toUnshieldedUtxos(transaction.unshieldedCreatedOutputs, transaction.unshieldedSpentOutputs),
-    indexerId: transaction.id,
-    protocolVersion: transaction.protocolVersion,
-    fees: {
-      estimatedFees: transaction.fees.estimatedFees,
-      paidFees: transaction.fees.paidFees
-    }
-  };
-};
+});
 
 const blockToContractState$ = (contractAddress: ContractAddress) => (block: Block) =>
   Rx.from(block.transactions).pipe(
