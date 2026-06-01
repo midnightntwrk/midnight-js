@@ -22,7 +22,12 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expect, test } from 'vitest';
 
-import { IndexerError, IndexerFormattedError, IndexerQueryError } from '../errors';
+import {
+  IndexerError,
+  IndexerFormattedError,
+  IndexerQueryError,
+  IndexerSubscriptionDataError
+} from '../errors';
 import type { TransactionResult } from '../gen/graphql';
 import {
   type IndexerUtxo,
@@ -251,5 +256,19 @@ describe('IndexerQueryError', () => {
 
     expect(error.cause).toBe(originalError);
     expect(error.message).toBe('Network unreachable');
+  });
+});
+
+describe('IndexerSubscriptionDataError', () => {
+  test('describes the missing field in the message', () => {
+    const error = new IndexerSubscriptionDataError('blocks');
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toBeInstanceOf(IndexerError);
+    expect(error.name).toBe('IndexerSubscriptionDataError');
+    expect(error.missingField).toBe('blocks');
+    expect(error.message).toBe(
+      "Expected 'blocks' in indexer subscription data, got null/undefined"
+    );
   });
 });

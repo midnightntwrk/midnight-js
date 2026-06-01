@@ -55,7 +55,7 @@ import { createClient } from 'graphql-ws';
 import * as ws from 'isomorphic-ws';
 import * as Rx from 'rxjs';
 
-import { IndexerFormattedError, IndexerQueryError } from './errors';
+import { IndexerFormattedError, IndexerQueryError, IndexerSubscriptionDataError } from './errors';
 import {
   type BlockOffset,
   type ContractActionOffset,
@@ -163,7 +163,10 @@ const blockOffsetToBlock$ = (apolloClient: ApolloClient) => (offset: InputMaybe<
     .pipe(
       withValidFetchData(),
       Rx.map((data) => {
-        const blocks = data.blocks!;
+        const blocks = data.blocks;
+        if (!blocks) {
+          throw new IndexerSubscriptionDataError('blocks');
+        }
         return {
           hash: blocks.hash,
           height: blocks.height,
@@ -323,7 +326,13 @@ const blockOffsetToContractState$ =
       })
       .pipe(
         withValidFetchData(),
-        Rx.map((data) => data.contractActions!.state),
+        Rx.map((data) => {
+          const contractActions = data.contractActions;
+          if (!contractActions) {
+            throw new IndexerSubscriptionDataError('contractActions');
+          }
+          return contractActions.state;
+        }),
         Rx.map(deserializeContractState)
       );
 
@@ -413,7 +422,10 @@ const blockOffsetToUnshieldedBalances$ =
       .pipe(
         withValidFetchData(),
         Rx.map((data) => {
-          const contractAction = data.contractActions!;
+          const contractAction = data.contractActions;
+          if (!contractAction) {
+            throw new IndexerSubscriptionDataError('contractActions');
+          }
           if ('unshieldedBalances' in contractAction) {
             return contractAction.unshieldedBalances;
           }

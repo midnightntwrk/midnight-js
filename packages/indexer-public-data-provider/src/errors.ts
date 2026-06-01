@@ -47,3 +47,14 @@ export class IndexerQueryError extends IndexerError {
     this.name = 'IndexerQueryError';
   }
 }
+
+/**
+ * An error raised when an indexer subscription payload is missing a field
+ * the provider relies on. Carries the missing field name for diagnostics.
+ */
+export class IndexerSubscriptionDataError extends IndexerError {
+  constructor(public readonly missingField: string) {
+    super(`Expected '${missingField}' in indexer subscription data, got null/undefined`);
+    this.name = 'IndexerSubscriptionDataError';
+  }
+}
