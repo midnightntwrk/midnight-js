@@ -22,7 +22,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expect, test } from 'vitest';
 
-import { IndexerError, IndexerFormattedError } from '../errors';
+import { IndexerError, IndexerFormattedError, IndexerQueryError } from '../errors';
 import type { TransactionResult } from '../gen/graphql';
 import {
   type IndexerUtxo,
@@ -231,5 +231,25 @@ describe('IndexerFormattedError', () => {
     const error = new IndexerFormattedError(causes);
 
     expect(error.cause).toBe(causes);
+  });
+});
+
+describe('IndexerQueryError', () => {
+  test('exposes message and name', () => {
+    const error = new IndexerQueryError('Query failed');
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toBeInstanceOf(IndexerError);
+    expect(error.name).toBe('IndexerQueryError');
+    expect(error.message).toBe('Query failed');
+  });
+
+  test('preserves original error via cause', () => {
+    const originalError = new Error('Network unreachable');
+
+    const error = new IndexerQueryError(originalError.message, { cause: originalError });
+
+    expect(error.cause).toBe(originalError);
+    expect(error.message).toBe('Network unreachable');
   });
 });

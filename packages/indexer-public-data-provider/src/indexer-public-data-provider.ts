@@ -55,7 +55,7 @@ import { createClient } from 'graphql-ws';
 import * as ws from 'isomorphic-ws';
 import * as Rx from 'rxjs';
 
-import { IndexerFormattedError } from './errors';
+import { IndexerFormattedError, IndexerQueryError } from './errors';
 import {
   type BlockOffset,
   type ContractActionOffset,
@@ -93,9 +93,9 @@ export const isRegularTransaction = (
   return 'identifiers' in tx && 'hash' in tx && Array.isArray(tx.identifiers);
 };
 
-const maybeThrowQueryError = <R extends { error?: { message: string } }>(result: R): R => {
+const maybeThrowQueryError = <R extends { error?: Error & { message: string } }>(result: R): R => {
   if (result.error) {
-    throw new Error(result.error.message);
+    throw new IndexerQueryError(result.error.message, { cause: result.error });
   }
   return result;
 };
@@ -103,7 +103,7 @@ const maybeThrowQueryError = <R extends { error?: { message: string } }>(result:
 const withCompleteQueryData = <A>(): Rx.OperatorFunction<ApolloQueryResult<A>, A> =>
   Rx.pipe(
     Rx.filter((result: ApolloQueryResult<A>) => {
-      if (result.error) throw new Error(result.error.message);
+      if (result.error) throw new IndexerQueryError(result.error.message, { cause: result.error });
       return result.dataState === 'complete';
     }),
     // Safe: dataState === 'complete' guarantees data is Complete<A> which defaults to A

@@ -35,3 +35,15 @@ export class IndexerFormattedError extends IndexerError {
     this.name = 'IndexerFormattedError';
   }
 }
+
+/**
+ * An error raised when an Apollo query or fetch returns a transport-level or
+ * GraphQL-level error. Preserves the original Apollo error via {@link Error.cause}
+ * so consumers can inspect network details, GraphQL errors, and the original stack.
+ */
+export class IndexerQueryError extends IndexerError {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'IndexerQueryError';
+  }
+}
