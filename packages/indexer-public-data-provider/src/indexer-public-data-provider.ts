@@ -93,7 +93,7 @@ export const isRegularTransaction = (
   return 'identifiers' in tx && 'hash' in tx && Array.isArray(tx.identifiers);
 };
 
-const maybeThrowQueryError = <R extends { error?: Error & { message: string } }>(result: R): R => {
+const maybeThrowQueryError = <R extends { error?: { message: string } }>(result: R): R => {
   if (result.error) {
     throw new IndexerQueryError(result.error.message, { cause: result.error });
   }

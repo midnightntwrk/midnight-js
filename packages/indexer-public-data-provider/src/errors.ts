@@ -22,12 +22,15 @@ import type { GraphQLFormattedError } from 'graphql';
 export abstract class IndexerError extends Error {}
 
 /**
- * An error describing the causes of error that occurred during server-side execution of
- * a query against the Indexer.
+ * Raised when a GraphQL response includes one or more `GraphQLFormattedError`
+ * entries. Aggregates all server-side errors into a single numbered message
+ * and exposes the original array via {@link cause}.
+ *
+ * Transport-level and other Apollo failures are reported via {@link IndexerQueryError}.
  */
 export class IndexerFormattedError extends IndexerError {
   /**
-   * @param cause An array of GraphQL errors that occurred during the server-side execution.
+   * @param cause The GraphQL errors reported by the server.
    */
   constructor(public readonly cause: readonly GraphQLFormattedError[]) {
     const formatted = cause.map((c, idx) => `${idx + 1}. ${c.message}`).join('\n\t');
@@ -38,7 +41,7 @@ export class IndexerFormattedError extends IndexerError {
 
 /**
  * An error raised when an Apollo query or fetch returns a transport-level or
- * GraphQL-level error. Preserves the original Apollo error via {@link Error.cause}
+ * GraphQL-level error. Preserves the original Apollo error via `Error.cause`
  * so consumers can inspect network details, GraphQL errors, and the original stack.
  */
 export class IndexerQueryError extends IndexerError {
@@ -49,11 +52,18 @@ export class IndexerQueryError extends IndexerError {
 }
 
 /**
+ * Subscription payload fields the indexer provider depends on.
+ * Narrowing this to a literal union prevents typos at throw sites and
+ * documents the exhaustive set of fields the provider currently reads.
+ */
+export type IndexerSubscriptionField = 'blocks' | 'contractActions';
+
+/**
  * An error raised when an indexer subscription payload is missing a field
  * the provider relies on. Carries the missing field name for diagnostics.
  */
 export class IndexerSubscriptionDataError extends IndexerError {
-  constructor(public readonly missingField: string) {
+  constructor(public readonly missingField: IndexerSubscriptionField) {
     super(`Expected '${missingField}' in indexer subscription data, got null/undefined`);
     this.name = 'IndexerSubscriptionDataError';
   }
