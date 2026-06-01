@@ -8,14 +8,22 @@
 
 ## Classes
 
+- [IndexerDataError](classes/IndexerDataError.md)
+- [IndexerError](classes/IndexerError.md)
 - [IndexerFormattedError](classes/IndexerFormattedError.md)
+- [IndexerProviderConfigError](classes/IndexerProviderConfigError.md)
+- [IndexerQueryError](classes/IndexerQueryError.md)
+- [IndexerSubscriptionDataError](classes/IndexerSubscriptionDataError.md)
 
 ## Type Aliases
 
+- [IndexerDataErrorContext](type-aliases/IndexerDataErrorContext.md)
+- [IndexerSubscriptionField](type-aliases/IndexerSubscriptionField.md)
 - [IndexerUtxo](type-aliases/IndexerUtxo.md)
 
 ## Functions
 
+- [correlateDeployTxId](functions/correlateDeployTxId.md)
 - [indexerPublicDataProvider](functions/indexerPublicDataProvider.md)
 - [isRegularTransaction](functions/isRegularTransaction.md)
 - [toSegmentStatus](functions/toSegmentStatus.md)
