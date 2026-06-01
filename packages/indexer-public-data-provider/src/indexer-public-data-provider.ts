@@ -55,7 +55,13 @@ import { createClient } from 'graphql-ws';
 import * as ws from 'isomorphic-ws';
 import * as Rx from 'rxjs';
 
-import { IndexerFormattedError } from './errors';
+import {
+  IndexerDataError,
+  IndexerFormattedError,
+  IndexerProviderConfigError,
+  IndexerQueryError,
+  IndexerSubscriptionDataError
+} from './errors';
 import {
   type BlockOffset,
   type ContractActionOffset,
@@ -93,9 +99,14 @@ export const isRegularTransaction = (
   return 'identifiers' in tx && 'hash' in tx && Array.isArray(tx.identifiers);
 };
 
+const hasContractAction = <T extends { contractAction?: unknown }>(
+  data: T
+): data is T & { contractAction: NonNullable<T['contractAction']> } =>
+  data.contractAction != null;
+
 const maybeThrowQueryError = <R extends { error?: { message: string } }>(result: R): R => {
   if (result.error) {
-    throw new Error(result.error.message);
+    throw new IndexerQueryError(result.error.message, { cause: result.error });
   }
   return result;
 };
@@ -103,7 +114,7 @@ const maybeThrowQueryError = <R extends { error?: { message: string } }>(result:
 const withCompleteQueryData = <A>(): Rx.OperatorFunction<ApolloQueryResult<A>, A> =>
   Rx.pipe(
     Rx.filter((result: ApolloQueryResult<A>) => {
-      if (result.error) throw new Error(result.error.message);
+      if (result.error) throw new IndexerQueryError(result.error.message, { cause: result.error });
       return result.dataState === 'complete';
     }),
     // Safe: dataState === 'complete' guarantees data is Complete<A> which defaults to A
@@ -163,7 +174,10 @@ const blockOffsetToBlock$ = (apolloClient: ApolloClient) => (offset: InputMaybe<
     .pipe(
       withValidFetchData(),
       Rx.map((data) => {
-        const blocks = data.blocks!;
+        const blocks = data.blocks;
+        if (!blocks) {
+          throw new IndexerSubscriptionDataError('blocks');
+        }
         return {
           hash: blocks.hash,
           height: blocks.height,
@@ -227,7 +241,7 @@ export const toTxStatus = (transactionResult: TransactionResult): TxStatus => {
   if (result === 'FAILURE' || result === 'PARTIAL_SUCCESS' || result === 'SUCCESS') {
     return map[result];
   }
-  throw new Error(`Unexpected 'status' value ${result}`);
+  throw IndexerDataError.unknownStatus(result);
 };
 
 export const toSegmentStatus = (success: boolean): SegmentStatus =>
@@ -273,6 +287,53 @@ const transformContractBalanceToUnshieldedBalance = (contractBalance: ContractBa
 
 export const toUnshieldedBalances = (contractBalances: readonly ContractBalance[]): UnshieldedBalances =>
   contractBalances.map(transformContractBalanceToUnshieldedBalance);
+
+/**
+ * Correlates a contract action at `contractAddress` with the transaction's
+ * identifier at the same positional index. Throws {@link IndexerDataError}
+ * when the deploy lacks an action for the address, when the corresponding
+ * identifier slot is missing, or when the identifier is not a non-empty
+ * string — all indicate that the indexer's contract-action / identifier
+ * rows are out of sync.
+ *
+ * @internal Exported for unit testing the correlation in isolation.
+ * Production callers should go through `PublicDataProvider.watchForDeployTxData`.
+ */
+export const correlateDeployTxId = (
+  contractAddress: ContractAddress,
+  contractActions: readonly { readonly address: string }[],
+  identifiers: readonly string[]
+): string => {
+  const actionIndex = contractActions.findIndex(({ address }) => address === contractAddress);
+  const txId = actionIndex >= 0 ? identifiers[actionIndex] : undefined;
+  if (typeof txId !== 'string' || txId.length === 0) {
+    throw IndexerDataError.missingIdentifier(contractAddress, actionIndex, identifiers.length);
+  }
+  return txId;
+};
+
+const toFinalizedDeployTxData = (
+  contractAddress: ContractAddress,
+  transaction: RegularTransaction
+): FinalizedTxData => ({
+  tx: deserializeTransaction(transaction.raw),
+  status: toTxStatus(transaction.transactionResult),
+  txId: correlateDeployTxId(contractAddress, transaction.contractActions, transaction.identifiers),
+  identifiers: transaction.identifiers,
+  txHash: transaction.hash,
+  blockHeight: transaction.block.height,
+  blockHash: transaction.block.hash,
+  blockTimestamp: transaction.block.timestamp,
+  blockAuthor: transaction.block.author,
+  segmentStatusMap: toSegmentStatusMap(transaction.transactionResult),
+  unshielded: toUnshieldedUtxos(transaction.unshieldedCreatedOutputs, transaction.unshieldedSpentOutputs),
+  indexerId: transaction.id,
+  protocolVersion: transaction.protocolVersion,
+  fees: {
+    estimatedFees: transaction.fees.estimatedFees,
+    paidFees: transaction.fees.paidFees
+  }
+});
 
 const blockToContractState$ = (contractAddress: ContractAddress) => (block: Block) =>
   Rx.from(block.transactions).pipe(
@@ -323,7 +384,13 @@ const blockOffsetToContractState$ =
       })
       .pipe(
         withValidFetchData(),
-        Rx.map((data) => data.contractActions!.state),
+        Rx.map((data) => {
+          const contractActions = data.contractActions;
+          if (!contractActions) {
+            throw new IndexerSubscriptionDataError('contractActions');
+          }
+          return contractActions.state;
+        }),
         Rx.map(deserializeContractState)
       );
 
@@ -345,8 +412,8 @@ const waitForContractToAppear =
       })
       .pipe(
         withCompleteQueryData(),
-        Rx.filter((data) => data.contractAction !== null),
-        Rx.map((data) => data.contractAction!.state),
+        Rx.filter(hasContractAction),
+        Rx.map((data) => data.contractAction.state),
         Rx.take(1)
       );
 
@@ -383,9 +450,9 @@ const waitForUnshieldedBalancesToAppear =
       })
       .pipe(
         withCompleteQueryData(),
-        Rx.filter((data) => data.contractAction !== null),
+        Rx.filter(hasContractAction),
         Rx.map((data) => {
-          const contractAction = data.contractAction!;
+          const { contractAction } = data;
           if ('unshieldedBalances' in contractAction) {
             return contractAction.unshieldedBalances;
           }
@@ -413,7 +480,10 @@ const blockOffsetToUnshieldedBalances$ =
       .pipe(
         withValidFetchData(),
         Rx.map((data) => {
-          const contractAction = data.contractActions!;
+          const contractAction = data.contractActions;
+          if (!contractAction) {
+            throw new IndexerSubscriptionDataError('contractActions');
+          }
           if ('unshieldedBalances' in contractAction) {
             return contractAction.unshieldedBalances;
           }
@@ -578,9 +648,16 @@ const indexerPublicDataProviderInternal = (
             const contract = queryResult.data.contractAction as ExcludeEmptyAndNull<
               DeployContractStateTxQueryQuery['contractAction']
             >;
-            return 'deploy' in contract
-              ? contract.deploy.transaction.contractActions.find(({ address }) => address === contractAddress)!.state
-              : contract.state;
+            if (!('deploy' in contract)) {
+              return contract.state;
+            }
+            const deployAction = contract.deploy.transaction.contractActions.find(
+              ({ address }) => address === contractAddress
+            );
+            if (!deployAction) {
+              throw IndexerDataError.missingContractAction(contractAddress);
+            }
+            return deployAction.state;
           }
           return null;
         })
@@ -620,28 +697,8 @@ const indexerPublicDataProviderInternal = (
               return 'deploy' in contract ? contract.deploy.transaction : contract.transaction;
             }),
             Rx.filter(isRegularTransaction),
-            Rx.map(
-              (transaction: RegularTransaction): FinalizedTxData => ({
-                tx: deserializeTransaction(transaction.raw),
-                status: toTxStatus(transaction.transactionResult),
-                txId: transaction.identifiers[
-                  transaction.contractActions.findIndex(({ address }) => address === contractAddress)
-                ]!,
-                identifiers: transaction.identifiers,
-                txHash: transaction.hash,
-                blockHeight: transaction.block.height,
-                blockHash: transaction.block.hash,
-                blockTimestamp: transaction.block.timestamp,
-                blockAuthor: transaction.block.author,
-                segmentStatusMap: toSegmentStatusMap(transaction.transactionResult),
-                unshielded: toUnshieldedUtxos(transaction.unshieldedCreatedOutputs, transaction.unshieldedSpentOutputs),
-                indexerId: transaction.id,
-                protocolVersion: transaction.protocolVersion,
-                fees: {
-                  estimatedFees: transaction.fees.estimatedFees,
-                  paidFees: transaction.fees.paidFees
-                },
-              })
+            Rx.map((transaction: RegularTransaction) =>
+              toFinalizedDeployTxData(contractAddress, transaction)
             )
           )
       );
@@ -723,7 +780,9 @@ const indexerPublicDataProviderInternal = (
       config: ContractStateObservableConfig = { type: 'latest' }
     ): Rx.Observable<UnshieldedBalances> {
       if (config.type === 'txId') {
-        throw new Error('txId configuration not supported for unshielded balances observable');
+        throw new IndexerProviderConfigError(
+          'txId configuration not supported for unshielded balances observable'
+        );
       }
       if (config.type === 'latest') {
         return contractAddressToLatestBlockOffset$(apolloClient)(contractAddress).pipe(
