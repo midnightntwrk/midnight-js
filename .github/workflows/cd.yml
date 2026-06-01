@@ -35,7 +35,7 @@ jobs:
     needs: [ci-midnightjs, ci-testkitjs]
     steps:
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # ratchet:actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # ratchet:actions/checkout@v6.0.2
         with:
           fetch-depth: 0
 
@@ -50,7 +50,7 @@ jobs:
           direnv export gha >> "$GITHUB_ENV"
 
       - name: Set up Node.js
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f  # ratchet:actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # ratchet:actions/setup-node@v6.4.0
         with:
           registry-url: https://npm.pkg.github.com/
           scope: '@midnight-ntwrk'
@@ -63,7 +63,7 @@ jobs:
         run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Cache Turbo and Yarn dependencies
-        uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # ratchet:actions/cache@v5.0.5
         with:
           path: |
             **/node_modules
@@ -90,19 +90,20 @@ jobs:
         id: release_notes
         run: |
           VERSION=${GITHUB_REF#refs/tags/}
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-          # Extract release notes from CHANGELOG.md for this version
-          awk "/^## .*$VERSION/,/^## /{if(/^## .*$VERSION/) found=1; else if(/^## / && found) exit; if(found && !/^## .*$VERSION/) print}" CHANGELOG.md > release_notes.md
+          # CHANGELOG headers use bare versions in brackets ("## [4.1.0]"); strip leading 'v'.
+          VERSION_NUMBER=${VERSION#v}
 
-          # If no release notes found, use commit messages since last tag
-          if [ ! -s release_notes.md ]; then
-            echo "### Changes" > release_notes.md
-            git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 HEAD^)..HEAD >> release_notes.md
-          fi
+          # Extract the section between this version's header and the next "## " header.
+          awk -v ver="$VERSION_NUMBER" '
+            $0 ~ ("^## \\[" ver "\\]") { found=1; next }
+            found && /^## / { exit }
+            found
+          ' CHANGELOG.md > release_notes.md
 
       - name: Determine Build Targets
-        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # ratchet:dorny/paths-filter@v4.0.1
         id: changes
         with:
           filters: |
@@ -124,15 +125,16 @@ jobs:
 
       - name: Create GitHub Release
         if: steps.changes.outputs.midnight-js == 'true'
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # ratchet:softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ steps.release_notes.outputs.version }}
-          release_name: Release ${{ steps.release_notes.outputs.version }}
+          name: Release ${{ steps.release_notes.outputs.version }}
           body_path: release_notes.md
           draft: false
           prerelease: false
+          make_latest: 'true'
 
       - name: Extract version number
         id: version
