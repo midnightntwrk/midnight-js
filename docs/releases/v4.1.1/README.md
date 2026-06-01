@@ -2,22 +2,23 @@
 
 **Release Date:** June 1, 2026
 **Previous Version:** v4.1.0
-**Migration Complexity:** None (drop-in patch release)
+**Migration Complexity:** Minimal — one error-field rename (`IndexerFormattedError.cause` → `.errors`); otherwise drop-in
 
 ## Quick Links
 
 - [Release Notes](./release-notes.md) - High-level changelog
-- [Breaking Changes](./breaking-changes.md) - None in v4.1.1
+- [Breaking Changes](./breaking-changes.md) - One field rename on `IndexerFormattedError`
 - [New Features](./new-features.md) - None in core (testkit-js tooling only)
-- [Migration Guide](./migration-guide.md) - Dependency bump only
-- [API Changes](./api-changes.md) - Re-exports and additive helpers
+- [Migration Guide](./migration-guide.md) - Dependency bump plus one find-and-replace
+- [API Changes](./api-changes.md) - Re-exports, additive helpers, new indexer error hierarchy
 
-## Breaking Changes (0)
+## Breaking Changes (1)
 
-No breaking changes. v4.1.1 is a drop-in upgrade from v4.1.0.
+- **`IndexerFormattedError.cause` renamed to `.errors`** — the GraphQL-error array carried by `IndexerFormattedError` has moved off the ES2022 `Error.cause` slot (which is contractually a single underlying error) onto a dedicated `.errors` field. Catch sites that read `err.cause` must migrate to `err.errors`. TypeScript surfaces every affected call site at compile time (#937)
 
 ## Notable Behaviour Changes
 
+- **Indexer provider raises typed errors instead of generic `Error` / non-null-assertion crashes** — Apollo failures, missing subscription fields, structurally inconsistent indexer rows, and unsupported observable configs now raise dedicated subclasses of a new `IndexerError` base. Previously these would either propagate as opaque `new Error("...")` instances or silently produce `undefined` values downstream (e.g. an empty-string `txId` in `FinalizedTxData`) (#937)
 - **Signing-key import validates entries up-front** — a single malformed entry now aborts the import without partial writes (was: opaque failure at later `submitTx`) (#926)
 - **Export/import password policy aligned with storage policy** — `exportPrivateState` / `exportSigningKey` now reject weak passwords (insufficient character classes, repeated characters, sequential patterns) instead of accepting any 16-char string (#922)
 - **`contractStateObservable` now emits for `blockHeight` / `blockHash` configs** — previously produced an empty observable due to a misplaced internal filter (#911)
@@ -33,10 +34,13 @@ No breaking changes. v4.1.1 is a drop-in upgrade from v4.1.0.
 ## Key Bug Fixes
 
 - `contractStateObservable({ type: 'blockHeight', blockHeight }) ` and `({ type: 'blockHash', blockHash })` now emit the contract state at the requested block instead of completing silently with no value (#911)
+- `watchForDeployTxData` previously masked a missing identifier slot behind a non-null assertion — when the indexer returned `identifiers[findIndex(...)] === undefined`, the value silently became the `txId` of `FinalizedTxData`. Now raises `IndexerDataError` with the correlating contract address, action index, and identifiers length (#937)
+- `queryDeployContractState` no longer crashes with a cryptic `TypeError` when the deploy transaction lacks a contract action for the requested address; raises `IndexerDataError` (`kind: 'missing-contract-action'`) instead (#937)
+- Apollo transport failures, GraphQL-error responses, and malformed subscription payloads from the indexer are now distinguishable in `catch` blocks (`IndexerQueryError` vs `IndexerFormattedError` vs `IndexerSubscriptionDataError`) — previously all collapsed to either `new Error(message)` or a non-null-assertion crash (#937)
 
 ## Quick Migration
 
-No code changes required. Bump the dependency and reinstall:
+Most consumers need only the dependency bump. If you `catch` `IndexerFormattedError` and read the GraphQL-error array, rename `.cause` to `.errors`:
 
 ```bash
 yarn upgrade @midnight-ntwrk/midnight-js@4.1.1
@@ -50,9 +54,10 @@ yarn install
 
 ## Testing Checklist
 
-- [ ] TypeScript compilation passes
+- [ ] TypeScript compilation passes (the `IndexerFormattedError.cause` → `.errors` rename surfaces affected call sites here)
 - [ ] Unit tests pass
 - [ ] Integration tests pass
+- [ ] If catching `IndexerFormattedError`: rename reads of `err.cause` to `err.errors`
 - [ ] If using `contractStateObservable` with `blockHeight` / `blockHash` configs: verify emissions are received (regression fix)
 - [ ] If exporting private state or signing keys: confirm export passwords satisfy the storage password policy (otherwise export now fails)
 - [ ] If using provider URLs against remote hosts: review the new insecure-URL warning and switch to `https://` / `wss://` where applicable

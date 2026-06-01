@@ -1,6 +1,6 @@
 # API Changes Reference v4.1.1
 
-Summary: **no removals, no signature changes**. All changes below are either additive (new exports) or internal-only (file moves with the same barrel surface).
+Summary: **no removals, no signature changes — except one field rename**. `IndexerFormattedError.cause` is renamed to `.errors` (see [Renamed Exports](#renamed-exports) at the bottom). All other changes are either additive (new exports) or internal-only (file moves with the same barrel surface).
 
 ## Package: `@midnight-ntwrk/midnight-js-utils`
 
@@ -88,6 +88,103 @@ The class signatures and constructor parameters are unchanged. They now carry a 
 
 ## Package: `@midnight-ntwrk/midnight-js-indexer-public-data-provider`
 
+### New Exports (additive)
+
+A coherent `IndexerError` hierarchy replaces the prior mix of generic `new Error(...)` throws and non-null-assertion crashes (#937). The base class is abstract, so every subclass can be caught with one `instanceof IndexerError` check.
+
+#### `IndexerError` (abstract base class)
+
+```typescript
+export abstract class IndexerError extends Error {}
+```
+
+Catches every error this provider raises — analogous to `PrivateStateImportError` in `@midnight-ntwrk/midnight-js-types`.
+
+#### `IndexerQueryError`
+
+```typescript
+export class IndexerQueryError extends IndexerError {
+  constructor(message: string, options?: ErrorOptions);
+}
+```
+
+Raised when an Apollo query or fetch fails at the transport layer (network failure, malformed response, Apollo client error). The original Apollo error is preserved via the standard `Error.cause` slot — distinct from `IndexerFormattedError`, which represents a well-formed response carrying `GraphQLFormattedError` entries.
+
+#### `IndexerDataError` + `IndexerDataErrorContext`
+
+```typescript
+export type IndexerDataErrorContext =
+  | { kind: 'unknown-status'; value: string }
+  | { kind: 'missing-contract-action'; contractAddress: string }
+  | {
+      kind: 'missing-identifier';
+      contractAddress: string;
+      actionIndex: number;
+      identifiersLength: number;
+    };
+
+export class IndexerDataError extends IndexerError {
+  constructor(public readonly context: IndexerDataErrorContext);
+
+  static unknownStatus(value: string): IndexerDataError;
+  static missingContractAction(contractAddress: string): IndexerDataError;
+  static missingIdentifier(
+    contractAddress: string,
+    actionIndex: number,
+    identifiersLength: number
+  ): IndexerDataError;
+}
+```
+
+Raised when indexer-returned data is structurally inconsistent with the provider's expectations: unknown enum values, broken referential integrity between related rows, or missing relations the schema implies should be present. The discriminated `context` field lets consumers branch on the failure mode without parsing the error message; static factories keep message and context in sync at construction.
+
+#### `IndexerSubscriptionDataError` + `IndexerSubscriptionField`
+
+```typescript
+export type IndexerSubscriptionField = 'blocks' | 'contractActions';
+
+export class IndexerSubscriptionDataError extends IndexerError {
+  constructor(public readonly missingField: IndexerSubscriptionField);
+}
+```
+
+Raised when an indexer subscription payload is missing a top-level field the provider relies on. The field name is a literal union for compile-time typo safety at throw sites.
+
+#### `IndexerProviderConfigError`
+
+```typescript
+export class IndexerProviderConfigError extends IndexerError {
+  constructor(message: string);
+}
+```
+
+Raised when the consumer passes a configuration the indexer provider cannot serve (e.g. an observable mode unsupported by the indexer's query surface). Signals API misuse, not server-side issues — a separate semantic category from `IndexerDataError`.
+
+### Modified Exports
+
+#### `IndexerFormattedError`
+
+**v4.1.0:**
+
+```typescript
+export class IndexerFormattedError extends Error {
+  constructor(public readonly cause: readonly GraphQLFormattedError[]);
+}
+```
+
+**v4.1.1:**
+
+```typescript
+export class IndexerFormattedError extends IndexerError {
+  constructor(public readonly errors: readonly GraphQLFormattedError[]);
+}
+```
+
+Two changes:
+
+1. **Base class** moved from `Error` → new abstract `IndexerError` (additive — narrower for `instanceof IndexerError`, still `instanceof Error`).
+2. **Field rename** `cause` → `errors`. This is the one breaking change in v4.1.1 (see [breaking-changes.md](./breaking-changes.md) and [Renamed Exports](#renamed-exports) below). The output message format also changes: indices now precede each error in a flat numbered list (`1. msg\n\t2. msg`) instead of the v4.1.0 reverse-order growing-indent format (was a regression — #823).
+
 ### Modified Internals (public API preserved)
 
 #### `indexerPublicDataProvider` factory
@@ -97,6 +194,10 @@ A `warnIfInsecureRemoteUrl` call is now made at factory invocation for the confi
 #### `contractStateObservable`
 
 Public signature unchanged. The internal `Rx.filter(isRegularTransaction)` over `waitForBlockToAppear` emissions has been removed (bug fix #911); the resulting observable now emits for `blockHeight` / `blockHash` configs as documented.
+
+#### `queryDeployContractState`, `watchForDeployTxData`, `waitForContractToAppear`, `waitForUnshieldedBalancesToAppear`, `unshieldedBalancesObservable`, `toTxStatus`
+
+Public signatures unchanged. Previously these used non-null assertions (`!`) or generic `new Error(...)` throws on indexer payloads. They now raise typed `IndexerDataError`, `IndexerSubscriptionDataError`, or `IndexerProviderConfigError` instances under the new `IndexerError` umbrella (#937). Where non-null assertions previously masked silent failures (e.g. `identifiers[findIndex(...)]` becoming an `undefined` or empty-string `txId` in `FinalizedTxData`), the typed error now interrupts that path.
 
 ## Package: `@midnight-ntwrk/midnight-js-http-client-proof-provider`
 
@@ -138,7 +239,13 @@ None.
 
 ### Renamed Exports
 
-None.
+#### `IndexerFormattedError.cause` → `IndexerFormattedError.errors` (#937)
+
+The `readonly GraphQLFormattedError[]` field carried by `IndexerFormattedError` is renamed from `cause` to `errors`. The slot type is unchanged.
+
+The standard ES2022 `Error.cause` slot is contractually a single underlying error, not a peer collection. Shadowing it broke Node's `util.inspect` causal chain, Sentry error grouping, and structured loggers. The dedicated `.errors` field clears the `cause` slot so the standard machinery works correctly, and `IndexerFormattedError` instances no longer need to special-case loggers.
+
+Consumer migration: rename `err.cause` → `err.errors` at catch sites that read this field. See [migration-guide.md § Step 3](./migration-guide.md#step-3-conditional--rename-indexerformattederrorcause--errors).
 
 ### Deprecated Exports
 

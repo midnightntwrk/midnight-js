@@ -1,8 +1,43 @@
 # Breaking Changes v4.1.1
 
-**None.**
+**1 breaking change** — a single field rename on a public error class. Every other v4.1.0 import continues to work identically in v4.1.1.
 
-v4.1.1 is a patch release. No public API surface has been removed, renamed, or had its signature changed. Every import that worked in v4.1.0 continues to work identically in v4.1.1.
+## 1. `IndexerFormattedError.cause` renamed to `.errors` (#937)
+
+`IndexerFormattedError` is the error raised by `@midnight-ntwrk/midnight-js-indexer-public-data-provider` when the indexer returns one or more `GraphQLFormattedError` entries. In v4.1.0 the underlying array was exposed through the ES2022 `Error.cause` slot.
+
+The standard `Error.cause` contract describes a *single* underlying error — not a peer collection. Shadowing it with a `readonly GraphQLFormattedError[]` broke Node's `util.inspect` causal chain, Sentry grouping, and structured loggers. v4.1.1 moves the array to a dedicated `.errors` field so the `cause` slot stays semver-compliant.
+
+**v4.1.0:**
+
+```typescript
+try {
+  await indexer.queryDeployContractState(address);
+} catch (e) {
+  if (e instanceof IndexerFormattedError) {
+    console.log(e.cause); // readonly GraphQLFormattedError[]
+  }
+}
+```
+
+**v4.1.1:**
+
+```typescript
+try {
+  await indexer.queryDeployContractState(address);
+} catch (e) {
+  if (e instanceof IndexerFormattedError) {
+    console.log(e.errors); // readonly GraphQLFormattedError[]
+  }
+}
+```
+
+**Action required only if:** your code catches `IndexerFormattedError` and reads the GraphQL-error array off the instance. Find-and-replace `err.cause` → `err.errors` at those call sites. A handful of TypeScript compile errors will surface them automatically.
+
+Also new in #937 (additive, non-breaking — covered in [api-changes.md](./api-changes.md)):
+
+- `IndexerError` — abstract base class so every error this provider raises can be caught with a single `instanceof IndexerError` check.
+- `IndexerQueryError`, `IndexerDataError`, `IndexerSubscriptionDataError`, `IndexerProviderConfigError` — named error classes replacing previous `new Error(...)` throws and non-null assertions. Each preserves diagnostic context (Apollo `cause`, discriminated `context`, missing-field name).
 
 ## Behaviour Changes (non-breaking, but worth knowing)
 
@@ -44,6 +79,6 @@ The connection itself is **not** blocked — the warning is informational. Loopb
 
 ## Common Migration Issues
 
-None — v4.1.1 is a drop-in replacement for v4.1.0.
+Only one — the `IndexerFormattedError.cause` → `.errors` rename. TypeScript will surface every affected call site at compile time.
 
 If you observe a previously-working flow throwing in v4.1.1, it is almost certainly one of the four behaviour changes above — see the `Action required only if` notes for each.

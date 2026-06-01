@@ -4,7 +4,15 @@
 **Previous Version:** v4.1.0
 **Node.js Requirement:** >=22
 
-v4.1.1 is a patch release: four hardening / correctness fixes in `@midnight-ntwrk/midnight-js`, a security-driven dependency refresh, and internal reorganisation of contracts governance code (public API unchanged). No breaking changes.
+v4.1.1 is a patch release: hardening and correctness fixes across `@midnight-ntwrk/midnight-js`, a security-driven dependency refresh, internal reorganisation of contracts governance code (public API unchanged), and a coherent error hierarchy for the indexer provider. The new error hierarchy carries one small breaking change — a single field rename on a public class.
+
+## Breaking Changes
+
+### `IndexerFormattedError.cause` renamed to `.errors` (#937)
+
+The `GraphQLFormattedError[]` array carried by `IndexerFormattedError` has been moved off the ES2022 `Error.cause` slot — which is contractually a single underlying error — onto a dedicated `.errors` field. Catch sites that read `err.cause` on this class must migrate to `err.errors`. TypeScript surfaces every affected call site at compile time.
+
+See [breaking-changes.md](./breaking-changes.md) for the full rationale and a before/after snippet.
 
 ## Security
 
@@ -57,6 +65,37 @@ Resolutions added / updated (transitives pinned across the workspace):
 Verification: `yarn npm audit --recursive --severity high` reports no advisories; remaining moderate entries are deprecation notices on `git-raw-commits` / `git-semver-tags` (not vulnerabilities).
 
 ## Bug Fixes
+
+### Harden error handling in `indexer-public-data-provider` (#937)
+
+A coherent `IndexerError` hierarchy replaces the mix of generic `new Error(...)` throws and non-null assertions previously sprinkled through the indexer provider. Every error this provider raises is now a subclass of the new abstract `IndexerError`, so consumers can catch them with a single `instanceof IndexerError` check (matching the `PrivateStateImportError` precedent in `@midnight-ntwrk/midnight-js-types`).
+
+Closed silent-failure and crash paths:
+
+- **`IndexerFormattedError` output was reversed and increasingly nested** — the `reduce` accumulator was appended at the *end* of each iteration, producing growing tab indentation and inverted error order. Replaced with `map().join('\n\t')` for an ordered numbered list. Existing tests used `toContain` which masked the regression — now strict `toBe` equality (Closes #823).
+- **Apollo errors were re-wrapped as plain `new Error(message)`**, discarding the original transport details, GraphQL errors, and stack. Now wrapped in `IndexerQueryError` carrying the Apollo error via `Error.cause` (Closes #822).
+- **Non-null assertions on subscription payload fields** (`data.blocks!`, `data.contractActions!.state`, `data.contractActions!`) replaced with explicit null checks raising `IndexerSubscriptionDataError`. The error names the missing field (typed as the literal union `'blocks' | 'contractActions'`) for actionable diagnostics (Closes #821).
+- **`queryDeployContractState` crashed with a cryptic `TypeError`** when the deploy transaction lacked a contract action for the requested address (was `find(...)!.state`). Now raises `IndexerDataError` (`kind: 'missing-contract-action'`).
+- **`watchForDeployTxData` returned `undefined` as a "valid" `txId`** when the indexer's `identifiers` array lacked the slot the contract-action index pointed to. Worse than a crash — it propagated `undefined` (and previously: empty strings) into `FinalizedTxData.txId`. Now raises `IndexerDataError` (`kind: 'missing-identifier'`) with the contract address, action index, and identifiers length. Correlation extracted into an `@internal` `correlateDeployTxId` helper with narrow types for cast-free testing.
+- **`toTxStatus` threw a generic `Error`** for unknown transaction-status enum values. Now raises `IndexerDataError` (`kind: 'unknown-status'`).
+- **`unshieldedBalancesObservable`'s `txId` branch threw a generic `Error`** for an unsupported config. Now raises `IndexerProviderConfigError`, distinguishing API misuse from server-side issues.
+- **Remaining non-null assertions on `data.contractAction!`** in `waitForContractToAppear` and `waitForUnshieldedBalancesToAppear` replaced with a `hasContractAction` type predicate so the type narrows through the Rx filter without a type-level lie. Removing the filter is now a compile error instead of a runtime crash.
+
+Error hierarchy:
+
+```
+IndexerError (abstract)
+├── IndexerFormattedError         GraphQL errors returned by server (errors[])
+├── IndexerQueryError             Apollo transport / query failure (cause preserved)
+├── IndexerSubscriptionDataError  Missing top-level field in subscription payload
+├── IndexerDataError              Structurally inconsistent indexer response (discriminated context)
+│     ├── kind: 'unknown-status'
+│     ├── kind: 'missing-contract-action'
+│     └── kind: 'missing-identifier'
+└── IndexerProviderConfigError    Consumer passed unsupported configuration
+```
+
+Closes #823, #822, #821.
 
 ### Emit contract state for `blockHeight` / `blockHash` configs (#911)
 
@@ -133,15 +172,16 @@ These additions are isolated to `testkit-js` — they do **not** affect the publ
 ## Documentation
 
 - Provider semantics and transaction privacy clarified in the `@midnight-ntwrk/midnight-js` README (#918)
-- API documentation regenerated for the new release surface (#934, #924, #910)
+- API documentation regenerated for the new release surface (#939, #934, #924, #910)
 
 ## CI
 
 - Pinned GitHub Actions bumped to latest versions across all workflows (#927)
+- `testkit-js` nightly e2e: concurrency group is now scoped by `testkit_docker_env`, so the five per-environment matrix legs no longer cancel one another. Non-nightly callers (`ci.yml`, `cd.yml`) fall back to a `'default'` group, preserving the existing single-group-per-branch behaviour (#935)
 
 ## Links
 
-- [Breaking Changes Details](./breaking-changes.md) — none
+- [Breaking Changes Details](./breaking-changes.md) — one field rename
 - [New Features Guide](./new-features.md)
 - [Migration Guide](./migration-guide.md)
 - [API Changes Reference](./api-changes.md)
