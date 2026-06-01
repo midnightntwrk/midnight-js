@@ -42,7 +42,7 @@
     "ws": "^8.20.0"
   },
   "devDependencies": {
-    "@graphql-codegen/cli": "^6.0.0",
+    "@graphql-codegen/cli": "^7.0.0",
     "@graphql-codegen/client-preset": "^5.0.0",
     "@graphql-codegen/typescript": "^5.0.0",
     "@graphql-codegen/typescript-operations": "^5.0.8",
