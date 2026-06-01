@@ -291,12 +291,13 @@ export const toUnshieldedBalances = (contractBalances: readonly ContractBalance[
 /**
  * Correlates a contract action at `contractAddress` with the transaction's
  * identifier at the same positional index. Throws {@link IndexerDataError}
- * when the deploy lacks an action for the address, or when the
- * corresponding identifier slot is missing — both indicate that the
- * indexer's contract-action / identifier rows are out of sync.
+ * when the deploy lacks an action for the address, when the corresponding
+ * identifier slot is missing, or when the identifier is not a non-empty
+ * string — all indicate that the indexer's contract-action / identifier
+ * rows are out of sync.
  *
- * Exported for unit testing the correlation in isolation. Production
- * callers should go through {@link PublicDataProvider.watchForDeployTxData}.
+ * @internal Exported for unit testing the correlation in isolation.
+ * Production callers should go through `PublicDataProvider.watchForDeployTxData`.
  */
 export const correlateDeployTxId = (
   contractAddress: ContractAddress,
@@ -305,7 +306,7 @@ export const correlateDeployTxId = (
 ): string => {
   const actionIndex = contractActions.findIndex(({ address }) => address === contractAddress);
   const txId = actionIndex >= 0 ? identifiers[actionIndex] : undefined;
-  if (txId === undefined) {
+  if (typeof txId !== 'string' || txId.length === 0) {
     throw IndexerDataError.missingIdentifier(contractAddress, actionIndex, identifiers.length);
   }
   return txId;

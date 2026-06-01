@@ -336,6 +336,26 @@ describe('correlateDeployTxId', () => {
       identifiersLength: 1
     });
   });
+
+  test('throws missing-identifier when the identifier slot is an empty string', () => {
+    let thrown: unknown;
+    try {
+      correlateDeployTxId(
+        targetAddress,
+        [{ address: targetAddress }, { address: '0xaaaa' }],
+        ['', 'id-a']
+      );
+    } catch (e) { thrown = e; }
+
+    expect(thrown).toBeInstanceOf(IndexerDataError);
+    const error = thrown as IndexerDataError;
+    expect(error.context).toEqual({
+      kind: 'missing-identifier',
+      contractAddress: targetAddress,
+      actionIndex: 0,
+      identifiersLength: 2
+    });
+  });
 });
 
 describe('IndexerDataError', () => {
