@@ -23,6 +23,7 @@ import {
 import { describe, expect, test } from 'vitest';
 
 import {
+  IndexerDataError,
   IndexerError,
   IndexerFormattedError,
   IndexerQueryError,
@@ -94,10 +95,11 @@ describe('toTxStatus', () => {
     expect(toTxStatus(result)).toBe(FailFallible);
   });
 
-  test('throws for unknown status', () => {
+  test('throws IndexerDataError for unknown status', () => {
     const result = { status: 'UNKNOWN', segments: null } as unknown as TransactionResult;
 
-    expect(() => toTxStatus(result)).toThrow("Unexpected 'status' value UNKNOWN");
+    expect(() => toTxStatus(result)).toThrow(IndexerDataError);
+    expect(() => toTxStatus(result)).toThrow("Unexpected transaction status value: UNKNOWN");
   });
 });
 
@@ -270,5 +272,16 @@ describe('IndexerSubscriptionDataError', () => {
     expect(error.message).toBe(
       "Expected 'blocks' in indexer subscription data, got null/undefined"
     );
+  });
+});
+
+describe('IndexerDataError', () => {
+  test('exposes message and name', () => {
+    const error = new IndexerDataError('Indexer returned malformed payload');
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toBeInstanceOf(IndexerError);
+    expect(error.name).toBe('IndexerDataError');
+    expect(error.message).toBe('Indexer returned malformed payload');
   });
 });

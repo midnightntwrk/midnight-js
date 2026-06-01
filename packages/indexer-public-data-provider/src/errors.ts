@@ -52,6 +52,23 @@ export class IndexerQueryError extends IndexerError {
 }
 
 /**
+ * An error raised when indexer-returned data is structurally inconsistent
+ * with the provider's expectations: unknown enum values, broken referential
+ * integrity between related rows, or missing relations the schema implies
+ * should be present.
+ *
+ * Distinct from {@link IndexerSubscriptionDataError} (which reports a missing
+ * top-level field on a subscription payload) and {@link IndexerFormattedError}
+ * (which reports errors the server explicitly returned).
+ */
+export class IndexerDataError extends IndexerError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'IndexerDataError';
+  }
+}
+
+/**
  * Subscription payload fields the indexer provider depends on.
  * Narrowing this to a literal union prevents typos at throw sites and
  * documents the exhaustive set of fields the provider currently reads.

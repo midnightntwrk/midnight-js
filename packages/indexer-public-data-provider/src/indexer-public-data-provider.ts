@@ -55,7 +55,12 @@ import { createClient } from 'graphql-ws';
 import * as ws from 'isomorphic-ws';
 import * as Rx from 'rxjs';
 
-import { IndexerFormattedError, IndexerQueryError, IndexerSubscriptionDataError } from './errors';
+import {
+  IndexerDataError,
+  IndexerFormattedError,
+  IndexerQueryError,
+  IndexerSubscriptionDataError
+} from './errors';
 import {
   type BlockOffset,
   type ContractActionOffset,
@@ -230,7 +235,7 @@ export const toTxStatus = (transactionResult: TransactionResult): TxStatus => {
   if (result === 'FAILURE' || result === 'PARTIAL_SUCCESS' || result === 'SUCCESS') {
     return map[result];
   }
-  throw new Error(`Unexpected 'status' value ${result}`);
+  throw new IndexerDataError(`Unexpected transaction status value: ${result}`);
 };
 
 export const toSegmentStatus = (success: boolean): SegmentStatus =>
@@ -590,9 +595,18 @@ const indexerPublicDataProviderInternal = (
             const contract = queryResult.data.contractAction as ExcludeEmptyAndNull<
               DeployContractStateTxQueryQuery['contractAction']
             >;
-            return 'deploy' in contract
-              ? contract.deploy.transaction.contractActions.find(({ address }) => address === contractAddress)!.state
-              : contract.state;
+            if (!('deploy' in contract)) {
+              return contract.state;
+            }
+            const deployAction = contract.deploy.transaction.contractActions.find(
+              ({ address }) => address === contractAddress
+            );
+            if (!deployAction) {
+              throw new IndexerDataError(
+                `Deploy transaction does not contain a contract action for address ${contractAddress}`
+              );
+            }
+            return deployAction.state;
           }
           return null;
         })
@@ -632,13 +646,20 @@ const indexerPublicDataProviderInternal = (
               return 'deploy' in contract ? contract.deploy.transaction : contract.transaction;
             }),
             Rx.filter(isRegularTransaction),
-            Rx.map(
-              (transaction: RegularTransaction): FinalizedTxData => ({
+            Rx.map((transaction: RegularTransaction): FinalizedTxData => {
+              const actionIndex = transaction.contractActions.findIndex(
+                ({ address }) => address === contractAddress
+              );
+              const txId = actionIndex >= 0 ? transaction.identifiers[actionIndex] : undefined;
+              if (txId === undefined) {
+                throw new IndexerDataError(
+                  `Transaction missing identifier for contract action at address ${contractAddress}`
+                );
+              }
+              return {
                 tx: deserializeTransaction(transaction.raw),
                 status: toTxStatus(transaction.transactionResult),
-                txId: transaction.identifiers[
-                  transaction.contractActions.findIndex(({ address }) => address === contractAddress)
-                ]!,
+                txId,
                 identifiers: transaction.identifiers,
                 txHash: transaction.hash,
                 blockHeight: transaction.block.height,
@@ -653,8 +674,8 @@ const indexerPublicDataProviderInternal = (
                   estimatedFees: transaction.fees.estimatedFees,
                   paidFees: transaction.fees.paidFees
                 },
-              })
-            )
+              };
+            })
           )
       );
     },
