@@ -21,13 +21,18 @@ yarn add @midnight-ntwrk/midnight-js
 import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
 import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
+import { FetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import type { MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
 
 // Set network
 setNetworkId('testnet');
 
 // Configure providers
-const providers = {
+const zkConfigProvider = new FetchZkConfigProvider('https://artifacts.example.com');
+
+const providers: MidnightProviders = {
   privateStateProvider: levelPrivateStateProvider({
     privateStoragePasswordProvider: () => 'your-secure-password',
     accountId: 'user-wallet-address'
@@ -36,7 +41,10 @@ const providers = {
     'https://indexer.example.com/graphql',
     'wss://indexer.example.com/graphql'
   ),
-  // ... zkConfigProvider, proofProvider, walletProvider, midnightProvider
+  zkConfigProvider,
+  proofProvider: httpClientProofProvider('https://proof-server.example.com', zkConfigProvider),
+  walletProvider,    // from @midnight-ntwrk/wallet-sdk
+  midnightProvider,  // from @midnight-ntwrk/wallet-sdk
 };
 
 // Deploy a contract
@@ -167,14 +175,44 @@ yarn lint:fix
 
 ### Available Scripts
 
+#### Build
+
 | Script | Description |
 | ------ | ----------- |
 | `yarn build` | Build all packages |
+| `yarn build:core` | Build everything except `testkit-*` |
+| `yarn build:testkit` | Build only `testkit-*` |
+| `yarn clean` | Clean all build outputs |
+| `yarn clean-build` | Clean then rebuild |
+
+#### Test
+
+| Script | Description |
+| ------ | ----------- |
 | `yarn test` | Run all tests |
+| `yarn test:unit` | Run unit tests (excludes testkit) |
+| `yarn it` | Run integration tests |
+| `yarn e2e` | Run e2e tests |
+| `yarn e2e-single` | Run a single e2e test file |
+
+#### Lint & Check
+
+| Script | Description |
+| ------ | ----------- |
 | `yarn lint` | Run ESLint |
 | `yarn lint:fix` | Fix linting issues |
-| `yarn commit` | Interactive conventional commit |
-| `yarn changelog` | Generate/update CHANGELOG.md |
+| `yarn check` | Type-check + lint + workspace constraints |
+| `yarn check:core` | Same as `check` but excludes testkit |
+| `yarn typecheck:tests` | Type-check test files |
+
+#### Release & Publish
+
+| Script | Description |
+| ------ | ----------- |
+| `yarn changelog` | Generate/update `CHANGELOG.md` |
+| `yarn deploy` | Publish all packages |
+| `yarn deploy:core` | Publish core packages (excludes testkit) |
+| `yarn build:markdown-docs` | Generate API docs via TypeDoc |
 
 ### Further Reading
 
@@ -191,7 +229,9 @@ Branch off `main` for all new features. Use [Conventional Commits](https://www.c
 
 **Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `ci`, `build`, `revert`
 
-**Scopes:** `core`, `testkit`, `wallet`, `deps`, `config`
+**Scopes:** `midnight-js`, `testkit-js`, `deps`, `deps-dev`, `config`, `release`
+
+New functionality must include unit and integration tests (TDD — tests first). See [CONTRIBUTING.md](./CONTRIBUTING.md) for full guidelines.
 
 ### Git Hooks
 
@@ -275,25 +315,44 @@ This allows "rehearsing" circuit calls (running Impact VM) such that execution c
 
 ### Release Process
 
-#### 1. Generate changelog
+Releases are driven by `scripts/release.sh`, which bumps versions in all workspaces, regenerates `CHANGELOG.md`, creates a release branch, and pushes the version tag. A push to `v*` tag triggers the [CD workflow](./.github/workflows/cd.yml), which publishes packages to GitHub Packages and creates a GitHub Release.
+
+#### Prerequisites
+
+- On `main` branch with a clean working tree
+- All previous release PRs merged
+- GPG signing configured
+
+#### Usage
+
 ```bash
-yarn changelog  # Updates CHANGELOG.md with new entries
+# Dry-run (default): updates files only, no git operations — review with `git diff`
+./scripts/release.sh 4.2.0
+
+# Full release: bump + changelog + branch + commit + tag + push
+./scripts/release.sh 4.2.0 --execute
+
+# Full release with build and tests beforehand
+./scripts/release.sh 4.2.0 --execute --with-tests
 ```
 
-#### 2. Update versions
-```bash
-yarn workspaces foreach --all version $VERSION
-```
+#### What the script does
 
-#### 3. Commit and tag
-```bash
-git add .
-git commit -m "chore: release v$VERSION"
-git tag v$VERSION
-git push origin v$VERSION  # Triggers CD workflow
-```
+1. Bumps version in root `package.json`, all `packages/*`, and all `testkit-js/*`
+2. Regenerates `CHANGELOG.md` via `yarn changelog`
+3. Creates branch `release/v<VERSION>`
+4. Commits as `chore(release): bump version to <VERSION>`
+5. Creates and pushes tag `v<VERSION>` — this triggers the CD workflow
 
-Use [GitHub Releases](https://github.com/midnightntwrk/midnight-js/releases/new) to create a tag following the pattern `vX.Y.Z`.
+#### What the CD workflow does
+
+After the tag is pushed:
+
+1. Runs full CI (midnight-js + testkit-js)
+2. Extracts release notes from `CHANGELOG.md` (section `## [<VERSION>]`)
+3. Validates and publishes `packages/*` to GitHub Packages
+4. Creates a GitHub Release with the extracted notes
+5. Publishes `testkit-js/*` if those paths changed
 
 ## Resources
 

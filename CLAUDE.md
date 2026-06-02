@@ -120,7 +120,7 @@ All derived from actual PR rejections in this repo:
 
 | If you change... | Impact | Action |
 |-----------------|--------|--------|
-| `types/` interfaces | All packages break | Coordinate with Szymon/Tim — breaking change |
+| `types/` interfaces | All packages break | Coordinate with Szymon — breaking change |
 | `contracts/` public API | Consumer dApps break | Major version bump required |
 | Provider interface shape | All implementations must update | Update all providers in same PR |
 | `midnight-js` barrel exports | Consumer import paths change | Verify sub-path exports match |
