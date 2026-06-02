@@ -137,7 +137,9 @@ jobs:
     name: E2E Tests Reports
     runs-on: ubuntu-latest
     needs: e2e_tests
-    if: always() && (needs.e2e_tests.result == 'success' || needs.e2e_tests.result == 'failure')
+    # Run on success/failure AND cancelled/skipped so reviewers can still see a row
+    # indicating why no test results exist (otherwise the absence is silent).
+    if: always()
     steps:
 
       - name: Checkout code
@@ -162,10 +164,11 @@ jobs:
 
       - name: Upload Allure Report
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7.0.1
-        if: always()
+        if: always() && needs.e2e_tests.result != 'skipped' && needs.e2e_tests.result != 'cancelled'
         with:
           name: allure-report-${{ inputs.testkit_docker_env || 'default' }}
           path: allure-report/
+          if-no-files-found: error
 
       - name: Merge CTRF Results
         if: always()
@@ -182,15 +185,21 @@ jobs:
         if: always()
         env:
           TESTKIT_ENV: ${{ inputs.testkit_docker_env || 'default' }}
+          E2E_RESULT: ${{ needs.e2e_tests.result }}
         run: |
-          CTRF_PATH=""
-          if [ -f ./ctrf-report-merged.json ]; then
-            CTRF_PATH="./ctrf-report-merged.json"
-          fi
+          set -euo pipefail
           {
             echo "### E2E Tests — \`${TESTKIT_ENV}\`"
             echo ""
-            ./.github/scripts/render-e2e-summary.sh "${TESTKIT_ENV}" "${CTRF_PATH}"
+            if [ "$E2E_RESULT" = "cancelled" ] || [ "$E2E_RESULT" = "skipped" ]; then
+              echo ":rotating_light: E2E tests **${E2E_RESULT}** — no results to render."
+            else
+              CTRF_PATH=""
+              if [ -f ./ctrf-report-merged.json ]; then
+                CTRF_PATH="./ctrf-report-merged.json"
+              fi
+              ./.github/scripts/render-e2e-summary.sh "${TESTKIT_ENV}" "${CTRF_PATH}"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Publish Test Report
@@ -208,12 +217,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
-      - name: Upload Test Results
+      - name: Upload CTRF Summary
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7.0.1
-        if: always()
+        if: always() && needs.e2e_tests.result != 'skipped' && needs.e2e_tests.result != 'cancelled'
         with:
           name: test-results-ctrf-summary-${{ inputs.testkit_docker_env || 'default' }}
           path: ctrf-results
+          if-no-files-found: error
 
       - name: Publish Test Summary Results
         if: always()
@@ -227,9 +237,10 @@ jobs:
             echo "No JUnit results found"
           fi
 
-      - name: Upload Test Results
+      - name: Upload JUnit Summary
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7.0.1
-        if: always()
+        if: always() && needs.e2e_tests.result != 'skipped' && needs.e2e_tests.result != 'cancelled'
         with:
           name: test-results-junit-summary-${{ inputs.testkit_docker_env || 'default' }}
           path: junit-test-results.xml
+          if-no-files-found: error

@@ -1,4 +1,12 @@
 name: CI - TestKit.js (prerelease)
+#
+# Extracted from ci-testkit-js-build.yml so the wrapper (ci-testkit-js.yml) can
+# schedule `prerelease` and `e2e` as siblings of `build` (both `needs: build`).
+# If prerelease lived inside the build workflow, `e2e: needs: build` would wait
+# for ALL build-workflow jobs including prerelease, removing the parallelism the
+# original monolithic workflow had. DO NOT merge this back into build.yml without
+# redesigning the wrapper DAG.
+
 env:
   MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
@@ -13,7 +21,7 @@ on:
     inputs:
       testkit_docker_env:
         type: string
-        description: Docker image version set sourced from testkit-js/env/<testkit_docker_env>.env (qanet|preview|preprod|mainnet|devnet). Empty falls back to the .envrc default. Only affects direnv-loaded vars; the published packages are the same regardless.
+        description: Docker image version set sourced from testkit-js/env/<testkit_docker_env>.env (qanet|preview|preprod|mainnet|devnet). Empty falls back to the .envrc default.
         required: false
         default: ''
 
