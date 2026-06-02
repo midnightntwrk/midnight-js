@@ -1,4 +1,4 @@
-[**@midnight-ntwrk/testkit-js v4.1.0**](README.md)
+[**@midnight-ntwrk/testkit-js v4.1.1**](README.md)
 
 ***
 
