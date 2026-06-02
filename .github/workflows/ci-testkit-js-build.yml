@@ -28,7 +28,7 @@ on:
         default: './testkit-js'
       testkit_docker_env:
         type: string
-        description: Docker image version set sourced from testkit-js/env/<testkit_docker_env>.env. Build output is identical across envs; this only affects direnv-loaded vars during the build job.
+        description: Docker image version set sourced from testkit-js/env/<testkit_docker_env>.env (qanet|preview|preprod|mainnet|devnet). Empty falls back to the .envrc default. Build output is identical across envs; this only affects direnv-loaded vars during the build job.
         required: false
         default: ''
     outputs:

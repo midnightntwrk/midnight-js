@@ -13,7 +13,7 @@ on:
     inputs:
       testkit_docker_env:
         type: string
-        description: Docker image version set sourced from testkit-js/env/<testkit_docker_env>.env. Only affects direnv-loaded vars; the published packages are the same regardless.
+        description: Docker image version set sourced from testkit-js/env/<testkit_docker_env>.env (qanet|preview|preprod|mainnet|devnet). Empty falls back to the .envrc default. Only affects direnv-loaded vars; the published packages are the same regardless.
         required: false
         default: ''
 
