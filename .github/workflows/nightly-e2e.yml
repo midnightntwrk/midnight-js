@@ -6,6 +6,9 @@ name: Nightly E2E
 # 'undeployed' for every matrix entry — we are not testing against live
 # networks here, only verifying the suite works against each image-version
 # combination.
+#
+# Build runs once (source is identical across envs); e2e fans out per env
+# and consumes the shared dist artifacts.
 
 on:
   schedule:
@@ -25,18 +28,27 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  build:
+    name: build
+    uses: ./.github/workflows/ci-testkit-js-build.yml
+    with:
+      should_run: 'true'
+      should_prerelease: 'false'
+      testkit_docker_env: 'preview'
+    secrets: inherit
+
   e2e:
     name: e2e (${{ matrix.image_versions }})
+    needs: build
     strategy:
       fail-fast: false
       matrix:
         image_versions: [qanet, preview, preprod, mainnet, devnet]
-    uses: ./.github/workflows/ci-testkit-js.yml
+    uses: ./.github/workflows/ci-testkit-js-e2e.yml
     with:
-      should_run: 'true'
-      should_prerelease: 'false'
-      network: 'undeployed'
+      test_files: ${{ needs.build.outputs.test-files }}
       testkit_docker_env: ${{ matrix.image_versions }}
+      network: 'undeployed'
     secrets: inherit
 
   summary:
