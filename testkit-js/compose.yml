@@ -28,6 +28,12 @@ services:
       APP__INFRA__LEDGER_STATE_STORAGE__PASSWORD: 'indexer'
       APP__INFRA__SECRET: '303132333435363738393031323334353637383930313233343536373839303132'
       APP__INFRA__SPO_NODE__BLOCKFROST_ID: 'dummy-not-using-spo'
+      # Standalone stack has no SPO node. Indexer 4.3.x spawns spo-indexer
+      # unconditionally and exits the whole process when it gives up
+      # reconnecting (default 30 × 10s ≈ 5 min). Stretching the delay to 24h
+      # keeps the indexer alive for the entire test run without disabling
+      # the subtask (no flag exists to opt out).
+      APP__INFRA__SPO_NODE__RECONNECT_MAX_DELAY: '24h'
 
     healthcheck:
       test: ['CMD-SHELL', 'cat /var/run/indexer-standalone/running']
