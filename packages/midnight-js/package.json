@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js",
-  "version": "4.1.0",
+  "version": "4.1.1",
   "description": "Barrel package for Midnight.js core framework",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
