@@ -41,7 +41,7 @@ export class PreviewTestEnvironment extends RemoteTestEnvironment {
       indexerWS: 'wss://indexer.preview.midnight.network/api/v4/graphql/ws',
       node: 'https://rpc.preview.midnight.network',
       nodeWS: 'wss://rpc.preview.midnight.network',
-      faucet: 'https://faucet.preview.midnight.network/api/request-tokens',
+      faucet: 'https://faucet.preview.midnight.network/api/drips',
       proofServer: this.proofServerContainer?.getUrl()
     };
   }

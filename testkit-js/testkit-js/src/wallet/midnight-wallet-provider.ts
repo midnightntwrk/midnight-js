@@ -18,8 +18,6 @@ import {
   DustSecretKey,
   type EncPublicKey,
   type FinalizedTransaction,
-  shieldedToken,
-  type TokenType,
   ZswapSecretKeys
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { type MidnightProvider, type UnboundTransaction, type WalletProvider } from '@midnight-ntwrk/midnight-js-types';
@@ -81,12 +79,12 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     return this.wallet.submitTransaction(tx);
   }
 
-  async start(waitForFundsInWallet = true, tokenType: TokenType = shieldedToken()): Promise<void> {
+  async start(waitForFundsInWallet = true): Promise<void> {
     this.logger.info('Starting wallet...');
     await this.wallet.start(this.zswapSecretKeys, this.dustSecretKey);
     if (waitForFundsInWallet) {
-      const balance = await waitForFunds(this.wallet, this.env, tokenType, true);
-      this.logger.info(`Your wallet balance is: ${balance}`);
+      const balance = await waitForFunds(this.wallet, this.env, true, this.unshieldedKeystore);
+      this.logger.info(`Your wallet NIGHT balance is: ${balance}`);
     }
   }
 

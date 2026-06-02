@@ -13,8 +13,16 @@
  * limitations under the License.
  */
 
-import { shieldedToken, type TokenType } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { type ShieldedWalletAPI, type ShieldedWalletState, type UnshieldedWalletAPI, type UnshieldedWalletState, type WalletFacade } from '@midnight-ntwrk/wallet-sdk';
+import { unshieldedToken } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import {
+  type ShieldedWalletAPI,
+  type ShieldedWalletState,
+  type UnshieldedKeystore,
+  type UnshieldedWalletAPI,
+  type UnshieldedWalletState,
+  type WalletFacade
+} from '@midnight-ntwrk/wallet-sdk';
+import axios from 'axios';
 import * as Rx from 'rxjs';
 
 import { FaucetClient } from '@/client';
@@ -50,9 +58,9 @@ export const syncWallet = (wallet: WalletFacade, throttleTime = 2_000, timeout =
       Rx.throttleTime(throttleTime),
       Rx.tap((state) => {
         const isSynced =
-            state.shielded.state.progress.isStrictlyComplete() &&
-            state.dust.state.progress.isStrictlyComplete() &&
-            state.unshielded.progress?.isStrictlyComplete() === true;
+          state.shielded.state.progress.isStrictlyComplete() &&
+          state.dust.state.progress.isStrictlyComplete() &&
+          state.unshielded.progress?.isStrictlyComplete() === true;
 
         logger.info(
           `Wallet synced state emission (synced=${isSynced}): { shielded=${state.shielded.state.progress.isStrictlyComplete()}, unshielded=${state.unshielded.progress.isStrictlyComplete()}, dust=${state.dust.state.progress.isStrictlyComplete()} }`
@@ -62,7 +70,7 @@ export const syncWallet = (wallet: WalletFacade, throttleTime = 2_000, timeout =
         (state) =>
           state.shielded.state.progress.isStrictlyComplete() &&
           state.dust.state.progress.isStrictlyComplete() &&
-          state.unshielded.progress.isStrictlyComplete() === true,
+          state.unshielded.progress.isStrictlyComplete() === true
       ),
       Rx.tap(() => logger.info('Sync complete')),
       Rx.tap((state) => {
@@ -70,7 +78,9 @@ export const syncWallet = (wallet: WalletFacade, throttleTime = 2_000, timeout =
         const unshieldedBalances = state.unshielded.balances || {};
         const dustBalances = state.dust.balance(new Date(Date.now())) || {};
 
-        logger.info(`Wallet balances after sync - Shielded: ${JSON.stringify(shieldedBalances)}, Unshielded: ${JSON.stringify(unshieldedBalances)}, Dust: ${JSON.stringify(dustBalances)}`);
+        logger.info(
+          `Wallet balances after sync - Shielded: ${JSON.stringify(shieldedBalances)}, Unshielded: ${JSON.stringify(unshieldedBalances)}, Dust: ${JSON.stringify(dustBalances)}`
+        );
       }),
       Rx.timeout({
         each: timeout,
@@ -80,26 +90,65 @@ export const syncWallet = (wallet: WalletFacade, throttleTime = 2_000, timeout =
   );
 };
 
+const registerNightUtxosForDust = async (
+  wallet: WalletFacade,
+  unshieldedKeystore: UnshieldedKeystore
+): Promise<string | undefined> => {
+  const state = await Rx.firstValueFrom(wallet.state());
+  const unshieldedRaw = unshieldedToken().raw;
+  const unregistered = state.unshielded.availableCoins.filter(
+    (coin) => coin.utxo.type === unshieldedRaw && coin.meta.registeredForDustGeneration === false
+  );
+  if (unregistered.length === 0) {
+    logger.warn('No unregistered NIGHT UTXOs available to register for dust generation');
+    return undefined;
+  }
+  logger.info(`Registering ${unregistered.length} NIGHT UTXO(s) for dust generation...`);
+  const recipe = await wallet.registerNightUtxosForDustGeneration(
+    unregistered,
+    unshieldedKeystore.getPublicKey(),
+    (payload) => unshieldedKeystore.signData(payload)
+  );
+  const finalized = await wallet.finalizeRecipe(recipe);
+  const txId = await wallet.submitTransaction(finalized);
+  logger.info(`Dust registration tx submitted: ${txId}`);
+  return txId;
+};
+
 export const waitForFunds = async (
   wallet: WalletFacade,
   env: EnvironmentConfiguration,
-  tokenType: TokenType = shieldedToken(),
-  fundFromFaucet = false
+  fundFromFaucet = false,
+  unshieldedKeystore: UnshieldedKeystore
 ): Promise<bigint> => {
-  const initialState = await getInitialShieldedState(wallet.shielded);
-  logger.info(`Your wallet address is: ${initialState.address.coinPublicKeyString()}, waiting for funds...`);
-  if (fundFromFaucet && env.faucet) {
-    logger.info('Requesting tokens from faucet...');
-    await new FaucetClient(env.faucet, logger).requestTokens(initialState.address.coinPublicKeyString());
+  const unshieldedAddress = unshieldedKeystore.getBech32Address().asString();
+  const nightTokenRaw = unshieldedToken().raw;
+  logger.info(`Your wallet address is: ${unshieldedAddress}, waiting for NIGHT funds...`);
+
+  let syncedState = await syncWallet(wallet);
+  const alreadyFunded = (syncedState.unshielded.balances[nightTokenRaw] ?? 0n) > 0n;
+
+  if (!alreadyFunded && fundFromFaucet && env.faucet) {
+    logger.info('Wallet has no NIGHT; requesting tokens from faucet...');
+    try {
+      await new FaucetClient(env.faucet, logger).requestTokens(unshieldedAddress);
+    } catch (error) {
+      if (!(axios.isAxiosError(error) && error.response?.status === 429)) {
+        throw error;
+      }
+    }
+    syncedState = await syncWallet(wallet);
   }
-  const initialBalance = initialState.balances[tokenType.tag];
-  if (initialBalance === undefined || initialBalance === 0n) {
-    logger.info('Your wallet balance is: 0, waiting to receive tokens...');
-    const syncedState = await syncWallet(wallet);
-    const syncedBalance = syncedState.shielded.balances[tokenType.tag] ?? 0n;
-    logger.info(`Your wallet balance after sync is: ${syncedBalance}`);
-    return syncedBalance;
+
+  if (unshieldedKeystore && syncedState.dust.balance(new Date()) === 0n) {
+    logger.info('Wallet has no dust; registering NIGHT UTXOs for dust generation...');
+    const registrationTxId = await registerNightUtxosForDust(wallet, unshieldedKeystore);
+    if (registrationTxId !== undefined) {
+      syncedState = await syncWallet(wallet);
+    }
   }
-  logger.info(`Your wallet balance is: ${initialBalance}`);
-  return initialBalance;
+
+  const balance = syncedState.unshielded.balances[nightTokenRaw] ?? 0n;
+  logger.info(`Your wallet NIGHT balance is: ${balance}`);
+  return balance;
 };

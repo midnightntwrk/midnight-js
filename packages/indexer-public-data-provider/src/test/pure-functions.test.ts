@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   FailEntirely,
   FailFallible,
@@ -22,9 +23,17 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expect, test } from 'vitest';
 
-import { IndexerFormattedError } from '../errors';
+import {
+  IndexerDataError,
+  IndexerError,
+  IndexerFormattedError,
+  IndexerProviderConfigError,
+  IndexerQueryError,
+  IndexerSubscriptionDataError
+} from '../errors';
 import type { TransactionResult } from '../gen/graphql';
 import {
+  correlateDeployTxId,
   type IndexerUtxo,
   isRegularTransaction,
   toSegmentStatus,
@@ -89,10 +98,16 @@ describe('toTxStatus', () => {
     expect(toTxStatus(result)).toBe(FailFallible);
   });
 
-  test('throws for unknown status', () => {
+  test('throws IndexerDataError for unknown status', () => {
     const result = { status: 'UNKNOWN', segments: null } as unknown as TransactionResult;
 
-    expect(() => toTxStatus(result)).toThrow("Unexpected 'status' value UNKNOWN");
+    let thrown: unknown;
+    try { toTxStatus(result); } catch (e) { thrown = e; }
+
+    expect(thrown).toBeInstanceOf(IndexerDataError);
+    const error = thrown as IndexerDataError;
+    expect(error.context).toEqual({ kind: 'unknown-status', value: 'UNKNOWN' });
+    expect(error.message).toBe('Unexpected transaction status value: UNKNOWN');
   });
 });
 
@@ -204,29 +219,187 @@ describe('toUnshieldedBalances', () => {
 });
 
 describe('IndexerFormattedError', () => {
-  test('formats single GraphQL error', () => {
+  test('formats single GraphQL error with header and numbered prefix', () => {
     const error = new IndexerFormattedError([{ message: 'Something went wrong' }]);
 
     expect(error).toBeInstanceOf(Error);
-    expect(error.message).toContain('Indexer GraphQL error(s)');
-    expect(error.message).toContain('Something went wrong');
+    expect(error).toBeInstanceOf(IndexerError);
+    expect(error.name).toBe('IndexerFormattedError');
+    expect(error.message).toBe('Indexer GraphQL error(s):\n\t1. Something went wrong');
   });
 
-  test('formats multiple GraphQL errors', () => {
+  test('lists multiple GraphQL errors in original order separated by tab-newline', () => {
     const error = new IndexerFormattedError([
       { message: 'First error' },
-      { message: 'Second error' }
+      { message: 'Second error' },
+      { message: 'Third error' }
     ]);
 
-    expect(error.message).toContain('First error');
-    expect(error.message).toContain('Second error');
+    expect(error.message).toBe(
+      'Indexer GraphQL error(s):\n\t1. First error\n\t2. Second error\n\t3. Third error'
+    );
   });
 
-  test('preserves cause array', () => {
-    const causes = [{ message: 'err1' }, { message: 'err2' }];
+  test('exposes the underlying errors array', () => {
+    const graphqlErrors = [{ message: 'err1' }, { message: 'err2' }];
 
-    const error = new IndexerFormattedError(causes);
+    const error = new IndexerFormattedError(graphqlErrors);
 
-    expect(error.cause).toBe(causes);
+    expect(error.errors).toBe(graphqlErrors);
+    expect(error.cause).toBeUndefined();
+  });
+});
+
+describe('IndexerQueryError', () => {
+  test('exposes message and name', () => {
+    const error = new IndexerQueryError('Query failed');
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toBeInstanceOf(IndexerError);
+    expect(error.name).toBe('IndexerQueryError');
+    expect(error.message).toBe('Query failed');
+  });
+
+  test('preserves original error via cause', () => {
+    const originalError = new Error('Network unreachable');
+
+    const error = new IndexerQueryError(originalError.message, { cause: originalError });
+
+    expect(error.cause).toBe(originalError);
+    expect(error.message).toBe('Network unreachable');
+  });
+});
+
+describe('IndexerSubscriptionDataError', () => {
+  test('describes the missing field in the message', () => {
+    const error = new IndexerSubscriptionDataError('blocks');
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toBeInstanceOf(IndexerError);
+    expect(error.name).toBe('IndexerSubscriptionDataError');
+    expect(error.missingField).toBe('blocks');
+    expect(error.message).toBe(
+      "Expected 'blocks' in indexer subscription data, got null/undefined"
+    );
+  });
+});
+
+describe('correlateDeployTxId', () => {
+  const targetAddress = '0xdeadbeef' as ContractAddress;
+
+  test('returns the identifier at the index of the matching contract action', () => {
+    const txId = correlateDeployTxId(
+      targetAddress,
+      [{ address: '0xaaaa' }, { address: targetAddress }, { address: '0xbbbb' }],
+      ['id-a', 'id-target', 'id-b']
+    );
+
+    expect(txId).toBe('id-target');
+  });
+
+  test('throws missing-identifier with actionIndex=-1 when no contract action matches', () => {
+    let thrown: unknown;
+    try {
+      correlateDeployTxId(
+        targetAddress,
+        [{ address: '0xaaaa' }, { address: '0xbbbb' }],
+        ['id-a', 'id-b']
+      );
+    } catch (e) { thrown = e; }
+
+    expect(thrown).toBeInstanceOf(IndexerDataError);
+    const error = thrown as IndexerDataError;
+    expect(error.context).toEqual({
+      kind: 'missing-identifier',
+      contractAddress: targetAddress,
+      actionIndex: -1,
+      identifiersLength: 2
+    });
+  });
+
+  test('throws missing-identifier when contractAction matches but identifier slot is undefined', () => {
+    let thrown: unknown;
+    try {
+      correlateDeployTxId(
+        targetAddress,
+        [{ address: '0xaaaa' }, { address: targetAddress }],
+        ['id-a']
+      );
+    } catch (e) { thrown = e; }
+
+    expect(thrown).toBeInstanceOf(IndexerDataError);
+    const error = thrown as IndexerDataError;
+    expect(error.context).toEqual({
+      kind: 'missing-identifier',
+      contractAddress: targetAddress,
+      actionIndex: 1,
+      identifiersLength: 1
+    });
+  });
+
+  test('throws missing-identifier when the identifier slot is an empty string', () => {
+    let thrown: unknown;
+    try {
+      correlateDeployTxId(
+        targetAddress,
+        [{ address: targetAddress }, { address: '0xaaaa' }],
+        ['', 'id-a']
+      );
+    } catch (e) { thrown = e; }
+
+    expect(thrown).toBeInstanceOf(IndexerDataError);
+    const error = thrown as IndexerDataError;
+    expect(error.context).toEqual({
+      kind: 'missing-identifier',
+      contractAddress: targetAddress,
+      actionIndex: 0,
+      identifiersLength: 2
+    });
+  });
+});
+
+describe('IndexerDataError', () => {
+  test('unknownStatus factory builds discriminated context and derived message', () => {
+    const error = IndexerDataError.unknownStatus('WEIRD');
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toBeInstanceOf(IndexerError);
+    expect(error.name).toBe('IndexerDataError');
+    expect(error.context).toEqual({ kind: 'unknown-status', value: 'WEIRD' });
+    expect(error.message).toBe('Unexpected transaction status value: WEIRD');
+  });
+
+  test('missingContractAction factory builds discriminated context and derived message', () => {
+    const error = IndexerDataError.missingContractAction('0xabc');
+
+    expect(error.context).toEqual({ kind: 'missing-contract-action', contractAddress: '0xabc' });
+    expect(error.message).toBe(
+      'Deploy transaction does not contain a contract action for address 0xabc'
+    );
+  });
+
+  test('missingIdentifier factory captures address, index and identifiers length', () => {
+    const error = IndexerDataError.missingIdentifier('0xabc', -1, 3);
+
+    expect(error.context).toEqual({
+      kind: 'missing-identifier',
+      contractAddress: '0xabc',
+      actionIndex: -1,
+      identifiersLength: 3
+    });
+    expect(error.message).toBe(
+      'Transaction missing identifier for contract action at address 0xabc (actionIndex=-1, identifiers.length=3)'
+    );
+  });
+});
+
+describe('IndexerProviderConfigError', () => {
+  test('exposes message and name', () => {
+    const error = new IndexerProviderConfigError('Unsupported observable mode: txId');
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toBeInstanceOf(IndexerError);
+    expect(error.name).toBe('IndexerProviderConfigError');
+    expect(error.message).toBe('Unsupported observable mode: txId');
   });
 });
