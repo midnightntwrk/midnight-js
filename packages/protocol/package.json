@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-protocol",
-  "version": "4.1.0",
+  "version": "4.1.1",
   "description": "Protocol type re-exports for midnight-js framework",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
