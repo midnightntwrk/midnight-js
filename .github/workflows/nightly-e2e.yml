@@ -33,7 +33,6 @@ jobs:
     uses: ./.github/workflows/ci-testkit-js-build.yml
     with:
       should_run: 'true'
-      should_prerelease: 'false'
       testkit_docker_env: 'preview'
     secrets: inherit
 
