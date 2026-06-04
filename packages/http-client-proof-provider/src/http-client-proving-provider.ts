@@ -19,7 +19,7 @@ import {
   parseCheckResult,
   type ProvingKeyMaterial,
   type ProvingProvider} from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { InvalidProtocolSchemeError, type ZKConfigProvider, zkConfigToProvingKeyMaterial } from '@midnight-ntwrk/midnight-js-types';
+import { InvalidProtocolSchemeError, type ZKConfigProvider, ZKConfigRegistry, zkConfigToProvingKeyMaterial } from '@midnight-ntwrk/midnight-js-types';
 import { warnIfInsecureRemoteUrl } from '@midnight-ntwrk/midnight-js-utils';
 import fetch from 'cross-fetch';
 import fetchBuilder from 'fetch-retry';
@@ -42,16 +42,35 @@ const buildEndpointUrl = (baseUrl: string, endpoint: string): URL => {
 
 export const DEFAULT_TIMEOUT = 300000;
 
-const getKeyMaterial = async <K extends string>(
-  zkConfigProvider: ZKConfigProvider<K>,
-  keyLocation: K
-): Promise<ProvingKeyMaterial | undefined> => {
-  try {
-    const zkConfig = await zkConfigProvider.get(keyLocation);
-    return zkConfigToProvingKeyMaterial(zkConfig);
-  } catch {
-    return undefined;
-  }
+/**
+ * Resolves the ZK key material for a proof preimage's key location.
+ *
+ * Canonical contract key locations (one per contract call; see `ZKConfigRegistry`) are resolved
+ * through the registry's verifier-key join — throwing the registry's artifact-drift error when no
+ * bundle matches, since proving would be guaranteed to fail. Other locations are protocol
+ * builtins (`midnight/...`), which resolve to `undefined` key material and are supplied by the
+ * proof server; when a single flat provider was given, a non-canonical location is also tried
+ * against it as a bare circuit name.
+ */
+const makeKeyMaterialResolver = <K extends string>(
+  zkConfigProvider: ZKConfigProvider<K> | ZKConfigRegistry
+): ((keyLocation: string) => Promise<ProvingKeyMaterial | undefined>) => {
+  const registry = zkConfigProvider instanceof ZKConfigRegistry ? zkConfigProvider : new ZKConfigRegistry([zkConfigProvider]);
+  const flatProvider = zkConfigProvider instanceof ZKConfigRegistry ? undefined : zkConfigProvider;
+  return async (keyLocation: string): Promise<ProvingKeyMaterial | undefined> => {
+    const resolved = await registry.resolveKeyLocation(keyLocation);
+    if (resolved !== undefined) {
+      return zkConfigToProvingKeyMaterial(resolved);
+    }
+    if (flatProvider === undefined) {
+      return undefined;
+    }
+    try {
+      return zkConfigToProvingKeyMaterial(await flatProvider.get(keyLocation as K));
+    } catch {
+      return undefined;
+    }
+  };
 };
 
 const makeHttpRequest = async (url: URL, payload: Uint8Array, timeout: number, headers: Record<string, string> = {}): Promise<Uint8Array> => {
@@ -78,9 +97,10 @@ export interface ProvingProviderConfig {
 
 export const httpClientProvingProvider = <K extends string>(
   url: string,
-  zkConfigProvider: ZKConfigProvider<K>,
+  zkConfigProvider: ZKConfigProvider<K> | ZKConfigRegistry,
   config?: ProvingProviderConfig
 ): ProvingProvider => {
+  const getKeyMaterial = makeKeyMaterialResolver(zkConfigProvider);
   const checkUrl = buildEndpointUrl(url, CHECK_PATH);
   const proveUrl = buildEndpointUrl(url, PROVE_PATH);
 
@@ -99,7 +119,7 @@ export const httpClientProvingProvider = <K extends string>(
 
   return  {
     async check(serializedPreimage: Uint8Array, keyLocation: string): Promise<(bigint | undefined)[]> {
-      const keyMaterial = await getKeyMaterial(zkConfigProvider, keyLocation as K);
+      const keyMaterial = await getKeyMaterial(keyLocation);
       const payload = createCheckPayload(serializedPreimage, keyMaterial?.ir);
       const result = await makeHttpRequest(checkUrl, payload, timeout, headers);
       return parseCheckResult(result);
@@ -110,7 +130,7 @@ export const httpClientProvingProvider = <K extends string>(
       keyLocation: string,
       overwriteBindingInput?: bigint
     ): Promise<Uint8Array> {
-      const keyMaterial = await getKeyMaterial(zkConfigProvider, keyLocation as K);
+      const keyMaterial = await getKeyMaterial(keyLocation);
       const payload = createProvingPayload(serializedPreimage, overwriteBindingInput, keyMaterial);
       return makeHttpRequest(proveUrl, payload, timeout, headers);
     }

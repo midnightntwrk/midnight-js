@@ -14,7 +14,7 @@
  */
 
 import type { ProverKey, VerifierKey, ZKIR } from '@midnight-ntwrk/midnight-js-types';
-import { createProverKey, createVerifierKey, createZKIR, ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
+import { createProverKey, createVerifierKey, createZKIR, ZKConfigProvider, ZKConfigRegistry } from '@midnight-ntwrk/midnight-js-types';
 import { assertSafeName } from '@midnight-ntwrk/midnight-js-utils';
 import * as fs from 'fs/promises';
 import * as path from 'path';
@@ -91,3 +91,58 @@ export class NodeZkConfigProvider<K extends string> extends ZKConfigProvider<K> 
     return this.readFile(ZKIR_DIR, circuitId, ZKIR_EXT).then(createZKIR);
   }
 }
+
+/**
+ * Returns `true` if `directory` is a compiled contract artifact bundle — a `compactc` output
+ * directory containing `keys/` and `zkir/` subdirectories.
+ */
+const isArtifactBundle = async (directory: string): Promise<boolean> => {
+  const isDir = async (subDir: string): Promise<boolean> => {
+    try {
+      return (await fs.stat(path.join(directory, subDir))).isDirectory();
+    } catch {
+      return false;
+    }
+  };
+  return (await isDir(KEY_DIR)) && (await isDir(ZKIR_DIR));
+};
+
+/**
+ * Creates a {@link ZKConfigRegistry} by discovering every compiled contract artifact bundle under
+ * a directory tree.
+ *
+ * This is the zero-configuration way to provide ZK artifacts for transactions that make
+ * cross-contract calls: point it at the project's artifact root (for example the directory
+ * containing the `compactc` `managed/<contract>` outputs, or the project root itself) and every
+ * bundle found — any directory containing `keys/` and `zkir/` subdirectories — becomes a registry
+ * source. No addresses are registered and no per-contract enumeration is needed; the registry
+ * binds deployed contracts to bundles by verifier key at resolution time.
+ *
+ * `node_modules` and hidden directories are not descended into, and discovery stops at a bundle
+ * (bundles do not nest).
+ *
+ * @param artifactRoot The directory to search for artifact bundles.
+ * @throws Error If no artifact bundle exists under `artifactRoot`.
+ */
+export const nodeZkConfigRegistry = async (artifactRoot: string): Promise<ZKConfigRegistry> => {
+  const sources: NodeZkConfigProvider<string>[] = [];
+  const visit = async (directory: string): Promise<void> => {
+    if (await isArtifactBundle(directory)) {
+      sources.push(new NodeZkConfigProvider(directory));
+      return;
+    }
+    const entries = await fs.readdir(directory, { withFileTypes: true });
+    await Promise.all(
+      entries
+        .filter((entry) => entry.isDirectory() && entry.name !== 'node_modules' && !entry.name.startsWith('.'))
+        .map((entry) => visit(path.join(directory, entry.name)))
+    );
+  };
+  await visit(path.resolve(artifactRoot));
+  if (sources.length === 0) {
+    throw new Error(
+      `No compiled contract artifact bundles (directories containing '${KEY_DIR}/' and '${ZKIR_DIR}/' subdirectories) found under '${artifactRoot}'`
+    );
+  }
+  return new ZKConfigRegistry(sources);
+};

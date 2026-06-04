@@ -18,7 +18,8 @@ import type {
   ProofProvider,
   ProveTxConfig,
   UnboundTransaction,
-  ZKConfigProvider
+  ZKConfigProvider,
+  ZKConfigRegistry
 } from '@midnight-ntwrk/midnight-js-types';
 
 import { httpClientProvingProvider, type ProvingProviderConfig } from './http-client-proving-provider';
@@ -56,7 +57,7 @@ export const DEFAULT_CONFIG = {
  */
 export const httpClientProofProvider = <K extends string>(
   url: string,
-  zkConfigProvider: ZKConfigProvider<K>,
+  zkConfigProvider: ZKConfigProvider<K> | ZKConfigRegistry,
   config?: ProvingProviderConfig
 ): ProofProvider => {
   const baseProvingProvider = httpClientProvingProvider(url, zkConfigProvider, config);

@@ -14,7 +14,7 @@
  */
 
 import type { ProvingProvider, WalletConnectedAPI } from '@midnight-ntwrk/dapp-connector-api';
-import type { ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
+import { type ZKConfigProvider, ZKConfigRegistry } from '@midnight-ntwrk/midnight-js-types';
 
 /**
  * Minimal interface required from the DApp Connector wallet.
@@ -40,6 +40,13 @@ export type DAppConnectorProvingAPI = Pick<WalletConnectedAPI, 'getProvingProvid
  */
 export const dappConnectorProvingProvider = async <K extends string>(
   api: DAppConnectorProvingAPI,
-  zkConfigProvider: ZKConfigProvider<K>,
+  zkConfigProvider: ZKConfigProvider<K> | ZKConfigRegistry,
 ): Promise<ProvingProvider> =>
-  api.getProvingProvider(zkConfigProvider.asKeyMaterialProvider());
+  api.getProvingProvider(
+    // The wallet round-trips each proof preimage's key location into this provider, so contract
+    // key locations must be resolved through the registry's verifier-key join.
+    (zkConfigProvider instanceof ZKConfigRegistry
+      ? zkConfigProvider
+      : new ZKConfigRegistry([zkConfigProvider])
+    ).asKeyMaterialProvider()
+  );

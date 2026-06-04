@@ -62,7 +62,8 @@ import {
   extractUserAddressedOutputs,
   fromLedgerContractState,
   toLedgerContractState,
-  toLedgerQueryContext} from '../../utils';
+  toLedgerQueryContext
+} from '../../utils';
 
 /**
  * Bridges the pre-CCC single-call signature these tests were written against to the multi-call

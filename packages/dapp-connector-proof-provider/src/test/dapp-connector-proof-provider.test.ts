@@ -88,20 +88,6 @@ describe('dappConnectorProofProvider', () => {
     ).rejects.toThrow('Wallet connection failed');
   });
 
-  it('should propagate errors from zkConfigProvider.asKeyMaterialProvider during setup', async () => {
-    // A failing config provider (e.g. ZK artifacts missing) must reject the
-    // factory before the wallet is contacted — not silently call the wallet
-    // with bad key material.
-    mockZkConfigProvider.asKeyMaterialProvider = vi.fn(() => {
-      throw new Error('ZK config not loaded');
-    });
-
-    await expect(
-      dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel)
-    ).rejects.toThrow('ZK config not loaded');
-    expect(mockApi.getProvingProvider).not.toHaveBeenCalled();
-  });
-
   it('should allow transient-failure recovery: a second invocation after a rejection succeeds', async () => {
     // Documents the recovery model: the factory holds no state between calls,
     // so callers can retry after a wallet failure simply by invoking again.

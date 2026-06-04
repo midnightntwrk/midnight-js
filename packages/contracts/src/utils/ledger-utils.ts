@@ -37,6 +37,8 @@ import {
   type ZswapChainState
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
+  encodeContractKeyLocation,
+  hashVerifierKey,
   Transaction
 } from '@midnight-ntwrk/midnight-js-types';
 import {
@@ -131,7 +133,10 @@ export const createUnprovenLedgerCallTx = (
   // One ContractCallPrototype per call. Each call's operation comes from that contract's state
   // (the root from the input state, callees from the resolved callee states). Sub-calls reuse the
   // communication commitment randomness the runtime bound them to their caller with; the root,
-  // being no one's callee, samples fresh randomness.
+  // being no one's callee, samples fresh randomness. Each call's key location is the canonical
+  // contract-qualified form — circuit names alone are ambiguous across contracts — embedding the
+  // hash of the deployed verifier key so provers resolve artifacts by content (see
+  // `ZKConfigRegistry`).
   const intent = Intent.new(ttlOneHour());
   for (const call of calls) {
     const callContractState = contractStateFor(call.contractAddress);
@@ -152,7 +157,11 @@ export const createUnprovenLedgerCallTx = (
           onSome: (commitment) => commitment.commCommRand,
           onNone: () => communicationCommitmentRandomness()
         }),
-        call.circuitId
+        encodeContractKeyLocation({
+          contractAddress: String(call.contractAddress),
+          circuitId: String(call.circuitId),
+          verifierKeyHash: hashVerifierKey(op.verifierKey)
+        })
       )
     );
   }
