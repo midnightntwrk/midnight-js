@@ -22,7 +22,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type {
   BlockHashConfig,
-  BlockHeightConfig,
+  BlockHeightConfig, BlockInfo,
   ContractStateObservableConfig,
   FinalizedTxData,
   PublicDataProvider,
@@ -43,6 +43,7 @@ import {
 } from './codec';
 import { IndexerDataError, IndexerInvariantError, IndexerProviderConfigError } from './errors';
 import type {
+  BlockOffset,
   ContractActionOffset,
   DeployContractStateTxQueryQuery,
   InputMaybe,
@@ -70,6 +71,7 @@ import {
   waitForUnshieldedBalancesToAppear
 } from './observables';
 import {
+  BLOCK_QUERY,
   CONTRACT_AND_ZSWAP_STATE_QUERY,
   CONTRACT_STATE_QUERY,
   DEPLOY_CONTRACT_STATE_TX_QUERY,
@@ -108,6 +110,26 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
 
   private get client() {
     return this.handle.client;
+  }
+
+  async queryBlock(config?: BlockHeightConfig | BlockHashConfig): Promise<BlockInfo | null> {
+    let offset: InputMaybe<BlockOffset>;
+    if (config) {
+      offset = config.type === 'blockHeight' ? { height: config.blockHeight } : { hash: config.blockHash };
+    } else {
+      offset = null;
+    }
+    const block = await this.client
+      .query({
+        query: BLOCK_QUERY,
+        variables: {
+          offset
+        },
+        fetchPolicy: 'no-cache'
+      })
+      .then(maybeThrowQueryError)
+      .then((queryResult) => queryResult.data?.block ?? null);
+    return block ? { hash: block.hash, height: block.height } : null;
   }
 
   queryContractState(

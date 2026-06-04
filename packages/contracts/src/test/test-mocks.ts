@@ -252,6 +252,7 @@ export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvab
   publicDataProvider: {
     watchForDeployTxData: vi.fn(),
     queryDeployContractState: vi.fn(),
+    queryBlock: vi.fn().mockResolvedValue({ hash: '00'.repeat(32), height: 0 }),
     queryContractState: vi.fn(),
     queryZSwapAndContractState: vi.fn(),
     queryUnshieldedBalances: vi.fn(),
@@ -351,7 +352,8 @@ export const createMockUnprovenCallTxData = (overrides: Partial<UnsubmittedCallT
       result: vi.fn(),
       nextZswapLocalState: createMockZswapLocalState(),
       ...overrides.private
-    }
+    },
+    calls: overrides.calls ?? []
 });
 
 export const createMockCallOptions = (overrides: Partial<CallOptions<Contract.Any, AnyProvableCircuitId>> = {}): CallOptions<Contract.Any, AnyProvableCircuitId> => ({

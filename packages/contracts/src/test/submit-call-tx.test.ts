@@ -102,7 +102,8 @@ describe('submit-call-tx', () => {
       nextZswapLocalState: mockZswapLocalState,
       privateTranscriptOutputs: [] as AlignedValue[],
       result: vi.fn()
-    }
+    },
+    calls: []
   });
 
   const verifySuccessfulCall = (

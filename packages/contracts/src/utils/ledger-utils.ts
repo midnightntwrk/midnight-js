@@ -14,6 +14,7 @@
  */
 
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import type { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import {
   type AlignedValue,
   type ContractAddress,
@@ -28,7 +29,6 @@ import {
   type ContractState as LedgerContractState,
   type EncPublicKey,
   Intent,
-  type PartitionedTranscript,
   QueryContext as LedgerQueryContext,
   type Transcript,
   type UnprovenTransaction,
@@ -37,7 +37,6 @@ import {
   type ZswapChainState
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
-  type AnyProvableCircuitId,
   Transaction
 } from '@midnight-ntwrk/midnight-js-types';
 import {
@@ -47,6 +46,7 @@ import {
   deserializeContractState,
   ttlOneHour
 } from '@midnight-ntwrk/midnight-js-utils';
+import { Option } from 'effect';
 
 import { type EncryptionPublicKeyResolver, zswapStateToOffer, zswapStateToSegmentedOffer } from './zswap-utils';
 
@@ -103,42 +103,66 @@ export const extractUserAddressedOutputs = (
   return outputs;
 };
 
+/**
+ * Assembles an unproven call transaction from the proof data of every contract call made while
+ * executing a circuit.
+ *
+ * @param calls Proof data for each contract call, in execution-trace order: cross-contract callees
+ * first, the root call last. For a circuit with no cross-contract calls this is a single entry.
+ * @param contractStateFor Resolves the on-chain contract state for a given address — the root
+ * contract's input state, and each cross-contract callee's resolved state.
+ * @param zswapChainState The root contract's Zswap chain state.
+ * @param nextZswapLocalState The Zswap local state produced by the (root) circuit execution. Only
+ * the root contract performs shielded transfers, so the transaction's offers derive solely from
+ * the root call.
+ * @param encryptionPublicKey Resolver for output encryption keys.
+ */
 export const createUnprovenLedgerCallTx = (
-  circuitId: AnyProvableCircuitId,
-  contractAddress: ContractAddress,
-  initialContractState: ContractState,
+  calls: readonly ContractExecutable.ContractExecutable.ContractCall[],
+  contractStateFor: (address: ContractExecutable.ContractExecutable.ContractCall['contractAddress']) => ContractState | undefined,
   zswapChainState: ZswapChainState,
-  partitionedTranscript: PartitionedTranscript,
-  privateTranscriptOutputs: AlignedValue[],
-  input: AlignedValue,
-  output: AlignedValue,
   nextZswapLocalState: ZswapLocalState,
   encryptionPublicKey: EncPublicKey | EncryptionPublicKeyResolver
 ): UnprovenTransaction => {
-  const op = toLedgerContractState(initialContractState).operation(circuitId);
-  assertDefined(op, `Operation '${circuitId}' is undefined for contract state ${initialContractState.toString(false)}`);
+  // Calls are in execution-trace order: cross-contract callees first, the root call last.
+  const rootCall = calls[calls.length - 1];
+  assertDefined(rootCall, 'Expected at least one contract call');
 
-  const intent = Intent.new(ttlOneHour()).addCall(
-    new ContractCallPrototype(
-      contractAddress,
-      circuitId,
-      op,
-      partitionedTranscript[0],
-      partitionedTranscript[1],
-      privateTranscriptOutputs,
-      input,
-      output,
-      communicationCommitmentRandomness(),
-      circuitId
-    )
-  );
+  // One ContractCallPrototype per call. Each call's operation comes from that contract's state
+  // (the root from the input state, callees from the resolved callee states). Sub-calls reuse the
+  // communication commitment randomness the runtime bound them to their caller with; the root,
+  // being no one's callee, samples fresh randomness.
+  const intent = Intent.new(ttlOneHour());
+  for (const call of calls) {
+    const callContractState = contractStateFor(call.contractAddress);
+    assertDefined(callContractState, `Contract state for '${call.contractAddress}' is undefined`);
+    const op = toLedgerContractState(callContractState).operation(call.circuitId);
+    assertDefined(op, `Operation '${call.circuitId}' is undefined for contract '${call.contractAddress}'`);
+    intent.addCall(
+      new ContractCallPrototype(
+        call.contractAddress,
+        call.circuitId,
+        op,
+        call.public.partitionedTranscript[0],
+        call.public.partitionedTranscript[1],
+        call.private.privateTranscriptOutputs,
+        call.private.input,
+        call.private.output,
+        Option.match(call.communicationCommitment, {
+          onSome: (commitment) => commitment.commCommRand,
+          onNone: () => communicationCommitmentRandomness()
+        }),
+        call.circuitId
+      )
+    );
+  }
 
-  const guaranteedOutputs = extractUserAddressedOutputs(partitionedTranscript[0]);
+  const guaranteedOutputs = extractUserAddressedOutputs(rootCall.public.partitionedTranscript[0]);
   if (guaranteedOutputs.length > 0) {
     intent.guaranteedUnshieldedOffer = UnshieldedOffer.new([], guaranteedOutputs, []);
   }
 
-  const fallibleOutputs = extractUserAddressedOutputs(partitionedTranscript[1]);
+  const fallibleOutputs = extractUserAddressedOutputs(rootCall.public.partitionedTranscript[1]);
   if (fallibleOutputs.length > 0) {
     intent.fallibleUnshieldedOffer = UnshieldedOffer.new([], fallibleOutputs, []);
   }
@@ -146,8 +170,8 @@ export const createUnprovenLedgerCallTx = (
   const segmentedOffers = zswapStateToSegmentedOffer(
     nextZswapLocalState,
     encryptionPublicKey,
-    { contractAddress, zswapChainState },
-    partitionedTranscript
+    { contractAddress: rootCall.contractAddress, zswapChainState },
+    rootCall.public.partitionedTranscript
   );
 
   return Transaction.fromPartsRandomized(

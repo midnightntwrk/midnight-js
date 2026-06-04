@@ -135,7 +135,8 @@ export class TransactionContextImpl<
       public: {
         ...unprovenCallTxData.public,
         ...finalizedTxData
-      }
+      },
+      calls: unprovenCallTxData.calls
     }
   }
 

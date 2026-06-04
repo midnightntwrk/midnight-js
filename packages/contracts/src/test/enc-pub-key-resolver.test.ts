@@ -74,7 +74,7 @@ describe('EncryptionPublicKeyResolver with additional mappings', () => {
 
   it('createCircuitCallTxInterface includes additional mappings from TransactionContext in call options', async () => {
     const { submitCallTx } = await import('../submit-call-tx');
-    vi.mocked(submitCallTx).mockResolvedValue({ public: {} as any, private: {} as any });
+    vi.mocked(submitCallTx).mockResolvedValue({ public: {} as any, private: {} as any, calls: [] as any });
 
     const providers = createMockProviders();
     const compiledContract = createMockCompiledContract();

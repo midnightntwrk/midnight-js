@@ -68,6 +68,20 @@ export type BlockHashConfig = {
 }
 
 /**
+ * Minimal identifying information for a block.
+ */
+export type BlockInfo = {
+  /**
+   * The hex-encoded block hash.
+   */
+  readonly hash: string;
+  /**
+   * The block height.
+   */
+  readonly height: number;
+}
+
+/**
  * The configuration for a contract state observable. The corresponding observables may begin at different
  * places (e.g. after a specific transaction identifier / block height) depending on the configuration, but
  * all state updates after the beginning are always included.
@@ -89,6 +103,14 @@ export type ContractStateObservableConfig =
  * TODO: Add timeouts or retry limits to 'watchFor' queries.
  */
 export interface PublicDataProvider {
+  /**
+   * Retrieves a block. If no block hash or block height is provided, the latest block is returned.
+   * Immediately returns null if no matching block is found.
+   * @param config The configuration of the query identifying the block of interest.
+   *               If `undefined` returns the latest block.
+   */
+  queryBlock(config?: BlockHeightConfig | BlockHashConfig): Promise<BlockInfo | null>;
+
   /**
    * Retrieves the on-chain state of a contract. If no block hash or block height are provided, the
    * contract state at the address in the latest block is returned.

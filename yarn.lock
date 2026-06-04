@@ -1783,6 +1783,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
+    effect: "npm:^3.20.0"
     vitest: "npm:^4.1.7"
   languageName: unknown
   linkType: soft

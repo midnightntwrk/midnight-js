@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { CompiledContract  } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import type { CompiledContract, ContractExecutable  } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import {
   type AlignedValue,
@@ -196,10 +196,25 @@ export type CallResultPublic = {
 export type CallResult<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = {
   /**
    * The public/non-sensitive data produced by the circuit execution.
+   *
+   * @remarks Describes the **root** contract call (the circuit that was invoked). It is the
+   * application-facing view; equivalent to the last entry of {@link calls}.
    */
   readonly public: CallResultPublic;
   /**
    * The private/sensitive data produced by the circuit execution.
+   *
+   * @remarks Describes the **root** contract call. Equivalent to the last entry of {@link calls}.
    */
   readonly private: CallResultPrivate<C, PCK>;
+  /**
+   * Proof data for every contract call made while executing the circuit, in execution-trace order:
+   * cross-contract callees first, the root call last. For a circuit that performs no cross-contract
+   * calls this contains a single entry (the root). Consistent with `compact-js`'s
+   * `ContractExecutable.CallResult.calls`.
+   *
+   * @remarks **Privacy-sensitive.** Each entry carries ZK input/output and private transcript data
+   * for a call in the tree. Treat as confidential alongside {@link private}.
+   */
+  readonly calls: readonly ContractExecutable.ContractExecutable.ContractCall[];
 };
