@@ -177,6 +177,12 @@ jobs:
           find test-results -name "ctrf-*.json" -exec cp {} ctrf-results/ \;
           if [ "$(ls -A ctrf-results)" ]; then
             npx ctrf merge ctrf-results --output ./ctrf-report-merged.json
+            # `npx ctrf merge` ignores --output and writes the merged file inside the input
+            # directory (ctrf-results/ctrf-report-merged.json). Copy it to the workspace root
+            # so the per-env summary step's `[ -f ./ctrf-report-merged.json ]` check finds it.
+            if [ -f ctrf-results/ctrf-report-merged.json ] && [ ! -f ./ctrf-report-merged.json ]; then
+              cp ctrf-results/ctrf-report-merged.json ./ctrf-report-merged.json
+            fi
           else
             echo "No CTRF results found"
           fi
