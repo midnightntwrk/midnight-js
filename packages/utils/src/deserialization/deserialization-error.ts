@@ -144,11 +144,8 @@ export class DeserializationError extends Error {
   /**
    * @param context Structured diagnostic context.
    * @param cause Underlying error. Typed as `unknown` to match the
-   *   `Error.cause` ECMA spec and to support unconditional flat-chain
-   *   propagation in `withRuntimeContext` (spec §7.5) — the inner error's
-   *   cause is passed through as-is rather than narrowed and silently
-   *   dropped when it is not an `Error`. Primary call sites (typed
-   *   wrappers) always pass an `Error` via `withDeserializationContext`.
+   *   `Error.cause` ECMA spec. Primary call sites (typed wrappers) always
+   *   pass an `Error` via `withDeserializationContext`.
    */
   constructor(context: DeserializationContext, cause?: unknown) {
     super(formatMessage(context), cause === undefined ? undefined : { cause });

@@ -21,7 +21,6 @@ import { type CallResult } from './call';
 import { type ContractProviders } from './contract-providers';
 import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from './errors';
 import * as Transaction from './internal/transaction';
-import { withRuntimeContext } from './internal/with-runtime-context';
 import type { SubmitTxProviders } from './submit-tx';
 import { submitTxAsync } from './submit-tx';
 import { type TransactionContext } from './transaction';
@@ -104,46 +103,37 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
   options: CallTxOptions<C, PCK>,
   transactionContext?: TransactionContext<C, PCK>
 ): Promise<FinalizedCallTxData<C, PCK> | CallResult<C, PCK>> {
-  return withRuntimeContext(
-    {
-      operation: 'call',
-      circuitId: String(options.circuitId),
-      contractAddress: options.contractAddress
-    },
-    async () => {
-      assertIsContractAddress(options.contractAddress);
-      assertDefined(
-        ContractExecutable.make(options.compiledContract)
-          .getProvableCircuitIds()
-          .find((circuitId) => circuitId as unknown as PCK === options.circuitId),
-        `Circuit '${options.circuitId}' is undefined`
-      );
-
-      const hasPrivateStateProvider = 'privateStateProvider' in providers;
-      const hasPrivateStateId = 'privateStateId' in options;
-
-      if (hasPrivateStateId && !hasPrivateStateProvider) {
-        throw new IncompleteCallTxPrivateStateConfig();
-      }
-
-      if (hasPrivateStateProvider) {
-        providers.privateStateProvider.setContractAddress(options.contractAddress);
-      }
-
-      const callTxFn = async (txCtx: TransactionContext<C, PCK>) => {
-        Transaction.mergeUnsubmittedCallTxData(
-          txCtx,
-          options.circuitId,
-          await createUnprovenCallTx(providers, options, txCtx),
-          hasPrivateStateId ? options.privateStateId : undefined
-        );
-      };
-
-      return transactionContext
-        ? Transaction.scoped(providers as ContractProviders<C, PCK>, callTxFn, transactionContext)
-        : Transaction.scoped(providers as ContractProviders<C, PCK>, callTxFn);
-    }
+  assertIsContractAddress(options.contractAddress);
+  assertDefined(
+    ContractExecutable.make(options.compiledContract)
+      .getProvableCircuitIds()
+      .find((circuitId) => circuitId as unknown as PCK === options.circuitId),
+    `Circuit '${options.circuitId}' is undefined`
   );
+
+  const hasPrivateStateProvider = 'privateStateProvider' in providers;
+  const hasPrivateStateId = 'privateStateId' in options;
+
+  if (hasPrivateStateId && !hasPrivateStateProvider) {
+    throw new IncompleteCallTxPrivateStateConfig();
+  }
+
+  if (hasPrivateStateProvider) {
+    providers.privateStateProvider.setContractAddress(options.contractAddress);
+  }
+
+  const callTxFn = async (txCtx: TransactionContext<C, PCK>) => {
+    Transaction.mergeUnsubmittedCallTxData(
+      txCtx,
+      options.circuitId,
+      await createUnprovenCallTx(providers, options, txCtx),
+      hasPrivateStateId ? options.privateStateId : undefined
+    );
+  };
+
+  return transactionContext
+    ? Transaction.scoped(providers as ContractProviders<C, PCK>, callTxFn, transactionContext)
+    : Transaction.scoped(providers as ContractProviders<C, PCK>, callTxFn)
 }
 
 /**
@@ -217,43 +207,34 @@ export async function submitCallTxAsync<C extends Contract.Any, PCK extends Cont
   providers: SubmitCallTxProviders<C, PCK>,
   options: CallTxOptions<C, PCK>
 ): Promise<SubmittedCallTx<C, PCK>> {
-  return withRuntimeContext(
-    {
-      operation: 'call',
-      circuitId: String(options.circuitId),
-      contractAddress: options.contractAddress
-    },
-    async () => {
-      assertIsContractAddress(options.contractAddress);
-      assertDefined(
-        ContractExecutable.make(options.compiledContract)
-          .getProvableCircuitIds()
-          .find((circuitId) => circuitId as unknown as PCK === options.circuitId),
-        `Circuit '${options.circuitId}' is undefined`
-      );
-
-      const hasPrivateStateProvider = 'privateStateProvider' in providers;
-      const hasPrivateStateId = 'privateStateId' in options;
-
-      if (hasPrivateStateId && !hasPrivateStateProvider) {
-        throw new IncompleteCallTxPrivateStateConfig();
-      }
-
-      if (hasPrivateStateProvider) {
-        providers.privateStateProvider.setContractAddress(options.contractAddress);
-      }
-
-      const unprovenCallTxData = await createUnprovenCallTx(providers, options);
-
-      const txId = await submitTxAsync(providers, {
-        unprovenTx: unprovenCallTxData.private.unprovenTx,
-        circuitId: options.circuitId
-      });
-
-      return {
-        txId,
-        callTxData: unprovenCallTxData
-      };
-    }
+  assertIsContractAddress(options.contractAddress);
+  assertDefined(
+    ContractExecutable.make(options.compiledContract)
+      .getProvableCircuitIds()
+      .find((circuitId) => circuitId as unknown as PCK === options.circuitId),
+    `Circuit '${options.circuitId}' is undefined`
   );
+
+  const hasPrivateStateProvider = 'privateStateProvider' in providers;
+  const hasPrivateStateId = 'privateStateId' in options;
+
+  if (hasPrivateStateId && !hasPrivateStateProvider) {
+    throw new IncompleteCallTxPrivateStateConfig();
+  }
+
+  if (hasPrivateStateProvider) {
+    providers.privateStateProvider.setContractAddress(options.contractAddress);
+  }
+
+  const unprovenCallTxData = await createUnprovenCallTx(providers, options);
+
+  const txId = await submitTxAsync(providers, {
+    unprovenTx: unprovenCallTxData.private.unprovenTx,
+    circuitId: options.circuitId
+  });
+
+  return {
+    txId,
+    callTxData: unprovenCallTxData
+  };
 }

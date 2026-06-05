@@ -35,7 +35,6 @@ import {
   createCircuitMaintenanceTxInterfaces,
   createContractMaintenanceTxInterface
 } from './governance/tx-interfaces';
-import { withRuntimeContext } from './internal/with-runtime-context';
 import {
   type CircuitCallTxInterface,
   createCircuitCallTxInterface
@@ -257,50 +256,45 @@ export async function findDeployedContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
   options: FindDeployedContractOptions<C>
 ): Promise<FoundContract<C>> {
-  return withRuntimeContext(
-    { operation: 'find', contractAddress: options.contractAddress },
-    async () => {
-      const { compiledContract, contractAddress } = options;
-      assertIsContractAddress(contractAddress);
-      providers.privateStateProvider.setContractAddress(contractAddress);
+  const { compiledContract, contractAddress } = options;
+  assertIsContractAddress(contractAddress);
+  providers.privateStateProvider.setContractAddress(contractAddress);
 
-      const finalizedTxData = await providers.publicDataProvider.watchForDeployTxData(contractAddress);
+  const finalizedTxData = await providers.publicDataProvider.watchForDeployTxData(contractAddress);
 
-      const initialContractState = await providers.publicDataProvider.queryDeployContractState(contractAddress);
-      assertDefined(initialContractState, `No contract deployed at contract address '${contractAddress}'`);
+  const initialContractState = await providers.publicDataProvider.queryDeployContractState(contractAddress);
+  assertDefined(initialContractState, `No contract deployed at contract address '${contractAddress}'`);
 
-      const currentContractState = await providers.publicDataProvider.queryContractState(contractAddress);
-      assertDefined(currentContractState, `No contract deployed at contract address '${contractAddress}'`);
+  const currentContractState = await providers.publicDataProvider.queryContractState(contractAddress);
+  assertDefined(currentContractState, `No contract deployed at contract address '${contractAddress}'`);
 
-      const verifierKeys = await providers.zkConfigProvider.getVerifierKeys(
-        ContractExecutable.make(compiledContract).getProvableCircuitIds()
-      );
-      verifyContractState(verifierKeys, currentContractState);
-
-      const signingKey = await setOrGetInitialSigningKey(providers.privateStateProvider, options);
-      const initialPrivateState = await setOrGetInitialPrivateState(providers.privateStateProvider, options);
-
-      return {
-        deployTxData: {
-          private: {
-            signingKey,
-            initialPrivateState
-          },
-          public: {
-            ...finalizedTxData,
-            contractAddress,
-            initialContractState
-          }
-        },
-        callTx: createCircuitCallTxInterface(
-          providers,
-          compiledContract,
-          contractAddress,
-          'privateStateId' in options ? options.privateStateId : undefined
-        ),
-        circuitMaintenanceTx: createCircuitMaintenanceTxInterfaces(providers, compiledContract, contractAddress),
-        contractMaintenanceTx: createContractMaintenanceTxInterface(providers, compiledContract, contractAddress)
-      };
-    }
+  const verifierKeys = await providers.zkConfigProvider.getVerifierKeys(
+    ContractExecutable.make(compiledContract).getProvableCircuitIds()
   );
+  verifyContractState(verifierKeys, currentContractState);
+
+  const signingKey = await setOrGetInitialSigningKey(providers.privateStateProvider, options);
+  const initialPrivateState = await setOrGetInitialPrivateState(providers.privateStateProvider, options);
+
+  return {
+    deployTxData: {
+      private: {
+        signingKey,
+        initialPrivateState
+      },
+      public: {
+        ...finalizedTxData,
+        contractAddress,
+        initialContractState
+      }
+    },
+    callTx: createCircuitCallTxInterface(
+      providers,
+      compiledContract,
+      contractAddress,
+      'privateStateId' in options ? options.privateStateId : undefined
+    ),
+    circuitMaintenanceTx: createCircuitMaintenanceTxInterfaces(providers, compiledContract, contractAddress),
+    contractMaintenanceTx: createContractMaintenanceTxInterface(providers, compiledContract, contractAddress)
+  };
 }
