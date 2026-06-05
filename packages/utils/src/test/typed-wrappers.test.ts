@@ -109,8 +109,13 @@ describe('typed wrappers — source attribution and default callee', () => {
   });
 
   it('decodeLedgerStateValue attributes to onchain-runtime (per D8)', () => {
+    // EncodedStateValue is a tagged union, not bytes. Construct a deliberately
+    // malformed one — the underlying StateValue.decode will throw, classifier
+    // returns 'unknown' (no pattern matches a structured-data decode error).
+    const malformedEncoded = { tag: 'not-a-real-tag' } as unknown as Parameters<typeof decodeLedgerStateValue>[0];
+
     expectThrowsDeserializationError(
-      () => decodeLedgerStateValue(garbage, { caller }),
+      () => decodeLedgerStateValue(malformedEncoded, { caller }),
       {
         dataType: 'StateValue',
         source: 'onchain-runtime',

@@ -180,8 +180,10 @@ describe('integration: compact-runtime source', () => {
 });
 
 describe('integration: onchain-runtime source — StateValue', () => {
-  it('garbage bytes → DeserializationError with source=onchain-runtime', () => {
-    const err = catchDeserError(() => decodeLedgerStateValue(new Uint8Array([0]), { caller }));
+  it('malformed EncodedStateValue → DeserializationError with source=onchain-runtime', () => {
+    const malformed = { tag: 'not-a-real-tag' } as unknown as Parameters<typeof decodeLedgerStateValue>[0];
+
+    const err = catchDeserError(() => decodeLedgerStateValue(malformed, { caller }));
 
     expect(err.context.source).toBe('onchain-runtime');
     expect(err.context.callee).toBe('@midnight-ntwrk/onchain-runtime-v3');

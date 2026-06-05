@@ -30,7 +30,7 @@ const innerContext: DeserializationContext = {
   classification: 'version-mismatch',
   direction: 'data-newer-than-code',
   mitigation: ['Hint A', 'Hint B'],
-  pinnedVersions: { ledger: 'v8', compactRuntime: 'compact-runtime', onchainRuntime: 'v3' },
+  pinnedVersions: { ledger: 'v8', compactRuntime: 'unversioned', onchainRuntime: 'v3' },
   extracted: { dataType: 'ContractState', expectedVersion: 6, receivedVersion: 7 }
 };
 

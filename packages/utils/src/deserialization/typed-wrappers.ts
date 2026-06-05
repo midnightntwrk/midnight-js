@@ -17,6 +17,7 @@ import { ContractState as CompactContractState } from '@midnight-ntwrk/midnight-
 import {
   type Binding,
   ContractState as LedgerContractState,
+  type EncodedStateValue,
   LedgerParameters,
   type Proof,
   type SignatureEnabled,
@@ -137,7 +138,11 @@ export const deserializeLedgerParameters = (
   );
 
 /**
- * Decode an onchain-runtime {@link LedgerStateValue} from raw bytes.
+ * Decode an onchain-runtime {@link LedgerStateValue} from its
+ * {@link EncodedStateValue} representation (a tagged union, NOT a byte
+ * buffer — `StateValue.decode` operates on the structured encoding produced
+ * by `StateValue.encode()`).
+ *
  * Source attribution is `onchain-runtime` (per D8) even though the type
  * is re-exported through the `ledger` sub-path — mitigation hints point
  * to the underlying runtime package.
@@ -145,7 +150,7 @@ export const deserializeLedgerParameters = (
  * Throws {@link DeserializationError} on failure with structured context.
  */
 export const decodeLedgerStateValue = (
-  encoded: Uint8Array,
+  encoded: EncodedStateValue,
   ctx: CallSiteContext
 ): LedgerStateValue =>
   withDeserializationContext(
