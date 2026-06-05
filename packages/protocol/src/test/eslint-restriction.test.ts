@@ -26,8 +26,11 @@ const CONFIG_FILE = resolve(MONOREPO_ROOT, 'eslint.config.mjs');
 // "consumer" and must go through the protocol ACL.
 const CONSUMER_PATH = 'packages/contracts/src/some-consumer.ts';
 const PROTOCOL_INTERNAL_PATH = 'packages/protocol/src/some-reexport.ts';
+const TYPED_WRAPPERS_PATH = 'packages/utils/src/deserialization/typed-wrappers.ts';
+const TEST_FILE_PATH = 'packages/contracts/src/test/some.test.ts';
 const ACL_REPLACEMENT_PREFIX = '@midnight-ntwrk/midnight-js-protocol';
 const RULE_ID = 'no-restricted-imports';
+const SYNTAX_RULE_ID = 'no-restricted-syntax';
 const DIST_IMPORT_MESSAGE = 'Direct imports from dist folders';
 
 // The ESLint constructor only stores options — config resolution happens
@@ -43,6 +46,11 @@ const importStatement = (moduleSpecifier: string): string => `import { foo } fro
 const lintRestricted = async (code: string, filePath: string): Promise<Linter.LintMessage[]> => {
   const [result] = await eslint.lintText(code, { filePath });
   return result.messages.filter((m) => m.ruleId === RULE_ID);
+};
+
+const lintSyntaxRestricted = async (code: string, filePath: string): Promise<Linter.LintMessage[]> => {
+  const [result] = await eslint.lintText(code, { filePath });
+  return result.messages.filter((m) => m.ruleId === SYNTAX_RULE_ID);
 };
 
 // The first `lintText` call pays a one-time cost: loading the root ESLint
@@ -118,6 +126,73 @@ describe('Protocol ACL: no-restricted-imports rule', () => {
       const messages = await lintRestricted(importStatement('../dist/whatever'), PROTOCOL_INTERNAL_PATH);
       expect(messages).toHaveLength(1);
       expect(messages[0].message).toContain(DIST_IMPORT_MESSAGE);
+    });
+  });
+});
+
+// Forbids raw `.deserialize`/`.decode` calls on ledger/runtime types from
+// consumer packages — spec issue-816 §10.4 (D5/D13).
+describe('Deserialization ACL: no-restricted-syntax rule', () => {
+  describe('flags raw .deserialize calls on ledger/runtime types from consumer packages', () => {
+    it.each([
+      'ContractState',
+      'LedgerContractState',
+      'CompactContractState',
+      'ZswapChainState',
+      'Transaction',
+      'LedgerTransaction',
+      'LedgerParameters'
+    ])('flags %s.deserialize(buf) from a consumer file', async (typeName) => {
+      const code = `const x = ${typeName}.deserialize(new Uint8Array());\n`;
+
+      const messages = await lintSyntaxRestricted(code, CONSUMER_PATH);
+
+      expect(messages).toHaveLength(1);
+      expect(messages[0].message).toMatch(/typed wrapper from @midnight-ntwrk\/midnight-js-utils/);
+    });
+
+    it.each(['StateValue', 'LedgerStateValue'])(
+      'flags %s.decode(buf) from a consumer file',
+      async (typeName) => {
+        const code = `const x = ${typeName}.decode(new Uint8Array());\n`;
+
+        const messages = await lintSyntaxRestricted(code, CONSUMER_PATH);
+
+        expect(messages).toHaveLength(1);
+        expect(messages[0].message).toMatch(/decodeLedgerStateValue/);
+      }
+    );
+
+    it('does NOT flag .deserialize on unrelated types', async () => {
+      const code = `const x = SomeUnrelatedClass.deserialize(new Uint8Array());\n`;
+
+      const messages = await lintSyntaxRestricted(code, CONSUMER_PATH);
+
+      expect(messages).toEqual([]);
+    });
+  });
+
+  describe('allows raw calls inside the sanctioned typed-wrappers file', () => {
+    it.each([
+      'ContractState.deserialize(buf)',
+      'ZswapChainState.deserialize(buf)',
+      'LedgerStateValue.decode(buf)'
+    ])('allows %s inside typed-wrappers.ts', async (call) => {
+      const code = `const buf = new Uint8Array(); const x = ${call};\n`;
+
+      const messages = await lintSyntaxRestricted(code, TYPED_WRAPPERS_PATH);
+
+      expect(messages).toEqual([]);
+    });
+  });
+
+  describe('allows raw calls inside test files (fixtures, canaries)', () => {
+    it('allows ContractState.deserialize inside a *.test.ts file', async () => {
+      const code = `const buf = new Uint8Array(); const x = ContractState.deserialize(buf);\n`;
+
+      const messages = await lintSyntaxRestricted(code, TEST_FILE_PATH);
+
+      expect(messages).toEqual([]);
     });
   });
 });
