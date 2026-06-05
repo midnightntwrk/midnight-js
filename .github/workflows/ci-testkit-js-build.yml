@@ -1,0 +1,159 @@
+name: CI - TestKit.js (build)
+#
+# Reusable build/lint/unit-test job, intentionally separated from e2e so that
+# nightly-e2e.yml can build once and fan e2e out across image-version envs.
+# The wrapper (ci-testkit-js.yml) schedules build → (prerelease || e2e) in
+# parallel via two separate `needs: build` jobs.
+
+env:
+  MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+permissions:
+  contents: read
+  issues: read
+  id-token: write
+  packages: write
+  checks: write
+  pull-requests: write
+
+on:
+  workflow_call:
+    inputs:
+      should_run:
+        required: true
+        type: string
+      yarn_filter:
+        type: string
+        description: Yarn workspace filter applied to `yarn build` (e.g., `--filter="./testkit-js/*"`). Unit tests use a hardcoded filter.
+        required: false
+        default: '--filter="./testkit-js/*"'
+      yarn_lint_paths:
+        type: string
+        description: Optional paths passed to `yarn lint` (e.g., ./packages).
+        required: false
+        default: './testkit-js'
+      testkit_docker_env:
+        type: string
+        description: Docker image version set sourced from testkit-js/env/<testkit_docker_env>.env (qanet|preview|preprod|mainnet|devnet). Empty falls back to the .envrc default.
+        required: false
+        default: ''
+    outputs:
+      test-files:
+        description: JSON array of e2e test filenames discovered in testkit-js-e2e/test.
+        value: ${{ jobs.generate-test-matrix.outputs.test-files }}
+
+concurrency:
+  group: TK-JS-build-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    if: inputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # ratchet:actions/checkout@v6.0.2
+
+      - name: Install direnv
+        run: curl -sfL https://direnv.net/install.sh | DIRENV_GITHUB_API_TOKEN=$GITHUB_TOKEN  bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Load environment from .envrc
+        env:
+          TESTKIT_DOCKER_ENV: ${{ inputs.testkit_docker_env }}
+        run: |
+          direnv allow .
+          direnv export gha >> "$GITHUB_ENV"
+
+      - name: Log in to GitHub Container registry
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # ratchet:docker/login-action@v4.2.0
+        with:
+          registry: 'https://ghcr.io'
+          username: MidnightCI
+          password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # ratchet:actions/setup-node@v6.4.0
+        with:
+          registry-url: https://npm.pkg.github.com/
+          scope: '@midnight-ntwrk'
+          node-version-file: '.nvmrc'
+          cache: 'yarn'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Configure yarn
+        run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Cache Turbo and Yarn dependencies
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # ratchet:actions/cache@v5.0.5
+        with:
+          path: |
+            **/node_modules
+            ~/.yarn
+            .turbo
+          key: turbo-testkit-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
+          restore-keys: |
+            turbo-testkit-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          yarn install --immutable
+
+      - name: Run build
+        run: yarn build ${{ inputs.yarn_filter }} --cache-dir ./turbo
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Run linter
+        run: yarn lint -- ${{ inputs.yarn_lint_paths }}
+
+      - name: Run tests
+        run: |
+          yarn test --filter="./testkit-js/*" --cache-dir ./turbo
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Upload compiled contracts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7.0.1
+        with:
+          name: e2e-tests-contracts
+          path: testkit-js/testkit-js-e2e/src/contract/compiled
+          if-no-files-found: error
+
+      - name: Upload packages dist
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7.0.1
+        with:
+          name: midnight-js-dist-testkit
+          path: packages/*/dist/
+          if-no-files-found: error
+
+      - name: Upload testkit dist
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v7.0.1
+        with:
+          name: testkit-dist
+          path: testkit-js/*/dist/
+          if-no-files-found: error
+
+  generate-test-matrix:
+    runs-on: ubuntu-latest
+    needs: ci
+    if: inputs.should_run == 'true'
+    outputs:
+      test-files: ${{ steps.generate-matrix.outputs.test-files }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # ratchet:actions/checkout@v6.0.2
+
+      - name: Generate test matrix
+        id: generate-matrix
+        run: |
+          set -euo pipefail
+          cd testkit-js/testkit-js-e2e/test
+          TEST_FILES=$(ls *.test.ts | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          if [ -z "$TEST_FILES" ] || [ "$TEST_FILES" = "[]" ]; then
+            echo "::error::No e2e test files discovered in testkit-js/testkit-js-e2e/test"
+            exit 1
+          fi
+          echo "test-files=$TEST_FILES" >> "$GITHUB_OUTPUT"
+          echo "Generated test matrix: $TEST_FILES"

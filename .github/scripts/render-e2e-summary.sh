@@ -32,15 +32,19 @@ ENV_DIR="$REPO_ROOT/testkit-js/env"
 
 read_env_var() {
   local file="$1" key="$2"
-  if [ -f "$file" ]; then
-    grep -E "^${key}=" "$file" | head -n1 | cut -d= -f2- || true
+  if [ ! -f "$file" ]; then
+    echo "missing-env-file"
+    return
   fi
+  # Strip pipe chars so the value cannot break the markdown table column layout.
+  grep -E "^${key}=" "$file" | head -n1 | cut -d= -f2- | tr -d '|' || true
 }
 
 format_duration() {
   local ms="$1"
   awk -v ms="$ms" 'BEGIN {
-    if (ms <= 0) { print "-"; exit }
+    if (ms < 0)  { print "invalid"; exit }
+    if (ms == 0) { print "-"; exit }
     s = int(ms / 1000)
     h = int(s / 3600); s = s % 3600
     m = int(s / 60); s = s % 60
@@ -71,11 +75,12 @@ while [ $# -gt 0 ]; do
     continue
   fi
 
-  passed=$(jq -r '.results.summary.passed // 0' "$ctrf")
-  failed=$(jq -r '.results.summary.failed // 0' "$ctrf")
-  skipped=$(jq -r '(.results.summary.skipped // 0) + (.results.summary.pending // 0)' "$ctrf")
-  start=$(jq -r '.results.summary.start // 0' "$ctrf")
-  stop=$(jq -r '.results.summary.stop // 0' "$ctrf")
+  # tonumber? coerces strings/floats to a number, defaults to 0 on failure so $(( )) below never aborts on bad CTRF data.
+  passed=$(jq -r '((.results.summary.passed  // 0) | tonumber? // 0)' "$ctrf")
+  failed=$(jq -r '((.results.summary.failed  // 0) | tonumber? // 0)' "$ctrf")
+  skipped=$(jq -r '(((.results.summary.skipped // 0) + (.results.summary.pending // 0)) | tonumber? // 0)' "$ctrf")
+  start=$(jq -r '((.results.summary.start // 0) | tonumber? // 0)' "$ctrf")
+  stop=$(jq -r '((.results.summary.stop  // 0) | tonumber? // 0)' "$ctrf")
   duration=$(format_duration "$((stop - start))")
 
   if [ "$failed" -gt 0 ]; then
