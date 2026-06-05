@@ -30,7 +30,6 @@ const innerContext: DeserializationContext = {
   classification: 'version-mismatch',
   direction: 'data-newer-than-code',
   mitigation: ['Hint A', 'Hint B'],
-  pinnedVersions: { ledger: 'v8', compactRuntime: 'unversioned', onchainRuntime: 'v3' },
   extracted: { dataType: 'ContractState', expectedVersion: 6, receivedVersion: 7 }
 };
 
@@ -141,7 +140,7 @@ describe('withRuntimeContext', () => {
       }
     });
 
-    it('preserves dataType, source, classification, direction, mitigation, extracted, pinnedVersions', async () => {
+    it('preserves dataType, source, classification, direction, mitigation, extracted', async () => {
       const ctx: RuntimeCallContext = { operation: 'call', circuitId: 'myCircuit' };
       const inner = new DeserializationError(innerContext, new Error('ledger boom'));
       let caught: unknown;
@@ -162,7 +161,6 @@ describe('withRuntimeContext', () => {
         expect(caught.context.direction).toBe(innerContext.direction);
         expect(caught.context.mitigation).toEqual(innerContext.mitigation);
         expect(caught.context.extracted).toEqual(innerContext.extracted);
-        expect(caught.context.pinnedVersions).toEqual(innerContext.pinnedVersions);
       }
     });
 

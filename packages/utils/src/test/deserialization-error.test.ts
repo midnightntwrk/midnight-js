@@ -25,10 +25,9 @@ const baseContext: DeserializationContext = {
   dataType: 'ContractState',
   source: 'ledger',
   caller: '@midnight-ntwrk/midnight-js-indexer-public-data-provider:queryContractState',
-  callee: '@midnight-ntwrk/ledger-v8',
+  callee: '@midnight-ntwrk/ledger',
   classification: 'version-mismatch',
-  mitigation: ['Hint A', 'Hint B'],
-  pinnedVersions: { ledger: 'v8', compactRuntime: 'unversioned', onchainRuntime: 'v3' }
+  mitigation: ['Hint A', 'Hint B']
 };
 
 describe('DeserializationError', () => {
@@ -63,7 +62,7 @@ describe('DeserializationError', () => {
       const error = new DeserializationError(baseContext, new Error('inner'));
 
       expect(error.message).toContain(
-        '  @midnight-ntwrk/midnight-js-indexer-public-data-provider:queryContractState → @midnight-ntwrk/ledger-v8'
+        '  @midnight-ntwrk/midnight-js-indexer-public-data-provider:queryContractState → @midnight-ntwrk/ledger'
       );
     });
 
@@ -82,12 +81,10 @@ describe('DeserializationError', () => {
       expect(error.message).toContain('  Classification: version-mismatch (direction: data-newer-than-code)');
     });
 
-    it('renders Pinned versions for all 3 sources', () => {
+    it('does NOT render hardcoded "Pinned versions" line (stale-string concern)', () => {
       const error = new DeserializationError(baseContext, new Error('inner'));
 
-      expect(error.message).toContain(
-        '  Pinned versions: ledger=v8, compact-runtime=unversioned, onchain-runtime=v3'
-      );
+      expect(error.message).not.toContain('Pinned versions');
     });
 
     it('omits Extracted line when context.extracted is undefined', () => {

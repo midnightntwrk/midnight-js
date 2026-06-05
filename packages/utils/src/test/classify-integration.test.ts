@@ -16,7 +16,7 @@
 /**
  * Integration tests against real WASM bindings.
  *
- * Acts as a CANARY: if `@midnight-ntwrk/ledger-v8` or any underlying source
+ * Acts as a CANARY: if `@midnight-ntwrk/ledger` or any underlying source
  * library changes error message strings (e.g. on a major bump), one or more
  * tests fail loudly and force a refresh of `patterns.ts` (spec §7.1).
  *
@@ -186,16 +186,19 @@ describe('integration: onchain-runtime source — StateValue', () => {
     const err = catchDeserError(() => decodeLedgerStateValue(malformed, { caller }));
 
     expect(err.context.source).toBe('onchain-runtime');
-    expect(err.context.callee).toBe('@midnight-ntwrk/onchain-runtime-v3');
+    expect(err.context.callee).toBe('@midnight-ntwrk/onchain-runtime');
   });
 });
 
 describe('integration: mitigation hints rendered (D12 — keyed on classification × source)', () => {
-  it('version-mismatch error includes pinned-versions guidance', () => {
+  it('version-mismatch error references the structural tag and underlying packages', () => {
     const err = catchDeserError(() =>
       deserializeContractState(headerBytes('midnight:contract-state[v5]:'), { caller })
     );
 
-    expect(err.context.mitigation.join('\n')).toMatch(/pinned versions/i);
+    const joined = err.context.mitigation.join('\n');
+    expect(joined).toMatch(/structural (version )?tag/i);
+    expect(joined).toMatch(/@midnight-ntwrk\/ledger/);
+    expect(joined).not.toContain('midnight-js-protocol');
   });
 });

@@ -22,13 +22,14 @@ import type {
   SourceLibrary
 } from './deserialization-error';
 import { PATTERNS } from './patterns';
-import { PINNED_VERSIONS } from './versions';
+import { SOURCE_PACKAGES } from './versions';
 
 const versionMismatchBaseline = (): readonly string[] => [
-  `Confirm @midnight-ntwrk/midnight-js-protocol pinned versions match the network protocol of the target environment ` +
-    `(ledger=${PINNED_VERSIONS.ledger}, compact-runtime=${PINNED_VERSIONS.compactRuntime}, ` +
-    `onchain-runtime=${PINNED_VERSIONS.onchainRuntime}).`,
-  'If reading data from an indexer, confirm the indexer protocol version matches the dApp.'
+  `Inspect the structural tag in this error (e.g. "expected ... got ..."). It identifies which ` +
+    `ledger/compact-runtime/onchain-runtime type your code expects and the version of the incoming data.`,
+  `Align the version of ${SOURCE_PACKAGES.ledger}-vN / ${SOURCE_PACKAGES.compactRuntime} / ` +
+    `${SOURCE_PACKAGES.onchainRuntime}-vN your dApp pulls in with the protocol version of the network ` +
+    `and indexer you are connecting to.`
 ];
 
 const formatMismatchBaseline = (): readonly string[] => [
@@ -40,22 +41,21 @@ const formatMismatchBaseline = (): readonly string[] => [
 const unknownBaseline = (): readonly string[] => [
   'Classification could not be determined from the error message.',
   'Inspect the underlying error (Caused by:) for context.',
-  'If the cause looks version-related, verify pinned versions in @midnight-ntwrk/midnight-js-protocol.'
+  'If the cause looks version-related, align the underlying ledger / compact-runtime / onchain-runtime package versions across your dApp, the network, and the indexer.'
 ];
 
 const PER_SOURCE_HINT: Readonly<Record<SourceLibrary, string>> = {
   ledger:
-    `Each ledger type has a structural version tag (e.g. "contract-state[v6]") that is independent of the ` +
-    `@midnight-ntwrk/ledger-${PINNED_VERSIONS.ledger} npm package version. ` +
-    `Inspect the error's "expected ... got" tag to identify the mismatched type and version, then either ` +
-    `align the data source to that structural version or pin a ledger npm version that supports the data's tag.`,
+    `Each ledger type has a structural version tag (e.g. "contract-state[v6]") embedded in the serialized ` +
+    `payload. The dApp's installed ${SOURCE_PACKAGES.ledger}-vN binding expects a specific tag; ` +
+    `the data source produced a different one. Resolve by aligning the version on either end.`,
   'compact-runtime':
-    'Verify the compactc compiler version used to build the contract matches the compact-runtime pinned ' +
-    'in @midnight-ntwrk/midnight-js-protocol. Compact-runtime depends on onchain-runtime — ' +
-    'version drift in either propagates here.',
+    `${SOURCE_PACKAGES.compactRuntime} depends on ${SOURCE_PACKAGES.onchainRuntime}-vN — ` +
+    `version drift in either propagates here. Verify the compactc compiler version used to build the ` +
+    `contract matches the runtime your dApp uses.`,
   'onchain-runtime':
-    `Verify @midnight-ntwrk/onchain-runtime-${PINNED_VERSIONS.onchainRuntime} pin matches the contract operations runtime. ` +
-    'Structural version tags (e.g. "state-value[vN]") may diverge from the npm package version.'
+    `Confirm ${SOURCE_PACKAGES.onchainRuntime}-vN installed in your dApp matches the contract operations ` +
+    `runtime in the target network. Structural tags (e.g. "state-value[vN]") may diverge from the npm major-version suffix.`
 };
 
 const buildMitigation = (
@@ -117,7 +117,6 @@ export const classify = (
       classification,
       direction,
       mitigation,
-      pinnedVersions: PINNED_VERSIONS,
       ...(extracted !== undefined ? { extracted } : {})
     };
   }
@@ -128,7 +127,6 @@ export const classify = (
     caller: callSite.caller,
     callee: callSite.callee,
     classification: 'unknown',
-    mitigation: buildMitigation('unknown', callSite.source),
-    pinnedVersions: PINNED_VERSIONS
+    mitigation: buildMitigation('unknown', callSite.source)
   };
 };

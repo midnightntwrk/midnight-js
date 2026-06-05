@@ -223,7 +223,7 @@ describe('classify — source dispatch (shared patterns)', () => {
 });
 
 describe('classify — mitigation generation (D12: keyed on classification × source)', () => {
-  it('version-mismatch mitigation includes version-pinning baseline + source hint', () => {
+  it('version-mismatch mitigation references the structural tag and the underlying package families', () => {
     const err = new Error(
       "expected header tag 'midnight:contract-state[v6]:', got 'midnight:contract-state[v5]:'"
     );
@@ -231,17 +231,23 @@ describe('classify — mitigation generation (D12: keyed on classification × so
     const ctx = classify(ledgerCallSite, err);
 
     expect(ctx.mitigation.length).toBeGreaterThan(0);
-    expect(ctx.mitigation.join('\n')).toMatch(/pinned versions/i);
-    expect(ctx.mitigation.join('\n')).toMatch(/structural version tag/i);
+    const joined = ctx.mitigation.join('\n');
+    expect(joined).toMatch(/structural (version )?tag/i);
+    expect(joined).toMatch(/@midnight-ntwrk\/ledger/);
+    // The hint MUST NOT reference midnight-js-protocol — consumers may import the underlying libs directly.
+    expect(joined).not.toContain('midnight-js-protocol');
+    // The hint MUST NOT hardcode major-version suffixes (they go stale on bump).
+    expect(joined).not.toMatch(/ledger-v\d/);
   });
 
-  it('format-mismatch mitigation does NOT recommend version pin check', () => {
+  it('format-mismatch mitigation focuses on byte corruption, not version', () => {
     const err = new Error('exceeded recursion depth deserializing');
 
     const ctx = classify(ledgerCallSite, err);
 
-    expect(ctx.mitigation.join('\n')).toMatch(/malformed|truncated|canonical/i);
-    expect(ctx.mitigation.join('\n')).not.toMatch(/pinned versions/i);
+    const joined = ctx.mitigation.join('\n');
+    expect(joined).toMatch(/malformed|truncated|canonical/i);
+    expect(joined).not.toMatch(/structural (version )?tag/i);
   });
 
   it('unknown mitigation tells dev to inspect the cause', () => {
@@ -252,23 +258,13 @@ describe('classify — mitigation generation (D12: keyed on classification × so
     expect(ctx.mitigation.join('\n')).toMatch(/inspect|caused by/i);
   });
 
-  it('generic-param-mismatch mitigation also includes version baseline', () => {
+  it('generic-param-mismatch mitigation also references the structural tag', () => {
     const err = new Error(
       "expected header tag 'midnight:proof[v1](proof-preimage):', got 'midnight:proof[v1](pre-proof):'"
     );
 
     const ctx = classify(ledgerCallSite, err);
 
-    expect(ctx.mitigation.join('\n')).toMatch(/pinned versions/i);
-  });
-});
-
-describe('classify — pinnedVersions always populated', () => {
-  it('exposes pinned versions for all three sources', () => {
-    const ctx = classify(ledgerCallSite, new Error('unknown error'));
-
-    expect(ctx.pinnedVersions.ledger).toBe('v8');
-    expect(ctx.pinnedVersions.compactRuntime).toBe('unversioned');
-    expect(ctx.pinnedVersions.onchainRuntime).toBe('v3');
+    expect(ctx.mitigation.join('\n')).toMatch(/structural (version )?tag/i);
   });
 });

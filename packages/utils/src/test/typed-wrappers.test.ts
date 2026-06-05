@@ -56,7 +56,7 @@ describe('typed wrappers — source attribution and default callee', () => {
       {
         dataType: 'ContractState',
         source: 'ledger',
-        defaultCallee: '@midnight-ntwrk/ledger-v8'
+        defaultCallee: '@midnight-ntwrk/ledger'
       }
     );
   });
@@ -78,7 +78,7 @@ describe('typed wrappers — source attribution and default callee', () => {
       {
         dataType: 'ZswapChainState',
         source: 'ledger',
-        defaultCallee: '@midnight-ntwrk/ledger-v8'
+        defaultCallee: '@midnight-ntwrk/ledger'
       }
     );
   });
@@ -92,7 +92,7 @@ describe('typed wrappers — source attribution and default callee', () => {
       {
         dataType: 'Transaction',
         source: 'ledger',
-        defaultCallee: '@midnight-ntwrk/ledger-v8'
+        defaultCallee: '@midnight-ntwrk/ledger'
       }
     );
   });
@@ -103,7 +103,7 @@ describe('typed wrappers — source attribution and default callee', () => {
       {
         dataType: 'LedgerParameters',
         source: 'ledger',
-        defaultCallee: '@midnight-ntwrk/ledger-v8'
+        defaultCallee: '@midnight-ntwrk/ledger'
       }
     );
   });
@@ -119,7 +119,7 @@ describe('typed wrappers — source attribution and default callee', () => {
       {
         dataType: 'StateValue',
         source: 'onchain-runtime',
-        defaultCallee: '@midnight-ntwrk/onchain-runtime-v3'
+        defaultCallee: '@midnight-ntwrk/onchain-runtime'
       }
     );
   });

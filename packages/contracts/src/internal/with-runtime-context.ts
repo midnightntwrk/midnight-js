@@ -42,7 +42,7 @@ const buildCaller = (context: RuntimeCallContext): string =>
  *   `DeserializationError` whose `caller` is overwritten with the contracts-package
  *   identifier (`{operation}({circuitId|-})`), preserving every other field of
  *   the inner context — including `callee` (D15), `dataType`, `source`,
- *   `classification`, `direction`, `mitigation`, `extracted`, and `pinnedVersions`.
+ *   `classification`, `direction`, `mitigation`, and `extracted`.
  *   The outer `cause` is set to the inner error's own `cause` (flat chain
  *   per spec §7.5 — unconditional). The cause is passed through as-is
  *   regardless of its shape; we NEVER re-wrap the inner `DeserializationError`

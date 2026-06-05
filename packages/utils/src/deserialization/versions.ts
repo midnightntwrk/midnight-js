@@ -14,19 +14,17 @@
  */
 
 /**
- * The npm package versions pinned by `@midnight-ntwrk/midnight-js-protocol`.
- * These appear in mitigation hints and in `DeserializationContext.pinnedVersions`.
+ * The npm package families that produce the deserialization errors this
+ * module wraps. The major-version suffix (e.g. `-v8`, `-v3`) is intentionally
+ * omitted — error messages reference the family and rely on the structural
+ * version tag carried inside the error itself (e.g. `contract-state[v6]`)
+ * for the actual version context.
  *
- * Update this file when bumping any of the underlying packages
- * (`@midnight-ntwrk/ledger-vN`, `@midnight-ntwrk/onchain-runtime-vN`).
+ * This avoids hardcoded `v8`/`v3` strings that would go stale silently when
+ * the underlying package is bumped.
  */
-export const PINNED_VERSIONS = {
-  ledger: 'v8',
-  /**
-   * `@midnight-ntwrk/compact-runtime` has no major-version suffix in its npm
-   * name (unlike `ledger-vN` / `onchain-runtime-vN`). Rendered as
-   * "unversioned" in error messages to make the asymmetry explicit.
-   */
-  compactRuntime: 'unversioned',
-  onchainRuntime: 'v3'
+export const SOURCE_PACKAGES = {
+  ledger: '@midnight-ntwrk/ledger',
+  compactRuntime: '@midnight-ntwrk/compact-runtime',
+  onchainRuntime: '@midnight-ntwrk/onchain-runtime'
 } as const;

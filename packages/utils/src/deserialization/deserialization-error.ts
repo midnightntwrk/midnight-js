@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { PINNED_VERSIONS } from './versions';
+import { SOURCE_PACKAGES } from './versions';
 
 /** Underlying library that produced the deserialization error. */
 export type SourceLibrary = 'ledger' | 'compact-runtime' | 'onchain-runtime';
@@ -69,23 +69,25 @@ export interface DeserializationContext extends DeserializationCallSite {
   readonly classification: Classification;
   readonly direction?: Direction;
   readonly mitigation: readonly string[];
-  readonly pinnedVersions: typeof PINNED_VERSIONS;
   readonly extracted?: ExtractedInfo;
 }
 
 /**
- * Default `callee` (target library identifier) per source. Used by typed
- * wrappers when the caller does not supply an override, and internally by
- * the message formatter when the context omits `callee`.
+ * Default `callee` (target library identifier) per source. Returns the bare
+ * package family — the major-version suffix (e.g. `-v8`, `-v3`) is omitted
+ * deliberately: the dev's installed version is reported by the structural
+ * tag in the error itself (e.g. `contract-state[v6]`), and the dApp can
+ * pull these packages with different majors than `midnight-js-protocol`
+ * pins.
  */
 export const defaultCalleeForSource = (source: SourceLibrary): string => {
   switch (source) {
     case 'ledger':
-      return `@midnight-ntwrk/ledger-${PINNED_VERSIONS.ledger}`;
+      return SOURCE_PACKAGES.ledger;
     case 'compact-runtime':
-      return `@midnight-ntwrk/compact-runtime`;
+      return SOURCE_PACKAGES.compactRuntime;
     case 'onchain-runtime':
-      return `@midnight-ntwrk/onchain-runtime-${PINNED_VERSIONS.onchainRuntime}`;
+      return SOURCE_PACKAGES.onchainRuntime;
   }
 };
 
@@ -112,10 +114,7 @@ const formatMessage = (ctx: DeserializationContext): string => {
   const lines: string[] = [
     `Failed to deserialize ${ctx.dataType} (${ctx.source}).`,
     `  ${ctx.caller} → ${callee}`,
-    classificationLine,
-    `  Pinned versions: ledger=${ctx.pinnedVersions.ledger}, ` +
-      `compact-runtime=${ctx.pinnedVersions.compactRuntime}, ` +
-      `onchain-runtime=${ctx.pinnedVersions.onchainRuntime}`
+    classificationLine
   ];
 
   if (ctx.extracted !== undefined) {
