@@ -24,33 +24,56 @@ import type { Classification, ExtractedInfo, PatternEntry } from './deserializat
 const GOT_SUBPATTERN =
   /^(?<gotType>[A-Za-z:-]+)\[v(?<gotVersion>\d+)\](?:\((?<gotSpecifiers>[^)]+)\))?:$/;
 
-const pattern1Classification = (match: RegExpExecArray): Classification => {
+/**
+ * Parsed result of Pattern #1 (primary + secondary). Computed once per match
+ * via {@link parsePattern1} and consumed by the three callbacks below — keeps
+ * NaN and undefined handling in one place and avoids re-running the secondary
+ * regex three times per pattern hit.
+ */
+interface Pattern1Parsed {
+  readonly what?: string;
+  readonly expectedVersion?: number;
+  readonly expectedSpecifiers?: string;
+  readonly secondaryMatched: boolean;
+  readonly gotVersion?: number;
+  readonly gotSpecifiers?: string;
+}
+
+const parsePattern1 = (match: RegExpExecArray): Pattern1Parsed => {
   const got = match.groups?.got ?? '';
   const sec = GOT_SUBPATTERN.exec(got);
-  if (sec === null) return 'version-mismatch';
-  const expVer = Number(match.groups?.expectedVersion);
-  const gotVer = Number(sec.groups?.gotVersion);
-  if (expVer !== gotVer) return 'version-mismatch';
-  if (match.groups?.expectedSpecifiers !== sec.groups?.gotSpecifiers) {
-    return 'generic-param-mismatch';
-  }
+  const expectedVersionRaw = match.groups?.expectedVersion;
+  const gotVersionRaw = sec?.groups?.gotVersion;
+  return {
+    what: match.groups?.what,
+    expectedVersion: expectedVersionRaw === undefined ? undefined : Number(expectedVersionRaw),
+    expectedSpecifiers: match.groups?.expectedSpecifiers,
+    secondaryMatched: sec !== null,
+    gotVersion: gotVersionRaw === undefined ? undefined : Number(gotVersionRaw),
+    gotSpecifiers: sec?.groups?.gotSpecifiers
+  };
+};
+
+const pattern1Classification = (match: RegExpExecArray): Classification => {
+  const p = parsePattern1(match);
+  if (!p.secondaryMatched) return 'version-mismatch';
+  if (p.expectedVersion !== p.gotVersion) return 'version-mismatch';
+  if (p.expectedSpecifiers !== p.gotSpecifiers) return 'generic-param-mismatch';
   return 'version-mismatch';
 };
 
 const pattern1Direction = (match: RegExpExecArray) => {
-  const got = match.groups?.got ?? '';
-  const sec = GOT_SUBPATTERN.exec(got);
-  if (sec === null) return undefined;
-  const expVer = Number(match.groups?.expectedVersion);
-  const gotVer = Number(sec.groups?.gotVersion);
-  if (gotVer < expVer) return 'data-older-than-code' as const;
-  if (gotVer > expVer) return 'data-newer-than-code' as const;
+  const p = parsePattern1(match);
+  if (!p.secondaryMatched || p.expectedVersion === undefined || p.gotVersion === undefined) {
+    return undefined;
+  }
+  if (p.gotVersion < p.expectedVersion) return 'data-older-than-code' as const;
+  if (p.gotVersion > p.expectedVersion) return 'data-newer-than-code' as const;
   return undefined;
 };
 
 const pattern1Extract = (match: RegExpExecArray): ExtractedInfo => {
-  const got = match.groups?.got ?? '';
-  const sec = GOT_SUBPATTERN.exec(got);
+  const p = parsePattern1(match);
   const info: {
     dataType?: string;
     expectedVersion?: number;
@@ -59,17 +82,11 @@ const pattern1Extract = (match: RegExpExecArray): ExtractedInfo => {
     receivedSpecifiers?: string;
   } = {};
 
-  if (match.groups?.what !== undefined) info.dataType = match.groups.what;
-  if (match.groups?.expectedVersion !== undefined) {
-    info.expectedVersion = Number(match.groups.expectedVersion);
-  }
-  if (match.groups?.expectedSpecifiers !== undefined) {
-    info.expectedSpecifiers = match.groups.expectedSpecifiers;
-  }
-  if (sec !== null) {
-    if (sec.groups?.gotVersion !== undefined) info.receivedVersion = Number(sec.groups.gotVersion);
-    if (sec.groups?.gotSpecifiers !== undefined) info.receivedSpecifiers = sec.groups.gotSpecifiers;
-  }
+  if (p.what !== undefined) info.dataType = p.what;
+  if (p.expectedVersion !== undefined) info.expectedVersion = p.expectedVersion;
+  if (p.expectedSpecifiers !== undefined) info.expectedSpecifiers = p.expectedSpecifiers;
+  if (p.gotVersion !== undefined) info.receivedVersion = p.gotVersion;
+  if (p.gotSpecifiers !== undefined) info.receivedSpecifiers = p.gotSpecifiers;
 
   return info;
 };

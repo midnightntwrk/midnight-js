@@ -44,10 +44,9 @@ const buildCaller = (context: RuntimeCallContext): string =>
  *   the inner context — including `callee` (D15), `dataType`, `source`,
  *   `classification`, `direction`, `mitigation`, `extracted`, and `pinnedVersions`.
  *   The outer `cause` is set to the inner error's own `cause` (flat chain
- *   per spec §7.5 — unconditional). If the inner error has no cause (rare —
- *   would mean it was constructed without one), the outer error has no cause
- *   either, NEVER re-wrapping the inner `DeserializationError` itself
- *   (avoids 3-level chain).
+ *   per spec §7.5 — unconditional). The cause is passed through as-is
+ *   regardless of its shape; we NEVER re-wrap the inner `DeserializationError`
+ *   itself as cause (avoids 3-level chain).
  */
 export const withRuntimeContext = async <T>(
   context: RuntimeCallContext,
@@ -63,7 +62,6 @@ export const withRuntimeContext = async <T>(
       ...e.context,
       caller: buildCaller(context)
     };
-    const cause = e.cause instanceof Error ? e.cause : undefined;
-    throw new DeserializationError(enrichedContext, cause);
+    throw new DeserializationError(enrichedContext, e.cause);
   }
 };

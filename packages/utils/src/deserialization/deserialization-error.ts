@@ -75,8 +75,8 @@ export interface DeserializationContext extends DeserializationCallSite {
 
 /**
  * Default `callee` (target library identifier) per source. Used by typed
- * wrappers when the caller does not supply an override, and by
- * {@link formatMessage} when the context omits `callee`.
+ * wrappers when the caller does not supply an override, and internally by
+ * the message formatter when the context omits `callee`.
  */
 export const defaultCalleeForSource = (source: SourceLibrary): string => {
   switch (source) {
@@ -144,14 +144,14 @@ export class DeserializationError extends Error {
 
   /**
    * @param context Structured diagnostic context.
-   * @param cause Underlying error from the WASM/runtime layer. Optional only
-   *   to support enrichment via `withRuntimeContext` when an inner
-   *   `DeserializationError` has no cause attached — flat-chain rule per spec
-   *   §7.5 forbids re-wrapping the inner error as cause. In practice this is
-   *   always an `Error` for primary call sites (the typed wrappers always pass
-   *   one).
+   * @param cause Underlying error. Typed as `unknown` to match the
+   *   `Error.cause` ECMA spec and to support unconditional flat-chain
+   *   propagation in `withRuntimeContext` (spec §7.5) — the inner error's
+   *   cause is passed through as-is rather than narrowed and silently
+   *   dropped when it is not an `Error`. Primary call sites (typed
+   *   wrappers) always pass an `Error` via `withDeserializationContext`.
    */
-  constructor(context: DeserializationContext, cause?: Error) {
+  constructor(context: DeserializationContext, cause?: unknown) {
     super(formatMessage(context), cause === undefined ? undefined : { cause });
     this.name = 'DeserializationError';
     this.context = context;

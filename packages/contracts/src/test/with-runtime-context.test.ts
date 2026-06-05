@@ -206,8 +206,8 @@ describe('withRuntimeContext', () => {
     });
   });
 
-  describe('defensive: inner cause is missing or not an Error', () => {
-    it('outer cause is undefined when inner.cause is not an Error (NEVER re-wraps inner — flat chain per §7.5)', async () => {
+  describe('unconditional flat-chain: inner cause passes through as-is (spec §7.5)', () => {
+    it('outer cause === inner.cause when inner.cause is a string (passes through, NEVER re-wraps inner)', async () => {
       const ctx: RuntimeCallContext = { operation: 'call', circuitId: 'myCircuit' };
       const inner = new DeserializationError(innerContext, new Error('placeholder'));
       Object.defineProperty(inner, 'cause', { value: 'not-an-error', configurable: true });
@@ -223,7 +223,7 @@ describe('withRuntimeContext', () => {
 
       expect(isDeserializationError(caught)).toBe(true);
       if (isDeserializationError(caught)) {
-        expect(caught.cause).toBeUndefined();
+        expect(caught.cause).toBe('not-an-error');
         expect(caught).not.toBe(inner);
       }
     });

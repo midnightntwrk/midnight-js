@@ -45,7 +45,21 @@ const ONCHAIN_RUNTIME_CALLEE = defaultCalleeForSource('onchain-runtime');
 
 /**
  * Deserialize a ledger {@link LedgerContractState} from raw bytes.
- * Throws {@link DeserializationError} on failure with structured context.
+ *
+ * @throws {DeserializationError} On any underlying ledger deserialization
+ *   failure. The error carries classification, direction inference, and
+ *   actionable mitigation hints.
+ *
+ * @example
+ * ```ts
+ * const state = deserializeContractState(buf, {
+ *   caller: '@midnight-ntwrk/midnight-js-indexer-public-data-provider:queryContractState'
+ * });
+ * ```
+ *
+ * The `caller` should be fully qualified (`@scope/package:function`) — this
+ * convention is enforced across the codebase and surfaces in the rendered
+ * error message.
  */
 export const deserializeContractState = (
   bytes: Uint8Array,
@@ -63,7 +77,9 @@ export const deserializeContractState = (
 
 /**
  * Deserialize a compact-runtime {@link CompactContractState} from raw bytes.
- * Throws {@link DeserializationError} on failure with structured context.
+ *
+ * @throws {DeserializationError} On any underlying compact-runtime
+ *   deserialization failure.
  */
 export const deserializeCompactContractState = (
   bytes: Uint8Array,
@@ -81,7 +97,9 @@ export const deserializeCompactContractState = (
 
 /**
  * Deserialize a ledger {@link ZswapChainState} from raw bytes.
- * Throws {@link DeserializationError} on failure with structured context.
+ *
+ * @throws {DeserializationError} On any underlying ledger deserialization
+ *   failure.
  */
 export const deserializeZswapChainState = (
   bytes: Uint8Array,
@@ -103,7 +121,8 @@ export const deserializeZswapChainState = (
  * use `('signature', 'proof', 'binding', ...)`. Add a new wrapper if a
  * different combination is needed.
  *
- * Throws {@link DeserializationError} on failure with structured context.
+ * @throws {DeserializationError} On any underlying ledger deserialization
+ *   failure.
  */
 export const deserializeLedgerTransaction = (
   bytes: Uint8Array,
@@ -121,7 +140,9 @@ export const deserializeLedgerTransaction = (
 
 /**
  * Deserialize ledger {@link LedgerParameters} from raw bytes.
- * Throws {@link DeserializationError} on failure with structured context.
+ *
+ * @throws {DeserializationError} On any underlying ledger deserialization
+ *   failure.
  */
 export const deserializeLedgerParameters = (
   bytes: Uint8Array,
@@ -147,7 +168,8 @@ export const deserializeLedgerParameters = (
  * is re-exported through the `ledger` sub-path — mitigation hints point
  * to the underlying runtime package.
  *
- * Throws {@link DeserializationError} on failure with structured context.
+ * @throws {DeserializationError} On any underlying onchain-runtime decode
+ *   failure.
  */
 export const decodeLedgerStateValue = (
   encoded: EncodedStateValue,

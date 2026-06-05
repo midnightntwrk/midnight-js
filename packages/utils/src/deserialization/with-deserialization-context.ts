@@ -32,9 +32,19 @@ const isThenable = (v: unknown): v is PromiseLike<unknown> =>
  * wrapper throws a `TypeError` synchronously to avoid silent
  * Promise-rejection escapes from the try/catch.
  *
+ * Status: this HOF is an **escape hatch** for ad-hoc deserialization sites
+ * not covered by the predefined typed wrappers in `./typed-wrappers.ts`.
+ * Prefer the typed wrappers for the 7 known production call sites.
+ *
+ * @throws {DeserializationError} When `fn()` throws an `Error`.
+ * @throws {TypeError} When `fn()` returns a thenable (sync-only violation).
+ *
  * @example
+ * ```ts
+ * // Inside a typed wrapper:
  * deserializeContractState(buf, ctx) =>
  *   withDeserializationContext(callSite, () => LedgerContractState.deserialize(buf));
+ * ```
  */
 export const withDeserializationContext = <T>(
   callSite: DeserializationCallSite,
