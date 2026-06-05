@@ -19,7 +19,7 @@ import { HttpLink } from '@apollo/client/link/http';
 import { RetryLink } from '@apollo/client/link/retry';
 import { GraphQLWsLink } from '@apollo/client/link/subscriptions';
 import { getMainDefinition } from '@apollo/client/utilities';
-import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
   type Binding,
   type ContractAddress,
@@ -29,7 +29,7 @@ import {
   type SignatureEnabled,
   type TransactionId
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { LedgerParameters,Transaction as LedgerTransaction, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { LedgerParameters, type Transaction as LedgerTransaction, type ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type {
   BlockHashConfig,
   BlockHeightConfig,
@@ -48,7 +48,14 @@ import {
   SegmentFail,
   SegmentSuccess,
   SucceedEntirely} from '@midnight-ntwrk/midnight-js-types';
-import { assertIsContractAddress, warnIfInsecureRemoteUrl } from '@midnight-ntwrk/midnight-js-utils';
+import {
+  assertIsContractAddress,
+  deserializeCompactContractState,
+  deserializeLedgerParameters as deserializeLedgerParametersTyped,
+  deserializeLedgerTransaction,
+  deserializeZswapChainState,
+  warnIfInsecureRemoteUrl
+} from '@midnight-ntwrk/midnight-js-utils';
 import { Buffer } from 'buffer';
 import fetch from 'cross-fetch';
 import { createClient } from 'graphql-ws';
@@ -134,17 +141,19 @@ const withValidFetchData = <A>(): Rx.OperatorFunction<FetchResult<A>, NonNullabl
 
 const toByteArray = (s: string): Buffer => Buffer.from(s, 'hex');
 
+const PKG = '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+
 const deserializeContractState = (s: string): ContractState =>
-  ContractState.deserialize(toByteArray(s));
+  deserializeCompactContractState(toByteArray(s), { caller: `${PKG}:deserializeContractState` });
 
 const deserializeZswapState = (s: string): ZswapChainState =>
-  ZswapChainState.deserialize(toByteArray(s));
+  deserializeZswapChainState(toByteArray(s), { caller: `${PKG}:deserializeZswapState` });
 
 const deserializeTransaction = (s: string): LedgerTransaction<SignatureEnabled, Proof, Binding> =>
-  LedgerTransaction.deserialize('signature', 'proof', 'binding', toByteArray(s));
+  deserializeLedgerTransaction(toByteArray(s), { caller: `${PKG}:deserializeTransaction` });
 
 const deserializeLedgerParameters = (s: string): LedgerParameters =>
-  LedgerParameters.deserialize(toByteArray(s));
+  deserializeLedgerParametersTyped(toByteArray(s), { caller: `${PKG}:deserializeLedgerParameters` });
 
 /**
  * The default time (in milliseconds) to wait between queries when polling.

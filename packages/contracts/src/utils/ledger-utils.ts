@@ -17,7 +17,7 @@ import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   type AlignedValue,
   type ContractAddress,
-  ContractState,
+  type ContractState,
   type QueryContext,
   type ZswapLocalState} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
@@ -25,12 +25,11 @@ import {
   communicationCommitmentRandomness,
   ContractCallPrototype,
   ContractDeploy,
-  ContractState as LedgerContractState,
+  type ContractState as LedgerContractState,
   type EncPublicKey,
   Intent,
   type PartitionedTranscript,
   QueryContext as LedgerQueryContext,
-  StateValue as LedgerStateValue,
   type Transcript,
   type UnprovenTransaction,
   UnshieldedOffer,
@@ -41,18 +40,26 @@ import {
   type AnyProvableCircuitId,
   Transaction
 } from '@midnight-ntwrk/midnight-js-types';
-import { assertDefined, ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
+import {
+  assertDefined,
+  decodeLedgerStateValue,
+  deserializeCompactContractState,
+  deserializeContractState,
+  ttlOneHour
+} from '@midnight-ntwrk/midnight-js-utils';
 
 import { type EncryptionPublicKeyResolver, zswapStateToOffer, zswapStateToSegmentedOffer } from './zswap-utils';
 
+const PKG = '@midnight-ntwrk/midnight-js-contracts';
+
 export const toLedgerContractState = (contractState: ContractState): LedgerContractState =>
-  LedgerContractState.deserialize(contractState.serialize());
+  deserializeContractState(contractState.serialize(), { caller: `${PKG}:toLedgerContractState` });
 
 export const fromLedgerContractState = (contractState: LedgerContractState): ContractState =>
-  ContractState.deserialize(contractState.serialize(), );
+  deserializeCompactContractState(contractState.serialize(), { caller: `${PKG}:fromLedgerContractState` });
 
 export const toLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext => {
-  const stateValue = LedgerStateValue.decode(queryContext.state.state.encode());
+  const stateValue = decodeLedgerStateValue(queryContext.state.state.encode(), { caller: `${PKG}:toLedgerQueryContext` });
   const ledgerQueryContext = new LedgerQueryContext(new ChargedState(stateValue), queryContext.address);
   // The above method of converting to ledger query context only retains the state. So, we have to set the settable properties manually
   ledgerQueryContext.block = queryContext.block;
