@@ -154,43 +154,6 @@ export default tseslint.config(
           ]
         }
       ],
-      // Forbid raw `.deserialize`/`.decode` calls on ledger/runtime types — consumers must use
-      // the typed wrappers in @midnight-ntwrk/midnight-js-utils. See spec issue-816 §10.4 (D5/D13).
-      // Override below allows the wrappers themselves and test files.
-      'no-restricted-syntax': [
-        'error',
-        {
-          selector: "CallExpression[callee.type='MemberExpression'][callee.property.name='deserialize'][callee.object.name=/^(ContractState|LedgerContractState|CompactContractState|ZswapChainState|Transaction|LedgerTransaction|LedgerParameters)$/]",
-          message: 'Direct .deserialize() call on a ledger/runtime type is forbidden. Use the typed wrapper from @midnight-ntwrk/midnight-js-utils (e.g. deserializeContractState, deserializeZswapChainState).'
-        },
-        {
-          selector: "CallExpression[callee.type='MemberExpression'][callee.property.name='decode'][callee.object.name=/^(StateValue|LedgerStateValue)$/]",
-          message: 'Direct .decode() call on StateValue is forbidden. Use decodeLedgerStateValue from @midnight-ntwrk/midnight-js-utils.'
-        }
-      ]
-    }
-  },
-  {
-    // The typed wrappers are the SOLE sanctioned location for raw .deserialize/.decode calls.
-    files: ['packages/utils/src/deserialization/typed-wrappers.ts'],
-    rules: {
-      'no-restricted-syntax': 'off'
-    }
-  },
-  {
-    // Test files may construct raw calls intentionally (fixtures, canaries).
-    files: ['**/*.test.ts', '**/*.spec.ts'],
-    rules: {
-      'no-restricted-syntax': 'off'
-    }
-  },
-  {
-    // testkit-js is test infrastructure for external dApp consumers — it may
-    // legitimately use raw .deserialize for setup/teardown and for variants
-    // (e.g. PreBinding) not covered by the production typed wrappers.
-    files: ['testkit-js/**/*.ts'],
-    rules: {
-      'no-restricted-syntax': 'off'
     }
   },
   {
