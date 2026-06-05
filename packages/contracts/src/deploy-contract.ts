@@ -25,6 +25,7 @@ import {
   createCircuitMaintenanceTxInterfaces,
   createContractMaintenanceTxInterface
 } from './governance/tx-interfaces';
+import { withRuntimeContext } from './internal/with-runtime-context';
 import { type DeployTxOptions, submitDeployTx } from './submit-deploy-tx';
 import { createCircuitCallTxInterface } from './tx-interfaces';
 import type { FinalizedDeployTxData } from './tx-model';
@@ -129,24 +130,26 @@ export async function deployContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
   options: DeployContractOptions<C>
 ): Promise<DeployedContract<C>> {
-  const deployTxData = await submitDeployTx(providers, createDeployTxOptions(options));
-  return {
-    deployTxData,
-    callTx: createCircuitCallTxInterface(
-      providers,
-      options.compiledContract,
-      deployTxData.public.contractAddress,
-      'privateStateId' in options ? options.privateStateId : undefined
-    ),
-    circuitMaintenanceTx: createCircuitMaintenanceTxInterfaces(
-      providers,
-      options.compiledContract,
-      deployTxData.public.contractAddress
-    ),
-    contractMaintenanceTx: createContractMaintenanceTxInterface(
-      providers,
-      options.compiledContract,
-      deployTxData.public.contractAddress
-    )
-  };
+  return withRuntimeContext({ operation: 'deploy' }, async () => {
+    const deployTxData = await submitDeployTx(providers, createDeployTxOptions(options));
+    return {
+      deployTxData,
+      callTx: createCircuitCallTxInterface(
+        providers,
+        options.compiledContract,
+        deployTxData.public.contractAddress,
+        'privateStateId' in options ? options.privateStateId : undefined
+      ),
+      circuitMaintenanceTx: createCircuitMaintenanceTxInterfaces(
+        providers,
+        options.compiledContract,
+        deployTxData.public.contractAddress
+      ),
+      contractMaintenanceTx: createContractMaintenanceTxInterface(
+        providers,
+        options.compiledContract,
+        deployTxData.public.contractAddress
+      )
+    };
+  });
 }
