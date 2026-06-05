@@ -13,10 +13,20 @@
  * limitations under the License.
  */
 
-export * from './assertion-utils';
-export * from './date-utils';
-export * from './deserialization';
-export * from './hex-utils';
-export * from './password-validation';
-export * from './security-utils';
-export * from './type-utils';
+/**
+ * The npm package versions pinned by `@midnight-ntwrk/midnight-js-protocol`.
+ * These appear in mitigation hints and in `DeserializationContext.pinnedVersions`.
+ *
+ * Update this file when bumping any of the underlying packages
+ * (`@midnight-ntwrk/ledger-vN`, `@midnight-ntwrk/onchain-runtime-vN`).
+ */
+export const PINNED_VERSIONS = {
+  ledger: 'v8',
+  /**
+   * `@midnight-ntwrk/compact-runtime` has no major-version suffix in its npm
+   * name (unlike `ledger-vN` / `onchain-runtime-vN`). Rendered as
+   * "unversioned" in error messages to make the asymmetry explicit.
+   */
+  compactRuntime: 'unversioned',
+  onchainRuntime: 'v3'
+} as const;
