@@ -6,6 +6,9 @@ name: Nightly E2E
 # 'undeployed' for every matrix entry — we are not testing against live
 # networks here, only verifying the suite works against each image-version
 # combination.
+#
+# Build runs once (source is identical across envs); e2e fans out per env
+# and consumes the shared dist artifacts.
 
 on:
   schedule:
@@ -25,18 +28,26 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  build:
+    name: build
+    uses: ./.github/workflows/ci-testkit-js-build.yml
+    with:
+      should_run: 'true'
+      testkit_docker_env: 'preview'
+    secrets: inherit
+
   e2e:
     name: e2e (${{ matrix.image_versions }})
+    needs: build
     strategy:
       fail-fast: false
       matrix:
         image_versions: [qanet, preview, preprod, mainnet, devnet]
-    uses: ./.github/workflows/ci-testkit-js.yml
+    uses: ./.github/workflows/ci-testkit-js-e2e.yml
     with:
-      should_run: 'true'
-      should_prerelease: 'false'
-      network: 'undeployed'
+      test_files: ${{ needs.build.outputs.test-files }}
       testkit_docker_env: ${{ matrix.image_versions }}
+      network: 'undeployed'
     secrets: inherit
 
   summary:
@@ -54,10 +65,22 @@ jobs:
           path: ctrf-by-env
 
       - name: Render cross-env summary
+        env:
+          E2E_RESULT: ${{ needs.e2e.result }}
         run: |
+          set -euo pipefail
           ARGS=()
+          CRASHED=0
           for env in qanet preview preprod mainnet devnet; do
-            ctrf=$(find "ctrf-by-env/test-results-ctrf-summary-${env}" -name "ctrf-*.json" 2>/dev/null | head -n1 || true)
+            artifact_dir="ctrf-by-env/test-results-ctrf-summary-${env}"
+            # No artifact dir = the e2e job for this env crashed before uploading.
+            # Distinguish from "artifact present but no CTRF inside" (empty test run).
+            if [ ! -d "$artifact_dir" ]; then
+              ARGS+=("$env" "")
+              CRASHED=$((CRASHED + 1))
+              continue
+            fi
+            ctrf=$(find "$artifact_dir" -name "ctrf-*.json" 2>/dev/null | head -n1 || true)
             ARGS+=("$env" "${ctrf:-}")
           done
           {
@@ -66,4 +89,14 @@ jobs:
             ./.github/scripts/render-e2e-summary.sh "${ARGS[@]}"
             echo ""
             echo "_Reports per environment available as run artifacts._"
+            if [ "$CRASHED" -gt 0 ]; then
+              echo ""
+              echo ":rotating_light: **${CRASHED} env(s) produced no artifact** — the e2e job crashed before tests ran."
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
+          # Fail the summary job (and therefore the nightly workflow) on any non-success,
+          # so reviewers do not have to read the e2e job result to know nightly is broken.
+          if [ "$CRASHED" -gt 0 ] || [ "$E2E_RESULT" != "success" ]; then
+            echo "::error::Nightly e2e: crashed_envs=${CRASHED} e2e.result=${E2E_RESULT}"
+            exit 1
+          fi
