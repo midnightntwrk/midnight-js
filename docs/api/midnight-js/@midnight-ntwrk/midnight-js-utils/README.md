@@ -8,12 +8,24 @@
 
 ## Classes
 
+- [DeserializationError](classes/DeserializationError.md)
 - [PasswordValidationError](classes/PasswordValidationError.md)
+
+## Interfaces
+
+- [CallSiteContext](interfaces/CallSiteContext.md)
+- [DeserializationCallSite](interfaces/DeserializationCallSite.md)
+- [DeserializationContext](interfaces/DeserializationContext.md)
+- [ExtractedInfo](interfaces/ExtractedInfo.md)
+- [PatternEntry](interfaces/PatternEntry.md)
 
 ## Type Aliases
 
+- [Classification](type-aliases/Classification.md)
+- [Direction](type-aliases/Direction.md)
 - [ParsedHexString](type-aliases/ParsedHexString.md)
 - [PasswordValidationFailure](type-aliases/PasswordValidationFailure.md)
+- [SourceLibrary](type-aliases/SourceLibrary.md)
 
 ## Variables
 
@@ -22,6 +34,8 @@
 - [MIN\_CHARACTER\_CLASSES](variables/MIN_CHARACTER_CLASSES.md)
 - [MIN\_PASSWORD\_LENGTH](variables/MIN_PASSWORD_LENGTH.md)
 - [MIN\_SEQUENTIAL\_LENGTH](variables/MIN_SEQUENTIAL_LENGTH.md)
+- [PATTERNS](variables/PATTERNS.md)
+- [SOURCE\_PACKAGES](variables/SOURCE_PACKAGES.md)
 
 ## Functions
 
@@ -31,7 +45,15 @@
 - [assertSafeName](functions/assertSafeName.md)
 - [assertSemVer](functions/assertSemVer.md)
 - [assertUndefined](functions/assertUndefined.md)
+- [classify](functions/classify.md)
+- [decodeLedgerStateValue](functions/decodeLedgerStateValue.md)
+- [deserializeCompactContractState](functions/deserializeCompactContractState.md)
+- [deserializeContractState](functions/deserializeContractState.md)
+- [deserializeLedgerParameters](functions/deserializeLedgerParameters.md)
+- [deserializeLedgerTransaction](functions/deserializeLedgerTransaction.md)
+- [deserializeZswapChainState](functions/deserializeZswapChainState.md)
 - [fromHex](functions/fromHex.md)
+- [isDeserializationError](functions/isDeserializationError.md)
 - [isHex](functions/isHex.md)
 - [parseCoinPublicKeyToHex](functions/parseCoinPublicKeyToHex.md)
 - [parseEncPublicKeyToHex](functions/parseEncPublicKeyToHex.md)
@@ -40,3 +62,4 @@
 - [ttlOneHour](functions/ttlOneHour.md)
 - [validatePassword](functions/validatePassword.md)
 - [warnIfInsecureRemoteUrl](functions/warnIfInsecureRemoteUrl.md)
+- [withDeserializationContext](functions/withDeserializationContext.md)
