@@ -14,6 +14,7 @@
  */
 
 export * from './contract';
+export * from './contract-events';
 export * from './errors';
 export * from './logger-provider';
 export * from './midnight-provider';
