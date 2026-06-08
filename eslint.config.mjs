@@ -29,6 +29,7 @@ export default tseslint.config(
       '**/*.json',
       'packages/compact/src/run-compactc.cjs',
       'scripts/**',
+      '.github/scripts/**',
       'yarn.config.cjs',
     ]
   },
