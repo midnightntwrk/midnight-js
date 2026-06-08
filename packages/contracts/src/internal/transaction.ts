@@ -24,7 +24,7 @@ import { CallTxFailedError, ScopedTransactionIdentityMismatchError } from '../er
 import { type ContractStates,type PublicContractStates } from '../get-states';
 import { submitTx, type SubmitTxOptions } from '../submit-tx';
 import type * as Transaction from '../transaction';
-import { type FinalizedCallTxData, type UnsubmittedCallTxData } from '../tx-model';
+import { EMPTY_EVENTS, type FinalizedCallTxData, type UnsubmittedCallTxData } from '../tx-model';
 
 /** @internal */
 export interface CachedStateIdentity {
@@ -246,7 +246,8 @@ export const scoped: {
       public: {
         nextContractState: unprovenCallTxData.public.nextContractState,
         partitionedTranscript: unprovenCallTxData.public.partitionedTranscript,
-        publicTranscript: unprovenCallTxData.public.publicTranscript
+        publicTranscript: unprovenCallTxData.public.publicTranscript,
+        events: EMPTY_EVENTS
       },
       private: {
         input: unprovenCallTxData.private.input,

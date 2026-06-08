@@ -34,6 +34,7 @@ import { type ContractStates, getPublicStates, getStates, type PublicContractSta
 import * as Transaction from './internal/transaction';
 import { type TransactionContext } from './transaction';
 import type { UnsubmittedCallTxData } from './tx-model';
+import { EMPTY_EVENTS } from './tx-model';
 import { createUnprovenLedgerCallTx, encryptionPublicKeyResolverForZswapState, zswapStateToNewCoins } from './utils';
 
 export function createUnprovenCallTxFromInitialStates<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
@@ -115,7 +116,8 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
       public: {
         nextContractState: contractState,
         partitionedTranscript,
-        publicTranscript
+        publicTranscript,
+        events: EMPTY_EVENTS
       },
       private: {
         input,

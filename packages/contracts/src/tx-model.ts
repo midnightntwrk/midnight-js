@@ -17,10 +17,24 @@ import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { ContractAddress, ContractState, SigningKey,ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { type ShieldedCoinInfo, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type {
-  FinalizedTxData
+  FinalizedTxData,
+  VersionedLogItem
 } from '@midnight-ntwrk/midnight-js-types';
 
 import type { CallResult } from './call';
+
+/**
+ * Shared frozen empty array used as the value of `events` in phase 1, before
+ * compact-js publishes its local-execution decoder. Avoids per-call allocation.
+ *
+ * ⚠ PHASE-1 SEMANTICS: this constant being returned does NOT mean the call/deploy
+ * emitted no events. It means the local-execution decoder has not shipped yet. Use
+ * the indexer surface (queryContractEvents / watchContractEvents) as the authoritative
+ * source of events emitted by a transaction until phase 2 lands.
+ *
+ * @see docs/specs/2026-06-08-midnight-js-mip-0002-events-design.md
+ */
+export const EMPTY_EVENTS: readonly VersionedLogItem[] = Object.freeze([]);
 
 /**
  * Data relevant to any unsubmitted transaction.
@@ -61,6 +75,12 @@ export type UnsubmittedDeployTxPublicData = {
    * The initial public state of the contract deployed to the blockchain.
    */
   readonly initialContractState: ContractState;
+  /**
+   * Contract events emitted by the deploy. Always empty in phase 1 — see
+   * {@link EMPTY_EVENTS} for the full caveat. Reserved for a future Compact
+   * language CoIP that may permit `log` expressions in constructors.
+   */
+  readonly events: readonly VersionedLogItem[];
 }
 
 /**

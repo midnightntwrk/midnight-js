@@ -29,7 +29,7 @@ import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import type { ContractConstructorOptionsWithArguments } from './call-constructor';
 import { type ContractProviders } from './contract-providers';
 import { isEffectContractError } from './errors';
-import type { UnsubmittedDeployTxData } from './tx-model';
+import { EMPTY_EVENTS, type UnsubmittedDeployTxData } from './tx-model';
 import { createEncryptionPublicKeyResolver, createUnprovenLedgerDeployTx, zswapStateToNewCoins } from './utils';
 
 /**
@@ -144,7 +144,8 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
     return {
       public: {
         contractAddress,
-        initialContractState
+        initialContractState,
+        events: EMPTY_EVENTS
       },
       private: {
         signingKey,

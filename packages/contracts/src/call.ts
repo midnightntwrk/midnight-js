@@ -30,6 +30,7 @@ import {
   type PartitionedTranscript,
   type ZswapChainState
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { VersionedLogItem } from '@midnight-ntwrk/midnight-js-types';
 
 /**
  * Describes the target of a circuit invocation.
@@ -181,6 +182,19 @@ export type CallResultPublic = {
    * can fail without invalidating the transaction, as long as the guaranteed section succeeds.
    */
   readonly partitionedTranscript: PartitionedTranscript;
+  /**
+   * Contract events emitted by this circuit call.
+   *
+   * ⚠ PHASE-1 SEMANTICS: this array is always empty in the current release because the
+   * local-execution decoder for `log` opcodes has not shipped yet (waiting on compact-js
+   * per MIP-0002 §7). `events.length === 0` does NOT mean the circuit emitted no events;
+   * it means the decoder is not yet wired. Use the indexer surface
+   * (`queryContractEvents` / `watchContractEvents`) as the authoritative source for
+   * events emitted by a transaction until phase 2 lands.
+   *
+   * @see docs/specs/2026-06-08-midnight-js-mip-0002-events-design.md
+   */
+  readonly events: readonly VersionedLogItem[];
 };
 
 /**

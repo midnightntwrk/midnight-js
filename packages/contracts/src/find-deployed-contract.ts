@@ -39,7 +39,7 @@ import {
   type CircuitCallTxInterface,
   createCircuitCallTxInterface
 } from './tx-interfaces';
-import type { FinalizedDeployTxDataBase } from './tx-model';
+import { EMPTY_EVENTS, type FinalizedDeployTxDataBase } from './tx-model';
 
 const setOrGetInitialSigningKey = async <C extends Contract.Any>(
   privateStateProvider: PrivateStateProvider,
@@ -285,7 +285,8 @@ export async function findDeployedContract<C extends Contract.Any>(
       public: {
         ...finalizedTxData,
         contractAddress,
-        initialContractState
+        initialContractState,
+        events: EMPTY_EVENTS
       }
     },
     callTx: createCircuitCallTxInterface(

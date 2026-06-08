@@ -81,6 +81,7 @@ export {
   createCallTxOptions,
   createCircuitCallTxInterface} from './tx-interfaces';
 export {
+  EMPTY_EVENTS,
   FinalizedCallTxData,
   FinalizedDeployTxData,
   FinalizedDeployTxDataBase,
