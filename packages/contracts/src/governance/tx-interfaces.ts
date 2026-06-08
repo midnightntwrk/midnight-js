@@ -124,6 +124,7 @@ export const createContractMaintenanceTxInterface = <C extends Contract.Any>(
 ): ContractMaintenanceTxInterface => {
   assertIsContractAddress(contractAddress);
   return {
+    // @ts-expect-error TODO(ledger-v9): blocked by compact-js bump — SigningKey v8 vs v9
     replaceAuthority: submitReplaceAuthorityTx(providers, compiledContract, contractAddress)
   };
 };

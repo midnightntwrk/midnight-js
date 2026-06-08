@@ -68,6 +68,7 @@ describe('submitReplaceAuthorityTx', () => {
       vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
 
       const replaceAuthorityFn = submitReplaceAuthorityTx(mockProviders, mockCompiledContract, mockContractAddress);
+      // @ts-expect-error fixture incompatible with ledger-v9 SigningKey shape
       const result = await replaceAuthorityFn(mockNewAuthority);
 
       expect(mockProviders.publicDataProvider.queryContractState).toHaveBeenCalledWith(mockContractAddress);
@@ -102,7 +103,8 @@ describe('submitReplaceAuthorityTx', () => {
       vi.mocked(submitTx).mockResolvedValue(failedTxData);
 
       const replaceAuthorityFn = submitReplaceAuthorityTx(mockProviders, mockCompiledContract, mockContractAddress);
-      
+
+      // @ts-expect-error fixture incompatible with ledger-v9 SigningKey shape
       await expect(replaceAuthorityFn(mockNewAuthority)).rejects.toThrow(ReplaceMaintenanceAuthorityTxFailedError);
     });
   });

@@ -32,12 +32,12 @@ import { createPlatform } from '@midnight-ntwrk/midnight-js-protocol/platform-js
 
 | Sub-path | Re-exports | Description |
 | -------- | ---------- | ----------- |
-| `./ledger` | `@midnight-ntwrk/ledger-v8` | Ledger types and transaction primitives |
+| `./ledger` | `@midnightntwrk/ledger-v9` | Ledger types and transaction primitives |
 | `./compact-runtime` | `@midnight-ntwrk/compact-runtime` | Compact contract runtime utilities |
 | `./compact-js` | `@midnight-ntwrk/compact-js` | Compact JS bindings |
 | `./compact-js/effect` | `@midnight-ntwrk/compact-js/effect` | Effect-based Compact bindings |
 | `./compact-js/effect/Contract` | `@midnight-ntwrk/compact-js/effect/Contract` | Effect-based Contract module |
-| `./onchain-runtime` | `@midnight-ntwrk/onchain-runtime-v3` | On-chain runtime (Impact VM) |
+| `./onchain-runtime` | `@midnightntwrk/onchain-runtime-v4` | On-chain runtime (Impact VM) |
 | `./platform-js` | `@midnight-ntwrk/platform-js` | Platform services |
 | `./platform-js/effect/Configuration` | `@midnight-ntwrk/platform-js/effect/Configuration` | Effect-based configuration |
 | `./platform-js/effect/ContractAddress` | `@midnight-ntwrk/platform-js/effect/ContractAddress` | Effect-based contract address resolution |

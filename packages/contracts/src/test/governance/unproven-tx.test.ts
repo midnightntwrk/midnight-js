@@ -56,6 +56,7 @@ describe('governance/unproven-tx', () => {
       mockZKProvider,
       mockCompiledContract,
       dummyContractAddress,
+      // @ts-expect-error fixture incompatible with ledger-v9 SigningKey shape
       dummySigningKey,
       dummyContractState,
       dummySigningKey2,
@@ -71,6 +72,7 @@ describe('governance/unproven-tx', () => {
       dummyContractAddress,
       'op',
       dummyContractState,
+      // @ts-expect-error fixture incompatible with ledger-v9 SigningKey shape
       dummySigningKey,
       dummyCPK
     );

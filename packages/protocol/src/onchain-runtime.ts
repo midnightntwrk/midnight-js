@@ -13,4 +13,4 @@
  * limitations under the License.
  */
 
-export * from '@midnight-ntwrk/onchain-runtime-v3';
+export * from '@midnightntwrk/onchain-runtime-v4';

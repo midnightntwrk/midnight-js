@@ -264,6 +264,7 @@ describe('ledger-utils', () => {
       chainState: ZswapChainState,
       contractAddress: ContractAddress
     ): string =>
+      // @ts-expect-error fixture incompatible with ledger-v9 postBlockUpdate signature
       ZswapInput.newContractOwned(qualifiedCoin, 0, contractAddress, chainState.postBlockUpdate(new Date())).nullifier;
 
     it('routes a user-bound shielded output from a fallible op into the fallible Zswap offer', () => {

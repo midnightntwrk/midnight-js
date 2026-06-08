@@ -1946,9 +1946,9 @@ __metadata:
   dependencies:
     "@midnight-ntwrk/compact-js": "npm:2.5.1"
     "@midnight-ntwrk/compact-runtime": "npm:0.16.0"
-    "@midnight-ntwrk/ledger-v8": "npm:8.1.0"
-    "@midnight-ntwrk/onchain-runtime-v3": "npm:3.0.0"
     "@midnight-ntwrk/platform-js": "npm:2.2.4"
+    "@midnightntwrk/ledger-v9": "npm:0.1.0-rc.1"
+    "@midnightntwrk/onchain-runtime-v4": "npm:4.0.0-rc.1"
     "@rollup/plugin-typescript": "npm:^12.3.0"
     "@vitest/coverage-v8": "npm:^4.1.7"
     eslint: "npm:^10.4.0"
@@ -2332,6 +2332,20 @@ __metadata:
   version: 2.1.0
   resolution: "@midnight-ntwrk/zkir-v2@npm:2.1.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fzkir-v2%2F2.1.0%2Fb3c8b9720535d7e62b86c5ff8341a13a46eb5c7e"
   checksum: 10/c16761489c3abbf858a4b7c2c4dd99d498f40554b5f1a57a93534b21c66390d4c6b0035dee8923fb5972418c75ac1f80e2e0675d8f3eb2a96dce7e7555fb2b7d
+  languageName: node
+  linkType: hard
+
+"@midnightntwrk/ledger-v9@npm:0.1.0-rc.1":
+  version: 0.1.0-rc.1
+  resolution: "@midnightntwrk/ledger-v9@npm:0.1.0-rc.1::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnightntwrk%2Fledger-v9%2F0.1.0-rc.1%2Ffd82fbf9d1233746419b740c41690372183018e3"
+  checksum: 10/6e4318135394df20a64ab2092468a48842f672061551290c2a16befe01ca2b1187b54f7ad820b00e19f44237df71cedfad3022d46bc0630279e26effcbc7fa5a
+  languageName: node
+  linkType: hard
+
+"@midnightntwrk/onchain-runtime-v4@npm:4.0.0-rc.1":
+  version: 4.0.0-rc.1
+  resolution: "@midnightntwrk/onchain-runtime-v4@npm:4.0.0-rc.1::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnightntwrk%2Fonchain-runtime-v4%2F4.0.0-rc.1%2F4819708ede52ae1d27292c0aafa22acbcd8ce623"
+  checksum: 10/bd3f4c414e025b58669b8308470f7df6638cf4d3e3fe0f3ed79b0b4da5f004ca1bdd6724e38593319d7c2835ea75adbd135c407d77444a8947f8f64e11712f97
   languageName: node
   linkType: hard
 

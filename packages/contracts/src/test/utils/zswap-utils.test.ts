@@ -247,6 +247,7 @@ describe('Zswap utilities', () => {
       }
       return prevZSwapChainState;
     }, new ZswapChainState());
+    // @ts-expect-error fixture incompatible with ledger-v9 postBlockUpdate signature
     const zswapChainStateUpdated = zswapChainState.postBlockUpdate(new Date());
     return { zswapChainState: zswapChainStateUpdated, nonMatchingInputs };
   };
@@ -975,6 +976,7 @@ describe('Zswap utilities', () => {
         ZswapOffer.fromOutput(output, coinInfo.type, coinInfo.value)
       ).eraseProofs();
       const [chainState, mtIndices] = new ZswapChainState().tryApply(seedTx.guaranteedOffer!);
+      // @ts-expect-error fixture incompatible with ledger-v9 postBlockUpdate signature
       const rehashedChainState = chainState.postBlockUpdate(new Date());
       const qualifiedCoin: QualifiedShieldedCoinInfo = { ...coinInfo, mt_index: mtIndices.get(output.commitment)! };
       // Act
@@ -1187,6 +1189,7 @@ describe('Zswap utilities', () => {
       chainState: ZswapChainState,
       contractAddress: ContractAddress
     ): string =>
+      // @ts-expect-error fixture incompatible with ledger-v9 postBlockUpdate signature
       ZswapInput.newContractOwned(qualifiedCoin, 0, contractAddress, chainState.postBlockUpdate(new Date())).nullifier;
 
     it('routes a wallet-owned input to the fallible offer when its nullifier is in partitionedTranscript[1].claimedNullifiers', () => {

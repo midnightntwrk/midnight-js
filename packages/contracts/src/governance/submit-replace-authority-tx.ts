@@ -87,6 +87,7 @@ export const submitReplaceAuthorityTx =
       providers.zkConfigProvider,
       compiledContract,
       contractAddress,
+      // @ts-expect-error TODO(ledger-v9): blocked by compact-js bump — SigningKey v8 vs v9
       newAuthority,
       contractState,
       currentAuthority,
@@ -98,6 +99,7 @@ export const submitReplaceAuthorityTx =
     }
     // TODO: What if machine crashes right before the following set executes? How to recover?
     //       Likely will need a history of pending transactions.
+    // @ts-expect-error TODO(ledger-v9): blocked by compact-js bump — SigningKey v8 vs v9
     await providers.privateStateProvider.setSigningKey(contractAddress, newAuthority);
     return submitTxResult;
   };

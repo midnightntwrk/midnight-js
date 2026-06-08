@@ -331,7 +331,8 @@ export const zswapStateToSegmentedOffer = (
     [FALLIBLE_SEGMENT_NUMBER]: emptyBucket()
   };
 
-  const rehashedChainState = addressAndChainStateTuple?.zswapChainState.postBlockUpdate(new Date());
+  // retentionDuration is a placeholder; needs to flow from LedgerParameters once threaded to this callsite.
+  const rehashedChainState = addressAndChainStateTuple?.zswapChainState.postBlockUpdate(new Date(), 0n);
 
   for (const output of zswapLocalState.outputs) {
     if (output.recipient.is_left) {

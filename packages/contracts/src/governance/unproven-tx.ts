@@ -63,6 +63,7 @@ export const createUnprovenReplaceAuthorityTx = <C extends Contract.Any>(
     signingKey: currentAuthority
   });
 
+  // @ts-expect-error TODO(ledger-v9): blocked by compact-js bump — MaintenanceUpdate v8 vs v9 (addSignature signature type changed)
   return unprovenTxFromContractUpdates(async () => {
     return (await contractRuntime.runPromise(contractExec.replaceContractMaintenanceAuthority(
       asEffectOption(newAuthority),
@@ -89,6 +90,7 @@ export const createUnprovenRemoveVerifierKeyTx = <C extends Contract.Any>(
     signingKey: currentAuthority
   });
 
+  // @ts-expect-error TODO(ledger-v9): blocked by compact-js bump — MaintenanceUpdate v8 vs v9 (addSignature signature type changed)
   return unprovenTxFromContractUpdates(async () => {
     return (await contractRuntime.runPromise(contractExec.removeContractOperation(
       ProvableCircuitId(operation),
@@ -116,6 +118,7 @@ export const createUnprovenInsertVerifierKeyTx = <C extends Contract.Any>(
     signingKey: currentAuthority
   });
 
+  // @ts-expect-error TODO(ledger-v9): blocked by compact-js bump — MaintenanceUpdate v8 vs v9 (addSignature signature type changed)
   return unprovenTxFromContractUpdates(async () => {
     return (await contractRuntime.runPromise(contractExec.addOrReplaceContractOperation(
       ProvableCircuitId(operation),
