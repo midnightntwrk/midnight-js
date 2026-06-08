@@ -108,7 +108,10 @@ describe('Unshielded Balances Integration', () => {
       const provider = indexerPublicDataProvider(queryURL, subscriptionURL);
 
       expect(typeof provider.unshieldedBalancesObservable).toBe('function');
-      expect(provider.unshieldedBalancesObservable.length).toBe(2); // expects 2 parameters
+      // The class signature declares `config` with a default value of `{ type: 'latest' }`,
+      // so JS `function.length` reports 1 required parameter (Phase 3 removed the
+      // outer wrapper that had previously declared `config` without a default).
+      expect(provider.unshieldedBalancesObservable.length).toBe(1);
     });
 
     test('should throw error for txId configuration before address validation', () => {

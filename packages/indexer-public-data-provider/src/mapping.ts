@@ -34,10 +34,11 @@ export const hasContractAction = <T extends { contractAction?: unknown }>(
   data.contractAction != null;
 
 export const isRegularTransaction = (
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  tx: any
+  tx: unknown
 ): tx is RegularTransaction & { hash: string; identifiers: string[] } => {
-  return 'identifiers' in tx && 'hash' in tx && Array.isArray(tx.identifiers);
+  if (typeof tx !== 'object' || tx === null) return false;
+  if (!('identifiers' in tx) || !('hash' in tx)) return false;
+  return Array.isArray((tx as { identifiers: unknown }).identifiers);
 };
 
 export const toFinalizedDeployTxData = (

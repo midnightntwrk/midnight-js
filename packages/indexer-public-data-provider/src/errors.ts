@@ -165,3 +165,20 @@ export class IndexerProviderConfigError extends IndexerError {
     this.name = 'IndexerProviderConfigError';
   }
 }
+
+/**
+ * An error raised when an upstream invariant the provider relies on does
+ * not hold at runtime — for example, when an `Rx.filter` upstream is
+ * expected to guarantee a non-empty array but the downstream `.map` still
+ * sees an empty one. Distinct from {@link IndexerDataError} (well-formed
+ * indexer payload that violates protocol-level expectations) and from
+ * {@link IndexerSubscriptionDataError} (server returned a `null` for a
+ * top-level subscription field) — `IndexerInvariantError` flags a bug in
+ * the provider's pipeline composition, not in the data.
+ */
+export class IndexerInvariantError extends IndexerError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'IndexerInvariantError';
+  }
+}

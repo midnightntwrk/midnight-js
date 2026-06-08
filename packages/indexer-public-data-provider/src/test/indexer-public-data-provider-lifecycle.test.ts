@@ -100,7 +100,11 @@ describe('indexerPublicDataProvider — config-object overload', () => {
     });
 
     const fakeTxId = '00'.repeat(32) as unknown as Parameters<typeof provider.watchForTxData>[0];
-    await provider.watchForTxData(fakeTxId).catch(() => undefined);
+    try {
+      await provider.watchForTxData(fakeTxId);
+    } catch {
+      // expected — the mocked watchQuery short-circuits before any data flows
+    }
 
     expect(watchQuerySpy).toHaveBeenCalledWith(
       expect.objectContaining({ pollInterval: customPollInterval })

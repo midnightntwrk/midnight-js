@@ -37,6 +37,7 @@ import {
   IndexerDataError,
   IndexerError,
   IndexerFormattedError,
+  IndexerInvariantError,
   IndexerProviderConfigError,
   IndexerQueryError,
   IndexerSubscriptionDataError
@@ -401,6 +402,25 @@ describe('IndexerProviderConfigError', () => {
     expect(error).toBeInstanceOf(IndexerError);
     expect(error.name).toBe('IndexerProviderConfigError');
     expect(error.message).toBe('Unsupported observable mode: txId');
+  });
+});
+
+describe('IndexerInvariantError', () => {
+  test('exposes message and name', () => {
+    const error = new IndexerInvariantError(
+      'watchForTxData: empty transactions array passed the non-empty filter'
+    );
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toBeInstanceOf(IndexerError);
+    expect(error.name).toBe('IndexerInvariantError');
+    expect(error.message).toBe('watchForTxData: empty transactions array passed the non-empty filter');
+  });
+
+  test('is distinct from IndexerDataError', () => {
+    const error = new IndexerInvariantError('any');
+
+    expect(error).not.toBeInstanceOf(IndexerDataError);
   });
 });
 

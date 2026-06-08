@@ -28,6 +28,7 @@ import type {
   PublicDataProvider,
   UnshieldedBalances
 } from '@midnight-ntwrk/midnight-js-types';
+import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 import * as Rx from 'rxjs';
 
 import {
@@ -40,7 +41,7 @@ import {
   toUnshieldedBalances,
   toUnshieldedUtxos
 } from './codec';
-import { IndexerDataError, IndexerProviderConfigError } from './errors';
+import { IndexerDataError, IndexerInvariantError, IndexerProviderConfigError } from './errors';
 import type {
   ContractActionOffset,
   DeployContractStateTxQueryQuery,
@@ -74,15 +75,10 @@ import {
 import type { ApolloHandle } from './transport';
 
 /**
- * Class form of the indexer-backed `PublicDataProvider`. Carries the
- * Apollo handle and the resolved poll interval. Does **not** call
- * `assertIsContractAddress` — the outer wrapper in `index.ts` retains that
- * responsibility until Phase 3.
- *
- * Phase 2 introduces this class for two reasons:
- *  1. To carry a `dispose()` lifecycle method (fix #820).
- *  2. To establish the `(handle, pollInterval)` constructor shape that
- *     maps directly onto `Layer.scoped` in the future Effect migration (#843).
+ * Indexer-backed `PublicDataProvider`. Every method that takes a
+ * `ContractAddress` validates the input up front via
+ * `assertIsContractAddress`. The constructor shape `(handle, pollInterval)`
+ * maps directly onto `Layer.scoped` in the future Effect migration (#843).
  *
  * TODO: Re-examine caching when 'ContractCall' and 'ContractDeploy' have
  * transaction identifiers included.
@@ -109,17 +105,18 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     return this.handle.client;
   }
 
-  async queryContractState(
+  queryContractState(
     address: ContractAddress,
     config?: BlockHeightConfig | BlockHashConfig
   ): Promise<ContractState | null> {
+    assertIsContractAddress(address);
     const offset: InputMaybe<ContractActionOffset> = config
       ? {
           blockOffset:
             config.type === 'blockHeight' ? { height: config.blockHeight } : { hash: config.blockHash }
         }
       : null;
-    const maybeContractState = await this.client
+    return this.client
       .query({
         query: CONTRACT_STATE_QUERY,
         variables: {
@@ -129,21 +126,22 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         fetchPolicy: 'no-cache'
       })
       .then(maybeThrowQueryError)
-      .then((queryResult) => queryResult.data?.contractAction?.state ?? null);
-    return maybeContractState ? parseHexContractState(maybeContractState) : null;
+      .then((queryResult) => queryResult.data?.contractAction?.state ?? null)
+      .then((maybeContractState) => (maybeContractState ? parseHexContractState(maybeContractState) : null));
   }
 
-  async queryZSwapAndContractState(
+  queryZSwapAndContractState(
     address: ContractAddress,
     config?: BlockHeightConfig | BlockHashConfig
   ): Promise<[ZswapChainState, ContractState, LedgerParameters] | null> {
+    assertIsContractAddress(address);
     const offset = config
       ? {
           blockOffset:
             config.type === 'blockHeight' ? { height: config.blockHeight } : { hash: config.blockHash }
         }
       : null;
-    const maybeContractStates = await this.client
+    return this.client
       .query({
         query: CONTRACT_AND_ZSWAP_STATE_QUERY,
         variables: {
@@ -153,29 +151,32 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         fetchPolicy: 'no-cache'
       })
       .then(maybeThrowQueryError)
-      .then((queryResult) => queryResult.data?.contractAction);
-    return maybeContractStates
-      ? [
-          parseHexZswapState(maybeContractStates.zswapState),
-          parseHexContractState(maybeContractStates.state),
-          maybeContractStates.transaction?.block?.ledgerParameters
-            ? parseHexLedgerParameters(maybeContractStates.transaction.block.ledgerParameters)
-            : LedgerParameters.initialParameters()
-        ]
-      : null;
+      .then((queryResult) => queryResult.data?.contractAction)
+      .then((maybeContractStates) =>
+        maybeContractStates
+          ? ([
+              parseHexZswapState(maybeContractStates.zswapState),
+              parseHexContractState(maybeContractStates.state),
+              maybeContractStates.transaction?.block?.ledgerParameters
+                ? parseHexLedgerParameters(maybeContractStates.transaction.block.ledgerParameters)
+                : LedgerParameters.initialParameters()
+            ] as [ZswapChainState, ContractState, LedgerParameters])
+          : null
+      );
   }
 
-  async queryUnshieldedBalances(
+  queryUnshieldedBalances(
     address: ContractAddress,
     config?: BlockHeightConfig | BlockHashConfig
   ): Promise<UnshieldedBalances | null> {
+    assertIsContractAddress(address);
     const offset: InputMaybe<ContractActionOffset> = config
       ? {
           blockOffset:
             config.type === 'blockHeight' ? { height: config.blockHeight } : { hash: config.blockHash }
         }
       : null;
-    const maybeUnshieldedBalances = await this.client
+    return this.client
       .query({
         query: QUERY_UNSHIELDED_BALANCES_WITH_OFFSET,
         variables: {
@@ -197,11 +198,14 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
           return contractAction.deploy.unshieldedBalances;
         }
         return [];
-      });
-    return maybeUnshieldedBalances ? toUnshieldedBalances(maybeUnshieldedBalances) : null;
+      })
+      .then((maybeUnshieldedBalances) =>
+        maybeUnshieldedBalances ? toUnshieldedBalances(maybeUnshieldedBalances) : null
+      );
   }
 
-  async queryDeployContractState(contractAddress: ContractAddress): Promise<ContractState | null> {
+  queryDeployContractState(contractAddress: ContractAddress): Promise<ContractState | null> {
+    assertIsContractAddress(contractAddress);
     return this.client
       .query({
         query: DEPLOY_CONTRACT_STATE_TX_QUERY,
@@ -231,19 +235,22 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
       .then((maybeContractState) => (maybeContractState ? parseHexContractState(maybeContractState) : null));
   }
 
-  async watchForContractState(contractAddress: ContractAddress): Promise<ContractState> {
+  watchForContractState(contractAddress: ContractAddress): Promise<ContractState> {
+    assertIsContractAddress(contractAddress);
     return Rx.firstValueFrom(
       waitForContractToAppear(this.client, this.pollInterval)(contractAddress)(null).pipe(Rx.map(parseHexContractState))
     );
   }
 
-  async watchForUnshieldedBalances(contractAddress: ContractAddress): Promise<UnshieldedBalances> {
+  watchForUnshieldedBalances(contractAddress: ContractAddress): Promise<UnshieldedBalances> {
+    assertIsContractAddress(contractAddress);
     return Rx.firstValueFrom(
       waitForUnshieldedBalancesToAppear(this.client, this.pollInterval)(contractAddress).pipe(Rx.map(toUnshieldedBalances))
     );
   }
 
-  async watchForDeployTxData(contractAddress: ContractAddress): Promise<FinalizedTxData> {
+  watchForDeployTxData(contractAddress: ContractAddress): Promise<FinalizedTxData> {
+    assertIsContractAddress(contractAddress);
     return Rx.firstValueFrom(
       this.client
         .watchQuery({
@@ -270,7 +277,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     );
   }
 
-  async watchForTxData(txId: TransactionId): Promise<FinalizedTxData> {
+  watchForTxData(txId: TransactionId): Promise<FinalizedTxData> {
     return Rx.firstValueFrom(
       this.client
         .watchQuery({
@@ -284,7 +291,15 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         .pipe(
           withCompleteQueryData(),
           Rx.filter((data) => data.transactions.length !== 0),
-          Rx.map((data) => data.transactions[0]!),
+          Rx.map((data) => {
+            const first = data.transactions[0];
+            if (first === undefined) {
+              throw new IndexerInvariantError(
+                'watchForTxData: empty transactions array passed the non-empty filter'
+              );
+            }
+            return first;
+          }),
           Rx.filter(isRegularTransaction),
           Rx.map(
             (transaction: RegularTransaction): FinalizedTxData => ({
@@ -315,6 +330,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     contractAddress: ContractAddress,
     config: ContractStateObservableConfig = { type: 'latest' }
   ): Rx.Observable<ContractState> {
+    assertIsContractAddress(contractAddress);
     if (config.type === 'txId') {
       const contractStates = transactionIdToTransaction$(this.client, this.pollInterval)(config.txId).pipe(
         Rx.filter(isRegularTransaction),
@@ -348,6 +364,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     contractAddress: ContractAddress,
     config: ContractStateObservableConfig = { type: 'latest' }
   ): Rx.Observable<UnshieldedBalances> {
+    assertIsContractAddress(contractAddress);
     if (config.type === 'txId') {
       throw new IndexerProviderConfigError(
         'txId configuration not supported for unshielded balances observable'

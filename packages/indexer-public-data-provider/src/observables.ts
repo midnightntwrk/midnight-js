@@ -18,7 +18,12 @@ import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js
 import * as Rx from 'rxjs';
 
 import { parseHexContractState, toUnshieldedBalances } from './codec';
-import { IndexerFormattedError, IndexerQueryError, IndexerSubscriptionDataError } from './errors';
+import {
+  IndexerFormattedError,
+  IndexerInvariantError,
+  IndexerQueryError,
+  IndexerSubscriptionDataError
+} from './errors';
 import type {
   BlockOffset,
   ContractActionOffset,
@@ -131,9 +136,15 @@ export const transactionIdToTransaction$ =
       .pipe(
         withCompleteQueryData(),
         Rx.filter((data) => data.transactions.length !== 0),
-        Rx.map((data) => ({
-          height: data.transactions[0]!.block.height
-        })),
+        Rx.map((data) => {
+          const first = data.transactions[0];
+          if (first === undefined) {
+            throw new IndexerInvariantError(
+              'transactionIdToTransaction$: empty transactions array passed the non-empty filter'
+            );
+          }
+          return { height: first.block.height };
+        }),
         Rx.concatMap(blockOffsetToBlock$(apolloClient)),
         Rx.concatMap(({ transactions }) => Rx.from(transactions))
       );
