@@ -83,6 +83,9 @@ import type { ApolloHandle } from './transport';
  *  1. To carry a `dispose()` lifecycle method (fix #820).
  *  2. To establish the `(handle, pollInterval)` constructor shape that
  *     maps directly onto `Layer.scoped` in the future Effect migration (#843).
+ *
+ * TODO: Re-examine caching when 'ContractCall' and 'ContractDeploy' have
+ * transaction identifiers included.
  */
 export class IndexerPublicDataProvider implements PublicDataProvider {
   private readonly handle: ApolloHandle;
@@ -93,7 +96,11 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     this.pollInterval = pollInterval;
   }
 
-  /** Releases the WebSocket connection and Apollo state. Idempotent. */
+  /**
+   * Releases the WebSocket connection and Apollo state. Delegates to
+   * {@link ApolloHandle.dispose} — see its docs for the
+   * repeat/concurrent/rejection-replay semantics.
+   */
   dispose(): Promise<void> {
     return this.handle.dispose();
   }

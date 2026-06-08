@@ -87,6 +87,28 @@ describe('indexerPublicDataProvider — config-object overload', () => {
     expect(() => indexerPublicDataProvider('invalid-url', subscriptionURL)).toThrow('Invalid URL');
   });
 
+  test('custom pollInterval reaches Apollo watchQuery (end-to-end threading)', async () => {
+    const { IndexerPublicDataProvider } = await import('../provider');
+    const { validateConfig } = await import('../config');
+    const { createApolloClient } = await import('../transport');
+    const customPollInterval = 7777;
+    const validated = validateConfig({ queryURL, subscriptionURL, pollInterval: customPollInterval });
+    const handle = createApolloClient(validated);
+    const provider = new IndexerPublicDataProvider(handle, validated.pollInterval);
+    const watchQuerySpy = vi.spyOn(handle.client, 'watchQuery').mockImplementationOnce(() => {
+      throw new Error('intentional short-circuit before observable subscribe');
+    });
+
+    const fakeTxId = '00'.repeat(32) as unknown as Parameters<typeof provider.watchForTxData>[0];
+    await provider.watchForTxData(fakeTxId).catch(() => undefined);
+
+    expect(watchQuerySpy).toHaveBeenCalledWith(
+      expect.objectContaining({ pollInterval: customPollInterval })
+    );
+
+    await provider.dispose();
+  });
+
   test('provider value is assignable to PublicDataProvider (type-level)', async () => {
     const { indexerPublicDataProvider } = await import('..');
 

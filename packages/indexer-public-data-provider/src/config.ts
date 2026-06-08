@@ -35,10 +35,18 @@ export type IndexerProviderConfig = {
   readonly pollInterval?: number;
 };
 
-/** Result of {@link validateConfig}: parsed URLs and resolved defaults. */
+/**
+ * Result of {@link validateConfig}: parsed URLs and resolved defaults.
+ * The raw `*URLString` fields carry the caller-supplied string verbatim
+ * (no normalization). `transport.ts` uses the raw strings when constructing
+ * Apollo's `HttpLink` and the `graphql-ws` client so that path/case-sensitive
+ * proxies see exactly what the caller intended.
+ */
 export type ValidatedConfig = {
   readonly queryURL: URL;
   readonly subscriptionURL: URL;
+  readonly queryURLString: string;
+  readonly subscriptionURLString: string;
   readonly webSocket: typeof ws.WebSocket;
   readonly pollInterval: number;
 };
@@ -86,6 +94,8 @@ export const validateConfig = (config: IndexerProviderConfig): ValidatedConfig =
   return {
     queryURL: queryURLObj,
     subscriptionURL: subscriptionURLObj,
+    queryURLString: config.queryURL,
+    subscriptionURLString: config.subscriptionURL,
     webSocket: config.webSocket ?? ws.WebSocket,
     pollInterval
   };

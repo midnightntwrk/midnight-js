@@ -208,9 +208,12 @@ export interface PublicDataProvider {
    * Releases resources held by this provider (WebSocket connection, pending
    * subscriptions, in-memory cache). After calling this method, no further
    * operations may be performed on this instance. Implementations that hold
-   * no resources may omit this method. Implementations that provide it must
-   * make it idempotent — a second invocation must be a no-op and must not
-   * throw.
+   * no resources should provide a no-op (`async dispose() {}`).
+   *
+   * Must be idempotent: repeated and concurrent invocations share a single
+   * teardown — they return the same `Promise`. If the first invocation
+   * rejects, subsequent invocations return the same rejected `Promise` —
+   * teardown is not retried.
    */
-  dispose?(): Promise<void>;
+  dispose(): Promise<void>;
 }

@@ -88,9 +88,11 @@ describe('createApolloClient — dispose lifecycle', () => {
 
     expect(stopSpy).toHaveBeenCalledTimes(1);
     expect(wsClientDisposeSpy).toHaveBeenCalledTimes(1);
-    expect(stopSpy.mock.invocationCallOrder[0]).toBeLessThan(
-      wsClientDisposeSpy.mock.invocationCallOrder[0]
-    );
+    const stopOrder = stopSpy.mock.invocationCallOrder[0];
+    const disposeOrder = wsClientDisposeSpy.mock.invocationCallOrder[0];
+    expect(stopOrder).toBeDefined();
+    expect(disposeOrder).toBeDefined();
+    expect(stopOrder).toBeLessThan(disposeOrder);
   });
 
   test('second dispose call is a no-op (idempotent)', async () => {
@@ -121,6 +123,24 @@ describe('createApolloClient — dispose lifecycle', () => {
     const stopSpy = vi.spyOn(handle.client, 'stop');
 
     await Promise.all([handle.dispose(), handle.dispose(), handle.dispose()]);
+
+    expect(stopSpy).toHaveBeenCalledTimes(1);
+    expect(wsClientDisposeSpy).toHaveBeenCalledTimes(1);
+  });
+
+  test('failed dispose is not retried — subsequent calls return the same rejection', async () => {
+    wsClientDisposeSpy.mockRejectedValueOnce(new Error('ws closed unexpectedly'));
+    const { validateConfig } = await import('../config');
+    const { createApolloClient } = await import('../transport');
+    const validated = validateConfig({
+      queryURL: 'http://localhost:4000/graphql',
+      subscriptionURL: 'ws://localhost:4000/graphql/ws'
+    });
+    const handle = createApolloClient(validated);
+    const stopSpy = vi.spyOn(handle.client, 'stop');
+
+    await expect(handle.dispose()).rejects.toThrow('ws closed unexpectedly');
+    await expect(handle.dispose()).rejects.toThrow('ws closed unexpectedly');
 
     expect(stopSpy).toHaveBeenCalledTimes(1);
     expect(wsClientDisposeSpy).toHaveBeenCalledTimes(1);

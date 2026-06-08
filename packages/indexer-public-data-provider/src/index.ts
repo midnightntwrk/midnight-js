@@ -54,9 +54,6 @@ export { DEFAULT_POLL_INTERVAL, type IndexerProviderConfig } from './config';
 export * from './errors';
 export { isRegularTransaction } from './mapping';
 
-/** Public surface returned by {@link indexerPublicDataProvider}: a `PublicDataProvider` whose `dispose()` is concrete (not optional). */
-export type DisposablePublicDataProvider = PublicDataProvider & { dispose(): Promise<void> };
-
 /**
  * Constructs an indexer-backed {@link PublicDataProvider}.
  *
@@ -72,18 +69,18 @@ export type DisposablePublicDataProvider = PublicDataProvider & { dispose(): Pro
  * `ContractAddress`. The wrapper is removed in Phase 3 by moving the
  * assertions into the class methods themselves.
  */
-export function indexerPublicDataProvider(config: IndexerProviderConfig): DisposablePublicDataProvider;
+export function indexerPublicDataProvider(config: IndexerProviderConfig): PublicDataProvider;
 /** @deprecated Use the `IndexerProviderConfig` overload. */
 export function indexerPublicDataProvider(
   queryURL: string,
   subscriptionURL: string,
   webSocket?: typeof ws.WebSocket
-): DisposablePublicDataProvider;
+): PublicDataProvider;
 export function indexerPublicDataProvider(
   configOrQueryURL: IndexerProviderConfig | string,
   subscriptionURL?: string,
   webSocket?: typeof ws.WebSocket
-): DisposablePublicDataProvider {
+): PublicDataProvider {
   let config: IndexerProviderConfig;
   if (typeof configOrQueryURL === 'string') {
     if (subscriptionURL === undefined) {

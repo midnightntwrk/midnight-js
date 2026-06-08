@@ -25,16 +25,22 @@ import type { ValidatedConfig } from './config';
 
 /**
  * Resource-bearing handle that pairs the Apollo client with an idempotent
- * `dispose()` for releasing the underlying WebSocket connection and
- * Apollo's in-memory state.
+ * `dispose()` for releasing the underlying WebSocket connection.
  */
 export type ApolloHandle = {
   readonly client: ApolloClient;
   /**
-   * Idempotent. Synchronously stops the Apollo client (`client.stop()` is
-   * void in Apollo Client 4.x — it cancels in-flight operations and clears
-   * the cache), then awaits the `graphql-ws` client's `dispose()` to close
-   * the WebSocket. A second invocation is a no-op.
+   * Stops the Apollo client (`client.stop()` is void in Apollo Client 4.x
+   * — it unsubscribes active observables, rejects in-flight queries, and
+   * clears the suspense cache; the `InMemoryCache` itself is not cleared),
+   * then awaits the `graphql-ws` client's `dispose()` to close the
+   * WebSocket connection.
+   *
+   * Repeated and concurrent invocations share a single teardown — they
+   * return the same `Promise` and never re-run `client.stop()` or
+   * `wsClient.dispose()`. If the first invocation rejects, subsequent
+   * invocations return the same rejected `Promise` — teardown is not
+   * retried.
    */
   dispose(): Promise<void>;
 };
@@ -49,10 +55,7 @@ export type ApolloHandle = {
  * is out of scope for the Phase 1–2 restructure.
  */
 export const createApolloClient = (validated: ValidatedConfig): ApolloHandle => {
-  const queryURL = validated.queryURL.toString();
-  const subscriptionURL = validated.subscriptionURL.toString();
-
-  const httpLink = new HttpLink({ fetch, uri: queryURL });
+  const httpLink = new HttpLink({ fetch, uri: validated.queryURLString });
   const retryLink = new RetryLink({
     delay: {
       initial: 1000,
@@ -65,7 +68,7 @@ export const createApolloClient = (validated: ValidatedConfig): ApolloHandle => 
   });
   const apolloLink = from([retryLink, httpLink]);
 
-  const wsClient = createClient({ url: subscriptionURL, webSocketImpl: validated.webSocket });
+  const wsClient = createClient({ url: validated.subscriptionURLString, webSocketImpl: validated.webSocket });
 
   const client = new ApolloClient({
     link: split(
