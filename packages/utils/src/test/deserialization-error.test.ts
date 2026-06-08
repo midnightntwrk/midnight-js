@@ -143,47 +143,21 @@ describe('DeserializationError', () => {
 });
 
 describe('isDeserializationError', () => {
-  describe('instanceof check (happy path)', () => {
-    it('returns true for DeserializationError instance', () => {
-      const error = new DeserializationError(baseContext, new Error('inner'));
+  it('returns true for DeserializationError instance', () => {
+    const error = new DeserializationError(baseContext, new Error('inner'));
 
-      expect(isDeserializationError(error)).toBe(true);
-    });
-
-    it('returns false for plain Error', () => {
-      expect(isDeserializationError(new Error('plain'))).toBe(false);
-    });
-
-    it('returns false for null/undefined/primitives', () => {
-      expect(isDeserializationError(null)).toBe(false);
-      expect(isDeserializationError(undefined)).toBe(false);
-      expect(isDeserializationError('string')).toBe(false);
-      expect(isDeserializationError(42)).toBe(false);
-      expect(isDeserializationError(true)).toBe(false);
-    });
-
-    it('returns false for empty object', () => {
-      expect(isDeserializationError({})).toBe(false);
-    });
+    expect(isDeserializationError(error)).toBe(true);
   });
 
-  describe('brand-check fallback (cross-realm scenarios per D13)', () => {
-    it('returns true for structurally-cloned object with name="DeserializationError" and context field', () => {
-      const clonedShape = { name: 'DeserializationError', message: 'cloned', context: baseContext };
+  it('returns false for plain Error', () => {
+    expect(isDeserializationError(new Error('plain'))).toBe(false);
+  });
 
-      expect(isDeserializationError(clonedShape)).toBe(true);
-    });
-
-    it('returns false for object with name="DeserializationError" but no context field', () => {
-      const incomplete = { name: 'DeserializationError', message: 'cloned' };
-
-      expect(isDeserializationError(incomplete)).toBe(false);
-    });
-
-    it('returns false for object with context field but wrong name', () => {
-      const wrongName = { name: 'OtherError', message: 'x', context: baseContext };
-
-      expect(isDeserializationError(wrongName)).toBe(false);
-    });
+  it('returns false for null/undefined/primitives/empty object', () => {
+    expect(isDeserializationError(null)).toBe(false);
+    expect(isDeserializationError(undefined)).toBe(false);
+    expect(isDeserializationError('string')).toBe(false);
+    expect(isDeserializationError(42)).toBe(false);
+    expect(isDeserializationError({})).toBe(false);
   });
 });

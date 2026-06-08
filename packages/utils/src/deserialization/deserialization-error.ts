@@ -140,14 +140,6 @@ export class DeserializationError extends Error {
   }
 }
 
-/**
- * Type guard for `DeserializationError`. Uses `instanceof` first; falls back
- * to a structural brand check for cross-realm scenarios (Web Worker
- * `postMessage`, npm hoist mismatches) where `instanceof` returns `false`.
- */
-export const isDeserializationError = (e: unknown): e is DeserializationError => {
-  if (e instanceof DeserializationError) return true;
-  if (e === null || typeof e !== 'object') return false;
-  const obj = e as { name?: unknown };
-  return obj.name === 'DeserializationError' && 'context' in (e as object);
-};
+/** Type guard for `DeserializationError`. */
+export const isDeserializationError = (e: unknown): e is DeserializationError =>
+  e instanceof DeserializationError;

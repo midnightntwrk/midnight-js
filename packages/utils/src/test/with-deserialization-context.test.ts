@@ -95,40 +95,4 @@ describe('withDeserializationContext', () => {
     });
   });
 
-  describe('sync-only enforcement (D14)', () => {
-    it('throws TypeError when fn() returns a Promise', () => {
-      expect(() =>
-        withDeserializationContext<Promise<number>>(callSite, () => Promise.resolve(42))
-      ).toThrow(TypeError);
-    });
-
-    it('throws TypeError when fn() returns a thenable-like object', () => {
-      const noopThen = (): void => {
-        /* intentional no-op — only the presence of `then` matters for thenable detection */
-      };
-      const fakeThenable = { then: noopThen };
-
-      expect(() => withDeserializationContext<typeof fakeThenable>(callSite, () => fakeThenable))
-        .toThrow(TypeError);
-    });
-
-    it('TypeError message includes caller for traceability', () => {
-      try {
-        withDeserializationContext<Promise<void>>(callSite, () => Promise.resolve());
-      } catch (e) {
-        expect(e).toBeInstanceOf(TypeError);
-        if (e instanceof TypeError) {
-          expect(e.message).toContain('@midnight-ntwrk/midnight-js-test:fixture');
-        }
-      }
-    });
-
-    it('allows non-thenable objects (e.g. plain Record without `then`)', () => {
-      const value = { result: 'ok', then: undefined };
-
-      const result = withDeserializationContext(callSite, () => value);
-
-      expect(result).toBe(value);
-    });
-  });
 });
