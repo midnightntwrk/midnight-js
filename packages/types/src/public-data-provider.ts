@@ -17,6 +17,12 @@ import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact
 import type { ContractAddress, LedgerParameters, TransactionId, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { Observable } from 'rxjs';
 
+import type {
+  ContractEventCursor,
+  ContractEventFilter,
+  ContractEventPage,
+  VersionedLogItem,
+} from './contract-events';
 import type { FinalizedTxData, UnshieldedBalances } from './midnight-types';
 
 /**
@@ -203,4 +209,44 @@ export interface PublicDataProvider {
    * @return {Observable<UnshieldedBalances>} An observable that emits the unshielded balances for the provided address.
    */
   unshieldedBalancesObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<UnshieldedBalances>;
+
+  /**
+   * Retrieves a page of contract events matching the filter.
+   *
+   * Events are returned in monotonic `id` order. Use `cursor.after` to resume from where a
+   * previous page ended. Returns an empty page when no events match.
+   *
+   * @param filter Required contractAddress plus optional type/field/block-range filters.
+   * @param cursor Optional resumption point. Omit to start at the earliest matching event.
+   * @param limit  Optional page size. Implementations honor up to 1000; may cap above.
+   *               Receiving fewer than `limit` events is a definitive end-of-page signal.
+   */
+  queryContractEvents(
+    filter: ContractEventFilter,
+    cursor?: ContractEventCursor,
+    limit?: number,
+  ): Promise<ContractEventPage>;
+
+  /**
+   * Creates a stream of contract events matching the filter.
+   *
+   * Emits one event at a time in monotonic `id` order. If `cursor` is provided, the stream
+   * starts at the first event with `id > cursor.after` (exclusive). Otherwise from the
+   * earliest matching event.
+   *
+   * Waits indefinitely for matching events (mirrors watchForContractState semantics).
+   *
+   * Delivery contract: implementations MUST guarantee monotonic-no-gap delivery across
+   * transparent transport reconnects. The implementation tracks the highest `id` it has
+   * emitted to the consumer and, on any internal reconnect, resubscribes with that id as
+   * the resumption cursor. Transparent reconnects do not surface as observable errors.
+   *
+   * Errors that the implementation cannot recover from (auth failure, schema rejection,
+   * indexer-side terminal close) MUST surface via the Observable's error channel. Callers
+   * terminate by unsubscribing.
+   */
+  contractEventsObservable(
+    filter: ContractEventFilter,
+    cursor?: ContractEventCursor,
+  ): Observable<VersionedLogItem>;
 }
