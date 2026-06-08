@@ -15,31 +15,78 @@
 
 import { InvalidProtocolSchemeError } from '@midnight-ntwrk/midnight-js-types';
 import { warnIfInsecureRemoteUrl } from '@midnight-ntwrk/midnight-js-utils';
+import * as ws from 'isomorphic-ws';
+
+import { IndexerProviderConfigError } from './errors';
+
+/** Default polling interval (milliseconds) for paths that still rely on Apollo `watchQuery` polling. */
+export const DEFAULT_POLL_INTERVAL = 1000;
 
 /**
- * Parses the indexer query and subscription URLs and verifies their protocol
- * schemes. Validation order matches the original monolithic factory:
+ * User-facing configuration for the indexer public data provider.
+ * All fields except the URLs are optional; defaults are filled in by
+ * {@link validateConfig}.
+ */
+export type IndexerProviderConfig = {
+  readonly queryURL: string;
+  readonly subscriptionURL: string;
+  readonly webSocket?: typeof ws.WebSocket;
+  /** Defaults to {@link DEFAULT_POLL_INTERVAL}. Must be a positive integer. */
+  readonly pollInterval?: number;
+};
+
+/** Result of {@link validateConfig}: parsed URLs and resolved defaults. */
+export type ValidatedConfig = {
+  readonly queryURL: URL;
+  readonly subscriptionURL: URL;
+  readonly webSocket: typeof ws.WebSocket;
+  readonly pollInterval: number;
+};
+
+const resolvePollInterval = (value: number | undefined): number => {
+  if (value === undefined) return DEFAULT_POLL_INTERVAL;
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new IndexerProviderConfigError(
+      `pollInterval must be a positive integer (milliseconds); received ${value}`
+    );
+  }
+  return value;
+};
+
+/**
+ * Parses and validates an {@link IndexerProviderConfig}.
+ *
+ * Validation order matches the original monolithic factory:
  * queryURL parse → queryURL scheme → subscriptionURL parse → subscriptionURL scheme.
  * After both URLs are valid, each is passed through {@link warnIfInsecureRemoteUrl}.
  *
- * Returns nothing — Phase 2 introduces a `ValidatedConfig` shape that carries
- * the parsed `URL` objects forward; in this phase the original raw strings
- * continue to flow through to `createApolloClient`.
+ * `pollInterval`, if supplied, must be a positive integer; non-positive
+ * values, `NaN`, `Infinity`, and fractions are rejected fail-fast.
  *
  * @throws `TypeError` from `new URL(...)` on malformed URLs.
  * @throws {@link InvalidProtocolSchemeError} on an unsupported scheme.
+ * @throws {@link IndexerProviderConfigError} on an invalid `pollInterval`.
  */
-export const validateAndWarnUrls = (queryURL: string, subscriptionURL: string): void => {
-  const queryURLObj = new URL(queryURL);
+export const validateConfig = (config: IndexerProviderConfig): ValidatedConfig => {
+  const queryURLObj = new URL(config.queryURL);
 
   if (queryURLObj.protocol !== 'http:' && queryURLObj.protocol !== 'https:') {
     throw new InvalidProtocolSchemeError(queryURLObj.protocol, ['http:', 'https:']);
   }
-  const subscriptionURLObj = new URL(subscriptionURL);
+  const subscriptionURLObj = new URL(config.subscriptionURL);
 
   if (subscriptionURLObj.protocol !== 'ws:' && subscriptionURLObj.protocol !== 'wss:') {
     throw new InvalidProtocolSchemeError(subscriptionURLObj.protocol, ['ws:', 'wss:']);
   }
-  warnIfInsecureRemoteUrl(queryURL, 'indexer query URL');
-  warnIfInsecureRemoteUrl(subscriptionURL, 'indexer subscription URL');
+  warnIfInsecureRemoteUrl(config.queryURL, 'indexer query URL');
+  warnIfInsecureRemoteUrl(config.subscriptionURL, 'indexer subscription URL');
+
+  const pollInterval = resolvePollInterval(config.pollInterval);
+
+  return {
+    queryURL: queryURLObj,
+    subscriptionURL: subscriptionURLObj,
+    webSocket: config.webSocket ?? ws.WebSocket,
+    pollInterval
+  };
 };

@@ -29,10 +29,13 @@ import type {
   UnshieldedBalances
 } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
-import * as ws from 'isomorphic-ws';
+import type * as ws from 'isomorphic-ws';
 import type * as Rx from 'rxjs';
 
-import { indexerPublicDataProviderInternal } from './provider';
+import { type IndexerProviderConfig, validateConfig } from './config';
+import { IndexerProviderConfigError } from './errors';
+import { IndexerPublicDataProvider } from './provider';
+import { createApolloClient } from './transport';
 
 export {
   correlateDeployTxId,
@@ -47,81 +50,113 @@ export {
   toUnshieldedBalances,
   toUnshieldedUtxos
 } from './codec';
+export { DEFAULT_POLL_INTERVAL, type IndexerProviderConfig } from './config';
 export * from './errors';
 export { isRegularTransaction } from './mapping';
 
+/** Public surface returned by {@link indexerPublicDataProvider}: a `PublicDataProvider` whose `dispose()` is concrete (not optional). */
+export type DisposablePublicDataProvider = PublicDataProvider & { dispose(): Promise<void> };
+
 /**
- * Constructs a {@link PublicDataProvider} based on an Apollo Client.
+ * Constructs an indexer-backed {@link PublicDataProvider}.
  *
- * Wraps the internal factory to assert that input contract addresses are
- * valid before forwarding the call. The duplicated `assertIsContractAddress`
- * calls below are removed in Phase 3 by moving the assertion into the class
- * methods themselves.
+ * Two call forms:
+ * 1. Object-config (preferred): `indexerPublicDataProvider({ queryURL, subscriptionURL, webSocket?, pollInterval? })`.
+ * 2. Positional (deprecated, retained for backward compatibility): `indexerPublicDataProvider(queryURL, subscriptionURL, webSocket?)`.
  *
- * @param queryURL The URL of a GraphQL server query endpoint.
- * @param subscriptionURL The URL of a GraphQL server subscription (websocket) endpoint.
- * @param webSocketImpl An optional websocket implementation for the Apollo client to use.
+ * The returned object exposes `dispose()` to release the WebSocket
+ * connection and Apollo state. Always call it on long-running providers.
+ *
+ * The current implementation wraps the inner class with
+ * `assertIsContractAddress` calls on every method that accepts a
+ * `ContractAddress`. The wrapper is removed in Phase 3 by moving the
+ * assertions into the class methods themselves.
  */
-export const indexerPublicDataProvider = (
+export function indexerPublicDataProvider(config: IndexerProviderConfig): DisposablePublicDataProvider;
+/** @deprecated Use the `IndexerProviderConfig` overload. */
+export function indexerPublicDataProvider(
   queryURL: string,
   subscriptionURL: string,
-  webSocketImpl: typeof ws.WebSocket = ws.WebSocket
-): PublicDataProvider => {
-  const publicDataProvider = indexerPublicDataProviderInternal(queryURL, subscriptionURL, webSocketImpl);
+  webSocket?: typeof ws.WebSocket
+): DisposablePublicDataProvider;
+export function indexerPublicDataProvider(
+  configOrQueryURL: IndexerProviderConfig | string,
+  subscriptionURL?: string,
+  webSocket?: typeof ws.WebSocket
+): DisposablePublicDataProvider {
+  let config: IndexerProviderConfig;
+  if (typeof configOrQueryURL === 'string') {
+    if (subscriptionURL === undefined) {
+      throw new IndexerProviderConfigError(
+        'subscriptionURL is required when calling the positional indexerPublicDataProvider overload'
+      );
+    }
+    config = { queryURL: configOrQueryURL, subscriptionURL, webSocket };
+  } else {
+    config = configOrQueryURL;
+  }
+
+  const validated = validateConfig(config);
+  const handle = createApolloClient(validated);
+  const inner = new IndexerPublicDataProvider(handle, validated.pollInterval);
+
   return {
     contractStateObservable(
       contractAddress: ContractAddress,
-      config: ContractStateObservableConfig
+      contractStateConfig: ContractStateObservableConfig
     ): Rx.Observable<ContractState> {
       assertIsContractAddress(contractAddress);
-      return publicDataProvider.contractStateObservable(contractAddress, config);
+      return inner.contractStateObservable(contractAddress, contractStateConfig);
     },
     queryContractState(
       contractAddress: ContractAddress,
-      config?: BlockHeightConfig | BlockHashConfig
+      queryConfig?: BlockHeightConfig | BlockHashConfig
     ): Promise<ContractState | null> {
       assertIsContractAddress(contractAddress);
-      return publicDataProvider.queryContractState(contractAddress, config);
+      return inner.queryContractState(contractAddress, queryConfig);
     },
     queryDeployContractState(contractAddress: ContractAddress): Promise<ContractState | null> {
       assertIsContractAddress(contractAddress);
-      return publicDataProvider.queryDeployContractState(contractAddress);
+      return inner.queryDeployContractState(contractAddress);
     },
     queryZSwapAndContractState(
       contractAddress: ContractAddress,
-      config?: BlockHeightConfig | BlockHashConfig
+      queryConfig?: BlockHeightConfig | BlockHashConfig
     ): Promise<[ZswapChainState, ContractState, LedgerParameters] | null> {
       assertIsContractAddress(contractAddress);
-      return publicDataProvider.queryZSwapAndContractState(contractAddress, config);
+      return inner.queryZSwapAndContractState(contractAddress, queryConfig);
     },
     queryUnshieldedBalances(
       contractAddress: ContractAddress,
-      config?: BlockHeightConfig | BlockHashConfig
+      queryConfig?: BlockHeightConfig | BlockHashConfig
     ): Promise<UnshieldedBalances | null> {
       assertIsContractAddress(contractAddress);
-      return publicDataProvider.queryUnshieldedBalances(contractAddress, config);
+      return inner.queryUnshieldedBalances(contractAddress, queryConfig);
     },
     watchForContractState(contractAddress: ContractAddress): Promise<ContractState> {
       assertIsContractAddress(contractAddress);
-      return publicDataProvider.watchForContractState(contractAddress);
+      return inner.watchForContractState(contractAddress);
     },
     watchForUnshieldedBalances(contractAddress: ContractAddress): Promise<UnshieldedBalances> {
       assertIsContractAddress(contractAddress);
-      return publicDataProvider.watchForUnshieldedBalances(contractAddress);
+      return inner.watchForUnshieldedBalances(contractAddress);
     },
     watchForDeployTxData(contractAddress: ContractAddress): Promise<FinalizedTxData> {
       assertIsContractAddress(contractAddress);
-      return publicDataProvider.watchForDeployTxData(contractAddress);
+      return inner.watchForDeployTxData(contractAddress);
     },
     watchForTxData(txId: TransactionId): Promise<FinalizedTxData> {
-      return publicDataProvider.watchForTxData(txId);
+      return inner.watchForTxData(txId);
     },
     unshieldedBalancesObservable(
       contractAddress: ContractAddress,
-      config: ContractStateObservableConfig
+      contractStateConfig: ContractStateObservableConfig
     ): Rx.Observable<UnshieldedBalances> {
       assertIsContractAddress(contractAddress);
-      return publicDataProvider.unshieldedBalancesObservable(contractAddress, config);
+      return inner.unshieldedBalancesObservable(contractAddress, contractStateConfig);
+    },
+    dispose(): Promise<void> {
+      return inner.dispose();
     }
   };
-};
+}

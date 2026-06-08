@@ -38,11 +38,6 @@ import {
   UNSHIELDED_BALANCE_SUB
 } from './query-definitions';
 
-/**
- * The default time (in milliseconds) to wait between queries when polling.
- */
-export const DEFAULT_POLL_INTERVAL = 1000;
-
 export type Block = {
   hash: string;
   height: number;
@@ -121,14 +116,14 @@ export const blockOffsetToBlock$ = (apolloClient: ApolloClient) => (offset: Inpu
     );
 
 export const transactionIdToTransaction$ =
-  (apolloClient: ApolloClient) => (identifier: TransactionId) =>
+  (apolloClient: ApolloClient, pollInterval: number) => (identifier: TransactionId) =>
     apolloClient
       .watchQuery({
         query: TX_ID_QUERY,
         variables: {
           offset: { identifier }
         },
-        pollInterval: DEFAULT_POLL_INTERVAL,
+        pollInterval,
         fetchPolicy: 'no-cache',
         initialFetchPolicy: 'no-cache',
         nextFetchPolicy: 'no-cache'
@@ -159,14 +154,14 @@ export const blockToContractState$ = (contractAddress: ContractAddress) => (bloc
   );
 
 export const contractAddressToLatestBlockOffset$ =
-  (apolloClient: ApolloClient) => (contractAddress: ContractAddress) =>
+  (apolloClient: ApolloClient, pollInterval: number) => (contractAddress: ContractAddress) =>
     apolloClient
       .watchQuery({
         query: LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY,
         variables: {
           address: contractAddress
         },
-        pollInterval: DEFAULT_POLL_INTERVAL,
+        pollInterval,
         fetchPolicy: 'no-cache',
         initialFetchPolicy: 'no-cache',
         nextFetchPolicy: 'no-cache'
@@ -211,7 +206,7 @@ export const blockOffsetToContractState$ =
       );
 
 export const waitForContractToAppear =
-  (apolloClient: ApolloClient) =>
+  (apolloClient: ApolloClient, pollInterval: number) =>
   (contractAddress: ContractAddress) =>
   (offset: InputMaybe<ContractActionOffset>) =>
     apolloClient
@@ -221,7 +216,7 @@ export const waitForContractToAppear =
           address: contractAddress,
           offset
         },
-        pollInterval: DEFAULT_POLL_INTERVAL,
+        pollInterval,
         fetchPolicy: 'no-cache',
         initialFetchPolicy: 'no-cache',
         nextFetchPolicy: 'no-cache'
@@ -233,33 +228,34 @@ export const waitForContractToAppear =
         Rx.take(1)
       );
 
-export const waitForBlockToAppear = (apolloClient: ApolloClient) => (offset: InputMaybe<BlockOffset>) =>
-  apolloClient
-    .watchQuery({
-      query: BLOCK_QUERY,
-      variables: {
-        offset
-      },
-      pollInterval: DEFAULT_POLL_INTERVAL,
-      fetchPolicy: 'no-cache',
-      initialFetchPolicy: 'no-cache',
-      nextFetchPolicy: 'no-cache'
-    })
-    .pipe(
-      withCompleteQueryData(),
-      Rx.filter((data) => data.block !== null),
-      Rx.take(1)
-    );
+export const waitForBlockToAppear =
+  (apolloClient: ApolloClient, pollInterval: number) => (offset: InputMaybe<BlockOffset>) =>
+    apolloClient
+      .watchQuery({
+        query: BLOCK_QUERY,
+        variables: {
+          offset
+        },
+        pollInterval,
+        fetchPolicy: 'no-cache',
+        initialFetchPolicy: 'no-cache',
+        nextFetchPolicy: 'no-cache'
+      })
+      .pipe(
+        withCompleteQueryData(),
+        Rx.filter((data) => data.block !== null),
+        Rx.take(1)
+      );
 
 export const waitForUnshieldedBalancesToAppear =
-  (apolloClient: ApolloClient) => (contractAddress: ContractAddress) =>
+  (apolloClient: ApolloClient, pollInterval: number) => (contractAddress: ContractAddress) =>
     apolloClient
       .watchQuery({
         query: UNSHIELDED_BALANCE_QUERY,
         variables: {
           address: contractAddress
         },
-        pollInterval: DEFAULT_POLL_INTERVAL,
+        pollInterval,
         fetchPolicy: 'no-cache',
         initialFetchPolicy: 'no-cache',
         nextFetchPolicy: 'no-cache'
