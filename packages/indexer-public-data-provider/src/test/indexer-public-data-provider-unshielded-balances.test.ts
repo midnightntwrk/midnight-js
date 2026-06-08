@@ -17,7 +17,7 @@ import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledge
 import type { ContractStateObservableConfig } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expect, test } from 'vitest';
 
-import { indexerPublicDataProvider } from '../indexer-public-data-provider';
+import { indexerPublicDataProvider } from '..';
 
 describe('Unshielded Balances Integration', () => {
   const queryURL = 'http://localhost:4000/api/v1/graphql';

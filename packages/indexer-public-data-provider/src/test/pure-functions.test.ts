@@ -24,15 +24,6 @@ import {
 import { describe, expect, test } from 'vitest';
 
 import {
-  IndexerDataError,
-  IndexerError,
-  IndexerFormattedError,
-  IndexerProviderConfigError,
-  IndexerQueryError,
-  IndexerSubscriptionDataError
-} from '../errors';
-import type { TransactionResult } from '../gen/graphql';
-import {
   correlateDeployTxId,
   type IndexerUtxo,
   isRegularTransaction,
@@ -41,7 +32,16 @@ import {
   toTxStatus,
   toUnshieldedBalances,
   toUnshieldedUtxos
-} from '../indexer-public-data-provider';
+} from '..';
+import {
+  IndexerDataError,
+  IndexerError,
+  IndexerFormattedError,
+  IndexerProviderConfigError,
+  IndexerQueryError,
+  IndexerSubscriptionDataError
+} from '../errors';
+import type { TransactionResult } from '../gen/graphql';
 
 describe('isRegularTransaction', () => {
   test('returns true for object with hash and identifiers array', () => {
@@ -414,7 +414,7 @@ describe('deserialization adapter wiring (issue-816)', () => {
   const garbageHex = 'ffffff';
 
   test('parseHexContractState throws DeserializationError tagged with the helper caller', async () => {
-    const { parseHexContractState } = await import('../indexer-public-data-provider');
+    const { parseHexContractState } = await import('..');
     const { isDeserializationError } = await import('@midnight-ntwrk/midnight-js-utils');
 
     let caught: unknown;
@@ -432,7 +432,7 @@ describe('deserialization adapter wiring (issue-816)', () => {
   });
 
   test('parseHexZswapState throws DeserializationError tagged with the helper caller', async () => {
-    const { parseHexZswapState } = await import('../indexer-public-data-provider');
+    const { parseHexZswapState } = await import('..');
     const { isDeserializationError } = await import('@midnight-ntwrk/midnight-js-utils');
 
     let caught: unknown;
@@ -450,7 +450,7 @@ describe('deserialization adapter wiring (issue-816)', () => {
   });
 
   test('parseHexTransaction throws DeserializationError tagged with the helper caller', async () => {
-    const { parseHexTransaction } = await import('../indexer-public-data-provider');
+    const { parseHexTransaction } = await import('..');
     const { isDeserializationError } = await import('@midnight-ntwrk/midnight-js-utils');
 
     let caught: unknown;
@@ -468,7 +468,7 @@ describe('deserialization adapter wiring (issue-816)', () => {
   });
 
   test('parseHexLedgerParameters throws DeserializationError tagged with the helper caller', async () => {
-    const { parseHexLedgerParameters } = await import('../indexer-public-data-provider');
+    const { parseHexLedgerParameters } = await import('..');
     const { isDeserializationError } = await import('@midnight-ntwrk/midnight-js-utils');
 
     let caught: unknown;

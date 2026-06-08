@@ -15,8 +15,8 @@
 
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 
+import { indexerPublicDataProvider } from '..';
 import { IndexerProviderConfigError } from '../errors';
-import { indexerPublicDataProvider } from '../indexer-public-data-provider';
 
 describe('indexerPublicDataProvider', () => {
   const queryURL = 'http://localhost:4000/api/v1/graphql';
