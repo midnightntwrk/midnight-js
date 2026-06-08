@@ -19,62 +19,55 @@ import { gql } from './gen';
 // - `amount` differs between Shielded (nullable String) and Unshielded (non-null String!)
 //   variants; the non-null sites are aliased to `amountRequired`.
 // - `sender`/`recipient` on Unshielded variants are `AddressOrContract` objects with
-//   nested fields; they're inlined here rather than fragmented to keep the codec flat.
-export const CONTRACT_EVENT_FIELDS_FRAGMENT = gql(`
-  fragment ContractEventFields on ContractEvent {
-    __typename
-    id
-    raw
-    maxId
-    protocolVersion
-    version
-    contractAddress
-    transactionId
-    ... on ShieldedSpendEvent { nullifier }
-    ... on ShieldedReceiveEvent {
-      commitment
-      ciphertext
-      receivingContractAddress
-    }
-    ... on ShieldedMintEvent {
-      commitment
-      domainSep
-      amount
-    }
-    ... on ShieldedBurnEvent {
-      nullifier
-      amount
-    }
-    ... on UnshieldedSpendEvent {
-      sender { kind userAddress contractAddress }
-      domainSep
-      tokenType
-      amountRequired: amount
-    }
-    ... on UnshieldedReceiveEvent {
-      recipient { kind userAddress contractAddress }
-      domainSep
-      tokenType
-      amountRequired: amount
-    }
-    ... on UnshieldedMintEvent {
-      domainSep
-      tokenType
-      amountRequired: amount
-    }
-    ... on UnshieldedBurnEvent {
-      sender { kind userAddress contractAddress }
-      tokenType
-      amountRequired: amount
-    }
-    ... on MiscContractEvent { name payload }
-  }
-`);
+//   nested fields, expanded inline below.
+//
+// The selection set is duplicated across query/subscription rather than shared via a
+// graphql fragment, because graphql-codegen's "client" preset masks fragment types
+// (`$fragmentRefs`), forcing consumers through `useFragment` to unmask. The duplication
+// keeps the codec switch flat and side-steps the masking machinery.
 
 export const CONTRACT_EVENTS_QUERY = gql(`
   query CONTRACT_EVENTS_QUERY($filter: ContractEventFilter!, $limit: Int, $offset: Int) {
     contractEvents(filter: $filter, limit: $limit, offset: $offset) {
-      ...ContractEventFields
+      __typename
+      id
+      raw
+      maxId
+      protocolVersion
+      version
+      contractAddress
+      transactionId
+      ... on ShieldedSpendEvent { nullifier }
+      ... on ShieldedReceiveEvent {
+        commitment
+        ciphertext
+        receivingContractAddress
+      }
+      ... on ShieldedMintEvent { commitment domainSep amount }
+      ... on ShieldedBurnEvent { nullifier amount }
+      ... on UnshieldedSpendEvent {
+        sender { kind userAddress contractAddress }
+        domainSep
+        tokenType
+        amountRequired: amount
+      }
+      ... on UnshieldedReceiveEvent {
+        recipient { kind userAddress contractAddress }
+        domainSep
+        tokenType
+        amountRequired: amount
+      }
+      ... on UnshieldedMintEvent {
+        domainSep
+        tokenType
+        amountRequired: amount
+      }
+      ... on UnshieldedBurnEvent {
+        sender { kind userAddress contractAddress }
+        tokenType
+        amountRequired: amount
+      }
+      ... on MiscContractEvent { name payload }
     }
   }
 `);
@@ -82,7 +75,45 @@ export const CONTRACT_EVENTS_QUERY = gql(`
 export const CONTRACT_EVENTS_SUB = gql(`
   subscription CONTRACT_EVENTS_SUB($filter: ContractEventFilter!, $id: Int) {
     contractEvents(filter: $filter, id: $id) {
-      ...ContractEventFields
+      __typename
+      id
+      raw
+      maxId
+      protocolVersion
+      version
+      contractAddress
+      transactionId
+      ... on ShieldedSpendEvent { nullifier }
+      ... on ShieldedReceiveEvent {
+        commitment
+        ciphertext
+        receivingContractAddress
+      }
+      ... on ShieldedMintEvent { commitment domainSep amount }
+      ... on ShieldedBurnEvent { nullifier amount }
+      ... on UnshieldedSpendEvent {
+        sender { kind userAddress contractAddress }
+        domainSep
+        tokenType
+        amountRequired: amount
+      }
+      ... on UnshieldedReceiveEvent {
+        recipient { kind userAddress contractAddress }
+        domainSep
+        tokenType
+        amountRequired: amount
+      }
+      ... on UnshieldedMintEvent {
+        domainSep
+        tokenType
+        amountRequired: amount
+      }
+      ... on UnshieldedBurnEvent {
+        sender { kind userAddress contractAddress }
+        tokenType
+        amountRequired: amount
+      }
+      ... on MiscContractEvent { name payload }
     }
   }
 `);
