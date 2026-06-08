@@ -62,16 +62,18 @@ describe('classify — Pattern #1 (tag mismatch with two-stage match)', () => {
     expect(ctx.direction).toBe('data-older-than-code');
   });
 
-  it('classifies as generic-param-mismatch when versions equal and specifiers differ', () => {
+  it('classifies as version-mismatch regardless of specifier differences (equal versions)', () => {
     const err = new Error(
       "expected header tag 'midnight:proof[v1](proof-preimage):', got 'midnight:proof[v1](pre-proof):'"
     );
 
     const ctx = classify(ledgerCallSite, err);
 
-    expect(ctx.classification).toBe('generic-param-mismatch');
-    expect(ctx.extracted?.expectedSpecifiers).toBe('proof-preimage');
-    expect(ctx.extracted?.receivedSpecifiers).toBe('pre-proof');
+    // Spec was trimmed: generic-param-mismatch was deferred. Specifier diffs
+    // still match Pattern #1 (regex tolerates an optional `(...)` block),
+    // and direction is undefined because the versions are equal.
+    expect(ctx.classification).toBe('version-mismatch');
+    expect(ctx.direction).toBeUndefined();
   });
 
   it('overrides context.dataType when regex captures `what` group', () => {
@@ -258,13 +260,4 @@ describe('classify — mitigation generation (D12: keyed on classification × so
     expect(ctx.mitigation.join('\n')).toMatch(/inspect|caused by/i);
   });
 
-  it('generic-param-mismatch mitigation also references the structural tag', () => {
-    const err = new Error(
-      "expected header tag 'midnight:proof[v1](proof-preimage):', got 'midnight:proof[v1](pre-proof):'"
-    );
-
-    const ctx = classify(ledgerCallSite, err);
-
-    expect(ctx.mitigation.join('\n')).toMatch(/structural (version )?tag/i);
-  });
 });

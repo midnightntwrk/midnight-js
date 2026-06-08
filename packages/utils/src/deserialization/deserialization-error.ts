@@ -19,11 +19,7 @@ import { SOURCE_PACKAGES } from './versions';
 export type SourceLibrary = 'ledger' | 'compact-runtime' | 'onchain-runtime';
 
 /** How the classifier categorized the error. */
-export type Classification =
-  | 'version-mismatch'
-  | 'generic-param-mismatch'
-  | 'format-mismatch'
-  | 'unknown';
+export type Classification = 'version-mismatch' | 'format-mismatch' | 'unknown';
 
 /** Direction of incompatibility when inferable from the error message. */
 export type Direction = 'data-newer-than-code' | 'data-older-than-code';
@@ -36,18 +32,14 @@ export interface ExtractedInfo {
   readonly dataType?: string;
   readonly expectedVersion?: number;
   readonly receivedVersion?: number;
-  readonly expectedSpecifiers?: string;
-  readonly receivedSpecifiers?: string;
 }
 
 /**
- * Pattern entry in the classifier table. The `classification` field can be
- * a static value (most patterns) or a function (Pattern #1, which dispatches
- * between `version-mismatch` and `generic-param-mismatch` based on captured groups).
+ * Pattern entry in the classifier table.
  */
 export interface PatternEntry {
   readonly regex: RegExp;
-  readonly classification: Classification | ((match: RegExpExecArray) => Classification);
+  readonly classification: Classification;
   readonly inferDirection?: (match: RegExpExecArray) => Direction | undefined;
   readonly extract?: (match: RegExpExecArray) => ExtractedInfo;
 }
@@ -94,14 +86,8 @@ export const defaultCalleeForSource = (source: SourceLibrary): string => {
 const formatExtracted = (e: ExtractedInfo): string => {
   const parts: string[] = [];
   if (e.dataType !== undefined) parts.push(`dataType=${e.dataType}`);
-  if (e.expectedVersion !== undefined) {
-    const spec = e.expectedSpecifiers !== undefined ? `(${e.expectedSpecifiers})` : '';
-    parts.push(`expected=${e.expectedVersion}${spec}`);
-  }
-  if (e.receivedVersion !== undefined) {
-    const spec = e.receivedSpecifiers !== undefined ? `(${e.receivedSpecifiers})` : '';
-    parts.push(`got=${e.receivedVersion}${spec}`);
-  }
+  if (e.expectedVersion !== undefined) parts.push(`expected=${e.expectedVersion}`);
+  if (e.receivedVersion !== undefined) parts.push(`got=${e.receivedVersion}`);
   return parts.join(', ');
 };
 

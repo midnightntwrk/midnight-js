@@ -18,7 +18,6 @@ import type {
   DeserializationCallSite,
   DeserializationContext,
   ExtractedInfo,
-  PatternEntry,
   SourceLibrary
 } from './deserialization-error';
 import { PATTERNS } from './patterns';
@@ -64,7 +63,6 @@ const buildMitigation = (
 ): readonly string[] => {
   switch (classification) {
     case 'version-mismatch':
-    case 'generic-param-mismatch':
       return [...versionMismatchBaseline(), PER_SOURCE_HINT[source]];
     case 'format-mismatch':
       return formatMismatchBaseline();
@@ -72,12 +70,6 @@ const buildMitigation = (
       return [...unknownBaseline(), PER_SOURCE_HINT[source]];
   }
 };
-
-const resolveClassification = (
-  entry: PatternEntry,
-  match: RegExpExecArray
-): Classification =>
-  typeof entry.classification === 'function' ? entry.classification(match) : entry.classification;
 
 /**
  * Classify a deserialization error against the shared pattern table.
@@ -100,7 +92,7 @@ export const classify = (
     const match = entry.regex.exec(message);
     if (match === null) continue;
 
-    const classification = resolveClassification(entry, match);
+    const classification = entry.classification;
     const direction = entry.inferDirection?.(match);
     const extracted: ExtractedInfo | undefined = entry.extract?.(match);
     const dataType = extracted?.dataType ?? callSite.dataType;
