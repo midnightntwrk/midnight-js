@@ -33,6 +33,10 @@ import { LedgerParameters,Transaction as LedgerTransaction, ZswapChainState } fr
 import type {
   BlockHashConfig,
   BlockHeightConfig,
+  ContractEventCursor,
+  ContractEventDecodeFailure,
+  ContractEventFilter,
+  ContractEventPage,
   ContractStateObservableConfig,
   FinalizedTxData,
   PublicDataProvider,
@@ -40,7 +44,8 @@ import type {
   TxStatus,
   UnshieldedBalances,
   UnshieldedUtxo,
-  UnshieldedUtxos} from '@midnight-ntwrk/midnight-js-types';
+  UnshieldedUtxos,
+  VersionedLogItem} from '@midnight-ntwrk/midnight-js-types';
 import {
   FailEntirely,
   FailFallible,
@@ -55,6 +60,12 @@ import { createClient } from 'graphql-ws';
 import * as ws from 'isomorphic-ws';
 import * as Rx from 'rxjs';
 
+import { toGraphQLFilter } from './contract-events';
+import { toVersionedLogItem } from './contract-events-codec';
+import {
+  CONTRACT_EVENTS_QUERY,
+  CONTRACT_EVENTS_SUB
+} from './contract-events-queries';
 import {
   IndexerDataError,
   IndexerFormattedError,
@@ -801,6 +812,94 @@ const indexerPublicDataProviderInternal = (
       return config.type === 'blockHeight' || config.type === 'blockHash'
         ? Rx.iif(() => config.inclusive ?? true, balances, balances.pipe(Rx.skip(1)))
         : balances;
+    },
+    async queryContractEvents(
+      filter: ContractEventFilter,
+      cursor?: ContractEventCursor,
+      limit = 100
+    ): Promise<ContractEventPage> {
+      // Request `limit + 1` so we can distinguish "more available" from "exactly N
+      // remaining". `cursor.after` is currently honoured client-side by post-filtering
+      // — the schema lacks `idGreaterThan` (OQ #1). Acceptable for sequential
+      // backfill via watchContractEvents; direct callers paying through a stale cursor
+      // pay O(offset).
+      const variables = {
+        filter: toGraphQLFilter(filter),
+        limit: limit + 1,
+        offset: 0
+      };
+      const result = await apolloClient
+        .query({
+          query: CONTRACT_EVENTS_QUERY,
+          variables,
+          fetchPolicy: 'no-cache'
+        })
+        .then(maybeThrowQueryError);
+
+      const allRaw = result.data?.contractEvents ?? [];
+      const filtered = cursor
+        ? allRaw.filter((r) => r.id > cursor.after)
+        : allRaw;
+      const hasMore = filtered.length > limit;
+      const pageRaw = hasMore ? filtered.slice(0, limit) : filtered;
+
+      const events: VersionedLogItem[] = [];
+      const decodeFailures: ContractEventDecodeFailure[] = [];
+      let maxIdSeen: number | undefined;
+      for (const r of pageRaw) {
+        maxIdSeen = maxIdSeen === undefined ? r.id : Math.max(maxIdSeen, r.id);
+        const decoded = toVersionedLogItem(r);
+        if (decoded.ok) {
+          events.push(decoded.item);
+        } else {
+          decodeFailures.push(decoded.failure);
+        }
+      }
+      const nextCursor = hasMore && maxIdSeen !== undefined ? { after: maxIdSeen } : null;
+      return { events, nextCursor, decodeFailures };
+    },
+    contractEventsObservable(
+      filter: ContractEventFilter,
+      cursor?: ContractEventCursor
+    ): Rx.Observable<VersionedLogItem> {
+      // Closure tracks the highest id we've emitted; on internal resubscribe (clean WS
+      // close), the next subscription resumes from that id. Consumers see one
+      // continuous stream — transparent reconnects do not surface as errors.
+      let lastEmittedId: number | undefined = cursor?.after;
+
+      const subscribeFrom = (resumeAfter: number | undefined): Rx.Observable<VersionedLogItem> =>
+        apolloClient
+          .subscribe({
+            query: CONTRACT_EVENTS_SUB,
+            variables: {
+              filter: toGraphQLFilter(filter),
+              id: resumeAfter ?? null
+            },
+            fetchPolicy: 'no-cache'
+          })
+          .pipe(
+            withValidFetchData(),
+            Rx.concatMap((data) => {
+              const event = data.contractEvents;
+              if (!event) {
+                return Rx.throwError(() => new IndexerSubscriptionDataError('contractEvents'));
+              }
+              const decoded = toVersionedLogItem(event);
+              if (decoded.ok) {
+                lastEmittedId = decoded.item.id;
+                return Rx.of(decoded.item);
+              }
+              lastEmittedId = decoded.failure.id;
+               
+              console.warn(
+                `[indexer-public-data-provider] skipped poison event id=${decoded.failure.id} ` +
+                `typename=${decoded.failure.typename} reason=${decoded.failure.reason}`
+              );
+              return Rx.EMPTY;
+            })
+          );
+
+      return Rx.defer(() => subscribeFrom(lastEmittedId));
     }
   };
 };
@@ -881,6 +980,21 @@ export const indexerPublicDataProvider = (
     ): Rx.Observable<UnshieldedBalances> {
       assertIsContractAddress(contractAddress);
       return publicDataProvider.unshieldedBalancesObservable(contractAddress, config);
+    },
+    queryContractEvents(
+      filter: ContractEventFilter,
+      cursor?: ContractEventCursor,
+      limit?: number
+    ): Promise<ContractEventPage> {
+      assertIsContractAddress(filter.contractAddress);
+      return publicDataProvider.queryContractEvents(filter, cursor, limit);
+    },
+    contractEventsObservable(
+      filter: ContractEventFilter,
+      cursor?: ContractEventCursor
+    ): Rx.Observable<VersionedLogItem> {
+      assertIsContractAddress(filter.contractAddress);
+      return publicDataProvider.contractEventsObservable(filter, cursor);
     }
   };
 };

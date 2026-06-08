@@ -13,5 +13,7 @@
  * limitations under the License.
  */
 
+export type { WatchContractEventsOptions } from './contract-events';
+export { toGraphQLFilter, watchContractEvents } from './contract-events';
 export * from './errors';
 export * from './indexer-public-data-provider';
