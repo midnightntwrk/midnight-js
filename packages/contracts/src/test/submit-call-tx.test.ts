@@ -32,7 +32,7 @@ import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from '../errors
 import { submitCallTx, submitCallTxAsync } from '../submit-call-tx';
 import { submitTx, submitTxAsync } from '../submit-tx';
 import { withContractScopedTransaction } from '../transaction';
-import type { FinalizedCallTxData, UnsubmittedCallTxData } from '../tx-model';
+import { EMPTY_EVENTS, type FinalizedCallTxData, type UnsubmittedCallTxData } from '../tx-model';
 import { type CallTxOptions, createUnprovenCallTx } from '../unproven-call-tx';
 import {
   createMockCoinInfo,
@@ -91,7 +91,8 @@ describe('submit-call-tx', () => {
     public: {
       nextContractState: StateValue.newNull(),
       publicTranscript: [],
-      partitionedTranscript: {} as PartitionedTranscript
+      partitionedTranscript: {} as PartitionedTranscript,
+      events: EMPTY_EVENTS
     },
     private: {
       input: {} as AlignedValue,

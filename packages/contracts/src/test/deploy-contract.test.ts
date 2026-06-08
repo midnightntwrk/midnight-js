@@ -21,7 +21,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type ContractProviders } from '../contract-providers';
 import { deployContract, type DeployContractOptionsBase, type DeployedContract } from '../deploy-contract';
-import { type UnsubmittedDeployTxData } from '../tx-model';
+import { EMPTY_EVENTS, type UnsubmittedDeployTxData } from '../tx-model';
 import {
   createMockCompiledContract,
   createMockContractState,
@@ -54,7 +54,8 @@ describe('deployContract', () => {
     public: {
       ...createMockFinalizedTxData(),
       contractAddress: 'mock-contract-address',
-      initialContractState: createMockContractState()
+      initialContractState: createMockContractState(),
+      events: EMPTY_EVENTS
     },
     private: {
       signingKey: createMockSigningKey(),

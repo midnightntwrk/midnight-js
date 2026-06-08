@@ -67,7 +67,7 @@ import {
 import { type CallOptions, type CallOptionsWithPrivateState } from '../call';
 import { type ContractConstructorResult } from '../call-constructor';
 import type { ContractProviders } from '../contract-providers';
-import { type UnsubmittedCallTxData, type UnsubmittedDeployTxData } from '../tx-model';
+import { EMPTY_EVENTS, type UnsubmittedCallTxData, type UnsubmittedDeployTxData } from '../tx-model';
 
 export const createMockContractAddress = () => sampleContractAddress();
 
@@ -322,7 +322,8 @@ export const createMockFinalizedTxData = (status: TxStatus = SucceedEntirely): F
 export const createMockUnprovenDeployTxData = (overrides: Partial<UnsubmittedDeployTxData<Contract.Any>> = {}): UnsubmittedDeployTxData<Contract.Any> => ({
   public: {
     contractAddress: createMockContractAddress(),
-    initialContractState: createMockContractState()
+    initialContractState: createMockContractState(),
+    events: EMPTY_EVENTS
   },
   private: {
     unprovenTx: createMockUnprovenTx(),
@@ -341,6 +342,7 @@ export const createMockUnprovenCallTxData = (overrides: Partial<UnsubmittedCallT
         { noop: { n: 1 } }
       ] as Op<AlignedValue>[],
       partitionedTranscript: {} as PartitionedTranscript,
+      events: EMPTY_EVENTS,
       ...overrides.public
     },
     private: {
