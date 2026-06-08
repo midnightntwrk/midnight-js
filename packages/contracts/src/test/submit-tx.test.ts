@@ -13,22 +13,26 @@
  * limitations under the License.
  */
 
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
 import type { AnyProvableCircuitId } from '@midnight-ntwrk/midnight-js-types';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { submitTx, submitTxAsync, type SubmitTxOptions } from '../submit-tx';
-import {
-  createMockFinalizedTxData,
-  createMockProvenTx,
-  createMockProviders,
-  createMockUnprovenTx
-} from './test-mocks';
+import { createMockFinalizedTxData, createMockProvenTx, createMockProviders, createMockUnprovenTx } from './test-mocks';
 
 describe('submit-tx', () => {
+  it('submit-tx.ts imports no filesystem API', () => {
+    const source = readFileSync(fileURLToPath(new URL('../submit-tx.ts', import.meta.url)), 'utf8');
+    expect(source).not.toMatch(/(?:from|require\(|import\()\s*['"](?:node:)?fs(?:\/promises)?['"]/);
+  });
+
   describe('submitTx', () => {
     let mockProviders: ReturnType<typeof createMockProviders>;
     let mockUnprovenTx: ReturnType<typeof createMockUnprovenTx>;
     let mockProvenTx: ReturnType<typeof createMockProvenTx>;
+    let originalMnDebug: string | undefined;
 
     beforeEach(() => {
       vi.clearAllMocks();
@@ -36,6 +40,18 @@ describe('submit-tx', () => {
       mockProviders = createMockProviders();
       mockUnprovenTx = createMockUnprovenTx();
       mockProvenTx = createMockProvenTx();
+      originalMnDebug = process.env.MN_DEBUG;
+    });
+
+    afterEach(() => {
+      // Restore any vi.spyOn (e.g. console spies in the debug-logging test) so stubs do
+      // not leak into subsequent tests; clearAllMocks alone does not un-spy.
+      vi.restoreAllMocks();
+      if (originalMnDebug === undefined) {
+        delete process.env.MN_DEBUG;
+      } else {
+        process.env.MN_DEBUG = originalMnDebug;
+      }
     });
 
     describe('happy path', () => {
@@ -48,7 +64,7 @@ describe('submit-tx', () => {
         mockProviders.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(mockFinalizedTxData);
 
         const options: SubmitTxOptions<AnyProvableCircuitId> = {
-          unprovenTx: mockUnprovenTx,
+          unprovenTx: mockUnprovenTx
         };
 
         const result = await submitTx(mockProviders, options);
@@ -61,7 +77,7 @@ describe('submit-tx', () => {
       });
 
       it('should successfully submit transaction with circuit ID', async () => {
-        const circuitId = 'testCircuit' as AnyProvableCircuitId;
+        const circuitId = 'testCircuit';
         const mockFinalizedTxData = createMockFinalizedTxData();
 
         mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue(mockProvenTx);
@@ -80,6 +96,40 @@ describe('submit-tx', () => {
         expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(mockProvenTx);
         expect(mockProviders.midnightProvider.submitTx).toHaveBeenCalled();
         expect(mockProviders.publicDataProvider.watchForTxData).toHaveBeenCalledWith('test-tx-id');
+        expect(result).toBe(mockFinalizedTxData);
+      });
+
+      it('submits successfully with debug logging enabled even if serialization throws', async () => {
+        // __DEBUG__ is compiled to `true` in this package's vitest config, so MN_DEBUG=true
+        // forces the debug-logging branch in logTransaction to run. That branch must never
+        // break submission — its serialization is wrapped in try/catch and emits only to
+        // the console (no filesystem writes; see the source-level invariant above).
+        process.env.MN_DEBUG = 'true';
+        vi.spyOn(console, 'log').mockImplementation(() => undefined);
+        const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+        const mockFinalizedTxData = createMockFinalizedTxData();
+        mockProvenTx.serialize = vi.fn().mockImplementation(() => {
+          throw new Error('serialize boom');
+        });
+
+        mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue(mockProvenTx);
+        mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue(mockProvenTx);
+        mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue('test-tx-id');
+        mockProviders.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(mockFinalizedTxData);
+
+        const options: SubmitTxOptions<AnyProvableCircuitId> = {
+          unprovenTx: mockUnprovenTx,
+          circuitId: 'testCircuit'
+        };
+
+        const result = await submitTx(mockProviders, options);
+
+        // Debug branch ran (serialization was attempted and its failure was swallowed)...
+        expect(mockProvenTx.serialize).toHaveBeenCalled();
+        expect(consoleError).toHaveBeenCalled();
+        // ...and submission still succeeded.
+        expect(mockProviders.midnightProvider.submitTx).toHaveBeenCalled();
         expect(result).toBe(mockFinalizedTxData);
       });
     });
@@ -106,7 +156,7 @@ describe('submit-tx', () => {
         mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue(expectedTxId);
 
         const options: SubmitTxOptions<AnyProvableCircuitId> = {
-          unprovenTx: mockUnprovenTx,
+          unprovenTx: mockUnprovenTx
         };
 
         const result = await submitTxAsync(mockProviders, options);
@@ -119,7 +169,7 @@ describe('submit-tx', () => {
       });
 
       it('should submit transaction with circuit ID and return txId', async () => {
-        const circuitId = 'testCircuit' as AnyProvableCircuitId;
+        const circuitId = 'testCircuit';
         const expectedTxId = 'test-tx-id-with-circuit';
 
         mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue(mockProvenTx);
@@ -139,7 +189,6 @@ describe('submit-tx', () => {
         expect(mockProviders.publicDataProvider.watchForTxData).not.toHaveBeenCalled();
         expect(result).toBe(expectedTxId);
       });
-
     });
 
     describe('error handling', () => {
@@ -149,7 +198,7 @@ describe('submit-tx', () => {
         mockProviders.walletProvider.balanceTx = vi.fn().mockRejectedValue(balanceError);
 
         const options: SubmitTxOptions<AnyProvableCircuitId> = {
-          unprovenTx: mockUnprovenTx,
+          unprovenTx: mockUnprovenTx
         };
 
         await expect(submitTxAsync(mockProviders, options)).rejects.toThrow('Balance transaction failed');
@@ -164,7 +213,7 @@ describe('submit-tx', () => {
         mockProviders.proofProvider.proveTx = vi.fn().mockRejectedValue(proveError);
 
         const options: SubmitTxOptions<AnyProvableCircuitId> = {
-          unprovenTx: mockUnprovenTx,
+          unprovenTx: mockUnprovenTx
         };
 
         await expect(submitTxAsync(mockProviders, options)).rejects.toThrow('Proof generation failed');
@@ -179,7 +228,7 @@ describe('submit-tx', () => {
         mockProviders.midnightProvider.submitTx = vi.fn().mockRejectedValue(submitError);
 
         const options: SubmitTxOptions<AnyProvableCircuitId> = {
-          unprovenTx: mockUnprovenTx,
+          unprovenTx: mockUnprovenTx
         };
 
         await expect(submitTxAsync(mockProviders, options)).rejects.toThrow('Network submission failed');
