@@ -74,7 +74,10 @@ export type IndexerDataErrorContext =
       contractAddress: string;
       actionIndex: number;
       identifiersLength: number;
-    };
+    }
+  | { kind: 'event-unknown-typename'; typename: string }
+  | { kind: 'event-malformed-payload'; typename: string; field: string }
+  | { kind: 'event-missing-required-field'; typename: string; field: string };
 
 /**
  * An error raised when indexer-returned data is structurally inconsistent
@@ -120,6 +123,22 @@ export class IndexerDataError extends IndexerError {
     });
   }
 
+  static eventUnknownTypename(typename: string): IndexerDataError {
+    return new IndexerDataError({ kind: 'event-unknown-typename', typename });
+  }
+
+  static eventMalformedPayload(typename: string, field: string, cause?: unknown): IndexerDataError {
+    const e = new IndexerDataError({ kind: 'event-malformed-payload', typename, field });
+    if (cause !== undefined) {
+      Object.defineProperty(e, 'cause', { value: cause, enumerable: false });
+    }
+    return e;
+  }
+
+  static eventMissingRequiredField(typename: string, field: string): IndexerDataError {
+    return new IndexerDataError({ kind: 'event-missing-required-field', typename, field });
+  }
+
   private static formatMessage(context: IndexerDataErrorContext): string {
     switch (context.kind) {
       case 'unknown-status':
@@ -131,6 +150,18 @@ export class IndexerDataError extends IndexerError {
           `Transaction missing identifier for contract action at address ${context.contractAddress}` +
           ` (actionIndex=${context.actionIndex}, identifiers.length=${context.identifiersLength})`
         );
+      case 'event-unknown-typename':
+        return (
+          `Unknown contract event __typename "${context.typename}". ` +
+          `Indicates a schema/midnight-js mismatch.`
+        );
+      case 'event-malformed-payload':
+        return `Failed to decode contract event ${context.typename}.${context.field}`;
+      case 'event-missing-required-field':
+        return (
+          `Contract event of type "${context.typename}" missing required field "${context.field}". ` +
+          `Indexer response violates the GraphQL schema contract.`
+        );
     }
   }
 }
@@ -140,7 +171,7 @@ export class IndexerDataError extends IndexerError {
  * Narrowing this to a literal union prevents typos at throw sites and
  * documents the exhaustive set of fields the provider currently reads.
  */
-export type IndexerSubscriptionField = 'blocks' | 'contractActions';
+export type IndexerSubscriptionField = 'blocks' | 'contractActions' | 'contractEvents';
 
 /**
  * An error raised when an indexer subscription payload is missing a field
