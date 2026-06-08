@@ -51,7 +51,7 @@ import {
 import {
   assertIsContractAddress,
   deserializeCompactContractState,
-  deserializeLedgerParameters as deserializeLedgerParametersTyped,
+  deserializeLedgerParameters,
   deserializeLedgerTransaction,
   deserializeZswapChainState,
   warnIfInsecureRemoteUrl
@@ -143,17 +143,23 @@ const toByteArray = (s: string): Buffer => Buffer.from(s, 'hex');
 
 const PKG = '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 
-const deserializeContractState = (s: string): ContractState =>
-  deserializeCompactContractState(toByteArray(s), { caller: `${PKG}:deserializeContractState` });
+/**
+ * Adapters that take hex-encoded indexer payloads, decode to bytes, and
+ * dispatch to the typed deserialization wrappers from `@midnight-ntwrk/midnight-js-utils`.
+ * They exist (rather than inlining) so the `caller` string is centralized and
+ * regression-testable. Exported for tests; not part of the public package API.
+ */
+export const parseHexContractState = (s: string): ContractState =>
+  deserializeCompactContractState(toByteArray(s), { caller: `${PKG}:parseHexContractState` });
 
-const deserializeZswapState = (s: string): ZswapChainState =>
-  deserializeZswapChainState(toByteArray(s), { caller: `${PKG}:deserializeZswapState` });
+export const parseHexZswapState = (s: string): ZswapChainState =>
+  deserializeZswapChainState(toByteArray(s), { caller: `${PKG}:parseHexZswapState` });
 
-const deserializeTransaction = (s: string): LedgerTransaction<SignatureEnabled, Proof, Binding> =>
-  deserializeLedgerTransaction(toByteArray(s), { caller: `${PKG}:deserializeTransaction` });
+export const parseHexTransaction = (s: string): LedgerTransaction<SignatureEnabled, Proof, Binding> =>
+  deserializeLedgerTransaction(toByteArray(s), { caller: `${PKG}:parseHexTransaction` });
 
-const deserializeLedgerParameters = (s: string): LedgerParameters =>
-  deserializeLedgerParametersTyped(toByteArray(s), { caller: `${PKG}:deserializeLedgerParameters` });
+export const parseHexLedgerParameters = (s: string): LedgerParameters =>
+  deserializeLedgerParameters(toByteArray(s), { caller: `${PKG}:parseHexLedgerParameters` });
 
 /**
  * The default time (in milliseconds) to wait between queries when polling.
@@ -237,7 +243,7 @@ const transactionToContractState$ =
   ({ identifiers, contractActions }: Transaction) =>
     Rx.zip(identifiers, contractActions).pipe(
       Rx.skipWhile((pair) => pair[0] !== transactionId),
-      Rx.map((pair) => deserializeContractState(pair[1].state))
+      Rx.map((pair) => parseHexContractState(pair[1].state))
     );
 
 export const toTxStatus = (transactionResult: TransactionResult): TxStatus => {
@@ -325,7 +331,7 @@ const toFinalizedDeployTxData = (
   contractAddress: ContractAddress,
   transaction: RegularTransaction
 ): FinalizedTxData => ({
-  tx: deserializeTransaction(transaction.raw),
+  tx: parseHexTransaction(transaction.raw),
   status: toTxStatus(transaction.transactionResult),
   txId: correlateDeployTxId(contractAddress, transaction.contractActions, transaction.identifiers),
   identifiers: transaction.identifiers,
@@ -348,7 +354,7 @@ const blockToContractState$ = (contractAddress: ContractAddress) => (block: Bloc
   Rx.from(block.transactions).pipe(
     Rx.concatMap(({ contractActions }) => Rx.from(contractActions)),
     Rx.filter((call) => call.address === contractAddress),
-    Rx.map((call) => deserializeContractState(call.state))
+    Rx.map((call) => parseHexContractState(call.state))
   );
 
 const contractAddressToLatestBlockOffset$ =
@@ -400,7 +406,7 @@ const blockOffsetToContractState$ =
           }
           return contractActions.state;
         }),
-        Rx.map(deserializeContractState)
+        Rx.map(parseHexContractState)
       );
 
 const waitForContractToAppear =
@@ -571,7 +577,7 @@ const indexerPublicDataProviderInternal = (
         })
         .then(maybeThrowQueryError)
         .then((queryResult) => queryResult.data?.contractAction?.state ?? null);
-      return maybeContractState ? deserializeContractState(maybeContractState) : null;
+      return maybeContractState ? parseHexContractState(maybeContractState) : null;
     },
     async queryZSwapAndContractState(
       address: ContractAddress,
@@ -598,10 +604,10 @@ const indexerPublicDataProviderInternal = (
         .then((queryResult) => queryResult.data?.contractAction);
       return maybeContractStates
         ? [
-            deserializeZswapState(maybeContractStates.zswapState),
-            deserializeContractState(maybeContractStates.state),
+            parseHexZswapState(maybeContractStates.zswapState),
+            parseHexContractState(maybeContractStates.state),
             maybeContractStates.transaction?.block?.ledgerParameters
-              ? deserializeLedgerParameters(maybeContractStates.transaction.block.ledgerParameters)
+              ? parseHexLedgerParameters(maybeContractStates.transaction.block.ledgerParameters)
               : LedgerParameters.initialParameters()
           ]
         : null;
@@ -670,11 +676,11 @@ const indexerPublicDataProviderInternal = (
           }
           return null;
         })
-        .then((maybeContractState) => (maybeContractState ? deserializeContractState(maybeContractState) : null));
+        .then((maybeContractState) => (maybeContractState ? parseHexContractState(maybeContractState) : null));
     },
     async watchForContractState(contractAddress: ContractAddress): Promise<ContractState> {
       return Rx.firstValueFrom(
-        waitForContractToAppear(apolloClient)(contractAddress)(null).pipe(Rx.map(deserializeContractState))
+        waitForContractToAppear(apolloClient)(contractAddress)(null).pipe(Rx.map(parseHexContractState))
       );
     },
     async watchForUnshieldedBalances(contractAddress: ContractAddress): Promise<UnshieldedBalances> {
@@ -730,7 +736,7 @@ const indexerPublicDataProviderInternal = (
             Rx.filter(isRegularTransaction),
             Rx.map(
               (transaction: RegularTransaction): FinalizedTxData => ({
-                tx: deserializeTransaction(transaction.raw),
+                tx: parseHexTransaction(transaction.raw),
                 status: toTxStatus(transaction.transactionResult),
                 txId,
                 txHash: transaction.hash,

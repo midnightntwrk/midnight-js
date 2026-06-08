@@ -22,6 +22,7 @@ import type { ExtractedInfo, PatternEntry } from './deserialization-error';
  * (verified against ledger-v8@8.1.0) — this secondary match is opportunistic
  * and only used to infer direction.
  */
+// Trailing `-` is a literal hyphen (no escape needed when last in class).
 const GOT_SUBPATTERN = /^(?<gotType>[A-Za-z:-]+)\[v(?<gotVersion>\d+)\]/;
 
 const pattern1Direction = (match: RegExpExecArray) => {
@@ -70,59 +71,59 @@ export const PATTERNS: readonly PatternEntry[] = [
     inferDirection: pattern1Direction,
     extract: pattern1Extract
   },
-  // #3 — versioned enum old discriminant → data is older
+  // #2 — versioned enum old discriminant → data is older
   {
     regex: /invalid old discriminant/i,
     classification: 'version-mismatch',
     inferDirection: () => 'data-older-than-code'
   },
-  // #4 — versioned enum unknown discriminant → data is newer
+  // #3 — versioned enum unknown discriminant → data is newer
   {
     regex: /unknown discriminant/i,
     classification: 'version-mismatch',
     inferDirection: () => 'data-newer-than-code'
   },
-  // #5 — auto-derived enum extension (serialize-macros)
+  // #4 — auto-derived enum extension (serialize-macros)
   {
     regex: /unrecognised discriminant/i,
     classification: 'version-mismatch'
   },
-  // #6 — explicit unsupported version at higher layer
+  // #5 — explicit unsupported version at higher layer
   {
     regex: /unsupported (?:proof|guaranteed transcript|fallible transcript) version/i,
     classification: 'version-mismatch'
   },
-  // #7 — over-read
+  // #6 — over-read
   {
     regex: /Not all bytes read/,
     classification: 'format-mismatch'
   },
-  // #8 — recursion overflow
+  // #7 — recursion overflow
   {
     regex: /exceeded recursion depth/,
     classification: 'format-mismatch'
   },
-  // #9 — scale encoding violation
+  // #8 — scale encoding violation
   {
     regex: /non-canonical scale encoding/,
     classification: 'format-mismatch'
   },
-  // #10 — integer range
+  // #9 — integer range
   {
     regex: /out of range for /,
     classification: 'format-mismatch'
   },
-  // #11 — bool decode
+  // #10 — bool decode
   {
     regex: /cannot deserialize \S+ as bool/,
     classification: 'format-mismatch'
   },
-  // #12 — Option discriminant (case-sensitive to distinguish from #3/#4)
+  // #11 — Option discriminant (case-sensitive to distinguish from #2/#3)
   {
     regex: /Invalid discriminant: /,
     classification: 'format-mismatch'
   },
-  // #13 — Rust std UnexpectedEof
+  // #12 — Rust std UnexpectedEof
   {
     regex: /failed to fill whole buffer/,
     classification: 'format-mismatch'

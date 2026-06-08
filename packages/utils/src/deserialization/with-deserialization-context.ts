@@ -26,7 +26,12 @@ import { type DeserializationCallSite, DeserializationError } from './deserializ
  * the primary API; use this HOF directly only for ad-hoc deserialization
  * sites not covered there.
  *
+ * If `fn()` returns a thenable the wrapper throws a `TypeError` rather
+ * than silently bypassing classification — any rejection from the
+ * thenable would otherwise escape the try/catch.
+ *
  * @throws {DeserializationError} When `fn()` throws an `Error`.
+ * @throws {TypeError} When `fn()` returns a thenable (sync-only violation).
  *
  * @example
  * ```ts
@@ -39,10 +44,21 @@ export const withDeserializationContext = <T>(
   callSite: DeserializationCallSite,
   fn: () => T
 ): T => {
+  let result: T;
   try {
-    return fn();
+    result = fn();
   } catch (cause) {
     if (!(cause instanceof Error)) throw cause;
     throw new DeserializationError(classify(callSite, cause), cause);
   }
+  if (
+    result !== null &&
+    typeof result === 'object' &&
+    typeof (result as { then?: unknown }).then === 'function'
+  ) {
+    throw new TypeError(
+      `withDeserializationContext is sync-only; received a thenable from ${callSite.caller}.`
+    );
+  }
+  return result;
 };

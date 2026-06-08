@@ -34,6 +34,7 @@ import {
   decodeLedgerStateValue,
   deserializeCompactContractState,
   deserializeContractState,
+  deserializeLedgerParameters,
   deserializeLedgerTransaction,
   deserializeZswapChainState
 } from '../deserialization/typed-wrappers';
@@ -159,14 +160,11 @@ describe('integration: ledger source — LedgerTransaction', () => {
 });
 
 describe('integration: ledger source — LedgerParameters smoke', () => {
-  it('garbage bytes → DeserializationError thrown', () => {
-    const err = catchDeserError(() =>
-      // LedgerParameters from a tiny garbage buffer
-      // The typed wrapper still throws a DeserializationError; we only assert that.
-      deserializeContractState(new Uint8Array([0, 0]), { caller })
-    );
+  it('garbage bytes → DeserializationError with LedgerParameters dataType', () => {
+    const err = catchDeserError(() => deserializeLedgerParameters(new Uint8Array([0, 0]), { caller }));
 
     expect(err.context.source).toBe('ledger');
+    expect(err.context.dataType).toBe('LedgerParameters');
   });
 });
 

@@ -52,7 +52,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { isDeserializationError, toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll } from 'vitest';
 
 import {
   createUnprovenLedgerCallTx,

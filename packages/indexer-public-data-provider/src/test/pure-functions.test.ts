@@ -403,3 +403,85 @@ describe('IndexerProviderConfigError', () => {
     expect(error.message).toBe('Unsupported observable mode: txId');
   });
 });
+
+// Regression tests for issue-816 refactor: verify the 4 hex-decoder adapters
+// in indexer-public-data-provider route bad input through the typed-wrapper
+// layer and produce a DeserializationError with the fully-qualified caller
+// string. Locks the wiring against future accidental reverts to raw
+// .deserialize/.decode calls.
+describe('deserialization adapter wiring (issue-816)', () => {
+  const PKG = '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+  const garbageHex = 'ffffff';
+
+  test('parseHexContractState throws DeserializationError tagged with the helper caller', async () => {
+    const { parseHexContractState } = await import('../indexer-public-data-provider');
+    const { isDeserializationError } = await import('@midnight-ntwrk/midnight-js-utils');
+
+    let caught: unknown;
+    try {
+      parseHexContractState(garbageHex);
+    } catch (e) {
+      caught = e;
+    }
+
+    expect(isDeserializationError(caught)).toBe(true);
+    if (isDeserializationError(caught)) {
+      expect(caught.context.caller).toBe(`${PKG}:parseHexContractState`);
+      expect(caught.context.source).toBe('compact-runtime');
+    }
+  });
+
+  test('parseHexZswapState throws DeserializationError tagged with the helper caller', async () => {
+    const { parseHexZswapState } = await import('../indexer-public-data-provider');
+    const { isDeserializationError } = await import('@midnight-ntwrk/midnight-js-utils');
+
+    let caught: unknown;
+    try {
+      parseHexZswapState(garbageHex);
+    } catch (e) {
+      caught = e;
+    }
+
+    expect(isDeserializationError(caught)).toBe(true);
+    if (isDeserializationError(caught)) {
+      expect(caught.context.caller).toBe(`${PKG}:parseHexZswapState`);
+      expect(caught.context.source).toBe('ledger');
+    }
+  });
+
+  test('parseHexTransaction throws DeserializationError tagged with the helper caller', async () => {
+    const { parseHexTransaction } = await import('../indexer-public-data-provider');
+    const { isDeserializationError } = await import('@midnight-ntwrk/midnight-js-utils');
+
+    let caught: unknown;
+    try {
+      parseHexTransaction(garbageHex);
+    } catch (e) {
+      caught = e;
+    }
+
+    expect(isDeserializationError(caught)).toBe(true);
+    if (isDeserializationError(caught)) {
+      expect(caught.context.caller).toBe(`${PKG}:parseHexTransaction`);
+      expect(caught.context.source).toBe('ledger');
+    }
+  });
+
+  test('parseHexLedgerParameters throws DeserializationError tagged with the helper caller', async () => {
+    const { parseHexLedgerParameters } = await import('../indexer-public-data-provider');
+    const { isDeserializationError } = await import('@midnight-ntwrk/midnight-js-utils');
+
+    let caught: unknown;
+    try {
+      parseHexLedgerParameters(garbageHex);
+    } catch (e) {
+      caught = e;
+    }
+
+    expect(isDeserializationError(caught)).toBe(true);
+    if (isDeserializationError(caught)) {
+      expect(caught.context.caller).toBe(`${PKG}:parseHexLedgerParameters`);
+      expect(caught.context.source).toBe('ledger');
+    }
+  });
+});

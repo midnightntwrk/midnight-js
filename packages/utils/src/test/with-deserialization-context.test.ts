@@ -95,4 +95,11 @@ describe('withDeserializationContext', () => {
     });
   });
 
+  describe('sync-only enforcement', () => {
+    it('throws TypeError when fn() returns a Promise (silent bypass guard)', () => {
+      expect(() =>
+        withDeserializationContext<Promise<number>>(callSite, () => Promise.resolve(42))
+      ).toThrow(TypeError);
+    });
+  });
 });
