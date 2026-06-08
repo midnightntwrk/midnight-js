@@ -26,22 +26,15 @@ import {
   ZswapChainState
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 
-import { defaultCalleeForSource } from './deserialization-error';
 import { withDeserializationContext } from './with-deserialization-context';
 
 /**
  * Minimal context the caller of a typed deserialization wrapper must supply.
- * The `dataType` and `source` are baked into each wrapper. `callee` defaults
- * to the source's pinned npm package; supply explicitly only to override.
+ * The `dataType` and `source` are baked into each wrapper.
  */
 export interface CallSiteContext {
   readonly caller: string;
-  readonly callee?: string;
 }
-
-const LEDGER_CALLEE = defaultCalleeForSource('ledger');
-const COMPACT_RUNTIME_CALLEE = defaultCalleeForSource('compact-runtime');
-const ONCHAIN_RUNTIME_CALLEE = defaultCalleeForSource('onchain-runtime');
 
 /**
  * Deserialize a ledger {@link LedgerContractState} from raw bytes.
@@ -69,8 +62,7 @@ export const deserializeContractState = (
     {
       dataType: 'ContractState',
       source: 'ledger',
-      caller: ctx.caller,
-      callee: ctx.callee ?? LEDGER_CALLEE
+      caller: ctx.caller
     },
     () => LedgerContractState.deserialize(bytes)
   );
@@ -89,8 +81,7 @@ export const deserializeCompactContractState = (
     {
       dataType: 'ContractState',
       source: 'compact-runtime',
-      caller: ctx.caller,
-      callee: ctx.callee ?? COMPACT_RUNTIME_CALLEE
+      caller: ctx.caller
     },
     () => CompactContractState.deserialize(bytes)
   );
@@ -109,8 +100,7 @@ export const deserializeZswapChainState = (
     {
       dataType: 'ZswapChainState',
       source: 'ledger',
-      caller: ctx.caller,
-      callee: ctx.callee ?? LEDGER_CALLEE
+      caller: ctx.caller
     },
     () => ZswapChainState.deserialize(bytes)
   );
@@ -132,8 +122,7 @@ export const deserializeLedgerTransaction = (
     {
       dataType: 'LedgerTransaction',
       source: 'ledger',
-      caller: ctx.caller,
-      callee: ctx.callee ?? LEDGER_CALLEE
+      caller: ctx.caller
     },
     () => LedgerTransaction.deserialize('signature', 'proof', 'binding', bytes)
   );
@@ -152,8 +141,7 @@ export const deserializeLedgerParameters = (
     {
       dataType: 'LedgerParameters',
       source: 'ledger',
-      caller: ctx.caller,
-      callee: ctx.callee ?? LEDGER_CALLEE
+      caller: ctx.caller
     },
     () => LedgerParameters.deserialize(bytes)
   );
@@ -179,8 +167,7 @@ export const decodeLedgerStateValue = (
     {
       dataType: 'StateValue',
       source: 'onchain-runtime',
-      caller: ctx.caller,
-      callee: ctx.callee ?? ONCHAIN_RUNTIME_CALLEE
+      caller: ctx.caller
     },
     () => LedgerStateValue.decode(encoded)
   );

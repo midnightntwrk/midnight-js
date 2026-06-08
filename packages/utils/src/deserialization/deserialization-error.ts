@@ -13,8 +13,6 @@
  * limitations under the License.
  */
 
-import { SOURCE_PACKAGES } from './versions';
-
 /** Underlying library that produced the deserialization error. */
 export type SourceLibrary = 'ledger' | 'compact-runtime' | 'onchain-runtime';
 
@@ -34,9 +32,7 @@ export interface ExtractedInfo {
   readonly receivedVersion?: number;
 }
 
-/**
- * Pattern entry in the classifier table.
- */
+/** Pattern entry in the classifier table. */
 export interface PatternEntry {
   readonly regex: RegExp;
   readonly classification: Classification;
@@ -53,7 +49,6 @@ export interface DeserializationCallSite {
   readonly dataType: string;
   readonly source: SourceLibrary;
   readonly caller: string;
-  readonly callee?: string;
 }
 
 /** Fully-classified context attached to a `DeserializationError`. */
@@ -64,25 +59,6 @@ export interface DeserializationContext extends DeserializationCallSite {
   readonly extracted?: ExtractedInfo;
 }
 
-/**
- * Default `callee` (target library identifier) per source. Returns the bare
- * package family — the major-version suffix (e.g. `-v8`, `-v3`) is omitted
- * deliberately: the dev's installed version is reported by the structural
- * tag in the error itself (e.g. `contract-state[v6]`), and the dApp can
- * pull these packages with different majors than `midnight-js-protocol`
- * pins.
- */
-export const defaultCalleeForSource = (source: SourceLibrary): string => {
-  switch (source) {
-    case 'ledger':
-      return SOURCE_PACKAGES.ledger;
-    case 'compact-runtime':
-      return SOURCE_PACKAGES.compactRuntime;
-    case 'onchain-runtime':
-      return SOURCE_PACKAGES.onchainRuntime;
-  }
-};
-
 const formatExtracted = (e: ExtractedInfo): string => {
   const parts: string[] = [];
   if (e.dataType !== undefined) parts.push(`dataType=${e.dataType}`);
@@ -92,14 +68,13 @@ const formatExtracted = (e: ExtractedInfo): string => {
 };
 
 const formatMessage = (ctx: DeserializationContext): string => {
-  const callee = ctx.callee ?? defaultCalleeForSource(ctx.source);
   const classificationLine =
     `  Classification: ${ctx.classification}` +
     (ctx.direction !== undefined ? ` (direction: ${ctx.direction})` : '');
 
   const lines: string[] = [
     `Failed to deserialize ${ctx.dataType} (${ctx.source}).`,
-    `  ${ctx.caller} → ${callee}`,
+    `  Call site: ${ctx.caller}`,
     classificationLine
   ];
 
@@ -120,9 +95,10 @@ const formatMessage = (ctx: DeserializationContext): string => {
 };
 
 /**
- * An error thrown by the deserialization wrappers when a ledger / compact-runtime /
- * onchain-runtime `.deserialize`/`.decode` call fails. Carries structured context
- * for diagnosis: data type, call site, classification, direction, mitigation.
+ * An error thrown by the deserialization wrappers when a ledger /
+ * compact-runtime / onchain-runtime `.deserialize`/`.decode` call fails.
+ * Carries structured context for diagnosis: data type, call site,
+ * classification, direction, mitigation.
  */
 export class DeserializationError extends Error {
   readonly context: DeserializationContext;

@@ -175,7 +175,6 @@ describe('integration: compact-runtime source', () => {
     const err = catchDeserError(() => deserializeCompactContractState(new Uint8Array([0]), { caller }));
 
     expect(err.context.source).toBe('compact-runtime');
-    expect(err.context.callee).toBe('@midnight-ntwrk/compact-runtime');
   });
 });
 
@@ -186,7 +185,6 @@ describe('integration: onchain-runtime source — StateValue', () => {
     const err = catchDeserError(() => decodeLedgerStateValue(malformed, { caller }));
 
     expect(err.context.source).toBe('onchain-runtime');
-    expect(err.context.callee).toBe('@midnight-ntwrk/onchain-runtime');
   });
 });
 

@@ -25,7 +25,6 @@ const baseContext: DeserializationContext = {
   dataType: 'ContractState',
   source: 'ledger',
   caller: '@midnight-ntwrk/midnight-js-indexer-public-data-provider:queryContractState',
-  callee: '@midnight-ntwrk/ledger',
   classification: 'version-mismatch',
   mitigation: ['Hint A', 'Hint B']
 };
@@ -58,11 +57,11 @@ describe('DeserializationError', () => {
       expect(error.message.split('\n')[0]).toBe('Failed to deserialize ContractState (ledger).');
     });
 
-    it('renders "caller → callee" line', () => {
+    it('renders the caller line', () => {
       const error = new DeserializationError(baseContext, new Error('inner'));
 
       expect(error.message).toContain(
-        '  @midnight-ntwrk/midnight-js-indexer-public-data-provider:queryContractState → @midnight-ntwrk/ledger'
+        '  Call site: @midnight-ntwrk/midnight-js-indexer-public-data-provider:queryContractState'
       );
     });
 

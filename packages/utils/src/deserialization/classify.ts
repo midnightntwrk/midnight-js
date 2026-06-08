@@ -105,7 +105,6 @@ export const classify = (
       dataType,
       source: callSite.source,
       caller: callSite.caller,
-      callee: callSite.callee,
       classification,
       direction,
       mitigation,
@@ -117,7 +116,6 @@ export const classify = (
     dataType: callSite.dataType,
     source: callSite.source,
     caller: callSite.caller,
-    callee: callSite.callee,
     classification: 'unknown',
     mitigation: buildMitigation('unknown', callSite.source)
   };

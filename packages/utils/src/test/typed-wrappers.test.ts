@@ -30,7 +30,7 @@ const caller = '@midnight-ntwrk/midnight-js-test:typed-wrapper-fixture';
 
 const expectThrowsDeserializationError = (
   fn: () => unknown,
-  expected: { dataType: string; source: string; defaultCallee: string }
+  expected: { dataType: string; source: string }
 ): void => {
   let caught: unknown;
   try {
@@ -45,18 +45,16 @@ const expectThrowsDeserializationError = (
     expect(caught.context.dataType).toBe(expected.dataType);
     expect(caught.context.source).toBe(expected.source);
     expect(caught.context.caller).toBe(caller);
-    expect(caught.context.callee).toBe(expected.defaultCallee);
   }
 };
 
-describe('typed wrappers — source attribution and default callee', () => {
-  it('deserializeContractState attributes to ledger with default ledger callee', () => {
+describe('typed wrappers — source attribution', () => {
+  it('deserializeContractState attributes to ledger', () => {
     expectThrowsDeserializationError(
       () => deserializeContractState(garbage, { caller }),
       {
         dataType: 'ContractState',
-        source: 'ledger',
-        defaultCallee: '@midnight-ntwrk/ledger'
+        source: 'ledger'
       }
     );
   });
@@ -66,8 +64,7 @@ describe('typed wrappers — source attribution and default callee', () => {
       () => deserializeCompactContractState(garbage, { caller }),
       {
         dataType: 'ContractState',
-        source: 'compact-runtime',
-        defaultCallee: '@midnight-ntwrk/compact-runtime'
+        source: 'compact-runtime'
       }
     );
   });
@@ -77,8 +74,7 @@ describe('typed wrappers — source attribution and default callee', () => {
       () => deserializeZswapChainState(garbage, { caller }),
       {
         dataType: 'ZswapChainState',
-        source: 'ledger',
-        defaultCallee: '@midnight-ntwrk/ledger'
+        source: 'ledger'
       }
     );
   });
@@ -91,8 +87,7 @@ describe('typed wrappers — source attribution and default callee', () => {
       () => deserializeLedgerTransaction(garbage, { caller }),
       {
         dataType: 'Transaction',
-        source: 'ledger',
-        defaultCallee: '@midnight-ntwrk/ledger'
+        source: 'ledger'
       }
     );
   });
@@ -102,8 +97,7 @@ describe('typed wrappers — source attribution and default callee', () => {
       () => deserializeLedgerParameters(garbage, { caller }),
       {
         dataType: 'LedgerParameters',
-        source: 'ledger',
-        defaultCallee: '@midnight-ntwrk/ledger'
+        source: 'ledger'
       }
     );
   });
@@ -118,25 +112,9 @@ describe('typed wrappers — source attribution and default callee', () => {
       () => decodeLedgerStateValue(malformedEncoded, { caller }),
       {
         dataType: 'StateValue',
-        source: 'onchain-runtime',
-        defaultCallee: '@midnight-ntwrk/onchain-runtime'
+        source: 'onchain-runtime'
       }
     );
   });
 });
 
-describe('typed wrappers — caller-supplied callee override', () => {
-  it('uses ctx.callee when provided, bypassing the default', () => {
-    let caught: unknown;
-    try {
-      deserializeContractState(garbage, { caller, callee: 'custom-test-callee' });
-    } catch (e) {
-      caught = e;
-    }
-
-    expect(isDeserializationError(caught)).toBe(true);
-    if (isDeserializationError(caught)) {
-      expect(caught.context.callee).toBe('custom-test-callee');
-    }
-  });
-});
