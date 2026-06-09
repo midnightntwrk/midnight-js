@@ -199,7 +199,7 @@ export const transactionIdToTransaction$ =
         const first = data.transactions[0];
         if (first === undefined) {
           throw new IndexerInvariantError(
-            'transactionIdToTransaction$: empty transactions array passed the non-empty filter'
+            'transactionIdToTransaction$: transactions array unexpectedly empty after predicate'
           );
         }
         return { height: first.block.height };

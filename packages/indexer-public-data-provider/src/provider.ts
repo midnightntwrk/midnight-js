@@ -203,6 +203,11 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
 
   queryDeployContractState(contractAddress: ContractAddress): Promise<ContractState | null> {
     assertIsContractAddress(contractAddress);
+    // Shape discrimination kept inline: this branch additionally does an
+    // address-correlated `find` over `contractActions` and throws
+    // `IndexerDataError.missingContractAction` (not `IndexerInvariantError`)
+    // on missing match — different error semantics from the helpers in
+    // `mapping.ts`, so extraction would obscure rather than simplify.
     return this.client
       .query({
         query: DEPLOY_CONTRACT_STATE_TX_QUERY,
