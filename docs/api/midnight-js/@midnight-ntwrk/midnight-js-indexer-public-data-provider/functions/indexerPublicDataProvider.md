@@ -8,7 +8,12 @@
 
 > **indexerPublicDataProvider**(`queryURL`, `subscriptionURL`, `webSocketImpl?`): [`PublicDataProvider`](#)
 
-Constructs a [PublicDataProvider](#) based on an [ApolloClient](#).
+Constructs a [PublicDataProvider](#) based on an Apollo Client.
+
+Wraps the internal factory to assert that input contract addresses are
+valid before forwarding the call. The duplicated `assertIsContractAddress`
+calls below are removed in Phase 3 by moving the assertion into the class
+methods themselves.
 
 ## Parameters
 
@@ -29,8 +34,6 @@ The URL of a GraphQL server subscription (websocket) endpoint.
 *typeof* `WebSocket` = `ws.WebSocket`
 
 An optional websocket implementation for the Apollo client to use.
-
-TODO: Re-examine caching when 'ContractCall' and 'ContractDeploy' have transaction identifiers included.
 
 ## Returns
 
