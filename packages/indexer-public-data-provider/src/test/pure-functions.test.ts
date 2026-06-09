@@ -78,6 +78,22 @@ describe('isRegularTransaction', () => {
 
     expect(isRegularTransaction(blockQueryResult)).toBe(false);
   });
+
+  test('returns false for null', () => {
+    expect(isRegularTransaction(null)).toBe(false);
+  });
+
+  test('returns false for undefined', () => {
+    expect(isRegularTransaction(undefined)).toBe(false);
+  });
+
+  test('returns false for a number primitive', () => {
+    expect(isRegularTransaction(42)).toBe(false);
+  });
+
+  test('returns false for a string primitive', () => {
+    expect(isRegularTransaction('hash')).toBe(false);
+  });
 });
 
 describe('toTxStatus', () => {

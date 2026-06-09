@@ -197,7 +197,9 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         if ('deploy' in contractAction) {
           return contractAction.deploy.unshieldedBalances;
         }
-        return [];
+        throw new IndexerInvariantError(
+          'queryUnshieldedBalances: contractAction has neither unshieldedBalances nor deploy field'
+        );
       })
       .then((maybeUnshieldedBalances) =>
         maybeUnshieldedBalances ? toUnshieldedBalances(maybeUnshieldedBalances) : null
