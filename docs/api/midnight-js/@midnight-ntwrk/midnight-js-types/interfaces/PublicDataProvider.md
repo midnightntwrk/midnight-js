@@ -39,6 +39,26 @@ The configuration for the observable.
 
 ***
 
+### dispose()
+
+> **dispose**(): `Promise`\<`void`\>
+
+Releases resources held by this provider (WebSocket connection, pending
+subscriptions, in-memory cache). After calling this method, no further
+operations may be performed on this instance. Implementations that hold
+no resources should provide a no-op (`async dispose() {}`).
+
+Must be idempotent: repeated and concurrent invocations share a single
+teardown — they return the same `Promise`. If the first invocation
+rejects, subsequent invocations return the same rejected `Promise` —
+teardown is not retried.
+
+#### Returns
+
+`Promise`\<`void`\>
+
+***
+
 ### queryContractState()
 
 > **queryContractState**(`contractAddress`, `config?`): `Promise`\<`ContractState` \| `null`\>
