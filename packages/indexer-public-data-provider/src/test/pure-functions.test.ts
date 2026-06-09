@@ -43,7 +43,7 @@ import {
   IndexerSubscriptionDataError
 } from '../errors';
 import type { TransactionResult } from '../gen/graphql';
-import { extractUnshieldedBalances } from '../mapping';
+import { extractRegularDeployTransaction, extractUnshieldedBalances } from '../mapping';
 
 describe('isRegularTransaction', () => {
   test('returns true for object with hash and identifiers array', () => {
@@ -419,6 +419,45 @@ describe('IndexerProviderConfigError', () => {
     expect(error).toBeInstanceOf(IndexerError);
     expect(error.name).toBe('IndexerProviderConfigError');
     expect(error.message).toBe('Unsupported observable mode: txId');
+  });
+});
+
+describe('extractRegularDeployTransaction', () => {
+  const regularTx = {
+    hash: 'tx-hash',
+    identifiers: ['id-1'],
+    block: { height: 1, hash: 'block-hash', author: null, timestamp: 0 },
+    raw: '',
+    id: 1,
+    protocolVersion: 0,
+    fees: { estimatedFees: '0', paidFees: '0' },
+    transactionResult: { status: 'SUCCESS' as const, segments: null },
+    contractActions: [],
+    unshieldedCreatedOutputs: [],
+    unshieldedSpentOutputs: []
+  };
+
+  test('returns null when contractAction is null', () => {
+    expect(extractRegularDeployTransaction(null)).toBeNull();
+  });
+
+  test('returns the regular transaction from the ContractDeploy / ContractUpdate variant', () => {
+    const action = { transaction: regularTx } as unknown as Parameters<typeof extractRegularDeployTransaction>[0];
+
+    expect(extractRegularDeployTransaction(action)).toEqual(regularTx);
+  });
+
+  test('returns the regular transaction from the ContractCall variant via deploy.transaction', () => {
+    const action = { deploy: { transaction: regularTx } } as unknown as Parameters<typeof extractRegularDeployTransaction>[0];
+
+    expect(extractRegularDeployTransaction(action)).toEqual(regularTx);
+  });
+
+  test('returns null when the underlying transaction is not a regular transaction', () => {
+    const systemTx = { id: 99, raw: '' }; // no identifiers/hash → fails isRegularTransaction
+    const action = { transaction: systemTx } as unknown as Parameters<typeof extractRegularDeployTransaction>[0];
+
+    expect(extractRegularDeployTransaction(action)).toBeNull();
   });
 });
 

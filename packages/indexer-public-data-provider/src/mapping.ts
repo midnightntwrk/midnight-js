@@ -24,7 +24,7 @@ import {
   toUnshieldedUtxos
 } from './codec';
 import { IndexerInvariantError } from './errors';
-import type { ContractBalance, RegularTransaction } from './gen/graphql';
+import type { ContractBalance, DeployTxQueryQuery, RegularTransaction } from './gen/graphql';
 
 type IsEmptyObject<T> = keyof T extends never ? true : false;
 export type ExcludeEmptyAndNull<T> = T extends null ? never : IsEmptyObject<T> extends true ? never : T;
@@ -68,6 +68,26 @@ export const isRegularTransaction = (
   if (typeof tx !== 'object' || tx === null) return false;
   if (!('identifiers' in tx) || !('hash' in tx)) return false;
   return Array.isArray((tx as { identifiers: unknown }).identifiers);
+};
+
+/**
+ * Walks a `DeployTxQueryQuery.contractAction` payload to the underlying
+ * transaction and returns it iff it is a regular (non-system) transaction.
+ * Returns `null` for two distinct cases:
+ * 1. `contractAction === null` — indexer hasn't produced data yet; callers
+ *    use this as the "keep polling" signal.
+ * 2. The contract action carries a non-regular (system) transaction shape.
+ *
+ * `ContractCall` reaches the transaction via `deploy.transaction`;
+ * `ContractDeploy` / `ContractUpdate` expose it directly as `transaction`.
+ */
+export const extractRegularDeployTransaction = (
+  contractAction: DeployTxQueryQuery['contractAction']
+): (RegularTransaction & { hash: string; identifiers: string[] }) | null => {
+  if (contractAction === null) return null;
+  const contract = contractAction as ExcludeEmptyAndNull<DeployTxQueryQuery['contractAction']>;
+  const transaction = 'deploy' in contract ? contract.deploy.transaction : contract.transaction;
+  return isRegularTransaction(transaction) ? transaction : null;
 };
 
 export const toFinalizedDeployTxData = (

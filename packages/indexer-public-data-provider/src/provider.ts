@@ -45,12 +45,12 @@ import { IndexerDataError, IndexerInvariantError, IndexerProviderConfigError } f
 import type {
   ContractActionOffset,
   DeployContractStateTxQueryQuery,
-  DeployTxQueryQuery,
   InputMaybe,
   RegularTransaction
 } from './gen/graphql';
 import {
   type ExcludeEmptyAndNull,
+  extractRegularDeployTransaction,
   extractUnshieldedBalances,
   isRegularTransaction,
   toFinalizedDeployTxData
@@ -248,20 +248,14 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
 
   watchForDeployTxData(contractAddress: ContractAddress): Promise<FinalizedTxData> {
     assertIsContractAddress(contractAddress);
-    const extractRegular = (data: DeployTxQueryQuery): (RegularTransaction & { hash: string; identifiers: string[] }) | null => {
-      if (data.contractAction === null) return null;
-      const contract = data.contractAction as ExcludeEmptyAndNull<DeployTxQueryQuery['contractAction']>;
-      const transaction = 'deploy' in contract ? contract.deploy.transaction : contract.transaction;
-      return isRegularTransaction(transaction) ? transaction : null;
-    };
     return Rx.firstValueFrom(
       pollUntilPresent(
         this.client,
         DEPLOY_TX_QUERY,
         { address: contractAddress },
-        (data) => extractRegular(data) !== null,
+        (data) => extractRegularDeployTransaction(data.contractAction) !== null,
         (data) => {
-          const transaction = extractRegular(data);
+          const transaction = extractRegularDeployTransaction(data.contractAction);
           if (transaction === null) {
             throw new IndexerInvariantError(
               'watchForDeployTxData: extracted transaction unexpectedly null after predicate'
