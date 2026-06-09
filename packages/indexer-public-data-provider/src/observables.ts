@@ -31,7 +31,7 @@ import type {
   InputMaybe,
   RegularTransaction
 } from './gen/graphql';
-import { hasContractAction } from './mapping';
+import { extractUnshieldedBalances, hasContractAction } from './mapping';
 import {
   BLOCK_QUERY,
   CONTRACT_STATE_QUERY,
@@ -317,18 +317,7 @@ export const waitForUnshieldedBalancesToAppear =
       UNSHIELDED_BALANCE_QUERY,
       { address: contractAddress },
       hasContractAction,
-      (data) => {
-        const action = data.contractAction;
-        if ('unshieldedBalances' in action) {
-          return action.unshieldedBalances;
-        }
-        if ('deploy' in action) {
-          return action.deploy.unshieldedBalances;
-        }
-        throw new IndexerInvariantError(
-          'waitForUnshieldedBalancesToAppear: contractAction has neither unshieldedBalances nor deploy field'
-        );
-      },
+      (data) => extractUnshieldedBalances(data.contractAction, 'waitForUnshieldedBalancesToAppear'),
       pollInterval
     );
 
@@ -360,15 +349,7 @@ export const blockOffsetToUnshieldedBalances$ =
           if (!contractAction) {
             throw new IndexerSubscriptionDataError('contractActions');
           }
-          if ('unshieldedBalances' in contractAction) {
-            return contractAction.unshieldedBalances;
-          }
-          if ('deploy' in contractAction) {
-            return contractAction.deploy.unshieldedBalances;
-          }
-          throw new IndexerInvariantError(
-            'blockOffsetToUnshieldedBalances$: contractActions has neither unshieldedBalances nor deploy field'
-          );
+          return extractUnshieldedBalances(contractAction, 'blockOffsetToUnshieldedBalances$');
         }),
         Rx.map(toUnshieldedBalances)
       );

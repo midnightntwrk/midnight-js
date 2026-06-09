@@ -43,6 +43,7 @@ import {
   IndexerSubscriptionDataError
 } from '../errors';
 import type { TransactionResult } from '../gen/graphql';
+import { extractUnshieldedBalances } from '../mapping';
 
 describe('isRegularTransaction', () => {
   test('returns true for object with hash and identifiers array', () => {
@@ -418,6 +419,36 @@ describe('IndexerProviderConfigError', () => {
     expect(error).toBeInstanceOf(IndexerError);
     expect(error.name).toBe('IndexerProviderConfigError');
     expect(error.message).toBe('Unsupported observable mode: txId');
+  });
+});
+
+describe('extractUnshieldedBalances', () => {
+  const balance = { tokenType: 'abc', amount: '100' };
+
+  test('returns balances from direct unshieldedBalances field (ContractUpdate / ContractDeploy variant)', () => {
+    expect(extractUnshieldedBalances({ unshieldedBalances: [balance] }, 'site')).toEqual([balance]);
+  });
+
+  test('returns balances from deploy.unshieldedBalances (ContractCall variant)', () => {
+    expect(extractUnshieldedBalances({ deploy: { unshieldedBalances: [balance] } }, 'site')).toEqual([balance]);
+  });
+
+  test('returns an empty array when the matching field exists and is empty', () => {
+    expect(extractUnshieldedBalances({ unshieldedBalances: [] }, 'site')).toEqual([]);
+  });
+
+  test('throws IndexerInvariantError with the caller name when neither field is present', () => {
+    let thrown: unknown;
+    try {
+      extractUnshieldedBalances({} as never, 'siteName');
+    } catch (e) {
+      thrown = e;
+    }
+
+    expect(thrown).toBeInstanceOf(IndexerInvariantError);
+    expect((thrown as IndexerInvariantError).message).toBe(
+      'siteName: contractAction has neither unshieldedBalances nor deploy field'
+    );
   });
 });
 

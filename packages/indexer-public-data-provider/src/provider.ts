@@ -49,7 +49,12 @@ import type {
   InputMaybe,
   RegularTransaction
 } from './gen/graphql';
-import { type ExcludeEmptyAndNull, isRegularTransaction, toFinalizedDeployTxData } from './mapping';
+import {
+  type ExcludeEmptyAndNull,
+  extractUnshieldedBalances,
+  isRegularTransaction,
+  toFinalizedDeployTxData
+} from './mapping';
 import {
   blockOffsetToBlock$,
   blockOffsetToContractState$,
@@ -188,18 +193,8 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
       .then(maybeThrowQueryError)
       .then((queryResult) => {
         const contractAction = queryResult.data?.contractAction;
-        if (!contractAction) {
-          return null;
-        }
-        if ('unshieldedBalances' in contractAction) {
-          return contractAction.unshieldedBalances;
-        }
-        if ('deploy' in contractAction) {
-          return contractAction.deploy.unshieldedBalances;
-        }
-        throw new IndexerInvariantError(
-          'queryUnshieldedBalances: contractAction has neither unshieldedBalances nor deploy field'
-        );
+        if (!contractAction) return null;
+        return extractUnshieldedBalances(contractAction, 'queryUnshieldedBalances');
       })
       .then((maybeUnshieldedBalances) =>
         maybeUnshieldedBalances ? toUnshieldedBalances(maybeUnshieldedBalances) : null
