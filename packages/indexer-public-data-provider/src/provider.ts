@@ -57,12 +57,12 @@ import {
   blockToContractState$,
   contractAddressToLatestBlockOffset$,
   maybeThrowQueryError,
+  pollUntilPresent,
   transactionIdToTransaction$,
   transactionToContractState$,
   waitForBlockToAppear,
   waitForContractToAppear,
-  waitForUnshieldedBalancesToAppear,
-  withCompleteQueryData
+  waitForUnshieldedBalancesToAppear
 } from './observables';
 import {
   CONTRACT_AND_ZSWAP_STATE_QUERY,
@@ -251,78 +251,72 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
 
   watchForDeployTxData(contractAddress: ContractAddress): Promise<FinalizedTxData> {
     assertIsContractAddress(contractAddress);
+    const extractRegular = (data: DeployTxQueryQuery): (RegularTransaction & { hash: string; identifiers: string[] }) | null => {
+      if (data.contractAction === null) return null;
+      const contract = data.contractAction as ExcludeEmptyAndNull<DeployTxQueryQuery['contractAction']>;
+      const transaction = 'deploy' in contract ? contract.deploy.transaction : contract.transaction;
+      return isRegularTransaction(transaction) ? transaction : null;
+    };
     return Rx.firstValueFrom(
-      this.client
-        .watchQuery({
-          query: DEPLOY_TX_QUERY,
-          variables: {
-            address: contractAddress
-          },
-          pollInterval: this.pollInterval,
-          fetchPolicy: 'no-cache',
-          initialFetchPolicy: 'no-cache',
-          nextFetchPolicy: 'no-cache'
-        })
-        .pipe(
-          withCompleteQueryData(),
-          Rx.filter((data) => data.contractAction !== null),
-          Rx.map((data) => {
-            const contract = data.contractAction as ExcludeEmptyAndNull<DeployTxQueryQuery['contractAction']>;
-
-            return 'deploy' in contract ? contract.deploy.transaction : contract.transaction;
-          }),
-          Rx.filter(isRegularTransaction),
-          Rx.map((transaction: RegularTransaction) => toFinalizedDeployTxData(contractAddress, transaction))
-        )
+      pollUntilPresent(
+        this.client,
+        DEPLOY_TX_QUERY,
+        { address: contractAddress },
+        (data) => extractRegular(data) !== null,
+        (data) => {
+          const transaction = extractRegular(data);
+          if (transaction === null) {
+            throw new IndexerInvariantError(
+              'watchForDeployTxData: extracted transaction unexpectedly null after predicate'
+            );
+          }
+          return toFinalizedDeployTxData(contractAddress, transaction);
+        },
+        this.pollInterval
+      )
     );
   }
 
   watchForTxData(txId: TransactionId): Promise<FinalizedTxData> {
     return Rx.firstValueFrom(
-      this.client
-        .watchQuery({
-          query: TX_ID_QUERY,
-          variables: { offset: { identifier: txId } },
-          pollInterval: this.pollInterval,
-          fetchPolicy: 'no-cache',
-          initialFetchPolicy: 'no-cache',
-          nextFetchPolicy: 'no-cache'
-        })
-        .pipe(
-          withCompleteQueryData(),
-          Rx.filter((data) => data.transactions.length !== 0),
-          Rx.map((data) => {
-            const first = data.transactions[0];
-            if (first === undefined) {
-              throw new IndexerInvariantError(
-                'watchForTxData: empty transactions array passed the non-empty filter'
-              );
+      pollUntilPresent(
+        this.client,
+        TX_ID_QUERY,
+        { offset: { identifier: txId } },
+        (data) => {
+          const first = data.transactions[0];
+          return first !== undefined && isRegularTransaction(first);
+        },
+        (data): FinalizedTxData => {
+          const first = data.transactions[0];
+          if (first === undefined || !isRegularTransaction(first)) {
+            throw new IndexerInvariantError(
+              'watchForTxData: transactions array unexpectedly empty or non-regular after predicate'
+            );
+          }
+          const transaction: RegularTransaction & { hash: string; identifiers: string[] } = first;
+          return {
+            tx: parseHexTransaction(transaction.raw),
+            status: toTxStatus(transaction.transactionResult),
+            txId,
+            txHash: transaction.hash,
+            identifiers: transaction.identifiers,
+            blockHeight: transaction.block.height,
+            blockHash: transaction.block.hash,
+            segmentStatusMap: toSegmentStatusMap(transaction.transactionResult),
+            unshielded: toUnshieldedUtxos(transaction.unshieldedCreatedOutputs, transaction.unshieldedSpentOutputs),
+            blockTimestamp: transaction.block.timestamp,
+            blockAuthor: transaction.block.author,
+            indexerId: transaction.id,
+            protocolVersion: transaction.protocolVersion,
+            fees: {
+              paidFees: transaction.fees.paidFees,
+              estimatedFees: transaction.fees.estimatedFees
             }
-            return first;
-          }),
-          Rx.filter(isRegularTransaction),
-          Rx.map(
-            (transaction: RegularTransaction): FinalizedTxData => ({
-              tx: parseHexTransaction(transaction.raw),
-              status: toTxStatus(transaction.transactionResult),
-              txId,
-              txHash: transaction.hash,
-              identifiers: transaction.identifiers,
-              blockHeight: transaction.block.height,
-              blockHash: transaction.block.hash,
-              segmentStatusMap: toSegmentStatusMap(transaction.transactionResult),
-              unshielded: toUnshieldedUtxos(transaction.unshieldedCreatedOutputs, transaction.unshieldedSpentOutputs),
-              blockTimestamp: transaction.block.timestamp,
-              blockAuthor: transaction.block.author,
-              indexerId: transaction.id,
-              protocolVersion: transaction.protocolVersion,
-              fees: {
-                paidFees: transaction.fees.paidFees,
-                estimatedFees: transaction.fees.estimatedFees
-              }
-            })
-          )
-        )
+          };
+        },
+        this.pollInterval
+      )
     );
   }
 
