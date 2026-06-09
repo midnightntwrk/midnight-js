@@ -29,10 +29,9 @@ import type {
   BlockOffset,
   ContractActionOffset,
   InputMaybe,
-  LatestContractTxBlockHeightQueryQuery,
   RegularTransaction
 } from './gen/graphql';
-import { type ExcludeEmptyAndNull, hasContractAction } from './mapping';
+import { hasContractAction } from './mapping';
 import {
   BLOCK_QUERY,
   CONTRACT_STATE_QUERY,
@@ -89,25 +88,45 @@ export const withValidFetchData = <A>(): Rx.OperatorFunction<FetchResult<A>, Non
   );
 
 /**
- * Polls `query` at `pollInterval` ms until `predicate(data)` holds, then
- * emits `mapFn(data)` once and completes. Centralizes the cache policy
- * (`no-cache` on initial/next/fetch), the `withCompleteQueryData` unwrap,
- * and the `take(1)` semantics that every poll-until-first-match call site
- * previously hand-rolled.
+ * Polls `query` immediately and then every `pollInterval` ms until
+ * `predicate(data)` holds, then emits `mapFn(data)` once and completes.
+ * Centralizes the cache policy (`no-cache` on initial/next/fetch), the
+ * `withCompleteQueryData` unwrap, and the `take(1)` semantics that every
+ * poll-until-first-match call site previously hand-rolled.
  *
- * The `predicate` is plain `boolean`-returning, not a type guard — `Rx.filter`
- * does not narrow through generic predicates, so `mapFn` should cast or
- * guard inside its body (the established `ExcludeEmptyAndNull<>` pattern).
+ * Two forms:
+ * 1. Type-guard `predicate` — `mapFn` receives the narrowed type and may
+ *    access fields the predicate proved present without a cast.
+ * 2. Plain `boolean` `predicate` — `mapFn` receives the un-narrowed
+ *    `TQuery` and must cast or guard inside its body (the established
+ *    `ExcludeEmptyAndNull<>` pattern at sites where the codegen union
+ *    includes empty-object members).
  */
-export const pollUntilPresent = <TQuery, TVars extends OperationVariables, TResult>(
+export function pollUntilPresent<TQuery, TVars extends OperationVariables, TNarrowed extends TQuery, TResult>(
+  apolloClient: ApolloClient,
+  query: TypedDocumentNode<TQuery, TVars>,
+  variables: TVars,
+  predicate: (data: TQuery) => data is TNarrowed,
+  mapFn: (data: TNarrowed) => TResult,
+  pollInterval: number
+): Rx.Observable<TResult>;
+export function pollUntilPresent<TQuery, TVars extends OperationVariables, TResult>(
   apolloClient: ApolloClient,
   query: TypedDocumentNode<TQuery, TVars>,
   variables: TVars,
   predicate: (data: TQuery) => boolean,
   mapFn: (data: TQuery) => TResult,
   pollInterval: number
-): Rx.Observable<TResult> =>
-  apolloClient
+): Rx.Observable<TResult>;
+export function pollUntilPresent<TQuery, TVars extends OperationVariables, TResult>(
+  apolloClient: ApolloClient,
+  query: TypedDocumentNode<TQuery, TVars>,
+  variables: TVars,
+  predicate: (data: TQuery) => boolean,
+  mapFn: (data: TQuery) => TResult,
+  pollInterval: number
+): Rx.Observable<TResult> {
+  return apolloClient
     .watchQuery({
       query,
       variables,
@@ -122,6 +141,7 @@ export const pollUntilPresent = <TQuery, TVars extends OperationVariables, TResu
       Rx.map(mapFn),
       Rx.take(1)
     );
+}
 
 // Assumes that the block exists.
 export const blockOffsetToBlock$ = (apolloClient: ApolloClient) => (offset: InputMaybe<BlockOffset>) =>
@@ -199,13 +219,8 @@ export const contractAddressToLatestBlockOffset$ =
       apolloClient,
       LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY,
       { address: contractAddress },
-      (data) => data.contractAction !== null,
-      (data) => {
-        const contract = data.contractAction as ExcludeEmptyAndNull<
-          LatestContractTxBlockHeightQueryQuery['contractAction']
-        >;
-        return { height: contract.transaction.block.height };
-      },
+      hasContractAction,
+      (data) => ({ height: data.contractAction.transaction.block.height }),
       pollInterval
     );
 
@@ -244,10 +259,7 @@ export const waitForContractToAppear =
       CONTRACT_STATE_QUERY,
       { address: contractAddress, offset },
       hasContractAction,
-      (data) => {
-        const action = data.contractAction as ExcludeEmptyAndNull<typeof data.contractAction>;
-        return action.state;
-      },
+      (data) => data.contractAction.state,
       pollInterval
     );
 
@@ -270,14 +282,16 @@ export const waitForUnshieldedBalancesToAppear =
       { address: contractAddress },
       hasContractAction,
       (data) => {
-        const action = data.contractAction as ExcludeEmptyAndNull<typeof data.contractAction>;
+        const action = data.contractAction;
         if ('unshieldedBalances' in action) {
           return action.unshieldedBalances;
         }
         if ('deploy' in action) {
           return action.deploy.unshieldedBalances;
         }
-        return [];
+        throw new IndexerInvariantError(
+          'waitForUnshieldedBalancesToAppear: contractAction has neither unshieldedBalances nor deploy field'
+        );
       },
       pollInterval
     );
@@ -308,7 +322,9 @@ export const blockOffsetToUnshieldedBalances$ =
           if ('deploy' in contractAction) {
             return contractAction.deploy.unshieldedBalances;
           }
-          return [];
+          throw new IndexerInvariantError(
+            'blockOffsetToUnshieldedBalances$: contractActions has neither unshieldedBalances nor deploy field'
+          );
         }),
         Rx.map(toUnshieldedBalances)
       );
