@@ -320,6 +320,37 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     );
   }
 
+  /**
+   * Creates a stream of contract states for `contractAddress`.
+   *
+   * **Wire-traffic asymmetry by branch:**
+   *
+   * | Branch                                 | Pipeline                                                                                            | Wire traffic |
+   * |----------------------------------------|-----------------------------------------------------------------------------------------------------|--------------|
+   * | `latest` / `blockHeight` / `blockHash` | poll for block-presence → `TXS_FROM_BLOCK_SUB` + client-side address filter                          | **Heavy** — every block on chain flows over WS; client extracts states for this contract. |
+   * | `txId`                                 | poll `TX_ID_QUERY` → `TXS_FROM_BLOCK_SUB` from the tx's block → walk states matching the identifier  | **Heavy** — same `TXS_FROM_BLOCK_SUB` subscription as above, opened once the tx is located. |
+   * | `all`                                  | poll for contract-presence → `CONTRACT_STATE_SUB($address, offset: null)`                            | **Light** — server-side filter; only this contract's state changes flow over WS. |
+   *
+   * The heavy path emits one observable value per matching contract action
+   * in each block — a per-block "states-at-this-block" view. It is used
+   * everywhere a block-level anchor matters (latest block, specific block
+   * with `inclusive`, transaction → containing-block). The light path
+   * (`all`) emits one value per state change directly from the
+   * server-filtered subscription — bandwidth scales with state changes
+   * rather than chain activity.
+   *
+   * Why not unify: `CONTRACT_STATE_SUB` is per-change, so a downstream
+   * `Rx.skip(1)` would skip the first state change rather than the first
+   * block — `inclusive: false` on `blockHeight`/`blockHash` would have a
+   * subtly different meaning. `TXS_FROM_BLOCK_SUB` for `all` would stream
+   * every block on chain (orders of magnitude more bytes on a busy chain).
+   *
+   * See {@link blockOffsetToBlock$}, {@link blockOffsetToContractState$},
+   * and {@link blockToContractState$} for per-subscription docs.
+   *
+   * @param contractAddress The address of the contract of interest.
+   * @param config The configuration of the stream. Defaults to `latest`.
+   */
   contractStateObservable(
     contractAddress: ContractAddress,
     config: ContractStateObservableConfig = { type: 'latest' }
@@ -354,6 +385,26 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     return maybeShortenedBlocks.pipe(Rx.concatMap(blockToContractState$(contractAddress)));
   }
 
+  /**
+   * Creates a stream of unshielded balances for `contractAddress`.
+   *
+   * All three non-`txId` branches (`latest`/`all`/`blockHeight`/`blockHash`)
+   * use `UNSHIELDED_BALANCE_SUB($address, $offset)` as the terminal
+   * subscription. **Wire traffic is uniformly light** — server-side
+   * filtered by `contractAddress`. The indexer has no per-block
+   * subscription analogue for balances, so there is no light/heavy
+   * asymmetry comparable to {@link contractStateObservable}.
+   *
+   * The `txId` configuration is not supported and throws
+   * {@link IndexerProviderConfigError}. Tx-anchored balance streams are
+   * not exposed by the indexer's subscription surface — for the related
+   * contract-state stream see {@link contractStateObservable}.
+   *
+   * See {@link blockOffsetToUnshieldedBalances$} for the per-subscription doc.
+   *
+   * @param contractAddress The address of the contract of interest.
+   * @param config The configuration of the stream. Defaults to `latest`.
+   */
   unshieldedBalancesObservable(
     contractAddress: ContractAddress,
     config: ContractStateObservableConfig = { type: 'latest' }

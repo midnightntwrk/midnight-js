@@ -143,7 +143,19 @@ export function pollUntilPresent<TQuery, TVars extends OperationVariables, TResu
     );
 }
 
-// Assumes that the block exists.
+/**
+ * Subscribes to `TXS_FROM_BLOCK_SUB`, which emits every block on the
+ * indexer from `offset` onward. **Heavy wire traffic** — no server-side
+ * filter by address; every block on chain flows through the WebSocket.
+ *
+ * Use when the caller needs the block-grouped "states-at-this-block"
+ * view (typically paired with {@link blockToContractState$} to extract
+ * contract states from each block's transactions). For a continuous
+ * change feed of a single contract, prefer {@link blockOffsetToContractState$}
+ * — it's server-side filtered (light).
+ *
+ * Assumes that the block at `offset` exists.
+ */
 export const blockOffsetToBlock$ = (apolloClient: ApolloClient) => (offset: InputMaybe<BlockOffset>) =>
   apolloClient
     .subscribe({
@@ -206,6 +218,16 @@ export const transactionToContractState$ =
       Rx.map((pair) => parseHexContractState(pair[1].state))
     );
 
+/**
+ * Walks a block's transactions and emits one {@link ContractState} per
+ * `contractAction` whose `address` matches `contractAddress`. Client-side
+ * filter. Paired with {@link blockOffsetToBlock$} to produce the
+ * block-grouped "states-at-this-block" view used by `contractStateObservable`
+ * for the `latest`, `blockHeight`, and `blockHash` branches.
+ *
+ * Multiple states can come from a single block (every matching contract
+ * action in every transaction of that block emits one).
+ */
 export const blockToContractState$ = (contractAddress: ContractAddress) => (block: Block) =>
   Rx.from(block.transactions).pipe(
     Rx.concatMap(({ contractActions }) => Rx.from(contractActions)),
@@ -224,7 +246,21 @@ export const contractAddressToLatestBlockOffset$ =
       pollInterval
     );
 
-// Assumes block already exists
+/**
+ * Subscribes to `CONTRACT_STATE_SUB($address, $offset)`. **Light wire
+ * traffic** — server-side filtered by `contractAddress`; only state
+ * changes for this contract flow through the WebSocket.
+ *
+ * Emits one {@link ContractState} per state change (per-change feed,
+ * not per-block snapshot). Used by `contractStateObservable.all` where
+ * the change-feed semantics fit. Not used by `latest`/`blockHeight`/`blockHash`
+ * — those need the per-block view from {@link blockOffsetToBlock$} +
+ * {@link blockToContractState$} because `Rx.skip(1)` on a per-change
+ * stream would skip a single change rather than a single block, giving
+ * `inclusive: false` a subtly different meaning.
+ *
+ * Assumes block already exists.
+ */
 export const blockOffsetToContractState$ =
   (apolloClient: ApolloClient) =>
   (contractAddress: ContractAddress) =>
@@ -296,6 +332,14 @@ export const waitForUnshieldedBalancesToAppear =
       pollInterval
     );
 
+/**
+ * Subscribes to `UNSHIELDED_BALANCE_SUB($address, $offset)`. **Light wire
+ * traffic** — server-side filtered by `contractAddress`. The indexer has
+ * no `BALANCES_FROM_BLOCK_SUB` analogue, so this is the only subscription
+ * for balances regardless of config branch. `unshieldedBalancesObservable`
+ * uses it uniformly across `latest`/`all`/`blockHeight`/`blockHash` —
+ * no light/heavy asymmetry analogous to {@link contractStateObservable}.
+ */
 export const blockOffsetToUnshieldedBalances$ =
   (apolloClient: ApolloClient) =>
   (contractAddress: ContractAddress) =>
