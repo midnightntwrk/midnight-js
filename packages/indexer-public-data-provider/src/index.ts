@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import type { PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
 import type * as ws from 'isomorphic-ws';
 
 import { type IndexerProviderConfig, validateConfig } from './config';
@@ -37,29 +36,31 @@ export {
 export { DEFAULT_POLL_INTERVAL, type IndexerProviderConfig } from './config';
 export * from './errors';
 export { isRegularTransaction } from './mapping';
+export { IndexerPublicDataProvider } from './provider';
 
 /**
- * Constructs an indexer-backed {@link PublicDataProvider}.
+ * Constructs an indexer-backed `PublicDataProvider`.
  *
  * Two call forms:
  * 1. Object-config (preferred): `indexerPublicDataProvider({ queryURL, subscriptionURL, webSocket?, pollInterval? })`.
  * 2. Positional (deprecated, retained for backward compatibility): `indexerPublicDataProvider(queryURL, subscriptionURL, webSocket?)`.
  *
- * The returned provider exposes `dispose()` to release the WebSocket
- * connection and Apollo state. Always call it on long-running providers.
+ * The returned concrete `IndexerPublicDataProvider` exposes `dispose()` to
+ * release the WebSocket connection and Apollo state. Always call it on
+ * long-running providers.
  */
-export function indexerPublicDataProvider(config: IndexerProviderConfig): PublicDataProvider;
+export function indexerPublicDataProvider(config: IndexerProviderConfig): IndexerPublicDataProvider;
 /** @deprecated Use the `IndexerProviderConfig` overload. */
 export function indexerPublicDataProvider(
   queryURL: string,
   subscriptionURL: string,
   webSocket?: typeof ws.WebSocket
-): PublicDataProvider;
+): IndexerPublicDataProvider;
 export function indexerPublicDataProvider(
   configOrQueryURL: IndexerProviderConfig | string,
   subscriptionURL?: string,
   webSocket?: typeof ws.WebSocket
-): PublicDataProvider {
+): IndexerPublicDataProvider {
   let config: IndexerProviderConfig;
   if (typeof configOrQueryURL === 'string') {
     if (subscriptionURL === undefined) {

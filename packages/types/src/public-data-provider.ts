@@ -203,17 +203,4 @@ export interface PublicDataProvider {
    * @return {Observable<UnshieldedBalances>} An observable that emits the unshielded balances for the provided address.
    */
   unshieldedBalancesObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<UnshieldedBalances>;
-
-  /**
-   * Releases resources held by this provider (WebSocket connection, pending
-   * subscriptions, in-memory cache). After calling this method, no further
-   * operations may be performed on this instance. Implementations that hold
-   * no resources should provide a no-op (`async dispose() {}`).
-   *
-   * Must be idempotent: repeated and concurrent invocations share a single
-   * teardown — they return the same `Promise`. If the first invocation
-   * rejects, subsequent invocations return the same rejected `Promise` —
-   * teardown is not retried.
-   */
-  dispose(): Promise<void>;
 }
