@@ -12,7 +12,7 @@
 
 ### tx
 
-`any`
+`unknown`
 
 ## Returns
 
