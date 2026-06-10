@@ -13,7 +13,69 @@
  * limitations under the License.
  */
 
+import type * as ws from 'isomorphic-ws';
+
+import { type IndexerProviderConfig, validateConfig } from './config';
+import { IndexerProviderConfigError } from './errors';
+import { IndexerPublicDataProvider } from './provider';
+import { createApolloClient } from './transport';
+
+export {
+  correlateDeployTxId,
+  type IndexerUtxo,
+  parseHexContractState,
+  parseHexLedgerParameters,
+  parseHexTransaction,
+  parseHexZswapState,
+  toSegmentStatus,
+  toSegmentStatusMap,
+  toTxStatus,
+  toUnshieldedBalances,
+  toUnshieldedUtxos
+} from './codec';
+export { DEFAULT_POLL_INTERVAL, type IndexerProviderConfig } from './config';
 export type { WatchContractEventsOptions } from './contract-events';
 export { toGraphQLFilter, watchContractEvents } from './contract-events';
 export * from './errors';
-export * from './indexer-public-data-provider';
+export { isRegularTransaction } from './mapping';
+export { IndexerPublicDataProvider } from './provider';
+
+/**
+ * Constructs an indexer-backed `PublicDataProvider`.
+ *
+ * Two call forms:
+ * 1. Object-config (preferred): `indexerPublicDataProvider({ queryURL, subscriptionURL, webSocket?, pollInterval? })`.
+ * 2. Positional (deprecated, retained for backward compatibility): `indexerPublicDataProvider(queryURL, subscriptionURL, webSocket?)`.
+ *
+ * The returned concrete `IndexerPublicDataProvider` exposes `dispose()` to
+ * release the WebSocket connection and Apollo state. Always call it on
+ * long-running providers.
+ */
+export function indexerPublicDataProvider(config: IndexerProviderConfig): IndexerPublicDataProvider;
+/** @deprecated Use the `IndexerProviderConfig` overload. */
+export function indexerPublicDataProvider(
+  queryURL: string,
+  subscriptionURL: string,
+  webSocket?: typeof ws.WebSocket
+): IndexerPublicDataProvider;
+export function indexerPublicDataProvider(
+  configOrQueryURL: IndexerProviderConfig | string,
+  subscriptionURL?: string,
+  webSocket?: typeof ws.WebSocket
+): IndexerPublicDataProvider {
+  let config: IndexerProviderConfig;
+  if (typeof configOrQueryURL === 'string') {
+    if (subscriptionURL === undefined) {
+      throw new IndexerProviderConfigError(
+        'subscriptionURL is required when calling the positional indexerPublicDataProvider overload'
+      );
+    }
+    config = { queryURL: configOrQueryURL, subscriptionURL, webSocket };
+  } else {
+    config = configOrQueryURL;
+  }
+
+  const validated = validateConfig(config);
+  const handle = createApolloClient(validated);
+  return new IndexerPublicDataProvider(handle, validated.pollInterval);
+}

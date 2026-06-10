@@ -13,10 +13,9 @@
  * limitations under the License.
  */
 
-export * from './assertion-utils';
-export * from './date-utils';
-export * from './deserialization';
-export * from './hex-utils';
-export * from './password-validation';
-export * from './security-utils';
-export * from './type-utils';
+export * from './classify';
+export * from './deserialization-error';
+export * from './patterns';
+export * from './typed-wrappers';
+export * from './versions';
+export * from './with-deserialization-context';

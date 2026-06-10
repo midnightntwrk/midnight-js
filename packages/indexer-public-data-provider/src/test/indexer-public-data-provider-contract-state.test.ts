@@ -19,7 +19,7 @@ import type { ContractStateObservableConfig } from '@midnight-ntwrk/midnight-js-
 import * as Rx from 'rxjs';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
-import { indexerPublicDataProvider } from '../indexer-public-data-provider';
+import { indexerPublicDataProvider } from '..';
 import { BLOCK_QUERY, TXS_FROM_BLOCK_SUB } from '../query-definitions';
 
 type BlockQueryData = { block: { height: number; hash: string } | null };

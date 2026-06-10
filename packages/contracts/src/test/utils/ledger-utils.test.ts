@@ -50,7 +50,7 @@ import {
   ZswapOffer,
   ZswapOutput
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { toHex } from '@midnight-ntwrk/midnight-js-utils';
+import { isDeserializationError, toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
 import { beforeAll } from 'vitest';
 
@@ -786,6 +786,71 @@ describe('ledger-utils', () => {
 
       expect(intent.fallibleUnshieldedOffer).toBeDefined();
       expect(intent.fallibleUnshieldedOffer!.outputs[0].owner).toBe(userAddress);
+    });
+  });
+
+  // Regression tests for issue-816 refactor: verify the 3 helpers route bad
+  // input through the typed-wrapper layer and produce a DeserializationError
+  // with the fully-qualified caller string. Locks the wiring against future
+  // accidental reverts to raw .deserialize/.decode calls.
+  describe('deserialization wrapper wiring (issue-816)', () => {
+    const PKG = '@midnight-ntwrk/midnight-js-contracts';
+
+    // Object with a .serialize() that returns invalid bytes. Casting to the
+    // expected nominal type because runtime only invokes .serialize().
+    const stubWithBadSerialize = <T>(): T =>
+      ({ serialize: () => new Uint8Array([0xff, 0xff, 0xff]) }) as unknown as T;
+
+    it('toLedgerContractState throws DeserializationError tagged with the helper caller', () => {
+      let caught: unknown;
+      try {
+        toLedgerContractState(stubWithBadSerialize<CompactContractState>());
+      } catch (e) {
+        caught = e;
+      }
+
+      expect(isDeserializationError(caught)).toBe(true);
+      if (isDeserializationError(caught)) {
+        expect(caught.context.caller).toBe(`${PKG}:toLedgerContractState`);
+        expect(caught.context.source).toBe('ledger');
+      }
+    });
+
+    it('fromLedgerContractState throws DeserializationError tagged with the helper caller', () => {
+      let caught: unknown;
+      try {
+        // Stub mimics the ledger ContractState shape (only .serialize() is invoked).
+        fromLedgerContractState(stubWithBadSerialize());
+      } catch (e) {
+        caught = e;
+      }
+
+      expect(isDeserializationError(caught)).toBe(true);
+      if (isDeserializationError(caught)) {
+        expect(caught.context.caller).toBe(`${PKG}:fromLedgerContractState`);
+        expect(caught.context.source).toBe('compact-runtime');
+      }
+    });
+
+    it('toLedgerQueryContext throws DeserializationError tagged with the helper caller', () => {
+      // QueryContext.state.state.encode() must return an EncodedStateValue —
+      // we supply a malformed tag to make decode fail.
+      const stubQueryContext = {
+        state: { state: { encode: () => ({ tag: 'not-a-real-tag' }) } }
+      } as unknown as QueryContext;
+
+      let caught: unknown;
+      try {
+        toLedgerQueryContext(stubQueryContext);
+      } catch (e) {
+        caught = e;
+      }
+
+      expect(isDeserializationError(caught)).toBe(true);
+      if (isDeserializationError(caught)) {
+        expect(caught.context.caller).toBe(`${PKG}:toLedgerQueryContext`);
+        expect(caught.context.source).toBe('onchain-runtime');
+      }
     });
   });
 });

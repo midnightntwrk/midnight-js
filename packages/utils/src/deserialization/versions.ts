@@ -13,10 +13,18 @@
  * limitations under the License.
  */
 
-export * from './assertion-utils';
-export * from './date-utils';
-export * from './deserialization';
-export * from './hex-utils';
-export * from './password-validation';
-export * from './security-utils';
-export * from './type-utils';
+/**
+ * The npm package families that produce the deserialization errors this
+ * module wraps. The major-version suffix (e.g. `-v8`, `-v3`) is intentionally
+ * omitted — error messages reference the family and rely on the structural
+ * version tag carried inside the error itself (e.g. `contract-state[v6]`)
+ * for the actual version context.
+ *
+ * This avoids hardcoded `v8`/`v3` strings that would go stale silently when
+ * the underlying package is bumped.
+ */
+export const SOURCE_PACKAGES = {
+  ledger: '@midnight-ntwrk/ledger',
+  compactRuntime: '@midnight-ntwrk/compact-runtime',
+  onchainRuntime: '@midnight-ntwrk/onchain-runtime'
+} as const;
