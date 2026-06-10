@@ -501,7 +501,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/platform@npm:^0.96.0":
+"@effect/platform@npm:^0.96.0, @effect/platform@npm:^0.96.1":
   version: 0.96.1
   resolution: "@effect/platform@npm:0.96.1"
   dependencies:
@@ -1719,17 +1719,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/compact-js@npm:2.5.1":
-  version: 2.5.1
-  resolution: "@midnight-ntwrk/compact-js@npm:2.5.1::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-js%2F2.5.1%2F8845b0f792dbe0a483d35c1d25a565a6cc7d98b9"
+"@midnight-ntwrk/compact-js@npm:2.5.3":
+  version: 2.5.3
+  resolution: "@midnight-ntwrk/compact-js@npm:2.5.3::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-js%2F2.5.3%2F9f3cf6f7cd312f7045e15f93b1fdbd5a4b85727a"
   dependencies:
-    "@effect/platform": "npm:^0.95.0"
+    "@effect/platform": "npm:^0.96.1"
     "@midnight-ntwrk/compact-runtime": "npm:0.16.0"
-    "@midnight-ntwrk/ledger-v8": "npm:^8.0.3"
+    "@midnight-ntwrk/ledger-v9": "npm:^0.1.0-alpha.1"
     "@midnight-ntwrk/platform-js": "npm:^2.2.4"
     effect: "npm:^3.20.0"
     tslib: "npm:^2.8.1"
-  checksum: 10/ee041b88d8fd43dc63f8cbb6b02f2eb0d6445921633b032e1dd3e909c75be8ca8f311cee70d16a9d06795bbb94172d2a6797799ee3870f29a8aa42e7e3e153b6
+  checksum: 10/acb276b226bd190a0fbc833275e9bda8a89386166261346f623a9e25d0bee59456bb36aa1a734e26564ad48fd7fdfe9d91d87307d5ba6f3d650da153ae68c6b9
   languageName: node
   linkType: hard
 
@@ -1755,6 +1755,13 @@ __metadata:
   version: 8.1.0
   resolution: "@midnight-ntwrk/ledger-v8@npm:8.1.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fledger-v8%2F8.1.0%2Fc42ed442b6c8c79e28ca5fc13a8764f31eab2f73"
   checksum: 10/10d56076b0333a502f157c816f8cfebefc8d50221cb20c6db15abcbf2d0092bdaf7e9bc1bd19a6d9f51455547c713c916cb16d4a7d18e83cba0e172ad6e2a507
+  languageName: node
+  linkType: hard
+
+"@midnight-ntwrk/ledger-v9@npm:^0.1.0-alpha.1":
+  version: 0.1.0-alpha.1
+  resolution: "@midnight-ntwrk/ledger-v9@npm:0.1.0-alpha.1::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fledger-v9%2F0.1.0-alpha.1%2Fa5533dc1678f37cdb57e586f85b5b4e885e80622"
+  checksum: 10/ed6408bea78de5c67e65e586538afce238b9c72b22f1f203cad7ad1c58c5c62fec7236358edc6d92805e4d7fe81c44943bc40d5166ae76b1ae728f17f65fb6bc
   languageName: node
   linkType: hard
 
@@ -1944,7 +1951,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-protocol@workspace:packages/protocol"
   dependencies:
-    "@midnight-ntwrk/compact-js": "npm:2.5.1"
+    "@midnight-ntwrk/compact-js": "npm:2.5.3"
     "@midnight-ntwrk/compact-runtime": "npm:0.16.0"
     "@midnight-ntwrk/platform-js": "npm:2.2.4"
     "@midnightntwrk/ledger-v9": "npm:0.1.0-rc.1"
