@@ -6,32 +6,52 @@
 
 # Function: indexerPublicDataProvider()
 
-> **indexerPublicDataProvider**(`queryURL`, `subscriptionURL`, `webSocketImpl?`): [`PublicDataProvider`](#)
+## Call Signature
 
-Constructs a [PublicDataProvider](#) based on an [ApolloClient](#).
+> **indexerPublicDataProvider**(`config`): [`IndexerPublicDataProvider`](../classes/IndexerPublicDataProvider.md)
 
-## Parameters
+Constructs an indexer-backed `PublicDataProvider`.
 
-### queryURL
+Two call forms:
+1. Object-config (preferred): `indexerPublicDataProvider({ queryURL, subscriptionURL, webSocket?, pollInterval? })`.
+2. Positional (deprecated, retained for backward compatibility): `indexerPublicDataProvider(queryURL, subscriptionURL, webSocket?)`.
+
+The returned concrete `IndexerPublicDataProvider` exposes `dispose()` to
+release the WebSocket connection and Apollo state. Always call it on
+long-running providers.
+
+### Parameters
+
+#### config
+
+[`IndexerProviderConfig`](../type-aliases/IndexerProviderConfig.md)
+
+### Returns
+
+[`IndexerPublicDataProvider`](../classes/IndexerPublicDataProvider.md)
+
+## Call Signature
+
+> **indexerPublicDataProvider**(`queryURL`, `subscriptionURL`, `webSocket?`): [`IndexerPublicDataProvider`](../classes/IndexerPublicDataProvider.md)
+
+### Parameters
+
+#### queryURL
 
 `string`
 
-The URL of a GraphQL server query endpoint.
-
-### subscriptionURL
+#### subscriptionURL
 
 `string`
 
-The URL of a GraphQL server subscription (websocket) endpoint.
+#### webSocket?
 
-### webSocketImpl?
+*typeof* `WebSocket`
 
-*typeof* `WebSocket` = `ws.WebSocket`
+### Returns
 
-An optional websocket implementation for the Apollo client to use.
+[`IndexerPublicDataProvider`](../classes/IndexerPublicDataProvider.md)
 
-TODO: Re-examine caching when 'ContractCall' and 'ContractDeploy' have transaction identifiers included.
+### Deprecated
 
-## Returns
-
-[`PublicDataProvider`](#)
+Use the `IndexerProviderConfig` overload.

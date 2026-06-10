@@ -20,6 +20,7 @@ Consumers can catch any indexer error with a single `instanceof IndexerError` ch
 - [`IndexerDataError`](IndexerDataError.md)
 - [`IndexerSubscriptionDataError`](IndexerSubscriptionDataError.md)
 - [`IndexerProviderConfigError`](IndexerProviderConfigError.md)
+- [`IndexerInvariantError`](IndexerInvariantError.md)
 
 ## Constructors
 

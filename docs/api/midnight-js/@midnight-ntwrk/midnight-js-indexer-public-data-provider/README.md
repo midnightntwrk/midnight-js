@@ -11,21 +11,32 @@
 - [IndexerDataError](classes/IndexerDataError.md)
 - [IndexerError](classes/IndexerError.md)
 - [IndexerFormattedError](classes/IndexerFormattedError.md)
+- [IndexerInvariantError](classes/IndexerInvariantError.md)
 - [IndexerProviderConfigError](classes/IndexerProviderConfigError.md)
+- [IndexerPublicDataProvider](classes/IndexerPublicDataProvider.md)
 - [IndexerQueryError](classes/IndexerQueryError.md)
 - [IndexerSubscriptionDataError](classes/IndexerSubscriptionDataError.md)
 
 ## Type Aliases
 
 - [IndexerDataErrorContext](type-aliases/IndexerDataErrorContext.md)
+- [IndexerProviderConfig](type-aliases/IndexerProviderConfig.md)
 - [IndexerSubscriptionField](type-aliases/IndexerSubscriptionField.md)
 - [IndexerUtxo](type-aliases/IndexerUtxo.md)
+
+## Variables
+
+- [DEFAULT\_POLL\_INTERVAL](variables/DEFAULT_POLL_INTERVAL.md)
 
 ## Functions
 
 - [correlateDeployTxId](functions/correlateDeployTxId.md)
 - [indexerPublicDataProvider](functions/indexerPublicDataProvider.md)
 - [isRegularTransaction](functions/isRegularTransaction.md)
+- [parseHexContractState](functions/parseHexContractState.md)
+- [parseHexLedgerParameters](functions/parseHexLedgerParameters.md)
+- [parseHexTransaction](functions/parseHexTransaction.md)
+- [parseHexZswapState](functions/parseHexZswapState.md)
 - [toSegmentStatus](functions/toSegmentStatus.md)
 - [toSegmentStatusMap](functions/toSegmentStatusMap.md)
 - [toTxStatus](functions/toTxStatus.md)
