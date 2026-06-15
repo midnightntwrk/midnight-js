@@ -56,6 +56,16 @@ export type ApolloHandle = {
  * is out of scope for the Phase 1–2 restructure.
  */
 export const createApolloClient = (validated: ValidatedConfig): ApolloHandle => {
+  /**
+   * `cross-fetch` resolves to `node-fetch` in Node (which sends
+   * `Accept-Encoding: gzip,deflate,br` by default) and to the platform `fetch`
+   * in browsers (which negotiates compression natively). This satisfies the
+   * upcoming indexer 4.4.0 HTTP-response compression contract without any
+   * configuration here. A unit test was attempted but cannot reliably
+   * intercept `cross-fetch` because the import is resolved at module-load
+   * time by earlier-running tests in the same file via vitest's hoisted
+   * `vi.mock`; see issue #976 for the design rationale.
+   */
   const httpLink = new HttpLink({ fetch, uri: validated.queryURLString });
   const retryLink = new RetryLink({
     delay: {

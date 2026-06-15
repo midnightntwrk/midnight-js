@@ -148,31 +148,3 @@ describe('createApolloClient — dispose lifecycle', () => {
     expect(wsClientDisposeSpy).toHaveBeenCalledTimes(1);
   });
 });
-
-describe('createApolloClient — HTTP transport', () => {
-  test('HttpLink fetch sends Accept-Encoding so the indexer can return compressed responses', async () => {
-    const fetchSpy = vi.fn(async () => new Response(JSON.stringify({ data: {} }), {
-      status: 200,
-      headers: { 'content-type': 'application/json' }
-    }));
-    vi.doMock('cross-fetch', () => ({ default: fetchSpy }));
-
-    vi.resetModules();
-    const { validateConfig } = await import('../config');
-    const { createApolloClient } = await import('../transport');
-    const { gql } = await import('@apollo/client/core');
-    const validated = validateConfig({
-      queryURL: 'http://localhost:4000/graphql',
-      subscriptionURL: 'ws://localhost:4000/graphql/ws'
-    });
-    const { client } = createApolloClient(validated);
-
-    await client.query({ query: gql`query Ping { __typename }` });
-
-    const headers = (fetchSpy.mock.calls[0]?.[1] as { headers?: Record<string, string> } | undefined)?.headers ?? {};
-    const accepted = (headers['accept-encoding'] ?? headers['Accept-Encoding'] ?? '').toLowerCase();
-    // node-fetch sets this implicitly; we accept either an explicit value or rely on the runtime adding it.
-    // If the runtime does it, the spy won't see it — in that case we still want to fail loudly if the runtime is wrong.
-    expect(typeof accepted === 'string').toBe(true);
-  });
-});
