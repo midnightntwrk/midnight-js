@@ -145,6 +145,25 @@ jobs:
           ./scripts/build-compactc.sh
           echo "COMPACT_HOME=$GITHUB_WORKSPACE/.compact-home" >> "$GITHUB_ENV"
 
+      # Pair the compactc opt-in with @midnight-ntwrk/compact-runtime built
+      # from the same submodule. The runtime is laid out at .compact-runtime-home
+      # and pulled into the workspace via a Yarn portal: resolution; without it,
+      # protocol/package.json would still consume the npm-published runtime,
+      # which can pair-mismatch a feature-branch compactc.
+      - name: Build compact-runtime from submodule
+        if: steps.compactc-mode.outputs.should_build == 'true'
+        run: ./scripts/build-compact-runtime.sh
+
+      - name: Inject portal:./.compact-runtime-home resolution
+        if: steps.compactc-mode.outputs.should_build == 'true'
+        run: node scripts/use-source-compact-runtime.js
+
+      - name: Re-install dependencies with portal resolution
+        if: steps.compactc-mode.outputs.should_build == 'true'
+        # package.json was mutated by the previous step, so yarn install must
+        # run without --immutable to materialize the portal: link.
+        run: yarn install
+
       - name: Run build
         run: yarn build ${{ inputs.yarn_filter }} --cache-dir ./turbo
         env:

@@ -301,6 +301,37 @@ CI, either trigger the `CI` workflow via `workflow_dispatch` with input
 `compactc_source=submodule`, or add the `compactc-from-source` label to your
 pull request.
 
+### Pairing with `@midnight-ntwrk/compact-runtime` from the same submodule
+
+A feature-branch compactc can emit code that requires a paired
+`@midnight-ntwrk/compact-runtime`. Build the runtime npm package from the
+same submodule and point Yarn at it via a `portal:` resolution:
+
+```bash
+# Path A: native nix
+./scripts/build-compact-runtime.sh
+
+# Path B: Docker (no host nix)
+./scripts/build-compact-runtime-docker.sh
+
+# Inject the resolution into root package.json, then install.
+node scripts/use-source-compact-runtime.js
+yarn install   # without --immutable; the previous step mutated package.json
+```
+
+`packages/protocol` (the only consumer) now resolves to
+`./.compact-runtime-home/`. To revert when done:
+
+```bash
+node scripts/use-source-compact-runtime.js --restore
+yarn install
+```
+
+In CI, the same `compactc-from-source` opt-in (PR label or workflow_dispatch
+input `compactc_source=submodule`) builds both compactc and compact-runtime
+and injects the portal resolution before `yarn build` — so the pair is
+always coherent.
+
 ## Troubleshooting
 
 See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for common issues and solutions.
