@@ -15,6 +15,8 @@
 
 import type * as ws from 'isomorphic-ws';
 
+import { inflate } from './inflate';
+
 const DEFLATE_PROTOCOL = 'graphql-transport-ws+deflate';
 
 const offerDeflate = (protocols?: string | string[]): string[] => {
@@ -26,10 +28,95 @@ const offerDeflate = (protocols?: string | string[]): string[] => {
     : [DEFLATE_PROTOCOL, ...requested];
 };
 
+/**
+ * Normalize a binary WebSocket payload to ArrayBuffer.
+ *
+ * The browser native `WebSocket` with `binaryType = 'arraybuffer'` delivers
+ * `ArrayBuffer`. The Node `ws` package can deliver `Buffer` (a `Uint8Array`
+ * subclass) regardless of `binaryType` for some receive paths, so we accept
+ * any `ArrayBufferView` and produce a tightly-sliced `ArrayBuffer`.
+ *
+ * Returns `null` for non-binary inputs (string, anything else) so the
+ * caller can treat them as passthrough.
+ */
+const toArrayBuffer = (data: unknown): ArrayBuffer | null => {
+  if (data instanceof ArrayBuffer) return data;
+  if (ArrayBuffer.isView(data)) {
+    const view = data as ArrayBufferView;
+    return view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength);
+  }
+  return null;
+};
+
 export const wrapWithDeflate = (Base: typeof ws.WebSocket): typeof ws.WebSocket => {
   return class DeflateWebSocket extends (Base as unknown as typeof WebSocket) {
+    /** Serializes async inflate so binary frames cannot overtake later text frames. */
+    private __deliveryQueue: Promise<void> = Promise.resolve();
+    /** Set to true on `close` — gates pending deliveries to avoid post-teardown work. */
+    private __closed = false;
+
     constructor(url: string | URL, protocols?: string | string[]) {
       super(url, offerDeflate(protocols));
+      this.binaryType = 'arraybuffer';
+      // Use the base class's listener slot — we don't want close handling to
+      // route through our own addEventListener override.
+      // Guard: some test stubs extend plain classes without addEventListener.
+      if (typeof super.addEventListener === 'function') {
+        super.addEventListener('close', () => {
+          this.__closed = true;
+          // Swallow any pending inflate rejections to prevent unhandled rejections
+          // surfacing after consumers have already torn down.
+          this.__deliveryQueue = this.__deliveryQueue.catch(() => undefined);
+        });
+      }
+    }
+
+    private __deliver(listener: (ev: MessageEvent) => void, original: MessageEvent): void {
+      const binary = this.protocol === DEFLATE_PROTOCOL ? toArrayBuffer(original.data) : null;
+      if (binary !== null) {
+        this.__deliveryQueue = this.__deliveryQueue.then(async () => {
+          if (this.__closed) return;
+          const text = await inflate(binary);
+          if (this.__closed) return;
+          listener(new MessageEvent('message', { data: text }));
+        });
+      } else {
+        this.__deliveryQueue = this.__deliveryQueue.then(() => {
+          if (this.__closed) return;
+          listener(original);
+        });
+      }
+    }
+
+    addEventListener<K extends keyof WebSocketEventMap>(
+      type: K,
+      listener: ((this: WebSocket, ev: WebSocketEventMap[K]) => unknown) | EventListenerObject | null,
+      options?: boolean | AddEventListenerOptions
+    ): void {
+      if (type === 'message' && typeof listener === 'function') {
+        const wrapped = (ev: Event): void => {
+          this.__deliver(listener as (ev: MessageEvent) => void, ev as MessageEvent);
+        };
+        super.addEventListener(type, wrapped as EventListener, options);
+        return;
+      }
+      super.addEventListener(type, listener as EventListener, options);
+    }
+
+    override set onmessage(handler: ((this: WebSocket, ev: MessageEvent) => unknown) | null) {
+      const base = Object.getPrototypeOf(Object.getPrototypeOf(this)) as { onmessage: typeof handler };
+      if (handler === null) {
+        base.onmessage = null;
+        return;
+      }
+      base.onmessage = (ev: MessageEvent): void => {
+        this.__deliver(handler as (ev: MessageEvent) => void, ev);
+      };
+    }
+
+    override get onmessage(): ((this: WebSocket, ev: MessageEvent) => unknown) | null {
+      const base = Object.getPrototypeOf(Object.getPrototypeOf(this)) as { onmessage: ((this: WebSocket, ev: MessageEvent) => unknown) | null };
+      return base.onmessage;
     }
   } as unknown as typeof ws.WebSocket;
 };
