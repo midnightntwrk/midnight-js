@@ -18,17 +18,13 @@ const decoder = new TextDecoder('utf-8', { fatal: true });
 /**
  * Hard upper bound on a single inflated subscription frame. A malicious or
  * buggy indexer could exploit zlib's high compression ratio on uniform data
- * to send a small frame that expands gigabytes ("compression bomb"). 16 MiB
- * comfortably accommodates the largest legitimate wallet-sync block update
- * while keeping a worst-case crash well below typical heap budgets.
+ * to send a small frame that expands gigabytes ("compression bomb").
  */
 export const MAX_INFLATED_BYTES = 16 * 1024 * 1024;
 
 /**
  * Inflate an RFC 1950 (zlib) compressed payload into its UTF-8 JSON string,
- * aborting if the inflated size exceeds {@link MAX_INFLATED_BYTES}. Used by
- * the deflate WebSocket wrapper to decode binary subscription frames from
- * indexer 4.4.0+ when `graphql-transport-ws+deflate` is negotiated.
+ * aborting if the inflated size exceeds {@link MAX_INFLATED_BYTES}.
  */
 export const inflate = async (data: ArrayBuffer): Promise<string> => {
   if (typeof globalThis.DecompressionStream !== 'function') {

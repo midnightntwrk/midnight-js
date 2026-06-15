@@ -17,7 +17,7 @@ import type * as ws from 'isomorphic-ws';
 
 import { inflate } from './inflate';
 
-const DEFLATE_PROTOCOL = 'graphql-transport-ws+deflate';
+export const DEFLATE_PROTOCOL = 'graphql-transport-ws+deflate';
 
 /** Minimal logger surface — compatible with Pino's `error(obj, msg)` shape and `console.error`. */
 export type DeflateLogger = {
@@ -34,15 +34,11 @@ const offerDeflate = (protocols?: string | string[]): string[] => {
 };
 
 /**
- * Normalize a binary WebSocket payload to ArrayBuffer.
- *
- * The browser native `WebSocket` with `binaryType = 'arraybuffer'` delivers
- * `ArrayBuffer`. The Node `ws` package can deliver `Buffer` (a `Uint8Array`
- * subclass) regardless of `binaryType` for some receive paths, so we accept
- * any `ArrayBufferView` and produce a tightly-sliced `ArrayBuffer`.
- *
- * Returns `null` for non-binary inputs (string, anything else) so the
- * caller can treat them as passthrough.
+ * Normalize any binary WebSocket frame payload to a plain `ArrayBuffer`.
+ * Accepts native `ArrayBuffer` and any `ArrayBufferView` (e.g. `Uint8Array`,
+ * `Buffer`) — narrowed against `SharedArrayBuffer` since the inflate stream
+ * requires a non-shared backing. Returns `null` for non-binary inputs so the
+ * caller can treat them as text passthrough.
  */
 const toArrayBuffer = (data: unknown): ArrayBuffer | null => {
   if (data instanceof ArrayBuffer) return data;
@@ -82,7 +78,6 @@ export const wrapWithDeflate = <T extends typeof ws.WebSocket>(
   return class DeflateWebSocket extends (Base as unknown as typeof WebSocket) {
     /** Serializes async inflate so binary frames cannot overtake later text frames. */
     private __deliveryQueue: Promise<void> = Promise.resolve();
-    /** Set to true on `close` — gates pending deliveries to avoid post-teardown work. */
     private __closed = false;
     /** User-supplied onmessage handler (the one returned by `get onmessage`). */
     private __onmessage: ((this: WebSocket, ev: MessageEvent) => unknown) | null = null;

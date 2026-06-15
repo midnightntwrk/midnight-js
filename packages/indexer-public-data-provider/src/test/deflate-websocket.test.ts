@@ -18,7 +18,7 @@ import { deflateSync } from 'node:zlib';
 import type * as ws from 'isomorphic-ws';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
-import { wrapWithDeflate } from '../deflate-websocket';
+import { DEFLATE_PROTOCOL, wrapWithDeflate } from '../deflate-websocket';
 
 describe('wrapWithDeflate — subprotocol negotiation', () => {
   test('offers only the deflate protocol when no protocols argument is passed', () => {
@@ -35,7 +35,7 @@ describe('wrapWithDeflate — subprotocol negotiation', () => {
 
     expect(baseCtor).toHaveBeenCalledWith(
       'ws://localhost/graphql/ws',
-      ['graphql-transport-ws+deflate']
+      [DEFLATE_PROTOCOL]
     );
   });
 
@@ -53,7 +53,7 @@ describe('wrapWithDeflate — subprotocol negotiation', () => {
 
     expect(baseCtor).toHaveBeenCalledWith(
       'ws://localhost/graphql/ws',
-      ['graphql-transport-ws+deflate', 'graphql-transport-ws']
+      [DEFLATE_PROTOCOL, 'graphql-transport-ws']
     );
   });
 
@@ -71,7 +71,7 @@ describe('wrapWithDeflate — subprotocol negotiation', () => {
 
     expect(baseCtor).toHaveBeenCalledWith(
       'ws://localhost/graphql/ws',
-      ['graphql-transport-ws+deflate', 'graphql-transport-ws', 'graphql-ws']
+      [DEFLATE_PROTOCOL, 'graphql-transport-ws', 'graphql-ws']
     );
   });
 
@@ -85,11 +85,11 @@ describe('wrapWithDeflate — subprotocol negotiation', () => {
     }
     const Wrapped = wrapWithDeflate(BaseWS as unknown as typeof ws.WebSocket);
 
-    new Wrapped('ws://localhost/graphql/ws', ['graphql-transport-ws+deflate', 'graphql-transport-ws']);
+    new Wrapped('ws://localhost/graphql/ws', [DEFLATE_PROTOCOL, 'graphql-transport-ws']);
 
     expect(baseCtor).toHaveBeenCalledWith(
       'ws://localhost/graphql/ws',
-      ['graphql-transport-ws+deflate', 'graphql-transport-ws']
+      [DEFLATE_PROTOCOL, 'graphql-transport-ws']
     );
   });
 });
@@ -153,9 +153,18 @@ describe('wrapWithDeflate — message delivery', () => {
     vi.restoreAllMocks();
   });
 
+  // Awaits the wrapper's internal delivery queue to flush all pending async inflate work.
+  // The cast is intentional: __deliveryQueue is a private implementation detail accessed
+  // here only for deterministic test awaiting (avoids arbitrary setTimeout delays).
+  const flushDelivery = async (sock: FakeWS): Promise<void> => {
+    // The wrapper's __deliveryQueue is replaced on each delivery, not mutated.
+    // Awaiting the current reference flushes everything queued up to this point.
+    await (sock as unknown as { __deliveryQueue: Promise<void> }).__deliveryQueue;
+  };
+
   test('inflates binary frames when the +deflate protocol was negotiated (addEventListener path)', async () => {
     const sock = new Wrapped('ws://x', 'graphql-transport-ws') as unknown as FakeWS;
-    sock.protocol = 'graphql-transport-ws+deflate';
+    sock.protocol = DEFLATE_PROTOCOL;
     const seen: unknown[] = [];
     sock.addEventListener('message', (ev) => seen.push((ev as MessageEvent).data));
 
@@ -163,13 +172,13 @@ describe('wrapWithDeflate — message delivery', () => {
     const compressed = deflateSync(Buffer.from(payload, 'utf8'));
     sock.__push(compressed.buffer.slice(compressed.byteOffset, compressed.byteOffset + compressed.byteLength));
 
-    await new Promise((r) => setTimeout(r, 20));
+    await flushDelivery(sock);
     expect(seen).toEqual([payload]);
   });
 
   test('inflates binary frames via the onmessage setter path', async () => {
     const sock = new Wrapped('ws://x', 'graphql-transport-ws') as unknown as FakeWS;
-    sock.protocol = 'graphql-transport-ws+deflate';
+    sock.protocol = DEFLATE_PROTOCOL;
     const seen: unknown[] = [];
     sock.onmessage = (ev) => seen.push(ev.data);
 
@@ -177,25 +186,25 @@ describe('wrapWithDeflate — message delivery', () => {
     const compressed = deflateSync(Buffer.from(payload, 'utf8'));
     sock.__push(compressed.buffer.slice(compressed.byteOffset, compressed.byteOffset + compressed.byteLength));
 
-    await new Promise((r) => setTimeout(r, 20));
+    await flushDelivery(sock);
     expect(seen).toEqual([payload]);
   });
 
   test('passes text frames through unchanged (server skipped compression on <256 B)', async () => {
     const sock = new Wrapped('ws://x', 'graphql-transport-ws') as unknown as FakeWS;
-    sock.protocol = 'graphql-transport-ws+deflate';
+    sock.protocol = DEFLATE_PROTOCOL;
     const seen: unknown[] = [];
     sock.addEventListener('message', (ev) => seen.push((ev as MessageEvent).data));
 
     sock.__push('{"type":"pong"}');
 
-    await new Promise((r) => setTimeout(r, 0));
+    await flushDelivery(sock);
     expect(seen).toEqual(['{"type":"pong"}']);
   });
 
   test('preserves delivery order when text and binary frames interleave', async () => {
     const sock = new Wrapped('ws://x', 'graphql-transport-ws') as unknown as FakeWS;
-    sock.protocol = 'graphql-transport-ws+deflate';
+    sock.protocol = DEFLATE_PROTOCOL;
     const seen: string[] = [];
     sock.addEventListener('message', (ev) => seen.push(String((ev as MessageEvent).data)));
 
@@ -205,7 +214,7 @@ describe('wrapWithDeflate — message delivery', () => {
     const thirdBinary = deflateSync(Buffer.from('{"id":"3"}', 'utf8'));
     sock.__push(thirdBinary.buffer.slice(thirdBinary.byteOffset, thirdBinary.byteOffset + thirdBinary.byteLength));
 
-    await new Promise((r) => setTimeout(r, 50));
+    await flushDelivery(sock);
     expect(seen).toEqual(['{"id":"1"}', '{"id":"2"}', '{"id":"3"}']);
   });
 
@@ -219,7 +228,7 @@ describe('wrapWithDeflate — message delivery', () => {
     sock.__push(buf);
     sock.__push('{"type":"pong"}');
 
-    await new Promise((r) => setTimeout(r, 0));
+    await flushDelivery(sock);
     expect(seen).toEqual([buf, '{"type":"pong"}']);
   });
 
@@ -233,7 +242,7 @@ describe('wrapWithDeflate — message delivery', () => {
     // The Node `ws` package may deliver binary frames as Buffer (a Uint8Array subclass)
     // regardless of binaryType — the wrapper must handle that, not just ArrayBuffer.
     const sock = new Wrapped('ws://x', 'graphql-transport-ws') as unknown as FakeWS;
-    sock.protocol = 'graphql-transport-ws+deflate';
+    sock.protocol = DEFLATE_PROTOCOL;
     const seen: unknown[] = [];
     sock.addEventListener('message', (ev) => seen.push((ev as MessageEvent).data));
 
@@ -242,53 +251,57 @@ describe('wrapWithDeflate — message delivery', () => {
     // Push the Buffer directly (NOT .buffer) — simulates ws-package behavior.
     sock.__push(compressed as unknown as ArrayBuffer);
 
-    await new Promise((r) => setTimeout(r, 20));
+    await flushDelivery(sock);
     expect(seen).toEqual([payload]);
   });
 
   test('drops a frame whose inflate throws and continues delivering subsequent frames (queue not poisoned, no unhandled rejection)', async () => {
     const sock = new Wrapped('ws://x', 'graphql-transport-ws') as unknown as FakeWS;
-    sock.protocol = 'graphql-transport-ws+deflate';
+    sock.protocol = DEFLATE_PROTOCOL;
     const seen: unknown[] = [];
     sock.addEventListener('message', (ev) => seen.push((ev as MessageEvent).data));
     const unhandled = vi.fn();
     process.on('unhandledRejection', unhandled);
+    try {
+      // First frame: garbage that inflate will reject.
+      const garbage = new Uint8Array([0xde, 0xad, 0xbe, 0xef]).buffer;
+      sock.__push(garbage);
+      // Second frame: a valid compressed payload that must still be delivered.
+      const good = deflateSync(Buffer.from('{"id":"survives"}', 'utf8'));
+      sock.__push(good.buffer.slice(good.byteOffset, good.byteOffset + good.byteLength));
 
-    // First frame: garbage that inflate will reject.
-    const garbage = new Uint8Array([0xde, 0xad, 0xbe, 0xef]).buffer;
-    sock.__push(garbage);
-    // Second frame: a valid compressed payload that must still be delivered.
-    const good = deflateSync(Buffer.from('{"id":"survives"}', 'utf8'));
-    sock.__push(good.buffer.slice(good.byteOffset, good.byteOffset + good.byteLength));
-
-    await new Promise((r) => setTimeout(r, 50));
-    expect(seen).toEqual(['{"id":"survives"}']);
-    expect(unhandled).not.toHaveBeenCalled();
-    process.off('unhandledRejection', unhandled);
+      await flushDelivery(sock);
+      expect(seen).toEqual(['{"id":"survives"}']);
+      expect(unhandled).not.toHaveBeenCalled();
+    } finally {
+      process.off('unhandledRejection', unhandled);
+    }
   });
 
   test('drops queued frames delivered after the socket has closed (no unhandled rejection)', async () => {
     const sock = new Wrapped('ws://x', 'graphql-transport-ws') as unknown as FakeWS;
-    sock.protocol = 'graphql-transport-ws+deflate';
+    sock.protocol = DEFLATE_PROTOCOL;
     const seen: unknown[] = [];
     sock.addEventListener('message', (ev) => seen.push((ev as MessageEvent).data));
     const unhandled = vi.fn();
     process.on('unhandledRejection', unhandled);
+    try {
+      const compressed = deflateSync(Buffer.from('{"id":"late"}', 'utf8'));
+      sock.__push(compressed.buffer.slice(compressed.byteOffset, compressed.byteOffset + compressed.byteLength));
+      // Synchronously emit close BEFORE the inflate promise resolves.
+      sock.dispatchEvent(new Event('close'));
 
-    const compressed = deflateSync(Buffer.from('{"id":"late"}', 'utf8'));
-    sock.__push(compressed.buffer.slice(compressed.byteOffset, compressed.byteOffset + compressed.byteLength));
-    // Synchronously emit close BEFORE the inflate promise resolves.
-    sock.dispatchEvent(new Event('close'));
-
-    await new Promise((r) => setTimeout(r, 20));
-    expect(seen).toEqual([]);
-    expect(unhandled).not.toHaveBeenCalled();
-    process.off('unhandledRejection', unhandled);
+      await flushDelivery(sock);
+      expect(seen).toEqual([]);
+      expect(unhandled).not.toHaveBeenCalled();
+    } finally {
+      process.off('unhandledRejection', unhandled);
+    }
   });
 
   test('routes binary frames through EventListenerObject.handleEvent with correct `this` binding', async () => {
     const sock = new Wrapped('ws://x', 'graphql-transport-ws') as unknown as FakeWS;
-    sock.protocol = 'graphql-transport-ws+deflate';
+    sock.protocol = DEFLATE_PROTOCOL;
     const seen: unknown[] = [];
     // Use a spy so vitest records the call's `this` context via `.mock.instances`.
     const listenerObj = {
@@ -303,7 +316,7 @@ describe('wrapWithDeflate — message delivery', () => {
     const compressed = deflateSync(Buffer.from(payload, 'utf8'));
     sock.__push(compressed.buffer.slice(compressed.byteOffset, compressed.byteOffset + compressed.byteLength));
 
-    await new Promise((r) => setTimeout(r, 20));
+    await flushDelivery(sock);
     expect(seen).toEqual([payload]);
     // `.mock.instances[0]` is the value of `this` at the time of the first call.
     expect(listenerObj.handleEvent.mock.instances[0]).toBe(listenerObj);
@@ -322,8 +335,8 @@ describe('wrapWithDeflate — message delivery', () => {
   test('isolates onmessage handlers across multiple wrapped instances (no prototype pollution)', async () => {
     const sock1 = new Wrapped('ws://x/1', 'graphql-transport-ws') as unknown as FakeWS;
     const sock2 = new Wrapped('ws://x/2', 'graphql-transport-ws') as unknown as FakeWS;
-    sock1.protocol = 'graphql-transport-ws+deflate';
-    sock2.protocol = 'graphql-transport-ws+deflate';
+    sock1.protocol = DEFLATE_PROTOCOL;
+    sock2.protocol = DEFLATE_PROTOCOL;
 
     const seen1: unknown[] = [];
     const seen2: unknown[] = [];
@@ -339,7 +352,8 @@ describe('wrapWithDeflate — message delivery', () => {
     sock1.__push(c1.buffer.slice(c1.byteOffset, c1.byteOffset + c1.byteLength));
     sock2.__push(c2.buffer.slice(c2.byteOffset, c2.byteOffset + c2.byteLength));
 
-    await new Promise((r) => setTimeout(r, 20));
+    await flushDelivery(sock1);
+    await flushDelivery(sock2);
     expect(seen1).toEqual([payload1]);
     expect(seen2).toEqual([payload2]);
   });
