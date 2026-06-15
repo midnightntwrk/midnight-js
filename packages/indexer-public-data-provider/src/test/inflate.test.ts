@@ -56,10 +56,11 @@ describe('inflate', () => {
     expect(result).toBe(payload);
   });
 
-  test('rejects on malformed input', async () => {
+  test('rejects on malformed input with a zlib data error', async () => {
     const garbage = new Uint8Array([0xde, 0xad, 0xbe, 0xef]).buffer;
 
-    await expect(inflate(garbage)).rejects.toThrow();
+    await expect(inflate(garbage)).rejects.toThrow(TypeError);
+    await expect(inflate(garbage)).rejects.toMatchObject({ cause: expect.objectContaining({ code: 'Z_DATA_ERROR' }) });
   });
 
   test('rejects when the inflated payload exceeds MAX_INFLATED_BYTES (compression-bomb guard)', async () => {
