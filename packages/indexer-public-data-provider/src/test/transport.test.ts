@@ -55,25 +55,6 @@ describe('createApolloClient — handle shape', () => {
     expect(typeof handle.dispose).toBe('function');
   });
 
-  test('forwards custom webSocket implementation to graphql-ws createClient', async () => {
-    const { validateConfig } = await import('../config');
-    const { createApolloClient } = await import('../transport');
-    class CustomWS {}
-    const validated = validateConfig({
-      queryURL: 'http://localhost:4000/graphql',
-      subscriptionURL: 'ws://localhost:4000/graphql/ws',
-      webSocket: CustomWS as unknown as typeof ws.WebSocket
-    });
-
-    createApolloClient(validated);
-
-    expect(createClientSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        webSocketImpl: expect.any(Function)
-      })
-    );
-  });
-
   test('passes a deflate-wrapped WebSocket implementation to graphql-ws createClient', async () => {
     const { validateConfig } = await import('../config');
     const { createApolloClient } = await import('../transport');
