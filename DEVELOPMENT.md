@@ -255,25 +255,46 @@ For feature-branch work against unreleased compactc, build the compiler from
 the `compact/` git submodule (pinned to LFDT-Minokawa/compact at the `0.31.0`
 release commit) instead of downloading the prebuilt binary.
 
-Prerequisites: [nix](https://nixos.org/download) installed locally.
+Two paths — pick based on what you have installed locally:
+
+**Path A: native nix build (fastest)**
+
+Prerequisites: [nix](https://nixos.org/download) on the host.
 
 ```bash
-# 1. Initialize the submodule (one-time)
 git submodule update --init compact
-
-# 2. Build compactc via nix and write the COMPACT_HOME wrapper
-./scripts/build-compactc.sh
-
-# 3. Reload direnv so COMPACT_HOME is exported into your shell
-direnv reload
+./scripts/build-compactc.sh   # nix builds, writes .compact-home/compactc
+direnv reload                  # exports COMPACT_HOME
 ```
 
-After the wrapper exists, `.envrc` auto-exports `COMPACT_HOME=$PWD/.compact-home`.
-`packages/compact` honours it: `fetch-compactc` skips the prebuilt download and
-`run-compactc` invokes `$COMPACT_HOME/compactc`.
+**Path B: Docker build (no host nix required)**
 
-To bump the pinned compactc version: update `compact/` submodule SHA, update
-`COMPACTC_VERSION` in `.envrc`, then re-run `./scripts/build-compactc.sh`.
+Prerequisites: Docker. Nix runs inside the container; no host toolchain
+needed. Each `compactc` invocation pays Docker startup overhead (~1–2 s on
+macOS), so this is slower per-call than Path A.
+
+```bash
+git submodule update --init compact
+./scripts/build-compactc-docker.sh   # builds Docker image, writes host wrapper
+direnv reload                         # exports COMPACT_HOME
+```
+
+The host wrapper at `.compact-home/compactc` proxies each invocation into the
+built image (`midnight-js-compactc-local:latest`).
+
+---
+
+After either path, `.envrc` auto-exports `COMPACT_HOME=$PWD/.compact-home`.
+`packages/compact` honours it: `fetch-compactc` skips the prebuilt download
+and `run-compactc` invokes `$COMPACT_HOME/compactc`.
+
+When `COMPACT_HOME` is set, `scripts/check-compiled.js` forces
+`yarn compact` to recompile the testkit's `.compact` contracts with the
+source-built compactc — otherwise the committed `src/contract/compiled/`
+artifacts (built against a previous compactc release) would silently be used.
+
+To bump the pinned compactc version: update the `compact/` submodule SHA,
+update `COMPACTC_VERSION` in `.envrc`, then re-run the build script.
 
 In CI, the prebuilt download is the default. To build from the submodule in
 CI, either trigger the `CI` workflow via `workflow_dispatch` with input

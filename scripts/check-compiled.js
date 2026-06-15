@@ -26,8 +26,12 @@ if (!compiledDirPath) {
 }
 
 const compiledDir = path.join(process.cwd(), compiledDirPath);
+const compactHome = process.env.COMPACT_HOME;
 
-if (!fs.existsSync(compiledDir)) {
+if (compactHome) {
+  console.log(`COMPACT_HOME=${compactHome} — forcing recompilation with source-built compactc.`);
+  execSync('yarn compact', { stdio: 'inherit' });
+} else if (!fs.existsSync(compiledDir)) {
   console.log(`Compiled directory not found at ${compiledDirPath}. Running yarn compact...`);
   execSync('yarn compact', { stdio: 'inherit' });
 } else {
