@@ -29,30 +29,22 @@
 
 set -euo pipefail
 
-repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-cd "$repo_root"
+# shellcheck source=./lib.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+cd "$REPO_ROOT"
 
-if [ ! -f compact/flake.nix ]; then
-  echo "error: compact submodule not initialized. Run: git submodule update --init compact" >&2
-  exit 1
-fi
-
-if ! command -v nix >/dev/null 2>&1; then
-  echo "error: nix is required to build compactc from the submodule." >&2
-  exit 1
-fi
+assert_submodule_initialized
+assert_command nix "building compactc from the submodule"
 
 # Output directory for the wrapper + nix gcroot. Defaults to `.compact-home`
 # at the repo root; `scripts/build-compactc-docker.sh` overrides it via
 # COMPACT_BUILD_OUT to install the bundle outside its runtime bind-mount target.
-home="${COMPACT_BUILD_OUT:-${repo_root}/.compact-home}"
+home="${COMPACT_BUILD_OUT:-${REPO_ROOT}/.compact-home}"
 mkdir -p "$home"
 
-# Flake reference for the compact build. Defaults to the local submodule as a
-# git working tree (picks up uncommitted edits). Overridable via
-# COMPACTC_FLAKE_REF (e.g., `path:/some/copy/of/compact` in environments where
-# the submodule has no `.git` directory).
-flake_ref="${COMPACTC_FLAKE_REF:-git+file://${repo_root}/compact}"
+# Default flake reference: `path:` works with paths containing spaces and
+# without a `.git` (unlike `git+file://`). Overridable via COMPACTC_FLAKE_REF.
+flake_ref="${COMPACTC_FLAKE_REF:-$(default_compact_flake_ref)}"
 
 # --out-link registers an indirect gcroot, so the built compiler survives
 # `nix-collect-garbage` and the wrapper keeps pointing at a live store path.

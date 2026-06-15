@@ -91,27 +91,17 @@ jobs:
       - name: Configure yarn
         run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
-      - name: Cache Turbo and Yarn dependencies
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # ratchet:actions/cache@v5.0.5
-        with:
-          path: |
-            **/node_modules
-            ~/.yarn
-            .turbo
-          key: turbo-testkit-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
-          restore-keys: |
-            turbo-testkit-${{ runner.os }}-
-
-      - name: Install dependencies
-        run: |
-          yarn install --immutable
-
       # Opt-in compactc build from the `compact/` submodule (feature-branch dev
       # against unreleased compactc). Activated by either:
       #   * workflow_dispatch input `compactc_source=submodule`, or
       #   * PR label `compactc-from-source`.
       # When active, `packages/compact/run-compactc` uses COMPACT_HOME and
-      # `fetch-compactc` skips the prebuilt-binary download.
+      # `fetch-compactc` skips the prebuilt-binary download; the source-built
+      # @midnight-ntwrk/compact-runtime is also injected before yarn install.
+      #
+      # Computed BEFORE the cache key so opt-in and default paths use disjoint
+      # cache buckets, preventing a mutated yarn.lock from one path from
+      # poisoning the other on subsequent runs.
       - name: Detect compactc build mode
         id: compactc-mode
         env:
@@ -125,6 +115,21 @@ jobs:
             echo "should_build=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Cache Turbo and Yarn dependencies
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # ratchet:actions/cache@v5.0.5
+        with:
+          path: |
+            **/node_modules
+            ~/.yarn
+            .turbo
+          key: turbo-testkit-${{ runner.os }}-${{ steps.compactc-mode.outputs.should_build }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
+          restore-keys: |
+            turbo-testkit-${{ runner.os }}-${{ steps.compactc-mode.outputs.should_build }}-
+
+      # Conditional compactc/runtime source build runs BEFORE yarn install so
+      # only a single install happens (no `--immutable` re-install after a
+      # mutated package.json). The portal/file resolution for the runtime is
+      # in place by the time yarn resolves the dependency tree.
       - name: Init compact submodule
         if: steps.compactc-mode.outputs.should_build == 'true'
         run: git submodule update --init --recursive compact
@@ -144,6 +149,24 @@ jobs:
         run: |
           ./scripts/build-compactc.sh
           echo "COMPACT_HOME=$GITHUB_WORKSPACE/.compact-home" >> "$GITHUB_ENV"
+
+      - name: Build compact-runtime from submodule
+        if: steps.compactc-mode.outputs.should_build == 'true'
+        run: ./scripts/build-compact-runtime.sh
+
+      - name: Inject file:./.compact-runtime-home resolution
+        if: steps.compactc-mode.outputs.should_build == 'true'
+        run: node scripts/use-source-compact-runtime.js
+
+      - name: Install dependencies (default path, immutable)
+        if: steps.compactc-mode.outputs.should_build != 'true'
+        run: yarn install --immutable
+
+      - name: Install dependencies (source-build opt-in)
+        if: steps.compactc-mode.outputs.should_build == 'true'
+        # package.json was mutated by the resolution-inject step, so yarn install
+        # must run without --immutable.
+        run: yarn install
 
       - name: Run build
         run: yarn build ${{ inputs.yarn_filter }} --cache-dir ./turbo

@@ -1,1 +1,2 @@
+node scripts/check-no-source-leak.js
 npx lint-staged
