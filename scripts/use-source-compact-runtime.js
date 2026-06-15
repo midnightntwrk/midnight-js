@@ -13,9 +13,13 @@
  * limitations under the License.
  */
 
-// Inject (or restore) a Yarn `portal:` resolution that points the
+// Inject (or restore) a Yarn `file:` resolution that points the
 // @midnight-ntwrk/compact-runtime dependency at the locally-built package
 // under `.compact-runtime-home/`. Run `yarn install` afterwards to materialize.
+//
+// Uses `file:` rather than `portal:` so Yarn installs the runtime's transitive
+// dependencies (e.g. @noble/hashes, object-inspect) into the root workspace.
+// `portal:` would symlink the package but skip its dependency tree.
 
 const fs = require('fs');
 const path = require('path');
@@ -23,14 +27,26 @@ const path = require('path');
 const repoRoot = path.resolve(__dirname, '..');
 const packageJsonPath = path.join(repoRoot, 'package.json');
 const runtimeHome = path.join(repoRoot, '.compact-runtime-home');
-const portalSpec = 'portal:./.compact-runtime-home';
+const sourceSpec = 'file:./.compact-runtime-home';
 const dependencyKey = '@midnight-ntwrk/compact-runtime';
 
-const args = new Set(process.argv.slice(2));
-const restore = args.has('--restore');
+const restore = process.argv.includes('--restore');
 
-const raw = fs.readFileSync(packageJsonPath, 'utf8');
-const pkg = JSON.parse(raw);
+let raw;
+try {
+  raw = fs.readFileSync(packageJsonPath, 'utf8');
+} catch (err) {
+  console.error(`Error reading ${packageJsonPath}: ${err.message}`);
+  process.exit(1);
+}
+
+let pkg;
+try {
+  pkg = JSON.parse(raw);
+} catch (err) {
+  console.error(`Error parsing ${packageJsonPath} as JSON: ${err.message}`);
+  process.exit(1);
+}
 
 function write(updated) {
   const next = JSON.stringify(updated, null, 2) + '\n';
@@ -42,15 +58,15 @@ function write(updated) {
 }
 
 if (restore) {
-  if (pkg.resolutions && pkg.resolutions[dependencyKey] === portalSpec) {
+  if (pkg.resolutions && pkg.resolutions[dependencyKey] === sourceSpec) {
     delete pkg.resolutions[dependencyKey];
     if (Object.keys(pkg.resolutions).length === 0) {
       delete pkg.resolutions;
     }
     write(pkg);
-    console.log(`Removed portal: resolution for ${dependencyKey}. Run 'yarn install' to materialize.`);
+    console.log(`Removed file: resolution for ${dependencyKey}. Run 'yarn install' to materialize.`);
   } else {
-    console.log(`No portal: resolution for ${dependencyKey} present; nothing to restore.`);
+    console.log(`No source-build resolution for ${dependencyKey} present; nothing to restore.`);
   }
   process.exit(0);
 }
@@ -64,7 +80,7 @@ if (!fs.existsSync(runtimePackageJson)) {
 }
 
 pkg.resolutions = pkg.resolutions || {};
-pkg.resolutions[dependencyKey] = portalSpec;
+pkg.resolutions[dependencyKey] = sourceSpec;
 write(pkg);
-console.log(`Injected portal: resolution for ${dependencyKey} → ${portalSpec}.`);
+console.log(`Injected file: resolution for ${dependencyKey} → ${sourceSpec}.`);
 console.log("Run 'yarn install' (without --immutable) to materialize.");

@@ -28,20 +28,14 @@
 
 set -euo pipefail
 
-repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-cd "$repo_root"
+# shellcheck source=./lib.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+cd "$REPO_ROOT"
 
-if [ ! -f compact/flake.nix ]; then
-  echo "error: compact submodule not initialized. Run: git submodule update --init compact" >&2
-  exit 1
-fi
+assert_submodule_initialized
+assert_command docker "building compactc without host nix"
 
-if ! command -v docker >/dev/null 2>&1; then
-  echo "error: docker is required to build compactc without host nix." >&2
-  exit 1
-fi
-
-home="${repo_root}/.compact-home"
+home="${REPO_ROOT}/.compact-home"
 mkdir -p "$home"
 
 image_tag="midnight-js-compactc-local:latest"
@@ -54,7 +48,7 @@ echo "Building compactc Docker image '$image_tag' (first build can be slow)..."
 #
 # The compactc bundle is installed at /compactc-home (NOT /work/.compact-home)
 # so the runtime bind-mount of the caller's CWD to /host-cwd cannot shadow it.
-docker build --tag "$image_tag" --file - "$repo_root" <<'DOCKERFILE'
+docker build --tag "$image_tag" --file - "$REPO_ROOT" <<'DOCKERFILE'
 FROM nixos/nix:latest
 # Append (don't clobber) so the base image's defaults survive. `extra-` merges
 # onto those defaults. sandbox=false because container runtimes usually lack
@@ -66,10 +60,10 @@ RUN mkdir -p /etc/nix && { \
     echo "extra-trusted-public-keys = hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="; \
   } >> /etc/nix/nix.conf
 COPY scripts/build-compactc.sh /opt/build-compactc/scripts/build-compactc.sh
+COPY scripts/lib.sh /opt/build-compactc/scripts/lib.sh
 COPY compact /opt/build-compactc/compact
 WORKDIR /opt/build-compactc
-# `git+file://` flake ref needs a `.git` (excluded by .dockerignore), so use
-# the path-flake override `scripts/build-compactc.sh` already supports.
+# `path:` flake ref tolerates the missing `.git` (excluded by .dockerignore).
 ENV COMPACTC_FLAKE_REF=path:/opt/build-compactc/compact
 # Direct the script to lay the bundle outside the host bind-mount target.
 ENV COMPACT_BUILD_OUT=/compactc-home

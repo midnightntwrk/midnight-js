@@ -21,20 +21,14 @@
 
 set -euo pipefail
 
-repo_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-cd "$repo_root"
+# shellcheck source=./lib.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+cd "$REPO_ROOT"
 
-if [ ! -f compact/flake.nix ]; then
-  echo "error: compact submodule not initialized. Run: git submodule update --init compact" >&2
-  exit 1
-fi
+assert_submodule_initialized
+assert_command docker "building compact-runtime without host nix"
 
-if ! command -v docker >/dev/null 2>&1; then
-  echo "error: docker is required to build compact-runtime without host nix." >&2
-  exit 1
-fi
-
-home="${repo_root}/.compact-runtime-home"
+home="${REPO_ROOT}/.compact-runtime-home"
 rm -rf "$home"
 mkdir -p "$home"
 
@@ -43,7 +37,7 @@ echo "Building compact-runtime Docker image '$image_tag' (first build can be slo
 
 # Build context = repo root, narrowed by the repo-root `.dockerignore` to
 # `scripts/` and `compact/` (minus compact/.git).
-docker build --tag "$image_tag" --file - "$repo_root" <<'DOCKERFILE'
+docker build --tag "$image_tag" --file - "$REPO_ROOT" <<'DOCKERFILE'
 FROM nixos/nix:latest
 RUN mkdir -p /etc/nix && { \
     echo "extra-experimental-features = nix-command flakes"; \
@@ -52,24 +46,24 @@ RUN mkdir -p /etc/nix && { \
     echo "extra-trusted-public-keys = hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ="; \
   } >> /etc/nix/nix.conf
 COPY scripts/build-compact-runtime.sh /opt/build/scripts/build-compact-runtime.sh
+COPY scripts/lib.sh /opt/build/scripts/lib.sh
 COPY compact /opt/build/compact
 WORKDIR /opt/build
-# `git+file://` flake ref needs a `.git` (excluded by .dockerignore), so use
-# the path-flake override the script supports.
+# `path:` flake ref tolerates the missing `.git` (excluded by .dockerignore).
 ENV COMPACTC_FLAKE_REF=path:/opt/build/compact
 # Lay out the runtime npm package outside the host bind-mount target.
 ENV COMPACT_RUNTIME_OUT=/compact-runtime-home
 RUN /opt/build/scripts/build-compact-runtime.sh
 DOCKERFILE
 
-# Extract the built package to the host's .compact-runtime-home. The image's
-# /compact-runtime-home is the canonical layout; we copy it onto the host so
-# Yarn's portal: can point at .compact-runtime-home without a docker run for
-# every node_modules read.
-container_id=$(docker create "$image_tag")
-trap 'docker rm -f "$container_id" >/dev/null 2>&1 || true' EXIT
-docker cp "$container_id:/compact-runtime-home/." "$home/"
+# Extract via `docker run --rm` with a bind mount, avoiding the
+# create/cp/remove cycle.
+docker run --rm \
+  --user "$(id -u):$(id -g)" \
+  --volume "$home:/out" \
+  "$image_tag" \
+  sh -c 'cp -R /compact-runtime-home/. /out/'
 
-version=$(node -e "console.log(require('$home/package.json').version)" 2>/dev/null || echo unknown)
-echo "compact-runtime $version extracted to $home"
-echo "Inject the Yarn portal: resolution with: node scripts/use-source-compact-runtime.js"
+version=$(grep -oE '"version"[[:space:]]*:[[:space:]]*"[^"]+"' "$home/package.json" | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+echo "compact-runtime ${version:-unknown} extracted to $home"
+echo "Inject the Yarn file: resolution with: node scripts/use-source-compact-runtime.js"

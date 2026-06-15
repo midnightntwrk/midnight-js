@@ -305,7 +305,7 @@ pull request.
 
 A feature-branch compactc can emit code that requires a paired
 `@midnight-ntwrk/compact-runtime`. Build the runtime npm package from the
-same submodule and point Yarn at it via a `portal:` resolution:
+same submodule and point Yarn at it via a `file:` resolution:
 
 ```bash
 # Path A: native nix
