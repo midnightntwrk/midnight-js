@@ -81,6 +81,8 @@ export const createApolloClient = (validated: ValidatedConfig): ApolloHandle => 
 
   const wsClient = createClient({
     url: validated.subscriptionURLString,
+    // TODO(loggerProvider): forward provider's optional logger here once the indexer
+    // public-data-provider factory accepts and threads loggerProvider through.
     webSocketImpl: wrapWithDeflate(validated.webSocket)
   });
 

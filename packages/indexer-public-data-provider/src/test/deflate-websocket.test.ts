@@ -23,8 +23,9 @@ import { wrapWithDeflate } from '../deflate-websocket';
 describe('wrapWithDeflate — subprotocol negotiation', () => {
   test('offers only the deflate protocol when no protocols argument is passed', () => {
     const baseCtor = vi.fn();
-    class BaseWS {
+    class BaseWS extends EventTarget {
       constructor(url: string, protocols?: string | string[]) {
+        super();
         baseCtor(url, protocols);
       }
     }
@@ -40,8 +41,9 @@ describe('wrapWithDeflate — subprotocol negotiation', () => {
 
   test('offers graphql-transport-ws+deflate FIRST when graphql-ws passes the standard protocol as a string', () => {
     const baseCtor = vi.fn();
-    class BaseWS {
+    class BaseWS extends EventTarget {
       constructor(url: string, protocols?: string | string[]) {
+        super();
         baseCtor(url, protocols);
       }
     }
@@ -57,8 +59,9 @@ describe('wrapWithDeflate — subprotocol negotiation', () => {
 
   test('preserves and dedupes when an array of protocols is passed', () => {
     const baseCtor = vi.fn();
-    class BaseWS {
+    class BaseWS extends EventTarget {
       constructor(url: string, protocols?: string | string[]) {
+        super();
         baseCtor(url, protocols);
       }
     }
@@ -74,8 +77,9 @@ describe('wrapWithDeflate — subprotocol negotiation', () => {
 
   test('does NOT duplicate the deflate protocol if the caller already included it', () => {
     const baseCtor = vi.fn();
-    class BaseWS {
+    class BaseWS extends EventTarget {
       constructor(url: string, protocols?: string | string[]) {
+        super();
         baseCtor(url, protocols);
       }
     }
@@ -280,6 +284,39 @@ describe('wrapWithDeflate — message delivery', () => {
     expect(seen).toEqual([]);
     expect(unhandled).not.toHaveBeenCalled();
     process.off('unhandledRejection', unhandled);
+  });
+
+  test('routes binary frames through EventListenerObject.handleEvent with correct `this` binding', async () => {
+    const sock = new Wrapped('ws://x', 'graphql-transport-ws') as unknown as FakeWS;
+    sock.protocol = 'graphql-transport-ws+deflate';
+    const seen: unknown[] = [];
+    // Use a spy so vitest records the call's `this` context via `.mock.instances`.
+    const listenerObj = {
+      tag: 'expected-this-value' as const,
+      handleEvent: vi.fn(function (ev: Event) {
+        seen.push((ev as MessageEvent).data);
+      })
+    };
+    sock.addEventListener('message', listenerObj);
+
+    const payload = '{"type":"next","id":"object-listener"}';
+    const compressed = deflateSync(Buffer.from(payload, 'utf8'));
+    sock.__push(compressed.buffer.slice(compressed.byteOffset, compressed.byteOffset + compressed.byteLength));
+
+    await new Promise((r) => setTimeout(r, 20));
+    expect(seen).toEqual([payload]);
+    // `.mock.instances[0]` is the value of `this` at the time of the first call.
+    expect(listenerObj.handleEvent.mock.instances[0]).toBe(listenerObj);
+  });
+
+  test('clears the installed onmessage when set to null', () => {
+    const sock = new Wrapped('ws://x', 'graphql-transport-ws') as unknown as FakeWS;
+    sock.onmessage = () => { /* placeholder */ };
+    expect(sock.onmessage).not.toBeNull();
+
+    sock.onmessage = null;
+
+    expect(sock.onmessage).toBeNull();
   });
 
   test('isolates onmessage handlers across multiple wrapped instances (no prototype pollution)', async () => {

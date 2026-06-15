@@ -19,6 +19,11 @@ import { inflate } from './inflate';
 
 const DEFLATE_PROTOCOL = 'graphql-transport-ws+deflate';
 
+/** Minimal logger surface — compatible with Pino's `error(obj, msg)` shape and `console.error`. */
+export type DeflateLogger = {
+  warn?(message: string, context?: Record<string, unknown>): void;
+};
+
 const offerDeflate = (protocols?: string | string[]): string[] => {
   const requested = protocols === undefined
     ? []
@@ -53,7 +58,10 @@ const toArrayBuffer = (data: unknown): ArrayBuffer | null => {
   return null;
 };
 
-export const wrapWithDeflate = (Base: typeof ws.WebSocket): typeof ws.WebSocket => {
+export const wrapWithDeflate = <T extends typeof ws.WebSocket>(
+  Base: T,
+  logger?: DeflateLogger
+): T => {
   // Capture the inherited onmessage accessor descriptor once at class-creation time.
   // This avoids walking the prototype chain on every setter call and — crucially —
   // lets us INVOKE the inherited setter (which has per-instance side-effects) rather
@@ -84,15 +92,20 @@ export const wrapWithDeflate = (Base: typeof ws.WebSocket): typeof ws.WebSocket 
       this.binaryType = 'arraybuffer';
       // Use the base class's listener slot — we don't want close handling to
       // route through our own addEventListener override.
-      // Guard: some test stubs extend plain classes without addEventListener.
-      if (typeof super.addEventListener === 'function') {
-        super.addEventListener('close', () => {
-          this.__closed = true;
-          // Swallow any pending inflate rejections to prevent unhandled rejections
-          // surfacing after consumers have already torn down.
-          this.__deliveryQueue = this.__deliveryQueue.catch(() => undefined);
-        });
+      if (typeof super.addEventListener !== 'function') {
+        throw new Error(
+          'DeflateWebSocket: base WebSocket class must implement addEventListener. ' +
+          `Received: ${typeof super.addEventListener}.`
+        );
       }
+      super.addEventListener('close', () => {
+        this.__closed = true;
+        // After close, the only expected rejection source is inflate() on already-queued
+        // binary frames. Swallowing is intentional — the consumer has torn down; re-raising
+        // would surface as an unhandled rejection. Inflate errors during live operation
+        // are caught and logged at the call site below, not here.
+        this.__deliveryQueue = this.__deliveryQueue.catch(() => undefined);
+      });
     }
 
     private __deliver(listener: (ev: MessageEvent) => void, original: MessageEvent): void {
@@ -103,9 +116,19 @@ export const wrapWithDeflate = (Base: typeof ws.WebSocket): typeof ws.WebSocket 
           let text: string;
           try {
             text = await inflate(binary);
-          } catch {
-            // Single malformed or oversized frame — drop it but keep the queue alive.
-            // graphql-ws will reconnect if the stream is genuinely broken.
+          } catch (err) {
+            // Single malformed or oversized frame — drop it but keep the queue alive so
+            // subsequent frames are not blocked. The underlying socket is unaffected, so
+            // graphql-ws will NOT trigger a reconnect (its reconnect path fires on close /
+            // error events, not frame-level decoding failures). If a server is systematically
+            // misbehaving, the subscription will stall silently from the consumer's view —
+            // surfacing the error through `logger` is the only diagnostic signal available.
+            logger?.warn?.('deflate-websocket: inflate failed, dropping frame', {
+              error: err instanceof Error ? err.message : String(err),
+              code: err instanceof Error && 'cause' in err && err.cause instanceof Error && 'code' in err.cause
+                ? (err.cause as { code?: unknown }).code
+                : undefined
+            });
             return;
           }
           if (this.__closed) return;
@@ -127,7 +150,7 @@ export const wrapWithDeflate = (Base: typeof ws.WebSocket): typeof ws.WebSocket 
       if (type === 'message' && listener !== null) {
         const invoke = typeof listener === 'function'
           ? (ev: MessageEvent): void => { (listener as (ev: MessageEvent) => unknown)(ev); }
-          : (ev: MessageEvent): void => { (listener as EventListenerObject).handleEvent(ev); };
+          : (ev: MessageEvent): void => { (listener as EventListenerObject).handleEvent.call(listener, ev); };
         const wrapped = (ev: Event): void => {
           this.__deliver(invoke, ev as MessageEvent);
         };
@@ -155,5 +178,5 @@ export const wrapWithDeflate = (Base: typeof ws.WebSocket): typeof ws.WebSocket 
         inheritedOnmessage.set.call(this, wrapped);
       }
     }
-  } as unknown as typeof ws.WebSocket;
+  } as unknown as T;
 };
