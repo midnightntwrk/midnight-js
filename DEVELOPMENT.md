@@ -211,6 +211,7 @@ git config --local tag.gpgSign true
 | Variable | Purpose | Set By |
 |----------|---------|--------|
 | `COMPACTC_VERSION` | Compact compiler version | direnv |
+| `COMPACT_HOME` | Directory containing a `compactc` wrapper, used in preference to the prebuilt download. Exported by `.envrc` when `./scripts/build-compactc.sh` has been run. | direnv (auto when `.compact-home/compactc` exists) |
 | `NODE_VERSION` | Node.js version | nvm |
 | `TESTKIT_DOCKER_ENV` | Selects which **docker image version set** the local testkit stack uses (`qanet`, `preview`, `preprod`, `mainnet`, `devnet`). Defaults to `preprod`. Does **not** select a live network — see `MN_TEST_ENVIRONMENT`. | direnv / shell |
 | `PROOF_SERVER_VERSION` | Proof-server docker image tag used by testkit compose files | `testkit-js/env/<TESTKIT_DOCKER_ENV>.env` |
@@ -247,6 +248,37 @@ To override versions without changing the env, source the file manually before r
 set -a; . testkit-js/env/preprod.env; set +a
 docker compose -f testkit-js/compose.yml up
 ```
+
+## Building compactc from the `compact/` submodule
+
+For feature-branch work against unreleased compactc, build the compiler from
+the `compact/` git submodule (pinned to LFDT-Minokawa/compact at the `0.31.0`
+release commit) instead of downloading the prebuilt binary.
+
+Prerequisites: [nix](https://nixos.org/download) installed locally.
+
+```bash
+# 1. Initialize the submodule (one-time)
+git submodule update --init compact
+
+# 2. Build compactc via nix and write the COMPACT_HOME wrapper
+./scripts/build-compactc.sh
+
+# 3. Reload direnv so COMPACT_HOME is exported into your shell
+direnv reload
+```
+
+After the wrapper exists, `.envrc` auto-exports `COMPACT_HOME=$PWD/.compact-home`.
+`packages/compact` honours it: `fetch-compactc` skips the prebuilt download and
+`run-compactc` invokes `$COMPACT_HOME/compactc`.
+
+To bump the pinned compactc version: update `compact/` submodule SHA, update
+`COMPACTC_VERSION` in `.envrc`, then re-run `./scripts/build-compactc.sh`.
+
+In CI, the prebuilt download is the default. To build from the submodule in
+CI, either trigger the `CI` workflow via `workflow_dispatch` with input
+`compactc_source=submodule`, or add the `compactc-from-source` label to your
+pull request.
 
 ## Troubleshooting
 

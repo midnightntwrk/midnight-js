@@ -37,6 +37,11 @@ on:
         description: Docker image version set sourced from testkit-js/env/<testkit_docker_env>.env (qanet|preview|preprod|mainnet|devnet). Empty falls back to the .envrc default.
         required: false
         default: ''
+      compactc_source:
+        type: string
+        description: 'compactc source: "release" (default prebuilt download) or "submodule" (build from compact/ submodule via nix). PR label `compactc-from-source` also activates submodule build.'
+        required: false
+        default: 'release'
     outputs:
       test-files:
         description: JSON array of e2e test filenames discovered in testkit-js-e2e/test.
@@ -100,6 +105,45 @@ jobs:
       - name: Install dependencies
         run: |
           yarn install --immutable
+
+      # Opt-in compactc build from the `compact/` submodule (feature-branch dev
+      # against unreleased compactc). Activated by either:
+      #   * workflow_dispatch input `compactc_source=submodule`, or
+      #   * PR label `compactc-from-source`.
+      # When active, `packages/compact/run-compactc` uses COMPACT_HOME and
+      # `fetch-compactc` skips the prebuilt-binary download.
+      - name: Detect compactc build mode
+        id: compactc-mode
+        env:
+          COMPACTC_SOURCE: ${{ inputs.compactc_source }}
+          LABEL_TRIGGER: ${{ contains(github.event.pull_request.labels.*.name, 'compactc-from-source') }}
+        shell: bash
+        run: |
+          if [[ "$COMPACTC_SOURCE" == "submodule" || "$LABEL_TRIGGER" == "true" ]]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Init compact submodule
+        if: steps.compactc-mode.outputs.should_build == 'true'
+        run: git submodule update --init --recursive compact
+
+      - name: Install nix
+        if: steps.compactc-mode.outputs.should_build == 'true'
+        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # ratchet:DeterminateSystems/nix-installer-action@v22
+        with:
+          # IOG binary cache provides prebuilt zkir; without this the first
+          # compactc build compiles zkir from source (~10-15 minutes).
+          extra-conf: |
+            extra-substituters = https://cache.iog.io
+            extra-trusted-public-keys = hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
+
+      - name: Build compactc from submodule
+        if: steps.compactc-mode.outputs.should_build == 'true'
+        run: |
+          ./scripts/build-compactc.sh
+          echo "COMPACT_HOME=$GITHUB_WORKSPACE/.compact-home" >> "$GITHUB_ENV"
 
       - name: Run build
         run: yarn build ${{ inputs.yarn_filter }} --cache-dir ./turbo

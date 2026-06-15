@@ -31,3 +31,6 @@ midnight-concurrent-test-db
 .claude
 .worktrees
 .gitnexus
+
+# Generated compactc wrapper from scripts/build-compactc.sh (points into the nix store)
+.compact-home/
