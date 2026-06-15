@@ -67,8 +67,9 @@ describe('createApolloClient — handle shape', () => {
 
     createApolloClient(validated);
 
-    const call = createClientSpy.mock.calls.at(-1)!;
-    const passed = call[0].webSocketImpl as new (...args: unknown[]) => unknown;
+    const lastCall = createClientSpy.mock.calls.at(-1) as [{ webSocketImpl: new (...args: unknown[]) => unknown }] | undefined;
+    const passed = lastCall?.[0].webSocketImpl;
+    expect(passed).toBeDefined();
     expect(passed).not.toBe(CustomWS);
     // Wrapper is a subclass of the user-supplied class:
     expect(Object.getPrototypeOf(passed)).toBe(CustomWS);

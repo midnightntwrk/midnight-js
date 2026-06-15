@@ -15,6 +15,7 @@
 
 import { deflateSync } from 'node:zlib';
 
+import type * as ws from 'isomorphic-ws';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 
 import { wrapWithDeflate } from '../deflate-websocket';
@@ -27,7 +28,7 @@ describe('wrapWithDeflate — subprotocol negotiation', () => {
         baseCtor(url, protocols);
       }
     }
-    const Wrapped = wrapWithDeflate(BaseWS as unknown as typeof WebSocket);
+    const Wrapped = wrapWithDeflate(BaseWS as unknown as typeof ws.WebSocket);
 
     new Wrapped('ws://localhost/graphql/ws');
 
@@ -44,7 +45,7 @@ describe('wrapWithDeflate — subprotocol negotiation', () => {
         baseCtor(url, protocols);
       }
     }
-    const Wrapped = wrapWithDeflate(BaseWS as unknown as typeof WebSocket);
+    const Wrapped = wrapWithDeflate(BaseWS as unknown as typeof ws.WebSocket);
 
     new Wrapped('ws://localhost/graphql/ws', 'graphql-transport-ws');
 
@@ -61,7 +62,7 @@ describe('wrapWithDeflate — subprotocol negotiation', () => {
         baseCtor(url, protocols);
       }
     }
-    const Wrapped = wrapWithDeflate(BaseWS as unknown as typeof WebSocket);
+    const Wrapped = wrapWithDeflate(BaseWS as unknown as typeof ws.WebSocket);
 
     new Wrapped('ws://localhost/graphql/ws', ['graphql-transport-ws', 'graphql-ws']);
 
@@ -78,7 +79,7 @@ describe('wrapWithDeflate — subprotocol negotiation', () => {
         baseCtor(url, protocols);
       }
     }
-    const Wrapped = wrapWithDeflate(BaseWS as unknown as typeof WebSocket);
+    const Wrapped = wrapWithDeflate(BaseWS as unknown as typeof ws.WebSocket);
 
     new Wrapped('ws://localhost/graphql/ws', ['graphql-transport-ws+deflate', 'graphql-transport-ws']);
 
@@ -134,10 +135,10 @@ class FakeWS extends EventTarget {
 FakeWS.prototype.onmessage = null;
 
 describe('wrapWithDeflate — message delivery', () => {
-  let Wrapped: typeof WebSocket;
+  let Wrapped: typeof ws.WebSocket;
 
   beforeEach(() => {
-    Wrapped = wrapWithDeflate(FakeWS as unknown as typeof WebSocket) as unknown as typeof WebSocket;
+    Wrapped = wrapWithDeflate(FakeWS as unknown as typeof ws.WebSocket);
   });
 
   afterEach(() => {
