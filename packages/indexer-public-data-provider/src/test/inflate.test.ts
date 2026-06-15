@@ -15,13 +15,22 @@
 
 import { deflateSync } from 'node:zlib';
 
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 
 import { inflate } from '../inflate';
 
 describe('inflate', () => {
-  test('relies on a DecompressionStream global at module-load time', () => {
-    expect(typeof globalThis.DecompressionStream).toBe('function');
+  test('throws at module-load if DecompressionStream is missing', async () => {
+    vi.resetModules();
+    vi.stubGlobal('DecompressionStream', undefined);
+    try {
+      await expect(async () => {
+        await import('../inflate');
+      }).rejects.toThrow(/DecompressionStream is required/);
+    } finally {
+      vi.unstubAllGlobals();
+      vi.resetModules();
+    }
   });
 
   test('round-trips a JSON payload compressed in RFC 1950 (zlib) format', async () => {

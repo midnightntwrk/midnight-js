@@ -38,6 +38,7 @@ export const MAX_INFLATED_BYTES = 16 * 1024 * 1024;
  * indexer 4.4.0+ when `graphql-transport-ws+deflate` is negotiated.
  */
 export const inflate = async (data: ArrayBuffer): Promise<string> => {
+  // 'deflate' in the Web Streams API means RFC 1950 (zlib envelope), not raw RFC 1951.
   const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate'));
   const reader = stream.getReader();
   const chunks: Uint8Array[] = [];
