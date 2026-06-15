@@ -43,7 +43,12 @@ const toArrayBuffer = (data: unknown): ArrayBuffer | null => {
   if (data instanceof ArrayBuffer) return data;
   if (ArrayBuffer.isView(data)) {
     const view = data as ArrayBufferView;
-    return view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength);
+    // Narrow against SharedArrayBuffer — we never expect shared-backed frames
+    // from a WebSocket, and slicing into a fresh ArrayBuffer requires the input
+    // backing to be a plain ArrayBuffer.
+    if (view.buffer instanceof ArrayBuffer) {
+      return view.buffer.slice(view.byteOffset, view.byteOffset + view.byteLength);
+    }
   }
   return null;
 };
