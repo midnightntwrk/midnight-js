@@ -20,16 +20,12 @@ import { describe, expect, test, vi } from 'vitest';
 import { inflate } from '../inflate';
 
 describe('inflate', () => {
-  test('throws at module-load if DecompressionStream is missing', async () => {
-    vi.resetModules();
+  test('inflate() throws if DecompressionStream is missing at call time', async () => {
     vi.stubGlobal('DecompressionStream', undefined);
     try {
-      await expect(async () => {
-        await import('../inflate');
-      }).rejects.toThrow(/DecompressionStream is required/);
+      await expect(inflate(new ArrayBuffer(0))).rejects.toThrow(/DecompressionStream is required/);
     } finally {
       vi.unstubAllGlobals();
-      vi.resetModules();
     }
   });
 

@@ -13,13 +13,6 @@
  * limitations under the License.
  */
 
-if (typeof globalThis.DecompressionStream !== 'function') {
-  throw new Error(
-    'DecompressionStream is required for graphql-transport-ws+deflate subscriptions. ' +
-    'Requires Node >= 18 or a browser shipped after March 2023 (Chrome 80, Firefox 113, Safari 16.4).'
-  );
-}
-
 const decoder = new TextDecoder('utf-8', { fatal: true });
 
 /**
@@ -38,6 +31,12 @@ export const MAX_INFLATED_BYTES = 16 * 1024 * 1024;
  * indexer 4.4.0+ when `graphql-transport-ws+deflate` is negotiated.
  */
 export const inflate = async (data: ArrayBuffer): Promise<string> => {
+  if (typeof globalThis.DecompressionStream !== 'function') {
+    throw new Error(
+      'DecompressionStream is required for graphql-transport-ws+deflate subscriptions. ' +
+      'Requires Node >= 18 or a browser shipped after March 2023 (Chrome 80, Firefox 113, Safari 16.4).'
+    );
+  }
   // 'deflate' in the Web Streams API means RFC 1950 (zlib envelope), not raw RFC 1951.
   const stream = new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate'));
   const reader = stream.getReader();
