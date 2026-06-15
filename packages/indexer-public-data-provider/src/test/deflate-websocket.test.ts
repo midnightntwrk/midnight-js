@@ -94,10 +94,10 @@ describe('wrapWithDeflate — subprotocol negotiation', () => {
  * Minimal EventTarget-based fake WebSocket. Tests dispatch `MessageEvent`s
  * directly via `__push()` to simulate server frames.
  *
- * `onmessage` is a prototype-level getter/setter (NOT a class-field instance
- * property) so that when `DeflateWebSocket`'s setter writes to
- * `FakeWS.prototype.onmessage` via `Object.getPrototypeOf(Object.getPrototypeOf(this))`,
- * the instance lookup in `__push` resolves to that prototype data property.
+ * `onmessage` is a true prototype-level accessor (getter + setter pair) so that
+ * `inheritedOnmessage.set` inside `wrapWithDeflate` finds it and calls per-instance
+ * writes. Each instance stores its installed handler in the hard-private `#installedOnmessage`
+ * field, preventing cross-instance pollution.
  */
 class FakeWS extends EventTarget {
   static OPEN = 1;
@@ -108,10 +108,15 @@ class FakeWS extends EventTarget {
   readyState = FakeWS.OPEN;
   onopen: ((ev: Event) => void) | null = null;
 
-  // onmessage is intentionally NOT a class field — it lives on the prototype
-  // so that DeflateWebSocket's prototype-walk setter can store the wrapped
-  // handler there and __push's `this.onmessage?.(event)` resolves to it.
-  declare onmessage: ((ev: MessageEvent) => void) | null;
+  /** Per-instance storage for whatever the wrapper installs via our prototype-level accessor. */
+  #installedOnmessage: ((ev: MessageEvent) => void) | null = null;
+
+  get onmessage(): ((ev: MessageEvent) => void) | null {
+    return this.#installedOnmessage;
+  }
+  set onmessage(handler: ((ev: MessageEvent) => void) | null) {
+    this.#installedOnmessage = handler;
+  }
 
   constructor(url: string, protocols?: string | string[]) {
     super();
@@ -122,7 +127,9 @@ class FakeWS extends EventTarget {
   __push(data: string | ArrayBuffer | Uint8Array): void {
     const event = new MessageEvent('message', { data });
     this.dispatchEvent(event);
-    this.onmessage?.(event);
+    // Use the hard-private slot (NOT `this.onmessage`) — `this.onmessage` would invoke
+    // the WRAPPER's getter (returning the original user handler), which would bypass __deliver.
+    this.#installedOnmessage?.(event);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-empty-function
@@ -130,9 +137,6 @@ class FakeWS extends EventTarget {
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   close(): void {}
 }
-// Initialize prototype-level onmessage to null so the property exists but
-// is not an instance field (class fields would shadow the prototype slot).
-FakeWS.prototype.onmessage = null;
 
 describe('wrapWithDeflate — message delivery', () => {
   let Wrapped: typeof ws.WebSocket;
@@ -143,9 +147,6 @@ describe('wrapWithDeflate — message delivery', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-    // Reset prototype-level onmessage so that one test's wrapped handler does
-    // not bleed into the next test via FakeWS.__push's `this.onmessage?.(event)`.
-    FakeWS.prototype.onmessage = null;
   });
 
   test('inflates binary frames when the +deflate protocol was negotiated (addEventListener path)', async () => {
@@ -279,5 +280,30 @@ describe('wrapWithDeflate — message delivery', () => {
     expect(seen).toEqual([]);
     expect(unhandled).not.toHaveBeenCalled();
     process.off('unhandledRejection', unhandled);
+  });
+
+  test('isolates onmessage handlers across multiple wrapped instances (no prototype pollution)', async () => {
+    const sock1 = new Wrapped('ws://x/1', 'graphql-transport-ws') as unknown as FakeWS;
+    const sock2 = new Wrapped('ws://x/2', 'graphql-transport-ws') as unknown as FakeWS;
+    sock1.protocol = 'graphql-transport-ws+deflate';
+    sock2.protocol = 'graphql-transport-ws+deflate';
+
+    const seen1: unknown[] = [];
+    const seen2: unknown[] = [];
+    sock1.onmessage = (ev) => seen1.push(ev.data);
+    sock2.onmessage = (ev) => seen2.push(ev.data);
+
+    // Setting sock2.onmessage MUST NOT overwrite sock1's installed handler.
+    // Push the same compressed payload to each socket.
+    const payload1 = '{"id":"1"}';
+    const payload2 = '{"id":"2"}';
+    const c1 = deflateSync(Buffer.from(payload1, 'utf8'));
+    const c2 = deflateSync(Buffer.from(payload2, 'utf8'));
+    sock1.__push(c1.buffer.slice(c1.byteOffset, c1.byteOffset + c1.byteLength));
+    sock2.__push(c2.buffer.slice(c2.byteOffset, c2.byteOffset + c2.byteLength));
+
+    await new Promise((r) => setTimeout(r, 20));
+    expect(seen1).toEqual([payload1]);
+    expect(seen2).toEqual([payload2]);
   });
 });

@@ -54,19 +54,30 @@ const toArrayBuffer = (data: unknown): ArrayBuffer | null => {
 };
 
 export const wrapWithDeflate = (Base: typeof ws.WebSocket): typeof ws.WebSocket => {
+  // Capture the inherited onmessage accessor descriptor once at class-creation time.
+  // This avoids walking the prototype chain on every setter call and — crucially —
+  // lets us INVOKE the inherited setter (which has per-instance side-effects) rather
+  // than overwriting a prototype slot (which would pollute all instances).
+  const inheritedOnmessage = Object.getOwnPropertyDescriptor(
+    (Base as unknown as typeof WebSocket).prototype,
+    'onmessage'
+  );
+
   /**
-   * NOTE for future maintainers: the returned class uses a fixed two-level
-   * prototype walk in its `onmessage` accessor to route writes through the
-   * base WebSocket's slot. **Do not subclass `DeflateWebSocket`** — wrapping
-   * it again will silently route `onmessage` writes to the wrong prototype
-   * and the inflate side of the wire will stop functioning. If composition
-   * is needed, instead invoke `wrapWithDeflate` once on the outermost base.
+   * NOTE for future maintainers: the `onmessage` setter invokes the inherited
+   * base accessor with `inheritedOnmessage.set.call(this, wrapped)` so that the
+   * base's per-instance dispatch machinery is used. **Do not subclass
+   * `DeflateWebSocket`** — wrapping it again will silently bypass the inflate
+   * logic. If composition is needed, invoke `wrapWithDeflate` once on the
+   * outermost base.
    */
   return class DeflateWebSocket extends (Base as unknown as typeof WebSocket) {
     /** Serializes async inflate so binary frames cannot overtake later text frames. */
     private __deliveryQueue: Promise<void> = Promise.resolve();
     /** Set to true on `close` — gates pending deliveries to avoid post-teardown work. */
     private __closed = false;
+    /** User-supplied onmessage handler (the one returned by `get onmessage`). */
+    private __onmessage: ((this: WebSocket, ev: MessageEvent) => unknown) | null = null;
 
     constructor(url: string | URL, protocols?: string | string[]) {
       super(url, offerDeflate(protocols));
@@ -126,20 +137,23 @@ export const wrapWithDeflate = (Base: typeof ws.WebSocket): typeof ws.WebSocket 
       super.addEventListener(type, listener as EventListener, options);
     }
 
-    override set onmessage(handler: ((this: WebSocket, ev: MessageEvent) => unknown) | null) {
-      const base = Object.getPrototypeOf(Object.getPrototypeOf(this)) as { onmessage: typeof handler };
-      if (handler === null) {
-        base.onmessage = null;
-        return;
-      }
-      base.onmessage = (ev: MessageEvent): void => {
-        this.__deliver(handler as (ev: MessageEvent) => void, ev);
-      };
+    override get onmessage(): ((this: WebSocket, ev: MessageEvent) => unknown) | null {
+      return this.__onmessage;
     }
 
-    override get onmessage(): ((this: WebSocket, ev: MessageEvent) => unknown) | null {
-      const base = Object.getPrototypeOf(Object.getPrototypeOf(this)) as { onmessage: ((this: WebSocket, ev: MessageEvent) => unknown) | null };
-      return base.onmessage;
+    override set onmessage(handler: ((this: WebSocket, ev: MessageEvent) => unknown) | null) {
+      this.__onmessage = handler;
+      const wrapped: ((ev: MessageEvent) => void) | null = handler === null
+        ? null
+        : (ev: MessageEvent): void => {
+            this.__deliver(handler as (ev: MessageEvent) => void, ev);
+          };
+      // Invoke the inherited accessor's setter with `this` = this instance,
+      // so the base implementation's per-instance dispatch machinery is used.
+      // No prototype writes here — each instance gets its own wrapped handler.
+      if (inheritedOnmessage?.set) {
+        inheritedOnmessage.set.call(this, wrapped);
+      }
     }
   } as unknown as typeof ws.WebSocket;
 };
