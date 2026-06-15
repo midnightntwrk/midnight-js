@@ -22,6 +22,7 @@ import fetch from 'cross-fetch';
 import { createClient } from 'graphql-ws';
 
 import type { ValidatedConfig } from './config';
+import { wrapWithDeflate } from './deflate-websocket';
 
 /**
  * Resource-bearing handle that pairs the Apollo client with an idempotent
@@ -68,7 +69,10 @@ export const createApolloClient = (validated: ValidatedConfig): ApolloHandle => 
   });
   const apolloLink = from([retryLink, httpLink]);
 
-  const wsClient = createClient({ url: validated.subscriptionURLString, webSocketImpl: validated.webSocket });
+  const wsClient = createClient({
+    url: validated.subscriptionURLString,
+    webSocketImpl: wrapWithDeflate(validated.webSocket)
+  });
 
   const client = new ApolloClient({
     link: split(
