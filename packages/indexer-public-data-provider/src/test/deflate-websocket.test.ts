@@ -18,6 +18,23 @@ import { describe, expect, test, vi } from 'vitest';
 import { wrapWithDeflate } from '../deflate-websocket';
 
 describe('wrapWithDeflate — subprotocol negotiation', () => {
+  test('offers only the deflate protocol when no protocols argument is passed', () => {
+    const baseCtor = vi.fn();
+    class BaseWS {
+      constructor(url: string, protocols?: string | string[]) {
+        baseCtor(url, protocols);
+      }
+    }
+    const Wrapped = wrapWithDeflate(BaseWS as unknown as typeof WebSocket);
+
+    new Wrapped('ws://localhost/graphql/ws');
+
+    expect(baseCtor).toHaveBeenCalledWith(
+      'ws://localhost/graphql/ws',
+      ['graphql-transport-ws+deflate']
+    );
+  });
+
   test('offers graphql-transport-ws+deflate FIRST when graphql-ws passes the standard protocol as a string', () => {
     const baseCtor = vi.fn();
     class BaseWS {
