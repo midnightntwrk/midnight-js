@@ -49,6 +49,14 @@ const toArrayBuffer = (data: unknown): ArrayBuffer | null => {
 };
 
 export const wrapWithDeflate = (Base: typeof ws.WebSocket): typeof ws.WebSocket => {
+  /**
+   * NOTE for future maintainers: the returned class uses a fixed two-level
+   * prototype walk in its `onmessage` accessor to route writes through the
+   * base WebSocket's slot. **Do not subclass `DeflateWebSocket`** — wrapping
+   * it again will silently route `onmessage` writes to the wrong prototype
+   * and the inflate side of the wire will stop functioning. If composition
+   * is needed, instead invoke `wrapWithDeflate` once on the outermost base.
+   */
   return class DeflateWebSocket extends (Base as unknown as typeof WebSocket) {
     /** Serializes async inflate so binary frames cannot overtake later text frames. */
     private __deliveryQueue: Promise<void> = Promise.resolve();
@@ -76,7 +84,14 @@ export const wrapWithDeflate = (Base: typeof ws.WebSocket): typeof ws.WebSocket 
       if (binary !== null) {
         this.__deliveryQueue = this.__deliveryQueue.then(async () => {
           if (this.__closed) return;
-          const text = await inflate(binary);
+          let text: string;
+          try {
+            text = await inflate(binary);
+          } catch {
+            // Single malformed or oversized frame — drop it but keep the queue alive.
+            // graphql-ws will reconnect if the stream is genuinely broken.
+            return;
+          }
           if (this.__closed) return;
           listener(new MessageEvent('message', { data: text }));
         });
@@ -93,9 +108,12 @@ export const wrapWithDeflate = (Base: typeof ws.WebSocket): typeof ws.WebSocket 
       listener: ((this: WebSocket, ev: WebSocketEventMap[K]) => unknown) | EventListenerObject | null,
       options?: boolean | AddEventListenerOptions
     ): void {
-      if (type === 'message' && typeof listener === 'function') {
+      if (type === 'message' && listener !== null) {
+        const invoke = typeof listener === 'function'
+          ? (ev: MessageEvent): void => { (listener as (ev: MessageEvent) => unknown)(ev); }
+          : (ev: MessageEvent): void => { (listener as EventListenerObject).handleEvent(ev); };
         const wrapped = (ev: Event): void => {
-          this.__deliver(listener as (ev: MessageEvent) => void, ev as MessageEvent);
+          this.__deliver(invoke, ev as MessageEvent);
         };
         super.addEventListener(type, wrapped as EventListener, options);
         return;

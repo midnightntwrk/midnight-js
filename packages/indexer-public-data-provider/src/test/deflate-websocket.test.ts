@@ -240,6 +240,27 @@ describe('wrapWithDeflate — message delivery', () => {
     expect(seen).toEqual([payload]);
   });
 
+  test('drops a frame whose inflate throws and continues delivering subsequent frames (queue not poisoned, no unhandled rejection)', async () => {
+    const sock = new Wrapped('ws://x', 'graphql-transport-ws') as unknown as FakeWS;
+    sock.protocol = 'graphql-transport-ws+deflate';
+    const seen: unknown[] = [];
+    sock.addEventListener('message', (ev) => seen.push((ev as MessageEvent).data));
+    const unhandled = vi.fn();
+    process.on('unhandledRejection', unhandled);
+
+    // First frame: garbage that inflate will reject.
+    const garbage = new Uint8Array([0xde, 0xad, 0xbe, 0xef]).buffer;
+    sock.__push(garbage);
+    // Second frame: a valid compressed payload that must still be delivered.
+    const good = deflateSync(Buffer.from('{"id":"survives"}', 'utf8'));
+    sock.__push(good.buffer.slice(good.byteOffset, good.byteOffset + good.byteLength));
+
+    await new Promise((r) => setTimeout(r, 50));
+    expect(seen).toEqual(['{"id":"survives"}']);
+    expect(unhandled).not.toHaveBeenCalled();
+    process.off('unhandledRejection', unhandled);
+  });
+
   test('drops queued frames delivered after the socket has closed (no unhandled rejection)', async () => {
     const sock = new Wrapped('ws://x', 'graphql-transport-ws') as unknown as FakeWS;
     sock.protocol = 'graphql-transport-ws+deflate';
