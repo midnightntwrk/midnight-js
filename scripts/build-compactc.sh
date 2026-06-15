@@ -42,7 +42,10 @@ if ! command -v nix >/dev/null 2>&1; then
   exit 1
 fi
 
-home="${repo_root}/.compact-home"
+# Output directory for the wrapper + nix gcroot. Defaults to `.compact-home`
+# at the repo root; `scripts/build-compactc-docker.sh` overrides it via
+# COMPACT_BUILD_OUT to install the bundle outside its runtime bind-mount target.
+home="${COMPACT_BUILD_OUT:-${repo_root}/.compact-home}"
 mkdir -p "$home"
 
 # Flake reference for the compact build. Defaults to the local submodule as a
