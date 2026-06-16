@@ -5,7 +5,7 @@ used in standard unshielded events.
 Exactly one of `userAddress` or `contractAddress` is non-null; the `kind`
 discriminator says which.
 """
-type AddressOrContract {
+type AddressOrContract @beta {
 	kind: AddressOrContractKind!
 	"""
 	Bech32m-encoded user address; populated when kind = USER.
@@ -230,11 +230,12 @@ type ContractCall implements ContractAction {
 	`ContractUpdate` don't execute circuits with the `log()` expression.
 	Per Andrzej's 12 May design call (#feat-public-events).
 	
-	Returns an empty list until the chain-indexer populates the
-	`ledger_events.contract_action_id` column from the v9 parse path
-	(gated on ticket #1157).
+	Events are attributed to a call by matching contract address and entry
+	point within the transaction; if several calls in one transaction share
+	both, their events are not attributed here and remain reachable via the
+	top-level `contractEvents` query.
 	"""
-	contractEvents: [ContractEvent!]!
+	contractEvents: [ContractEvent!]! @beta
 }
 
 """
@@ -274,6 +275,7 @@ interface ContractEvent {
 	version: Int!
 	contractAddress: HexEncoded!
 	transactionId: Int!
+	transaction: Transaction!
 }
 
 """
@@ -304,6 +306,12 @@ input ContractEventFilter {
 	subscription, terminates the stream once the chain reaches this block.
 	"""
 	toBlock: Int
+	"""
+	Optional: hex-encoded transaction hash; narrows to events emitted from
+	transactions with this hash ("I just submitted tx X, give me its
+	events").
+	"""
+	transactionHash: HexEncoded
 }
 
 """
@@ -778,7 +786,7 @@ type MerkleTreeCollapsedUpdate {
 	protocolVersion: Int!
 }
 
-type MiscContractEvent implements ContractEvent {
+type MiscContractEvent implements ContractEvent @beta {
 	id: Int!
 	raw: HexEncoded!
 	maxId: Int!
@@ -795,6 +803,10 @@ type MiscContractEvent implements ContractEvent {
 	descriptor to decode.
 	"""
 	payload: HexEncoded!
+	"""
+	The transaction this event was emitted from.
+	"""
+	transaction: Transaction!
 }
 
 type Mutation {
@@ -827,7 +839,7 @@ type ParamChange implements DustLedgerEvent {
 	protocolVersion: Int!
 }
 
-type PausedEvent implements ContractEvent {
+type PausedEvent implements ContractEvent @beta {
 	id: Int!
 	raw: HexEncoded!
 	maxId: Int!
@@ -835,6 +847,10 @@ type PausedEvent implements ContractEvent {
 	version: Int!
 	contractAddress: HexEncoded!
 	transactionId: Int!
+	"""
+	The transaction this event was emitted from.
+	"""
+	transaction: Transaction!
 }
 
 """
@@ -899,7 +915,7 @@ type Query {
 	Block-range bounds (`fromBlock`, `toBlock`) live on `ContractEventFilter`
 	for symmetry with the subscription. `limit`/`offset` are top-level args.
 	"""
-	contractEvents(filter: ContractEventFilter!, limit: Int, offset: Int): [ContractEvent!]!
+	contractEvents(filter: ContractEventFilter!, limit: Int, offset: Int): [ContractEvent!]! @beta
 	"""
 	Get the full history of D-parameter changes for governance auditability.
 	"""
@@ -1149,7 +1165,7 @@ type Segment {
 	success: Boolean!
 }
 
-type ShieldedBurnEvent implements ContractEvent {
+type ShieldedBurnEvent implements ContractEvent @beta {
 	id: Int!
 	raw: HexEncoded!
 	maxId: Int!
@@ -1165,9 +1181,13 @@ type ShieldedBurnEvent implements ContractEvent {
 	Optional, hidden in some shielded burns (`Maybe<Uint<128>>`).
 	"""
 	amount: String
+	"""
+	The transaction this event was emitted from.
+	"""
+	transaction: Transaction!
 }
 
-type ShieldedMintEvent implements ContractEvent {
+type ShieldedMintEvent implements ContractEvent @beta {
 	id: Int!
 	raw: HexEncoded!
 	maxId: Int!
@@ -1187,6 +1207,10 @@ type ShieldedMintEvent implements ContractEvent {
 	Optional, hidden in some shielded mints (`Maybe<Uint<128>>`).
 	"""
 	amount: String
+	"""
+	The transaction this event was emitted from.
+	"""
+	transaction: Transaction!
 }
 
 """
@@ -1219,7 +1243,7 @@ type ShieldedNullifierTransaction {
 	transaction: Transaction! @beta
 }
 
-type ShieldedReceiveEvent implements ContractEvent {
+type ShieldedReceiveEvent implements ContractEvent @beta {
 	id: Int!
 	raw: HexEncoded!
 	maxId: Int!
@@ -1243,9 +1267,13 @@ type ShieldedReceiveEvent implements ContractEvent {
 	inherited from the ContractEvent interface.
 	"""
 	receivingContractAddress: HexEncoded
+	"""
+	The transaction this event was emitted from.
+	"""
+	transaction: Transaction!
 }
 
-type ShieldedSpendEvent implements ContractEvent {
+type ShieldedSpendEvent implements ContractEvent @beta {
 	id: Int!
 	raw: HexEncoded!
 	maxId: Int!
@@ -1257,6 +1285,10 @@ type ShieldedSpendEvent implements ContractEvent {
 	Indexed.
 	"""
 	nullifier: HexEncoded!
+	"""
+	The transaction this event was emitted from.
+	"""
+	transaction: Transaction!
 }
 
 """
@@ -1415,7 +1447,7 @@ type Subscription {
 	Subscribe to contract events matching the given filter, returning
 	events in monotonic `id` order.
 	"""
-	contractEvents(filter: ContractEventFilter!, id: Int): ContractEvent!
+	contractEvents(filter: ContractEventFilter!, id: Int): ContractEvent! @beta
 	"""
 	Subscribe to dust generation entries for a dust address in `[start_index, end_index]`
 	inclusive. `dustGenerationEndIndex` is exclusive, pass `dustGenerationEndIndex - 1`.
@@ -1619,7 +1651,7 @@ enum TransactionResultStatus {
 
 scalar Unit
 
-type UnpausedEvent implements ContractEvent {
+type UnpausedEvent implements ContractEvent @beta {
 	id: Int!
 	raw: HexEncoded!
 	maxId: Int!
@@ -1627,11 +1659,15 @@ type UnpausedEvent implements ContractEvent {
 	version: Int!
 	contractAddress: HexEncoded!
 	transactionId: Int!
+	"""
+	The transaction this event was emitted from.
+	"""
+	transaction: Transaction!
 }
 
 scalar UnshieldedAddress
 
-type UnshieldedBurnEvent implements ContractEvent {
+type UnshieldedBurnEvent implements ContractEvent @beta {
 	id: Int!
 	raw: HexEncoded!
 	maxId: Int!
@@ -1648,9 +1684,13 @@ type UnshieldedBurnEvent implements ContractEvent {
 	"""
 	tokenType: HexEncoded!
 	amount: String!
+	"""
+	The transaction this event was emitted from.
+	"""
+	transaction: Transaction!
 }
 
-type UnshieldedMintEvent implements ContractEvent {
+type UnshieldedMintEvent implements ContractEvent @beta {
 	id: Int!
 	raw: HexEncoded!
 	maxId: Int!
@@ -1667,9 +1707,13 @@ type UnshieldedMintEvent implements ContractEvent {
 	"""
 	tokenType: HexEncoded!
 	amount: String!
+	"""
+	The transaction this event was emitted from.
+	"""
+	transaction: Transaction!
 }
 
-type UnshieldedReceiveEvent implements ContractEvent {
+type UnshieldedReceiveEvent implements ContractEvent @beta {
 	id: Int!
 	raw: HexEncoded!
 	maxId: Int!
@@ -1690,9 +1734,13 @@ type UnshieldedReceiveEvent implements ContractEvent {
 	"""
 	tokenType: HexEncoded!
 	amount: String!
+	"""
+	The transaction this event was emitted from.
+	"""
+	transaction: Transaction!
 }
 
-type UnshieldedSpendEvent implements ContractEvent {
+type UnshieldedSpendEvent implements ContractEvent @beta {
 	id: Int!
 	raw: HexEncoded!
 	maxId: Int!
@@ -1713,6 +1761,10 @@ type UnshieldedSpendEvent implements ContractEvent {
 	"""
 	tokenType: HexEncoded!
 	amount: String!
+	"""
+	The transaction this event was emitted from.
+	"""
+	transaction: Transaction!
 }
 
 """

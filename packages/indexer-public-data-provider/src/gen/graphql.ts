@@ -154,9 +154,10 @@ export type ContractCall = ContractAction & {
    * `ContractUpdate` don't execute circuits with the `log()` expression.
    * Per Andrzej's 12 May design call (#feat-public-events).
    *
-   * Returns an empty list until the chain-indexer populates the
-   * `ledger_events.contract_action_id` column from the v9 parse path
-   * (gated on ticket #1157).
+   * Events are attributed to a call by matching contract address and entry
+   * point within the transaction; if several calls in one transaction share
+   * both, their events are not attributed here and remain reachable via the
+   * top-level `contractEvents` query.
    */
   readonly contractEvents: ReadonlyArray<ContractEvent>;
   /** Contract deploy for this contract call. */
@@ -194,6 +195,7 @@ export type ContractEvent = {
   readonly maxId: Scalars['Int']['output'];
   readonly protocolVersion: Scalars['Int']['output'];
   readonly raw: Scalars['HexEncoded']['output'];
+  readonly transaction: Transaction;
   readonly transactionId: Scalars['Int']['output'];
   readonly version: Scalars['Int']['output'];
 };
@@ -217,6 +219,12 @@ export type ContractEventFilter = {
    * subscription, terminates the stream once the chain reaches this block.
    */
   readonly toBlock: InputMaybe<Scalars['Int']['input']>;
+  /**
+   * Optional: hex-encoded transaction hash; narrows to events emitted from
+   * transactions with this hash ("I just submitted tx X, give me its
+   * events").
+   */
+  readonly transactionHash: InputMaybe<Scalars['HexEncoded']['input']>;
   /**
    * Optional: filter to a subset of contract event types. Indexer translates
    * to `variant = ANY(...)` against the indexed variant column.
@@ -525,6 +533,8 @@ export type MiscContractEvent = ContractEvent & {
   readonly payload: Scalars['HexEncoded']['output'];
   readonly protocolVersion: Scalars['Int']['output'];
   readonly raw: Scalars['HexEncoded']['output'];
+  /** The transaction this event was emitted from. */
+  readonly transaction: Transaction;
   readonly transactionId: Scalars['Int']['output'];
   readonly version: Scalars['Int']['output'];
 };
@@ -564,6 +574,8 @@ export type PausedEvent = ContractEvent & {
   readonly maxId: Scalars['Int']['output'];
   readonly protocolVersion: Scalars['Int']['output'];
   readonly raw: Scalars['HexEncoded']['output'];
+  /** The transaction this event was emitted from. */
+  readonly transaction: Transaction;
   readonly transactionId: Scalars['Int']['output'];
   readonly version: Scalars['Int']['output'];
 };
@@ -938,6 +950,8 @@ export type ShieldedBurnEvent = ContractEvent & {
   readonly nullifier: Scalars['HexEncoded']['output'];
   readonly protocolVersion: Scalars['Int']['output'];
   readonly raw: Scalars['HexEncoded']['output'];
+  /** The transaction this event was emitted from. */
+  readonly transaction: Transaction;
   readonly transactionId: Scalars['Int']['output'];
   readonly version: Scalars['Int']['output'];
 };
@@ -954,6 +968,8 @@ export type ShieldedMintEvent = ContractEvent & {
   readonly maxId: Scalars['Int']['output'];
   readonly protocolVersion: Scalars['Int']['output'];
   readonly raw: Scalars['HexEncoded']['output'];
+  /** The transaction this event was emitted from. */
+  readonly transaction: Transaction;
   readonly transactionId: Scalars['Int']['output'];
   readonly version: Scalars['Int']['output'];
 };
@@ -994,6 +1010,8 @@ export type ShieldedReceiveEvent = ContractEvent & {
    * inherited from the ContractEvent interface.
    */
   readonly receivingContractAddress: Maybe<Scalars['HexEncoded']['output']>;
+  /** The transaction this event was emitted from. */
+  readonly transaction: Transaction;
   readonly transactionId: Scalars['Int']['output'];
   readonly version: Scalars['Int']['output'];
 };
@@ -1006,6 +1024,8 @@ export type ShieldedSpendEvent = ContractEvent & {
   readonly nullifier: Scalars['HexEncoded']['output'];
   readonly protocolVersion: Scalars['Int']['output'];
   readonly raw: Scalars['HexEncoded']['output'];
+  /** The transaction this event was emitted from. */
+  readonly transaction: Transaction;
   readonly transactionId: Scalars['Int']['output'];
   readonly version: Scalars['Int']['output'];
 };
@@ -1339,6 +1359,8 @@ export type UnpausedEvent = ContractEvent & {
   readonly maxId: Scalars['Int']['output'];
   readonly protocolVersion: Scalars['Int']['output'];
   readonly raw: Scalars['HexEncoded']['output'];
+  /** The transaction this event was emitted from. */
+  readonly transaction: Transaction;
   readonly transactionId: Scalars['Int']['output'];
   readonly version: Scalars['Int']['output'];
 };
@@ -1354,6 +1376,8 @@ export type UnshieldedBurnEvent = ContractEvent & {
   readonly sender: AddressOrContract;
   /** Indexed; matches existing unshielded_utxos.token_type index. */
   readonly tokenType: Scalars['HexEncoded']['output'];
+  /** The transaction this event was emitted from. */
+  readonly transaction: Transaction;
   readonly transactionId: Scalars['Int']['output'];
   readonly version: Scalars['Int']['output'];
 };
@@ -1369,6 +1393,8 @@ export type UnshieldedMintEvent = ContractEvent & {
   readonly raw: Scalars['HexEncoded']['output'];
   /** Indexed; matches existing unshielded_utxos.token_type index. */
   readonly tokenType: Scalars['HexEncoded']['output'];
+  /** The transaction this event was emitted from. */
+  readonly transaction: Transaction;
   readonly transactionId: Scalars['Int']['output'];
   readonly version: Scalars['Int']['output'];
 };
@@ -1386,6 +1412,8 @@ export type UnshieldedReceiveEvent = ContractEvent & {
   readonly recipient: AddressOrContract;
   /** Indexed; matches existing unshielded_utxos.token_type index. */
   readonly tokenType: Scalars['HexEncoded']['output'];
+  /** The transaction this event was emitted from. */
+  readonly transaction: Transaction;
   readonly transactionId: Scalars['Int']['output'];
   readonly version: Scalars['Int']['output'];
 };
@@ -1403,6 +1431,8 @@ export type UnshieldedSpendEvent = ContractEvent & {
   readonly sender: AddressOrContract;
   /** Indexed; matches existing unshielded_utxos.token_type index. */
   readonly tokenType: Scalars['HexEncoded']['output'];
+  /** The transaction this event was emitted from. */
+  readonly transaction: Transaction;
   readonly transactionId: Scalars['Int']['output'];
   readonly version: Scalars['Int']['output'];
 };
