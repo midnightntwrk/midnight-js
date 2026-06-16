@@ -300,7 +300,7 @@ describe('ledger-utils', () => {
       chainState: ZswapChainState,
       contractAddress: ContractAddress
     ): string =>
-      ZswapInput.newContractOwned(qualifiedCoin, 0, contractAddress, chainState.postBlockUpdate(new Date())).nullifier;
+      ZswapInput.newContractOwned(qualifiedCoin, 0, contractAddress, chainState.postBlockUpdate(new Date(), 1n)).nullifier;
 
     it('routes a user-bound shielded output from a fallible op into the fallible Zswap offer', () => {
       // Arrange
