@@ -58,10 +58,12 @@ describe('Protocol ACL: no-restricted-imports rule', () => {
   describe('flags direct imports from consumer packages', () => {
     it.each([
       ['@midnight-ntwrk/ledger-v8', `${ACL_REPLACEMENT_PREFIX}/ledger`],
+      ['@midnightntwrk/ledger-v9', `${ACL_REPLACEMENT_PREFIX}/ledger`],
       ['@midnight-ntwrk/compact-runtime', `${ACL_REPLACEMENT_PREFIX}/compact-runtime`],
       ['@midnight-ntwrk/compact-js', `${ACL_REPLACEMENT_PREFIX}/compact-js`],
       ['@midnight-ntwrk/compact-js/effect', `${ACL_REPLACEMENT_PREFIX}/compact-js`],
       ['@midnight-ntwrk/onchain-runtime-v3', `${ACL_REPLACEMENT_PREFIX}/onchain-runtime`],
+      ['@midnightntwrk/onchain-runtime-v4', `${ACL_REPLACEMENT_PREFIX}/onchain-runtime`],
       ['@midnight-ntwrk/platform-js', `${ACL_REPLACEMENT_PREFIX}/platform-js`],
       ['@midnight-ntwrk/platform-js/effect/Configuration', `${ACL_REPLACEMENT_PREFIX}/platform-js`]
     ])('flags direct import of %s and points to %s', async (restricted, expectedReplacement) => {
@@ -76,7 +78,9 @@ describe('Protocol ACL: no-restricted-imports rule', () => {
     // the rule's wildcard pattern must still flag it. This guards the wildcard.
     it.each([
       ['ledger', '@midnight-ntwrk/ledger-v99'],
-      ['onchain-runtime', '@midnight-ntwrk/onchain-runtime-v99']
+      ['ledger', '@midnightntwrk/ledger-v99'],
+      ['onchain-runtime', '@midnight-ntwrk/onchain-runtime-v99'],
+      ['onchain-runtime', '@midnightntwrk/onchain-runtime-v99']
     ])('flags hypothetical future %s majors via the wildcard pattern', async (_name, futureSpecifier) => {
       const messages = await lintRestricted(importStatement(futureSpecifier), CONSUMER_PATH);
       expect(messages).toHaveLength(1);
@@ -103,11 +107,11 @@ describe('Protocol ACL: no-restricted-imports rule', () => {
 
   describe('override for packages/protocol/src/', () => {
     it.each([
-      '@midnight-ntwrk/ledger-v8',
+      '@midnightntwrk/ledger-v9',
       '@midnight-ntwrk/compact-runtime',
       '@midnight-ntwrk/compact-js',
       '@midnight-ntwrk/compact-js/effect',
-      '@midnight-ntwrk/onchain-runtime-v3',
+      '@midnightntwrk/onchain-runtime-v4',
       '@midnight-ntwrk/platform-js'
     ])('allows direct import of %s inside packages/protocol/src/', async (pkg) => {
       const messages = await lintRestricted(importStatement(pkg), PROTOCOL_INTERNAL_PATH);

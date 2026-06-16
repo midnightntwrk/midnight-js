@@ -16,7 +16,7 @@
 import typescript from '@rollup/plugin-typescript';
 import dts from 'rollup-plugin-dts';
 
-const external = [/node_modules/, /^@midnight-ntwrk\//];
+const external = [/node_modules/, /^@midnight-ntwrk\//, /^@midnightntwrk\//];
 
 const entries = [
   { input: 'src/index.ts', name: 'index' },

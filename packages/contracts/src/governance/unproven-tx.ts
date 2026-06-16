@@ -31,6 +31,7 @@ import {
   asContractAddress,
   asEffectOption,
   makeContractExecutableRuntime,
+  signingKeyHex,
   Transaction,
   type VerifierKey,
   type ZKConfigProvider
@@ -60,7 +61,7 @@ export const createUnprovenReplaceAuthorityTx = <C extends Contract.Any>(
   const contractExec = ContractExecutable.make(compiledContract);
   const contractRuntime = makeContractExecutableRuntime(zkConfigProvider, {
     coinPublicKey,
-    signingKey: currentAuthority
+    signingKey: signingKeyHex(currentAuthority)
   });
 
   return unprovenTxFromContractUpdates(async () => {
@@ -86,7 +87,7 @@ export const createUnprovenRemoveVerifierKeyTx = <C extends Contract.Any>(
   const contractExec = ContractExecutable.make(compiledContract);
   const contractRuntime = makeContractExecutableRuntime(zkConfigProvider, {
     coinPublicKey,
-    signingKey: currentAuthority
+    signingKey: signingKeyHex(currentAuthority)
   });
 
   return unprovenTxFromContractUpdates(async () => {
@@ -113,7 +114,7 @@ export const createUnprovenInsertVerifierKeyTx = <C extends Contract.Any>(
   const contractExec = ContractExecutable.make(compiledContract);
   const contractRuntime = makeContractExecutableRuntime(zkConfigProvider, {
     coinPublicKey,
-    signingKey: currentAuthority
+    signingKey: signingKeyHex(currentAuthority)
   });
 
   return unprovenTxFromContractUpdates(async () => {

@@ -229,6 +229,14 @@ export const encryptionPublicKeyResolverForZswapState = (
 export const GUARANTEED_SEGMENT_NUMBER = 0;
 export const FALLIBLE_SEGMENT_NUMBER = 1;
 
+/**
+ * The duration, in seconds, for which past Zswap Merkle-tree roots are retained during a
+ * post-block update. Matches the ledger's initial `global_ttl` parameter
+ * (midnight-ledger `ledger/src/structure.rs`), which the ledger itself passes to
+ * `post_block_update`; the wasm API does not expose the parameter, so it is mirrored here.
+ */
+const ZSWAP_PAST_ROOT_RETENTION_SECONDS = 3600n;
+
 type SegmentBucket = {
   outputs: Map<string, UnprovenOutput>;
   inputs: Map<string, UnprovenInput>;
@@ -331,7 +339,10 @@ export const zswapStateToSegmentedOffer = (
     [FALLIBLE_SEGMENT_NUMBER]: emptyBucket()
   };
 
-  const rehashedChainState = addressAndChainStateTuple?.zswapChainState.postBlockUpdate(new Date());
+  // Ledger v9 requires the past-Merkle-root retention duration explicitly. Mirror the ledger's
+  // initial parameters (`global_ttl`, midnight-ledger `ledger/src/structure.rs`): 3600 seconds.
+  // Retention only prunes historical roots and does not affect the commitment bookkeeping below.
+  const rehashedChainState = addressAndChainStateTuple?.zswapChainState.postBlockUpdate(new Date(), ZSWAP_PAST_ROOT_RETENTION_SECONDS);
 
   for (const output of zswapLocalState.outputs) {
     if (output.recipient.is_left) {

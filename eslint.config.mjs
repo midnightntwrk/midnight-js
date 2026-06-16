@@ -133,7 +133,7 @@ export default tseslint.config(
               message: 'Direct imports from dist folders are not allowed. Use source files instead.'
             },
             {
-              group: ['@midnight-ntwrk/ledger-v*'],
+              group: ['@midnight-ntwrk/ledger-v*', '@midnightntwrk/ledger-v*'],
               message: 'Import from @midnight-ntwrk/midnight-js-protocol/ledger instead. Only packages/protocol/src/ may import from ledger directly.'
             },
             {
@@ -145,7 +145,7 @@ export default tseslint.config(
               message: 'Import from @midnight-ntwrk/midnight-js-protocol/compact-js instead. Only packages/protocol/src/ may import from compact-js directly.'
             },
             {
-              group: ['@midnight-ntwrk/onchain-runtime-v*'],
+              group: ['@midnight-ntwrk/onchain-runtime-v*', '@midnightntwrk/onchain-runtime-v*'],
               message: 'Import from @midnight-ntwrk/midnight-js-protocol/onchain-runtime instead. Only packages/protocol/src/ may import from onchain-runtime directly.'
             },
             {
