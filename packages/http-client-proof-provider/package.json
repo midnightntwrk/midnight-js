@@ -23,7 +23,7 @@
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage logs src/test/resources/compiled",
     "compact": "yarn fetch-compactc && yarn compact-simple",
     "compact-simple": "run-compactc src/test/resources/simple.compact ./src/test/resources/compiled/simple",
-    "build": "node ../../scripts/check-compiled.js src/test/resources/compiled && rollup -c rollup.config.mjs",
+    "build": "node ../../scripts/check-compiled.js src/test/resources/compiled --force-on-compact-home && rollup -c rollup.config.mjs",
     "test": "vitest run",
     "deploy": "yarn npm publish --tolerate-republish"
   },
