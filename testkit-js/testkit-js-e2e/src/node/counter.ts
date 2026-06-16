@@ -82,6 +82,6 @@ async function counter() {
 counter()
   .then(() => logger.info('Counter test completed'))
   .catch((error) => {
-    logger.error('Counter test failed:', error);
+    logger.error({ err: error }, 'Counter test failed');
     process.exit(1);
   });
