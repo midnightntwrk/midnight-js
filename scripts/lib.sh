@@ -22,9 +22,8 @@
 #   assert_command nix "building compactc from the submodule"
 #   flake_ref="${COMPACTC_FLAKE_REF:-$(default_compact_flake_ref)}"
 
-# Resolve the repo root from the caller's path. BASH_SOURCE[1] is the sourcing
-# script; ${0%/*}/.. is its directory's parent.
-REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[1]}")/.." && pwd)
+# `cd -P + pwd -P` so a symlinked checkout still resolves to its real location.
+REPO_ROOT=$(cd -P -- "$(dirname -- "${BASH_SOURCE[1]}")/.." && pwd -P)
 
 assert_submodule_initialized() {
   if [ ! -f "$REPO_ROOT/compact/flake.nix" ]; then

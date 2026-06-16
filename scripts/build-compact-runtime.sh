@@ -14,16 +14,9 @@
 # limitations under the License.
 
 # Build @midnight-ntwrk/compact-runtime from the `compact/` submodule via nix
-# and lay out the resulting npm package at `.compact-runtime-home/` so it can
-# be consumed via Yarn's `portal:` protocol.
-#
-# Companion to `scripts/build-compactc.sh`. Use both when developing against
-# an unreleased compactc/runtime pair; their generated artifacts (compactc
-# binary + compact-runtime npm package) must come from the same source tree.
-#
-# First build can be slow: without nix `trusted-users` access to the IOG cache
-# (`cache.iog.io`), the dependencies compile from source. Subsequent runs are
-# cached.
+# and lay it out at `.compact-runtime-home/` for Yarn's `file:` resolution.
+# Companion to build-compactc.sh — the compactc/runtime pair must come from
+# the same source tree.
 
 set -euo pipefail
 
@@ -42,8 +35,6 @@ home="${COMPACT_RUNTIME_OUT:-${REPO_ROOT}/.compact-runtime-home}"
 # Default flake reference: see scripts/lib.sh:default_compact_flake_ref.
 flake_ref="${COMPACTC_FLAKE_REF:-$(default_compact_flake_ref)}"
 
-# Sibling gcroot directory keeps the runtime nix gcroot independent of the
-# compactc one.
 gcroot_dir="${home}-build"
 mkdir -p "$gcroot_dir"
 
@@ -52,20 +43,33 @@ nix build --out-link "$gcroot_dir/result" "${flake_ref}#runtime.package"
 
 # `packages.runtime.package` layout (per compact/flake.nix):
 #   $out/lib/node_modules/@midnight-ntwrk/compact-runtime/{package.json,dist/,...}
-# Materialize a flat npm package directory at $home so Yarn `portal:` can point
+# Materialize a flat npm package directory at $home so Yarn `file:` can point
 # at it without a wrapper layer.
-src_pkg_dir="$(readlink -f "$gcroot_dir/result")/lib/node_modules/@midnight-ntwrk/compact-runtime"
+#
+# `cd -P + pwd -P` is the portable equivalent of `readlink -f`: BSD readlink
+# (macOS without coreutils) has no `-f`, but `cd` follows symlinks and `pwd -P`
+# prints the physical (dereferenced) path.
+src_pkg_dir="$(cd -P "$gcroot_dir/result/lib/node_modules/@midnight-ntwrk/compact-runtime" && pwd -P)"
 if [ ! -d "$src_pkg_dir" ]; then
   echo "error: built runtime package not found at $src_pkg_dir" >&2
   exit 1
 fi
 
-rm -rf "$home"
-mkdir -p "$home"
-cp -RL "$src_pkg_dir"/. "$home/"
+# Stage into a sibling temp dir and atomically swap, so an interrupted cp
+# (Ctrl-C, disk full, signal) cannot leave the developer with a half-deleted
+# $home and no working install.
+staging_dir="${home}.new"
+rm -rf "$staging_dir"
+mkdir -p "$staging_dir"
+cp -RL "$src_pkg_dir"/. "$staging_dir/"
 # Ensure files are writable (nix-store paths are read-only by default).
-chmod -R u+w "$home"
+chmod -R u+w "$staging_dir"
+rm -rf "$home"
+mv "$staging_dir" "$home"
 
-version=$(grep -oE '"version"[[:space:]]*:[[:space:]]*"[^"]+"' "$home/package.json" | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
-echo "compact-runtime ${version:-unknown} laid out at $home"
+# Pass the path via argv so a $home containing shell metacharacters cannot
+# break (or inject into) the embedded JS expression. Failure (missing or
+# malformed package.json) propagates under `set -e` instead of being masked.
+version=$(node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).version)' "$home/package.json")
+echo "compact-runtime ${version} laid out at $home"
 echo "Inject the Yarn file: resolution with: node scripts/use-source-compact-runtime.js"

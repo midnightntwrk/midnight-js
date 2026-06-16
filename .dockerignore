@@ -1,9 +1,6 @@
-# Restrict Docker build context to what scripts/build-compactc-docker.sh needs:
-# the compact/ submodule (excluding its .git) and scripts/.
-# Other docker tooling in the repo (testkit-js/compose.yml, etc.) only consumes
-# external images and never runs `docker build`, so this restrictive baseline
-# is safe.
-
+# Restrict the repo-wide docker build context to compact/ + scripts/ (what
+# scripts/build-*-docker.sh need). Safe today because no other Dockerfile in
+# the repo runs `docker build`; if one ever does, scope this via -f instead.
 *
 !compact/
 !scripts/

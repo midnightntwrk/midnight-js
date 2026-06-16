@@ -71,7 +71,6 @@ if (restore) {
   process.exit(0);
 }
 
-// Inject path.
 const runtimePackageJson = path.join(runtimeHome, 'package.json');
 if (!fs.existsSync(runtimePackageJson)) {
   console.error(`Error: ${runtimePackageJson} not found.`);

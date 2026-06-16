@@ -29,7 +29,25 @@ if (!compiledDirPath) {
   process.exit(1);
 }
 
-const compiledDir = path.join(process.cwd(), compiledDirPath);
+// Reject traversal sequences and absolute paths in the argv input before it
+// reaches any path.join/path.resolve. The callers are package.json build
+// scripts in this repo (trusted), but explicit rejection makes the boundary
+// unambiguous to both readers and static analysers.
+if (
+  path.isAbsolute(compiledDirPath) ||
+  compiledDirPath.includes('\0') ||
+  compiledDirPath.split(/[\\/]/).includes('..')
+) {
+  console.error(`Error: compiled dir must be a relative path without '..' segments (got '${compiledDirPath}').`);
+  process.exit(1);
+}
+
+const cwd = process.cwd();
+const compiledDir = path.resolve(cwd, compiledDirPath);
+if (compiledDir !== cwd && !compiledDir.startsWith(cwd + path.sep)) {
+  console.error(`Error: compiled dir must be inside ${cwd} (resolved to ${compiledDir}).`);
+  process.exit(1);
+}
 const compactHome = process.env.COMPACT_HOME;
 
 // Fail fast: if COMPACT_HOME is set but its compactc wrapper is missing, the
@@ -44,14 +62,18 @@ if (compactHome) {
   }
 }
 
+// Narrow catches to ENOENT (missing files are part of the contract: a source
+// file that hasn't been added yet, a partial compiled tree). EACCES / EIO /
+// ELOOP would otherwise be silently treated as "missing" and let the
+// staleness check skip recompilation against a real filesystem error.
 function newestMtimeMs(filePaths) {
   let newest = 0;
   for (const p of filePaths) {
     try {
       const t = fs.statSync(p).mtime.getTime();
       if (t > newest) newest = t;
-    } catch {
-      // missing entry: ignore
+    } catch (err) {
+      if (err.code !== 'ENOENT') throw err;
     }
   }
   return newest;
@@ -60,6 +82,9 @@ function newestMtimeMs(filePaths) {
 function oldestMtimeMs(dir) {
   let oldest = Infinity;
   for (const entry of fs.readdirSync(dir, { recursive: true })) {
+    // `entry` is filesystem-derived from a validated dir and cannot escape;
+    // nosemgrep tags the trusted-source flow that SAST cannot track.
+    // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
     const full = path.join(dir, entry);
     try {
       const stat = fs.statSync(full);
@@ -67,20 +92,26 @@ function oldestMtimeMs(dir) {
         const t = stat.mtime.getTime();
         if (t < oldest) oldest = t;
       }
-    } catch {
-      // unreadable entry: ignore
+    } catch (err) {
+      if (err.code !== 'ENOENT') throw err;
     }
   }
   return oldest === Infinity ? 0 : oldest;
 }
 
 function listSourceCompactFiles(dir) {
+  // `dir` is the validated compiledDir (proven to be under cwd at entry), so
+  // its parent is also under cwd (or equal to it) — the resolve is bounded.
+  // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
   const sourceDir = path.resolve(dir, '..');
   try {
     return fs.readdirSync(sourceDir)
       .filter((f) => f.endsWith('.compact'))
+      // `f` is a filename from readdirSync of a validated dir; cannot escape.
+      // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
       .map((f) => path.join(sourceDir, f));
-  } catch {
+  } catch (err) {
+    if (err.code !== 'ENOENT') throw err;
     return [];
   }
 }

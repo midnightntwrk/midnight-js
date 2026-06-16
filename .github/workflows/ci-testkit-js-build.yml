@@ -91,17 +91,10 @@ jobs:
       - name: Configure yarn
         run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
-      # Opt-in compactc build from the `compact/` submodule (feature-branch dev
-      # against unreleased compactc). Activated by either:
-      #   * workflow_dispatch input `compactc_source=submodule`, or
-      #   * PR label `compactc-from-source`.
-      # When active, `packages/compact/run-compactc` uses COMPACT_HOME and
-      # `fetch-compactc` skips the prebuilt-binary download; the source-built
-      # @midnight-ntwrk/compact-runtime is also injected before yarn install.
-      #
-      # Computed BEFORE the cache key so opt-in and default paths use disjoint
-      # cache buckets, preventing a mutated yarn.lock from one path from
-      # poisoning the other on subsequent runs.
+      # Opt-in submodule build, activated by workflow_dispatch input or PR
+      # label `compactc-from-source` (the label only fires on pull_request
+      # events). Computed BEFORE the cache key so opt-in and default paths
+      # land in disjoint cache buckets.
       - name: Detect compactc build mode
         id: compactc-mode
         env:
@@ -115,6 +108,20 @@ jobs:
             echo "should_build=false" >> "$GITHUB_OUTPUT"
           fi
 
+      # Fold the submodule SHA into the cache key — yarn.lock alone doesn't
+      # discriminate runs against different compact/ commits.
+      - name: Resolve compact submodule SHA
+        id: compact-sha
+        if: steps.compactc-mode.outputs.should_build == 'true'
+        shell: bash
+        run: |
+          sha=$(git ls-tree HEAD compact | awk '{print $3}')
+          if [ -z "$sha" ]; then
+            echo "error: could not resolve compact submodule SHA from HEAD." >&2
+            exit 1
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
       - name: Cache Turbo and Yarn dependencies
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # ratchet:actions/cache@v5.0.5
         with:
@@ -122,14 +129,12 @@ jobs:
             **/node_modules
             ~/.yarn
             .turbo
-          key: turbo-testkit-${{ runner.os }}-${{ steps.compactc-mode.outputs.should_build }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
+          key: turbo-testkit-${{ runner.os }}-${{ steps.compactc-mode.outputs.should_build }}-${{ steps.compact-sha.outputs.sha }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
           restore-keys: |
-            turbo-testkit-${{ runner.os }}-${{ steps.compactc-mode.outputs.should_build }}-
+            turbo-testkit-${{ runner.os }}-${{ steps.compactc-mode.outputs.should_build }}-${{ steps.compact-sha.outputs.sha }}-
 
-      # Conditional compactc/runtime source build runs BEFORE yarn install so
-      # only a single install happens (no `--immutable` re-install after a
-      # mutated package.json). The portal/file resolution for the runtime is
-      # in place by the time yarn resolves the dependency tree.
+      # Source build runs BEFORE yarn install so the file: resolution is in
+      # place when yarn resolves the tree (avoids an --immutable re-install).
       - name: Init compact submodule
         if: steps.compactc-mode.outputs.should_build == 'true'
         run: git submodule update --init --recursive compact
@@ -158,14 +163,16 @@ jobs:
         if: steps.compactc-mode.outputs.should_build == 'true'
         run: node scripts/use-source-compact-runtime.js
 
-      - name: Install dependencies (default path, immutable)
+      # --immutable on the default path enforces lockfile coherence. The
+      # source-build opt-in mutates package.json via use-source-compact-runtime.js,
+      # so the lockfile must be allowed to update; the two-step form keeps
+      # that distinction explicit (versus a ternary-string `if:` flag).
+      - name: Install dependencies (default, immutable)
         if: steps.compactc-mode.outputs.should_build != 'true'
         run: yarn install --immutable
 
       - name: Install dependencies (source-build opt-in)
         if: steps.compactc-mode.outputs.should_build == 'true'
-        # package.json was mutated by the resolution-inject step, so yarn install
-        # must run without --immutable.
         run: yarn install
 
       - name: Run build

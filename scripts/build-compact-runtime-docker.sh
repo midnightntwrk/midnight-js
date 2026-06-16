@@ -15,7 +15,7 @@
 
 # Build @midnight-ntwrk/compact-runtime from the `compact/` submodule inside a
 # Docker container, so developers without host nix can still produce the
-# `.compact-runtime-home/` npm package that Yarn's `portal:` protocol points at.
+# `.compact-runtime-home/` npm package that Yarn's `file:` resolution points at.
 # The Dockerfile delegates to `scripts/build-compact-runtime.sh` so the build
 # logic lives in one place.
 
@@ -29,8 +29,6 @@ assert_submodule_initialized
 assert_command docker "building compact-runtime without host nix"
 
 home="${REPO_ROOT}/.compact-runtime-home"
-rm -rf "$home"
-mkdir -p "$home"
 
 image_tag="midnight-js-compact-runtime-local:latest"
 echo "Building compact-runtime Docker image '$image_tag' (first build can be slow)..."
@@ -56,14 +54,22 @@ ENV COMPACT_RUNTIME_OUT=/compact-runtime-home
 RUN /opt/build/scripts/build-compact-runtime.sh
 DOCKERFILE
 
+# Recreate the host output directory only after the image build succeeded, so a
+# `docker build` failure does not wipe a previously-working install.
+rm -rf "$home"
+mkdir -p "$home"
+
 # Extract via `docker run --rm` with a bind mount, avoiding the
-# create/cp/remove cycle.
+# create/cp/remove cycle and the root-owned files that `docker cp` would
+# produce on the host without user-namespace remapping. `chmod -R u+w` after
+# copy mirrors build-compact-runtime.sh: nix-store files leak through as
+# read-only and would otherwise break `yarn install`'s rewrite step.
 docker run --rm \
   --user "$(id -u):$(id -g)" \
   --volume "$home:/out" \
   "$image_tag" \
-  sh -c 'cp -R /compact-runtime-home/. /out/'
+  sh -c 'cp -R /compact-runtime-home/. /out/ && chmod -R u+w /out'
 
-version=$(grep -oE '"version"[[:space:]]*:[[:space:]]*"[^"]+"' "$home/package.json" | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
-echo "compact-runtime ${version:-unknown} extracted to $home"
+version=$(node -e 'process.stdout.write(JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")).version)' "$home/package.json")
+echo "compact-runtime ${version} extracted to $home"
 echo "Inject the Yarn file: resolution with: node scripts/use-source-compact-runtime.js"

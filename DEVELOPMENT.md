@@ -288,10 +288,12 @@ After either path, `.envrc` auto-exports `COMPACT_HOME=$PWD/.compact-home`.
 `packages/compact` honours it: `fetch-compactc` skips the prebuilt download
 and `run-compactc` invokes `$COMPACT_HOME/compactc`.
 
-When `COMPACT_HOME` is set, `scripts/check-compiled.js` forces
-`yarn compact` to recompile the testkit's `.compact` contracts with the
-source-built compactc — otherwise the committed `src/contract/compiled/`
-artifacts (built against a previous compactc release) would silently be used.
+When `COMPACT_HOME` is set, packages whose `build` script passes
+`--force-on-compact-home` to `scripts/check-compiled.js` (currently
+`testkit-js/testkit-js-e2e` and `packages/http-client-proof-provider`) recompile
+their `.compact` contracts with the source-built compactc — otherwise the
+committed `compiled/` artifacts (built against a previous compactc release)
+would silently be used.
 
 To bump the pinned compactc version: update the `compact/` submodule SHA,
 update `COMPACTC_VERSION` in `.envrc`, then re-run the build script.
@@ -329,7 +331,7 @@ yarn install
 
 In CI, the same `compactc-from-source` opt-in (PR label or workflow_dispatch
 input `compactc_source=submodule`) builds both compactc and compact-runtime
-and injects the portal resolution before `yarn build` — so the pair is
+and injects the `file:` resolution before `yarn build` — so the pair is
 always coherent.
 
 ## Troubleshooting
