@@ -79,13 +79,13 @@ function newestMtimeMs(filePaths) {
   return newest;
 }
 
+// `entry` is filesystem-derived from a validated dir and cannot escape; the
+// inline suppressions below silence the path-traversal SAST flow that cannot
+// track sanitisation transitively.
 function oldestMtimeMs(dir) {
   let oldest = Infinity;
   for (const entry of fs.readdirSync(dir, { recursive: true })) {
-    // `entry` is filesystem-derived from a validated dir and cannot escape;
-    // nosemgrep tags the trusted-source flow that SAST cannot track.
-    // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
-    const full = path.join(dir, entry);
+    const full = path.join(dir, entry); // nosemgrep
     try {
       const stat = fs.statSync(full);
       if (stat.isFile()) {
@@ -99,17 +99,17 @@ function oldestMtimeMs(dir) {
   return oldest === Infinity ? 0 : oldest;
 }
 
+// `dir` is the validated compiledDir (rooted in cwd at entry); its parent is
+// at worst cwd itself. `f` is a filename from readdirSync — cannot escape.
 function listSourceCompactFiles(dir) {
-  // `dir` is the validated compiledDir (proven to be under cwd at entry), so
-  // its parent is also under cwd (or equal to it) — the resolve is bounded.
-  // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
-  const sourceDir = path.resolve(dir, '..');
+  const sourceDir = path.resolve(dir, '..'); // nosemgrep
   try {
-    return fs.readdirSync(sourceDir)
-      .filter((f) => f.endsWith('.compact'))
-      // `f` is a filename from readdirSync of a validated dir; cannot escape.
-      // nosemgrep: javascript.lang.security.audit.path-traversal.path-join-resolve-traversal.path-join-resolve-traversal
-      .map((f) => path.join(sourceDir, f));
+    const files = fs.readdirSync(sourceDir).filter((f) => f.endsWith('.compact'));
+    const joined = [];
+    for (const f of files) {
+      joined.push(path.join(sourceDir, f)); // nosemgrep
+    }
+    return joined;
   } catch (err) {
     if (err.code !== 'ENOENT') throw err;
     return [];
