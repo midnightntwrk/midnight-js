@@ -39,9 +39,9 @@ on:
         default: 'undeployed'
       testkit_docker_env:
         type: string
-        description: Docker image version set sourced from testkit-js/env/<testkit_docker_env>.env (qanet|preview|preprod|mainnet|devnet). Empty falls back to the .envrc default.
+        description: Docker image version set sourced from testkit-js/env/<testkit_docker_env>.env (qanet|preview|preprod|mainnet|devnet). Empty falls back to the .envrc default (devnet).
         required: false
-        default: ''
+        default: 'devnet'
       compactc_source:
         type: string
         description: 'compactc source: "release" (default prebuilt download) or "submodule" (build from compact/ submodule via nix).'
