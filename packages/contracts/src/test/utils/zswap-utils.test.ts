@@ -53,10 +53,10 @@ import {
   serializeCoinInfo,
   serializeQualifiedShieldedCoinInfo,
   SHIELDED_BURN_COIN_PUBLIC_KEY,
+  ZSWAP_MERKLE_ROOT_RETENTION_SECONDS,
   zswapStateToNewCoins,
   zswapStateToOffer,
-  zswapStateToSegmentedOffer
-} from '../../utils';
+  zswapStateToSegmentedOffer} from '../../utils';
 
 const arbitraryBytes = fc.uint8Array({ minLength: 32, maxLength: 32 });
 
@@ -247,7 +247,7 @@ describe('Zswap utilities', () => {
       }
       return prevZSwapChainState;
     }, new ZswapChainState());
-    const zswapChainStateUpdated = zswapChainState.postBlockUpdate(new Date());
+    const zswapChainStateUpdated = zswapChainState.postBlockUpdate(new Date(), ZSWAP_MERKLE_ROOT_RETENTION_SECONDS);
     return { zswapChainState: zswapChainStateUpdated, nonMatchingInputs };
   };
 
@@ -975,7 +975,7 @@ describe('Zswap utilities', () => {
         ZswapOffer.fromOutput(output, coinInfo.type, coinInfo.value)
       ).eraseProofs();
       const [chainState, mtIndices] = new ZswapChainState().tryApply(seedTx.guaranteedOffer!);
-      const rehashedChainState = chainState.postBlockUpdate(new Date());
+      const rehashedChainState = chainState.postBlockUpdate(new Date(), ZSWAP_MERKLE_ROOT_RETENTION_SECONDS);
       const qualifiedCoin: QualifiedShieldedCoinInfo = { ...coinInfo, mt_index: mtIndices.get(output.commitment)! };
       // Act
       const nullifierSeg0 = ZswapInput.newContractOwned(qualifiedCoin, 0, contractRecipient.right, rehashedChainState).nullifier;
@@ -1187,7 +1187,12 @@ describe('Zswap utilities', () => {
       chainState: ZswapChainState,
       contractAddress: ContractAddress
     ): string =>
-      ZswapInput.newContractOwned(qualifiedCoin, 0, contractAddress, chainState.postBlockUpdate(new Date())).nullifier;
+      ZswapInput.newContractOwned(
+        qualifiedCoin,
+        0,
+        contractAddress,
+        chainState.postBlockUpdate(new Date(), ZSWAP_MERKLE_ROOT_RETENTION_SECONDS)
+      ).nullifier;
 
     it('routes a wallet-owned input to the fallible offer when its nullifier is in partitionedTranscript[1].claimedNullifiers', () => {
       // Arrange

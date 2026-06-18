@@ -61,7 +61,8 @@ import {
   extractUserAddressedOutputs,
   fromLedgerContractState,
   toLedgerContractState,
-  toLedgerQueryContext} from '../../utils';
+  toLedgerQueryContext,
+  ZSWAP_MERKLE_ROOT_RETENTION_SECONDS} from '../../utils';
 const emptyTranscript: PartitionedTranscript = [undefined, undefined];
 
 describe('ledger-utils', () => {
@@ -264,7 +265,12 @@ describe('ledger-utils', () => {
       chainState: ZswapChainState,
       contractAddress: ContractAddress
     ): string =>
-      ZswapInput.newContractOwned(qualifiedCoin, 0, contractAddress, chainState.postBlockUpdate(new Date())).nullifier;
+      ZswapInput.newContractOwned(
+        qualifiedCoin,
+        0,
+        contractAddress,
+        chainState.postBlockUpdate(new Date(), ZSWAP_MERKLE_ROOT_RETENTION_SECONDS)
+      ).nullifier;
 
     it('routes a user-bound shielded output from a fallible op into the fallible Zswap offer', () => {
       // Arrange
