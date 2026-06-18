@@ -2344,14 +2344,14 @@ __metadata:
 
 "@midnightntwrk/ledger-v9@npm:1.0.0-rc.2":
   version: 1.0.0-rc.2
-  resolution: "@midnightntwrk/ledger-v9@npm:1.0.0-rc.2::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnightntwrk%2Fledger-v9%2F1.0.0-rc.2%2F8cdcdcdee3026e358ca58cd33cc1f542759671a0"
+  resolution: "@midnightntwrk/ledger-v9@npm:1.0.0-rc.2"
   checksum: 10/84dc2c7774c23a8122f5f7ccb535ab4a725afd7a02e6c7cdd685e248cbbd151ce5f803056b16061462e6be36d99f8a5162d6db4de8b41a38bd1d5474fde7805c
   languageName: node
   linkType: hard
 
 "@midnightntwrk/onchain-runtime-v4@npm:4.0.0-rc.2":
   version: 4.0.0-rc.2
-  resolution: "@midnightntwrk/onchain-runtime-v4@npm:4.0.0-rc.2::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnightntwrk%2Fonchain-runtime-v4%2F4.0.0-rc.2%2F7ff16d5ae29fb6aba81c134bb4f766e4f75e8df2"
+  resolution: "@midnightntwrk/onchain-runtime-v4@npm:4.0.0-rc.2"
   checksum: 10/c2176e55591586a6871ec1fa6449c9f6236f230890be1ae08cb90294bb244f2d9f5390b4892d6aa87236b95d967f27f37a595d5ffbbe74c5eab80fdb66750173
   languageName: node
   linkType: hard
