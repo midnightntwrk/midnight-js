@@ -61,8 +61,8 @@ describe('integration: ledger source — Pattern #1 (tag mismatch)', () => {
     expect(err.context.classification).toBe('version-mismatch');
     expect(err.context.direction).toBeUndefined();
     expect(err.context.source).toBe('ledger');
-    // expected version is structural ContractState [v6] in current ledger-v8
-    expect(err.context.extracted?.expectedVersion).toBe(6);
+    // expected version is structural ContractState [v8] in current ledger-v9
+    expect(err.context.extracted?.expectedVersion).toBe(8);
     expect(err.context.extracted?.receivedVersion).toBeUndefined();
   });
 
@@ -76,27 +76,27 @@ describe('integration: ledger source — Pattern #1 (tag mismatch)', () => {
   });
 
   it('header tag with older version → version-mismatch + data-older-than-code', () => {
-    // ContractState currently expects [v6]. We feed [v5].
+    // ContractState currently expects [v8]. We feed [v5].
     const oldTag = headerBytes('midnight:contract-state[v5]:');
 
     const err = catchDeserError(() => deserializeContractState(oldTag, { caller }));
 
     expect(err.context.classification).toBe('version-mismatch');
     expect(err.context.direction).toBe('data-older-than-code');
-    expect(err.context.extracted?.expectedVersion).toBe(6);
+    expect(err.context.extracted?.expectedVersion).toBe(8);
     expect(err.context.extracted?.receivedVersion).toBe(5);
   });
 
   it('header tag with newer version → version-mismatch + data-newer-than-code', () => {
-    // ContractState currently expects [v6]. We feed [v7].
-    const newTag = headerBytes('midnight:contract-state[v7]:');
+    // ContractState currently expects [v8]. We feed [v9].
+    const newTag = headerBytes('midnight:contract-state[v9]:');
 
     const err = catchDeserError(() => deserializeContractState(newTag, { caller }));
 
     expect(err.context.classification).toBe('version-mismatch');
     expect(err.context.direction).toBe('data-newer-than-code');
-    expect(err.context.extracted?.expectedVersion).toBe(6);
-    expect(err.context.extracted?.receivedVersion).toBe(7);
+    expect(err.context.extracted?.expectedVersion).toBe(8);
+    expect(err.context.extracted?.receivedVersion).toBe(9);
   });
 
   it('cross-type bytes (zswap header fed to ContractState) → version-mismatch', () => {
