@@ -137,13 +137,13 @@ export const createUnprovenLedgerCallTx = (
   // contract-qualified form — circuit names alone are ambiguous across contracts — embedding the
   // hash of the deployed verifier key so provers resolve artifacts by content (see
   // `ZKConfigRegistry`).
-  const intent = Intent.new(ttlOneHour());
+  let intent = Intent.new(ttlOneHour());
   for (const call of calls) {
     const callContractState = contractStateFor(call.contractAddress);
     assertDefined(callContractState, `Contract state for '${call.contractAddress}' is undefined`);
     const op = toLedgerContractState(callContractState).operation(call.circuitId);
     assertDefined(op, `Operation '${call.circuitId}' is undefined for contract '${call.contractAddress}'`);
-    intent.addCall(
+    intent = intent.addCall(
       new ContractCallPrototype(
         call.contractAddress,
         call.circuitId,
