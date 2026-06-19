@@ -139,7 +139,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     assertIsContractAddress(address);
     const offset: InputMaybe<ContractActionOffset> = config
       ? {
-          blockOffset:
+          asOfBlockOffset:
             config.type === 'blockHeight' ? { height: config.blockHeight } : { hash: config.blockHash }
         }
       : null;
@@ -162,9 +162,9 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     config?: BlockHeightConfig | BlockHashConfig
   ): Promise<[ZswapChainState, ContractState, LedgerParameters] | null> {
     assertIsContractAddress(address);
-    const offset = config
+    const offset: InputMaybe<ContractActionOffset> = config
       ? {
-          blockOffset:
+          asOfBlockOffset:
             config.type === 'blockHeight' ? { height: config.blockHeight } : { hash: config.blockHash }
         }
       : null;
