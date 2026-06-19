@@ -21,12 +21,29 @@ import type {
   ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
 
-import { httpClientProvingProvider, type ProvingProviderConfig } from './http-client-proving-provider';
+import {
+  DEFAULT_TIMEOUT,
+  httpClientProvingProvider,
+  type ProvingProviderConfig
+} from './http-client-proving-provider';
 
 export const DEFAULT_CONFIG = {
-  timeout: 300000,
+  timeout: DEFAULT_TIMEOUT,
   zkConfig: undefined
 };
+
+/**
+ * Resolves the timeout to use for a proveTx call.
+ *
+ * Precedence: per-call `proveTxConfig.timeout` > construction-time
+ * `config.timeout` > `DEFAULT_TIMEOUT`. This was previously collapsed to the
+ * construction-time value because the per-call `ProveTxConfig` was ignored
+ * (see https://github.com/midnightntwrk/midnight-js/issues/974).
+ */
+const resolveTimeout = (
+  constructionConfig: ProvingProviderConfig | undefined,
+  proveTxConfig: ProveTxConfig | undefined
+): number => proveTxConfig?.timeout ?? constructionConfig?.timeout ?? DEFAULT_TIMEOUT;
 
 /**
  * Creates a high-level {@link ProofProvider} that implements transaction-level proving
@@ -59,15 +76,21 @@ export const httpClientProofProvider = <K extends string>(
   zkConfigProvider: ZKConfigProvider<K>,
   config?: ProvingProviderConfig
 ): ProofProvider => {
-  const baseProvingProvider = httpClientProvingProvider(url, zkConfigProvider, config);
-
   return {
     async proveTx(
       unprovenTx: UnprovenTransaction,
-      _partialProveTxConfig?: ProveTxConfig
+      proveTxConfig?: ProveTxConfig
     ): Promise<UnboundTransaction> {
+      // Build a per-call ProvingProvider so the per-call `proveTxConfig.timeout`
+      // is actually honored, rather than silently using the construction-time
+      // timeout. The construction-time `config` is reused for non-timeout fields
+      // (e.g. headers) so callers do not have to re-supply them.
+      const perCallProvingProvider = httpClientProvingProvider(url, zkConfigProvider, {
+        ...config,
+        timeout: resolveTimeout(config, proveTxConfig)
+      });
       const costModel = CostModel.initialCostModel();
-      return unprovenTx.prove(baseProvingProvider, costModel);
+      return unprovenTx.prove(perCallProvingProvider, costModel);
     }
   };
 };
