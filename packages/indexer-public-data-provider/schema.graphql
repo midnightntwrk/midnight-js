@@ -166,9 +166,13 @@ Either a block offset or a transaction offset.
 """
 input ContractActionOffset @oneOf {
 	"""
-	Either a block hash or a block height.
+	Either a block hash or a block height; selects the contract action in that exact block.
 	"""
 	blockOffset: BlockOffset
+  """
+  Either a block hash or a block height; selects the address's state as of that block (the latest contract action in any block at or before it).
+  """
+  asOfBlockOffset: BlockOffset
 	"""
 	Either a transaction hash or a transaction identifier.
 	"""
@@ -225,11 +229,11 @@ type ContractCall implements ContractAction {
 	unshieldedBalances: [ContractBalance!]!
 	"""
 	Contract events emitted by this contract call.
-	
+
 	Only `ContractCall` exposes this field — `ContractDeploy` and
 	`ContractUpdate` don't execute circuits with the `log()` expression.
 	Per Andrzej's 12 May design call (#feat-public-events).
-	
+
 	Events are attributed to a call by matching contract address and entry
 	point within the transaction; if several calls in one transaction share
 	both, their events are not attributed here and remain reachable via the
@@ -911,7 +915,7 @@ type Query {
 	dustGenerationMerkleTreeUpdate(startIndex: Int!, endIndex: Int!): MerkleTreeCollapsedUpdate! @beta
 	"""
 	Find contract events matching the filter, with optional pagination.
-	
+
 	Block-range bounds (`fromBlock`, `toBlock`) live on `ContractEventFilter`
 	for symmetry with the subscription. `limit`/`offset` are top-level args.
 	"""
@@ -1900,4 +1904,3 @@ schema {
 	mutation: Mutation
 	subscription: Subscription
 }
-

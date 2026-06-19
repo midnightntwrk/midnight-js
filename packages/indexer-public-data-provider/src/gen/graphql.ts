@@ -126,10 +126,12 @@ export type ContractAction = {
 
 /** Either a block offset or a transaction offset. */
 export type ContractActionOffset =
-  /** Either a block hash or a block height. */
-  { readonly blockOffset: BlockOffset; readonly transactionOffset?: never; }
+  /** Either a block hash or a block height; selects the address's state as of that block (the latest contract action in any block at or before it). */
+  { readonly asOfBlockOffset: BlockOffset; readonly blockOffset?: never; readonly transactionOffset?: never; }
+  |  /** Either a block hash or a block height; selects the contract action in that exact block. */
+  { readonly asOfBlockOffset?: never; readonly blockOffset: BlockOffset; readonly transactionOffset?: never; }
   |  /** Either a transaction hash or a transaction identifier. */
-  { readonly blockOffset?: never; readonly transactionOffset: TransactionOffset; };
+  { readonly asOfBlockOffset?: never; readonly blockOffset?: never; readonly transactionOffset: TransactionOffset; };
 
 /**
  * Represents a token balance held by a contract.
