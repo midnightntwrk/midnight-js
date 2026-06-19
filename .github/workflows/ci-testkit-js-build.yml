@@ -183,6 +183,12 @@ jobs:
       - name: Run linter
         run: yarn lint -- ${{ inputs.yarn_lint_paths }}
 
+      # Tests for the root build-tooling scripts (e.g. the check-no-source-leak
+      # pre-commit guard). Runs on every build, independent of the submodule
+      # opt-in, since the guard protects `main` for all contributors.
+      - name: Run script tests
+        run: yarn test:scripts
+
       - name: Run tests
         run: |
           yarn test --filter="./testkit-js/*" --cache-dir ./turbo

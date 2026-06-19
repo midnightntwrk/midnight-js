@@ -19,6 +19,7 @@
     "clean-build": "turbo run clean-build",
     "test": "turbo run test",
     "test:unit": "turbo run test --filter='!@midnight-ntwrk/testkit-*'",
+    "test:scripts": "vitest run --config scripts/vitest.config.ts",
     "it": "turbo run it",
     "e2e": "turbo run e2e",
     "e2e-single": "turbo run e2e-single",
