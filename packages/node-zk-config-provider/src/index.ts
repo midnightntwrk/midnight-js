@@ -13,4 +13,4 @@
  * limitations under the License.
  */
 
-export { NodeZkConfigProvider } from './node-zk-config-provider';
+export { NodeZkConfigProvider, nodeZkConfigRegistry } from './node-zk-config-provider';
