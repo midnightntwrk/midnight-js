@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { createKeystore, type DefaultConfiguration, type NetworkId, type UnshieldedKeystore, type WalletFacade } from '@midnight-ntwrk/wallet-sdk';
+import { createKeystore, type DefaultConfiguration, type NetworkId, type UnshieldedKeystore, type WalletFacade } from '@midnightntwrk/wallet-sdk';
 
 import { logger } from '@/logger';
 import { type EnvironmentConfiguration } from '@/test-environment/environment-configuration';

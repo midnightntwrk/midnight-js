@@ -29,13 +29,13 @@ import type {
 } from '@midnight-ntwrk/dapp-connector-api';
 import { type Binding, type PreBinding, type Proof, type SignatureEnabled, Transaction as LedgerTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { fromHex, toHex, ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
-import { DustAddress, MidnightBech32m } from '@midnight-ntwrk/wallet-sdk/address-format';
-import { type BalancingRecipe } from '@midnight-ntwrk/wallet-sdk/facade';
-import { WasmProver } from '@midnight-ntwrk/wallet-sdk-prover-client/effect';
 import {
   type KeyMaterialProvider as ZkirKeyMaterialProvider,
   provingProvider as createLocalProvingProvider,
 } from '@midnight-ntwrk/zkir-v2';
+import { DustAddress, MidnightBech32m } from '@midnightntwrk/wallet-sdk/address-format';
+import { type BalancingRecipe } from '@midnightntwrk/wallet-sdk/facade';
+import { WasmProver } from '@midnightntwrk/wallet-sdk-prover-client/effect';
 import { firstValueFrom } from 'rxjs';
 
 import type { EnvironmentConfiguration } from '@/test-environment/environment-configuration';

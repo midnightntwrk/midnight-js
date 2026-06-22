@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { NetworkId } from '@midnight-ntwrk/wallet-sdk';
+import { NetworkId } from '@midnightntwrk/wallet-sdk';
 
 import type { EnvironmentConfiguration } from '@/test-environment';
 
