@@ -21,7 +21,7 @@ import {
   type UnshieldedWalletAPI,
   type UnshieldedWalletState,
   type WalletFacade
-} from '@midnight-ntwrk/wallet-sdk';
+} from '@midnightntwrk/wallet-sdk';
 import axios from 'axios';
 import * as Rx from 'rxjs';
 

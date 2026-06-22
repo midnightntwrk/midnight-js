@@ -31,7 +31,7 @@ import {
   type UnshieldedWalletAPI,
   WalletEntrySchema,
   WalletFacade
-} from '@midnight-ntwrk/wallet-sdk';
+} from '@midnightntwrk/wallet-sdk';
 
 import { logger } from '@/logger';
 

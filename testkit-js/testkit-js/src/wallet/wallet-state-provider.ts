@@ -15,7 +15,7 @@
 
 import fs from 'node:fs';
 
-import { type ShieldedWalletAPI, type UnshieldedWalletAPI } from '@midnight-ntwrk/wallet-sdk';
+import { type ShieldedWalletAPI, type UnshieldedWalletAPI } from '@midnightntwrk/wallet-sdk';
 import { type Logger } from 'pino';
 
 import { getEnvVarEnvironment } from '@/env-vars';
