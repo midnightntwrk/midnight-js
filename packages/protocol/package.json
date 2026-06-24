@@ -104,7 +104,7 @@
     "dist/"
   ],
   "dependencies": {
-    "@midnight-ntwrk/compact-js": "2.5.5-rc.1",
+    "@midnight-ntwrk/compact-js": "2.5.5-rc.2",
     "@midnight-ntwrk/compact-runtime": "0.16.103-dev.3a289c2e7811d2868e7810bd5a5f1f0b7055995f",
     "@midnight-ntwrk/platform-js": "3.0.0",
     "@midnightntwrk/ledger-v9": "1.0.0-rc.2",
