@@ -84,7 +84,7 @@ export class FluentWalletBuilder {
       return WalletSeeds.generateRandom();
     })();
 
-    const unshieldedKeystore = createKeystore(seeds.unshielded, this.networkId);
+    const unshieldedKeystore = createKeystore({ kind: 'schnorr', secret: seeds.unshielded }, this.networkId);
 
     const shieldedWallet = WalletFactory.createShieldedWallet(this.config, seeds.shielded);
     const unshieldedWallet = WalletFactory.createUnshieldedWallet(
@@ -112,7 +112,7 @@ export class FluentWalletBuilder {
       return WalletSeeds.generateRandom();
     })();
 
-    const unshieldedKeystore = createKeystore(seeds.unshielded, this.networkId);
+    const unshieldedKeystore = createKeystore({ kind: 'schnorr', secret: seeds.unshielded }, this.networkId);
 
     const shieldedWallet = WalletFactory.createShieldedWallet(this.config, seeds.shielded);
     const unshieldedWallet = WalletFactory.createUnshieldedWallet(

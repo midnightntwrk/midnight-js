@@ -144,8 +144,8 @@ export class DAppConnectorWalletAdapter implements ConnectedAPI {
     const signature = this.walletProvider.unshieldedKeystore.signData(bytes);
     return {
       data,
-      signature,
-      verifyingKey: this.walletProvider.unshieldedKeystore.getPublicKey(),
+      signature: signature.value,
+      verifyingKey: this.walletProvider.unshieldedKeystore.getPublicKey().value,
     };
   }
 
