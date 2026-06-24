@@ -20,7 +20,7 @@ import type { EnvironmentConfiguration } from '@/test-environment/environment-co
 import { DAppConnectorWalletAdapter } from '@/wallet/dapp-connector-wallet-adapter';
 import type { MidnightWalletProvider } from '@/wallet/midnight-wallet-provider';
 
-vi.mock('@midnight-ntwrk/wallet-sdk/address-format', () => ({
+vi.mock('@midnightntwrk/wallet-sdk/address-format', () => ({
   MidnightBech32m: {
     encode: vi.fn().mockReturnValue({ asString: () => 'mn1shielded-bech32m-address' }),
   },
@@ -39,7 +39,7 @@ vi.mock('@midnight-ntwrk/zkir-v2', () => ({
   } satisfies ZkirProvingProvider),
 }));
 
-vi.mock('@midnight-ntwrk/wallet-sdk-prover-client/effect', () => ({
+vi.mock('@midnightntwrk/wallet-sdk-prover-client/effect', () => ({
   WasmProver: {
     makeDefaultKeyMaterialProvider: vi.fn().mockReturnValue({
       lookupKey: vi.fn().mockResolvedValue({ ir: new Uint8Array(), proverKey: new Uint8Array(), verifierKey: new Uint8Array() }),
@@ -167,7 +167,7 @@ describe('[Unit tests] DAppConnectorWalletAdapter', () => {
 
   describe('getShieldedAddresses', () => {
     it('should return Bech32m-encoded address and key strings from wallet state', async () => {
-      const { MidnightBech32m } = await import('@midnight-ntwrk/wallet-sdk/address-format');
+      const { MidnightBech32m } = await import('@midnightntwrk/wallet-sdk/address-format');
 
       const result = await adapter.getShieldedAddresses();
 
@@ -191,7 +191,7 @@ describe('[Unit tests] DAppConnectorWalletAdapter', () => {
 
   describe('getDustAddress', () => {
     it('should return encoded dust address from DustSecretKey public key', async () => {
-      const { DustAddress } = await import('@midnight-ntwrk/wallet-sdk/address-format');
+      const { DustAddress } = await import('@midnightntwrk/wallet-sdk/address-format');
 
       const result = await adapter.getDustAddress();
 

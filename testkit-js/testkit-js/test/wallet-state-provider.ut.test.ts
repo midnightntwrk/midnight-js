@@ -15,7 +15,7 @@
 
 import fs from 'node:fs';
 
-import type { ShieldedWalletAPI } from '@midnight-ntwrk/wallet-sdk';
+import type { ShieldedWalletAPI } from '@midnightntwrk/wallet-sdk';
 import pino from 'pino';
 
 import { getWalletStateFilename, WalletSaveStateProvider } from '@/wallet/wallet-state-provider';
