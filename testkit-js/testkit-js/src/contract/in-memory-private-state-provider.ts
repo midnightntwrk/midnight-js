@@ -135,12 +135,22 @@ const validateSalt = (salt: string): void => {
 };
 
 const SIGNING_KEY_MIN_HEX_LENGTH = 6;
+const SIGNING_KEY_KINDS: readonly string[] = ['schnorr', 'ecdsa'];
+
+const isValidSigningKeyHex = (value: string): boolean =>
+  value.length >= SIGNING_KEY_MIN_HEX_LENGTH
+  && value.length % 2 === 0
+  && /^[0-9a-fA-F]+$/.test(value);
 
 const validateSigningKeyValue = (value: unknown): void => {
-  if (typeof value !== 'string'
-    || value.length < SIGNING_KEY_MIN_HEX_LENGTH
-    || value.length % 2 !== 0
-    || !/^[0-9a-fA-F]+$/.test(value)) {
+  if (typeof value !== 'object' || value === null) {
+    throw new InvalidExportFormatError('Invalid signing key value');
+  }
+  const candidate = value as Record<string, unknown>;
+  if (typeof candidate.tag !== 'string'
+    || !SIGNING_KEY_KINDS.includes(candidate.tag)
+    || typeof candidate.value !== 'string'
+    || !isValidSigningKeyHex(candidate.value)) {
     throw new InvalidExportFormatError('Invalid signing key value');
   }
 };
