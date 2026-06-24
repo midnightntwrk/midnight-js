@@ -78,6 +78,7 @@
   },
   "resolutions": {
     "effect": "3.20.0",
+    "@midnight-ntwrk/platform-js": "3.0.0",
     "@midnightntwrk/ledger-v9": "1.0.0-rc.2",
     "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.2",
     "@midnight-ntwrk/compact-runtime": "0.16.103-dev.3a289c2e7811d2868e7810bd5a5f1f0b7055995f",
