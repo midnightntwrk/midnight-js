@@ -98,7 +98,7 @@ describe('deployContract', () => {
       expect.objectContaining({
         compiledContract: baseOptions.compiledContract,
         args: baseOptions.args,
-        signingKey: expect.not.stringMatching(createMockSigningKey())
+        signingKey: expect.not.objectContaining(createMockSigningKey())
       })
     );
   });
@@ -144,7 +144,7 @@ describe('deployContract', () => {
         privateStateId: options.privateStateId,
         initialPrivateState,
         args: options.args,
-        signingKey: expect.not.stringMatching(createMockSigningKey())
+        signingKey: expect.not.objectContaining(createMockSigningKey())
       })
     );
   });

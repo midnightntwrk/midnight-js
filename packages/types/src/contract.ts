@@ -15,6 +15,7 @@
 
 import { type CompiledContract, Contract, type ContractExecutable, ContractExecutableRuntime,
   ZKConfiguration, ZKConfigurationReadError } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect';
+import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/platform-js';
 import * as Configuration from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/Configuration';
 import { Cause, type ConfigError, ConfigProvider, Effect, Exit,Layer, Option } from 'effect';
@@ -78,7 +79,7 @@ export type ContractExecutableRuntimeOptions = {
   readonly coinPublicKey: string;
 
   /** The signing key to add as the to-be-deployed contract's maintenance authority. */
-  readonly signingKey?: string;
+  readonly signingKey?: SigningKey;
 }
 
 /**
@@ -93,7 +94,10 @@ export const makeContractExecutableRuntime:
   (zkConfigProvider, options) => {
     let config: readonly [string, string][] = [['KEYS_COIN_PUBLIC', options.coinPublicKey]];
     if (options.signingKey) {
-      config = config.concat([['KEYS_SIGNING', options.signingKey]])
+      config = config.concat([
+        ['KEYS_SIGNING', options.signingKey.value],
+        ['KEYS_SIGNINGKIND', options.signingKey.tag]
+      ])
     }
     return ContractExecutableRuntime.make(makeAdaptedRuntimeLayer(zkConfigProvider, new Map(config)));
   };
