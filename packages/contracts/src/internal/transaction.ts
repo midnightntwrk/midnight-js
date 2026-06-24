@@ -26,28 +26,6 @@ import { submitTx, type SubmitTxOptions } from '../submit-tx';
 import type * as Transaction from '../transaction';
 import { type FinalizedCallTxData, type UnsubmittedCallTxData } from '../tx-model';
 
-/**
- * Renders an error together with its `cause` chain into one readable string. A circuit failure is
- * wrapped in layers on the way out (e.g. `ContractRuntimeError` reporting "Error executing circuit
- * '<id>'", then the scoped-transaction error here), and each wrapper's own `toString()` reports only
- * its own message. A bare `String(err)` would therefore surface the outermost wrapper and silently
- * drop the originating cause; walking the chain keeps the root reason visible. For an error with no
- * cause the output is identical to `String(err)`.
- *
- * @internal
- */
-export const formatErrorChain = (error: unknown): string => {
-  const parts: string[] = [];
-  const seen = new Set<unknown>();
-  let current: unknown = error;
-  while (current !== undefined && current !== null && !seen.has(current)) {
-    seen.add(current);
-    parts.push(String(current));
-    current = (current as { cause?: unknown }).cause;
-  }
-  return parts.join(': caused by: ');
-};
-
 /** @internal */
 export interface CachedStateIdentity {
   readonly contractAddress: string;
@@ -243,7 +221,7 @@ export const scoped: {
       throw err;
     }
     const execErr = new Error(
-      `Unexpected error executing scoped transaction '${txOptions?.scopeName ?? '<unnamed>'}': ${formatErrorChain(err)}`,
+      `Unexpected error executing scoped transaction '${txOptions?.scopeName ?? '<unnamed>'}': ${String(err)}`,
       { cause: err }
     );
     providers?.loggerProvider?.error?.call(

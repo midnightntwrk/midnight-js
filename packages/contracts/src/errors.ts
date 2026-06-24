@@ -18,7 +18,7 @@ import type { AnyProvableCircuitId, FinalizedTxData, PrivateStateId } from '@mid
 
 interface EffectContractError {
   readonly _tag: string;
-  readonly cause: { readonly name: string; readonly message: string };
+  readonly cause: { readonly name: string; readonly message: string; readonly isCompactError?: boolean };
 }
 
 export const isEffectContractError = (error: unknown): error is EffectContractError =>

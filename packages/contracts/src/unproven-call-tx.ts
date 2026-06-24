@@ -178,7 +178,11 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
     };
   } catch (error: unknown) {
     if (!isEffectContractError(error) || error._tag !== 'ContractRuntimeError') throw error;
-    if (error.cause.name !== 'CompactError') throw error;
+    // Lift the root Compact error's message to the top, so the thrown error reports the real reason
+    // (e.g. a re-entrancy or implementation-binding rejection) rather than the generic
+    // "Error executing circuit '<id>'". Tested via the inherited `isCompactError` brand so every
+    // CompactError subclass qualifies, not just the base class (whose `name` differs per subclass).
+    if (!error.cause.isCompactError) throw error;
     throw new Error(error.cause.message, { cause: error });
   }
 }
