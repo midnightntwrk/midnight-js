@@ -33,7 +33,7 @@ import {
   type SigningKeyExport,
   SigningKeyExportError
 } from '@midnight-ntwrk/midnight-js-types';
-import { validatePassword } from '@midnight-ntwrk/midnight-js-utils';
+import { isValidSigningKey, validatePassword } from '@midnight-ntwrk/midnight-js-utils';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex, randomBytes } from '@noble/hashes/utils.js';
 import { type AbstractLevel, type AbstractSublevel } from 'abstract-level';
@@ -645,23 +645,8 @@ const validateSalt = (salt: string): void => {
   }
 };
 
-const SIGNING_KEY_MIN_HEX_LENGTH = 6;
-const SIGNING_KEY_KINDS: readonly string[] = ['schnorr', 'ecdsa'];
-
-const isValidSigningKeyHex = (value: string): boolean =>
-  value.length >= SIGNING_KEY_MIN_HEX_LENGTH
-  && value.length % 2 === 0
-  && /^[0-9a-fA-F]+$/.test(value);
-
 const validateSigningKeyValue = (value: unknown): void => {
-  if (typeof value !== 'object' || value === null) {
-    throw new InvalidExportFormatError('Invalid signing key value');
-  }
-  const candidate = value as Record<string, unknown>;
-  if (typeof candidate.tag !== 'string'
-    || !SIGNING_KEY_KINDS.includes(candidate.tag)
-    || typeof candidate.value !== 'string'
-    || !isValidSigningKeyHex(candidate.value)) {
+  if (!isValidSigningKey(value)) {
     throw new InvalidExportFormatError('Invalid signing key value');
   }
 };
