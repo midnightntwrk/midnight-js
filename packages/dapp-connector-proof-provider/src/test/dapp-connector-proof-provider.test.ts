@@ -25,7 +25,8 @@ describe('dappConnectorProofProvider', () => {
 
   const mockProvingProvider: ProvingProvider = {
     check: vi.fn(),
-    prove: vi.fn()
+    prove: vi.fn(),
+    lookupKey: vi.fn()
   };
 
   const mockKeyMaterialProvider: KeyMaterialProvider = {

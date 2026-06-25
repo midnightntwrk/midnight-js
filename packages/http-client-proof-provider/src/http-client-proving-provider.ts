@@ -133,6 +133,15 @@ export const httpClientProvingProvider = <K extends string>(
       const keyMaterial = await getKeyMaterial(keyLocation);
       const payload = createProvingPayload(serializedPreimage, overwriteBindingInput, keyMaterial);
       return makeHttpRequest(proveUrl, payload, timeout, headers);
+    },
+
+    // rc.3 added `lookupKey` to `ProvingProvider`: the ledger resolves a circuit's key
+    // material through the provider when assembling proof-server payloads. Reuse the same
+    // resolver `check`/`prove` already use — contract circuits resolve to real key material
+    // via the ZK config registry; protocol builtins resolve to `undefined` and are supplied
+    // by the proof server.
+    async lookupKey(keyLocation: string): Promise<ProvingKeyMaterial | undefined> {
+      return getKeyMaterial(keyLocation);
     }
   };
 };

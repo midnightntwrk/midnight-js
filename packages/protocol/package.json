@@ -107,8 +107,8 @@
     "@midnight-ntwrk/compact-js": "file:/Users/josephdenman/IdeaProjects/midnight-sdk/compact-js/compact-js",
     "@midnight-ntwrk/compact-runtime": "file:/Users/josephdenman/IdeaProjects/compact/runtime",
     "@midnight-ntwrk/platform-js": "2.2.4",
-    "@midnightntwrk/ledger-v9": "1.0.0-rc.2",
-    "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.2"
+    "@midnightntwrk/ledger-v9": "1.0.0-rc.3",
+    "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.3"
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.3.0",

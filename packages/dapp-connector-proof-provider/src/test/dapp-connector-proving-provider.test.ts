@@ -30,7 +30,8 @@ import { type DAppConnectorProvingAPI, dappConnectorProvingProvider } from '../d
 describe('dappConnectorProvingProvider', () => {
   const mockProvingProvider: ProvingProvider = {
     check: vi.fn(),
-    prove: vi.fn()
+    prove: vi.fn(),
+    lookupKey: vi.fn()
   };
 
   const verifierKey = Uint8Array.of(1, 1);
