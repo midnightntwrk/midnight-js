@@ -45,7 +45,7 @@ const logger = createLogger(
  * end. Because compact-js now exposes `CallResultPublic.events`, the deploy
  * step can additionally assert emitted events against what the indexer returns.
  */
-describe.skip('Contract events (E2E, gated on ledger-9 / #970)', () => {
+describe('Contract events (E2E, gated on ledger-9 / #970)', () => {
   let publicDataProvider: PublicDataProvider;
   let providers: CounterProviders;
   let deployedContract: DeployedCounterContract;
