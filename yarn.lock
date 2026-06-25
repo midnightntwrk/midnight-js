@@ -1945,7 +1945,7 @@ __metadata:
   resolution: "@midnight-ntwrk/midnight-js-types@workspace:packages/types"
   dependencies:
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
-    effect: "npm:^3.20.0"
+    effect: "npm:^3.21.3"
     pino: "npm:^10.3.1"
     rxjs: "npm:^7.8.2"
     vitest: "npm:^4.1.7"
@@ -6300,13 +6300,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"effect@npm:3.20.0":
-  version: 3.20.0
-  resolution: "effect@npm:3.20.0"
+"effect@npm:3.21.3":
+  version: 3.21.3
+  resolution: "effect@npm:3.21.3"
   dependencies:
     "@standard-schema/spec": "npm:^1.0.0"
     fast-check: "npm:^3.23.1"
-  checksum: 10/62c1e43f86db04551aaf494a3d2fe296ce3a7d5e25c79c0b41b88e82152af6bb429ce040c7b51fd1b98d3fe93bef768737967f182b4b88ed488689860b55fc26
+  checksum: 10/3f88c07a398b35a384549db1b0e013806fbb7a5285f52e9c6fb9050ef286ada09e763eed2d9e14839534c40de5f632aabf1ee76487184769aa0a995deec70cf0
   languageName: node
   linkType: hard
 
