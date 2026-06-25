@@ -75,7 +75,7 @@ TODO: There are at least three options we should support in the future:
 
 #### newAuthority
 
-`string`
+`SigningKey`
 
 The signing key of the new contract maintenance authority.
 
