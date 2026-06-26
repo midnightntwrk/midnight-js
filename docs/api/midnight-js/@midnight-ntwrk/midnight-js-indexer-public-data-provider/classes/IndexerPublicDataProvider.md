@@ -40,6 +40,39 @@ transaction identifiers included.
 
 ## Methods
 
+### contractEventsObservable()
+
+> **contractEventsObservable**(`filter`, `opts?`): `Observable`\<`ContractEvent`\>
+
+Streams contract events for `filter.contractAddress`, replaying from
+`opts.startAt` then continuing live. Request building and validation are
+delegated to buildSubscriptionVariables, which throws
+**synchronously** on an invalid filter (mirroring the other observable
+methods). See the PublicDataProvider.contractEventsObservable
+contract for cursor, completion, and at-least-once semantics.
+
+#### Parameters
+
+##### filter
+
+`ContractEventSubscriptionFilter`
+
+##### opts?
+
+###### startAt?
+
+`ContractEventCursor`
+
+#### Returns
+
+`Observable`\<`ContractEvent`\>
+
+#### Implementation of
+
+`PublicDataProvider.contractEventsObservable`
+
+***
+
 ### contractStateObservable()
 
 > **contractStateObservable**(`contractAddress`, `config?`): `Observable`\<`ContractState`\>
@@ -106,6 +139,40 @@ repeat/concurrent/rejection-replay semantics.
 #### Returns
 
 `Promise`\<`void`\>
+
+***
+
+### queryContractEvents()
+
+> **queryContractEvents**(`filter`, `page?`): `Promise`\<`ContractEvent`[]\>
+
+Queries contract events for `filter.contractAddress`. Request building and
+validation are delegated to buildQueryVariables, which throws
+**synchronously** (before any network call) on an invalid address, empty
+`types`, illegal `fieldPrefixes`, or an unknown `fieldName`. When
+`page.limit` is omitted [DEFAULT\_CONTRACT\_EVENTS\_PAGE\_SIZE](../variables/DEFAULT_CONTRACT_EVENTS_PAGE_SIZE.md) is applied.
+
+Results are mapped in the indexer's ascending-`id` order. GraphQL /
+transport errors reject the promise via maybeThrowQueryError — an
+empty array always means "no matching events", never a swallowed error.
+
+#### Parameters
+
+##### filter
+
+`ContractEventQueryFilter`
+
+##### page?
+
+`ContractEventsPage`
+
+#### Returns
+
+`Promise`\<`ContractEvent`[]\>
+
+#### Implementation of
+
+`PublicDataProvider.queryContractEvents`
 
 ***
 

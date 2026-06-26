@@ -22,7 +22,7 @@ authority stored on the blockchain for this contract.
 
 ##### newAuthority
 
-`string`
+`SigningKey`
 
 The new contract maintenance authority for this contract.
 
