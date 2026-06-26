@@ -76,7 +76,8 @@ export type IndexerDataErrorContext =
       identifiersLength: number;
     }
   | { kind: 'unknown-event-type'; typename: string }
-  | { kind: 'missing-event-field'; typename: string; field: string };
+  | { kind: 'missing-event-field'; typename: string; field: string }
+  | { kind: 'unknown-address-kind'; typename: string; field: string; value: string };
 
 /**
  * An error raised when indexer-returned data is structurally inconsistent
@@ -130,6 +131,10 @@ export class IndexerDataError extends IndexerError {
     return new IndexerDataError({ kind: 'missing-event-field', typename, field });
   }
 
+  static unknownAddressKind(typename: string, field: string, value: string): IndexerDataError {
+    return new IndexerDataError({ kind: 'unknown-address-kind', typename, field, value });
+  }
+
   private static formatMessage(context: IndexerDataErrorContext): string {
     switch (context.kind) {
       case 'unknown-status':
@@ -145,6 +150,8 @@ export class IndexerDataError extends IndexerError {
         return `Unknown contract event __typename: ${context.typename}`;
       case 'missing-event-field':
         return `Contract event ${context.typename} is missing required field '${context.field}'`;
+      case 'unknown-address-kind':
+        return `Contract event ${context.typename} field '${context.field}' has unknown address kind '${context.value}'`;
     }
   }
 }

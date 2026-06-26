@@ -17,7 +17,7 @@ import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledge
 import type { ContractEvent, ContractEventAddress, ContractEventBase } from '@midnight-ntwrk/midnight-js-types';
 
 import { IndexerDataError } from './errors';
-import type { AddressOrContractKind, ContractEventsQueryQuery } from './gen/graphql';
+import type { ContractEventsQueryQuery } from './gen/graphql';
 
 /**
  * A single contract-event node as returned by `CONTRACT_EVENTS_QUERY` /
@@ -26,11 +26,12 @@ import type { AddressOrContractKind, ContractEventsQueryQuery } from './gen/grap
  */
 export type ContractEventNode = ContractEventsQueryQuery['contractEvents'][number];
 
-type AddressOrContractNode = {
-  readonly kind: AddressOrContractKind;
-  readonly userAddress: string | null;
-  readonly contractAddress: string | null;
-};
+/**
+ * The `sender`/`recipient` selection shape, derived from the generated operation
+ * type rather than hand-redeclared — a schema change to `AddressOrContract`
+ * surfaces as a compile error here instead of silent runtime drift.
+ */
+type AddressOrContractNode = Extract<ContractEventNode, { sender: object }>['sender'];
 
 const baseFields = (node: ContractEventNode): ContractEventBase => ({
   id: node.id,
@@ -54,9 +55,10 @@ const optional = (value: string | null | undefined): string | undefined => value
 
 /**
  * Narrows the indexer's `AddressOrContract` tagged union to the public
- * {@link ContractEventAddress}. Fails fast when the `kind`-selected address
- * field is absent — surfaces indexer inconsistency rather than emitting a
- * half-built address.
+ * {@link ContractEventAddress}. Fails fast — surfaces indexer inconsistency
+ * rather than emitting a half-built address — on an unrecognized `kind`
+ * (`unknownAddressKind`) or an absent `kind`-selected address field
+ * (`missingEventField`).
  */
 const toEventAddress = (
   address: AddressOrContractNode,
@@ -69,7 +71,7 @@ const toEventAddress = (
   if (address.kind === 'CONTRACT') {
     return { kind: 'contract', value: required(address.contractAddress, typename, `${field}.contractAddress`) };
   }
-  throw IndexerDataError.missingEventField(typename, `${field}.kind`);
+  throw IndexerDataError.unknownAddressKind(typename, field, address.kind);
 };
 
 /**

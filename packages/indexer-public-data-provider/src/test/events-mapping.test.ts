@@ -239,6 +239,30 @@ describe('toContractEvent - AddressOrContract narrowing', () => {
     };
     expect(() => toContractEvent(node)).toThrow(IndexerDataError);
   });
+
+  test('throws unknown-address-kind (not missing-field) for an unrecognized kind value', () => {
+    const node: ContractEventNode = {
+      __typename: 'UnshieldedSpendEvent',
+      ...base,
+      sender: { kind: '%future added value', userAddress: 'aabb', contractAddress: null },
+      domainSep: 'd0',
+      tokenType: 't0',
+      amount: '1'
+    };
+    expect(() => toContractEvent(node)).toThrow(IndexerDataError);
+    let caught: IndexerDataError | undefined;
+    try {
+      toContractEvent(node);
+    } catch (e) {
+      caught = e as IndexerDataError;
+    }
+    expect(caught?.context).toEqual({
+      kind: 'unknown-address-kind',
+      typename: 'UnshieldedSpendEvent',
+      field: 'sender',
+      value: '%future added value'
+    });
+  });
 });
 
 describe('toContractEvent - negative', () => {
