@@ -42,16 +42,20 @@ const baseFields = (node: ContractEventNode): ContractEventBase => ({
   raw: node.raw
 });
 
-/** Asserts a required string field is present, throwing fail-fast otherwise. */
-const required = (value: string | null | undefined, typename: string, field: string): string => {
-  if (value == null) {
+/**
+ * Asserts a nullable indexer field is present, throwing fail-fast on `null`.
+ * Selected GraphQL fields are always present in the response, so the only
+ * absent case is an explicit `null` (indexer drift) — never `undefined`.
+ */
+const requireField = (value: string | null, typename: string, field: string): string => {
+  if (value === null) {
     throw IndexerDataError.missingEventField(typename, field);
   }
   return value;
 };
 
 /** Normalizes an absent (`null`) nullable field to `undefined`. */
-const optional = (value: string | null | undefined): string | undefined => value ?? undefined;
+const optionalField = (value: string | null): string | undefined => value ?? undefined;
 
 /**
  * Narrows the indexer's `AddressOrContract` tagged union to the public
@@ -66,10 +70,10 @@ const toEventAddress = (
   field: string
 ): ContractEventAddress => {
   if (address.kind === 'USER') {
-    return { kind: 'user', value: required(address.userAddress, typename, `${field}.userAddress`) };
+    return { kind: 'user', value: requireField(address.userAddress, typename, `${field}.userAddress`) };
   }
   if (address.kind === 'CONTRACT') {
-    return { kind: 'contract', value: required(address.contractAddress, typename, `${field}.contractAddress`) };
+    return { kind: 'contract', value: requireField(address.contractAddress, typename, `${field}.contractAddress`) };
   }
   throw IndexerDataError.unknownAddressKind(typename, field, address.kind);
 };
@@ -86,63 +90,63 @@ export const toContractEvent = (node: ContractEventNode): ContractEvent => {
   const tn = node.__typename;
   switch (node.__typename) {
     case 'ShieldedSpendEvent':
-      return { eventType: 'ShieldedSpend', ...baseFields(node), nullifier: required(node.nullifier, tn, 'nullifier') };
+      return { eventType: 'ShieldedSpend', ...baseFields(node), nullifier: requireField(node.nullifier, tn, 'nullifier') };
     case 'ShieldedReceiveEvent':
       return {
         eventType: 'ShieldedReceive',
         ...baseFields(node),
-        commitment: required(node.commitment, tn, 'commitment'),
-        ciphertext: optional(node.ciphertext),
-        receivingContractAddress: optional(node.receivingContractAddress)
+        commitment: requireField(node.commitment, tn, 'commitment'),
+        ciphertext: optionalField(node.ciphertext),
+        receivingContractAddress: optionalField(node.receivingContractAddress)
       };
     case 'ShieldedMintEvent':
       return {
         eventType: 'ShieldedMint',
         ...baseFields(node),
-        commitment: required(node.commitment, tn, 'commitment'),
-        domainSep: required(node.domainSep, tn, 'domainSep'),
-        amount: optional(node.shieldedAmount)
+        commitment: requireField(node.commitment, tn, 'commitment'),
+        domainSep: requireField(node.domainSep, tn, 'domainSep'),
+        amount: optionalField(node.shieldedAmount)
       };
     case 'ShieldedBurnEvent':
       return {
         eventType: 'ShieldedBurn',
         ...baseFields(node),
-        nullifier: required(node.nullifier, tn, 'nullifier'),
-        amount: optional(node.shieldedAmount)
+        nullifier: requireField(node.nullifier, tn, 'nullifier'),
+        amount: optionalField(node.shieldedAmount)
       };
     case 'UnshieldedSpendEvent':
       return {
         eventType: 'UnshieldedSpend',
         ...baseFields(node),
         sender: toEventAddress(node.sender, tn, 'sender'),
-        domainSep: required(node.domainSep, tn, 'domainSep'),
-        tokenType: required(node.tokenType, tn, 'tokenType'),
-        amount: required(node.amount, tn, 'amount')
+        domainSep: requireField(node.domainSep, tn, 'domainSep'),
+        tokenType: requireField(node.tokenType, tn, 'tokenType'),
+        amount: requireField(node.amount, tn, 'amount')
       };
     case 'UnshieldedReceiveEvent':
       return {
         eventType: 'UnshieldedReceive',
         ...baseFields(node),
         recipient: toEventAddress(node.recipient, tn, 'recipient'),
-        domainSep: required(node.domainSep, tn, 'domainSep'),
-        tokenType: required(node.tokenType, tn, 'tokenType'),
-        amount: required(node.amount, tn, 'amount')
+        domainSep: requireField(node.domainSep, tn, 'domainSep'),
+        tokenType: requireField(node.tokenType, tn, 'tokenType'),
+        amount: requireField(node.amount, tn, 'amount')
       };
     case 'UnshieldedMintEvent':
       return {
         eventType: 'UnshieldedMint',
         ...baseFields(node),
-        domainSep: required(node.domainSep, tn, 'domainSep'),
-        tokenType: required(node.tokenType, tn, 'tokenType'),
-        amount: required(node.amount, tn, 'amount')
+        domainSep: requireField(node.domainSep, tn, 'domainSep'),
+        tokenType: requireField(node.tokenType, tn, 'tokenType'),
+        amount: requireField(node.amount, tn, 'amount')
       };
     case 'UnshieldedBurnEvent':
       return {
         eventType: 'UnshieldedBurn',
         ...baseFields(node),
         sender: toEventAddress(node.sender, tn, 'sender'),
-        tokenType: required(node.tokenType, tn, 'tokenType'),
-        amount: required(node.amount, tn, 'amount')
+        tokenType: requireField(node.tokenType, tn, 'tokenType'),
+        amount: requireField(node.amount, tn, 'amount')
       };
     case 'PausedEvent':
       return { eventType: 'Paused', ...baseFields(node) };
@@ -152,8 +156,8 @@ export const toContractEvent = (node: ContractEventNode): ContractEvent => {
       return {
         eventType: 'Misc',
         ...baseFields(node),
-        name: required(node.name, tn, 'name'),
-        payload: required(node.payload, tn, 'payload')
+        name: requireField(node.name, tn, 'name'),
+        payload: requireField(node.payload, tn, 'payload')
       };
     default: {
       // Compile-time exhaustiveness: a new generated variant makes this fail to
