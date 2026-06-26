@@ -1,5 +1,5 @@
 import * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
-__compactRuntime.checkRuntimeVersion('0.16.101');
+__compactRuntime.checkRuntimeVersion('0.17.102');
 
 const _descriptor_0 = new __compactRuntime.CompactTypeUnsignedInteger(65535n, 2);
 
@@ -139,6 +139,8 @@ const _descriptor_12 = new _Either_1();
 
 const _descriptor_13 = new __compactRuntime.CompactTypeUnsignedInteger(255n, 1);
 
+const _descriptor_14 = new __compactRuntime.CompactTypeUnsignedInteger(4294967295n, 4);
+
 export class Contract {
   witnesses;
   constructor(...args_0) {
@@ -174,7 +176,7 @@ export class Contract {
                                      'struct ShieldedCoinInfo<nonce: Bytes<32>, color: Bytes<32>, value: Uint<0..340282366920938463463374607431768211456>>',
                                      coin_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost() };
+        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
         const partialProofData = {
           input: {
             value: _descriptor_5.toValue(coin_0),
@@ -186,7 +188,7 @@ export class Contract {
         };
         const result_0 = this._deposit_0(context, partialProofData, coin_0);
         partialProofData.output = { value: [], alignment: [] };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
+        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
       }
     };
     this.impureCircuits = { deposit: this.circuits.deposit };

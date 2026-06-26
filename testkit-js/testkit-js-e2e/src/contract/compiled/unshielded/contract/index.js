@@ -1,5 +1,5 @@
 import * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
-__compactRuntime.checkRuntimeVersion('0.16.101');
+__compactRuntime.checkRuntimeVersion('0.17.102');
 
 const _descriptor_0 = new __compactRuntime.CompactTypeUnsignedInteger(18446744073709551615n, 8);
 
@@ -81,6 +81,8 @@ const _descriptor_8 = new _Either_1();
 
 const _descriptor_9 = new __compactRuntime.CompactTypeUnsignedInteger(255n, 1);
 
+const _descriptor_10 = new __compactRuntime.CompactTypeUnsignedInteger(4294967295n, 4);
+
 export class Contract {
   witnesses;
   constructor(...args_0) {
@@ -121,7 +123,7 @@ export class Contract {
                                      'Uint<0..18446744073709551616>',
                                      amount_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost() };
+        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
         const partialProofData = {
           input: {
             value: _descriptor_2.toValue(domainSep_0).concat(_descriptor_0.toValue(amount_0)),
@@ -136,7 +138,7 @@ export class Contract {
                                                           domainSep_0,
                                                           amount_0);
         partialProofData.output = { value: _descriptor_2.toValue(result_0), alignment: _descriptor_2.alignment() };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
+        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
       },
       mintUnshieldedToContractTest: (...args_1) => {
         if (args_1.length !== 4) {
@@ -174,7 +176,7 @@ export class Contract {
                                      'Uint<0..18446744073709551616>',
                                      amount_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost() };
+        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
         const partialProofData = {
           input: {
             value: _descriptor_2.toValue(domainSep_0).concat(_descriptor_3.toValue(address_0).concat(_descriptor_0.toValue(amount_0))),
@@ -190,7 +192,7 @@ export class Contract {
                                                               address_0,
                                                               amount_0);
         partialProofData.output = { value: _descriptor_2.toValue(result_0), alignment: _descriptor_2.alignment() };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
+        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
       },
       mintUnshieldedToUserTest: (...args_1) => {
         if (args_1.length !== 4) {
@@ -228,7 +230,7 @@ export class Contract {
                                      'Uint<0..18446744073709551616>',
                                      amount_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost() };
+        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
         const partialProofData = {
           input: {
             value: _descriptor_2.toValue(domainSep_0).concat(_descriptor_4.toValue(address_0).concat(_descriptor_0.toValue(amount_0))),
@@ -244,7 +246,7 @@ export class Contract {
                                                           address_0,
                                                           amount_0);
         partialProofData.output = { value: _descriptor_2.toValue(result_0), alignment: _descriptor_2.alignment() };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
+        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
       },
       sendUnshieldedToSelfTest: (...args_1) => {
         if (args_1.length !== 3) {
@@ -274,7 +276,7 @@ export class Contract {
                                      'Uint<0..340282366920938463463374607431768211456>',
                                      amount_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost() };
+        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
         const partialProofData = {
           input: {
             value: _descriptor_2.toValue(color_0).concat(_descriptor_6.toValue(amount_0)),
@@ -289,7 +291,7 @@ export class Contract {
                                                           color_0,
                                                           amount_0);
         partialProofData.output = { value: [], alignment: [] };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
+        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
       },
       sendUnshieldedToContractTest: (...args_1) => {
         if (args_1.length !== 4) {
@@ -327,7 +329,7 @@ export class Contract {
                                      'struct ContractAddress<bytes: Bytes<32>>',
                                      address_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost() };
+        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
         const partialProofData = {
           input: {
             value: _descriptor_2.toValue(color_0).concat(_descriptor_6.toValue(amount_0).concat(_descriptor_3.toValue(address_0))),
@@ -343,7 +345,7 @@ export class Contract {
                                                               amount_0,
                                                               address_0);
         partialProofData.output = { value: [], alignment: [] };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
+        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
       },
       sendUnshieldedToUserTest: (...args_1) => {
         if (args_1.length !== 4) {
@@ -381,7 +383,7 @@ export class Contract {
                                      'struct UserAddress<bytes: Bytes<32>>',
                                      address_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost() };
+        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
         const partialProofData = {
           input: {
             value: _descriptor_2.toValue(color_0).concat(_descriptor_6.toValue(amount_0).concat(_descriptor_4.toValue(address_0))),
@@ -397,7 +399,7 @@ export class Contract {
                                                           amount_0,
                                                           address_0);
         partialProofData.output = { value: [], alignment: [] };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
+        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
       },
       receiveUnshieldedTest: (...args_1) => {
         if (args_1.length !== 3) {
@@ -427,7 +429,7 @@ export class Contract {
                                      'Uint<0..340282366920938463463374607431768211456>',
                                      amount_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost() };
+        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
         const partialProofData = {
           input: {
             value: _descriptor_2.toValue(color_0).concat(_descriptor_6.toValue(amount_0)),
@@ -442,7 +444,7 @@ export class Contract {
                                                        color_0,
                                                        amount_0);
         partialProofData.output = { value: [], alignment: [] };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
+        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
       },
       getUnshieldedBalanceTest: (...args_1) => {
         if (args_1.length !== 2) {
@@ -464,7 +466,7 @@ export class Contract {
                                      'Bytes<32>',
                                      color_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost() };
+        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
         const partialProofData = {
           input: {
             value: _descriptor_2.toValue(color_0),
@@ -478,7 +480,7 @@ export class Contract {
                                                           partialProofData,
                                                           color_0);
         partialProofData.output = { value: _descriptor_6.toValue(result_0), alignment: _descriptor_6.alignment() };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
+        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
       },
       getUnshieldedBalanceGtTest: (...args_1) => {
         if (args_1.length !== 3) {
@@ -508,7 +510,7 @@ export class Contract {
                                      'Uint<0..340282366920938463463374607431768211456>',
                                      amount_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost() };
+        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
         const partialProofData = {
           input: {
             value: _descriptor_2.toValue(color_0).concat(_descriptor_6.toValue(amount_0)),
@@ -523,7 +525,7 @@ export class Contract {
                                                             color_0,
                                                             amount_0);
         partialProofData.output = { value: _descriptor_1.toValue(result_0), alignment: _descriptor_1.alignment() };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
+        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
       },
       getUnshieldedBalanceLtTest: (...args_1) => {
         if (args_1.length !== 3) {
@@ -553,7 +555,7 @@ export class Contract {
                                      'Uint<0..340282366920938463463374607431768211456>',
                                      amount_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost() };
+        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
         const partialProofData = {
           input: {
             value: _descriptor_2.toValue(color_0).concat(_descriptor_6.toValue(amount_0)),
@@ -568,7 +570,7 @@ export class Contract {
                                                             color_0,
                                                             amount_0);
         partialProofData.output = { value: _descriptor_1.toValue(result_0), alignment: _descriptor_1.alignment() };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
+        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
       },
       getUnshieldedBalanceGteTest: (...args_1) => {
         if (args_1.length !== 3) {
@@ -598,7 +600,7 @@ export class Contract {
                                      'Uint<0..340282366920938463463374607431768211456>',
                                      amount_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost() };
+        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
         const partialProofData = {
           input: {
             value: _descriptor_2.toValue(color_0).concat(_descriptor_6.toValue(amount_0)),
@@ -613,7 +615,7 @@ export class Contract {
                                                              color_0,
                                                              amount_0);
         partialProofData.output = { value: _descriptor_1.toValue(result_0), alignment: _descriptor_1.alignment() };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
+        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
       },
       getUnshieldedBalanceLteTest: (...args_1) => {
         if (args_1.length !== 3) {
@@ -643,7 +645,7 @@ export class Contract {
                                      'Uint<0..340282366920938463463374607431768211456>',
                                      amount_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost() };
+        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
         const partialProofData = {
           input: {
             value: _descriptor_2.toValue(color_0).concat(_descriptor_6.toValue(amount_0)),
@@ -658,7 +660,7 @@ export class Contract {
                                                              color_0,
                                                              amount_0);
         partialProofData.output = { value: _descriptor_1.toValue(result_0), alignment: _descriptor_1.alignment() };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
+        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
       },
       receiveNightTokens: (...args_1) => {
         if (args_1.length !== 2) {
@@ -680,7 +682,7 @@ export class Contract {
                                      'Uint<0..340282366920938463463374607431768211456>',
                                      amount_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost() };
+        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
         const partialProofData = {
           input: {
             value: _descriptor_6.toValue(amount_0),
@@ -694,7 +696,7 @@ export class Contract {
                                                     partialProofData,
                                                     amount_0);
         partialProofData.output = { value: [], alignment: [] };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
+        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
       },
       sendNightTokensToUser: (...args_1) => {
         if (args_1.length !== 3) {
@@ -724,7 +726,7 @@ export class Contract {
                                      'struct UserAddress<bytes: Bytes<32>>',
                                      user_addr_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost() };
+        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
         const partialProofData = {
           input: {
             value: _descriptor_0.toValue(amount_0).concat(_descriptor_4.toValue(user_addr_0)),
@@ -739,7 +741,7 @@ export class Contract {
                                                        amount_0,
                                                        user_addr_0);
         partialProofData.output = { value: [], alignment: [] };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
+        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
       },
       sendNightTokensToRecipient: (...args_1) => {
         if (args_1.length !== 3) {
@@ -769,7 +771,7 @@ export class Contract {
                                      'struct Either<is_left: Boolean, left: struct ContractAddress<bytes: Bytes<32>>, right: struct UserAddress<bytes: Bytes<32>>>',
                                      recipient_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost() };
+        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
         const partialProofData = {
           input: {
             value: _descriptor_0.toValue(amount_0).concat(_descriptor_5.toValue(recipient_0)),
@@ -784,7 +786,7 @@ export class Contract {
                                                             amount_0,
                                                             recipient_0);
         partialProofData.output = { value: [], alignment: [] };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
+        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
       }
     };
     this.impureCircuits = {

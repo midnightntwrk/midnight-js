@@ -1720,15 +1720,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/compact-runtime@npm:0.16.103-dev.3a289c2e7811d2868e7810bd5a5f1f0b7055995f":
-  version: 0.16.103-dev.3a289c2e7811d2868e7810bd5a5f1f0b7055995f
-  resolution: "@midnight-ntwrk/compact-runtime@npm:0.16.103-dev.3a289c2e7811d2868e7810bd5a5f1f0b7055995f::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-runtime%2F0.16.103-dev.3a289c2e7811d2868e7810bd5a5f1f0b7055995f%2F4a0a25198188e6c33fef600b58e1b9832ae002e4"
+"@midnight-ntwrk/compact-runtime@npm:0.17.102-dev.82a6b7c83060d9566e57aa496a33ed80289a7257":
+  version: 0.17.102-dev.82a6b7c83060d9566e57aa496a33ed80289a7257
+  resolution: "@midnight-ntwrk/compact-runtime@npm:0.17.102-dev.82a6b7c83060d9566e57aa496a33ed80289a7257::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-runtime%2F0.17.102-dev.82a6b7c83060d9566e57aa496a33ed80289a7257%2F3bc6ba519f981b3fc5cab757bfebc54eee93c2e4"
   dependencies:
     "@midnightntwrk/onchain-runtime-v4": "npm:^4.0.0-rc.2"
     "@noble/hashes": "npm:^2.0.1"
     "@types/object-inspect": "npm:^1.8.1"
     object-inspect: "npm:^1.12.3"
-  checksum: 10/3f474105f626c393a686cc5b7f7a70e86eaff4834788e5e6a14e7d7cc17e3daa63791902da29f49e3808a5e8e24d5ccbd7346013cd9514824678ed9b8e5c8fbf
+  checksum: 10/544e635c5ff43b94971e5405baca62c2a20a3ded0f45369cc243b240ebbbcd6c3feb03dc9d066cf64e36c89576f78461b703a02c83e628be92f5fe265440e629
   languageName: node
   linkType: hard
 
@@ -1926,7 +1926,7 @@ __metadata:
   resolution: "@midnight-ntwrk/midnight-js-protocol@workspace:packages/protocol"
   dependencies:
     "@midnight-ntwrk/compact-js": "npm:2.5.5-rc.2"
-    "@midnight-ntwrk/compact-runtime": "npm:0.16.103-dev.3a289c2e7811d2868e7810bd5a5f1f0b7055995f"
+    "@midnight-ntwrk/compact-runtime": "npm:0.17.102-dev.82a6b7c83060d9566e57aa496a33ed80289a7257"
     "@midnight-ntwrk/platform-js": "npm:3.0.0"
     "@midnightntwrk/ledger-v9": "npm:1.0.0-rc.2"
     "@midnightntwrk/onchain-runtime-v4": "npm:4.0.0-rc.2"

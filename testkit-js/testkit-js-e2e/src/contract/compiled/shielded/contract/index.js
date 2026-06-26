@@ -1,5 +1,5 @@
 import * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
-__compactRuntime.checkRuntimeVersion('0.16.101');
+__compactRuntime.checkRuntimeVersion('0.17.102');
 
 const _descriptor_0 = new __compactRuntime.CompactTypeBytes(32);
 
@@ -177,6 +177,8 @@ const _descriptor_16 = new _Either_1();
 
 const _descriptor_17 = new __compactRuntime.CompactTypeUnsignedInteger(255n, 1);
 
+const _descriptor_18 = new __compactRuntime.CompactTypeUnsignedInteger(4294967295n, 4);
+
 export class Contract {
   witnesses;
   constructor(...args_0) {
@@ -217,7 +219,7 @@ export class Contract {
                                      'Uint<0..18446744073709551616>',
                                      amount_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost() };
+        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
         const partialProofData = {
           input: {
             value: _descriptor_0.toValue(domainSep_0).concat(_descriptor_2.toValue(amount_0)),
@@ -232,7 +234,7 @@ export class Contract {
                                                     domainSep_0,
                                                     amount_0);
         partialProofData.output = { value: _descriptor_4.toValue(result_0), alignment: _descriptor_4.alignment() };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
+        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
       },
       mintAndSendShielded: (...args_1) => {
         if (args_1.length !== 6) {
@@ -286,7 +288,7 @@ export class Contract {
                                      'Uint<0..340282366920938463463374607431768211456>',
                                      sendValue_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost() };
+        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
         const partialProofData = {
           input: {
             value: _descriptor_0.toValue(domainSep_0).concat(_descriptor_2.toValue(mintValue_0).concat(_descriptor_0.toValue(mintNonce_0).concat(_descriptor_3.toValue(publicKey_0).concat(_descriptor_4.toValue(sendValue_0))))),
@@ -304,7 +306,7 @@ export class Contract {
                                                      publicKey_0,
                                                      sendValue_0);
         partialProofData.output = { value: _descriptor_8.toValue(result_0), alignment: _descriptor_8.alignment() };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
+        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
       },
       depositShielded: (...args_1) => {
         if (args_1.length !== 2) {
@@ -326,7 +328,7 @@ export class Contract {
                                      'struct ShieldedCoinInfo<nonce: Bytes<32>, color: Bytes<32>, value: Uint<0..340282366920938463463374607431768211456>>',
                                      coin_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost() };
+        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
         const partialProofData = {
           input: {
             value: _descriptor_6.toValue(coin_0),
@@ -340,7 +342,7 @@ export class Contract {
                                                  partialProofData,
                                                  coin_0);
         partialProofData.output = { value: [], alignment: [] };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
+        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
       },
       mintAndSendImmediateShielded: (...args_1) => {
         if (args_1.length !== 6) {
@@ -394,7 +396,7 @@ export class Contract {
                                      'Uint<0..340282366920938463463374607431768211456>',
                                      sendValue_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost() };
+        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
         const partialProofData = {
           input: {
             value: _descriptor_0.toValue(domainSep_0).concat(_descriptor_2.toValue(mintValue_0).concat(_descriptor_0.toValue(mintNonce_0).concat(_descriptor_3.toValue(publicKey_0).concat(_descriptor_4.toValue(sendValue_0))))),
@@ -412,7 +414,7 @@ export class Contract {
                                                               publicKey_0,
                                                               sendValue_0);
         partialProofData.output = { value: _descriptor_8.toValue(result_0), alignment: _descriptor_8.alignment() };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
+        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
       },
       mintAndBurnShielded: (...args_1) => {
         if (args_1.length !== 5) {
@@ -458,7 +460,7 @@ export class Contract {
                                      'Uint<0..340282366920938463463374607431768211456>',
                                      burnValue_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost() };
+        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
         const partialProofData = {
           input: {
             value: _descriptor_0.toValue(domainSep_0).concat(_descriptor_2.toValue(mintValue_0).concat(_descriptor_0.toValue(mintNonce_0).concat(_descriptor_4.toValue(burnValue_0)))),
@@ -475,7 +477,7 @@ export class Contract {
                                                      mintNonce_0,
                                                      burnValue_0);
         partialProofData.output = { value: _descriptor_8.toValue(result_0), alignment: _descriptor_8.alignment() };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
+        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
       }
     };
     this.impureCircuits = {

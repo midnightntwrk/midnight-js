@@ -1,5 +1,5 @@
 import * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
-__compactRuntime.checkRuntimeVersion('0.16.101');
+__compactRuntime.checkRuntimeVersion('0.17.102');
 
 const _descriptor_0 = new __compactRuntime.CompactTypeUnsignedInteger(65535n, 2);
 
@@ -47,6 +47,8 @@ const _descriptor_6 = new _ContractAddress_0();
 
 const _descriptor_7 = new __compactRuntime.CompactTypeUnsignedInteger(255n, 1);
 
+const _descriptor_8 = new __compactRuntime.CompactTypeUnsignedInteger(4294967295n, 4);
+
 export class Contract {
   witnesses;
   constructor(...args_0) {
@@ -71,7 +73,7 @@ export class Contract {
                                      'CircuitContext',
                                      contextOrig_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost() };
+        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
         const partialProofData = {
           input: { value: [], alignment: [] },
           output: undefined,
@@ -80,7 +82,7 @@ export class Contract {
         };
         const result_0 = this._noop_0(context, partialProofData);
         partialProofData.output = { value: [], alignment: [] };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost };
+        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
       }
     };
     this.impureCircuits = { noop: this.circuits.noop };

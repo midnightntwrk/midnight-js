@@ -81,7 +81,7 @@
     "@midnight-ntwrk/platform-js": "3.0.0",
     "@midnightntwrk/ledger-v9": "1.0.0-rc.2",
     "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.2",
-    "@midnight-ntwrk/compact-runtime": "0.16.103-dev.3a289c2e7811d2868e7810bd5a5f1f0b7055995f",
+    "@midnight-ntwrk/compact-runtime": "0.17.102-dev.82a6b7c83060d9566e57aa496a33ed80289a7257",
     "undici": ">=7.24.0",
     "tar": ">=7.5.11",
     "fast-xml-parser": ">=5.7.0",
