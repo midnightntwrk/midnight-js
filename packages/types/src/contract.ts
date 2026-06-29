@@ -96,7 +96,7 @@ export const makeContractExecutableRuntime:
     if (options.signingKey) {
       config = config.concat([
         ['KEYS_SIGNING', options.signingKey.value],
-        ['KEYS_SIGNINGKIND', options.signingKey.tag]
+        ['KEYS_SIGNING_KIND', options.signingKey.tag]
       ])
     }
     return ContractExecutableRuntime.make(makeAdaptedRuntimeLayer(zkConfigProvider, new Map(config)));
