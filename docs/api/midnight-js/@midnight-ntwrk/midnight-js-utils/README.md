@@ -55,6 +55,7 @@
 - [fromHex](functions/fromHex.md)
 - [isDeserializationError](functions/isDeserializationError.md)
 - [isHex](functions/isHex.md)
+- [isValidSigningKey](functions/isValidSigningKey.md)
 - [parseCoinPublicKeyToHex](functions/parseCoinPublicKeyToHex.md)
 - [parseEncPublicKeyToHex](functions/parseEncPublicKeyToHex.md)
 - [parseHex](functions/parseHex.md)

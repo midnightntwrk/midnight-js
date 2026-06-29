@@ -23,6 +23,13 @@
 
 ## Interfaces
 
+- [ContractEventAddress](interfaces/ContractEventAddress.md)
+- [ContractEventBase](interfaces/ContractEventBase.md)
+- [ContractEventFieldPrefix](interfaces/ContractEventFieldPrefix.md)
+- [ContractEventFilterBase](interfaces/ContractEventFilterBase.md)
+- [ContractEventQueryFilter](interfaces/ContractEventQueryFilter.md)
+- [ContractEventsPage](interfaces/ContractEventsPage.md)
+- [ContractEventSubscriptionFilter](interfaces/ContractEventSubscriptionFilter.md)
 - [ExportPrivateStatesOptions](interfaces/ExportPrivateStatesOptions.md)
 - [ExportSigningKeysOptions](interfaces/ExportSigningKeysOptions.md)
 - [FinalizedTxData](interfaces/FinalizedTxData.md)
@@ -50,6 +57,9 @@
 - [BlockHash](type-aliases/BlockHash.md)
 - [BlockHashConfig](type-aliases/BlockHashConfig.md)
 - [BlockHeightConfig](type-aliases/BlockHeightConfig.md)
+- [ContractEvent](type-aliases/ContractEvent.md)
+- [ContractEventCursor](type-aliases/ContractEventCursor.md)
+- [ContractEventType](type-aliases/ContractEventType.md)
 - [ContractExecutableRuntimeOptions](type-aliases/ContractExecutableRuntimeOptions.md)
 - [ContractStateObservableConfig](type-aliases/ContractStateObservableConfig.md)
 - [Fees](type-aliases/Fees.md)

@@ -11,6 +11,51 @@ TODO: Add timeouts or retry limits to 'watchFor' queries.
 
 ## Methods
 
+### contractEventsObservable()
+
+> **contractEventsObservable**(`filter`, `opts?`): `Observable`\<[`ContractEvent`](../type-aliases/ContractEvent.md)\>
+
+Streams contract events for a contract address — replay from a cursor, then
+live, in one continuous stream.
+
+The start is supplied via `opts.startAt`: `{ fromId }` resumes inclusively
+from a known event id, `{ fromBlock }` starts from a block height. Omitting
+`startAt` streams from the start of history. The indexer replays historical
+events from that point in monotonic `id` order, then continues live — there
+is no separate backfill query and no client-side dedup.
+
+`{ fromId }` is **inclusive**; to resume *after* the last seen event pass
+`{ fromId: lastSeenId + 1 }`.
+
+`filter.toBlock` completes the stream once the chain reaches that height;
+without it the stream runs until unsubscribed or the provider is disposed.
+Delivery is **at-least-once** across transport reconnects (the provider
+does not advance the cursor) — persisting consumers should dedup by `id`.
+Transport failures surface as an observable `error`, never a silent
+completion.
+
+#### Parameters
+
+##### filter
+
+[`ContractEventSubscriptionFilter`](ContractEventSubscriptionFilter.md)
+
+The events to stream; `contractAddress` is required.
+
+##### opts?
+
+Optional stream start.
+
+###### startAt?
+
+[`ContractEventCursor`](../type-aliases/ContractEventCursor.md)
+
+#### Returns
+
+`Observable`\<[`ContractEvent`](../type-aliases/ContractEvent.md)\>
+
+***
+
 ### contractStateObservable()
 
 > **contractStateObservable**(`address`, `config`): `Observable`\<`ContractState`\>
@@ -36,6 +81,49 @@ The configuration for the observable.
 #### Returns
 
 `Observable`\<`ContractState`\>
+
+***
+
+### queryContractEvents()
+
+> **queryContractEvents**(`filter`, `page?`): `Promise`\<[`ContractEvent`](../type-aliases/ContractEvent.md)[]\>
+
+Queries contract events for a contract address — a finite, paginated,
+point-in-time read.
+
+Results are returned in ascending `id` order. The result is a plain array
+with no total count: detect the end via `result.length < limit`, and read
+`maxId` on the last item to see how far the tip is.
+
+When `page.limit` is omitted an implementation-defined default page size is
+applied (never an undocumented server default). `offset` is only stable
+within a window with a fixed upper bound — pin `filter.toBlock` for
+multi-page reads, or prefer the `getAllContractEvents` helper / the
+subscription for tailing.
+
+Fails fast (synchronously, before any network call) on an invalid
+`contractAddress`, an empty `types` array, `fieldPrefixes` combined with
+`Misc` (or with `types` omitted), or an unknown `fieldName`. Network /
+GraphQL errors reject the promise — an empty array always means "no
+matching events", never a swallowed error.
+
+#### Parameters
+
+##### filter
+
+[`ContractEventQueryFilter`](ContractEventQueryFilter.md)
+
+The events to return; `contractAddress` is required.
+
+##### page?
+
+[`ContractEventsPage`](ContractEventsPage.md)
+
+Optional pagination window.
+
+#### Returns
+
+`Promise`\<[`ContractEvent`](../type-aliases/ContractEvent.md)[]\>
 
 ***
 

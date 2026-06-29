@@ -6,7 +6,7 @@
 
 # Type Alias: IndexerDataErrorContext
 
-> **IndexerDataErrorContext** = \{ `kind`: `"unknown-status"`; `value`: `string`; \} \| \{ `contractAddress`: `string`; `kind`: `"missing-contract-action"`; \} \| \{ `actionIndex`: `number`; `contractAddress`: `string`; `identifiersLength`: `number`; `kind`: `"missing-identifier"`; \}
+> **IndexerDataErrorContext** = \{ `kind`: `"unknown-status"`; `value`: `string`; \} \| \{ `contractAddress`: `string`; `kind`: `"missing-contract-action"`; \} \| \{ `actionIndex`: `number`; `contractAddress`: `string`; `identifiersLength`: `number`; `kind`: `"missing-identifier"`; \} \| \{ `kind`: `"unknown-event-type"`; `typename`: `string`; \} \| \{ `field`: `string`; `kind`: `"missing-event-field"`; `typename`: `string`; \} \| \{ `field`: `string`; `kind`: `"unknown-address-kind"`; `typename`: `string`; `value`: `string`; \}
 
 Discriminated context describing the specific way indexer-returned data
 failed to satisfy the provider's expectations. The `kind` tag lets

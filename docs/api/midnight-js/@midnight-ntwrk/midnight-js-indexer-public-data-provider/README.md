@@ -26,11 +26,13 @@
 
 ## Variables
 
+- [DEFAULT\_CONTRACT\_EVENTS\_PAGE\_SIZE](variables/DEFAULT_CONTRACT_EVENTS_PAGE_SIZE.md)
 - [DEFAULT\_POLL\_INTERVAL](variables/DEFAULT_POLL_INTERVAL.md)
 
 ## Functions
 
 - [correlateDeployTxId](functions/correlateDeployTxId.md)
+- [getAllContractEvents](functions/getAllContractEvents.md)
 - [indexerPublicDataProvider](functions/indexerPublicDataProvider.md)
 - [isRegularTransaction](functions/isRegularTransaction.md)
 - [parseHexContractState](functions/parseHexContractState.md)
