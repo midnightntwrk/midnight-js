@@ -1,7 +1,7 @@
 {
   "name": "@midnight-ntwrk/midnight-js-monorepo",
   "description": "Midnight application development framework",
-  "version": "4.1.1",
+  "version": "5.0.0-alpha.1",
   "packageManager": "yarn@4.14.1",
   "repository": "git@github.com:midnight-ntwrk/artifacts",
   "engines": {
