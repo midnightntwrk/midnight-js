@@ -105,7 +105,7 @@
   ],
   "dependencies": {
     "@midnight-ntwrk/compact-js": "2.5.5-rc.2",
-    "@midnight-ntwrk/compact-runtime": "0.17.102-dev.82a6b7c83060d9566e57aa496a33ed80289a7257",
+    "@midnight-ntwrk/compact-runtime": "0.17.104-dev.1dcee19f4367a5cd36b23e81fd917d58844beeb0",
     "@midnight-ntwrk/platform-js": "3.0.0",
     "@midnightntwrk/ledger-v9": "1.0.0-rc.2",
     "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.2"

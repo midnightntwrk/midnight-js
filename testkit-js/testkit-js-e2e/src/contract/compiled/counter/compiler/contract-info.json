@@ -1,7 +1,7 @@
 {
-  "compiler-version": "0.32.102",
-  "language-version": "0.24.101",
-  "runtime-version": "0.17.102",
+  "compiler-version": "0.32.108",
+  "language-version": "0.24.102",
+  "runtime-version": "0.17.104",
   "circuits": [
     {
       "name": "increment",

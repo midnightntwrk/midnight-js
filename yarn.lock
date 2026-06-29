@@ -1720,15 +1720,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/compact-runtime@npm:0.17.102-dev.82a6b7c83060d9566e57aa496a33ed80289a7257":
-  version: 0.17.102-dev.82a6b7c83060d9566e57aa496a33ed80289a7257
-  resolution: "@midnight-ntwrk/compact-runtime@npm:0.17.102-dev.82a6b7c83060d9566e57aa496a33ed80289a7257::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-runtime%2F0.17.102-dev.82a6b7c83060d9566e57aa496a33ed80289a7257%2F3bc6ba519f981b3fc5cab757bfebc54eee93c2e4"
+"@midnight-ntwrk/compact-runtime@npm:0.17.104-dev.1dcee19f4367a5cd36b23e81fd917d58844beeb0":
+  version: 0.17.104-dev.1dcee19f4367a5cd36b23e81fd917d58844beeb0
+  resolution: "@midnight-ntwrk/compact-runtime@npm:0.17.104-dev.1dcee19f4367a5cd36b23e81fd917d58844beeb0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-runtime%2F0.17.104-dev.1dcee19f4367a5cd36b23e81fd917d58844beeb0%2F6ea7eccef85c5d4081d5d41534178db94a633a24"
   dependencies:
-    "@midnightntwrk/onchain-runtime-v4": "npm:^4.0.0-rc.2"
+    "@midnightntwrk/onchain-runtime-v4": "npm:^4.0.0-rc.3"
     "@noble/hashes": "npm:^2.0.1"
     "@types/object-inspect": "npm:^1.8.1"
     object-inspect: "npm:^1.12.3"
-  checksum: 10/544e635c5ff43b94971e5405baca62c2a20a3ded0f45369cc243b240ebbbcd6c3feb03dc9d066cf64e36c89576f78461b703a02c83e628be92f5fe265440e629
+  checksum: 10/8a9509b8987cf410bc6aa097a756e0f883a30aedf6d2de78aa3f6f3124cbd4cfa9ee08cca81657b6929a35352ef91cdaa7f451e518d1d0697c7ad8266c40bf27
   languageName: node
   linkType: hard
 
@@ -1926,7 +1926,7 @@ __metadata:
   resolution: "@midnight-ntwrk/midnight-js-protocol@workspace:packages/protocol"
   dependencies:
     "@midnight-ntwrk/compact-js": "npm:2.5.5-rc.2"
-    "@midnight-ntwrk/compact-runtime": "npm:0.17.102-dev.82a6b7c83060d9566e57aa496a33ed80289a7257"
+    "@midnight-ntwrk/compact-runtime": "npm:0.17.104-dev.1dcee19f4367a5cd36b23e81fd917d58844beeb0"
     "@midnight-ntwrk/platform-js": "npm:3.0.0"
     "@midnightntwrk/ledger-v9": "npm:1.0.0-rc.2"
     "@midnightntwrk/onchain-runtime-v4": "npm:4.0.0-rc.2"
