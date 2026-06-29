@@ -14,44 +14,57 @@ interface PublicDataProvider {
     page?: ContractEventsPage,
   ): Promise<ContractEvent[]>;
 
-  /** Replay from a cursor, then live tail. Terminable via filter.toBlock. */
+  /** Replay from a start cursor, then live tail. Terminable via filter.toBlock. */
   contractEventsObservable(
     filter: ContractEventSubscriptionFilter,
-    cursor?: ContractEventCursor,
+    opts?: { startAt?: ContractEventCursor },
   ): Observable<ContractEvent>;
-
-  /** Added in #961 — optional, additive. Releases provider-held resources. */
-  dispose?(): Promise<void>;
 }
 ```
 
-`queryContractEvents` and `contractEventsObservable` are **required** interface members. Custom `PublicDataProvider` implementations must add them. `dispose?` is optional.
+`queryContractEvents` and `contractEventsObservable` are **required** interface members — custom `PublicDataProvider` implementations must add them. Note the start cursor is passed via `opts.startAt`, **not** positionally. There is **no** `dispose` member on the `PublicDataProvider` interface; `dispose()` lives only on the concrete `IndexerPublicDataProvider` (see below).
 
 ### New event types
 
 ```ts
 export type ContractEventType =
   | 'ShieldedSpend' | 'ShieldedReceive' | 'ShieldedMint' | 'ShieldedBurn'
-  | 'Paused' | 'Unpaused' | 'Misc' /* ... transfer-style variants ... */;
+  | 'UnshieldedSpend' | 'UnshieldedReceive' | 'UnshieldedMint' | 'UnshieldedBurn'
+  | 'Paused' | 'Unpaused' | 'Misc'; // 11 variants
 
 export interface ContractEventAddress {
   readonly kind: 'user' | 'contract';
   readonly value: string;
 }
 
-export interface ContractEventBase { /* fields common to every variant */ }
+export interface ContractEventBase {
+  readonly id: number;              // monotonic indexer cursor; inclusive resumption point
+  readonly maxId: number;           // highest event id known (events tip)
+  readonly version: number;         // payload schema version
+  readonly contractAddress: ContractAddress;
+  readonly transactionId: number;   // indexer row id — NOT the chain tx hash
+  readonly raw: string;             // opaque hex VersionedLogItem, verbatim
+}
 
 export type ContractEvent =
   | (ContractEventBase & { readonly eventType: 'ShieldedSpend'; readonly nullifier: string })
-  | (ContractEventBase & { readonly eventType: 'ShieldedBurn';  readonly nullifier: string; readonly amount?: string })
-  | (ContractEventBase & { readonly sender: ContractEventAddress;    /* ... */ })
-  | (ContractEventBase & { readonly recipient: ContractEventAddress; /* ... */ })
+  | (ContractEventBase & { readonly eventType: 'ShieldedReceive'; readonly commitment: string; readonly ciphertext?: string; readonly receivingContractAddress?: string })
+  | (ContractEventBase & { readonly eventType: 'ShieldedMint'; readonly commitment: string; readonly domainSep: string; readonly amount?: string })
+  | (ContractEventBase & { readonly eventType: 'ShieldedBurn'; readonly nullifier: string; readonly amount?: string })
+  | (ContractEventBase & { readonly eventType: 'UnshieldedSpend'; readonly sender: ContractEventAddress; readonly domainSep: string; readonly tokenType: string; readonly amount: string })
+  | (ContractEventBase & { readonly eventType: 'UnshieldedReceive'; readonly recipient: ContractEventAddress; readonly domainSep: string; readonly tokenType: string; readonly amount: string })
+  | (ContractEventBase & { readonly eventType: 'UnshieldedMint'; readonly domainSep: string; readonly tokenType: string; readonly amount: string })
+  | (ContractEventBase & { readonly eventType: 'UnshieldedBurn'; readonly sender: ContractEventAddress; readonly tokenType: string; readonly amount: string })
   | (ContractEventBase & { readonly eventType: 'Paused' })
   | (ContractEventBase & { readonly eventType: 'Unpaused' })
-  | (ContractEventBase & { readonly eventType: 'Misc'; readonly name: string; readonly payload: string })
-  /* 11 variants total */;
+  | (ContractEventBase & { readonly eventType: 'Misc'; readonly name: string; readonly payload: string });
 
-export interface ContractEventFilterBase { /* shared filter fields */ }
+export interface ContractEventFilterBase {
+  readonly contractAddress: ContractAddress;
+  readonly types?: ContractEventType[];               // omit = all; empty array is rejected
+  readonly fieldPrefixes?: ContractEventFieldPrefix[]; // non-Misc variants only
+  readonly transactionHash?: string;
+}
 
 export interface ContractEventQueryFilter extends ContractEventFilterBase {
   readonly fromBlock?: number; // inclusive
@@ -63,7 +76,7 @@ export interface ContractEventSubscriptionFilter extends ContractEventFilterBase
 }
 
 export type ContractEventCursor =
-  | { readonly fromId: string }     // xor
+  | { readonly fromId: number }     // xor — inclusive event id
   | { readonly fromBlock: number };
 
 export interface ContractEventsPage {
@@ -90,23 +103,31 @@ type SigningKey = { tag: 'schnorr' | 'ecdsa'; value: string /* hex */ };
 
 ### New / changed exports
 
+Package barrel (`index.ts`) exports:
+
 ```ts
 // Structured configuration (preferred)
-export interface IndexerProviderConfig { /* indexer URLs, optional pollInterval */ }
-export type ValidatedConfig = /* ... */;
-export function validateConfig(config: IndexerProviderConfig): ValidatedConfig;
-export const DEFAULT_POLL_INTERVAL: number;
+export type IndexerProviderConfig = {
+  readonly queryURL: string;        // indexer HTTP/GraphQL endpoint
+  readonly subscriptionURL: string; // indexer WebSocket endpoint
+  readonly webSocket?: typeof ws.WebSocket;
+  readonly pollInterval?: number;   // defaults to DEFAULT_POLL_INTERVAL
+};
+export const DEFAULT_POLL_INTERVAL: number;            // 1000 (ms)
+export const DEFAULT_CONTRACT_EVENTS_PAGE_SIZE: number; // 100
 
-// Factory now overloaded — object form preferred, positional form @deprecated
-export function indexerPublicDataProvider(config: IndexerProviderConfig): DisposablePublicDataProvider;
+// Concrete provider class + overloaded factory (both return IndexerPublicDataProvider)
+export class IndexerPublicDataProvider implements PublicDataProvider { dispose(): Promise<void>; /* ... */ }
+export function indexerPublicDataProvider(config: IndexerProviderConfig): IndexerPublicDataProvider;
+/** @deprecated positional form retained for backward compatibility */
+export function indexerPublicDataProvider(queryURL: string, subscriptionURL: string, webSocket?: typeof ws.WebSocket): IndexerPublicDataProvider;
 
-// Disposable provider type
-export type DisposablePublicDataProvider = PublicDataProvider & { dispose(): Promise<void> };
-
-// Event iterator helper + default page size
+// Event iterator helper + transaction guard
 export function getAllContractEvents(/* provider, filter */): AsyncIterable<ContractEvent>;
-export const DEFAULT_CONTRACT_EVENTS_PAGE_SIZE: number;
+export function isRegularTransaction(/* ... */): boolean;
 ```
+
+`dispose()` is a method on the concrete `IndexerPublicDataProvider` returned by the factory — there is no separate `DisposablePublicDataProvider` type, and the `PublicDataProvider` interface itself has no `dispose` member. `validateConfig` / `ValidatedConfig` exist but live in the internal `config.ts` module and are **not** re-exported from the package barrel.
 
 New typed error variants accompany the event surface (e.g. `IndexerDataError.unknownAddressKind` for an unrecognized address kind; unknown `__typename` / missing-field cases continue to fail fast).
 
@@ -148,5 +169,5 @@ Subpath re-exports retargeted (see [breaking-changes.md](./breaking-changes.md))
 |---------|-----------------|
 | `/ledger` | `@midnightntwrk/ledger-v9@1.0.0-rc.2` |
 | `/onchain-runtime` | `@midnightntwrk/onchain-runtime-v4@4.0.0-rc.2` |
-| `/compact-runtime` | `@midnight-ntwrk/compact-runtime@0.17.102-dev` |
+| `/compact-runtime` | `@midnight-ntwrk/compact-runtime@0.17.102-dev.82a6b7c83060d9566e57aa496a33ed80289a7257` |
 | `/platform-js` | `@midnight-ntwrk/platform-js@3.0.0` |

@@ -38,35 +38,40 @@ for await (const event of getAllContractEvents(publicDataProvider, filter)) {
 ```ts
 import type { ContractEventCursor, ContractEventSubscriptionFilter } from '@midnight-ntwrk/midnight-js-types';
 
-const cursor: ContractEventCursor = { fromBlock: 100 }; // or { fromId: '...' } — fromId xor fromBlock
+const cursor: ContractEventCursor = { fromBlock: 100 }; // or { fromId: 42 } — fromId xor fromBlock, both numbers
 const subscription: ContractEventSubscriptionFilter = { contractAddress /*, toBlock */ };
 
+// The start cursor is passed via opts.startAt (not positionally).
 publicDataProvider
-  .contractEventsObservable(subscription, cursor)
+  .contractEventsObservable(subscription, { startAt: cursor })
   .subscribe((event) => handle(event));
 ```
 
+`{ fromId }` resumes **inclusively** from a known event id — to resume *after* the last seen event, pass `{ fromId: lastSeenId + 1 }`. Omitting `startAt` streams from the start of history.
+
 ### The `ContractEvent` union
 
-`ContractEvent` is an 11-variant discriminated union keyed on `eventType`. A `ContractEventBase` carries the fields common to every variant; each variant adds its own:
+`ContractEvent` is an 11-variant discriminated union keyed on `eventType` (four `Shielded*`, four `Unshielded*`, plus `Paused` / `Unpaused` / `Misc`). A `ContractEventBase` carries the fields common to every variant; each variant adds its own:
 
 ```ts
 type ContractEvent =
   | (ContractEventBase & { eventType: 'ShieldedSpend';   nullifier: string })
+  | (ContractEventBase & { eventType: 'ShieldedReceive'; commitment: string; ciphertext?: string; receivingContractAddress?: string })
+  | (ContractEventBase & { eventType: 'ShieldedMint';    commitment: string; domainSep: string; amount?: string })
   | (ContractEventBase & { eventType: 'ShieldedBurn';    nullifier: string; amount?: string })
-  | (ContractEventBase & { eventType: 'ShieldedMint';    /* ... */ })
-  | (ContractEventBase & { eventType: 'ShieldedReceive'; /* ... */ })
-  | (ContractEventBase & { sender: ContractEventAddress;    /* ... */ })
-  | (ContractEventBase & { recipient: ContractEventAddress; /* ... */ })
+  | (ContractEventBase & { eventType: 'UnshieldedSpend';   sender: ContractEventAddress; domainSep: string; tokenType: string; amount: string })
+  | (ContractEventBase & { eventType: 'UnshieldedReceive'; recipient: ContractEventAddress; domainSep: string; tokenType: string; amount: string })
+  | (ContractEventBase & { eventType: 'UnshieldedMint';    domainSep: string; tokenType: string; amount: string })
+  | (ContractEventBase & { eventType: 'UnshieldedBurn';    sender: ContractEventAddress; tokenType: string; amount: string })
   | (ContractEventBase & { eventType: 'Paused' })
   | (ContractEventBase & { eventType: 'Unpaused' })
-  | (ContractEventBase & { eventType: 'Misc'; name: string; payload: string })
-  /* ... */;
+  | (ContractEventBase & { eventType: 'Misc'; name: string; payload: string });
 ```
 
 Notable schema-driven decisions:
 
-- `sender` / `recipient` map to `ContractEventAddress = { kind: 'user' | 'contract'; value }` (the schema's `AddressOrContract` is an object, not a scalar).
+- `sender` / `recipient` (on the `Unshielded*` variants) map to `ContractEventAddress = { kind: 'user' | 'contract'; value }` (the schema's tagged `Either<ZswapCoinPublicKey, ContractAddress>` is an object, not a scalar).
+- `amount` is always a `string` (encodes up to a 16-byte integer) — never round it through `Number()`. Absent nullable fields are normalized to `undefined`, never `null`.
 - `Misc` carries an opaque `{ name, payload }`.
 - The node→`ContractEvent` mapper **fails fast** on an unknown `__typename` or a missing required field (it never silently produces `undefined`), and carries a compile-time exhaustiveness guard so a schema change becomes a type error rather than runtime drift.
 
@@ -76,19 +81,19 @@ Notable schema-driven decisions:
 
 ## Disposable `IndexerPublicDataProvider` with structured config (#961)
 
-Phase 2 of #808 (closes #820). The indexer provider gains a structured configuration object, becomes a class, and exposes explicit resource cleanup.
+Phase 2 of #808 (closes #820). The indexer provider gains a structured configuration object, becomes a class (`IndexerPublicDataProvider`), and exposes explicit resource cleanup.
 
 ```ts
 import {
   indexerPublicDataProvider,
-  type DisposablePublicDataProvider,
+  IndexerPublicDataProvider,
 } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
 
-// Preferred: object-config form
-const provider: DisposablePublicDataProvider = indexerPublicDataProvider({
-  indexerHttpUrl,
-  indexerWsUrl,
-  pollInterval: 1_000, // optional; defaults to DEFAULT_POLL_INTERVAL
+// Preferred: object-config form. Returns the concrete IndexerPublicDataProvider.
+const provider: IndexerPublicDataProvider = indexerPublicDataProvider({
+  queryURL,            // indexer HTTP/GraphQL endpoint
+  subscriptionURL,     // indexer WebSocket endpoint
+  pollInterval: 1_000, // optional; defaults to DEFAULT_POLL_INTERVAL (1000ms)
 });
 
 // ... use the provider ...
@@ -96,10 +101,9 @@ const provider: DisposablePublicDataProvider = indexerPublicDataProvider({
 await provider.dispose(); // releases the underlying graphql-ws WebSocket
 ```
 
-- `validateConfig(config)` fails fast on an invalid `pollInterval` (`0`, negative, `NaN`, `Infinity`, fractional).
-- `dispose()` stops the Apollo client then awaits the `graphql-ws` teardown; concurrent dispose calls share one in-flight promise (no double teardown under `Promise.all`).
-- The positional factory form is retained but `@deprecated` — migrate to the object form.
-- `PublicDataProvider.dispose?(): Promise<void>` was added as an **optional** interface member.
+- The structured config is `{ queryURL, subscriptionURL, webSocket?, pollInterval? }`. An invalid `pollInterval` (non-integer, `0`, or negative) fails fast at construction.
+- `dispose()` (on the concrete `IndexerPublicDataProvider`) stops the Apollo client then awaits the `graphql-ws` teardown; concurrent dispose calls share one in-flight promise (no double teardown under `Promise.all`).
+- The positional factory form `indexerPublicDataProvider(queryURL, subscriptionURL, webSocket?)` is retained but `@deprecated` — migrate to the object form.
 
 ---
 

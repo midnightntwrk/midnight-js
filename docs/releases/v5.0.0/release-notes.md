@@ -17,7 +17,7 @@ v5.0.0 is a major release. It retargets the framework's on-chain protocol bindin
 
 The subpath re-exports `@midnight-ntwrk/midnight-js-protocol/ledger` and `/onchain-runtime` now resolve to the v9 / v4 packages. The new `@midnightntwrk` scope is registered in `.yarnrc.yml` and both scope variants are flagged by the ESLint `no-restricted-imports` ACL outside `packages/protocol/src/`.
 
-This pulls through a coordinated dependency set: `@midnight-ntwrk/platform-js@3.0.0`, `@midnight-ntwrk/compact-runtime@0.17.102-dev`, and `compactc 0.32.102`.
+This pulls through a coordinated dependency set: `@midnight-ntwrk/platform-js@3.0.0`, `@midnight-ntwrk/compact-runtime@0.17.102-dev.82a6b7c83060d9566e57aa496a33ed80289a7257`, and `compactc 0.32.102`.
 
 ### `SigningKey` is now a structured object (#970)
 
@@ -36,9 +36,9 @@ ledger-v9 bumps the structural `ContractState` tag. The version-mismatch canary 
 
 ledger-v9 made `retentionDuration` (seconds of past Merkle roots to retain) a required argument. Calling with the old single-argument form throws `retention_duration is out of range`. A named constant is now threaded through the production call site.
 
-### `@midnightntwrk/wallet-sdk` 2.0.0 (testkit-js) (#970)
+### `@midnightntwrk/wallet-sdk` 2.0.0-canary (testkit-js) (#970)
 
-The testkit wallet stack moved to the 2.0.0 major (and aligned siblings: `wallet-sdk-prover-client` 2.0.0, `wallet-sdk-address-format` 4.0.0), which adopts the onchain-v4 structured key/signature types. `createKeystore` now takes `{ kind: SignatureKind; secret: Uint8Array }` rather than a raw `Uint8Array`.
+The testkit wallet stack moved to the 2.0.0 major canary line (`2.0.0-canary.20260623092110-2f10bcf`), with aligned siblings `wallet-sdk-prover-client@2.0.0-canary.20260623092110-2f10bcf` and `wallet-sdk-address-format@4.0.0-canary.20260623092110-2f10bcf`, which adopts the onchain-v4 structured key/signature types. `createKeystore` now takes `{ kind: SignatureKind; secret: Uint8Array }` rather than a raw `Uint8Array`.
 
 ## New Features
 
@@ -47,9 +47,9 @@ The testkit wallet stack moved to the 2.0.0 major (and aligned siblings: `wallet
 The `PublicDataProvider` interface gains indexer-sourced contract-event querying and streaming, per the MIP-0002 indexer-events spec (rev 2):
 
 - `queryContractEvents(filter, page?): Promise<ContractEvent[]>` — finite, point-in-time paged read bounded by inclusive `fromBlock` / `toBlock`.
-- `contractEventsObservable(filter, cursor?): Observable<ContractEvent>` — replay from a `ContractEventCursor` (then live tail), terminable with `toBlock`.
+- `contractEventsObservable(filter, opts?: { startAt?: ContractEventCursor }): Observable<ContractEvent>` — replay from a start cursor (then live tail), terminable with `toBlock`.
 - `getAllContractEvents(...)` — async-iterator helper that pages through a query for you.
-- `ContractEvent` — an 11-variant discriminated union (`ShieldedSpend`, `ShieldedReceive`, `ShieldedMint`, `ShieldedBurn`, transfer-style variants carrying `sender` / `recipient` as `{ kind, value }`, `Paused`, `Unpaused`, `Misc { name, payload }`, …), plus `ContractEventQueryFilter`, `ContractEventSubscriptionFilter`, `ContractEventCursor` (`fromId` xor `fromBlock`), and `ContractEventsPage`.
+- `ContractEvent` — an 11-variant discriminated union (`ShieldedSpend` / `ShieldedReceive` / `ShieldedMint` / `ShieldedBurn`, `UnshieldedSpend` / `UnshieldedReceive` / `UnshieldedMint` / `UnshieldedBurn` — the `Unshielded*` variants carry `sender` / `recipient` as `ContractEventAddress = { kind, value }` — plus `Paused`, `Unpaused`, `Misc { name, payload }`), alongside `ContractEventQueryFilter`, `ContractEventSubscriptionFilter`, `ContractEventCursor` (`{ fromId: number }` xor `{ fromBlock: number }`), and `ContractEventsPage`.
 
 The mapper fails fast on an unknown `__typename` or a missing required field, and carries a compile-time exhaustiveness guard so a schema change surfaces as a type error rather than silent drift.
 
@@ -59,10 +59,9 @@ The mapper fails fast on an unknown `__typename` or a missing required field, an
 
 Phase 2 of #808 (closes #820):
 
-- New `IndexerProviderConfig` / `ValidatedConfig` types and `validateConfig(config)` with fail-fast `pollInterval` validation (rejects `0`, negative, `NaN`, `Infinity`, and fractional values), plus a `DEFAULT_POLL_INTERVAL` constant.
+- A structured `IndexerProviderConfig` (`{ queryURL, subscriptionURL, webSocket?, pollInterval? }`) with fail-fast `pollInterval` validation (rejects non-integer, `0`, and negative values), plus a `DEFAULT_POLL_INTERVAL` constant (1000ms). (`validateConfig` / `ValidatedConfig` exist internally but are not re-exported from the package barrel.)
 - The inner factory becomes a `class IndexerPublicDataProvider implements PublicDataProvider`; the factory is overloaded — the object-config form is preferred, the positional form is retained as `@deprecated`.
-- Explicit resource cleanup: the factory returns a `DisposablePublicDataProvider` (= `PublicDataProvider & { dispose(): Promise<void> }`) whose `dispose()` stops the Apollo client and awaits the underlying `graphql-ws` teardown; concurrent dispose calls share a single in-flight promise.
-- `PublicDataProvider` gains an optional `dispose?(): Promise<void>` — additive, non-breaking for existing implementations.
+- Explicit resource cleanup: the factory returns the concrete `IndexerPublicDataProvider`, whose `dispose()` stops the Apollo client and awaits the underlying `graphql-ws` teardown; concurrent dispose calls share a single in-flight promise. (`dispose()` lives on the concrete class — it is not a member of the shared `PublicDataProvider` interface.)
 
 ### Classified deserialization / versioning errors (#955)
 
@@ -97,7 +96,7 @@ The generated contract-event GraphQL schema gains transaction references and bet
 
 ## Dependencies
 
-- `chore(deps): migrate wallet-sdk to @midnightntwrk scope and bump to v1.2.0` (#986) (superseded by the 2.0.0 bump in #970).
+- `chore(deps): migrate wallet-sdk to @midnightntwrk scope and bump to v1.2.0` (#986) (superseded by the `2.0.0-canary` bump in #970).
 - `chore(deps): bump shell-quote` (#973).
 - `chore(deps): bump EnricoMi/publish-unit-test-result-action` (#990).
 

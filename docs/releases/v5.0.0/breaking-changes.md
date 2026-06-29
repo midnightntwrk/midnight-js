@@ -13,7 +13,7 @@ v5.0.0 is a protocol-level major release. The breaking surface concentrates in t
 | `@midnight-ntwrk/midnight-js-protocol/ledger` | `@midnight-ntwrk/ledger-v8@8.1.0` | `@midnightntwrk/ledger-v9@1.0.0-rc.2` |
 | `@midnight-ntwrk/midnight-js-protocol/onchain-runtime` | `@midnight-ntwrk/onchain-runtime-v3@3.0.0` | `@midnightntwrk/onchain-runtime-v4@4.0.0-rc.2` |
 
-Coordinated companions: `@midnight-ntwrk/platform-js@3.0.0`, `@midnight-ntwrk/compact-runtime@0.17.102-dev`, `compactc 0.32.102`.
+Coordinated companions: `@midnight-ntwrk/platform-js@3.0.0`, `@midnight-ntwrk/compact-runtime@0.17.102-dev.82a6b7c83060d9566e57aa496a33ed80289a7257`, `compactc 0.32.102`.
 
 **Impact:** Any code importing ledger / onchain-runtime types should do so **only** through the protocol package's subpath re-exports — direct imports of the old-scope packages are flagged by ESLint (`no-restricted-imports`) and resolve to incompatible type shapes.
 
@@ -75,13 +75,13 @@ ledger-v9 makes `retentionDuration` (seconds of past Merkle roots to retain) a *
 
 ---
 
-## 5. `@midnightntwrk/wallet-sdk` 2.0.0 (testkit-js) (#970)
+## 5. `@midnightntwrk/wallet-sdk` 2.0.0-canary (testkit-js) (#970)
 
-The testkit wallet stack moved to the 2.0.0 major, aligning siblings to avoid duplicate majors:
+The testkit wallet stack moved to the 2.0.0 major canary line, aligning siblings to avoid duplicate majors (all on the `20260623092110-2f10bcf` canary):
 
-- `@midnightntwrk/wallet-sdk` `1.2.0` → `2.0.0`
-- `@midnightntwrk/wallet-sdk-prover-client` `^1.2.3` → `2.0.0`
-- `@midnightntwrk/wallet-sdk-address-format` `^3.1.2` → `4.0.0`
+- `@midnightntwrk/wallet-sdk` `1.2.0` → `2.0.0-canary.20260623092110-2f10bcf`
+- `@midnightntwrk/wallet-sdk-prover-client` `^1.2.3` → `2.0.0-canary.20260623092110-2f10bcf`
+- `@midnightntwrk/wallet-sdk-address-format` `^3.1.2` → `4.0.0-canary.20260623092110-2f10bcf`
 
 `createKeystore` now takes `{ kind: SignatureKind; secret: Uint8Array }` instead of a raw `Uint8Array`. This affects consumers building wallets through the testkit fluent builder.
 
@@ -89,5 +89,5 @@ The testkit wallet stack moved to the 2.0.0 major, aligning siblings to avoid du
 
 ## Non-breaking additions worth noting
 
-- `PublicDataProvider.dispose?(): Promise<void>` is **optional** — existing implementations are unaffected (#961).
-- The new `queryContractEvents` / `contractEventsObservable` methods are additive to the `PublicDataProvider` interface; any custom implementation of that interface must now provide them (the framework's `IndexerPublicDataProvider` does). If you implement `PublicDataProvider` yourself, this is a required-method addition — see [api-changes.md](./api-changes.md).
+- `dispose()` is exposed on the concrete `IndexerPublicDataProvider` returned by the factory (#961). It is **not** a member of the shared `PublicDataProvider` interface, so existing interface implementations are unaffected.
+- The new `queryContractEvents` / `contractEventsObservable` methods are **required** members of the `PublicDataProvider` interface; the framework's `IndexerPublicDataProvider` provides them. If you implement `PublicDataProvider` yourself, this is a required-method addition that will fail to type-check until you add both — see [api-changes.md](./api-changes.md).

@@ -126,7 +126,7 @@ If you call `postBlockUpdate` directly, pass the now-required `retentionDuration
 
 ---
 
-## Step 7 — testkit-js consumers: wallet-sdk 2.0.0
+## Step 7 — testkit-js consumers: wallet-sdk 2.0.0-canary
 
 If you build wallets through the testkit:
 
