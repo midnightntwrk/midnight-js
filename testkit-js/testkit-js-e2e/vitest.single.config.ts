@@ -35,9 +35,6 @@ export default defineConfig({
     include: [`./test/${testFile}`],
     reporters: [
       'default',
-      // TEMP DIAGNOSTIC (#1001): prints why-is-node-running output if vitest detects the process
-      // hanging. JS-handle-layer only — complements the native process.report watchdog in vite.setup.mjs.
-      'hanging-process',
       ['junit', { outputFile: `./reports/test-report-${testBaseName}.xml` }],
       ['@d2t/vitest-ctrf-json-reporter', { outputDir: './reports', outputFile: `ctrf-report-${testBaseName}.json` }],
       ['allure-vitest/reporter', { resultsDir: `./reports/allure-results-${testBaseName}` }]
