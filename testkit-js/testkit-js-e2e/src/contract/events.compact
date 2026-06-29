@@ -1,0 +1,56 @@
+import CompactStandardLibrary;
+
+export circuit emitMisc(name: Bytes<32>, payload: Bytes<256>): [] {
+  emit (Misc { name: disclose(name), payload: disclose(payload) });
+}
+
+export circuit emitShieldedSpend(nullifier: Bytes<32>): [] {
+  emit (ShieldedSpend { nullifier: disclose(nullifier) });
+}
+
+export circuit emitShieldedReceive(commitment: Bytes<32>): [] {
+  emit (ShieldedReceive {
+    commitment: disclose(commitment),
+    contract_address: none<Bytes<32>>(),
+    ciphertext: none<Bytes<512>>()
+  });
+}
+
+export circuit emitShieldedMint(commitment: Bytes<32>): [] {
+  emit (ShieldedMint {
+    commitment: disclose(commitment),
+    domain_sep: default<Bytes<32>>,
+    amount: some<Uint<128>>(1 as Uint<128>)
+  });
+}
+
+export circuit emitShieldedBurn(nullifier: Bytes<32>): [] {
+  emit (ShieldedBurn {
+    nullifier: disclose(nullifier),
+    amount: some<Uint<128>>(1 as Uint<128>)
+  });
+}
+
+export circuit emitUnshieldedSpend(tokenType: Bytes<32>, amount: Uint<128>): [] {
+  const sender = left<ZswapCoinPublicKey, ContractAddress>(ZswapCoinPublicKey { bytes: default<Bytes<32>> });
+  emit (UnshieldedSpend { sender: sender, token_type: disclose(tokenType), amount: disclose(amount) });
+}
+
+export circuit emitUnshieldedReceive(tokenType: Bytes<32>, amount: Uint<128>): [] {
+  const recipient = left<ZswapCoinPublicKey, ContractAddress>(ZswapCoinPublicKey { bytes: default<Bytes<32>> });
+  emit (UnshieldedReceive { recipient: recipient, token_type: disclose(tokenType), amount: disclose(amount) });
+}
+
+export circuit emitUnshieldedMint(tokenType: Bytes<32>, amount: Uint<128>): [] {
+  emit (UnshieldedMint { domain_sep: default<Bytes<32>>, token_type: disclose(tokenType), amount: disclose(amount) });
+}
+
+export circuit emitUnshieldedBurn(tokenType: Bytes<32>, amount: Uint<128>): [] {
+  const sender = left<ZswapCoinPublicKey, ContractAddress>(ZswapCoinPublicKey { bytes: default<Bytes<32>> });
+  emit (UnshieldedBurn { sender: sender, token_type: disclose(tokenType), amount: disclose(amount) });
+}
+
+export circuit emitLifecycle(): [] {
+  emit (Paused {});
+  emit (Unpaused {});
+}
