@@ -382,3 +382,51 @@ export const UNSHIELDED_BALANCE_SUB = gql(
     }
   }`
 );
+
+export const CONTRACT_EVENTS_QUERY = gql(
+  `
+  query CONTRACT_EVENTS_QUERY($filter: ContractEventFilter!, $limit: Int, $offset: Int) {
+    contractEvents(filter: $filter, limit: $limit, offset: $offset) {
+      __typename
+      id
+      maxId
+      version
+      contractAddress
+      transactionId
+      raw
+      ... on ShieldedSpendEvent { nullifier }
+      ... on ShieldedReceiveEvent { commitment ciphertext receivingContractAddress }
+      ... on ShieldedMintEvent { commitment domainSep shieldedAmount: amount }
+      ... on ShieldedBurnEvent { nullifier shieldedAmount: amount }
+      ... on UnshieldedSpendEvent { sender { kind userAddress contractAddress } domainSep tokenType amount }
+      ... on UnshieldedReceiveEvent { recipient { kind userAddress contractAddress } domainSep tokenType amount }
+      ... on UnshieldedMintEvent { domainSep tokenType amount }
+      ... on UnshieldedBurnEvent { sender { kind userAddress contractAddress } tokenType amount }
+      ... on MiscContractEvent { name payload }
+    }
+  }`
+);
+
+export const CONTRACT_EVENTS_SUB = gql(
+  `
+  subscription CONTRACT_EVENTS_SUB($filter: ContractEventFilter!, $id: Int) {
+    contractEvents(filter: $filter, id: $id) {
+      __typename
+      id
+      maxId
+      version
+      contractAddress
+      transactionId
+      raw
+      ... on ShieldedSpendEvent { nullifier }
+      ... on ShieldedReceiveEvent { commitment ciphertext receivingContractAddress }
+      ... on ShieldedMintEvent { commitment domainSep shieldedAmount: amount }
+      ... on ShieldedBurnEvent { nullifier shieldedAmount: amount }
+      ... on UnshieldedSpendEvent { sender { kind userAddress contractAddress } domainSep tokenType amount }
+      ... on UnshieldedReceiveEvent { recipient { kind userAddress contractAddress } domainSep tokenType amount }
+      ... on UnshieldedMintEvent { domainSep tokenType amount }
+      ... on UnshieldedBurnEvent { sender { kind userAddress contractAddress } tokenType amount }
+      ... on MiscContractEvent { name payload }
+    }
+  }`
+);

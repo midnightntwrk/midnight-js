@@ -107,7 +107,7 @@ MN_TEST_FAUCET="http://custom-faucet:3087"
 `compose.yml` and `proof-server.yml` resolve their image tags from env vars sourced from `testkit-js/env/<TESTKIT_DOCKER_ENV>.env`:
 
 ```bash
-TESTKIT_DOCKER_ENV     # qanet|preview|preprod|mainnet|devnet (default: preprod)
+TESTKIT_DOCKER_ENV     # qanet|preview|preprod|mainnet|devnet (default: devnet)
 PROOF_SERVER_VERSION   # proof-server image tag
 INDEXER_VERSION        # indexer-standalone image tag
 MIDNIGHT_NODE_VERSION  # midnight-node image tag

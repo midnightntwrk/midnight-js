@@ -49,7 +49,7 @@ export const defaultContainersConfiguration: ContainersConfiguration = {
       indexer: {
         name: 'indexer',
         port: 8088,
-        waitStrategy: Wait.forListeningPorts()
+        waitStrategy: Wait.forHealthCheck().withStartupTimeout(3 * 60_000)
       }
     }
   },

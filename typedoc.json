@@ -18,7 +18,7 @@
       "ZKConfigProvider.getVerifierKey": "#",
       "ZKConfigProvider.getZKIR": "#"
     },
-    "@midnight-ntwrk/ledger-v8": {
+    "@midnightntwrk/ledger-v9": {
       "ProvingProvider": "#"
     },
     "@midnight-ntwrk/compact-js": {
@@ -27,7 +27,7 @@
     "@midnight-ntwrk/platform-js": {
       "ContractAddress": "#"
     },
-    "@midnight-ntwrk/onchain-runtime-v3": {
+    "@midnightntwrk/onchain-runtime-v4": {
       "ContractAddress": "#"
     },
     "@apollo/client": {

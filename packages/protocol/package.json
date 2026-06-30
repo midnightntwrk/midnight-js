@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-protocol",
-  "version": "4.1.1",
+  "version": "5.0.0-alpha.1",
   "description": "Protocol type re-exports for midnight-js framework",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -104,11 +104,11 @@
     "dist/"
   ],
   "dependencies": {
-    "@midnight-ntwrk/compact-js": "2.5.1",
-    "@midnight-ntwrk/compact-runtime": "0.16.0",
-    "@midnight-ntwrk/ledger-v8": "8.1.0",
-    "@midnight-ntwrk/onchain-runtime-v3": "3.0.0",
-    "@midnight-ntwrk/platform-js": "2.2.4"
+    "@midnight-ntwrk/compact-js": "2.5.5-rc.2",
+    "@midnight-ntwrk/compact-runtime": "0.17.102-dev.82a6b7c83060d9566e57aa496a33ed80289a7257",
+    "@midnight-ntwrk/platform-js": "3.0.0",
+    "@midnightntwrk/ledger-v9": "1.0.0-rc.2",
+    "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.2"
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.3.0",

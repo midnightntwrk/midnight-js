@@ -56,7 +56,7 @@ describe.skip('indexerPublicDataProvider', () => {
 
   test('indexerPublicDataProvider should create a PublicDataProvider instance using fully qualified urls', async () => {
     // Dynamically load the function so jest can mock its dependencies.
-    const { indexerPublicDataProvider } = await import('../indexer-public-data-provider');
+    const { indexerPublicDataProvider } = await import('..');
     const provider = indexerPublicDataProvider(queryURL, subscriptionURL);
     expect(mockHttpLink).toHaveBeenCalledWith(expect.objectContaining({ uri: queryURL }));
     expect(mockCreateClient).toHaveBeenCalledWith(expect.objectContaining({ url: subscriptionURL }));
@@ -65,7 +65,7 @@ describe.skip('indexerPublicDataProvider', () => {
 
   test('indexerPublicDataProvider should create a PublicDataProvider instance using origin urls with ws', async () => {
     // Dynamically load the function so jest can mock its dependencies.
-    const { indexerPublicDataProvider } = await import('../indexer-public-data-provider');
+    const { indexerPublicDataProvider } = await import('..');
     const provider = indexerPublicDataProvider(queryOrigin, subscriptionWithWs);
     expect(mockHttpLink).toHaveBeenCalledWith(expect.objectContaining({ uri: queryURL }));
     expect(mockCreateClient).toHaveBeenCalledWith(expect.objectContaining({ url: subscriptionURL }));

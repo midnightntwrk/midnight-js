@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { type NetworkId } from '@midnight-ntwrk/wallet-sdk';
+import { type NetworkId } from '@midnightntwrk/wallet-sdk';
 
 import {
   getMnTestFaucet,

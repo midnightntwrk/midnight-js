@@ -229,6 +229,15 @@ export const encryptionPublicKeyResolverForZswapState = (
 export const GUARANTEED_SEGMENT_NUMBER = 0;
 export const FALLIBLE_SEGMENT_NUMBER = 1;
 
+/**
+ * Seconds of past Merkle-tree roots to retain when rehashing a `ZswapChainState`
+ * via `postBlockUpdate`. ledger-v9 made this argument required (it was implicit
+ * in ledger-v8). It governs retention of historical roots only — not the current
+ * root used here for nullifier derivation — so a one-hour window mirrors the
+ * existing `ttlOneHour` convention.
+ */
+export const ZSWAP_MERKLE_ROOT_RETENTION_SECONDS = 3600n;
+
 type SegmentBucket = {
   outputs: Map<string, UnprovenOutput>;
   inputs: Map<string, UnprovenInput>;
@@ -331,7 +340,10 @@ export const zswapStateToSegmentedOffer = (
     [FALLIBLE_SEGMENT_NUMBER]: emptyBucket()
   };
 
-  const rehashedChainState = addressAndChainStateTuple?.zswapChainState.postBlockUpdate(new Date());
+  const rehashedChainState = addressAndChainStateTuple?.zswapChainState.postBlockUpdate(
+    new Date(),
+    ZSWAP_MERKLE_ROOT_RETENTION_SECONDS
+  );
 
   for (const output of zswapLocalState.outputs) {
     if (output.recipient.is_left) {

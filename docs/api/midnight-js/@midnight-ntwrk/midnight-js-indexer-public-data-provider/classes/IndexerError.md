@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v4.1.1**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-alpha.1**](../../../README.md)
 
 ***
 
@@ -20,6 +20,7 @@ Consumers can catch any indexer error with a single `instanceof IndexerError` ch
 - [`IndexerDataError`](IndexerDataError.md)
 - [`IndexerSubscriptionDataError`](IndexerSubscriptionDataError.md)
 - [`IndexerProviderConfigError`](IndexerProviderConfigError.md)
+- [`IndexerInvariantError`](IndexerInvariantError.md)
 
 ## Constructors
 

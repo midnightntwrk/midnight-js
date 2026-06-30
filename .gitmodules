@@ -1,0 +1,3 @@
+[submodule "compact"]
+	path = compact
+	url = https://github.com/LFDT-Minokawa/compact.git

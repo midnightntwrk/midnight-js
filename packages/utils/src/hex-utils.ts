@@ -18,7 +18,7 @@ import {
   MidnightBech32m,
   ShieldedCoinPublicKey,
   ShieldedEncryptionPublicKey
-} from '@midnight-ntwrk/wallet-sdk-address-format';
+} from '@midnightntwrk/wallet-sdk-address-format';
 import { Buffer } from 'buffer';
 
 /**

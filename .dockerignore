@@ -1,0 +1,15 @@
+# Restrict the repo-wide docker build context to compact/ + scripts/ (what
+# scripts/build-*-docker.sh need). Safe today because no other Dockerfile in
+# the repo runs `docker build`; if one ever does, scope this via -f instead.
+*
+!compact/
+!scripts/
+
+# Cull noise inside the included paths
+compact/.git
+compact/.github
+compact/target
+compact/node_modules
+compact/dist
+compact/build
+**/*.md

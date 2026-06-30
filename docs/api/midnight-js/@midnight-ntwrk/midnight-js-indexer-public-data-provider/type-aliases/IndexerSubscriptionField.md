@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v4.1.1**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-alpha.1**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Type Alias: IndexerSubscriptionField
 
-> **IndexerSubscriptionField** = `"blocks"` \| `"contractActions"`
+> **IndexerSubscriptionField** = `"blocks"` \| `"contractActions"` \| `"contractEvents"`
 
 Subscription payload fields the indexer provider depends on.
 Narrowing this to a literal union prevents typos at throw sites and

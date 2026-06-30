@@ -85,6 +85,194 @@ export type ContractStateObservableConfig =
   | All;
 
 /**
+ * The eleven contract event variants surfaced by the indexer (MIP-0002 public
+ * contract log emission). The variant *set* is identical to compact-js's
+ * `LogEventType`; only the string casing differs (PascalCase here, kebab-case
+ * in compact-js, SCREAMING_SNAKE on the indexer wire). Adding a variant is a
+ * breaking change — the mapping, filter translation, and exhaustiveness guards
+ * all key off this union.
+ */
+export type ContractEventType =
+  | 'ShieldedSpend'
+  | 'ShieldedReceive'
+  | 'ShieldedMint'
+  | 'ShieldedBurn'
+  | 'UnshieldedSpend'
+  | 'UnshieldedReceive'
+  | 'UnshieldedMint'
+  | 'UnshieldedBurn'
+  | 'Paused'
+  | 'Unpaused'
+  | 'Misc';
+
+/**
+ * A `sender` / `recipient` on an unshielded event. The indexer returns a tagged
+ * union (`Either<ZswapCoinPublicKey, ContractAddress>`); this preserves the
+ * discriminator so consumers can tell a user address from a contract address
+ * rather than receiving a bare, ambiguous string.
+ */
+export interface ContractEventAddress {
+  /** Which kind of address `value` holds. */
+  readonly kind: 'user' | 'contract';
+  /** The hex-encoded address. */
+  readonly value: string;
+}
+
+/**
+ * Fields common to every {@link ContractEvent} variant, regardless of type.
+ */
+export interface ContractEventBase {
+  /**
+   * Monotonic indexer cursor for this event. Inclusive resumption point — to
+   * resume *after* this event, pass `{ fromId: id + 1 }`.
+   */
+  readonly id: number;
+  /**
+   * Highest event id the indexer currently knows (the chain tip for events).
+   * Compare against {@link id} to detect catch-up / whether more events exist.
+   */
+  readonly maxId: number;
+  /**
+   * Payload schema version — selects the (future) per-event payload decoder.
+   * Iteration-1 events are `version: 1`.
+   */
+  readonly version: number;
+  /** Address of the contract that emitted the event. */
+  readonly contractAddress: ContractAddress;
+  /**
+   * Indexer-internal `BIGSERIAL` row id of the emitting transaction — **not**
+   * the chain transaction hash. To fetch the chain transaction, issue a
+   * separate query. Note the asymmetry with {@link ContractEventFilterBase.transactionHash},
+   * which narrows by chain hash.
+   */
+  readonly transactionId: number;
+  /**
+   * Opaque hex `VersionedLogItem` bytes, carried verbatim. Never decoded or
+   * validated by this provider — the forward bridge to a future compact-js
+   * payload decoder.
+   */
+  readonly raw: string;
+}
+
+/**
+ * A decoded contract event. Discriminated union keyed on `eventType`; narrow on
+ * it to access the variant-specific payload fields.
+ *
+ * `amount` is always a `string` (encodes up to a 16-byte integer) — never round
+ * it through `Number()`. Absent nullable fields are normalized to `undefined`
+ * (never `null`).
+ */
+export type ContractEvent =
+  | (ContractEventBase & { readonly eventType: 'ShieldedSpend'; readonly nullifier: string })
+  | (ContractEventBase & {
+      readonly eventType: 'ShieldedReceive';
+      readonly commitment: string;
+      readonly ciphertext?: string;
+      readonly receivingContractAddress?: string;
+    })
+  | (ContractEventBase & {
+      readonly eventType: 'ShieldedMint';
+      readonly commitment: string;
+      readonly domainSep: string;
+      readonly amount?: string;
+    })
+  | (ContractEventBase & { readonly eventType: 'ShieldedBurn'; readonly nullifier: string; readonly amount?: string })
+  | (ContractEventBase & {
+      readonly eventType: 'UnshieldedSpend';
+      readonly sender: ContractEventAddress;
+      readonly domainSep: string;
+      readonly tokenType: string;
+      readonly amount: string;
+    })
+  | (ContractEventBase & {
+      readonly eventType: 'UnshieldedReceive';
+      readonly recipient: ContractEventAddress;
+      readonly domainSep: string;
+      readonly tokenType: string;
+      readonly amount: string;
+    })
+  | (ContractEventBase & {
+      readonly eventType: 'UnshieldedMint';
+      readonly domainSep: string;
+      readonly tokenType: string;
+      readonly amount: string;
+    })
+  | (ContractEventBase & {
+      readonly eventType: 'UnshieldedBurn';
+      readonly sender: ContractEventAddress;
+      readonly tokenType: string;
+      readonly amount: string;
+    })
+  | (ContractEventBase & { readonly eventType: 'Paused' })
+  | (ContractEventBase & { readonly eventType: 'Unpaused' })
+  | (ContractEventBase & { readonly eventType: 'Misc'; readonly name: string; readonly payload: string });
+
+/**
+ * A single prefix filter on an indexed field of a standard event. `prefix` is
+ * hex-encoded; the empty string matches all values.
+ */
+export interface ContractEventFieldPrefix {
+  readonly fieldName: string;
+  readonly prefix: string;
+}
+
+/**
+ * Filter fields shared by the query and the subscription.
+ */
+export interface ContractEventFilterBase {
+  /** Required: the contract whose events to return. */
+  readonly contractAddress: ContractAddress;
+  /**
+   * Optional subset of event types. Omit to mean "all types". An empty array
+   * is rejected (it would silently match nothing).
+   */
+  readonly types?: ContractEventType[];
+  /**
+   * Optional prefix filters on indexed fields. Accepted only when every
+   * filtered type is a standard (non-`Misc`) variant — see method docs.
+   */
+  readonly fieldPrefixes?: ContractEventFieldPrefix[];
+  /** Optional: narrow to events emitted from the transaction with this chain hash. */
+  readonly transactionHash?: string;
+}
+
+/**
+ * Filter for {@link PublicDataProvider.queryContractEvents}. `fromBlock` /
+ * `toBlock` are inclusive block-height bounds for a finite, point-in-time read.
+ */
+export interface ContractEventQueryFilter extends ContractEventFilterBase {
+  readonly fromBlock?: number;
+  readonly toBlock?: number;
+}
+
+/**
+ * Filter for {@link PublicDataProvider.contractEventsObservable}. The stream
+ * start is supplied separately via {@link ContractEventCursor}; `toBlock`
+ * terminates the stream once the chain reaches that height.
+ */
+export interface ContractEventSubscriptionFilter extends ContractEventFilterBase {
+  readonly toBlock?: number;
+}
+
+/**
+ * Where a subscription begins. Exactly one addressing mode per call — two
+ * competing start points are unrepresentable by construction.
+ */
+export type ContractEventCursor =
+  | { readonly fromId: number }
+  | { readonly fromBlock: number };
+
+/**
+ * Pagination window for {@link PublicDataProvider.queryContractEvents}.
+ * `offset` is only stable within a window with a fixed upper bound — pin
+ * `toBlock` for multi-page reads.
+ */
+export interface ContractEventsPage {
+  readonly limit?: number;
+  readonly offset?: number;
+}
+
+/**
  * Interface for a public data service. This service retrieves public data from the blockchain.
  * TODO: Add timeouts or retry limits to 'watchFor' queries.
  */
@@ -203,4 +391,57 @@ export interface PublicDataProvider {
    * @return {Observable<UnshieldedBalances>} An observable that emits the unshielded balances for the provided address.
    */
   unshieldedBalancesObservable(address: ContractAddress, config: ContractStateObservableConfig): Observable<UnshieldedBalances>;
+
+  /**
+   * Queries contract events for a contract address — a finite, paginated,
+   * point-in-time read.
+   *
+   * Results are returned in ascending `id` order. The result is a plain array
+   * with no total count: detect the end via `result.length < limit`, and read
+   * `maxId` on the last item to see how far the tip is.
+   *
+   * When `page.limit` is omitted an implementation-defined default page size is
+   * applied (never an undocumented server default). `offset` is only stable
+   * within a window with a fixed upper bound — pin `filter.toBlock` for
+   * multi-page reads, or prefer the `getAllContractEvents` helper / the
+   * subscription for tailing.
+   *
+   * Fails fast (synchronously, before any network call) on an invalid
+   * `contractAddress`, an empty `types` array, `fieldPrefixes` combined with
+   * `Misc` (or with `types` omitted), or an unknown `fieldName`. Network /
+   * GraphQL errors reject the promise — an empty array always means "no
+   * matching events", never a swallowed error.
+   *
+   * @param filter The events to return; `contractAddress` is required.
+   * @param page Optional pagination window.
+   */
+  queryContractEvents(filter: ContractEventQueryFilter, page?: ContractEventsPage): Promise<ContractEvent[]>;
+
+  /**
+   * Streams contract events for a contract address — replay from a cursor, then
+   * live, in one continuous stream.
+   *
+   * The start is supplied via `opts.startAt`: `{ fromId }` resumes inclusively
+   * from a known event id, `{ fromBlock }` starts from a block height. Omitting
+   * `startAt` streams from the start of history. The indexer replays historical
+   * events from that point in monotonic `id` order, then continues live — there
+   * is no separate backfill query and no client-side dedup.
+   *
+   * `{ fromId }` is **inclusive**; to resume *after* the last seen event pass
+   * `{ fromId: lastSeenId + 1 }`.
+   *
+   * `filter.toBlock` completes the stream once the chain reaches that height;
+   * without it the stream runs until unsubscribed or the provider is disposed.
+   * Delivery is **at-least-once** across transport reconnects (the provider
+   * does not advance the cursor) — persisting consumers should dedup by `id`.
+   * Transport failures surface as an observable `error`, never a silent
+   * completion.
+   *
+   * @param filter The events to stream; `contractAddress` is required.
+   * @param opts Optional stream start.
+   */
+  contractEventsObservable(
+    filter: ContractEventSubscriptionFilter,
+    opts?: { startAt?: ContractEventCursor }
+  ): Observable<ContractEvent>;
 }
