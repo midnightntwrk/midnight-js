@@ -3,10 +3,9 @@
  * Copyright (C) 2025-2026 Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * You may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  * http://www.apache.org/licenses/LICENSE-2.0
- *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -77,9 +76,18 @@ function trackInvocations(): { getCalls: () => (ProvingProviderConfig | undefine
   return { getCalls: () => calls };
 }
 
-const stubTx = {
-  prove: async () => ({}) as never
-} as unknown as UnprovenTransaction;
+/**
+ * Minimal typed stub for proveTx tests. Only `prove` is exercised by
+ * `httpClientProofProvider`, so a `Partial<UnprovenTransaction>` documents
+ * that intent without dragging in `addCalls`/`addZswapOffer`/etc. The single
+ * contained cast lives here so call sites stay clean.
+ */
+const stubTx = (): UnprovenTransaction => {
+  const partial: Partial<UnprovenTransaction> = {
+    prove: vi.fn().mockResolvedValue({}) as UnprovenTransaction['prove']
+  };
+  return partial as UnprovenTransaction;
+};
 
 describe('httpClientProofProvider', () => {
   beforeEach(() => {
@@ -104,7 +112,7 @@ describe('httpClientProofProvider', () => {
     test('uses DEFAULT_TIMEOUT when neither config.timeout nor proveTxConfig.timeout is provided', async () => {
       const { getCalls } = trackInvocations();
       const provider = httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider());
-      await provider.proveTx(stubTx);
+      await provider.proveTx(stubTx());
 
       const calls = getCalls();
       expect(calls).toHaveLength(1);
@@ -116,7 +124,7 @@ describe('httpClientProofProvider', () => {
       const provider = httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider(), {
         timeout: 12345
       });
-      await provider.proveTx(stubTx);
+      await provider.proveTx(stubTx());
 
       const calls = getCalls();
       expect(calls).toHaveLength(1);
@@ -128,7 +136,7 @@ describe('httpClientProofProvider', () => {
       const provider = httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider(), {
         timeout: 12345
       });
-      await provider.proveTx(stubTx, { timeout: 99999 } satisfies ProveTxConfig);
+      await provider.proveTx(stubTx(), { timeout: 99999 } satisfies ProveTxConfig);
 
       const calls = getCalls();
       expect(calls).toHaveLength(1);
@@ -141,7 +149,7 @@ describe('httpClientProofProvider', () => {
         timeout: 12345,
         headers: { 'x-custom': 'kept' }
       });
-      await provider.proveTx(stubTx, { timeout: 99999 });
+      await provider.proveTx(stubTx(), { timeout: 99999 });
 
       const calls = getCalls();
       expect(calls).toHaveLength(1);
@@ -156,8 +164,8 @@ describe('httpClientProofProvider', () => {
       // actually honored.
       const { getCalls } = trackInvocations();
       const provider = httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider());
-      await provider.proveTx(stubTx, { timeout: 1000 });
-      await provider.proveTx(stubTx, { timeout: 2000 });
+      await provider.proveTx(stubTx(), { timeout: 1000 });
+      await provider.proveTx(stubTx(), { timeout: 2000 });
 
       const calls = getCalls();
       expect(calls).toHaveLength(2);
