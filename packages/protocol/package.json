@@ -107,8 +107,8 @@
     "@midnight-ntwrk/compact-js": "2.5.5-rc.2",
     "@midnight-ntwrk/compact-runtime": "0.17.104-dev.1dcee19f4367a5cd36b23e81fd917d58844beeb0",
     "@midnight-ntwrk/platform-js": "3.0.0",
-    "@midnightntwrk/ledger-v9": "1.0.0-rc.2",
-    "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.2"
+    "@midnightntwrk/ledger-v9": "1.0.0-rc.3",
+    "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.3"
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.3.0",
