@@ -15,50 +15,48 @@
 
 import type { ProverKey, VerifierKey, ZKIR } from '@midnight-ntwrk/midnight-js-types';
 import { createProverKey, createVerifierKey, createZKIR, ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
-import { assertSafeName } from '@midnight-ntwrk/midnight-js-utils';
+import {
+  assertManifestHash,
+  assertSafeName,
+  parseZkArtifactManifest,
+  verifyZkArtifactIntegrity,
+  ZK_MANIFEST_DIR,
+  ZK_MANIFEST_FILE_NAME,
+  ZkArtifactIntegrityError,
+  type ZkArtifactManifest,
+  type ZkConfigIntegrityOptions
+} from '@midnight-ntwrk/midnight-js-utils';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 
-/**
- * The name of the directory containing proving and verifying keys.
- */
 const KEY_DIR = 'keys';
-/**
- * File extension for proving keys.
- */
 const PROVER_EXT = '.prover';
-/**
- * File extension for verifying keys.
- */
 const VERIFIER_EXT = '.verifier';
-/**
- * The name of the directory containing zkIRs.
- */
 const ZKIR_DIR = 'zkir';
-/**
- * File extension for zkIRs.
- */
 const ZKIR_EXT = '.bzkir';
 
+const isErrnoException = (error: unknown): error is NodeJS.ErrnoException =>
+  error instanceof Error && 'code' in error;
+
 /**
- * Implementation of {@link ZKConfigProvider} that reads the keys and zkIR from the local filesystem.
+ * {@link ZKConfigProvider} that reads keys and zkIR from the local filesystem and verifies them
+ * against the `compactc` integrity manifest.
  * @typeParam K - The type of the circuit ID used by the provider.
  */
 export class NodeZkConfigProvider<K extends string> extends ZKConfigProvider<K> {
+  private manifestPromise?: Promise<ZkArtifactManifest | undefined>;
+
   /**
-   * @param directory The path to the base directory containing the key and ZKIR subdirectories.
+   * @param directory The base directory containing the key and ZKIR subdirectories.
+   * @param integrityOptions Integrity-verification options.
    */
-  constructor(readonly directory: string) {
+  constructor(
+    readonly directory: string,
+    private readonly integrityOptions: ZkConfigIntegrityOptions = {}
+  ) {
     super();
   }
 
-  /**
-   * Reads a file from the local filesystem.
-   * @param subDir The subdirectory of the base-directory to read from.
-   * @param circuitId The circuit ID corresponding to the file to read.
-   * @param ext The file extension of the file to read.
-   * @private
-   */
   private async readFile(subDir: string, circuitId: K, ext: string): Promise<Buffer> {
     assertSafeName(circuitId, 'circuitId');
     const baseDir = path.resolve(this.directory, subDir);
@@ -70,24 +68,69 @@ export class NodeZkConfigProvider<K extends string> extends ZKConfigProvider<K> 
     return fs.readFile(target);
   }
 
-  /**
-   * {@link ZKConfigProvider.getProverKey}
-   */
-  getProverKey(circuitId: K): Promise<ProverKey> {
-    return this.readFile(KEY_DIR, circuitId, PROVER_EXT).then(createProverKey);
+  private loadManifest(): Promise<ZkArtifactManifest | undefined> {
+    if (this.manifestPromise === undefined) {
+      const promise = this.readManifest();
+      this.manifestPromise = promise;
+      promise.catch(() => {
+        if (this.manifestPromise === promise) {
+          this.manifestPromise = undefined;
+        }
+      });
+    }
+    return this.manifestPromise;
   }
 
-  /**
-   * {@link ZKConfigProvider.getVerifierKey}
-   */
-  getVerifierKey(circuitId: K): Promise<VerifierKey> {
-    return this.readFile(KEY_DIR, circuitId, VERIFIER_EXT).then(createVerifierKey);
+  private async readManifest(): Promise<ZkArtifactManifest | undefined> {
+    const manifestPath = path.resolve(this.directory, ZK_MANIFEST_DIR, ZK_MANIFEST_FILE_NAME);
+    const { expectedManifestHash } = this.integrityOptions;
+    let bytes: Buffer;
+    try {
+      bytes = await fs.readFile(manifestPath);
+    } catch (error) {
+      if (isErrnoException(error) && error.code === 'ENOENT') {
+        if (expectedManifestHash !== undefined) {
+          throw new ZkArtifactIntegrityError(
+            `Expected ZK artifact manifest at ${manifestPath} but it was not found`,
+            { cause: error }
+          );
+        }
+        return undefined;
+      }
+      throw error;
+    }
+    if (expectedManifestHash !== undefined) {
+      assertManifestHash(bytes, expectedManifestHash);
+    }
+    return parseZkArtifactManifest(bytes.toString('utf-8'));
   }
 
-  /**
-   * {@link ZKConfigProvider.getZKIR}
-   */
-  getZKIR(circuitId: K): Promise<ZKIR> {
-    return this.readFile(ZKIR_DIR, circuitId, ZKIR_EXT).then(createZKIR);
+  private async verifyArtifact(subDir: typeof KEY_DIR | typeof ZKIR_DIR, fileName: string, bytes: Uint8Array): Promise<void> {
+    const manifest = await this.loadManifest();
+    verifyZkArtifactIntegrity({
+      manifest,
+      relativePath: `${subDir}/${fileName}`,
+      bytes,
+      mode: this.integrityOptions.verify ?? 'require',
+      onWarn: this.integrityOptions.onWarn
+    });
+  }
+
+  async getProverKey(circuitId: K): Promise<ProverKey> {
+    const bytes = await this.readFile(KEY_DIR, circuitId, PROVER_EXT);
+    await this.verifyArtifact(KEY_DIR, `${circuitId}${PROVER_EXT}`, bytes);
+    return createProverKey(bytes);
+  }
+
+  async getVerifierKey(circuitId: K): Promise<VerifierKey> {
+    const bytes = await this.readFile(KEY_DIR, circuitId, VERIFIER_EXT);
+    await this.verifyArtifact(KEY_DIR, `${circuitId}${VERIFIER_EXT}`, bytes);
+    return createVerifierKey(bytes);
+  }
+
+  async getZKIR(circuitId: K): Promise<ZKIR> {
+    const bytes = await this.readFile(ZKIR_DIR, circuitId, ZKIR_EXT);
+    await this.verifyArtifact(ZKIR_DIR, `${circuitId}${ZKIR_EXT}`, bytes);
+    return createZKIR(bytes);
   }
 }
