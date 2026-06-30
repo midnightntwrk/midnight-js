@@ -13,13 +13,17 @@
  * limitations under the License.
  */
 
+import { computeSha256Hex, ZkArtifactIntegrityError } from '@midnight-ntwrk/midnight-js-utils';
 import type { BinaryLike } from 'crypto';
 import * as crypto from 'crypto';
 import express from 'express';
 import * as fs from 'fs/promises';
 import type { Server } from 'http';
+import { vi } from 'vitest';
 
 import { FetchZkConfigProvider } from '../index';
+
+const createHashHex = (binaryLike: BinaryLike): string => crypto.createHash('sha256').update(binaryLike).digest('hex');
 
 describe('Fetch ZK config Provider', () => {
   const resourceDir = `${process.cwd()}/src/test/resources`;
@@ -40,6 +44,29 @@ describe('Fetch ZK config Provider', () => {
     });
     app.get('/zkir/set_topic.bzkir', (_, res) => {
       res.type('application/octet-stream').send(zkir);
+    });
+    const manifest = JSON.stringify({
+      'manifest-version': '1',
+      keys: {
+        type: 'directory',
+        'set_topic.prover': { type: 'file', size: proverKey.length, hash: computeSha256Hex(new Uint8Array(proverKey)) },
+        'set_topic.verifier': {
+          type: 'file',
+          size: verifierKey.length,
+          hash: computeSha256Hex(new Uint8Array(verifierKey))
+        }
+      },
+      zkir: {
+        type: 'directory',
+        'set_topic.bzkir': {
+          type: 'file',
+          size: Buffer.byteLength(zkir),
+          hash: computeSha256Hex(new Uint8Array(Buffer.from(zkir)))
+        }
+      }
+    });
+    app.get('/compiler/contract-manifest.json', (_, res) => {
+      res.type('application/json').send(manifest);
     });
     server = app.listen();
     const serverAddress = server.address();
@@ -100,20 +127,20 @@ describe('Fetch ZK config Provider', () => {
       'foo bar'
     ])('getProverKey rejects %s without calling fetch', async (circuitId) => {
       // Arrange
-      const provider = new FetchZkConfigProvider(serverURL, FETCH_NEVER);
+      const provider = new FetchZkConfigProvider(serverURL, { fetchFunc: FETCH_NEVER });
       const target = circuitId as unknown as 'set_topic';
       // Act + Assert
       await expect(provider.getProverKey(target)).rejects.toThrow(/Invalid circuitId/);
     });
 
     test('getVerifierKey rejects "../etc/passwd" without calling fetch', async () => {
-      const provider = new FetchZkConfigProvider(serverURL, FETCH_NEVER);
+      const provider = new FetchZkConfigProvider(serverURL, { fetchFunc: FETCH_NEVER });
       const target = '../etc/passwd' as unknown as 'set_topic';
       await expect(provider.getVerifierKey(target)).rejects.toThrow(/Invalid circuitId/);
     });
 
     test('getZKIR rejects ".." without calling fetch', async () => {
-      const provider = new FetchZkConfigProvider(serverURL, FETCH_NEVER);
+      const provider = new FetchZkConfigProvider(serverURL, { fetchFunc: FETCH_NEVER });
       const target = '..' as unknown as 'set_topic';
       await expect(provider.getZKIR(target)).rejects.toThrow(/Invalid circuitId/);
     });
@@ -184,6 +211,142 @@ describe('Fetch ZK config Provider', () => {
       const provider = new FetchZkConfigProvider(errorServerURL);
       await expect(provider.getProverKey('missing_circuit')).rejects.toThrow(/missing_circuit/);
       await expect(provider.getProverKey('missing_circuit')).rejects.toThrow(/404/);
+    });
+  });
+
+  describe('ZK artifact integrity verification', () => {
+    const realProver = () => fs.readFile(`${resourceDir}/keys/set_topic.prover`);
+
+    it('verifies and resolves under the default (require) when the manifest matches', async () => {
+      const proverKey = await new FetchZkConfigProvider(serverURL).getProverKey('set_topic');
+      expect(proverKey.length).toBeGreaterThan(0);
+    });
+
+    it('rejects a tampered prover key (digest mismatch) and names the path and digests', async () => {
+      const genuine = await realProver();
+      const tampered = Buffer.from(genuine);
+      tampered[tampered.length - 1] ^= 0xff;
+      const goodHash = createHashHex(genuine);
+      const app = express();
+      app.get('/keys/set_topic.prover', (_, res) => res.send(tampered));
+      app.get('/compiler/contract-manifest.json', (_, res) =>
+        res.type('application/json').send(
+          JSON.stringify({
+            'manifest-version': '1',
+            keys: { type: 'directory', 'set_topic.prover': { type: 'file', size: genuine.length, hash: goodHash } }
+          })
+        )
+      );
+      const tamperServer = app.listen();
+      const addr = tamperServer.address();
+      const url = typeof addr === 'object' && addr ? `http://localhost:${addr.port}` : '';
+      try {
+        await expect(new FetchZkConfigProvider(url).getProverKey('set_topic')).rejects.toThrow(ZkArtifactIntegrityError);
+        await expect(new FetchZkConfigProvider(url).getProverKey('set_topic')).rejects.toThrow(/keys\/set_topic\.prover/);
+        await expect(new FetchZkConfigProvider(url).getProverKey('set_topic')).rejects.toThrow(new RegExp(goodHash));
+      } finally {
+        tamperServer.close();
+      }
+    });
+
+    it('rejects when the manifest is absent under the default (require)', async () => {
+      // spaServer-style server with no manifest route and real-looking keys is overkill;
+      // reuse the SPA-fallback server which 404s the manifest. Here: a server that serves the prover but no manifest.
+      const app = express();
+      app.get('/keys/set_topic.prover', async (_, res) => res.send(await realProver()));
+      const noManifestServer = app.listen();
+      const addr = noManifestServer.address();
+      const url = typeof addr === 'object' && addr ? `http://localhost:${addr.port}` : '';
+      try {
+        await expect(new FetchZkConfigProvider(url).getProverKey('set_topic')).rejects.toThrow(ZkArtifactIntegrityError);
+      } finally {
+        noManifestServer.close();
+      }
+    });
+
+    it('warns and resolves when the manifest is absent in warn mode', async () => {
+      const app = express();
+      app.get('/keys/set_topic.prover', async (_, res) => res.send(await realProver()));
+      const noManifestServer = app.listen();
+      const addr = noManifestServer.address();
+      const url = typeof addr === 'object' && addr ? `http://localhost:${addr.port}` : '';
+      const onWarn = vi.fn();
+      try {
+        const key = await new FetchZkConfigProvider(url, { verify: 'warn', onWarn }).getProverKey('set_topic');
+        expect(key.length).toBeGreaterThan(0);
+        expect(onWarn).toHaveBeenCalledOnce();
+        expect(onWarn.mock.calls[0][0]).toMatch(/^midnight-js:.*set_topic\.prover/);
+      } finally {
+        noManifestServer.close();
+      }
+    });
+
+    it('rejects when expectedManifestHash does not match the served manifest', async () => {
+      await expect(
+        new FetchZkConfigProvider(serverURL, { expectedManifestHash: 'b'.repeat(64) }).getProverKey('set_topic')
+      ).rejects.toThrow(ZkArtifactIntegrityError);
+    });
+
+    it('rejects in warn mode when expectedManifestHash is set but the manifest is absent', async () => {
+      const app = express();
+      app.get('/keys/set_topic.prover', async (_, res) => res.send(await realProver()));
+      const noManifestServer = app.listen();
+      const addr = noManifestServer.address();
+      const url = typeof addr === 'object' && addr ? `http://localhost:${addr.port}` : '';
+      try {
+        await expect(
+          new FetchZkConfigProvider(url, { verify: 'warn', expectedManifestHash: 'b'.repeat(64) }).getProverKey(
+            'set_topic'
+          )
+        ).rejects.toThrow(ZkArtifactIntegrityError);
+      } finally {
+        noManifestServer.close();
+      }
+    });
+
+    it('fetches the manifest exactly once across a concurrent get()', async () => {
+      let manifestHits = 0;
+      const counting: typeof fetch = (input, init) => {
+        if (String(input).endsWith('/compiler/contract-manifest.json')) {
+          manifestHits += 1;
+        }
+        return fetch(input, init);
+      };
+      await new FetchZkConfigProvider(serverURL, { fetchFunc: counting }).get('set_topic');
+      expect(manifestHits).toBe(1);
+    });
+
+    it('does not memoize a transient manifest failure', async () => {
+      let manifestHits = 0;
+      const app = express();
+      app.get('/keys/set_topic.prover', async (_, res) => res.send(await realProver()));
+      app.get('/compiler/contract-manifest.json', (_, res) => {
+        manifestHits += 1;
+        if (manifestHits === 1) {
+          res.status(500).send('transient');
+          return;
+        }
+        res.type('application/json').send(
+          JSON.stringify({
+            'manifest-version': '1',
+            keys: { type: 'directory', 'set_topic.prover': { type: 'file', size: 0, hash: 'c'.repeat(64) } }
+          })
+        );
+      });
+      const flaky = app.listen();
+      const addr = flaky.address();
+      const url = typeof addr === 'object' && addr ? `http://localhost:${addr.port}` : '';
+      const provider = new FetchZkConfigProvider(url);
+      try {
+        // First load: manifest 500 → treated as absent → require throws "manifest absent".
+        await expect(provider.getProverKey('set_topic')).rejects.toThrow(ZkArtifactIntegrityError);
+        // Second load: manifest now serves (with a wrong hash) → require throws a DIGEST mismatch,
+        // proving the manifest was re-fetched (not a memoized "absent").
+        await expect(provider.getProverKey('set_topic')).rejects.toThrow(/failed integrity verification: expected sha-256/);
+        expect(manifestHits).toBeGreaterThanOrEqual(2);
+      } finally {
+        flaky.close();
+      }
     });
   });
 });
