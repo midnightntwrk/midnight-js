@@ -104,19 +104,13 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
     if (this.manifestPromise === undefined) {
       const promise = this.fetchManifest();
       this.manifestPromise = promise;
-      // Do not memoize a failed or absent load: clear so a later call retries.
-      promise.then(
-        (manifest) => {
-          if (manifest === undefined && this.manifestPromise === promise) {
-            this.manifestPromise = undefined;
-          }
-        },
-        () => {
-          if (this.manifestPromise === promise) {
-            this.manifestPromise = undefined;
-          }
+      // Do not memoize a failed load (e.g. a transient network error where fetchFunc throws):
+      // clear so a later call retries. A resolved `undefined` (manifest absent) IS cached.
+      promise.catch(() => {
+        if (this.manifestPromise === promise) {
+          this.manifestPromise = undefined;
         }
-      );
+      });
     }
     return this.manifestPromise;
   }

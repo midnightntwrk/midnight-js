@@ -14,6 +14,7 @@
  */
 
 import { computeSha256Hex, ZkArtifactIntegrityError } from '@midnight-ntwrk/midnight-js-utils';
+import { fetch } from 'cross-fetch';
 import type { BinaryLike } from 'crypto';
 import * as crypto from 'crypto';
 import express from 'express';
@@ -304,7 +305,7 @@ describe('Fetch ZK config Provider', () => {
       }
     });
 
-    it('fetches the manifest exactly once across a concurrent get()', async () => {
+    it('fetches the manifest exactly once across concurrent getProverKey() calls', async () => {
       let manifestHits = 0;
       const counting: typeof fetch = (input, init) => {
         if (String(input).endsWith('/compiler/contract-manifest.json')) {
@@ -312,38 +313,52 @@ describe('Fetch ZK config Provider', () => {
         }
         return fetch(input, init);
       };
-      await new FetchZkConfigProvider(serverURL, { fetchFunc: counting }).get('set_topic');
+      const provider = new FetchZkConfigProvider(serverURL, { fetchFunc: counting });
+      await Promise.all([provider.getProverKey('set_topic'), provider.getProverKey('set_topic')]);
       expect(manifestHits).toBe(1);
     });
 
-    it('does not memoize a transient manifest failure', async () => {
-      let manifestHits = 0;
+    it('does not memoize a transient manifest failure (fetchFunc throws)', async () => {
+      let manifestFetchAttempts = 0;
+      // Fixture server: real prover key + manifest with a WRONG prover hash (triggers digest mismatch).
+      const proverBytes = await realProver();
       const app = express();
-      app.get('/keys/set_topic.prover', async (_, res) => res.send(await realProver()));
+      app.get('/keys/set_topic.prover', (_, res) => res.send(proverBytes));
       app.get('/compiler/contract-manifest.json', (_, res) => {
-        manifestHits += 1;
-        if (manifestHits === 1) {
-          res.status(500).send('transient');
-          return;
-        }
         res.type('application/json').send(
           JSON.stringify({
             'manifest-version': '1',
-            keys: { type: 'directory', 'set_topic.prover': { type: 'file', size: 0, hash: 'c'.repeat(64) } }
+            keys: { type: 'directory', 'set_topic.prover': { type: 'file', size: proverBytes.length, hash: 'c'.repeat(64) } }
           })
         );
       });
       const flaky = app.listen();
       const addr = flaky.address();
       const url = typeof addr === 'object' && addr ? `http://localhost:${addr.port}` : '';
-      const provider = new FetchZkConfigProvider(url);
+
+      // fetchFunc: throws on the first manifest request (simulates a transient network error);
+      // delegates to real fetch for all subsequent requests.
+      let firstManifestThrown = false;
+      const flakyFetch: typeof fetch = (input, init) => {
+        if (String(input).endsWith('/compiler/contract-manifest.json')) {
+          manifestFetchAttempts += 1;
+          if (!firstManifestThrown) {
+            firstManifestThrown = true;
+            return Promise.reject(new Error('transient network error'));
+          }
+        }
+        return fetch(input, init);
+      };
+
+      const provider = new FetchZkConfigProvider(url, { fetchFunc: flakyFetch });
       try {
-        // First load: manifest 500 → treated as absent → require throws "manifest absent".
-        await expect(provider.getProverKey('set_topic')).rejects.toThrow(ZkArtifactIntegrityError);
-        // Second load: manifest now serves (with a wrong hash) → require throws a DIGEST mismatch,
-        // proving the manifest was re-fetched (not a memoized "absent").
+        // First call: fetchFunc throws on manifest → fetchManifest rejects → cache cleared → getProverKey rejects.
+        await expect(provider.getProverKey('set_topic')).rejects.toThrow('transient network error');
+        // Second call: manifest now fetched successfully (wrong hash) → digest mismatch error,
+        // proving the cache was cleared and the manifest was re-fetched on retry.
         await expect(provider.getProverKey('set_topic')).rejects.toThrow(/failed integrity verification: expected sha-256/);
-        expect(manifestHits).toBeGreaterThanOrEqual(2);
+        // Manifest endpoint must have been attempted at least twice: once (thrown) + once (successful retry).
+        expect(manifestFetchAttempts).toBeGreaterThanOrEqual(2);
       } finally {
         flaky.close();
       }
