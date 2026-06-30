@@ -35,6 +35,7 @@ import {
   type SigningKeyExport,
   SigningKeyExportError
 } from '@midnight-ntwrk/midnight-js-types';
+import { isValidSigningKey } from '@midnight-ntwrk/midnight-js-utils';
 import { createCipheriv, createDecipheriv, pbkdf2Sync, randomBytes } from 'crypto';
 
 const ALGORITHM = 'aes-256-gcm';
@@ -134,13 +135,8 @@ const validateSalt = (salt: string): void => {
   }
 };
 
-const SIGNING_KEY_MIN_HEX_LENGTH = 6;
-
 const validateSigningKeyValue = (value: unknown): void => {
-  if (typeof value !== 'string'
-    || value.length < SIGNING_KEY_MIN_HEX_LENGTH
-    || value.length % 2 !== 0
-    || !/^[0-9a-fA-F]+$/.test(value)) {
+  if (!isValidSigningKey(value)) {
     throw new InvalidExportFormatError('Invalid signing key value');
   }
 };

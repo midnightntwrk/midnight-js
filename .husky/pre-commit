@@ -1,1 +1,4 @@
-npx lint-staged
+# `&&` so a non-zero exit from the leak check short-circuits the hook;
+# otherwise lint-staged's exit code overrides it and a poisoned package.json
+# can slip through unnoticed.
+node scripts/check-no-source-leak.js && npx lint-staged

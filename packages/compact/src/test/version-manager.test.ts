@@ -95,13 +95,19 @@ describe('VersionManager', () => {
       '../../etc',
       '/etc/passwd',
       'foo/bar',
-      'not-semver',
-      '1.2',
-      'v1.2.3',
+      'foo\\bar',
       '',
       '1.2.3 '
     ])('getVersionDir rejects %s', (version) => {
       expect(() => vm.getVersionDir(version)).toThrow(/Invalid version/);
+    });
+
+    it.each([
+      '0.31.0',
+      '0.31.0-rc.1',
+      '73ebfbbff78118e77a83fdc99dca352db0020869'
+    ])('getVersionDir accepts safe version %s', (version) => {
+      expect(vm.getVersionDir(version)).toBe(path.join(managedDir, version));
     });
 
     it('versionExists rejects ".."', () => {

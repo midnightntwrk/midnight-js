@@ -1435,15 +1435,18 @@ describe('Level Private State Provider', (): void => {
       };
 
       test.each([
-        ['null',            { [CONTRACT_ADDRESS_1]: null }],
-        ['object',          { [CONTRACT_ADDRESS_1]: { sk: 'deadbeef' } }],
-        ['number',          { [CONTRACT_ADDRESS_1]: 12345 }],
-        ['boolean',         { [CONTRACT_ADDRESS_1]: true }],
-        ['array',           { [CONTRACT_ADDRESS_1]: ['deadbeef'] }],
-        ['empty string',    { [CONTRACT_ADDRESS_1]: '' }],
-        ['non-hex chars',   { [CONTRACT_ADDRESS_1]: 'zz'.repeat(8) }],
-        ['odd hex length',  { [CONTRACT_ADDRESS_1]: 'abcde' }],
-        ['shorter than version prefix', { [CONTRACT_ADDRESS_1]: 'ab' }]
+        ['null',                  { [CONTRACT_ADDRESS_1]: null }],
+        ['plain object (no tag)', { [CONTRACT_ADDRESS_1]: { sk: 'deadbeef' } }],
+        ['number',                { [CONTRACT_ADDRESS_1]: 12345 }],
+        ['boolean',               { [CONTRACT_ADDRESS_1]: true }],
+        ['array',                 { [CONTRACT_ADDRESS_1]: ['deadbeef'] }],
+        ['legacy hex string',     { [CONTRACT_ADDRESS_1]: 'deadbeef' }],
+        ['unknown tag',           { [CONTRACT_ADDRESS_1]: { tag: 'rsa', value: 'deadbeef' } }],
+        ['missing value',         { [CONTRACT_ADDRESS_1]: { tag: 'schnorr' } }],
+        ['non-hex value',         { [CONTRACT_ADDRESS_1]: { tag: 'schnorr', value: 'zz'.repeat(8) } }],
+        ['odd-length value',      { [CONTRACT_ADDRESS_1]: { tag: 'schnorr', value: 'abcde' } }],
+        ['too-short value',       { [CONTRACT_ADDRESS_1]: { tag: 'schnorr', value: 'ab' } }],
+        ['empty value',           { [CONTRACT_ADDRESS_1]: { tag: 'schnorr', value: '' } }]
       ])('importSigningKeys rejects %s signingKey value with InvalidExportFormatError', async (_reason, keys) => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
         const badExport = await buildBadExport(keys as Record<string, unknown>);
@@ -1487,9 +1490,9 @@ describe('Level Private State Provider', (): void => {
         expect(await db.getSigningKey(CONTRACT_ADDRESS_2)).toBeNull();
       });
 
-      test('importSigningKeys accepts well-formed lowercase hex with version prefix', async () => {
+      test('importSigningKeys accepts a well-formed structured signing key', async () => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
-        const wellFormed = '0102030a1b2c3d4e5f';
+        const wellFormed = { tag: 'schnorr', value: '0102030a1b2c3d4e5f' };
         const goodExport = await buildBadExport({ [CONTRACT_ADDRESS_1]: wellFormed });
 
         const result = await db.importSigningKeys(goodExport, { password: VALID_PASSWORD });

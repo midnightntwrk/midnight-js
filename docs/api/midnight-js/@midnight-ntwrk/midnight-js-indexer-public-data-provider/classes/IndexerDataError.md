@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v4.1.1**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-alpha.1**](../../../README.md)
 
 ***
 
@@ -70,6 +70,26 @@ Construct via the static factory methods to ensure the message and
 
 ***
 
+### missingEventField()
+
+> `static` **missingEventField**(`typename`, `field`): `IndexerDataError`
+
+#### Parameters
+
+##### typename
+
+`string`
+
+##### field
+
+`string`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
 ### missingIdentifier()
 
 > `static` **missingIdentifier**(`contractAddress`, `actionIndex`, `identifiersLength`): `IndexerDataError`
@@ -87,6 +107,46 @@ Construct via the static factory methods to ensure the message and
 ##### identifiersLength
 
 `number`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
+### unknownAddressKind()
+
+> `static` **unknownAddressKind**(`typename`, `field`, `value`): `IndexerDataError`
+
+#### Parameters
+
+##### typename
+
+`string`
+
+##### field
+
+`string`
+
+##### value
+
+`string`
+
+#### Returns
+
+`IndexerDataError`
+
+***
+
+### unknownEventType()
+
+> `static` **unknownEventType**(`typename`): `IndexerDataError`
+
+#### Parameters
+
+##### typename
+
+`string`
 
 #### Returns
 

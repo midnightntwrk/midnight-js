@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v4.1.1**](../../README.md)
+[**Midnight.js API Reference v5.0.0-alpha.1**](../../README.md)
 
 ***
 
@@ -55,6 +55,7 @@
 - [fromHex](functions/fromHex.md)
 - [isDeserializationError](functions/isDeserializationError.md)
 - [isHex](functions/isHex.md)
+- [isValidSigningKey](functions/isValidSigningKey.md)
 - [parseCoinPublicKeyToHex](functions/parseCoinPublicKeyToHex.md)
 - [parseEncPublicKeyToHex](functions/parseEncPublicKeyToHex.md)
 - [parseHex](functions/parseHex.md)

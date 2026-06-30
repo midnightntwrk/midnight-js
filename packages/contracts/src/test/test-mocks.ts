@@ -259,7 +259,9 @@ export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvab
     watchForTxData: vi.fn(),
     contractStateObservable: vi.fn(),
     watchForUnshieldedBalances: vi.fn(),
-    unshieldedBalancesObservable: vi.fn()
+    unshieldedBalancesObservable: vi.fn(),
+    queryContractEvents: vi.fn(),
+    contractEventsObservable: vi.fn()
   },
   privateStateProvider: {
     setContractAddress: vi.fn(),

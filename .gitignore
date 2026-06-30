@@ -31,3 +31,10 @@ midnight-concurrent-test-db
 .claude
 .worktrees
 .gitnexus
+
+# Generated compactc wrapper from scripts/build-compactc.sh (points into the nix store)
+.compact-home/
+
+# Locally-built @midnight-ntwrk/compact-runtime npm package (Yarn file: target)
+.compact-runtime-home/
+.compact-runtime-home-build/

@@ -129,6 +129,40 @@ providers.publicDataProvider.watchForContractState(address);
 providers.publicDataProvider.contractStateObservable(address, config);
 ```
 
+### Contract Events `@beta`
+
+MIP-0002 public contract log events, sourced from the indexer. `ContractEvent`
+is a discriminated union keyed on `eventType` (11 variants:
+`ShieldedSpend|ShieldedReceive|ShieldedMint|ShieldedBurn|UnshieldedSpend|UnshieldedReceive|UnshieldedMint|UnshieldedBurn|Paused|Unpaused|Misc`).
+
+```typescript
+import { getAllContractEvents } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+
+// Finite, paginated read (ascending id order).
+const events = await providers.publicDataProvider.queryContractEvents(
+  { contractAddress, types: ['ShieldedSpend'] },
+  { limit, offset }
+);
+
+// Replay-from-cursor + live subscription. `{ fromId }` is INCLUSIVE — resume
+// after the last seen event with `{ fromId: lastSeenId + 1 }`. `toBlock`
+// completes the stream; delivery is at-least-once (dedup by `id`).
+const sub = providers.publicDataProvider
+  .contractEventsObservable({ contractAddress }, { startAt: { fromId } })
+  .subscribe((event) => { /* event.eventType narrows the payload */ });
+
+// Read all history safely (recommended over manual offset loops).
+for await (const event of getAllContractEvents(providers.publicDataProvider, { contractAddress })) {
+  index(event);
+}
+```
+
+Notes: `amount` is always a `string` (never `Number()`); `sender`/`recipient`
+are `{ kind: 'user' | 'contract'; value }`; `Misc` carries opaque `name`/`payload`;
+every event carries opaque `raw` bytes. `DEFAULT_CONTRACT_EVENTS_PAGE_SIZE`
+applies when `limit` is omitted. There is no `watchContractEvents` — the
+subscription already unifies replay and live.
+
 ### Private State Management
 
 ```typescript

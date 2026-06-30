@@ -23,6 +23,11 @@ import {
 import type {
   BlockHashConfig,
   BlockHeightConfig,
+  ContractEvent,
+  ContractEventCursor,
+  ContractEventQueryFilter,
+  ContractEventsPage,
+  ContractEventSubscriptionFilter,
   ContractStateObservableConfig,
   FinalizedTxData,
   PublicDataProvider,
@@ -41,7 +46,10 @@ import {
   toUnshieldedBalances,
   toUnshieldedUtxos
 } from './codec';
+import { DEFAULT_CONTRACT_EVENTS_PAGE_SIZE } from './config';
 import { IndexerDataError, IndexerInvariantError, IndexerProviderConfigError } from './errors';
+import { buildQueryVariables, buildSubscriptionVariables } from './events-filter';
+import { toContractEvent } from './events-mapping';
 import type {
   ContractActionOffset,
   DeployContractStateTxQueryQuery,
@@ -61,6 +69,7 @@ import {
   blockOffsetToUnshieldedBalances$,
   blockToContractState$,
   contractAddressToLatestBlockOffset$,
+  contractEvents$,
   maybeThrowQueryError,
   pollUntilPresent,
   transactionIdToTransaction$,
@@ -71,6 +80,7 @@ import {
 } from './observables';
 import {
   CONTRACT_AND_ZSWAP_STATE_QUERY,
+  CONTRACT_EVENTS_QUERY,
   CONTRACT_STATE_QUERY,
   DEPLOY_CONTRACT_STATE_TX_QUERY,
   DEPLOY_TX_QUERY,
@@ -428,5 +438,44 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     return config.type === 'blockHeight' || config.type === 'blockHash'
       ? Rx.iif(() => config.inclusive ?? true, balances, balances.pipe(Rx.skip(1)))
       : balances;
+  }
+
+  /**
+   * Queries contract events for `filter.contractAddress`. Request building and
+   * validation are delegated to {@link buildQueryVariables}, which throws
+   * **synchronously** (before any network call) on an invalid address, empty
+   * `types`, illegal `fieldPrefixes`, or an unknown `fieldName`. When
+   * `page.limit` is omitted {@link DEFAULT_CONTRACT_EVENTS_PAGE_SIZE} is applied.
+   *
+   * Results are mapped in the indexer's ascending-`id` order. GraphQL /
+   * transport errors reject the promise via {@link maybeThrowQueryError} — an
+   * empty array always means "no matching events", never a swallowed error.
+   */
+  queryContractEvents(filter: ContractEventQueryFilter, page?: ContractEventsPage): Promise<ContractEvent[]> {
+    const variables = buildQueryVariables(filter, page, DEFAULT_CONTRACT_EVENTS_PAGE_SIZE);
+    return this.client
+      .query({
+        query: CONTRACT_EVENTS_QUERY,
+        variables,
+        fetchPolicy: 'no-cache'
+      })
+      .then(maybeThrowQueryError)
+      .then((queryResult) => (queryResult.data?.contractEvents ?? []).map(toContractEvent));
+  }
+
+  /**
+   * Streams contract events for `filter.contractAddress`, replaying from
+   * `opts.startAt` then continuing live. Request building and validation are
+   * delegated to {@link buildSubscriptionVariables}, which throws
+   * **synchronously** on an invalid filter (mirroring the other observable
+   * methods). See the {@link PublicDataProvider.contractEventsObservable}
+   * contract for cursor, completion, and at-least-once semantics.
+   */
+  contractEventsObservable(
+    filter: ContractEventSubscriptionFilter,
+    opts?: { startAt?: ContractEventCursor }
+  ): Rx.Observable<ContractEvent> {
+    const variables = buildSubscriptionVariables(filter, opts);
+    return contractEvents$(this.client)(variables);
   }
 }

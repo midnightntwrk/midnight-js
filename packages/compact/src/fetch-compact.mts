@@ -64,6 +64,7 @@ const currentCpu = process.arch;
 
 const compactRepo = process.env.COMPACT_REPO || 'midnightntwrk/compact';
 const compactTagPrefix = process.env.COMPACT_TAG_PREFIX || 'compactc-v';
+const compactAssetPrefix = process.env.COMPACT_ASSET_PREFIX || 'compactc_v';
 const compactDockerImage = process.env.COMPACT_DOCKER_IMAGE || 'ghcr.io/midnight-ntwrk/compactc';
 const githubToken = process.env.GITHUB_TOKEN;
 const authHeaders: Record<string, string> = githubToken ? { Authorization: `Bearer ${githubToken}` } : {};
@@ -106,7 +107,7 @@ const fetchCompact = async (): Promise<void> => {
     }
   };
 
-  const assetName = `compactc_v${compactcVersion}_${platformToAssetSuffix()}.zip`;
+  const assetName = `${compactAssetPrefix}${compactcVersion}_${platformToAssetSuffix()}.zip`;
   const asset = assets.find((assetLocal) => assetLocal.name === assetName);
 
   if (!asset) {
