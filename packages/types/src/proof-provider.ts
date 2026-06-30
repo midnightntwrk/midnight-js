@@ -30,7 +30,11 @@ export type UnboundTransaction = Transaction<SignatureEnabled, Proof, PreBinding
  */
 export interface ProveTxConfig {
   /**
-   * The timeout for the request.
+   * The timeout for the request, in milliseconds. This is a per-request
+   * timeout for the underlying proof server call, not a hard wall-clock
+   * ceiling for the whole `proveTx` call — the proof provider's internal
+   * retry/backoff means a `proveTx` call may take longer than this value
+   * if retries are configured upstream. See issue #974.
    */
   readonly timeout?: number;
 }

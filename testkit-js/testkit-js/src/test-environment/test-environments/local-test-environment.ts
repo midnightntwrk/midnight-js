@@ -14,7 +14,7 @@
  */
 
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { NetworkId } from '@midnight-ntwrk/wallet-sdk';
+import { NetworkId } from '@midnightntwrk/wallet-sdk';
 import type { Logger } from 'pino';
 import { DockerComposeEnvironment, type StartedDockerComposeEnvironment } from 'testcontainers';
 

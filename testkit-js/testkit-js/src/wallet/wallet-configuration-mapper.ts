@@ -19,7 +19,7 @@ import {
   InMemoryTransactionHistoryStorage,
   mergeWalletEntries,
   WalletEntrySchema
-} from '@midnight-ntwrk/wallet-sdk';
+} from '@midnightntwrk/wallet-sdk';
 
 import { type EnvironmentConfiguration } from '@/test-environment';
 

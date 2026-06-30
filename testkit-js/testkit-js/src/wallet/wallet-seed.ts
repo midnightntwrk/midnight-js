@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { generateRandomSeed, HDWallet, Roles } from '@midnight-ntwrk/wallet-sdk';
+import { generateRandomSeed, HDWallet, Roles } from '@midnightntwrk/wallet-sdk';
 import { mnemonicToSeedSync } from '@scure/bip39';
 
 export const TEST_MNEMONIC =
