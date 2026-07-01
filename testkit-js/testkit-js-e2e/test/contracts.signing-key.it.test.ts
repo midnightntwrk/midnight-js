@@ -13,7 +13,12 @@
  * limitations under the License.
  */
 
-import { deployContract, submitReplaceAuthorityTx } from '@midnight-ntwrk/midnight-js-contracts';
+import {
+  deployContract,
+  submitInsertVerifierKeyTx,
+  submitRemoveVerifierKeyTx,
+  submitReplaceAuthorityTx
+} from '@midnight-ntwrk/midnight-js-contracts';
 import { sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { type ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
@@ -28,7 +33,7 @@ import path from 'path';
 
 import { SLOW_TEST_TIMEOUT } from '@/constants';
 import { CompiledCounterContract } from '@/contract';
-import { CounterConfiguration } from '@/counter-api';
+import { CIRCUIT_ID_INCREMENT, CounterConfiguration } from '@/counter-api';
 import { CounterPrivateStateId, type CounterProviders, privateStateZero } from '@/types/counter-types';
 
 const logger = createLogger(
@@ -145,6 +150,61 @@ describe('Contract maintenance authority signing keys', () => {
       )(nextEcdsaKey);
       expect(replaceWithEcdsa.status).toBe(SucceedEntirely);
       expect(await providers.privateStateProvider.getSigningKey(contractAddress)).toEqual(nextEcdsaKey);
+    },
+    SLOW_TEST_TIMEOUT
+  );
+
+  /**
+   * Proves that an ECDSA contract maintenance authority can authorize the verifier-key maintenance
+   * actions — not only {@link submitReplaceAuthorityTx}, but {@link submitRemoveVerifierKeyTx} and
+   * {@link submitInsertVerifierKeyTx} as well. Each maintenance update is signed by the ECDSA
+   * authority key; a `SucceedEntirely` status therefore proves the ECDSA signature was produced and
+   * verified by the node for both actions.
+   *
+   * @given A Counter contract deployed with an ECDSA maintenance authority key
+   * @when Removing the `increment` verifier key, then re-inserting it
+   * @then Both maintenance updates succeed entirely, proving the ECDSA authority signed each one
+   */
+  test(
+    'should remove and re-insert a verifier key authorized by an ecdsa signing key [@slow]',
+    async () => {
+      const ecdsaKey = sampleSigningKey('ecdsa');
+      const deployTxOptions = {
+        compiledContract: CompiledCounterContract,
+        signingKey: ecdsaKey,
+        privateStateId: CounterPrivateStateId,
+        initialPrivateState: privateStateZero
+      };
+      const deployedContract = await deployContract(providers, deployTxOptions);
+      await expectSuccessfulDeployTx(providers, deployedContract.deployTxData, deployTxOptions);
+
+      const contractAddress: ContractAddress = deployedContract.deployTxData.public.contractAddress;
+      providers.privateStateProvider.setContractAddress(contractAddress);
+      expect(await providers.privateStateProvider.getSigningKey(contractAddress)).toEqual(ecdsaKey);
+
+      // Capture the verifier key from the local artifacts before removing it on-chain so it can be
+      // re-inserted afterwards.
+      const incrementVk = await providers.zkConfigProvider.getVerifierKey(CIRCUIT_ID_INCREMENT);
+
+      const removeResult = await submitRemoveVerifierKeyTx(
+        providers,
+        CompiledCounterContract,
+        contractAddress,
+        CIRCUIT_ID_INCREMENT
+      );
+      expect(removeResult.status).toBe(SucceedEntirely);
+
+      const insertResult = await submitInsertVerifierKeyTx(
+        providers,
+        CompiledCounterContract,
+        contractAddress,
+        CIRCUIT_ID_INCREMENT,
+        incrementVk
+      );
+      expect(insertResult.status).toBe(SucceedEntirely);
+
+      // The authority key kind is unchanged by verifier-key maintenance actions.
+      expect(await providers.privateStateProvider.getSigningKey(contractAddress)).toEqual(ecdsaKey);
     },
     SLOW_TEST_TIMEOUT
   );
