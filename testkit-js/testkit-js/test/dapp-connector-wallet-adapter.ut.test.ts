@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { ProvingProvider as ZkirProvingProvider } from '@midnight-ntwrk/zkir-v2';
+import type { ProvingProvider as ZkirProvingProvider } from '@midnightntwrk/zkir-v2';
 import { of } from 'rxjs';
 
 import type { EnvironmentConfiguration } from '@/test-environment/environment-configuration';
@@ -32,7 +32,7 @@ vi.mock('@midnightntwrk/wallet-sdk/address-format', () => ({
   },
 }));
 
-vi.mock('@midnight-ntwrk/zkir-v2', () => ({
+vi.mock('@midnightntwrk/zkir-v2', () => ({
   provingProvider: vi.fn().mockReturnValue({
     check: vi.fn(),
     prove: vi.fn(),
@@ -316,7 +316,7 @@ describe('[Unit tests] DAppConnectorWalletAdapter', () => {
 
   describe('getProvingProvider', () => {
     it('should return a ProvingProvider by adapting KeyMaterialProvider types', async () => {
-      const { provingProvider: createLocalProvingProvider } = await import('@midnight-ntwrk/zkir-v2');
+      const { provingProvider: createLocalProvingProvider } = await import('@midnightntwrk/zkir-v2');
 
       const mockDAppKMP = {
         getZKIR: vi.fn().mockResolvedValue(new Uint8Array([1])),
@@ -338,7 +338,7 @@ describe('[Unit tests] DAppConnectorWalletAdapter', () => {
     });
 
     it('should resolve key material from DApp provider in lookupKey', async () => {
-      const { provingProvider: createLocalProvingProvider } = await import('@midnight-ntwrk/zkir-v2');
+      const { provingProvider: createLocalProvingProvider } = await import('@midnightntwrk/zkir-v2');
 
       const mockDAppKMP = {
         getZKIR: vi.fn().mockResolvedValue(new Uint8Array([10])),
@@ -362,7 +362,7 @@ describe('[Unit tests] DAppConnectorWalletAdapter', () => {
     });
 
     it('should delegate getParams to default provider', async () => {
-      const { provingProvider: createLocalProvingProvider } = await import('@midnight-ntwrk/zkir-v2');
+      const { provingProvider: createLocalProvingProvider } = await import('@midnightntwrk/zkir-v2');
 
       const mockDAppKMP = {
         getZKIR: vi.fn(),

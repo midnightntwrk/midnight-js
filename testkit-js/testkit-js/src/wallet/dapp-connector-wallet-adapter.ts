@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+import { type Binding, type PreBinding, type Proof, type SignatureEnabled, Transaction as LedgerTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { fromHex, toHex, ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
 import type {
   Configuration,
   ConnectedAPI,
@@ -26,16 +28,14 @@ import type {
   SignDataOptions,
   TokenType,
   WalletConnectedAPI,
-} from '@midnight-ntwrk/dapp-connector-api';
-import { type Binding, type PreBinding, type Proof, type SignatureEnabled, Transaction as LedgerTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { fromHex, toHex, ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
-import {
-  type KeyMaterialProvider as ZkirKeyMaterialProvider,
-  provingProvider as createLocalProvingProvider,
-} from '@midnight-ntwrk/zkir-v2';
+} from '@midnightntwrk/dapp-connector-api';
 import { DustAddress, MidnightBech32m } from '@midnightntwrk/wallet-sdk/address-format';
 import { type BalancingRecipe } from '@midnightntwrk/wallet-sdk/facade';
 import { WasmProver } from '@midnightntwrk/wallet-sdk-prover-client/effect';
+import {
+  type KeyMaterialProvider as ZkirKeyMaterialProvider,
+  provingProvider as createLocalProvingProvider,
+} from '@midnightntwrk/zkir-v2';
 import { firstValueFrom } from 'rxjs';
 
 import type { EnvironmentConfiguration } from '@/test-environment/environment-configuration';
@@ -213,7 +213,7 @@ export class DAppConnectorWalletAdapter implements ConnectedAPI {
 
   private async signAndFinalize(recipe: BalancingRecipe): Promise<{ tx: string }> {
     const signed = await this.walletProvider.wallet.signRecipe(recipe, (payload) =>
-      this.walletProvider.unshieldedKeystore.signData(payload),
+      this.walletProvider.unshieldedKeystore.signDataAsync(payload),
     );
     const finalized = await this.walletProvider.wallet.finalizeRecipe(signed);
     return { tx: toHex(finalized.serialize()) };
