@@ -1720,15 +1720,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/compact-runtime@npm:0.17.102-dev.82a6b7c83060d9566e57aa496a33ed80289a7257":
-  version: 0.17.102-dev.82a6b7c83060d9566e57aa496a33ed80289a7257
-  resolution: "@midnight-ntwrk/compact-runtime@npm:0.17.102-dev.82a6b7c83060d9566e57aa496a33ed80289a7257::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-runtime%2F0.17.102-dev.82a6b7c83060d9566e57aa496a33ed80289a7257%2F3bc6ba519f981b3fc5cab757bfebc54eee93c2e4"
+"@midnight-ntwrk/compact-runtime@npm:0.18.0-rc.0":
+  version: 0.18.0-rc.0
+  resolution: "@midnight-ntwrk/compact-runtime@npm:0.18.0-rc.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-runtime%2F0.18.0-rc.0%2F27afe600c8093b8d02a99e94f32b7c9f445bdf52"
   dependencies:
     "@midnightntwrk/onchain-runtime-v4": "npm:^4.0.0-rc.2"
+    "@noble/curves": "npm:^2.2.0"
     "@noble/hashes": "npm:^2.0.1"
     "@types/object-inspect": "npm:^1.8.1"
     object-inspect: "npm:^1.12.3"
-  checksum: 10/544e635c5ff43b94971e5405baca62c2a20a3ded0f45369cc243b240ebbbcd6c3feb03dc9d066cf64e36c89576f78461b703a02c83e628be92f5fe265440e629
+  checksum: 10/a6170f6349ee35bd8a57b623a0d502d2ff26ccf8cbd3519c485ae030aab25c2e3312c339c0d8d677a34fc34d7e2ccc93a18911f2317c6ba892248527edfce1cf
   languageName: node
   linkType: hard
 
@@ -1926,7 +1927,7 @@ __metadata:
   resolution: "@midnight-ntwrk/midnight-js-protocol@workspace:packages/protocol"
   dependencies:
     "@midnight-ntwrk/compact-js": "npm:2.5.5-rc.2"
-    "@midnight-ntwrk/compact-runtime": "npm:0.17.102-dev.82a6b7c83060d9566e57aa496a33ed80289a7257"
+    "@midnight-ntwrk/compact-runtime": "npm:0.18.0-rc.0"
     "@midnight-ntwrk/platform-js": "npm:3.0.0"
     "@midnightntwrk/ledger-v9": "npm:1.0.0-rc.2"
     "@midnightntwrk/onchain-runtime-v4": "npm:4.0.0-rc.2"
@@ -2383,6 +2384,15 @@ __metadata:
   dependencies:
     "@noble/hashes": "npm:1.8.0"
   checksum: 10/3cfe2735ea94972988ca9e217e0ebb2044372a7160b2079bf885da789492a6291fc8bf76ca3d8bf8dee477847ee2d6fac267d1e6c4f555054059f5e8c4865d44
+  languageName: node
+  linkType: hard
+
+"@noble/curves@npm:^2.2.0":
+  version: 2.2.0
+  resolution: "@noble/curves@npm:2.2.0"
+  dependencies:
+    "@noble/hashes": "npm:2.2.0"
+  checksum: 10/f9545e55bb8b6cdf2618c936870b9229339c90b25f129fc368b4b534e723f274e5c0daf8abca2f891bcf0a59c3b49c5ac5205899aec07f5251f545ec616e3aa9
   languageName: node
   linkType: hard
 

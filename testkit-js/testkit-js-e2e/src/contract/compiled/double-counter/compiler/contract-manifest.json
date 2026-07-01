@@ -1,6 +1,98 @@
 {
   "manifest-version": "1",
-  "compiler-version": "0.32.102",
-  "language-version": "0.24.101",
-  "runtime-version": "0.17.102"
+  "compiler-version": "0.33.0",
+  "language-version": "0.25.0",
+  "runtime-version": "0.18.0-rc.0",
+  "compiler": {
+    "type": "directory",
+    "contract-info.json": {
+      "type": "file",
+      "size": 1453,
+      "hash": "5acf00452e0f4e79a4d2ae0a758486cfb139c6d0c5882ca62faf7bde9539b0e0"
+    }
+  },
+  "contract": {
+    "type": "directory",
+    "index.d.ts": {
+      "type": "file",
+      "size": 2193,
+      "hash": "c52e8e64475c2ae631ee8f4a044d9696754adfaaf09dc0bf97af9fc229dc0b75"
+    },
+    "index.js": {
+      "type": "file",
+      "size": 21445,
+      "hash": "295b589e19c467467b7dbc049601586cd0f994ddfd13c6f83b0febc170464237"
+    },
+    "index.js.map": {
+      "type": "file",
+      "size": 922,
+      "hash": "1952690366cac6ec62203749a74c1de4d865426f7bbca751eb25832b9d519af7"
+    }
+  },
+  "zkir": {
+    "type": "directory",
+    "increment1.bzkir": {
+      "type": "file",
+      "size": 67,
+      "hash": "84bcf131ef7e522d28e23fe97b4d8ec550f3d84bc0c38fd3d0a73e1491591183"
+    },
+    "increment1.zkir": {
+      "type": "file",
+      "size": 838,
+      "hash": "92b8fdede82543bf8f26bb40213f00cc4b5feec1d5b1104031d63e8d37ddf74b"
+    },
+    "increment2.bzkir": {
+      "type": "file",
+      "size": 65,
+      "hash": "ef91ea25558e630d537bdb9abfb889d14209a4b6ad0fbd9ee8ce0cffd52c5202"
+    },
+    "increment2.zkir": {
+      "type": "file",
+      "size": 799,
+      "hash": "98c7c1a7b1b509755a8b97c5565d06ff21600a41afd09bc567c68170136d945b"
+    },
+    "reset.bzkir": {
+      "type": "file",
+      "size": 107,
+      "hash": "669da52a03de075a62b1890f0369229db7fd88a812b0edca634f481331762848"
+    },
+    "reset.zkir": {
+      "type": "file",
+      "size": 1645,
+      "hash": "abd693d497edf8a6e878492b64010b554361bce24b469b61daafec0b8b0427fb"
+    }
+  },
+  "keys": {
+    "type": "directory",
+    "increment1.prover": {
+      "type": "file",
+      "size": 23153,
+      "hash": "ff1fd01787ed540e39b190d4db36330457de29528ad94c0e55209576eb5943a8"
+    },
+    "increment1.verifier": {
+      "type": "file",
+      "size": 1351,
+      "hash": "5bd7d462f5df0d9eaaef16e2717fef381b4d94af744c7194b95526a592833911"
+    },
+    "increment2.prover": {
+      "type": "file",
+      "size": 23149,
+      "hash": "0f61d8fba1a8e266213dbcf05bcf3256ed47491fa95150e8845f32af761d7750"
+    },
+    "increment2.verifier": {
+      "type": "file",
+      "size": 1351,
+      "hash": "362accd320e4208cd1923b16fc2db0d074f5cea21056edce024d6eab049012f0"
+    },
+    "reset.prover": {
+      "type": "file",
+      "size": 14120,
+      "hash": "d14a47d2ab08176865088770964fd5384798b7b7a466f1bc2edcb3c0629016bc"
+    },
+    "reset.verifier": {
+      "type": "file",
+      "size": 1351,
+      "hash": "ba6566901f91af02f274e9dbf7fca6a8752b924b162015f222728778e2729bc0"
+    }
+  }
 }

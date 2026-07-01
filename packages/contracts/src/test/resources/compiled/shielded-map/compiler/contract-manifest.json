@@ -1,6 +1,58 @@
 {
   "manifest-version": "1",
-  "compiler-version": "0.32.102",
-  "language-version": "0.24.101",
-  "runtime-version": "0.17.102"
+  "compiler-version": "0.33.0",
+  "language-version": "0.25.0",
+  "runtime-version": "0.18.0-rc.0",
+  "compiler": {
+    "type": "directory",
+    "contract-info.json": {
+      "type": "file",
+      "size": 2321,
+      "hash": "bc8fb2c098cffe0f299b28b7c22fe47e0a5e1a12e7a3899e65e82ee10f857fe4"
+    }
+  },
+  "contract": {
+    "type": "directory",
+    "index.d.ts": {
+      "type": "file",
+      "size": 1791,
+      "hash": "21e556e758b973e26a166501cac4203d83a077393a31c4b0446baebde00256f7"
+    },
+    "index.js": {
+      "type": "file",
+      "size": 28004,
+      "hash": "7be9ff4b38a538e22825d4a455b9174e8ae153012eaa2bc7b2e60a0980d55a55"
+    },
+    "index.js.map": {
+      "type": "file",
+      "size": 1205,
+      "hash": "a914a7d89f307ee15f6069c052beaac2896f0cf1f63155975cc38c0a1698a196"
+    }
+  },
+  "zkir": {
+    "type": "directory",
+    "deposit.bzkir": {
+      "type": "file",
+      "size": 470,
+      "hash": "cddafc65ce9528d3c3f779c9ef78e6104cdee015ba4eebb1a34bb5781f629429"
+    },
+    "deposit.zkir": {
+      "type": "file",
+      "size": 7044,
+      "hash": "49217bac1dc53011569d452f7b04e9cf741ff4fd251cbd63525a584124882b53"
+    }
+  },
+  "keys": {
+    "type": "directory",
+    "deposit.prover": {
+      "type": "file",
+      "size": 5207493,
+      "hash": "974ea622067d693450fd3448d005b51e2b0c82df3aefa3a0ded7041f6b16cab3"
+    },
+    "deposit.verifier": {
+      "type": "file",
+      "size": 2119,
+      "hash": "73b16725369ea30ea31502c5baa5c4e5609b8cd991f655de2e07aa5b2a29ffe9"
+    }
+  }
 }

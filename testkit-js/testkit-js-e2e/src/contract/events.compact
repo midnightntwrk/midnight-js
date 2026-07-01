@@ -11,7 +11,7 @@ export circuit emitShieldedSpend(nullifier: Bytes<32>): [] {
 export circuit emitShieldedReceive(commitment: Bytes<32>): [] {
   emit (ShieldedReceive {
     commitment: disclose(commitment),
-    contract_address: none<Bytes<32>>(),
+    contractAddress: none<Bytes<32>>(),
     ciphertext: none<Bytes<512>>()
   });
 }
@@ -19,7 +19,7 @@ export circuit emitShieldedReceive(commitment: Bytes<32>): [] {
 export circuit emitShieldedMint(commitment: Bytes<32>): [] {
   emit (ShieldedMint {
     commitment: disclose(commitment),
-    domain_sep: default<Bytes<32>>,
+    domainSep: default<Bytes<32>>,
     amount: some<Uint<128>>(1 as Uint<128>)
   });
 }
@@ -33,21 +33,21 @@ export circuit emitShieldedBurn(nullifier: Bytes<32>): [] {
 
 export circuit emitUnshieldedSpend(tokenType: Bytes<32>, amount: Uint<128>): [] {
   const sender = left<ZswapCoinPublicKey, ContractAddress>(ZswapCoinPublicKey { bytes: default<Bytes<32>> });
-  emit (UnshieldedSpend { sender: sender, token_type: disclose(tokenType), amount: disclose(amount) });
+  emit (UnshieldedSpend { sender: sender, domainSep: default<Bytes<32>>, tokenType: disclose(tokenType), amount: disclose(amount) });
 }
 
 export circuit emitUnshieldedReceive(tokenType: Bytes<32>, amount: Uint<128>): [] {
   const recipient = left<ZswapCoinPublicKey, ContractAddress>(ZswapCoinPublicKey { bytes: default<Bytes<32>> });
-  emit (UnshieldedReceive { recipient: recipient, token_type: disclose(tokenType), amount: disclose(amount) });
+  emit (UnshieldedReceive { recipient: recipient, domainSep: default<Bytes<32>>, tokenType: disclose(tokenType), amount: disclose(amount) });
 }
 
 export circuit emitUnshieldedMint(tokenType: Bytes<32>, amount: Uint<128>): [] {
-  emit (UnshieldedMint { domain_sep: default<Bytes<32>>, token_type: disclose(tokenType), amount: disclose(amount) });
+  emit (UnshieldedMint { domainSep: default<Bytes<32>>, tokenType: disclose(tokenType), amount: disclose(amount) });
 }
 
 export circuit emitUnshieldedBurn(tokenType: Bytes<32>, amount: Uint<128>): [] {
   const sender = left<ZswapCoinPublicKey, ContractAddress>(ZswapCoinPublicKey { bytes: default<Bytes<32>> });
-  emit (UnshieldedBurn { sender: sender, token_type: disclose(tokenType), amount: disclose(amount) });
+  emit (UnshieldedBurn { sender: sender, tokenType: disclose(tokenType), amount: disclose(amount) });
 }
 
 export circuit emitLifecycle(): [] {

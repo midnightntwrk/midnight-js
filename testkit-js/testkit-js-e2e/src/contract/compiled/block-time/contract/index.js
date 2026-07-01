@@ -1,5 +1,5 @@
 import * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
-__compactRuntime.checkRuntimeVersion('0.17.102');
+__compactRuntime.checkRuntimeVersion('0.18.0-rc.0');
 
 const _descriptor_0 = new __compactRuntime.CompactTypeUnsignedInteger(18446744073709551615n, 8);
 
@@ -59,13 +59,13 @@ export class Contract {
     }
     this.witnesses = witnesses_0;
     this.circuits = {
-      testBlockTimeLt: (...args_1) => {
+      testBlockTimeLt: async (...args_1) => {
         if (args_1.length !== 2) {
           throw new __compactRuntime.CompactError(`testBlockTimeLt: expected 2 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
         const contextOrig_0 = args_1[0];
         const time_0 = args_1[1];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.callContext.currentQueryContext != undefined)) {
           __compactRuntime.typeError('testBlockTimeLt',
                                      'argument 1 (as invoked from Typescript)',
                                      'block-time.compact line 3 char 1',
@@ -79,7 +79,7 @@ export class Contract {
                                      'Uint<0..18446744073709551616>',
                                      time_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
+        const context = __compactRuntime.copyCircuitContext(contextOrig_0);
         const partialProofData = {
           input: {
             value: _descriptor_0.toValue(time_0),
@@ -89,19 +89,20 @@ export class Contract {
           publicTranscript: [],
           privateTranscriptOutputs: []
         };
-        const result_0 = this._testBlockTimeLt_0(context,
-                                                 partialProofData,
-                                                 time_0);
+        const result_0 = await this._testBlockTimeLt_0(context,
+                                                       partialProofData,
+                                                       time_0);
         partialProofData.output = { value: [], alignment: [] };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
+        __compactRuntime.finalizeCallProofData(context, partialProofData);
+        return { result: result_0, context: context, gasCost: context.callContext.currentGasCost };
       },
-      testBlockTimeGte: (...args_1) => {
+      testBlockTimeGte: async (...args_1) => {
         if (args_1.length !== 2) {
           throw new __compactRuntime.CompactError(`testBlockTimeGte: expected 2 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
         const contextOrig_0 = args_1[0];
         const time_0 = args_1[1];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.callContext.currentQueryContext != undefined)) {
           __compactRuntime.typeError('testBlockTimeGte',
                                      'argument 1 (as invoked from Typescript)',
                                      'block-time.compact line 7 char 1',
@@ -115,7 +116,7 @@ export class Contract {
                                      'Uint<0..18446744073709551616>',
                                      time_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
+        const context = __compactRuntime.copyCircuitContext(contextOrig_0);
         const partialProofData = {
           input: {
             value: _descriptor_0.toValue(time_0),
@@ -125,19 +126,20 @@ export class Contract {
           publicTranscript: [],
           privateTranscriptOutputs: []
         };
-        const result_0 = this._testBlockTimeGte_0(context,
-                                                  partialProofData,
-                                                  time_0);
+        const result_0 = await this._testBlockTimeGte_0(context,
+                                                        partialProofData,
+                                                        time_0);
         partialProofData.output = { value: [], alignment: [] };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
+        __compactRuntime.finalizeCallProofData(context, partialProofData);
+        return { result: result_0, context: context, gasCost: context.callContext.currentGasCost };
       },
-      testBlockTimeGt: (...args_1) => {
+      testBlockTimeGt: async (...args_1) => {
         if (args_1.length !== 2) {
           throw new __compactRuntime.CompactError(`testBlockTimeGt: expected 2 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
         const contextOrig_0 = args_1[0];
         const time_0 = args_1[1];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.callContext.currentQueryContext != undefined)) {
           __compactRuntime.typeError('testBlockTimeGt',
                                      'argument 1 (as invoked from Typescript)',
                                      'block-time.compact line 11 char 1',
@@ -151,7 +153,7 @@ export class Contract {
                                      'Uint<0..18446744073709551616>',
                                      time_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
+        const context = __compactRuntime.copyCircuitContext(contextOrig_0);
         const partialProofData = {
           input: {
             value: _descriptor_0.toValue(time_0),
@@ -161,19 +163,20 @@ export class Contract {
           publicTranscript: [],
           privateTranscriptOutputs: []
         };
-        const result_0 = this._testBlockTimeGt_0(context,
-                                                 partialProofData,
-                                                 time_0);
+        const result_0 = await this._testBlockTimeGt_0(context,
+                                                       partialProofData,
+                                                       time_0);
         partialProofData.output = { value: [], alignment: [] };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
+        __compactRuntime.finalizeCallProofData(context, partialProofData);
+        return { result: result_0, context: context, gasCost: context.callContext.currentGasCost };
       },
-      testBlockTimeLte: (...args_1) => {
+      testBlockTimeLte: async (...args_1) => {
         if (args_1.length !== 2) {
           throw new __compactRuntime.CompactError(`testBlockTimeLte: expected 2 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
         const contextOrig_0 = args_1[0];
         const time_0 = args_1[1];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.callContext.currentQueryContext != undefined)) {
           __compactRuntime.typeError('testBlockTimeLte',
                                      'argument 1 (as invoked from Typescript)',
                                      'block-time.compact line 15 char 1',
@@ -187,7 +190,7 @@ export class Contract {
                                      'Uint<0..18446744073709551616>',
                                      time_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
+        const context = __compactRuntime.copyCircuitContext(contextOrig_0);
         const partialProofData = {
           input: {
             value: _descriptor_0.toValue(time_0),
@@ -197,11 +200,12 @@ export class Contract {
           publicTranscript: [],
           privateTranscriptOutputs: []
         };
-        const result_0 = this._testBlockTimeLte_0(context,
-                                                  partialProofData,
-                                                  time_0);
+        const result_0 = await this._testBlockTimeLte_0(context,
+                                                        partialProofData,
+                                                        time_0);
         partialProofData.output = { value: [], alignment: [] };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
+        __compactRuntime.finalizeCallProofData(context, partialProofData);
+        return { result: result_0, context: context, gasCost: context.callContext.currentGasCost };
       }
     };
     this.impureCircuits = {
@@ -217,7 +221,7 @@ export class Contract {
       testBlockTimeLte: this.circuits.testBlockTimeLte
     };
   }
-  initialState(...args_0) {
+  async initialState(...args_0) {
     if (args_0.length !== 1) {
       throw new __compactRuntime.CompactError(`Contract state constructor: expected 1 argument (as invoked from Typescript), received ${args_0.length}`);
     }
@@ -238,21 +242,21 @@ export class Contract {
     state_0.setOperation('testBlockTimeGte', new __compactRuntime.ContractOperation());
     state_0.setOperation('testBlockTimeGt', new __compactRuntime.ContractOperation());
     state_0.setOperation('testBlockTimeLte', new __compactRuntime.ContractOperation());
-    const context = __compactRuntime.createCircuitContext(__compactRuntime.dummyContractAddress(), constructorContext_0.initialZswapLocalState.coinPublicKey, state_0.data, constructorContext_0.initialPrivateState);
+    const context = __compactRuntime.createCircuitContext('constructor', __compactRuntime.dummyContractAddress(), constructorContext_0.initialZswapLocalState.coinPublicKey, state_0.data, constructorContext_0.initialPrivateState);
     const partialProofData = {
       input: { value: [], alignment: [] },
       output: undefined,
       publicTranscript: [],
       privateTranscriptOutputs: []
     };
-    state_0.data = new __compactRuntime.ChargedState(context.currentQueryContext.state.state);
+    state_0.data = new __compactRuntime.ChargedState(context.callContext.currentQueryContext.state.state);
     return {
       currentContractState: state_0,
-      currentPrivateState: context.currentPrivateState,
-      currentZswapLocalState: context.currentZswapLocalState
+      currentPrivateState: context.callContext.currentPrivateState,
+      currentZswapLocalState: context.callContext.currentZswapLocalState
     }
   }
-  _blockTimeLt_0(context, partialProofData, time_0) {
+  async _blockTimeLt_0(context, partialProofData, time_0) {
     return _descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
                                                                      partialProofData,
                                                                      [
@@ -270,10 +274,10 @@ export class Contract {
                                                                       { popeq: { cached: true,
                                                                                  result: undefined } }]).value);
   }
-  _blockTimeGte_0(context, partialProofData, time_0) {
-    return !this._blockTimeLt_0(context, partialProofData, time_0);
+  async _blockTimeGte_0(context, partialProofData, time_0) {
+    return !await this._blockTimeLt_0(context, partialProofData, time_0);
   }
-  _blockTimeGt_0(context, partialProofData, time_0) {
+  async _blockTimeGt_0(context, partialProofData, time_0) {
     return _descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
                                                                      partialProofData,
                                                                      [
@@ -291,31 +295,31 @@ export class Contract {
                                                                       { popeq: { cached: true,
                                                                                  result: undefined } }]).value);
   }
-  _blockTimeLte_0(context, partialProofData, time_0) {
-    return !this._blockTimeGt_0(context, partialProofData, time_0);
+  async _blockTimeLte_0(context, partialProofData, time_0) {
+    return !await this._blockTimeGt_0(context, partialProofData, time_0);
   }
-  _testBlockTimeLt_0(context, partialProofData, time_0) {
-    return __compactRuntime.assert(this._blockTimeLt_0(context,
-                                                       partialProofData,
-                                                       time_0),
+  async _testBlockTimeLt_0(context, partialProofData, time_0) {
+    return __compactRuntime.assert(await this._blockTimeLt_0(context,
+                                                             partialProofData,
+                                                             time_0),
                                    'Block time is >= time');
   }
-  _testBlockTimeGte_0(context, partialProofData, time_0) {
-    return __compactRuntime.assert(this._blockTimeGte_0(context,
-                                                        partialProofData,
-                                                        time_0),
+  async _testBlockTimeGte_0(context, partialProofData, time_0) {
+    return __compactRuntime.assert(await this._blockTimeGte_0(context,
+                                                              partialProofData,
+                                                              time_0),
                                    'Block time is < time');
   }
-  _testBlockTimeGt_0(context, partialProofData, time_0) {
-    return __compactRuntime.assert(this._blockTimeGt_0(context,
-                                                       partialProofData,
-                                                       time_0),
+  async _testBlockTimeGt_0(context, partialProofData, time_0) {
+    return __compactRuntime.assert(await this._blockTimeGt_0(context,
+                                                             partialProofData,
+                                                             time_0),
                                    'Block time is <= time');
   }
-  _testBlockTimeLte_0(context, partialProofData, time_0) {
-    return __compactRuntime.assert(this._blockTimeLte_0(context,
-                                                        partialProofData,
-                                                        time_0),
+  async _testBlockTimeLte_0(context, partialProofData, time_0) {
+    return __compactRuntime.assert(await this._blockTimeLte_0(context,
+                                                              partialProofData,
+                                                              time_0),
                                    'Block time is > time');
   }
 }
@@ -323,7 +327,7 @@ export function ledger(stateOrChargedState) {
   const state = stateOrChargedState instanceof __compactRuntime.StateValue ? stateOrChargedState : stateOrChargedState.state;
   const chargedState = stateOrChargedState instanceof __compactRuntime.StateValue ? new __compactRuntime.ChargedState(stateOrChargedState) : stateOrChargedState;
   const context = {
-    currentQueryContext: new __compactRuntime.QueryContext(chargedState, __compactRuntime.dummyContractAddress()),
+    callContext: { currentQueryContext: new __compactRuntime.QueryContext(chargedState, __compactRuntime.dummyContractAddress()), currentGasCost: __compactRuntime.emptyRunningCost() },
     costModel: __compactRuntime.CostModel.initialCostModel()
   };
   const partialProofData = {
@@ -336,10 +340,17 @@ export function ledger(stateOrChargedState) {
   };
 }
 const _emptyContext = {
-  currentQueryContext: new __compactRuntime.QueryContext(new __compactRuntime.ContractState().data, __compactRuntime.dummyContractAddress())
+  callContext: { currentQueryContext: new __compactRuntime.QueryContext(new __compactRuntime.ContractState().data, __compactRuntime.dummyContractAddress()), currentGasCost: __compactRuntime.emptyRunningCost() }
 };
 const _dummyContract = new Contract({ });
 export const pureCircuits = {};
 export const contractReferenceLocations =
   { tag: 'publicLedgerArray', indices: { } };
+export const expectedVk = {
+  'testBlockTimeGt': 'c587bc4c304aed0033e95f9be75dc1083dc32a2ed08c065a8a0cf8d1df4aae57',
+  'testBlockTimeGte': 'f130299ec564947c2fdea587fefb31081ae0b304c0591a87ef206a4f8ae2c389',
+  'testBlockTimeLt': '47b4fc02b13302c7eebe11510d691abeb601937cad6090eeafaeabdc053c8ad8',
+  'testBlockTimeLte': 'c329e58501f4b81ccaeeb66a06dd024b4c424edf94430ea49de320467e30466b',
+};
+
 //# sourceMappingURL=index.js.map

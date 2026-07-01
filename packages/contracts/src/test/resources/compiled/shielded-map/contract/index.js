@@ -1,5 +1,5 @@
 import * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
-__compactRuntime.checkRuntimeVersion('0.17.102');
+__compactRuntime.checkRuntimeVersion('0.18.0-rc.0');
 
 const _descriptor_0 = new __compactRuntime.CompactTypeUnsignedInteger(65535n, 2);
 
@@ -156,13 +156,13 @@ export class Contract {
     }
     this.witnesses = witnesses_0;
     this.circuits = {
-      deposit: (...args_1) => {
+      deposit: async (...args_1) => {
         if (args_1.length !== 2) {
           throw new __compactRuntime.CompactError(`deposit: expected 2 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
         const contextOrig_0 = args_1[0];
         const coin_0 = args_1[1];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.callContext.currentQueryContext != undefined)) {
           __compactRuntime.typeError('deposit',
                                      'argument 1 (as invoked from Typescript)',
                                      'shielded-map.compact line 8 char 1',
@@ -176,7 +176,7 @@ export class Contract {
                                      'struct ShieldedCoinInfo<nonce: Bytes<32>, color: Bytes<32>, value: Uint<0..340282366920938463463374607431768211456>>',
                                      coin_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
+        const context = __compactRuntime.copyCircuitContext(contextOrig_0);
         const partialProofData = {
           input: {
             value: _descriptor_5.toValue(coin_0),
@@ -186,15 +186,16 @@ export class Contract {
           publicTranscript: [],
           privateTranscriptOutputs: []
         };
-        const result_0 = this._deposit_0(context, partialProofData, coin_0);
+        const result_0 = await this._deposit_0(context, partialProofData, coin_0);
         partialProofData.output = { value: [], alignment: [] };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
+        __compactRuntime.finalizeCallProofData(context, partialProofData);
+        return { result: result_0, context: context, gasCost: context.callContext.currentGasCost };
       }
     };
     this.impureCircuits = { deposit: this.circuits.deposit };
     this.provableCircuits = { deposit: this.circuits.deposit };
   }
-  initialState(...args_0) {
+  async initialState(...args_0) {
     if (args_0.length !== 1) {
       throw new __compactRuntime.CompactError(`Contract state constructor: expected 1 argument (as invoked from Typescript), received ${args_0.length}`);
     }
@@ -217,7 +218,7 @@ export class Contract {
     stateValue_0 = stateValue_0.arrayPush(__compactRuntime.StateValue.newNull());
     state_0.data = new __compactRuntime.ChargedState(stateValue_0);
     state_0.setOperation('deposit', new __compactRuntime.ContractOperation());
-    const context = __compactRuntime.createCircuitContext(__compactRuntime.dummyContractAddress(), constructorContext_0.initialZswapLocalState.coinPublicKey, state_0.data, constructorContext_0.initialPrivateState);
+    const context = __compactRuntime.createCircuitContext('constructor', __compactRuntime.dummyContractAddress(), constructorContext_0.initialZswapLocalState.coinPublicKey, state_0.data, constructorContext_0.initialPrivateState);
     const partialProofData = {
       input: { value: [], alignment: [] },
       output: undefined,
@@ -244,17 +245,17 @@ export class Contract {
                                                  value: __compactRuntime.StateValue.newCell({ value: _descriptor_4.toValue({ nonce: new Uint8Array(32), color: new Uint8Array(32), value: 0n, mt_index: 0n }),
                                                                                               alignment: _descriptor_4.alignment() }).encode() } },
                                        { ins: { cached: false, n: 1 } }]);
-    state_0.data = new __compactRuntime.ChargedState(context.currentQueryContext.state.state);
+    state_0.data = new __compactRuntime.ChargedState(context.callContext.currentQueryContext.state.state);
     return {
       currentContractState: state_0,
-      currentPrivateState: context.currentPrivateState,
-      currentZswapLocalState: context.currentZswapLocalState
+      currentPrivateState: context.callContext.currentPrivateState,
+      currentZswapLocalState: context.callContext.currentZswapLocalState
     }
   }
   _right_0(value_0) {
     return { is_left: false, left: { bytes: new Uint8Array(32) }, right: value_0 };
   }
-  _receiveShielded_0(context, partialProofData, coin_0) {
+  async _receiveShielded_0(context, partialProofData, coin_0) {
     const recipient_0 = this._right_0(_descriptor_8.fromValue(__compactRuntime.queryLedgerState(context,
                                                                                                 partialProofData,
                                                                                                 [
@@ -313,9 +314,9 @@ export class Contract {
     return result_0;
   }
   _dummy_0(context, partialProofData) {
-    const witnessContext_0 = __compactRuntime.createWitnessContext(ledger(context.currentQueryContext.state), context.currentPrivateState, context.currentQueryContext.address);
+    const witnessContext_0 = __compactRuntime.createWitnessContext(ledger(context.callContext.currentQueryContext.state), context.callContext.currentPrivateState, context.callContext.currentQueryContext.address);
     const [nextPrivateState_0, result_0] = this.witnesses.dummy(witnessContext_0);
-    context.currentPrivateState = nextPrivateState_0;
+    context.callContext.currentPrivateState = nextPrivateState_0;
     if (!(Array.isArray(result_0) && result_0.length === 0 )) {
       __compactRuntime.typeError('dummy',
                                  'return value',
@@ -329,8 +330,8 @@ export class Contract {
     });
     return result_0;
   }
-  _deposit_0(context, partialProofData, coin_0) {
-    this._receiveShielded_0(context, partialProofData, coin_0);
+  async _deposit_0(context, partialProofData, coin_0) {
+    await this._receiveShielded_0(context, partialProofData, coin_0);
     const tmp_0 = this._right_0(_descriptor_8.fromValue(__compactRuntime.queryLedgerState(context,
                                                                                           partialProofData,
                                                                                           [
@@ -396,7 +397,7 @@ export function ledger(stateOrChargedState) {
   const state = stateOrChargedState instanceof __compactRuntime.StateValue ? stateOrChargedState : stateOrChargedState.state;
   const chargedState = stateOrChargedState instanceof __compactRuntime.StateValue ? new __compactRuntime.ChargedState(stateOrChargedState) : stateOrChargedState;
   const context = {
-    currentQueryContext: new __compactRuntime.QueryContext(chargedState, __compactRuntime.dummyContractAddress()),
+    callContext: { currentQueryContext: new __compactRuntime.QueryContext(chargedState, __compactRuntime.dummyContractAddress()), currentGasCost: __compactRuntime.emptyRunningCost() },
     costModel: __compactRuntime.CostModel.initialCostModel()
   };
   const partialProofData = {
@@ -437,10 +438,14 @@ export function ledger(stateOrChargedState) {
   };
 }
 const _emptyContext = {
-  currentQueryContext: new __compactRuntime.QueryContext(new __compactRuntime.ContractState().data, __compactRuntime.dummyContractAddress())
+  callContext: { currentQueryContext: new __compactRuntime.QueryContext(new __compactRuntime.ContractState().data, __compactRuntime.dummyContractAddress()), currentGasCost: __compactRuntime.emptyRunningCost() }
 };
 const _dummyContract = new Contract({ dummy: (...args) => undefined });
 export const pureCircuits = {};
 export const contractReferenceLocations =
   { tag: 'publicLedgerArray', indices: { } };
+export const expectedVk = {
+  'deposit': '73b16725369ea30ea31502c5baa5c4e5609b8cd991f655de2e07aa5b2a29ffe9',
+};
+
 //# sourceMappingURL=index.js.map

@@ -1,6 +1,138 @@
 {
   "manifest-version": "1",
-  "compiler-version": "0.32.102",
-  "language-version": "0.24.101",
-  "runtime-version": "0.17.102"
+  "compiler-version": "0.33.0",
+  "language-version": "0.25.0",
+  "runtime-version": "0.18.0-rc.0",
+  "compiler": {
+    "type": "directory",
+    "contract-info.json": {
+      "type": "file",
+      "size": 11741,
+      "hash": "22eb25b2f06e1e4b59bbdb8c6dc50aeb9bc00b1b0e1892a81de18fb0196f7ce7"
+    }
+  },
+  "contract": {
+    "type": "directory",
+    "index.d.ts": {
+      "type": "file",
+      "size": 16082,
+      "hash": "bf4d598ec410290b4cfc8fc1dd290b882bb1d819fd60d86c7ca2b2af21760b27"
+    },
+    "index.js": {
+      "type": "file",
+      "size": 68344,
+      "hash": "84a65dbcae24bb3eae9f3be2ee3654e23f3a71127d45a35cf5a990d5d0db348f"
+    },
+    "index.js.map": {
+      "type": "file",
+      "size": 3631,
+      "hash": "8cb1b782859d5f82b229975232ccb0e487299a91110c79c1cf818bd438875767"
+    }
+  },
+  "zkir": {
+    "type": "directory",
+    "depositShielded.bzkir": {
+      "type": "file",
+      "size": 202,
+      "hash": "3f8b2d043f9e819b8d928401b5a174054cd466b427de2ee49eff1d08c9228675"
+    },
+    "depositShielded.zkir": {
+      "type": "file",
+      "size": 2995,
+      "hash": "79be047ab91aab2226b70eb69237c06a1139af77906fc0ad68dc8bd81bf36299"
+    },
+    "mintAndBurnShielded.bzkir": {
+      "type": "file",
+      "size": 1289,
+      "hash": "d6b6527508398056d2550a36977bca1b8588df5ec4fb6f5cbaa2d05af3fb415c"
+    },
+    "mintAndBurnShielded.zkir": {
+      "type": "file",
+      "size": 17795,
+      "hash": "6bab70c9ce145d296993775473897e96fe1f23ca747d7aa7c3914c187a5c2c49"
+    },
+    "mintAndSendImmediateShielded.bzkir": {
+      "type": "file",
+      "size": 1298,
+      "hash": "79e81aeb96fc342bb36f21cbdebf40c391d007f5e919bc5da7958a53382a0f75"
+    },
+    "mintAndSendImmediateShielded.zkir": {
+      "type": "file",
+      "size": 17969,
+      "hash": "0d9591a79538fed30e5eeecf1b37d18b13e89dd1a35aca74b3a9e4f44f0ffb4d"
+    },
+    "mintAndSendShielded.bzkir": {
+      "type": "file",
+      "size": 1298,
+      "hash": "79e81aeb96fc342bb36f21cbdebf40c391d007f5e919bc5da7958a53382a0f75"
+    },
+    "mintAndSendShielded.zkir": {
+      "type": "file",
+      "size": 17969,
+      "hash": "0d9591a79538fed30e5eeecf1b37d18b13e89dd1a35aca74b3a9e4f44f0ffb4d"
+    },
+    "mintShieldedTokens.bzkir": {
+      "type": "file",
+      "size": 230,
+      "hash": "ad46ce6f77302617bd4d7d901f1867933243ea51246306f8acf6a02c0ccd871b"
+    },
+    "mintShieldedTokens.zkir": {
+      "type": "file",
+      "size": 3053,
+      "hash": "2ee0cb7ab660bbd7c92d5e4c7a52996f4b91d5f20451feb24dc8cce2b9992291"
+    }
+  },
+  "keys": {
+    "type": "directory",
+    "depositShielded.prover": {
+      "type": "file",
+      "size": 2823221,
+      "hash": "37d816d4aaac549a160754770cca7ff77d9f0af1f5b9add8ac6a166b2ec7052e"
+    },
+    "depositShielded.verifier": {
+      "type": "file",
+      "size": 2119,
+      "hash": "079f937462bd68c6164b9435d70a8507144e59188cf65e95637e42b9b772daec"
+    },
+    "mintAndBurnShielded.prover": {
+      "type": "file",
+      "size": 10008658,
+      "hash": "ed1e9271fac3db6e844da7a4cb3db4a3f75c2dbe2eca64aafd10c41645152f32"
+    },
+    "mintAndBurnShielded.verifier": {
+      "type": "file",
+      "size": 2119,
+      "hash": "a92faf7abfdbc8dc15eba023c83d74850d917019e43f7e53ca51628621fa55e9"
+    },
+    "mintAndSendImmediateShielded.prover": {
+      "type": "file",
+      "size": 10008892,
+      "hash": "d06a95af84e54d25cff65a1e4495ded336e0dfb751855a51f0bb36f48c4d0858"
+    },
+    "mintAndSendImmediateShielded.verifier": {
+      "type": "file",
+      "size": 2119,
+      "hash": "82317ecc58eaab0ba9a40b17ad76ec74f9ca28939693c2e5d8c6c940c49ee1d2"
+    },
+    "mintAndSendShielded.prover": {
+      "type": "file",
+      "size": 10008892,
+      "hash": "d06a95af84e54d25cff65a1e4495ded336e0dfb751855a51f0bb36f48c4d0858"
+    },
+    "mintAndSendShielded.verifier": {
+      "type": "file",
+      "size": 2119,
+      "hash": "82317ecc58eaab0ba9a40b17ad76ec74f9ca28939693c2e5d8c6c940c49ee1d2"
+    },
+    "mintShieldedTokens.prover": {
+      "type": "file",
+      "size": 147180,
+      "hash": "414dcbac1f7d52d41ef31a8716af7bf2093eaa627e6006f938a8c3b387f51cd6"
+    },
+    "mintShieldedTokens.verifier": {
+      "type": "file",
+      "size": 1351,
+      "hash": "cc3e2f221e0d8cb4986866c7838b0dd5a7a567bcff71c51ea99358993b0094df"
+    }
+  }
 }
