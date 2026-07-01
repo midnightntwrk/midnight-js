@@ -72,6 +72,9 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
     return this.baseURL.endsWith('/') ? this.baseURL : `${this.baseURL}/`;
   }
 
+  // Detects an SPA/CDN fallback page served in place of a missing file. Keyed on content-type:
+  // a real manifest served with a wrong `text/html` type is treated as absent (fail-closed under
+  // `require`), which is safe — it errs toward rejecting rather than trusting an unverified artifact.
   private static isHtmlFallback(response: Response): boolean {
     return (response.headers.get('content-type') ?? '').includes('text/html');
   }

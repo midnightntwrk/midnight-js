@@ -81,6 +81,16 @@ describe('computeSha256Hex', () => {
   it('returns the lowercase hex sha-256 digest', () => {
     expect(computeSha256Hex(BYTES)).toBe(BYTES_SHA256);
   });
+
+  it('hashes only the view of an offset array, not its backing buffer', () => {
+    const backing = new Uint8Array(3 + BYTES.length);
+    backing.set(BYTES, 3);
+    const view = backing.subarray(3);
+
+    expect(view.byteOffset).toBe(3);
+    expect(computeSha256Hex(view)).toBe(BYTES_SHA256);
+    expect(computeSha256Hex(new Uint8Array(view.buffer))).not.toBe(BYTES_SHA256);
+  });
 });
 
 describe('verifyZkArtifactIntegrity', () => {
@@ -123,6 +133,24 @@ describe('verifyZkArtifactIntegrity', () => {
     expect(() =>
       verifyZkArtifactIntegrity({ manifest: undefined, relativePath: 'keys/increment.prover', bytes: BYTES, mode: 'require' })
     ).toThrow(ZkArtifactIntegrityError);
+  });
+
+  it('names the opt-out hatches when it throws for a missing manifest in require mode', () => {
+    expect(() =>
+      verifyZkArtifactIntegrity({ manifest: undefined, relativePath: 'keys/increment.prover', bytes: BYTES, mode: 'require' })
+    ).toThrow(/recompile with a manifest-emitting compactc.*verify: 'warn'.*verify: 'off'/is);
+  });
+
+  it('rejects an artifact whose length differs from the manifest size before hashing', () => {
+    const wrongSize = parseZkArtifactManifest(
+      JSON.stringify({
+        'manifest-version': '1',
+        keys: { type: 'directory', 'increment.prover': { type: 'file', size: BYTES.length + 1, hash: BYTES_SHA256 } }
+      })
+    );
+    expect(() =>
+      verifyZkArtifactIntegrity({ manifest: wrongSize, relativePath: 'keys/increment.prover', bytes: BYTES, mode: 'require' })
+    ).toThrow(new RegExp(`expected ${BYTES.length + 1} bytes, got ${BYTES.length}`));
   });
 
   it('skips verification entirely in off mode (even on mismatch)', () => {

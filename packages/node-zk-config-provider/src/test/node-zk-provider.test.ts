@@ -149,10 +149,13 @@ describe('Node ZK config Provider', () => {
       await expect(new NodeZkConfigProvider(dir).getProverKey('set_topic')).rejects.toThrow(/keys\/set_topic\.prover/);
     });
 
-    it('rejects when the manifest is absent under the default (require)', async () => {
+    it('rejects when the manifest is absent under the default (require) and names the opt-out hatches', async () => {
       // resourceDir has keys/ and zkir/ but no compiler/contract-manifest.json
       await expect(new NodeZkConfigProvider(resourceDir).getProverKey('set_topic')).rejects.toThrow(
         ZkArtifactIntegrityError
+      );
+      await expect(new NodeZkConfigProvider(resourceDir).getProverKey('set_topic')).rejects.toThrow(
+        /recompile with a manifest-emitting compactc.*verify: 'warn'.*verify: 'off'/is
       );
     });
 
@@ -209,11 +212,14 @@ describe('Node ZK config Provider', () => {
       );
       const key = await new NodeZkConfigProvider(dir).getProverKey('tiny' as 'set_topic');
       expect(key.length).toBe(small.length);
-      // The known-wrong reconstruction would hash the whole pool, not the slice — prove it differs.
-      const read = await fs.readFile(path.join(dir, 'keys', 'tiny.prover'));
-      if (read.byteOffset > 0) {
-        expect(computeSha256Hex(new Uint8Array(read.buffer))).not.toBe(computeSha256Hex(read));
-      }
+      // Deterministically prove offset handling: a nonzero-byteOffset view must hash its slice,
+      // not the whole backing buffer (the mis-hash a naive `new Uint8Array(buf.buffer)` would produce).
+      const backing = new Uint8Array(3 + small.length);
+      backing.set(small, 3);
+      const offsetView = backing.subarray(3);
+      expect(offsetView.byteOffset).toBe(3);
+      expect(computeSha256Hex(offsetView)).toBe(computeSha256Hex(small));
+      expect(computeSha256Hex(new Uint8Array(offsetView.buffer))).not.toBe(computeSha256Hex(offsetView));
     });
   });
 });
