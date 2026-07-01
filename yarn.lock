@@ -1706,17 +1706,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/compact-js@npm:2.5.5-rc.2":
-  version: 2.5.5-rc.2
-  resolution: "@midnight-ntwrk/compact-js@npm:2.5.5-rc.2::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-js%2F2.5.5-rc.2%2Fe3cf2d38d6b9863c2658164954c8279ebf2f9ee2"
+"@midnight-ntwrk/compact-js@npm:2.5.5-rc.4":
+  version: 2.5.5-rc.4
+  resolution: "@midnight-ntwrk/compact-js@npm:2.5.5-rc.4::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-js%2F2.5.5-rc.4%2F750718c61707d535e47cd0e1574d09f8ddae907f"
   dependencies:
     "@effect/platform": "npm:^0.96.1"
-    "@midnight-ntwrk/compact-runtime": "npm:0.16.103-dev.3a289c2e7811d2868e7810bd5a5f1f0b7055995f"
+    "@midnight-ntwrk/compact-runtime": "npm:0.18.0-rc.0"
     "@midnight-ntwrk/platform-js": "npm:^3.0.0"
     "@midnightntwrk/ledger-v9": "npm:^1.0.0-rc.2"
-    effect: "npm:^3.21.2"
+    effect: "npm:^3.21.4"
     tslib: "npm:^2.8.1"
-  checksum: 10/e188c97c0a0afc4be852356fe70bc7c0c67def8f6bcb90bcdedf1e8e062cb55d41bfc531ad408e9c507f0dd45b8a0f651beb5151edfb1484a24b1eea38153cf7
+  checksum: 10/4d7a19b3660203780f2f38b8b0556a06f051500b4b07a8957f2f6e49479288efce8330cf5be70d98a17d64f070cee108210acfdb606eb9db1b88aa6a0d625188
   languageName: node
   linkType: hard
 
@@ -1926,7 +1926,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-protocol@workspace:packages/protocol"
   dependencies:
-    "@midnight-ntwrk/compact-js": "npm:2.5.5-rc.2"
+    "@midnight-ntwrk/compact-js": "npm:2.5.5-rc.4"
     "@midnight-ntwrk/compact-runtime": "npm:0.18.0-rc.0"
     "@midnight-ntwrk/platform-js": "npm:3.0.0"
     "@midnightntwrk/ledger-v9": "npm:1.0.0-rc.2"
@@ -6310,13 +6310,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"effect@npm:3.20.0":
-  version: 3.20.0
-  resolution: "effect@npm:3.20.0"
+"effect@npm:^3.19.19, effect@npm:^3.20.0, effect@npm:^3.21.0, effect@npm:^3.21.4":
+  version: 3.21.4
+  resolution: "effect@npm:3.21.4"
   dependencies:
     "@standard-schema/spec": "npm:^1.0.0"
     fast-check: "npm:^3.23.1"
-  checksum: 10/62c1e43f86db04551aaf494a3d2fe296ce3a7d5e25c79c0b41b88e82152af6bb429ce040c7b51fd1b98d3fe93bef768737967f182b4b88ed488689860b55fc26
+  checksum: 10/c95506043e070662af85963af779b3d4e9ec501e03069532888831cc268e0fd9f448dcd2a4c89809e05471e64dcd270313b196056f878d1c028037870694af11
   languageName: node
   linkType: hard
 

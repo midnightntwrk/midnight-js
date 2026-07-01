@@ -179,21 +179,23 @@ describe('ledger-utils', () => {
       const mod = await import('../resources/compiled/shielded-map/contract/index.js');
       shieldedContract = new mod.Contract({ dummy: (ctx: { privateState: undefined }) => [ctx.privateState, []] });
       const emptyZswap = { coinPublicKey: shieldedCpk, outputs: [], inputs: [], currentIndex: 0n };
-      const initResult = shieldedContract.initialState({ initialPrivateState: undefined, initialZswapLocalState: emptyZswap });
+      const initResult = await shieldedContract.initialState({ initialPrivateState: undefined, initialZswapLocalState: emptyZswap });
       shieldedInitialState = initResult.currentContractState;
     });
 
-    it('succeeds with deposit circuit that calls receiveShielded', () => {
+    it('succeeds with deposit circuit that calls receiveShielded', async () => {
       const coin = { nonce: new Uint8Array(32).fill(1), color: new Uint8Array(32).fill(2), value: 100n };
-      const ctx = createCircuitContext(shieldedAddr, shieldedCpk, shieldedInitialState, undefined);
+      const ctx = createCircuitContext('deposit', shieldedAddr, shieldedCpk, shieldedInitialState, undefined);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { proofData, context } = (shieldedContract.circuits as any).deposit(ctx, coin);
+      const { context, gasCost } = await (shieldedContract.circuits as any).deposit(ctx, coin);
+      // The root circuit completes last, so its proof data is the final entry in the trace.
+      const proofData = context.callProofDataTrace[context.callProofDataTrace.length - 1];
 
       // Build partitioned transcript from the circuit execution
       // The circuit produces publicTranscript ops; we need to wrap them as a guaranteed Transcript
       const transcript: Transcript<AlignedValue> = {
-        gas: context.gasCost,
-        effects: context.currentQueryContext.effects,
+        gas: gasCost,
+        effects: context.callContext.currentQueryContext.effects,
         program: proofData.publicTranscript
       };
       const partitioned: PartitionedTranscript = [transcript, undefined];
