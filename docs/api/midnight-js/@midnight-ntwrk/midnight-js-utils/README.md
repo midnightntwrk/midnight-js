@@ -10,6 +10,7 @@
 
 - [DeserializationError](classes/DeserializationError.md)
 - [PasswordValidationError](classes/PasswordValidationError.md)
+- [ZkArtifactIntegrityError](classes/ZkArtifactIntegrityError.md)
 
 ## Interfaces
 
@@ -18,6 +19,9 @@
 - [DeserializationContext](interfaces/DeserializationContext.md)
 - [ExtractedInfo](interfaces/ExtractedInfo.md)
 - [PatternEntry](interfaces/PatternEntry.md)
+- [ZkArtifactManifest](interfaces/ZkArtifactManifest.md)
+- [ZkArtifactManifestFile](interfaces/ZkArtifactManifestFile.md)
+- [ZkConfigIntegrityOptions](interfaces/ZkConfigIntegrityOptions.md)
 
 ## Type Aliases
 
@@ -26,6 +30,7 @@
 - [ParsedHexString](type-aliases/ParsedHexString.md)
 - [PasswordValidationFailure](type-aliases/PasswordValidationFailure.md)
 - [SourceLibrary](type-aliases/SourceLibrary.md)
+- [ZkArtifactIntegrityMode](type-aliases/ZkArtifactIntegrityMode.md)
 
 ## Variables
 
@@ -36,16 +41,20 @@
 - [MIN\_SEQUENTIAL\_LENGTH](variables/MIN_SEQUENTIAL_LENGTH.md)
 - [PATTERNS](variables/PATTERNS.md)
 - [SOURCE\_PACKAGES](variables/SOURCE_PACKAGES.md)
+- [ZK\_MANIFEST\_DIR](variables/ZK_MANIFEST_DIR.md)
+- [ZK\_MANIFEST\_FILE\_NAME](variables/ZK_MANIFEST_FILE_NAME.md)
 
 ## Functions
 
 - [assertDefined](functions/assertDefined.md)
 - [assertIsContractAddress](functions/assertIsContractAddress.md)
 - [assertIsHex](functions/assertIsHex.md)
+- [assertManifestHash](functions/assertManifestHash.md)
 - [assertSafeName](functions/assertSafeName.md)
 - [assertSemVer](functions/assertSemVer.md)
 - [assertUndefined](functions/assertUndefined.md)
 - [classify](functions/classify.md)
+- [computeSha256Hex](functions/computeSha256Hex.md)
 - [decodeLedgerStateValue](functions/decodeLedgerStateValue.md)
 - [deserializeCompactContractState](functions/deserializeCompactContractState.md)
 - [deserializeContractState](functions/deserializeContractState.md)
@@ -59,8 +68,10 @@
 - [parseCoinPublicKeyToHex](functions/parseCoinPublicKeyToHex.md)
 - [parseEncPublicKeyToHex](functions/parseEncPublicKeyToHex.md)
 - [parseHex](functions/parseHex.md)
+- [parseZkArtifactManifest](functions/parseZkArtifactManifest.md)
 - [toHex](functions/toHex.md)
 - [ttlOneHour](functions/ttlOneHour.md)
 - [validatePassword](functions/validatePassword.md)
+- [verifyZkArtifactIntegrity](functions/verifyZkArtifactIntegrity.md)
 - [warnIfInsecureRemoteUrl](functions/warnIfInsecureRemoteUrl.md)
 - [withDeserializationContext](functions/withDeserializationContext.md)
