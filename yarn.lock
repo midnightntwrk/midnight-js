@@ -1960,6 +1960,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@midnightntwrk/wallet-sdk-address-format": "npm:4.0.0-canary.20260623092110-2f10bcf"
+    "@noble/hashes": "npm:^2.2.0"
     "@types/node": "npm:^24.0.0"
     vitest: "npm:^4.1.7"
   languageName: unknown

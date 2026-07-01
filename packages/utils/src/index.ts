@@ -21,3 +21,4 @@ export * from './password-validation';
 export * from './security-utils';
 export * from './signing-key-utils';
 export * from './type-utils';
+export * from './zk-artifact-manifest';
