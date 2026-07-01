@@ -36,4 +36,4 @@ Defaults to [DEFAULT\_POLL\_INTERVAL](../variables/DEFAULT_POLL_INTERVAL.md). Mu
 
 ### webSocket?
 
-> `readonly` `optional` **webSocket?**: *typeof* `ws.WebSocket`
+> `readonly` `optional` **webSocket?**: *typeof* `WebSocket`

@@ -9,3 +9,7 @@
 ## Classes
 
 - [FetchZkConfigProvider](classes/FetchZkConfigProvider.md)
+
+## Type Aliases
+
+- [FetchZkConfigProviderOptions](type-aliases/FetchZkConfigProviderOptions.md)

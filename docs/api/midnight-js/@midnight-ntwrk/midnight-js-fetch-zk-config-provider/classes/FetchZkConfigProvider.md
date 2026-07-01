@@ -6,7 +6,7 @@
 
 # Class: FetchZkConfigProvider\<K\>
 
-Retrieves ZK artifacts from a remote source.
+Retrieves ZK artifacts from a remote source and verifies them against the `compactc` integrity manifest.
 
 ## Extends
 
@@ -22,7 +22,7 @@ Retrieves ZK artifacts from a remote source.
 
 ### Constructor
 
-> **new FetchZkConfigProvider**\<`K`\>(`baseURL`, `fetchFunc?`): `FetchZkConfigProvider`\<`K`\>
+> **new FetchZkConfigProvider**\<`K`\>(`baseURL`, `options?`): `FetchZkConfigProvider`\<`K`\>
 
 #### Parameters
 
@@ -32,11 +32,11 @@ Retrieves ZK artifacts from a remote source.
 
 The endpoint to query for ZK artifacts.
 
-##### fetchFunc?
+##### options?
 
-\{(`input`, `init?`): `Promise`\<`Response`\>; (`input`, `init?`): `Promise`\<`Response`\>; \}
+[`FetchZkConfigProviderOptions`](../type-aliases/FetchZkConfigProviderOptions.md) = `{}`
 
-The function to use to execute queries.
+Custom fetch and integrity-verification options.
 
 #### Returns
 

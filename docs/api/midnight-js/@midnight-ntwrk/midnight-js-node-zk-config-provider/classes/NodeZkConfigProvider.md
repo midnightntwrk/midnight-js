@@ -6,7 +6,8 @@
 
 # Class: NodeZkConfigProvider\<K\>
 
-Implementation of [ZKConfigProvider](#) that reads the keys and zkIR from the local filesystem.
+[ZKConfigProvider](#) that reads keys and zkIR from the local filesystem and verifies them
+against the `compactc` integrity manifest.
 
 ## Extends
 
@@ -24,7 +25,7 @@ The type of the circuit ID used by the provider.
 
 ### Constructor
 
-> **new NodeZkConfigProvider**\<`K`\>(`directory`): `NodeZkConfigProvider`\<`K`\>
+> **new NodeZkConfigProvider**\<`K`\>(`directory`, `integrityOptions?`): `NodeZkConfigProvider`\<`K`\>
 
 #### Parameters
 
@@ -32,7 +33,13 @@ The type of the circuit ID used by the provider.
 
 `string`
 
-The path to the base directory containing the key and ZKIR subdirectories.
+The base directory containing the key and ZKIR subdirectories.
+
+##### integrityOptions?
+
+`ZkConfigIntegrityOptions` = `{}`
+
+Integrity-verification options.
 
 #### Returns
 
@@ -48,7 +55,7 @@ The path to the base directory containing the key and ZKIR subdirectories.
 
 > `readonly` **directory**: `string`
 
-The path to the base directory containing the key and ZKIR subdirectories.
+The base directory containing the key and ZKIR subdirectories.
 
 ## Methods
 
@@ -94,13 +101,15 @@ The circuit ID of the artifacts to retrieve.
 
 > **getProverKey**(`circuitId`): `Promise`\<`ProverKey`\>
 
-[ZKConfigProvider.getProverKey](#)
+Retrieves the prover key produced by `compactc` compiler for the given circuit.
 
 #### Parameters
 
 ##### circuitId
 
 `K`
+
+The circuit ID of the prover key to retrieve.
 
 #### Returns
 
@@ -116,13 +125,15 @@ The circuit ID of the artifacts to retrieve.
 
 > **getVerifierKey**(`circuitId`): `Promise`\<`VerifierKey`\>
 
-[ZKConfigProvider.getVerifierKey](#)
+Retrieves the verifier key produced by `compactc` compiler for the given circuit.
 
 #### Parameters
 
 ##### circuitId
 
 `K`
+
+The circuit ID of the verifier key to retrieve.
 
 #### Returns
 
@@ -162,13 +173,15 @@ The circuit IDs of the verifier keys to retrieve.
 
 > **getZKIR**(`circuitId`): `Promise`\<`ZKIR`\>
 
-[ZKConfigProvider.getZKIR](#)
+Retrieves the zero-knowledge intermediate representation produced by `compactc` compiler for the given circuit.
 
 #### Parameters
 
 ##### circuitId
 
 `K`
+
+The circuit ID of the ZKIR to retrieve.
 
 #### Returns
 
