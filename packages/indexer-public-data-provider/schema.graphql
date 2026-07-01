@@ -216,10 +216,6 @@ input ContractActionOffset @oneOf {
 	Either a block hash or a block height; selects the contract action in that exact block.
 	"""
 	blockOffset: BlockOffset
-  """
-  Either a block hash or a block height; selects the address's state as of that block (the latest contract action in any block at or before it).
-  """
-  asOfBlockOffset: BlockOffset
 	"""
 	Either a transaction hash or a transaction identifier.
 	"""
