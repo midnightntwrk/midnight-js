@@ -38,3 +38,9 @@ midnight-concurrent-test-db
 # Locally-built @midnight-ntwrk/compact-runtime npm package (Yarn file: target)
 .compact-runtime-home/
 .compact-runtime-home-build/
+
+# Generated compactc test fixtures, (re)compiled on demand by scripts/check-compiled.js.
+# These are build artifacts (contract bindings, proving/verifier keys, ZKIR) and are not
+# meant to be committed.
+**/src/test/resources/compiled/
+**/src/contract/compiled/

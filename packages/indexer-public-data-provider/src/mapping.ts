@@ -34,6 +34,11 @@ export const hasContractAction = <T extends { contractAction?: unknown }>(
 ): data is T & { contractAction: NonNullable<T['contractAction']> } =>
   data.contractAction != null;
 
+export const hasContract = <T extends { contract?: unknown }>(
+  data: T
+): data is T & { contract: NonNullable<T['contract']> } =>
+  data.contract != null;
+
 /**
  * Structural shape of a `contractAction` payload (or `contractActions` on the
  * subscription variant) that carries unshielded balances. `ContractDeploy` /

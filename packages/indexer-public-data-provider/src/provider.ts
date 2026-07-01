@@ -148,11 +148,12 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     config?: BlockHeightConfig | BlockHashConfig
   ): Promise<ContractState | null> {
     assertIsContractAddress(address);
-    const offset: InputMaybe<ContractActionOffset> = config
-      ? {
-          asOfBlockOffset:
-            config.type === 'blockHeight' ? { height: config.blockHeight } : { hash: config.blockHash }
-        }
+    // The deployed indexer resolves `contract(offset:)` "as of" the given block (the latest
+    // contract action at or before it), which is what cross-contract reads require.
+    const offset: InputMaybe<BlockOffset> = config
+      ? config.type === 'blockHeight'
+        ? { height: config.blockHeight }
+        : { hash: config.blockHash }
       : null;
     return this.client
       .query({
@@ -164,7 +165,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         fetchPolicy: 'no-cache'
       })
       .then(maybeThrowQueryError)
-      .then((queryResult) => queryResult.data?.contractAction?.state ?? null)
+      .then((queryResult) => queryResult.data?.contract?.state ?? null)
       .then((maybeContractState) => (maybeContractState ? parseHexContractState(maybeContractState) : null));
   }
 
@@ -173,11 +174,17 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     config?: BlockHeightConfig | BlockHashConfig
   ): Promise<[ZswapChainState, ContractState, LedgerParameters] | null> {
     assertIsContractAddress(address);
-    const offset: InputMaybe<ContractActionOffset> = config
-      ? {
-          asOfBlockOffset:
-            config.type === 'blockHeight' ? { height: config.blockHeight } : { hash: config.blockHash }
-        }
+    // The deployed indexer's `Contract` exposes an as-of `state`, but `zswapState` and
+    // `ledgerParameters` live only on `ContractAction`, and `Contract.actions` is newest-first
+    // (NOT offset-filtered). When the offset is the latest block — which every caller pins it to
+    // (see `createUnprovenCallTx`, which sets `blockHash = latestBlock.hash`) — the as-of state IS
+    // the newest action, so `contract.state === actions[0].state` and the triple is coherent. The
+    // guard below fails loudly if that invariant is violated (e.g. a historical offset is pinned),
+    // rather than silently pairing an old state with a newer zswapState.
+    const offset: InputMaybe<BlockOffset> = config
+      ? config.type === 'blockHeight'
+        ? { height: config.blockHeight }
+        : { hash: config.blockHash }
       : null;
     return this.client
       .query({
@@ -189,18 +196,26 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         fetchPolicy: 'no-cache'
       })
       .then(maybeThrowQueryError)
-      .then((queryResult) => queryResult.data?.contractAction)
-      .then((maybeContractStates) =>
-        maybeContractStates
-          ? ([
-              parseHexZswapState(maybeContractStates.zswapState),
-              parseHexContractState(maybeContractStates.state),
-              maybeContractStates.transaction?.block?.ledgerParameters
-                ? parseHexLedgerParameters(maybeContractStates.transaction.block.ledgerParameters)
-                : LedgerParameters.initialParameters()
-            ] as [ZswapChainState, ContractState, LedgerParameters])
-          : null
-      );
+      .then((queryResult) => queryResult.data?.contract)
+      .then((maybeContract) => {
+        const action = maybeContract?.actions[0];
+        if (!maybeContract || !action) return null;
+        if (maybeContract.state !== action.state) {
+          throw new Error(
+            'queryZSwapAndContractState: contract state as of the requested offset does not match the ' +
+              "latest contract action's state. `zswapState`/`ledgerParameters` are read from the latest " +
+              'action and are only coherent when the offset is the latest block; a historical offset was ' +
+              'likely supplied.'
+          );
+        }
+        return [
+          parseHexZswapState(action.zswapState),
+          parseHexContractState(maybeContract.state),
+          action.transaction?.block?.ledgerParameters
+            ? parseHexLedgerParameters(action.transaction.block.ledgerParameters)
+            : LedgerParameters.initialParameters()
+        ] as [ZswapChainState, ContractState, LedgerParameters];
+      });
   }
 
   queryUnshieldedBalances(

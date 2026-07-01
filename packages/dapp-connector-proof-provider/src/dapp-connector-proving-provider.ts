@@ -43,12 +43,6 @@ export const dappConnectorProvingProvider = async <K extends string>(
   api: DAppConnectorProvingAPI,
   zkConfigProvider: ZKConfigProvider<K> | ZKConfigRegistry,
 ): Promise<ProvingProvider> =>
-  // `api.getProvingProvider` is typed against @midnight-ntwrk/dapp-connector-api's `ProvingProvider`,
-  // whose declaration still tracks the ledger-v6 template and so lacks the `lookupKey` method that
-  // ledger-v9 (rc.3) added to `ProvingProvider`. That package documents its provider as "compatible
-  // with Ledger's ProvingProvider", and an rc.3-compatible wallet returns an object implementing
-  // `lookupKey`, so we re-assert the accurate ledger type here. Remove this cast once
-  // dapp-connector-api's `ProvingProvider` is updated to include `lookupKey`.
   api.getProvingProvider(
     // The wallet round-trips each proof preimage's key location into this provider, so contract
     // key locations must be resolved through the registry's verifier-key join.
@@ -56,4 +50,4 @@ export const dappConnectorProvingProvider = async <K extends string>(
       ? zkConfigProvider
       : new ZKConfigRegistry([zkConfigProvider])
     ).asKeyMaterialProvider()
-  ) as Promise<ProvingProvider>;
+  );
