@@ -1,5 +1,5 @@
 import * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
-__compactRuntime.checkRuntimeVersion('0.17.102');
+__compactRuntime.checkRuntimeVersion('0.18.0-rc.0');
 
 const _descriptor_0 = new __compactRuntime.CompactTypeUnsignedInteger(18446744073709551615n, 8);
 
@@ -95,14 +95,14 @@ export class Contract {
     }
     this.witnesses = witnesses_0;
     this.circuits = {
-      mintUnshieldedToSelfTest: (...args_1) => {
+      mintUnshieldedToSelfTest: async (...args_1) => {
         if (args_1.length !== 3) {
           throw new __compactRuntime.CompactError(`mintUnshieldedToSelfTest: expected 3 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
         const contextOrig_0 = args_1[0];
         const domainSep_0 = args_1[1];
         const amount_0 = args_1[2];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.callContext.currentQueryContext != undefined)) {
           __compactRuntime.typeError('mintUnshieldedToSelfTest',
                                      'argument 1 (as invoked from Typescript)',
                                      'unshielded.compact line 3 char 1',
@@ -123,7 +123,7 @@ export class Contract {
                                      'Uint<0..18446744073709551616>',
                                      amount_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
+        const context = __compactRuntime.copyCircuitContext(contextOrig_0);
         const partialProofData = {
           input: {
             value: _descriptor_2.toValue(domainSep_0).concat(_descriptor_0.toValue(amount_0)),
@@ -133,14 +133,15 @@ export class Contract {
           publicTranscript: [],
           privateTranscriptOutputs: []
         };
-        const result_0 = this._mintUnshieldedToSelfTest_0(context,
-                                                          partialProofData,
-                                                          domainSep_0,
-                                                          amount_0);
+        const result_0 = await this._mintUnshieldedToSelfTest_0(context,
+                                                                partialProofData,
+                                                                domainSep_0,
+                                                                amount_0);
         partialProofData.output = { value: _descriptor_2.toValue(result_0), alignment: _descriptor_2.alignment() };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
+        __compactRuntime.finalizeCallProofData(context, partialProofData);
+        return { result: result_0, context: context, gasCost: context.callContext.currentGasCost };
       },
-      mintUnshieldedToContractTest: (...args_1) => {
+      mintUnshieldedToContractTest: async (...args_1) => {
         if (args_1.length !== 4) {
           throw new __compactRuntime.CompactError(`mintUnshieldedToContractTest: expected 4 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
@@ -148,7 +149,7 @@ export class Contract {
         const domainSep_0 = args_1[1];
         const address_0 = args_1[2];
         const amount_0 = args_1[3];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.callContext.currentQueryContext != undefined)) {
           __compactRuntime.typeError('mintUnshieldedToContractTest',
                                      'argument 1 (as invoked from Typescript)',
                                      'unshielded.compact line 8 char 1',
@@ -176,7 +177,7 @@ export class Contract {
                                      'Uint<0..18446744073709551616>',
                                      amount_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
+        const context = __compactRuntime.copyCircuitContext(contextOrig_0);
         const partialProofData = {
           input: {
             value: _descriptor_2.toValue(domainSep_0).concat(_descriptor_3.toValue(address_0).concat(_descriptor_0.toValue(amount_0))),
@@ -186,15 +187,16 @@ export class Contract {
           publicTranscript: [],
           privateTranscriptOutputs: []
         };
-        const result_0 = this._mintUnshieldedToContractTest_0(context,
-                                                              partialProofData,
-                                                              domainSep_0,
-                                                              address_0,
-                                                              amount_0);
+        const result_0 = await this._mintUnshieldedToContractTest_0(context,
+                                                                    partialProofData,
+                                                                    domainSep_0,
+                                                                    address_0,
+                                                                    amount_0);
         partialProofData.output = { value: _descriptor_2.toValue(result_0), alignment: _descriptor_2.alignment() };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
+        __compactRuntime.finalizeCallProofData(context, partialProofData);
+        return { result: result_0, context: context, gasCost: context.callContext.currentGasCost };
       },
-      mintUnshieldedToUserTest: (...args_1) => {
+      mintUnshieldedToUserTest: async (...args_1) => {
         if (args_1.length !== 4) {
           throw new __compactRuntime.CompactError(`mintUnshieldedToUserTest: expected 4 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
@@ -202,7 +204,7 @@ export class Contract {
         const domainSep_0 = args_1[1];
         const address_0 = args_1[2];
         const amount_0 = args_1[3];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.callContext.currentQueryContext != undefined)) {
           __compactRuntime.typeError('mintUnshieldedToUserTest',
                                      'argument 1 (as invoked from Typescript)',
                                      'unshielded.compact line 16 char 1',
@@ -230,7 +232,7 @@ export class Contract {
                                      'Uint<0..18446744073709551616>',
                                      amount_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
+        const context = __compactRuntime.copyCircuitContext(contextOrig_0);
         const partialProofData = {
           input: {
             value: _descriptor_2.toValue(domainSep_0).concat(_descriptor_4.toValue(address_0).concat(_descriptor_0.toValue(amount_0))),
@@ -240,22 +242,23 @@ export class Contract {
           publicTranscript: [],
           privateTranscriptOutputs: []
         };
-        const result_0 = this._mintUnshieldedToUserTest_0(context,
-                                                          partialProofData,
-                                                          domainSep_0,
-                                                          address_0,
-                                                          amount_0);
+        const result_0 = await this._mintUnshieldedToUserTest_0(context,
+                                                                partialProofData,
+                                                                domainSep_0,
+                                                                address_0,
+                                                                amount_0);
         partialProofData.output = { value: _descriptor_2.toValue(result_0), alignment: _descriptor_2.alignment() };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
+        __compactRuntime.finalizeCallProofData(context, partialProofData);
+        return { result: result_0, context: context, gasCost: context.callContext.currentGasCost };
       },
-      sendUnshieldedToSelfTest: (...args_1) => {
+      sendUnshieldedToSelfTest: async (...args_1) => {
         if (args_1.length !== 3) {
           throw new __compactRuntime.CompactError(`sendUnshieldedToSelfTest: expected 3 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
         const contextOrig_0 = args_1[0];
         const color_0 = args_1[1];
         const amount_0 = args_1[2];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.callContext.currentQueryContext != undefined)) {
           __compactRuntime.typeError('sendUnshieldedToSelfTest',
                                      'argument 1 (as invoked from Typescript)',
                                      'unshielded.compact line 20 char 1',
@@ -276,7 +279,7 @@ export class Contract {
                                      'Uint<0..340282366920938463463374607431768211456>',
                                      amount_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
+        const context = __compactRuntime.copyCircuitContext(contextOrig_0);
         const partialProofData = {
           input: {
             value: _descriptor_2.toValue(color_0).concat(_descriptor_6.toValue(amount_0)),
@@ -286,14 +289,15 @@ export class Contract {
           publicTranscript: [],
           privateTranscriptOutputs: []
         };
-        const result_0 = this._sendUnshieldedToSelfTest_0(context,
-                                                          partialProofData,
-                                                          color_0,
-                                                          amount_0);
+        const result_0 = await this._sendUnshieldedToSelfTest_0(context,
+                                                                partialProofData,
+                                                                color_0,
+                                                                amount_0);
         partialProofData.output = { value: [], alignment: [] };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
+        __compactRuntime.finalizeCallProofData(context, partialProofData);
+        return { result: result_0, context: context, gasCost: context.callContext.currentGasCost };
       },
-      sendUnshieldedToContractTest: (...args_1) => {
+      sendUnshieldedToContractTest: async (...args_1) => {
         if (args_1.length !== 4) {
           throw new __compactRuntime.CompactError(`sendUnshieldedToContractTest: expected 4 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
@@ -301,7 +305,7 @@ export class Contract {
         const color_0 = args_1[1];
         const amount_0 = args_1[2];
         const address_0 = args_1[3];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.callContext.currentQueryContext != undefined)) {
           __compactRuntime.typeError('sendUnshieldedToContractTest',
                                      'argument 1 (as invoked from Typescript)',
                                      'unshielded.compact line 24 char 1',
@@ -329,7 +333,7 @@ export class Contract {
                                      'struct ContractAddress<bytes: Bytes<32>>',
                                      address_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
+        const context = __compactRuntime.copyCircuitContext(contextOrig_0);
         const partialProofData = {
           input: {
             value: _descriptor_2.toValue(color_0).concat(_descriptor_6.toValue(amount_0).concat(_descriptor_3.toValue(address_0))),
@@ -339,15 +343,16 @@ export class Contract {
           publicTranscript: [],
           privateTranscriptOutputs: []
         };
-        const result_0 = this._sendUnshieldedToContractTest_0(context,
-                                                              partialProofData,
-                                                              color_0,
-                                                              amount_0,
-                                                              address_0);
+        const result_0 = await this._sendUnshieldedToContractTest_0(context,
+                                                                    partialProofData,
+                                                                    color_0,
+                                                                    amount_0,
+                                                                    address_0);
         partialProofData.output = { value: [], alignment: [] };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
+        __compactRuntime.finalizeCallProofData(context, partialProofData);
+        return { result: result_0, context: context, gasCost: context.callContext.currentGasCost };
       },
-      sendUnshieldedToUserTest: (...args_1) => {
+      sendUnshieldedToUserTest: async (...args_1) => {
         if (args_1.length !== 4) {
           throw new __compactRuntime.CompactError(`sendUnshieldedToUserTest: expected 4 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
@@ -355,7 +360,7 @@ export class Contract {
         const color_0 = args_1[1];
         const amount_0 = args_1[2];
         const address_0 = args_1[3];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.callContext.currentQueryContext != undefined)) {
           __compactRuntime.typeError('sendUnshieldedToUserTest',
                                      'argument 1 (as invoked from Typescript)',
                                      'unshielded.compact line 28 char 1',
@@ -383,7 +388,7 @@ export class Contract {
                                      'struct UserAddress<bytes: Bytes<32>>',
                                      address_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
+        const context = __compactRuntime.copyCircuitContext(contextOrig_0);
         const partialProofData = {
           input: {
             value: _descriptor_2.toValue(color_0).concat(_descriptor_6.toValue(amount_0).concat(_descriptor_4.toValue(address_0))),
@@ -393,22 +398,23 @@ export class Contract {
           publicTranscript: [],
           privateTranscriptOutputs: []
         };
-        const result_0 = this._sendUnshieldedToUserTest_0(context,
-                                                          partialProofData,
-                                                          color_0,
-                                                          amount_0,
-                                                          address_0);
+        const result_0 = await this._sendUnshieldedToUserTest_0(context,
+                                                                partialProofData,
+                                                                color_0,
+                                                                amount_0,
+                                                                address_0);
         partialProofData.output = { value: [], alignment: [] };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
+        __compactRuntime.finalizeCallProofData(context, partialProofData);
+        return { result: result_0, context: context, gasCost: context.callContext.currentGasCost };
       },
-      receiveUnshieldedTest: (...args_1) => {
+      receiveUnshieldedTest: async (...args_1) => {
         if (args_1.length !== 3) {
           throw new __compactRuntime.CompactError(`receiveUnshieldedTest: expected 3 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
         const contextOrig_0 = args_1[0];
         const color_0 = args_1[1];
         const amount_0 = args_1[2];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.callContext.currentQueryContext != undefined)) {
           __compactRuntime.typeError('receiveUnshieldedTest',
                                      'argument 1 (as invoked from Typescript)',
                                      'unshielded.compact line 32 char 1',
@@ -429,7 +435,7 @@ export class Contract {
                                      'Uint<0..340282366920938463463374607431768211456>',
                                      amount_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
+        const context = __compactRuntime.copyCircuitContext(contextOrig_0);
         const partialProofData = {
           input: {
             value: _descriptor_2.toValue(color_0).concat(_descriptor_6.toValue(amount_0)),
@@ -439,20 +445,21 @@ export class Contract {
           publicTranscript: [],
           privateTranscriptOutputs: []
         };
-        const result_0 = this._receiveUnshieldedTest_0(context,
-                                                       partialProofData,
-                                                       color_0,
-                                                       amount_0);
+        const result_0 = await this._receiveUnshieldedTest_0(context,
+                                                             partialProofData,
+                                                             color_0,
+                                                             amount_0);
         partialProofData.output = { value: [], alignment: [] };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
+        __compactRuntime.finalizeCallProofData(context, partialProofData);
+        return { result: result_0, context: context, gasCost: context.callContext.currentGasCost };
       },
-      getUnshieldedBalanceTest: (...args_1) => {
+      getUnshieldedBalanceTest: async (...args_1) => {
         if (args_1.length !== 2) {
           throw new __compactRuntime.CompactError(`getUnshieldedBalanceTest: expected 2 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
         const contextOrig_0 = args_1[0];
         const color_0 = args_1[1];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.callContext.currentQueryContext != undefined)) {
           __compactRuntime.typeError('getUnshieldedBalanceTest',
                                      'argument 1 (as invoked from Typescript)',
                                      'unshielded.compact line 36 char 1',
@@ -466,7 +473,7 @@ export class Contract {
                                      'Bytes<32>',
                                      color_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
+        const context = __compactRuntime.copyCircuitContext(contextOrig_0);
         const partialProofData = {
           input: {
             value: _descriptor_2.toValue(color_0),
@@ -476,20 +483,21 @@ export class Contract {
           publicTranscript: [],
           privateTranscriptOutputs: []
         };
-        const result_0 = this._getUnshieldedBalanceTest_0(context,
-                                                          partialProofData,
-                                                          color_0);
+        const result_0 = await this._getUnshieldedBalanceTest_0(context,
+                                                                partialProofData,
+                                                                color_0);
         partialProofData.output = { value: _descriptor_6.toValue(result_0), alignment: _descriptor_6.alignment() };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
+        __compactRuntime.finalizeCallProofData(context, partialProofData);
+        return { result: result_0, context: context, gasCost: context.callContext.currentGasCost };
       },
-      getUnshieldedBalanceGtTest: (...args_1) => {
+      getUnshieldedBalanceGtTest: async (...args_1) => {
         if (args_1.length !== 3) {
           throw new __compactRuntime.CompactError(`getUnshieldedBalanceGtTest: expected 3 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
         const contextOrig_0 = args_1[0];
         const color_0 = args_1[1];
         const amount_0 = args_1[2];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.callContext.currentQueryContext != undefined)) {
           __compactRuntime.typeError('getUnshieldedBalanceGtTest',
                                      'argument 1 (as invoked from Typescript)',
                                      'unshielded.compact line 40 char 1',
@@ -510,7 +518,7 @@ export class Contract {
                                      'Uint<0..340282366920938463463374607431768211456>',
                                      amount_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
+        const context = __compactRuntime.copyCircuitContext(contextOrig_0);
         const partialProofData = {
           input: {
             value: _descriptor_2.toValue(color_0).concat(_descriptor_6.toValue(amount_0)),
@@ -520,21 +528,22 @@ export class Contract {
           publicTranscript: [],
           privateTranscriptOutputs: []
         };
-        const result_0 = this._getUnshieldedBalanceGtTest_0(context,
-                                                            partialProofData,
-                                                            color_0,
-                                                            amount_0);
+        const result_0 = await this._getUnshieldedBalanceGtTest_0(context,
+                                                                  partialProofData,
+                                                                  color_0,
+                                                                  amount_0);
         partialProofData.output = { value: _descriptor_1.toValue(result_0), alignment: _descriptor_1.alignment() };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
+        __compactRuntime.finalizeCallProofData(context, partialProofData);
+        return { result: result_0, context: context, gasCost: context.callContext.currentGasCost };
       },
-      getUnshieldedBalanceLtTest: (...args_1) => {
+      getUnshieldedBalanceLtTest: async (...args_1) => {
         if (args_1.length !== 3) {
           throw new __compactRuntime.CompactError(`getUnshieldedBalanceLtTest: expected 3 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
         const contextOrig_0 = args_1[0];
         const color_0 = args_1[1];
         const amount_0 = args_1[2];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.callContext.currentQueryContext != undefined)) {
           __compactRuntime.typeError('getUnshieldedBalanceLtTest',
                                      'argument 1 (as invoked from Typescript)',
                                      'unshielded.compact line 44 char 1',
@@ -555,7 +564,7 @@ export class Contract {
                                      'Uint<0..340282366920938463463374607431768211456>',
                                      amount_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
+        const context = __compactRuntime.copyCircuitContext(contextOrig_0);
         const partialProofData = {
           input: {
             value: _descriptor_2.toValue(color_0).concat(_descriptor_6.toValue(amount_0)),
@@ -565,21 +574,22 @@ export class Contract {
           publicTranscript: [],
           privateTranscriptOutputs: []
         };
-        const result_0 = this._getUnshieldedBalanceLtTest_0(context,
-                                                            partialProofData,
-                                                            color_0,
-                                                            amount_0);
+        const result_0 = await this._getUnshieldedBalanceLtTest_0(context,
+                                                                  partialProofData,
+                                                                  color_0,
+                                                                  amount_0);
         partialProofData.output = { value: _descriptor_1.toValue(result_0), alignment: _descriptor_1.alignment() };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
+        __compactRuntime.finalizeCallProofData(context, partialProofData);
+        return { result: result_0, context: context, gasCost: context.callContext.currentGasCost };
       },
-      getUnshieldedBalanceGteTest: (...args_1) => {
+      getUnshieldedBalanceGteTest: async (...args_1) => {
         if (args_1.length !== 3) {
           throw new __compactRuntime.CompactError(`getUnshieldedBalanceGteTest: expected 3 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
         const contextOrig_0 = args_1[0];
         const color_0 = args_1[1];
         const amount_0 = args_1[2];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.callContext.currentQueryContext != undefined)) {
           __compactRuntime.typeError('getUnshieldedBalanceGteTest',
                                      'argument 1 (as invoked from Typescript)',
                                      'unshielded.compact line 48 char 1',
@@ -600,7 +610,7 @@ export class Contract {
                                      'Uint<0..340282366920938463463374607431768211456>',
                                      amount_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
+        const context = __compactRuntime.copyCircuitContext(contextOrig_0);
         const partialProofData = {
           input: {
             value: _descriptor_2.toValue(color_0).concat(_descriptor_6.toValue(amount_0)),
@@ -610,21 +620,22 @@ export class Contract {
           publicTranscript: [],
           privateTranscriptOutputs: []
         };
-        const result_0 = this._getUnshieldedBalanceGteTest_0(context,
-                                                             partialProofData,
-                                                             color_0,
-                                                             amount_0);
+        const result_0 = await this._getUnshieldedBalanceGteTest_0(context,
+                                                                   partialProofData,
+                                                                   color_0,
+                                                                   amount_0);
         partialProofData.output = { value: _descriptor_1.toValue(result_0), alignment: _descriptor_1.alignment() };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
+        __compactRuntime.finalizeCallProofData(context, partialProofData);
+        return { result: result_0, context: context, gasCost: context.callContext.currentGasCost };
       },
-      getUnshieldedBalanceLteTest: (...args_1) => {
+      getUnshieldedBalanceLteTest: async (...args_1) => {
         if (args_1.length !== 3) {
           throw new __compactRuntime.CompactError(`getUnshieldedBalanceLteTest: expected 3 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
         const contextOrig_0 = args_1[0];
         const color_0 = args_1[1];
         const amount_0 = args_1[2];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.callContext.currentQueryContext != undefined)) {
           __compactRuntime.typeError('getUnshieldedBalanceLteTest',
                                      'argument 1 (as invoked from Typescript)',
                                      'unshielded.compact line 52 char 1',
@@ -645,7 +656,7 @@ export class Contract {
                                      'Uint<0..340282366920938463463374607431768211456>',
                                      amount_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
+        const context = __compactRuntime.copyCircuitContext(contextOrig_0);
         const partialProofData = {
           input: {
             value: _descriptor_2.toValue(color_0).concat(_descriptor_6.toValue(amount_0)),
@@ -655,20 +666,21 @@ export class Contract {
           publicTranscript: [],
           privateTranscriptOutputs: []
         };
-        const result_0 = this._getUnshieldedBalanceLteTest_0(context,
-                                                             partialProofData,
-                                                             color_0,
-                                                             amount_0);
+        const result_0 = await this._getUnshieldedBalanceLteTest_0(context,
+                                                                   partialProofData,
+                                                                   color_0,
+                                                                   amount_0);
         partialProofData.output = { value: _descriptor_1.toValue(result_0), alignment: _descriptor_1.alignment() };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
+        __compactRuntime.finalizeCallProofData(context, partialProofData);
+        return { result: result_0, context: context, gasCost: context.callContext.currentGasCost };
       },
-      receiveNightTokens: (...args_1) => {
+      receiveNightTokens: async (...args_1) => {
         if (args_1.length !== 2) {
           throw new __compactRuntime.CompactError(`receiveNightTokens: expected 2 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
         const contextOrig_0 = args_1[0];
         const amount_0 = args_1[1];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.callContext.currentQueryContext != undefined)) {
           __compactRuntime.typeError('receiveNightTokens',
                                      'argument 1 (as invoked from Typescript)',
                                      'unshielded.compact line 56 char 1',
@@ -682,7 +694,7 @@ export class Contract {
                                      'Uint<0..340282366920938463463374607431768211456>',
                                      amount_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
+        const context = __compactRuntime.copyCircuitContext(contextOrig_0);
         const partialProofData = {
           input: {
             value: _descriptor_6.toValue(amount_0),
@@ -692,20 +704,21 @@ export class Contract {
           publicTranscript: [],
           privateTranscriptOutputs: []
         };
-        const result_0 = this._receiveNightTokens_0(context,
-                                                    partialProofData,
-                                                    amount_0);
+        const result_0 = await this._receiveNightTokens_0(context,
+                                                          partialProofData,
+                                                          amount_0);
         partialProofData.output = { value: [], alignment: [] };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
+        __compactRuntime.finalizeCallProofData(context, partialProofData);
+        return { result: result_0, context: context, gasCost: context.callContext.currentGasCost };
       },
-      sendNightTokensToUser: (...args_1) => {
+      sendNightTokensToUser: async (...args_1) => {
         if (args_1.length !== 3) {
           throw new __compactRuntime.CompactError(`sendNightTokensToUser: expected 3 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
         const contextOrig_0 = args_1[0];
         const amount_0 = args_1[1];
         const user_addr_0 = args_1[2];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.callContext.currentQueryContext != undefined)) {
           __compactRuntime.typeError('sendNightTokensToUser',
                                      'argument 1 (as invoked from Typescript)',
                                      'unshielded.compact line 60 char 1',
@@ -726,7 +739,7 @@ export class Contract {
                                      'struct UserAddress<bytes: Bytes<32>>',
                                      user_addr_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
+        const context = __compactRuntime.copyCircuitContext(contextOrig_0);
         const partialProofData = {
           input: {
             value: _descriptor_0.toValue(amount_0).concat(_descriptor_4.toValue(user_addr_0)),
@@ -736,21 +749,22 @@ export class Contract {
           publicTranscript: [],
           privateTranscriptOutputs: []
         };
-        const result_0 = this._sendNightTokensToUser_0(context,
-                                                       partialProofData,
-                                                       amount_0,
-                                                       user_addr_0);
+        const result_0 = await this._sendNightTokensToUser_0(context,
+                                                             partialProofData,
+                                                             amount_0,
+                                                             user_addr_0);
         partialProofData.output = { value: [], alignment: [] };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
+        __compactRuntime.finalizeCallProofData(context, partialProofData);
+        return { result: result_0, context: context, gasCost: context.callContext.currentGasCost };
       },
-      sendNightTokensToRecipient: (...args_1) => {
+      sendNightTokensToRecipient: async (...args_1) => {
         if (args_1.length !== 3) {
           throw new __compactRuntime.CompactError(`sendNightTokensToRecipient: expected 3 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
         const contextOrig_0 = args_1[0];
         const amount_0 = args_1[1];
         const recipient_0 = args_1[2];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.callContext.currentQueryContext != undefined)) {
           __compactRuntime.typeError('sendNightTokensToRecipient',
                                      'argument 1 (as invoked from Typescript)',
                                      'unshielded.compact line 68 char 1',
@@ -771,7 +785,7 @@ export class Contract {
                                      'struct Either<is_left: Boolean, left: struct ContractAddress<bytes: Bytes<32>>, right: struct UserAddress<bytes: Bytes<32>>>',
                                      recipient_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
+        const context = __compactRuntime.copyCircuitContext(contextOrig_0);
         const partialProofData = {
           input: {
             value: _descriptor_0.toValue(amount_0).concat(_descriptor_5.toValue(recipient_0)),
@@ -781,12 +795,13 @@ export class Contract {
           publicTranscript: [],
           privateTranscriptOutputs: []
         };
-        const result_0 = this._sendNightTokensToRecipient_0(context,
-                                                            partialProofData,
-                                                            amount_0,
-                                                            recipient_0);
+        const result_0 = await this._sendNightTokensToRecipient_0(context,
+                                                                  partialProofData,
+                                                                  amount_0,
+                                                                  recipient_0);
         partialProofData.output = { value: [], alignment: [] };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
+        __compactRuntime.finalizeCallProofData(context, partialProofData);
+        return { result: result_0, context: context, gasCost: context.callContext.currentGasCost };
       }
     };
     this.impureCircuits = {
@@ -824,7 +839,7 @@ export class Contract {
       sendNightTokensToRecipient: this.circuits.sendNightTokensToRecipient
     };
   }
-  initialState(...args_0) {
+  async initialState(...args_0) {
     if (args_0.length !== 1) {
       throw new __compactRuntime.CompactError(`Contract state constructor: expected 1 argument (as invoked from Typescript), received ${args_0.length}`);
     }
@@ -856,18 +871,18 @@ export class Contract {
     state_0.setOperation('receiveNightTokens', new __compactRuntime.ContractOperation());
     state_0.setOperation('sendNightTokensToUser', new __compactRuntime.ContractOperation());
     state_0.setOperation('sendNightTokensToRecipient', new __compactRuntime.ContractOperation());
-    const context = __compactRuntime.createCircuitContext(__compactRuntime.dummyContractAddress(), constructorContext_0.initialZswapLocalState.coinPublicKey, state_0.data, constructorContext_0.initialPrivateState);
+    const context = __compactRuntime.createCircuitContext('constructor', __compactRuntime.dummyContractAddress(), constructorContext_0.initialZswapLocalState.coinPublicKey, state_0.data, constructorContext_0.initialPrivateState);
     const partialProofData = {
       input: { value: [], alignment: [] },
       output: undefined,
       publicTranscript: [],
       privateTranscriptOutputs: []
     };
-    state_0.data = new __compactRuntime.ChargedState(context.currentQueryContext.state.state);
+    state_0.data = new __compactRuntime.ChargedState(context.callContext.currentQueryContext.state.state);
     return {
       currentContractState: state_0,
-      currentPrivateState: context.currentPrivateState,
-      currentZswapLocalState: context.currentZswapLocalState
+      currentPrivateState: context.callContext.currentPrivateState,
+      currentZswapLocalState: context.callContext.currentZswapLocalState
     }
   }
   _left_0(value_0) {
@@ -886,11 +901,11 @@ export class Contract {
     return this._persistentCommit_0([domain_sep_0, contractAddress_0.bytes],
                                     new Uint8Array([109, 105, 100, 110, 105, 103, 104, 116, 58, 100, 101, 114, 105, 118, 101, 95, 116, 111, 107, 101, 110, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]));
   }
-  _mintUnshieldedToken_0(context,
-                         partialProofData,
-                         domainSep_0,
-                         amount_0,
-                         recipient_0)
+  async _mintUnshieldedToken_0(context,
+                               partialProofData,
+                               domainSep_0,
+                               amount_0,
+                               recipient_0)
   {
     __compactRuntime.queryLedgerState(context,
                                       partialProofData,
@@ -1022,7 +1037,12 @@ export class Contract {
     }
     return color_0;
   }
-  _sendUnshielded_0(context, partialProofData, color_0, amount_0, recipient_0) {
+  async _sendUnshielded_0(context,
+                          partialProofData,
+                          color_0,
+                          amount_0,
+                          recipient_0)
+  {
     const tmp_0 = this._left_1(color_0);
     __compactRuntime.queryLedgerState(context,
                                       partialProofData,
@@ -1139,7 +1159,7 @@ export class Contract {
     }
     return [];
   }
-  _receiveUnshielded_0(context, partialProofData, color_0, amount_0) {
+  async _receiveUnshielded_0(context, partialProofData, color_0, amount_0) {
     const tmp_0 = this._left_1(color_0);
     __compactRuntime.queryLedgerState(context,
                                       partialProofData,
@@ -1173,7 +1193,7 @@ export class Contract {
                                        { swap: { n: 0 } }]);
     return [];
   }
-  _unshieldedBalance_0(context, partialProofData, color_0) {
+  async _unshieldedBalance_0(context, partialProofData, color_0) {
     const tmp_0 = this._left_1(color_0);
     return _descriptor_6.fromValue(__compactRuntime.queryLedgerState(context,
                                                                      partialProofData,
@@ -1205,7 +1225,7 @@ export class Contract {
                                                                       { popeq: { cached: true,
                                                                                  result: undefined } }]).value);
   }
-  _unshieldedBalanceLt_0(context, partialProofData, color_0, amount_0) {
+  async _unshieldedBalanceLt_0(context, partialProofData, color_0, amount_0) {
     const tmp_0 = this._left_1(color_0);
     return _descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
                                                                      partialProofData,
@@ -1241,13 +1261,13 @@ export class Contract {
                                                                       { popeq: { cached: true,
                                                                                  result: undefined } }]).value);
   }
-  _unshieldedBalanceGte_0(context, partialProofData, color_0, amount_0) {
-    return !this._unshieldedBalanceLt_0(context,
-                                        partialProofData,
-                                        color_0,
-                                        amount_0);
+  async _unshieldedBalanceGte_0(context, partialProofData, color_0, amount_0) {
+    return !await this._unshieldedBalanceLt_0(context,
+                                              partialProofData,
+                                              color_0,
+                                              amount_0);
   }
-  _unshieldedBalanceGt_0(context, partialProofData, color_0, amount_0) {
+  async _unshieldedBalanceGt_0(context, partialProofData, color_0, amount_0) {
     const tmp_0 = this._left_1(color_0);
     return _descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
                                                                      partialProofData,
@@ -1283,11 +1303,11 @@ export class Contract {
                                                                       { popeq: { cached: true,
                                                                                  result: undefined } }]).value);
   }
-  _unshieldedBalanceLte_0(context, partialProofData, color_0, amount_0) {
-    return !this._unshieldedBalanceGt_0(context,
-                                        partialProofData,
-                                        color_0,
-                                        amount_0);
+  async _unshieldedBalanceLte_0(context, partialProofData, color_0, amount_0) {
+    return !await this._unshieldedBalanceGt_0(context,
+                                              partialProofData,
+                                              color_0,
+                                              amount_0);
   }
   _persistentCommit_0(value_0, rand_0) {
     const result_0 = __compactRuntime.persistentCommit(_descriptor_7,
@@ -1295,37 +1315,40 @@ export class Contract {
                                                        rand_0);
     return result_0;
   }
-  _mintUnshieldedToSelfTest_0(context, partialProofData, domainSep_0, amount_0)
+  async _mintUnshieldedToSelfTest_0(context,
+                                    partialProofData,
+                                    domainSep_0,
+                                    amount_0)
   {
-    const color_0 = this._mintUnshieldedToken_0(context,
-                                                partialProofData,
-                                                domainSep_0,
-                                                amount_0,
-                                                this._left_0(_descriptor_3.fromValue(__compactRuntime.queryLedgerState(context,
-                                                                                                                       partialProofData,
-                                                                                                                       [
-                                                                                                                        { dup: { n: 2 } },
-                                                                                                                        { idx: { cached: true,
-                                                                                                                                 pushPath: false,
-                                                                                                                                 path: [
-                                                                                                                                        { tag: 'value',
-                                                                                                                                          value: { value: _descriptor_9.toValue(0n),
-                                                                                                                                                   alignment: _descriptor_9.alignment() } }] } },
-                                                                                                                        { popeq: { cached: true,
-                                                                                                                                   result: undefined } }]).value)));
+    const color_0 = await this._mintUnshieldedToken_0(context,
+                                                      partialProofData,
+                                                      domainSep_0,
+                                                      amount_0,
+                                                      this._left_0(_descriptor_3.fromValue(__compactRuntime.queryLedgerState(context,
+                                                                                                                             partialProofData,
+                                                                                                                             [
+                                                                                                                              { dup: { n: 2 } },
+                                                                                                                              { idx: { cached: true,
+                                                                                                                                       pushPath: false,
+                                                                                                                                       path: [
+                                                                                                                                              { tag: 'value',
+                                                                                                                                                value: { value: _descriptor_9.toValue(0n),
+                                                                                                                                                         alignment: _descriptor_9.alignment() } }] } },
+                                                                                                                              { popeq: { cached: true,
+                                                                                                                                         result: undefined } }]).value)));
     return color_0;
   }
-  _mintUnshieldedToContractTest_0(context,
-                                  partialProofData,
-                                  domainSep_0,
-                                  address_0,
-                                  amount_0)
+  async _mintUnshieldedToContractTest_0(context,
+                                        partialProofData,
+                                        domainSep_0,
+                                        address_0,
+                                        amount_0)
   {
-    const color_0 = this._mintUnshieldedToken_0(context,
-                                                partialProofData,
-                                                domainSep_0,
-                                                amount_0,
-                                                this._left_0(address_0));
+    const color_0 = await this._mintUnshieldedToken_0(context,
+                                                      partialProofData,
+                                                      domainSep_0,
+                                                      amount_0,
+                                                      this._left_0(address_0));
     if (!this._equal_2(address_0,
                        _descriptor_3.fromValue(__compactRuntime.queryLedgerState(context,
                                                                                  partialProofData,
@@ -1340,120 +1363,147 @@ export class Contract {
                                                                                   { popeq: { cached: true,
                                                                                              result: undefined } }]).value)))
     {
-      this._receiveUnshielded_0(context, partialProofData, color_0, amount_0);
+      await this._receiveUnshielded_0(context,
+                                      partialProofData,
+                                      color_0,
+                                      amount_0);
     }
     return color_0;
   }
-  _mintUnshieldedToUserTest_0(context,
-                              partialProofData,
-                              domainSep_0,
-                              address_0,
-                              amount_0)
+  async _mintUnshieldedToUserTest_0(context,
+                                    partialProofData,
+                                    domainSep_0,
+                                    address_0,
+                                    amount_0)
   {
-    return this._mintUnshieldedToken_0(context,
-                                       partialProofData,
-                                       domainSep_0,
-                                       amount_0,
-                                       this._right_0(address_0));
+    return await this._mintUnshieldedToken_0(context,
+                                             partialProofData,
+                                             domainSep_0,
+                                             amount_0,
+                                             this._right_0(address_0));
   }
-  _sendUnshieldedToSelfTest_0(context, partialProofData, color_0, amount_0) {
-    this._sendUnshielded_0(context,
-                           partialProofData,
-                           color_0,
-                           amount_0,
-                           this._left_0(_descriptor_3.fromValue(__compactRuntime.queryLedgerState(context,
-                                                                                                  partialProofData,
-                                                                                                  [
-                                                                                                   { dup: { n: 2 } },
-                                                                                                   { idx: { cached: true,
-                                                                                                            pushPath: false,
-                                                                                                            path: [
-                                                                                                                   { tag: 'value',
-                                                                                                                     value: { value: _descriptor_9.toValue(0n),
-                                                                                                                              alignment: _descriptor_9.alignment() } }] } },
-                                                                                                   { popeq: { cached: true,
-                                                                                                              result: undefined } }]).value)));
-    return [];
-  }
-  _sendUnshieldedToContractTest_0(context,
-                                  partialProofData,
-                                  color_0,
-                                  amount_0,
-                                  address_0)
+  async _sendUnshieldedToSelfTest_0(context, partialProofData, color_0, amount_0)
   {
-    this._sendUnshielded_0(context,
-                           partialProofData,
-                           color_0,
-                           amount_0,
-                           this._left_0(address_0));
+    await this._sendUnshielded_0(context,
+                                 partialProofData,
+                                 color_0,
+                                 amount_0,
+                                 this._left_0(_descriptor_3.fromValue(__compactRuntime.queryLedgerState(context,
+                                                                                                        partialProofData,
+                                                                                                        [
+                                                                                                         { dup: { n: 2 } },
+                                                                                                         { idx: { cached: true,
+                                                                                                                  pushPath: false,
+                                                                                                                  path: [
+                                                                                                                         { tag: 'value',
+                                                                                                                           value: { value: _descriptor_9.toValue(0n),
+                                                                                                                                    alignment: _descriptor_9.alignment() } }] } },
+                                                                                                         { popeq: { cached: true,
+                                                                                                                    result: undefined } }]).value)));
     return [];
   }
-  _sendUnshieldedToUserTest_0(context,
-                              partialProofData,
-                              color_0,
-                              amount_0,
-                              address_0)
-  {
-    this._sendUnshielded_0(context,
-                           partialProofData,
-                           color_0,
-                           amount_0,
-                           this._right_0(address_0));
-    return [];
-  }
-  _receiveUnshieldedTest_0(context, partialProofData, color_0, amount_0) {
-    this._receiveUnshielded_0(context, partialProofData, color_0, amount_0);
-    return [];
-  }
-  _getUnshieldedBalanceTest_0(context, partialProofData, color_0) {
-    return this._unshieldedBalance_0(context, partialProofData, color_0);
-  }
-  _getUnshieldedBalanceGtTest_0(context, partialProofData, color_0, amount_0) {
-    return this._unshieldedBalanceGt_0(context,
-                                       partialProofData,
-                                       color_0,
-                                       amount_0);
-  }
-  _getUnshieldedBalanceLtTest_0(context, partialProofData, color_0, amount_0) {
-    return this._unshieldedBalanceLt_0(context,
-                                       partialProofData,
-                                       color_0,
-                                       amount_0);
-  }
-  _getUnshieldedBalanceGteTest_0(context, partialProofData, color_0, amount_0) {
-    return this._unshieldedBalanceGte_0(context,
+  async _sendUnshieldedToContractTest_0(context,
                                         partialProofData,
                                         color_0,
-                                        amount_0);
-  }
-  _getUnshieldedBalanceLteTest_0(context, partialProofData, color_0, amount_0) {
-    return this._unshieldedBalanceLte_0(context,
-                                        partialProofData,
-                                        color_0,
-                                        amount_0);
-  }
-  _receiveNightTokens_0(context, partialProofData, amount_0) {
-    this._receiveUnshielded_0(context,
-                              partialProofData,
-                              new Uint8Array(32),
-                              amount_0);
-    return [];
-  }
-  _sendNightTokensToUser_0(context, partialProofData, amount_0, user_addr_0) {
-    this._sendUnshielded_0(context,
-                           partialProofData,
-                           new Uint8Array(32),
-                           amount_0,
-                           this._right_0(user_addr_0));
-    return [];
-  }
-  _sendNightTokensToRecipient_0(context, partialProofData, amount_0, recipient_0)
+                                        amount_0,
+                                        address_0)
   {
-    this._sendUnshielded_0(context,
-                           partialProofData,
-                           this._nativeToken_0(),
-                           amount_0,
-                           recipient_0);
+    await this._sendUnshielded_0(context,
+                                 partialProofData,
+                                 color_0,
+                                 amount_0,
+                                 this._left_0(address_0));
+    return [];
+  }
+  async _sendUnshieldedToUserTest_0(context,
+                                    partialProofData,
+                                    color_0,
+                                    amount_0,
+                                    address_0)
+  {
+    await this._sendUnshielded_0(context,
+                                 partialProofData,
+                                 color_0,
+                                 amount_0,
+                                 this._right_0(address_0));
+    return [];
+  }
+  async _receiveUnshieldedTest_0(context, partialProofData, color_0, amount_0) {
+    await this._receiveUnshielded_0(context, partialProofData, color_0, amount_0);
+    return [];
+  }
+  async _getUnshieldedBalanceTest_0(context, partialProofData, color_0) {
+    return await this._unshieldedBalance_0(context, partialProofData, color_0);
+  }
+  async _getUnshieldedBalanceGtTest_0(context,
+                                      partialProofData,
+                                      color_0,
+                                      amount_0)
+  {
+    return await this._unshieldedBalanceGt_0(context,
+                                             partialProofData,
+                                             color_0,
+                                             amount_0);
+  }
+  async _getUnshieldedBalanceLtTest_0(context,
+                                      partialProofData,
+                                      color_0,
+                                      amount_0)
+  {
+    return await this._unshieldedBalanceLt_0(context,
+                                             partialProofData,
+                                             color_0,
+                                             amount_0);
+  }
+  async _getUnshieldedBalanceGteTest_0(context,
+                                       partialProofData,
+                                       color_0,
+                                       amount_0)
+  {
+    return await this._unshieldedBalanceGte_0(context,
+                                              partialProofData,
+                                              color_0,
+                                              amount_0);
+  }
+  async _getUnshieldedBalanceLteTest_0(context,
+                                       partialProofData,
+                                       color_0,
+                                       amount_0)
+  {
+    return await this._unshieldedBalanceLte_0(context,
+                                              partialProofData,
+                                              color_0,
+                                              amount_0);
+  }
+  async _receiveNightTokens_0(context, partialProofData, amount_0) {
+    await this._receiveUnshielded_0(context,
+                                    partialProofData,
+                                    new Uint8Array(32),
+                                    amount_0);
+    return [];
+  }
+  async _sendNightTokensToUser_0(context,
+                                 partialProofData,
+                                 amount_0,
+                                 user_addr_0)
+  {
+    await this._sendUnshielded_0(context,
+                                 partialProofData,
+                                 new Uint8Array(32),
+                                 amount_0,
+                                 this._right_0(user_addr_0));
+    return [];
+  }
+  async _sendNightTokensToRecipient_0(context,
+                                      partialProofData,
+                                      amount_0,
+                                      recipient_0)
+  {
+    await this._sendUnshielded_0(context,
+                                 partialProofData,
+                                 this._nativeToken_0(),
+                                 amount_0,
+                                 recipient_0);
     return [];
   }
   _equal_0(x0, y0) {
@@ -1477,7 +1527,7 @@ export function ledger(stateOrChargedState) {
   const state = stateOrChargedState instanceof __compactRuntime.StateValue ? stateOrChargedState : stateOrChargedState.state;
   const chargedState = stateOrChargedState instanceof __compactRuntime.StateValue ? new __compactRuntime.ChargedState(stateOrChargedState) : stateOrChargedState;
   const context = {
-    currentQueryContext: new __compactRuntime.QueryContext(chargedState, __compactRuntime.dummyContractAddress()),
+    callContext: { currentQueryContext: new __compactRuntime.QueryContext(chargedState, __compactRuntime.dummyContractAddress()), currentGasCost: __compactRuntime.emptyRunningCost() },
     costModel: __compactRuntime.CostModel.initialCostModel()
   };
   const partialProofData = {
@@ -1490,10 +1540,28 @@ export function ledger(stateOrChargedState) {
   };
 }
 const _emptyContext = {
-  currentQueryContext: new __compactRuntime.QueryContext(new __compactRuntime.ContractState().data, __compactRuntime.dummyContractAddress())
+  callContext: { currentQueryContext: new __compactRuntime.QueryContext(new __compactRuntime.ContractState().data, __compactRuntime.dummyContractAddress()), currentGasCost: __compactRuntime.emptyRunningCost() }
 };
 const _dummyContract = new Contract({ });
 export const pureCircuits = {};
 export const contractReferenceLocations =
   { tag: 'publicLedgerArray', indices: { } };
+export const expectedVk = {
+  'getUnshieldedBalanceGtTest': '0d8df5d0cab71a135e63606fceb46607eb236712757654a17c0e4cadb51db68d',
+  'getUnshieldedBalanceGteTest': '727366cba8899cc10987875c7b9af575d351c6e7698339f6642bee52caf42aea',
+  'getUnshieldedBalanceLtTest': '873586089e51d4272432de80e276a8e9ebf13a7c5d2b09f844d9b4db8c2649d1',
+  'getUnshieldedBalanceLteTest': '85c46d60f9b187a16386673778856b366d08fdadf1e9df6423525264c20ac92d',
+  'getUnshieldedBalanceTest': '31f6c65107af914e2841a9ecbf201ca12733b3d3b31186d3980267463e07eea7',
+  'mintUnshieldedToContractTest': '1831e4ccf84abd13f9b64a338b49085f0eb733a0263dc94099a3ef5a84c4de1e',
+  'mintUnshieldedToSelfTest': 'a8fd6fa9f65f07a991c5772c6409b1d2672923ef36153618c1f59e38f1b5aa00',
+  'mintUnshieldedToUserTest': '995709a8c8624b163da299ba6f8f48a5be3d54a3c503433fe9bf33677a6a950d',
+  'receiveNightTokens': '33e57b6ffe3dbd3510b93a38a599bc582b43513c73d0dc591969d0d680d90d4f',
+  'receiveUnshieldedTest': 'a3c403ecb5f1f3717e93cf10744c0a3545d4548bd8defd2b4871c8a1a0918828',
+  'sendNightTokensToRecipient': 'eb34e2c77715b2351d3aa36afd3144dfc2f0a63c6e35ba2e2353ba9f326c7ee4',
+  'sendNightTokensToUser': 'f6b8fb7bcb07fca13f90c7c7e5125a561164daaeca60f36c282156920b7e45be',
+  'sendUnshieldedToContractTest': 'e6eea63d035e5ca5de95da16d9bdb58eaeeec8645035e97db27e8ec5728e17b8',
+  'sendUnshieldedToSelfTest': '7727578b6a56689e9f1aa13e14c980e567be5803a247b55ec765e7722d6c73bc',
+  'sendUnshieldedToUserTest': '57a047d2f3d1dae12c475f49b452214ae8737c842db618d1e619183c96551954',
+};
+
 //# sourceMappingURL=index.js.map

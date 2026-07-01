@@ -1,5 +1,5 @@
 import * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
-__compactRuntime.checkRuntimeVersion('0.17.102');
+__compactRuntime.checkRuntimeVersion('0.18.0-rc.0');
 
 const _descriptor_0 = new __compactRuntime.CompactTypeBytes(32);
 
@@ -191,7 +191,7 @@ export class Contract {
     }
     this.witnesses = witnesses_0;
     this.circuits = {
-      heavyCheckpointMintAndSend: (...args_1) => {
+      heavyCheckpointMintAndSend: async (...args_1) => {
         if (args_1.length !== 6) {
           throw new __compactRuntime.CompactError(`heavyCheckpointMintAndSend: expected 6 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
@@ -201,7 +201,7 @@ export class Contract {
         const mintNonce_0 = args_1[3];
         const publicKey_0 = args_1[4];
         const sendValue_0 = args_1[5];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.callContext.currentQueryContext != undefined)) {
           __compactRuntime.typeError('heavyCheckpointMintAndSend',
                                      'argument 1 (as invoked from Typescript)',
                                      'shielded-fallible.compact line 20 char 1',
@@ -243,7 +243,7 @@ export class Contract {
                                      'Uint<0..340282366920938463463374607431768211456>',
                                      sendValue_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
+        const context = __compactRuntime.copyCircuitContext(contextOrig_0);
         const partialProofData = {
           input: {
             value: _descriptor_0.toValue(domainSep_0).concat(_descriptor_1.toValue(mintValue_0).concat(_descriptor_0.toValue(mintNonce_0).concat(_descriptor_4.toValue(publicKey_0).concat(_descriptor_5.toValue(sendValue_0))))),
@@ -253,15 +253,16 @@ export class Contract {
           publicTranscript: [],
           privateTranscriptOutputs: []
         };
-        const result_0 = this._heavyCheckpointMintAndSend_0(context,
-                                                            partialProofData,
-                                                            domainSep_0,
-                                                            mintValue_0,
-                                                            mintNonce_0,
-                                                            publicKey_0,
-                                                            sendValue_0);
+        const result_0 = await this._heavyCheckpointMintAndSend_0(context,
+                                                                  partialProofData,
+                                                                  domainSep_0,
+                                                                  mintValue_0,
+                                                                  mintNonce_0,
+                                                                  publicKey_0,
+                                                                  sendValue_0);
         partialProofData.output = { value: _descriptor_8.toValue(result_0), alignment: _descriptor_8.alignment() };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
+        __compactRuntime.finalizeCallProofData(context, partialProofData);
+        return { result: result_0, context: context, gasCost: context.callContext.currentGasCost };
       }
     };
     this.impureCircuits = {
@@ -271,7 +272,7 @@ export class Contract {
       heavyCheckpointMintAndSend: this.circuits.heavyCheckpointMintAndSend
     };
   }
-  initialState(...args_0) {
+  async initialState(...args_0) {
     if (args_0.length !== 1) {
       throw new __compactRuntime.CompactError(`Contract state constructor: expected 1 argument (as invoked from Typescript), received ${args_0.length}`);
     }
@@ -290,7 +291,7 @@ export class Contract {
     stateValue_0 = stateValue_0.arrayPush(__compactRuntime.StateValue.newNull());
     state_0.data = new __compactRuntime.ChargedState(stateValue_0);
     state_0.setOperation('heavyCheckpointMintAndSend', new __compactRuntime.ContractOperation());
-    const context = __compactRuntime.createCircuitContext(__compactRuntime.dummyContractAddress(), constructorContext_0.initialZswapLocalState.coinPublicKey, state_0.data, constructorContext_0.initialPrivateState);
+    const context = __compactRuntime.createCircuitContext('constructor', __compactRuntime.dummyContractAddress(), constructorContext_0.initialZswapLocalState.coinPublicKey, state_0.data, constructorContext_0.initialPrivateState);
     const partialProofData = {
       input: { value: [], alignment: [] },
       output: undefined,
@@ -308,11 +309,11 @@ export class Contract {
                                                           new __compactRuntime.StateMap()
                                                         ).encode() } },
                                        { ins: { cached: false, n: 1 } }]);
-    state_0.data = new __compactRuntime.ChargedState(context.currentQueryContext.state.state);
+    state_0.data = new __compactRuntime.ChargedState(context.callContext.currentQueryContext.state.state);
     return {
       currentContractState: state_0,
-      currentPrivateState: context.currentPrivateState,
-      currentZswapLocalState: context.currentZswapLocalState
+      currentPrivateState: context.callContext.currentPrivateState,
+      currentZswapLocalState: context.callContext.currentZswapLocalState
     }
   }
   _some_0(value_0) { return { is_some: true, value: value_0 }; }
@@ -331,12 +332,12 @@ export class Contract {
     return this._persistentCommit_0([domain_sep_0, contractAddress_0.bytes],
                                     new Uint8Array([109, 105, 100, 110, 105, 103, 104, 116, 58, 100, 101, 114, 105, 118, 101, 95, 116, 111, 107, 101, 110, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]));
   }
-  _mintShieldedToken_0(context,
-                       partialProofData,
-                       domain_sep_0,
-                       value_0,
-                       nonce_0,
-                       recipient_0)
+  async _mintShieldedToken_0(context,
+                             partialProofData,
+                             domain_sep_0,
+                             value_0,
+                             nonce_0,
+                             recipient_0)
   {
     const coin_0 = { nonce: nonce_0,
                      color:
@@ -439,7 +440,8 @@ export class Contract {
     }
     return coin_0;
   }
-  _sendShielded_0(context, partialProofData, input_0, recipient_0, value_0) {
+  async _sendShielded_0(context, partialProofData, input_0, recipient_0, value_0)
+  {
     const selfAddr_0 = _descriptor_3.fromValue(__compactRuntime.queryLedgerState(context,
                                                                                  partialProofData,
                                                                                  [
@@ -478,9 +480,11 @@ export class Contract {
                                                'result of subtraction would be negative'),
                        t_0 - value_0));
     const output_0 = { nonce:
-                         this._upgradeFromTransient_0(this._transientHash_0([__compactRuntime.convertBytesToField(28,
-                                                                                                                  new Uint8Array([109, 105, 100, 110, 105, 103, 104, 116, 58, 107, 101, 114, 110, 101, 108, 58, 110, 111, 110, 99, 101, 95, 101, 118, 111, 108, 118, 101]),
-                                                                                                                  '<standard library>'),
+                         this._upgradeFromTransient_0(this._transientHash_0([__compactRuntime.convertBytesToBigint(52435875175126190479447740508185965837690552500527637822603658699938581184512n,
+                                                                                                                   28,
+                                                                                                                   new Uint8Array([109, 105, 100, 110, 105, 103, 104, 116, 58, 107, 101, 114, 110, 101, 108, 58, 110, 111, 110, 99, 101, 95, 101, 118, 111, 108, 118, 101]),
+                                                                                                                   'Field',
+                                                                                                                   '<standard library>'),
                                                                              this._degradeToTransient_0(input_0.nonce)])),
                        color: input_0.color,
                        value: value_0 };
@@ -530,9 +534,11 @@ export class Contract {
       return { change: this._none_0(), sent: output_0 };
     } else {
       const changeCoin_0 = { nonce:
-                               this._upgradeFromTransient_0(this._transientHash_0([__compactRuntime.convertBytesToField(30,
-                                                                                                                        new Uint8Array([109, 105, 100, 110, 105, 103, 104, 116, 58, 107, 101, 114, 110, 101, 108, 58, 110, 111, 110, 99, 101, 95, 101, 118, 111, 108, 118, 101, 47, 50]),
-                                                                                                                        '<standard library>'),
+                               this._upgradeFromTransient_0(this._transientHash_0([__compactRuntime.convertBytesToBigint(52435875175126190479447740508185965837690552500527637822603658699938581184512n,
+                                                                                                                         30,
+                                                                                                                         new Uint8Array([109, 105, 100, 110, 105, 103, 104, 116, 58, 107, 101, 114, 110, 101, 108, 58, 110, 111, 110, 99, 101, 95, 101, 118, 111, 108, 118, 101, 47, 50]),
+                                                                                                                         'Field',
+                                                                                                                         '<standard library>'),
                                                                                    this._degradeToTransient_0(input_0.nonce)])),
                              color: input_0.color,
                              value: change_0 };
@@ -643,101 +649,101 @@ export class Contract {
     });
     return result_0;
   }
-  _heavyCheckpointMintAndSend_0(context,
-                                partialProofData,
-                                domainSep_0,
-                                mintValue_0,
-                                mintNonce_0,
-                                publicKey_0,
-                                sendValue_0)
+  async _heavyCheckpointMintAndSend_0(context,
+                                      partialProofData,
+                                      domainSep_0,
+                                      mintValue_0,
+                                      mintNonce_0,
+                                      publicKey_0,
+                                      sendValue_0)
   {
-    this._folder_0(context,
-                   partialProofData,
-                   ((context, partialProofData, t_0, i_0) =>
-                    {
-                      const key_0 = this._persistentHash_1([mintNonce_0,
-                                                            domainSep_0]);
-                      __compactRuntime.queryLedgerState(context,
-                                                        partialProofData,
-                                                        [
-                                                         { idx: { cached: false,
-                                                                  pushPath: true,
-                                                                  path: [
-                                                                         { tag: 'value',
-                                                                           value: { value: _descriptor_17.toValue(0n),
-                                                                                    alignment: _descriptor_17.alignment() } }] } },
-                                                         { push: { storage: false,
-                                                                   value: __compactRuntime.StateValue.newCell({ value: _descriptor_0.toValue(key_0),
-                                                                                                                alignment: _descriptor_0.alignment() }).encode() } },
-                                                         { push: { storage: true,
-                                                                   value: __compactRuntime.StateValue.newCell({ value: _descriptor_1.toValue(0n),
-                                                                                                                alignment: _descriptor_1.alignment() }).encode() } },
-                                                         { ins: { cached: false,
-                                                                  n: 1 } },
-                                                         { ins: { cached: true,
-                                                                  n: 1 } }]);
-                      return t_0;
-                    }),
-                   [],
-                   [0n,
-                    1n,
-                    2n,
-                    3n,
-                    4n,
-                    5n,
-                    6n,
-                    7n,
-                    8n,
-                    9n,
-                    10n,
-                    11n,
-                    12n,
-                    13n,
-                    14n,
-                    15n,
-                    16n,
-                    17n,
-                    18n,
-                    19n,
-                    20n,
-                    21n,
-                    22n,
-                    23n,
-                    24n,
-                    25n,
-                    26n,
-                    27n,
-                    28n,
-                    29n,
-                    30n,
-                    31n]);
+    await this._folder_0(context,
+                         partialProofData,
+                         (async (context, partialProofData, t_0, i_0) =>
+                          {
+                            const key_0 = this._persistentHash_1([mintNonce_0,
+                                                                  domainSep_0]);
+                            __compactRuntime.queryLedgerState(context,
+                                                              partialProofData,
+                                                              [
+                                                               { idx: { cached: false,
+                                                                        pushPath: true,
+                                                                        path: [
+                                                                               { tag: 'value',
+                                                                                 value: { value: _descriptor_17.toValue(0n),
+                                                                                          alignment: _descriptor_17.alignment() } }] } },
+                                                               { push: { storage: false,
+                                                                         value: __compactRuntime.StateValue.newCell({ value: _descriptor_0.toValue(key_0),
+                                                                                                                      alignment: _descriptor_0.alignment() }).encode() } },
+                                                               { push: { storage: true,
+                                                                         value: __compactRuntime.StateValue.newCell({ value: _descriptor_1.toValue(0n),
+                                                                                                                      alignment: _descriptor_1.alignment() }).encode() } },
+                                                               { ins: { cached: false,
+                                                                        n: 1 } },
+                                                               { ins: { cached: true,
+                                                                        n: 1 } }]);
+                            return t_0;
+                          }),
+                         [],
+                         [0n,
+                          1n,
+                          2n,
+                          3n,
+                          4n,
+                          5n,
+                          6n,
+                          7n,
+                          8n,
+                          9n,
+                          10n,
+                          11n,
+                          12n,
+                          13n,
+                          14n,
+                          15n,
+                          16n,
+                          17n,
+                          18n,
+                          19n,
+                          20n,
+                          21n,
+                          22n,
+                          23n,
+                          24n,
+                          25n,
+                          26n,
+                          27n,
+                          28n,
+                          29n,
+                          30n,
+                          31n]);
     __compactRuntime.queryLedgerState(context, partialProofData, [ 'ckpt']);
-    const coin_0 = this._mintShieldedToken_0(context,
-                                             partialProofData,
-                                             domainSep_0,
-                                             mintValue_0,
-                                             mintNonce_0,
-                                             this._right_0(_descriptor_3.fromValue(__compactRuntime.queryLedgerState(context,
-                                                                                                                     partialProofData,
-                                                                                                                     [
-                                                                                                                      { dup: { n: 2 } },
-                                                                                                                      { idx: { cached: true,
-                                                                                                                               pushPath: false,
-                                                                                                                               path: [
-                                                                                                                                      { tag: 'value',
-                                                                                                                                        value: { value: _descriptor_17.toValue(0n),
-                                                                                                                                                 alignment: _descriptor_17.alignment() } }] } },
-                                                                                                                      { popeq: { cached: true,
-                                                                                                                                 result: undefined } }]).value)));
+    const coin_0 = await this._mintShieldedToken_0(context,
+                                                   partialProofData,
+                                                   domainSep_0,
+                                                   mintValue_0,
+                                                   mintNonce_0,
+                                                   this._right_0(_descriptor_3.fromValue(__compactRuntime.queryLedgerState(context,
+                                                                                                                           partialProofData,
+                                                                                                                           [
+                                                                                                                            { dup: { n: 2 } },
+                                                                                                                            { idx: { cached: true,
+                                                                                                                                     pushPath: false,
+                                                                                                                                     path: [
+                                                                                                                                            { tag: 'value',
+                                                                                                                                              value: { value: _descriptor_17.toValue(0n),
+                                                                                                                                                       alignment: _descriptor_17.alignment() } }] } },
+                                                                                                                            { popeq: { cached: true,
+                                                                                                                                       result: undefined } }]).value)));
     const qualified_0 = { nonce: coin_0.nonce,
                           color: coin_0.color,
                           value: coin_0.value,
                           mt_index: 0n };
-    return this._sendShielded_0(context,
-                                partialProofData,
-                                qualified_0,
-                                this._left_0(publicKey_0),
-                                sendValue_0);
+    return await this._sendShielded_0(context,
+                                      partialProofData,
+                                      qualified_0,
+                                      this._left_0(publicKey_0),
+                                      sendValue_0);
   }
   _equal_0(x0, y0) {
     if (!x0.every((x, i) => y0[i] === x)) { return false; }
@@ -751,8 +757,8 @@ export class Contract {
     if (x0 !== y0) { return false; }
     return true;
   }
-  _folder_0(context, partialProofData, f, x, a0) {
-    for (let i = 0; i < 32; i++) { x = f(context, partialProofData, x, a0[i]); }
+  async _folder_0(context, partialProofData, f, x, a0) {
+    for (let i = 0; i < 32; i++) { x = await f(context, partialProofData, x, a0[i]); }
     return x;
   }
 }
@@ -760,7 +766,7 @@ export function ledger(stateOrChargedState) {
   const state = stateOrChargedState instanceof __compactRuntime.StateValue ? stateOrChargedState : stateOrChargedState.state;
   const chargedState = stateOrChargedState instanceof __compactRuntime.StateValue ? new __compactRuntime.ChargedState(stateOrChargedState) : stateOrChargedState;
   const context = {
-    currentQueryContext: new __compactRuntime.QueryContext(chargedState, __compactRuntime.dummyContractAddress()),
+    callContext: { currentQueryContext: new __compactRuntime.QueryContext(chargedState, __compactRuntime.dummyContractAddress()), currentGasCost: __compactRuntime.emptyRunningCost() },
     costModel: __compactRuntime.CostModel.initialCostModel()
   };
   const partialProofData = {
@@ -883,10 +889,14 @@ export function ledger(stateOrChargedState) {
   };
 }
 const _emptyContext = {
-  currentQueryContext: new __compactRuntime.QueryContext(new __compactRuntime.ContractState().data, __compactRuntime.dummyContractAddress())
+  callContext: { currentQueryContext: new __compactRuntime.QueryContext(new __compactRuntime.ContractState().data, __compactRuntime.dummyContractAddress()), currentGasCost: __compactRuntime.emptyRunningCost() }
 };
 const _dummyContract = new Contract({ });
 export const pureCircuits = {};
 export const contractReferenceLocations =
   { tag: 'publicLedgerArray', indices: { } };
+export const expectedVk = {
+  'heavyCheckpointMintAndSend': '13505057c20988818733a0b93ca95493180ca910d65a2376a8869d4ac1e9e7c7',
+};
+
 //# sourceMappingURL=index.js.map

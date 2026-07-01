@@ -1,5 +1,5 @@
 import * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
-__compactRuntime.checkRuntimeVersion('0.17.102');
+__compactRuntime.checkRuntimeVersion('0.18.0-rc.0');
 
 const _descriptor_0 = new __compactRuntime.CompactTypeBytes(32);
 
@@ -191,14 +191,14 @@ export class Contract {
     }
     this.witnesses = witnesses_0;
     this.circuits = {
-      mintShieldedTokens: (...args_1) => {
+      mintShieldedTokens: async (...args_1) => {
         if (args_1.length !== 3) {
           throw new __compactRuntime.CompactError(`mintShieldedTokens: expected 3 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
         const contextOrig_0 = args_1[0];
         const domainSep_0 = args_1[1];
         const amount_0 = args_1[2];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.callContext.currentQueryContext != undefined)) {
           __compactRuntime.typeError('mintShieldedTokens',
                                      'argument 1 (as invoked from Typescript)',
                                      'shielded.compact line 3 char 1',
@@ -219,7 +219,7 @@ export class Contract {
                                      'Uint<0..18446744073709551616>',
                                      amount_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
+        const context = __compactRuntime.copyCircuitContext(contextOrig_0);
         const partialProofData = {
           input: {
             value: _descriptor_0.toValue(domainSep_0).concat(_descriptor_2.toValue(amount_0)),
@@ -229,14 +229,15 @@ export class Contract {
           publicTranscript: [],
           privateTranscriptOutputs: []
         };
-        const result_0 = this._mintShieldedTokens_0(context,
-                                                    partialProofData,
-                                                    domainSep_0,
-                                                    amount_0);
+        const result_0 = await this._mintShieldedTokens_0(context,
+                                                          partialProofData,
+                                                          domainSep_0,
+                                                          amount_0);
         partialProofData.output = { value: _descriptor_4.toValue(result_0), alignment: _descriptor_4.alignment() };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
+        __compactRuntime.finalizeCallProofData(context, partialProofData);
+        return { result: result_0, context: context, gasCost: context.callContext.currentGasCost };
       },
-      mintAndSendShielded: (...args_1) => {
+      mintAndSendShielded: async (...args_1) => {
         if (args_1.length !== 6) {
           throw new __compactRuntime.CompactError(`mintAndSendShielded: expected 6 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
@@ -246,7 +247,7 @@ export class Contract {
         const mintNonce_0 = args_1[3];
         const publicKey_0 = args_1[4];
         const sendValue_0 = args_1[5];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.callContext.currentQueryContext != undefined)) {
           __compactRuntime.typeError('mintAndSendShielded',
                                      'argument 1 (as invoked from Typescript)',
                                      'shielded.compact line 8 char 1',
@@ -288,7 +289,7 @@ export class Contract {
                                      'Uint<0..340282366920938463463374607431768211456>',
                                      sendValue_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
+        const context = __compactRuntime.copyCircuitContext(contextOrig_0);
         const partialProofData = {
           input: {
             value: _descriptor_0.toValue(domainSep_0).concat(_descriptor_2.toValue(mintValue_0).concat(_descriptor_0.toValue(mintNonce_0).concat(_descriptor_3.toValue(publicKey_0).concat(_descriptor_4.toValue(sendValue_0))))),
@@ -298,23 +299,24 @@ export class Contract {
           publicTranscript: [],
           privateTranscriptOutputs: []
         };
-        const result_0 = this._mintAndSendShielded_0(context,
-                                                     partialProofData,
-                                                     domainSep_0,
-                                                     mintValue_0,
-                                                     mintNonce_0,
-                                                     publicKey_0,
-                                                     sendValue_0);
+        const result_0 = await this._mintAndSendShielded_0(context,
+                                                           partialProofData,
+                                                           domainSep_0,
+                                                           mintValue_0,
+                                                           mintNonce_0,
+                                                           publicKey_0,
+                                                           sendValue_0);
         partialProofData.output = { value: _descriptor_8.toValue(result_0), alignment: _descriptor_8.alignment() };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
+        __compactRuntime.finalizeCallProofData(context, partialProofData);
+        return { result: result_0, context: context, gasCost: context.callContext.currentGasCost };
       },
-      depositShielded: (...args_1) => {
+      depositShielded: async (...args_1) => {
         if (args_1.length !== 2) {
           throw new __compactRuntime.CompactError(`depositShielded: expected 2 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
         const contextOrig_0 = args_1[0];
         const coin_0 = args_1[1];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.callContext.currentQueryContext != undefined)) {
           __compactRuntime.typeError('depositShielded',
                                      'argument 1 (as invoked from Typescript)',
                                      'shielded.compact line 14 char 1',
@@ -328,7 +330,7 @@ export class Contract {
                                      'struct ShieldedCoinInfo<nonce: Bytes<32>, color: Bytes<32>, value: Uint<0..340282366920938463463374607431768211456>>',
                                      coin_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
+        const context = __compactRuntime.copyCircuitContext(contextOrig_0);
         const partialProofData = {
           input: {
             value: _descriptor_6.toValue(coin_0),
@@ -338,13 +340,14 @@ export class Contract {
           publicTranscript: [],
           privateTranscriptOutputs: []
         };
-        const result_0 = this._depositShielded_0(context,
-                                                 partialProofData,
-                                                 coin_0);
+        const result_0 = await this._depositShielded_0(context,
+                                                       partialProofData,
+                                                       coin_0);
         partialProofData.output = { value: [], alignment: [] };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
+        __compactRuntime.finalizeCallProofData(context, partialProofData);
+        return { result: result_0, context: context, gasCost: context.callContext.currentGasCost };
       },
-      mintAndSendImmediateShielded: (...args_1) => {
+      mintAndSendImmediateShielded: async (...args_1) => {
         if (args_1.length !== 6) {
           throw new __compactRuntime.CompactError(`mintAndSendImmediateShielded: expected 6 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
@@ -354,7 +357,7 @@ export class Contract {
         const mintNonce_0 = args_1[3];
         const publicKey_0 = args_1[4];
         const sendValue_0 = args_1[5];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.callContext.currentQueryContext != undefined)) {
           __compactRuntime.typeError('mintAndSendImmediateShielded',
                                      'argument 1 (as invoked from Typescript)',
                                      'shielded.compact line 18 char 1',
@@ -396,7 +399,7 @@ export class Contract {
                                      'Uint<0..340282366920938463463374607431768211456>',
                                      sendValue_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
+        const context = __compactRuntime.copyCircuitContext(contextOrig_0);
         const partialProofData = {
           input: {
             value: _descriptor_0.toValue(domainSep_0).concat(_descriptor_2.toValue(mintValue_0).concat(_descriptor_0.toValue(mintNonce_0).concat(_descriptor_3.toValue(publicKey_0).concat(_descriptor_4.toValue(sendValue_0))))),
@@ -406,17 +409,18 @@ export class Contract {
           publicTranscript: [],
           privateTranscriptOutputs: []
         };
-        const result_0 = this._mintAndSendImmediateShielded_0(context,
-                                                              partialProofData,
-                                                              domainSep_0,
-                                                              mintValue_0,
-                                                              mintNonce_0,
-                                                              publicKey_0,
-                                                              sendValue_0);
+        const result_0 = await this._mintAndSendImmediateShielded_0(context,
+                                                                    partialProofData,
+                                                                    domainSep_0,
+                                                                    mintValue_0,
+                                                                    mintNonce_0,
+                                                                    publicKey_0,
+                                                                    sendValue_0);
         partialProofData.output = { value: _descriptor_8.toValue(result_0), alignment: _descriptor_8.alignment() };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
+        __compactRuntime.finalizeCallProofData(context, partialProofData);
+        return { result: result_0, context: context, gasCost: context.callContext.currentGasCost };
       },
-      mintAndBurnShielded: (...args_1) => {
+      mintAndBurnShielded: async (...args_1) => {
         if (args_1.length !== 5) {
           throw new __compactRuntime.CompactError(`mintAndBurnShielded: expected 5 arguments (as invoked from Typescript), received ${args_1.length}`);
         }
@@ -425,7 +429,7 @@ export class Contract {
         const mintValue_0 = args_1[2];
         const mintNonce_0 = args_1[3];
         const burnValue_0 = args_1[4];
-        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.currentQueryContext != undefined)) {
+        if (!(typeof(contextOrig_0) === 'object' && contextOrig_0.callContext.currentQueryContext != undefined)) {
           __compactRuntime.typeError('mintAndBurnShielded',
                                      'argument 1 (as invoked from Typescript)',
                                      'shielded.compact line 23 char 1',
@@ -460,7 +464,7 @@ export class Contract {
                                      'Uint<0..340282366920938463463374607431768211456>',
                                      burnValue_0)
         }
-        const context = { ...contextOrig_0, gasCost: __compactRuntime.emptyRunningCost(), events: [] };
+        const context = __compactRuntime.copyCircuitContext(contextOrig_0);
         const partialProofData = {
           input: {
             value: _descriptor_0.toValue(domainSep_0).concat(_descriptor_2.toValue(mintValue_0).concat(_descriptor_0.toValue(mintNonce_0).concat(_descriptor_4.toValue(burnValue_0)))),
@@ -470,14 +474,15 @@ export class Contract {
           publicTranscript: [],
           privateTranscriptOutputs: []
         };
-        const result_0 = this._mintAndBurnShielded_0(context,
-                                                     partialProofData,
-                                                     domainSep_0,
-                                                     mintValue_0,
-                                                     mintNonce_0,
-                                                     burnValue_0);
+        const result_0 = await this._mintAndBurnShielded_0(context,
+                                                           partialProofData,
+                                                           domainSep_0,
+                                                           mintValue_0,
+                                                           mintNonce_0,
+                                                           burnValue_0);
         partialProofData.output = { value: _descriptor_8.toValue(result_0), alignment: _descriptor_8.alignment() };
-        return { result: result_0, context: context, proofData: partialProofData, gasCost: context.gasCost, events: context.events };
+        __compactRuntime.finalizeCallProofData(context, partialProofData);
+        return { result: result_0, context: context, gasCost: context.callContext.currentGasCost };
       }
     };
     this.impureCircuits = {
@@ -495,7 +500,7 @@ export class Contract {
       mintAndBurnShielded: this.circuits.mintAndBurnShielded
     };
   }
-  initialState(...args_0) {
+  async initialState(...args_0) {
     if (args_0.length !== 1) {
       throw new __compactRuntime.CompactError(`Contract state constructor: expected 1 argument (as invoked from Typescript), received ${args_0.length}`);
     }
@@ -517,18 +522,18 @@ export class Contract {
     state_0.setOperation('depositShielded', new __compactRuntime.ContractOperation());
     state_0.setOperation('mintAndSendImmediateShielded', new __compactRuntime.ContractOperation());
     state_0.setOperation('mintAndBurnShielded', new __compactRuntime.ContractOperation());
-    const context = __compactRuntime.createCircuitContext(__compactRuntime.dummyContractAddress(), constructorContext_0.initialZswapLocalState.coinPublicKey, state_0.data, constructorContext_0.initialPrivateState);
+    const context = __compactRuntime.createCircuitContext('constructor', __compactRuntime.dummyContractAddress(), constructorContext_0.initialZswapLocalState.coinPublicKey, state_0.data, constructorContext_0.initialPrivateState);
     const partialProofData = {
       input: { value: [], alignment: [] },
       output: undefined,
       publicTranscript: [],
       privateTranscriptOutputs: []
     };
-    state_0.data = new __compactRuntime.ChargedState(context.currentQueryContext.state.state);
+    state_0.data = new __compactRuntime.ChargedState(context.callContext.currentQueryContext.state.state);
     return {
       currentContractState: state_0,
-      currentPrivateState: context.currentPrivateState,
-      currentZswapLocalState: context.currentZswapLocalState
+      currentPrivateState: context.callContext.currentPrivateState,
+      currentZswapLocalState: context.callContext.currentZswapLocalState
     }
   }
   _some_0(value_0) { return { is_some: true, value: value_0 }; }
@@ -547,12 +552,12 @@ export class Contract {
     return this._persistentCommit_0([domain_sep_0, contractAddress_0.bytes],
                                     new Uint8Array([109, 105, 100, 110, 105, 103, 104, 116, 58, 100, 101, 114, 105, 118, 101, 95, 116, 111, 107, 101, 110, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]));
   }
-  _mintShieldedToken_0(context,
-                       partialProofData,
-                       domain_sep_0,
-                       value_0,
-                       nonce_0,
-                       recipient_0)
+  async _mintShieldedToken_0(context,
+                             partialProofData,
+                             domain_sep_0,
+                             value_0,
+                             nonce_0,
+                             recipient_0)
   {
     const coin_0 = { nonce: nonce_0,
                      color:
@@ -658,7 +663,7 @@ export class Contract {
   _shieldedBurnAddress_0() {
     return this._left_0({ bytes: new Uint8Array(32) });
   }
-  _receiveShielded_0(context, partialProofData, coin_0) {
+  async _receiveShielded_0(context, partialProofData, coin_0) {
     const recipient_0 = this._right_0(_descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
                                                                                                 partialProofData,
                                                                                                 [
@@ -692,7 +697,8 @@ export class Contract {
                                        { swap: { n: 0 } }]);
     return [];
   }
-  _sendShielded_0(context, partialProofData, input_0, recipient_0, value_0) {
+  async _sendShielded_0(context, partialProofData, input_0, recipient_0, value_0)
+  {
     const selfAddr_0 = _descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
                                                                                  partialProofData,
                                                                                  [
@@ -731,9 +737,11 @@ export class Contract {
                                                'result of subtraction would be negative'),
                        t_0 - value_0));
     const output_0 = { nonce:
-                         this._upgradeFromTransient_0(this._transientHash_0([__compactRuntime.convertBytesToField(28,
-                                                                                                                  new Uint8Array([109, 105, 100, 110, 105, 103, 104, 116, 58, 107, 101, 114, 110, 101, 108, 58, 110, 111, 110, 99, 101, 95, 101, 118, 111, 108, 118, 101]),
-                                                                                                                  '<standard library>'),
+                         this._upgradeFromTransient_0(this._transientHash_0([__compactRuntime.convertBytesToBigint(52435875175126190479447740508185965837690552500527637822603658699938581184512n,
+                                                                                                                   28,
+                                                                                                                   new Uint8Array([109, 105, 100, 110, 105, 103, 104, 116, 58, 107, 101, 114, 110, 101, 108, 58, 110, 111, 110, 99, 101, 95, 101, 118, 111, 108, 118, 101]),
+                                                                                                                   'Field',
+                                                                                                                   '<standard library>'),
                                                                              this._degradeToTransient_0(input_0.nonce)])),
                        color: input_0.color,
                        value: value_0 };
@@ -783,9 +791,11 @@ export class Contract {
       return { change: this._none_0(), sent: output_0 };
     } else {
       const changeCoin_0 = { nonce:
-                               this._upgradeFromTransient_0(this._transientHash_0([__compactRuntime.convertBytesToField(30,
-                                                                                                                        new Uint8Array([109, 105, 100, 110, 105, 103, 104, 116, 58, 107, 101, 114, 110, 101, 108, 58, 110, 111, 110, 99, 101, 95, 101, 118, 111, 108, 118, 101, 47, 50]),
-                                                                                                                        '<standard library>'),
+                               this._upgradeFromTransient_0(this._transientHash_0([__compactRuntime.convertBytesToBigint(52435875175126190479447740508185965837690552500527637822603658699938581184512n,
+                                                                                                                         30,
+                                                                                                                         new Uint8Array([109, 105, 100, 110, 105, 103, 104, 116, 58, 107, 101, 114, 110, 101, 108, 58, 110, 111, 110, 99, 101, 95, 101, 118, 111, 108, 118, 101, 47, 50]),
+                                                                                                                         'Field',
+                                                                                                                         '<standard library>'),
                                                                                    this._degradeToTransient_0(input_0.nonce)])),
                              color: input_0.color,
                              value: change_0 };
@@ -832,13 +842,17 @@ export class Contract {
       return { change: this._some_0(changeCoin_0), sent: output_0 };
     }
   }
-  _sendImmediateShielded_0(context, partialProofData, input_0, target_0, value_0)
+  async _sendImmediateShielded_0(context,
+                                 partialProofData,
+                                 input_0,
+                                 target_0,
+                                 value_0)
   {
-    return this._sendShielded_0(context,
-                                partialProofData,
-                                this._upcastQualifiedCoin_0(input_0),
-                                target_0,
-                                value_0);
+    return await this._sendShielded_0(context,
+                                      partialProofData,
+                                      this._upcastQualifiedCoin_0(input_0),
+                                      target_0,
+                                      value_0);
   }
   _downcastQualifiedCoin_0(coin_0) {
     return { nonce: coin_0.nonce, color: coin_0.color, value: coin_0.value };
@@ -906,7 +920,8 @@ export class Contract {
     });
     return result_0;
   }
-  _mintShieldedTokens_0(context, partialProofData, domainSep_0, amount_0) {
+  async _mintShieldedTokens_0(context, partialProofData, domainSep_0, amount_0)
+  {
     return __compactRuntime.queryLedgerState(context,
                                              partialProofData,
                                              [
@@ -939,104 +954,104 @@ export class Contract {
                                               { swap: { n: 0 } }]),
            amount_0;
   }
-  _mintAndSendShielded_0(context,
-                         partialProofData,
-                         domainSep_0,
-                         mintValue_0,
-                         mintNonce_0,
-                         publicKey_0,
-                         sendValue_0)
+  async _mintAndSendShielded_0(context,
+                               partialProofData,
+                               domainSep_0,
+                               mintValue_0,
+                               mintNonce_0,
+                               publicKey_0,
+                               sendValue_0)
   {
-    const coin_0 = this._mintShieldedToken_0(context,
-                                             partialProofData,
-                                             domainSep_0,
-                                             mintValue_0,
-                                             mintNonce_0,
-                                             this._right_0(_descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
-                                                                                                                     partialProofData,
-                                                                                                                     [
-                                                                                                                      { dup: { n: 2 } },
-                                                                                                                      { idx: { cached: true,
-                                                                                                                               pushPath: false,
-                                                                                                                               path: [
-                                                                                                                                      { tag: 'value',
-                                                                                                                                        value: { value: _descriptor_17.toValue(0n),
-                                                                                                                                                 alignment: _descriptor_17.alignment() } }] } },
-                                                                                                                      { popeq: { cached: true,
-                                                                                                                                 result: undefined } }]).value)));
+    const coin_0 = await this._mintShieldedToken_0(context,
+                                                   partialProofData,
+                                                   domainSep_0,
+                                                   mintValue_0,
+                                                   mintNonce_0,
+                                                   this._right_0(_descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
+                                                                                                                           partialProofData,
+                                                                                                                           [
+                                                                                                                            { dup: { n: 2 } },
+                                                                                                                            { idx: { cached: true,
+                                                                                                                                     pushPath: false,
+                                                                                                                                     path: [
+                                                                                                                                            { tag: 'value',
+                                                                                                                                              value: { value: _descriptor_17.toValue(0n),
+                                                                                                                                                       alignment: _descriptor_17.alignment() } }] } },
+                                                                                                                            { popeq: { cached: true,
+                                                                                                                                       result: undefined } }]).value)));
     const qualified_0 = { nonce: coin_0.nonce,
                           color: coin_0.color,
                           value: coin_0.value,
                           mt_index: 0n };
-    return this._sendShielded_0(context,
-                                partialProofData,
-                                qualified_0,
-                                this._left_0(publicKey_0),
-                                sendValue_0);
+    return await this._sendShielded_0(context,
+                                      partialProofData,
+                                      qualified_0,
+                                      this._left_0(publicKey_0),
+                                      sendValue_0);
   }
-  _depositShielded_0(context, partialProofData, coin_0) {
-    this._receiveShielded_0(context, partialProofData, coin_0); return [];
+  async _depositShielded_0(context, partialProofData, coin_0) {
+    await this._receiveShielded_0(context, partialProofData, coin_0); return [];
   }
-  _mintAndSendImmediateShielded_0(context,
-                                  partialProofData,
-                                  domainSep_0,
-                                  mintValue_0,
-                                  mintNonce_0,
-                                  publicKey_0,
-                                  sendValue_0)
+  async _mintAndSendImmediateShielded_0(context,
+                                        partialProofData,
+                                        domainSep_0,
+                                        mintValue_0,
+                                        mintNonce_0,
+                                        publicKey_0,
+                                        sendValue_0)
   {
-    const coin_0 = this._mintShieldedToken_0(context,
-                                             partialProofData,
-                                             domainSep_0,
-                                             mintValue_0,
-                                             mintNonce_0,
-                                             this._right_0(_descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
-                                                                                                                     partialProofData,
-                                                                                                                     [
-                                                                                                                      { dup: { n: 2 } },
-                                                                                                                      { idx: { cached: true,
-                                                                                                                               pushPath: false,
-                                                                                                                               path: [
-                                                                                                                                      { tag: 'value',
-                                                                                                                                        value: { value: _descriptor_17.toValue(0n),
-                                                                                                                                                 alignment: _descriptor_17.alignment() } }] } },
-                                                                                                                      { popeq: { cached: true,
-                                                                                                                                 result: undefined } }]).value)));
-    return this._sendImmediateShielded_0(context,
-                                         partialProofData,
-                                         coin_0,
-                                         this._left_0(publicKey_0),
-                                         sendValue_0);
+    const coin_0 = await this._mintShieldedToken_0(context,
+                                                   partialProofData,
+                                                   domainSep_0,
+                                                   mintValue_0,
+                                                   mintNonce_0,
+                                                   this._right_0(_descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
+                                                                                                                           partialProofData,
+                                                                                                                           [
+                                                                                                                            { dup: { n: 2 } },
+                                                                                                                            { idx: { cached: true,
+                                                                                                                                     pushPath: false,
+                                                                                                                                     path: [
+                                                                                                                                            { tag: 'value',
+                                                                                                                                              value: { value: _descriptor_17.toValue(0n),
+                                                                                                                                                       alignment: _descriptor_17.alignment() } }] } },
+                                                                                                                            { popeq: { cached: true,
+                                                                                                                                       result: undefined } }]).value)));
+    return await this._sendImmediateShielded_0(context,
+                                               partialProofData,
+                                               coin_0,
+                                               this._left_0(publicKey_0),
+                                               sendValue_0);
   }
-  _mintAndBurnShielded_0(context,
-                         partialProofData,
-                         domainSep_0,
-                         mintValue_0,
-                         mintNonce_0,
-                         burnValue_0)
+  async _mintAndBurnShielded_0(context,
+                               partialProofData,
+                               domainSep_0,
+                               mintValue_0,
+                               mintNonce_0,
+                               burnValue_0)
   {
-    const coin_0 = this._mintShieldedToken_0(context,
-                                             partialProofData,
-                                             domainSep_0,
-                                             mintValue_0,
-                                             mintNonce_0,
-                                             this._right_0(_descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
-                                                                                                                     partialProofData,
-                                                                                                                     [
-                                                                                                                      { dup: { n: 2 } },
-                                                                                                                      { idx: { cached: true,
-                                                                                                                               pushPath: false,
-                                                                                                                               path: [
-                                                                                                                                      { tag: 'value',
-                                                                                                                                        value: { value: _descriptor_17.toValue(0n),
-                                                                                                                                                 alignment: _descriptor_17.alignment() } }] } },
-                                                                                                                      { popeq: { cached: true,
-                                                                                                                                 result: undefined } }]).value)));
-    return this._sendImmediateShielded_0(context,
-                                         partialProofData,
-                                         coin_0,
-                                         this._shieldedBurnAddress_0(),
-                                         burnValue_0);
+    const coin_0 = await this._mintShieldedToken_0(context,
+                                                   partialProofData,
+                                                   domainSep_0,
+                                                   mintValue_0,
+                                                   mintNonce_0,
+                                                   this._right_0(_descriptor_1.fromValue(__compactRuntime.queryLedgerState(context,
+                                                                                                                           partialProofData,
+                                                                                                                           [
+                                                                                                                            { dup: { n: 2 } },
+                                                                                                                            { idx: { cached: true,
+                                                                                                                                     pushPath: false,
+                                                                                                                                     path: [
+                                                                                                                                            { tag: 'value',
+                                                                                                                                              value: { value: _descriptor_17.toValue(0n),
+                                                                                                                                                       alignment: _descriptor_17.alignment() } }] } },
+                                                                                                                            { popeq: { cached: true,
+                                                                                                                                       result: undefined } }]).value)));
+    return await this._sendImmediateShielded_0(context,
+                                               partialProofData,
+                                               coin_0,
+                                               this._shieldedBurnAddress_0(),
+                                               burnValue_0);
   }
   _equal_0(x0, y0) {
     if (!x0.every((x, i) => y0[i] === x)) { return false; }
@@ -1055,7 +1070,7 @@ export function ledger(stateOrChargedState) {
   const state = stateOrChargedState instanceof __compactRuntime.StateValue ? stateOrChargedState : stateOrChargedState.state;
   const chargedState = stateOrChargedState instanceof __compactRuntime.StateValue ? new __compactRuntime.ChargedState(stateOrChargedState) : stateOrChargedState;
   const context = {
-    currentQueryContext: new __compactRuntime.QueryContext(chargedState, __compactRuntime.dummyContractAddress()),
+    callContext: { currentQueryContext: new __compactRuntime.QueryContext(chargedState, __compactRuntime.dummyContractAddress()), currentGasCost: __compactRuntime.emptyRunningCost() },
     costModel: __compactRuntime.CostModel.initialCostModel()
   };
   const partialProofData = {
@@ -1068,10 +1083,18 @@ export function ledger(stateOrChargedState) {
   };
 }
 const _emptyContext = {
-  currentQueryContext: new __compactRuntime.QueryContext(new __compactRuntime.ContractState().data, __compactRuntime.dummyContractAddress())
+  callContext: { currentQueryContext: new __compactRuntime.QueryContext(new __compactRuntime.ContractState().data, __compactRuntime.dummyContractAddress()), currentGasCost: __compactRuntime.emptyRunningCost() }
 };
 const _dummyContract = new Contract({ });
 export const pureCircuits = {};
 export const contractReferenceLocations =
   { tag: 'publicLedgerArray', indices: { } };
+export const expectedVk = {
+  'depositShielded': '079f937462bd68c6164b9435d70a8507144e59188cf65e95637e42b9b772daec',
+  'mintAndBurnShielded': 'a92faf7abfdbc8dc15eba023c83d74850d917019e43f7e53ca51628621fa55e9',
+  'mintAndSendImmediateShielded': '82317ecc58eaab0ba9a40b17ad76ec74f9ca28939693c2e5d8c6c940c49ee1d2',
+  'mintAndSendShielded': '82317ecc58eaab0ba9a40b17ad76ec74f9ca28939693c2e5d8c6c940c49ee1d2',
+  'mintShieldedTokens': 'cc3e2f221e0d8cb4986866c7838b0dd5a7a567bcff71c51ea99358993b0094df',
+};
+
 //# sourceMappingURL=index.js.map

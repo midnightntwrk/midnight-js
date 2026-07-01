@@ -1,6 +1,118 @@
 {
   "manifest-version": "1",
-  "compiler-version": "0.32.102",
-  "language-version": "0.24.101",
-  "runtime-version": "0.17.102"
+  "compiler-version": "0.33.0",
+  "language-version": "0.25.0",
+  "runtime-version": "0.18.0-rc.0",
+  "compiler": {
+    "type": "directory",
+    "contract-info.json": {
+      "type": "file",
+      "size": 1636,
+      "hash": "296f0b347f9cb9233b0336ecdf9966b4c9210211c73b9923a4704008c98c5251"
+    }
+  },
+  "contract": {
+    "type": "directory",
+    "index.d.ts": {
+      "type": "file",
+      "size": 2546,
+      "hash": "d679e5a4dba59cae90380a718febcd1bfe1e6bb2ea10a1c33ce7dd34f0893c93"
+    },
+    "index.js": {
+      "type": "file",
+      "size": 19517,
+      "hash": "5fb8fe4d0228d18e86aa968ec346b6948c6c1091742e6a72e20e516990344e57"
+    },
+    "index.js.map": {
+      "type": "file",
+      "size": 1039,
+      "hash": "acfac05c82479dc020e133ae304e17966d09b2ec646f3083d09f0ce85fb63c57"
+    }
+  },
+  "zkir": {
+    "type": "directory",
+    "testBlockTimeGt.bzkir": {
+      "type": "file",
+      "size": 99,
+      "hash": "232480763c11db8718d65c2098cc1a6b96eafa492d302f3edc81bde7fd9002ba"
+    },
+    "testBlockTimeGt.zkir": {
+      "type": "file",
+      "size": 1454,
+      "hash": "44c516a71d3a954c6900075c1fecaa6c9fa3e24b98bf22df51366d9b16fb676c"
+    },
+    "testBlockTimeGte.bzkir": {
+      "type": "file",
+      "size": 105,
+      "hash": "41dd13eb24af72e2905bc7551c65a0180d751ae21da070dc1a9a94f951dbece2"
+    },
+    "testBlockTimeGte.zkir": {
+      "type": "file",
+      "size": 1549,
+      "hash": "7221670a31d59ed572dca988c37d4afa0bb0d83960e61b52464368ff8eee553a"
+    },
+    "testBlockTimeLt.bzkir": {
+      "type": "file",
+      "size": 99,
+      "hash": "c5822e4311624467316e93aabfa283c4f459756e283c550613e57c0327c70aee"
+    },
+    "testBlockTimeLt.zkir": {
+      "type": "file",
+      "size": 1454,
+      "hash": "f073b3215877658de3bf7c8005eac0a8d01afb7eaff03597df91ffe46231476e"
+    },
+    "testBlockTimeLte.bzkir": {
+      "type": "file",
+      "size": 105,
+      "hash": "fecd888fda0735c1fbfe8fdf1bf70a3161c54acda6b4ffd28e7a316b57b5a5d2"
+    },
+    "testBlockTimeLte.zkir": {
+      "type": "file",
+      "size": 1549,
+      "hash": "54506b00e4ab5f42e71c786567564caa30d91e49616f5bb59089a21cf0269cc4"
+    }
+  },
+  "keys": {
+    "type": "directory",
+    "testBlockTimeGt.prover": {
+      "type": "file",
+      "size": 41369,
+      "hash": "a0d798e7638c96376cdac1be9f911ae861095d189fc94f174ae3334ec6e8a71f"
+    },
+    "testBlockTimeGt.verifier": {
+      "type": "file",
+      "size": 1351,
+      "hash": "c587bc4c304aed0033e95f9be75dc1083dc32a2ed08c065a8a0cf8d1df4aae57"
+    },
+    "testBlockTimeGte.prover": {
+      "type": "file",
+      "size": 41480,
+      "hash": "045d61a911ab68bb39d234c86021902fd9aa9f0ad5d8dda0e53ca348e6cb9571"
+    },
+    "testBlockTimeGte.verifier": {
+      "type": "file",
+      "size": 1351,
+      "hash": "f130299ec564947c2fdea587fefb31081ae0b304c0591a87ef206a4f8ae2c389"
+    },
+    "testBlockTimeLt.prover": {
+      "type": "file",
+      "size": 41367,
+      "hash": "c93a235386b951bf3f15cf88e0da5641e82be38ac44a663528d3b29e80359484"
+    },
+    "testBlockTimeLt.verifier": {
+      "type": "file",
+      "size": 1351,
+      "hash": "47b4fc02b13302c7eebe11510d691abeb601937cad6090eeafaeabdc053c8ad8"
+    },
+    "testBlockTimeLte.prover": {
+      "type": "file",
+      "size": 41479,
+      "hash": "b8efdd17481b968beeb6b4b2e281698778e188e0e8452b792ef1ca5c0d6ca8ba"
+    },
+    "testBlockTimeLte.verifier": {
+      "type": "file",
+      "size": 1351,
+      "hash": "c329e58501f4b81ccaeeb66a06dd024b4c424edf94430ea49de320467e30466b"
+    }
+  }
 }
