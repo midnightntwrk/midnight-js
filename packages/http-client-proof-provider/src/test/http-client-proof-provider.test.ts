@@ -19,8 +19,9 @@ import { ZKConfigProvider, type ProveTxConfig } from '@midnight-ntwrk/midnight-j
 import type { ProvingProviderConfig } from '../http-client-proving-provider';
 
 // Mock the low-level http-client-proving-provider module so we can observe
-// what `timeout` value is wired through for each proveTx call, without
-// requiring a live proof server.
+// what timeout value is wired into the underlying provider at construction
+// time and what timeout override flows through each per-circuit check/prove
+// call during a proveTx — without requiring a live proof server.
 // The actual `DEFAULT_TIMEOUT` is exported and re-exported unchanged so
 // tests can still assert against the real constant.
 vi.mock('../http-client-proving-provider', async (importOriginal) => {
@@ -57,23 +58,51 @@ class MockZKConfigProvider extends ZKConfigProvider<'test-circuit'> {
 }
 
 /**
- * Captures the `timeout` field of the ProvingProviderConfig each time
- * httpClientProvingProvider is invoked, and returns a stub ProvingProvider
- * whose prove() no-ops. Lets us assert on what was wired through without
- * exercising real ZK proving.
+ * Wires `mockedHttpClientProvingProvider` to return a stub ProvingProvider
+ * whose prove() captures the per-call timeout override each invocation
+ * receives. Returns the call records so tests can assert on:
+ *   - `constructionCalls`: how many times the inner factory was invoked
+ *     (should be exactly 1 per httpClientProofProvider construction)
+ *   - `proveTimeouts`: the per-call timeout overrides passed to each
+ *     prove() call within a proveTx
+ *   - `checkTimeouts`: the per-call timeout overrides passed to each
+ *     check() call within a proveTx
  */
-function trackInvocations(): { getCalls: () => (ProvingProviderConfig | undefined)[] } {
-  const calls: (ProvingProviderConfig | undefined)[] = [];
+function wireMocks(): {
+  constructionCalls: ProvingProviderConfig[];
+  proveTimeouts: (number | undefined)[];
+  checkTimeouts: (number | undefined)[];
+} {
+  const constructionCalls: ProvingProviderConfig[] = [];
+  const proveTimeouts: (number | undefined)[] = [];
+  const checkTimeouts: (number | undefined)[] = [];
+
   mockedHttpClientProvingProvider.mockImplementation(
     (_url: string, _zk: ZKConfigProvider<string>, cfg?: ProvingProviderConfig) => {
-      calls.push(cfg);
+      constructionCalls.push(cfg ?? {});
       return {
-        check: async () => ({ status: 'accepted' }),
-        prove: async () => ({}) as never
+        check: async (
+          _preimage: Uint8Array,
+          _key: string,
+          overrideTimeout?: number
+        ) => {
+          checkTimeouts.push(overrideTimeout);
+          return [undefined];
+        },
+        prove: async (
+          _preimage: Uint8Array,
+          _key: string,
+          _overwriteBindingInput?: bigint,
+          overrideTimeout?: number
+        ) => {
+          proveTimeouts.push(overrideTimeout);
+          return new Uint8Array();
+        }
       };
     }
   );
-  return { getCalls: () => calls };
+
+  return { constructionCalls, proveTimeouts, checkTimeouts };
 }
 
 /**
@@ -95,9 +124,36 @@ describe('httpClientProofProvider', () => {
   });
 
   test('returns a ProofProvider with a proveTx method', () => {
+    wireMocks();
     const provider = httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider());
     expect(provider).toHaveProperty('proveTx');
     expect(typeof provider.proveTx).toBe('function');
+  });
+
+  test('builds the underlying ProvingProvider exactly once at construction', () => {
+    // The previous (buggy-then-fixed) implementation either built the inner
+    // provider once at construction (bug — per-call timeout ignored) or
+    // rebuilt it per proveTx (fix — but caused warn spam + deferred URL
+    // validation). The current design builds once at construction and threads
+    // the per-call timeout through wrapper closures.
+    const { constructionCalls } = wireMocks();
+    const provider = httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider());
+
+    expect(constructionCalls).toHaveLength(1);
+    expect(constructionCalls[0]?.timeout).toBe(DEFAULT_TIMEOUT);
+
+    // Multiple proveTx calls must not rebuild the inner provider.
+    void provider;
+  });
+
+  test('preserves construction-time config.timeout in the single construction call', () => {
+    const { constructionCalls } = wireMocks();
+    httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider(), {
+      timeout: 12345
+    });
+
+    expect(constructionCalls).toHaveLength(1);
+    expect(constructionCalls[0]?.timeout).toBe(12345);
   });
 
   /**
@@ -105,72 +161,74 @@ describe('httpClientProofProvider', () => {
    *
    * The bug: per-call `proveTxConfig.timeout` was silently ignored because the
    * underlying httpClientProvingProvider was constructed once at provider-
-   * creation time with a fixed timeout. The fix builds the underlying
-   * provider per call so the per-call timeout is honored.
+   * creation time with a fixed timeout. The current fix builds the inner
+   * provider once at construction (preserving eager URL validation + warn)
+   * and threads the resolved per-call timeout through a wrapper closure so
+   * every circuit-level check/prove inside proveTx honors it.
    */
   describe('per-call timeout precedence (issue #974)', () => {
-    test('uses DEFAULT_TIMEOUT when neither config.timeout nor proveTxConfig.timeout is provided', async () => {
-      const { getCalls } = trackInvocations();
+    test('DEFAULT_TIMEOUT flows through when neither config.timeout nor proveTxConfig.timeout is set', async () => {
+      const { constructionCalls, proveTimeouts, checkTimeouts } = wireMocks();
       const provider = httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider());
       await provider.proveTx(stubTx());
 
-      const calls = getCalls();
-      expect(calls).toHaveLength(1);
-      expect(calls[0]?.timeout).toBe(DEFAULT_TIMEOUT);
+      // construction uses DEFAULT_TIMEOUT, and the wrapper forwards it.
+      expect(constructionCalls).toHaveLength(1);
+      expect(constructionCalls[0]?.timeout).toBe(DEFAULT_TIMEOUT);
+      // The inner prove() receives the per-call override (DEFAULT_TIMEOUT).
+      expect(proveTimeouts).toEqual([DEFAULT_TIMEOUT]);
+      // No check calls in this test (stub only invokes prove), so empty.
+      expect(checkTimeouts).toEqual([]);
     });
 
-    test('uses construction-time config.timeout when proveTxConfig is omitted', async () => {
-      const { getCalls } = trackInvocations();
+    test('construction-time config.timeout flows through when proveTxConfig is omitted', async () => {
+      const { constructionCalls, proveTimeouts } = wireMocks();
       const provider = httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider(), {
         timeout: 12345
       });
       await provider.proveTx(stubTx());
 
-      const calls = getCalls();
-      expect(calls).toHaveLength(1);
-      expect(calls[0]?.timeout).toBe(12345);
+      expect(constructionCalls).toHaveLength(1);
+      expect(constructionCalls[0]?.timeout).toBe(12345);
+      expect(proveTimeouts).toEqual([12345]);
     });
 
     test('per-call proveTxConfig.timeout takes precedence over construction-time config.timeout', async () => {
-      const { getCalls } = trackInvocations();
+      const { constructionCalls, proveTimeouts } = wireMocks();
       const provider = httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider(), {
         timeout: 12345
       });
       await provider.proveTx(stubTx(), { timeout: 99999 } satisfies ProveTxConfig);
 
-      const calls = getCalls();
-      expect(calls).toHaveLength(1);
-      expect(calls[0]?.timeout).toBe(99999);
+      expect(constructionCalls).toHaveLength(1);
+      expect(constructionCalls[0]?.timeout).toBe(12345);
+      expect(proveTimeouts).toEqual([99999]);
     });
 
-    test('construction-time non-timeout config fields are preserved on the per-call provider', async () => {
-      const { getCalls } = trackInvocations();
-      const provider = httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider(), {
-        timeout: 12345,
-        headers: { 'x-custom': 'kept' }
-      });
-      await provider.proveTx(stubTx(), { timeout: 99999 });
-
-      const calls = getCalls();
-      expect(calls).toHaveLength(1);
-      expect(calls[0]?.timeout).toBe(99999);
-      expect(calls[0]?.headers).toEqual({ 'x-custom': 'kept' });
-    });
-
-    test('each proveTx call builds its own ProvingProvider (no fixed provider reuse)', async () => {
-      // The previous (buggy) implementation built the underlying provider once
-      // at construction time and reused it. With the fix, each call should
-      // invoke httpClientProvingProvider afresh so the per-call config is
-      // actually honored.
-      const { getCalls } = trackInvocations();
+    test('each proveTx call threads its own resolved timeout (no fixed provider reuse of stale timeout)', async () => {
+      // Two proveTx calls with different per-call timeouts. The inner provider
+      // is built once at construction (so warn/validate fires once), but each
+      // wrapper closure captures its own resolved timeout for the duration of
+      // its proveTx.
+      const { constructionCalls, proveTimeouts } = wireMocks();
       const provider = httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider());
       await provider.proveTx(stubTx(), { timeout: 1000 });
       await provider.proveTx(stubTx(), { timeout: 2000 });
 
-      const calls = getCalls();
-      expect(calls).toHaveLength(2);
-      expect(calls[0]?.timeout).toBe(1000);
-      expect(calls[1]?.timeout).toBe(2000);
+      expect(constructionCalls).toHaveLength(1);
+      expect(proveTimeouts).toEqual([1000, 2000]);
+    });
+
+    test('construction-time non-timeout config fields are preserved on the single construction call', async () => {
+      const { constructionCalls } = wireMocks();
+      httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider(), {
+        timeout: 12345,
+        headers: { 'x-custom': 'kept' }
+      });
+
+      expect(constructionCalls).toHaveLength(1);
+      expect(constructionCalls[0]?.timeout).toBe(12345);
+      expect(constructionCalls[0]?.headers).toEqual({ 'x-custom': 'kept' });
     });
   });
 });

@@ -97,22 +97,27 @@ export const httpClientProvingProvider = <K extends string>(
   const timeout = config?.timeout ?? DEFAULT_TIMEOUT;
   const headers = config?.headers ?? {};
 
-  return  {
-    async check(serializedPreimage: Uint8Array, keyLocation: string): Promise<(bigint | undefined)[]> {
+  return {
+    async check(
+      serializedPreimage: Uint8Array,
+      keyLocation: string,
+      overrideTimeout?: number
+    ): Promise<(bigint | undefined)[]> {
       const keyMaterial = await getKeyMaterial(zkConfigProvider, keyLocation as K);
       const payload = createCheckPayload(serializedPreimage, keyMaterial?.ir);
-      const result = await makeHttpRequest(checkUrl, payload, timeout, headers);
+      const result = await makeHttpRequest(checkUrl, payload, overrideTimeout ?? timeout, headers);
       return parseCheckResult(result);
     },
 
     async prove(
       serializedPreimage: Uint8Array,
       keyLocation: string,
-      overwriteBindingInput?: bigint
+      overwriteBindingInput?: bigint,
+      overrideTimeout?: number
     ): Promise<Uint8Array> {
       const keyMaterial = await getKeyMaterial(zkConfigProvider, keyLocation as K);
       const payload = createProvingPayload(serializedPreimage, overwriteBindingInput, keyMaterial);
-      return makeHttpRequest(proveUrl, payload, timeout, headers);
+      return makeHttpRequest(proveUrl, payload, overrideTimeout ?? timeout, headers);
     }
   };
 };

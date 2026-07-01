@@ -76,19 +76,42 @@ export const httpClientProofProvider = <K extends string>(
   zkConfigProvider: ZKConfigProvider<K>,
   config?: ProvingProviderConfig
 ): ProofProvider => {
+  // Build the underlying ProvingProvider once at construction time. The URL
+  // validation (InvalidProtocolSchemeError) and the insecure-URL warning both
+  // fire here, eagerly, so a misconfigured URL surfaces at provider wiring
+  // time rather than on the first proveTx call — see PR #983 review.
+  const provingProvider = httpClientProvingProvider(url, zkConfigProvider, config);
+
   return {
     async proveTx(
       unprovenTx: UnprovenTransaction,
       proveTxConfig?: ProveTxConfig
     ): Promise<UnboundTransaction> {
-      // Build a per-call ProvingProvider so the per-call `proveTxConfig.timeout`
-      // is actually honored, rather than silently using the construction-time
-      // timeout. The construction-time `config` is reused for non-timeout fields
-      // (e.g. headers) so callers do not have to re-supply them.
-      const perCallProvingProvider = httpClientProvingProvider(url, zkConfigProvider, {
-        ...config,
-        timeout: resolveTimeout(config, proveTxConfig)
-      });
+      // Resolve the per-call timeout. Precedence:
+      //   per-call `proveTxConfig.timeout` > construction-time `config.timeout`
+      //   > `DEFAULT_TIMEOUT`. See https://github.com/midnightntwrk/midnight-js/issues/974.
+      const perCallTimeout = resolveTimeout(config, proveTxConfig);
+
+      // Wrap the per-construction provider so every circuit-level check/prove
+      // call inside this proveTx uses the per-call timeout, without rebuilding
+      // the underlying provider (which would re-run URL validation and the
+      // insecure-URL warning on every transaction).
+      //
+      // The wrapper structurally matches the `ProvingProvider` interface from
+      // `@midnight-ntwrk/midnight-js-protocol/ledger` (same `check` / `prove`
+      // signatures, just with the per-call timeout pre-bound); the cast keeps
+      // callers in lockstep with the upstream type without forcing us to
+      // re-export the type here.
+      const perCallProvingProvider = {
+        check: (preimage: Uint8Array, keyLocation: string) =>
+          provingProvider.check(preimage, keyLocation, perCallTimeout),
+        prove: (
+          preimage: Uint8Array,
+          keyLocation: string,
+          overwriteBindingInput?: bigint
+        ) => provingProvider.prove(preimage, keyLocation, overwriteBindingInput, perCallTimeout)
+      } as ProvingProvider;
+
       const costModel = CostModel.initialCostModel();
       return unprovenTx.prove(perCallProvingProvider, costModel);
     }
