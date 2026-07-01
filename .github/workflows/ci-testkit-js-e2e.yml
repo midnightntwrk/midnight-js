@@ -19,7 +19,7 @@ on:
         required: true
       testkit_docker_env:
         type: string
-        description: Docker image version set sourced from testkit-js/env/<testkit_docker_env>.env (qanet|preview|preprod|mainnet|devnet). Empty falls back to the .envrc default (devnet).
+        description: Docker image version set sourced from testkit-js/env/<testkit_docker_env>.env (qanet|preview|preprod|mainnet|devnet|stagenet). Empty falls back to the .envrc default (devnet).
         required: false
         default: 'devnet'
       build_timeout:

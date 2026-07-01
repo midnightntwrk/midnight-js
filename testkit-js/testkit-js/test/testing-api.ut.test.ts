@@ -25,7 +25,8 @@ import {
   LocalTestEnvironment,
   PreprodTestEnvironment,
   PreviewTestEnvironment,
-  QanetTestEnvironment} from '@/test-environment/test-environments';
+  QanetTestEnvironment,
+  StagenetTestEnvironment} from '@/test-environment/test-environments';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `ut_${new Date().toISOString().replace(/:/g, '-')}.log`)
@@ -49,7 +50,8 @@ describe('[Unit tests] Testing API', () => {
     ['local environment reference', undefined, LocalTestEnvironment],
     ['qanet environment reference', 'qanet', QanetTestEnvironment],
     ['preview environment reference', 'preview', PreviewTestEnvironment],
-    ['preprod environment reference', 'preprod', PreprodTestEnvironment]
+    ['preprod environment reference', 'preprod', PreprodTestEnvironment],
+    ['stagenet environment reference', 'stagenet', StagenetTestEnvironment]
   ])('test environment should return %s', async (_, envVar, expectedInstance) => {
     process.env.MN_TEST_ENVIRONMENT = envVar;
     expect(getTestEnvironment(logger)).toBeInstanceOf(expectedInstance);

@@ -74,11 +74,12 @@ Set of functions that simplify testing of DApps in Midnight
    - qanet
    - preview
    - preprod
+   - stagenet
    - env-var-remote
 
 If **MN_TEST_ENVIRONMENT** is not set, the default value will be `undeployed`.
 If **MN_TEST_ENVIRONMENT** is set to `undeployed`, the testing environment will be deployed locally using Docker.
-If **MN_TEST_ENVIRONMENT** is set to `qanet`, `preview`, `preprod`, or `env-var-remote` the testing environment will be the corresponding live network, with proof server setup using predefined NETWORK_ID.
+If **MN_TEST_ENVIRONMENT** is set to `qanet`, `preview`, `preprod`, `stagenet`, or `env-var-remote` the testing environment will be the corresponding live network, with proof server setup using predefined NETWORK_ID.
 If **MN_TEST_ENVIRONMENT** is set to `env-var-remote`, below environment variables must be set:
   - *MN_TEST_NETWORK_ID* - Proof server NETWORK_ID
   - *MN_TEST_INDEXER* - Indexer URL
@@ -113,7 +114,7 @@ environmentConfiguration = await testEnvironment.start();
 MN_TEST_ENVIRONMENT='preview'; yarn test
 ```
 
-This allows you to easily switch between predefined environments like `qanet`, `preview`, `preprod`, and others.
+This allows you to easily switch between predefined environments like `qanet`, `preview`, `preprod`, `stagenet`, and others.
 Default (undefined) value is `undeployed` which will deploy the testing environment locally using Docker.
 
 ---

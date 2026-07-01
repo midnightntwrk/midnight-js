@@ -74,8 +74,8 @@ Infrastructure Components
 ## Environment Configuration
 
 > **Two independent axes.** Don't conflate them:
-> - `MN_TEST_ENVIRONMENT` — **where** tests run (`undeployed` local stack, or a live network: `qanet` / `preview` / `preprod` / `env-var-remote`).
-> - `TESTKIT_DOCKER_ENV` — **which docker image versions** the local stack uses (`qanet` / `preview` / `preprod` / `mainnet` / `devnet`). The image-version sets `mainnet` and `devnet` exist only as version bundles; the test framework does not run against live mainnet or devnet.
+> - `MN_TEST_ENVIRONMENT` — **where** tests run (`undeployed` local stack, or a live network: `qanet` / `preview` / `preprod` / `stagenet` / `env-var-remote`).
+> - `TESTKIT_DOCKER_ENV` — **which docker image versions** the local stack uses (`qanet` / `preview` / `preprod` / `mainnet` / `devnet` / `stagenet`). The image-version sets `mainnet` and `devnet` exist only as version bundles; the test framework does not run against live mainnet or devnet.
 
 ### Environment Types
 
@@ -85,13 +85,14 @@ Infrastructure Components
 | `qanet` | Integration | Live QA network | Network dependent |
 | `preview` | Integration | Live preview network | Network dependent |
 | `preprod` | Integration | Live preprod network | Network dependent |
+| `stagenet` | Integration | Live stagenet network (`*.stagenet.shielded.tools`) | Network dependent; no faucet — fund via `MN_TEST_WALLET_SEED` |
 | `env-var-remote` | Custom | User-defined endpoints | Requires `MN_TEST_INDEXER` / `MN_TEST_NODE` / `MN_TEST_FAUCET` |
 
 ### Environment Variables
 
 ```bash
 # Primary Configuration
-MN_TEST_ENVIRONMENT=undeployed|qanet|preview|preprod|env-var-remote
+MN_TEST_ENVIRONMENT=undeployed|qanet|preview|preprod|stagenet|env-var-remote
 MN_TEST_WALLET_SEED="optional-seed-phrase"
 
 # Custom Environment (when env-var-remote)
@@ -107,7 +108,7 @@ MN_TEST_FAUCET="http://custom-faucet:3087"
 `compose.yml` and `proof-server.yml` resolve their image tags from env vars sourced from `testkit-js/env/<TESTKIT_DOCKER_ENV>.env`:
 
 ```bash
-TESTKIT_DOCKER_ENV     # qanet|preview|preprod|mainnet|devnet (default: devnet)
+TESTKIT_DOCKER_ENV     # qanet|preview|preprod|mainnet|devnet|stagenet (default: devnet)
 PROOF_SERVER_VERSION   # proof-server image tag
 INDEXER_VERSION        # indexer-standalone image tag
 MIDNIGHT_NODE_VERSION  # midnight-node image tag
@@ -328,7 +329,7 @@ yarn e2e-debug             # Debug output
 
 ### Key Environment Variables  
 ```bash
-MN_TEST_ENVIRONMENT        # Optional network id: undeployed|qanet|preview|preprod|env-var-remote
+MN_TEST_ENVIRONMENT        # Optional network id: undeployed|qanet|preview|preprod|stagenet|env-var-remote
 MN_TEST_WALLET_SEED        # Optional wallet seed
 ```
 

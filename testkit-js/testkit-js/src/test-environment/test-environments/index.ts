@@ -19,4 +19,5 @@ export * from './preprod-test-environment';
 export * from './preview-test-environment';
 export * from './qanet-test-environment';
 export * from './remote-test-environment';
+export * from './stagenet-test-environment';
 export * from './test-environment';

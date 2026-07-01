@@ -42,7 +42,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        image_versions: [qanet, preview, preprod, mainnet, devnet]
+        image_versions: [qanet, preview, preprod, mainnet, devnet, stagenet]
     uses: ./.github/workflows/ci-testkit-js-e2e.yml
     with:
       test_files: ${{ needs.build.outputs.test-files }}
@@ -71,7 +71,7 @@ jobs:
           set -euo pipefail
           ARGS=()
           CRASHED=0
-          for env in qanet preview preprod mainnet devnet; do
+          for env in qanet preview preprod mainnet devnet stagenet; do
             artifact_dir="ctrf-by-env/test-results-ctrf-summary-${env}"
             # No artifact dir = the e2e job for this env crashed before uploading.
             # Distinguish from "artifact present but no CTRF inside" (empty test run).

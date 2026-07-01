@@ -213,7 +213,7 @@ git config --local tag.gpgSign true
 | `COMPACTC_VERSION` | Compact compiler version | direnv |
 | `COMPACT_HOME` | Directory containing a `compactc` wrapper, used in preference to the prebuilt download. Exported by `.envrc` when `./scripts/build-compactc.sh` has been run. | direnv (auto when `.compact-home/compactc` exists) |
 | `NODE_VERSION` | Node.js version | nvm |
-| `TESTKIT_DOCKER_ENV` | Selects which **docker image version set** the local testkit stack uses (`qanet`, `preview`, `preprod`, `mainnet`, `devnet`). Defaults to `devnet`. Does **not** select a live network — see `MN_TEST_ENVIRONMENT`. | direnv / shell |
+| `TESTKIT_DOCKER_ENV` | Selects which **docker image version set** the local testkit stack uses (`qanet`, `preview`, `preprod`, `mainnet`, `devnet`, `stagenet`). Defaults to `devnet`. Does **not** select a live network — see `MN_TEST_ENVIRONMENT`. | direnv / shell |
 | `PROOF_SERVER_VERSION` | Proof-server docker image tag used by testkit compose files | `testkit-js/env/<TESTKIT_DOCKER_ENV>.env` |
 | `INDEXER_VERSION` | Indexer-standalone docker image tag used by testkit compose files | `testkit-js/env/<TESTKIT_DOCKER_ENV>.env` |
 | `MIDNIGHT_NODE_VERSION` | Midnight-node docker image tag used by testkit compose files | `testkit-js/env/<TESTKIT_DOCKER_ENV>.env` |
@@ -230,10 +230,12 @@ The testkit has **two independent axes** of configuration. Do not conflate them:
 
 | Axis | Variable | Values | What it controls |
 |------|----------|--------|------------------|
-| Live test target | `MN_TEST_ENVIRONMENT` | `undeployed`, `qanet`, `preview`, `preprod`, `env-var-remote` | Where tests run against — local docker stack or a deployed network |
-| Docker image versions | `TESTKIT_DOCKER_ENV` | `qanet`, `preview`, `preprod`, `mainnet`, `devnet` | Which image tags the locally-launched containers use. `MN_TEST_ENVIRONMENT=undeployed` runs the full local stack and uses all three image tags; remote modes (`qanet`/`preview`/`preprod`/`env-var-remote`) still launch a local proof-server and consume `PROOF_SERVER_VERSION` |
+| Live test target | `MN_TEST_ENVIRONMENT` | `undeployed`, `qanet`, `preview`, `preprod`, `stagenet`, `env-var-remote` | Where tests run against — local docker stack or a deployed network |
+| Docker image versions | `TESTKIT_DOCKER_ENV` | `qanet`, `preview`, `preprod`, `mainnet`, `devnet`, `stagenet` | Which image tags the locally-launched containers use. `MN_TEST_ENVIRONMENT=undeployed` runs the full local stack and uses all three image tags; remote modes (`qanet`/`preview`/`preprod`/`stagenet`/`env-var-remote`) still launch a local proof-server and consume `PROOF_SERVER_VERSION` |
 
-Both happen to use overlapping names (`qanet`/`preview`/`preprod`) because the env files bundle the image versions deployed to those live networks. `mainnet` and `devnet` exist as image-version sets only — the test framework does not run against live mainnet or devnet.
+Both happen to use overlapping names (`qanet`/`preview`/`preprod`/`stagenet`) because the env files bundle the image versions deployed to those live networks. `mainnet` and `devnet` exist as image-version sets only — the test framework does not run against live mainnet or devnet.
+
+`stagenet` targets the `*.stagenet.shielded.tools` endpoints and has **no faucet** — fund wallets with a seed via `MN_TEST_WALLET_SEED`.
 
 `testkit-js/compose.yml` and `testkit-js/proof-server.yml` resolve their image tags from `PROOF_SERVER_VERSION`, `INDEXER_VERSION`, and `MIDNIGHT_NODE_VERSION`. The active env file is picked by `TESTKIT_DOCKER_ENV`:
 
