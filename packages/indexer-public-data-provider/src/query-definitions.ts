@@ -268,8 +268,8 @@ export const TXS_FROM_BLOCK_SUB = gql(
 
 export const CONTRACT_STATE_QUERY = gql(
   `
-  query CONTRACT_STATE_QUERY($address: HexEncoded!, $offset: ContractActionOffset) {
-    contractAction(address: $address, offset: $offset) {
+  query CONTRACT_STATE_QUERY($address: HexEncoded!, $offset: BlockOffset) {
+    contract(address: $address, offset: $offset) {
       state
     }
   }`

@@ -137,11 +137,10 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     config?: BlockHeightConfig | BlockHashConfig
   ): Promise<ContractState | null> {
     assertIsContractAddress(address);
-    const offset: InputMaybe<ContractActionOffset> = config
-      ? {
-          asOfBlockOffset:
-            config.type === 'blockHeight' ? { height: config.blockHeight } : { hash: config.blockHash }
-        }
+    const offset: InputMaybe<BlockOffset> = config
+      ? config.type === 'blockHeight'
+        ? { height: config.blockHeight }
+        : { hash: config.blockHash }
       : null;
     return this.client
       .query({
@@ -153,7 +152,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         fetchPolicy: 'no-cache'
       })
       .then(maybeThrowQueryError)
-      .then((queryResult) => queryResult.data?.contractAction?.state ?? null)
+      .then((queryResult) => queryResult.data?.contract?.state ?? null)
       .then((maybeContractState) => (maybeContractState ? parseHexContractState(maybeContractState) : null));
   }
 

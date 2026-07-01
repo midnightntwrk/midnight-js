@@ -162,6 +162,53 @@ interface ContractAction {
 }
 
 """
+The type of a contract action.
+"""
+enum ContractActionType {
+	DEPLOY
+	CALL
+	UPDATE
+}
+
+"""
+A contract, reflecting its state as of a particular block.
+"""
+type Contract {
+	address: HexEncoded!
+	state: HexEncoded!
+	maintenanceAuthority: ContractMaintenanceAuthority!
+	"""
+	The contract's actions, most recent first, optionally filtered by type.
+	"""
+	actions(limit: Int, type: ContractActionType): [ContractAction!]!
+}
+
+"""
+The maintenance authority governing updates to a contract.
+"""
+type ContractMaintenanceAuthority {
+	committee: [ContractMaintenanceVerifyingKey!]!
+	threshold: Int!
+	counter: Int!
+}
+
+"""
+The kind of a contract maintenance verifying key.
+"""
+enum ContractMaintenanceVerifyingKeyKind {
+	SCHNORR
+	ECDSA
+}
+
+"""
+A verifying key belonging to a contract maintenance authority committee.
+"""
+type ContractMaintenanceVerifyingKey {
+	kind: ContractMaintenanceVerifyingKeyKind!
+	key: HexEncoded!
+}
+
+"""
 Either a block offset or a transaction offset.
 """
 input ContractActionOffset @oneOf {
@@ -896,6 +943,14 @@ type Query {
 	Find a contract action for the given address and optional offset.
 	"""
 	contractAction(address: HexEncoded!, offset: ContractActionOffset): ContractAction
+	"""
+	Find a contract for the given address and optional block offset.
+
+	The returned `Contract` reflects the state as of the given block (the latest
+	contract action in any block at or before it); without an offset the latest
+	state is returned.
+	"""
+	contract(address: HexEncoded!, offset: BlockOffset): Contract
 	"""
 	Get DUST generation status for specific Cardano reward addresses.
 	"""

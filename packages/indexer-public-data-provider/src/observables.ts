@@ -27,11 +27,10 @@ import {
 } from './errors';
 import type {
   BlockOffset,
-  ContractActionOffset,
   InputMaybe,
   RegularTransaction
 } from './gen/graphql';
-import { extractUnshieldedBalances, hasContractAction } from './mapping';
+import { extractUnshieldedBalances, hasContract, hasContractAction } from './mapping';
 import {
   BLOCK_QUERY,
   CONTRACT_STATE_QUERY,
@@ -289,13 +288,13 @@ export const blockOffsetToContractState$ =
 export const waitForContractToAppear =
   (apolloClient: ApolloClient, pollInterval: number) =>
   (contractAddress: ContractAddress) =>
-  (offset: InputMaybe<ContractActionOffset>) =>
+  (offset: InputMaybe<BlockOffset>) =>
     pollUntilPresent(
       apolloClient,
       CONTRACT_STATE_QUERY,
       { address: contractAddress, offset },
-      hasContractAction,
-      (data) => data.contractAction.state,
+      hasContract,
+      (data) => data.contract.state,
       pollInterval
     );
 
