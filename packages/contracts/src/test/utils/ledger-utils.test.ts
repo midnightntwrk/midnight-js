@@ -52,52 +52,17 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { isDeserializationError, toHex } from '@midnight-ntwrk/midnight-js-utils';
 import { randomBytes } from 'crypto';
-import { Option } from 'effect';
 import { beforeAll } from 'vitest';
 
 import {
-  createUnprovenLedgerCallTx as createUnprovenLedgerCallTxMulti,
+  createUnprovenLedgerCallTx,
   createZswapOutput,
   type EncryptionPublicKeyResolver,
   extractUserAddressedOutputs,
   fromLedgerContractState,
   toLedgerContractState,
-  toLedgerQueryContext
-} from '../../utils';
-
-/**
- * Bridges the pre-CCC single-call signature these tests were written against to the multi-call
- * {@link createUnprovenLedgerCallTxMulti}, by wrapping the arguments as a single (root) contract
- * call. Lets the existing single-call test cases exercise the generalized implementation unchanged.
- */
-const createUnprovenLedgerCallTx = (
-  circuitId: any, // eslint-disable-line @typescript-eslint/no-explicit-any
-  contractAddress: any, // eslint-disable-line @typescript-eslint/no-explicit-any
-  contractState: any, // eslint-disable-line @typescript-eslint/no-explicit-any
-  zswapChainState: any, // eslint-disable-line @typescript-eslint/no-explicit-any
-  partitionedTranscript: any, // eslint-disable-line @typescript-eslint/no-explicit-any
-  privateTranscriptOutputs: any, // eslint-disable-line @typescript-eslint/no-explicit-any
-  input: any, // eslint-disable-line @typescript-eslint/no-explicit-any
-  output: any, // eslint-disable-line @typescript-eslint/no-explicit-any
-  nextZswapLocalState: any, // eslint-disable-line @typescript-eslint/no-explicit-any
-  encryptionPublicKey: any // eslint-disable-line @typescript-eslint/no-explicit-any
-) =>
-  createUnprovenLedgerCallTxMulti(
-    [
-      {
-        contractAddress,
-        circuitId,
-        public: { contractState, publicTranscript: [], partitionedTranscript },
-        private: { input, output, privateTranscriptOutputs },
-        communicationCommitment: Option.none()
-      }
-    ],
-    () => contractState,
-    zswapChainState,
-    nextZswapLocalState,
-    encryptionPublicKey
-  );
-
+  toLedgerQueryContext,
+  ZSWAP_MERKLE_ROOT_RETENTION_SECONDS} from '../../utils';
 const emptyTranscript: PartitionedTranscript = [undefined, undefined];
 
 describe('ledger-utils', () => {
@@ -220,7 +185,7 @@ describe('ledger-utils', () => {
 
     it('succeeds with deposit circuit that calls receiveShielded', () => {
       const coin = { nonce: new Uint8Array(32).fill(1), color: new Uint8Array(32).fill(2), value: 100n };
-      const ctx = createCircuitContext('deposit', shieldedAddr, shieldedCpk, shieldedInitialState, undefined);
+      const ctx = createCircuitContext(shieldedAddr, shieldedCpk, shieldedInitialState, undefined);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { proofData, context } = (shieldedContract.circuits as any).deposit(ctx, coin);
 
@@ -300,7 +265,12 @@ describe('ledger-utils', () => {
       chainState: ZswapChainState,
       contractAddress: ContractAddress
     ): string =>
-      ZswapInput.newContractOwned(qualifiedCoin, 0, contractAddress, chainState.postBlockUpdate(new Date(), 1n)).nullifier;
+      ZswapInput.newContractOwned(
+        qualifiedCoin,
+        0,
+        contractAddress,
+        chainState.postBlockUpdate(new Date(), ZSWAP_MERKLE_ROOT_RETENTION_SECONDS)
+      ).nullifier;
 
     it('routes a user-bound shielded output from a fallible op into the fallible Zswap offer', () => {
       // Arrange

@@ -16,13 +16,13 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-import { assertSemVer } from '@midnight-ntwrk/midnight-js-utils';
+import { assertSafeName } from '@midnight-ntwrk/midnight-js-utils';
 
 export class VersionManager {
   constructor(private packageDir: string) {}
 
   getVersionDir(version: string): string {
-    assertSemVer(version, 'version');
+    assertSafeName(version, 'version');
     return path.resolve(this.packageDir, 'managed', version);
   }
 

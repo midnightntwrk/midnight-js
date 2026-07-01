@@ -22,8 +22,6 @@ import {
   exitResultOrError,
   makeContractExecutableRuntime,
   type PrivateStateId,
-  schnorrSigningKey,
-  signingKeyHex,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
@@ -122,7 +120,7 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
   const contractExec = ContractExecutable.make(options.compiledContract);
   const contractRuntime = makeContractExecutableRuntime(zkConfigProvider, {
     coinPublicKey: coinPublicKey,
-    signingKey: signingKeyHex(options.signingKey)
+    signingKey: options.signingKey
   });
   const initialPrivateState = 'initialPrivateState' in options ? options.initialPrivateState : undefined;
   const args = ('args' in options ? options.args : []) as Contract.InitializeParameters<C>;
@@ -149,9 +147,9 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
         initialContractState
       },
       private: {
-        // Compact.js returns the maintenance-authority key as a bare hex string; re-tag it as the
-        // Schnorr key it is (string-keyed configuration boundaries only carry Schnorr keys).
-        signingKey: schnorrSigningKey(signingKey),
+        // Compact.js returns the maintenance-authority key as a structured `SigningKey` ({ tag, value }),
+        // which already carries its signature scheme, so it is threaded through unchanged.
+        signingKey,
         initialPrivateState: privateState,
         initialZswapState: zswapLocalState,
         unprovenTx,

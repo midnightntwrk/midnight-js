@@ -15,7 +15,7 @@
 
 import { type CompiledContract, Contract, type ContractExecutable, ContractExecutableRuntime,
   ZKConfiguration, ZKConfigurationReadError } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect';
-import { type SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { SigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/platform-js';
 import * as Configuration from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/Configuration';
 import { Cause, type ConfigError, ConfigProvider, Effect, Exit,Layer, Option } from 'effect';
@@ -72,30 +72,6 @@ const makeAdaptedRuntimeLayer = (zkConfigProvider: ZKConfigProvider<string>, con
   );
 
 /**
- * Extracts the raw hex value of a Schnorr signing key for use where keys are still modeled as
- * bare hex strings (e.g. the contract executable runtime's `KEYS_SIGNING` configuration entry,
- * which Compact.js re-tags as Schnorr at the proving boundary).
- *
- * @throws Error If the key is not a Schnorr key: silently dropping an `ecdsa` tag would produce
- * signatures under the wrong scheme, which would only surface as a verification failure on-chain.
- */
-export const signingKeyHex = (signingKey: SigningKey): string => {
-  if (signingKey.tag !== 'schnorr') {
-    throw new Error(
-      `Cannot convert signing key to hex: expected a 'schnorr' key, received '${signingKey.tag}'. ` +
-      'String-keyed configuration boundaries re-tag keys as Schnorr, so passing a non-Schnorr key would corrupt it.'
-    );
-  }
-  return signingKey.value;
-};
-
-/**
- * Tags a bare hex signing key as a Schnorr {@link SigningKey}. Untagged keys in earlier ledger
- * versions were Schnorr keys, so this preserves the previous semantics.
- */
-export const schnorrSigningKey = (value: string): SigningKey => ({ tag: 'schnorr', value });
-
-/**
  * Options for use when constructing a Compact.js contract executable runtime.
  */
 export type ContractExecutableRuntimeOptions = {
@@ -103,7 +79,7 @@ export type ContractExecutableRuntimeOptions = {
   readonly coinPublicKey: string;
 
   /** The signing key to add as the to-be-deployed contract's maintenance authority. */
-  readonly signingKey?: string;
+  readonly signingKey?: SigningKey;
 }
 
 /**
@@ -118,7 +94,10 @@ export const makeContractExecutableRuntime:
   (zkConfigProvider, options) => {
     let config: readonly [string, string][] = [['KEYS_COIN_PUBLIC', options.coinPublicKey]];
     if (options.signingKey) {
-      config = config.concat([['KEYS_SIGNING', options.signingKey]])
+      config = config.concat([
+        ['KEYS_SIGNING', options.signingKey.value],
+        ['KEYS_SIGNING_KIND', options.signingKey.tag]
+      ])
     }
     return ContractExecutableRuntime.make(makeAdaptedRuntimeLayer(zkConfigProvider, new Map(config)));
   };

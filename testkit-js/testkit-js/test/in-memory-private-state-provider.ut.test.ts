@@ -33,7 +33,7 @@ const VALID_PASSWORD = 'Valid-Pass9-Test!@';
 
 const CONTRACT_ADDRESS_1 = 'contract-address-1' as ContractAddress;
 const CONTRACT_ADDRESS_2 = 'contract-address-2' as ContractAddress;
-const VALID_SIGNING_KEY = '0102030a1b2c3d4e5f';
+const VALID_SIGNING_KEY = { tag: 'schnorr', value: '0102030a1b2c3d4e5f' };
 
 const encryptPayload = (data: string, password: string, salt: Buffer): string => {
   const key = pbkdf2Sync(password, salt, PBKDF2_ITERATIONS, KEY_LENGTH, 'sha256');
@@ -65,15 +65,18 @@ type PS = Contract.PrivateState<Contract.Any>;
 describe('[Unit tests] inMemoryPrivateStateProvider importSigningKeys validation', () => {
   describe('rejects malformed signingKey values with InvalidExportFormatError', () => {
     it.each([
-      ['null',                         { [CONTRACT_ADDRESS_1]: null }],
-      ['object',                       { [CONTRACT_ADDRESS_1]: { sk: 'deadbeef' } }],
-      ['number',                       { [CONTRACT_ADDRESS_1]: 12345 }],
-      ['boolean',                      { [CONTRACT_ADDRESS_1]: true }],
-      ['array',                        { [CONTRACT_ADDRESS_1]: ['deadbeef'] }],
-      ['empty string',                 { [CONTRACT_ADDRESS_1]: '' }],
-      ['non-hex chars',                { [CONTRACT_ADDRESS_1]: 'zz'.repeat(8) }],
-      ['odd hex length',               { [CONTRACT_ADDRESS_1]: 'abcde' }],
-      ['shorter than version prefix',  { [CONTRACT_ADDRESS_1]: 'ab' }]
+      ['null',                  { [CONTRACT_ADDRESS_1]: null }],
+      ['plain object (no tag)', { [CONTRACT_ADDRESS_1]: { sk: 'deadbeef' } }],
+      ['number',                { [CONTRACT_ADDRESS_1]: 12345 }],
+      ['boolean',               { [CONTRACT_ADDRESS_1]: true }],
+      ['array',                 { [CONTRACT_ADDRESS_1]: ['deadbeef'] }],
+      ['legacy hex string',     { [CONTRACT_ADDRESS_1]: 'deadbeef' }],
+      ['unknown tag',           { [CONTRACT_ADDRESS_1]: { tag: 'rsa', value: 'deadbeef' } }],
+      ['missing value',         { [CONTRACT_ADDRESS_1]: { tag: 'schnorr' } }],
+      ['non-hex value',         { [CONTRACT_ADDRESS_1]: { tag: 'schnorr', value: 'zz'.repeat(8) } }],
+      ['odd-length value',      { [CONTRACT_ADDRESS_1]: { tag: 'schnorr', value: 'abcde' } }],
+      ['too-short value',       { [CONTRACT_ADDRESS_1]: { tag: 'schnorr', value: 'ab' } }],
+      ['empty value',           { [CONTRACT_ADDRESS_1]: { tag: 'schnorr', value: '' } }]
     ])('%s value is rejected', async (_reason, keys) => {
       const provider = inMemoryPrivateStateProvider<PSI, PS>();
       const badExport = buildExport(keys as Record<string, unknown>);
@@ -101,7 +104,7 @@ describe('[Unit tests] inMemoryPrivateStateProvider importSigningKeys validation
     });
   });
 
-  it('accepts a well-formed hex signing key', async () => {
+  it('accepts a well-formed structured signing key', async () => {
     const provider = inMemoryPrivateStateProvider<PSI, PS>();
     const goodExport = buildExport({ [CONTRACT_ADDRESS_1]: VALID_SIGNING_KEY });
 

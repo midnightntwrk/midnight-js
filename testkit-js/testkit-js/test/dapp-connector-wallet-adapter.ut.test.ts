@@ -89,8 +89,8 @@ const mockWalletFacade = {
 
 const mockUnshieldedKeystore = {
   getBech32Address: vi.fn().mockReturnValue({ asString: () => 'mn1unshielded-bech32m-address' }),
-  signData: vi.fn().mockReturnValue('mock-signature'),
-  getPublicKey: vi.fn().mockReturnValue('mock-public-key'),
+  signData: vi.fn().mockReturnValue({ tag: 'schnorr', value: 'mock-signature' }),
+  getPublicKey: vi.fn().mockReturnValue({ tag: 'schnorr', value: 'mock-public-key' }),
   getSecretKey: vi.fn(),
   getAddress: vi.fn(),
 };

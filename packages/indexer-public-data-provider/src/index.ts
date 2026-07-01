@@ -33,8 +33,9 @@ export {
   toUnshieldedBalances,
   toUnshieldedUtxos
 } from './codec';
-export { DEFAULT_POLL_INTERVAL, type IndexerProviderConfig } from './config';
+export { DEFAULT_CONTRACT_EVENTS_PAGE_SIZE, DEFAULT_POLL_INTERVAL, type IndexerProviderConfig } from './config';
 export * from './errors';
+export { getAllContractEvents } from './get-all-contract-events';
 export { isRegularTransaction } from './mapping';
 export { IndexerPublicDataProvider } from './provider';
 

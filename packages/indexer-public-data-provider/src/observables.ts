@@ -16,6 +16,7 @@
 import type { ApolloClient, ApolloQueryResult, FetchResult, OperationVariables } from '@apollo/client/core';
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import type { ContractAddress, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { ContractEvent } from '@midnight-ntwrk/midnight-js-types';
 import * as Rx from 'rxjs';
 
 import { parseHexContractState, toUnshieldedBalances } from './codec';
@@ -25,15 +26,18 @@ import {
   IndexerQueryError,
   IndexerSubscriptionDataError
 } from './errors';
+import { toContractEvent } from './events-mapping';
 import type {
   BlockOffset,
   ContractActionOffset,
+  ContractEventsSubSubscriptionVariables,
   InputMaybe,
   RegularTransaction
 } from './gen/graphql';
 import { extractUnshieldedBalances, hasContractAction } from './mapping';
 import {
   BLOCK_QUERY,
+  CONTRACT_EVENTS_SUB,
   CONTRACT_STATE_QUERY,
   CONTRACT_STATE_SUB,
   LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY,
@@ -352,4 +356,33 @@ export const blockOffsetToUnshieldedBalances$ =
           return extractUnshieldedBalances(contractAction, 'blockOffsetToUnshieldedBalances$');
         }),
         Rx.map(toUnshieldedBalances)
+      );
+
+/**
+ * Subscribes to `CONTRACT_EVENTS_SUB` with pre-built, pre-validated `variables`.
+ * The indexer replays historical events from the supplied cursor in monotonic
+ * `id` order, then continues live in the same stream. `toBlock` (carried in
+ * `variables.filter`) completes the stream server-side; a missing
+ * `contractEvents` field surfaces as {@link IndexerSubscriptionDataError} and
+ * GraphQL errors as {@link IndexerFormattedError} (via {@link withValidFetchData})
+ * — never a silent completion.
+ */
+export const contractEvents$ =
+  (apolloClient: ApolloClient) =>
+  (variables: ContractEventsSubSubscriptionVariables): Rx.Observable<ContractEvent> =>
+    apolloClient
+      .subscribe({
+        query: CONTRACT_EVENTS_SUB,
+        variables,
+        fetchPolicy: 'no-cache'
+      })
+      .pipe(
+        withValidFetchData(),
+        Rx.map((data) => {
+          const node = data.contractEvents;
+          if (!node) {
+            throw new IndexerSubscriptionDataError('contractEvents');
+          }
+          return toContractEvent(node);
+        })
       );

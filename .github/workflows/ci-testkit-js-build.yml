@@ -34,9 +34,9 @@ on:
         default: './testkit-js'
       testkit_docker_env:
         type: string
-        description: Docker image version set sourced from testkit-js/env/<testkit_docker_env>.env (qanet|preview|preprod|mainnet|devnet). Empty falls back to the .envrc default.
+        description: Docker image version set sourced from testkit-js/env/<testkit_docker_env>.env (qanet|preview|preprod|mainnet|devnet). Empty falls back to the .envrc default (devnet).
         required: false
-        default: ''
+        default: 'devnet'
       compactc_source:
         type: string
         description: 'compactc source: "release" (default prebuilt download) or "submodule" (build from compact/ submodule via nix). PR label `compactc-from-source` also activates submodule build.'
@@ -55,7 +55,7 @@ jobs:
   ci:
     if: inputs.should_run == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # ratchet:actions/checkout@v6.0.2
 

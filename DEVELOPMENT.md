@@ -213,7 +213,7 @@ git config --local tag.gpgSign true
 | `COMPACTC_VERSION` | Compact compiler version | direnv |
 | `COMPACT_HOME` | Directory containing a `compactc` wrapper, used in preference to the prebuilt download. Exported by `.envrc` when `./scripts/build-compactc.sh` has been run. | direnv (auto when `.compact-home/compactc` exists) |
 | `NODE_VERSION` | Node.js version | nvm |
-| `TESTKIT_DOCKER_ENV` | Selects which **docker image version set** the local testkit stack uses (`qanet`, `preview`, `preprod`, `mainnet`, `devnet`). Defaults to `preprod`. Does **not** select a live network — see `MN_TEST_ENVIRONMENT`. | direnv / shell |
+| `TESTKIT_DOCKER_ENV` | Selects which **docker image version set** the local testkit stack uses (`qanet`, `preview`, `preprod`, `mainnet`, `devnet`). Defaults to `devnet`. Does **not** select a live network — see `MN_TEST_ENVIRONMENT`. | direnv / shell |
 | `PROOF_SERVER_VERSION` | Proof-server docker image tag used by testkit compose files | `testkit-js/env/<TESTKIT_DOCKER_ENV>.env` |
 | `INDEXER_VERSION` | Indexer-standalone docker image tag used by testkit compose files | `testkit-js/env/<TESTKIT_DOCKER_ENV>.env` |
 | `MIDNIGHT_NODE_VERSION` | Midnight-node docker image tag used by testkit compose files | `testkit-js/env/<TESTKIT_DOCKER_ENV>.env` |

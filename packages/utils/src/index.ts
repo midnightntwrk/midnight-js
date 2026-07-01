@@ -19,4 +19,5 @@ export * from './deserialization';
 export * from './hex-utils';
 export * from './password-validation';
 export * from './security-utils';
+export * from './signing-key-utils';
 export * from './type-utils';

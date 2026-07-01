@@ -23,6 +23,13 @@ import { IndexerProviderConfigError } from './errors';
 export const DEFAULT_POLL_INTERVAL = 1000;
 
 /**
+ * Default page size for {@link PublicDataProvider.queryContractEvents} when the
+ * caller omits `page.limit`. Applied explicitly by the provider so the page
+ * size is documented and stable, never an undocumented server default.
+ */
+export const DEFAULT_CONTRACT_EVENTS_PAGE_SIZE = 100;
+
+/**
  * User-facing configuration for the indexer public data provider.
  * All fields except the URLs are optional; defaults are filled in by
  * {@link validateConfig}.

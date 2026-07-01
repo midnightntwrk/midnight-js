@@ -6,7 +6,7 @@
 
 # Type Alias: IndexerSubscriptionField
 
-> **IndexerSubscriptionField** = `"blocks"` \| `"contractActions"`
+> **IndexerSubscriptionField** = `"blocks"` \| `"contractActions"` \| `"contractEvents"`
 
 Subscription payload fields the indexer provider depends on.
 Narrowing this to a literal union prevents typos at throw sites and

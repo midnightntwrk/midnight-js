@@ -206,7 +206,7 @@ corruption modes are also surfaced as throws rather than `null`.
 
 ### getSigningKey()
 
-> **getSigningKey**(`address`): `Promise`\<`string` \| `null`\>
+> **getSigningKey**(`address`): `Promise`\<`SigningKey` \| `null`\>
 
 Retrieve the signing key for a contract.
 
@@ -220,7 +220,7 @@ The address of the contract for which to get the signing key.
 
 #### Returns
 
-`Promise`\<`string` \| `null`\>
+`Promise`\<`SigningKey` \| `null`\>
 
 The stored signing key, or `null` if either:
   - no signing key is stored for the given address, or
@@ -483,7 +483,7 @@ The address of the contract having the given signing key.
 
 ##### signingKey
 
-`string`
+`SigningKey`
 
 The signing key to store.
 

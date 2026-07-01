@@ -51,18 +51,16 @@ const lintRestricted = async (code: string, filePath: string): Promise<Linter.Li
 // load that can exceed the 5s per-test default. Warming once in a hook keeps
 // individual tests fast and deterministic.
 beforeAll(async () => {
-  await eslint.lintText(importStatement('@midnight-ntwrk/ledger-v8'), { filePath: CONSUMER_PATH });
+  await eslint.lintText(importStatement('@midnightntwrk/ledger-v9'), { filePath: CONSUMER_PATH });
 }, 60_000);
 
 describe('Protocol ACL: no-restricted-imports rule', () => {
   describe('flags direct imports from consumer packages', () => {
     it.each([
-      ['@midnight-ntwrk/ledger-v8', `${ACL_REPLACEMENT_PREFIX}/ledger`],
       ['@midnightntwrk/ledger-v9', `${ACL_REPLACEMENT_PREFIX}/ledger`],
       ['@midnight-ntwrk/compact-runtime', `${ACL_REPLACEMENT_PREFIX}/compact-runtime`],
       ['@midnight-ntwrk/compact-js', `${ACL_REPLACEMENT_PREFIX}/compact-js`],
       ['@midnight-ntwrk/compact-js/effect', `${ACL_REPLACEMENT_PREFIX}/compact-js`],
-      ['@midnight-ntwrk/onchain-runtime-v3', `${ACL_REPLACEMENT_PREFIX}/onchain-runtime`],
       ['@midnightntwrk/onchain-runtime-v4', `${ACL_REPLACEMENT_PREFIX}/onchain-runtime`],
       ['@midnight-ntwrk/platform-js', `${ACL_REPLACEMENT_PREFIX}/platform-js`],
       ['@midnight-ntwrk/platform-js/effect/Configuration', `${ACL_REPLACEMENT_PREFIX}/platform-js`]
@@ -74,8 +72,8 @@ describe('Protocol ACL: no-restricted-imports rule', () => {
       expect(messages[0].message).toContain(expectedReplacement);
     });
 
-    // Future-proofing: if a new ledger major version is added (e.g. ledger-v9),
-    // the rule's wildcard pattern must still flag it. This guards the wildcard.
+    // Future-proofing: if a new ledger/onchain-runtime major version is added
+    // (under either scope), the rule's wildcard pattern must still flag it.
     it.each([
       ['ledger', '@midnight-ntwrk/ledger-v99'],
       ['ledger', '@midnightntwrk/ledger-v99'],

@@ -74,7 +74,10 @@ export type IndexerDataErrorContext =
       contractAddress: string;
       actionIndex: number;
       identifiersLength: number;
-    };
+    }
+  | { kind: 'unknown-event-type'; typename: string }
+  | { kind: 'missing-event-field'; typename: string; field: string }
+  | { kind: 'unknown-address-kind'; typename: string; field: string; value: string };
 
 /**
  * An error raised when indexer-returned data is structurally inconsistent
@@ -120,6 +123,18 @@ export class IndexerDataError extends IndexerError {
     });
   }
 
+  static unknownEventType(typename: string): IndexerDataError {
+    return new IndexerDataError({ kind: 'unknown-event-type', typename });
+  }
+
+  static missingEventField(typename: string, field: string): IndexerDataError {
+    return new IndexerDataError({ kind: 'missing-event-field', typename, field });
+  }
+
+  static unknownAddressKind(typename: string, field: string, value: string): IndexerDataError {
+    return new IndexerDataError({ kind: 'unknown-address-kind', typename, field, value });
+  }
+
   private static formatMessage(context: IndexerDataErrorContext): string {
     switch (context.kind) {
       case 'unknown-status':
@@ -131,6 +146,12 @@ export class IndexerDataError extends IndexerError {
           `Transaction missing identifier for contract action at address ${context.contractAddress}` +
           ` (actionIndex=${context.actionIndex}, identifiers.length=${context.identifiersLength})`
         );
+      case 'unknown-event-type':
+        return `Unknown contract event __typename: ${context.typename}`;
+      case 'missing-event-field':
+        return `Contract event ${context.typename} is missing required field '${context.field}'`;
+      case 'unknown-address-kind':
+        return `Contract event ${context.typename} field '${context.field}' has unknown address kind '${context.value}'`;
     }
   }
 }
@@ -140,7 +161,7 @@ export class IndexerDataError extends IndexerError {
  * Narrowing this to a literal union prevents typos at throw sites and
  * documents the exhaustive set of fields the provider currently reads.
  */
-export type IndexerSubscriptionField = 'blocks' | 'contractActions';
+export type IndexerSubscriptionField = 'blocks' | 'contractActions' | 'contractEvents';
 
 /**
  * An error raised when an indexer subscription payload is missing a field

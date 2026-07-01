@@ -122,6 +122,79 @@ type ContractStateObservableConfig =
   | { type: 'blockHash'; blockHash: string; inclusive?: boolean }
 ```
 
+## Contract events `@beta`
+
+Query and stream MIP-0002 public contract log events for a contract address. The
+indexer decodes each standard event into typed scalar fields server-side; this
+provider maps those into the discriminated `ContractEvent` union. Custom-event
+(`Misc`) payload decoding is not done here — the `name`/`payload` are carried as
+opaque hex, and every event carries the raw `VersionedLogItem` bytes (`raw`) for
+a future decoder.
+
+```typescript
+// Query: finite, paginated, point-in-time read (ascending id order).
+queryContractEvents(
+  filter: ContractEventQueryFilter,
+  page?: ContractEventsPage
+): Promise<ContractEvent[]>
+
+// Subscription: replay from a cursor, then live, in one stream.
+contractEventsObservable(
+  filter: ContractEventSubscriptionFilter,
+  opts?: { startAt?: ContractEventCursor }
+): Observable<ContractEvent>
+```
+
+### Recommended path (DX)
+
+- **Tail a contract's events (most common):** use `contractEventsObservable`. It
+  unifies replay + live in one stream — no hand-rolled paging.
+- **Read all historical events:** use the `getAllContractEvents` helper, not
+  manual `limit`/`offset` loops. It pins a stable upper bound once and pages
+  safely to exhaustion.
+- **Manual `queryContractEvents` paging:** only when you need explicit page
+  control. `offset` is stable only within a fixed `toBlock` window; detect the
+  end via `result.length < limit`. When `limit` is omitted,
+  `DEFAULT_CONTRACT_EVENTS_PAGE_SIZE` is applied.
+
+`{ fromId }` is an **inclusive** resumption cursor — to resume after the last
+seen event, pass `{ fromId: lastSeenId + 1 }`. `toBlock` completes the
+subscription; delivery is at-least-once across transport reconnects, so
+persisting consumers should dedup by `id`.
+
+### Standard vs `Misc`
+
+Standard events expose decoded fields today (e.g. `nullifier`, `commitment`,
+`amount`). `sender`/`recipient` are `{ kind: 'user' | 'contract'; value }`.
+`amount` is always a `string` (up to a 16-byte integer) — never coerce it
+through `Number()`. `Misc` exposes `name` + opaque `payload`; decoding the
+custom payload arrives with the future compact-js decoder.
+
+### Example — watch my contract's events with resumption
+
+```typescript
+import { getAllContractEvents } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+
+// Tail live events, resuming after the last event the app persisted.
+const sub = provider
+  .contractEventsObservable(
+    { contractAddress, types: ['ShieldedSpend', 'ShieldedReceive'] },
+    lastSeenId === undefined ? undefined : { startAt: { fromId: lastSeenId + 1 } }
+  )
+  .subscribe((event) => {
+    persistCursor(event.id);
+    if (event.eventType === 'ShieldedReceive') handleReceive(event.commitment);
+  });
+
+// One-off: everything my just-submitted transaction emitted.
+const mine = await provider.queryContractEvents({ contractAddress, transactionHash });
+
+// Full historical scan, safely paged.
+for await (const event of getAllContractEvents(provider, { contractAddress })) {
+  index(event);
+}
+```
+
 ## Transaction Data
 
 The `FinalizedTxData` type returned by watch methods includes:
@@ -150,6 +223,8 @@ type FinalizedTxData = {
 ```typescript
 import {
   indexerPublicDataProvider,
+  getAllContractEvents,
+  DEFAULT_CONTRACT_EVENTS_PAGE_SIZE,
   IndexerFormattedError,
   toUnshieldedUtxos,
   toUnshieldedBalances,
