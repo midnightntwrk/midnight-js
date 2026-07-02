@@ -15,7 +15,12 @@
 
 import { InvalidProtocolSchemeError } from '@midnight-ntwrk/midnight-js-types';
 import { warnIfInsecureRemoteUrl } from '@midnight-ntwrk/midnight-js-utils';
-import * as ws from 'isomorphic-ws';
+// Default import, not `import * as ws` + `ws.WebSocket`: isomorphic-ws is CJS
+// (`module.exports = require('ws')`) with no `exports` map. Node's CJS→ESM interop
+// exposes only the `default` export to the built `.mjs`, so the named `ws.WebSocket`
+// resolves to `undefined` at runtime under ESM (it works only in the CJS build).
+// The default export is the WebSocket class in both formats.
+import WebSocket from 'isomorphic-ws';
 
 import { IndexerProviderConfigError } from './errors';
 
@@ -37,7 +42,7 @@ export const DEFAULT_CONTRACT_EVENTS_PAGE_SIZE = 100;
 export type IndexerProviderConfig = {
   readonly queryURL: string;
   readonly subscriptionURL: string;
-  readonly webSocket?: typeof ws.WebSocket;
+  readonly webSocket?: typeof WebSocket;
   /** Defaults to {@link DEFAULT_POLL_INTERVAL}. Must be a positive integer. */
   readonly pollInterval?: number;
 };
@@ -54,7 +59,7 @@ export type ValidatedConfig = {
   readonly subscriptionURL: URL;
   readonly queryURLString: string;
   readonly subscriptionURLString: string;
-  readonly webSocket: typeof ws.WebSocket;
+  readonly webSocket: typeof WebSocket;
   readonly pollInterval: number;
 };
 
@@ -103,7 +108,7 @@ export const validateConfig = (config: IndexerProviderConfig): ValidatedConfig =
     subscriptionURL: subscriptionURLObj,
     queryURLString: config.queryURL,
     subscriptionURLString: config.subscriptionURL,
-    webSocket: config.webSocket ?? ws.WebSocket,
+    webSocket: config.webSocket ?? WebSocket,
     pollInterval
   };
 };

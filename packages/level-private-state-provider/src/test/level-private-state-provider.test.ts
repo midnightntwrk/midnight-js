@@ -1006,6 +1006,30 @@ describe('Level Private State Provider', (): void => {
       expect(await db.getSigningKey(CONTRACT_ADDRESS_2)).toEqual(signingKey2);
     });
 
+    test('exports and imports mixed schnorr and ecdsa signing keys preserving each kind', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      const schnorrKey = sampleSigningKey('schnorr');
+      const ecdsaKey = sampleSigningKey('ecdsa');
+      await db.setSigningKey(CONTRACT_ADDRESS_1, schnorrKey);
+      await db.setSigningKey(CONTRACT_ADDRESS_2, ecdsaKey);
+
+      const exportData = await db.exportSigningKeys();
+
+      await db.clearSigningKeys();
+      const result = await db.importSigningKeys(exportData);
+
+      expect(result.imported).toBe(2);
+      expect(result.skipped).toBe(0);
+      expect(result.overwritten).toBe(0);
+
+      const importedSchnorr = await db.getSigningKey(CONTRACT_ADDRESS_1);
+      const importedEcdsa = await db.getSigningKey(CONTRACT_ADDRESS_2);
+      expect(importedSchnorr).toEqual(schnorrKey);
+      expect(importedSchnorr?.tag).toBe('schnorr');
+      expect(importedEcdsa).toEqual(ecdsaKey);
+      expect(importedEcdsa?.tag).toBe('ecdsa');
+    });
+
     test('exports with custom password and imports with same password', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
       const signingKey = sampleSigningKey();

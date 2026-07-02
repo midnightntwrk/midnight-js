@@ -22,6 +22,7 @@ import fetch from 'cross-fetch';
 import { createClient } from 'graphql-ws';
 
 import type { ValidatedConfig } from './config';
+import { wrapWithDeflate } from './deflate-websocket';
 
 /**
  * Resource-bearing handle that pairs the Apollo client with an idempotent
@@ -55,6 +56,17 @@ export type ApolloHandle = {
  * is out of scope for the Phase 1–2 restructure.
  */
 export const createApolloClient = (validated: ValidatedConfig): ApolloHandle => {
+  /**
+   * `cross-fetch` resolves to `node-fetch` in Node (which sends
+   * `Accept-Encoding: gzip,deflate` by default) and to the platform `fetch`
+   * in browsers (which negotiates compression natively). This satisfies the
+   * upcoming indexer 4.4.0 HTTP-response compression contract without any
+   * configuration here. A unit test was attempted but cannot reliably
+   * intercept `cross-fetch` because vitest's hoisted vi.mock('graphql-ws')
+   * binds the transport-side cross-fetch import before any per-test
+   * vi.doMock can intercept it, making the Accept-Encoding header
+   * untestable without a full integration setup.
+   */
   const httpLink = new HttpLink({ fetch, uri: validated.queryURLString });
   const retryLink = new RetryLink({
     delay: {
@@ -68,7 +80,12 @@ export const createApolloClient = (validated: ValidatedConfig): ApolloHandle => 
   });
   const apolloLink = from([retryLink, httpLink]);
 
-  const wsClient = createClient({ url: validated.subscriptionURLString, webSocketImpl: validated.webSocket });
+  const wsClient = createClient({
+    url: validated.subscriptionURLString,
+    // TODO(loggerProvider): forward provider's optional logger here once the indexer
+    // public-data-provider factory accepts and threads loggerProvider through.
+    webSocketImpl: wrapWithDeflate(validated.webSocket)
+  });
 
   const client = new ApolloClient({
     link: split(

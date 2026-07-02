@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v4.1.1**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-alpha.1**](../../../README.md)
 
 ***
 
@@ -36,4 +36,4 @@ Defaults to [DEFAULT\_POLL\_INTERVAL](../variables/DEFAULT_POLL_INTERVAL.md). Mu
 
 ### webSocket?
 
-> `readonly` `optional` **webSocket?**: *typeof* `ws.WebSocket`
+> `readonly` `optional` **webSocket?**: *typeof* `WebSocket`

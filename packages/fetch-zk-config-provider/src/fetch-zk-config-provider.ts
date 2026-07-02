@@ -19,48 +19,64 @@ import {
   createVerifierKey,
   createZKIR,
   InvalidProtocolSchemeError,
-  ZKConfigProvider} from '@midnight-ntwrk/midnight-js-types';
-import { assertSafeName } from '@midnight-ntwrk/midnight-js-utils';
+  ZKConfigProvider
+} from '@midnight-ntwrk/midnight-js-types';
+import {
+  assertManifestHash,
+  assertSafeName,
+  parseZkArtifactManifest,
+  verifyZkArtifactIntegrity,
+  ZK_MANIFEST_DIR,
+  ZK_MANIFEST_FILE_NAME,
+  ZkArtifactIntegrityError,
+  type ZkArtifactManifest,
+  type ZkConfigIntegrityOptions
+} from '@midnight-ntwrk/midnight-js-utils';
 import { fetch } from 'cross-fetch';
 
-/**
- * The name of the path containing proving and verifying keys.
- */
 const KEY_PATH = 'keys';
-/**
- * File extension for proving keys.
- */
 const PROVER_EXT = '.prover';
-/**
- * File extension for verifying keys.
- */
 const VERIFIER_EXT = '.verifier';
-/**
- * The name of the path containing zkIRs.
- */
 const ZKIR_PATH = 'zkir';
-/**
- * File extension for zkIRs.
- */
 const ZKIR_EXT = '.bzkir';
 
+/** Options for {@link FetchZkConfigProvider}. Carries the optional custom fetch alongside integrity options. */
+export type FetchZkConfigProviderOptions = ZkConfigIntegrityOptions & { readonly fetchFunc?: typeof fetch };
+
 /**
- * Retrieves ZK artifacts from a remote source.
+ * Retrieves ZK artifacts from a remote source and verifies them against the `compactc` integrity manifest.
  */
 export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K> {
+  private readonly fetchFunc: typeof fetch;
+  private readonly integrityOptions: FetchZkConfigProviderOptions;
+  private manifestPromise?: Promise<ZkArtifactManifest | undefined>;
+
   /**
    * @param baseURL The endpoint to query for ZK artifacts.
-   * @param fetchFunc The function to use to execute queries.
+   * @param options Custom fetch and integrity-verification options.
    */
   constructor(
     public readonly baseURL: string,
-    private fetchFunc: typeof fetch = fetch
+    options: FetchZkConfigProviderOptions = {}
   ) {
     super();
     const urlObject = new URL(baseURL);
     if (urlObject.protocol !== 'http:' && urlObject.protocol !== 'https:') {
       throw new InvalidProtocolSchemeError(urlObject.protocol, ['http:', 'https:']);
     }
+    this.fetchFunc = options.fetchFunc ?? fetch;
+    this.integrityOptions = options;
+  }
+
+  private get base(): string {
+    return this.baseURL.endsWith('/') ? this.baseURL : `${this.baseURL}/`;
+  }
+
+  // Detects an SPA/CDN fallback page served in place of a missing file. Keyed on content-type:
+  // a real manifest served with a wrong `text/html` type is treated as absent (fail-closed under
+  // `require`), which is safe — it errs toward rejecting rather than trusting an unverified artifact.
+  private static isHtmlFallback(response: Response): boolean {
+    return (response.headers.get('content-type') ?? '').includes('text/html');
   }
 
   private async sendRequest<T extends 'text' | 'arraybuffer'>(
@@ -70,17 +86,15 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
     responseType: T
   ): Promise<T extends 'text' ? string : Uint8Array> {
     assertSafeName(circuitId, 'circuitId');
-    const base = this.baseURL.endsWith('/') ? this.baseURL : `${this.baseURL}/`;
-    const fullUrl = new URL(`${url}/${encodeURIComponent(circuitId)}${ext}`, base).toString();
-    const response = await this.fetchFunc(fullUrl, {
-      method: 'GET'
-    });
+    const fullUrl = new URL(`${url}/${encodeURIComponent(circuitId)}${ext}`, this.base).toString();
+    const response = await this.fetchFunc(fullUrl, { method: 'GET' });
     if (!response.ok) {
       throw new Error(`Failed to fetch ZK artifact from ${fullUrl}: ${response.status} ${response.statusText}`);
     }
-    const contentType = response.headers.get('content-type') ?? '';
-    if (contentType.includes('text/html')) {
-      throw new Error(`Expected ZK artifact, but received text/html from ${fullUrl}. This usually means the file does not exist and the server returned an SPA fallback page.`);
+    if (FetchZkConfigProvider.isHtmlFallback(response)) {
+      throw new Error(
+        `Expected ZK artifact, but received text/html from ${fullUrl}. This usually means the file does not exist and the server returned an SPA fallback page.`
+      );
     }
     /* eslint-disable @typescript-eslint/no-explicit-any */
     return responseType === 'text'
@@ -89,15 +103,66 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
     /* eslint-enable @typescript-eslint/no-explicit-any */
   }
 
-  getProverKey(circuitId: K): Promise<ProverKey> {
-    return this.sendRequest(KEY_PATH, circuitId, PROVER_EXT, 'arraybuffer').then(createProverKey);
+  private loadManifest(): Promise<ZkArtifactManifest | undefined> {
+    if (this.manifestPromise === undefined) {
+      const promise = this.fetchManifest();
+      this.manifestPromise = promise;
+      // Do not memoize a failed load (e.g. a transient network error where fetchFunc throws):
+      // clear so a later call retries. A resolved `undefined` (manifest absent) IS cached.
+      promise.catch(() => {
+        if (this.manifestPromise === promise) {
+          this.manifestPromise = undefined;
+        }
+      });
+    }
+    return this.manifestPromise;
   }
 
-  getVerifierKey(circuitId: K): Promise<VerifierKey> {
-    return this.sendRequest(KEY_PATH, circuitId, VERIFIER_EXT, 'arraybuffer').then(createVerifierKey);
+  private async fetchManifest(): Promise<ZkArtifactManifest | undefined> {
+    const url = new URL(`${ZK_MANIFEST_DIR}/${ZK_MANIFEST_FILE_NAME}`, this.base).toString();
+    const { expectedManifestHash } = this.integrityOptions;
+    const response = await this.fetchFunc(url, { method: 'GET' });
+    if (!response.ok || FetchZkConfigProvider.isHtmlFallback(response)) {
+      if (expectedManifestHash !== undefined) {
+        throw new ZkArtifactIntegrityError(
+          `Expected ZK artifact manifest at ${url} but it was not available (status ${response.status})`
+        );
+      }
+      return undefined;
+    }
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (expectedManifestHash !== undefined) {
+      assertManifestHash(bytes, expectedManifestHash);
+    }
+    return parseZkArtifactManifest(new TextDecoder().decode(bytes));
   }
 
-  getZKIR(circuitId: K): Promise<ZKIR> {
-    return this.sendRequest(ZKIR_PATH, circuitId, ZKIR_EXT, 'arraybuffer').then(createZKIR);
+  private async verifyArtifact(dir: typeof KEY_PATH | typeof ZKIR_PATH, fileName: string, bytes: Uint8Array): Promise<void> {
+    const manifest = await this.loadManifest();
+    verifyZkArtifactIntegrity({
+      manifest,
+      relativePath: `${dir}/${fileName}`,
+      bytes,
+      mode: this.integrityOptions.verify ?? 'require',
+      onWarn: this.integrityOptions.onWarn
+    });
+  }
+
+  async getProverKey(circuitId: K): Promise<ProverKey> {
+    const bytes = await this.sendRequest(KEY_PATH, circuitId, PROVER_EXT, 'arraybuffer');
+    await this.verifyArtifact(KEY_PATH, `${circuitId}${PROVER_EXT}`, bytes);
+    return createProverKey(bytes);
+  }
+
+  async getVerifierKey(circuitId: K): Promise<VerifierKey> {
+    const bytes = await this.sendRequest(KEY_PATH, circuitId, VERIFIER_EXT, 'arraybuffer');
+    await this.verifyArtifact(KEY_PATH, `${circuitId}${VERIFIER_EXT}`, bytes);
+    return createVerifierKey(bytes);
+  }
+
+  async getZKIR(circuitId: K): Promise<ZKIR> {
+    const bytes = await this.sendRequest(ZKIR_PATH, circuitId, ZKIR_EXT, 'arraybuffer');
+    await this.verifyArtifact(ZKIR_PATH, `${circuitId}${ZKIR_EXT}`, bytes);
+    return createZKIR(bytes);
   }
 }

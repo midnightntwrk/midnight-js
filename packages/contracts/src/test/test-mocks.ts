@@ -20,7 +20,8 @@ import {
   ChargedState,
   CompactError,
   type ContractState,
-  emptyZswapLocalState,  type Op,
+  emptyZswapLocalState,
+  finalizeCallProofData,  type Op,
   sampleSigningKey,
   type SigningKey,
   StateValue,
@@ -118,19 +119,20 @@ export const createMockZswapLocalState = (): ZswapLocalState => ({
   inputs: []
 });
 
-export const createDefaultCircuit = () => vi.fn().mockImplementation((ctx) => ({
-  result: { test: 'result ' },
-  context: {
-    ...ctx,
-    currentPrivateState: { test: 'next-private-state' }
-  },
-  proofData: {
+export const createDefaultCircuit = () => vi.fn().mockImplementation((ctx) => {
+  finalizeCallProofData(ctx, {
     input: { value: [], alignment: [] },
-    output: undefined,
+    output: { value: [], alignment: [] },
     publicTranscript: [],
     privateTranscriptOutputs: []
-  }
-}));
+  });
+  ctx.callContext.currentPrivateState = { test: 'next-private-state' };
+  return {
+    result: { test: 'result ' },
+    context: ctx,
+    gasCost: ctx.callContext.currentGasCost
+  };
+});
 
 export const createFailingCircuit = (failMessage: string) => vi.fn().mockImplementation((() => {
   compactAssert(false, failMessage);
