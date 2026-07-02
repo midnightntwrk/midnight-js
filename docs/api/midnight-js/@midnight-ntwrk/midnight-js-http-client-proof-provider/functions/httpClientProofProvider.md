@@ -31,7 +31,7 @@ The URL of the proof server
 
 ### zkConfigProvider
 
-[`ZKConfigProvider`](#)\<`K`\>
+`ZKConfigRegistry` \| [`ZKConfigProvider`](#)\<`K`\>
 
 Provider for zero-knowledge configuration artifacts
 

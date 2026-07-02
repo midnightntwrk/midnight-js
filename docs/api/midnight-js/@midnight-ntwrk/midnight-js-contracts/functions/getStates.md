@@ -6,7 +6,7 @@
 
 # Function: getStates()
 
-> **getStates**\<`PS`\>(`publicDataProvider`, `privateStateProvider`, `contractAddress`, `privateStateId`): `Promise`\<[`ContractStates`](../type-aliases/ContractStates.md)\<`PS`\>\>
+> **getStates**\<`PS`\>(`publicDataProvider`, `privateStateProvider`, `contractAddress`, `privateStateId`, `blockHash?`): `Promise`\<[`ContractStates`](../type-aliases/ContractStates.md)\<`PS`\>\>
 
 Retrieves the Zswap, ledger, and private states of the contract corresponding
 to the given identifier using the given providers.
@@ -43,6 +43,10 @@ The ledger address of the contract.
 `string`
 
 The identifier for the private state of the contract.
+
+### blockHash?
+
+`string`
 
 ## Returns
 

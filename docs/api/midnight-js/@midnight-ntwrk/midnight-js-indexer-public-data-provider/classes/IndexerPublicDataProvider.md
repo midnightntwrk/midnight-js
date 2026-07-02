@@ -142,6 +142,32 @@ repeat/concurrent/rejection-replay semantics.
 
 ***
 
+### queryBlock()
+
+> **queryBlock**(`config?`): `Promise`\<`BlockInfo` \| `null`\>
+
+Retrieves a block. If no block hash or block height is provided, the latest block is returned.
+Immediately returns null if no matching block is found.
+
+#### Parameters
+
+##### config?
+
+`BlockHeightConfig` \| `BlockHashConfig`
+
+The configuration of the query identifying the block of interest.
+              If `undefined` returns the latest block.
+
+#### Returns
+
+`Promise`\<`BlockInfo` \| `null`\>
+
+#### Implementation of
+
+`PublicDataProvider.queryBlock`
+
+***
+
 ### queryContractEvents()
 
 > **queryContractEvents**(`filter`, `page?`): `Promise`\<`ContractEvent`[]\>

@@ -9,3 +9,7 @@
 ## Classes
 
 - [NodeZkConfigProvider](classes/NodeZkConfigProvider.md)
+
+## Functions
+
+- [nodeZkConfigRegistry](functions/nodeZkConfigRegistry.md)
