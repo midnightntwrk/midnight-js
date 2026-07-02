@@ -1961,7 +1961,7 @@ __metadata:
   dependencies:
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*"
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
-    "@midnightntwrk/wallet-sdk-address-format": "npm:4.0.0-canary.20260623092110-2f10bcf"
+    "@midnightntwrk/wallet-sdk-address-format": "npm:4.0.0-beta.1"
     "@noble/hashes": "npm:^2.2.0"
     "@types/node": "npm:^24.0.0"
     vitest: "npm:^4.1.7"
@@ -2107,17 +2107,6 @@ __metadata:
     "@scure/base": "npm:^2.0.0"
     "@subsquid/scale-codec": "npm:^4.0.1"
   checksum: 10/ff3e6355ca1e77341f2bb5a4c2fa711663371cf16659d70272dfb464e11576fd1dea657f33fd9da3cab25b31d3a9c13201348aae2f5d87d6bee9175861ed1680
-  languageName: node
-  linkType: hard
-
-"@midnightntwrk/wallet-sdk-address-format@npm:4.0.0-canary.20260623092110-2f10bcf":
-  version: 4.0.0-canary.20260623092110-2f10bcf
-  resolution: "@midnightntwrk/wallet-sdk-address-format@npm:4.0.0-canary.20260623092110-2f10bcf"
-  dependencies:
-    "@midnightntwrk/ledger-v9": "npm:1.0.0-rc.2"
-    "@scure/base": "npm:^2.0.0"
-    "@subsquid/scale-codec": "npm:^4.0.1"
-  checksum: 10/9ac23fa4d785dbd760905d2c10ca3a2ebc4b8a07cce769f0f7ce41d03bb0241446bcd15b833591d73d732afd2a90ba01f1aa333ff4c82b9e478b1184334474cb
   languageName: node
   linkType: hard
 
