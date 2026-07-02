@@ -117,10 +117,13 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
     privateState: initialPrivateState,
     ledgerParameters
   };
+  // `calleeResolver` is defined exactly when cross-contract calls are enabled, and it carries the
+  // block its callee states are resolved as of, so a single check drives both the resolver wiring
+  // and `parentBlockHash`.
   const circuitContext =
-    crossContract === undefined || calleeResolver === undefined
+    calleeResolver === undefined
       ? baseCircuitContext
-      : { ...baseCircuitContext, stateProvider: calleeResolver.stateProvider, parentBlockHash: crossContract.blockHash };
+      : { ...baseCircuitContext, stateProvider: calleeResolver.stateProvider, parentBlockHash: calleeResolver.blockHash };
 
   const exitResult = await contractRuntime.runPromiseExit(contractExec.circuit(
     ProvableCircuitId<C>(options.circuitId as any), // eslint-disable-line @typescript-eslint/no-explicit-any

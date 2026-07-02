@@ -14,7 +14,7 @@
  */
 
 import type { CostModel } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { createProofProvider, type ProofProvider, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
+import { createProofProvider, type ProofProvider, type ZKConfigProvider, type ZKConfigRegistry } from '@midnight-ntwrk/midnight-js-types';
 
 import { type DAppConnectorProvingAPI, dappConnectorProvingProvider } from './dapp-connector-proving-provider';
 
@@ -28,13 +28,16 @@ import { type DAppConnectorProvingAPI, dappConnectorProvingProvider } from './da
  *
  * @typeParam K - Union of circuit identifier strings defined by the contract.
  * @param api - DApp Connector wallet API exposing `getProvingProvider`.
- * @param zkConfigProvider - Provider that supplies ZK configuration artifacts and key material.
+ * @param zkConfigProvider - A single {@link ZKConfigProvider} or a multi-source
+ * {@link ZKConfigRegistry} that supplies ZK configuration artifacts and key material. A registry is
+ * required to prove transactions that make cross-contract calls, which carry one proof per contract
+ * in the call tree.
  * @param costModel - Cost model applied during transaction proving.
  * @returns A {@link ProofProvider} whose `proveTx` method delegates to the wallet.
  */
 export const dappConnectorProofProvider = async <K extends string>(
   api: DAppConnectorProvingAPI,
-  zkConfigProvider: ZKConfigProvider<K>,
+  zkConfigProvider: ZKConfigProvider<K> | ZKConfigRegistry,
   costModel: CostModel,
 ): Promise<ProofProvider> => {
   const provingProvider = await dappConnectorProvingProvider(api, zkConfigProvider);

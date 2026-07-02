@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { ZKConfig } from './midnight-types';
+import type { VerifierKey, ZKConfig } from './midnight-types';
 import type { KeyMaterialProvider, ZKConfigProvider } from './zk-config-provider';
 import { type ContractKeyLocation, encodeContractKeyLocation, hashVerifierKey, parseContractKeyLocation } from './zk-key-location';
 
@@ -23,11 +23,29 @@ import { type ContractKeyLocation, encodeContractKeyLocation, hashVerifierKey, p
  * never compiled for) the deployed contract.
  */
 export class ZKArtifactNotFoundError extends Error {
-  constructor(readonly keyLocation: ContractKeyLocation) {
+  /**
+   * @param keyLocation The location that could not be resolved.
+   * @param suppressedErrors Errors raised by individual sources while probing their verifier key
+   * (integrity violations, permission/IO failures, or a genuine absence of the circuit). They are
+   * attached as this error's `cause` so a real failure — for example a `ZkArtifactIntegrityError` —
+   * is not hidden behind the "missing or stale" message.
+   */
+  constructor(
+    readonly keyLocation: ContractKeyLocation,
+    readonly suppressedErrors: readonly unknown[] = []
+  ) {
     super(
       `No ZK artifact bundle matches the deployed verifier key for contract ` +
         `'${keyLocation.contractAddress}', circuit '${keyLocation.circuitId}'. The local compiled ` +
-        `artifacts are missing or stale with respect to the deployed contract.`
+        `artifacts are missing or stale with respect to the deployed contract.`,
+      suppressedErrors.length > 0
+        ? {
+            cause: new AggregateError(
+              suppressedErrors,
+              'One or more artifact sources errored while resolving the verifier key.'
+            )
+          }
+        : undefined
     );
     this.name = 'ZKArtifactNotFoundError';
   }
@@ -47,13 +65,25 @@ export class ZKArtifactNotFoundError extends Error {
  * resolution immune to redeploys, multiple deployments of one contract, and circuit-name
  * collisions across contracts.
  *
- * The sources are the per-contract {@link ZKConfigProvider}s the application already constructs;
- * resolutions are memoized per location.
+ * The sources are the per-contract {@link ZKConfigProvider}s the application already constructs. The
+ * location→source binding and each source's verifier-key hashes are memoized; the (potentially
+ * multi-MB) artifacts themselves are re-fetched from the bound source rather than retained, so the
+ * registry's memory does not grow with the number of distinct locations resolved.
  */
 export class ZKConfigRegistry {
   private readonly sources: readonly ZKConfigProvider<string>[];
 
-  private readonly resolved = new Map<string, ZKConfig<string>>();
+  /**
+   * Binds a resolved key location to the source that serves it — a single source reference per
+   * location, so it can be held for the registry's lifetime without retaining artifact bytes.
+   */
+  private readonly boundSource = new Map<string, ZKConfigProvider<string>>();
+
+  /**
+   * Memoizes each source's verifier-key hash per circuit, so source selection reuses computed
+   * hashes instead of re-fetching and re-hashing keys on every new location.
+   */
+  private readonly vkHashByCircuit = new Map<ZKConfigProvider<string>, Map<string, string>>();
 
   /**
    * @param sources The compiled-contract artifact sources to resolve against — one per compiled
@@ -110,25 +140,72 @@ export class ZKConfigRegistry {
   }
 
   private async resolve(keyLocation: string, parsed: ContractKeyLocation): Promise<ZKConfig<string>> {
-    const memoized = this.resolved.get(keyLocation);
-    if (memoized !== undefined) {
-      return memoized;
+    const bound = this.boundSource.get(keyLocation);
+    if (bound !== undefined) {
+      return this.buildConfig(bound, parsed.circuitId);
     }
+    const suppressedErrors: unknown[] = [];
     for (const source of this.sources) {
-      let verifierKey: Uint8Array;
+      let probe: { hash: string; verifierKey?: VerifierKey };
       try {
-        verifierKey = await source.getVerifierKey(parsed.circuitId);
-      } catch {
-        // The source has no circuit by this name; try the next one.
+        probe = await this.probeVerifierKeyHash(source, parsed.circuitId);
+      } catch (error) {
+        // A source may simply not have this circuit, or the read may have failed for a real reason
+        // (integrity violation, permissions, IO). The provider interface can't tell them apart, so
+        // keep probing other sources but retain the error to surface as the cause if none matches —
+        // never silently discard it.
+        suppressedErrors.push(error);
         continue;
       }
-      if (hashVerifierKey(verifierKey) !== parsed.verifierKeyHash) {
+      if (probe.hash !== parsed.verifierKeyHash) {
         continue;
       }
-      const config = await source.get(parsed.circuitId);
-      this.resolved.set(keyLocation, config);
-      return config;
+      this.boundSource.set(keyLocation, source);
+      return this.buildConfig(source, parsed.circuitId, probe.verifierKey);
     }
-    throw new ZKArtifactNotFoundError(parsed);
+    throw new ZKArtifactNotFoundError(parsed, suppressedErrors);
+  }
+
+  /**
+   * Returns a source's verifier-key hash for a circuit, memoized per source and circuit. The
+   * verifier key bytes are included only when freshly fetched (a memo miss), so a caller that
+   * matches on the hash can reuse them and avoid a second fetch (and re-integrity-verification).
+   */
+  private async probeVerifierKeyHash(
+    source: ZKConfigProvider<string>,
+    circuitId: string
+  ): Promise<{ hash: string; verifierKey?: VerifierKey }> {
+    const cached = this.vkHashByCircuit.get(source)?.get(circuitId);
+    if (cached !== undefined) {
+      return { hash: cached };
+    }
+    const verifierKey = await source.getVerifierKey(circuitId);
+    const hash = hashVerifierKey(verifierKey);
+    let byCircuit = this.vkHashByCircuit.get(source);
+    if (byCircuit === undefined) {
+      byCircuit = new Map();
+      this.vkHashByCircuit.set(source, byCircuit);
+    }
+    byCircuit.set(circuitId, hash);
+    return { hash, verifierKey };
+  }
+
+  /**
+   * Assembles the {@link ZKConfig} for a circuit from a source. Reuses an already-fetched verifier
+   * key when the caller has one, so it is not fetched (and re-integrity-verified) a second time;
+   * otherwise fetches all three artifacts from the source. Unlike {@link ZKConfigProvider.get}, the
+   * three fetches run concurrently.
+   */
+  private async buildConfig(
+    source: ZKConfigProvider<string>,
+    circuitId: string,
+    verifierKey?: VerifierKey
+  ): Promise<ZKConfig<string>> {
+    const [proverKey, resolvedVerifierKey, zkir] = await Promise.all([
+      source.getProverKey(circuitId),
+      verifierKey !== undefined ? Promise.resolve(verifierKey) : source.getVerifierKey(circuitId),
+      source.getZKIR(circuitId)
+    ]);
+    return { circuitId, proverKey, verifierKey: resolvedVerifierKey, zkir };
   }
 }

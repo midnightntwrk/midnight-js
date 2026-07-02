@@ -143,8 +143,14 @@ const isArtifactBundle = async (directory: string): Promise<boolean> => {
   const isDir = async (subDir: string): Promise<boolean> => {
     try {
       return (await fs.stat(path.join(directory, subDir))).isDirectory();
-    } catch {
-      return false;
+    } catch (error) {
+      // Only a genuinely absent path means "not a bundle here". Any other failure (e.g. EACCES) is a
+      // real IO error and must propagate rather than silently drop a bundle, consistent with
+      // `readManifest` in this file.
+      if (isErrnoException(error) && (error.code === 'ENOENT' || error.code === 'ENOTDIR')) {
+        return false;
+      }
+      throw error;
     }
   };
   return (await isDir(KEY_DIR)) && (await isDir(ZKIR_DIR));

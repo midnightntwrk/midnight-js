@@ -118,6 +118,11 @@ export const extractUserAddressedOutputs = (
  * the root contract performs shielded transfers, so the transaction's offers derive solely from
  * the root call.
  * @param encryptionPublicKey Resolver for output encryption keys.
+ *
+ * @remarks Precondition: every operation resolved via `contractStateFor` for an invoked circuit must
+ * carry its deployed verifier key — the call's key location embeds the key's hash so provers resolve
+ * artifacts by content. Contract states read from chain (or produced by a real deploy) satisfy this;
+ * a bare `ContractOperation` with no verifier key does not, and is rejected with a clear error.
  */
 export const createUnprovenLedgerCallTx = (
   calls: readonly ContractExecutable.ContractExecutable.ContractCall[],
@@ -143,6 +148,15 @@ export const createUnprovenLedgerCallTx = (
     assertDefined(callContractState, `Contract state for '${call.contractAddress}' is undefined`);
     const op = toLedgerContractState(callContractState).operation(call.circuitId);
     assertDefined(op, `Operation '${call.circuitId}' is undefined for contract '${call.contractAddress}'`);
+    // The key location hashes the operation's deployed verifier key; a state whose operation carries
+    // no key (e.g. a bare `ContractOperation`) is a caller error, surfaced here rather than as an
+    // opaque "expected Uint8Array" throw from the hasher.
+    assertDefined(
+      op.verifierKey,
+      `Operation '${call.circuitId}' on contract '${call.contractAddress}' has no verifier key. Each ` +
+        'invoked operation must carry its deployed verifier key (present in states read from chain, or ' +
+        "produced by a real deploy), which the call's key location hashes."
+    );
     intent = intent.addCall(
       new ContractCallPrototype(
         call.contractAddress,
