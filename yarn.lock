@@ -1706,9 +1706,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/compact-js@file:/Users/josephdenman/IdeaProjects/midnight-sdk/compact-js/compact-js::locator=%40midnight-ntwrk%2Fmidnight-js-protocol%40workspace%3Apackages%2Fprotocol":
+"@midnight-ntwrk/compact-js@npm:2.5.5-rc.5":
   version: 2.5.5-rc.5
-  resolution: "@midnight-ntwrk/compact-js@file:/Users/josephdenman/IdeaProjects/midnight-sdk/compact-js/compact-js#/Users/josephdenman/IdeaProjects/midnight-sdk/compact-js/compact-js::hash=f5eee6&locator=%40midnight-ntwrk%2Fmidnight-js-protocol%40workspace%3Apackages%2Fprotocol"
+  resolution: "@midnight-ntwrk/compact-js@npm:2.5.5-rc.5::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-js%2F2.5.5-rc.5%2Fbe73638adb10caf47b4152e8c24a81ee1c76c6ee"
   dependencies:
     "@effect/platform": "npm:^0.96.1"
     "@midnight-ntwrk/compact-runtime": "npm:0.18.0-rc.0"
@@ -1717,7 +1717,7 @@ __metadata:
     "@noble/hashes": "npm:^2.2.0"
     effect: "npm:^3.21.4"
     tslib: "npm:^2.8.1"
-  checksum: 10/a67e8409fc2f07cb093b5a354127fb5b2fec12e100a40958ebef7b02ed02cfbfc93f2095e917dda45b0ec79b9d6e3b4c65db66309e3c5f0c019eed414a20d873
+  checksum: 10/b1b88f9c153a1734e39b0d258beebd287a73a212ff668568636b267b2e3ec94226ea48e24f4d9b22e56c872704d23df2f3185ec038ff015879b3daadba4f46dd
   languageName: node
   linkType: hard
 
@@ -1928,7 +1928,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-protocol@workspace:packages/protocol"
   dependencies:
-    "@midnight-ntwrk/compact-js": "file:/Users/josephdenman/IdeaProjects/midnight-sdk/compact-js/compact-js"
+    "@midnight-ntwrk/compact-js": "npm:2.5.5-rc.5"
     "@midnight-ntwrk/compact-runtime": "npm:0.18.0-rc.0"
     "@midnight-ntwrk/platform-js": "npm:3.0.0"
     "@midnightntwrk/ledger-v9": "npm:1.0.0-rc.2"
