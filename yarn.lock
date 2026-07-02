@@ -2037,10 +2037,10 @@ __metadata:
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
+    "@midnight-ntwrk/zkir-v2": "npm:2.1.0"
     "@midnightntwrk/dapp-connector-api": "npm:4.1.0-beta.1"
     "@midnightntwrk/wallet-sdk": "npm:2.0.0-beta.2"
     "@midnightntwrk/wallet-sdk-prover-client": "npm:2.0.0-beta.2"
-    "@midnightntwrk/zkir-v2": "npm:2.2.0-rc.3"
     "@scure/bip39": "npm:^2.2.0"
     "@types/ws": "npm:^8.18.1"
     "@vitest/runner": "npm:^4.1.7"
@@ -2062,7 +2062,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@midnight-ntwrk/zkir-v2@npm:^2.1.0":
+"@midnight-ntwrk/zkir-v2@npm:2.1.0, @midnight-ntwrk/zkir-v2@npm:^2.1.0":
   version: 2.1.0
   resolution: "@midnight-ntwrk/zkir-v2@npm:2.1.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fzkir-v2%2F2.1.0%2Fb3c8b9720535d7e62b86c5ff8341a13a46eb5c7e"
   checksum: 10/c16761489c3abbf858a4b7c2c4dd99d498f40554b5f1a57a93534b21c66390d4c6b0035dee8923fb5972418c75ac1f80e2e0675d8f3eb2a96dce7e7555fb2b7d
@@ -2298,13 +2298,6 @@ __metadata:
     "@midnightntwrk/wallet-sdk-unshielded-wallet": "npm:4.0.0-beta.2"
     "@midnightntwrk/wallet-sdk-utilities": "npm:1.2.0"
   checksum: 10/ce75b09bc90f47cb15e407d95bbb08c5ff0e74b3ba13b43d00346b0d5e7f6d4ecbe053a7e46aea3a103299f810bb40d6f3a8d3d52191e30550ebaf0803cbab31
-  languageName: node
-  linkType: hard
-
-"@midnightntwrk/zkir-v2@npm:2.2.0-rc.3":
-  version: 2.2.0-rc.3
-  resolution: "@midnightntwrk/zkir-v2@npm:2.2.0-rc.3"
-  checksum: 10/1d671425a46a4c39dc9c0aba6e7ea9e853220d1285fd6f4c122ffbabc7290e0647e947d8457e89e2ebf49736b43d7c8e2f5a8608b98202c40c7577d58d0ffbcd
   languageName: node
   linkType: hard
 
