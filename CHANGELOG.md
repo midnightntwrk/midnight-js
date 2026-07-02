@@ -2,6 +2,43 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [5.0.0-beta.1](https://github.com/midnightntwrk/midnight-js/compare/v5.0.0-alpha.1...v5.0.0-beta.1) (2026-07-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* **midnight-js:** verify ZK artifacts against the compactc integrity manifest (#1015)
+
+### Features
+
+* Cross-Contract Call Support ([#967](https://github.com/midnightntwrk/midnight-js/pull/967)) ([be6012c](https://github.com/midnightntwrk/midnight-js/commit/be6012c503d9b04843b73ae448b1263298119391))
+* **midnight-js:** adopt graphql-transport-ws+deflate subscription compression ([#977](https://github.com/midnightntwrk/midnight-js/pull/977)) ([feb8308](https://github.com/midnightntwrk/midnight-js/commit/feb8308cd06ec1adb3f9f97ce3b408045e5d4c3c))
+* **midnight-js:** verify ZK artifacts against the compactc integrity manifest ([#1015](https://github.com/midnightntwrk/midnight-js/pull/1015)) ([8512994](https://github.com/midnightntwrk/midnight-js/commit/8512994276e3a1ad0674de46402b03711365c35f))
+
+
+### Bug Fixes
+
+* **config:** pass --no-stash to lint-staged to keep GPG signatures valid ([#1020](https://github.com/midnightntwrk/midnight-js/pull/1020)) ([6e1505d](https://github.com/midnightntwrk/midnight-js/commit/6e1505d45cfcb1e23bc92e255e43cb80a9596bd8))
+
+
+### Documentation
+
+* API documentation update ([#1007](https://github.com/midnightntwrk/midnight-js/pull/1007)) ([555c68f](https://github.com/midnightntwrk/midnight-js/commit/555c68febfae9f60247279d96da0c235afbab990))
+* API documentation update ([#1021](https://github.com/midnightntwrk/midnight-js/pull/1021)) ([7a72cb2](https://github.com/midnightntwrk/midnight-js/commit/7a72cb2a8f1d8c8e0534a17b21d2c084ca840854))
+* API documentation update ([#1024](https://github.com/midnightntwrk/midnight-js/pull/1024)) ([3162b79](https://github.com/midnightntwrk/midnight-js/commit/3162b79978c535c2e6c331ff9be098753e8722c3))
+
+
+### Tests
+
+* **testkit-js:** cover ECDSA contract maintenance actions and key persistence ([#901](https://github.com/midnightntwrk/midnight-js/pull/901)) ([c6e90a8](https://github.com/midnightntwrk/midnight-js/commit/c6e90a8315dc255b1c9428e9954f01f6712035c4))
+* **testkit-js:** verify MIP-0002 emit→indexer contract-events loop ([#993](https://github.com/midnightntwrk/midnight-js/pull/993)) ([a92a91f](https://github.com/midnightntwrk/midnight-js/commit/a92a91f7535ecf1ea759ac61c36ef794226c7e94)), closes [midnight-indexer#1279](https://github.com/midnightntwrk/midnight-js/pull/1279) [#1001](https://github.com/midnightntwrk/midnight-js/pull/1001) [#1001](https://github.com/midnightntwrk/midnight-js/pull/1001) [#1001](https://github.com/midnightntwrk/midnight-js/pull/1001) [#1001](https://github.com/midnightntwrk/midnight-js/pull/1001) [#1001](https://github.com/midnightntwrk/midnight-js/pull/1001) [#1001](https://github.com/midnightntwrk/midnight-js/pull/1001) [#1001](https://github.com/midnightntwrk/midnight-js/pull/1001)
+
+
+### Build System
+
+* **deps:** bump compact-runtime to 0.18.0-rc.0 and compactc to 0.33.0-rc.0 ([#1016](https://github.com/midnightntwrk/midnight-js/pull/1016)) ([9669eb9](https://github.com/midnightntwrk/midnight-js/commit/9669eb9f4dbe05d4165993cf274dee52f8b9cb44))
+* **deps:** bump devnet stack and wallet/ledger/connector/zkir dependencies ([#1019](https://github.com/midnightntwrk/midnight-js/pull/1019)) ([e5d8e9e](https://github.com/midnightntwrk/midnight-js/commit/e5d8e9e0ca075c2a08518e1b78687224da668a31))
+
 ## [5.0.0-alpha.1](https://github.com/midnightntwrk/midnight-js/compare/v4.1.0...v5.0.0-alpha.1) (2026-06-29)
 
 
@@ -91,6 +128,7 @@ All notable changes to this project will be documented in this file. See [commit
 * **deps:** remove unused root devDependencies, scope build-time deps to packages ([#916](https://github.com/midnightntwrk/midnight-js/pull/916)) ([b24283f](https://github.com/midnightntwrk/midnight-js/commit/b24283f32bd64dd540ef3206c1568c7cf4b1fac3))
 * **deps:** swap protocol to ledger-v9 + onchain-runtime-v4 ([@midnightntwrk](https://github.com/midnightntwrk)) ([#970](https://github.com/midnightntwrk/midnight-js/pull/970)) ([f33743c](https://github.com/midnightntwrk/midnight-js/commit/f33743cd92c099a983bf2a0d6632f1170aceeb58))
 * **release:** bump version to 4.1.1 ([#946](https://github.com/midnightntwrk/midnight-js/pull/946)) ([d4f3755](https://github.com/midnightntwrk/midnight-js/commit/d4f375505aba3245b34e555167ab6c1c59ec24d1))
+* **release:** bump version to 5.0.0-alpha.1 ([#1003](https://github.com/midnightntwrk/midnight-js/pull/1003)) ([7fbd590](https://github.com/midnightntwrk/midnight-js/commit/7fbd59059c15ed3681f1ba65f509a8b66a1f5d23))
 
 ## [4.1.0](https://github.com/midnightntwrk/midnight-js/compare/v4.0.4...v4.1.0) (2026-05-21)
 
