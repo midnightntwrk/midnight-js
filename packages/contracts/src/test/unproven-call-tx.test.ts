@@ -49,7 +49,8 @@ vi.mock('../utils', () => ({
     createUnprovenLedgerCallTx: vi.fn().mockReturnValue({ test: 'unproven-tx' }),
     createEncryptionPublicKeyResolver: vi.fn().mockReturnValue(() => 'encrypted-key'),
     encryptionPublicKeyResolverForZswapState: vi.fn().mockReturnValue(() => 'encrypted-key'),
-    zswapStateToNewCoins: vi.fn().mockReturnValue([{ test: 'coin' }])
+    zswapStateToNewCoins: vi.fn().mockReturnValue([{ test: 'coin' }]),
+    makeCalleeStateResolver: vi.fn()
 }));
 
 describe('unproven-call-tx', () => {
@@ -161,7 +162,8 @@ describe('unproven-call-tx', () => {
       expect(result).toBeDefined();
       expect(mockGetPublicStates).toHaveBeenCalledWith(
         providers.publicDataProvider,
-        options.contractAddress
+        options.contractAddress,
+        '00'.repeat(32)
       );
     });
 
@@ -200,7 +202,8 @@ describe('unproven-call-tx', () => {
         providers.publicDataProvider,
         providers.privateStateProvider,
         options.contractAddress,
-        options.privateStateId
+        options.privateStateId,
+        '00'.repeat(32)
       );
     });
   });
