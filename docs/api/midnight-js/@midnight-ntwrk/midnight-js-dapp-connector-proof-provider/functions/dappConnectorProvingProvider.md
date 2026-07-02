@@ -6,9 +6,9 @@
 
 # Function: dappConnectorProvingProvider()
 
-> **dappConnectorProvingProvider**\<`K`\>(`api`, `zkConfigProvider`): `Promise`\<`ProvingProvider`\>
+> **dappConnectorProvingProvider**\<`K`\>(`api`, `zkConfigProvider`): `Promise`\<[`ProvingProvider`](#)\>
 
-Obtains a ProvingProvider from the DApp Connector wallet.
+Obtains a [ProvingProvider](#) from the DApp Connector wallet.
 
 ## Type Parameters
 
@@ -28,15 +28,15 @@ DApp Connector wallet API exposing `getProvingProvider`.
 
 ### zkConfigProvider
 
-[`ZKConfigProvider`](#)\<`K`\>
+[`ZKConfigProvider`](#)\<`K`\> \| `ZKConfigRegistry`
 
 Provider that supplies ZK configuration artifacts and key material.
 
 ## Returns
 
-`Promise`\<`ProvingProvider`\>
+`Promise`\<[`ProvingProvider`](#)\>
 
-A ProvingProvider backed by the wallet.
+A [ProvingProvider](#) backed by the wallet.
 
 ## Remarks
 

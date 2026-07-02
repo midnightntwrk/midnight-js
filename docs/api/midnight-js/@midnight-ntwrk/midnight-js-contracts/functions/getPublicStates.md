@@ -6,7 +6,7 @@
 
 # Function: getPublicStates()
 
-> **getPublicStates**(`publicDataProvider`, `contractAddress`): `Promise`\<[`PublicContractStates`](../type-aliases/PublicContractStates.md)\>
+> **getPublicStates**(`publicDataProvider`, `contractAddress`, `blockHash?`): `Promise`\<[`PublicContractStates`](../type-aliases/PublicContractStates.md)\>
 
 Fetches only the public visible (Zswap and ledger) states of a contract.
 
@@ -24,6 +24,10 @@ The provider to use to fetch the public states (Zswap and ledger)
 `string`
 
 The ledger address of the contract.
+
+### blockHash?
+
+`string`
 
 ## Returns
 

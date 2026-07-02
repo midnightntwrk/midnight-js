@@ -84,6 +84,28 @@ The configuration for the observable.
 
 ***
 
+### queryBlock()
+
+> **queryBlock**(`config?`): `Promise`\<[`BlockInfo`](../type-aliases/BlockInfo.md) \| `null`\>
+
+Retrieves a block. If no block hash or block height is provided, the latest block is returned.
+Immediately returns null if no matching block is found.
+
+#### Parameters
+
+##### config?
+
+[`BlockHeightConfig`](../type-aliases/BlockHeightConfig.md) \| [`BlockHashConfig`](../type-aliases/BlockHashConfig.md)
+
+The configuration of the query identifying the block of interest.
+              If `undefined` returns the latest block.
+
+#### Returns
+
+`Promise`\<[`BlockInfo`](../type-aliases/BlockInfo.md) \| `null`\>
+
+***
+
 ### queryContractEvents()
 
 > **queryContractEvents**(`filter`, `page?`): `Promise`\<[`ContractEvent`](../type-aliases/ContractEvent.md)[]\>

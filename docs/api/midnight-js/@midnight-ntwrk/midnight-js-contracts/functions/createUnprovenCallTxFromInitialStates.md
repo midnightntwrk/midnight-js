@@ -17,6 +17,10 @@ Configuration.
 
 ## Param
 
+## Param
+
+Enables cross-contract calls; required for circuits that make them.
+
 ## Remarks
 
 The returned [UnsubmittedCallTxData](../type-aliases/UnsubmittedCallTxData.md) is privacy-sensitive and carries
@@ -26,7 +30,7 @@ transmitting the result.
 
 ## Call Signature
 
-> **createUnprovenCallTxFromInitialStates**\<`C`, `PCK`\>(`zkConfigProvider`, `options`, `walletEncryptionPublicKey`): `Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
+> **createUnprovenCallTxFromInitialStates**\<`C`, `PCK`\>(`zkConfigProvider`, `options`, `walletEncryptionPublicKey`, `crossContract?`): `Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
 
 ### Type Parameters
 
@@ -52,13 +56,17 @@ transmitting the result.
 
 `string`
 
+#### crossContract?
+
+`CrossContractConfig`
+
 ### Returns
 
 `Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
 
 ## Call Signature
 
-> **createUnprovenCallTxFromInitialStates**\<`C`, `PCK`\>(`zkConfigProvider`, `options`, `walletEncryptionPublicKey`): `Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
+> **createUnprovenCallTxFromInitialStates**\<`C`, `PCK`\>(`zkConfigProvider`, `options`, `walletEncryptionPublicKey`, `crossContract?`): `Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
 
 ### Type Parameters
 
@@ -83,6 +91,10 @@ transmitting the result.
 #### walletEncryptionPublicKey
 
 `string`
+
+#### crossContract?
+
+`CrossContractConfig`
 
 ### Returns
 

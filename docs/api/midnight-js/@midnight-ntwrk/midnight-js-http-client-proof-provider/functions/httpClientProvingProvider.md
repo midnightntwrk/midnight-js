@@ -22,7 +22,7 @@
 
 ### zkConfigProvider
 
-[`ZKConfigProvider`](#)\<`K`\>
+`ZKConfigRegistry` \| [`ZKConfigProvider`](#)\<`K`\>
 
 ### config?
 
