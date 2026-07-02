@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/testkit-js",
-  "version": "5.0.0-alpha.1",
+  "version": "5.0.0-beta.1",
   "description": "Testing kit for Midnight JS packages",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -32,7 +32,6 @@
     "deploy": "yarn npm publish --tolerate-republish"
   },
   "dependencies": {
-    "@midnight-ntwrk/dapp-connector-api": "4.0.1",
     "@midnight-ntwrk/midnight-js-compact": "workspace:*",
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*",
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*",
@@ -44,8 +43,9 @@
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
     "@midnight-ntwrk/midnight-js-utils": "workspace:*",
     "@midnight-ntwrk/zkir-v2": "2.1.0",
-    "@midnightntwrk/wallet-sdk": "2.0.0-beta.1",
-    "@midnightntwrk/wallet-sdk-prover-client": "2.0.0-beta.1",
+    "@midnightntwrk/dapp-connector-api": "4.1.0-beta.1",
+    "@midnightntwrk/wallet-sdk": "2.0.0-beta.2",
+    "@midnightntwrk/wallet-sdk-prover-client": "2.0.0-beta.2",
     "@scure/bip39": "^2.2.0",
     "axios": "^1.16.1",
     "buffer": "^6.0.3",

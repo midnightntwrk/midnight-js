@@ -1,7 +1,7 @@
 {
   "name": "@midnight-ntwrk/midnight-js-monorepo",
   "description": "Midnight application development framework",
-  "version": "5.0.0-alpha.1",
+  "version": "5.0.0-beta.1",
   "packageManager": "yarn@4.14.1",
   "repository": "git@github.com:midnight-ntwrk/artifacts",
   "engines": {
@@ -78,8 +78,8 @@
   },
   "resolutions": {
     "@midnight-ntwrk/platform-js": "3.0.0",
-    "@midnightntwrk/ledger-v9": "1.0.0-rc.2",
-    "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.2",
+    "@midnightntwrk/ledger-v9": "1.0.0-rc.3",
+    "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.3",
     "@midnight-ntwrk/compact-runtime": "0.18.0-rc.0",
     "undici": ">=7.24.0",
     "tar": ">=7.5.11",

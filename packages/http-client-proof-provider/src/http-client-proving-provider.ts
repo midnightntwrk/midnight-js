@@ -133,6 +133,8 @@ export const httpClientProvingProvider = <K extends string>(
       const keyMaterial = await getKeyMaterial(keyLocation);
       const payload = createProvingPayload(serializedPreimage, overwriteBindingInput, keyMaterial);
       return makeHttpRequest(proveUrl, payload, timeout, headers);
-    }
+    },
+
+    lookupKey: getKeyMaterial
   };
 };

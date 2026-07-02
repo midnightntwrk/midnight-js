@@ -107,7 +107,7 @@ const registerNightUtxosForDust = async (
   const recipe = await wallet.registerNightUtxosForDustGeneration(
     unregistered,
     unshieldedKeystore.getPublicKey(),
-    (payload) => unshieldedKeystore.signData(payload)
+    (payload) => unshieldedKeystore.signDataAsync(payload)
   );
   const finalized = await wallet.finalizeRecipe(recipe);
   const txId = await wallet.submitTransaction(finalized);
