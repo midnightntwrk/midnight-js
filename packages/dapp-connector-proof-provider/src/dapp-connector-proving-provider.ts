@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
+import type { WalletConnectedAPI } from '@midnight-ntwrk/dapp-connector-api';
 import type { ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { type ZKConfigProvider, ZKConfigRegistry, zkConfigToProvingKeyMaterial } from '@midnight-ntwrk/midnight-js-types';
-import type { WalletConnectedAPI } from '@midnightntwrk/dapp-connector-api';
+import { type ZKConfigProvider, ZKConfigRegistry } from '@midnight-ntwrk/midnight-js-types';
 
 /**
  * Minimal interface required from the DApp Connector wallet.
@@ -42,19 +42,12 @@ export type DAppConnectorProvingAPI = Pick<WalletConnectedAPI, 'getProvingProvid
 export const dappConnectorProvingProvider = async <K extends string>(
   api: DAppConnectorProvingAPI,
   zkConfigProvider: ZKConfigProvider<K> | ZKConfigRegistry,
-): Promise<ProvingProvider> => {
-  // The wallet round-trips each proof preimage's key location into this provider, so contract
-  // key locations must be resolved through the registry's verifier-key join.
-  const registry =
-    zkConfigProvider instanceof ZKConfigRegistry ? zkConfigProvider : new ZKConfigRegistry([zkConfigProvider]);
-  const walletProvingProvider = await api.getProvingProvider(registry.asKeyMaterialProvider());
-  return {
-    check: (serializedPreimage, keyLocation) => walletProvingProvider.check(serializedPreimage, keyLocation),
-    prove: (serializedPreimage, keyLocation, overwriteBindingInput) =>
-      walletProvingProvider.prove(serializedPreimage, keyLocation, overwriteBindingInput),
-    async lookupKey(keyLocation) {
-      const resolved = await registry.resolveKeyLocation(keyLocation);
-      return resolved === undefined ? undefined : zkConfigToProvingKeyMaterial(resolved);
-    }
-  };
-};
+): Promise<ProvingProvider> =>
+  api.getProvingProvider(
+    // The wallet round-trips each proof preimage's key location into this provider, so contract
+    // key locations must be resolved through the registry's verifier-key join.
+    (zkConfigProvider instanceof ZKConfigRegistry
+      ? zkConfigProvider
+      : new ZKConfigRegistry([zkConfigProvider])
+    ).asKeyMaterialProvider()
+  );
