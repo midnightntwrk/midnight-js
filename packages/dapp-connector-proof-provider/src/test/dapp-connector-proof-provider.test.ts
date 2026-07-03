@@ -13,9 +13,8 @@
  * limitations under the License.
  */
 
-import type { CostModel, UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { CostModel, ProvingProvider, UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { KeyMaterialProvider, UnboundTransaction, ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
-import type { ProvingProvider } from '@midnightntwrk/dapp-connector-api';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { dappConnectorProofProvider } from '../dapp-connector-proof-provider';
@@ -67,14 +66,7 @@ describe('dappConnectorProofProvider', () => {
 
     const result = await proofProvider.proveTx(mockUnprovenTx);
 
-    expect(mockUnprovenTx.prove).toHaveBeenCalledWith(
-      expect.objectContaining({
-        check: expect.any(Function),
-        prove: expect.any(Function),
-        lookupKey: expect.any(Function)
-      }),
-      mockCostModel
-    );
+    expect(mockUnprovenTx.prove).toHaveBeenCalledWith(mockProvingProvider, mockCostModel);
     expect(result).toBe(mockUnboundTx);
   });
 

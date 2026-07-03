@@ -13,12 +13,6 @@
  * limitations under the License.
  */
 
-import { type Binding, type PreBinding, type Proof, type SignatureEnabled, Transaction as LedgerTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { fromHex, toHex, ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
-import {
-  type KeyMaterialProvider as ZkirKeyMaterialProvider,
-  provingProvider as createLocalProvingProvider,
-} from '@midnight-ntwrk/zkir-v2';
 import type {
   Configuration,
   ConnectedAPI,
@@ -32,7 +26,13 @@ import type {
   SignDataOptions,
   TokenType,
   WalletConnectedAPI,
-} from '@midnightntwrk/dapp-connector-api';
+} from '@midnight-ntwrk/dapp-connector-api';
+import { type Binding, type PreBinding, type Proof, type SignatureEnabled, Transaction as LedgerTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { fromHex, toHex, ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
+import {
+  type KeyMaterialProvider as ZkirKeyMaterialProvider,
+  provingProvider as createLocalProvingProvider,
+} from '@midnight-ntwrk/zkir-v2';
 import { DustAddress, MidnightBech32m } from '@midnightntwrk/wallet-sdk/address-format';
 import { type BalancingRecipe } from '@midnightntwrk/wallet-sdk/facade';
 import { WasmProver } from '@midnightntwrk/wallet-sdk-prover-client/effect';
@@ -164,11 +164,6 @@ export class DAppConnectorWalletAdapter implements ConnectedAPI {
         return defaultProvider.getParams(k);
       },
     };
-    // The prover engine (zkir-v2's provingProvider) and its SRS params (from WasmProver, i.e.
-    // wallet-sdk-prover-client) must be built against the same zkir-v2 version. wallet-sdk-prover-client
-    // depends on @midnight-ntwrk/zkir-v2 ^2.1.0, so testkit-js pins that same version. Bumping zkir-v2
-    // here without a matching wallet-sdk-prover-client yields proofs the node rejects as InvalidProof
-    // (RPC 1010, Custom error 115).
     return createLocalProvingProvider(zkirProvider);
   }
 
@@ -218,7 +213,7 @@ export class DAppConnectorWalletAdapter implements ConnectedAPI {
 
   private async signAndFinalize(recipe: BalancingRecipe): Promise<{ tx: string }> {
     const signed = await this.walletProvider.wallet.signRecipe(recipe, (payload) =>
-      this.walletProvider.unshieldedKeystore.signDataAsync(payload),
+      this.walletProvider.unshieldedKeystore.signData(payload),
     );
     const finalized = await this.walletProvider.wallet.finalizeRecipe(signed);
     return { tx: toHex(finalized.serialize()) };

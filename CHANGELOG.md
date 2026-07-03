@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [5.0.0-beta.3](https://github.com/midnightntwrk/midnight-js/compare/v5.0.0-beta.1...v5.0.0-beta.3) (2026-07-03)
+
+
+### Documentation
+
+* update release notes for v5.0.0 ([#1029](https://github.com/midnightntwrk/midnight-js/pull/1029)) ([7184daa](https://github.com/midnightntwrk/midnight-js/commit/7184daad2152aab172cea8e10dca0b656c4f4e3f)), closes [#998](https://github.com/midnightntwrk/midnight-js/pull/998) [#967](https://github.com/midnightntwrk/midnight-js/pull/967) [#1015](https://github.com/midnightntwrk/midnight-js/pull/1015) [#977](https://github.com/midnightntwrk/midnight-js/pull/977) [#999](https://github.com/midnightntwrk/midnight-js/pull/999) [#1020](https://github.com/midnightntwrk/midnight-js/pull/1020) [#993](https://github.com/midnightntwrk/midnight-js/pull/993) [midnight-indexer#1279](https://github.com/midnightntwrk/midnight-js/pull/1279)
+
+
+### Reverts
+
+* "build(deps): bump devnet stack and wallet/ledger/connector/zkir dependencies ([#1019](https://github.com/midnightntwrk/midnight-js/pull/1019))" ([#1038](https://github.com/midnightntwrk/midnight-js/pull/1038)) ([0316fbb](https://github.com/midnightntwrk/midnight-js/commit/0316fbb44e6cb033226e21b0121bc5b96413fa36)), closes [#1032](https://github.com/midnightntwrk/midnight-js/pull/1032)
+
 ## [5.0.0-beta.1](https://github.com/midnightntwrk/midnight-js/compare/v5.0.0-alpha.1...v5.0.0-beta.1) (2026-07-02)
 
 
@@ -38,6 +50,11 @@ All notable changes to this project will be documented in this file. See [commit
 
 * **deps:** bump compact-runtime to 0.18.0-rc.0 and compactc to 0.33.0-rc.0 ([#1016](https://github.com/midnightntwrk/midnight-js/pull/1016)) ([9669eb9](https://github.com/midnightntwrk/midnight-js/commit/9669eb9f4dbe05d4165993cf274dee52f8b9cb44))
 * **deps:** bump devnet stack and wallet/ledger/connector/zkir dependencies ([#1019](https://github.com/midnightntwrk/midnight-js/pull/1019)) ([e5d8e9e](https://github.com/midnightntwrk/midnight-js/commit/e5d8e9e0ca075c2a08518e1b78687224da668a31))
+
+
+### Improvements
+
+* **release:** bump version to 5.0.0-beta.1 ([#1032](https://github.com/midnightntwrk/midnight-js/pull/1032)) ([e9db03f](https://github.com/midnightntwrk/midnight-js/commit/e9db03f508d6eebc25b85364dbc7512b520d7f26))
 
 ## [5.0.0-alpha.1](https://github.com/midnightntwrk/midnight-js/compare/v4.1.0...v5.0.0-alpha.1) (2026-06-29)
 
