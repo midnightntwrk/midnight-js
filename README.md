@@ -329,7 +329,7 @@ Releases are driven by `scripts/release.sh`, which bumps versions in all workspa
 # Dry-run (default): updates files only, no git operations — review with `git diff`
 ./scripts/release.sh 4.2.0
 
-# Full release: bump + changelog + branch + commit + tag + push
+# Full release: bump + changelog + branch + commit + push
 ./scripts/release.sh 4.2.0 --execute
 
 # Full release with build and tests beforehand
@@ -342,17 +342,16 @@ Releases are driven by `scripts/release.sh`, which bumps versions in all workspa
 2. Regenerates `CHANGELOG.md` via `yarn changelog`
 3. Creates branch `release/v<VERSION>`
 4. Commits as `chore(release): bump version to <VERSION>`
-5. Creates and pushes tag `v<VERSION>` — this triggers the CD workflow
+5. Pushes branch `release/v<VERSION>` — open a PR to `main`; merging it publishes the release
 
-#### What the CD workflow does
+#### What happens on merge to `main`
 
-After the tag is pushed:
+When the release PR is merged, the version bump on `main` triggers the `publish` job in the CI workflow. Once the build, unit, integration, and e2e jobs pass in the same run, it:
 
-1. Runs full CI (midnight-js + testkit-js)
-2. Extracts release notes from `CHANGELOG.md` (section `## [<VERSION>]`)
-3. Validates and publishes `packages/*` to GitHub Packages
-4. Creates a GitHub Release with the extracted notes
-5. Publishes `testkit-js/*` if those paths changed
+1. Extracts release notes from `CHANGELOG.md` (section `## [<VERSION>]`)
+2. Validates and publishes `packages/*` to GitHub Packages
+3. Creates a GitHub Release with the extracted notes (creating the `v<VERSION>` tag on the merge commit)
+4. Publishes `testkit-js/*` if those paths changed
 
 ## Resources
 
