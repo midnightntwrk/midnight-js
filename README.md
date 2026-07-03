@@ -315,7 +315,7 @@ This allows "rehearsing" circuit calls (running Impact VM) such that execution c
 
 ### Release Process
 
-Releases are driven by `scripts/release.sh`, which bumps versions in all workspaces, regenerates `CHANGELOG.md`, creates a release branch, and pushes the version tag. A push to `v*` tag triggers the [CD workflow](./.github/workflows/cd.yml), which publishes packages to GitHub Packages and creates a GitHub Release.
+Releases are driven by `scripts/release.sh`, which bumps versions in all workspaces, regenerates `CHANGELOG.md`, creates a release branch, and pushes it. Opening and merging a PR from that release branch to `main` triggers the `publish` job in the [CI workflow](./.github/workflows/ci.yml): once the build, unit, integration, and e2e jobs pass, it publishes packages to GitHub Packages and creates the GitHub Release (which creates the `v<version>` tag on the main merge commit). Publishing is gated on the same test run, so no release can ship ahead of its e2e.
 
 #### Prerequisites
 
