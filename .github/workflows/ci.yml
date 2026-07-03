@@ -30,7 +30,10 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # Cancel superseded PR runs to save CI, but never cancel push-to-main runs:
+  # the `publish` job runs there and is non-atomic, so a mid-flight release must
+  # queue behind a newer main push rather than be cancelled into a partial state.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   ci:
@@ -237,8 +240,10 @@ jobs:
           name: Release ${{ needs.detect-release.outputs.version }}
           body_path: release_notes.md
           draft: false
-          prerelease: false
-          make_latest: 'true'
+          # A version with a pre-release identifier (e.g. 5.0.0-beta.1) is flagged
+          # as a pre-release and must NOT become the "Latest" release.
+          prerelease: ${{ contains(needs.detect-release.outputs.version_number, '-') }}
+          make_latest: ${{ contains(needs.detect-release.outputs.version_number, '-') && 'false' || 'true' }}
 
       - name: Bump testkit-js versions
         if: steps.changes.outputs.testkit-js == 'true'
