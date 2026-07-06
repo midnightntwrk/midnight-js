@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-alpha.1**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.3**](../../../README.md)
 
 ***
 
@@ -28,9 +28,12 @@ DApp Connector wallet API exposing `getProvingProvider`.
 
 ### zkConfigProvider
 
-[`ZKConfigProvider`](#)\<`K`\>
+`ZKConfigRegistry` \| [`ZKConfigProvider`](#)\<`K`\>
 
-Provider that supplies ZK configuration artifacts and key material.
+A single [ZKConfigProvider](#) or a multi-source
+ZKConfigRegistry that supplies ZK configuration artifacts and key material. A registry is
+required to prove transactions that make cross-contract calls, which carry one proof per contract
+in the call tree.
 
 ### costModel
 

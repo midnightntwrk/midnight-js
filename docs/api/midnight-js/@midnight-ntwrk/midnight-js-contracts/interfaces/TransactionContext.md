@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-alpha.1**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.3**](../../../README.md)
 
 ***
 
@@ -22,7 +22,7 @@ Encapsulates the context for managing a scoped contract transaction.
 
 ### \[CacheStates\]
 
-> `readonly` **\[CacheStates\]**: (`states`, `identity`) => `void`
+> `readonly` **\[CacheStates\]**: (`states`, `identity`, `blockHash`) => `void`
 
 #### Parameters
 
@@ -34,6 +34,10 @@ Encapsulates the context for managing a scoped contract transaction.
 
 `CachedStateIdentity`
 
+##### blockHash
+
+`string`
+
 #### Returns
 
 `void`
@@ -42,7 +46,7 @@ Encapsulates the context for managing a scoped contract transaction.
 
 ### \[GetCurrentStatesForIdentity\]
 
-> `readonly` **\[GetCurrentStatesForIdentity\]**: (`identity`) => [`PublicContractStates`](../type-aliases/PublicContractStates.md) \| [`ContractStates`](../type-aliases/ContractStates.md)\<`PrivateState`\<`C`\>\> \| `undefined`
+> `readonly` **\[GetCurrentStatesForIdentity\]**: (`identity`) => `PinnedContractStates`\<`PrivateState`\<`C`\>\> \| `undefined`
 
 #### Parameters
 
@@ -52,7 +56,7 @@ Encapsulates the context for managing a scoped contract transaction.
 
 #### Returns
 
-[`PublicContractStates`](../type-aliases/PublicContractStates.md) \| [`ContractStates`](../type-aliases/ContractStates.md)\<`PrivateState`\<`C`\>\> \| `undefined`
+`PinnedContractStates`\<`PrivateState`\<`C`\>\> \| `undefined`
 
 ***
 
