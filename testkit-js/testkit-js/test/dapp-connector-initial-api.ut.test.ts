@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { ConnectedAPI } from '@midnight-ntwrk/dapp-connector-api';
+import type { ConnectedAPI } from '@midnightntwrk/dapp-connector-api';
 
 import { DAppConnectorInitialAPI } from '@/wallet/dapp-connector-initial-api';
 

@@ -29,9 +29,9 @@
     "dist/"
   ],
   "dependencies": {
-    "@midnight-ntwrk/dapp-connector-api": "4.0.1",
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
-    "@midnight-ntwrk/midnight-js-types": "workspace:*"
+    "@midnight-ntwrk/midnight-js-types": "workspace:*",
+    "@midnightntwrk/dapp-connector-api": "4.1.0-beta.1"
   },
   "devDependencies": {
     "vitest": "^4.1.7"
