@@ -30,7 +30,10 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # Cancel superseded PR runs to save CI, but never cancel push-to-main runs:
+  # the `publish` job runs there and is non-atomic, so a mid-flight release must
+  # queue behind a newer main push rather than be cancelled into a partial state.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   ci:
@@ -94,3 +97,170 @@ jobs:
       compactc_source: ${{ inputs.compactc_source || 'release' }}
     uses: ./.github/workflows/ci-testkit-js.yml
     secrets: inherit
+
+  # Release is a commit landing on main that changes the root package.json
+  # version. Detection is convention-independent, so it covers both the
+  # `chore(release):` prep commit and any merge-commit message. Steps only run
+  # on push-to-main; on every other event the job succeeds with empty outputs
+  # (is_release != 'true'), so `publish` below stays skipped.
+  detect-release:
+    name: Detect release
+    runs-on: ubuntu-latest
+    outputs:
+      is_release: ${{ steps.rel.outputs.is_release }}
+      version: ${{ steps.rel.outputs.version }}
+      version_number: ${{ steps.rel.outputs.version_number }}
+    steps:
+      - name: Checkout
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # ratchet:actions/checkout@v6.0.2
+        with:
+          fetch-depth: 2
+
+      - name: Detect version bump
+        id: rel
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          prev=$(git show HEAD~1:package.json | jq -r .version)
+          curr=$(jq -r .version package.json)
+          if [ "$prev" != "$curr" ]; then
+            {
+              echo "is_release=true"
+              echo "version=v${curr}"
+              echo "version_number=${curr}"
+            } >> "$GITHUB_OUTPUT"
+            echo "Release detected: ${prev} -> ${curr}"
+          else
+            echo "is_release=false" >> "$GITHUB_OUTPUT"
+            echo "No version change (${curr}); not a release."
+          fi
+
+  # Publishes to GitHub Packages and cuts the GitHub Release (which creates the
+  # v<version> tag on this main commit). Gated on the build/test/e2e jobs in the
+  # SAME run, so a release can never publish ahead of its e2e — replacing the
+  # former standalone CD workflow, which re-ran e2e that CI had already run.
+  publish:
+    name: Publish release
+    needs: [ci-midnightjs, ci-testkit, detect-release]
+    if: needs.detect-release.outputs.is_release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      packages: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # ratchet:actions/checkout@v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Install direnv
+        run: curl -sfL https://direnv.net/install.sh | DIRENV_GITHUB_API_TOKEN=$GITHUB_TOKEN  bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Load environment from .envrc
+        run: |
+          direnv allow .
+          direnv export gha >> "$GITHUB_ENV"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # ratchet:actions/setup-node@v6.4.0
+        with:
+          registry-url: https://npm.pkg.github.com/
+          scope: '@midnight-ntwrk'
+          node-version-file: '.nvmrc'
+          cache: 'yarn'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Configure yarn
+        run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Cache Turbo and Yarn dependencies
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # ratchet:actions/cache@v5.0.5
+        with:
+          path: |
+            **/node_modules
+            ~/.yarn
+            .turbo
+          key: turbo-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Build packages
+        run: yarn build:core
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Extract release notes
+        id: release_notes
+        env:
+          VERSION_NUMBER: ${{ needs.detect-release.outputs.version_number }}
+        run: |
+          # CHANGELOG headers use bare versions in brackets ("## [4.1.0]").
+          # Extract the section between this version's header and the next "## ".
+          awk -v ver="$VERSION_NUMBER" '
+            $0 ~ ("^## \\[" ver "\\]") { found=1; next }
+            found && /^## / { exit }
+            found
+          ' CHANGELOG.md > release_notes.md
+
+      - name: Determine Build Targets
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # ratchet:dorny/paths-filter@v4.0.1
+        id: changes
+        with:
+          filters: |
+            midnight-js: 'packages/**'
+            testkit-js: 'testkit-js/**'
+
+      - name: Validate Packages Before Publishing
+        if: steps.changes.outputs.midnight-js == 'true'
+        uses: ./.github/actions/validate-packages
+        with:
+          workspace-path: './packages'
+
+      - name: Publish packages
+        if: steps.changes.outputs.midnight-js == 'true'
+        run: |
+          yarn deploy --filter="./packages/*" --cache-dir ./turbo --concurrency=1
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Create GitHub Release
+        if: steps.changes.outputs.midnight-js == 'true'
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # ratchet:softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ needs.detect-release.outputs.version }}
+          name: Release ${{ needs.detect-release.outputs.version }}
+          body_path: release_notes.md
+          draft: false
+          # A version with a pre-release identifier (e.g. 5.0.0-beta.1) is flagged
+          # as a pre-release and must NOT become the "Latest" release.
+          prerelease: ${{ contains(needs.detect-release.outputs.version_number, '-') }}
+          make_latest: ${{ contains(needs.detect-release.outputs.version_number, '-') && 'false' || 'true' }}
+
+      - name: Bump testkit-js versions
+        if: steps.changes.outputs.testkit-js == 'true'
+        env:
+          VERSION_NUMBER: ${{ needs.detect-release.outputs.version_number }}
+        run: yarn workspaces foreach -R --from "./testkit-js/*" --exclude "./packages/*" version "$VERSION_NUMBER"
+
+      - name: Validate testkit-js Packages Before Publishing
+        if: steps.changes.outputs.testkit-js == 'true'
+        uses: ./.github/actions/validate-packages
+        with:
+          workspace-path: './testkit-js'
+
+      - name: Publish testkit-js packages
+        if: steps.changes.outputs.testkit-js == 'true'
+        run: |
+          yarn deploy --filter="./testkit-js/*" --cache-dir ./turbo --concurrency=1
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}

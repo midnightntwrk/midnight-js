@@ -2,7 +2,7 @@
 
 **Migration complexity:** Significant. This is a protocol-level major release — expect to touch any code that constructs signing keys, persists exported signing keys, or imports ledger / onchain-runtime types directly.
 
-The required changes fall into three buckets: (1) bump the framework, (2) move signing keys to the structured `{ tag, value }` shape, and (3) re-derive any state persisted under the old protocol. New contract-event APIs are additive — adopt them only if you need them.
+The required changes fall into four buckets: (1) bump the framework, (2) move signing keys to the structured `{ tag, value }` shape, (3) re-derive any state persisted under the old protocol, and (4) ship the `compactc` integrity manifest alongside your ZK artifacts (verification is now fail-closed). Contract-event APIs and cross-contract call support are additive — adopt them only if you need them.
 
 ---
 
@@ -38,7 +38,7 @@ The v9 / v4 protocol packages are release candidates and can be pulled in transi
     "@midnightntwrk/ledger-v9": "1.0.0-rc.2",
     "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.2",
     "@midnight-ntwrk/platform-js": "3.0.0",
-    "@midnight-ntwrk/compact-runtime": "0.17.102-dev.82a6b7c83060d9566e57aa496a33ed80289a7257"
+    "@midnight-ntwrk/compact-runtime": "0.18.0-rc.0"
   }
 }
 ```
@@ -126,9 +126,9 @@ If you call `postBlockUpdate` directly, pass the now-required `retentionDuration
 
 ---
 
-## Step 7 — testkit-js consumers: wallet-sdk 2.0.0-canary
+## Step 7 — testkit-js consumers: wallet-sdk 2.0.0-beta
 
-If you build wallets through the testkit:
+If you build wallets through the testkit (all siblings on the `2.0.0-beta.1` / `4.0.0-beta.1` line):
 
 - `createKeystore` now takes `{ kind: SignatureKind; secret: Uint8Array }` instead of a raw `Uint8Array`.
 - DApp-connector adapters round-trip structured `Signature` / `SignatureVerifyingKey`; emit the `.value` (schnorr) on the wire to preserve the plain-hex contract. Update any test mocks to the structured shape.
@@ -141,7 +141,28 @@ The default `TESTKIT_DOCKER_ENV` is now `devnet`; bump local Docker image versio
 
 If you need on-chain contract events, the `PublicDataProvider` now exposes them — see [new-features.md](./new-features.md) for `queryContractEvents`, `contractEventsObservable`, and `getAllContractEvents`. If you implement `PublicDataProvider` yourself, these two methods are now **required** interface members.
 
-> Querying/streaming works against an indexer that decodes MIP-0002 events. Contract-side **emission** requires `compactc 0.32.102` + `compact-runtime 0.17.x`.
+> Querying/streaming works against an indexer that decodes MIP-0002 events. Contract-side **emission** requires `compactc 0.33.0-rc.0` + `compact-runtime 0.18.x`.
+
+---
+
+## Step 9 — Ship the ZK artifact integrity manifest
+
+`FetchZkConfigProvider` / `NodeZkConfigProvider` now verify artifacts against `compiler/contract-manifest.json` and are **fail-closed by default** (`verify: 'require'`). Loading artifacts that are stale, partial, or missing the manifest now throws `ZkArtifactIntegrityError`.
+
+- **Preferred:** recompile with `compactc 0.33.0-rc.0` so the `contract-manifest.json` is emitted alongside the artifacts, and ship the whole `compiler/` directory with your artifacts.
+- **Harden further:** pin `expectedManifestHash` (SHA-256 of the manifest bytes) at build time to resist a coordinated swap of both the artifacts and their co-located manifest.
+- **Temporary escape hatch:** set `verify: 'warn'` (or `'off'`) while you regenerate artifacts — but a digest mismatch still throws except in `'off'` mode.
+
+```diff
+- new NodeZkConfigProvider(baseDir);
++ new NodeZkConfigProvider(baseDir, { verify: 'require', expectedManifestHash: MANIFEST_SHA256 });
+```
+
+---
+
+## Step 10 — Adopt cross-contract calls (optional)
+
+If you make calls that span multiple deployed contracts, resolve proving artifacts through a `ZKConfigRegistry` built from one `ZKConfigProvider` per compiled contract (yours + call targets). No address registration is needed — see [new-features.md](./new-features.md). If you implement `PublicDataProvider` yourself, the new `queryBlock()` method is now a **required** interface member.
 
 ---
 
@@ -153,3 +174,4 @@ If you need on-chain contract events, the `PublicDataProvider` now exposes them 
 - [ ] Persisted signing-key exports re-exported or transformed.
 - [ ] No direct imports of old-scope ledger / onchain-runtime packages (ESLint `no-restricted-imports` is clean).
 - [ ] Old-protocol contract state re-derived or guarded by `isDeserializationError`.
+- [ ] ZK artifacts recompiled with `compactc 0.33.0-rc.0`; `compiler/contract-manifest.json` shipped so integrity verification passes (`ZkArtifactIntegrityError` clean).

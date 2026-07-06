@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import type { ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   createProverKey,
   createVerifierKey,
@@ -22,7 +23,6 @@ import {
   ZKConfigProvider,
   ZKConfigRegistry
 } from '@midnight-ntwrk/midnight-js-types';
-import type { ProvingProvider } from '@midnightntwrk/dapp-connector-api';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type DAppConnectorProvingAPI, dappConnectorProvingProvider } from '../dapp-connector-proving-provider';
@@ -104,24 +104,10 @@ describe('dappConnectorProvingProvider', () => {
     await expect(keyMaterialProvider.getProverKey(driftedLocation)).rejects.toThrow(/No ZK artifact bundle matches/);
   });
 
-  it('should delegate check and prove to the DApp Connector API provider', async () => {
+  it('should return the ProvingProvider from the DApp Connector API', async () => {
     const result = await dappConnectorProvingProvider(mockApi, mockZkConfigProvider);
 
-    const preimage = Uint8Array.of(9, 9);
-    await result.check(preimage, keyLocation);
-    await result.prove(preimage, keyLocation);
-
-    expect(mockProvingProvider.check).toHaveBeenCalledWith(preimage, keyLocation);
-    expect(mockProvingProvider.prove).toHaveBeenCalledWith(preimage, keyLocation, undefined);
-  });
-
-  it('should resolve lookupKey from the registry, independently of the wallet provider', async () => {
-    // The wallet's ProvingProvider has no lookupKey; the framework supplies it from the same
-    // registry verifier-key join used to resolve key material for proving.
-    const result = await dappConnectorProvingProvider(mockApi, mockZkConfigProvider);
-
-    await expect(result.lookupKey(keyLocation)).resolves.toEqual({ proverKey, verifierKey, ir: zkir });
-    await expect(result.lookupKey('midnight/zswap/spend')).resolves.toBeUndefined();
+    expect(result).toBe(mockProvingProvider);
   });
 
   it('should propagate errors from getProvingProvider', async () => {
@@ -146,7 +132,7 @@ describe('dappConnectorProvingProvider', () => {
     await expect(dappConnectorProvingProvider(mockApi, mockZkConfigProvider)).rejects.toThrow('Wallet locked');
     const result = await dappConnectorProvingProvider(mockApi, mockZkConfigProvider);
 
-    expect(result.lookupKey).toBeTypeOf('function');
+    expect(result).toBe(mockProvingProvider);
     expect(mockApi.getProvingProvider).toHaveBeenCalledTimes(2);
   });
 });

@@ -149,12 +149,15 @@ log_info "Step 7: Commit changes"
 execute_or_log "git add ."
 execute_or_log "git commit -m 'chore(release): bump version to $NEW_VERSION'"
 
-log_info "Step 8: Create and push tag"
-execute_or_log "git tag -a v$NEW_VERSION -m 'Release v$NEW_VERSION'"
+log_info "Step 8: Push release branch"
+# No tag is created here. Publishing is driven by CI: when the release PR is
+# merged to main, the version bump on main triggers the `publish` job in
+# ci.yml, which publishes the packages and cuts the GitHub Release (creating
+# the v<version> tag on the main merge commit).
 execute_or_log "git push origin $RELEASE_BRANCH"
-execute_or_log "git push origin v$NEW_VERSION"
 
-log_info "Release process completed successfully!"
+log_info "Release branch pushed successfully!"
+log_info "Next: open a PR from $RELEASE_BRANCH to main. Merging it publishes the release."
 
 if [ "$DRY_RUN" = true ]; then
   echo ""

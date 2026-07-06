@@ -1,5 +1,34 @@
 # New Features v5.0.0
 
+## Cross-contract call support (#967)
+
+v5.0.0 can assemble, prove, and submit **cross-contract calls** — a single transaction whose call tree spans several deployed contracts, each carrying its own proof.
+
+Because one such transaction needs artifacts for every contract in the tree, proving is driven by a `ZKConfigRegistry` that resolves artifacts across a *set* of compiled-contract sources — the per-contract `ZKConfigProvider`s the application already builds:
+
+```ts
+import { ZKConfigRegistry } from '@midnight-ntwrk/midnight-js-types';
+
+// One source per compiled contract the app can call (its own + call targets).
+const registry = new ZKConfigRegistry([myContractZkConfig, tokenContractZkConfig]);
+```
+
+- **No address registration.** The binding from a call to its artifacts is *derived* by joining on the verifier key: each key location embeds the SHA-256 of the call's deployed verifier key (known at assembly from the contract's resolved on-chain state), and resolution selects the source whose local verifier key for that circuit matches. The join is exactly the predicate the chain enforces (a proof must verify against the deployed key), so it is immune to redeploys, multiple deployments of one contract, and circuit-name collisions across contracts. Resolutions are memoized.
+- `resolveKeyLocation()` returns `undefined` for non-contract key locations (e.g. a `midnight/` protocol builtin) and throws `ZKArtifactNotFoundError` when a contract location's embedded hash matches no source.
+- The canonical grammar — `contract:<address-hex>/<circuitId>?vk=<sha-256 of the deployed verifier key>` — is defined once upstream in `@midnight-ntwrk/compact-js` and re-exported via `@midnight-ntwrk/midnight-js-protocol/compact-js` (`ContractKeyLocation`, `encodeContractKeyLocation`, `parseContractKeyLocation`, `hashVerifierKey`).
+
+Cross-contract call assembly resolves on-chain state at a chosen block via the new **"as-of" endpoint** on `PublicDataProvider`:
+
+```ts
+import type { BlockInfo } from '@midnight-ntwrk/midnight-js-types';
+
+const latest: BlockInfo | null = await publicDataProvider.queryBlock();                        // latest block
+const at = await publicDataProvider.queryBlock({ type: 'blockHeight', blockHeight: 12_345 });  // by height
+// or { type: 'blockHash', blockHash }. BlockInfo = { hash: string; height: number }; null if no match.
+```
+
+---
+
 ## MIP-0002 contract events on `PublicDataProvider` (#988)
 
 The `PublicDataProvider` can now read and stream decoded on-chain **contract events**, sourced from the indexer's server-side-decoded scalar fields (per the MIP-0002 indexer-events spec, rev 2).
@@ -75,7 +104,7 @@ Notable schema-driven decisions:
 - `Misc` carries an opaque `{ name, payload }`.
 - The node→`ContractEvent` mapper **fails fast** on an unknown `__typename` or a missing required field (it never silently produces `undefined`), and carries a compile-time exhaustiveness guard so a schema change becomes a type error rather than runtime drift.
 
-> The query / streaming surface covers all 11 variants. Contract-side **emission** of MIP-0002 events requires `compactc 0.32.102` + `compact-runtime 0.17.x` (#996); see the project notes for the current emission scope (standard events; `Misc` emission not yet available).
+> The query / streaming surface covers all 11 variants. Contract-side **emission** of MIP-0002 events requires `compactc 0.33.0-rc.0` + `compact-runtime 0.18.x` and is exercised end-to-end by an emit→indexer contract-events test (#993) for all shielded events and unshielded **mint/burn**. Unshielded **spend/receive** and **Misc** remain skipped pending an indexer decode fix (midnight-indexer#1279) and are not yet usable.
 
 ---
 
@@ -131,6 +160,40 @@ try {
 - `DeserializationError` with classification, direction inference, per-source mitigation hints, and structural-tag extraction.
 - `isDeserializationError` type guard with a cross-realm brand-check fallback (Web Worker boundaries, npm hoist mismatches).
 - 6 typed wrappers (`deserializeContractState`, …, `decodeLedgerStateValue`) as the primary API; `withDeserializationContext` HOF as an escape hatch (sync-only — it guards against thenable returns).
+
+---
+
+## ZK artifact integrity verification (#1015)
+
+`FetchZkConfigProvider` and `NodeZkConfigProvider` now verify every ZK artifact they load against the `compactc`-emitted integrity manifest (`compiler/contract-manifest.json`). A new `zk-artifact-manifest` module in `@midnight-ntwrk/midnight-js-utils` parses the manifest and drives the check.
+
+```ts
+import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
+
+// Default: fail-closed. A missing manifest or a digest mismatch throws ZkArtifactIntegrityError.
+const provider = new NodeZkConfigProvider(baseDir);
+
+// Explicit control via ZkConfigIntegrityOptions:
+const lenient = new NodeZkConfigProvider(baseDir, {
+  verify: 'warn',                        // 'require' (default) | 'warn' | 'off'
+  onWarn: (msg) => logger.warn(msg),     // default: console.warn
+  expectedManifestHash: MANIFEST_SHA256, // pin to resist a coordinated artifact+manifest swap
+});
+```
+
+Exports from `@midnight-ntwrk/midnight-js-utils`: `ZkArtifactManifest`, `ZkArtifactManifestFile`, `ZkConfigIntegrityOptions`, `ZkArtifactIntegrityMode`, `ZkArtifactIntegrityError`, and the `ZK_MANIFEST_DIR` / `ZK_MANIFEST_FILE_NAME` constants. See [breaking-changes.md](./breaking-changes.md) for the fail-closed default.
+
+---
+
+## Deflate-compressed subscriptions (#977)
+
+The indexer provider negotiates the `graphql-transport-ws+deflate` WebSocket subprotocol and transparently inflates compressed subscription frames. Decompression uses the universal `DecompressionStream` global (RFC 1950 zlib), covering Node ≥ 18 and modern browsers (Chrome 80 / Firefox 113 / Safari 16.4+). It is entirely transparent to callers:
+
+- The user-supplied WebSocket is wrapped before it reaches `graphql-ws`; mixed compressed/plain frame ordering is preserved via a promise queue.
+- If the server selects the plain subprotocol, it falls back with no behavioral change.
+- A **16 MiB hard cap** on inflated payload size guards against compression-bomb DoS.
+
+No API change is required — construct the provider as before and compression is negotiated automatically when the server supports it.
 
 ---
 

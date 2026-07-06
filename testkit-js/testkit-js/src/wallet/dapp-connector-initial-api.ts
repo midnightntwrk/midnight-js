@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { ConnectedAPI, InitialAPI } from '@midnightntwrk/dapp-connector-api';
+import type { ConnectedAPI, InitialAPI } from '@midnight-ntwrk/dapp-connector-api';
 
 export class DAppConnectorInitialAPI implements InitialAPI {
   readonly rdns: string;

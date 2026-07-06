@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-dapp-connector-proof-provider",
-  "version": "5.0.0-alpha.1",
+  "version": "5.0.0-beta.3",
   "description": "Implementation of proof provider leveraging the DApp Connector's proving API",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -29,9 +29,9 @@
     "dist/"
   ],
   "dependencies": {
+    "@midnight-ntwrk/dapp-connector-api": "4.0.1",
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
-    "@midnight-ntwrk/midnight-js-types": "workspace:*",
-    "@midnightntwrk/dapp-connector-api": "4.1.0-beta.1"
+    "@midnight-ntwrk/midnight-js-types": "workspace:*"
   },
   "devDependencies": {
     "vitest": "^4.1.7"
