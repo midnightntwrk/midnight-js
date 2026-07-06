@@ -117,10 +117,13 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
     privateState: initialPrivateState,
     ledgerParameters
   };
+  // `calleeResolver` is defined exactly when cross-contract calls are enabled, and it carries the
+  // block its callee states are resolved as of, so a single check drives both the resolver wiring
+  // and `parentBlockHash`.
   const circuitContext =
-    crossContract === undefined || calleeResolver === undefined
+    calleeResolver === undefined
       ? baseCircuitContext
-      : { ...baseCircuitContext, stateProvider: calleeResolver.stateProvider, parentBlockHash: crossContract.blockHash };
+      : { ...baseCircuitContext, stateProvider: calleeResolver.stateProvider, parentBlockHash: calleeResolver.blockHash };
 
   const exitResult = await contractRuntime.runPromiseExit(contractExec.circuit(
     ProvableCircuitId<C>(options.circuitId as any), // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -249,17 +252,33 @@ const createCallOptions = <C extends Contract.Any, PCK extends Contract.Provable
   return callOptions as CallOptions<C, PCK>;
 };
 
+/**
+ * Reads the current latest block and returns its hash, which pins the chain snapshot a call
+ * transaction is built against.
+ */
+const pinLatestBlockHash = async (publicDataProvider: PublicDataProvider): Promise<string> => {
+  const latestBlock = await publicDataProvider.queryBlock();
+  assertDefined(latestBlock, 'Failed to fetch the latest block from the public data provider');
+  return latestBlock.hash;
+};
+
+// The state read owns the block pin. On a cache miss it pins the scope to the current latest block
+// and reads the states as of it; on a scoped-transaction cache hit it returns the cached states and
+// the block the scope was first read at. Either way the returned `blockHash` is the block the
+// returned states correspond to, so callers pin `parentBlockHash` and cross-contract callee reads
+// to a block coherent with the root states — including across cache hits, which previously paired
+// cached states with a freshly-queried latest block.
 const getContractStates = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: UnprovenCallTxProvidersWithPrivateState<C>,
   options: CallTxOptionsWithPrivateStateId<C, PCK>,
-  transactionContext?: TransactionContext<C, PCK>,
-  blockHash?: string
-): Promise<ContractStates<Contract.PrivateState<C>>> => {
+  transactionContext?: TransactionContext<C, PCK>
+): Promise<{ readonly states: ContractStates<Contract.PrivateState<C>>; readonly blockHash: string }> => {
   const identity = { contractAddress: options.contractAddress, privateStateId: options.privateStateId };
-  const txCtxStates = transactionContext?.[Transaction.GetCurrentStatesForIdentity](identity);
-  if (txCtxStates) {
-    return txCtxStates as ContractStates<Contract.PrivateState<C>>;
+  const cached = transactionContext?.[Transaction.GetCurrentStatesForIdentity](identity);
+  if (cached) {
+    return { states: cached.states as ContractStates<Contract.PrivateState<C>>, blockHash: cached.blockHash };
   }
+  const blockHash = await pinLatestBlockHash(providers.publicDataProvider);
   const states = await getStates(
     providers.publicDataProvider,
     providers.privateStateProvider,
@@ -268,31 +287,31 @@ const getContractStates = async <C extends Contract.Any, PCK extends Contract.Pr
     blockHash
   );
   if (transactionContext) {
-    transactionContext[Transaction.CacheStates](states, identity);
+    transactionContext[Transaction.CacheStates](states, identity, blockHash);
   }
-  return states;
+  return { states, blockHash };
 };
 
 const getContractPublicStates = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: UnprovenCallTxProvidersBase,
   options: CallTxOptionsBase<C, PCK>,
-  transactionContext?: TransactionContext<C, PCK>,
-  blockHash?: string
-): Promise<PublicContractStates> => {
+  transactionContext?: TransactionContext<C, PCK>
+): Promise<{ readonly states: PublicContractStates; readonly blockHash: string }> => {
   const identity = { contractAddress: options.contractAddress };
-  const txCtxStates = transactionContext?.[Transaction.GetCurrentStatesForIdentity](identity);
-  if (txCtxStates) {
-    return txCtxStates;
+  const cached = transactionContext?.[Transaction.GetCurrentStatesForIdentity](identity);
+  if (cached) {
+    return { states: cached.states, blockHash: cached.blockHash };
   }
+  const blockHash = await pinLatestBlockHash(providers.publicDataProvider);
   const states = await getPublicStates(
     providers.publicDataProvider,
     options.contractAddress,
     blockHash
   );
   if (transactionContext) {
-    transactionContext[Transaction.CacheStates]({ ...states, privateState: undefined }, identity);
+    transactionContext[Transaction.CacheStates]({ ...states, privateState: undefined }, identity, blockHash);
   }
-  return states;
+  return { states, blockHash };
 };
 
 /**
@@ -372,14 +391,14 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
     throw new IncompleteCallTxPrivateStateConfig();
   }
 
-  // Pin the transaction to a single block so the root contract and any cross-contract callees are
-  // read from one coherent chain snapshot (and the circuit's `parentBlockHash` is a real block).
-  const latestBlock = await providers.publicDataProvider.queryBlock();
-  assertDefined(latestBlock, 'Failed to fetch the latest block from the public data provider');
-  const blockHash = latestBlock.hash;
-
+  // The whole transaction is read from one coherent chain snapshot: the state read pins the block
+  // (the current latest block on a fresh read, or the scope's original block on a cache hit) and
+  // returns it, and that same block is used for `parentBlockHash` and cross-contract callee reads.
   if (hasPrivateStateId && hasPrivateStateProvider) {
-    const { zswapChainState, contractState, privateState, ledgerParameters } = await getContractStates(providers, options, transactionContext, blockHash);
+    const {
+      states: { zswapChainState, contractState, privateState, ledgerParameters },
+      blockHash
+    } = await getContractStates(providers, options, transactionContext);
     return createUnprovenCallTxFromInitialStates(
       providers.zkConfigProvider,
       createCallOptions(
@@ -395,7 +414,10 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
     );
   }
 
-  const { zswapChainState, contractState, ledgerParameters } = await getContractPublicStates(providers, options, transactionContext, blockHash);
+  const {
+    states: { zswapChainState, contractState, ledgerParameters },
+    blockHash
+  } = await getContractPublicStates(providers, options, transactionContext);
   return createUnprovenCallTxFromInitialStates(
     providers.zkConfigProvider,
     createCallOptions(

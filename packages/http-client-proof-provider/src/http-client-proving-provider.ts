@@ -20,7 +20,7 @@ import {
   type ProvingKeyMaterial,
   type ProvingProvider} from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { InvalidProtocolSchemeError, type ZKConfigProvider, ZKConfigRegistry, zkConfigToProvingKeyMaterial } from '@midnight-ntwrk/midnight-js-types';
-import { warnIfInsecureRemoteUrl } from '@midnight-ntwrk/midnight-js-utils';
+import { warnIfInsecureRemoteUrl, ZkArtifactIntegrityError } from '@midnight-ntwrk/midnight-js-utils';
 import fetch from 'cross-fetch';
 import fetchBuilder from 'fetch-retry';
 
@@ -67,7 +67,14 @@ const makeKeyMaterialResolver = <K extends string>(
     }
     try {
       return zkConfigToProvingKeyMaterial(await flatProvider.get(keyLocation as K));
-    } catch {
+    } catch (error) {
+      // A flat provider legitimately doesn't serve protocol builtins (or bare names it lacks); those
+      // resolve to `undefined` and are supplied by the proof server. An integrity violation, however,
+      // means the artifact IS present but tampered with or stale — that must surface, not be masked
+      // as "no key material" sent to the proof server.
+      if (error instanceof ZkArtifactIntegrityError) {
+        throw error;
+      }
       return undefined;
     }
   };

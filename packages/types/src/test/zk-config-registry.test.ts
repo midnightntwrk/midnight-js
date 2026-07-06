@@ -101,16 +101,47 @@ describe('ZKConfigRegistry', () => {
     );
   });
 
-  it('memoizes resolutions per key location', async () => {
-    const source = sourceB();
-    const registry = new ZKConfigRegistry([source]);
+  it('surfaces source errors as the cause of the not-found error', async () => {
+    const registry = new ZKConfigRegistry([sourceA(), sourceB()]);
+
+    // No source defines 'missing', so both error while probing; those errors must not be lost.
+    try {
+      await registry.resolveKeyLocation(locationFor(ADDRESS_A, 'missing', bytes(1, 1)));
+      expect.fail('expected ZKArtifactNotFoundError');
+    } catch (error) {
+      expect(error).toBeInstanceOf(ZKArtifactNotFoundError);
+      const cause = (error as ZKArtifactNotFoundError).cause;
+      expect(cause).toBeInstanceOf(AggregateError);
+      expect((cause as AggregateError).errors).toHaveLength(2);
+    }
+  });
+
+  it('caches the location→source binding so repeat resolutions skip re-scanning other sources', async () => {
+    const a = sourceA(); // does not define 'burn'
+    const b = sourceB(); // defines 'burn'
+    const registry = new ZKConfigRegistry([a, b]);
     const location = locationFor(ADDRESS_B, 'burn', bytes(2, 4));
 
     await registry.resolveKeyLocation(location);
-    const callsAfterFirst = source.getVerifierKey.mock.calls.length;
+    const aCallsAfterFirst = a.getVerifierKey.mock.calls.length;
     await registry.resolveKeyLocation(location);
 
-    expect(source.getVerifierKey.mock.calls.length).toEqual(callsAfterFirst);
+    // The binding is memoized, so the second resolution goes straight to the matching source and
+    // does not re-probe the non-matching one.
+    expect(a.getVerifierKey.mock.calls.length).toEqual(aCallsAfterFirst);
+  });
+
+  it('assembles the config from the key fetched during selection, without a second fetch', async () => {
+    const source = sourceB();
+    const registry = new ZKConfigRegistry([source]);
+
+    await registry.resolveKeyLocation(locationFor(ADDRESS_B, 'burn', bytes(2, 4)));
+
+    // One fetch to select the source by verifier-key hash; the config reuses that key rather than
+    // fetching (and re-integrity-verifying) it a second time via `ZKConfigProvider.get`.
+    expect(source.getVerifierKey.mock.calls.length).toEqual(1);
+    expect(source.getProverKey.mock.calls.length).toEqual(1);
+    expect(source.getZKIR.mock.calls.length).toEqual(1);
   });
 
   it('resolves structured keys via get', async () => {

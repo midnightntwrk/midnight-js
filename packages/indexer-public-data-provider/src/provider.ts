@@ -101,6 +101,13 @@ import type { ApolloHandle } from './transport';
  * TODO: Re-examine caching when 'ContractCall' and 'ContractDeploy' have
  * transaction identifiers included.
  */
+/**
+ * Maps an optional block-height/block-hash config to the indexer's `BlockOffset` input, or `null`
+ * to select the latest block.
+ */
+const toBlockOffset = (config?: BlockHeightConfig | BlockHashConfig): InputMaybe<BlockOffset> =>
+  config ? (config.type === 'blockHeight' ? { height: config.blockHeight } : { hash: config.blockHash }) : null;
+
 export class IndexerPublicDataProvider implements PublicDataProvider {
   private readonly handle: ApolloHandle;
   private readonly pollInterval: number;
@@ -124,12 +131,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
   }
 
   async queryBlock(config?: BlockHeightConfig | BlockHashConfig): Promise<BlockInfo | null> {
-    let offset: InputMaybe<BlockOffset>;
-    if (config) {
-      offset = config.type === 'blockHeight' ? { height: config.blockHeight } : { hash: config.blockHash };
-    } else {
-      offset = null;
-    }
+    const offset = toBlockOffset(config);
     const block = await this.client
       .query({
         query: BLOCK_QUERY,
@@ -150,11 +152,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     assertIsContractAddress(address);
     // The deployed indexer resolves `contract(offset:)` "as of" the given block (the latest
     // contract action at or before it), which is what cross-contract reads require.
-    const offset: InputMaybe<BlockOffset> = config
-      ? config.type === 'blockHeight'
-        ? { height: config.blockHeight }
-        : { hash: config.blockHash }
-      : null;
+    const offset = toBlockOffset(config);
     return this.client
       .query({
         query: CONTRACT_STATE_QUERY,
@@ -181,11 +179,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     // the newest action, so `contract.state === actions[0].state` and the triple is coherent. The
     // guard below fails loudly if that invariant is violated (e.g. a historical offset is pinned),
     // rather than silently pairing an old state with a newer zswapState.
-    const offset: InputMaybe<BlockOffset> = config
-      ? config.type === 'blockHeight'
-        ? { height: config.blockHeight }
-        : { hash: config.blockHash }
-      : null;
+    const offset = toBlockOffset(config);
     return this.client
       .query({
         query: CONTRACT_AND_ZSWAP_STATE_QUERY,
@@ -418,7 +412,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         Rx.concatMap(() => blockOffsetToContractState$(this.client)(contractAddress)(null))
       );
     }
-    const offset = config.type === 'blockHash' ? { hash: config.blockHash } : { height: config.blockHeight };
+    const offset = toBlockOffset(config);
     const blocks = waitForBlockToAppear(this.client, this.pollInterval)(offset).pipe(
       Rx.concatMap(() => blockOffsetToBlock$(this.client)(offset))
     );
@@ -469,7 +463,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         Rx.concatMap(() => blockOffsetToUnshieldedBalances$(this.client)(contractAddress)(null))
       );
     }
-    const offset = config.type === 'blockHash' ? { hash: config.blockHash } : { height: config.blockHeight };
+    const offset = toBlockOffset(config);
     const balances = waitForBlockToAppear(this.client, this.pollInterval)(offset).pipe(
       Rx.concatMap(() => blockOffsetToUnshieldedBalances$(this.client)(contractAddress)(offset))
     );

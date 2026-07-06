@@ -41,11 +41,12 @@ export interface TransactionContext<
   ) => void;
   readonly [Internal.CacheStates]: (
     states: ContractStates<Contract.PrivateState<C>> | PublicContractStates,
-    identity: Internal.CachedStateIdentity
+    identity: Internal.CachedStateIdentity,
+    blockHash: string
   ) => void;
   readonly [Internal.GetCurrentStatesForIdentity]: (
     identity: Internal.CachedStateIdentity
-  ) => ContractStates<Contract.PrivateState<C>> | PublicContractStates | undefined;
+  ) => Internal.PinnedContractStates<Contract.PrivateState<C>> | undefined;
 
   /**
    * Gets the additional scoped {@link CoinPublicKey} to {@link EncPublicKey} mappings.

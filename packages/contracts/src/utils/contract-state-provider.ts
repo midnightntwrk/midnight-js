@@ -37,6 +37,12 @@ export interface CalleeStateResolver {
    * indexer. (Keyed by `string` to be agnostic to the various branded `ContractAddress` types.)
    */
   readonly resolvedStates: ReadonlyMap<string, ContractState>;
+  /**
+   * The block hash the callee states are resolved as of — the same block the root contract's state
+   * was read at. Exposed so the circuit's `parentBlockHash` can be set from a single source (the
+   * resolver's presence and its block are then one and the same).
+   */
+  readonly blockHash: string;
 }
 
 /**
@@ -78,5 +84,5 @@ export const makeCalleeStateResolver = (
       return state;
     }
   };
-  return { stateProvider, resolvedStates };
+  return { stateProvider, resolvedStates, blockHash };
 };
