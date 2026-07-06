@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-alpha.1**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.3**](../../../README.md)
 
 ***
 
@@ -19,8 +19,10 @@ chain itself enforces — a proof must verify against the deployed key — and i
 resolution immune to redeploys, multiple deployments of one contract, and circuit-name
 collisions across contracts.
 
-The sources are the per-contract [ZKConfigProvider](ZKConfigProvider.md)s the application already constructs;
-resolutions are memoized per location.
+The sources are the per-contract [ZKConfigProvider](ZKConfigProvider.md)s the application already constructs. The
+location→source binding and each source's verifier-key hashes are memoized; the (potentially
+multi-MB) artifacts themselves are re-fetched from the bound source rather than retained, so the
+registry's memory does not grow with the number of distinct locations resolved.
 
 ## Constructors
 
