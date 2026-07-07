@@ -71,6 +71,43 @@ describe('parseZkArtifactManifest', () => {
     expect(() => parseZkArtifactManifest(bad)).toThrow(ZkArtifactIntegrityError);
   });
 
+  it('throws on a non-string hash', () => {
+    const bad = JSON.stringify({
+      'manifest-version': '1',
+      keys: { type: 'directory', 'a.prover': { type: 'file', size: 1, hash: 123 } }
+    });
+    expect(() => parseZkArtifactManifest(bad)).toThrow(/invalid sha-256 hash/);
+  });
+
+  it.each([-1, 1.5, '3'])('throws on an invalid size (%j)', (size) => {
+    const bad = JSON.stringify({
+      'manifest-version': '1',
+      keys: { type: 'directory', 'a.prover': { type: 'file', size, hash: BYTES_SHA256 } }
+    });
+    expect(() => parseZkArtifactManifest(bad)).toThrow(/invalid size/);
+  });
+
+  it.each(['42', '"manifest"', 'null'])('throws when the JSON root is not an object (%s)', (rawJson) => {
+    expect(() => parseZkArtifactManifest(rawJson)).toThrow(/must be a JSON object/);
+  });
+
+  it('throws on an array root (fails the manifest-version check)', () => {
+    // Arrays pass the record guard (typeof [] === 'object'), so they surface as a version error.
+    expect(() => parseZkArtifactManifest('[]')).toThrow(/manifest-version/);
+  });
+
+  it('normalizes uppercase entry hashes to lowercase so verification accepts them', () => {
+    const upper = JSON.stringify({
+      'manifest-version': '1',
+      keys: { type: 'directory', 'increment.prover': { type: 'file', size: BYTES.length, hash: BYTES_SHA256.toUpperCase() } }
+    });
+    const manifest = parseZkArtifactManifest(upper);
+    expect(manifest.files.get('keys/increment.prover')?.hash).toBe(BYTES_SHA256);
+    expect(() =>
+      verifyZkArtifactIntegrity({ manifest, relativePath: 'keys/increment.prover', bytes: BYTES, mode: 'require' })
+    ).not.toThrow();
+  });
+
   // Note: a *duplicate flattened key* cannot arise from valid JSON (object keys are unique and each key is
   // prefixed by its top-level directory name, so sections cannot collide). The `files.has(key)` guard in the
   // parser is therefore defensive-only and is intentionally not exercised by a unit test — there is no valid
@@ -127,6 +164,17 @@ describe('verifyZkArtifactIntegrity', () => {
     const onWarn = vi.fn();
     verifyZkArtifactIntegrity({ manifest, relativePath: 'keys/missing.prover', bytes: BYTES, mode: 'warn', onWarn });
     expect(onWarn).toHaveBeenCalledOnce();
+  });
+
+  it('falls back to console.warn when no onWarn callback is supplied', () => {
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      verifyZkArtifactIntegrity({ manifest: undefined, relativePath: 'keys/increment.prover', bytes: BYTES, mode: 'warn' });
+      expect(consoleWarn).toHaveBeenCalledOnce();
+      expect(consoleWarn.mock.calls[0][0]).toMatch(/^midnight-js:/);
+    } finally {
+      consoleWarn.mockRestore();
+    }
   });
 
   it('throws when the manifest is absent in require mode', () => {
