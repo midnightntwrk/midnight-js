@@ -27,7 +27,7 @@
     "deploy": "yarn npm publish --tolerate-republish"
   },
   "dependencies": {
-    "@apollo/client": "^4.2.0",
+    "@apollo/client": "^4.2.3",
     "@graphql-typed-document-node/core": "^3.2.0",
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
