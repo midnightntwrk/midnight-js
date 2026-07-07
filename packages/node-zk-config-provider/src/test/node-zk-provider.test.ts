@@ -30,8 +30,8 @@ const createHash = (binaryLike: BinaryLike): string => {
 };
 
 // Builds a self-contained base dir: keys/, zkir/, and compiler/contract-manifest.json.
-// `proverHashOverride` lets a test inject a wrong hash for the prover entry.
-const buildBaseDir = async (proverHashOverride?: string): Promise<string> => {
+// `hashOverrides` lets a test inject a wrong hash for individual manifest entries.
+const buildBaseDir = async (hashOverrides: { prover?: string; verifier?: string; zkir?: string } = {}): Promise<string> => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'node-zk-it-'));
   await fs.mkdir(path.join(dir, 'keys'));
   await fs.mkdir(path.join(dir, 'zkir'));
@@ -46,12 +46,16 @@ const buildBaseDir = async (proverHashOverride?: string): Promise<string> => {
     'manifest-version': '1',
     keys: {
       type: 'directory',
-      'set_topic.prover': { type: 'file', size: prover.length, hash: proverHashOverride ?? computeSha256Hex(prover) },
-      'set_topic.verifier': { type: 'file', size: verifier.length, hash: computeSha256Hex(verifier) }
+      'set_topic.prover': { type: 'file', size: prover.length, hash: hashOverrides.prover ?? computeSha256Hex(prover) },
+      'set_topic.verifier': {
+        type: 'file',
+        size: verifier.length,
+        hash: hashOverrides.verifier ?? computeSha256Hex(verifier)
+      }
     },
     zkir: {
       type: 'directory',
-      'set_topic.bzkir': { type: 'file', size: zkir.length, hash: computeSha256Hex(zkir) }
+      'set_topic.bzkir': { type: 'file', size: zkir.length, hash: hashOverrides.zkir ?? computeSha256Hex(zkir) }
     }
   };
   await fs.writeFile(path.join(dir, 'compiler', 'contract-manifest.json'), JSON.stringify(manifest));
@@ -144,9 +148,72 @@ describe('Node ZK config Provider', () => {
     });
 
     it('rejects a tampered prover key (manifest hash wrong) and names the path', async () => {
-      const dir = await buildBaseDir('d'.repeat(64));
+      const dir = await buildBaseDir({ prover: 'd'.repeat(64) });
       await expect(new NodeZkConfigProvider(dir).getProverKey('set_topic')).rejects.toThrow(ZkArtifactIntegrityError);
       await expect(new NodeZkConfigProvider(dir).getProverKey('set_topic')).rejects.toThrow(/keys\/set_topic\.prover/);
+    });
+
+    it('rejects a tampered verifier key and names the path', async () => {
+      const dir = await buildBaseDir({ verifier: 'd'.repeat(64) });
+      await expect(new NodeZkConfigProvider(dir).getVerifierKey('set_topic')).rejects.toThrow(ZkArtifactIntegrityError);
+      await expect(new NodeZkConfigProvider(dir).getVerifierKey('set_topic')).rejects.toThrow(
+        /keys\/set_topic\.verifier/
+      );
+    });
+
+    it('rejects a tampered ZKIR and names the path', async () => {
+      const dir = await buildBaseDir({ zkir: 'd'.repeat(64) });
+      await expect(new NodeZkConfigProvider(dir).getZKIR('set_topic')).rejects.toThrow(ZkArtifactIntegrityError);
+      await expect(new NodeZkConfigProvider(dir).getZKIR('set_topic')).rejects.toThrow(/zkir\/set_topic\.bzkir/);
+    });
+
+    it('get() assembles all three artifacts through the verified getters', async () => {
+      const config = await new NodeZkConfigProvider(manifestDir).get('set_topic');
+      expect(config.circuitId).toBe('set_topic');
+      expect(createHash(config.proverKey)).toEqual(PROVER_KEY_HASH);
+      expect(createHash(config.verifierKey)).toEqual(VERIFIER_KEY_HASH);
+      expect(createHash(config.zkir)).toEqual(ZKIR_HASH);
+    });
+
+    it('get() rejects when any single artifact fails verification', async () => {
+      const dir = await buildBaseDir({ verifier: 'd'.repeat(64) });
+      await expect(new NodeZkConfigProvider(dir).get('set_topic')).rejects.toThrow(ZkArtifactIntegrityError);
+    });
+
+    it('getVerifierKeys() returns verified [circuitId, key] pairs', async () => {
+      const pairs = await new NodeZkConfigProvider(manifestDir).getVerifierKeys(['set_topic']);
+      expect(pairs).toHaveLength(1);
+      expect(pairs[0][0]).toBe('set_topic');
+      expect(createHash(pairs[0][1])).toEqual(VERIFIER_KEY_HASH);
+    });
+
+    it('reads the manifest once per provider instance (later deletion goes unnoticed)', async () => {
+      const dir = await buildBaseDir();
+      const provider = new NodeZkConfigProvider(dir);
+      await provider.getProverKey('set_topic');
+      await fs.rm(path.join(dir, 'compiler', 'contract-manifest.json'));
+      // Cached manifest still in effect for this instance...
+      const key = await provider.getProverKey('set_topic');
+      expect(key.length).toBeGreaterThan(0);
+      // ...while a fresh instance sees the deletion and fails closed, proving the cache did the work.
+      await expect(new NodeZkConfigProvider(dir).getProverKey('set_topic')).rejects.toThrow(ZkArtifactIntegrityError);
+    });
+
+    it('rethrows non-ENOENT manifest read errors and does not memoize them', async () => {
+      const dir = await buildBaseDir();
+      const manifestPath = path.join(dir, 'compiler', 'contract-manifest.json');
+      // Replace the manifest file with a directory: fs.readFile fails with EISDIR, which must
+      // surface as-is (only ENOENT means "absent") and must not be cached as a permanent failure.
+      const manifestBytes = await fs.readFile(manifestPath);
+      await fs.rm(manifestPath);
+      await fs.mkdir(manifestPath);
+      const provider = new NodeZkConfigProvider(dir);
+      await expect(provider.getProverKey('set_topic')).rejects.toThrow(/EISDIR/);
+      // Restore the manifest; the same instance recovers, proving the failure was not memoized.
+      await fs.rmdir(manifestPath);
+      await fs.writeFile(manifestPath, manifestBytes);
+      const key = await provider.getProverKey('set_topic');
+      expect(key.length).toBeGreaterThan(0);
     });
 
     it('rejects when the manifest is absent under the default (require) and names the opt-out hatches', async () => {

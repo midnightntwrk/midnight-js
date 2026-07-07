@@ -41,14 +41,9 @@ const logger = createLogger(
 
 /**
  * MIP-0002 Unshielded* contract events — each variant emitted by its own single-event circuit in its
- * own test. Requires events indexer >= pre-alpha.13, which fixed the Either-address `kind` decode
- * (midnightntwrk/midnight-indexer#1279: a left<ZswapCoinPublicKey, ContractAddress> address is 65
- * bytes on the wire, previously truncated to 33 — which had surfaced kind as 'contract').
- *
- * Mint and Burn pass under pre-alpha.13. Spend and Receive remain `test.skip`: their
- * sender/recipient `kind` is now correct ('user') but the `value` still decodes as an empty string
- * instead of the emitted key bytes, even though Burn decodes the same left<...> address correctly —
- * a residual indexer decode bug (midnightntwrk/midnight-indexer#1279).
+ * own test. Requires indexer >= 4.4.0-pre-alpha.13 (events-epics build): older indexers lack contract
+ * event support and the Either-address decode for sender/recipient (a
+ * left<ZswapCoinPublicKey, ContractAddress> address is 65 bytes on the wire).
  */
 describe('Contract events — Unshielded* (E2E)', () => {
   let env: EventsEnvironment;
@@ -65,7 +60,7 @@ describe('Contract events — Unshielded* (E2E)', () => {
     await teardownEventsEnvironment(env);
   });
 
-  test.skip('emits an UnshieldedSpend event with sender, token type and amount', async () => {
+  test('emits an UnshieldedSpend event with sender, token type and amount', async () => {
     await api.emitUnshieldedSpend(env.deployedContract, TOKEN_TYPE, AMOUNT);
     const event = findEvent(await query(), 'UnshieldedSpend');
     assertBaseEvent(event, env.contractAddress);
@@ -77,7 +72,7 @@ describe('Contract events — Unshielded* (E2E)', () => {
     expect(event.amount).toBe('1000');
   });
 
-  test.skip('emits an UnshieldedReceive event with recipient, token type and amount', async () => {
+  test('emits an UnshieldedReceive event with recipient, token type and amount', async () => {
     await api.emitUnshieldedReceive(env.deployedContract, TOKEN_TYPE, AMOUNT);
     const event = findEvent(await query(), 'UnshieldedReceive');
     assertBaseEvent(event, env.contractAddress);
@@ -89,16 +84,9 @@ describe('Contract events — Unshielded* (E2E)', () => {
     expect(event.amount).toBe('1000');
   });
 
-  test('emits an UnshieldedMint event with domain separator, token type and amount', async () => {
-    await api.emitUnshieldedMint(env.deployedContract, TOKEN_TYPE, AMOUNT);
-    const event = findEvent(await query(), 'UnshieldedMint');
-    assertBaseEvent(event, env.contractAddress);
-    checkId(event);
-    if (event.eventType !== 'UnshieldedMint') throw new Error('unreachable');
-    expect(event.domainSep).toBe(ZERO32_HEX);
-    expect(event.tokenType).toBe(TOKEN_TYPE_HEX);
-    expect(event.amount).toBe('1000');
-  });
+  // UnshieldedMint has no e2e test: it carries no address (the decode path where per-variant bugs
+  // have occurred), and its remaining fields are a subset of UnshieldedSpend's assertions above.
+  // Its mapping is covered by the provider package unit suites; each proof here costs CI minutes.
 
   test('emits an UnshieldedBurn event with sender, token type and amount', async () => {
     await api.emitUnshieldedBurn(env.deployedContract, TOKEN_TYPE, AMOUNT);

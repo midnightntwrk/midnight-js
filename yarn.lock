@@ -5,9 +5,9 @@ __metadata:
   version: 9
   cacheKey: 10
 
-"@apollo/client@npm:^4.2.0":
-  version: 4.2.0
-  resolution: "@apollo/client@npm:4.2.0"
+"@apollo/client@npm:^4.2.3":
+  version: 4.2.3
+  resolution: "@apollo/client@npm:4.2.3"
   dependencies:
     "@graphql-typed-document-node/core": "npm:^3.1.1"
     "@wry/caches": "npm:^1.0.0"
@@ -17,7 +17,7 @@ __metadata:
     optimism: "npm:^0.18.0"
     tslib: "npm:^2.3.0"
   peerDependencies:
-    graphql: ^16.0.0
+    graphql: ^16.0.0 || ^17.0.0
     graphql-ws: ^5.5.5 || ^6.0.3
     react: ^17.0.0 || ^18.0.0 || >=19.0.0-rc
     react-dom: ^17.0.0 || ^18.0.0 || >=19.0.0-rc
@@ -32,7 +32,7 @@ __metadata:
       optional: true
     subscriptions-transport-ws:
       optional: true
-  checksum: 10/fceef4fdeb0780fe91dd95ccd9fea9b56710698b154a1bc6b843ade8df39475d5133eb918705152459ec54f618bd420008e1a0c46012ae8ae7d62bc1e619359e
+  checksum: 10/f2195d389601b9cf109f3e29b75a27292be2cb6be51ec4d1b57500d295867047565dd3932a762e646939b9d8953d9d868210710159df929c8ac152ad819b097c
   languageName: node
   linkType: hard
 
@@ -1909,7 +1909,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-indexer-public-data-provider@workspace:packages/indexer-public-data-provider"
   dependencies:
-    "@apollo/client": "npm:^4.2.0"
+    "@apollo/client": "npm:^4.2.3"
     "@graphql-codegen/cli": "npm:^6.0.0"
     "@graphql-codegen/client-preset": "npm:^5.0.0"
     "@graphql-codegen/typescript": "npm:^5.0.0"

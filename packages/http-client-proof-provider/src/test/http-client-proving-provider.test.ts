@@ -443,6 +443,45 @@ describe('httpClientProvingProvider', () => {
     });
   });
 
+  describe('per-request timeout override', () => {
+    it('should use overrideTimeout over the configured timeout for check requests', async () => {
+      const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
+      const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider, { timeout: 60000 });
+
+      vi.mocked(ledger.createCheckPayload).mockReturnValue(new Uint8Array([20, 21, 22]));
+      vi.mocked(ledger.parseCheckResult).mockReturnValue([undefined]);
+
+      await provider.check(new Uint8Array([1, 2, 3]), 'test-circuit', 111);
+
+      expect(timeoutSpy).toHaveBeenLastCalledWith(111);
+      timeoutSpy.mockRestore();
+    });
+
+    it('should use overrideTimeout over the configured timeout for prove requests', async () => {
+      const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
+      const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider, { timeout: 60000 });
+
+      vi.mocked(ledger.createProvingPayload).mockReturnValue(new Uint8Array([30, 31, 32]));
+
+      await provider.prove(new Uint8Array([1, 2, 3]), 'test-circuit', undefined, 222);
+
+      expect(timeoutSpy).toHaveBeenLastCalledWith(222);
+      timeoutSpy.mockRestore();
+    });
+
+    it('should fall back to the configured timeout when overrideTimeout is undefined', async () => {
+      const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
+      const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider, { timeout: 60000 });
+
+      vi.mocked(ledger.createProvingPayload).mockReturnValue(new Uint8Array([30, 31, 32]));
+
+      await provider.prove(new Uint8Array([1, 2, 3]), 'test-circuit');
+
+      expect(timeoutSpy).toHaveBeenLastCalledWith(60000);
+      timeoutSpy.mockRestore();
+    });
+  });
+
   describe('URL configuration', () => {
     it('should preserve path prefix in URL', async () => {
       const urlWithPath = 'http://localhost:8080/api/v1';

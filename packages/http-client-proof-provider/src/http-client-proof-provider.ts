@@ -22,12 +22,23 @@ import type {
   ZKConfigRegistry
 } from '@midnight-ntwrk/midnight-js-types';
 
-import { httpClientProvingProvider, type ProvingProviderConfig } from './http-client-proving-provider';
+import { DEFAULT_TIMEOUT, httpClientProvingProvider, type ProvingProviderConfig } from './http-client-proving-provider';
 
 export const DEFAULT_CONFIG = {
-  timeout: 300000,
+  timeout: DEFAULT_TIMEOUT,
   zkConfig: undefined
 };
+
+/**
+ * Resolves the timeout for a `proveTx` call. Precedence: per-call `proveTxConfig.timeout` >
+ * construction-time `config.timeout` > `DEFAULT_TIMEOUT`. The per-call value was previously
+ * discarded, so a caller-supplied timeout had no effect — see
+ * https://github.com/midnightntwrk/midnight-js/issues/974.
+ */
+const resolveTimeout = (
+  constructionConfig: ProvingProviderConfig | undefined,
+  proveTxConfig: ProveTxConfig | undefined
+): number => proveTxConfig?.timeout ?? constructionConfig?.timeout ?? DEFAULT_TIMEOUT;
 
 /**
  * Creates a high-level {@link ProofProvider} that implements transaction-level proving
@@ -60,15 +71,31 @@ export const httpClientProofProvider = <K extends string>(
   zkConfigProvider: ZKConfigProvider<K> | ZKConfigRegistry,
   config?: ProvingProviderConfig
 ): ProofProvider => {
+  // Build the underlying ProvingProvider once at construction time so URL validation
+  // (InvalidProtocolSchemeError) and the insecure-URL warning fire eagerly here — at wiring time —
+  // rather than being deferred to (and repeated on) every proveTx call.
   const baseProvingProvider = httpClientProvingProvider(url, zkConfigProvider, config);
 
   return {
     async proveTx(
       unprovenTx: UnprovenTransaction,
-      _partialProveTxConfig?: ProveTxConfig
+      proveTxConfig?: ProveTxConfig
     ): Promise<UnboundTransaction> {
+      const perCallTimeout = resolveTimeout(config, proveTxConfig);
+
+      // Wrap the construction-time provider so every circuit-level check/prove in this proveTx uses
+      // the per-call timeout, without rebuilding the underlying provider. The timeout override is
+      // exposed by TimeoutAwareProvingProvider, so this needs no cast.
+      const perCallProvingProvider: ProvingProvider = {
+        check: (serializedPreimage, keyLocation) =>
+          baseProvingProvider.check(serializedPreimage, keyLocation, perCallTimeout),
+        prove: (serializedPreimage, keyLocation, overwriteBindingInput) =>
+          baseProvingProvider.prove(serializedPreimage, keyLocation, overwriteBindingInput, perCallTimeout),
+        lookupKey: (keyLocation) => baseProvingProvider.lookupKey(keyLocation)
+      };
+
       const costModel = CostModel.initialCostModel();
-      return unprovenTx.prove(baseProvingProvider, costModel);
+      return unprovenTx.prove(perCallProvingProvider, costModel);
     }
   };
 };
