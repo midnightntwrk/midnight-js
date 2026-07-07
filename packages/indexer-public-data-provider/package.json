@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-indexer-public-data-provider",
-  "version": "5.0.0-alpha.1",
+  "version": "5.0.0-beta.3",
   "description": "Implementation of public data provider based on the Midnight Pub-sub indexer",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -27,7 +27,7 @@
     "deploy": "yarn npm publish --tolerate-republish"
   },
   "dependencies": {
-    "@apollo/client": "^4.2.0",
+    "@apollo/client": "^4.2.3",
     "@graphql-typed-document-node/core": "^3.2.0",
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*",

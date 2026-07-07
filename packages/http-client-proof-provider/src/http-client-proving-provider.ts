@@ -102,11 +102,32 @@ export interface ProvingProviderConfig {
   readonly headers?: Record<string, string>;
 }
 
+/**
+ * A {@link ProvingProvider} whose per-circuit `check`/`prove` calls accept an optional per-request
+ * timeout override. The extra parameter is optional and trailing, so this type stays assignable to
+ * `ProvingProvider`; callers that don't need per-request control can ignore it. Used by
+ * `httpClientProofProvider` to honor a per-`proveTx` timeout without rebuilding the underlying
+ * provider — see https://github.com/midnightntwrk/midnight-js/issues/974.
+ */
+export interface TimeoutAwareProvingProvider extends ProvingProvider {
+  check(
+    serializedPreimage: Uint8Array,
+    keyLocation: string,
+    overrideTimeout?: number
+  ): Promise<(bigint | undefined)[]>;
+  prove(
+    serializedPreimage: Uint8Array,
+    keyLocation: string,
+    overwriteBindingInput?: bigint,
+    overrideTimeout?: number
+  ): Promise<Uint8Array>;
+}
+
 export const httpClientProvingProvider = <K extends string>(
   url: string,
   zkConfigProvider: ZKConfigProvider<K> | ZKConfigRegistry,
   config?: ProvingProviderConfig
-): ProvingProvider => {
+): TimeoutAwareProvingProvider => {
   const getKeyMaterial = makeKeyMaterialResolver(zkConfigProvider);
   const checkUrl = buildEndpointUrl(url, CHECK_PATH);
   const proveUrl = buildEndpointUrl(url, PROVE_PATH);
@@ -125,21 +146,26 @@ export const httpClientProvingProvider = <K extends string>(
   const headers = config?.headers ?? {};
 
   return  {
-    async check(serializedPreimage: Uint8Array, keyLocation: string): Promise<(bigint | undefined)[]> {
+    async check(
+      serializedPreimage: Uint8Array,
+      keyLocation: string,
+      overrideTimeout?: number
+    ): Promise<(bigint | undefined)[]> {
       const keyMaterial = await getKeyMaterial(keyLocation);
       const payload = createCheckPayload(serializedPreimage, keyMaterial?.ir);
-      const result = await makeHttpRequest(checkUrl, payload, timeout, headers);
+      const result = await makeHttpRequest(checkUrl, payload, overrideTimeout ?? timeout, headers);
       return parseCheckResult(result);
     },
 
     async prove(
       serializedPreimage: Uint8Array,
       keyLocation: string,
-      overwriteBindingInput?: bigint
+      overwriteBindingInput?: bigint,
+      overrideTimeout?: number
     ): Promise<Uint8Array> {
       const keyMaterial = await getKeyMaterial(keyLocation);
       const payload = createProvingPayload(serializedPreimage, overwriteBindingInput, keyMaterial);
-      return makeHttpRequest(proveUrl, payload, timeout, headers);
+      return makeHttpRequest(proveUrl, payload, overrideTimeout ?? timeout, headers);
     },
 
     lookupKey: getKeyMaterial

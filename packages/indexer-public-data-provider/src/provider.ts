@@ -14,11 +14,11 @@
  */
 
 import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import {
-  type ContractAddress,
+import type {
+  ContractAddress,
   LedgerParameters,
-  type TransactionId,
-  type ZswapChainState
+  TransactionId,
+  ZswapChainState
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type {
   BlockHashConfig,
@@ -172,13 +172,14 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     config?: BlockHeightConfig | BlockHashConfig
   ): Promise<[ZswapChainState, ContractState, LedgerParameters] | null> {
     assertIsContractAddress(address);
-    // The deployed indexer's `Contract` exposes an as-of `state`, but `zswapState` and
-    // `ledgerParameters` live only on `ContractAction`, and `Contract.actions` is newest-first
-    // (NOT offset-filtered). When the offset is the latest block — which every caller pins it to
-    // (see `createUnprovenCallTx`, which sets `blockHash = latestBlock.hash`) — the as-of state IS
-    // the newest action, so `contract.state === actions[0].state` and the triple is coherent. The
-    // guard below fails loudly if that invariant is violated (e.g. a historical offset is pinned),
-    // rather than silently pairing an old state with a newer zswapState.
+    // One request pinned to a single block yields a coherent triple: `block` supplies the ledger
+    // parameters and the contract's zswap commitment tree resolved from that block's ledger state,
+    // and `contract` supplies the contract state as of the same block. The zswap tree is taken from
+    // the block (not the contract's last action) on purpose — the ledger keeps only a window of past
+    // commitment-tree roots, so a tree from the contract's last modification can age out and be
+    // unusable for building transactions; the queried block's tree is the one execution needs.
+    // Callers pin `offset` to a specific block, so both fields resolve at the same anchor with no
+    // race between them.
     const offset = toBlockOffset(config);
     return this.client
       .query({
@@ -190,24 +191,19 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         fetchPolicy: 'no-cache'
       })
       .then(maybeThrowQueryError)
-      .then((queryResult) => queryResult.data?.contract)
-      .then((maybeContract) => {
-        const action = maybeContract?.actions[0];
-        if (!maybeContract || !action) return null;
-        if (maybeContract.state !== action.state) {
-          throw new Error(
-            'queryZSwapAndContractState: contract state as of the requested offset does not match the ' +
-              "latest contract action's state. `zswapState`/`ledgerParameters` are read from the latest " +
-              'action and are only coherent when the offset is the latest block; a historical offset was ' +
-              'likely supplied.'
-          );
+      .then((queryResult) => queryResult.data)
+      .then((data) => {
+        const block = data?.block;
+        const contractState = data?.contract?.state;
+        const contractZswapState = block?.contractZswapState;
+        // `contractZswapState`/`contract` are null when the contract does not exist as of the block.
+        if (!block || contractState == null || contractZswapState == null) {
+          return null;
         }
         return [
-          parseHexZswapState(action.zswapState),
-          parseHexContractState(maybeContract.state),
-          action.transaction?.block?.ledgerParameters
-            ? parseHexLedgerParameters(action.transaction.block.ledgerParameters)
-            : LedgerParameters.initialParameters()
+          parseHexZswapState(contractZswapState),
+          parseHexContractState(contractState),
+          parseHexLedgerParameters(block.ledgerParameters)
         ] as [ZswapChainState, ContractState, LedgerParameters];
       });
   }

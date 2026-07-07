@@ -1,6 +1,6 @@
 # Breaking Changes v4.1.1 → v5.0.0
 
-v5.0.0 is a protocol-level major release. The breaking surface concentrates in three areas: the **protocol bindings** (new packages, new scope), the **`SigningKey` representation**, and **on-chain state compatibility**.
+v5.0.0 is a protocol-level major release. The breaking surface concentrates in four areas: the **protocol bindings** (new packages, new scope), the **`SigningKey` representation**, **on-chain state compatibility**, and **ZK artifact integrity verification** (now fail-closed by default).
 
 ---
 
@@ -13,7 +13,7 @@ v5.0.0 is a protocol-level major release. The breaking surface concentrates in t
 | `@midnight-ntwrk/midnight-js-protocol/ledger` | `@midnight-ntwrk/ledger-v8@8.1.0` | `@midnightntwrk/ledger-v9@1.0.0-rc.2` |
 | `@midnight-ntwrk/midnight-js-protocol/onchain-runtime` | `@midnight-ntwrk/onchain-runtime-v3@3.0.0` | `@midnightntwrk/onchain-runtime-v4@4.0.0-rc.2` |
 
-Coordinated companions: `@midnight-ntwrk/platform-js@3.0.0`, `@midnight-ntwrk/compact-runtime@0.17.102-dev.82a6b7c83060d9566e57aa496a33ed80289a7257`, `compactc 0.32.102`.
+Coordinated companions: `@midnight-ntwrk/platform-js@3.0.0`, `@midnight-ntwrk/compact-runtime@0.18.0-rc.0`, `@midnight-ntwrk/compact-js@2.5.5-rc.5`, `compactc 0.33.0-rc.0`.
 
 **Impact:** Any code importing ledger / onchain-runtime types should do so **only** through the protocol package's subpath re-exports — direct imports of the old-scope packages are flagged by ESLint (`no-restricted-imports`) and resolve to incompatible type shapes.
 
@@ -43,7 +43,9 @@ type SigningKey = { tag: 'schnorr' | 'ecdsa'; value: string /* hex */ };
   };
 ```
 
-The Configuration layer maps the object to the `KEYS_SIGNING` / `KEYS_SIGNINGKIND` config values. Because the key round-trips through the config layer (object → config → object), the returned key is structurally equal but a new reference — compare by value (`toEqual`), not identity (`toBe`).
+The Configuration layer maps the object to the `KEYS_SIGNING` / `KEYS_SIGNING_KIND` config values. Because the key round-trips through the config layer (object → config → object), the returned key is structurally equal but a new reference — compare by value (`toEqual`), not identity (`toBe`).
+
+> **Note (#999):** the kind key is `KEYS_SIGNING_KIND` (with a word-separating underscore). An earlier build wrote `KEYS_SIGNINGKIND`, which the config reader never matched — `signingKind` silently fell back to `schnorr` and any ECDSA key was downgraded. Fixed in v5.0.0.
 
 ### 2b. Signing-key import / export validation
 
@@ -75,19 +77,46 @@ ledger-v9 makes `retentionDuration` (seconds of past Merkle roots to retain) a *
 
 ---
 
-## 5. `@midnightntwrk/wallet-sdk` 2.0.0-canary (testkit-js) (#970)
+## 5. `@midnightntwrk/wallet-sdk` 2.0.0-beta (testkit-js) (#970, #967)
 
-The testkit wallet stack moved to the 2.0.0 major canary line, aligning siblings to avoid duplicate majors (all on the `20260623092110-2f10bcf` canary):
+The testkit wallet stack moved to the 2.0.0 major beta line, aligning siblings to avoid duplicate majors:
 
-- `@midnightntwrk/wallet-sdk` `1.2.0` → `2.0.0-canary.20260623092110-2f10bcf`
-- `@midnightntwrk/wallet-sdk-prover-client` `^1.2.3` → `2.0.0-canary.20260623092110-2f10bcf`
-- `@midnightntwrk/wallet-sdk-address-format` `^3.1.2` → `4.0.0-canary.20260623092110-2f10bcf`
+- `@midnightntwrk/wallet-sdk` `1.2.0` → `2.0.0-beta.1`
+- `@midnightntwrk/wallet-sdk-prover-client` `^1.2.3` → `2.0.0-beta.1`
+- `@midnightntwrk/wallet-sdk-address-format` `^3.1.2` → `4.0.0-beta.1`
 
 `createKeystore` now takes `{ kind: SignatureKind; secret: Uint8Array }` instead of a raw `Uint8Array`. This affects consumers building wallets through the testkit fluent builder.
 
 ---
 
+## 6. ZK artifacts verified against the `compactc` integrity manifest (#1015)
+
+`FetchZkConfigProvider` and `NodeZkConfigProvider` now verify each ZK artifact against the `compactc`-emitted `contract-manifest.json` (in the artifact base's `compiler/` directory). The default mode is **fail-closed** (`verify: 'require'`):
+
+```diff
+- // v4.x: artifacts loaded without integrity checks
++ // v5.0.0: default 'require' — a missing manifest or a digest mismatch throws ZkArtifactIntegrityError
+  const zkConfigProvider = new NodeZkConfigProvider(baseDir);
+```
+
+**Impact:** a deployment whose local artifacts are stale, partial, or missing the `contract-manifest.json` will now throw `ZkArtifactIntegrityError` at load time instead of proceeding with unverified artifacts.
+
+Opt down or pin explicitly through the constructor option bag (`ZkConfigIntegrityOptions`):
+
+```ts
+new NodeZkConfigProvider(baseDir, {
+  verify: 'warn',                 // 'require' (default) | 'warn' | 'off'
+  onWarn: (msg) => logger.warn(msg),
+  expectedManifestHash: MANIFEST_SHA256, // pin to resist a coordinated artifact+manifest swap
+});
+```
+
+A digest mismatch always throws (except in `'off'` mode). Only `expectedManifestHash` (SHA-256 of the manifest bytes, pinned at build time) defends against an adversary who can rewrite both the artifacts and their co-located manifest.
+
+---
+
 ## Non-breaking additions worth noting
 
+- **Cross-contract call support** (#967) is additive: `ZKConfigRegistry` (types), the `ContractKeyLocation` grammar re-export, and the new `PublicDataProvider.queryBlock()` "as-of" endpoint. `queryBlock` is a new required member of the `PublicDataProvider` interface — custom implementations must add it (see [api-changes.md](./api-changes.md)).
 - `dispose()` is exposed on the concrete `IndexerPublicDataProvider` returned by the factory (#961). It is **not** a member of the shared `PublicDataProvider` interface, so existing interface implementations are unaffected.
 - The new `queryContractEvents` / `contractEventsObservable` methods are **required** members of the `PublicDataProvider` interface; the framework's `IndexerPublicDataProvider` provides them. If you implement `PublicDataProvider` yourself, this is a required-method addition that will fail to type-check until you add both — see [api-changes.md](./api-changes.md).

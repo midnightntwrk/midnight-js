@@ -20,7 +20,7 @@ import * as Rx from 'rxjs';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 
 import { DEFAULT_CONTRACT_EVENTS_PAGE_SIZE } from '../config';
-import { IndexerError } from '../errors';
+import { IndexerError, IndexerSubscriptionDataError } from '../errors';
 import { IndexerPublicDataProvider } from '../provider';
 
 const ADDRESS = '1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef' as ContractAddress;
@@ -35,6 +35,14 @@ const buildProvider = () => {
   const provider = new IndexerPublicDataProvider({ client, dispose: () => Promise.resolve() }, 1000);
   return { client, provider };
 };
+
+/**
+ * `ApolloClient['subscribe']` is typed against Apollo's result envelope; the tests drive it with
+ * plain rxjs sources, which are runtime-compatible but not assignable. Confines the one unavoidable
+ * cast to a single seam instead of repeating it at every mock site.
+ */
+const mockSubscribe = (client: ApolloClient, results: Rx.Observable<unknown>) =>
+  vi.spyOn(client, 'subscribe').mockReturnValue(results as unknown as ReturnType<ApolloClient['subscribe']>);
 
 const eventNode = (id: number) => ({
   __typename: 'ShieldedSpendEvent' as const,
@@ -103,9 +111,7 @@ describe('queryContractEvents', () => {
 describe('contractEventsObservable - cursor mapping', () => {
   const captureSubscribeVars = () => {
     const { client, provider } = buildProvider();
-    const subscribeSpy = vi
-      .spyOn(client, 'subscribe')
-      .mockReturnValue(Rx.NEVER as unknown as ReturnType<ApolloClient['subscribe']>);
+    const subscribeSpy = mockSubscribe(client, Rx.NEVER);
     return { provider, subscribeSpy };
   };
 
@@ -144,11 +150,7 @@ describe('contractEventsObservable - cursor mapping', () => {
 describe('contractEventsObservable - emission, completion, and errors', () => {
   test('emits mapped events in id order', async () => {
     const { client, provider } = buildProvider();
-    vi.spyOn(client, 'subscribe').mockReturnValue(
-      Rx.from([{ data: { contractEvents: eventNode(1) } }, { data: { contractEvents: eventNode(2) } }]) as unknown as ReturnType<
-        ApolloClient['subscribe']
-      >
-    );
+    mockSubscribe(client, Rx.from([{ data: { contractEvents: eventNode(1) } }, { data: { contractEvents: eventNode(2) } }]));
 
     const emitted = await Rx.firstValueFrom(provider.contractEventsObservable({ contractAddress: ADDRESS }).pipe(Rx.toArray()));
 
@@ -157,7 +159,7 @@ describe('contractEventsObservable - emission, completion, and errors', () => {
 
   test('completes (does not error) when the stream completes — e.g. toBlock reached', async () => {
     const { client, provider } = buildProvider();
-    vi.spyOn(client, 'subscribe').mockReturnValue(Rx.EMPTY as unknown as ReturnType<ApolloClient['subscribe']>);
+    mockSubscribe(client, Rx.EMPTY);
 
     const completed = await new Promise<boolean>((resolve, reject) => {
       provider
@@ -167,19 +169,22 @@ describe('contractEventsObservable - emission, completion, and errors', () => {
     expect(completed).toBe(true);
   });
 
+  test('errors with IndexerSubscriptionDataError when the payload has a null contractEvents field', async () => {
+    const { client, provider } = buildProvider();
+    mockSubscribe(client, Rx.of({ data: { contractEvents: null } }));
+
+    // A completed-empty stream would reject with EmptyError, so this also rules out silent completion.
+    await expect(
+      Rx.firstValueFrom(provider.contractEventsObservable({ contractAddress: ADDRESS }))
+    ).rejects.toBeInstanceOf(IndexerSubscriptionDataError);
+  });
+
   test('surfaces a GraphQL error as an observable error, not a silent completion', async () => {
     const { client, provider } = buildProvider();
-    vi.spyOn(client, 'subscribe').mockReturnValue(
-      Rx.of({ errors: [{ message: 'socket failure' }] }) as unknown as ReturnType<ApolloClient['subscribe']>
-    );
+    mockSubscribe(client, Rx.of({ errors: [{ message: 'socket failure' }] }));
 
-    const result = await new Promise<{ errored: boolean; error?: unknown }>((resolve) => {
-      provider.contractEventsObservable({ contractAddress: ADDRESS }).subscribe({
-        error: (error: unknown) => resolve({ errored: true, error }),
-        complete: () => resolve({ errored: false })
-      });
-    });
-    expect(result.errored).toBe(true);
-    expect(result.error).toBeInstanceOf(IndexerError);
+    await expect(
+      Rx.firstValueFrom(provider.contractEventsObservable({ contractAddress: ADDRESS }))
+    ).rejects.toBeInstanceOf(IndexerError);
   });
 });
