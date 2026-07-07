@@ -63,8 +63,8 @@ describe('IndexerPublicDataProvider query methods', () => {
   });
 
   describe('queryZSwapAndContractState', () => {
-    test('reads the as-of contract with a single action, mapping the offset', async () => {
-      const query = vi.fn().mockResolvedValue({ data: { contract: null } });
+    test('composes block and contract in one request, mapping the offset', async () => {
+      const query = vi.fn().mockResolvedValue({ data: { block: null, contract: null } });
 
       await providerWithQuery(query).queryZSwapAndContractState(ADDRESS, { type: 'blockHash', blockHash: '0xfeed' });
 
@@ -76,31 +76,34 @@ describe('IndexerPublicDataProvider query methods', () => {
       );
     });
 
-    test('returns null when the contract is absent at the offset', async () => {
-      const query = vi.fn().mockResolvedValue({ data: { contract: null } });
+    test('uses a null (latest) offset when no config is given', async () => {
+      const query = vi.fn().mockResolvedValue({ data: { block: null, contract: null } });
+
+      await providerWithQuery(query).queryZSwapAndContractState(ADDRESS);
+
+      expect(query).toHaveBeenCalledWith(expect.objectContaining({ variables: { address: ADDRESS, offset: null } }));
+    });
+
+    test('returns null when there is no block at the offset', async () => {
+      const query = vi.fn().mockResolvedValue({ data: { block: null, contract: { state: 'aa' } } });
 
       expect(await providerWithQuery(query).queryZSwapAndContractState(ADDRESS)).toBeNull();
     });
 
-    test('returns null when the contract has no actions', async () => {
-      const query = vi.fn().mockResolvedValue({ data: { contract: { state: 'aa', actions: [] } } });
-
-      expect(await providerWithQuery(query).queryZSwapAndContractState(ADDRESS)).toBeNull();
-    });
-
-    test('throws the coherence guard when the as-of state differs from the latest action state', async () => {
+    test('returns null when the contract state is absent at the offset', async () => {
       const query = vi.fn().mockResolvedValue({
-        data: {
-          contract: {
-            state: 'aa',
-            actions: [{ state: 'bb', zswapState: 'cc', transaction: { block: { ledgerParameters: null } } }]
-          }
-        }
+        data: { block: { ledgerParameters: 'aa', contractZswapState: 'bb' }, contract: null }
       });
 
-      await expect(providerWithQuery(query).queryZSwapAndContractState(ADDRESS)).rejects.toThrow(
-        /does not match the latest contract action/
-      );
+      expect(await providerWithQuery(query).queryZSwapAndContractState(ADDRESS)).toBeNull();
+    });
+
+    test('returns null when the contract has no zswap state at the block (contract absent as of that block)', async () => {
+      const query = vi.fn().mockResolvedValue({
+        data: { block: { ledgerParameters: 'aa', contractZswapState: null }, contract: { state: 'bb' } }
+      });
+
+      expect(await providerWithQuery(query).queryZSwapAndContractState(ADDRESS)).toBeNull();
     });
   });
 });
