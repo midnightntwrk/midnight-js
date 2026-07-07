@@ -71,16 +71,6 @@ export const emitShieldedSpend = (
   nullifier: Uint8Array
 ): Promise<FinalizedTxData> => submit('ShieldedSpend', eventsContract.callTx.emitShieldedSpend(nullifier));
 
-export const emitShieldedReceive = (
-  eventsContract: DeployedEventsContract,
-  commitment: Uint8Array
-): Promise<FinalizedTxData> => submit('ShieldedReceive', eventsContract.callTx.emitShieldedReceive(commitment));
-
-export const emitShieldedMint = (
-  eventsContract: DeployedEventsContract,
-  commitment: Uint8Array
-): Promise<FinalizedTxData> => submit('ShieldedMint', eventsContract.callTx.emitShieldedMint(commitment));
-
 export const emitShieldedBurn = (
   eventsContract: DeployedEventsContract,
   nullifier: Uint8Array
@@ -98,12 +88,6 @@ export const emitUnshieldedReceive = (
   amount: bigint
 ): Promise<FinalizedTxData> =>
   submit('UnshieldedReceive', eventsContract.callTx.emitUnshieldedReceive(tokenType, amount));
-
-export const emitUnshieldedMint = (
-  eventsContract: DeployedEventsContract,
-  tokenType: Uint8Array,
-  amount: bigint
-): Promise<FinalizedTxData> => submit('UnshieldedMint', eventsContract.callTx.emitUnshieldedMint(tokenType, amount));
 
 export const emitUnshieldedBurn = (
   eventsContract: DeployedEventsContract,

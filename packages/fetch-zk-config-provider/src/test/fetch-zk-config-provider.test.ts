@@ -111,6 +111,11 @@ describe('Fetch ZK config Provider', () => {
     expect(() => new FetchZkConfigProvider('ws://localhost:5000')).toThrow(/^Invalid protocol scheme: 'ws:'/);
   });
 
+  test('accepts a baseURL with a trailing slash', async () => {
+    const proverKey = await new FetchZkConfigProvider(`${serverURL}/`).getProverKey('set_topic');
+    expect(createHash(proverKey)).toEqual(PROVER_KEY_HASH);
+  });
+
   describe('rejects unsafe circuitId before issuing the request', () => {
     const FETCH_NEVER = (() => {
       throw new Error('fetch must not be called for invalid circuitId');
@@ -218,6 +223,25 @@ describe('Fetch ZK config Provider', () => {
   describe('ZK artifact integrity verification', () => {
     const realProver = () => fs.readFile(`${resourceDir}/keys/set_topic.prover`);
 
+    // Spins up an ephemeral fixture server for one test; callers must close() in a finally.
+    const startServer = (configure: (app: express.Express) => void): { url: string; close: () => void } => {
+      const app = express();
+      configure(app);
+      const listening = app.listen();
+      const addr = listening.address();
+      const url = typeof addr === 'object' && addr ? `http://localhost:${addr.port}` : '';
+      return { url, close: () => listening.close() };
+    };
+
+    const manifestFor = (dir: string, fileName: string, bytes: Buffer, hashOverride?: string): string =>
+      JSON.stringify({
+        'manifest-version': '1',
+        [dir]: {
+          type: 'directory',
+          [fileName]: { type: 'file', size: bytes.length, hash: hashOverride ?? computeSha256Hex(new Uint8Array(bytes)) }
+        }
+      });
+
     it('verifies and resolves under the default (require) when the manifest matches', async () => {
       const proverKey = await new FetchZkConfigProvider(serverURL).getProverKey('set_topic');
       expect(proverKey.length).toBeGreaterThan(0);
@@ -247,6 +271,82 @@ describe('Fetch ZK config Provider', () => {
         await expect(new FetchZkConfigProvider(url).getProverKey('set_topic')).rejects.toThrow(new RegExp(goodHash));
       } finally {
         tamperServer.close();
+      }
+    });
+
+    it('rejects a tampered verifier key and names the path', async () => {
+      const genuine = await fs.readFile(`${resourceDir}/keys/set_topic.verifier`);
+      const tampered = Buffer.from(genuine);
+      tampered[0] ^= 0xff;
+      const { url, close } = startServer((app) => {
+        app.get('/keys/set_topic.verifier', (_, res) => res.send(tampered));
+        app.get('/compiler/contract-manifest.json', (_, res) =>
+          res.type('application/json').send(manifestFor('keys', 'set_topic.verifier', genuine))
+        );
+      });
+      try {
+        await expect(new FetchZkConfigProvider(url).getVerifierKey('set_topic')).rejects.toThrow(
+          ZkArtifactIntegrityError
+        );
+        await expect(new FetchZkConfigProvider(url).getVerifierKey('set_topic')).rejects.toThrow(
+          /keys\/set_topic\.verifier/
+        );
+      } finally {
+        close();
+      }
+    });
+
+    it('rejects a tampered ZKIR and names the path', async () => {
+      const genuine = await fs.readFile(`${resourceDir}/zkir/set_topic.bzkir`);
+      const tampered = Buffer.from(genuine);
+      tampered[0] ^= 0xff;
+      const { url, close } = startServer((app) => {
+        app.get('/zkir/set_topic.bzkir', (_, res) => res.type('application/octet-stream').send(tampered));
+        app.get('/compiler/contract-manifest.json', (_, res) =>
+          res.type('application/json').send(manifestFor('zkir', 'set_topic.bzkir', genuine))
+        );
+      });
+      try {
+        await expect(new FetchZkConfigProvider(url).getZKIR('set_topic')).rejects.toThrow(ZkArtifactIntegrityError);
+        await expect(new FetchZkConfigProvider(url).getZKIR('set_topic')).rejects.toThrow(/zkir\/set_topic\.bzkir/);
+      } finally {
+        close();
+      }
+    });
+
+    it('treats a present manifest missing the requested entry as absent (require throws)', async () => {
+      const prover = await realProver();
+      const { url, close } = startServer((app) => {
+        app.get('/keys/set_topic.prover', (_, res) => res.send(prover));
+        app.get('/compiler/contract-manifest.json', (_, res) =>
+          res.type('application/json').send(manifestFor('keys', 'other.prover', Buffer.from('x')))
+        );
+      });
+      try {
+        await expect(new FetchZkConfigProvider(url).getProverKey('set_topic')).rejects.toThrow(
+          ZkArtifactIntegrityError
+        );
+      } finally {
+        close();
+      }
+    });
+
+    it('accepts a response with no content-type header (not mistaken for HTML fallback)', async () => {
+      const prover = await realProver();
+      const { url, close } = startServer((app) => {
+        app.get('/keys/set_topic.prover', (_, res) => {
+          res.removeHeader('Content-Type');
+          res.end(prover);
+        });
+        app.get('/compiler/contract-manifest.json', (_, res) =>
+          res.type('application/json').send(manifestFor('keys', 'set_topic.prover', prover))
+        );
+      });
+      try {
+        const key = await new FetchZkConfigProvider(url).getProverKey('set_topic');
+        expect(createHash(key)).toEqual(PROVER_KEY_HASH);
+      } finally {
+        close();
       }
     });
 

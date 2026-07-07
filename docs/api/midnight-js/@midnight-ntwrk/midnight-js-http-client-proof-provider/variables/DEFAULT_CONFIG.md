@@ -54,7 +54,7 @@ Proof Server (/check, /prove)
 
 ### timeout
 
-> **timeout**: `number` = `300000`
+> **timeout**: `number` = `DEFAULT_TIMEOUT`
 
 ### zkConfig
 
