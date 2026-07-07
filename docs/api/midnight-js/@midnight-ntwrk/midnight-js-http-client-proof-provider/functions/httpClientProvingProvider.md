@@ -6,7 +6,7 @@
 
 # Function: httpClientProvingProvider()
 
-> **httpClientProvingProvider**\<`K`\>(`url`, `zkConfigProvider`, `config?`): [`ProvingProvider`](#)
+> **httpClientProvingProvider**\<`K`\>(`url`, `zkConfigProvider`, `config?`): `TimeoutAwareProvingProvider`
 
 ## Type Parameters
 
@@ -30,4 +30,4 @@
 
 ## Returns
 
-[`ProvingProvider`](#)
+`TimeoutAwareProvingProvider`
