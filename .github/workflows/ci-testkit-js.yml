@@ -1,6 +1,7 @@
 name: CI - TestKit.js
 
 permissions:
+  actions: read
   contents: read
   issues: read
   id-token: write
