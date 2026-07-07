@@ -9,6 +9,7 @@ env:
   MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
 permissions:
+  actions: read
   contents: read
   issues: read
   id-token: write
@@ -221,13 +222,24 @@ jobs:
 
       - name: Generate test matrix
         id: generate-matrix
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          cd testkit-js/testkit-js-e2e/test
-          TEST_FILES=$(ls *.test.ts | jq -R -s -c 'split("\n") | map(select(length > 0))')
-          if [ -z "$TEST_FILES" ] || [ "$TEST_FILES" = "[]" ]; then
+          FILES=$(cd testkit-js/testkit-js-e2e/test && ls *.test.ts)
+          if [ -z "$FILES" ]; then
             echo "::error::No e2e test files discovered in testkit-js/testkit-js-e2e/test"
             exit 1
           fi
+          # Order longest-first from recent run history so the slowest files start
+          # in the first max-parallel wave (LPT). Fall back to alphabetical if the
+          # ordering script fails or returns anything other than the same file set.
+          ORDERED=$(printf '%s\n' "$FILES" | bash "$GITHUB_WORKSPACE/.github/scripts/order-e2e-matrix.sh" 2>/dev/null || true)
+          if [ -z "$ORDERED" ] || [ "$(printf '%s\n' "$ORDERED" | sort)" != "$(printf '%s\n' "$FILES" | sort)" ]; then
+            echo "::warning::e2e matrix ordering unavailable; using alphabetical order"
+            ORDERED=$(printf '%s\n' "$FILES" | sort)
+          fi
+          TEST_FILES=$(printf '%s\n' "$ORDERED" | jq -R -s -c 'split("\n") | map(select(length > 0))')
           echo "test-files=$TEST_FILES" >> "$GITHUB_OUTPUT"
           echo "Generated test matrix: $TEST_FILES"
