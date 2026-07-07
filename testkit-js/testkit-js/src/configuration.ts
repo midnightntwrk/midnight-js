@@ -44,7 +44,7 @@ export const defaultContainersConfiguration: ContainersConfiguration = {
       node: {
         name: 'node',
         port: 9944,
-        waitStrategy: WaitStrategies.forDelayedStrategy(20_000, Wait.forHealthCheck())
+        waitStrategy: WaitStrategies.forDelayedStrategy(10_000, Wait.forHealthCheck())
       },
       indexer: {
         name: 'indexer',
