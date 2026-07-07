@@ -287,17 +287,12 @@ export const CONTRACT_STATE_SUB = gql(
 export const CONTRACT_AND_ZSWAP_STATE_QUERY = gql(
   `
   query CONTRACT_AND_ZSWAP_STATE_QUERY($address: HexEncoded!, $offset: BlockOffset) {
+    block(offset: $offset) {
+      ledgerParameters
+      contractZswapState(address: $address)
+    }
     contract(address: $address, offset: $offset) {
       state
-      actions(limit: 1) {
-        state
-        zswapState
-        transaction {
-          block {
-            ledgerParameters
-          }
-        }
-      }
     }
   }`
 );
