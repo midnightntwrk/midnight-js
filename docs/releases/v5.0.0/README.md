@@ -41,4 +41,4 @@ See [breaking-changes.md](./breaking-changes.md) for full rationale and before/a
 
 ## Pre-release protocol note
 
-The v9 / v4 protocol packages this release targets are themselves release candidates (`@midnightntwrk/ledger-v9@1.0.0-rc.2`, `@midnightntwrk/onchain-runtime-v4@4.0.0-rc.2`), paired with `compact-runtime 0.18.0-rc.0`, `compact-js 2.5.5-rc.5`, and `compactc 0.33.0-rc.0`. The testkit wallet stack is on the `2.0.0-beta.1` line. Pin transitive copies to a single version to avoid duplicate-major type clashes (the migration guide covers the resolutions).
+The v9 / v4 protocol packages this release targets are themselves release candidates (`@midnightntwrk/ledger-v9@1.0.0-rc.3`, `@midnightntwrk/onchain-runtime-v4@4.0.0-rc.3`), paired with `compact-runtime 0.18.0-rc.1`, `compact-js 2.5.5-rc.6`, and `compactc 0.33.0-rc.1`. The testkit wallet stack is on the `2.0.0-beta.2` line. Pin transitive copies to a single version to avoid duplicate-major type clashes (the migration guide covers the resolutions).

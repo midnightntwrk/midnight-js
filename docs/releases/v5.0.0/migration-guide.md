@@ -35,10 +35,10 @@ The v9 / v4 protocol packages are release candidates and can be pulled in transi
 // package.json
 {
   "resolutions": {
-    "@midnightntwrk/ledger-v9": "1.0.0-rc.2",
-    "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.2",
+    "@midnightntwrk/ledger-v9": "1.0.0-rc.3",
+    "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.3",
     "@midnight-ntwrk/platform-js": "3.0.0",
-    "@midnight-ntwrk/compact-runtime": "0.18.0-rc.0"
+    "@midnight-ntwrk/compact-runtime": "0.18.0-rc.1"
   }
 }
 ```
@@ -128,7 +128,7 @@ If you call `postBlockUpdate` directly, pass the now-required `retentionDuration
 
 ## Step 7 — testkit-js consumers: wallet-sdk 2.0.0-beta
 
-If you build wallets through the testkit (all siblings on the `2.0.0-beta.1` / `4.0.0-beta.1` line):
+If you build wallets through the testkit (all siblings on the `2.0.0-beta.2` / `4.0.0-beta.2` line):
 
 - `createKeystore` now takes `{ kind: SignatureKind; secret: Uint8Array }` instead of a raw `Uint8Array`.
 - DApp-connector adapters round-trip structured `Signature` / `SignatureVerifyingKey`; emit the `.value` (schnorr) on the wire to preserve the plain-hex contract. Update any test mocks to the structured shape.
@@ -141,7 +141,7 @@ The default `TESTKIT_DOCKER_ENV` is now `devnet`; bump local Docker image versio
 
 If you need on-chain contract events, the `PublicDataProvider` now exposes them — see [new-features.md](./new-features.md) for `queryContractEvents`, `contractEventsObservable`, and `getAllContractEvents`. If you implement `PublicDataProvider` yourself, these two methods are now **required** interface members.
 
-> Querying/streaming works against an indexer that decodes MIP-0002 events. Contract-side **emission** requires `compactc 0.33.0-rc.0` + `compact-runtime 0.18.x`.
+> Querying/streaming works against an indexer that decodes MIP-0002 events. Contract-side **emission** requires `compactc 0.33.0-rc.1` + `compact-runtime 0.18.x`.
 
 ---
 
@@ -149,7 +149,7 @@ If you need on-chain contract events, the `PublicDataProvider` now exposes them 
 
 `FetchZkConfigProvider` / `NodeZkConfigProvider` now verify artifacts against `compiler/contract-manifest.json` and are **fail-closed by default** (`verify: 'require'`). Loading artifacts that are stale, partial, or missing the manifest now throws `ZkArtifactIntegrityError`.
 
-- **Preferred:** recompile with `compactc 0.33.0-rc.0` so the `contract-manifest.json` is emitted alongside the artifacts, and ship the whole `compiler/` directory with your artifacts.
+- **Preferred:** recompile with `compactc 0.33.0-rc.1` so the `contract-manifest.json` is emitted alongside the artifacts, and ship the whole `compiler/` directory with your artifacts.
 - **Harden further:** pin `expectedManifestHash` (SHA-256 of the manifest bytes) at build time to resist a coordinated swap of both the artifacts and their co-located manifest.
 - **Temporary escape hatch:** set `verify: 'warn'` (or `'off'`) while you regenerate artifacts — but a digest mismatch still throws except in `'off'` mode.
 
@@ -174,4 +174,4 @@ If you make calls that span multiple deployed contracts, resolve proving artifac
 - [ ] Persisted signing-key exports re-exported or transformed.
 - [ ] No direct imports of old-scope ledger / onchain-runtime packages (ESLint `no-restricted-imports` is clean).
 - [ ] Old-protocol contract state re-derived or guarded by `isDeserializationError`.
-- [ ] ZK artifacts recompiled with `compactc 0.33.0-rc.0`; `compiler/contract-manifest.json` shipped so integrity verification passes (`ZkArtifactIntegrityError` clean).
+- [ ] ZK artifacts recompiled with `compactc 0.33.0-rc.1`; `compiler/contract-manifest.json` shipped so integrity verification passes (`ZkArtifactIntegrityError` clean).
