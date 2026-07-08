@@ -212,10 +212,10 @@ Subpath re-exports retargeted (see [breaking-changes.md](./breaking-changes.md))
 
 | Subpath | Now resolves to |
 |---------|-----------------|
-| `/ledger` | `@midnightntwrk/ledger-v9@1.0.0-rc.2` |
-| `/onchain-runtime` | `@midnightntwrk/onchain-runtime-v4@4.0.0-rc.2` |
-| `/compact-runtime` | `@midnight-ntwrk/compact-runtime@0.18.0-rc.0` |
-| `/compact-js` | `@midnight-ntwrk/compact-js@2.5.5-rc.5` (provides the `ContractKeyLocation` grammar) |
+| `/ledger` | `@midnightntwrk/ledger-v9@1.0.0-rc.3` |
+| `/onchain-runtime` | `@midnightntwrk/onchain-runtime-v4@4.0.0-rc.3` |
+| `/compact-runtime` | `@midnight-ntwrk/compact-runtime@0.18.0-rc.1` |
+| `/compact-js` | `@midnight-ntwrk/compact-js@2.5.5-rc.6` (provides the `ContractKeyLocation` grammar) |
 | `/platform-js` | `@midnight-ntwrk/platform-js@3.0.0` |
 
 ## `@midnight-ntwrk/midnight-js-fetch-zk-config-provider` / `-node-zk-config-provider`

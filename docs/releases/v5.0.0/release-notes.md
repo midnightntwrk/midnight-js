@@ -12,12 +12,12 @@ v5.0.0 is a major release. It retargets the framework's on-chain protocol bindin
 
 `packages/protocol` now re-exports the new-scope protocol packages:
 
-- `@midnight-ntwrk/ledger-v8@8.1.0` → `@midnightntwrk/ledger-v9@1.0.0-rc.2`
-- `@midnight-ntwrk/onchain-runtime-v3@3.0.0` → `@midnightntwrk/onchain-runtime-v4@4.0.0-rc.2`
+- `@midnight-ntwrk/ledger-v8@8.1.0` → `@midnightntwrk/ledger-v9@1.0.0-rc.3`
+- `@midnight-ntwrk/onchain-runtime-v3@3.0.0` → `@midnightntwrk/onchain-runtime-v4@4.0.0-rc.3`
 
 The subpath re-exports `@midnight-ntwrk/midnight-js-protocol/ledger` and `/onchain-runtime` now resolve to the v9 / v4 packages. The new `@midnightntwrk` scope is registered in `.yarnrc.yml` and both scope variants are flagged by the ESLint `no-restricted-imports` ACL outside `packages/protocol/src/`.
 
-This pulls through a coordinated dependency set: `@midnight-ntwrk/platform-js@3.0.0`, `@midnight-ntwrk/compact-runtime@0.18.0-rc.0`, `@midnight-ntwrk/compact-js@2.5.5-rc.5`, and `compactc 0.33.0-rc.0` (compiler 0.33.0 / language 0.25.0 / runtime 0.18.0-rc.0).
+This pulls through a coordinated dependency set: `@midnight-ntwrk/platform-js@3.0.0`, `@midnight-ntwrk/compact-runtime@0.18.0-rc.1`, `@midnight-ntwrk/compact-js@2.5.5-rc.6`, and `compactc 0.33.0-rc.1` (compiler 0.33.0 / language 0.25.0 / runtime 0.18.0-rc.1).
 
 ### `SigningKey` is now a structured object (#970)
 
@@ -38,7 +38,7 @@ ledger-v9 made `retentionDuration` (seconds of past Merkle roots to retain) a re
 
 ### `@midnightntwrk/wallet-sdk` 2.0.0-beta (testkit-js) (#970, #967)
 
-The testkit wallet stack moved to the 2.0.0 major beta line (`@midnightntwrk/wallet-sdk@2.0.0-beta.1`), with aligned siblings `wallet-sdk-prover-client@2.0.0-beta.1` and `wallet-sdk-address-format@4.0.0-beta.1`, which adopts the onchain-v4 structured key/signature types. `createKeystore` now takes `{ kind: SignatureKind; secret: Uint8Array }` rather than a raw `Uint8Array`.
+The testkit wallet stack moved to the 2.0.0 major beta line (`@midnightntwrk/wallet-sdk@2.0.0-beta.2`), with aligned siblings `wallet-sdk-prover-client@2.0.0-beta.2` and `wallet-sdk-address-format@4.0.0-beta.2`, which adopts the onchain-v4 structured key/signature types. `createKeystore` now takes `{ kind: SignatureKind; secret: Uint8Array }` rather than a raw `Uint8Array`.
 
 ### ZK artifacts verified against the `compactc` integrity manifest (#1015)
 
@@ -65,7 +65,7 @@ The `PublicDataProvider` interface gains indexer-sourced contract-event querying
 
 The mapper fails fast on an unknown `__typename` or a missing required field, and carries a compile-time exhaustiveness guard so a schema change surfaces as a type error rather than silent drift.
 
-> The query / streaming surface covers all 11 event variants. Contract-side **emission** of MIP-0002 events requires `compactc 0.33.0-rc.0` + `compact-runtime 0.18.x` and is exercised end-to-end by an emit→indexer contract-events test (#993) for all shielded events and unshielded **mint/burn**. Unshielded **spend/receive** and **Misc** remain skipped pending an indexer decode fix (midnight-indexer#1279).
+> The query / streaming surface covers all 11 event variants. Contract-side **emission** of MIP-0002 events requires `compactc 0.33.0-rc.1` + `compact-runtime 0.18.x` and is exercised end-to-end by an emit→indexer contract-events test (#993) for all shielded events and unshielded **mint/burn**. Unshielded **spend/receive** remain skipped pending an indexer decode fix (midnight-indexer#1279); **Misc** is skipped separately because proving `emitMisc` — the suite's heaviest circuit (~5× the next-largest zkir) — needs a proof-server-side fix.
 
 ### Deflate-compressed subscriptions (#977)
 
@@ -97,6 +97,8 @@ The generated contract-event GraphQL schema gains transaction references and bet
 
 ## Bug Fixes
 
+- **midnight-js:** honor per-call `proveTxConfig.timeout` (#1054, closes #974). `httpClientProofProvider().proveTx()` accepted a `ProveTxConfig` but silently discarded it — the underlying proving provider was built once with a fixed timeout, so `proveTxConfig.timeout` had no effect. The per-call timeout is now threaded down to the underlying request (per-call > construction-time > `DEFAULT_TIMEOUT`) while the provider is still built once, keeping eager URL validation and the insecure-URL warning firing only once.
+- **contracts:** robustness fixes for cross-contract calls (#1034) — corrects the cached transaction context and unshielded outputs, hardens verifier-key resolution in `ZKConfigRegistry`, and realigns the indexer provider's generated GraphQL schema and query definitions.
 - **midnight-js:** pass the signing-key kind via the `KEYS_SIGNING_KIND` config key (#999). The runtime previously wrote `KEYS_SIGNINGKIND`, which the config reader never matched, so `signingKind` silently fell back to `schnorr` — dropping ECDSA maintenance authority keys at deploy time and getting later ECDSA-signed updates rejected as `Malformed(InvalidCommitteeSignature)`.
 - **testkit-js:** wait on the indexer healthcheck with a 3-minute startup timeout (#980).
 - **testkit-js:** stretch the indexer SPO reconnect delay to keep the connection alive (#950).
@@ -112,19 +114,27 @@ The generated contract-event GraphQL schema gains transaction references and bet
 
 ## Build & CI
 
-- Bump `compact-runtime 0.18.0-rc.0` / `compactc 0.33.0-rc.0` (plus `compact-js 2.5.5-rc.5`), switch back to the release tag/asset prefixes, and recompile every managed contract — artifacts now built with compiler 0.33.0 / language 0.25.0 / runtime 0.18.0-rc.0 (#1016). Supersedes the earlier `compactc 0.32.102` / `compact-runtime 0.17.102` bump (#996).
+- Bump the Compact toolchain to `compactc 0.33.0-rc.1` / `compact-runtime 0.18.0-rc.1` / `compact-js 2.5.5-rc.6` and regenerate all compiled artifacts (`runtime-version` stamps `0.18.0-rc.1`) (#1068). Follows the initial `compactc 0.33.0-rc.0` / `compact-runtime 0.18.0-rc.0` bump (#1016), which switched back to the release tag/asset prefixes and superseded the earlier `compactc 0.32.102` / `compact-runtime 0.17.102` bump (#996).
+- Enforce `packageManager` and `engines` consistency across the workspace via yarn constraints (#1067).
+- Dedupe workflow setup, gate release concurrency, and fix coverage mapping (#1065); publish releases from CI, dropping the duplicate CD e2e run (#1033).
+- Speed up e2e env startup (#1064) and cache pinned Docker images to unblock e2e parallelism (#1062).
 - Stop the changelog config from collecting `BREAKING CHANGE` footer notes (#1002).
 - testkit-js can build `compactc` from the `compact/` submodule (opt-in) (#978).
-- Cover ECDSA contract maintenance actions and key persistence (#901), and verify the MIP-0002 emit→indexer contract-events loop (#993).
+- Cover ECDSA contract maintenance actions and key persistence (#901), verify the MIP-0002 emit→indexer contract-events loop (#993), and add cross-contract-call tests (#1035).
 - Scope e2e artifacts per environment and render CI summaries; default `TESTKIT_DOCKER_ENV` to `devnet` (#948, #970).
 
 ## Dependencies
 
-- `chore(deps): migrate wallet-sdk to @midnightntwrk scope and bump to v1.2.0` (#986) (superseded by the `2.0.0-beta.1` bump in #970 / #967).
+- `build(deps): re-apply devnet stack and wallet/ledger/connector/zkir dependency bumps` (#1045) — restores the baseline reverted in #1038: `@midnightntwrk/wallet-sdk` (+ `wallet-sdk-prover-client`) `2.0.0-beta.2`, `wallet-sdk-address-format` `4.0.0-beta.2`, `@midnightntwrk/ledger-v9` `1.0.0-rc.3`, `@midnightntwrk/dapp-connector-api` `4.1.0-beta.1` (rescoped from `@midnight-ntwrk`), devnet node `2.0.0-rc.3` / proof-server `9.0.0-rc.4`. testkit-js stays on `@midnight-ntwrk/zkir-v2` `2.1.0` so the DApp-connector local prover engine and its `WasmProver` params share one zkir version.
+- `chore(env): update indexer to 4.4.0-pre-alpha.16` (#1053).
+- `chore(deps): bump @apollo/client 4.2.0 → 4.2.3` (#1056).
+- `chore(deps): bump lint-staged to 17 and transitive security deps` (#1051).
+- `chore(deps): consolidate GitHub Actions bumps` (#1049) and bump `MishaKav/jest-coverage-comment` (#1055).
+- `chore(deps): migrate wallet-sdk to @midnightntwrk scope and bump to v1.2.0` (#986) (superseded by the `2.0.0-beta.2` bump in #970 / #967 / #1045).
 - `chore(deps): bump shell-quote` (#973).
 - `chore(deps): bump EnricoMi/publish-unit-test-result-action` (#990).
 
 ## Documentation
 
-- API documentation refreshes (#1024, #1021, #1007, #997, #972, #969, #947, #944).
-- Release process and README refresh (#943).
+- API documentation refreshes (#1060, #1047, #1024, #1021, #1007, #997, #972, #969, #947, #944).
+- Release notes for v5.0.0 (#1029) and release process / README refresh (#943).
