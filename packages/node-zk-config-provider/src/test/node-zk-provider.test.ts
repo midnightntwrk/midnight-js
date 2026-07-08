@@ -29,33 +29,47 @@ const createHash = (binaryLike: BinaryLike): string => {
   return crypto.createHash('sha256').update(binaryLike).digest().toString('base64');
 };
 
+// Synthetic artifacts. Content is irrelevant to what these tests exercise (path handling, manifest
+// verification, caching), so we avoid the real 7.3MB prover key: hashing it with pure-JS SHA-256
+// under v8 coverage instrumentation crosses the default 5s vitest timeout on slow CI runners.
+const SET_TOPIC_PROVER = Buffer.from('synthetic prover key artifact');
+const SET_TOPIC_VERIFIER = Buffer.from('synthetic verifier key artifact');
+const SET_TOPIC_ZKIR = Buffer.from('synthetic zkir artifact');
+
 // Builds a self-contained base dir: keys/, zkir/, and compiler/contract-manifest.json.
 // `hashOverrides` lets a test inject a wrong hash for individual manifest entries.
-const buildBaseDir = async (hashOverrides: { prover?: string; verifier?: string; zkir?: string } = {}): Promise<string> => {
+const buildBaseDir = async (
+  hashOverrides: { prover?: string; verifier?: string; zkir?: string } = {}
+): Promise<string> => {
   const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'node-zk-it-'));
   await fs.mkdir(path.join(dir, 'keys'));
   await fs.mkdir(path.join(dir, 'zkir'));
   await fs.mkdir(path.join(dir, 'compiler'));
-  const prover = await fs.readFile(`${resourceDir}/keys/set_topic.prover`);
-  const verifier = await fs.readFile(`${resourceDir}/keys/set_topic.verifier`);
-  const zkir = await fs.readFile(`${resourceDir}/zkir/set_topic.bzkir`);
-  await fs.writeFile(path.join(dir, 'keys', 'set_topic.prover'), prover);
-  await fs.writeFile(path.join(dir, 'keys', 'set_topic.verifier'), verifier);
-  await fs.writeFile(path.join(dir, 'zkir', 'set_topic.bzkir'), zkir);
+  await fs.writeFile(path.join(dir, 'keys', 'set_topic.prover'), SET_TOPIC_PROVER);
+  await fs.writeFile(path.join(dir, 'keys', 'set_topic.verifier'), SET_TOPIC_VERIFIER);
+  await fs.writeFile(path.join(dir, 'zkir', 'set_topic.bzkir'), SET_TOPIC_ZKIR);
   const manifest = {
     'manifest-version': '1',
     keys: {
       type: 'directory',
-      'set_topic.prover': { type: 'file', size: prover.length, hash: hashOverrides.prover ?? computeSha256Hex(prover) },
+      'set_topic.prover': {
+        type: 'file',
+        size: SET_TOPIC_PROVER.length,
+        hash: hashOverrides.prover ?? computeSha256Hex(SET_TOPIC_PROVER)
+      },
       'set_topic.verifier': {
         type: 'file',
-        size: verifier.length,
-        hash: hashOverrides.verifier ?? computeSha256Hex(verifier)
+        size: SET_TOPIC_VERIFIER.length,
+        hash: hashOverrides.verifier ?? computeSha256Hex(SET_TOPIC_VERIFIER)
       }
     },
     zkir: {
       type: 'directory',
-      'set_topic.bzkir': { type: 'file', size: zkir.length, hash: hashOverrides.zkir ?? computeSha256Hex(zkir) }
+      'set_topic.bzkir': {
+        type: 'file',
+        size: SET_TOPIC_ZKIR.length,
+        hash: hashOverrides.zkir ?? computeSha256Hex(SET_TOPIC_ZKIR)
+      }
     }
   };
   await fs.writeFile(path.join(dir, 'compiler', 'contract-manifest.json'), JSON.stringify(manifest));
@@ -63,7 +77,7 @@ const buildBaseDir = async (hashOverrides: { prover?: string; verifier?: string;
 };
 
 describe('Node ZK config Provider', () => {
-  const PROVER_KEY_HASH = 'DnbPkv3mY0+nHwt3NGuaWlMRC+2QhtG+COdhjFd0xB8=';
+  const PROVER_KEY_HASH = createHash(SET_TOPIC_PROVER);
 
   let manifestDir: string;
   beforeAll(async () => {
@@ -75,14 +89,14 @@ describe('Node ZK config Provider', () => {
     expect(createHash(proverKey)).toEqual(PROVER_KEY_HASH);
   });
 
-  const VERIFIER_KEY_HASH = 'sbTZdCx3Kz4RA5OUSaBg2+WZupNdCwd13XmQV9j4pd4=';
+  const VERIFIER_KEY_HASH = createHash(SET_TOPIC_VERIFIER);
 
   test('reads verifier key correctly', async () => {
     const verifierKey = await new NodeZkConfigProvider(manifestDir).getVerifierKey('set_topic');
     expect(createHash(verifierKey)).toEqual(VERIFIER_KEY_HASH);
   });
 
-  const ZKIR_HASH = 'CW4hEb7fRkPiS85+l0/kvN+6IbISWJycOrwW5Jn+AI0=';
+  const ZKIR_HASH = createHash(SET_TOPIC_ZKIR);
 
   test('reads ZKIR correctly', async () => {
     const zkProvider = await new NodeZkConfigProvider(manifestDir).getZKIR('set_topic');
