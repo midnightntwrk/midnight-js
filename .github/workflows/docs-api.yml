@@ -68,6 +68,11 @@ jobs:
           body: "Update API documentation - created by Midnight CI GitHub Action"
           branch: api-docs/update
           delete-branch: true
-          sign-commits: true
+          # No sign-commits: it only works with GITHUB_TOKEN or a GitHub App
+          # token. GH_TOKEN is a PAT (used so the opened PR triggers CI, which a
+          # GITHUB_TOKEN-created PR cannot), and create-pull-request silently
+          # leaves PAT commits unsigned. The squash-merge into main is signed by
+          # GitHub regardless. For verified branch commits, switch to a GitHub
+          # App token via actions/create-github-app-token and re-add sign-commits.
           author: "Midnight CI GitHub Action <midnight-ci@users.noreply.github.com>"
           committer: "Midnight CI GitHub Action <midnight-ci@users.noreply.github.com>"
