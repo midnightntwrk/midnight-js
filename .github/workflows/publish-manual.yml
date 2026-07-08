@@ -1,0 +1,139 @@
+name: Publish (manual)
+#
+# Workaround to publish the current `main` on demand, WITHOUT a version-bump
+# commit and WITHOUT the full CI/e2e cycle (main is assumed already tested).
+#
+# It publishes the version currently in the root package.json AS-IS, for a
+# version that has NOT yet been published — e.g. to finish a release whose
+# automatic publish never completed (CI timed out mid-run), or to publish main
+# ahead of the last release.
+#
+# The guard is an UNCONDITIONAL hard stop: if the current version is already on
+# the registry, the workflow refuses to run. There is deliberately no override —
+# this workflow must never be able to touch already-published artefacts.
+#
+# This does NOT touch ci.yml or the automatic release path. See
+# docs/superpowers/specs/2026-07-08-manual-publish-from-main-design.md.
+
+env:
+  MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+  packages: write
+
+concurrency:
+  group: publish-manual
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish current main
+    runs-on: ubuntu-latest
+    steps:
+      - name: Guard - main only
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::publish-manual can only run from main (got ${{ github.ref }})."
+          exit 1
+
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # ratchet:actions/checkout@v7.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Setup build environment
+        uses: ./.github/actions/setup-build-env
+        with:
+          node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      # Unconditional hard stop: if this version is already on the registry, refuse
+      # to run. This workflow must never touch already-published artefacts, so
+      # there is no override — bump the version to publish new code.
+      - name: Guard - refuse if version already published
+        id: guard
+        env:
+          YARN_NPM_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+        run: |
+          set -euo pipefail
+          version=$(jq -r .version package.json)
+          echo "Checking whether @midnight-ntwrk/midnight-js@${version} is already published..."
+          exists=$(yarn npm info "@midnight-ntwrk/midnight-js" --json 2>/dev/null \
+            | jq -r --arg v "$version" '.versions | has($v)' 2>/dev/null || echo "false")
+          if [ "$exists" = "true" ]; then
+            echo "::error::v${version} is already published — refusing to run. Bump the version to publish new code."
+            exit 1
+          fi
+          echo "v${version} is not published yet — proceeding."
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "tag=v${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Build packages
+        run: yarn build:core
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Extract release notes
+        env:
+          VERSION_NUMBER: ${{ steps.guard.outputs.version }}
+        run: |
+          set -euo pipefail
+          # CHANGELOG headers use bare versions in brackets ("## [4.1.0]").
+          # Extract the section between this version's header and the next "## ".
+          awk -v ver="$VERSION_NUMBER" '
+            $0 ~ ("^## \\[" ver "\\]") { found=1; next }
+            found && /^## / { exit }
+            found
+          ' CHANGELOG.md > release_notes.md
+          # Fall back to a minimal body when CHANGELOG has no section for this version.
+          if [ ! -s release_notes.md ]; then
+            echo "Manual release of v${VERSION_NUMBER} from main @ $(git rev-parse --short HEAD)." > release_notes.md
+          fi
+
+      - name: Validate packages before publishing
+        uses: ./.github/actions/validate-packages
+        with:
+          workspace-path: './packages'
+
+      - name: Publish packages
+        run: |
+          yarn deploy --filter="./packages/*" --cache-dir ./turbo --concurrency=1
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Bump testkit-js versions
+        env:
+          VERSION_NUMBER: ${{ steps.guard.outputs.version }}
+        run: yarn workspaces foreach -R --from "./testkit-js/*" --exclude "./packages/*" version "$VERSION_NUMBER"
+
+      - name: Validate testkit-js packages before publishing
+        uses: ./.github/actions/validate-packages
+        with:
+          workspace-path: './testkit-js'
+
+      - name: Publish testkit-js packages
+        run: |
+          yarn deploy --filter="./testkit-js/*" --cache-dir ./turbo --concurrency=1
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # ratchet:softprops/action-gh-release@v3.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.guard.outputs.tag }}
+          name: Release ${{ steps.guard.outputs.tag }}
+          body_path: release_notes.md
+          draft: false
+          # A version with a pre-release identifier (e.g. 5.0.0-beta.1) is flagged
+          # as a pre-release and must NOT become the "Latest" release.
+          prerelease: ${{ contains(steps.guard.outputs.version, '-') }}
+          make_latest: ${{ contains(steps.guard.outputs.version, '-') && 'false' || 'true' }}
