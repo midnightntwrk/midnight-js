@@ -71,7 +71,14 @@ jobs:
       - name: Aggregate coverage reports
         run: |
           mkdir -p .nyc_output
-          find . -type f -name 'coverage-final.json' -exec cp {} .nyc_output/ \;
+          # Copy each coverage-final.json under a unique name so `nyc merge` sees
+          # every package — identical basenames would otherwise overwrite one
+          # another, leaving a misleading single-package report.
+          i=0
+          find . -type f -name 'coverage-final.json' -not -path '*/node_modules/*' | while IFS= read -r f; do
+            cp "$f" ".nyc_output/coverage-$i.json"
+            i=$((i + 1))
+          done
           npx --yes nyc merge .nyc_output coverage.json
           npx --yes nyc report --reporter=html --report-dir=coverage --temp-dir=.nyc_output
           rm -rf .nyc_output
