@@ -31,10 +31,7 @@ runs:
   using: 'composite'
   steps:
     - name: Install direnv
-      shell: bash
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
-      run: curl -sfL https://direnv.net/install.sh | DIRENV_GITHUB_API_TOKEN=$GITHUB_TOKEN bash
+      uses: ./.github/actions/install-direnv
 
     - name: Load environment from .envrc
       shell: bash
