@@ -97,8 +97,6 @@ jobs:
         uses: ./.github/actions/setup-build-env
         with:
           node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-          docker-login: 'true'
-          docker-password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           cache-key-prefix: 'turbo-testkit'
           testkit-docker-env: ${{ inputs.testkit_docker_env }}
 
@@ -132,6 +130,18 @@ jobs:
         with:
           path: image-cache
           key: docker-images-zst-${{ inputs.testkit_docker_env }}-${{ hashFiles(format('testkit-js/env/{0}.env', inputs.testkit_docker_env)) }}
+
+      # ghcr is only needed on a cache miss: on a hit the images are loaded from
+      # the tarball below and `docker compose up` finds them locally (no pull).
+      # Mirrors prepare_images' conditional login and removes a per-matrix-job
+      # ghcr round-trip that was prone to `Client.Timeout` failures.
+      - name: Log in to GitHub Container registry
+        if: steps.image-cache.outputs.cache-hit != 'true'
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # ratchet:docker/login-action@v4.2.0
+        with:
+          registry: 'https://ghcr.io'
+          username: MidnightCI
+          password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Load Docker images
         if: steps.image-cache.outputs.cache-hit == 'true'
