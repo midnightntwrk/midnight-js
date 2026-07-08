@@ -7,7 +7,7 @@
   },
   "author": "IOG",
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22"
   },
   "license": "Apache-2.0",
   "version": "5.0.0-beta.3",
@@ -35,5 +35,6 @@
   ],
   "dependencies": {
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
-  }
+  },
+  "packageManager": "yarn@4.14.1"
 }

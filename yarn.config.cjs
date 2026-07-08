@@ -23,6 +23,27 @@ function highestRange(ranges) {
 }
 
 /**
+ * Propagates a manifest field from the root workspace to every other
+ * workspace, so the monorepo has a single source of truth. Adds the field
+ * where missing and rewrites it where it drifted.
+ *
+ * @param {import('@yarnpkg/types').Yarn.Constraints.Context} ctx
+ * @param {string[]} path
+ */
+function enforceRootField({ Yarn }, path) {
+  const root = Yarn.workspace({ cwd: '.' });
+  if (!root) return;
+
+  const expected = path.reduce((node, key) => node?.[key], root.manifest);
+  if (expected === undefined) return;
+
+  for (const workspace of Yarn.workspaces()) {
+    if (workspace.cwd === root.cwd) continue;
+    workspace.set(path, expected);
+  }
+}
+
+/**
  * @param {import('@yarnpkg/types').Yarn.Constraints.Context} ctx
  */
 function enforceConsistentVersions({ Yarn }) {
@@ -55,5 +76,7 @@ function enforceConsistentVersions({ Yarn }) {
 module.exports = defineConfig({
   async constraints(ctx) {
     enforceConsistentVersions(ctx);
+    enforceRootField(ctx, ['packageManager']);
+    enforceRootField(ctx, ['engines', 'node']);
   }
 });
