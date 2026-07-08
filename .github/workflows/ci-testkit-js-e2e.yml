@@ -54,7 +54,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v6.1.0
         with:
           path: image-cache
-          key: docker-images-${{ inputs.testkit_docker_env }}-${{ hashFiles(format('testkit-js/env/{0}.env', inputs.testkit_docker_env)) }}
+          key: docker-images-zst-${{ inputs.testkit_docker_env }}-${{ hashFiles(format('testkit-js/env/{0}.env', inputs.testkit_docker_env)) }}
 
       - name: Log in to GitHub Container registry
         if: steps.image-cache.outputs.cache-hit != 'true'
@@ -76,7 +76,7 @@ jobs:
             "ghcr.io/midnight-ntwrk/proof-server:${PROOF_SERVER_VERSION}" \
             "ghcr.io/midnight-ntwrk/indexer-standalone:${INDEXER_VERSION}" \
             "ghcr.io/midnight-ntwrk/midnight-node:${MIDNIGHT_NODE_VERSION}" \
-            | gzip > image-cache/images.tar.gz
+            | zstd -T0 > image-cache/images.tar.zst
 
   e2e_tests:
     name: E2E Tests
@@ -85,7 +85,7 @@ jobs:
     timeout-minutes: ${{ inputs.build_timeout }}
     strategy:
       fail-fast: false
-      max-parallel: 12
+      max-parallel: 14
       matrix:
         test-file: ${{ fromJson(inputs.test_files) }}
     steps:
@@ -131,11 +131,11 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v6.1.0
         with:
           path: image-cache
-          key: docker-images-${{ inputs.testkit_docker_env }}-${{ hashFiles(format('testkit-js/env/{0}.env', inputs.testkit_docker_env)) }}
+          key: docker-images-zst-${{ inputs.testkit_docker_env }}-${{ hashFiles(format('testkit-js/env/{0}.env', inputs.testkit_docker_env)) }}
 
       - name: Load Docker images
         if: steps.image-cache.outputs.cache-hit == 'true'
-        run: gunzip -c image-cache/images.tar.gz | docker load
+        run: zstd -dc image-cache/images.tar.zst | docker load
 
       - name: Run e2e tests - ${{ matrix.test-file }}
         if: ${{ !contains(github.event.head_commit.message, '[skip_it]') }}

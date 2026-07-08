@@ -21,6 +21,7 @@ on:
     - cron: "30 4 * * *"
 
 permissions:
+  actions: read
   contents: read
   issues: read
   id-token: write
