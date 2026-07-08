@@ -50,7 +50,9 @@ on:
 
 concurrency:
   group: TK-JS-build-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # Only cancel superseded PR runs; queue push-to-main runs so a mid-flight
+  # release (gated on this workflow in ci.yml) is never cancelled half-done.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   ci:
@@ -61,9 +63,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # ratchet:actions/checkout@v7.0.0
 
       - name: Install direnv
-        run: curl -sfL https://direnv.net/install.sh | DIRENV_GITHUB_API_TOKEN=$GITHUB_TOKEN  bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: ./.github/actions/install-direnv
 
       - name: Load environment from .envrc
         env:

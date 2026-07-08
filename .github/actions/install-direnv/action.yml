@@ -1,0 +1,27 @@
+name: 'Install direnv'
+description: >-
+  Install a pinned, checksum-verified direnv binary onto PATH. Replaces the
+  remote install script piped into a shell (flagged by gha-curl-pipe-shell)
+  with a download + SHA-256 verification, so a compromised install script
+  can't run arbitrary code on the runner. Linux amd64 only — matches the CI
+  runners.
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Download and verify direnv
+      shell: bash
+      env:
+        # Bump both together: get the new sha with
+        #   curl -sfL .../v<VER>/direnv.linux-amd64 | sha256sum
+        DIRENV_VERSION: '2.37.1'
+        DIRENV_SHA256: '1f1b93dd6f38523fde26dfac96151ef9d31a374e3005cd3345fb93555ae0c9b5'
+      run: |
+        set -euo pipefail
+        curl -sfLo /tmp/direnv "https://github.com/direnv/direnv/releases/download/v${DIRENV_VERSION}/direnv.linux-amd64"
+        echo "${DIRENV_SHA256}  /tmp/direnv" | sha256sum -c -
+        mkdir -p "$HOME/.local/bin"
+        install -m 0755 /tmp/direnv "$HOME/.local/bin/direnv"
+        rm -f /tmp/direnv
+        echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        "$HOME/.local/bin/direnv" version
