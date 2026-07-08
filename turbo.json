@@ -22,7 +22,7 @@
     "test": {
       "outputLogs": "new-only",
       "dependsOn": ["^build"],
-      "inputs": ["src/**/*.ts", "compose.yml"],
+      "inputs": ["src/**/*.ts", "vitest.config.ts", "vitest.*.config.ts", "compose.yml"],
       "outputs": ["reports/**", "coverage/**", "logs/**"]
     },
     "it": {

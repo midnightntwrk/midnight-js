@@ -220,7 +220,7 @@ git config --local tag.gpgSign true
 Without direnv, set manually:
 
 ```bash
-export COMPACTC_VERSION=0.29.0
+export COMPACTC_VERSION=0.33.0-rc.1
 ```
 
 ### Testkit environment selection

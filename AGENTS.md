@@ -292,7 +292,7 @@ feat(contracts): add batch deployment support
 fix(private-state): handle encryption key rotation edge case
 test(indexer): add integration tests for subscription reconnection
 docs(readme): update quick start example
-chore(deps): bump typescript to 5.8.3
+chore(deps): bump typescript to 6.0.3
 ```
 
 ## Package Dependencies
