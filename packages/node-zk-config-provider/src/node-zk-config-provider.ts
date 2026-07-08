@@ -195,3 +195,19 @@ export const nodeZkConfigRegistry = async (artifactRoot: string): Promise<ZKConf
   }
   return new ZKConfigRegistry(sources);
 };
+
+/**
+ * Options for {@link nodeZkConfigProvider}. Combines the artifact `directory` with integrity options.
+ */
+export interface NodeZkConfigProviderOptions extends ZkConfigIntegrityOptions {
+  /** The base directory containing the key and ZKIR subdirectories. */
+  readonly directory: string;
+}
+
+/**
+ * Factory for {@link NodeZkConfigProvider} following the `provider(options)` convention.
+ */
+export function nodeZkConfigProvider<K extends string>(options: NodeZkConfigProviderOptions): NodeZkConfigProvider<K> {
+  const { directory, ...integrityOptions } = options;
+  return new NodeZkConfigProvider<K>(directory, integrityOptions);
+}

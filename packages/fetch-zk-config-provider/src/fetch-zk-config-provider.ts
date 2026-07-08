@@ -166,3 +166,21 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
     return createZKIR(bytes);
   }
 }
+
+/**
+ * Options for {@link fetchZkConfigProvider}. Combines the remote `baseURL` with fetch and integrity options.
+ */
+export interface CreateFetchZkConfigProviderOptions extends FetchZkConfigProviderOptions {
+  /** The endpoint to query for ZK artifacts. */
+  readonly baseURL: string;
+}
+
+/**
+ * Factory for {@link FetchZkConfigProvider} following the `provider(options)` convention.
+ */
+export function fetchZkConfigProvider<K extends string>(
+  options: CreateFetchZkConfigProviderOptions
+): FetchZkConfigProvider<K> {
+  const { baseURL, ...rest } = options;
+  return new FetchZkConfigProvider<K>(baseURL, rest);
+}
