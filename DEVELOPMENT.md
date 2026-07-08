@@ -221,7 +221,7 @@ git config --local tag.gpgSign true
 Without direnv, set manually:
 
 ```bash
-export COMPACTC_VERSION=0.29.0
+export COMPACTC_VERSION=0.33.0-rc.1
 ```
 
 ### Testkit environment selection
@@ -252,8 +252,9 @@ docker compose -f testkit-js/compose.yml up
 ## Building compactc from the `compact/` submodule
 
 For feature-branch work against unreleased compactc, build the compiler from
-the `compact/` git submodule (pinned to LFDT-Minokawa/compact at the `0.31.0`
-release commit) instead of downloading the prebuilt binary.
+the `compact/` git submodule (pinned to a specific LFDT-Minokawa/compact
+commit — run `git submodule status` to see the current pin) instead of
+downloading the prebuilt binary.
 
 Two paths — pick based on what you have installed locally:
 

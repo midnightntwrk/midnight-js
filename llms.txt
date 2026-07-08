@@ -296,7 +296,7 @@ await testEnv.shutdown();
 
 | Variable | Values |
 |----------|--------|
-| `MN_TEST_ENVIRONMENT` | `undeployed`, `devnet`, `testnet`, `env-var-remote` |
+| `MN_TEST_ENVIRONMENT` | `undeployed`, `qanet`, `preview`, `preprod`, `env-var-remote` |
 | `MN_TEST_WALLET_SEED` | Specific seed phrase (optional) |
 | `MN_TEST_NETWORK_ID` | Network identifier |
 | `MN_TEST_INDEXER` | Custom indexer URL |
@@ -332,8 +332,8 @@ midnight-js/
 
 ### Midnight Packages
 - `@midnight-ntwrk/compact-js` - Compact language runtime
-- `@midnight-ntwrk/ledger-v8` - Ledger types
-- `@midnight-ntwrk/onchain-runtime-v3` - On-chain VM
+- `@midnightntwrk/ledger-v9` - Ledger types
+- `@midnightntwrk/onchain-runtime-v4` - On-chain VM
 - `@midnight-ntwrk/compact-runtime` - Circuit execution
 - `@midnight-ntwrk/wallet-sdk-facade` - Wallet integration
 
