@@ -132,6 +132,28 @@ describe('unproven-call-tx', () => {
   });
 
   describe('createUnprovenCallTx', () => {
+    it('throws when the latest block cannot be fetched from the public data provider', async () => {
+      const publicDataProvider = createMockProviders().publicDataProvider;
+      publicDataProvider.queryBlock = vi.fn().mockResolvedValue(null);
+
+      const providers = {
+        zkConfigProvider: createMockZKConfigProvider(),
+        publicDataProvider,
+        walletProvider: createMockProviders().walletProvider
+      };
+      const options = {
+        contract: createMockContract(),
+        compiledContract: createMockCompiledContract(),
+        circuitId: 'testCircuit',
+        contractAddress: createMockContractAddress(),
+        args: ['test-arg']
+      };
+
+      await expect(createUnprovenCallTx(providers, options)).rejects.toThrow(
+        'Failed to fetch the latest block from the public data provider'
+      );
+    });
+
     it('should create unproven call tx without private state provider', async () => {
       const { getPublicStates } = await import('../get-states');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

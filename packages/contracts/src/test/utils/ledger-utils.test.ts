@@ -16,6 +16,7 @@
 import { getNetworkId,setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import {
   type AlignedValue,
+  type CommunicationCommitmentData,
   ContractOperation,
   ContractState as CompactContractState,
   createCircuitContext,
@@ -25,6 +26,8 @@ import {
 import {
   type CoinCommitment,
   coinCommitment,
+  communicationCommitment,
+  communicationCommitmentRandomness,
   type ContractAddress,
   createShieldedCoinInfo,
   feeToken,
@@ -922,5 +925,140 @@ describe('ledger-utils', () => {
         expect(caught.context.source).toBe('onchain-runtime');
       }
     });
+  });
+});
+
+describe('createUnprovenLedgerCallTx multi-call assembly', () => {
+  beforeAll(() => {
+    setNetworkId('testnet');
+  });
+
+  const encryptionPublicKey = sampleEncryptionPublicKey();
+  const alignedValue: AlignedValue = {
+    value: [new Uint8Array()],
+    alignment: [{ tag: 'atom', value: { tag: 'field' } }]
+  };
+  const emptyZswapLocalState = {
+    outputs: [],
+    inputs: [],
+    coinPublicKey: sampleCoinPublicKey(),
+    currentIndex: 0n
+  };
+
+  type AssembledCall = { address: string; entryPoint: string | Uint8Array; communicationCommitment: string };
+
+  const entryPointOf = (call: AssembledCall): string =>
+    typeof call.entryPoint === 'string' ? call.entryPoint : new TextDecoder().decode(call.entryPoint);
+
+  const stateWithCircuit = (circuitId: string): CompactContractState => {
+    const state = new CompactContractState();
+    state.setOperation(circuitId, makeOperation());
+    return state;
+  };
+
+  // A parent-bound commitment for a sub-call. The assembly reads only `commCommRand`, but the
+  // `CommunicationCommitmentData` type also requires the parent's computed `commComm`.
+  const boundCommitment = (commCommRand: string): Option.Option<CommunicationCommitmentData> =>
+    Option.some({ commCommRand, commComm: communicationCommitment(alignedValue, alignedValue, commCommRand) });
+
+  const callInput = (
+    circuitId: string,
+    address: string,
+    state: CompactContractState,
+    commitment: Option.Option<CommunicationCommitmentData>
+  ) => ({
+    contractAddress: PlatformContractAddress.ContractAddress(address),
+    circuitId,
+    public: { contractState: state.data.state, publicTranscript: [], partitionedTranscript: emptyTranscript },
+    private: { input: alignedValue, output: alignedValue, privateTranscriptOutputs: [] as AlignedValue[] },
+    communicationCommitment: commitment
+  });
+
+  const actionsOf = (tx: ReturnType<typeof createUnprovenLedgerCallTx>): AssembledCall[] =>
+    [...(tx.intents?.values().next().value?.actions ?? [])] as unknown as AssembledCall[];
+
+  it("assembles one prototype per call in trace order, resolving each contract's own operation", () => {
+    const calleeCall = callInput(
+      'calleeCircuit',
+      sampleContractAddress(),
+      stateWithCircuit('calleeCircuit'),
+      boundCommitment(communicationCommitmentRandomness())
+    );
+    const rootCall = callInput('rootCircuit', sampleContractAddress(), stateWithCircuit('rootCircuit'), Option.none());
+
+    const byAddress = new Map<string, CompactContractState>([
+      [String(calleeCall.contractAddress), stateWithCircuit('calleeCircuit')],
+      [String(rootCall.contractAddress), stateWithCircuit('rootCircuit')]
+    ]);
+    const contractStateFor = vi.fn((address: unknown) => byAddress.get(String(address)));
+
+    const tx = createUnprovenLedgerCallTx(
+      [calleeCall, rootCall],
+      contractStateFor as never,
+      new ZswapChainState(),
+      emptyZswapLocalState,
+      encryptionPublicKey
+    );
+    const actions = actionsOf(tx);
+
+    // Both calls are assembled, callee first and root last (execution-trace order).
+    expect(actions).toHaveLength(2);
+    expect(actions.map((a) => a.address)).toEqual([String(calleeCall.contractAddress), String(rootCall.contractAddress)]);
+    expect(actions.map(entryPointOf)).toEqual(['calleeCircuit', 'rootCircuit']);
+    // Each call's operation is looked up from that call's own resolved state, in order.
+    expect(contractStateFor.mock.calls.map((c) => String(c[0]))).toEqual([
+      String(calleeCall.contractAddress),
+      String(rootCall.contractAddress)
+    ]);
+  });
+
+  it('reuses a sub-call communication commitment and samples fresh randomness for the root', () => {
+    const calleeAddress = sampleContractAddress();
+    const rootAddress = sampleContractAddress();
+    const calleeRand = communicationCommitmentRandomness();
+
+    const build = (): AssembledCall[] => {
+      const calleeCall = callInput('calleeCircuit', calleeAddress, stateWithCircuit('calleeCircuit'), boundCommitment(calleeRand));
+      const rootCall = callInput('rootCircuit', rootAddress, stateWithCircuit('rootCircuit'), Option.none());
+      const byAddress = new Map<string, CompactContractState>([
+        [String(calleeCall.contractAddress), stateWithCircuit('calleeCircuit')],
+        [String(rootCall.contractAddress), stateWithCircuit('rootCircuit')]
+      ]);
+      const tx = createUnprovenLedgerCallTx(
+        [calleeCall, rootCall],
+        ((address: unknown) => byAddress.get(String(address))) as never,
+        new ZswapChainState(),
+        emptyZswapLocalState,
+        encryptionPublicKey
+      );
+      return actionsOf(tx);
+    };
+
+    const first = build();
+    const second = build();
+
+    // The sub-call reuses the runtime-bound commitment randomness, so its commitment is stable...
+    expect(first[0].communicationCommitment).toBe(second[0].communicationCommitment);
+    // ...whereas the root, being no one's callee, samples fresh randomness each assembly.
+    expect(first[1].communicationCommitment).not.toBe(second[1].communicationCommitment);
+  });
+
+  it('throws a clear error when a callee state cannot be resolved', () => {
+    const calleeCall = callInput(
+      'calleeCircuit',
+      sampleContractAddress(),
+      stateWithCircuit('calleeCircuit'),
+      boundCommitment(communicationCommitmentRandomness())
+    );
+    const rootState = stateWithCircuit('rootCircuit');
+    const rootCall = callInput('rootCircuit', sampleContractAddress(), rootState, Option.none());
+
+    // The callee (assembled first) has no resolvable state.
+    const contractStateFor = ((address: unknown) =>
+      String(address) === String(rootCall.contractAddress) ? rootState : undefined) as never;
+
+    expect(() =>
+      createUnprovenLedgerCallTx([calleeCall, rootCall], contractStateFor, new ZswapChainState(), emptyZswapLocalState, encryptionPublicKey)
+    ).toThrow(/Contract state for '.*' is undefined/);
   });
 });
