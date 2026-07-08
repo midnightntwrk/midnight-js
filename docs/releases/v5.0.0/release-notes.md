@@ -65,7 +65,7 @@ The `PublicDataProvider` interface gains indexer-sourced contract-event querying
 
 The mapper fails fast on an unknown `__typename` or a missing required field, and carries a compile-time exhaustiveness guard so a schema change surfaces as a type error rather than silent drift.
 
-> The query / streaming surface covers all 11 event variants. Contract-side **emission** of MIP-0002 events requires `compactc 0.33.0-rc.1` + `compact-runtime 0.18.x` and is exercised end-to-end by an emit→indexer contract-events test (#993) for all shielded events and unshielded **mint/burn**. Unshielded **spend/receive** and **Misc** remain skipped pending an indexer decode fix (midnight-indexer#1279).
+> The query / streaming surface covers all 11 event variants. Contract-side **emission** of MIP-0002 events requires `compactc 0.33.0-rc.1` + `compact-runtime 0.18.x` and is exercised end-to-end by an emit→indexer contract-events test (#993) for all shielded events and unshielded **mint/burn**. Unshielded **spend/receive** remain skipped pending an indexer decode fix (midnight-indexer#1279); **Misc** is skipped separately because proving `emitMisc` — the suite's heaviest circuit (~5× the next-largest zkir) — needs a proof-server-side fix.
 
 ### Deflate-compressed subscriptions (#977)
 
