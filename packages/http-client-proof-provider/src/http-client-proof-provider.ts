@@ -41,6 +41,17 @@ const resolveTimeout = (
 ): number => proveTxConfig?.timeout ?? constructionConfig?.timeout ?? DEFAULT_TIMEOUT;
 
 /**
+ * Options for {@link httpClientProofProvider}. The connection fields (`url`, `zkConfigProvider`)
+ * are combined with the underlying {@link ProvingProviderConfig} into a single flat object.
+ */
+export interface HttpClientProofProviderOptions<K extends string> extends ProvingProviderConfig {
+  /** The URL of the proof server. */
+  readonly url: string;
+  /** Provider for zero-knowledge configuration artifacts. */
+  readonly zkConfigProvider: ZKConfigProvider<K> | ZKConfigRegistry;
+}
+
+/**
  * Creates a high-level {@link ProofProvider} that implements transaction-level proving
  * using the low-level circuit-by-circuit {@link ProvingProvider} as its foundation.
  *
@@ -48,9 +59,7 @@ const resolveTimeout = (
  * - High-level ProofProvider interface (works with complete transactions)
  * - Low-level ProvingProvider interface (works with individual circuits)
  *
- * @param url The URL of the proof server
- * @param zkConfigProvider Provider for zero-knowledge configuration artifacts
- * @param config Optional configuration for the underlying ProvingProvider
+ * @param options Connection and proving configuration — see {@link HttpClientProofProviderOptions}
  * @returns A ProofProvider instance that uses ProvingProvider internally
  *
  * @remarks
@@ -66,22 +75,57 @@ const resolveTimeout = (
  * **Note:** The /prove-tx endpoint is NOT used. All proving is done through
  * individual circuit operations using /check and /prove endpoints.
  */
-export const httpClientProofProvider = <K extends string>(
+export function httpClientProofProvider<K extends string>(
+  options: HttpClientProofProviderOptions<K>
+): ProofProvider;
+/**
+ * @deprecated Use the {@link HttpClientProofProviderOptions} object form:
+ * `httpClientProofProvider({ url, zkConfigProvider })`.
+ *
+ * @param url The URL of the proof server
+ * @param zkConfigProvider Provider for zero-knowledge configuration artifacts
+ * @param config Optional configuration for the underlying ProvingProvider
+ * @returns A ProofProvider instance that uses ProvingProvider internally
+ */
+export function httpClientProofProvider<K extends string>(
   url: string,
   zkConfigProvider: ZKConfigProvider<K> | ZKConfigRegistry,
   config?: ProvingProviderConfig
-): ProofProvider => {
+): ProofProvider;
+export function httpClientProofProvider<K extends string>(
+  optionsOrUrl: HttpClientProofProviderOptions<K> | string,
+  zkConfigProvider?: ZKConfigProvider<K> | ZKConfigRegistry,
+  config?: ProvingProviderConfig
+): ProofProvider {
+  let url: string;
+  let resolvedZkConfigProvider: ZKConfigProvider<K> | ZKConfigRegistry;
+  let resolvedConfig: ProvingProviderConfig | undefined;
+
+  if (typeof optionsOrUrl === 'string') {
+    if (zkConfigProvider === undefined) {
+      throw new Error('zkConfigProvider is required when calling the positional httpClientProofProvider overload');
+    }
+    url = optionsOrUrl;
+    resolvedZkConfigProvider = zkConfigProvider;
+    resolvedConfig = config;
+  } else {
+    const { url: optionsUrl, zkConfigProvider: optionsZkConfigProvider, ...rest } = optionsOrUrl;
+    url = optionsUrl;
+    resolvedZkConfigProvider = optionsZkConfigProvider;
+    resolvedConfig = rest;
+  }
+
   // Build the underlying ProvingProvider once at construction time so URL validation
   // (InvalidProtocolSchemeError) and the insecure-URL warning fire eagerly here — at wiring time —
   // rather than being deferred to (and repeated on) every proveTx call.
-  const baseProvingProvider = httpClientProvingProvider(url, zkConfigProvider, config);
+  const baseProvingProvider = httpClientProvingProvider(url, resolvedZkConfigProvider, resolvedConfig);
 
   return {
     async proveTx(
       unprovenTx: UnprovenTransaction,
       proveTxConfig?: ProveTxConfig
     ): Promise<UnboundTransaction> {
-      const perCallTimeout = resolveTimeout(config, proveTxConfig);
+      const perCallTimeout = resolveTimeout(resolvedConfig, proveTxConfig);
 
       // Wrap the construction-time provider so every circuit-level check/prove in this proveTx uses
       // the per-call timeout, without rebuilding the underlying provider. The timeout override is
