@@ -10,6 +10,15 @@ export type ImpureCircuits<PS> = {
                         mintNonce_0: Uint8Array,
                         recipient_0: { bytes: Uint8Array },
                         fee_0: bigint): Promise<__compactRuntime.CircuitResults<PS, Uint8Array>>;
+  mintWithShieldedFee(context: __compactRuntime.CircuitContext<PS>,
+                      domainSep_0: Uint8Array,
+                      mintValue_0: bigint,
+                      mintNonce_0: Uint8Array,
+                      recipient_0: { bytes: Uint8Array },
+                      feeCoin_0: { nonce: Uint8Array,
+                                   color: Uint8Array,
+                                   value: bigint
+                                 }): Promise<__compactRuntime.CircuitResults<PS, Uint8Array>>;
 }
 
 export type ProvableCircuits<PS> = {
@@ -19,6 +28,15 @@ export type ProvableCircuits<PS> = {
                         mintNonce_0: Uint8Array,
                         recipient_0: { bytes: Uint8Array },
                         fee_0: bigint): Promise<__compactRuntime.CircuitResults<PS, Uint8Array>>;
+  mintWithShieldedFee(context: __compactRuntime.CircuitContext<PS>,
+                      domainSep_0: Uint8Array,
+                      mintValue_0: bigint,
+                      mintNonce_0: Uint8Array,
+                      recipient_0: { bytes: Uint8Array },
+                      feeCoin_0: { nonce: Uint8Array,
+                                   color: Uint8Array,
+                                   value: bigint
+                                 }): Promise<__compactRuntime.CircuitResults<PS, Uint8Array>>;
 }
 
 export type PureCircuits = {
@@ -31,6 +49,15 @@ export type Circuits<PS> = {
                         mintNonce_0: Uint8Array,
                         recipient_0: { bytes: Uint8Array },
                         fee_0: bigint): Promise<__compactRuntime.CircuitResults<PS, Uint8Array>>;
+  mintWithShieldedFee(context: __compactRuntime.CircuitContext<PS>,
+                      domainSep_0: Uint8Array,
+                      mintValue_0: bigint,
+                      mintNonce_0: Uint8Array,
+                      recipient_0: { bytes: Uint8Array },
+                      feeCoin_0: { nonce: Uint8Array,
+                                   color: Uint8Array,
+                                   value: bigint
+                                 }): Promise<__compactRuntime.CircuitResults<PS, Uint8Array>>;
 }
 
 export type Ledger = {

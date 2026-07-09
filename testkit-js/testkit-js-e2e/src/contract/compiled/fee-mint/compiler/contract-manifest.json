@@ -7,30 +7,40 @@
     "type": "directory",
     "contract-info.json": {
       "type": "file",
-      "size": 1626,
-      "hash": "3b38acde72a79dceecb0406f586a5ec2483e93802b7b90081cf8bdf1f1427da9"
+      "size": 3431,
+      "hash": "b24fe8dc599672575b96ff220654c4493bea23934a5ad53533778e01ab956ea3"
     }
   },
   "contract": {
     "type": "directory",
     "index.d.ts": {
       "type": "file",
-      "size": 2234,
-      "hash": "d74829546e7767226e97d1c1834c7288ca1c47092dc509fd4a0a0f96012a2ecc"
+      "size": 3779,
+      "hash": "07d869c56bcc5175f784591031d741d8ce2b6ca4d3ae70f7d47d2daed768f8f4"
     },
     "index.js": {
       "type": "file",
-      "size": 39911,
-      "hash": "b25bf874749d16e1be867feb705f78dfe3106779a5958caecebf7b8f11d4a0f4"
+      "size": 53049,
+      "hash": "6952f2e6a2b858bb83160a9b1341405dea36b0b9e9950c0b096c5e05bb8fdded"
     },
     "index.js.map": {
       "type": "file",
-      "size": 1889,
-      "hash": "b14b8389aab2b4f4aea5db5f53a9e8717e4a81478a290671e4d5f40c02e2b9c1"
+      "size": 2623,
+      "hash": "37522cb8e13f14cdbd34af6da2b60845dfcd69d30b2d54390e4a1d70bb68ea7f"
     }
   },
   "zkir": {
     "type": "directory",
+    "mintWithShieldedFee.bzkir": {
+      "type": "file",
+      "size": 2748,
+      "hash": "1ea54387548cb4aadaa0c8e3c04e81111708590be8316973c2dd2d009f15a9eb"
+    },
+    "mintWithShieldedFee.zkir": {
+      "type": "file",
+      "size": 48143,
+      "hash": "a6da3a118721ac72a926bbd7e116d89c65ea279effacce9ab1070f750109f1a4"
+    },
     "mintWithUnshieldedFee.bzkir": {
       "type": "file",
       "size": 2737,
@@ -44,6 +54,16 @@
   },
   "keys": {
     "type": "directory",
+    "mintWithShieldedFee.prover": {
+      "type": "file",
+      "size": 76475437,
+      "hash": "2e1359889dfd7ae7d19a171f9a6b8f13a94fdeb63dea27771dced62966a78346"
+    },
+    "mintWithShieldedFee.verifier": {
+      "type": "file",
+      "size": 2119,
+      "hash": "a12b894ea1941155ef02e77250eb16321d4d4efee780f513f409b48702ae0f30"
+    },
     "mintWithUnshieldedFee.prover": {
       "type": "file",
       "size": 76465625,
