@@ -353,6 +353,10 @@ When the release PR is merged, the version bump on `main` triggers the `publish`
 3. Creates a GitHub Release with the extracted notes (creating the `v<VERSION>` tag on the merge commit)
 4. Publishes `testkit-js/*` if those paths changed
 
+#### Ad-hoc publish from a release branch
+
+The **Publish (manual)** workflow ([`.github/workflows/publish-manual.yml`](./.github/workflows/publish-manual.yml)) publishes the version currently in `package.json` from a `release/**` branch, on demand, without a version bump or the full CI/e2e cycle. Run it from the Actions tab against a `release/**` branch; optionally set the `dist_tag` input (default `latest`) to publish under a side tag such as `v4-lts` without moving `latest`. It refuses to run when that version is already published, and marks the GitHub Release "Latest" only for a stable version published under the `latest` tag. Use it to finish a release whose automatic publish never completed, or to ship a maintenance release under a side tag.
+
 ## Resources
 
 - [Midnight Network](https://midnight.network)
