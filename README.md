@@ -315,34 +315,43 @@ This allows "rehearsing" circuit calls (running Impact VM) such that execution c
 
 ### Release Process
 
-Releases are driven by `scripts/release.sh`, which bumps versions in all workspaces, regenerates `CHANGELOG.md`, creates a release branch, and pushes it. Opening and merging a PR from that release branch to `main` triggers the `publish` job in the [CI workflow](./.github/workflows/ci.yml): once the build, unit, integration, and e2e jobs pass, it publishes packages to GitHub Packages and creates the GitHub Release (which creates the `v<version>` tag on the main merge commit). Publishing is gated on the same test run, so no release can ship ahead of its e2e.
+Releases are prepared by the **Release (prepare PR)** GitHub Actions workflow
+([`.github/workflows/release-prepare.yml`](./.github/workflows/release-prepare.yml)).
+Trigger it manually from the Actions tab with the target `version`; it bumps versions in
+all workspaces, regenerates `CHANGELOG.md`, and opens a `release/v<version>` PR. Full CI
+runs on that PR and gates the merge. Merging it to `main` triggers the `publish` job in the
+[CI workflow](./.github/workflows/ci.yml): once the build, unit, integration, and e2e jobs
+pass, it publishes packages to GitHub Packages and creates the GitHub Release (which creates
+the `v<version>` tag on the main merge commit). Publishing is gated on the same test run, so
+no release can ship ahead of its e2e.
 
-#### Prerequisites
+#### Preparing a release
 
-- On `main` branch with a clean working tree
-- All previous release PRs merged
-- GPG signing configured
+1. Actions tab → **Release (prepare PR)** → **Run workflow**, from `main`.
+2. Enter the `version` (e.g. `5.1.0` or `5.1.0-beta.1`).
+3. Review the opened `release/v<version>` PR (version bumps + changelog), wait for CI, merge.
 
-#### Usage
+#### Local fallback
+
+If CI is unavailable, `scripts/release.sh` performs the same preparation locally:
 
 ```bash
 # Dry-run (default): updates files only, no git operations — review with `git diff`
-./scripts/release.sh 4.2.0
+./scripts/release.sh 5.1.0
 
-# Full release: bump + changelog + branch + commit + push
-./scripts/release.sh 4.2.0 --execute
+# Only file changes (bump + changelog), no git — what CI runs
+./scripts/release.sh 5.1.0 --files-only
 
-# Full release with build and tests beforehand
-./scripts/release.sh 4.2.0 --execute --with-tests
+# Full local release: bump + changelog + branch + commit + push
+./scripts/release.sh 5.1.0 --execute
+
+# Full local release with build and tests beforehand
+./scripts/release.sh 5.1.0 --execute --with-tests
 ```
 
-#### What the script does
-
-1. Bumps version in root `package.json`, all `packages/*`, and all `testkit-js/*`
-2. Regenerates `CHANGELOG.md` via `yarn changelog`
-3. Creates branch `release/v<VERSION>`
-4. Commits as `chore(release): bump version to <VERSION>`
-5. Pushes branch `release/v<VERSION>` — open a PR to `main`; merging it publishes the release
+Prerequisites for the local path: on `main` with a clean working tree, all previous release
+PRs merged, and GPG signing configured. After pushing, open a PR to `main`; merging it
+publishes the release.
 
 #### What happens on merge to `main`
 
