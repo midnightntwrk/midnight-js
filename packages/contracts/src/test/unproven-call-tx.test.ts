@@ -114,7 +114,7 @@ describe('unproven-call-tx', () => {
       expect(result.private.nextPrivateState).toEqual({ test: 'next-private-state' });
     });
 
-    it('forwards the executor log events onto the public result (empty when the circuit emits no logs)', async () => {
+    it('forwards the executor log events onto the public result as logEvents (empty when the circuit emits no logs)', async () => {
       const options = createMockCallOptions({
         initialContractState: await getInitialContractState()
       });
@@ -126,7 +126,7 @@ describe('unproven-call-tx', () => {
         walletEncryptionPublicKey
       );
 
-      expect(result.public.events).toEqual([]);
+      expect(result.public.logEvents).toEqual([]);
     });
 
     it('should fail when circuit fails at runtime', async () => {

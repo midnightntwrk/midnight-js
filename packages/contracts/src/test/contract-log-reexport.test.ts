@@ -15,10 +15,16 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { ContractLog } from '../index';
+import { ContractLog, type LogEvent } from '../index';
 
 describe('ContractLog re-export', () => {
-  it('re-exports compact-js decodeAll for decoding CallResult events without reaching into compact-js', () => {
+  it('exposes compact-js decodeAll so consumers decode CallResult events without reaching into compact-js', () => {
+    expect(ContractLog.decodeAll).toBeTypeOf('function');
     expect(ContractLog.decodeAll([])).toEqual([]);
+  });
+
+  it('re-exports the LogEvent type so consumers can name CallResult events without importing compact-runtime', () => {
+    const events: readonly LogEvent[] = [];
+    expect(ContractLog.decodeAll(events)).toEqual([]);
   });
 });

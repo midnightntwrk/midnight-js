@@ -23,7 +23,7 @@ There is no single TypeScript source of truth across all three. The indexer is a
 
 ## Decision
 
-1. **`compact-js` is the authority only for the local-execution path.** Surface its `events` on `CallResultPublic.events`, carried **raw**, and re-export `ContractLog` (so consumers decode via `ContractLog.decodeAll` without depending on `compact-js` directly).
+1. **`compact-js` is the authority only for the local-execution path.** Surface its `events` on `CallResultPublic.logEvents` (named to distinguish these raw log emissions from the decoded indexer `ContractEvent` surface), carried **raw**, and re-export `ContractLog` (so consumers decode via `ContractLog.decodeAll` without depending on `compact-js` directly).
 2. **The indexer path is NOT coupled to `compact-js`.** Its authority is the generated indexer GraphQL schema. `ContractEventType` ↔ schema parity is already compile-enforced by `Record<ContractEventType, IndexerContractEventType>` plus the `__typename` exhaustiveness switch in `toContractEvent` — no `compact-js` coupling is added.
 3. **Representation choices** on the local path: events forwarded **raw** (the `compact-js` payload decoder is `@experimental`), **execution-wide** across the whole call tree in emission order (each tagged with its emitting contract address), and the **deploy/constructor path is excluded** (`compact-js` `DeployResultPublic` carries no events).
 
@@ -32,7 +32,7 @@ There is no single TypeScript source of truth across all three. The indexer is a
 - Normal skew between the indexer and `compact-js` (independent deployments) does not manifest as false CI failures or pressure to change the public type against the wrong authority.
 - Consumers on the local path get a typed decoder without taking a direct `compact-js` dependency.
 - There is still no single TypeScript source of truth spanning both paths. True unification requires a generated TypeScript schema artifact emitted from the ledger's Rust `LogEventType` enum (MIP-0002 §7, Option A). Tracked as an upstream (ledger team) ask.
-- Non-empty events require the compiler to emit `log` ops; until the bundled `compactc` does, `events` is `[]` in practice. The wiring is structurally sound and tested against `[]`.
+- Non-empty events require the compiler to emit `log` ops; until the bundled `compactc` does, `events` is `[]` in practice. The forwarding is nonetheless covered independent of the payload: the direct executor→`CallResultPublic` path is asserted against `[]`, and the scoped-transaction rebuild path is asserted by reference identity (so a dropped or hardcoded forward fails the test).
 
 ## Alternatives rejected
 

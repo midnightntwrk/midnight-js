@@ -152,7 +152,7 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
         nextContractState: rootCall.public.contractState,
         partitionedTranscript: rootCall.public.partitionedTranscript,
         publicTranscript: rootCall.public.publicTranscript,
-        events
+        logEvents: events
       },
       private: {
         input: rootCall.private.input,
