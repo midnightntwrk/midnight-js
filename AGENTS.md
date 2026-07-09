@@ -283,13 +283,6 @@ yarn build --filter=@midnight-ntwrk/midnight-js-contracts
 yarn typecheck:tests
 ```
 
-### Building compactc from the `compact/` submodule (feature branches)
-
-See [DEVELOPMENT.md § Building compactc from the `compact/`
-submodule](./DEVELOPMENT.md#building-compactc-from-the-compact-submodule) for
-local setup and CI opt-in (`workflow_dispatch` input `compactc_source=submodule`
-or PR label `compactc-from-source`).
-
 ## Commit Guidelines
 
 Follow conventional commits:

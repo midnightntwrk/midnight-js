@@ -61,15 +61,21 @@ class MockZKConfigProvider extends ZKConfigProvider<'test-circuit'> {
  *   - `proveTimeouts` / `checkTimeouts`: the override threaded through each prove/check call
  */
 function wireMocks(): {
+  urls: unknown[];
+  zkConfigProviders: unknown[];
   constructionConfigs: ProvingProviderConfig[];
   proveTimeouts: (number | undefined)[];
   checkTimeouts: (number | undefined)[];
 } {
+  const urls: unknown[] = [];
+  const zkConfigProviders: unknown[] = [];
   const constructionConfigs: ProvingProviderConfig[] = [];
   const proveTimeouts: (number | undefined)[] = [];
   const checkTimeouts: (number | undefined)[] = [];
 
-  mockedHttpClientProvingProvider.mockImplementation((_url, _zkConfigProvider, config) => {
+  mockedHttpClientProvingProvider.mockImplementation((url, zkConfigProvider, config) => {
+    urls.push(url);
+    zkConfigProviders.push(zkConfigProvider);
     constructionConfigs.push(config ?? {});
     return {
       check: async (_preimage, _keyLocation, overrideTimeout) => {
@@ -84,7 +90,7 @@ function wireMocks(): {
     };
   });
 
-  return { constructionConfigs, proveTimeouts, checkTimeouts };
+  return { urls, zkConfigProviders, constructionConfigs, proveTimeouts, checkTimeouts };
 }
 
 /**
@@ -163,5 +169,48 @@ describe('httpClientProofProvider', () => {
       headers: { 'x-custom': 'kept' }
     });
     expect(constructionConfigs).toEqual([{ timeout: 12345, headers: { 'x-custom': 'kept' } }]);
+  });
+
+  describe('object-options form (flattened config)', () => {
+    test('passes url and zkConfigProvider from options to the underlying ProvingProvider', () => {
+      const { urls, zkConfigProviders } = wireMocks();
+      const zkConfigProvider = new MockZKConfigProvider();
+      httpClientProofProvider({ url: 'http://localhost:8080', zkConfigProvider });
+      expect(urls).toEqual(['http://localhost:8080']);
+      expect(zkConfigProviders).toEqual([zkConfigProvider]);
+    });
+
+    test('flattens timeout and other config fields from options onto the construction config', () => {
+      const { constructionConfigs } = wireMocks();
+      httpClientProofProvider({
+        url: 'http://localhost:8080',
+        zkConfigProvider: new MockZKConfigProvider(),
+        timeout: 12345,
+        headers: { 'x-custom': 'kept' }
+      });
+      expect(constructionConfigs).toEqual([{ timeout: 12345, headers: { 'x-custom': 'kept' } }]);
+    });
+
+    test('threads the flattened options timeout to prove when proveTxConfig is omitted', async () => {
+      const { proveTimeouts } = wireMocks();
+      const provider = httpClientProofProvider({
+        url: 'http://localhost:8080',
+        zkConfigProvider: new MockZKConfigProvider(),
+        timeout: 777
+      });
+      await provider.proveTx(stubTx());
+      expect(proveTimeouts).toEqual([777]);
+    });
+
+    test('per-call proveTxConfig.timeout still overrides the flattened options timeout', async () => {
+      const { proveTimeouts } = wireMocks();
+      const provider = httpClientProofProvider({
+        url: 'http://localhost:8080',
+        zkConfigProvider: new MockZKConfigProvider(),
+        timeout: 777
+      });
+      await provider.proveTx(stubTx(), { timeout: 99999 } satisfies ProveTxConfig);
+      expect(proveTimeouts).toEqual([99999]);
+    });
   });
 });

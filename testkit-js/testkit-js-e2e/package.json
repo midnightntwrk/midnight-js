@@ -24,7 +24,7 @@
   "license": "Apache-2.0",
   "scripts": {
     "clean": "rm -rf dist reports coverage logs tsconfig.build.tsbuildinfo .rollup.cache midnight-level-db src/contract/compiled",
-    "build": "node ../../scripts/check-compiled.js src/contract/compiled --force-on-compact-home && yarn build-core && yarn compact-copy",
+    "build": "node ../../scripts/check-compiled.js src/contract/compiled && yarn build-core && yarn compact-copy",
     "build-core": "rollup -c rollup.config.mjs",
     "build-dev": "turbo build && yarn build",
     "e2e": "docker compose -f ../compose.yml pull --policy missing && DEBUG='testcontainers:compose' NODE_OPTIONS=--experimental-vm-modules vitest --config vitest.config.ts run",

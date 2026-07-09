@@ -52,7 +52,6 @@ header:
     - '**/managed/**'
     - '**/auto-generated/**'
     - 'packages/*/src/gen/*.ts'
-    - 'compact/**'
 
   comment: on-failure
 
