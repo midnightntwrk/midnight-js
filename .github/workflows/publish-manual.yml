@@ -1,12 +1,13 @@
 name: Publish (manual)
 #
-# Workaround to publish the current `main` on demand, WITHOUT a version-bump
-# commit and WITHOUT the full CI/e2e cycle (main is assumed already tested).
+# Ad-hoc publish of a `release/**` branch on demand, WITHOUT a version-bump
+# commit and WITHOUT the full CI/e2e cycle (the branch is assumed already tested).
 #
-# It publishes the version currently in the root package.json AS-IS, for a
-# version that has NOT yet been published — e.g. to finish a release whose
-# automatic publish never completed (CI timed out mid-run), or to publish main
-# ahead of the last release.
+# It publishes the version currently in the root package.json AS-IS, under the
+# chosen npm dist-tag (default `latest`), for a version that has NOT yet been
+# published — e.g. to finish a release whose automatic publish never completed
+# (CI timed out mid-run), or to ship a maintenance release under a side tag
+# (leaving `latest` untouched).
 #
 # The guard is an UNCONDITIONAL hard stop: if the current version is already on
 # the registry, the workflow refuses to run. There is deliberately no override —
@@ -20,6 +21,11 @@ env:
 
 on:
   workflow_dispatch:
+    inputs:
+      dist_tag:
+        description: 'npm dist-tag to publish under. Default: latest.'
+        required: false
+        default: 'latest'
 
 permissions:
   contents: write
@@ -32,14 +38,25 @@ concurrency:
 
 jobs:
   publish:
-    name: Publish current main
+    name: Publish release branch
     runs-on: ubuntu-latest
     steps:
-      - name: Guard - main only
-        if: github.ref != 'refs/heads/main'
+      - name: Guard - release branch only
+        if: ${{ !startsWith(github.ref, 'refs/heads/release/') }}
         run: |
-          echo "::error::publish-manual can only run from main (got ${{ github.ref }})."
+          echo "::error::publish-manual can only run from a release/** branch (got ${{ github.ref }})."
           exit 1
+
+      - name: Validate dist-tag
+        env:
+          DIST_TAG: ${{ inputs.dist_tag }}
+        run: |
+          set -euo pipefail
+          if ! echo "$DIST_TAG" | grep -Eq '^[a-zA-Z0-9][a-zA-Z0-9._-]*$'; then
+            echo "::error::Invalid dist-tag '$DIST_TAG' (allowed: letters, digits, '.', '-', '_'; must start alphanumeric)."
+            exit 1
+          fi
+          echo "Publishing under dist-tag '$DIST_TAG'."
 
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # ratchet:actions/checkout@v7.0.0
         with:
@@ -93,7 +110,7 @@ jobs:
           ' CHANGELOG.md > release_notes.md
           # Fall back to a minimal body when CHANGELOG has no section for this version.
           if [ ! -s release_notes.md ]; then
-            echo "Manual release of v${VERSION_NUMBER} from main @ $(git rev-parse --short HEAD)." > release_notes.md
+            echo "Manual release of v${VERSION_NUMBER} from ${GITHUB_REF_NAME} @ $(git rev-parse --short HEAD)." > release_notes.md
           fi
 
       - name: Validate packages before publishing
@@ -103,9 +120,10 @@ jobs:
 
       - name: Publish packages
         run: |
-          yarn deploy --filter="./packages/*" --cache-dir ./turbo --concurrency=1
+          yarn deploy --filter="./packages/*" --cache-dir ./turbo --concurrency=1 -- --tag "$DIST_TAG"
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          DIST_TAG: ${{ inputs.dist_tag }}
 
       - name: Bump testkit-js versions
         env:
@@ -119,10 +137,11 @@ jobs:
 
       - name: Publish testkit-js packages
         run: |
-          yarn deploy --filter="./testkit-js/*" --cache-dir ./turbo --concurrency=1
+          yarn deploy --filter="./testkit-js/*" --cache-dir ./turbo --concurrency=1 -- --tag "$DIST_TAG"
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          DIST_TAG: ${{ inputs.dist_tag }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # ratchet:softprops/action-gh-release@v3.0.1
@@ -134,6 +153,8 @@ jobs:
           body_path: release_notes.md
           draft: false
           # A version with a pre-release identifier (e.g. 5.0.0-beta.1) is flagged
-          # as a pre-release and must NOT become the "Latest" release.
+          # as a pre-release. The GitHub Release is marked "Latest" only for a
+          # stable version published under the `latest` dist-tag — a side-tag
+          # publish (e.g. v4-lts) must not move the "Latest" badge.
           prerelease: ${{ contains(steps.guard.outputs.version, '-') }}
-          make_latest: ${{ contains(steps.guard.outputs.version, '-') && 'false' || 'true' }}
+          make_latest: ${{ (inputs.dist_tag == 'latest' && !contains(steps.guard.outputs.version, '-')) && 'true' || 'false' }}
