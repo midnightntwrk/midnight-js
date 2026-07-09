@@ -35,6 +35,7 @@ import {
   type SigningKeyExport,
   SigningKeyExportError
 } from '@midnight-ntwrk/midnight-js-types';
+import { isValidSigningKey } from '@midnight-ntwrk/midnight-js-utils';
 import { createCipheriv, createDecipheriv, pbkdf2Sync, randomBytes } from 'crypto';
 
 const ALGORITHM = 'aes-256-gcm';
@@ -131,6 +132,12 @@ const validateSalt = (salt: string): void => {
   }
   if (!/^[0-9a-fA-F]+$/.test(salt)) {
     throw new InvalidExportFormatError('Invalid salt format');
+  }
+};
+
+const validateSigningKeyValue = (value: unknown): void => {
+  if (!isValidSigningKey(value)) {
+    throw new InvalidExportFormatError('Invalid signing key value');
   }
 };
 
@@ -490,6 +497,10 @@ export const inMemoryPrivateStateProvider = <
         throw new InvalidExportFormatError(
           `Too many keys in export (${addresses.length}). Maximum allowed: ${maxKeys}`
         );
+      }
+
+      for (const address of addresses) {
+        validateSigningKeyValue(payload.keys[address]);
       }
 
       if (conflictStrategy === 'error') {

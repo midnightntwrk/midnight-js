@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v4.0.4**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.3**](../../../README.md)
 
 ***
 
@@ -6,14 +6,14 @@
 
 # Function: isRegularTransaction()
 
-> **isRegularTransaction**(`tx`): `tx is Transaction & { block: Block; contractActions: readonly ContractAction[]; dustLedgerEvents: readonly DustLedgerEvent[]; endIndex: number; fees: TransactionFees; hash: string; id: number; identifiers: readonly string[]; merkleTreeRoot: string; protocolVersion: number; raw: string; startIndex: number; transactionResult: TransactionResult; unshieldedCreatedOutputs: readonly UnshieldedUtxo[]; unshieldedSpentOutputs: readonly UnshieldedUtxo[]; zswapLedgerEvents: readonly ZswapLedgerEvent[] } & { hash: string; identifiers: string[] }`
+> **isRegularTransaction**(`tx`): `tx is Transaction & { block: Block; contractActions: readonly ContractAction[]; dustCommitmentEndIndex: number; dustCommitmentStartIndex: number; dustGenerationEndIndex: number; dustGenerationStartIndex: number; dustLedgerEvents: readonly DustLedgerEvent[]; endIndex: number; fee: string; fees: TransactionFees; hash: string; id: number; identifiers: readonly string[]; merkleTreeRoot: string; protocolVersion: number; raw: string; startIndex: number; transactionResult: TransactionResult; unshieldedCreatedOutputs: readonly UnshieldedUtxo[]; unshieldedSpentOutputs: readonly UnshieldedUtxo[]; zswapEndIndex: number; zswapLedgerEvents: readonly ZswapLedgerEvent[]; zswapMerkleTreeRoot: string; zswapStartIndex: number } & { hash: string; identifiers: string[] }`
 
 ## Parameters
 
 ### tx
 
-`any`
+`unknown`
 
 ## Returns
 
-`tx is Transaction & { block: Block; contractActions: readonly ContractAction[]; dustLedgerEvents: readonly DustLedgerEvent[]; endIndex: number; fees: TransactionFees; hash: string; id: number; identifiers: readonly string[]; merkleTreeRoot: string; protocolVersion: number; raw: string; startIndex: number; transactionResult: TransactionResult; unshieldedCreatedOutputs: readonly UnshieldedUtxo[]; unshieldedSpentOutputs: readonly UnshieldedUtxo[]; zswapLedgerEvents: readonly ZswapLedgerEvent[] } & { hash: string; identifiers: string[] }`
+`tx is Transaction & { block: Block; contractActions: readonly ContractAction[]; dustCommitmentEndIndex: number; dustCommitmentStartIndex: number; dustGenerationEndIndex: number; dustGenerationStartIndex: number; dustLedgerEvents: readonly DustLedgerEvent[]; endIndex: number; fee: string; fees: TransactionFees; hash: string; id: number; identifiers: readonly string[]; merkleTreeRoot: string; protocolVersion: number; raw: string; startIndex: number; transactionResult: TransactionResult; unshieldedCreatedOutputs: readonly UnshieldedUtxo[]; unshieldedSpentOutputs: readonly UnshieldedUtxo[]; zswapEndIndex: number; zswapLedgerEvents: readonly ZswapLedgerEvent[]; zswapMerkleTreeRoot: string; zswapStartIndex: number } & { hash: string; identifiers: string[] }`

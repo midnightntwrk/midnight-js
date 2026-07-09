@@ -13,4 +13,4 @@
  * limitations under the License.
  */
 
-export { FetchZkConfigProvider } from './fetch-zk-config-provider';
+export { FetchZkConfigProvider, type FetchZkConfigProviderOptions } from './fetch-zk-config-provider';

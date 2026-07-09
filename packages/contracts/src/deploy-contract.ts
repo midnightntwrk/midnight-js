@@ -21,12 +21,12 @@ import type { PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import type { ContractConstructorOptionsWithArguments } from './call-constructor';
 import { type ContractProviders } from './contract-providers';
 import type { FoundContract } from './find-deployed-contract';
-import { type DeployTxOptions, submitDeployTx } from './submit-deploy-tx';
 import {
-  createCircuitCallTxInterface,
   createCircuitMaintenanceTxInterfaces,
   createContractMaintenanceTxInterface
-} from './tx-interfaces';
+} from './governance/tx-interfaces';
+import { type DeployTxOptions, submitDeployTx } from './submit-deploy-tx';
+import { createCircuitCallTxInterface } from './tx-interfaces';
 import type { FinalizedDeployTxData } from './tx-model';
 
 /**

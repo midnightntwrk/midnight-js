@@ -18,7 +18,7 @@ import type { AnyProvableCircuitId, FinalizedTxData, PrivateStateId } from '@mid
 
 interface EffectContractError {
   readonly _tag: string;
-  readonly cause: { readonly name: string; readonly message: string };
+  readonly cause: { readonly name: string; readonly message: string; readonly isCompactError?: boolean };
 }
 
 export const isEffectContractError = (error: unknown): error is EffectContractError =>
@@ -116,36 +116,6 @@ export class ContractTypeError extends TypeError {
         ', '
       )}, are undefined or have mismatched verifier keys for contract state ${contractState.toString(false)}`
     );
-  }
-}
-
-/**
- * An error indicating that a contract maintenance authority replacement transaction failed.
- */
-export class ReplaceMaintenanceAuthorityTxFailedError extends TxFailedError {
-  constructor(finalizedTxData: FinalizedTxData) {
-    super(finalizedTxData);
-    this.name = 'ReplaceMaintenanceAuthorityTxFailedError';
-  }
-}
-
-/**
- * An error indicating that a verifier key removal transaction failed.
- */
-export class RemoveVerifierKeyTxFailedError extends TxFailedError {
-  constructor(finalizedTxData: FinalizedTxData) {
-    super(finalizedTxData);
-    this.name = 'RemoveVerifierKeyTxFailedError';
-  }
-}
-
-/**
- * An error indicating that a verifier key insertion transaction failed.
- */
-export class InsertVerifierKeyTxFailedError extends TxFailedError {
-  constructor(finalizedTxData: FinalizedTxData) {
-    super(finalizedTxData);
-    this.name = 'InsertVerifierKeyTxFailedError';
   }
 }
 

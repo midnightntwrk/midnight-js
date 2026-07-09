@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v4.0.4**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.3**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Function: httpClientProvingProvider()
 
-> **httpClientProvingProvider**\<`K`\>(`url`, `zkConfigProvider`, `config?`): [`ProvingProvider`](#)
+> **httpClientProvingProvider**\<`K`\>(`url`, `zkConfigProvider`, `config?`): `TimeoutAwareProvingProvider`
 
 ## Type Parameters
 
@@ -22,7 +22,7 @@
 
 ### zkConfigProvider
 
-[`ZKConfigProvider`](#)\<`K`\>
+`ZKConfigRegistry` \| [`ZKConfigProvider`](#)\<`K`\>
 
 ### config?
 
@@ -30,4 +30,4 @@
 
 ## Returns
 
-[`ProvingProvider`](#)
+`TimeoutAwareProvingProvider`

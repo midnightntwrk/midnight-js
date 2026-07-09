@@ -13,9 +13,17 @@
  * limitations under the License.
  */
 
+import { validatePassword } from '@midnight-ntwrk/midnight-js-utils';
 import { Buffer } from 'buffer';
 
+import { type CryptoBackend, type CryptoBackendType, resolveCryptoBackend } from './crypto-backend';
+
 export type PrivateStoragePasswordProvider = () => string | Promise<string>;
+
+export interface StorageEncryptionOptions {
+  existingSalt?: Buffer | Uint8Array;
+  cryptoBackend?: CryptoBackendType;
+}
 
 const KEY_LENGTH = 32;
 const IV_LENGTH = 12;
@@ -29,88 +37,6 @@ const CURRENT_ENCRYPTION_VERSION = ENCRYPTION_VERSION_V2;
 
 const VERSION_PREFIX_LENGTH = 1;
 const HEADER_LENGTH = VERSION_PREFIX_LENGTH + SALT_LENGTH + IV_LENGTH + AUTH_TAG_LENGTH;
-
-export const assertWebCryptoAvailable = (): void => {
-  if (typeof globalThis.crypto === 'undefined') {
-    throw new Error(
-      'Web Crypto API is not available. Ensure you are running in Node.js >= 15 or a browser with Web Crypto support.'
-    );
-  }
-  if (typeof globalThis.crypto.subtle === 'undefined') {
-    throw new Error(
-      'Web Crypto subtle API is not available. In browsers, this requires a secure context (HTTPS or localhost).'
-    );
-  }
-};
-
-const getRandomBytes = (length: number): Uint8Array => {
-  return globalThis.crypto.getRandomValues(new Uint8Array(length));
-};
-
-const sha256 = async (data: Uint8Array): Promise<Uint8Array> => {
-  const hashBuffer = await globalThis.crypto.subtle.digest('SHA-256', data);
-  return new Uint8Array(hashBuffer);
-};
-
-const pbkdf2 = async (
-  password: Uint8Array,
-  salt: Uint8Array,
-  iterations: number,
-  keyLength: number
-): Promise<Uint8Array> => {
-  const baseKey = await globalThis.crypto.subtle.importKey(
-    'raw',
-    password,
-    'PBKDF2',
-    false,
-    ['deriveBits']
-  );
-  const derived = await globalThis.crypto.subtle.deriveBits(
-    { name: 'PBKDF2', salt, iterations, hash: 'SHA-256' },
-    baseKey,
-    keyLength * 8
-  );
-  return new Uint8Array(derived);
-};
-
-const aesGcmEncrypt = async (
-  key: Uint8Array,
-  iv: Uint8Array,
-  plaintext: Uint8Array
-): Promise<{ ciphertext: Uint8Array; authTag: Uint8Array }> => {
-  const cryptoKey = await globalThis.crypto.subtle.importKey(
-    'raw', key, 'AES-GCM', false, ['encrypt']
-  );
-  const result = await globalThis.crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv, tagLength: AUTH_TAG_LENGTH * 8 },
-    cryptoKey,
-    plaintext
-  );
-  const resultBytes = new Uint8Array(result);
-  const ciphertext = resultBytes.slice(0, resultBytes.length - AUTH_TAG_LENGTH);
-  const authTag = resultBytes.slice(resultBytes.length - AUTH_TAG_LENGTH);
-  return { ciphertext, authTag };
-};
-
-const aesGcmDecrypt = async (
-  key: Uint8Array,
-  iv: Uint8Array,
-  ciphertext: Uint8Array,
-  authTag: Uint8Array
-): Promise<Uint8Array> => {
-  const cryptoKey = await globalThis.crypto.subtle.importKey(
-    'raw', key, 'AES-GCM', false, ['decrypt']
-  );
-  const combined = new Uint8Array(ciphertext.length + authTag.length);
-  combined.set(ciphertext, 0);
-  combined.set(authTag, ciphertext.length);
-  const result = await globalThis.crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv, tagLength: AUTH_TAG_LENGTH * 8 },
-    cryptoKey,
-    combined
-  );
-  return new Uint8Array(result);
-};
 
 interface EncryptedComponents {
   version: number;
@@ -153,10 +79,14 @@ const getIterationsForVersion = (version: number): number => {
   }
 };
 
-const hashPassword = async (password: string): Promise<string> => {
-  const data = new TextEncoder().encode(password);
-  const hash = await sha256(data);
-  return Buffer.from(hash).toString('hex');
+const deriveEncryptionKey = async (
+  backend: CryptoBackend,
+  password: string,
+  salt: Uint8Array,
+  iterations: number,
+): Promise<Uint8Array> => {
+  const passwordBytes = new TextEncoder().encode(password);
+  return backend.pbkdf2(passwordBytes, salt, iterations, KEY_LENGTH);
 };
 
 const constantTimeBufferEqual = (aBuf: Buffer, bBuf: Buffer): boolean => {
@@ -194,33 +124,30 @@ export const timingSafeEqual = (a: Buffer | Uint8Array, b: Buffer | Uint8Array):
 export class StorageEncryption {
   private readonly encryptionKey: Uint8Array;
   private readonly salt: Uint8Array;
-  private readonly passwordHash: string;
+  private readonly backend: CryptoBackend;
 
-  private constructor(encryptionKey: Uint8Array, salt: Uint8Array, passwordHash: string) {
+  private constructor(encryptionKey: Uint8Array, salt: Uint8Array, backend: CryptoBackend) {
     this.encryptionKey = encryptionKey;
     this.salt = salt;
-    this.passwordHash = passwordHash;
+    this.backend = backend;
   }
 
-  static async create(password: string, existingSalt?: Buffer | Uint8Array): Promise<StorageEncryption> {
-    assertWebCryptoAvailable();
-    const salt = existingSalt ? new Uint8Array(existingSalt) : getRandomBytes(SALT_LENGTH);
-    const passwordBytes = new TextEncoder().encode(password);
-    const encryptionKey = await pbkdf2(passwordBytes, salt, PBKDF2_ITERATIONS_V2, KEY_LENGTH);
-    const passwordHash = await hashPassword(password);
-    return new StorageEncryption(encryptionKey, salt, passwordHash);
+  static async create(password: string, options?: StorageEncryptionOptions): Promise<StorageEncryption> {
+    const backend = resolveCryptoBackend(options?.cryptoBackend);
+    const salt = options?.existingSalt ? new Uint8Array(options.existingSalt) : backend.randomBytes(SALT_LENGTH);
+    const encryptionKey = await deriveEncryptionKey(backend, password, salt, PBKDF2_ITERATIONS_V2);
+    return new StorageEncryption(encryptionKey, salt, backend);
   }
 
   async verifyPassword(password: string): Promise<boolean> {
-    const inputHash = Buffer.from(await hashPassword(password), 'hex');
-    const storedHash = Buffer.from(this.passwordHash, 'hex');
-    return timingSafeEqual(inputHash, storedHash);
+    const candidateKey = await deriveEncryptionKey(this.backend, password, this.salt, PBKDF2_ITERATIONS_V2);
+    return timingSafeEqual(candidateKey, this.encryptionKey);
   }
 
   async encrypt(data: string): Promise<string> {
     const plaintext = new TextEncoder().encode(data);
-    const iv = getRandomBytes(IV_LENGTH);
-    const { ciphertext, authTag } = await aesGcmEncrypt(this.encryptionKey, iv, plaintext);
+    const iv = this.backend.randomBytes(IV_LENGTH);
+    const { ciphertext, authTag } = await this.backend.aesGcmEncrypt(this.encryptionKey, iv, plaintext);
 
     const version = new Uint8Array([CURRENT_ENCRYPTION_VERSION]);
     const result = Buffer.concat([version, this.salt, iv, authTag, ciphertext]);
@@ -240,7 +167,7 @@ export class StorageEncryption {
       throw new Error('Salt mismatch: data was encrypted with a different password');
     }
 
-    const decrypted = await aesGcmDecrypt(this.encryptionKey, iv, encrypted, authTag);
+    const decrypted = await this.backend.aesGcmDecrypt(this.encryptionKey, iv, encrypted, authTag);
     return Buffer.from(decrypted).toString('utf-8');
   }
 
@@ -253,27 +180,19 @@ export class StorageEncryption {
     }
 
     const iterations = getIterationsForVersion(version);
-    let decryptionKey: Uint8Array;
-    if (version === CURRENT_ENCRYPTION_VERSION) {
-      decryptionKey = this.encryptionKey;
-    } else {
-      const passwordBytes = new TextEncoder().encode(password);
-      decryptionKey = await pbkdf2(passwordBytes, salt, iterations, KEY_LENGTH);
-    }
+    const decryptionKey = version === CURRENT_ENCRYPTION_VERSION
+      ? this.encryptionKey
+      : await deriveEncryptionKey(this.backend, password, salt, iterations);
 
-    const decrypted = await aesGcmDecrypt(decryptionKey, iv, encrypted, authTag);
+    const decrypted = await this.backend.aesGcmDecrypt(decryptionKey, iv, encrypted, authTag);
     return Buffer.from(decrypted).toString('utf-8');
   }
 
   static isEncrypted(data: string): boolean {
-    try {
-      const buffer = Buffer.from(data, 'base64');
-      const version = buffer[0];
-      return buffer.length >= HEADER_LENGTH &&
-        (version === ENCRYPTION_VERSION_V1 || version === ENCRYPTION_VERSION_V2);
-    } catch {
-      return false;
-    }
+    const buffer = Buffer.from(data, 'base64');
+    const version = buffer[0];
+    return buffer.length >= HEADER_LENGTH &&
+      (version === ENCRYPTION_VERSION_V1 || version === ENCRYPTION_VERSION_V2);
   }
 
   static getVersion(encryptedData: string): number {
@@ -289,100 +208,6 @@ export class StorageEncryption {
   }
 }
 
-const MIN_PASSWORD_LENGTH = 16;
-const MIN_CHARACTER_CLASSES = 3;
-const MAX_CONSECUTIVE_REPEATED = 3;
-const MIN_SEQUENTIAL_LENGTH = 4;
-
-const countCharacterClasses = (password: string): number => {
-  let count = 0;
-  if (/[a-z]/.test(password)) count++;
-  if (/[A-Z]/.test(password)) count++;
-  if (/[0-9]/.test(password)) count++;
-  if (/[^a-zA-Z0-9]/.test(password)) count++;
-  return count;
-};
-
-const hasRepeatedCharacters = (password: string): boolean => {
-  let consecutiveCount = 1;
-  for (let i = 1; i < password.length; i++) {
-    if (password[i] === password[i - 1]) {
-      consecutiveCount++;
-      if (consecutiveCount > MAX_CONSECUTIVE_REPEATED) {
-        return true;
-      }
-    } else {
-      consecutiveCount = 1;
-    }
-  }
-  return false;
-};
-
-const hasSequentialPattern = (password: string): boolean => {
-  const lowerPassword = password.toLowerCase();
-
-  for (let i = 0; i <= lowerPassword.length - MIN_SEQUENTIAL_LENGTH; i++) {
-    let ascendingCount = 1;
-    let descendingCount = 1;
-
-    for (let j = 1; j < MIN_SEQUENTIAL_LENGTH; j++) {
-      const currentCode = lowerPassword.charCodeAt(i + j);
-      const prevCode = lowerPassword.charCodeAt(i + j - 1);
-
-      if (currentCode === prevCode + 1) {
-        ascendingCount++;
-      } else {
-        ascendingCount = 1;
-      }
-
-      if (currentCode === prevCode - 1) {
-        descendingCount++;
-      } else {
-        descendingCount = 1;
-      }
-
-      if (ascendingCount >= MIN_SEQUENTIAL_LENGTH || descendingCount >= MIN_SEQUENTIAL_LENGTH) {
-        return true;
-      }
-    }
-  }
-  return false;
-};
-
-const validatePassword = (password: string): void => {
-  if (!password) {
-    throw new Error(
-      'Password is required for private state encryption.\n' +
-        'Please provide a password via privateStoragePasswordProvider in the configuration.'
-    );
-  }
-
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    throw new Error(
-      `Password must be at least ${MIN_PASSWORD_LENGTH} characters long. Current length: ${password.length}`
-    );
-  }
-
-  if (hasRepeatedCharacters(password)) {
-    throw new Error(
-      `Password contains too many repeated characters (more than ${MAX_CONSECUTIVE_REPEATED} identical in a row)`
-    );
-  }
-
-  const characterClasses = countCharacterClasses(password);
-  if (characterClasses < MIN_CHARACTER_CLASSES) {
-    throw new Error(
-      `Password must contain at least ${MIN_CHARACTER_CLASSES} of: uppercase letters, lowercase letters, digits, special characters. Found: ${characterClasses}`
-    );
-  }
-
-  if (hasSequentialPattern(password)) {
-    throw new Error(
-      "Password contains sequential patterns (e.g., '1234', 'abcd'). Use a more random password"
-    );
-  }
-};
-
 export const getPasswordFromProvider = async (provider: PrivateStoragePasswordProvider): Promise<string> => {
   const password = await provider();
   validatePassword(password);
@@ -395,8 +220,9 @@ export const decryptValue = async (
   password: string
 ): Promise<string> => {
   if (!StorageEncryption.isEncrypted(encryptedValue)) {
-    console.debug('MIDNIGHT: Encountered unencrypted data during decryption - passing through as-is');
-    return encryptedValue;
+    throw new Error(
+      'Unrecognized or unencrypted data encountered during decryption'
+    );
   }
 
   const version = StorageEncryption.getVersion(encryptedValue);

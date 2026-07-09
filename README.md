@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/midnightntwrk/midnight-js/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/midnightntwrk/midnight-js/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6.0-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![GitHub Release](https://img.shields.io/github/v/release/midnightntwrk/midnight-js?logo=github)](https://github.com/midnightntwrk/midnight-js/releases)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/midnightntwrk/midnight-js/pulls)
@@ -12,7 +12,7 @@ TypeScript application development framework for the Midnight blockchain. Simila
 ## Installation
 
 ```bash
-yarn add @midnight-ntwrk/midnight-js-contracts @midnight-ntwrk/midnight-js-types
+yarn add @midnight-ntwrk/midnight-js
 ```
 
 ## Quick Start
@@ -21,13 +21,18 @@ yarn add @midnight-ntwrk/midnight-js-contracts @midnight-ntwrk/midnight-js-types
 import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
 import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-private-state-provider';
 import { indexerPublicDataProvider } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
+import { FetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import type { MidnightProviders } from '@midnight-ntwrk/midnight-js-types';
 
 // Set network
 setNetworkId('testnet');
 
 // Configure providers
-const providers = {
+const zkConfigProvider = new FetchZkConfigProvider('https://artifacts.example.com');
+
+const providers: MidnightProviders = {
   privateStateProvider: levelPrivateStateProvider({
     privateStoragePasswordProvider: () => 'your-secure-password',
     accountId: 'user-wallet-address'
@@ -36,7 +41,10 @@ const providers = {
     'https://indexer.example.com/graphql',
     'wss://indexer.example.com/graphql'
   ),
-  // ... zkConfigProvider, proofProvider, walletProvider, midnightProvider
+  zkConfigProvider,
+  proofProvider: httpClientProofProvider('https://proof-server.example.com', zkConfigProvider),
+  walletProvider,    // from @midnight-ntwrk/wallet-sdk
+  midnightProvider,  // from @midnight-ntwrk/wallet-sdk
 };
 
 // Deploy a contract
@@ -82,6 +90,7 @@ const result = await deployed.callTx.increment();
 | [@midnight-ntwrk/midnight-js-network-id](packages/network-id) | Network identifier management |
 | [@midnight-ntwrk/midnight-js-logger-provider](packages/logger-provider) | Pino logger wrapper for diagnostics |
 | [@midnight-ntwrk/midnight-js-compact](packages/compact) | Compact compiler manager |
+| [@midnight-ntwrk/midnight-js-protocol](packages/protocol) | Version-agnostic re-exports of Midnight protocol packages |
 | [@midnight-ntwrk/midnight-js-utils](packages/utils) | General utility functions |
 
 ## Architecture
@@ -166,14 +175,44 @@ yarn lint:fix
 
 ### Available Scripts
 
+#### Build
+
 | Script | Description |
 | ------ | ----------- |
 | `yarn build` | Build all packages |
+| `yarn build:core` | Build everything except `testkit-*` |
+| `yarn build:testkit` | Build only `testkit-*` |
+| `yarn clean` | Clean all build outputs |
+| `yarn clean-build` | Clean then rebuild |
+
+#### Test
+
+| Script | Description |
+| ------ | ----------- |
 | `yarn test` | Run all tests |
+| `yarn test:unit` | Run unit tests (excludes testkit) |
+| `yarn it` | Run integration tests |
+| `yarn e2e` | Run e2e tests |
+| `yarn e2e-single` | Run a single e2e test file |
+
+#### Lint & Check
+
+| Script | Description |
+| ------ | ----------- |
 | `yarn lint` | Run ESLint |
 | `yarn lint:fix` | Fix linting issues |
-| `yarn commit` | Interactive conventional commit |
-| `yarn changelog` | Generate/update CHANGELOG.md |
+| `yarn check` | Type-check + lint + workspace constraints |
+| `yarn check:core` | Same as `check` but excludes testkit |
+| `yarn typecheck:tests` | Type-check test files |
+
+#### Release & Publish
+
+| Script | Description |
+| ------ | ----------- |
+| `yarn changelog` | Generate/update `CHANGELOG.md` |
+| `yarn deploy` | Publish all packages |
+| `yarn deploy:core` | Publish core packages (excludes testkit) |
+| `yarn build:markdown-docs` | Generate API docs via TypeDoc |
 
 ### Further Reading
 
@@ -190,13 +229,15 @@ Branch off `main` for all new features. Use [Conventional Commits](https://www.c
 
 **Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `ci`, `build`, `revert`
 
-**Scopes:** `core`, `testkit`, `wallet`, `deps`, `config`
+**Scopes:** `midnight-js`, `testkit-js`, `deps`, `deps-dev`, `config`, `release`
+
+New functionality must include unit and integration tests (TDD — tests first). See [CONTRIBUTING.md](./CONTRIBUTING.md) for full guidelines.
 
 ### Git Hooks
 
 - `pre-commit`: Runs lint-staged
 - `commit-msg`: Validates commit message format
-- `pre-push`: Runs full check suite
+- `pre-push`: Runs `yarn lint` and `yarn typecheck:tests`
 
 ## Glossary
 
@@ -274,25 +315,43 @@ This allows "rehearsing" circuit calls (running Impact VM) such that execution c
 
 ### Release Process
 
-#### 1. Generate changelog
+Releases are driven by `scripts/release.sh`, which bumps versions in all workspaces, regenerates `CHANGELOG.md`, creates a release branch, and pushes it. Opening and merging a PR from that release branch to `main` triggers the `publish` job in the [CI workflow](./.github/workflows/ci.yml): once the build, unit, integration, and e2e jobs pass, it publishes packages to GitHub Packages and creates the GitHub Release (which creates the `v<version>` tag on the main merge commit). Publishing is gated on the same test run, so no release can ship ahead of its e2e.
+
+#### Prerequisites
+
+- On `main` branch with a clean working tree
+- All previous release PRs merged
+- GPG signing configured
+
+#### Usage
+
 ```bash
-yarn changelog  # Updates CHANGELOG.md with new entries
+# Dry-run (default): updates files only, no git operations — review with `git diff`
+./scripts/release.sh 4.2.0
+
+# Full release: bump + changelog + branch + commit + push
+./scripts/release.sh 4.2.0 --execute
+
+# Full release with build and tests beforehand
+./scripts/release.sh 4.2.0 --execute --with-tests
 ```
 
-#### 2. Update versions
-```bash
-yarn workspaces foreach --all version $VERSION
-```
+#### What the script does
 
-#### 3. Commit and tag
-```bash
-git add .
-git commit -m "chore: release v$VERSION"
-git tag v$VERSION
-git push origin v$VERSION  # Triggers CD workflow
-```
+1. Bumps version in root `package.json`, all `packages/*`, and all `testkit-js/*`
+2. Regenerates `CHANGELOG.md` via `yarn changelog`
+3. Creates branch `release/v<VERSION>`
+4. Commits as `chore(release): bump version to <VERSION>`
+5. Pushes branch `release/v<VERSION>` — open a PR to `main`; merging it publishes the release
 
-Use [GitHub Releases](https://github.com/midnightntwrk/midnight-js/releases/new) to create a tag following the pattern `vX.Y.Z`.
+#### What happens on merge to `main`
+
+When the release PR is merged, the version bump on `main` triggers the `publish` job in the CI workflow. Once the build, unit, integration, and e2e jobs pass in the same run, it:
+
+1. Extracts release notes from `CHANGELOG.md` (section `## [<VERSION>]`)
+2. Validates and publishes `packages/*` to GitHub Packages
+3. Creates a GitHub Release with the extracted notes (creating the `v<VERSION>` tag on the merge commit)
+4. Publishes `testkit-js/*` if those paths changed
 
 ## Resources
 

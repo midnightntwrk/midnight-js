@@ -29,6 +29,8 @@ export default tseslint.config(
       '**/*.json',
       'packages/compact/src/run-compactc.cjs',
       'scripts/**',
+      'yarn.config.cjs',
+      '.versionrc.js',
     ]
   },
   js.configs.recommended,
@@ -104,7 +106,22 @@ export default tseslint.config(
       'import/no-default-export': 'off',
       'import/extensions': 'off',
       'import/no-unresolved': 'error',
-      'import/no-extraneous-dependencies': 'off',
+      'import/no-extraneous-dependencies': [
+        'error',
+        {
+          devDependencies: [
+            '**/test/**',
+            '**/__tests__/**',
+            '**/*.test.ts',
+            '**/*.spec.ts',
+            '**/rollup.config.*',
+            '**/vitest.config.*',
+            '**/vitest.*.config.*'
+          ],
+          optionalDependencies: false,
+          peerDependencies: true
+        }
+      ],
       'max-classes-per-file': 'off',
       'lines-between-class-members': 'off',
       'no-restricted-imports': [
@@ -116,7 +133,7 @@ export default tseslint.config(
               message: 'Direct imports from dist folders are not allowed. Use source files instead.'
             },
             {
-              group: ['@midnight-ntwrk/ledger-v*'],
+              group: ['@midnight-ntwrk/ledger-v*', '@midnightntwrk/ledger-v*'],
               message: 'Import from @midnight-ntwrk/midnight-js-protocol/ledger instead. Only packages/protocol/src/ may import from ledger directly.'
             },
             {
@@ -128,7 +145,7 @@ export default tseslint.config(
               message: 'Import from @midnight-ntwrk/midnight-js-protocol/compact-js instead. Only packages/protocol/src/ may import from compact-js directly.'
             },
             {
-              group: ['@midnight-ntwrk/onchain-runtime-v*'],
+              group: ['@midnight-ntwrk/onchain-runtime-v*', '@midnightntwrk/onchain-runtime-v*'],
               message: 'Import from @midnight-ntwrk/midnight-js-protocol/onchain-runtime instead. Only packages/protocol/src/ may import from onchain-runtime directly.'
             },
             {

@@ -15,6 +15,6 @@
 
 export * as compactJs from '@midnight-ntwrk/compact-js';
 export * as compactRuntime from '@midnight-ntwrk/compact-runtime';
-export * as ledger from '@midnight-ntwrk/ledger-v8';
-export * as onchainRuntime from '@midnight-ntwrk/onchain-runtime-v3';
 export * as platform from '@midnight-ntwrk/platform-js';
+export * as ledger from '@midnightntwrk/ledger-v9';
+export * as onchainRuntime from '@midnightntwrk/onchain-runtime-v4';

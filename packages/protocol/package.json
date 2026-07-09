@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-protocol",
-  "version": "4.0.4",
+  "version": "5.0.0-beta.4",
   "description": "Protocol type re-exports for midnight-js framework",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -90,30 +90,36 @@
   },
   "sideEffects": false,
   "repository": "git@github.com:midnight-ntwrk/artifacts",
-  "packageManager": "yarn@4.12.0",
+  "packageManager": "yarn@4.14.1",
   "author": "IOHK",
   "license": "Apache-2.0",
   "scripts": {
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
     "build": "rollup -c rollup.config.mjs",
     "lint": "eslint src/",
+    "test": "vitest run",
     "deploy": "yarn npm publish --tolerate-republish"
   },
   "files": [
     "dist/"
   ],
   "dependencies": {
-    "@midnight-ntwrk/compact-js": "2.5.0",
-    "@midnight-ntwrk/compact-runtime": "0.15.0",
-    "@midnight-ntwrk/ledger-v8": "8.0.3",
-    "@midnight-ntwrk/onchain-runtime-v3": "3.0.0",
-    "@midnight-ntwrk/platform-js": "2.2.4"
+    "@midnight-ntwrk/compact-js": "2.5.5-rc.7",
+    "@midnight-ntwrk/compact-runtime": "0.18.0-rc.1",
+    "@midnight-ntwrk/platform-js": "3.0.0",
+    "@midnightntwrk/ledger-v9": "1.0.0-rc.3",
+    "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.3"
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.3.0",
-    "rollup": "^4.60.0",
+    "@vitest/coverage-v8": "^4.1.7",
+    "eslint": "^10.4.0",
+    "rollup": "^4.60.4",
     "rollup-plugin-dts": "^6.4.1",
-    "typescript": "^6.0.2",
-    "vitest": "^4.1.2"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.7"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

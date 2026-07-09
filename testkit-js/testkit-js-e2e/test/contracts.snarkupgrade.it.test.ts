@@ -124,12 +124,7 @@ describe('Contracts API Snark Upgrade [dedicated contract] [@slow]', () => {
     );
 
     await expect(() => contractCircuitsInterface.reset()).rejects.toThrow(
-      "Operation 'reset' is undefined for contract state ContractState (Array(1) [\n" +
-        '    <[-]: b8>,\n' +
-        ']{\n' +
-        '    increment: <verifier key>,\n' +
-        '    decrement: <verifier key>,\n' +
-        '}ContractState )'
+      "Operation 'reset' is undefined for contract '"
     );
   });
 

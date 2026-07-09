@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { CompiledContract  } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import type { CompiledContract, ContractExecutable  } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import {
   type AlignedValue,
@@ -122,6 +122,18 @@ export type CallOptions<C extends Contract.Any, PCK extends Contract.ProvableCir
 
 /**
  * The private (sensitive) portions of the call result.
+ *
+ * @remarks
+ * **Privacy-sensitive type.** Every field on this type carries data the
+ * zero-knowledge proofs were designed to keep confidential: the ZK-aligned
+ * circuit input/output, the private transcript outputs from witness calls,
+ * the JS-typed circuit result, the next private state, and the next Zswap
+ * local state.
+ *
+ * Application code must not log, serialize, or transmit instances of this
+ * type. If a non-sensitive subset of the call result is needed (for example,
+ * the JS `result` value alone), extract that field explicitly rather than
+ * passing the whole object across a trust boundary.
  */
 export type CallResultPrivate<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = {
   /**
@@ -137,7 +149,7 @@ export type CallResultPrivate<C extends Contract.Any, PCK extends Contract.Prova
    */
   readonly privateTranscriptOutputs: AlignedValue[];
   /**
-   * The JS representation of the input to the circuit.
+   * The JS representation of the value returned by the circuit.
    */
   readonly result: Contract.CircuitReturnType<C, PCK>;
   /**
@@ -173,14 +185,36 @@ export type CallResultPublic = {
 
 /**
  * Contains all information resulting from circuit execution.
+ *
+ * @remarks
+ * **Privacy-sensitive type.** The `private` field is a
+ * {@link CallResultPrivate} carrying ZK-confidential data. Treat the whole
+ * object as confidential when logging, serializing, or transmitting — read
+ * only the `public` field or destructure specific non-sensitive fields rather
+ * than spreading or stringifying the whole object.
  */
 export type CallResult<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = {
   /**
    * The public/non-sensitive data produced by the circuit execution.
+   *
+   * @remarks Describes the **root** contract call (the circuit that was invoked). It is the
+   * application-facing view; equivalent to the last entry of {@link calls}.
    */
   readonly public: CallResultPublic;
   /**
    * The private/sensitive data produced by the circuit execution.
+   *
+   * @remarks Describes the **root** contract call. Equivalent to the last entry of {@link calls}.
    */
   readonly private: CallResultPrivate<C, PCK>;
+  /**
+   * Proof data for every contract call made while executing the circuit, in execution-trace order:
+   * cross-contract callees first, the root call last. For a circuit that performs no cross-contract
+   * calls this contains a single entry (the root). Consistent with `compact-js`'s
+   * `ContractExecutable.CallResult.calls`.
+   *
+   * @remarks **Privacy-sensitive.** Each entry carries ZK input/output and private transcript data
+   * for a call in the tree. Treat as confidential alongside {@link private}.
+   */
+  readonly calls: readonly ContractExecutable.ContractExecutable.ContractCall[];
 };

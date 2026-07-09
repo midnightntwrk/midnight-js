@@ -1,0 +1,49 @@
+import CompactStandardLibrary;
+
+// Forces partitioning by:
+//   1. Many state writes BEFORE the checkpoint — bloats the guaranteed-prefix
+//      cost so the ledger's `run_to_ckpt_no(no_ckpts+1, ...)` (= run whole
+//      circuit) exceeds `closure_budgets`. See `midnight-ledger/ledger/src/
+//      construct.rs:1037-1070`.
+//   2. `kernel.checkpoint()` after the heavy section — gives the ledger an
+//      explicit split point so `n=0` (everything fallible) is selectable
+//      when the larger prefixes don't fit.
+//   3. `mintShielded` + `sendShielded` after the checkpoint — produces the
+//      user-bound shielded output whose routing #876 used to misplace.
+//
+// With this circuit the partition algorithm rejects `n=2` (whole circuit in
+// guaranteed) because of (1), and selects `n=0` so the shielded effects from
+// `mintShielded` + `sendShielded` land in `partitionedTranscript[1]` — the
+// exact pre-condition #876 needed.
+export ledger counters: Map<Bytes<32>, Counter>;
+
+export circuit heavyCheckpointMintAndSend(
+  domainSep: Bytes<32>,
+  mintValue: Uint<64>,
+  mintNonce: Bytes<32>,
+  publicKey: ZswapCoinPublicKey,
+  sendValue: Uint<128>
+): ShieldedSendResult {
+  for (const i of 0..32) {
+    const key = persistentHash<Vector<2, Bytes<32>>>([disclose(mintNonce), disclose(domainSep)]);
+    counters.insertDefault(key);
+  }
+  kernel.checkpoint();
+  const coin = mintShieldedToken(
+    disclose(domainSep),
+    disclose(mintValue),
+    disclose(mintNonce),
+    right<ZswapCoinPublicKey, ContractAddress>(kernel.self())
+  );
+  const qualified = QualifiedShieldedCoinInfo {
+    nonce: coin.nonce,
+    color: coin.color,
+    value: coin.value,
+    mt_index: 0 as Uint<64>
+  };
+  return sendShielded(
+    qualified,
+    left<ZswapCoinPublicKey, ContractAddress>(disclose(publicKey)),
+    disclose(sendValue)
+  );
+}

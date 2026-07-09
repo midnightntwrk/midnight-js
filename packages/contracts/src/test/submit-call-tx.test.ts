@@ -102,7 +102,8 @@ describe('submit-call-tx', () => {
       nextZswapLocalState: mockZswapLocalState,
       privateTranscriptOutputs: [] as AlignedValue[],
       result: vi.fn()
-    }
+    },
+    calls: []
   });
 
   const verifySuccessfulCall = (
@@ -121,6 +122,7 @@ describe('submit-call-tx', () => {
       circuitId: 'testCircuit'
     });
     expect(result).toEqual({
+      calls: mockUnprovenCallTxData.calls,
       private: mockUnprovenCallTxData.private,
       public: {
         ...mockUnprovenCallTxData.public,
@@ -224,6 +226,7 @@ describe('submit-call-tx', () => {
         expect(mockProviders.privateStateProvider.set).toHaveBeenCalledWith(mockPrivateStateId, nextPrivateState_2);
         expect(createUnprovenCallTx).toHaveBeenCalledWith(mockProviders, options, expect.anything());
         expect(result).toEqual({
+          calls: mockUnprovenCallTxData_2.calls,
           private: mockUnprovenCallTxData_2.private,
           public: {
             ...mockUnprovenCallTxData_2.public,
@@ -459,6 +462,7 @@ describe('submit-call-tx', () => {
           circuitId: 'testCircuit'
         });
         expect(result).toEqual({
+          calls: mockUnprovenCallTxData.calls,
           private: mockUnprovenCallTxData.private,
           public: { ...mockUnprovenCallTxData.public, ...mockFinalizedTxData }
         });

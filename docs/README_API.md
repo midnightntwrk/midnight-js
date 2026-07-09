@@ -25,9 +25,11 @@ MidnightProviders
 
 | Package | Purpose |
 |---------|---------|
+| `@midnight-ntwrk/midnight-js` | Barrel package re-exporting the framework's public API |
 | `@midnight-ntwrk/midnight-js-types` | Shared types, interfaces, and provider contracts |
 | `@midnight-ntwrk/midnight-js-contracts` | Contract deployment, circuit calls, and transaction submission |
 | `@midnight-ntwrk/midnight-js-network-id` | Network identifier configuration for runtime and ledger WASM APIs |
+| `@midnight-ntwrk/midnight-js-protocol` | Version-agnostic re-exports of Midnight protocol packages |
 | `@midnight-ntwrk/midnight-js-utils` | Shared utilities (hex encoding, bech32m, assertions) |
 
 ### Providers
@@ -37,6 +39,7 @@ MidnightProviders
 | `@midnight-ntwrk/midnight-js-indexer-public-data-provider` | GraphQL-based blockchain data provider (queries and subscriptions) |
 | `@midnight-ntwrk/midnight-js-level-private-state-provider` | AES-256-GCM encrypted persistent state storage via [LevelDB](https://github.com/Level/level) |
 | `@midnight-ntwrk/midnight-js-http-client-proof-provider` | HTTP client for the Midnight proof server |
+| `@midnight-ntwrk/midnight-js-dapp-connector-proof-provider` | Proof provider delegating proof generation to the DApp Connector wallet |
 | `@midnight-ntwrk/midnight-js-fetch-zk-config-provider` | Browser-compatible ZK artifact provider using the [Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API) |
 | `@midnight-ntwrk/midnight-js-node-zk-config-provider` | Node.js filesystem-based ZK artifact provider |
 | `@midnight-ntwrk/midnight-js-logger-provider` | Application-specific [Pino](https://github.com/pinojs/pino) logger configuration |
@@ -75,8 +78,8 @@ const providers: MidnightProviders = {
   publicDataProvider: indexerPublicDataProvider(queryUrl, subscriptionUrl),
   zkConfigProvider,
   proofProvider: httpClientProofProvider(proofServerUrl, zkConfigProvider),
-  walletProvider,    // from @midnight-ntwrk/wallet-sdk-facade
-  midnightProvider,  // from @midnight-ntwrk/wallet-sdk-facade
+  walletProvider,    // from @midnight-ntwrk/wallet-sdk
+  midnightProvider,  // from @midnight-ntwrk/wallet-sdk
 };
 ```
 

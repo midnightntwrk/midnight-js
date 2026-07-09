@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v4.0.4**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.3**](../../../README.md)
 
 ***
 
@@ -75,7 +75,7 @@ TODO: There are at least three options we should support in the future:
 
 #### newAuthority
 
-`string`
+`SigningKey`
 
 The signing key of the new contract maintenance authority.
 

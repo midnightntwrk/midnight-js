@@ -84,7 +84,7 @@ describe('Hex Utils', () => {
     });
   });
 
-  // Note that we are not mocking the underlying use of @midnight-ntwrk/wallet-sdk-address-format
+  // Note that we are not mocking the underlying use of @midnightntwrk/wallet-sdk-address-format
   describe('parseCoinPublicKeyToHex', () => {
     const mockNetworkId = 'undeployed';
 
@@ -110,7 +110,7 @@ describe('Hex Utils', () => {
     });
   });
 
-  // Note that we are not mocking the underlying use of @midnight-ntwrk/wallet-sdk-address-format
+  // Note that we are not mocking the underlying use of @midnightntwrk/wallet-sdk-address-format
   describe('parseEncPublicKeyToHex', () => {
     const mockNetworkId = 'test';
 

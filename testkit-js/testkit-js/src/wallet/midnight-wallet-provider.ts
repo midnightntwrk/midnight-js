@@ -18,14 +18,11 @@ import {
   DustSecretKey,
   type EncPublicKey,
   type FinalizedTransaction,
-  shieldedToken,
-  type TokenType,
   ZswapSecretKeys
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { type MidnightProvider, type UnboundTransaction, type WalletProvider } from '@midnight-ntwrk/midnight-js-types';
 import { ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
-import { type WalletFacade } from '@midnight-ntwrk/wallet-sdk-facade';
-import { type UnshieldedKeystore } from '@midnight-ntwrk/wallet-sdk-unshielded-wallet';
+import { type UnshieldedKeystore, type WalletFacade } from '@midnightntwrk/wallet-sdk';
 import type { Logger } from 'pino';
 
 import { type EnvironmentConfiguration } from '@/index';
@@ -74,7 +71,7 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     ttl: Date = ttlOneHour()
   ): Promise<FinalizedTransaction> {
     const finalizedTransactionRecipe = await this.wallet.balanceUnboundTransaction(tx, { shieldedSecretKeys: this.zswapSecretKeys, dustSecretKey: this.dustSecretKey}, { ttl });
-    const signed = await this.wallet.signRecipe(finalizedTransactionRecipe, (payload) => this.unshieldedKeystore.signData(payload));
+    const signed = await this.wallet.signRecipe(finalizedTransactionRecipe, (payload) => this.unshieldedKeystore.signDataAsync(payload));
     return this.wallet.finalizeRecipe(signed);
   }
 
@@ -82,12 +79,12 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     return this.wallet.submitTransaction(tx);
   }
 
-  async start(waitForFundsInWallet = true, tokenType: TokenType = shieldedToken()): Promise<void> {
+  async start(waitForFundsInWallet = true): Promise<void> {
     this.logger.info('Starting wallet...');
     await this.wallet.start(this.zswapSecretKeys, this.dustSecretKey);
     if (waitForFundsInWallet) {
-      const balance = await waitForFunds(this.wallet, this.env, tokenType, true);
-      this.logger.info(`Your wallet balance is: ${balance}`);
+      const balance = await waitForFunds(this.wallet, this.env, true, this.unshieldedKeystore);
+      this.logger.info(`Your wallet NIGHT balance is: ${balance}`);
     }
   }
 

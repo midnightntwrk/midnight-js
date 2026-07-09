@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v4.0.4**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.3**](../../../README.md)
 
 ***
 
@@ -88,7 +88,7 @@
 
 ### create()
 
-> `static` **create**(`password`, `existingSalt?`): `Promise`\<`StorageEncryption`\>
+> `static` **create**(`password`, `options?`): `Promise`\<`StorageEncryption`\>
 
 #### Parameters
 
@@ -96,9 +96,9 @@
 
 `string`
 
-##### existingSalt?
+##### options?
 
-`Uint8Array`\<`ArrayBufferLike`\> \| `Buffer`\<`ArrayBufferLike`\>
+[`StorageEncryptionOptions`](../interfaces/StorageEncryptionOptions.md)
 
 #### Returns
 

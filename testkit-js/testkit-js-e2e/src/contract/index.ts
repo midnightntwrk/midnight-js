@@ -19,7 +19,9 @@ import * as CompiledBlockTime from './compiled/block-time/contract/index.js';
 import * as CompiledCounter from './compiled/counter/contract/index.js';
 import * as CompiledCounterClone from './compiled/counter-clone/contract/index.js';
 import * as CompiledDoubleCounter from './compiled/double-counter/contract/index.js';
+import * as CompiledEvents from './compiled/events/contract/index.js';
 import * as CompiledShielded from './compiled/shielded/contract/index.js';
+import * as CompiledShieldedFallible from './compiled/shielded-fallible/contract/index.js';
 import * as CompiledSimple from './compiled/simple/contract/index.js';
 import * as CompiledUnshielded from './compiled/unshielded/contract/index.js';
 import * as DoubleCounterWitnesses from './double-counter-witnesses.js';
@@ -29,6 +31,11 @@ export const CompiledBlockTimeContract = CompiledContract.make<CompiledBlockTime
   'BlockTime',
   CompiledBlockTime.Contract
 ).pipe(CompiledContract.withVacantWitnesses, CompiledContract.withCompiledFileAssets('./compiled/block-time'));
+
+export const CompiledEventsContract = CompiledContract.make<CompiledEvents.Contract>(
+  'Events',
+  CompiledEvents.Contract
+).pipe(CompiledContract.withVacantWitnesses, CompiledContract.withCompiledFileAssets('./compiled/events'));
 
 export const CompiledCounterContract = CompiledContract.make<CompiledCounter.Contract<Witnesses.CounterPrivateState>>(
   'Counter',
@@ -67,11 +74,18 @@ export const CompiledShieldedContract = CompiledContract.make<CompiledShielded.C
   CompiledShielded.Contract
 ).pipe(CompiledContract.withVacantWitnesses, CompiledContract.withCompiledFileAssets('./compiled/shielded'));
 
+export const CompiledShieldedFallibleContract = CompiledContract.make<CompiledShieldedFallible.Contract>(
+  'ShieldedFallible',
+  CompiledShieldedFallible.Contract
+).pipe(CompiledContract.withVacantWitnesses, CompiledContract.withCompiledFileAssets('./compiled/shielded-fallible'));
+
 export * as CompiledBlockTime from './compiled/block-time/contract/index.js';
 export * as CompiledCounter from './compiled/counter/contract/index.js';
 export * as CompiledCounterClone from './compiled/counter-clone/contract/index.js';
 export * as CompiledDoubleCounter from './compiled/double-counter/contract/index.js';
+export * as CompiledEvents from './compiled/events/contract/index.js';
 export * as CompiledShielded from './compiled/shielded/contract/index.js';
+export * as CompiledShieldedFallible from './compiled/shielded-fallible/contract/index.js';
 export * as CompiledSimple from './compiled/simple/contract/index.js';
 export * as CompiledUnshielded from './compiled/unshielded/contract/index.js';
 export * as DoubleCounterWitnesses from './double-counter-witnesses.js';

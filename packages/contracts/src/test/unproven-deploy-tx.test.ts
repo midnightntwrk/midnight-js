@@ -67,7 +67,7 @@ describe('unproven-deploy-tx', () => {
       expect(result.private).toBeDefined();
       expect(result.public.contractAddress).toBe('mock-contract-address');
       expect(result.public.initialContractState).toEqual({ test: 'initial-contract-state' });
-      expect(result.private.signingKey).toBe(options.signingKey);
+      expect(result.private.signingKey).toEqual(options.signingKey);
       expect(result.private.unprovenTx).toEqual({ test: 'unproven-tx' });
     });
 
@@ -91,7 +91,7 @@ describe('unproven-deploy-tx', () => {
       expect(result).toBeDefined();
       expect(result.public).toBeDefined();
       expect(result.private).toBeDefined();
-      expect(result.private.signingKey).toBe(options.signingKey);
+      expect(result.private.signingKey).toEqual(options.signingKey);
     });
 
     it('should fail when contract initialState function throws CompactError', async () => {

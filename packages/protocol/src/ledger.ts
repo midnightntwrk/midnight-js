@@ -13,4 +13,4 @@
  * limitations under the License.
  */
 
-export * from '@midnight-ntwrk/ledger-v8';
+export * from '@midnightntwrk/ledger-v9';

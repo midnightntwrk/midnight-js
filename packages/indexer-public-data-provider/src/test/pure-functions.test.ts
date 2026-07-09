@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   FailEntirely,
   FailFallible,
@@ -22,9 +23,8 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expect, test } from 'vitest';
 
-import { IndexerFormattedError } from '../errors';
-import type { TransactionResult } from '../gen/graphql';
 import {
+  correlateDeployTxId,
   type IndexerUtxo,
   isRegularTransaction,
   toSegmentStatus,
@@ -32,7 +32,18 @@ import {
   toTxStatus,
   toUnshieldedBalances,
   toUnshieldedUtxos
-} from '../indexer-public-data-provider';
+} from '..';
+import {
+  IndexerDataError,
+  IndexerError,
+  IndexerFormattedError,
+  IndexerInvariantError,
+  IndexerProviderConfigError,
+  IndexerQueryError,
+  IndexerSubscriptionDataError
+} from '../errors';
+import type { TransactionResult } from '../gen/graphql';
+import { extractRegularDeployTransaction, extractUnshieldedBalances } from '../mapping';
 
 describe('isRegularTransaction', () => {
   test('returns true for object with hash and identifiers array', () => {
@@ -62,6 +73,28 @@ describe('isRegularTransaction', () => {
   test('returns false for empty object', () => {
     expect(isRegularTransaction({})).toBe(false);
   });
+
+  test('returns false for a block query result shape', () => {
+    const blockQueryResult = { block: { height: 1000, hash: '0xabc' } };
+
+    expect(isRegularTransaction(blockQueryResult)).toBe(false);
+  });
+
+  test('returns false for null', () => {
+    expect(isRegularTransaction(null)).toBe(false);
+  });
+
+  test('returns false for undefined', () => {
+    expect(isRegularTransaction(undefined)).toBe(false);
+  });
+
+  test('returns false for a number primitive', () => {
+    expect(isRegularTransaction(42)).toBe(false);
+  });
+
+  test('returns false for a string primitive', () => {
+    expect(isRegularTransaction('hash')).toBe(false);
+  });
 });
 
 describe('toTxStatus', () => {
@@ -83,10 +116,16 @@ describe('toTxStatus', () => {
     expect(toTxStatus(result)).toBe(FailFallible);
   });
 
-  test('throws for unknown status', () => {
+  test('throws IndexerDataError for unknown status', () => {
     const result = { status: 'UNKNOWN', segments: null } as unknown as TransactionResult;
 
-    expect(() => toTxStatus(result)).toThrow("Unexpected 'status' value UNKNOWN");
+    let thrown: unknown;
+    try { toTxStatus(result); } catch (e) { thrown = e; }
+
+    expect(thrown).toBeInstanceOf(IndexerDataError);
+    const error = thrown as IndexerDataError;
+    expect(error.context).toEqual({ kind: 'unknown-status', value: 'UNKNOWN' });
+    expect(error.message).toBe('Unexpected transaction status value: UNKNOWN');
   });
 });
 
@@ -198,29 +237,357 @@ describe('toUnshieldedBalances', () => {
 });
 
 describe('IndexerFormattedError', () => {
-  test('formats single GraphQL error', () => {
+  test('formats single GraphQL error with header and numbered prefix', () => {
     const error = new IndexerFormattedError([{ message: 'Something went wrong' }]);
 
     expect(error).toBeInstanceOf(Error);
-    expect(error.message).toContain('Indexer GraphQL error(s)');
-    expect(error.message).toContain('Something went wrong');
+    expect(error).toBeInstanceOf(IndexerError);
+    expect(error.name).toBe('IndexerFormattedError');
+    expect(error.message).toBe('Indexer GraphQL error(s):\n\t1. Something went wrong');
   });
 
-  test('formats multiple GraphQL errors', () => {
+  test('lists multiple GraphQL errors in original order separated by tab-newline', () => {
     const error = new IndexerFormattedError([
       { message: 'First error' },
-      { message: 'Second error' }
+      { message: 'Second error' },
+      { message: 'Third error' }
     ]);
 
-    expect(error.message).toContain('First error');
-    expect(error.message).toContain('Second error');
+    expect(error.message).toBe(
+      'Indexer GraphQL error(s):\n\t1. First error\n\t2. Second error\n\t3. Third error'
+    );
   });
 
-  test('preserves cause array', () => {
-    const causes = [{ message: 'err1' }, { message: 'err2' }];
+  test('exposes the underlying errors array', () => {
+    const graphqlErrors = [{ message: 'err1' }, { message: 'err2' }];
 
-    const error = new IndexerFormattedError(causes);
+    const error = new IndexerFormattedError(graphqlErrors);
 
-    expect(error.cause).toBe(causes);
+    expect(error.errors).toBe(graphqlErrors);
+    expect(error.cause).toBeUndefined();
+  });
+});
+
+describe('IndexerQueryError', () => {
+  test('exposes message and name', () => {
+    const error = new IndexerQueryError('Query failed');
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toBeInstanceOf(IndexerError);
+    expect(error.name).toBe('IndexerQueryError');
+    expect(error.message).toBe('Query failed');
+  });
+
+  test('preserves original error via cause', () => {
+    const originalError = new Error('Network unreachable');
+
+    const error = new IndexerQueryError(originalError.message, { cause: originalError });
+
+    expect(error.cause).toBe(originalError);
+    expect(error.message).toBe('Network unreachable');
+  });
+});
+
+describe('IndexerSubscriptionDataError', () => {
+  test('describes the missing field in the message', () => {
+    const error = new IndexerSubscriptionDataError('blocks');
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toBeInstanceOf(IndexerError);
+    expect(error.name).toBe('IndexerSubscriptionDataError');
+    expect(error.missingField).toBe('blocks');
+    expect(error.message).toBe(
+      "Expected 'blocks' in indexer subscription data, got null/undefined"
+    );
+  });
+});
+
+describe('correlateDeployTxId', () => {
+  const targetAddress = '0xdeadbeef' as ContractAddress;
+
+  test('returns the identifier at the index of the matching contract action', () => {
+    const txId = correlateDeployTxId(
+      targetAddress,
+      [{ address: '0xaaaa' }, { address: targetAddress }, { address: '0xbbbb' }],
+      ['id-a', 'id-target', 'id-b']
+    );
+
+    expect(txId).toBe('id-target');
+  });
+
+  test('throws missing-identifier with actionIndex=-1 when no contract action matches', () => {
+    let thrown: unknown;
+    try {
+      correlateDeployTxId(
+        targetAddress,
+        [{ address: '0xaaaa' }, { address: '0xbbbb' }],
+        ['id-a', 'id-b']
+      );
+    } catch (e) { thrown = e; }
+
+    expect(thrown).toBeInstanceOf(IndexerDataError);
+    const error = thrown as IndexerDataError;
+    expect(error.context).toEqual({
+      kind: 'missing-identifier',
+      contractAddress: targetAddress,
+      actionIndex: -1,
+      identifiersLength: 2
+    });
+  });
+
+  test('throws missing-identifier when contractAction matches but identifier slot is undefined', () => {
+    let thrown: unknown;
+    try {
+      correlateDeployTxId(
+        targetAddress,
+        [{ address: '0xaaaa' }, { address: targetAddress }],
+        ['id-a']
+      );
+    } catch (e) { thrown = e; }
+
+    expect(thrown).toBeInstanceOf(IndexerDataError);
+    const error = thrown as IndexerDataError;
+    expect(error.context).toEqual({
+      kind: 'missing-identifier',
+      contractAddress: targetAddress,
+      actionIndex: 1,
+      identifiersLength: 1
+    });
+  });
+
+  test('throws missing-identifier when the identifier slot is an empty string', () => {
+    let thrown: unknown;
+    try {
+      correlateDeployTxId(
+        targetAddress,
+        [{ address: targetAddress }, { address: '0xaaaa' }],
+        ['', 'id-a']
+      );
+    } catch (e) { thrown = e; }
+
+    expect(thrown).toBeInstanceOf(IndexerDataError);
+    const error = thrown as IndexerDataError;
+    expect(error.context).toEqual({
+      kind: 'missing-identifier',
+      contractAddress: targetAddress,
+      actionIndex: 0,
+      identifiersLength: 2
+    });
+  });
+});
+
+describe('IndexerDataError', () => {
+  test('unknownStatus factory builds discriminated context and derived message', () => {
+    const error = IndexerDataError.unknownStatus('WEIRD');
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toBeInstanceOf(IndexerError);
+    expect(error.name).toBe('IndexerDataError');
+    expect(error.context).toEqual({ kind: 'unknown-status', value: 'WEIRD' });
+    expect(error.message).toBe('Unexpected transaction status value: WEIRD');
+  });
+
+  test('missingContractAction factory builds discriminated context and derived message', () => {
+    const error = IndexerDataError.missingContractAction('0xabc');
+
+    expect(error.context).toEqual({ kind: 'missing-contract-action', contractAddress: '0xabc' });
+    expect(error.message).toBe(
+      'Deploy transaction does not contain a contract action for address 0xabc'
+    );
+  });
+
+  test('missingIdentifier factory captures address, index and identifiers length', () => {
+    const error = IndexerDataError.missingIdentifier('0xabc', -1, 3);
+
+    expect(error.context).toEqual({
+      kind: 'missing-identifier',
+      contractAddress: '0xabc',
+      actionIndex: -1,
+      identifiersLength: 3
+    });
+    expect(error.message).toBe(
+      'Transaction missing identifier for contract action at address 0xabc (actionIndex=-1, identifiers.length=3)'
+    );
+  });
+});
+
+describe('IndexerProviderConfigError', () => {
+  test('exposes message and name', () => {
+    const error = new IndexerProviderConfigError('Unsupported observable mode: txId');
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toBeInstanceOf(IndexerError);
+    expect(error.name).toBe('IndexerProviderConfigError');
+    expect(error.message).toBe('Unsupported observable mode: txId');
+  });
+});
+
+describe('extractRegularDeployTransaction', () => {
+  const regularTx = {
+    hash: 'tx-hash',
+    identifiers: ['id-1'],
+    block: { height: 1, hash: 'block-hash', author: null, timestamp: 0 },
+    raw: '',
+    id: 1,
+    protocolVersion: 0,
+    fees: { estimatedFees: '0', paidFees: '0' },
+    transactionResult: { status: 'SUCCESS' as const, segments: null },
+    contractActions: [],
+    unshieldedCreatedOutputs: [],
+    unshieldedSpentOutputs: []
+  };
+
+  test('returns null when contractAction is null', () => {
+    expect(extractRegularDeployTransaction(null)).toBeNull();
+  });
+
+  test('returns the regular transaction from the ContractDeploy / ContractUpdate variant', () => {
+    const action = { transaction: regularTx } as unknown as Parameters<typeof extractRegularDeployTransaction>[0];
+
+    expect(extractRegularDeployTransaction(action)).toEqual(regularTx);
+  });
+
+  test('returns the regular transaction from the ContractCall variant via deploy.transaction', () => {
+    const action = { deploy: { transaction: regularTx } } as unknown as Parameters<typeof extractRegularDeployTransaction>[0];
+
+    expect(extractRegularDeployTransaction(action)).toEqual(regularTx);
+  });
+
+  test('returns null when the underlying transaction is not a regular transaction', () => {
+    const systemTx = { id: 99, raw: '' }; // no identifiers/hash → fails isRegularTransaction
+    const action = { transaction: systemTx } as unknown as Parameters<typeof extractRegularDeployTransaction>[0];
+
+    expect(extractRegularDeployTransaction(action)).toBeNull();
+  });
+});
+
+describe('extractUnshieldedBalances', () => {
+  const balance = { tokenType: 'abc', amount: '100' };
+
+  test('returns balances from direct unshieldedBalances field (ContractUpdate / ContractDeploy variant)', () => {
+    expect(extractUnshieldedBalances({ unshieldedBalances: [balance] }, 'site')).toEqual([balance]);
+  });
+
+  test('returns balances from deploy.unshieldedBalances (ContractCall variant)', () => {
+    expect(extractUnshieldedBalances({ deploy: { unshieldedBalances: [balance] } }, 'site')).toEqual([balance]);
+  });
+
+  test('returns an empty array when the matching field exists and is empty', () => {
+    expect(extractUnshieldedBalances({ unshieldedBalances: [] }, 'site')).toEqual([]);
+  });
+
+  test('throws IndexerInvariantError with the caller name when neither field is present', () => {
+    let thrown: unknown;
+    try {
+      extractUnshieldedBalances({} as never, 'siteName');
+    } catch (e) {
+      thrown = e;
+    }
+
+    expect(thrown).toBeInstanceOf(IndexerInvariantError);
+    expect((thrown as IndexerInvariantError).message).toBe(
+      'siteName: contractAction has neither unshieldedBalances nor deploy field'
+    );
+  });
+});
+
+describe('IndexerInvariantError', () => {
+  test('exposes message and name', () => {
+    const error = new IndexerInvariantError(
+      'watchForTxData: empty transactions array passed the non-empty filter'
+    );
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toBeInstanceOf(IndexerError);
+    expect(error.name).toBe('IndexerInvariantError');
+    expect(error.message).toBe('watchForTxData: empty transactions array passed the non-empty filter');
+  });
+
+  test('is distinct from IndexerDataError', () => {
+    const error = new IndexerInvariantError('any');
+
+    expect(error).not.toBeInstanceOf(IndexerDataError);
+  });
+});
+
+// Regression tests for issue-816 refactor: verify the 4 hex-decoder adapters
+// in indexer-public-data-provider route bad input through the typed-wrapper
+// layer and produce a DeserializationError with the fully-qualified caller
+// string. Locks the wiring against future accidental reverts to raw
+// .deserialize/.decode calls.
+describe('deserialization adapter wiring (issue-816)', () => {
+  const PKG = '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+  const garbageHex = 'ffffff';
+
+  test('parseHexContractState throws DeserializationError tagged with the helper caller', async () => {
+    const { parseHexContractState } = await import('..');
+    const { isDeserializationError } = await import('@midnight-ntwrk/midnight-js-utils');
+
+    let caught: unknown;
+    try {
+      parseHexContractState(garbageHex);
+    } catch (e) {
+      caught = e;
+    }
+
+    expect(isDeserializationError(caught)).toBe(true);
+    if (isDeserializationError(caught)) {
+      expect(caught.context.caller).toBe(`${PKG}:parseHexContractState`);
+      expect(caught.context.source).toBe('compact-runtime');
+    }
+  });
+
+  test('parseHexZswapState throws DeserializationError tagged with the helper caller', async () => {
+    const { parseHexZswapState } = await import('..');
+    const { isDeserializationError } = await import('@midnight-ntwrk/midnight-js-utils');
+
+    let caught: unknown;
+    try {
+      parseHexZswapState(garbageHex);
+    } catch (e) {
+      caught = e;
+    }
+
+    expect(isDeserializationError(caught)).toBe(true);
+    if (isDeserializationError(caught)) {
+      expect(caught.context.caller).toBe(`${PKG}:parseHexZswapState`);
+      expect(caught.context.source).toBe('ledger');
+    }
+  });
+
+  test('parseHexTransaction throws DeserializationError tagged with the helper caller', async () => {
+    const { parseHexTransaction } = await import('..');
+    const { isDeserializationError } = await import('@midnight-ntwrk/midnight-js-utils');
+
+    let caught: unknown;
+    try {
+      parseHexTransaction(garbageHex);
+    } catch (e) {
+      caught = e;
+    }
+
+    expect(isDeserializationError(caught)).toBe(true);
+    if (isDeserializationError(caught)) {
+      expect(caught.context.caller).toBe(`${PKG}:parseHexTransaction`);
+      expect(caught.context.source).toBe('ledger');
+    }
+  });
+
+  test('parseHexLedgerParameters throws DeserializationError tagged with the helper caller', async () => {
+    const { parseHexLedgerParameters } = await import('..');
+    const { isDeserializationError } = await import('@midnight-ntwrk/midnight-js-utils');
+
+    let caught: unknown;
+    try {
+      parseHexLedgerParameters(garbageHex);
+    } catch (e) {
+      caught = e;
+    }
+
+    expect(isDeserializationError(caught)).toBe(true);
+    if (isDeserializationError(caught)) {
+      expect(caught.context.caller).toBe(`${PKG}:parseHexLedgerParameters`);
+      expect(caught.context.source).toBe('ledger');
+    }
   });
 });

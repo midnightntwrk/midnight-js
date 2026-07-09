@@ -36,6 +36,19 @@ export interface CachedStateIdentity {
 export interface CachedStatesWithIdentity<PS> {
   readonly identity: CachedStateIdentity;
   readonly states: ContractStates<PS> | PublicContractStates;
+  /**
+   * The hash of the block the states were read as of. A scoped transaction is a single chain
+   * snapshot: the first read pins this block and every subsequent call in the scope reuses it, so
+   * the cached `zswapChainState`/`ledgerParameters` and the block used for `parentBlockHash` and
+   * cross-contract callee reads all refer to one coherent block.
+   */
+  readonly blockHash: string;
+}
+
+/** @internal The states pinned to a block within a scoped transaction. */
+export interface PinnedContractStates<PS> {
+  readonly states: ContractStates<PS> | PublicContractStates;
+  readonly blockHash: string;
 }
 
 /** @internal */
@@ -100,7 +113,7 @@ export class TransactionContextImpl<
 
   [GetCurrentStatesForIdentity](
     identity: CachedStateIdentity
-  ): ContractStates<Contract.PrivateState<C>> | PublicContractStates | undefined {
+  ): PinnedContractStates<Contract.PrivateState<C>> | undefined {
     if (!this.cachedStates) {
       return undefined;
     }
@@ -111,7 +124,7 @@ export class TransactionContextImpl<
         { contractAddress: identity.contractAddress, privateStateId: identity.privateStateId }
       );
     }
-    return this.cachedStates.states;
+    return { states: this.cachedStates.states, blockHash: this.cachedStates.blockHash };
   }
 
   getLastUnsubmittedCallTxDataToTransact(): [UnsubmittedCallTxData<C, PCK>, PrivateStateId?] | undefined {
@@ -135,12 +148,17 @@ export class TransactionContextImpl<
       public: {
         ...unprovenCallTxData.public,
         ...finalizedTxData
-      }
+      },
+      calls: unprovenCallTxData.calls
     }
   }
 
-  [CacheStates](states: ContractStates<Contract.PrivateState<C>> | PublicContractStates, identity: CachedStateIdentity): void {
-    this.cachedStates = { states, identity };
+  [CacheStates](
+    states: ContractStates<Contract.PrivateState<C>> | PublicContractStates,
+    identity: CachedStateIdentity,
+    blockHash: string
+  ): void {
+    this.cachedStates = { states, identity, blockHash };
   }
 
   [MergeUnsubmittedCallTxData](circuitId: PCK, callData: UnsubmittedCallTxData<C, PCK>, privateStateId?: PrivateStateId): void {
@@ -164,7 +182,13 @@ export class TransactionContextImpl<
 
     contractState.data = new ChargedState(callData.public.nextContractState);
 
-    this[CacheStates]({ contractState, zswapChainState, ledgerParameters, privateState }, this.cachedStates.identity);
+    // Preserve the pinned block: in-scope calls advance the contract state in memory but the scope
+    // stays pinned to the block its states were first read at.
+    this[CacheStates](
+      { contractState, zswapChainState, ledgerParameters, privateState },
+      this.cachedStates.identity,
+      this.cachedStates.blockHash
+    );
   }
 }
 

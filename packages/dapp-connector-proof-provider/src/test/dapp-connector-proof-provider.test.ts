@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-import type { CostModel, ProvingProvider, UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { CostModel, UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { KeyMaterialProvider, UnboundTransaction, ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
+import type { ProvingProvider } from '@midnightntwrk/dapp-connector-api';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { dappConnectorProofProvider } from '../dapp-connector-proof-provider';
@@ -66,7 +67,14 @@ describe('dappConnectorProofProvider', () => {
 
     const result = await proofProvider.proveTx(mockUnprovenTx);
 
-    expect(mockUnprovenTx.prove).toHaveBeenCalledWith(mockProvingProvider, mockCostModel);
+    expect(mockUnprovenTx.prove).toHaveBeenCalledWith(
+      expect.objectContaining({
+        check: expect.any(Function),
+        prove: expect.any(Function),
+        lookupKey: expect.any(Function)
+      }),
+      mockCostModel
+    );
     expect(result).toBe(mockUnboundTx);
   });
 
@@ -86,5 +94,34 @@ describe('dappConnectorProofProvider', () => {
     await expect(
       dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel)
     ).rejects.toThrow('Wallet connection failed');
+  });
+
+  it('should allow transient-failure recovery: a second invocation after a rejection succeeds', async () => {
+    // Documents the recovery model: the factory holds no state between calls,
+    // so callers can retry after a wallet failure simply by invoking again.
+    // Protects against a future refactor that caches the rejected promise.
+    mockApi.getProvingProvider = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('Wallet locked'))
+      .mockResolvedValueOnce(mockProvingProvider);
+
+    await expect(
+      dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel)
+    ).rejects.toThrow('Wallet locked');
+
+    const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
+
+    expect(proofProvider).toHaveProperty('proveTx');
+    expect(mockApi.getProvingProvider).toHaveBeenCalledTimes(2);
+  });
+
+  it('should call getProvingProvider once per factory invocation (independent providers)', async () => {
+    // "Single fetch" is scoped to a single ProofProvider instance. Two
+    // separate factory calls must each obtain their own ProvingProvider —
+    // never share a cached one across instances.
+    await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
+    await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
+
+    expect(mockApi.getProvingProvider).toHaveBeenCalledTimes(2);
   });
 });

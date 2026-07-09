@@ -56,10 +56,14 @@ export type ContractStates<PS> = PublicContractStates & {
  */
 export const getPublicStates = async (
   publicDataProvider: PublicDataProvider,
-  contractAddress: ContractAddress
+  contractAddress: ContractAddress,
+  blockHash?: string
 ): Promise<PublicContractStates> => {
   assertIsContractAddress(contractAddress);
-  const zswapAndContractState = await publicDataProvider.queryZSwapAndContractState(contractAddress);
+  const zswapAndContractState = await publicDataProvider.queryZSwapAndContractState(
+    contractAddress,
+    blockHash === undefined ? undefined : { type: 'blockHash', blockHash }
+  );
   assertDefined(zswapAndContractState, `No public state found at contract address '${contractAddress}'`);
   const [zswapChainState, contractState, ledgerParameters] = zswapAndContractState;
   return { contractState, zswapChainState, ledgerParameters };
@@ -79,9 +83,10 @@ export const getStates = async <PS>(
   publicDataProvider: PublicDataProvider,
   privateStateProvider: PrivateStateProvider<PrivateStateId, PS>,
   contractAddress: ContractAddress,
-  privateStateId: PrivateStateId
+  privateStateId: PrivateStateId,
+  blockHash?: string
 ): Promise<ContractStates<PS>> => {
-  const publicContractStates = await getPublicStates(publicDataProvider, contractAddress);
+  const publicContractStates = await getPublicStates(publicDataProvider, contractAddress, blockHash);
   const privateState = await privateStateProvider.get(privateStateId);
   assertDefined(privateState, `No private state found at private state ID '${privateStateId}'`);
   return { ...publicContractStates, privateState };

@@ -13,9 +13,7 @@
  * limitations under the License.
  */
 
-import { type NetworkId } from '@midnight-ntwrk/wallet-sdk-abstractions';
-import { type DefaultConfiguration, type WalletFacade } from '@midnight-ntwrk/wallet-sdk-facade';
-import { createKeystore, type UnshieldedKeystore } from '@midnight-ntwrk/wallet-sdk-unshielded-wallet';
+import { createKeystore, type DefaultConfiguration, type NetworkId, type UnshieldedKeystore, type WalletFacade } from '@midnightntwrk/wallet-sdk';
 
 import { logger } from '@/logger';
 import { type EnvironmentConfiguration } from '@/test-environment/environment-configuration';
@@ -86,7 +84,7 @@ export class FluentWalletBuilder {
       return WalletSeeds.generateRandom();
     })();
 
-    const unshieldedKeystore = createKeystore(seeds.unshielded, this.networkId);
+    const unshieldedKeystore = createKeystore({ kind: 'schnorr', secret: seeds.unshielded }, this.networkId);
 
     const shieldedWallet = WalletFactory.createShieldedWallet(this.config, seeds.shielded);
     const unshieldedWallet = WalletFactory.createUnshieldedWallet(
@@ -114,7 +112,7 @@ export class FluentWalletBuilder {
       return WalletSeeds.generateRandom();
     })();
 
-    const unshieldedKeystore = createKeystore(seeds.unshielded, this.networkId);
+    const unshieldedKeystore = createKeystore({ kind: 'schnorr', secret: seeds.unshielded }, this.networkId);
 
     const shieldedWallet = WalletFactory.createShieldedWallet(this.config, seeds.shielded);
     const unshieldedWallet = WalletFactory.createUnshieldedWallet(

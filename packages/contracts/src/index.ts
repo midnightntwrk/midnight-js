@@ -46,9 +46,6 @@ export {
   DeployTxFailedError,
   IncompleteCallTxPrivateStateConfig,
   IncompleteFindContractPrivateStateConfig,
-  InsertVerifierKeyTxFailedError,
-  RemoveVerifierKeyTxFailedError,
-  ReplaceMaintenanceAuthorityTxFailedError,
   TxFailedError} from './errors';
 export {
   findDeployedContract,
@@ -61,23 +58,28 @@ export {
   verifyContractState} from './find-deployed-contract';
 export { ContractStates,getPublicStates, getStates, PublicContractStates } from './get-states';
 export { getUnshieldedBalances } from './get-unshielded-balances';
+export {
+  CircuitMaintenanceTxInterface,
+  CircuitMaintenanceTxInterfaces,
+  ContractMaintenanceTxInterface,
+  createCircuitMaintenanceTxInterface,
+  createCircuitMaintenanceTxInterfaces,
+  createContractMaintenanceTxInterface,
+  InsertVerifierKeyTxFailedError,
+  RemoveVerifierKeyTxFailedError,
+  ReplaceMaintenanceAuthorityTxFailedError,
+  submitInsertVerifierKeyTx,
+  submitRemoveVerifierKeyTx,
+  submitReplaceAuthorityTx
+} from './governance';
 export { submitCallTx, submitCallTxAsync } from './submit-call-tx';
 export { DeployTxOptions,submitDeployTx } from './submit-deploy-tx';
-export { submitInsertVerifierKeyTx } from './submit-insert-vk-tx';
-export { submitRemoveVerifierKeyTx } from './submit-remove-vk-tx';
-export { submitReplaceAuthorityTx } from './submit-replace-authority-tx';
 export { submitTx, submitTxAsync, SubmitTxOptions, SubmitTxProviders } from './submit-tx';
 export { ScopedTransactionOptions, TransactionContext, withContractScopedTransaction } from './transaction';
 export {
   CircuitCallTxInterface,
-  CircuitMaintenanceTxInterface,
-  CircuitMaintenanceTxInterfaces,
-  ContractMaintenanceTxInterface,
   createCallTxOptions,
-  createCircuitCallTxInterface,
-  createCircuitMaintenanceTxInterface,
-  createCircuitMaintenanceTxInterfaces,
-  createContractMaintenanceTxInterface} from './tx-interfaces';
+  createCircuitCallTxInterface} from './tx-interfaces';
 export {
   FinalizedCallTxData,
   FinalizedDeployTxData,

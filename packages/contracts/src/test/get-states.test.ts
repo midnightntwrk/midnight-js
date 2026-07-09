@@ -55,7 +55,7 @@ describe('get-states', () => {
         const result = await getPublicStates(mockProviders.publicDataProvider, mockContractAddress);
 
         expect(mockProviders.publicDataProvider.queryZSwapAndContractState)
-          .toHaveBeenCalledWith(mockContractAddress);
+          .toHaveBeenCalledWith(mockContractAddress, undefined);
         expect(result).toEqual({
           zswapChainState: mockZswapChainState,
           contractState: mockContractState,
@@ -80,7 +80,7 @@ describe('get-states', () => {
         );
 
         expect(mockProviders.publicDataProvider.queryZSwapAndContractState)
-          .toHaveBeenCalledWith(mockContractAddress);
+          .toHaveBeenCalledWith(mockContractAddress, undefined);
         expect(mockProviders.privateStateProvider.get).toHaveBeenCalledWith(mockPrivateStateId);
         expect(result).toEqual({
           zswapChainState: mockZswapChainState,

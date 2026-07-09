@@ -1,9 +1,11 @@
-[**@midnight-ntwrk/testkit-js v4.0.4**](README.md)
+[**@midnight-ntwrk/testkit-js v5.0.0-beta.3**](README.md)
 
 ***
 
 ## Classes
 
+- [DAppConnectorInitialAPI](classes/DAppConnectorInitialAPI.md)
+- [DAppConnectorWalletAdapter](classes/DAppConnectorWalletAdapter.md)
 - [DynamicProofServerContainer](classes/DynamicProofServerContainer.md)
 - [EnvVarRemoteTestEnvironment](classes/EnvVarRemoteTestEnvironment.md)
 - [FaucetClient](classes/FaucetClient.md)

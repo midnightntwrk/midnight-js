@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-level-private-state-provider",
-  "version": "4.0.4",
+  "version": "5.0.0-beta.4",
   "description": "Private state provider implementation that uses browser localStorage or Node.js file storage",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -17,7 +17,7 @@
   },
   "author": "IOG",
   "repository": "git@github.com:midnight-ntwrk/artifacts",
-  "packageManager": "yarn@4.12.0",
+  "packageManager": "yarn@4.14.1",
   "license": "Apache-2.0",
   "scripts": {
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
@@ -28,11 +28,18 @@
   "dependencies": {
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
-    "abstract-level": "^3.0.0",
+    "@midnight-ntwrk/midnight-js-utils": "workspace:*",
+    "@noble/ciphers": "^2.2.0",
+    "@noble/hashes": "^2.2.0",
+    "abstract-level": "^3.1.1",
     "buffer": "^6.0.3",
-    "fp-ts": "^2.16.1",
-    "io-ts": "^2.2.20",
     "level": "^10.0.0",
-    "superjson": "^2.0.0"
+    "superjson": "^2.2.6"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.7"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }
