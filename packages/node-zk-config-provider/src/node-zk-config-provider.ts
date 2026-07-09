@@ -206,6 +206,9 @@ export interface NodeZkConfigProviderOptions extends ZkConfigIntegrityOptions {
 
 /**
  * Factory for {@link NodeZkConfigProvider} following the `provider(options)` convention.
+ *
+ * @typeParam K - The circuit-ID union. It is not inferred from `options`, so supply it explicitly
+ * (e.g. `nodeZkConfigProvider<'a' | 'b'>({ … })`) to keep `getProverKey` narrowed; it otherwise widens to `string`.
  */
 export function nodeZkConfigProvider<K extends string>(options: NodeZkConfigProviderOptions): NodeZkConfigProvider<K> {
   const { directory, ...integrityOptions } = options;

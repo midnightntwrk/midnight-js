@@ -41,6 +41,17 @@ const resolveTimeout = (
 ): number => proveTxConfig?.timeout ?? constructionConfig?.timeout ?? DEFAULT_TIMEOUT;
 
 /**
+ * Options for {@link httpClientProofProvider}. The connection fields (`url`, `zkConfigProvider`)
+ * are combined with the underlying {@link ProvingProviderConfig} into a single flat object.
+ */
+export interface HttpClientProofProviderOptions<K extends string> extends ProvingProviderConfig {
+  /** The URL of the proof server. */
+  readonly url: string;
+  /** Provider for zero-knowledge configuration artifacts. */
+  readonly zkConfigProvider: ZKConfigProvider<K> | ZKConfigRegistry;
+}
+
+/**
  * Creates a high-level {@link ProofProvider} that implements transaction-level proving
  * using the low-level circuit-by-circuit {@link ProvingProvider} as its foundation.
  *
@@ -48,9 +59,7 @@ const resolveTimeout = (
  * - High-level ProofProvider interface (works with complete transactions)
  * - Low-level ProvingProvider interface (works with individual circuits)
  *
- * @param url The URL of the proof server
- * @param zkConfigProvider Provider for zero-knowledge configuration artifacts
- * @param config Optional configuration for the underlying ProvingProvider
+ * @param options Connection and proving configuration — see {@link HttpClientProofProviderOptions}
  * @returns A ProofProvider instance that uses ProvingProvider internally
  *
  * @remarks
@@ -66,23 +75,17 @@ const resolveTimeout = (
  * **Note:** The /prove-tx endpoint is NOT used. All proving is done through
  * individual circuit operations using /check and /prove endpoints.
  */
-/**
- * Options for {@link httpClientProofProvider}. The connection fields (`url`, `zkConfigProvider`)
- * are combined with the underlying {@link ProvingProviderConfig} into a single flat object.
- */
-export interface HttpClientProofProviderOptions<K extends string> extends ProvingProviderConfig {
-  /** The URL of the proof server. */
-  readonly url: string;
-  /** Provider for zero-knowledge configuration artifacts. */
-  readonly zkConfigProvider: ZKConfigProvider<K> | ZKConfigRegistry;
-}
-
 export function httpClientProofProvider<K extends string>(
   options: HttpClientProofProviderOptions<K>
 ): ProofProvider;
 /**
  * @deprecated Use the {@link HttpClientProofProviderOptions} object form:
  * `httpClientProofProvider({ url, zkConfigProvider })`.
+ *
+ * @param url The URL of the proof server
+ * @param zkConfigProvider Provider for zero-knowledge configuration artifacts
+ * @param config Optional configuration for the underlying ProvingProvider
+ * @returns A ProofProvider instance that uses ProvingProvider internally
  */
 export function httpClientProofProvider<K extends string>(
   url: string,
