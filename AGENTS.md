@@ -340,6 +340,39 @@ Before implementing, clarify:
 - [Vitest Documentation](https://vitest.dev/)
 - [Conventional Commits](https://www.conventionalcommits.org/)
 
+## Architecture Decision Records (ADRs)
+
+Architecturally significant decisions are recorded as ADRs in [`docs/adr/`](./docs/adr/).
+This is a hard workflow requirement, not a suggestion.
+
+### Read — MUST, before any architecture-affecting change
+
+1. Read the index in [`docs/adr/README.md`](./docs/adr/README.md).
+2. Find any **Accepted** ADR relevant to what you are about to change.
+3. Follow it. If your change would contradict an Accepted ADR, do **not**
+   silently diverge — either keep the decision, or write a new ADR that
+   supersedes it (see below) and call out the reversal in your PR.
+
+### Create — MUST, when a change qualifies
+
+Write a new ADR before implementing any of:
+
+- Changes to provider interfaces in `packages/types/src` (breaks all downstream packages).
+- Adding a provider implementation, or changing a provider's public shape.
+- Adding a new runtime dependency, or swapping a core library (crypto, GraphQL client, etc.).
+- Any breaking change to a package's exported public API (major version bump).
+
+If unsure whether a change qualifies, it probably does — write the ADR.
+
+### How
+
+1. Copy [`docs/adr/template.md`](./docs/adr/template.md) to
+   `docs/adr/NNNN-kebab-title.md` using the next sequential zero-padded number.
+2. Open it as `Proposed`, fill in Context / Decision / Consequences / Alternatives.
+3. Add a row to the index table in `docs/adr/README.md`.
+4. Flip the status to `Accepted` when the decision lands. To reverse a past
+   decision, add a new ADR and mark the old one `Superseded by ADR-NNNN`.
+
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
