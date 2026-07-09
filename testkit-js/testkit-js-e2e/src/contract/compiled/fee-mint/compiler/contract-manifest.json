@@ -1,0 +1,58 @@
+{
+  "manifest-version": "1",
+  "compiler-version": "0.33.0",
+  "language-version": "0.25.0",
+  "runtime-version": "0.18.0-rc.1",
+  "compiler": {
+    "type": "directory",
+    "contract-info.json": {
+      "type": "file",
+      "size": 1626,
+      "hash": "3b38acde72a79dceecb0406f586a5ec2483e93802b7b90081cf8bdf1f1427da9"
+    }
+  },
+  "contract": {
+    "type": "directory",
+    "index.d.ts": {
+      "type": "file",
+      "size": 2234,
+      "hash": "d74829546e7767226e97d1c1834c7288ca1c47092dc509fd4a0a0f96012a2ecc"
+    },
+    "index.js": {
+      "type": "file",
+      "size": 39911,
+      "hash": "b25bf874749d16e1be867feb705f78dfe3106779a5958caecebf7b8f11d4a0f4"
+    },
+    "index.js.map": {
+      "type": "file",
+      "size": 1889,
+      "hash": "b14b8389aab2b4f4aea5db5f53a9e8717e4a81478a290671e4d5f40c02e2b9c1"
+    }
+  },
+  "zkir": {
+    "type": "directory",
+    "mintWithUnshieldedFee.bzkir": {
+      "type": "file",
+      "size": 2737,
+      "hash": "599e58452b1de713fb3223544cde2e16d04f242ac0248c601adc856506aad3b4"
+    },
+    "mintWithUnshieldedFee.zkir": {
+      "type": "file",
+      "size": 47752,
+      "hash": "81f1a56a5060c58f7cefa85da6e4e04965fdba750e8e6b842a4f34c0b77710ee"
+    }
+  },
+  "keys": {
+    "type": "directory",
+    "mintWithUnshieldedFee.prover": {
+      "type": "file",
+      "size": 76465625,
+      "hash": "d122b247fbb85ec96e99863653d597edf8306340a7877a41358482a0499c4336"
+    },
+    "mintWithUnshieldedFee.verifier": {
+      "type": "file",
+      "size": 2119,
+      "hash": "872e3d717fb94c7e83c811ed3c9851480c65ec686dbcf48f3cd281acbc329763"
+    }
+  }
+}
