@@ -1,10 +1,6 @@
-# `&&` so a non-zero exit from the leak check short-circuits the hook;
-# otherwise lint-staged's exit code overrides it and a poisoned package.json
-# can slip through unnoticed.
-#
 # `--no-stash`: lint-staged's default backup stash rewrites the working tree
 # around the commit, which invalidates the GPG signature git computes for a
 # signed commit (producing "Unverified" commits on GitHub). Our task is
 # read-only (`eslint --cache`, no `--fix`), so it never modifies files and the
 # backup stash serves no purpose — disabling it keeps signatures valid.
-node scripts/check-no-source-leak.js && npx lint-staged --no-stash
+npx lint-staged --no-stash

@@ -8,15 +8,6 @@ on:
       - 'main'
   pull_request:
   workflow_dispatch:
-    inputs:
-      compactc_source:
-        description: 'compactc source: "release" (default prebuilt download) or "submodule" (build from compact/ submodule via nix).'
-        required: false
-        type: choice
-        default: 'release'
-        options:
-          - release
-          - submodule
   schedule:
     - cron: "30 4 * * *"
 
@@ -86,7 +77,6 @@ jobs:
           (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch')
         }}
       network: undeployed
-      compactc_source: ${{ inputs.compactc_source || 'release' }}
     uses: ./.github/workflows/ci-testkit-js.yml
     secrets: inherit
 
