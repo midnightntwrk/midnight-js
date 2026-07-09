@@ -32,9 +32,14 @@ jobs:
           echo "::error::release-prepare can only run from main (got ${{ github.ref }})."
           exit 1
 
+      # fetch-depth: 0 + fetch-tags: true are BOTH required: `yarn changelog`
+      # (.versionrc.js has releaseCount: 0) regenerates the whole CHANGELOG from
+      # every release tag, so all `v*` tags must be present. checkout does not
+      # fetch tags without fetch-tags, even at full depth.
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # ratchet:actions/checkout@v7.0.0
         with:
           fetch-depth: 0
+          fetch-tags: true
 
       - name: Setup build environment
         uses: ./.github/actions/setup-build-env
