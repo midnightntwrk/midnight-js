@@ -270,7 +270,8 @@ export const scoped: {
       public: {
         nextContractState: unprovenCallTxData.public.nextContractState,
         partitionedTranscript: unprovenCallTxData.public.partitionedTranscript,
-        publicTranscript: unprovenCallTxData.public.publicTranscript
+        publicTranscript: unprovenCallTxData.public.publicTranscript,
+        events: unprovenCallTxData.public.events
       },
       private: {
         input: unprovenCallTxData.private.input,

@@ -91,7 +91,8 @@ describe('submit-call-tx', () => {
     public: {
       nextContractState: StateValue.newNull(),
       publicTranscript: [],
-      partitionedTranscript: {} as PartitionedTranscript
+      partitionedTranscript: {} as PartitionedTranscript,
+      events: []
     },
     private: {
       input: {} as AlignedValue,

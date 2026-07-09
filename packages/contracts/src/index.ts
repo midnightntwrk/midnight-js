@@ -108,3 +108,6 @@ export {
   DeployTxOptionsWithPrivateStateId,
   UnprovenDeployTxOptions,
   UnprovenDeployTxProviders} from './unproven-deploy-tx';
+// Decoder for `CallResultPublic.events` (MIP-0002), re-exported from compact-js so consumers
+// decode via `ContractLog.decodeAll` without depending on compact-js directly.
+export { ContractLog } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
