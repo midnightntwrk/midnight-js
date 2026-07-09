@@ -38,11 +38,6 @@ on:
         description: Docker image version set sourced from testkit-js/env/<testkit_docker_env>.env (qanet|preview|preprod|mainnet|devnet). Empty falls back to the .envrc default (devnet).
         required: false
         default: 'devnet'
-      compactc_source:
-        type: string
-        description: 'compactc source: "release" (default prebuilt download) or "submodule" (build from compact/ submodule via nix). PR label `compactc-from-source` also activates submodule build.'
-        required: false
-        default: 'release'
     outputs:
       test-files:
         description: JSON array of e2e test filenames discovered in testkit-js-e2e/test.
@@ -92,37 +87,6 @@ jobs:
       - name: Configure yarn
         run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
-      # Opt-in submodule build, activated by workflow_dispatch input or PR
-      # label `compactc-from-source` (the label only fires on pull_request
-      # events). Computed BEFORE the cache key so opt-in and default paths
-      # land in disjoint cache buckets.
-      - name: Detect compactc build mode
-        id: compactc-mode
-        env:
-          COMPACTC_SOURCE: ${{ inputs.compactc_source }}
-          LABEL_TRIGGER: ${{ contains(github.event.pull_request.labels.*.name, 'compactc-from-source') }}
-        shell: bash
-        run: |
-          if [[ "$COMPACTC_SOURCE" == "submodule" || "$LABEL_TRIGGER" == "true" ]]; then
-            echo "should_build=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "should_build=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      # Fold the submodule SHA into the cache key — yarn.lock alone doesn't
-      # discriminate runs against different compact/ commits.
-      - name: Resolve compact submodule SHA
-        id: compact-sha
-        if: steps.compactc-mode.outputs.should_build == 'true'
-        shell: bash
-        run: |
-          sha=$(git ls-tree HEAD compact | awk '{print $3}')
-          if [ -z "$sha" ]; then
-            echo "error: could not resolve compact submodule SHA from HEAD." >&2
-            exit 1
-          fi
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
-
       - name: Cache Turbo and Yarn dependencies
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # ratchet:actions/cache@v6.1.0
         with:
@@ -130,51 +94,13 @@ jobs:
             **/node_modules
             ~/.yarn
             .turbo
-          key: turbo-testkit-${{ runner.os }}-${{ steps.compactc-mode.outputs.should_build }}-${{ steps.compact-sha.outputs.sha }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
+          key: turbo-testkit-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
           restore-keys: |
-            turbo-testkit-${{ runner.os }}-${{ steps.compactc-mode.outputs.should_build }}-${{ steps.compact-sha.outputs.sha }}-
+            turbo-testkit-${{ runner.os }}-
 
-      # Source build runs BEFORE yarn install so the file: resolution is in
-      # place when yarn resolves the tree (avoids an --immutable re-install).
-      - name: Init compact submodule
-        if: steps.compactc-mode.outputs.should_build == 'true'
-        run: git submodule update --init --recursive compact
-
-      - name: Install nix
-        if: steps.compactc-mode.outputs.should_build == 'true'
-        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # ratchet:DeterminateSystems/nix-installer-action@v22
-        with:
-          # IOG binary cache provides prebuilt zkir; without this the first
-          # compactc build compiles zkir from source (~10-15 minutes).
-          extra-conf: |
-            extra-substituters = https://cache.iog.io
-            extra-trusted-public-keys = hydra.iohk.io:f/Ea+s+dFdN+3Y/G+FDgSq+a5NEWhJGzdjvKNGv0/EQ=
-
-      - name: Build compactc from submodule
-        if: steps.compactc-mode.outputs.should_build == 'true'
+      - name: Install dependencies
         run: |
-          ./scripts/build-compactc.sh
-          echo "COMPACT_HOME=$GITHUB_WORKSPACE/.compact-home" >> "$GITHUB_ENV"
-
-      - name: Build compact-runtime from submodule
-        if: steps.compactc-mode.outputs.should_build == 'true'
-        run: ./scripts/build-compact-runtime.sh
-
-      - name: Inject file:./.compact-runtime-home resolution
-        if: steps.compactc-mode.outputs.should_build == 'true'
-        run: node scripts/use-source-compact-runtime.js
-
-      # --immutable on the default path enforces lockfile coherence. The
-      # source-build opt-in mutates package.json via use-source-compact-runtime.js,
-      # so the lockfile must be allowed to update; the two-step form keeps
-      # that distinction explicit (versus a ternary-string `if:` flag).
-      - name: Install dependencies (default, immutable)
-        if: steps.compactc-mode.outputs.should_build != 'true'
-        run: yarn install --immutable
-
-      - name: Install dependencies (source-build opt-in)
-        if: steps.compactc-mode.outputs.should_build == 'true'
-        run: yarn install
+          yarn install --immutable
 
       - name: Run build
         run: yarn build ${{ inputs.yarn_filter }} --cache-dir ./turbo

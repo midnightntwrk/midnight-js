@@ -91,7 +91,8 @@ describe('submit-call-tx', () => {
     public: {
       nextContractState: StateValue.newNull(),
       publicTranscript: [],
-      partitionedTranscript: {} as PartitionedTranscript
+      partitionedTranscript: {} as PartitionedTranscript,
+      logEvents: []
     },
     private: {
       input: {} as AlignedValue,
@@ -153,6 +154,21 @@ describe('submit-call-tx', () => {
 
         verifySuccessfulCall(mockUnprovenCallTxData, mockFinalizedTxData, result, options);
         expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
+      });
+
+      it('forwards logEvents through the nested scoped CallResult rebuild', async () => {
+        const options = createBasicCallOptions();
+        const { mockUnprovenCallTxData } = setupSuccessfulMocks();
+
+        // Nesting a call inside an outer scope returns via the hand-rolled `CallResult` rebuild
+        // (internal/transaction.ts), not the root `[Submit]` spread. Reference identity proves the
+        // rebuild forwards the executor's actual logEvents array rather than a fresh/hardcoded default.
+        let nestedResult: Awaited<ReturnType<typeof submitCallTx>> | undefined;
+        await withContractScopedTransaction(mockProviders, async (txCtx) => {
+          nestedResult = await submitCallTx(mockProviders, options, txCtx);
+        });
+
+        expect(nestedResult?.public.logEvents).toBe(mockUnprovenCallTxData.public.logEvents);
       });
     });
 

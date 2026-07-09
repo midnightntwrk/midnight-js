@@ -20,6 +20,7 @@ import {
   type CoinPublicKey,
   type ContractAddress,
   type ContractState,
+  type LogEvent,
   type Op,
   type StateValue,
   type ZswapLocalState
@@ -181,6 +182,19 @@ export type CallResultPublic = {
    * can fail without invalidating the transaction, as long as the guaranteed section succeeds.
    */
   readonly partitionedTranscript: PartitionedTranscript;
+  /**
+   * The MIP-0002 contract log events emitted during circuit execution. Surfaced on the `compact-js`
+   * executor result and typed by `compact-runtime`'s {@link LogEvent}. This is the single
+   * execution-wide list across the whole call tree (not just the root call), in emission order; each
+   * event is tagged with its emitting contract's address, so a per-contract view is a filter over
+   * that address.
+   *
+   * Events are carried **raw** — decode on demand with `ContractLog.decodeAll` (re-exported from
+   * this package). The decoder degrades gracefully and never throws, but it is `@experimental`: a
+   * successful decode can still yield a silently-wrong payload, so treat decoded values with care.
+   * Empty when the circuit emits no logs.
+   */
+  readonly logEvents: readonly LogEvent[];
 };
 
 /**

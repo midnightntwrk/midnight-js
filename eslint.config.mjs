@@ -31,7 +31,6 @@ export default tseslint.config(
       'scripts/**',
       'yarn.config.cjs',
       '.versionrc.js',
-      'compact/**',
     ]
   },
   js.configs.recommended,

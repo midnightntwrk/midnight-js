@@ -132,7 +132,7 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
   ));
 
   try {
-    const { result, privateState, zswapLocalState, calls } = exitResultOrError(exitResult);
+    const { result, privateState, zswapLocalState, calls, events } = exitResultOrError(exitResult);
     // The root contract call is the last entry; cross-contract callees precede it.
     const rootCall = calls[calls.length - 1];
     assertDefined(rootCall, 'Circuit execution produced no contract calls');
@@ -151,7 +151,8 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
       public: {
         nextContractState: rootCall.public.contractState,
         partitionedTranscript: rootCall.public.partitionedTranscript,
-        publicTranscript: rootCall.public.publicTranscript
+        publicTranscript: rootCall.public.publicTranscript,
+        logEvents: events
       },
       private: {
         input: rootCall.private.input,

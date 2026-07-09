@@ -1807,9 +1807,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/compact-js@npm:2.5.5-rc.6":
-  version: 2.5.5-rc.6
-  resolution: "@midnight-ntwrk/compact-js@npm:2.5.5-rc.6::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-js%2F2.5.5-rc.6%2F97961d0333002a7e6b03640d704b1b1fff8bc4f1"
+"@midnight-ntwrk/compact-js@npm:2.5.5-rc.7":
+  version: 2.5.5-rc.7
+  resolution: "@midnight-ntwrk/compact-js@npm:2.5.5-rc.7::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-js%2F2.5.5-rc.7%2F85b830afecaf900818f5948a5d5fb70fbff99e94"
   dependencies:
     "@effect/platform": "npm:^0.96.1"
     "@midnight-ntwrk/compact-runtime": "npm:0.18.0-rc.1"
@@ -1818,7 +1818,7 @@ __metadata:
     "@noble/hashes": "npm:^2.2.0"
     effect: "npm:^3.21.4"
     tslib: "npm:^2.8.1"
-  checksum: 10/7254a826eaa7729aae3112a89e9e2b9ffaae354ef4635f3db1254b28dc4621029a741ca8e98e5b6defa65935523892d94eabf4dbc79e23b05ab8128547dbecc9
+  checksum: 10/4546878614e72da0133d923ea2a54017372d4d04c6290dfca293b525b2c53a95c0f44dd4262c0d6104391870a8efe4677118552f42d54a1da04130f34ec71012
   languageName: node
   linkType: hard
 
@@ -2022,7 +2022,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-protocol@workspace:packages/protocol"
   dependencies:
-    "@midnight-ntwrk/compact-js": "npm:2.5.5-rc.6"
+    "@midnight-ntwrk/compact-js": "npm:2.5.5-rc.7"
     "@midnight-ntwrk/compact-runtime": "npm:0.18.0-rc.1"
     "@midnight-ntwrk/platform-js": "npm:3.0.0"
     "@midnightntwrk/ledger-v9": "npm:1.0.0-rc.3"
