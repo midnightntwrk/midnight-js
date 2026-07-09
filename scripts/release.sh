@@ -26,7 +26,7 @@ RUN_TESTS=false
 FILES_ONLY=false
 
 print_usage() {
-  echo "Usage: $0 <version> [--execute] [--with-tests]"
+  echo "Usage: $0 <version> [--execute] [--with-tests] [--files-only]"
   echo ""
   echo "Options:"
   echo "  --execute     Execute full release including git operations (default: dry-run)"
