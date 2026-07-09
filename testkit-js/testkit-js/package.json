@@ -61,7 +61,7 @@
     "@vitest/runner": "^4.1.7",
     "allure-commandline": "^2.42.0",
     "allure-js-commons": "^3.9.0",
-    "allure-vitest": "^3.9.0",
+    "allure-vitest": "^3.10.2",
     "rxjs": "^7.8.2",
     "typedoc": "^0.28.19",
     "typedoc-plugin-markdown": "4.11.0",
