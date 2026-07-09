@@ -166,3 +166,27 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
     return createZKIR(bytes);
   }
 }
+
+/**
+ * Options for {@link fetchZkConfigProvider}. Combines the remote `baseURL` with fetch and integrity options.
+ *
+ * Named with a `Create` prefix because {@link FetchZkConfigProviderOptions} — the class constructor's
+ * options — already exists; the prefix keeps both names unambiguous rather than being a style inconsistency.
+ */
+export interface CreateFetchZkConfigProviderOptions extends FetchZkConfigProviderOptions {
+  /** The endpoint to query for ZK artifacts. */
+  readonly baseURL: string;
+}
+
+/**
+ * Factory for {@link FetchZkConfigProvider} following the `provider(options)` convention.
+ *
+ * @typeParam K - The circuit-ID union. It is not inferred from `options`, so supply it explicitly
+ * (e.g. `fetchZkConfigProvider<'a' | 'b'>({ … })`) to keep `getProverKey` narrowed; it otherwise widens to `string`.
+ */
+export function fetchZkConfigProvider<K extends string>(
+  options: CreateFetchZkConfigProviderOptions
+): FetchZkConfigProvider<K> {
+  const { baseURL, ...rest } = options;
+  return new FetchZkConfigProvider<K>(baseURL, rest);
+}

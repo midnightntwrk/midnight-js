@@ -344,6 +344,7 @@ export const createMockUnprovenCallTxData = (overrides: Partial<UnsubmittedCallT
         { noop: { n: 1 } }
       ] as Op<AlignedValue>[],
       partitionedTranscript: {} as PartitionedTranscript,
+      logEvents: [],
       ...overrides.public
     },
     private: {
