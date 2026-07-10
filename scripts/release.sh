@@ -23,13 +23,15 @@ NC='\033[0m'
 NEW_VERSION=""
 DRY_RUN=true
 RUN_TESTS=false
+FILES_ONLY=false
 
 print_usage() {
-  echo "Usage: $0 <version> [--execute] [--with-tests]"
+  echo "Usage: $0 <version> [--execute] [--with-tests] [--files-only]"
   echo ""
   echo "Options:"
   echo "  --execute     Execute full release including git operations (default: dry-run)"
   echo "  --with-tests  Run build and tests before release"
+  echo "  --files-only  Only update files (version bump + changelog), then exit. No git, no tests. Used by CI."
   echo ""
   echo "Dry-run mode (default):"
   echo "  - Updates version in all package.json files"
@@ -89,6 +91,10 @@ while [[ $# -gt 0 ]]; do
       RUN_TESTS=true
       shift
       ;;
+    --files-only)
+      FILES_ONLY=true
+      shift
+      ;;
     *)
       log_error "Unknown option: $1"
       print_usage
@@ -131,6 +137,11 @@ done
 
 log_info "Step 4: Generate changelog"
 execute_local "yarn changelog"
+
+if [ "$FILES_ONLY" = true ]; then
+  log_info "--files-only: version bump and changelog complete. Skipping tests and git operations."
+  exit 0
+fi
 
 if [ "$RUN_TESTS" = true ]; then
   log_info "Step 5: Build and test"

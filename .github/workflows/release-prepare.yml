@@ -1,0 +1,90 @@
+name: Release (prepare PR)
+#
+# Manually prepares a release: bumps versions across all workspaces, regenerates
+# CHANGELOG.md, and opens a release PR. Merging that PR to `main` triggers the
+# existing `publish` job in ci.yml. This replaces the need to run
+# scripts/release.sh locally; the script remains as a local fallback.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g. 5.1.0 or 5.1.0-beta.1)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release-prepare
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Prepare release PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Guard - main only
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::release-prepare can only run from main (got \"$GITHUB_REF\")."
+          exit 1
+
+      # fetch-depth: 0 + fetch-tags: true are BOTH required: `yarn changelog`
+      # (.versionrc.js has releaseCount: 0) regenerates the whole CHANGELOG from
+      # every release tag, so all `v*` tags must be present. checkout does not
+      # fetch tags without fetch-tags, even at full depth.
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # ratchet:actions/checkout@v7.0.0
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup build environment
+        uses: ./.github/actions/setup-build-env
+        with:
+          node-auth-token: ${{ secrets.MIDNIGHTBOT_PACKAGES_WRITE }}
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Validate version input
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          if ! echo "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::Invalid version '$VERSION' (expected semver like 5.1.0 or 5.1.0-beta.1)."
+            exit 1
+          fi
+          echo "Version '$VERSION' is valid."
+
+      - name: Bump versions and generate changelog
+        env:
+          VERSION: ${{ inputs.version }}
+        run: bash scripts/release.sh "$VERSION" --files-only
+
+      - name: Create release PR
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # ratchet:peter-evans/create-pull-request@v8.1.1
+        with:
+          token: ${{ secrets.GH_TOKEN }}
+          add-paths: |
+            package.json
+            packages/**/package.json
+            testkit-js/**/package.json
+            CHANGELOG.md
+          commit-message: "chore(release): bump version to ${{ inputs.version }}"
+          title: "chore(release): bump version to ${{ inputs.version }}"
+          body: |
+            Automated release preparation for v${{ inputs.version }}.
+
+            - Versions bumped across all workspaces
+            - `CHANGELOG.md` regenerated
+
+            Merging this PR to `main` triggers the `publish` job in ci.yml, which
+            publishes the packages and cuts the GitHub Release.
+          branch: release/v${{ inputs.version }}
+          delete-branch: true
+          author: "Midnight CI GitHub Action <midnight-ci@users.noreply.github.com>"
+          committer: "Midnight CI GitHub Action <midnight-ci@users.noreply.github.com>"
