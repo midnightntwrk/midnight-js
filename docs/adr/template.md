@@ -1,6 +1,6 @@
 # NNNN. <short title in imperative mood>
 
-- Status: Proposed
+- Status: Accepted
 - Date: YYYY-MM-DD
 - Deciders: <names>
 

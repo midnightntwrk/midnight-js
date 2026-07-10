@@ -21,18 +21,17 @@ The full contributor/agent rules live in [AGENTS.md](../../AGENTS.md#architectur
 ## How to add one
 
 1. Copy [`template.md`](./template.md) to `NNNN-kebab-title.md`, where `NNNN`
-   is the next sequential zero-padded number.
-2. Fill it in and open the PR with the ADR marked `Proposed`.
-3. On merge/approval, change the status to `Accepted` and add a row below.
-4. To reverse a past decision, write a new ADR and mark the old one
+   is the next sequential zero-padded number — list this directory to find the
+   highest existing one.
+2. Fill it in as `Accepted`: approving the PR *is* the acceptance, so there is
+   no separate status flip after merge.
+3. To reverse a past decision, write a new ADR and mark the old one
    `Superseded by ADR-NNNN`.
+
+There is no index to maintain — the ADR files in this directory are the list.
+This keeps each ADR PR limited to its own new file, so concurrent PRs never
+conflict on a shared table.
 
 ## Statuses
 
 `Proposed` · `Accepted` · `Deprecated` · `Superseded by ADR-NNNN`
-
-## Index
-
-| ADR | Title | Status |
-|-----|-------|--------|
-| [0001](./0001-record-architecture-decisions.md) | Record architecture decisions | Accepted |

@@ -35,7 +35,7 @@ import {
 /**
  * Describes the target of a circuit invocation.
  */
-export type CallOptionsBase<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = {
+export interface CallOptionsBase<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> {
   /**
    * An optional mapping of {@link CoinPublicKey} to {@link EncPublicKey} that can be used to resolve encryption
    * keys for coins created during circuit execution.
@@ -55,7 +55,7 @@ export type CallOptionsBase<C extends Contract.Any, PCK extends Contract.Provabl
    * The address of the contract being executed.
    */
   readonly contractAddress: ContractAddress;
-};
+}
 
 /**
  * Conditional type that optionally adds the inferred circuit argument types to
@@ -74,7 +74,7 @@ export type CallOptionsWithArguments<C extends Contract.Any, PCK extends Contrac
 /**
  * Data retrieved via providers that should be included in the call options.
  */
-export type CallOptionsProviderDataDependencies = {
+export interface CallOptionsProviderDataDependencies {
   /**
    * The Zswap public key of the current user.
    */
@@ -91,7 +91,7 @@ export type CallOptionsProviderDataDependencies = {
    * The ledger parameters to use when executing the circuit.
    */
   readonly ledgerParameters: LedgerParameters;
-};
+}
 
 /**
  * Call options with circuit arguments and data
@@ -136,7 +136,7 @@ export type CallOptions<C extends Contract.Any, PCK extends Contract.ProvableCir
  * the JS `result` value alone), extract that field explicitly rather than
  * passing the whole object across a trust boundary.
  */
-export type CallResultPrivate<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = {
+export interface CallResultPrivate<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> {
   /**
    * ZK representation of the circuit arguments.
    */
@@ -166,7 +166,7 @@ export type CallResultPrivate<C extends Contract.Any, PCK extends Contract.Prova
 /**
  * The public portions of the call result.
  */
-export type CallResultPublic = {
+export interface CallResultPublic {
   /**
    * The public state resulting from executing the circuit.
    */
@@ -195,7 +195,7 @@ export type CallResultPublic = {
    * Empty when the circuit emits no logs.
    */
   readonly logEvents: readonly LogEvent[];
-};
+}
 
 /**
  * Contains all information resulting from circuit execution.
@@ -207,7 +207,7 @@ export type CallResultPublic = {
  * only the `public` field or destructure specific non-sensitive fields rather
  * than spreading or stringifying the whole object.
  */
-export type CallResult<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = {
+export interface CallResult<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> {
   /**
    * The public/non-sensitive data produced by the circuit execution.
    *
@@ -231,4 +231,4 @@ export type CallResult<C extends Contract.Any, PCK extends Contract.ProvableCirc
    * for a call in the tree. Treat as confidential alongside {@link private}.
    */
   readonly calls: readonly ContractExecutable.ContractExecutable.ContractCall[];
-};
+}

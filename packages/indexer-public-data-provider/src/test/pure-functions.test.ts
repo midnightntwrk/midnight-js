@@ -42,7 +42,7 @@ import {
   IndexerQueryError,
   IndexerSubscriptionDataError
 } from '../errors';
-import type { TransactionResult } from '../gen/graphql';
+import type { TransactionResult } from '../gen/schema-types';
 import { extractRegularDeployTransaction, extractUnshieldedBalances } from '../mapping';
 
 describe('isRegularTransaction', () => {

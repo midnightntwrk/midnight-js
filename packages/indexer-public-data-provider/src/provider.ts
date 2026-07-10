@@ -51,13 +51,8 @@ import { DEFAULT_CONTRACT_EVENTS_PAGE_SIZE } from './config';
 import { IndexerDataError, IndexerInvariantError, IndexerProviderConfigError } from './errors';
 import { buildQueryVariables, buildSubscriptionVariables } from './events-filter';
 import { toContractEvent } from './events-mapping';
-import type {
-  BlockOffset,
-  ContractActionOffset,
-  DeployContractStateTxQueryQuery,
-  InputMaybe,
-  RegularTransaction
-} from './gen/graphql';
+import type { BlockOffset, ContractActionOffset, DeployContractStateTxQueryQuery } from './gen/graphql';
+import type { InputMaybe, RegularTransaction } from './gen/schema-types';
 import {
   type ExcludeEmptyAndNull,
   extractRegularDeployTransaction,

@@ -21,7 +21,7 @@ import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight
 /**
  * Object containing the publicly visible states of a contract.
  */
-export type PublicContractStates = {
+export interface PublicContractStates {
   /**
    * The (public) Zswap chain state of a contract.
    */
@@ -40,12 +40,12 @@ export type PublicContractStates = {
  * Object containing the publicly visible states of a contract and the private
  * state of a contract.
  */
-export type ContractStates<PS> = PublicContractStates & {
+export interface ContractStates<PS> extends PublicContractStates {
   /**
    * The private state of a contract.
    */
   readonly privateState: PS;
-};
+}
 
 /**
  * Fetches only the public visible (Zswap and ledger) states of a contract.

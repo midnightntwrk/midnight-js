@@ -27,12 +27,8 @@ import {
   IndexerSubscriptionDataError
 } from './errors';
 import { toContractEvent } from './events-mapping';
-import type {
-  BlockOffset,
-  ContractEventsSubSubscriptionVariables,
-  InputMaybe,
-  RegularTransaction
-} from './gen/graphql';
+import type { BlockOffset, ContractEventsSubSubscriptionVariables } from './gen/graphql';
+import type { InputMaybe, RegularTransaction } from './gen/schema-types';
 import { extractUnshieldedBalances, hasContract, hasContractAction } from './mapping';
 import {
   BLOCK_QUERY,

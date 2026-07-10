@@ -30,7 +30,7 @@ declare const __DEBUG__: boolean;
 /**
  * Configuration for {@link submitTx}.
  */
-export type SubmitTxOptions<PCK extends AnyProvableCircuitId> = {
+export interface SubmitTxOptions<PCK extends AnyProvableCircuitId> {
   /**
    * The transaction to prove, balance, and submit.
    */

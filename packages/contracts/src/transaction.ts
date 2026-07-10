@@ -79,7 +79,7 @@ export interface TransactionContext<
 /**
  * Options for use when creating scoped transactions.
  */
-export type ScopedTransactionOptions = {
+export interface ScopedTransactionOptions {
   /**
    * An optional name for the transaction scope.
    */

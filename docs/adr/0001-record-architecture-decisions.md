@@ -18,8 +18,8 @@ record of *why* the architecture is the way it is, not just *what* it is.
 We will record architecturally significant decisions as Architecture Decision
 Records (ADRs) stored in `docs/adr/`, one Markdown file per decision, using the
 MADR-lite template in [`template.md`](./template.md). Files are named
-`NNNN-kebab-title.md` with a zero-padded sequential number. The index in
-[`README.md`](./README.md) lists every ADR and its status.
+`NNNN-kebab-title.md` with a zero-padded sequential number. The files in
+`docs/adr/` are themselves the list, so there is no separately maintained index.
 
 ## Consequences
 
@@ -27,7 +27,7 @@ MADR-lite template in [`template.md`](./template.md). Files are named
   in PRs, and discoverable by grep or the repo's documentation skills, which
   already look under `docs/adr/`.
 - **Negative:** contributors must spend time writing an ADR for qualifying
-  changes; the index must be kept in sync by hand.
+  changes.
 - **Follow-ups:** enforcement guidance for contributors and agents lives in
   [AGENTS.md](../../AGENTS.md); a CI gate could be added later if manual
   discipline proves insufficient.

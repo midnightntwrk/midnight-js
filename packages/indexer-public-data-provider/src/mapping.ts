@@ -24,7 +24,8 @@ import {
   toUnshieldedUtxos
 } from './codec';
 import { IndexerInvariantError } from './errors';
-import type { ContractBalance, DeployTxQueryQuery, RegularTransaction } from './gen/graphql';
+import type { DeployTxQueryQuery } from './gen/graphql';
+import type { ContractBalance, RegularTransaction } from './gen/schema-types';
 
 type IsEmptyObject<T> = keyof T extends never ? true : false;
 export type ExcludeEmptyAndNull<T> = T extends null ? never : IsEmptyObject<T> extends true ? never : T;
