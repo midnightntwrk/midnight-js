@@ -79,6 +79,11 @@ jobs:
             exit 0
           fi
           echo "changed=true" >> "$GITHUB_OUTPUT"
+          # Stage the changes so ghcommit-action enumerates individual files.
+          # git status collapses a wholly-untracked new directory into a single
+          # "docs/.../foo/" entry, which ghcommit then tries to read as a file
+          # ("is a directory"). Staging lists each file (A/M/D) individually.
+          git add -A docs
           # Force the rolling branch back to the current main so the PR always
           # shows just the latest generated-docs diff (one commit on top).
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"

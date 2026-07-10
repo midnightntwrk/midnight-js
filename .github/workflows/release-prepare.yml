@@ -97,6 +97,9 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
+          # Stage so ghcommit-action enumerates individual files rather than a
+          # collapsed untracked directory (which it would fail to read).
+          git add -A -- package.json CHANGELOG.md packages testkit-js
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
           git push --force origin "HEAD:refs/heads/release/v${VERSION}"
 
