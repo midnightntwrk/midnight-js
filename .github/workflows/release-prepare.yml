@@ -65,6 +65,15 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: bash scripts/release.sh "$VERSION" --files-only
 
+      # `.envrc` (loaded by setup-build-env via direnv) sets `commit.gpgSign=true`
+      # for local contributors, but the runner has no GPG secret key. Without
+      # this override, create-pull-request's local commit fails with
+      # "gpg: signing failed: No secret key". Overridden locally so it does not
+      # affect contributors. For verified branch commits, switch to a GitHub App
+      # token and re-add sign-commits.
+      - name: Disable local commit signing (no GPG key on runner)
+        run: git config commit.gpgsign false
+
       - name: Create release PR
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # ratchet:peter-evans/create-pull-request@v8.1.1
         with:
