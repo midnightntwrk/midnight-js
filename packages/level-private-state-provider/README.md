@@ -40,6 +40,8 @@ const state = await provider.get('stateId');
 | `midnightDbName`                 |          | `midnight-level-db` | Database name                          |
 | `privateStateStoreName`          |          | `private-states`    | Store name for states                  |
 | `signingKeyStoreName`            |          | `signing-keys`      | Store name for keys                    |
+| `cryptoBackend` | | auto-detected (`'webcrypto'` if available, else `'noble'`) | `'webcrypto' \| 'noble'`. Auto-detects Web Crypto availability; set explicitly to force a backend (e.g. `'noble'` in Node.js tests, or `'webcrypto'` for explicit browser intent). Added in #827. |
+| `levelFactory` | | `(dbName) => new Level(dbName, { createIfMissing: true })` | `LevelFactory`. Custom storage factory. The `level` package auto-selects `browser-level` (IndexedDB) or `classic-level` (Node.js) based on bundler target. |
 
 ## Security
 

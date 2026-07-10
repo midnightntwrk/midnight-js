@@ -1,0 +1,71 @@
+import CompactStandardLibrary;
+
+// Regression contract for #731: `mintShieldedToken` + `receiveUnshielded` in
+// the SAME circuit. Pre-#877 `midnight-js-contracts` pinned the minted
+// shielded coin to `DEFAULT_SEGMENT_NUMBER = 0` (guaranteed offer) while the
+// circuit's transcript was entirely fallible, so the shielded output and the
+// unshielded fee receive ended up in different segments. The wallet balancer
+// then saw an unmatched delta and failed (`Wallet.InsufficientFunds` on a
+// unshielded-only wallet, or chain error 186 `EffectsCheckFailure`). The fix
+// (#877) routes the shielded output into the same segment as the mint.
+//
+// The heavy state writes + `kernel.checkpoint()` reproduce #876's
+// pre-condition: they force the partition algorithm to reject `n=2` (whole
+// circuit guaranteed) and select `n=0` (everything fallible), so the mint's
+// user-bound `ZswapOutput` MUST land in the fallible offer.
+export ledger counters: Map<Bytes<32>, Counter>;
+
+export circuit mintWithUnshieldedFee(
+  domainSep: Bytes<32>,
+  mintValue: Uint<64>,
+  mintNonce: Bytes<32>,
+  recipient: ZswapCoinPublicKey,
+  fee: Uint<128>
+): Bytes<32> {
+  for (const i of 0..32) {
+    const key = persistentHash<Vector<2, Bytes<32>>>([disclose(mintNonce), disclose(domainSep)]);
+    counters.insertDefault(key);
+  }
+  kernel.checkpoint();
+
+  const coin = mintShieldedToken(
+    disclose(domainSep),
+    disclose(mintValue),
+    disclose(mintNonce),
+    left<ZswapCoinPublicKey, ContractAddress>(disclose(recipient))
+  );
+
+  receiveUnshielded(nativeToken(), disclose(fee));
+
+  return coin.color;
+}
+
+// Variant reported in #731 by @robbyja: replacing the unshielded fee with a
+// shielded one (`receiveShielded`) does NOT sidestep the bug — the shielded
+// balancer still fails coin selection because the freshly-minted token color
+// exists in no wallet coin. Same segment-routing root cause, fully-shielded
+// leg. Kept as a distinct circuit so the regression covers both fee paths.
+export circuit mintWithShieldedFee(
+  domainSep: Bytes<32>,
+  mintValue: Uint<64>,
+  mintNonce: Bytes<32>,
+  recipient: ZswapCoinPublicKey,
+  feeCoin: ShieldedCoinInfo
+): Bytes<32> {
+  for (const i of 0..32) {
+    const key = persistentHash<Vector<2, Bytes<32>>>([disclose(mintNonce), disclose(domainSep)]);
+    counters.insertDefault(key);
+  }
+  kernel.checkpoint();
+
+  const coin = mintShieldedToken(
+    disclose(domainSep),
+    disclose(mintValue),
+    disclose(mintNonce),
+    left<ZswapCoinPublicKey, ContractAddress>(disclose(recipient))
+  );
+
+  receiveShielded(disclose(feeCoin));
+
+  return coin.color;
+}
