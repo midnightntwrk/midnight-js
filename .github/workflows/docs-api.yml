@@ -12,6 +12,14 @@ on:
       - main
   workflow_dispatch:
 
+# The rolling docs branch is updated by a non-atomic sequence (force-push ->
+# API commit -> open PR). Serialize runs so overlapping pushes to main cannot
+# clobber the branch or race on `gh pr create`. Only the latest generated docs
+# matter, so cancel any in-flight run.
+concurrency:
+  group: docs-api
+  cancel-in-progress: true
+
 jobs:
   docs:
     runs-on: ubuntu-latest

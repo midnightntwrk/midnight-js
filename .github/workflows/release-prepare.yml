@@ -68,11 +68,16 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
+          # Capture the workspace list on its own line: a failure of the yarn
+          # call inside a `for ... in $(...)` word-list is NOT caught by
+          # `set -e`, which would silently bump only the root and leave the
+          # workspaces on their old versions.
+          workspaces=$(yarn workspaces list --json)
           npm pkg set version="$VERSION"
-          for pkg in $(yarn workspaces list --json | jq -r 'select(.location | startswith("packages/")) | .name'); do
+          for pkg in $(echo "$workspaces" | jq -r 'select(.location | startswith("packages/")) | .name'); do
             npm pkg set version="$VERSION" -w "$pkg"
           done
-          for pkg in $(yarn workspaces list --json | jq -r 'select(.location | startswith("testkit-js/")) | .name'); do
+          for pkg in $(echo "$workspaces" | jq -r 'select(.location | startswith("testkit-js/")) | .name'); do
             npm pkg set version="$VERSION" -w "$pkg"
           done
 
@@ -114,6 +119,13 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
+          # Idempotent: a re-dispatch for a version whose PR is already open
+          # force-pushes the branch and re-commits above, so only skip the
+          # create (which would otherwise fail with "already exists").
+          if [ -n "$(gh pr list --head "release/v${VERSION}" --state open --json number --jq '.[].number')" ]; then
+            echo "Release PR for v${VERSION} already open; the new signed commit was pushed to it."
+            exit 0
+          fi
           gh pr create --base main --head "release/v${VERSION}" \
             --title "chore(release): bump version to ${VERSION}" \
             --body "Automated release preparation for v${VERSION}.
