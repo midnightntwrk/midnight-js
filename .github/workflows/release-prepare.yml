@@ -90,6 +90,11 @@ jobs:
       # a bare noreply email that resolves to no account, which leaves the
       # `license/cla` check permanently "not signed". GH_TOKEN is a PAT (not
       # GITHUB_TOKEN) so the opened PR still triggers CI.
+      # Head branch is `prepare-release/*`, NOT `release/*`: a ruleset protects
+      # `release/*` (requires PR + status checks), which would reject the API
+      # commit below with "Changes must be made through a pull request". The PR
+      # still targets main and merging still triggers publish (detect-release in
+      # ci.yml compares package.json versions, independent of the branch name).
       - name: Push release branch
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
@@ -106,7 +111,7 @@ jobs:
           # imports; this job only bumps files and never builds, so the hook
           # would fail with import/no-unresolved. The pushed ref is just the
           # current main tip; ghcommit-action adds the release commit via API.
-          git push --no-verify --force origin "HEAD:refs/heads/release/v${VERSION}"
+          git push --no-verify --force origin "HEAD:refs/heads/prepare-release/v${VERSION}"
 
       - name: Commit release changes via GitHub API (signed)
         # planetscale/ghcommit-action commits via GitHub's GraphQL
@@ -116,7 +121,7 @@ jobs:
         with:
           commit_message: "chore(release): bump version to ${{ inputs.version }}"
           repo: ${{ github.repository }}
-          branch: release/v${{ inputs.version }}
+          branch: prepare-release/v${{ inputs.version }}
           file_pattern: "package.json CHANGELOG.md packages testkit-js"
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
@@ -130,11 +135,11 @@ jobs:
           # Idempotent: a re-dispatch for a version whose PR is already open
           # force-pushes the branch and re-commits above, so only skip the
           # create (which would otherwise fail with "already exists").
-          if [ -n "$(gh pr list --head "release/v${VERSION}" --state open --json number --jq '.[].number')" ]; then
+          if [ -n "$(gh pr list --head "prepare-release/v${VERSION}" --state open --json number --jq '.[].number')" ]; then
             echo "Release PR for v${VERSION} already open; the new signed commit was pushed to it."
             exit 0
           fi
-          gh pr create --base main --head "release/v${VERSION}" \
+          gh pr create --base main --head "prepare-release/v${VERSION}" \
             --title "chore(release): bump version to ${VERSION}" \
             --body "Automated release preparation for v${VERSION}.
 
