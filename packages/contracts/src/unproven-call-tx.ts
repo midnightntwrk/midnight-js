@@ -39,7 +39,7 @@ import { createUnprovenLedgerCallTx, encryptionPublicKeyResolverForZswapState, m
 /**
  * Enables cross-contract calls during circuit execution.
  */
-export type CrossContractConfig = {
+export interface CrossContractConfig {
   /**
    * Resolves the states of cross-contract call targets.
    */
@@ -49,7 +49,7 @@ export type CrossContractConfig = {
    * given to the call were read.
    */
   readonly blockHash: string;
-};
+}
 
 export function createUnprovenCallTxFromInitialStates<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
   zkConfigProvider: ZKConfigProvider<string>,

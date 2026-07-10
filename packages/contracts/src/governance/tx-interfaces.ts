@@ -29,7 +29,7 @@ import { submitReplaceAuthorityTx } from './submit-replace-authority-tx';
  * An interface for creating maintenance transactions for a specific circuit defined in a
  * given contract.
  */
-export type CircuitMaintenanceTxInterface = {
+export interface CircuitMaintenanceTxInterface {
   /**
    * Constructs and submits a transaction that removes the current verifier key stored
    * on the blockchain for this circuit at this contract's address.
@@ -42,7 +42,7 @@ export type CircuitMaintenanceTxInterface = {
    * @param newVk The new verifier key to add for this circuit.
    */
   insertVerifierKey(newVk: VerifierKey): Promise<FinalizedTxData>;
-};
+}
 
 /**
  * Creates a {@link CircuitMaintenanceTxInterface}.
