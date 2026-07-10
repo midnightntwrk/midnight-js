@@ -31,7 +31,7 @@
   "dependencies": {
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
-    "@midnightntwrk/dapp-connector-api": "4.1.0-beta.1"
+    "@midnightntwrk/dapp-connector-api": "4.1.0-canary.20260701150847-65b4ee2"
   },
   "devDependencies": {
     "vitest": "^4.1.7"

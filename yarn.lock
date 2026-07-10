@@ -1879,7 +1879,7 @@ __metadata:
   dependencies:
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
-    "@midnightntwrk/dapp-connector-api": "npm:4.1.0-beta.1"
+    "@midnightntwrk/dapp-connector-api": "npm:4.1.0-canary.20260701150847-65b4ee2"
     vitest: "npm:^4.1.7"
   languageName: unknown
   linkType: soft
@@ -2147,7 +2147,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     "@midnight-ntwrk/zkir-v2": "npm:2.1.0"
-    "@midnightntwrk/dapp-connector-api": "npm:4.1.0-beta.1"
+    "@midnightntwrk/dapp-connector-api": "npm:4.1.0-canary.20260701150847-65b4ee2"
     "@midnightntwrk/wallet-sdk": "npm:2.0.0-beta.2"
     "@midnightntwrk/wallet-sdk-prover-client": "npm:2.0.0-beta.2"
     "@scure/bip39": "npm:^2.2.0"
@@ -2178,10 +2178,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnightntwrk/dapp-connector-api@npm:4.1.0-beta.1":
-  version: 4.1.0-beta.1
-  resolution: "@midnightntwrk/dapp-connector-api@npm:4.1.0-beta.1"
-  checksum: 10/dc4ca4a201f98a2e078d3546fb0a60760dc6f2c8784ca2fdbed275009383dfc763a3007dfabd6d7d23faf5dcb93e28b24ae09f519692b33eefe149841cc767ee
+"@midnightntwrk/dapp-connector-api@npm:4.1.0-canary.20260701150847-65b4ee2":
+  version: 4.1.0-canary.20260701150847-65b4ee2
+  resolution: "@midnightntwrk/dapp-connector-api@npm:4.1.0-canary.20260701150847-65b4ee2"
+  checksum: 10/55f9cdf1118524632a1f48038486a0a54b5223ebcfbd3eb27449a452a9b4019a73c6a95e35fef6256590fda144512fbc0c3b31f282d20128b2cd8221ab1f704f
   languageName: node
   linkType: hard
 
