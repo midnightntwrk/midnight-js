@@ -137,7 +137,7 @@ export const verifyContractState = (
 /**
  * Base type for the configuration options for {@link findDeployedContract}.
  */
-export type FindDeployedContractOptionsBase<C extends Contract.Any> = {
+export interface FindDeployedContractOptionsBase<C extends Contract.Any> {
   /**
    * The compiled contract to use to execute circuits.
    */
@@ -165,12 +165,13 @@ export type FindDeployedContractOptionsBase<C extends Contract.Any> = {
  * the intention is to overwrite the private state currently stored at the given
  * private state ID.
  */
-export type FindDeployedContractOptionsExistingPrivateState<C extends Contract.Any> = FindDeployedContractOptionsBase<C> & {
+export interface FindDeployedContractOptionsExistingPrivateState<C extends Contract.Any>
+  extends FindDeployedContractOptionsBase<C> {
   /**
    * An identifier for the private state of the contract being found.
    */
   readonly privateStateId: PrivateStateId;
-};
+}
 
 /**
  * {@link findDeployedContract} configuration that includes an initial private
@@ -178,15 +179,15 @@ export type FindDeployedContractOptionsExistingPrivateState<C extends Contract.A
  * the intention is to overwrite the private state currently stored at the given
  * private state ID.
  */
-export type FindDeployedContractOptionsStorePrivateState<C extends Contract.Any> =
-  FindDeployedContractOptionsExistingPrivateState<C> & {
-    /**
-     * For types of contract that make no use of private state and or witnesses that operate upon it, this
-     * property may be `undefined`. Otherwise, the value provided via this property should be same initial
-     * state that was used when calling {@link deployContract}.
-     */
-    readonly initialPrivateState: Contract.PrivateState<C>;
-  };
+export interface FindDeployedContractOptionsStorePrivateState<C extends Contract.Any>
+  extends FindDeployedContractOptionsExistingPrivateState<C> {
+  /**
+   * For types of contract that make no use of private state and or witnesses that operate upon it, this
+   * property may be `undefined`. Otherwise, the value provided via this property should be same initial
+   * state that was used when calling {@link deployContract}.
+   */
+  readonly initialPrivateState: Contract.PrivateState<C>;
+}
 
 /**
  * Configuration for {@link findDeployedContract}.
@@ -199,7 +200,7 @@ export type FindDeployedContractOptions<C extends Contract.Any> =
 /**
  * Base type for a deployed contract that has been found on the blockchain.
  */
-export type FoundContract<C extends Contract.Any> = {
+export interface FoundContract<C extends Contract.Any> {
   /**
    * Data for the finalized deploy transaction corresponding to this contract.
    */

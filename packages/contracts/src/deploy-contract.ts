@@ -78,7 +78,7 @@ export type DeployContractOptions<C extends Contract.Any> =
 /**
  * Interface for a contract that has been deployed to the blockchain.
  */
-export type DeployedContract<C extends Contract.Any> = FoundContract<C> & {
+export interface DeployedContract<C extends Contract.Any> extends FoundContract<C> {
   /**
    * Data resulting from the deployment transaction that created this contract. The information in a
    * {@link deployTxData} contains additional private information that does not
@@ -86,7 +86,7 @@ export type DeployedContract<C extends Contract.Any> = FoundContract<C> & {
    * the deployer of a contract.
    */
   readonly deployTxData: FinalizedDeployTxData<C>;
-};
+}
 
 const createDeployTxOptions = <C extends Contract.Any>(
   deployContractOptions: DeployContractOptions<C>

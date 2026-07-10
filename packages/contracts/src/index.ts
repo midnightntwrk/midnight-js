@@ -82,13 +82,17 @@ export {
   createCircuitCallTxInterface} from './tx-interfaces';
 export {
   FinalizedCallTxData,
+  FinalizedCallTxPublicData,
   FinalizedDeployTxData,
   FinalizedDeployTxDataBase,
+  FinalizedDeployTxPublicData,
   SubmittedCallTx,
   UnsubmittedCallTxData,
+  UnsubmittedCallTxPrivateData,
   UnsubmittedDeployTxData,
   UnsubmittedDeployTxDataBase,
   UnsubmittedDeployTxPrivateData,
+  UnsubmittedDeployTxPrivateDataFull,
   UnsubmittedDeployTxPublicData,
   UnsubmittedTxData} from './tx-model';
 export {
