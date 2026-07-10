@@ -1,4 +1,4 @@
-**Midnight.js API Reference v5.0.0-beta.3**
+**Midnight.js API Reference v5.0.0-beta.4**
 
 ***
 

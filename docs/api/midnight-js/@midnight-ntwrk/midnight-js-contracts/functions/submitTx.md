@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.3**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.4**](../../../README.md)
 
 ***
 
@@ -59,7 +59,7 @@ The providers used to manage the transaction lifecycle.
 
 ### options
 
-[`SubmitTxOptions`](../type-aliases/SubmitTxOptions.md)\<`PCK`\>
+[`SubmitTxOptions`](../interfaces/SubmitTxOptions.md)\<`PCK`\>
 
 Configuration.
 

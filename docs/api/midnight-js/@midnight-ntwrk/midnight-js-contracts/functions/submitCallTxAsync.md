@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.3**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.4**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Function: submitCallTxAsync()
 
-> **submitCallTxAsync**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`SubmittedCallTx`](../type-aliases/SubmittedCallTx.md)\<`C`, `PCK`\>\>
+> **submitCallTxAsync**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`SubmittedCallTx`](../interfaces/SubmittedCallTx.md)\<`C`, `PCK`\>\>
 
 Creates and submits a transaction for the invocation of a circuit on a given contract,
 returning immediately after submission without waiting for finalization.
@@ -67,14 +67,14 @@ Configuration.
 
 ## Returns
 
-`Promise`\<[`SubmittedCallTx`](../type-aliases/SubmittedCallTx.md)\<`C`, `PCK`\>\>
+`Promise`\<[`SubmittedCallTx`](../interfaces/SubmittedCallTx.md)\<`C`, `PCK`\>\>
 
 A `Promise` that resolves with the transaction ID and call transaction data immediately after submission;
         or rejects with an error if the submission fails.
 
 ## Remarks
 
-The returned [SubmittedCallTx](../type-aliases/SubmittedCallTx.md) is privacy-sensitive and carries the
+The returned [SubmittedCallTx](../interfaces/SubmittedCallTx.md) is privacy-sensitive and carries the
 unproven transaction and private state via `callTxData`. See that type for
 handling guidance before logging, serializing, or transmitting the result.
 
