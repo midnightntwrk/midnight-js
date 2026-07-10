@@ -53,35 +53,53 @@ jobs:
           yarn run build:markdown-docs
           cd testkit-js/testkit-js && yarn run build:markdown-docs
 
-      # `.envrc` (loaded by setup-build-env via direnv) sets `commit.gpgSign=true`
-      # for local contributors, but the runner has no GPG secret key. Without
-      # this override, create-pull-request's local commit fails with
-      # "gpg: signing failed: No secret key". Overridden locally so it does not
-      # affect contributors. For verified branch commits, switch to a GitHub App
-      # token and re-add sign-commits (see the note on the PR step below).
-      - name: Disable local commit signing (no GPG key on runner)
-        run: git config commit.gpgsign false
+      # The commit MUST be created via the GitHub API (not a local `git commit`)
+      # so it is signed by GitHub and attributed to the GH_TOKEN owner
+      # (MidnightCI, a real account). A local commit is unsigned and authored by
+      # a bare noreply email that resolves to no account, which leaves the
+      # `license/cla` check permanently "not signed". GH_TOKEN is a PAT (not
+      # GITHUB_TOKEN) so the opened PR still triggers CI.
+      - name: Reset rolling docs branch to main
+        id: changes
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ -z "$(git status --porcelain ./docs)" ]; then
+            echo "No documentation changes."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          # Force the rolling branch back to the current main so the PR always
+          # shows just the latest generated-docs diff (one commit on top).
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+          git push --force origin "HEAD:refs/heads/api-docs/update"
 
-      # Both typedoc generators write under docs/, so staging that path captures
-      # every generated change. create-pull-request no-ops when the tree is clean,
-      # so the previous explicit `git status ./docs` guard is no longer needed.
-      # Uses a fixed branch, so repeated runs update one rolling docs PR instead
-      # of opening a fresh timestamped PR each time.
-      - name: Create API documentation PR
-        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # ratchet:peter-evans/create-pull-request@v8.1.1
+      - name: Commit docs via GitHub API (signed)
+        if: steps.changes.outputs.changed == 'true'
+        # Third-party action pinned by full commit SHA. Commits via GitHub's
+        # GraphQL createCommitOnBranch API, so the commit is GitHub-signed
+        # (Verified) and attributed to the GH_TOKEN owner. No upstream version
+        # tags exist, so it is pinned by SHA only.
+        uses: MonikaJassova/ghcommit-action@aee0efc02d3707e178c534477e5c87f70fe6678f
         with:
-          token: ${{ secrets.GH_TOKEN }}
-          add-paths: docs
-          commit-message: "docs: API documentation update"
-          title: "docs: API documentation update"
-          body: "Update API documentation - created by Midnight CI GitHub Action"
+          commit_message: "docs: API documentation update"
+          repo: ${{ github.repository }}
           branch: api-docs/update
-          delete-branch: true
-          # No sign-commits: it only works with GITHUB_TOKEN or a GitHub App
-          # token. GH_TOKEN is a PAT (used so the opened PR triggers CI, which a
-          # GITHUB_TOKEN-created PR cannot), and create-pull-request silently
-          # leaves PAT commits unsigned. The squash-merge into main is signed by
-          # GitHub regardless. For verified branch commits, switch to a GitHub
-          # App token via actions/create-github-app-token and re-add sign-commits.
-          author: "Midnight CI GitHub Action <midnight-ci@users.noreply.github.com>"
-          committer: "Midnight CI GitHub Action <midnight-ci@users.noreply.github.com>"
+          file_pattern: docs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Open docs PR if none is open
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          if [ -z "$(gh pr list --head api-docs/update --state open --json number --jq '.[].number')" ]; then
+            gh pr create --base main --head api-docs/update \
+              --title "docs: API documentation update" \
+              --body "Update API documentation - created by Midnight CI GitHub Action"
+          else
+            echo "Docs PR already open; the new signed commit was pushed to it."
+          fi
