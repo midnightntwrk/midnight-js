@@ -101,7 +101,12 @@ jobs:
           # collapsed untracked directory (which it would fail to read).
           git add -A -- package.json CHANGELOG.md packages testkit-js
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
-          git push --force origin "HEAD:refs/heads/release/v${VERSION}"
+          # --no-verify: skip the husky pre-push hook (yarn lint + typecheck).
+          # It is a local-dev guard and needs a full build to resolve workspace
+          # imports; this job only bumps files and never builds, so the hook
+          # would fail with import/no-unresolved. The pushed ref is just the
+          # current main tip; ghcommit-action adds the release commit via API.
+          git push --no-verify --force origin "HEAD:refs/heads/release/v${VERSION}"
 
       - name: Commit release changes via GitHub API (signed)
         # planetscale/ghcommit-action commits via GitHub's GraphQL
