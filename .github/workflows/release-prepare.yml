@@ -60,40 +60,80 @@ jobs:
           fi
           echo "Version '$VERSION' is valid."
 
-      - name: Bump versions and generate changelog
+      # Version bump + changelog, inline with standard tooling (previously
+      # scripts/release.sh --files-only). The script remains as a local fallback
+      # but CI no longer depends on it.
+      - name: Bump versions across workspaces
         env:
           VERSION: ${{ inputs.version }}
-        run: bash scripts/release.sh "$VERSION" --files-only
+        run: |
+          set -euo pipefail
+          # Capture the workspace list on its own line: a failure of the yarn
+          # call inside a `for ... in $(...)` word-list is NOT caught by
+          # `set -e`, which would silently bump only the root and leave the
+          # workspaces on their old versions.
+          workspaces=$(yarn workspaces list --json)
+          npm pkg set version="$VERSION"
+          for pkg in $(echo "$workspaces" | jq -r 'select(.location | startswith("packages/")) | .name'); do
+            npm pkg set version="$VERSION" -w "$pkg"
+          done
+          for pkg in $(echo "$workspaces" | jq -r 'select(.location | startswith("testkit-js/")) | .name'); do
+            npm pkg set version="$VERSION" -w "$pkg"
+          done
 
-      # `.envrc` (loaded by setup-build-env via direnv) sets `commit.gpgSign=true`
-      # for local contributors, but the runner has no GPG secret key. Without
-      # this override, create-pull-request's local commit fails with
-      # "gpg: signing failed: No secret key". Overridden locally so it does not
-      # affect contributors. For verified branch commits, switch to a GitHub App
-      # token and re-add sign-commits.
-      - name: Disable local commit signing (no GPG key on runner)
-        run: git config commit.gpgsign false
+      - name: Generate changelog
+        run: yarn changelog
 
-      - name: Create release PR
-        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # ratchet:peter-evans/create-pull-request@v8.1.1
+      # The commit MUST be created via the GitHub API (not a local `git commit`)
+      # so it is signed by GitHub and attributed to the GH_TOKEN owner
+      # (MidnightCI, a real account). A local commit is unsigned and authored by
+      # a bare noreply email that resolves to no account, which leaves the
+      # `license/cla` check permanently "not signed". GH_TOKEN is a PAT (not
+      # GITHUB_TOKEN) so the opened PR still triggers CI.
+      - name: Push release branch
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          REPO: ${{ github.repository }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          # Stage so ghcommit-action enumerates individual files rather than a
+          # collapsed untracked directory (which it would fail to read).
+          git add -A -- package.json CHANGELOG.md packages testkit-js
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+          git push --force origin "HEAD:refs/heads/release/v${VERSION}"
+
+      - name: Commit release changes via GitHub API (signed)
+        # planetscale/ghcommit-action commits via GitHub's GraphQL
+        # createCommitOnBranch API, so the commit is GitHub-signed (Verified)
+        # and attributed to the GH_TOKEN owner (MidnightCI).
+        uses: planetscale/ghcommit-action@a6b150b81dca5dd027baa898604418eec9e11465 # ratchet:planetscale/ghcommit-action@v0.2.22
         with:
-          token: ${{ secrets.GH_TOKEN }}
-          add-paths: |
-            package.json
-            packages/**/package.json
-            testkit-js/**/package.json
-            CHANGELOG.md
-          commit-message: "chore(release): bump version to ${{ inputs.version }}"
-          title: "chore(release): bump version to ${{ inputs.version }}"
-          body: |
-            Automated release preparation for v${{ inputs.version }}.
-
-            - Versions bumped across all workspaces
-            - `CHANGELOG.md` regenerated
-
-            Merging this PR to `main` triggers the `publish` job in ci.yml, which
-            publishes the packages and cuts the GitHub Release.
+          commit_message: "chore(release): bump version to ${{ inputs.version }}"
+          repo: ${{ github.repository }}
           branch: release/v${{ inputs.version }}
-          delete-branch: true
-          author: "Midnight CI GitHub Action <midnight-ci@users.noreply.github.com>"
-          committer: "Midnight CI GitHub Action <midnight-ci@users.noreply.github.com>"
+          file_pattern: "package.json CHANGELOG.md packages testkit-js"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+
+      - name: Open release PR
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          # Idempotent: a re-dispatch for a version whose PR is already open
+          # force-pushes the branch and re-commits above, so only skip the
+          # create (which would otherwise fail with "already exists").
+          if [ -n "$(gh pr list --head "release/v${VERSION}" --state open --json number --jq '.[].number')" ]; then
+            echo "Release PR for v${VERSION} already open; the new signed commit was pushed to it."
+            exit 0
+          fi
+          gh pr create --base main --head "release/v${VERSION}" \
+            --title "chore(release): bump version to ${VERSION}" \
+            --body "Automated release preparation for v${VERSION}.
+
+          - Versions bumped across all workspaces
+          - \`CHANGELOG.md\` regenerated
+
+          Merging this PR to \`main\` triggers the \`publish\` job in ci.yml, which publishes the packages and cuts the GitHub Release."
