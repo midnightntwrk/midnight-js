@@ -36,3 +36,4 @@ The full contributor/agent rules live in [AGENTS.md](../../AGENTS.md#architectur
 | ADR | Title | Status |
 |-----|-------|--------|
 | [0001](./0001-record-architecture-decisions.md) | Record architecture decisions | Accepted |
+| [0002](./0002-compact-js-owns-local-execution-events.md) | Forward contract log events from local execution; keep the indexer path independent | Accepted |

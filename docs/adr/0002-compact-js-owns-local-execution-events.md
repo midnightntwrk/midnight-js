@@ -1,6 +1,6 @@
 # 0002. Forward contract log events from local execution; keep the indexer path independent
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-09
 - Deciders: Szymon Paluchowski
 - Related: [MIP-0002](https://github.com/midnightntwrk/midnight-improvement-proposals/blob/main/mips/mip-0002-public-contract-log-emission.md), PR #1083, PR #1081
