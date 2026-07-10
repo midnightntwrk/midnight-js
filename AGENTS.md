@@ -347,7 +347,7 @@ This is a hard workflow requirement, not a suggestion.
 
 ### Read — MUST, before any architecture-affecting change
 
-1. Read the index in [`docs/adr/README.md`](./docs/adr/README.md).
+1. Browse the ADRs in [`docs/adr/`](./docs/adr/) — the files are the list.
 2. Find any **Accepted** ADR relevant to what you are about to change.
 3. Follow it. If your change would contradict an Accepted ADR, do **not**
    silently diverge — either keep the decision, or write a new ADR that
@@ -367,11 +367,12 @@ If unsure whether a change qualifies, it probably does — write the ADR.
 ### How
 
 1. Copy [`docs/adr/template.md`](./docs/adr/template.md) to
-   `docs/adr/NNNN-kebab-title.md` using the next sequential zero-padded number.
+   `docs/adr/NNNN-kebab-title.md` using the next sequential zero-padded number
+   (list the directory to find the highest existing one).
 2. Fill in Context / Decision / Consequences / Alternatives, marked `Accepted` —
    approving the PR is the acceptance, so ADRs land `Accepted`, not `Proposed`.
-3. Add a row to the index table in `docs/adr/README.md` in the same PR.
-4. To reverse a past decision, add a new ADR and mark the old one
+   There is no shared index to update, so ADR PRs never conflict with each other.
+3. To reverse a past decision, add a new ADR and mark the old one
    `Superseded by ADR-NNNN`.
 
 <!-- gitnexus:start -->
