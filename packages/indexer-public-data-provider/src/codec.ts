@@ -46,7 +46,7 @@ import {
 import { Buffer } from 'buffer';
 
 import { IndexerDataError } from './errors';
-import type { ContractBalance, Segment, TransactionResult } from './gen/graphql';
+import type { ContractBalance, Segment, TransactionResult } from './gen/schema-types';
 
 const toByteArray = (s: string): Buffer => Buffer.from(s, 'hex');
 

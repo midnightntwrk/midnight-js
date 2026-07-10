@@ -15,40 +15,48 @@
 
 import type { CodegenConfig } from '@graphql-codegen/cli';
 
+const typeGenerationConfig = {
+  avoidOptionals: true,
+  skipTypename: true,
+  skipTypeNameForRoot: true,
+  enumsAsTypes: true,
+  futureProofEnums: true,
+  immutableTypes: true,
+  useTypeImports: true,
+  strictScalars: true,
+  scalars: {
+    BigInt: 'number',
+    SessionId: 'string',
+    WalletLocalState: 'string',
+    Unit: 'null',
+    Instant: 'number',
+    HexEncoded: 'string',
+    ViewingKey: 'string',
+    UnshieldedAddress: 'string',
+    CardanoRewardAddress: 'string',
+    DustAddress: 'string'
+  },
+  namingConvention: {
+    transformUnderscore: true
+  }
+};
+
 const config: CodegenConfig = {
   generates: {
     './src/gen/': {
       documents: ['./src/**/*.ts'],
       schema: './schema.graphql',
       preset: 'client',
-      config: {
-        avoidOptionals: true,
-        skipTypename: true,
-        skipTypeNameForRoot: true,
-        enumsAsTypes: true,
-        futureProofEnums: true,
-        immutableTypes: true,
-        useTypeImports: true,
-        strictScalars: true,
-        scalars: {
-          BigInt: 'number',
-          SessionId: 'string',
-          WalletLocalState: 'string',
-          Unit: 'null',
-          Instant: 'number',
-          HexEncoded: 'string',
-          ViewingKey: 'string',
-          UnshieldedAddress: 'string',
-          CardanoRewardAddress: 'string',
-          DustAddress: 'string'
-        },
-        namingConvention: {
-          transformUnderscore: true
-        }
-      },
+      config: typeGenerationConfig,
       presetConfig: {
         gqlTagName: 'gql'
       },
+      hooks: { afterAllFileWrite: ['prettier --write'] }
+    },
+    './src/gen/schema-types.ts': {
+      schema: './schema.graphql',
+      plugins: ['typescript'],
+      config: typeGenerationConfig,
       hooks: { afterAllFileWrite: ['prettier --write'] }
     }
   }
