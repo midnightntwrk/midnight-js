@@ -96,11 +96,10 @@ jobs:
           git push --force origin "HEAD:refs/heads/release/v${VERSION}"
 
       - name: Commit release changes via GitHub API (signed)
-        # Third-party action pinned by full commit SHA. Commits via GitHub's
-        # GraphQL createCommitOnBranch API, so the commit is GitHub-signed
-        # (Verified) and attributed to the GH_TOKEN owner. No upstream version
-        # tags exist, so it is pinned by SHA only.
-        uses: MonikaJassova/ghcommit-action@aee0efc02d3707e178c534477e5c87f70fe6678f
+        # planetscale/ghcommit-action commits via GitHub's GraphQL
+        # createCommitOnBranch API, so the commit is GitHub-signed (Verified)
+        # and attributed to the GH_TOKEN owner (MidnightCI).
+        uses: planetscale/ghcommit-action@a6b150b81dca5dd027baa898604418eec9e11465 # ratchet:planetscale/ghcommit-action@v0.2.22
         with:
           commit_message: "chore(release): bump version to ${{ inputs.version }}"
           repo: ${{ github.repository }}
