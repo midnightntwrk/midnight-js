@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-protocol",
-  "version": "5.0.0-beta.4",
+  "version": "5.0.0-beta.6",
   "description": "Protocol type re-exports for midnight-js framework",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
