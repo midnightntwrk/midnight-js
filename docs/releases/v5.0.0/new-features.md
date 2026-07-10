@@ -108,6 +108,69 @@ Notable schema-driven decisions:
 
 ---
 
+## MIP-0002 log events on `CallResult` (#1083)
+
+The two MIP-0002 surfaces are complementary. #988 reads events **off-chain, from the indexer**, after a transaction lands. This one exposes the same events **synchronously, from the local execution result** of a call — `compact-js` already computes them on `ContractExecutable.CallResult.events`, but `midnight-js` was destructuring the executor result without `events` and dropping them.
+
+`CallResultPublic` now carries them:
+
+```ts
+interface CallResultPublic {
+  // ...existing fields
+  readonly events: LogEvent[]; // execution-wide, in emission order, tagged by emitting contract address
+}
+```
+
+Events are carried **raw** (no eager decode). Decode them with the `ContractLog` helper, re-exported from `compact-js` through the `midnight-js` barrel — so you never take a direct dependency on `compact-js`:
+
+```ts
+import { contracts } from '@midnight-ntwrk/midnight-js';
+
+const result = await callTx(/* ... */);
+
+// lenient: never throws — undecodable entries are skipped
+const logs = contracts.ContractLog.decodeAll(result.public.events);
+```
+
+The single `events` list spans the whole call tree (all contracts touched by a cross-contract call), in emission order.
+
+---
+
+## `provider(options)` factories for proof and ZK-config providers (#1078)
+
+The provider layer moves toward a uniform `provider(options)` convention: wire a provider by passing one options object instead of remembering positional-argument order. **Additive and backward-compatible** — existing positional and class-based usage keeps working.
+
+`httpClientProofProvider` gains an object-options form with a flattened config:
+
+```ts
+import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
+
+// new — preferred
+const proofProvider = httpClientProofProvider({
+  url: 'https://proof-server.example',
+  zkConfigProvider,
+  timeout: 30_000, // optional
+  headers: { authorization: `Bearer ${token}` }, // optional
+});
+
+// old — still works, now marked @deprecated for one release cycle
+const legacy = httpClientProofProvider('https://proof-server.example', zkConfigProvider);
+```
+
+The ZK-config providers gain thin factory functions alongside the existing classes (the classes stay exported for subclassing/composition):
+
+```ts
+import { nodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
+import { fetchZkConfigProvider } from '@midnight-ntwrk/midnight-js-fetch-zk-config-provider';
+
+const zkNode = nodeZkConfigProvider(options);
+const zkFetch = fetchZkConfigProvider(options);
+```
+
+> Low-level `httpClientProvingProvider` is intentionally left positional and tracked as a follow-up — converting it re-couples internal test mocks and it is a lower-traffic advanced-scenarios primitive.
+
+---
+
 ## Disposable `IndexerPublicDataProvider` with structured config (#961)
 
 Phase 2 of #808 (closes #820). The indexer provider gains a structured configuration object, becomes a class (`IndexerPublicDataProvider`), and exposes explicit resource cleanup.

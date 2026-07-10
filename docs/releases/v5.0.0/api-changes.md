@@ -125,6 +125,26 @@ export const hashVerifierKey: (/* verifier key */) => string; // sha-256 hex
 
 ---
 
+## `@midnight-ntwrk/midnight-js-contracts`
+
+### `CallResultPublic.events` + `ContractLog` re-export (#1083)
+
+```ts
+interface CallResultPublic {
+  // ...existing fields
+  readonly events: LogEvent[]; // execution-wide, in emission order, tagged by emitting contract address; carried raw
+}
+
+// re-exported from compact-js through the barrel — reachable as contracts.ContractLog
+export const ContractLog: {
+  decodeAll(events: readonly LogEvent[]): DecodedLog[]; // lenient — never throws
+};
+```
+
+The single `events` list spans the whole call tree. Decode without a direct `compact-js` dependency via `contracts.ContractLog.decodeAll(result.public.events)`.
+
+---
+
 ## `@midnight-ntwrk/midnight-js-indexer-public-data-provider`
 
 ### New / changed exports
@@ -215,9 +235,37 @@ Subpath re-exports retargeted (see [breaking-changes.md](./breaking-changes.md))
 | `/ledger` | `@midnightntwrk/ledger-v9@1.0.0-rc.3` |
 | `/onchain-runtime` | `@midnightntwrk/onchain-runtime-v4@4.0.0-rc.3` |
 | `/compact-runtime` | `@midnight-ntwrk/compact-runtime@0.18.0-rc.1` |
-| `/compact-js` | `@midnight-ntwrk/compact-js@2.5.5-rc.6` (provides the `ContractKeyLocation` grammar) |
+| `/compact-js` | `@midnight-ntwrk/compact-js@2.5.5-rc.7` (provides the `ContractKeyLocation` grammar) |
 | `/platform-js` | `@midnight-ntwrk/platform-js@3.0.0` |
+
+## `@midnight-ntwrk/midnight-js-http-client-proof-provider`
+
+### `httpClientProofProvider` — object-options form (#1078)
+
+```ts
+// new — preferred object-options form (flattened config)
+export function httpClientProofProvider(options: {
+  readonly url: string;
+  readonly zkConfigProvider: ZKConfigProvider<string>;
+  readonly timeout?: number;
+  readonly headers?: Record<string, string>;
+}): ProofProvider<string>;
+
+/** @deprecated positional form retained for one release cycle */
+export function httpClientProofProvider(url: string, zkConfigProvider: ZKConfigProvider<string>): ProofProvider<string>;
+```
+
+Additive and backward-compatible — the positional overload keeps working. Low-level `httpClientProvingProvider` remains positional (tracked as a follow-up).
 
 ## `@midnight-ntwrk/midnight-js-fetch-zk-config-provider` / `-node-zk-config-provider`
 
 Both provider constructors now accept an optional `ZkConfigIntegrityOptions` bag (see `midnight-js-utils` above) and verify artifacts against `compiler/contract-manifest.json`, defaulting to `verify: 'require'` (fail-closed). See [breaking-changes.md](./breaking-changes.md).
+
+### `provider(options)` factory functions (#1078)
+
+Thin factory functions are added alongside the existing classes (the classes stay exported for subclassing/composition):
+
+```ts
+export function nodeZkConfigProvider(options: /* ... */): NodeZkConfigProvider<string>;
+export function fetchZkConfigProvider(options: /* ... */): FetchZkConfigProvider<string>;
+```
