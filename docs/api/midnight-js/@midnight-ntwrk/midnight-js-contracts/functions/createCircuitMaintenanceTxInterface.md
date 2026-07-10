@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.3**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.4**](../../../README.md)
 
 ***
 
@@ -6,9 +6,9 @@
 
 # Function: createCircuitMaintenanceTxInterface()
 
-> **createCircuitMaintenanceTxInterface**\<`C`, `PCK`\>(`providers`, `circuitId`, `compiledContract`, `contractAddress`): [`CircuitMaintenanceTxInterface`](../type-aliases/CircuitMaintenanceTxInterface.md)
+> **createCircuitMaintenanceTxInterface**\<`C`, `PCK`\>(`providers`, `circuitId`, `compiledContract`, `contractAddress`): [`CircuitMaintenanceTxInterface`](../interfaces/CircuitMaintenanceTxInterface.md)
 
-Creates a [CircuitMaintenanceTxInterface](../type-aliases/CircuitMaintenanceTxInterface.md).
+Creates a [CircuitMaintenanceTxInterface](../interfaces/CircuitMaintenanceTxInterface.md).
 
 ## Type Parameters
 
@@ -47,4 +47,4 @@ The address of the deployed contract for which this
 
 ## Returns
 
-[`CircuitMaintenanceTxInterface`](../type-aliases/CircuitMaintenanceTxInterface.md)
+[`CircuitMaintenanceTxInterface`](../interfaces/CircuitMaintenanceTxInterface.md)

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.3**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.4**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Function: findDeployedContract()
 
-Creates an instance of [FoundContract](../type-aliases/FoundContract.md) given the address of a deployed contract and an
+Creates an instance of [FoundContract](../interfaces/FoundContract.md) given the address of a deployed contract and an
 optional private state ID at which an existing private state is stored. When given, the current value
 at the private state ID is used as the `initialPrivateState` value in the `finalizedDeployTxData`
 property of the returned `FoundContract`.
@@ -43,7 +43,7 @@ IncompleteFindContractPrivateStateConfig If an `initialPrivateState` is given bu
 
 ## Call Signature
 
-> **findDeployedContract**\<`C`\>(`providers`, `options`): `Promise`\<[`FoundContract`](../type-aliases/FoundContract.md)\<`C`\>\>
+> **findDeployedContract**\<`C`\>(`providers`, `options`): `Promise`\<[`FoundContract`](../interfaces/FoundContract.md)\<`C`\>\>
 
 ### Type Parameters
 
@@ -59,15 +59,15 @@ IncompleteFindContractPrivateStateConfig If an `initialPrivateState` is given bu
 
 #### options
 
-[`FindDeployedContractOptionsBase`](../type-aliases/FindDeployedContractOptionsBase.md)\<`C`\>
+[`FindDeployedContractOptionsBase`](../interfaces/FindDeployedContractOptionsBase.md)\<`C`\>
 
 ### Returns
 
-`Promise`\<[`FoundContract`](../type-aliases/FoundContract.md)\<`C`\>\>
+`Promise`\<[`FoundContract`](../interfaces/FoundContract.md)\<`C`\>\>
 
 ## Call Signature
 
-> **findDeployedContract**\<`C`\>(`providers`, `options`): `Promise`\<[`FoundContract`](../type-aliases/FoundContract.md)\<`C`\>\>
+> **findDeployedContract**\<`C`\>(`providers`, `options`): `Promise`\<[`FoundContract`](../interfaces/FoundContract.md)\<`C`\>\>
 
 ### Type Parameters
 
@@ -83,15 +83,15 @@ IncompleteFindContractPrivateStateConfig If an `initialPrivateState` is given bu
 
 #### options
 
-[`FindDeployedContractOptionsExistingPrivateState`](../type-aliases/FindDeployedContractOptionsExistingPrivateState.md)\<`C`\>
+[`FindDeployedContractOptionsExistingPrivateState`](../interfaces/FindDeployedContractOptionsExistingPrivateState.md)\<`C`\>
 
 ### Returns
 
-`Promise`\<[`FoundContract`](../type-aliases/FoundContract.md)\<`C`\>\>
+`Promise`\<[`FoundContract`](../interfaces/FoundContract.md)\<`C`\>\>
 
 ## Call Signature
 
-> **findDeployedContract**\<`C`\>(`providers`, `options`): `Promise`\<[`FoundContract`](../type-aliases/FoundContract.md)\<`C`\>\>
+> **findDeployedContract**\<`C`\>(`providers`, `options`): `Promise`\<[`FoundContract`](../interfaces/FoundContract.md)\<`C`\>\>
 
 ### Type Parameters
 
@@ -107,8 +107,8 @@ IncompleteFindContractPrivateStateConfig If an `initialPrivateState` is given bu
 
 #### options
 
-[`FindDeployedContractOptionsStorePrivateState`](../type-aliases/FindDeployedContractOptionsStorePrivateState.md)\<`C`\>
+[`FindDeployedContractOptionsStorePrivateState`](../interfaces/FindDeployedContractOptionsStorePrivateState.md)\<`C`\>
 
 ### Returns
 
-`Promise`\<[`FoundContract`](../type-aliases/FoundContract.md)\<`C`\>\>
+`Promise`\<[`FoundContract`](../interfaces/FoundContract.md)\<`C`\>\>

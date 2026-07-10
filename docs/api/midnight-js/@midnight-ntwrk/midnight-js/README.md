@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.3**](../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.4**](../../README.md)
 
 ***
 
@@ -34,7 +34,6 @@ const deployed = await contracts.deployContract(providers, {
 | ------------ | ---------------------------------------- | ---------------------------------------------- |
 | `contracts`  | `@midnight-ntwrk/midnight-js-contracts`  | Contract deployment and interaction utilities   |
 | `networkId`  | `@midnight-ntwrk/midnight-js-network-id` | Network identifier management                  |
-| `protocol`   | `@midnight-ntwrk/midnight-js-protocol`   | Version-agnostic protocol type re-exports       |
 | `types`      | `@midnight-ntwrk/midnight-js-types`      | Shared types, interfaces, and provider contracts|
 | `utils`      | `@midnight-ntwrk/midnight-js-utils`      | Hex encoding, address validation, and utilities |
 

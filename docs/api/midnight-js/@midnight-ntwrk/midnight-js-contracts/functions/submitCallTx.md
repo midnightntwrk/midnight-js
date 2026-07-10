@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.3**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.4**](../../../README.md)
 
 ***
 
@@ -48,14 +48,14 @@ When transaction fails in either guaranteed or fallible phase.
 
 ## Remarks
 
-The returned [FinalizedCallTxData](../type-aliases/FinalizedCallTxData.md) (and the [CallResult](../type-aliases/CallResult.md) variant)
+The returned [FinalizedCallTxData](../interfaces/FinalizedCallTxData.md) (and the [CallResult](../interfaces/CallResult.md) variant)
 is privacy-sensitive and carries the unproven transaction and private
 state. See those types for handling guidance before logging, serializing,
 or transmitting the result.
 
 ## Call Signature
 
-> **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`FinalizedCallTxData`](../type-aliases/FinalizedCallTxData.md)\<`C`, `PCK`\>\>
+> **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`FinalizedCallTxData`](../interfaces/FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
 ### Type Parameters
 
@@ -79,11 +79,11 @@ or transmitting the result.
 
 ### Returns
 
-`Promise`\<[`FinalizedCallTxData`](../type-aliases/FinalizedCallTxData.md)\<`C`, `PCK`\>\>
+`Promise`\<[`FinalizedCallTxData`](../interfaces/FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
 ## Call Signature
 
-> **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`FinalizedCallTxData`](../type-aliases/FinalizedCallTxData.md)\<`C`, `PCK`\>\>
+> **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`FinalizedCallTxData`](../interfaces/FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
 ### Type Parameters
 
@@ -107,11 +107,11 @@ or transmitting the result.
 
 ### Returns
 
-`Promise`\<[`FinalizedCallTxData`](../type-aliases/FinalizedCallTxData.md)\<`C`, `PCK`\>\>
+`Promise`\<[`FinalizedCallTxData`](../interfaces/FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
 ## Call Signature
 
-> **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`, `transactionContext`): `Promise`\<[`CallResult`](../type-aliases/CallResult.md)\<`C`, `PCK`\>\>
+> **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`, `transactionContext`): `Promise`\<[`CallResult`](../interfaces/CallResult.md)\<`C`, `PCK`\>\>
 
 ### Type Parameters
 
@@ -139,11 +139,11 @@ or transmitting the result.
 
 ### Returns
 
-`Promise`\<[`CallResult`](../type-aliases/CallResult.md)\<`C`, `PCK`\>\>
+`Promise`\<[`CallResult`](../interfaces/CallResult.md)\<`C`, `PCK`\>\>
 
 ## Call Signature
 
-> **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`, `transactionContext`): `Promise`\<[`CallResult`](../type-aliases/CallResult.md)\<`C`, `PCK`\>\>
+> **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`, `transactionContext`): `Promise`\<[`CallResult`](../interfaces/CallResult.md)\<`C`, `PCK`\>\>
 
 ### Type Parameters
 
@@ -171,4 +171,4 @@ or transmitting the result.
 
 ### Returns
 
-`Promise`\<[`CallResult`](../type-aliases/CallResult.md)\<`C`, `PCK`\>\>
+`Promise`\<[`CallResult`](../interfaces/CallResult.md)\<`C`, `PCK`\>\>

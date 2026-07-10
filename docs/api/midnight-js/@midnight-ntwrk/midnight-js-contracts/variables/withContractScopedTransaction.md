@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.3**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.4**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Variable: withContractScopedTransaction
 
-> `const` **withContractScopedTransaction**: \<`C`, `PCK`\>(`providers`, `fn`, `options?`) => `Promise`\<[`FinalizedCallTxData`](../type-aliases/FinalizedCallTxData.md)\<`C`, `PCK`\>\>
+> `const` **withContractScopedTransaction**: \<`C`, `PCK`\>(`providers`, `fn`, `options?`) => `Promise`\<[`FinalizedCallTxData`](../interfaces/FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
 Executes a function within the context of a contract-scoped transaction.
 
@@ -36,13 +36,13 @@ The function to execute within the transaction context.
 
 ### options?
 
-[`ScopedTransactionOptions`](../type-aliases/ScopedTransactionOptions.md)
+[`ScopedTransactionOptions`](../interfaces/ScopedTransactionOptions.md)
 
 Optional transaction scope options.
 
 ## Returns
 
-`Promise`\<[`FinalizedCallTxData`](../type-aliases/FinalizedCallTxData.md)\<`C`, `PCK`\>\>
+`Promise`\<[`FinalizedCallTxData`](../interfaces/FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
 A `Promise` that resolves with the finalized transaction data of the single transaction
 created for all circuit calls made within `fn`.

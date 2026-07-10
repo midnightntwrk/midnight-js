@@ -1,0 +1,44 @@
+[**Midnight.js API Reference v5.0.0-beta.4**](../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../packages.md) / [@midnight-ntwrk/midnight-js-contracts](../README.md) / UnsubmittedTxData
+
+# Interface: UnsubmittedTxData
+
+Data relevant to any unsubmitted transaction.
+
+## Remarks
+
+**Privacy-sensitive type.** Every field on this type is private: the
+`unprovenTx` field carries the `UnprovenTransaction` that the underlying
+zero-knowledge proofs were designed to keep confidential, and `newCoins`
+includes shielded coin material that must not leak.
+
+Application code must not log, serialize, or transmit instances of this
+type. The framework deliberately exposes these references to support
+retry, replay, debug, and redacted-telemetry workflows that require
+access to the underlying transaction structure — raw transmission to
+observability platforms (log shippers, error reporters, analytics) is
+not an intended use.
+
+## Extended by
+
+- [`UnsubmittedCallTxPrivateData`](UnsubmittedCallTxPrivateData.md)
+- [`UnsubmittedDeployTxPrivateDataFull`](UnsubmittedDeployTxPrivateDataFull.md)
+
+## Properties
+
+### newCoins
+
+> `readonly` **newCoins**: `ShieldedCoinInfo`[]
+
+New coins created during the construction of the transaction.
+
+***
+
+### unprovenTx
+
+> `readonly` **unprovenTx**: `UnprovenTransaction`
+
+The unproven ledger transaction produced.
