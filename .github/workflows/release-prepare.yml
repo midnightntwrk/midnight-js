@@ -90,12 +90,13 @@ jobs:
       # a bare noreply email that resolves to no account, which leaves the
       # `license/cla` check permanently "not signed". GH_TOKEN is a PAT (not
       # GITHUB_TOKEN) so the opened PR still triggers CI.
-      # Head branch is `prepare-release/*`, NOT `release/*`: a ruleset protects
-      # `release/*` (requires PR + status checks), which would reject the API
-      # commit below with "Changes must be made through a pull request". The PR
-      # still targets main and merging still triggers publish (detect-release in
-      # ci.yml compares package.json versions, independent of the branch name).
-      - name: Push release branch
+      # The release/* ruleset ALLOWS creating a branch but BLOCKS updating one
+      # ("Changes must be made through a pull request"). Creating release/vX and
+      # then adding the bump commit fails, because that second step is an update.
+      # So mirror scripts/release.sh: build the signed commit on an unprotected
+      # staging branch, then create release/vX pointing straight at it - a single
+      # creation, which the ruleset permits.
+      - name: Stage bump and push unprotected staging branch
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           REPO: ${{ github.repository }}
@@ -106,14 +107,12 @@ jobs:
           # collapsed untracked directory (which it would fail to read).
           git add -A -- package.json CHANGELOG.md packages testkit-js
           git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
-          # --no-verify: skip the husky pre-push hook (yarn lint + typecheck).
-          # It is a local-dev guard and needs a full build to resolve workspace
-          # imports; this job only bumps files and never builds, so the hook
-          # would fail with import/no-unresolved. The pushed ref is just the
-          # current main tip; ghcommit-action adds the release commit via API.
-          git push --no-verify --force origin "HEAD:refs/heads/prepare-release/v${VERSION}"
+          # staging/* is not matched by the release/* ruleset, so it can be
+          # committed to and deleted freely. --no-verify skips the husky pre-push
+          # hook (lint/typecheck), which needs a full build this job never runs.
+          git push --no-verify --force origin "HEAD:refs/heads/staging/release-v${VERSION}"
 
-      - name: Commit release changes via GitHub API (signed)
+      - name: Commit bump via GitHub API (signed) onto staging branch
         # planetscale/ghcommit-action commits via GitHub's GraphQL
         # createCommitOnBranch API, so the commit is GitHub-signed (Verified)
         # and attributed to the GH_TOKEN owner (MidnightCI).
@@ -121,25 +120,33 @@ jobs:
         with:
           commit_message: "chore(release): bump version to ${{ inputs.version }}"
           repo: ${{ github.repository }}
-          branch: prepare-release/v${{ inputs.version }}
+          branch: staging/release-v${{ inputs.version }}
           file_pattern: "package.json CHANGELOG.md packages testkit-js"
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
-      - name: Open release PR
+      - name: Create release/v<version> at the signed commit and open PR
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          REPO: ${{ github.repository }}
           VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
-          # Idempotent: a re-dispatch for a version whose PR is already open
-          # force-pushes the branch and re-commits above, so only skip the
-          # create (which would otherwise fail with "already exists").
-          if [ -n "$(gh pr list --head "prepare-release/v${VERSION}" --state open --json number --jq '.[].number')" ]; then
-            echo "Release PR for v${VERSION} already open; the new signed commit was pushed to it."
-            exit 0
+          # release/vX is protected - once created it cannot be updated or
+          # deleted - so refuse if it already exists (bump a new version).
+          if gh api "repos/${REPO}/git/ref/heads/release/v${VERSION}" >/dev/null 2>&1; then
+            echo "::error::release/v${VERSION} already exists and is protected. Bump a new version."
+            exit 1
           fi
-          gh pr create --base main --head "prepare-release/v${VERSION}" \
+          # The signed commit the action just made on the staging branch.
+          sha=$(gh api "repos/${REPO}/git/ref/heads/staging/release-v${VERSION}" --jq '.object.sha')
+          # Create release/vX pointing at it (creation is permitted; an update
+          # would be rejected by the ruleset).
+          gh api -X POST "repos/${REPO}/git/refs" -f ref="refs/heads/release/v${VERSION}" -f sha="${sha}"
+          # Best-effort cleanup of the unprotected staging branch.
+          gh api -X DELETE "repos/${REPO}/git/refs/heads/staging/release-v${VERSION}" \
+            || echo "note: could not delete staging branch (non-fatal)"
+          gh pr create --base main --head "release/v${VERSION}" \
             --title "chore(release): bump version to ${VERSION}" \
             --body "Automated release preparation for v${VERSION}.
 
