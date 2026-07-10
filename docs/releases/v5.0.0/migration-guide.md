@@ -166,6 +166,31 @@ If you make calls that span multiple deployed contracts, resolve proving artifac
 
 ---
 
+## Step 11 — Read MIP-0002 log events from `CallResult` (optional)
+
+Local call results now surface their MIP-0002 log events on `CallResultPublic.events` (previously dropped). No change is required — the field is additive. To consume them, decode with the `ContractLog` helper re-exported through the barrel (no direct `compact-js` dependency needed):
+
+```ts
+import { contracts } from '@midnight-ntwrk/midnight-js';
+
+const logs = contracts.ContractLog.decodeAll(result.public.events); // lenient — never throws
+```
+
+---
+
+## Step 12 — Migrate to `provider(options)` factories (optional)
+
+Positional provider constructors still work but are `@deprecated` for one release cycle. Move to the object-options form at your convenience:
+
+```diff
+- httpClientProofProvider(url, zkConfigProvider);
++ httpClientProofProvider({ url, zkConfigProvider });
+```
+
+`nodeZkConfigProvider(options)` / `fetchZkConfigProvider(options)` factory functions are also available alongside the existing classes.
+
+---
+
 ## Verification checklist
 
 - [ ] `yarn install` clean with the resolutions in place (no duplicate ledger-v9 majors).

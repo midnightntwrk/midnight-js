@@ -33,7 +33,8 @@ See [breaking-changes.md](./breaking-changes.md) for full rationale and before/a
 ## Headline Features
 
 - **Cross-contract call support** — assemble/prove/submit call trees spanning multiple deployed contracts; `ZKConfigRegistry` resolves per-contract artifacts by verifier-key hash (no address registration), plus a new `PublicDataProvider.queryBlock()` "as-of" endpoint (#967).
-- **MIP-0002 contract events on `PublicDataProvider`** — `queryContractEvents()` (paged point-in-time read), `contractEventsObservable()` (replay-from-cursor then live tail), and the `getAllContractEvents()` async-iterator helper, backed by an 11-variant `ContractEvent` discriminated union (#988).
+- **MIP-0002 contract events, two surfaces** — off-chain on `PublicDataProvider` via `queryContractEvents()` (paged point-in-time read), `contractEventsObservable()` (replay-from-cursor then live tail), and the `getAllContractEvents()` async-iterator helper, backed by an 11-variant `ContractEvent` discriminated union (#988); and on the local-execution path via `CallResultPublic.events` with a `contracts.ContractLog.decodeAll()` helper (#1083).
+- **Uniform `provider(options)` factories** — `httpClientProofProvider({ url, zkConfigProvider, ... })` and `nodeZkConfigProvider(options)` / `fetchZkConfigProvider(options)`; additive and backward-compatible, positional forms retained as `@deprecated` (#1078).
 - **ZK artifact integrity verification** — providers verify artifacts against the `compactc` `contract-manifest.json`; fail-closed by default with an optional `expectedManifestHash` pin (#1015).
 - **Deflate-compressed subscriptions** — `graphql-transport-ws+deflate` negotiation with transparent inflation and a 16 MiB compression-bomb cap (#977).
 - **Disposable `IndexerPublicDataProvider`** — the inner factory is now a class with a structured `IndexerProviderConfig` (`{ queryURL, subscriptionURL, ... }`), fail-fast config validation, and an explicit `dispose()` that releases the underlying WebSocket connection (#961).
@@ -41,4 +42,4 @@ See [breaking-changes.md](./breaking-changes.md) for full rationale and before/a
 
 ## Pre-release protocol note
 
-The v9 / v4 protocol packages this release targets are themselves release candidates (`@midnightntwrk/ledger-v9@1.0.0-rc.3`, `@midnightntwrk/onchain-runtime-v4@4.0.0-rc.3`), paired with `compact-runtime 0.18.0-rc.1`, `compact-js 2.5.5-rc.6`, and `compactc 0.33.0-rc.1`. The testkit wallet stack is on the `2.0.0-beta.2` line. Pin transitive copies to a single version to avoid duplicate-major type clashes (the migration guide covers the resolutions).
+The v9 / v4 protocol packages this release targets are themselves release candidates (`@midnightntwrk/ledger-v9@1.0.0-rc.3`, `@midnightntwrk/onchain-runtime-v4@4.0.0-rc.3`), paired with `compact-runtime 0.18.0-rc.1`, `compact-js 2.5.5-rc.7`, and `compactc 0.33.0-rc.1`. The testkit wallet stack is on the `2.0.0-beta.2` line. Pin transitive copies to a single version to avoid duplicate-major type clashes (the migration guide covers the resolutions).

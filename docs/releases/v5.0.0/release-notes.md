@@ -17,7 +17,7 @@ v5.0.0 is a major release. It retargets the framework's on-chain protocol bindin
 
 The subpath re-exports `@midnight-ntwrk/midnight-js-protocol/ledger` and `/onchain-runtime` now resolve to the v9 / v4 packages. The new `@midnightntwrk` scope is registered in `.yarnrc.yml` and both scope variants are flagged by the ESLint `no-restricted-imports` ACL outside `packages/protocol/src/`.
 
-This pulls through a coordinated dependency set: `@midnight-ntwrk/platform-js@3.0.0`, `@midnight-ntwrk/compact-runtime@0.18.0-rc.1`, `@midnight-ntwrk/compact-js@2.5.5-rc.6`, and `compactc 0.33.0-rc.1` (compiler 0.33.0 / language 0.25.0 / runtime 0.18.0-rc.1).
+This pulls through a coordinated dependency set: `@midnight-ntwrk/platform-js@3.0.0`, `@midnight-ntwrk/compact-runtime@0.18.0-rc.1`, `@midnight-ntwrk/compact-js@2.5.5-rc.7`, and `compactc 0.33.0-rc.1` (compiler 0.33.0 / language 0.25.0 / runtime 0.18.0-rc.1).
 
 ### `SigningKey` is now a structured object (#970)
 
@@ -67,6 +67,24 @@ The mapper fails fast on an unknown `__typename` or a missing required field, an
 
 > The query / streaming surface covers all 11 event variants. Contract-side **emission** of MIP-0002 events requires `compactc 0.33.0-rc.1` + `compact-runtime 0.18.x` and is exercised end-to-end by an emit→indexer contract-events test (#993) for all shielded events and unshielded **mint/burn**. Unshielded **spend/receive** remain skipped pending an indexer decode fix (midnight-indexer#1279); **Misc** is skipped separately because proving `emitMisc` — the suite's heaviest circuit (~5× the next-largest zkir) — needs a proof-server-side fix.
 
+### MIP-0002 log events on `CallResult` (#1083)
+
+The **local-execution path** now surfaces the MIP-0002 contract log events that `compact-js` already computes — `midnight-js` was previously discarding them:
+
+- `CallResultPublic.events` — a new `readonly LogEvent[]` field carrying the single execution-wide event list across the whole call tree, in emission order, each event tagged with its emitting contract's address. Carried **raw** (no eager decode).
+- `ContractLog` is re-exported from `compact-js` through the barrel (`contracts.ContractLog`), so consumers decode with `ContractLog.decodeAll(result.public.events)` (lenient, never throws) **without** taking a direct dependency on `compact-js`.
+
+This complements the indexer-sourced querying/streaming from #988: #988 reads events off-chain from the indexer, while this exposes them synchronously on the result of a local call.
+
+### `provider(options)` factories for proof and ZK-config providers (#1078)
+
+The provider layer moves toward a uniform `provider(options)` convention — wiring a provider means passing one options object instead of remembering positional-argument order. **Additive and backward-compatible**: existing positional/class usage keeps working.
+
+- `httpClientProofProvider({ url, zkConfigProvider, timeout?, headers? })` — new object-options form with a flattened config; the positional signature is retained as a `@deprecated` overload for one release cycle (same pattern as `indexerPublicDataProvider`).
+- `nodeZkConfigProvider(options)` / `fetchZkConfigProvider(options)` — thin factory functions alongside the existing `NodeZkConfigProvider` / `FetchZkConfigProvider` classes (the classes stay exported; only a consistent call-site is added).
+
+Low-level `httpClientProvingProvider` is intentionally left positional and tracked as a follow-up.
+
 ### Deflate-compressed subscriptions (#977)
 
 The indexer provider negotiates the `graphql-transport-ws+deflate` WebSocket subprotocol and transparently inflates compressed subscription frames (RFC 1950 zlib via the universal `DecompressionStream`, covering Node ≥ 18 and modern browsers). It falls back cleanly when the server selects the plain subprotocol, and enforces a 16 MiB hard cap on inflated payloads to guard against compression-bomb DoS.
@@ -107,6 +125,7 @@ The generated contract-event GraphQL schema gains transaction references and bet
 
 ## Refactoring
 
+- **midnight-js:** convert intersection type aliases to interfaces for clearer IDE tooltips (#629).
 - **midnight-js:** wrapper consolidation, assertion hygiene, and a `pollUntilPresent` helper (#962).
 - **midnight-js:** split the `indexer-public-data-provider` monolith into 7 layered files (#960).
 - **utils:** extract the shared structured signing-key validation into `midnight-js-utils` (#970).
@@ -114,7 +133,7 @@ The generated contract-event GraphQL schema gains transaction references and bet
 
 ## Build & CI
 
-- Bump the Compact toolchain to `compactc 0.33.0-rc.1` / `compact-runtime 0.18.0-rc.1` / `compact-js 2.5.5-rc.6` and regenerate all compiled artifacts (`runtime-version` stamps `0.18.0-rc.1`) (#1068). Follows the initial `compactc 0.33.0-rc.0` / `compact-runtime 0.18.0-rc.0` bump (#1016), which switched back to the release tag/asset prefixes and superseded the earlier `compactc 0.32.102` / `compact-runtime 0.17.102` bump (#996).
+- Bump the Compact toolchain to `compactc 0.33.0-rc.1` / `compact-runtime 0.18.0-rc.1` / `compact-js 2.5.5-rc.7` and regenerate all compiled artifacts (`runtime-version` stamps `0.18.0-rc.1`) (#1068, #1081 — `compact-js` `rc.6` → `rc.7`). Follows the initial `compactc 0.33.0-rc.0` / `compact-runtime 0.18.0-rc.0` bump (#1016), which switched back to the release tag/asset prefixes and superseded the earlier `compactc 0.32.102` / `compact-runtime 0.17.102` bump (#996).
 - Enforce `packageManager` and `engines` consistency across the workspace via yarn constraints (#1067).
 - Dedupe workflow setup, gate release concurrency, and fix coverage mapping (#1065); publish releases from CI, dropping the duplicate CD e2e run (#1033).
 - Speed up e2e env startup (#1064) and cache pinned Docker images to unblock e2e parallelism (#1062).
@@ -126,6 +145,7 @@ The generated contract-event GraphQL schema gains transaction references and bet
 ## Dependencies
 
 - `build(deps): re-apply devnet stack and wallet/ledger/connector/zkir dependency bumps` (#1045) — restores the baseline reverted in #1038: `@midnightntwrk/wallet-sdk` (+ `wallet-sdk-prover-client`) `2.0.0-beta.2`, `wallet-sdk-address-format` `4.0.0-beta.2`, `@midnightntwrk/ledger-v9` `1.0.0-rc.3`, `@midnightntwrk/dapp-connector-api` `4.1.0-beta.1` (rescoped from `@midnight-ntwrk`), devnet node `2.0.0-rc.3` / proof-server `9.0.0-rc.4`. testkit-js stays on `@midnight-ntwrk/zkir-v2` `2.1.0` so the DApp-connector local prover engine and its `WasmProver` params share one zkir version.
+- `chore(deps): bump graphql to 17 and graphql-codegen to v6/v7` (#1086) — `indexer-public-data-provider` now depends on `graphql ^17.0.1`.
 - `chore(env): update indexer to 4.4.0-pre-alpha.16` (#1053).
 - `chore(deps): bump @apollo/client 4.2.0 → 4.2.3` (#1056).
 - `chore(deps): bump lint-staged to 17 and transitive security deps` (#1051).
