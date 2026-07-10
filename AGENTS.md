@@ -368,10 +368,11 @@ If unsure whether a change qualifies, it probably does — write the ADR.
 
 1. Copy [`docs/adr/template.md`](./docs/adr/template.md) to
    `docs/adr/NNNN-kebab-title.md` using the next sequential zero-padded number.
-2. Open it as `Proposed`, fill in Context / Decision / Consequences / Alternatives.
-3. Add a row to the index table in `docs/adr/README.md`.
-4. Flip the status to `Accepted` when the decision lands. To reverse a past
-   decision, add a new ADR and mark the old one `Superseded by ADR-NNNN`.
+2. Fill in Context / Decision / Consequences / Alternatives, marked `Accepted` —
+   approving the PR is the acceptance, so ADRs land `Accepted`, not `Proposed`.
+3. Add a row to the index table in `docs/adr/README.md` in the same PR.
+4. To reverse a past decision, add a new ADR and mark the old one
+   `Superseded by ADR-NNNN`.
 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
