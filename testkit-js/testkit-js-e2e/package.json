@@ -2,6 +2,7 @@
   "name": "@midnight-ntwrk/testkit-js-e2e",
   "version": "5.0.0-beta.6",
   "description": "E2E tests for Midnight JS packages",
+  "private": true,
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -42,8 +43,7 @@
     "compact-unshielded": "run-compactc src/contract/unshielded.compact ./src/contract/compiled/unshielded",
     "compact-shielded": "run-compactc src/contract/shielded.compact ./src/contract/compiled/shielded",
     "compact-shielded-fallible": "run-compactc src/contract/shielded-fallible.compact ./src/contract/compiled/shielded-fallible",
-    "compact-fee-mint": "run-compactc src/contract/fee-mint.compact ./src/contract/compiled/fee-mint",
-    "deploy": "yarn npm publish --tolerate-republish"
+    "compact-fee-mint": "run-compactc src/contract/fee-mint.compact ./src/contract/compiled/fee-mint"
   },
   "dependencies": {
     "@midnight-ntwrk/midnight-js-compact": "workspace:*",
