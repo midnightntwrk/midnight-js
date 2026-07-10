@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.1.0**](../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.3**](../../README.md)
 
 ***
 
@@ -19,10 +19,19 @@
 - [PrivateStateExportError](classes/PrivateStateExportError.md)
 - [PrivateStateImportError](classes/PrivateStateImportError.md)
 - [SigningKeyExportError](classes/SigningKeyExportError.md)
+- [ZKArtifactNotFoundError](classes/ZKArtifactNotFoundError.md)
 - [ZKConfigProvider](classes/ZKConfigProvider.md)
+- [ZKConfigRegistry](classes/ZKConfigRegistry.md)
 
 ## Interfaces
 
+- [ContractEventAddress](interfaces/ContractEventAddress.md)
+- [ContractEventBase](interfaces/ContractEventBase.md)
+- [ContractEventFieldPrefix](interfaces/ContractEventFieldPrefix.md)
+- [ContractEventFilterBase](interfaces/ContractEventFilterBase.md)
+- [ContractEventQueryFilter](interfaces/ContractEventQueryFilter.md)
+- [ContractEventsPage](interfaces/ContractEventsPage.md)
+- [ContractEventSubscriptionFilter](interfaces/ContractEventSubscriptionFilter.md)
 - [ExportPrivateStatesOptions](interfaces/ExportPrivateStatesOptions.md)
 - [ExportSigningKeysOptions](interfaces/ExportSigningKeysOptions.md)
 - [FinalizedTxData](interfaces/FinalizedTxData.md)
@@ -45,9 +54,15 @@
 ## Type Aliases
 
 - [All](type-aliases/All.md)
+- [AnyPrivateState](type-aliases/AnyPrivateState.md)
+- [AnyProvableCircuitId](type-aliases/AnyProvableCircuitId.md)
 - [BlockHash](type-aliases/BlockHash.md)
 - [BlockHashConfig](type-aliases/BlockHashConfig.md)
 - [BlockHeightConfig](type-aliases/BlockHeightConfig.md)
+- [BlockInfo](type-aliases/BlockInfo.md)
+- [ContractEvent](type-aliases/ContractEvent.md)
+- [ContractEventCursor](type-aliases/ContractEventCursor.md)
+- [ContractEventType](type-aliases/ContractEventType.md)
 - [ContractExecutableRuntimeOptions](type-aliases/ContractExecutableRuntimeOptions.md)
 - [ContractStateObservableConfig](type-aliases/ContractStateObservableConfig.md)
 - [Fees](type-aliases/Fees.md)
@@ -83,6 +98,7 @@
 
 - [asContractAddress](functions/asContractAddress.md)
 - [asEffectOption](functions/asEffectOption.md)
+- [createProofProvider](functions/createProofProvider.md)
 - [createProverKey](functions/createProverKey.md)
 - [createVerifierKey](functions/createVerifierKey.md)
 - [createZKIR](functions/createZKIR.md)

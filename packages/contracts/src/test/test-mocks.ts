@@ -13,18 +13,19 @@
  * limitations under the License.
  */
 
-import { CompiledContract } from '@midnight-ntwrk/compact-js';
-import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
+import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import {
   assert as compactAssert,
   ChargedState,
   CompactError,
   type ContractState,
-  emptyZswapLocalState,  type Op,
+  emptyZswapLocalState,
+  finalizeCallProofData,  type Op,
   sampleSigningKey,
   type SigningKey,
   StateValue,
-  type ZswapLocalState} from '@midnight-ntwrk/compact-runtime';
+  type ZswapLocalState} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
   type AlignedValue,
   type Binding,
@@ -34,6 +35,7 @@ import {
   type DustSecretKey,
   type EncPublicKey,
   type EncryptionSecretKey,
+  LedgerParameters,
   type PartitionedTranscript,
   type Proof,
   type Proofish,
@@ -48,8 +50,10 @@ import {
   type UnprovenTransaction,
   type ZswapChainState,
   type ZswapSecretKeys,
-} from '@midnight-ntwrk/ledger-v7';
+} from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
+  type AnyPrivateState,
+  type AnyProvableCircuitId,
   type FinalizedTxData,
   type PrivateStateId,
   type ProverKey,
@@ -115,19 +119,20 @@ export const createMockZswapLocalState = (): ZswapLocalState => ({
   inputs: []
 });
 
-export const createDefaultCircuit = () => vi.fn().mockImplementation((ctx) => ({
-  result: { test: 'result ' },
-  context: {
-    ...ctx,
-    currentPrivateState: { test: 'next-private-state' }
-  },
-  proofData: {
+export const createDefaultCircuit = () => vi.fn().mockImplementation((ctx) => {
+  finalizeCallProofData(ctx, {
     input: { value: [], alignment: [] },
-    output: undefined,
+    output: { value: [], alignment: [] },
     publicTranscript: [],
     privateTranscriptOutputs: []
-  }
-}));
+  });
+  ctx.callContext.currentPrivateState = { test: 'next-private-state' };
+  return {
+    result: { test: 'result ' },
+    context: ctx,
+    gasCost: ctx.callContext.currentGasCost
+  };
+});
 
 export const createFailingCircuit = (failMessage: string) => vi.fn().mockImplementation((() => {
   compactAssert(false, failMessage);
@@ -148,7 +153,9 @@ const defaultMockContractClassOptions: MockContractClassOptions = {
 const createMockContractClass = (options?: Partial<MockContractClassOptions>) => {
   const finalOptions = { ...defaultMockContractClassOptions, ...options } as MockContractClassOptions;
   return class {
-    constructor(witnesses: Contract.Witnesses<any>) { // eslint-disable-line @typescript-eslint/no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    constructor(witnesses: Contract.Witnesses<any>) {
+
       if (finalOptions.constructorErrorMessage) {
         throw new CompactError(finalOptions.constructorErrorMessage);
       }
@@ -166,13 +173,13 @@ const createMockContractClass = (options?: Partial<MockContractClassOptions>) =>
       this.circuits = {
         testCircuit: finalOptions.testCircuit
       };
-      this.impureCircuits = this.circuits;
+      this.provableCircuits = this.circuits;
     }
     initialState;
     circuits;
-    impureCircuits;
+    provableCircuits;
     witnesses;
-  }
+  };
 }
 
 export const createMockContract = (options?: Partial<MockContractClassOptions>): Contract<undefined> =>
@@ -186,6 +193,8 @@ export const createMockCompiledContract = (options?: Partial<MockContractClassOp
 
 export const createMockUnprovenTx = (): UnprovenTransaction => ({
   addCalls: vi.fn(),
+  addZswapOffer: vi.fn(),
+  addIntent: vi.fn(),
   eraseProofs: vi.fn(),
   identifiers: vi.fn(),
   merge: vi.fn(),
@@ -209,6 +218,8 @@ export const createMockUnprovenTx = (): UnprovenTransaction => ({
 
 export const createMockProvenTx = (): Transaction<Signaturish, Proofish, Bindingish> => ({
   addCalls: vi.fn(),
+  addZswapOffer: vi.fn(),
+  addIntent: vi.fn(),
   eraseProofs: vi.fn(),
   identifiers: vi.fn().mockReturnValue(['test-tx-id']),
   merge: vi.fn(),
@@ -236,13 +247,14 @@ export const createMockCoinInfo = (): ShieldedCoinInfo => ({
   value: 0n
 });
 
-export const createMockProviders = (): ContractProviders<Contract.Any, Contract.ImpureCircuitId<Contract.Any>, Contract.PrivateState<Contract.Any>> => ({
+export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvableCircuitId, AnyPrivateState> => ({
   midnightProvider: {
     submitTx: vi.fn()
   },
   publicDataProvider: {
     watchForDeployTxData: vi.fn(),
     queryDeployContractState: vi.fn(),
+    queryBlock: vi.fn().mockResolvedValue({ hash: '00'.repeat(32), height: 0 }),
     queryContractState: vi.fn(),
     queryZSwapAndContractState: vi.fn(),
     queryUnshieldedBalances: vi.fn(),
@@ -250,7 +262,9 @@ export const createMockProviders = (): ContractProviders<Contract.Any, Contract.
     watchForTxData: vi.fn(),
     contractStateObservable: vi.fn(),
     watchForUnshieldedBalances: vi.fn(),
-    unshieldedBalancesObservable: vi.fn()
+    unshieldedBalancesObservable: vi.fn(),
+    queryContractEvents: vi.fn(),
+    contractEventsObservable: vi.fn()
   },
   privateStateProvider: {
     setContractAddress: vi.fn(),
@@ -323,13 +337,14 @@ export const createMockUnprovenDeployTxData = (overrides: Partial<UnsubmittedDep
   ...overrides
 });
 
-export const createMockUnprovenCallTxData = (overrides: Partial<UnsubmittedCallTxData<Contract.Any, Contract.ImpureCircuitId<Contract.Any>>> = {}): UnsubmittedCallTxData<Contract.Any, Contract.ImpureCircuitId<Contract.Any>> => ({
+export const createMockUnprovenCallTxData = (overrides: Partial<UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId>> = {}): UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId> => ({
     public: {
       nextContractState: StateValue.newNull(),
       publicTranscript: [
         { noop: { n: 1 } }
       ] as Op<AlignedValue>[],
       partitionedTranscript: {} as PartitionedTranscript,
+      logEvents: [],
       ...overrides.public
     },
     private: {
@@ -342,10 +357,11 @@ export const createMockUnprovenCallTxData = (overrides: Partial<UnsubmittedCallT
       result: vi.fn(),
       nextZswapLocalState: createMockZswapLocalState(),
       ...overrides.private
-    }
+    },
+    calls: overrides.calls ?? []
 });
 
-export const createMockCallOptions = (overrides: Partial<CallOptions<Contract.Any, Contract.ImpureCircuitId<Contract.Any>>> = {}): CallOptions<Contract.Any, Contract.ImpureCircuitId<Contract.Any>> => ({
+export const createMockCallOptions = (overrides: Partial<CallOptions<Contract.Any, AnyProvableCircuitId>> = {}): CallOptions<Contract.Any, AnyProvableCircuitId> => ({
   compiledContract: createMockCompiledContract(),
   circuitId: 'testCircuit',
   args: [] as never[],
@@ -353,10 +369,11 @@ export const createMockCallOptions = (overrides: Partial<CallOptions<Contract.An
   coinPublicKey: createMockCoinPublicKey(),
   initialContractState: createMockContractState(),
   initialZswapChainState: {} as ZswapChainState,
+  ledgerParameters: LedgerParameters.initialParameters(),
   ...overrides
 });
 
-export const createMockCallOptionsWithPrivateState = (overrides: Partial<CallOptionsWithPrivateState<Contract.Any, Contract.ImpureCircuitId<Contract.Any>>> = {}): CallOptionsWithPrivateState<Contract.Any, Contract.ImpureCircuitId<Contract.Any>> => ({
+export const createMockCallOptionsWithPrivateState = (overrides: Partial<CallOptionsWithPrivateState<Contract.Any, AnyProvableCircuitId>> = {}): CallOptionsWithPrivateState<Contract.Any, AnyProvableCircuitId> => ({
   ...createMockCallOptions(),
   initialPrivateState: { test: 'private-state' },
   ...overrides

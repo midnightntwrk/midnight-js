@@ -82,7 +82,7 @@ direnv status
 If you prefer not to use direnv, manually set environment:
 
 ```bash
-export COMPACTC_VERSION=0.29.0
+export COMPACTC_VERSION=0.33.0-rc.1
 nvm use
 git config --local commit.gpgSign true
 git config --local tag.gpgSign true
@@ -229,9 +229,6 @@ git push --no-verify
 git commit -m "feat(contracts): add batch deployment"
 git commit -m "fix(utils): handle empty input"
 git commit -m "docs: update README"
-
-# Or use interactive commit
-yarn commit
 ```
 
 **Valid types:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `ci`, `build`, `revert`
@@ -302,7 +299,7 @@ yarn build
 direnv allow
 
 # Without direnv
-export COMPACTC_VERSION=0.29.0
+export COMPACTC_VERSION=0.33.0-rc.1
 ```
 
 ### Docker Compose Service Unhealthy

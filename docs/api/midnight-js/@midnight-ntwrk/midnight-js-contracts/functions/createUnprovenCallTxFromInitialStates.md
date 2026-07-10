@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.1.0**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.3**](../../../README.md)
 
 ***
 
@@ -11,15 +11,26 @@ unproven, unsubmitted, call transaction.
 
 ## Param
 
+## Param
+
 Configuration.
 
 ## Param
 
 ## Param
 
+Enables cross-contract calls; required for circuits that make them.
+
+## Remarks
+
+The returned [UnsubmittedCallTxData](../type-aliases/UnsubmittedCallTxData.md) is privacy-sensitive and carries
+the unproven transaction, ZK inputs/outputs, and next private state. See
+that type for handling guidance before logging, serializing, or
+transmitting the result.
+
 ## Call Signature
 
-> **createUnprovenCallTxFromInitialStates**\<`C`, `ICK`\>(`zkConfigProvider`, `options`, `walletEncryptionPublicKey`): `Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `ICK`\>\>
+> **createUnprovenCallTxFromInitialStates**\<`C`, `PCK`\>(`zkConfigProvider`, `options`, `walletEncryptionPublicKey`, `crossContract?`): `Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
 
 ### Type Parameters
 
@@ -27,31 +38,35 @@ Configuration.
 
 `C` *extends* `Contract`\<`undefined`, `Witnesses`\<`undefined`\>\>
 
-#### ICK
+#### PCK
 
-`ICK` *extends* `string`
+`PCK` *extends* `string`
 
 ### Parameters
 
 #### zkConfigProvider
 
-`ZKConfigProvider`\<`string`\>
+[`ZKConfigProvider`](#)\<`string`\>
 
 #### options
 
-[`CallOptionsWithProviderDataDependencies`](../type-aliases/CallOptionsWithProviderDataDependencies.md)\<`C`, `ICK`\>
+[`CallOptionsWithProviderDataDependencies`](../type-aliases/CallOptionsWithProviderDataDependencies.md)\<`C`, `PCK`\>
 
 #### walletEncryptionPublicKey
 
 `string`
 
+#### crossContract?
+
+`CrossContractConfig`
+
 ### Returns
 
-`Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `ICK`\>\>
+`Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
 
 ## Call Signature
 
-> **createUnprovenCallTxFromInitialStates**\<`C`, `ICK`\>(`zkConfigProvider`, `options`, `walletEncryptionPublicKey`): `Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `ICK`\>\>
+> **createUnprovenCallTxFromInitialStates**\<`C`, `PCK`\>(`zkConfigProvider`, `options`, `walletEncryptionPublicKey`, `crossContract?`): `Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
 
 ### Type Parameters
 
@@ -59,24 +74,28 @@ Configuration.
 
 `C` *extends* `Any`
 
-#### ICK
+#### PCK
 
-`ICK` *extends* `string`
+`PCK` *extends* `string`
 
 ### Parameters
 
 #### zkConfigProvider
 
-`ZKConfigProvider`\<`string`\>
+[`ZKConfigProvider`](#)\<`string`\>
 
 #### options
 
-[`CallOptionsWithPrivateState`](../type-aliases/CallOptionsWithPrivateState.md)\<`C`, `ICK`\>
+[`CallOptionsWithPrivateState`](../type-aliases/CallOptionsWithPrivateState.md)\<`C`, `PCK`\>
 
 #### walletEncryptionPublicKey
 
 `string`
 
+#### crossContract?
+
+`CrossContractConfig`
+
 ### Returns
 
-`Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `ICK`\>\>
+`Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>

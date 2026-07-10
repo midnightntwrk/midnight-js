@@ -22,7 +22,7 @@
  * @throws Error If the value is nullable.
  */
 export function assertDefined<A>(value: A | null | undefined, message?: string): asserts value is NonNullable<A> {
-  if (!value) {
+  if (value === null || value === undefined) {
     throw new Error(message ?? 'Expected value to be defined');
   }
 }
@@ -36,7 +36,7 @@ export function assertDefined<A>(value: A | null | undefined, message?: string):
  * @throws Error If the value is not undefined or null
  */
 export function assertUndefined<A>(value: A | null | undefined, message?: string): asserts value is undefined | null {
-  if (value) {
+  if (value !== null && value !== undefined) {
     throw new Error(message ?? 'Expected value to be null or undefined');
   }
 }

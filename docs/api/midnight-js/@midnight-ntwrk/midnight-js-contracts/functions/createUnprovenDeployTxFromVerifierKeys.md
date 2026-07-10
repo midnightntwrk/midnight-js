@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.1.0**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.3**](../../../README.md)
 
 ***
 
@@ -23,6 +23,13 @@ Configuration.
 
 ## Param
 
+## Remarks
+
+The returned [UnsubmittedDeployTxData](../type-aliases/UnsubmittedDeployTxData.md) is privacy-sensitive and
+carries the unproven transaction, signing key, initial private state, and
+initial Zswap state. See that type for handling guidance before logging,
+serializing, or transmitting the result.
+
 ## Call Signature
 
 > **createUnprovenDeployTxFromVerifierKeys**\<`C`\>(`zkConfigProvider`, `coinPublicKey`, `options`, `encryptionPublicKey`): `Promise`\<[`UnsubmittedDeployTxData`](../type-aliases/UnsubmittedDeployTxData.md)\<`C`\>\>
@@ -37,7 +44,7 @@ Configuration.
 
 #### zkConfigProvider
 
-`ZKConfigProvider`\<`string`\>
+[`ZKConfigProvider`](#)\<`string`\>
 
 #### coinPublicKey
 
@@ -69,7 +76,7 @@ Configuration.
 
 #### zkConfigProvider
 
-`ZKConfigProvider`\<`string`\>
+[`ZKConfigProvider`](#)\<`string`\>
 
 #### coinPublicKey
 

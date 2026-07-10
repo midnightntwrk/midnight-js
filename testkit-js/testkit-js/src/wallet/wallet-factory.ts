@@ -13,17 +13,25 @@
  * limitations under the License.
  */
 
-import { DustSecretKey, LedgerParameters, ZswapSecretKeys } from '@midnight-ntwrk/ledger-v7';
-import { DustWallet, type DustWalletAPI } from '@midnight-ntwrk/wallet-sdk-dust-wallet';
-import { type DefaultConfiguration, WalletFacade } from '@midnight-ntwrk/wallet-sdk-facade';
-import { ShieldedWallet, type ShieldedWalletAPI } from '@midnight-ntwrk/wallet-sdk-shielded';
-import { type DefaultV1Configuration } from '@midnight-ntwrk/wallet-sdk-shielded/v1';
+import { DustSecretKey, LedgerParameters, ZswapSecretKeys } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
+  type DefaultConfiguration,
+  type DefaultDustConfiguration,
+  type DefaultShieldedConfiguration,
+  type DefaultUnshieldedConfiguration,
+  DustWallet,
+  type DustWalletAPI,
   InMemoryTransactionHistoryStorage,
+  mergeWalletEntries,
   PublicKey,
+  ShieldedWallet,
+  type ShieldedWalletAPI,
   type UnshieldedKeystore,
   UnshieldedWallet,
-  type UnshieldedWalletAPI} from '@midnight-ntwrk/wallet-sdk-unshielded-wallet';
+  type UnshieldedWalletAPI,
+  WalletEntrySchema,
+  WalletFacade
+} from '@midnightntwrk/wallet-sdk';
 
 import { logger } from '@/logger';
 
@@ -35,28 +43,28 @@ export interface DustWalletOptions {
 
 export const DEFAULT_DUST_OPTIONS: DustWalletOptions = {
   ledgerParams: LedgerParameters.initialParameters(),
-  additionalFeeOverhead: 500_000_000_000_000_000_000n,
+  additionalFeeOverhead: 0n,
   feeBlocksMargin: 5
 };
 
 export class WalletFactory {
-  static createShieldedWallet(config: DefaultV1Configuration, seed: Uint8Array): ShieldedWalletAPI {
+  static createShieldedWallet(config: DefaultShieldedConfiguration, seed: Uint8Array): ShieldedWalletAPI {
     const Shielded = ShieldedWallet(config);
     return Shielded.startWithSeed(seed);
   }
 
   static createUnshieldedWallet(
-    config: DefaultV1Configuration,
-    unshieldedKeystore: UnshieldedKeystore,
+    config: DefaultUnshieldedConfiguration,
+    unshieldedKeystore: UnshieldedKeystore
   ): UnshieldedWalletAPI {
     return UnshieldedWallet({
       ...config,
-      txHistoryStorage: new InMemoryTransactionHistoryStorage(),
+      txHistoryStorage: new InMemoryTransactionHistoryStorage(WalletEntrySchema, mergeWalletEntries)
     }).startWithPublicKey(PublicKey.fromKeyStore(unshieldedKeystore));
   }
 
   static createDustWallet(
-    config: DefaultV1Configuration,
+    config: DefaultDustConfiguration,
     seed: Uint8Array,
     dustOptions: DustWalletOptions = DEFAULT_DUST_OPTIONS
   ): DustWalletAPI {
@@ -65,8 +73,8 @@ export class WalletFactory {
       costParameters: {
         ledgerParams: dustOptions.ledgerParams,
         additionalFeeOverhead: dustOptions.additionalFeeOverhead,
-        feeBlocksMargin: dustOptions.feeBlocksMargin,
-      },
+        feeBlocksMargin: dustOptions.feeBlocksMargin
+      }
     };
     logger.info(`Creating dust wallet with params: ${JSON.stringify(dustConfig)}`);
     const Dust = DustWallet(dustConfig);
@@ -84,7 +92,7 @@ export class WalletFactory {
       configuration: config,
       shielded: () => shieldedWallet,
       unshielded: () => unshieldedWallet,
-      dust: () => dustWallet,
+      dust: () => dustWallet
     });
   }
 
@@ -99,7 +107,7 @@ export class WalletFactory {
   }
 
   static async restoreShieldedWallet(
-    config: DefaultV1Configuration,
+    config: DefaultShieldedConfiguration,
     serializedState: string
   ): Promise<ShieldedWallet> {
     return ShieldedWallet(config).restore(serializedState);

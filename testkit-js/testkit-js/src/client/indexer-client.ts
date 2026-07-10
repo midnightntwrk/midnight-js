@@ -16,7 +16,7 @@
 import axios from 'axios';
 import type { Logger } from 'pino';
 
-import { extractHostnameAndPort } from '@/utils';
+import { buildUrlWithPath } from '@/utils';
 
 export class IndexerClient {
   readonly indexerUrl: string;
@@ -38,15 +38,9 @@ export class IndexerClient {
    * @returns {Promise<AxiosResponse | void>} A promise that resolves to the response of the health check or logs an error if the request fails.
    */
   async health() {
-    const url = `https://${extractHostnameAndPort(this.indexerUrl)}/ready`;
-    return axios
-      .get(url, { timeout: 1000 })
-      .then((r) => {
-        this.logger.info(`Connected to indexer ${url}: ${JSON.stringify(r.data)}`);
-        return r;
-      })
-      .catch((error) => {
-        this.logger.warn(`Failed to connect to indexer at '${url}'`, error);
-      });
+    const url = buildUrlWithPath(this.indexerUrl, '/ready');
+    const response = await axios.get(url, { timeout: 1000 });
+    this.logger.info(`Connected to indexer ${url}: ${JSON.stringify(response.data)}`);
+    return response;
   }
 }

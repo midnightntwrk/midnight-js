@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import type {
   MidnightProviders,
   PrivateStateId
@@ -25,6 +25,6 @@ import type {
  */
 export type ContractProviders<
   C extends Contract.Any = Contract.Any,
-  ICK extends Contract.ImpureCircuitId<C> = Contract.ImpureCircuitId<C>,
+  PCK extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>,
   PS = Contract.PrivateState<C>
-> = MidnightProviders<ICK, PrivateStateId, PS>;
+> = MidnightProviders<PCK, PrivateStateId, PS>;

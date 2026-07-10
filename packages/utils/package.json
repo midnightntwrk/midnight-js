@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-utils",
-  "version": "3.2.0",
+  "version": "5.0.0-beta.4",
   "description": "Shared utilities for MidnightJS modules",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -16,23 +16,29 @@
     }
   },
   "repository": "git@github.com:midnight-ntwrk/artifacts",
-  "packageManager": "yarn@4.10.3",
+  "packageManager": "yarn@4.14.1",
   "author": "IOHK",
   "license": "Apache-2.0",
   "scripts": {
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
     "build": "rollup -c rollup.config.mjs",
     "test": "vitest run",
-    "deploy": "yarn npm publish"
+    "deploy": "yarn npm publish --tolerate-republish"
   },
   "files": [
     "dist/"
   ],
   "dependencies": {
     "@midnight-ntwrk/midnight-js-network-id": "workspace:*",
-    "@scure/base": "^2.0.0"
+    "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
+    "@midnightntwrk/wallet-sdk-address-format": "4.0.0-beta.2",
+    "@noble/hashes": "^2.2.0"
   },
   "devDependencies": {
-    "@types/node": "^24.0.0"
+    "@types/node": "^24.0.0",
+    "vitest": "^4.1.7"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

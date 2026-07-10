@@ -14,12 +14,14 @@
  */
 
 import {
+  CostModel,
   type PreBinding,
   type Proof,
+  type ProvingProvider,
   type SignatureEnabled,
   type Transaction,
   type UnprovenTransaction
-} from '@midnight-ntwrk/ledger-v7';
+} from '@midnight-ntwrk/midnight-js-protocol/ledger';
 
 export type UnboundTransaction = Transaction<SignatureEnabled, Proof, PreBinding>;
 
@@ -28,7 +30,10 @@ export type UnboundTransaction = Transaction<SignatureEnabled, Proof, PreBinding
  */
 export interface ProveTxConfig {
   /**
-   * The timeout for the request.
+   * The timeout for the request, in milliseconds. This is a per-request timeout for the underlying
+   * proof server call, not a hard wall-clock ceiling for the whole `proveTx` call — the proof
+   * provider's internal retry/backoff means a `proveTx` call may take longer than this value when
+   * retries occur. See https://github.com/midnightntwrk/midnight-js/issues/974.
    */
   readonly timeout?: number;
 }
@@ -48,3 +53,20 @@ export interface ProofProvider {
    */
   proveTx(unprovenTx: UnprovenTransaction, proveTxConfig?: ProveTxConfig): Promise<UnboundTransaction>;
 }
+
+/**
+ * Creates a {@link ProofProvider} from a {@link ProvingProvider}.
+ * The returned provider proves transactions using the initial cost model.
+ *
+ * @param provingProvider - The underlying proving provider used to generate proofs.
+ * @param costModel - Optional cost model to use for proof generation. Defaults to the initial cost model if not provided.
+ * @returns A {@link ProofProvider} that delegates proof generation to the given proving provider.
+ */
+export const createProofProvider = (
+  provingProvider: ProvingProvider,
+  costModel: CostModel = CostModel.initialCostModel()
+): ProofProvider => ({
+  async proveTx(unprovenTx: UnprovenTransaction): Promise<UnboundTransaction> {
+    return unprovenTx.prove(provingProvider, costModel);
+  }
+});

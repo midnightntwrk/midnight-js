@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { type Contract } from '@midnight-ntwrk/compact-js';
+import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 
 import { type ContractProviders } from './contract-providers';
@@ -27,7 +27,7 @@ import { createUnprovenDeployTx } from './unproven-deploy-tx';
  * Providers necessary to submit a deployment transaction - all providers.
  */
 export type SubmitDeployTxProviders<C extends Contract.Any> =
-  | ContractProviders<C, Contract.ImpureCircuitId<C>, unknown>
+  | ContractProviders<C, Contract.ProvableCircuitId<C>, unknown>
   | ContractProviders<C>;
 
 /**
@@ -36,7 +36,7 @@ export type SubmitDeployTxProviders<C extends Contract.Any> =
 export type DeployTxOptions<C extends Contract.Any> = DeployTxOptionsBase<C> | DeployTxOptionsWithPrivateStateId<C>;
 
 export async function submitDeployTx<C extends Contract<undefined>>(
-  providers: ContractProviders<C, Contract.ImpureCircuitId<C>, unknown>,
+  providers: ContractProviders<C, Contract.ProvableCircuitId<C>, unknown>,
   options: DeployTxOptionsBase<C>
 ): Promise<FinalizedDeployTxData<C>>;
 
@@ -79,6 +79,12 @@ export async function submitDeployTx<C extends Contract.Any>(
  *
  * @throws {DeployTxFailedError} When transaction fails in either guaranteed or fallible phase.
  *         The error contains the finalized transaction data for debugging.
+ *
+ * @remarks
+ * The returned {@link FinalizedDeployTxData} is privacy-sensitive and carries
+ * the unproven transaction, signing key, and initial private state. See that
+ * type for handling guidance before logging, serializing, or transmitting the
+ * result.
  */
 export async function submitDeployTx<C extends Contract.Any>(
   providers: SubmitDeployTxProviders<C>,

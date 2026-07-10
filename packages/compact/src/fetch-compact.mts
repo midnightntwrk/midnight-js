@@ -62,15 +62,18 @@ const targetFile = path.resolve(packageDir, `compactc-${compactcVersion}.zip`);
 const currentPlatform = process.platform;
 const currentCpu = process.arch;
 
-const compactRepo = process.env.COMPACT_REPO || 'midnight-ntwrk/artifacts';
+const compactRepo = process.env.COMPACT_REPO || 'midnightntwrk/compact';
 const compactTagPrefix = process.env.COMPACT_TAG_PREFIX || 'compactc-v';
+const compactAssetPrefix = process.env.COMPACT_ASSET_PREFIX || 'compactc_v';
 const compactDockerImage = process.env.COMPACT_DOCKER_IMAGE || 'ghcr.io/midnight-ntwrk/compactc';
+const githubToken = process.env.GITHUB_TOKEN;
+const authHeaders: Record<string, string> = githubToken ? { Authorization: `Bearer ${githubToken}` } : {};
 
 const fetchCompact = async (): Promise<void> => {
   type Release = { assets_url: string }
   const urlString = `https://api.github.com/repos/${compactRepo}/releases/tags/${compactTagPrefix}${compactcVersion}`;
   console.log(`Trying to fetch release from: ${urlString}`);
-  const release: Release = await fetch(urlString).then((r) => {
+  const release: Release = await fetch(urlString, { headers: authHeaders }).then((r) => {
     if (r.ok) {
       return r.json() as unknown as Release;
     } else {
@@ -80,7 +83,7 @@ const fetchCompact = async (): Promise<void> => {
   });
 
   type Asset = { name: string; url: string }
-  const assets: Asset[] = await fetch(release.assets_url).then((r) => r.json() as unknown as Asset[]);
+  const assets: Asset[] = await fetch(release.assets_url, { headers: authHeaders }).then((r) => r.json() as unknown as Asset[]);
 
   const platformToAssetSuffix = (): string => {
     if (currentPlatform === 'darwin') {
@@ -104,7 +107,7 @@ const fetchCompact = async (): Promise<void> => {
     }
   };
 
-  const assetName = `compactc_v${compactcVersion}_${platformToAssetSuffix()}.zip`;
+  const assetName = `${compactAssetPrefix}${compactcVersion}_${platformToAssetSuffix()}.zip`;
   const asset = assets.find((assetLocal) => assetLocal.name === assetName);
 
   if (!asset) {
@@ -113,6 +116,7 @@ const fetchCompact = async (): Promise<void> => {
 
   const assetData = await fetch(asset.url, {
     headers: {
+      ...authHeaders,
       Accept: 'application/octet-stream'
     }
   }).then(async (response) => {
@@ -133,8 +137,8 @@ const fetchCompact = async (): Promise<void> => {
   fs.rmSync(targetCompactDir, { force: true, recursive: true });
   fs.mkdirSync(targetCompactDir, { recursive: true });
 
-  childProcess.execSync(`unzip ${targetFile} -d ${targetCompactDir}`);
-  childProcess.execSync(`chmod -R +w ${targetCompactDir}`);
+  childProcess.spawnSync('unzip', [targetFile, '-d', targetCompactDir], { stdio: 'inherit' });
+  childProcess.spawnSync('chmod', ['-R', '+w', targetCompactDir], { stdio: 'inherit' });
   console.log(`Compact extracted to ${targetCompactDir}`);
 
   fs.rmSync(targetFile);
@@ -145,7 +149,7 @@ const fetchCompact = async (): Promise<void> => {
 const fetchDockerImage = () => {
   console.log('Fetching Compact docker image...');
   const dockerImage = `${compactDockerImage}:v${compactcVersion}`;
-  const child = childProcess.exec(`docker pull ${dockerImage}`);
+  const child = childProcess.spawn('docker', ['pull', dockerImage]);
   child.on('exit', (code, signal) => {
     console.log(`Child process exited with code ${code}`);
     if (code === 0) {

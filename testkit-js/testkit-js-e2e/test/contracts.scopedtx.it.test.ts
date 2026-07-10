@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-import { type ContractAddress } from '@midnight-ntwrk/ledger-v7';
 import {
   type CallTxOptionsWithPrivateStateId,
   type FinalizedDeployTxData,
   submitCallTx,
   withContractScopedTransaction
 } from '@midnight-ntwrk/midnight-js-contracts';
+import { type ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { EnvironmentConfiguration, MidnightWalletProvider, TestEnvironment } from '@midnight-ntwrk/testkit-js';
 import { createLogger, getTestEnvironment, initializeMidnightProviders } from '@midnight-ntwrk/testkit-js';
 import path from 'path';
@@ -33,7 +33,7 @@ import {
   type DeployedCounterContract,
   type DoubleCounterContract,
   privateStateZero
-} from '@/double-counter-types';
+} from '@/types/double-counter-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `scoped_tx_contracts_${new Date().toISOString()}.log`)

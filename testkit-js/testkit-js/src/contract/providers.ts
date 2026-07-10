@@ -27,7 +27,7 @@ import { type ContractConfiguration } from './contract-types';
 /**
  * Configures and returns the required providers for a Midnight contract.
  *
- * @template ICK - Type parameter for the input circuit key string
+ * @template PCK - Type parameter for the input circuit key string
  * @template PS - Type parameter for the private state
  *
  * @param {MidnightWalletProvider} midnightWalletProvider - The midnightWalletProvider provider instance to use for transactions
@@ -42,12 +42,12 @@ import { type ContractConfiguration } from './contract-types';
  *   - walletProvider: For midnightWalletProvider operations
  *   - midnightProvider: For Midnight-specific operations
  */
-export const initializeMidnightProviders = <ICK extends string, PS>(
+export const initializeMidnightProviders = <PCK extends string, PS>(
   midnightWalletProvider: MidnightWalletProvider,
   environmentConfiguration: EnvironmentConfiguration,
   contractConfiguration: ContractConfiguration
-): MidnightProviders<ICK, PrivateStateId, PS> => {
-  const zkConfigProvider = new NodeZkConfigProvider<ICK>(contractConfiguration.zkConfigPath);
+): MidnightProviders<PCK, PrivateStateId, PS> => {
+  const zkConfigProvider = new NodeZkConfigProvider<PCK>(contractConfiguration.zkConfigPath);
 
   const coinPublicKey = midnightWalletProvider.getCoinPublicKey();
   const accountId = Buffer.from(coinPublicKey).toString('hex');

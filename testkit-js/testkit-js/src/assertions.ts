@@ -13,9 +13,6 @@
  * limitations under the License.
  */
 
-import type { Contract } from '@midnight-ntwrk/compact-js';
-import type { StateValue } from '@midnight-ntwrk/compact-runtime';
-import type { Bindingish, Proofish, Signaturish, Transaction } from '@midnight-ntwrk/ledger-v7';
 import type {
   CallTxOptions,
   DeployContractOptions,
@@ -24,6 +21,9 @@ import type {
   FinalizedDeployTxData,
   FinalizedDeployTxDataBase
 } from '@midnight-ntwrk/midnight-js-contracts';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import type { StateValue } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { Bindingish, Proofish, Signaturish, Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
   type FinalizedTxData,
   type MidnightProviders,
@@ -73,7 +73,7 @@ export const expectFoundAndDeployedTxDataEqual = <C extends Contract.Any>(
 };
 
 export const expectFoundAndDeployedStatesEqual = async <C extends Contract.Any>(
-  providers: MidnightProviders<Contract.ImpureCircuitId<C>, PrivateStateId, Contract.PrivateState<C> | unknown>,
+  providers: MidnightProviders<Contract.ProvableCircuitId<C>, PrivateStateId, Contract.PrivateState<C> | unknown>,
   deployTxData: FinalizedDeployTxData<C>,
   foundDeployTxData: FinalizedDeployTxDataBase<C>,
   privateStateId?: PrivateStateId,
@@ -103,7 +103,7 @@ export const expectSuccessfulTxData = (finalizedTxData: FinalizedTxData): void =
 };
 
 export const expectSuccessfulDeployTx = async <C extends Contract.Any>(
-  providers: MidnightProviders<Contract.ImpureCircuitId<C>, PrivateStateId, Contract.PrivateState<C> | unknown>,
+  providers: MidnightProviders<Contract.ProvableCircuitId<C>, PrivateStateId, Contract.PrivateState<C> | unknown>,
   deployTxData: FinalizedDeployTxData<C>,
   deployTxOptions?: DeployContractOptions<C> | DeployTxOptions<C>
 ): Promise<void> => {
@@ -112,7 +112,7 @@ export const expectSuccessfulDeployTx = async <C extends Contract.Any>(
   const deployedLedgerState = await providers.publicDataProvider.queryContractState(
     deployTxData.public.contractAddress
   );
-  expect(stateValueEqual(deployTxData.public.initialContractState.data.state, deployedLedgerState!.data.state));
+  expect(stateValueEqual(deployTxData.public.initialContractState.data.state, deployedLedgerState!.data.state)).toBeTruthy();
   expect(deployTxData.public.initialContractState).toBeTruthy();
 
   // Checks that the signing key and private state passed in the deploy configuration
@@ -135,15 +135,15 @@ export const expectSuccessfulDeployTx = async <C extends Contract.Any>(
   }
 };
 
-export const expectSuccessfulCallTx = async <C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
-  providers: MidnightProviders<Contract.ImpureCircuitId<C>, PrivateStateId, Contract.PrivateState<C> | unknown>,
-  callTxData: FinalizedCallTxData<C, ICK>,
-  callTxOptions?: CallTxOptions<C, ICK>,
+export const expectSuccessfulCallTx = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  providers: MidnightProviders<Contract.ProvableCircuitId<C>, PrivateStateId, Contract.PrivateState<C> | unknown>,
+  callTxData: FinalizedCallTxData<C, PCK>,
+  callTxOptions?: CallTxOptions<C, PCK>,
   nextPrivateState?: Contract.PrivateState<C>
 ): Promise<void> => {
   expectSuccessfulTxData(callTxData.public);
   expect(callTxData.public.nextContractState).toBeTruthy();
-  expect(callTxData.private.nextZswapLocalState);
+  expect(callTxData.private.nextZswapLocalState).toBeTruthy();
   if (callTxOptions) {
     if ('privateStateId' in callTxOptions) {
       const storedPrivateState = await providers.privateStateProvider.get(callTxOptions.privateStateId);

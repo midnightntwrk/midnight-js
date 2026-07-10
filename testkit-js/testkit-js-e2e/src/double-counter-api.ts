@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { ContractAddress } from '@midnight-ntwrk/ledger-v7';
 import { deployContract } from '@midnight-ntwrk/midnight-js-contracts';
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { FinalizedTxData } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 import {
@@ -41,7 +41,7 @@ import {
   createDoubleCounterContractInstance,
   type DeployedCounterContract,
   type DoubleCounterContract
-} from './double-counter-types';
+} from './types/double-counter-types';
 
 export const currentDir = path.resolve(new URL(import.meta.url).pathname, '..');
 

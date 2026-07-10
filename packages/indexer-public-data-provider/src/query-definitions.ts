@@ -268,8 +268,8 @@ export const TXS_FROM_BLOCK_SUB = gql(
 
 export const CONTRACT_STATE_QUERY = gql(
   `
-  query CONTRACT_STATE_QUERY($address: HexEncoded!, $offset: ContractActionOffset) {
-    contractAction(address: $address, offset: $offset) {
+  query CONTRACT_STATE_QUERY($address: HexEncoded!, $offset: BlockOffset) {
+    contract(address: $address, offset: $offset) {
       state
     }
   }`
@@ -286,10 +286,13 @@ export const CONTRACT_STATE_SUB = gql(
 
 export const CONTRACT_AND_ZSWAP_STATE_QUERY = gql(
   `
-  query BOTH_STATE_QUERY($address: HexEncoded!, $offset: ContractActionOffset) {
-    contractAction(address: $address, offset: $offset) {
+  query CONTRACT_AND_ZSWAP_STATE_QUERY($address: HexEncoded!, $offset: BlockOffset) {
+    block(offset: $offset) {
+      ledgerParameters
+      contractZswapState(address: $address)
+    }
+    contract(address: $address, offset: $offset) {
       state
-      zswapState
     }
   }`
 );
@@ -374,6 +377,54 @@ export const UNSHIELDED_BALANCE_SUB = gql(
           }
         }
       }
+    }
+  }`
+);
+
+export const CONTRACT_EVENTS_QUERY = gql(
+  `
+  query CONTRACT_EVENTS_QUERY($filter: ContractEventFilter!, $limit: Int, $offset: Int) {
+    contractEvents(filter: $filter, limit: $limit, offset: $offset) {
+      __typename
+      id
+      maxId
+      version
+      contractAddress
+      transactionId
+      raw
+      ... on ShieldedSpendEvent { nullifier }
+      ... on ShieldedReceiveEvent { commitment ciphertext receivingContractAddress }
+      ... on ShieldedMintEvent { commitment domainSep shieldedAmount: amount }
+      ... on ShieldedBurnEvent { nullifier shieldedAmount: amount }
+      ... on UnshieldedSpendEvent { sender { kind userAddress contractAddress } domainSep tokenType amount }
+      ... on UnshieldedReceiveEvent { recipient { kind userAddress contractAddress } domainSep tokenType amount }
+      ... on UnshieldedMintEvent { domainSep tokenType amount }
+      ... on UnshieldedBurnEvent { sender { kind userAddress contractAddress } tokenType amount }
+      ... on MiscContractEvent { name payload }
+    }
+  }`
+);
+
+export const CONTRACT_EVENTS_SUB = gql(
+  `
+  subscription CONTRACT_EVENTS_SUB($filter: ContractEventFilter!, $id: Int) {
+    contractEvents(filter: $filter, id: $id) {
+      __typename
+      id
+      maxId
+      version
+      contractAddress
+      transactionId
+      raw
+      ... on ShieldedSpendEvent { nullifier }
+      ... on ShieldedReceiveEvent { commitment ciphertext receivingContractAddress }
+      ... on ShieldedMintEvent { commitment domainSep shieldedAmount: amount }
+      ... on ShieldedBurnEvent { nullifier shieldedAmount: amount }
+      ... on UnshieldedSpendEvent { sender { kind userAddress contractAddress } domainSep tokenType amount }
+      ... on UnshieldedReceiveEvent { recipient { kind userAddress contractAddress } domainSep tokenType amount }
+      ... on UnshieldedMintEvent { domainSep tokenType amount }
+      ... on UnshieldedBurnEvent { sender { kind userAddress contractAddress } tokenType amount }
+      ... on MiscContractEvent { name payload }
     }
   }`
 );

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.1.0**](../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.3**](../../README.md)
 
 ***
 
@@ -12,13 +12,18 @@
 
 ## Interfaces
 
+- [CryptoBackend](interfaces/CryptoBackend.md)
 - [LevelPrivateStateProviderConfig](interfaces/LevelPrivateStateProviderConfig.md)
 - [MigrationResult](interfaces/MigrationResult.md)
 - [PasswordRotationOptions](interfaces/PasswordRotationOptions.md)
 - [PasswordRotationResult](interfaces/PasswordRotationResult.md)
+- [StorageEncryptionOptions](interfaces/StorageEncryptionOptions.md)
 
 ## Type Aliases
 
+- [CryptoBackendType](type-aliases/CryptoBackendType.md)
+- [DatabaseLevel](type-aliases/DatabaseLevel.md)
+- [LevelFactory](type-aliases/LevelFactory.md)
 - [PrivateStoragePasswordProvider](type-aliases/PrivateStoragePasswordProvider.md)
 
 ## Variables

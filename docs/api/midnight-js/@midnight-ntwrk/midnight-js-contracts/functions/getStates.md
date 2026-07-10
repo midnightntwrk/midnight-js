@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.1.0**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.3**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Function: getStates()
 
-> **getStates**\<`PS`\>(`publicDataProvider`, `privateStateProvider`, `contractAddress`, `privateStateId`): `Promise`\<[`ContractStates`](../type-aliases/ContractStates.md)\<`PS`\>\>
+> **getStates**\<`PS`\>(`publicDataProvider`, `privateStateProvider`, `contractAddress`, `privateStateId`, `blockHash?`): `Promise`\<[`ContractStates`](../type-aliases/ContractStates.md)\<`PS`\>\>
 
 Retrieves the Zswap, ledger, and private states of the contract corresponding
 to the given identifier using the given providers.
@@ -21,14 +21,14 @@ to the given identifier using the given providers.
 
 ### publicDataProvider
 
-`PublicDataProvider`
+[`PublicDataProvider`](#)
 
 The provider to use to fetch the public states (Zswap and ledger)
                           from the blockchain.
 
 ### privateStateProvider
 
-`PrivateStateProvider`\<`string`, `PS`\>
+[`PrivateStateProvider`](#)\<`string`, `PS`\>
 
 The provider to use to fetch the private state.
 
@@ -43,6 +43,10 @@ The ledger address of the contract.
 `string`
 
 The identifier for the private state of the contract.
+
+### blockHash?
+
+`string`
 
 ## Returns
 

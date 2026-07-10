@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import type { ContractAddress } from '@midnight-ntwrk/ledger-v7';
 import { createCircuitCallTxInterface, deployContract } from '@midnight-ntwrk/midnight-js-contracts';
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PrivateStateExport, SigningKeyExport } from '@midnight-ntwrk/midnight-js-types';
 import type { EnvironmentConfiguration, MidnightWalletProvider, TestEnvironment } from '@midnight-ntwrk/testkit-js';
 import { createLogger, getTestEnvironment, initializeMidnightProviders } from '@midnight-ntwrk/testkit-js';
@@ -26,7 +26,7 @@ import { CompiledCounterContract } from '@/contract';
 import { type CounterPrivateState } from '@/contract/witnesses';
 import * as api from '@/counter-api';
 import { CounterConfiguration } from '@/counter-api';
-import { type CounterCircuits, CounterPrivateStateId, privateStateZero } from '@/counter-types';
+import { type CounterCircuit, CounterPrivateStateId, privateStateZero } from '@/types/counter-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `level-private-state-provider_${new Date().toISOString()}.log`)
@@ -68,7 +68,7 @@ describe('Level Private State Provider - Export/Import Integration', () => {
 
       // ARRANGE - Phase 1: Deploy contract and perform first increment
       logger.info('Phase 1: Deploying contract and performing first increment');
-      const providers = initializeMidnightProviders<CounterCircuits, CounterPrivateState>(
+      const providers = initializeMidnightProviders<CounterCircuit, CounterPrivateState>(
         wallet,
         environmentConfiguration,
         contractConfiguration
@@ -114,7 +114,7 @@ describe('Level Private State Provider - Export/Import Integration', () => {
 
       // ACT - Phase 4: Create new providers and import state
       logger.info('Phase 4: Creating new providers and importing state');
-      const newProviders = initializeMidnightProviders<CounterCircuits, CounterPrivateState>(
+      const newProviders = initializeMidnightProviders<CounterCircuit, CounterPrivateState>(
         wallet,
         environmentConfiguration,
         contractConfiguration

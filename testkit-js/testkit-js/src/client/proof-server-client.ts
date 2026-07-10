@@ -16,7 +16,7 @@
 import axios, { type AxiosRequestConfig } from 'axios';
 import type { Logger } from 'pino';
 
-import { extractHostnameAndPort } from '@/utils';
+import { buildUrlWithPath } from '@/utils';
 
 export class ProofServerClient {
   readonly proofServer: string;
@@ -38,16 +38,10 @@ export class ProofServerClient {
    * @returns {Promise<AxiosResponse | void>} A promise that resolves to the response of the health check or logs an error if the request fails.
    */
   async health() {
-    const url = `http://${extractHostnameAndPort(this.proofServer)}/health`;
-    return axios
-      .get(url, { timeout: 1000 })
-      .then((r) => {
-        this.logger.info(`Connected to proof server ${url}: ${JSON.stringify(r.data)}`);
-        return r;
-      })
-      .catch((error) => {
-        this.logger.warn(`Failed to connect to proof server at '${url}'`, error);
-      });
+    const url = buildUrlWithPath(this.proofServer, '/health');
+    const response = await axios.get(url, { timeout: 1000 });
+    this.logger.info(`Connected to proof server ${url}: ${JSON.stringify(response.data)}`);
+    return response;
   }
 
   /**
@@ -61,15 +55,9 @@ export class ProofServerClient {
       timeout: 3 * 60_000
     }
   ) {
-    const url = `http://${extractHostnameAndPort(this.proofServer)}/prove-tx`;
-    return axios
-      .post(url, data, config)
-      .then((r) => {
-        this.logger.info(`Received data from proof server ${url}`);
-        return r;
-      })
-      .catch((error) => {
-        this.logger.error(`Error in proof server at '${url}' ${error.toString()}`);
-      });
+    const url = buildUrlWithPath(this.proofServer, '/prove-tx');
+    const response = await axios.post(url, data, config);
+    this.logger.info(`Received data from proof server ${url}`);
+    return response;
   }
 }

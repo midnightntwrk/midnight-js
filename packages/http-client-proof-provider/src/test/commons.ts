@@ -16,20 +16,23 @@
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { CompiledContract } from '@midnight-ntwrk/compact-js';
-import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
+import { createUnprovenCallTxFromInitialStates, createUnprovenDeployTxFromVerifierKeys } from '@midnight-ntwrk/midnight-js-contracts';
+import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { CompiledContract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import {
   type CoinPublicKey,
   createConstructorContext,
   emptyZswapLocalState,
-  sampleSigningKey} from '@midnight-ntwrk/compact-runtime';
+  sampleSigningKey} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
+  LedgerParameters,
   sampleCoinPublicKey,
   sampleContractAddress,
   sampleEncryptionPublicKey,
-  type UnprovenTransaction,  ZswapChainState} from '@midnight-ntwrk/ledger-v7';
-import { createUnprovenCallTxFromInitialStates, createUnprovenDeployTxFromVerifierKeys } from '@midnight-ntwrk/midnight-js-contracts';
-import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+  type UnprovenTransaction,
+  ZswapChainState
+} from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { createProverKey,
   createVerifierKey,
   createZKIR,
@@ -71,11 +74,11 @@ const createMockContractClass = (contractModule: any, coinPublicKey: CoinPublicK
         currentZswapLocalState: emptyZswapLocalState(ctx.initialZswapLocalState.coinPublicKey)
       });
       this.circuits = contract.circuits;
-      this.impureCircuits = this.circuits;
+      this.provableCircuits = this.circuits;
     }
     initialState;
     circuits;
-    impureCircuits;
+    provableCircuits;
     witnesses;
   }
 }
@@ -132,6 +135,7 @@ export const getValidUnprovenTx = async (): Promise<UnprovenTransaction> => {
     coinPublicKey,
     initialContractState: deploy.public.initialContractState,
     initialZswapChainState: new ZswapChainState(),
+    ledgerParameters: LedgerParameters.initialParameters(),
     arguments: []
   };
 

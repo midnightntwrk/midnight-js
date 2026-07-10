@@ -1,8 +1,7 @@
 name: CI - TestKit.js
-env:
-  MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
 permissions:
+  actions: read
   contents: read
   issues: read
   id-token: write
@@ -39,340 +38,43 @@ on:
         description: Midnight network to use (testnet/devnet/undeployed)
         required: true
         default: 'undeployed'
+      testkit_docker_env:
+        type: string
+        description: Docker image version set sourced from testkit-js/env/<testkit_docker_env>.env (qanet|preview|preprod|mainnet|devnet). Empty falls back to the .envrc default (devnet).
+        required: false
+        default: 'devnet'
 
 concurrency:
-  group: TK-JS-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  group: TK-JS-${{ github.workflow }}-${{ inputs.testkit_docker_env || 'default' }}-${{ github.event.pull_request.number || github.ref }}
+  # Only cancel superseded PR runs; queue push-to-main runs so a mid-flight
+  # release (gated on this workflow in ci.yml) is never cancelled half-done.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  ci:
+  build:
+    uses: ./.github/workflows/ci-testkit-js-build.yml
+    with:
+      should_run: ${{ inputs.should_run }}
+      yarn_filter: ${{ inputs.yarn_filter }}
+      yarn_lint_paths: ${{ inputs.yarn_lint_paths }}
+      testkit_docker_env: ${{ inputs.testkit_docker_env }}
+    secrets: inherit
+
+  prerelease:
+    needs: build
+    if: inputs.should_run == 'true' && inputs.should_prerelease == 'true'
+    uses: ./.github/workflows/ci-testkit-js-prerelease.yml
+    with:
+      testkit_docker_env: ${{ inputs.testkit_docker_env }}
+    secrets: inherit
+
+  e2e:
+    needs: build
     if: inputs.should_run == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # ratchet:actions/checkout@v6
-
-      - name: Install direnv
-        run: curl -sfL https://direnv.net/install.sh | DIRENV_GITHUB_API_TOKEN=$GITHUB_TOKEN  bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Load environment from .envrc
-        run: |
-          direnv allow .
-          direnv export gha >> "$GITHUB_ENV"
-
-      - name: Log in to GitHub Container registry
-        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # ratchet:docker/login-action@v4
-        with:
-          registry: 'https://ghcr.io'
-          username: ${{ github.actor }}
-          password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-
-      - name: Set up Node.js
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # ratchet:actions/setup-node@v6
-        with:
-          always-auth: true
-          registry-url: https://npm.pkg.github.com/
-          scope: '@midnight-ntwrk'
-          node-version-file: '.nvmrc'
-          cache: 'yarn'
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-
-      - name: Configure yarn
-        run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-
-      - name: Cache Turbo and Yarn dependencies
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
-        with:
-          path: |
-            **/node_modules
-            ~/.yarn
-            .turbo
-          key: turbo-testkit-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
-          restore-keys: |
-            turbo-testkit-${{ runner.os }}-
-
-      - name: Install dependencies
-        run: |
-          yarn install --immutable
-
-      - name: Run build
-        run: yarn build ${{ inputs.yarn_filter }} --cache-dir ./turbo
-        env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-
-      - name: Run linter
-        run: yarn lint -- ${{ inputs.yarn_lint_paths }}
-
-      - name: Run tests
-        run: |
-          yarn test --filter="./testkit-js/*" --cache-dir ./turbo
-        env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-
-      - name: Upload compiled contracts
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # ratchet:actions/upload-artifact@v7
-        with:
-          name: e2e-tests-contracts
-          path: testkit-js/testkit-js-e2e/src/contract/compiled
-
-      - name: Upload dist for it
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # ratchet:actions/upload-artifact@v7
-        with:
-          name: midnight-js-dist-testkit
-          path: packages/*/dist/
-
-      - name: Upload dist for it
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # ratchet:actions/upload-artifact@v7
-        with:
-          name: testkit-dist
-          path: testkit-js/*/dist/
-
-  cd-prerelease:
-    runs-on: ubuntu-latest
-    needs: ci
-    if: inputs.should_prerelease == 'true'
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # ratchet:actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Install direnv
-        run: curl -sfL https://direnv.net/install.sh | DIRENV_GITHUB_API_TOKEN=$GITHUB_TOKEN  bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Load environment from .envrc
-        run: |
-          direnv allow .
-          direnv export gha >> "$GITHUB_ENV"
-
-      - name: Set up Node.js
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # ratchet:actions/setup-node@v6
-        with:
-          always-auth: true
-          registry-url: https://npm.pkg.github.com/
-          scope: '@midnight-ntwrk'
-          node-version-file: '.nvmrc'
-          cache: 'yarn'
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-
-      - name: Configure yarn & npm
-        run: |
-          yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-
-      - name: Cache Turbo and Yarn dependencies
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
-        with:
-          path: |
-            **/node_modules
-            ~/.yarn
-            .turbo
-          key: turbo-testkit-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
-          restore-keys: |
-            turbo-testkit-${{ runner.os }}-
-
-      - name: Install dependencies
-        run: yarn install --immutable
-
-      - name: Temp bump prerelease
-        run: yarn version prerelease
-
-      - name: Set short git commit SHA
-        id: vars
-        run: |
-          calculatedSha=$(git rev-parse --short ${{ github.sha }})
-          currentVersion=$(jq -r .version package.json)
-          targetVersion="$currentVersion-pre.$calculatedSha"
-          echo "target_version=$targetVersion" >> $GITHUB_OUTPUT
-
-      - name: Bump versions
-        run: yarn workspaces foreach -R --from "./testkit-js/*" --exclude "./packages/*" version ${{ steps.vars.outputs.target_version }}
-
-      - name: Publish packages
-        run: yarn deploy --filter="./testkit-js/*" --cache-dir ./turbo -- --tag pre
-        env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-
-  generate-test-matrix:
-    runs-on: ubuntu-latest
-    needs: ci
-    outputs:
-      test-files: ${{ steps.generate-matrix.outputs.test-files }}
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # ratchet:actions/checkout@v6
-
-      - name: Generate test matrix
-        id: generate-matrix
-        run: |
-          cd testkit-js/testkit-js-e2e/test
-          TEST_FILES=$(ls *.test.ts | jq -R -s -c 'split("\n") | map(select(length > 0))')
-          echo "test-files=$TEST_FILES" >> $GITHUB_OUTPUT
-          echo "Generated test matrix: $TEST_FILES"
-
-  e2e_tests:
-    name: E2E Tests
-    runs-on: ubuntu-latest-8-core-x64
-    needs: [ci, generate-test-matrix]
-    timeout-minutes: ${{ inputs.build_timeout }}
-    strategy:
-      fail-fast: false
-      matrix:
-        test-file: ${{ fromJson(needs.generate-test-matrix.outputs.test-files) }}
-    steps:
-
-      - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # ratchet:actions/checkout@v6
-
-      - name: Install direnv
-        run: curl -sfL https://direnv.net/install.sh | DIRENV_GITHUB_API_TOKEN=$GITHUB_TOKEN  bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Load environment from .envrc
-        run: |
-          direnv allow .
-          direnv export gha >> "$GITHUB_ENV"
-
-      - name: Log in to GitHub Container registry
-        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2 # ratchet:docker/login-action@v4
-        with:
-          registry: 'https://ghcr.io'
-          username: ${{ github.actor }}
-          password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-
-      - name: Set up Node.js
-        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # ratchet:actions/setup-node@v6
-        with:
-          always-auth: true
-          registry-url: https://npm.pkg.github.com/
-          scope: '@midnight-ntwrk'
-          node-version-file: '.nvmrc'
-          cache: 'yarn'
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-
-      - name: Configure yarn
-        run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-
-      - name: Cache Turbo and Yarn dependencies
-        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
-        with:
-          path: |
-            **/node_modules
-            ~/.yarn
-            .turbo
-          key: turbo-testkit-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
-          restore-keys: |
-            turbo-testkit-${{ runner.os }}-
-
-      - name: Install dependencies
-        run: yarn install --immutable
-
-      - name: Download build
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # ratchet:actions/download-artifact@v8
-        with:
-          name: midnight-js-dist-testkit
-          path: packages/
-
-      - name: Download testkit build
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # ratchet:actions/download-artifact@v8
-        with:
-          name: testkit-dist
-          path: testkit-js/
-
-      - name: Download contracts
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # ratchet:actions/download-artifact@v8
-        with:
-          name: e2e-tests-contracts
-          path: testkit-js/testkit-js-e2e/src/contract/compiled
-
-      - name: Post-Install dependencies
-        run: yarn postinstall
-
-      - name: Run e2e tests - ${{ matrix.test-file }}
-        if: ${{ !contains(github.event.head_commit.message, '[skip_it]') }}
-        run: yarn e2e-single --filter="./testkit-js/*" --concurrency 1 --cache-dir ./turbo
-        env:
-          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-          MN_TEST_ENVIRONMENT: ${{ inputs.network }}
-          MN_TEST_FILE: ${{ matrix.test-file }}
-
-      - name: Upload Test Results
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # ratchet:actions/upload-artifact@v7
-        if: always()
-        with:
-          name: test-results-${{ matrix.test-file }}
-          path: testkit-js/testkit-js-e2e/reports/
-
-  e2e_tests_reports:
-    name: E2E Tests Reports
-    runs-on: ubuntu-latest
-    needs: e2e_tests
-    if: always() && (needs.e2e_tests.result == 'success' || needs.e2e_tests.result == 'failure')
-    steps:
-
-      - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # ratchet:actions/checkout@v6
-
-      - name: Download Test Results
-        uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # ratchet:actions/download-artifact@v8
-        with:
-          pattern: test-results-*
-          path: test-results
-
-      - name: Merge CTRF Results
-        if: always()
-        run: |
-          mkdir ctrf-results
-          find test-results -name "ctrf-*.json" -exec cp {} ctrf-results/ \;
-          if [ "$(ls -A ctrf-results)" ]; then
-            npx ctrf merge ctrf-results --output ./ctrf-report-merged.json
-          else
-            echo "No CTRF results found"
-          fi
-
-      - name: Publish Test Report
-        if: always()
-        uses: ctrf-io/github-test-reporter@024bc4b64d997ca9da86833c6b9548c55c620e40 # v1.0.26
-        with:
-          title: 'E2E Tests Results'
-          report-path: 'ctrf-results/ctrf-report-merged.json'
-          suite-folded-report: true
-          pull-request: true
-          pull-request-report: true
-          overwrite-comment: true
-          collapse-large-reports: true
-          comment-tag: '${{ github.workflow }}-${{ github.job }}'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-
-      - name: Upload Test Results
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # ratchet:actions/upload-artifact@v7
-        if: always()
-        with:
-          name: test-results-ctrf-summary
-          path: ctrf-results
-
-      - name: Publish Test Summary Results
-        if: always()
-        run: |
-          mkdir junit-results
-          find test-results -name "*.xml" -exec cp {} junit-results/ \;
-          if [ "$(ls -A junit-results)" ]; then
-            npm install -g junit-report-merger
-            jrm junit-test-results.xml junit-results/*.xml
-          else
-            echo "No JUnit results found"
-          fi
-
-      - name: Upload Test Results
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # ratchet:actions/upload-artifact@v7
-        if: always()
-        with:
-          name: test-results-junit-summary
-          path: junit-test-results.xml
+    uses: ./.github/workflows/ci-testkit-js-e2e.yml
+    with:
+      test_files: ${{ needs.build.outputs.test-files }}
+      testkit_docker_env: ${{ inputs.testkit_docker_env }}
+      build_timeout: ${{ inputs.build_timeout }}
+      network: ${{ inputs.network }}
+    secrets: inherit

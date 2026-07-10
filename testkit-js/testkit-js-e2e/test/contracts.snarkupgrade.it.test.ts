@@ -13,13 +13,13 @@
  * limitations under the License.
  */
 
-import type { ContractAddress } from '@midnight-ntwrk/ledger-v7';
 import {
   createCircuitCallTxInterface,
   createCircuitMaintenanceTxInterface,
   createCircuitMaintenanceTxInterfaces,
   submitRemoveVerifierKeyTx
 } from '@midnight-ntwrk/midnight-js-contracts';
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import type {
   EnvironmentConfiguration,
@@ -31,7 +31,7 @@ import path from 'path';
 
 import * as api from '@/counter-api';
 import { CIRCUIT_ID_RESET, CompiledCounterContract } from '@/counter-api';
-import { type CounterProviders } from '@/counter-types';
+import { type CounterProviders } from '@/types/counter-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_snark_upgrade_${new Date().toISOString()}.log`)
@@ -124,12 +124,7 @@ describe('Contracts API Snark Upgrade [dedicated contract] [@slow]', () => {
     );
 
     await expect(() => contractCircuitsInterface.reset()).rejects.toThrow(
-      "Operation 'reset' is undefined for contract state ContractState (Array(1) [\n" +
-        '    <[-]: b8>,\n' +
-        ']{\n' +
-        '    increment: <verifier key>,\n' +
-        '    decrement: <verifier key>,\n' +
-        '}ContractState )'
+      "Operation 'reset' is undefined for contract '"
     );
   });
 

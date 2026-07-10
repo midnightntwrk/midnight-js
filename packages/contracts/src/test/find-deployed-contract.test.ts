@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { type Contract } from '@midnight-ntwrk/compact-js';
+import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { findDeployedContract, type FoundContract } from '../find-deployed-contract';
@@ -29,7 +29,10 @@ import {
 } from './test-mocks';
 
 vi.mock('../tx-interfaces', () => ({
-  createCircuitCallTxInterface: vi.fn().mockReturnValue({ call: 'mock-call-interface' }),
+  createCircuitCallTxInterface: vi.fn().mockReturnValue({ call: 'mock-call-interface' })
+}));
+
+vi.mock('../governance/tx-interfaces', () => ({
   createCircuitMaintenanceTxInterfaces: vi.fn().mockReturnValue({ maintenance: 'mock-maintenance-interfaces' }),
   createContractMaintenanceTxInterface: vi.fn().mockReturnValue({ contractMaintenance: 'mock-contract-maintenance' })
 }));
@@ -39,7 +42,7 @@ vi.mock('@midnight-ntwrk/midnight-js-types', async (importOriginal) => {
   const actual = await importOriginal() as any;
   return {
     ...actual,
-    getImpureCircuitIds: vi.fn().mockReturnValue(['testCircuit'])
+    getProvableCircuitIds: vi.fn().mockReturnValue(['testCircuit'])
   };
 });
 

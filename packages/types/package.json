@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-types",
-  "version": "3.2.0",
+  "version": "5.0.0-beta.4",
   "description": "Shared data types and interfaces for MidnightJS modules",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -16,21 +16,28 @@
     }
   },
   "repository": "git@github.com:midnight-ntwrk/artifacts",
-  "packageManager": "yarn@4.10.3",
+  "packageManager": "yarn@4.14.1",
   "author": "IOHK",
   "license": "Apache-2.0",
   "scripts": {
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache",
     "build": "rollup -c rollup.config.mjs",
     "test": "vitest run --passWithNoTests",
-    "deploy": "yarn npm publish"
+    "deploy": "yarn npm publish --tolerate-republish"
   },
   "files": [
     "dist/"
   ],
   "dependencies": {
-    "@midnight-ntwrk/compact-js": "2.4.3",
-    "@midnight-ntwrk/platform-js": "2.2.0",
-    "rxjs": "^7.5.0"
+    "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
+    "effect": "^3.20.0",
+    "pino": "^10.3.1",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.7"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

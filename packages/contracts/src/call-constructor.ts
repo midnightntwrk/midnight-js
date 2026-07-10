@@ -13,17 +13,17 @@
  * limitations under the License.
  */
 
-import { type CompiledContract, type Contract } from '@midnight-ntwrk/compact-js';
+import { type CompiledContract, type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import {
   type CoinPublicKey,
   type ContractState,
   type ZswapLocalState
-} from '@midnight-ntwrk/compact-runtime';
+} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 
 /**
  * Describes the target of a circuit invocation.
  */
-export interface ContractConstructorOptionsBase<C extends Contract.Any> {
+export type ContractConstructorOptionsBase<C extends Contract.Any> = {
   /**
    * The compiled contract defining the circuit to call.
    */
@@ -47,7 +47,7 @@ export type ContractConstructorOptionsWithArguments<C extends Contract.Any> =
 /**
  * Data retrieved via providers that should be included in the constructor call options.
  */
-export interface ContractConstructorOptionsProviderDataDependencies {
+export type ContractConstructorOptionsProviderDataDependencies = {
   /**
    * The current user's ZSwap public key.
    */
@@ -83,7 +83,7 @@ export type ContractConstructorOptions<C extends Contract.Any> =
 /**
  * The updated states resulting from executing a contract constructor.
  */
-export interface ContractConstructorResult<C extends Contract.Any> {
+export type ContractConstructorResult<C extends Contract.Any> = {
   /**
    * The public state resulting from executing the contract constructor.
    */

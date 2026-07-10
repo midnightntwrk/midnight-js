@@ -7,5 +7,40 @@
   "excludePrivate": true,
   "entryPoints": ["packages/*"],
   "entryPointStrategy": "packages",
-  "exclude": ["packages/compact"]
+  "exclude": ["packages/compact"],
+  "externalSymbolLinkMappings": {
+    "@midnight-ntwrk/midnight-js-types": {
+      "ProofProvider": "#",
+      "PublicDataProvider": "#",
+      "PrivateStateProvider": "#",
+      "ZKConfigProvider": "#",
+      "ZKConfigProvider.getProverKey": "#",
+      "ZKConfigProvider.getVerifierKey": "#",
+      "ZKConfigProvider.getZKIR": "#"
+    },
+    "@midnightntwrk/ledger-v9": {
+      "ProvingProvider": "#"
+    },
+    "@midnight-ntwrk/compact-js": {
+      "": "#"
+    },
+    "@midnight-ntwrk/platform-js": {
+      "ContractAddress": "#"
+    },
+    "@midnightntwrk/onchain-runtime-v4": {
+      "ContractAddress": "#"
+    },
+    "@apollo/client": {
+      "ApolloClient": "#"
+    },
+    "level": {
+      "Level": "#"
+    },
+    "pino": {
+      "pino.Logger": "#"
+    },
+    "effect": {
+      "ManagedRuntime": "#"
+    }
+  }
 }

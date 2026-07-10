@@ -13,22 +13,15 @@
  * limitations under the License.
  */
 
-import { type CompiledContract, ContractExecutable } from '@midnight-ntwrk/compact-js';
-import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
-import type { SigningKey } from '@midnight-ntwrk/compact-runtime';
-import type { ContractAddress } from '@midnight-ntwrk/ledger-v7';
-import {
-  type FinalizedTxData,
-  type PrivateStateId,
-  type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
+import { type CompiledContract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
+import type { CoinPublicKey, ContractAddress, EncPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { type PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type CallResult } from './call';
 import { type ContractProviders } from './contract-providers';
 import { submitCallTx } from './submit-call-tx';
-import { submitInsertVerifierKeyTx } from './submit-insert-vk-tx';
-import { submitRemoveVerifierKeyTx } from './submit-remove-vk-tx';
-import { submitReplaceAuthorityTx } from './submit-replace-authority-tx';
 import * as Transaction from './transaction';
 import type { FinalizedCallTxData } from './tx-model';
 import type { CallTxOptions, CallTxOptionsWithPrivateStateId } from './unproven-call-tx';
@@ -38,30 +31,32 @@ import type { CallTxOptions, CallTxOptionsWithPrivateStateId } from './unproven-
  * and submits a call transaction.
  */
 export type CircuitCallTxInterface<C extends Contract.Any> = {
-  [ICK in Contract.ImpureCircuitId<C>]: {
-    (...args: Contract.CircuitParameters<C, ICK>): Promise<FinalizedCallTxData<C, ICK>>,
-    (txCtx: Transaction.TransactionContext<C, ICK>, ...args: Contract.CircuitParameters<C, ICK>): Promise<CallResult<C, ICK>>
+  [PCK in Contract.ProvableCircuitId<C>]: {
+    (...args: Contract.CircuitParameters<C, PCK>): Promise<FinalizedCallTxData<C, PCK>>,
+    (txCtx: Transaction.TransactionContext<C, PCK>, ...args: Contract.CircuitParameters<C, PCK>): Promise<CallResult<C, PCK>>
   };
 };
 
 /**
  * Creates a {@link CallTxOptions} object from various data.
  */
-export const createCallTxOptions = <C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
+export const createCallTxOptions = <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
-  circuitId: ICK,
+  circuitId: PCK,
   contractAddress: ContractAddress,
   privateStateId: PrivateStateId | undefined,
-  args: Contract.CircuitParameters<C, ICK>
-): CallTxOptions<C, ICK> => {
+  additionalCoinEncPublicKeyMappings: ReadonlyMap<CoinPublicKey, EncPublicKey> | undefined,
+  args: Contract.CircuitParameters<C, PCK>
+): CallTxOptions<C, PCK> => {
   const callOptionsBase = {
+    additionalCoinEncPublicKeyMappings,
     compiledContract,
     circuitId,
     contractAddress
   };
   const callTxOptionsBase = args.length !== 0 ? { ...callOptionsBase, args } : callOptionsBase;
   const callTxOptions = privateStateId ? { ...callTxOptionsBase, privateStateId } : callTxOptionsBase;
-  return callTxOptions as CallTxOptions<C, ICK>;
+  return callTxOptions as CallTxOptions<C, PCK>;
 };
 
 /**
@@ -80,7 +75,7 @@ export const createCircuitCallTxInterface = <C extends Contract.Any>(
 ): CircuitCallTxInterface<C> => {
   assertIsContractAddress(contractAddress);
   providers.privateStateProvider.setContractAddress(contractAddress);
-  return ContractExecutable.make(compiledContract).getImpureCircuitIds().reduce(
+  return ContractExecutable.make(compiledContract).getProvableCircuitIds().reduce(
     (acc, circuitId) => ({
       ...acc,
       [circuitId]: (...args: unknown[]) => {
@@ -91,6 +86,7 @@ export const createCircuitCallTxInterface = <C extends Contract.Any>(
           circuitId,
           contractAddress,
           privateStateId,
+          txCtx?.getAdditionalMappings(),
           callArgs as Contract.CircuitParameters<C, typeof circuitId>
         );
         return txCtx
@@ -100,107 +96,4 @@ export const createCircuitCallTxInterface = <C extends Contract.Any>(
     }),
     {}
   ) as CircuitCallTxInterface<C>;
-};
-
-/**
- * An interface for creating maintenance transactions for a specific circuit defined in a
- * given contract.
- */
-export type CircuitMaintenanceTxInterface = {
-  /**
-   * Constructs and submits a transaction that removes the current verifier key stored
-   * on the blockchain for this circuit at this contract's address.
-   */
-  removeVerifierKey(): Promise<FinalizedTxData>;
-  /**
-   * Constructs and submits a transaction that adds a new verifier key to the
-   * blockchain for this circuit at this contract's address.
-   *
-   * @param newVk The new verifier key to add for this circuit.
-   */
-  insertVerifierKey(newVk: VerifierKey): Promise<FinalizedTxData>;
-}
-
-/**
- * Creates a {@link CircuitMaintenanceTxInterface}.
- *
- * @param providers The providers to use to create and submit transactions.
- * @param circuitId The circuit ID the interface is for.
- * @param contractAddress The address of the deployed contract for which this
- *                        interface is being created.
- */
-export const createCircuitMaintenanceTxInterface = <C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>>(
-  providers: ContractProviders<C, ICK>,
-  circuitId: ICK,
-  compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
-  contractAddress: ContractAddress
-): CircuitMaintenanceTxInterface => {
-  assertIsContractAddress(contractAddress);
-  return {
-    removeVerifierKey(): Promise<FinalizedTxData> {
-      return submitRemoveVerifierKeyTx(providers, compiledContract, contractAddress, circuitId);
-    },
-    insertVerifierKey(newVk: VerifierKey): Promise<FinalizedTxData> {
-      return submitInsertVerifierKeyTx(providers, compiledContract, contractAddress, circuitId, newVk);
-    }
-  };
-};
-
-/**
- * A set of maintenance transaction creation interfaces, one for each circuit defined in
- * a given contract, keyed by the circuit name.
- */
-export type CircuitMaintenanceTxInterfaces<C extends Contract.Any> = Record<Contract.ImpureCircuitId<C>, CircuitMaintenanceTxInterface>;
-
-/**
- * Creates a {@link CircuitMaintenanceTxInterfaces}.
- *
- * @param providers The providers to use to build transactions.
- * @param contract The contract to use to execute circuits.
- * @param contractAddress The ledger address of the contract.
- */
-export const createCircuitMaintenanceTxInterfaces = <C extends Contract.Any>(
-  providers: ContractProviders<C>,
-  compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
-  contractAddress: ContractAddress
-): CircuitMaintenanceTxInterfaces<C> => {
-  assertIsContractAddress(contractAddress);
-  return ContractExecutable.make(compiledContract).getImpureCircuitIds().reduce(
-    (acc, circuitId) => ({
-      ...acc,
-      [circuitId]: createCircuitMaintenanceTxInterface(providers, circuitId, compiledContract, contractAddress)
-    }),
-    {}
-  ) as CircuitMaintenanceTxInterfaces<C>;
-};
-
-/**
- * Interface for creating maintenance transactions for a contract that was
- * deployed.
- */
-export interface ContractMaintenanceTxInterface {
-  /**
-   * Constructs and submits a transaction that replaces the maintenance
-   * authority stored on the blockchain for this contract.
-   *
-   * @param newAuthority The new contract maintenance authority for this contract.
-   */
-  replaceAuthority(newAuthority: SigningKey): Promise<FinalizedTxData>;
-}
-
-/**
- * Creates a {@link ContractMaintenanceTxInterface}.
- *
- * @param providers The providers to use to build transactions.
- * @param contractAddress The ledger address of the contract.
- */
-export const createContractMaintenanceTxInterface = <C extends Contract.Any>(
-  providers: ContractProviders,
-  compiledContract: CompiledContract.CompiledContract<C, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
-  contractAddress: ContractAddress
-): ContractMaintenanceTxInterface => {
-  assertIsContractAddress(contractAddress);
-  return {
-    replaceAuthority: submitReplaceAuthorityTx(providers, compiledContract, contractAddress)
-  };
 };

@@ -13,15 +13,15 @@
  * limitations under the License.
  */
 
-import type { ContractState } from '@midnight-ntwrk/compact-runtime';
-import type { ContractAddress, ZswapChainState } from '@midnight-ntwrk/ledger-v7';
+import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { ContractAddress, LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PrivateStateId,PrivateStateProvider, PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 
 /**
  * Object containing the publicly visible states of a contract.
  */
-export interface PublicContractStates {
+export type PublicContractStates = {
   /**
    * The (public) Zswap chain state of a contract.
    */
@@ -30,18 +30,22 @@ export interface PublicContractStates {
    * The (public) ledger state of a contract.
    */
   readonly contractState: ContractState;
+  /**
+   * The ledger parameters in effect on the block associated with the contract state.
+   */
+  readonly ledgerParameters: LedgerParameters;
 }
 
 /**
  * Object containing the publicly visible states of a contract and the private
  * state of a contract.
  */
-export interface ContractStates<PS> extends PublicContractStates {
+export type ContractStates<PS> = PublicContractStates & {
   /**
    * The private state of a contract.
    */
   readonly privateState: PS;
-}
+};
 
 /**
  * Fetches only the public visible (Zswap and ledger) states of a contract.
@@ -52,13 +56,17 @@ export interface ContractStates<PS> extends PublicContractStates {
  */
 export const getPublicStates = async (
   publicDataProvider: PublicDataProvider,
-  contractAddress: ContractAddress
+  contractAddress: ContractAddress,
+  blockHash?: string
 ): Promise<PublicContractStates> => {
   assertIsContractAddress(contractAddress);
-  const zswapAndContractState = await publicDataProvider.queryZSwapAndContractState(contractAddress);
+  const zswapAndContractState = await publicDataProvider.queryZSwapAndContractState(
+    contractAddress,
+    blockHash === undefined ? undefined : { type: 'blockHash', blockHash }
+  );
   assertDefined(zswapAndContractState, `No public state found at contract address '${contractAddress}'`);
-  const [zswapChainState, contractState] = zswapAndContractState;
-  return { contractState, zswapChainState };
+  const [zswapChainState, contractState, ledgerParameters] = zswapAndContractState;
+  return { contractState, zswapChainState, ledgerParameters };
 };
 
 /**
@@ -75,9 +83,10 @@ export const getStates = async <PS>(
   publicDataProvider: PublicDataProvider,
   privateStateProvider: PrivateStateProvider<PrivateStateId, PS>,
   contractAddress: ContractAddress,
-  privateStateId: PrivateStateId
+  privateStateId: PrivateStateId,
+  blockHash?: string
 ): Promise<ContractStates<PS>> => {
-  const publicContractStates = await getPublicStates(publicDataProvider, contractAddress);
+  const publicContractStates = await getPublicStates(publicDataProvider, contractAddress, blockHash);
   const privateState = await privateStateProvider.get(privateStateId);
   assertDefined(privateState, `No private state found at private state ID '${privateStateId}'`);
   return { ...publicContractStates, privateState };

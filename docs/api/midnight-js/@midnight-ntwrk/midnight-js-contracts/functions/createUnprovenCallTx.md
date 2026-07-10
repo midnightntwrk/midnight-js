@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.1.0**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.3**](../../../README.md)
 
 ***
 
@@ -28,9 +28,16 @@ IncompleteCallTxPrivateStateConfig If a `privateStateId` was given but a `privat
                                           was not. We assume that when a user gives a `privateStateId`,
                                           they want to update the private state store.
 
+## Remarks
+
+The returned [UnsubmittedCallTxData](../type-aliases/UnsubmittedCallTxData.md) is privacy-sensitive and carries
+the unproven transaction, ZK inputs/outputs, and next private state. See
+that type for handling guidance before logging, serializing, or
+transmitting the result.
+
 ## Call Signature
 
-> **createUnprovenCallTx**\<`C`, `ICK`\>(`providers`, `options`, `transactionContext?`): `Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `ICK`\>\>
+> **createUnprovenCallTx**\<`C`, `PCK`\>(`providers`, `options`, `transactionContext?`): `Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
 
 ### Type Parameters
 
@@ -38,9 +45,9 @@ IncompleteCallTxPrivateStateConfig If a `privateStateId` was given but a `privat
 
 `C` *extends* `Contract`\<`undefined`, `Witnesses`\<`undefined`\>\>
 
-#### ICK
+#### PCK
 
-`ICK` *extends* `string`
+`PCK` *extends* `string`
 
 ### Parameters
 
@@ -50,19 +57,19 @@ IncompleteCallTxPrivateStateConfig If a `privateStateId` was given but a `privat
 
 #### options
 
-[`CallOptionsWithArguments`](../type-aliases/CallOptionsWithArguments.md)\<`C`, `ICK`\>
+[`CallOptionsWithArguments`](../type-aliases/CallOptionsWithArguments.md)\<`C`, `PCK`\>
 
 #### transactionContext?
 
-[`TransactionContext`](../interfaces/TransactionContext.md)\<`C`, `ICK`\>
+[`TransactionContext`](../interfaces/TransactionContext.md)\<`C`, `PCK`\>
 
 ### Returns
 
-`Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `ICK`\>\>
+`Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
 
 ## Call Signature
 
-> **createUnprovenCallTx**\<`C`, `ICK`\>(`providers`, `options`, `transactionContext?`): `Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `ICK`\>\>
+> **createUnprovenCallTx**\<`C`, `PCK`\>(`providers`, `options`, `transactionContext?`): `Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
 
 ### Type Parameters
 
@@ -70,9 +77,9 @@ IncompleteCallTxPrivateStateConfig If a `privateStateId` was given but a `privat
 
 `C` *extends* `Any`
 
-#### ICK
+#### PCK
 
-`ICK` *extends* `string`
+`PCK` *extends* `string`
 
 ### Parameters
 
@@ -82,12 +89,12 @@ IncompleteCallTxPrivateStateConfig If a `privateStateId` was given but a `privat
 
 #### options
 
-[`CallTxOptionsWithPrivateStateId`](../type-aliases/CallTxOptionsWithPrivateStateId.md)\<`C`, `ICK`\>
+[`CallTxOptionsWithPrivateStateId`](../type-aliases/CallTxOptionsWithPrivateStateId.md)\<`C`, `PCK`\>
 
 #### transactionContext?
 
-[`TransactionContext`](../interfaces/TransactionContext.md)\<`C`, `ICK`\>
+[`TransactionContext`](../interfaces/TransactionContext.md)\<`C`, `PCK`\>
 
 ### Returns
 
-`Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `ICK`\>\>
+`Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>

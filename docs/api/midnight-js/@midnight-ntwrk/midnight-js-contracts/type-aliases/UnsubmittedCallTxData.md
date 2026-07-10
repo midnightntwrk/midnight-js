@@ -1,12 +1,12 @@
-[**Midnight.js API Reference v3.1.0**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.3**](../../../README.md)
 
 ***
 
 [Midnight.js API Reference](../../../packages.md) / [@midnight-ntwrk/midnight-js-contracts](../README.md) / UnsubmittedCallTxData
 
-# Type Alias: UnsubmittedCallTxData\<C, ICK\>
+# Type Alias: UnsubmittedCallTxData\<C, PCK\>
 
-> **UnsubmittedCallTxData**\<`C`, `ICK`\> = [`CallResult`](CallResult.md)\<`C`, `ICK`\> & `object`
+> **UnsubmittedCallTxData**\<`C`, `PCK`\> = [`CallResult`](CallResult.md)\<`C`, `PCK`\> & `object`
 
 Data for an unsubmitted call transaction.
 
@@ -24,6 +24,16 @@ Private data relevant to this call transaction.
 
 `C` *extends* `Contract.Any`
 
-### ICK
+### PCK
 
-`ICK` *extends* `Contract.ImpureCircuitId`\<`C`\>
+`PCK` *extends* `Contract.ProvableCircuitId`\<`C`\>
+
+## Remarks
+
+**Privacy-sensitive type.** Intersects [CallResult](CallResult.md) (whose `private`
+field exposes ZK inputs/outputs, the private transcript outputs, and the
+next private state) with an additional [UnsubmittedTxData](UnsubmittedTxData.md) under
+`private` (carrying the `UnprovenTransaction` and new shielded
+coins). Treat as confidential when logging, serializing, or transmitting —
+destructure specific non-sensitive fields rather than spreading or
+stringifying the whole object.

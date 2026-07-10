@@ -13,8 +13,6 @@
  * limitations under the License.
  */
 
-import { sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
-import type { ContractAddress } from '@midnight-ntwrk/ledger-v7';
 import {
   createCircuitMaintenanceTxInterface,
   createCircuitMaintenanceTxInterfaces,
@@ -23,6 +21,8 @@ import {
   submitRemoveVerifierKeyTx,
   submitReplaceAuthorityTx
 } from '@midnight-ntwrk/midnight-js-contracts';
+import { sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { SucceedEntirely, type VerifierKey } from '@midnight-ntwrk/midnight-js-types';
 import {
   createLogger,
@@ -42,7 +42,7 @@ import {
   CounterCloneConfiguration,
   SimpleConfiguration
 } from '@/counter-api';
-import { type CounterProviders, type DeployedCounterContract } from '@/counter-types';
+import { type CounterProviders, type DeployedCounterContract } from '@/types/counter-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_snark_upgrade_${new Date().toISOString()}.log`)

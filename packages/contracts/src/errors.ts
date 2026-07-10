@@ -13,9 +13,23 @@
  * limitations under the License.
  */
 
-import type { Contract } from '@midnight-ntwrk/compact-js';
-import type { ContractState } from '@midnight-ntwrk/compact-runtime';
-import type { FinalizedTxData, PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
+import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { AnyProvableCircuitId, FinalizedTxData, PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
+
+interface EffectContractError {
+  readonly _tag: string;
+  readonly cause: { readonly name: string; readonly message: string; readonly isCompactError?: boolean };
+}
+
+export const isEffectContractError = (error: unknown): error is EffectContractError =>
+  typeof error === 'object' &&
+  error !== null &&
+  '_tag' in error &&
+  'cause' in error &&
+  typeof (error as Record<string, unknown>).cause === 'object' &&
+  (error as Record<string, unknown>).cause !== null &&
+  'name' in ((error as Record<string, unknown>).cause as object) &&
+  'message' in ((error as Record<string, unknown>).cause as object);
 
 /**
  * An error indicating that a transaction submitted to a consensus node failed.
@@ -29,7 +43,7 @@ export class TxFailedError extends Error {
    */
   constructor(
     public readonly finalizedTxData: FinalizedTxData,
-    public readonly circuitId?: Contract.ImpureCircuitId<Contract.Any> | Contract.ImpureCircuitId<Contract.Any>[]
+    public readonly circuitId?: AnyProvableCircuitId | AnyProvableCircuitId[]
   ) {
     super('Transaction failed');
     this.message = JSON.stringify(
@@ -37,7 +51,11 @@ export class TxFailedError extends Error {
         ...(circuitId && { circuitId }),
         ...finalizedTxData
       },
-      null,
+      (_key, value) => {
+        if (typeof value === 'bigint') return value.toString();
+        if (value instanceof Map) return Object.fromEntries(value);
+        return value;
+      },
       '\t'
     );
   }
@@ -66,7 +84,7 @@ export class CallTxFailedError extends TxFailedError {
    */
   constructor(
     finalizedTxData: FinalizedTxData,
-    circuitId: Contract.ImpureCircuitId<Contract.Any> | Contract.ImpureCircuitId<Contract.Any>[]
+    circuitId: AnyProvableCircuitId | AnyProvableCircuitId[]
   ) {
     super(finalizedTxData, circuitId);
     this.name = 'CallTxFailedError';
@@ -91,43 +109,13 @@ export class ContractTypeError extends TypeError {
    */
   constructor(
     readonly contractState: ContractState,
-    readonly circuitIds: Contract.ImpureCircuitId<Contract.Any>[]
+    readonly circuitIds: AnyProvableCircuitId[]
   ) {
     super(
       `Following operations: ${circuitIds.join(
         ', '
       )}, are undefined or have mismatched verifier keys for contract state ${contractState.toString(false)}`
     );
-  }
-}
-
-/**
- * An error indicating that a contract maintenance authority replacement transaction failed.
- */
-export class ReplaceMaintenanceAuthorityTxFailedError extends TxFailedError {
-  constructor(finalizedTxData: FinalizedTxData) {
-    super(finalizedTxData);
-    this.name = 'ReplaceMaintenanceAuthorityTxFailedError';
-  }
-}
-
-/**
- * An error indicating that a verifier key removal transaction failed.
- */
-export class RemoveVerifierKeyTxFailedError extends TxFailedError {
-  constructor(finalizedTxData: FinalizedTxData) {
-    super(finalizedTxData);
-    this.name = 'RemoveVerifierKeyTxFailedError';
-  }
-}
-
-/**
- * An error indicating that a verifier key insertion transaction failed.
- */
-export class InsertVerifierKeyTxFailedError extends TxFailedError {
-  constructor(finalizedTxData: FinalizedTxData) {
-    super(finalizedTxData);
-    this.name = 'InsertVerifierKeyTxFailedError';
   }
 }
 

@@ -1,6 +1,7 @@
 node_modules/
 dist/
 build/
+
 .turbo
 *.tsbuildinfo
 .direnv/
@@ -28,5 +29,5 @@ logs
 
 midnight-concurrent-test-db
 .claude
-
 .worktrees
+.gitnexus

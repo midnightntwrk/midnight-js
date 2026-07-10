@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { WitnessContext } from '@midnight-ntwrk/compact-runtime';
+import type { WitnessContext } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 
 import type { Ledger } from './compiled/counter/contract/index.js';
 

@@ -1,0 +1,19 @@
+[**Midnight.js API Reference v5.0.0-beta.3**](../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../packages.md) / [@midnight-ntwrk/midnight-js-indexer-public-data-provider](../README.md) / isRegularTransaction
+
+# Function: isRegularTransaction()
+
+> **isRegularTransaction**(`tx`): `tx is Transaction & { block: Block; contractActions: readonly ContractAction[]; dustCommitmentEndIndex: number; dustCommitmentStartIndex: number; dustGenerationEndIndex: number; dustGenerationStartIndex: number; dustLedgerEvents: readonly DustLedgerEvent[]; endIndex: number; fee: string; fees: TransactionFees; hash: string; id: number; identifiers: readonly string[]; merkleTreeRoot: string; protocolVersion: number; raw: string; startIndex: number; transactionResult: TransactionResult; unshieldedCreatedOutputs: readonly UnshieldedUtxo[]; unshieldedSpentOutputs: readonly UnshieldedUtxo[]; zswapEndIndex: number; zswapLedgerEvents: readonly ZswapLedgerEvent[]; zswapMerkleTreeRoot: string; zswapStartIndex: number } & { hash: string; identifiers: string[] }`
+
+## Parameters
+
+### tx
+
+`unknown`
+
+## Returns
+
+`tx is Transaction & { block: Block; contractActions: readonly ContractAction[]; dustCommitmentEndIndex: number; dustCommitmentStartIndex: number; dustGenerationEndIndex: number; dustGenerationStartIndex: number; dustLedgerEvents: readonly DustLedgerEvent[]; endIndex: number; fee: string; fees: TransactionFees; hash: string; id: number; identifiers: readonly string[]; merkleTreeRoot: string; protocolVersion: number; raw: string; startIndex: number; transactionResult: TransactionResult; unshieldedCreatedOutputs: readonly UnshieldedUtxo[]; unshieldedSpentOutputs: readonly UnshieldedUtxo[]; zswapEndIndex: number; zswapLedgerEvents: readonly ZswapLedgerEvent[]; zswapMerkleTreeRoot: string; zswapStartIndex: number } & { hash: string; identifiers: string[] }`

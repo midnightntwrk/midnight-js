@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.1.0**](../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.3**](../../README.md)
 
 ***
 
@@ -9,3 +9,7 @@
 ## Classes
 
 - [FetchZkConfigProvider](classes/FetchZkConfigProvider.md)
+
+## Type Aliases
+
+- [FetchZkConfigProviderOptions](type-aliases/FetchZkConfigProviderOptions.md)

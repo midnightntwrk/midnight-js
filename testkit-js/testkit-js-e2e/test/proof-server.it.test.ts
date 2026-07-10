@@ -13,18 +13,6 @@
  * limitations under the License.
  */
 
-import { sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
-import {
-  ContractCall,
-  ContractDeploy,
-  LedgerState,
-  type Proof,
-  sampleCoinPublicKey,
-  sampleEncryptionPublicKey,
-  type UnprovenTransaction,
-  WellFormedStrictness,
-  ZswapChainState
-} from '@midnight-ntwrk/ledger-v7';
 import {
   createUnprovenCallTxFromInitialStates,
   createUnprovenDeployTxFromVerifierKeys
@@ -32,6 +20,19 @@ import {
 import { DEFAULT_CONFIG, httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
 import { getNetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
+import { sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import {
+  ContractCall,
+  ContractDeploy,
+  LedgerParameters,
+  LedgerState,
+  type Proof,
+  sampleCoinPublicKey,
+  sampleEncryptionPublicKey,
+  type UnprovenTransaction,
+  WellFormedStrictness,
+  ZswapChainState
+} from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { ProofProvider } from '@midnight-ntwrk/midnight-js-types';
 import {
   createLogger,
@@ -43,7 +44,7 @@ import path from 'path';
 import { createInitialPrivateState } from '@/contract/witnesses';
 import * as api from '@/counter-api';
 import { CounterConfiguration } from '@/counter-api';
-import type { CounterCircuits } from '@/counter-types';
+import type { CounterCircuit } from '@/types/counter-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `proof_server_${new Date().toISOString()}.log`)
@@ -57,7 +58,7 @@ describe('Proof server integration', () => {
   let proofProvider: ProofProvider;
   let unprovenDeployTx: UnprovenTransaction;
   let unprovenCallTx: UnprovenTransaction;
-  let zkConfigProvider: NodeZkConfigProvider<CounterCircuits>;
+  let zkConfigProvider: NodeZkConfigProvider<CounterCircuit>;
 
   beforeEach(() => {
     logger.info(`Running test=${expect.getState().currentTestName}`);
@@ -66,7 +67,7 @@ describe('Proof server integration', () => {
   beforeAll(async () => {
     setNetworkId('undeployed');
     proofServerContainer = await DynamicProofServerContainer.start(logger);
-    zkConfigProvider = new NodeZkConfigProvider<CounterCircuits>(new CounterConfiguration().zkConfigPath);
+    zkConfigProvider = new NodeZkConfigProvider<CounterCircuit>(new CounterConfiguration().zkConfigPath);
     proofProvider = httpClientProofProvider(proofServerContainer.getUrl(), zkConfigProvider);
     const coinPublicKey = sampleCoinPublicKey();
     const encryptionPublicKey = sampleEncryptionPublicKey();
@@ -91,7 +92,8 @@ describe('Proof server integration', () => {
         coinPublicKey,
         initialContractState: unprovenDeployTxResult.public.initialContractState,
         initialZswapChainState: new ZswapChainState(),
-        initialPrivateState: unprovenDeployTxResult.private.initialPrivateState
+        initialPrivateState: unprovenDeployTxResult.private.initialPrivateState,
+        ledgerParameters: LedgerParameters.initialParameters()
       },
       encryptionPublicKey
     )).private.unprovenTx;

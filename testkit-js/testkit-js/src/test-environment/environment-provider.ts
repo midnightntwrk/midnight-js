@@ -24,7 +24,7 @@ import {
   LocalTestEnvironment,
   PreprodTestEnvironment,
   PreviewTestEnvironment,
-  QanetTestEnvironment,
+  QanetTestEnvironment
 } from './test-environments';
 
 /**
@@ -38,15 +38,15 @@ export const getTestEnvironment = (logger: Logger): TestEnvironment => {
   switch (testEnv) {
     case 'preview':
       env = new PreviewTestEnvironment(logger);
-      setNetworkId('test');
+      setNetworkId('preview');
       break;
     case 'preprod':
       env = new PreprodTestEnvironment(logger);
-      setNetworkId('test');
+      setNetworkId('preprod');
       break;
     case 'qanet':
       env = new QanetTestEnvironment(logger);
-      setNetworkId('dev');
+      setNetworkId('qanet');
       break;
     case 'env-var-remote':
       env = new EnvVarRemoteTestEnvironment(logger);

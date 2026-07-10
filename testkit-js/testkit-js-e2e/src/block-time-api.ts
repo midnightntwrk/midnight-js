@@ -23,7 +23,7 @@ import { WebSocket } from 'ws';
 import type {
   BlockTimeProviders,
   DeployedBlockTimeContract
-} from '@/block-time-types';
+} from '@/types/block-time-types';
 
 import { CompiledBlockTimeContract } from './contract';
 

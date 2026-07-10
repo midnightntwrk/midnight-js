@@ -1,10 +1,10 @@
-[**Midnight.js API Reference v3.1.0**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.3**](../../../README.md)
 
 ***
 
 [Midnight.js API Reference](../../../packages.md) / [@midnight-ntwrk/midnight-js-contracts](../README.md) / TransactionContext
 
-# Interface: TransactionContext\<C, ICK\>
+# Interface: TransactionContext\<C, PCK\>
 
 Encapsulates the context for managing a scoped contract transaction.
 
@@ -14,25 +14,29 @@ Encapsulates the context for managing a scoped contract transaction.
 
 `C` *extends* `Contract.Any`
 
-### ICK
+### PCK
 
-`ICK` *extends* `Contract.ImpureCircuitId`\<`C`\> = `Contract.ImpureCircuitId`\<`C`\>
+`PCK` *extends* `Contract.ProvableCircuitId`\<`C`\> = `Contract.ProvableCircuitId`\<`C`\>
 
 ## Properties
 
-### \[CacheStates\]()
+### \[CacheStates\]
 
-> `readonly` **\[CacheStates\]**: (`states`, `identity`) => `void`
+> `readonly` **\[CacheStates\]**: (`states`, `identity`, `blockHash`) => `void`
 
 #### Parameters
 
 ##### states
 
-[`PublicContractStates`](../type-aliases/PublicContractStates.md) | [`ContractStates`](../type-aliases/ContractStates.md)\<`PrivateState`\<`C`\>\>
+[`PublicContractStates`](../type-aliases/PublicContractStates.md) \| [`ContractStates`](../type-aliases/ContractStates.md)\<`PrivateState`\<`C`\>\>
 
 ##### identity
 
 `CachedStateIdentity`
+
+##### blockHash
+
+`string`
 
 #### Returns
 
@@ -40,9 +44,9 @@ Encapsulates the context for managing a scoped contract transaction.
 
 ***
 
-### \[GetCurrentStatesForIdentity\]()
+### \[GetCurrentStatesForIdentity\]
 
-> `readonly` **\[GetCurrentStatesForIdentity\]**: (`identity`) => [`PublicContractStates`](../type-aliases/PublicContractStates.md) \| [`ContractStates`](../type-aliases/ContractStates.md)\<`PrivateState`\<`C`\>\> \| `undefined`
+> `readonly` **\[GetCurrentStatesForIdentity\]**: (`identity`) => `PinnedContractStates`\<`PrivateState`\<`C`\>\> \| `undefined`
 
 #### Parameters
 
@@ -52,11 +56,11 @@ Encapsulates the context for managing a scoped contract transaction.
 
 #### Returns
 
-[`PublicContractStates`](../type-aliases/PublicContractStates.md) \| [`ContractStates`](../type-aliases/ContractStates.md)\<`PrivateState`\<`C`\>\> \| `undefined`
+`PinnedContractStates`\<`PrivateState`\<`C`\>\> \| `undefined`
 
 ***
 
-### \[MergeUnsubmittedCallTxData\]()
+### \[MergeUnsubmittedCallTxData\]
 
 > `readonly` **\[MergeUnsubmittedCallTxData\]**: (`circuitId`, `callData`, `privateStateId?`) => `void`
 
@@ -64,11 +68,11 @@ Encapsulates the context for managing a scoped contract transaction.
 
 ##### circuitId
 
-`ICK`
+`PCK`
 
 ##### callData
 
-[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `ICK`\>
+[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `PCK`\>
 
 ##### privateStateId?
 
@@ -80,13 +84,13 @@ Encapsulates the context for managing a scoped contract transaction.
 
 ***
 
-### \[Submit\]()
+### \[Submit\]
 
-> `readonly` **\[Submit\]**: () => `Promise`\<[`FinalizedCallTxData`](../type-aliases/FinalizedCallTxData.md)\<`C`, `ICK`\>\>
+> `readonly` **\[Submit\]**: () => `Promise`\<[`FinalizedCallTxData`](../type-aliases/FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
 #### Returns
 
-`Promise`\<[`FinalizedCallTxData`](../type-aliases/FinalizedCallTxData.md)\<`C`, `ICK`\>\>
+`Promise`\<[`FinalizedCallTxData`](../type-aliases/FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
 ***
 
@@ -95,6 +99,21 @@ Encapsulates the context for managing a scoped contract transaction.
 > `readonly` **\[TypeId\]**: *typeof* `TypeId`
 
 ## Methods
+
+### getAdditionalMappings()
+
+> **getAdditionalMappings**(): `ReadonlyMap`\<`string`, `string`\> \| `undefined`
+
+Gets the additional scoped CoinPublicKey to EncPublicKey mappings.
+
+#### Returns
+
+`ReadonlyMap`\<`string`, `string`\> \| `undefined`
+
+A `ReadonlyMap`<CoinPublicKey, EncPublicKey> instance, or `undefined` if no additional
+mappings were specified for the current transaction context.
+
+***
 
 ### getCurrentStates()
 
@@ -117,13 +136,13 @@ reflecting any unsubmitted circuit calls made to the contract during the scope o
 
 ### getLastUnsubmittedCallTxDataToTransact()
 
-> **getLastUnsubmittedCallTxDataToTransact**(): \[[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `ICK`\>, `string`?\] \| `undefined`
+> **getLastUnsubmittedCallTxDataToTransact**(): \[[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `PCK`\>, `string`?\] \| `undefined`
 
 Gets the last unsubmitted call transaction data.
 
 #### Returns
 
-\[[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `ICK`\>, `string`?\] \| `undefined`
+\[[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `PCK`\>, `string`?\] \| `undefined`
 
 A tuple containing an [UnsubmittedCallTxData](../type-aliases/UnsubmittedCallTxData.md) instance, and an optional private state
 ID, or `undefined` if circuit calls are yet to be made.

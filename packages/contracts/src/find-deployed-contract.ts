@@ -13,14 +13,15 @@
  * limitations under the License.
  */
 
-import { type CompiledContract, type Contract, ContractExecutable } from '@midnight-ntwrk/compact-js';
+import { type CompiledContract, type Contract, ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import {
   type ContractAddress,
   type ContractState,
   sampleSigningKey,
   type SigningKey
-} from '@midnight-ntwrk/compact-runtime';
+} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
+  type AnyProvableCircuitId,
   type PrivateStateId,
   type PrivateStateProvider,
   type VerifierKey} from '@midnight-ntwrk/midnight-js-types';
@@ -29,12 +30,14 @@ import { assertDefined, assertIsContractAddress, toHex } from '@midnight-ntwrk/m
 import { type ContractProviders } from './contract-providers';
 import { ContractTypeError, IncompleteFindContractPrivateStateConfig } from './errors';
 import {
-  type CircuitCallTxInterface,
   type CircuitMaintenanceTxInterfaces,
   type ContractMaintenanceTxInterface,
-  createCircuitCallTxInterface,
   createCircuitMaintenanceTxInterfaces,
   createContractMaintenanceTxInterface
+} from './governance/tx-interfaces';
+import {
+  type CircuitCallTxInterface,
+  createCircuitCallTxInterface
 } from './tx-interfaces';
 import type { FinalizedDeployTxDataBase } from './tx-model';
 
@@ -115,7 +118,7 @@ export const verifierKeysEqual = (a: Uint8Array, b: Uint8Array): boolean =>
  * @throws ContractTypeError When one or more of the local and deployed verifier keys do not match.
  */
 export const verifyContractState = (
-  verifierKeys: [Contract.ImpureCircuitId<Contract.Any>, VerifierKey][],
+  verifierKeys: [AnyProvableCircuitId, VerifierKey][],
   contractState: ContractState
 ): void => {
   const mismatchedCircuitIds = verifierKeys.reduce(
@@ -134,7 +137,7 @@ export const verifyContractState = (
 /**
  * Base type for the configuration options for {@link findDeployedContract}.
  */
-export interface FindDeployedContractOptionsBase<C extends Contract.Any> {
+export type FindDeployedContractOptionsBase<C extends Contract.Any> = {
   /**
    * The compiled contract to use to execute circuits.
    */
@@ -162,13 +165,12 @@ export interface FindDeployedContractOptionsBase<C extends Contract.Any> {
  * the intention is to overwrite the private state currently stored at the given
  * private state ID.
  */
-export interface FindDeployedContractOptionsExistingPrivateState<C extends Contract.Any>
-  extends FindDeployedContractOptionsBase<C> {
+export type FindDeployedContractOptionsExistingPrivateState<C extends Contract.Any> = FindDeployedContractOptionsBase<C> & {
   /**
    * An identifier for the private state of the contract being found.
    */
   readonly privateStateId: PrivateStateId;
-}
+};
 
 /**
  * {@link findDeployedContract} configuration that includes an initial private
@@ -176,15 +178,15 @@ export interface FindDeployedContractOptionsExistingPrivateState<C extends Contr
  * the intention is to overwrite the private state currently stored at the given
  * private state ID.
  */
-export interface FindDeployedContractOptionsStorePrivateState<C extends Contract.Any>
-  extends FindDeployedContractOptionsExistingPrivateState<C> {
-  /**
-   * For types of contract that make no use of private state and or witnesses that operate upon it, this
-   * property may be `undefined`. Otherwise, the value provided via this property should be same initial
-   * state that was used when calling {@link deployContract}.
-   */
-  readonly initialPrivateState: Contract.PrivateState<C>;
-}
+export type FindDeployedContractOptionsStorePrivateState<C extends Contract.Any> =
+  FindDeployedContractOptionsExistingPrivateState<C> & {
+    /**
+     * For types of contract that make no use of private state and or witnesses that operate upon it, this
+     * property may be `undefined`. Otherwise, the value provided via this property should be same initial
+     * state that was used when calling {@link deployContract}.
+     */
+    readonly initialPrivateState: Contract.PrivateState<C>;
+  };
 
 /**
  * Configuration for {@link findDeployedContract}.
@@ -197,7 +199,7 @@ export type FindDeployedContractOptions<C extends Contract.Any> =
 /**
  * Base type for a deployed contract that has been found on the blockchain.
  */
-export interface FoundContract<C extends Contract.Any> {
+export type FoundContract<C extends Contract.Any> = {
   /**
    * Data for the finalized deploy transaction corresponding to this contract.
    */
@@ -219,7 +221,7 @@ export interface FoundContract<C extends Contract.Any> {
 }
 
 export async function findDeployedContract<C extends Contract<undefined>>(
-  providers: ContractProviders<C, Contract.ImpureCircuitId<C>, unknown>,
+  providers: ContractProviders<C, Contract.ProvableCircuitId<C>, unknown>,
   options: FindDeployedContractOptionsBase<C>
 ): Promise<FoundContract<C>>;
 
@@ -267,7 +269,7 @@ export async function findDeployedContract<C extends Contract.Any>(
   assertDefined(currentContractState, `No contract deployed at contract address '${contractAddress}'`);
 
   const verifierKeys = await providers.zkConfigProvider.getVerifierKeys(
-    ContractExecutable.make(compiledContract).getImpureCircuitIds()
+    ContractExecutable.make(compiledContract).getProvableCircuitIds()
   );
   verifyContractState(verifierKeys, currentContractState);
 

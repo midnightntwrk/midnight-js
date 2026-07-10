@@ -13,13 +13,18 @@
  * limitations under the License.
  */
 
-import { type CompiledContract,type Contract } from '@midnight-ntwrk/compact-js';
-import { StateValue } from '@midnight-ntwrk/compact-runtime';
-import { type AlignedValue, type ContractAddress, type PartitionedTranscript } from '@midnight-ntwrk/ledger-v7';
+import { type CompiledContract, type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import { StateValue } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { type AlignedValue, type ContractAddress, type IntentHash, type PartitionedTranscript, type RawTokenType } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
+  type AnyPrivateState,
+  type AnyProvableCircuitId,
   FailEntirely,
+  FailFallible,
   type FinalizedTxData,
-  type PrivateStateId
+  type PrivateStateId,
+  SegmentFail,
+  SegmentSuccess
 } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -64,10 +69,10 @@ describe('submit-call-tx', () => {
     vi.mock('../submit-tx');
   });
 
-  const createBasicCallOptions = (overrides: Partial<CallTxOptions<Contract.Any, Contract.ImpureCircuitId<Contract.Any>>> = {}) => ({
+  const createBasicCallOptions = (overrides: Partial<CallTxOptions<Contract.Any, AnyProvableCircuitId>> = {}) => ({
     compiledContract: mockCompiledContract,
     contractAddress: mockContractAddress,
-    circuitId: 'testCircuit' as Contract.ImpureCircuitId<Contract.Any>,
+    circuitId: 'testCircuit' as AnyProvableCircuitId,
     args: ['arg1', 'arg2'],
     ...overrides
   });
@@ -82,11 +87,12 @@ describe('submit-call-tx', () => {
     return { mockUnprovenCallTxData, mockFinalizedTxData };
   };
 
-  const createFailedTxData = (): UnsubmittedCallTxData<Contract.Any, Contract.ImpureCircuitId<Contract.Any>> => ({
+  const createFailedTxData = (): UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId> => ({
     public: {
       nextContractState: StateValue.newNull(),
       publicTranscript: [],
-      partitionedTranscript: {} as PartitionedTranscript
+      partitionedTranscript: {} as PartitionedTranscript,
+      logEvents: []
     },
     private: {
       input: {} as AlignedValue,
@@ -97,14 +103,15 @@ describe('submit-call-tx', () => {
       nextZswapLocalState: mockZswapLocalState,
       privateTranscriptOutputs: [] as AlignedValue[],
       result: vi.fn()
-    }
+    },
+    calls: []
   });
 
   const verifySuccessfulCall = (
-    mockUnprovenCallTxData: UnsubmittedCallTxData<Contract.Any, Contract.ImpureCircuitId<Contract.Any>>,
+    mockUnprovenCallTxData: UnsubmittedCallTxData<Contract.Any, AnyProvableCircuitId>,
     mockFinalizedTxData: FinalizedTxData,
-    result: FinalizedCallTxData<Contract.Any, Contract.ImpureCircuitId<Contract.Any>>,
-    options: CallTxOptions<Contract.Any, Contract.ImpureCircuitId<Contract.Any>>
+    result: FinalizedCallTxData<Contract.Any, AnyProvableCircuitId>,
+    options: CallTxOptions<Contract.Any, AnyProvableCircuitId>
   ) => {
     expect(createUnprovenCallTx).toHaveBeenCalledWith(
       mockProviders,
@@ -116,6 +123,7 @@ describe('submit-call-tx', () => {
       circuitId: 'testCircuit'
     });
     expect(result).toEqual({
+      calls: mockUnprovenCallTxData.calls,
       private: mockUnprovenCallTxData.private,
       public: {
         ...mockUnprovenCallTxData.public,
@@ -147,11 +155,26 @@ describe('submit-call-tx', () => {
         verifySuccessfulCall(mockUnprovenCallTxData, mockFinalizedTxData, result, options);
         expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
       });
+
+      it('forwards logEvents through the nested scoped CallResult rebuild', async () => {
+        const options = createBasicCallOptions();
+        const { mockUnprovenCallTxData } = setupSuccessfulMocks();
+
+        // Nesting a call inside an outer scope returns via the hand-rolled `CallResult` rebuild
+        // (internal/transaction.ts), not the root `[Submit]` spread. Reference identity proves the
+        // rebuild forwards the executor's actual logEvents array rather than a fresh/hardcoded default.
+        let nestedResult: Awaited<ReturnType<typeof submitCallTx>> | undefined;
+        await withContractScopedTransaction(mockProviders, async (txCtx) => {
+          nestedResult = await submitCallTx(mockProviders, options, txCtx);
+        });
+
+        expect(nestedResult?.public.logEvents).toBe(mockUnprovenCallTxData.public.logEvents);
+      });
     });
 
     describe('successful call with private state ID', () => {
       it('should successfully submit call transaction and update private state', async () => {
-        const nextPrivateState = { newState: 'updated' } as Contract.PrivateState<Contract.Any>;
+        const nextPrivateState = { newState: 'updated' } as AnyPrivateState;
         const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
         const { mockFinalizedTxData } = setupSuccessfulMocks();
 
@@ -176,8 +199,8 @@ describe('submit-call-tx', () => {
       });
 
       it('should successfully submit scoped call transaction and update private state', async () => {
-        const nextPrivateState_1 = { newState: 'updated_1' } as Contract.PrivateState<Contract.Any>;
-        const nextPrivateState_2 = { newState: 'updated_2' } as Contract.PrivateState<Contract.Any>;
+        const nextPrivateState_1 = { newState: 'updated_1' } as AnyPrivateState;
+        const nextPrivateState_2 = { newState: 'updated_2' } as AnyPrivateState;
         const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
         const { mockFinalizedTxData } = setupSuccessfulMocks();
 
@@ -219,6 +242,7 @@ describe('submit-call-tx', () => {
         expect(mockProviders.privateStateProvider.set).toHaveBeenCalledWith(mockPrivateStateId, nextPrivateState_2);
         expect(createUnprovenCallTx).toHaveBeenCalledWith(mockProviders, options, expect.anything());
         expect(result).toEqual({
+          calls: mockUnprovenCallTxData_2.calls,
           private: mockUnprovenCallTxData_2.private,
           public: {
             ...mockUnprovenCallTxData_2.public,
@@ -282,7 +306,7 @@ describe('submit-call-tx', () => {
       });
 
       it('should include failure data and circuit ID in CallTxFailedError', async () => {
-        const circuitId = 'testCircuit' as Contract.ImpureCircuitId<Contract.Any>;
+        const circuitId = 'testCircuit' as AnyProvableCircuitId;
         const options = createBasicCallOptions({ circuitId });
         const mockUnprovenCallTxData = createFailedTxData();
         const mockFailedTxData = createMockFinalizedTxData(FailEntirely);
@@ -299,6 +323,82 @@ describe('submit-call-tx', () => {
           expect((error as CallTxFailedError).circuitId).toEqual(circuitId);
         }
       });
+
+      it('should throw CallTxFailedError when transaction fails with FailFallible', async () => {
+        const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
+        const mockUnprovenCallTxData = createFailedTxData();
+        const mockFailedTxData = createMockFinalizedTxData(FailFallible);
+
+        vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+        vi.mocked(submitTx).mockResolvedValue(mockFailedTxData);
+
+        await expect(submitCallTx(mockProviders, options)).rejects.toThrow(CallTxFailedError);
+        expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
+      });
+
+      it('should throw CallTxFailedError when scoped transaction fails with FailFallible', async () => {
+        const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
+        const mockUnprovenCallTxData = createFailedTxData();
+        const mockFailedTxData = createMockFinalizedTxData(FailFallible);
+
+        vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+        vi.mocked(submitTx).mockResolvedValue(mockFailedTxData);
+
+        await expect(withContractScopedTransaction(mockProviders, async (txCtx) => {
+          await submitCallTx(mockProviders, options, txCtx);
+        })).rejects.toThrow(CallTxFailedError);
+
+        expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
+      });
+
+      it('should expose FailFallible status in CallTxFailedError finalizedTxData', async () => {
+        const circuitId = 'testCircuit' as AnyProvableCircuitId;
+        const options = createBasicCallOptions({ circuitId });
+        const mockUnprovenCallTxData = createFailedTxData();
+        const mockFailedTxData = createMockFinalizedTxData(FailFallible);
+
+        vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+        vi.mocked(submitTx).mockResolvedValue(mockFailedTxData);
+
+        try {
+          await submitCallTx(mockProviders, options);
+          expect.fail('Expected CallTxFailedError to be thrown');
+        } catch (error) {
+          expect(error).toBeInstanceOf(CallTxFailedError);
+          const callError = error as CallTxFailedError;
+          expect(callError.finalizedTxData.status).toBe(FailFallible);
+          expect(callError.finalizedTxData).toEqual(mockFailedTxData);
+          expect(callError.circuitId).toEqual(circuitId);
+        }
+      });
+
+      it('should preserve segmentStatusMap in CallTxFailedError for FailFallible', async () => {
+        const circuitId = 'testCircuit' as AnyProvableCircuitId;
+        const options = createBasicCallOptions({ circuitId });
+        const mockUnprovenCallTxData = createFailedTxData();
+        const segmentStatusMap = new Map([
+          [0, SegmentSuccess],
+          [1, SegmentFail]
+        ]);
+        const mockFailedTxData: FinalizedTxData = {
+          ...createMockFinalizedTxData(FailFallible),
+          segmentStatusMap
+        };
+
+        vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+        vi.mocked(submitTx).mockResolvedValue(mockFailedTxData);
+
+        try {
+          await submitCallTx(mockProviders, options);
+          expect.fail('Expected CallTxFailedError to be thrown');
+        } catch (error) {
+          expect(error).toBeInstanceOf(CallTxFailedError);
+          const callError = error as CallTxFailedError;
+          expect(callError.finalizedTxData.segmentStatusMap).toBeDefined();
+          expect(callError.finalizedTxData.segmentStatusMap!.get(0)).toBe(SegmentSuccess);
+          expect(callError.finalizedTxData.segmentStatusMap!.get(1)).toBe(SegmentFail);
+        }
+      });
     });
 
     describe('validation checks', () => {
@@ -309,7 +409,7 @@ describe('submit-call-tx', () => {
       });
 
       it('should validate circuit exists in contract', async () => {
-        const options = createBasicCallOptions({ circuitId: 'nonExistentCircuit' as Contract.ImpureCircuitId<Contract.Any> });
+        const options = createBasicCallOptions({ circuitId: 'nonExistentCircuit' as AnyProvableCircuitId });
 
         await expect(submitCallTx(mockProviders, options)).rejects.toThrow("Circuit 'nonExistentCircuit' is undefined");
       });
@@ -378,6 +478,7 @@ describe('submit-call-tx', () => {
           circuitId: 'testCircuit'
         });
         expect(result).toEqual({
+          calls: mockUnprovenCallTxData.calls,
           private: mockUnprovenCallTxData.private,
           public: { ...mockUnprovenCallTxData.public, ...mockFinalizedTxData }
         });
@@ -491,7 +592,7 @@ describe('submit-call-tx', () => {
       });
 
       it('should validate circuit exists in contract', async () => {
-        const options = createBasicCallOptions({ circuitId: 'nonExistentCircuit' as Contract.ImpureCircuitId<Contract.Any> });
+        const options = createBasicCallOptions({ circuitId: 'nonExistentCircuit' as AnyProvableCircuitId });
 
         await expect(submitCallTxAsync(mockProviders, options)).rejects.toThrow("Circuit 'nonExistentCircuit' is undefined");
       });
@@ -549,10 +650,41 @@ describe('submit-call-tx', () => {
         expect(result.callTxData).toEqual(mockUnprovenCallTxData);
       });
 
+      it('should return sufficient data for caller to detect and handle FailFallible after manual finalization', async () => {
+        const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
+        const mockTxId = 'test-tx-id-fail-fallible';
+        const nextPrivateState = { state: 'should-not-persist' } as AnyPrivateState;
+
+        const mockUnprovenCallTxData = createMockUnprovenCallTxData({
+          private: {
+            nextPrivateState,
+            input: {} as AlignedValue,
+            output: {} as AlignedValue,
+            privateTranscriptOutputs: [] as AlignedValue[],
+            result: vi.fn(),
+            nextZswapLocalState: mockZswapLocalState,
+            unprovenTx: mockUnprovenTx,
+            newCoins: [mockCoinInfo]
+          }
+        });
+        vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+        vi.mocked(submitTxAsync).mockResolvedValue(mockTxId);
+
+        const { txId, callTxData } = await submitCallTxAsync(mockProviders, options);
+
+        const mockFailFallibleFinalization = createMockFinalizedTxData(FailFallible);
+        vi.mocked(mockProviders.publicDataProvider.watchForTxData).mockResolvedValue(mockFailFallibleFinalization);
+        const finalizedData = await mockProviders.publicDataProvider.watchForTxData(txId);
+
+        expect(finalizedData.status).toBe(FailFallible);
+        expect(callTxData.private.nextPrivateState).toEqual(nextPrivateState);
+        expect(mockProviders.privateStateProvider.set).not.toHaveBeenCalled();
+      });
+
       it('should return callTxData with all private state information', async () => {
         const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
         const mockTxId = 'test-tx-id-full-data';
-        const nextPrivateState = { complexState: 'data' } as Contract.PrivateState<Contract.Any>;
+        const nextPrivateState = { complexState: 'data' } as AnyPrivateState;
 
         const mockUnprovenCallTxData = createMockUnprovenCallTxData({
           private: {
@@ -574,6 +706,50 @@ describe('submit-call-tx', () => {
         expect(result.callTxData.private.nextPrivateState).toEqual(nextPrivateState);
         expect(result.callTxData).toEqual(mockUnprovenCallTxData);
       });
+    });
+  });
+
+  describe('FailFallible with unshielded outputs', () => {
+    it('should preserve guaranteed unshielded outputs in FinalizedTxData when fallible portion fails', async () => {
+      const options = createBasicCallOptions();
+      const mockUnprovenCallTxData = createMockUnprovenCallTxData();
+      const guaranteedUnshieldedOutputs = {
+        created: [
+          { owner: createMockContractAddress(), tokenType: 'night-token' as RawTokenType, intentHash: 'intent-1' as IntentHash, value: 100n },
+          { owner: createMockContractAddress(), tokenType: 'night-token' as RawTokenType, intentHash: 'intent-2' as IntentHash, value: 50n }
+        ],
+        spent: [
+          { owner: createMockContractAddress(), tokenType: 'night-token' as RawTokenType, intentHash: 'intent-3' as IntentHash, value: 200n }
+        ]
+      };
+      const segmentStatusMap = new Map([
+        [0, SegmentSuccess],
+        [1, SegmentFail]
+      ]);
+      const mockFailedTxData: FinalizedTxData = {
+        ...createMockFinalizedTxData(FailFallible),
+        segmentStatusMap,
+        unshielded: guaranteedUnshieldedOutputs
+      };
+
+      vi.mocked(createUnprovenCallTx).mockResolvedValue(mockUnprovenCallTxData);
+      vi.mocked(submitTx).mockResolvedValue(mockFailedTxData);
+
+      try {
+        await submitCallTx(mockProviders, options);
+        expect.fail('Expected CallTxFailedError to be thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(CallTxFailedError);
+        const finalizedTxData = (error as CallTxFailedError).finalizedTxData;
+        expect(finalizedTxData.status).toBe(FailFallible);
+        expect(finalizedTxData.unshielded.created).toHaveLength(2);
+        expect(finalizedTxData.unshielded.created[0].value).toBe(100n);
+        expect(finalizedTxData.unshielded.created[1].value).toBe(50n);
+        expect(finalizedTxData.unshielded.spent).toHaveLength(1);
+        expect(finalizedTxData.unshielded.spent[0].value).toBe(200n);
+        expect(finalizedTxData.segmentStatusMap!.get(0)).toBe(SegmentSuccess);
+        expect(finalizedTxData.segmentStatusMap!.get(1)).toBe(SegmentFail);
+      }
     });
   });
 });

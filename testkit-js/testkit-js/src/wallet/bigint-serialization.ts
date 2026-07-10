@@ -15,12 +15,12 @@
 
 declare global {
   interface BigInt {
-    toJSON(): number;
+    toJSON(): string;
   }
 }
 
 BigInt.prototype.toJSON = function () {
-  return Number(this);
+  return this.toString();
 };
 
 export {};

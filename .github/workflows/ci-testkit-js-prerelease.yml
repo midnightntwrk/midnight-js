@@ -1,0 +1,64 @@
+name: CI - TestKit.js (prerelease)
+#
+# Extracted from ci-testkit-js-build.yml so the wrapper (ci-testkit-js.yml) can
+# schedule `prerelease` and `e2e` as siblings of `build` (both `needs: build`).
+# If prerelease lived inside the build workflow, `e2e: needs: build` would wait
+# for ALL build-workflow jobs including prerelease, removing the parallelism the
+# original monolithic workflow had. DO NOT merge this back into build.yml without
+# redesigning the wrapper DAG.
+
+env:
+  MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+permissions:
+  contents: read
+  issues: read
+  id-token: write
+  packages: write
+
+on:
+  workflow_call:
+    inputs:
+      testkit_docker_env:
+        type: string
+        description: Docker image version set sourced from testkit-js/env/<testkit_docker_env>.env (qanet|preview|preprod|mainnet|devnet). Empty falls back to the .envrc default (devnet).
+        required: false
+        default: 'devnet'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # ratchet:actions/checkout@v7.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Setup build environment
+        uses: ./.github/actions/setup-build-env
+        with:
+          node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          cache-key-prefix: 'turbo-testkit'
+          testkit-docker-env: ${{ inputs.testkit_docker_env }}
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Temp bump prerelease
+        run: yarn version prerelease
+
+      - name: Set short git commit SHA
+        id: vars
+        run: |
+          calculatedSha=$(git rev-parse --short ${{ github.sha }})
+          currentVersion=$(jq -r .version package.json)
+          targetVersion="$currentVersion-pre.$calculatedSha"
+          echo "target_version=$targetVersion" >> $GITHUB_OUTPUT
+
+      - name: Bump versions
+        run: yarn workspaces foreach -R --from "./testkit-js/*" --exclude "./packages/*" version ${{ steps.vars.outputs.target_version }}
+
+      - name: Publish packages
+        run: yarn deploy --filter="./testkit-js/*" --cache-dir ./turbo -- --tag pre
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}

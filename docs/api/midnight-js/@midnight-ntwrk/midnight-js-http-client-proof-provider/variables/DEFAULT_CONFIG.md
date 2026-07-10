@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.1.0**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.3**](../../../README.md)
 
 ***
 
@@ -54,7 +54,7 @@ Proof Server (/check, /prove)
 
 ### timeout
 
-> **timeout**: `number` = `300000`
+> **timeout**: `number` = `DEFAULT_TIMEOUT`
 
 ### zkConfig
 

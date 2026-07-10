@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.1.0**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.3**](../../../README.md)
 
 ***
 
@@ -46,9 +46,16 @@ Optional scoped transaction context to participate in an
 When transaction fails in either guaranteed or fallible phase.
         The error contains the finalized transaction data and circuit ID for debugging.
 
+## Remarks
+
+The returned [FinalizedCallTxData](../type-aliases/FinalizedCallTxData.md) (and the [CallResult](../type-aliases/CallResult.md) variant)
+is privacy-sensitive and carries the unproven transaction and private
+state. See those types for handling guidance before logging, serializing,
+or transmitting the result.
+
 ## Call Signature
 
-> **submitCallTx**\<`C`, `ICK`\>(`providers`, `options`): `Promise`\<[`FinalizedCallTxData`](../type-aliases/FinalizedCallTxData.md)\<`C`, `ICK`\>\>
+> **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`FinalizedCallTxData`](../type-aliases/FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
 ### Type Parameters
 
@@ -56,27 +63,27 @@ When transaction fails in either guaranteed or fallible phase.
 
 `C` *extends* `Contract`\<`undefined`, `Witnesses`\<`undefined`\>\>
 
-#### ICK
+#### PCK
 
-`ICK` *extends* `string`
+`PCK` *extends* `string`
 
 ### Parameters
 
 #### providers
 
-[`SubmitTxProviders`](../type-aliases/SubmitTxProviders.md)\<`C`, `ICK`\>
+[`SubmitTxProviders`](../type-aliases/SubmitTxProviders.md)\<`C`, `PCK`\>
 
 #### options
 
-[`CallTxOptionsBase`](../type-aliases/CallTxOptionsBase.md)\<`C`, `ICK`\>
+[`CallTxOptionsBase`](../type-aliases/CallTxOptionsBase.md)\<`C`, `PCK`\>
 
 ### Returns
 
-`Promise`\<[`FinalizedCallTxData`](../type-aliases/FinalizedCallTxData.md)\<`C`, `ICK`\>\>
+`Promise`\<[`FinalizedCallTxData`](../type-aliases/FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
 ## Call Signature
 
-> **submitCallTx**\<`C`, `ICK`\>(`providers`, `options`): `Promise`\<[`FinalizedCallTxData`](../type-aliases/FinalizedCallTxData.md)\<`C`, `ICK`\>\>
+> **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`FinalizedCallTxData`](../type-aliases/FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
 ### Type Parameters
 
@@ -84,9 +91,9 @@ When transaction fails in either guaranteed or fallible phase.
 
 `C` *extends* `Any`
 
-#### ICK
+#### PCK
 
-`ICK` *extends* `string`
+`PCK` *extends* `string`
 
 ### Parameters
 
@@ -96,15 +103,15 @@ When transaction fails in either guaranteed or fallible phase.
 
 #### options
 
-[`CallTxOptionsWithPrivateStateId`](../type-aliases/CallTxOptionsWithPrivateStateId.md)\<`C`, `ICK`\>
+[`CallTxOptionsWithPrivateStateId`](../type-aliases/CallTxOptionsWithPrivateStateId.md)\<`C`, `PCK`\>
 
 ### Returns
 
-`Promise`\<[`FinalizedCallTxData`](../type-aliases/FinalizedCallTxData.md)\<`C`, `ICK`\>\>
+`Promise`\<[`FinalizedCallTxData`](../type-aliases/FinalizedCallTxData.md)\<`C`, `PCK`\>\>
 
 ## Call Signature
 
-> **submitCallTx**\<`C`, `ICK`\>(`providers`, `options`, `transactionContext`): `Promise`\<[`CallResult`](../type-aliases/CallResult.md)\<`C`, `ICK`\>\>
+> **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`, `transactionContext`): `Promise`\<[`CallResult`](../type-aliases/CallResult.md)\<`C`, `PCK`\>\>
 
 ### Type Parameters
 
@@ -112,9 +119,9 @@ When transaction fails in either guaranteed or fallible phase.
 
 `C` *extends* `Any`
 
-#### ICK
+#### PCK
 
-`ICK` *extends* `string`
+`PCK` *extends* `string`
 
 ### Parameters
 
@@ -124,19 +131,19 @@ When transaction fails in either guaranteed or fallible phase.
 
 #### options
 
-[`CallTxOptionsWithPrivateStateId`](../type-aliases/CallTxOptionsWithPrivateStateId.md)\<`C`, `ICK`\>
+[`CallTxOptionsWithPrivateStateId`](../type-aliases/CallTxOptionsWithPrivateStateId.md)\<`C`, `PCK`\>
 
 #### transactionContext
 
-[`TransactionContext`](../interfaces/TransactionContext.md)\<`C`, `ICK`\>
+[`TransactionContext`](../interfaces/TransactionContext.md)\<`C`, `PCK`\>
 
 ### Returns
 
-`Promise`\<[`CallResult`](../type-aliases/CallResult.md)\<`C`, `ICK`\>\>
+`Promise`\<[`CallResult`](../type-aliases/CallResult.md)\<`C`, `PCK`\>\>
 
 ## Call Signature
 
-> **submitCallTx**\<`C`, `ICK`\>(`providers`, `options`, `transactionContext`): `Promise`\<[`CallResult`](../type-aliases/CallResult.md)\<`C`, `ICK`\>\>
+> **submitCallTx**\<`C`, `PCK`\>(`providers`, `options`, `transactionContext`): `Promise`\<[`CallResult`](../type-aliases/CallResult.md)\<`C`, `PCK`\>\>
 
 ### Type Parameters
 
@@ -144,24 +151,24 @@ When transaction fails in either guaranteed or fallible phase.
 
 `C` *extends* `Contract`\<`undefined`, `Witnesses`\<`undefined`\>\>
 
-#### ICK
+#### PCK
 
-`ICK` *extends* `string`
+`PCK` *extends* `string`
 
 ### Parameters
 
 #### providers
 
-[`SubmitTxProviders`](../type-aliases/SubmitTxProviders.md)\<`C`, `ICK`\>
+[`SubmitTxProviders`](../type-aliases/SubmitTxProviders.md)\<`C`, `PCK`\>
 
 #### options
 
-[`CallTxOptionsBase`](../type-aliases/CallTxOptionsBase.md)\<`C`, `ICK`\>
+[`CallTxOptionsBase`](../type-aliases/CallTxOptionsBase.md)\<`C`, `PCK`\>
 
 #### transactionContext
 
-[`TransactionContext`](../interfaces/TransactionContext.md)\<`C`, `ICK`\>
+[`TransactionContext`](../interfaces/TransactionContext.md)\<`C`, `PCK`\>
 
 ### Returns
 
-`Promise`\<[`CallResult`](../type-aliases/CallResult.md)\<`C`, `ICK`\>\>
+`Promise`\<[`CallResult`](../type-aliases/CallResult.md)\<`C`, `PCK`\>\>

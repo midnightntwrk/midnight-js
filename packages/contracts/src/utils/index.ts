@@ -13,5 +13,6 @@
  * limitations under the License.
  */
 
+export * from './contract-state-provider';
 export * from './ledger-utils';
 export * from './zswap-utils';

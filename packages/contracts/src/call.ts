@@ -13,26 +13,35 @@
  * limitations under the License.
  */
 
-import type { CompiledContract  } from '@midnight-ntwrk/compact-js';
-import type { Contract } from '@midnight-ntwrk/compact-js/effect/Contract';
+import type { CompiledContract, ContractExecutable  } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import type { Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
 import {
   type AlignedValue,
   type CoinPublicKey,
   type ContractAddress,
   type ContractState,
+  type LogEvent,
   type Op,
   type StateValue,
   type ZswapLocalState
-} from '@midnight-ntwrk/compact-runtime';
+} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
+  type EncPublicKey,
+  type LedgerParameters,
   type PartitionedTranscript,
   type ZswapChainState
-} from '@midnight-ntwrk/ledger-v7';
+} from '@midnight-ntwrk/midnight-js-protocol/ledger';
 
 /**
  * Describes the target of a circuit invocation.
  */
-export interface CallOptionsBase<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> {
+export type CallOptionsBase<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = {
+  /**
+   * An optional mapping of {@link CoinPublicKey} to {@link EncPublicKey} that can be used to resolve encryption
+   * keys for coins created during circuit execution.
+   */
+  readonly additionalCoinEncPublicKeyMappings?: ReadonlyMap<CoinPublicKey, EncPublicKey>;
+
   /**
    * The contract defining the circuit to call.
    */
@@ -41,31 +50,31 @@ export interface CallOptionsBase<C extends Contract.Any, ICK extends Contract.Im
   /**
    * The identifier of the circuit to call.
    */
-  readonly circuitId: ICK;
+  readonly circuitId: PCK;
   /**
    * The address of the contract being executed.
    */
   readonly contractAddress: ContractAddress;
-}
+};
 
 /**
  * Conditional type that optionally adds the inferred circuit argument types to
  * the options for a circuit call.
  */
-export type CallOptionsWithArguments<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> =
-  Contract.CircuitParameters<C, ICK> extends []
-    ? CallOptionsBase<C, ICK>
-    : CallOptionsBase<C, ICK> & {
+export type CallOptionsWithArguments<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> =
+  Contract.CircuitParameters<C, PCK> extends []
+    ? CallOptionsBase<C, PCK>
+    : CallOptionsBase<C, PCK> & {
     /**
      * Arguments to pass to the circuit being called.
      */
-    readonly args: Contract.CircuitParameters<C, ICK>;
+    readonly args: Contract.CircuitParameters<C, PCK>;
   };
 
 /**
  * Data retrieved via providers that should be included in the call options.
  */
-export interface CallOptionsProviderDataDependencies {
+export type CallOptionsProviderDataDependencies = {
   /**
    * The Zswap public key of the current user.
    */
@@ -78,23 +87,27 @@ export interface CallOptionsProviderDataDependencies {
    * The initial public Zswap state of the contract to run the circuit against.
    */
   readonly initialZswapChainState: ZswapChainState;
-}
+  /**
+   * The ledger parameters to use when executing the circuit.
+   */
+  readonly ledgerParameters: LedgerParameters;
+};
 
 /**
  * Call options with circuit arguments and data
  */
 export type CallOptionsWithProviderDataDependencies<
   C extends Contract.Any,
-  ICK extends Contract.ImpureCircuitId<C>
-> = CallOptionsWithArguments<C, ICK> & CallOptionsProviderDataDependencies;
+  PCK extends Contract.ProvableCircuitId<C>
+> = CallOptionsWithArguments<C, PCK> & CallOptionsProviderDataDependencies;
 
 /**
  * Call options for contracts with private state.
  */
 export type CallOptionsWithPrivateState<
   C extends Contract.Any,
-  ICK extends Contract.ImpureCircuitId<C>
-> = CallOptionsWithProviderDataDependencies<C, ICK> & {
+  PCK extends Contract.ProvableCircuitId<C>
+> = CallOptionsWithProviderDataDependencies<C, PCK> & {
   /**
    * The private state to run the circuit against.
    */
@@ -104,14 +117,26 @@ export type CallOptionsWithPrivateState<
 /**
  * Call options for a given contract and circuit.
  */
-export type CallOptions<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> =
-  | CallOptionsWithProviderDataDependencies<C, ICK>
-  | CallOptionsWithPrivateState<C, ICK>;
+export type CallOptions<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> =
+  | CallOptionsWithProviderDataDependencies<C, PCK>
+  | CallOptionsWithPrivateState<C, PCK>;
 
 /**
  * The private (sensitive) portions of the call result.
+ *
+ * @remarks
+ * **Privacy-sensitive type.** Every field on this type carries data the
+ * zero-knowledge proofs were designed to keep confidential: the ZK-aligned
+ * circuit input/output, the private transcript outputs from witness calls,
+ * the JS-typed circuit result, the next private state, and the next Zswap
+ * local state.
+ *
+ * Application code must not log, serialize, or transmit instances of this
+ * type. If a non-sensitive subset of the call result is needed (for example,
+ * the JS `result` value alone), extract that field explicitly rather than
+ * passing the whole object across a trust boundary.
  */
-export interface CallResultPrivate<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> {
+export type CallResultPrivate<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = {
   /**
    * ZK representation of the circuit arguments.
    */
@@ -125,9 +150,9 @@ export interface CallResultPrivate<C extends Contract.Any, ICK extends Contract.
    */
   readonly privateTranscriptOutputs: AlignedValue[];
   /**
-   * The JS representation of the input to the circuit.
+   * The JS representation of the value returned by the circuit.
    */
-  readonly result: Contract.CircuitReturnType<C, ICK>;
+  readonly result: Contract.CircuitReturnType<C, PCK>;
   /**
    * The private state resulting from executing the circuit.
    */
@@ -136,12 +161,12 @@ export interface CallResultPrivate<C extends Contract.Any, ICK extends Contract.
    * The Zswap local state resulting from executing the circuit.
    */
   readonly nextZswapLocalState: ZswapLocalState;
-}
+};
 
 /**
  * The public portions of the call result.
  */
-export interface CallResultPublic {
+export type CallResultPublic = {
   /**
    * The public state resulting from executing the circuit.
    */
@@ -157,18 +182,53 @@ export interface CallResultPublic {
    * can fail without invalidating the transaction, as long as the guaranteed section succeeds.
    */
   readonly partitionedTranscript: PartitionedTranscript;
-}
+  /**
+   * The MIP-0002 contract log events emitted during circuit execution. Surfaced on the `compact-js`
+   * executor result and typed by `compact-runtime`'s {@link LogEvent}. This is the single
+   * execution-wide list across the whole call tree (not just the root call), in emission order; each
+   * event is tagged with its emitting contract's address, so a per-contract view is a filter over
+   * that address.
+   *
+   * Events are carried **raw** — decode on demand with `ContractLog.decodeAll` (re-exported from
+   * this package). The decoder degrades gracefully and never throws, but it is `@experimental`: a
+   * successful decode can still yield a silently-wrong payload, so treat decoded values with care.
+   * Empty when the circuit emits no logs.
+   */
+  readonly logEvents: readonly LogEvent[];
+};
 
 /**
  * Contains all information resulting from circuit execution.
+ *
+ * @remarks
+ * **Privacy-sensitive type.** The `private` field is a
+ * {@link CallResultPrivate} carrying ZK-confidential data. Treat the whole
+ * object as confidential when logging, serializing, or transmitting — read
+ * only the `public` field or destructure specific non-sensitive fields rather
+ * than spreading or stringifying the whole object.
  */
-export interface CallResult<C extends Contract.Any, ICK extends Contract.ImpureCircuitId<C>> {
+export type CallResult<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> = {
   /**
    * The public/non-sensitive data produced by the circuit execution.
+   *
+   * @remarks Describes the **root** contract call (the circuit that was invoked). It is the
+   * application-facing view; equivalent to the last entry of {@link calls}.
    */
   readonly public: CallResultPublic;
   /**
    * The private/sensitive data produced by the circuit execution.
+   *
+   * @remarks Describes the **root** contract call. Equivalent to the last entry of {@link calls}.
    */
-  readonly private: CallResultPrivate<C, ICK>;
-}
+  readonly private: CallResultPrivate<C, PCK>;
+  /**
+   * Proof data for every contract call made while executing the circuit, in execution-trace order:
+   * cross-contract callees first, the root call last. For a circuit that performs no cross-contract
+   * calls this contains a single entry (the root). Consistent with `compact-js`'s
+   * `ContractExecutable.CallResult.calls`.
+   *
+   * @remarks **Privacy-sensitive.** Each entry carries ZK input/output and private transcript data
+   * for a call in the tree. Treat as confidential alongside {@link private}.
+   */
+  readonly calls: readonly ContractExecutable.ContractExecutable.ContractCall[];
+};

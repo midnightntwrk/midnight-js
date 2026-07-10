@@ -13,9 +13,7 @@
  * limitations under the License.
  */
 
-import { type NetworkId } from '@midnight-ntwrk/wallet-sdk-abstractions';
-import { type DefaultConfiguration, type WalletFacade } from '@midnight-ntwrk/wallet-sdk-facade';
-import { createKeystore, type UnshieldedKeystore } from '@midnight-ntwrk/wallet-sdk-unshielded-wallet';
+import { createKeystore, type DefaultConfiguration, type NetworkId, type UnshieldedKeystore, type WalletFacade } from '@midnightntwrk/wallet-sdk';
 
 import { logger } from '@/logger';
 import { type EnvironmentConfiguration } from '@/test-environment/environment-configuration';
@@ -81,30 +79,27 @@ export class FluentWalletBuilder {
   }
 
   async build(): Promise<WalletFacade> {
-    if (!this.seeds) {
+    const seeds = this.seeds ?? (() => {
       logger.info('No seed provided, generating random seed');
-      this.seeds = WalletSeeds.generateRandom();
-      logger.info(`Generated random wallet seed: ${this.seeds.masterSeed}`);
-    }
+      return WalletSeeds.generateRandom();
+    })();
 
-    logger.info(`Building wallet with configuration: ${JSON.stringify(this.config)}`);
+    const unshieldedKeystore = createKeystore({ kind: 'schnorr', secret: seeds.unshielded }, this.networkId);
 
-    const unshieldedKeystore = createKeystore(this.seeds.unshielded, this.networkId);
-
-    const shieldedWallet = WalletFactory.createShieldedWallet(this.config, this.seeds.shielded);
+    const shieldedWallet = WalletFactory.createShieldedWallet(this.config, seeds.shielded);
     const unshieldedWallet = WalletFactory.createUnshieldedWallet(
       this.config,
       unshieldedKeystore
     );
     const dustWallet = WalletFactory.createDustWallet(
       this.config,
-      this.seeds.dust,
+      seeds.dust,
       this.dustOptions
     );
 
     const walletFacade = await WalletFactory.createWalletFacade(this.config, shieldedWallet, unshieldedWallet, dustWallet);
 
-    return WalletFactory.startWalletFacade(walletFacade, this.seeds.shielded, this.seeds.dust);
+    return WalletFactory.startWalletFacade(walletFacade, seeds.shielded, seeds.dust);
   }
 
   async buildWithoutStarting(): Promise<{
@@ -112,24 +107,21 @@ export class FluentWalletBuilder {
     seeds: WalletSeeds;
     keystore: UnshieldedKeystore;
   }> {
-    if (!this.seeds) {
+    const seeds = this.seeds ?? (() => {
       logger.info('No seed provided, generating random seed');
-      this.seeds = WalletSeeds.generateRandom();
-      logger.info(`Generated random wallet seed: ${this.seeds.masterSeed}`);
-    }
+      return WalletSeeds.generateRandom();
+    })();
 
-    logger.info(`Building wallet without starting with configuration: ${JSON.stringify(this.config)}`);
+    const unshieldedKeystore = createKeystore({ kind: 'schnorr', secret: seeds.unshielded }, this.networkId);
 
-    const unshieldedKeystore = createKeystore(this.seeds.unshielded, this.networkId);
-
-    const shieldedWallet = WalletFactory.createShieldedWallet(this.config, this.seeds.shielded);
+    const shieldedWallet = WalletFactory.createShieldedWallet(this.config, seeds.shielded);
     const unshieldedWallet = WalletFactory.createUnshieldedWallet(
       this.config,
       unshieldedKeystore
     );
     const dustWallet = WalletFactory.createDustWallet(
       this.config,
-      this.seeds.dust,
+      seeds.dust,
       this.dustOptions
     );
 
@@ -137,7 +129,7 @@ export class FluentWalletBuilder {
 
     return {
       wallet: walletFacade,
-      seeds: this.seeds,
+      seeds,
       keystore: unshieldedKeystore
     };
   }

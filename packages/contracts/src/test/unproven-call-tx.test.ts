@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-import { type ContractState, StateValue } from '@midnight-ntwrk/compact-runtime';
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import { type ContractState, StateValue } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createUnprovenCallTx, createUnprovenCallTxFromInitialStates } from '../unproven-call-tx';
@@ -46,8 +47,10 @@ vi.mock('../utils', () => ({
       { test: 'unproven-tx' }
     ]),
     createUnprovenLedgerCallTx: vi.fn().mockReturnValue({ test: 'unproven-tx' }),
-    encryptionPublicKeyForZswapState: vi.fn().mockReturnValue('encrypted-key'),
-    zswapStateToNewCoins: vi.fn().mockReturnValue([{ test: 'coin' }])
+    createEncryptionPublicKeyResolver: vi.fn().mockReturnValue(() => 'encrypted-key'),
+    encryptionPublicKeyResolverForZswapState: vi.fn().mockReturnValue(() => 'encrypted-key'),
+    zswapStateToNewCoins: vi.fn().mockReturnValue([{ test: 'coin' }]),
+    makeCalleeStateResolver: vi.fn()
 }));
 
 describe('unproven-call-tx', () => {
@@ -111,6 +114,21 @@ describe('unproven-call-tx', () => {
       expect(result.private.nextPrivateState).toEqual({ test: 'next-private-state' });
     });
 
+    it('forwards the executor log events onto the public result as logEvents (empty when the circuit emits no logs)', async () => {
+      const options = createMockCallOptions({
+        initialContractState: await getInitialContractState()
+      });
+      const walletEncryptionPublicKey = createMockEncryptionPublicKey();
+
+      const result = await createUnprovenCallTxFromInitialStates(
+        createMockZKConfigProvider(),
+        options,
+        walletEncryptionPublicKey
+      );
+
+      expect(result.public.logEvents).toEqual([]);
+    });
+
     it('should fail when circuit fails at runtime', async () => {
       const options = createMockCallOptions({
         compiledContract: createMockCompiledContract({
@@ -129,6 +147,28 @@ describe('unproven-call-tx', () => {
   });
 
   describe('createUnprovenCallTx', () => {
+    it('throws when the latest block cannot be fetched from the public data provider', async () => {
+      const publicDataProvider = createMockProviders().publicDataProvider;
+      publicDataProvider.queryBlock = vi.fn().mockResolvedValue(null);
+
+      const providers = {
+        zkConfigProvider: createMockZKConfigProvider(),
+        publicDataProvider,
+        walletProvider: createMockProviders().walletProvider
+      };
+      const options = {
+        contract: createMockContract(),
+        compiledContract: createMockCompiledContract(),
+        circuitId: 'testCircuit',
+        contractAddress: createMockContractAddress(),
+        args: ['test-arg']
+      };
+
+      await expect(createUnprovenCallTx(providers, options)).rejects.toThrow(
+        'Failed to fetch the latest block from the public data provider'
+      );
+    });
+
     it('should create unproven call tx without private state provider', async () => {
       const { getPublicStates } = await import('../get-states');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -136,7 +176,8 @@ describe('unproven-call-tx', () => {
 
       mockGetPublicStates.mockResolvedValue({
         zswapChainState: { test: 'zswap-chain-state' },
-        contractState: await getInitialContractState()
+        contractState: await getInitialContractState(),
+        ledgerParameters: LedgerParameters.initialParameters()
       });
 
       const providers = {
@@ -158,7 +199,8 @@ describe('unproven-call-tx', () => {
       expect(result).toBeDefined();
       expect(mockGetPublicStates).toHaveBeenCalledWith(
         providers.publicDataProvider,
-        options.contractAddress
+        options.contractAddress,
+        '00'.repeat(32)
       );
     });
 
@@ -170,7 +212,8 @@ describe('unproven-call-tx', () => {
       mockGetStates.mockResolvedValue({
         zswapChainState: { test: 'zswap-chain-state' },
         contractState: await getInitialContractState(),
-        privateState: { test: 'private-state' }
+        privateState: { test: 'private-state' },
+        ledgerParameters: LedgerParameters.initialParameters()
       });
 
       const providers = {
@@ -196,7 +239,8 @@ describe('unproven-call-tx', () => {
         providers.publicDataProvider,
         providers.privateStateProvider,
         options.contractAddress,
-        options.privateStateId
+        options.privateStateId,
+        '00'.repeat(32)
       );
     });
   });

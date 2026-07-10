@@ -14,14 +14,6 @@
  */
 
 import {
-  type CoinPublicKey,
-  decodeZswapLocalState,
-  emptyZswapLocalState,
-  sampleSigningKey,
-  type SigningKey
-} from '@midnight-ntwrk/compact-runtime';
-import { ZswapChainState } from '@midnight-ntwrk/ledger-v7';
-import {
   type CallResult,
   createUnprovenCallTx,
   createUnprovenCallTxFromInitialStates,
@@ -34,6 +26,14 @@ import {
   type UnsubmittedDeployTxData
 } from '@midnight-ntwrk/midnight-js-contracts';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import {
+  type CoinPublicKey,
+  decodeZswapLocalState,
+  emptyZswapLocalState,
+  sampleSigningKey,
+  type SigningKey
+} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import {
   createLogger,
@@ -50,7 +50,7 @@ import path from 'path';
 
 import { CompiledSimple } from '@/contract';
 import * as api from '@/counter-api';
-import type { SimpleContract, SimpleProviders } from '@/simple-types';
+import type { SimpleContract, SimpleProviders } from '@/types/simple-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_nostate_${new Date().toISOString()}.log`)
@@ -229,7 +229,8 @@ describe('Contracts API', () => {
         contractAddress: unprovenDeployTxResult.public.contractAddress,
         coinPublicKey,
         initialContractState: unprovenDeployTxResult.public.initialContractState,
-        initialZswapChainState: new ZswapChainState()
+        initialZswapChainState: new ZswapChainState(),
+        ledgerParameters: LedgerParameters.initialParameters()
       },
       providers.walletProvider.getEncryptionPublicKey()
     );

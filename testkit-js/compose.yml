@@ -1,6 +1,6 @@
 services:
   proof-server:
-    image: 'ghcr.io/midnight-ntwrk/proof-server:7.0.0'
+    image: "ghcr.io/midnight-ntwrk/proof-server:${PROOF_SERVER_VERSION}"
     container_name: proof-server_$TESTCONTAINERS_UID
     command: ['midnight-proof-server --verbose']
     ports:
@@ -15,7 +15,7 @@ services:
       start_period: 10s
 
   indexer:
-    image: 'ghcr.io/midnight-ntwrk/indexer-standalone:3.1.0'
+    image: "ghcr.io/midnight-ntwrk/indexer-standalone:${INDEXER_VERSION}"
     container_name: indexer_$TESTCONTAINERS_UID
     ports:
       - '8088'
@@ -27,10 +27,17 @@ services:
       APP__INFRA__PUB_SUB__PASSWORD: 'indexer'
       APP__INFRA__LEDGER_STATE_STORAGE__PASSWORD: 'indexer'
       APP__INFRA__SECRET: '303132333435363738393031323334353637383930313233343536373839303132'
+      APP__INFRA__SPO_NODE__BLOCKFROST_ID: 'dummy-not-using-spo'
+      # Standalone stack has no SPO node. Indexer 4.3.x spawns spo-indexer
+      # unconditionally and exits the whole process when it gives up
+      # reconnecting (default 30 × 10s ≈ 5 min). Stretching the delay to 24h
+      # keeps the indexer alive for the entire test run without disabling
+      # the subtask (no flag exists to opt out).
+      APP__INFRA__SPO_NODE__RECONNECT_MAX_DELAY: '24h'
 
     healthcheck:
       test: ['CMD-SHELL', 'cat /var/run/indexer-standalone/running']
-      interval: 10s
+      interval: 2s
       timeout: 5s
       retries: 20
       start_period: 10s
@@ -39,7 +46,7 @@ services:
         condition: service_healthy
 
   node:
-    image: 'ghcr.io/midnight-ntwrk/midnight-node:0.21.0'
+    image: "ghcr.io/midnight-ntwrk/midnight-node:${MIDNIGHT_NODE_VERSION}"
     container_name: node_$TESTCONTAINERS_UID
     ports:
       - '9944'

@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
-import { type Contract } from '@midnight-ntwrk/compact-js';
-import { type ZswapLocalState } from '@midnight-ntwrk/compact-runtime';
-import { type UnprovenTransaction } from '@midnight-ntwrk/ledger-v7';
+import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import { type ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { AnyPrivateState } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type ContractProviders } from '../contract-providers';
@@ -35,7 +36,10 @@ vi.mock('../submit-deploy-tx', () => ({
 }));
 
 vi.mock('../tx-interfaces', () => ({
-  createCircuitCallTxInterface: vi.fn().mockReturnValue({ call: 'mock-call-interface' }),
+  createCircuitCallTxInterface: vi.fn().mockReturnValue({ call: 'mock-call-interface' })
+}));
+
+vi.mock('../governance/tx-interfaces', () => ({
   createCircuitMaintenanceTxInterfaces: vi.fn().mockReturnValue({ maintenance: 'mock-maintenance-interfaces' }),
   createContractMaintenanceTxInterface: vi.fn().mockReturnValue({ contractMaintenance: 'mock-contract-maintenance' })
 }));
@@ -46,7 +50,7 @@ describe('deployContract', () => {
   let providers: ContractProviders;
   let baseOptions: DeployContractOptionsBase<Contract.Any>;
 
-  const createMockDeployTxData = (initialPrivateState?: Contract.PrivateState<Contract.Any>): UnsubmittedDeployTxData<Contract.Any> => ({
+  const createMockDeployTxData = (initialPrivateState?: AnyPrivateState): UnsubmittedDeployTxData<Contract.Any> => ({
     public: {
       ...createMockFinalizedTxData(),
       contractAddress: 'mock-contract-address',
@@ -94,7 +98,7 @@ describe('deployContract', () => {
       expect.objectContaining({
         compiledContract: baseOptions.compiledContract,
         args: baseOptions.args,
-        signingKey: expect.not.stringMatching(createMockSigningKey())
+        signingKey: expect.not.objectContaining(createMockSigningKey())
       })
     );
   });
@@ -140,7 +144,7 @@ describe('deployContract', () => {
         privateStateId: options.privateStateId,
         initialPrivateState,
         args: options.args,
-        signingKey: expect.not.stringMatching(createMockSigningKey())
+        signingKey: expect.not.objectContaining(createMockSigningKey())
       })
     );
   });

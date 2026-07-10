@@ -29,7 +29,13 @@ export default defineConfig({
       include: ['src/**/*.ts'],
       exclude: ['**/test/**'],
       reporter: ['clover', 'json', 'json-summary', 'lcov', 'text'],
-      reportsDirectory: './coverage'
+      reportsDirectory: './coverage',
+      thresholds: {
+        lines: 97,
+        functions: 94,
+        branches: 93,
+        statements: 97
+      }
     },
     reporters: [
       'default',

@@ -1,6 +1,6 @@
 # Midnight.js
 
-> TypeScript SDK for building privacy-preserving dApps on the Midnight blockchain
+> TypeScript framework for building privacy-preserving dApps on the Midnight blockchain
 
 Midnight.js provides comprehensive tools for deploying and interacting with smart contracts, managing private state with encryption, generating zero-knowledge proofs, and submitting transactions to the Midnight network.
 
@@ -33,8 +33,10 @@ MidnightProviders
 
 | Package | Purpose |
 |---------|---------|
+| `@midnight-ntwrk/midnight-js` | Barrel package for Midnight.js core framework |
 | `@midnight-ntwrk/midnight-js-types` | Shared types, interfaces, provider contracts |
 | `@midnight-ntwrk/midnight-js-contracts` | Contract deployment, interaction, transaction submission |
+| `@midnight-ntwrk/midnight-js-dapp-connector-proof-provider` | Proof provider delegating to DApp Connector wallet |
 | `@midnight-ntwrk/midnight-js-indexer-public-data-provider` | GraphQL-based blockchain data provider |
 | `@midnight-ntwrk/midnight-js-level-private-state-provider` | Encrypted LevelDB storage for private state |
 | `@midnight-ntwrk/midnight-js-http-client-proof-provider` | HTTP client for proof server |
@@ -127,6 +129,40 @@ providers.publicDataProvider.watchForContractState(address);
 providers.publicDataProvider.contractStateObservable(address, config);
 ```
 
+### Contract Events `@beta`
+
+MIP-0002 public contract log events, sourced from the indexer. `ContractEvent`
+is a discriminated union keyed on `eventType` (11 variants:
+`ShieldedSpend|ShieldedReceive|ShieldedMint|ShieldedBurn|UnshieldedSpend|UnshieldedReceive|UnshieldedMint|UnshieldedBurn|Paused|Unpaused|Misc`).
+
+```typescript
+import { getAllContractEvents } from '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
+
+// Finite, paginated read (ascending id order).
+const events = await providers.publicDataProvider.queryContractEvents(
+  { contractAddress, types: ['ShieldedSpend'] },
+  { limit, offset }
+);
+
+// Replay-from-cursor + live subscription. `{ fromId }` is INCLUSIVE — resume
+// after the last seen event with `{ fromId: lastSeenId + 1 }`. `toBlock`
+// completes the stream; delivery is at-least-once (dedup by `id`).
+const sub = providers.publicDataProvider
+  .contractEventsObservable({ contractAddress }, { startAt: { fromId } })
+  .subscribe((event) => { /* event.eventType narrows the payload */ });
+
+// Read all history safely (recommended over manual offset loops).
+for await (const event of getAllContractEvents(providers.publicDataProvider, { contractAddress })) {
+  index(event);
+}
+```
+
+Notes: `amount` is always a `string` (never `Number()`); `sender`/`recipient`
+are `{ kind: 'user' | 'contract'; value }`; `Misc` carries opaque `name`/`payload`;
+every event carries opaque `raw` bytes. `DEFAULT_CONTRACT_EVENTS_PAGE_SIZE`
+applies when `limit` is omitted. There is no `watchContractEvents` — the
+subscription already unifies replay and live.
+
 ### Private State Management
 
 ```typescript
@@ -158,6 +194,45 @@ const proofProvider = httpClientProofProvider(
 );
 
 const provenTx = await proofProvider.proveTx(unprovenTx);
+```
+
+### DApp Connector Proof Generation
+
+```typescript
+import { dappConnectorProofProvider } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
+
+// High-level: transaction proving via DApp Connector wallet
+const proofProvider = await dappConnectorProofProvider(
+  walletConnectedAPI,   // from @midnight-ntwrk/dapp-connector-api
+  zkConfigProvider,
+  costModel
+);
+
+const provenTx = await proofProvider.proveTx(unprovenTx);
+```
+
+```typescript
+import { dappConnectorProvingProvider } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
+
+// Low-level: circuit proving via DApp Connector wallet
+const provingProvider = await dappConnectorProvingProvider(
+  walletConnectedAPI,
+  zkConfigProvider
+);
+```
+
+### Barrel Package
+
+```typescript
+// Single import for all core modules
+import { contracts, networkId, types, utils } from '@midnight-ntwrk/midnight-js';
+
+networkId.setNetworkId('testnet');
+const deployed = await contracts.deployContract(providers, options);
+
+// Or use sub-path imports for tree-shaking
+import { deployContract } from '@midnight-ntwrk/midnight-js/contracts';
+import { setNetworkId } from '@midnight-ntwrk/midnight-js/network-id';
 ```
 
 ### Network Setup
@@ -221,7 +296,7 @@ await testEnv.shutdown();
 
 | Variable | Values |
 |----------|--------|
-| `MN_TEST_ENVIRONMENT` | `undeployed`, `devnet`, `testnet`, `env-var-remote` |
+| `MN_TEST_ENVIRONMENT` | `undeployed`, `qanet`, `preview`, `preprod`, `env-var-remote` |
 | `MN_TEST_WALLET_SEED` | Specific seed phrase (optional) |
 | `MN_TEST_NETWORK_ID` | Network identifier |
 | `MN_TEST_INDEXER` | Custom indexer URL |
@@ -233,8 +308,10 @@ await testEnv.shutdown();
 ```
 midnight-js/
 ├── packages/                          # Core packages
+│   ├── midnight-js/                   # Barrel package (core framework)
 │   ├── types/                         # Shared types
 │   ├── contracts/                     # Contract utilities
+│   ├── dapp-connector-proof-provider/ # DApp Connector proof provider
 │   ├── indexer-public-data-provider/  # GraphQL provider
 │   ├── level-private-state-provider/  # Encrypted storage
 │   ├── http-client-proof-provider/    # Proof HTTP client
@@ -255,8 +332,8 @@ midnight-js/
 
 ### Midnight Packages
 - `@midnight-ntwrk/compact-js` - Compact language runtime
-- `@midnight-ntwrk/ledger-v7` - Ledger types
-- `@midnight-ntwrk/onchain-runtime-v2` - On-chain VM
+- `@midnightntwrk/ledger-v9` - Ledger types
+- `@midnightntwrk/onchain-runtime-v4` - On-chain VM
 - `@midnight-ntwrk/compact-runtime` - Circuit execution
 - `@midnight-ntwrk/wallet-sdk-facade` - Wallet integration
 

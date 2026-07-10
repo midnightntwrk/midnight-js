@@ -14,13 +14,6 @@
  */
 
 import {
-  ContractState,
-  decodeZswapLocalState,
-  emptyZswapLocalState,
-  sampleSigningKey
-} from '@midnight-ntwrk/compact-runtime';
-import { type ContractAddress, ZswapChainState } from '@midnight-ntwrk/ledger-v7';
-import {
   ContractTypeError,
   createCircuitCallTxInterface,
   createUnprovenCallTxFromInitialStates,
@@ -31,6 +24,13 @@ import {
   submitCallTx,
   submitDeployTx} from '@midnight-ntwrk/midnight-js-contracts';
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
+import {
+  ContractState,
+  decodeZswapLocalState,
+  emptyZswapLocalState,
+  sampleSigningKey
+} from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { type ContractAddress, LedgerParameters, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import { parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 import type {
@@ -66,16 +66,16 @@ import {
   CounterConfiguration,
   SimpleConfiguration
 } from '@/counter-api';
-import { type CounterCloneCircuits,CounterClonePrivateStateId } from '@/counter-clone-types';
+import { type CounterCloneCircuit,CounterClonePrivateStateId } from '@/types/counter-clone-types';
 import {
-  type CounterCircuits,
+  type CounterCircuit,
   type CounterContract,
   CounterPrivateStateId,
   type CounterProviders,
   type DeployedCounterContract,
   privateStateZero
-} from '@/counter-types';
-import { type SimpleCircuits } from '@/simple-types';
+} from '@/types/counter-types';
+import { type SimpleCircuit } from '@/types/simple-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_${new Date().toISOString()}.log`)
@@ -158,7 +158,8 @@ describe('Contracts API', () => {
         coinPublicKey: providers.walletProvider.getCoinPublicKey(),
         initialPrivateState: createPrivateState(1),
         initialContractState: unprovenDeployTxResult.public.initialContractState,
-        initialZswapChainState: new ZswapChainState()
+        initialZswapChainState: new ZswapChainState(),
+        ledgerParameters: LedgerParameters.initialParameters()
       },
       providers.walletProvider.getEncryptionPublicKey()
     );
@@ -270,7 +271,7 @@ describe('Contracts API', () => {
    * @and Should validate state consistency despite empty local store
    */
   test('should return deployed contract if it exists on specific address with initialPrivateState and empty local private state store', async () => {
-    const providersLocal = initializeMidnightProviders<CounterCircuits, CounterPrivateState>(
+    const providersLocal = initializeMidnightProviders<CounterCircuit, CounterPrivateState>(
       wallet,
       environmentConfiguration,
       getConfigurationWithEmptyPrivateStore()
@@ -352,7 +353,7 @@ describe('Contracts API', () => {
    * @then Should throw ContractTypeError for mismatched circuit IDs
    */
   test('should throw for incompatible contract types that differ by circuit ids', async () => {
-    const providersLocal = initializeMidnightProviders<SimpleCircuits, unknown>(
+    const providersLocal = initializeMidnightProviders<SimpleCircuit, unknown>(
       wallet,
       environmentConfiguration,
       new SimpleConfiguration()
@@ -377,7 +378,7 @@ describe('Contracts API', () => {
    * @then Should throw ContractTypeError for mismatched verifier keys
    */
   test('should throw for incompatible contract types with same shape but different verifier keys', async () => {
-    const providersLocal = initializeMidnightProviders<CounterCloneCircuits, CounterPrivateState>(
+    const providersLocal = initializeMidnightProviders<CounterCloneCircuit, CounterPrivateState>(
       wallet,
       environmentConfiguration,
       new CounterCloneConfiguration()
@@ -558,7 +559,7 @@ describe('Contracts API', () => {
    * @and Should reference specific private state ID in error message
    */
   test('should throw error if private state is undefined', async () => {
-    const providersLocal = initializeMidnightProviders<CounterCircuits, CounterPrivateState>(
+    const providersLocal = initializeMidnightProviders<CounterCircuit, CounterPrivateState>(
       wallet,
       environmentConfiguration,
       getConfigurationWithEmptyPrivateStore()

@@ -13,7 +13,10 @@
  * limitations under the License.
  */
 
-import { indexerPublicDataProvider } from '../indexer-public-data-provider';
+import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+
+import { indexerPublicDataProvider } from '..';
+import { IndexerProviderConfigError } from '../errors';
 
 describe('indexerPublicDataProvider', () => {
   const queryURL = 'http://localhost:4000/api/v1/graphql';
@@ -53,5 +56,14 @@ describe('indexerPublicDataProvider', () => {
   test('indexerPublicDataProvider should use the provided WebSocket implementation', () => {
     const provider = indexerPublicDataProvider(queryURL, subscriptionURL);
     expect(provider).toBeDefined();
+  });
+
+  test('unshieldedBalancesObservable rejects txId configuration with IndexerProviderConfigError', () => {
+    const provider = indexerPublicDataProvider(queryURL, subscriptionURL);
+    const address = '0'.repeat(64) as ContractAddress;
+
+    expect(() => provider.unshieldedBalancesObservable(address, { type: 'txId', txId: 'unused' })).toThrow(
+      IndexerProviderConfigError
+    );
   });
 });

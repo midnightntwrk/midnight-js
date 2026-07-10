@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { sampleContractAddress } from '@midnight-ntwrk/compact-runtime';
+import { sampleContractAddress } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 
 export const MINUTE = 60_000;
 export const SLOW_TEST_TIMEOUT = 6 * MINUTE;

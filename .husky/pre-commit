@@ -1,1 +1,6 @@
-npx lint-staged
+# `--no-stash`: lint-staged's default backup stash rewrites the working tree
+# around the commit, which invalidates the GPG signature git computes for a
+# signed commit (producing "Unverified" commits on GitHub). Our task is
+# read-only (`eslint --cache`, no `--fix`), so it never modifies files and the
+# backup stash serves no purpose — disabling it keeps signatures valid.
+npx lint-staged --no-stash

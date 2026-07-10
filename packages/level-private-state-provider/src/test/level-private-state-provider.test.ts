@@ -16,7 +16,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
-import { type ContractAddress, sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
+import { type ContractAddress, sampleSigningKey } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
   ExportDecryptionError,
   ImportConflictError,
@@ -26,13 +26,36 @@ import {
   type SigningKeyExport,
   SigningKeyExportError
 } from '@midnight-ntwrk/midnight-js-types';
+import { PasswordValidationError,type PasswordValidationFailure } from '@midnight-ntwrk/midnight-js-utils';
 import * as crypto from 'crypto';
 import { Level } from 'level';
 import * as superjson from 'superjson';
 import { vi } from 'vitest';
 
-import { levelPrivateStateProvider, migrateToAccountScoped } from '../index';
+import { type DatabaseLevel, levelPrivateStateProvider, migrateToAccountScoped } from '../index';
 import { StorageEncryption } from '../storage-encryption';
+
+const captureError = async (action: () => Promise<unknown>): Promise<unknown> => {
+  try {
+    await action();
+  } catch (error) {
+    return error;
+  }
+  return undefined;
+};
+
+const expectPasswordValidationCause = (
+  error: unknown,
+  reason: PasswordValidationFailure
+): void => {
+  expect(error).toBeInstanceOf(Error);
+  if (error instanceof Error) {
+    expect(error.cause).toBeInstanceOf(PasswordValidationError);
+    if (error.cause instanceof PasswordValidationError) {
+      expect(error.cause.reason).toBe(reason);
+    }
+  }
+};
 
 describe('Level Private State Provider', (): void => {
   const TEST_PASSWORD = 'Test-Storage-Pass8!';
@@ -465,6 +488,46 @@ describe('Level Private State Provider', (): void => {
       ).rejects.toThrow(PrivateStateExportError);
     });
 
+    describe('strict password policy on export/import', () => {
+      test.each<[PasswordValidationFailure, string]>([
+        ['too_short', 'short'],
+        ['repeated_characters', 'aaaaaaaaaaaaaaaa'],
+        ['insufficient_classes', 'abcdefghjkmnpqrs'],
+        ['sequential_pattern', 'Password-123456!']
+      ])('exportPrivateStates rejects weak password (%s)', async (reason, weakPassword) => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+        db.setContractAddress(TEST_CONTRACT_ADDRESS);
+        await db.set('stringValue', testStates.stringValue);
+
+        const error = await captureError(() =>
+          db.exportPrivateStates({ password: weakPassword })
+        );
+
+        expect(error).toBeInstanceOf(PrivateStateExportError);
+        expectPasswordValidationCause(error, reason);
+      });
+
+      test.each<[PasswordValidationFailure, string]>([
+        ['too_short', 'short'],
+        ['repeated_characters', 'aaaaaaaaaaaaaaaa'],
+        ['insufficient_classes', 'abcdefghjkmnpqrs'],
+        ['sequential_pattern', 'Password-123456!']
+      ])('importPrivateStates rejects weak password (%s)', async (reason, weakPassword) => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+        db.setContractAddress(TEST_CONTRACT_ADDRESS);
+        await db.set('stringValue', testStates.stringValue);
+        const exportData = await db.exportPrivateStates({ password: EXPORT_PASSWORD });
+        await db.clear();
+
+        const error = await captureError(() =>
+          db.importPrivateStates(exportData, { password: weakPassword })
+        );
+
+        expect(error).toBeInstanceOf(PrivateStateExportError);
+        expectPasswordValidationCause(error, reason);
+      });
+    });
+
     test('throws ImportConflictError when conflict strategy is error (default)', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
       db.setContractAddress(TEST_CONTRACT_ADDRESS);
@@ -701,8 +764,8 @@ describe('Level Private State Provider', (): void => {
 
         // Create encryption with a known salt and encrypt non-JSON data
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
-        const notJson = encryption.encrypt('this is not JSON');
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
+        const notJson = await encryption.encrypt('this is not JSON');
 
         const badExport: PrivateStateExport = {
           format: 'midnight-private-state-export',
@@ -720,9 +783,9 @@ describe('Level Private State Provider', (): void => {
         db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
         // Valid JSON but missing required 'states' field
-        const invalidPayload = encryption.encrypt(JSON.stringify({
+        const invalidPayload = await encryption.encrypt(JSON.stringify({
           version: 1,
           exportedAt: new Date().toISOString(),
           stateCount: 0
@@ -745,9 +808,9 @@ describe('Level Private State Provider', (): void => {
         db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
         // Valid JSON but missing required 'version' field
-        const invalidPayload = encryption.encrypt(JSON.stringify({
+        const invalidPayload = await encryption.encrypt(JSON.stringify({
           exportedAt: new Date().toISOString(),
           stateCount: 0,
           states: {}
@@ -769,9 +832,9 @@ describe('Level Private State Provider', (): void => {
         db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
         // stateCount says 5 but only 1 state present
-        const mismatchedPayload = encryption.encrypt(JSON.stringify({
+        const mismatchedPayload = await encryption.encrypt(JSON.stringify({
           version: 1,
           exportedAt: new Date().toISOString(),
           stateCount: 5,
@@ -796,8 +859,8 @@ describe('Level Private State Provider', (): void => {
         db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
-        const unsupportedVersionPayload = encryption.encrypt(JSON.stringify({
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
+        const unsupportedVersionPayload = await encryption.encrypt(JSON.stringify({
           version: 999,
           exportedAt: new Date().toISOString(),
           stateCount: 0,
@@ -820,9 +883,9 @@ describe('Level Private State Provider', (): void => {
         db.setContractAddress(TEST_CONTRACT_ADDRESS);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
         // State value is not valid superjson
-        const invalidStatePayload = encryption.encrypt(JSON.stringify({
+        const invalidStatePayload = await encryption.encrypt(JSON.stringify({
           version: 1,
           exportedAt: new Date().toISOString(),
           stateCount: 1,
@@ -884,8 +947,8 @@ describe('Level Private State Provider', (): void => {
         // Uppercase hex should still be valid (the regex allows both cases)
         const uppercaseSalt = 'A'.repeat(64);
         const salt = Buffer.from(uppercaseSalt, 'hex');
-        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
-        const validPayload = encryption.encrypt(JSON.stringify({
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
+        const validPayload = await encryption.encrypt(JSON.stringify({
           version: 1,
           exportedAt: new Date().toISOString(),
           stateCount: 0,
@@ -907,7 +970,7 @@ describe('Level Private State Provider', (): void => {
   });
 
   describe('Signing Key Export/Import', () => {
-    const EXPORT_PASSWORD = 'export-test-password-1234';
+    const EXPORT_PASSWORD = 'Sk-Export-Test-Pass9!';
     const CONTRACT_ADDRESS_1 = 'contract-address-1' as ContractAddress;
     const CONTRACT_ADDRESS_2 = 'contract-address-2' as ContractAddress;
 
@@ -943,6 +1006,30 @@ describe('Level Private State Provider', (): void => {
       expect(await db.getSigningKey(CONTRACT_ADDRESS_2)).toEqual(signingKey2);
     });
 
+    test('exports and imports mixed schnorr and ecdsa signing keys preserving each kind', async () => {
+      const db = levelPrivateStateProvider<PID, PS>(testConfig);
+      const schnorrKey = sampleSigningKey('schnorr');
+      const ecdsaKey = sampleSigningKey('ecdsa');
+      await db.setSigningKey(CONTRACT_ADDRESS_1, schnorrKey);
+      await db.setSigningKey(CONTRACT_ADDRESS_2, ecdsaKey);
+
+      const exportData = await db.exportSigningKeys();
+
+      await db.clearSigningKeys();
+      const result = await db.importSigningKeys(exportData);
+
+      expect(result.imported).toBe(2);
+      expect(result.skipped).toBe(0);
+      expect(result.overwritten).toBe(0);
+
+      const importedSchnorr = await db.getSigningKey(CONTRACT_ADDRESS_1);
+      const importedEcdsa = await db.getSigningKey(CONTRACT_ADDRESS_2);
+      expect(importedSchnorr).toEqual(schnorrKey);
+      expect(importedSchnorr?.tag).toBe('schnorr');
+      expect(importedEcdsa).toEqual(ecdsaKey);
+      expect(importedEcdsa?.tag).toBe('ecdsa');
+    });
+
     test('exports with custom password and imports with same password', async () => {
       const db = levelPrivateStateProvider<PID, PS>(testConfig);
       const signingKey = sampleSigningKey();
@@ -965,7 +1052,7 @@ describe('Level Private State Provider', (): void => {
       await db.clearSigningKeys();
 
       await expect(
-        db.importSigningKeys(exportData, { password: 'wrong-password-12345' })
+        db.importSigningKeys(exportData, { password: 'Wrong-Pass8-Test!!' })
       ).rejects.toThrow(ExportDecryptionError);
     });
 
@@ -996,6 +1083,44 @@ describe('Level Private State Provider', (): void => {
       await expect(
         db.importSigningKeys(exportData, { password: 'short' })
       ).rejects.toThrow(SigningKeyExportError);
+    });
+
+    describe('strict password policy on signing keys export/import', () => {
+      test.each<[PasswordValidationFailure, string]>([
+        ['too_short', 'short'],
+        ['repeated_characters', 'aaaaaaaaaaaaaaaa'],
+        ['insufficient_classes', 'abcdefghjkmnpqrs'],
+        ['sequential_pattern', 'Password-123456!']
+      ])('exportSigningKeys rejects weak password (%s)', async (reason, weakPassword) => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+        await db.setSigningKey(CONTRACT_ADDRESS_1, sampleSigningKey());
+
+        const error = await captureError(() =>
+          db.exportSigningKeys({ password: weakPassword })
+        );
+
+        expect(error).toBeInstanceOf(SigningKeyExportError);
+        expectPasswordValidationCause(error, reason);
+      });
+
+      test.each<[PasswordValidationFailure, string]>([
+        ['too_short', 'short'],
+        ['repeated_characters', 'aaaaaaaaaaaaaaaa'],
+        ['insufficient_classes', 'abcdefghjkmnpqrs'],
+        ['sequential_pattern', 'Password-123456!']
+      ])('importSigningKeys rejects weak password (%s)', async (reason, weakPassword) => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+        await db.setSigningKey(CONTRACT_ADDRESS_1, sampleSigningKey());
+        const exportData = await db.exportSigningKeys({ password: EXPORT_PASSWORD });
+        await db.clearSigningKeys();
+
+        const error = await captureError(() =>
+          db.importSigningKeys(exportData, { password: weakPassword })
+        );
+
+        expect(error).toBeInstanceOf(SigningKeyExportError);
+        expectPasswordValidationCause(error, reason);
+      });
     });
 
     test('throws ImportConflictError when conflict strategy is error (default)', async () => {
@@ -1168,7 +1293,7 @@ describe('Level Private State Provider', (): void => {
     });
 
     describe('malformed data edge cases', () => {
-      const VALID_PASSWORD = 'valid-password-for-test';
+      const VALID_PASSWORD = 'Valid-Pass9-Test!@';
 
       test('throws ExportDecryptionError for garbage base64 payload', async () => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
@@ -1188,8 +1313,8 @@ describe('Level Private State Provider', (): void => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
-        const notJson = encryption.encrypt('this is not JSON');
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
+        const notJson = await encryption.encrypt('this is not JSON');
 
         const badExport: SigningKeyExport = {
           format: 'midnight-signing-key-export',
@@ -1206,8 +1331,8 @@ describe('Level Private State Provider', (): void => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
-        const invalidPayload = encryption.encrypt(JSON.stringify({
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
+        const invalidPayload = await encryption.encrypt(JSON.stringify({
           version: 1,
           exportedAt: new Date().toISOString(),
           keyCount: 0
@@ -1228,8 +1353,8 @@ describe('Level Private State Provider', (): void => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
-        const invalidPayload = encryption.encrypt(JSON.stringify({
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
+        const invalidPayload = await encryption.encrypt(JSON.stringify({
           exportedAt: new Date().toISOString(),
           keyCount: 0,
           keys: {}
@@ -1250,8 +1375,8 @@ describe('Level Private State Provider', (): void => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
-        const mismatchedPayload = encryption.encrypt(JSON.stringify({
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
+        const mismatchedPayload = await encryption.encrypt(JSON.stringify({
           version: 1,
           exportedAt: new Date().toISOString(),
           keyCount: 5,
@@ -1275,8 +1400,8 @@ describe('Level Private State Provider', (): void => {
         const db = levelPrivateStateProvider<PID, PS>(testConfig);
 
         const salt = Buffer.from('0'.repeat(64), 'hex');
-        const encryption = new StorageEncryption(VALID_PASSWORD, salt);
-        const unsupportedVersionPayload = encryption.encrypt(JSON.stringify({
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
+        const unsupportedVersionPayload = await encryption.encrypt(JSON.stringify({
           version: 999,
           exportedAt: new Date().toISOString(),
           keyCount: 0,
@@ -1311,6 +1436,93 @@ describe('Level Private State Provider', (): void => {
         };
 
         await expect(db.importSigningKeys(tamperedExport)).rejects.toThrow(ExportDecryptionError);
+      });
+    });
+
+    describe('signingKey value validation', () => {
+      const VALID_PASSWORD = 'Valid-Pass9-Test!@';
+
+      const buildBadExport = async (keys: Record<string, unknown>): Promise<SigningKeyExport> => {
+        const salt = Buffer.from('0'.repeat(64), 'hex');
+        const encryption = await StorageEncryption.create(VALID_PASSWORD, { existingSalt: salt });
+        const encryptedPayload = await encryption.encrypt(JSON.stringify({
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          keyCount: Object.keys(keys).length,
+          keys
+        }));
+        return {
+          format: 'midnight-signing-key-export',
+          encryptedPayload,
+          salt: salt.toString('hex')
+        };
+      };
+
+      test.each([
+        ['null',                  { [CONTRACT_ADDRESS_1]: null }],
+        ['plain object (no tag)', { [CONTRACT_ADDRESS_1]: { sk: 'deadbeef' } }],
+        ['number',                { [CONTRACT_ADDRESS_1]: 12345 }],
+        ['boolean',               { [CONTRACT_ADDRESS_1]: true }],
+        ['array',                 { [CONTRACT_ADDRESS_1]: ['deadbeef'] }],
+        ['legacy hex string',     { [CONTRACT_ADDRESS_1]: 'deadbeef' }],
+        ['unknown tag',           { [CONTRACT_ADDRESS_1]: { tag: 'rsa', value: 'deadbeef' } }],
+        ['missing value',         { [CONTRACT_ADDRESS_1]: { tag: 'schnorr' } }],
+        ['non-hex value',         { [CONTRACT_ADDRESS_1]: { tag: 'schnorr', value: 'zz'.repeat(8) } }],
+        ['odd-length value',      { [CONTRACT_ADDRESS_1]: { tag: 'schnorr', value: 'abcde' } }],
+        ['too-short value',       { [CONTRACT_ADDRESS_1]: { tag: 'schnorr', value: 'ab' } }],
+        ['empty value',           { [CONTRACT_ADDRESS_1]: { tag: 'schnorr', value: '' } }]
+      ])('importSigningKeys rejects %s signingKey value with InvalidExportFormatError', async (_reason, keys) => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+        const badExport = await buildBadExport(keys as Record<string, unknown>);
+
+        await expect(
+          db.importSigningKeys(badExport, { password: VALID_PASSWORD })
+        ).rejects.toThrow(InvalidExportFormatError);
+      });
+
+      test.each([
+        ['invalid value last',  { [CONTRACT_ADDRESS_1]: sampleSigningKey(), [CONTRACT_ADDRESS_2]: null }],
+        ['invalid value first', { [CONTRACT_ADDRESS_1]: null,               [CONTRACT_ADDRESS_2]: sampleSigningKey() }]
+      ])('importSigningKeys is atomic: %s leaves all keys unwritten', async (_reason, keys) => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+        const badExport = await buildBadExport(keys as Record<string, unknown>);
+
+        await expect(
+          db.importSigningKeys(badExport, { password: VALID_PASSWORD })
+        ).rejects.toThrow(InvalidExportFormatError);
+
+        expect(await db.getSigningKey(CONTRACT_ADDRESS_1)).toBeNull();
+        expect(await db.getSigningKey(CONTRACT_ADDRESS_2)).toBeNull();
+      });
+
+      test('importSigningKeys atomicity: existing keys are not overwritten when a later value is invalid', async () => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+        const original = sampleSigningKey();
+        await db.setSigningKey(CONTRACT_ADDRESS_1, original);
+
+        const replacement = sampleSigningKey();
+        const badExport = await buildBadExport({
+          [CONTRACT_ADDRESS_1]: replacement,
+          [CONTRACT_ADDRESS_2]: { sk: 'not-a-string' }
+        });
+
+        await expect(
+          db.importSigningKeys(badExport, { password: VALID_PASSWORD, conflictStrategy: 'overwrite' })
+        ).rejects.toThrow(InvalidExportFormatError);
+
+        expect(await db.getSigningKey(CONTRACT_ADDRESS_1)).toEqual(original);
+        expect(await db.getSigningKey(CONTRACT_ADDRESS_2)).toBeNull();
+      });
+
+      test('importSigningKeys accepts a well-formed structured signing key', async () => {
+        const db = levelPrivateStateProvider<PID, PS>(testConfig);
+        const wellFormed = { tag: 'schnorr', value: '0102030a1b2c3d4e5f' };
+        const goodExport = await buildBadExport({ [CONTRACT_ADDRESS_1]: wellFormed });
+
+        const result = await db.importSigningKeys(goodExport, { password: VALID_PASSWORD });
+
+        expect(result.imported).toBe(1);
+        expect(await db.getSigningKey(CONTRACT_ADDRESS_1)).toEqual(wellFormed);
       });
     });
   });
@@ -1574,11 +1786,11 @@ describe('Level Private State Provider', (): void => {
 
       await db.set('key-1', 'value-1');
       expect(verifyPasswordSpy).toHaveBeenCalledTimes(1);
-      expect(verifyPasswordSpy).toHaveLastReturnedWith(true);
+      await expect(verifyPasswordSpy).toHaveLastResolvedWith(true);
 
       await db.set('key-2', 'value-2');
       expect(verifyPasswordSpy).toHaveBeenCalledTimes(2);
-      expect(verifyPasswordSpy).toHaveLastReturnedWith(true);
+      await expect(verifyPasswordSpy).toHaveLastResolvedWith(true);
 
       verifyPasswordSpy.mockRestore();
     });
@@ -1614,7 +1826,7 @@ describe('Level Private State Provider', (): void => {
       db.setContractAddress(CACHE_CONTRACT_ADDRESS);
       await db.set('test-key', 'test-value');
 
-      db.invalidateEncryptionCache();
+      await db.invalidateEncryptionCache();
 
       const value = await db.get('test-key');
       expect(value).toBe('test-value');
@@ -1654,6 +1866,41 @@ describe('Level Private State Provider', (): void => {
       const value = await db2.get('shared-key');
 
       expect(value).toBe('shared-value');
+    });
+  });
+
+  describe('Encryption Cache Invalidation', () => {
+    const INVALIDATE_TEST_DB = 'midnight-invalidate-test-db';
+    const INVALIDATE_CONTRACT_ADDRESS = 'invalidate-test-contract' as ContractAddress;
+
+    afterEach(async () => {
+      await fs.rm(path.join('.', INVALIDATE_TEST_DB), { recursive: true, force: true });
+    });
+
+    test('operations after invalidateEncryptionCache re-derive the encryption instance', async () => {
+      // Guards against a regression where invalidate is a no-op: after
+      // clearing the cache, the next operation must actually call
+      // StorageEncryption.create again rather than silently reusing a stale
+      // entry.
+      const createSpy = vi.spyOn(StorageEncryption, 'create');
+      try {
+        const config = {
+          midnightDbName: INVALIDATE_TEST_DB,
+          privateStoragePasswordProvider: () => TEST_PASSWORD,
+          accountId: TEST_ACCOUNT_ID
+        };
+        const db = levelPrivateStateProvider<string, string>(config);
+        db.setContractAddress(INVALIDATE_CONTRACT_ADDRESS);
+        await db.set('key', 'value');
+
+        const callsBeforeInvalidate = createSpy.mock.calls.length;
+        await db.invalidateEncryptionCache();
+        await db.get('key');
+
+        expect(createSpy.mock.calls.length).toBe(callsBeforeInvalidate + 1);
+      } finally {
+        createSpy.mockRestore();
+      }
     });
   });
 
@@ -1745,6 +1992,79 @@ describe('Level Private State Provider', (): void => {
         await expect(
           db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD)
         ).resolves.not.toThrow();
+      });
+
+      // The sublevel name format mirrors getScopedLevelName in level-private-state-provider.ts (sha256 hex prefix sliced to ACCOUNT_ID_HASH_LENGTH).
+      const buildScopedSublevelName = (accountId: string): string =>
+        `private-states:${crypto.createHash('sha256').update(accountId).digest('hex').substring(0, 32)}`;
+
+      test('aborts rotation when sublevel contains an unencrypted entry', async () => {
+        const config = {
+          midnightDbName: ROTATION_TEST_DB,
+          privateStoragePasswordProvider: () => OLD_PASSWORD,
+          accountId: TEST_ACCOUNT_ID
+        };
+
+        const db = levelPrivateStateProvider<string, string>(config);
+        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
+        await db.set('key1', 'value1');
+        await db.set('key2', 'value2');
+
+        const sublevelName = buildScopedSublevelName(TEST_ACCOUNT_ID);
+        const plaintextKey = `${ROTATION_CONTRACT_ADDRESS}:plaintext-entry`;
+
+        const directLevel = new Level(ROTATION_TEST_DB, { createIfMissing: true });
+        const directSublevel = directLevel.sublevel<string, string>(sublevelName, { valueEncoding: 'utf-8' });
+        await directLevel.open();
+        await directSublevel.open();
+        await directSublevel.put(plaintextKey, 'this-is-not-encrypted');
+        await directSublevel.close();
+        await directLevel.close();
+
+        await expect(
+          db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD)
+        ).rejects.toThrow(/Failed to decrypt entry.*Unrecognized or unencrypted data/);
+
+        const value1 = await db.get('key1');
+        const value2 = await db.get('key2');
+        expect(value1).toBe('value1');
+        expect(value2).toBe('value2');
+      });
+
+      test('propagates raw error when first iterated entry is unencrypted', async () => {
+        const config = {
+          midnightDbName: ROTATION_TEST_DB,
+          privateStoragePasswordProvider: () => OLD_PASSWORD,
+          accountId: TEST_ACCOUNT_ID
+        };
+
+        const db = levelPrivateStateProvider<string, string>(config);
+        db.setContractAddress(ROTATION_CONTRACT_ADDRESS);
+        await db.set('key1', 'value1');
+        await db.set('key2', 'value2');
+
+        const sublevelName = buildScopedSublevelName(TEST_ACCOUNT_ID);
+        // Lex-sort before ROTATION_CONTRACT_ADDRESS so iterator hits this first.
+        const plaintextKey = 'aaa-contract:plaintext-first';
+
+        const directLevel = new Level(ROTATION_TEST_DB, { createIfMissing: true });
+        const directSublevel = directLevel.sublevel<string, string>(sublevelName, { valueEncoding: 'utf-8' });
+        await directLevel.open();
+        await directSublevel.open();
+        await directSublevel.put(plaintextKey, 'this-is-not-encrypted');
+        await directSublevel.close();
+        await directLevel.close();
+
+        // First-entry path at rotateStorePassword: isDecryptionError returns false for the new message,
+        // so the error propagates raw (not wrapped by "Failed to decrypt entry" nor "Old password is incorrect").
+        await expect(
+          db.changePassword(() => OLD_PASSWORD, () => NEW_PASSWORD)
+        ).rejects.toThrow(/^Unrecognized or unencrypted data encountered during decryption$/);
+
+        const value1 = await db.get('key1');
+        const value2 = await db.get('key2');
+        expect(value1).toBe('value1');
+        expect(value2).toBe('value2');
       });
 
       test('re-encrypts all contracts data in sublevel to prevent data loss', async () => {
@@ -2528,9 +2848,9 @@ describe('Level Private State Provider', (): void => {
         await level.open();
         await unscopedSubLevel.open();
 
-        const encryption = new StorageEncryption(TEST_PASSWORD);
-        await unscopedSubLevel.put('contract1:state1', encryption.encrypt(superjson.stringify('value1')));
-        await unscopedSubLevel.put('contract1:state2', encryption.encrypt(superjson.stringify('value2')));
+        const encryption = await StorageEncryption.create(TEST_PASSWORD);
+        await unscopedSubLevel.put('contract1:state1', await encryption.encrypt(superjson.stringify('value1')));
+        await unscopedSubLevel.put('contract1:state2', await encryption.encrypt(superjson.stringify('value2')));
       } finally {
         await unscopedSubLevel.close();
         await level.close();
@@ -2555,8 +2875,8 @@ describe('Level Private State Provider', (): void => {
         await level.open();
         await unscopedSubLevel.open();
 
-        const encryption = new StorageEncryption(TEST_PASSWORD);
-        await unscopedSubLevel.put('contract1', encryption.encrypt(superjson.stringify({ key: 'data' })));
+        const encryption = await StorageEncryption.create(TEST_PASSWORD);
+        await unscopedSubLevel.put('contract1', await encryption.encrypt(superjson.stringify({ key: 'data' })));
       } finally {
         await unscopedSubLevel.close();
         await level.close();
@@ -2605,7 +2925,7 @@ describe('Level Private State Provider', (): void => {
         valueEncoding: 'utf-8'
       });
 
-      const encryption = new StorageEncryption(TEST_PASSWORD);
+      const encryption = await StorageEncryption.create(TEST_PASSWORD);
       const CONTRACT_ADDR = 'test-contract' as ContractAddress;
       const METADATA_KEY = '__midnight_encryption_metadata__';
 
@@ -2617,7 +2937,7 @@ describe('Level Private State Provider', (): void => {
         await unscopedSubLevel.put(METADATA_KEY, JSON.stringify(metadata));
         await unscopedSubLevel.put(
           `${CONTRACT_ADDR}:migrated-key`,
-          encryption.encrypt(superjson.stringify('migrated-value'))
+          await encryption.encrypt(superjson.stringify('migrated-value'))
         );
       } finally {
         await unscopedSubLevel.close();
@@ -2646,7 +2966,7 @@ describe('Level Private State Provider', (): void => {
         valueEncoding: 'utf-8'
       });
 
-      const encryption = new StorageEncryption(TEST_PASSWORD);
+      const encryption = await StorageEncryption.create(TEST_PASSWORD);
       const CONTRACT_ADDR = 'test-contract' as ContractAddress;
       const METADATA_KEY = '__midnight_encryption_metadata__';
 
@@ -2658,7 +2978,7 @@ describe('Level Private State Provider', (): void => {
         await unscopedSubLevel.put(METADATA_KEY, JSON.stringify(metadata));
         await unscopedSubLevel.put(
           `${CONTRACT_ADDR}:idempotent-key`,
-          encryption.encrypt(superjson.stringify('idempotent-value'))
+          await encryption.encrypt(superjson.stringify('idempotent-value'))
         );
       } finally {
         await unscopedSubLevel.close();
@@ -2695,8 +3015,8 @@ describe('Level Private State Provider', (): void => {
         valueEncoding: 'utf-8'
       });
 
-      const encryption = new StorageEncryption(TEST_PASSWORD);
-      const originalEncryptedValue = encryption.encrypt(superjson.stringify('original-value'));
+      const encryption = await StorageEncryption.create(TEST_PASSWORD);
+      const originalEncryptedValue = await encryption.encrypt(superjson.stringify('original-value'));
 
       try {
         await level.open();
@@ -2725,6 +3045,64 @@ describe('Level Private State Provider', (): void => {
       } finally {
         await unscopedAfter.close();
         await levelAfter.close();
+      }
+    });
+  });
+
+  describe('levelFactory', () => {
+    const FACTORY_DB_NAME = 'test-custom-factory-db';
+
+    afterAll(async () => {
+      await fs.rm(path.join('.', FACTORY_DB_NAME), { recursive: true, force: true });
+    });
+
+    const createLevel = (dbName: string): DatabaseLevel =>
+      new Level(dbName, { createIfMissing: true }) as DatabaseLevel;
+
+    test('custom levelFactory is invoked on get/set operations', async () => {
+      const factory = vi.fn(createLevel);
+      const db = levelPrivateStateProvider<PID, PS>({
+        ...testConfig,
+        midnightDbName: FACTORY_DB_NAME,
+        levelFactory: factory,
+      });
+      db.setContractAddress(TEST_CONTRACT_ADDRESS);
+
+      await db.set('stringValue', 'value');
+      await db.get('stringValue');
+
+      expect(factory).toHaveBeenCalled();
+      expect(factory.mock.calls.every(([name]) => name === FACTORY_DB_NAME)).toBe(true);
+    });
+
+    test('set/get roundtrip works with custom levelFactory', async () => {
+      const db = levelPrivateStateProvider<PID, PS>({
+        ...testConfig,
+        midnightDbName: FACTORY_DB_NAME,
+        levelFactory: createLevel,
+      });
+      db.setContractAddress(TEST_CONTRACT_ADDRESS);
+
+      await db.set('numberValue', 42);
+      const value = await db.get('numberValue');
+      expect(value).toBe(42);
+    });
+
+    test('migrateToAccountScoped uses custom levelFactory', async () => {
+      const migrationDbName = 'test-migration-factory-db';
+      const factory = vi.fn(createLevel);
+
+      try {
+        await migrateToAccountScoped({
+          accountId: TEST_ACCOUNT_ID,
+          midnightDbName: migrationDbName,
+          levelFactory: factory,
+        });
+
+        expect(factory).toHaveBeenCalled();
+        expect(factory.mock.calls.every(([name]) => name === migrationDbName)).toBe(true);
+      } finally {
+        await fs.rm(path.join('.', migrationDbName), { recursive: true, force: true });
       }
     });
   });

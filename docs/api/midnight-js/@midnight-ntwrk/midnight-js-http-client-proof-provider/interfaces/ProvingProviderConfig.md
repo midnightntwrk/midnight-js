@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v3.1.0**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.3**](../../../README.md)
 
 ***
 
@@ -8,6 +8,12 @@
 
 ## Properties
 
+### headers?
+
+> `readonly` `optional` **headers?**: `Record`\<`string`, `string`\>
+
+***
+
 ### timeout?
 
-> `readonly` `optional` **timeout**: `number`
+> `readonly` `optional` **timeout?**: `number`

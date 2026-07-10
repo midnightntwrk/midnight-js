@@ -7,10 +7,10 @@
   },
   "author": "IOG",
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22"
   },
   "license": "Apache-2.0",
-  "version": "3.2.0",
+  "version": "5.0.0-beta.4",
   "type": "module",
   "bin": {
     "fetch-compactc": "dist/fetch-compact.mjs",
@@ -21,14 +21,20 @@
     "build": "tsc -p tsconfig.build.json && cp src/run-compactc.cjs dist/",
     "lint": "eslint ./src",
     "typecheck": "tsc -p tsconfig.json",
-    "deploy": "yarn npm publish"
+    "test": "vitest run",
+    "deploy": "yarn npm publish --tolerate-republish"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.2"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.7"
   },
   "files": [
     "dist/"
-  ]
+  ],
+  "dependencies": {
+    "@midnight-ntwrk/midnight-js-utils": "workspace:*"
+  },
+  "packageManager": "yarn@4.14.1"
 }

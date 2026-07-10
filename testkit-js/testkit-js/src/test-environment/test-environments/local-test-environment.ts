@@ -14,7 +14,7 @@
  */
 
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { NetworkId } from '@midnight-ntwrk/wallet-sdk-abstractions';
+import { NetworkId } from '@midnightntwrk/wallet-sdk';
 import type { Logger } from 'pino';
 import { DockerComposeEnvironment, type StartedDockerComposeEnvironment } from 'testcontainers';
 
@@ -56,8 +56,8 @@ export class LocalTestConfiguration implements EnvironmentConfiguration {
   constructor({ indexer, node, proofServer }: ComponentPortsConfiguration) {
     this.walletNetworkId = NetworkId.NetworkId.Undeployed;
     this.networkId = 'undeployed';
-    this.indexer = `http://127.0.0.1:${indexer}/api/v3/graphql`;
-    this.indexerWS = `ws://127.0.0.1:${indexer}/api/v3/graphql/ws`;
+    this.indexer = `http://127.0.0.1:${indexer}/api/v4/graphql`;
+    this.indexerWS = `ws://127.0.0.1:${indexer}/api/v4/graphql/ws`;
     this.node = `http://127.0.0.1:${node}`;
     this.nodeWS = `ws://127.0.0.1:${node}`;
     this.proofServer = `http://127.0.0.1:${proofServer}`;

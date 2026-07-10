@@ -1,14 +1,27 @@
-[**Midnight.js API Reference v3.1.0**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.3**](../../../README.md)
 
 ***
 
 [Midnight.js API Reference](../../../packages.md) / [@midnight-ntwrk/midnight-js-contracts](../README.md) / CallResultPrivate
 
-# Type Alias: CallResultPrivate\<C, ICK\>
+# Type Alias: CallResultPrivate\<C, PCK\>
 
-> **CallResultPrivate**\<`C`, `ICK`\> = `object`
+> **CallResultPrivate**\<`C`, `PCK`\> = `object`
 
 The private (sensitive) portions of the call result.
+
+## Remarks
+
+**Privacy-sensitive type.** Every field on this type carries data the
+zero-knowledge proofs were designed to keep confidential: the ZK-aligned
+circuit input/output, the private transcript outputs from witness calls,
+the JS-typed circuit result, the next private state, and the next Zswap
+local state.
+
+Application code must not log, serialize, or transmit instances of this
+type. If a non-sensitive subset of the call result is needed (for example,
+the JS `result` value alone), extract that field explicitly rather than
+passing the whole object across a trust boundary.
 
 ## Type Parameters
 
@@ -16,9 +29,9 @@ The private (sensitive) portions of the call result.
 
 `C` *extends* `Contract.Any`
 
-### ICK
+### PCK
 
-`ICK` *extends* `Contract.ImpureCircuitId`\<`C`\>
+`PCK` *extends* `Contract.ProvableCircuitId`\<`C`\>
 
 ## Properties
 
@@ -64,6 +77,6 @@ ZK representation of the circuit witness call results.
 
 ### result
 
-> `readonly` **result**: `Contract.CircuitReturnType`\<`C`, `ICK`\>
+> `readonly` **result**: `Contract.CircuitReturnType`\<`C`, `PCK`\>
 
-The JS representation of the input to the circuit.
+The JS representation of the value returned by the circuit.
