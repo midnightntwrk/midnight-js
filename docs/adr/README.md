@@ -36,3 +36,4 @@ The full contributor/agent rules live in [AGENTS.md](../../AGENTS.md#architectur
 | ADR | Title | Status |
 |-----|-------|--------|
 | [0001](./0001-record-architecture-decisions.md) | Record architecture decisions | Accepted |
+| [0003](./0003-prefer-interfaces-over-object-type-aliases.md) | Prefer interfaces over object-type aliases for named object types | Accepted |

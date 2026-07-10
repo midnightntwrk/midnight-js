@@ -1,6 +1,6 @@
 # 0003. Prefer interfaces over object-type aliases for named object types
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-10
 - Deciders: Szymon Paluchowski
 - Related: PR #629
