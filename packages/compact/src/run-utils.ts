@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025-2026 Midnight Foundation
+ * Copyright (C) Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -18,18 +18,18 @@ import * as path from 'node:path';
 
 export const resolveCompactPath = (packageDir: string, version?: string): string => {
   const compactHomeEnv = process.env.COMPACT_HOME;
-  
+
   if (compactHomeEnv) {
     console.log(`COMPACT_HOME env variable is set; using Compact from ${compactHomeEnv}`);
     return compactHomeEnv;
   }
 
   const managedDir = path.resolve(packageDir, 'managed');
-  
+
   if (version) {
     const versionDir = path.resolve(managedDir, version);
     const compactcPath = path.join(versionDir, 'compactc');
-    
+
     if (fs.existsSync(compactcPath)) {
       console.log(`Using Compact version ${version} from ${versionDir}`);
       return versionDir;
@@ -38,7 +38,7 @@ export const resolveCompactPath = (packageDir: string, version?: string): string
     }
   }
 
-  const versions = fs.existsSync(managedDir) 
+  const versions = fs.existsSync(managedDir)
     ? fs.readdirSync(managedDir, { withFileTypes: true })
         .filter(dirent => dirent.isDirectory())
         .map(dirent => dirent.name)
@@ -56,6 +56,6 @@ export const resolveCompactPath = (packageDir: string, version?: string): string
   const latestVersion = versions[0];
   const latestVersionDir = path.resolve(managedDir, latestVersion);
   console.log(`Using latest Compact version ${latestVersion} from ${latestVersionDir}`);
-  
+
   return latestVersionDir;
 };
