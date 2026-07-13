@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025-2026 Midnight Foundation
+ * Copyright (C) Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -45,7 +45,7 @@ describe('submitInsertVerifierKeyTx', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     mockProviders = createMockProviders();
     mockCompiledContract = createMockCompiledContract();
     mockContractAddress = createMockContractAddress();
@@ -65,7 +65,7 @@ describe('submitInsertVerifierKeyTx', () => {
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockSigningKey);
       mockProviders.walletProvider.getCoinPublicKey = vi.fn().mockReturnValue(mockCoinPublicKey);
       mockContractState.operation = vi.fn().mockReturnValue(undefined);
-      
+
       vi.mocked(createUnprovenInsertVerifierKeyTx).mockReturnValue(mockUnprovenTx);
       vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
 
@@ -99,14 +99,14 @@ describe('submitInsertVerifierKeyTx', () => {
     it('should throw InsertVerifierKeyTxFailedError when transaction fails', async () => {
       const { InsertVerifierKeyTxFailedError } = await import('../../governance/errors');
       const { FailEntirely } = await import('@midnight-ntwrk/midnight-js-types');
-      
+
       const circuitId = 'testCircuit';
       const failedTxData = createMockFinalizedTxData(FailEntirely);
 
       mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockSigningKey);
       mockContractState.operation = vi.fn().mockReturnValue(undefined);
-      
+
       vi.mocked(createUnprovenInsertVerifierKeyTx).mockReturnValue(mockUnprovenTx);
       vi.mocked(submitTx).mockResolvedValue(failedTxData);
 
