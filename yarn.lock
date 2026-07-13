@@ -5,9 +5,9 @@ __metadata:
   version: 9
   cacheKey: 10
 
-"@apollo/client@npm:^4.2.3":
-  version: 4.2.3
-  resolution: "@apollo/client@npm:4.2.3"
+"@apollo/client@npm:^4.2.5":
+  version: 4.2.5
+  resolution: "@apollo/client@npm:4.2.5"
   dependencies:
     "@graphql-typed-document-node/core": "npm:^3.1.1"
     "@wry/caches": "npm:^1.0.0"
@@ -32,7 +32,7 @@ __metadata:
       optional: true
     subscriptions-transport-ws:
       optional: true
-  checksum: 10/f2195d389601b9cf109f3e29b75a27292be2cb6be51ec4d1b57500d295867047565dd3932a762e646939b9d8953d9d868210710159df929c8ac152ad819b097c
+  checksum: 10/4e19e03b352d488fce184f3e4639f51f4d7876041041006190a96d0c9886237390fe6e23b0450ffe3298feb9efb4067de235e73c2385fa4cd34cc471ac22d059
   languageName: node
   linkType: hard
 
@@ -1917,7 +1917,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-indexer-public-data-provider@workspace:packages/indexer-public-data-provider"
   dependencies:
-    "@apollo/client": "npm:^4.2.3"
+    "@apollo/client": "npm:^4.2.5"
     "@graphql-codegen/cli": "npm:^7.1.3"
     "@graphql-codegen/client-preset": "npm:^6.0.1"
     "@graphql-codegen/typescript": "npm:^6.0.2"
