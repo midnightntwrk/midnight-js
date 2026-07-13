@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025-2026 Midnight Foundation
+ * Copyright (C) Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ describe('submitRemoveVerifierKeyTx', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     mockProviders = createMockProviders();
     mockCompiledContract = createMockCompiledContract();
     mockContractAddress = createMockContractAddress();
@@ -63,7 +63,7 @@ describe('submitRemoveVerifierKeyTx', () => {
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockSigningKey);
       mockProviders.walletProvider.getCoinPublicKey = vi.fn().mockReturnValue(mockCoinPublicKey);
       mockContractState.operation = vi.fn().mockReturnValue(mockOperation);
-      
+
       vi.mocked(createUnprovenRemoveVerifierKeyTx).mockReturnValue(mockUnprovenTx);
       vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
 
@@ -95,7 +95,7 @@ describe('submitRemoveVerifierKeyTx', () => {
     it('should throw RemoveVerifierKeyTxFailedError when transaction fails', async () => {
       const { RemoveVerifierKeyTxFailedError } = await import('../../governance/errors');
       const { FailEntirely } = await import('@midnight-ntwrk/midnight-js-types');
-      
+
       const circuitId = 'testCircuit';
       const failedTxData = createMockFinalizedTxData(FailEntirely);
       const mockOperation = { verifierKey: new Uint8Array(32) };
@@ -103,7 +103,7 @@ describe('submitRemoveVerifierKeyTx', () => {
       mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockSigningKey);
       mockContractState.operation = vi.fn().mockReturnValue(mockOperation);
-      
+
       vi.mocked(createUnprovenRemoveVerifierKeyTx).mockReturnValue(mockUnprovenTx);
       vi.mocked(submitTx).mockResolvedValue(failedTxData);
 

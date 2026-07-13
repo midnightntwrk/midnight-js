@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025-2026 Midnight Foundation
+ * Copyright (C) Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@ describe('submitReplaceAuthorityTx', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     mockProviders = createMockProviders();
     mockCompiledContract = createMockCompiledContract();
     mockContractAddress = createMockContractAddress();
@@ -63,7 +63,7 @@ describe('submitReplaceAuthorityTx', () => {
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockCurrentAuthority);
       mockProviders.privateStateProvider.setSigningKey = vi.fn().mockResolvedValue(undefined);
       mockProviders.walletProvider.getCoinPublicKey = vi.fn().mockReturnValue(mockCoinPublicKey);
-      
+
       vi.mocked(createUnprovenReplaceAuthorityTx).mockReturnValue(mockUnprovenTx);
       vi.mocked(submitTx).mockResolvedValue(mockFinalizedTxData);
 
@@ -91,18 +91,18 @@ describe('submitReplaceAuthorityTx', () => {
     it('should throw ReplaceMaintenanceAuthorityTxFailedError when transaction fails', async () => {
       const { ReplaceMaintenanceAuthorityTxFailedError } = await import('../../governance/errors');
       const { FailEntirely } = await import('@midnight-ntwrk/midnight-js-types');
-      
+
       const failedTxData = createMockFinalizedTxData(FailEntirely);
 
       mockProviders.publicDataProvider.queryContractState = vi.fn().mockResolvedValue(mockContractState);
       mockProviders.privateStateProvider.getSigningKey = vi.fn().mockResolvedValue(mockCurrentAuthority);
       mockProviders.privateStateProvider.setSigningKey = vi.fn().mockResolvedValue(undefined);
-      
+
       vi.mocked(createUnprovenReplaceAuthorityTx).mockReturnValue(mockUnprovenTx);
       vi.mocked(submitTx).mockResolvedValue(failedTxData);
 
       const replaceAuthorityFn = submitReplaceAuthorityTx(mockProviders, mockCompiledContract, mockContractAddress);
-      
+
       await expect(replaceAuthorityFn(mockNewAuthority)).rejects.toThrow(ReplaceMaintenanceAuthorityTxFailedError);
     });
   });
