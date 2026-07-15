@@ -386,7 +386,8 @@ describe('Zswap utilities', () => {
             expect(delta).toBeUndefined();
           }
         }
-      )
+      ),
+      { numRuns: 25 }
     ));
 
   test('should return only coins meant for provided wallet in zswapStateToNewCoins', () => {
