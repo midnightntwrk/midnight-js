@@ -11,13 +11,19 @@ provider, then creates an unbalanced, unproven, unsubmitted, call transaction.
 
 ## Param
 
+**providers**
+
 The providers to use to create the call transaction.
 
 ## Param
 
+**options**
+
 Configuration.
 
 ## Param
+
+**transactionContext**
 
 Optional scoped transaction context to participate in an
        existing transaction scope.

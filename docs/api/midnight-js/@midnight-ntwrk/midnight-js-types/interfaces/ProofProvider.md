@@ -10,6 +10,8 @@ Interface for a proof server running in a trusted environment.
 
 ## Type Param
 
+**K**
+
 The type of the circuit ID used by the provider.
 
 ## Methods
