@@ -11,9 +11,13 @@ construction workflow and is used to create a [DeployedContract](../interfaces/D
 
 ## Param
 
+**providers**
+
 The providers used to manage the transaction lifecycle.
 
 ## Param
+
+**options**
 
 Configuration.
 

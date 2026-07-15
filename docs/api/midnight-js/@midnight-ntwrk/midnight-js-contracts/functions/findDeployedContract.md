@@ -13,9 +13,13 @@ property of the returned `FoundContract`.
 
 ## Param
 
+**providers**
+
 The providers used to manage transaction lifecycles.
 
 ## Param
+
+**options**
 
 Configuration.
 
