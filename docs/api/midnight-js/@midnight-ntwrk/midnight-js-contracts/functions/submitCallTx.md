@@ -30,13 +30,19 @@ Midnight transactions execute in two phases:
 
 ## Param
 
+**providers**
+
 The providers used to manage the invocation lifecycle.
 
 ## Param
 
+**options**
+
 Configuration.
 
 ## Param
+
+**transactionContext**
 
 Optional scoped transaction context to participate in an
        existing transaction scope.

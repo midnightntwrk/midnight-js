@@ -1981,7 +1981,7 @@ __metadata:
     "@rollup/plugin-typescript": "npm:^12.3.0"
     "@tsconfig/node24": "npm:^24.0.4"
     "@types/node": "npm:^24.0.0"
-    "@vitest/coverage-v8": "npm:^4.1.7"
+    "@vitest/coverage-v8": "npm:^4.1.10"
     "@vitest/ui": "npm:^4.1.9"
     "@yarnpkg/types": "npm:^4.0.1"
     commit-and-tag-version: "npm:^12.7.3"
@@ -2036,7 +2036,7 @@ __metadata:
     "@midnightntwrk/ledger-v9": "npm:1.0.0-rc.3"
     "@midnightntwrk/onchain-runtime-v4": "npm:4.0.0-rc.3"
     "@rollup/plugin-typescript": "npm:^12.3.0"
-    "@vitest/coverage-v8": "npm:^4.1.7"
+    "@vitest/coverage-v8": "npm:^4.1.10"
     eslint: "npm:^10.4.0"
     rollup: "npm:^4.60.4"
     rollup-plugin-dts: "npm:^6.4.1"
@@ -4425,12 +4425,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vitest/coverage-v8@npm:^4.1.7":
-  version: 4.1.7
-  resolution: "@vitest/coverage-v8@npm:4.1.7"
+"@vitest/coverage-v8@npm:^4.1.10":
+  version: 4.1.10
+  resolution: "@vitest/coverage-v8@npm:4.1.10"
   dependencies:
     "@bcoe/v8-coverage": "npm:^1.0.2"
-    "@vitest/utils": "npm:4.1.7"
+    "@vitest/utils": "npm:4.1.10"
     ast-v8-to-istanbul: "npm:^1.0.0"
     istanbul-lib-coverage: "npm:^3.2.2"
     istanbul-lib-report: "npm:^3.0.1"
@@ -4440,12 +4440,12 @@ __metadata:
     std-env: "npm:^4.0.0-rc.1"
     tinyrainbow: "npm:^3.1.0"
   peerDependencies:
-    "@vitest/browser": 4.1.7
-    vitest: 4.1.7
+    "@vitest/browser": 4.1.10
+    vitest: 4.1.10
   peerDependenciesMeta:
     "@vitest/browser":
       optional: true
-  checksum: 10/ebfe69453f635946449303356fd7b41d6db5ef2449c7e50fe4789930d4b386685c5d8e3587c0fb8ce4010463371dad195471dda2efad673ee26b58d6ff5b7fbe
+  checksum: 10/e593f5205a65d10f200e68a99e720d7a9f5e9be65d8160e4f0b6b5f1a7a87f0453c03e79fd1c022dbd7fb26a22657ca4d9410ae27b36da90d41d7ca04f681ab1
   languageName: node
   linkType: hard
 
@@ -4479,6 +4479,15 @@ __metadata:
     vite:
       optional: true
   checksum: 10/124d0ec9cc099fde1fca4b065b81a389e9ba2204ecba9729751a0a022d0ffaa34609d9dc60c1f8494ee972c2209035a4476ff1dddc1790e07d1ca28a1103b30d
+  languageName: node
+  linkType: hard
+
+"@vitest/pretty-format@npm:4.1.10":
+  version: 4.1.10
+  resolution: "@vitest/pretty-format@npm:4.1.10"
+  dependencies:
+    tinyrainbow: "npm:^3.1.0"
+  checksum: 10/e4f6907143ab0e40dda29d70b17027586c92921d622091321f10512e660b3995dcee7aa56e17b750b72560f295e25f96035372348415f18ebfd39b66a55b4704
   languageName: node
   linkType: hard
 
@@ -4543,6 +4552,17 @@ __metadata:
   peerDependencies:
     vitest: 4.1.9
   checksum: 10/433dcd696ec899c3876eb44aa64922c7f8bfafe2c05257aa4a4e3bc2e5a2d2618036f63afa309335ed66c30c22f701d95621907bf3f7f5aa2b0e49d91e381644
+  languageName: node
+  linkType: hard
+
+"@vitest/utils@npm:4.1.10":
+  version: 4.1.10
+  resolution: "@vitest/utils@npm:4.1.10"
+  dependencies:
+    "@vitest/pretty-format": "npm:4.1.10"
+    convert-source-map: "npm:^2.0.0"
+    tinyrainbow: "npm:^3.1.0"
+  checksum: 10/95484aad55c7b00bbcd4963e27cbb86fe207620a6093973d68da9d0a06bad37c388d84c9ab43d5f35d88e46c8f376a5592d9c54c025c958361160f4802bb25ee
   languageName: node
   linkType: hard
 

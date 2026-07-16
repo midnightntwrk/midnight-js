@@ -11,13 +11,21 @@ unproven, unsubmitted, call transaction.
 
 ## Param
 
+**zkConfigProvider**
+
 ## Param
+
+**options**
 
 Configuration.
 
 ## Param
 
+**walletEncryptionPublicKey**
+
 ## Param
+
+**crossContract**
 
 Enables cross-contract calls; required for circuits that make them.
 

@@ -11,17 +11,25 @@ from the constructor results.
 
 ## Param
 
+**verifierKeys**
+
 The verifier keys for the contract being deployed.
 
 ## Param
+
+**coinPublicKey**
 
 The Zswap coin public key of the current user.
 
 ## Param
 
+**options**
+
 Configuration.
 
 ## Param
+
+**encryptionPublicKey**
 
 ## Remarks
 

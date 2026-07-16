@@ -11,9 +11,13 @@ from the constructor results.
 
 ## Param
 
+**providers**
+
 The providers to use to create the deploy transaction.
 
 ## Param
+
+**options**
 
 Configuration.
 
