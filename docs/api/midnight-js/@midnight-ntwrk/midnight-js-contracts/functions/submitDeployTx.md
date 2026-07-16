@@ -33,9 +33,13 @@ Midnight transactions execute in two phases:
 
 ## Param
 
+**providers**
+
 The providers used to manage the deploy lifecycle.
 
 ## Param
+
+**options**
 
 Configuration.
 
