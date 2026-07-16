@@ -2115,7 +2115,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     "@midnight-ntwrk/testkit-js": "workspace:*"
     "@types/ws": "npm:^8.18.1"
-    "@vitest/runner": "npm:^4.1.7"
+    "@vitest/runner": "npm:^4.1.10"
     allure-commandline: "npm:^2.43.0"
     allure-js-commons: "npm:^3.9.0"
     allure-vitest: "npm:^3.10.2"
@@ -2152,7 +2152,7 @@ __metadata:
     "@midnightntwrk/wallet-sdk-prover-client": "npm:2.0.0-beta.2"
     "@scure/bip39": "npm:^2.2.0"
     "@types/ws": "npm:^8.18.1"
-    "@vitest/runner": "npm:^4.1.7"
+    "@vitest/runner": "npm:^4.1.10"
     allure-commandline: "npm:^2.43.0"
     allure-js-commons: "npm:^3.9.0"
     allure-vitest: "npm:^3.10.2"
@@ -4509,13 +4509,23 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vitest/runner@npm:4.1.7, @vitest/runner@npm:^4.1.7":
+"@vitest/runner@npm:4.1.7":
   version: 4.1.7
   resolution: "@vitest/runner@npm:4.1.7"
   dependencies:
     "@vitest/utils": "npm:4.1.7"
     pathe: "npm:^2.0.3"
   checksum: 10/429f1e0cc93f66a681d8acc816e21ac41258b07550f9139d004aab103bb06be53e3d91fc66886cef1ba1460a120f5fe4b12d6fe32dafdb1b06740dd119d70f7e
+  languageName: node
+  linkType: hard
+
+"@vitest/runner@npm:^4.1.10":
+  version: 4.1.10
+  resolution: "@vitest/runner@npm:4.1.10"
+  dependencies:
+    "@vitest/utils": "npm:4.1.10"
+    pathe: "npm:^2.0.3"
+  checksum: 10/2c962cb13af0880990036808a35679b7ac6657c8f542490234c2faa6ffd2ab080ac6bf21b487c64d84aa635cfb37b49eb679098c2003a100dfc6c4d5e87bf055
   languageName: node
   linkType: hard
 
