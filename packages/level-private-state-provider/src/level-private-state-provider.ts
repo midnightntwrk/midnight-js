@@ -19,6 +19,7 @@ import {
   type ExportPrivateStatesOptions,
   type ExportSigningKeysOptions,
   ImportConflictError,
+  ImportPasswordValidationError,
   type ImportPrivateStatesOptions,
   type ImportPrivateStatesResult,
   type ImportSigningKeysOptions,
@@ -93,9 +94,9 @@ export interface LevelPrivateStateProviderConfig {
    * The same policy is applied to custom passwords passed to
    * {@link PrivateStateProvider.exportPrivateStates} / `exportSigningKeys` and
    * their `importPrivateStates` / `importSigningKeys` counterparts. Violations
-   * surface as `PasswordValidationError` on storage paths, or wrapped as
-   * `PrivateStateExportError` / `SigningKeyExportError` (with `cause`) on
-   * export/import paths.
+   * surface as `PasswordValidationError` on storage paths, wrapped as
+   * `PrivateStateExportError` / `SigningKeyExportError` (with `cause`) on export
+   * paths, or as `ImportPasswordValidationError` on import paths.
    *
    * SECURITY: Use a strong, secret password. Never use public key material
    * or other non-secret values as the password source.
@@ -618,21 +619,15 @@ const CURRENT_EXPORT_VERSION = 1;
 const SUPPORTED_EXPORT_VERSIONS = [1];
 const EXPECTED_SALT_LENGTH = 64; // 32 bytes as hex
 
-const validateExportPassword = (password: string): void => {
+const validatePasswordOrThrow = (
+  password: string,
+  wrap: (message: string, cause: unknown) => Error
+): void => {
   try {
     validatePassword(password);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Invalid export password';
-    throw new PrivateStateExportError(message, { cause: error });
-  }
-};
-
-const validateSigningKeyExportPassword = (password: string): void => {
-  try {
-    validatePassword(password);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Invalid export password';
-    throw new SigningKeyExportError(message, { cause: error });
+    const message = error instanceof Error ? error.message : 'Invalid password';
+    throw wrap(message, error);
   }
 };
 
@@ -851,7 +846,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
 
       // Validate custom password if provided
       if (options?.password !== undefined) {
-        validateExportPassword(options.password);
+        validatePasswordOrThrow(options.password, (message, cause) => new PrivateStateExportError(message, { cause }));
       }
 
       // Determine export password - use provided password or storage password
@@ -930,7 +925,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
 
       // Validate custom password if provided
       if (options?.password !== undefined) {
-        validateExportPassword(options.password);
+        validatePasswordOrThrow(options.password, (message) => new ImportPasswordValidationError(message));
       }
 
       // Determine import password - use provided password or storage password
@@ -1029,7 +1024,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       const maxKeys = options?.maxKeys ?? MAX_EXPORT_SIGNING_KEYS;
 
       if (options?.password !== undefined) {
-        validateSigningKeyExportPassword(options.password);
+        validatePasswordOrThrow(options.password, (message, cause) => new SigningKeyExportError(message, { cause }));
       }
 
       const exportPassword = options?.password ?? await getPasswordFromProvider(passwordProvider);
@@ -1083,7 +1078,7 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
       validateSalt(exportData.salt);
 
       if (options?.password !== undefined) {
-        validateSigningKeyExportPassword(options.password);
+        validatePasswordOrThrow(options.password, (message) => new ImportPasswordValidationError(message));
       }
 
       const importPassword = options?.password ?? await getPasswordFromProvider(passwordProvider);
