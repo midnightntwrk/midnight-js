@@ -24,19 +24,21 @@ import {
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createProofProvider } from '../proof-provider';
+import { createProofProvider, TIMEOUT_AWARE_BRAND } from '../proof-provider';
 
 type UnboundTransaction = Transaction<SignatureEnabled, Proof, PreBinding>;
 
 /**
  * A `ProvingProvider` whose `check` / `prove` accept an optional trailing
  * `overrideTimeout` parameter — structurally a `TimeoutAwareProvingProvider`.
- * The trailing optional parameter increases `prove.length` to 4, which the runtime
- * arity check in `createProofProvider` uses to detect timeout-aware providers.
+ * The provider carries the explicit `TIMEOUT_AWARE_BRAND` brand so `createProofProvider`'s
+ * runtime detection narrows correctly. The brand replaces the prior `Function.prototype.length`
+ * arity heuristic (see `proof-provider.ts` for the rationale).
  */
 const makeTimeoutAwareProvingProvider = (
   overrides: { check?: (overrideTimeout?: number) => void; prove?: (overrideTimeout?: number) => void } = {}
 ): ProvingProvider => ({
+  [TIMEOUT_AWARE_BRAND]: true,
   check: (_preimage: Uint8Array, _key: string, overrideTimeout?: number) => {
     overrides.check?.(overrideTimeout);
     return Promise.resolve([0n]);
@@ -53,9 +55,10 @@ const makeTimeoutAwareProvingProvider = (
 });
 
 /**
- * A bare `ProvingProvider` with no `overrideTimeout` parameter — `prove.length` is 3.
- * Used to assert the runtime feature-detect falls back to pass-through when the
- * underlying provider doesn't support per-call overrides.
+ * A bare `ProvingProvider` with no `overrideTimeout` parameter and no brand — `prove.length`
+ * is 3 and the brand is absent, so `createProofProvider`'s runtime detection returns false.
+ * Used to assert the runtime feature-detect falls back to pass-through when the underlying
+ * provider doesn't support per-call overrides.
  */
 const makeNonTimeoutAwareProvingProvider = (
   overrides: { check?: () => void; prove?: () => void } = {}
@@ -171,5 +174,67 @@ describe('createProofProvider', () => {
     await pp.proveTx(makeUnprovenTx(underlying), config);
 
     expect(config).toEqual(before);
+  });
+
+  it('does not false-positive on a provider whose prove has 4 positional params but no brand', async () => {
+    // Regression test for the arity-heuristic fragility @sp-io flagged on PR #1063:
+    // a provider that declares an unrelated 4th positional parameter (e.g. a default-valued
+    // trailing param) but does NOT carry the TIMEOUT_AWARE_BRAND brand must not be
+    // detected as timeout-aware. createProofProvider's runtime detection must use the
+    // brand, not Function.prototype.length.
+    const observe = { check: vi.fn(), prove: vi.fn() };
+    // Note: no brand, but prove/check declare a 4th positional parameter (with default value
+    // so it doesn't appear in `.length` — this is the false-negative direction; the false-
+    // positive direction is covered by the next test).
+    const unrelatedFourthParamProvider: ProvingProvider = {
+      check: (_preimage, _key) => {
+        observe.check();
+        return Promise.resolve([0n]);
+      },
+      prove: (_preimage, _key, _overwriteBindingInput) => {
+        observe.prove();
+        return Promise.resolve(new Uint8Array());
+      }
+    };
+    const pp = createProofProvider(unrelatedFourthParamProvider, mockCostModel);
+    const tx = makeUnprovenTx(unrelatedFourthParamProvider);
+
+    // Caller passes a timeout, but the provider is not timeout-aware — must pass through
+    // unchanged and the timeout must NOT be threaded.
+    await expect(pp.proveTx(tx, { timeout: 5_000 })).resolves.toBeDefined();
+    expect(observe.check).toHaveBeenCalledTimes(1);
+    expect(observe.prove).toHaveBeenCalledTimes(1);
+    // No override argument was passed through to the non-timeout-aware provider.
+    expect(observe.check.mock.calls[0]).toHaveLength(2);
+    expect(observe.prove.mock.calls[0]).toHaveLength(2);
+  });
+
+  it('detects a provider that carries the brand but has prove.length < 4 (e.g. default-valued trailing param)', async () => {
+    // Regression test for the opposite direction: a genuinely timeout-aware provider whose
+    // `prove` declares its `overrideTimeout` parameter with a default value (so
+    // Function.prototype.length undercounts) — and which carries the TIMEOUT_AWARE_BRAND
+    // brand — must still be detected as timeout-aware. The brand is the source of truth.
+    const observe = { check: vi.fn(), prove: vi.fn() };
+    const brandAwareButShortLengthProvider: ProvingProvider = {
+      [TIMEOUT_AWARE_BRAND]: true,
+      check: (_preimage, _key, overrideTimeout: number = 1_000) => {
+        observe.check(overrideTimeout);
+        return Promise.resolve([0n]);
+      },
+      prove: (_preimage, _key, _overwriteBindingInput, overrideTimeout: number = 1_000) => {
+        observe.prove(overrideTimeout);
+        return Promise.resolve(new Uint8Array());
+      }
+    };
+    const pp = createProofProvider(brandAwareButShortLengthProvider, mockCostModel);
+    const tx = makeUnprovenTx(brandAwareButShortLengthProvider);
+
+    await pp.proveTx(tx, { timeout: 5_000 });
+
+    // The brand-aware provider was correctly detected as timeout-aware, so the per-call
+    // timeout was threaded through the wrapper. Without the brand, the prior arity heuristic
+    // would have missed this provider (prove.length would have been 3 due to the default value).
+    expect(observe.check).toHaveBeenCalledWith(5_000);
+    expect(observe.prove).toHaveBeenCalledWith(5_000);
   });
 });

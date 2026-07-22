@@ -55,17 +55,42 @@ export interface ProofProvider {
 }
 
 /**
- * A {@link ProvingProvider} whose per-circuit `check` / `prove` calls accept an optional per-request
- * timeout override. The override is a trailing optional parameter so this interface stays assignable
- * to `ProvingProvider`; callers that don't need per-request control can ignore it.
+ * Brand symbol identifying a {@link ProvingProvider} whose per-circuit `check` / `prove` calls
+ * accept an optional per-request timeout override.
  *
- * Used by `createProofProvider` and `httpClientProofProvider` to honor a per-`proveTx` timeout
- * without rebuilding the underlying provider. The Midnight `httpClientProvingProvider` conforms
- * to this interface; custom providers can opt in by extending it.
+ * Replaces the prior `Function.prototype.length` arity heuristic, which was fragile against
+ * default-value parameters (truncates the reported length) and unrelated trailing positional
+ * parameters (false positives). The brand is an explicit opt-in: providers that extend
+ * {@link TimeoutAwareProvingProvider} declare `[TIMEOUT_AWARE_BRAND]: true` on the returned
+ * object, and the runtime check in `createProofProvider` tests for it.
+ *
+ * See PR #1063 review feedback by @sp-io: arity cannot reliably distinguish a
+ * timeout-aware provider from one that happens to declare four positional parameters
+ * or a default-valued trailing parameter.
+ */
+export const TIMEOUT_AWARE_BRAND: unique symbol = Symbol.for(
+  '@midnight-ntwrk/midnight-js-types/timeout-aware-proving-provider'
+);
+
+/**
+ * A {@link ProvingProvider} whose per-circuit `check` / `prove` calls accept an optional
+ * per-request timeout override. The override is a trailing optional parameter so this
+ * interface stays assignable to `ProvingProvider`; callers that don't need per-request
+ * control can ignore it.
+ *
+ * Providers that conform to this interface MUST carry the {@link TIMEOUT_AWARE_BRAND} brand
+ * on the returned object. This is an explicit opt-in — runtime detection in
+ * `createProofProvider` tests the brand instead of inspecting `Function.prototype.length`.
+ *
+ * Used by `createProofProvider` and `httpClientProofProvider` to honor a per-`proveTx`
+ * timeout without rebuilding the underlying provider. The Midnight `httpClientProvingProvider`
+ * and `dappConnectorProvingProvider` conform; custom providers can opt in by extending
+ * this interface and declaring the brand.
  *
  * See https://github.com/midnightntwrk/midnight-js/issues/974.
  */
 export interface TimeoutAwareProvingProvider extends ProvingProvider {
+  readonly [TIMEOUT_AWARE_BRAND]: true;
   check(
     serializedPreimage: Uint8Array,
     keyLocation: string,
@@ -80,24 +105,19 @@ export interface TimeoutAwareProvingProvider extends ProvingProvider {
 }
 
 /**
- * Returns true if the supplied {@link ProvingProvider} accepts an optional trailing
- * `overrideTimeout` parameter on its `check` / `prove` calls — i.e., conforms structurally
- * to {@link TimeoutAwareProvingProvider}.
+ * Returns true if the supplied {@link ProvingProvider} carries the
+ * {@link TIMEOUT_AWARE_BRAND} brand — i.e., conforms structurally and by declaration to
+ * {@link TimeoutAwareProvingProvider}.
  *
- * Detection: TypeScript's structural typing means a `ProvingProvider` whose `prove` accepts
- * four positional parameters is structurally a `TimeoutAwareProvingProvider`. We narrow with
- * the runtime feature-detect on `prove.length` (arity); when the override is present,
- * `createProofProvider` threads the per-call timeout through a wrapper closure, otherwise
- * the underlying provider is used as-is.
+ * Detection is via the brand property; we deliberately do NOT use `Function.prototype.length`
+ * because it stops counting at the first parameter with a default value or rest parameter,
+ * which produces false negatives (timeout-aware providers with default-valued trailing
+ * parameters) and false positives (providers with an unrelated 4th positional parameter).
  */
 const isTimeoutAwareProvingProvider = (
   pp: ProvingProvider
 ): pp is TimeoutAwareProvingProvider => {
-  // `Function.prototype.length` returns the number of declared parameters before any rest
-  // parameter; an `overrideTimeout?: number` trailing parameter is counted. The Midnight
-  // protocol `ProvingProvider.prove` signature has 3 positional params (preimage, key,
-  // overwriteBindingInput); the timeout-aware extension adds a 4th.
-  return pp.prove.length >= 4;
+  return (pp as Partial<TimeoutAwareProvingProvider>)[TIMEOUT_AWARE_BRAND] === true;
 };
 
 /**
@@ -116,10 +136,11 @@ const isTimeoutAwareProvingProvider = (
  * caller omits `proveTxConfig`, the underlying `ProvingProvider` is used as-is.
  *
  * Per-call timeout threading requires the underlying `ProvingProvider` to conform to
- * {@link TimeoutAwareProvingProvider} — i.e., accept an optional trailing
- * `overrideTimeout` parameter on `check` / `prove`. The Midnight `httpClientProvingProvider`
- * conforms; custom providers that don't will receive the unmodified call shape (no per-call
- * override threaded) and the underlying provider's own default remains in effect.
+ * {@link TimeoutAwareProvingProvider} — i.e., to carry the {@link TIMEOUT_AWARE_BRAND} brand
+ * AND accept an optional trailing `overrideTimeout` parameter on `check` / `prove`. The
+ * Midnight `httpClientProvingProvider` and `dappConnectorProvingProvider` conform; custom
+ * providers that don't will receive the unmodified call shape (no per-call override
+ * threaded) and the underlying provider's own default remains in effect.
  */
 export const createProofProvider = (
   provingProvider: ProvingProvider,
@@ -143,9 +164,10 @@ export const createProofProvider = (
       // Wrap the underlying provider so every circuit-level check/prove inside this proveTx
       // uses the per-call timeout, without rebuilding the underlying provider. The wrapper
       // structurally matches `ProvingProvider`; `isTimeoutAwareProvingProvider` above proves
-      // the underlying `check` / `prove` accept the trailing `overrideTimeout` parameter.
-      // `lookupKey` is forwarded unchanged so the wrapper doesn't drop the upstream
-      // `ProvingProvider.lookupKey` surface that the transaction prover may call.
+      // the underlying `check` / `prove` accept the trailing `overrideTimeout` parameter
+      // via the explicit TIMEOUT_AWARE_BRAND brand. `lookupKey` is forwarded unchanged so the
+      // wrapper doesn't drop the upstream `ProvingProvider.lookupKey` surface that the
+      // transaction prover may call.
       const perCallProvingProvider: ProvingProvider = {
         check: (serializedPreimage, keyLocation) =>
           provingProvider.check(serializedPreimage, keyLocation, perCallTimeout),
