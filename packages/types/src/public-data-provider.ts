@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025-2026 Midnight Foundation
+ * Copyright (C) Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -65,6 +65,20 @@ export type BlockHashConfig = {
    * The block height indicating where to begin the state stream.
    */
   readonly blockHash: string;
+}
+
+/**
+ * Minimal identifying information for a block.
+ */
+export type BlockInfo = {
+  /**
+   * The hex-encoded block hash.
+   */
+  readonly hash: string;
+  /**
+   * The block height.
+   */
+  readonly height: number;
 }
 
 /**
@@ -277,6 +291,14 @@ export interface ContractEventsPage {
  * TODO: Add timeouts or retry limits to 'watchFor' queries.
  */
 export interface PublicDataProvider {
+  /**
+   * Retrieves a block. If no block hash or block height is provided, the latest block is returned.
+   * Immediately returns null if no matching block is found.
+   * @param config The configuration of the query identifying the block of interest.
+   *               If `undefined` returns the latest block.
+   */
+  queryBlock(config?: BlockHeightConfig | BlockHashConfig): Promise<BlockInfo | null>;
+
   /**
    * Retrieves the on-chain state of a contract. If no block hash or block height are provided, the
    * contract state at the address in the latest block is returned.

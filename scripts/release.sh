@@ -1,5 +1,5 @@
 # This file is part of midnight-js.
-# Copyright (C) 2025-2026 Midnight Foundation
+# Copyright (C) Midnight Foundation
 # SPDX-License-Identifier: Apache-2.0
 # Licensed under the Apache License, Version 2.0 (the "License");
 # You may not use this file except in compliance with the License.
@@ -23,13 +23,15 @@ NC='\033[0m'
 NEW_VERSION=""
 DRY_RUN=true
 RUN_TESTS=false
+FILES_ONLY=false
 
 print_usage() {
-  echo "Usage: $0 <version> [--execute] [--with-tests]"
+  echo "Usage: $0 <version> [--execute] [--with-tests] [--files-only]"
   echo ""
   echo "Options:"
   echo "  --execute     Execute full release including git operations (default: dry-run)"
   echo "  --with-tests  Run build and tests before release"
+  echo "  --files-only  Only update files (version bump + changelog), then exit. No git, no tests. Used by CI."
   echo ""
   echo "Dry-run mode (default):"
   echo "  - Updates version in all package.json files"
@@ -89,6 +91,10 @@ while [[ $# -gt 0 ]]; do
       RUN_TESTS=true
       shift
       ;;
+    --files-only)
+      FILES_ONLY=true
+      shift
+      ;;
     *)
       log_error "Unknown option: $1"
       print_usage
@@ -132,6 +138,11 @@ done
 log_info "Step 4: Generate changelog"
 execute_local "yarn changelog"
 
+if [ "$FILES_ONLY" = true ]; then
+  log_info "--files-only: version bump and changelog complete. Skipping tests and git operations."
+  exit 0
+fi
+
 if [ "$RUN_TESTS" = true ]; then
   log_info "Step 5: Build and test"
   execute_or_log "yarn clean-build"
@@ -149,12 +160,15 @@ log_info "Step 7: Commit changes"
 execute_or_log "git add ."
 execute_or_log "git commit -m 'chore(release): bump version to $NEW_VERSION'"
 
-log_info "Step 8: Create and push tag"
-execute_or_log "git tag -a v$NEW_VERSION -m 'Release v$NEW_VERSION'"
+log_info "Step 8: Push release branch"
+# No tag is created here. Publishing is driven by CI: when the release PR is
+# merged to main, the version bump on main triggers the `publish` job in
+# ci.yml, which publishes the packages and cuts the GitHub Release (creating
+# the v<version> tag on the main merge commit).
 execute_or_log "git push origin $RELEASE_BRANCH"
-execute_or_log "git push origin v$NEW_VERSION"
 
-log_info "Release process completed successfully!"
+log_info "Release branch pushed successfully!"
+log_info "Next: open a PR from $RELEASE_BRANCH to main. Merging it publishes the release."
 
 if [ "$DRY_RUN" = true ]; then
   echo ""

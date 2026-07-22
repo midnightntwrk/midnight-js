@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025-2026 Midnight Foundation
+ * Copyright (C) Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -24,4 +24,6 @@ export * from './providers';
 export * from './public-data-provider';
 export * from './wallet-provider';
 export * from './zk-config-provider';
+export * from './zk-config-registry';
+export * from './zk-key-location';
 export { Transaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';

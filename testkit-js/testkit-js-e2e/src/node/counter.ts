@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025-2026 Midnight Foundation
+ * Copyright (C) Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -82,6 +82,6 @@ async function counter() {
 counter()
   .then(() => logger.info('Counter test completed'))
   .catch((error) => {
-    logger.error('Counter test failed:', error);
+    logger.error({ err: error }, 'Counter test failed');
     process.exit(1);
   });

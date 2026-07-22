@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-alpha.1**](../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.6**](../../README.md)
 
 ***
 
@@ -19,7 +19,9 @@
 - [PrivateStateExportError](classes/PrivateStateExportError.md)
 - [PrivateStateImportError](classes/PrivateStateImportError.md)
 - [SigningKeyExportError](classes/SigningKeyExportError.md)
+- [ZKArtifactNotFoundError](classes/ZKArtifactNotFoundError.md)
 - [ZKConfigProvider](classes/ZKConfigProvider.md)
+- [ZKConfigRegistry](classes/ZKConfigRegistry.md)
 
 ## Interfaces
 
@@ -57,6 +59,7 @@
 - [BlockHash](type-aliases/BlockHash.md)
 - [BlockHashConfig](type-aliases/BlockHashConfig.md)
 - [BlockHeightConfig](type-aliases/BlockHeightConfig.md)
+- [BlockInfo](type-aliases/BlockInfo.md)
 - [ContractEvent](type-aliases/ContractEvent.md)
 - [ContractEventCursor](type-aliases/ContractEventCursor.md)
 - [ContractEventType](type-aliases/ContractEventType.md)

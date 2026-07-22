@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025-2026 Midnight Foundation
+ * Copyright (C) Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -55,7 +55,7 @@ describe('createApolloClient — handle shape', () => {
     expect(typeof handle.dispose).toBe('function');
   });
 
-  test('forwards custom webSocket implementation to graphql-ws createClient', async () => {
+  test('passes a deflate-wrapped WebSocket implementation to graphql-ws createClient', async () => {
     const { validateConfig } = await import('../config');
     const { createApolloClient } = await import('../transport');
     class CustomWS {}
@@ -67,9 +67,12 @@ describe('createApolloClient — handle shape', () => {
 
     createApolloClient(validated);
 
-    expect(createClientSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ webSocketImpl: CustomWS })
-    );
+    const lastCall = createClientSpy.mock.calls.at(-1) as [{ webSocketImpl: new (...args: unknown[]) => unknown }] | undefined;
+    const passed = lastCall?.[0].webSocketImpl;
+    expect(passed).toBeDefined();
+    expect(passed).not.toBe(CustomWS);
+    // Wrapper is a subclass of the user-supplied class:
+    expect(Object.getPrototypeOf(passed)).toBe(CustomWS);
   });
 });
 

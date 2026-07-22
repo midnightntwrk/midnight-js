@@ -1,6 +1,7 @@
 name: CI - TestKit.js
 
 permissions:
+  actions: read
   contents: read
   issues: read
   id-token: write
@@ -42,15 +43,12 @@ on:
         description: Docker image version set sourced from testkit-js/env/<testkit_docker_env>.env (qanet|preview|preprod|mainnet|devnet). Empty falls back to the .envrc default (devnet).
         required: false
         default: 'devnet'
-      compactc_source:
-        type: string
-        description: 'compactc source: "release" (default prebuilt download) or "submodule" (build from compact/ submodule via nix).'
-        required: false
-        default: 'release'
 
 concurrency:
   group: TK-JS-${{ github.workflow }}-${{ inputs.testkit_docker_env || 'default' }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # Only cancel superseded PR runs; queue push-to-main runs so a mid-flight
+  # release (gated on this workflow in ci.yml) is never cancelled half-done.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
@@ -60,7 +58,6 @@ jobs:
       yarn_filter: ${{ inputs.yarn_filter }}
       yarn_lint_paths: ${{ inputs.yarn_lint_paths }}
       testkit_docker_env: ${{ inputs.testkit_docker_env }}
-      compactc_source: ${{ inputs.compactc_source }}
     secrets: inherit
 
   prerelease:

@@ -1,0 +1,78 @@
+{
+  "manifest-version": "1",
+  "compiler-version": "0.33.0",
+  "language-version": "0.25.0",
+  "runtime-version": "0.18.0-rc.1",
+  "compiler": {
+    "type": "directory",
+    "contract-info.json": {
+      "type": "file",
+      "size": 3431,
+      "hash": "b24fe8dc599672575b96ff220654c4493bea23934a5ad53533778e01ab956ea3"
+    }
+  },
+  "contract": {
+    "type": "directory",
+    "index.d.ts": {
+      "type": "file",
+      "size": 3779,
+      "hash": "07d869c56bcc5175f784591031d741d8ce2b6ca4d3ae70f7d47d2daed768f8f4"
+    },
+    "index.js": {
+      "type": "file",
+      "size": 53049,
+      "hash": "6952f2e6a2b858bb83160a9b1341405dea36b0b9e9950c0b096c5e05bb8fdded"
+    },
+    "index.js.map": {
+      "type": "file",
+      "size": 2623,
+      "hash": "37522cb8e13f14cdbd34af6da2b60845dfcd69d30b2d54390e4a1d70bb68ea7f"
+    }
+  },
+  "zkir": {
+    "type": "directory",
+    "mintWithShieldedFee.bzkir": {
+      "type": "file",
+      "size": 2748,
+      "hash": "1ea54387548cb4aadaa0c8e3c04e81111708590be8316973c2dd2d009f15a9eb"
+    },
+    "mintWithShieldedFee.zkir": {
+      "type": "file",
+      "size": 48143,
+      "hash": "a6da3a118721ac72a926bbd7e116d89c65ea279effacce9ab1070f750109f1a4"
+    },
+    "mintWithUnshieldedFee.bzkir": {
+      "type": "file",
+      "size": 2737,
+      "hash": "599e58452b1de713fb3223544cde2e16d04f242ac0248c601adc856506aad3b4"
+    },
+    "mintWithUnshieldedFee.zkir": {
+      "type": "file",
+      "size": 47752,
+      "hash": "81f1a56a5060c58f7cefa85da6e4e04965fdba750e8e6b842a4f34c0b77710ee"
+    }
+  },
+  "keys": {
+    "type": "directory",
+    "mintWithShieldedFee.prover": {
+      "type": "file",
+      "size": 76475437,
+      "hash": "2e1359889dfd7ae7d19a171f9a6b8f13a94fdeb63dea27771dced62966a78346"
+    },
+    "mintWithShieldedFee.verifier": {
+      "type": "file",
+      "size": 2119,
+      "hash": "a12b894ea1941155ef02e77250eb16321d4d4efee780f513f409b48702ae0f30"
+    },
+    "mintWithUnshieldedFee.prover": {
+      "type": "file",
+      "size": 76465625,
+      "hash": "d122b247fbb85ec96e99863653d597edf8306340a7877a41358482a0499c4336"
+    },
+    "mintWithUnshieldedFee.verifier": {
+      "type": "file",
+      "size": 2119,
+      "hash": "872e3d717fb94c7e83c811ed3c9851480c65ec686dbcf48f3cd281acbc329763"
+    }
+  }
+}

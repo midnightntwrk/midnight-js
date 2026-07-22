@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025-2026 Midnight Foundation
+ * Copyright (C) Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -20,7 +20,8 @@ import {
   ChargedState,
   CompactError,
   type ContractState,
-  emptyZswapLocalState,  type Op,
+  emptyZswapLocalState,
+  finalizeCallProofData,  type Op,
   sampleSigningKey,
   type SigningKey,
   StateValue,
@@ -118,19 +119,20 @@ export const createMockZswapLocalState = (): ZswapLocalState => ({
   inputs: []
 });
 
-export const createDefaultCircuit = () => vi.fn().mockImplementation((ctx) => ({
-  result: { test: 'result ' },
-  context: {
-    ...ctx,
-    currentPrivateState: { test: 'next-private-state' }
-  },
-  proofData: {
+export const createDefaultCircuit = () => vi.fn().mockImplementation((ctx) => {
+  finalizeCallProofData(ctx, {
     input: { value: [], alignment: [] },
-    output: undefined,
+    output: { value: [], alignment: [] },
     publicTranscript: [],
     privateTranscriptOutputs: []
-  }
-}));
+  });
+  ctx.callContext.currentPrivateState = { test: 'next-private-state' };
+  return {
+    result: { test: 'result ' },
+    context: ctx,
+    gasCost: ctx.callContext.currentGasCost
+  };
+});
 
 export const createFailingCircuit = (failMessage: string) => vi.fn().mockImplementation((() => {
   compactAssert(false, failMessage);
@@ -252,6 +254,7 @@ export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvab
   publicDataProvider: {
     watchForDeployTxData: vi.fn(),
     queryDeployContractState: vi.fn(),
+    queryBlock: vi.fn().mockResolvedValue({ hash: '00'.repeat(32), height: 0 }),
     queryContractState: vi.fn(),
     queryZSwapAndContractState: vi.fn(),
     queryUnshieldedBalances: vi.fn(),
@@ -341,6 +344,7 @@ export const createMockUnprovenCallTxData = (overrides: Partial<UnsubmittedCallT
         { noop: { n: 1 } }
       ] as Op<AlignedValue>[],
       partitionedTranscript: {} as PartitionedTranscript,
+      logEvents: [],
       ...overrides.public
     },
     private: {
@@ -353,7 +357,8 @@ export const createMockUnprovenCallTxData = (overrides: Partial<UnsubmittedCallT
       result: vi.fn(),
       nextZswapLocalState: createMockZswapLocalState(),
       ...overrides.private
-    }
+    },
+    calls: overrides.calls ?? []
 });
 
 export const createMockCallOptions = (overrides: Partial<CallOptions<Contract.Any, AnyProvableCircuitId>> = {}): CallOptions<Contract.Any, AnyProvableCircuitId> => ({

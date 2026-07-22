@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025-2026 Midnight Foundation
+ * Copyright (C) Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ import { submitReplaceAuthorityTx } from './submit-replace-authority-tx';
  * An interface for creating maintenance transactions for a specific circuit defined in a
  * given contract.
  */
-export type CircuitMaintenanceTxInterface = {
+export interface CircuitMaintenanceTxInterface {
   /**
    * Constructs and submits a transaction that removes the current verifier key stored
    * on the blockchain for this circuit at this contract's address.
@@ -42,7 +42,7 @@ export type CircuitMaintenanceTxInterface = {
    * @param newVk The new verifier key to add for this circuit.
    */
   insertVerifierKey(newVk: VerifierKey): Promise<FinalizedTxData>;
-};
+}
 
 /**
  * Creates a {@link CircuitMaintenanceTxInterface}.

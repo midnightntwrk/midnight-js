@@ -8,19 +8,11 @@ on:
       - 'main'
   pull_request:
   workflow_dispatch:
-    inputs:
-      compactc_source:
-        description: 'compactc source: "release" (default prebuilt download) or "submodule" (build from compact/ submodule via nix).'
-        required: false
-        type: choice
-        default: 'release'
-        options:
-          - release
-          - submodule
   schedule:
     - cron: "30 4 * * *"
 
 permissions:
+  actions: read
   contents: read
   issues: read
   id-token: write
@@ -30,7 +22,10 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # Cancel superseded PR runs to save CI, but never cancel push-to-main runs:
+  # the `publish` job runs there and is non-atomic, so a mid-flight release must
+  # queue behind a newer main push rather than be cancelled into a partial state.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   ci:
@@ -41,21 +36,12 @@ jobs:
       build_t_js: ${{ steps.build-targets.outputs.testkit-js }}
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # ratchet:actions/checkout@v6.0.2
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # ratchet:actions/checkout@v7.0.0
         with:
           fetch-depth: 0
 
-      - name: Set up Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # ratchet:actions/setup-node@v6.4.0
-        with:
-          registry-url: https://npm.pkg.github.com/
-          scope: '@midnight-ntwrk'
-          node-version-file: '.nvmrc'
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-
       - name: Determine Build Targets
-        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # ratchet:dorny/paths-filter@v4.0.1
+        uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # ratchet:dorny/paths-filter@v4.0.2
         id: build-targets
         with:
           filters: |
@@ -91,6 +77,188 @@ jobs:
           (github.ref_name == 'main' || contains(github.event.head_commit.message, '[do_publish]') || github.event_name == 'workflow_dispatch')
         }}
       network: undeployed
-      compactc_source: ${{ inputs.compactc_source || 'release' }}
     uses: ./.github/workflows/ci-testkit-js.yml
     secrets: inherit
+
+  # Release is a commit landing on main that changes the root package.json
+  # version. Detection is convention-independent, so it covers both the
+  # `chore(release):` prep commit and any merge-commit message. Steps only run
+  # on push-to-main; on every other event the job succeeds with empty outputs
+  # (is_release != 'true'), so `publish` below stays skipped.
+  detect-release:
+    name: Detect release
+    runs-on: ubuntu-latest
+    outputs:
+      is_release: ${{ steps.rel.outputs.is_release }}
+      version: ${{ steps.rel.outputs.version }}
+      version_number: ${{ steps.rel.outputs.version_number }}
+    steps:
+      - name: Checkout
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # ratchet:actions/checkout@v7.0.0
+        with:
+          fetch-depth: 2
+
+      - name: Detect version bump
+        id: rel
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          prev=$(git show HEAD~1:package.json | jq -r .version)
+          curr=$(jq -r .version package.json)
+          if [ "$prev" != "$curr" ]; then
+            {
+              echo "is_release=true"
+              echo "version=v${curr}"
+              echo "version_number=${curr}"
+            } >> "$GITHUB_OUTPUT"
+            echo "Release detected: ${prev} -> ${curr}"
+          else
+            echo "is_release=false" >> "$GITHUB_OUTPUT"
+            echo "No version change (${curr}); not a release."
+          fi
+
+  # Publishes to GitHub Packages and cuts the GitHub Release (which creates the
+  # v<version> tag on this main commit). Gated on the build/test/e2e jobs in the
+  # SAME run, so a release can never publish ahead of its e2e — replacing the
+  # former standalone CD workflow, which re-ran e2e that CI had already run.
+  publish:
+    name: Publish release
+    needs: [ci-midnightjs, ci-testkit, detect-release]
+    if: needs.detect-release.outputs.is_release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      packages: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # ratchet:actions/checkout@v7.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Setup build environment
+        uses: ./.github/actions/setup-build-env
+        with:
+          node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Build packages
+        run: yarn build:core
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Extract release notes
+        id: release_notes
+        env:
+          VERSION_NUMBER: ${{ needs.detect-release.outputs.version_number }}
+        run: |
+          # CHANGELOG headers use bare versions in brackets ("## [4.1.0]").
+          # Extract the section between this version's header and the next "## ".
+          awk -v ver="$VERSION_NUMBER" '
+            $0 ~ ("^## \\[" ver "\\]") { found=1; next }
+            found && /^## / { exit }
+            found
+          ' CHANGELOG.md > release_notes.md
+
+      - name: Determine Build Targets
+        uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # ratchet:dorny/paths-filter@v4.0.2
+        id: changes
+        with:
+          filters: |
+            midnight-js: 'packages/**'
+            testkit-js: 'testkit-js/**'
+
+      - name: Validate Packages Before Publishing
+        if: steps.changes.outputs.midnight-js == 'true'
+        uses: ./.github/actions/validate-packages
+        with:
+          workspace-path: './packages'
+
+      - name: Publish packages
+        if: steps.changes.outputs.midnight-js == 'true'
+        run: |
+          yarn deploy --filter="./packages/*" --cache-dir ./turbo --concurrency=1
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Create GitHub Release
+        if: steps.changes.outputs.midnight-js == 'true'
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # ratchet:softprops/action-gh-release@v3.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ needs.detect-release.outputs.version }}
+          name: Release ${{ needs.detect-release.outputs.version }}
+          body_path: release_notes.md
+          draft: false
+          # A version with a pre-release identifier (e.g. 5.0.0-beta.1) is flagged
+          # as a pre-release and must NOT become the "Latest" release.
+          prerelease: ${{ contains(needs.detect-release.outputs.version_number, '-') }}
+          make_latest: ${{ contains(needs.detect-release.outputs.version_number, '-') && 'false' || 'true' }}
+
+      - name: Bump testkit-js versions
+        if: steps.changes.outputs.testkit-js == 'true'
+        env:
+          VERSION_NUMBER: ${{ needs.detect-release.outputs.version_number }}
+        run: yarn workspaces foreach -R --from "./testkit-js/*" --exclude "./packages/*" version "$VERSION_NUMBER"
+
+      - name: Validate testkit-js Packages Before Publishing
+        if: steps.changes.outputs.testkit-js == 'true'
+        uses: ./.github/actions/validate-packages
+        with:
+          workspace-path: './testkit-js'
+
+      - name: Publish testkit-js packages
+        if: steps.changes.outputs.testkit-js == 'true'
+        run: |
+          yarn deploy --filter="./testkit-js/*" --cache-dir ./turbo --concurrency=1
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      # ---------------------------------------------------------------------------
+      # Dual-publish to the @midnightntwrk npm org via OIDC trusted publishing.
+      #
+      # Additive and independent: the @midnight-ntwrk GitHub-registry publishes above
+      # are untouched, and midnight-ntwrk/artifacts keeps mirroring @midnight-ntwrk to
+      # public npm. @midnightntwrk is the migration target (see shielded-sre#258).
+      #
+      # OIDC uses the workflow-level `id-token: write` — no long-lived NPM_TOKEN.
+      #
+      # Gated OFF by default. Enable by setting repo variable PUBLISH_MIDNIGHTNTWRK=true
+      # ONLY after each @midnightntwrk/* package has this repo + this workflow
+      # registered as a Trusted Publisher on npmjs.com (npm UI, org admin).
+      # ---------------------------------------------------------------------------
+      - name: Verify npm supports OIDC trusted publishing
+        if: vars.PUBLISH_MIDNIGHTNTWRK == 'true' && (steps.changes.outputs.midnight-js == 'true' || steps.changes.outputs.testkit-js == 'true')
+        run: |
+          # OIDC trusted publishing requires npm >= 11.5.1. The npm version is pinned
+          # via .nvmrc (node 24.11.1 bundles npm 11.6.2) — this only asserts the floor,
+          # it does NOT install/upgrade npm (that would unpin the toolchain).
+          need="11.5.1"
+          have="$(npm --version)"
+          if [ "$(printf '%s\n%s\n' "$need" "$have" | sort -V | head -n1)" != "$need" ]; then
+            echo "::error::npm $have < $need — OIDC trusted publishing unsupported. Bump .nvmrc node so its bundled npm is >= $need."
+            exit 1
+          fi
+          echo "npm $have supports OIDC trusted publishing"
+
+      - name: Publish packages to @midnightntwrk (public npm, OIDC)
+        if: vars.PUBLISH_MIDNIGHTNTWRK == 'true' && steps.changes.outputs.midnight-js == 'true'
+        run: node .github/scripts/publish-public-npm.mjs
+        env:
+          MIDNIGHT_SOURCE_SCOPE: '@midnight-ntwrk'
+          MIDNIGHT_TARGET_SCOPE: '@midnightntwrk'
+          MIDNIGHT_WORKSPACE_GLOB: 'packages'
+          MIDNIGHT_PUBLISH_DRY_RUN: ${{ vars.PUBLISH_MIDNIGHTNTWRK_DRY_RUN || 'false' }}
+
+      - name: Publish testkit-js to @midnightntwrk (public npm, OIDC)
+        if: vars.PUBLISH_MIDNIGHTNTWRK == 'true' && steps.changes.outputs.testkit-js == 'true'
+        run: node .github/scripts/publish-public-npm.mjs
+        env:
+          MIDNIGHT_SOURCE_SCOPE: '@midnight-ntwrk'
+          MIDNIGHT_TARGET_SCOPE: '@midnightntwrk'
+          MIDNIGHT_WORKSPACE_GLOB: 'testkit-js'
+          MIDNIGHT_PUBLISH_DRY_RUN: ${{ vars.PUBLISH_MIDNIGHTNTWRK_DRY_RUN || 'false' }}

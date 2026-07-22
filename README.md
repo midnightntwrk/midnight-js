@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/midnightntwrk/midnight-js/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/midnightntwrk/midnight-js/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6.0-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D22-green?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![GitHub Release](https://img.shields.io/github/v/release/midnightntwrk/midnight-js?logo=github)](https://github.com/midnightntwrk/midnight-js/releases)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/midnightntwrk/midnight-js/pulls)
@@ -237,7 +237,7 @@ New functionality must include unit and integration tests (TDD — tests first).
 
 - `pre-commit`: Runs lint-staged
 - `commit-msg`: Validates commit message format
-- `pre-push`: Runs full check suite
+- `pre-push`: Runs `yarn lint` and `yarn typecheck:tests`
 
 ## Glossary
 
@@ -315,44 +315,52 @@ This allows "rehearsing" circuit calls (running Impact VM) such that execution c
 
 ### Release Process
 
-Releases are driven by `scripts/release.sh`, which bumps versions in all workspaces, regenerates `CHANGELOG.md`, creates a release branch, and pushes the version tag. A push to `v*` tag triggers the [CD workflow](./.github/workflows/cd.yml), which publishes packages to GitHub Packages and creates a GitHub Release.
+Releases are prepared by the **Release (prepare PR)** GitHub Actions workflow
+([`.github/workflows/release-prepare.yml`](./.github/workflows/release-prepare.yml)).
+Trigger it manually from the Actions tab with the target `version`; it bumps versions in
+all workspaces, regenerates `CHANGELOG.md`, and opens a `release/v<version>` PR. Full CI
+runs on that PR and gates the merge. Merging it to `main` triggers the `publish` job in the
+[CI workflow](./.github/workflows/ci.yml): once the build, unit, integration, and e2e jobs
+pass, it publishes packages to GitHub Packages and creates the GitHub Release (which creates
+the `v<version>` tag on the main merge commit). Publishing is gated on the same test run, so
+no release can ship ahead of its e2e.
 
-#### Prerequisites
+#### Preparing a release
 
-- On `main` branch with a clean working tree
-- All previous release PRs merged
-- GPG signing configured
+1. Actions tab → **Release (prepare PR)** → **Run workflow**, from `main`.
+2. Enter the `version` (e.g. `5.1.0` or `5.1.0-beta.1`).
+3. Review the opened `release/v<version>` PR (version bumps + changelog), wait for CI, merge.
 
-#### Usage
+#### Local fallback
+
+If CI is unavailable, `scripts/release.sh` performs the same preparation locally:
 
 ```bash
 # Dry-run (default): updates files only, no git operations — review with `git diff`
-./scripts/release.sh 4.2.0
+./scripts/release.sh 5.1.0
 
-# Full release: bump + changelog + branch + commit + tag + push
-./scripts/release.sh 4.2.0 --execute
+# Only file changes (bump + changelog), no git — what CI runs
+./scripts/release.sh 5.1.0 --files-only
 
-# Full release with build and tests beforehand
-./scripts/release.sh 4.2.0 --execute --with-tests
+# Full local release: bump + changelog + branch + commit + push
+./scripts/release.sh 5.1.0 --execute
+
+# Full local release with build and tests beforehand
+./scripts/release.sh 5.1.0 --execute --with-tests
 ```
 
-#### What the script does
+Prerequisites for the local path: on `main` with a clean working tree, all previous release
+PRs merged, and GPG signing configured. After pushing, open a PR to `main`; merging it
+publishes the release.
 
-1. Bumps version in root `package.json`, all `packages/*`, and all `testkit-js/*`
-2. Regenerates `CHANGELOG.md` via `yarn changelog`
-3. Creates branch `release/v<VERSION>`
-4. Commits as `chore(release): bump version to <VERSION>`
-5. Creates and pushes tag `v<VERSION>` — this triggers the CD workflow
+#### What happens on merge to `main`
 
-#### What the CD workflow does
+When the release PR is merged, the version bump on `main` triggers the `publish` job in the CI workflow. Once the build, unit, integration, and e2e jobs pass in the same run, it:
 
-After the tag is pushed:
-
-1. Runs full CI (midnight-js + testkit-js)
-2. Extracts release notes from `CHANGELOG.md` (section `## [<VERSION>]`)
-3. Validates and publishes `packages/*` to GitHub Packages
-4. Creates a GitHub Release with the extracted notes
-5. Publishes `testkit-js/*` if those paths changed
+1. Extracts release notes from `CHANGELOG.md` (section `## [<VERSION>]`)
+2. Validates and publishes `packages/*` to GitHub Packages
+3. Creates a GitHub Release with the extracted notes (creating the `v<VERSION>` tag on the merge commit)
+4. Publishes `testkit-js/*` if those paths changed
 
 ## Resources
 

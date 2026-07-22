@@ -1,18 +1,10 @@
-[**Midnight.js API Reference v5.0.0-alpha.1**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
 
 ***
 
 [Midnight.js API Reference](../../../packages.md) / [@midnight-ntwrk/midnight-js-indexer-public-data-provider](../README.md) / IndexerPublicDataProvider
 
 # Class: IndexerPublicDataProvider
-
-Indexer-backed `PublicDataProvider`. Every method that takes a
-`ContractAddress` validates the input up front via
-`assertIsContractAddress`. The constructor shape `(handle, pollInterval)`
-maps directly onto `Layer.scoped` in the future Effect migration (#843).
-
-TODO: Re-examine caching when 'ContractCall' and 'ContractDeploy' have
-transaction identifiers included.
 
 ## Implements
 
@@ -139,6 +131,32 @@ repeat/concurrent/rejection-replay semantics.
 #### Returns
 
 `Promise`\<`void`\>
+
+***
+
+### queryBlock()
+
+> **queryBlock**(`config?`): `Promise`\<`BlockInfo` \| `null`\>
+
+Retrieves a block. If no block hash or block height is provided, the latest block is returned.
+Immediately returns null if no matching block is found.
+
+#### Parameters
+
+##### config?
+
+`BlockHeightConfig` \| `BlockHashConfig`
+
+The configuration of the query identifying the block of interest.
+              If `undefined` returns the latest block.
+
+#### Returns
+
+`Promise`\<`BlockInfo` \| `null`\>
+
+#### Implementation of
+
+`PublicDataProvider.queryBlock`
 
 ***
 

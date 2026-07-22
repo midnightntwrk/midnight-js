@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025-2026 Midnight Foundation
+ * Copyright (C) Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -15,11 +15,15 @@
 
 import * as ledger from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import {
+  encodeContractKeyLocation,
+  hashVerifierKey,
   InvalidProtocolSchemeError,
   type ProverKey,
   type VerifierKey,
+  ZKArtifactNotFoundError,
   type ZKConfig,
   type ZKConfigProvider,
+  ZKConfigRegistry,
   type ZKIR
 } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -443,6 +447,45 @@ describe('httpClientProvingProvider', () => {
     });
   });
 
+  describe('per-request timeout override', () => {
+    it('should use overrideTimeout over the configured timeout for check requests', async () => {
+      const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
+      const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider, { timeout: 60000 });
+
+      vi.mocked(ledger.createCheckPayload).mockReturnValue(new Uint8Array([20, 21, 22]));
+      vi.mocked(ledger.parseCheckResult).mockReturnValue([undefined]);
+
+      await provider.check(new Uint8Array([1, 2, 3]), 'test-circuit', 111);
+
+      expect(timeoutSpy).toHaveBeenLastCalledWith(111);
+      timeoutSpy.mockRestore();
+    });
+
+    it('should use overrideTimeout over the configured timeout for prove requests', async () => {
+      const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
+      const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider, { timeout: 60000 });
+
+      vi.mocked(ledger.createProvingPayload).mockReturnValue(new Uint8Array([30, 31, 32]));
+
+      await provider.prove(new Uint8Array([1, 2, 3]), 'test-circuit', undefined, 222);
+
+      expect(timeoutSpy).toHaveBeenLastCalledWith(222);
+      timeoutSpy.mockRestore();
+    });
+
+    it('should fall back to the configured timeout when overrideTimeout is undefined', async () => {
+      const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
+      const provider = httpClientProvingProvider(mockUrl, mockZkConfigProvider, { timeout: 60000 });
+
+      vi.mocked(ledger.createProvingPayload).mockReturnValue(new Uint8Array([30, 31, 32]));
+
+      await provider.prove(new Uint8Array([1, 2, 3]), 'test-circuit');
+
+      expect(timeoutSpy).toHaveBeenLastCalledWith(60000);
+      timeoutSpy.mockRestore();
+    });
+  });
+
   describe('URL configuration', () => {
     it('should preserve path prefix in URL', async () => {
       const urlWithPath = 'http://localhost:8080/api/v1';
@@ -498,6 +541,67 @@ describe('httpClientProvingProvider', () => {
 
       const calledUrl = mockFetchRetry.mock.calls[0][0] as URL;
       expect(calledUrl.pathname).toBe('/api/v1/check');
+    });
+  });
+
+  describe('registry key resolution', () => {
+    const verifierKey = new Uint8Array([4, 5, 6]);
+    const contractAddress = 'aa'.repeat(32);
+
+    const registrySource = (): ZKConfigProvider<string> =>
+      ({
+        getVerifierKey: vi.fn().mockResolvedValue(verifierKey),
+        getProverKey: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3])),
+        getZKIR: vi.fn().mockResolvedValue(new Uint8Array([7, 8, 9]))
+      }) as unknown as ZKConfigProvider<string>;
+
+    const locationFor = (vk: Uint8Array): string =>
+      encodeContractKeyLocation({ contractAddress, circuitId: 'transfer', verifierKeyHash: hashVerifierKey(vk) });
+
+    it('resolves a canonical key location through the registry and supplies its key material', async () => {
+      const provider = httpClientProvingProvider(mockUrl, new ZKConfigRegistry([registrySource()]));
+      vi.mocked(ledger.createProvingPayload).mockReturnValue(new Uint8Array([30, 31, 32]));
+
+      await provider.prove(new Uint8Array([1, 2, 3]), locationFor(verifierKey));
+
+      expect(ledger.createProvingPayload).toHaveBeenCalledWith(
+        new Uint8Array([1, 2, 3]),
+        undefined,
+        expect.objectContaining({
+          proverKey: expect.any(Uint8Array),
+          verifierKey: expect.any(Uint8Array),
+          ir: expect.any(Uint8Array)
+        })
+      );
+    });
+
+    it('propagates ZKArtifactNotFoundError from prove() when the deployed verifier key has drifted', async () => {
+      const provider = httpClientProvingProvider(mockUrl, new ZKConfigRegistry([registrySource()]));
+      vi.mocked(ledger.createProvingPayload).mockReturnValue(new Uint8Array([30, 31, 32]));
+
+      // A canonical location whose embedded verifier-key hash matches no source.
+      await expect(
+        provider.prove(new Uint8Array([1, 2, 3]), locationFor(new Uint8Array([9, 9, 9])))
+      ).rejects.toBeInstanceOf(ZKArtifactNotFoundError);
+    });
+
+    it('propagates ZKArtifactNotFoundError from check() when the deployed verifier key has drifted', async () => {
+      const provider = httpClientProvingProvider(mockUrl, new ZKConfigRegistry([registrySource()]));
+      vi.mocked(ledger.createCheckPayload).mockReturnValue(new Uint8Array([20, 21, 22]));
+
+      await expect(
+        provider.check(new Uint8Array([1, 2, 3]), locationFor(new Uint8Array([9, 9, 9])))
+      ).rejects.toBeInstanceOf(ZKArtifactNotFoundError);
+    });
+
+    it('returns undefined key material for a non-contract location when only a registry is given', async () => {
+      const provider = httpClientProvingProvider(mockUrl, new ZKConfigRegistry([registrySource()]));
+      vi.mocked(ledger.createProvingPayload).mockReturnValue(new Uint8Array([30, 31, 32]));
+
+      // A protocol builtin: not a contract key location, and there is no flat provider to fall back to.
+      await provider.prove(new Uint8Array([1, 2, 3]), 'midnight/zswap/spend');
+
+      expect(ledger.createProvingPayload).toHaveBeenCalledWith(new Uint8Array([1, 2, 3]), undefined, undefined);
     });
   });
 });

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-alpha.1**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
 
 ***
 
@@ -7,13 +7,17 @@
 # Function: deployContract()
 
 Creates and submits a contract deployment transaction. This function is the entry point for the transaction
-construction workflow and is used to create a [DeployedContract](../type-aliases/DeployedContract.md) instance.
+construction workflow and is used to create a [DeployedContract](../interfaces/DeployedContract.md) instance.
 
 ## Param
+
+**providers**
 
 The providers used to manage the transaction lifecycle.
 
 ## Param
+
+**options**
 
 Configuration.
 
@@ -24,7 +28,7 @@ DeployTxFailedError If the transaction is submitted successfully but produces an
 
 ## Call Signature
 
-> **deployContract**\<`C`\>(`providers`, `options`): `Promise`\<[`DeployedContract`](../type-aliases/DeployedContract.md)\<`C`\>\>
+> **deployContract**\<`C`\>(`providers`, `options`): `Promise`\<[`DeployedContract`](../interfaces/DeployedContract.md)\<`C`\>\>
 
 ### Type Parameters
 
@@ -44,11 +48,11 @@ DeployTxFailedError If the transaction is submitted successfully but produces an
 
 ### Returns
 
-`Promise`\<[`DeployedContract`](../type-aliases/DeployedContract.md)\<`C`\>\>
+`Promise`\<[`DeployedContract`](../interfaces/DeployedContract.md)\<`C`\>\>
 
 ## Call Signature
 
-> **deployContract**\<`C`\>(`providers`, `options`): `Promise`\<[`DeployedContract`](../type-aliases/DeployedContract.md)\<`C`\>\>
+> **deployContract**\<`C`\>(`providers`, `options`): `Promise`\<[`DeployedContract`](../interfaces/DeployedContract.md)\<`C`\>\>
 
 ### Type Parameters
 
@@ -68,4 +72,4 @@ DeployTxFailedError If the transaction is submitted successfully but produces an
 
 ### Returns
 
-`Promise`\<[`DeployedContract`](../type-aliases/DeployedContract.md)\<`C`\>\>
+`Promise`\<[`DeployedContract`](../interfaces/DeployedContract.md)\<`C`\>\>

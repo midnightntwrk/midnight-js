@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-alpha.1**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Type Alias: ContractConstructorOptionsWithProviderDataDependencies\<C\>
 
-> **ContractConstructorOptionsWithProviderDataDependencies**\<`C`\> = [`ContractConstructorOptionsWithArguments`](ContractConstructorOptionsWithArguments.md)\<`C`\> & [`ContractConstructorOptionsProviderDataDependencies`](ContractConstructorOptionsProviderDataDependencies.md)
+> **ContractConstructorOptionsWithProviderDataDependencies**\<`C`\> = [`ContractConstructorOptionsWithArguments`](ContractConstructorOptionsWithArguments.md)\<`C`\> & [`ContractConstructorOptionsProviderDataDependencies`](../interfaces/ContractConstructorOptionsProviderDataDependencies.md)
 
 Contract constructor options including arguments and provider data.
 

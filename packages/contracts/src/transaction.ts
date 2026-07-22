@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025-2026 Midnight Foundation
+ * Copyright (C) Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -41,15 +41,16 @@ export interface TransactionContext<
   ) => void;
   readonly [Internal.CacheStates]: (
     states: ContractStates<Contract.PrivateState<C>> | PublicContractStates,
-    identity: Internal.CachedStateIdentity
+    identity: Internal.CachedStateIdentity,
+    blockHash: string
   ) => void;
   readonly [Internal.GetCurrentStatesForIdentity]: (
     identity: Internal.CachedStateIdentity
-  ) => ContractStates<Contract.PrivateState<C>> | PublicContractStates | undefined;
+  ) => Internal.PinnedContractStates<Contract.PrivateState<C>> | undefined;
 
   /**
    * Gets the additional scoped {@link CoinPublicKey} to {@link EncPublicKey} mappings.
-   * 
+   *
    * @return A `ReadonlyMap`<{@link CoinPublicKey}, {@link EncPublicKey}> instance, or `undefined` if no additional
    * mappings were specified for the current transaction context.
    */
@@ -78,7 +79,7 @@ export interface TransactionContext<
 /**
  * Options for use when creating scoped transactions.
  */
-export type ScopedTransactionOptions = {
+export interface ScopedTransactionOptions {
   /**
    * An optional name for the transaction scope.
    */

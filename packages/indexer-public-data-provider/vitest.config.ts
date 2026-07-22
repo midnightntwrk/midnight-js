@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025-2026 Midnight Foundation
+ * Copyright (C) Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -30,7 +30,13 @@ export default defineConfig({
       include: ['src/**/*.ts'],
       exclude: ['**/test/**', 'src/gen/**'],
       reporter: ['clover', 'json', 'json-summary', 'lcov', 'text'],
-      reportsDirectory: './coverage'
+      reportsDirectory: './coverage',
+      thresholds: {
+        lines: 76,
+        functions: 65,
+        branches: 70,
+        statements: 77
+      }
     },
     reporters: [
       'default',

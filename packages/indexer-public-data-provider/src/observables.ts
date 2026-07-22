@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025-2026 Midnight Foundation
+ * Copyright (C) Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -27,14 +27,9 @@ import {
   IndexerSubscriptionDataError
 } from './errors';
 import { toContractEvent } from './events-mapping';
-import type {
-  BlockOffset,
-  ContractActionOffset,
-  ContractEventsSubSubscriptionVariables,
-  InputMaybe,
-  RegularTransaction
-} from './gen/graphql';
-import { extractUnshieldedBalances, hasContractAction } from './mapping';
+import type { BlockOffset, ContractEventsSubSubscriptionVariables } from './gen/graphql';
+import type { InputMaybe, RegularTransaction } from './gen/schema-types';
+import { extractUnshieldedBalances, hasContract, hasContractAction } from './mapping';
 import {
   BLOCK_QUERY,
   CONTRACT_EVENTS_SUB,
@@ -293,13 +288,13 @@ export const blockOffsetToContractState$ =
 export const waitForContractToAppear =
   (apolloClient: ApolloClient, pollInterval: number) =>
   (contractAddress: ContractAddress) =>
-  (offset: InputMaybe<ContractActionOffset>) =>
+  (offset: InputMaybe<BlockOffset>) =>
     pollUntilPresent(
       apolloClient,
       CONTRACT_STATE_QUERY,
       { address: contractAddress, offset },
-      hasContractAction,
-      (data) => data.contractAction.state,
+      hasContract,
+      (data) => data.contract.state,
       pollInterval
     );
 

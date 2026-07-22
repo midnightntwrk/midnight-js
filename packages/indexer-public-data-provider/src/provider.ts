@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025-2026 Midnight Foundation
+ * Copyright (C) Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -14,15 +14,16 @@
  */
 
 import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import {
-  type ContractAddress,
+import type {
+  ContractAddress,
   LedgerParameters,
-  type TransactionId,
-  type ZswapChainState
+  TransactionId,
+  ZswapChainState
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type {
   BlockHashConfig,
   BlockHeightConfig,
+  BlockInfo,
   ContractEvent,
   ContractEventCursor,
   ContractEventQueryFilter,
@@ -50,12 +51,8 @@ import { DEFAULT_CONTRACT_EVENTS_PAGE_SIZE } from './config';
 import { IndexerDataError, IndexerInvariantError, IndexerProviderConfigError } from './errors';
 import { buildQueryVariables, buildSubscriptionVariables } from './events-filter';
 import { toContractEvent } from './events-mapping';
-import type {
-  ContractActionOffset,
-  DeployContractStateTxQueryQuery,
-  InputMaybe,
-  RegularTransaction
-} from './gen/graphql';
+import type { BlockOffset, ContractActionOffset, DeployContractStateTxQueryQuery } from './gen/graphql';
+import type { InputMaybe, RegularTransaction } from './gen/schema-types';
 import {
   type ExcludeEmptyAndNull,
   extractRegularDeployTransaction,
@@ -79,6 +76,7 @@ import {
   waitForUnshieldedBalancesToAppear
 } from './observables';
 import {
+  BLOCK_QUERY,
   CONTRACT_AND_ZSWAP_STATE_QUERY,
   CONTRACT_EVENTS_QUERY,
   CONTRACT_STATE_QUERY,
@@ -98,6 +96,13 @@ import type { ApolloHandle } from './transport';
  * TODO: Re-examine caching when 'ContractCall' and 'ContractDeploy' have
  * transaction identifiers included.
  */
+/**
+ * Maps an optional block-height/block-hash config to the indexer's `BlockOffset` input, or `null`
+ * to select the latest block.
+ */
+const toBlockOffset = (config?: BlockHeightConfig | BlockHashConfig): InputMaybe<BlockOffset> =>
+  config ? (config.type === 'blockHeight' ? { height: config.blockHeight } : { hash: config.blockHash }) : null;
+
 export class IndexerPublicDataProvider implements PublicDataProvider {
   private readonly handle: ApolloHandle;
   private readonly pollInterval: number;
@@ -120,17 +125,29 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     return this.handle.client;
   }
 
+  async queryBlock(config?: BlockHeightConfig | BlockHashConfig): Promise<BlockInfo | null> {
+    const offset = toBlockOffset(config);
+    const block = await this.client
+      .query({
+        query: BLOCK_QUERY,
+        variables: {
+          offset
+        },
+        fetchPolicy: 'no-cache'
+      })
+      .then(maybeThrowQueryError)
+      .then((queryResult) => queryResult.data?.block ?? null);
+    return block ? { hash: block.hash, height: block.height } : null;
+  }
+
   queryContractState(
     address: ContractAddress,
     config?: BlockHeightConfig | BlockHashConfig
   ): Promise<ContractState | null> {
     assertIsContractAddress(address);
-    const offset: InputMaybe<ContractActionOffset> = config
-      ? {
-          blockOffset:
-            config.type === 'blockHeight' ? { height: config.blockHeight } : { hash: config.blockHash }
-        }
-      : null;
+    // The deployed indexer resolves `contract(offset:)` "as of" the given block (the latest
+    // contract action at or before it), which is what cross-contract reads require.
+    const offset = toBlockOffset(config);
     return this.client
       .query({
         query: CONTRACT_STATE_QUERY,
@@ -141,7 +158,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         fetchPolicy: 'no-cache'
       })
       .then(maybeThrowQueryError)
-      .then((queryResult) => queryResult.data?.contractAction?.state ?? null)
+      .then((queryResult) => queryResult.data?.contract?.state ?? null)
       .then((maybeContractState) => (maybeContractState ? parseHexContractState(maybeContractState) : null));
   }
 
@@ -150,12 +167,15 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     config?: BlockHeightConfig | BlockHashConfig
   ): Promise<[ZswapChainState, ContractState, LedgerParameters] | null> {
     assertIsContractAddress(address);
-    const offset = config
-      ? {
-          blockOffset:
-            config.type === 'blockHeight' ? { height: config.blockHeight } : { hash: config.blockHash }
-        }
-      : null;
+    // One request pinned to a single block yields a coherent triple: `block` supplies the ledger
+    // parameters and the contract's zswap commitment tree resolved from that block's ledger state,
+    // and `contract` supplies the contract state as of the same block. The zswap tree is taken from
+    // the block (not the contract's last action) on purpose — the ledger keeps only a window of past
+    // commitment-tree roots, so a tree from the contract's last modification can age out and be
+    // unusable for building transactions; the queried block's tree is the one execution needs.
+    // Callers pin `offset` to a specific block, so both fields resolve at the same anchor with no
+    // race between them.
+    const offset = toBlockOffset(config);
     return this.client
       .query({
         query: CONTRACT_AND_ZSWAP_STATE_QUERY,
@@ -166,18 +186,21 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         fetchPolicy: 'no-cache'
       })
       .then(maybeThrowQueryError)
-      .then((queryResult) => queryResult.data?.contractAction)
-      .then((maybeContractStates) =>
-        maybeContractStates
-          ? ([
-              parseHexZswapState(maybeContractStates.zswapState),
-              parseHexContractState(maybeContractStates.state),
-              maybeContractStates.transaction?.block?.ledgerParameters
-                ? parseHexLedgerParameters(maybeContractStates.transaction.block.ledgerParameters)
-                : LedgerParameters.initialParameters()
-            ] as [ZswapChainState, ContractState, LedgerParameters])
-          : null
-      );
+      .then((queryResult) => queryResult.data)
+      .then((data) => {
+        const block = data?.block;
+        const contractState = data?.contract?.state;
+        const contractZswapState = block?.contractZswapState;
+        // `contractZswapState`/`contract` are null when the contract does not exist as of the block.
+        if (!block || contractState == null || contractZswapState == null) {
+          return null;
+        }
+        return [
+          parseHexZswapState(contractZswapState),
+          parseHexContractState(contractState),
+          parseHexLedgerParameters(block.ledgerParameters)
+        ] as [ZswapChainState, ContractState, LedgerParameters];
+      });
   }
 
   queryUnshieldedBalances(
@@ -380,7 +403,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         Rx.concatMap(() => blockOffsetToContractState$(this.client)(contractAddress)(null))
       );
     }
-    const offset = config.type === 'blockHash' ? { hash: config.blockHash } : { height: config.blockHeight };
+    const offset = toBlockOffset(config);
     const blocks = waitForBlockToAppear(this.client, this.pollInterval)(offset).pipe(
       Rx.concatMap(() => blockOffsetToBlock$(this.client)(offset))
     );
@@ -431,7 +454,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         Rx.concatMap(() => blockOffsetToUnshieldedBalances$(this.client)(contractAddress)(null))
       );
     }
-    const offset = config.type === 'blockHash' ? { hash: config.blockHash } : { height: config.blockHeight };
+    const offset = toBlockOffset(config);
     const balances = waitForBlockToAppear(this.client, this.pollInterval)(offset).pipe(
       Rx.concatMap(() => blockOffsetToUnshieldedBalances$(this.client)(contractAddress)(offset))
     );

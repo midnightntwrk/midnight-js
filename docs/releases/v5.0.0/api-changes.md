@@ -19,10 +19,18 @@ interface PublicDataProvider {
     filter: ContractEventSubscriptionFilter,
     opts?: { startAt?: ContractEventCursor },
   ): Observable<ContractEvent>;
+
+  /** "As-of" block lookup. No argument → latest block. Returns null if none matches. */
+  queryBlock(config?: BlockHeightConfig | BlockHashConfig): Promise<BlockInfo | null>;
 }
+
+export type BlockInfo = {
+  readonly hash: string;   // hex-encoded block hash
+  readonly height: number;
+};
 ```
 
-`queryContractEvents` and `contractEventsObservable` are **required** interface members — custom `PublicDataProvider` implementations must add them. Note the start cursor is passed via `opts.startAt`, **not** positionally. There is **no** `dispose` member on the `PublicDataProvider` interface; `dispose()` lives only on the concrete `IndexerPublicDataProvider` (see below).
+`queryContractEvents`, `contractEventsObservable`, and `queryBlock` are **required** interface members — custom `PublicDataProvider` implementations must add them. Note the start cursor is passed via `opts.startAt`, **not** positionally. There is **no** `dispose` member on the `PublicDataProvider` interface; `dispose()` lives only on the concrete `IndexerPublicDataProvider` (see below).
 
 ### New event types
 
@@ -97,6 +105,44 @@ type SigningKey = { tag: 'schnorr' | 'ecdsa'; value: string /* hex */ };
 
 `ContractExecutableRuntimeOptions.signingKey` now uses the structured `SigningKey`.
 
+### Cross-contract call — new exports (#967)
+
+```ts
+// Resolves ZK artifacts across a set of compiled-contract sources, keyed by verifier-key hash.
+export class ZKConfigRegistry {
+  constructor(sources: Iterable<ZKConfigProvider<string>>);
+  get(location: ContractKeyLocation): Promise<ZKConfig<string>>;
+  resolveKeyLocation(keyLocation: string): Promise<ZKConfig<string> | undefined>;
+}
+export class ZKArtifactNotFoundError extends Error { readonly keyLocation: ContractKeyLocation; }
+
+// Canonical key-location grammar, re-exported from @midnight-ntwrk/midnight-js-protocol/compact-js
+export type ContractKeyLocation = /* { contractAddress, circuitId, ... } */;
+export const encodeContractKeyLocation: (loc: ContractKeyLocation) => string;
+export const parseContractKeyLocation: (s: string) => ContractKeyLocation | undefined;
+export const hashVerifierKey: (/* verifier key */) => string; // sha-256 hex
+```
+
+---
+
+## `@midnight-ntwrk/midnight-js-contracts`
+
+### `CallResultPublic.events` + `ContractLog` re-export (#1083)
+
+```ts
+interface CallResultPublic {
+  // ...existing fields
+  readonly events: LogEvent[]; // execution-wide, in emission order, tagged by emitting contract address; carried raw
+}
+
+// re-exported from compact-js through the barrel — reachable as contracts.ContractLog
+export const ContractLog: {
+  decodeAll(events: readonly LogEvent[]): DecodedLog[]; // lenient — never throws
+};
+```
+
+The single `events` list spans the whole call tree. Decode without a direct `compact-js` dependency via `contracts.ContractLog.decodeAll(result.public.events)`.
+
 ---
 
 ## `@midnight-ntwrk/midnight-js-indexer-public-data-provider`
@@ -143,6 +189,25 @@ Internally the provider was split into 7 layered files (#960): `config.ts`, `tra
 // Structured signing-key validation (shared by both private-state providers)
 export const isValidSigningKey: (value: unknown) => boolean;
 
+// ZK artifact integrity manifest (#1015) — consumed by both ZK config providers
+export type ZkArtifactIntegrityMode = 'require' | 'warn' | 'off';
+export interface ZkConfigIntegrityOptions {
+  readonly verify?: ZkArtifactIntegrityMode;   // default 'require' (fail-closed)
+  readonly expectedManifestHash?: string;      // SHA-256 hex of the manifest bytes, pinned at build time
+  readonly onWarn?: (message: string) => void; // default console.warn
+}
+export interface ZkArtifactManifest {
+  readonly version: string;
+  readonly compilerVersion?: string;
+  readonly languageVersion?: string;
+  readonly runtimeVersion?: string;
+  readonly files: ReadonlyMap<string, ZkArtifactManifestFile>;
+}
+export interface ZkArtifactManifestFile { readonly size: number; readonly hash: string; }
+export class ZkArtifactIntegrityError extends Error {}
+export const ZK_MANIFEST_DIR: string;        // 'compiler'
+export const ZK_MANIFEST_FILE_NAME: string;  // 'contract-manifest.json'
+
 // Deserialization / versioning errors (#955)
 export class DeserializationError extends Error {
   readonly classification: 'version-mismatch' | 'generic-param-mismatch' | 'format-mismatch' | 'unknown';
@@ -167,7 +232,40 @@ Subpath re-exports retargeted (see [breaking-changes.md](./breaking-changes.md))
 
 | Subpath | Now resolves to |
 |---------|-----------------|
-| `/ledger` | `@midnightntwrk/ledger-v9@1.0.0-rc.2` |
-| `/onchain-runtime` | `@midnightntwrk/onchain-runtime-v4@4.0.0-rc.2` |
-| `/compact-runtime` | `@midnight-ntwrk/compact-runtime@0.17.102-dev.82a6b7c83060d9566e57aa496a33ed80289a7257` |
+| `/ledger` | `@midnightntwrk/ledger-v9@1.0.0-rc.3` |
+| `/onchain-runtime` | `@midnightntwrk/onchain-runtime-v4@4.0.0-rc.3` |
+| `/compact-runtime` | `@midnight-ntwrk/compact-runtime@0.18.0-rc.1` |
+| `/compact-js` | `@midnight-ntwrk/compact-js@2.5.5-rc.7` (provides the `ContractKeyLocation` grammar) |
 | `/platform-js` | `@midnight-ntwrk/platform-js@3.0.0` |
+
+## `@midnight-ntwrk/midnight-js-http-client-proof-provider`
+
+### `httpClientProofProvider` — object-options form (#1078)
+
+```ts
+// new — preferred object-options form (flattened config)
+export function httpClientProofProvider(options: {
+  readonly url: string;
+  readonly zkConfigProvider: ZKConfigProvider<string>;
+  readonly timeout?: number;
+  readonly headers?: Record<string, string>;
+}): ProofProvider<string>;
+
+/** @deprecated positional form retained for one release cycle */
+export function httpClientProofProvider(url: string, zkConfigProvider: ZKConfigProvider<string>): ProofProvider<string>;
+```
+
+Additive and backward-compatible — the positional overload keeps working. Low-level `httpClientProvingProvider` remains positional (tracked as a follow-up).
+
+## `@midnight-ntwrk/midnight-js-fetch-zk-config-provider` / `-node-zk-config-provider`
+
+Both provider constructors now accept an optional `ZkConfigIntegrityOptions` bag (see `midnight-js-utils` above) and verify artifacts against `compiler/contract-manifest.json`, defaulting to `verify: 'require'` (fail-closed). See [breaking-changes.md](./breaking-changes.md).
+
+### `provider(options)` factory functions (#1078)
+
+Thin factory functions are added alongside the existing classes (the classes stay exported for subclassing/composition):
+
+```ts
+export function nodeZkConfigProvider(options: /* ... */): NodeZkConfigProvider<string>;
+export function fetchZkConfigProvider(options: /* ... */): FetchZkConfigProvider<string>;
+```

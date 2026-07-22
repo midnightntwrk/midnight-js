@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-alpha.1**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
 
 ***
 
@@ -11,28 +11,36 @@ from the constructor results.
 
 ## Param
 
+**verifierKeys**
+
 The verifier keys for the contract being deployed.
 
 ## Param
+
+**coinPublicKey**
 
 The Zswap coin public key of the current user.
 
 ## Param
 
+**options**
+
 Configuration.
 
 ## Param
 
+**encryptionPublicKey**
+
 ## Remarks
 
-The returned [UnsubmittedDeployTxData](../type-aliases/UnsubmittedDeployTxData.md) is privacy-sensitive and
+The returned [UnsubmittedDeployTxData](../interfaces/UnsubmittedDeployTxData.md) is privacy-sensitive and
 carries the unproven transaction, signing key, initial private state, and
 initial Zswap state. See that type for handling guidance before logging,
 serializing, or transmitting the result.
 
 ## Call Signature
 
-> **createUnprovenDeployTxFromVerifierKeys**\<`C`\>(`zkConfigProvider`, `coinPublicKey`, `options`, `encryptionPublicKey`): `Promise`\<[`UnsubmittedDeployTxData`](../type-aliases/UnsubmittedDeployTxData.md)\<`C`\>\>
+> **createUnprovenDeployTxFromVerifierKeys**\<`C`\>(`zkConfigProvider`, `coinPublicKey`, `options`, `encryptionPublicKey`): `Promise`\<[`UnsubmittedDeployTxData`](../interfaces/UnsubmittedDeployTxData.md)\<`C`\>\>
 
 ### Type Parameters
 
@@ -60,11 +68,11 @@ serializing, or transmitting the result.
 
 ### Returns
 
-`Promise`\<[`UnsubmittedDeployTxData`](../type-aliases/UnsubmittedDeployTxData.md)\<`C`\>\>
+`Promise`\<[`UnsubmittedDeployTxData`](../interfaces/UnsubmittedDeployTxData.md)\<`C`\>\>
 
 ## Call Signature
 
-> **createUnprovenDeployTxFromVerifierKeys**\<`C`\>(`zkConfigProvider`, `coinPublicKey`, `options`, `encryptionPublicKey`): `Promise`\<[`UnsubmittedDeployTxData`](../type-aliases/UnsubmittedDeployTxData.md)\<`C`\>\>
+> **createUnprovenDeployTxFromVerifierKeys**\<`C`\>(`zkConfigProvider`, `coinPublicKey`, `options`, `encryptionPublicKey`): `Promise`\<[`UnsubmittedDeployTxData`](../interfaces/UnsubmittedDeployTxData.md)\<`C`\>\>
 
 ### Type Parameters
 
@@ -92,4 +100,4 @@ serializing, or transmitting the result.
 
 ### Returns
 
-`Promise`\<[`UnsubmittedDeployTxData`](../type-aliases/UnsubmittedDeployTxData.md)\<`C`\>\>
+`Promise`\<[`UnsubmittedDeployTxData`](../interfaces/UnsubmittedDeployTxData.md)\<`C`\>\>

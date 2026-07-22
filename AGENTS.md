@@ -283,13 +283,6 @@ yarn build --filter=@midnight-ntwrk/midnight-js-contracts
 yarn typecheck:tests
 ```
 
-### Building compactc from the `compact/` submodule (feature branches)
-
-See [DEVELOPMENT.md § Building compactc from the `compact/`
-submodule](./DEVELOPMENT.md#building-compactc-from-the-compact-submodule) for
-local setup and CI opt-in (`workflow_dispatch` input `compactc_source=submodule`
-or PR label `compactc-from-source`).
-
 ## Commit Guidelines
 
 Follow conventional commits:
@@ -299,7 +292,7 @@ feat(contracts): add batch deployment support
 fix(private-state): handle encryption key rotation edge case
 test(indexer): add integration tests for subscription reconnection
 docs(readme): update quick start example
-chore(deps): bump typescript to 5.8.3
+chore(deps): bump typescript to 6.0.3
 ```
 
 ## Package Dependencies
@@ -346,6 +339,41 @@ Before implementing, clarify:
 - [RxJS Guide](https://rxjs.dev/guide/overview)
 - [Vitest Documentation](https://vitest.dev/)
 - [Conventional Commits](https://www.conventionalcommits.org/)
+
+## Architecture Decision Records (ADRs)
+
+Architecturally significant decisions are recorded as ADRs in [`docs/adr/`](./docs/adr/).
+This is a hard workflow requirement, not a suggestion.
+
+### Read — MUST, before any architecture-affecting change
+
+1. Browse the ADRs in [`docs/adr/`](./docs/adr/) — the files are the list.
+2. Find any **Accepted** ADR relevant to what you are about to change.
+3. Follow it. If your change would contradict an Accepted ADR, do **not**
+   silently diverge — either keep the decision, or write a new ADR that
+   supersedes it (see below) and call out the reversal in your PR.
+
+### Create — MUST, when a change qualifies
+
+Write a new ADR before implementing any of:
+
+- Changes to provider interfaces in `packages/types/src` (breaks all downstream packages).
+- Adding a provider implementation, or changing a provider's public shape.
+- Adding a new runtime dependency, or swapping a core library (crypto, GraphQL client, etc.).
+- Any breaking change to a package's exported public API (major version bump).
+
+If unsure whether a change qualifies, it probably does — write the ADR.
+
+### How
+
+1. Copy [`docs/adr/template.md`](./docs/adr/template.md) to
+   `docs/adr/NNNN-kebab-title.md` using the next sequential zero-padded number
+   (list the directory to find the highest existing one).
+2. Fill in Context / Decision / Consequences / Alternatives, marked `Accepted` —
+   approving the PR is the acceptance, so ADRs land `Accepted`, not `Proposed`.
+   There is no shared index to update, so ADR PRs never conflict with each other.
+3. To reverse a past decision, add a new ADR and mark the old one
+   `Superseded by ADR-NNNN`.
 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence

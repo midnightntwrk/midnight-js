@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025-2026 Midnight Foundation
+ * Copyright (C) Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -30,7 +30,10 @@ export type UnboundTransaction = Transaction<SignatureEnabled, Proof, PreBinding
  */
 export interface ProveTxConfig {
   /**
-   * The timeout for the request.
+   * The timeout for the request, in milliseconds. This is a per-request timeout for the underlying
+   * proof server call, not a hard wall-clock ceiling for the whole `proveTx` call — the proof
+   * provider's internal retry/backoff means a `proveTx` call may take longer than this value when
+   * retries occur. See https://github.com/midnightntwrk/midnight-js/issues/974.
    */
   readonly timeout?: number;
 }

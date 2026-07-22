@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/testkit-js",
-  "version": "5.0.0-alpha.1",
+  "version": "5.0.0-beta.6",
   "description": "Testing kit for Midnight JS packages",
   "main": "dist/index.cjs",
   "module": "dist/index.mjs",
@@ -19,7 +19,7 @@
     "type": "git",
     "url": "git+ssh://git@github.com/midnight-ntwrk/artifacts.git"
   },
-  "packageManager": "yarn@4.12.0",
+  "packageManager": "yarn@4.14.1",
   "author": "IOHK",
   "license": "Apache-2.0",
   "scripts": {
@@ -32,7 +32,6 @@
     "deploy": "yarn npm publish --tolerate-republish"
   },
   "dependencies": {
-    "@midnight-ntwrk/dapp-connector-api": "4.0.1",
     "@midnight-ntwrk/midnight-js-compact": "workspace:*",
     "@midnight-ntwrk/midnight-js-contracts": "workspace:*",
     "@midnight-ntwrk/midnight-js-http-client-proof-provider": "workspace:*",
@@ -44,8 +43,9 @@
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
     "@midnight-ntwrk/midnight-js-utils": "workspace:*",
     "@midnight-ntwrk/zkir-v2": "2.1.0",
-    "@midnightntwrk/wallet-sdk": "2.0.0-canary.20260623092110-2f10bcf",
-    "@midnightntwrk/wallet-sdk-prover-client": "2.0.0-canary.20260623092110-2f10bcf",
+    "@midnightntwrk/dapp-connector-api": "4.1.0-beta.1",
+    "@midnightntwrk/wallet-sdk": "2.0.0-beta.2",
+    "@midnightntwrk/wallet-sdk-prover-client": "2.0.0-beta.2",
     "@scure/bip39": "^2.2.0",
     "axios": "^1.16.1",
     "buffer": "^6.0.3",
@@ -58,17 +58,20 @@
   },
   "devDependencies": {
     "@types/ws": "^8.18.1",
-    "@vitest/runner": "^4.1.7",
-    "allure-commandline": "^2.42.0",
+    "@vitest/runner": "^4.1.10",
+    "allure-commandline": "^2.43.0",
     "allure-js-commons": "^3.9.0",
-    "allure-vitest": "^3.9.0",
+    "allure-vitest": "^3.10.2",
     "rxjs": "^7.8.2",
     "typedoc": "^0.28.19",
-    "typedoc-plugin-markdown": "4.11.0",
+    "typedoc-plugin-markdown": "4.12.0",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^4.1.7"
   },
   "files": [
     "dist/"
-  ]
+  ],
+  "engines": {
+    "node": ">=22"
+  }
 }

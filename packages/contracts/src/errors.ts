@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025-2026 Midnight Foundation
+ * Copyright (C) Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import type { AnyProvableCircuitId, FinalizedTxData, PrivateStateId } from '@mid
 
 interface EffectContractError {
   readonly _tag: string;
-  readonly cause: { readonly name: string; readonly message: string };
+  readonly cause: { readonly name: string; readonly message: string; readonly isCompactError?: boolean };
 }
 
 export const isEffectContractError = (error: unknown): error is EffectContractError =>

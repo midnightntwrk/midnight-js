@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-alpha.1**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
 
 ***
 
@@ -11,22 +11,34 @@ unproven, unsubmitted, call transaction.
 
 ## Param
 
+**zkConfigProvider**
+
 ## Param
+
+**options**
 
 Configuration.
 
 ## Param
 
+**walletEncryptionPublicKey**
+
+## Param
+
+**crossContract**
+
+Enables cross-contract calls; required for circuits that make them.
+
 ## Remarks
 
-The returned [UnsubmittedCallTxData](../type-aliases/UnsubmittedCallTxData.md) is privacy-sensitive and carries
+The returned [UnsubmittedCallTxData](../interfaces/UnsubmittedCallTxData.md) is privacy-sensitive and carries
 the unproven transaction, ZK inputs/outputs, and next private state. See
 that type for handling guidance before logging, serializing, or
 transmitting the result.
 
 ## Call Signature
 
-> **createUnprovenCallTxFromInitialStates**\<`C`, `PCK`\>(`zkConfigProvider`, `options`, `walletEncryptionPublicKey`): `Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
+> **createUnprovenCallTxFromInitialStates**\<`C`, `PCK`\>(`zkConfigProvider`, `options`, `walletEncryptionPublicKey`, `crossContract?`): `Promise`\<[`UnsubmittedCallTxData`](../interfaces/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
 
 ### Type Parameters
 
@@ -52,13 +64,17 @@ transmitting the result.
 
 `string`
 
+#### crossContract?
+
+`CrossContractConfig`
+
 ### Returns
 
-`Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
+`Promise`\<[`UnsubmittedCallTxData`](../interfaces/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
 
 ## Call Signature
 
-> **createUnprovenCallTxFromInitialStates**\<`C`, `PCK`\>(`zkConfigProvider`, `options`, `walletEncryptionPublicKey`): `Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
+> **createUnprovenCallTxFromInitialStates**\<`C`, `PCK`\>(`zkConfigProvider`, `options`, `walletEncryptionPublicKey`, `crossContract?`): `Promise`\<[`UnsubmittedCallTxData`](../interfaces/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
 
 ### Type Parameters
 
@@ -84,6 +100,10 @@ transmitting the result.
 
 `string`
 
+#### crossContract?
+
+`CrossContractConfig`
+
 ### Returns
 
-`Promise`\<[`UnsubmittedCallTxData`](../type-aliases/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>
+`Promise`\<[`UnsubmittedCallTxData`](../interfaces/UnsubmittedCallTxData.md)\<`C`, `PCK`\>\>

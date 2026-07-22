@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025-2026 Midnight Foundation
+ * Copyright (C) Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     environment: 'node',
+    testTimeout: 30_000,
     globals: true,
     include: ['**/test/**/*.test.ts'],
     exclude: ['node_modules', 'dist'],
@@ -29,7 +30,13 @@ export default defineConfig({
       include: ['src/**/*.ts'],
       exclude: ['**/test/**'],
       reporter: ['clover', 'json', 'json-summary', 'lcov', 'text'],
-      reportsDirectory: './coverage'
+      reportsDirectory: './coverage',
+      thresholds: {
+        lines: 93,
+        functions: 100,
+        branches: 82,
+        statements: 93
+      }
     },
     reporters: [
       'default',

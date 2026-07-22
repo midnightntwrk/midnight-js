@@ -80,6 +80,14 @@ type Block {
 	"""
 	systemParameters: SystemParameters!
 	"""
+	The zswap commitment tree filtered to the given contract address, resolved from this
+	block's ledger state; null if the contract does not exist at this block. Hex-encoded.
+	For building transactions, compose with `ledgerParameters` and `contract { state }` in
+	one request, anchored to the same block; use the latest block, older trees age out of
+	the ledger's root window.
+	"""
+	contractZswapState(address: HexEncoded!): HexEncoded @beta
+	"""
 	The hex-encoded dust commitment Merkle tree root at the latest indexed state.
 	"""
 	dustCommitmentMerkleTreeRoot: HexEncoded
@@ -162,6 +170,79 @@ interface ContractAction {
 }
 
 """
+The type of a contract action.
+"""
+enum ContractActionType {
+	DEPLOY
+	CALL
+	UPDATE
+}
+
+"""
+The kind of a contract maintenance verifying key.
+"""
+enum ContractMaintenanceVerifyingKeyKind {
+	SCHNORR
+	ECDSA
+}
+
+"""
+A verifying key belonging to a contract maintenance authority committee.
+"""
+type ContractMaintenanceVerifyingKey @beta {
+	"""
+	The signature scheme of the key.
+	"""
+	kind: ContractMaintenanceVerifyingKeyKind!
+	"""
+	The hex-encoded tagged-serialized verifying key.
+	"""
+	key: HexEncoded!
+}
+
+"""
+The maintenance authority governing updates to a contract.
+"""
+type ContractMaintenanceAuthority @beta {
+	"""
+	The committee of verifying keys authorised to maintain the contract.
+	"""
+	committee: [ContractMaintenanceVerifyingKey!]!
+	"""
+	The number of committee signatures required to authorise maintenance.
+	"""
+	threshold: Int!
+	"""
+	Monotonic counter guarding against replay of maintenance operations.
+	"""
+	counter: Int!
+}
+
+"""
+A contract, reflecting its state as of a particular block.
+"""
+type Contract @beta {
+	"""
+	The hex-encoded contract address.
+	"""
+	address: HexEncoded!
+	"""
+	The hex-encoded serialized contract state as of the queried block (the latest contract
+	action at or before it).
+	"""
+	state: HexEncoded!
+	"""
+	The contract's maintenance authority as of the queried block.
+	"""
+	maintenanceAuthority: ContractMaintenanceAuthority! @beta
+	"""
+	Recent contract actions for this contract, newest first, optionally filtered by type. Use
+	the `contractActions` subscription to enumerate all actions.
+	"""
+	actions(limit: Int, type: ContractActionType): [ContractAction!]! @beta
+}
+
+"""
 Either a block offset or a transaction offset.
 """
 input ContractActionOffset @oneOf {
@@ -225,11 +306,11 @@ type ContractCall implements ContractAction {
 	unshieldedBalances: [ContractBalance!]!
 	"""
 	Contract events emitted by this contract call.
-	
+
 	Only `ContractCall` exposes this field — `ContractDeploy` and
 	`ContractUpdate` don't execute circuits with the `log()` expression.
 	Per Andrzej's 12 May design call (#feat-public-events).
-	
+
 	Events are attributed to a call by matching contract address and entry
 	point within the transaction; if several calls in one transaction share
 	both, their events are not attributed here and remain reachable via the
@@ -893,6 +974,11 @@ type Query {
 	"""
 	contractAction(address: HexEncoded!, offset: ContractActionOffset): ContractAction
 	"""
+	Find a contract by address, resolved as of the given block offset (or its latest state if no
+	offset is given). Returns null if the contract has no action at or before that block.
+	"""
+	contract(address: HexEncoded!, offset: BlockOffset): Contract @beta
+	"""
 	Get DUST generation status for specific Cardano reward addresses.
 	"""
 	dustGenerationStatus(cardanoRewardAddresses: [CardanoRewardAddress!]!): [DustGenerationStatus!]!
@@ -911,7 +997,7 @@ type Query {
 	dustGenerationMerkleTreeUpdate(startIndex: Int!, endIndex: Int!): MerkleTreeCollapsedUpdate! @beta
 	"""
 	Find contract events matching the filter, with optional pagination.
-	
+
 	Block-range bounds (`fromBlock`, `toBlock`) live on `ContractEventFilter`
 	for symmetry with the subscription. `limit`/`offset` are top-level args.
 	"""
@@ -1900,4 +1986,3 @@ schema {
 	mutation: Mutation
 	subscription: Subscription
 }
-

@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025-2026 Midnight Foundation
+ * Copyright (C) Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -24,7 +24,8 @@ import {
   toUnshieldedUtxos
 } from './codec';
 import { IndexerInvariantError } from './errors';
-import type { ContractBalance, DeployTxQueryQuery, RegularTransaction } from './gen/graphql';
+import type { DeployTxQueryQuery } from './gen/graphql';
+import type { ContractBalance, RegularTransaction } from './gen/schema-types';
 
 type IsEmptyObject<T> = keyof T extends never ? true : false;
 export type ExcludeEmptyAndNull<T> = T extends null ? never : IsEmptyObject<T> extends true ? never : T;
@@ -33,6 +34,11 @@ export const hasContractAction = <T extends { contractAction?: unknown }>(
   data: T
 ): data is T & { contractAction: NonNullable<T['contractAction']> } =>
   data.contractAction != null;
+
+export const hasContract = <T extends { contract?: unknown }>(
+  data: T
+): data is T & { contract: NonNullable<T['contract']> } =>
+  data.contract != null;
 
 /**
  * Structural shape of a `contractAction` payload (or `contractActions` on the

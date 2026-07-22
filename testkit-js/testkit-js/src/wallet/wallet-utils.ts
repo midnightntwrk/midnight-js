@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025-2026 Midnight Foundation
+ * Copyright (C) Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -107,7 +107,7 @@ const registerNightUtxosForDust = async (
   const recipe = await wallet.registerNightUtxosForDustGeneration(
     unregistered,
     unshieldedKeystore.getPublicKey(),
-    (payload) => unshieldedKeystore.signData(payload)
+    (payload) => unshieldedKeystore.signDataAsync(payload)
   );
   const finalized = await wallet.finalizeRecipe(recipe);
   const txId = await wallet.submitTransaction(finalized);

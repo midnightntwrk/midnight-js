@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025-2026 Midnight Foundation
+ * Copyright (C) Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -147,6 +147,8 @@ export async function createUnprovenDeployTxFromVerifierKeys<C extends Contract.
         initialContractState
       },
       private: {
+        // Compact.js returns the maintenance-authority key as a structured `SigningKey` ({ tag, value }),
+        // which already carries its signature scheme, so it is threaded through unchanged.
         signingKey,
         initialPrivateState: privateState,
         initialZswapState: zswapLocalState,

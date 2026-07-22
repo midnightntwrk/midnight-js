@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-alpha.1**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Function: getPublicStates()
 
-> **getPublicStates**(`publicDataProvider`, `contractAddress`): `Promise`\<[`PublicContractStates`](../type-aliases/PublicContractStates.md)\>
+> **getPublicStates**(`publicDataProvider`, `contractAddress`, `blockHash?`): `Promise`\<[`PublicContractStates`](../interfaces/PublicContractStates.md)\>
 
 Fetches only the public visible (Zswap and ledger) states of a contract.
 
@@ -25,6 +25,10 @@ The provider to use to fetch the public states (Zswap and ledger)
 
 The ledger address of the contract.
 
+### blockHash?
+
+`string`
+
 ## Returns
 
-`Promise`\<[`PublicContractStates`](../type-aliases/PublicContractStates.md)\>
+`Promise`\<[`PublicContractStates`](../interfaces/PublicContractStates.md)\>

@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025-2026 Midnight Foundation
+ * Copyright (C) Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -46,7 +46,7 @@ import {
 import { Buffer } from 'buffer';
 
 import { IndexerDataError } from './errors';
-import type { ContractBalance, Segment, TransactionResult } from './gen/graphql';
+import type { ContractBalance, Segment, TransactionResult } from './gen/schema-types';
 
 const toByteArray = (s: string): Buffer => Buffer.from(s, 'hex');
 

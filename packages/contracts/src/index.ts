@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025-2026 Midnight Foundation
+ * Copyright (C) Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -82,13 +82,17 @@ export {
   createCircuitCallTxInterface} from './tx-interfaces';
 export {
   FinalizedCallTxData,
+  FinalizedCallTxPublicData,
   FinalizedDeployTxData,
   FinalizedDeployTxDataBase,
+  FinalizedDeployTxPublicData,
   SubmittedCallTx,
   UnsubmittedCallTxData,
+  UnsubmittedCallTxPrivateData,
   UnsubmittedDeployTxData,
   UnsubmittedDeployTxDataBase,
   UnsubmittedDeployTxPrivateData,
+  UnsubmittedDeployTxPrivateDataFull,
   UnsubmittedDeployTxPublicData,
   UnsubmittedTxData} from './tx-model';
 export {
@@ -108,3 +112,9 @@ export {
   DeployTxOptionsWithPrivateStateId,
   UnprovenDeployTxOptions,
   UnprovenDeployTxProviders} from './unproven-deploy-tx';
+// Event type and decoder for `CallResultPublic.events` (MIP-0002), re-exported so consumers can name
+// the events (`LogEvent`) and decode them (`ContractLog.decodeAll`) without depending on
+// compact-js/compact-runtime directly. `ContractEvent` (the decoded shape) is reachable as
+// `ContractLog.ContractEvent`.
+export { ContractLog } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+export type { LogEvent } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';

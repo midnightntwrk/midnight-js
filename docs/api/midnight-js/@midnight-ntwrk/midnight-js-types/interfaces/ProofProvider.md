@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-alpha.1**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
 
 ***
 
@@ -9,6 +9,8 @@
 Interface for a proof server running in a trusted environment.
 
 ## Type Param
+
+**K**
 
 The type of the circuit ID used by the provider.
 

@@ -12,6 +12,14 @@ on:
       - main
   workflow_dispatch:
 
+# The rolling docs branch is updated by a non-atomic sequence (force-push ->
+# API commit -> open PR). Serialize runs so overlapping pushes to main cannot
+# clobber the branch or race on `gh pr create`. Only the latest generated docs
+# matter, so cancel any in-flight run.
+concurrency:
+  group: docs-api
+  cancel-in-progress: true
+
 jobs:
   docs:
     runs-on: ubuntu-latest
@@ -33,41 +41,12 @@ jobs:
           password: ${{ secrets.GH_PASSWORD }}
 
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # ratchet:actions/checkout@v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # ratchet:actions/checkout@v7.0.0
 
-      - name: Install direnv
-        run: curl -sfL https://direnv.net/install.sh | DIRENV_GITHUB_API_TOKEN=$GITHUB_TOKEN  bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Load environment from .envrc
-        run: |
-          direnv allow .
-          direnv export gha >> "$GITHUB_ENV"
-
-      - name: Set up Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # ratchet:actions/setup-node@v6.4.0
+      - name: Setup build environment
+        uses: ./.github/actions/setup-build-env
         with:
-          registry-url: https://npm.pkg.github.com/
-          scope: '@midnight-ntwrk'
-          node-version-file: '.nvmrc'
-          cache: 'yarn'
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTBOT_PACKAGES_WRITE }}
-
-      - name: Cache Turbo and Yarn dependencies
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # ratchet:actions/cache@v5.0.5
-        with:
-          path: |
-            **/node_modules
-            ~/.yarn
-            .turbo
-          key: turbo-${{ runner.os }}-${{ hashFiles('**/yarn.lock') }}-${{ hashFiles('**/turbo.json') }}
-          restore-keys: |
-            turbo-${{ runner.os }}-
-
-      - name: Configure yarn
-        run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' "$MIDNIGHTBOT_PACKAGES_WRITE"
+          node-auth-token: ${{ secrets.MIDNIGHTBOT_PACKAGES_WRITE }}
 
       - name: Install dependencies
         run: yarn install --immutable
@@ -82,40 +61,60 @@ jobs:
           yarn run build:markdown-docs
           cd testkit-js/testkit-js && yarn run build:markdown-docs
 
-      - name: Check if there are changes in docs and create a new branch
-        id: set_update
-        run: |
-          if [ -n "$(git status ./docs --porcelain)" ]; then
-            echo "Adding new..."
-            git config --global user.email "midnight-ci@users.noreply.github.com"
-            git config --global user.name "Midnight CI GitHub Action"
-            BRANCH=api-docs/merge-prs/`date +'%Y-%m-%dT%H%M%S'`
-            git checkout -b $BRANCH
-            git remote set-url origin "https://$GH_TOKEN@github.com/${{ github.repository }}.git"
-            git push -u origin $BRANCH
-            echo "UPDATE=true" >> $GITHUB_OUTPUT
-            echo "NEW_BRANCH=$BRANCH" >> $GITHUB_OUTPUT
-          else
-            echo "Nothing to update"
-            echo "UPDATE=false" >> $GITHUB_OUTPUT
-          fi
+      # The commit MUST be created via the GitHub API (not a local `git commit`)
+      # so it is signed by GitHub and attributed to the GH_TOKEN owner
+      # (MidnightCI, a real account). A local commit is unsigned and authored by
+      # a bare noreply email that resolves to no account, which leaves the
+      # `license/cla` check permanently "not signed". GH_TOKEN is a PAT (not
+      # GITHUB_TOKEN) so the opened PR still triggers CI.
+      - name: Reset rolling docs branch to main
+        id: changes
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ -z "$(git status --porcelain ./docs)" ]; then
+            echo "No documentation changes."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          # Stage the changes so ghcommit-action enumerates individual files.
+          # git status collapses a wholly-untracked new directory into a single
+          # "docs/.../foo/" entry, which ghcommit then tries to read as a file
+          # ("is a directory"). Staging lists each file (A/M/D) individually.
+          git add -A docs
+          # Force the rolling branch back to the current main so the PR always
+          # shows just the latest generated-docs diff (one commit on top).
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git"
+          # --no-verify: skip the husky pre-push hook (yarn lint + typecheck),
+          # a local-dev guard that is redundant here. The pushed ref is just the
+          # current main tip; ghcommit-action adds the docs commit via API.
+          git push --no-verify --force origin "HEAD:refs/heads/api-docs/update"
 
-      - uses: MonikaJassova/ghcommit-action@aee0efc02d3707e178c534477e5c87f70fe6678f
-        if: steps.set_update.outputs.UPDATE == 'true'
+      - name: Commit docs via GitHub API (signed)
+        if: steps.changes.outputs.changed == 'true'
+        # planetscale/ghcommit-action commits via GitHub's GraphQL
+        # createCommitOnBranch API, so the commit is GitHub-signed (Verified)
+        # and attributed to the GH_TOKEN owner (MidnightCI).
+        uses: planetscale/ghcommit-action@a6b150b81dca5dd027baa898604418eec9e11465 # ratchet:planetscale/ghcommit-action@v0.2.22
         with:
           commit_message: "docs: API documentation update"
           repo: ${{ github.repository }}
-          branch: ${{ steps.set_update.outputs.NEW_BRANCH }}
-          file_pattern: 'docs *.md'
-        env:
-          GITHUB_TOKEN: ${{secrets.GH_TOKEN}}
-
-      - name: Open a PR
-        if: steps.set_update.outputs.UPDATE == 'true'
+          branch: api-docs/update
+          file_pattern: docs
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-          NEW_BRANCH: ${{ steps.set_update.outputs.NEW_BRANCH }}
+
+      - name: Open docs PR if none is open
+        if: steps.changes.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
-          gh pr create --base main --head "$NEW_BRANCH" --title "docs: API documentation update" --body "Update API documentation - created by Midnight CI Github Action"
+          if [ -z "$(gh pr list --head api-docs/update --state open --json number --jq '.[].number')" ]; then
+            gh pr create --base main --head api-docs/update \
+              --title "docs: API documentation update" \
+              --body "Update API documentation - created by Midnight CI GitHub Action"
+          else
+            echo "Docs PR already open; the new signed commit was pushed to it."
+          fi

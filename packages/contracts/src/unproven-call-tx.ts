@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025-2026 Midnight Foundation
+ * Copyright (C) Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import { type Contract, ProvableCircuitId } from '@midnight-ntwrk/midnight-js-pr
 import { type CoinPublicKey, type ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { type EncPublicKey, type LedgerParameters, type ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
-import { exitResultOrError, makeContractExecutableRuntime, type PrivateStateId, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
+import { exitResultOrError, makeContractExecutableRuntime, type PrivateStateId, type PublicDataProvider, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
 import { assertDefined, assertIsContractAddress, parseCoinPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import type {
@@ -34,18 +34,35 @@ import { type ContractStates, getPublicStates, getStates, type PublicContractSta
 import * as Transaction from './internal/transaction';
 import { type TransactionContext } from './transaction';
 import type { UnsubmittedCallTxData } from './tx-model';
-import { createUnprovenLedgerCallTx, encryptionPublicKeyResolverForZswapState, zswapStateToNewCoins } from './utils';
+import { createUnprovenLedgerCallTx, encryptionPublicKeyResolverForZswapState, makeCalleeStateResolver, zswapStateToNewCoins } from './utils';
+
+/**
+ * Enables cross-contract calls during circuit execution.
+ */
+export interface CrossContractConfig {
+  /**
+   * Resolves the states of cross-contract call targets.
+   */
+  readonly publicDataProvider: PublicDataProvider;
+  /**
+   * The block at which all contract states are read; must be the block at which the initial states
+   * given to the call were read.
+   */
+  readonly blockHash: string;
+}
 
 export function createUnprovenCallTxFromInitialStates<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
   zkConfigProvider: ZKConfigProvider<string>,
   options: CallOptionsWithProviderDataDependencies<C, PCK>,
-  walletEncryptionPublicKey: EncPublicKey
+  walletEncryptionPublicKey: EncPublicKey,
+  crossContract?: CrossContractConfig
 ): Promise<UnsubmittedCallTxData<C, PCK>>;
 
 export function createUnprovenCallTxFromInitialStates<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   zkConfigProvider: ZKConfigProvider<string>,
   options: CallOptionsWithPrivateState<C, PCK>,
-  walletEncryptionPublicKey: EncPublicKey
+  walletEncryptionPublicKey: EncPublicKey,
+  crossContract?: CrossContractConfig
 ): Promise<UnsubmittedCallTxData<C, PCK>>;
 
 /**
@@ -54,8 +71,8 @@ export function createUnprovenCallTxFromInitialStates<C extends Contract.Any, PC
  *
  * @param zkConfigProvider
  * @param options Configuration.
- *
  * @param walletEncryptionPublicKey
+ * @param crossContract Enables cross-contract calls; required for circuits that make them.
  * @returns Data produced by the circuit call and an unproven transaction assembled from the call result.
  *
  * @remarks
@@ -67,7 +84,8 @@ export function createUnprovenCallTxFromInitialStates<C extends Contract.Any, PC
 export async function createUnprovenCallTxFromInitialStates<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   zkConfigProvider: ZKConfigProvider<string>,
   options: CallOptions<C, PCK>,
-  walletEncryptionPublicKey: EncPublicKey
+  walletEncryptionPublicKey: EncPublicKey,
+  crossContract?: CrossContractConfig
 ): Promise<UnsubmittedCallTxData<C, PCK>> {
   const { compiledContract, contractAddress, coinPublicKey, initialContractState, initialZswapChainState, ledgerParameters } = options;
   assertIsContractAddress(contractAddress);
@@ -85,54 +103,68 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
   const initialPrivateState = 'initialPrivateState' in options ? options.initialPrivateState : undefined;
   const args = ('args' in options ? options.args : []);
 
-  const exitResult = await contractRuntime.runPromiseExit(contractExec.circuit(ProvableCircuitId<C>(options.circuitId as any), { // eslint-disable-line @typescript-eslint/no-explicit-any
-      address: ContractAddress(contractAddress),
-      contractState: initialContractState,
-      privateState: initialPrivateState,
-      ledgerParameters
-    },
+  // When cross-contract calls are enabled, callee states are resolved lazily, on demand, from the
+  // provider (and memoized for tx assembly), pinned — along with the circuit's `parentBlockHash` —
+  // to the block at which the initial states were read, so the whole call tree (root and callees)
+  // is read from one coherent chain snapshot.
+  const calleeResolver =
+    crossContract === undefined
+      ? undefined
+      : makeCalleeStateResolver(crossContract.publicDataProvider, crossContract.blockHash);
+  const baseCircuitContext = {
+    address: ContractAddress(contractAddress),
+    contractState: initialContractState,
+    privateState: initialPrivateState,
+    ledgerParameters
+  };
+  // `calleeResolver` is defined exactly when cross-contract calls are enabled, and it carries the
+  // block its callee states are resolved as of, so a single check drives both the resolver wiring
+  // and `parentBlockHash`.
+  const circuitContext =
+    calleeResolver === undefined
+      ? baseCircuitContext
+      : { ...baseCircuitContext, stateProvider: calleeResolver.stateProvider, parentBlockHash: calleeResolver.blockHash };
+
+  const exitResult = await contractRuntime.runPromiseExit(contractExec.circuit(
+    ProvableCircuitId<C>(options.circuitId as any), // eslint-disable-line @typescript-eslint/no-explicit-any
+    circuitContext,
     ...args as any // eslint-disable-line @typescript-eslint/no-explicit-any
   ));
 
   try {
-    const {
-      public: {
-        contractState,
-        partitionedTranscript,
-        publicTranscript
-      },
-      private: {
-        input,
-        output,
-        privateState,
-        privateTranscriptOutputs,
-        result,
-        zswapLocalState
-      }
-    } = exitResultOrError(exitResult)
+    const { result, privateState, zswapLocalState, calls, events } = exitResultOrError(exitResult);
+    // The root contract call is the last entry; cross-contract callees precede it.
+    const rootCall = calls[calls.length - 1];
+    assertDefined(rootCall, 'Circuit execution produced no contract calls');
+
+    // Resolves the on-chain state for any contract in the call tree: the root contract from the
+    // input state, and each cross-contract callee from the state the provider resolved during
+    // execution.
+    const contractStateFor = (
+      address: ContractExecutable.ContractExecutable.ContractCall['contractAddress']
+    ): ContractState | undefined =>
+      address === rootCall.contractAddress
+        ? initialContractState
+        : calleeResolver?.resolvedStates.get(String(address));
 
     return {
       public: {
-        nextContractState: contractState,
-        partitionedTranscript,
-        publicTranscript
+        nextContractState: rootCall.public.contractState,
+        partitionedTranscript: rootCall.public.partitionedTranscript,
+        publicTranscript: rootCall.public.publicTranscript,
+        logEvents: events
       },
       private: {
-        input,
-        output,
+        input: rootCall.private.input,
+        output: rootCall.private.output,
         result: result as unknown as Contract.CircuitReturnType<C, PCK>,
         nextPrivateState: privateState,
         nextZswapLocalState: zswapLocalState,
-        privateTranscriptOutputs,
+        privateTranscriptOutputs: rootCall.private.privateTranscriptOutputs,
         unprovenTx: createUnprovenLedgerCallTx(
-          options.circuitId,
-          contractAddress,
-          initialContractState,
+          calls,
+          contractStateFor,
           initialZswapChainState,
-          partitionedTranscript,
-          privateTranscriptOutputs,
-          input,
-          output,
           zswapLocalState,
           encryptionPublicKeyResolverForZswapState(
             zswapLocalState,
@@ -145,11 +177,16 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
           parseCoinPublicKeyToHex(coinPublicKey, getNetworkId()),
           zswapLocalState
         )
-      }
+      },
+      calls
     };
   } catch (error: unknown) {
     if (!isEffectContractError(error) || error._tag !== 'ContractRuntimeError') throw error;
-    if (error.cause.name !== 'CompactError') throw error;
+    // Lift the root Compact error's message to the top, so the thrown error reports the real reason
+    // (e.g. a re-entrancy or implementation-binding rejection) rather than the generic
+    // "Error executing circuit '<id>'". Tested via the inherited `isCompactError` brand so every
+    // CompactError subclass qualifies, not just the base class (whose `name` differs per subclass).
+    if (!error.cause.isCompactError) throw error;
     throw new Error(error.cause.message, { cause: error });
   }
 }
@@ -216,46 +253,66 @@ const createCallOptions = <C extends Contract.Any, PCK extends Contract.Provable
   return callOptions as CallOptions<C, PCK>;
 };
 
+/**
+ * Reads the current latest block and returns its hash, which pins the chain snapshot a call
+ * transaction is built against.
+ */
+const pinLatestBlockHash = async (publicDataProvider: PublicDataProvider): Promise<string> => {
+  const latestBlock = await publicDataProvider.queryBlock();
+  assertDefined(latestBlock, 'Failed to fetch the latest block from the public data provider');
+  return latestBlock.hash;
+};
+
+// The state read owns the block pin. On a cache miss it pins the scope to the current latest block
+// and reads the states as of it; on a scoped-transaction cache hit it returns the cached states and
+// the block the scope was first read at. Either way the returned `blockHash` is the block the
+// returned states correspond to, so callers pin `parentBlockHash` and cross-contract callee reads
+// to a block coherent with the root states — including across cache hits, which previously paired
+// cached states with a freshly-queried latest block.
 const getContractStates = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: UnprovenCallTxProvidersWithPrivateState<C>,
   options: CallTxOptionsWithPrivateStateId<C, PCK>,
   transactionContext?: TransactionContext<C, PCK>
-): Promise<ContractStates<Contract.PrivateState<C>>> => {
+): Promise<{ readonly states: ContractStates<Contract.PrivateState<C>>; readonly blockHash: string }> => {
   const identity = { contractAddress: options.contractAddress, privateStateId: options.privateStateId };
-  const txCtxStates = transactionContext?.[Transaction.GetCurrentStatesForIdentity](identity);
-  if (txCtxStates) {
-    return txCtxStates as ContractStates<Contract.PrivateState<C>>;
+  const cached = transactionContext?.[Transaction.GetCurrentStatesForIdentity](identity);
+  if (cached) {
+    return { states: cached.states as ContractStates<Contract.PrivateState<C>>, blockHash: cached.blockHash };
   }
+  const blockHash = await pinLatestBlockHash(providers.publicDataProvider);
   const states = await getStates(
     providers.publicDataProvider,
     providers.privateStateProvider,
     options.contractAddress,
-    options.privateStateId
+    options.privateStateId,
+    blockHash
   );
   if (transactionContext) {
-    transactionContext[Transaction.CacheStates](states, identity);
+    transactionContext[Transaction.CacheStates](states, identity, blockHash);
   }
-  return states;
+  return { states, blockHash };
 };
 
 const getContractPublicStates = async <C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: UnprovenCallTxProvidersBase,
   options: CallTxOptionsBase<C, PCK>,
   transactionContext?: TransactionContext<C, PCK>
-): Promise<PublicContractStates> => {
+): Promise<{ readonly states: PublicContractStates; readonly blockHash: string }> => {
   const identity = { contractAddress: options.contractAddress };
-  const txCtxStates = transactionContext?.[Transaction.GetCurrentStatesForIdentity](identity);
-  if (txCtxStates) {
-    return txCtxStates;
+  const cached = transactionContext?.[Transaction.GetCurrentStatesForIdentity](identity);
+  if (cached) {
+    return { states: cached.states, blockHash: cached.blockHash };
   }
+  const blockHash = await pinLatestBlockHash(providers.publicDataProvider);
   const states = await getPublicStates(
     providers.publicDataProvider,
-    options.contractAddress
+    options.contractAddress,
+    blockHash
   );
   if (transactionContext) {
-    transactionContext[Transaction.CacheStates]({ ...states, privateState: undefined }, identity);
+    transactionContext[Transaction.CacheStates]({ ...states, privateState: undefined }, identity, blockHash);
   }
-  return states;
+  return { states, blockHash };
 };
 
 /**
@@ -335,8 +392,14 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
     throw new IncompleteCallTxPrivateStateConfig();
   }
 
+  // The whole transaction is read from one coherent chain snapshot: the state read pins the block
+  // (the current latest block on a fresh read, or the scope's original block on a cache hit) and
+  // returns it, and that same block is used for `parentBlockHash` and cross-contract callee reads.
   if (hasPrivateStateId && hasPrivateStateProvider) {
-    const { zswapChainState, contractState, privateState, ledgerParameters } = await getContractStates(providers, options, transactionContext);
+    const {
+      states: { zswapChainState, contractState, privateState, ledgerParameters },
+      blockHash
+    } = await getContractStates(providers, options, transactionContext);
     return createUnprovenCallTxFromInitialStates(
       providers.zkConfigProvider,
       createCallOptions(
@@ -347,11 +410,15 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
         zswapChainState,
         privateState
       ),
-      providers.walletProvider.getEncryptionPublicKey()
+      providers.walletProvider.getEncryptionPublicKey(),
+      { publicDataProvider: providers.publicDataProvider, blockHash }
     );
   }
 
-  const { zswapChainState, contractState, ledgerParameters } = await getContractPublicStates(providers, options, transactionContext);
+  const {
+    states: { zswapChainState, contractState, ledgerParameters },
+    blockHash
+  } = await getContractPublicStates(providers, options, transactionContext);
   return createUnprovenCallTxFromInitialStates(
     providers.zkConfigProvider,
     createCallOptions(
@@ -361,6 +428,7 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
       contractState,
       zswapChainState
     ),
-    providers.walletProvider.getEncryptionPublicKey()
+    providers.walletProvider.getEncryptionPublicKey(),
+    { publicDataProvider: providers.publicDataProvider, blockHash }
   );
 }

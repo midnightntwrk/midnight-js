@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-alpha.1**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
 
 ***
 
@@ -33,9 +33,13 @@ Midnight transactions execute in two phases:
 
 ## Param
 
+**providers**
+
 The providers used to manage the deploy lifecycle.
 
 ## Param
+
+**options**
 
 Configuration.
 
@@ -46,14 +50,14 @@ When transaction fails in either guaranteed or fallible phase.
 
 ## Remarks
 
-The returned [FinalizedDeployTxData](../type-aliases/FinalizedDeployTxData.md) is privacy-sensitive and carries
+The returned [FinalizedDeployTxData](../interfaces/FinalizedDeployTxData.md) is privacy-sensitive and carries
 the unproven transaction, signing key, and initial private state. See that
 type for handling guidance before logging, serializing, or transmitting the
 result.
 
 ## Call Signature
 
-> **submitDeployTx**\<`C`\>(`providers`, `options`): `Promise`\<[`FinalizedDeployTxData`](../type-aliases/FinalizedDeployTxData.md)\<`C`\>\>
+> **submitDeployTx**\<`C`\>(`providers`, `options`): `Promise`\<[`FinalizedDeployTxData`](../interfaces/FinalizedDeployTxData.md)\<`C`\>\>
 
 ### Type Parameters
 
@@ -73,11 +77,11 @@ result.
 
 ### Returns
 
-`Promise`\<[`FinalizedDeployTxData`](../type-aliases/FinalizedDeployTxData.md)\<`C`\>\>
+`Promise`\<[`FinalizedDeployTxData`](../interfaces/FinalizedDeployTxData.md)\<`C`\>\>
 
 ## Call Signature
 
-> **submitDeployTx**\<`C`\>(`providers`, `options`): `Promise`\<[`FinalizedDeployTxData`](../type-aliases/FinalizedDeployTxData.md)\<`C`\>\>
+> **submitDeployTx**\<`C`\>(`providers`, `options`): `Promise`\<[`FinalizedDeployTxData`](../interfaces/FinalizedDeployTxData.md)\<`C`\>\>
 
 ### Type Parameters
 
@@ -97,4 +101,4 @@ result.
 
 ### Returns
 
-`Promise`\<[`FinalizedDeployTxData`](../type-aliases/FinalizedDeployTxData.md)\<`C`\>\>
+`Promise`\<[`FinalizedDeployTxData`](../interfaces/FinalizedDeployTxData.md)\<`C`\>\>

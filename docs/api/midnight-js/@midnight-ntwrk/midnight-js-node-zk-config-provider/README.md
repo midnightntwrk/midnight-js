@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-alpha.1**](../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.6**](../../README.md)
 
 ***
 
@@ -9,3 +9,12 @@
 ## Classes
 
 - [NodeZkConfigProvider](classes/NodeZkConfigProvider.md)
+
+## Interfaces
+
+- [NodeZkConfigProviderOptions](interfaces/NodeZkConfigProviderOptions.md)
+
+## Functions
+
+- [nodeZkConfigProvider](functions/nodeZkConfigProvider.md)
+- [nodeZkConfigRegistry](functions/nodeZkConfigRegistry.md)

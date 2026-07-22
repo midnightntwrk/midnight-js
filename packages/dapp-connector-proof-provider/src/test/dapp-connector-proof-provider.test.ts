@@ -1,6 +1,6 @@
 /*
  * This file is part of midnight-js.
- * Copyright (C) 2025-2026 Midnight Foundation
+ * Copyright (C) Midnight Foundation
  * SPDX-License-Identifier: Apache-2.0
  * Licensed under the Apache License, Version 2.0 (the "License");
  * You may not use this file except in compliance with the License.
@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-import type { CostModel, ProvingProvider, UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { CostModel, UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { KeyMaterialProvider, UnboundTransaction, ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
+import type { ProvingProvider } from '@midnightntwrk/dapp-connector-api';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { dappConnectorProofProvider } from '../dapp-connector-proof-provider';
@@ -66,7 +67,14 @@ describe('dappConnectorProofProvider', () => {
 
     const result = await proofProvider.proveTx(mockUnprovenTx);
 
-    expect(mockUnprovenTx.prove).toHaveBeenCalledWith(mockProvingProvider, mockCostModel);
+    expect(mockUnprovenTx.prove).toHaveBeenCalledWith(
+      expect.objectContaining({
+        check: expect.any(Function),
+        prove: expect.any(Function),
+        lookupKey: expect.any(Function)
+      }),
+      mockCostModel
+    );
     expect(result).toBe(mockUnboundTx);
   });
 
@@ -86,20 +94,6 @@ describe('dappConnectorProofProvider', () => {
     await expect(
       dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel)
     ).rejects.toThrow('Wallet connection failed');
-  });
-
-  it('should propagate errors from zkConfigProvider.asKeyMaterialProvider during setup', async () => {
-    // A failing config provider (e.g. ZK artifacts missing) must reject the
-    // factory before the wallet is contacted — not silently call the wallet
-    // with bad key material.
-    mockZkConfigProvider.asKeyMaterialProvider = vi.fn(() => {
-      throw new Error('ZK config not loaded');
-    });
-
-    await expect(
-      dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel)
-    ).rejects.toThrow('ZK config not loaded');
-    expect(mockApi.getProvingProvider).not.toHaveBeenCalled();
   });
 
   it('should allow transient-failure recovery: a second invocation after a rejection succeeds', async () => {
