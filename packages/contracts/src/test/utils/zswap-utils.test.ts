@@ -54,6 +54,8 @@ import {
   serializeQualifiedShieldedCoinInfo,
   SHIELDED_BURN_COIN_PUBLIC_KEY,
   ZSWAP_MERKLE_ROOT_RETENTION_SECONDS,
+  zswapCallsToNewCoins,
+  zswapCallsToSegmentedOffer,
   zswapStateToNewCoins,
   zswapStateToOffer,
   zswapStateToSegmentedOffer} from '../../utils';
@@ -1415,4 +1417,460 @@ describe('Zswap utilities', () => {
       expect(() => zswapStateToOffer(zswapState, resolver)).toThrow(/Unable to resolve encryption public key/);
     });
   });
+
+describe('zswapCallsToSegmentedOffer (cross-contract shielded coins, issue #658)', () => {
+  const makeTranscript = (
+    claimedShieldedReceives: CoinCommitment[],
+    claimedShieldedSpends: CoinCommitment[],
+    claimedNullifiers: string[] = []
+  ): Transcript<AlignedValue> => ({
+    gas: { readTime: 0n, computeTime: 0n, bytesWritten: 0n, bytesDeleted: 0n },
+    effects: {
+      claimedNullifiers,
+      claimedShieldedReceives,
+      claimedShieldedSpends,
+      claimedContractCalls: [],
+      shieldedMints: new Map(),
+      unshieldedInputs: new Map(),
+      unshieldedOutputs: new Map(),
+      unshieldedMints: new Map(),
+      claimedUnshieldedSpends: new Map()
+    },
+    program: ['new', { noop: { n: 5 } }]
+  });
+
+  const toContract = (address: ContractAddress): Recipient => ({
+    is_left: false,
+    left: sampleCoinPublicKey(),
+    right: address
+  });
+
+  const contractCommitment = (coin: ShieldedCoinInfo, address: ContractAddress): CoinCommitment =>
+    ZswapOutput.newContractOwned(coin, 0, address).commitment;
+
+  const guaranteedOnly = (claims: CoinCommitment[], nullifiers: string[] = []): PartitionedTranscript => [
+    makeTranscript(claims, claims, nullifiers),
+    undefined
+  ];
+
+  type SegmentedOffer = ReturnType<typeof zswapCallsToSegmentedOffer>['guaranteed'];
+  const outputsOf = (offer: SegmentedOffer) => [...(offer?.outputs ?? [])];
+  const inputsOf = (offer: SegmentedOffer) => [...(offer?.inputs ?? [])];
+  const transientsOf = (offer: SegmentedOffer) => [...(offer?.transients ?? [])];
+
+  it("includes a callee's output, which the root-only assembly used to drop", () => {
+    // The heart of #658. The root moves no coins at all; the callee receives one. Assembling from
+    // the root alone produced an empty offer while the callee's transcript claimed the receive,
+    // which the ledger rejects as commitments != claimed_shielded_receives.
+    const root = sampleContractAddress();
+    const callee = sampleContractAddress();
+    const coin = createShieldedCoinInfo(nativeToken().raw, 100n);
+    const commitment = contractCommitment(coin, callee);
+
+    const result = zswapCallsToSegmentedOffer(
+      [
+        {
+          contractAddress: callee,
+          zswapLocalState: { currentIndex: 1n, coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [{ coinInfo: coin, recipient: toContract(callee) }] },
+          zswapChainState: undefined,
+          partitionedTranscript: guaranteedOnly([commitment])
+        },
+        {
+          contractAddress: root,
+          zswapLocalState: { currentIndex: 0n, coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [] },
+          zswapChainState: undefined,
+          partitionedTranscript: guaranteedOnly([])
+        }
+      ],
+      randomEncryptionPublicKey()
+    );
+
+    expect(outputsOf(result.guaranteed)).toHaveLength(1);
+    expect(outputsOf(result.guaranteed)[0].commitment).toBe(commitment);
+    expect(result.fallible).toBeUndefined();
+  });
+
+  it('collapses the send/receive pair for one coin into a single output', () => {
+    // The sender's local state and the recipient's both carry the same coin: the sender created
+    // it, the recipient claimed it. Two offer outputs for one commitment is "faerie gold" and the
+    // ledger refuses to apply it, so the pair has to collapse.
+    const sender = sampleContractAddress();
+    const recipient = sampleContractAddress();
+    const coin = createShieldedCoinInfo(nativeToken().raw, 100n);
+    const commitment = contractCommitment(coin, recipient);
+    const sameOutput = { coinInfo: coin, recipient: toContract(recipient) };
+
+    const result = zswapCallsToSegmentedOffer(
+      [
+        {
+          contractAddress: recipient,
+          zswapLocalState: { currentIndex: 1n, coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [sameOutput] },
+          zswapChainState: undefined,
+          partitionedTranscript: guaranteedOnly([commitment])
+        },
+        {
+          contractAddress: sender,
+          zswapLocalState: { currentIndex: 1n, coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [sameOutput] },
+          zswapChainState: undefined,
+          partitionedTranscript: guaranteedOnly([commitment])
+        }
+      ],
+      randomEncryptionPublicKey()
+    );
+
+    expect(outputsOf(result.guaranteed)).toHaveLength(1);
+    expect(outputsOf(result.guaranteed)[0].commitment).toBe(commitment);
+  });
+
+  it('keeps two contracts\' coins distinct when their coin info is identical', () => {
+    // Buckets are keyed by commitment, which binds the recipient. Keying by serialized coin info
+    // -- {nonce, type, value}, recipient dropped -- silently merged these into one output.
+    const first = sampleContractAddress();
+    const second = sampleContractAddress();
+    const coin = createShieldedCoinInfo(nativeToken().raw, 100n);
+    const firstCommitment = contractCommitment(coin, first);
+    const secondCommitment = contractCommitment(coin, second);
+    expect(firstCommitment).not.toBe(secondCommitment);
+
+    const result = zswapCallsToSegmentedOffer(
+      [
+        {
+          contractAddress: first,
+          zswapLocalState: { currentIndex: 1n, coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [{ coinInfo: coin, recipient: toContract(first) }] },
+          zswapChainState: undefined,
+          partitionedTranscript: guaranteedOnly([firstCommitment])
+        },
+        {
+          contractAddress: second,
+          zswapLocalState: { currentIndex: 1n, coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [{ coinInfo: coin, recipient: toContract(second) }] },
+          zswapChainState: undefined,
+          partitionedTranscript: guaranteedOnly([secondCommitment])
+        }
+      ],
+      randomEncryptionPublicKey()
+    );
+
+    expect(outputsOf(result.guaranteed).map((o) => o.commitment).sort()).toEqual(
+      [firstCommitment, secondCommitment].sort()
+    );
+  });
+
+  it('pairs an input with an output created by another call into a transient', () => {
+    // The caller sends a coin to the callee; the callee receives it and immediately re-spends it.
+    // The coin never settles on chain, so it must become a transient rather than an input needing
+    // a Merkle path -- and the matching output must leave the offer.
+    const caller = sampleContractAddress();
+    const callee = sampleContractAddress();
+    const coin = createShieldedCoinInfo(nativeToken().raw, 100n);
+    const commitment = contractCommitment(coin, callee);
+    const qualified: QualifiedShieldedCoinInfo = { ...coin, mt_index: 0n };
+
+    const result = zswapCallsToSegmentedOffer(
+      [
+        {
+          contractAddress: caller,
+          zswapLocalState: { currentIndex: 1n, coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [{ coinInfo: coin, recipient: toContract(callee) }] },
+          zswapChainState: undefined,
+          partitionedTranscript: guaranteedOnly([commitment])
+        },
+        {
+          contractAddress: callee,
+          zswapLocalState: { currentIndex: 0n, coinPublicKey: sampleCoinPublicKey(), inputs: [qualified], outputs: [] },
+          zswapChainState: undefined,
+          partitionedTranscript: guaranteedOnly([commitment])
+        }
+      ],
+      randomEncryptionPublicKey()
+    );
+
+    expect(transientsOf(result.guaranteed)).toHaveLength(1);
+    expect(outputsOf(result.guaranteed)).toHaveLength(0);
+    expect(inputsOf(result.guaranteed)).toHaveLength(0);
+    // Which coin, and that it balances. `type` and `value` ride alongside the unproven item in the
+    // bucket rather than inside it, so a count alone would not notice either being wrong — and a
+    // mis-valued transient is what the ledger rejects.
+    expect(transientsOf(result.guaranteed)[0].commitment).toBe(commitment);
+    expect(result.guaranteed!.deltas.get(nativeToken().raw)).toBeUndefined();
+  });
+
+  it("binds a contract-owned input to the contract that spent it, not the root", () => {
+    // A contract-owned nullifier is H(coin || sender), so attributing a callee's spend to the root
+    // yields a nullifier the ledger cannot match against the callee's claim. Pinned by deriving
+    // the expected nullifier independently for each address.
+    const root = sampleContractAddress();
+    const callee = sampleContractAddress();
+    const coin = createShieldedCoinInfo(nativeToken().raw, 100n);
+
+    // The coin has to actually be in the tree before an input can be built against it: settle an
+    // output addressed to the callee, then take the index the ledger assigned it. Handing
+    // newContractOwned an mt_index with no leaf behind it fails with "invalid index into sparse
+    // merkle tree" long before any nullifier is derived.
+    const settled = ZswapOutput.newContractOwned(coin, 0, callee);
+    const settledOffer = Transaction.fromParts(
+      getNetworkId(),
+      ZswapOffer.fromOutput(settled, nativeToken().raw, coin.value)
+    ).eraseProofs().guaranteedOffer;
+    expect(settledOffer).toBeDefined();
+    const [applied, mtIndices] = new ZswapChainState().tryApply(settledOffer!);
+    const mtIndex = mtIndices.get(settled.commitment);
+    expect(mtIndex).toBeDefined();
+    const chainState = applied.postBlockUpdate(new Date(), ZSWAP_MERKLE_ROOT_RETENTION_SECONDS);
+    const qualified: QualifiedShieldedCoinInfo = { ...coin, mt_index: mtIndex! };
+
+    // newContractOwned does not check that the leaf it opens was addressed to `contract`; it just
+    // proves a path and hashes the coin with whoever is named as the spender. That is precisely
+    // why attributing a callee's spend to the root is silently wrong rather than an error: it
+    // produces a well-formed input carrying a nullifier the callee's claim can never match.
+    const calleeNullifier = ZswapInput.newContractOwned(qualified, 0, callee, chainState).nullifier;
+    const rootNullifier = ZswapInput.newContractOwned(qualified, 0, root, chainState).nullifier;
+    expect(calleeNullifier).not.toBe(rootNullifier);
+
+    const result = zswapCallsToSegmentedOffer(
+      [
+        {
+          contractAddress: callee,
+          zswapLocalState: { currentIndex: 0n, coinPublicKey: sampleCoinPublicKey(), inputs: [qualified], outputs: [] },
+          zswapChainState: chainState,
+          partitionedTranscript: guaranteedOnly([], [calleeNullifier])
+        }
+      ],
+      randomEncryptionPublicKey()
+    );
+
+    expect(inputsOf(result.guaranteed)).toHaveLength(1);
+    expect(inputsOf(result.guaranteed)[0].nullifier).toBe(calleeNullifier);
+  });
+
+  it('names the contract when a call spends a settled coin with no chain state available', () => {
+    // A callee that only receives needs no chain state; one that spends a settled coin of its own
+    // does, and the root's view has that callee's leaves collapsed out of it. Failing loudly here
+    // beats building a path against the wrong tree.
+    const callee = sampleContractAddress();
+    const coin = createShieldedCoinInfo(nativeToken().raw, 100n);
+
+    expect(() =>
+      zswapCallsToSegmentedOffer(
+        [
+          {
+            contractAddress: callee,
+            zswapLocalState: {
+              currentIndex: 0n,
+              coinPublicKey: sampleCoinPublicKey(),
+              inputs: [{ ...coin, mt_index: 0n }],
+              outputs: []
+            },
+            zswapChainState: undefined,
+            partitionedTranscript: guaranteedOnly([])
+          }
+        ],
+        randomEncryptionPublicKey()
+      )
+    ).toThrow(/Zswap chain state for contract/);
+  });
+
+  it('rejects a coin two calls route to different segments', () => {
+    // Sequencing forbids a guaranteed call from containing a fallible one, so the send and the
+    // receive of one coin always share a segment. Disagreement means the local states and the
+    // transcripts are inconsistent; picking one silently would build an offer the ledger rejects.
+    const sender = sampleContractAddress();
+    const recipient = sampleContractAddress();
+    const coin = createShieldedCoinInfo(nativeToken().raw, 100n);
+    const commitment = contractCommitment(coin, recipient);
+    const sameOutput = { coinInfo: coin, recipient: toContract(recipient) };
+
+    expect(() =>
+      zswapCallsToSegmentedOffer(
+        [
+          {
+            contractAddress: sender,
+            zswapLocalState: { currentIndex: 1n, coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [sameOutput] },
+            zswapChainState: undefined,
+            partitionedTranscript: [makeTranscript([commitment], [commitment]), makeTranscript([], [])]
+          },
+          {
+            contractAddress: recipient,
+            zswapLocalState: { currentIndex: 1n, coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [sameOutput] },
+            zswapChainState: undefined,
+            partitionedTranscript: [makeTranscript([], []), makeTranscript([commitment], [commitment])]
+          }
+        ],
+        randomEncryptionPublicKey()
+      )
+    ).toThrow(/segment 0 by one call and segment 1 by another/);
+  });
+
+  it('routes a repeated coin by every transcript of the contract that owns it', () => {
+    // A contract's Zswap local state is one accumulator, so a second call into it reports the coin
+    // the first call created — and only the first call's transcript claims it. Routing that second
+    // report against the second call's transcript alone found nothing and, both halves being
+    // present, called it a mismatch between local state and declared effects.
+    const callee = sampleContractAddress();
+    const coin = createShieldedCoinInfo(nativeToken().raw, 100n);
+    const commitment = contractCommitment(coin, callee);
+    const carried = { coinInfo: coin, recipient: toContract(callee) };
+
+    const result = zswapCallsToSegmentedOffer(
+      [
+        {
+          contractAddress: callee,
+          zswapLocalState: { currentIndex: 1n, coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [carried] },
+          zswapChainState: undefined,
+          partitionedTranscript: guaranteedOnly([commitment])
+        },
+        {
+          contractAddress: callee,
+          zswapLocalState: { currentIndex: 1n, coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [carried] },
+          zswapChainState: undefined,
+          partitionedTranscript: [makeTranscript([], []), makeTranscript([], [])]
+        }
+      ],
+      randomEncryptionPublicKey()
+    );
+
+    expect(outputsOf(result.guaranteed)).toHaveLength(1);
+    expect(outputsOf(result.guaranteed)[0].commitment).toBe(commitment);
+    expect(result.fallible).toBeUndefined();
+  });
+
+  it('keeps a repeated coin in the segment the call that moved it claimed', () => {
+    // The same accumulator, claimed in the fallible section. The second report matched nothing on
+    // its own, fell back to guaranteed, and the two reports of one commitment then disagreed —
+    // failing as a segment conflict rather than as the repeat it is.
+    const callee = sampleContractAddress();
+    const coin = createShieldedCoinInfo(nativeToken().raw, 100n);
+    const commitment = contractCommitment(coin, callee);
+    const carried = { coinInfo: coin, recipient: toContract(callee) };
+
+    const result = zswapCallsToSegmentedOffer(
+      [
+        {
+          contractAddress: callee,
+          zswapLocalState: { currentIndex: 1n, coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [carried] },
+          zswapChainState: undefined,
+          partitionedTranscript: [makeTranscript([], []), makeTranscript([commitment], [commitment])]
+        },
+        {
+          contractAddress: callee,
+          zswapLocalState: { currentIndex: 1n, coinPublicKey: sampleCoinPublicKey(), inputs: [], outputs: [carried] },
+          zswapChainState: undefined,
+          partitionedTranscript: guaranteedOnly([])
+        }
+      ],
+      randomEncryptionPublicKey()
+    );
+
+    expect(outputsOf(result.fallible)).toHaveLength(1);
+    expect(outputsOf(result.fallible)[0].commitment).toBe(commitment);
+    expect(result.guaranteed).toBeUndefined();
+  });
+
+  it('folds a repeated create-and-spend into one transient when the same contract is called twice', () => {
+    // The accumulator again, but for a coin the contract both created and spent. Pass 1 collapses
+    // the repeat by commitment and pass 2's settled branch overwrites by nullifier, so both are
+    // idempotent; the transient branch is not — it moves the output out of the bucket, so a second
+    // report of the same input finds the commitment still in `segmentOfOutput` and nothing left
+    // under it. Two calls into one contract is enough to reach it (coip-0003-impl-midnight-js
+    // item 3).
+    const callee = sampleContractAddress();
+    const coin = createShieldedCoinInfo(nativeToken().raw, 100n);
+    const commitment = contractCommitment(coin, callee);
+    const state = {
+      currentIndex: 1n,
+      coinPublicKey: sampleCoinPublicKey(),
+      inputs: [{ ...coin, mt_index: 0n }],
+      outputs: [{ coinInfo: coin, recipient: toContract(callee) }]
+    };
+
+    const result = zswapCallsToSegmentedOffer(
+      [
+        {
+          contractAddress: callee,
+          zswapLocalState: state,
+          zswapChainState: undefined,
+          partitionedTranscript: guaranteedOnly([commitment])
+        },
+        {
+          contractAddress: callee,
+          zswapLocalState: state,
+          zswapChainState: undefined,
+          partitionedTranscript: [makeTranscript([], []), makeTranscript([], [])]
+        }
+      ],
+      randomEncryptionPublicKey()
+    );
+
+    // One coin, so one transient and no loose output: the pair was folded, not counted twice.
+    expect(transientsOf(result.guaranteed)).toHaveLength(1);
+    expect(outputsOf(result.guaranteed)).toHaveLength(0);
+    expect(inputsOf(result.guaranteed)).toHaveLength(0);
+    expect(result.fallible).toBeUndefined();
+    // And it is that coin, folded once and balancing: two reports of one coin must not double its
+    // value into the delta.
+    expect(transientsOf(result.guaranteed)[0].commitment).toBe(commitment);
+    expect(result.guaranteed!.deltas.get(nativeToken().raw)).toBeUndefined();
+  });
+
+  it('collects coins a callee addressed to the wallet, not just the root call\'s', () => {
+    // The offers come from every call, so a coin a callee sends the invoking wallet is really
+    // created; reporting only the root's left the caller unaware of a coin it owns.
+    const cpk = sampleCoinPublicKey();
+    const toWallet = (coinInfo: ShieldedCoinInfo) => ({ coinInfo, recipient: { is_left: true, left: cpk, right: sampleContractAddress() } });
+    const fromCallee = createShieldedCoinInfo(nativeToken().raw, 7n);
+    const fromRoot = createShieldedCoinInfo(nativeToken().raw, 11n);
+    const state = (outputs: ReturnType<typeof toWallet>[]) => ({
+      currentIndex: 0n,
+      coinPublicKey: cpk,
+      inputs: [],
+      outputs
+    });
+
+    expect(zswapCallsToNewCoins(cpk, [state([toWallet(fromCallee)]), state([toWallet(fromRoot)])])).toEqual([
+      fromCallee,
+      fromRoot
+    ]);
+  });
+
+  it('reports a coin once when the contract that created it was called twice', () => {
+    // The per-contract accumulator again: the second call reports the first call's output too.
+    const cpk = sampleCoinPublicKey();
+    const coinInfo = createShieldedCoinInfo(nativeToken().raw, 7n);
+    const carried = { coinInfo, recipient: { is_left: true, left: cpk, right: sampleContractAddress() } };
+    const state = { currentIndex: 0n, coinPublicKey: cpk, inputs: [], outputs: [carried] };
+
+    expect(zswapCallsToNewCoins(cpk, [state, state])).toEqual([coinInfo]);
+  });
+
+  it('pairs a coin into a transient whatever index it reports, since that tree has one leaf', () => {
+    // `mt_index` is a position among the transaction's commitments — the coordinate the settled
+    // path proves against. A transient's tree carries exactly one leaf, this coin's own output, so
+    // the input half is proved at 0 no matter what the runtime reported. Passing the reported index
+    // through instead builds a path the sparse tree allows and the proof cannot satisfy.
+    const callee = sampleContractAddress();
+    const coin = createShieldedCoinInfo(nativeToken().raw, 100n);
+    const commitment = contractCommitment(coin, callee);
+
+    const result = zswapCallsToSegmentedOffer(
+      [
+        {
+          contractAddress: callee,
+          zswapLocalState: {
+            currentIndex: 1n,
+            coinPublicKey: sampleCoinPublicKey(),
+            inputs: [{ ...coin, mt_index: 7n }],
+            outputs: [{ coinInfo: coin, recipient: toContract(callee) }]
+          },
+          zswapChainState: undefined,
+          partitionedTranscript: guaranteedOnly([commitment])
+        }
+      ],
+      randomEncryptionPublicKey()
+    );
+
+    expect(transientsOf(result.guaranteed)).toHaveLength(1);
+    expect(transientsOf(result.guaranteed)[0].commitment).toBe(commitment);
+    expect(outputsOf(result.guaranteed)).toHaveLength(0);
+    expect(result.guaranteed!.deltas.get(nativeToken().raw)).toBeUndefined();
+  });
+});
+
 });

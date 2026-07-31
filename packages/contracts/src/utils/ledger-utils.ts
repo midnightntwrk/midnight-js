@@ -31,6 +31,7 @@ import {
   Intent,
   QueryContext as LedgerQueryContext,
   type Transcript,
+  type UnprovenOffer,
   type UnprovenTransaction,
   UnshieldedOffer,
   type UtxoOutput,
@@ -50,7 +51,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-utils';
 import { Option } from 'effect';
 
-import { type EncryptionPublicKeyResolver, zswapStateToOffer, zswapStateToSegmentedOffer } from './zswap-utils';
+import { type EncryptionPublicKeyResolver, zswapCallsToSegmentedOffer, zswapStateToOffer } from './zswap-utils';
 
 const PKG = '@midnight-ntwrk/midnight-js-contracts';
 
@@ -106,6 +107,67 @@ export const extractUserAddressedOutputs = (
 };
 
 /**
+ * Offers and transcripts come from the same execution but different code, so they can disagree — and
+ * must not. For each contract-addressed coin, the number of times the offers carry it has to equal
+ * the number of times that contract's transcripts claim to receive it. Claims sum across
+ * transcripts, so a coin two calls both claim counts twice against an offer that carries it once.
+ *
+ * The chain enforces the same equality but reports only an error code, after proving, naming neither
+ * side (`midnight-ledger/ledger/src/verify.rs:1499-1560`). Both sides are in hand here, so compare
+ * them first and say what differs.
+ */
+const assertReceivesMatchClaims = (
+  calls: readonly ContractExecutable.ContractExecutable.ContractCall[],
+  segmentedOffers: { guaranteed: UnprovenOffer | undefined; fallible: UnprovenOffer | undefined }
+): void => {
+  const tally = (entries: readonly string[]): Map<string, number> => {
+    const counts = new Map<string, number>();
+    for (const entry of entries) counts.set(entry, (counts.get(entry) ?? 0) + 1);
+    return counts;
+  };
+  const key = (segment: number, commitment: string, address: string): string =>
+    `segment ${segment} / ${commitment} / ${address}`;
+
+  const offered: string[] = [];
+  for (const [segment, offer] of [
+    [0, segmentedOffers.guaranteed],
+    [1, segmentedOffers.fallible]
+  ] as const) {
+    if (offer === undefined) continue;
+    for (const item of [...offer.outputs, ...offer.transients]) {
+      if (item.contractAddress === undefined) continue;
+      offered.push(key(segment, String(item.commitment), String(item.contractAddress)));
+    }
+  }
+
+  const claimed: string[] = [];
+  for (const call of calls) {
+    call.public.partitionedTranscript.forEach((half, segment) => {
+      if (half === undefined) return;
+      for (const commitment of half.effects.claimedShieldedReceives) {
+        claimed.push(key(segment, String(commitment), String(call.contractAddress)));
+      }
+    });
+  }
+
+  const offeredCounts = tally(offered);
+  const claimedCounts = tally(claimed);
+  const differences = Array.from(new Set([...offeredCounts.keys(), ...claimedCounts.keys()]))
+    .map((entry) => ({ entry, offered: offeredCounts.get(entry) ?? 0, claimed: claimedCounts.get(entry) ?? 0 }))
+    .filter(({ offered: o, claimed: c }) => o !== c);
+  if (differences.length === 0) return;
+
+  throw new Error(
+    `A shielded coin addressed to a contract must be claimed as received by that contract as many ` +
+      `times as the offers carry it, and these do not match. A transaction like this is rejected ` +
+      `after proving. Offer count vs claim count:\n` +
+      differences
+        .map(({ entry, offered: o, claimed: c }) => `  ${entry}: offered ${o}, claimed ${c}`)
+        .join('\n')
+  );
+};
+
+/**
  * Assembles an unproven call transaction from the proof data of every contract call made while
  * executing a circuit.
  *
@@ -113,10 +175,9 @@ export const extractUserAddressedOutputs = (
  * first, the root call last. For a circuit with no cross-contract calls this is a single entry.
  * @param contractStateFor Resolves the on-chain contract state for a given address — the root
  * contract's input state, and each cross-contract callee's resolved state.
- * @param zswapChainState The root contract's Zswap chain state.
- * @param nextZswapLocalState The Zswap local state produced by the (root) circuit execution. Only
- * the root contract performs shielded transfers, so the transaction's offers derive solely from
- * the root call.
+ * @param chainStateFor Resolves the Zswap chain state for a given address — the root contract's
+ * from the input state, and each cross-contract callee's from the state the provider resolved
+ * during execution. Only consulted for a call that spends a coin already settled on chain.
  * @param encryptionPublicKey Resolver for output encryption keys.
  *
  * @remarks Precondition: every operation resolved via `contractStateFor` for an invoked circuit must
@@ -127,8 +188,9 @@ export const extractUserAddressedOutputs = (
 export const createUnprovenLedgerCallTx = (
   calls: readonly ContractExecutable.ContractExecutable.ContractCall[],
   contractStateFor: (address: ContractExecutable.ContractExecutable.ContractCall['contractAddress']) => ContractState | undefined,
-  zswapChainState: ZswapChainState,
-  nextZswapLocalState: ZswapLocalState,
+  chainStateFor: (
+    address: ContractExecutable.ContractExecutable.ContractCall['contractAddress']
+  ) => ZswapChainState | undefined,
   encryptionPublicKey: EncPublicKey | EncryptionPublicKeyResolver
 ): UnprovenTransaction => {
   // Calls are in execution-trace order: cross-contract callees first, the root call last.
@@ -195,12 +257,22 @@ export const createUnprovenLedgerCallTx = (
     intent.fallibleUnshieldedOffer = UnshieldedOffer.new([], fallibleOutputs, []);
   }
 
-  const segmentedOffers = zswapStateToSegmentedOffer(
-    nextZswapLocalState,
-    encryptionPublicKey,
-    { contractAddress: rootCall.contractAddress, zswapChainState },
-    rootCall.public.partitionedTranscript
+  // Shielded coins, like the user-addressed unshielded outputs above, can be produced by any call
+  // in the tree. A callee that is sent a coin *must* claim the receive in the same transaction or
+  // the ledger rejects the whole thing, so its coins have to reach the offers — and each
+  // contract-owned input has to be bound to the contract that spent it, since a contract-owned
+  // nullifier hashes that contract's address.
+  const segmentedOffers = zswapCallsToSegmentedOffer(
+    calls.map((call) => ({
+      contractAddress: call.contractAddress,
+      zswapLocalState: call.private.zswapLocalState,
+      zswapChainState: chainStateFor(call.contractAddress),
+      partitionedTranscript: call.public.partitionedTranscript
+    })),
+    encryptionPublicKey
   );
+
+  assertReceivesMatchClaims(calls, segmentedOffers);
 
   return Transaction.fromPartsRandomized(
     getNetworkId(),

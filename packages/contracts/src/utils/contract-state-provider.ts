@@ -18,7 +18,24 @@ import type {
   ContractState,
   ContractStateProvider
 } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
+
+/**
+ * The chain-side state of one cross-contract callee, as of the resolver's block.
+ */
+export interface ResolvedCalleeState {
+  /**
+   * The callee's contract state — its ledger data and its `ContractOperation`s.
+   */
+  readonly contractState: ContractState;
+  /**
+   * The callee's Zswap chain state: its view of the global shielded commitment tree, pruned to the
+   * coins it owns. Needed to build a Merkle path when the callee spends a coin of its own, because
+   * the root contract's view has every other contract's leaves collapsed out of it.
+   */
+  readonly zswapChainState: ZswapChainState;
+}
 
 /**
  * A {@link ContractStateProvider} backed by a {@link PublicDataProvider}, together with the
@@ -30,13 +47,14 @@ export interface CalleeStateResolver {
    */
   readonly stateProvider: ContractStateProvider;
   /**
-   * The contract states resolved (and memoized) while executing the circuit, keyed by the
-   * string form of the contract address. Populated as a side effect of the runtime invoking
+   * The states resolved (and memoized) while executing the circuit, keyed by the string form of
+   * the contract address. Populated as a side effect of the runtime invoking
    * {@link ContractStateProvider.getContractState}. Used after execution to look up each callee's
-   * `ContractOperation` when assembling the transaction, avoiding a second round-trip to the
-   * indexer. (Keyed by `string` to be agnostic to the various branded `ContractAddress` types.)
+   * `ContractOperation` and — when that callee moved shielded coins — its Zswap chain state, both
+   * without a second round-trip to the indexer. (Keyed by `string` to be agnostic to the various
+   * branded `ContractAddress` types.)
    */
-  readonly resolvedStates: ReadonlyMap<string, ContractState>;
+  readonly resolvedStates: ReadonlyMap<string, ResolvedCalleeState>;
   /**
    * The block hash the callee states are resolved as of — the same block the root contract's state
    * was read at. Exposed so the circuit's `parentBlockHash` can be set from a single source (the
@@ -56,6 +74,12 @@ export interface CalleeStateResolver {
  * advance, and the circuit is not executed twice. Each fetched state is memoized in
  * {@link CalleeStateResolver.resolvedStates} so it can be reused when building the transaction.
  *
+ * Each callee is fetched with `queryZSwapAndContractState` rather than `queryContractState`, so a
+ * single round-trip yields both halves at one block: the contract state the runtime needs to
+ * execute the call, and the Zswap chain state transaction assembly needs if that callee spends a
+ * shielded coin of its own. The zswap half is unused for callees that move no coins; fetching it
+ * unconditionally keeps the read atomic and avoids a second, later, differently-anchored query.
+ *
  * A `null` result from the data provider (no state at the address) resolves to `undefined`, which
  * the runtime surfaces as an unresolved cross-contract call.
  *
@@ -68,20 +92,24 @@ export const makeCalleeStateResolver = (
   publicDataProvider: PublicDataProvider,
   blockHash: string
 ): CalleeStateResolver => {
-  const resolvedStates = new Map<string, ContractState>();
+  const resolvedStates = new Map<string, ResolvedCalleeState>();
   const stateProvider: ContractStateProvider = {
     getContractState: async (_blockHash: string, address: ContractAddress): Promise<ContractState | undefined> => {
       const key = String(address);
       const cached = resolvedStates.get(key);
       if (cached !== undefined) {
-        return cached;
+        return cached.contractState;
       }
-      const state = await publicDataProvider.queryContractState(address, { type: 'blockHash', blockHash });
-      if (state === null) {
+      const resolved = await publicDataProvider.queryZSwapAndContractState(address, {
+        type: 'blockHash',
+        blockHash
+      });
+      if (resolved === null) {
         return undefined;
       }
-      resolvedStates.set(key, state);
-      return state;
+      const [zswapChainState, contractState] = resolved;
+      resolvedStates.set(key, { contractState, zswapChainState });
+      return contractState;
     }
   };
   return { stateProvider, resolvedStates, blockHash };

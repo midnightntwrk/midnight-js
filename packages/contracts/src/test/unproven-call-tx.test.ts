@@ -49,6 +49,9 @@ vi.mock('../utils', () => ({
     createUnprovenLedgerCallTx: vi.fn().mockReturnValue({ test: 'unproven-tx' }),
     createEncryptionPublicKeyResolver: vi.fn().mockReturnValue(() => 'encrypted-key'),
     encryptionPublicKeyResolverForZswapState: vi.fn().mockReturnValue(() => 'encrypted-key'),
+    // Both: the call path uses zswapCallsToNewCoins, and the deploy this file sets up with reaches
+    // zswapStateToNewCoins through unproven-deploy-tx.
+    zswapCallsToNewCoins: vi.fn().mockReturnValue([{ test: 'coin' }]),
     zswapStateToNewCoins: vi.fn().mockReturnValue([{ test: 'coin' }]),
     makeCalleeStateResolver: vi.fn()
 }));

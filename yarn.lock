@@ -1856,6 +1856,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@midnight-ntwrk/midnight-js-bundled-contract-module-provider@workspace:packages/bundled-contract-module-provider":
+  version: 0.0.0-use.local
+  resolution: "@midnight-ntwrk/midnight-js-bundled-contract-module-provider@workspace:packages/bundled-contract-module-provider"
+  dependencies:
+    "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
+    "@midnight-ntwrk/midnight-js-utils": "workspace:*"
+    vitest: "npm:^4.1.7"
+  languageName: unknown
+  linkType: soft
+
 "@midnight-ntwrk/midnight-js-compact@workspace:*, @midnight-ntwrk/midnight-js-compact@workspace:packages/compact":
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-compact@workspace:packages/compact"

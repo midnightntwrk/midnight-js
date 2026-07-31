@@ -1,0 +1,41 @@
+{
+  "name": "@midnight-ntwrk/midnight-js-bundled-contract-module-provider",
+  "version": "5.0.0-beta.6",
+  "description": "MidnightJS module resolving cross-contract callees to the compiled contract modules bundled with an application",
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": {
+        "import": "./dist/index.d.mts",
+        "require": "./dist/index.d.cts"
+      },
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "author": "IOG",
+  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "packageManager": "yarn@4.14.1",
+  "license": "Apache-2.0",
+  "scripts": {
+    "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
+    "build": "rollup -c rollup.config.mjs",
+    "test": "vitest run",
+    "deploy": "yarn npm publish --tolerate-republish"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
+    "@midnight-ntwrk/midnight-js-utils": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.7"
+  },
+  "files": [
+    "dist/"
+  ],
+  "engines": {
+    "node": ">=22"
+  }
+}

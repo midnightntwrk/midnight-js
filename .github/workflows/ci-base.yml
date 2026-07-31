@@ -101,6 +101,7 @@ jobs:
           hide-comment: false
           unique-id-for-comment: 'midnightjs-coverage'
           multiple-files: |
+            bundled-contract-module-provider, ./packages/bundled-contract-module-provider/coverage/coverage-summary.json
             contracts, ./packages/contracts/coverage/coverage-summary.json
             dapp-connector-proof-provider, ./packages/dapp-connector-proof-provider/coverage/coverage-summary.json
             fetch-zk-config-provider, ./packages/fetch-zk-config-provider/coverage/coverage-summary.json

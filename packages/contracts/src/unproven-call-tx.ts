@@ -16,7 +16,7 @@
 import { getNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { ContractExecutable } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import { type Contract, ProvableCircuitId } from '@midnight-ntwrk/midnight-js-protocol/compact-js/effect/Contract';
-import { type CoinPublicKey, type ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { type CoinPublicKey, type ContractModuleProvider, type ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { type EncPublicKey, type LedgerParameters, type ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/platform-js/effect/ContractAddress';
 import { exitResultOrError, makeContractExecutableRuntime, type PrivateStateId, type PublicDataProvider, type ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
@@ -34,7 +34,7 @@ import { type ContractStates, getPublicStates, getStates, type PublicContractSta
 import * as Transaction from './internal/transaction';
 import { type TransactionContext } from './transaction';
 import type { UnsubmittedCallTxData } from './tx-model';
-import { createUnprovenLedgerCallTx, encryptionPublicKeyResolverForZswapState, makeCalleeStateResolver, zswapStateToNewCoins } from './utils';
+import { createUnprovenLedgerCallTx, encryptionPublicKeyResolverForZswapState, makeCalleeStateResolver, zswapCallsToNewCoins } from './utils';
 
 /**
  * Enables cross-contract calls during circuit execution.
@@ -49,6 +49,11 @@ export interface CrossContractConfig {
    * given to the call were read.
    */
   readonly blockHash: string;
+  /**
+   * Resolves a callee's address to the module implementing it. Absent when the application
+   * registered none, which a circuit that actually makes a call then fails on.
+   */
+  readonly moduleProvider?: ContractModuleProvider;
 }
 
 export function createUnprovenCallTxFromInitialStates<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
@@ -115,15 +120,24 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
     address: ContractAddress(contractAddress),
     contractState: initialContractState,
     privateState: initialPrivateState,
-    ledgerParameters
+    ledgerParameters,
+    // The block reaches the VM's block context whether or not anything is called, so it is set here
+    // rather than only alongside the providers.
+    parentBlockHash: crossContract?.blockHash
   };
-  // `calleeResolver` is defined exactly when cross-contract calls are enabled, and it carries the
-  // block its callee states are resolved as of, so a single check drives both the resolver wiring
-  // and `parentBlockHash`.
+  // Both providers or neither: resolving a callee needs its state and the module implementing it,
+  // and an application that registered no modules cannot make the call at all. Leaving both out is
+  // what makes that failure name the missing provider rather than a callee that would not resolve.
+  const moduleProvider = crossContract?.moduleProvider;
   const circuitContext =
-    calleeResolver === undefined
+    calleeResolver === undefined || moduleProvider === undefined
       ? baseCircuitContext
-      : { ...baseCircuitContext, stateProvider: calleeResolver.stateProvider, parentBlockHash: calleeResolver.blockHash };
+      : {
+          ...baseCircuitContext,
+          stateProvider: calleeResolver.stateProvider,
+          moduleProvider,
+          parentBlockHash: calleeResolver.blockHash
+        };
 
   const exitResult = await contractRuntime.runPromiseExit(contractExec.circuit(
     ProvableCircuitId<C>(options.circuitId as any), // eslint-disable-line @typescript-eslint/no-explicit-any, no-restricted-syntax
@@ -145,7 +159,17 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
     ): ContractState | undefined =>
       address === rootCall.contractAddress
         ? initialContractState
-        : calleeResolver?.resolvedStates.get(String(address));
+        : calleeResolver?.resolvedStates.get(String(address))?.contractState;
+
+    // Same split for the Zswap chain state, which a call needs only when it spends a coin already
+    // settled on chain. Each contract's view has every other contract's commitments collapsed out,
+    // so a callee's spend cannot be built against the root's.
+    const chainStateFor = (
+      address: ContractExecutable.ContractExecutable.ContractCall['contractAddress']
+    ): ZswapChainState | undefined =>
+      address === rootCall.contractAddress
+        ? initialZswapChainState
+        : calleeResolver?.resolvedStates.get(String(address))?.zswapChainState;
 
     return {
       public: {
@@ -164,8 +188,7 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
         unprovenTx: createUnprovenLedgerCallTx(
           calls,
           contractStateFor,
-          initialZswapChainState,
-          zswapLocalState,
+          chainStateFor,
           encryptionPublicKeyResolverForZswapState(
             zswapLocalState,
             options.coinPublicKey,
@@ -173,9 +196,12 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
             options.additionalCoinEncPublicKeyMappings
           )
         ),
-        newCoins: zswapStateToNewCoins(
+        // Every call, not just the root: the offers are assembled from the whole tree, so a coin a
+        // callee addresses to this wallet is genuinely created and belongs in what the caller is
+        // handed. `calls` carries the root as its last entry.
+        newCoins: zswapCallsToNewCoins(
           parseCoinPublicKeyToHex(coinPublicKey, getNetworkId()),
-          zswapLocalState
+          calls.map((call) => call.private.zswapLocalState)
         )
       },
       calls
@@ -321,7 +347,10 @@ const getContractPublicStates = async <C extends Contract.Any, PCK extends Contr
  * omit a private state provider if they're creating a call transaction for a
  * contract with no private state.
  */
-export type UnprovenCallTxProvidersBase = Pick<ContractProviders, 'zkConfigProvider' | 'publicDataProvider' | 'walletProvider'>;
+export type UnprovenCallTxProvidersBase = Pick<
+  ContractProviders,
+  'zkConfigProvider' | 'publicDataProvider' | 'walletProvider' | 'contractModuleProvider'
+>;
 
 /**
  * Same providers as {@link UnprovenCallTxProvidersBase} with an additional private
@@ -411,7 +440,7 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
         privateState
       ),
       providers.walletProvider.getEncryptionPublicKey(),
-      { publicDataProvider: providers.publicDataProvider, blockHash }
+      { publicDataProvider: providers.publicDataProvider, blockHash, moduleProvider: providers.contractModuleProvider }
     );
   }
 
@@ -429,6 +458,6 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
       zswapChainState
     ),
     providers.walletProvider.getEncryptionPublicKey(),
-    { publicDataProvider: providers.publicDataProvider, blockHash }
+    { publicDataProvider: providers.publicDataProvider, blockHash, moduleProvider: providers.contractModuleProvider }
   );
 }
