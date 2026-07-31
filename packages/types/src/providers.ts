@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+import type { ContractModuleProvider } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+
 import type { LoggerProvider } from './logger-provider';
 import type { MidnightProvider } from './midnight-provider';
 import type { AnyProvableCircuitId } from './midnight-types';
@@ -59,6 +61,12 @@ export interface MidnightProviders<
    * Submits proven, balanced transactions to the network.
    */
   readonly midnightProvider: MidnightProvider;
+  /**
+   * Resolves a cross-contract callee's address to the compiled module implementing it. Only the
+   * application knows which modules it bundled, so there is no default; a circuit that makes a
+   * cross-contract call without one fails naming the call it could not bind.
+   */
+  readonly contractModuleProvider?: ContractModuleProvider;
   /**
    * An optional logger that provides utilities for logging at given levels.
    */
