@@ -1,7 +1,11 @@
 name: Check PR
 
+# Uses pull_request_target so the GITHUB_TOKEN keeps write access on fork PRs
+# (a plain pull_request trigger caps fork tokens to read-only, which breaks the
+# commit-status write below). Safe here because no job checks out PR head code;
+# they only read PR metadata (title/body). Do NOT add a fork-code checkout step.
 on:
-  pull_request:
+  pull_request_target:
     types:
       - opened
       - edited
