@@ -218,6 +218,7 @@ yarn lint:fix
 
 - **[DEVELOPMENT.md](./DEVELOPMENT.md)** - Detailed guide for working on packages, debugging, and Turborepo commands
 - **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** - Common issues and solutions
+- **[Vite + WASM Resolution](./docs/guides/vite-wasm-resolution.md)** — Fixing WASM dual-instantiation in Vite monorepo setups
 
 ## Contributing
 
