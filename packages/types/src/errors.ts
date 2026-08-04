@@ -113,11 +113,16 @@ export class ImportConflictError extends PrivateStateImportError {
 }
 
 /**
- * An error thrown when an indexer polling query times out.
+ * An error thrown when a data provider polling query times out.
  */
-export class IndexerTimeoutError extends Error {
-  constructor(message: string, options?: ErrorOptions) {
-    super(message, options);
-    this.name = 'IndexerTimeoutError';
+export class WatchTimeoutError extends Error {
+  constructor(
+    public readonly operation: string,
+    public readonly subject: string,
+    public readonly maxWaitMs: number,
+    options?: ErrorOptions
+  ) {
+    super(`${operation}: timed out after ${maxWaitMs}ms waiting for ${subject}`, options);
+    this.name = 'WatchTimeoutError';
   }
 }

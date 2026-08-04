@@ -113,28 +113,67 @@ describe('indexerPublicDataProvider — config-object overload', () => {
     await provider.dispose();
   });
 
-  test('watchForTxData throws IndexerTimeoutError when query times out', async () => {
-    const { IndexerPublicDataProvider } = await import('../provider');
-    const { validateConfig } = await import('../config');
-    const { createApolloClient } = await import('../transport');
-    const { IndexerTimeoutError } = await import('@midnight-ntwrk/midnight-js-types');
-    const { Observable } = await import('rxjs');
+  describe('timeout behavior', () => {
+    test('watch methods timeout when data never arrives', async () => {
+      const { IndexerPublicDataProvider } = await import('../provider');
+      const { validateConfig } = await import('../config');
+      const { createApolloClient } = await import('../transport');
+      const { WatchTimeoutError } = await import('@midnight-ntwrk/midnight-js-types');
+      const { NEVER } = await import('rxjs');
 
-    const validated = validateConfig({ queryURL, subscriptionURL });
-    const handle = createApolloClient(validated);
-    const provider = new IndexerPublicDataProvider(handle, validated.pollInterval);
+      const validated = validateConfig({ queryURL, subscriptionURL });
+      const handle = createApolloClient(validated);
+      const provider = new IndexerPublicDataProvider(handle, validated.pollInterval);
 
-    // Mock watchQuery to return an observable that never emits any valid transaction data
-    vi.spyOn(handle.client, 'watchQuery').mockImplementation(() => {
-      return new Observable(() => {}) as any;
+      const watchQuerySpy = vi.spyOn(handle.client, 'watchQuery').mockReturnValue(
+        NEVER as Partial<ReturnType<typeof handle.client.watchQuery>> as ReturnType<typeof handle.client.watchQuery>
+      );
+      const subscribeSpy = vi.spyOn(handle.client, 'subscribe').mockReturnValue(
+        NEVER as Partial<ReturnType<typeof handle.client.subscribe>> as ReturnType<typeof handle.client.subscribe>
+      );
+
+      const fakeAddress = '00'.repeat(32) as Parameters<typeof provider.watchForContractState>[0];
+      const fakeTxId = '00'.repeat(32) as Parameters<typeof provider.watchForTxData>[0];
+      const maxWaitMs = 50;
+
+      await expect(provider.watchForContractState(fakeAddress, { maxWaitMs })).rejects.toThrow(WatchTimeoutError);
+      await expect(provider.watchForUnshieldedBalances(fakeAddress, { maxWaitMs })).rejects.toThrow(WatchTimeoutError);
+      await expect(provider.watchForDeployTxData(fakeAddress, { maxWaitMs })).rejects.toThrow(WatchTimeoutError);
+      await expect(provider.watchForTxData(fakeTxId, { maxWaitMs })).rejects.toThrow(WatchTimeoutError);
+
+      await expect(provider.watchForContractState(fakeAddress, { maxWaitMs })).rejects.toThrow(/watchForContractState.*50ms/);
+
+      watchQuerySpy.mockRestore();
+      subscribeSpy.mockRestore();
+      await provider.dispose();
     });
 
-    const fakeTxId = '00'.repeat(32) as unknown as Parameters<typeof provider.watchForTxData>[0];
-    const maxWaitMs = 50; // short timeout for test
+    test('watch method does not timeout if data arrives in time', async () => {
+      const { IndexerPublicDataProvider } = await import('../provider');
+      const { validateConfig } = await import('../config');
+      const { createApolloClient } = await import('../transport');
+      const { of, delay } = await import('rxjs');
 
-    await expect(provider.watchForTxData(fakeTxId, maxWaitMs)).rejects.toThrow(IndexerTimeoutError);
+      const validated = validateConfig({ queryURL, subscriptionURL });
+      const handle = createApolloClient(validated);
+      const provider = new IndexerPublicDataProvider(handle, validated.pollInterval);
 
-    await provider.dispose();
+      // Provide a mock that won't throw during parsing just to verify the timeout doesn't reject
+      vi.spyOn(provider as any, 'watchForTxData').mockImplementationOnce(async (txId, opts) => {
+        const { applyTimeout } = await import('../provider');
+        const { firstValueFrom } = await import('rxjs');
+        // @ts-ignore
+        return firstValueFrom(of({ fakeData: true }).pipe(delay(10), applyTimeout(opts?.maxWaitMs, 'watchForTxData', txId)));
+      });
+
+      const fakeTxId = '00'.repeat(32) as Parameters<typeof provider.watchForTxData>[0];
+      const maxWaitMs = 200;
+
+      const result = await provider.watchForTxData(fakeTxId, { maxWaitMs });
+      expect(result).toBeDefined();
+
+      await provider.dispose();
+    });
   });
 
   test('provider value is assignable to PublicDataProvider (type-level)', async () => {

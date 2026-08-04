@@ -34,10 +34,9 @@ import type {
   PublicDataProvider,
   UnshieldedBalances
 } from '@midnight-ntwrk/midnight-js-types';
+import { WatchTimeoutError } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
-import { IndexerTimeoutError } from '@midnight-ntwrk/midnight-js-types';
 import * as Rx from 'rxjs';
-import { timeout } from 'rxjs';
 
 import {
   parseHexContractState,
@@ -104,6 +103,25 @@ import type { ApolloHandle } from './transport';
  */
 const toBlockOffset = (config?: BlockHeightConfig | BlockHashConfig): InputMaybe<BlockOffset> =>
   config ? (config.type === 'blockHeight' ? { height: config.blockHeight } : { hash: config.blockHash }) : null;
+
+function validateMaxWaitMs(maxWaitMs?: number): void {
+  if (
+    maxWaitMs !== undefined &&
+    (typeof maxWaitMs !== 'number' || !Number.isFinite(maxWaitMs) || maxWaitMs <= 0 || maxWaitMs > 2147483647)
+  ) {
+    throw new RangeError(`maxWaitMs must be a positive integer <= 2147483647, got ${maxWaitMs}`);
+  }
+}
+
+function applyTimeout<T>(maxWaitMs: number | undefined, operation: string, subject: string): Rx.OperatorFunction<T, T> {
+  if (maxWaitMs === undefined) {
+    return Rx.identity;
+  }
+  return Rx.timeout({
+    first: maxWaitMs,
+    with: () => Rx.throwError(() => new WatchTimeoutError(operation, subject, maxWaitMs))
+  });
+}
 
 export class IndexerPublicDataProvider implements PublicDataProvider {
   private readonly handle: ApolloHandle;
@@ -272,34 +290,31 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
       .then((maybeContractState) => (maybeContractState ? parseHexContractState(maybeContractState) : null));
   }
 
-  watchForContractState(contractAddress: ContractAddress, maxWaitMs = 300_000): Promise<ContractState> {
+  watchForContractState(contractAddress: ContractAddress, opts?: { maxWaitMs?: number }): Promise<ContractState> {
     assertIsContractAddress(contractAddress);
+    validateMaxWaitMs(opts?.maxWaitMs);
     return Rx.firstValueFrom(
       waitForContractToAppear(this.client, this.pollInterval)(contractAddress)(null).pipe(
         Rx.map(parseHexContractState),
-        timeout({
-          each: maxWaitMs,
-          with: () => Rx.throwError(() => new IndexerTimeoutError(`watchForContractState: Timed out after ${maxWaitMs}ms waiting for contract state of ${contractAddress}`))
-        })
+        applyTimeout(opts?.maxWaitMs, 'watchForContractState', contractAddress)
       )
     );
   }
 
-  watchForUnshieldedBalances(contractAddress: ContractAddress, maxWaitMs = 300_000): Promise<UnshieldedBalances> {
+  watchForUnshieldedBalances(contractAddress: ContractAddress, opts?: { maxWaitMs?: number }): Promise<UnshieldedBalances> {
     assertIsContractAddress(contractAddress);
+    validateMaxWaitMs(opts?.maxWaitMs);
     return Rx.firstValueFrom(
       waitForUnshieldedBalancesToAppear(this.client, this.pollInterval)(contractAddress).pipe(
         Rx.map(toUnshieldedBalances),
-        timeout({
-          each: maxWaitMs,
-          with: () => Rx.throwError(() => new IndexerTimeoutError(`watchForUnshieldedBalances: Timed out after ${maxWaitMs}ms waiting for unshielded balances of ${contractAddress}`))
-        })
+        applyTimeout(opts?.maxWaitMs, 'watchForUnshieldedBalances', contractAddress)
       )
     );
   }
 
-  watchForDeployTxData(contractAddress: ContractAddress, maxWaitMs = 300_000): Promise<FinalizedTxData> {
+  watchForDeployTxData(contractAddress: ContractAddress, opts?: { maxWaitMs?: number }): Promise<FinalizedTxData> {
     assertIsContractAddress(contractAddress);
+    validateMaxWaitMs(opts?.maxWaitMs);
     return Rx.firstValueFrom(
       pollUntilPresent(
         this.client,
@@ -317,15 +332,13 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         },
         this.pollInterval
       ).pipe(
-        timeout({
-          each: maxWaitMs,
-          with: () => Rx.throwError(() => new IndexerTimeoutError(`watchForDeployTxData: Timed out after ${maxWaitMs}ms waiting for deploy tx for ${contractAddress}`))
-        })
+        applyTimeout(opts?.maxWaitMs, 'watchForDeployTxData', contractAddress)
       )
     );
   }
 
-  watchForTxData(txId: TransactionId, maxWaitMs = 300_000): Promise<FinalizedTxData> {
+  watchForTxData(txId: TransactionId, opts?: { maxWaitMs?: number }): Promise<FinalizedTxData> {
+    validateMaxWaitMs(opts?.maxWaitMs);
     return Rx.firstValueFrom(
       pollUntilPresent(
         this.client,
@@ -365,10 +378,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         },
         this.pollInterval
       ).pipe(
-        timeout({
-          each: maxWaitMs,
-          with: () => Rx.throwError(() => new IndexerTimeoutError(`watchForTxData: Timed out after ${maxWaitMs}ms waiting for tx ${txId}`))
-        })
+        applyTimeout(opts?.maxWaitMs, 'watchForTxData', txId)
       )
     );
   }

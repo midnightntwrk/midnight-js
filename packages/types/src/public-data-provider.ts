@@ -345,55 +345,62 @@ export interface PublicDataProvider {
 
   /**
    * Retrieves the contract state of the contract with the given address.
-   * If a matching state is not found within `maxWaitMs`, throws `IndexerTimeoutError`.
-   * @param contractAddress The address of the contract of interest.
-   * @param maxWaitMs The maximum time to wait for the data in milliseconds. Defaults to 300,000 (5 minutes).
-   */
-  watchForContractState(contractAddress: ContractAddress, maxWaitMs?: number): Promise<ContractState>;
-
-  /**
-   * Monitors for any unshielded balances associated with a specific contract address.
-   * If unshielded balances are not found within `maxWaitMs`, throws `IndexerTimeoutError`.
-   *
-   * @param {ContractAddress} contractAddress - The address of the contract to monitor for unshielded balances.
-   * @param {number} maxWaitMs - The maximum time to wait for the data in milliseconds. Defaults to 300,000 (5 minutes).
-   * @return {Promise<UnshieldedBalances>} A promise that resolves to the detected unshielded balances.
-   */
-  watchForUnshieldedBalances(contractAddress: ContractAddress, maxWaitMs?: number): Promise<UnshieldedBalances>;
-
-  /**
-   * Retrieves data of the deployment transaction for the contract at the given contract address.
-   *
-   * If the transaction does not appear within `maxWaitMs`, the promise rejects with an `IndexerTimeoutError`.
+   * If `opts.maxWaitMs` is provided and a matching state is not found within `opts.maxWaitMs`, the returned promise rejects with a `WatchTimeoutError`.
    *
    * Custom implementations MUST maintain this timeout behavior to ensure consistency
    * across all PublicDataProvider implementations.
    *
    * @param contractAddress The address of the contract of interest.
-   * @param maxWaitMs The maximum time to wait for the data in milliseconds. Defaults to 300,000 (5 minutes).
+   * @param opts The configuration options for the watch operation.
+   */
+  watchForContractState(contractAddress: ContractAddress, opts?: { maxWaitMs?: number }): Promise<ContractState>;
+
+  /**
+   * Monitors for any unshielded balances associated with a specific contract address.
+   * If `opts.maxWaitMs` is provided and unshielded balances are not found within `opts.maxWaitMs`, the returned promise rejects with a `WatchTimeoutError`.
+   *
+   * Custom implementations MUST maintain this timeout behavior to ensure consistency
+   * across all PublicDataProvider implementations.
+   *
+   * @param contractAddress The address of the contract to monitor for unshielded balances.
+   * @param opts The configuration options for the watch operation.
+   * @returns A promise that resolves to the detected unshielded balances.
+   */
+  watchForUnshieldedBalances(contractAddress: ContractAddress, opts?: { maxWaitMs?: number }): Promise<UnshieldedBalances>;
+
+  /**
+   * Retrieves data of the deployment transaction for the contract at the given contract address.
+   *
+   * If `opts.maxWaitMs` is provided and the transaction does not appear within `opts.maxWaitMs`, the returned promise rejects with a `WatchTimeoutError`.
+   *
+   * Custom implementations MUST maintain this timeout behavior to ensure consistency
+   * across all PublicDataProvider implementations.
+   *
+   * @param contractAddress The address of the contract of interest.
+   * @param opts The configuration options for the watch operation.
    *
    * @returns A promise that resolves with finalized transaction data when the deployment appears on-chain.
    */
-  watchForDeployTxData(contractAddress: ContractAddress, maxWaitMs?: number): Promise<FinalizedTxData>;
+  watchForDeployTxData(contractAddress: ContractAddress, opts?: { maxWaitMs?: number }): Promise<FinalizedTxData>;
 
   /**
    * Retrieves data of the transaction containing the call or deployment with the given identifier.
    *
-   * If the transaction does not appear within `maxWaitMs`, the promise rejects with an `IndexerTimeoutError`.
+   * If `opts.maxWaitMs` is provided and the transaction does not appear within `opts.maxWaitMs`, the returned promise rejects with a `WatchTimeoutError`.
    *
    * Custom implementations MUST maintain this timeout behavior to ensure consistency
    * across all PublicDataProvider implementations.
    *
    * Applications using this method should be aware that:
    * - The promise will not resolve until the transaction appears on-chain
-   * - If a transaction is invalid and never appears, this will reject after `maxWaitMs`
+   * - If a transaction is invalid and never appears, this will reject after `opts.maxWaitMs` (if provided)
    *
    * @param txId The identifier of the call or deployment of interest.
-   * @param maxWaitMs The maximum time to wait for the data in milliseconds. Defaults to 300,000 (5 minutes).
+   * @param opts The configuration options for the watch operation.
    *
    * @returns A promise that resolves with finalized transaction data when the transaction appears on-chain.
    */
-  watchForTxData(txId: TransactionId, maxWaitMs?: number): Promise<FinalizedTxData>;
+  watchForTxData(txId: TransactionId, opts?: { maxWaitMs?: number }): Promise<FinalizedTxData>;
 
   /**
    * Creates a stream of contract states. The observable emits a value every time a state is either
