@@ -24,12 +24,15 @@ import { warnIfInsecureRemoteUrl, ZkArtifactIntegrityError } from '@midnight-ntw
 import fetch from 'cross-fetch';
 import fetchBuilder from 'fetch-retry';
 
-const retryOptions = {
+// The retry delay is exponential, but we cap it at the per-attempt timeout so that
+// the cumulative wall-clock budget (timeout × (1 + Σ delay_i)) does not wildly
+// exceed the caller-configured timeout.  See GitHub issue #984 for details.
+const retryOptions = (perAttemptTimeout: number) => ({
   retries: 3,
-  retryDelay: (attempt: number) => 2 ** attempt * 1_000,
+  retryDelay: (attempt: number) => Math.min(2 ** attempt * 1_000, perAttemptTimeout),
   retryOn: [500, 503]
-};
-const fetchRetry = fetchBuilder(fetch, retryOptions);
+});
+const fetchRetry = fetchBuilder(fetch);
 
 const CHECK_PATH = '/check';
 const PROVE_PATH = '/prove';
@@ -85,7 +88,8 @@ const makeHttpRequest = async (url: URL, payload: Uint8Array, timeout: number, h
     method: 'POST',
     body: new Uint8Array(payload),
     headers: { 'Content-Type': 'application/octet-stream', ...headers },
-    signal: AbortSignal.timeout(timeout)
+    signal: AbortSignal.timeout(timeout),
+    retryOptions: retryOptions(timeout),
   });
 
   if (!response.ok) {
