@@ -120,8 +120,11 @@ export type LedgerVersion = (typeof LEDGER_VERSIONS)[number];
 
 /** Maps the numeric protocolVersion reported by the network to a ledger impl. */
 export const protocolVersionToLedger = (protocolVersion: number): LedgerVersion => {
-  // OPEN QUESTION (§8): concrete int → v8/v9 mapping to be confirmed.
-  // Fail fast on anything unrecognised.
+  // The int encodes the NODE version (major*1_000_000 + minor*1_000), not the
+  // ledger major. Range table mirrors the indexer's own mapping (OQ1, §8):
+  //   22_000–22_999 (node 0.22) → v8;  1_000_000–1_000_999 (node 1.0) → v8;
+  //   2_000_000–2_000_999 (node 2.0) → v9;  2_001_000–2_001_999 (node 2.1) → v9.
+  // Fail fast on anything unrecognised (the indexer does the same).
   ...
 };
 ```
@@ -360,8 +363,16 @@ Throws catch the *failing* cases; the dangerous §6.1 downgrade is a plausible-b
 
 ## 8. Open Questions & Assumptions
 
-- **OQ1 — BLOCKER (owner: ledger/protocol team — name the accountable contact at MJS-01 kickoff; resolve-by: MJS-01 design freeze; escalation: if unanswered by resolve-by, raise to SOW-Q3-10 steering via product#119):** What is the concrete mapping from the numeric `protocolVersion` returned by the indexer to `v8` / `v9`? (Exact int values / ranges, and the fork-boundary value.) This is the top project risk: MJS-01 is foundational and blocks MJS-02/03 (15–25 pd total), so an unanswered OQ1 stalls all three workstreams.
-  - **Interim strategy:** the mapping lives solely behind `protocolVersionToLedger`. The rest of MJS-01 (both-version facades, dispatch plumbing, tests using an injected/provisional mapping) can proceed against a stub. **No MJS-01 code that depends on the concrete int→version mapping may merge until OQ1 is answered.**
+- **OQ1 — RESOLVED (2026-08-04; evidence from the indexer source + live networks; one confirmation outstanding):** the `protocolVersion` int encodes the **node** version (`major·1_000_000 + minor·1_000`), not the ledger major. The authoritative int→ledger mapping lives in the codebase that produces the field — [`midnight-indexer/indexer-common/src/domain/protocol_version.rs`](https://github.com/midnightntwrk/midnight-indexer/blob/main/indexer-common/src/domain/protocol_version.rs):
+  | int range | node | ledger |
+  |---|---|---|
+  | `22_000 – 22_999` | 0.22 | **v8** |
+  | `1_000_000 – 1_000_999` | 1.0 | **v8** |
+  | `2_000_000 – 2_000_999` | 2.0 | **v9** |
+  | `2_001_000 – 2_001_999` | 2.1 | **v9** |
+  | anything else | — | `Unsupported` error |
+
+  The indexer itself fail-fasts on unknown ints — the same semantics §6.2 prescribes. Live check (2026-08-04): preview/preprod/qanet all report `1000000` (node 1.0 / ledger v8); the indexer source notes devnet/stagenet under the node 2.0 rollout already serve ledger-9 chains. The fork boundary is therefore the `1_00x_xxx → 2_000_xxx` transition. `protocolVersionToLedger` implements this as **ranges** (not single ints) with the fail-fast else-branch, mirroring the indexer's table. **Outstanding confirmation (owner: ledger/node team, at MJS-01 kickoff):** that this table is a *contract*, not an indexer implementation detail, and that future ranges (node 2.2+, and 3.x at the next fork) extend the same convention. The freeze gate below (committed map + table test) is unchanged — it is now implementation, not discovery, and MJS-01 is no longer stalled on it.
 - **OQ2 — RESOLVED (v2, spike pins; re-confirm at implementation — RC tags churn):** Ledger v8 = `@midnight-ntwrk/ledger-v8@8.1.0` for the type/decode surface (the spike's `8.0.3` alias served its pre-fork proving path — not needed under D9) + **onchain-runtime-v3**; the keep-state execution stack (dApp-owned, §4.2) is compact `0.31.1` / compact-runtime `0.16.0`. v9 = `@midnightntwrk/ledger-v9@1.0.0-rc.3` / `onchain-runtime-v4@4.0.0-rc.3`. Coexistence/aliasing strategy: §4.1 Implementation packaging. **Supply-chain checklist (sec review) — the re-confirm step is not a footnote:** (a) verify with the organisation the ownership of **both** npm scopes (`@midnight-ntwrk` and `@midnightntwrk` — two near-identical active scopes for WASM packages in the state/proving path is a typosquat-shaped risk, and the new aliases + dynamic-import subpath are exactly where a wrong scope hides in review); (b) exact-version pins with lockfile integrity for the whole v8 tree (the repo's `resolutions` pin pattern); (c) a CI gate asserting only the audited scopes/versions appear in `protocol`'s resolved dependency tree, including test aliases (`onchain-runtime-v3-alt`, `compact-runtime-v16`).
 - **OQ3:** Which ledger symbols **diverge structurally** between v8 and v9 (vs. identical)? Determines the size of the discriminated-union surface in §4.3. The spike pre-answers part of it: `EncodedStateValue` and the transcript POJO layer are bucket-(1).
 - **OQ4 — RESOLVED (v2, reformulated):** The original question ("can a single logical transaction span both versions?") assumed any intra-tx version mix is a hazard to reject. The keep-state model **requires exactly one sanctioned cross-version composition**: a ledger-8 execution transcript wrapped in a native ledger-9 transaction with a V2 proof (§4.2). The security gate is therefore inverted: the seam MUST reject any intra-tx version mix **other than** the sanctioned keep-state composition (negative test, §9). The sanctioned path itself is sound because the transcript/state-data layer is byte-identical (bucket-1) and the ledger enforces the V2 ↔ `co.v2` proof/key pairing at verification.
@@ -377,7 +388,7 @@ Throws catch the *failing* cases; the dangerous §6.1 downgrade is a plausible-b
 - **OQ14 — fork-capable e2e environment (owner: TBD; resolve-by: before the fork-boundary e2e is declared done):** the testkit compose stack is v9-only today; define/build the node + indexer + proof-server image matrix that starts at v8 and migrates at a set height (or adopt the spike simulator for the boundary cases). Until it exists, proof/apply-level ACs rely on the §9 verification harness at unit/integration level — recorded, not implied.
 
 **Freeze-gate done-definitions (QA-6).** Each "before-freeze" gate closes only when a concrete artifact is merged and its test is green:
-- **OQ1** → the concrete int→version map committed behind `protocolVersionToLedger`, with a table test.
+- **OQ1** → *(mapping known — see OQ1)* the range table committed behind `protocolVersionToLedger`, with a table test mirroring the indexer's ranges (including the `Unsupported` else-branch).
 - **OQ3** → a checked-in `symbol-buckets.md` (or a typed const) enumerating every boundary-crossing symbol with its bucket (1/2/3), referenced by the ACL test's per-version lists. The classification also lands as the `LedgerModule<V>` conditional type (§4.1b) — the type is the artifact, the doc is commentary.
 - **OQ4** → *(resolved)* the sanctioned keep-state composition documented (§4.2) + the reject-other-mixes throw path with its negative test.
 - **OQ6** → *(resolved)* at-import instantiation documented + resolution (c) recorded (NFR6); residual: same-layout confirmation for `ledger-v8`.
