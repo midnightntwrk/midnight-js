@@ -35,7 +35,9 @@ import type {
   UnshieldedBalances
 } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
+import { IndexerTimeoutError } from '@midnight-ntwrk/midnight-js-types';
 import * as Rx from 'rxjs';
+import { timeout } from 'rxjs';
 
 import {
   parseHexContractState,
@@ -270,21 +272,33 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
       .then((maybeContractState) => (maybeContractState ? parseHexContractState(maybeContractState) : null));
   }
 
-  watchForContractState(contractAddress: ContractAddress): Promise<ContractState> {
+  watchForContractState(contractAddress: ContractAddress, maxWaitMs = 300_000): Promise<ContractState> {
     assertIsContractAddress(contractAddress);
     return Rx.firstValueFrom(
-      waitForContractToAppear(this.client, this.pollInterval)(contractAddress)(null).pipe(Rx.map(parseHexContractState))
+      waitForContractToAppear(this.client, this.pollInterval)(contractAddress)(null).pipe(
+        Rx.map(parseHexContractState),
+        timeout({
+          each: maxWaitMs,
+          with: () => Rx.throwError(() => new IndexerTimeoutError(`watchForContractState: Timed out after ${maxWaitMs}ms waiting for contract state of ${contractAddress}`))
+        })
+      )
     );
   }
 
-  watchForUnshieldedBalances(contractAddress: ContractAddress): Promise<UnshieldedBalances> {
+  watchForUnshieldedBalances(contractAddress: ContractAddress, maxWaitMs = 300_000): Promise<UnshieldedBalances> {
     assertIsContractAddress(contractAddress);
     return Rx.firstValueFrom(
-      waitForUnshieldedBalancesToAppear(this.client, this.pollInterval)(contractAddress).pipe(Rx.map(toUnshieldedBalances))
+      waitForUnshieldedBalancesToAppear(this.client, this.pollInterval)(contractAddress).pipe(
+        Rx.map(toUnshieldedBalances),
+        timeout({
+          each: maxWaitMs,
+          with: () => Rx.throwError(() => new IndexerTimeoutError(`watchForUnshieldedBalances: Timed out after ${maxWaitMs}ms waiting for unshielded balances of ${contractAddress}`))
+        })
+      )
     );
   }
 
-  watchForDeployTxData(contractAddress: ContractAddress): Promise<FinalizedTxData> {
+  watchForDeployTxData(contractAddress: ContractAddress, maxWaitMs = 300_000): Promise<FinalizedTxData> {
     assertIsContractAddress(contractAddress);
     return Rx.firstValueFrom(
       pollUntilPresent(
@@ -302,11 +316,16 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
           return toFinalizedDeployTxData(contractAddress, transaction);
         },
         this.pollInterval
+      ).pipe(
+        timeout({
+          each: maxWaitMs,
+          with: () => Rx.throwError(() => new IndexerTimeoutError(`watchForDeployTxData: Timed out after ${maxWaitMs}ms waiting for deploy tx for ${contractAddress}`))
+        })
       )
     );
   }
 
-  watchForTxData(txId: TransactionId): Promise<FinalizedTxData> {
+  watchForTxData(txId: TransactionId, maxWaitMs = 300_000): Promise<FinalizedTxData> {
     return Rx.firstValueFrom(
       pollUntilPresent(
         this.client,
@@ -345,6 +364,11 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
           };
         },
         this.pollInterval
+      ).pipe(
+        timeout({
+          each: maxWaitMs,
+          with: () => Rx.throwError(() => new IndexerTimeoutError(`watchForTxData: Timed out after ${maxWaitMs}ms waiting for tx ${txId}`))
+        })
       )
     );
   }

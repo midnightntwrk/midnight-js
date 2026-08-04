@@ -111,3 +111,13 @@ export class ImportConflictError extends PrivateStateImportError {
     this.name = 'ImportConflictError';
   }
 }
+
+/**
+ * An error thrown when an indexer polling query times out.
+ */
+export class IndexerTimeoutError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options);
+    this.name = 'IndexerTimeoutError';
+  }
+}

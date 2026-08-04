@@ -288,7 +288,6 @@ export interface ContractEventsPage {
 
 /**
  * Interface for a public data service. This service retrieves public data from the blockchain.
- * TODO: Add timeouts or retry limits to 'watchFor' queries.
  */
 export interface PublicDataProvider {
   /**
@@ -346,55 +345,55 @@ export interface PublicDataProvider {
 
   /**
    * Retrieves the contract state of the contract with the given address.
-   * Waits indefinitely for matching data to appear.
+   * If a matching state is not found within `maxWaitMs`, throws `IndexerTimeoutError`.
    * @param contractAddress The address of the contract of interest.
+   * @param maxWaitMs The maximum time to wait for the data in milliseconds. Defaults to 300,000 (5 minutes).
    */
-  watchForContractState(contractAddress: ContractAddress): Promise<ContractState>;
+  watchForContractState(contractAddress: ContractAddress, maxWaitMs?: number): Promise<ContractState>;
 
   /**
    * Monitors for any unshielded balances associated with a specific contract address.
+   * If unshielded balances are not found within `maxWaitMs`, throws `IndexerTimeoutError`.
    *
    * @param {ContractAddress} contractAddress - The address of the contract to monitor for unshielded balances.
+   * @param {number} maxWaitMs - The maximum time to wait for the data in milliseconds. Defaults to 300,000 (5 minutes).
    * @return {Promise<UnshieldedBalances>} A promise that resolves to the detected unshielded balances.
    */
-  watchForUnshieldedBalances(contractAddress: ContractAddress): Promise<UnshieldedBalances>;
+  watchForUnshieldedBalances(contractAddress: ContractAddress, maxWaitMs?: number): Promise<UnshieldedBalances>;
 
   /**
    * Retrieves data of the deployment transaction for the contract at the given contract address.
    *
-   * **IMPORTANT: This method waits indefinitely** until the deployment transaction appears on the
-   * blockchain. It will never timeout or reject unless an error occurs.
+   * If the transaction does not appear within `maxWaitMs`, the promise rejects with an `IndexerTimeoutError`.
    *
-   * Custom implementations MUST maintain this indefinite waiting behavior to ensure consistency
-   * across all PublicDataProvider implementations. Do not implement timeouts in this method.
+   * Custom implementations MUST maintain this timeout behavior to ensure consistency
+   * across all PublicDataProvider implementations.
    *
    * @param contractAddress The address of the contract of interest.
+   * @param maxWaitMs The maximum time to wait for the data in milliseconds. Defaults to 300,000 (5 minutes).
    *
    * @returns A promise that resolves with finalized transaction data when the deployment appears on-chain.
-   *          The promise never rejects due to timeout.
    */
-  watchForDeployTxData(contractAddress: ContractAddress): Promise<FinalizedTxData>;
+  watchForDeployTxData(contractAddress: ContractAddress, maxWaitMs?: number): Promise<FinalizedTxData>;
 
   /**
    * Retrieves data of the transaction containing the call or deployment with the given identifier.
    *
-   * **IMPORTANT: This method waits indefinitely** until the transaction appears on the blockchain.
-   * It will never timeout or reject unless an error occurs.
+   * If the transaction does not appear within `maxWaitMs`, the promise rejects with an `IndexerTimeoutError`.
    *
-   * Custom implementations MUST maintain this indefinite waiting behavior to ensure consistency
-   * across all PublicDataProvider implementations. Do not implement timeouts in this method.
+   * Custom implementations MUST maintain this timeout behavior to ensure consistency
+   * across all PublicDataProvider implementations.
    *
    * Applications using this method should be aware that:
    * - The promise will not resolve until the transaction appears on-chain
-   * - If a transaction is invalid and never appears, this will never return
-   * - Consider using application-level timeouts or cancellation mechanisms if needed
+   * - If a transaction is invalid and never appears, this will reject after `maxWaitMs`
    *
    * @param txId The identifier of the call or deployment of interest.
+   * @param maxWaitMs The maximum time to wait for the data in milliseconds. Defaults to 300,000 (5 minutes).
    *
    * @returns A promise that resolves with finalized transaction data when the transaction appears on-chain.
-   *          The promise never rejects due to timeout.
    */
-  watchForTxData(txId: TransactionId): Promise<FinalizedTxData>;
+  watchForTxData(txId: TransactionId, maxWaitMs?: number): Promise<FinalizedTxData>;
 
   /**
    * Creates a stream of contract states. The observable emits a value every time a state is either

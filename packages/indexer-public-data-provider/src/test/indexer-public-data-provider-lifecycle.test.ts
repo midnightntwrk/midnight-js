@@ -113,6 +113,30 @@ describe('indexerPublicDataProvider — config-object overload', () => {
     await provider.dispose();
   });
 
+  test('watchForTxData throws IndexerTimeoutError when query times out', async () => {
+    const { IndexerPublicDataProvider } = await import('../provider');
+    const { validateConfig } = await import('../config');
+    const { createApolloClient } = await import('../transport');
+    const { IndexerTimeoutError } = await import('@midnight-ntwrk/midnight-js-types');
+    const { Observable } = await import('rxjs');
+
+    const validated = validateConfig({ queryURL, subscriptionURL });
+    const handle = createApolloClient(validated);
+    const provider = new IndexerPublicDataProvider(handle, validated.pollInterval);
+
+    // Mock watchQuery to return an observable that never emits any valid transaction data
+    vi.spyOn(handle.client, 'watchQuery').mockImplementation(() => {
+      return new Observable(() => {}) as any;
+    });
+
+    const fakeTxId = '00'.repeat(32) as unknown as Parameters<typeof provider.watchForTxData>[0];
+    const maxWaitMs = 50; // short timeout for test
+
+    await expect(provider.watchForTxData(fakeTxId, maxWaitMs)).rejects.toThrow(IndexerTimeoutError);
+
+    await provider.dispose();
+  });
+
   test('provider value is assignable to PublicDataProvider (type-level)', async () => {
     const { indexerPublicDataProvider } = await import('..');
 
