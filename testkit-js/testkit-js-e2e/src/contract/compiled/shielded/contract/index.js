@@ -787,7 +787,7 @@ export class Contract {
                                          { ins: { cached: true, n: 2 } },
                                          { swap: { n: 0 } }]);
     }
-    if (this._equal_2(change_0, 0n)) {
+    if (change_0 === 0n) {
       return { change: this._none_0(), sent: output_0 };
     } else {
       const changeCoin_0 = { nonce:
@@ -1059,10 +1059,6 @@ export class Contract {
   }
   _equal_1(x0, y0) {
     if (!x0.every((x, i) => y0[i] === x)) { return false; }
-    return true;
-  }
-  _equal_2(x0, y0) {
-    if (x0 !== y0) { return false; }
     return true;
   }
 }
