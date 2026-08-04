@@ -36,7 +36,7 @@ jobs:
       build_t_js: ${{ steps.build-targets.outputs.testkit-js }}
 
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # ratchet:actions/checkout@v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
           fetch-depth: 0
 
@@ -95,7 +95,7 @@ jobs:
     steps:
       - name: Checkout
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # ratchet:actions/checkout@v7.0.0
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
           fetch-depth: 2
 
@@ -132,7 +132,7 @@ jobs:
       id-token: write
       packages: write
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # ratchet:actions/checkout@v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # ratchet:actions/checkout@v7.0.1
         with:
           fetch-depth: 0
 
@@ -185,7 +185,7 @@ jobs:
 
       - name: Create GitHub Release
         if: steps.changes.outputs.midnight-js == 'true'
-        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # ratchet:softprops/action-gh-release@v3.0.1
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # ratchet:softprops/action-gh-release@v3.0.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -217,3 +217,48 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      # ---------------------------------------------------------------------------
+      # Dual-publish to the @midnightntwrk npm org via OIDC trusted publishing.
+      #
+      # Additive and independent: the @midnight-ntwrk GitHub-registry publishes above
+      # are untouched, and midnight-ntwrk/artifacts keeps mirroring @midnight-ntwrk to
+      # public npm. @midnightntwrk is the migration target (see shielded-sre#258).
+      #
+      # OIDC uses the workflow-level `id-token: write` — no long-lived NPM_TOKEN.
+      #
+      # Gated OFF by default. Enable by setting repo variable PUBLISH_MIDNIGHTNTWRK=true
+      # ONLY after each @midnightntwrk/* package has this repo + this workflow
+      # registered as a Trusted Publisher on npmjs.com (npm UI, org admin).
+      # ---------------------------------------------------------------------------
+      - name: Verify npm supports OIDC trusted publishing
+        if: vars.PUBLISH_MIDNIGHTNTWRK == 'true' && (steps.changes.outputs.midnight-js == 'true' || steps.changes.outputs.testkit-js == 'true')
+        run: |
+          # OIDC trusted publishing requires npm >= 11.5.1. The npm version is pinned
+          # via .nvmrc (node 24.11.1 bundles npm 11.6.2) — this only asserts the floor,
+          # it does NOT install/upgrade npm (that would unpin the toolchain).
+          need="11.5.1"
+          have="$(npm --version)"
+          if [ "$(printf '%s\n%s\n' "$need" "$have" | sort -V | head -n1)" != "$need" ]; then
+            echo "::error::npm $have < $need — OIDC trusted publishing unsupported. Bump .nvmrc node so its bundled npm is >= $need."
+            exit 1
+          fi
+          echo "npm $have supports OIDC trusted publishing"
+
+      - name: Publish packages to @midnightntwrk (public npm, OIDC)
+        if: vars.PUBLISH_MIDNIGHTNTWRK == 'true' && steps.changes.outputs.midnight-js == 'true'
+        run: node .github/scripts/publish-public-npm.mjs
+        env:
+          MIDNIGHT_SOURCE_SCOPE: '@midnight-ntwrk'
+          MIDNIGHT_TARGET_SCOPE: '@midnightntwrk'
+          MIDNIGHT_WORKSPACE_GLOB: 'packages'
+          MIDNIGHT_PUBLISH_DRY_RUN: ${{ vars.PUBLISH_MIDNIGHTNTWRK_DRY_RUN || 'false' }}
+
+      - name: Publish testkit-js to @midnightntwrk (public npm, OIDC)
+        if: vars.PUBLISH_MIDNIGHTNTWRK == 'true' && steps.changes.outputs.testkit-js == 'true'
+        run: node .github/scripts/publish-public-npm.mjs
+        env:
+          MIDNIGHT_SOURCE_SCOPE: '@midnight-ntwrk'
+          MIDNIGHT_TARGET_SCOPE: '@midnightntwrk'
+          MIDNIGHT_WORKSPACE_GLOB: 'testkit-js'
+          MIDNIGHT_PUBLISH_DRY_RUN: ${{ vars.PUBLISH_MIDNIGHTNTWRK_DRY_RUN || 'false' }}
