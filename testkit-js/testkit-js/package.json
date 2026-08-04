@@ -60,7 +60,7 @@
     "@types/ws": "^8.18.1",
     "@vitest/runner": "^4.1.10",
     "allure-commandline": "^2.43.0",
-    "allure-js-commons": "^3.9.0",
+    "allure-js-commons": "^3.10.2",
     "allure-vitest": "^3.10.2",
     "rxjs": "^7.8.2",
     "typedoc": "^0.28.19",
