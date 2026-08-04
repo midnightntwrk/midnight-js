@@ -18,13 +18,14 @@ import {
   encodeContractKeyLocation,
   hashVerifierKey,
   InvalidProtocolSchemeError,
+  ProofServerResponseError,
   type ProverKey,
   type VerifierKey,
   ZKArtifactNotFoundError,
   type ZKConfig,
   type ZKConfigProvider,
   ZKConfigRegistry,
-  type ZKIR
+  type ZKIR,
 } from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -224,8 +225,13 @@ describe('httpClientProvingProvider', () => {
       vi.mocked(ledger.createCheckPayload).mockReturnValue(new Uint8Array([20, 21, 22]));
 
       await expect(provider.check(serializedPreimage, 'test-circuit')).rejects.toThrow(
-        /Failed Proof Server response/
+        ProofServerResponseError
       );
+      await expect(provider.check(serializedPreimage, 'test-circuit')).rejects.toMatchObject({
+        url: mockUrl,
+        statusCode: 500,
+        statusText: 'Internal Server Error'
+      });
     });
   });
 
@@ -345,8 +351,13 @@ describe('httpClientProvingProvider', () => {
       vi.mocked(ledger.createProvingPayload).mockReturnValue(new Uint8Array([30, 31, 32]));
 
       await expect(provider.prove(serializedPreimage, 'test-circuit')).rejects.toThrow(
-        /Failed Proof Server response/
+        ProofServerResponseError
       );
+      await expect(provider.prove(serializedPreimage, 'test-circuit')).rejects.toMatchObject({
+        url: mockUrl,
+        statusCode: 503,
+        statusText: 'Service Unavailable'
+      });
     });
   });
 

@@ -111,3 +111,23 @@ export class ImportConflictError extends PrivateStateImportError {
     this.name = 'ImportConflictError';
   }
 }
+
+/**
+ * Thrown when the Proof Server returns a non-OK HTTP response. Network-level failures (connection refused, DNS, timeout) propagate as native fetch errors.
+ * @param url The URL of the Proof Server that failed.
+ * @param statusCode The HTTP status code returned.
+ * @param statusText The HTTP status text returned.
+ */
+export class ProofServerResponseError extends Error {
+  constructor(
+    public readonly url: string,
+    public readonly statusCode: number,
+    public readonly statusText: string
+  ) {
+    super(`Failed Proof Server response: url="${url}", code="${statusCode}", status="${statusText}"`);
+    this.name = 'ProofServerResponseError';
+  }
+}
+
+export const isProofServerResponseError = (e: unknown): e is ProofServerResponseError =>
+  e instanceof Error && e.name === 'ProofServerResponseError';

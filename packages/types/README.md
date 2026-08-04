@@ -151,7 +151,8 @@ import {
   PrivateStateImportError,
   ExportDecryptionError,
   InvalidExportFormatError,
-  ImportConflictError
+  ImportConflictError,
+  ProofServerResponseError
 } from '@midnight-ntwrk/midnight-js-types';
 ```
 
@@ -211,6 +212,7 @@ import {
   ExportDecryptionError,
   InvalidExportFormatError,
   ImportConflictError,
+  ProofServerResponseError,
 
   // Factory functions
   createProofProvider,
