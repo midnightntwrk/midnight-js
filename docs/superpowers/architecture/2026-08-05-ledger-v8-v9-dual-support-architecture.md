@@ -1,6 +1,6 @@
 # Architecture Document — Ledger v8/v9 Support in Midnight.js (Hard-Fork Transition)
 
-**Status:** Derived from Design Spec Draft v3.5 (2026-08-06)
+**Status:** Derived from Design Spec Draft v3.5 (2026-08-06) · helper names aligned with spec v3.8 (`isDecodedTxData()` / `createRawFinalizedTxData()`)
 **Source spec:** [`docs/superpowers/specs/2026-07-09-ledger-v8-v9-dual-support-design.md`](../specs/2026-07-09-ledger-v8-v9-dual-support-design.md)
 **Related issues:** [#1004](https://github.com/midnightntwrk/midnight-js/issues/1004) · [#1005](https://github.com/midnightntwrk/midnight-js/issues/1005) · [#1006](https://github.com/midnightntwrk/midnight-js/issues/1006)
 **Program:** Ledger v8→v9 Hard Fork Migration (SOW-Q3-10 / product#119)
@@ -100,10 +100,10 @@ flowchart BT
     subgraph core["Core packages (v9-only, zero v8 knowledge)"]
         protocol["protocol<br/>+ version.ts (additive)<br/>re-exports ledger-v9 (unchanged)"]
         types["types — declarations ONLY:<br/>rawTx field, generic KeepStateBridge<br/>family, 2 provider queries"]
-        utils["utils — runtime helpers:<br/>isV9TxData(), createV8FinalizedTxData()"]
+        utils["utils — runtime helpers:<br/>isDecodedTxData(), createRawFinalizedTxData()"]
         contracts["contracts<br/>routing, dedicated keep-state entry<br/>(consumes KeepStateBridge from types)"]
         indexerprov["indexer-public-data-provider<br/>raw surfacing for v8 records,<br/>queryRawContractState,<br/>queryLatestProtocolVersion"]
-        barrel["midnight-js (barrel)<br/>re-exports version utils + isV9TxData;<br/>compat NOT re-exported"]
+        barrel["midnight-js (barrel)<br/>re-exports version utils + isDecodedTxData;<br/>compat NOT re-exported"]
     end
 
     subgraph leaf["Transitional leaf (dApp-side only)"]
@@ -204,12 +204,12 @@ export interface KeepStateBridge<TArgs, TWitnesses, TPrivateState> {
 
 | Provider | Change |
 |---|---|
-| `indexer-public-data-provider` | v8-tagged records populate the additive `rawTx: Uint8Array` field — the **sole** additive field (`protocolVersion` pre-exists on every record); `rawTx` is populated on v8 records only, so its presence is the runtime discriminant. Accessing the v9-typed `tx` on a v8 record throws a typed error naming the compat codec — via a **non-enumerable accessor** (serialization/spread/deep-equality never trip it) installed by the mandatory `createV8FinalizedTxData()` factory from `utils`; consumers narrow with `isV9TxData()` instead of try/catch. Additive `queryRawContractState` returns the **serialized** migrated state (bytes, never a WASM object across the package boundary; works pre-fork too — only *decoded* state reads throw SEC-9). Additive `queryLatestProtocolVersion()` backs `networkHeadVersion`. Both new members are implementer-facing breaking — all in-repo implementations and testkit mocks update in the same PR. |
+| `indexer-public-data-provider` | v8-tagged records populate the additive `rawTx: Uint8Array` field — the **sole** additive field (`protocolVersion` pre-exists on every record); `rawTx` is populated on v8 records only, so its presence is the runtime discriminant. Accessing the v9-typed `tx` on a v8 record throws a typed error naming the compat codec — via a **non-enumerable accessor** (serialization/spread/deep-equality never trip it) installed by the mandatory `createRawFinalizedTxData()` factory from `utils`; consumers narrow with `isDecodedTxData()` instead of try/catch. Additive `queryRawContractState` returns the **serialized** migrated state (bytes, never a WASM object across the package boundary; works pre-fork too — only *decoded* state reads throw SEC-9). Additive `queryLatestProtocolVersion()` backs `networkHeadVersion`. Both new members are implementer-facing breaking — all in-repo implementations and testkit mocks update in the same PR. |
 | Proof providers | **Unchanged.** The transition runs against one dual-capable proof server; ZKIR self-describes its version; retained pre-fork key triples pass through the existing configured `proofProvider` (delivery API = OQ12). |
 | `level-private-state-provider` | Expected version-agnostic (stores opaque values the migration never touches); confirmed during MJS-03. |
 | `types` | **Consumer-compile-compatible, declarations only** — `rawTx` field, generic `KeepStateBridge` family + keep-state entry options type, two provider queries. Three recorded runtime caveats: `.tx` throw on v8 records, SEC-9 pre-fork throw on decoded state queries, implementer-facing provider members. |
-| `utils` | Runtime helpers `isV9TxData()` + `createV8FinalizedTxData()` (`types` stays implementation-free per NFR4). |
-| `midnight-js` barrel | Re-exports the new version utils + `isV9TxData()`. The compat package is deliberately **not** re-exported. |
+| `utils` | Runtime helpers `isDecodedTxData()` + `createRawFinalizedTxData()` (`types` stays implementation-free per NFR4). |
+| `midnight-js` barrel | Re-exports the new version utils + `isDecodedTxData()`. The compat package is deliberately **not** re-exported. |
 
 ### 3.3 How compat is injected into the existing transaction flow
 
@@ -346,7 +346,7 @@ sequenceDiagram
         P-->>D: FinalizedTxData with decoded tx (static path, unchanged)
     else record tagged v8
         P-->>D: FinalizedTxData with rawTx: Uint8Array populated (sole additive field —<br/>protocolVersion pre-exists on every record)
-        Note over D: direct .tx access throws a typed error naming the compat codec<br/>(non-enumerable accessor — stringify/spread never trip it);<br/>narrow with isV9TxData() from utils instead of try/catch
+        Note over D: direct .tx access throws a typed error naming the compat codec<br/>(non-enumerable accessor — stringify/spread never trip it);<br/>narrow with isDecodedTxData() from utils instead of try/catch
         D->>K: decodeTransaction(rawTx)
         K-->>D: decoded v8 object (distinct type, lives dApp-side only)
     end
@@ -407,7 +407,7 @@ flowchart LR
 
 | Layer | Rule |
 |---|---|
-| Core interfaces | Carry v8 data **only** as the additive `rawTx: Uint8Array` (v8 records only; `protocolVersion` pre-exists on every record). No unions, no brands, no casts. The declared `tx` stays required — a documented lying type on v8 records (weak compile-time signal by design); mitigations: non-enumerable throwing accessor, `isV9TxData()` guard narrowing on `rawTx` absence, mandatory `createV8FinalizedTxData()` factory (`utils`). |
+| Core interfaces | Carry v8 data **only** as the additive `rawTx: Uint8Array` (v8 records only; `protocolVersion` pre-exists on every record). No unions, no brands, no casts. The declared `tx` stays required — a documented lying type on v8 records (weak compile-time signal by design); mitigations: non-enumerable throwing accessor, `isDecodedTxData()` guard narrowing on `rawTx` absence, mandatory `createRawFinalizedTxData()` factory (`utils`). |
 | `KeepStateBridge` | Declared in `types`, generic over `TArgs`/`TWitnesses`/`TPrivateState` (opaque — OQ13 closes without churning `types`); POJOs + v9 types in signatures; no retained-stack (0.16) type crosses into core. |
 | Shared keep-state POJO layer | `EncodedStateValue`, transcript/`Op`/`AlignedValue` — **byte-identical across versions** (spike-established, contractual). Fixtures are the authoritative check. |
 | Package boundary | Raw serialized state crosses as **bytes**, never as a WASM-backed object. |
@@ -464,7 +464,7 @@ Fail-fast, typed, remediation-bearing — never a silent default. Every new erro
 | Unknown `protocolVersion` int | Typed error naming the observed int + supported set (distinct names for read vs construct paths) |
 | Construct/submit with v8 head | Typed pre-fork-unsupported error ("stay on midnight-js vX for pre-fork operation") |
 | Head flips between resolve and submit | Dedicated stale-head typed error; advise re-resolve + rebuild; no auto-retry |
-| `.tx` access on a v8-tagged record | Typed error: "decode `rawTx` with `@midnight-ntwrk/midnight-js-ledger-v8-compat/codec`" — non-enumerable accessor (stringify/spread/clone never trip it); prefer `isV9TxData()` |
+| `.tx` access on a v8-tagged record | Typed error: "decode `rawTx` with `@midnight-ntwrk/midnight-js-ledger-v8-compat/codec`" — non-enumerable accessor (stringify/spread/clone never trip it); prefer `isDecodedTxData()` |
 | v9 instance mismatch at `keepState` attach | `KeepStateLedgerInstanceMismatchError` → dual-instantiation guide |
 | Down-convert failure (malformed bytes, lost `StateValue` type) | Throw — never a silently wrong or empty state |
 | Key set matches no supported proof version | Typed error (proof version always derived from key tag, never hardcoded) |
