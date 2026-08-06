@@ -345,7 +345,7 @@ sequenceDiagram
     alt record tagged v9
         P-->>D: FinalizedTxData with decoded tx (static path, unchanged)
     else record tagged v8
-        P-->>D: FinalizedTxData with rawTx: Uint8Array populated (sole additive field;<br/>protocolVersion pre-exists on every record)
+        P-->>D: FinalizedTxData with rawTx: Uint8Array populated (sole additive field —<br/>protocolVersion pre-exists on every record)
         Note over D: direct .tx access throws a typed error naming the compat codec<br/>(non-enumerable accessor — stringify/spread never trip it);<br/>narrow with isV9TxData() from utils instead of try/catch
         D->>K: decodeTransaction(rawTx)
         K-->>D: decoded v8 object (distinct type, lives dApp-side only)
@@ -364,7 +364,7 @@ stateDiagram-v2
     Retired: Compat retired (framework v10)
 
     PreFork --> PostFork: hard fork —<br/>protocol migrates all ContractState<br/>to v9 envelope (co.v2 preserved)
-    PostFork --> Retired: midnight-js policy decision (OQ10);<br/>npm deprecate compat package,<br/>shrink LedgerVersion
+    PostFork --> Retired: midnight-js policy decision (OQ10) —<br/>npm deprecate compat package,<br/>shrink LedgerVersion
 
     note right of PreFork
         Framework: read-capable only.
