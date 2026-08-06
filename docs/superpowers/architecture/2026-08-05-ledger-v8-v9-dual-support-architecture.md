@@ -346,7 +346,7 @@ sequenceDiagram
         P-->>D: FinalizedTxData with decoded tx (static path, unchanged)
     else record tagged v8
         P-->>D: FinalizedTxData with rawTx: Uint8Array populated (sole additive field —<br/>protocolVersion pre-exists on every record)
-        Note over D: direct .tx access throws a typed error naming the compat codec<br/>(non-enumerable accessor — stringify/spread never trip it);<br/>narrow with isDecodedTxData() from utils instead of try/catch
+        Note over D: direct .tx access throws a typed error naming the compat codec<br/>(non-enumerable accessor — stringify/spread never trip it)<br/>narrow with isDecodedTxData() from utils instead of try/catch
         D->>K: decodeTransaction(rawTx)
         K-->>D: decoded v8 object (distinct type, lives dApp-side only)
     end
@@ -369,8 +369,8 @@ stateDiagram-v2
     note right of PreFork
         Framework: read-capable only.
         Raw records + raw contract state
-        work (decode via compat codec);
-        decoded state reads throw SEC-9;
+        work (decode via compat codec).
+        decoded state reads throw SEC-9.
         construct/submit throws typed
         pre-fork error (D9).
     end note
