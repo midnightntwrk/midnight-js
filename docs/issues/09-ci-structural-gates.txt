@@ -1,33 +1,39 @@
-TITLE: ci: structural isolation gates + error-code registry meta-test
+TITLE: ci: structural isolation gates + error-code registry test
 
 CONTEXT
-Spec sections 8 "Structural gates" / AC2 / AC6; architecture doc section 9.
-AC7 requires these CI-enforced FROM THE FIRST PR — this ticket lands with or
-before ticket 02.
+Architecture doc section 3.1 (the two dependency-graph gates), section 9
+(structural isolation + type safety rows) and section 7 (stable error `code`
+discriminants). The gates must be CI-enforced from the FIRST code PR — this
+ticket lands with or before ticket 02.
 
 SCOPE
-- Dependency-graph gates (both directions):
+- Dependency-graph gates (section 3.1, both directions):
     (a) no core package resolves ledger-v8 or the compat package
     (b) the compat package resolves NO direct ledger-v9 (v9 only via the
         protocol peerDependency)
 - Packaging lint for the compat package's dependency shape (peer vs regular).
-- ESLint no-explicit-any stays on + grep gate on `as unknown` (NFR2).
+- ESLint no-explicit-any stays on + grep gate on `as unknown` (section 9,
+  type-safety row).
 - Export-surface strict-equality test harness (sorted FULL key sets — reusable
   by tickets 02/05/08; one-directional toContain assertions are a known
   rejected pattern in this repo).
-- Error-`code` registry meta-test (QA-10): the stable code registry asserted
-  with strict equality against the set of negative-tested codes — a new error
-  class cannot ship untested. Registry starts empty and grows with 07/08.
-- Golden-baseline lifecycle enforcement (QA-8): baseline changes allowed ONLY
-  in dedicated commits with no production-code changes; any other commit
-  touching baselines fails CI.
-- OQ2 supply-chain gate: only audited scopes/versions in the compat package's
-  resolved tree (activates with ticket 05).
+- Error-`code` registry test: the stable code registry asserted with strict
+  equality against the set of negative-tested codes — a new error class cannot
+  ship untested (section 7: every new error class carries a stable code).
+  Registry starts empty and grows with 07/08.
+- Golden-baseline lifecycle enforcement (section 9, FR7 row): baseline changes
+  allowed ONLY in dedicated commits with no production-code changes; any other
+  commit touching baselines fails CI.
+- Supply-chain gate (section 3.4 / OQ2): only audited scopes/versions in the
+  compat package's resolved tree (activates with ticket 05).
 
 TESTS: the gates ARE tests; each gets a deliberate red-case verification in
 the PR description (prove the gate fires before merging it green).
 
-ACCEPTANCE: AC6 (gate half), AC2 (meta-test half).
+ACCEPTANCE
+- Both dependency-direction gates + packaging lint + baseline-lifecycle rule
+  active in CI and demonstrated to fire on a synthetic violation.
+
 ESTIMATE: M (2-3 days)
 DEPENDS ON: nothing
 BLOCKS: merge confidence of every code ticket; land first

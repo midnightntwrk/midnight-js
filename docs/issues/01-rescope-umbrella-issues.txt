@@ -1,26 +1,25 @@
-TITLE: chore: re-scope issues #1004/#1005/#1006 against HF design v3.9
+TITLE: chore: re-scope issues #1004/#1005/#1006 against the HF architecture
 
 CONTEXT
-The three umbrella issues predate the v3 simplification rework. #1004 still says
-"unified v8/v9 dispatch APIs" — withdrawn by D10 (no generic dispatch layer).
-The #1005/#1006 sizings assume machinery that no longer exists (spec section 10,
-"Issue updates" note).
+The three umbrella issues predate the simplified design. #1004 still says
+"unified v8/v9 dispatch APIs" — withdrawn by decision D10 (architecture doc
+section 8: no generic version-dispatch layer). The #1005/#1006 sizings assume
+machinery that no longer exists.
 
 SCOPE
 - #1004 (MJS-01): shrink to the version-identity module only (ticket 02).
 - #1005 (MJS-02): re-point at routing + dedicated keep-state entry (ticket 07);
-  link the confirmed upstream answers (comment 5190024611 + tkerber confirmation
-  5202692002).
+  link the confirmed upstream answers (comments 5190024611 and 5202692002).
 - #1006 (MJS-03): shrink to record surfacing + queryRawContractState +
   queryLatestProtocolVersion + key-triple pass-through (ticket 08).
-- Mirror the still-open OQ items as tracker issues with owners + resolve-by dates
-  (OQ3d, OQ8, OQ9, OQ10, OQ12, OQ13, OQ14) — spec section 11 says gates close only
-  when a concrete artifact merges green, and the spec document must not keep
-  growing as a tracker.
+- Mirror the open items from the architecture doc section 10 gating table as
+  tracker issues with owners + resolve-by dates (OQ3d, OQ8, OQ9, OQ10, OQ12,
+  OQ13, OQ14) — gates close only when a concrete artifact merges green, and
+  the architecture document must not keep growing as a tracker.
 
 ACCEPTANCE
-- All three issues reference spec v3.9 + the architecture doc and carry the
-  reduced scope in their descriptions.
+- All three issues reference the architecture doc and carry the reduced scope
+  in their descriptions.
 - One tracker issue per open OQ, each with owner and resolve-by.
 
 ESTIMATE: S (half a day)

@@ -1,7 +1,8 @@
 TITLE: test(testkit-js): HF fixture generators + verification harness decision (OQ9)
 
 CONTEXT
-Spec section 8 "Fixture provenance". The repo is v9-only today; the decode and
+Architecture doc section 9 ("Keep-state correctness" row + the test-tier note)
+and section 10 gating table (OQ9). The repo is v9-only today; the decode and
 keep-state test slices of tickets 05/06/07 are blocked without fixtures.
 Preferred source: port the spike's generators (shieldedtech/spike-dapp-hf);
 fallback: committed golden hex + protocolVersion int.
@@ -11,20 +12,22 @@ SCOPE
   (mint at test time; migrated-state fixture via the spike's migrate flow).
 - Fixture inventory (MINIMAL-size mandate — repo precedent: WASM-fixture
   coverage timeouts, see PR #1075):
-    * migrated ContractState (v9 envelope, co.v2 preserved)
+    * migrated ContractState (v9 envelope, co.v2 preserved — glossary,
+      "Migrated state")
     * v6-envelope pre-migration state (SEC-9 negative)
     * tampered variants: key set flipped both ways; perturbed-but-well-formed bytes
-    * both-keys fixture (routing truth table)
+    * both-keys fixture (routing truth table, section 4.1)
     * Merkle-bearing migrated fixture (rehash test)
     * test-only V9-COMPILED TWIN of the minimal keep-state contract (same
-      circuits, v9 toolchain — QA-2) to mint the V3 proof + repopulated v3/ir
-      key set for AC3's negative
+      circuits, v9 toolchain) to mint the V3 proof + repopulated v3/ir key set
+      for the proof-version negative
 - DECIDE and record the verification harness: ledger-v9 local verify entry vs
-  ported spike-simulator devDependency. This decision also feeds OQ14 (ticket 11).
+  ported spike-simulator devDependency. This decision also feeds the
+  fork-capable e2e environment (OQ14, ticket 11).
 
 ACCEPTANCE
 - Generators reproducible in CI; each fixture has a provenance note.
-- Harness decision recorded in the testkit README + spec tracker issue closed.
+- Harness decision recorded in the testkit README + OQ9 tracker issue closed.
 
 ESTIMATE: M-L (3-5 days, spike port risk)
 DEPENDS ON: nothing hard (parallel with 02/03)

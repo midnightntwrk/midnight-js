@@ -1,36 +1,44 @@
 TITLE: feat(protocol): version identity utilities (MJS-01)
 
 CONTEXT
-Spec FR1/FR2, section 4.1; architecture doc section 3.2. protocol gains ONE new
-module (version.ts) and nothing else changes — no new deps, no WASM change, no
-subpath change. This unblocks every other ticket.
+Architecture doc section 3.2, "protocol (MJS-01) — version identity only".
+protocol gains ONE new module (version.ts) and nothing else changes — no new
+deps, no WASM change, no subpath change. This unblocks every other ticket.
 
 SCOPE
 - LEDGER_VERSIONS = ['v8','v9'] as const; type LedgerVersion.
-- protocolVersionToLedger(int): BOUNDED PER-MAJOR ranges (BC-1/v3.5):
-    22_000 <= v < 23_000  -> v8   (major-0 exemption: only node 0.22 attested; 23_000 fail-fasts BY DESIGN — QA-1)
+- protocolVersionToLedger(int): BOUNDED PER-MAJOR ranges (mapping table in
+  architecture doc section 3.2):
+    22_000 <= v < 23_000  -> v8   (major-0 exemption: only node 0.22 attested; 23_000 fail-fasts BY DESIGN)
     1_000_000 <= v < 2_000_000 -> v8
     2_000_000 <= v < 3_000_000 -> v9
     unknown MAJOR -> typed error (never an unseen minor within a known major;
     no open-ended >= — node 3.x might be a new era).
-  This is the SOLE narrowing point from untrusted number to LedgerVersion.
+  This is the SOLE narrowing point from untrusted number to LedgerVersion
+  (defence layer 1, architecture doc section 6.2).
 - versionOfRecord(record: { protocolVersion: number })            — read paths
 - networkHeadVersion(source: { queryLatestProtocolVersion(): Promise<number> }) — construct paths
   STRUCTURAL parameters only — types depends on protocol, so protocol must not
-  import provider interfaces (layering, NFR4).
-- Distinct typed error names for read vs construct paths (D8 inheritance).
+  import provider interfaces (layering note, section 3.2).
+- Distinct typed error names for read vs construct paths (section 7 table).
 
 TESTS (TDD, Arrange-Act-Assert)
 - Table test over ranges incl. boundary values: 21_999, 22_000, 22_999, 23_000
   (fail-fast by design), 2_000_000, 2_999_999, 3_000_000; unseen-minor
-  regression guard (2_002_000 maps to v9 WITHOUT error).
+  regression guard (2_002_000 maps to v9 WITHOUT error — a routine node minor
+  release must never brick construct/submit).
 - Sourcing-guardrail spy test: networkHeadVersion called exactly once per
   construct operation; versionOfRecord never on the construct path.
 - Export-surface strict-equality test (sorted FULL key sets) diffed against the
-  pre-change export list — every pre-existing export unchanged (AC1/QA-9).
+  pre-change export list — every pre-existing export unchanged.
 - Existing protocol suites run unmodified.
 
-ACCEPTANCE: AC1. Coverage: protocol keeps 100%.
+ACCEPTANCE
+- Mapping matches the section 3.2 table exactly; unknown-major fail-fast on
+  read AND construct paths, negative-tested.
+- protocol's pre-existing surface untouched (mechanical export-surface check).
+- Coverage: protocol keeps 100%.
+
 ESTIMATE: S-M (1-2 days)
 DEPENDS ON: nothing (09 CI gates land with or before this PR)
 BLOCKS: 03, 05, 07, 08

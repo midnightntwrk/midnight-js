@@ -1,30 +1,32 @@
 TITLE: feat: hardening — OQ8 head-version cross-check + OQ15 tag-prefix assert
 
 CONTEXT
-Spec sections 6.1/6.3, 10 step 6, 11 (OQ8, OQ15 resolved-by-ruling v3.9);
-architecture doc section 6. Two independent defence-in-depth items; separate
-PRs are fine.
+Architecture doc section 6 (trust boundaries + defence layers) and the
+section 10 gating table (OQ8; OQ15 resolved by ruling). Two independent
+defence-in-depth items; separate PRs are fine.
 
-SCOPE — OQ8 (SECURITY; blocks production-readiness declaration)
+SCOPE — OQ8 (SECURITY; blocks the production-readiness declaration for the
+transition window — section 10 gating table)
 - protocolVersionToLedger guards only UNKNOWN ints; a malicious indexer
-  reporting a wrong-but-VALID head version passes narrowing. Residual live risk:
-  mis-routing a call between keep-state and v9-native (bounded to DoS/griefing
-  by the effects-equality backstop, but detectability matters).
+  reporting a wrong-but-VALID head version passes narrowing (section 6.2,
+  defence layer 6: residual risk). Live risk: mis-routing a call between
+  keep-state and v9-native — bounded to DoS/griefing by the effects-equality
+  backstop (defence layer 5), but detectability matters.
 - Implement an independent cross-check signal for the head version on
   construct/submit (candidate sources: node RPC vs indexer; decide with the
-  risk owner). Until it lands, section 6.3 breadcrumbs are the detection and a
-  NAMED OWNER formally accepts the residual risk.
-- Negative test ships WITH the mechanism (spec gate rule).
-- The no-logger gap (loggerProvider is optional) is part of the OQ8 residual-
-  risk sign-off.
+  risk owner). Until it lands, the defence-layer-6 breadcrumbs are the
+  detection and a NAMED OWNER formally accepts the residual risk.
+- Negative test ships WITH the mechanism.
+- The no-logger gap (loggerProvider is optional) is part of the OQ8
+  residual-risk sign-off.
 
-SCOPE — OQ15 (non-blocking; resolved by upstream ruling, tkerber 2026-08-06)
+SCOPE — OQ15 (non-blocking; resolved by upstream ruling — section 10 table)
 - NO first-class discriminant API is coming — the prepended serialized tag
   prefix IS the sanctioned mechanism: read raw data to the second ':', branch
   on the human-readable tag (one n-arm case statement as versions grow).
 - Implement the one-line assert at the proving seam using that parse; negative
-  test: v8-serialized transaction body presented at the seam is rejected with
-  version context (pairs with the QA-5 unsanctioned-mixing suite in ticket 07).
+  test: a v8-serialized transaction body presented at the seam is rejected with
+  version context (pairs with the unsanctioned-mixing suite in ticket 07).
 
 ACCEPTANCE
 - OQ8: cross-check merged green + tracker issue closed; risk-owner sign-off

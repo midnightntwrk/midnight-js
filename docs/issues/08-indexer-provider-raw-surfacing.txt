@@ -1,32 +1,32 @@
 TITLE: feat: indexer provider — raw v8-record surfacing + queryRawContractState + queryLatestProtocolVersion (MJS-03)
 
 CONTEXT
-Spec section 4.4; architecture doc sections 3.2/4.3. The provider carries ZERO
-v8 knowledge — v8 records surface as raw bytes, decoding is dApp-side (ticket
-06). Recorded fallback if implementation finds provider-internal logic needing
-decoded v8 fields: optional injected codec (OQ3a discovery).
+Architecture doc section 3.2 (providers table) and section 4.3 (record-read
+sequence). The provider carries ZERO v8 knowledge — v8 records surface as raw
+bytes, decoding is dApp-side (ticket 06).
 
 SCOPE
 - Per-record dispatch on protocolVersion: v9 records decode through today's
   static path UNCHANGED; v8-tagged records populate rawTx (the provider already
-  holds transaction.raw) and are built via createRawFinalizedTxData() from
-  utils (non-enumerable throwing tx accessor — ticket 03).
+  holds the raw form) and are built via createRawFinalizedTxData() from utils
+  (non-enumerable throwing tx accessor — ticket 03).
 - queryRawContractState: serialized migrated state (bytes; provider receives
-  hex before parsing — no WASM object across the package boundary). Works
-  pre-fork too: returns v6-envelope bytes + version.
-- queryLatestProtocolVersion(): head int backing networkHeadVersion. OQ3d:
-  confirm the concrete indexer GraphQL field (expected: latest block's
-  protocolVersion) BEFORE implementation; integration test asserts strictly
-  against that source, not just "a number".
-- SEC-9: DECODED contract-state queries (queryContractState,
+  hex before parsing — no WASM object across the package boundary, section 5).
+  Works pre-fork too: returns v6-envelope bytes + version.
+- queryLatestProtocolVersion(): head int backing networkHeadVersion. OQ3d
+  (section 10 gating table): the schema field EXISTS — Block.protocolVersion in
+  the generated indexer schema (packages/indexer-public-data-provider/src/gen/
+  schema-types.ts); remaining: confirm latest-block semantics in the
+  integration test, asserting strictly against that source, not just "a number".
+- SEC-9 (section 7 table): DECODED contract-state queries (queryContractState,
   queryZSwapAndContractState, deploy-state variants — record the exact member
   list during implementation) throw a deterministic typed error while the head
   is v8, naming the raw alternative. Runtime behaviour change: null-returning
-  -> typed-throwing pre-fork (AC7 caveat 3; TROUBLESHOOTING in ticket 12).
-- Implementer policy: all in-repo PublicDataProvider implementations + testkit
-  mocks add both members IN THIS PR.
+  -> typed-throwing pre-fork (TROUBLESHOOTING in ticket 12).
+- Implementer policy (section 3.2 provider row): all in-repo PublicDataProvider
+  implementations + testkit mocks add both members IN THIS PR.
 - Barrel: re-export protocol version utils + isDecodedTxData(); compat package
-  deliberately NOT re-exported.
+  deliberately NOT re-exported (section 3.2 barrel row).
 
 TESTS
 - v8-tagged record: rawTx/protocolVersion populated; direct .tx read throws
@@ -38,13 +38,17 @@ TESTS
 - v9 record behaviour unchanged (docker integration vs real indexer response).
 - queryRawContractState round-trips vs parsed state AND returns bytes+version
   for a v6-envelope pre-fork state while the decoded query throws SEC-9.
-- queryLatestProtocolVersion asserted against the OQ3d-confirmed field.
+- queryLatestProtocolVersion asserted against the confirmed schema field.
 - Keep-state proving passes retained key triples through the configured
   proofProvider (delivery API per OQ12 — mark blocked-on if OQ12 still open).
 - Barrel export-surface strict equality.
 
-ACCEPTANCE: AC6, AC7.
-OPEN: OQ3d (gates start); OQ12 (gates the key-delivery slice + MJS-03 freeze).
+ACCEPTANCE
+- Historical v8 records surface as raw bytes + version and decode dApp-side;
+  v9 records unchanged; structural-isolation gates stay green (section 9).
+
+OPEN (section 10 gating table): OQ3d latest-block semantics; OQ12 (gates the
+key-delivery slice + the MJS-03 freeze).
 ESTIMATE: L (1 week)
 DEPENDS ON: 02, 03, 07
 BLOCKS: 10, 11, 12

@@ -1,66 +1,77 @@
 TITLE: feat(contracts): protocol-version routing + dedicated keep-state entry (MJS-02)
 
 CONTEXT
-Spec section 4.3; architecture doc sections 3.2/3.3/4.1/4.2. The v9-native
+Architecture doc sections 3.2 (contracts component), 3.3 (injection flow),
+4.1 (routing decision view) and 4.2 (keep-state sequence). The v9-native
 entry's signatures and generics are UNTOUCHED (FR7) — keep-state is a separate
 entry because 0.16-generated contract types cannot satisfy the v9-pinned
 generics of the existing one.
 
 SCOPE
 - Per-operation version resolution via networkHeadVersion (memoised within the
-  operation only; requires provider member from ticket 08 — develop against a
-  mock until 08 lands).
-- Routing truth table (TOTAL over shapes — adversarial input):
+  operation only; requires the provider member from ticket 08 — develop against
+  a mock until 08 lands).
+- Routing truth table (section 4.1 — TOTAL over shapes, adversarial input):
     co.v2-only            -> keep-state
     v3/ir, no co.v2       -> v9-native (default, untouched)
     both populated        -> v9-native + dual-key breadcrumb
     neither               -> typed unsupported-key-set error
-  Provenance caveat A4: co.v2-only assumes every v9-era deploy populates v3/ir
-  (unconfirmed — asked with OQ13); until then the missing-config error names
-  BOTH plausible causes and the path breadcrumb carries key-set shape +
-  contract address (QA-7).
+  Provenance caveat A4 (section 4.1): co.v2-only assumes every v9-era deploy
+  populates v3/ir (unconfirmed — asked with OQ13); until then the
+  missing-config error names BOTH plausible causes and the path breadcrumb
+  carries key-set shape + contract address (QA-7).
 - submitKeepStateCallTx (dedicated entry): keepState bridge attaches as a TYPED
-  OPTIONS FIELD of this entry (not the global providers object). Identity check
-  usesSameLedgerInstance(ContractState) at the START OF EVERY INVOCATION,
-  before any fetch/proving -> KeepStateLedgerInstanceMismatchError.
-- SINGLE-SNAPSHOT invariant (v3.4 f7): exactly one queryRawContractState fetch;
-  contracts decodes those bytes for routing + SEC-5, hands the IDENTICAL bytes
-  to executeCall (closes intra-operation TOCTOU).
+  OPTIONS FIELD of this entry, not the global providers object (section 3.3,
+  point 1). Identity check usesSameLedgerInstance(ContractState) at the START
+  OF EVERY INVOCATION, before any fetch/proving ->
+  KeepStateLedgerInstanceMismatchError (section 3.3, point 2).
+- SINGLE-SNAPSHOT invariant (section 3.2): exactly one queryRawContractState
+  fetch; contracts decodes those bytes for routing + SEC-5, hands the IDENTICAL
+  bytes to executeCall (closes the intra-operation TOCTOU).
 - Compose Intent -> Transaction via existing zswap-utils (v9-native binding);
   prove V2 SELECTED BY KEY TAG (never hardcoded); pass retained key triples
-  through the configured proofProvider (plumbing here; API shape = OQ12).
-- SEC-5 pre-proving check: local verifier key byte-matches fetched co.v2 slot.
-- Typed errors per spec 6.2 (stable `code` discriminant on every class): pre-fork
-  head (D9), post-fork v8-artifact deploy, missing keepState option (exact
-  snippet + both causes), stale-head via the QA-3 predicate (re-query head on
-  submit rejection; error iff it differs from operation-start version, else
-  re-throw with { cause }), unsupported key set, proof-version invariant.
-- Breadcrumbs (spec 6.3): all four dispatch decision points emit debug-level
-  loggerProvider breadcrumbs (selected version, path, source, raw int; path
-  breadcrumb += key-set shape + contract address). Privacy constraint: no key
-  bytes, no decoded state, no payloads.
+  through the configured proofProvider (plumbing here; API shape = OQ12,
+  section 3.2 proof-providers row).
+- SEC-5 pre-proving check: local verifier key byte-matches fetched co.v2 slot
+  (defence layer 3, section 6.2).
+- Typed errors per the section 7 table (stable `code` discriminant on every
+  class — dual npm scopes break instanceof): pre-fork head (D9), post-fork
+  v8-artifact deploy, missing keepState option (exact snippet + both causes),
+  stale-head via the QA-3 predicate (section 4.4: re-query head on submit
+  rejection; error iff it differs from operation-start version, else re-throw
+  with { cause }), unsupported key set, proof-version invariant.
+- Breadcrumbs (section 6.2, defence layer 6): all four dispatch decision points
+  emit debug-level loggerProvider breadcrumbs (selected version, path, source,
+  raw int; path breadcrumb += key-set shape + contract address). Privacy
+  constraint (layer 7): no key bytes, no decoded state, no payloads.
 
 TESTS (fixtures from 04)
 - Truth-table strict assertions (all four shapes) + deploy negative + missing-
   config negative; A4 mis-route with config attached -> deterministic typed
-  failure at down-convert (QA-7).
-- Keep-state positive e2e-at-unit-tier through the dedicated entry incl.
-  witness/private-state pass-through.
+  failure at down-convert, reconstructable from the breadcrumb.
+- Keep-state positive through the dedicated entry incl. witness/private-state
+  pass-through (section 4.2 sequence, end to end at unit/integration tier).
 - Single-snapshot spy: exactly one queryRawContractState per operation.
 - Stale-head predicate both ways (QA-3). SEC-5 negative BEFORE proving.
 - Proof-version negative: V3 proof / repopulated keys vs preserved co.v2 fails
-  (v9-compiled twin fixture, QA-2); unsanctioned-mixing negatives with their
-  construction mechanisms (QA-5: serialized fixture via tag prefix, compat
-  internals, mixed prototype/proof-request).
+  (v9-compiled twin fixture from 04); unsanctioned-mixing negatives with their
+  construction mechanisms (serialized fixture discriminated via the tag prefix,
+  compat internals, mixed prototype/proof-request).
 - Compile-level: 0.16-generated contract types accepted by the dedicated entry
-  and NOT required to satisfy the v9-native entry.
-- FR7 non-regression: existing v9 suites unmodified (diff gate); golden-fixture
-  byte equality on the closed deterministic-stage set captured on main BEFORE
-  this PR (QA-8 baseline lifecycle: re-baseline only in dedicated
-  no-production-change commits).
-- Injected-logger breadcrumb tests, strict equality on structured fields.
+  and NOT required to satisfy the v9-native entry (section 9, type-safety row).
+- v9-native non-regression (section 9, FR7 row): existing v9 suites unmodified
+  (diff gate); golden-fixture byte equality on the closed deterministic-stage
+  set captured on main BEFORE this PR; re-baselining only in dedicated
+  no-production-change commits.
+- Injected-logger breadcrumb tests, strict equality on structured fields
+  (section 9, observability row).
 
-ACCEPTANCE: AC2 (error paths, this package's share), AC3, AC4, AC5, AC8.
+ACCEPTANCE
+- Every error path above negative-tested, one test per path (section 7 is the
+  enumeration).
+- Keep-state call works end to end with no recompilation and no v9 variant;
+  v9-native flows byte-identical to the captured baselines.
+
 ESTIMATE: L-XL (2 weeks)
 DEPENDS ON: 02, 03, 05; fixtures 04; golden baselines captured first
 BLOCKS: 08 (barrel wiring), 10, 11

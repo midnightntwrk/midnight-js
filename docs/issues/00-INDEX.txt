@@ -1,16 +1,15 @@
 LEDGER v8/v9 HARD-FORK SUPPORT — ISSUE DRAFTS (INDEX)
 ======================================================
 
-Source spec:  Design Spec Draft v3.9 (2026-08-06), branch docs/superpowers-specs,
-              docs/superpowers/specs/2026-07-09-ledger-v8-v9-dual-support-design.md
-Architecture: docs/architecture/2026-08-05-ledger-v8-v9-dual-support-architecture.md (PR #1142)
-Program:      Ledger v8->v9 Hard Fork Migration (SOW-Q3-10 / product#119)
+Source of truth: docs/architecture/2026-08-05-ledger-v8-v9-dual-support-architecture.md
+                 (PR #1142) — all section references below point at that document.
+Program:         Ledger v8->v9 Hard Fork Migration (SOW-Q3-10 / product#119)
 Umbrella issues to re-scope: #1004 (MJS-01), #1005 (MJS-02), #1006 (MJS-03) — see ticket 01.
 
-Delivery order (dependency-driven, spec section 10; the fork date is NOT a
-scheduling input — D12):
+Delivery order (dependency-driven — architecture doc section 9 "Delivery
+sequence"; the fork date is NOT a scheduling input — decision D12):
 
-  01  chore: re-scope umbrella issues #1004/#1005/#1006 against design v3.9
+  01  chore: re-scope umbrella issues #1004/#1005/#1006 against the architecture
   02  feat(protocol): version identity utilities                    [MJS-01]
   03  feat: keep-state declarations (types) + runtime helpers (utils)
   04  test(testkit-js): HF fixture generators + verification harness (OQ9)
@@ -18,21 +17,23 @@ scheduling input — D12):
   06  feat: ledger-v8-compat package — ./codec entry (v8 decoders)
   07  feat(contracts): version routing + dedicated keep-state entry [MJS-02]
   08  feat: indexer provider — raw surfacing + two new queries      [MJS-03]
-  09  ci: structural isolation gates + error-code registry meta-test
+  09  ci: structural isolation gates + error-code registry test
   10  feat: hardening — OQ8 head cross-check + OQ15 tag-prefix assert
   11  test(testkit-js-e2e): fork-capable e2e environment + cross-fork scenario
-  12  docs: migration guide, TROUBLESHOOTING, llms.txt              [AC9]
+  12  docs: migration guide, TROUBLESHOOTING, llms.txt
 
 Dependency graph (blocks ->):
 
   02 -> 03 -> 05 -> 07 -> 08 -> 12
         03 -> 06
   04 -> 05, 06, 07 (test slices only)
-  09 lands WITH or BEFORE the first code PR (02) — gates are CI-enforced from day one (AC7)
+  09 lands WITH or BEFORE the first code PR (02) — the structural gates are
+     CI-enforced from day one (architecture doc section 9, structural isolation)
   10, 11 after 08 (hardening tier)
 
-External dependencies (tracked, not owned here):
+External dependencies (architecture doc section 10, "Open items that gate
+rollout" — tracked there, not owned here):
   OQ12  supported key-delivery API + min dual-ZKIR proof-server version  -> gates 08 freeze
   OQ13  executeCall final signature + deploy version-tag field + A4      -> gates 05/07 API freeze
   OQ10  support-window policy + graduation path                          -> retirement docs (12)
-  OQ7   Wallet SDK migrateState (owner: @agronmurtezi)                   -> fee-paying e2e in 11
+  OQ7   Wallet SDK migrateState (owner assigned)                         -> fee-paying e2e in 11

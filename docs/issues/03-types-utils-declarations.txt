@@ -1,10 +1,12 @@
 TITLE: feat: keep-state declarations in types + runtime helpers in utils
 
 CONTEXT
-Spec section 4.3/4.4 (v3.3 finding 1, v3.4 findings 2/4/6, v3.6 relocation);
-architecture doc section 3.2. MUST land before the compat package (v3.4
-finding 3) — compat implements the types-declared interface via its peer.
-types stays declarations-only (NFR4); runtime code goes to utils.
+Architecture doc section 3.2 (types/utils rows of the providers table, the
+KeepStateBridge interface under contracts, the ".tx typing decision" note) and
+section 5 (data & type boundaries). MUST land before the compat package —
+compat implements the types-declared interface via its peerDependency
+(section 9, delivery sequence). types stays declarations-only; runtime code
+goes to utils.
 
 SCOPE — types (consumer-compile-compatible, declarations ONLY)
 - KeepStateBridge<TArgs, TWitnesses, TPrivateState>:
@@ -13,15 +15,16 @@ SCOPE — types (consumer-compile-compatible, declarations ONLY)
        symbol, typed parameter; wrong symbol = compile error)
     executeCall(input: KeepStateCallInput<...>): Promise<KeepStateCallResult<...>>
   Witness/private-state shapes are OPAQUE GENERICS — closing OQ13 must not
-  churn this surface.
+  churn this surface (section 10 gating table).
 - KeepStateCallInput { serializedContractState: Uint8Array; circuitId; args;
   witnesses; privateState } / KeepStateCallResult { transcript; callPrototype:
   ContractCallPrototype; nextPrivateState }.
-- Keep-state entry options type (the keepState field of the dedicated entry).
+- Keep-state entry options type (the keepState field of the dedicated entry —
+  section 3.3, injection point).
 - FinalizedTxData.rawTx?: Uint8Array — the SOLE additive record field
-  (protocolVersion pre-exists). Declared tx stays REQUIRED (v3.4 finding 1 —
-  documented lying type on v8 records; union consciously rejected as
-  consumer-compile-breaking).
+  (protocolVersion pre-exists). Declared tx stays REQUIRED — the union was
+  consciously rejected as consumer-compile-breaking; see ".tx typing decision"
+  in section 3.2.
 - Two provider members on PublicDataProvider: queryRawContractState,
   queryLatestProtocolVersion — implementer-facing breaking; policy: all
   in-repo implementations + testkit mocks update in the provider PR (ticket 08).
@@ -35,14 +38,20 @@ SCOPE — utils (runtime)
 
 TESTS
 - Consumer-compile-compat assertion (existing consumer code compiles unchanged).
-- Guard narrows correctly both ways; copy semantics (QA-6): after spread/clone
-  tx === undefined (NO throw), rawTx byte-equal, isDecodedTxData(copy) === false.
+- Guard narrows correctly both ways; copy semantics (QA-6, section 4.3): after
+  spread/clone tx === undefined (NO throw), rawTx byte-equal,
+  isDecodedTxData(copy) === false.
 - Descriptor-parity test: records built via the factory carry identical property
   descriptors for tx (basis for provider/mock parity in 08).
 - JSON.stringify / spread / structuredClone / deep-equality of a raw record do
-  NOT throw; direct .tx read DOES throw the typed error naming the compat codec.
+  NOT throw; direct .tx read DOES throw the typed error naming the compat codec
+  (section 7 table).
 
-ACCEPTANCE: types diff is declarations-only; AC7 caveats recorded in code docs.
+ACCEPTANCE
+- types diff is declarations-only; the three consumer-runtime caveats from the
+  section 3.2 types row are recorded in code docs (.tx runtime break, SEC-9
+  pre-fork throw, implementer-facing provider members).
+
 ESTIMATE: M (2-3 days)
 DEPENDS ON: 02
 BLOCKS: 05, 06, 07, 08
