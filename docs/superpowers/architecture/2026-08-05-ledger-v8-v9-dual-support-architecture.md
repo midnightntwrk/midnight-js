@@ -1,6 +1,6 @@
 # Architecture Document — Ledger v8/v9 Support in Midnight.js (Hard-Fork Transition)
 
-**Status:** Derived from Design Spec Draft v3.8 (2026-08-06)
+**Status:** Derived from Design Spec Draft v3.9 (2026-08-06 — upstream answers confirmed by @tkerber; OQ15 resolved by ruling)
 **Source spec:** [`docs/superpowers/specs/2026-07-09-ledger-v8-v9-dual-support-design.md`](../specs/2026-07-09-ledger-v8-v9-dual-support-design.md)
 **Related issues:** [#1004](https://github.com/midnightntwrk/midnight-js/issues/1004) · [#1005](https://github.com/midnightntwrk/midnight-js/issues/1005) · [#1006](https://github.com/midnightntwrk/midnight-js/issues/1006)
 **Program:** Ledger v8→v9 Hard Fork Migration (SOW-Q3-10 / product#119)
@@ -571,7 +571,7 @@ The compat package is **born with its retirement plan**:
 | OQ12 | (a) Supported key-delivery API for retained pre-fork key triples (spike shipped them ad-hoc); (b) minimum proof-server version with dual-ZKIR support shipped; (c) DApp-connector local-proving status for the migration guide | MJS-03 freeze; operator-facing rollout requirement |
 | OQ13 | Final `executeCall` signature (dApp-side witness/private-state generic bindings only — the published `types` surface is generic and does not churn) + deploy-artifact version-tag field + **A4 confirmation** (does every v9-era deploy populate `v3`/`ir`?) | Compat API freeze; routing-provenance soundness |
 | OQ14 | Fork-capable e2e environment (or spike simulator adoption) | Proof/apply-level AC promotion from unit/integration tier |
-| OQ15 | Serialized-form version assert at the proving seam (upstream acknowledged a first-class discriminant as doable; interim: the prepended type/version tag on every serialized object) — **non-blocking defence-in-depth** | Nothing (nice-to-have) |
+| OQ15 | **Resolved by ruling (v3.9):** no first-class discriminant API — the prepended serialized tag prefix **is** the sanctioned mechanism (parse to the second `:`, branch on the human-readable tag); implement the proving-seam assert in hardening — **non-blocking defence-in-depth** | Nothing (nice-to-have) |
 | OQ7 | Wallet SDK `migrateState` (owner assigned); test-only shim port is a named work item; validated interim: run two Wallet SDK versions, restore v1 state with v2 code | Fee-paying cross-fork e2e |
 
 ---
