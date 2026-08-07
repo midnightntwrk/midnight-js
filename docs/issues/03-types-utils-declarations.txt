@@ -1,0 +1,48 @@
+TITLE: feat: keep-state declarations in types + runtime helpers in utils
+
+CONTEXT
+Spec section 4.3/4.4 (v3.3 finding 1, v3.4 findings 2/4/6, v3.6 relocation);
+architecture doc section 3.2. MUST land before the compat package (v3.4
+finding 3) — compat implements the types-declared interface via its peer.
+types stays declarations-only (NFR4); runtime code goes to utils.
+
+SCOPE — types (consumer-compile-compatible, declarations ONLY)
+- KeepStateBridge<TArgs, TWitnesses, TPrivateState>:
+    usesSameLedgerInstance(probe: typeof ContractState): boolean
+      (probe = the ContractState constructor from protocol/ledger — pinned
+       symbol, typed parameter; wrong symbol = compile error)
+    executeCall(input: KeepStateCallInput<...>): Promise<KeepStateCallResult<...>>
+  Witness/private-state shapes are OPAQUE GENERICS — closing OQ13 must not
+  churn this surface.
+- KeepStateCallInput { serializedContractState: Uint8Array; circuitId; args;
+  witnesses; privateState } / KeepStateCallResult { transcript; callPrototype:
+  ContractCallPrototype; nextPrivateState }.
+- Keep-state entry options type (the keepState field of the dedicated entry).
+- FinalizedTxData.rawTx?: Uint8Array — the SOLE additive record field
+  (protocolVersion pre-exists). Declared tx stays REQUIRED (v3.4 finding 1 —
+  documented lying type on v8 records; union consciously rejected as
+  consumer-compile-breaking).
+- Two provider members on PublicDataProvider: queryRawContractState,
+  queryLatestProtocolVersion — implementer-facing breaking; policy: all
+  in-repo implementations + testkit mocks update in the provider PR (ticket 08).
+
+SCOPE — utils (runtime)
+- isDecodedTxData(d): d is FinalizedTxData & { readonly rawTx?: undefined }
+  (narrowing on rawTx ABSENCE).
+- createRawFinalizedTxData(fields): installs the NON-ENUMERABLE throwing tx
+  accessor + populates rawTx. Mandatory for provider and testkit mocks — an
+  object literal silently satisfies the interface without the throw.
+
+TESTS
+- Consumer-compile-compat assertion (existing consumer code compiles unchanged).
+- Guard narrows correctly both ways; copy semantics (QA-6): after spread/clone
+  tx === undefined (NO throw), rawTx byte-equal, isDecodedTxData(copy) === false.
+- Descriptor-parity test: records built via the factory carry identical property
+  descriptors for tx (basis for provider/mock parity in 08).
+- JSON.stringify / spread / structuredClone / deep-equality of a raw record do
+  NOT throw; direct .tx read DOES throw the typed error naming the compat codec.
+
+ACCEPTANCE: types diff is declarations-only; AC7 caveats recorded in code docs.
+ESTIMATE: M (2-3 days)
+DEPENDS ON: 02
+BLOCKS: 05, 06, 07, 08

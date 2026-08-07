@@ -1,0 +1,36 @@
+TITLE: test(testkit-js-e2e): fork-capable e2e environment + cross-fork scenario (OQ14, OQ7)
+
+CONTEXT
+Spec sections 8 (harness note, Operational), 11 (OQ14 direction set, OQ7);
+architecture doc section 9 test-tier note. Upstream runs fork rehearsals but
+explicitly advises midnight-js to own ENVIRONMENT-INDEPENDENT e2e tests, even
+if only happy paths (#1005 answer 5). Until this exists, proof/apply-level ACs
+are authoritatively gated at the unit/integration tier (recorded, not implied).
+
+SCOPE
+- Build the testkit node+indexer+proof-server matrix that STARTS at v8 and
+  MIGRATES at a configured height — or adopt the spike simulator (decide
+  together with ticket 04's harness choice).
+- Cross-cutting fork-boundary scenario in ONE session:
+    read v8 history (raw + dApp-side decode via ./codec)
+  + keep-state call on a migrated contract
+  + v9-native flow side by side
+  + stale-head flip -> the dedicated typed error (QA-3 predicate observable e2e)
+- Effects-equality backstop negative at this tier: perturbed-but-well-formed
+  state bytes -> rejection at apply (promotes the section 6.1 invariant from
+  fixture assertion to real apply).
+- Keep-state proving runs SERIALIZED against its proof server (spike-documented
+  contention; parallel cross-fork proving flakes) — mind the e2e CI ghcr-pull
+  bottleneck when sizing the matrix.
+- OQ7: fee-paying cross-fork e2e uses the test-only wallet shim (port spike
+  facade-builder.ts / sim-reads.ts into testkit) — NAMED work item so the e2e
+  never silently degrades to test.skip; delete when Wallet SDK lands
+  migrateState (owner: @agronmurtezi; validated interim: two Wallet SDK
+  versions, restore v1 state with v2 code).
+- On completion: promote proof/apply-level acceptance criteria from the
+  unit/integration tier (update the spec tracker).
+
+ACCEPTANCE: AC3/AC4 exercised at the e2e tier; fork-boundary scenario green in CI.
+ESTIMATE: XL (infra-heavy; start the OQ14 decision early)
+DEPENDS ON: 07, 08; harness decision from 04
+BLOCKS: proof/apply-level AC promotion

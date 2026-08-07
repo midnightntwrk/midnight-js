@@ -1,0 +1,32 @@
+TITLE: feat: ledger-v8-compat — ./codec entry (v8 historical-record decoders)
+
+CONTEXT
+Spec section 4.2 "./codec"; architecture doc section 3.2. Second entry point of
+the compat package so keep-state-only consumers never pay the v8 WASM cost.
+Importing this entry instantiates the v8 WASM — THE IMPORT IS THE OPT-IN
+(NFR6; lazy-init design withdrawn with OQ6).
+
+SCOPE
+- decodeTransaction, decodeLedgerParameters, decodeZswapState — FINAL list is
+  OQ3a (product input: which historical record types do dApps actually consume;
+  post-fork contract state is v9-enveloped, so likely 2-3 functions).
+- @midnight-ntwrk/ledger-v8 as a regular dependency — the ONLY one in the whole
+  tree (CI gate from ticket 09 enforces this).
+- Where a v8 decoder fails OPEN on wrong-version input (returns a structurally
+  valid-but-wrong object — plausible for byte-identical shapes), add a
+  codec-side discriminant / round-trip check (OQ3c).
+- Decode errors re-thrown with { cause } + version context — never swallowed.
+
+TESTS (fixtures from ticket 04)
+- v8 fixtures decode to reference values.
+- A v9-tagged payload fed to a v8 decoder yields a DETERMINISTIC failure signal:
+  a throw where the decoder throws, otherwise the codec's own round-trip /
+  discriminant check fires.
+- Import side-effect: importing ./codec instantiates the v8 WASM; root entry
+  alone does not (bundle-cost separation asserted).
+
+ACCEPTANCE: AC7 (dApp-side decode path).
+OPEN: OQ3a decoder list sign-off; OQ3c fail-open inventory.
+ESTIMATE: M (2-4 days)
+DEPENDS ON: 03, 05 (package scaffold); test slices on 04
+BLOCKS: 12 (migration-guide examples)

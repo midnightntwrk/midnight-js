@@ -1,0 +1,41 @@
+TITLE: docs: HF migration guide, TROUBLESHOOTING entries, llms.txt/API docs (AC9)
+
+CONTEXT
+Spec AC9: documentation ships WITH the feature, not after. Architecture doc
+section 10 (removal plan) and the AC7 runtime caveats define most of the
+content. Docs live under docs/ (docs/guides), never docs/superpowers.
+
+SCOPE — migration guide
+- The keepState snippet (dedicated-entry options field) + createKeepStateBridge
+  with the dApp's own retained 0.16 instances.
+- dApp-side v8 history decoding (./codec import = opt-in; the import
+  instantiates the v8 WASM).
+- Operator requirement (once OQ12 pins): ONE dual-capable v9-era proof server,
+  minimum version with dual-ZKIR support; DApp-connector local-proving status.
+- D9 pre-fork stance: the new major is READ-CAPABLE ONLY pre-fork (raw records
+  + raw contract state work; construct/submit and decoded state reads throw) —
+  dApps that must transact pre-fork stay on the last v8-based major
+  (adoption-cliff consequence, recorded at D9).
+- V2-support statement per #1005 answer 2: no upstream sunset planned;
+  retirement is a midnight-js policy act (OQ10) — include the graduation-path
+  caveat for un-graduated keep-state contracts.
+- Implementer note: the two new PublicDataProvider members are implementer-
+  facing breaking (third-party implementations must add them).
+
+SCOPE — TROUBLESHOOTING
+- .tx typed throw on v8 records + the COPY caveat (clone -> tx silently
+  undefined; re-guard with isDecodedTxData()).
+- KeepStateLedgerInstanceMismatchError -> dual-instantiation guide (Vite/WASM).
+- SEC-9 pre-fork throw on decoded state queries (was null-returning).
+- Stale-head error at the fork boundary (re-resolve + rebuild; no auto-retry).
+- Catching errors by stable `code`, not instanceof (dual npm scopes).
+
+SCOPE — reference
+- llms.txt + TypeDoc/API-doc updates for every new public export.
+- Compat package README: retirement pre-announcement (deprecate at framework
+  v10; LedgerVersion shrink is the compile-time signal).
+
+ACCEPTANCE: AC9 checklist complete; docs merged in the same release train as 08.
+ESTIMATE: M (2-3 days, mostly consolidation)
+DEPENDS ON: 06, 07, 08 (final APIs); OQ12 for the operator numbers
+BLOCKS: release of the transition-window major

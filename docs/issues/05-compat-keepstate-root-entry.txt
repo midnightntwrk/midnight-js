@@ -1,0 +1,49 @@
+TITLE: feat: @midnight-ntwrk/midnight-js-ledger-v8-compat — package scaffold + keep-state root entry
+
+CONTEXT
+Spec section 4.2 (D11); architecture doc sections 3.2/3.4. New transitional
+package, one per fork window, named for the version it retires with. Root
+entry ('.') = keep-state; ./codec is ticket 06. Retirement plan pre-announced
+in the README from day one (D8/OQ10).
+
+SCOPE
+- createKeepStateBridge({ compactRuntime, onchainRuntime }): KeepStateBridge —
+  implements the types-declared interface (ticket 03) via peerDependencies.
+- peerDependencies: protocol + types (ranges = framework major; workspace
+  devDependencies for local build/tests). Every v9 symbol imported from
+  protocol/ledger ONLY — NO direct ledger-v9 dependency (packaging lint;
+  closes the #1052 v9 axis by construction).
+- usesSameLedgerInstance: constructor-reference equality against the package's
+  own ContractState import from protocol/ledger.
+- Internals (exported only for the package's own tests):
+    extractEncodedStateValue — v9-enveloped bytes -> byte-identical POJO;
+      throws on malformed input / lost StateValue type
+    toExecutionState — decode AND REHASH inside the dApp's 0.16 instance
+      (bounded Merkle trees return non-rehashed; rehash before any checkRoot)
+    wrapTranscriptV9 — POJO transcript + key tag -> native v9 ContractCallPrototype
+  Down-convert carries only .data; blank .balance/.operations are harmless —
+  the ledger checks claimed spends at apply.
+- CompactRuntime016 / OnchainRuntimeV3: hand-maintained STRUCTURAL interfaces
+  covering only the members the package calls; CI compile test assigns the real
+  compact-runtime@0.16 / onchain-runtime-v3 module types (devDependencies) —
+  upstream drift breaks the build.
+- Packaging: ESM-only; OQ2 supply-chain checklist (both npm scopes verified,
+  exact pins, lockfile integrity, CI scope/version gate on the resolved tree).
+
+TESTS (fixtures from ticket 04)
+- Down-convert round-trip vs pre-migration reference; malformed-bytes and
+  lost-StateValue negatives throw.
+- Merkle rehash: root readable after down-convert; deliberately non-rehashed
+  decode THROWS on root access (rehash is load-bearing).
+- #1052 axis 1 (0.16): npm-alias onchain-runtime-v3-alt — POJO handoff between
+  instances succeeds; WASM-backed object across instances fails (negative control).
+- #1052 axis 2 (v9): ledger-v9-alt alias — usesSameLedgerInstance returns false.
+- Export-surface strict-equality test (sorted full key sets).
+
+ACCEPTANCE: AC3 (compat side), AC6 (isolation gates green).
+OPEN: OQ13 — final executeCall signature freeze (generics make it non-churning
+for types, but freeze before publishing); confirm ledger-v8 at-import WASM
+layout when pinning (OQ2/OQ6 note).
+ESTIMATE: L (1-1.5 weeks)
+DEPENDS ON: 02, 03; test slices on 04
+BLOCKS: 07
