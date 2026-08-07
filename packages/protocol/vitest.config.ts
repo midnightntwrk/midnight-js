@@ -22,6 +22,11 @@ export default defineConfig({
     globals: true,
     include: ['**/test/**/*.test.ts'],
     exclude: ['node_modules', 'dist'],
+    typecheck: {
+      enabled: true,
+      include: ['**/test/**/*.test-d.ts', '**/test/version.test.ts'],
+      tsconfig: './tsconfig.json',
+    },
     coverage: {
       provider: 'v8',
       enabled: true,
