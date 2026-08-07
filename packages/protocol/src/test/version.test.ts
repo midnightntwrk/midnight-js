@@ -13,9 +13,17 @@
  * limitations under the License.
  */
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { LEDGER_VERSIONS, protocolVersionToLedger, UnknownProtocolVersionError } from '../version';
+import {
+  LEDGER_VERSIONS,
+  networkHeadVersion,
+  protocolVersionToLedger,
+  UnknownNetworkHeadProtocolVersionError,
+  UnknownProtocolVersionError,
+  UnknownRecordProtocolVersionError,
+  versionOfRecord
+} from '../version';
 
 const MAX_ERROR_MESSAGE_LENGTH = 256;
 
@@ -124,5 +132,84 @@ describe('runtime immutability', () => {
       // @ts-expect-error — mutation must fail at compile time and at runtime
       error.supportedRanges[0].version = 'v9';
     }).toThrow(TypeError);
+  });
+});
+
+describe('versionOfRecord', () => {
+  it('maps a historical record protocolVersion on the read path', () => {
+    expect(versionOfRecord({ protocolVersion: 1_000_000 })).toBe('v8');
+  });
+
+  it('throws UnknownRecordProtocolVersionError with full payload for an unknown major', () => {
+    const error = expectProtocolVersionError(() => versionOfRecord({ protocolVersion: 23_000 }));
+    expect(error).toBeInstanceOf(UnknownRecordProtocolVersionError);
+    expect(error.code).toBe('UNKNOWN_RECORD_PROTOCOL_VERSION');
+    expect(error.protocolVersion).toBe(23_000);
+    expect(error.supportedRanges).toEqual(EXPECTED_SUPPORTED_RANGES);
+  });
+
+  it('throws the record error, never the base error, for adversarial input through the helper', () => {
+    // @ts-expect-error — adversarial runtime input, signature is number
+    const error = expectProtocolVersionError(() => versionOfRecord({ protocolVersion: '2500000' }));
+    expect(error).toBeInstanceOf(UnknownRecordProtocolVersionError);
+    expect(error.protocolVersion).toBeUndefined();
+  });
+
+  it('never queries a record that structurally could be queried', () => {
+    const queryLatestProtocolVersion = vi.fn().mockResolvedValue(2_000_000);
+    const record = { protocolVersion: 1_000_000, queryLatestProtocolVersion };
+    expect(versionOfRecord(record)).toBe('v8');
+    expect(queryLatestProtocolVersion).toHaveBeenCalledTimes(0);
+  });
+});
+
+describe('networkHeadVersion', () => {
+  const rejectionOf = async (promise: Promise<unknown>): Promise<UnknownProtocolVersionError> => {
+    const outcome = await promise.then(
+      () => {
+        throw new Error('expected the construct path to reject');
+      },
+      (caught: unknown) => caught
+    );
+    if (outcome instanceof UnknownProtocolVersionError) {
+      return outcome;
+    }
+    throw new Error('expected a protocol version error rejection');
+  };
+
+  it('resolves the ledger version of the network head with exactly one query', async () => {
+    const source = { queryLatestProtocolVersion: vi.fn().mockResolvedValue(2_000_000) };
+    await expect(networkHeadVersion(source)).resolves.toBe('v9');
+    expect(source.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
+  });
+
+  it('queries once per invocation with no cross-call caching', async () => {
+    const source = { queryLatestProtocolVersion: vi.fn().mockResolvedValue(1_000_000) };
+    await networkHeadVersion(source);
+    await networkHeadVersion(source);
+    expect(source.queryLatestProtocolVersion).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects with UnknownNetworkHeadProtocolVersionError with full payload for an unknown major', async () => {
+    const source = { queryLatestProtocolVersion: vi.fn().mockResolvedValue(23_000) };
+    const error = await rejectionOf(networkHeadVersion(source));
+    expect(error).toBeInstanceOf(UnknownNetworkHeadProtocolVersionError);
+    expect(error.code).toBe('UNKNOWN_NETWORK_HEAD_PROTOCOL_VERSION');
+    expect(error.protocolVersion).toBe(23_000);
+    expect(error.supportedRanges).toEqual(EXPECTED_SUPPORTED_RANGES);
+  });
+
+  it('rejects with the network-head error and undefined field when the source resolves NaN', async () => {
+    const source = { queryLatestProtocolVersion: vi.fn().mockResolvedValue(Number.NaN) };
+    const error = await rejectionOf(networkHeadVersion(source));
+    expect(error).toBeInstanceOf(UnknownNetworkHeadProtocolVersionError);
+    expect(error.protocolVersion).toBeUndefined();
+  });
+
+  it('propagates the underlying query rejection unchanged — no wrap, no retry, no fallback', async () => {
+    const failure = new Error('indexer unreachable');
+    const source = { queryLatestProtocolVersion: vi.fn().mockRejectedValue(failure) };
+    await expect(networkHeadVersion(source)).rejects.toBe(failure);
+    expect(source.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
   });
 });

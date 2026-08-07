@@ -81,6 +81,16 @@ export class UnknownProtocolVersionError extends Error {
   }
 }
 
+/** Read path (versionOfRecord). */
+export class UnknownRecordProtocolVersionError extends UnknownProtocolVersionError {
+  override readonly code = 'UNKNOWN_RECORD_PROTOCOL_VERSION';
+}
+
+/** Construct path (networkHeadVersion). */
+export class UnknownNetworkHeadProtocolVersionError extends UnknownProtocolVersionError {
+  override readonly code = 'UNKNOWN_NETWORK_HEAD_PROTOCOL_VERSION';
+}
+
 type ProtocolVersionErrorConstructor = new (observed: unknown) => UnknownProtocolVersionError;
 
 const toLedgerVersion = (observed: unknown, ProtocolVersionError: ProtocolVersionErrorConstructor): LedgerVersion => {
@@ -104,3 +114,13 @@ const toLedgerVersion = (observed: unknown, ProtocolVersionError: ProtocolVersio
  */
 export const protocolVersionToLedger = (protocolVersion: number): LedgerVersion =>
   toLedgerVersion(protocolVersion, UnknownProtocolVersionError);
+
+/** Read-path sourcing helper (historical records). */
+export const versionOfRecord = (record: { protocolVersion: number }): LedgerVersion =>
+  toLedgerVersion(record.protocolVersion, UnknownRecordProtocolVersionError);
+
+/** Construct-path sourcing helper (network head). Exactly one query per call. */
+export const networkHeadVersion = async (source: {
+  queryLatestProtocolVersion(): Promise<number>;
+}): Promise<LedgerVersion> =>
+  toLedgerVersion(await source.queryLatestProtocolVersion(), UnknownNetworkHeadProtocolVersionError);
