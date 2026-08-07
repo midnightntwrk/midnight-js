@@ -13,6 +13,16 @@
  * limitations under the License.
  */
 
+export type { LedgerVersion, ProtocolVersionErrorCode, SupportedProtocolVersionRange } from './version';
+export {
+  LEDGER_VERSIONS,
+  networkHeadVersion,
+  protocolVersionToLedger,
+  UnknownNetworkHeadProtocolVersionError,
+  UnknownProtocolVersionError,
+  UnknownRecordProtocolVersionError,
+  versionOfRecord,
+} from './version';
 export * as compactJs from '@midnight-ntwrk/compact-js';
 export * as compactRuntime from '@midnight-ntwrk/compact-runtime';
 export * as platform from '@midnight-ntwrk/platform-js';

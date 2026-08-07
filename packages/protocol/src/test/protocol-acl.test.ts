@@ -60,14 +60,24 @@ describe('Protocol ACL package', () => {
       expect(Object.keys(ns).length).toBeGreaterThan(0);
     });
 
-    it('exposes exactly the documented namespaces', () => {
-      // If this fails after adding a new protocol namespace, update the expected list.
+    it('exposes exactly the documented namespaces and version-identity exports', () => {
+      // Strict-equality pin of the full root surface: the five subpath-paired
+      // namespaces plus the flat version-identity exports (root-only by design —
+      // no ./version subpath). If this fails after an intentional surface
+      // change, update the expected list.
       expect(sortedKeys(protocol)).toEqual([
         'compactJs',
         'compactRuntime',
         'ledger',
+        'LEDGER_VERSIONS',
+        'networkHeadVersion',
         'onchainRuntime',
         'platform',
+        'protocolVersionToLedger',
+        'UnknownNetworkHeadProtocolVersionError',
+        'UnknownProtocolVersionError',
+        'UnknownRecordProtocolVersionError',
+        'versionOfRecord',
       ]);
     });
   });
