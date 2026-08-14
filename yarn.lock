@@ -1868,7 +1868,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
-    effect: "npm:^3.20.0"
+    effect: "npm:^3.22.1"
     vitest: "npm:^4.1.7"
   languageName: unknown
   linkType: soft
@@ -2050,7 +2050,7 @@ __metadata:
   resolution: "@midnight-ntwrk/midnight-js-types@workspace:packages/types"
   dependencies:
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
-    effect: "npm:^3.20.0"
+    effect: "npm:^3.22.1"
     pino: "npm:^10.3.1"
     rxjs: "npm:^7.8.2"
     vitest: "npm:^4.1.7"
@@ -6452,13 +6452,23 @@ __metadata:
   languageName: node
   linkType: hard
 
-"effect@npm:^3.19.19, effect@npm:^3.20.0, effect@npm:^3.21.0, effect@npm:^3.21.4":
+"effect@npm:^3.19.19, effect@npm:^3.21.0, effect@npm:^3.21.4":
   version: 3.21.4
   resolution: "effect@npm:3.21.4"
   dependencies:
     "@standard-schema/spec": "npm:^1.0.0"
     fast-check: "npm:^3.23.1"
   checksum: 10/c95506043e070662af85963af779b3d4e9ec501e03069532888831cc268e0fd9f448dcd2a4c89809e05471e64dcd270313b196056f878d1c028037870694af11
+  languageName: node
+  linkType: hard
+
+"effect@npm:^3.22.1":
+  version: 3.22.1
+  resolution: "effect@npm:3.22.1"
+  dependencies:
+    "@standard-schema/spec": "npm:^1.0.0"
+    fast-check: "npm:^3.23.1"
+  checksum: 10/00575333225e2dabf0a873e993357ad0e923476db7a44f24b8a65f766683ac9cbc98b2b30a299a65b581694709d35df85f46fb6fa6f5c922c134aa5e2dea6ce5
   languageName: node
   linkType: hard
 
