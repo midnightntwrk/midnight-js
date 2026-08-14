@@ -68,7 +68,7 @@ jobs:
           direnv export gha >> "$GITHUB_ENV"
 
       - name: Log in to GitHub Container registry
-        uses: docker/login-action@371161bbe7024a29a25c5e19bfcbc0804fe9ad2c # ratchet:docker/login-action@v4.5.2
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # ratchet:docker/login-action@v4.6.0
         with:
           registry: 'https://ghcr.io'
           username: MidnightCI
