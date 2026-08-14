@@ -6452,17 +6452,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"effect@npm:^3.19.19, effect@npm:^3.21.0, effect@npm:^3.21.4":
-  version: 3.21.4
-  resolution: "effect@npm:3.21.4"
-  dependencies:
-    "@standard-schema/spec": "npm:^1.0.0"
-    fast-check: "npm:^3.23.1"
-  checksum: 10/c95506043e070662af85963af779b3d4e9ec501e03069532888831cc268e0fd9f448dcd2a4c89809e05471e64dcd270313b196056f878d1c028037870694af11
-  languageName: node
-  linkType: hard
-
-"effect@npm:^3.22.1":
+"effect@npm:3.22.1":
   version: 3.22.1
   resolution: "effect@npm:3.22.1"
   dependencies:
