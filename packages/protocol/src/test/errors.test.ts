@@ -28,27 +28,42 @@ describe('PROTOCOL_ERROR_CODES', () => {
       MERKLE_NOT_REHASHED: 'MIDNIGHT_JS_P_MERKLE_NOT_REHASHED'
     });
   });
+
+  it('is frozen', () => {
+    expect(Object.isFrozen(PROTOCOL_ERROR_CODES)).toBe(true);
+  });
 });
 
 describe('UnknownProtocolVersionError', () => {
   it('is a real Error with a descriptive name and message on the read path', () => {
-    const error = new UnknownProtocolVersionError(9_000_000, 'read');
+    const error = new UnknownProtocolVersionError(9_000_000, 'read', 'unknown');
 
     expect(error).toBeInstanceOf(Error);
     expect(error.name).toBe('UnknownProtocolVersionError');
     expect(error.protocolVersion).toBe(9_000_000);
     expect(error.path).toBe('read');
+    expect(error.reason).toBe('unknown');
     expect(error.code).toBe(PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ);
     expect(error.message).toContain('9000000');
     expect(error.message).toContain('read');
   });
 
-  it('carries the construct-path code and mentions both supported eras', () => {
-    const error = new UnknownProtocolVersionError(3_000_000, 'construct');
+  it('carries the construct-path code and mentions both supported eras for an unknown version', () => {
+    const error = new UnknownProtocolVersionError(3_000_000, 'construct', 'unknown');
 
     expect(error.path).toBe('construct');
+    expect(error.reason).toBe('unknown');
     expect(error.code).toBe(PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_CONSTRUCT);
     expect(error.message).toMatch(/v8/);
     expect(error.message).toMatch(/v9/);
+  });
+
+  it('describes a malformed input without the misleading upgrade text', () => {
+    const error = new UnknownProtocolVersionError(Number.NaN, 'construct', 'malformed');
+
+    expect(error.reason).toBe('malformed');
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_CONSTRUCT);
+    expect(error.message).toMatch(/malformed/i);
+    expect(error.message).not.toMatch(/upgrade midnight-js/);
   });
 });
