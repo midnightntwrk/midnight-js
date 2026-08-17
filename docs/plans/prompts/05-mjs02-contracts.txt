@@ -1,0 +1,42 @@
+TASK: Execute Plan 3 — MJS-02 `contracts` unified entries & dispatch (issue #1005).
+PREREQUISITES (verify live): PRs #1155/#1156 merged; Plan-2 D14-B PR merged;
+the cross-plan provider-members PR merged (testkit mocks implement
+queryLatestProtocolVersion/queryRawContractState — contracts tests consume
+them); engine core on main (prompt 03, at least Tasks 1.5/1.6 for keep-state
+work); OQ13 era-tag field + overload-typing inputs recorded (prompt 01) for
+Task 3.2. Do only what is unblocked; report the rest.
+
+Invoke superpowers:subagent-driven-development with the plan:
+/Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js.docs-superpowers-specs/docs/plans/2026-08-17-hf-mjs02-contracts-plan.md
+Spec (binding): /Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js.docs-superpowers-specs/docs/superpowers/specs/2026-07-09-ledger-v8-v9-dual-support-design.md (§4.3, §6.2, §8 contracts slice)
+
+ORDER: Task 3.1 (non-regression baselines: sha256 manifest of untouched test
+files + golden fixtures for the ENUMERATED deterministic stages — decoded
+state, transcript POJO, unproven-call prototype pre-binding; structural
+equality post-binding) lands as a dedicated no-production-change PR BEFORE
+any other change in packages/contracts. Then 3.2 (compile-assertion harness +
+0.16 overload prototype — the largest single work item; negative compile
+tests that 0.16/0.18 shapes cannot cross-match; neither-shape diagnostic),
+3.3+3.4 (era dispatch + fail-fasts + key-set truth table + SEC-5 byte-match),
+3.5 (keep-state + v8-native orchestration), 3.6+3.7 (stale-head two-step
+remediation with the deploy branch; scoped-transaction era rules), 3.8
+(breadcrumbs + AC2 registry meta-test).
+
+Non-negotiable behaviors from review rounds (already in the plan, easy to
+miss): stale-head predicate compares ERAS not raw ints; the stale-head error
+text itself carries the two-step remediation (verify-no-finalization, then
+re-run) and a deploy-specific branch pointing at the runtime-deploy guide
+chapter; head/state era mismatch first does a latch-bypassing fresh head read
+({ fresh: true }) and raises indexer-inconsistency (NOT fork-in-progress) if
+the fresh head still disagrees; era-invariant assert on the 0.18 return path
+is a registered-code typed throw (MIDNIGHT_JS_C_ERA_INVARIANT_VIOLATION);
+mixed-era scopes throw MIDNIGHT_JS_C_MIXED_ERA_SCOPE; wrapped external causes
+(node submit rejection, proof-server HTTP) are sanitized before the logger
+seam.
+
+Workflow: NEW wt worktree per PR from clean origin/main (prefix
+feat/1005-*); yarn install && yarn build before first push; TDD; SDD loop.
+Hard rules: never cite spec sections in code; codes MIDNIGHT_JS_C_* from the
+utils registry, every new code negative-tested (meta-test asserts registry ==
+tested set); no `any`/`as unknown`; Apache headers; conventional commits;
+subagents never push/post; PRs only with user approval.

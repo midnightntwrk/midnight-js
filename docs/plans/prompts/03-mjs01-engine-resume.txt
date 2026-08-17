@@ -1,0 +1,43 @@
+TASK: Resume the MJS-01 plan — ledger-8 engine (Tasks 1.5-1.8 = PRs 1004-D/E).
+PREREQUISITES (verify live before starting): fixtures merged (prompt 02);
+PR #1155 and #1156 merged to main; for Tasks 1.7/1.8 additionally the OQ13
+discovery decisions recorded (prompt 01): acquisition mechanism, engine
+placement (protocol vs contracts — if contracts won, transplant the task
+file paths but keep interfaces/tests identical), era-tag field, engine leg
+shape. If a prerequisite is missing, do only what is unblocked (1.5/1.6 need
+just fixtures) and report the rest as blocked.
+
+Invoke superpowers:subagent-driven-development with the plan:
+/Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js.docs-superpowers-specs/docs/plans/2026-08-17-hf-mjs01-protocol-plan.md
+Spec (binding): /Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js.docs-superpowers-specs/docs/superpowers/specs/2026-07-09-ledger-v8-v9-dual-support-design.md
+
+Prior-state ledger (tasks 0.3-partial and 1.1-1.4 are COMPLETE — do not
+re-dispatch): worktree midnight-js.feat-1004-protocol-dual-ledger,
+.superpowers/sdd/2026-08-17-hf-mjs01-protocol-plan/progress.md. If that
+worktree is gone, trust git history: 1.1-1.4 landed via PRs #1155/#1156.
+Start a FRESH ledger in your own worktree noting this.
+
+Workflow: NEW wt worktree per PR from clean origin/main
+(feat/1004-engine-core for 1.5+1.6; feat/1004-engine-legs for 1.7+1.8);
+yarn install && yarn build before first push; TDD; SDD review loop per task.
+
+Interfaces you consume (already on main after the merges):
+- @midnight-ntwrk/midnight-js-protocol: LedgerVersion, protocolVersionToLedger,
+  versionOfRecord/networkHeadVersion (ProtocolVersionSource/VersionedRecord),
+  loadV8(): Promise<ProtocolV8> (self-reference dynamic import; failures wrap
+  in Ledger8RuntimeMissingError with memo-clear retry — landed via #1156),
+  PROTOCOL_ERROR_CODES on the ./errors leaf subpath (codes
+  MIDNIGHT_JS_P_LEDGER8_INSTANCE_MISMATCH, MIDNIGHT_JS_P_LEDGER8_RUNTIME_MISSING,
+  MIDNIGHT_JS_P_DOWN_CONVERT_FAILED, MIDNIGHT_JS_P_MERKLE_NOT_REHASHED are
+  registered and awaiting their classes/uses in these tasks).
+- utils: assertNever, hasErrorCode, parseSerializedTag ({namespace, version,
+  tag, body: copied bytes}; segments /^[a-z0-9_-]+$/i).
+- Fixtures: testkit-js/testkit-js/src/fixtures/hf/ (names in the plan/prompt 02).
+
+Reminders: protocol coverage thresholds 100/100/100/100 with glob-scoped
+carve-outs only (plan Task 1.6 step 5); dual-instance negatives use npm-alias
+devDeps (onchain-runtime-v3-alt, ledger-v9-alt); productionize the spike's
+downcast.ts, do not re-derive. Never cite spec sections in code; no
+`any`/`as unknown`; Apache headers; conventional commits; subagents never
+push/post to GitHub; offer PR creation to the user at the end
+(superpowers:finishing-a-development-branch).

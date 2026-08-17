@@ -1,0 +1,48 @@
+TASK: Execute Plan 4 — MJS-03 providers + integration & hardening (issue #1006).
+PREREQUISITES (verify live): Plan-2 D14-B merged. Tasks 4.1/4.2 ship in the
+CROSS-PLAN PR together with Plan-2 Task 2.3 (interface members) and testkit
+mocks — if prompt 04's session already did that PR, skip 4.1/4.2 and start at
+4.3. Task 4.5 additionally needs the fixtures (prompt 02) and keep-state
+engine (prompt 03).
+
+Invoke superpowers:subagent-driven-development with the plan:
+/Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js.docs-superpowers-specs/docs/plans/2026-08-17-hf-mjs03-providers-plan.md
+Spec (binding): /Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js.docs-superpowers-specs/docs/superpowers/specs/2026-07-09-ledger-v8-v9-dual-support-design.md (§4.4, §4.5, §6.3, §8 providers slice, §10 steps 4-6)
+
+Key implementation facts:
+- OQ3d ANSWERED: head field = Block.protocolVersion via Query.block(offset:
+  null) (schema already has it; BLOCK_QUERY today selects only height+hash).
+- D16 latch lives INSIDE IndexerPublicDataProvider: cache only after
+  CORROBORATED v9 (route 1: same composed snapshot carries a v9-era state
+  envelope; route 2: provider itself decoded a v9-era finalized record);
+  never latch on a bare int; { fresh: true } always bypasses; one engagement
+  test per route + poisoned-latch + bypass + lagging-replica negatives.
+- queryRawContractState: composed single request with the head field
+  (mitigation, not guarantee); OQ15 tag parse on the raw hex BEFORE any
+  decode; adversarial fixtures in the indexer's real wire encoding (hex —
+  ASCII ':' is 3a): missing second colon, unknown tag, tag/content mismatch,
+  oversized prefix.
+- Dual decode: v9 through today's static path byte-unchanged; v8 via
+  loadV8() awaited inside the already-async query method, memoised; lazy
+  gates (v9-only session never loads v8 WASM; decode-only never loads 0.16).
+- Tx-flow seams: v8 arm = { version: 'v8', txBytes } request AND response at
+  proof/wallet/midnight providers; OQ15 tag assert at both proving seams and
+  submit; CostModel.initialCostModel() re-audit for the v8 arm (record the
+  finding); sanitize wrapped HTTP causes.
+- 4.5: private-state cross-window round-trip (0.16 keep-state write → 0.18
+  read post-graduation via both-keys fixture + PS-schema-identical twin;
+  VALUE equality, not byte); mock version-invariant throws
+  MIDNIGHT_JS_PR_MOCK_VERSION_INVARIANT.
+- 4.6: barrel re-exports (NO protocol/v8 runtime re-export); isolated-linker
+  (pnpm/PnP) install smoke + Vite laziness fixture as CI jobs.
+- Phase 5 (5.1 split-topology integration, 5.2 migration guide + docs +
+  CLAUDE.md layering fix, 5.3 static v8-era env + AC0 e2e + harness-gated
+  security negatives) — read the plan; 5.2/5.3 need user input on OQ9/OQ14
+  rulings; treat as separate PRs and confirm scope with the user first.
+
+Workflow: NEW wt worktree per PR from clean origin/main (prefix feat/1006-*);
+yarn install && yarn build before first push; TDD; SDD loop. Hard rules:
+never cite spec sections in code; codes MIDNIGHT_JS_PR_* from the utils
+registry, negative-tested; no `any`/`as unknown`; Apache headers;
+conventional commits; docker integration tests must assert strictly against
+the OQ3d source field; subagents never push/post; PRs only with user approval.

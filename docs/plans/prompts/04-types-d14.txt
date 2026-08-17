@@ -1,0 +1,41 @@
+TASK: Execute Plan 2 — `types` + `utils` D14 foundation (tracked on issue #1006).
+PREREQUISITE (verify live): PRs #1155 and #1156 merged to main (LedgerVersion
+and protocol ./v8 must exist on main). If not merged, stop and report.
+
+Invoke superpowers:subagent-driven-development with the plan:
+/Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js.docs-superpowers-specs/docs/plans/2026-08-17-hf-types-d14-foundation-plan.md
+Spec (binding): /Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js.docs-superpowers-specs/docs/superpowers/specs/2026-07-09-ledger-v8-v9-dual-support-design.md (§4.4 types bullet, §4.5, AC7)
+
+ORDER IS MANDATORY: Task 2.1 (API-report gate: @microsoft/api-extractor over
+the rollup-dts output, baseline committed from CURRENT main BEFORE any D14
+edit, CI diff job + allowed-breaking.md allowlist) merges before Tasks
+2.2/2.4. Task 2.3 (PublicDataProvider members) is a CROSS-PLAN PR: it ships
+in ONE PR together with MJS-03 plan Tasks 4.1/4.2 (indexer implementation:
+head query + corroborated D16 latch; queryRawContractState) and the testkit
+mock updates — coordinate with prompt 06 or execute those two tasks from the
+MJS-03 plan inside that PR yourself.
+
+Workflow: NEW wt worktree per PR from clean origin/main (branch prefix
+feat/1006-types-d14-*); yarn install && yarn build before first push; TDD;
+SDD review loop per task; compile-level tests use vitest typecheck/expectTypeOf.
+
+Key design points already fixed (do not relitigate): the 0.18 overload's
+return type stays plain v9 (unions ONLY on provider read surfaces + the 0.16
+overload's return); version-truth invariant (arm version ===
+protocolVersionToLedger(protocolVersion, 'read'), single construction point);
+v8 tx-flow arm = { version: 'v8', txBytes } tag-prefixed bytes both
+directions; queryLatestProtocolVersion(options?: { fresh?: boolean }) — fresh
+bypasses any cache (QA-3 + head/state-mismatch re-read contract); D16 latch
+corroboration = provider-internal observations only (same-snapshot v9
+envelope, or self-decoded v9-era finalized record).
+
+OQ3d is ANSWERED (use it in 4.1): the head field is Block.protocolVersion via
+Query.block(offset: null) — extend BLOCK_QUERY or add a thin query; no
+indexer schema gap.
+
+Hard rules: never cite spec sections (OQ/§/D) in code/comments/errors; error
+codes MIDNIGHT_JS_PR_* from utils registry (import protocol codes only from
+the ./errors leaf subpath); no `any`/`as unknown`; Apache headers;
+conventional commits; the breaking set must equal the API-report allowlist
+(anything else fails CI); subagents never push/post; PR creation only with
+user approval.
