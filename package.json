@@ -30,6 +30,7 @@
     "build:markdown-docs": "typedoc --validation --plugin typedoc-plugin-markdown --options typedoc.json",
     "lint": "eslint",
     "lint:fix": "NODE_OPTIONS=--max-old-space-size=16192 eslint ./packages --fix",
+    "lint:casts": "bash scripts/check-casts.sh",
     "changelog": "commit-and-tag-version --skip.bump --skip.commit --skip.tag",
     "changelog:first": "rm -f CHANGELOG.md && commit-and-tag-version --skip.bump --skip.commit --skip.tag --release-as $(node -p \"require('./package.json').version\")",
     "postinstall": "husky",

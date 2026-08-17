@@ -156,6 +156,18 @@ export default tseslint.config(
           ]
         }
       ],
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@midnight-ntwrk/midnight-js-protocol/v8'],
+              allowTypeImports: true,
+              message: 'Runtime v8 access only via loadV8() from @midnight-ntwrk/midnight-js-protocol. Type-only imports are allowed.'
+            }
+          ]
+        }
+      ],
     }
   },
   {
@@ -171,7 +183,8 @@ export default tseslint.config(
             }
           ]
         }
-      ]
+      ],
+      '@typescript-eslint/no-restricted-imports': 'off'
     }
   },
   prettierConfig

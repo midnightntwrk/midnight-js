@@ -28,7 +28,9 @@ const CONSUMER_PATH = 'packages/contracts/src/some-consumer.ts';
 const PROTOCOL_INTERNAL_PATH = 'packages/protocol/src/some-reexport.ts';
 const ACL_REPLACEMENT_PREFIX = '@midnight-ntwrk/midnight-js-protocol';
 const RULE_ID = 'no-restricted-imports';
+const TS_RULE_ID = '@typescript-eslint/no-restricted-imports';
 const DIST_IMPORT_MESSAGE = 'Direct imports from dist folders';
+const V8_SUBPATH = `${ACL_REPLACEMENT_PREFIX}/v8`;
 
 // The ESLint constructor only stores options — config resolution happens
 // lazily inside `lintText` — so eager initialisation here is cheap and lets
@@ -39,11 +41,18 @@ const eslint = new ESLint({
 });
 
 const importStatement = (moduleSpecifier: string): string => `import { foo } from '${moduleSpecifier}';\n`;
+const typeImportStatement = (moduleSpecifier: string): string => `import type { Foo } from '${moduleSpecifier}';\n`;
 
-const lintRestricted = async (code: string, filePath: string): Promise<Linter.LintMessage[]> => {
+const lintMessagesFor = async (code: string, filePath: string, ruleId: string): Promise<Linter.LintMessage[]> => {
   const [result] = await eslint.lintText(code, { filePath });
-  return result.messages.filter((m) => m.ruleId === RULE_ID);
+  return result.messages.filter((m) => m.ruleId === ruleId);
 };
+
+const lintRestricted = (code: string, filePath: string): Promise<Linter.LintMessage[]> =>
+  lintMessagesFor(code, filePath, RULE_ID);
+
+const lintV8Restricted = (code: string, filePath: string): Promise<Linter.LintMessage[]> =>
+  lintMessagesFor(code, filePath, TS_RULE_ID);
 
 // The first `lintText` call pays a one-time cost: loading the root ESLint
 // config, instantiating plugins, and warming `eslint-import-resolver-typescript`
@@ -121,5 +130,26 @@ describe('Protocol ACL: no-restricted-imports rule', () => {
       expect(messages).toHaveLength(1);
       expect(messages[0].message).toContain(DIST_IMPORT_MESSAGE);
     });
+  });
+});
+
+describe('Protocol ACL: @typescript-eslint/no-restricted-imports protocol/v8 gate', () => {
+  it('flags a runtime import of protocol/v8 from a consumer package', async () => {
+    const messages = await lintV8Restricted(importStatement(V8_SUBPATH), CONSUMER_PATH);
+
+    expect(messages).toHaveLength(1);
+    expect(messages[0].message).toContain('loadV8()');
+  });
+
+  it('allows a type-only import of protocol/v8 from a consumer package', async () => {
+    const messages = await lintV8Restricted(typeImportStatement(V8_SUBPATH), CONSUMER_PATH);
+
+    expect(messages).toEqual([]);
+  });
+
+  it('allows a runtime import of protocol/v8 inside packages/protocol/src/', async () => {
+    const messages = await lintV8Restricted(importStatement(V8_SUBPATH), PROTOCOL_INTERNAL_PATH);
+
+    expect(messages).toEqual([]);
   });
 });
