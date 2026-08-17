@@ -1,3 +1,5 @@
+#!/bin/bash
+#
 # This file is part of midnight-js.
 # Copyright (C) Midnight Foundation
 # SPDX-License-Identifier: Apache-2.0
@@ -10,8 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-#!/bin/bash
 #
 # No-new-occurrences gate for unsafe `as unknown` / `as any` casts.
 #
@@ -22,14 +22,22 @@
 # when a hit appears that isn't already in the baseline. Fixing/removing a
 # pre-existing hit is always fine and does not require touching the baseline.
 #
+# The pattern uses word-boundary guards (`(^|[^A-Za-z0-9_])` / `($|[^A-Za-z0-9_])`)
+# instead of `\b`, since `\b` support is inconsistent across grep/BRE/ERE
+# implementations (macOS vs GNU). This avoids false positives like the
+# substring "as" inside "h-as- unknown" matching the bare `as unknown|as any`
+# pattern.
+#
 # To accept a new, reviewed occurrence, regenerate the baseline with:
-#   git grep -E 'as unknown|as any' -- ':(glob)packages/*/src/**/*.ts' \
-#     ':(glob,exclude)packages/*/src/test/**' | sort > scripts/cast-baseline.txt
+#   git grep -E '(^|[^A-Za-z0-9_])as (unknown|any)($|[^A-Za-z0-9_])' -- \
+#     ':(glob)packages/*/src/**/*.ts' ':(glob,exclude)packages/*/src/test/**' \
+#     | sort > scripts/cast-baseline.txt
 
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BASELINE_FILE="$ROOT_DIR/scripts/cast-baseline.txt"
+CAST_PATTERN='(^|[^A-Za-z0-9_])as (unknown|any)($|[^A-Za-z0-9_])'
 
 cd "$ROOT_DIR"
 
@@ -38,7 +46,7 @@ if [[ ! -f "$BASELINE_FILE" ]]; then
   exit 1
 fi
 
-CURRENT_HITS="$(git grep -E 'as unknown|as any' -- ':(glob)packages/*/src/**/*.ts' ':(glob,exclude)packages/*/src/test/**' | sort || true)"
+CURRENT_HITS="$(git grep -E "$CAST_PATTERN" -- ':(glob)packages/*/src/**/*.ts' ':(glob,exclude)packages/*/src/test/**' | sort || true)"
 BASELINE_HITS="$(sort "$BASELINE_FILE")"
 
 NEW_HITS="$(comm -13 <(printf '%s\n' "$BASELINE_HITS") <(printf '%s\n' "$CURRENT_HITS") || true)"

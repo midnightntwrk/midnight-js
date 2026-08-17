@@ -19,6 +19,7 @@ import { UTILS_ERROR_CODES } from '../error-codes';
 import { parseSerializedTag } from '../serialized-tag';
 
 const utf8 = (s: string) => new TextEncoder().encode(s);
+const COLON_BYTE = 0x3a;
 
 describe('parseSerializedTag', () => {
   it('parses a well-formed prefix to the second colon', () => {
@@ -45,6 +46,13 @@ describe('parseSerializedTag', () => {
 
   it('names the error and states the tag is a defence-in-depth discriminant only', () => {
     expect(() => parseSerializedTag(utf8('justbytes'))).toThrow(/defence-in-depth|not.*authorit/i);
+  });
+
+  it.each([
+    ['no colon at all', utf8('justbytes')],
+    ['invalid UTF-8 in the prefix', new Uint8Array([0xff, 0xfe, COLON_BYTE, 0x76, COLON_BYTE])]
+  ])('states a concrete remediation next step on %s', (_name, bytes) => {
+    expect(() => parseSerializedTag(bytes)).toThrow(/verify the payload came from a sanctioned serialization seam/);
   });
 
   it('produces a body that is empty when the tag ends at the last byte', () => {

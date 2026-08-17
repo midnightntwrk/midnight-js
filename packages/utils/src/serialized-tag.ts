@@ -26,6 +26,10 @@ const DEFENCE_IN_DEPTH_NOTE =
   'The tag is a defence-in-depth discriminant only (spec §6.1) — it is attacker-controlled ' +
   'input and is never the authority on the body; the node remains the sole authority on the decoded body.';
 
+const NEXT_STEP_NOTE =
+  "Expected a '<network>:<version>:' prefix — verify the payload came from a sanctioned " +
+  "serialization seam (see the migration guide's tag-prefix section).";
+
 export class TagParseError extends Error {
   readonly code = UTILS_ERROR_CODES.TAG_PARSE_FAILED;
 
@@ -59,7 +63,7 @@ export const parseSerializedTag = (bytes: Uint8Array): ParsedSerializedTag => {
   if (secondColonIndex === -1) {
     throw new TagParseError(
       `Unable to locate a well-formed 'namespace:version:' tag prefix within the first ` +
-        `${MAX_TAG_PREFIX_BYTES} bytes. ${DEFENCE_IN_DEPTH_NOTE}`
+        `${MAX_TAG_PREFIX_BYTES} bytes. ${DEFENCE_IN_DEPTH_NOTE} ${NEXT_STEP_NOTE}`
     );
   }
 
@@ -67,7 +71,7 @@ export const parseSerializedTag = (bytes: Uint8Array): ParsedSerializedTag => {
   try {
     tag = new TextDecoder('utf-8', { fatal: true }).decode(bytes.subarray(0, secondColonIndex));
   } catch (cause) {
-    throw new TagParseError(`Tag prefix is not valid UTF-8. ${DEFENCE_IN_DEPTH_NOTE}`, { cause });
+    throw new TagParseError(`Tag prefix is not valid UTF-8. ${DEFENCE_IN_DEPTH_NOTE} ${NEXT_STEP_NOTE}`, { cause });
   }
 
   return { tag, body: bytes.subarray(secondColonIndex + 1) };

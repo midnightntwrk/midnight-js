@@ -168,6 +168,13 @@ export default tseslint.config(
           ]
         }
       ],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "ImportExpression > Literal[value='@midnight-ntwrk/midnight-js-protocol/v8']",
+          message: 'Runtime v8 access only via loadV8() from @midnight-ntwrk/midnight-js-protocol. Dynamic imports of protocol/v8 are not allowed outside packages/protocol/src/.'
+        }
+      ],
     }
   },
   {
@@ -184,7 +191,8 @@ export default tseslint.config(
           ]
         }
       ],
-      '@typescript-eslint/no-restricted-imports': 'off'
+      '@typescript-eslint/no-restricted-imports': 'off',
+      'no-restricted-syntax': 'off'
     }
   },
   prettierConfig
