@@ -58,7 +58,7 @@ jobs:
 
       - name: Log in to GitHub Container registry
         if: steps.image-cache.outputs.cache-hit != 'true'
-        uses: docker/login-action@371161bbe7024a29a25c5e19bfcbc0804fe9ad2c # ratchet:docker/login-action@v4.5.2
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # ratchet:docker/login-action@v4.6.0
         with:
           registry: 'https://ghcr.io'
           username: MidnightCI
@@ -137,7 +137,7 @@ jobs:
       # ghcr round-trip that was prone to `Client.Timeout` failures.
       - name: Log in to GitHub Container registry
         if: steps.image-cache.outputs.cache-hit != 'true'
-        uses: docker/login-action@371161bbe7024a29a25c5e19bfcbc0804fe9ad2c # ratchet:docker/login-action@v4.5.2
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # ratchet:docker/login-action@v4.6.0
         with:
           registry: 'https://ghcr.io'
           username: MidnightCI
@@ -269,7 +269,7 @@ jobs:
           mkdir junit-results
           find test-results -name "*.xml" -exec cp {} junit-results/ \;
           if [ "$(ls -A junit-results)" ]; then
-            npm install -g junit-report-merger
+            npm install -g junit-report-merger@9.0.4
             jrm junit-test-results.xml junit-results/*.xml
           else
             echo "No JUnit results found"

@@ -8,6 +8,8 @@ registries:
 
 updates:
   - package-ecosystem: "github-actions"
+    labels:
+      - "bot:github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
@@ -23,6 +25,8 @@ updates:
 #      default-days: 7
 
   - package-ecosystem: "npm"
+    labels:
+      - "bot:dependencies"
     directory: "/"
     registries:
       - npm-github

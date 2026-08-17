@@ -99,7 +99,7 @@ jobs:
           path: coverage.zip
 
       - name: Publish Test Coverage
-        uses: MishaKav/jest-coverage-comment@25f2818fee93043532f640ad32a7565b4bd4ea9a # ratchet:MishaKav/jest-coverage-comment@v1.0.34
+        uses: MishaKav/jest-coverage-comment@642ef024cc554a34b7082cea12c7bf63575ae151 # ratchet:MishaKav/jest-coverage-comment@v1.0.36
         with:
           hide-comment: false
           unique-id-for-comment: 'midnightjs-coverage'
