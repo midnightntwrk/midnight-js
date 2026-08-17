@@ -13,15 +13,6 @@
  * limitations under the License.
  */
 
-export * from './assert-never';
-export * from './assertion-utils';
-export * from './date-utils';
-export * from './deserialization';
-export * from './error-codes';
-export * from './hex-utils';
-export * from './password-validation';
-export * from './security-utils';
-export * from './serialized-tag';
-export * from './signing-key-utils';
-export * from './type-utils';
-export * from './zk-artifact-manifest';
+export const assertNever = (value: never, context: string): never => {
+  throw new Error(`assertNever: unreachable branch reached in ${context} (value: ${JSON.stringify(value)})`);
+};
