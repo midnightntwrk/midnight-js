@@ -13,20 +13,28 @@
  * limitations under the License.
  */
 
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
 import { loadV8 } from '../load-v8';
 
-// Minimum contractual set (spec §4.1(3)). The full OQ3 surface list is not
-// resolved yet, so this asserts presence, not exhaustive sorted equality.
+// Presence assertions (not exhaustive sorted equality) on purpose: the full
+// v8 surface is owned by the upstream ledger package; this pins only the
+// symbols midnight-js contractually relies on.
 const MINIMUM_CONTRACTUAL_SURFACE = ['Transaction', 'LedgerParameters', 'ZswapChainState', 'ContractState'];
 
 const SRC_ROOT = resolve(__dirname, '..');
+const PKG_ROOT = resolve(__dirname, '..', '..');
 const PROTOCOL_ACL_PREFIX = '@midnight-ntwrk/midnight-js-protocol';
 const V8_SUBPATH_SPECIFIER = `${PROTOCOL_ACL_PREFIX}/v8`;
+// Matches the specifier only as a complete quoted literal (import position),
+// so prose mentions of the subpath — e.g. inside error messages — don't trip
+// the sole-reference scan below.
+const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const V8_SUBPATH_LITERAL = new RegExp(`['"\`]${escapeRegExp(V8_SUBPATH_SPECIFIER)}['"\`]`);
+const distV8Exists = existsSync(resolve(PKG_ROOT, 'dist/v8.mjs'));
 
 const collectTsFiles = (dir: string): string[] =>
   readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -34,28 +42,27 @@ const collectTsFiles = (dir: string): string[] =>
     return entry.isDirectory() ? collectTsFiles(fullPath) : entry.name.endsWith('.ts') ? [fullPath] : [];
   });
 
-describe('loadV8', () => {
-  // NOTE: if WASM cannot instantiate under vitest's node environment, this is
-  // the assertion to skip — document with `test.skip` and reference OQ3/OQ9.
-  it('exposes the minimum contractual v8 surface', async () => {
+// loadV8 resolves the self-reference specifier through the exports map to
+// dist/v8.mjs, so this suite needs a prior `yarn build`; without one it is
+// reported as visible skips (same policy as dist-laziness.test.ts).
+describe.skipIf(!distV8Exists)('loadV8', () => {
+  it.each(MINIMUM_CONTRACTUAL_SURFACE)('exposes contractual v8 surface member %s', async (expectedKey) => {
     const surface = await loadV8();
-    const keys = Object.keys(surface);
-    for (const expectedKey of MINIMUM_CONTRACTUAL_SURFACE) {
-      expect(keys).toContain(expectedKey);
-    }
+    expect(Object.keys(surface)).toContain(expectedKey);
   });
 
-  it('memoises the module promise across calls', () => {
+  it('memoises the module promise across calls', async () => {
     const first = loadV8();
     const second = loadV8();
-    expect(first).toBe(second);
+    expect(second).toBe(first);
+    await expect(first).resolves.toBeDefined();
   });
 });
 
 describe('sole runtime reference to protocol/v8', () => {
   it('is referenced only from load-v8.ts within src/', () => {
     const filesReferencingV8Subpath = collectTsFiles(SRC_ROOT)
-      .filter((file) => readFileSync(file, 'utf8').includes(V8_SUBPATH_SPECIFIER))
+      .filter((file) => V8_SUBPATH_LITERAL.test(readFileSync(file, 'utf8')))
       .map((file) => file.slice(SRC_ROOT.length + 1));
 
     expect(filesReferencingV8Subpath).toEqual(['load-v8.ts']);

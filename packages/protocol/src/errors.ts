@@ -44,3 +44,16 @@ export class UnknownProtocolVersionError extends Error {
         : PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_CONSTRUCT;
   }
 }
+
+export class Ledger8RuntimeMissingError extends Error {
+  readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING;
+
+  constructor(cause: unknown) {
+    super(
+      'Failed to load the v8 ledger runtime via @midnight-ntwrk/midnight-js-protocol/v8. ' +
+        'This usually means a broken or partial install of the protocol package — reinstall dependencies and retry.',
+      { cause }
+    );
+    this.name = 'Ledger8RuntimeMissingError';
+  }
+}

@@ -13,16 +13,27 @@
  * limitations under the License.
  */
 
-// `typeof import(...)` is required here rather than a top-level `import type`
-// statement: it keeps the module reference purely local to this type alias,
-// with nothing to point at 'v8' but this line.
-// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-export type ProtocolV8 = typeof import('./v8.js');
+import { Ledger8RuntimeMissingError } from './errors';
+import type * as V8 from './v8.js';
+
+export type ProtocolV8 = typeof V8;
 
 let v8ModulePromise: Promise<ProtocolV8> | undefined;
 
-/** The only sanctioned runtime path to the v8 era (spec §4.1(3)).
- *  Self-reference specifier: resolves within this installed protocol copy;
- *  external to the rollup bundle, so the WASM loads only on first call. */
+/**
+ * The only sanctioned runtime path to the v8 ledger era.
+ *
+ * The package self-reference specifier resolves through this package's own
+ * exports map and stays external to the rollup bundle, so the v8 WASM loads
+ * only on the first call. Enforced by v8-surface.test.ts (no other module in
+ * src/ may reference the /v8 subpath) and dist-laziness.test.ts (the index
+ * bundle must never link the subpath statically).
+ *
+ * A failed load is not memoised: the rejection propagates as
+ * {@link Ledger8RuntimeMissingError} and the next call retries the import.
+ */
 export const loadV8 = (): Promise<ProtocolV8> =>
-  (v8ModulePromise ??= import('@midnight-ntwrk/midnight-js-protocol/v8'));
+  (v8ModulePromise ??= import('@midnight-ntwrk/midnight-js-protocol/v8').catch((error: unknown) => {
+    v8ModulePromise = undefined;
+    throw new Ledger8RuntimeMissingError(error);
+  }));

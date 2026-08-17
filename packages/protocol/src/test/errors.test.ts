@@ -15,7 +15,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { PROTOCOL_ERROR_CODES, UnknownProtocolVersionError } from '../errors';
+import { Ledger8RuntimeMissingError, PROTOCOL_ERROR_CODES, UnknownProtocolVersionError } from '../errors';
 
 describe('PROTOCOL_ERROR_CODES', () => {
   it('is exactly the documented registry of codes', () => {
@@ -50,5 +50,20 @@ describe('UnknownProtocolVersionError', () => {
     expect(error.code).toBe(PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_CONSTRUCT);
     expect(error.message).toMatch(/v8/);
     expect(error.message).toMatch(/v9/);
+  });
+});
+
+describe('Ledger8RuntimeMissingError', () => {
+  it('carries the LEDGER8_RUNTIME_MISSING code and preserves the cause', () => {
+    const cause = new Error('ERR_MODULE_NOT_FOUND');
+
+    const error = new Ledger8RuntimeMissingError(cause);
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error.name).toBe('Ledger8RuntimeMissingError');
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING);
+    expect(error.cause).toBe(cause);
+    expect(error.message).toContain('midnight-js-protocol/v8');
+    expect(error.message).toContain('reinstall');
   });
 });
