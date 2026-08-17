@@ -266,7 +266,7 @@ jobs:
           mkdir junit-results
           find test-results -name "*.xml" -exec cp {} junit-results/ \;
           if [ "$(ls -A junit-results)" ]; then
-            npm install -g junit-report-merger
+            npm install -g junit-report-merger@9.0.4
             jrm junit-test-results.xml junit-results/*.xml
           else
             echo "No JUnit results found"
