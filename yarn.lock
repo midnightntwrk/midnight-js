@@ -2033,6 +2033,7 @@ __metadata:
     "@midnight-ntwrk/compact-js": "npm:2.5.5-rc.7"
     "@midnight-ntwrk/compact-runtime": "npm:0.18.0-rc.1"
     "@midnight-ntwrk/platform-js": "npm:3.0.0"
+    "@midnightntwrk/ledger-v8": "npm:8.1.1"
     "@midnightntwrk/ledger-v9": "npm:1.0.0-rc.3"
     "@midnightntwrk/onchain-runtime-v4": "npm:4.0.0-rc.3"
     "@rollup/plugin-typescript": "npm:^12.3.0"
@@ -2182,6 +2183,13 @@ __metadata:
   version: 4.1.0-beta.1
   resolution: "@midnightntwrk/dapp-connector-api@npm:4.1.0-beta.1"
   checksum: 10/dc4ca4a201f98a2e078d3546fb0a60760dc6f2c8784ca2fdbed275009383dfc763a3007dfabd6d7d23faf5dcb93e28b24ae09f519692b33eefe149841cc767ee
+  languageName: node
+  linkType: hard
+
+"@midnightntwrk/ledger-v8@npm:8.1.1":
+  version: 8.1.1
+  resolution: "@midnightntwrk/ledger-v8@npm:8.1.1"
+  checksum: 10/f3fadf26cda8ef749a26d62e569a6c041634a153df79bd0fdf176e3b320eae77665bd9a0ddd760ed02efab481448b8aa8dc85eef2fade87e16ff4af7780074f4
   languageName: node
   linkType: hard
 

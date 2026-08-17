@@ -13,11 +13,4 @@
  * limitations under the License.
  */
 
-export * from './errors';
-export * from './load-v8';
-export * from './version';
-export * as compactJs from '@midnight-ntwrk/compact-js';
-export * as compactRuntime from '@midnight-ntwrk/compact-runtime';
-export * as platform from '@midnight-ntwrk/platform-js';
-export * as ledger from '@midnightntwrk/ledger-v9';
-export * as onchainRuntime from '@midnightntwrk/onchain-runtime-v4';
+export * from '@midnightntwrk/ledger-v8';
