@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript 6, vitest 4 typecheck mode (compile-assertion harness — new tooling, Task 3.2), the plan-1 engine, the plan-2 type surface.
 
-**Spec:** `docs/superpowers/specs/2026-07-09-ledger-v8-v9-dual-support-design.md` (v5.1) — §4.3, §6.2, §8 (contracts slice).
+**Spec:** `docs/superpowers/specs/2026-07-09-ledger-v8-v9-dual-support-design.md` (v5.2) — §4.3, §6.2, §8 (contracts slice).
 
 **Ticket:** [#1005 MJS-02](https://github.com/midnightntwrk/midnight-js/issues/1005). Branch: `feat/1005-contracts-unified-entries` (fresh worktree per PR).
 
@@ -24,7 +24,7 @@
 - TDD: test first, watch it fail, implement, watch it pass, commit. Arrange-Act-Assert. Every `expect()` has a matcher. Strict equality on export surfaces (`expect(actual.sort()).toEqual(expected.sort())`).
 - Errors: never swallow; re-throw with `{ cause }`; every typed error carries a stable `code` and remediation text; cause chains sanitized before the logger seam (spec §6.2).
 - Coverage: `packages/protocol` vitest thresholds are 100/100/100/100 and **coverage is always enabled** — every protocol task must keep 100% or add the glob-scoped carve-outs from Task 1.6. `packages/utils` thresholds: lines 97, functions 94, branches 93, statements 97.
-- Exact versions (spec OQ2, re-confirm at implementation): v8 = `ledger-v8@8.1.0` + `onchain-runtime-v3`; retained dApp stack compact `0.31.1` / compact-runtime `0.16.0`; v9 = `ledger-v9@1.0.0-rc.3` / `onchain-runtime-v4@4.0.0-rc.3`. **Verify the ledger-v8 npm scope** (`@midnight-ntwrk` vs `@midnightntwrk`) before adding the dependency; record the literal in the OQ2 checklist.
+- Exact versions (spec OQ2, re-confirm at implementation): v8 = `@midnightntwrk/ledger-v8@8.1.1` (implemented pin, PR #1156; `ledger-v8` is dual-published — org-ownership check on BOTH scopes per OQ2) + `@midnight-ntwrk/onchain-runtime-v3`; retained dApp stack compact `0.31.1` / compact-runtime `0.16.0` (only under `@midnight-ntwrk`); v9 = `ledger-v9@1.0.0-rc.3` / `onchain-runtime-v4@4.0.0-rc.3`.
 - The spec's §6.2 privacy constraint applies to all error messages and breadcrumbs: version ints/sets and key identifiers allowed; key bytes, decoded state, raw payloads forbidden.
 
 ## Phase 3 — #1005 MJS-02: `contracts` unified entries & dispatch
@@ -37,13 +37,13 @@ Branch: `feat/1005-contracts-unified-entries`. **Task 3.1 (baselines) lands befo
 - [ ] **Step 2:** Capture golden fixtures on `main` for the deterministic stages **enumerated** (QA-11): decoded state, transcript POJO, unproven-call prototype pre-binding; structural-equality assertions for post-binding stages (randomness — no injection seam exists today).
 - [ ] **Step 3:** Commit `test(midnight-js): capture v9-native non-regression baselines` (dedicated no-production-change commit — the re-baselining rule).
 
-### Task 3.2 [OQ13-gated]: compile-assertion harness + 0.16 overload prototype
+### Task 3.2 [was OQ13-gated — anchors delivered by Plan-1 Task 0.1, 2026-08-17]: compile-assertion harness + 0.16 overload prototype
 
 **Files:**
 - Create: `packages/contracts/src/test/typecheck/overloads.test-d.ts` (vitest typecheck mode — enable `typecheck: { enabled: true }` in contracts' vitest config), `packages/contracts/src/ledger8-contract.ts` (the 0.16 type family)
 
 **Interfaces:**
-- Consumes: Task 0.1 Step 3 era-tag field; a real spike-generated 0.16 contract object as devDependency fixture.
+- Consumes: Task 0.1 Step 3 era-tag discriminators (resolved — spec v5.2 §4.3): 0.18 = compact-js `CompiledContract` with the `Symbol.for('compact-js/CompiledContract')` brand (type level: its unique-symbol variance brand); 0.16 = raw sync `Contract` instance (type-level anchor: non-Promise `impureCircuits` returns + `initialState(ctx): ConstructorResult`); near-miss guard: 0.18 codegen is fully `async` (`initialState.constructor.name === 'AsyncFunction'` ⇒ typed era/artifact-mismatch error), 0.18 modules export `expectedVk`. A real spike-generated 0.16 contract object as devDependency fixture.
 - Produces (the parallel type family — spec §4.3, the largest single work item):
   ```ts
   export interface Ledger8Contract<PS = unknown> { /* pinned from the real 0.16 artifact shape: impureCircuits, initialState, witnesses */ }
@@ -61,11 +61,11 @@ Branch: `feat/1005-contracts-unified-entries`. **Task 3.1 (baselines) lands befo
 - Create: `packages/contracts/src/internal/era.ts`, `packages/contracts/src/hf-errors.ts`, `packages/contracts/src/test/era-dispatch.test.ts`
 
 **Interfaces:**
-- Consumes: `networkHeadVersion`, `parseSerializedTag`, `CONTRACTS_ERROR_CODES`, Task 0.1 era-tag field.
+- Consumes: `networkHeadVersion`, `parseSerializedTag`, `CONTRACTS_ERROR_CODES`, Task 0.1 era-tag discriminators (resolved — spec v5.2 §4.3: compact-js `Symbol.for('compact-js/CompiledContract')` brand ⇒ v9native; raw sync `Contract` instance ⇒ ledger8; async raw instance ⇒ typed era/artifact-mismatch error, never silent).
 - Produces:
   ```ts
   export type PipelineEra = 'ledger8' | 'v9native';
-  export const pipelineEraOf: (compiledContract: unknown) => PipelineEra;                    // era-tag field
+  export const pipelineEraOf: (compiledContract: unknown) => PipelineEra;                    // spec v5.2 §4.3 discriminators
   export const resolveOperationEra: (pdp: PublicDataProvider) => Promise<{ head: LedgerVersion; headProtocolVersion: number }>; // memoised per operation
   export const assertEraCompatible: (pipeline: PipelineEra, head: LedgerVersion, kind: 'call' | 'deploy') => void;
   export const assertHeadStateEraAgreement: (head: LedgerVersion, state: RawContractState, pdp: PublicDataProvider) => Promise<void>;
@@ -140,7 +140,7 @@ Branch: `feat/1005-contracts-unified-entries`. **Task 3.1 (baselines) lands befo
 | PR | Tasks | Contents | Depends on |
 |----|-------|----------|-----------|
 | 1005-A | 3.1 | non-regression baselines: sha256 manifest of untouched test files + golden fixtures (dedicated no-production-change PR) | — |
-| 1005-B | 3.2 | compile-assertion harness + 0.16 overload typing prototype (closes OQ13 typing item) | 1005-A, OQ13 era-tag field (Task 0.1) |
+| 1005-B | 3.2 | compile-assertion harness + 0.16 overload typing prototype (closes OQ13 typing item) | 1005-A (era-tag anchors delivered by Plan-1 Task 0.1 — spec v5.2 §4.3) |
 | 1005-C | 3.3, 3.4 | era dispatch + fail-fasts; key-set truth table + SEC-5 | 1005-B, cross-plan provider-members PR |
 | 1005-D | 3.5 | keep-state + v8-native orchestration through unified entries | 1005-C, plan-1 PR 1004-E |
 | 1005-E | 3.6, 3.7 | stale-head two-step remediation + deploy branch; scoped-transaction era rules | 1005-D |

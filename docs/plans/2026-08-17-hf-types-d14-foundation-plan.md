@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript 6, @microsoft/api-extractor over rollup-dts output, vitest 4 + expectTypeOf compile tests.
 
-**Spec:** `docs/superpowers/specs/2026-07-09-ledger-v8-v9-dual-support-design.md` (v5.1) — §4.4 (types bullet), §4.5, AC7.
+**Spec:** `docs/superpowers/specs/2026-07-09-ledger-v8-v9-dual-support-design.md` (v5.2) — §4.4 (types bullet), §4.5, AC7.
 
 **Ticket:** tracked as a checklist on [#1006](https://github.com/midnightntwrk/midnight-js/issues/1006) (shared prereq of #1005 and #1006). Branch: `feat/1006-types-d14-foundation`.
 
@@ -24,7 +24,7 @@
 - TDD: test first, watch it fail, implement, watch it pass, commit. Arrange-Act-Assert. Every `expect()` has a matcher. Strict equality on export surfaces (`expect(actual.sort()).toEqual(expected.sort())`).
 - Errors: never swallow; re-throw with `{ cause }`; every typed error carries a stable `code` and remediation text; cause chains sanitized before the logger seam (spec §6.2).
 - Coverage: `packages/protocol` vitest thresholds are 100/100/100/100 and **coverage is always enabled** — every protocol task must keep 100% or add the glob-scoped carve-outs from Task 1.6. `packages/utils` thresholds: lines 97, functions 94, branches 93, statements 97.
-- Exact versions (spec OQ2, re-confirm at implementation): v8 = `ledger-v8@8.1.0` + `onchain-runtime-v3`; retained dApp stack compact `0.31.1` / compact-runtime `0.16.0`; v9 = `ledger-v9@1.0.0-rc.3` / `onchain-runtime-v4@4.0.0-rc.3`. **Verify the ledger-v8 npm scope** (`@midnight-ntwrk` vs `@midnightntwrk`) before adding the dependency; record the literal in the OQ2 checklist.
+- Exact versions (spec OQ2, re-confirm at implementation): v8 = `@midnightntwrk/ledger-v8@8.1.1` (implemented pin, PR #1156; `ledger-v8` is dual-published — org-ownership check on BOTH scopes per OQ2) + `@midnight-ntwrk/onchain-runtime-v3`; retained dApp stack compact `0.31.1` / compact-runtime `0.16.0` (only under `@midnight-ntwrk`); v9 = `ledger-v9@1.0.0-rc.3` / `onchain-runtime-v4@4.0.0-rc.3`.
 - The spec's §6.2 privacy constraint applies to all error messages and breadcrumbs: version ints/sets and key identifiers allowed; key bytes, decoded state, raw payloads forbidden.
 
 ## Phase 2 — `types` + `utils` D14 foundation (prereq for #1005/#1006; tracked on #1006)

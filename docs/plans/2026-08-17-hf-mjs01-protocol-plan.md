@@ -8,15 +8,15 @@
 
 **Tech Stack:** TypeScript 6, vitest 4 (protocol thresholds 100/100/100/100, always enabled), rollup 4 per-entry file bundles, ledger-v8 8.1.x, compact-runtime 0.16 / onchain-runtime-v3 (engine era).
 
-**Spec:** `docs/superpowers/specs/2026-07-09-ledger-v8-v9-dual-support-design.md` (v5.1) — §4.1, §4.2, §6.2, §8 (protocol slice).
+**Spec:** `docs/superpowers/specs/2026-07-09-ledger-v8-v9-dual-support-design.md` (v5.2) — §4.1, §4.2, §6.2, §8 (protocol slice).
 
-**Ticket:** [#1004 MJS-01](https://github.com/midnightntwrk/midnight-js/issues/1004). Branch: `feat/1004-protocol-dual-ledger` (fresh `wt` worktree from clean `origin/main`; a new worktree per PR below).
+**Ticket:** [#1004 MJS-01](https://github.com/midnightntwrk/midnight-js/issues/1004). **Merge flow (owner instruction, 2026-08-17): long-living integration branch.** `feat/1004-protocol-dual-ledger` is a long-living branch cut from clean `origin/main` (created 2026-08-17 at `8de45623`). Every MJS-01 PR below targets it (never `main`); after 1004-A…1004-E have merged there, **one final PR** merges `feat/1004-protocol-dual-ledger` → `main` and closes #1004. Per-PR work still happens on its own `wt` worktree, branched **from the integration branch** (or stacked on the preceding PR's branch where noted).
 
 **Companion plans (read the index):** `2026-08-17-ledger-v8-v9-dual-support-plan.md` links all four plans and the cross-plan PR rule.
 
 ## Global Constraints
 
-- **Worktree rule:** every phase starts on a fresh `wt` worktree branched from clean `origin/main` (never off another feature branch). Branch names: `feat/1004-protocol-dual-ledger`, `feat/1006-types-d14-foundation`, `feat/1005-contracts-unified-entries`, `feat/1006-provider-dual-decode`.
+- **Worktree rule:** every phase starts on a fresh `wt` worktree. **MJS-01 exception (integration-branch flow):** MJS-01 PR worktrees branch from the long-living `feat/1004-protocol-dual-ledger` (itself cut from clean `origin/main`), or stack on the preceding PR's branch where the PR table notes it — never from an unrelated feature branch. Other plans keep branching from clean `origin/main`: `feat/1006-types-d14-foundation`, `feat/1005-contracts-unified-entries`, `feat/1006-provider-dual-decode`.
 - **Fresh worktree:** run `yarn && yarn build` before first push (pre-push lint needs `dist/`).
 - Apache 2.0 license header on every new `.ts` file (copy from any existing `src/` file).
 - Conventional commits, GPG-signed; PR title matches `<type>(<scope>): <subject>`.
@@ -24,25 +24,27 @@
 - TDD: test first, watch it fail, implement, watch it pass, commit. Arrange-Act-Assert. Every `expect()` has a matcher. Strict equality on export surfaces (`expect(actual.sort()).toEqual(expected.sort())`).
 - Errors: never swallow; re-throw with `{ cause }`; every typed error carries a stable `code` and remediation text; cause chains sanitized before the logger seam (spec §6.2).
 - Coverage: `packages/protocol` vitest thresholds are 100/100/100/100 and **coverage is always enabled** — every protocol task must keep 100% or add the glob-scoped carve-outs from Task 1.6. `packages/utils` thresholds: lines 97, functions 94, branches 93, statements 97.
-- Exact versions (spec OQ2, re-confirm at implementation): v8 = `ledger-v8@8.1.0` + `onchain-runtime-v3`; retained dApp stack compact `0.31.1` / compact-runtime `0.16.0`; v9 = `ledger-v9@1.0.0-rc.3` / `onchain-runtime-v4@4.0.0-rc.3`. **Verify the ledger-v8 npm scope** (`@midnight-ntwrk` vs `@midnightntwrk`) before adding the dependency; record the literal in the OQ2 checklist.
+- Exact versions (spec OQ2, re-confirm at implementation): v8 = `@midnightntwrk/ledger-v8@8.1.1` (as implemented in PR #1156) + `@midnight-ntwrk/onchain-runtime-v3` (`3.1.0` observed on the public registry at the OQ13 spike); retained dApp stack compact `0.31.1` / compact-runtime `0.16.0`; v9 = `ledger-v9@1.0.0-rc.3` / `onchain-runtime-v4@4.0.0-rc.3`. **Scopes verified (public npm, 2026-08-17):** the retained 0.16 stack (`@midnight-ntwrk/compact-runtime@0.16.0`, `@midnight-ntwrk/onchain-runtime-v3`) publishes **only** under `@midnight-ntwrk`; `ledger-v8` is **dual-published** — `@midnight-ntwrk/ledger-v8` (8.0.2…8.1.1, the scope the HF spike used) and `@midnightntwrk/ledger-v8` (8.1.1, 8.2.0-rc.1, matching the v9-era scope; the pin PR #1156 uses); v9-era = `@midnightntwrk`. 0.16-runtime acquisition (spec §4.1(4) resolved): `onchain-runtime-v3` as a regular protocol dependency + the glue alias `"compact-runtime-016": "npm:@midnight-ntwrk/compact-runtime@0.16.0"` — record all literals in the OQ2 checklist; dual-published `ledger-v8` makes the org-ownership check on **both** scopes mandatory, not optional. Local caveat: a global `~/.npmrc` may route `@midnight-ntwrk` to GitHub Packages — public-registry override needed when installing.
 - The spec's §6.2 privacy constraint applies to all error messages and breadcrumbs: version ints/sets and key identifiers allowed; key bytes, decoded state, raw payloads forbidden.
 
 ## Phase 0 — Discovery & unblockers (before the Phase 1/3 freezes; parallel to Tasks 1.1–1.4)
 
 ### Task 0.1: OQ13 discovery spike — engine freeze inputs
 
+**STATUS (2026-08-17): spike RUN — 3 of 5 steps closed, spec updated to v5.2.** Evidence: runnable probes against the real island-3 bboard artifact (compact 0.31.1 / compact-runtime 0.16.0). Draft write-ups (archive) in the session scratchpad `oq13-drafts/`: `draft-ticket-comment-1004.md`, `draft-upstream-questions-1005.md`, `draft-d11-engine-placement.md`; experiments in `oq13-expt/` (`probe-extract.mjs`, `probe-engine-leg.mjs`). **Ticket comments SKIPPED per owner instruction (2026-08-17)** — findings live in spec v5.2 + this plan only. Remaining to fully close OQ13: D11 owner decision; A4/A5 upstream answers (drafted questions available if the owner chooses to raise them on #1005).
+
 **Files:**
-- Create: comment on #1004 + #1005 recording each answer; spec §11 OQ13 updated per answer (docs branch)
+- Create: spec §11 OQ13 updated per answer (docs branch); ~~comment on #1004 + #1005~~ (skipped — owner instruction)
 
 **Interfaces:**
 - Consumes: `shieldedtech/spike-dapp-hf` (islands), a real 0.16-generated contract artifact
 - Produces: the five decisions/answers every OQ13-gated task below names
 
-- [ ] **Step 1: 0.16-runtime acquisition mechanism (BLOCKING).** Verify against a real 0.16-generated contract object whether the runtime handle is extractable from the object itself (candidate (c)); if not, decide (a) era-suffixed upstream publish vs (b) documented npm alias. Record the decision in spec §4.1(4) and OQ13. Deliverable: a runnable snippet in the ticket comment proving the chosen mechanism resolves the 0.16 instance the artifact imports.
-- [ ] **Step 2: D11 engine-placement sub-decision.** With Step 1's answer, decide `protocol` vs internal-to-`contracts` placement (owner call — present both per spec D11). Tasks 1.7–1.9 assume `protocol`; if `contracts` wins, they move packages but keep identical interfaces/tests.
-- [ ] **Step 3: era-tag field.** Identify the field on a 0.16 vs 0.18 contract object that discriminates pipeline era (spec §4.3 dispatch input). Deliverable: the exact property path + a type-level discriminator both `pipelineEraOf` (Task 3.3) and the overload split (Task 3.2) will use.
-- [ ] **Step 4: A4 + A5 upstream questions.** File the two questions with upstream (tkerber thread on #1005): does every v9-era deploy populate `v3`/`ir`? are fresh v9-era ZKIR-v2 deploys sanctioned? is the proof binding envelope/era-specific (A5)? Record answers in spec Assumptions.
-- [ ] **Step 5: engine leg shape.** Confirm raw `createCircuitContext` + invoke (no compact-js) against the spike, or pin a 0.16-compatible shim. Deliverable: the exact call sequence Task 1.8 implements.
+- [x] **Step 1: 0.16-runtime acquisition mechanism (BLOCKING) — RESOLVED.** compact-runtime@0.16.0 has **no WASM** (pure-JS glue over era-suffixed `@midnight-ntwrk/onchain-runtime-v3`, which holds the only WASM). Candidate (c) extraction **refuted** (deep reflective walk over a real instantiated contract: zero runtime handles). Mechanism: `protocol` declares `onchain-runtime-v3` directly + the 0.16 glue via a **protocol-internal npm alias** (`"compact-runtime-016": "npm:@midnight-ntwrk/compact-runtime@0.16.0"`). Proven: a second physical glue copy runs the full deploy+call leg identically; only the ocrt3 WASM instance must be shared (forced second WASM copy fails at `coerceToChargedState` — the D15 probe's exact failure). No peers, nothing dApp-declared, bump-only DX holds, OQ2 alias vector closed. Recorded in spec §4.1(4) + OQ13; runnable snippet in the draft ticket comment.
+- [ ] **Step 2: D11 engine-placement sub-decision — PRESENTED, owner decision pending.** Both options written up (`draft-d11-engine-placement.md`; summarized in spec D11): the peer-forwarding argument for `contracts` placement is moot (no peers exist); remaining trade-off is hotfix cadence vs single-seam retirement + one lint gate. Non-binding recommendation: `protocol`. Tasks 1.7–1.9 assume `protocol`; if `contracts` wins, they move packages but keep identical interfaces/tests.
+- [x] **Step 3: era-tag field — RESOLVED.** 0.18 callers hold a compact-js `CompiledContract` branded `Symbol.for('compact-js/CompiledContract')` (global registry — survives duplicated copies); 0.16 callers hold a raw sync `Contract` instance (own props exactly `witnesses/circuits/impureCircuits/provableCircuits`). Near-miss guard: 0.18 codegen is fully `async`, 0.16 has zero async members (`initialState.constructor.name === 'AsyncFunction'` ⇒ 0.18 raw object ⇒ typed error); 0.18 modules also export `expectedVk`. Type level: unique-symbol variance brand (0.18) vs non-Promise `impureCircuits`/`initialState` (0.16) — structurally disjoint both directions. Pinned in spec §4.3 for `pipelineEraOf` (Task 3.3) and the overload split (Task 3.2).
+- [ ] **Step 4: A4 + A5 upstream questions — DRAFTED; posting SKIPPED per owner instruction (2026-08-17).** Ready as #1005 questions 9 (A4: can a v9-era deploy produce a `co.v2`-only state; are fresh v9-era ZKIR-v2 deploys sanctioned) and 10 (A5: envelope/era-specific proof binding — the rewrap defence, incl. request for the commitment-layout pointer) in `draft-upstream-questions-1005.md`. The owner raises them through their own channel when ready; record answers in spec Assumptions when they land. A4/A5 stay **unconfirmed** until then — the dispatch fallback wording and the A5 harness negative keep their unconfirmed-assumption posture.
+- [x] **Step 5: engine leg shape — CONFIRMED.** Raw `createCircuitContext` + invoke, **no compact-js** on the 0.16 path; a protocol-owned glue copy works (Step 1 experiment). Sequence Task 1.7/1.8 implements: call = `createCircuitContext(address, coinPk, contractState, privateState, undefined, CostModel.initialCostModel())` → `contract.impureCircuits[id](ctx, ...args)` → `{result, proofData{input,output,publicTranscript,privateTranscriptOutputs}, context}` → post-state from `res.context.currentQueryContext.state`; compose = state bridge (`cs.data.state.encode()` → ledger `StateValue.decode` → `QueryContext`) → `partitionTranscripts([new PreTranscript(qc, publicTranscript)], params)` → `ContractCallPrototype(...)` → `Intent.new(ttl).addCall` → `Transaction.fromPartsRandomized` → `prove(...).bind()`. **Bonus finding:** the v8 deploy leg is spike-PROVEN (island-3 `assembleDeploy`: `createConstructorContext` → sync `initialState` → `LedgerContractStateV8.deserialize(cs.serialize())` → verifier-key registration via `setOperation` (else `well_formed` rejects `VerifierKeyNotSet`) → `ContractDeploy` → intent → `fromParts`) — Task 1.8's "spike-unproven" caveat downgraded to split-topology-only (spec §4.1(4)).
 
 ### Task 0.2: OQ9 fixture port
 
@@ -66,7 +68,7 @@
 
 ## Phase 1 — #1004 MJS-01: `protocol` dual-ledger seam (+ `utils` error foundation)
 
-Branch: `feat/1004-protocol-dual-ledger`. Tasks 1.1–1.6 need nothing from Phase 0; 1.7–1.9 are OQ13-gated.
+Branch: `feat/1004-protocol-dual-ledger`. Tasks 1.1–1.6 need nothing from Phase 0; 1.7–1.9 were OQ13-gated — the Task 0.1 spike delivered their engine inputs, leaving only the D11 placement owner decision as their gate.
 
 ### Task 1.1: `protocol` version module + typed errors
 
@@ -348,7 +350,7 @@ export const hasErrorCode = <C extends string>(e: unknown, code?: C): e is Error
 
 **Files:**
 - Create: `packages/protocol/src/v8.ts`, `packages/protocol/src/load-v8.ts`, `packages/protocol/src/test/v8-surface.test.ts`, `packages/protocol/src/test/dist-laziness.test.ts`
-- Modify: `packages/protocol/package.json` (add `ledger-v8` dependency — exact scoped literal from OQ2 verification; add `./v8` to `exports`), `packages/protocol/rollup.config.mjs`, `packages/protocol/src/index.ts`
+- Modify: `packages/protocol/package.json` (add `ledger-v8` dependency — implemented literal `@midnightntwrk/ledger-v8@8.1.1` (PR #1156); note: `ledger-v8` is dual-published, see Global Constraints; add `./v8` to `exports`), `packages/protocol/rollup.config.mjs`, `packages/protocol/src/index.ts`
 
 **Interfaces:**
 - Produces:
@@ -369,7 +371,7 @@ it.each(distIndex.map((c, i) => [i, c] as const))('dist index %i has no static l
 ```
 
 - [ ] **Step 2:** Run — FAIL (no `v8.ts`, no dep).
-- [ ] **Step 3: Implement.** `v8.ts`: `export * from '<verified-scope>/ledger-v8';` (single line — the subpath instantiates the v8 WASM at import; that is why it is only ever reached through `loadV8()`). `load-v8.ts`:
+- [ ] **Step 3: Implement.** `v8.ts`: `export * from '@midnightntwrk/ledger-v8';` (the implemented pin — PR #1156; single line — the subpath instantiates the v8 WASM at import; that is why it is only ever reached through `loadV8()`). `load-v8.ts`:
 
 ```ts
 export type ProtocolV8 = typeof import('./v8.js');
@@ -428,7 +430,7 @@ export const loadV8 = (): Promise<ProtocolV8> =>
 - [ ] **Step 5: Coverage config (QA-13):** in `vitest.config.ts` add `coverage.thresholds` per-glob: `'src/version.ts': { lines:100, functions:100, branches:100, statements:100 }`, engine globs explicitly listed with the PR-justified lower bounds; note in the config comment: if the WASM coverage-timeout precedent recurs, exclude engine suites from instrumentation, never pad timeouts.
 - [ ] **Step 6: Commit** — `feat(midnight-js): add ledger-8 instance/runtime fail-fasts (D15, #1052)`.
 
-### Task 1.7 [OQ13-gated]: engine — circuit invocation + keep-state wrap leg
+### Task 1.7 [was OQ13-gated — inputs delivered by Task 0.1; remaining gate: D11 placement decision]: engine — circuit invocation + keep-state wrap leg
 
 **Files:**
 - Create: `packages/protocol/src/engine/execute.ts`, `packages/protocol/src/engine/wrap-v9.ts`, tests `packages/protocol/src/test/engine-execute.test.ts`
@@ -442,7 +444,7 @@ export const loadV8 = (): Promise<ProtocolV8> =>
   ```
 - [ ] **Steps (red/green/commit):** positive — spike counter fixture executes `increment` and the transcript POJO equals the spike's recorded reference; negative — mismatched runtime instance rejected by Task 1.6 guard before invocation; wrap produces a `ContractCallPrototype` accepted by existing `zswap-utils` `Intent` composition. Commit `feat(midnight-js): add ledger-8 circuit execution and keep-state v9 wrap`.
 
-### Task 1.8 [OQ13/OQ3-gated]: engine — v8-native composition + deploy machinery
+### Task 1.8 [was OQ13/OQ3-gated — OQ13 inputs delivered by Task 0.1 (deploy leg spike-proven); remaining gates: D11 placement decision + OQ3 surface]: engine — v8-native composition + deploy machinery
 
 **Files:**
 - Create: `packages/protocol/src/engine/compose-v8.ts`, `packages/protocol/src/engine/deploy-v8.ts`, tests
@@ -454,7 +456,7 @@ export const loadV8 = (): Promise<ProtocolV8> =>
   export const composeV8DeployTx: (initialState: DownConvertedState, artifacts: Ledger8Artifacts, v8: ProtocolV8) => Uint8Array;
   export const executeConstructor016: (contract: Ledger8ContractLike, args: readonly unknown[]) => ConstructorResultPojo; // spike-unproven — spec §4.1(4)
   ```
-- [ ] **Steps:** serialized output parses back via `parseSerializedTag` with the v8 tag; round-trips through the v8 fixtures decoder; deploy leg is explicitly spike-unproven — first test is written against upstream's documented `ContractDeploy` shape and marked as the OQ13 confirmation artifact. Commit `feat(midnight-js): add v8-native tx composition incl. deploy machinery (FR8)`.
+- [ ] **Steps:** serialized output parses back via `parseSerializedTag` with the v8 tag; round-trips through the v8 fixtures decoder; deploy leg follows the spike-proven `assembleDeploy` sequence (Task 0.1 Step 5 — incl. verifier-key registration via `setOperation`, whose omission `well_formed` rejects with `VerifierKeyNotSet`: encode as a typed engine failure); the split-topology confirmation stays with the integration milestone. Commit `feat(midnight-js): add v8-native tx composition incl. deploy machinery (FR8)`.
 
 ---
 
@@ -463,12 +465,15 @@ export const loadV8 = (): Promise<ProtocolV8> =>
 
 ## PR slicing (small PRs, not one kobyła)
 
-| PR | Tasks | Contents | Depends on |
-|----|-------|----------|-----------|
-| 1004-A | 0.2 | spike fixture port into testkit (`testkit-js/.../fixtures/hf/`) | — |
-| 1004-B | 1.1, 1.2, 1.3 | version module + protocol errors; utils registry/`assertNever`/tag parse; ESLint gates | — |
-| 1004-C | 1.4 | `./v8` subpath, `loadV8()`, rollup entry + dist laziness gate, OQ2 checklist | 1004-B |
-| 1004-D | 1.5, 1.6 | engine envelope/down-convert/rehash; identity probes + runtime-missing fail-fast; coverage globs | 1004-A, 1004-C |
-| 1004-E | 1.7, 1.8 | keep-state execution leg; v8-native composition + deploy machinery | 1004-D + OQ13 closed (Task 0.1) |
+**All MJS-01 PRs target the long-living integration branch `feat/1004-protocol-dual-ledger` — never `main`.** A single final PR (1004-F) merges the integration branch to `main` and closes #1004. Status 2026-08-17: integration branch created at `main@8de45623`; **#1155** (= 1004-B, `feat/1004-version-module-gates`) retargeted to it; **#1156** (= 1004-C, `feat/1004-v8-subpath-loadv8`) stays stacked on #1155's branch — after #1155 merges into the integration branch, retarget #1156 to `feat/1004-protocol-dual-ledger`.
 
-Tasks 0.1/0.3 produce no PRs — deliverables are ticket comments + spec updates on the docs branch.
+| PR | Tasks | Contents | Base / depends on |
+|----|-------|----------|-----------|
+| 1004-A | 0.2 | spike fixture port into testkit (`testkit-js/.../fixtures/hf/`) | integration branch |
+| 1004-B (**#1155, open**) | 1.1, 1.2, 1.3 | version module + protocol errors; utils registry/`assertNever`/tag parse; ESLint gates | integration branch |
+| 1004-C (**#1156, open**) | 1.4 | `./v8` subpath, `loadV8()`, rollup entry + dist laziness gate, OQ2 checklist | stacked on 1004-B; retarget to integration branch after 1004-B merges |
+| 1004-D | 1.5, 1.6 | engine envelope/down-convert/rehash; identity probes + runtime-missing fail-fast; coverage globs | integration branch, after 1004-A + 1004-C |
+| 1004-E | 1.7, 1.8 | keep-state execution leg; v8-native composition + deploy machinery | integration branch, after 1004-D + D11 placement decision (Task 0.1 Step 2 — the other OQ13 engine inputs are delivered) |
+| 1004-F | — | **final merge:** `feat/1004-protocol-dual-ledger` → `main`; closes #1004; periodically refresh the integration branch from `main` beforehand so this diff is reviewable | 1004-A…1004-E merged |
+
+Tasks 0.1/0.3 produce no PRs — deliverables are spec/plan updates on the docs branch (ticket comments skipped per owner instruction, 2026-08-17).
