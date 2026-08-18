@@ -7,7 +7,19 @@ import importPlugin from 'eslint-plugin-import';
 import simpleImportSort from 'eslint-plugin-simple-import-sort';
 import unusedImports from 'eslint-plugin-unused-imports';
 
-
+// No-new-occurrences gate for unsafe casts in package sources. Existing,
+// reviewed occurrences carry an inline eslint-disable; test files and
+// testkit-js are exempt (see the dedicated override below).
+const unsafeCastSelectors = [
+  {
+    selector: "TSAsExpression[typeAnnotation.type='TSAnyKeyword'], TSTypeAssertion[typeAnnotation.type='TSAnyKeyword']",
+    message: "Unsafe cast to 'any'. Use a precise type or a type guard instead; a reviewed exception needs an inline eslint-disable."
+  },
+  {
+    selector: "TSAsExpression[typeAnnotation.type='TSUnknownKeyword'], TSTypeAssertion[typeAnnotation.type='TSUnknownKeyword']",
+    message: "Unsafe cast to 'unknown'. Use a precise type or a type guard instead; a reviewed exception needs an inline eslint-disable."
+  }
+];
 
 export default tseslint.config(
   {
@@ -156,6 +168,15 @@ export default tseslint.config(
           ]
         }
       ],
+      'no-restricted-syntax': ['error', ...unsafeCastSelectors],
+    }
+  },
+  {
+    // Tests and testkit-js are exempt from the unsafe-cast gate — mocking and
+    // fixtures legitimately cast.
+    files: ['packages/*/src/test/**/*.ts', 'testkit-js/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': 'off'
     }
   },
   {
