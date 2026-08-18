@@ -52,6 +52,14 @@ vi.mock('@midnight-ntwrk/midnight-js-protocol/ledger', async () => {
   };
 });
 
+/**
+ * Partial stub of the abstract provider: only the methods a test exercises are
+ * supplied, and a typo in a member name fails typechecking against
+ * `Partial<ZKConfigProvider<string>>`.
+ */
+const zkConfigProviderWith = (overrides: Partial<ZKConfigProvider<string>>): ZKConfigProvider<string> =>
+  overrides as ZKConfigProvider<string>;
+
 describe('httpClientProvingProvider', () => {
   const mockUrl = 'http://localhost:8080';
   const mockZkConfig : ZKConfig<string> = {
@@ -69,9 +77,9 @@ describe('httpClientProvingProvider', () => {
     vi.mocked(ledger.createProvingPayload).mockReset();
     vi.mocked(ledger.parseCheckResult).mockReset();
 
-    mockZkConfigProvider = {
+    mockZkConfigProvider = zkConfigProviderWith({
       get: vi.fn().mockResolvedValue(mockZkConfig)
-    } as unknown as ZKConfigProvider<string>;
+    });
 
     mockFetchRetry.mockResolvedValue({
       ok: true,
@@ -549,11 +557,11 @@ describe('httpClientProvingProvider', () => {
     const contractAddress = 'aa'.repeat(32);
 
     const registrySource = (): ZKConfigProvider<string> =>
-      ({
+      zkConfigProviderWith({
         getVerifierKey: vi.fn().mockResolvedValue(verifierKey),
         getProverKey: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3])),
         getZKIR: vi.fn().mockResolvedValue(new Uint8Array([7, 8, 9]))
-      }) as unknown as ZKConfigProvider<string>;
+      });
 
     const locationFor = (vk: Uint8Array): string =>
       encodeContractKeyLocation({ contractAddress, circuitId: 'transfer', verifierKeyHash: hashVerifierKey(vk) });
