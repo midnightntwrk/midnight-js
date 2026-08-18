@@ -174,5 +174,42 @@ export default tseslint.config(
       ]
     }
   },
+  {
+    // OQ9 hard-fork fixture smoke test (task 0.2): it deliberately verifies
+    // fixture bytes against BOTH raw ledger versions at once (v8 and v9), to
+    // prove cross-fork negatives fail closed. `@midnight-ntwrk/midnight-js-
+    // protocol/ledger` only re-exports the current ledger (v9), so it cannot
+    // serve this file's purpose; scoped like the packages/protocol/src/
+    // override above.
+    files: ['testkit-js/testkit-js/test/hf-fixtures.ut.test.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/dist/**', './dist/**', '../dist/**'],
+              message: 'Direct imports from dist folders are not allowed. Use source files instead.'
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    // OQ9 fixture generator scripts (task 0.2): plain Node scripts, not part
+    // of any package's build output, run manually to (re)mint the fixtures in
+    // ../fixtures/hf. Not covered by the testkit-js/packages *.ts block above
+    // (they are .mjs), so `no-undef` needs the Node globals they actually use
+    // declared explicitly.
+    files: ['testkit-js/testkit-js/src/fixtures/hf/generators/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        Buffer: 'readonly',
+        console: 'readonly',
+        process: 'readonly'
+      }
+    }
+  },
   prettierConfig
 );
