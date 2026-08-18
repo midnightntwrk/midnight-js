@@ -86,3 +86,53 @@ export class Ledger8RuntimeMissingError extends Error {
     this.name = 'Ledger8RuntimeMissingError';
   }
 }
+
+/**
+ * Thrown by the down-convert engine (`engine/envelope.ts`, `engine/down-convert.ts`)
+ * when it cannot turn a raw contract-state envelope, or an already-extracted
+ * {@link EncodedStateValue}, into an executable pre-fork state.
+ *
+ * `stage` names which step failed (e.g. `'v9 envelope extraction'`,
+ * `'v9 state down-convert'`) so the message stays useful without ever
+ * including the input bytes themselves — this class never renders raw hex or
+ * decoded state contents, only the stage name and the wrapped `cause`.
+ */
+export class DownConvertFailedError extends Error {
+  readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED;
+
+  constructor(
+    readonly stage: string,
+    cause: unknown
+  ) {
+    super(
+      `Failed to down-convert a contract-state for execution during ${stage}. This usually means malformed or ` +
+        'truncated input bytes, or an envelope tagged for a different ledger version than the one requested — ' +
+        'check the source and requested LedgerVersion of the input.',
+      { cause }
+    );
+    this.name = 'DownConvertFailedError';
+  }
+}
+
+/**
+ * Thrown by {@link checkRoot} (`engine/down-convert.ts`) when a bounded
+ * Merkle tree's root is read before the tree has been rehashed.
+ *
+ * A bounded Merkle tree only has a readable root once every node hash has
+ * been computed; a tree built or modified via `update()` without a
+ * subsequent `rehash()` reports `undefined` instead. Call
+ * {@link downConvertForExecution} (which unconditionally rehashes every tree
+ * it finds, as a defensive no-op when a tree already has its hashes) before
+ * reading a root.
+ */
+export class MerkleNotRehashedError extends Error {
+  readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED;
+
+  constructor() {
+    super(
+      'Attempted to read the root of a bounded Merkle tree before it was rehashed. This usually means a ' +
+        'StateValue was decoded without going through downConvertForExecution — rehash it first.'
+    );
+    this.name = 'MerkleNotRehashedError';
+  }
+}

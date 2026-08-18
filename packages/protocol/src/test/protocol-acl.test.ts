@@ -69,10 +69,12 @@ describe('Protocol ACL package', () => {
       expect(sortedKeys(protocol)).toEqual([
         'compactJs',
         'compactRuntime',
+        'DownConvertFailedError',
         'ledger',
         'LEDGER_VERSIONS',
         'Ledger8RuntimeMissingError',
         'loadV8',
+        'MerkleNotRehashedError',
         'networkHeadVersion',
         'onchainRuntime',
         'platform',

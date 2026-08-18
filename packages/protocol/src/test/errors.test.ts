@@ -15,7 +15,13 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { Ledger8RuntimeMissingError, PROTOCOL_ERROR_CODES, UnknownProtocolVersionError } from '../errors';
+import {
+  DownConvertFailedError,
+  Ledger8RuntimeMissingError,
+  MerkleNotRehashedError,
+  PROTOCOL_ERROR_CODES,
+  UnknownProtocolVersionError
+} from '../errors';
 
 describe('PROTOCOL_ERROR_CODES', () => {
   it('is exactly the documented registry of codes', () => {
@@ -80,5 +86,39 @@ describe('Ledger8RuntimeMissingError', () => {
     expect(error.cause).toBe(cause);
     expect(error.message).toContain('midnight-js-protocol/v8');
     expect(error.message).toContain('reinstall');
+  });
+});
+
+describe('DownConvertFailedError', () => {
+  it('carries the DOWN_CONVERT_FAILED code, preserves the cause, and names the failing stage', () => {
+    const cause = new Error('tag v8 != v6');
+
+    const error = new DownConvertFailedError('v9 envelope extraction', cause);
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error.name).toBe('DownConvertFailedError');
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED);
+    expect(error.cause).toBe(cause);
+    expect(error.message).toContain('v9 envelope extraction');
+  });
+
+  it('never includes a hex or byte dump in its own message', () => {
+    const cause = new Error('out of range for u64');
+
+    const error = new DownConvertFailedError('v9 state down-convert', cause);
+
+    expect(error.message).not.toMatch(/[0-9a-f]{16,}/i);
+  });
+});
+
+describe('MerkleNotRehashedError', () => {
+  it('carries the MERKLE_NOT_REHASHED code and a descriptive, bounded message', () => {
+    const error = new MerkleNotRehashedError();
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error.name).toBe('MerkleNotRehashedError');
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED);
+    expect(error.message).toMatch(/rehash/i);
+    expect(error.message).not.toMatch(/[0-9a-f]{16,}/i);
   });
 });
