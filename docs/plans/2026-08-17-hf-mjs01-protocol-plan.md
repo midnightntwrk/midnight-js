@@ -48,15 +48,17 @@
 
 ### Task 0.2: OQ9 fixture port
 
+**STATUS (2026-08-18): RUN — fixtures landed on feat/1004-hf-fixtures (PR 1004-A); spec OQ9 updated; §6.1 item rulings pending owner sign-off.**
+
 **Files:**
 - Create: `testkit-js/testkit-js/src/fixtures/hf/` (minted fixtures + generator scripts)
 
 **Interfaces:**
 - Produces: fixture files named exactly: `state-v8.hex`, `state-v8-v6-envelope.hex`, `state-migrated-v9.hex`, `state-migrated-v9-merkle.hex`, `state-tampered-keyset-v8to9.hex`, `state-tampered-keyset-v9to8.hex`, `state-tampered-bytes.hex`, `state-both-keys.hex`, `state-co-v2-only-foreign.hex` (A4 mis-dispatch), plus the v9-compiled twin artifact dir `twin-contract/` and each fixture's `protocolVersion` int in `fixtures.json`
 
-- [ ] **Step 1:** Port the spike's generators (`ledger-v8` + `onchain-runtime-v3` as testkit devDependencies; mint at test time where cheap, commit golden hex where not). Minimal-size mandate: fixture contract = the spike's counter (repo precedent: WASM-fixture coverage timeouts).
-- [ ] **Step 2:** Record the verification-harness decision (ledger-v9 local verify vs ported spike simulator) in spec OQ9, **plus the item-by-item ruling on the §6.1 harness-gated security-negative list** (perturbed-bytes apply, A5 rewrap, double-submit): hard release gate vs owner-signed residual risk.
-- [ ] **Step 3:** Commit fixtures with a generator README (how each was minted, from which spike island).
+- [x] **Step 1: port the spike's generators — RESOLVED.** All nine fixtures + `twin-contract/` (recompiled with this repo's own toolchain, PS-schema identity confirmed field-for-field against the spike's compiled counter) + `fixtures.json` + generator `README.md` committed. **DevDependency deviation from the brief:** did **not** add `@midnight-ntwrk/onchain-runtime-v3`/`compact-runtime@0.16.0` as testkit devDependencies — root `resolutions` already force `@midnight-ntwrk/compact-runtime` to `0.18.0-rc.1` repo-wide, so a `0.16.0` install would be silently overridden by Yarn, not actually provide a 0.16 runtime; the two fixtures that would have needed the 0.16 stack were obtained as goldens (byte-verbatim from spike island-3) instead, at zero cost to this task or its consumers. Only `@midnightntwrk/ledger-v8@8.1.1` and `@midnightntwrk/ledger-v9@1.0.0-rc.3` (already pinned by root `resolutions`) were added.
+- [x] **Step 2: record the verification-harness decision — RESOLVED**, spec OQ9 updated (harness tier split + §6.1 item-by-item recommendations, **owner sign-off pending**).
+- [x] **Step 3: commit fixtures with a generator README — RESOLVED.** Commit range `8de45623..1ff8e850`: `f8a49a18` (add ledger-v8/ledger-v9 devDependencies), `91a501de` (port OQ9 hard-fork fixtures from spike-dapp-hf), `b068671b` (add smoke test for OQ9 hard-fork fixtures), `53a23cb8` (scope lint rules for OQ9 fixture generators), `95477809` (rework A4 fixture as a valid state, foreign key inside — fix-round-1 Critical), `1ff8e850` (assert fixtures.json protocolVersion and A4 shape — fix-round-1 Important). All six GPG-signed.
 
 ### Task 0.3: OQ3 discovery — decode surfaces & indexer facts
 
