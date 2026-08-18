@@ -19,11 +19,292 @@ import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { loadV8 } from '../load-v8';
+// Type-only import: erased at compile time, so it costs nothing at runtime,
+// but a vendor rename or removal of any of these 30 OQ3_SURFACE type-only
+// members breaks the build. This is the only check available for them —
+// they never appear in `Object.keys()`.
+import type {
+  AlignedValue,
+  Bindingish,
+  CoinCommitment,
+  CoinPublicKey,
+  ContractAddress,
+  EncodedStateValue,
+  EncPublicKey,
+  FinalizedTransaction,
+  IntentHash,
+  Nullifier,
+  PartitionedTranscript,
+  Proofish,
+  ProvingKeyMaterial,
+  ProvingProvider,
+  PublicAddress,
+  QualifiedShieldedCoinInfo,
+  RawTokenType,
+  ShieldedCoinInfo,
+  Signaturish,
+  SigningKey,
+  TokenType,
+  TransactionHash,
+  TransactionId,
+  Transcript,
+  UnprovenInput,
+  UnprovenOffer,
+  UnprovenOutput,
+  UnprovenTransaction,
+  UnprovenTransient,
+  UtxoOutput
+} from '../v8.js';
 
-// Presence assertions (not exhaustive sorted equality) on purpose: the full
-// v8 surface is owned by the upstream ledger package; this pins only the
-// symbols midnight-js contractually relies on.
-const MINIMUM_CONTRACTUAL_SURFACE = ['Transaction', 'LedgerParameters', 'ZswapChainState', 'ContractState'];
+// Prefixed `_`: this type exists only to force the compiler to resolve every
+// name in the import above — it is never instantiated.
+type _OQ3SurfaceTypeOnlyMembers = [
+  AlignedValue,
+  Bindingish,
+  CoinCommitment,
+  CoinPublicKey,
+  ContractAddress,
+  EncPublicKey,
+  EncodedStateValue,
+  FinalizedTransaction,
+  IntentHash,
+  Nullifier,
+  PartitionedTranscript,
+  Proofish,
+  ProvingKeyMaterial,
+  ProvingProvider,
+  PublicAddress,
+  QualifiedShieldedCoinInfo,
+  RawTokenType,
+  ShieldedCoinInfo,
+  Signaturish,
+  SigningKey,
+  TokenType,
+  TransactionHash,
+  TransactionId,
+  Transcript<AlignedValue>,
+  UnprovenInput,
+  UnprovenOffer,
+  UnprovenOutput,
+  UnprovenTransaction,
+  UnprovenTransient,
+  UtxoOutput
+];
+
+// OQ3_SURFACE (79 names, MJS-01 plan Task 1.4 appendix) mixes runtime and
+// type-only vendor exports; `Object.keys()` on the loaded module only ever
+// sees the runtime half. The 30 type-only members are covered above instead.
+// This is the runtime-visible subset — the consumption contract this
+// framework depends on. Checked as a subset (assertion B below), not an
+// exhaustive list: the vendor's full runtime surface is larger than what
+// OQ3_SURFACE consumes, and assertion A below already pins that full list.
+const OQ3_SURFACE_RUNTIME = [
+  'Binding',
+  'ChargedState',
+  'CoinSecretKey',
+  'ContractCallPrototype',
+  'ContractDeploy',
+  'ContractOperation',
+  'ContractState',
+  'CostModel',
+  'DustSecretKey',
+  'EncryptionSecretKey',
+  'Intent',
+  'LedgerParameters',
+  'MaintenanceUpdate',
+  'PreBinding',
+  'PreTranscript',
+  'Proof',
+  'QueryContext',
+  'SignatureEnabled',
+  'StateValue',
+  'Transaction',
+  'UnshieldedOffer',
+  'ZswapChainState',
+  'ZswapInput',
+  'ZswapOffer',
+  'ZswapOutput',
+  'ZswapSecretKeys',
+  'ZswapTransient',
+  'addressFromKey',
+  'coinCommitment',
+  'communicationCommitment',
+  'communicationCommitmentRandomness',
+  'createCheckPayload',
+  'createProvingPayload',
+  'createShieldedCoinInfo',
+  'feeToken',
+  'nativeToken',
+  'parseCheckResult',
+  'partitionTranscripts',
+  'sampleCoinPublicKey',
+  'sampleContractAddress',
+  'sampleDustSecretKey',
+  'sampleEncryptionPublicKey',
+  'sampleRawTokenType',
+  'sampleSigningKey',
+  'sampleUserAddress',
+  'shieldedToken',
+  'signatureVerifyingKey',
+  'signingKeyFromBip340',
+  'unshieldedToken'
+].sort();
+
+// Full glue-filtered vendor runtime surface (leak/ACL detector — repo rule:
+// export surfaces are asserted with strict equality, not subset containment).
+// wasm-bindgen glue (`__wbg_*` / `__wbindgen_*`, ~150 names at last count) is
+// excluded because it churns across WASM rebuilds and would make this test
+// flaky without protecting anything midnight-js relies on. This list is
+// larger than OQ3_SURFACE_RUNTIME: the vendor exports runtime helpers
+// (`decode*`/`encode*` codecs, dust/zswap internals, etc.) that OQ3_SURFACE
+// never names because it captures only the consumed subset.
+const PINNED_FULL_RUNTIME_SURFACE = [
+  'AuthorizedClaim',
+  'Binding',
+  'ChargedState',
+  'ClaimRewardsTransaction',
+  'CoinSecretKey',
+  'ContractCall',
+  'ContractCallPrototype',
+  'ContractDeploy',
+  'ContractMaintenanceAuthority',
+  'ContractOperation',
+  'ContractOperationVersion',
+  'ContractOperationVersionedVerifierKey',
+  'ContractState',
+  'CostModel',
+  'DustActions',
+  'DustGenerationState',
+  'DustLocalState',
+  'DustLocalStateWithChanges',
+  'DustParameters',
+  'DustRegistration',
+  'DustSecretKey',
+  'DustSpend',
+  'DustState',
+  'DustStateChanges',
+  'DustStateMerkleTreeCollapsedUpdate',
+  'DustUtxoState',
+  'EncryptionSecretKey',
+  'Event',
+  'Intent',
+  'IntoUnderlyingByteSource',
+  'IntoUnderlyingSink',
+  'IntoUnderlyingSource',
+  'LedgerParameters',
+  'LedgerState',
+  'MaintenanceUpdate',
+  'MerkleTreeCollapsedUpdate',
+  'NoBinding',
+  'NoProof',
+  'PreBinding',
+  'PrePartitionContractCall',
+  'PreProof',
+  'PreTranscript',
+  'Proof',
+  'QueryContext',
+  'QueryResults',
+  'ReplaceAuthority',
+  'SignatureEnabled',
+  'SignatureErased',
+  'StateBoundedMerkleTree',
+  'StateMap',
+  'StateValue',
+  'SystemTransaction',
+  'Transaction',
+  'TransactionContext',
+  'TransactionCostModel',
+  'TransactionResult',
+  'UnshieldedOffer',
+  'UtxoMeta',
+  'UtxoState',
+  'VerifiedTransaction',
+  'VerifierKeyInsert',
+  'VerifierKeyRemove',
+  'VmResults',
+  'VmStack',
+  'WellFormedStrictness',
+  'ZswapChainState',
+  'ZswapInput',
+  'ZswapLocalState',
+  'ZswapLocalStateWithChanges',
+  'ZswapOffer',
+  'ZswapOutput',
+  'ZswapSecretKeys',
+  'ZswapStateChanges',
+  'ZswapTransient',
+  'addressFromKey',
+  'bigIntModFr',
+  'bigIntToValue',
+  'coinCommitment',
+  'coinNullifier',
+  'communicationCommitment',
+  'communicationCommitmentRandomness',
+  'createCheckPayload',
+  'createCoinInfo',
+  'createProvingPayload',
+  'createProvingTransactionPayload',
+  'createShieldedCoinInfo',
+  'decodeCoinPublicKey',
+  'decodeContractAddress',
+  'decodeQualifiedShieldedCoinInfo',
+  'decodeRawTokenType',
+  'decodeShieldedCoinInfo',
+  'decodeUserAddress',
+  'degradeToTransient',
+  'dummyContractAddress',
+  'dummyUserAddress',
+  'dustCommitment',
+  'dustInitialNonce',
+  'dustNonce',
+  'dustNullifier',
+  'ecAdd',
+  'ecMul',
+  'ecMulGenerator',
+  'encodeCoinPublicKey',
+  'encodeContractAddress',
+  'encodeQualifiedShieldedCoinInfo',
+  'encodeRawTokenType',
+  'encodeShieldedCoinInfo',
+  'encodeUserAddress',
+  'entryPointHash',
+  'feeToken',
+  'hashToCurve',
+  'leafHash',
+  'maxAlignedSize',
+  'maxField',
+  'nativeToken',
+  'parseCheckResult',
+  'partitionTranscripts',
+  'persistentCommit',
+  'persistentHash',
+  'proofDataIntoSerializedPreimage',
+  'rawTokenType',
+  'runProgram',
+  'runtimeCoinCommitment',
+  'runtimeCoinNullifier',
+  'sampleCoinPublicKey',
+  'sampleContractAddress',
+  'sampleDustSecretKey',
+  'sampleEncryptionPublicKey',
+  'sampleIntentHash',
+  'sampleRawTokenType',
+  'sampleSigningKey',
+  'sampleUserAddress',
+  'shieldedToken',
+  'signData',
+  'signatureVerifyingKey',
+  'signingKeyFromBip340',
+  'transientCommit',
+  'transientHash',
+  'unshieldedToken',
+  'updatedValue',
+  'upgradeFromTransient',
+  'valueToBigInt',
+  'verifySignature'
+].sort();
+
+const GLUE_PATTERN = /^__wbg_|^__wbindgen_/;
 
 const SRC_ROOT = resolve(__dirname, '..');
 const PKG_ROOT = resolve(__dirname, '..', '..');
@@ -46,9 +327,21 @@ const collectTsFiles = (dir: string): string[] =>
 // dist/v8.mjs, so this suite needs a prior `yarn build`; without one it is
 // reported as visible skips (same policy as dist-laziness.test.ts).
 describe.skipIf(!distV8Exists)('loadV8', () => {
-  it.each(MINIMUM_CONTRACTUAL_SURFACE)('exposes contractual v8 surface member %s', async (expectedKey) => {
+  it('exposes exactly the pinned glue-filtered runtime surface (assertion A: leak/ACL detector)', async () => {
     const surface = await loadV8();
-    expect(Object.keys(surface)).toContain(expectedKey);
+    const actualRuntimeKeysFiltered = Object.keys(surface)
+      .filter((key) => !GLUE_PATTERN.test(key))
+      .sort();
+
+    expect(actualRuntimeKeysFiltered).toEqual(PINNED_FULL_RUNTIME_SURFACE);
+  });
+
+  it('exposes every runtime-visible OQ3_SURFACE member (assertion B: consumption contract)', async () => {
+    const surface = await loadV8();
+    const actualKeys = new Set(Object.keys(surface));
+    const missingFromSurface = OQ3_SURFACE_RUNTIME.filter((key) => !actualKeys.has(key));
+
+    expect(missingFromSurface).toEqual([]);
   });
 
   it('memoises the module promise across calls', async () => {
