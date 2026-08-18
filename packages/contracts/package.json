@@ -33,7 +33,7 @@
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*",
     "@midnight-ntwrk/midnight-js-types": "workspace:*",
     "@midnight-ntwrk/midnight-js-utils": "workspace:*",
-    "effect": "^3.20.0"
+    "effect": "^3.22.1"
   },
   "files": [
     "dist/"
