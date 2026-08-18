@@ -47,7 +47,7 @@ import {
 } from './test-mocks';
 
 describe('submit-call-tx', () => {
-  let mockCompiledContract: CompiledContract.CompiledContract<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  let mockCompiledContract: CompiledContract.CompiledContract<any, any>;
   let mockContractAddress: ReturnType<typeof createMockContractAddress>;
   let mockZswapLocalState: ReturnType<typeof createMockZswapLocalState>;
   let mockPrivateStateId: PrivateStateId;
@@ -255,7 +255,7 @@ describe('submit-call-tx', () => {
     describe('configuration validation', () => {
       it('should throw IncompleteCallTxPrivateStateConfig when privateStateId provided without privateStateProvider', async () => {
         const providersWithoutPrivateState = { ...mockProviders };
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         delete (providersWithoutPrivateState as any).privateStateProvider;
         const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
 
@@ -558,7 +558,7 @@ describe('submit-call-tx', () => {
     describe('configuration validation', () => {
       it('should throw IncompleteCallTxPrivateStateConfig when privateStateId provided without privateStateProvider', async () => {
         const providersWithoutPrivateState = { ...mockProviders };
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         delete (providersWithoutPrivateState as any).privateStateProvider;
         const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
 
