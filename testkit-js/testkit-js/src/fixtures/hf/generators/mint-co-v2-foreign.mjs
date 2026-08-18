@@ -15,41 +15,64 @@
 
 // Mints state-co-v2-only-foreign.hex -- the A4 mis-dispatch negative.
 //
-// The brief calls this a "co.v2-only" blob: a foreign artifact that is NOT a
-// ContractState at all, fed to code that expects one. Rather than a wrong
-// *version* of the right schema (the tamper fixtures above), this is the
-// WRONG SCHEMA entirely, so it must fail at the first tag check no matter
-// which contract-state version a caller expects.
+// Fix round 1 (Critical): the first attempt minted a BARE `ContractOperation`
+// and fed it where a `ContractState` was expected -- that fails at the
+// envelope-tag check on the very first byte, so it could never reach the
+// down-convert/execute code path this fixture exists to test. This version
+// mints a full, well-formed `ContractState` that deserializes cleanly on
+// ledger-v9 (same envelope tag as the other migrated fixtures), whose
+// registered `increment` operation slot carries a FOREIGN verifier key --
+// so the mis-dispatch only surfaces later, deterministically, when execution
+// actually tries to use that slot (a typed key mismatch), not at decode time.
 //
-// Minted from `@midnightntwrk/ledger-v8`'s `ContractOperation` (envelope tag
-// `midnight:contract-operation[v4]:`), keyed with the twin contract's own
-// `increment` verifier key (../twin-contract/compiled/keys/increment.verifier
-// -- "different key material" from either golden ContractState, per the
-// brief). ledger-v8 was used deliberately: the 0.16-era `contract-operation`
-// tag (which the brief's "co.v2" label points at) requires the
-// compact-runtime-0.16 / onchain-runtime-v3 stack, which is not installed
-// here (see README.md "Mint-path decisions" -- root `resolutions` pins
-// @midnight-ntwrk/compact-runtime to 0.18.0-rc.1, in conflict with the 0.16.0
-// pin this stack needs). ContractOperation[v4] is a different top-level
-// schema than ContractState under EVERY installed decoder here, which is the
-// property this fixture exists to exercise -- ledger-v9's own
-// ContractOperation is tag [v6], confirming the schema (not just the version)
-// differs from any ContractState envelope.
+// "Foreign" here means genuinely NOT built from the retained counter
+// artifacts: the key is borrowed from the real migrated golden
+// (state-migrated-v9.hex)'s own `post` operation -- bboard's real,
+// pre-fork-compiled, migrated verifier key (DECISIONS.md: "copies the
+// pre-fork contract's verifier key `source.v2 -> op.v2`"). `ContractOperation`
+// exposes only its plain, unversioned `verifierKey` (the .d.ts: "Only the
+// latest available version is exposed to this API") -- the pre-migration,
+// single-key-slot shape DECISIONS.md calls `op.v2`, as opposed to the
+// fork-era multi-version `ContractOperationVersion('v3'|'v4')`/
+// `ContractOperationVersionedVerifierKey` scheme. That single-slot key is what
+// this fixture borrows and re-registers under the counter's own circuit
+// name ("increment"), on an otherwise-blank ContractState.
 
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { ContractOperation } from '@midnightntwrk/ledger-v8';
-import { asciiPrefix, FIXTURES_DIR, writeHexFixture } from './lib.mjs';
+import { ContractState, ChargedState, StateValue } from '@midnightntwrk/ledger-v9';
+import { asciiPrefix, readHexFixture, writeHexFixture } from './lib.mjs';
 
-const VERIFIER_KEY_PATH = resolve(FIXTURES_DIR, 'twin-contract/compiled/keys/increment.verifier');
+const FOREIGN_SOURCE_OPERATION = 'post'; // a real op.v2-vintage bboard circuit, foreign to counter
+const TARGET_OPERATION = 'increment'; // counter's own (only) circuit name
 
 export const run = () => {
-  const verifierKey = new Uint8Array(readFileSync(VERIFIER_KEY_PATH));
-  const op = new ContractOperation();
-  op.verifierKey = verifierKey;
-  const bytes = op.serialize();
+  const goldenState = ContractState.deserialize(readHexFixture('state-migrated-v9.hex'));
+  const foreignOp = goldenState.operation(FOREIGN_SOURCE_OPERATION);
+  if (foreignOp === undefined) {
+    throw new Error(`state-migrated-v9.hex has no '${FOREIGN_SOURCE_OPERATION}' operation to borrow`);
+  }
 
-  console.log(`[co-v2-only-foreign] tag=${asciiPrefix(bytes, 33)} bytes=${bytes.length}`);
+  const state = new ContractState();
+  state.data = new ChargedState(StateValue.newNull());
+  state.setOperation(TARGET_OPERATION, foreignOp);
+  const bytes = state.serialize();
+
+  // Verify the shape this fixture exists to prove, before writing it: a
+  // clean round-trip, with the foreign key intact under the counter's own
+  // operation name.
+  const roundTrip = ContractState.deserialize(bytes);
+  const registered = roundTrip.operation(TARGET_OPERATION);
+  if (registered === undefined) {
+    throw new Error('round-trip lost the foreign operation registration');
+  }
+  if (!Buffer.from(registered.verifierKey).equals(Buffer.from(foreignOp.verifierKey))) {
+    throw new Error('round-trip corrupted the foreign verifier key');
+  }
+
+  console.log(
+    `[co-v2-only-foreign] tag=${asciiPrefix(bytes, 29)} bytes=${bytes.length} ` +
+      `operation='${TARGET_OPERATION}' (borrowed from '${FOREIGN_SOURCE_OPERATION}') ` +
+      `verifierKeyLength=${registered.verifierKey.length}`
+  );
 
   writeHexFixture('state-co-v2-only-foreign.hex', bytes);
 };

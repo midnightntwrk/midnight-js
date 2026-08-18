@@ -59,11 +59,11 @@
       "notes": "state-v8-v6-envelope.hex bytes followed immediately by state-migrated-v9.hex bytes -- both envelope tags present in one blob, so no single protocolVersion applies by construction. Verified: v8.ContractState.deserialize throws 'Not all bytes read...4692 bytes remaining' (full-buffer-consumption check catches the over-read); v9.ContractState.deserialize throws on the tag mismatch at offset 0."
     },
     "state-co-v2-only-foreign.hex": {
-      "protocolVersion": 1000000,
-      "envelopeTag": "midnight:contract-operation[v4]:",
+      "protocolVersion": 2000000,
+      "envelopeTag": "midnight:contract-state[v8]:",
       "status": "ok",
-      "kind": "foreign-schema",
-      "notes": "A4 mis-dispatch negative: a ledger-v8 ContractOperation (a DIFFERENT top-level schema, not ContractState), keyed with the twin contract's own increment verifier key. Verified: both v8.ContractState.deserialize and v9.ContractState.deserialize throw on the tag mismatch ('contract-operation[' != 'contract-state[...'). See README.md for why ContractOperation[v4] stands in for the brief's 'co.v2' label."
+      "kind": "foreign-key-in-valid-state",
+      "notes": "A4 mis-dispatch negative (fix round 1: reworked from a bare foreign ContractOperation, which failed at the envelope-tag check before ever reaching the intended code path). A full, well-formed ContractState (deserializes cleanly on ledger-v9, protocolVersion 2000000 to match) whose 'increment' operation slot carries the REAL 'post' operation borrowed from state-migrated-v9.hex -- a genuinely foreign, migrated op.v2-vintage verifier key, not built from twin-contract/. Fails only later, at execution (a verifier-key mismatch), never at decode. See README.md 'The A4 mis-dispatch fixture'."
     }
   }
 }

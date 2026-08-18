@@ -1,17 +1,22 @@
 # OQ9 hard-fork fixtures
 
 Fixtures for the HF v8/v9 protocol work (MJS-01, task 0.2). Every fixture is a
-`ContractState`-shaped (or, for one negative, a deliberately-foreign
-`ContractOperation`-shaped) byte blob, committed as lower-case hex text, for
-the **spike's `counter` contract** — the smallest contract in
+well-formed `ContractState`-shaped byte blob, committed as lower-case hex
+text, for the **spike's `counter` contract** — the smallest contract in
 `spike-dapp-hf` (a single `round: Counter` ledger cell, one nullary circuit
 `increment()`), per the plan's minimal-size mandate (repo precedent:
-WASM-fixture coverage timeouts on large fixtures).
+WASM-fixture coverage timeouts on large fixtures). Every fixture deserializes
+as a `ContractState` on at least one ledger version — none of them fail at
+the envelope-tag check by design; where a fixture exists to probe a failure,
+that failure is pushed as deep as the fixture's construction allows (a
+version-tag mismatch, a corrupted payload, or — for the A4 mis-dispatch
+negative — a foreign key inside an otherwise-valid operation slot, deferring
+the failure to execution).
 
 Source of truth for every claim below is `generators/*.mjs` (mint scripts,
-runnable) plus a throwaway, not-committed `generators/.probe.mjs` used while
-authoring this fixture set to verify every deserialize outcome quoted here
-against the real `@midnightntwrk/ledger-v8@8.1.1` /
+runnable) plus throwaway, not-committed `generators/.probe*.mjs` scripts used
+while authoring this fixture set to verify every deserialize outcome quoted
+here against the real `@midnightntwrk/ledger-v8@8.1.1` /
 `@midnightntwrk/ledger-v9@1.0.0-rc.3` packages — nothing below is guessed.
 
 ## Fixtures
@@ -26,7 +31,7 @@ against the real `@midnightntwrk/ledger-v8@8.1.1` /
 | `state-tampered-keyset-v9to8.hex` | 1000000 (claimed) / 2000000 (actual payload) | derive | `state-migrated-v9.hex` with only the tag's version digit flipped `'8'→'6'`. |
 | `state-tampered-bytes.hex` | 2000000 | derive | `state-migrated-v9.hex` with one payload byte bit-flipped past the header. |
 | `state-both-keys.hex` | null (ambiguous by design) | derive | `state-v8-v6-envelope.hex` ++ `state-migrated-v9.hex` concatenated — both envelope tags in one blob. |
-| `state-co-v2-only-foreign.hex` | 1000000 | mint (npm, cheap) | A5 mis-dispatch negative: a `ledger-v8` `ContractOperation` (a different top-level schema entirely), not a `ContractState`. |
+| `state-co-v2-only-foreign.hex` | 2000000 | mint (npm, cheap) | A4 mis-dispatch negative: a full, well-formed `ContractState` (deserializes cleanly on `ledger-v9`) whose `increment` operation slot carries a FOREIGN verifier key — borrowed from the golden `state-migrated-v9.hex`'s real `post` operation (a different, real migrated circuit, not built from the retained counter artifacts). Fails later, at execution, not at decode. |
 
 `fixtures.json` repeats this table machine-readably, plus the exact envelope
 tag / claimed-vs-actual era for each, plus `status` (`ok` / `synthetic` /
@@ -55,14 +60,71 @@ set. All nine outcomes:
 | `state-tampered-keyset-v9to8.hex` | THROW ("deserialized storage graph not in normal form") | THROW (tag `v6` != `v8`) |
 | `state-tampered-bytes.hex` | THROW (tag `v8` != `v6`) | THROW ("out of range for u64") |
 | `state-both-keys.hex` | THROW ("Not all bytes read...4692 bytes remaining") | THROW (tag mismatch at offset 0) |
-| `state-co-v2-only-foreign.hex` | THROW (tag `contract-operation[` != `contract-state[`) | THROW (tag `contract-operation[` != `contract-state[`) |
+| `state-co-v2-only-foreign.hex` | THROW (tag `v8` != `v6` — this fixture is v9-era only) | **ACCEPT** (shape-positive — see "The A4 mis-dispatch fixture" below) |
 
-**Every negative fixture fails closed on both decoders — no silent-accept was
-found.** `state-both-keys.hex` in particular shows `ledger-v8`'s deserializer
-validates full-buffer consumption (it does not silently stop after the first
-complete message and ignore trailing bytes). This is the strongest empirical
-input this task produced for the OQ9 harness-gating decision — see the task
-report's "OQ9 inputs" section for the full write-up.
+**Every fixture that is meant to fail at decode does fail closed, on both
+decoders — no silent-accept was found among them.** `state-both-keys.hex` in
+particular shows `ledger-v8`'s deserializer validates full-buffer consumption
+(it does not silently stop after the first complete message and ignore
+trailing bytes). `state-co-v2-only-foreign.hex` is the one fixture in this
+table that is SUPPOSED to accept on `ledger-v9` — see below for why, and
+where its failure actually lives. This is the strongest empirical input this
+task produced for the OQ9 harness-gating decision — see the task report's
+"OQ9 inputs" section for the full write-up.
+
+### The A4 mis-dispatch fixture (`state-co-v2-only-foreign.hex`)
+
+Minted (`generators/mint-co-v2-foreign.mjs`) as: a fresh, blank
+`ContractState` (`StateValue.newNull()` data — the ledger payload doesn't
+matter for this fixture's purpose) with one operation registered under the
+counter's own circuit name, `increment` — but the `ContractOperation`
+object registered there is not built from anything in `twin-contract/`. It
+is the REAL `post` operation `ContractState.deserialize('state-migrated-v9.hex').operation('post')`
+returns: bboard's own, genuinely migrated, pre-fork-compiled verifier key
+(the single-slot shape DECISIONS.md calls `op.v2`, migrated via
+`source.v2 -> op.v2`; `ContractOperation`'s plain `verifierKey` getter is
+documented as exposing "only the latest available version"). Verified
+(`generators/mint-co-v2-foreign.mjs`'s own self-check, run at mint time, plus
+the smoke test): the result deserializes cleanly with `ledger-v9`
+(`operations()` returns `['increment']`), and its `verifierKey` bytes are
+confirmed to differ from `twin-contract/compiled/keys/increment.verifier` —
+genuinely foreign, not just relabeled.
+
+This is deliberate: `downcastV9StateForExecution` (`downcast.ts`) reads
+*only* `.data` (the `StateValue`), never `.operations()` — so this fixture
+cannot and does not fail at down-convert. Nor does the mere presence check
+`assemble.ts` uses (`state.operation(circuitId) === undefined ? throw :
+...`) catch it — the slot IS populated. The mismatch is only observable at
+the next step: attempting to actually prove/verify a real `increment` call
+against this state's `increment` slot, which is keyed for a completely
+different circuit. That later, deterministic, typed failure (a verifier-key
+mismatch at proof-verification time) is the engine-level test this fixture
+feeds; minting it is out of scope here (it needs a real proof-server round
+trip), so this fixture supplies only the well-formed-but-booby-trapped STATE
+input for that test to consume.
+
+## Tampered fixtures
+
+The byte-level offsets `generators/mint-tampered-and-derived.mjs` uses,
+spelled out (all four are reproducible, documented byte surgery on a real
+golden — see the file itself for the exact code):
+
+- **`state-tampered-keyset-v8to9.hex`**: `state-v8-v6-envelope.hex` with only
+  the tag's single ASCII version digit flipped, `'6' -> '8'`, at the offset
+  found by `indexOf('[v') + 2` (offset 25 for this golden). Everything else
+  is untouched.
+- **`state-tampered-keyset-v9to8.hex`**: `state-migrated-v9.hex`, same
+  technique, digit flipped `'8' -> '6'` (offset 25).
+- **`state-tampered-bytes.hex`**: `state-migrated-v9.hex` with one payload
+  byte XORed with `0xff` at `headerLen + 32` (offset 57), tag left intact.
+- **`state-both-keys.hex`**: `state-v8-v6-envelope.hex` bytes followed
+  immediately by `state-migrated-v9.hex` bytes, concatenated — no offset
+  math, just `Buffer.concat`.
+
+None of these four are states a real chain could ever produce; each probes
+exactly one failure mode (schema-tag lie, payload corruption, or envelope
+over-read). See "Verified decode matrix" above for what actually happens
+when each is fed to both ledgers' `ContractState.deserialize`.
 
 ## Mint-path decisions (per the brief's (a)/(b)/(c) order)
 
@@ -120,9 +182,10 @@ out/compiler/contract-info.json`) — same single ledger field
 compiler/language/runtime version numbers differ, as expected for a "compiled
 under the current toolchain" twin.
 
-`state-co-v2-only-foreign.hex` (see above) is keyed with
-`twin-contract/compiled/keys/increment.verifier` — the twin's own freshly
-generated verifier key, not imported from the spike.
+`twin-contract/compiled/keys/increment.verifier` is used as the KNOWN-GOOD
+key in the smoke test, to confirm `state-co-v2-only-foreign.hex`'s embedded
+key is genuinely foreign (see "The A4 mis-dispatch fixture" above) — that
+fixture is NOT keyed with it.
 
 ## Regenerating
 
