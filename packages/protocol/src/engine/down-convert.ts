@@ -25,7 +25,7 @@ import { DownConvertFailedError, MerkleNotRehashedError } from '../errors';
  * (e.g. a differently-bundled copy of onchain-runtime-v3), and so tests can
  * substitute a controlled fake to exercise the safety net below.
  */
-export interface CompactRuntime016StateValue {
+export interface Ledger8CompactRuntimeStateValue {
   readonly newArray: () => StateValue;
   readonly newMap: (map: StateMap) => StateValue;
   readonly newBoundedMerkleTree: (tree: StateBoundedMerkleTree) => StateValue;
@@ -33,8 +33,8 @@ export interface CompactRuntime016StateValue {
 }
 
 /** The pre-fork runtime surface {@link downConvertForExecution} bridges into. */
-export interface CompactRuntime016 {
-  readonly StateValue: CompactRuntime016StateValue;
+export interface Ledger8CompactRuntime {
+  readonly StateValue: Ledger8CompactRuntimeStateValue;
   readonly ChargedState: new (state: StateValue) => ChargedState;
 }
 
@@ -79,7 +79,7 @@ export interface DownConvertedState {
  * `downConvertForExecution` result that happens to pass regardless of
  * whether this function actually recursed.
  */
-export const rehashStateValue = (SV: CompactRuntime016StateValue, sv: StateValue): StateValue => {
+export const rehashStateValue = (SV: Ledger8CompactRuntimeStateValue, sv: StateValue): StateValue => {
   switch (sv.type()) {
     case 'boundedMerkleTree':
       return SV.newBoundedMerkleTree(sv.asBoundedMerkleTree()!.rehash());
@@ -111,17 +111,17 @@ export const checkRoot = (tree: StateBoundedMerkleTree): AlignedValue => {
 /**
  * Down-converts an already-extracted (post-fork) {@link EncodedStateValue}
  * into the pre-fork {@link DownConvertedState} a v8-era circuit executes
- * against, decoding it through `runtime016` and rehashing every bounded
+ * against, decoding it through `ledger8Runtime` and rehashing every bounded
  * Merkle tree it contains.
  *
- * Never returns a silently empty or partial state: a `runtime016.StateValue.decode`
+ * Never returns a silently empty or partial state: a `ledger8Runtime.StateValue.decode`
  * failure, or a decode that silently loses non-null source data, is wrapped
  * in a {@link DownConvertFailedError} with `{ cause }`.
  */
-export const downConvertForExecution = (state: EncodedStateValue, runtime016: CompactRuntime016): DownConvertedState => {
+export const downConvertForExecution = (state: EncodedStateValue, ledger8Runtime: Ledger8CompactRuntime): DownConvertedState => {
   let decoded: StateValue;
   try {
-    decoded = runtime016.StateValue.decode(state);
+    decoded = ledger8Runtime.StateValue.decode(state);
   } catch (cause) {
     throw new DownConvertFailedError('v9 state down-convert', cause);
   }
@@ -133,6 +133,6 @@ export const downConvertForExecution = (state: EncodedStateValue, runtime016: Co
     );
   }
 
-  const rehashed = rehashStateValue(runtime016.StateValue, decoded);
-  return { data: new runtime016.ChargedState(rehashed) };
+  const rehashed = rehashStateValue(ledger8Runtime.StateValue, decoded);
+  return { data: new ledger8Runtime.ChargedState(rehashed) };
 };

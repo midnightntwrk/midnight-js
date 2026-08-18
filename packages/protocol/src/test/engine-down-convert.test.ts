@@ -20,7 +20,7 @@ import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import type { AlignedValue as LedgerV9AlignedValue, EncodedStateValue as LedgerV9EncodedStateValue, Op as LedgerV9Op } from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
-import type { CompactRuntime016 } from '../engine/down-convert';
+import type { Ledger8CompactRuntime } from '../engine/down-convert';
 import { checkRoot, downConvertForExecution, rehashStateValue } from '../engine/down-convert';
 import { extractEncodedStateValue } from '../engine/envelope';
 import { DownConvertFailedError, MerkleNotRehashedError, PROTOCOL_ERROR_CODES } from '../errors';
@@ -203,7 +203,7 @@ describe('downConvertForExecution safety net', () => {
 
   it('throws DOWN_CONVERT_FAILED if the decoded StateValue silently lost non-null source data', () => {
     const nonNullEncoded = ocrt3.StateValue.newCell(fieldValue(0x44)).encode();
-    const lossyRuntime: CompactRuntime016 = {
+    const lossyRuntime: Ledger8CompactRuntime = {
       StateValue: {
         newArray: () => ocrt3.StateValue.newArray(),
         newMap: (map) => ocrt3.StateValue.newMap(map),
@@ -219,7 +219,7 @@ describe('downConvertForExecution safety net', () => {
   });
 
   it('wraps a StateValue.decode failure in DownConvertFailedError', () => {
-    const throwingRuntime: CompactRuntime016 = {
+    const throwingRuntime: Ledger8CompactRuntime = {
       StateValue: {
         newArray: () => ocrt3.StateValue.newArray(),
         newMap: (map) => ocrt3.StateValue.newMap(map),
