@@ -227,8 +227,19 @@ export type BlockHash = string;
 
 /**
  * Data for any finalized transaction.
+ *
+ * This is the v9 arm of {@link VersionedFinalizedTxData} — see
+ * {@link FinalizedTxDataV8} for the v8 arm. A provider only ever produces
+ * this shape for a record whose `protocolVersion` resolves to the v9 ledger
+ * runtime: `version` always equals the resolved ledger version for
+ * `protocolVersion` (the same resolution the `read`-path resolver in
+ * `@midnight-ntwrk/midnight-js-protocol` performs).
  */
 export interface FinalizedTxData {
+  /**
+   * Discriminant identifying this as a v9 ledger record.
+   */
+  readonly version: 'v9';
   /**
    * The transaction that was finalized.
    */

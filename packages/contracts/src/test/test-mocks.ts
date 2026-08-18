@@ -300,6 +300,7 @@ export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvab
 });
 
 export const createMockFinalizedTxData = (status: TxStatus = SucceedEntirely): FinalizedTxData => ({
+  version: 'v9',
   status: status,
   txId: 'test-tx-id',
   identifiers: ['test-tx-id-0', 'test-tx-id'],

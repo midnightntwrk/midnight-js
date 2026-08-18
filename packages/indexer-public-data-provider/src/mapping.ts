@@ -100,6 +100,7 @@ export const toFinalizedDeployTxData = (
   contractAddress: ContractAddress,
   transaction: RegularTransaction
 ): FinalizedTxData => ({
+  version: 'v9',
   tx: parseHexTransaction(transaction.raw),
   status: toTxStatus(transaction.transactionResult),
   txId: correlateDeployTxId(contractAddress, transaction.contractActions, transaction.identifiers),

@@ -325,6 +325,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
           }
           const transaction: RegularTransaction & { hash: string; identifiers: string[] } = first;
           return {
+            version: 'v9',
             tx: parseHexTransaction(transaction.raw),
             status: toTxStatus(transaction.transactionResult),
             txId,
