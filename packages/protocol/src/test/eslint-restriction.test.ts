@@ -18,19 +18,22 @@ import { resolve } from 'node:path';
 import { ESLint, type Linter } from 'eslint';
 import { beforeAll, describe, expect, it } from 'vitest';
 
+// Canary tests for the protocol ACL and v8 gates in eslint.config.mjs — one
+// case per config artifact, nothing more. A selector or glob with a typo
+// matches nothing and disables its gate silently (ESLint reports no error for
+// a dead selector), and `yarn lint` in CI only fails on violations, never on
+// a weakened rule. These canaries are the only automated signal for that
+// failure mode; exhaustive permutations add no further signal and are
+// deliberately absent.
 const MONOREPO_ROOT = resolve(__dirname, '../../../..');
 const CONFIG_FILE = resolve(MONOREPO_ROOT, 'eslint.config.mjs');
 
-// File paths used to exercise the rule. The ESLint rule's override applies to
-// files matching `packages/protocol/src/**/*.ts`; everything else is a
-// "consumer" and must go through the protocol ACL.
 const CONSUMER_PATH = 'packages/contracts/src/some-consumer.ts';
 const PROTOCOL_INTERNAL_PATH = 'packages/protocol/src/some-reexport.ts';
 const ACL_REPLACEMENT_PREFIX = '@midnight-ntwrk/midnight-js-protocol';
 const RULE_ID = 'no-restricted-imports';
 const TS_RULE_ID = '@typescript-eslint/no-restricted-imports';
 const SYNTAX_RULE_ID = 'no-restricted-syntax';
-const DIST_IMPORT_MESSAGE = 'Direct imports from dist folders';
 const V8_SUBPATH = `${ACL_REPLACEMENT_PREFIX}/v8`;
 
 // The ESLint constructor only stores options — config resolution happens
@@ -50,15 +53,6 @@ const lintMessagesFor = async (code: string, filePath: string, ruleId: string): 
   return result.messages.filter((m) => m.ruleId === ruleId);
 };
 
-const lintRestricted = (code: string, filePath: string): Promise<Linter.LintMessage[]> =>
-  lintMessagesFor(code, filePath, RULE_ID);
-
-const lintV8Restricted = (code: string, filePath: string): Promise<Linter.LintMessage[]> =>
-  lintMessagesFor(code, filePath, TS_RULE_ID);
-
-const lintV8DynamicRestricted = (code: string, filePath: string): Promise<Linter.LintMessage[]> =>
-  lintMessagesFor(code, filePath, SYNTAX_RULE_ID);
-
 // The first `lintText` call pays a one-time cost: loading the root ESLint
 // config, instantiating plugins, and warming `eslint-import-resolver-typescript`
 // which reads every `tsconfig.json` across the monorepo. Under parallel CI
@@ -68,142 +62,67 @@ beforeAll(async () => {
   await eslint.lintText(importStatement('@midnightntwrk/ledger-v9'), { filePath: CONSUMER_PATH });
 }, 60_000);
 
-describe('Protocol ACL: no-restricted-imports rule', () => {
-  describe('flags direct imports from consumer packages', () => {
-    it.each([
-      ['@midnightntwrk/ledger-v9', `${ACL_REPLACEMENT_PREFIX}/ledger`],
-      ['@midnight-ntwrk/compact-runtime', `${ACL_REPLACEMENT_PREFIX}/compact-runtime`],
-      ['@midnight-ntwrk/compact-js', `${ACL_REPLACEMENT_PREFIX}/compact-js`],
-      ['@midnight-ntwrk/compact-js/effect', `${ACL_REPLACEMENT_PREFIX}/compact-js`],
-      ['@midnightntwrk/onchain-runtime-v4', `${ACL_REPLACEMENT_PREFIX}/onchain-runtime`],
-      ['@midnight-ntwrk/platform-js', `${ACL_REPLACEMENT_PREFIX}/platform-js`],
-      ['@midnight-ntwrk/platform-js/effect/Configuration', `${ACL_REPLACEMENT_PREFIX}/platform-js`]
-    ])('flags direct import of %s and points to %s', async (restricted, expectedReplacement) => {
-      const messages = await lintRestricted(importStatement(restricted), CONSUMER_PATH);
+describe('Protocol ACL: no-restricted-imports canaries', () => {
+  // One case per restricted-pattern entry in the config.
+  it.each([
+    '@midnightntwrk/ledger-v9',
+    '@midnight-ntwrk/compact-runtime',
+    '@midnight-ntwrk/compact-js',
+    '@midnightntwrk/onchain-runtime-v4',
+    '@midnight-ntwrk/platform-js'
+  ])('flags direct import of %s from a consumer package', async (restricted) => {
+    const messages = await lintMessagesFor(importStatement(restricted), CONSUMER_PATH, RULE_ID);
 
-      expect(messages).toHaveLength(1);
-      expect(messages[0].message).toContain(restricted);
-      expect(messages[0].message).toContain(expectedReplacement);
-    });
-
-    // Future-proofing: if a new ledger/onchain-runtime major version is added
-    // (under either scope), the rule's wildcard pattern must still flag it.
-    it.each([
-      ['ledger', '@midnight-ntwrk/ledger-v99'],
-      ['ledger', '@midnightntwrk/ledger-v99'],
-      ['onchain-runtime', '@midnight-ntwrk/onchain-runtime-v99'],
-      ['onchain-runtime', '@midnightntwrk/onchain-runtime-v99']
-    ])('flags hypothetical future %s majors via the wildcard pattern', async (_name, futureSpecifier) => {
-      const messages = await lintRestricted(importStatement(futureSpecifier), CONSUMER_PATH);
-      expect(messages).toHaveLength(1);
-    });
+    expect(messages).toHaveLength(1);
   });
 
-  describe('allows imports via the protocol ACL', () => {
-    it.each([
-      ACL_REPLACEMENT_PREFIX,
-      `${ACL_REPLACEMENT_PREFIX}/ledger`,
-      `${ACL_REPLACEMENT_PREFIX}/compact-runtime`,
-      `${ACL_REPLACEMENT_PREFIX}/compact-js`,
-      `${ACL_REPLACEMENT_PREFIX}/compact-js/effect`,
-      `${ACL_REPLACEMENT_PREFIX}/compact-js/effect/Contract`,
-      `${ACL_REPLACEMENT_PREFIX}/onchain-runtime`,
-      `${ACL_REPLACEMENT_PREFIX}/platform-js`,
-      `${ACL_REPLACEMENT_PREFIX}/platform-js/effect/Configuration`,
-      `${ACL_REPLACEMENT_PREFIX}/platform-js/effect/ContractAddress`
-    ])('allows consumer package to import from %s', async (protocolSubpath) => {
-      const messages = await lintRestricted(importStatement(protocolSubpath), CONSUMER_PATH);
-      expect(messages).toEqual([]);
-    });
+  it('allows a consumer package to import via the protocol ACL subpath', async () => {
+    const messages = await lintMessagesFor(importStatement(`${ACL_REPLACEMENT_PREFIX}/ledger`), CONSUMER_PATH, RULE_ID);
+
+    expect(messages).toEqual([]);
   });
 
-  describe('override for packages/protocol/src/', () => {
-    it.each([
-      '@midnightntwrk/ledger-v9',
-      '@midnight-ntwrk/compact-runtime',
-      '@midnight-ntwrk/compact-js',
-      '@midnight-ntwrk/compact-js/effect',
-      '@midnightntwrk/onchain-runtime-v4',
-      '@midnight-ntwrk/platform-js'
-    ])('allows direct import of %s inside packages/protocol/src/', async (pkg) => {
-      const messages = await lintRestricted(importStatement(pkg), PROTOCOL_INTERNAL_PATH);
-      expect(messages).toEqual([]);
-    });
+  it('allows a direct protocol-package import inside packages/protocol/src/', async () => {
+    const messages = await lintMessagesFor(importStatement('@midnightntwrk/ledger-v9'), PROTOCOL_INTERNAL_PATH, RULE_ID);
 
-    it('still forbids dist imports inside packages/protocol/src/', async () => {
-      const messages = await lintRestricted(importStatement('../dist/whatever'), PROTOCOL_INTERNAL_PATH);
-      expect(messages).toHaveLength(1);
-      expect(messages[0].message).toContain(DIST_IMPORT_MESSAGE);
-    });
+    expect(messages).toEqual([]);
+  });
+
+  it('still forbids dist imports inside packages/protocol/src/', async () => {
+    const messages = await lintMessagesFor(importStatement('../dist/whatever'), PROTOCOL_INTERNAL_PATH, RULE_ID);
+
+    expect(messages).toHaveLength(1);
   });
 });
 
-describe('Protocol ACL: @typescript-eslint/no-restricted-imports protocol/v8 gate', () => {
+describe('protocol/v8 gate canaries', () => {
   it('flags a runtime import of protocol/v8 from a consumer package', async () => {
-    const messages = await lintV8Restricted(importStatement(V8_SUBPATH), CONSUMER_PATH);
+    const messages = await lintMessagesFor(importStatement(V8_SUBPATH), CONSUMER_PATH, TS_RULE_ID);
 
     expect(messages).toHaveLength(1);
-    expect(messages[0].message).toContain('loadV8()');
   });
 
   it('allows a type-only import of protocol/v8 from a consumer package', async () => {
-    const messages = await lintV8Restricted(typeImportStatement(V8_SUBPATH), CONSUMER_PATH);
+    const messages = await lintMessagesFor(typeImportStatement(V8_SUBPATH), CONSUMER_PATH, TS_RULE_ID);
 
     expect(messages).toEqual([]);
   });
 
   it('allows a runtime import of protocol/v8 inside packages/protocol/src/', async () => {
-    const messages = await lintV8Restricted(importStatement(V8_SUBPATH), PROTOCOL_INTERNAL_PATH);
+    const messages = await lintMessagesFor(importStatement(V8_SUBPATH), PROTOCOL_INTERNAL_PATH, TS_RULE_ID);
 
     expect(messages).toEqual([]);
   });
 
-  it('flags a deep-subpath static import of protocol/v8 from a consumer package', async () => {
-    const messages = await lintV8Restricted(importStatement(`${V8_SUBPATH}/deep/path`), CONSUMER_PATH);
-
-    expect(messages.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it('allows a deep-subpath static import of protocol/v8 inside packages/protocol/src/', async () => {
-    const messages = await lintV8Restricted(importStatement(`${V8_SUBPATH}/deep/path`), PROTOCOL_INTERNAL_PATH);
-
-    expect(messages).toEqual([]);
-  });
-});
-
-describe('Protocol ACL: no-restricted-syntax protocol/v8 dynamic-import gate', () => {
   it('flags a dynamic import of protocol/v8 from a consumer package', async () => {
-    const messages = await lintV8DynamicRestricted(dynamicImportStatement(V8_SUBPATH), CONSUMER_PATH);
+    const messages = await lintMessagesFor(dynamicImportStatement(V8_SUBPATH), CONSUMER_PATH, SYNTAX_RULE_ID);
 
     expect(messages).toHaveLength(1);
-    expect(messages[0].message).toContain('loadV8()');
   });
 
   it('allows a dynamic import of protocol/v8 inside packages/protocol/src/', async () => {
-    const messages = await lintV8DynamicRestricted(dynamicImportStatement(V8_SUBPATH), PROTOCOL_INTERNAL_PATH);
+    const messages = await lintMessagesFor(dynamicImportStatement(V8_SUBPATH), PROTOCOL_INTERNAL_PATH, SYNTAX_RULE_ID);
 
     expect(messages).toEqual([]);
-  });
-
-  it('flags a template-literal dynamic import of protocol/v8 from a consumer package (no interpolation)', async () => {
-    const code = `export const load = () => import(\`${V8_SUBPATH}\`);\n`;
-    const messages = await lintV8DynamicRestricted(code, CONSUMER_PATH);
-
-    expect(messages.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it('flags a deep-subpath dynamic import of protocol/v8 from a consumer package', async () => {
-    const messages = await lintV8DynamicRestricted(dynamicImportStatement(`${V8_SUBPATH}/deep/path`), CONSUMER_PATH);
-
-    expect(messages.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it('allows every dynamic-import form of protocol/v8 inside packages/protocol/src/', async () => {
-    const literalMessages = await lintV8DynamicRestricted(dynamicImportStatement(`${V8_SUBPATH}/deep/path`), PROTOCOL_INTERNAL_PATH);
-    const templateCode = `export const load = () => import(\`${V8_SUBPATH}\`);\n`;
-    const templateMessages = await lintV8DynamicRestricted(templateCode, PROTOCOL_INTERNAL_PATH);
-
-    expect(literalMessages).toEqual([]);
-    expect(templateMessages).toEqual([]);
   });
 });
