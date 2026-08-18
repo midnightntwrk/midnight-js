@@ -52,6 +52,8 @@
     "ws": "^8.20.0"
   },
   "devDependencies": {
+    "@midnightntwrk/ledger-v8": "8.1.1",
+    "@midnightntwrk/ledger-v9": "1.0.0-rc.3",
     "@types/ws": "^8.18.1",
     "@vitest/runner": "^4.1.10",
     "allure-commandline": "^2.43.0",
