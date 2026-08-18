@@ -72,7 +72,7 @@ describe('Protocol ACL package', () => {
         'ledger',
         'LEDGER_VERSIONS',
         'Ledger8RuntimeMissingError',
-        'loadV8',
+        'loadLedger8',
         'networkHeadVersion',
         'onchainRuntime',
         'platform',

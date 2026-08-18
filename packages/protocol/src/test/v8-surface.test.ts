@@ -18,7 +18,7 @@ import { join, resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { loadV8 } from '../load-v8';
+import { loadLedger8 } from '../load-v8';
 // Type-only import: erased at compile time, so it costs nothing at runtime,
 // but a vendor rename or removal of any of these 30 OQ3_SURFACE type-only
 // members breaks the build. This is the only check available for them —
@@ -326,12 +326,12 @@ const collectTsFiles = (dir: string): string[] =>
     return entry.isDirectory() ? collectTsFiles(fullPath) : entry.name.endsWith('.ts') ? [fullPath] : [];
   });
 
-// loadV8 resolves the self-reference specifier through the exports map to
+// loadLedger8 resolves the self-reference specifier through the exports map to
 // dist/v8.mjs, so this suite needs a prior `yarn build`; without one it is
 // reported as visible skips (same policy as dist-laziness.test.ts).
-describe.skipIf(!distV8Exists)('loadV8', () => {
+describe.skipIf(!distV8Exists)('loadLedger8', () => {
   it('exposes exactly the pinned glue-filtered runtime surface (assertion A: leak/ACL detector)', async () => {
-    const surface = await loadV8();
+    const surface = await loadLedger8();
     const actualRuntimeKeysFiltered = Object.keys(surface)
       .filter((key) => !GLUE_PATTERN.test(key))
       .sort();
@@ -340,7 +340,7 @@ describe.skipIf(!distV8Exists)('loadV8', () => {
   });
 
   it('exposes every runtime-visible OQ3_SURFACE member (assertion B: consumption contract)', async () => {
-    const surface = await loadV8();
+    const surface = await loadLedger8();
     const actualKeys = new Set(Object.keys(surface));
     const missingFromSurface = OQ3_SURFACE_RUNTIME.filter((key) => !actualKeys.has(key));
 
@@ -348,8 +348,8 @@ describe.skipIf(!distV8Exists)('loadV8', () => {
   });
 
   it('memoises the module promise across calls', async () => {
-    const first = loadV8();
-    const second = loadV8();
+    const first = loadLedger8();
+    const second = loadLedger8();
     expect(second).toBe(first);
     await expect(first).resolves.toBeDefined();
   });

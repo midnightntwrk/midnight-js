@@ -30,7 +30,7 @@ const V8_SUBPATH_SPECIFIER = ['@midnight-ntwrk/midnight-js-protocol', 'v8'].join
 // into the happy-path suites (vitest isolates module state per test file).
 // Needs a prior `yarn build`: mocking still resolves the specifier through
 // the exports map to dist/v8.mjs (same policy as dist-laziness.test.ts).
-describe.skipIf(!distV8Exists)('loadV8 failure path', () => {
+describe.skipIf(!distV8Exists)('loadLedger8 failure path', () => {
   afterEach(() => {
     vi.doUnmock(V8_SUBPATH_SPECIFIER);
   });
@@ -39,12 +39,12 @@ describe.skipIf(!distV8Exists)('loadV8 failure path', () => {
     vi.doMock(V8_SUBPATH_SPECIFIER, () => {
       throw new Error('simulated v8 load failure');
     });
-    const { loadV8 } = await import('../load-v8');
+    const { loadLedger8 } = await import('../load-v8');
 
-    const first = loadV8();
+    const first = loadLedger8();
     const error = await first.then(
       () => {
-        throw new Error('expected loadV8 to reject');
+        throw new Error('expected loadLedger8 to reject');
       },
       (rejection: unknown) => rejection
     );
@@ -56,7 +56,7 @@ describe.skipIf(!distV8Exists)('loadV8 failure path', () => {
     // `cause` is non-enumerable on Error, so it needs a direct assertion.
     expect((error as Ledger8RuntimeMissingError).cause).toBeInstanceOf(Error);
 
-    const second = loadV8();
+    const second = loadLedger8();
     expect(second).not.toBe(first);
     await expect(second).rejects.toBeInstanceOf(Ledger8RuntimeMissingError);
   });
