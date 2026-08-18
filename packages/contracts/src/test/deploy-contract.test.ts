@@ -75,7 +75,7 @@ describe('deployContract', () => {
 
   beforeEach(async () => {
     const { submitDeployTx } = await import('../submit-deploy-tx');
-
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockSubmitDeployTx = submitDeployTx as any;
     vi.clearAllMocks();
 

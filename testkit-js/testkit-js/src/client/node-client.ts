@@ -57,7 +57,7 @@ export class NodeClient {
    * @throws {Error} If response format is unexpected
    * @private
    */
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private static throwOnUnexpected(response: AxiosResponse<any, any>): void {
     if (typeof response.data !== 'object' || !response.data.result || typeof response.data.result !== 'string') {
       throw new Error(`Unexpected response format: ${JSON.stringify(response.data)}`);
@@ -71,7 +71,7 @@ export class NodeClient {
    * @returns {Promise<string>} Response result as string
    * @private
    */
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async jsonRPC(method: string, params: any[]): Promise<string> {
     const response = await axios.post(
       this.nodeURL,

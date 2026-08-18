@@ -57,13 +57,13 @@ export const getValidZKConfig = async () => ({
   zkir: createZKIR(await fs.readFile(`${resourceDir}/compiled/${CONTRACT}/zkir/${CIRCUIT_ID}.bzkir`))
 });
 
-const createMockContractClass = (contractModule: any, coinPublicKey: CoinPublicKey) => {
+const createMockContractClass = (contractModule: any, coinPublicKey: CoinPublicKey) => { // eslint-disable-line @typescript-eslint/no-explicit-any
   return class {
-    constructor(witnesses: Contract.Witnesses<any>) {
+    constructor(witnesses: Contract.Witnesses<any>) { // eslint-disable-line @typescript-eslint/no-explicit-any
       const contract = new contractModule.Contract({});
 
       this.witnesses = witnesses;
-      this.initialState = (ctx: any) => ({
+      this.initialState = (ctx: any) => ({ // eslint-disable-line @typescript-eslint/no-explicit-any
         currentContractState: contract.initialState(
           createConstructorContext(
             undefined,
@@ -83,10 +83,10 @@ const createMockContractClass = (contractModule: any, coinPublicKey: CoinPublicK
   }
 }
 
-export const createMockCompiledContract = (contractModule: any, coinPublicKey: CoinPublicKey): CompiledContract.CompiledContract<any, unknown, never> => {
-  return CompiledContract.make(CONTRACT, createMockContractClass(contractModule, coinPublicKey) as any).pipe(
+export const createMockCompiledContract = (contractModule: any, coinPublicKey: CoinPublicKey): CompiledContract.CompiledContract<any, unknown, never> => { // eslint-disable-line @typescript-eslint/no-explicit-any
+  return CompiledContract.make(CONTRACT, createMockContractClass(contractModule, coinPublicKey) as any).pipe( // eslint-disable-line @typescript-eslint/no-explicit-any
     CompiledContract.withVacantWitnesses
-  ) as unknown as CompiledContract.CompiledContract<any, unknown, never>;
+  ) as unknown as CompiledContract.CompiledContract<any, unknown, never>; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 const createMockZKConfigProvider = (): ZKConfigProvider<string> => {

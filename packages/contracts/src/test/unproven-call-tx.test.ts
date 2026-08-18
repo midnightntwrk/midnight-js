@@ -171,7 +171,7 @@ describe('unproven-call-tx', () => {
 
     it('should create unproven call tx without private state provider', async () => {
       const { getPublicStates } = await import('../get-states');
-
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mockGetPublicStates = getPublicStates as any;
 
       mockGetPublicStates.mockResolvedValue({
@@ -206,7 +206,7 @@ describe('unproven-call-tx', () => {
 
     it('should create unproven call tx with private state provider', async () => {
       const { getStates } = await import('../get-states');
-
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const mockGetStates = getStates as any;
 
       mockGetStates.mockResolvedValue({

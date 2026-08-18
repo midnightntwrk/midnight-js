@@ -202,7 +202,7 @@ describe('ledger-utils', () => {
   });
 
   describe('createUnprovenLedgerCallTx with receiveShielded (issue #686)', () => {
-
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let shieldedContract: any;
     let shieldedInitialState: CompactContractState;
     const shieldedAddr = sampleContractAddress();
@@ -222,7 +222,7 @@ describe('ledger-utils', () => {
     it('succeeds with deposit circuit that calls receiveShielded', async () => {
       const coin = { nonce: new Uint8Array(32).fill(1), color: new Uint8Array(32).fill(2), value: 100n };
       const ctx = createCircuitContext('deposit', shieldedAddr, shieldedCpk, shieldedInitialState, undefined);
-
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { context, gasCost } = await (shieldedContract.circuits as any).deposit(ctx, coin);
       // The root circuit completes last, so its proof data is the final entry in the trace.
       const proofData = context.callProofDataTrace[context.callProofDataTrace.length - 1];

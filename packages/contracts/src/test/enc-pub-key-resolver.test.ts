@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { getNetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { sampleCoinPublicKey, sampleEncryptionPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';

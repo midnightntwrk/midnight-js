@@ -153,7 +153,7 @@ const defaultMockContractClassOptions: MockContractClassOptions = {
 const createMockContractClass = (options?: Partial<MockContractClassOptions>) => {
   const finalOptions = { ...defaultMockContractClassOptions, ...options } as MockContractClassOptions;
   return class {
-
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     constructor(witnesses: Contract.Witnesses<any>) {
 
       if (finalOptions.constructorErrorMessage) {
@@ -185,10 +185,10 @@ const createMockContractClass = (options?: Partial<MockContractClassOptions>) =>
 export const createMockContract = (options?: Partial<MockContractClassOptions>): Contract<undefined> =>
   new (createMockContractClass(options))({});
 
-export const createMockCompiledContract = (options?: Partial<MockContractClassOptions>): CompiledContract.CompiledContract<any, unknown, never> => {
+export const createMockCompiledContract = (options?: Partial<MockContractClassOptions>): CompiledContract.CompiledContract<any, unknown, never> => { // eslint-disable-line @typescript-eslint/no-explicit-any
   return CompiledContract.make('test', createMockContractClass(options)).pipe(
     CompiledContract.withVacantWitnesses
-  ) as unknown as CompiledContract.CompiledContract<any, unknown, never>;
+  ) as unknown as CompiledContract.CompiledContract<any, unknown, never>; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
 export const createMockUnprovenTx = (): UnprovenTransaction => ({

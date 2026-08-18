@@ -173,20 +173,18 @@ describe('Unsafe-cast gate: no-restricted-syntax canaries', () => {
 });
 
 describe('no-explicit-any canaries', () => {
-  it('flags an explicit any as an error in package sources', async () => {
-    const messages = await lintMessagesFor('export const f = (x: any): number => 0;\n', CONSUMER_PATH, EXPLICIT_ANY_RULE_ID);
+  // Explicit 'any' is an error everywhere, tests included — a reviewed
+  // exception needs an inline eslint-disable, keeping each occurrence visible
+  // at the point of use.
+  it.each([
+    ['package sources', CONSUMER_PATH],
+    ['a package test file', PACKAGE_TEST_PATH],
+    ['a testkit-js file', TESTKIT_PATH]
+  ])('flags an explicit any as an error in %s', async (_name, filePath) => {
+    const messages = await lintMessagesFor('export const f = (x: any): number => 0;\n', filePath, EXPLICIT_ANY_RULE_ID);
 
     expect(messages).toHaveLength(1);
     expect(messages[0].severity).toBe(ERROR_SEVERITY);
-  });
-
-  it.each([
-    ['a package test file', PACKAGE_TEST_PATH],
-    ['a testkit-js file', TESTKIT_PATH]
-  ])('allows an explicit any in %s', async (_name, filePath) => {
-    const messages = await lintMessagesFor('export const f = (x: any): number => 0;\n', filePath, EXPLICIT_ANY_RULE_ID);
-
-    expect(messages).toEqual([]);
   });
 });
 

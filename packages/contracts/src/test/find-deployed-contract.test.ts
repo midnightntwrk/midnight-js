@@ -38,7 +38,7 @@ vi.mock('../governance/tx-interfaces', () => ({
 }));
 
 vi.mock('@midnight-ntwrk/midnight-js-types', async (importOriginal) => {
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const actual = await importOriginal() as any;
   return {
     ...actual,

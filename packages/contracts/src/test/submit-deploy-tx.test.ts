@@ -39,7 +39,7 @@ vi.mock('@midnight-ntwrk/midnight-js-protocol/compact-runtime');
 vi.mock('@midnight-ntwrk/midnight-js-protocol/ledger');
 
 describe('submit-deploy-tx', () => {
-  let mockCompiledContract: CompiledContract.CompiledContract<any, any>;
+  let mockCompiledContract: CompiledContract.CompiledContract<any, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   let mockContractAddress: ReturnType<typeof createMockContractAddress>;
   let mockSigningKey: ReturnType<typeof createMockSigningKey>;
   let mockPrivateStateId: PrivateStateId;

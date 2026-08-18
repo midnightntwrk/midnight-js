@@ -194,14 +194,6 @@ export default tseslint.config(
     }
   },
   {
-    // Tests and testkit-js may use explicit 'any' — typing mocks and fixtures
-    // precisely adds noise without catching bugs.
-    files: ['packages/*/src/test/**/*.ts', 'testkit-js/**/*.ts'],
-    rules: {
-      '@typescript-eslint/no-explicit-any': 'off'
-    }
-  },
-  {
     files: ['packages/protocol/src/**/*.ts'],
     rules: {
       'no-restricted-imports': [
