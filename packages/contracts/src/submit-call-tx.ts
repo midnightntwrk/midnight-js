@@ -107,7 +107,7 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
   assertDefined(
     ContractExecutable.make(options.compiledContract)
       .getProvableCircuitIds()
-      .find((circuitId) => circuitId as unknown as PCK === options.circuitId),
+      .find((circuitId) => circuitId as unknown as PCK === options.circuitId), // eslint-disable-line no-restricted-syntax
     `Circuit '${options.circuitId}' is undefined`
   );
 
@@ -211,7 +211,7 @@ export async function submitCallTxAsync<C extends Contract.Any, PCK extends Cont
   assertDefined(
     ContractExecutable.make(options.compiledContract)
       .getProvableCircuitIds()
-      .find((circuitId) => circuitId as unknown as PCK === options.circuitId),
+      .find((circuitId) => circuitId as unknown as PCK === options.circuitId), // eslint-disable-line no-restricted-syntax
     `Circuit '${options.circuitId}' is undefined`
   );
 
