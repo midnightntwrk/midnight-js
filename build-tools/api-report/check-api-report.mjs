@@ -37,6 +37,7 @@
 
 import { readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
+import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url));
@@ -112,14 +113,34 @@ function extractChangedLineGroups(diffText) {
   return groups;
 }
 
-function loadAllowlistEntries() {
-  const content = readFileSync(`${REPO_ROOT}/${ALLOWLIST_PATH}`, 'utf8');
-  return content
+const ENTRIES_HEADING_PATTERN = /^## Entries$/m;
+
+// Only text after the "## Entries" heading is live allowlist data. Everything
+// above it (including the "## Format" section, which is itself written as a
+// bulleted list) is documentation and must never be parsed as entries.
+// Exported (and kept pure, taking file content rather than reading it) so it
+// has a focused unit test — see check-api-report.test.mjs.
+export function parseAllowlistEntries(content) {
+  const headingMatch = content.match(ENTRIES_HEADING_PATTERN);
+  if (!headingMatch) {
+    throw new Error('Missing required "## Entries" heading.');
+  }
+  const entriesSection = content.slice(headingMatch.index + headingMatch[0].length);
+  return entriesSection
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.startsWith('- '))
     .map((line) => line.slice(2).trim())
     .filter((entry) => entry.length > 0);
+}
+
+function loadAllowlistEntries() {
+  const content = readFileSync(`${REPO_ROOT}/${ALLOWLIST_PATH}`, 'utf8');
+  try {
+    return parseAllowlistEntries(content);
+  } catch (error) {
+    throw new Error(`Failed to parse ${ALLOWLIST_PATH}`, { cause: error });
+  }
 }
 
 function main() {
@@ -163,9 +184,14 @@ function main() {
   );
 }
 
-try {
-  main();
-} catch (error) {
-  console.error('API-report gate failed to run.', error);
-  process.exitCode = 1;
+// Only run the gate when this file is executed directly (`node check-api-report.mjs`),
+// not when it's imported (e.g. by check-api-report.test.mjs) to reuse `parseAllowlistEntries`.
+const isMainModule = process.argv[1] !== undefined && fileURLToPath(import.meta.url) === resolve(process.argv[1]);
+if (isMainModule) {
+  try {
+    main();
+  } catch (error) {
+    console.error('API-report gate failed to run.', error);
+    process.exitCode = 1;
+  }
 }
