@@ -21,7 +21,7 @@ import type { AlignedValue as LedgerV9AlignedValue, EncodedStateValue as LedgerV
 import { describe, expect, it } from 'vitest';
 
 import type { CompactRuntime016 } from '../engine/down-convert';
-import { checkRoot, downConvertForExecution } from '../engine/down-convert';
+import { checkRoot, downConvertForExecution, rehashStateValue } from '../engine/down-convert';
 import { extractEncodedStateValue } from '../engine/envelope';
 import { DownConvertFailedError, MerkleNotRehashedError, PROTOCOL_ERROR_CODES } from '../errors';
 
@@ -39,14 +39,8 @@ const fieldValue = (byte: number): ocrt3.AlignedValue => ({
   alignment: FIELD_ALIGNMENT
 });
 
-const buildRehashedTree = (byte: number): ocrt3.StateValue => {
-  const tree = new ocrt3.StateBoundedMerkleTree(4).update(0n, fieldValue(byte)).rehash();
-  return ocrt3.StateValue.newBoundedMerkleTree(tree);
-};
-
-// Simulates the hash loss a real encode()/decode() POJO boundary crossing
-// causes (see engine/down-convert.ts) without needing a second WASM instance.
-const roundTripThroughEncoding = (sv: ocrt3.StateValue): ocrt3.StateValue => ocrt3.StateValue.decode(sv.encode());
+const buildNeverRehashedTree = (byte: number): ocrt3.StateBoundedMerkleTree =>
+  new ocrt3.StateBoundedMerkleTree(4).update(0n, fieldValue(byte));
 
 describe('extractEncodedStateValue + downConvertForExecution round trip', () => {
   it('down-converts a migrated v9 state to data byte-identical with the pre-migration v8 state', () => {
@@ -117,7 +111,7 @@ describe('Merkle rehash', () => {
   // exercised directly against a freshly built tree that has never been
   // through `.rehash()` or any encode/decode round trip.
   it('a freshly built, never-rehashed tree fails checkRoot with MERKLE_NOT_REHASHED', () => {
-    const tree = new ocrt3.StateBoundedMerkleTree(4).update(0n, fieldValue(0x55));
+    const tree = buildNeverRehashedTree(0x55);
 
     expect(() => checkRoot(tree)).toThrow(MerkleNotRehashedError);
     expect(() => checkRoot(tree)).toThrowError(expect.objectContaining({ code: PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED }));
@@ -135,42 +129,53 @@ describe('Merkle rehash', () => {
   });
 });
 
-describe('rehash recursion (contract-agnostic StateValue algebra)', () => {
-  it('rehashes a Merkle tree nested inside an array', () => {
-    const treeSv = roundTripThroughEncoding(buildRehashedTree(0x11));
+describe('rehashStateValue recursion (contract-agnostic StateValue algebra)', () => {
+  // These call rehashStateValue directly on structures that have never been
+  // through an encode()/decode() round trip — unlike a downConvertForExecution
+  // integration test, nothing here can materialize the nested tree's hash as
+  // a side effect. The pre-condition assertion (checkRoot throws) proves the
+  // tree genuinely starts non-rehashed; the post-condition assertion (checkRoot
+  // does not throw) is therefore only satisfiable if rehashStateValue actually
+  // recursed into the array/map and rehashed the tree it found — a broken
+  // 'array'/'map' case (e.g. one that fails to recurse, or drops the element)
+  // would leave the pre-condition's failure unchanged and fail this test.
+  it('recurses into an array to rehash a nested tree that was never rehashed', () => {
+    const treeSv = ocrt3.StateValue.newBoundedMerkleTree(buildNeverRehashedTree(0x11));
     const arraySv = ocrt3.StateValue.newArray().arrayPush(treeSv);
 
-    const downConverted = downConvertForExecution(arraySv.encode(), ocrt3);
-
-    const children = downConverted.data.state.asArray();
-    if (children === undefined) {
-      throw new Error('test fixture invariant violated: expected an array StateValue');
-    }
-    const tree = children[0]?.asBoundedMerkleTree();
-    if (tree === undefined) {
+    const treeBefore = arraySv.asArray()?.[0]?.asBoundedMerkleTree();
+    if (treeBefore === undefined) {
       throw new Error('test fixture invariant violated: expected a boundedMerkleTree array element');
     }
+    expect(() => checkRoot(treeBefore)).toThrow(MerkleNotRehashedError);
 
-    expect(() => checkRoot(tree)).not.toThrow();
+    const result = rehashStateValue(ocrt3.StateValue, arraySv);
+
+    const treeAfter = result.asArray()?.[0]?.asBoundedMerkleTree();
+    if (treeAfter === undefined) {
+      throw new Error('test fixture invariant violated: expected a boundedMerkleTree array element');
+    }
+    expect(() => checkRoot(treeAfter)).not.toThrow();
   });
 
-  it('rehashes a Merkle tree nested inside a map', () => {
+  it('recurses into a map to rehash a nested tree that was never rehashed', () => {
     const key = fieldValue(0x22);
-    const treeSv = roundTripThroughEncoding(buildRehashedTree(0x33));
+    const treeSv = ocrt3.StateValue.newBoundedMerkleTree(buildNeverRehashedTree(0x33));
     const mapSv = ocrt3.StateValue.newMap(new ocrt3.StateMap().insert(key, treeSv));
 
-    const downConverted = downConvertForExecution(mapSv.encode(), ocrt3);
-
-    const map = downConverted.data.state.asMap();
-    if (map === undefined) {
-      throw new Error('test fixture invariant violated: expected a map StateValue');
-    }
-    const tree = map.get(key)?.asBoundedMerkleTree();
-    if (tree === undefined) {
+    const treeBefore = mapSv.asMap()?.get(key)?.asBoundedMerkleTree();
+    if (treeBefore === undefined) {
       throw new Error('test fixture invariant violated: expected a boundedMerkleTree map value');
     }
+    expect(() => checkRoot(treeBefore)).toThrow(MerkleNotRehashedError);
 
-    expect(() => checkRoot(tree)).not.toThrow();
+    const result = rehashStateValue(ocrt3.StateValue, mapSv);
+
+    const treeAfter = result.asMap()?.get(key)?.asBoundedMerkleTree();
+    if (treeAfter === undefined) {
+      throw new Error('test fixture invariant violated: expected a boundedMerkleTree map value');
+    }
+    expect(() => checkRoot(treeAfter)).not.toThrow();
   });
 });
 

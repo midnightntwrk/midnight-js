@@ -69,8 +69,17 @@ export interface DownConvertedState {
  * an onchain-runtime-v3 invariant, not a type-system guarantee, and not one
  * a real fixture can violate (there is no way to construct a `StateValue`
  * that fails it without corrupting the WASM's own internal state).
+ *
+ * Exported (in addition to {@link downConvertForExecution}) so tests can
+ * exercise this recursion directly against an in-memory tree that has never
+ * been through an `encode()`/`decode()` round trip. On the pinned
+ * onchain-runtime-v3/ledger-v9 versions, that round trip alone already
+ * materializes a tree's hashes (verified empirically), which would otherwise
+ * mask a broken `'array'`/`'map'` case behind a `checkRoot` call on a
+ * `downConvertForExecution` result that happens to pass regardless of
+ * whether this function actually recursed.
  */
-const rehashStateValue = (SV: CompactRuntime016StateValue, sv: StateValue): StateValue => {
+export const rehashStateValue = (SV: CompactRuntime016StateValue, sv: StateValue): StateValue => {
   switch (sv.type()) {
     case 'boundedMerkleTree':
       return SV.newBoundedMerkleTree(sv.asBoundedMerkleTree()!.rehash());
