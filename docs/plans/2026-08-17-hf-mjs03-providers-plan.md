@@ -61,6 +61,7 @@ Branch: `feat/1006-provider-dual-decode`. All in-repo `PublicDataProvider` imple
 
 - [ ] **Step 1: Failing tests:** round-trips both envelopes (Task 0.2 fixtures served as **hex** — the indexer's real wire encoding, `:` = `3a`); `version` derived via `protocolVersionToLedger(protocolVersion, 'read')` at the single construction point; adversarial matrix at this parse point (missing second `:`, unknown tag, tag/content mismatch, oversized prefix, all in hex encoding) → `TAG_PARSE_FAILED` typed error before any decode; the composed request feeds route-1 corroboration (Task 4.1 spy).
 - [ ] **Step 2–4:** red → implement → green. **Step 5: Commit** — `feat(midnight-js): add raw contract-state query with composed head snapshot (FR6/§4.4)`.
+- [ ] **Note (Task 0.3 discovery):** the OQ3 fail-open set is six types (see spec OQ3(c)) — the tag check cannot rely on tags discriminating era for the zswap-subsystem types; design against the full list, not `ZswapChainState` alone.
 
 ### Task 4.3: indexer — per-record dual decode + lazy `loadV8()` + union surfacing
 

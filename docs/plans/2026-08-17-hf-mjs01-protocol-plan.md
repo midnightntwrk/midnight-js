@@ -60,9 +60,11 @@
 
 ### Task 0.3: OQ3 discovery — decode surfaces & indexer facts
 
-- [ ] **Step 1:** Enumerate the final `protocol/v8` decode/construct surface (input to Task 1.4's export-surface test — the sorted key list).
-- [ ] **Step 2:** Build the decoder fail-open matrix: which v8 decoders accept v9 bytes without throwing, and whether the v9 `deserializeCompactContractState` accepts v8 bytes (drives nothing at runtime — the Task 4.2 tag check covers it — but records the risk).
-- [ ] **Step 3:** Identify the indexer GraphQL field backing `queryLatestProtocolVersion` (OQ3d) and confirm the snapshot/consistency semantics of multi-root-field queries (OQ3e). Record in spec.
+**STATUS (2026-08-17): discovery RUN — steps 1–3 answered; spec OQ3 updated (b remains open via Task 0.2).**
+
+- [x] **Step 1: enumerate the final `protocol/v8` decode/construct surface — RESOLVED.** Unioned the spike island-3 driver's named imports, the wider `packages/` tree's current `protocol/ledger` (v9) consumption, and the plan's stated minimum (`Transaction`, `LedgerParameters`, `ZswapChainState`, `ContractState`) — **79 names**, all independently confirmed present in `@midnightntwrk/ledger-v8@8.1.1` (43 as runtime exports, 30 as `.d.ts` type-only exports). Zero drift against the consumed surface (no missing/renamed names); v9 adds 9 unconsumed names. Sorted list is the `OQ3_SURFACE` appendix under Task 1.4 below — authoritative input to that task's export-surface test.
+- [x] **Step 2: build the decoder fail-open matrix — RESOLVED (Fix round 1: broadened to the full surface, supersedes the original single-type finding).** Extended from the original 4-type check to every decoder-bearing export of the 79-name `OQ3_SURFACE`, minted at the OQ2 pins. **Fail-open set is six types, both directions:** `ZswapChainState`, `ZswapOutput`, `ZswapOffer`, `EncryptionSecretKey` (plain and tagged forms), `PreBinding`, and the untagged `StateValue` encode()/decode() POJO bridge — systemic across the Zswap subsystem and crypto-primitive wrappers, not an isolated `ZswapChainState` quirk (full tag evidence in spec OQ3(c)). `ContractState`, `Transaction`, `Intent`, `ContractOperation`, `LedgerParameters`, `SignatureEnabled` all throw cleanly. The remaining surface entries are enumerated N-A in spec OQ3(c) (no codec / construction-only / Merkle-dependency), which also flags a vendor `.d.ts`/runtime drift: `CoinSecretKey.deserialize` is declared but not bound at runtime in either package. **Correction to this step's original premise:** no `deserializeCompactContractState` export exists in either package — the only contract-state decoder is the plain `ContractState.deserialize(raw)`, which throws cleanly.
+- [x] **Step 3: indexer GraphQL facts — RESOLVED.** OQ3d: the field is `Block.protocolVersion`, reached via the root query `block` with no arguments (no offset ⇒ latest block); query document `query { block { protocolVersion } }`; verified against midnight-indexer `origin/main` tip `49fe051ac97cfeaef33ada592f279d929be925ef` (2026-08-17). The existing provider only reads `protocolVersion` at the Transaction level today — `queryLatestProtocolVersion()` is new work. OQ3e: **no shared snapshot** across multi-root-field queries — async-graphql resolves Query-root siblings concurrently, each resolver doing its own independent pool read with no per-request transaction; single-request composition buys one round trip, not one consistent read point, so the head↔state era-mismatch fail-fast remains the correctness backstop (current-architecture fact, re-check on indexer version bumps). Also noted: the `contract` root field is `@beta` (stable alternative: `contractAction`) — which one the composed query builds on is decided at MJS-03 (Task 4.1). Recorded in spec §11 OQ3 and §4.3/§4.4.
 
 ---
 
@@ -360,7 +362,7 @@ export const hasErrorCode = <C extends string>(e: unknown, code?: C): e is Error
   ```
 - Resolution decision (spec §4.1(3), DEV-4): the dynamic import uses the **package self-reference specifier** `import('@midnight-ntwrk/midnight-js-protocol/v8')` — it resolves inside the already-loaded `protocol` copy (dual-scope immune), is already `external` under the existing rollup pattern `/^@midnight-ntwrk\//` (so never inlined — NFR6 survives the single-file bundles), and works identically in esm and cjs output.
 
-- [ ] **Step 1: Failing tests.** `v8-surface.test.ts`: `const surface = await loadV8(); expect(Object.keys(surface).sort()).toEqual(OQ3_SURFACE.sort())` (OQ3 list from Task 0.3; until it closes, assert the minimum contractual set: `Transaction`, `LedgerParameters`, `ZswapChainState`, `ContractState`); memoisation: two `loadV8()` calls return the identical promise. `dist-laziness.test.ts` (runs post-build; guard with `existsSync`):
+- [ ] **Step 1: Failing tests.** `v8-surface.test.ts`: `const surface = await loadV8(); expect(Object.keys(surface).sort()).toEqual(OQ3_SURFACE.sort())` (the list is now closed — 79 names, see the `OQ3_SURFACE` appendix at the end of this task); memoisation: two `loadV8()` calls return the identical promise. `dist-laziness.test.ts` (runs post-build; guard with `existsSync`):
 
 ```ts
 const distIndex = ['dist/index.mjs', 'dist/index.cjs'].map((p) => readFileSync(resolve(PKG_ROOT, p), 'utf8'));
@@ -390,6 +392,31 @@ export const loadV8 = (): Promise<ProtocolV8> =>
 - [ ] **Step 5: Lazy-load gate test:** in a fresh vitest process (`test/lazy-load.test.ts`, `pool: 'forks'`), import `../index`, assert `import.meta.resolve`-level: spy via a module-level flag exported from `v8.ts`? No — assert indirectly: `expect(v8ModulePromise-visible-behaviour)`: call nothing, then `expect(process.moduleLoadList ?? []).not.toContain(expect.stringMatching(/ledger-v8/))` on Node, or simpler and portable: mock `import()` seam by asserting `loadV8` is the only reference to the subpath in `src/` (`git grep -l 'midnight-js-protocol/v8' packages/protocol/src` returns only `load-v8.ts`). Implement the grep variant (deterministic, no runtime introspection).
 - [ ] **Step 6: Commit** — `feat(midnight-js): add protocol/v8 subpath and lazy loadV8 accessor (D13, NFR6)`.
 - [ ] **Step 7: OQ2 supply-chain checklist** (same PR, `SECURITY-SUPPLY-CHAIN.md` section or PR description): org ownership of both npm scopes checked, exact pin recorded as literal, lockfile integrity noted.
+
+#### OQ3_SURFACE (Task 0.3 result — authoritative for the v8-surface test)
+
+```
+AlignedValue, Binding, Bindingish, ChargedState, CoinCommitment, CoinPublicKey,
+CoinSecretKey, ContractAddress, ContractCallPrototype, ContractDeploy,
+ContractOperation, ContractState, CostModel, DustSecretKey, EncPublicKey,
+EncodedStateValue, EncryptionSecretKey, FinalizedTransaction, Intent, IntentHash,
+LedgerParameters, MaintenanceUpdate, Nullifier, PartitionedTranscript, PreBinding,
+PreTranscript, Proof, Proofish, ProvingKeyMaterial, ProvingProvider, PublicAddress,
+QualifiedShieldedCoinInfo, QueryContext, RawTokenType, ShieldedCoinInfo,
+SignatureEnabled, Signaturish, SigningKey, StateValue, TokenType, Transaction,
+TransactionHash, TransactionId, Transcript, UnprovenInput, UnprovenOffer,
+UnprovenOutput, UnprovenTransaction, UnprovenTransient, UnshieldedOffer, UtxoOutput,
+ZswapChainState, ZswapInput, ZswapOffer, ZswapOutput, ZswapSecretKeys, ZswapTransient,
+addressFromKey, coinCommitment, communicationCommitment,
+communicationCommitmentRandomness, createCheckPayload, createProvingPayload,
+createShieldedCoinInfo, feeToken, nativeToken, parseCheckResult,
+partitionTranscripts, sampleCoinPublicKey, sampleContractAddress,
+sampleDustSecretKey, sampleEncryptionPublicKey, sampleRawTokenType,
+sampleSigningKey, sampleUserAddress, shieldedToken, signatureVerifyingKey,
+signingKeyFromBip340, unshieldedToken
+```
+
+The export-surface test asserts against this list after filtering wasm-bindgen glue (`__wbg_*`/`__wbindgen_*` — ~150 churny names that vary across WASM rebuilds; asserting them would make the test flaky).
 
 ### Task 1.5: engine — envelope extract, down-convert, rehash (fixture-driven)
 
