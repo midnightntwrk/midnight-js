@@ -158,6 +158,9 @@ const OQ3_SURFACE_RUNTIME = [
 // larger than OQ3_SURFACE_RUNTIME: the vendor exports runtime helpers
 // (`decode*`/`encode*` codecs, dust/zswap internals, etc.) that OQ3_SURFACE
 // never names because it captures only the consumed subset.
+// If a vendor bump makes this assertion fail: AUDIT the diff (which names
+// were added/removed/renamed) before touching this list — never blind-update
+// it to whatever the new build happens to export.
 const PINNED_FULL_RUNTIME_SURFACE = [
   'AuthorizedClaim',
   'Binding',
