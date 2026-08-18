@@ -156,6 +156,38 @@ export default tseslint.config(
           ]
         }
       ],
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@midnight-ntwrk/midnight-js-protocol/v8', '@midnight-ntwrk/midnight-js-protocol/v8/*'],
+              allowTypeImports: true,
+              message: 'Runtime v8 access only via loadV8() from @midnight-ntwrk/midnight-js-protocol. Type-only imports are allowed.'
+            }
+          ]
+        }
+      ],
+      // Blocks dynamic `import(...)` of protocol/v8 (and any subpath under
+      // it) outside packages/protocol/src/, in both of its two syntactic
+      // forms: a plain string literal, and a template literal with no
+      // interpolation (`` `@midnight-ntwrk/midnight-js-protocol/v8` ``) that
+      // would otherwise slip past a Literal-only selector. A template
+      // literal WITH interpolation (e.g. built from a runtime-computed
+      // suffix) cannot be statically matched and is not covered here.
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "ImportExpression > Literal[value=/^@midnight-ntwrk\\/midnight-js-protocol\\/v8(\\/|$)/]",
+          message: 'Runtime v8 access only via loadV8() from @midnight-ntwrk/midnight-js-protocol. Dynamic imports of protocol/v8 are not allowed outside packages/protocol/src/.'
+        },
+        {
+          selector:
+            "ImportExpression > TemplateLiteral[quasis.length=1][quasis.0.value.raw=/^@midnight-ntwrk\\/midnight-js-protocol\\/v8(\\/|$)/]",
+          message: 'Runtime v8 access only via loadV8() from @midnight-ntwrk/midnight-js-protocol. Dynamic imports of protocol/v8 are not allowed outside packages/protocol/src/.'
+        }
+      ],
     }
   },
   {
@@ -171,7 +203,9 @@ export default tseslint.config(
             }
           ]
         }
-      ]
+      ],
+      '@typescript-eslint/no-restricted-imports': 'off',
+      'no-restricted-syntax': 'off'
     }
   },
   {

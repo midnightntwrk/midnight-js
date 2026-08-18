@@ -14,6 +14,14 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
     },
+    "./errors": {
+      "types": {
+        "import": "./dist/errors.d.mts",
+        "require": "./dist/errors.d.cts"
+      },
+      "import": "./dist/errors.mjs",
+      "require": "./dist/errors.cjs"
+    },
     "./ledger": {
       "types": {
         "import": "./dist/ledger.d.mts",
@@ -21,6 +29,14 @@
       },
       "import": "./dist/ledger.mjs",
       "require": "./dist/ledger.cjs"
+    },
+    "./v8": {
+      "types": {
+        "import": "./dist/v8.d.mts",
+        "require": "./dist/v8.d.cts"
+      },
+      "import": "./dist/v8.mjs",
+      "require": "./dist/v8.cjs"
     },
     "./compact-runtime": {
       "types": {
@@ -107,6 +123,7 @@
     "@midnight-ntwrk/compact-js": "2.5.5-rc.7",
     "@midnight-ntwrk/compact-runtime": "0.18.0-rc.1",
     "@midnight-ntwrk/platform-js": "3.0.0",
+    "@midnightntwrk/ledger-v8": "8.1.1",
     "@midnightntwrk/ledger-v9": "1.0.0-rc.3",
     "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.3"
   },

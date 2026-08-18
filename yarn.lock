@@ -2033,6 +2033,7 @@ __metadata:
     "@midnight-ntwrk/compact-js": "npm:2.5.5-rc.7"
     "@midnight-ntwrk/compact-runtime": "npm:0.18.0-rc.1"
     "@midnight-ntwrk/platform-js": "npm:3.0.0"
+    "@midnightntwrk/ledger-v8": "npm:8.1.1"
     "@midnightntwrk/ledger-v9": "npm:1.0.0-rc.3"
     "@midnightntwrk/onchain-runtime-v4": "npm:4.0.0-rc.3"
     "@rollup/plugin-typescript": "npm:^12.3.0"

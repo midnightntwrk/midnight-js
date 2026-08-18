@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+export * from './errors';
+export * from './load-v8';
+export * from './version';
 export * as compactJs from '@midnight-ntwrk/compact-js';
 export * as compactRuntime from '@midnight-ntwrk/compact-runtime';
 export * as platform from '@midnight-ntwrk/platform-js';
