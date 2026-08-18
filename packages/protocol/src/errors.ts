@@ -80,10 +80,52 @@ export class Ledger8RuntimeMissingError extends Error {
   constructor(cause: unknown) {
     super(
       'Failed to load the v8 ledger runtime via @midnight-ntwrk/midnight-js-protocol/v8. ' +
-        'This usually means a broken or partial install of the protocol package — reinstall dependencies and retry.',
+        'This usually means a broken or partial install of the protocol package — reinstall dependencies and retry. ' +
+        'The retained pre-fork stack pins @midnightntwrk/ledger-v8@8.1.1, @midnight-ntwrk/onchain-runtime-v3@3.1.0, ' +
+        'and compact-runtime@0.16.0 — verify these exact versions are present in node_modules.',
       { cause }
     );
     this.name = 'Ledger8RuntimeMissingError';
+  }
+}
+
+/**
+ * Which physical-copy axis {@link assertSharedLedger8Instances}
+ * (`engine/instance-guard.ts`) detected two distinct instances on:
+ * - `'onchain-runtime-v3'` — the retained pre-fork (`compact-runtime@0.16`)
+ *   runtime axis.
+ * - `'ledger-v9'` — the current post-fork ledger axis.
+ */
+export type Ledger8InstanceAxis = 'onchain-runtime-v3' | 'ledger-v9';
+
+/**
+ * Thrown by {@link assertSharedLedger8Instances} (`engine/instance-guard.ts`)
+ * when the same-named WASM package resolved to two physically distinct
+ * copies in this process (a dual-instantiation) — objects created by one
+ * copy fail `instanceof`/coercion checks against the other copy's classes,
+ * so mixing them silently corrupts down-convert results instead of failing
+ * loudly.
+ *
+ * `axis` names which side of the check failed. This is a direct assertion
+ * failure (a reference-equality mismatch), not a wrapped lower-level
+ * exception, so unlike {@link DownConvertFailedError} there is no `cause` to
+ * carry. This usually means a duplicate npm install of the affected package
+ * (e.g. an aliased dependency, a version mismatch that defeated
+ * deduplication, or a bundler that failed to dedupe it) — run
+ * `yarn why <package>` to find the duplicate and align every consumer on a
+ * single resolved version.
+ */
+export class Ledger8InstanceMismatchError extends Error {
+  readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH;
+
+  constructor(readonly axis: Ledger8InstanceAxis) {
+    super(
+      `Detected two physically distinct copies of ${axis} loaded into the same process (a dual-instantiation). ` +
+        "Objects created by one copy fail instanceof/coercion checks against the other copy's classes. This " +
+        'usually means a duplicate npm install of the affected package — run `yarn why <package>` to find the ' +
+        'duplicate and align every consumer on a single resolved version.'
+    );
+    this.name = 'Ledger8InstanceMismatchError';
   }
 }
 

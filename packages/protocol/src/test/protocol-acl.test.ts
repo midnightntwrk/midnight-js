@@ -72,6 +72,7 @@ describe('Protocol ACL package', () => {
         'DownConvertFailedError',
         'ledger',
         'LEDGER_VERSIONS',
+        'Ledger8InstanceMismatchError',
         'Ledger8RuntimeMissingError',
         'loadV8',
         'MerkleNotRehashedError',

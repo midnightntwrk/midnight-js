@@ -34,7 +34,19 @@ export default defineConfig({
         lines: 100,
         functions: 100,
         branches: 100,
-        statements: 100
+        statements: 100,
+        // Per-glob floors for the dual-ledger engine seam. All at 100 —
+        // every engine file currently achieves full coverage. If a lower
+        // bound is ever PR-justified, replace the literal 100 for that glob
+        // with the real achieved number and say why in a comment here, never
+        // silently relax it. If v8 coverage instrumentation ever times out
+        // against a large/slow WASM call in one of these suites, exclude
+        // that suite from instrumentation (vitest coverage.exclude) instead
+        // — never fix a timeout by padding the test timeout.
+        'src/version.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/engine/envelope.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/engine/down-convert.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/engine/instance-guard.ts': { lines: 100, functions: 100, branches: 100, statements: 100 }
       }
     },
     reporters: [

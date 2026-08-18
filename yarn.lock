@@ -2040,6 +2040,8 @@ __metadata:
     "@rollup/plugin-typescript": "npm:^12.3.0"
     "@vitest/coverage-v8": "npm:^4.1.10"
     eslint: "npm:^10.6.0"
+    ledger-v9-alt: "npm:@midnightntwrk/ledger-v9@1.0.0-rc.3"
+    onchain-runtime-v3-alt: "npm:@midnight-ntwrk/onchain-runtime-v3@3.1.0"
     rollup: "npm:^4.60.4"
     rollup-plugin-dts: "npm:^6.4.1"
     typescript: "npm:^6.0.3"
@@ -2089,7 +2091,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@midnight-ntwrk/onchain-runtime-v3@npm:3.1.0":
+"@midnight-ntwrk/onchain-runtime-v3@npm:3.1.0, onchain-runtime-v3-alt@npm:@midnight-ntwrk/onchain-runtime-v3@3.1.0":
   version: 3.1.0
   resolution: "@midnight-ntwrk/onchain-runtime-v3@npm:3.1.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fonchain-runtime-v3%2F3.1.0%2F9e7166a1a37b28579339a3e3176b4bf024818a73"
   checksum: 10/b13ce3729fd290220bdad0b5139793f8b3d01fdeb8317b2ed0542262b67a556ebfdebe0ed0e3047e9d5b460368e39f79e29d6c641c2f3b246dc74aa28e8e7f6f
@@ -2203,7 +2205,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnightntwrk/ledger-v9@npm:1.0.0-rc.3":
+"@midnightntwrk/ledger-v9@npm:1.0.0-rc.3, ledger-v9-alt@npm:@midnightntwrk/ledger-v9@1.0.0-rc.3":
   version: 1.0.0-rc.3
   resolution: "@midnightntwrk/ledger-v9@npm:1.0.0-rc.3"
   checksum: 10/5d2c2ff808b6dcc8f8ba2b75f81467c9bc4904e625e246bea1f8c77be7eb6d06cac28b189d1f6b708a85559ddf133efe93147da12169db48f927c72f414d0fa7
