@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -24,6 +24,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const FIXTURES_DIR = resolve(HERE, '../src/fixtures/hf');
 
 interface FixtureEntry {
+  readonly protocolVersion: number | null;
   readonly status: 'ok' | 'synthetic' | 'tampered';
 }
 
@@ -51,11 +52,41 @@ const EXPECTED_FIXTURE_NAMES = [
   'state-co-v2-only-foreign.hex'
 ];
 
+// Expected per fixtures.json, asserted explicitly here so drift between the
+// two is caught by CI rather than discovered later.
+const EXPECTED_PROTOCOL_VERSIONS: Record<string, number | null> = {
+  'state-v8.hex': 1000000,
+  'state-v8-v6-envelope.hex': 1000000,
+  'state-migrated-v9.hex': 2000000,
+  'state-migrated-v9-merkle.hex': 2000000,
+  'state-tampered-keyset-v8to9.hex': 2000000,
+  'state-tampered-keyset-v9to8.hex': 1000000,
+  'state-tampered-bytes.hex': 2000000,
+  'state-both-keys.hex': null,
+  'state-co-v2-only-foreign.hex': 2000000
+};
+
 describe('[Unit tests] OQ9 hard-fork fixtures', () => {
   const manifest = readManifest();
 
   it('declares exactly the nine fixtures named in the task-0.2 brief', () => {
     expect(Object.keys(manifest.fixtures).sort()).toEqual([...EXPECTED_FIXTURE_NAMES].sort());
+  });
+
+  it('every .hex file on disk is listed in fixtures.json, and vice versa', () => {
+    const onDisk = readdirSync(FIXTURES_DIR)
+      .filter((entry) => entry.endsWith('.hex'))
+      .sort();
+
+    expect(onDisk).toEqual(Object.keys(manifest.fixtures).sort());
+  });
+
+  it('every fixture carries the protocolVersion recorded in fixtures.json (including the null on state-both-keys.hex)', () => {
+    const actual = Object.fromEntries(
+      Object.entries(manifest.fixtures).map(([name, entry]) => [name, entry.protocolVersion])
+    );
+
+    expect(actual).toEqual(EXPECTED_PROTOCOL_VERSIONS);
   });
 
   describe.each(EXPECTED_FIXTURE_NAMES)('%s', (name) => {
@@ -96,12 +127,30 @@ describe('[Unit tests] OQ9 hard-fork fixtures', () => {
       expect(tree).toBeDefined();
       expect(tree?.root()).toBeDefined();
     });
+  });
 
-    it('state-co-v2-only-foreign.hex is NOT a ContractState under either ledger version', () => {
+  describe('state-co-v2-only-foreign.hex (A4 mis-dispatch): a valid state, with a foreign key inside', () => {
+    it('deserializes cleanly as a ContractState on ledger-v9 (shape-positive, not a decode failure)', () => {
+      const bytes = readHexFixture('state-co-v2-only-foreign.hex');
+
+      expect(() => LedgerContractStateV9.deserialize(bytes)).not.toThrow();
+    });
+
+    it('registers an "increment" operation whose verifier key is genuinely foreign to the twin contract', () => {
+      const bytes = readHexFixture('state-co-v2-only-foreign.hex');
+      const state = LedgerContractStateV9.deserialize(bytes);
+
+      const operation = state.operation('increment');
+      expect(operation).toBeDefined();
+
+      const twinKey = readFileSync(resolve(FIXTURES_DIR, 'twin-contract/compiled/keys/increment.verifier'));
+      expect(Buffer.from(operation!.verifierKey).equals(twinKey)).toBe(false);
+    });
+
+    it('is not a valid v8-era ContractState (this fixture is v9-era only)', () => {
       const bytes = readHexFixture('state-co-v2-only-foreign.hex');
 
       expect(() => LedgerContractStateV8.deserialize(bytes)).toThrow();
-      expect(() => LedgerContractStateV9.deserialize(bytes)).toThrow();
     });
   });
 
