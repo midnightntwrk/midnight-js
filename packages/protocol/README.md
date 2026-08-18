@@ -32,6 +32,7 @@ import { createPlatform } from '@midnight-ntwrk/midnight-js-protocol/platform-js
 
 | Sub-path | Re-exports | Description |
 | -------- | ---------- | ----------- |
+| `./errors` | (own) | `PROTOCOL_ERROR_CODES` and `UnknownProtocolVersionError` without pulling in the ledger/compact-js/onchain-runtime/platform namespaces |
 | `./ledger` | `@midnightntwrk/ledger-v9` | Ledger types and transaction primitives |
 | `./v8` | `@midnightntwrk/ledger-v8` | Previous-era (v8) ledger — do not import at runtime; use `loadV8()` |
 | `./compact-runtime` | `@midnight-ntwrk/compact-runtime` | Compact contract runtime utilities |
@@ -61,6 +62,22 @@ import type { Transaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
 ```
 
 If the v8 module cannot be loaded (usually a broken or partial install), `loadV8()` rejects with `Ledger8RuntimeMissingError` (code `MIDNIGHT_JS_P_LEDGER8_RUNTIME_MISSING`) carrying the original error as `cause`. The failed load is not memoised — the next call retries.
+
+## Version Module
+
+The root barrel (and the `./errors` subpath, for the error types) also export a small module for mapping a raw `protocolVersion` integer onto the ledger runtime it corresponds to:
+
+```typescript
+import {
+  LEDGER_VERSIONS,          // readonly ['v8', 'v9']
+  protocolVersionToLedger,  // (protocolVersion: number, path?: 'read' | 'construct') => 'v8' | 'v9'
+  versionOfRecord,          // (record: { protocolVersion: number }) => 'v8' | 'v9'
+  networkHeadVersion,       // (source: { queryLatestProtocolVersion(): Promise<number> }) => Promise<'v8' | 'v9'>
+  UnknownProtocolVersionError
+} from '@midnight-ntwrk/midnight-js-protocol';
+```
+
+Prefer `versionOfRecord` for a `protocolVersion` already read off an indexer/node record, and `networkHeadVersion` for the network's current head version — both tag any error with the correct path automatically. `UnknownProtocolVersionError` carries a `reason` of `'malformed'` (the input was not a non-negative integer) or `'unknown'` (a well-formed integer outside every mapped range), so callers can distinguish "bad input" from "genuinely unsupported protocol version".
 
 ## ESLint Enforcement
 

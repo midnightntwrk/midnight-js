@@ -13,6 +13,41 @@
  * limitations under the License.
  */
 
+const isObjectLike = (value: unknown): value is object =>
+  (typeof value === 'object' && value !== null) || typeof value === 'function';
+
+const constructorName = (value: object): string | undefined => {
+  if (!('constructor' in value)) {
+    return undefined;
+  }
+  const ctor = value.constructor;
+  return typeof ctor === 'function' ? ctor.name : undefined;
+};
+
+// Deliberately never JSON.stringify()s the value: that throws on BigInt and
+// on circular references (losing the unreachable-branch context entirely),
+// and would otherwise happily serialize an arbitrary object's contents
+// (including sensitive fields) straight into an error message/log. Objects
+// render only as their constructor name; primitives render via String().
+const describeUnreachableValue = (value: unknown): string => {
+  try {
+    if (isObjectLike(value)) {
+      return `[object ${constructorName(value) ?? 'Object'}]`;
+    }
+    return String(value);
+  } catch {
+    return '<unstringifiable>';
+  }
+};
+
+/**
+ * Runtime backstop for exhaustiveness checks: call this in the `default`/
+ * `else` branch of a switch or if-chain over a closed union so that adding a
+ * new union member without handling it becomes a compile error (the branch
+ * would no longer receive `never`) — and, if it's ever reached anyway (e.g.
+ * via an unchecked external input at a type boundary), throws immediately
+ * with a message identifying where and what.
+ */
 export const assertNever = (value: never, context: string): never => {
-  throw new Error(`assertNever: unreachable branch reached in ${context} (value: ${JSON.stringify(value)})`);
+  throw new Error(`assertNever: unreachable branch reached in ${context} (value: ${describeUnreachableValue(value)})`);
 };

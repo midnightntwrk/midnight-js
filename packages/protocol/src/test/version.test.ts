@@ -35,35 +35,98 @@ describe('protocolVersionToLedger', () => {
     expect(() => protocolVersionToLedger(int)).toThrow(UnknownProtocolVersionError);
   });
 
-  it('rejects non-integers and negatives', () => {
-    expect(() => protocolVersionToLedger(1.5)).toThrow(UnknownProtocolVersionError);
-    expect(() => protocolVersionToLedger(-1)).toThrow(UnknownProtocolVersionError);
+  it('defaults to the construct path and code when called without an explicit path', () => {
+    expect(() => protocolVersionToLedger(3_000_000)).toThrowError(
+      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_CONSTRUCT })
+    );
   });
 
-  it('names the int and the supported set in the message', () => {
+  it('names the int in the message for an unknown version', () => {
     expect(() => protocolVersionToLedger(3_000_000)).toThrow(/3000000/);
-    expect(() => protocolVersionToLedger(3_000_000)).toThrow(/v8.*v9|supported/i);
+  });
+
+  it('mentions v8 in the message for an unknown version', () => {
+    expect(() => protocolVersionToLedger(3_000_000)).toThrow(/v8/);
+  });
+
+  it('mentions v9 in the message for an unknown version', () => {
+    expect(() => protocolVersionToLedger(3_000_000)).toThrow(/v9/);
+  });
+
+  describe('malformed input', () => {
+    it.each([
+      ['NaN', Number.NaN],
+      ['a fractional number', 1.5],
+      ['a negative number', -1]
+    ])('reports reason "malformed" for %s, not the unknown-version text', (_name, input) => {
+      try {
+        protocolVersionToLedger(input);
+        expect.fail('expected protocolVersionToLedger to throw UnknownProtocolVersionError');
+      } catch (e) {
+        expect(e).toBeInstanceOf(UnknownProtocolVersionError);
+        const error = e as UnknownProtocolVersionError;
+        expect(error.reason).toBe('malformed');
+        expect(error.message).toMatch(/malformed/i);
+        expect(error.message).not.toMatch(/upgrade midnight-js/);
+      }
+    });
+
+    it('reports reason "unknown" for a well-formed but unsupported version', () => {
+      try {
+        protocolVersionToLedger(3_000_000);
+        expect.fail('expected protocolVersionToLedger to throw UnknownProtocolVersionError');
+      } catch (e) {
+        expect(e).toBeInstanceOf(UnknownProtocolVersionError);
+        const error = e as UnknownProtocolVersionError;
+        expect(error.reason).toBe('unknown');
+        expect(error.message).toMatch(/upgrade midnight-js/);
+      }
+    });
   });
 });
 
 describe('sourcing helpers', () => {
-  it('versionOfRecord uses the read path code', () => {
-    try {
-      versionOfRecord({ protocolVersion: 9_000_000 });
-      expect.fail('expected versionOfRecord to throw UnknownProtocolVersionError');
-    } catch (e) {
-      expect(e).toBeInstanceOf(UnknownProtocolVersionError);
-      expect((e as UnknownProtocolVersionError).code).toBe(PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ);
-    }
+  describe('versionOfRecord', () => {
+    it.each([
+      [{ protocolVersion: 1_000_000 }, 'v8'],
+      [{ protocolVersion: 2_000_000 }, 'v9']
+    ])('resolves %j to %s', (record, expected) => {
+      expect(versionOfRecord(record)).toBe(expected);
+    });
+
+    it('uses the read path code on failure', () => {
+      try {
+        versionOfRecord({ protocolVersion: 9_000_000 });
+        expect.fail('expected versionOfRecord to throw UnknownProtocolVersionError');
+      } catch (e) {
+        expect(e).toBeInstanceOf(UnknownProtocolVersionError);
+        expect((e as UnknownProtocolVersionError).code).toBe(PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ);
+      }
+    });
   });
 
-  it('networkHeadVersion queries the source exactly once and uses the construct code', async () => {
-    const source = { queryLatestProtocolVersion: vi.fn().mockResolvedValue(2_000_000) };
-    await expect(networkHeadVersion(source)).resolves.toBe('v9');
-    expect(source.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
-    const bad = { queryLatestProtocolVersion: vi.fn().mockResolvedValue(9_000_000) };
-    await expect(networkHeadVersion(bad)).rejects.toMatchObject({
-      code: PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_CONSTRUCT
+  describe('networkHeadVersion', () => {
+    it('resolves to the mapped ledger version and queries the source exactly once', async () => {
+      const source = { queryLatestProtocolVersion: vi.fn().mockResolvedValue(2_000_000) };
+
+      await expect(networkHeadVersion(source)).resolves.toBe('v9');
+
+      expect(source.queryLatestProtocolVersion).toHaveBeenCalledTimes(1);
+    });
+
+    it('rejects with the construct-path code when the source reports an unknown version', async () => {
+      const source = { queryLatestProtocolVersion: vi.fn().mockResolvedValue(9_000_000) };
+
+      await expect(networkHeadVersion(source)).rejects.toMatchObject({
+        code: PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_CONSTRUCT
+      });
+    });
+
+    it('propagates the source rejection unchanged', async () => {
+      const sourceError = new Error('network unreachable');
+      const source = { queryLatestProtocolVersion: vi.fn().mockRejectedValue(sourceError) };
+
+      await expect(networkHeadVersion(source)).rejects.toBe(sourceError);
     });
   });
 });

@@ -15,36 +15,122 @@
 
 import { UnknownProtocolVersionError, type VersionResolutionPath } from './errors';
 
+/**
+ * The two ledger runtimes midnight-js can talk to. `v8` backs node 0.22 and
+ * the 1.x line; `v9` backs the 2.x line. This is a closed, exhaustive set —
+ * see {@link protocolVersionToLedger} for how a raw `protocolVersion`
+ * integer maps onto it.
+ */
 export const LEDGER_VERSIONS = ['v8', 'v9'] as const;
 export type LedgerVersion = (typeof LEDGER_VERSIONS)[number];
 
-/** int encodes the NODE version (major·1_000_000 + minor·1_000) — spec OQ1.
- *  Bounded per-major ranges; fail fast ONLY on an unknown major. Major 0 is
- *  exempt from the same-major rule (0.x minors are semver-breaking). */
-const NODE_MAJOR_TO_LEDGER: Readonly<Record<number, LedgerVersion>> = { 1: 'v8', 2: 'v9' };
-const NODE_MAJOR0_MINOR_TO_LEDGER: Readonly<Record<number, LedgerVersion>> = { 22: 'v8' };
+/**
+ * Anything that can report the network's current head protocol version —
+ * typically an indexer or node client. Consumed by {@link networkHeadVersion}.
+ */
+export interface ProtocolVersionSource {
+  queryLatestProtocolVersion(): Promise<number>;
+}
 
+/**
+ * Any record carrying a raw `protocolVersion` integer field, e.g. a
+ * transaction or block already read from the indexer. Consumed by
+ * {@link versionOfRecord}.
+ */
+export interface VersionedRecord {
+  readonly protocolVersion: number;
+}
+
+// The protocolVersion integer encodes the NODE version as
+// major * 1_000_000 + minor * 1_000. This encoding — and the node-major to
+// ledger-runtime mapping below — mirrors the canonical mapping maintained in
+// midnightntwrk/midnight-indexer, indexer-common/src/domain/protocol_version.rs.
+//
+// Node major 0 is exempt from the same-major bucketing used for majors 1+:
+// 0.x minor releases are semver-breaking, so each 0.x minor is mapped
+// individually via NODE_MAJOR0_MINOR_TO_LEDGER instead of being bucketed by
+// major alone.
+const NODE_MAJOR_TO_LEDGER = {
+  1: 'v8',
+  2: 'v9'
+} as const satisfies Partial<Record<number, LedgerVersion>>;
+
+const NODE_MAJOR0_MINOR_TO_LEDGER = {
+  22: 'v8'
+} as const satisfies Partial<Record<number, LedgerVersion>>;
+
+type MappedLedgerVersion =
+  | (typeof NODE_MAJOR_TO_LEDGER)[keyof typeof NODE_MAJOR_TO_LEDGER]
+  | (typeof NODE_MAJOR0_MINOR_TO_LEDGER)[keyof typeof NODE_MAJOR0_MINOR_TO_LEDGER];
+
+// Compile-time-only guard: if LEDGER_VERSIONS ever grows without a matching
+// entry being added to one of the two tables above, this assignment stops
+// type-checking (the conditional type resolves to `never`).
+const _allLedgerVersionsAreMapped: Exclude<LedgerVersion, MappedLedgerVersion> extends never ? true : never = true;
+
+// Kept as a small typed function (rather than indexing the `as const`
+// tables directly) because a `number`-typed key cannot index an object type
+// with only numeric literal properties — the `Partial<Record<number, ...>>`
+// parameter type is what makes the `=== undefined` guard at each call site
+// type-driven instead of relying on a cast.
+const lookupLedger = (table: Partial<Record<number, LedgerVersion>>, key: number): LedgerVersion | undefined =>
+  table[key];
+
+/**
+ * Maps a raw `protocolVersion` integer (as returned by the indexer or node)
+ * onto the ledger runtime it corresponds to.
+ *
+ * | protocolVersion range   | node version | ledger |
+ * | ------------------------ | ------------ | ------ |
+ * | 22_000 – 22_999           | 0.22.x       | v8     |
+ * | 1_000_000 – 1_999_999      | 1.x          | v8     |
+ * | 2_000_000 – 2_999_999      | 2.x          | v9     |
+ *
+ * Throws {@link UnknownProtocolVersionError}:
+ * - with `reason: 'malformed'` when `protocolVersion` is not a non-negative
+ *   integer;
+ * - with `reason: 'unknown'` when it is a well-formed integer outside every
+ *   range above.
+ *
+ * Most call sites should not call this directly. Prefer
+ * {@link versionOfRecord} for a `protocolVersion` read off an existing
+ * indexer/node record, or {@link networkHeadVersion} for the network's
+ * current head version — both tag the resulting error with the correct
+ * `path` automatically. Pass `path` explicitly here only when neither helper
+ * fits the call site.
+ */
 export const protocolVersionToLedger = (
   protocolVersion: number,
   path: VersionResolutionPath = 'construct'
 ): LedgerVersion => {
   if (!Number.isInteger(protocolVersion) || protocolVersion < 0) {
-    throw new UnknownProtocolVersionError(protocolVersion, path);
+    throw new UnknownProtocolVersionError(protocolVersion, path, 'malformed');
   }
   const major = Math.floor(protocolVersion / 1_000_000);
   const ledger =
     major === 0
-      ? NODE_MAJOR0_MINOR_TO_LEDGER[Math.floor(protocolVersion / 1_000)]
-      : NODE_MAJOR_TO_LEDGER[major];
+      ? lookupLedger(NODE_MAJOR0_MINOR_TO_LEDGER, Math.floor(protocolVersion / 1_000))
+      : lookupLedger(NODE_MAJOR_TO_LEDGER, major);
   if (ledger === undefined) {
-    throw new UnknownProtocolVersionError(protocolVersion, path);
+    throw new UnknownProtocolVersionError(protocolVersion, path, 'unknown');
   }
   return ledger;
 };
 
-export const versionOfRecord = (record: { protocolVersion: number }): LedgerVersion =>
+/**
+ * Resolves the ledger version for a record's `protocolVersion` field (e.g. a
+ * transaction or block already read from the indexer). Any resulting
+ * {@link UnknownProtocolVersionError} is tagged with the `read` path.
+ */
+export const versionOfRecord = (record: VersionedRecord): LedgerVersion =>
   protocolVersionToLedger(record.protocolVersion, 'read');
 
-export const networkHeadVersion = async (source: {
-  queryLatestProtocolVersion(): Promise<number>;
-}): Promise<LedgerVersion> => protocolVersionToLedger(await source.queryLatestProtocolVersion(), 'construct');
+/**
+ * Queries `source` for the network's current head protocol version and
+ * resolves it to a {@link LedgerVersion}. Any resulting
+ * {@link UnknownProtocolVersionError} is tagged with the `construct` path.
+ * A rejection from `source.queryLatestProtocolVersion()` propagates
+ * unchanged.
+ */
+export const networkHeadVersion = async (source: ProtocolVersionSource): Promise<LedgerVersion> =>
+  protocolVersionToLedger(await source.queryLatestProtocolVersion(), 'construct');

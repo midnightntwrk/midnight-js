@@ -20,6 +20,7 @@ const external = [/node_modules/, /^@midnight-ntwrk\//, /^@midnightntwrk\//];
 
 const entries = [
   { input: 'src/index.ts', name: 'index' },
+  { input: 'src/errors.ts', name: 'errors' },
   { input: 'src/ledger.ts', name: 'ledger' },
   { input: 'src/v8.ts', name: 'v8' },
   { input: 'src/compact-runtime.ts', name: 'compact-runtime' },

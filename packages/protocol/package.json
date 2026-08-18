@@ -14,6 +14,14 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
     },
+    "./errors": {
+      "types": {
+        "import": "./dist/errors.d.mts",
+        "require": "./dist/errors.d.cts"
+      },
+      "import": "./dist/errors.mjs",
+      "require": "./dist/errors.cjs"
+    },
     "./ledger": {
       "types": {
         "import": "./dist/ledger.d.mts",

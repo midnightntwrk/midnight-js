@@ -157,6 +157,18 @@ describe('Protocol ACL: @typescript-eslint/no-restricted-imports protocol/v8 gat
 
     expect(messages).toEqual([]);
   });
+
+  it('flags a deep-subpath static import of protocol/v8 from a consumer package', async () => {
+    const messages = await lintV8Restricted(importStatement(`${V8_SUBPATH}/deep/path`), CONSUMER_PATH);
+
+    expect(messages.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('allows a deep-subpath static import of protocol/v8 inside packages/protocol/src/', async () => {
+    const messages = await lintV8Restricted(importStatement(`${V8_SUBPATH}/deep/path`), PROTOCOL_INTERNAL_PATH);
+
+    expect(messages).toEqual([]);
+  });
 });
 
 describe('Protocol ACL: no-restricted-syntax protocol/v8 dynamic-import gate', () => {
@@ -171,5 +183,27 @@ describe('Protocol ACL: no-restricted-syntax protocol/v8 dynamic-import gate', (
     const messages = await lintV8DynamicRestricted(dynamicImportStatement(V8_SUBPATH), PROTOCOL_INTERNAL_PATH);
 
     expect(messages).toEqual([]);
+  });
+
+  it('flags a template-literal dynamic import of protocol/v8 from a consumer package (no interpolation)', async () => {
+    const code = `export const load = () => import(\`${V8_SUBPATH}\`);\n`;
+    const messages = await lintV8DynamicRestricted(code, CONSUMER_PATH);
+
+    expect(messages.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('flags a deep-subpath dynamic import of protocol/v8 from a consumer package', async () => {
+    const messages = await lintV8DynamicRestricted(dynamicImportStatement(`${V8_SUBPATH}/deep/path`), CONSUMER_PATH);
+
+    expect(messages.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('allows every dynamic-import form of protocol/v8 inside packages/protocol/src/', async () => {
+    const literalMessages = await lintV8DynamicRestricted(dynamicImportStatement(`${V8_SUBPATH}/deep/path`), PROTOCOL_INTERNAL_PATH);
+    const templateCode = `export const load = () => import(\`${V8_SUBPATH}\`);\n`;
+    const templateMessages = await lintV8DynamicRestricted(templateCode, PROTOCOL_INTERNAL_PATH);
+
+    expect(literalMessages).toEqual([]);
+    expect(templateMessages).toEqual([]);
   });
 });
