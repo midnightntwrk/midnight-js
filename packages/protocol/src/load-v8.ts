@@ -32,7 +32,7 @@ let v8ModulePromise: Promise<ProtocolV8> | undefined;
  * A failed load is not memoised: the rejection propagates as
  * {@link Ledger8RuntimeMissingError} and the next call retries the import.
  */
-export const loadV8 = (): Promise<ProtocolV8> =>
+export const loadLedger8 = (): Promise<ProtocolV8> =>
   (v8ModulePromise ??= import('@midnight-ntwrk/midnight-js-protocol/v8').catch((error: unknown) => {
     v8ModulePromise = undefined;
     throw new Ledger8RuntimeMissingError(error);

@@ -34,7 +34,7 @@ import { createPlatform } from '@midnight-ntwrk/midnight-js-protocol/platform-js
 | -------- | ---------- | ----------- |
 | `./errors` | (own) | `PROTOCOL_ERROR_CODES` and `UnknownProtocolVersionError` without pulling in the ledger/compact-js/onchain-runtime/platform namespaces |
 | `./ledger` | `@midnightntwrk/ledger-v9` | Ledger types and transaction primitives |
-| `./v8` | `@midnightntwrk/ledger-v8` | Previous-era (v8) ledger — do not import at runtime; use `loadV8()` |
+| `./v8` | `@midnightntwrk/ledger-v8` | Previous-era (v8) ledger — do not import at runtime; use `loadLedger8()` |
 | `./compact-runtime` | `@midnight-ntwrk/compact-runtime` | Compact contract runtime utilities |
 | `./compact-js` | `@midnight-ntwrk/compact-js` | Compact JS bindings |
 | `./compact-js/effect` | `@midnight-ntwrk/compact-js/effect` | Effect-based Compact bindings |
@@ -49,9 +49,9 @@ import { createPlatform } from '@midnight-ntwrk/midnight-js-protocol/platform-js
 The `./v8` subpath re-exports the previous-era ledger (`@midnightntwrk/ledger-v8`), which carries its own WASM. To keep that WASM out of eagerly-loaded module graphs, runtime imports of `@midnight-ntwrk/midnight-js-protocol/v8` are blocked by ESLint everywhere outside this package. Use the lazy accessor instead:
 
 ```typescript
-import { loadV8 } from '@midnight-ntwrk/midnight-js-protocol';
+import { loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
 
-const v8 = await loadV8();
+const v8 = await loadLedger8();
 const transaction = v8.Transaction.deserialize(rawTransaction);
 ```
 
@@ -61,7 +61,7 @@ Type-only imports of the subpath are allowed:
 import type { Transaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
 ```
 
-If the v8 module cannot be loaded (usually a broken or partial install), `loadV8()` rejects with `Ledger8RuntimeMissingError` (code `MIDNIGHT_JS_P_LEDGER8_RUNTIME_MISSING`) carrying the original error as `cause`. The failed load is not memoised — the next call retries.
+If the v8 module cannot be loaded (usually a broken or partial install), `loadLedger8()` rejects with `Ledger8RuntimeMissingError` (code `MIDNIGHT_JS_P_LEDGER8_RUNTIME_MISSING`) carrying the original error as `cause`. The failed load is not memoised — the next call retries.
 
 ## Version Module
 
@@ -87,9 +87,9 @@ An ESLint `no-restricted-imports` rule prevents direct imports of the underlying
 
 Replace the direct protocol import with the corresponding subpath from this package. For the v8 era specifically, the error
 
-> Runtime v8 access only via loadV8() from @midnight-ntwrk/midnight-js-protocol.
+> Runtime v8 access only via loadLedger8() from @midnight-ntwrk/midnight-js-protocol.
 
-means: replace the direct `./v8` runtime import with `loadV8()` (type-only imports stay as they are).
+means: replace the direct `./v8` runtime import with `loadLedger8()` (type-only imports stay as they are).
 
 ## Resources
 

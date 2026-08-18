@@ -21,7 +21,7 @@ import { describe, expect, it } from 'vitest';
 // This suite only makes sense against a real build: it inspects the rollup
 // output to guarantee the v8 ledger WASM is never inlined or statically
 // imported into the eagerly-loaded index bundle — it may load only through
-// the dynamic import inside loadV8().
+// the dynamic import inside loadLedger8().
 const PKG_ROOT = resolve(__dirname, '..', '..');
 const DIST_ENTRY_PATHS = ['dist/index.mjs', 'dist/index.cjs'];
 // Built from parts so the sole-reference scan in v8-surface.test.ts keeps
