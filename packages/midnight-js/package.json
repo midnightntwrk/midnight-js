@@ -57,6 +57,9 @@
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache reports coverage",
     "build": "rollup -c rollup.config.mjs",
     "test": "vitest run --passWithNoTests",
+    "api-report:prepare": "node ../../build-tools/api-report/prepare-entry.mjs",
+    "api-report": "yarn api-report:prepare && api-extractor run --config ./api-extractor.json",
+    "api-report:accept": "yarn api-report:prepare && api-extractor run --local --config ./api-extractor.json",
     "deploy": "yarn npm publish --tolerate-republish"
   },
   "dependencies": {
@@ -67,6 +70,7 @@
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
   },
   "devDependencies": {
+    "@microsoft/api-extractor": "7.58.12",
     "@rollup/plugin-typescript": "^12.3.0",
     "rollup": "^4.60.4",
     "rollup-plugin-dts": "^6.4.1",

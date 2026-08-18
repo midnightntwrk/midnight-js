@@ -51,6 +51,7 @@ jobs:
               - 'package.json'
             midnight-js:
               - 'packages/**'
+              - 'build-tools/api-report/**'
             testkit-js:
               - 'packages/**'
               - 'testkit-js/**'

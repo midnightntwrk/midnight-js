@@ -23,6 +23,9 @@
     "clean": "rm -rf dist tsconfig.build.tsbuildinfo .rollup.cache",
     "build": "rollup -c rollup.config.mjs",
     "test": "vitest run --passWithNoTests",
+    "api-report:prepare": "node ../../build-tools/api-report/prepare-entry.mjs",
+    "api-report": "yarn api-report:prepare && api-extractor run --config ./api-extractor.json",
+    "api-report:accept": "yarn api-report:prepare && api-extractor run --local --config ./api-extractor.json",
     "deploy": "yarn npm publish --tolerate-republish"
   },
   "files": [
@@ -35,6 +38,7 @@
     "rxjs": "^7.8.2"
   },
   "devDependencies": {
+    "@microsoft/api-extractor": "7.58.12",
     "vitest": "^4.1.7"
   },
   "engines": {
