@@ -100,16 +100,31 @@ describe('extractEncodedStateValue', () => {
     expect(captured).toBeInstanceOf(DownConvertFailedError);
     expect((captured as DownConvertFailedError).message).not.toMatch(/[0-9a-f]{16,}/i);
   });
+
+  // These two fixtures carry an envelope tag deliberately flipped to the
+  // *other* ledger version's tag (fixtures/hf/README.md's "Tampered fixtures"
+  // section). The verified decode matrix in that README guarantees each
+  // direction throws when read with the version the tag now (falsely) claims.
+  it.each([
+    { fixture: 'state-tampered-keyset-v8to9.hex', version: 'v9' as const },
+    { fixture: 'state-tampered-keyset-v9to8.hex', version: 'v8' as const }
+  ])('wraps extraction of $fixture as $version in a DownConvertFailedError (DOWN_CONVERT_FAILED)', ({ fixture, version }) => {
+    const tampered = readHexFixture(fixture);
+
+    expect(() => extractEncodedStateValue(tampered, version)).toThrowError(
+      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED })
+    );
+  });
 });
 
 describe('Merkle rehash', () => {
   // With the pinned onchain-runtime-v3 / ledger-v9 versions, `encode()` fully
   // materializes a tree's node hashes even when `.rehash()` was never called,
   // so a fixture that has crossed an encode()/decode() round trip already
-  // has a readable root (verified empirically; see task-1.5-report.md). The
-  // "root read before rehash" failure `checkRoot` guards against is instead
-  // exercised directly against a freshly built tree that has never been
-  // through `.rehash()` or any encode/decode round trip.
+  // has a readable root (verified empirically). The "root read before
+  // rehash" failure `checkRoot` guards against is instead exercised directly
+  // against a freshly built tree that has never been through `.rehash()` or
+  // any encode/decode round trip.
   it('a freshly built, never-rehashed tree fails checkRoot with MERKLE_NOT_REHASHED', () => {
     const tree = buildNeverRehashedTree(0x55);
 

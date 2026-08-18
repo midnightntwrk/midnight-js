@@ -60,6 +60,84 @@ describe('assertSharedLedger8Instances', () => {
     expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH);
     expect(error.axis).toBe('ledger-v9');
   });
+
+  it('throws naming the onchain-runtime-v3 axis when both sides of that axis are undefined (nullish probes are not a proof of a shared instance)', () => {
+    let caught: unknown;
+    try {
+      assertSharedLedger8Instances(undefined, undefined, ledgerV9, ledgerV9);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Ledger8InstanceMismatchError);
+    const error = caught as Ledger8InstanceMismatchError;
+    expect(error.axis).toBe('onchain-runtime-v3');
+  });
+
+  it('throws naming the onchain-runtime-v3 axis when both sides of that axis are null', () => {
+    let caught: unknown;
+    try {
+      assertSharedLedger8Instances(null, null, ledgerV9, ledgerV9);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Ledger8InstanceMismatchError);
+    const error = caught as Ledger8InstanceMismatchError;
+    expect(error.axis).toBe('onchain-runtime-v3');
+  });
+
+  it('throws naming the onchain-runtime-v3 axis when only one side of that axis is nullish', () => {
+    let caught: unknown;
+    try {
+      assertSharedLedger8Instances(onchainRuntimeV3, undefined, ledgerV9, ledgerV9);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Ledger8InstanceMismatchError);
+    const error = caught as Ledger8InstanceMismatchError;
+    expect(error.axis).toBe('onchain-runtime-v3');
+  });
+
+  it('throws naming the ledger-v9 axis when both sides of that axis are undefined and the onchain-runtime-v3 axis matches', () => {
+    let caught: unknown;
+    try {
+      assertSharedLedger8Instances(onchainRuntimeV3, onchainRuntimeV3, undefined, undefined);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Ledger8InstanceMismatchError);
+    const error = caught as Ledger8InstanceMismatchError;
+    expect(error.axis).toBe('ledger-v9');
+  });
+
+  it('throws naming the ledger-v9 axis when only one side of that axis is nullish and the onchain-runtime-v3 axis matches', () => {
+    let caught: unknown;
+    try {
+      assertSharedLedger8Instances(onchainRuntimeV3, onchainRuntimeV3, ledgerV9, null);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Ledger8InstanceMismatchError);
+    const error = caught as Ledger8InstanceMismatchError;
+    expect(error.axis).toBe('ledger-v9');
+  });
+
+  it('throws naming the onchain-runtime-v3 axis when every probe is undefined (all-nullish input)', () => {
+    let caught: unknown;
+    try {
+      assertSharedLedger8Instances(undefined, undefined, undefined, undefined);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Ledger8InstanceMismatchError);
+    const error = caught as Ledger8InstanceMismatchError;
+    expect(error.axis).toBe('onchain-runtime-v3');
+  });
 });
 
 describe('assertLedger8RuntimePresent', () => {

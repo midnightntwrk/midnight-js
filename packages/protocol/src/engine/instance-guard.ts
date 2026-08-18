@@ -34,6 +34,13 @@ import { loadV8 } from '../load-v8';
  *
  * Checks the 0.16 runtime axis before the ledger-v9 axis and throws on the
  * first mismatch found.
+ *
+ * A nullish probe (`null`/`undefined`) on either side of an axis is rejected
+ * before the `===` comparison runs, rather than compared directly: two
+ * nullish values are always `===` to each other, so a caller that
+ * optional-chained a missing export on both sides (or simply forgot to pass
+ * a probe) would otherwise pass this fail-fast safety net by accident
+ * instead of failing it.
  */
 export const assertSharedLedger8Instances = (
   contractRuntime: unknown,
@@ -41,10 +48,10 @@ export const assertSharedLedger8Instances = (
   ledgerV9: unknown,
   engineLedgerV9: unknown
 ): void => {
-  if (contractRuntime !== engineRuntime) {
+  if (contractRuntime == null || engineRuntime == null || contractRuntime !== engineRuntime) {
     throw new Ledger8InstanceMismatchError('onchain-runtime-v3');
   }
-  if (ledgerV9 !== engineLedgerV9) {
+  if (ledgerV9 == null || engineLedgerV9 == null || ledgerV9 !== engineLedgerV9) {
     throw new Ledger8InstanceMismatchError('ledger-v9');
   }
 };
