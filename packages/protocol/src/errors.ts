@@ -155,6 +155,11 @@ export type Ledger8InstanceAxis = 'onchain-runtime-v3';
  * single resolved version.
  */
 export class Ledger8InstanceMismatchError extends Error {
+  /** Code-based recognition — see {@link carriesProtocolCode}. */
+  static [Symbol.hasInstance](value: unknown): boolean {
+    return carriesProtocolCode(value, PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH);
+  }
+
   readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH;
 
   constructor(readonly axis: Ledger8InstanceAxis) {
@@ -179,6 +184,11 @@ export class Ledger8InstanceMismatchError extends Error {
  * decoded state contents, only the stage name and the wrapped `cause`.
  */
 export class DownConvertFailedError extends Error {
+  /** Code-based recognition — see {@link carriesProtocolCode}. */
+  static [Symbol.hasInstance](value: unknown): boolean {
+    return carriesProtocolCode(value, PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED);
+  }
+
   readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED;
 
   constructor(
@@ -207,6 +217,11 @@ export class DownConvertFailedError extends Error {
  * instead of silently repairing.
  */
 export class MerkleNotRehashedError extends Error {
+  /** Code-based recognition — see {@link carriesProtocolCode}. */
+  static [Symbol.hasInstance](value: unknown): boolean {
+    return carriesProtocolCode(value, PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED);
+  }
+
   readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED;
 
   constructor() {

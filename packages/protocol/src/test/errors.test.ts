@@ -172,6 +172,24 @@ const CODE_RECOGNITION_CASES: readonly CodeRecognitionCase[] = [
     errorClass: Ledger8RuntimeMissingError,
     ownCodes: [PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING],
     instances: [new Ledger8RuntimeMissingError(new Error('ERR_MODULE_NOT_FOUND'))]
+  },
+  {
+    label: 'Ledger8InstanceMismatchError',
+    errorClass: Ledger8InstanceMismatchError,
+    ownCodes: [PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH],
+    instances: [new Ledger8InstanceMismatchError('onchain-runtime-v3')]
+  },
+  {
+    label: 'DownConvertFailedError',
+    errorClass: DownConvertFailedError,
+    ownCodes: [PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED],
+    instances: [new DownConvertFailedError('v9 state down-convert', new Error('malformed bytes'))]
+  },
+  {
+    label: 'MerkleNotRehashedError',
+    errorClass: MerkleNotRehashedError,
+    ownCodes: [PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED],
+    instances: [new MerkleNotRehashedError()]
   }
 ];
 
