@@ -91,16 +91,18 @@ export class Ledger8RuntimeMissingError extends Error {
 }
 
 /**
- * Which physical-copy axis {@link assertSharedLedger8Instances}
- * (`engine/instance-guard.ts`) detected two distinct instances on:
- * - `'onchain-runtime-v3'` — the retained pre-fork (`compact-runtime@0.16`)
- *   runtime axis.
- * - `'ledger-v9'` — the current post-fork ledger axis.
+ * Which physical-copy axis {@link assertSharedLedger8Instance}
+ * (`engine/instance-guard.ts`) detected two distinct instances on. Only the
+ * retained pre-fork (`compact-runtime@0.16`) runtime axis
+ * (`'onchain-runtime-v3'`) has two genuine acquisition paths inside this
+ * package — its own dependency versus the copy the 0.16 glue resolves for its
+ * own dependency — so it is the union's only member; a new axis joins only
+ * when it gains a comparable second acquisition path.
  */
-export type Ledger8InstanceAxis = 'onchain-runtime-v3' | 'ledger-v9';
+export type Ledger8InstanceAxis = 'onchain-runtime-v3';
 
 /**
- * Thrown by {@link assertSharedLedger8Instances} (`engine/instance-guard.ts`)
+ * Thrown by {@link assertSharedLedger8Instance} (`engine/instance-guard.ts`)
  * when the same-named WASM package resolved to two physically distinct
  * copies in this process (a dual-instantiation) — objects created by one
  * copy fail `instanceof`/coercion checks against the other copy's classes,

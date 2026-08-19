@@ -141,7 +141,6 @@
     "@rollup/plugin-typescript": "^12.3.0",
     "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^10.6.0",
-    "ledger-v9-alt": "npm:@midnightntwrk/ledger-v9@1.0.0-rc.3",
     "onchain-runtime-v3-alt": "npm:@midnight-ntwrk/onchain-runtime-v3@3.1.0",
     "rollup": "^4.60.4",
     "rollup-plugin-dts": "^6.4.1",

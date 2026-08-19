@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { ChargedState as LedgerV9ChargedState, type ContractCallPrototype } from '@midnightntwrk/ledger-v9';
+import type { ContractCallPrototype } from '@midnightntwrk/ledger-v9';
 
 import { loadLedger8 } from '../load-v8';
 import type { LedgerVersion } from '../version';
@@ -29,7 +29,7 @@ import {
 import { type DownConvertedState, downConvertForExecution, type Ledger8CompactRuntime } from './down-convert';
 import { type EncodedStateValue, extractEncodedStateValue } from './envelope';
 import { executeCircuit, type ExecuteCircuitOptions, type Ledger8ExecutionRuntime, type TranscriptPojo } from './execute';
-import { assertLedger8RuntimePresent, assertSharedLedger8Instances } from './instance-guard';
+import { assertSharedLedger8Instance } from './instance-guard';
 import { wrapKeepStateCall, type WrapKeepStateCallOptions } from './wrap-v9';
 
 export type {
@@ -72,37 +72,30 @@ export interface Ledger8Engine {
  * and `onchain-runtime-v3` WASM — happens only when that subpath is
  * dynamically imported, never as a side effect of loading the package root.
  *
- * Runs {@link assertLedger8RuntimePresent} first (the same retained-toolchain
- * canary `loadLedger8` backs) so a broken or partial install fails fast with
- * {@link Ledger8RuntimeMissingError}, before any WASM acquisition here even
- * starts. Then runs {@link assertSharedLedger8Instances} exactly once: the
- * `onchain-runtime-v3` axis compares this package's own copy against the
+ * Runs {@link assertSharedLedger8Instance} exactly once, on the
+ * `onchain-runtime-v3` axis: it compares this package's own copy against the
  * copy the 0.16 glue resolves for its own dependency (a genuine second
  * acquisition path — a duplicate install would resolve these differently),
- * so a dual-instantiation there fails loudly before any contract execution
- * can silently corrupt on a physical-instance mismatch. The `ledger-v9` axis
- * has no comparable second acquisition path inside this package — `engine/wrap-v9.ts`
- * imports the same `@midnightntwrk/ledger-v9` specifier this module does —
- * so the same reference is passed on both sides of that axis, matching the
- * happy-path shape `engine-instance-guard.test.ts` already exercises.
+ * so a dual-instantiation fails loudly before any contract execution can
+ * silently corrupt on a physical-instance mismatch. No other WASM package
+ * this module acquires has a comparable second acquisition path, so no other
+ * axis is asserted. Any acquisition failure surfaces through the facade
+ * (`engine/load-engine.ts`) as {@link Ledger8RuntimeMissingError}.
  *
- * Also resolves the v8 ledger module via {@link loadLedger8} — the same
- * memoised loader {@link assertLedger8RuntimePresent} already awaited above,
- * so this second call resolves immediately from cache rather than re-running
- * the dynamic import — and closes over it for {@link composeV8CallTx}
+ * Also acquires the v8 ledger module via {@link loadLedger8} in the same
+ * `Promise.all` — its rejection is already a {@link Ledger8RuntimeMissingError},
+ * see `../load-v8.ts` — and closes over it for {@link composeV8CallTx}
  * (`engine/compose-v8.ts`) and {@link composeV8DeployTx} (`engine/deploy-v8.ts`),
  * so neither takes a module parameter on the public facade.
  */
 export const createLedger8Engine = async (): Promise<Ledger8Engine> => {
-  await assertLedger8RuntimePresent();
-
   const [glue, ocrt3, v8] = await Promise.all([
     import('compact-runtime-ledger8'),
     import('@midnight-ntwrk/onchain-runtime-v3'),
     loadLedger8()
   ]);
 
-  assertSharedLedger8Instances(ocrt3.ChargedState, glue.ChargedState, LedgerV9ChargedState, LedgerV9ChargedState);
+  assertSharedLedger8Instance('onchain-runtime-v3', ocrt3.ChargedState, glue.ChargedState);
 
   const ledger8CompactRuntime: Ledger8CompactRuntime = {
     StateValue: glue.StateValue,

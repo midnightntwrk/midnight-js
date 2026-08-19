@@ -94,13 +94,13 @@ describe('Ledger8RuntimeMissingError', () => {
 
 describe('Ledger8InstanceMismatchError', () => {
   it('carries the LEDGER8_INSTANCE_MISMATCH code, names the axis, and remediates with yarn why', () => {
-    const error = new Ledger8InstanceMismatchError('ledger-v9');
+    const error = new Ledger8InstanceMismatchError('onchain-runtime-v3');
 
     expect(error).toBeInstanceOf(Error);
     expect(error.name).toBe('Ledger8InstanceMismatchError');
     expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH);
-    expect(error.axis).toBe('ledger-v9');
-    expect(error.message).toContain('ledger-v9');
+    expect(error.axis).toBe('onchain-runtime-v3');
+    expect(error.message).toContain('onchain-runtime-v3');
     expect(error.message).toContain('dual-instantiation');
     expect(error.message).toContain('yarn why');
   });
