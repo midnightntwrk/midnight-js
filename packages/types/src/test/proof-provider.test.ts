@@ -26,13 +26,29 @@ const stubProvingProvider: ProvingProvider = {
   lookupKey: vi.fn()
 };
 
-const stubCostModel = { tag: 'cost-model' } as unknown as CostModel;
+// Each stub is built as a `Partial<T>` naming only the members this suite
+// exercises, then narrowed with a single assertion — the same pattern the
+// http-client proof-provider tests use for their transaction stub.
+const partialCostModel: Partial<CostModel> = { toString: () => 'stub-cost-model' };
+const stubCostModel = partialCostModel as CostModel;
+
+const createStubUnboundTx = (): UnboundTransaction => {
+  const partial: Partial<UnboundTransaction> = { bindingRandomness: 42n };
+  return partial as UnboundTransaction;
+};
+
+const createStubUnprovenTx = (provenAs: UnboundTransaction): UnprovenTransaction => {
+  const partial: Partial<UnprovenTransaction> = {
+    prove: vi.fn().mockResolvedValue(provenAs) as UnprovenTransaction['prove']
+  };
+  return partial as UnprovenTransaction;
+};
 
 describe('createProofProvider', () => {
   describe('v9 payload', () => {
     it('proves the carried transaction and tags the result as v9', async () => {
-      const unboundTx = { tag: 'unbound-tx' } as unknown as UnboundTransaction;
-      const unprovenTx = { prove: vi.fn().mockResolvedValue(unboundTx) } as unknown as UnprovenTransaction;
+      const unboundTx = createStubUnboundTx();
+      const unprovenTx = createStubUnprovenTx(unboundTx);
       const provider = createProofProvider(stubProvingProvider, stubCostModel);
 
       const result = await provider.proveTx({ version: 'v9', tx: unprovenTx });

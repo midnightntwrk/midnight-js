@@ -62,12 +62,10 @@ describe('MidnightWalletProvider', () => {
       const wallet = createWalletStub();
       const provider = await createProvider(wallet);
 
-      const rejection = await Promise.resolve()
-        .then(() => provider.submitTx({ version: 'v8', txBytes: new Uint8Array([1, 2, 3]) }))
-        .then(
-          () => undefined,
-          (error: unknown) => error
-        );
+      const rejection = await provider.submitTx({ version: 'v8', txBytes: new Uint8Array([1, 2, 3]) }).then(
+        () => undefined,
+        (error: unknown) => error
+      );
 
       expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
       expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(true);

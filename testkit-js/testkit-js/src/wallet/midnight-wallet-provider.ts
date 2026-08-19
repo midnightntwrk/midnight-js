@@ -88,7 +88,7 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
     }
   }
 
-  submitTx(tx: VersionedFinalizedTransaction): Promise<string> {
+  async submitTx(tx: VersionedFinalizedTransaction): Promise<string> {
     switch (tx.version) {
       case 'v9':
         return this.wallet.submitTransaction(tx.tx);
