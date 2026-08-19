@@ -69,6 +69,7 @@ export class IndexerQueryError extends IndexerError {
 export type IndexerDataErrorContext =
   | { kind: 'unknown-status'; value: string }
   | { kind: 'missing-head-block' }
+  | { kind: 'malformed-state-encoding' }
   | { kind: 'missing-contract-action'; contractAddress: string }
   | {
       kind: 'missing-identifier';
@@ -111,6 +112,10 @@ export class IndexerDataError extends IndexerError {
     return new IndexerDataError({ kind: 'missing-head-block' });
   }
 
+  static malformedStateEncoding(): IndexerDataError {
+    return new IndexerDataError({ kind: 'malformed-state-encoding' });
+  }
+
   static missingContractAction(contractAddress: string): IndexerDataError {
     return new IndexerDataError({ kind: 'missing-contract-action', contractAddress });
   }
@@ -144,6 +149,11 @@ export class IndexerDataError extends IndexerError {
     switch (context.kind) {
       case 'unknown-status':
         return `Unexpected transaction status value: ${context.value}`;
+      case 'malformed-state-encoding':
+        return (
+          'The indexer returned a contract state that is not a hex-encoded byte string. ' +
+          'Check that the indexer and this client agree on the wire encoding, and retry against a healthy indexer.'
+        );
       case 'missing-head-block':
         return (
           'The indexer returned no head block, so the network protocol version could not be read. ' +

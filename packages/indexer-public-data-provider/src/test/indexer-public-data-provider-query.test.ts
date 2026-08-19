@@ -14,25 +14,14 @@
  */
 
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { fromHex } from '@midnight-ntwrk/midnight-js-utils';
 import type { DocumentNode } from 'graphql';
 import { describe, expect, test, vi } from 'vitest';
 
 import { IndexerDataError } from '../errors';
 import { IndexerPublicDataProvider } from '../provider';
-import {
-  BLOCK_QUERY,
-  CONTRACT_AND_ZSWAP_STATE_QUERY,
-  CONTRACT_STATE_QUERY,
-  HEAD_PROTOCOL_VERSION_QUERY
-} from '../query-definitions';
+import { BLOCK_QUERY, CONTRACT_AND_ZSWAP_STATE_QUERY, HEAD_PROTOCOL_VERSION_QUERY } from '../query-definitions';
 import type { ApolloHandle } from '../transport';
-import {
-  mintV8ContractStateHex,
-  mintV9ContractStateHex,
-  V8_ERA_PROTOCOL_VERSION,
-  V9_ERA_PROTOCOL_VERSION
-} from './state-fixtures';
+import { V8_ERA_PROTOCOL_VERSION, V9_ERA_PROTOCOL_VERSION } from './state-fixtures';
 
 const ADDRESS = '12'.repeat(32) as ContractAddress;
 
@@ -59,8 +48,6 @@ const dispatchingQuery = (responses: ReadonlyMap<DocumentNode, unknown>): Return
 const headResponse = (protocolVersion: number | null): unknown => ({
   data: { block: protocolVersion === null ? null : { protocolVersion } }
 });
-
-const stateResponse = (state: string | null): unknown => ({ data: { contract: state === null ? null : { state } } });
 
 describe('IndexerPublicDataProvider query methods', () => {
   describe('queryBlock', () => {
@@ -176,69 +163,6 @@ describe('IndexerPublicDataProvider query methods', () => {
       await provider.queryLatestProtocolVersion();
 
       expect(query).toHaveBeenCalledTimes(2);
-    });
-  });
-
-  describe('queryRawContractState', () => {
-    test('returns the state bytes as served, with the era derived from the head protocol version', async () => {
-      const stateHex = mintV9ContractStateHex();
-      const query = dispatchingQuery(
-        new Map<DocumentNode, unknown>([
-          [CONTRACT_STATE_QUERY, stateResponse(stateHex)],
-          [HEAD_PROTOCOL_VERSION_QUERY, headResponse(V9_ERA_PROTOCOL_VERSION)]
-        ])
-      );
-
-      const record = await providerWithQuery(query).queryRawContractState(ADDRESS);
-
-      expect(record).toEqual({
-        version: 'v9',
-        protocolVersion: V9_ERA_PROTOCOL_VERSION,
-        raw: new Uint8Array(fromHex(stateHex))
-      });
-    });
-
-    test('derives the older era from an older-era head protocol version', async () => {
-      const stateHex = await mintV8ContractStateHex();
-      const query = dispatchingQuery(
-        new Map<DocumentNode, unknown>([
-          [CONTRACT_STATE_QUERY, stateResponse(stateHex)],
-          [HEAD_PROTOCOL_VERSION_QUERY, headResponse(V8_ERA_PROTOCOL_VERSION)]
-        ])
-      );
-
-      const record = await providerWithQuery(query).queryRawContractState(ADDRESS);
-
-      expect(record?.version).toBe('v8');
-      expect(record?.protocolVersion).toBe(V8_ERA_PROTOCOL_VERSION);
-    });
-
-    test('returns null, and never asks for the head version, when the contract has no state at the offset', async () => {
-      const query = dispatchingQuery(new Map<DocumentNode, unknown>([[CONTRACT_STATE_QUERY, stateResponse(null)]]));
-
-      const record = await providerWithQuery(query).queryRawContractState(ADDRESS);
-
-      expect(record).toBeNull();
-      expect(query).toHaveBeenCalledTimes(1);
-    });
-
-    test('maps a block-height config to a height offset', async () => {
-      const query = dispatchingQuery(new Map<DocumentNode, unknown>([[CONTRACT_STATE_QUERY, stateResponse(null)]]));
-
-      await providerWithQuery(query).queryRawContractState(ADDRESS, { type: 'blockHeight', blockHeight: 7 });
-
-      expect(query).toHaveBeenCalledWith(
-        expect.objectContaining({ variables: { address: ADDRESS, offset: { height: 7 } } })
-      );
-    });
-
-    test('rejects a malformed contract address before issuing any request', async () => {
-      const query = dispatchingQuery(new Map<DocumentNode, unknown>());
-
-      await expect(
-        providerWithQuery(query).queryRawContractState('not-an-address' as ContractAddress)
-      ).rejects.toThrow();
-      expect(query).not.toHaveBeenCalled();
     });
   });
 });

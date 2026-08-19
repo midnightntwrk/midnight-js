@@ -44,6 +44,7 @@ import {
   deserializeLedgerParameters,
   deserializeLedgerTransaction,
   deserializeZswapChainState,
+  isHex,
   parseSerializedTag,
   TagParseError
 } from '@midnight-ntwrk/midnight-js-utils';
@@ -127,11 +128,23 @@ export const contractStateEnvelopeVersion = (raw: Uint8Array): LedgerVersion => 
  * @param protocolVersion The protocol-version integer the network reported for
  *                        that state.
  */
-export const toRawContractState = (hexState: string, protocolVersion: number): RawContractState => ({
-  version: protocolVersionToLedger(protocolVersion, 'read'),
-  protocolVersion,
-  raw: new Uint8Array(toByteArray(hexState))
-});
+export const toRawContractState = (hexState: string, protocolVersion: number): RawContractState => {
+  // Hex first: `Buffer.from(s, 'hex')` stops at the first character it cannot
+  // read, so an only-partly-hex payload would otherwise be silently truncated
+  // into a shorter, still plausible-looking byte string.
+  if (!isHex(hexState)) {
+    throw IndexerDataError.malformedStateEncoding();
+  }
+  const raw = new Uint8Array(toByteArray(hexState));
+  // Envelope next, before the bytes are handed to anything: rejects a payload
+  // that is not a contract state from a supported runtime.
+  contractStateEnvelopeVersion(raw);
+  return {
+    version: protocolVersionToLedger(protocolVersion, 'read'),
+    protocolVersion,
+    raw
+  };
+};
 
 export const toTxStatus = (transactionResult: TransactionResult): TxStatus => {
   const result = transactionResult.status;

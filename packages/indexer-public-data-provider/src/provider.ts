@@ -88,6 +88,7 @@ import {
   DEPLOY_TX_QUERY,
   HEAD_PROTOCOL_VERSION_QUERY,
   QUERY_UNSHIELDED_BALANCES_WITH_OFFSET,
+  RAW_CONTRACT_STATE_QUERY,
   TX_ID_QUERY
 } from './query-definitions';
 import type { ApolloHandle } from './transport';
@@ -253,9 +254,19 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    * without deserializing them, paired with the ledger era those bytes belong
    * to.
    *
-   * The state is fetched first; the head protocol version — which supplies the
-   * era — is only requested when a state actually exists, so a lookup that
-   * finds nothing costs a single request.
+   * The block that dates the state and the state itself are asked for in a
+   * single document. That saves a round trip; it does **not** make the two
+   * fields a consistent snapshot — the indexer resolves Query-root siblings
+   * concurrently, from independent reads, so they can still come from
+   * different blocks. Requiring the two to agree is exactly what makes a head
+   * read usable as corroboration below.
+   *
+   * Only a read with no offset can corroborate, because only then is the block
+   * field the network's head block.
+   *
+   * @throws {TagParseError} When the served state does not carry a
+   *   contract-state envelope from a supported ledger runtime.
+   * @throws {IndexerDataError} When the served state is not hex-encoded.
    */
   async queryRawContractState(
     address: ContractAddress,
@@ -263,9 +274,9 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
   ): Promise<RawContractState | null> {
     assertIsContractAddress(address);
     const offset = toBlockOffset(config);
-    const state = await this.client
+    const data = await this.client
       .query({
-        query: CONTRACT_STATE_QUERY,
+        query: RAW_CONTRACT_STATE_QUERY,
         variables: {
           address,
           offset
@@ -273,12 +284,16 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         fetchPolicy: 'no-cache'
       })
       .then(maybeThrowQueryError)
-      .then((queryResult) => queryResult.data?.contract?.state ?? null);
-    if (state === null) {
+      .then((queryResult) => queryResult.data);
+    const state = data?.contract?.state ?? null;
+    const block = data?.block ?? null;
+    if (state === null || block === null) {
       return null;
     }
-    const record = toRawContractState(state, await this.queryLatestProtocolVersion());
-    this.corroborateFromStateSnapshot(record);
+    const record = toRawContractState(state, block.protocolVersion);
+    if (offset === null) {
+      this.corroborateFromStateSnapshot(record);
+    }
     return record;
   }
 

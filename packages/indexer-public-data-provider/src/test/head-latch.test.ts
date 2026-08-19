@@ -19,7 +19,7 @@ import * as Rx from 'rxjs';
 import { describe, expect, test, vi } from 'vitest';
 
 import { IndexerPublicDataProvider } from '../provider';
-import { CONTRACT_STATE_QUERY, HEAD_PROTOCOL_VERSION_QUERY } from '../query-definitions';
+import { HEAD_PROTOCOL_VERSION_QUERY, RAW_CONTRACT_STATE_QUERY } from '../query-definitions';
 import type { ApolloHandle } from '../transport';
 import {
   mintV8ContractStateHex,
@@ -53,7 +53,11 @@ const dispatchingQuery = (responses: ReadonlyMap<DocumentNode, unknown>): QueryM
   });
 
 const headResponse = (protocolVersion: number): unknown => ({ data: { block: { protocolVersion } } });
-const stateResponse = (state: string): unknown => ({ data: { contract: { state } } });
+
+/** The composed state read: the dating block and the state in one response. */
+const composedResponse = (state: string, protocolVersion: number): unknown => ({
+  data: { block: { protocolVersion }, contract: { state } }
+});
 
 /** How many of the recorded requests asked the indexer for the head version. */
 const headRequestCount = (query: QueryMock): number =>
@@ -100,7 +104,7 @@ describe('head protocol-version cache', () => {
   test('caches once a state read reports both a newer-era head and a newer-era state envelope', async () => {
     const query = dispatchingQuery(
       new Map<DocumentNode, unknown>([
-        [CONTRACT_STATE_QUERY, stateResponse(mintV9ContractStateHex())],
+        [RAW_CONTRACT_STATE_QUERY, composedResponse(mintV9ContractStateHex(), V9_ERA_PROTOCOL_VERSION)],
         [HEAD_PROTOCOL_VERSION_QUERY, headResponse(V9_ERA_PROTOCOL_VERSION)]
       ])
     );
@@ -118,7 +122,7 @@ describe('head protocol-version cache', () => {
   test('does not cache when the head reports the newer era but the state envelope is still the older one', async () => {
     const query = dispatchingQuery(
       new Map<DocumentNode, unknown>([
-        [CONTRACT_STATE_QUERY, stateResponse(await mintV8ContractStateHex())],
+        [RAW_CONTRACT_STATE_QUERY, composedResponse(await mintV8ContractStateHex(), V9_ERA_PROTOCOL_VERSION)],
         [HEAD_PROTOCOL_VERSION_QUERY, headResponse(V9_ERA_PROTOCOL_VERSION)]
       ])
     );
@@ -157,7 +161,7 @@ describe('head protocol-version cache', () => {
   test('a fresh reading always goes to the network, even once the cache is engaged', async () => {
     const query = dispatchingQuery(
       new Map<DocumentNode, unknown>([
-        [CONTRACT_STATE_QUERY, stateResponse(mintV9ContractStateHex())],
+        [RAW_CONTRACT_STATE_QUERY, composedResponse(mintV9ContractStateHex(), V9_ERA_PROTOCOL_VERSION)],
         [HEAD_PROTOCOL_VERSION_QUERY, headResponse(V9_ERA_PROTOCOL_VERSION)]
       ])
     );
@@ -172,7 +176,7 @@ describe('head protocol-version cache', () => {
 
   test('never lowers an engaged cache when a later reading reports the older era', async () => {
     const responses = new Map<DocumentNode, unknown>([
-      [CONTRACT_STATE_QUERY, stateResponse(mintV9ContractStateHex())],
+      [RAW_CONTRACT_STATE_QUERY, composedResponse(mintV9ContractStateHex(), V9_ERA_PROTOCOL_VERSION)],
       [HEAD_PROTOCOL_VERSION_QUERY, headResponse(V9_ERA_PROTOCOL_VERSION)]
     ]);
     const query = dispatchingQuery(responses);

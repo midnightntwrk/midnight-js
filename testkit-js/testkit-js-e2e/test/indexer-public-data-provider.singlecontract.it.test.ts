@@ -14,6 +14,7 @@
  */
 
 import type { FinalizedDeployTxData } from '@midnight-ntwrk/midnight-js-contracts';
+import { LEDGER_VERSIONS, versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
 import { type FinalizedTxData, type PublicDataProvider, SucceedEntirely } from '@midnight-ntwrk/midnight-js-types';
 import {
   createLogger,
@@ -21,6 +22,7 @@ import {
   initializeMidnightProviders,
   type TestEnvironment
 } from '@midnight-ntwrk/testkit-js';
+import fetch from 'cross-fetch';
 import path from 'path';
 
 import { UNDEPLOYED_CONTRACT_ADDRESS, VERY_SLOW_TEST_TIMEOUT } from '@/constants';
@@ -47,6 +49,7 @@ describe('Indexer API', () => {
   let finalizedDeployTxData: FinalizedDeployTxData<CounterContract>;
   let incrementedTxData: FinalizedTxData;
   let testEnvironment: TestEnvironment;
+  let indexerQueryUrl: string;
 
   beforeEach(() => {
     logger.info(`Running test=${expect.getState().currentTestName}`);
@@ -55,6 +58,7 @@ describe('Indexer API', () => {
   beforeAll(async () => {
     testEnvironment = getTestEnvironment(logger);
     const environmentConfiguration = await testEnvironment.start();
+    indexerQueryUrl = environmentConfiguration.indexer;
     api.setLogger(logger);
     logger.info(`Private state: ${JSON.stringify(privateStateZero)}`);
     const wallet = await testEnvironment.getMidnightWalletProvider();
@@ -118,6 +122,44 @@ describe('Indexer API', () => {
     if (state) {
       expect(ledger(state?.data).round).toEqual(1n);
     }
+  });
+
+  test('queryLatestProtocolVersion - should return exactly the protocolVersion the indexer reports on its head block', async () => {
+    // Asked for straight from the indexer, bypassing the provider entirely, so
+    // this compares against the real source field rather than against another
+    // reading taken the same way.
+    const response = await fetch(indexerQueryUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: 'query { block { protocolVersion } }' })
+    });
+    const payload = (await response.json()) as { data: { block: { protocolVersion: number } } };
+
+    const version = await publicDataProvider.queryLatestProtocolVersion({ fresh: true });
+
+    expect(version).toEqual(payload.data.block.protocolVersion);
+    // Resolving throws on a protocol version this client does not know, so
+    // this also pins that the indexer's integer is one this client supports.
+    expect(LEDGER_VERSIONS).toContain(versionOfRecord({ protocolVersion: version }));
+  });
+
+  test('queryRawContractState - should return the exact state bytes the indexer serves, dated by the same read', async () => {
+    const address = finalizedDeployTxData.public.contractAddress;
+
+    const record = await publicDataProvider.queryRawContractState(address);
+    const parsed = await publicDataProvider.queryContractState(address);
+
+    expect(record).not.toBeNull();
+    expect(parsed).not.toBeNull();
+    if (record && parsed) {
+      expect(record.raw).toEqual(new Uint8Array(parsed.serialize()));
+      expect(record.version).toEqual(versionOfRecord({ protocolVersion: record.protocolVersion }));
+      expect(record.protocolVersion).toEqual(await publicDataProvider.queryLatestProtocolVersion({ fresh: true }));
+    }
+  });
+
+  test('queryRawContractState - should return null on no contract at contract address', async () => {
+    await expect(publicDataProvider.queryRawContractState(UNDEPLOYED_CONTRACT_ADDRESS)).resolves.toBeNull();
   });
 
   test('queryContractState - should return null on no contract at contract address', async () => {
