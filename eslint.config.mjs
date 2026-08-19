@@ -9,7 +9,7 @@ import unusedImports from 'eslint-plugin-unused-imports';
 
 // No-new-occurrences gate for unsafe casts in package sources. Existing,
 // reviewed occurrences carry an inline eslint-disable; test files and
-// testkit-js are exempt (see the dedicated override below).
+// testkit-js are exempt (see the dedicated gate block below).
 const unsafeCastSelectors = [
   {
     selector: "TSAsExpression[typeAnnotation.type='TSAnyKeyword'], TSTypeAssertion[typeAnnotation.type='TSAnyKeyword']",
@@ -18,10 +18,21 @@ const unsafeCastSelectors = [
   {
     selector: "TSAsExpression[typeAnnotation.type='TSUnknownKeyword'], TSTypeAssertion[typeAnnotation.type='TSUnknownKeyword']",
     message: "Unsafe cast to 'unknown'. Use a precise type or a type guard instead; a reviewed exception needs an inline eslint-disable."
+  },
+  {
+    selector: "TSAsExpression[typeAnnotation.type='TSNeverKeyword'], TSTypeAssertion[typeAnnotation.type='TSNeverKeyword']",
+    message: "Unsafe cast to 'never'. Use a precise type or a type guard instead; a reviewed exception needs an inline eslint-disable."
   }
 ];
 
 export default tseslint.config(
+  {
+    // A stale eslint-disable hides nothing but suggests it still does; fail
+    // the lint so it gets removed (or the regression it masked gets fixed).
+    linterOptions: {
+      reportUnusedDisableDirectives: 'error'
+    }
+  },
   {
     ignores: [
       '**/dist/**',
@@ -97,7 +108,7 @@ export default tseslint.config(
       '@typescript-eslint/no-require-imports': 'error',
       '@typescript-eslint/no-use-before-define': ['error'],
       '@typescript-eslint/no-shadow': ['error'],
-      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/consistent-type-definitions': 'off',
       '@typescript-eslint/consistent-type-imports': [
         'error',
@@ -168,15 +179,18 @@ export default tseslint.config(
           ]
         }
       ],
-      'no-restricted-syntax': ['error', ...unsafeCastSelectors],
     }
   },
   {
-    // Tests and testkit-js are exempt from the unsafe-cast gate — mocking and
-    // fixtures legitimately cast.
-    files: ['packages/*/src/test/**/*.ts', 'testkit-js/**/*.ts'],
+    // Unsafe-cast gate for package sources. Tests and testkit-js are exempt —
+    // mocking and fixtures legitimately cast — via files/ignores scoping
+    // rather than a 'no-restricted-syntax: off' override, so the exemption
+    // cannot silently disable unrelated selectors another block adds to this
+    // rule.
+    files: ['packages/**/*.ts', 'packages/**/*.tsx', 'packages/**/*.mts'],
+    ignores: ['packages/*/src/test/**'],
     rules: {
-      'no-restricted-syntax': 'off'
+      'no-restricted-syntax': ['error', ...unsafeCastSelectors]
     }
   },
   {
