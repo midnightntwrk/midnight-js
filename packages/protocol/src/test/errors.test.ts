@@ -237,6 +237,16 @@ const CODE_RECOGNITION_CASES: readonly CodeRecognitionCase[] = [
     errorClass: MerkleNotRehashedError,
     ownCodes: [PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED],
     instances: [new MerkleNotRehashedError()]
+  },
+  {
+    label: 'Ledger8ComposeFailedError',
+    errorClass: Ledger8ComposeFailedError,
+    ownCodes: [PROTOCOL_ERROR_CODES.LEDGER8_COMPOSE_FAILED],
+    instances: [
+      new Ledger8ComposeFailedError('wrap-call', 'increment'),
+      new Ledger8ComposeFailedError('call-operation', 'increment'),
+      new Ledger8ComposeFailedError('deploy-verifier-key', 'increment')
+    ]
   }
 ];
 

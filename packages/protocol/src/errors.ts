@@ -270,6 +270,11 @@ export type Ledger8ComposeStage = 'wrap-call' | 'call-operation' | 'deploy-verif
  * hex or byte-array contents.
  */
 export class Ledger8ComposeFailedError extends Error {
+  /** Code-based recognition — see {@link carriesProtocolCode}. */
+  static [Symbol.hasInstance](value: unknown): boolean {
+    return carriesProtocolCode(value, PROTOCOL_ERROR_CODES.LEDGER8_COMPOSE_FAILED);
+  }
+
   readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.LEDGER8_COMPOSE_FAILED;
 
   constructor(
