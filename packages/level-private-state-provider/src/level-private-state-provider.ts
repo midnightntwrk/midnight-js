@@ -131,6 +131,12 @@ export type DatabaseLevel = AbstractLevel<string | Buffer | Uint8Array, string, 
 
 export type LevelFactory = (dbName: string) => DatabaseLevel;
 
+/**
+ * A store as this provider uses it: string keys, string values. Keys that are
+ * branded strings, such as `ContractAddress`, widen to `string` on the way in.
+ */
+type StringSubLevel = AbstractSublevel<DatabaseLevel, string | Uint8Array | Buffer, string, string>;
+
 interface StorageContext {
   readonly dbName: string;
   readonly createLevel: LevelFactory;
@@ -186,6 +192,37 @@ const defaultLevelFactory: LevelFactory = (dbName: string) =>
 const dbAccessQueues = new Map<string, Promise<void>>();
 
 /**
+ * How long one queued operation may run before it is abandoned.
+ *
+ * Without a bound, a single operation that never settles - a `levelFactory`
+ * whose `open()` hangs, a stalled iterator - would wedge every later operation
+ * on that database for the lifetime of the process, with no error to diagnose.
+ */
+const DB_OPERATION_TIMEOUT_MS = 300000; // 5 minutes
+
+const withOperationTimeout = async <A>(dbName: string, operation: () => Promise<A>): Promise<A> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      operation(),
+      new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => {
+          reject(
+            new Error(
+              `Timed out after ${DB_OPERATION_TIMEOUT_MS}ms operating on private state database "${dbName}". ` +
+              `The database handle appears stuck. Operations queued behind it have been released, so the ` +
+              `next one may fail to open until that handle is released.`
+            )
+          );
+        }, DB_OPERATION_TIMEOUT_MS);
+      })
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
+/**
  * Serializes access to one database, so that overlapping callers queue instead
  * of colliding.
  *
@@ -196,6 +233,13 @@ const dbAccessQueues = new Map<string, Promise<void>>();
  * path (`browser-level`, IndexedDB) takes no such lock, but serializing there
  * is still what makes a read-modify-write sequence deterministic. The cost is
  * that throughput is one operation per database at a time.
+ *
+ * The queue slot is claimed synchronously, before this function's first `await`.
+ * That is what makes queue order equal call order, so `set(k, v)` followed by
+ * `remove(k)` applies in that order even when neither is awaited. Callers must
+ * therefore reach this function without awaiting anything first - work that
+ * needs the database, such as resolving an encryption key from the stored salt,
+ * belongs inside `operation`, which runs on the already-open handle.
  *
  * The map is module-level because the resource it guards is process-wide: a
  * per-provider map could not see a second provider opening the same database.
@@ -208,12 +252,13 @@ const dbAccessQueues = new Map<string, Promise<void>>();
  * at all - it still contends on the operating system lock.
  *
  * Not reentrant: entering the lock for a database that already holds it
- * deadlocks, and there is no timeout to break it. Callers must therefore
- * resolve encryption keys, which read the database themselves, before entering.
+ * deadlocks. Each operation is bounded by {@link DB_OPERATION_TIMEOUT_MS}, so a
+ * stuck operation surfaces as an error instead of hanging the queue forever.
  */
 const withDbLock = async <A>(dbName: string, operation: () => Promise<A>): Promise<A> => {
+  const bounded = (): Promise<A> => withOperationTimeout(dbName, operation);
   const pending = dbAccessQueues.get(dbName);
-  const current = pending === undefined ? operation() : pending.then(operation);
+  const current = pending === undefined ? bounded() : pending.then(bounded);
   // The stored tail must never reject, because a rejected tail would reject
   // every operation chained behind it. The caller still receives the real
   // outcome through `current`.
@@ -269,14 +314,14 @@ const closeDatabase = async (
   }
 };
 
-const withSubLevel = <K, V, A>(
+const withSubLevel = <A>(
   ctx: StorageContext,
   levelName: string,
-  thunk: (subLevel: AbstractSublevel<DatabaseLevel, string | Uint8Array | Buffer, K, V>) => Promise<A>,
+  thunk: (subLevel: StringSubLevel) => Promise<A>,
 ): Promise<A> =>
   withDbLock(ctx.dbName, async () => {
     const level = await openDatabase(ctx);
-    const subLevel = level.sublevel<K, V>(levelName, {
+    const subLevel = level.sublevel<string, string>(levelName, {
       valueEncoding: 'utf-8'
     });
 
@@ -285,10 +330,19 @@ const withSubLevel = <K, V, A>(
       await subLevel.open();
       result = await thunk(subLevel);
     } catch (error: unknown) {
-      try {
-        await closeDatabase(subLevel, level);
-      } catch {
-        // Don't mask the error from the operation - that is the one worth reporting.
+      const closeError = await closeDatabase(subLevel, level).then(
+        () => undefined,
+        (failure: unknown) => failure
+      );
+      if (closeError !== undefined) {
+        // Both failures matter: the operation error explains what the caller asked for,
+        // and the close error means the handle still holds the database.
+        throw new AggregateError(
+          [error, closeError],
+          `Operation on private state database "${ctx.dbName}" failed, and the database handle ` +
+          `could not be closed afterwards. The database stays locked for the rest of this process.`,
+          { cause: error }
+        );
       }
       throw error;
     }
@@ -302,8 +356,6 @@ const withSubLevel = <K, V, A>(
 const METADATA_KEY = '__midnight_encryption_metadata__';
 
 const DEFAULT_MAX_ROTATION_ENTRIES = 10000;
-
-const encryptionInitPromises = new Map<string, Promise<Buffer>>();
 
 const passwordRotationLocks = new Map<string, Promise<void>>();
 
@@ -330,52 +382,50 @@ interface EncryptionCacheEntry {
  */
 const encryptionCache = new Map<string, EncryptionCacheEntry>();
 
-const getOrCreateSalt = async (ctx: StorageContext, levelName: string): Promise<Buffer> => {
-  const lockKey = `${ctx.dbName}:${levelName}`;
-
-  const existingPromise = encryptionInitPromises.get(lockKey);
-  if (existingPromise) {
-    return existingPromise;
-  }
-
-  const initPromise = withSubLevel<string, string, Buffer>(ctx, levelName, async (subLevel) => {
-    try {
-      const metadataJson = await subLevel.get(METADATA_KEY);
-      if (metadataJson) {
-        const metadata = JSON.parse(metadataJson);
-        return Buffer.from(metadata.salt, 'hex');
-      }
-    } catch (error: unknown) {
-      if (!(error && typeof error === 'object' && 'code' in error && error.code === 'LEVEL_NOT_FOUND')) {
-        throw error;
-      }
-    }
-
-    const salt = Buffer.from(randomBytes(32));
-    const metadata = {
-      salt: salt.toString('hex'),
-      version: 1
-    };
-    await subLevel.put(METADATA_KEY, JSON.stringify(metadata));
-    return salt;
-  });
-
-  encryptionInitPromises.set(lockKey, initPromise);
-
+/**
+ * Reads the stored salt, creating and persisting one when the store has none.
+ *
+ * Takes an already-open sublevel rather than a {@link StorageContext}, so that
+ * it runs on the handle its caller has open instead of queueing a second
+ * open/close cycle of its own. That is what lets a caller claim its queue slot
+ * before doing any database work - see {@link withDbLock}.
+ */
+const readOrCreateSalt = async (subLevel: StringSubLevel): Promise<Buffer> => {
   try {
-    return await initPromise;
-  } finally {
-    encryptionInitPromises.delete(lockKey);
+    const metadataJson = await subLevel.get(METADATA_KEY);
+    if (metadataJson) {
+      const metadata = JSON.parse(metadataJson);
+      return Buffer.from(metadata.salt, 'hex');
+    }
+  } catch (error: unknown) {
+    if (!(error && typeof error === 'object' && 'code' in error && error.code === 'LEVEL_NOT_FOUND')) {
+      throw error;
+    }
   }
+
+  const salt = Buffer.from(randomBytes(32));
+  const metadata = {
+    salt: salt.toString('hex'),
+    version: 1
+  };
+  await subLevel.put(METADATA_KEY, JSON.stringify(metadata));
+  return salt;
 };
 
-const getOrCreateEncryption = async (
-  ctx: StorageContext,
-  levelName: string,
+/**
+ * Resolves the encryption for a store from the salt it currently holds.
+ *
+ * Runs inside the caller's database lock, so the salt it reads cannot change
+ * between here and the write that uses the resulting key. That is what keeps a
+ * password rotation from landing between the two.
+ */
+const resolveEncryption = async (
+  subLevel: StringSubLevel,
+  cacheKey: string,
   passwordProvider: PrivateStoragePasswordProvider,
+  cryptoBackend?: CryptoBackendType,
 ): Promise<StorageEncryption> => {
-  const cacheKey = `${ctx.dbName}:${levelName}`;
-  const salt = await getOrCreateSalt(ctx, levelName);
+  const salt = await readOrCreateSalt(subLevel);
   const saltHex = salt.toString('hex');
 
   const cached = encryptionCache.get(cacheKey);
@@ -384,13 +434,13 @@ const getOrCreateEncryption = async (
     if (await cached.encryption.verifyPassword(password)) {
       return cached.encryption;
     }
-    const encryption = await StorageEncryption.create(password, { existingSalt: salt, cryptoBackend: ctx.cryptoBackend });
+    const encryption = await StorageEncryption.create(password, { existingSalt: salt, cryptoBackend });
     encryptionCache.set(cacheKey, { encryption, saltHex });
     return encryption;
   }
 
   const password = await getPasswordFromProvider(passwordProvider);
-  const encryption = await StorageEncryption.create(password, { existingSalt: salt, cryptoBackend: ctx.cryptoBackend });
+  const encryption = await StorageEncryption.create(password, { existingSalt: salt, cryptoBackend });
   encryptionCache.set(cacheKey, { encryption, saltHex });
   return encryption;
 };
@@ -435,25 +485,6 @@ const withPasswordRotationLock = async <T>(
   }
 };
 
-const waitForRotationLock = async (
-  dbName: string,
-  levelName: string,
-  timeoutMs: number = DEFAULT_LOCK_TIMEOUT_MS
-): Promise<void> => {
-  const lockKey = `${dbName}:${levelName}`;
-  const startWait = Date.now();
-
-  while (passwordRotationLocks.has(lockKey)) {
-    if (Date.now() - startWait > timeoutMs) {
-      throw new Error(
-        `Timed out waiting for password rotation to complete on "${lockKey}". ` +
-          `The rotation may be stuck or taking longer than ${timeoutMs}ms.`
-      );
-    }
-    await passwordRotationLocks.get(lockKey);
-  }
-};
-
 interface RotateStorePasswordParams {
   readonly ctx: StorageContext;
   readonly storeName: string;
@@ -486,18 +517,20 @@ const rotateStorePassword = async (
 ): Promise<PasswordRotationResult> => {
   const { ctx, storeName, oldPasswordProvider, newPasswordProvider, maxEntries, shouldProceed } = params;
 
-  const oldPassword = await getPasswordFromProvider(oldPasswordProvider);
-  const newPassword = await getPasswordFromProvider(newPasswordProvider);
-
-  const salt = await getOrCreateSalt(ctx, storeName);
-  const oldEncryption = await StorageEncryption.create(oldPassword, { existingSalt: salt, cryptoBackend: ctx.cryptoBackend });
-  const newEncryption = await StorageEncryption.create(newPassword, { cryptoBackend: ctx.cryptoBackend });
-  const newSalt = newEncryption.getSalt();
-
-  return withSubLevel<string, string, PasswordRotationResult>(
+  return withSubLevel<PasswordRotationResult>(
     ctx,
     storeName,
     async (subLevel) => {
+      // Resolved inside the lock, on the salt this store holds right now, so a
+      // concurrent write cannot slip in between reading the salt and rewriting it.
+      const oldPassword = await getPasswordFromProvider(oldPasswordProvider);
+      const newPassword = await getPasswordFromProvider(newPasswordProvider);
+
+      const salt = await readOrCreateSalt(subLevel);
+      const oldEncryption = await StorageEncryption.create(oldPassword, { existingSalt: salt, cryptoBackend: ctx.cryptoBackend });
+      const newEncryption = await StorageEncryption.create(newPassword, { cryptoBackend: ctx.cryptoBackend });
+      const newSalt = newEncryption.getSalt();
+
       const entriesToMigrate: { key: string; decryptedValue: string }[] = [];
       let hasMatchingData = false;
       let firstEntryValidated = false;
@@ -587,16 +620,20 @@ const rotateStorePassword = async (
   );
 };
 
-const subLevelMaybeGet = async <K, V>(
+const subLevelMaybeGet = <K extends string, V>(
   ctx: StorageContext,
   levelName: string,
   key: K,
   passwordProvider: PrivateStoragePasswordProvider,
-): Promise<V | null> => {
-  await waitForRotationLock(ctx.dbName, levelName);
-  const encryption = await getOrCreateEncryption(ctx, levelName, passwordProvider);
+): Promise<V | null> =>
+  withSubLevel<V | null>(ctx, levelName, async (subLevel) => {
+    const encryption = await resolveEncryption(
+      subLevel,
+      `${ctx.dbName}:${levelName}`,
+      passwordProvider,
+      ctx.cryptoBackend
+    );
 
-  return withSubLevel<K, string, V | null>(ctx, levelName, async (subLevel) => {
     try {
       const encryptedValue = await subLevel.get(key);
 
@@ -636,20 +673,22 @@ const subLevelMaybeGet = async <K, V>(
       throw error;
     }
   });
-};
 
 /**
  * Iterate all key-value pairs in a sublevel, excluding metadata keys.
  */
-const getAllEntries = async <K extends string, V>(
+const getAllEntries = <K extends string, V>(
   ctx: StorageContext,
   levelName: string,
   passwordProvider: PrivateStoragePasswordProvider,
-): Promise<Map<K, V>> => {
-  await waitForRotationLock(ctx.dbName, levelName);
-  const encryption = await getOrCreateEncryption(ctx, levelName, passwordProvider);
-
-  return withSubLevel<K, string, Map<K, V>>(ctx, levelName, async (subLevel) => {
+): Promise<Map<K, V>> =>
+  withSubLevel<Map<K, V>>(ctx, levelName, async (subLevel) => {
+    const encryption = await resolveEncryption(
+      subLevel,
+      `${ctx.dbName}:${levelName}`,
+      passwordProvider,
+      ctx.cryptoBackend
+    );
     const entries = new Map<K, V>();
     let password: string | null = null;
 
@@ -688,7 +727,6 @@ const getAllEntries = async <K extends string, V>(
 
     return entries;
   });
-};
 
 /**
  * Internal structure of the decrypted export payload.
@@ -881,24 +919,26 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
     /** {@inheritDoc PrivateStateProvider.remove} */
     async remove(privateStateId: PSI): Promise<void> {
       const { privateState } = scopedNames;
-      await waitForRotationLock(ctx.dbName, privateState);
       const scopedKey = getScopedKey(privateStateId);
-      return withSubLevel<string, string, void>(ctx, privateState, (subLevel) =>
+      return withSubLevel<void>(ctx, privateState, (subLevel) =>
         subLevel.del(scopedKey),
       );
     },
     /** {@inheritDoc PrivateStateProvider.set} */
     async set(privateStateId: PSI, state: PS): Promise<void> {
       const { privateState } = scopedNames;
-      await waitForRotationLock(ctx.dbName, privateState);
       const scopedKey = getScopedKey(privateStateId);
-      const encryption = await getOrCreateEncryption(ctx, privateState, passwordProvider);
       const serialized = superjson.stringify(state);
-      const encrypted = await encryption.encrypt(serialized);
 
-      return withSubLevel<string, string, void>(ctx, privateState, (subLevel) =>
-        subLevel.put(scopedKey, encrypted),
-      );
+      return withSubLevel<void>(ctx, privateState, async (subLevel) => {
+        const encryption = await resolveEncryption(
+          subLevel,
+          `${ctx.dbName}:${privateState}`,
+          passwordProvider,
+          ctx.cryptoBackend
+        );
+        await subLevel.put(scopedKey, await encryption.encrypt(serialized));
+      });
     },
     /** {@inheritDoc PrivateStateProvider.clear} */
     async clear(): Promise<void> {
@@ -916,22 +956,24 @@ export const levelPrivateStateProvider = <PSI extends PrivateStateId, PS = any>(
     /** {@inheritDoc PrivateStateProvider.removeSigningKey} */
     async removeSigningKey(address: ContractAddress): Promise<void> {
       const { signingKey } = scopedNames;
-      await waitForRotationLock(ctx.dbName, signingKey);
-      return withSubLevel<ContractAddress, string, void>(ctx, signingKey, (subLevel) =>
+      return withSubLevel<void>(ctx, signingKey, (subLevel) =>
         subLevel.del(address),
       );
     },
     /** {@inheritDoc PrivateStateProvider.setSigningKey} */
     async setSigningKey(address: ContractAddress, signingKey: SigningKey): Promise<void> {
       const { signingKey: signingKeyLevelName } = scopedNames;
-      await waitForRotationLock(ctx.dbName, signingKeyLevelName);
-      const encryption = await getOrCreateEncryption(ctx, signingKeyLevelName, passwordProvider);
       const serialized = superjson.stringify(signingKey);
-      const encrypted = await encryption.encrypt(serialized);
 
-      return withSubLevel<ContractAddress, string, void>(ctx, signingKeyLevelName, (subLevel) =>
-        subLevel.put(address, encrypted),
-      );
+      return withSubLevel<void>(ctx, signingKeyLevelName, async (subLevel) => {
+        const encryption = await resolveEncryption(
+          subLevel,
+          `${ctx.dbName}:${signingKeyLevelName}`,
+          passwordProvider,
+          ctx.cryptoBackend
+        );
+        await subLevel.put(address, await encryption.encrypt(serialized));
+      });
     },
     /** {@inheritDoc PrivateStateProvider.clearSigningKeys} */
     async clearSigningKeys(): Promise<void> {
