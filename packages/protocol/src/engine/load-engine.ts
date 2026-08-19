@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { Ledger8RuntimeMissingError } from '../errors';
+import { Ledger8InstanceMismatchError, Ledger8RuntimeMissingError } from '../errors';
 import type * as Engine from './index.js';
 
 export type { Ledger8Engine } from './index.js';
@@ -32,13 +32,20 @@ let enginePromise: Promise<Engine.Ledger8Engine> | undefined;
  * never link the `./engine` subpath, `@midnight-ntwrk/onchain-runtime-v3`, or
  * the `compact-runtime-ledger8` glue alias statically).
  *
- * A failed load is not memoised: the rejection propagates as
- * {@link Ledger8RuntimeMissingError} and the next call retries the import.
+ * A failed load is not memoised: the next call retries the import. A
+ * rejection that already carries a protocol error code —
+ * {@link Ledger8RuntimeMissingError} from the retained-runtime acquisition, or
+ * {@link Ledger8InstanceMismatchError} from the construction-time instance
+ * guard — propagates unchanged, keeping its class, code and discriminants
+ * intact for callers; any other failure (e.g. a raw module-resolution error
+ * on the engine chunk itself) is wrapped in {@link Ledger8RuntimeMissingError}.
  */
 export const loadLedger8Engine = (): Promise<Engine.Ledger8Engine> =>
   (enginePromise ??= import('@midnight-ntwrk/midnight-js-protocol/engine')
     .then((engineModule) => engineModule.createLedger8Engine())
     .catch((error: unknown) => {
       enginePromise = undefined;
-      throw error instanceof Ledger8RuntimeMissingError ? error : new Ledger8RuntimeMissingError(error);
+      throw error instanceof Ledger8RuntimeMissingError || error instanceof Ledger8InstanceMismatchError
+        ? error
+        : new Ledger8RuntimeMissingError(error);
     }));
