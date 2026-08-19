@@ -18,6 +18,7 @@ import type { ContractAddress, LedgerParameters, TransactionId, ZswapChainState 
 import type { Observable } from 'rxjs';
 
 import type { FinalizedTxData, UnshieldedBalances } from './midnight-types';
+import type { RawContractState } from './raw-contract-state';
 
 /**
  * Streams all previous states of a contract.
@@ -466,4 +467,51 @@ export interface PublicDataProvider {
     filter: ContractEventSubscriptionFilter,
     opts?: { startAt?: ContractEventCursor }
   ): Observable<ContractEvent>;
+
+  /**
+   * Retrieves the protocol-version integer reported by the network's current
+   * head block.
+   *
+   * Implementations MAY serve this from a cache, but only after they have
+   * corroborated evidence that the network has moved to the newer ledger era.
+   * Corroboration means one of exactly two things:
+   *
+   * 1. a single response that carried both the head version and a contract
+   *    state whose envelope belongs to the newer era; or
+   * 2. a finalized record the implementation itself decoded, whose protocol
+   *    version resolves to the newer era.
+   *
+   * A head version integer on its own is never enough — an indexer can report
+   * a newer head while still serving older-era state, so caching on that
+   * alone would pin the wrong answer. While the network is still on the older
+   * era an implementation MUST NOT cache at all. Once a cached answer is
+   * established it only ever moves forward: a later older-era reading never
+   * clears or lowers it.
+   *
+   * @param options Pass `{ fresh: true }` to skip any cache and always issue a
+   *                real request. Callers use this to re-read the head after
+   *                they have seen evidence that a cached answer disagrees with
+   *                what the network is actually serving.
+   */
+  queryLatestProtocolVersion(options?: { readonly fresh?: boolean }): Promise<number>;
+
+  /**
+   * Retrieves the on-chain state of a contract as the raw serialized bytes the
+   * network returned, without deserializing them, together with the era those
+   * bytes belong to.
+   *
+   * This is the state input for callers that must work across the ledger fork:
+   * they narrow on {@link RawContractState.version} and then hand the bytes to
+   * that era's deserializer. Both eras' envelopes are returned unchanged.
+   *
+   * Immediately returns null if no matching data is found.
+   *
+   * @param contractAddress The address of the contract of interest.
+   * @param config The configuration of the query.
+   *               If `undefined` returns the latest state.
+   */
+  queryRawContractState(
+    contractAddress: ContractAddress,
+    config?: BlockHeightConfig | BlockHashConfig
+  ): Promise<RawContractState | null>;
 }

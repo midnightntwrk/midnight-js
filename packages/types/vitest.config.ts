@@ -48,7 +48,11 @@ export default defineConfig({
     // other tests in this package aren't slowed down by a tsc pass.
     typecheck: {
       enabled: true,
-      include: ['**/test/versioned.test.ts', '**/test/versioned-tx.test.ts']
+      include: [
+        '**/test/versioned.test.ts',
+        '**/test/versioned-tx.test.ts',
+        '**/test/public-data-provider.test.ts'
+      ]
     }
   },
   resolve: {

@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { protocolVersionToLedger } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
   type Binding,
@@ -25,6 +26,7 @@ import {
   type Transaction as LedgerTransaction,
   type ZswapChainState
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { RawContractState } from '@midnight-ntwrk/midnight-js-types';
 import {
   FailEntirely,
   FailFallible,
@@ -69,6 +71,27 @@ export const parseHexTransaction = (s: string): LedgerTransaction<SignatureEnabl
 
 export const parseHexLedgerParameters = (s: string): LedgerParameters =>
   deserializeLedgerParameters(toByteArray(s), { caller: `${PKG}:parseHexLedgerParameters` });
+
+/**
+ * Builds the raw (undeserialized) contract-state record served by
+ * `PublicDataProvider.queryRawContractState`.
+ *
+ * This is the single construction point for the record's `version` field: it
+ * is always derived here from `protocolVersion`, using the read-path resolver,
+ * and is never passed in or chosen by a caller. Keeping the derivation in one
+ * place is what makes "`version` always agrees with `protocolVersion`" true by
+ * construction rather than by convention.
+ *
+ * @param hexState The hex-encoded serialized contract state, as the indexer
+ *                 serves it.
+ * @param protocolVersion The protocol-version integer the network reported for
+ *                        that state.
+ */
+export const toRawContractState = (hexState: string, protocolVersion: number): RawContractState => ({
+  version: protocolVersionToLedger(protocolVersion, 'read'),
+  protocolVersion,
+  raw: new Uint8Array(toByteArray(hexState))
+});
 
 export const toTxStatus = (transactionResult: TransactionResult): TxStatus => {
   const result = transactionResult.status;

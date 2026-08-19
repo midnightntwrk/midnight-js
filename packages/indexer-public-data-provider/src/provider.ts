@@ -32,6 +32,7 @@ import type {
   ContractStateObservableConfig,
   FinalizedTxData,
   PublicDataProvider,
+  RawContractState,
   UnshieldedBalances
 } from '@midnight-ntwrk/midnight-js-types';
 import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
@@ -42,6 +43,7 @@ import {
   parseHexLedgerParameters,
   parseHexTransaction,
   parseHexZswapState,
+  toRawContractState,
   toSegmentStatusMap,
   toTxStatus,
   toUnshieldedBalances,
@@ -82,6 +84,7 @@ import {
   CONTRACT_STATE_QUERY,
   DEPLOY_CONTRACT_STATE_TX_QUERY,
   DEPLOY_TX_QUERY,
+  HEAD_PROTOCOL_VERSION_QUERY,
   QUERY_UNSHIELDED_BALANCES_WITH_OFFSET,
   TX_ID_QUERY
 } from './query-definitions';
@@ -138,6 +141,66 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
       .then(maybeThrowQueryError)
       .then((queryResult) => queryResult.data?.block ?? null);
     return block ? { hash: block.hash, height: block.height } : null;
+  }
+
+  /**
+   * Reads the protocol-version integer of the network's head block.
+   *
+   * The indexer's `block` root field with no offset resolves to the latest
+   * indexed block, so this is the head version. Nothing is cached: every call
+   * issues a request.
+   *
+   * @throws {IndexerDataError} When the indexer has not indexed a block yet
+   *   and therefore reports no head block.
+   */
+  async queryLatestProtocolVersion(): Promise<number> {
+    return this.fetchHeadProtocolVersion();
+  }
+
+  private async fetchHeadProtocolVersion(): Promise<number> {
+    const block = await this.client
+      .query({
+        query: HEAD_PROTOCOL_VERSION_QUERY,
+        fetchPolicy: 'no-cache'
+      })
+      .then(maybeThrowQueryError)
+      .then((queryResult) => queryResult.data?.block ?? null);
+    if (block === null) {
+      throw IndexerDataError.missingHeadBlock();
+    }
+    return block.protocolVersion;
+  }
+
+  /**
+   * Reads the contract state at `address` as the bytes the indexer served,
+   * without deserializing them, paired with the ledger era those bytes belong
+   * to.
+   *
+   * The state is fetched first; the head protocol version — which supplies the
+   * era — is only requested when a state actually exists, so a lookup that
+   * finds nothing costs a single request.
+   */
+  async queryRawContractState(
+    address: ContractAddress,
+    config?: BlockHeightConfig | BlockHashConfig
+  ): Promise<RawContractState | null> {
+    assertIsContractAddress(address);
+    const offset = toBlockOffset(config);
+    const state = await this.client
+      .query({
+        query: CONTRACT_STATE_QUERY,
+        variables: {
+          address,
+          offset
+        },
+        fetchPolicy: 'no-cache'
+      })
+      .then(maybeThrowQueryError)
+      .then((queryResult) => queryResult.data?.contract?.state ?? null);
+    if (state === null) {
+      return null;
+    }
+    return toRawContractState(state, await this.queryLatestProtocolVersion());
   }
 
   queryContractState(

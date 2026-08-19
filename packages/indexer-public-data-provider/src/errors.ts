@@ -68,6 +68,7 @@ export class IndexerQueryError extends IndexerError {
  */
 export type IndexerDataErrorContext =
   | { kind: 'unknown-status'; value: string }
+  | { kind: 'missing-head-block' }
   | { kind: 'missing-contract-action'; contractAddress: string }
   | {
       kind: 'missing-identifier';
@@ -106,6 +107,10 @@ export class IndexerDataError extends IndexerError {
     return new IndexerDataError({ kind: 'unknown-status', value });
   }
 
+  static missingHeadBlock(): IndexerDataError {
+    return new IndexerDataError({ kind: 'missing-head-block' });
+  }
+
   static missingContractAction(contractAddress: string): IndexerDataError {
     return new IndexerDataError({ kind: 'missing-contract-action', contractAddress });
   }
@@ -139,6 +144,11 @@ export class IndexerDataError extends IndexerError {
     switch (context.kind) {
       case 'unknown-status':
         return `Unexpected transaction status value: ${context.value}`;
+      case 'missing-head-block':
+        return (
+          'The indexer returned no head block, so the network protocol version could not be read. ' +
+          'Wait for the indexer to finish indexing at least one block, then retry.'
+        );
       case 'missing-contract-action':
         return `Deploy transaction does not contain a contract action for address ${context.contractAddress}`;
       case 'missing-identifier':

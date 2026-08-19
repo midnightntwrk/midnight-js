@@ -14,17 +14,53 @@
  */
 
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { fromHex } from '@midnight-ntwrk/midnight-js-utils';
+import type { DocumentNode } from 'graphql';
 import { describe, expect, test, vi } from 'vitest';
 
+import { IndexerDataError } from '../errors';
 import { IndexerPublicDataProvider } from '../provider';
-import { BLOCK_QUERY, CONTRACT_AND_ZSWAP_STATE_QUERY } from '../query-definitions';
+import {
+  BLOCK_QUERY,
+  CONTRACT_AND_ZSWAP_STATE_QUERY,
+  CONTRACT_STATE_QUERY,
+  HEAD_PROTOCOL_VERSION_QUERY
+} from '../query-definitions';
 import type { ApolloHandle } from '../transport';
+import {
+  mintV8ContractStateHex,
+  mintV9ContractStateHex,
+  V8_ERA_PROTOCOL_VERSION,
+  V9_ERA_PROTOCOL_VERSION
+} from './state-fixtures';
 
 const ADDRESS = '12'.repeat(32) as ContractAddress;
 
 /** Builds a provider whose Apollo client's `query` is the supplied mock. */
 const providerWithQuery = (query: ReturnType<typeof vi.fn>): IndexerPublicDataProvider =>
   new IndexerPublicDataProvider({ client: { query } } as unknown as ApolloHandle, 1000);
+
+type QueryRequest = { readonly query: DocumentNode };
+
+/**
+ * A `query` mock that answers per document, so a method issuing more than one
+ * request can be driven (and counted) without depending on call order.
+ * An unregistered document is a test-setup mistake and fails loudly rather
+ * than resolving to `undefined`.
+ */
+const dispatchingQuery = (responses: ReadonlyMap<DocumentNode, unknown>): ReturnType<typeof vi.fn> =>
+  vi.fn().mockImplementation(({ query }: QueryRequest) => {
+    if (!responses.has(query)) {
+      return Promise.reject(new Error('test setup: no response registered for the requested document'));
+    }
+    return Promise.resolve(responses.get(query));
+  });
+
+const headResponse = (protocolVersion: number | null): unknown => ({
+  data: { block: protocolVersion === null ? null : { protocolVersion } }
+});
+
+const stateResponse = (state: string | null): unknown => ({ data: { contract: state === null ? null : { state } } });
 
 describe('IndexerPublicDataProvider query methods', () => {
   describe('queryBlock', () => {
@@ -104,6 +140,105 @@ describe('IndexerPublicDataProvider query methods', () => {
       });
 
       expect(await providerWithQuery(query).queryZSwapAndContractState(ADDRESS)).toBeNull();
+    });
+  });
+  describe('queryLatestProtocolVersion', () => {
+    test('reads the version off the head block, asking for no offset so the indexer serves the latest', async () => {
+      const query = dispatchingQuery(new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(V9_ERA_PROTOCOL_VERSION)]]));
+
+      const version = await providerWithQuery(query).queryLatestProtocolVersion();
+
+      expect(version).toBe(V9_ERA_PROTOCOL_VERSION);
+      expect(query).toHaveBeenCalledWith(
+        expect.objectContaining({ query: HEAD_PROTOCOL_VERSION_QUERY, fetchPolicy: 'no-cache' })
+      );
+    });
+
+    test('fails fast when the indexer reports no head block at all', async () => {
+      const query = dispatchingQuery(new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(null)]]));
+
+      const rejection = await providerWithQuery(query)
+        .queryLatestProtocolVersion()
+        .then(
+          () => undefined,
+          (error: unknown) => error
+        );
+
+      expect(rejection).toBeInstanceOf(IndexerDataError);
+      expect((rejection as IndexerDataError).context).toEqual({ kind: 'missing-head-block' });
+    });
+
+    test('issues a fresh request on every call while the network is still on the older era', async () => {
+      const query = dispatchingQuery(new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(V8_ERA_PROTOCOL_VERSION)]]));
+      const provider = providerWithQuery(query);
+
+      await provider.queryLatestProtocolVersion();
+      await provider.queryLatestProtocolVersion();
+
+      expect(query).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('queryRawContractState', () => {
+    test('returns the state bytes as served, with the era derived from the head protocol version', async () => {
+      const stateHex = mintV9ContractStateHex();
+      const query = dispatchingQuery(
+        new Map<DocumentNode, unknown>([
+          [CONTRACT_STATE_QUERY, stateResponse(stateHex)],
+          [HEAD_PROTOCOL_VERSION_QUERY, headResponse(V9_ERA_PROTOCOL_VERSION)]
+        ])
+      );
+
+      const record = await providerWithQuery(query).queryRawContractState(ADDRESS);
+
+      expect(record).toEqual({
+        version: 'v9',
+        protocolVersion: V9_ERA_PROTOCOL_VERSION,
+        raw: new Uint8Array(fromHex(stateHex))
+      });
+    });
+
+    test('derives the older era from an older-era head protocol version', async () => {
+      const stateHex = await mintV8ContractStateHex();
+      const query = dispatchingQuery(
+        new Map<DocumentNode, unknown>([
+          [CONTRACT_STATE_QUERY, stateResponse(stateHex)],
+          [HEAD_PROTOCOL_VERSION_QUERY, headResponse(V8_ERA_PROTOCOL_VERSION)]
+        ])
+      );
+
+      const record = await providerWithQuery(query).queryRawContractState(ADDRESS);
+
+      expect(record?.version).toBe('v8');
+      expect(record?.protocolVersion).toBe(V8_ERA_PROTOCOL_VERSION);
+    });
+
+    test('returns null, and never asks for the head version, when the contract has no state at the offset', async () => {
+      const query = dispatchingQuery(new Map<DocumentNode, unknown>([[CONTRACT_STATE_QUERY, stateResponse(null)]]));
+
+      const record = await providerWithQuery(query).queryRawContractState(ADDRESS);
+
+      expect(record).toBeNull();
+      expect(query).toHaveBeenCalledTimes(1);
+    });
+
+    test('maps a block-height config to a height offset', async () => {
+      const query = dispatchingQuery(new Map<DocumentNode, unknown>([[CONTRACT_STATE_QUERY, stateResponse(null)]]));
+
+      await providerWithQuery(query).queryRawContractState(ADDRESS, { type: 'blockHeight', blockHeight: 7 });
+
+      expect(query).toHaveBeenCalledWith(
+        expect.objectContaining({ variables: { address: ADDRESS, offset: { height: 7 } } })
+      );
+    });
+
+    test('rejects a malformed contract address before issuing any request', async () => {
+      const query = dispatchingQuery(new Map<DocumentNode, unknown>());
+
+      await expect(
+        providerWithQuery(query).queryRawContractState('not-an-address' as ContractAddress)
+      ).rejects.toThrow();
+      expect(query).not.toHaveBeenCalled();
     });
   });
 });

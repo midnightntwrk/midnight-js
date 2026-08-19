@@ -25,6 +25,17 @@ export const BLOCK_QUERY = gql(
   }`
 );
 
+// The indexer's `block` root field with no offset resolves to the latest
+// indexed block, so this is the network's head protocol version.
+export const HEAD_PROTOCOL_VERSION_QUERY = gql(
+  `
+  query HEAD_PROTOCOL_VERSION_QUERY {
+    block {
+      protocolVersion
+    }
+  }`
+);
+
 export const TX_ID_QUERY = gql(
   `
   query TX_ID_QUERY($offset: TransactionOffset!) {

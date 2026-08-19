@@ -22,6 +22,7 @@ export * from './private-state-provider';
 export * from './proof-provider';
 export * from './providers';
 export * from './public-data-provider';
+export * from './raw-contract-state';
 export * from './versioned';
 export * from './wallet-provider';
 export * from './zk-config-provider';
