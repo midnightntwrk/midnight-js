@@ -46,9 +46,10 @@ describe('dappConnectorProofProvider', () => {
       getProvingProvider: vi.fn().mockResolvedValue(mockProvingProvider)
     };
 
-    mockZkConfigProvider = {
+    const zkConfigProviderOverrides: Partial<ZKConfigProvider<string>> = {
       asKeyMaterialProvider: vi.fn().mockReturnValue(mockKeyMaterialProvider)
-    } as unknown as ZKConfigProvider<string>;
+    };
+    mockZkConfigProvider = zkConfigProviderOverrides as ZKConfigProvider<string>;
 
     mockUnprovenTx = {
       prove: vi.fn().mockResolvedValue(mockUnboundTx)
