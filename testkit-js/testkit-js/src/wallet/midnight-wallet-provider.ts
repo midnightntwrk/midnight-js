@@ -17,11 +17,16 @@ import {
   type CoinPublicKey,
   DustSecretKey,
   type EncPublicKey,
-  type FinalizedTransaction,
   ZswapSecretKeys
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { type MidnightProvider, type UnboundTransaction, type WalletProvider } from '@midnight-ntwrk/midnight-js-types';
-import { ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
+import {
+  type MidnightProvider,
+  V8PayloadUnsupportedError,
+  type VersionedFinalizedTransaction,
+  type VersionedUnboundTransaction,
+  type WalletProvider
+} from '@midnight-ntwrk/midnight-js-types';
+import { assertNever, ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
 import { type UnshieldedKeystore, type WalletFacade } from '@midnightntwrk/wallet-sdk';
 import type { Logger } from 'pino';
 
@@ -67,16 +72,31 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
   }
 
   async balanceTx(
-    tx: UnboundTransaction,
+    tx: VersionedUnboundTransaction,
     ttl: Date = ttlOneHour()
-  ): Promise<FinalizedTransaction> {
-    const finalizedTransactionRecipe = await this.wallet.balanceUnboundTransaction(tx, { shieldedSecretKeys: this.zswapSecretKeys, dustSecretKey: this.dustSecretKey}, { ttl });
-    const signed = await this.wallet.signRecipe(finalizedTransactionRecipe, (payload) => this.unshieldedKeystore.signDataAsync(payload));
-    return this.wallet.finalizeRecipe(signed);
+  ): Promise<VersionedFinalizedTransaction> {
+    switch (tx.version) {
+      case 'v9': {
+        const finalizedTransactionRecipe = await this.wallet.balanceUnboundTransaction(tx.tx, { shieldedSecretKeys: this.zswapSecretKeys, dustSecretKey: this.dustSecretKey}, { ttl });
+        const signed = await this.wallet.signRecipe(finalizedTransactionRecipe, (payload) => this.unshieldedKeystore.signDataAsync(payload));
+        return { version: 'v9', tx: await this.wallet.finalizeRecipe(signed) };
+      }
+      case 'v8':
+        throw new V8PayloadUnsupportedError('balanceTx');
+      default:
+        return assertNever(tx, 'MidnightWalletProvider.balanceTx');
+    }
   }
 
-  submitTx(tx: FinalizedTransaction): Promise<string> {
-    return this.wallet.submitTransaction(tx);
+  submitTx(tx: VersionedFinalizedTransaction): Promise<string> {
+    switch (tx.version) {
+      case 'v9':
+        return this.wallet.submitTransaction(tx.tx);
+      case 'v8':
+        throw new V8PayloadUnsupportedError('submitTx');
+      default:
+        return assertNever(tx, 'MidnightWalletProvider.submitTx');
+    }
   }
 
   async start(waitForFundsInWallet = true): Promise<void> {

@@ -21,9 +21,12 @@ import {
 import {
   type AnyProvableCircuitId,
   type FinalizedTxData,
+  type VersionedTx,
 } from '@midnight-ntwrk/midnight-js-types';
+import { assertNever } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
+import { EraInvariantViolationError } from './errors';
 
 declare const __DEBUG__: boolean;
 
@@ -78,16 +81,38 @@ function logTransaction(circuitId: string | string[] | undefined, tx: Transactio
   }
 }
 
+/**
+ * Unwraps the v9 arm of a versioned provider payload. This flow only ever
+ * sends v9 payloads, so a v8 response cannot be handled here — it means the
+ * provider answered about a different transaction than the one it was given.
+ *
+ * @param payload The payload a provider returned.
+ * @param seam The provider method that returned it, used in the error message.
+ */
+function requireV9<T>(payload: VersionedTx<T>, seam: string): T {
+  switch (payload.version) {
+    case 'v9':
+      return payload.tx;
+    case 'v8':
+      throw new EraInvariantViolationError(seam);
+    default:
+      return assertNever(payload, 'requireV9');
+  }
+}
+
 async function submitTxCore<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: SubmitTxProviders<C, PCK>,
   options: SubmitTxOptions<PCK>
 ): Promise<string> {
-  const provenTx = await providers.proofProvider.proveTx(options.unprovenTx);
-  const toSubmit = await providers.walletProvider.balanceTx(provenTx);
+  const provenTx = requireV9(
+    await providers.proofProvider.proveTx({ version: 'v9', tx: options.unprovenTx }),
+    'proveTx'
+  );
+  const toSubmit = requireV9(await providers.walletProvider.balanceTx({ version: 'v9', tx: provenTx }), 'balanceTx');
   if (__DEBUG__) {
     logTransaction(options.circuitId, toSubmit);
   }
-  return providers.midnightProvider.submitTx(toSubmit);
+  return providers.midnightProvider.submitTx({ version: 'v9', tx: toSubmit });
 }
 
 /**

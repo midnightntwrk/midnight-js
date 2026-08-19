@@ -19,7 +19,14 @@ import {
   type FinalizedTransaction,
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 
-import { type UnboundTransaction } from './proof-provider';
+import { type VersionedUnboundTransaction } from './proof-provider';
+import { type VersionedTx } from './versioned';
+
+/**
+ * A balanced, signed transaction ready for submission: either the live v9
+ * ledger object, or the serialized bytes of a v8-era transaction.
+ */
+export type VersionedFinalizedTransaction = VersionedTx<FinalizedTransaction>;
 
 /**
  * Interface representing a WalletProvider that handles operations such as
@@ -32,7 +39,7 @@ export interface WalletProvider {
    * @param tx The transaction to balance.
    * @param ttl
    */
-  balanceTx(tx: UnboundTransaction, ttl?: Date): Promise<FinalizedTransaction>;
+  balanceTx(tx: VersionedUnboundTransaction, ttl?: Date): Promise<VersionedFinalizedTransaction>;
 
   getCoinPublicKey(): CoinPublicKey;
 

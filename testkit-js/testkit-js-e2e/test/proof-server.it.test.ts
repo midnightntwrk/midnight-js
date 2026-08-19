@@ -15,7 +15,8 @@
 
 import {
   createUnprovenCallTxFromInitialStates,
-  createUnprovenDeployTxFromVerifierKeys
+  createUnprovenDeployTxFromVerifierKeys,
+  EraInvariantViolationError
 } from '@midnight-ntwrk/midnight-js-contracts';
 import { DEFAULT_CONFIG, httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
 import { getNetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
@@ -33,7 +34,7 @@ import {
   WellFormedStrictness,
   ZswapChainState
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { ProofProvider } from '@midnight-ntwrk/midnight-js-types';
+import type { ProofProvider, ProveTxConfig, UnboundTransaction } from '@midnight-ntwrk/midnight-js-types';
 import {
   createLogger,
   DynamicProofServerContainer,
@@ -59,6 +60,18 @@ describe('Proof server integration', () => {
   let unprovenDeployTx: UnprovenTransaction;
   let unprovenCallTx: UnprovenTransaction;
   let zkConfigProvider: NodeZkConfigProvider<CounterCircuit>;
+
+  // The proof-provider seam carries a version-tagged payload in both
+  // directions. This suite only ever sends v9 transactions, so it wraps the
+  // request and unwraps the v9 response once here, keeping every assertion
+  // below written against the plain ledger transaction.
+  const proveV9 = async (unprovenTx: UnprovenTransaction, config?: ProveTxConfig): Promise<UnboundTransaction> => {
+    const proven = await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }, config);
+    if (proven.version !== 'v9') {
+      throw new EraInvariantViolationError('proveTx');
+    }
+    return proven.tx;
+  };
 
   beforeEach(() => {
     logger.info(`Running test=${expect.getState().currentTestName}`);
@@ -113,13 +126,13 @@ describe('Proof server integration', () => {
    * @and Should return valid ContractDeploy and ContractCall instances
    */
   test('should create proofs successfully for deploy and call transactions', async () => {
-    const provenDeployTx = await proofProvider.proveTx(unprovenDeployTx);
+    const provenDeployTx = await proveV9(unprovenDeployTx);
     const contractActions = provenDeployTx.intents?.get(1)?.actions;
     expect(contractActions?.length).toEqual(1);
     if (contractActions) {
       expect(contractActions[0]).toBeInstanceOf(ContractDeploy);
     }
-    const provenCallTx = await proofProvider.proveTx(unprovenCallTx);
+    const provenCallTx = await proveV9(unprovenCallTx);
     expect(provenCallTx.intents?.size ?? 0).toEqual(1);
     const contractActionsCall = [...provenCallTx.intents!.entries()][0][1].actions;
     expect(contractActionsCall?.length).toEqual(1);
@@ -137,10 +150,10 @@ describe('Proof server integration', () => {
     strictness.enforceBalancing = false;
     strictness.verifyNativeProofs = false;
 
-    const provenDeployTx = await proofProvider.proveTx(unprovenDeployTx);
+    const provenDeployTx = await proveV9(unprovenDeployTx);
     expect(() => provenDeployTx.wellFormed(ledgerState, strictness, new Date())).not.toThrow();
 
-    const provenCallTx = await proofProvider.proveTx(unprovenCallTx);
+    const provenCallTx = await proveV9(unprovenCallTx);
     expect(() => provenCallTx.wellFormed(ledgerState, strictness, new Date())).not.toThrow();
   });
 
@@ -159,7 +172,7 @@ describe('Proof server integration', () => {
   test(`should execute ${numTxsToProve} proveTx calls in parallel without errors`, async () => {
     const results = await Promise.all(
       [...Array(numTxsToProve)].map(() =>
-        proofProvider.proveTx(unprovenCallTx, {
+        proveV9(unprovenCallTx, {
           timeout
         })
       )

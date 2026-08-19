@@ -18,10 +18,13 @@ import {
   type ProverKey,
   type ProveTxConfig,
   type UnboundTransaction,
+  V8PayloadUnsupportedError,
   type VerifierKey,
+  type VersionedUnprovenTransaction,
   ZKConfigProvider,
   type ZKIR
 } from '@midnight-ntwrk/midnight-js-types';
+import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 import type { ProvingProviderConfig } from '../http-client-proving-provider';
@@ -94,19 +97,21 @@ function wireMocks(): {
 }
 
 /**
- * Minimal typed transaction stub. `httpClientProofProvider` invokes `prove(provingProvider, ...)`,
- * so the stub drives that provider once — exactly as the real `UnprovenTransaction.prove` would —
- * to let the per-call timeout thread through to the underlying provider. `Partial<UnprovenTransaction>`
- * documents that only `prove` is exercised, keeping the single cast contained here.
+ * Minimal typed transaction stub, wrapped in the v9 arm of the versioned payload the provider
+ * seam takes. `httpClientProofProvider` invokes `prove(provingProvider, ...)` on the carried
+ * transaction, so the stub drives that provider once — exactly as the real
+ * `UnprovenTransaction.prove` would — to let the per-call timeout thread through to the
+ * underlying provider. `Partial<UnprovenTransaction>` documents that only `prove` is exercised,
+ * keeping the single cast contained here.
  */
-const stubTx = (): UnprovenTransaction => {
+const stubTx = (): VersionedUnprovenTransaction => {
   const partial: Partial<UnprovenTransaction> = {
     prove: vi.fn(async (provingProvider: ProvingProvider) => {
       await provingProvider.prove(new Uint8Array(), 'test-circuit');
       return {} as UnboundTransaction;
     }) as UnprovenTransaction['prove']
   };
-  return partial as UnprovenTransaction;
+  return { version: 'v9', tx: partial as UnprovenTransaction };
 };
 
 describe('httpClientProofProvider', () => {
@@ -124,6 +129,22 @@ describe('httpClientProofProvider', () => {
     const { constructionConfigs } = wireMocks();
     httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider());
     expect(constructionConfigs).toHaveLength(1);
+  });
+
+  describe('v8 payload', () => {
+    test('rejects with the registered unsupported-payload code and never calls the proof server', async () => {
+      const { proveTimeouts } = wireMocks();
+      const provider = httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider());
+
+      const rejection = await provider.proveTx({ version: 'v8', txBytes: new Uint8Array([1, 2, 3]) }).then(
+        () => undefined,
+        (error: unknown) => error
+      );
+
+      expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
+      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(true);
+      expect(proveTimeouts).toEqual([]);
+    });
   });
 
   describe('per-call timeout precedence (issue #974)', () => {

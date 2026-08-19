@@ -22,8 +22,25 @@ import {
   type Transaction,
   type UnprovenTransaction
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { assertNever } from '@midnight-ntwrk/midnight-js-utils';
+
+import { V8PayloadUnsupportedError } from './errors';
+import type { VersionedTx } from './versioned';
 
 export type UnboundTransaction = Transaction<SignatureEnabled, Proof, PreBinding>;
+
+/**
+ * An unproven transaction on its way to a {@link ProofProvider}: either the
+ * live v9 ledger object, or the serialized bytes of a v8-era transaction.
+ */
+export type VersionedUnprovenTransaction = VersionedTx<UnprovenTransaction>;
+
+/**
+ * A proven-but-unbalanced transaction coming back from a {@link ProofProvider}:
+ * either the live v9 ledger object, or the serialized bytes of a v8-era
+ * transaction.
+ */
+export type VersionedUnboundTransaction = VersionedTx<UnboundTransaction>;
 
 /**
  * The configuration for the proof request to the proof provider.
@@ -51,7 +68,10 @@ export interface ProofProvider {
    * @param proveTxConfig The configuration for the proof request to the proof provider. Empty in case
    *                      a deploy transaction is being proved with no user-defined timeout.
    */
-  proveTx(unprovenTx: UnprovenTransaction, proveTxConfig?: ProveTxConfig): Promise<UnboundTransaction>;
+  proveTx(
+    unprovenTx: VersionedUnprovenTransaction,
+    proveTxConfig?: ProveTxConfig
+  ): Promise<VersionedUnboundTransaction>;
 }
 
 /**
@@ -66,7 +86,14 @@ export const createProofProvider = (
   provingProvider: ProvingProvider,
   costModel: CostModel = CostModel.initialCostModel()
 ): ProofProvider => ({
-  async proveTx(unprovenTx: UnprovenTransaction): Promise<UnboundTransaction> {
-    return unprovenTx.prove(provingProvider, costModel);
+  async proveTx(unprovenTx: VersionedUnprovenTransaction): Promise<VersionedUnboundTransaction> {
+    switch (unprovenTx.version) {
+      case 'v9':
+        return { version: 'v9', tx: await unprovenTx.tx.prove(provingProvider, costModel) };
+      case 'v8':
+        throw new V8PayloadUnsupportedError('proveTx');
+      default:
+        return assertNever(unprovenTx, 'createProofProvider.proveTx');
+    }
   }
 });

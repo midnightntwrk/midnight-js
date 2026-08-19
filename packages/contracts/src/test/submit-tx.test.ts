@@ -17,8 +17,10 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import type { AnyProvableCircuitId } from '@midnight-ntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { EraInvariantViolationError } from '../errors';
 import { submitTx, submitTxAsync, type SubmitTxOptions } from '../submit-tx';
 import { createMockFinalizedTxData, createMockProvenTx, createMockProviders, createMockUnprovenTx } from './test-mocks';
 
@@ -58,8 +60,8 @@ describe('submit-tx', () => {
       it('should successfully submit transaction without circuit ID', async () => {
         const mockFinalizedTxData = createMockFinalizedTxData();
 
-        mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue(mockProvenTx);
-        mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue(mockProvenTx);
+        mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
+        mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
         mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue('test-tx-id');
         mockProviders.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(mockFinalizedTxData);
 
@@ -69,8 +71,8 @@ describe('submit-tx', () => {
 
         const result = await submitTx(mockProviders, options);
 
-        expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith(mockUnprovenTx);
-        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(mockProvenTx);
+        expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith({ version: 'v9', tx: mockUnprovenTx });
+        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith({ version: 'v9', tx: mockProvenTx });
         expect(mockProviders.midnightProvider.submitTx).toHaveBeenCalled();
         expect(mockProviders.publicDataProvider.watchForTxData).toHaveBeenCalledWith('test-tx-id');
         expect(result).toBe(mockFinalizedTxData);
@@ -80,8 +82,8 @@ describe('submit-tx', () => {
         const circuitId = 'testCircuit';
         const mockFinalizedTxData = createMockFinalizedTxData();
 
-        mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue(mockProvenTx);
-        mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue(mockProvenTx);
+        mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
+        mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
         mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue('test-tx-id');
         mockProviders.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(mockFinalizedTxData);
 
@@ -92,8 +94,8 @@ describe('submit-tx', () => {
 
         const result = await submitTx(mockProviders, options);
 
-        expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith(mockUnprovenTx);
-        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(mockProvenTx);
+        expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith({ version: 'v9', tx: mockUnprovenTx });
+        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith({ version: 'v9', tx: mockProvenTx });
         expect(mockProviders.midnightProvider.submitTx).toHaveBeenCalled();
         expect(mockProviders.publicDataProvider.watchForTxData).toHaveBeenCalledWith('test-tx-id');
         expect(result).toBe(mockFinalizedTxData);
@@ -113,8 +115,8 @@ describe('submit-tx', () => {
           throw new Error('serialize boom');
         });
 
-        mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue(mockProvenTx);
-        mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue(mockProvenTx);
+        mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
+        mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
         mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue('test-tx-id');
         mockProviders.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(mockFinalizedTxData);
 
@@ -151,8 +153,8 @@ describe('submit-tx', () => {
       it('should submit transaction and return txId without waiting for finalization', async () => {
         const expectedTxId = 'test-tx-id';
 
-        mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue(mockProvenTx);
-        mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue(mockProvenTx);
+        mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
+        mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
         mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue(expectedTxId);
 
         const options: SubmitTxOptions<AnyProvableCircuitId> = {
@@ -161,8 +163,8 @@ describe('submit-tx', () => {
 
         const result = await submitTxAsync(mockProviders, options);
 
-        expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith(mockUnprovenTx);
-        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(mockProvenTx);
+        expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith({ version: 'v9', tx: mockUnprovenTx });
+        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith({ version: 'v9', tx: mockProvenTx });
         expect(mockProviders.midnightProvider.submitTx).toHaveBeenCalled();
         expect(mockProviders.publicDataProvider.watchForTxData).not.toHaveBeenCalled();
         expect(result).toBe(expectedTxId);
@@ -172,8 +174,8 @@ describe('submit-tx', () => {
         const circuitId = 'testCircuit';
         const expectedTxId = 'test-tx-id-with-circuit';
 
-        mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue(mockProvenTx);
-        mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue(mockProvenTx);
+        mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
+        mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
         mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue(expectedTxId);
 
         const options: SubmitTxOptions<AnyProvableCircuitId> = {
@@ -183,8 +185,8 @@ describe('submit-tx', () => {
 
         const result = await submitTxAsync(mockProviders, options);
 
-        expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith(mockUnprovenTx);
-        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith(mockProvenTx);
+        expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith({ version: 'v9', tx: mockUnprovenTx });
+        expect(mockProviders.walletProvider.balanceTx).toHaveBeenCalledWith({ version: 'v9', tx: mockProvenTx });
         expect(mockProviders.midnightProvider.submitTx).toHaveBeenCalled();
         expect(mockProviders.publicDataProvider.watchForTxData).not.toHaveBeenCalled();
         expect(result).toBe(expectedTxId);
@@ -194,7 +196,7 @@ describe('submit-tx', () => {
     describe('error handling', () => {
       it('should propagate balanceTx errors', async () => {
         const balanceError = new Error('Balance transaction failed');
-        mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue(mockProvenTx);
+        mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
         mockProviders.walletProvider.balanceTx = vi.fn().mockRejectedValue(balanceError);
 
         const options: SubmitTxOptions<AnyProvableCircuitId> = {
@@ -202,14 +204,14 @@ describe('submit-tx', () => {
         };
 
         await expect(submitTxAsync(mockProviders, options)).rejects.toThrow('Balance transaction failed');
-        expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith(mockUnprovenTx);
+        expect(mockProviders.proofProvider.proveTx).toHaveBeenCalledWith({ version: 'v9', tx: mockUnprovenTx });
         expect(mockProviders.midnightProvider.submitTx).not.toHaveBeenCalled();
       });
 
       it('should propagate proveTx errors', async () => {
         const proveError = new Error('Proof generation failed');
 
-        mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue(mockProvenTx);
+        mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
         mockProviders.proofProvider.proveTx = vi.fn().mockRejectedValue(proveError);
 
         const options: SubmitTxOptions<AnyProvableCircuitId> = {
@@ -223,8 +225,8 @@ describe('submit-tx', () => {
       it('should propagate submitTx errors', async () => {
         const submitError = new Error('Network submission failed');
 
-        mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue(mockProvenTx);
-        mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue(mockProvenTx);
+        mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
+        mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
         mockProviders.midnightProvider.submitTx = vi.fn().mockRejectedValue(submitError);
 
         const options: SubmitTxOptions<AnyProvableCircuitId> = {
@@ -232,6 +234,41 @@ describe('submit-tx', () => {
         };
 
         await expect(submitTxAsync(mockProviders, options)).rejects.toThrow('Network submission failed');
+      });
+    });
+
+    describe('v8 responses on the v9-only flow', () => {
+      const rejectionOf = async (): Promise<unknown> => {
+        const options: SubmitTxOptions<AnyProvableCircuitId> = { unprovenTx: mockUnprovenTx };
+        return submitTxAsync(mockProviders, options).then(
+          () => undefined,
+          (error: unknown) => error
+        );
+      };
+
+      it('rejects a v8-tagged proveTx response with the era-invariant code and never balances it', async () => {
+        mockProviders.proofProvider.proveTx = vi
+          .fn()
+          .mockResolvedValue({ version: 'v8', txBytes: new Uint8Array([1, 2, 3]) });
+
+        const rejection = await rejectionOf();
+
+        expect(rejection).toBeInstanceOf(EraInvariantViolationError);
+        expect(hasErrorCode(rejection, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
+        expect(mockProviders.walletProvider.balanceTx).not.toHaveBeenCalled();
+      });
+
+      it('rejects a v8-tagged balanceTx response with the era-invariant code and never submits it', async () => {
+        mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
+        mockProviders.walletProvider.balanceTx = vi
+          .fn()
+          .mockResolvedValue({ version: 'v8', txBytes: new Uint8Array([1, 2, 3]) });
+
+        const rejection = await rejectionOf();
+
+        expect(rejection).toBeInstanceOf(EraInvariantViolationError);
+        expect(hasErrorCode(rejection, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
+        expect(mockProviders.midnightProvider.submitTx).not.toHaveBeenCalled();
       });
     });
   });

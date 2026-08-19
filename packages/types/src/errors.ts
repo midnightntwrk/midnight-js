@@ -13,6 +13,38 @@
  * limitations under the License.
  */
 
+import { PROVIDER_ERROR_CODES, type ProviderErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+
+/**
+ * Thrown by a provider that only speaks the v9 ledger runtime when it is
+ * handed the v8 arm of a versioned transaction payload — serialized,
+ * tag-prefixed bytes instead of a live v9 transaction object.
+ *
+ * This is transitional: the provider seams already carry both arms so that
+ * callers can be written once, but handling of the v8 arm is not implemented
+ * in these providers yet.
+ *
+ * Lives in this package (rather than in each provider package) because the
+ * payload union it rejects is defined here, on the provider interfaces every
+ * implementation shares. Catch it via its stable `code`, using `hasErrorCode`
+ * from `@midnight-ntwrk/midnight-js-utils`.
+ */
+export class V8PayloadUnsupportedError extends Error {
+  readonly code: ProviderErrorCode = PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED;
+
+  /**
+   * @param seam The provider method that received the payload, e.g. `proveTx`.
+   */
+  constructor(readonly seam: string) {
+    super(
+      `${seam} received a v8-era transaction payload (serialized bytes), which is not yet supported by this provider. ` +
+        `Send the v9 arm of the payload ({ version: 'v9', tx }) on this seam, or route v8-era traffic to a provider ` +
+        `that handles v8 payloads.`
+    );
+    this.name = 'V8PayloadUnsupportedError';
+  }
+}
+
 /**
  * An error describing an invalid protocol scheme.
  */

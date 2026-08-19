@@ -19,6 +19,40 @@ import type { FinalizedTransaction as V8Transaction } from '@midnight-ntwrk/midn
 import type { BlockHash, Fees, FinalizedTxData, SegmentStatus, TxStatus, UnshieldedUtxos } from './midnight-types';
 
 /**
+ * The v8 arm of every transaction payload crossing a provider seam
+ * (`proveTx`, `balanceTx`, `submitTx`), in both directions.
+ *
+ * During the ledger-fork window a v8-era transaction never crosses a provider
+ * seam as a live ledger object: the two ledger runtimes are separate WASM
+ * instances, so an object built by one cannot be handed to the other. It
+ * crosses as its serialized, tag-prefixed byte form instead, and the
+ * `version` discriminant says which runtime produced those bytes.
+ */
+export interface V8TxBytes {
+  /**
+   * Discriminant identifying this as a v8-era payload.
+   */
+  readonly version: 'v8';
+  /**
+   * The transaction in its serialized, tag-prefixed byte form.
+   */
+  readonly txBytes: Uint8Array;
+}
+
+/**
+ * A transaction payload crossing a provider seam, discriminated by the ledger
+ * runtime it belongs to: serialized bytes for the v8 era ({@link V8TxBytes}),
+ * or the live ledger object of type `T` for v9.
+ *
+ * Consumers must narrow on `version` before touching the payload — there is
+ * deliberately no untagged form, so a bare `Uint8Array` (bytes whose era
+ * nobody can tell) is never assignable where this type is expected.
+ *
+ * @typeParam T - The v9 ledger transaction type carried by the `'v9'` arm.
+ */
+export type VersionedTx<T> = V8TxBytes | { readonly version: 'v9'; readonly tx: T };
+
+/**
  * The v8 arm of {@link VersionedFinalizedTxData}. Carries exactly the same
  * finalized-transaction metadata as {@link FinalizedTxData}, but with a v8
  * ledger transaction object in place of the v9 one. A provider only ever

@@ -65,7 +65,7 @@ describe('dappConnectorProofProvider', () => {
   it('should delegate proveTx to unprovenTx.prove with the injected cost model', async () => {
     const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
 
-    const result = await proofProvider.proveTx(mockUnprovenTx);
+    const result = await proofProvider.proveTx({ version: 'v9', tx: mockUnprovenTx });
 
     expect(mockUnprovenTx.prove).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -75,14 +75,14 @@ describe('dappConnectorProofProvider', () => {
       }),
       mockCostModel
     );
-    expect(result).toBe(mockUnboundTx);
+    expect(result).toEqual({ version: 'v9', tx: mockUnboundTx });
   });
 
   it('should obtain the ProvingProvider once at setup, not per proveTx call', async () => {
     const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
 
-    await proofProvider.proveTx(mockUnprovenTx);
-    await proofProvider.proveTx(mockUnprovenTx);
+    await proofProvider.proveTx({ version: 'v9', tx: mockUnprovenTx });
+    await proofProvider.proveTx({ version: 'v9', tx: mockUnprovenTx });
 
     expect(mockApi.getProvingProvider).toHaveBeenCalledTimes(1);
   });

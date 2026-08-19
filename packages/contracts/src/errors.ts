@@ -15,6 +15,32 @@
 
 import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type { AnyProvableCircuitId, FinalizedTxData, PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES, type ContractsErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+
+/**
+ * An error indicating that a v8-era transaction payload — serialized,
+ * tag-prefixed bytes — came back from a provider on a transaction flow that
+ * only ever hands out v9 transactions.
+ *
+ * The provider seams carry both eras, but this flow wraps every outgoing
+ * payload as v9, so a v8 response means the provider answered about a
+ * different transaction than the one it was given.
+ */
+export class EraInvariantViolationError extends Error {
+  readonly code: ContractsErrorCode = CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION;
+
+  /**
+   * @param seam The provider method that returned the payload, e.g. `proveTx`.
+   */
+  constructor(readonly seam: string) {
+    super(
+      `${seam} returned a v8-era transaction payload on a flow that only submits v9 transactions. ` +
+        `Check that the configured provider matches the network this application targets, and that no custom ` +
+        `provider implementation re-tags the payload it was handed.`
+    );
+    this.name = 'EraInvariantViolationError';
+  }
+}
 
 interface EffectContractError {
   readonly _tag: string;
