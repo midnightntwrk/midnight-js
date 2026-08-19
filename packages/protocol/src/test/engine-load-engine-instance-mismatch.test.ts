@@ -22,7 +22,7 @@ import { Ledger8InstanceMismatchError, PROTOCOL_ERROR_CODES } from '../errors';
 // scenario, using only a dynamic re-import of `../engine` — so this poisoned
 // module registry cannot leak into any other engine-facade suite (same
 // isolation precedent as load-v8-failure.test.ts). The underlying detection
-// logic (does assertSharedLedger8Instances actually catch a dual-instantiation)
+// logic (does assertSharedLedger8Instance actually catch a dual-instantiation)
 // is already covered by engine-instance-guard.test.ts; this test only proves
 // the facade WIRES that guard into construction, rejecting before an engine
 // is ever returned.
@@ -31,12 +31,12 @@ describe('createLedger8Engine construction — dual-instantiation guard wiring',
     vi.doUnmock('../engine/instance-guard');
   });
 
-  it('rejects before returning an engine when assertSharedLedger8Instances detects a dual-instantiation', async () => {
+  it('rejects before returning an engine when assertSharedLedger8Instance detects a dual-instantiation', async () => {
     vi.doMock('../engine/instance-guard', async (importOriginal) => {
       const actual = await importOriginal<typeof InstanceGuard>();
       return {
         ...actual,
-        assertSharedLedger8Instances: () => {
+        assertSharedLedger8Instance: () => {
           throw new Ledger8InstanceMismatchError('onchain-runtime-v3');
         }
       };
