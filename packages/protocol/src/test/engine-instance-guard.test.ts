@@ -14,29 +14,25 @@
  */
 
 import * as onchainRuntimeV3 from '@midnight-ntwrk/onchain-runtime-v3';
-import * as ledgerV9 from '@midnightntwrk/ledger-v9';
-// The `-alt` packages are npm aliases of the same versions resolved under a
-// different package name, so Node gives each its own physical module
-// instance — real second copies, not test doubles, of the exact dual-WASM
-// failure mode these guards exist to catch.
-import * as ledgerV9Alt from 'ledger-v9-alt';
+// The `-alt` package is an npm alias of the same version resolved under a
+// different package name, so Node gives it its own physical module
+// instance — a real second copy, not a test double, of the exact dual-WASM
+// failure mode this guard exists to catch.
 import * as onchainRuntimeV3Alt from 'onchain-runtime-v3-alt';
 import { describe, expect, it } from 'vitest';
 
-import { assertSharedLedger8Instances } from '../engine/instance-guard';
+import { assertSharedLedger8Instance } from '../engine/instance-guard';
 import { Ledger8InstanceMismatchError, PROTOCOL_ERROR_CODES } from '../errors';
 
-describe('assertSharedLedger8Instances', () => {
-  it('does not throw when the same physical module instance is passed on both axes', () => {
-    expect(() =>
-      assertSharedLedger8Instances(onchainRuntimeV3, onchainRuntimeV3, ledgerV9, ledgerV9)
-    ).not.toThrow();
+describe('assertSharedLedger8Instance', () => {
+  it('does not throw when both probes reference the same physical module instance', () => {
+    expect(() => assertSharedLedger8Instance('onchain-runtime-v3', onchainRuntimeV3, onchainRuntimeV3)).not.toThrow();
   });
 
-  it('throws Ledger8InstanceMismatchError naming the onchain-runtime-v3 axis when the 0.16 runtime is a second physical copy', () => {
+  it('throws Ledger8InstanceMismatchError naming the axis when the probes come from two physical copies', () => {
     let caught: unknown;
     try {
-      assertSharedLedger8Instances(onchainRuntimeV3, onchainRuntimeV3Alt, ledgerV9, ledgerV9);
+      assertSharedLedger8Instance('onchain-runtime-v3', onchainRuntimeV3, onchainRuntimeV3Alt);
     } catch (error) {
       caught = error;
     }
@@ -47,95 +43,39 @@ describe('assertSharedLedger8Instances', () => {
     expect(error.axis).toBe('onchain-runtime-v3');
   });
 
-  it('throws Ledger8InstanceMismatchError naming the ledger-v9 axis when the 0.16 runtime matches but ledger-v9 is a second physical copy', () => {
+  it('throws when both probes are undefined (nullish probes are not a proof of a shared instance)', () => {
     let caught: unknown;
     try {
-      assertSharedLedger8Instances(onchainRuntimeV3, onchainRuntimeV3, ledgerV9, ledgerV9Alt);
+      assertSharedLedger8Instance('onchain-runtime-v3', undefined, undefined);
     } catch (error) {
       caught = error;
     }
 
     expect(caught).toBeInstanceOf(Ledger8InstanceMismatchError);
-    const error = caught as Ledger8InstanceMismatchError;
-    expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH);
-    expect(error.axis).toBe('ledger-v9');
+    expect((caught as Ledger8InstanceMismatchError).axis).toBe('onchain-runtime-v3');
   });
 
-  it('throws naming the onchain-runtime-v3 axis when both sides of that axis are undefined (nullish probes are not a proof of a shared instance)', () => {
+  it('throws when both probes are null', () => {
     let caught: unknown;
     try {
-      assertSharedLedger8Instances(undefined, undefined, ledgerV9, ledgerV9);
+      assertSharedLedger8Instance('onchain-runtime-v3', null, null);
     } catch (error) {
       caught = error;
     }
 
     expect(caught).toBeInstanceOf(Ledger8InstanceMismatchError);
-    const error = caught as Ledger8InstanceMismatchError;
-    expect(error.axis).toBe('onchain-runtime-v3');
+    expect((caught as Ledger8InstanceMismatchError).axis).toBe('onchain-runtime-v3');
   });
 
-  it('throws naming the onchain-runtime-v3 axis when both sides of that axis are null', () => {
+  it('throws when only one probe is nullish', () => {
     let caught: unknown;
     try {
-      assertSharedLedger8Instances(null, null, ledgerV9, ledgerV9);
+      assertSharedLedger8Instance('onchain-runtime-v3', onchainRuntimeV3, undefined);
     } catch (error) {
       caught = error;
     }
 
     expect(caught).toBeInstanceOf(Ledger8InstanceMismatchError);
-    const error = caught as Ledger8InstanceMismatchError;
-    expect(error.axis).toBe('onchain-runtime-v3');
-  });
-
-  it('throws naming the onchain-runtime-v3 axis when only one side of that axis is nullish', () => {
-    let caught: unknown;
-    try {
-      assertSharedLedger8Instances(onchainRuntimeV3, undefined, ledgerV9, ledgerV9);
-    } catch (error) {
-      caught = error;
-    }
-
-    expect(caught).toBeInstanceOf(Ledger8InstanceMismatchError);
-    const error = caught as Ledger8InstanceMismatchError;
-    expect(error.axis).toBe('onchain-runtime-v3');
-  });
-
-  it('throws naming the ledger-v9 axis when both sides of that axis are undefined and the onchain-runtime-v3 axis matches', () => {
-    let caught: unknown;
-    try {
-      assertSharedLedger8Instances(onchainRuntimeV3, onchainRuntimeV3, undefined, undefined);
-    } catch (error) {
-      caught = error;
-    }
-
-    expect(caught).toBeInstanceOf(Ledger8InstanceMismatchError);
-    const error = caught as Ledger8InstanceMismatchError;
-    expect(error.axis).toBe('ledger-v9');
-  });
-
-  it('throws naming the ledger-v9 axis when only one side of that axis is nullish and the onchain-runtime-v3 axis matches', () => {
-    let caught: unknown;
-    try {
-      assertSharedLedger8Instances(onchainRuntimeV3, onchainRuntimeV3, ledgerV9, null);
-    } catch (error) {
-      caught = error;
-    }
-
-    expect(caught).toBeInstanceOf(Ledger8InstanceMismatchError);
-    const error = caught as Ledger8InstanceMismatchError;
-    expect(error.axis).toBe('ledger-v9');
-  });
-
-  it('throws naming the onchain-runtime-v3 axis when every probe is undefined (all-nullish input)', () => {
-    let caught: unknown;
-    try {
-      assertSharedLedger8Instances(undefined, undefined, undefined, undefined);
-    } catch (error) {
-      caught = error;
-    }
-
-    expect(caught).toBeInstanceOf(Ledger8InstanceMismatchError);
-    const error = caught as Ledger8InstanceMismatchError;
-    expect(error.axis).toBe('onchain-runtime-v3');
+    expect((caught as Ledger8InstanceMismatchError).axis).toBe('onchain-runtime-v3');
   });
 });

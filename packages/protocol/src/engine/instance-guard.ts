@@ -13,44 +13,34 @@
  * limitations under the License.
  */
 
-import { Ledger8InstanceMismatchError } from '../errors';
+import { type Ledger8InstanceAxis, Ledger8InstanceMismatchError } from '../errors';
 
 /**
- * Fails fast on a dual-instantiation of either WASM package the down-convert
- * engine bridges between: the retained pre-fork `compact-runtime@0.16` axis
- * (`@midnight-ntwrk/onchain-runtime-v3`) and the current post-fork ledger
- * axis (`@midnightntwrk/ledger-v9`).
+ * Fails fast on a dual-instantiation of a WASM package the down-convert
+ * engine depends on, along one named `axis`.
  *
- * A duplicate npm install of either package resolves to two physically
- * distinct module instances — same shape, different WASM linear memory and
- * different classes — so objects created by one copy silently fail
- * `instanceof`/coercion checks against the other copy's classes instead of
- * raising a clear error at the point of misuse. Reference equality on
- * whatever each caller passes (a module namespace or a specific exported
- * class/constructor) is a reliable, cheap probe for this: two references to
- * the *same* physical copy are always `===`; two references sourced from
- * different physical copies never are, even at the same package version.
+ * A duplicate npm install resolves to two physically distinct module
+ * instances — same shape, different WASM linear memory and different
+ * classes — so objects created by one copy silently fail `instanceof`/coercion
+ * checks against the other copy's classes instead of raising a clear error at
+ * the point of misuse. Reference equality on whatever each caller passes (a
+ * module namespace or a specific exported class/constructor) is a reliable,
+ * cheap probe for this: two references to the *same* physical copy are always
+ * `===`; two references sourced from different physical copies never are,
+ * even at the same package version.
  *
- * Checks the 0.16 runtime axis before the ledger-v9 axis and throws on the
- * first mismatch found.
+ * A nullish probe (`null`/`undefined`) on either side is rejected before the
+ * `===` comparison runs, rather than compared directly: two nullish values
+ * are always `===` to each other, so a caller that optional-chained a missing
+ * export on both sides (or simply forgot to pass a probe) would otherwise
+ * pass this fail-fast safety net by accident instead of failing it.
  *
- * A nullish probe (`null`/`undefined`) on either side of an axis is rejected
- * before the `===` comparison runs, rather than compared directly: two
- * nullish values are always `===` to each other, so a caller that
- * optional-chained a missing export on both sides (or simply forgot to pass
- * a probe) would otherwise pass this fail-fast safety net by accident
- * instead of failing it.
+ * An axis earns an assertion only when the package genuinely reaches this
+ * process through two acquisition paths — see {@link Ledger8InstanceAxis} for
+ * why `'onchain-runtime-v3'` is the only member today.
  */
-export const assertSharedLedger8Instances = (
-  contractRuntime: unknown,
-  engineRuntime: unknown,
-  ledgerV9: unknown,
-  engineLedgerV9: unknown
-): void => {
-  if (contractRuntime == null || engineRuntime == null || contractRuntime !== engineRuntime) {
-    throw new Ledger8InstanceMismatchError('onchain-runtime-v3');
-  }
-  if (ledgerV9 == null || engineLedgerV9 == null || ledgerV9 !== engineLedgerV9) {
-    throw new Ledger8InstanceMismatchError('ledger-v9');
+export const assertSharedLedger8Instance = (axis: Ledger8InstanceAxis, expected: unknown, actual: unknown): void => {
+  if (expected == null || actual == null || expected !== actual) {
+    throw new Ledger8InstanceMismatchError(axis);
   }
 };
