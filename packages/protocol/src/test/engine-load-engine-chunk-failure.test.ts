@@ -18,7 +18,7 @@ import { resolve } from 'node:path';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { Ledger8RuntimeMissingError } from '../errors';
+import { Ledger8InstanceMismatchError, Ledger8RuntimeMissingError } from '../errors';
 
 const PKG_ROOT = resolve(__dirname, '..', '..');
 const distEngineExists = existsSync(resolve(PKG_ROOT, 'dist/engine.mjs'));
@@ -56,6 +56,27 @@ describe.skipIf(!distEngineExists)('loadLedger8Engine failure path', () => {
     const second = loadLedger8Engine();
     expect(second).not.toBe(first);
     await expect(second).rejects.toBeInstanceOf(Ledger8RuntimeMissingError);
+  });
+
+  it('passes a Ledger8InstanceMismatchError from engine construction through unwrapped, and clears the memo for retry', async () => {
+    const mismatch = new Ledger8InstanceMismatchError('onchain-runtime-v3');
+    vi.doMock(ENGINE_SUBPATH_SPECIFIER, () => ({
+      createLedger8Engine: () => Promise.reject(mismatch)
+    }));
+    const { loadLedger8Engine } = await import('../engine/load-engine');
+
+    const first = loadLedger8Engine();
+    const error = await first.then(
+      () => {
+        throw new Error('expected loadLedger8Engine to reject');
+      },
+      (rejection: unknown) => rejection
+    );
+    expect(error).toBe(mismatch);
+
+    const second = loadLedger8Engine();
+    expect(second).not.toBe(first);
+    await expect(second).rejects.toBe(mismatch);
   });
 
   it('does not double-wrap when the engine chunk itself already rejects with Ledger8RuntimeMissingError', async () => {
