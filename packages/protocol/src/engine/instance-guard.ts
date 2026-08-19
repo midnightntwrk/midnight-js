@@ -13,8 +13,7 @@
  * limitations under the License.
  */
 
-import { Ledger8InstanceMismatchError, Ledger8RuntimeMissingError } from '../errors';
-import { loadLedger8 } from '../load-v8';
+import { Ledger8InstanceMismatchError } from '../errors';
 
 /**
  * Fails fast on a dual-instantiation of either WASM package the down-convert
@@ -55,25 +54,3 @@ export const assertSharedLedger8Instances = (
     throw new Ledger8InstanceMismatchError('ledger-v9');
   }
 };
-
-/**
- * Probes that the retained v8 runtime (loaded via {@link loadLedger8}) is
- * resolvable, before any fetch or proving work starts — so a missing or
- * broken retained-toolchain install fails immediately and legibly instead of
- * mid-flight.
- *
- * `loadRuntime` is the acquisition seam: it defaults to {@link loadLedger8}, the
- * only sanctioned runtime path to the v8 ledger era, but tests can inject a
- * loader that rejects to exercise the failure path without a real broken
- * install. A rejection is always surfaced as {@link Ledger8RuntimeMissingError}
- * — never the raw module-resolution error — and an already-wrapped rejection
- * (the default `loadLedger8` path already wraps) is passed through unchanged
- * rather than double-wrapped.
- */
-export const assertLedger8RuntimePresent = (loadRuntime: () => Promise<unknown> = loadLedger8): Promise<void> =>
-  loadRuntime().then(
-    () => undefined,
-    (cause: unknown) => {
-      throw cause instanceof Ledger8RuntimeMissingError ? cause : new Ledger8RuntimeMissingError(cause);
-    }
-  );

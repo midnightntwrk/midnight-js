@@ -23,8 +23,8 @@ import * as ledgerV9Alt from 'ledger-v9-alt';
 import * as onchainRuntimeV3Alt from 'onchain-runtime-v3-alt';
 import { describe, expect, it } from 'vitest';
 
-import { assertLedger8RuntimePresent, assertSharedLedger8Instances } from '../engine/instance-guard';
-import { Ledger8InstanceMismatchError, Ledger8RuntimeMissingError, PROTOCOL_ERROR_CODES } from '../errors';
+import { assertSharedLedger8Instances } from '../engine/instance-guard';
+import { Ledger8InstanceMismatchError, PROTOCOL_ERROR_CODES } from '../errors';
 
 describe('assertSharedLedger8Instances', () => {
   it('does not throw when the same physical module instance is passed on both axes', () => {
@@ -137,53 +137,5 @@ describe('assertSharedLedger8Instances', () => {
     expect(caught).toBeInstanceOf(Ledger8InstanceMismatchError);
     const error = caught as Ledger8InstanceMismatchError;
     expect(error.axis).toBe('onchain-runtime-v3');
-  });
-});
-
-describe('assertLedger8RuntimePresent', () => {
-  it('resolves without throwing when the injected loader succeeds', async () => {
-    await expect(assertLedger8RuntimePresent(() => Promise.resolve({}))).resolves.toBeUndefined();
-  });
-
-  it('wraps an unresolvable retained runtime in Ledger8RuntimeMissingError naming the pinned versions, never the raw resolution error', async () => {
-    const rawError = new Error('Cannot find module "@midnightntwrk/ledger-v8" ERR_MODULE_NOT_FOUND');
-    let caught: unknown;
-
-    try {
-      await assertLedger8RuntimePresent(() => Promise.reject(rawError));
-      throw new Error('expected assertLedger8RuntimePresent to reject');
-    } catch (error) {
-      caught = error;
-    }
-
-    expect(caught).toBeInstanceOf(Ledger8RuntimeMissingError);
-    const error = caught as Ledger8RuntimeMissingError;
-    expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING);
-    expect(error.cause).toBe(rawError);
-    expect(error.message).toContain('8.1.1');
-    expect(error.message).toContain('3.1.0');
-    expect(error.message).toContain('0.16.0');
-    expect(error.message).not.toContain('ERR_MODULE_NOT_FOUND');
-  });
-
-  it('does not double-wrap when the injected loader already rejects with Ledger8RuntimeMissingError', async () => {
-    const alreadyWrapped = new Ledger8RuntimeMissingError(new Error('inner resolution failure'));
-    let caught: unknown;
-
-    try {
-      await assertLedger8RuntimePresent(() => Promise.reject(alreadyWrapped));
-      throw new Error('expected assertLedger8RuntimePresent to reject');
-    } catch (error) {
-      caught = error;
-    }
-
-    expect(caught).toBe(alreadyWrapped);
-  });
-
-  it('defaults to the real v8 runtime loader and never surfaces a raw error when no loader is injected', async () => {
-    await assertLedger8RuntimePresent().then(
-      (value) => expect(value).toBeUndefined(),
-      (error: unknown) => expect(error).toBeInstanceOf(Ledger8RuntimeMissingError)
-    );
   });
 });
