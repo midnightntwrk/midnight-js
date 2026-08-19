@@ -182,24 +182,76 @@ const getScopedLevelName = (baseLevelName: string, accountId: string): string =>
 const defaultLevelFactory: LevelFactory = (dbName: string) =>
   new Level(dbName, { createIfMissing: true }) as DatabaseLevel;
 
-const withSubLevel = async <K, V, A>(
+/**
+ * Queues of pending database operations, keyed by database name.
+ *
+ * Every operation opens and closes its own database handle, and LevelDB grants
+ * the handle exclusively: a second `open()` on the same path - or an `open()`
+ * racing another operation's `close()` - fails with "Database failed to open".
+ * Concurrent callers therefore have to be serialized. The key is the database
+ * name because the exclusive lock covers the whole database, not a sublevel.
+ *
+ * The queue is module-level because the resource it guards is process-wide;
+ * a per-provider queue could not see a second provider opening the same path.
+ * This mirrors {@link encryptionInitPromises} and {@link passwordRotationLocks}.
+ * Entries are removed once a queue drains, so the map holds at most one entry
+ * per database currently in use.
+ *
+ * Note that this cannot serialize access across separate processes; those still
+ * contend on the operating system lock and surface as an open failure.
+ */
+const dbAccessQueues = new Map<string, Promise<void>>();
+
+const withDbLock = async <A>(dbName: string, operation: () => Promise<A>): Promise<A> => {
+  const pending = dbAccessQueues.get(dbName);
+  // A failed operation must not prevent queued operations from running, so the
+  // same thunk serves as both fulfillment and rejection handler.
+  const current = pending === undefined ? operation() : pending.then(operation, operation);
+  const settled = current.then(
+    () => undefined,
+    () => undefined
+  );
+  dbAccessQueues.set(dbName, settled);
+
+  try {
+    return await current;
+  } finally {
+    if (dbAccessQueues.get(dbName) === settled) {
+      dbAccessQueues.delete(dbName);
+    }
+  }
+};
+
+const withSubLevel = <K, V, A>(
   ctx: StorageContext,
   levelName: string,
   thunk: (subLevel: AbstractSublevel<DatabaseLevel, string | Uint8Array | Buffer, K, V>) => Promise<A>,
-): Promise<A> => {
-  const level = ctx.createLevel(ctx.dbName);
-  const subLevel = level.sublevel<K, V>(levelName, {
-    valueEncoding: 'utf-8'
+): Promise<A> =>
+  withDbLock(ctx.dbName, async () => {
+    const level = ctx.createLevel(ctx.dbName);
+    try {
+      await level.open();
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new Error(
+        `Failed to open private state database "${ctx.dbName}": ${errorMessage}. ` +
+        `LevelDB grants the database to a single holder at a time. ` +
+        `Ensure no other process is using it.`,
+        { cause: error }
+      );
+    }
+
+    const subLevel = level.sublevel<K, V>(levelName, {
+      valueEncoding: 'utf-8'
+    });
+    try {
+      await subLevel.open();
+      return await thunk(subLevel);
+    } finally {
+      await subLevel.close();
+      await level.close();
+    }
   });
-  try {
-    await level.open();
-    await subLevel.open();
-    return await thunk(subLevel);
-  } finally {
-    await subLevel.close();
-    await level.close();
-  }
-};
 
 const METADATA_KEY = '__midnight_encryption_metadata__';
 
@@ -1273,88 +1325,89 @@ export interface MigrationResult {
   readonly signingKeysMigrated: number;
 }
 
-const migrateSublevel = async (
+const migrateSublevel = (
   ctx: StorageContext,
   oldLevelName: string,
   newLevelName: string,
-): Promise<number> => {
-  const level = ctx.createLevel(ctx.dbName);
-
-  try {
-    await level.open();
-
-    const oldSubLevel = level.sublevel<string, string>(oldLevelName, {
-      valueEncoding: 'utf-8'
-    });
-    const newSubLevel = level.sublevel<string, string>(newLevelName, {
-      valueEncoding: 'utf-8'
-    });
+): Promise<number> =>
+  withDbLock(ctx.dbName, async () => {
+    const level = ctx.createLevel(ctx.dbName);
 
     try {
-      await oldSubLevel.open();
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      throw new Error(
-        `Failed to open source sublevel "${oldLevelName}": ${errorMessage}. ` +
-        `Ensure no other process is accessing the database.`,
-        { cause: error }
-      );
-    }
+      await level.open();
 
-    try {
-      await newSubLevel.open();
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      throw new Error(
-        `Failed to open target sublevel "${newLevelName}": ${errorMessage}. ` +
-        `Ensure no other process is accessing the database.`,
-        { cause: error }
-      );
-    }
+      const oldSubLevel = level.sublevel<string, string>(oldLevelName, {
+        valueEncoding: 'utf-8'
+      });
+      const newSubLevel = level.sublevel<string, string>(newLevelName, {
+        valueEncoding: 'utf-8'
+      });
 
-    let count = 0;
-    const operations: { type: 'put'; key: string; value: string }[] = [];
-
-    try {
-      for await (const [key, value] of oldSubLevel.iterator()) {
-        operations.push({ type: 'put', key, value });
-        count++;
-      }
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      throw new Error(
-        `Failed to read data from source sublevel "${oldLevelName}" after ${count} entries: ${errorMessage}. ` +
-        `Migration incomplete. Source data is unchanged.`,
-        { cause: error }
-      );
-    }
-
-    if (operations.length > 0) {
       try {
-        await newSubLevel.batch(operations);
+        await oldSubLevel.open();
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         throw new Error(
-          `Failed to write ${operations.length} entries to target sublevel "${newLevelName}": ${errorMessage}. ` +
-          `Migration incomplete. Target sublevel may contain partial data. ` +
-          `Source data at "${oldLevelName}" is unchanged.`,
+          `Failed to open source sublevel "${oldLevelName}": ${errorMessage}. ` +
+          `Ensure no other process is accessing the database.`,
           { cause: error }
         );
       }
-    }
 
-    await newSubLevel.close();
-    await oldSubLevel.close();
+      try {
+        await newSubLevel.open();
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        throw new Error(
+          `Failed to open target sublevel "${newLevelName}": ${errorMessage}. ` +
+          `Ensure no other process is accessing the database.`,
+          { cause: error }
+        );
+      }
 
-    return count;
-  } finally {
-    try {
-      await level.close();
-    } catch {
-      // Don't mask the original error - just ignore the close failure
+      let count = 0;
+      const operations: { type: 'put'; key: string; value: string }[] = [];
+
+      try {
+        for await (const [key, value] of oldSubLevel.iterator()) {
+          operations.push({ type: 'put', key, value });
+          count++;
+        }
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        throw new Error(
+          `Failed to read data from source sublevel "${oldLevelName}" after ${count} entries: ${errorMessage}. ` +
+          `Migration incomplete. Source data is unchanged.`,
+          { cause: error }
+        );
+      }
+
+      if (operations.length > 0) {
+        try {
+          await newSubLevel.batch(operations);
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+          throw new Error(
+            `Failed to write ${operations.length} entries to target sublevel "${newLevelName}": ${errorMessage}. ` +
+            `Migration incomplete. Target sublevel may contain partial data. ` +
+            `Source data at "${oldLevelName}" is unchanged.`,
+            { cause: error }
+          );
+        }
+      }
+
+      await newSubLevel.close();
+      await oldSubLevel.close();
+
+      return count;
+    } finally {
+      try {
+        await level.close();
+      } catch {
+        // Don't mask the original error - just ignore the close failure
+      }
     }
-  }
-};
+  });
 
 /**
  * Migrates existing unscoped private state and signing key data to account-scoped sublevels.

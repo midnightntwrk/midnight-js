@@ -3049,6 +3049,99 @@ describe('Level Private State Provider', (): void => {
     });
   });
 
+  describe('Concurrent operations', () => {
+    const CONCURRENCY_DB_NAME = 'test-concurrency-db';
+    const CONCURRENCY_CONTRACT_ADDRESS = 'concurrency-contract' as ContractAddress;
+
+    const concurrencyConfig = {
+      ...testConfig,
+      midnightDbName: CONCURRENCY_DB_NAME
+    };
+
+    const createProvider = () => {
+      const provider = levelPrivateStateProvider<string, unknown>(concurrencyConfig);
+      provider.setContractAddress(CONCURRENCY_CONTRACT_ADDRESS);
+      return provider;
+    };
+
+    const rejectionsOf = (results: PromiseSettledResult<unknown>[]): unknown[] =>
+      results.filter((result) => result.status === 'rejected').map((result) => result.reason);
+
+    afterAll(async () => {
+      await fs.rm(path.join('.', CONCURRENCY_DB_NAME), { recursive: true, force: true });
+    });
+
+    test('concurrent set and get on one provider instance all succeed', async () => {
+      const provider = createProvider();
+      await provider.set('warmup', { n: 0 });
+
+      const operations: Promise<unknown>[] = [];
+      for (let i = 0; i < 10; i++) {
+        operations.push(provider.set(`state${i}`, { n: i }));
+        operations.push(provider.get(`state${i}`));
+      }
+      const results = await Promise.allSettled(operations);
+
+      expect(rejectionsOf(results)).toEqual([]);
+    });
+
+    test('every concurrently written state is readable afterwards', async () => {
+      const provider = createProvider();
+
+      await Promise.all(
+        Array.from({ length: 10 }, (_, i) => provider.set(`persisted${i}`, { n: i }))
+      );
+      const values = await Promise.all(
+        Array.from({ length: 10 }, (_, i) => provider.get(`persisted${i}`))
+      );
+
+      expect(values).toEqual(Array.from({ length: 10 }, (_, i) => ({ n: i })));
+    });
+
+    test('concurrent private state and signing key operations all succeed', async () => {
+      const provider = createProvider();
+      const signingKey = sampleSigningKey();
+      await provider.set('to-remove', { n: 1 });
+
+      const results = await Promise.allSettled([
+        provider.set('mixed', { n: 2 }),
+        provider.get('mixed'),
+        provider.remove('to-remove'),
+        provider.setSigningKey('mixed-address', signingKey),
+        provider.getSigningKey('mixed-address')
+      ]);
+
+      expect(rejectionsOf(results)).toEqual([]);
+    });
+
+    test('concurrent operations on two providers sharing one database all succeed', async () => {
+      const first = createProvider();
+      const second = createProvider();
+
+      const operations: Promise<unknown>[] = [];
+      for (let i = 0; i < 5; i++) {
+        operations.push(first.set(`shared${i}`, { n: i }));
+        operations.push(second.get(`shared${i}`));
+      }
+      const results = await Promise.allSettled(operations);
+
+      expect(rejectionsOf(results)).toEqual([]);
+    });
+
+    test('concurrent writes to the same key leave one of the written values', async () => {
+      const provider = createProvider();
+
+      await Promise.all([
+        provider.set('contended', { n: 1 }),
+        provider.set('contended', { n: 2 }),
+        provider.set('contended', { n: 3 })
+      ]);
+      const value = await provider.get('contended');
+
+      expect([{ n: 1 }, { n: 2 }, { n: 3 }]).toContainEqual(value);
+    });
+  });
+
   describe('levelFactory', () => {
     const FACTORY_DB_NAME = 'test-custom-factory-db';
 
