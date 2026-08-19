@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { Ledger8ComposeFailedError } from '../errors';
 import type { ProtocolV8 } from '../load-v8';
+import { assembleCallPrototype } from './assemble-call';
 import type { TranscriptPojo } from './execute';
 
 /**
@@ -38,31 +38,15 @@ export interface ComposeV8CallOptions {
 }
 
 /**
- * Bridges a {@link TranscriptPojo}'s pre-call state into a v8-native
- * `QueryContext`. Same envelope-crossing rationale as `wrap-v9.ts`'s
- * `toV9QueryContext`: the `EncodedStateValue` produced by
- * `.data.state.encode()` is structurally identical between the pre-fork
- * (`onchain-runtime-v3`) and ledger-v8 packages, so decoding it through
- * ledger-v8's own `StateValue`/`ChargedState` is a safe envelope crossing,
- * not a lossy re-encode.
- */
-const toV8QueryContext = (
-  transcript: TranscriptPojo,
-  contractAddress: string,
-  v8: ProtocolV8
-): InstanceType<ProtocolV8['QueryContext']> => {
-  const stateValue = v8.StateValue.decode(transcript.preContractState.data.state.encode());
-  return new v8.QueryContext(new v8.ChargedState(stateValue), contractAddress);
-};
-
-/**
  * Composes a v8-native call transaction from a {@link TranscriptPojo} — the
  * output of {@link executeCircuit} (`engine/execute.ts`) — and immediately
- * serializes it. This is the "same-era" leg: both the circuit's execution
- * and the call it produces are bound entirely on the ledger-v8 axis (the
- * spike's `assembleCallV8`), as opposed to {@link wrapKeepStateCall}
- * (`engine/wrap-v9.ts`), which binds a retained-execution transcript
- * natively onto the current, post-fork ledger-v9 axis instead.
+ * serializes it. The call prototype comes from {@link assembleCallPrototype}
+ * (`engine/assemble-call.ts`) against the injected v8 module. This is the
+ * "same-era" leg: both the circuit's execution and the call it produces are
+ * bound entirely on the ledger-v8 axis (the spike's `assembleCallV8`), as
+ * opposed to {@link wrapKeepStateCall} (`engine/wrap-v9.ts`), which binds a
+ * retained-execution transcript natively onto the current, post-fork
+ * ledger-v9 axis instead.
  *
  * Never proves the transaction — the returned bytes are an UNPROVEN,
  * tag-prefixed serialization (`midnight:transaction[...]:...`), exactly what
@@ -77,32 +61,7 @@ const toV8QueryContext = (
 export const composeV8CallTx = (options: ComposeV8CallOptions, v8: ProtocolV8): Uint8Array => {
   const { transcript, contractAddress, contractState, networkId, ttl } = options;
 
-  const op = contractState.operation(transcript.circuitId);
-  if (op === undefined) {
-    throw new Ledger8ComposeFailedError('call-operation', transcript.circuitId);
-  }
-
-  const params = v8.LedgerParameters.initialParameters();
-  const queryContext = toV8QueryContext(transcript, contractAddress, v8);
-  const partitioned = v8.partitionTranscripts([new v8.PreTranscript(queryContext, transcript.publicTranscript)], params);
-  const first = partitioned[0];
-  if (first === undefined) {
-    throw new Error('partitionTranscripts returned no result for the v8-native call transcript.');
-  }
-  const [guaranteed, fallible] = first;
-
-  const prototype = new v8.ContractCallPrototype(
-    contractAddress,
-    transcript.circuitId,
-    op,
-    guaranteed,
-    fallible,
-    transcript.privateTranscriptOutputs,
-    transcript.input,
-    transcript.output,
-    v8.communicationCommitmentRandomness(),
-    transcript.circuitId
-  );
+  const prototype = assembleCallPrototype(v8, { transcript, contractAddress, operations: contractState, stage: 'call-operation' });
 
   const intent = v8.Intent.new(ttl).addCall(prototype);
   const unproven = v8.Transaction.fromPartsRandomized(networkId, undefined, undefined, intent);
