@@ -37,8 +37,9 @@ import type { FinalizedTxDataV8, VersionedFinalizedTxData } from '../versioned';
 
 // Spelled out independently of `FinalizedTxData` (no `Omit`/`keyof` derived
 // from it) so the equality check below actually pins the v9 arm's shape
-// instead of reflexively restating it. Field-for-field copy of the pre-D14
-// `FinalizedTxData` shape (14 fields) plus the new `version` discriminant.
+// instead of reflexively restating it. Field-for-field copy of the original
+// `FinalizedTxData` shape (14 fields, before the version discriminant was
+// added) plus the new `version` discriminant.
 type FinalizedTxDataV9Fixture = {
   readonly version: 'v9';
   readonly tx: Transaction<SignatureEnabled, Proof, Binding>;
