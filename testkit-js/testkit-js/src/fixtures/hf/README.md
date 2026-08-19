@@ -187,6 +187,60 @@ key in the smoke test, to confirm `state-co-v2-only-foreign.hex`'s embedded
 key is genuinely foreign (see "The A4 mis-dispatch fixture" above) — that
 fixture is NOT keyed with it.
 
+## `counter-016/`
+
+`counter-016/compiled/contract/index.js` is the spike's own `counter.compact` recompiled
+with the spike's **original, pre-fork toolchain** (`compiler-version: 0.31.1`,
+`language-version: 0.23.0`, `runtime-version: 0.16.0` — from the spike's own
+`island-3/tests/tester/fixtures/counter/out/compiler/contract-info.json`), as
+opposed to `twin-contract/compiled/`, which is the SAME source recompiled with
+THIS repo's current toolchain (`compactc 0.33.0-rc.2`, `runtime-version:
+0.18.0-rc.1`). The two are not interchangeable: `twin-contract/compiled/` emits
+0.18-era (async) codegen and cannot run against a `compact-runtime@0.16`
+instance; `counter-016/` emits the sync codegen the retained pre-fork engine
+(`packages/protocol/src/engine/execute.ts`) actually exercises, and is the
+fixture `engine-execute.test.ts` runs `increment` against.
+
+Ported verbatim (byte-for-byte, only source-map generation trimmed — same
+"drop the map, keep the module minimal" precedent as `twin-contract/`) from
+`spike-dapp-hf/island-3/tests/tester/fixtures/counter/out/contract/index.js`
+(git blob `405a68179e4cfb3fb6307486461df7879ab508f3`). The contract source
+itself is unchanged from `../twin-contract/counter.compact` — a single
+`round: Counter` ledger cell with one nullary circuit `increment()` — so it is
+not duplicated here.
+
+Only the compiled contract module is ported — no `.d.ts`, no
+`compiler/contract-info.json`, no `keys/`, no `zkir/`. None of those are read
+at import time; the module's only own-time dependency is a bare
+`@midnight-ntwrk/compact-runtime` import, satisfied in tests by redirecting
+that specifier (module-registry-scoped to the one test file that imports this
+fixture) to this repo's own `compact-runtime-ledger8` — the same retained
+`@midnight-ntwrk/compact-runtime@0.16.0`, installed under an alias so it can
+coexist with the root's `0.18.0-rc.1` pin (see
+`packages/protocol/package.json`).
+
+The `compiled/` path segment (mirroring `twin-contract/compiled/`) is not
+cosmetic: `.licenserc.yaml`'s `paths-ignore` excludes `**/compiled/**` from
+the Apache-2.0 license-header check, which this ported-verbatim upstream
+artifact — same as `twin-contract/compiled/contract/index.js` — must not
+carry.
+
+`counter-016/increment-transcript.golden.json` is a golden regression
+reference for the transcript `executeCircuit` (`engine/execute.ts`) produces
+when running `increment()` against this contract's freshly-constructed
+initial state (`round: 0`). The spike carries no recorded transcript fixture
+of its own to port, so this one was minted once, directly from
+`engine-execute.test.ts`'s own real execution against this ported artifact
+(no proving involved — circuit execution through `compact-runtime@0.16` is
+fully deterministic), and is committed as JSON with bigints written as
+`` `${n}n` ``-suffixed strings and byte arrays as lower-case hex (the two
+value kinds an `AlignedValue`/`Op` tree carries that JSON has no native
+encoding for). `preContractState`/`postContractState`/`privateStateAfter` are
+excluded from the golden — they carry live `ChargedState` WASM objects, not
+plain data — the transcript's post-state is instead asserted directly in the
+same test via the contract's own `ledger()` projector (`round` goes `0n` →
+`1n`).
+
 ## Regenerating
 
 ```
