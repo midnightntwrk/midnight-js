@@ -15,7 +15,17 @@
 
 import { ChargedState as LedgerV9ChargedState, type ContractCallPrototype } from '@midnightntwrk/ledger-v9';
 
+import { loadLedger8 } from '../load-v8';
 import type { LedgerVersion } from '../version';
+import { type ComposeV8CallOptions, composeV8CallTx } from './compose-v8';
+import {
+  type ComposeV8DeployOptions,
+  composeV8DeployTx,
+  type ConstructorResultPojo,
+  executeConstructor,
+  type ExecuteConstructorOptions,
+  type Ledger8ConstructorRuntime
+} from './deploy-v8';
 import { type DownConvertedState, downConvertForExecution, type Ledger8CompactRuntime } from './down-convert';
 import { type EncodedStateValue, extractEncodedStateValue } from './envelope';
 import { executeCircuit, type ExecuteCircuitOptions, type Ledger8ExecutionRuntime, type TranscriptPojo } from './execute';
@@ -23,9 +33,13 @@ import { assertLedger8RuntimePresent, assertSharedLedger8Instances } from './ins
 import { wrapKeepStateCall, type WrapKeepStateCallOptions } from './wrap-v9';
 
 export type {
+  ComposeV8CallOptions,
+  ComposeV8DeployOptions,
+  ConstructorResultPojo,
   DownConvertedState,
   EncodedStateValue,
   ExecuteCircuitOptions,
+  ExecuteConstructorOptions,
   TranscriptPojo,
   WrapKeepStateCallOptions
 };
@@ -42,6 +56,9 @@ export interface Ledger8Engine {
   downConvertForExecution(state: EncodedStateValue): DownConvertedState;
   executeCircuit(options: ExecuteCircuitOptions): TranscriptPojo;
   wrapKeepStateCall(options: WrapKeepStateCallOptions): ContractCallPrototype;
+  composeCallTx(options: ComposeV8CallOptions): Uint8Array;
+  executeConstructor(options: ExecuteConstructorOptions): ConstructorResultPojo;
+  composeDeployTx(options: ComposeV8DeployOptions): Uint8Array;
 }
 
 /**
@@ -79,9 +96,10 @@ export interface Ledger8Engine {
 export const createLedger8Engine = async (): Promise<Ledger8Engine> => {
   await assertLedger8RuntimePresent();
 
-  const [glue, ocrt3] = await Promise.all([
+  const [glue, ocrt3, v8] = await Promise.all([
     import('compact-runtime-ledger8'),
-    import('@midnight-ntwrk/onchain-runtime-v3')
+    import('@midnight-ntwrk/onchain-runtime-v3'),
+    loadLedger8()
   ]);
 
   assertSharedLedger8Instances(ocrt3.ChargedState, glue.ChargedState, LedgerV9ChargedState, LedgerV9ChargedState);
@@ -94,11 +112,17 @@ export const createLedger8Engine = async (): Promise<Ledger8Engine> => {
     createCircuitContext: glue.createCircuitContext,
     CostModel: glue.CostModel
   };
+  const ledger8ConstructorRuntime: Ledger8ConstructorRuntime = {
+    createConstructorContext: glue.createConstructorContext
+  };
 
   return {
     extractState: (raw, version) => extractEncodedStateValue(raw, version),
     downConvertForExecution: (state) => downConvertForExecution(state, ledger8CompactRuntime),
     executeCircuit: (options) => executeCircuit(options, ledger8ExecutionRuntime),
-    wrapKeepStateCall: (options) => wrapKeepStateCall(options)
+    wrapKeepStateCall: (options) => wrapKeepStateCall(options),
+    composeCallTx: (options) => composeV8CallTx(options, v8),
+    executeConstructor: (options) => executeConstructor(options, ledger8ConstructorRuntime),
+    composeDeployTx: (options) => composeV8DeployTx(options, v8)
   };
 };

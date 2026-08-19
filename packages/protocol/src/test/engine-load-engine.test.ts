@@ -17,11 +17,13 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
+import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import { ContractCallPrototype, ContractOperation, ContractState, Intent, sampleContractAddress } from '@midnightntwrk/ledger-v9';
 import type { ConstructorContext } from 'compact-runtime-ledger8';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createLedger8Engine } from '../engine';
+import type { Ledger8ConstructorContractLike } from '../engine/deploy-v8';
 import type { DownConvertedState } from '../engine/down-convert';
 import type { ExecuteCircuitOptions, Ledger8ContractLike } from '../engine/execute';
 
@@ -62,13 +64,16 @@ interface CompiledCounterContract extends Ledger8ContractLike {
 // Ledger8RuntimeMissingError — same policy as dist-laziness.test.ts and the
 // loadLedger8Engine suite below. Run `yarn build && yarn test` to green it.
 describe.skipIf(!distV8Exists)('createLedger8Engine', () => {
-  it('builds a Ledger8Engine exposing extractState, downConvertForExecution, executeCircuit and wrapKeepStateCall', async () => {
+  it('builds a Ledger8Engine exposing extractState, downConvertForExecution, executeCircuit, wrapKeepStateCall, composeCallTx, executeConstructor and composeDeployTx', async () => {
     const engine = await createLedger8Engine();
 
     expect(typeof engine.extractState).toBe('function');
     expect(typeof engine.downConvertForExecution).toBe('function');
     expect(typeof engine.executeCircuit).toBe('function');
     expect(typeof engine.wrapKeepStateCall).toBe('function');
+    expect(typeof engine.composeCallTx).toBe('function');
+    expect(typeof engine.executeConstructor).toBe('function');
+    expect(typeof engine.composeDeployTx).toBe('function');
   });
 
   it('extractState + downConvertForExecution round-trip a v8-era envelope into a decoded DownConvertedState', async () => {
@@ -144,6 +149,77 @@ describe.skipIf(!distV8Exists)('createLedger8Engine', () => {
     const transcript = engine.executeCircuit(options);
 
     expect(transcript.circuitId).toBe('increment');
+  });
+
+  it('executeConstructor + composeDeployTx run the full v8-native deploy leg on the ported counter-016 fixture', async () => {
+    const engine = await createLedger8Engine();
+    const { Contract } = (await import(/* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js'))) as {
+      readonly Contract: new (witnesses: Record<string, never>) => Ledger8ConstructorContractLike;
+    };
+    const initialPrivateState: Record<string, never> = {};
+    const contract = new Contract(initialPrivateState);
+    const verifierKey = readFileSync(
+      resolve(PKG_ROOT, '..', '..', 'testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/keys/increment.verifier')
+    );
+
+    const constructorResult = engine.executeConstructor({
+      contract,
+      args: [],
+      privateState: initialPrivateState,
+      coinPk: SAMPLE_COIN_PUBLIC_KEY
+    });
+    const deployBytes = engine.composeDeployTx({
+      contractState: constructorResult.contractState,
+      verifierKeys: new Map([['increment', new Uint8Array(verifierKey)]]),
+      networkId: 'test-network',
+      ttl: new Date(Date.now() + 3_600_000)
+    });
+
+    expect(deployBytes).toBeInstanceOf(Uint8Array);
+    const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', deployBytes);
+    expect(Buffer.from(back.serialize())).toEqual(Buffer.from(deployBytes));
+  });
+
+  it('composeCallTx composes a v8-native call transaction from a real executeCircuit transcript', async () => {
+    const engine = await createLedger8Engine();
+    const { Contract } = (await import(/* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js'))) as CompiledCounterModule;
+    const ledger8Runtime = await import('compact-runtime-ledger8');
+    const initialPrivateState: Record<string, never> = {};
+    const contract = new Contract(initialPrivateState);
+    const constructorContext = ledger8Runtime.createConstructorContext(initialPrivateState, SAMPLE_COIN_PUBLIC_KEY);
+    const initial = contract.initialState(constructorContext);
+    const preState: DownConvertedState = { data: initial.currentContractState.data };
+    const address = ocrt3.dummyContractAddress();
+
+    const transcript = engine.executeCircuit({
+      contract,
+      circuitId: 'increment',
+      args: [],
+      state: preState,
+      address,
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      privateState: {}
+    });
+
+    const verifierKey = readFileSync(
+      resolve(PKG_ROOT, '..', '..', 'testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/keys/increment.verifier')
+    );
+    const v8ContractState = new LedgerV8.ContractState();
+    const v8Operation = new LedgerV8.ContractOperation();
+    v8Operation.verifierKey = new Uint8Array(verifierKey);
+    v8ContractState.setOperation('increment', v8Operation);
+
+    const callBytes = engine.composeCallTx({
+      transcript,
+      contractAddress: address,
+      contractState: v8ContractState,
+      networkId: 'test-network',
+      ttl: new Date(Date.now() + 3_600_000)
+    });
+
+    expect(callBytes).toBeInstanceOf(Uint8Array);
+    const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', callBytes);
+    expect(Buffer.from(back.serialize())).toEqual(Buffer.from(callBytes));
   });
 
   // Every other wrapKeepStateCall test (engine-wrap-v9.test.ts and the
