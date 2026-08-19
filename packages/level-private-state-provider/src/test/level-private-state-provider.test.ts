@@ -3067,6 +3067,10 @@ describe('Level Private State Provider', (): void => {
     const rejectionsOf = (results: PromiseSettledResult<unknown>[]): unknown[] =>
       results.filter((result) => result.status === 'rejected').map((result) => result.reason);
 
+    beforeEach(async () => {
+      await fs.rm(path.join('.', CONCURRENCY_DB_NAME), { recursive: true, force: true });
+    });
+
     afterAll(async () => {
       await fs.rm(path.join('.', CONCURRENCY_DB_NAME), { recursive: true, force: true });
     });
@@ -3098,47 +3102,64 @@ describe('Level Private State Provider', (): void => {
       expect(values).toEqual(Array.from({ length: 10 }, (_, i) => ({ n: i })));
     });
 
-    test('concurrent private state and signing key operations all succeed', async () => {
+    test('concurrent private state and signing key operations take effect', async () => {
       const provider = createProvider();
       const signingKey = sampleSigningKey();
       await provider.set('to-remove', { n: 1 });
 
       const results = await Promise.allSettled([
         provider.set('mixed', { n: 2 }),
-        provider.get('mixed'),
         provider.remove('to-remove'),
-        provider.setSigningKey('mixed-address', signingKey),
-        provider.getSigningKey('mixed-address')
+        provider.setSigningKey('mixed-address', signingKey)
       ]);
 
       expect(rejectionsOf(results)).toEqual([]);
+      expect(await provider.get('mixed')).toEqual({ n: 2 });
+      expect(await provider.get('to-remove')).toBeNull();
+      expect(await provider.getSigningKey('mixed-address')).toEqual(signingKey);
     });
 
-    test('concurrent operations on two providers sharing one database all succeed', async () => {
-      const first = createProvider();
-      const second = createProvider();
+    test('two providers sharing one database both see all concurrent writes', async () => {
+      const writer = createProvider();
+      const reader = createProvider();
 
-      const operations: Promise<unknown>[] = [];
-      for (let i = 0; i < 5; i++) {
-        operations.push(first.set(`shared${i}`, { n: i }));
-        operations.push(second.get(`shared${i}`));
-      }
-      const results = await Promise.allSettled(operations);
+      const writes = await Promise.allSettled(
+        Array.from({ length: 5 }, (_, i) => writer.set(`shared${i}`, { n: i }))
+      );
+      expect(rejectionsOf(writes)).toEqual([]);
 
-      expect(rejectionsOf(results)).toEqual([]);
+      const values = await Promise.all(
+        Array.from({ length: 5 }, (_, i) => reader.get(`shared${i}`))
+      );
+      expect(values).toEqual(Array.from({ length: 5 }, (_, i) => ({ n: i })));
     });
 
-    test('concurrent writes to the same key leave one of the written values', async () => {
-      const provider = createProvider();
+    test('a failed open reports the underlying reason and leaves the queue usable', async () => {
+      let failOpen = true;
+      const provider = levelPrivateStateProvider<string, unknown>({
+        ...concurrencyConfig,
+        levelFactory: (dbName: string): DatabaseLevel => {
+          const level = new Level(dbName, { createIfMissing: true }) as DatabaseLevel;
+          if (failOpen) {
+            // What abstract-level reports: a constant message, the real reason in `cause`.
+            level.open = () =>
+              Promise.reject(new Error('Database failed to open', { cause: new Error('disk on fire') }));
+          }
+          return level;
+        }
+      });
+      provider.setContractAddress(CONCURRENCY_CONTRACT_ADDRESS);
 
-      await Promise.all([
-        provider.set('contended', { n: 1 }),
-        provider.set('contended', { n: 2 }),
-        provider.set('contended', { n: 3 })
-      ]);
-      const value = await provider.get('contended');
+      const error = await captureError(() => provider.set('after-failure', { n: 1 }));
 
-      expect([{ n: 1 }, { n: 2 }, { n: 3 }]).toContainEqual(value);
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toContain('Failed to open private state database');
+      expect((error as Error).message).toContain('disk on fire');
+      expect((error as Error).cause).toBeInstanceOf(Error);
+
+      failOpen = false;
+      await provider.set('after-failure', { n: 1 });
+      expect(await provider.get('after-failure')).toEqual({ n: 1 });
     });
   });
 

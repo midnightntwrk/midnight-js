@@ -182,31 +182,41 @@ const getScopedLevelName = (baseLevelName: string, accountId: string): string =>
 const defaultLevelFactory: LevelFactory = (dbName: string) =>
   new Level(dbName, { createIfMissing: true }) as DatabaseLevel;
 
-/**
- * Queues of pending database operations, keyed by database name.
- *
- * Every operation opens and closes its own database handle, and LevelDB grants
- * the handle exclusively: a second `open()` on the same path - or an `open()`
- * racing another operation's `close()` - fails with "Database failed to open".
- * Concurrent callers therefore have to be serialized. The key is the database
- * name because the exclusive lock covers the whole database, not a sublevel.
- *
- * The queue is module-level because the resource it guards is process-wide;
- * a per-provider queue could not see a second provider opening the same path.
- * This mirrors {@link encryptionInitPromises} and {@link passwordRotationLocks}.
- * Entries are removed once a queue drains, so the map holds at most one entry
- * per database currently in use.
- *
- * Note that this cannot serialize access across separate processes; those still
- * contend on the operating system lock and surface as an open failure.
- */
+/** Tail of the pending operation chain for each database, keyed by database name. */
 const dbAccessQueues = new Map<string, Promise<void>>();
 
+/**
+ * Serializes access to one database, so that overlapping callers queue instead
+ * of colliding.
+ *
+ * Every operation opens its own database handle and closes it again. On the
+ * Node.js path (`classic-level`) LevelDB grants the database directory to a
+ * single holder, so a second `open()` - or an `open()` racing another
+ * operation's `close()` - fails with `LEVEL_DATABASE_NOT_OPEN`. The browser
+ * path (`browser-level`, IndexedDB) takes no such lock, but serializing there
+ * is still what makes a read-modify-write sequence deterministic. The cost is
+ * that throughput is one operation per database at a time.
+ *
+ * The map is module-level because the resource it guards is process-wide: a
+ * per-provider map could not see a second provider opening the same database.
+ * Each caller deletes only its own tail, so an earlier operation's cleanup
+ * cannot drop a later one's entry.
+ *
+ * Two limitations. Keying is by the configured name verbatim, so two configs
+ * naming one directory differently (`'db'` and `'./db'`) are not serialized
+ * against each other. And access from separate processes cannot be serialized
+ * at all - it still contends on the operating system lock.
+ *
+ * Not reentrant: entering the lock for a database that already holds it
+ * deadlocks, and there is no timeout to break it. Callers must therefore
+ * resolve encryption keys, which read the database themselves, before entering.
+ */
 const withDbLock = async <A>(dbName: string, operation: () => Promise<A>): Promise<A> => {
   const pending = dbAccessQueues.get(dbName);
-  // A failed operation must not prevent queued operations from running, so the
-  // same thunk serves as both fulfillment and rejection handler.
-  const current = pending === undefined ? operation() : pending.then(operation, operation);
+  const current = pending === undefined ? operation() : pending.then(operation);
+  // The stored tail must never reject, because a rejected tail would reject
+  // every operation chained behind it. The caller still receives the real
+  // outcome through `current`.
   const settled = current.then(
     () => undefined,
     () => undefined
@@ -222,35 +232,71 @@ const withDbLock = async <A>(dbName: string, operation: () => Promise<A>): Promi
   }
 };
 
+const describeOpenFailure = (error: unknown): string => {
+  if (!(error instanceof Error)) {
+    return 'Unknown error';
+  }
+  // abstract-level reports every open failure as the same
+  // `LEVEL_DATABASE_NOT_OPEN` error, so the reason is one level down.
+  return error.cause instanceof Error ? error.cause.message : error.message;
+};
+
+const openDatabase = async (ctx: StorageContext): Promise<DatabaseLevel> => {
+  const level = ctx.createLevel(ctx.dbName);
+  try {
+    await level.open();
+    return level;
+  } catch (error: unknown) {
+    throw new Error(
+      `Failed to open private state database "${ctx.dbName}": ${describeOpenFailure(error)}. ` +
+      `Possible causes: another process holds the database, ` +
+      `insufficient file permissions, or a corrupted store.`,
+      { cause: error }
+    );
+  }
+};
+
+const closeDatabase = async (
+  subLevel: { close(): Promise<void> },
+  level: DatabaseLevel
+): Promise<void> => {
+  // `level.close()` has to run even when closing the sublevel fails: an
+  // unclosed handle keeps the database locked for the rest of the process.
+  try {
+    await subLevel.close();
+  } finally {
+    await level.close();
+  }
+};
+
 const withSubLevel = <K, V, A>(
   ctx: StorageContext,
   levelName: string,
   thunk: (subLevel: AbstractSublevel<DatabaseLevel, string | Uint8Array | Buffer, K, V>) => Promise<A>,
 ): Promise<A> =>
   withDbLock(ctx.dbName, async () => {
-    const level = ctx.createLevel(ctx.dbName);
-    try {
-      await level.open();
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      throw new Error(
-        `Failed to open private state database "${ctx.dbName}": ${errorMessage}. ` +
-        `LevelDB grants the database to a single holder at a time. ` +
-        `Ensure no other process is using it.`,
-        { cause: error }
-      );
-    }
-
+    const level = await openDatabase(ctx);
     const subLevel = level.sublevel<K, V>(levelName, {
       valueEncoding: 'utf-8'
     });
+
+    let result: A;
     try {
       await subLevel.open();
-      return await thunk(subLevel);
-    } finally {
-      await subLevel.close();
-      await level.close();
+      result = await thunk(subLevel);
+    } catch (error: unknown) {
+      try {
+        await closeDatabase(subLevel, level);
+      } catch {
+        // Don't mask the error from the operation - that is the one worth reporting.
+      }
+      throw error;
     }
+
+    // On the success path a close failure is reported rather than ignored:
+    // it can mean the write never reached disk.
+    await closeDatabase(subLevel, level);
+    return result;
   });
 
 const METADATA_KEY = '__midnight_encryption_metadata__';
@@ -1331,11 +1377,9 @@ const migrateSublevel = (
   newLevelName: string,
 ): Promise<number> =>
   withDbLock(ctx.dbName, async () => {
-    const level = ctx.createLevel(ctx.dbName);
+    const level = await openDatabase(ctx);
 
     try {
-      await level.open();
-
       const oldSubLevel = level.sublevel<string, string>(oldLevelName, {
         valueEncoding: 'utf-8'
       });
