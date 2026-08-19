@@ -15,7 +15,12 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { Ledger8RuntimeMissingError, PROTOCOL_ERROR_CODES, UnknownProtocolVersionError } from '../errors';
+import {
+  Ledger8RuntimeMissingError,
+  PROTOCOL_ERROR_CODES,
+  type ProtocolErrorCode,
+  UnknownProtocolVersionError
+} from '../errors';
 
 describe('PROTOCOL_ERROR_CODES', () => {
   it('is exactly the documented registry of codes', () => {
@@ -90,38 +95,67 @@ describe('Ledger8RuntimeMissingError', () => {
 // that makes the check survive that — see the `Symbol.hasInstance` note in
 // errors.ts. A foreign copy's instance is indistinguishable, at runtime, from
 // an `Error` carrying the same `code`, which is what these build.
-describe('code-based instanceof recognition', () => {
-  it('recognises its own instances on both code paths', () => {
-    expect(new UnknownProtocolVersionError(9_000_000, 'read', 'unknown')).toBeInstanceOf(UnknownProtocolVersionError);
-    expect(new UnknownProtocolVersionError(9_000_000, 'construct', 'unknown')).toBeInstanceOf(
-      UnknownProtocolVersionError
-    );
-  });
+interface CodeRecognitionCase {
+  readonly label: string;
+  readonly errorClass: new (...args: never[]) => Error;
+  readonly ownCodes: readonly ProtocolErrorCode[];
+  readonly instances: readonly Error[];
+}
 
-  it.each([
-    PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ,
-    PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_CONSTRUCT
-  ])('recognises an error from a foreign copy of this module carrying %s', (code) => {
-    const fromForeignCopy = Object.assign(new Error('thrown by another copy of this module'), { code });
+// One row per error class — a class added by a later PR in this series adds a
+// row here rather than its own describe block.
+const CODE_RECOGNITION_CASES: readonly CodeRecognitionCase[] = [
+  {
+    label: 'UnknownProtocolVersionError',
+    errorClass: UnknownProtocolVersionError,
+    ownCodes: [
+      PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ,
+      PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_CONSTRUCT
+    ],
+    instances: [
+      new UnknownProtocolVersionError(9_000_000, 'read', 'unknown'),
+      new UnknownProtocolVersionError(9_000_000, 'construct', 'unknown')
+    ]
+  },
+  {
+    label: 'Ledger8RuntimeMissingError',
+    errorClass: Ledger8RuntimeMissingError,
+    ownCodes: [PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING],
+    instances: [new Ledger8RuntimeMissingError(new Error('ERR_MODULE_NOT_FOUND'))]
+  }
+];
 
-    expect(fromForeignCopy).toBeInstanceOf(UnknownProtocolVersionError);
-  });
+/** Every registry code that is NOT one of `ownCodes` — the negative side of recognition. */
+const otherProtocolCodes = (ownCodes: readonly ProtocolErrorCode[]): ProtocolErrorCode[] =>
+  Object.values(PROTOCOL_ERROR_CODES).filter((code) => !ownCodes.includes(code));
 
-  it('rejects an error carrying no code at all', () => {
-    expect(new Error('no code')).not.toBeInstanceOf(UnknownProtocolVersionError);
-  });
-
-  it('rejects an error carrying a different protocol code', () => {
-    const other = Object.assign(new Error('another protocol failure'), {
-      code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED
+describe.each(CODE_RECOGNITION_CASES)(
+  '$label code-based instanceof recognition',
+  ({ errorClass, ownCodes, instances }) => {
+    it('recognises its own instances', () => {
+      for (const instance of instances) {
+        expect(instance).toBeInstanceOf(errorClass);
+      }
     });
 
-    expect(other).not.toBeInstanceOf(UnknownProtocolVersionError);
-  });
+    it('recognises an error from a foreign copy of this module carrying one of its codes', () => {
+      for (const code of ownCodes) {
+        expect(Object.assign(new Error('thrown by another copy of this module'), { code })).toBeInstanceOf(errorClass);
+      }
+    });
 
-  it('rejects a non-Error value even when it carries a matching code', () => {
-    const notAnError = { code: PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ, message: 'shaped like an error' };
+    it('rejects an error carrying no code at all', () => {
+      expect(new Error('no code')).not.toBeInstanceOf(errorClass);
+    });
 
-    expect(notAnError).not.toBeInstanceOf(UnknownProtocolVersionError);
-  });
-});
+    it('rejects an error carrying any other code in the registry', () => {
+      for (const code of otherProtocolCodes(ownCodes)) {
+        expect(Object.assign(new Error('another protocol failure'), { code })).not.toBeInstanceOf(errorClass);
+      }
+    });
+
+    it('rejects a non-Error value even when it carries a matching code', () => {
+      expect({ code: ownCodes[0], message: 'shaped like an error' }).not.toBeInstanceOf(errorClass);
+    });
+  }
+);

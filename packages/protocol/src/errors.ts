@@ -107,6 +107,11 @@ export class UnknownProtocolVersionError extends Error {
 }
 
 export class Ledger8RuntimeMissingError extends Error {
+  /** Code-based recognition — see {@link carriesProtocolCode}. */
+  static [Symbol.hasInstance](value: unknown): boolean {
+    return carriesProtocolCode(value, PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING);
+  }
+
   readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING;
 
   constructor(cause: unknown) {
