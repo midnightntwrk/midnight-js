@@ -44,7 +44,7 @@
     "@midnight-ntwrk/midnight-js-utils": "workspace:*",
     "@midnight-ntwrk/zkir-v2": "2.1.0",
     "@midnightntwrk/dapp-connector-api": "4.1.0-beta.1",
-    "@midnightntwrk/wallet-sdk": "2.0.0-beta.2",
+    "@midnightntwrk/wallet-sdk": "2.0.0-canary.20260730145109-1cf94a3",
     "@midnightntwrk/wallet-sdk-prover-client": "2.0.0-beta.2",
     "@scure/bip39": "^2.2.0",
     "axios": "^1.16.1",
