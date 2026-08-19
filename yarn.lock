@@ -2041,7 +2041,6 @@ __metadata:
     "@vitest/coverage-v8": "npm:^4.1.10"
     compact-runtime-ledger8: "npm:@midnight-ntwrk/compact-runtime@0.16.0"
     eslint: "npm:^10.6.0"
-    ledger-v9-alt: "npm:@midnightntwrk/ledger-v9@1.0.0-rc.3"
     onchain-runtime-v3-alt: "npm:@midnight-ntwrk/onchain-runtime-v3@3.1.0"
     rollup: "npm:^4.60.4"
     rollup-plugin-dts: "npm:^6.4.1"
@@ -2206,7 +2205,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnightntwrk/ledger-v9@npm:1.0.0-rc.3, ledger-v9-alt@npm:@midnightntwrk/ledger-v9@1.0.0-rc.3":
+"@midnightntwrk/ledger-v9@npm:1.0.0-rc.3":
   version: 1.0.0-rc.3
   resolution: "@midnightntwrk/ledger-v9@npm:1.0.0-rc.3"
   checksum: 10/5d2c2ff808b6dcc8f8ba2b75f81467c9bc4904e625e246bea1f8c77be7eb6d06cac28b189d1f6b708a85559ddf133efe93147da12169db48f927c72f414d0fa7
