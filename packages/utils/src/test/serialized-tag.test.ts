@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { describe, expect, it } from 'vitest';
 
 import { UTILS_ERROR_CODES } from '../error-codes';
@@ -79,6 +80,29 @@ describe('parseSerializedTag', () => {
     } catch (e) {
       expect((e as Error).cause).toBeInstanceOf(TypeError);
     }
+  });
+
+  it('parses the bracketed version segment the ledger runtimes actually emit', () => {
+    // Minted here rather than hardcoded: the tag is whatever the pinned
+    // runtime writes, and a runtime that changed its tag shape should fail
+    // this test rather than quietly go unparsed at a provider seam.
+    const serialized = new ContractState().serialize();
+
+    const parsed = parseSerializedTag(serialized);
+
+    expect(parsed.namespace).toBe('midnight');
+    expect(parsed.version).toMatch(/^contract-state\[v\d+\]$/);
+    expect(parsed.body).toEqual(serialized.slice(parsed.tag.length + 1));
+  });
+
+  it.each([
+    ['whitespace inside a bracketed version', utf8('midnight:contract state[v8]:body')],
+    ['a newline inside a bracketed version', utf8('midnight:contract-state[v8\n]:body')],
+    ['a bracketed version that is otherwise empty', utf8('midnight::body')]
+  ])('still rejects %s now that brackets are accepted', (_name, bytes) => {
+    expect(() => parseSerializedTag(bytes)).toThrow(
+      expect.objectContaining({ code: UTILS_ERROR_CODES.TAG_PARSE_FAILED })
+    );
   });
 
   it('produces a body that is empty when the tag ends at the last byte', () => {

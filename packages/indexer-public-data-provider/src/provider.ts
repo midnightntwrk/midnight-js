@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { protocolVersionToLedger } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type {
   ContractAddress,
@@ -39,6 +40,7 @@ import { assertIsContractAddress } from '@midnight-ntwrk/midnight-js-utils';
 import * as Rx from 'rxjs';
 
 import {
+  contractStateEnvelopeVersion,
   parseHexContractState,
   parseHexLedgerParameters,
   parseHexTransaction,
@@ -106,13 +108,82 @@ import type { ApolloHandle } from './transport';
 const toBlockOffset = (config?: BlockHeightConfig | BlockHashConfig): InputMaybe<BlockOffset> =>
   config ? (config.type === 'blockHeight' ? { height: config.blockHeight } : { hash: config.blockHash }) : null;
 
+/**
+ * How the provider came to know the network head is on the v9 ledger era.
+ * Named so a wrong call site is identifiable from the thrown message.
+ */
+type CorroborationRoute = 'snapshot-envelope' | 'finalized-record';
+
 export class IndexerPublicDataProvider implements PublicDataProvider {
   private readonly handle: ApolloHandle;
   private readonly pollInterval: number;
 
+  /**
+   * The head protocol version, cached — but only once the provider has
+   * corroborated evidence that the network really is on the v9 ledger era.
+   * `undefined` means "no such evidence yet", and every head read then goes to
+   * the network. Only {@link corroborateV9} ever writes this field.
+   */
+  private v9HeadProtocolVersion: number | undefined;
+
   constructor(handle: ApolloHandle, pollInterval: number) {
     this.handle = handle;
     this.pollInterval = pollInterval;
+  }
+
+  /**
+   * Records corroborated evidence that the network head is on the v9 ledger
+   * era, so later head reads can be served without a request.
+   *
+   * The bar is deliberately high, because caching the wrong answer is worse
+   * than paying for a request: a head integer on its own proves nothing (an
+   * indexer can report a v9 head while still serving v8-era state), so only
+   * the two routes in {@link CorroborationRoute} may call this. The cached
+   * answer also only ever moves forward — a later v8-era reading never clears
+   * or lowers what was already established, because the ledger era does not go
+   * backwards once the network has forked.
+   *
+   * @throws {IndexerInvariantError} When the caller passes a protocol version
+   *   that is not on the v9 ledger era — the era check belongs to the caller,
+   *   so getting here with a v8-era version means a call site is wrong.
+   */
+  private corroborateV9(headProtocolVersion: number, route: CorroborationRoute): void {
+    if (protocolVersionToLedger(headProtocolVersion, 'read') !== 'v9') {
+      throw new IndexerInvariantError(
+        `corroborateV9: the ${route} route supplied protocol version ${headProtocolVersion}, which is not on the ` +
+          'v9 ledger era; call sites must check the era before corroborating'
+      );
+    }
+    if (this.v9HeadProtocolVersion === undefined || headProtocolVersion > this.v9HeadProtocolVersion) {
+      this.v9HeadProtocolVersion = headProtocolVersion;
+    }
+  }
+
+  /**
+   * Route 1: a state read whose head version and whose state envelope both say
+   * v9. The envelope is the part a head integer cannot stand in for — it comes
+   * off the bytes the indexer actually served for that contract.
+   */
+  private corroborateFromStateSnapshot(record: RawContractState): void {
+    if (record.version !== 'v9') {
+      return;
+    }
+    if (contractStateEnvelopeVersion(record.raw) !== 'v9') {
+      return;
+    }
+    this.corroborateV9(record.protocolVersion, 'snapshot-envelope');
+  }
+
+  /**
+   * Route 2: a finalized transaction record this provider decoded itself,
+   * whose own protocol version is on the v9 era. Such a record cannot exist
+   * before the network has forked.
+   */
+  private corroborateFromFinalizedRecord(protocolVersion: number): void {
+    if (protocolVersionToLedger(protocolVersion, 'read') !== 'v9') {
+      return;
+    }
+    this.corroborateV9(protocolVersion, 'finalized-record');
   }
 
   /**
@@ -147,13 +218,19 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    * Reads the protocol-version integer of the network's head block.
    *
    * The indexer's `block` root field with no offset resolves to the latest
-   * indexed block, so this is the head version. Nothing is cached: every call
-   * issues a request.
+   * indexed block, so this is the head version. The answer is served from the
+   * cache only once {@link corroborateV9} has engaged it; until then, and
+   * whenever `options.fresh` is `true`, every call issues a request.
+   *
+   * @param options Pass `{ fresh: true }` to bypass the cache.
    *
    * @throws {IndexerDataError} When the indexer has not indexed a block yet
    *   and therefore reports no head block.
    */
-  async queryLatestProtocolVersion(): Promise<number> {
+  async queryLatestProtocolVersion(options?: { readonly fresh?: boolean }): Promise<number> {
+    if (options?.fresh !== true && this.v9HeadProtocolVersion !== undefined) {
+      return this.v9HeadProtocolVersion;
+    }
     return this.fetchHeadProtocolVersion();
   }
 
@@ -200,7 +277,9 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     if (state === null) {
       return null;
     }
-    return toRawContractState(state, await this.queryLatestProtocolVersion());
+    const record = toRawContractState(state, await this.queryLatestProtocolVersion());
+    this.corroborateFromStateSnapshot(record);
+    return record;
   }
 
   queryContractState(
@@ -347,9 +426,9 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     );
   }
 
-  watchForDeployTxData(contractAddress: ContractAddress): Promise<FinalizedTxData> {
+  async watchForDeployTxData(contractAddress: ContractAddress): Promise<FinalizedTxData> {
     assertIsContractAddress(contractAddress);
-    return Rx.firstValueFrom(
+    const finalized = await Rx.firstValueFrom(
       pollUntilPresent(
         this.client,
         DEPLOY_TX_QUERY,
@@ -367,10 +446,12 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         this.pollInterval
       )
     );
+    this.corroborateFromFinalizedRecord(finalized.protocolVersion);
+    return finalized;
   }
 
-  watchForTxData(txId: TransactionId): Promise<FinalizedTxData> {
-    return Rx.firstValueFrom(
+  async watchForTxData(txId: TransactionId): Promise<FinalizedTxData> {
+    const finalized = await Rx.firstValueFrom(
       pollUntilPresent(
         this.client,
         TX_ID_QUERY,
@@ -411,6 +492,8 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         this.pollInterval
       )
     );
+    this.corroborateFromFinalizedRecord(finalized.protocolVersion);
+    return finalized;
   }
 
   /**

@@ -40,6 +40,13 @@ export const mintV9ContractStateHex = (): string => toHex(mintV9ContractStateByt
 /** The v8 fixture in the indexer's wire encoding: lowercase hex, no prefix. */
 export const mintV8ContractStateHex = async (): Promise<string> => toHex(await mintV8ContractStateBytes());
 
+/**
+ * A minimal, real v9 transaction in the indexer's wire encoding. Built from
+ * the v9 runtime itself so it deserializes for real — no stubbing of the
+ * transaction decoder is needed anywhere.
+ */
+export const mintV9TransactionHex = (): string => toHex(ledger.Transaction.fromParts('local-test').mockProve().bind().serialize());
+
 /** Protocol-version integer for a node release whose ledger runtime is v8. */
 export const V8_ERA_PROTOCOL_VERSION = 1_000_000;
 

@@ -22,7 +22,12 @@ import { UTILS_ERROR_CODES } from './error-codes';
 // what this prefix claims.
 const MAX_TAG_PREFIX_BYTES = 64;
 const COLON = 0x3a;
-const SEGMENT_PATTERN = /^[a-z0-9_-]+$/i;
+// Square brackets are part of the real wire format: the ledger runtimes
+// write versions like `contract-state[v8]` and
+// `transaction[v12](signature[v2],proof,pedersen-schnorr[v1])`. They are
+// printable, non-control characters, so accepting them does not reopen the
+// log-injection hole the pattern exists to close.
+const SEGMENT_PATTERN = /^[a-z0-9_[\](),-]+$/i;
 
 const DEFENCE_IN_DEPTH_NOTE =
   'The tag is a defence-in-depth discriminant only — it is attacker-controlled ' +
@@ -80,9 +85,10 @@ const malformedTagError = (detail: string): TagParseError =>
  * this throws {@link TagParseError} without reading further into the buffer
  * if no well-formed prefix is found there, so an attacker cannot force a
  * full-buffer scan by omitting the tag. Both `namespace` and `version` must
- * be non-empty and match `/^[a-z0-9_-]+$/i`; anything else (including
- * control characters, which could otherwise be used to inject fake log
- * lines) throws {@link TagParseError}. `body` is a `.slice()` copy, so it is
+ * be non-empty and match `/^[a-z0-9_[\](),-]+$/i` — the character set the
+ * ledger runtimes actually emit, brackets and parentheses included. Anything
+ * else (whitespace, and control characters, which could otherwise be used to
+ * inject fake log lines) throws {@link TagParseError}. `body` is a `.slice()` copy, so it is
  * isolated from the input buffer the caller passed in.
  */
 export const parseSerializedTag = (bytes: Uint8Array): ParsedSerializedTag => {
@@ -112,7 +118,7 @@ export const parseSerializedTag = (bytes: Uint8Array): ParsedSerializedTag => {
     // message — the exact risk this validation exists to close off.
     throw malformedTagError(
       "Malformed 'namespace:version:' tag prefix — namespace and version must each be non-empty and match " +
-        '/^[a-z0-9_-]+$/i.'
+        '/^[a-z0-9_[\\](),-]+$/i.'
     );
   }
 

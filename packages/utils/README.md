@@ -138,6 +138,8 @@ hasErrorCode<C extends string>(e: unknown, code: C): e is Error & { code: C }
 // value's raw bytes. Only scans the first 64 bytes (MAX_TAG_PREFIX_BYTES) —
 // throws TagParseError without reading further if no well-formed prefix is
 // found there. `body` is a `.slice()` copy, independent of the input buffer.
+// Both segments must be non-empty and match /^[a-z0-9_[\](),-]+$/i — the
+// character set the ledger runtimes emit, e.g. 'midnight:contract-state[v8]:'.
 // The tag is a defence-in-depth discriminant only; it is never the
 // authority on the decoded body.
 parseSerializedTag(bytes: Uint8Array): {

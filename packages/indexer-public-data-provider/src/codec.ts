@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { protocolVersionToLedger } from '@midnight-ntwrk/midnight-js-protocol';
+import { type LedgerVersion, protocolVersionToLedger } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
   type Binding,
@@ -43,7 +43,9 @@ import {
   deserializeCompactContractState,
   deserializeLedgerParameters,
   deserializeLedgerTransaction,
-  deserializeZswapChainState
+  deserializeZswapChainState,
+  parseSerializedTag,
+  TagParseError
 } from '@midnight-ntwrk/midnight-js-utils';
 import { Buffer } from 'buffer';
 
@@ -71,6 +73,44 @@ export const parseHexTransaction = (s: string): LedgerTransaction<SignatureEnabl
 
 export const parseHexLedgerParameters = (s: string): LedgerParameters =>
   deserializeLedgerParameters(toByteArray(s), { caller: `${PKG}:parseHexLedgerParameters` });
+
+// A serialized contract state carries a `midnight:contract-state[vN]:`
+// envelope tag. The bracketed number is the *state format* version, not the
+// ledger version: the v8 ledger writes `[v6]` and the v9 ledger writes `[v8]`.
+// Both entries are pinned by a test that serializes a state with each runtime
+// and checks the tag it produces, so a runtime bump that changes the format
+// version fails loudly here instead of silently mis-reading an envelope.
+const CONTRACT_STATE_TAG_TO_LEDGER_VERSION: Readonly<Partial<Record<string, LedgerVersion>>> = Object.freeze({
+  'midnight:contract-state[v6]': 'v8',
+  'midnight:contract-state[v8]': 'v9'
+});
+
+/**
+ * Reads which ledger runtime wrote a serialized contract state, from the
+ * envelope tag in front of the state body — without deserializing the body.
+ *
+ * The tag is attacker-controlled input and is never the authority on the body;
+ * the node remains the sole authority on what the bytes decode to. What this
+ * check buys is a cheap, early rejection of anything that is not a contract
+ * state from a supported runtime, before those bytes reach a decoder.
+ *
+ * @throws {TagParseError} When there is no well-formed envelope tag, or the
+ *   tag is not one of the supported contract-state envelopes.
+ */
+export const contractStateEnvelopeVersion = (raw: Uint8Array): LedgerVersion => {
+  const { tag } = parseSerializedTag(raw);
+  const ledgerVersion = CONTRACT_STATE_TAG_TO_LEDGER_VERSION[tag];
+  if (ledgerVersion === undefined) {
+    // Deliberately does not echo the observed tag: it is attacker-controlled
+    // and unvalidated beyond its character set, so embedding it verbatim would
+    // let a crafted payload put arbitrary text into this message.
+    throw new TagParseError(
+      'The serialized state does not carry a contract-state envelope from a supported ledger runtime. ' +
+        'Verify the payload came from a contract-state query and not from another serialized type.'
+    );
+  }
+  return ledgerVersion;
+};
 
 /**
  * Builds the raw (undeserialized) contract-state record served by
