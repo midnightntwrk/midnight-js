@@ -164,18 +164,19 @@ export class DownConvertFailedError extends Error {
  *
  * A bounded Merkle tree only has a readable root once every node hash has
  * been computed; a tree built or modified via `update()` without a
- * subsequent `rehash()` reports `undefined` instead. Call
- * {@link downConvertForExecution} (which unconditionally rehashes every tree
- * it finds, as a defensive no-op when a tree already has its hashes) before
- * reading a root.
+ * subsequent `rehash()` reports `undefined` instead.
+ * {@link downConvertForExecution} asserts this (via
+ * {@link assertMerkleTreesRehashed}) on every tree it decodes, failing fast
+ * instead of silently repairing.
  */
 export class MerkleNotRehashedError extends Error {
   readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED;
 
   constructor() {
     super(
-      'Attempted to read the root of a bounded Merkle tree before it was rehashed. This usually means a ' +
-        'StateValue was decoded without going through downConvertForExecution — rehash it first.'
+      'Attempted to read the root of a bounded Merkle tree before it was rehashed. This usually means the ' +
+        'tree was built or updated in memory and never rehashed — call rehash() on it before encoding it or ' +
+        'executing against it.'
     );
     this.name = 'MerkleNotRehashedError';
   }
