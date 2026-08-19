@@ -28,6 +28,9 @@ const DIST_ENTRY_PATHS = ['dist/index.mjs', 'dist/index.cjs'];
 // matching only load-v8.ts.
 const V8_SUBPATH_SPECIFIER = ['@midnight-ntwrk/midnight-js-protocol', 'v8'].join('/');
 const V8_DIST_ARTIFACTS = ['dist/v8.mjs', 'dist/v8.cjs', 'dist/v8.d.mts', 'dist/v8.d.cts'];
+// Built from parts for the same reason as V8_SUBPATH_SPECIFIER above.
+const ENGINE_SUBPATH_SPECIFIER = ['@midnight-ntwrk/midnight-js-protocol', 'engine'].join('/');
+const ENGINE_DIST_ARTIFACTS = ['dist/engine.mjs', 'dist/engine.cjs', 'dist/engine.d.mts', 'dist/engine.d.cts'];
 const distEntriesExist = DIST_ENTRY_PATHS.every((p) => existsSync(resolve(PKG_ROOT, p)));
 
 const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -60,6 +63,34 @@ describe.skipIf(!distEntriesExist)('dist laziness gate', () => {
   });
 
   it.each(V8_DIST_ARTIFACTS)('%s referenced by the ./v8 exports map entry exists', (path) => {
+    expect(existsSync(resolve(PKG_ROOT, path))).toBe(true);
+  });
+
+  it.each(DIST_ENTRY_PATHS)('%s has no static onchain-runtime-v3 linkage', (path) => {
+    const content = readFileSync(resolve(PKG_ROOT, path), 'utf8');
+    expect(content).not.toMatch(/from\s*['"][^'"]*onchain-runtime-v3['"]/);
+    expect(content).not.toMatch(/require\(['"][^'"]*onchain-runtime-v3['"]\)/);
+  });
+
+  it.each(DIST_ENTRY_PATHS)('%s has no linkage (static or dynamic) of the compact-runtime-ledger8 glue alias', (path) => {
+    const content = readFileSync(resolve(PKG_ROOT, path), 'utf8');
+    expect(content).not.toMatch(/['"]compact-runtime-ledger8['"]/);
+  });
+
+  it.each(DIST_ENTRY_PATHS)('%s has no static linkage of the protocol/engine subpath', (path) => {
+    const content = readFileSync(resolve(PKG_ROOT, path), 'utf8');
+    const enginePattern = escapeRegExp(ENGINE_SUBPATH_SPECIFIER);
+    expect(content).not.toMatch(new RegExp(`from\\s*['"]${enginePattern}['"]`));
+    expect(content).not.toMatch(new RegExp(`require\\(['"]${enginePattern}['"]\\)`));
+  });
+
+  it.each(DIST_ENTRY_PATHS)('%s keeps the lazy dynamic import of the protocol/engine subpath', (path) => {
+    const content = readFileSync(resolve(PKG_ROOT, path), 'utf8');
+    const enginePattern = escapeRegExp(ENGINE_SUBPATH_SPECIFIER);
+    expect(content).toMatch(new RegExp(`import\\(\\s*['"]${enginePattern}['"]\\s*\\)`));
+  });
+
+  it.each(ENGINE_DIST_ARTIFACTS)('%s referenced by the ./engine exports map entry exists', (path) => {
     expect(existsSync(resolve(PKG_ROOT, path))).toBe(true);
   });
 });

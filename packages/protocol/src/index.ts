@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+export * from './engine/load-engine';
 export * from './errors';
 export * from './load-v8';
 export * from './version';

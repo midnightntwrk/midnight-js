@@ -1,0 +1,61 @@
+/*
+ * This file is part of midnight-js.
+ * Copyright (C) Midnight Foundation
+ * SPDX-License-Identifier: Apache-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
+import * as LedgerV9 from '@midnightntwrk/ledger-v9';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import type { DownConvertedState } from '../engine/down-convert';
+import type { TranscriptPojo } from '../engine/execute';
+
+const FIELD_ALIGNMENT: ocrt3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
+const fieldValue = (byte: number): ocrt3.AlignedValue => ({ value: [new Uint8Array(32).fill(byte)], alignment: FIELD_ALIGNMENT });
+const buildState = (byte: number): DownConvertedState => ({ data: new ocrt3.ChargedState(ocrt3.StateValue.newCell(fieldValue(byte))) });
+
+const buildTranscript = (): TranscriptPojo => ({
+  circuitId: 'increment',
+  result: [],
+  input: fieldValue(0x10),
+  output: fieldValue(0x20),
+  publicTranscript: [],
+  privateTranscriptOutputs: [],
+  preContractState: buildState(0x01),
+  postContractState: buildState(0x02),
+  privateStateAfter: {}
+});
+
+// Lives in its own file so the mocked, poisoned `@midnightntwrk/ledger-v9`
+// module registry cannot leak into engine-wrap-v9.test.ts's happy-path suite
+// (vitest isolates module state per test file) — same isolation precedent as
+// load-v8-failure.test.ts.
+describe('wrapKeepStateCall defensive guard', () => {
+  afterEach(() => {
+    vi.doUnmock('@midnightntwrk/ledger-v9');
+  });
+
+  it('throws when partitionTranscripts returns no result for the single call submitted', async () => {
+    vi.doMock('@midnightntwrk/ledger-v9', async (importOriginal) => {
+      const actual = await importOriginal<typeof LedgerV9>();
+      return { ...actual, partitionTranscripts: () => [] };
+    });
+    const { wrapKeepStateCall } = await import('../engine/wrap-v9');
+    const contractState = new LedgerV9.ContractState();
+    contractState.setOperation('increment', new LedgerV9.ContractOperation());
+
+    expect(() =>
+      wrapKeepStateCall({ transcript: buildTranscript(), contractAddress: LedgerV9.sampleContractAddress(), contractState })
+    ).toThrow(/partitionTranscripts returned no result/);
+  });
+});

@@ -16,13 +16,19 @@
 import typescript from '@rollup/plugin-typescript';
 import dts from 'rollup-plugin-dts';
 
-const external = [/node_modules/, /^@midnight-ntwrk\//, /^@midnightntwrk\//];
+// `compact-runtime-ledger8` is an npm-aliased ident (the retained pre-fork
+// `@midnight-ntwrk/compact-runtime@0.16.0`, installed under a different name
+// so it can coexist with the root's `0.18.0-rc.1` pin) — it doesn't match
+// either scoped-package pattern below, so it needs its own entry to stay
+// external rather than be (unsuccessfully, absent a resolve plugin) bundled.
+const external = [/node_modules/, /^@midnight-ntwrk\//, /^@midnightntwrk\//, /^compact-runtime-ledger8$/];
 
 const entries = [
   { input: 'src/index.ts', name: 'index' },
   { input: 'src/errors.ts', name: 'errors' },
   { input: 'src/ledger.ts', name: 'ledger' },
   { input: 'src/v8.ts', name: 'v8' },
+  { input: 'src/engine/index.ts', name: 'engine' },
   { input: 'src/compact-runtime.ts', name: 'compact-runtime' },
   { input: 'src/compact-js.ts', name: 'compact-js' },
   { input: 'src/compact-js-effect.ts', name: 'compact-js-effect' },

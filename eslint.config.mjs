@@ -152,6 +152,10 @@ export default tseslint.config(
             {
               group: ['@midnight-ntwrk/platform-js', '@midnight-ntwrk/platform-js/*'],
               message: 'Import from @midnight-ntwrk/midnight-js-protocol/platform-js instead. Only packages/protocol/src/ may import from platform-js directly.'
+            },
+            {
+              group: ['compact-runtime-ledger8'],
+              message: 'The retained pre-fork compact-runtime@0.16 glue is a packages/protocol/src/ implementation detail. Use loadLedger8Engine() from @midnight-ntwrk/midnight-js-protocol instead.'
             }
           ]
         }
@@ -164,6 +168,11 @@ export default tseslint.config(
               group: ['@midnight-ntwrk/midnight-js-protocol/v8', '@midnight-ntwrk/midnight-js-protocol/v8/*'],
               allowTypeImports: true,
               message: 'Runtime v8 access only via loadLedger8() from @midnight-ntwrk/midnight-js-protocol. Type-only imports are allowed.'
+            },
+            {
+              group: ['@midnight-ntwrk/midnight-js-protocol/engine', '@midnight-ntwrk/midnight-js-protocol/engine/*'],
+              allowTypeImports: true,
+              message: 'Runtime engine access only via loadLedger8Engine() from @midnight-ntwrk/midnight-js-protocol. Type-only imports are allowed.'
             }
           ]
         }
@@ -186,6 +195,16 @@ export default tseslint.config(
           selector:
             "ImportExpression > TemplateLiteral[quasis.length=1][quasis.0.value.raw=/^@midnight-ntwrk\\/midnight-js-protocol\\/v8(\\/|$)/]",
           message: 'Runtime v8 access only via loadLedger8() from @midnight-ntwrk/midnight-js-protocol. Dynamic imports of protocol/v8 are not allowed outside packages/protocol/src/.'
+        },
+        {
+          selector:
+            "ImportExpression > Literal[value=/^@midnight-ntwrk\\/midnight-js-protocol\\/engine(\\/|$)/]",
+          message: 'Runtime engine access only via loadLedger8Engine() from @midnight-ntwrk/midnight-js-protocol. Dynamic imports of protocol/engine are not allowed outside packages/protocol/src/.'
+        },
+        {
+          selector:
+            "ImportExpression > TemplateLiteral[quasis.length=1][quasis.0.value.raw=/^@midnight-ntwrk\\/midnight-js-protocol\\/engine(\\/|$)/]",
+          message: 'Runtime engine access only via loadLedger8Engine() from @midnight-ntwrk/midnight-js-protocol. Dynamic imports of protocol/engine are not allowed outside packages/protocol/src/.'
         }
       ],
     }

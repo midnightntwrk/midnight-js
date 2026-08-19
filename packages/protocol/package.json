@@ -38,6 +38,14 @@
       "import": "./dist/v8.mjs",
       "require": "./dist/v8.cjs"
     },
+    "./engine": {
+      "types": {
+        "import": "./dist/engine.d.mts",
+        "require": "./dist/engine.d.cts"
+      },
+      "import": "./dist/engine.mjs",
+      "require": "./dist/engine.cjs"
+    },
     "./compact-runtime": {
       "types": {
         "import": "./dist/compact-runtime.d.mts",
@@ -126,7 +134,8 @@
     "@midnight-ntwrk/platform-js": "3.0.0",
     "@midnightntwrk/ledger-v8": "8.1.1",
     "@midnightntwrk/ledger-v9": "1.0.0-rc.3",
-    "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.3"
+    "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.3",
+    "compact-runtime-ledger8": "npm:@midnight-ntwrk/compact-runtime@0.16.0"
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.3.0",

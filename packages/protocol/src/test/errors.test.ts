@@ -17,6 +17,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   DownConvertFailedError,
+  Ledger8ComposeFailedError,
   Ledger8InstanceMismatchError,
   Ledger8RuntimeMissingError,
   MerkleNotRehashedError,
@@ -32,7 +33,8 @@ describe('PROTOCOL_ERROR_CODES', () => {
       LEDGER8_INSTANCE_MISMATCH: 'MIDNIGHT_JS_P_LEDGER8_INSTANCE_MISMATCH',
       LEDGER8_RUNTIME_MISSING: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_MISSING',
       DOWN_CONVERT_FAILED: 'MIDNIGHT_JS_P_DOWN_CONVERT_FAILED',
-      MERKLE_NOT_REHASHED: 'MIDNIGHT_JS_P_MERKLE_NOT_REHASHED'
+      MERKLE_NOT_REHASHED: 'MIDNIGHT_JS_P_MERKLE_NOT_REHASHED',
+      LEDGER8_COMPOSE_FAILED: 'MIDNIGHT_JS_P_LEDGER8_COMPOSE_FAILED'
     });
   });
 
@@ -134,6 +136,51 @@ describe('MerkleNotRehashedError', () => {
     expect(error.name).toBe('MerkleNotRehashedError');
     expect(error.code).toBe(PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED);
     expect(error.message).toMatch(/rehash/i);
+    expect(error.message).not.toMatch(/[0-9a-f]{16,}/i);
+  });
+});
+
+describe('Ledger8ComposeFailedError', () => {
+  it('carries the LEDGER8_COMPOSE_FAILED code, the wrap-call stage, and names the circuit id', () => {
+    const error = new Ledger8ComposeFailedError('wrap-call', 'increment');
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error.name).toBe('Ledger8ComposeFailedError');
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_COMPOSE_FAILED);
+    expect(error.stage).toBe('wrap-call');
+    expect(error.message).toContain('increment');
+    expect(error.message).toMatch(/no registered operation/i);
+  });
+
+  it('never includes a hex or byte dump in its own message', () => {
+    const error = new Ledger8ComposeFailedError('wrap-call', 'increment');
+
+    expect(error.message).not.toMatch(/[0-9a-f]{16,}/i);
+  });
+
+  it('carries the deploy-verifier-key stage and names the circuit id with a VerifierKeyNotSet-flavoured message', () => {
+    const error = new Ledger8ComposeFailedError('deploy-verifier-key', 'increment');
+
+    expect(error.stage).toBe('deploy-verifier-key');
+    expect(error.circuitId).toBe('increment');
+    expect(error.message).toContain('increment');
+    expect(error.message).toMatch(/verifier key/i);
+    expect(error.message).toMatch(/VerifierKeyNotSet/);
+  });
+
+  it('carries the call-operation stage and names composeV8CallTx as the failing compose context', () => {
+    const error = new Ledger8ComposeFailedError('call-operation', 'increment');
+
+    expect(error.stage).toBe('call-operation');
+    expect(error.circuitId).toBe('increment');
+    expect(error.message).toContain('increment');
+    expect(error.message).toMatch(/no registered operation/i);
+    expect(error.message).toContain('composeV8CallTx');
+  });
+
+  it('never includes a hex or byte dump in a call-operation message', () => {
+    const error = new Ledger8ComposeFailedError('call-operation', 'increment');
+
     expect(error.message).not.toMatch(/[0-9a-f]{16,}/i);
   });
 });

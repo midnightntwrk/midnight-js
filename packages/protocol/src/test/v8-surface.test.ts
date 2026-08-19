@@ -364,3 +364,16 @@ describe('sole runtime reference to protocol/v8', () => {
     expect(filesReferencingV8Subpath).toEqual(['load-v8.ts']);
   });
 });
+
+const ENGINE_SUBPATH_SPECIFIER = `${PROTOCOL_ACL_PREFIX}/engine`;
+const ENGINE_SUBPATH_LITERAL = new RegExp(`['"\`]${escapeRegExp(ENGINE_SUBPATH_SPECIFIER)}['"\`]`);
+
+describe('sole runtime reference to protocol/engine', () => {
+  it('is referenced only from engine/load-engine.ts within src/', () => {
+    const filesReferencingEngineSubpath = collectTsFiles(SRC_ROOT)
+      .filter((file) => ENGINE_SUBPATH_LITERAL.test(readFileSync(file, 'utf8')))
+      .map((file) => file.slice(SRC_ROOT.length + 1));
+
+    expect(filesReferencingEngineSubpath).toEqual(['engine/load-engine.ts']);
+  });
+});

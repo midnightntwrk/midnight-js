@@ -46,7 +46,11 @@ export default defineConfig({
         'src/version.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/engine/envelope.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/engine/down-convert.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
-        'src/engine/instance-guard.ts': { lines: 100, functions: 100, branches: 100, statements: 100 }
+        'src/engine/instance-guard.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/engine/execute.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/engine/wrap-v9.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/engine/index.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/engine/load-engine.ts': { lines: 100, functions: 100, branches: 100, statements: 100 }
       }
     },
     reporters: [
