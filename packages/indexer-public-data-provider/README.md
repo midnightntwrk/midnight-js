@@ -65,7 +65,46 @@ queryUnshieldedBalances(
   contractAddress: ContractAddress,
   config?: BlockHeightConfig | BlockHashConfig
 ): Promise<UnshieldedBalances | null>
+
+// Query contract state as raw bytes, not deserialized
+queryRawContractState(
+  contractAddress: ContractAddress,
+  config?: BlockHeightConfig | BlockHashConfig
+): Promise<RawContractState | null>
+
+// Query the protocol version of the network's current head block
+queryLatestProtocolVersion(
+  options?: { readonly fresh?: boolean }
+): Promise<number>
 ```
+
+### Reading State Across the Ledger Fork
+
+`queryRawContractState` returns the serialized bytes exactly as the network
+sent them, still in their envelope, alongside the era the record is dated to.
+Use it when the deserializer you need depends on that era:
+
+```typescript
+const state = await provider.queryRawContractState(contractAddress);
+
+if (state !== null) {
+  switch (state.version) {
+    case 'v9':
+      // hand state.raw to the v9 deserializer
+      break;
+    case 'v8':
+      // hand state.raw to the v8 deserializer
+      break;
+  }
+}
+```
+
+`state.version` is derived from `state.protocolVersion`; this provider does not
+check it against the envelope inside `state.raw`.
+
+`queryLatestProtocolVersion` reports the head block's protocol version. The
+answer may be served from a cache once the provider has corroborating evidence
+that the network has moved on; pass `{ fresh: true }` to force a real request.
 
 ### Watch Methods
 
@@ -197,10 +236,13 @@ for await (const event of getAllContractEvents(provider, { contractAddress })) {
 
 ## Transaction Data
 
-The `FinalizedTxData` type returned by watch methods includes:
+`FinalizedTxData` is the `'v9'` arm of the `VersionedFinalizedTxData` union.
+This provider always emits that arm; per-record era dispatch arrives later.
+The type returned by the watch methods includes:
 
 ```typescript
 type FinalizedTxData = {
+  version: 'v9';                      // Ledger era arm; this provider only emits v9
   tx: Transaction;                    // Deserialized ledger transaction
   txId: TransactionId;                // Transaction identifier
   txHash: string;                     // Transaction hash
