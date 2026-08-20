@@ -540,6 +540,8 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
           }
           const transaction: RegularTransaction & { hash: string; identifiers: string[] } = first;
           return {
+            // Transitional: always the v9 arm, whatever protocolVersion says.
+            // Dispatching per record needs dual decode, which lands later.
             version: 'v9',
             tx: parseHexTransaction(transaction.raw),
             status: toTxStatus(transaction.transactionResult),
