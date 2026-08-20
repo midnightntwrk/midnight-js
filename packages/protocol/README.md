@@ -33,6 +33,7 @@ import { createPlatform } from '@midnight-ntwrk/midnight-js-protocol/platform-js
 | Sub-path | Re-exports | Description |
 | -------- | ---------- | ----------- |
 | `./errors` | (own) | `PROTOCOL_ERROR_CODES`, `UnknownProtocolVersionError` and the types `ProtocolErrorCode`, `ProtocolVersionUnknownReason`, `VersionResolutionPath` — without pulling in the ledger/compact-js/onchain-runtime/platform namespaces |
+| `./version` | (own) | `LEDGER_VERSIONS`, `protocolVersionToLedger`, `versionOfRecord`, `networkHeadVersion` and the type `LedgerVersion` — same lightweight guarantee as `./errors` |
 | `./ledger` | `@midnightntwrk/ledger-v9` | Ledger types and transaction primitives |
 | `./compact-runtime` | `@midnight-ntwrk/compact-runtime` | Compact contract runtime utilities |
 | `./compact-js` | `@midnight-ntwrk/compact-js` | Compact JS bindings |
@@ -45,7 +46,7 @@ import { createPlatform } from '@midnight-ntwrk/midnight-js-protocol/platform-js
 
 ## Version Module
 
-The root barrel exports a small module for mapping a raw `protocolVersion` integer onto the ledger runtime it corresponds to. (The error type it throws is additionally reachable from the lighter `./errors` subpath; the mapping functions themselves are not.)
+Mapping a raw `protocolVersion` integer onto the ledger runtime it corresponds to. Reachable from the root barrel and, without loading the ledger/compact-js/onchain-runtime/platform namespaces, from the `./version` subpath. The error it throws is reachable from `./errors` on the same terms.
 
 The `protocolVersion` integer encodes the **node** version as `major * 1_000_000 + minor * 1_000 + patch`, so a whole node major occupies a 1_000_000-wide range:
 
@@ -61,9 +62,9 @@ import {
   LEDGER_VERSIONS,          // readonly ['v8', 'v9']
   protocolVersionToLedger,  // (protocolVersion: number, path?: 'read' | 'construct') => 'v8' | 'v9'
   versionOfRecord,          // (record: { protocolVersion: number }) => 'v8' | 'v9'
-  networkHeadVersion,       // (source: { queryLatestProtocolVersion(): Promise<number> }) => Promise<'v8' | 'v9'>
-  UnknownProtocolVersionError
-} from '@midnight-ntwrk/midnight-js-protocol';
+  networkHeadVersion        // (source: { queryLatestProtocolVersion(): Promise<number> }) => Promise<'v8' | 'v9'>
+} from '@midnight-ntwrk/midnight-js-protocol/version';
+import { UnknownProtocolVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 ```
 
 Prefer `versionOfRecord` for a `protocolVersion` already read off an indexer/node record, and `networkHeadVersion` for the network's current head version — both tag any error with the correct path automatically. `UnknownProtocolVersionError` carries a `reason` of `'malformed'` (the input was not a non-negative integer) or `'unknown'` (a well-formed integer outside every mapped range), so callers can distinguish "bad input" from "genuinely unsupported protocol version".

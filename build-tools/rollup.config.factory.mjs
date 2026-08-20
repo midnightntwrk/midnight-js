@@ -36,6 +36,9 @@ function entryNameOf(subpath, target) {
  * the single source of truth. Every subpath maps to `src/<name>.ts`, where
  * `<name>` is the file name it exposes under `dist` -- subpath keys are free to
  * differ from it, as `./platform-js/effect/Configuration` does.
+ *
+ * Returns rollup's named-entry form, `{ <name>: <source file> }`, so all
+ * entries go through one pass.
  */
 function entriesFrom(packageJson) {
   const exportsMap = packageJson.exports;
@@ -45,7 +48,7 @@ function entriesFrom(packageJson) {
   const names = Object.entries(exportsMap)
     .filter(([subpath]) => !NON_ENTRY_SUBPATHS.includes(subpath))
     .map(([subpath, target]) => entryNameOf(subpath, target));
-  return [...new Set(names)].map((name) => ({ input: `src/${name}.ts`, name }));
+  return Object.fromEntries([...new Set(names)].map((name) => [name, `src/${name}.ts`]));
 }
 
 /**
@@ -54,6 +57,20 @@ function entriesFrom(packageJson) {
  * no `.cjs`, no `.d.cts`, no `.d.mts`. CommonJS consumers load the package
  * through Node's `require(esm)` support, hence `engines.node >= 22.12`.
  *
+ * The JavaScript for every entry is emitted by a SINGLE rollup pass, so a
+ * module reached by more than one entry is emitted once and imported by
+ * relative path. Bundling each entry on its own would inline such a module
+ * into every bundle instead: for a class that is not a duplicate but a
+ * different class, so `instanceof` silently answers `false` across two
+ * subpaths of the same package -- exactly where a caller tells failure modes
+ * apart. A module shared by several entries without being an entry itself
+ * lands in `dist/shared/`.
+ *
+ * Declarations stay one pass per entry. Types are structural, so a declaration
+ * repeated in two entries costs nothing at the type level, while bundling them
+ * together makes `rollup-plugin-dts` add the other entries' external imports as
+ * side-effect imports to an unrelated entry's `.d.ts`.
+ *
  * @param packageJson The package's own manifest; its `exports` map defines the
  *   entries to build.
  * @param options.define Compile-time constants substituted in the sources,
@@ -61,10 +78,19 @@ function entriesFrom(packageJson) {
  *   literals need their own quotes.
  */
 export function createRollupConfig(packageJson, { define } = {}) {
-  return entriesFrom(packageJson).flatMap(({ input, name }) => [
+  const entries = entriesFrom(packageJson);
+  return [
     {
-      input,
-      output: [{ file: `dist/${name}.js`, format: 'esm', sourcemap: true }],
+      input: entries,
+      output: [
+        {
+          dir: 'dist',
+          format: 'esm',
+          sourcemap: true,
+          entryFileNames: '[name].js',
+          chunkFileNames: 'shared/[name]-[hash].js'
+        }
+      ],
       plugins: [
         ...(define ? [replace({ values: define, preventAssignment: true })] : []),
         // Declarations come from `rollup-plugin-dts` below. Letting `tsc` emit
@@ -79,11 +105,11 @@ export function createRollupConfig(packageJson, { define } = {}) {
       ],
       external: isExternal
     },
-    {
+    ...Object.entries(entries).map(([name, input]) => ({
       input,
       output: [{ file: `dist/${name}.d.ts`, format: 'esm' }],
       plugins: [dts()],
       external: isExternal
-    }
-  ]);
+    }))
+  ];
 }

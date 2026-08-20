@@ -38,7 +38,6 @@ const TS_RULE_ID = '@typescript-eslint/no-restricted-imports';
 const SYNTAX_RULE_ID = 'no-restricted-syntax';
 const EXPLICIT_ANY_RULE_ID = '@typescript-eslint/no-explicit-any';
 const V8_SUBPATH = `${ACL_REPLACEMENT_PREFIX}/v8`;
-const DIST_IMPORT_MESSAGE = 'Direct imports from dist folders';
 const ERROR_SEVERITY = 2;
 
 // The ESLint constructor only stores options — config resolution happens
@@ -57,9 +56,6 @@ const lintMessagesFor = async (code: string, filePath: string, ruleId: string): 
   const [result] = await eslint.lintText(code, { filePath });
   return result.messages.filter((m) => m.ruleId === ruleId);
 };
-
-const lintRestricted = async (code: string, filePath: string): Promise<Linter.LintMessage[]> =>
-  lintMessagesFor(code, filePath, RULE_ID);
 
 // The first `lintText` call pays a one-time cost: loading the root ESLint
 // config, instantiating plugins, and warming `eslint-import-resolver-typescript`

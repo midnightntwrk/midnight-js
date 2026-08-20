@@ -10,12 +10,12 @@
       "default": "./dist/index.js"
     },
     "./errors": {
-      "types": {
-        "import": "./dist/errors.d.mts",
-        "require": "./dist/errors.d.cts"
-      },
-      "import": "./dist/errors.mjs",
-      "require": "./dist/errors.cjs"
+      "types": "./dist/errors.d.ts",
+      "default": "./dist/errors.js"
+    },
+    "./version": {
+      "types": "./dist/version.d.ts",
+      "default": "./dist/version.js"
     },
     "./ledger": {
       "types": "./dist/ledger.d.ts",
