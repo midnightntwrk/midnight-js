@@ -29,11 +29,12 @@ inlined into each bundle.
 
 We will expose the v8 era through a dedicated `./v8` subpath export of the
 protocol package (`export * from '@midnightntwrk/ledger-v8'`) and a single
-lazy accessor in the barrel:
+lazy accessor, `loadLedger8`, which lives in `src/lib/load-v8.ts` and is
+re-exported by the barrel:
 
 ```typescript
 export const loadLedger8 = (): Promise<ProtocolV8> =>
-  (v8ModulePromise ??= import('./v8.js').catch((error: unknown) => {
+  (v8ModulePromise ??= import('../v8.js').catch((error: unknown) => {
     v8ModulePromise = undefined;
     throw new Ledger8RuntimeMissingError(error);
   }));
@@ -41,12 +42,17 @@ export const loadLedger8 = (): Promise<ProtocolV8> =>
 
 Specifically:
 
-- **Relative dynamic import of the sibling entry.** `./v8` is an `exports`
+- **Relative dynamic import of the v8 entry.** `./v8` is an `exports`
   subpath, so the build emits `dist/v8.js` as its own entry chunk and leaves
   the dynamic import in `dist/index.js` verbatim. The v8 module is therefore
   never part of the eagerly-loaded index bundle, and the specifier resolves
   within the installed copy of the package — no name resolution, no exports
-  map, no second copy.
+  map, no second copy. The accessor itself is not a published subpath, so it
+  sits in `src/lib/` rather than at the top of `src/`, which the export-surface
+  gate reserves for entries; hence `../v8.js` and not `./v8.js`. `lib/` marks a
+  module that is not a build entry, which is a different thing from
+  `contracts/src/internal` — that name marks implementation hidden from
+  consumers, and `loadLedger8` is public API.
 - **Memoisation with retry.** The module promise is memoised so concurrent and
   repeated callers share one load. A failed load is *not* memoised: the
   rejection is wrapped in `Ledger8RuntimeMissingError` (code
@@ -64,8 +70,9 @@ Specifically:
      exemption is expressed with `ignores` — never as
      `'no-restricted-syntax': 'off'`, which would silently drop the unsafe-cast
      gate sharing that rule.
-  2. A source-scan test (`v8-surface.test.ts`) asserts `load-v8.ts` is the only
-     module in the protocol package that references the subpath.
+  2. A source-scan test (`v8-surface.test.ts`) asserts `lib/load-v8.ts` is the
+     only module in the protocol package that imports the v8 module at
+     runtime, reading past comments and type-only imports.
   3. A dist gate (`dist-laziness.test.ts`) inspects the built bundles: no
      static linkage of `ledger-v8` or of the v8 entry may appear in the index
      bundle, the lazy dynamic import must survive the build, and the artifacts
@@ -89,8 +96,8 @@ Specifically:
 - **Negative:** v8 access is async (`await loadLedger8()`), which shapes every
   downstream API that touches the previous era; correctness is coupled to the
   build emitting `./v8` as its own chunk, so a bundler swap has to keep the
-  dist gate green; tests that exercise `loadLedger8()` require a built `dist/`
-  and are skipped without one.
+  dist gate green; that gate reads the built output, so it needs a prior
+  `yarn build` and is skipped without one.
 - **Follow-ups:** downstream read-path code (era detection, deserialisation of
   v8 records) builds on `loadLedger8()`; when the next fork retires v8, the
   subpath and accessor are removed in a major release.
