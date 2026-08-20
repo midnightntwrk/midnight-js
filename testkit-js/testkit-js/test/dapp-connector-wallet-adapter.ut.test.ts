@@ -106,11 +106,18 @@ const mockEnvironmentConfiguration: EnvironmentConfiguration = {
   faucet: 'http://localhost:8080/faucet',
 };
 
+// `WalletFacade` and `UnshieldedKeystore` are wallet-sdk classes with private
+// members, so no object literal can satisfy them structurally and a direct
+// assertion is rejected. The adapter only reads the members stubbed above, so
+// funnel the stand-ins through one helper that names the unsoundness instead of
+// repeating a cast per member.
+const stubbing = <T>(members: object): T => members as T;
+
 const mockWalletProvider = {
-  wallet: mockWalletFacade as MidnightWalletProvider['wallet'],
-  unshieldedKeystore: mockUnshieldedKeystore as MidnightWalletProvider['unshieldedKeystore'],
-  zswapSecretKeys: {} as MidnightWalletProvider['zswapSecretKeys'],
-  dustSecretKey: { publicKey: 12345n } as MidnightWalletProvider['dustSecretKey'],
+  wallet: stubbing<MidnightWalletProvider['wallet']>(mockWalletFacade),
+  unshieldedKeystore: stubbing<MidnightWalletProvider['unshieldedKeystore']>(mockUnshieldedKeystore),
+  zswapSecretKeys: stubbing<MidnightWalletProvider['zswapSecretKeys']>({}),
+  dustSecretKey: stubbing<MidnightWalletProvider['dustSecretKey']>({ publicKey: 12345n }),
 };
 
 describe('[Unit tests] DAppConnectorWalletAdapter', () => {

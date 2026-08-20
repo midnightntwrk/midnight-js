@@ -23,7 +23,7 @@
     "e2e": "turbo run e2e",
     "e2e-single": "turbo run e2e-single",
     "check": "turbo run check && yarn lint && yarn constraints",
-    "typecheck:tests": "bash -c 'for pkg in packages/*/; do tsc --noEmit -p \"${pkg}tsconfig.json\" || exit 1; done'",
+    "typecheck:tests": "bash -c 'for cfg in packages/*/tsconfig.json testkit-js/*/tsconfig.json; do tsc --noEmit --composite false -p \"$cfg\" || exit 1; done'",
     "check:core": "turbo run check --filter='!@midnight-ntwrk/testkit-*' && yarn lint",
     "deploy": "turbo run deploy",
     "deploy:core": "turbo run deploy --filter='!@midnight-ntwrk/testkit-*'",
