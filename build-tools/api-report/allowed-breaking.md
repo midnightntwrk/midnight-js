@@ -52,4 +52,6 @@ gate as evidence that the whole public surface is unchanged.
 
 ## Entries
 
+**Note on bare-line entries:** when a changed block contains only a single property line (e.g., `readonly version: 'v9';`) plus a closing brace, there is no exported symbol name to write an entry against. In those cases, the entry must be the distinguishing substring itself. While such an entry is listed, any future changed block in the types report containing that same line anywhere will be waved through without separate documentation — so such entries should be removed as soon as the block they cover leaves the report.
+
 <!-- Empty: no breaking changes have been made against the current baselines yet. -->

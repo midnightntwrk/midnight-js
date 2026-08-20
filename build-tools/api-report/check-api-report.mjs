@@ -18,8 +18,9 @@
    established single-line precedent). This file is entirely Node globals, so a
    file-level disable is used instead of one inline comment per usage. */
 
-// CI gate for the `.d.ts` API surface of `@midnight-ntwrk/midnight-js-types`
-// and the `@midnight-ntwrk/midnight-js` barrel.
+// CI gate for the `.d.ts` API surface of `@midnight-ntwrk/midnight-js-types`.
+// For scope and what the barrel report covers (and does not cover), see the
+// "Scope and limitations" section in allowed-breaking.md.
 //
 // 1. Regenerates each package's API report (see `api-extractor.json` in each
 //    package) directly into the checked-in baseline files under
