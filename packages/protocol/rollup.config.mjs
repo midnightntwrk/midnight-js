@@ -13,78 +13,22 @@
  * limitations under the License.
  */
 
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { createMultiEntryRollupConfig } from '../../build-tools/rollup.config.multi-entry.mjs';
 
-import typescript from '@rollup/plugin-typescript';
-import dts from 'rollup-plugin-dts';
-
-const external = [/node_modules/, /^@midnight-ntwrk\//, /^@midnightntwrk\//];
-
-const PACKAGE_DIR = path.dirname(fileURLToPath(import.meta.url));
-const ERROR_MODULE = path.join(PACKAGE_DIR, 'src', 'errors');
-const ERROR_SUBPATH = '@midnight-ntwrk/midnight-js-protocol/errors';
-
-// Every entry below is bundled independently, so a relatively-imported
-// src/errors.ts would be INLINED into each one — index, engine and any future
-// entry would each declare their own `class …Error`. Error classes are part of
-// this package's public contract (`error instanceof Ledger8RuntimeMissingError`
-// in src/engine/load-engine.ts, and the same check in consumer catch blocks),
-// and a class is only ever equal to itself: an error thrown inside one bundle
-// would answer `false` against another bundle's class, silently.
-//
-// This plugin resolves src/errors.ts to the package's own ./errors subpath for
-// every entry except that subpath itself, keeping it external. All bundles
-// then import the one shared error module at runtime, and the package root
-// re-exports those very classes rather than copies of them. `errors.ts` has no
-// internal imports of its own, so nothing here can become circular.
-const shareErrorModule = (entryName) => ({
-  name: 'share-error-module',
-  resolveId(source, importer) {
-    if (entryName === 'errors' || importer === undefined || !source.startsWith('.')) {
-      return null;
-    }
-    const resolved = path.resolve(path.dirname(importer), source).replace(/\.(?:m?[jt]s)$/, '');
-    return resolved === ERROR_MODULE ? { id: ERROR_SUBPATH, external: true } : null;
-  }
-});
-
-const entries = [
-  { input: 'src/index.ts', name: 'index' },
-  { input: 'src/errors.ts', name: 'errors' },
-  { input: 'src/ledger.ts', name: 'ledger' },
-  { input: 'src/v8.ts', name: 'v8' },
-  { input: 'src/compact-runtime.ts', name: 'compact-runtime' },
-  { input: 'src/compact-js.ts', name: 'compact-js' },
-  { input: 'src/compact-js-effect.ts', name: 'compact-js-effect' },
-  { input: 'src/compact-js-effect-contract.ts', name: 'compact-js-effect-contract' },
-  { input: 'src/onchain-runtime.ts', name: 'onchain-runtime' },
-  { input: 'src/platform.ts', name: 'platform' },
-  { input: 'src/platform-effect-configuration.ts', name: 'platform-effect-configuration' },
-  { input: 'src/platform-effect-contract-address.ts', name: 'platform-effect-contract-address' },
-];
-
-export default entries.flatMap(({ input, name }) => [
+export default createMultiEntryRollupConfig(
   {
-    input,
-    output: [
-      { file: `dist/${name}.mjs`, format: 'esm', sourcemap: true },
-      { file: `dist/${name}.cjs`, format: 'cjs', sourcemap: true },
-    ],
-    plugins: [
-      shareErrorModule(name),
-      typescript({ tsconfig: './tsconfig.build.json', composite: false }),
-    ],
-    external,
+    index: 'src/index.ts',
+    errors: 'src/errors.ts',
+    ledger: 'src/ledger.ts',
+    v8: 'src/v8.ts',
+    'compact-runtime': 'src/compact-runtime.ts',
+    'compact-js': 'src/compact-js.ts',
+    'compact-js-effect': 'src/compact-js-effect.ts',
+    'compact-js-effect-contract': 'src/compact-js-effect-contract.ts',
+    'onchain-runtime': 'src/onchain-runtime.ts',
+    platform: 'src/platform.ts',
+    'platform-effect-configuration': 'src/platform-effect-configuration.ts',
+    'platform-effect-contract-address': 'src/platform-effect-contract-address.ts'
   },
-  {
-    input,
-    output: [
-      { file: `dist/${name}.d.mts`, format: 'esm' },
-      { file: `dist/${name}.d.cts`, format: 'cjs' },
-      { file: `dist/${name}.d.ts`, format: 'esm' },
-    ],
-    plugins: [shareErrorModule(name), dts()],
-    external,
-  },
-]);
+  [/node_modules/, /^@midnight-ntwrk\//, /^@midnightntwrk\//]
+);

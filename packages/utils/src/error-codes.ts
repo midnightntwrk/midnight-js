@@ -42,17 +42,13 @@ export const PROVIDER_ERROR_CODES = Object.freeze({
 } as const);
 export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[keyof typeof PROVIDER_ERROR_CODES];
 
-export const UTILS_ERROR_CODES = Object.freeze({ TAG_PARSE_FAILED: 'MIDNIGHT_JS_U_TAG_PARSE_FAILED' } as const);
-export type UtilsErrorCode = (typeof UTILS_ERROR_CODES)[keyof typeof UTILS_ERROR_CODES];
-
 /** Union of every error code any midnight-js layer can produce. */
-export type MidnightJsErrorCode = ProtocolErrorCode | ContractsErrorCode | ProviderErrorCode | UtilsErrorCode;
+export type MidnightJsErrorCode = ProtocolErrorCode | ContractsErrorCode | ProviderErrorCode;
 
 export const MIDNIGHT_JS_ERROR_CODES: readonly MidnightJsErrorCode[] = Object.freeze([
   ...Object.values(PROTOCOL_ERROR_CODES),
   ...Object.values(CONTRACTS_ERROR_CODES),
-  ...Object.values(PROVIDER_ERROR_CODES),
-  ...Object.values(UTILS_ERROR_CODES)
+  ...Object.values(PROVIDER_ERROR_CODES)
 ]);
 
 const MIDNIGHT_JS_ERROR_CODE_SET: ReadonlySet<string> = new Set(MIDNIGHT_JS_ERROR_CODES);

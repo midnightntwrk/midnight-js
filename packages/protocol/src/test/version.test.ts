@@ -20,20 +20,25 @@ import { LEDGER_VERSIONS, networkHeadVersion, protocolVersionToLedger, versionOf
 
 describe('protocolVersionToLedger', () => {
   it.each([
-    [22_000, 'v8'],
-    [22_500, 'v8'], // node 0.22 (major-0 exemption)
     [1_000_000, 'v8'],
-    [1_999_000, 'v8'], // node 1.x
+    [1_999_000, 'v8'],
+    [1_999_999, 'v8'], // last of node 1.x
     [2_000_000, 'v9'],
     [2_001_000, 'v9'],
-    [2_999_000, 'v9'] // node 2.x — unseen-minor regression guard
+    [2_999_999, 'v9'] // last of node 2.x — unseen-minor regression guard
   ])('maps %i to %s', (int, expected) => {
     expect(protocolVersionToLedger(int)).toBe(expected);
   });
 
-  it.each([[23_000], [0], [21_000], [3_000_000], [4_000_000]])('fails fast on unknown %i', (int) => {
-    expect(() => protocolVersionToLedger(int)).toThrow(UnknownProtocolVersionError);
-  });
+  // Node majors below 1 are not mapped at all: midnight-js ships against
+  // node 1.x and 2.x only, so a 0.x protocolVersion is an unknown version
+  // rather than a supported era.
+  it.each([[22_000], [22_500], [22_999], [0], [999_999], [3_000_000], [4_000_000]])(
+    'fails fast on unknown %i',
+    (int) => {
+      expect(() => protocolVersionToLedger(int)).toThrow(UnknownProtocolVersionError);
+    }
+  );
 
   it('defaults to the construct path and code when called without an explicit path', () => {
     expect(() => protocolVersionToLedger(3_000_000)).toThrowError(

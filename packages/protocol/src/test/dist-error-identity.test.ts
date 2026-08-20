@@ -18,21 +18,57 @@ import { resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-// This suite only makes sense against a real build: it loads the package
-// through its own exports map (never through src/) to check an invariant only
-// the built artifact can violate — that every entry point shares ONE physical
-// copy of the error classes. Each rollup entry is bundled independently, so a
-// relatively-imported errors module gets inlined into every one of them, and
-// an error thrown inside one bundle then fails `instanceof` against another
-// bundle's class. The facade in src/engine/load-engine.ts discriminates its
-// rejection that way, and so does every consumer catching by class; a src-only
-// test cannot see the breakage because vitest resolves src/errors.ts once.
+// Only the built artifact can violate this invariant: every entry point must
+// share ONE physical copy of the error classes. Bundling each entry in its own
+// rollup pass would inline the error module into each of them, and an error
+// thrown inside one bundle would then fail `instanceof` against another
+// bundle's class — silently, exactly where a caller tells failure modes apart.
+// A src-only test cannot see it, because vitest resolves src/errors.ts once.
+//
+// Everything here is asserted against dist/ rather than against the build
+// config: the artifact is what consumers load, and it stays meaningful however
+// the build is reorganised.
 const PKG_ROOT = resolve(__dirname, '..', '..');
-const DIST_ENTRY_PATHS = ['dist/index.mjs', 'dist/index.cjs'];
-const ERRORS_SUBPATH_SPECIFIER = '@midnight-ntwrk/midnight-js-protocol/errors';
-const distEntriesExist = DIST_ENTRY_PATHS.every((p) => existsSync(resolve(PKG_ROOT, p)));
+const ERRORS_SUBPATH = './errors';
+const SELF_SPECIFIER = '@midnight-ntwrk/midnight-js-protocol';
+const ERROR_CLASS_DECLARATION = /class\s+\w+\s+extends\s+Error\b/;
 
-const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+// The exports map is the source of truth: it is the contract consumers resolve
+// against, so a subpath added later is covered without editing this file.
+// Read rather than imported, because a JSON import attribute would not
+// type-check under this package's `module` setting.
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const isConditionalExport = (value: unknown): value is { import: string; require: string } =>
+  isRecord(value) && typeof value.import === 'string' && typeof value.require === 'string';
+
+const readExportedBundles = (): Map<string, readonly string[]> => {
+  const manifest: unknown = JSON.parse(readFileSync(resolve(PKG_ROOT, 'package.json'), 'utf8'));
+  const exportsField = isRecord(manifest) ? manifest.exports : undefined;
+  if (!isRecord(exportsField)) {
+    throw new Error('protocol package.json has no exports map');
+  }
+  const conditional = Object.entries(exportsField).filter(
+    (entry): entry is [string, { import: string; require: string }] => isConditionalExport(entry[1])
+  );
+  return new Map(
+    conditional.map(([subpath, { import: esm, require: cjs }]) => [
+      subpath,
+      [esm, cjs].map((p) => p.replace(/^\.\//, ''))
+    ])
+  );
+};
+
+const bundlesBySubpath = readExportedBundles();
+const allBundles = [...bundlesBySubpath.values()].flat();
+const errorBundles = bundlesBySubpath.get(ERRORS_SUBPATH) ?? [];
+const nonErrorBundles = [...bundlesBySubpath.entries()]
+  .filter(([subpath]) => subpath !== ERRORS_SUBPATH)
+  .flatMap(([, bundles]) => bundles);
+
+const bundlesExist = allBundles.every((p) => existsSync(resolve(PKG_ROOT, p)));
+const contentOf = (path: string): string => readFileSync(resolve(PKG_ROOT, path), 'utf8');
 
 const isErrorClass = (value: unknown): boolean =>
   typeof value === 'function' && Object.prototype.isPrototypeOf.call(Error, value);
@@ -41,11 +77,15 @@ const isErrorClass = (value: unknown): boolean =>
 const errorClassesOf = (namespace: object): Map<string, unknown> =>
   new Map(Object.entries(namespace).filter(([, value]) => isErrorClass(value)));
 
-// Skipped (not omitted) when dist/ is absent, so a run without a prior build
-// reports these as visible skips rather than silently vanishing — same
-// precedent as dist-laziness.test.ts. Reads and imports happen inside each
-// `it` body for the same reason as that suite.
-describe.skipIf(!distEntriesExist)('dist error-class identity gate', () => {
+// Skipped (not omitted) when dist/ is absent outside CI, so a run without a
+// prior build reports visible skips rather than silently vanishing. In CI a
+// missing build is itself a failure, so the gate must not be skippable there.
+describe.skipIf(!bundlesExist && !process.env.CI)('dist error-class identity gate', () => {
+  it('ships a bundle for every exported subpath', () => {
+    expect(bundlesBySubpath.has(ERRORS_SUBPATH)).toBe(true);
+    expect(allBundles.filter((p) => !existsSync(resolve(PKG_ROOT, p)))).toEqual([]);
+  });
+
   it('exports the very same error classes from the package root and the ./errors subpath', async () => {
     const root: object = await import('@midnight-ntwrk/midnight-js-protocol');
     const errors: object = await import('@midnight-ntwrk/midnight-js-protocol/errors');
@@ -60,19 +100,26 @@ describe.skipIf(!distEntriesExist)('dist error-class identity gate', () => {
     }
   });
 
-  it.each(DIST_ENTRY_PATHS)('%s imports the shared error module instead of inlining its own classes', (path) => {
-    const content = readFileSync(resolve(PKG_ROOT, path), 'utf8');
-
-    expect(content).not.toMatch(/class\s+\w+\s+extends\s+Error\b/);
-    expect(content).toMatch(new RegExp(`['"]${escapeRegExp(ERRORS_SUBPATH_SPECIFIER)}['"]`));
+  it.each(nonErrorBundles)('%s declares no error class of its own', (path) => {
+    expect(contentOf(path)).not.toMatch(ERROR_CLASS_DECLARATION);
   });
 
-  it('recognises an error thrown by a foreign copy of the module, by code', async () => {
-    const errors = await import('@midnight-ntwrk/midnight-js-protocol/errors');
-    const fromForeignCopy = Object.assign(new Error('thrown by an independently bundled copy'), {
-      code: errors.PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ
-    });
+  it.each(errorBundles)('%s is the one bundle that declares the error classes', (path) => {
+    expect(contentOf(path)).toMatch(ERROR_CLASS_DECLARATION);
+  });
 
-    expect(fromForeignCopy).toBeInstanceOf(errors.UnknownProtocolVersionError);
+  // A single-pass build links entries to the shared module by relative path.
+  // Anything else means the entries were bundled independently again — either
+  // inlining their own copy, or reaching the classes through this package's
+  // own exports map, which would make correctness depend on the consumer's
+  // resolver supporting self-referencing.
+  it.each(errorBundles)('%s is reached by relative path, never through the package name', (errorBundle) => {
+    const relativeSpecifier = `./${errorBundle.replace(/^dist\//, '')}`;
+    const importers = nonErrorBundles.filter((path) => contentOf(path).includes(relativeSpecifier));
+
+    expect(importers.length).toBeGreaterThan(0);
+    for (const path of allBundles) {
+      expect(contentOf(path)).not.toContain(`${SELF_SPECIFIER}/errors`);
+    }
   });
 });

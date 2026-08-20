@@ -13,39 +13,15 @@
  * limitations under the License.
  */
 
-import typescript from '@rollup/plugin-typescript';
-import dts from 'rollup-plugin-dts';
+import { createMultiEntryRollupConfig } from '../../build-tools/rollup.config.multi-entry.mjs';
 
-const external = [/node_modules/, /^@midnight-ntwrk\/midnight-js-(.*)$/];
-
-const entries = [
-  { input: 'src/index.ts', name: 'index' },
-  { input: 'src/contracts.ts', name: 'contracts' },
-  { input: 'src/network-id.ts', name: 'network-id' },
-  { input: 'src/types.ts', name: 'types' },
-  { input: 'src/utils.ts', name: 'utils' },
-];
-
-export default entries.flatMap(({ input, name }) => [
+export default createMultiEntryRollupConfig(
   {
-    input,
-    output: [
-      { file: `dist/${name}.mjs`, format: 'esm', sourcemap: true },
-      { file: `dist/${name}.cjs`, format: 'cjs', sourcemap: true },
-    ],
-    plugins: [
-      typescript({ tsconfig: './tsconfig.build.json', composite: false }),
-    ],
-    external,
+    index: 'src/index.ts',
+    contracts: 'src/contracts.ts',
+    'network-id': 'src/network-id.ts',
+    types: 'src/types.ts',
+    utils: 'src/utils.ts'
   },
-  {
-    input,
-    output: [
-      { file: `dist/${name}.d.mts`, format: 'esm' },
-      { file: `dist/${name}.d.cts`, format: 'cjs' },
-      { file: `dist/${name}.d.ts`, format: 'esm' },
-    ],
-    plugins: [dts()],
-    external,
-  },
-]);
+  [/node_modules/, /^@midnight-ntwrk\/midnight-js-(.*)$/]
+);
