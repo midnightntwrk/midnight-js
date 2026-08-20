@@ -229,11 +229,16 @@ export type BlockHash = string;
  * Data for any finalized transaction.
  *
  * This is the v9 arm of {@link VersionedFinalizedTxData} — see
- * {@link FinalizedTxDataV8} for the v8 arm. A provider only ever produces
- * this shape for a record whose `protocolVersion` resolves to the v9 ledger
- * runtime: `version` always equals the resolved ledger version for
- * `protocolVersion` (the same resolution the `read`-path resolver in
- * `@midnight-ntwrk/midnight-js-protocol` performs).
+ * {@link FinalizedTxDataV8} for the v8 arm. The intent is that `version`
+ * equals the ledger version `protocolVersion` resolves to (the same
+ * resolution the `read`-path resolver in
+ * `@midnight-ntwrk/midnight-js-protocol` performs), so a provider would only
+ * produce this shape for a record that resolves to the v9 ledger runtime.
+ *
+ * That is not yet what ships: the providers in this repo emit only the v9 arm,
+ * whatever `protocolVersion` says. Per-record version dispatch arrives with
+ * dual decode. Until then, treat `version` as "the arm you were handed", not
+ * as a verified statement about `protocolVersion`.
  */
 export interface FinalizedTxData {
   /**

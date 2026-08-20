@@ -55,11 +55,15 @@ export type VersionedTx<T> = V8TxBytes | { readonly version: 'v9'; readonly tx: 
 /**
  * The v8 arm of {@link VersionedFinalizedTxData}. Carries exactly the same
  * finalized-transaction metadata as {@link FinalizedTxData}, but with a v8
- * ledger transaction object in place of the v9 one. A provider only ever
- * produces this shape for a record whose `protocolVersion` resolves to the
- * v8 ledger runtime: `version` always equals the resolved ledger version for
- * `protocolVersion` (i.e. resolving `protocolVersion` the same way the
- * `read`-path resolver in `@midnight-ntwrk/midnight-js-protocol` does).
+ * ledger transaction object in place of the v9 one. The intent is that
+ * `version` equals the ledger version `protocolVersion` resolves to (the same
+ * resolution the `read`-path resolver in
+ * `@midnight-ntwrk/midnight-js-protocol` performs), so a provider would only
+ * produce this shape for a record that resolves to the v8 ledger runtime.
+ *
+ * No provider in this repo produces this arm yet — they all emit the v9 arm.
+ * The arm exists so consumers can be written against both eras ahead of
+ * per-record version dispatch, which arrives with dual decode.
  */
 export interface FinalizedTxDataV8 {
   /**
@@ -130,11 +134,16 @@ export interface FinalizedTxDataV8 {
  * A finalized transaction record, discriminated by which ledger runtime
  * produced it. Both arms carry identical metadata; only `tx`'s type and the
  * `version` discriminant differ. `version` is set at exactly one
- * construction point per provider, and on every value of this type
- * `version` always equals the resolved ledger version for `protocolVersion`
- * (the same resolution the `read`-path resolver in
- * `@midnight-ntwrk/midnight-js-protocol` performs) — never asserted here,
- * since `types` stays declarations-only; providers and their mocks are
- * responsible for upholding it at construction time.
+ * construction point per provider, and is meant to equal the ledger version
+ * `protocolVersion` resolves to (the same resolution the `read`-path resolver
+ * in `@midnight-ntwrk/midnight-js-protocol` performs). That agreement is
+ * never asserted here, since `types` stays declarations-only; providers and
+ * their mocks are responsible for upholding it at construction time.
+ *
+ * The providers in this repo do not uphold it yet: they emit only the v9 arm,
+ * whatever `protocolVersion` says. Per-record version dispatch arrives with
+ * dual decode. Narrow on `version` to pick a runtime — that is what the
+ * discriminant is for — but do not yet read it as a verified statement about
+ * `protocolVersion`.
  */
 export type VersionedFinalizedTxData = FinalizedTxDataV8 | FinalizedTxData;
