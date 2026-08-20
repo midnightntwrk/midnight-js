@@ -13,39 +13,32 @@
  * limitations under the License.
  */
 
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
-import type {
-  AlignedValue as LedgerV9AlignedValue,
-  EncodedStateValue as LedgerV9EncodedStateValue,
-  Op as LedgerV9Op
+import {
+  type AlignedValue as LedgerV9AlignedValue,
+  ChargedState as LedgerV9ChargedState,
+  ContractState as LedgerV9ContractState,
+  type EncodedStateValue as LedgerV9EncodedStateValue,
+  type Op as LedgerV9Op,
+  StateValue as LedgerV9StateValue
 } from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
 import { DownConvertFailedError, MerkleNotRehashedError, PROTOCOL_ERROR_CODES } from '../errors';
 import type { Ledger8CompactRuntime } from '../lib/engine/down-convert';
-import { assertMerkleTreesRehashed, checkRoot, downConvertForExecution, structurallyEqual } from '../lib/engine/down-convert';
+import {
+  assertMerkleTreesRehashed,
+  checkRoot,
+  downConvertForExecution,
+  structurallyEqual
+} from '../lib/engine/down-convert';
 import { extractEncodedStateValue } from '../lib/engine/envelope';
 
-const FIXTURES_DIR = resolve(__dirname, '../../../../testkit-js/testkit-js/src/fixtures/hf');
-
-/**
- * Reads a hex fixture, failing if the file did not decode in full.
- * `Buffer.from(_, 'hex')` stops silently at the first non-hex character, so
- * without this length check a truncated or corrupted fixture would still make
- * every negative test below pass — for the wrong reason.
- */
-const readHexFixture = (name: string): Uint8Array => {
-  const text = readFileSync(resolve(FIXTURES_DIR, name), 'utf8').trim();
-  const bytes = Uint8Array.from(Buffer.from(text, 'hex'));
-  if (bytes.length * 2 !== text.length) {
-    throw new Error(`fixture ${name} is not valid hex in full: ${text.length} chars decoded to ${bytes.length} bytes`);
-  }
-  return bytes;
-};
-
+// Envelopes are built in-process rather than read from the hard-fork golden
+// fixtures, so this suite depends only on the two runtimes it bridges. The
+// goldens prove something this cannot — that a *real* migrated on-chain state
+// down-converts byte-identically to its pre-migration form — and the tests
+// asserting that ship with those fixtures rather than here.
 const FIELD_ALIGNMENT: ocrt3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
 
 const fieldValue = (byte: number): ocrt3.AlignedValue => ({
@@ -68,7 +61,25 @@ const arrayOf = (...items: readonly ocrt3.StateValue[]): ocrt3.StateValue =>
   items.reduce((acc, item) => acc.arrayPush(item), ocrt3.StateValue.newArray());
 
 const mapOf = (...entries: readonly (readonly [number, ocrt3.StateValue])[]): ocrt3.StateValue =>
-  ocrt3.StateValue.newMap(entries.reduce((acc, [key, value]) => acc.insert(fieldValue(key), value), new ocrt3.StateMap()));
+  ocrt3.StateValue.newMap(
+    entries.reduce((acc, [key, value]) => acc.insert(fieldValue(key), value), new ocrt3.StateMap())
+  );
+
+/** A `contract-state[v6]` envelope, serialized by the pre-fork runtime itself. */
+const ledger8Envelope = (state: ocrt3.StateValue): Uint8Array => {
+  const contractState = new ocrt3.ContractState();
+  contractState.data = new ocrt3.ChargedState(state);
+  return contractState.serialize();
+};
+
+/** A `contract-state[v8]` envelope, serialized by the post-fork ledger. */
+const ledger9Envelope = (byte: number): Uint8Array => {
+  const contractState = new LedgerV9ContractState();
+  contractState.data = new LedgerV9ChargedState(
+    LedgerV9StateValue.newCell({ value: [new Uint8Array(32).fill(byte)], alignment: FIELD_ALIGNMENT })
+  );
+  return contractState.serialize();
+};
 
 /** A runtime whose `decode` is replaced, so the safety net can be driven directly. */
 const runtimeDecoding = (decode: () => ocrt3.StateValue): Ledger8CompactRuntime => ({
@@ -77,9 +88,9 @@ const runtimeDecoding = (decode: () => ocrt3.StateValue): Ledger8CompactRuntime 
 });
 
 describe('extractEncodedStateValue + downConvertForExecution round trip', () => {
-  it('down-converts a migrated v9 state to data byte-identical with the pre-migration v8 state', () => {
-    const v9Encoded = extractEncodedStateValue(readHexFixture('state-migrated-v9.hex'), 'v9', ocrt3.ContractState);
-    const v8Encoded = extractEncodedStateValue(readHexFixture('state-v8.hex'), 'v8', ocrt3.ContractState);
+  it('down-converts a post-fork state to the same data the pre-fork envelope carries', () => {
+    const v9Encoded = extractEncodedStateValue(ledger9Envelope(0x42), 'v9', ocrt3.ContractState);
+    const v8Encoded = extractEncodedStateValue(ledger8Envelope(cellSv(0x42)), 'v8', ocrt3.ContractState);
 
     const downConverted = downConvertForExecution(v9Encoded, ocrt3);
 
@@ -87,7 +98,7 @@ describe('extractEncodedStateValue + downConvertForExecution round trip', () => 
   });
 
   it('is a pure function of its byte input (repeatable, no shared mutable state)', () => {
-    const raw = readHexFixture('state-migrated-v9.hex');
+    const raw = ledger9Envelope(0x42);
 
     const a = downConvertForExecution(extractEncodedStateValue(raw, 'v9', ocrt3.ContractState), ocrt3);
     const b = downConvertForExecution(extractEncodedStateValue(raw, 'v9', ocrt3.ContractState), ocrt3);
@@ -97,88 +108,67 @@ describe('extractEncodedStateValue + downConvertForExecution round trip', () => 
 });
 
 describe('extractEncodedStateValue', () => {
-  it('reads a pre-fork (tag v6) envelope to the same state the post-fork envelope carries', () => {
-    // Migration is state-preserving, so the *pre-fork* envelope read with the
-    // pre-fork decoder and the *post-fork* envelope read with the post-fork
-    // decoder must yield the same EncodedStateValue. Unlike comparing
-    // state-v8.hex against state-v8-v6-envelope.hex — which are byte-identical
-    // files, so that comparison could only fail if extraction were
-    // non-deterministic — this exercises both decoders on different bytes.
-    const fromLedger8 = extractEncodedStateValue(readHexFixture('state-v8-v6-envelope.hex'), 'v8', ocrt3.ContractState);
-    const fromLedger9 = extractEncodedStateValue(readHexFixture('state-migrated-v9.hex'), 'v9', ocrt3.ContractState);
+  it('reads a pre-fork envelope through the pre-fork decoder', () => {
+    const extracted = extractEncodedStateValue(ledger8Envelope(cellSv(0x07)), 'v8', ocrt3.ContractState);
 
-    expect(fromLedger8).toEqual(fromLedger9);
+    expect(extracted).toEqual(cellSv(0x07).encode());
   });
 
-  it('throws a DownConvertFailedError carrying DOWN_CONVERT_FAILED on truncated/tampered bytes', () => {
-    const tampered = readHexFixture('state-tampered-bytes.hex');
+  it('reads a post-fork envelope through the post-fork decoder', () => {
+    const extracted = extractEncodedStateValue(ledger9Envelope(0x07), 'v9', ocrt3.ContractState);
 
-    expect(() => extractEncodedStateValue(tampered, 'v9', ocrt3.ContractState)).toThrowError(
-      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED })
-    );
-  });
-
-  it('never returns a silently empty state — it throws instead', () => {
-    const tampered = readHexFixture('state-tampered-bytes.hex');
-
-    expect(() => extractEncodedStateValue(tampered, 'v9', ocrt3.ContractState)).toThrow(DownConvertFailedError);
-  });
-
-  it('rejects empty input rather than yielding an empty state', () => {
-    expect(() => extractEncodedStateValue(new Uint8Array(0), 'v9', ocrt3.ContractState)).toThrowError(
-      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED })
-    );
-    expect(() => extractEncodedStateValue(new Uint8Array(0), 'v8', ocrt3.ContractState)).toThrowError(
-      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED })
-    );
-  });
-
-  it('never leaks a raw hex/byte dump in the thrown error message', () => {
-    const tampered = readHexFixture('state-tampered-bytes.hex');
-
-    try {
-      extractEncodedStateValue(tampered, 'v9', ocrt3.ContractState);
-      expect.unreachable('extraction of tampered bytes must throw');
-    } catch (error) {
-      expect(error).toBeInstanceOf(DownConvertFailedError);
-      expect((error as DownConvertFailedError).message).not.toMatch(/[0-9a-f]{16,}/i);
-    }
+    expect(extracted).toEqual(cellSv(0x07).encode());
   });
 
   // The realistic production bug is not a tampered envelope but a *valid*
   // state read with the wrong LedgerVersion — e.g. a protocolVersion mapping
   // error routing a genuine v9 state to the pre-fork decoder. Each envelope
   // carries its own era's header tag, so each direction must fail closed.
-  it.each([
-    { fixture: 'state-migrated-v9.hex', version: 'v8' as const },
-    { fixture: 'state-v8.hex', version: 'v9' as const }
-  ])('rejects the untampered $fixture read as $version', ({ fixture, version }) => {
-    expect(() => extractEncodedStateValue(readHexFixture(fixture), version, ocrt3.ContractState)).toThrowError(
+  it('rejects a valid post-fork envelope read as v8', () => {
+    expect(() => extractEncodedStateValue(ledger9Envelope(0x07), 'v8', ocrt3.ContractState)).toThrowError(
       expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED })
     );
   });
 
-  // These two fixtures carry an envelope tag deliberately flipped to the
-  // *other* ledger version's tag (fixtures/hf/README.md's "Tampered fixtures"
-  // section).
-  it.each([
-    { fixture: 'state-tampered-keyset-v8to9.hex', version: 'v9' as const },
-    { fixture: 'state-tampered-keyset-v9to8.hex', version: 'v8' as const }
-  ])('wraps extraction of $fixture as $version in a DownConvertFailedError (DOWN_CONVERT_FAILED)', ({ fixture, version }) => {
-    const tampered = readHexFixture(fixture);
-
-    expect(() => extractEncodedStateValue(tampered, version, ocrt3.ContractState)).toThrowError(
+  it('rejects a valid pre-fork envelope read as v9', () => {
+    expect(() => extractEncodedStateValue(ledger8Envelope(cellSv(0x07)), 'v9', ocrt3.ContractState)).toThrowError(
       expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED })
     );
   });
 
-  it('names the failing stage without a version claim the down-convert cannot make', () => {
+  it.each([
+    { name: 'empty input', raw: new Uint8Array(0) },
+    { name: 'a truncated envelope', raw: ledger9Envelope(0x07).slice(0, 20) },
+    { name: 'an envelope with trailing bytes', raw: Uint8Array.from([...ledger9Envelope(0x07), 0, 0, 0, 0]) }
+  ])('rejects $name rather than yielding a partial state', ({ raw }) => {
+    expect(() => extractEncodedStateValue(raw, 'v9', ocrt3.ContractState)).toThrowError(
+      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED })
+    );
+  });
+
+  it('never returns a silently empty state — it throws instead', () => {
+    expect(() => extractEncodedStateValue(new Uint8Array(0), 'v8', ocrt3.ContractState)).toThrow(
+      DownConvertFailedError
+    );
+  });
+
+  it('never leaks a raw hex/byte dump in the thrown error message', () => {
     try {
-      extractEncodedStateValue(readHexFixture('state-tampered-bytes.hex'), 'v9', ocrt3.ContractState);
-      expect.unreachable('extraction of tampered bytes must throw');
+      extractEncodedStateValue(ledger9Envelope(0x07).slice(0, 20), 'v9', ocrt3.ContractState);
+      expect.unreachable('a truncated envelope must throw');
     } catch (error) {
       expect(error).toBeInstanceOf(DownConvertFailedError);
-      expect((error as DownConvertFailedError).stage).toBe('v9 envelope extraction');
+      expect((error as DownConvertFailedError).message).not.toMatch(/[0-9a-f]{16,}/i);
+    }
+  });
+
+  it('names the failing stage, including the version the caller asked for', () => {
+    try {
+      extractEncodedStateValue(new Uint8Array(0), 'v8', ocrt3.ContractState);
+      expect.unreachable('empty input must throw');
+    } catch (error) {
+      expect(error).toBeInstanceOf(DownConvertFailedError);
+      expect((error as DownConvertFailedError).stage).toBe('v8 envelope extraction');
     }
   });
 });
@@ -188,7 +178,9 @@ describe('Merkle rehash', () => {
     const tree = buildNeverRehashedTree(0x55);
 
     expect(() => checkRoot(tree)).toThrow(MerkleNotRehashedError);
-    expect(() => checkRoot(tree)).toThrowError(expect.objectContaining({ code: PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED }));
+    expect(() => checkRoot(tree)).toThrowError(
+      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED })
+    );
   });
 
   // This is the vendor behaviour `assertMerkleTreesRehashed`'s fail-fast
@@ -203,17 +195,6 @@ describe('Merkle rehash', () => {
     const decoded = ocrt3.StateValue.decode(encoded);
 
     expect(() => checkRoot(decoded.asBoundedMerkleTree()!)).not.toThrow();
-  });
-
-  it('checkRoot passes on the golden migrated-v9-merkle fixture after downConvertForExecution', () => {
-    const encoded = extractEncodedStateValue(readHexFixture('state-migrated-v9-merkle.hex'), 'v9', ocrt3.ContractState);
-    const downConverted = downConvertForExecution(encoded, ocrt3);
-    const tree = downConverted.data.state.asBoundedMerkleTree();
-    if (tree === undefined) {
-      throw new Error('test fixture invariant violated: expected a boundedMerkleTree StateValue');
-    }
-
-    expect(() => checkRoot(tree)).not.toThrow();
   });
 });
 
@@ -298,17 +279,17 @@ describe('downConvertForExecution safety net', () => {
   it('throws DOWN_CONVERT_FAILED if the decoded array silently lost an element', () => {
     const source = arrayOf(cellSv(0x01), cellSv(0x02)).encode();
 
-    expect(() =>
-      downConvertForExecution(source, runtimeDecoding(() => arrayOf(cellSv(0x01))))
-    ).toThrowError(expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED }));
+    expect(() => downConvertForExecution(source, runtimeDecoding(() => arrayOf(cellSv(0x01))))).toThrowError(
+      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED })
+    );
   });
 
   it('throws DOWN_CONVERT_FAILED if the decoded map silently lost an entry', () => {
     const source = mapOf([0x01, cellSv(0x01)], [0x02, cellSv(0x02)]).encode();
 
-    expect(() =>
-      downConvertForExecution(source, runtimeDecoding(() => mapOf([0x01, cellSv(0x01)])))
-    ).toThrowError(expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED }));
+    expect(() => downConvertForExecution(source, runtimeDecoding(() => mapOf([0x01, cellSv(0x01)])))).toThrowError(
+      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED })
+    );
   });
 
   it('throws DOWN_CONVERT_FAILED if a nested cell changed value', () => {
