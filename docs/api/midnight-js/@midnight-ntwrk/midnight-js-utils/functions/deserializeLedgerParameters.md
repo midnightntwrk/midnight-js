@@ -6,9 +6,9 @@
 
 # Function: deserializeLedgerParameters()
 
-> **deserializeLedgerParameters**(`bytes`, `ctx`): `LedgerParameters`
+> **deserializeLedgerParameters**(`bytes`, `ctx`): [`LedgerParameters`](../../midnight-js-protocol/ledger/classes/LedgerParameters.md)
 
-Deserialize ledger LedgerParameters from raw bytes.
+Deserialize ledger [LedgerParameters](../../midnight-js-protocol/ledger/classes/LedgerParameters.md) from raw bytes.
 
 ## Parameters
 
@@ -22,7 +22,7 @@ Deserialize ledger LedgerParameters from raw bytes.
 
 ## Returns
 
-`LedgerParameters`
+[`LedgerParameters`](../../midnight-js-protocol/ledger/classes/LedgerParameters.md)
 
 ## Throws
 

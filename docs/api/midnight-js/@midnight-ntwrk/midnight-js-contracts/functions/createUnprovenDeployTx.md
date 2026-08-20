@@ -36,7 +36,7 @@ serializing, or transmitting the result.
 
 #### C
 
-`C` *extends* `Contract`\<`undefined`, `Witnesses`\<`undefined`\>\>
+`C` *extends* [`Contract`](../../midnight-js-protocol/compact-js/interfaces/Contract.md)\<`undefined`, [`Witnesses`](../../midnight-js-protocol/compact-js/type-aliases/Witnesses.md)\<`undefined`\>\>
 
 ### Parameters
 
@@ -60,7 +60,7 @@ serializing, or transmitting the result.
 
 #### C
 
-`C` *extends* `Any`
+`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
 
 ### Parameters
 

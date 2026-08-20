@@ -1,0 +1,139 @@
+[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [contracts](../README.md) / UnsubmittedCallTxPrivateData
+
+# Interface: UnsubmittedCallTxPrivateData\<C, PCK\>
+
+Defined in: packages/contracts/dist/index.d.ts:624
+
+The private data of an unsubmitted call transaction: the circuit execution's
+private result ([CallResultPrivate](CallResultPrivate.md)) combined with the unproven
+transaction data ([UnsubmittedTxData](UnsubmittedTxData.md)).
+
+## Extends
+
+- [`CallResultPrivate`](CallResultPrivate.md)\<`C`, `PCK`\>.[`UnsubmittedTxData`](UnsubmittedTxData.md)
+
+## Type Parameters
+
+### C
+
+`C` *extends* [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+
+### PCK
+
+`PCK` *extends* [`ProvableCircuitId`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<`C`\>
+
+## Properties
+
+### input
+
+> `readonly` **input**: [`AlignedValue`](../../../midnight-js-protocol/onchain-runtime/type-aliases/AlignedValue.md)
+
+Defined in: packages/contracts/dist/index.d.ts:98
+
+ZK representation of the circuit arguments.
+
+#### Inherited from
+
+[`CallResultPrivate`](CallResultPrivate.md).[`input`](CallResultPrivate.md#input)
+
+***
+
+### newCoins
+
+> `readonly` **newCoins**: [`ShieldedCoinInfo`](../../../midnight-js-protocol/ledger/type-aliases/ShieldedCoinInfo.md)[]
+
+Defined in: packages/contracts/dist/index.d.ts:471
+
+New coins created during the construction of the transaction.
+
+#### Inherited from
+
+[`UnsubmittedTxData`](UnsubmittedTxData.md).[`newCoins`](UnsubmittedTxData.md#newcoins)
+
+***
+
+### nextPrivateState
+
+> `readonly` **nextPrivateState**: [`PrivateState`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/PrivateState.md)\<`C`\>
+
+Defined in: packages/contracts/dist/index.d.ts:114
+
+The private state resulting from executing the circuit.
+
+#### Inherited from
+
+[`CallResultPrivate`](CallResultPrivate.md).[`nextPrivateState`](CallResultPrivate.md#nextprivatestate)
+
+***
+
+### nextZswapLocalState
+
+> `readonly` **nextZswapLocalState**: [`ZswapLocalState`](../../../midnight-js-protocol/compact-runtime/interfaces/ZswapLocalState.md)
+
+Defined in: packages/contracts/dist/index.d.ts:118
+
+The Zswap local state resulting from executing the circuit.
+
+#### Inherited from
+
+[`CallResultPrivate`](CallResultPrivate.md).[`nextZswapLocalState`](CallResultPrivate.md#nextzswaplocalstate)
+
+***
+
+### output
+
+> `readonly` **output**: [`AlignedValue`](../../../midnight-js-protocol/onchain-runtime/type-aliases/AlignedValue.md)
+
+Defined in: packages/contracts/dist/index.d.ts:102
+
+ZK representation of the circuit result.
+
+#### Inherited from
+
+[`CallResultPrivate`](CallResultPrivate.md).[`output`](CallResultPrivate.md#output)
+
+***
+
+### privateTranscriptOutputs
+
+> `readonly` **privateTranscriptOutputs**: [`AlignedValue`](../../../midnight-js-protocol/onchain-runtime/type-aliases/AlignedValue.md)[]
+
+Defined in: packages/contracts/dist/index.d.ts:106
+
+ZK representation of the circuit witness call results.
+
+#### Inherited from
+
+[`CallResultPrivate`](CallResultPrivate.md).[`privateTranscriptOutputs`](CallResultPrivate.md#privatetranscriptoutputs)
+
+***
+
+### result
+
+> `readonly` **result**: [`CircuitReturnType`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/CircuitReturnType.md)\<`C`, `PCK`\>
+
+Defined in: packages/contracts/dist/index.d.ts:110
+
+The JS representation of the value returned by the circuit.
+
+#### Inherited from
+
+[`CallResultPrivate`](CallResultPrivate.md).[`result`](CallResultPrivate.md#result)
+
+***
+
+### unprovenTx
+
+> `readonly` **unprovenTx**: [`UnprovenTransaction`](../../../midnight-js-protocol/ledger/type-aliases/UnprovenTransaction.md)
+
+Defined in: packages/contracts/dist/index.d.ts:467
+
+The unproven ledger transaction produced.
+
+#### Inherited from
+
+[`UnsubmittedTxData`](UnsubmittedTxData.md).[`unprovenTx`](UnsubmittedTxData.md#unproventx)

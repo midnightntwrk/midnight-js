@@ -1,0 +1,104 @@
+[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [contracts](../README.md) / submitCallTxAsync
+
+# Function: submitCallTxAsync()
+
+> **submitCallTxAsync**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`SubmittedCallTx`](../interfaces/SubmittedCallTx.md)\<`C`, `PCK`\>\>
+
+Defined in: packages/contracts/dist/index.d.ts:1299
+
+Creates and submits a transaction for the invocation of a circuit on a given contract,
+returning immediately after submission without waiting for finalization.
+
+Unlike [submitCallTx](submitCallTx.md), this function does not wait for transaction finalization,
+check transaction status, or update private state. The caller must handle these steps manually.
+
+## Transaction Execution Phases
+
+Midnight transactions execute in two phases:
+1. **Guaranteed phase**: If failure occurs, the transaction is NOT included in the blockchain
+2. **Fallible phase**: If failure occurs, the transaction IS recorded on-chain as a partial success
+
+## Manual Post-Submission Steps
+
+After calling this function, you must manually:
+1. Watch for transaction finalization using `providers.publicDataProvider.watchForTxData(txId)`
+2. Check transaction status (compare against `SucceedEntirely`)
+3. Handle failures appropriately (throw errors, log, etc.)
+4. Update private state if transaction succeeded and `privateStateId` was provided
+
+## Failure Behavior (Manual Handling Required)
+
+**Guaranteed Phase Failure:**
+- Transaction is rejected and not included in the blockchain
+- `watchForTxData` may reject or return error status
+- You must NOT store private state updates
+
+**Fallible Phase Failure:**
+- Transaction is recorded on-chain with non-`SucceedEntirely` status
+- `watchForTxData` returns transaction data with failed status
+- You must NOT store private state updates
+- Transaction appears in blockchain history as partial success
+
+## Type Parameters
+
+### C
+
+`C` *extends* [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+
+### PCK
+
+`PCK` *extends* `string`
+
+## Parameters
+
+### providers
+
+`SubmitCallTxProviders`\<`C`, `PCK`\>
+
+The providers used to manage the invocation lifecycle.
+
+### options
+
+[`CallTxOptions`](../type-aliases/CallTxOptions.md)\<`C`, `PCK`\>
+
+Configuration.
+
+## Returns
+
+`Promise`\<[`SubmittedCallTx`](../interfaces/SubmittedCallTx.md)\<`C`, `PCK`\>\>
+
+A `Promise` that resolves with the transaction ID and call transaction data immediately after submission;
+        or rejects with an error if the submission fails.
+
+## Remarks
+
+The returned [SubmittedCallTx](../interfaces/SubmittedCallTx.md) is privacy-sensitive and carries the
+unproven transaction and private state via `callTxData`. See that type for
+handling guidance before logging, serializing, or transmitting the result.
+
+## Example
+
+```typescript
+// 1. Submit
+const { txId, callTxData } = await submitCallTxAsync(providers, options);
+
+// 2. Watch (when ready)
+const finalizedData = await providers.publicDataProvider.watchForTxData(txId);
+
+// 3. Check status
+if (finalizedData.status !== SucceedEntirely) {
+  throw new CallTxFailedError(finalizedData, options.circuitId);
+}
+
+// 4. Update private state manually if needed
+if (options.privateStateId) {
+  await providers.privateStateProvider.set(
+    privateStateId,
+    callTxData.private.nextPrivateState
+  );
+}
+```

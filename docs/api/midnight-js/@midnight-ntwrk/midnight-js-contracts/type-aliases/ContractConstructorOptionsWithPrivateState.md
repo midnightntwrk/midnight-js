@@ -15,7 +15,7 @@ the target of a circuit invocation.
 
 ### initialPrivateState
 
-> `readonly` **initialPrivateState**: `Contract.PrivateState`\<`C`\>
+> `readonly` **initialPrivateState**: [`PrivateState`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/PrivateState.md)\<`C`\>
 
 The private state to run the circuit against.
 
@@ -23,4 +23,4 @@ The private state to run the circuit against.
 
 ### C
 
-`C` *extends* `Contract.Any`
+`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)

@@ -44,7 +44,7 @@ transmitting the result.
 
 #### C
 
-`C` *extends* `Contract`\<`undefined`, `Witnesses`\<`undefined`\>\>
+`C` *extends* [`Contract`](../../midnight-js-protocol/compact-js/interfaces/Contract.md)\<`undefined`, [`Witnesses`](../../midnight-js-protocol/compact-js/type-aliases/Witnesses.md)\<`undefined`\>\>
 
 #### PCK
 
@@ -54,7 +54,7 @@ transmitting the result.
 
 #### zkConfigProvider
 
-[`ZKConfigProvider`](#)\<`string`\>
+[`ZKConfigProvider`](../../midnight-js/types/classes/ZKConfigProvider.md)\<`string`\>
 
 #### options
 
@@ -80,7 +80,7 @@ transmitting the result.
 
 #### C
 
-`C` *extends* `Any`
+`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
 
 #### PCK
 
@@ -90,7 +90,7 @@ transmitting the result.
 
 #### zkConfigProvider
 
-[`ZKConfigProvider`](#)\<`string`\>
+[`ZKConfigProvider`](../../midnight-js/types/classes/ZKConfigProvider.md)\<`string`\>
 
 #### options
 

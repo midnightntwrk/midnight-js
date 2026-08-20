@@ -23,6 +23,6 @@ Represents the current number of funds available or held in an account.
 
 ### tokenType
 
-> `readonly` **tokenType**: `RawTokenType`
+> `readonly` **tokenType**: [`RawTokenType`](../../midnight-js-protocol/ledger/type-aliases/RawTokenType.md)
 
 Represents the type of token in the system.
