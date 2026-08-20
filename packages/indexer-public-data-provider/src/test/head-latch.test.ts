@@ -20,7 +20,7 @@ import { describe, expect, test, vi } from 'vitest';
 
 import { IndexerPublicDataProvider } from '../provider';
 import { HEAD_PROTOCOL_VERSION_QUERY, RAW_CONTRACT_STATE_QUERY } from '../query-definitions';
-import type { ApolloHandle } from '../transport';
+import { type ApolloRequest, stubApolloHandle, type WatchQueryStub } from './apollo-stub';
 import {
   mintV8ContractStateHex,
   mintV9ContractStateHex,
@@ -34,20 +34,13 @@ import {
 const ADDRESS = '12'.repeat(32) as ContractAddress;
 const TX_ID = 'test-tx-id';
 
-type QueryRequest = { readonly query: DocumentNode };
-type QueryMock = ReturnType<typeof vi.fn<(request: QueryRequest) => Promise<unknown>>>;
+type QueryMock = ReturnType<typeof vi.fn<(request: ApolloRequest) => Promise<unknown>>>;
 
-/**
- * Stubs the Apollo seam the same way the sibling provider suites do — the
- * client is a class with private fields and invariant generics, so a
- * structural stub is the only test seam short of injecting a custom
- * ApolloLink into the provider's internal client construction.
- */
-const buildProvider = (query: QueryMock, watchQuery?: ReturnType<typeof vi.fn>): IndexerPublicDataProvider =>
-  new IndexerPublicDataProvider({ client: { query, watchQuery } } as unknown as ApolloHandle, 1000);
+const buildProvider = (query: QueryMock, watchQuery?: WatchQueryStub): IndexerPublicDataProvider =>
+  new IndexerPublicDataProvider(stubApolloHandle({ query, watchQuery }), 1000);
 
 const dispatchingQuery = (responses: ReadonlyMap<DocumentNode, unknown>): QueryMock =>
-  vi.fn<(request: QueryRequest) => Promise<unknown>>().mockImplementation(({ query }: QueryRequest) => {
+  vi.fn<(request: ApolloRequest) => Promise<unknown>>().mockImplementation(({ query }: ApolloRequest) => {
     if (!responses.has(query)) {
       return Promise.reject(new Error('test setup: no response registered for the requested document'));
     }

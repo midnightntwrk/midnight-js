@@ -23,14 +23,13 @@ import {
   toHex,
   UTILS_ERROR_CODES
 } from '@midnight-ntwrk/midnight-js-utils';
-import type { DocumentNode } from 'graphql';
 import { describe, expect, test, vi } from 'vitest';
 
 import { contractStateEnvelopeVersion } from '../codec';
 import { IndexerDataError } from '../errors';
 import { IndexerPublicDataProvider } from '../provider';
 import { HEAD_PROTOCOL_VERSION_QUERY, RAW_CONTRACT_STATE_QUERY } from '../query-definitions';
-import type { ApolloHandle } from '../transport';
+import { type ApolloRequest, stubApolloHandle } from './apollo-stub';
 import {
   mintV8ContractStateHex,
   mintV9ContractStateHex,
@@ -40,12 +39,10 @@ import {
 
 const ADDRESS = '12'.repeat(32) as ContractAddress;
 
-type QueryRequest = { readonly query: DocumentNode };
-type QueryMock = ReturnType<typeof vi.fn<(request: QueryRequest) => Promise<unknown>>>;
+type QueryMock = ReturnType<typeof vi.fn<(request: ApolloRequest) => Promise<unknown>>>;
 
-/** Stubs the Apollo seam the same way the sibling provider suites do. */
 const buildProvider = (query: QueryMock): IndexerPublicDataProvider =>
-  new IndexerPublicDataProvider({ client: { query } } as unknown as ApolloHandle, 1000);
+  new IndexerPublicDataProvider(stubApolloHandle({ query }), 1000);
 
 const composedResponse = (state: string | null, protocolVersion: number | null): unknown => ({
   data: {
@@ -55,7 +52,7 @@ const composedResponse = (state: string | null, protocolVersion: number | null):
 });
 
 const providerServing = (state: string | null, protocolVersion: number | null): IndexerPublicDataProvider =>
-  buildProvider(vi.fn<(request: QueryRequest) => Promise<unknown>>().mockResolvedValue(composedResponse(state, protocolVersion)));
+  buildProvider(vi.fn<(request: ApolloRequest) => Promise<unknown>>().mockResolvedValue(composedResponse(state, protocolVersion)));
 
 // ---------------------------------------------------------------------------
 // Adversarial payload construction.
@@ -113,7 +110,7 @@ describe('queryRawContractState', () => {
   describe('composed call path', () => {
     test('asks for the block protocol version and the contract state in one request', async () => {
       const query = vi
-        .fn<(request: QueryRequest) => Promise<unknown>>()
+        .fn<(request: ApolloRequest) => Promise<unknown>>()
         .mockResolvedValue(composedResponse(mintV9ContractStateHex(), V9_ERA_PROTOCOL_VERSION));
 
       await buildProvider(query).queryRawContractState(ADDRESS);
@@ -130,7 +127,7 @@ describe('queryRawContractState', () => {
 
     test('anchors both fields to the same requested offset', async () => {
       const query = vi
-        .fn<(request: QueryRequest) => Promise<unknown>>()
+        .fn<(request: ApolloRequest) => Promise<unknown>>()
         .mockResolvedValue(composedResponse(mintV9ContractStateHex(), V9_ERA_PROTOCOL_VERSION));
 
       await buildProvider(query).queryRawContractState(ADDRESS, { type: 'blockHash', blockHash: '0xfeed' });
@@ -142,7 +139,7 @@ describe('queryRawContractState', () => {
 
     test('feeds the head-version cache when the composed response reports the newer era on both fields', async () => {
       const query = vi
-        .fn<(request: QueryRequest) => Promise<unknown>>()
+        .fn<(request: ApolloRequest) => Promise<unknown>>()
         .mockResolvedValue(composedResponse(mintV9ContractStateHex(), V9_ERA_PROTOCOL_VERSION));
       const provider = buildProvider(query);
 
@@ -157,7 +154,7 @@ describe('queryRawContractState', () => {
 
     test('does not feed the cache from a read pinned to an explicit block, which is not the head', async () => {
       const query = vi
-        .fn<(request: QueryRequest) => Promise<unknown>>()
+        .fn<(request: ApolloRequest) => Promise<unknown>>()
         .mockResolvedValue(composedResponse(mintV9ContractStateHex(), V9_ERA_PROTOCOL_VERSION));
       const provider = buildProvider(query);
 
@@ -298,7 +295,7 @@ describe('queryRawContractState', () => {
 
     test('does not feed the head-version cache from a rejected payload', async () => {
       const query = vi
-        .fn<(request: QueryRequest) => Promise<unknown>>()
+        .fn<(request: ApolloRequest) => Promise<unknown>>()
         .mockResolvedValue(composedResponse(retagged(mintV9ContractStateHex(), 'attacker:v1'), V9_ERA_PROTOCOL_VERSION));
       const provider = buildProvider(query);
 
