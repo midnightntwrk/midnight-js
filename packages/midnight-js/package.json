@@ -1,50 +1,29 @@
 {
   "name": "@midnight-ntwrk/midnight-js",
   "version": "5.0.0-beta.6",
+  "type": "module",
   "description": "Barrel package for Midnight.js core framework",
-  "main": "dist/index.cjs",
-  "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": {
-        "import": "./dist/index.d.mts",
-        "require": "./dist/index.d.cts"
-      },
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     },
     "./contracts": {
-      "types": {
-        "import": "./dist/contracts.d.mts",
-        "require": "./dist/contracts.d.cts"
-      },
-      "import": "./dist/contracts.mjs",
-      "require": "./dist/contracts.cjs"
+      "types": "./dist/contracts.d.ts",
+      "default": "./dist/contracts.js"
     },
     "./network-id": {
-      "types": {
-        "import": "./dist/network-id.d.mts",
-        "require": "./dist/network-id.d.cts"
-      },
-      "import": "./dist/network-id.mjs",
-      "require": "./dist/network-id.cjs"
+      "types": "./dist/network-id.d.ts",
+      "default": "./dist/network-id.js"
     },
     "./types": {
-      "types": {
-        "import": "./dist/types.d.mts",
-        "require": "./dist/types.d.cts"
-      },
-      "import": "./dist/types.mjs",
-      "require": "./dist/types.cjs"
+      "types": "./dist/types.d.ts",
+      "default": "./dist/types.js"
     },
     "./utils": {
-      "types": {
-        "import": "./dist/utils.d.mts",
-        "require": "./dist/utils.d.cts"
-      },
-      "import": "./dist/utils.mjs",
-      "require": "./dist/utils.cjs"
+      "types": "./dist/utils.d.ts",
+      "default": "./dist/utils.js"
     },
     "./package.json": "./package.json"
   },
