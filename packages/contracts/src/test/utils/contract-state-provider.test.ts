@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-import type { ContractAddress, ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { sampleContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { PublicDataProvider } from '@midnight-ntwrk/midnight-js-types';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -21,13 +22,17 @@ import { makeCalleeStateResolver } from '../../utils';
 
 const BLOCK_HASH = 'ab'.repeat(32);
 const OTHER_BLOCK_HASH = 'cd'.repeat(32);
-const ADDRESS = 'a'.repeat(64) as unknown as ContractAddress;
-const OTHER_ADDRESS = 'b'.repeat(64) as unknown as ContractAddress;
-const STATE = { tag: 'callee-state' } as unknown as ContractState;
+const ADDRESS = sampleContractAddress();
+const OTHER_ADDRESS = sampleContractAddress();
+
+/** Identity sentinel standing in for the opaque WASM `ContractState`. */
+const fakeState = (tag: string): ContractState => ({ tag }) as unknown as ContractState;
+
+const STATE = fakeState('callee-state');
 
 /** A `PublicDataProvider` whose only exercised method is `queryContractState`. */
 const providerWith = (queryContractState: PublicDataProvider['queryContractState']): PublicDataProvider =>
-  ({ queryContractState } as unknown as PublicDataProvider);
+  ({ queryContractState } as PublicDataProvider);
 
 describe('makeCalleeStateResolver', () => {
   it('exposes the pinned block hash and an initially empty resolved-states map', () => {
@@ -67,7 +72,7 @@ describe('makeCalleeStateResolver', () => {
     const queryContractState = vi
       .fn()
       .mockResolvedValueOnce(STATE)
-      .mockResolvedValueOnce({ tag: 'other-state' } as unknown as ContractState);
+      .mockResolvedValueOnce(fakeState('other-state'));
     const resolver = makeCalleeStateResolver(providerWith(queryContractState), BLOCK_HASH);
 
     await resolver.stateProvider.getContractState(BLOCK_HASH, ADDRESS);

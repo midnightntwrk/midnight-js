@@ -20,9 +20,8 @@ import path from 'path';
 import type { Logger } from 'pino';
 import { WebSocket } from 'ws';
 
-import type { DeployedEventsContract, EventsProviders } from '@/types/events-types';
-
 import { CompiledEventsContract } from './contract';
+import type { DeployedEventsContract, EventsProviders } from './types/events-types';
 
 export const currentDir = path.resolve(new URL(import.meta.url).pathname, '..');
 

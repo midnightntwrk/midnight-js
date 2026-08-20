@@ -16,10 +16,10 @@
 import axios from 'axios';
 import pino from 'pino';
 
-import { FaucetClient } from '@/client/faucet-client';
-import { IndexerClient } from '@/client/indexer-client';
-import { NodeClient } from '@/client/node-client';
-import { ProofServerClient } from '@/client/proof-server-client';
+import { FaucetClient } from '../src/client/faucet-client';
+import { IndexerClient } from '../src/client/indexer-client';
+import { NodeClient } from '../src/client/node-client';
+import { ProofServerClient } from '../src/client/proof-server-client';
 
 vi.mock('axios');
 const mockedAxios = vi.mocked(axios);

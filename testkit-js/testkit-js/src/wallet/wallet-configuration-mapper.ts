@@ -21,7 +21,7 @@ import {
   WalletEntrySchema
 } from '@midnightntwrk/wallet-sdk';
 
-import { type EnvironmentConfiguration } from '@/test-environment';
+import { type EnvironmentConfiguration } from '../test-environment';
 
 export interface MapperOptions {
   readonly networkId?: string;

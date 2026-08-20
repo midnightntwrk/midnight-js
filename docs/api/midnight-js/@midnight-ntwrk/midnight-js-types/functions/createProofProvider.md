@@ -8,20 +8,20 @@
 
 > **createProofProvider**(`provingProvider`, `costModel?`): [`ProofProvider`](../interfaces/ProofProvider.md)
 
-Creates a [ProofProvider](../interfaces/ProofProvider.md) from a [ProvingProvider](#).
+Creates a [ProofProvider](../interfaces/ProofProvider.md) from a [ProvingProvider](../../midnight-js-protocol/ledger/type-aliases/ProvingProvider.md).
 The returned provider proves transactions using the initial cost model.
 
 ## Parameters
 
 ### provingProvider
 
-[`ProvingProvider`](#)
+[`ProvingProvider`](../../midnight-js-protocol/ledger/type-aliases/ProvingProvider.md)
 
 The underlying proving provider used to generate proofs.
 
 ### costModel?
 
-`CostModel` = `...`
+[`CostModel`](../../midnight-js-protocol/ledger/classes/CostModel.md) = `...`
 
 Optional cost model to use for proof generation. Defaults to the initial cost model if not provided.
 

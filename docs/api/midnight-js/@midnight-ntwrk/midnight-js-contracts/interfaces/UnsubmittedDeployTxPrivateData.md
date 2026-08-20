@@ -28,13 +28,13 @@ object across a trust boundary.
 
 ### C
 
-`C` *extends* `Contract.Any`
+`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
 
 ## Properties
 
 ### initialPrivateState
 
-> `readonly` **initialPrivateState**: `PrivateState`\<`C`\>
+> `readonly` **initialPrivateState**: [`PrivateState`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/PrivateState.md)\<`C`\>
 
 The initial private state of the contract deployed to the blockchain. This
 value is persisted if the transaction succeeds.
@@ -43,6 +43,6 @@ value is persisted if the transaction succeeds.
 
 ### signingKey
 
-> `readonly` **signingKey**: `SigningKey`
+> `readonly` **signingKey**: [`SigningKey`](../../midnight-js-protocol/onchain-runtime/type-aliases/SigningKey.md)
 
 The signing key that was added as the deployed contract's maintenance authority.

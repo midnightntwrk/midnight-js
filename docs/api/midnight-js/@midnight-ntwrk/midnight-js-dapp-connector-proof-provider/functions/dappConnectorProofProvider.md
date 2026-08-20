@@ -6,9 +6,9 @@
 
 # Function: dappConnectorProofProvider()
 
-> **dappConnectorProofProvider**\<`K`\>(`api`, `zkConfigProvider`, `costModel`): `Promise`\<[`ProofProvider`](#)\>
+> **dappConnectorProofProvider**\<`K`\>(`api`, `zkConfigProvider`, `costModel`): `Promise`\<[`ProofProvider`](../../midnight-js/types/interfaces/ProofProvider.md)\>
 
-Creates a [ProofProvider](#) that delegates proving to a DApp Connector wallet.
+Creates a [ProofProvider](../../midnight-js/types/interfaces/ProofProvider.md) that delegates proving to a DApp Connector wallet.
 
 ## Type Parameters
 
@@ -28,24 +28,24 @@ DApp Connector wallet API exposing `getProvingProvider`.
 
 ### zkConfigProvider
 
-`ZKConfigRegistry` \| [`ZKConfigProvider`](#)\<`K`\>
+[`ZKConfigRegistry`](../../midnight-js/types/classes/ZKConfigRegistry.md) \| [`ZKConfigProvider`](../../midnight-js/types/classes/ZKConfigProvider.md)\<`K`\>
 
-A single [ZKConfigProvider](#) or a multi-source
-ZKConfigRegistry that supplies ZK configuration artifacts and key material. A registry is
+A single [ZKConfigProvider](../../midnight-js/types/classes/ZKConfigProvider.md) or a multi-source
+[ZKConfigRegistry](../../midnight-js/types/classes/ZKConfigRegistry.md) that supplies ZK configuration artifacts and key material. A registry is
 required to prove transactions that make cross-contract calls, which carry one proof per contract
 in the call tree.
 
 ### costModel
 
-`CostModel`
+[`CostModel`](../../midnight-js-protocol/ledger/classes/CostModel.md)
 
 Cost model applied during transaction proving.
 
 ## Returns
 
-`Promise`\<[`ProofProvider`](#)\>
+`Promise`\<[`ProofProvider`](../../midnight-js/types/interfaces/ProofProvider.md)\>
 
-A [ProofProvider](#) whose `proveTx` method delegates to the wallet.
+A [ProofProvider](../../midnight-js/types/interfaces/ProofProvider.md) whose `proveTx` method delegates to the wallet.
 
 ## Remarks
 
