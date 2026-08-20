@@ -28,11 +28,11 @@ import {
 import path from 'path';
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 
-import { CompiledShieldedFallibleContract } from '@/contract';
+import { CompiledShieldedFallibleContract } from '../src/contract';
 import {
   type ShieldedFallibleContractCircuit,
   type ShieldedFallibleContractProviders
-} from '@/types/shielded-fallible-types';
+} from '../src/types/shielded-fallible-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `shielded_fallible_routing_${new Date().toISOString()}.log`)

@@ -19,9 +19,9 @@ import { getTestEnvironment, initializeMidnightProviders, type TestEnvironment }
 import type { Logger } from 'pino';
 import { expect } from 'vitest';
 
-import * as api from '@/events-api';
-import { EventsConfiguration } from '@/events-api';
-import type { DeployedEventsContract } from '@/types/events-types';
+import * as api from '../../src/events-api';
+import { EventsConfiguration } from '../../src/events-api';
+import type { DeployedEventsContract } from '../../src/types/events-types';
 
 export const toHex = (bytes: Uint8Array): string => Buffer.from(bytes).toString('hex');
 

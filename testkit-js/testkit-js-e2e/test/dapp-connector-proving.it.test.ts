@@ -32,8 +32,8 @@ import {
 } from '@midnight-ntwrk/testkit-js';
 import path from 'path';
 
-import * as api from '@/counter-api';
-import type { SimpleProviders } from '@/types/simple-types';
+import * as api from '../src/counter-api';
+import type { SimpleProviders } from '../src/types/simple-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `dapp_connector_proving_${new Date().toISOString()}.log`),
