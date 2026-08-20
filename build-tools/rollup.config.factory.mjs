@@ -1,3 +1,4 @@
+import { rmSync } from 'node:fs';
 import { isAbsolute } from 'node:path';
 
 import replace from '@rollup/plugin-replace';
@@ -52,9 +53,29 @@ function entriesFrom(packageJson) {
 }
 
 /**
- * ESM-only config for a `"type": "module"` package. Produces exactly
- * `dist/<name>.js`, `dist/<name>.js.map` and `dist/<name>.d.ts` per entry --
- * no `.cjs`, no `.d.cts`, no `.d.mts`. CommonJS consumers load the package
+ * Empties `dist` once, before the JavaScript pass writes anything.
+ *
+ * `chunkFileNames` embeds a content hash, so editing a shared module makes the
+ * next build write a NEW chunk rather than overwrite the old one, and rollup
+ * never cleans its own output directory. Left alone, every superseded chunk --
+ * and every artifact of a subpath since dropped from `exports` -- accumulates
+ * in `dist` and ships, because packages publish `"files": ["dist/"]`.
+ *
+ * Only the JavaScript pass cleans. The `.d.ts` passes run after it and would
+ * delete the JavaScript it had just emitted.
+ */
+const cleanDist = () => ({
+  name: 'clean-dist',
+  buildStart() {
+    rmSync('dist', { recursive: true, force: true });
+  }
+});
+
+/**
+ * ESM-only config for a `"type": "module"` package. Produces
+ * `dist/<name>.js`, `dist/<name>.js.map` and `dist/<name>.d.ts` per entry,
+ * plus any shared chunks under `dist/shared/` -- no `.cjs`, no `.d.cts`, no
+ * `.d.mts`. CommonJS consumers load the package
  * through Node's `require(esm)` support, hence `engines.node >= 22.12`.
  *
  * The JavaScript for every entry is emitted by a SINGLE rollup pass, so a
@@ -92,6 +113,7 @@ export function createRollupConfig(packageJson, { define } = {}) {
         }
       ],
       plugins: [
+        cleanDist(),
         ...(define ? [replace({ values: define, preventAssignment: true })] : []),
         // Declarations come from `rollup-plugin-dts` below. Letting `tsc` emit
         // them too leaves per-module `.d.ts` and `.d.ts.map` files in `dist`
