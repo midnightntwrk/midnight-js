@@ -18,7 +18,56 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import { parseAllowlistEntries } from './check-api-report.mjs';
+import { extractChangedLineGroups, isGroupAllowed, parseAllowlistEntries } from './check-api-report.mjs';
+
+const buildDiff = (lines) =>
+  [
+    'diff --git a/build-tools/api-report/baselines/x.api.md b/build-tools/api-report/baselines/x.api.md',
+    'index 1111111..2222222 100644',
+    '--- a/build-tools/api-report/baselines/x.api.md',
+    '+++ b/build-tools/api-report/baselines/x.api.md',
+    '@@ -1,2 +1,12 @@',
+    ...lines,
+  ].join('\n');
+
+test('keeps an annotation line grouped with the declaration it annotates', () => {
+  const diffText = buildDiff([
+    ' // context',
+    '+// @public',
+    '+export interface RawContractState {',
+    '+    readonly raw: Uint8Array;',
+    '+}',
+    ' // context',
+  ]);
+
+  assert.deepEqual(extractChangedLineGroups(diffText), [
+    ['// @public', 'export interface RawContractState {', 'readonly raw: Uint8Array;', '}'],
+  ]);
+});
+
+test('does not let one entry cover a neighbouring declaration across a blank line', () => {
+  const diffText = buildDiff([
+    ' // context',
+    '+// @public',
+    '+export interface RawContractState {',
+    '+    readonly raw: Uint8Array;',
+    '+}',
+    '+',
+    '+// @public (undocumented)',
+    '+export interface TotallyUndocumentedNewThing {',
+    '+    readonly surprise: string;',
+    '+}',
+    ' // context',
+  ]);
+
+  const groups = extractChangedLineGroups(diffText);
+  const unmatched = groups.filter((group) => !isGroupAllowed(group, ['RawContractState']));
+
+  assert.equal(groups.length, 2);
+  assert.deepEqual(unmatched, [
+    ['// @public (undocumented)', 'export interface TotallyUndocumentedNewThing {', 'readonly surprise: string;', '}'],
+  ]);
+});
 
 test('parses entries listed under the "## Entries" heading', () => {
   const content = [

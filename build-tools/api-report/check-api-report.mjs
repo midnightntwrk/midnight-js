@@ -80,8 +80,14 @@ function regenerateReports() {
 }
 
 // Groups consecutive added/removed lines from a unified diff into blocks.
-// A block ends at a context line, a diff header, or a hunk boundary.
-function extractChangedLineGroups(diffText) {
+// A block ends at a context line, a diff header, a hunk boundary, or a changed
+// blank line. The blank-line boundary matters: api-extractor always separates
+// two declarations by a blank line, so without it two adjacent declarations
+// would fold into a single block and one allowlist entry would silently cover
+// its undocumented neighbour.
+// Exported (and kept pure) so it has a focused unit test — see
+// check-api-report.test.mjs.
+export function extractChangedLineGroups(diffText) {
   const groups = [];
   let currentGroup = null;
   for (const line of diffText.split('\n')) {
@@ -102,6 +108,7 @@ function extractChangedLineGroups(diffText) {
     }
     const content = line.slice(1).trim();
     if (content.length === 0) {
+      currentGroup = null;
       continue;
     }
     if (!currentGroup) {
@@ -111,6 +118,13 @@ function extractChangedLineGroups(diffText) {
     currentGroup.push(content);
   }
   return groups;
+}
+
+// A block is allowed when at least one of its lines contains an allowlist
+// entry as a substring. Exported (and kept pure) so it has a focused unit test
+// — see check-api-report.test.mjs.
+export function isGroupAllowed(group, allowlistEntries) {
+  return group.some((line) => allowlistEntries.some((entry) => line.includes(entry)));
 }
 
 const ENTRIES_HEADING_PATTERN = /^## Entries$/m;
@@ -161,9 +175,7 @@ function main() {
   const changeGroups = extractChangedLineGroups(diffText);
   const allowlistEntries = loadAllowlistEntries();
 
-  const isGroupAllowed = (group) =>
-    group.some((line) => allowlistEntries.some((entry) => line.includes(entry)));
-  const unmatchedGroups = changeGroups.filter((group) => !isGroupAllowed(group));
+  const unmatchedGroups = changeGroups.filter((group) => !isGroupAllowed(group, allowlistEntries));
 
   if (unmatchedGroups.length > 0) {
     console.error('API report differs from the checked-in baseline, and the following changed line(s)');
