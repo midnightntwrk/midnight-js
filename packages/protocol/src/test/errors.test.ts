@@ -121,7 +121,7 @@ describe('DownConvertFailedError', () => {
   it('never includes a hex or byte dump in its own message', () => {
     const cause = new Error('out of range for u64');
 
-    const error = new DownConvertFailedError('v9 state down-convert', cause);
+    const error = new DownConvertFailedError('state down-convert', cause);
 
     expect(error.message).not.toMatch(/[0-9a-f]{16,}/i);
   });
@@ -183,7 +183,7 @@ const CODE_RECOGNITION_CASES: readonly CodeRecognitionCase[] = [
     label: 'DownConvertFailedError',
     errorClass: DownConvertFailedError,
     ownCodes: [PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED],
-    instances: [new DownConvertFailedError('v9 state down-convert', new Error('malformed bytes'))]
+    instances: [new DownConvertFailedError('state down-convert', new Error('malformed bytes'))]
   },
   {
     label: 'MerkleNotRehashedError',

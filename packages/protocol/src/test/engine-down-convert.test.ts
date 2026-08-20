@@ -17,19 +17,33 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
-import type { AlignedValue as LedgerV9AlignedValue, EncodedStateValue as LedgerV9EncodedStateValue, Op as LedgerV9Op } from '@midnightntwrk/ledger-v9';
+import type {
+  AlignedValue as LedgerV9AlignedValue,
+  EncodedStateValue as LedgerV9EncodedStateValue,
+  Op as LedgerV9Op
+} from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
 import type { Ledger8CompactRuntime } from '../engine/down-convert';
-import { assertMerkleTreesRehashed, checkRoot, downConvertForExecution } from '../engine/down-convert';
+import { assertMerkleTreesRehashed, checkRoot, downConvertForExecution, structurallyEqual } from '../engine/down-convert';
 import { extractEncodedStateValue } from '../engine/envelope';
 import { DownConvertFailedError, MerkleNotRehashedError, PROTOCOL_ERROR_CODES } from '../errors';
 
 const FIXTURES_DIR = resolve(__dirname, '../../../../testkit-js/testkit-js/src/fixtures/hf');
 
+/**
+ * Reads a hex fixture, failing if the file did not decode in full.
+ * `Buffer.from(_, 'hex')` stops silently at the first non-hex character, so
+ * without this length check a truncated or corrupted fixture would still make
+ * every negative test below pass — for the wrong reason.
+ */
 const readHexFixture = (name: string): Uint8Array => {
-  const text = readFileSync(resolve(FIXTURES_DIR, name), 'utf8');
-  return Uint8Array.from(Buffer.from(text.trim(), 'hex'));
+  const text = readFileSync(resolve(FIXTURES_DIR, name), 'utf8').trim();
+  const bytes = Uint8Array.from(Buffer.from(text, 'hex'));
+  if (bytes.length * 2 !== text.length) {
+    throw new Error(`fixture ${name} is not valid hex in full: ${text.length} chars decoded to ${bytes.length} bytes`);
+  }
+  return bytes;
 };
 
 const FIELD_ALIGNMENT: ocrt3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
@@ -42,10 +56,30 @@ const fieldValue = (byte: number): ocrt3.AlignedValue => ({
 const buildNeverRehashedTree = (byte: number): ocrt3.StateBoundedMerkleTree =>
   new ocrt3.StateBoundedMerkleTree(4).update(0n, fieldValue(byte));
 
+const neverRehashedTreeSv = (byte: number): ocrt3.StateValue =>
+  ocrt3.StateValue.newBoundedMerkleTree(buildNeverRehashedTree(byte));
+
+const rehashedTreeSv = (byte: number): ocrt3.StateValue =>
+  ocrt3.StateValue.newBoundedMerkleTree(buildNeverRehashedTree(byte).rehash());
+
+const cellSv = (byte: number): ocrt3.StateValue => ocrt3.StateValue.newCell(fieldValue(byte));
+
+const arrayOf = (...items: readonly ocrt3.StateValue[]): ocrt3.StateValue =>
+  items.reduce((acc, item) => acc.arrayPush(item), ocrt3.StateValue.newArray());
+
+const mapOf = (...entries: readonly (readonly [number, ocrt3.StateValue])[]): ocrt3.StateValue =>
+  ocrt3.StateValue.newMap(entries.reduce((acc, [key, value]) => acc.insert(fieldValue(key), value), new ocrt3.StateMap()));
+
+/** A runtime whose `decode` is replaced, so the safety net can be driven directly. */
+const runtimeDecoding = (decode: () => ocrt3.StateValue): Ledger8CompactRuntime => ({
+  StateValue: { decode },
+  ChargedState: ocrt3.ChargedState
+});
+
 describe('extractEncodedStateValue + downConvertForExecution round trip', () => {
   it('down-converts a migrated v9 state to data byte-identical with the pre-migration v8 state', () => {
-    const v9Encoded = extractEncodedStateValue(readHexFixture('state-migrated-v9.hex'), 'v9');
-    const v8Encoded = extractEncodedStateValue(readHexFixture('state-v8.hex'), 'v8');
+    const v9Encoded = extractEncodedStateValue(readHexFixture('state-migrated-v9.hex'), 'v9', ocrt3.ContractState);
+    const v8Encoded = extractEncodedStateValue(readHexFixture('state-v8.hex'), 'v8', ocrt3.ContractState);
 
     const downConverted = downConvertForExecution(v9Encoded, ocrt3);
 
@@ -55,28 +89,31 @@ describe('extractEncodedStateValue + downConvertForExecution round trip', () => 
   it('is a pure function of its byte input (repeatable, no shared mutable state)', () => {
     const raw = readHexFixture('state-migrated-v9.hex');
 
-    const a = downConvertForExecution(extractEncodedStateValue(raw, 'v9'), ocrt3);
-    const b = downConvertForExecution(extractEncodedStateValue(raw, 'v9'), ocrt3);
+    const a = downConvertForExecution(extractEncodedStateValue(raw, 'v9', ocrt3.ContractState), ocrt3);
+    const b = downConvertForExecution(extractEncodedStateValue(raw, 'v9', ocrt3.ContractState), ocrt3);
 
     expect(a.data.state.encode()).toEqual(b.data.state.encode());
   });
 });
 
 describe('extractEncodedStateValue', () => {
-  it('extracts a v8-era (tag v6) envelope directly via onchain-runtime-v3', () => {
-    // state-v8-v6-envelope.hex and state-v8.hex are documented as byte-identical
-    // (README.md: the ledger-v8 bridge is a no-op on this input), so they must
-    // extract to the same EncodedStateValue.
-    const fromRawEnvelope = extractEncodedStateValue(readHexFixture('state-v8-v6-envelope.hex'), 'v8');
-    const fromBridgedState = extractEncodedStateValue(readHexFixture('state-v8.hex'), 'v8');
+  it('reads a pre-fork (tag v6) envelope to the same state the post-fork envelope carries', () => {
+    // Migration is state-preserving, so the *pre-fork* envelope read with the
+    // pre-fork decoder and the *post-fork* envelope read with the post-fork
+    // decoder must yield the same EncodedStateValue. Unlike comparing
+    // state-v8.hex against state-v8-v6-envelope.hex — which are byte-identical
+    // files, so that comparison could only fail if extraction were
+    // non-deterministic — this exercises both decoders on different bytes.
+    const fromLedger8 = extractEncodedStateValue(readHexFixture('state-v8-v6-envelope.hex'), 'v8', ocrt3.ContractState);
+    const fromLedger9 = extractEncodedStateValue(readHexFixture('state-migrated-v9.hex'), 'v9', ocrt3.ContractState);
 
-    expect(fromRawEnvelope).toEqual(fromBridgedState);
+    expect(fromLedger8).toEqual(fromLedger9);
   });
 
   it('throws a DownConvertFailedError carrying DOWN_CONVERT_FAILED on truncated/tampered bytes', () => {
     const tampered = readHexFixture('state-tampered-bytes.hex');
 
-    expect(() => extractEncodedStateValue(tampered, 'v9')).toThrowError(
+    expect(() => extractEncodedStateValue(tampered, 'v9', ocrt3.ContractState)).toThrowError(
       expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED })
     );
   });
@@ -84,47 +121,69 @@ describe('extractEncodedStateValue', () => {
   it('never returns a silently empty state — it throws instead', () => {
     const tampered = readHexFixture('state-tampered-bytes.hex');
 
-    expect(() => extractEncodedStateValue(tampered, 'v9')).toThrow(DownConvertFailedError);
+    expect(() => extractEncodedStateValue(tampered, 'v9', ocrt3.ContractState)).toThrow(DownConvertFailedError);
+  });
+
+  it('rejects empty input rather than yielding an empty state', () => {
+    expect(() => extractEncodedStateValue(new Uint8Array(0), 'v9', ocrt3.ContractState)).toThrowError(
+      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED })
+    );
+    expect(() => extractEncodedStateValue(new Uint8Array(0), 'v8', ocrt3.ContractState)).toThrowError(
+      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED })
+    );
   });
 
   it('never leaks a raw hex/byte dump in the thrown error message', () => {
     const tampered = readHexFixture('state-tampered-bytes.hex');
-    let captured: unknown;
 
     try {
-      extractEncodedStateValue(tampered, 'v9');
+      extractEncodedStateValue(tampered, 'v9', ocrt3.ContractState);
+      expect.unreachable('extraction of tampered bytes must throw');
     } catch (error) {
-      captured = error;
+      expect(error).toBeInstanceOf(DownConvertFailedError);
+      expect((error as DownConvertFailedError).message).not.toMatch(/[0-9a-f]{16,}/i);
     }
+  });
 
-    expect(captured).toBeInstanceOf(DownConvertFailedError);
-    expect((captured as DownConvertFailedError).message).not.toMatch(/[0-9a-f]{16,}/i);
+  // The realistic production bug is not a tampered envelope but a *valid*
+  // state read with the wrong LedgerVersion — e.g. a protocolVersion mapping
+  // error routing a genuine v9 state to the pre-fork decoder. Each envelope
+  // carries its own era's header tag, so each direction must fail closed.
+  it.each([
+    { fixture: 'state-migrated-v9.hex', version: 'v8' as const },
+    { fixture: 'state-v8.hex', version: 'v9' as const }
+  ])('rejects the untampered $fixture read as $version', ({ fixture, version }) => {
+    expect(() => extractEncodedStateValue(readHexFixture(fixture), version, ocrt3.ContractState)).toThrowError(
+      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED })
+    );
   });
 
   // These two fixtures carry an envelope tag deliberately flipped to the
   // *other* ledger version's tag (fixtures/hf/README.md's "Tampered fixtures"
-  // section). The verified decode matrix in that README guarantees each
-  // direction throws when read with the version the tag now (falsely) claims.
+  // section).
   it.each([
     { fixture: 'state-tampered-keyset-v8to9.hex', version: 'v9' as const },
     { fixture: 'state-tampered-keyset-v9to8.hex', version: 'v8' as const }
   ])('wraps extraction of $fixture as $version in a DownConvertFailedError (DOWN_CONVERT_FAILED)', ({ fixture, version }) => {
     const tampered = readHexFixture(fixture);
 
-    expect(() => extractEncodedStateValue(tampered, version)).toThrowError(
+    expect(() => extractEncodedStateValue(tampered, version, ocrt3.ContractState)).toThrowError(
       expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED })
     );
+  });
+
+  it('names the failing stage without a version claim the down-convert cannot make', () => {
+    try {
+      extractEncodedStateValue(readHexFixture('state-tampered-bytes.hex'), 'v9', ocrt3.ContractState);
+      expect.unreachable('extraction of tampered bytes must throw');
+    } catch (error) {
+      expect(error).toBeInstanceOf(DownConvertFailedError);
+      expect((error as DownConvertFailedError).stage).toBe('v9 envelope extraction');
+    }
   });
 });
 
 describe('Merkle rehash', () => {
-  // With the pinned onchain-runtime-v3 / ledger-v9 versions, `encode()` fully
-  // materializes a tree's node hashes even when `.rehash()` was never called,
-  // so a fixture that has crossed an encode()/decode() round trip already
-  // has a readable root (verified empirically). The "root read before
-  // rehash" failure `checkRoot` guards against is instead exercised directly
-  // against a freshly built tree that has never been through `.rehash()` or
-  // any encode/decode round trip.
   it('a freshly built, never-rehashed tree fails checkRoot with MERKLE_NOT_REHASHED', () => {
     const tree = buildNeverRehashedTree(0x55);
 
@@ -132,8 +191,22 @@ describe('Merkle rehash', () => {
     expect(() => checkRoot(tree)).toThrowError(expect.objectContaining({ code: PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED }));
   });
 
-  it('checkRoot passes on the golden migrated-v9-merkle fixture after downConvertForExecution (the encode/decode round trip materializes the hashes)', () => {
-    const encoded = extractEncodedStateValue(readHexFixture('state-migrated-v9-merkle.hex'), 'v9');
+  // This is the vendor behaviour `assertMerkleTreesRehashed`'s fail-fast
+  // design rests on: because a round trip materializes hashes, a rootless tree
+  // reaching the walk can only be an upstream programming error, never
+  // ordinary state. If a vendor bump ever stops materializing them, this test
+  // fails and the fail-fast reasoning has to be revisited — rather than the
+  // change surfacing in production.
+  it('an encode/decode round trip materializes the hashes of a tree that was never rehashed', () => {
+    const encoded = neverRehashedTreeSv(0x55).encode();
+
+    const decoded = ocrt3.StateValue.decode(encoded);
+
+    expect(() => checkRoot(decoded.asBoundedMerkleTree()!)).not.toThrow();
+  });
+
+  it('checkRoot passes on the golden migrated-v9-merkle fixture after downConvertForExecution', () => {
+    const encoded = extractEncodedStateValue(readHexFixture('state-migrated-v9-merkle.hex'), 'v9', ocrt3.ContractState);
     const downConverted = downConvertForExecution(encoded, ocrt3);
     const tree = downConverted.data.state.asBoundedMerkleTree();
     if (tree === undefined) {
@@ -146,35 +219,61 @@ describe('Merkle rehash', () => {
 
 describe('assertMerkleTreesRehashed recursion (contract-agnostic StateValue algebra)', () => {
   // These call assertMerkleTreesRehashed directly on structures that have
-  // never been through an encode()/decode() round trip — unlike a
-  // downConvertForExecution integration test, nothing here can materialize
-  // the nested tree's hash as a side effect. A throw is therefore only
-  // producible if the walk actually recursed into the array/map and found the
-  // never-rehashed tree — a broken 'array'/'map' case (e.g. one that fails to
-  // recurse, or drops the element) would pass silently and fail this test.
+  // never been through an encode()/decode() round trip — nothing here can
+  // materialize the nested tree's hash as a side effect. A throw is therefore
+  // only producible if the walk actually reached the never-rehashed tree.
   it('recurses into an array and rejects a nested tree that was never rehashed', () => {
-    const treeSv = ocrt3.StateValue.newBoundedMerkleTree(buildNeverRehashedTree(0x11));
-    const arraySv = ocrt3.StateValue.newArray().arrayPush(treeSv);
-
-    expect(() => assertMerkleTreesRehashed(arraySv)).toThrow(MerkleNotRehashedError);
+    expect(() => assertMerkleTreesRehashed(arrayOf(neverRehashedTreeSv(0x11)))).toThrow(MerkleNotRehashedError);
   });
 
   it('recurses into a map and rejects a nested tree that was never rehashed', () => {
-    const key = fieldValue(0x22);
-    const treeSv = ocrt3.StateValue.newBoundedMerkleTree(buildNeverRehashedTree(0x33));
-    const mapSv = ocrt3.StateValue.newMap(new ocrt3.StateMap().insert(key, treeSv));
-
-    expect(() => assertMerkleTreesRehashed(mapSv)).toThrow(MerkleNotRehashedError);
+    expect(() => assertMerkleTreesRehashed(mapOf([0x22, neverRehashedTreeSv(0x33)]))).toThrow(MerkleNotRehashedError);
   });
 
-  it('accepts an array and a map whose nested trees have been rehashed', () => {
-    const rehashedTreeSv = (byte: number): ocrt3.StateValue =>
-      ocrt3.StateValue.newBoundedMerkleTree(buildNeverRehashedTree(byte).rehash());
-    const arraySv = ocrt3.StateValue.newArray().arrayPush(rehashedTreeSv(0x11));
-    const mapSv = ocrt3.StateValue.newMap(new ocrt3.StateMap().insert(fieldValue(0x22), rehashedTreeSv(0x33)));
+  // A walk that only inspected each container's first element would pass every
+  // single-element test above. These place the rootless tree last.
+  it('rejects a tree at a non-first array position', () => {
+    const sv = arrayOf(cellSv(0x01), rehashedTreeSv(0x02), neverRehashedTreeSv(0x03));
 
-    expect(() => assertMerkleTreesRehashed(arraySv)).not.toThrow();
-    expect(() => assertMerkleTreesRehashed(mapSv)).not.toThrow();
+    expect(() => assertMerkleTreesRehashed(sv)).toThrow(MerkleNotRehashedError);
+  });
+
+  it('rejects a tree at a non-first map entry', () => {
+    const sv = mapOf([0x01, cellSv(0x01)], [0x02, rehashedTreeSv(0x02)], [0x03, neverRehashedTreeSv(0x03)]);
+
+    expect(() => assertMerkleTreesRehashed(sv)).toThrow(MerkleNotRehashedError);
+  });
+
+  // A walk flattened to a single level — checking each container's immediate
+  // children instead of recursing — would pass every test above. These nest
+  // the rootless tree two containers deep, through both container variants.
+  it('rejects a tree nested two arrays deep', () => {
+    const sv = arrayOf(cellSv(0x01), arrayOf(cellSv(0x02), neverRehashedTreeSv(0x03)));
+
+    expect(() => assertMerkleTreesRehashed(sv)).toThrow(MerkleNotRehashedError);
+  });
+
+  it('rejects a tree nested in a map inside an array', () => {
+    const sv = arrayOf(cellSv(0x01), mapOf([0x02, cellSv(0x02)], [0x03, neverRehashedTreeSv(0x04)]));
+
+    expect(() => assertMerkleTreesRehashed(sv)).toThrow(MerkleNotRehashedError);
+  });
+
+  it('rejects a tree nested in an array inside a map', () => {
+    const sv = mapOf([0x01, cellSv(0x01)], [0x02, arrayOf(cellSv(0x03), neverRehashedTreeSv(0x04))]);
+
+    expect(() => assertMerkleTreesRehashed(sv)).toThrow(MerkleNotRehashedError);
+  });
+
+  it('accepts nested containers whose trees have all been rehashed', () => {
+    const sv = arrayOf(
+      ocrt3.StateValue.newNull(),
+      cellSv(0x01),
+      rehashedTreeSv(0x02),
+      mapOf([0x03, rehashedTreeSv(0x04)], [0x05, arrayOf(rehashedTreeSv(0x06))])
+    );
+
+    expect(() => assertMerkleTreesRehashed(sv)).not.toThrow();
   });
 });
 
@@ -185,67 +284,127 @@ describe('downConvertForExecution safety net', () => {
     expect(downConverted.data.state.type()).toBe('null');
   });
 
-  it('throws DOWN_CONVERT_FAILED if the decoded StateValue silently lost non-null source data', () => {
-    const nonNullEncoded = ocrt3.StateValue.newCell(fieldValue(0x44)).encode();
-    const lossyRuntime: Ledger8CompactRuntime = {
-      StateValue: { decode: () => ocrt3.StateValue.newNull() },
-      ChargedState: ocrt3.ChargedState
-    };
+  it('throws DOWN_CONVERT_FAILED if the decoded StateValue collapsed to null', () => {
+    const nonNullEncoded = cellSv(0x44).encode();
 
-    expect(() => downConvertForExecution(nonNullEncoded, lossyRuntime)).toThrowError(
-      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED })
-    );
+    expect(() =>
+      downConvertForExecution(nonNullEncoded, runtimeDecoding(() => ocrt3.StateValue.newNull()))
+    ).toThrowError(expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED }));
+  });
+
+  // Partial loss is the mode a top-level tag comparison cannot see: the source
+  // and the decoded value are both arrays, so only a full structural
+  // comparison catches the dropped element.
+  it('throws DOWN_CONVERT_FAILED if the decoded array silently lost an element', () => {
+    const source = arrayOf(cellSv(0x01), cellSv(0x02)).encode();
+
+    expect(() =>
+      downConvertForExecution(source, runtimeDecoding(() => arrayOf(cellSv(0x01))))
+    ).toThrowError(expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED }));
+  });
+
+  it('throws DOWN_CONVERT_FAILED if the decoded map silently lost an entry', () => {
+    const source = mapOf([0x01, cellSv(0x01)], [0x02, cellSv(0x02)]).encode();
+
+    expect(() =>
+      downConvertForExecution(source, runtimeDecoding(() => mapOf([0x01, cellSv(0x01)])))
+    ).toThrowError(expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED }));
+  });
+
+  it('throws DOWN_CONVERT_FAILED if a nested cell changed value', () => {
+    const source = arrayOf(cellSv(0x01), arrayOf(cellSv(0x02))).encode();
+
+    expect(() =>
+      downConvertForExecution(source, runtimeDecoding(() => arrayOf(cellSv(0x01), arrayOf(cellSv(0x99)))))
+    ).toThrowError(expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED }));
   });
 
   it('wraps a StateValue.decode failure in DownConvertFailedError', () => {
-    const throwingRuntime: Ledger8CompactRuntime = {
-      StateValue: {
-        decode: () => {
-          throw new Error('simulated decode failure');
-        }
-      },
-      ChargedState: ocrt3.ChargedState
-    };
+    const throwingRuntime = runtimeDecoding(() => {
+      throw new Error('simulated decode failure');
+    });
 
     expect(() => downConvertForExecution(ocrt3.StateValue.newNull().encode(), throwingRuntime)).toThrowError(
       expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED })
     );
   });
 
-  it('throws MERKLE_NOT_REHASHED instead of returning a state whose tree has no readable root', () => {
-    // A real encode()/decode() round trip materializes tree hashes on the
-    // pinned versions, so the only way a never-rehashed tree can reach the
-    // walk is an injected decode — the same seam the lossy/throwing fakes
-    // above use.
-    const unrehashedRuntime: Ledger8CompactRuntime = {
-      StateValue: {
-        decode: () => ocrt3.StateValue.newArray().arrayPush(ocrt3.StateValue.newBoundedMerkleTree(buildNeverRehashedTree(0x55)))
-      },
-      ChargedState: ocrt3.ChargedState
-    };
+  // ChargedState construction is where a genuine dual-instantiation surfaces:
+  // wasm-bindgen rejects a StateValue built by the other physical copy. It has
+  // to leave this function as a coded error like every other failure, or
+  // code-based discrimination breaks exactly where it matters most.
+  it('wraps a ChargedState construction failure in DownConvertFailedError', () => {
+    class ThrowingChargedState extends ocrt3.ChargedState {
+      constructor(state: ocrt3.StateValue) {
+        super(state);
+        throw new Error('simulated ChargedState rejection');
+      }
+    }
+    const runtime: Ledger8CompactRuntime = { StateValue: ocrt3.StateValue, ChargedState: ThrowingChargedState };
 
-    expect(() => downConvertForExecution(ocrt3.StateValue.newNull().encode(), unrehashedRuntime)).toThrowError(
-      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED })
+    expect(() => downConvertForExecution(cellSv(0x44).encode(), runtime)).toThrowError(
+      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED })
     );
+  });
+
+  it('throws MERKLE_NOT_REHASHED instead of returning a state whose tree has no readable root', () => {
+    // A real encode()/decode() round trip materializes tree hashes, so the
+    // only way a never-rehashed tree can reach the walk is an injected decode.
+    // The source is encoded from the same structure so the re-encode
+    // comparison passes and the Merkle assertion is what fails.
+    const source = arrayOf(neverRehashedTreeSv(0x55)).encode();
+
+    expect(() =>
+      downConvertForExecution(source, runtimeDecoding(() => arrayOf(neverRehashedTreeSv(0x55))))
+    ).toThrowError(expect.objectContaining({ code: PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED }));
   });
 });
 
-// --- Step 5: compile-time drift detector ------------------------------------
-// If a vendor bump ever changes the wire shape of EncodedStateValue, Op, or
-// AlignedValue between the pre-fork (onchain-runtime-v3) and post-fork
-// (ledger-v9) packages this engine bridges, this block stops compiling — long
-// before any fixture-based test could catch a silent structural drift.
+describe('structurallyEqual', () => {
+  it('holds for a state value and its own re-encoding, including a multi-entry map', () => {
+    // Also pins the assumption the comparison relies on: the runtime emits map
+    // entries in a canonical key order, so a value and its re-encoding iterate
+    // identically even when the entries were inserted out of order.
+    const encoded = mapOf([0x33, cellSv(0x33)], [0x11, cellSv(0x11)], [0x77, cellSv(0x77)]).encode();
+
+    expect(structurallyEqual(ocrt3.StateValue.decode(encoded).encode(), encoded)).toBe(true);
+  });
+
+  it.each([
+    { name: 'identical primitives', a: 1, b: 1, equal: true },
+    { name: 'different primitives', a: 1, b: 2, equal: false },
+    { name: 'null against an object', a: null, b: {}, equal: false },
+    { name: 'an object against a primitive', a: {}, b: 1, equal: false },
+    { name: 'equal byte arrays', a: new Uint8Array([1, 2]), b: new Uint8Array([1, 2]), equal: true },
+    { name: 'byte arrays of different length', a: new Uint8Array([1, 2]), b: new Uint8Array([1]), equal: false },
+    { name: 'byte arrays differing in one byte', a: new Uint8Array([1, 2]), b: new Uint8Array([1, 3]), equal: false },
+    { name: 'a byte array against a plain array', a: new Uint8Array([1]), b: [1], equal: false },
+    { name: 'equal maps', a: new Map([['k', 1]]), b: new Map([['k', 1]]), equal: true },
+    { name: 'maps of different size', a: new Map([['k', 1]]), b: new Map(), equal: false },
+    { name: 'maps with different keys', a: new Map([['k', 1]]), b: new Map([['j', 1]]), equal: false },
+    { name: 'maps with different values', a: new Map([['k', 1]]), b: new Map([['k', 2]]), equal: false },
+    { name: 'a map against a plain object', a: new Map([['k', 1]]), b: { k: 1 }, equal: false },
+    { name: 'equal arrays', a: [1, 2], b: [1, 2], equal: true },
+    { name: 'arrays of different length', a: [1, 2], b: [1], equal: false },
+    { name: 'an array against an object', a: [1], b: { 0: 1 }, equal: false },
+    { name: 'equal objects', a: { x: 1, y: [2] }, b: { x: 1, y: [2] }, equal: true },
+    { name: 'objects with different key counts', a: { x: 1 }, b: { x: 1, y: 2 }, equal: false },
+    { name: 'objects with different values', a: { x: 1 }, b: { x: 2 }, equal: false },
+    { name: 'objects with different keys', a: { x: 1 }, b: { y: 1 }, equal: false }
+  ])('is $equal for $name', ({ a, b, equal }) => {
+    expect(structurallyEqual(a, b)).toBe(equal);
+  });
+});
+
+// Compile-time drift detector. If a vendor bump ever changes the wire shape of
+// EncodedStateValue, Op, or AlignedValue between the pre-fork
+// (onchain-runtime-v3) and post-fork (ledger-v9) packages this engine bridges,
+// this block stops compiling. It is a real gate because CI type-checks test
+// files (`typecheck:tests`); it is deliberately not paired with a runtime
+// assertion, since any such assertion would be a tautology after erasure.
 type AssertEqual<A, B> = (<T>() => T extends A ? 1 : 0) extends <T>() => T extends B ? 1 : 0 ? true : false;
 type Expect<T extends true> = T;
 
 type _EncodedStateValueUnchanged = Expect<AssertEqual<ocrt3.EncodedStateValue, LedgerV9EncodedStateValue>>;
 type _OpUnchanged = Expect<AssertEqual<ocrt3.Op<null>, LedgerV9Op<null>>>;
 type _AlignedValueUnchanged = Expect<AssertEqual<ocrt3.AlignedValue, LedgerV9AlignedValue>>;
-
-describe('v8/v9 EncodedStateValue, Op, and AlignedValue shapes', () => {
-  it('have not drifted between onchain-runtime-v3 and ledger-v9 (compile-time gate above; this only documents intent)', () => {
-    const driftChecks: [_EncodedStateValueUnchanged, _OpUnchanged, _AlignedValueUnchanged] = [true, true, true];
-
-    expect(driftChecks).toEqual([true, true, true]);
-  });
-});

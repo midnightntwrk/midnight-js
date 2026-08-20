@@ -42,11 +42,19 @@ const V8_SUBPATH_PATTERN = escapeRegExp(V8_SUBPATH_SPECIFIER);
 // dist/ is absent — vitest still executes a `describe` callback during test
 // collection even when `skipIf` is true; only the nested `it`s are skipped.
 describe.skipIf(!distEntriesExist)('dist laziness gate', () => {
-  it.each(DIST_ENTRY_PATHS)('%s has no static ledger-v8 linkage', (path) => {
-    const content = readFileSync(resolve(PKG_ROOT, path), 'utf8');
-    expect(content).not.toMatch(/from\s*['"][^'"]*ledger-v8['"]/);
-    expect(content).not.toMatch(/require\(['"][^'"]*ledger-v8['"]\)/);
-  });
+  // Both halves of the retained pre-fork stack, not just ledger-v8:
+  // onchain-runtime-v3 is a runtime dependency of this package and carries its
+  // own multi-megabyte WASM, so a static link to it costs a v9-only consumer
+  // exactly as much. The engine modules reference it only through erased
+  // `import type`s and injected parameters, which is what keeps this green.
+  it.each(DIST_ENTRY_PATHS.flatMap((path) => ['ledger-v8', 'onchain-runtime-v3'].map((pkg) => ({ path, pkg }))))(
+    '$path has no static $pkg linkage',
+    ({ path, pkg }) => {
+      const content = readFileSync(resolve(PKG_ROOT, path), 'utf8');
+      expect(content).not.toMatch(new RegExp(`from\\s*['"][^'"]*${escapeRegExp(pkg)}['"]`));
+      expect(content).not.toMatch(new RegExp(`require\\(['"][^'"]*${escapeRegExp(pkg)}['"]\\)`));
+    }
+  );
 
   it.each(DIST_ENTRY_PATHS)('%s has no static linkage of the protocol/v8 subpath', (path) => {
     const content = readFileSync(resolve(PKG_ROOT, path), 'utf8');
