@@ -488,6 +488,11 @@ export interface PublicDataProvider {
    * established it only ever moves forward: a later older-era reading never
    * clears or lowers it.
    *
+   * Route 2 proves the era only. A record's protocol version is the version of
+   * the block that carried it and may sit behind the head, so it MUST NOT be
+   * returned from this method — the cached value always comes from a head
+   * reading.
+   *
    * @param options Pass `{ fresh: true }` to skip any cache and always issue a
    *                real request. Callers use this to re-read the head after
    *                they have seen evidence that a cached answer disagrees with

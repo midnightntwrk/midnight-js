@@ -25,7 +25,9 @@ import {
   mintV8ContractStateHex,
   mintV9ContractStateHex,
   mintV9TransactionHex,
+  UNRESOLVABLE_PROTOCOL_VERSION,
   V8_ERA_PROTOCOL_VERSION,
+  V9_ERA_LATER_PROTOCOL_VERSION,
   V9_ERA_PROTOCOL_VERSION
 } from './state-fixtures';
 
@@ -135,26 +137,70 @@ describe('head protocol-version cache', () => {
     expect(headRequestCount(query)).toBe(before + 1);
   });
 
-  test('caches after decoding a finalized transaction record from the newer era', async () => {
-    const query = dispatchingQuery(new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(V9_ERA_PROTOCOL_VERSION)]]));
+  test('caches the fetched head, not the record version, after decoding a newer-era finalized record', async () => {
+    // The record and the head deliberately carry different v9-era integers: a
+    // record only proves which era the network is on, it is not itself a head
+    // reading, so the cached answer has to be the one that came back from the
+    // head field.
+    const query = dispatchingQuery(
+      new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(V9_ERA_LATER_PROTOCOL_VERSION)]])
+    );
     const watchQuery = vi.fn().mockReturnValue(finalizedTransactionEmission(V9_ERA_PROTOCOL_VERSION));
     const provider = buildProvider(query, watchQuery);
 
     await provider.watchForTxData(TX_ID);
+    const afterCorroboration = headRequestCount(query);
     const cached = await provider.queryLatestProtocolVersion();
 
-    expect(cached).toBe(V9_ERA_PROTOCOL_VERSION);
-    expect(headRequestCount(query)).toBe(0);
+    expect(cached).toBe(V9_ERA_LATER_PROTOCOL_VERSION);
+    // Exactly one request, to fetch the value being cached — and none after.
+    expect(afterCorroboration).toBe(1);
+    expect(headRequestCount(query)).toBe(1);
   });
 
-  test('does not cache after decoding a finalized transaction record from the older era', async () => {
+  test('does not cache when the head still reports the older era, however new the finalized record is', async () => {
+    // A replica lagging behind the record it just served. Caching its answer
+    // would pin a version the network has already moved past.
+    const query = dispatchingQuery(new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(V8_ERA_PROTOCOL_VERSION)]]));
+    const watchQuery = vi.fn().mockReturnValue(finalizedTransactionEmission(V9_ERA_PROTOCOL_VERSION));
+    const provider = buildProvider(query, watchQuery);
+
+    await provider.watchForTxData(TX_ID);
+    const afterCorroboration = headRequestCount(query);
+    await provider.queryLatestProtocolVersion();
+
+    expect(afterCorroboration).toBe(1);
+    expect(headRequestCount(query)).toBe(2);
+  });
+
+  test('does not even look at the head after decoding a finalized transaction record from the older era', async () => {
     const query = dispatchingQuery(new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(V8_ERA_PROTOCOL_VERSION)]]));
     const watchQuery = vi.fn().mockReturnValue(finalizedTransactionEmission(V8_ERA_PROTOCOL_VERSION));
     const provider = buildProvider(query, watchQuery);
 
     await provider.watchForTxData(TX_ID);
+    const afterCorroboration = headRequestCount(query);
     await provider.queryLatestProtocolVersion();
 
+    expect(afterCorroboration).toBe(0);
+    expect(headRequestCount(query)).toBe(1);
+  });
+
+  test('returns the finalized record normally when its protocol version is one this client cannot resolve', async () => {
+    // Warming the cache is a side effect of the caller's real request. An
+    // integer this client does not recognize means "cannot tell which era" —
+    // it must not turn the caller's finalization read into a failure.
+    const query = dispatchingQuery(new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(V9_ERA_PROTOCOL_VERSION)]]));
+    const watchQuery = vi.fn().mockReturnValue(finalizedTransactionEmission(UNRESOLVABLE_PROTOCOL_VERSION));
+    const provider = buildProvider(query, watchQuery);
+
+    const finalized = await provider.watchForTxData(TX_ID);
+    const afterCorroboration = headRequestCount(query);
+    await provider.queryLatestProtocolVersion();
+
+    expect(finalized.txId).toBe(TX_ID);
+    expect(finalized.protocolVersion).toBe(UNRESOLVABLE_PROTOCOL_VERSION);
+    expect(afterCorroboration).toBe(0);
     expect(headRequestCount(query)).toBe(1);
   });
 

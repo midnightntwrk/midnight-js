@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { protocolVersionToLedger } from '@midnight-ntwrk/midnight-js-protocol';
+import { protocolVersionToLedger, UnknownProtocolVersionError } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type {
   ContractAddress,
@@ -115,6 +115,27 @@ const toBlockOffset = (config?: BlockHeightConfig | BlockHashConfig): InputMaybe
  */
 type CorroborationRoute = 'snapshot-envelope' | 'finalized-record';
 
+/**
+ * Whether `protocolVersion` belongs to the v9 ledger era, answering `false`
+ * for an integer this client cannot resolve at all.
+ *
+ * Every caller here is warming a cache as a side effect of some other request
+ * the user actually asked for, so "I do not recognize this integer" has to
+ * mean "cannot tell which era" rather than failing that request. Only
+ * {@link UnknownProtocolVersionError} is treated that way — anything else is a
+ * real failure and propagates.
+ */
+const isV9Era = (protocolVersion: number): boolean => {
+  try {
+    return protocolVersionToLedger(protocolVersion, 'read') === 'v9';
+  } catch (error) {
+    if (error instanceof UnknownProtocolVersionError) {
+      return false;
+    }
+    throw error;
+  }
+};
+
 export class IndexerPublicDataProvider implements PublicDataProvider {
   private readonly handle: ApolloHandle;
   private readonly pollInterval: number;
@@ -149,7 +170,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    *   so getting here with a v8-era version means a call site is wrong.
    */
   private corroborateV9(headProtocolVersion: number, route: CorroborationRoute): void {
-    if (protocolVersionToLedger(headProtocolVersion, 'read') !== 'v9') {
+    if (!isV9Era(headProtocolVersion)) {
       throw new IndexerInvariantError(
         `corroborateV9: the ${route} route supplied protocol version ${headProtocolVersion}, which is not on the ` +
           'v9 ledger era; call sites must check the era before corroborating'
@@ -178,13 +199,27 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
   /**
    * Route 2: a finalized transaction record this provider decoded itself,
    * whose own protocol version is on the v9 era. Such a record cannot exist
-   * before the network has forked.
+   * before the network has forked, so it is proof of the era.
+   *
+   * It is proof of the era and nothing more. The record's own integer is the
+   * version of the block that contained it, which may sit well behind the
+   * head, so it is never the value that gets cached: the era proof buys one
+   * head read, and only that head reading is cached — and only if it, too, is
+   * on the v9 era. A replica still answering from before the fork therefore
+   * caches nothing, and is asked again next time.
+   *
+   * Best effort throughout: this runs as a side effect of a finalization read
+   * the caller asked for, and never makes that read fail.
    */
-  private corroborateFromFinalizedRecord(protocolVersion: number): void {
-    if (protocolVersionToLedger(protocolVersion, 'read') !== 'v9') {
+  private async corroborateFromFinalizedRecord(protocolVersion: number): Promise<void> {
+    if (this.v9HeadProtocolVersion !== undefined || !isV9Era(protocolVersion)) {
       return;
     }
-    this.corroborateV9(protocolVersion, 'finalized-record');
+    const headProtocolVersion = await this.fetchHeadProtocolVersion();
+    if (!isV9Era(headProtocolVersion)) {
+      return;
+    }
+    this.corroborateV9(headProtocolVersion, 'finalized-record');
   }
 
   /**
@@ -461,7 +496,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         this.pollInterval
       )
     );
-    this.corroborateFromFinalizedRecord(finalized.protocolVersion);
+    await this.corroborateFromFinalizedRecord(finalized.protocolVersion);
     return finalized;
   }
 
@@ -507,7 +542,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         this.pollInterval
       )
     );
-    this.corroborateFromFinalizedRecord(finalized.protocolVersion);
+    await this.corroborateFromFinalizedRecord(finalized.protocolVersion);
     return finalized;
   }
 

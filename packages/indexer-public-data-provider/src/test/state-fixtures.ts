@@ -52,3 +52,12 @@ export const V8_ERA_PROTOCOL_VERSION = 1_000_000;
 
 /** Protocol-version integer for a node release whose ledger runtime is v9. */
 export const V9_ERA_PROTOCOL_VERSION = 2_000_000;
+
+/**
+ * A later v9-era protocol version. Paired with {@link V9_ERA_PROTOCOL_VERSION}
+ * it lets a test tell which of two v9 readings a value came from.
+ */
+export const V9_ERA_LATER_PROTOCOL_VERSION = 2_003_000;
+
+/** A protocol-version integer no release of this client can resolve. */
+export const UNRESOLVABLE_PROTOCOL_VERSION = 0;
