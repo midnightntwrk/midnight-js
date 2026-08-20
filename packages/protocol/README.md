@@ -32,7 +32,7 @@ import { createPlatform } from '@midnight-ntwrk/midnight-js-protocol/platform-js
 
 | Sub-path | Re-exports | Description |
 | -------- | ---------- | ----------- |
-| `./errors` | (own) | `PROTOCOL_ERROR_CODES` and `UnknownProtocolVersionError` without pulling in the ledger/compact-js/onchain-runtime/platform namespaces |
+| `./errors` | (own) | `PROTOCOL_ERROR_CODES`, `UnknownProtocolVersionError` and the types `ProtocolErrorCode`, `ProtocolVersionUnknownReason`, `VersionResolutionPath` — without pulling in the ledger/compact-js/onchain-runtime/platform namespaces |
 | `./ledger` | `@midnightntwrk/ledger-v9` | Ledger types and transaction primitives |
 | `./compact-runtime` | `@midnight-ntwrk/compact-runtime` | Compact contract runtime utilities |
 | `./compact-js` | `@midnight-ntwrk/compact-js` | Compact JS bindings |
@@ -45,7 +45,16 @@ import { createPlatform } from '@midnight-ntwrk/midnight-js-protocol/platform-js
 
 ## Version Module
 
-The root barrel (and the `./errors` subpath, for the error types) also export a small module for mapping a raw `protocolVersion` integer onto the ledger runtime it corresponds to:
+The root barrel exports a small module for mapping a raw `protocolVersion` integer onto the ledger runtime it corresponds to. (The error type it throws is additionally reachable from the lighter `./errors` subpath; the mapping functions themselves are not.)
+
+The `protocolVersion` integer encodes the **node** version as `major * 1_000_000 + minor * 1_000 + patch`, so a whole node major occupies a 1_000_000-wide range:
+
+| protocolVersion range | node version | ledger |
+| --------------------- | ------------ | ------ |
+| 1_000_000 – 1_999_999 | 1.x          | v8     |
+| 2_000_000 – 2_999_999 | 2.x          | v9     |
+
+Anything outside those ranges throws rather than guessing.
 
 ```typescript
 import {

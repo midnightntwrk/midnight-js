@@ -164,7 +164,6 @@ import {
   PROVIDER_ERROR_CODES,
   MIDNIGHT_JS_ERROR_CODES,
   hasErrorCode
-
 } from '@midnight-ntwrk/midnight-js-utils';
 ```
 
