@@ -96,11 +96,11 @@ export class FetchZkConfigProvider<K extends string> extends ZKConfigProvider<K>
         `Expected ZK artifact, but received text/html from ${fullUrl}. This usually means the file does not exist and the server returned an SPA fallback page.`
       );
     }
-    /* eslint-disable @typescript-eslint/no-explicit-any */
+    /* eslint-disable @typescript-eslint/no-explicit-any, no-restricted-syntax */
     return responseType === 'text'
       ? ((await response.text()) as any)
       : ((await response.arrayBuffer().then((arrayBuffer) => new Uint8Array(arrayBuffer))) as any);
-    /* eslint-enable @typescript-eslint/no-explicit-any */
+    /* eslint-enable @typescript-eslint/no-explicit-any, no-restricted-syntax */
   }
 
   private loadManifest(): Promise<ZkArtifactManifest | undefined> {

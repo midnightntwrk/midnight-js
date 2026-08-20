@@ -15,7 +15,7 @@
 
 import type { ConnectedAPI } from '@midnightntwrk/dapp-connector-api';
 
-import { DAppConnectorInitialAPI } from '@/wallet/dapp-connector-initial-api';
+import { DAppConnectorInitialAPI } from '../src/wallet/dapp-connector-initial-api';
 
 describe('[Unit tests] DAppConnectorInitialAPI', () => {
   const mockConnectedWallet = {} as ConnectedAPI;
