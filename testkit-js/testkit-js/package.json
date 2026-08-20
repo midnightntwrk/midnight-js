@@ -8,6 +8,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./fixtures-hf": {
+      "types": "./dist/fixtures-hf.d.ts",
+      "default": "./dist/fixtures-hf.js"
     }
   },
   "repository": {

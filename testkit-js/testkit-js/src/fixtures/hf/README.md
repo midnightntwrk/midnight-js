@@ -19,6 +19,47 @@ while authoring this fixture set to verify every deserialize outcome quoted
 here against the real `@midnightntwrk/ledger-v8@8.1.1` /
 `@midnightntwrk/ledger-v9@1.0.0-rc.3` packages — nothing below is guessed.
 
+## Consuming these fixtures
+
+The whole tree below `src/fixtures/hf/` is **published** with
+`@midnight-ntwrk/testkit-js`. The build copies it verbatim into
+`dist/fixtures/hf/`, and `src/fixtures-hf.ts` resolves it relative to its own
+module URL, so the same accessors work from source inside this repo and from
+the installed package outside it:
+
+```ts
+import {
+  HF_FIXTURE_NAMES,
+  hfFixturePath,
+  hfFixturesManifest,
+  readHfFixture
+} from '@midnight-ntwrk/testkit-js/fixtures-hf';
+
+const bytes = readHfFixture('state-v8.hex');                    // Uint8Array
+const era = hfFixturesManifest['state-v8.hex'].protocolVersion; // 1000000
+const source = hfFixturePath('twin-contract/counter.compact');  // absolute path
+```
+
+`readHfFixture` covers the nine `.hex` states. Everything else — both compiled
+contracts, `increment-transcript.golden.json`, `fixtures.json`, this README —
+is reached by path through `hfFixturePath`. Both accessors throw rather than
+returning a placeholder: an unknown fixture name, a path that climbs out of the
+fixture directory, a missing file and a hex file that is not whole hex are all
+errors. `hfFixturesManifest` is validated against `HF_FIXTURE_NAMES` at import,
+so a manifest that has drifted fails immediately instead of at first lookup.
+
+Two things to know about what ships:
+
+- **`generators/` is deliberately excluded.** The mint scripts import the
+  `ledger-v8`/`ledger-v9` devDependencies, which a consumer of the published
+  package does not get. They stay a repo-only tool; see
+  [Regenerating](#regenerating).
+- **The compiled contract files are data, not modules.** In particular
+  `counter-016/compiled/contract/index.js` expects
+  `@midnight-ntwrk/compact-runtime@0.16`, which nothing in this repo installs
+  (see [Version pin note](#version-pin-note-deviation-from-the-brief-with-evidence)).
+  Read these files, do not `import` them.
+
 ## Fixtures
 
 | File | protocolVersion | Mint path | What it is |
