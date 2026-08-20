@@ -71,7 +71,7 @@ export type ProtocolVersionUnknownReason = 'unknown' | 'malformed';
  * to build a new construct.
  */
 export class UnknownProtocolVersionError extends Error {
-  /** Recognises both of this class's codes — see {@link carriesProtocolCode}. */
+  /** Recognises both of this class's codes — see `carriesProtocolCode` above. */
   static [Symbol.hasInstance](value: unknown): boolean {
     return carriesProtocolCode(
       value,
@@ -107,7 +107,6 @@ export class UnknownProtocolVersionError extends Error {
 }
 
 export class Ledger8RuntimeMissingError extends Error {
-  /** Code-based recognition — see {@link carriesProtocolCode}. */
   static [Symbol.hasInstance](value: unknown): boolean {
     return carriesProtocolCode(value, PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING);
   }
@@ -117,9 +116,9 @@ export class Ledger8RuntimeMissingError extends Error {
   constructor(cause: unknown) {
     super(
       'Failed to load the v8 ledger runtime via @midnight-ntwrk/midnight-js-protocol/v8. ' +
-        'This usually means a broken or partial install of the protocol package — reinstall dependencies and retry. ' +
-        'The retained pre-fork stack pins @midnightntwrk/ledger-v8@8.1.1, @midnight-ntwrk/onchain-runtime-v3@3.1.0, ' +
-        'and compact-runtime@0.16.0 — verify these exact versions are present in node_modules.',
+        'This usually means a broken or partial install of the protocol package — reinstall dependencies and retry, ' +
+        "and check that the retained pre-fork packages listed in this package's dependencies resolved at their " +
+        'pinned versions.',
       { cause }
     );
     this.name = 'Ledger8RuntimeMissingError';
@@ -127,35 +126,40 @@ export class Ledger8RuntimeMissingError extends Error {
 }
 
 /**
- * Which physical-copy axis {@link assertSharedLedger8Instance}
- * (`engine/instance-guard.ts`) detected two distinct instances on. Only the
- * retained pre-fork (`compact-runtime@0.16`) runtime axis
- * (`'onchain-runtime-v3'`) has two genuine acquisition paths inside this
- * package — its own dependency versus the copy the 0.16 glue resolves for its
- * own dependency — so it is the union's only member; a new axis joins only
- * when it gains a comparable second acquisition path.
+ * Which physical-copy axis `assertSharedLedger8Instance`
+ * (`engine/instance-guard.ts`) detected two distinct instances on.
+ *
+ * `'onchain-runtime-v3'` is the only member because it is the only retained
+ * pre-fork package this one both depends on directly and can receive from a
+ * consumer's own resolution — a `compact-runtime` build that re-exports it, or
+ * a bundler that failed to dedupe it. A new axis joins only when it gains a
+ * comparable second acquisition path.
  */
 export type Ledger8InstanceAxis = 'onchain-runtime-v3';
 
+/** The npm package name behind each axis, so the error can name what to run `yarn why` on. */
+const AXIS_PACKAGE_NAMES: Readonly<Record<Ledger8InstanceAxis, string>> = Object.freeze({
+  'onchain-runtime-v3': '@midnight-ntwrk/onchain-runtime-v3'
+});
+
 /**
- * Thrown by {@link assertSharedLedger8Instance} (`engine/instance-guard.ts`)
- * when the same-named WASM package resolved to two physically distinct
- * copies in this process (a dual-instantiation) — objects created by one
- * copy fail `instanceof`/coercion checks against the other copy's classes,
- * so mixing them silently corrupts down-convert results instead of failing
- * loudly.
+ * Thrown by `assertSharedLedger8Instance` (`engine/instance-guard.ts`) when
+ * the same-named WASM package resolved to two physically distinct copies in
+ * this process (a dual-instantiation).
  *
- * `axis` names which side of the check failed. This is a direct assertion
+ * Mixing copies does not corrupt results silently: wasm-bindgen emits an
+ * `_assertClass` check on every object handed across a class boundary, so a
+ * cross-copy handoff throws `expected instance of <Class>`. That failure is
+ * loud but opaque — it names neither the package nor the duplicate install.
+ * This error exists to replace it with one that does, at the point the two
+ * copies are first observed rather than deep inside a down-convert.
+ *
+ * `axis` names the package the check ran on. This is a direct assertion
  * failure (a reference-equality mismatch), not a wrapped lower-level
  * exception, so unlike {@link DownConvertFailedError} there is no `cause` to
- * carry. This usually means a duplicate npm install of the affected package
- * (e.g. an aliased dependency, a version mismatch that defeated
- * deduplication, or a bundler that failed to dedupe it) — run
- * `yarn why <package>` to find the duplicate and align every consumer on a
- * single resolved version.
+ * carry.
  */
 export class Ledger8InstanceMismatchError extends Error {
-  /** Code-based recognition — see {@link carriesProtocolCode}. */
   static [Symbol.hasInstance](value: unknown): boolean {
     return carriesProtocolCode(value, PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH);
   }
@@ -163,10 +167,11 @@ export class Ledger8InstanceMismatchError extends Error {
   readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH;
 
   constructor(readonly axis: Ledger8InstanceAxis) {
+    const packageName = AXIS_PACKAGE_NAMES[axis];
     super(
-      `Detected two physically distinct copies of ${axis} loaded into the same process (a dual-instantiation). ` +
-        "Objects created by one copy fail instanceof/coercion checks against the other copy's classes. This " +
-        'usually means a duplicate npm install of the affected package — run `yarn why <package>` to find the ' +
+      `Detected two physically distinct copies of ${packageName} loaded into the same process (a ` +
+        "dual-instantiation). Objects created by one copy are rejected by the other copy's classes. This usually " +
+        `means a duplicate install of the affected package — run \`yarn why ${packageName}\` to find the ` +
         'duplicate and align every consumer on a single resolved version.'
     );
     this.name = 'Ledger8InstanceMismatchError';
@@ -174,17 +179,31 @@ export class Ledger8InstanceMismatchError extends Error {
 }
 
 /**
+ * Which step of the down-convert pipeline a {@link DownConvertFailedError}
+ * came from. A closed union rather than a free-form string for two reasons:
+ * a consumer can `switch` on `stage` exhaustively, and no call site can
+ * interpolate input-derived text into the error message, which is what keeps
+ * the "never renders state contents" guarantee a property of this class
+ * rather than of every caller's discipline.
+ *
+ * Down-convert is version-agnostic — it consumes an already-extracted
+ * `EncodedStateValue` whichever era it came from — so its stage carries no
+ * version, unlike the two extraction stages.
+ */
+export type DownConvertStage = 'v8 envelope extraction' | 'v9 envelope extraction' | 'state down-convert';
+
+/**
  * Thrown by the down-convert engine (`engine/envelope.ts`, `engine/down-convert.ts`)
  * when it cannot turn a raw contract-state envelope, or an already-extracted
- * {@link EncodedStateValue}, into an executable pre-fork state.
+ * `EncodedStateValue`, into an executable pre-fork state.
  *
- * `stage` names which step failed (e.g. `'v9 envelope extraction'`,
- * `'v9 state down-convert'`) so the message stays useful without ever
+ * `stage` names which step failed, so the message stays useful without ever
  * including the input bytes themselves — this class never renders raw hex or
- * decoded state contents, only the stage name and the wrapped `cause`.
+ * decoded state contents, only the stage name and the wrapped `cause`. The
+ * underlying runtime distinguishes tag-mismatch, truncated, trailing-bytes
+ * and empty input in its own message; that detail is preserved on `cause`.
  */
 export class DownConvertFailedError extends Error {
-  /** Code-based recognition — see {@link carriesProtocolCode}. */
   static [Symbol.hasInstance](value: unknown): boolean {
     return carriesProtocolCode(value, PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED);
   }
@@ -192,13 +211,13 @@ export class DownConvertFailedError extends Error {
   readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED;
 
   constructor(
-    readonly stage: string,
+    readonly stage: DownConvertStage,
     cause: unknown
   ) {
     super(
-      `Failed to down-convert a contract-state for execution during ${stage}. This usually means malformed or ` +
-        'truncated input bytes, or an envelope tagged for a different ledger version than the one requested — ' +
-        'check the source and requested LedgerVersion of the input.',
+      `Failed to down-convert a contract-state for execution during ${stage}. Read the wrapped cause for what ` +
+        'the runtime actually reported; it distinguishes a tag mismatch (an envelope tagged for a different ' +
+        'ledger version than the one requested) from truncated, trailing, or empty input bytes.',
       { cause }
     );
     this.name = 'DownConvertFailedError';
@@ -206,18 +225,16 @@ export class DownConvertFailedError extends Error {
 }
 
 /**
- * Thrown by {@link checkRoot} (`engine/down-convert.ts`) when a bounded
- * Merkle tree's root is read before the tree has been rehashed.
+ * Thrown by `checkRoot` (`engine/down-convert.ts`) when a bounded Merkle
+ * tree's root is read before the tree has been rehashed.
  *
  * A bounded Merkle tree only has a readable root once every node hash has
- * been computed; a tree built or modified via `update()` without a
- * subsequent `rehash()` reports `undefined` instead.
- * {@link downConvertForExecution} asserts this (via
- * {@link assertMerkleTreesRehashed}) on every tree it decodes, failing fast
- * instead of silently repairing.
+ * been computed; the vendor documents `root()` as returning `undefined` until
+ * then, and `rehash()` as necessary "because the onchain runtime does not
+ * automatically rehash trees". `downConvertForExecution` asserts this on
+ * every tree it decodes, failing fast instead of silently repairing.
  */
 export class MerkleNotRehashedError extends Error {
-  /** Code-based recognition — see {@link carriesProtocolCode}. */
   static [Symbol.hasInstance](value: unknown): boolean {
     return carriesProtocolCode(value, PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED);
   }
@@ -227,8 +244,8 @@ export class MerkleNotRehashedError extends Error {
   constructor() {
     super(
       'Attempted to read the root of a bounded Merkle tree before it was rehashed. This usually means the ' +
-        'tree was built or updated in memory and never rehashed — call rehash() on it before encoding it or ' +
-        'executing against it.'
+        'tree was built or updated in memory and never rehashed — call rehash() on it before executing ' +
+        'against it.'
     );
     this.name = 'MerkleNotRehashedError';
   }

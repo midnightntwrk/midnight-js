@@ -19,15 +19,24 @@ import { type Ledger8InstanceAxis, Ledger8InstanceMismatchError } from '../error
  * Fails fast on a dual-instantiation of a WASM package the down-convert
  * engine depends on, along one named `axis`.
  *
- * A duplicate npm install resolves to two physically distinct module
- * instances — same shape, different WASM linear memory and different
- * classes — so objects created by one copy silently fail `instanceof`/coercion
- * checks against the other copy's classes instead of raising a clear error at
- * the point of misuse. Reference equality on whatever each caller passes (a
- * module namespace or a specific exported class/constructor) is a reliable,
- * cheap probe for this: two references to the *same* physical copy are always
- * `===`; two references sourced from different physical copies never are,
+ * A duplicate install resolves to two physically distinct module instances —
+ * same shape, different WASM linear memory, different classes. Handing an
+ * object from one copy to the other's classes does fail, and loudly:
+ * wasm-bindgen's `_assertClass` throws `expected instance of <Class>`. But it
+ * throws deep inside a decode, naming neither the package nor the duplicate
+ * install. This guard exists to detect the condition where it can be
+ * explained, not to detect a failure that would otherwise pass silently.
+ *
+ * Reference equality is the probe: two references to the *same* physical copy
+ * are always `===`; two sourced from different physical copies never are,
  * even at the same package version.
+ *
+ * Both probes are compared symmetrically — there is no expected side — so the
+ * two arguments are interchangeable. What matters is that they are obtained
+ * from **two different acquisition paths** (two distinct import specifiers,
+ * or an import versus a caller-supplied module). Passing the same binding
+ * twice satisfies the check trivially and proves nothing; the caller owns
+ * that, because nothing in the signature can enforce it.
  *
  * A nullish probe (`null`/`undefined`) on either side is rejected before the
  * `===` comparison runs, rather than compared directly: two nullish values
@@ -39,8 +48,8 @@ import { type Ledger8InstanceAxis, Ledger8InstanceMismatchError } from '../error
  * process through two acquisition paths — see {@link Ledger8InstanceAxis} for
  * why `'onchain-runtime-v3'` is the only member today.
  */
-export const assertSharedLedger8Instance = (axis: Ledger8InstanceAxis, expected: unknown, actual: unknown): void => {
-  if (expected == null || actual == null || expected !== actual) {
+export const assertSharedLedger8Instance = (axis: Ledger8InstanceAxis, probeA: unknown, probeB: unknown): void => {
+  if (probeA == null || probeB == null || probeA !== probeB) {
     throw new Ledger8InstanceMismatchError(axis);
   }
 };
