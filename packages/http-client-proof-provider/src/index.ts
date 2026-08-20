@@ -29,7 +29,13 @@
  *   'http://localhost:6300',
  *   zkConfigProvider
  * );
- * const provenTx = await proofProvider.proveTx(unprovenTx, { zkConfig });
+ * // Transaction payloads cross a provider seam version-tagged: tag on the way
+ * // in, narrow on `version` on the way out. There is no untagged form.
+ * const proven = await proofProvider.proveTx({ version: 'v9', tx: unprovenTx });
+ * if (proven.version !== 'v9') {
+ *   throw new Error('Expected a v9 proven transaction');
+ * }
+ * const provenTx = proven.tx;
  * ```
  *
  * ## Low-Level: Circuit Proving (ProvingProvider)

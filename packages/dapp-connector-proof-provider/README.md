@@ -19,7 +19,13 @@ const proofProvider = await dappConnectorProofProvider(
   costModel
 );
 
-const provenTx = await proofProvider.proveTx(unprovenTx);
+// Transaction payloads cross a provider seam version-tagged: tag on the way
+// in, narrow on `version` on the way out. There is no untagged form.
+const proven = await proofProvider.proveTx({ version: 'v9', tx: unprovenTx });
+if (proven.version !== 'v9') {
+  throw new Error('Expected a v9 proven transaction');
+}
+const provenTx = proven.tx;
 ```
 
 ## Configuration
@@ -55,7 +61,11 @@ const proofProvider = await dappConnectorProofProvider(
   costModel
 );
 
-const provenTx = await proofProvider.proveTx(unprovenTx);
+const proven = await proofProvider.proveTx({ version: 'v9', tx: unprovenTx });
+if (proven.version !== 'v9') {
+  throw new Error('Expected a v9 proven transaction');
+}
+const provenTx = proven.tx;
 ```
 
 ### Low-Level: Circuit Proving

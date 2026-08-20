@@ -101,6 +101,7 @@ type SegmentStatus = typeof SegmentSuccess | typeof SegmentFail;
 
 ```typescript
 interface FinalizedTxData {
+  version: 'v9';
   tx: Transaction;
   status: TxStatus;
   txId: TransactionId;
