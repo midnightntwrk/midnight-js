@@ -21,7 +21,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 import { createCipheriv, pbkdf2Sync, randomBytes } from 'crypto';
 
-import { inMemoryPrivateStateProvider } from '@/contract/in-memory-private-state-provider';
+import { inMemoryPrivateStateProvider } from '../src/contract/in-memory-private-state-provider';
 
 const ALGORITHM = 'aes-256-gcm';
 const KEY_LENGTH = 32;

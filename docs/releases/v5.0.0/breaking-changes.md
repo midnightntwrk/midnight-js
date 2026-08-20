@@ -1,6 +1,6 @@
 # Breaking Changes v4.1.1 → v5.0.0
 
-v5.0.0 is a protocol-level major release. The breaking surface concentrates in four areas: the **protocol bindings** (new packages, new scope), the **`SigningKey` representation**, **on-chain state compatibility**, and **ZK artifact integrity verification** (now fail-closed by default).
+v5.0.0 is a protocol-level major release. The breaking surface concentrates in five areas: the **protocol bindings** (new packages, new scope), the **`SigningKey` representation**, **on-chain state compatibility**, **ZK artifact integrity verification** (now fail-closed by default), and **ESM-only packaging**.
 
 ---
 
@@ -112,6 +112,76 @@ new NodeZkConfigProvider(baseDir, {
 ```
 
 A digest mismatch always throws (except in `'off'` mode). Only `expectedManifestHash` (SHA-256 of the manifest bytes, pinned at build time) defends against an adversary who can rewrite both the artifacts and their co-located manifest.
+
+---
+
+## 7. Published packages are ESM-only (#1173)
+
+Every published package now declares `"type": "module"` and ships a single
+JavaScript build per entry. The `main` / `module` fields are gone and each
+`exports` subpath resolves to one file:
+
+```jsonc
+// Before (v4.1.1): dual format
+{
+  "main": "dist/index.cjs",
+  "module": "dist/index.mjs",
+  "exports": {
+    ".": {
+      "types": { "import": "./dist/index.d.mts", "require": "./dist/index.d.cts" },
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  }
+}
+
+// After (v5.0.0): ESM only
+{
+  "type": "module",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" }
+  }
+}
+```
+
+Subpath **keys** are unchanged, so no import specifier in your code has to move.
+`@midnight-ntwrk/midnight-js-protocol/ledger` and friends still resolve.
+
+**Impact — you need both of these:**
+
+| Requirement | Why |
+|-------------|-----|
+| **Node >= 22.12** | Where `require(esm)` works unflagged, so a CommonJS consumer can still load these packages. `engines.node` is now `>=22.12`. |
+| **TypeScript >= 5.8** with a `module` setting that knows about `require(esm)` | Older module settings refuse the import at compile time even though the runtime call succeeds. |
+
+A CommonJS TypeScript consumer keeps working at runtime, but only some `module`
+settings **compile**. Verified against tsc 6.0.3 with a CommonJS consumer file
+importing `@midnight-ntwrk/midnight-js/utils` and
+`@midnight-ntwrk/midnight-js-protocol/ledger`:
+
+| `module` | `moduleResolution` | Result |
+|----------|--------------------|--------|
+| `node16` | `node16` | `TS1479` |
+| `node18` | (default) | `TS1479` |
+| `node20` | (default) | compiles |
+| `nodenext` | `nodenext` | compiles |
+| `preserve` | `bundler` | compiles |
+| `commonjs` | `node10` | `TS5107` (`node10` is no longer supported in TypeScript 6) |
+
+`module: node20` was introduced in TypeScript 5.8 precisely to model Node's
+`require(esm)`, which is why it is the lowest CommonJS setting that works. The
+failure on `node16` / `node18` reads:
+
+```
+error TS1479: The current file is a CommonJS module whose imports will produce
+'require' calls; however, the referenced file is an ECMAScript module and cannot
+be imported with 'require'.
+```
+
+Deep imports into build output were never part of the published surface and are
+now refused by Node with `ERR_PACKAGE_PATH_NOT_EXPORTED`; import through a
+declared subpath instead.
 
 ---
 
