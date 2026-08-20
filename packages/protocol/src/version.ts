@@ -43,12 +43,14 @@ export interface VersionedRecord {
 
 // The protocolVersion integer encodes the NODE version as
 // major * 1_000_000 + minor * 1_000 + patch, so a whole node major occupies a
-// 1_000_000-wide range. This encoding — and the node-major to ledger-runtime
-// mapping below — mirrors the canonical mapping maintained in
-// midnightntwrk/midnight-indexer, indexer-common/src/domain/protocol_version.rs.
+// 1_000_000-wide range. That encoding is the one used by
+// midnightntwrk/midnight-indexer (indexer-common/src/domain/protocol_version.rs).
 //
-// Only majors 1 and 2 are mapped. midnight-js ships against node 1.x and 2.x,
-// so a 0.x protocolVersion is an unknown version, not a supported era.
+// The table below is deliberately NARROWER than the indexer's: only majors 1
+// and 2 are mapped. midnight-js ships against node 1.x and 2.x, so a 0.x
+// protocolVersion — which the indexer does map — is treated here as an unknown
+// version rather than a supported era. This is a fail-closed choice, not a
+// mirror; do not "restore" 0.x to match the indexer without a caller needing it.
 const NODE_MAJOR_TO_LEDGER = {
   1: 'v8',
   2: 'v9'
@@ -83,6 +85,9 @@ const lookupLedger = (table: Partial<Record<number, LedgerVersion>>, key: number
  *   integer;
  * - with `reason: 'unknown'` when it is a well-formed integer outside every
  *   range above.
+ *
+ * `path` defaults to `'construct'`, which decides which of the two error
+ * codes a failure carries.
  *
  * Most call sites should not call this directly. Prefer
  * {@link versionOfRecord} for a `protocolVersion` read off an existing

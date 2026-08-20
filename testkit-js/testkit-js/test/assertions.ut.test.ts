@@ -15,7 +15,7 @@
 
 import type { StateValue } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 
-import { stateValueEqual } from '@/assertions';
+import { stateValueEqual } from '../src/assertions';
 
 const createMockStateValue = (value: string): StateValue => ({
   toString: (_verbose: boolean) => value

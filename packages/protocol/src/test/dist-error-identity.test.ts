@@ -40,32 +40,33 @@ const ERROR_CLASS_DECLARATION = /class\s+\w+\s+extends\s+Error\b/;
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null;
 
-const isConditionalExport = (value: unknown): value is { import: string; require: string } =>
-  isRecord(value) && typeof value.import === 'string' && typeof value.require === 'string';
+// One bundle per subpath since the package went ESM-only: the `default`
+// condition is the file every consumer loads, whether by `import` or through
+// Node's `require(esm)`.
+const isBundleExport = (value: unknown): value is { types: string; default: string } =>
+  isRecord(value) && typeof value.types === 'string' && typeof value.default === 'string';
 
-const readExportedBundles = (): Map<string, readonly string[]> => {
+const readExportedBundles = (): Map<string, string> => {
   const manifest: unknown = JSON.parse(readFileSync(resolve(PKG_ROOT, 'package.json'), 'utf8'));
   const exportsField = isRecord(manifest) ? manifest.exports : undefined;
   if (!isRecord(exportsField)) {
     throw new Error('protocol package.json has no exports map');
   }
-  const conditional = Object.entries(exportsField).filter(
-    (entry): entry is [string, { import: string; require: string }] => isConditionalExport(entry[1])
+  const bundled = Object.entries(exportsField).filter(
+    (entry): entry is [string, { types: string; default: string }] => isBundleExport(entry[1])
   );
-  return new Map(
-    conditional.map(([subpath, { import: esm, require: cjs }]) => [
-      subpath,
-      [esm, cjs].map((p) => p.replace(/^\.\//, ''))
-    ])
-  );
+  return new Map(bundled.map(([subpath, target]) => [subpath, target.default.replace(/^\.\//, '')]));
 };
 
 const bundlesBySubpath = readExportedBundles();
-const allBundles = [...bundlesBySubpath.values()].flat();
-const errorBundles = bundlesBySubpath.get(ERRORS_SUBPATH) ?? [];
+const allBundles = [...bundlesBySubpath.values()];
+const errorBundle = bundlesBySubpath.get(ERRORS_SUBPATH);
+// Kept as a list so an absent `./errors` subpath fails test 1 with a readable
+// message instead of throwing out of the module body.
+const errorBundles = errorBundle === undefined ? [] : [errorBundle];
 const nonErrorBundles = [...bundlesBySubpath.entries()]
   .filter(([subpath]) => subpath !== ERRORS_SUBPATH)
-  .flatMap(([, bundles]) => bundles);
+  .map(([, bundle]) => bundle);
 
 const bundlesExist = allBundles.every((p) => existsSync(resolve(PKG_ROOT, p)));
 const contentOf = (path: string): string => readFileSync(resolve(PKG_ROOT, path), 'utf8');
@@ -113,8 +114,8 @@ describe.skipIf(!bundlesExist && !process.env.CI)('dist error-class identity gat
   // inlining their own copy, or reaching the classes through this package's
   // own exports map, which would make correctness depend on the consumer's
   // resolver supporting self-referencing.
-  it.each(errorBundles)('%s is reached by relative path, never through the package name', (errorBundle) => {
-    const relativeSpecifier = `./${errorBundle.replace(/^dist\//, '')}`;
+  it.each(errorBundles)('%s is reached by relative path, never through the package name', (bundle) => {
+    const relativeSpecifier = `./${bundle.replace(/^dist\//, '')}`;
     const importers = nonErrorBundles.filter((path) => contentOf(path).includes(relativeSpecifier));
 
     expect(importers.length).toBeGreaterThan(0);

@@ -266,9 +266,19 @@ describe('Fetch ZK config Provider', () => {
       const addr = tamperServer.address();
       const url = typeof addr === 'object' && addr ? `http://localhost:${addr.port}` : '';
       try {
-        await expect(new FetchZkConfigProvider(url).getProverKey('set_topic')).rejects.toThrow(ZkArtifactIntegrityError);
-        await expect(new FetchZkConfigProvider(url).getProverKey('set_topic')).rejects.toThrow(/keys\/set_topic\.prover/);
-        await expect(new FetchZkConfigProvider(url).getProverKey('set_topic')).rejects.toThrow(new RegExp(goodHash));
+        // Single fetch: three separate getProverKey calls each pull and hash the 7.3MB key,
+        // which exceeds the 5s test timeout on slow CI runners under coverage instrumentation.
+        const rejection = await new FetchZkConfigProvider(url).getProverKey('set_topic').then(
+          () => {
+            throw new Error('expected getProverKey to reject');
+          },
+          (error: unknown) => error
+        );
+        if (!(rejection instanceof ZkArtifactIntegrityError)) {
+          throw new Error(`expected ZkArtifactIntegrityError, got: ${String(rejection)}`);
+        }
+        expect(rejection.message).toMatch(/keys\/set_topic\.prover/);
+        expect(rejection.message).toMatch(new RegExp(goodHash));
       } finally {
         tamperServer.close();
       }

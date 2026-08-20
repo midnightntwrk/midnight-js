@@ -13,10 +13,9 @@
  * limitations under the License.
  */
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 import { getNetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
-import { sampleCoinPublicKey, sampleEncryptionPublicKey } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { type ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
+import { sampleCoinPublicKey, sampleEncryptionPublicKey, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { parseCoinPublicKeyToHex,parseEncPublicKeyToHex } from '@midnight-ntwrk/midnight-js-utils';
 
 import { deployContract } from '../deploy-contract';
@@ -39,7 +38,7 @@ vi.mock('../submit-call-tx', () => ({ submitCallTx: vi.fn() }));
 describe('EncryptionPublicKeyResolver with additional mappings', () => {
   it('deployContract forwards additionalCoinEncPublicKeyMappings to submitDeployTx', async () => {
     const { submitDeployTx } = await import('../submit-deploy-tx');
-    const mockSubmitDeployTx = submitDeployTx as unknown as ReturnType<typeof vi.fn>;
+    const mockSubmitDeployTx = vi.mocked(submitDeployTx, { partial: true });
     const providers = createMockProviders();
     const mappings = new Map([[createMockCoinPublicKey(), createMockEncryptionPublicKey()]]);
     const options = {
@@ -57,8 +56,8 @@ describe('EncryptionPublicKeyResolver with additional mappings', () => {
       private: {
         signingKey: createMockSigningKey(),
         initialPrivateState: undefined,
-        initialZswapState: {},
-        unprovenTx: {},
+        initialZswapState: {} as ZswapLocalState,
+        unprovenTx: {} as UnprovenTransaction,
         newCoins: []
       }
     };
@@ -74,7 +73,9 @@ describe('EncryptionPublicKeyResolver with additional mappings', () => {
 
   it('createCircuitCallTxInterface includes additional mappings from TransactionContext in call options', async () => {
     const { submitCallTx } = await import('../submit-call-tx');
-    vi.mocked(submitCallTx).mockResolvedValue({ public: {} as any, private: {} as any, calls: [] as any });
+    vi.mocked(submitCallTx).mockResolvedValue(
+      { public: {}, private: {}, calls: [] } as unknown as Awaited<ReturnType<typeof submitCallTx>>
+    );
 
     const providers = createMockProviders();
     const compiledContract = createMockCompiledContract();
@@ -85,7 +86,8 @@ describe('EncryptionPublicKeyResolver with additional mappings', () => {
     const { TransactionContextImpl } = await import('../internal/transaction');
 
     const txCtx = new TransactionContextImpl(providers, { additionalCoinEncPublicKeyMappings: mappings });
-    await (callInterface.testCircuit as unknown as (txCtx?: any, ...args: any[]) => Promise<any>)(txCtx, 'arg1');
+    const testCircuit = callInterface.testCircuit as unknown as (txCtx: unknown, ...args: unknown[]) => Promise<unknown>;
+    await testCircuit(txCtx, 'arg1');
 
     expect(submitCallTx).toHaveBeenCalledWith(
       providers,
@@ -110,7 +112,7 @@ describe('EncryptionPublicKeyResolver with additional mappings', () => {
 
     expect(resolver(queryKeyHex)).toBe(expected);
 
-    const zswapState = { coinPublicKey: walletCpk } as any;
+    const zswapState = { coinPublicKey: walletCpk } as unknown as ZswapLocalState;
     const resolver2 = encryptionPublicKeyResolverForZswapState(zswapState, walletCpk, walletEpk, mappings);
     expect(resolver2(queryKeyHex)).toBe(expected);
   });

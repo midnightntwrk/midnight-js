@@ -91,10 +91,11 @@ describe('instanceof', () => {
     );
   });
 
-  // The build emits one shared copy of this module (see createMultiEntryRollupConfig),
-  // so `instanceof` is plain prototype identity: carrying the code is not enough.
-  // A caller narrowed by `instanceof` therefore really does have `reason`,
-  // `path` and `protocolVersion`.
+  // `instanceof` is plain prototype identity, so carrying the code is not
+  // enough. A caller narrowed by `instanceof` therefore really does have
+  // `reason`, `path` and `protocolVersion`. That this still holds across the
+  // built bundles -- where a per-entry build would emit a second copy of this
+  // module, and a second class -- is covered by dist-error-identity.test.ts.
   it('rejects an error that only carries a matching code', () => {
     const codeOnly = Object.assign(new Error('shaped like one of ours'), {
       code: PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ
