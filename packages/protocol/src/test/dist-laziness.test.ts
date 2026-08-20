@@ -23,15 +23,17 @@ import { describe, expect, it } from 'vitest';
 // imported into the eagerly-loaded index bundle — it may load only through
 // the dynamic import inside loadLedger8().
 const PKG_ROOT = resolve(__dirname, '..', '..');
-const DIST_ENTRY_PATHS = ['dist/index.mjs', 'dist/index.cjs'];
-// Built from parts so the sole-reference scan in v8-surface.test.ts keeps
-// matching only load-v8.ts.
-const V8_SUBPATH_SPECIFIER = ['@midnight-ntwrk/midnight-js-protocol', 'v8'].join('/');
-const V8_DIST_ARTIFACTS = ['dist/v8.mjs', 'dist/v8.cjs', 'dist/v8.d.mts', 'dist/v8.d.cts'];
-const distEntriesExist = DIST_ENTRY_PATHS.every((p) => existsSync(resolve(PKG_ROOT, p)));
+const DIST_INDEX_PATH = 'dist/index.js';
+// The `./v8` entry chunk as rollup writes it into the index bundle: the
+// dynamic import of `../v8.js` in src/lib/load-v8.ts comes out as an
+// output-relative specifier. Built from parts so the runtime-reference scan
+// in v8-surface.test.ts keeps matching only lib/load-v8.ts.
+const V8_CHUNK_SPECIFIER = ['.', 'v8.js'].join('/');
+const V8_DIST_ARTIFACTS = ['dist/v8.js', 'dist/v8.d.ts'];
+const distIndexExists = existsSync(resolve(PKG_ROOT, DIST_INDEX_PATH));
 
 const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const V8_SUBPATH_PATTERN = escapeRegExp(V8_SUBPATH_SPECIFIER);
+const V8_CHUNK_PATTERN = escapeRegExp(V8_CHUNK_SPECIFIER);
 
 // Skipped (not omitted) when dist/ is absent, so a run without a prior build
 // still reports these as visible skips rather than silently vanishing —
@@ -41,22 +43,23 @@ const V8_SUBPATH_PATTERN = escapeRegExp(V8_SUBPATH_SPECIFIER);
 // body) so that `describe.skipIf` actually prevents them from running when
 // dist/ is absent — vitest still executes a `describe` callback during test
 // collection even when `skipIf` is true; only the nested `it`s are skipped.
-describe.skipIf(!distEntriesExist)('dist laziness gate', () => {
-  it.each(DIST_ENTRY_PATHS)('%s has no static ledger-v8 linkage', (path) => {
-    const content = readFileSync(resolve(PKG_ROOT, path), 'utf8');
+describe.skipIf(!distIndexExists)('dist laziness gate', () => {
+  it('the index bundle has no static ledger-v8 linkage', () => {
+    const content = readFileSync(resolve(PKG_ROOT, DIST_INDEX_PATH), 'utf8');
+
     expect(content).not.toMatch(/from\s*['"][^'"]*ledger-v8['"]/);
-    expect(content).not.toMatch(/require\(['"][^'"]*ledger-v8['"]\)/);
   });
 
-  it.each(DIST_ENTRY_PATHS)('%s has no static linkage of the protocol/v8 subpath', (path) => {
-    const content = readFileSync(resolve(PKG_ROOT, path), 'utf8');
-    expect(content).not.toMatch(new RegExp(`from\\s*['"]${V8_SUBPATH_PATTERN}['"]`));
-    expect(content).not.toMatch(new RegExp(`require\\(['"]${V8_SUBPATH_PATTERN}['"]\\)`));
+  it('the index bundle has no static linkage of the v8 chunk', () => {
+    const content = readFileSync(resolve(PKG_ROOT, DIST_INDEX_PATH), 'utf8');
+
+    expect(content).not.toMatch(new RegExp(`from\\s*['"]${V8_CHUNK_PATTERN}['"]`));
   });
 
-  it.each(DIST_ENTRY_PATHS)('%s keeps the lazy dynamic import of the protocol/v8 subpath', (path) => {
-    const content = readFileSync(resolve(PKG_ROOT, path), 'utf8');
-    expect(content).toMatch(new RegExp(`import\\(\\s*['"]${V8_SUBPATH_PATTERN}['"]\\s*\\)`));
+  it('the index bundle keeps the lazy dynamic import of the v8 chunk', () => {
+    const content = readFileSync(resolve(PKG_ROOT, DIST_INDEX_PATH), 'utf8');
+
+    expect(content).toMatch(new RegExp(`import\\(\\s*['"]${V8_CHUNK_PATTERN}['"]\\s*\\)`));
   });
 
   it.each(V8_DIST_ARTIFACTS)('%s referenced by the ./v8 exports map entry exists', (path) => {

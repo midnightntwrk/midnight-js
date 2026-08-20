@@ -25,11 +25,11 @@ const unsafeCastSelectors = [
   }
 ];
 
-// The `./v8` subpath and `loadLedger8()` do not exist yet -- they arrive with
-// the v8 loader. This gate lands ahead of them deliberately, so no consumer can
-// grow a direct v8 dependency in the meantime.
+// The `./v8` subpath carries the previous-era ledger and its own WASM. Only
+// `loadLedger8()` may reach it at runtime, so no consumer can grow a direct v8
+// dependency that pulls that WASM into an eagerly-loaded module graph.
 const V8_RUNTIME_MESSAGE =
-  'Runtime v8 access will be available only via loadLedger8() from @midnight-ntwrk/midnight-js-protocol.';
+  'Runtime v8 access only via loadLedger8() from @midnight-ntwrk/midnight-js-protocol.';
 
 // Blocks dynamic `import(...)` of protocol/v8 (and any subpath under it) in
 // both of its statically matchable forms: a plain string literal, and a

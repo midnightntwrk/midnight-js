@@ -22,12 +22,8 @@
       "default": "./dist/ledger.js"
     },
     "./v8": {
-      "types": {
-        "import": "./dist/v8.d.mts",
-        "require": "./dist/v8.d.cts"
-      },
-      "import": "./dist/v8.mjs",
-      "require": "./dist/v8.cjs"
+      "types": "./dist/v8.d.ts",
+      "default": "./dist/v8.js"
     },
     "./compact-runtime": {
       "types": "./dist/compact-runtime.d.ts",

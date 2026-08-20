@@ -107,7 +107,7 @@ means: replace the direct `./v8` runtime import with `loadLedger8()` (type-only 
 
 **3. The v8 dynamic-import gate** — `no-restricted-syntax` selectors block `import('@midnight-ntwrk/midnight-js-protocol/v8')` in the same scopes. An interpolated template literal cannot be matched statically and is not covered.
 
-Both v8 gates point at `loadLedger8()`, which arrives with the v8 loader; they land ahead of it so no consumer can grow a direct v8 dependency in the meantime.
+Both v8 gates point at `loadLedger8()`, the accessor on the root barrel — the only sanctioned runtime path to the v8 era.
 
 ## Resources
 
