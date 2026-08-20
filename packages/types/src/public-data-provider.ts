@@ -502,12 +502,14 @@ export interface PublicDataProvider {
 
   /**
    * Retrieves the on-chain state of a contract as the raw serialized bytes the
-   * network returned, without deserializing them, together with the era those
-   * bytes belong to.
+   * network returned, without deserializing them, together with the era the
+   * record is dated to.
    *
    * This is the state input for callers that must work across the ledger fork:
    * they narrow on {@link RawContractState.version} and then hand the bytes to
-   * that era's deserializer. Both eras' envelopes are returned unchanged.
+   * that era's deserializer. Both eras' envelopes are returned unchanged. The
+   * era comes from the record's protocol version and is not checked against
+   * the envelope the bytes carry.
    *
    * Immediately returns null if no matching data is found.
    *

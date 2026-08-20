@@ -21,21 +21,30 @@ import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
  *
  * During the ledger-fork window the two ledger runtimes are separate WASM
  * instances, so bytes produced by one cannot be handed to the other. Reading
- * the state as bytes plus the era they belong to lets a caller pick the right
- * runtime before it deserializes anything, instead of guessing and failing
+ * the state as bytes plus the era the network dated them to lets a caller pick
+ * a runtime before it deserializes anything, instead of guessing and failing
  * deep inside a decoder.
  *
  * `version` is derived from `protocolVersion` — resolved the same way the
  * `read`-path resolver in `@midnight-ntwrk/midnight-js-protocol` resolves it.
- * On every value of this type the two fields therefore agree; the derivation
+ * On every value of this type those two fields therefore agree; the derivation
  * is never asserted here, because `types` stays declarations-only. Providers
  * and their mocks are responsible for setting `version` at exactly one
  * construction point, from `protocolVersion`, and never independently.
+ *
+ * What is not established at this layer is that `version` agrees with the
+ * envelope inside `raw`. Nothing here compares the two, so `version` is the
+ * network's dating of the record, not a guarantee about the bytes.
  */
 export interface RawContractState {
   /**
-   * The ledger runtime whose deserializer can read {@link raw}, derived from
-   * {@link protocolVersion}.
+   * The ledger era this record is dated to, derived from
+   * {@link protocolVersion} alone.
+   *
+   * This layer does not check that the era agrees with the envelope {@link raw}
+   * actually carries, so this is a statement about the record's
+   * `protocolVersion`, not a verified statement about the bytes. A caller that
+   * cannot tolerate the two disagreeing must inspect the envelope itself.
    */
   readonly version: LedgerVersion;
   /**
