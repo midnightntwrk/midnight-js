@@ -63,7 +63,7 @@ export class UnknownProtocolVersionError extends Error {
             `protocolVersion integer (e.g. from an indexer transaction/block record or ` +
             `queryLatestProtocolVersion()), not a derived or miscoded value.`
         : `Unknown protocolVersion ${protocolVersion} on the ${path} path. ` +
-            `Supported eras: v8 (node 0.22, 1.x) and v9 (node 2.x). ` +
+            `Supported eras: v8 (node 1.x) and v9 (node 2.x). ` +
             `An unknown node major usually means this framework major predates a newer fork — upgrade midnight-js.`
     );
     this.name = 'UnknownProtocolVersionError';

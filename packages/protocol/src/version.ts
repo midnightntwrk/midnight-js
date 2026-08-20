@@ -16,8 +16,8 @@
 import { UnknownProtocolVersionError, type VersionResolutionPath } from './errors';
 
 /**
- * The two ledger runtimes midnight-js can talk to. `v8` backs node 0.22 and
- * the 1.x line; `v9` backs the 2.x line. This is a closed, exhaustive set —
+ * The two ledger runtimes midnight-js can talk to. `v8` backs the node 1.x
+ * line; `v9` backs the 2.x line. This is a closed, exhaustive set —
  * see {@link protocolVersionToLedger} for how a raw `protocolVersion`
  * integer maps onto it.
  */
@@ -42,37 +42,30 @@ export interface VersionedRecord {
 }
 
 // The protocolVersion integer encodes the NODE version as
-// major * 1_000_000 + minor * 1_000. This encoding — and the node-major to
-// ledger-runtime mapping below — mirrors the canonical mapping maintained in
+// major * 1_000_000 + minor * 1_000 + patch, so a whole node major occupies a
+// 1_000_000-wide range. This encoding — and the node-major to ledger-runtime
+// mapping below — mirrors the canonical mapping maintained in
 // midnightntwrk/midnight-indexer, indexer-common/src/domain/protocol_version.rs.
 //
-// Node major 0 is exempt from the same-major bucketing used for majors 1+:
-// 0.x minor releases are semver-breaking, so each 0.x minor is mapped
-// individually via NODE_MAJOR0_MINOR_TO_LEDGER instead of being bucketed by
-// major alone.
+// Only majors 1 and 2 are mapped. midnight-js ships against node 1.x and 2.x,
+// so a 0.x protocolVersion is an unknown version, not a supported era.
 const NODE_MAJOR_TO_LEDGER = {
   1: 'v8',
   2: 'v9'
 } as const satisfies Partial<Record<number, LedgerVersion>>;
 
-const NODE_MAJOR0_MINOR_TO_LEDGER = {
-  22: 'v8'
-} as const satisfies Partial<Record<number, LedgerVersion>>;
-
-type MappedLedgerVersion =
-  | (typeof NODE_MAJOR_TO_LEDGER)[keyof typeof NODE_MAJOR_TO_LEDGER]
-  | (typeof NODE_MAJOR0_MINOR_TO_LEDGER)[keyof typeof NODE_MAJOR0_MINOR_TO_LEDGER];
+type MappedLedgerVersion = (typeof NODE_MAJOR_TO_LEDGER)[keyof typeof NODE_MAJOR_TO_LEDGER];
 
 // Compile-time-only guard: if LEDGER_VERSIONS ever grows without a matching
-// entry being added to one of the two tables above, this assignment stops
-// type-checking (the conditional type resolves to `never`).
+// entry being added to the table above, this assignment stops type-checking
+// (the conditional type resolves to `never`).
 const _allLedgerVersionsAreMapped: Exclude<LedgerVersion, MappedLedgerVersion> extends never ? true : never = true;
 
-// Kept as a small typed function (rather than indexing the `as const`
-// tables directly) because a `number`-typed key cannot index an object type
-// with only numeric literal properties — the `Partial<Record<number, ...>>`
-// parameter type is what makes the `=== undefined` guard at each call site
-// type-driven instead of relying on a cast.
+// Kept as a small typed function (rather than indexing the `as const` table
+// directly) because a `number`-typed key cannot index an object type with only
+// numeric literal properties — the `Partial<Record<number, ...>>` parameter
+// type is what makes the `=== undefined` guard below type-driven instead of
+// relying on a cast.
 const lookupLedger = (table: Partial<Record<number, LedgerVersion>>, key: number): LedgerVersion | undefined =>
   table[key];
 
@@ -80,11 +73,10 @@ const lookupLedger = (table: Partial<Record<number, LedgerVersion>>, key: number
  * Maps a raw `protocolVersion` integer (as returned by the indexer or node)
  * onto the ledger runtime it corresponds to.
  *
- * | protocolVersion range   | node version | ledger |
- * | ------------------------ | ------------ | ------ |
- * | 22_000 – 22_999           | 0.22.x       | v8     |
- * | 1_000_000 – 1_999_999      | 1.x          | v8     |
- * | 2_000_000 – 2_999_999      | 2.x          | v9     |
+ * | protocolVersion range | node version | ledger |
+ * | --------------------- | ------------ | ------ |
+ * | 1_000_000 – 1_999_999 | 1.x          | v8     |
+ * | 2_000_000 – 2_999_999 | 2.x          | v9     |
  *
  * Throws {@link UnknownProtocolVersionError}:
  * - with `reason: 'malformed'` when `protocolVersion` is not a non-negative
@@ -106,11 +98,7 @@ export const protocolVersionToLedger = (
   if (!Number.isInteger(protocolVersion) || protocolVersion < 0) {
     throw new UnknownProtocolVersionError(protocolVersion, path, 'malformed');
   }
-  const major = Math.floor(protocolVersion / 1_000_000);
-  const ledger =
-    major === 0
-      ? lookupLedger(NODE_MAJOR0_MINOR_TO_LEDGER, Math.floor(protocolVersion / 1_000))
-      : lookupLedger(NODE_MAJOR_TO_LEDGER, major);
+  const ledger = lookupLedger(NODE_MAJOR_TO_LEDGER, Math.floor(protocolVersion / 1_000_000));
   if (ledger === undefined) {
     throw new UnknownProtocolVersionError(protocolVersion, path, 'unknown');
   }
