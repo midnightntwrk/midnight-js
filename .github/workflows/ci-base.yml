@@ -55,6 +55,13 @@ jobs:
       - name: Check dependency constraints
         run: yarn constraints
 
+      # Test files are excluded from tsconfig.build.json and vitest does not
+      # type-check, so without this step compile-time assertions living in test
+      # files (e.g. the vendor drift detectors in packages/protocol) can never
+      # fail a merge — only a local pre-push hook, which --no-verify skips.
+      - name: Type-check test files
+        run: yarn typecheck:tests
+
       - name: Run tests
         run: |
           yarn test ${{ inputs.yarn_filter }} --concurrency 1 --cache-dir ./turbo
