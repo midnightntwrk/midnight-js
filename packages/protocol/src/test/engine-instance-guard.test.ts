@@ -21,10 +21,10 @@ import * as onchainRuntimeV3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as onchainRuntimeV3Alt from 'onchain-runtime-v3-alt';
 import { describe, expect, it } from 'vitest';
 
-import type { Ledger8CompactRuntime } from '../engine/down-convert';
-import { downConvertForExecution } from '../engine/down-convert';
-import { assertSharedLedger8Instance } from '../engine/instance-guard';
 import { Ledger8InstanceMismatchError, PROTOCOL_ERROR_CODES } from '../errors';
+import type { Ledger8CompactRuntime } from '../lib/engine/down-convert';
+import { downConvertForExecution } from '../lib/engine/down-convert';
+import { assertSharedLedger8Instance } from '../lib/engine/instance-guard';
 
 const FIELD_ALIGNMENT: onchainRuntimeV3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
 const cell = (byte: number): onchainRuntimeV3.StateValue =>

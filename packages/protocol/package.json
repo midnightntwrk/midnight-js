@@ -1,106 +1,61 @@
 {
   "name": "@midnight-ntwrk/midnight-js-protocol",
   "version": "5.0.0-beta.6",
+  "type": "module",
   "description": "Protocol type re-exports for midnight-js framework",
-  "main": "dist/index.cjs",
-  "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": {
-        "import": "./dist/index.d.mts",
-        "require": "./dist/index.d.cts"
-      },
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     },
     "./errors": {
-      "types": {
-        "import": "./dist/errors.d.mts",
-        "require": "./dist/errors.d.cts"
-      },
-      "import": "./dist/errors.mjs",
-      "require": "./dist/errors.cjs"
+      "types": "./dist/errors.d.ts",
+      "default": "./dist/errors.js"
+    },
+    "./version": {
+      "types": "./dist/version.d.ts",
+      "default": "./dist/version.js"
     },
     "./ledger": {
-      "types": {
-        "import": "./dist/ledger.d.mts",
-        "require": "./dist/ledger.d.cts"
-      },
-      "import": "./dist/ledger.mjs",
-      "require": "./dist/ledger.cjs"
+      "types": "./dist/ledger.d.ts",
+      "default": "./dist/ledger.js"
     },
     "./v8": {
-      "types": {
-        "import": "./dist/v8.d.mts",
-        "require": "./dist/v8.d.cts"
-      },
-      "import": "./dist/v8.mjs",
-      "require": "./dist/v8.cjs"
+      "types": "./dist/v8.d.ts",
+      "default": "./dist/v8.js"
     },
     "./compact-runtime": {
-      "types": {
-        "import": "./dist/compact-runtime.d.mts",
-        "require": "./dist/compact-runtime.d.cts"
-      },
-      "import": "./dist/compact-runtime.mjs",
-      "require": "./dist/compact-runtime.cjs"
+      "types": "./dist/compact-runtime.d.ts",
+      "default": "./dist/compact-runtime.js"
     },
     "./compact-js": {
-      "types": {
-        "import": "./dist/compact-js.d.mts",
-        "require": "./dist/compact-js.d.cts"
-      },
-      "import": "./dist/compact-js.mjs",
-      "require": "./dist/compact-js.cjs"
+      "types": "./dist/compact-js.d.ts",
+      "default": "./dist/compact-js.js"
     },
     "./compact-js/effect": {
-      "types": {
-        "import": "./dist/compact-js-effect.d.mts",
-        "require": "./dist/compact-js-effect.d.cts"
-      },
-      "import": "./dist/compact-js-effect.mjs",
-      "require": "./dist/compact-js-effect.cjs"
+      "types": "./dist/compact-js-effect.d.ts",
+      "default": "./dist/compact-js-effect.js"
     },
     "./compact-js/effect/Contract": {
-      "types": {
-        "import": "./dist/compact-js-effect-contract.d.mts",
-        "require": "./dist/compact-js-effect-contract.d.cts"
-      },
-      "import": "./dist/compact-js-effect-contract.mjs",
-      "require": "./dist/compact-js-effect-contract.cjs"
+      "types": "./dist/compact-js-effect-contract.d.ts",
+      "default": "./dist/compact-js-effect-contract.js"
     },
     "./onchain-runtime": {
-      "types": {
-        "import": "./dist/onchain-runtime.d.mts",
-        "require": "./dist/onchain-runtime.d.cts"
-      },
-      "import": "./dist/onchain-runtime.mjs",
-      "require": "./dist/onchain-runtime.cjs"
+      "types": "./dist/onchain-runtime.d.ts",
+      "default": "./dist/onchain-runtime.js"
     },
     "./platform-js": {
-      "types": {
-        "import": "./dist/platform.d.mts",
-        "require": "./dist/platform.d.cts"
-      },
-      "import": "./dist/platform.mjs",
-      "require": "./dist/platform.cjs"
+      "types": "./dist/platform.d.ts",
+      "default": "./dist/platform.js"
     },
     "./platform-js/effect/Configuration": {
-      "types": {
-        "import": "./dist/platform-effect-configuration.d.mts",
-        "require": "./dist/platform-effect-configuration.d.cts"
-      },
-      "import": "./dist/platform-effect-configuration.mjs",
-      "require": "./dist/platform-effect-configuration.cjs"
+      "types": "./dist/platform-effect-configuration.d.ts",
+      "default": "./dist/platform-effect-configuration.js"
     },
     "./platform-js/effect/ContractAddress": {
-      "types": {
-        "import": "./dist/platform-effect-contract-address.d.mts",
-        "require": "./dist/platform-effect-contract-address.d.cts"
-      },
-      "import": "./dist/platform-effect-contract-address.mjs",
-      "require": "./dist/platform-effect-contract-address.cjs"
+      "types": "./dist/platform-effect-contract-address.d.ts",
+      "default": "./dist/platform-effect-contract-address.js"
     },
     "./package.json": "./package.json"
   },
@@ -131,7 +86,7 @@
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.3.0",
     "@vitest/coverage-v8": "^4.1.10",
-    "eslint": "^10.6.0",
+    "eslint": "^10.8.1",
     "onchain-runtime-v3-alt": "npm:@midnight-ntwrk/onchain-runtime-v3@3.1.0",
     "rollup": "^4.60.4",
     "rollup-plugin-dts": "^6.4.1",
@@ -139,6 +94,6 @@
     "vitest": "^4.1.7"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12"
   }
 }

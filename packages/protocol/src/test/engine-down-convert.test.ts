@@ -24,10 +24,10 @@ import type {
 } from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
-import type { Ledger8CompactRuntime } from '../engine/down-convert';
-import { assertMerkleTreesRehashed, checkRoot, downConvertForExecution, structurallyEqual } from '../engine/down-convert';
-import { extractEncodedStateValue } from '../engine/envelope';
 import { DownConvertFailedError, MerkleNotRehashedError, PROTOCOL_ERROR_CODES } from '../errors';
+import type { Ledger8CompactRuntime } from '../lib/engine/down-convert';
+import { assertMerkleTreesRehashed, checkRoot, downConvertForExecution, structurallyEqual } from '../lib/engine/down-convert';
+import { extractEncodedStateValue } from '../lib/engine/envelope';
 
 const FIXTURES_DIR = resolve(__dirname, '../../../../testkit-js/testkit-js/src/fixtures/hf');
 

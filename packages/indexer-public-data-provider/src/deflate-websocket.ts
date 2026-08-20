@@ -63,7 +63,7 @@ export const wrapWithDeflate = <T extends typeof ws.WebSocket>(
   // lets us INVOKE the inherited setter (which has per-instance side-effects) rather
   // than overwriting a prototype slot (which would pollute all instances).
   const inheritedOnmessage = Object.getOwnPropertyDescriptor(
-    (Base as unknown as typeof WebSocket).prototype,
+    (Base as unknown as typeof WebSocket).prototype, // eslint-disable-line no-restricted-syntax
     'onmessage'
   );
 
@@ -75,7 +75,7 @@ export const wrapWithDeflate = <T extends typeof ws.WebSocket>(
    * logic. If composition is needed, invoke `wrapWithDeflate` once on the
    * outermost base.
    */
-  return class DeflateWebSocket extends (Base as unknown as typeof WebSocket) {
+  return class DeflateWebSocket extends (Base as unknown as typeof WebSocket) { // eslint-disable-line no-restricted-syntax
     /** Serializes async inflate so binary frames cannot overtake later text frames. */
     private __deliveryQueue: Promise<void> = Promise.resolve();
     private __closed = false;

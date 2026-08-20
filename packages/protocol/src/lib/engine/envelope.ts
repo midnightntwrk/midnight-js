@@ -16,8 +16,8 @@
 import type { ContractState as OnchainContractStateV3 } from '@midnight-ntwrk/onchain-runtime-v3';
 import { ContractState as LedgerContractStateV9, type EncodedStateValue } from '@midnightntwrk/ledger-v9';
 
-import { DownConvertFailedError } from '../errors';
-import type { LedgerVersion } from '../version';
+import { DownConvertFailedError } from '../../errors';
+import type { LedgerVersion } from '../../version';
 
 export type { EncodedStateValue };
 

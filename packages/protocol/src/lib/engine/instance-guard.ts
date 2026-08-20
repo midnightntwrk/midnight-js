@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { type Ledger8InstanceAxis, Ledger8InstanceMismatchError } from '../errors';
+import { type Ledger8InstanceAxis, Ledger8InstanceMismatchError } from '../../errors';
 
 /**
  * Fails fast on a dual-instantiation of a WASM package the down-convert

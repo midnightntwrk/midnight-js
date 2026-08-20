@@ -22,6 +22,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { getUnshieldedBalances } from '../get-unshielded-balances';
 
 describe('getUnshieldedBalances', () => {
+  const providerWith = (queryUnshieldedBalances: PublicDataProvider['queryUnshieldedBalances']): PublicDataProvider =>
+    ({ queryUnshieldedBalances }) as PublicDataProvider;
+
   const mockContractAddress = sampleContractAddress();
   const mockUnshieldedBalances: UnshieldedBalances = [
     {
@@ -35,9 +38,7 @@ describe('getUnshieldedBalances', () => {
   ];
 
   it('should return unshielded balances when data exists', async () => {
-    const mockPublicDataProvider: PublicDataProvider = {
-      queryUnshieldedBalances: vi.fn().mockResolvedValue(mockUnshieldedBalances)
-    } as unknown as PublicDataProvider;
+    const mockPublicDataProvider = providerWith(vi.fn().mockResolvedValue(mockUnshieldedBalances));
 
     const result = await getUnshieldedBalances(mockPublicDataProvider, mockContractAddress);
 
@@ -46,9 +47,7 @@ describe('getUnshieldedBalances', () => {
   });
 
   it('should throw error when no unshielded balances found', async () => {
-    const mockPublicDataProvider: PublicDataProvider = {
-      queryUnshieldedBalances: vi.fn().mockResolvedValue(null)
-    } as unknown as PublicDataProvider;
+    const mockPublicDataProvider = providerWith(vi.fn().mockResolvedValue(null));
 
     await expect(getUnshieldedBalances(mockPublicDataProvider, mockContractAddress))
       .rejects
@@ -58,9 +57,7 @@ describe('getUnshieldedBalances', () => {
   });
 
   it('should validate contract address', async () => {
-    const mockPublicDataProvider: PublicDataProvider = {
-      queryUnshieldedBalances: vi.fn()
-    } as unknown as PublicDataProvider;
+    const mockPublicDataProvider = providerWith(vi.fn());
 
     const invalidAddress = 'invalid-address' as ContractAddress;
 
@@ -72,9 +69,7 @@ describe('getUnshieldedBalances', () => {
   });
 
   it('should return empty array when balances exist but are empty', async () => {
-    const mockPublicDataProvider: PublicDataProvider = {
-      queryUnshieldedBalances: vi.fn().mockResolvedValue([])
-    } as unknown as PublicDataProvider;
+    const mockPublicDataProvider = providerWith(vi.fn().mockResolvedValue([]));
 
     const result = await getUnshieldedBalances(mockPublicDataProvider, mockContractAddress);
 

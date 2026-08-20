@@ -53,9 +53,9 @@ export default defineConfig({
         // cannot quietly take these files down with it — do not delete them as
         // dead config.
         'src/version.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
-        'src/engine/envelope.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
-        'src/engine/down-convert.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
-        'src/engine/instance-guard.ts': { lines: 100, functions: 100, branches: 100, statements: 100 }
+        'src/lib/engine/envelope.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/lib/engine/down-convert.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/lib/engine/instance-guard.ts': { lines: 100, functions: 100, branches: 100, statements: 100 }
       }
     },
     reporters: [

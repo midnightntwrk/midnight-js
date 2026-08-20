@@ -18,13 +18,12 @@ import { NetworkId } from '@midnightntwrk/wallet-sdk';
 import type { Logger } from 'pino';
 import { DockerComposeEnvironment, type StartedDockerComposeEnvironment } from 'testcontainers';
 
-import { getContainersConfiguration } from '@/configuration';
-import type { StandaloneContainersConfiguration } from '@/configuration-types';
-import { getEnvVarWalletSeeds } from '@/env-vars';
-import type { ProofServerContainer } from '@/proof-server-container';
-import type { EnvironmentConfiguration } from '@/test-environment';
-import { MidnightWalletProvider } from '@/wallet';
-
+import { getContainersConfiguration } from '../../configuration';
+import type { StandaloneContainersConfiguration } from '../../configuration-types';
+import { getEnvVarWalletSeeds } from '../../env-vars';
+import type { ProofServerContainer } from '../../proof-server-container';
+import { MidnightWalletProvider } from '../../wallet';
+import type { EnvironmentConfiguration } from '..';
 import { TestEnvironment } from './test-environment';
 
 /**

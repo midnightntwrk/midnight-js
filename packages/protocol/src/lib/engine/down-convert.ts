@@ -16,7 +16,7 @@
 import type { ChargedState, StateBoundedMerkleTree, StateValue } from '@midnight-ntwrk/onchain-runtime-v3';
 import type { AlignedValue, EncodedStateValue } from '@midnightntwrk/ledger-v9';
 
-import { DownConvertFailedError, MerkleNotRehashedError } from '../errors';
+import { DownConvertFailedError, MerkleNotRehashedError } from '../../errors';
 
 /**
  * The subset of the pre-fork (`compact-runtime@0.16` / onchain-runtime-v3)

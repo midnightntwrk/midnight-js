@@ -13,12 +13,12 @@
  * limitations under the License.
  */
 
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { loadLedger8 } from '../load-v8';
+import { loadLedger8 } from '../lib/load-v8';
 // Type-only import: erased at compile time, so it costs nothing at runtime,
 // but a vendor rename or removal of any of these 30 OQ3_SURFACE type-only
 // members breaks the build. This is the only check available for them —
@@ -310,15 +310,17 @@ const PINNED_FULL_RUNTIME_SURFACE = [
 const GLUE_PATTERN = /^__wbg_|^__wbindgen_/;
 
 const SRC_ROOT = resolve(__dirname, '..');
-const PKG_ROOT = resolve(__dirname, '..', '..');
-const PROTOCOL_ACL_PREFIX = '@midnight-ntwrk/midnight-js-protocol';
-const V8_SUBPATH_SPECIFIER = `${PROTOCOL_ACL_PREFIX}/v8`;
-// Matches the specifier only as a complete quoted literal (import position),
-// so prose mentions of the subpath — e.g. inside error messages — don't trip
-// the sole-reference scan below.
-const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const V8_SUBPATH_LITERAL = new RegExp(`['"\`]${escapeRegExp(V8_SUBPATH_SPECIFIER)}['"\`]`);
-const distV8Exists = existsSync(resolve(PKG_ROOT, 'dist/v8.mjs'));
+// The v8 module as its siblings under src/ address it: one or two path
+// segments up, always with the `.js` extension the ESM build resolves. Built
+// from parts so this file's own literal cannot trip the scan below.
+const V8_MODULE_SPECIFIER = new RegExp(`['"\`]\\.{1,2}/${['v8', 'js'].join('\\.')}['"\`]`);
+// Type-only imports are erased before anything runs, so they are not runtime
+// references — v8's types are free to be named anywhere. Comments go too, so
+// that prose naming the module does not count as reaching for it.
+const TYPE_ONLY_IMPORT = /import\s+type\s[^;]*?from\s*['"`][^'"`]+['"`];?/g;
+const COMMENT = /\/\*[\s\S]*?\*\/|\/\/[^\n]*/g;
+
+const runtimeCodeOf = (source: string): string => source.replace(COMMENT, '').replace(TYPE_ONLY_IMPORT, '');
 
 const collectTsFiles = (dir: string): string[] =>
   readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -326,10 +328,10 @@ const collectTsFiles = (dir: string): string[] =>
     return entry.isDirectory() ? collectTsFiles(fullPath) : entry.name.endsWith('.ts') ? [fullPath] : [];
   });
 
-// loadLedger8 resolves the self-reference specifier through the exports map to
-// dist/v8.mjs, so this suite needs a prior `yarn build`; without one it is
-// reported as visible skips (same policy as dist-laziness.test.ts).
-describe.skipIf(!distV8Exists)('loadLedger8', () => {
+// loadLedger8 imports the v8 module by relative specifier, so these run
+// against the sources and need no prior `yarn build` — the built artifacts are
+// gated separately in dist-laziness.test.ts.
+describe('loadLedger8', () => {
   it('exposes exactly the pinned glue-filtered runtime surface (assertion A: leak/ACL detector)', async () => {
     const surface = await loadLedger8();
     const actualRuntimeKeysFiltered = Object.keys(surface)
@@ -355,12 +357,12 @@ describe.skipIf(!distV8Exists)('loadLedger8', () => {
   });
 });
 
-describe('sole runtime reference to protocol/v8', () => {
-  it('is referenced only from load-v8.ts within src/', () => {
-    const filesReferencingV8Subpath = collectTsFiles(SRC_ROOT)
-      .filter((file) => V8_SUBPATH_LITERAL.test(readFileSync(file, 'utf8')))
+describe('sole runtime reference to the v8 module', () => {
+  it('is imported at runtime only from lib/load-v8.ts within src/', () => {
+    const filesImportingV8 = collectTsFiles(SRC_ROOT)
+      .filter((file) => V8_MODULE_SPECIFIER.test(runtimeCodeOf(readFileSync(file, 'utf8'))))
       .map((file) => file.slice(SRC_ROOT.length + 1));
 
-    expect(filesReferencingV8Subpath).toEqual(['load-v8.ts']);
+    expect(filesImportingV8).toEqual([join('lib', 'load-v8.ts')]);
   });
 });

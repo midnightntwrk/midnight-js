@@ -29,11 +29,11 @@ import {
 import path from 'path';
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 
-import { CompiledUnshieldedContract } from '@/contract';
+import { CompiledUnshieldedContract } from '../src/contract';
 import {
   type UnshieldedContractCircuit,
   type UnshieldedContractProviders
-} from '@/types/unshielded-types';
+} from '../src/types/unshielded-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `unshielded_cross_wallet_${new Date().toISOString()}.log`)
