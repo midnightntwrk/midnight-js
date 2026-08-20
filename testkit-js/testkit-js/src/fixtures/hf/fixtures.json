@@ -1,24 +1,24 @@
 {
-  "protocolVersionScheme": "node-major * 1_000_000 + node-minor * 1_000 (per OQ2); v8-era = 1_000_000 (node 1.x), v9-era = 2_000_000 (node 2.x)",
+  "protocolVersionScheme": "node-major * 1_000_000 + node-minor * 1_000; v8-era = 1_000_000 (node 1.x), v9-era = 2_000_000 (node 2.x). Mirrors the protocolVersion integer the node and indexer report.",
   "fixtures": {
     "state-v8.hex": {
       "protocolVersion": 1000000,
       "envelopeTag": "midnight:contract-state[v6]:",
-      "status": "ok",
+      "status": "valid",
       "kind": "golden-bridged",
       "notes": "Byte-identical to state-v8-v6-envelope.hex: LedgerContractStateV8.deserialize(...).serialize() is a no-op round-trip on this input (see generators/mint-state-v8.mjs)."
     },
     "state-v8-v6-envelope.hex": {
       "protocolVersion": 1000000,
       "envelopeTag": "midnight:contract-state[v6]:",
-      "status": "ok",
+      "status": "valid",
       "kind": "golden",
       "notes": "Ported verbatim from spike-dapp-hf/island-3/driver/tests/builder/fixtures/downcast-v8.hex (identical across islands 1/2/3 and ts-downcast). Raw compact-runtime-0.16 ContractState.serialize() output."
     },
     "state-migrated-v9.hex": {
       "protocolVersion": 2000000,
       "envelopeTag": "midnight:contract-state[v8]:",
-      "status": "ok",
+      "status": "valid",
       "kind": "golden",
       "notes": "Ported verbatim from spike-dapp-hf/island-3/driver/tests/builder/fixtures/migrated-v9.hex (identical across islands 1/2/3 and ts-downcast). A real ledger-8->9 migrated state, produced by the spike's Rust simulator's `migrate-8-to-9`."
     },
@@ -27,7 +27,7 @@
       "envelopeTag": "midnight:contract-state[v8]:",
       "status": "synthetic",
       "kind": "synthetic",
-      "notes": "NOT a real migration output (ledger-v9 exposes no migrate/from_v8 entry point -- OQ9 mint-path (a) failed, and no small tree-bearing golden exists in the spike -- mint-path (b) failed for this one fixture only). Hand-built via ledger-v9's public StateBoundedMerkleTree/StateValue API: one rehashed leaf, so it deserializes cleanly with ledger-v9."
+      "notes": "NOT a real migration output (ledger-v9 exposes no migrate/from_v8 entry point -- mint path (a) failed, and no small tree-bearing golden exists in the spike -- mint path (b) failed for this one fixture only). Hand-built via ledger-v9's public StateBoundedMerkleTree/StateValue API: one rehashed leaf, so it deserializes cleanly with ledger-v9."
     },
     "state-tampered-keyset-v8to9.hex": {
       "protocolVersion": 2000000,
@@ -61,9 +61,9 @@
     "state-co-v2-only-foreign.hex": {
       "protocolVersion": 2000000,
       "envelopeTag": "midnight:contract-state[v8]:",
-      "status": "ok",
+      "status": "foreign-key",
       "kind": "foreign-key-in-valid-state",
-      "notes": "A4 mis-dispatch negative (fix round 1: reworked from a bare foreign ContractOperation, which failed at the envelope-tag check before ever reaching the intended code path). A full, well-formed ContractState (deserializes cleanly on ledger-v9, protocolVersion 2000000 to match) whose 'increment' operation slot carries the REAL 'post' operation borrowed from state-migrated-v9.hex -- a genuinely foreign, migrated op.v2-vintage verifier key, not built from twin-contract/. Fails only later, at execution (a verifier-key mismatch), never at decode. See README.md 'The A4 mis-dispatch fixture'."
+      "notes": "Mis-dispatch negative (reworked from a bare foreign ContractOperation, which failed at the envelope-tag check before ever reaching the intended code path). A full, well-formed ContractState (deserializes cleanly on ledger-v9, protocolVersion 2000000 to match) whose 'increment' operation slot carries the REAL 'post' operation borrowed from state-migrated-v9.hex -- a genuinely foreign, migrated op.v2-vintage verifier key, not built from twin-contract/. Fails only later, at execution (a verifier-key mismatch), never at decode. See README.md 'The mis-dispatch fixture'."
     }
   }
 }

@@ -52,12 +52,19 @@ export type HfFixtureName = (typeof HF_FIXTURE_NAMES)[number];
 /**
  * What a fixture is good for.
  *
- * - `ok` — deserializes cleanly on the ledger matching its `protocolVersion`.
+ * - `valid` — a real state that deserializes cleanly on the ledger matching
+ *   its `protocolVersion`, and is fit to use as a known-good input.
  * - `synthetic` — hand-built rather than produced by a real migration, but
  *   still a valid state on its ledger.
- * - `tampered` — deliberately corrupt; expected to be rejected.
+ * - `tampered` — deliberately corrupt; expected to be rejected at decode.
+ * - `foreign-key` — decodes cleanly, but carries a deliberately foreign
+ *   verifier key, so it fails only later at execution. Deliberately kept out
+ *   of `valid`: filtering on `valid` must never hand back a poisoned state.
  */
-export type HfFixtureStatus = 'ok' | 'synthetic' | 'tampered';
+export const HF_FIXTURE_STATUSES = ['valid', 'synthetic', 'tampered', 'foreign-key'] as const;
+
+/** One of the {@link HF_FIXTURE_STATUSES}. */
+export type HfFixtureStatus = (typeof HF_FIXTURE_STATUSES)[number];
 
 /** The subset of a fixture's manifest entry this package promises to keep. */
 export interface HfFixtureEntry {
@@ -75,13 +82,11 @@ const MANIFEST_FILE = 'fixtures.json';
 
 const HEX_TEXT = /^[0-9a-f]+$/;
 
-const FIXTURE_STATUSES = ['ok', 'synthetic', 'tampered'] as const;
-
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const isFixtureStatus = (value: unknown): value is HfFixtureStatus =>
-  value === 'ok' || value === 'synthetic' || value === 'tampered';
+  HF_FIXTURE_STATUSES.some((status) => status === value);
 
 const isProtocolVersion = (value: unknown): value is number | null => value === null || Number.isInteger(value);
 
@@ -117,7 +122,7 @@ const parseEntry = (name: HfFixtureName, value: unknown): HfFixtureEntry => {
   }
   if (!isFixtureStatus(status)) {
     throw new Error(
-      `${MANIFEST_FILE} entry ${name} has status ${JSON.stringify(status)}, expected one of ${FIXTURE_STATUSES.join(', ')}`
+      `${MANIFEST_FILE} entry ${name} has status ${JSON.stringify(status)}, expected one of ${HF_FIXTURE_STATUSES.join(', ')}`
     );
   }
   return { protocolVersion, status };
