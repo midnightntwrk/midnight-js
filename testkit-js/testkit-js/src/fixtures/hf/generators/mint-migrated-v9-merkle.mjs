@@ -40,14 +40,17 @@
 // rehashed at the byte level (matching the committed golden
 // state-migrated-v9.hex, which deserializes cleanly), so this fixture calls
 // `.rehash()` before serializing to stay a realistic, cleanly-deserializable
-// input. The hash loss `downcastV9StateForExecution` (downcast.ts:
-// rehashStateValue) guards against happens one step LATER, in the
-// encode()/decode() POJO bridge it uses to cross the compact-runtime/
-// ledger-v9 package boundary -- decode() drops the cached node hashes even
-// though the source tree was fully hashed. This fixture proves the byte-level
-// envelope is well-formed and deserializes with ledger-v9; the down-convert's
-// rehash-after-decode necessity is covered directly against the real golden
-// in the smoke test.
+// input.
+//
+// An earlier version of this comment claimed the encode()/decode() POJO bridge
+// then DROPS those cached node hashes, which is what the HF spike's
+// rehash-after-decode step existed to repair. That is not the behaviour of the
+// pinned onchain-runtime-v3/ledger-v9 versions: a round trip materializes a
+// tree's hashes even when the source was never rehashed. The engine therefore
+// asserts roots instead of rebuilding them, and pins the round-trip behaviour
+// with its own test (packages/protocol engine-down-convert: "an encode/decode
+// round trip materializes the hashes of a tree that was never rehashed"), so a
+// vendor bump that changes it fails there rather than in production.
 
 import { ContractState, ChargedState, StateValue, StateBoundedMerkleTree } from '@midnightntwrk/ledger-v9';
 import { asciiPrefix, writeHexFixture } from './lib.mjs';
