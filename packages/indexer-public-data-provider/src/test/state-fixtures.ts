@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { ledger, loadV8 } from '@midnight-ntwrk/midnight-js-protocol';
+import { ledger, loadLedger8 } from '@midnight-ntwrk/midnight-js-protocol';
 import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 
 // Contract-state fixtures are minted here, at test time, from the two ledger
@@ -22,7 +22,7 @@ import { toHex } from '@midnight-ntwrk/midnight-js-utils';
 // and keeps them tiny: a freshly constructed, empty `ContractState` is a few
 // dozen bytes, so no large binary ever enters the unit-test run.
 //
-// The v8 runtime is reached through `loadV8()`, the only sanctioned path to
+// The v8 runtime is reached through `loadLedger8()`, the only sanctioned path to
 // it; nothing here depends on the v8 ledger package directly.
 
 /** A newly constructed, empty contract state serialized by the v9 runtime. */
@@ -30,7 +30,7 @@ export const mintV9ContractStateBytes = (): Uint8Array => new ledger.ContractSta
 
 /** A newly constructed, empty contract state serialized by the v8 runtime. */
 export const mintV8ContractStateBytes = async (): Promise<Uint8Array> => {
-  const v8 = await loadV8();
+  const v8 = await loadLedger8();
   return new v8.ContractState().serialize();
 };
 
