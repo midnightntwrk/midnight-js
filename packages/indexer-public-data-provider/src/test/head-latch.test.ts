@@ -179,6 +179,30 @@ describe('head protocol-version cache', () => {
     expect(headRequestCount(query)).toBe(1);
   });
 
+  test('delivers the finalized record, and leaves the cache cold, when the corroborating head read fails', async () => {
+    // Corroboration rides along on a read the caller asked for. If the extra
+    // head request fails, that means "cannot corroborate right now" — it must
+    // not take the finalization read down with it, and it must not leave a
+    // half-warmed cache behind.
+    const query = vi
+      .fn<(request: ApolloRequest) => Promise<unknown>>()
+      .mockRejectedValueOnce(new Error('connection reset by peer'))
+      .mockResolvedValue(headResponse(V9_ERA_PROTOCOL_VERSION));
+    const watchQuery = vi.fn().mockReturnValue(finalizedTransactionEmission(V9_ERA_PROTOCOL_VERSION));
+    const provider = buildProvider(query, watchQuery);
+
+    const finalized = await provider.watchForTxData(TX_ID);
+    const afterCorroboration = headRequestCount(query);
+    const later = await provider.queryLatestProtocolVersion();
+
+    expect(finalized.txId).toBe(TX_ID);
+    expect(afterCorroboration).toBe(1);
+    // The second request is the proof the cache stayed cold: a warm one would
+    // have answered without going to the network at all.
+    expect(later).toBe(V9_ERA_PROTOCOL_VERSION);
+    expect(headRequestCount(query)).toBe(2);
+  });
+
   test('returns the finalized record normally when its protocol version is one this client cannot resolve', async () => {
     // Warming the cache is a side effect of the caller's real request. An
     // integer this client does not recognize means "cannot tell which era" —

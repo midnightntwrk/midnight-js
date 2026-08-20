@@ -215,7 +215,21 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     if (this.v9HeadProtocolVersion !== undefined || !isV9Era(protocolVersion)) {
       return;
     }
-    const headProtocolVersion = await this.fetchHeadProtocolVersion();
+    let headProtocolVersion: number;
+    try {
+      headProtocolVersion = await this.fetchHeadProtocolVersion();
+    } catch {
+      // The corroborating read is an extra, optional request bolted onto the
+      // caller's real one. It is a network call, so it can fail for reasons
+      // that say nothing about the record just delivered; when it does, the
+      // honest reading is "cannot corroborate right now", not "this
+      // finalization read failed". Nothing is recorded, so the provider simply
+      // stays in its pre-cache state and keeps asking for the head version on
+      // every call, exactly as it did before — the next operation retries this
+      // naturally. The error is deliberately not re-raised: doing so would
+      // turn an optional signal into a failure of the caller's request.
+      return;
+    }
     if (!isV9Era(headProtocolVersion)) {
       return;
     }
