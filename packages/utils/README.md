@@ -100,36 +100,6 @@ assertIsContractAddress(
 ttlOneHour(): Date
 ```
 
-### Exhaustiveness Checking
-
-```typescript
-// Runtime backstop for a switch/if-chain over a closed union: call this in
-// the default/else branch so an unhandled new union member is a compile
-// error. If ever reached at runtime, throws with a message naming `context`
-// and a safe rendering of `value` — primitives via String(), objects as
-// `[object <ConstructorName>]` (never the object's own fields, so this is
-// safe to call with values that may carry sensitive data).
-assertNever(value: never, context: string): never
-```
-
-### Error Codes and Guards
-
-```typescript
-// Per-layer error-code registries (each frozen; values are string literals)
-CONTRACTS_ERROR_CODES
-PROVIDER_ERROR_CODES
-
-// The combined, frozen registry of every code midnight-js can produce
-MIDNIGHT_JS_ERROR_CODES: readonly MidnightJsErrorCode[]
-
-// Type guard, two forms:
-// - no-arg: true only if `e.code` is a member of MIDNIGHT_JS_ERROR_CODES
-hasErrorCode(e: unknown): e is Error & { code: MidnightJsErrorCode }
-// - with-code: true only if `e.code === code` (code need not be a member of
-//   MidnightJsErrorCode, so this also compares against foreign codes)
-hasErrorCode<C extends string>(e: unknown, code: C): e is Error & { code: C }
-```
-
 ## Exports
 
 ```typescript
@@ -154,16 +124,7 @@ import {
   assertIsContractAddress,
 
   // Date utilities
-  ttlOneHour,
-
-  // Exhaustiveness checking
-  assertNever,
-
-  // Error codes and guards
-  CONTRACTS_ERROR_CODES,
-  PROVIDER_ERROR_CODES,
-  MIDNIGHT_JS_ERROR_CODES,
-  hasErrorCode
+  ttlOneHour
 } from '@midnight-ntwrk/midnight-js-utils';
 ```
 

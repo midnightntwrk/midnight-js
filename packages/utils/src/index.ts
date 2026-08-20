@@ -13,11 +13,9 @@
  * limitations under the License.
  */
 
-export * from './assert-never';
 export * from './assertion-utils';
 export * from './date-utils';
 export * from './deserialization';
-export * from './error-codes';
 export * from './hex-utils';
 export * from './password-validation';
 export * from './security-utils';
