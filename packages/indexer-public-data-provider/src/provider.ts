@@ -301,7 +301,8 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
    *
    * @throws {TagParseError} When the served state does not carry a
    *   contract-state envelope from a supported ledger runtime.
-   * @throws {IndexerDataError} When the served state is not hex-encoded.
+   * @throws {IndexerDataError} When the served state is not hex-encoded, or
+   *   when a state is served with no block to date it.
    */
   async queryRawContractState(
     address: ContractAddress,
@@ -321,9 +322,15 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
       .then(maybeThrowQueryError)
       .then((queryResult) => queryResult.data);
     const state = data?.contract?.state ?? null;
-    const block = data?.block ?? null;
-    if (state === null || block === null) {
+    if (state === null) {
       return null;
+    }
+    const block = data?.block ?? null;
+    if (block === null) {
+      // A served state with no block to date it is an inconsistent indexer,
+      // not an absent contract. Reporting it as "nothing here" would hand the
+      // caller a wrong answer that reads exactly like a correct one.
+      throw IndexerDataError.missingHeadBlock();
     }
     const record = toRawContractState(state, block.protocolVersion);
     if (offset === null) {

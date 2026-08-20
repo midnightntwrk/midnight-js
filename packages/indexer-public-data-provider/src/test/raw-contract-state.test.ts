@@ -173,8 +173,23 @@ describe('queryRawContractState', () => {
       expect(await providerServing(null, V9_ERA_PROTOCOL_VERSION).queryRawContractState(ADDRESS)).toBeNull();
     });
 
-    test('returns null when there is no block at the offset', async () => {
-      expect(await providerServing(mintV9ContractStateHex(), null).queryRawContractState(ADDRESS)).toBeNull();
+    test('fails fast when a state is served but the block that dates it is missing', async () => {
+      // Returning null here would report "no contract at this address" for
+      // what is really an inconsistent indexer — two very different things for
+      // a caller to act on.
+      const rejection = await providerServing(mintV9ContractStateHex(), null)
+        .queryRawContractState(ADDRESS)
+        .then(
+          () => undefined,
+          (error: unknown) => error
+        );
+
+      expect(rejection).toBeInstanceOf(IndexerDataError);
+      expect((rejection as IndexerDataError).context).toEqual({ kind: 'missing-head-block' });
+    });
+
+    test('returns null, without reading a block, when neither the state nor the block is there', async () => {
+      expect(await providerServing(null, null).queryRawContractState(ADDRESS)).toBeNull();
     });
   });
 
