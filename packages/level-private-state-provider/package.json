@@ -35,6 +35,9 @@
     "rollup": "^4.60.4",
     "vitest": "^4.1.7"
   },
+  "files": [
+    "dist/"
+  ],
   "engines": {
     "node": ">=22.12"
   }
