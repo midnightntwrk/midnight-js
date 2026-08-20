@@ -90,8 +90,8 @@ describe('VersionedFinalizedTxData', () => {
     // Bidirectional: catches a field being dropped (fixture would then demand
     // a field FinalizedTxData no longer has), added (FinalizedTxData would
     // demand a field the fixture doesn't have), or retyped (mismatched field
-    // type breaks assignability in at least one direction) — see the
-    // fix-round-1 report for a demonstrated failure of this exact check.
+    // type breaks assignability in at least one direction). A mutation of this
+    // fixture was verified to fail this check.
     expectTypeOf<FinalizedTxDataV9Fixture>().toEqualTypeOf<FinalizedTxData>();
   });
 
@@ -105,8 +105,8 @@ describe('VersionedFinalizedTxData', () => {
     // property against a hardcoded literal union. Removing an arm shrinks
     // the actual union; adding a third arm (with its own literal `version`)
     // or widening an arm's `version` to a non-literal grows it — either way
-    // it stops equaling the hardcoded `'v8' | 'v9'` — see the fix-round-1
-    // report for a demonstrated failure of this exact check.
+    // it stops equaling the hardcoded `'v8' | 'v9'`. A mutation of the union
+    // was verified to fail this check.
     expectTypeOf<VersionedFinalizedTxData['version']>().toEqualTypeOf<'v8' | 'v9'>();
   });
 });
