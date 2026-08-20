@@ -1,8 +1,9 @@
 # Allowed breaking API changes
 
-This file is the allowlist for the `.d.ts` API-report gate that protects
-`@midnight-ntwrk/midnight-js-types` and the `@midnight-ntwrk/midnight-js`
-barrel. The gate regenerates the API reports in
+This file is the allowlist for the `.d.ts` API-report gate. The gate covers
+the `@midnight-ntwrk/midnight-js-types` surface; see
+[Scope and limitations](#scope-and-limitations) for what it does **not**
+cover. The gate regenerates the API reports in
 [`baselines/`](./baselines) and compares them against the checked-in
 version. If they match, the gate passes. If they differ, every changed line
 must match an entry in this file, or the gate fails.
@@ -12,6 +13,29 @@ frozen while a breaking-change window is open, and entries are added here
 instead to document each intentional break. When the breaking window closes,
 a follow-up PR regenerates the baselines to match the new surface and clears
 this file back to empty.
+
+## Scope and limitations
+
+Read this before assuming a change is covered.
+
+**What the gate really watches:** the exported type surface of
+`@midnight-ntwrk/midnight-js-types`. That package's report
+([`baselines/midnight-js-types.api.md`](./baselines/midnight-js-types.api.md))
+lists every exported symbol and its shape, so any break there is caught.
+
+**What the gate does not watch:** anything reached only through the
+`@midnight-ntwrk/midnight-js` barrel. The barrel re-exports whole packages as
+namespaces (`export * as contracts from '@midnight-ntwrk/midnight-js-contracts'`),
+and [`prepare-entry.mjs`](./prepare-entry.mjs) rewrites each of those into an
+import of an external namespace. API Extractor cannot see through an external
+namespace import, so the barrel's report is just a handful of namespace
+re-export lines. Nothing inside `contracts`, `utils` or `network-id` is
+compared at all — adding, removing or breaking an export in those packages
+leaves the barrel baseline byte-for-byte identical and the gate green.
+
+So: a break in `types` fails the gate and needs an entry below. A break in any
+other package does not, and this file will not record it. Do not read a green
+gate as evidence that the whole public surface is unchanged.
 
 ## Format
 
