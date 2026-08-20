@@ -5,7 +5,7 @@
   "packageManager": "yarn@4.14.1",
   "repository": "git@github.com:midnight-ntwrk/artifacts",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12"
   },
   "workspaces": [
     "packages/*",
