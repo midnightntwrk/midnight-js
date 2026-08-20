@@ -131,12 +131,14 @@ describe('protocol/v8 gate canaries', () => {
   });
 
   // The exemption above must come from `ignores` on the block that adds the v8
-  // selectors, never from switching the rule off for protocol sources. Both
-  // rules are shared: an `'off'` override drops every OTHER selector another
-  // block adds to them too, and it does so silently, because an absent rule
-  // reports nothing. That is not hypothetical — the unsafe-cast gate on `main`
-  // rides on `no-restricted-syntax`, so an `'off'` here would leave the whole
-  // protocol package, the largest body of new hard-fork code, without it.
+  // selectors, never from switching the rule off for protocol sources.
+  // `no-restricted-syntax` is shared: an `'off'` override drops every OTHER
+  // selector another block adds to it too, and it does so silently, because an
+  // absent rule reports nothing. That is not hypothetical — the unsafe-cast
+  // gate on `main` rides on `no-restricted-syntax`, so an `'off'` here would
+  // leave the whole protocol package, the largest body of new hard-fork code,
+  // without it. `@typescript-eslint/no-restricted-imports` is checked on the
+  // same principle, though it currently carries only the v8 patterns.
   it.each([SYNTAX_RULE_ID, TS_RULE_ID])('never disables %s outright for protocol sources', async (ruleId) => {
     const { rules } = await eslint.calculateConfigForFile(PROTOCOL_INTERNAL_PATH);
     const entry = rules?.[ruleId];
@@ -193,8 +195,10 @@ describe('Unsafe-cast gate: no-restricted-syntax canaries', () => {
 // `no-restricted-syntax` carries two gates with different exemptions, and flat
 // config replaces a rule's options wholesale: if one block matching a file were
 // to shadow another, the shadowed gate would vanish with no lint error to show
-// for it. One case per scope region, asserting exactly which gates are live
-// there — an ordering mistake in eslint.config.mjs cannot pass all four.
+// for it. The four blocks are mutually exclusive by construction, so block
+// ORDER cannot decide the outcome; what these cases pin is the `files`/
+// `ignores` scoping — a mistake that makes two blocks overlap, or leaves a
+// region uncovered, cannot pass all four.
 describe('both no-restricted-syntax gates survive together', () => {
   const UNSAFE_CAST = 'export const y = 0 as any;\n';
 

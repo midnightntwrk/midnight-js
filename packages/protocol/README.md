@@ -33,7 +33,7 @@ import { createPlatform } from '@midnight-ntwrk/midnight-js-protocol/platform-js
 | Sub-path | Re-exports | Description |
 | -------- | ---------- | ----------- |
 | `./errors` | (own) | `PROTOCOL_ERROR_CODES`, `UnknownProtocolVersionError` and the types `ProtocolErrorCode`, `ProtocolVersionUnknownReason`, `VersionResolutionPath` — without pulling in the ledger/compact-js/onchain-runtime/platform namespaces |
-| `./version` | (own) | `LEDGER_VERSIONS`, `protocolVersionToLedger`, `versionOfRecord`, `networkHeadVersion` and the type `LedgerVersion` — same lightweight guarantee as `./errors` |
+| `./version` | (own) | `LEDGER_VERSIONS`, `protocolVersionToLedger`, `versionOfRecord`, `networkHeadVersion` and the types `LedgerVersion`, `ProtocolVersionSource`, `VersionedRecord` — same lightweight guarantee as `./errors` |
 | `./ledger` | `@midnightntwrk/ledger-v9` | Ledger types and transaction primitives |
 | `./compact-runtime` | `@midnight-ntwrk/compact-runtime` | Compact contract runtime utilities |
 | `./compact-js` | `@midnight-ntwrk/compact-js` | Compact JS bindings |
@@ -55,12 +55,12 @@ The `protocolVersion` integer encodes the **node** version as `major * 1_000_000
 | 1_000_000 – 1_999_999 | 1.x          | v8     |
 | 2_000_000 – 2_999_999 | 2.x          | v9     |
 
-Anything outside those ranges throws rather than guessing.
+Anything outside those ranges throws rather than guessing. Node 0.x is deliberately absent: the indexer's own table does map it, but midnight-js meets only node 1.x or 2.x, so a 0.x `protocolVersion` is reported as unknown rather than silently resolved.
 
 ```typescript
 import {
   LEDGER_VERSIONS,          // readonly ['v8', 'v9']
-  protocolVersionToLedger,  // (protocolVersion: number, path?: 'read' | 'construct') => 'v8' | 'v9'
+  protocolVersionToLedger,  // (protocolVersion: number, path?: 'read' | 'construct') => 'v8' | 'v9'   (path defaults to 'construct')
   versionOfRecord,          // (record: { protocolVersion: number }) => 'v8' | 'v9'
   networkHeadVersion        // (source: { queryLatestProtocolVersion(): Promise<number> }) => Promise<'v8' | 'v9'>
 } from '@midnight-ntwrk/midnight-js-protocol/version';
@@ -71,11 +71,19 @@ Prefer `versionOfRecord` for a `protocolVersion` already read off an indexer/nod
 
 ## ESLint Enforcement
 
-An ESLint `no-restricted-imports` rule prevents direct imports of the underlying protocol packages outside of this package. If you see an error like:
+Three rules in the repo's `eslint.config.mjs` govern how other packages reach protocol internals.
+
+**1. The protocol ACL** — a `no-restricted-imports` rule prevents direct imports of the underlying protocol packages outside of this package. If you see an error like:
 
 > Import from `@midnight-ntwrk/midnight-js-protocol/ledger` instead.
 
 Replace the direct protocol import with the corresponding subpath from this package.
+
+**2. The v8 static-import gate** — `@typescript-eslint/no-restricted-imports` blocks runtime imports of `@midnight-ntwrk/midnight-js-protocol/v8` outside `packages/protocol/src/`. Type-only imports (`import type`) are allowed.
+
+**3. The v8 dynamic-import gate** — `no-restricted-syntax` selectors block `import('@midnight-ntwrk/midnight-js-protocol/v8')` in the same scopes. An interpolated template literal cannot be matched statically and is not covered.
+
+Both v8 gates point at `loadLedger8()`, which arrives with the v8 loader; they land ahead of it so no consumer can grow a direct v8 dependency in the meantime.
 
 ## Resources
 

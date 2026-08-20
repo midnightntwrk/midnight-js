@@ -27,7 +27,7 @@ export type ProtocolErrorCode = (typeof PROTOCOL_ERROR_CODES)[keyof typeof PROTO
 export type VersionResolutionPath = 'read' | 'construct';
 
 /**
- * Why {@link protocolVersionToLedger} could not resolve a ledger version:
+ * Why `protocolVersionToLedger` could not resolve a ledger version:
  * - `'malformed'` — the input was not even a well-formed protocolVersion
  *   value (not a non-negative integer).
  * - `'unknown'` — the input was a well-formed integer, but outside every
@@ -36,16 +36,18 @@ export type VersionResolutionPath = 'read' | 'construct';
 export type ProtocolVersionUnknownReason = 'unknown' | 'malformed';
 
 /**
- * Thrown by {@link protocolVersionToLedger} (and, transitively,
- * {@link versionOfRecord} / {@link networkHeadVersion}) when a raw
- * `protocolVersion` integer cannot be resolved to a {@link LedgerVersion}.
+ * Thrown by `protocolVersionToLedger` (and, transitively, `versionOfRecord` /
+ * `networkHeadVersion`) when a raw `protocolVersion` integer cannot be
+ * resolved to a `LedgerVersion`. Those live in `./version`, which imports this
+ * module -- the dependency stays one-way, so they are named here rather than
+ * linked.
  *
  * `reason` distinguishes a malformed input (wrong shape/type, not a
  * protocol-version problem at all) from a well-formed but genuinely unknown
  * version (a real protocol version this framework build does not support
  * yet). `code` further splits each case by which call path produced it —
- * `read` for a version read off an existing record, `construct` for one used
- * to build a new construct.
+ * `read` for a version taken off an existing record, `construct` for a version
+ * chosen to build something new against the network's current head.
  */
 export class UnknownProtocolVersionError extends Error {
   readonly code: ProtocolErrorCode;

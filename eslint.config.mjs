@@ -9,7 +9,7 @@ import unusedImports from 'eslint-plugin-unused-imports';
 
 // No-new-occurrences gate for unsafe casts in package sources. Existing,
 // reviewed occurrences carry an inline eslint-disable; test files and
-// testkit-js are exempt (see the dedicated gate block below).
+// testkit-js are exempt (see the four `no-restricted-syntax` blocks below).
 const unsafeCastSelectors = [
   {
     selector: "TSAsExpression[typeAnnotation.type='TSAnyKeyword'], TSTypeAssertion[typeAnnotation.type='TSAnyKeyword']",
@@ -25,8 +25,11 @@ const unsafeCastSelectors = [
   }
 ];
 
+// The `./v8` subpath and `loadLedger8()` do not exist yet -- they arrive with
+// the v8 loader. This gate lands ahead of them deliberately, so no consumer can
+// grow a direct v8 dependency in the meantime.
 const V8_RUNTIME_MESSAGE =
-  'Runtime v8 access only via loadLedger8() from @midnight-ntwrk/midnight-js-protocol.';
+  'Runtime v8 access will be available only via loadLedger8() from @midnight-ntwrk/midnight-js-protocol.';
 
 // Blocks dynamic `import(...)` of protocol/v8 (and any subpath under it) in
 // both of its statically matchable forms: a plain string literal, and a
@@ -45,8 +48,10 @@ const v8DynamicImportSelectors = [
   }
 ];
 
-// Scopes the two `no-restricted-syntax` gates below. They exempt different
-// files, so the globs are named once and reused rather than restated.
+// Shared file scopes for the v8 and unsafe-cast gates below -- both the
+// `@typescript-eslint/no-restricted-imports` block and the four
+// `no-restricted-syntax` blocks. They exempt different files, so the globs are
+// named once and reused rather than restated.
 const PACKAGE_SOURCE_GLOBS = ['packages/**/*.ts', 'packages/**/*.tsx', 'packages/**/*.mts'];
 const PACKAGE_TEST_GLOBS = ['packages/*/src/test/**/*.ts', 'packages/*/src/test/**/*.tsx', 'packages/*/src/test/**/*.mts'];
 const PACKAGE_TEST_DIRS = 'packages/*/src/test/**';
