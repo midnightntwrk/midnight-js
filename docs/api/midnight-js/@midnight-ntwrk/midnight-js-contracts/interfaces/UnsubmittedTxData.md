@@ -31,7 +31,7 @@ not an intended use.
 
 ### newCoins
 
-> `readonly` **newCoins**: `ShieldedCoinInfo`[]
+> `readonly` **newCoins**: [`ShieldedCoinInfo`](../../midnight-js-protocol/ledger/type-aliases/ShieldedCoinInfo.md)[]
 
 New coins created during the construction of the transaction.
 
@@ -39,6 +39,6 @@ New coins created during the construction of the transaction.
 
 ### unprovenTx
 
-> `readonly` **unprovenTx**: `UnprovenTransaction`
+> `readonly` **unprovenTx**: [`UnprovenTransaction`](../../midnight-js-protocol/ledger/type-aliases/UnprovenTransaction.md)
 
 The unproven ledger transaction produced.

@@ -19,13 +19,13 @@ produced by running the contract constructor.
 
 ### C
 
-`C` *extends* `Contract.Any`
+`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
 
 ## Properties
 
 ### initialPrivateState
 
-> `readonly` **initialPrivateState**: `PrivateState`\<`C`\>
+> `readonly` **initialPrivateState**: [`PrivateState`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/PrivateState.md)\<`C`\>
 
 The initial private state of the contract deployed to the blockchain. This
 value is persisted if the transaction succeeds.
@@ -38,7 +38,7 @@ value is persisted if the transaction succeeds.
 
 ### initialZswapState
 
-> `readonly` **initialZswapState**: `ZswapLocalState`
+> `readonly` **initialZswapState**: [`ZswapLocalState`](../../midnight-js-protocol/compact-runtime/interfaces/ZswapLocalState.md)
 
 The Zswap state produced as a result of running the contract constructor. Useful for when
 inputs or outputs are created in the contract constructor.
@@ -47,7 +47,7 @@ inputs or outputs are created in the contract constructor.
 
 ### newCoins
 
-> `readonly` **newCoins**: `ShieldedCoinInfo`[]
+> `readonly` **newCoins**: [`ShieldedCoinInfo`](../../midnight-js-protocol/ledger/type-aliases/ShieldedCoinInfo.md)[]
 
 New coins created during the construction of the transaction.
 
@@ -59,7 +59,7 @@ New coins created during the construction of the transaction.
 
 ### signingKey
 
-> `readonly` **signingKey**: `SigningKey`
+> `readonly` **signingKey**: [`SigningKey`](../../midnight-js-protocol/onchain-runtime/type-aliases/SigningKey.md)
 
 The signing key that was added as the deployed contract's maintenance authority.
 
@@ -71,7 +71,7 @@ The signing key that was added as the deployed contract's maintenance authority.
 
 ### unprovenTx
 
-> `readonly` **unprovenTx**: `UnprovenTransaction`
+> `readonly` **unprovenTx**: [`UnprovenTransaction`](../../midnight-js-protocol/ledger/type-aliases/UnprovenTransaction.md)
 
 The unproven ledger transaction produced.
 

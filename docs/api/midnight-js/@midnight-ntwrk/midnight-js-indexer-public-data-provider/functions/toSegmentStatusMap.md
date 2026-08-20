@@ -6,7 +6,7 @@
 
 # Function: toSegmentStatusMap()
 
-> **toSegmentStatusMap**(`transactionResult`): `Map`\<`number`, `SegmentStatus`\> \| `undefined`
+> **toSegmentStatusMap**(`transactionResult`): `Map`\<`number`, [`SegmentStatus`](../../midnight-js/types/type-aliases/SegmentStatus.md)\> \| `undefined`
 
 ## Parameters
 
@@ -16,4 +16,4 @@
 
 ## Returns
 
-`Map`\<`number`, `SegmentStatus`\> \| `undefined`
+`Map`\<`number`, [`SegmentStatus`](../../midnight-js/types/type-aliases/SegmentStatus.md)\> \| `undefined`

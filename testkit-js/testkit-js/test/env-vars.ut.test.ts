@@ -16,8 +16,8 @@
 import path from 'path';
 import { WebSocket } from 'ws';
 
-import { getEnvVarWalletSeeds, getMnTestIndexer } from '@/env-vars';
-import { createLogger } from '@/logger';
+import { getEnvVarWalletSeeds, getMnTestIndexer } from '../src/env-vars';
+import { createLogger } from '../src/logger';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `ut_${new Date().toISOString().replace(/:/g, '-')}.log`)

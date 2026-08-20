@@ -53,20 +53,20 @@ import {
   INVALID_CONTRACT_ADDRESS_TOO_LONG,
   SLOW_TEST_TIMEOUT,
   UNDEPLOYED_CONTRACT_ADDRESS
-} from '@/constants';
+} from '../src/constants';
 import {
   CompiledCounter,
-} from '@/contract';
-import { CompiledCounterCloneContract,CompiledCounterContract, CompiledSimpleContract } from '@/contract';
-import { type CounterPrivateState, createInitialPrivateState, createPrivateState } from '@/contract/witnesses';
-import * as api from '@/counter-api';
+} from '../src/contract';
+import { CompiledCounterCloneContract,CompiledCounterContract, CompiledSimpleContract } from '../src/contract';
+import { type CounterPrivateState, createInitialPrivateState, createPrivateState } from '../src/contract/witnesses';
+import * as api from '../src/counter-api';
 import {
   CIRCUIT_ID_INCREMENT,
   CounterCloneConfiguration,
   CounterConfiguration,
   SimpleConfiguration
-} from '@/counter-api';
-import { type CounterCloneCircuit,CounterClonePrivateStateId } from '@/types/counter-clone-types';
+} from '../src/counter-api';
+import { type CounterCloneCircuit,CounterClonePrivateStateId } from '../src/types/counter-clone-types';
 import {
   type CounterCircuit,
   type CounterContract,
@@ -74,8 +74,8 @@ import {
   type CounterProviders,
   type DeployedCounterContract,
   privateStateZero
-} from '@/types/counter-types';
-import { type SimpleCircuit } from '@/types/simple-types';
+} from '../src/types/counter-types';
+import { type SimpleCircuit } from '../src/types/simple-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_${new Date().toISOString()}.log`)

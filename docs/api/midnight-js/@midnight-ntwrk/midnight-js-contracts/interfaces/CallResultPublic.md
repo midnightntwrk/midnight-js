@@ -16,10 +16,10 @@ The public portions of the call result.
 
 ### logEvents
 
-> `readonly` **logEvents**: readonly `LogEvent`[]
+> `readonly` **logEvents**: readonly [`LogEvent`](../../midnight-js/contracts/type-aliases/LogEvent.md)[]
 
 The MIP-0002 contract log events emitted during circuit execution. Surfaced on the `compact-js`
-executor result and typed by `compact-runtime`'s LogEvent. This is the single
+executor result and typed by `compact-runtime`'s [LogEvent](../../midnight-js/contracts/type-aliases/LogEvent.md). This is the single
 execution-wide list across the whole call tree (not just the root call), in emission order; each
 event is tagged with its emitting contract's address, so a per-contract view is a filter over
 that address.
@@ -33,7 +33,7 @@ Empty when the circuit emits no logs.
 
 ### nextContractState
 
-> `readonly` **nextContractState**: `StateValue`
+> `readonly` **nextContractState**: [`StateValue`](../../midnight-js-protocol/onchain-runtime/classes/StateValue.md)
 
 The public state resulting from executing the circuit.
 
@@ -41,7 +41,7 @@ The public state resulting from executing the circuit.
 
 ### partitionedTranscript
 
-> `readonly` **partitionedTranscript**: `PartitionedTranscript`
+> `readonly` **partitionedTranscript**: [`PartitionedTranscript`](../../midnight-js-protocol/ledger/type-aliases/PartitionedTranscript.md)
 
 A [publicTranscript](#publictranscript) partitioned into guaranteed and fallible sections.
 The guaranteed section of a public transcript must succeed for the corresponding
@@ -52,6 +52,6 @@ can fail without invalidating the transaction, as long as the guaranteed section
 
 ### publicTranscript
 
-> `readonly` **publicTranscript**: `Op`\<`AlignedValue`\>[]
+> `readonly` **publicTranscript**: [`Op`](../../midnight-js-protocol/onchain-runtime/type-aliases/Op.md)\<[`AlignedValue`](../../midnight-js-protocol/onchain-runtime/type-aliases/AlignedValue.md)\>[]
 
 The public transcript resulting from executing the circuit.

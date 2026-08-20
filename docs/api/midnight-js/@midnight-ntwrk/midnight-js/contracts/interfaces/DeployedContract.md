@@ -1,0 +1,82 @@
+[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [contracts](../README.md) / DeployedContract
+
+# Interface: DeployedContract\<C\>
+
+Defined in: packages/contracts/dist/index.d.ts:986
+
+Interface for a contract that has been deployed to the blockchain.
+
+## Extends
+
+- [`FoundContract`](FoundContract.md)\<`C`\>
+
+## Type Parameters
+
+### C
+
+`C` *extends* [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+
+## Properties
+
+### callTx
+
+> `readonly` **callTx**: [`CircuitCallTxInterface`](../type-aliases/CircuitCallTxInterface.md)\<`C`\>
+
+Defined in: packages/contracts/dist/index.d.ts:927
+
+Interface for creating call transactions for a contract.
+
+#### Inherited from
+
+[`FoundContract`](FoundContract.md).[`callTx`](FoundContract.md#calltx)
+
+***
+
+### circuitMaintenanceTx
+
+> `readonly` **circuitMaintenanceTx**: [`CircuitMaintenanceTxInterfaces`](../type-aliases/CircuitMaintenanceTxInterfaces.md)\<`C`\>
+
+Defined in: packages/contracts/dist/index.d.ts:932
+
+An interface for creating maintenance transactions for circuits defined in the
+contract that was deployed.
+
+#### Inherited from
+
+[`FoundContract`](FoundContract.md).[`circuitMaintenanceTx`](FoundContract.md#circuitmaintenancetx)
+
+***
+
+### contractMaintenanceTx
+
+> `readonly` **contractMaintenanceTx**: [`ContractMaintenanceTxInterface`](ContractMaintenanceTxInterface.md)
+
+Defined in: packages/contracts/dist/index.d.ts:937
+
+Interface for creating maintenance transactions for the contract that was
+deployed.
+
+#### Inherited from
+
+[`FoundContract`](FoundContract.md).[`contractMaintenanceTx`](FoundContract.md#contractmaintenancetx)
+
+***
+
+### deployTxData
+
+> `readonly` **deployTxData**: [`FinalizedDeployTxData`](FinalizedDeployTxData.md)\<`C`\>
+
+Defined in: packages/contracts/dist/index.d.ts:993
+
+Data resulting from the deployment transaction that created this contract. The information in a
+[deployTxData](#deploytxdata) contains additional private information that does not
+exist in [FoundContract.deployTxData](FoundContract.md#deploytxdata) because certain private data is only available to
+the deployer of a contract.
+
+#### Overrides
+
+[`FoundContract`](FoundContract.md).[`deployTxData`](FoundContract.md#deploytxdata)

@@ -6,7 +6,7 @@
 
 # Function: parseHexZswapState()
 
-> **parseHexZswapState**(`s`): `ZswapChainState`
+> **parseHexZswapState**(`s`): [`ZswapChainState`](../../midnight-js-protocol/ledger/classes/ZswapChainState.md)
 
 ## Parameters
 
@@ -16,4 +16,4 @@
 
 ## Returns
 
-`ZswapChainState`
+[`ZswapChainState`](../../midnight-js-protocol/ledger/classes/ZswapChainState.md)

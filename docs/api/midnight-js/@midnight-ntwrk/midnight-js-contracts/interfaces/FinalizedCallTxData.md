@@ -24,17 +24,17 @@ than spreading or stringifying the whole object.
 
 ### C
 
-`C` *extends* `Contract.Any`
+`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
 
 ### PCK
 
-`PCK` *extends* `Contract.ProvableCircuitId`\<`C`\>
+`PCK` *extends* [`ProvableCircuitId`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<`C`\>
 
 ## Properties
 
 ### calls
 
-> `readonly` **calls**: readonly `ContractCall`[]
+> `readonly` **calls**: readonly [`ContractCall`](../../midnight-js-protocol/compact-js/namespaces/ContractExecutable/namespaces/ContractExecutable/type-aliases/ContractCall.md)[]
 
 Proof data for every contract call made while executing the circuit, in execution-trace order:
 cross-contract callees first, the root call last. For a circuit that performs no cross-contract

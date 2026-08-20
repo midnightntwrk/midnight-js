@@ -1869,6 +1869,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     effect: "npm:^3.22.1"
+    rollup: "npm:^4.60.4"
     vitest: "npm:^4.1.7"
   languageName: unknown
   linkType: soft
@@ -1880,6 +1881,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnightntwrk/dapp-connector-api": "npm:4.1.0-beta.1"
+    rollup: "npm:^4.60.4"
     vitest: "npm:^4.1.7"
   languageName: unknown
   linkType: soft
@@ -1893,6 +1895,7 @@ __metadata:
     "@types/express": "npm:^5.0.6"
     cross-fetch: "npm:^4.1.0"
     express: "npm:^5.2.1"
+    rollup: "npm:^4.60.4"
     vitest: "npm:^4.1.7"
   languageName: unknown
   linkType: soft
@@ -1909,6 +1912,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     cross-fetch: "npm:^4.1.0"
     fetch-retry: "npm:^6.0.0"
+    rollup: "npm:^4.60.4"
     vitest: "npm:^4.1.7"
   languageName: unknown
   linkType: soft
@@ -1933,6 +1937,7 @@ __metadata:
     graphql: "npm:^17.0.1"
     graphql-ws: "npm:^6.0.8"
     isomorphic-ws: "npm:^5.0.0"
+    rollup: "npm:^4.60.4"
     rxjs: "npm:^7.8.2"
     vitest: "npm:^4.1.7"
     ws: "npm:^8.20.0"
@@ -1951,6 +1956,7 @@ __metadata:
     abstract-level: "npm:^3.1.1"
     buffer: "npm:^6.0.3"
     level: "npm:^10.0.0"
+    rollup: "npm:^4.60.4"
     superjson: "npm:^2.2.6"
     vitest: "npm:^4.1.7"
   languageName: unknown
@@ -1963,6 +1969,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     pino: "npm:^10.3.1"
     pino-pretty: "npm:^13.1.3"
+    rollup: "npm:^4.60.4"
     vitest: "npm:^4.1.7"
   languageName: unknown
   linkType: soft
@@ -1975,8 +1982,6 @@ __metadata:
     "@commitlint/config-conventional": "npm:^20.4.3"
     "@d2t/vitest-ctrf-json-reporter": "npm:^1.3.0"
     "@eslint/js": "npm:^10.0.1"
-    "@rollup/plugin-commonjs": "npm:^29.0.3"
-    "@rollup/plugin-node-resolve": "npm:^16.0.3"
     "@rollup/plugin-replace": "npm:^6.0.3"
     "@rollup/plugin-typescript": "npm:^12.3.0"
     "@tsconfig/node24": "npm:^24.0.4"
@@ -2012,6 +2017,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/midnight-js-network-id@workspace:packages/network-id"
   dependencies:
+    rollup: "npm:^4.60.4"
     vitest: "npm:^4.1.7"
   languageName: unknown
   linkType: soft
@@ -2022,6 +2028,7 @@ __metadata:
   dependencies:
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
+    rollup: "npm:^4.60.4"
     vitest: "npm:^4.1.7"
   languageName: unknown
   linkType: soft
@@ -2052,6 +2059,7 @@ __metadata:
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     effect: "npm:^3.22.1"
     pino: "npm:^10.3.1"
+    rollup: "npm:^4.60.4"
     rxjs: "npm:^7.8.2"
     vitest: "npm:^4.1.7"
   languageName: unknown
@@ -2066,6 +2074,7 @@ __metadata:
     "@midnightntwrk/wallet-sdk-address-format": "npm:4.0.0-beta.2"
     "@noble/hashes": "npm:^2.2.0"
     "@types/node": "npm:^24.0.0"
+    rollup: "npm:^4.60.4"
     vitest: "npm:^4.1.7"
   languageName: unknown
   linkType: soft
@@ -2125,8 +2134,8 @@ __metadata:
     pino: "npm:^10.3.1"
     pino-pretty: "npm:^13.1.3"
     rimraf: "npm:^6.1.3"
+    rollup: "npm:^4.60.4"
     rxjs: "npm:^7.8.2"
-    vite-tsconfig-paths: "npm:^5.1.4"
     vitest: "npm:^4.1.7"
     ws: "npm:^8.20.0"
   languageName: unknown
@@ -2161,11 +2170,11 @@ __metadata:
     cross-fetch: "npm:^4.1.0"
     pino: "npm:^10.3.1"
     pino-pretty: "npm:^13.1.3"
+    rollup: "npm:^4.60.4"
     rxjs: "npm:^7.8.2"
     testcontainers: "npm:^12.0.0"
     typedoc: "npm:^0.28.19"
     typedoc-plugin-markdown: "npm:4.12.0"
-    vite-tsconfig-paths: "npm:^5.1.4"
     vitest: "npm:^4.1.7"
     ws: "npm:^8.20.0"
   languageName: unknown
@@ -3294,44 +3303,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@rollup/plugin-commonjs@npm:^29.0.3":
-  version: 29.0.3
-  resolution: "@rollup/plugin-commonjs@npm:29.0.3"
-  dependencies:
-    "@rollup/pluginutils": "npm:^5.0.1"
-    commondir: "npm:^1.0.1"
-    estree-walker: "npm:^2.0.2"
-    fdir: "npm:^6.2.0"
-    is-reference: "npm:1.2.1"
-    magic-string: "npm:^0.30.3"
-    picomatch: "npm:^4.0.2"
-  peerDependencies:
-    rollup: ^2.68.0||^3.0.0||^4.0.0
-  peerDependenciesMeta:
-    rollup:
-      optional: true
-  checksum: 10/2331da36b60350f2c99e6deb175d8112e5986e8c48571d29b8f4c9aa20a228abf11142b6bd5facf708e5ee0f1284d01ac869283ebffe25e5e9b834caf985fb11
-  languageName: node
-  linkType: hard
-
-"@rollup/plugin-node-resolve@npm:^16.0.3":
-  version: 16.0.3
-  resolution: "@rollup/plugin-node-resolve@npm:16.0.3"
-  dependencies:
-    "@rollup/pluginutils": "npm:^5.0.1"
-    "@types/resolve": "npm:1.20.2"
-    deepmerge: "npm:^4.2.2"
-    is-module: "npm:^1.0.0"
-    resolve: "npm:^1.22.1"
-  peerDependencies:
-    rollup: ^2.78.0||^3.0.0||^4.0.0
-  peerDependenciesMeta:
-    rollup:
-      optional: true
-  checksum: 10/6848212994adc5c3fcd851eb268ad58b3905c5535272ae51d33a7ac1590ff428d102afe81702e031b0360481798e61efc0194b4ee39b812a3ae274c998f4d424
-  languageName: node
-  linkType: hard
-
 "@rollup/plugin-replace@npm:^6.0.3":
   version: 6.0.3
   resolution: "@rollup/plugin-replace@npm:6.0.3"
@@ -3938,7 +3909,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/estree@npm:*, @types/estree@npm:1.0.8, @types/estree@npm:^1.0.0, @types/estree@npm:^1.0.6, @types/estree@npm:^1.0.8":
+"@types/estree@npm:1.0.8, @types/estree@npm:^1.0.0, @types/estree@npm:^1.0.6, @types/estree@npm:^1.0.8":
   version: 1.0.8
   resolution: "@types/estree@npm:1.0.8"
   checksum: 10/25a4c16a6752538ffde2826c2cc0c6491d90e69cd6187bef4a006dd2c3c45469f049e643d7e516c515f21484dc3d48fd5c870be158a5beb72f5baf3dc43e4099
@@ -4066,13 +4037,6 @@ __metadata:
   version: 1.2.7
   resolution: "@types/range-parser@npm:1.2.7"
   checksum: 10/95640233b689dfbd85b8c6ee268812a732cf36d5affead89e806fe30da9a430767af8ef2cd661024fd97e19d61f3dec75af2df5e80ec3bea000019ab7028629a
-  languageName: node
-  linkType: hard
-
-"@types/resolve@npm:1.20.2":
-  version: 1.20.2
-  resolution: "@types/resolve@npm:1.20.2"
-  checksum: 10/1bff0d3875e7e1557b6c030c465beca9bf3b1173ebc6937cac547654b0af3bb3ff0f16470e9c4d7c5dc308ad9ac8627c38dbff24ef698b66673ff5bd4ead7f7e
   languageName: node
   linkType: hard
 
@@ -5721,13 +5685,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"commondir@npm:^1.0.1":
-  version: 1.0.1
-  resolution: "commondir@npm:1.0.1"
-  checksum: 10/4620bc4936a4ef12ce7dfcd272bb23a99f2ad68889a4e4ad766c9f8ad21af982511934d6f7050d4a8bde90011b1c15d56e61a1b4576d9913efbf697a20172d6c
-  languageName: node
-  linkType: hard
-
 "compare-func@npm:^2.0.0":
   version: 2.0.0
   resolution: "compare-func@npm:2.0.0"
@@ -6267,13 +6224,6 @@ __metadata:
   version: 0.1.4
   resolution: "deep-is@npm:0.1.4"
   checksum: 10/ec12d074aef5ae5e81fa470b9317c313142c9e8e2afe3f8efa124db309720db96d1d222b82b84c834e5f87e7a614b44a4684b6683583118b87c833b3be40d4d8
-  languageName: node
-  linkType: hard
-
-"deepmerge@npm:^4.2.2":
-  version: 4.3.1
-  resolution: "deepmerge@npm:4.3.1"
-  checksum: 10/058d9e1b0ff1a154468bf3837aea436abcfea1ba1d165ddaaf48ca93765fdd01a30d33c36173da8fbbed951dd0a267602bc782fe288b0fc4b7e1e7091afc4529
   languageName: node
   linkType: hard
 
@@ -7195,7 +7145,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fdir@npm:^6.2.0, fdir@npm:^6.5.0":
+"fdir@npm:^6.5.0":
   version: 6.5.0
   resolution: "fdir@npm:6.5.0"
   peerDependencies:
@@ -7693,13 +7643,6 @@ __metadata:
     merge2: "npm:^1.4.1"
     slash: "npm:^3.0.0"
   checksum: 10/288e95e310227bbe037076ea81b7c2598ccbc3122d87abc6dab39e1eec309aa14f0e366a98cdc45237ffcfcbad3db597778c0068217dcb1950fef6249104e1b1
-  languageName: node
-  linkType: hard
-
-"globrex@npm:^0.1.2":
-  version: 0.1.2
-  resolution: "globrex@npm:0.1.2"
-  checksum: 10/81ce62ee6f800d823d6b7da7687f841676d60ee8f51f934ddd862e4057316d26665c4edc0358d4340a923ac00a514f8b67c787e28fe693aae16350f4e60d55e9
   languageName: node
   linkType: hard
 
@@ -8312,13 +8255,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"is-module@npm:^1.0.0":
-  version: 1.0.0
-  resolution: "is-module@npm:1.0.0"
-  checksum: 10/8cd5390730c7976fb4e8546dd0b38865ee6f7bacfa08dfbb2cc07219606755f0b01709d9361e01f13009bbbd8099fa2927a8ed665118a6105d66e40f1b838c3f
-  languageName: node
-  linkType: hard
-
 "is-negative-zero@npm:^2.0.3":
   version: 2.0.3
   resolution: "is-negative-zero@npm:2.0.3"
@@ -8368,15 +8304,6 @@ __metadata:
   version: 4.0.0
   resolution: "is-promise@npm:4.0.0"
   checksum: 10/0b46517ad47b00b6358fd6553c83ec1f6ba9acd7ffb3d30a0bf519c5c69e7147c132430452351b8a9fc198f8dd6c4f76f8e6f5a7f100f8c77d57d9e0f4261a8a
-  languageName: node
-  linkType: hard
-
-"is-reference@npm:1.2.1":
-  version: 1.2.1
-  resolution: "is-reference@npm:1.2.1"
-  dependencies:
-    "@types/estree": "npm:*"
-  checksum: 10/e7b48149f8abda2c10849ea51965904d6a714193d68942ad74e30522231045acf06cbfae5a4be2702fede5d232e61bf50b3183acdc056e6e3afe07fcf4f4b2bc
   languageName: node
   linkType: hard
 
@@ -12062,20 +11989,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tsconfck@npm:^3.0.3":
-  version: 3.1.6
-  resolution: "tsconfck@npm:3.1.6"
-  peerDependencies:
-    typescript: ^5.0.0
-  peerDependenciesMeta:
-    typescript:
-      optional: true
-  bin:
-    tsconfck: bin/tsconfck.js
-  checksum: 10/8574595286850273bf83319b4e67ca760088df3c36f7ca1425aaf797416672e854271bd31e75c9b3e1836ed5b66410c6bc38cbbda9c638a5416c6a682ed94132
-  languageName: node
-  linkType: hard
-
 "tsconfig-paths@npm:^3.15.0":
   version: 3.15.0
   resolution: "tsconfig-paths@npm:3.15.0"
@@ -12504,22 +12417,6 @@ __metadata:
   version: 1.1.2
   resolution: "vary@npm:1.1.2"
   checksum: 10/31389debef15a480849b8331b220782230b9815a8e0dbb7b9a8369559aed2e9a7800cd904d4371ea74f4c3527db456dc8e7ac5befce5f0d289014dbdf47b2242
-  languageName: node
-  linkType: hard
-
-"vite-tsconfig-paths@npm:^5.1.4":
-  version: 5.1.4
-  resolution: "vite-tsconfig-paths@npm:5.1.4"
-  dependencies:
-    debug: "npm:^4.1.1"
-    globrex: "npm:^0.1.2"
-    tsconfck: "npm:^3.0.3"
-  peerDependencies:
-    vite: "*"
-  peerDependenciesMeta:
-    vite:
-      optional: true
-  checksum: 10/b409dbd17829f560021a71dba3e473b9c06dcf5fdc9d630b72c1f787145ec478b38caff1be04868971ac8bdcbf0f5af45eeece23dbc9c59c54b901f867740ae0
   languageName: node
   linkType: hard
 

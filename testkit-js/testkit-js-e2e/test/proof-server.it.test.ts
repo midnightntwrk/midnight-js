@@ -41,10 +41,10 @@ import {
 } from '@midnight-ntwrk/testkit-js';
 import path from 'path';
 
-import { createInitialPrivateState } from '@/contract/witnesses';
-import * as api from '@/counter-api';
-import { CounterConfiguration } from '@/counter-api';
-import type { CounterCircuit } from '@/types/counter-types';
+import { createInitialPrivateState } from '../src/contract/witnesses';
+import * as api from '../src/counter-api';
+import { CounterConfiguration } from '../src/counter-api';
+import type { CounterCircuit } from '../src/types/counter-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `proof_server_${new Date().toISOString()}.log`)

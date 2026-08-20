@@ -6,7 +6,7 @@
 
 # Function: toTxStatus()
 
-> **toTxStatus**(`transactionResult`): `TxStatus`
+> **toTxStatus**(`transactionResult`): [`TxStatus`](../../midnight-js/types/type-aliases/TxStatus.md)
 
 ## Parameters
 
@@ -16,4 +16,4 @@
 
 ## Returns
 
-`TxStatus`
+[`TxStatus`](../../midnight-js/types/type-aliases/TxStatus.md)

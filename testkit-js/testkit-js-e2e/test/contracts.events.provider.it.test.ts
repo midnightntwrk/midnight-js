@@ -24,9 +24,8 @@ import path from 'path';
 import * as Rx from 'rxjs';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
-import { VERY_SLOW_TEST_TIMEOUT } from '@/constants';
-import * as api from '@/events-api';
-
+import { VERY_SLOW_TEST_TIMEOUT } from '../src/constants';
+import * as api from '../src/events-api';
 import {
   assertBaseEvent,
   createIdMonotonicityCheck,

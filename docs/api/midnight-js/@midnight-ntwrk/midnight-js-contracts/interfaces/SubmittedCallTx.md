@@ -22,11 +22,11 @@ object.
 
 ### C
 
-`C` *extends* `Contract.Any`
+`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
 
 ### PCK
 
-`PCK` *extends* `Contract.ProvableCircuitId`\<`C`\>
+`PCK` *extends* [`ProvableCircuitId`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<`C`\>
 
 ## Properties
 
