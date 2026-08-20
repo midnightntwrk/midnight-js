@@ -15,11 +15,11 @@
 
 import { createKeystore, type DefaultConfiguration, type NetworkId, type UnshieldedKeystore, type WalletFacade } from '@midnightntwrk/wallet-sdk';
 
-import { logger } from '@/logger';
-import { type EnvironmentConfiguration } from '@/test-environment/environment-configuration';
-import { mapEnvironmentToConfiguration } from '@/wallet/wallet-configuration-mapper';
-import { DEFAULT_DUST_OPTIONS, type DustWalletOptions, WalletFactory } from '@/wallet/wallet-factory';
-import { WalletSeeds } from '@/wallet/wallet-seed';
+import { logger } from '../logger';
+import { type EnvironmentConfiguration } from '../test-environment/environment-configuration';
+import { mapEnvironmentToConfiguration } from './wallet-configuration-mapper';
+import { DEFAULT_DUST_OPTIONS, type DustWalletOptions, WalletFactory } from './wallet-factory';
+import { WalletSeeds } from './wallet-seed';
 
 export class FluentWalletBuilder {
   private constructor(

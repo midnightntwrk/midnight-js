@@ -16,9 +16,9 @@
 import type { ProvingProvider as ZkirProvingProvider } from '@midnight-ntwrk/zkir-v2';
 import { of } from 'rxjs';
 
-import type { EnvironmentConfiguration } from '@/test-environment/environment-configuration';
-import { DAppConnectorWalletAdapter } from '@/wallet/dapp-connector-wallet-adapter';
-import type { MidnightWalletProvider } from '@/wallet/midnight-wallet-provider';
+import type { EnvironmentConfiguration } from '../src/test-environment/environment-configuration';
+import { DAppConnectorWalletAdapter } from '../src/wallet/dapp-connector-wallet-adapter';
+import type { MidnightWalletProvider } from '../src/wallet/midnight-wallet-provider';
 
 vi.mock('@midnightntwrk/wallet-sdk/address-format', () => ({
   MidnightBech32m: {

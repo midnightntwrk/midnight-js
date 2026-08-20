@@ -16,7 +16,7 @@
 import axios from 'axios';
 import pino from 'pino';
 
-import { NodeClient } from '@/client/node-client';
+import { NodeClient } from '../src/client/node-client';
 
 vi.mock('axios');
 const mockedAxios = vi.mocked(axios);

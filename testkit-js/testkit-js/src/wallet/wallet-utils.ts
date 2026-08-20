@@ -25,9 +25,9 @@ import {
 import axios from 'axios';
 import * as Rx from 'rxjs';
 
-import { FaucetClient } from '@/client';
-import { type EnvironmentConfiguration } from '@/index';
-import { logger } from '@/logger';
+import { FaucetClient } from '../client';
+import { type EnvironmentConfiguration } from '../index';
+import { logger } from '../logger';
 
 export const getInitialState = async (
   wallet: ShieldedWalletAPI | UnshieldedWalletAPI

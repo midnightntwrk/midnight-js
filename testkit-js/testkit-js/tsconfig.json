@@ -5,10 +5,7 @@
     "outDir": "./dist",
     "esModuleInterop": true,
     "strictPropertyInitialization": false,
-    "types": ["vitest/globals"],
-    "paths": {
-      "@/*": ["./src/*"]
-    }
+    "types": ["vitest/globals"]
   },
   "include": [
     "./test/**/*.ts",
