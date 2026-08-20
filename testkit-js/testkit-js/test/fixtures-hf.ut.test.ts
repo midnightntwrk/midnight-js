@@ -19,6 +19,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   HF_FIXTURE_NAMES,
+  type HfFixtureEntry,
   type HfFixtureName,
   hfFixturePath,
   hfFixturesManifest,
@@ -38,14 +39,62 @@ const filesUnder = (root: string): string[] => {
   return walk(root).sort();
 };
 
+// The manifest values the accessor is expected to expose. Spelled out rather
+// than derived from the shipped file, so this is an independent statement of
+// what the package promises -- deriving it from `fixtures.json` would make the
+// assertion below compare that file with itself.
+const EXPECTED_MANIFEST: Record<HfFixtureName, HfFixtureEntry> = {
+  'state-v8.hex': { protocolVersion: 1000000, status: 'valid' },
+  'state-v8-v6-envelope.hex': { protocolVersion: 1000000, status: 'valid' },
+  'state-migrated-v9.hex': { protocolVersion: 2000000, status: 'valid' },
+  'state-migrated-v9-merkle.hex': { protocolVersion: 2000000, status: 'synthetic' },
+  'state-tampered-keyset-v8to9.hex': { protocolVersion: 2000000, status: 'tampered' },
+  'state-tampered-keyset-v9to8.hex': { protocolVersion: 1000000, status: 'tampered' },
+  'state-tampered-bytes.hex': { protocolVersion: 2000000, status: 'tampered' },
+  'state-both-keys.hex': { protocolVersion: null, status: 'tampered' },
+  'state-co-v2-only-foreign.hex': { protocolVersion: 2000000, status: 'foreign-key' }
+};
+
 describe('[Unit tests] hard-fork fixture accessors', () => {
   /**
-   * @given the exported fixture-name list and the manifest read from disk
-   * @when both key sets are compared
-   * @then they are equal, so neither can drift from the other unnoticed
+   * @given the shipped fixtures.json, read from disk independently of the module
+   * @when its key set is compared with the exported fixture-name list
+   * @then they are equal, so drift between the two is caught here
    */
-  it('exposes a manifest keyed by exactly the exported fixture names', () => {
-    expect(Object.keys(hfFixturesManifest).sort()).toEqual([...HF_FIXTURE_NAMES].sort());
+  it('ships a manifest keyed by exactly the exported fixture names', () => {
+    const declared: unknown = JSON.parse(readFileSync(hfFixturePath('fixtures.json'), 'utf8'));
+    if (typeof declared !== 'object' || declared === null || !('fixtures' in declared)) {
+      throw new Error('fixtures.json does not declare a "fixtures" object');
+    }
+    const { fixtures } = declared;
+    if (typeof fixtures !== 'object' || fixtures === null) {
+      throw new Error('fixtures.json "fixtures" is not an object');
+    }
+
+    expect(Object.keys(fixtures).sort()).toEqual([...HF_FIXTURE_NAMES].sort());
+  });
+
+  /**
+   * @given the manifest the module exposes
+   * @when it is compared with the independently-stated expectation
+   * @then every protocolVersion and status matches, including the null entry
+   */
+  it('exposes the protocolVersion and status promised for every fixture', () => {
+    expect(hfFixturesManifest).toEqual(EXPECTED_MANIFEST);
+  });
+
+  /**
+   * @given the deliberately poisoned mis-dispatch fixture
+   * @when the manifest is filtered for states fit to use as known-good input
+   * @then it is absent, so a `valid` filter can never hand back a poisoned state
+   */
+  it('keeps the foreign-key fixture out of the valid set', () => {
+    const valid = HF_FIXTURE_NAMES.filter((name) => hfFixturesManifest[name].status === 'valid');
+
+    expect(valid).not.toContain('state-co-v2-only-foreign.hex');
+    expect([...valid].sort()).toEqual(
+      ['state-v8.hex', 'state-v8-v6-envelope.hex', 'state-migrated-v9.hex'].sort()
+    );
   });
 
   describe.each(HF_FIXTURE_NAMES)('%s', (name) => {

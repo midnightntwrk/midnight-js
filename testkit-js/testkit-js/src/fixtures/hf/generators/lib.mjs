@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-// Shared IO helpers for the OQ9 fixture generators. Every fixture is committed
-// as lower-case hex text (no whitespace, no trailing newline) so it can be
-// diffed and reviewed like source code.
+// Shared IO helpers for the hard-fork fixture generators. Every fixture is
+// committed as lower-case hex text (no whitespace, no trailing newline) so it
+// can be diffed and reviewed like source code.
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -26,7 +26,19 @@ export const FIXTURES_DIR = resolve(HERE, '..');
 
 export const fixturePath = (name) => resolve(FIXTURES_DIR, name);
 
-export const readHexFixture = (name) => Uint8Array.from(Buffer.from(readFileSync(fixturePath(name), 'utf8').trim(), 'hex'));
+// Mirrors the whole-hex check in ../../../fixtures-hf.ts. `Buffer.from(..., 'hex')`
+// stops at the first character it cannot decode and returns a SHORTER buffer
+// without complaining, so an unvalidated read would mint every derived fixture
+// from a silently truncated golden. These are plain Node scripts and cannot
+// import the TypeScript accessor without a build, hence the duplicated check.
+export const readHexFixture = (name) => {
+  const path = fixturePath(name);
+  const text = readFileSync(path, 'utf8').trim();
+  if (text.length === 0 || text.length % 2 !== 0 || !/^[0-9a-f]+$/.test(text)) {
+    throw new Error(`${path} is not whole lower-case hex; refusing to mint from a truncated decode`);
+  }
+  return Uint8Array.from(Buffer.from(text, 'hex'));
+};
 
 export const writeHexFixture = (name, bytes) => {
   writeFileSync(fixturePath(name), Buffer.from(bytes).toString('hex'));
