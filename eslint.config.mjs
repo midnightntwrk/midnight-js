@@ -156,6 +156,18 @@ export default tseslint.config(
           ]
         }
       ],
+    }
+  },
+  {
+    // The v8 gates live in their own block, exempting packages/protocol/src/
+    // through `ignores` rather than a `'off'` override in the protocol block.
+    // `no-restricted-syntax` is a shared rule: disabling it for protocol
+    // sources would also drop any unrelated selector another block adds to it,
+    // silently, because an absent rule produces no lint error. With `ignores`,
+    // only these selectors stop applying there.
+    files: ['packages/**/*.ts', 'packages/**/*.tsx', 'packages/**/*.mts', 'testkit-js/**/*.ts'],
+    ignores: ['packages/protocol/src/**'],
+    rules: {
       '@typescript-eslint/no-restricted-imports': [
         'error',
         {
@@ -203,9 +215,7 @@ export default tseslint.config(
             }
           ]
         }
-      ],
-      '@typescript-eslint/no-restricted-imports': 'off',
-      'no-restricted-syntax': 'off'
+      ]
     }
   },
   prettierConfig

@@ -125,4 +125,23 @@ describe('protocol/v8 gate canaries', () => {
 
     expect(messages).toEqual([]);
   });
+
+  // The exemption above must come from `ignores` on the block that adds the v8
+  // selectors, never from switching the rule off for protocol sources. Both
+  // rules are shared: an `'off'` override drops every OTHER selector another
+  // block adds to them too, and it does so silently, because an absent rule
+  // reports nothing. That is not hypothetical — the unsafe-cast gate on `main`
+  // rides on `no-restricted-syntax`, so an `'off'` here would leave the whole
+  // protocol package, the largest body of new hard-fork code, without it.
+  it.each([SYNTAX_RULE_ID, TS_RULE_ID])('never disables %s outright for protocol sources', async (ruleId) => {
+    const { rules } = await eslint.calculateConfigForFile(PROTOCOL_INTERNAL_PATH);
+    const entry = rules?.[ruleId];
+
+    // Absent is correct (the v8 block simply does not apply here). Present
+    // means another block set it, and then it must be enabled, not disabled.
+    if (entry !== undefined) {
+      expect(Array.isArray(entry) ? entry[0] : entry).not.toBe(0);
+      expect(Array.isArray(entry) ? entry[0] : entry).not.toBe('off');
+    }
+  });
 });
