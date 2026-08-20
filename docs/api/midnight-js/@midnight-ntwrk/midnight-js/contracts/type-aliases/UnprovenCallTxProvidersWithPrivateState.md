@@ -1,0 +1,21 @@
+[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [contracts](../README.md) / UnprovenCallTxProvidersWithPrivateState
+
+# Type Alias: UnprovenCallTxProvidersWithPrivateState\<C\>
+
+> **UnprovenCallTxProvidersWithPrivateState**\<`C`\> = [`UnprovenCallTxProvidersBase`](UnprovenCallTxProvidersBase.md) & `Pick`\<[`ContractProviders`](ContractProviders.md)\<`C`\>, `"privateStateProvider"`\>
+
+Defined in: packages/contracts/dist/index.d.ts:817
+
+Same providers as [UnprovenCallTxProvidersBase](UnprovenCallTxProvidersBase.md) with an additional private
+state provider to store the new private state resulting from the circuit call -
+only used when creating a call transaction for a contract with a private state.
+
+## Type Parameters
+
+### C
+
+`C` *extends* [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)

@@ -22,7 +22,7 @@
 
 ### zkConfigProvider
 
-`ZKConfigRegistry` \| [`ZKConfigProvider`](#)\<`K`\>
+[`ZKConfigRegistry`](../../midnight-js/types/classes/ZKConfigRegistry.md) \| [`ZKConfigProvider`](../../midnight-js/types/classes/ZKConfigProvider.md)\<`K`\>
 
 ### config?
 

@@ -23,13 +23,13 @@ private state ID.
 
 ### C
 
-`C` *extends* `Contract.Any`
+`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
 
 ## Properties
 
 ### compiledContract
 
-> `readonly` **compiledContract**: `CompiledContract`\<`C`, `any`\>
+> `readonly` **compiledContract**: [`CompiledContract`](../../midnight-js-protocol/compact-js/namespaces/CompiledContract/interfaces/CompiledContract.md)\<`C`, `any`\>
 
 The compiled contract to use to execute circuits.
 
@@ -61,7 +61,7 @@ An identifier for the private state of the contract being found.
 
 ### signingKey?
 
-> `readonly` `optional` **signingKey?**: `SigningKey`
+> `readonly` `optional` **signingKey?**: [`SigningKey`](../../midnight-js-protocol/onchain-runtime/type-aliases/SigningKey.md)
 
 The signing key to use to perform contract maintenance updates. If defined, the given signing
 key is stored for this contract address. This is useful when someone has already added the given signing

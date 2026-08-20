@@ -15,7 +15,7 @@ Unshielded UTXOs are outputs that have not been shielded or encrypted, making th
 
 ### intentHash
 
-> `readonly` **intentHash**: `IntentHash`
+> `readonly` **intentHash**: [`IntentHash`](../../midnight-js-protocol/ledger/type-aliases/IntentHash.md)
 
 The identifier of the intent associated with the unshielded UTXO.
 This is used to track the intent behind the creation or use of the UTXO.
@@ -24,7 +24,7 @@ This is used to track the intent behind the creation or use of the UTXO.
 
 ### owner
 
-> `readonly` **owner**: `ContractAddress`
+> `readonly` **owner**: [`ContractAddress`](../../midnight-js-protocol/ledger/type-aliases/ContractAddress.md)
 
 The unique identifier of the unshielded UTXO.
 
@@ -32,7 +32,7 @@ The unique identifier of the unshielded UTXO.
 
 ### tokenType
 
-> `readonly` **tokenType**: `RawTokenType`
+> `readonly` **tokenType**: [`RawTokenType`](../../midnight-js-protocol/ledger/type-aliases/RawTokenType.md)
 
 The type of token associated with the unshielded UTXO.
 This indicates the kind of asset or currency represented by the UTXO.

@@ -24,7 +24,7 @@ never compiled for) the deployed contract.
 
 ##### keyLocation
 
-`ContractKeyLocation`
+[`ContractKeyLocation`](../../midnight-js/types/interfaces/ContractKeyLocation.md)
 
 The location that could not be resolved.
 
@@ -49,7 +49,7 @@ is not hidden behind the "missing or stale" message.
 
 ### keyLocation
 
-> `readonly` **keyLocation**: `ContractKeyLocation`
+> `readonly` **keyLocation**: [`ContractKeyLocation`](../../midnight-js/types/interfaces/ContractKeyLocation.md)
 
 The location that could not be resolved.
 
