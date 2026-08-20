@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-/** Registry of every error code this package's error classes can carry. Frozen so a downstream package cannot mutate the shared registry object at runtime. */
+/** Stable error-code strings for this package. Frozen so a downstream package cannot mutate the shared registry object at runtime. */
 export const PROTOCOL_ERROR_CODES = Object.freeze({
   UNKNOWN_PROTOCOL_VERSION_READ: 'MIDNIGHT_JS_P_UNKNOWN_PROTOCOL_VERSION_READ',
   UNKNOWN_PROTOCOL_VERSION_CONSTRUCT: 'MIDNIGHT_JS_P_UNKNOWN_PROTOCOL_VERSION_CONSTRUCT',
@@ -23,29 +23,6 @@ export const PROTOCOL_ERROR_CODES = Object.freeze({
   MERKLE_NOT_REHASHED: 'MIDNIGHT_JS_P_MERKLE_NOT_REHASHED'
 } as const);
 export type ProtocolErrorCode = (typeof PROTOCOL_ERROR_CODES)[keyof typeof PROTOCOL_ERROR_CODES];
-
-/**
- * Whether `value` is an `Error` carrying one of `codes` — the predicate behind
- * every error class's `Symbol.hasInstance` below, which makes `instanceof`
- * code-based rather than prototype-based for this package's errors.
- *
- * Why: nothing guarantees a process holds only one physical copy of this
- * module. A consumer's bundler can inline it into several chunks, and two
- * versions of this package can coexist in one dependency tree; each copy
- * declares its own classes, so an error thrown by one copy answers `false` to
- * a prototype-based `instanceof` against another copy's class — silently, and
- * exactly where a caller is trying to tell one failure mode from another. The
- * `code` string is the one identity that survives every copy, so it is what
- * these classes compare. (This package's own build additionally shares a
- * single error module across its entry points — see the `share-error-module`
- * plugin in rollup.config.mjs — so both layers have to fail before class-based
- * discrimination breaks.)
- *
- * A non-`Error` value never matches: a plain object carrying the same `code`
- * is rejected, so this stays narrower than a bare duck-type check.
- */
-const carriesProtocolCode = (value: unknown, ...codes: readonly ProtocolErrorCode[]): boolean =>
-  value instanceof Error && 'code' in value && codes.some((code) => code === value.code);
 
 export type VersionResolutionPath = 'read' | 'construct';
 
@@ -71,15 +48,6 @@ export type ProtocolVersionUnknownReason = 'unknown' | 'malformed';
  * to build a new construct.
  */
 export class UnknownProtocolVersionError extends Error {
-  /** Recognises both of this class's codes — see {@link carriesProtocolCode}. */
-  static [Symbol.hasInstance](value: unknown): boolean {
-    return carriesProtocolCode(
-      value,
-      PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ,
-      PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_CONSTRUCT
-    );
-  }
-
   readonly code: ProtocolErrorCode;
 
   constructor(

@@ -68,14 +68,7 @@ describe('UnknownProtocolVersionError', () => {
   });
 });
 
-// A second physical copy of this module (a consumer's bundler splitting the
-// package, or two versions of it in one dependency tree) declares its own
-// classes, so a prototype-based `instanceof` against the other copy's class
-// silently answers `false`. These assertions pin the code-based recognition
-// that makes the check survive that — see the `Symbol.hasInstance` note in
-// errors.ts. A foreign copy's instance is indistinguishable, at runtime, from
-// an `Error` carrying the same `code`, which is what these build.
-describe('code-based instanceof recognition', () => {
+describe('instanceof', () => {
   it('recognises its own instances on both code paths', () => {
     expect(new UnknownProtocolVersionError(9_000_000, 'read', 'unknown')).toBeInstanceOf(UnknownProtocolVersionError);
     expect(new UnknownProtocolVersionError(9_000_000, 'construct', 'unknown')).toBeInstanceOf(
@@ -83,28 +76,23 @@ describe('code-based instanceof recognition', () => {
     );
   });
 
-  it.each([
-    PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ,
-    PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_CONSTRUCT
-  ])('recognises an error from a foreign copy of this module carrying %s', (code) => {
-    const fromForeignCopy = Object.assign(new Error('thrown by another copy of this module'), { code });
+  // The build emits one shared copy of this module (see createMultiEntryRollupConfig),
+  // so `instanceof` is plain prototype identity: carrying the code is not enough.
+  // A caller narrowed by `instanceof` therefore really does have `reason`,
+  // `path` and `protocolVersion`.
+  it('rejects an error that only carries a matching code', () => {
+    const codeOnly = Object.assign(new Error('shaped like one of ours'), {
+      code: PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ
+    });
 
-    expect(fromForeignCopy).toBeInstanceOf(UnknownProtocolVersionError);
+    expect(codeOnly).not.toBeInstanceOf(UnknownProtocolVersionError);
   });
 
   it('rejects an error carrying no code at all', () => {
     expect(new Error('no code')).not.toBeInstanceOf(UnknownProtocolVersionError);
   });
 
-  it('rejects an error carrying a different protocol code', () => {
-    const other = Object.assign(new Error('another protocol failure'), {
-      code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED
-    });
-
-    expect(other).not.toBeInstanceOf(UnknownProtocolVersionError);
-  });
-
-  it('rejects a non-Error value even when it carries a matching code', () => {
+  it('rejects a non-Error value carrying a matching code', () => {
     const notAnError = { code: PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ, message: 'shaped like an error' };
 
     expect(notAnError).not.toBeInstanceOf(UnknownProtocolVersionError);
