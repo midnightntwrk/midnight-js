@@ -2174,7 +2174,7 @@ __metadata:
     "@midnightntwrk/ledger-v9": "npm:1.0.0-rc.3"
     "@midnightntwrk/wallet-sdk": "npm:2.0.0-beta.2"
     "@midnightntwrk/wallet-sdk-prover-client": "npm:2.0.0-beta.2"
-    "@scure/bip39": "npm:^2.2.0"
+    "@scure/bip39": "npm:^2.3.0"
     "@types/ws": "npm:^8.18.1"
     "@vitest/runner": "npm:^4.1.10"
     allure-commandline: "npm:^2.43.0"
@@ -2561,7 +2561,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@noble/hashes@npm:^2.3.0":
+"@noble/hashes@npm:2.3.0, @noble/hashes@npm:^2.3.0":
   version: 2.3.0
   resolution: "@noble/hashes@npm:2.3.0"
   checksum: 10/2a980fa3257269d0f2f0c65ad30033a395121a523cb207bd5e481054cabf21af3cce87a8d657a3d7409924ec28f7fcaaf3fb01150813ac3c9e16964a95ae0ab7
@@ -3571,13 +3571,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@scure/base@npm:2.2.0":
-  version: 2.2.0
-  resolution: "@scure/base@npm:2.2.0"
-  checksum: 10/b52ec9cd54bad77e22f881b6924ccab692dc1c6dd10287d1787bf263e9f1e560d6d2bda906538fb9a39615d61a1b5c2f53f57a511667fd10e93b9cdaa6fb5d2a
-  languageName: node
-  linkType: hard
-
 "@scure/base@npm:^1.1.1, @scure/base@npm:^1.1.7":
   version: 1.2.6
   resolution: "@scure/base@npm:1.2.6"
@@ -3606,13 +3599,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@scure/bip39@npm:^2.2.0":
-  version: 2.2.0
-  resolution: "@scure/bip39@npm:2.2.0"
+"@scure/bip39@npm:^2.3.0":
+  version: 2.3.0
+  resolution: "@scure/bip39@npm:2.3.0"
   dependencies:
-    "@noble/hashes": "npm:2.2.0"
-    "@scure/base": "npm:2.2.0"
-  checksum: 10/f8f05c9f1337f694e1b490dcc795ac0da87e3cb4e5377889c19caa910c46567aa6b4071f2fc102fffb76020c221e09ffe9e1dde471728224335713c55cbfb182
+    "@noble/hashes": "npm:2.3.0"
+  checksum: 10/ce883a517549e1023aca6991d16cd2102e296a8199b2e13ee3b43409e4fc2d879d9e80caec0cb4504ae8692437964f24b025b073a4419a19c3ad1ad63c77a74a
   languageName: node
   linkType: hard
 
