@@ -24,6 +24,11 @@ import {
   UnknownProtocolVersionError
 } from '../errors';
 
+// Every `yarn why <name>` target the message offers, so the assertion can be
+// two-directional: a missing name and a leaked extra name both fail.
+const yarnWhyTargets = (message: string): string[] =>
+  [...message.matchAll(/yarn why ([^\s`]+)/g)].map(([, name]) => name).sort();
+
 describe('PROTOCOL_ERROR_CODES', () => {
   it('is exactly the documented registry of codes', () => {
     expect(PROTOCOL_ERROR_CODES).toEqual({
@@ -144,7 +149,10 @@ describe('Ledger8InstanceMismatchError', () => {
     expect(error.axis).toBe('onchain-runtime-v3');
     expect(error.message).toContain('onchain-runtime-v3');
     expect(error.message).toContain('dual-instantiation');
-    expect(error.message).toContain('yarn why');
+    expect(yarnWhyTargets(error.message)).toEqual([
+      '@midnight-ntwrk/onchain-runtime-v3',
+      '@midnightntwrk/onchain-runtime-v3'
+    ]);
   });
 });
 
