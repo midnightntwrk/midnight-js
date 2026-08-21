@@ -17,7 +17,7 @@
  * Build entry for the `./engine` subpath.
  *
  * The engine implementation lives under `lib/` so it is not an entry of its
- * own; this module is what rollup emits as `dist/engine.mjs`, the chunk that
+ * own; this module is what rollup emits as `dist/engine.js`, the chunk that
  * {@link loadLedger8Engine} reaches by dynamic import. Keeping it a separate
  * entry is what holds the retained `compact-runtime@0.16` glue and the
  * `@midnight-ntwrk/onchain-runtime-v3` WASM out of the package root.
