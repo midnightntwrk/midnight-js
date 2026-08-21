@@ -82,7 +82,7 @@ export class Ledger8RuntimeMissingError extends Error {
 
   constructor(cause: unknown) {
     super(
-      'Failed to load the v8 ledger runtime via @midnight-ntwrk/midnight-js-protocol/v8. ' +
+      'Failed to load the v8 ledger runtime via the midnight-js-protocol/v8 subpath export. ' +
         'This usually means a broken or partial install of the protocol package — reinstall dependencies and retry.',
       { cause }
     );
@@ -96,15 +96,28 @@ export class Ledger8RuntimeMissingError extends Error {
  *
  * `'onchain-runtime-v3'` is the only member because it is the only retained
  * pre-fork package this one both depends on directly and can receive from a
- * consumer's own resolution — a `compact-runtime` build that re-exports it, or
- * a bundler that failed to dedupe it. A new axis joins only when it gains a
- * comparable second acquisition path.
+ * consumer's own resolution — a `compact-runtime` build that re-exports it, a
+ * bundler that failed to dedupe it, or the same version installed under both
+ * npm scopes while the scope migration runs. A new axis joins only when it
+ * gains a comparable second acquisition path.
  */
 export type Ledger8InstanceAxis = 'onchain-runtime-v3';
 
-/** The npm package name behind each axis, so the error can name what to run `yarn why` on. */
-const AXIS_PACKAGE_NAMES: Readonly<Record<Ledger8InstanceAxis, string>> = Object.freeze({
-  'onchain-runtime-v3': '@midnight-ntwrk/onchain-runtime-v3'
+/**
+ * Every npm name each axis is published under, so the error can name what to
+ * trace in the dependency tree.
+ *
+ * Both scopes, not one, and not as future-proofing: the dual-publish
+ * (`.github/scripts/publish-public-npm.mjs`) rewrites dependency scopes at pack
+ * time, so the two published copies of this package depend on two differently
+ * *named* copies of the same runtime at the same version — an install
+ * combination no resolver can dedupe, and therefore a live cause of the
+ * mismatch this error reports. That rewrite touches `package.json` only, never
+ * a string in compiled code, so a single name here would point every consumer
+ * installed from the other scope at a package that is not in their tree.
+ */
+const AXIS_PACKAGE_NAMES: Readonly<Record<Ledger8InstanceAxis, readonly string[]>> = Object.freeze({
+  'onchain-runtime-v3': Object.freeze(['@midnight-ntwrk/onchain-runtime-v3', '@midnightntwrk/onchain-runtime-v3'])
 });
 
 /**
@@ -123,17 +136,24 @@ const AXIS_PACKAGE_NAMES: Readonly<Record<Ledger8InstanceAxis, string>> = Object
  * failure (a reference-equality mismatch), not a wrapped lower-level
  * exception, so unlike {@link DownConvertFailedError} there is no `cause` to
  * carry.
+ *
+ * The remediation prescribes no single package manager. This package is
+ * published, and consumed by dApps installed with npm, yarn, pnpm and bun
+ * alike, so naming only the one this repo happens to use would hand most
+ * consumers a command they cannot run.
  */
 export class Ledger8InstanceMismatchError extends Error {
   readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH;
 
   constructor(readonly axis: Ledger8InstanceAxis) {
-    const packageName = AXIS_PACKAGE_NAMES[axis];
+    const packageNames = AXIS_PACKAGE_NAMES[axis].join(' and ');
     super(
-      `Detected two physically distinct copies of ${packageName} loaded into the same process (a ` +
-        "dual-instantiation). Objects created by one copy are rejected by the other copy's classes. This usually " +
-        `means a duplicate install of the affected package — run \`yarn why ${packageName}\` to find the ` +
-        'duplicate and align every consumer on a single resolved version.'
+      `Detected two physically distinct copies of ${axis} loaded into the same process (a dual-instantiation). ` +
+        "Objects created by one copy are rejected by the other copy's classes. This usually means a duplicate " +
+        'install; the package is published under two npm scopes while the scope migration is in progress, and ' +
+        'depending on both names is itself a duplicate that no resolver can dedupe. Trace ' +
+        `${packageNames} with your package manager's \`why\` command (npm why, yarn why, pnpm why, ` +
+        'bun pm why), then align every consumer on a single package name and version.'
     );
     this.name = 'Ledger8InstanceMismatchError';
   }
