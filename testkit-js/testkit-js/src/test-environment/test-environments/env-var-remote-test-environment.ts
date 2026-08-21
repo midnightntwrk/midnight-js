@@ -23,10 +23,9 @@ import {
   getMnTestNode,
   getMnTestNodeWs,
   getMnTestWalletNetworkId
-} from '@/env-vars';
-import { MissingEnvironmentVariable } from '@/errors';
-import type { EnvironmentConfiguration } from '@/test-environment';
-
+} from '../../env-vars';
+import { MissingEnvironmentVariable } from '../../errors';
+import type { EnvironmentConfiguration } from '..';
 import { RemoteTestEnvironment } from './remote-test-environment';
 
 /**

@@ -21,14 +21,14 @@ to the given identifier using the given providers.
 
 ### publicDataProvider
 
-[`PublicDataProvider`](#)
+[`PublicDataProvider`](../../midnight-js/types/interfaces/PublicDataProvider.md)
 
 The provider to use to fetch the public states (Zswap and ledger)
                           from the blockchain.
 
 ### privateStateProvider
 
-[`PrivateStateProvider`](#)\<`string`, `PS`\>
+[`PrivateStateProvider`](../../midnight-js/types/interfaces/PrivateStateProvider.md)\<`string`, `PS`\>
 
 The provider to use to fetch the private state.
 

@@ -16,7 +16,7 @@
 import axios, { type AxiosRequestConfig } from 'axios';
 import type { Logger } from 'pino';
 
-import { buildUrlWithPath } from '@/utils';
+import { buildUrlWithPath } from '../utils';
 
 export class ProofServerClient {
   readonly proofServer: string;

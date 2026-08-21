@@ -1,15 +1,15 @@
-# OQ9 hard-fork fixtures
+# Hard-fork fixtures
 
-Fixtures for the HF v8/v9 protocol work (MJS-01, task 0.2). Every fixture is a
+Fixtures for the ledger v8/v9 hard-fork migration work. Every fixture is a
 well-formed `ContractState`-shaped byte blob, committed as lower-case hex
-text, for the **spike's `counter` contract** — the smallest contract in
-`spike-dapp-hf` (a single `round: Counter` ledger cell, one nullary circuit
-`increment()`), per the plan's minimal-size mandate (repo precedent:
+text, for the **`counter` contract** — the smallest contract in the
+upstream hard-fork prototype (a single `round: Counter` ledger cell, one
+nullary circuit `increment()`), chosen for minimal size (repo precedent:
 WASM-fixture coverage timeouts on large fixtures). Every fixture deserializes
 as a `ContractState` on at least one ledger version — none of them fail at
 the envelope-tag check by design; where a fixture exists to probe a failure,
 that failure is pushed as deep as the fixture's construction allows (a
-version-tag mismatch, a corrupted payload, or — for the A4 mis-dispatch
+version-tag mismatch, a corrupted payload, or — for the mis-dispatch
 negative — a foreign key inside an otherwise-valid operation slot, deferring
 the failure to execution).
 
@@ -19,19 +19,67 @@ while authoring this fixture set to verify every deserialize outcome quoted
 here against the real `@midnightntwrk/ledger-v8@8.1.1` /
 `@midnightntwrk/ledger-v9@1.0.0-rc.3` packages — nothing below is guessed.
 
+> **On provenance paths.** Where a fixture is described as ported from
+> `spike-dapp-hf/…`, that is an internal hard-fork prototype repository, not a
+> public one: the paths record *where the bytes came from* so the port can be
+> audited internally, and are not resolvable from outside the project. Every
+> behavioural claim in this file is reproducible from the committed bytes and
+> the two ledger packages named above, without access to that repository.
+
+## Consuming these fixtures
+
+The whole tree below `src/fixtures/hf/` is **published** with
+`@midnight-ntwrk/testkit-js`. The build copies it verbatim into
+`dist/fixtures/hf/`, and `src/fixtures-hf.ts` resolves it relative to its own
+module URL, so the same accessors work from source inside this repo and from
+the installed package outside it:
+
+```ts
+import {
+  HF_FIXTURE_NAMES,
+  hfFixturePath,
+  hfFixturesManifest,
+  readHfFixture
+} from '@midnight-ntwrk/testkit-js/fixtures-hf';
+
+const bytes = readHfFixture('state-v8.hex');                    // Uint8Array
+const era = hfFixturesManifest['state-v8.hex'].protocolVersion; // 1000000
+const source = hfFixturePath('twin-contract/counter.compact');  // absolute path
+```
+
+`readHfFixture` covers the nine `.hex` states. Everything else — both compiled
+contracts, `increment-transcript.golden.json`, `fixtures.json`, this README —
+is reached by path through `hfFixturePath`. Both accessors throw rather than
+returning a placeholder: an unknown fixture name, a path that climbs out of the
+fixture directory, a missing file and a hex file that is not whole hex are all
+errors. `hfFixturesManifest` is validated against `HF_FIXTURE_NAMES` at import,
+so a manifest that has drifted fails immediately instead of at first lookup.
+
+Two things to know about what ships:
+
+- **`generators/` is deliberately excluded.** The mint scripts import the
+  `ledger-v8`/`ledger-v9` devDependencies, which a consumer of the published
+  package does not get. They stay a repo-only tool; see
+  [Regenerating](#regenerating).
+- **The compiled contract files are data, not modules.** In particular
+  `counter-016/compiled/contract/index.js` expects
+  `@midnight-ntwrk/compact-runtime@0.16`, which nothing in this repo installs
+  (see [Version pin note](#version-pin-note-deviation-from-the-brief-with-evidence)).
+  Read these files, do not `import` them.
+
 ## Fixtures
 
 | File | protocolVersion | Mint path | What it is |
 |---|---|---|---|
 | `state-v8.hex` | 1000000 | mint (npm, cheap) | `state-v8-v6-envelope.hex` bridged through `ledger-v8`'s `ContractState` (`LedgerContractStateV8.deserialize(bytes).serialize()`), the same bridge `assemble.ts:59-60` uses. **Finding:** byte-identical to its input — ledger-v8's codec accepts the v6-tagged envelope unchanged. |
 | `state-v8-v6-envelope.hex` | 1000000 | golden (ported) | Raw `compact-runtime-0.16` `ContractState.serialize()` output. Tag `contract-state[v6]`. Ported verbatim from `spike-dapp-hf/island-3/driver/tests/builder/fixtures/downcast-v8.hex` (byte-identical across islands 1/2/3 and `ts-downcast/`). |
-| `state-migrated-v9.hex` | 2000000 | golden (ported) | A real ledger-8→9 migrated contract state. Tag `contract-state[v8]`. Ported verbatim from `spike-dapp-hf/island-3/driver/tests/builder/fixtures/migrated-v9.hex`. Produced upstream by the spike's Rust simulator's `migrate-8-to-9` (tkerber's `v8-to-v9-state-translation`) — see `DECISIONS.md`/`ISLANDS.md` in the spike. |
+| `state-migrated-v9.hex` | 2000000 | golden (ported) | A real ledger-8→9 migrated contract state. Tag `contract-state[v8]`. Ported verbatim from `spike-dapp-hf/island-3/driver/tests/builder/fixtures/migrated-v9.hex`. Produced upstream by the prototype's Rust simulator's `migrate-8-to-9` state translation. |
 | `state-migrated-v9-merkle.hex` | 2000000 | mint (npm, cheap) | Synthetic (not a real migration): a hand-built, rehashed `StateBoundedMerkleTree` wrapped in a `ContractState`, built only from `@midnightntwrk/ledger-v9`'s public API. Deserializes cleanly with `ledger-v9`. |
 | `state-tampered-keyset-v8to9.hex` | 2000000 (claimed) / 1000000 (actual payload) | derive | `state-v8-v6-envelope.hex` with only the tag's version digit flipped `'6'→'8'`. |
 | `state-tampered-keyset-v9to8.hex` | 1000000 (claimed) / 2000000 (actual payload) | derive | `state-migrated-v9.hex` with only the tag's version digit flipped `'8'→'6'`. |
 | `state-tampered-bytes.hex` | 2000000 | derive | `state-migrated-v9.hex` with one payload byte bit-flipped past the header. |
 | `state-both-keys.hex` | null (ambiguous by design) | derive | `state-v8-v6-envelope.hex` ++ `state-migrated-v9.hex` concatenated — both envelope tags in one blob. |
-| `state-co-v2-only-foreign.hex` | 2000000 | mint (npm, cheap) | A4 mis-dispatch negative: a full, well-formed `ContractState` (deserializes cleanly on `ledger-v9`) whose `increment` operation slot carries a FOREIGN verifier key — borrowed from the golden `state-migrated-v9.hex`'s real `post` operation (a different, real migrated circuit, not built from the retained counter artifacts). Fails later, at execution, not at decode. |
+| `state-co-v2-only-foreign.hex` | 2000000 | mint (npm, cheap) | Mis-dispatch negative: a full, well-formed `ContractState` (deserializes cleanly on `ledger-v9`) whose `increment` operation slot carries a FOREIGN verifier key — borrowed from the golden `state-migrated-v9.hex`'s real `post` operation (a different, real migrated circuit, not built from the retained counter artifacts). Fails later, at execution, not at decode. |
 
 `fixtures.json` repeats this table machine-readably, plus the exact envelope
 tag / claimed-vs-actual era for each, plus `status` (`ok` / `synthetic` /
@@ -39,7 +87,7 @@ tag / claimed-vs-actual era for each, plus `status` (`ok` / `synthetic` /
 
 ### protocolVersion scheme
 
-Per OQ2: `node-major * 1_000_000 + node-minor * 1_000`. v8-era fixtures use
+Scheme: `node-major * 1_000_000 + node-minor * 1_000`. v8-era fixtures use
 `1_000_000` (node 1.x, pre-fork); v9-era fixtures use `2_000_000` (node 2.x,
 post-fork). `state-both-keys.hex` has no single valid value by construction
 (it wears both tags) and is recorded as `null`.
@@ -60,7 +108,7 @@ set. All nine outcomes:
 | `state-tampered-keyset-v9to8.hex` | THROW ("deserialized storage graph not in normal form") | THROW (tag `v6` != `v8`) |
 | `state-tampered-bytes.hex` | THROW (tag `v8` != `v6`) | THROW ("out of range for u64") |
 | `state-both-keys.hex` | THROW ("Not all bytes read...4692 bytes remaining") | THROW (tag mismatch at offset 0) |
-| `state-co-v2-only-foreign.hex` | THROW (tag `v8` != `v6` — this fixture is v9-era only) | **ACCEPT** (shape-positive — see "The A4 mis-dispatch fixture" below) |
+| `state-co-v2-only-foreign.hex` | THROW (tag `v8` != `v6` — this fixture is v9-era only) | **ACCEPT** (shape-positive — see "The mis-dispatch fixture" below) |
 
 **Every fixture that is meant to fail at decode does fail closed, on both
 decoders — no silent-accept was found among them.** `state-both-keys.hex` in
@@ -68,11 +116,11 @@ particular shows `ledger-v8`'s deserializer validates full-buffer consumption
 (it does not silently stop after the first complete message and ignore
 trailing bytes). `state-co-v2-only-foreign.hex` is the one fixture in this
 table that is SUPPOSED to accept on `ledger-v9` — see below for why, and
-where its failure actually lives. This is the strongest empirical input this
-task produced for the OQ9 harness-gating decision — see the task report's
-"OQ9 inputs" section for the full write-up.
+where its failure actually lives. This is the strongest empirical
+evidence this fixture set provides about how the two deserializers behave
+across the fork boundary.
 
-### The A4 mis-dispatch fixture (`state-co-v2-only-foreign.hex`)
+### The mis-dispatch fixture (`state-co-v2-only-foreign.hex`)
 
 Minted (`generators/mint-co-v2-foreign.mjs`) as: a fresh, blank
 `ContractState` (`StateValue.newNull()` data — the ledger payload doesn't
@@ -81,7 +129,7 @@ counter's own circuit name, `increment` — but the `ContractOperation`
 object registered there is not built from anything in `twin-contract/`. It
 is the REAL `post` operation `ContractState.deserialize('state-migrated-v9.hex').operation('post')`
 returns: bboard's own, genuinely migrated, pre-fork-compiled verifier key
-(the single-slot shape DECISIONS.md calls `op.v2`, migrated via
+(the single-slot `op.v2` shape, migrated via
 `source.v2 -> op.v2`; `ContractOperation`'s plain `verifierKey` getter is
 documented as exposing "only the latest available version"). Verified
 (`generators/mint-co-v2-foreign.mjs`'s own self-check, run at mint time, plus
@@ -184,7 +232,7 @@ under the current toolchain" twin.
 
 `twin-contract/compiled/keys/increment.verifier` is used as the KNOWN-GOOD
 key in the smoke test, to confirm `state-co-v2-only-foreign.hex`'s embedded
-key is genuinely foreign (see "The A4 mis-dispatch fixture" above) — that
+key is genuinely foreign (see "The mis-dispatch fixture" above) — that
 fixture is NOT keyed with it.
 
 ## `counter-016/`

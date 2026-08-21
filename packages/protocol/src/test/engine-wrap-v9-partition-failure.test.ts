@@ -17,8 +17,8 @@ import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as LedgerV9 from '@midnightntwrk/ledger-v9';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { DownConvertedState } from '../engine/down-convert';
-import type { TranscriptPojo } from '../engine/execute';
+import type { DownConvertedState } from '../lib/engine/down-convert';
+import type { TranscriptPojo } from '../lib/engine/execute';
 
 const FIELD_ALIGNMENT: ocrt3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
 const fieldValue = (byte: number): ocrt3.AlignedValue => ({ value: [new Uint8Array(32).fill(byte)], alignment: FIELD_ALIGNMENT });
@@ -50,7 +50,7 @@ describe('wrapKeepStateCall defensive guard', () => {
       const actual = await importOriginal<typeof LedgerV9>();
       return { ...actual, partitionTranscripts: () => [] };
     });
-    const { wrapKeepStateCall } = await import('../engine/wrap-v9');
+    const { wrapKeepStateCall } = await import('../lib/engine/wrap-v9');
     const contractState = new LedgerV9.ContractState();
     contractState.setOperation('increment', new LedgerV9.ContractOperation());
 

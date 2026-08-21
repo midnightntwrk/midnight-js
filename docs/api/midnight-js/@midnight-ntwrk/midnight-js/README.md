@@ -71,3 +71,11 @@ import { ... } from '@midnight-ntwrk/midnight-js/utils';
 By using this package, you agree to [Midnight's Terms and Conditions](https://midnight.network/static/terms.pdf) and [Privacy Policy](https://midnight.network/static/privacy-policy.pdf).
 
 Licensed under [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0).
+
+## Modules
+
+- [](README.md)
+- [contracts](contracts/README.md)
+- [network-id](network-id/README.md)
+- [types](types/README.md)
+- [utils](utils/README.md)

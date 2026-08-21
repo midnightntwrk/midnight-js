@@ -21,28 +21,29 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Ledger8InstanceMismatchError, Ledger8RuntimeMissingError } from '../errors';
 
 const PKG_ROOT = resolve(__dirname, '..', '..');
-const distEngineExists = existsSync(resolve(PKG_ROOT, 'dist/engine.mjs'));
-// Built from parts so the sole-reference scan in v8-surface.test.ts keeps
-// matching only engine/load-engine.ts (same precedent as
-// load-v8-failure.test.ts's own V8_SUBPATH_SPECIFIER).
-const ENGINE_SUBPATH_SPECIFIER = ['@midnight-ntwrk/midnight-js-protocol', 'engine'].join('/');
+const distEngineExists = existsSync(resolve(PKG_ROOT, 'dist/engine.js'));
+// Built from parts so the runtime-reference scan in v8-surface.test.ts keeps
+// matching only lib/engine/load-engine.ts. Resolved from this file, it names
+// the same module lib/engine/load-engine.ts imports (same precedent as
+// load-v8-failure.test.ts's own V8_MODULE_SPECIFIER).
+const ENGINE_MODULE_SPECIFIER = ['..', 'engine.js'].join('/');
 
-// loadLedger8Engine resolves the self-reference specifier through the exports
-// map to dist/engine.mjs, so this suite needs a prior `yarn build`; without
+// loadLedger8Engine resolves its relative specifier to the built
+// dist/engine.js chunk, so this suite needs a prior `yarn build`; without
 // one it is reported as visible skips (same policy as dist-laziness.test.ts /
 // load-v8-failure.test.ts). Lives in its own file so the mocked, poisoned
 // module registry cannot leak into engine-load-engine.test.ts's happy-path
 // suite (same isolation precedent as load-v8-failure.test.ts).
 describe.skipIf(!distEngineExists)('loadLedger8Engine failure path', () => {
   afterEach(() => {
-    vi.doUnmock(ENGINE_SUBPATH_SPECIFIER);
+    vi.doUnmock(ENGINE_MODULE_SPECIFIER);
   });
 
   it('wraps a failed engine-chunk load in Ledger8RuntimeMissingError and retries on the next call', async () => {
-    vi.doMock(ENGINE_SUBPATH_SPECIFIER, () => {
+    vi.doMock(ENGINE_MODULE_SPECIFIER, () => {
       throw new Error('simulated engine chunk load failure');
     });
-    const { loadLedger8Engine } = await import('../engine/load-engine');
+    const { loadLedger8Engine } = await import('../lib/engine/load-engine');
 
     const first = loadLedger8Engine();
     const error = await first.then(
@@ -60,10 +61,10 @@ describe.skipIf(!distEngineExists)('loadLedger8Engine failure path', () => {
 
   it('passes a Ledger8InstanceMismatchError from engine construction through unwrapped, and clears the memo for retry', async () => {
     const mismatch = new Ledger8InstanceMismatchError('onchain-runtime-v3');
-    vi.doMock(ENGINE_SUBPATH_SPECIFIER, () => ({
+    vi.doMock(ENGINE_MODULE_SPECIFIER, () => ({
       createLedger8Engine: () => Promise.reject(mismatch)
     }));
-    const { loadLedger8Engine } = await import('../engine/load-engine');
+    const { loadLedger8Engine } = await import('../lib/engine/load-engine');
 
     const first = loadLedger8Engine();
     const error = await first.then(
@@ -81,10 +82,10 @@ describe.skipIf(!distEngineExists)('loadLedger8Engine failure path', () => {
 
   it('does not double-wrap when the engine chunk itself already rejects with Ledger8RuntimeMissingError', async () => {
     const alreadyWrapped = new Ledger8RuntimeMissingError(new Error('inner resolution failure'));
-    vi.doMock(ENGINE_SUBPATH_SPECIFIER, () => ({
+    vi.doMock(ENGINE_MODULE_SPECIFIER, () => ({
       createLedger8Engine: () => Promise.reject(alreadyWrapped)
     }));
-    const { loadLedger8Engine } = await import('../engine/load-engine');
+    const { loadLedger8Engine } = await import('../lib/engine/load-engine');
 
     const error = await loadLedger8Engine().then(
       () => {

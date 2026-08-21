@@ -80,9 +80,9 @@ const rewriteScope = (pkg) => {
 };
 
 // Rewrite SOURCE_SCOPE -> TARGET_SCOPE inside built JS/DTS files. Compiled
-// bundles carry literal import specifiers — including the protocol package's
-// self-reference used by loadV8() — which must match the rewritten package
-// names or they fail to resolve in the published copy.
+// bundles carry their cross-package import specifiers verbatim, so those
+// specifiers must match the rewritten package names or they fail to resolve in
+// the published copy.
 const rewriteScopeInFiles = (dir) => {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const fullPath = join(dir, entry.name);

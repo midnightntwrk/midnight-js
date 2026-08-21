@@ -12,13 +12,13 @@ The updated states resulting from executing a contract constructor.
 
 ### C
 
-`C` *extends* `Contract.Any`
+`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
 
 ## Properties
 
 ### nextContractState
 
-> `readonly` **nextContractState**: `ContractState`
+> `readonly` **nextContractState**: [`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)
 
 The public state resulting from executing the contract constructor.
 
@@ -26,7 +26,7 @@ The public state resulting from executing the contract constructor.
 
 ### nextPrivateState
 
-> `readonly` **nextPrivateState**: `PrivateState`\<`C`\>
+> `readonly` **nextPrivateState**: [`PrivateState`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/PrivateState.md)\<`C`\>
 
 The private state resulting from executing the contract constructor.
 
@@ -34,6 +34,6 @@ The private state resulting from executing the contract constructor.
 
 ### nextZswapLocalState
 
-> `readonly` **nextZswapLocalState**: `ZswapLocalState`
+> `readonly` **nextZswapLocalState**: [`ZswapLocalState`](../../midnight-js-protocol/compact-runtime/interfaces/ZswapLocalState.md)
 
 The Zswap local state resulting from executing the contract constructor.

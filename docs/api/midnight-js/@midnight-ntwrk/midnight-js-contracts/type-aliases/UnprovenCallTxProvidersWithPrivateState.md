@@ -16,4 +16,4 @@ only used when creating a call transaction for a contract with a private state.
 
 ### C
 
-`C` *extends* `Contract.Any`
+`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)

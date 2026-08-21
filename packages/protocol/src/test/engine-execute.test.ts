@@ -20,7 +20,7 @@ import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import type { ConstructorContext } from 'compact-runtime-ledger8';
 import { describe, expect, it, vi } from 'vitest';
 
-import type { DownConvertedState } from '../engine/down-convert';
+import type { DownConvertedState } from '../lib/engine/down-convert';
 import {
   executeCircuit,
   type ExecuteCircuitOptions,
@@ -29,7 +29,7 @@ import {
   type Ledger8ContractLike,
   type Ledger8ExecutionRuntime,
   type TranscriptPojo
-} from '../engine/execute';
+} from '../lib/engine/execute';
 
 const FIXTURE_DIR = resolve(__dirname, '../../../../testkit-js/testkit-js/src/fixtures/hf/counter-016');
 const EMPTY_ALIGNED: ocrt3.AlignedValue = { value: [], alignment: [] };

@@ -20,27 +20,30 @@ import { fileURLToPath } from 'node:url';
 import { ContractState as LedgerContractStateV8 } from '@midnightntwrk/ledger-v8';
 import { ContractState as LedgerContractStateV9 } from '@midnightntwrk/ledger-v9';
 
+// The fixture bytes reach the ledgers through the package's own accessor, not
+// through a local reader: its whole-hex check is what stops a truncated decode
+// from being mistaken for a valid but different state, and running the goldens
+// through it is what proves the shipped accessor works against a real ledger.
+import { HF_FIXTURE_NAMES, type HfFixtureName, hfFixturePath, hfFixturesManifest, readHfFixture } from '../src/fixtures-hf';
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 const FIXTURES_DIR = resolve(HERE, '../src/fixtures/hf');
 
-interface FixtureEntry {
-  readonly protocolVersion: number | null;
-  readonly status: 'ok' | 'synthetic' | 'tampered';
+const readHexFixture = (name: HfFixtureName): Uint8Array => readHfFixture(name);
+
+interface ManifestShape {
+  readonly fixtures: Record<string, unknown>;
 }
 
-interface FixturesManifest {
-  readonly fixtures: Record<string, FixtureEntry>;
-}
-
-const readManifest = (): FixturesManifest =>
-  JSON.parse(readFileSync(resolve(FIXTURES_DIR, 'fixtures.json'), 'utf8')) as FixturesManifest;
-
-const readHexFixture = (name: string): Uint8Array => {
-  const text = readFileSync(resolve(FIXTURES_DIR, name), 'utf8');
-  return Uint8Array.from(Buffer.from(text.trim(), 'hex'));
+const isManifestShape = (value: unknown): value is ManifestShape => {
+  if (typeof value !== 'object' || value === null || !('fixtures' in value)) {
+    return false;
+  }
+  const { fixtures } = value;
+  return typeof fixtures === 'object' && fixtures !== null;
 };
 
-const EXPECTED_FIXTURE_NAMES = [
+const EXPECTED_FIXTURE_NAMES: readonly HfFixtureName[] = [
   'state-v8.hex',
   'state-v8-v6-envelope.hex',
   'state-migrated-v9.hex',
@@ -54,7 +57,7 @@ const EXPECTED_FIXTURE_NAMES = [
 
 // Expected per fixtures.json, asserted explicitly here so drift between the
 // two is caught by CI rather than discovered later.
-const EXPECTED_PROTOCOL_VERSIONS: Record<string, number | null> = {
+const EXPECTED_PROTOCOL_VERSIONS: Record<HfFixtureName, number | null> = {
   'state-v8.hex': 1000000,
   'state-v8-v6-envelope.hex': 1000000,
   'state-migrated-v9.hex': 2000000,
@@ -66,24 +69,26 @@ const EXPECTED_PROTOCOL_VERSIONS: Record<string, number | null> = {
   'state-co-v2-only-foreign.hex': 2000000
 };
 
-describe('[Unit tests] OQ9 hard-fork fixtures', () => {
-  const manifest = readManifest();
-
-  it('declares exactly the nine fixtures named in the task-0.2 brief', () => {
-    expect(Object.keys(manifest.fixtures).sort()).toEqual([...EXPECTED_FIXTURE_NAMES].sort());
+describe('[Unit tests] hard-fork fixtures', () => {
+  it('exposes exactly the nine fixtures this suite expects', () => {
+    expect([...HF_FIXTURE_NAMES].sort()).toEqual([...EXPECTED_FIXTURE_NAMES].sort());
   });
 
   it('every .hex file on disk is listed in fixtures.json, and vice versa', () => {
+    const declared: unknown = JSON.parse(readFileSync(hfFixturePath('fixtures.json'), 'utf8'));
+    if (!isManifestShape(declared)) {
+      throw new Error('fixtures.json does not declare a "fixtures" object');
+    }
     const onDisk = readdirSync(FIXTURES_DIR)
       .filter((entry) => entry.endsWith('.hex'))
       .sort();
 
-    expect(onDisk).toEqual(Object.keys(manifest.fixtures).sort());
+    expect(onDisk).toEqual(Object.keys(declared.fixtures).sort());
   });
 
   it('every fixture carries the protocolVersion recorded in fixtures.json (including the null on state-both-keys.hex)', () => {
     const actual = Object.fromEntries(
-      Object.entries(manifest.fixtures).map(([name, entry]) => [name, entry.protocolVersion])
+      Object.entries(hfFixturesManifest).map(([name, entry]) => [name, entry.protocolVersion])
     );
 
     expect(actual).toEqual(EXPECTED_PROTOCOL_VERSIONS);
@@ -91,7 +96,7 @@ describe('[Unit tests] OQ9 hard-fork fixtures', () => {
 
   describe.each(EXPECTED_FIXTURE_NAMES)('%s', (name) => {
     it('exists on disk and parses as hex', () => {
-      const text = readFileSync(resolve(FIXTURES_DIR, name), 'utf8').trim();
+      const text = readFileSync(hfFixturePath(name), 'utf8').trim();
 
       expect(text.length).toBeGreaterThan(0);
       expect(text.length % 2).toBe(0);
@@ -129,7 +134,7 @@ describe('[Unit tests] OQ9 hard-fork fixtures', () => {
     });
   });
 
-  describe('state-co-v2-only-foreign.hex (A4 mis-dispatch): a valid state, with a foreign key inside', () => {
+  describe('state-co-v2-only-foreign.hex (mis-dispatch): a decodable state, with a foreign key inside', () => {
     it('deserializes cleanly as a ContractState on ledger-v9 (shape-positive, not a decode failure)', () => {
       const bytes = readHexFixture('state-co-v2-only-foreign.hex');
 
@@ -143,7 +148,7 @@ describe('[Unit tests] OQ9 hard-fork fixtures', () => {
       const operation = state.operation('increment');
       expect(operation).toBeDefined();
 
-      const twinKey = readFileSync(resolve(FIXTURES_DIR, 'twin-contract/compiled/keys/increment.verifier'));
+      const twinKey = readFileSync(hfFixturePath('twin-contract/compiled/keys/increment.verifier'));
       expect(Buffer.from(operation!.verifierKey).equals(twinKey)).toBe(false);
     });
 
@@ -155,9 +160,7 @@ describe('[Unit tests] OQ9 hard-fork fixtures', () => {
   });
 
   describe('tampered fixtures fail closed on both ledger versions', () => {
-    const tamperedNames = Object.entries(manifest.fixtures)
-      .filter(([, entry]) => entry.status === 'tampered')
-      .map(([fixtureName]) => fixtureName);
+    const tamperedNames = HF_FIXTURE_NAMES.filter((name) => hfFixturesManifest[name].status === 'tampered');
 
     it('covers all four documented tampered fixtures', () => {
       expect(tamperedNames.sort()).toEqual(

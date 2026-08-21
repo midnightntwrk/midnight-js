@@ -20,10 +20,10 @@ import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import { ContractCallPrototype, ContractOperation, ContractState, Intent, sampleContractAddress } from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
-import type { DownConvertedState } from '../engine/down-convert';
-import type { TranscriptPojo } from '../engine/execute';
-import { wrapKeepStateCall } from '../engine/wrap-v9';
 import { Ledger8ComposeFailedError, PROTOCOL_ERROR_CODES } from '../errors';
+import type { DownConvertedState } from '../lib/engine/down-convert';
+import type { TranscriptPojo } from '../lib/engine/execute';
+import { wrapKeepStateCall } from '../lib/engine/wrap-v9';
 
 const FIELD_ALIGNMENT: ocrt3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
 
