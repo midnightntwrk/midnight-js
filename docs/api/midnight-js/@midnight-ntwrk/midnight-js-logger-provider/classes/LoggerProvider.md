@@ -70,7 +70,7 @@ Implementation of LoggerProvider that returns a [Logger](#) instance.
 
 ##### level
 
-`LogLevel`
+[`LogLevel`](../../midnight-js/types/enumerations/LogLevel.md)
 
 #### Returns
 

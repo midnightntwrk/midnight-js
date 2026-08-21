@@ -254,9 +254,7 @@ describe('submit-call-tx', () => {
 
     describe('configuration validation', () => {
       it('should throw IncompleteCallTxPrivateStateConfig when privateStateId provided without privateStateProvider', async () => {
-        const providersWithoutPrivateState = { ...mockProviders };
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        delete (providersWithoutPrivateState as any).privateStateProvider;
+        const { privateStateProvider: _omitted, ...providersWithoutPrivateState } = mockProviders;
         const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
 
         await expect(submitCallTx(providersWithoutPrivateState, options)).rejects.toThrow(
@@ -557,9 +555,7 @@ describe('submit-call-tx', () => {
 
     describe('configuration validation', () => {
       it('should throw IncompleteCallTxPrivateStateConfig when privateStateId provided without privateStateProvider', async () => {
-        const providersWithoutPrivateState = { ...mockProviders };
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        delete (providersWithoutPrivateState as any).privateStateProvider;
+        const { privateStateProvider: _omitted, ...providersWithoutPrivateState } = mockProviders;
         const options = createBasicCallOptions({ privateStateId: mockPrivateStateId });
 
         await expect(submitCallTxAsync(providersWithoutPrivateState, options)).rejects.toThrow(

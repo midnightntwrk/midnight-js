@@ -1,0 +1,537 @@
+[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js-protocol](../../README.md) / [ledger](../README.md) / ZswapLocalState
+
+# Class: ZswapLocalState
+
+Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:2988
+
+The local state of a user/wallet, consisting of a set
+of unspent coins
+
+It also keeps track of coins that are in-flight, either expecting to spend
+or expecting to receive, and a local copy of the global coin commitment
+Merkle tree to generate proofs against.
+
+It does not store keys internally, but accepts them as arguments to various operations.
+
+## Constructors
+
+### Constructor
+
+> **new ZswapLocalState**(): `ZswapLocalState`
+
+Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:2992
+
+Creates a new, empty state
+
+#### Returns
+
+`ZswapLocalState`
+
+## Properties
+
+### coins
+
+> `readonly` **coins**: `Set`\<[`QualifiedShieldedCoinInfo`](../type-aliases/QualifiedShieldedCoinInfo.md)\>
+
+Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:3102
+
+The set of *spendable* coins of this wallet
+
+***
+
+### firstFree
+
+> `readonly` **firstFree**: `bigint`
+
+Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:3107
+
+The first free index in the internal coin commitments Merkle tree.
+This may be used to identify which merkle tree updates are necessary.
+
+***
+
+### merkleTreeRoot
+
+> `readonly` **merkleTreeRoot**: `bigint` \| `undefined`
+
+Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:3121
+
+The root of the commitment Merkle tree.
+
+***
+
+### pendingOutputs
+
+> `readonly` **pendingOutputs**: `Map`\<`string`, \[[`ShieldedCoinInfo`](../type-aliases/ShieldedCoinInfo.md), `Date` \| `undefined`\]\>
+
+Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:3112
+
+The outputs that this wallet is expecting to receive in the future, with
+an optional TTL attached.
+
+***
+
+### pendingSpends
+
+> `readonly` **pendingSpends**: `Map`\<`string`, \[[`QualifiedShieldedCoinInfo`](../type-aliases/QualifiedShieldedCoinInfo.md), `Date` \| `undefined`\]\>
+
+Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:3117
+
+The spends that this wallet is expecting to be finalized on-chain in the
+future. Each has an optional TTL attached.
+
+## Methods
+
+### apply()
+
+> **apply**\<`P`\>(`secretKeys`, `offer`): `ZswapLocalState`
+
+Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:3042
+
+Locally applies an offer to the current state, returning the updated state
+
+#### Type Parameters
+
+##### P
+
+`P` *extends* [`Proofish`](../type-aliases/Proofish.md)
+
+#### Parameters
+
+##### secretKeys
+
+[`ZswapSecretKeys`](ZswapSecretKeys.md)
+
+##### offer
+
+[`ZswapOffer`](ZswapOffer.md)\<`P`\>
+
+#### Returns
+
+`ZswapLocalState`
+
+***
+
+### applyCollapsedUpdate()
+
+> **applyCollapsedUpdate**(`update`): `ZswapLocalState`
+
+Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:3010
+
+Applies a collapsed Merkle tree update to the current local state, fast
+forwarding through the indices included in it, if it is a correct update.
+
+The general flow for usage if Alice is in state A, and wants to ask Bob how to reach the new state B, is:
+ - Find where she left off – what's her firstFree?
+ - Find out where she's going – ask for Bob's firstFree.
+ - Find what contents she does care about – ask Bob for the filtered
+   entries she want to include proper in her tree.
+ - In order, of Merkle tree indices:
+   - Insert (with `apply` offers Alice cares about).
+   - Skip (with this method) sections Alice does not care about, obtaining
+     the collapsed update covering the gap from Bob.
+Note that `firstFree` is not included in the tree itself, and both ends of
+updates *are* included.
+
+#### Parameters
+
+##### update
+
+[`MerkleTreeCollapsedUpdate`](MerkleTreeCollapsedUpdate.md)
+
+#### Returns
+
+`ZswapLocalState`
+
+***
+
+### applyFailed()
+
+> **applyFailed**\<`P`\>(`offer`): `ZswapLocalState`
+
+Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:3051
+
+Locally reverts pending outputs/spends from an offer known to have failed
+or which has been discarded.
+
+#### Type Parameters
+
+##### P
+
+`P` *extends* [`Proofish`](../type-aliases/Proofish.md)
+
+#### Parameters
+
+##### offer
+
+[`ZswapOffer`](ZswapOffer.md)\<`P`\>
+
+#### Returns
+
+`ZswapLocalState`
+
+***
+
+### applyWithChanges()
+
+> **applyWithChanges**\<`P`\>(`secretKeys`, `offer`): [`ZswapLocalStateWithChanges`](ZswapLocalStateWithChanges.md)
+
+Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:3046
+
+Locally applies an offer to the current state, returning both the updated state and the state changes.
+
+#### Type Parameters
+
+##### P
+
+`P` *extends* [`Proofish`](../type-aliases/Proofish.md)
+
+#### Parameters
+
+##### secretKeys
+
+[`ZswapSecretKeys`](ZswapSecretKeys.md)
+
+##### offer
+
+[`ZswapOffer`](ZswapOffer.md)\<`P`\>
+
+#### Returns
+
+[`ZswapLocalStateWithChanges`](ZswapLocalStateWithChanges.md)
+
+***
+
+### clearPending()
+
+> **clearPending**(`time`): `ZswapLocalState`
+
+Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:3068
+
+Clears pending outputs / spends that have passed their TTL without being included in
+a block.
+
+Note that as TTLs are *from a block perspective*, and there is some
+latency between the block and the wallet, the time passed in here should
+not be the current time, but incorporate a latency buffer.
+
+NOTE: This API endpoint is currently non-functional and works as a no-op.
+
+#### Parameters
+
+##### time
+
+`Date`
+
+#### Returns
+
+`ZswapLocalState`
+
+***
+
+### insertCoin()
+
+> **insertCoin**(`secretKeys`, `coin`): `ZswapLocalState`
+
+Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:3018
+
+Directly inserts a coin owned by this wallet into the state at `this.first_free`.
+
+This function requires secret keys as coins are indexed by nullifier, and
+secret keys are required to compute this.
+
+#### Parameters
+
+##### secretKeys
+
+[`ZswapSecretKeys`](ZswapSecretKeys.md)
+
+##### coin
+
+[`ShieldedCoinInfo`](../type-aliases/ShieldedCoinInfo.md)
+
+#### Returns
+
+`ZswapLocalState`
+
+***
+
+### removeCoinByNullifier()
+
+> **removeCoinByNullifier**(`nullifier`): `ZswapLocalState`
+
+Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:3023
+
+Removes a given coin from the tracked coins by its nullifier.
+
+#### Parameters
+
+##### nullifier
+
+`string`
+
+#### Returns
+
+`ZswapLocalState`
+
+***
+
+### replayEvents()
+
+> **replayEvents**(`secretKeys`, `events`): `ZswapLocalState`
+
+Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:3029
+
+Replays observed events against the current local state. These *must* be replayed
+in the same order as emitted by the chain being followed.
+
+#### Parameters
+
+##### secretKeys
+
+[`ZswapSecretKeys`](ZswapSecretKeys.md)
+
+##### events
+
+[`Event`](Event.md)[]
+
+#### Returns
+
+`ZswapLocalState`
+
+***
+
+### replayEventsWithChanges()
+
+> **replayEventsWithChanges**(`secretKeys`, `events`): [`ZswapLocalStateWithChanges`](ZswapLocalStateWithChanges.md)
+
+Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:3034
+
+Replays observed events against the current local state, returning both the updated state
+and the state changes. These *must* be replayed in the same order as emitted by the chain being followed.
+
+#### Parameters
+
+##### secretKeys
+
+[`ZswapSecretKeys`](ZswapSecretKeys.md)
+
+##### events
+
+[`Event`](Event.md)[]
+
+#### Returns
+
+[`ZswapLocalStateWithChanges`](ZswapLocalStateWithChanges.md)
+
+***
+
+### replayRawEvents()
+
+> **replayRawEvents**(`sk`, `rawEvents`): [`ZswapLocalStateWithChanges`](ZswapLocalStateWithChanges.md)
+
+Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:3038
+
+Replays a direct concatenation of serialized ledger events. Otherwise acts as `replayEventsWithChanges`.
+
+#### Parameters
+
+##### sk
+
+[`ZswapSecretKeys`](ZswapSecretKeys.md)
+
+##### rawEvents
+
+`Uint8Array`
+
+#### Returns
+
+[`ZswapLocalStateWithChanges`](ZswapLocalStateWithChanges.md)
+
+***
+
+### revertTransaction()
+
+> **revertTransaction**\<`S`, `P`, `B`\>(`transaction`): `ZswapLocalState`
+
+Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:3057
+
+Locally reverts all pending outputs/spends from a transaction which has been discarded.
+
+Behaves as [applyFailed](#applyfailed) for the entire transaction.
+
+#### Type Parameters
+
+##### S
+
+`S` *extends* [`Signaturish`](../type-aliases/Signaturish.md)
+
+##### P
+
+`P` *extends* [`Proofish`](../type-aliases/Proofish.md)
+
+##### B
+
+`B` *extends* [`Bindingish`](../type-aliases/Bindingish.md)
+
+#### Parameters
+
+##### transaction
+
+[`Transaction`](Transaction.md)\<`S`, `P`, `B`\>
+
+#### Returns
+
+`ZswapLocalState`
+
+***
+
+### serialize()
+
+> **serialize**(): `Uint8Array`
+
+Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:3093
+
+#### Returns
+
+`Uint8Array`
+
+***
+
+### spend()
+
+> **spend**(`secretKeys`, `coin`, `segment`, `ttl?`): \[`ZswapLocalState`, [`UnprovenInput`](../type-aliases/UnprovenInput.md)\]
+
+Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:3075
+
+Initiates a new spend of a specific coin, outputting the corresponding
+[ZswapInput](ZswapInput.md), and the updated state marking this coin as
+in-flight.
+
+#### Parameters
+
+##### secretKeys
+
+[`ZswapSecretKeys`](ZswapSecretKeys.md)
+
+##### coin
+
+[`QualifiedShieldedCoinInfo`](../type-aliases/QualifiedShieldedCoinInfo.md)
+
+##### segment
+
+`number` \| `undefined`
+
+##### ttl?
+
+`Date`
+
+#### Returns
+
+\[`ZswapLocalState`, [`UnprovenInput`](../type-aliases/UnprovenInput.md)\]
+
+***
+
+### spendFromOutput()
+
+> **spendFromOutput**(`secretKeys`, `coin`, `segment`, `output`, `ttl?`): \[`ZswapLocalState`, [`UnprovenTransient`](../type-aliases/UnprovenTransient.md)\]
+
+Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:3082
+
+Initiates a new spend of a new-yet-received output, outputting the
+corresponding [ZswapTransient](ZswapTransient.md), and the updated state marking
+this coin as in-flight.
+
+#### Parameters
+
+##### secretKeys
+
+[`ZswapSecretKeys`](ZswapSecretKeys.md)
+
+##### coin
+
+[`QualifiedShieldedCoinInfo`](../type-aliases/QualifiedShieldedCoinInfo.md)
+
+##### segment
+
+`number` \| `undefined`
+
+##### output
+
+[`UnprovenOutput`](../type-aliases/UnprovenOutput.md)
+
+##### ttl?
+
+`Date`
+
+#### Returns
+
+\[`ZswapLocalState`, [`UnprovenTransient`](../type-aliases/UnprovenTransient.md)\]
+
+***
+
+### toString()
+
+> **toString**(`compact?`): `string`
+
+Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:3097
+
+#### Parameters
+
+##### compact?
+
+`boolean`
+
+#### Returns
+
+`string`
+
+***
+
+### watchFor()
+
+> **watchFor**(`coinPublicKey`, `coin`): `ZswapLocalState`
+
+Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:3091
+
+Adds a coin to the list of coins that are expected to be received
+
+This should be used if an output is creating a coin for this wallet, which
+does not contain a ciphertext to detect it. In this case, the wallet must
+know the commitment ahead of time to notice the receipt.
+
+#### Parameters
+
+##### coinPublicKey
+
+`string`
+
+##### coin
+
+[`ShieldedCoinInfo`](../type-aliases/ShieldedCoinInfo.md)
+
+#### Returns
+
+`ZswapLocalState`
+
+***
+
+### deserialize()
+
+> `static` **deserialize**(`raw`): `ZswapLocalState`
+
+Defined in: node\_modules/@midnightntwrk/ledger-v9/ledger-v9.d.ts:3095
+
+#### Parameters
+
+##### raw
+
+`Uint8Array`
+
+#### Returns
+
+`ZswapLocalState`

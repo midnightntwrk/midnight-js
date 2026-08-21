@@ -22,19 +22,19 @@ import { ContractCallPrototype, ContractOperation, ContractState, Intent, sample
 import type { ConstructorContext } from 'compact-runtime-ledger8';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createLedger8Engine } from '../engine';
-import type { Ledger8ConstructorContractLike } from '../engine/deploy-v8';
-import type { DownConvertedState } from '../engine/down-convert';
-import type { ExecuteCircuitOptions, Ledger8ContractLike } from '../engine/execute';
+import { createLedger8Engine } from '../lib/engine';
+import type { Ledger8ConstructorContractLike } from '../lib/engine/deploy-v8';
+import type { DownConvertedState } from '../lib/engine/down-convert';
+import type { ExecuteCircuitOptions, Ledger8ContractLike } from '../lib/engine/execute';
 
 const PKG_ROOT = resolve(__dirname, '..', '..');
-const distEngineExists = existsSync(resolve(PKG_ROOT, 'dist/engine.mjs'));
+const distEngineExists = existsSync(resolve(PKG_ROOT, 'dist/engine.js'));
 // createLedger8Engine() calls loadLedger8() (../load-v8.ts), which resolves
 // the package self-reference specifier through the exports map to
-// dist/v8.mjs — so the whole happy-path suite below needs this dist
+// dist/v8.js — so the whole happy-path suite below needs this dist
 // artifact too, or it fails with a confusing Ledger8RuntimeMissingError
 // rather than a clean skip.
-const distV8Exists = existsSync(resolve(PKG_ROOT, 'dist/v8.mjs'));
+const distV8Exists = existsSync(resolve(PKG_ROOT, 'dist/v8.js'));
 const FIXTURE_DIR = resolve(PKG_ROOT, '..', '..', 'testkit-js/testkit-js/src/fixtures/hf/counter-016');
 const SAMPLE_COIN_PUBLIC_KEY = 'ca'.repeat(32);
 
@@ -270,12 +270,12 @@ describe.skipIf(!distV8Exists)('createLedger8Engine', () => {
   });
 });
 
-// loadLedger8Engine resolves the self-reference specifier through the exports
-// map to dist/engine.mjs, so this suite needs a prior `yarn build`; without
+// loadLedger8Engine resolves its relative specifier to the built
+// dist/engine.js chunk, so this suite needs a prior `yarn build`; without
 // one it is reported as visible skips (same policy as dist-laziness.test.ts).
 describe.skipIf(!distEngineExists)('loadLedger8Engine', () => {
   it('memoises the engine promise across calls', async () => {
-    const { loadLedger8Engine } = await import('../engine/load-engine');
+    const { loadLedger8Engine } = await import('../lib/engine/load-engine');
 
     const first = loadLedger8Engine();
     const second = loadLedger8Engine();

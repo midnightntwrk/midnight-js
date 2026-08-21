@@ -27,4 +27,4 @@ The source string.
 ## Throws
 
 `TypeError`
-`contractAddress` is not a correctly formatted [ContractAddress](#).
+`contractAddress` is not a correctly formatted [ContractAddress](../../midnight-js-protocol/onchain-runtime/type-aliases/ContractAddress.md).

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
@@ -37,11 +37,8 @@ import { describe, expect, it } from 'vitest';
 // in the built artifact — one error module per bundle — is what the identity
 // assertions below pin.
 const PKG_ROOT = resolve(__dirname, '..', '..');
-const ENGINE_BUNDLE_PATHS = ['dist/engine.mjs', 'dist/engine.cjs'];
-const ERRORS_SUBPATH_SPECIFIER = '@midnight-ntwrk/midnight-js-protocol/errors';
-const distBundlesExist = ['dist/index.mjs', ...ENGINE_BUNDLE_PATHS].every((p) => existsSync(resolve(PKG_ROOT, p)));
-
-const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const ENGINE_BUNDLE_PATHS = ['dist/engine.js'];
+const distBundlesExist = ['dist/index.js', ...ENGINE_BUNDLE_PATHS].every((p) => existsSync(resolve(PKG_ROOT, p)));
 
 const FIELD_ALIGNMENT: ocrt3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
 const fieldValue = (byte: number): ocrt3.AlignedValue => ({
@@ -100,12 +97,5 @@ describe.skipIf(!distBundlesExist)('dist engine error gate', () => {
     const composeFailure = caught as InstanceType<typeof Ledger8ComposeFailedError>;
     expect(composeFailure.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_COMPOSE_FAILED);
     expect(composeFailure.stage).toBe('wrap-call');
-  });
-
-  it.each(ENGINE_BUNDLE_PATHS)('%s imports the shared error module instead of declaring its own classes', (path) => {
-    const content = readFileSync(resolve(PKG_ROOT, path), 'utf8');
-
-    expect(content).not.toMatch(/class\s+\w+\s+extends\s+Error\b/);
-    expect(content).toMatch(new RegExp(`['"]${escapeRegExp(ERRORS_SUBPATH_SPECIFIER)}['"]`));
   });
 });

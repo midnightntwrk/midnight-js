@@ -28,7 +28,7 @@ must be balanced using the [WalletProvider](WalletProvider.md) interface.
 
 ##### unprovenTx
 
-`UnprovenTransaction`
+[`UnprovenTransaction`](../../midnight-js-protocol/ledger/type-aliases/UnprovenTransaction.md)
 
 ##### proveTxConfig?
 

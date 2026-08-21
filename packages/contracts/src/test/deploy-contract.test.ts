@@ -17,11 +17,12 @@ import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
 import { type ZswapLocalState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import { type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { AnyPrivateState } from '@midnight-ntwrk/midnight-js-types';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, type MockedFunction, vi } from 'vitest';
 
 import { type ContractProviders } from '../contract-providers';
 import { deployContract, type DeployContractOptionsBase, type DeployedContract } from '../deploy-contract';
-import { type UnsubmittedDeployTxData } from '../tx-model';
+import type { submitDeployTx } from '../submit-deploy-tx';
+import { type FinalizedDeployTxData, type UnsubmittedDeployTxData } from '../tx-model';
 import {
   createMockCompiledContract,
   createMockContractState,
@@ -45,7 +46,13 @@ vi.mock('../governance/tx-interfaces', () => ({
 }));
 
 describe('deployContract', () => {
-  let mockSubmitDeployTx: ReturnType<typeof vi.fn>;
+  let mockSubmitDeployTx: MockedFunction<typeof submitDeployTx>;
+
+  // The tests resolve unsubmitted-level tx data where the real function
+  // returns finalized-level data; the code under test forwards the value
+  // opaquely, so the missing finalized fields are never read.
+  const asFinalized = (data: UnsubmittedDeployTxData<Contract.Any>): FinalizedDeployTxData<Contract.Any> =>
+    data as FinalizedDeployTxData<Contract.Any>;
   let mockDeployTxData: UnsubmittedDeployTxData<Contract.Any>;
   let providers: ContractProviders;
   let baseOptions: DeployContractOptionsBase<Contract.Any>;
@@ -75,8 +82,7 @@ describe('deployContract', () => {
 
   beforeEach(async () => {
     const { submitDeployTx } = await import('../submit-deploy-tx');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    mockSubmitDeployTx = submitDeployTx as any;
+    mockSubmitDeployTx = vi.mocked(submitDeployTx);
     vi.clearAllMocks();
 
     providers = createMockProviders();
@@ -88,7 +94,7 @@ describe('deployContract', () => {
 
   it('should deploy contract without private state', async () => {
     mockDeployTxData = createMockDeployTxData();
-    mockSubmitDeployTx.mockResolvedValue(mockDeployTxData);
+    mockSubmitDeployTx.mockResolvedValue(asFinalized(mockDeployTxData));
 
     const result = await deployContract(providers, baseOptions);
 
@@ -105,7 +111,7 @@ describe('deployContract', () => {
 
   it('should deploy contract with provided signing key', async () => {
     mockDeployTxData = createMockDeployTxData();
-    mockSubmitDeployTx.mockResolvedValue(mockDeployTxData);
+    mockSubmitDeployTx.mockResolvedValue(asFinalized(mockDeployTxData));
 
     const signingKey = createMockSigningKey();
     const options = { ...baseOptions, signingKey };
@@ -126,7 +132,7 @@ describe('deployContract', () => {
   it('should deploy contract with private state', async () => {
     const initialPrivateState = { test: 'initial-private-state' };
     mockDeployTxData = createMockDeployTxData(initialPrivateState);
-    mockSubmitDeployTx.mockResolvedValue(mockDeployTxData);
+    mockSubmitDeployTx.mockResolvedValue(asFinalized(mockDeployTxData));
 
     const options = {
       ...baseOptions,
@@ -152,7 +158,7 @@ describe('deployContract', () => {
   it('should deploy contract with both custom signing key and private state', async () => {
     const initialPrivateState = { test: 'initial-private-state' };
     mockDeployTxData = createMockDeployTxData(initialPrivateState);
-    mockSubmitDeployTx.mockResolvedValue(mockDeployTxData);
+    mockSubmitDeployTx.mockResolvedValue(asFinalized(mockDeployTxData));
 
     const signingKey = createMockSigningKey();
     const options = {

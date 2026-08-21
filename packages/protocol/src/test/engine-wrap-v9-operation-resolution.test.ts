@@ -20,8 +20,8 @@ import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as LedgerV9 from '@midnightntwrk/ledger-v9';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { DownConvertedState } from '../engine/down-convert';
-import type { TranscriptPojo } from '../engine/execute';
+import type { DownConvertedState } from '../lib/engine/down-convert';
+import type { TranscriptPojo } from '../lib/engine/execute';
 
 // See engine-wrap-v9.test.ts: `ContractOperation.verifierKey`'s setter
 // validates a `midnight:verifier-key[...]:` tagged blob.
@@ -69,7 +69,7 @@ describe('wrapKeepStateCall operation resolution', () => {
       }
       return { ...actual, ContractCallPrototype: CapturingContractCallPrototype };
     });
-    const { wrapKeepStateCall } = await import('../engine/wrap-v9');
+    const { wrapKeepStateCall } = await import('../lib/engine/wrap-v9');
 
     const registeredOp = new LedgerV9.ContractOperation();
     registeredOp.verifierKey = REGISTERED_VERIFIER_KEY;

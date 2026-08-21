@@ -1,18 +1,13 @@
 {
   "name": "@midnight-ntwrk/midnight-js-network-id",
   "version": "5.0.0-beta.6",
+  "type": "module",
   "description": "Package for setting the network ID of runtime and ledger WASM API",
-  "main": "dist/index.cjs",
-  "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": {
-        "import": "./dist/index.d.mts",
-        "require": "./dist/index.d.cts"
-      },
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     }
   },
   "repository": "git@github.com:midnight-ntwrk/artifacts",
@@ -29,9 +24,10 @@
     "dist/"
   ],
   "devDependencies": {
+    "rollup": "^4.60.4",
     "vitest": "^4.1.7"
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12"
   }
 }

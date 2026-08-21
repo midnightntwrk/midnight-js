@@ -20,10 +20,10 @@ import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import { describe, expect, it } from 'vitest';
 
-import { type ComposeV8CallOptions, composeV8CallTx } from '../engine/compose-v8';
-import type { DownConvertedState } from '../engine/down-convert';
-import type { TranscriptPojo } from '../engine/execute';
 import { Ledger8ComposeFailedError, PROTOCOL_ERROR_CODES } from '../errors';
+import { type ComposeV8CallOptions, composeV8CallTx } from '../lib/engine/compose-v8';
+import type { DownConvertedState } from '../lib/engine/down-convert';
+import type { TranscriptPojo } from '../lib/engine/execute';
 
 const NETWORK_ID = 'test-network';
 const TTL = new Date(Date.now() + 3_600_000);

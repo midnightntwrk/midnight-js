@@ -21,61 +21,80 @@ import * as onchainRuntimeV3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as onchainRuntimeV3Alt from 'onchain-runtime-v3-alt';
 import { describe, expect, it } from 'vitest';
 
-import { assertSharedLedger8Instance } from '../engine/instance-guard';
 import { Ledger8InstanceMismatchError, PROTOCOL_ERROR_CODES } from '../errors';
+import type { Ledger8CompactRuntime } from '../lib/engine/down-convert';
+import { downConvertForExecution } from '../lib/engine/down-convert';
+import { assertSharedLedger8Instance } from '../lib/engine/instance-guard';
+
+const FIELD_ALIGNMENT: onchainRuntimeV3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
+const cell = (byte: number): onchainRuntimeV3.StateValue =>
+  onchainRuntimeV3.StateValue.newCell({ value: [new Uint8Array(32).fill(byte)], alignment: FIELD_ALIGNMENT });
 
 describe('assertSharedLedger8Instance', () => {
-  it('does not throw when both probes reference the same physical module instance', () => {
-    expect(() => assertSharedLedger8Instance('onchain-runtime-v3', onchainRuntimeV3, onchainRuntimeV3)).not.toThrow();
+  it('does not throw when two independent acquisitions resolve to the same physical copy', async () => {
+    // Deliberately not `(axis, x, x)`: comparing a binding with itself is
+    // `x === x` and asserts nothing. A static import and a dynamic import of
+    // the same specifier are two separate acquisitions that Node resolves to
+    // one module record — the condition the guard is supposed to accept.
+    const viaDynamicImport = await import('@midnight-ntwrk/onchain-runtime-v3');
+
+    expect(() => assertSharedLedger8Instance('onchain-runtime-v3', onchainRuntimeV3, viaDynamicImport)).not.toThrow();
   });
 
   it('throws Ledger8InstanceMismatchError naming the axis when the probes come from two physical copies', () => {
-    let caught: unknown;
     try {
       assertSharedLedger8Instance('onchain-runtime-v3', onchainRuntimeV3, onchainRuntimeV3Alt);
+      expect.unreachable('two physical copies must be rejected');
     } catch (error) {
-      caught = error;
+      expect(error).toBeInstanceOf(Ledger8InstanceMismatchError);
+      expect(error).toMatchObject({
+        code: PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH,
+        axis: 'onchain-runtime-v3'
+      });
     }
-
-    expect(caught).toBeInstanceOf(Ledger8InstanceMismatchError);
-    const error = caught as Ledger8InstanceMismatchError;
-    expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH);
-    expect(error.axis).toBe('onchain-runtime-v3');
   });
 
-  it('throws when both probes are undefined (nullish probes are not a proof of a shared instance)', () => {
-    let caught: unknown;
+  it('names the npm package, not the axis label, in the remediation hint', () => {
     try {
-      assertSharedLedger8Instance('onchain-runtime-v3', undefined, undefined);
+      assertSharedLedger8Instance('onchain-runtime-v3', onchainRuntimeV3, onchainRuntimeV3Alt);
+      expect.unreachable('two physical copies must be rejected');
     } catch (error) {
-      caught = error;
+      expect(error).toBeInstanceOf(Ledger8InstanceMismatchError);
+      expect((error as Ledger8InstanceMismatchError).message).toContain(
+        'yarn why @midnight-ntwrk/onchain-runtime-v3'
+      );
     }
-
-    expect(caught).toBeInstanceOf(Ledger8InstanceMismatchError);
-    expect((caught as Ledger8InstanceMismatchError).axis).toBe('onchain-runtime-v3');
   });
 
-  it('throws when both probes are null', () => {
-    let caught: unknown;
+  it.each([
+    { name: 'both probes undefined', a: undefined, b: undefined },
+    { name: 'both probes null', a: null, b: null },
+    { name: 'only one probe nullish', a: onchainRuntimeV3, b: undefined }
+  ])('throws when $name (nullish probes are not a proof of a shared instance)', ({ a, b }) => {
     try {
-      assertSharedLedger8Instance('onchain-runtime-v3', null, null);
+      assertSharedLedger8Instance('onchain-runtime-v3', a, b);
+      expect.unreachable('nullish probes must be rejected');
     } catch (error) {
-      caught = error;
+      expect(error).toBeInstanceOf(Ledger8InstanceMismatchError);
+      expect(error).toMatchObject({ axis: 'onchain-runtime-v3' });
     }
-
-    expect(caught).toBeInstanceOf(Ledger8InstanceMismatchError);
-    expect((caught as Ledger8InstanceMismatchError).axis).toBe('onchain-runtime-v3');
   });
+});
 
-  it('throws when only one probe is nullish', () => {
-    let caught: unknown;
-    try {
-      assertSharedLedger8Instance('onchain-runtime-v3', onchainRuntimeV3, undefined);
-    } catch (error) {
-      caught = error;
-    }
+describe('a dual-instantiation reaching the down-convert', () => {
+  // Establishes what the guard is guarding against, using two genuinely
+  // distinct physical copies. wasm-bindgen rejects the foreign StateValue when
+  // ChargedState is constructed; downConvertForExecution must surface that as
+  // a coded error rather than letting a bare WASM TypeError escape a seam
+  // whose contract is code-based discrimination.
+  it('fails with a coded DownConvertFailedError rather than corrupt data', () => {
+    const mixedRuntime: Ledger8CompactRuntime = {
+      StateValue: onchainRuntimeV3.StateValue,
+      ChargedState: onchainRuntimeV3Alt.ChargedState
+    };
 
-    expect(caught).toBeInstanceOf(Ledger8InstanceMismatchError);
-    expect((caught as Ledger8InstanceMismatchError).axis).toBe('onchain-runtime-v3');
+    expect(() => downConvertForExecution(cell(0x11).encode(), mixedRuntime)).toThrowError(
+      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED })
+    );
   });
 });

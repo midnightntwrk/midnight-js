@@ -1,18 +1,17 @@
 {
   "name": "@midnight-ntwrk/testkit-js",
   "version": "5.0.0-beta.6",
+  "type": "module",
   "description": "Testing kit for Midnight JS packages",
-  "main": "dist/index.cjs",
-  "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": {
-        "import": "./dist/index.d.mts",
-        "require": "./dist/index.d.cts"
-      },
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./fixtures-hf": {
+      "types": "./dist/fixtures-hf.d.ts",
+      "default": "./dist/fixtures-hf.js"
     }
   },
   "repository": {
@@ -64,16 +63,16 @@
     "allure-commandline": "^2.43.0",
     "allure-js-commons": "^3.9.0",
     "allure-vitest": "^3.10.2",
+    "rollup": "^4.60.4",
     "rxjs": "^7.8.2",
     "typedoc": "^0.28.19",
     "typedoc-plugin-markdown": "4.12.0",
-    "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^4.1.7"
   },
   "files": [
     "dist/"
   ],
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12"
   }
 }

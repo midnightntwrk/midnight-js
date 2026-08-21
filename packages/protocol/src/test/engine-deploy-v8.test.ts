@@ -20,6 +20,7 @@ import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import { describe, expect, it, vi } from 'vitest';
 
+import { Ledger8ComposeFailedError, PROTOCOL_ERROR_CODES } from '../errors';
 import {
   type ComposeV8DeployOptions,
   composeV8DeployTx,
@@ -28,8 +29,7 @@ import {
   type Ledger8ConstructorContractLike,
   type Ledger8ConstructorResult,
   type Ledger8ConstructorRuntime
-} from '../engine/deploy-v8';
-import { Ledger8ComposeFailedError, PROTOCOL_ERROR_CODES } from '../errors';
+} from '../lib/engine/deploy-v8';
 
 const NETWORK_ID = 'test-network';
 const TTL = new Date(Date.now() + 3_600_000);
