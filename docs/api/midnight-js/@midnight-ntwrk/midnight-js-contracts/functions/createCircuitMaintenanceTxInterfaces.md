@@ -14,7 +14,7 @@ Creates a [CircuitMaintenanceTxInterfaces](../type-aliases/CircuitMaintenanceTxI
 
 ### C
 
-`C` *extends* `Any`
+`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
 
 ## Parameters
 
@@ -26,7 +26,7 @@ The providers to use to build transactions.
 
 ### compiledContract
 
-`CompiledContract`\<`C`, `any`\>
+[`CompiledContract`](../../midnight-js-protocol/compact-js/namespaces/CompiledContract/interfaces/CompiledContract.md)\<`C`, `any`\>
 
 The contract to use to execute circuits.
 

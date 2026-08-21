@@ -1,0 +1,51 @@
+[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [contracts](../README.md) / SubmittedCallTx
+
+# Interface: SubmittedCallTx\<C, PCK\>
+
+Defined in: packages/contracts/dist/index.d.ts:674
+
+Data returned from an asynchronous call transaction submission.
+Contains the transaction ID and call transaction data without waiting for finalization.
+
+## Remarks
+
+**Privacy-sensitive type.** The `callTxData` field carries
+[UnsubmittedCallTxData](UnsubmittedCallTxData.md) and transitively the `UnprovenTransaction`
+and the call's private state. Treat as confidential when logging,
+serializing, or transmitting — read only `txId` or destructure specific
+non-sensitive fields rather than spreading or stringifying the whole
+object.
+
+## Type Parameters
+
+### C
+
+`C` *extends* [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+
+### PCK
+
+`PCK` *extends* [`ProvableCircuitId`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<`C`\>
+
+## Properties
+
+### callTxData
+
+> `readonly` **callTxData**: [`UnsubmittedCallTxData`](UnsubmittedCallTxData.md)\<`C`, `PCK`\>
+
+Defined in: packages/contracts/dist/index.d.ts:682
+
+The unproven call transaction data including private state.
+
+***
+
+### txId
+
+> `readonly` **txId**: `string`
+
+Defined in: packages/contracts/dist/index.d.ts:678
+
+The transaction ID returned from submission.

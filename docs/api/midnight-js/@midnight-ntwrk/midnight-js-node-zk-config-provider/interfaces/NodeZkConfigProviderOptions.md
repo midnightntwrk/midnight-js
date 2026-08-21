@@ -10,7 +10,7 @@ Options for [nodeZkConfigProvider](../functions/nodeZkConfigProvider.md). Combin
 
 ## Extends
 
-- `ZkConfigIntegrityOptions`
+- [`ZkConfigIntegrityOptions`](../../midnight-js/utils/interfaces/ZkConfigIntegrityOptions.md)
 
 ## Properties
 
@@ -33,7 +33,7 @@ artifacts it certifies.
 
 #### Inherited from
 
-`ZkConfigIntegrityOptions.expectedManifestHash`
+[`ZkConfigIntegrityOptions`](../../midnight-js/utils/interfaces/ZkConfigIntegrityOptions.md).[`expectedManifestHash`](../../midnight-js/utils/interfaces/ZkConfigIntegrityOptions.md#expectedmanifesthash)
 
 ***
 
@@ -55,20 +55,20 @@ Warning sink for `warn` mode. Default: `console.warn`.
 
 #### Inherited from
 
-`ZkConfigIntegrityOptions.onWarn`
+[`ZkConfigIntegrityOptions`](../../midnight-js/utils/interfaces/ZkConfigIntegrityOptions.md).[`onWarn`](../../midnight-js/utils/interfaces/ZkConfigIntegrityOptions.md#onwarn)
 
 ***
 
 ### verify?
 
-> `readonly` `optional` **verify?**: `ZkArtifactIntegrityMode`
+> `readonly` `optional` **verify?**: [`ZkArtifactIntegrityMode`](../../midnight-js/utils/type-aliases/ZkArtifactIntegrityMode.md)
 
-Default `'require'` (fail-closed). Trust boundary: without [expectedManifestHash](#expectedmanifesthash) the
+Default `'require'` (fail-closed). Trust boundary: without [expectedManifestHash](../../midnight-js/utils/interfaces/ZkConfigIntegrityOptions.md#expectedmanifesthash) the
 manifest is loaded from the same base location as the artifacts, so `require`/`warn` detect
 corruption (partial deploy, truncation, a stale or wrong artifact set) but NOT an adversary who
-can rewrite both the artifacts and the co-located manifest. Set [expectedManifestHash](#expectedmanifesthash) to
+can rewrite both the artifacts and the co-located manifest. Set [expectedManifestHash](../../midnight-js/utils/interfaces/ZkConfigIntegrityOptions.md#expectedmanifesthash) to
 defend against that coordinated substitution.
 
 #### Inherited from
 
-`ZkConfigIntegrityOptions.verify`
+[`ZkConfigIntegrityOptions`](../../midnight-js/utils/interfaces/ZkConfigIntegrityOptions.md).[`verify`](../../midnight-js/utils/interfaces/ZkConfigIntegrityOptions.md#verify)

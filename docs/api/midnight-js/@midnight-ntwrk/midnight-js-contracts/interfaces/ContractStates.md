@@ -23,7 +23,7 @@ state of a contract.
 
 ### contractState
 
-> `readonly` **contractState**: `ContractState`
+> `readonly` **contractState**: [`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)
 
 The (public) ledger state of a contract.
 
@@ -35,7 +35,7 @@ The (public) ledger state of a contract.
 
 ### ledgerParameters
 
-> `readonly` **ledgerParameters**: `LedgerParameters`
+> `readonly` **ledgerParameters**: [`LedgerParameters`](../../midnight-js-protocol/ledger/classes/LedgerParameters.md)
 
 The ledger parameters in effect on the block associated with the contract state.
 
@@ -55,7 +55,7 @@ The private state of a contract.
 
 ### zswapChainState
 
-> `readonly` **zswapChainState**: `ZswapChainState`
+> `readonly` **zswapChainState**: [`ZswapChainState`](../../midnight-js-protocol/ledger/classes/ZswapChainState.md)
 
 The (public) Zswap chain state of a contract.
 

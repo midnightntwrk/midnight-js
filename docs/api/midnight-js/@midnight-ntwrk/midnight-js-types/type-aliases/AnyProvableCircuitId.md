@@ -6,4 +6,4 @@
 
 # Type Alias: AnyProvableCircuitId
 
-> **AnyProvableCircuitId** = `Contract.ProvableCircuitId`\<`Contract.Any`\>
+> **AnyProvableCircuitId** = [`ProvableCircuitId`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<[`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)\>
