@@ -24,10 +24,18 @@ import {
   UnknownProtocolVersionError
 } from '../errors';
 
-// Every `yarn why <name>` target the message offers, so the assertion can be
+// Every scoped package name the message names, so the assertion can be
 // two-directional: a missing name and a leaked extra name both fail.
-const yarnWhyTargets = (message: string): string[] =>
-  [...message.matchAll(/yarn why ([^\s`]+)/g)].map(([, name]) => name).sort();
+const packageNamesIn = (message: string): string[] =>
+  [...message.matchAll(/@[a-z0-9.-]+\/[a-z0-9.-]+/g)].map(([name]) => name).sort();
+
+// Which package managers the remediation covers. A published error must not
+// prescribe the one this repo happens to use, so this is asserted exhaustively:
+// dropping one, or narrowing back to a single tool, fails.
+const whyCommandsIn = (message: string): string[] =>
+  ['npm why', 'yarn why', 'pnpm why', 'bun pm why'].filter((command) =>
+    new RegExp(`\\b${command}\\b`).test(message)
+  );
 
 describe('PROTOCOL_ERROR_CODES', () => {
   it('is exactly the documented registry of codes', () => {
@@ -149,10 +157,11 @@ describe('Ledger8InstanceMismatchError', () => {
     expect(error.axis).toBe('onchain-runtime-v3');
     expect(error.message).toContain('onchain-runtime-v3');
     expect(error.message).toContain('dual-instantiation');
-    expect(yarnWhyTargets(error.message)).toEqual([
+    expect(packageNamesIn(error.message)).toEqual([
       '@midnight-ntwrk/onchain-runtime-v3',
       '@midnightntwrk/onchain-runtime-v3'
     ]);
+    expect(whyCommandsIn(error.message)).toEqual(['npm why', 'yarn why', 'pnpm why', 'bun pm why']);
   });
 });
 
