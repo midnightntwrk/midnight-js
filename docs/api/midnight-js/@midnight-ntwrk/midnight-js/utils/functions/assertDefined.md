@@ -1,0 +1,41 @@
+[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [utils](../README.md) / assertDefined
+
+# Function: assertDefined()
+
+> **assertDefined**\<`A`\>(`value`, `message?`): `asserts value is NonNullable<A>`
+
+Defined in: packages/utils/dist/index.d.ts:14
+
+Asserts that the given value is non-nullable.
+
+## Type Parameters
+
+### A
+
+`A`
+
+## Parameters
+
+### value
+
+`A` \| `null` \| `undefined`
+
+The value to test for nullability.
+
+### message?
+
+`string`
+
+The error message to use if an error is thrown.
+
+## Returns
+
+`asserts value is NonNullable<A>`
+
+## Throws
+
+Error If the value is nullable.

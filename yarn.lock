@@ -2167,6 +2167,8 @@ __metadata:
     "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     "@midnight-ntwrk/zkir-v2": "npm:2.1.0"
     "@midnightntwrk/dapp-connector-api": "npm:4.1.0-beta.1"
+    "@midnightntwrk/ledger-v8": "npm:8.1.1"
+    "@midnightntwrk/ledger-v9": "npm:1.0.0-rc.3"
     "@midnightntwrk/wallet-sdk": "npm:2.0.0-beta.2"
     "@midnightntwrk/wallet-sdk-prover-client": "npm:2.0.0-beta.2"
     "@scure/bip39": "npm:^2.2.0"

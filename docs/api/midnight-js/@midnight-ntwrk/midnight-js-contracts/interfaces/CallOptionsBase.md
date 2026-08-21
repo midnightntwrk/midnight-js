@@ -12,11 +12,11 @@ Describes the target of a circuit invocation.
 
 ### C
 
-`C` *extends* `Contract.Any`
+`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
 
 ### PCK
 
-`PCK` *extends* `Contract.ProvableCircuitId`\<`C`\>
+`PCK` *extends* [`ProvableCircuitId`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<`C`\>
 
 ## Properties
 
@@ -24,7 +24,7 @@ Describes the target of a circuit invocation.
 
 > `readonly` `optional` **additionalCoinEncPublicKeyMappings?**: `ReadonlyMap`\<`string`, `string`\>
 
-An optional mapping of CoinPublicKey to EncPublicKey that can be used to resolve encryption
+An optional mapping of [CoinPublicKey](../../midnight-js-protocol/onchain-runtime/type-aliases/CoinPublicKey.md) to [EncPublicKey](../../midnight-js-protocol/ledger/type-aliases/EncPublicKey.md) that can be used to resolve encryption
 keys for coins created during circuit execution.
 
 ***
@@ -39,7 +39,7 @@ The identifier of the circuit to call.
 
 ### compiledContract
 
-> `readonly` **compiledContract**: `CompiledContract`\<`C`, `any`\>
+> `readonly` **compiledContract**: [`CompiledContract`](../../midnight-js-protocol/compact-js/namespaces/CompiledContract/interfaces/CompiledContract.md)\<`C`, `any`\>
 
 The contract defining the circuit to call.
 

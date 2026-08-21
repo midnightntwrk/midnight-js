@@ -54,15 +54,18 @@ describe('assertSharedLedger8Instance', () => {
     }
   });
 
-  it('names the npm package, not the axis label, in the remediation hint', () => {
+  // Both published names, not one: the dual-publish rewrites dependency scopes
+  // at pack time, so a consumer installed from either scope must find their own
+  // name in the hint. See AXIS_PACKAGE_NAMES in `errors.ts`.
+  it('names every published npm package, not the axis label, in the remediation hint', () => {
     try {
       assertSharedLedger8Instance('onchain-runtime-v3', onchainRuntimeV3, onchainRuntimeV3Alt);
       expect.unreachable('two physical copies must be rejected');
     } catch (error) {
       expect(error).toBeInstanceOf(Ledger8InstanceMismatchError);
-      expect((error as Ledger8InstanceMismatchError).message).toContain(
-        'yarn why @midnight-ntwrk/onchain-runtime-v3'
-      );
+      const { message } = error as Ledger8InstanceMismatchError;
+      expect(message).toContain('@midnight-ntwrk/onchain-runtime-v3');
+      expect(message).toContain('@midnightntwrk/onchain-runtime-v3');
     }
   });
 
