@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **assertIsContractAddress**(`x`): `asserts x is string`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/utils.d.ts:17
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/utils.d.ts:19
 
 ## Parameters
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Class: CompactTypeBytes
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:170
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:141
 
 Runtime type of the builtin `Bytes` types
 
@@ -20,7 +20,7 @@ Runtime type of the builtin `Bytes` types
 
 > **new CompactTypeBytes**(`length`): `CompactTypeBytes`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:172
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:143
 
 #### Parameters
 
@@ -38,7 +38,7 @@ Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.t
 
 > `readonly` **length**: `number`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:171
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:142
 
 ## Methods
 
@@ -46,7 +46,7 @@ Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.t
 
 > **alignment**(): [`Alignment`](../../onchain-runtime/type-aliases/Alignment.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:173
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:144
 
 The field-aligned binary alignment of this type.
 
@@ -64,7 +64,7 @@ The field-aligned binary alignment of this type.
 
 > **fromValue**(`value`): `Uint8Array`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:174
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:145
 
 Converts this type's field-aligned binary representation to its TypeScript
 representation destructively; (partially) consuming the input, and
@@ -90,7 +90,7 @@ ignoring superflous data for chaining.
 
 > **toValue**(`value`): [`Value`](../../onchain-runtime/type-aliases/Value.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:175
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:146
 
 Converts this type's TypeScript representation to its field-aligned binary
 representation

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../../../README.md)
 
 ***
 
@@ -8,17 +8,12 @@
 
 > `const` **decodeAll**: (`events`) => [`ContractEvent`](../type-aliases/ContractEvent.md)[]
 
-Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:208
-
-**`Experimental`**
+Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:209
 
 Decode a batch of raw [LogEvent](../../../type-aliases/LogEvent.md)s (e.g. `result.events`) into typed [ContractEvent](../type-aliases/ContractEvent.md)s.
 
 Like [decode](decode.md), this never throws — degraded events are preserved in place rather than
 dropped, so the returned array is index-aligned with the input.
-
- Inherits [decode](decode.md)'s experimental caveat: decoded payload offsets are derived,
-not yet confirmed against a live `emit`.
 
 ## Parameters
 

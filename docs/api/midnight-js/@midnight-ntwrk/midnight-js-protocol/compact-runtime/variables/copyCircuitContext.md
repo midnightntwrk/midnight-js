@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > `const` **copyCircuitContext**: (`context`) => [`CircuitContext`](../interfaces/CircuitContext.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:184
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:202
 
 **`Internal`**
 

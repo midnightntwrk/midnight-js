@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -8,6 +8,6 @@
 
 > `const` **CompactTypeSecp256k1Point**: [`CompactType`](../interfaces/CompactType.md)\<[`Secp256k1Point`](../interfaces/Secp256k1Point.md)\>
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:86
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:46
 
 Runtime type of [Secp256k1Point](../interfaces/Secp256k1Point.md)

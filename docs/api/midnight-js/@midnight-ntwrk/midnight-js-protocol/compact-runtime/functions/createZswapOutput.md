@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **createZswapOutput**(`circuitContext`, `coinInfo`, `recipient`): \[\]
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:158
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:174
 
 Adds a coin to the list of outputs produced by the circuit.
 

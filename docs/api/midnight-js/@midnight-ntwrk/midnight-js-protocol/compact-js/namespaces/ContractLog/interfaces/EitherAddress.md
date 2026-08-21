@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Interface: EitherAddress
 
-Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:55
+Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:56
 
 The recipient/sender side of an unshielded event — an `Either<ZswapCoinPublicKey, ContractAddress>`.
 `kind` is the `Either` discriminant; `bytes` are the raw 32-byte address.
@@ -17,7 +17,7 @@ The recipient/sender side of an unshielded event — an `Either<ZswapCoinPublicK
 
 > `readonly` **bytes**: `Uint8Array`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:57
+Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:58
 
 ***
 
@@ -25,4 +25,4 @@ Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog
 
 > `readonly` **kind**: `"coin-public-key"` \| `"contract-address"`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:56
+Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:57

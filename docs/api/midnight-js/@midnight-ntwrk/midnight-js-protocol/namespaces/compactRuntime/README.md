@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -83,12 +83,6 @@ Re-exports [bigIntToValue](../../onchain-runtime/functions/bigIntToValue.md)
 ### BlockContext
 
 Re-exports [BlockContext](../../onchain-runtime/type-aliases/BlockContext.md)
-
-***
-
-### Bytes32Descriptor
-
-Re-exports [Bytes32Descriptor](../../compact-runtime/variables/Bytes32Descriptor.md)
 
 ***
 
@@ -224,12 +218,6 @@ Re-exports [CompactTypeJubjubPoint](../../compact-runtime/variables/CompactTypeJ
 
 ***
 
-### CompactTypeJubjubSchnorrSignature
-
-Re-exports [CompactTypeJubjubSchnorrSignature](../../compact-runtime/variables/CompactTypeJubjubSchnorrSignature.md)
-
-***
-
 ### CompactTypeMerkleTreeDigest
 
 Re-exports [CompactTypeMerkleTreeDigest](../../compact-runtime/variables/CompactTypeMerkleTreeDigest.md)
@@ -317,12 +305,6 @@ Re-exports [CONTRACT_ADDRESS_BYTE_LENGTH](../../compact-runtime/variables/CONTRA
 ### ContractAddress
 
 Re-exports [ContractAddress](../../onchain-runtime/type-aliases/ContractAddress.md)
-
-***
-
-### ContractAddressDescriptor
-
-Re-exports [ContractAddressDescriptor](../../compact-runtime/variables/ContractAddressDescriptor.md)
 
 ***
 
@@ -854,12 +836,6 @@ Re-exports [maxField](../../onchain-runtime/functions/maxField.md)
 
 ***
 
-### MaxUint8Descriptor
-
-Re-exports [MaxUint8Descriptor](../../compact-runtime/variables/MaxUint8Descriptor.md)
-
-***
-
 ### MerkleTreeDigest
 
 Re-exports [MerkleTreeDigest](../../compact-runtime/interfaces/MerkleTreeDigest.md)
@@ -1082,6 +1058,24 @@ Re-exports [secp256k1BaseNeg](../../compact-runtime/functions/secp256k1BaseNeg.m
 
 ***
 
+### secp256k1BaseSub
+
+Re-exports [secp256k1BaseSub](../../compact-runtime/functions/secp256k1BaseSub.md)
+
+***
+
+### secp256k1EcdsaRecover
+
+Re-exports [secp256k1EcdsaRecover](../../compact-runtime/functions/secp256k1EcdsaRecover.md)
+
+***
+
+### secp256k1FromProjective
+
+Re-exports [secp256k1FromProjective](../../compact-runtime/functions/secp256k1FromProjective.md)
+
+***
+
 ### secp256k1Mul
 
 Re-exports [secp256k1Mul](../../compact-runtime/functions/secp256k1Mul.md)
@@ -1136,21 +1130,21 @@ Re-exports [secp256k1ScalarNeg](../../compact-runtime/functions/secp256k1ScalarN
 
 ***
 
+### secp256k1ScalarSub
+
+Re-exports [secp256k1ScalarSub](../../compact-runtime/functions/secp256k1ScalarSub.md)
+
+***
+
+### secp256k1ToProjective
+
+Re-exports [secp256k1ToProjective](../../compact-runtime/functions/secp256k1ToProjective.md)
+
+***
+
 ### ShieldedCoinInfo
 
 Re-exports [ShieldedCoinInfo](../../onchain-runtime/type-aliases/ShieldedCoinInfo.md)
-
-***
-
-### ShieldedCoinInfoDescriptor
-
-Re-exports [ShieldedCoinInfoDescriptor](../../compact-runtime/variables/ShieldedCoinInfoDescriptor.md)
-
-***
-
-### ShieldedCoinRecipientDescriptor
-
-Re-exports [ShieldedCoinRecipientDescriptor](../../compact-runtime/variables/ShieldedCoinRecipientDescriptor.md)
 
 ***
 
@@ -1385,12 +1379,6 @@ Re-exports [VmStack](../../onchain-runtime/classes/VmStack.md)
 ### WitnessContext
 
 Re-exports [WitnessContext](../../compact-runtime/interfaces/WitnessContext.md)
-
-***
-
-### ZswapCoinPublicKeyDescriptor
-
-Re-exports [ZswapCoinPublicKeyDescriptor](../../compact-runtime/variables/ZswapCoinPublicKeyDescriptor.md)
 
 ***
 

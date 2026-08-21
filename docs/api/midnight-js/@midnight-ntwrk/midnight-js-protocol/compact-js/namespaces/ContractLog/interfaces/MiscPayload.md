@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Interface: MiscPayload
 
-Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:107
+Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:112
 
 ## Properties
 
@@ -14,7 +14,7 @@ Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog
 
 > `readonly` **name**: `Uint8Array`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:108
+Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:113
 
 ***
 
@@ -22,4 +22,4 @@ Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog
 
 > `readonly` **payload**: `Uint8Array`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:109
+Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:114

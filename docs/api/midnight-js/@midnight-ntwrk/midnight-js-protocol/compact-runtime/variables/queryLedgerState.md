@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > `const` **queryLedgerState**: (`circuitContext`, `partialProofData`, `program`) => [`AlignedValue`](../../onchain-runtime/type-aliases/AlignedValue.md) \| `undefined`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:224
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:242
 
 Runs a program (query) against the current ledger state in the given circuit context. Records the transcript in the
 given partial proof data.
