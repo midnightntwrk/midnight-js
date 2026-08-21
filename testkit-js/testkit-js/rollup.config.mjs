@@ -21,7 +21,7 @@ import packageJson from './package.json' with { type: 'json' };
 
 const FIXTURE_SOURCE = 'src/fixtures/hf';
 const FIXTURE_TARGET = 'dist/fixtures/hf';
-const ACCESSOR_BUNDLE = 'dist/fixtures-hf.js';
+const ACCESSOR_ENTRY = 'fixtures-hf';
 
 // Dev-only: they import the ledger devDependencies, which a consumer of the
 // published package does not get. Everything else -- the state bytes, both
@@ -44,9 +44,14 @@ const config = createRollupConfig(packageJson);
 // The assets belong to the entry that reads them, so they are copied by the
 // pass that emits it. Throwing beats silently shipping an accessor with no
 // bytes next to it, should the entry ever be renamed.
-const accessorBundle = config.find(({ output }) => output.some(({ file }) => file === ACCESSOR_BUNDLE));
+//
+// The factory bundles every JS entry in one pass, keyed by entry name
+// (`input: { index, 'fixtures-hf' }`, `output.dir: 'dist'`), so the accessor is
+// found by its entry key. The declaration-only passes take a string `input`,
+// for which `Object.hasOwn` is false, and are skipped.
+const accessorBundle = config.find(({ input }) => Object.hasOwn(input, ACCESSOR_ENTRY));
 if (!accessorBundle) {
-  throw new Error(`no rollup entry emits ${ACCESSOR_BUNDLE}; the "./fixtures-hf" exports subpath is missing`);
+  throw new Error(`no rollup entry is keyed "${ACCESSOR_ENTRY}"; the "./fixtures-hf" exports subpath is missing`);
 }
 accessorBundle.plugins = [...accessorBundle.plugins, copyFixtureAssets];
 
