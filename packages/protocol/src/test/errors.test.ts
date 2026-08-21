@@ -100,6 +100,10 @@ describe('Ledger8RuntimeMissingError', () => {
     expect(error.cause).toBe(cause);
     expect(error.message).toContain('midnight-js-protocol/v8');
     expect(error.message).toContain('reinstall');
+    // Self-reference, so it must name no scope at all: the dual-publish renames
+    // this package in `package.json` but never in a compiled string, and the
+    // subpath alone identifies the import under either scope.
+    expect(packageNamesIn(error.message)).toEqual([]);
   });
 });
 
@@ -148,7 +152,7 @@ describe('instanceof', () => {
 });
 
 describe('Ledger8InstanceMismatchError', () => {
-  it('carries the LEDGER8_INSTANCE_MISMATCH code, names the axis, and remediates with yarn why', () => {
+  it('carries the LEDGER8_INSTANCE_MISMATCH code, names the axis, and remediates tool-agnostically', () => {
     const error = new Ledger8InstanceMismatchError('onchain-runtime-v3');
 
     expect(error).toBeInstanceOf(Error);

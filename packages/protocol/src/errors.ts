@@ -81,7 +81,7 @@ export class Ledger8RuntimeMissingError extends Error {
 
   constructor(cause: unknown) {
     super(
-      'Failed to load the v8 ledger runtime via @midnight-ntwrk/midnight-js-protocol/v8. ' +
+      'Failed to load the v8 ledger runtime via the midnight-js-protocol/v8 subpath export. ' +
         'This usually means a broken or partial install of the protocol package — reinstall dependencies and retry.',
       { cause }
     );
