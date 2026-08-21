@@ -1,0 +1,92 @@
+[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [contracts](../README.md) / UnsubmittedCallTxData
+
+# Interface: UnsubmittedCallTxData\<C, PCK\>
+
+Defined in: packages/contracts/dist/index.d.ts:626
+
+Contains all information resulting from circuit execution.
+
+## Remarks
+
+**Privacy-sensitive type.** The `private` field is a
+[CallResultPrivate](CallResultPrivate.md) carrying ZK-confidential data. Treat the whole
+object as confidential when logging, serializing, or transmitting — read
+only the `public` field or destructure specific non-sensitive fields rather
+than spreading or stringifying the whole object.
+
+## Extends
+
+- [`CallResult`](CallResult.md)\<`C`, `PCK`\>
+
+## Extended by
+
+- [`FinalizedCallTxData`](FinalizedCallTxData.md)
+
+## Type Parameters
+
+### C
+
+`C` *extends* [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+
+### PCK
+
+`PCK` *extends* [`ProvableCircuitId`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<`C`\>
+
+## Properties
+
+### calls
+
+> `readonly` **calls**: readonly [`ContractCall`](../../../midnight-js-protocol/compact-js/namespaces/ContractExecutable/namespaces/ContractExecutable/type-aliases/ContractCall.md)[]
+
+Defined in: packages/contracts/dist/index.d.ts:186
+
+Proof data for every contract call made while executing the circuit, in execution-trace order:
+cross-contract callees first, the root call last. For a circuit that performs no cross-contract
+calls this contains a single entry (the root). Consistent with `compact-js`'s
+`ContractExecutable.CallResult.calls`.
+
+#### Remarks
+
+**Privacy-sensitive.** Each entry carries ZK input/output and private transcript data
+for a call in the tree. Treat as confidential alongside [private](CallResult.md#private).
+
+#### Inherited from
+
+[`CallResult`](CallResult.md).[`calls`](CallResult.md#calls)
+
+***
+
+### private
+
+> `readonly` **private**: [`UnsubmittedCallTxPrivateData`](UnsubmittedCallTxPrivateData.md)\<`C`, `PCK`\>
+
+Defined in: packages/contracts/dist/index.d.ts:630
+
+Private data relevant to this call transaction.
+
+#### Overrides
+
+[`CallResult`](CallResult.md).[`private`](CallResult.md#private)
+
+***
+
+### public
+
+> `readonly` **public**: [`CallResultPublic`](CallResultPublic.md)
+
+Defined in: packages/contracts/dist/index.d.ts:170
+
+The public/non-sensitive data produced by the circuit execution.
+
+#### Remarks
+
+Describes the **root** contract call (the circuit that was invoked). It is the
+application-facing view; equivalent to the last entry of [calls](CallResult.md#calls).
+
+#### Inherited from
+
+[`CallResult`](CallResult.md).[`public`](CallResult.md#public)

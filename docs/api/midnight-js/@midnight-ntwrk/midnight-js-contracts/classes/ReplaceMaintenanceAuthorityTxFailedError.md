@@ -22,7 +22,7 @@ An error indicating that a contract maintenance authority replacement transactio
 
 ##### finalizedTxData
 
-`FinalizedTxData`
+[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md)
 
 #### Returns
 
@@ -50,7 +50,7 @@ The name of the circuit that was called to create the call
 
 ### finalizedTxData
 
-> `readonly` **finalizedTxData**: `FinalizedTxData`
+> `readonly` **finalizedTxData**: [`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md)
 
 The finalization data of the transaction that failed.
 

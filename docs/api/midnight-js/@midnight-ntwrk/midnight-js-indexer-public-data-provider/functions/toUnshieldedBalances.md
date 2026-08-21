@@ -6,7 +6,7 @@
 
 # Function: toUnshieldedBalances()
 
-> **toUnshieldedBalances**(`contractBalances`): `UnshieldedBalances`
+> **toUnshieldedBalances**(`contractBalances`): [`UnshieldedBalances`](../../midnight-js/types/type-aliases/UnshieldedBalances.md)
 
 ## Parameters
 
@@ -16,4 +16,4 @@ readonly `ContractBalance`[]
 
 ## Returns
 
-`UnshieldedBalances`
+[`UnshieldedBalances`](../../midnight-js/types/type-aliases/UnshieldedBalances.md)

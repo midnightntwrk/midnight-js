@@ -6,7 +6,7 @@
 
 # Function: submitTx()
 
-> **submitTx**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<`FinalizedTxData`\>
+> **submitTx**\<`C`, `PCK`\>(`providers`, `options`): `Promise`\<[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md)\>
 
 Proves, balances, and submits an unproven deployment or call transaction using
 the given providers, according to the given options.
@@ -43,7 +43,7 @@ finalization handling and timeout control.
 
 ### C
 
-`C` *extends* `Any`
+`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
 
 ### PCK
 
@@ -65,7 +65,7 @@ Configuration.
 
 ## Returns
 
-`Promise`\<`FinalizedTxData`\>
+`Promise`\<[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md)\>
 
 A promise that resolves with the finalized transaction data for the invocation,
          or rejects if an error occurs along the way.

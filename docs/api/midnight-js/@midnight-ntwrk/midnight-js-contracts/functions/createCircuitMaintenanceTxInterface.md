@@ -14,7 +14,7 @@ Creates a [CircuitMaintenanceTxInterface](../interfaces/CircuitMaintenanceTxInte
 
 ### C
 
-`C` *extends* `Any`
+`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
 
 ### PCK
 
@@ -36,7 +36,7 @@ The circuit ID the interface is for.
 
 ### compiledContract
 
-`CompiledContract`\<`C`, `any`\>
+[`CompiledContract`](../../midnight-js-protocol/compact-js/namespaces/CompiledContract/interfaces/CompiledContract.md)\<`C`, `any`\>
 
 ### contractAddress
 

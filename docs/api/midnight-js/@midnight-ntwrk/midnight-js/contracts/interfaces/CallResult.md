@@ -1,0 +1,80 @@
+[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [contracts](../README.md) / CallResult
+
+# Interface: CallResult\<C, PCK\>
+
+Defined in: packages/contracts/dist/index.d.ts:163
+
+Contains all information resulting from circuit execution.
+
+## Remarks
+
+**Privacy-sensitive type.** The `private` field is a
+[CallResultPrivate](CallResultPrivate.md) carrying ZK-confidential data. Treat the whole
+object as confidential when logging, serializing, or transmitting — read
+only the `public` field or destructure specific non-sensitive fields rather
+than spreading or stringifying the whole object.
+
+## Extended by
+
+- [`UnsubmittedCallTxData`](UnsubmittedCallTxData.md)
+
+## Type Parameters
+
+### C
+
+`C` *extends* [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+
+### PCK
+
+`PCK` *extends* [`ProvableCircuitId`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<`C`\>
+
+## Properties
+
+### calls
+
+> `readonly` **calls**: readonly [`ContractCall`](../../../midnight-js-protocol/compact-js/namespaces/ContractExecutable/namespaces/ContractExecutable/type-aliases/ContractCall.md)[]
+
+Defined in: packages/contracts/dist/index.d.ts:186
+
+Proof data for every contract call made while executing the circuit, in execution-trace order:
+cross-contract callees first, the root call last. For a circuit that performs no cross-contract
+calls this contains a single entry (the root). Consistent with `compact-js`'s
+`ContractExecutable.CallResult.calls`.
+
+#### Remarks
+
+**Privacy-sensitive.** Each entry carries ZK input/output and private transcript data
+for a call in the tree. Treat as confidential alongside [private](#private).
+
+***
+
+### private
+
+> `readonly` **private**: [`CallResultPrivate`](CallResultPrivate.md)\<`C`, `PCK`\>
+
+Defined in: packages/contracts/dist/index.d.ts:176
+
+The private/sensitive data produced by the circuit execution.
+
+#### Remarks
+
+Describes the **root** contract call. Equivalent to the last entry of [calls](#calls).
+
+***
+
+### public
+
+> `readonly` **public**: [`CallResultPublic`](CallResultPublic.md)
+
+Defined in: packages/contracts/dist/index.d.ts:170
+
+The public/non-sensitive data produced by the circuit execution.
+
+#### Remarks
+
+Describes the **root** contract call (the circuit that was invoked). It is the
+application-facing view; equivalent to the last entry of [calls](#calls).
