@@ -14,7 +14,7 @@ Fetches only the public visible (Zswap and ledger) states of a contract.
 
 ### publicDataProvider
 
-[`PublicDataProvider`](#)
+[`PublicDataProvider`](../../midnight-js/types/interfaces/PublicDataProvider.md)
 
 The provider to use to fetch the public states (Zswap and ledger)
                           from the blockchain.

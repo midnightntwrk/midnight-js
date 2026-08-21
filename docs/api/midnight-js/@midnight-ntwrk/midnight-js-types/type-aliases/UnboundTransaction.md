@@ -6,4 +6,4 @@
 
 # Type Alias: UnboundTransaction
 
-> **UnboundTransaction** = `Transaction`\<`SignatureEnabled`, `Proof`, `PreBinding`\>
+> **UnboundTransaction** = [`Transaction`](../../midnight-js/types/classes/Transaction.md)\<[`SignatureEnabled`](../../midnight-js-protocol/ledger/classes/SignatureEnabled.md), [`Proof`](../../midnight-js-protocol/ledger/classes/Proof.md), [`PreBinding`](../../midnight-js-protocol/ledger/classes/PreBinding.md)\>

@@ -6,7 +6,7 @@
 
 # Function: toUnshieldedUtxos()
 
-> **toUnshieldedUtxos**(`createdUtxo`, `spentUtxo`): `UnshieldedUtxos`
+> **toUnshieldedUtxos**(`createdUtxo`, `spentUtxo`): [`UnshieldedUtxos`](../../midnight-js/types/type-aliases/UnshieldedUtxos.md)
 
 ## Parameters
 
@@ -20,4 +20,4 @@ readonly [`IndexerUtxo`](../type-aliases/IndexerUtxo.md)[]
 
 ## Returns
 
-`UnshieldedUtxos`
+[`UnshieldedUtxos`](../../midnight-js/types/type-aliases/UnshieldedUtxos.md)
