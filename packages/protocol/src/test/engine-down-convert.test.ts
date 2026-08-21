@@ -380,8 +380,8 @@ describe('structurallyEqual', () => {
 // Compile-time drift detector. If a vendor bump ever changes the wire shape of
 // EncodedStateValue, Op, or AlignedValue between the pre-fork
 // (onchain-runtime-v3) and post-fork (ledger-v9) packages this engine bridges,
-// this block stops compiling. It is a real gate because CI type-checks test
-// files (`typecheck:tests`); it is deliberately not paired with a runtime
+// this block stops compiling. It is enforced by `yarn typecheck:tests`, which
+// the pre-push hook runs; it is deliberately not paired with a runtime
 // assertion, since any such assertion would be a tautology after erasure.
 type AssertEqual<A, B> = (<T>() => T extends A ? 1 : 0) extends <T>() => T extends B ? 1 : 0 ? true : false;
 type Expect<T extends true> = T;
