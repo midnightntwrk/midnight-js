@@ -108,7 +108,13 @@ export const createLedger8Engine = async (): Promise<Ledger8Engine> => {
 
   assertSharedLedger8Instance('onchain-runtime-v3', ocrt3.ChargedState, glue.ChargedState);
 
+  // `ContractState` comes from ocrt3 while the other two come from the glue.
+  // That is sound only because the assertion above has already established the
+  // two are one physical copy: had they been distinct, it would have thrown
+  // rather than let a mixed runtime be assembled here. The member is what pins
+  // this object to the pre-fork era -- see `Ledger8CompactRuntime`.
   const ledger8CompactRuntime: Ledger8CompactRuntime = {
+    ContractState: ocrt3.ContractState,
     StateValue: glue.StateValue,
     ChargedState: glue.ChargedState
   };

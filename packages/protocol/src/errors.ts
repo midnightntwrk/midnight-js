@@ -24,7 +24,8 @@ export const PROTOCOL_ERROR_CODES = Object.freeze({
   LEDGER8_COMPOSE_FAILED: 'MIDNIGHT_JS_P_LEDGER8_COMPOSE_FAILED',
   LEDGER8_COMPOSE_OPTION_INVALID: 'MIDNIGHT_JS_P_LEDGER8_COMPOSE_OPTION_INVALID',
   LEDGER8_ZSWAP_UNSUPPORTED: 'MIDNIGHT_JS_P_LEDGER8_ZSWAP_UNSUPPORTED',
-  UNKNOWN_LEDGER_VERSION: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION'
+  UNKNOWN_LEDGER_VERSION: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION',
+  LEDGER8_RUNTIME_INVALID: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_INVALID'
 } as const);
 export type ProtocolErrorCode = (typeof PROTOCOL_ERROR_CODES)[keyof typeof PROTOCOL_ERROR_CODES];
 
@@ -475,6 +476,38 @@ export class Ledger8ComposeOptionError extends Error {
  * "never renders caller-supplied text" property is only worth having if it
  * holds here too.
  */
+/**
+ * Thrown by `extractEncodedStateValue` (`lib/engine/envelope.ts`) when the
+ * injected pre-fork runtime cannot be used — it was not passed at all, or the
+ * binding the decoder needs is absent from it.
+ *
+ * Separate from {@link DownConvertFailedError} because the remediation is
+ * unrelated: nothing is wrong with the caller's input. Folding this into a
+ * down-convert failure would name an extraction stage and tell the caller to
+ * read a cause describing tag mismatches and truncation, sending them to audit
+ * data that is perfectly good. It is also distinct from
+ * {@link Ledger8RuntimeMissingError}, which reports a *failed acquisition* of
+ * the v8 chunk; this one reports a runtime that was acquired, or assembled by
+ * hand, and then handed over incomplete.
+ *
+ * Like {@link UnknownLedgerVersionError}, a TypeScript caller cannot produce
+ * this — it exists for the untyped JavaScript consumers this package also
+ * serves. `missingMember` names the absent binding; it is one of this module's
+ * own literals rather than caller-supplied text, so exposing it leaks nothing.
+ */
+export class Ledger8RuntimeInvalidError extends Error {
+  readonly code = PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_INVALID;
+
+  constructor(readonly missingMember: string) {
+    super(
+      'The ledger-8 runtime handed to the down-convert engine cannot be used: the binding it needs is missing. ' +
+        'Acquire the runtime with loadLedger8() and pass the pre-fork ContractState class it exposes instead of ' +
+        'assembling the runtime object by hand. Read `missingMember` on this error for the absent member.'
+    );
+    this.name = 'Ledger8RuntimeInvalidError';
+  }
+}
+
 export class UnknownLedgerVersionError extends Error {
   readonly code = PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION;
 

@@ -23,6 +23,7 @@ import {
   Ledger8ComposeFailedError,
   Ledger8ComposeOptionError,
   Ledger8InstanceMismatchError,
+  Ledger8RuntimeInvalidError,
   Ledger8RuntimeMissingError,
   Ledger8ZswapUnsupportedError,
   MerkleNotRehashedError,
@@ -56,7 +57,8 @@ describe('PROTOCOL_ERROR_CODES', () => {
       LEDGER8_COMPOSE_FAILED: 'MIDNIGHT_JS_P_LEDGER8_COMPOSE_FAILED',
       LEDGER8_COMPOSE_OPTION_INVALID: 'MIDNIGHT_JS_P_LEDGER8_COMPOSE_OPTION_INVALID',
       LEDGER8_ZSWAP_UNSUPPORTED: 'MIDNIGHT_JS_P_LEDGER8_ZSWAP_UNSUPPORTED',
-      UNKNOWN_LEDGER_VERSION: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION'
+      UNKNOWN_LEDGER_VERSION: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION',
+      LEDGER8_RUNTIME_INVALID: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_INVALID'
     });
   });
 
@@ -454,6 +456,30 @@ describe('Ledger8ZswapUnsupportedError', () => {
   it('never includes a hex or byte dump in its own message', () => {
     const error = new Ledger8ZswapUnsupportedError('send');
 
+    expect(error.message).not.toMatch(/[0-9a-f]{16,}/i);
+  });
+});
+
+describe('Ledger8RuntimeInvalidError', () => {
+  // A caller that never passed the pre-fork runtime, or passed one missing the
+  // binding, is a distinct fault from bad envelope bytes and has a distinct
+  // remediation. It therefore needs its own code: reporting it as
+  // DOWN_CONVERT_FAILED points the caller at bytes that are fine.
+  it('carries its own code and names the member that was missing', () => {
+    const error = new Ledger8RuntimeInvalidError('deserialize');
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error.name).toBe('Ledger8RuntimeInvalidError');
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_INVALID);
+    expect(error.missingMember).toBe('deserialize');
+    expect(error.code).not.toBe(PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED);
+  });
+
+  it('points at the acquisition path rather than at the input bytes', () => {
+    const error = new Ledger8RuntimeInvalidError('deserialize');
+
+    expect(error.message).toMatch(/loadLedger8/);
+    expect(error.message).not.toMatch(/byte|envelope/i);
     expect(error.message).not.toMatch(/[0-9a-f]{16,}/i);
   });
 });
