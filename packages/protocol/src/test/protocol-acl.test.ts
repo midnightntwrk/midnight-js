@@ -73,6 +73,7 @@ describe('Protocol ACL package', () => {
         'ledger',
         'LEDGER_VERSIONS',
         'Ledger8InstanceMismatchError',
+        'Ledger8RuntimeInvalidError',
         'Ledger8RuntimeMissingError',
         'loadLedger8',
         'MerkleNotRehashedError',

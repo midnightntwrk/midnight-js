@@ -20,12 +20,27 @@ import { type Ledger8InstanceAxis, Ledger8InstanceMismatchError } from '../../er
  * engine depends on, along one named `axis`.
  *
  * A duplicate install resolves to two physically distinct module instances —
- * same shape, different WASM linear memory, different classes. Handing an
- * object from one copy to the other's classes does fail, and loudly:
- * wasm-bindgen's `_assertClass` throws `expected instance of <Class>`. But it
- * throws deep inside a decode, naming neither the package nor the duplicate
- * install. This guard exists to detect the condition where it can be
- * explained, not to detect a failure that would otherwise pass silently.
+ * same shape, different WASM linear memory, different classes. What happens
+ * when they mix depends on which position the foreign object is in, and only
+ * one of the two is checked:
+ *
+ * - As an **argument** to a wasm-bound function, wasm-bindgen emits
+ *   `_assertClass`, which throws `expected instance of <Class>`. Loud, though
+ *   deep inside a decode and naming neither the package nor the duplicate
+ *   install.
+ * - As the **receiver** of a wasm-bound method, nothing is checked. The glue
+ *   reads `this.__wbg_ptr` and calls into its own linear memory with a pointer
+ *   that belongs to the other copy's heap. Measured on the pinned version, that
+ *   returns a plausible, wrong value: a cell built in one copy read back
+ *   through the other's `encode()` yields different bytes with no error, and
+ *   `type()` still reports the correct variant. Whether it happens to come back
+ *   right depends on how the two heaps line up, so it is not reliably
+ *   reproducible — and a test that passes proves nothing about production.
+ *
+ * So this guard is not only a diagnosis-improver. For the receiver direction it
+ * is the only thing standing between a duplicate install and silently wrong
+ * contract state, which is why it must run before any state crosses the bridge
+ * rather than being treated as optional belt-and-braces.
  *
  * Reference equality is the probe: two references to the *same* physical copy
  * are always `===`; two sourced from different physical copies never are,

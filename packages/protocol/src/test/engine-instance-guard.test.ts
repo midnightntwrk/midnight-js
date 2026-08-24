@@ -72,7 +72,9 @@ describe('assertSharedLedger8Instance', () => {
 
   // Both published names, not one: the dual-publish rewrites dependency scopes
   // at pack time, so a consumer installed from either scope must find their own
-  // name in the hint. See AXIS_PACKAGE_NAMES in `errors.ts`.
+  // name in the hint. See `axisPackageNames` in `errors.ts`, which joins the
+  // scopes in `PUBLISHED_SCOPES` onto the bare names in
+  // `AXIS_BARE_PACKAGE_NAMES`.
   it('names every published npm package, not the axis label, in the remediation hint', () => {
     try {
       assertSharedLedger8Instance('onchain-runtime-v3', onchainRuntimeV3.ChargedState, onchainRuntimeV3Alt.ChargedState);
@@ -108,6 +110,7 @@ describe('a dual-instantiation reaching the down-convert', () => {
   // whose contract is code-based discrimination.
   it('fails with a coded DownConvertFailedError rather than corrupt data', () => {
     const mixedRuntime: Ledger8CompactRuntime = {
+      ContractState: onchainRuntimeV3.ContractState,
       StateValue: onchainRuntimeV3.StateValue,
       ChargedState: onchainRuntimeV3Alt.ChargedState
     };
