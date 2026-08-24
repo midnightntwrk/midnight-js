@@ -68,7 +68,8 @@ export default defineConfig({
         'src/lib/era/compose-types.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/era/contract-state.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/era/era.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
-        'src/lib/era/load-era.ts': { lines: 100, functions: 100, branches: 100, statements: 100 }
+        'src/lib/era/load-era.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/lib/era/unshielded.ts': { lines: 100, functions: 100, branches: 100, statements: 100 }
       }
     },
     reporters: [
