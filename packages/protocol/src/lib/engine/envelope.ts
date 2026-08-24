@@ -16,7 +16,7 @@
 import type { ContractState as OnchainContractStateV3 } from '@midnight-ntwrk/onchain-runtime-v3';
 import { ContractState as LedgerContractStateV9, type EncodedStateValue } from '@midnightntwrk/ledger-v9';
 
-import { DownConvertFailedError } from '../../errors';
+import { DownConvertFailedError, UnknownLedgerVersionError } from '../../errors';
 import type { LedgerVersion } from '../../version';
 
 export type { EncodedStateValue };
@@ -26,15 +26,18 @@ export type { EncodedStateValue };
  * to read a `contract-state[v6]` envelope.
  *
  * Injected rather than imported as a value for the same reason
- * `Ledger8CompactRuntime` is: every pre-fork package must reach this process
- * through `loadLedger8()`'s lazy acquisition path, so that a v9-only consumer
- * never links the retained pre-fork WASM. A value import here would statically
- * link it into whatever bundle reaches this module; the type-only import above
- * is erased and links nothing. The `dist-laziness` suite holds that line.
+ * `Ledger8CompactRuntime` is: a value import would statically link the
+ * retained pre-fork WASM into whatever bundle reaches this module, so a
+ * v9-only consumer would pay for a runtime it never calls. The type-only
+ * import above is erased and links nothing, leaving the pre-fork packages to
+ * reach this process through a lazy acquisition path the caller owns. The
+ * `dist-laziness` suite holds that line.
  */
 export interface Ledger8ContractState {
   readonly deserialize: (raw: Uint8Array) => OnchainContractStateV3;
 }
+
+type EnvelopeDecoder = (raw: Uint8Array, ledger8ContractState: Ledger8ContractState) => EncodedStateValue;
 
 /**
  * One decoder per {@link LedgerVersion}. A `Record` rather than a ternary so
@@ -45,15 +48,25 @@ export interface Ledger8ContractState {
  * - `v9` — a post-fork `contract-state[v8]`-tagged envelope, read via
  *   `@midnightntwrk/ledger-v9`.
  * - `v8` — a pre-fork `contract-state[v6]`-tagged envelope, read via
- *   `@midnight-ntwrk/onchain-runtime-v3`, the same codec that produced it
- *   (`compact-runtime@0.16` re-exports that package's `ContractState`
- *   unchanged).
+ *   onchain-runtime-v3, the same codec that produced it.
+ *
+ * Built on a null prototype, and frozen. Both matter: this table is indexed by
+ * a value that is only type-checked for TypeScript callers, and a plain object
+ * literal resolves an unexpected key through `Object.prototype` — `'toString'`
+ * would return the string `'[object Object]'` and `'constructor'` would hand
+ * the caller's own raw bytes straight back, both typed as an
+ * `EncodedStateValue` and neither throwing. The freeze matches the discipline
+ * `errors.ts` applies to its own tables: the one table whose mutation would
+ * reroute contract-state bytes to the wrong era's codec should not be the one
+ * left writable.
  */
-const ENVELOPE_DECODERS = {
-  v8: (raw: Uint8Array, ledger8ContractState: Ledger8ContractState): EncodedStateValue =>
-    ledger8ContractState.deserialize(raw).data.state.encode(),
-  v9: (raw: Uint8Array): EncodedStateValue => LedgerContractStateV9.deserialize(raw).data.state.encode()
-} as const satisfies Record<LedgerVersion, (raw: Uint8Array, ledger8ContractState: Ledger8ContractState) => EncodedStateValue>;
+const ENVELOPE_DECODERS: Readonly<Record<LedgerVersion, EnvelopeDecoder>> = Object.freeze(
+  Object.assign(Object.create(null) as Record<LedgerVersion, EnvelopeDecoder>, {
+    v8: (raw: Uint8Array, ledger8ContractState: Ledger8ContractState): EncodedStateValue =>
+      ledger8ContractState.deserialize(raw).data.state.encode(),
+    v9: (raw: Uint8Array): EncodedStateValue => LedgerContractStateV9.deserialize(raw).data.state.encode()
+  } satisfies Record<LedgerVersion, EnvelopeDecoder>)
+);
 
 /**
  * Extracts the primary {@link EncodedStateValue} out of a raw, serialized
@@ -70,14 +83,26 @@ const ENVELOPE_DECODERS = {
  * `ledger8ContractState` is required for every `version`, not just `'v8'`:
  * making it optional would let a caller reach the `v8` branch with
  * `undefined` and fail with a `TypeError` instead of at the call site.
+ *
+ * `version` is validated before it is used, rather than trusted from the type
+ * signature. TypeScript cannot vouch for it here — this package is published
+ * and consumed from plain JavaScript too, and the value is derived from
+ * network data. Validating first is also what keeps `stage` inside its closed
+ * union: it is built from `version`, so an unvalidated string would otherwise
+ * reach a field whose whole contract is that consumers can `switch` on it.
  */
 export const extractEncodedStateValue = (
   raw: Uint8Array,
   version: LedgerVersion,
   ledger8ContractState: Ledger8ContractState
 ): EncodedStateValue => {
+  const decoder = ENVELOPE_DECODERS[version];
+  if (typeof decoder !== 'function') {
+    throw new UnknownLedgerVersionError(String(version));
+  }
+
   try {
-    return ENVELOPE_DECODERS[version](raw, ledger8ContractState);
+    return decoder(raw, ledger8ContractState);
   } catch (cause) {
     throw new DownConvertFailedError(`${version} envelope extraction`, cause);
   }

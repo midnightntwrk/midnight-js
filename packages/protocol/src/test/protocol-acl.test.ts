@@ -81,6 +81,7 @@ describe('Protocol ACL package', () => {
         'platform',
         'PROTOCOL_ERROR_CODES',
         'protocolVersionToLedger',
+        'UnknownLedgerVersionError',
         'UnknownProtocolVersionError',
         'versionOfRecord',
       ]);
