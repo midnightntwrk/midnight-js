@@ -31,6 +31,14 @@ import { type Ledger8InstanceAxis, Ledger8InstanceMismatchError } from '../../er
  * are always `===`; two sourced from different physical copies never are,
  * even at the same package version.
  *
+ * Pass a **shared binding** — a class the package exports, such as
+ * `ChargedState` or `StateValue` — never a module namespace object. A
+ * namespace is per-module, so a re-export produces a different one even when
+ * there is exactly one physical copy behind it; comparing namespaces would
+ * report a mismatch on a healthy install and send the user hunting a duplicate
+ * that does not exist. A re-export preserves the identity of the binding
+ * itself, which is why the binding is the sound probe and the namespace is not.
+ *
  * Both probes are compared symmetrically — there is no expected side — so the
  * two arguments are interchangeable. What matters is that they are obtained
  * from **two different acquisition paths** (two distinct import specifiers,

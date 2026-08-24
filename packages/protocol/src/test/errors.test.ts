@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -24,6 +27,7 @@ import {
   Ledger8ZswapUnsupportedError,
   MerkleNotRehashedError,
   PROTOCOL_ERROR_CODES,
+  UnknownLedgerVersionError,
   UnknownProtocolVersionError
 } from '../errors';
 
@@ -51,12 +55,34 @@ describe('PROTOCOL_ERROR_CODES', () => {
       MERKLE_NOT_REHASHED: 'MIDNIGHT_JS_P_MERKLE_NOT_REHASHED',
       LEDGER8_COMPOSE_FAILED: 'MIDNIGHT_JS_P_LEDGER8_COMPOSE_FAILED',
       LEDGER8_COMPOSE_OPTION_INVALID: 'MIDNIGHT_JS_P_LEDGER8_COMPOSE_OPTION_INVALID',
-      LEDGER8_ZSWAP_UNSUPPORTED: 'MIDNIGHT_JS_P_LEDGER8_ZSWAP_UNSUPPORTED'
+      LEDGER8_ZSWAP_UNSUPPORTED: 'MIDNIGHT_JS_P_LEDGER8_ZSWAP_UNSUPPORTED',
+      UNKNOWN_LEDGER_VERSION: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION'
     });
   });
 
   it('is frozen', () => {
     expect(Object.isFrozen(PROTOCOL_ERROR_CODES)).toBe(true);
+  });
+});
+
+// The dual-publish (.github/scripts/publish-public-npm.mjs) rewrites
+// `@midnight-ntwrk/` -> `@midnightntwrk/` inside built .js/.d.ts files, not
+// only in package.json. Any scoped package name written as a single literal
+// here therefore ships rewritten: two names that differ only by scope collapse
+// into one, and a remediation hint that names both scopes silently degrades to
+// naming one of them twice. The scope fragments must stay separated from the
+// `/` so the rewrite has nothing to match.
+describe('resilience to the dual-publish scope rewrite', () => {
+  const source = readFileSync(resolve(__dirname, '../errors.ts'), 'utf8');
+
+  it('holds no scoped package literal that the pack-time rewrite would collapse', () => {
+    expect(source).not.toContain('@midnight-ntwrk/');
+  });
+
+  it('names two distinct scopes in the remediation hint, not one twice', () => {
+    const names = packageNamesIn(new Ledger8InstanceMismatchError('onchain-runtime-v3').message);
+
+    expect(new Set(names).size).toBe(names.length);
   });
 });
 
@@ -218,6 +244,41 @@ describe('MerkleNotRehashedError', () => {
     expect(error.code).toBe(PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED);
     expect(error.message).toMatch(/rehash/i);
     expect(error.message).not.toMatch(/[0-9a-f]{16,}/i);
+  });
+
+  // The vendor binding for root() is fallible: it rethrows a Rust Err rather
+  // than always resolving to a value or undefined. That throw has to keep the
+  // MERKLE_NOT_REHASHED code instead of being demoted to a generic
+  // down-convert failure, so the class must be able to carry a cause.
+  it('preserves a wrapped cause when the vendor accessor threw', () => {
+    const cause = new Error('tree not rehashed');
+
+    const error = new MerkleNotRehashedError(cause);
+
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED);
+    expect(error.cause).toBe(cause);
+  });
+});
+
+describe('UnknownLedgerVersionError', () => {
+  it('carries the UNKNOWN_LEDGER_VERSION code and names the supported eras', () => {
+    const error = new UnknownLedgerVersionError('v10');
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error.name).toBe('UnknownLedgerVersionError');
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION);
+    expect(error.message).toContain('v8');
+    expect(error.message).toContain('v9');
+  });
+
+  // The requested value reaches this class from an untyped JS caller, so it is
+  // the one input the engine cannot vouch for. It is exposed as a field for
+  // programmatic use and deliberately kept out of the message.
+  it('exposes the requested version without rendering it in the message', () => {
+    const error = new UnknownLedgerVersionError('__proto__');
+
+    expect(error.requestedVersion).toBe('__proto__');
+    expect(error.message).not.toContain('__proto__');
   });
 });
 
