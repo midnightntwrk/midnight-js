@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Interface: EncodedZswapLocalState
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:94
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:110
 
 Tracks the coins consumed and produced throughout circuit execution.
 
@@ -16,7 +16,7 @@ Tracks the coins consumed and produced throughout circuit execution.
 
 > **coinPublicKey**: [`EncodedCoinPublicKey`](EncodedCoinPublicKey.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:98
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:114
 
 The Zswap coin public key of the user executing the circuit.
 
@@ -26,7 +26,7 @@ The Zswap coin public key of the user executing the circuit.
 
 > **currentIndex**: `bigint`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:102
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:118
 
 The Merkle tree index of the next coin produced.
 
@@ -36,7 +36,7 @@ The Merkle tree index of the next coin produced.
 
 > **inputs**: [`EncodedQualifiedShieldedCoinInfo`](EncodedQualifiedShieldedCoinInfo.md)[]
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:106
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:122
 
 The coins consumed as inputs to the circuit.
 
@@ -46,7 +46,7 @@ The coins consumed as inputs to the circuit.
 
 > **outputs**: `object`[]
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:110
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:126
 
 The coins produced as outputs from the circuit.
 

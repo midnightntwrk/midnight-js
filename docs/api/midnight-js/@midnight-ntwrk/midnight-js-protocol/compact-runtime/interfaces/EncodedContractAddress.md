@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Interface: EncodedContractAddress
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:40
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:56
 
 A [ContractAddress](../../onchain-runtime/type-aliases/ContractAddress.md) encoded as a byte string. This representation is used internally by the contract executable.
 
@@ -16,6 +16,6 @@ A [ContractAddress](../../onchain-runtime/type-aliases/ContractAddress.md) encod
 
 > `readonly` **bytes**: `Uint8Array`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:44
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:60
 
 The contract address's bytes.

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -8,6 +8,6 @@
 
 > `const` **CONTRACT\_ADDRESS\_BYTE\_LENGTH**: `32` = `32`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/utils.d.ts:10
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/utils.d.ts:12
 
 The expected length (in bytes) of a contract address.

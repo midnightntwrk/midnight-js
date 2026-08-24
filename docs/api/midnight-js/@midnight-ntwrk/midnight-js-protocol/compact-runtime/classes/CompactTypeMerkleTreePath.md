@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Class: CompactTypeMerkleTreePath\<A\>
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:98
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:81
 
 Runtime type of [MerkleTreePath](../interfaces/MerkleTreePath.md)
 
@@ -26,7 +26,7 @@ Runtime type of [MerkleTreePath](../interfaces/MerkleTreePath.md)
 
 > **new CompactTypeMerkleTreePath**\<`A`\>(`n`, `leaf`): `CompactTypeMerkleTreePath`\<`A`\>
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:101
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:84
 
 #### Parameters
 
@@ -48,7 +48,7 @@ Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.t
 
 > `readonly` **leaf**: [`CompactType`](../interfaces/CompactType.md)\<`A`\>
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:99
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:82
 
 ***
 
@@ -56,7 +56,7 @@ Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.t
 
 > `readonly` **path**: [`CompactTypeVector`](CompactTypeVector.md)\<[`MerkleTreePathEntry`](../interfaces/MerkleTreePathEntry.md)\>
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:100
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:83
 
 ## Methods
 
@@ -64,7 +64,7 @@ Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.t
 
 > **alignment**(): [`Alignment`](../../onchain-runtime/type-aliases/Alignment.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:102
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:85
 
 The field-aligned binary alignment of this type.
 
@@ -82,7 +82,7 @@ The field-aligned binary alignment of this type.
 
 > **fromValue**(`value`): [`MerkleTreePath`](../interfaces/MerkleTreePath.md)\<`A`\>
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:103
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:86
 
 Converts this type's field-aligned binary representation to its TypeScript
 representation destructively; (partially) consuming the input, and
@@ -108,7 +108,7 @@ ignoring superflous data for chaining.
 
 > **toValue**(`value`): [`Value`](../../onchain-runtime/type-aliases/Value.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:104
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:87
 
 Converts this type's TypeScript representation to its field-aligned binary
 representation

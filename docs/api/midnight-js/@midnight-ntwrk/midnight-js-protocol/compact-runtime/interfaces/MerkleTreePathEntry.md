@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Interface: MerkleTreePathEntry
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:50
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:58
 
 An entry in a Merkle path. TypeScript representation of the Compact type of
 the same name.
@@ -17,7 +17,7 @@ the same name.
 
 > `readonly` **goes\_left**: `boolean`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:52
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:60
 
 ***
 
@@ -25,4 +25,4 @@ Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.t
 
 > `readonly` **sibling**: [`MerkleTreeDigest`](MerkleTreeDigest.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:51
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:59

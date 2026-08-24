@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > `const` **encodeRecipient**: (`{ is_left, left, right }`) => [`EncodedRecipient`](../interfaces/EncodedRecipient.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:125
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:141
 
 Converts an [Recipient](../interfaces/Recipient.md) to an [EncodedRecipient](../interfaces/EncodedRecipient.md). Useful for testing.
 
