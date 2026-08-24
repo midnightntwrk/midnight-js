@@ -47,8 +47,14 @@ describe.skipIf(!distIndexExists)('dist laziness gate', () => {
   // Both halves of the retained pre-fork stack, not just ledger-v8:
   // onchain-runtime-v3 is a runtime dependency of this package and carries its
   // own multi-megabyte WASM, so a static link to it costs a v9-only consumer
-  // exactly as much. The engine modules reference it only through erased
-  // `import type`s and injected parameters, which is what keeps this green.
+  // exactly as much.
+  //
+  // Today this case passes for a reason the engine has no part in: no build
+  // entry reaches `lib/engine/*`, so those modules are not bundled at all and
+  // a value import in them would not fail this. It is asserted now so the
+  // constraint is already in place when the PR that surfaces the engine wires
+  // it into an entry — at which point the erased `import type`s are what keeps
+  // it green.
   it.each(['ledger-v8', 'onchain-runtime-v3'])('the index bundle has no static %s linkage', (pkg) => {
     const content = readFileSync(resolve(PKG_ROOT, DIST_INDEX_PATH), 'utf8');
 
