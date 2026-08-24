@@ -38,12 +38,28 @@ describe('assertSharedLedger8Instance', () => {
     // one module record — the condition the guard is supposed to accept.
     const viaDynamicImport = await import('@midnight-ntwrk/onchain-runtime-v3');
 
-    expect(() => assertSharedLedger8Instance('onchain-runtime-v3', onchainRuntimeV3, viaDynamicImport)).not.toThrow();
+    expect(() =>
+      assertSharedLedger8Instance('onchain-runtime-v3', onchainRuntimeV3.ChargedState, viaDynamicImport.ChargedState)
+    ).not.toThrow();
+  });
+
+  // The probe has to be a shared binding, not a module namespace object. A
+  // re-export — the case the error message names first — produces a fresh
+  // namespace over the same physical copy, so a namespace comparison would
+  // fail on a healthy install. Spreading the namespace reproduces that shape:
+  // a different object carrying identical bindings.
+  it('accepts a binding reached through a re-export, where a namespace comparison would false-positive', () => {
+    const viaReExport = { ...onchainRuntimeV3 };
+
+    expect(viaReExport).not.toBe(onchainRuntimeV3);
+    expect(() =>
+      assertSharedLedger8Instance('onchain-runtime-v3', onchainRuntimeV3.ChargedState, viaReExport.ChargedState)
+    ).not.toThrow();
   });
 
   it('throws Ledger8InstanceMismatchError naming the axis when the probes come from two physical copies', () => {
     try {
-      assertSharedLedger8Instance('onchain-runtime-v3', onchainRuntimeV3, onchainRuntimeV3Alt);
+      assertSharedLedger8Instance('onchain-runtime-v3', onchainRuntimeV3.ChargedState, onchainRuntimeV3Alt.ChargedState);
       expect.unreachable('two physical copies must be rejected');
     } catch (error) {
       expect(error).toBeInstanceOf(Ledger8InstanceMismatchError);
@@ -59,7 +75,7 @@ describe('assertSharedLedger8Instance', () => {
   // name in the hint. See AXIS_PACKAGE_NAMES in `errors.ts`.
   it('names every published npm package, not the axis label, in the remediation hint', () => {
     try {
-      assertSharedLedger8Instance('onchain-runtime-v3', onchainRuntimeV3, onchainRuntimeV3Alt);
+      assertSharedLedger8Instance('onchain-runtime-v3', onchainRuntimeV3.ChargedState, onchainRuntimeV3Alt.ChargedState);
       expect.unreachable('two physical copies must be rejected');
     } catch (error) {
       expect(error).toBeInstanceOf(Ledger8InstanceMismatchError);
@@ -72,7 +88,7 @@ describe('assertSharedLedger8Instance', () => {
   it.each([
     { name: 'both probes undefined', a: undefined, b: undefined },
     { name: 'both probes null', a: null, b: null },
-    { name: 'only one probe nullish', a: onchainRuntimeV3, b: undefined }
+    { name: 'only one probe nullish', a: onchainRuntimeV3.ChargedState, b: undefined }
   ])('throws when $name (nullish probes are not a proof of a shared instance)', ({ a, b }) => {
     try {
       assertSharedLedger8Instance('onchain-runtime-v3', a, b);
