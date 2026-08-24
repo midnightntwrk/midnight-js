@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
@@ -51,6 +51,17 @@ const downConvertedState = (byte: number) => ({
 
 // A transcript naming a circuit no contract state has registered: the shortest
 // real path to an error raised INSIDE the engine chunk.
+const FIXTURES_DIR = resolve(PKG_ROOT, '..', '..', 'testkit-js/testkit-js/src/fixtures/hf');
+
+const readHexFixture = (name: string): Uint8Array => {
+  const text = readFileSync(resolve(FIXTURES_DIR, name), 'utf8').trim();
+  const bytes = Uint8Array.from(Buffer.from(text, 'hex'));
+  if (bytes.length * 2 !== text.length) {
+    throw new Error(`fixture ${name} is not valid hex in full: ${text.length} chars decoded to ${bytes.length} bytes`);
+  }
+  return bytes;
+};
+
 const transcriptForUnregisteredCircuit = () => ({
   circuitId: 'increment',
   result: [],
@@ -102,5 +113,72 @@ describe.skipIf(!distBundlesExist && !process.env.CI)('dist engine error gate', 
     expect(composeFailure.code).toBe(PROTOCOL_ERROR_CODES.COMPOSE_FAILED);
     expect(composeFailure.version).toBe('v9');
     expect(composeFailure.stage).toBe('wrap-call');
+  });
+
+  // The era facade is published through the root barrel, so its failures cross
+  // the SAME bundle boundary the engine's do: a caller narrowing on
+  // `ComposeFailedError` imported from the package root must still match one
+  // raised inside the era arm, and must still find its discriminants.
+  it('raises an era composition failure the root package can discriminate by class and by code', async () => {
+    const { loadLedgerEra, ComposeFailedError, PROTOCOL_ERROR_CODES } = await import(
+      '@midnight-ntwrk/midnight-js-protocol'
+    );
+    const era = await loadLedgerEra('v8');
+
+    let caught: unknown;
+    try {
+      era.composeCallTx({
+        calls: [
+          {
+            contractAddress: ocrt3.dummyContractAddress(),
+            circuitId: 'increment',
+            // A blank state: it declares no operation for the circuit, which is
+            // the shortest real path to a failure raised inside the era arm.
+            contractState: new ocrt3.ContractState().serialize(),
+            transcript: {
+              kind: 'unpartitioned',
+              preState: ocrt3.StateValue.newCell(fieldValue(0x01)).encode(),
+              publicTranscript: []
+            },
+            privateTranscriptOutputs: [],
+            input: fieldValue(0x10),
+            output: fieldValue(0x20)
+          }
+        ],
+        networkId: 'test-network',
+        ttl: new Date(Date.now() + 3_600_000)
+      });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(ComposeFailedError);
+    expect(caught).toBeInstanceOf(Error);
+    const failure = caught as InstanceType<typeof ComposeFailedError>;
+    expect(failure.code).toBe(PROTOCOL_ERROR_CODES.COMPOSE_FAILED);
+    expect(failure.version).toBe('v8');
+    expect(failure.stage).toBe('call-operation');
+  });
+
+  it('raises a state-decode failure the root package can discriminate by class and by code', async () => {
+    const { loadLedgerEra, StateDecodeFailedError, PROTOCOL_ERROR_CODES } = await import(
+      '@midnight-ntwrk/midnight-js-protocol'
+    );
+    const era = await loadLedgerEra('v9');
+
+    let caught: unknown;
+    try {
+      // A state written by the OTHER era: valid bytes, wrong decoder.
+      era.decodeContractState(readHexFixture('state-v8.hex'));
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(StateDecodeFailedError);
+    expect(caught).toBeInstanceOf(Error);
+    const failure = caught as InstanceType<typeof StateDecodeFailedError>;
+    expect(failure.code).toBe(PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED);
+    expect(failure.version).toBe('v9');
+    expect(failure.cause).toBeInstanceOf(Error);
   });
 });

@@ -77,6 +77,17 @@ const eagerContents = (entry: string): string => eagerClosureOf(entry).map((chun
 
 const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
+const FIXTURES_DIR = resolve(PKG_ROOT, '..', '..', 'testkit-js/testkit-js/src/fixtures/hf');
+
+const readHexFixture = (name: string): Uint8Array => {
+  const text = readFileSync(resolve(FIXTURES_DIR, name), 'utf8').trim();
+  const bytes = Uint8Array.from(Buffer.from(text, 'hex'));
+  if (bytes.length * 2 !== text.length) {
+    throw new Error(`fixture ${name} is not valid hex in full: ${text.length} chars decoded to ${bytes.length} bytes`);
+  }
+  return bytes;
+};
+
 // Skipped (not omitted) when dist/ is absent, so a run without a prior build
 // still reports these as visible skips rather than silently vanishing —
 // run `yarn build && yarn test` to green them.
@@ -94,6 +105,13 @@ describe.skipIf(!distIndexExists)('dist laziness gate', () => {
   it.each(['ledger-v8', 'onchain-runtime-v3'])('nothing loaded eagerly by the index bundle links %s statically', (pkg) => {
     const content = eagerContents(DIST_INDEX_PATH);
 
+    // The era facade is published through the root barrel, so `loadLedgerEra`
+    // is part of this eager closure by construction. Anchoring on it here is
+    // what ties the two halves together: the accessor a v9-only consumer calls
+    // really is in the bundle being scanned, so the absence of a static link
+    // below is a statement about the code that consumer runs, not about some
+    // other chunk that happens to be clean.
+    expect(content).toContain('loadLedgerEra');
     expect(content).not.toMatch(new RegExp(`from\\s*['"][^'"]*${escapeRegExp(pkg)}['"]`));
   });
 
@@ -127,5 +145,41 @@ describe.skipIf(!distIndexExists)('dist laziness gate', () => {
 
   it.each(ENGINE_DIST_ARTIFACTS)('%s referenced by the ./engine exports map entry exists', (path) => {
     expect(existsSync(resolve(PKG_ROOT, path))).toBe(true);
+  });
+
+  // Every route to the two retained chunks, in one place. The tests above show
+  // each chunk is absent from the eager closure and that a dynamic import of it
+  // survives; this one closes the remaining gap — that no chunk in that closure
+  // reaches either one by a STATIC specifier under some other name. A static
+  // `from './v8.js'` anywhere in the closure would defeat both of the others
+  // while still leaving the dynamic import in place.
+  it.each([
+    ['v8', V8_CHUNK_PATTERN],
+    ['engine', ENGINE_CHUNK_PATTERN]
+  ])('the %s chunk is reached from the eager closure only by dynamic import', (_name, pattern) => {
+    const content = eagerContents(DIST_INDEX_PATH);
+
+    expect(content).not.toMatch(new RegExp(`(?:from|^\\s*import)\\s*['"]${pattern}['"]`, 'm'));
+    expect(content).toMatch(new RegExp(`import\\(\\s*['"]${pattern}['"]\\s*\\)`));
+  });
+
+  // The static walk above says the v9 era CAN run without the retained chunks.
+  // This says it DOES: the built package is driven through `loadLedgerEra('v9')`
+  // and made to do real work, so a v9-only consumer's path is exercised rather
+  // than only inspected.
+  it('serves a working v9 era out of the built package', async () => {
+    const { loadLedgerEra } = await import('@midnight-ntwrk/midnight-js-protocol');
+
+    const era = await loadLedgerEra('v9');
+
+    expect(era.version).toBe('v9');
+    expect(Object.keys(era).sort()).toEqual([
+      'composeCallTx',
+      'composeDeployTx',
+      'decodeContractState',
+      'extractState',
+      'version'
+    ]);
+    expect(era.decodeContractState(readHexFixture('state-migrated-v9.hex')).entryPoints.length).toBeGreaterThan(0);
   });
 });
