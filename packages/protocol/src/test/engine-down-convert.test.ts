@@ -27,11 +27,12 @@ import {
   ContractState as LedgerV9ContractState,
   type EncodedStateValue as LedgerV9EncodedStateValue,
   type Op as LedgerV9Op,
+  StateMap as LedgerV9StateMap,
   StateValue as LedgerV9StateValue
 } from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
-import { DownConvertFailedError, MerkleNotRehashedError, PROTOCOL_ERROR_CODES } from '../errors';
+import { DownConvertFailedError, MerkleNotRehashedError, PROTOCOL_ERROR_CODES, UnknownLedgerVersionError } from '../errors';
 import type { Ledger8CompactRuntime } from '../lib/engine/down-convert';
 import {
   assertMerkleTreesRehashed,
@@ -40,7 +41,6 @@ import {
   structurallyEqual
 } from '../lib/engine/down-convert';
 import { extractEncodedStateValue } from '../lib/engine/envelope';
-import type { LedgerVersion } from '../version';
 
 // Envelopes are built in-process rather than read from the hard-fork golden
 // fixtures, so this suite depends only on the two runtimes it bridges. The
@@ -116,28 +116,6 @@ describe('extractEncodedStateValue + downConvertForExecution round trip', () => 
 });
 
 describe('extractEncodedStateValue', () => {
-  // `version` is typed, but extractEncodedStateValue sits behind the public
-  // Ledger8Engine.extractState, so an untyped consumer can reach it with any
-  // string. A bare index would resolve these off Object.prototype and return
-  // their result as if it were state -- 'toString' yields the STRING
-  // '[object Undefined]' with no throw at all.
-  it.each(['v7', 'toString', 'valueOf', 'constructor'])(
-    'rejects the unsupported ledger version %s instead of routing it to a prototype member',
-    (version) => {
-      let caught: unknown;
-      try {
-        extractEncodedStateValue(ledger8Envelope(cellSv(0x07)), version as LedgerVersion, ocrt3.ContractState);
-      } catch (error) {
-        caught = error;
-      }
-
-      expect(caught).toBeInstanceOf(DownConvertFailedError);
-      const error = caught as DownConvertFailedError;
-      expect(error.code).toBe(PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED);
-      expect((error.cause as Error).message).toContain(`Unknown ledger version '${version}'`);
-    }
-  );
-
   it('reads a pre-fork envelope through the pre-fork decoder', () => {
     const extracted = extractEncodedStateValue(ledger8Envelope(cellSv(0x07)), 'v8', ocrt3.ContractState);
 
@@ -192,13 +170,61 @@ describe('extractEncodedStateValue', () => {
     }
   });
 
-  it('names the failing stage, including the version the caller asked for', () => {
+  it.each([
+    { version: 'v8' as const, stage: 'v8 envelope extraction' },
+    { version: 'v9' as const, stage: 'v9 envelope extraction' }
+  ])('names the failing stage as $stage for a $version extraction', ({ version, stage }) => {
     try {
-      extractEncodedStateValue(new Uint8Array(0), 'v8', ocrt3.ContractState);
+      extractEncodedStateValue(new Uint8Array(0), version, ocrt3.ContractState);
       expect.unreachable('empty input must throw');
     } catch (error) {
       expect(error).toBeInstanceOf(DownConvertFailedError);
-      expect((error as DownConvertFailedError).stage).toBe('v8 envelope extraction');
+      expect((error as DownConvertFailedError).stage).toBe(stage);
+    }
+  });
+
+  // The v8 decoder is a different implementation from the v9 one, so the
+  // failure modes the docstring promises have to be pinned on both. A lenient
+  // decoder that ignored trailing garbage would accept a corrupted envelope.
+  it.each([
+    { name: 'a truncated envelope', mangle: (raw: Uint8Array): Uint8Array => raw.slice(0, 20) },
+    { name: 'an envelope with trailing bytes', mangle: (raw: Uint8Array): Uint8Array => Uint8Array.from([...raw, 0, 0, 0, 0]) }
+  ])('rejects $name read as v8', ({ mangle }) => {
+    expect(() => extractEncodedStateValue(mangle(ledger8Envelope(cellSv(0x07))), 'v8', ocrt3.ContractState)).toThrowError(
+      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED })
+    );
+  });
+
+  // An object-literal decoder table resolves an unexpected key through
+  // Object.prototype: 'constructor' calls Object and hands the raw bytes back
+  // as an EncodedStateValue, 'toString' returns the string '[object Object]'.
+  // Both are silent wrong answers from a function documented to fail closed,
+  // and both are reachable in practice: extractEncodedStateValue sits behind
+  // the public Ledger8Engine.extractState, so an untyped consumer can reach it
+  // with any string. They must throw a coded error instead, and the
+  // unvalidated string must never reach the error's `stage`.
+  //
+  // 'v7' is in the list for the other half of the problem: a plausible era
+  // string that is simply not supported has to fail the same way as a
+  // prototype member, not fall through to a decoder.
+  it.each(['v7', 'constructor', 'toString', 'valueOf', 'isPrototypeOf', '__proto__', 'bogus'])(
+    'rejects the non-ledger version %s instead of resolving it through the prototype chain',
+    (version) => {
+      expect(() =>
+        // @ts-expect-error - reaching the runtime guard that exists for untyped JS callers
+        extractEncodedStateValue(ledger9Envelope(0x07), version, ocrt3.ContractState)
+      ).toThrowError(expect.objectContaining({ code: PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION }));
+    }
+  );
+
+  it('does not carry an unvalidated version string into the error message', () => {
+    try {
+      // @ts-expect-error - reaching the runtime guard that exists for untyped JS callers
+      extractEncodedStateValue(ledger9Envelope(0x07), 'toString', ocrt3.ContractState);
+      expect.unreachable('an unknown ledger version must throw');
+    } catch (error) {
+      expect(error).toBeInstanceOf(UnknownLedgerVersionError);
+      expect((error as UnknownLedgerVersionError).message).not.toContain('toString');
     }
   });
 });
@@ -225,6 +251,36 @@ describe('Merkle rehash', () => {
     const decoded = ocrt3.StateValue.decode(encoded);
 
     expect(() => checkRoot(decoded.asBoundedMerkleTree()!)).not.toThrow();
+  });
+
+  // The wasm-bindgen shim for root() rethrows a Rust Err rather than always
+  // resolving to a value or undefined. That throw has to keep the
+  // MERKLE_NOT_REHASHED code: a consumer switching on the code to choose a
+  // remediation would otherwise be told to check its envelope bytes when the
+  // real fix is to rehash the tree.
+  it('reports a throwing root() accessor as MERKLE_NOT_REHASHED, preserving the cause', () => {
+    const cause = new Error('tree not rehashed');
+    const throwingTree = {
+      root: () => {
+        throw cause;
+      }
+    };
+
+    try {
+      // @ts-expect-error - simulating the fallible vendor binding, which the .d.ts does not model
+      checkRoot(throwingTree);
+      expect.unreachable('a throwing root() must be reported');
+    } catch (error) {
+      expect(error).toBeInstanceOf(MerkleNotRehashedError);
+      expect((error as MerkleNotRehashedError).cause).toBe(cause);
+    }
+  });
+
+  it('treats a null root as not-rehashed, not as a readable root', () => {
+    expect(() =>
+      // @ts-expect-error - serde can emit null rather than undefined for a Rust None
+      checkRoot({ root: () => null })
+    ).toThrow(MerkleNotRehashedError);
   });
 });
 
@@ -274,6 +330,19 @@ describe('assertMerkleTreesRehashed recursion (contract-agnostic StateValue alge
     const sv = mapOf([0x01, cellSv(0x01)], [0x02, arrayOf(cellSv(0x03), neverRehashedTreeSv(0x04))]);
 
     expect(() => assertMerkleTreesRehashed(sv)).toThrow(MerkleNotRehashedError);
+  });
+
+  // A switch with no default arm returns void on an unrecognised variant,
+  // having checked nothing and recursed into nothing — so every Merkle tree
+  // nested inside a container variant the pinned typings do not know about
+  // would be skipped silently. The compile-time exhaustiveness guard cannot
+  // see this: the runtime StateValue comes from a caller-injected runtime,
+  // whose WASM can emit a tag the shipped .d.ts does not declare.
+  it('rejects a StateValue variant it does not recognise instead of skipping it', () => {
+    expect(() =>
+      // @ts-expect-error - a runtime-only variant, which the pinned typings exclude by construction
+      assertMerkleTreesRehashed({ type: () => 'sparseContainer' })
+    ).toThrowError(expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED }));
   });
 
   it('accepts nested containers whose trees have all been rehashed', () => {
@@ -401,18 +470,95 @@ describe('structurallyEqual', () => {
     { name: 'equal objects', a: { x: 1, y: [2] }, b: { x: 1, y: [2] }, equal: true },
     { name: 'objects with different key counts', a: { x: 1 }, b: { x: 1, y: 2 }, equal: false },
     { name: 'objects with different values', a: { x: 1 }, b: { x: 2 }, equal: false },
-    { name: 'objects with different keys', a: { x: 1 }, b: { y: 1 }, equal: false }
+    { name: 'objects with different keys', a: { x: 1 }, b: { y: 1 }, equal: false },
+    // Key *counts* matching is not key *sets* matching. Looking each of a's
+    // keys up in b without checking the key exists reads `undefined` on both
+    // sides and short-circuits to equal, so these two disagree on every key
+    // and still compare equal. Unreachable in today's EncodedStateValue
+    // algebra, which has no undefined-valued fields — and the reason this is
+    // pinned rather than left to that assumption holding forever.
+    { name: 'objects whose keys differ, with an undefined value', a: { x: undefined }, b: { y: 1 }, equal: false },
+    { name: 'objects whose keys differ, both undefined-valued', a: { x: undefined }, b: { y: undefined }, equal: false },
+    // Map order-sensitivity is deliberate, not incidental: it is what makes
+    // the re-encode comparison exact. A get()-based rewrite would pass every
+    // string-keyed row above and silently drop that property.
+    { name: 'maps with the same entries in a different order', a: new Map([['a', 1], ['b', 2]]), b: new Map([['b', 2], ['a', 1]]), equal: false }
   ])('is $equal for $name', ({ a, b, equal }) => {
     expect(structurallyEqual(a, b)).toBe(equal);
+  });
+});
+
+// The production comparison is cross-codec: the source EncodedStateValue is
+// produced by ledger-v9 and the re-encoding by onchain-runtime-v3. Every other
+// container test in this file builds both sides with ocrt3, so it cannot fail
+// for ordering reasons. These build the v9 side natively and run the real
+// bridge over the two container variants and a Merkle tree — the shapes where
+// a divergence in map iteration order between the two eras would surface.
+describe('cross-codec down-convert over containers', () => {
+  const v9Field = (byte: number): LedgerV9AlignedValue => ({
+    value: [new Uint8Array(32).fill(byte)],
+    alignment: FIELD_ALIGNMENT
+  });
+
+  const v9Envelope = (state: LedgerV9StateValue): Uint8Array => {
+    const contractState = new LedgerV9ContractState();
+    contractState.data = new LedgerV9ChargedState(state);
+    return contractState.serialize();
+  };
+
+  const v9MapOf = (...keys: readonly number[]): LedgerV9StateValue =>
+    LedgerV9StateValue.newMap(
+      keys.reduce(
+        (acc, key) => acc.insert(v9Field(key), LedgerV9StateValue.newCell(v9Field(key))),
+        new LedgerV9StateMap()
+      )
+    );
+
+  const v9ArrayOf = (...bytes: readonly number[]): LedgerV9StateValue =>
+    bytes.reduce(
+      (acc, byte) => acc.arrayPush(LedgerV9StateValue.newCell(v9Field(byte))),
+      LedgerV9StateValue.newArray()
+    );
+
+  it('down-converts a multi-entry map inserted out of key order', () => {
+    const extracted = extractEncodedStateValue(v9Envelope(v9MapOf(0x33, 0x11, 0x77)), 'v9', ocrt3.ContractState);
+    const downConverted = downConvertForExecution(extracted, ocrt3);
+
+    expect(downConverted.data.state.encode()).toEqual(
+      extractEncodedStateValue(
+        ledger8Envelope(mapOf([0x33, cellSv(0x33)], [0x11, cellSv(0x11)], [0x77, cellSv(0x77)])),
+        'v8',
+        ocrt3.ContractState
+      )
+    );
+  });
+
+  it('down-converts a nested array without losing an element', () => {
+    const extracted = extractEncodedStateValue(v9Envelope(v9ArrayOf(0x01, 0x02, 0x03)), 'v9', ocrt3.ContractState);
+    const downConverted = downConvertForExecution(extracted, ocrt3);
+
+    expect(downConverted.data.state.encode()).toEqual(
+      extractEncodedStateValue(
+        ledger8Envelope(arrayOf(cellSv(0x01), cellSv(0x02), cellSv(0x03))),
+        'v8',
+        ocrt3.ContractState
+      )
+    );
   });
 });
 
 // Compile-time drift detector. If a vendor bump ever changes the wire shape of
 // EncodedStateValue, Op, or AlignedValue between the pre-fork
 // (onchain-runtime-v3) and post-fork (ledger-v9) packages this engine bridges,
-// this block stops compiling. It is enforced by `yarn typecheck:tests`, which
-// the pre-push hook runs; it is deliberately not paired with a runtime
+// this block stops compiling. It is deliberately not paired with a runtime
 // assertion, since any such assertion would be a tautology after erasure.
+//
+// Where it is checked, precisely: `yarn typecheck:tests`, run by the pre-push
+// hook. Test files are outside tsconfig.build.json and vitest transpiles
+// without type-checking, so CI does not evaluate this block — a `--no-verify`
+// push carrying a vendor bump that diverged the two eras' wire shapes would go
+// green. Treat a failure here as the signal it is, and do not assume CI will
+// repeat it.
 type AssertEqual<A, B> = (<T>() => T extends A ? 1 : 0) extends <T>() => T extends B ? 1 : 0 ? true : false;
 type Expect<T extends true> = T;
 

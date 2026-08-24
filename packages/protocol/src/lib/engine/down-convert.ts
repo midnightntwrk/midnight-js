@@ -19,15 +19,13 @@ import type { AlignedValue, EncodedStateValue } from '@midnightntwrk/ledger-v9';
 import { DownConvertFailedError, MerkleNotRehashedError } from '../../errors';
 
 /**
- * The subset of the pre-fork (`compact-runtime@0.16` / onchain-runtime-v3)
- * `StateValue` statics {@link downConvertForExecution} needs.
+ * The subset of the pre-fork onchain-runtime-v3 `StateValue` statics
+ * {@link downConvertForExecution} needs.
  *
- * Injected rather than imported as a value because every pre-fork package
- * must reach this process through `loadLedger8()`'s lazy acquisition path — a
- * value import here would statically link the retained pre-fork WASM into any
- * bundle that reaches this module, which the `dist-laziness` suite forbids.
- * Letting tests substitute a controlled fake is a consequence of that seam,
- * not its purpose.
+ * Injected rather than imported as a value: a value import here would
+ * statically link the retained pre-fork WASM into any bundle that reaches this
+ * module, which the `dist-laziness` suite forbids. The pre-fork packages reach
+ * this process through a lazy acquisition path the caller owns.
  */
 export interface Ledger8CompactRuntimeStateValue {
   readonly decode: (value: EncodedStateValue) => StateValue;
@@ -57,12 +55,15 @@ export interface DownConvertedState {
  * Structural equality over the `EncodedStateValue` algebra — plain objects,
  * arrays, `Map`s, `Uint8Array`s and primitives.
  *
- * Hand-rolled rather than `node:util`'s `isDeepStrictEqual` because this
- * package also ships to browsers, where `node:util` does not resolve. `Map`s
- * are compared pairwise in iteration order, which is exact here: the runtime
- * emits map entries in a canonical key order, so a value and its re-encoding
- * always iterate identically (pinned by a test over a multi-entry map
- * inserted out of order).
+ * Hand-rolled rather than `node:util`'s `isDeepStrictEqual`, which does not
+ * resolve in a browser bundle. `Map`s are compared pairwise in iteration
+ * order, deliberately: both runtimes emit map entries in a canonical key
+ * order, so a value and its re-encoding iterate identically whatever order the
+ * entries were inserted in. That is a cross-runtime property, not a
+ * single-codec one — the source encoding comes from ledger-v9 and the
+ * re-encoding from onchain-runtime-v3 — so it is pinned by tests that build
+ * the two sides with the two different codecs, not only by the same-codec
+ * round trip.
  */
 export const structurallyEqual = (a: unknown, b: unknown): boolean => {
   if (a === b) {
@@ -96,14 +97,38 @@ export const structurallyEqual = (a: unknown, b: unknown): boolean => {
   const aRecord: Record<string, unknown> = { ...a };
   const bRecord: Record<string, unknown> = { ...b };
   const aKeys = Object.keys(aRecord);
+  // `key in bRecord`, not just a matching key count: without it two objects
+  // that share no key at all compare equal whenever the diverging key's value
+  // in `a` is `undefined`, because both lookups then read `undefined` and
+  // short-circuit. Today's algebra has no undefined-valued fields, so this is
+  // a guard against the algebra gaining one rather than a live defect.
   return (
-    aKeys.length === Object.keys(bRecord).length && aKeys.every((key) => structurallyEqual(aRecord[key], bRecord[key]))
+    aKeys.length === Object.keys(bRecord).length &&
+    aKeys.every((key) => key in bRecord && structurallyEqual(aRecord[key], bRecord[key]))
   );
 };
 
+/**
+ * Reads a bounded Merkle tree's root, failing with
+ * {@link MerkleNotRehashedError} when the tree has not been rehashed.
+ *
+ * Three shapes of "no root" are treated alike, because all three mean the same
+ * thing to a caller and only one is in the vendor's type: `undefined` (what
+ * the typings document), `null` (what a `None` can serialize to), and a throw
+ * — the wasm-bindgen shim for `root()` rethrows a Rust `Err` rather than
+ * always resolving to a value. Letting that throw escape would demote it to a
+ * generic down-convert failure and tell the caller to check its envelope bytes
+ * when the actual remediation is to rehash the tree.
+ */
 export const checkRoot = (tree: StateBoundedMerkleTree): AlignedValue => {
-  const root = tree.root();
-  if (root === undefined) {
+  let root: AlignedValue | undefined;
+  try {
+    root = tree.root();
+  } catch (cause) {
+    throw new MerkleNotRehashedError(cause);
+  }
+
+  if (root == null) {
     throw new MerkleNotRehashedError();
   }
   return root;
@@ -126,9 +151,8 @@ export const checkRoot = (tree: StateBoundedMerkleTree): AlignedValue => {
  * (`materializes the hashes of a tree that was never rehashed`) that fails if
  * a vendor bump changes it.
  *
- * Does not mutate or rebuild the state, unlike the rehash-on-decode this
- * replaced. It is not allocation-free: each `asArray()`/`asMap()` step
- * marshals fresh wrapper objects out of WASM.
+ * Does not mutate or rebuild the state. It is not allocation-free: each
+ * `asArray()`/`asMap()` step marshals fresh wrapper objects out of WASM.
  *
  * The non-null assertions below are guarded by the preceding `type()` call:
  * the `as*` accessors return `undefined` only on a variant mismatch, which
@@ -141,7 +165,8 @@ export const checkRoot = (tree: StateBoundedMerkleTree): AlignedValue => {
  * multi-entry map rather than by prose alone.
  */
 export const assertMerkleTreesRehashed = (sv: StateValue): void => {
-  switch (sv.type()) {
+  const variant = sv.type();
+  switch (variant) {
     case 'boundedMerkleTree':
       checkRoot(sv.asBoundedMerkleTree()!);
       return;
@@ -156,24 +181,27 @@ export const assertMerkleTreesRehashed = (sv: StateValue): void => {
     case 'cell':
     case 'null':
       return;
+    default: {
+      // Compile-time exhaustiveness, in the style of version.ts's
+      // `_allLedgerVersionsAreMapped`: a vendor bump that adds a variant stops
+      // this assignment type-checking, so the omission is a build failure
+      // rather than a review miss.
+      //
+      // The runtime throw is not redundant with it. The `StateValue` reaching
+      // this walk comes from a caller-injected runtime, whose WASM can emit a
+      // tag the pinned `.d.ts` does not declare — and these declarations are
+      // known to be unfaithful (see the `asCell()` note below). Returning
+      // `void` on an unrecognised variant would skip every Merkle tree nested
+      // inside it without a word, which is the exact silent-wrong-data
+      // outcome this module exists to prevent.
+      const unhandled: never = variant;
+      throw new DownConvertFailedError(
+        'state down-convert',
+        new Error(`unhandled StateValue variant '${String(unhandled)}' in the Merkle rehash walk`)
+      );
+    }
   }
 };
-
-/** The `StateValue` variants {@link assertMerkleTreesRehashed} handles. */
-type HandledStateValueVariant = 'boundedMerkleTree' | 'array' | 'map' | 'cell' | 'null';
-
-// Compile-time-only guard, in the style of version.ts's
-// `_allLedgerVersionsAreMapped`: if a vendor bump adds a StateValue variant,
-// this assignment stops type-checking. Without it a new *container* variant
-// would fall out of the switch above and silently skip every Merkle tree
-// nested inside it — the exact silent-wrong-data outcome this module exists
-// to prevent.
-const _allStateValueVariantsHandled: Exclude<
-  ReturnType<StateValue['type']>,
-  HandledStateValueVariant
-> extends never
-  ? true
-  : never = true;
 
 /**
  * Down-converts an already-extracted (post-fork) {@link EncodedStateValue}
@@ -189,11 +217,20 @@ const _allStateValueVariantsHandled: Exclude<
  * whose whole contract is code-based discrimination.
  *
  * Structural integrity is checked by re-encoding the decoded value and
- * comparing it to the input, which catches every loss mode at every depth (a
- * shortened array, a dropped map entry, a changed cell, a substituted
- * subtree) rather than only a wholesale collapse to `null`. This costs one
- * extra encode plus a deep comparison per call, and it is deliberate: the
- * alternative is a bridge that can hand a circuit silently wrong data.
+ * comparing it to the input, which catches loss at every depth (a shortened
+ * array, a dropped map entry, a changed cell, a substituted subtree) rather
+ * than only a wholesale collapse to `null`. This costs one extra encode plus a
+ * deep comparison per call, and it is deliberate: the alternative is a bridge
+ * that can hand a circuit silently wrong data.
+ *
+ * What it does not cover: anything the pre-fork encoder re-derives rather than
+ * carries. A bounded Merkle tree encodes as its height and leaves, never its
+ * node hashes, so a tree whose internal hashes were re-materialized
+ * differently across the fork boundary still re-encodes byte-identically here.
+ * {@link assertMerkleTreesRehashed} establishes only that each tree has a
+ * readable root, not that the root matches the source's. Comparing roots
+ * across the boundary needs the source-side tree, which this function never
+ * sees — it belongs at the envelope seam.
  */
 export const downConvertForExecution = (
   state: EncodedStateValue,

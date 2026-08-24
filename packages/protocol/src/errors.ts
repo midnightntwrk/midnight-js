@@ -22,7 +22,8 @@ export const PROTOCOL_ERROR_CODES = Object.freeze({
   DOWN_CONVERT_FAILED: 'MIDNIGHT_JS_P_DOWN_CONVERT_FAILED',
   MERKLE_NOT_REHASHED: 'MIDNIGHT_JS_P_MERKLE_NOT_REHASHED',
   LEDGER8_COMPOSE_FAILED: 'MIDNIGHT_JS_P_LEDGER8_COMPOSE_FAILED',
-  LEDGER8_ZSWAP_UNSUPPORTED: 'MIDNIGHT_JS_P_LEDGER8_ZSWAP_UNSUPPORTED'
+  LEDGER8_ZSWAP_UNSUPPORTED: 'MIDNIGHT_JS_P_LEDGER8_ZSWAP_UNSUPPORTED',
+  UNKNOWN_LEDGER_VERSION: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION'
 } as const);
 export type ProtocolErrorCode = (typeof PROTOCOL_ERROR_CODES)[keyof typeof PROTOCOL_ERROR_CODES];
 
@@ -52,7 +53,9 @@ export type ProtocolVersionUnknownReason = 'unknown' | 'malformed';
  * chosen to build something new against the network's current head.
  */
 export class UnknownProtocolVersionError extends Error {
-  readonly code: ProtocolErrorCode;
+  readonly code:
+    | typeof PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ
+    | typeof PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_CONSTRUCT;
 
   constructor(
     readonly protocolVersion: number,
@@ -86,7 +89,7 @@ export class UnknownProtocolVersionError extends Error {
 export type RetainedEraSubpath = '/v8' | '/engine';
 
 export class Ledger8RuntimeMissingError extends Error {
-  readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING;
+  readonly code = PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING;
 
   constructor(
     readonly subpath: RetainedEraSubpath,
@@ -140,21 +143,32 @@ export class Ledger8ZswapUnsupportedError extends Error {
 export type Ledger8InstanceAxis = 'onchain-runtime-v3';
 
 /**
- * Every npm name each axis is published under, so the error can name what to
- * trace in the dependency tree.
+ * The npm scopes this package and its retained pre-fork runtimes are published
+ * under, while the scope migration runs.
  *
- * Both scopes, not one, and not as future-proofing: the dual-publish
- * (`.github/scripts/publish-public-npm.mjs`) rewrites dependency scopes at pack
- * time, so the two published copies of this package depend on two differently
- * *named* copies of the same runtime at the same version — an install
- * combination no resolver can dedupe, and therefore a live cause of the
- * mismatch this error reports. That rewrite touches `package.json` only, never
- * a string in compiled code, so a single name here would point every consumer
- * installed from the other scope at a package that is not in their tree.
+ * Held apart from the `/` on purpose, and joined only at
+ * {@link axisPackageNames}. The dual-publish
+ * (`.github/scripts/publish-public-npm.mjs`) rewrites the old scope to the new
+ * one inside built `.js`/`.d.ts` files as well as in `package.json`, matching
+ * on the scope *with* its trailing slash. A scoped package name written as one
+ * literal would therefore ship rewritten, collapsing the two names below into
+ * one and turning a hint that names both scopes into one that names a single
+ * scope twice. Splitting the scope from the slash leaves the rewrite nothing
+ * to match; `errors.test.ts` holds that line.
  */
-const AXIS_PACKAGE_NAMES: Readonly<Record<Ledger8InstanceAxis, readonly string[]>> = Object.freeze({
-  'onchain-runtime-v3': Object.freeze(['@midnight-ntwrk/onchain-runtime-v3', '@midnightntwrk/onchain-runtime-v3'])
+const PUBLISHED_SCOPES = Object.freeze(['@midnight-ntwrk', '@midnightntwrk'] as const);
+
+/**
+ * The unscoped npm name of each axis. Both published copies of an axis carry
+ * this same name under a different scope, so naming only one scope would point
+ * every consumer installed from the other at a package not in their tree.
+ */
+const AXIS_BARE_PACKAGE_NAMES: Readonly<Record<Ledger8InstanceAxis, string>> = Object.freeze({
+  'onchain-runtime-v3': 'onchain-runtime-v3'
 });
+
+const axisPackageNames = (axis: Ledger8InstanceAxis): readonly string[] =>
+  PUBLISHED_SCOPES.map((scope) => `${scope}/${AXIS_BARE_PACKAGE_NAMES[axis]}`);
 
 /**
  * Thrown by `assertSharedLedger8Instance` (`lib/engine/instance-guard.ts`)
@@ -173,16 +187,15 @@ const AXIS_PACKAGE_NAMES: Readonly<Record<Ledger8InstanceAxis, readonly string[]
  * exception, so unlike {@link DownConvertFailedError} there is no `cause` to
  * carry.
  *
- * The remediation prescribes no single package manager. This package is
- * published, and consumed by dApps installed with npm, yarn, pnpm and bun
- * alike, so naming only the one this repo happens to use would hand most
- * consumers a command they cannot run.
+ * The remediation names every mainstream package manager rather than the one
+ * this repo happens to use, because this package is consumed by dApps
+ * installed with all of them.
  */
 export class Ledger8InstanceMismatchError extends Error {
-  readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH;
+  readonly code = PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH;
 
   constructor(readonly axis: Ledger8InstanceAxis) {
-    const packageNames = AXIS_PACKAGE_NAMES[axis].join(' and ');
+    const packageNames = axisPackageNames(axis).join(' and ');
     super(
       `Detected two physically distinct copies of ${axis} loaded into the same process (a dual-instantiation). ` +
         "Objects created by one copy are rejected by the other copy's classes. This usually means a duplicate " +
@@ -207,11 +220,7 @@ export class Ledger8InstanceMismatchError extends Error {
  * `EncodedStateValue` whichever era it came from — so its stage carries no
  * version, unlike the two extraction stages.
  */
-export type DownConvertStage =
-  | 'v8 envelope extraction'
-  | 'v9 envelope extraction'
-  | 'envelope extraction'
-  | 'state down-convert';
+export type DownConvertStage = 'v8 envelope extraction' | 'v9 envelope extraction' | 'state down-convert';
 
 /**
  * Thrown by the down-convert engine (`lib/engine/envelope.ts`,
@@ -226,7 +235,7 @@ export type DownConvertStage =
  * and empty input in its own message; that detail is preserved on `cause`.
  */
 export class DownConvertFailedError extends Error {
-  readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED;
+  readonly code = PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED;
 
   constructor(
     readonly stage: DownConvertStage,
@@ -253,13 +262,14 @@ export class DownConvertFailedError extends Error {
  * every tree it decodes, failing fast instead of silently repairing.
  */
 export class MerkleNotRehashedError extends Error {
-  readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED;
+  readonly code = PROTOCOL_ERROR_CODES.MERKLE_NOT_REHASHED;
 
-  constructor() {
+  constructor(cause?: unknown) {
     super(
       'Attempted to read the root of a bounded Merkle tree before it was rehashed. This usually means the ' +
         'tree was built or updated in memory and never rehashed — call rehash() on it before executing ' +
-        'against it.'
+        'against it.',
+      { cause }
     );
     this.name = 'MerkleNotRehashedError';
   }
@@ -336,4 +346,33 @@ export class Ledger8ComposeFailedError extends Error {
       "with VerifierKeyNotSet. Resolve the compiled contract's verifier key for this circuit (from its keys/ " +
       'artifacts) and include it in the verifier-key map.'
   };
+}
+
+/**
+ * Thrown by `extractEncodedStateValue` (`lib/engine/envelope.ts`) when the
+ * `version` it was handed is not a member of `LEDGER_VERSIONS`.
+ *
+ * TypeScript callers cannot produce this: `version` is typed as
+ * `LedgerVersion`. It exists for the untyped JavaScript consumers this package
+ * also serves, where an unvalidated string would otherwise be used to index the
+ * decoder table and could resolve to an inherited `Object.prototype` member —
+ * yielding a plausible-looking non-state instead of a failure.
+ *
+ * `requestedVersion` carries the offending value for programmatic use. It is
+ * deliberately kept out of the message: this is the one input on the seam that
+ * comes straight from an untrusted caller, and the down-convert errors'
+ * "never renders caller-supplied text" property is only worth having if it
+ * holds here too.
+ */
+export class UnknownLedgerVersionError extends Error {
+  readonly code = PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION;
+
+  constructor(readonly requestedVersion: string) {
+    super(
+      'Unknown ledger version requested for contract-state extraction. Supported eras are v8 (node 1.x) and ' +
+        'v9 (node 2.x); read `requestedVersion` on this error for the value that was passed. Derive it with ' +
+        'protocolVersionToLedger rather than constructing the string by hand.'
+    );
+    this.name = 'UnknownLedgerVersionError';
+  }
 }
