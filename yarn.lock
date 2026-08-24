@@ -2100,7 +2100,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@midnight-ntwrk/onchain-runtime-v3@npm:3.1.0, @midnight-ntwrk/onchain-runtime-v3@npm:^3.0.0, onchain-runtime-v3-alt@npm:@midnight-ntwrk/onchain-runtime-v3@3.1.0":
+"@midnight-ntwrk/onchain-runtime-v3@npm:3.1.0, onchain-runtime-v3-alt@npm:@midnight-ntwrk/onchain-runtime-v3@3.1.0":
   version: 3.1.0
   resolution: "@midnight-ntwrk/onchain-runtime-v3@npm:3.1.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fonchain-runtime-v3%2F3.1.0%2F9e7166a1a37b28579339a3e3176b4bf024818a73"
   checksum: 10/b13ce3729fd290220bdad0b5139793f8b3d01fdeb8317b2ed0542262b67a556ebfdebe0ed0e3047e9d5b460368e39f79e29d6c641c2f3b246dc74aa28e8e7f6f
