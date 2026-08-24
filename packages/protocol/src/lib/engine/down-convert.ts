@@ -17,6 +17,7 @@ import type { ChargedState, StateBoundedMerkleTree, StateValue } from '@midnight
 import type { AlignedValue, EncodedStateValue } from '@midnightntwrk/ledger-v9';
 
 import { DownConvertFailedError, MerkleNotRehashedError } from '../../errors';
+import type { Ledger8ContractState } from './envelope';
 
 /**
  * The subset of the pre-fork onchain-runtime-v3 `StateValue` statics
@@ -24,15 +25,43 @@ import { DownConvertFailedError, MerkleNotRehashedError } from '../../errors';
  *
  * Injected rather than imported as a value: a value import here would
  * statically link the retained pre-fork WASM into any bundle that reaches this
- * module, which the `dist-laziness` suite forbids. The pre-fork packages reach
- * this process through a lazy acquisition path the caller owns.
+ * module. The pre-fork packages reach this process through a lazy acquisition
+ * path the caller owns.
+ *
+ * The `dist-laziness` suite is the intended enforcement, but it does not cover
+ * this module yet — it inspects `dist/index.js`, and no build entry reaches
+ * `lib/engine/*` on this branch, so nothing here is bundled to inspect. It
+ * begins covering this file when the engine gains a build entry; see the same
+ * note on `Ledger8ContractState` in `envelope.ts`.
  */
 export interface Ledger8CompactRuntimeStateValue {
   readonly decode: (value: EncodedStateValue) => StateValue;
 }
 
-/** The pre-fork runtime surface {@link downConvertForExecution} bridges into. */
+/**
+ * The pre-fork runtime surface {@link downConvertForExecution} bridges into.
+ *
+ * `ContractState` is here to pin the *era*, not because this module calls it.
+ * `StateValue.decode` and `new ChargedState(...)` are structurally identical
+ * across the fork — that identity is what makes the bridge possible, and it is
+ * asserted directly by the wire-shape drift detectors in
+ * `engine-down-convert.test.ts`. So neither member can tell a pre-fork runtime
+ * from a post-fork one, and without a third member this interface is satisfied
+ * by onchain-runtime-v4 and by `compact-runtime` (which re-exports it) — both
+ * public barrel exports of this very package. A caller reaching for the wrong
+ * one gets no error: decode and re-encode then use the same post-fork codec, so
+ * the structural comparison passes, the Merkle walk passes, and a v4
+ * `ChargedState` is returned typed as a v3 one, to surface later as an opaque
+ * wasm-bindgen rejection deep inside execution.
+ *
+ * `ContractState` closes that, because its `query()` returns a `GatherResult`
+ * whose `log` variant gained fields after the fork. That divergence is
+ * incidental to this bridge, so it is pinned by a compile-time negative
+ * assertion (`_PostForkOnchainRuntimeIsRejected`) rather than trusted: a vendor
+ * bump that realigned the two shapes would otherwise silently reopen the hole.
+ */
 export interface Ledger8CompactRuntime {
+  readonly ContractState: Ledger8ContractState;
   readonly StateValue: Ledger8CompactRuntimeStateValue;
   readonly ChargedState: new (state: StateValue) => ChargedState;
 }
@@ -57,13 +86,15 @@ export interface DownConvertedState {
  *
  * Hand-rolled rather than `node:util`'s `isDeepStrictEqual`, which does not
  * resolve in a browser bundle. `Map`s are compared pairwise in iteration
- * order, deliberately: both runtimes emit map entries in a canonical key
- * order, so a value and its re-encoding iterate identically whatever order the
- * entries were inserted in. That is a cross-runtime property, not a
- * single-codec one — the source encoding comes from ledger-v9 and the
- * re-encoding from onchain-runtime-v3 — so it is pinned by tests that build
- * the two sides with the two different codecs, not only by the same-codec
- * round trip.
+ * order, deliberately: both runtimes emit map entries in a deterministic,
+ * insertion-order-independent order that the two of them agree on, so a value
+ * and its re-encoding iterate identically whatever order the entries were
+ * inserted in. Note that order is not ascending by key — it is a canonical
+ * hash order, so do not reason about it as sorted. That agreement is a
+ * cross-runtime property, not a single-codec one — the source encoding comes
+ * from ledger-v9 and the re-encoding from onchain-runtime-v3 — so it is pinned
+ * by tests that build the two sides with the two different codecs, not only by
+ * the same-codec round trip.
  */
 export const structurallyEqual = (a: unknown, b: unknown): boolean => {
   if (a === b) {
@@ -100,8 +131,18 @@ export const structurallyEqual = (a: unknown, b: unknown): boolean => {
   // `key in bRecord`, not just a matching key count: without it two objects
   // that share no key at all compare equal whenever the diverging key's value
   // in `a` is `undefined`, because both lookups then read `undefined` and
-  // short-circuit. Today's algebra has no undefined-valued fields, so this is
-  // a guard against the algebra gaining one rather than a live defect.
+  // short-circuit. No *record* in today's algebra holds an undefined-valued
+  // field — the one `undefined` it contains is the second slot of a
+  // boundedMerkleTree leaf tuple (`[Uint8Array, undefined]`), which arrives
+  // through the array branch above and never reaches this comparison. So this
+  // guards against a record gaining one rather than fixing a live defect.
+  //
+  // It is a partial guard, not a total one: `bRecord` is a plain object, so
+  // `in` also succeeds for every `Object.prototype` member. Keys in the pinned
+  // algebra are only `tag`/`content`/`value`/`alignment`/`length`, none of them
+  // inherited, so the hole is unreachable today — but `Object.hasOwn` would
+  // close it outright and is the right move the moment this helper is used on
+  // anything wider.
   return (
     aKeys.length === Object.keys(bRecord).length &&
     aKeys.every((key) => key in bRecord && structurallyEqual(aRecord[key], bRecord[key]))

@@ -30,9 +30,16 @@ import {
   StateMap as LedgerV9StateMap,
   StateValue as LedgerV9StateValue
 } from '@midnightntwrk/ledger-v9';
+import type * as ocrt4 from '@midnightntwrk/onchain-runtime-v4';
 import { describe, expect, it } from 'vitest';
 
-import { DownConvertFailedError, MerkleNotRehashedError, PROTOCOL_ERROR_CODES, UnknownLedgerVersionError } from '../errors';
+import {
+  DownConvertFailedError,
+  Ledger8RuntimeInvalidError,
+  MerkleNotRehashedError,
+  PROTOCOL_ERROR_CODES,
+  UnknownLedgerVersionError
+} from '../errors';
 import type { Ledger8CompactRuntime } from '../lib/engine/down-convert';
 import {
   assertMerkleTreesRehashed,
@@ -91,6 +98,7 @@ const ledger9Envelope = (byte: number): Uint8Array => {
 
 /** A runtime whose `decode` is replaced, so the safety net can be driven directly. */
 const runtimeDecoding = (decode: () => ocrt3.StateValue): Ledger8CompactRuntime => ({
+  ContractState: ocrt3.ContractState,
   StateValue: { decode },
   ChargedState: ocrt3.ChargedState
 });
@@ -183,6 +191,52 @@ describe('extractEncodedStateValue', () => {
     }
   });
 
+  // The class message deliberately carries no detail of its own — it tells the
+  // caller to read the cause, which is where the runtime's own diagnosis
+  // (tag mismatch vs truncated vs trailing vs empty) lives. Dropping the
+  // `{ cause }` argument would leave that instruction pointing at nothing, so
+  // the wiring is asserted rather than assumed.
+  it.each([{ version: 'v8' as const }, { version: 'v9' as const }])(
+    'preserves the runtime cause behind a failed $version extraction',
+    ({ version }) => {
+      try {
+        extractEncodedStateValue(new Uint8Array(0), version, ocrt3.ContractState);
+        expect.unreachable('empty input must throw');
+      } catch (error) {
+        expect(error).toBeInstanceOf(DownConvertFailedError);
+        expect((error as DownConvertFailedError).cause).toBeDefined();
+      }
+    }
+  );
+
+  // A caller that omits the pre-fork runtime has a runtime-acquisition fault,
+  // not a bad envelope. Reporting it as DOWN_CONVERT_FAILED at the extraction
+  // stage sends them to inspect bytes that are perfectly fine, so it gets its
+  // own code. Reachable only from untyped JS, like the version guard.
+  it.each([{ probe: undefined }, { probe: null }, { probe: {} }, { probe: { deserialize: 'nope' } }])(
+    'rejects a runtime that cannot deserialize ($probe) without blaming the input bytes',
+    ({ probe }) => {
+      try {
+        // @ts-expect-error - reaching the runtime guard that exists for untyped JS callers
+        extractEncodedStateValue(ledger8Envelope(cellSv(0x07)), 'v8', probe);
+        expect.unreachable('an unusable ledger-8 runtime must throw');
+      } catch (error) {
+        expect(error).toBeInstanceOf(Ledger8RuntimeInvalidError);
+        expect((error as Ledger8RuntimeInvalidError).code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_INVALID);
+      }
+    }
+  );
+
+  // Validated before the version is dispatched, so a v9 caller who omits the
+  // runtime gets the same accurate diagnosis rather than reaching the decoder
+  // and succeeding by luck.
+  it('rejects an unusable runtime on the v9 path too, before decoding', () => {
+    expect(() =>
+      // @ts-expect-error - reaching the runtime guard that exists for untyped JS callers
+      extractEncodedStateValue(ledger9Envelope(0x07), 'v9', undefined)
+    ).toThrowError(expect.objectContaining({ code: PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_INVALID }));
+  });
+
   // The v8 decoder is a different implementation from the v9 one, so the
   // failure modes the docstring promises have to be pinned on both. A lenient
   // decoder that ignored trailing garbage would accept a corrupted envelope.
@@ -197,7 +251,8 @@ describe('extractEncodedStateValue', () => {
 
   // An object-literal decoder table resolves an unexpected key through
   // Object.prototype: 'constructor' calls Object and hands the raw bytes back
-  // as an EncodedStateValue, 'toString' returns the string '[object Object]'.
+  // as an EncodedStateValue, 'toString' returns '[object Undefined]' (read into
+  // a local and called bare, so its `this` is undefined, not the table).
   // Both are silent wrong answers from a function documented to fail closed,
   // and both are reachable in practice: extractEncodedStateValue sits behind
   // the public Ledger8Engine.extractState, so an untyped consumer can reach it
@@ -409,22 +464,83 @@ describe('downConvertForExecution safety net', () => {
     );
   });
 
+  // DOWN_CONVERT_FAILED is shared by three stages, so `stage` is the only
+  // thing that tells a consumer "your envelope bytes are bad" apart from "the
+  // bridge lost data mid-conversion". Every failure raised inside
+  // downConvertForExecution must therefore name the down-convert stage, and
+  // must carry the underlying cause: the class message says to read it.
+  it.each([
+    {
+      name: 'a re-encode mismatch',
+      run: () => downConvertForExecution(cellSv(0x44).encode(), runtimeDecoding(() => ocrt3.StateValue.newNull()))
+    },
+    {
+      name: 'a decode failure',
+      run: () =>
+        downConvertForExecution(
+          ocrt3.StateValue.newNull().encode(),
+          runtimeDecoding(() => {
+            throw new Error('simulated decode failure');
+          })
+        )
+    }
+  ])('names the state down-convert stage and preserves the cause for $name', ({ run }) => {
+    try {
+      run();
+      expect.unreachable('the safety net must throw');
+    } catch (error) {
+      expect(error).toBeInstanceOf(DownConvertFailedError);
+      expect((error as DownConvertFailedError).stage).toBe('state down-convert');
+      expect((error as DownConvertFailedError).cause).toBeDefined();
+    }
+  });
+
+  // The injected failure is the exact object the caller's runtime threw, so
+  // this pins pass-through identity rather than mere presence — a wrapper that
+  // re-created the cause would lose the runtime's own diagnosis.
+  it('passes the runtime error through as the cause, not a copy of it', () => {
+    const thrown = new Error('simulated decode failure');
+
+    try {
+      downConvertForExecution(
+        ocrt3.StateValue.newNull().encode(),
+        runtimeDecoding(() => {
+          throw thrown;
+        })
+      );
+      expect.unreachable('a throwing decode must fail the down-convert');
+    } catch (error) {
+      expect((error as DownConvertFailedError).cause).toBe(thrown);
+    }
+  });
+
   // ChargedState construction is where a genuine dual-instantiation surfaces:
   // wasm-bindgen rejects a StateValue built by the other physical copy. It has
   // to leave this function as a coded error like every other failure, or
   // code-based discrimination breaks exactly where it matters most.
   it('wraps a ChargedState construction failure in DownConvertFailedError', () => {
+    const rejection = new Error('simulated ChargedState rejection');
     class ThrowingChargedState extends ocrt3.ChargedState {
       constructor(state: ocrt3.StateValue) {
         super(state);
-        throw new Error('simulated ChargedState rejection');
+        throw rejection;
       }
     }
-    const runtime: Ledger8CompactRuntime = { StateValue: ocrt3.StateValue, ChargedState: ThrowingChargedState };
+    const runtime: Ledger8CompactRuntime = {
+      ContractState: ocrt3.ContractState,
+      StateValue: ocrt3.StateValue,
+      ChargedState: ThrowingChargedState
+    };
 
-    expect(() => downConvertForExecution(cellSv(0x44).encode(), runtime)).toThrowError(
-      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED })
-    );
+    try {
+      downConvertForExecution(cellSv(0x44).encode(), runtime);
+      expect.unreachable('a rejecting ChargedState must fail the down-convert');
+    } catch (error) {
+      expect(error).toBeInstanceOf(DownConvertFailedError);
+      expect((error as DownConvertFailedError).code).toBe(PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED);
+      expect((error as DownConvertFailedError).stage).toBe('state down-convert');
+      expect((error as DownConvertFailedError).cause).toBe(rejection);
+    }
   });
 
   it('throws MERKLE_NOT_REHASHED instead of returning a state whose tree has no readable root', () => {
@@ -492,8 +608,13 @@ describe('structurallyEqual', () => {
 // produced by ledger-v9 and the re-encoding by onchain-runtime-v3. Every other
 // container test in this file builds both sides with ocrt3, so it cannot fail
 // for ordering reasons. These build the v9 side natively and run the real
-// bridge over the two container variants and a Merkle tree — the shapes where
-// a divergence in map iteration order between the two eras would surface.
+// bridge over the two container variants — the shapes where a divergence in map
+// iteration order between the two eras would surface.
+//
+// Not covered here: a v9-built boundedMerkleTree. Its leaf map is the third
+// ordered structure in the algebra, and the only golden that carries one has a
+// single leaf, which compares equal under any ordering. That gap is real and
+// outstanding.
 describe('cross-codec down-convert over containers', () => {
   const v9Field = (byte: number): LedgerV9AlignedValue => ({
     value: [new Uint8Array(32).fill(byte)],
@@ -574,3 +695,24 @@ type _AlignedValueUnchanged = Expect<AssertEqual<ocrt3.AlignedValue, LedgerV9Ali
 type _V8EncodedStateValueUnchanged = Expect<AssertEqual<LedgerV8EncodedStateValue, LedgerV9EncodedStateValue>>;
 type _V8OpUnchanged = Expect<AssertEqual<LedgerV8Op<null>, LedgerV9Op<null>>>;
 type _V8AlignedValueUnchanged = Expect<AssertEqual<LedgerV8AlignedValue, LedgerV9AlignedValue>>;
+
+// Era rejection, and why it needs pinning here rather than trusting the
+// interface to keep working. `Ledger8CompactRuntime` must accept only the
+// pre-fork runtime, but `StateValue.decode` and `new ChargedState(...)` are
+// structurally identical across the fork (the assertions above are exactly
+// that fact), so neither member discriminates. `ContractState` is what does:
+// its `query()` returns a `GatherResult` whose `log` variant gained fields
+// post-fork. That divergence is incidental to this engine — a vendor bump
+// that aligned the two shapes would silently make every post-fork runtime
+// assignable again, reopening a hole where the whole bridge decodes with the
+// wrong era's codec while every runtime check still passes. These two lines
+// turn that back into a build failure.
+//
+// Checked in the same place as the block above: `yarn typecheck:tests` via the
+// pre-push hook, not CI.
+type NotAssignable<T, U> = T extends U ? false : true;
+
+type _PostForkOnchainRuntimeIsRejected = Expect<NotAssignable<typeof ocrt4, Ledger8CompactRuntime>>;
+type _PostForkLedgerIsRejected = Expect<
+  NotAssignable<{ ContractState: typeof LedgerV9ContractState; StateValue: typeof LedgerV9StateValue }, Ledger8CompactRuntime>
+>;

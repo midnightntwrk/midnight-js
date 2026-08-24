@@ -74,6 +74,7 @@ describe('Protocol ACL package', () => {
         'LEDGER_VERSIONS',
         'Ledger8ComposeFailedError',
         'Ledger8InstanceMismatchError',
+        'Ledger8RuntimeInvalidError',
         'Ledger8RuntimeMissingError',
         'Ledger8ZswapUnsupportedError',
         'loadLedger8',
