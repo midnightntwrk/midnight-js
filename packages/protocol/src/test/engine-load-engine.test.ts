@@ -64,17 +64,26 @@ interface CompiledCounterContract extends Ledger8ContractLike {
 // Ledger8RuntimeMissingError — same policy as dist-laziness.test.ts and the
 // loadLedger8Engine suite below. Run `yarn build && yarn test` to green it.
 describe.skipIf(!distV8Exists)('createLedger8Engine', () => {
-  it('builds a Ledger8Engine exposing extractState, downConvertForExecution, executeCircuit, wrapKeepStateCall, composeCallTx, executeConstructor and composeDeployTx', async () => {
+  // Strict equality, not a per-method `typeof` sweep: a method leaked onto the
+  // facade, renamed, or silently dropped has to fail here, which a
+  // one-directional check of the names we happen to remember cannot do.
+  it('exposes exactly the seven documented engine methods, and nothing else', async () => {
     const engine = await createLedger8Engine();
 
-    expect(typeof engine.extractState).toBe('function');
-    expect(typeof engine.downConvertForExecution).toBe('function');
-    expect(typeof engine.executeCircuit).toBe('function');
-    expect(typeof engine.wrapKeepStateCall).toBe('function');
-    expect(typeof engine.composeCallTx).toBe('function');
-    expect(typeof engine.executeConstructor).toBe('function');
-    expect(typeof engine.composeDeployTx).toBe('function');
+    expect(Object.keys(engine).sort()).toEqual(
+      [
+        'composeCallTx',
+        'composeDeployTx',
+        'downConvertForExecution',
+        'executeCircuit',
+        'executeConstructor',
+        'extractState',
+        'wrapKeepStateCall'
+      ].sort()
+    );
+    expect(Object.values(engine).every((method) => typeof method === 'function')).toBe(true);
   });
+
 
   it('extractState + downConvertForExecution round-trip a v8-era envelope into a decoded DownConvertedState', async () => {
     const engine = await createLedger8Engine();
@@ -168,16 +177,24 @@ describe.skipIf(!distV8Exists)('createLedger8Engine', () => {
       privateState: initialPrivateState,
       coinPk: SAMPLE_COIN_PUBLIC_KEY
     });
-    const deployBytes = engine.composeDeployTx({
+    const deployBytes = await engine.composeDeployTx({
       contractState: constructorResult.contractState,
       verifierKeys: new Map([['increment', new Uint8Array(verifierKey)]]),
       networkId: 'test-network',
       ttl: new Date(Date.now() + 3_600_000)
     });
 
-    expect(deployBytes).toBeInstanceOf(Uint8Array);
+    // Read the deploy back apart rather than only round-tripping it: the
+    // deployed state must carry the supplied key under the circuit it was
+    // supplied for, which byte-identity of a re-serialization cannot show.
     const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', deployBytes);
-    expect(Buffer.from(back.serialize())).toEqual(Buffer.from(deployBytes));
+    const deployed = [...(back.intents?.values() ?? [])]
+      .flatMap((intent) => intent.actions)
+      .filter((action) => action instanceof LedgerV8.ContractDeploy);
+    expect(deployed).toHaveLength(1);
+    const registered = deployed[0].initialState;
+    expect(registered.operations()).toEqual(['increment']);
+    expect(Buffer.from(registered.operation('increment')?.verifierKey ?? new Uint8Array())).toEqual(Buffer.from(verifierKey));
   });
 
   it('composeCallTx composes a v8-native call transaction from a real executeCircuit transcript', async () => {
@@ -209,17 +226,34 @@ describe.skipIf(!distV8Exists)('createLedger8Engine', () => {
     v8Operation.verifierKey = new Uint8Array(verifierKey);
     v8ContractState.setOperation('increment', v8Operation);
 
-    const callBytes = engine.composeCallTx({
+    const ttl = new Date(Date.now() + 3_600_000);
+    const callBytes = await engine.composeCallTx({
       transcript,
       contractAddress: address,
       contractState: v8ContractState,
       networkId: 'test-network',
-      ttl: new Date(Date.now() + 3_600_000)
+      ttl
     });
 
-    expect(callBytes).toBeInstanceOf(Uint8Array);
+    // The only test in the suite whose transcript carries a REAL, non-empty
+    // publicTranscript, so the only one that can show what
+    // partitionTranscripts produced actually reached the prototype: this
+    // circuit's ops are all guaranteed, so the guaranteed transcript must be
+    // populated and the fallible one absent. Swapping the two positional
+    // arguments in assemble-call.ts would misplace the work between the
+    // transaction's guaranteed and fallible sections, and passes every other
+    // assertion in this package.
     const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', callBytes);
-    expect(Buffer.from(back.serialize())).toEqual(Buffer.from(callBytes));
+    const intents = [...(back.intents?.values() ?? [])];
+    expect(intents).toHaveLength(1);
+    const calls = intents[0].actions.filter((action) => action instanceof LedgerV8.ContractCall);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].address).toBe(address);
+    expect(calls[0].entryPoint).toBe('increment');
+    expect(calls[0].guaranteedTranscript).toBeDefined();
+    expect(calls[0].fallibleTranscript).toBeUndefined();
+    // Intents record their ttl at second granularity, so compare floored seconds.
+    expect(Math.floor(intents[0].ttl.getTime() / 1000)).toBe(Math.floor(ttl.getTime() / 1000));
   });
 
   // Every other wrapKeepStateCall test (engine-wrap-v9.test.ts and the

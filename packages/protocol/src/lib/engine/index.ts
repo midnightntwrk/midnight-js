@@ -47,18 +47,24 @@ export type {
 /**
  * The public surface {@link createLedger8Engine} builds: every retained-v8
  * (pre-fork execution, v9-native keep-state binding, v8-native composition
- * and deploy) capability, with the 0.16 runtime instance and the v8 ledger
- * module already captured in closure — no method here takes a runtime or
- * module parameter.
+ * and deploy) capability, with the 0.16 runtime instance already captured in
+ * closure — no method here takes a runtime or module parameter.
+ *
+ * The two composition methods are async and the other five are not, because
+ * only those two need the v8 ledger module: they acquire it on first use via
+ * `loadLedger8` (`../load-v8.ts`), which is memoised, so the multi-megabyte v8
+ * WASM is never instantiated for a consumer that only executes circuits and
+ * binds them onto v9. See {@link createLedger8Engine} for why that load is not
+ * hoisted into construction.
  */
 export interface Ledger8Engine {
   extractState(raw: Uint8Array, version: LedgerVersion): EncodedStateValue;
   downConvertForExecution(state: EncodedStateValue): DownConvertedState;
   executeCircuit(options: ExecuteCircuitOptions): TranscriptPojo;
   wrapKeepStateCall(options: WrapKeepStateCallOptions): ContractCallPrototype;
-  composeCallTx(options: ComposeV8CallOptions): Uint8Array;
+  composeCallTx(options: ComposeV8CallOptions): Promise<Uint8Array>;
   executeConstructor(options: ExecuteConstructorOptions): ConstructorResultPojo;
-  composeDeployTx(options: ComposeV8DeployOptions): Uint8Array;
+  composeDeployTx(options: ComposeV8DeployOptions): Promise<Uint8Array>;
 }
 
 /**
@@ -80,20 +86,24 @@ export interface Ledger8Engine {
  * silently corrupt on a physical-instance mismatch. No other WASM package
  * this module acquires has a comparable second acquisition path, so no other
  * axis is asserted. Any acquisition failure surfaces through the facade
- * (`lib/engine/load-engine.ts`) as {@link Ledger8RuntimeMissingError}.
+ * (`lib/engine/load-engine.ts`) as `Ledger8RuntimeMissingError` (`../../errors.ts`).
  *
- * Also acquires the v8 ledger module via {@link loadLedger8} in the same
- * `Promise.all` — its rejection is already a {@link Ledger8RuntimeMissingError},
- * see `../load-v8.ts` — and closes over it for {@link composeV8CallTx}
- * (`lib/engine/compose-v8.ts`) and {@link composeV8DeployTx}
- * (`lib/engine/deploy-v8.ts`), so neither takes a module parameter on the
- * public facade.
+ * Deliberately does NOT acquire the v8 ledger module here. Only the two
+ * composition legs need it, so hoisting the load into construction would make
+ * every consumer — including the keep-state path, which never touches the v8
+ * axis — instantiate multi-megabyte WASM and hard-depend on ledger-v8
+ * resolving. `composeCallTx`/`composeDeployTx` therefore await
+ * {@link loadLedger8} per call instead; it memoises, so the module loads at most
+ * once, and its rejection is already a `Ledger8RuntimeMissingError` (see
+ * `../load-v8.ts`). Keeping it out of the `Promise.all` also orders
+ * {@link assertSharedLedger8Instance} ahead of any v8 acquisition, so a
+ * dual-instantiation can no longer lose the race and be reported as a missing
+ * runtime instead.
  */
 export const createLedger8Engine = async (): Promise<Ledger8Engine> => {
-  const [glue, ocrt3, v8] = await Promise.all([
+  const [glue, ocrt3] = await Promise.all([
     import('compact-runtime-ledger8'),
-    import('@midnight-ntwrk/onchain-runtime-v3'),
-    loadLedger8()
+    import('@midnight-ntwrk/onchain-runtime-v3')
   ]);
 
   assertSharedLedger8Instance('onchain-runtime-v3', ocrt3.ChargedState, glue.ChargedState);
@@ -115,8 +125,8 @@ export const createLedger8Engine = async (): Promise<Ledger8Engine> => {
     downConvertForExecution: (state) => downConvertForExecution(state, ledger8CompactRuntime),
     executeCircuit: (options) => executeCircuit(options, ledger8ExecutionRuntime),
     wrapKeepStateCall: (options) => wrapKeepStateCall(options),
-    composeCallTx: (options) => composeV8CallTx(options, v8),
+    composeCallTx: async (options) => composeV8CallTx(options, await loadLedger8()),
     executeConstructor: (options) => executeConstructor(options, ledger8ConstructorRuntime),
-    composeDeployTx: (options) => composeV8DeployTx(options, v8)
+    composeDeployTx: async (options) => composeV8DeployTx(options, await loadLedger8())
   };
 };

@@ -18,6 +18,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DownConvertFailedError,
   Ledger8ComposeFailedError,
+  Ledger8ComposeOptionError,
   Ledger8InstanceMismatchError,
   Ledger8RuntimeMissingError,
   MerkleNotRehashedError,
@@ -47,7 +48,8 @@ describe('PROTOCOL_ERROR_CODES', () => {
       LEDGER8_RUNTIME_MISSING: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_MISSING',
       DOWN_CONVERT_FAILED: 'MIDNIGHT_JS_P_DOWN_CONVERT_FAILED',
       MERKLE_NOT_REHASHED: 'MIDNIGHT_JS_P_MERKLE_NOT_REHASHED',
-      LEDGER8_COMPOSE_FAILED: 'MIDNIGHT_JS_P_LEDGER8_COMPOSE_FAILED'
+      LEDGER8_COMPOSE_FAILED: 'MIDNIGHT_JS_P_LEDGER8_COMPOSE_FAILED',
+      LEDGER8_COMPOSE_OPTION_INVALID: 'MIDNIGHT_JS_P_LEDGER8_COMPOSE_OPTION_INVALID'
     });
   });
 
@@ -223,14 +225,49 @@ describe('Ledger8ComposeFailedError', () => {
     expect(error.message).not.toMatch(/[0-9a-f]{16,}/i);
   });
 
-  it('carries the deploy-verifier-key stage and names the circuit id with a VerifierKeyNotSet-flavoured message', () => {
+  it('carries the deploy-verifier-key stage and names the circuit whose key is missing', () => {
     const error = new Ledger8ComposeFailedError('deploy-verifier-key', 'increment');
 
     expect(error.stage).toBe('deploy-verifier-key');
     expect(error.circuitId).toBe('increment');
     expect(error.message).toContain('increment');
     expect(error.message).toMatch(/verifier key/i);
-    expect(error.message).toMatch(/VerifierKeyNotSet/);
+    expect(error.message).toContain('composeV8DeployTx');
+  });
+
+  it('carries the deploy-unknown-circuit stage and explains that the address would change', () => {
+    const error = new Ledger8ComposeFailedError('deploy-unknown-circuit', 'stale');
+
+    expect(error.stage).toBe('deploy-unknown-circuit');
+    expect(error.circuitId).toBe('stale');
+    expect(error.message).toContain('stale');
+    expect(error.message).toMatch(/does not declare/i);
+    expect(error.message).toMatch(/address/i);
+  });
+
+  it('carries the deploy-verifier-key-blob stage and preserves the ledger failure on cause', () => {
+    const cause = new Error('expected header tag');
+    const error = new Ledger8ComposeFailedError('deploy-verifier-key-blob', 'increment', cause);
+
+    expect(error.stage).toBe('deploy-verifier-key-blob');
+    expect(error.circuitId).toBe('increment');
+    expect(error.cause).toBe(cause);
+    expect(error.message).toMatch(/rejected the verifier-key bytes/i);
+  });
+
+  it('carries the call-verifier-key stage and points at a constructor-built state', () => {
+    const error = new Ledger8ComposeFailedError('call-verifier-key', 'increment');
+
+    expect(error.stage).toBe('call-verifier-key');
+    expect(error.circuitId).toBe('increment');
+    expect(error.message).toContain('increment');
+    expect(error.message).toMatch(/no verifier key/i);
+    expect(error.message).toMatch(/constructor/i);
+  });
+
+  it('carries no cause for the assertion stages, which wrap nothing', () => {
+    expect(new Ledger8ComposeFailedError('wrap-call', 'increment').cause).toBeUndefined();
+    expect(new Ledger8ComposeFailedError('deploy-verifier-key', 'increment').cause).toBeUndefined();
   });
 
   it('carries the call-operation stage and names composeV8CallTx as the failing compose context', () => {
@@ -247,5 +284,42 @@ describe('Ledger8ComposeFailedError', () => {
     const error = new Ledger8ComposeFailedError('call-operation', 'increment');
 
     expect(error.message).not.toMatch(/[0-9a-f]{16,}/i);
+  });
+});
+
+describe('Ledger8ComposeOptionError', () => {
+  it('carries the LEDGER8_COMPOSE_OPTION_INVALID code and preserves the decoder failure for contractState', () => {
+    const cause = new Error('expected header tag');
+    const error = new Ledger8ComposeOptionError('contractState', cause);
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error.name).toBe('Ledger8ComposeOptionError');
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_COMPOSE_OPTION_INVALID);
+    expect(error.option).toBe('contractState');
+    expect(error.cause).toBe(cause);
+    expect(error.message).toMatch(/could not be bridged/i);
+  });
+
+  it('explains why an empty network id is refused rather than passed through', () => {
+    const error = new Ledger8ComposeOptionError('networkId');
+
+    expect(error.option).toBe('networkId');
+    expect(error.cause).toBeUndefined();
+    expect(error.message).toMatch(/empty network id/i);
+    expect(error.message).toMatch(/submission/i);
+  });
+
+  it('explains that an invalid ttl would be recorded as the epoch', () => {
+    const error = new Ledger8ComposeOptionError('ttl');
+
+    expect(error.option).toBe('ttl');
+    expect(error.message).toMatch(/time-to-live/i);
+    expect(error.message).toMatch(/epoch/i);
+  });
+
+  it('never includes a hex or byte dump in its own message', () => {
+    for (const option of ['contractState', 'networkId', 'ttl'] as const) {
+      expect(new Ledger8ComposeOptionError(option).message).not.toMatch(/[0-9a-f]{16,}/i);
+    }
   });
 });

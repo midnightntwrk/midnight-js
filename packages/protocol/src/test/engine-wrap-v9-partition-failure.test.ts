@@ -13,12 +13,23 @@
  * limitations under the License.
  */
 
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as LedgerV9 from '@midnightntwrk/ledger-v9';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { DownConvertedState } from '../lib/engine/down-convert';
 import type { TranscriptPojo } from '../lib/engine/execute';
+
+// A REGISTERED key, not a blank operation: assembleCallPrototype rejects a
+// key-less operation before it ever partitions a transcript (stage
+// 'call-verifier-key'), so a blank one would make this test assert that guard
+// instead of the partition guard it exists for.
+const REGISTERED_VERIFIER_KEY = readFileSync(
+  resolve(__dirname, '../../../../testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/keys/increment.verifier')
+);
 
 const FIELD_ALIGNMENT: ocrt3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
 const fieldValue = (byte: number): ocrt3.AlignedValue => ({ value: [new Uint8Array(32).fill(byte)], alignment: FIELD_ALIGNMENT });
@@ -52,7 +63,9 @@ describe('wrapKeepStateCall defensive guard', () => {
     });
     const { wrapKeepStateCall } = await import('../lib/engine/wrap-v9');
     const contractState = new LedgerV9.ContractState();
-    contractState.setOperation('increment', new LedgerV9.ContractOperation());
+    const operation = new LedgerV9.ContractOperation();
+    operation.verifierKey = REGISTERED_VERIFIER_KEY;
+    contractState.setOperation('increment', operation);
 
     expect(() =>
       wrapKeepStateCall({ transcript: buildTranscript(), contractAddress: LedgerV9.sampleContractAddress(), contractState })

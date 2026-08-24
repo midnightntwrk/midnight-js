@@ -62,9 +62,23 @@ export interface CallAssemblyLedger<
   ) => TPrototype;
 }
 
-/** The slice of a ledger `ContractState` {@link assembleCallPrototype} reads. */
+/**
+ * The slice of a ledger `ContractState` {@link assembleCallPrototype} reads.
+ *
+ * `TOperation` is constrained to the one property this module inspects: a
+ * registered operation must carry a verifier key for a call against it to be
+ * verifiable. Both eras' `ContractOperation` declare `verifierKey` as a
+ * required `Uint8Array`, but a slot that was never assigned one reads back
+ * `undefined` — pinned by the operation-resolution tests, so a vendor change
+ * fails a test rather than silently disabling the check below.
+ */
 export interface CallOperationRegistry<TOperation> {
   readonly operation: (circuitId: string) => TOperation | undefined;
+}
+
+/** The one property {@link assembleCallPrototype} inspects on a resolved operation. */
+export interface VerifiableOperation {
+  readonly verifierKey?: Uint8Array;
 }
 
 /** Everything {@link assembleCallPrototype} needs beyond the ledger module. */
@@ -90,10 +104,27 @@ export interface AssembleCallOptions<TOperation> {
  * preserves the data exactly.
  *
  * Throws {@link Ledger8ComposeFailedError} with the caller's `stage` when
- * `operations` has no registered operation for the transcript's circuit,
- * rather than silently falling back to a blank, unverifiable operation.
+ * `operations` has no registered operation for the transcript's circuit, and
+ * with stage `'call-verifier-key'` when the operation it resolves carries no
+ * verifier key — rather than silently composing a call against a blank,
+ * unverifiable operation. The second check is stage-independent because the
+ * diagnosis does not differ by leg: an operation without a key is unusable on
+ * either ledger axis.
+ *
+ * `partitionTranscripts` returning nothing for the single call submitted is an
+ * internal invariant of the ledger module, not a caller error, so it throws a
+ * plain `Error` and deliberately carries no protocol error code.
  */
-export const assembleCallPrototype = <TStateValue, TChargedState, TQueryContext, TPreTranscript, TParams, TTranscript, TOperation, TPrototype>(
+export const assembleCallPrototype = <
+  TStateValue,
+  TChargedState,
+  TQueryContext,
+  TPreTranscript,
+  TParams,
+  TTranscript,
+  TOperation extends VerifiableOperation,
+  TPrototype
+>(
   ledger: CallAssemblyLedger<TStateValue, TChargedState, TQueryContext, TPreTranscript, TParams, TTranscript, TOperation, TPrototype>,
   options: AssembleCallOptions<TOperation>
 ): TPrototype => {
@@ -102,6 +133,9 @@ export const assembleCallPrototype = <TStateValue, TChargedState, TQueryContext,
   const op = operations.operation(transcript.circuitId);
   if (op === undefined) {
     throw new Ledger8ComposeFailedError(stage, transcript.circuitId);
+  }
+  if (op.verifierKey === undefined) {
+    throw new Ledger8ComposeFailedError('call-verifier-key', transcript.circuitId);
   }
 
   const stateValue = ledger.StateValue.decode(transcript.preContractState.data.state.encode());

@@ -20,7 +20,7 @@ import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import { describe, expect, it } from 'vitest';
 
-import { Ledger8ComposeFailedError, PROTOCOL_ERROR_CODES } from '../errors';
+import { Ledger8ComposeFailedError, Ledger8ComposeOptionError, PROTOCOL_ERROR_CODES } from '../errors';
 import { type ComposeV8CallOptions, composeV8CallTx } from '../lib/engine/compose-v8';
 import type { DownConvertedState } from '../lib/engine/down-convert';
 import type { TranscriptPojo } from '../lib/engine/execute';
@@ -32,14 +32,6 @@ const TTL = new Date(Date.now() + 3_600_000);
 // (SignatureEnabled/PreProof/PreBinding) transaction — derived empirically by
 // serializing an unproven transaction against the pinned
 // `@midnightntwrk/ledger-v8@8.1.1` build, not guessed.
-// A `parseSerializedTag` round trip is NOT exercised here: this tag's
-// `version` segment (`transaction[v9](signature[v1],proof-preimage,embedded-fr[v1])`)
-// contains `[`, `]`, `(`, `)`, and `,` — bytes `parseSerializedTag`'s
-// `namespace:version:` grammar rejects (segments must match
-// `/^[a-z0-9_-]+$/i`). That round trip is exercised at the consumer layer
-// against tags whose grammar it actually accepts (e.g. `ContractState`'s
-// `contract-state[v6]`/`[v8]` tags) — see `packages/utils`'s own
-// `serialized-tag.test.ts` and `envelope.ts`'s callers.
 const V8_UNPROVEN_TX_TAG = 'midnight:transaction[v9](signature[v1],proof-preimage,embedded-fr[v1]):';
 
 const FIELD_ALIGNMENT: ocrt3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
@@ -65,11 +57,15 @@ const REGISTERED_VERIFIER_KEY = readFileSync(
   resolve(__dirname, '../../../../testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/keys/increment.verifier')
 );
 
-const buildV8ContractStateWithOperation = (circuitId: string): LedgerV8.ContractState => {
-  const contractState = new LedgerV8.ContractState();
+const buildRegisteredOperation = (): LedgerV8.ContractOperation => {
   const op = new LedgerV8.ContractOperation();
   op.verifierKey = REGISTERED_VERIFIER_KEY;
-  contractState.setOperation(circuitId, op);
+  return op;
+};
+
+const buildV8ContractStateWithOperation = (circuitId: string): LedgerV8.ContractState => {
+  const contractState = new LedgerV8.ContractState();
+  contractState.setOperation(circuitId, buildRegisteredOperation());
   return contractState;
 };
 
@@ -89,6 +85,8 @@ describe('composeV8CallTx (real ledger-v8 WASM)', () => {
 
     expect(bytes).toBeInstanceOf(Uint8Array);
     const tag = Buffer.from(bytes.subarray(0, V8_UNPROVEN_TX_TAG.length)).toString('latin1');
+    // The tag itself carries `proof-preimage`, so this one assertion is also
+    // what shows the transaction was never proven.
     expect(tag).toBe(V8_UNPROVEN_TX_TAG);
   });
 
@@ -101,12 +99,58 @@ describe('composeV8CallTx (real ledger-v8 WASM)', () => {
     expect(Buffer.from(back.serialize())).toEqual(Buffer.from(bytes));
   });
 
-  it('never proves the transaction: the serialized bytes carry a pre-proof tag, not a real proof', () => {
-    const contractState = buildV8ContractStateWithOperation('increment');
+  it('passes the exact operation resolved from contractState.operation(circuitId) into ContractCallPrototype, and keys it by circuit id', () => {
+    // Byte comparison of two composed transactions cannot show this: the
+    // assembly draws fresh `communicationCommitmentRandomness()` and
+    // `fromPartsRandomized` picks a random segment id, so ANY two composes
+    // differ. The module is an injected parameter, so the prototype
+    // constructor can be intercepted directly (no vi.doMock needed) —
+    // everything else stays the real ledger-v8. Asserted by VALUE, because
+    // `ContractState.operation()` returns a fresh wrapper object per call
+    // (same reasoning as engine-wrap-v9-operation-resolution.test.ts).
+    const captured: { op?: LedgerV8.ContractOperation; entryPoint?: Uint8Array | string; keyLocation?: string; address?: string } = {};
+    // Subclasses the real prototype rather than replacing it, so no cast is
+    // needed and the genuine WASM constructor still validates every argument.
+    class CapturingContractCallPrototype extends LedgerV8.ContractCallPrototype {
+      constructor(
+        address: LedgerV8.ContractAddress,
+        entryPoint: Uint8Array | string,
+        op: LedgerV8.ContractOperation,
+        guaranteedPublicTranscript: LedgerV8.Transcript<LedgerV8.AlignedValue> | undefined,
+        falliblePublicTranscript: LedgerV8.Transcript<LedgerV8.AlignedValue> | undefined,
+        privateTranscriptOutputs: LedgerV8.AlignedValue[],
+        input: LedgerV8.AlignedValue,
+        output: LedgerV8.AlignedValue,
+        communicationCommitmentRand: LedgerV8.CommunicationCommitmentRand,
+        keyLocation: string
+      ) {
+        super(
+          address,
+          entryPoint,
+          op,
+          guaranteedPublicTranscript,
+          falliblePublicTranscript,
+          privateTranscriptOutputs,
+          input,
+          output,
+          communicationCommitmentRand,
+          keyLocation
+        );
+        captured.address = address;
+        captured.entryPoint = entryPoint;
+        captured.op = op;
+        captured.keyLocation = keyLocation;
+      }
+    }
+    const capturingV8: typeof LedgerV8 = { ...LedgerV8, ContractCallPrototype: CapturingContractCallPrototype };
+    const options = buildCallOptions(buildV8ContractStateWithOperation('increment'));
 
-    const bytes = composeV8CallTx(buildCallOptions(contractState), LedgerV8);
+    composeV8CallTx(options, capturingV8);
 
-    expect(Buffer.from(bytes).toString('latin1')).toContain('proof-preimage');
+    expect(captured.op?.serialize()).toEqual(buildRegisteredOperation().serialize());
+    expect(captured.entryPoint).toBe('increment');
+    expect(captured.keyLocation).toBe('increment');
+    expect(captured.address).toBe(options.contractAddress);
   });
 
   it('throws Ledger8ComposeFailedError (stage call-operation) when the v8 contract state has no registered operation for the circuit', () => {
@@ -126,6 +170,26 @@ describe('composeV8CallTx (real ledger-v8 WASM)', () => {
     expect(error.circuitId).toBe('increment');
   });
 
+  it('throws Ledger8ComposeFailedError (stage call-verifier-key) when the registered operation carries no verifier key', () => {
+    // The state a constructor produces: the entry point is declared, but its
+    // key is blank until a deploy registers one. Composing a call against it
+    // would produce a transaction no ledger can verify.
+    const withBlankOperation = new LedgerV8.ContractState();
+    withBlankOperation.setOperation('increment', new LedgerV8.ContractOperation());
+
+    let caught: unknown;
+    try {
+      composeV8CallTx(buildCallOptions(withBlankOperation), LedgerV8);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Ledger8ComposeFailedError);
+    const error = caught as Ledger8ComposeFailedError;
+    expect(error.stage).toBe('call-verifier-key');
+    expect(error.circuitId).toBe('increment');
+  });
+
   it('throws a plain Error when partitionTranscripts returns no result for the single call submitted', () => {
     const contractState = buildV8ContractStateWithOperation('increment');
     const poisonedV8: typeof LedgerV8 = { ...LedgerV8, partitionTranscripts: () => [] };
@@ -133,18 +197,32 @@ describe('composeV8CallTx (real ledger-v8 WASM)', () => {
     expect(() => composeV8CallTx(buildCallOptions(contractState), poisonedV8)).toThrow(/partitionTranscripts returned no result/);
   });
 
-  it('uses the exact operation resolved from contractState.operation(circuitId), not a blank default', () => {
-    // A blank `ContractOperation` (no verifierKey assigned) is a distinct,
-    // valid WASM value from the registered one — composing against each
-    // produces different serialized bytes only if the resolved operation
-    // genuinely flows into `ContractCallPrototype`, not a hardcoded stand-in.
-    const withRegisteredKey = buildV8ContractStateWithOperation('increment');
-    const withBlankOperation = new LedgerV8.ContractState();
-    withBlankOperation.setOperation('increment', new LedgerV8.ContractOperation());
+  it('refuses an empty network id rather than baking it into the transaction', () => {
+    const options = { ...buildCallOptions(buildV8ContractStateWithOperation('increment')), networkId: '' };
 
-    const bytesWithRegisteredKey = composeV8CallTx(buildCallOptions(withRegisteredKey), LedgerV8);
-    const bytesWithBlankOperation = composeV8CallTx(buildCallOptions(withBlankOperation), LedgerV8);
+    let caught: unknown;
+    try {
+      composeV8CallTx(options, LedgerV8);
+    } catch (error) {
+      caught = error;
+    }
 
-    expect(Buffer.from(bytesWithRegisteredKey)).not.toEqual(Buffer.from(bytesWithBlankOperation));
+    expect(caught).toBeInstanceOf(Ledger8ComposeOptionError);
+    expect((caught as Ledger8ComposeOptionError).option).toBe('networkId');
+    expect((caught as Ledger8ComposeOptionError).code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_COMPOSE_OPTION_INVALID);
+  });
+
+  it('refuses an invalid ttl rather than composing a transaction the ledger dates to the epoch', () => {
+    const options = { ...buildCallOptions(buildV8ContractStateWithOperation('increment')), ttl: new Date('not-a-date') };
+
+    let caught: unknown;
+    try {
+      composeV8CallTx(options, LedgerV8);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Ledger8ComposeOptionError);
+    expect((caught as Ledger8ComposeOptionError).option).toBe('ttl');
   });
 });

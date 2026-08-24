@@ -20,10 +20,11 @@ import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import { describe, expect, it, vi } from 'vitest';
 
-import { Ledger8ComposeFailedError, PROTOCOL_ERROR_CODES } from '../errors';
+import { Ledger8ComposeFailedError, Ledger8ComposeOptionError, PROTOCOL_ERROR_CODES } from '../errors';
 import {
   type ComposeV8DeployOptions,
   composeV8DeployTx,
+  entryPointName,
   executeConstructor,
   type ExecuteConstructorOptions,
   type Ledger8ConstructorContractLike,
@@ -37,17 +38,41 @@ const TTL = new Date(Date.now() + 3_600_000);
 // Same literal tag as engine-compose-v8.test.ts — both legs produce an
 // UnprovenTransaction (SignatureEnabled/PreProof/PreBinding), so the tag is
 // identical regardless of whether the transaction carries a deploy or a call.
+// It contains `proof-preimage`, so asserting it is also what shows the
+// transaction was never proven.
 const V8_UNPROVEN_TX_TAG = 'midnight:transaction[v9](signature[v1],proof-preimage,embedded-fr[v1]):';
 
-const REGISTERED_VERIFIER_KEY = new Uint8Array(
-  readFileSync(resolve(__dirname, '../../../../testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/keys/increment.verifier'))
-);
+const KEYS_DIR = resolve(__dirname, '../../../../testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/keys');
+const REGISTERED_VERIFIER_KEY = new Uint8Array(readFileSync(resolve(KEYS_DIR, 'increment.verifier')));
 
 // Same redirect precedent as engine-execute.test.ts: the ported artifact's
 // bare `@midnight-ntwrk/compact-runtime` import is scoped to this file's
-// module registry, so it never leaks into other suites. Must live at module
-// top level — vitest hoists `vi.mock` regardless of nesting.
+// module registry, so it never leaks into other suites. Vitest hoists
+// `vi.mock` out of any nesting, so it is written at top level to read the way
+// it executes.
 vi.mock('@midnight-ntwrk/compact-runtime', async () => import('compact-runtime-ledger8'));
+
+describe('entryPointName', () => {
+  it('returns a string entry-point name unchanged', () => {
+    expect(entryPointName('increment')).toBe('increment');
+  });
+
+  // The vendor behaviour entryPointName's existence is reasoned about:
+  // `operations()` is DECLARED `Array<string | Uint8Array>`, but ledger-v8
+  // decodes an entry point set from bytes back to a string. If that ever
+  // changes, the byte arm below stops being dead in practice — and this test
+  // is what says so.
+  it('is only ever handed strings by ledger-v8 today: a byte-set entry point reads back as a string', () => {
+    const contractState = new LedgerV8.ContractState();
+    contractState.setOperation(new TextEncoder().encode('increment'), new LedgerV8.ContractOperation());
+
+    expect(contractState.operations()).toEqual(['increment']);
+  });
+
+  it('decodes a byte-array entry-point name to its text, never to its byte values', () => {
+    expect(entryPointName(new TextEncoder().encode('increment'))).toBe('increment');
+  });
+});
 
 describe('executeConstructor (fake runtime — plumbing only, no WASM execution)', () => {
   it('builds the constructor context, invokes initialState with the given args, and packages a ConstructorResultPojo', () => {
@@ -55,6 +80,7 @@ describe('executeConstructor (fake runtime — plumbing only, no WASM execution)
     let capturedPrivateState: unknown;
     let capturedCoinPk: unknown;
     let capturedArgs: unknown;
+    let capturedContext: unknown;
 
     const runtime: Ledger8ConstructorRuntime = {
       createConstructorContext: (privateState, coinPk) => {
@@ -65,8 +91,8 @@ describe('executeConstructor (fake runtime — plumbing only, no WASM execution)
     };
     const contract: Ledger8ConstructorContractLike = {
       initialState: (constructorContext, ...args): Ledger8ConstructorResult => {
+        capturedContext = constructorContext;
         capturedArgs = args;
-        expect(constructorContext).toEqual({ marker: 'constructor-context' });
         return { currentContractState: finalContractState, currentPrivateState: { count: 0 } };
       }
     };
@@ -85,6 +111,7 @@ describe('executeConstructor (fake runtime — plumbing only, no WASM execution)
     expect(capturedPrivateState).toEqual({ initial: true });
     expect(capturedCoinPk).toBe('ca'.repeat(32));
     expect(capturedArgs).toEqual(['seed']);
+    expect(capturedContext).toEqual({ marker: 'constructor-context' });
   });
 });
 
@@ -113,17 +140,24 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
     const contract = new Contract(initialPrivateState);
     const runtime: Ledger8ConstructorRuntime = { createConstructorContext: ledger8Runtime.createConstructorContext };
 
-    // Two separate (deterministic, pure) constructor runs: one through
-    // executeConstructor (the shape under test), one direct, so the round
-    // number can be read off the native onchain-runtime-v3 state through the
-    // contract's own `ledger()` projector — crossing `ledger(...)` a
-    // ledger-v8-bridged ChargedState would mix two distinct WASM instances.
     const result = executeConstructor({ contract, args: [], privateState: initialPrivateState, coinPk: SAMPLE_COIN_PUBLIC_KEY }, runtime);
-    const constructorContext = ledger8Runtime.createConstructorContext(initialPrivateState, SAMPLE_COIN_PUBLIC_KEY);
-    const direct = contract.initialState(constructorContext);
 
-    expect(ledger(direct.currentContractState.data).round).toBe(0n);
+    // Every assertion reads executeConstructor's OWN result. `ledger()` is the
+    // contract's projector over a native onchain-runtime-v3 state, so the
+    // round is read off the pre-fork state directly; crossing a
+    // ledger-v8-bridged ChargedState through it would mix two WASM instances.
+    const constructed = result.contractState;
+    expect(constructed).toBeInstanceOf(ocrt3.ContractState);
+    if (!(constructed instanceof ocrt3.ContractState)) {
+      throw new Error('executeConstructor did not return the pre-fork ContractState the fixture built');
+    }
+    expect(ledger(constructed.data).round).toBe(0n);
+    expect(result.privateState).toEqual(initialPrivateState);
 
+    // The premise the deploy leg is built on: a constructor declares its entry
+    // points but leaves every verifier key blank, which is why composeV8DeployTx
+    // requires a key for each one. If ledger-v8 ever reported a blank slot as
+    // something other than `undefined`, this is the test that would say so.
     const ledgerCS = LedgerV8.ContractState.deserialize(result.contractState.serialize());
     expect(ledgerCS.operations()).toEqual(['increment']);
     expect(ledgerCS.operation('increment')?.verifierKey).toBeUndefined();
@@ -131,13 +165,34 @@ describe('executeConstructor against the ported spike counter-016 fixture (real 
 });
 
 describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
-  const buildDeployOptions = (verifierKeys: ReadonlyMap<string, Uint8Array>): ComposeV8DeployOptions => {
+  const buildPreForkState = (circuitIds: readonly string[]): ocrt3.ContractState => {
     const blankState = new ocrt3.ContractState();
-    blankState.setOperation('increment', new ocrt3.ContractOperation());
-    return { contractState: blankState, verifierKeys, networkId: NETWORK_ID, ttl: TTL };
+    for (const circuitId of circuitIds) {
+      blankState.setOperation(circuitId, new ocrt3.ContractOperation());
+    }
+    return blankState;
   };
 
-  it('composes and serializes a v8-native deploy transaction, registering every supplied verifier key', () => {
+  const buildDeployOptions = (
+    verifierKeys: ReadonlyMap<string, Uint8Array>,
+    circuitIds: readonly string[] = ['increment']
+  ): ComposeV8DeployOptions => ({
+    contractState: buildPreForkState(circuitIds),
+    verifierKeys,
+    networkId: NETWORK_ID,
+    ttl: TTL
+  });
+
+  const deployedStateOf = (bytes: Uint8Array): LedgerV8.ContractState => {
+    const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', bytes);
+    const deploys = [...(back.intents?.values() ?? [])]
+      .flatMap((intent) => intent.actions)
+      .filter((action) => action instanceof LedgerV8.ContractDeploy);
+    expect(deploys).toHaveLength(1);
+    return deploys[0].initialState;
+  };
+
+  it('composes and serializes a v8-native deploy transaction, tag-prefixed exactly as ledger-v8 emits it', () => {
     const bytes = composeV8DeployTx(buildDeployOptions(new Map([['increment', REGISTERED_VERIFIER_KEY]])), LedgerV8);
 
     expect(bytes).toBeInstanceOf(Uint8Array);
@@ -153,16 +208,33 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
     expect(Buffer.from(back.serialize())).toEqual(Buffer.from(bytes));
   });
 
-  it('never proves the transaction: the serialized bytes carry a pre-proof tag, not a real proof', () => {
-    const bytes = composeV8DeployTx(buildDeployOptions(new Map([['increment', REGISTERED_VERIFIER_KEY]])), LedgerV8);
+  // A single-circuit deploy cannot show that EVERY map entry is registered:
+  // stopping after the first one would pass it. Two circuits can. The fixtures
+  // commit exactly one real verifier key (`increment.verifier`) and the setter
+  // rejects anything that is not a genuine tagged key, so both slots carry the
+  // same bytes here — enough to catch a partial or mis-keyed registration
+  // (`operations()` names the slots), not enough to catch two identical keys
+  // being swapped, which is not a behaviour difference.
+  it('registers a verifier key for every circuit the key map covers, keyed by circuit id', () => {
+    const verifierKeys = new Map([
+      ['increment', REGISTERED_VERIFIER_KEY],
+      ['decrement', REGISTERED_VERIFIER_KEY]
+    ]);
 
-    expect(Buffer.from(bytes).toString('latin1')).toContain('proof-preimage');
+    const bytes = composeV8DeployTx(buildDeployOptions(verifierKeys, ['increment', 'decrement']), LedgerV8);
+
+    const deployed = deployedStateOf(bytes);
+    expect(deployed.operations().sort()).toEqual(['decrement', 'increment']);
+    expect(Buffer.from(deployed.operation('increment')?.verifierKey ?? new Uint8Array())).toEqual(Buffer.from(REGISTERED_VERIFIER_KEY));
+    expect(Buffer.from(deployed.operation('decrement')?.verifierKey ?? new Uint8Array())).toEqual(Buffer.from(REGISTERED_VERIFIER_KEY));
   });
 
-  it('throws Ledger8ComposeFailedError (stage deploy-verifier-key) when a declared circuit has no verifier key after registration', () => {
+  it('throws Ledger8ComposeFailedError (stage deploy-verifier-key) naming the declared circuit the key map does not cover', () => {
+    const verifierKeys = new Map([['increment', REGISTERED_VERIFIER_KEY]]);
+
     let caught: unknown;
     try {
-      composeV8DeployTx(buildDeployOptions(new Map()), LedgerV8);
+      composeV8DeployTx(buildDeployOptions(verifierKeys, ['increment', 'decrement']), LedgerV8);
     } catch (error) {
       caught = error;
     }
@@ -171,6 +243,92 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
     const error = caught as Ledger8ComposeFailedError;
     expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_COMPOSE_FAILED);
     expect(error.stage).toBe('deploy-verifier-key');
+    expect(error.circuitId).toBe('decrement');
+  });
+
+  // The fail-open case: `setOperation` CREATES a slot, so without this check a
+  // stray key would deploy a contract with an entry point its source never had,
+  // at an address the caller's artifacts do not describe.
+  it('throws Ledger8ComposeFailedError (stage deploy-unknown-circuit) for a key naming a circuit the state does not declare', () => {
+    const verifierKeys = new Map([
+      ['increment', REGISTERED_VERIFIER_KEY],
+      ['stale-from-an-earlier-compile', REGISTERED_VERIFIER_KEY]
+    ]);
+
+    let caught: unknown;
+    try {
+      composeV8DeployTx(buildDeployOptions(verifierKeys), LedgerV8);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Ledger8ComposeFailedError);
+    const error = caught as Ledger8ComposeFailedError;
+    expect(error.stage).toBe('deploy-unknown-circuit');
+    expect(error.circuitId).toBe('stale-from-an-earlier-compile');
+  });
+
+  it('throws Ledger8ComposeFailedError (stage deploy-verifier-key-blob) with the ledger failure on cause when the key bytes are not a verifier key', () => {
+    const verifierKeys = new Map([['increment', new Uint8Array([1, 2, 3])]]);
+
+    let caught: unknown;
+    try {
+      composeV8DeployTx(buildDeployOptions(verifierKeys), LedgerV8);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Ledger8ComposeFailedError);
+    const error = caught as Ledger8ComposeFailedError;
+    expect(error.stage).toBe('deploy-verifier-key-blob');
     expect(error.circuitId).toBe('increment');
+    expect(error.cause).toBeDefined();
+    // The ledger's own diagnosis is preserved rather than flattened into text.
+    expect(error.message).not.toContain('1,2,3');
+  });
+
+  it('throws Ledger8ComposeOptionError (contractState) with the decoder failure on cause when the state cannot be bridged into the v8 era', () => {
+    const notAContractState = { serialize: () => new Uint8Array([9, 9, 9]) };
+
+    let caught: unknown;
+    try {
+      composeV8DeployTx({ ...buildDeployOptions(new Map()), contractState: notAContractState }, LedgerV8);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Ledger8ComposeOptionError);
+    const error = caught as Ledger8ComposeOptionError;
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_COMPOSE_OPTION_INVALID);
+    expect(error.option).toBe('contractState');
+    expect(error.cause).toBeDefined();
+  });
+
+  it('refuses an empty network id rather than baking it into the transaction', () => {
+    const options = { ...buildDeployOptions(new Map([['increment', REGISTERED_VERIFIER_KEY]])), networkId: '' };
+
+    let caught: unknown;
+    try {
+      composeV8DeployTx(options, LedgerV8);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Ledger8ComposeOptionError);
+    expect((caught as Ledger8ComposeOptionError).option).toBe('networkId');
+  });
+
+  it('refuses an invalid ttl rather than composing a transaction the ledger dates to the epoch', () => {
+    const options = { ...buildDeployOptions(new Map([['increment', REGISTERED_VERIFIER_KEY]])), ttl: new Date('not-a-date') };
+
+    let caught: unknown;
+    try {
+      composeV8DeployTx(options, LedgerV8);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Ledger8ComposeOptionError);
+    expect((caught as Ledger8ComposeOptionError).option).toBe('ttl');
   });
 });

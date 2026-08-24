@@ -23,8 +23,8 @@ import type { TranscriptPojo } from './execute';
  * `contractState` is the migrated, post-fork v9 `ContractState` — read from
  * chain, or otherwise carrying the contract's real registered operations —
  * used only to look up the `ContractOperation` for `transcript.circuitId`
- * (mirrors {@link ComposeV8CallOptions}'s `contractState` parameter in
- * `engine/compose-v8.ts`, and the spike's own `assembleCallV9`).
+ * (mirrors `ComposeV8CallOptions`'s `contractState` parameter in
+ * `engine/compose-v8.ts`).
  */
 export interface WrapKeepStateCallOptions {
   readonly transcript: TranscriptPojo;
@@ -48,8 +48,10 @@ export interface WrapKeepStateCallOptions {
  * a deploy); it reuses whichever key was already registered on-chain by the
  * contract's original (pre-fork) deploy and carried through the migration —
  * so `contractState` must already carry that operation, or this throws
- * {@link Ledger8ComposeFailedError} (stage `'wrap-call'`) rather than
- * silently falling back to a blank, unverifiable operation.
+ * `Ledger8ComposeFailedError` (`../../errors.ts`) rather than silently
+ * falling back to a blank, unverifiable operation: stage `'wrap-call'` when
+ * no operation is registered for the circuit at all, and
+ * `'call-verifier-key'` when the one registered carries no verifier key.
  */
 export const wrapKeepStateCall = (options: WrapKeepStateCallOptions): ledgerV9.ContractCallPrototype => {
   const { transcript, contractAddress, contractState } = options;

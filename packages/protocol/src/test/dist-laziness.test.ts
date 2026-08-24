@@ -24,17 +24,18 @@ import { describe, expect, it } from 'vitest';
 // the dynamic import inside loadLedger8().
 const PKG_ROOT = resolve(__dirname, '..', '..');
 const DIST_INDEX_PATH = 'dist/index.js';
-// The `./v8` entry chunk as rollup writes it into the index bundle: the
-// dynamic import of `../v8.js` in src/lib/load-v8.ts comes out as an
-// output-relative specifier, at whatever depth the importing chunk sits.
-// Built from parts so the runtime-reference scan
-// in v8-surface.test.ts keeps matching only lib/load-v8.ts.
+// The `./v8` entry chunk as rollup writes it into whichever eagerly-loaded
+// chunk reaches loadLedger8: the dynamic import of `../v8.js` in
+// src/lib/load-v8.ts comes out as an output-relative specifier, at whatever
+// depth that chunk sits. Built from parts so the runtime-reference scan in
+// v8-surface.test.ts keeps matching only lib/load-v8.ts.
 const V8_CHUNK_PATTERN = `(?:\\.{1,2}/)+${['v8', 'js'].join('\\.')}`;
 const V8_DIST_ARTIFACTS = ['dist/v8.js', 'dist/v8.d.ts'];
 const distIndexExists = existsSync(resolve(PKG_ROOT, DIST_INDEX_PATH));
 // The `./engine` entry chunk, named the same way and for the same reason: the
 // dynamic import of `../../engine.js` in src/lib/engine/load-engine.ts comes
-// out as an output-relative specifier too, at whatever depth imports it.
+// out as an output-relative specifier too, at whatever depth the chunk that
+// imports it sits.
 const ENGINE_CHUNK_PATTERN = `(?:\\.{1,2}/)+${['engine', 'js'].join('\\.')}`;
 const ENGINE_DIST_ARTIFACTS = ['dist/engine.js', 'dist/engine.d.ts'];
 
@@ -42,11 +43,17 @@ const ENGINE_DIST_ARTIFACTS = ['dist/engine.js', 'dist/engine.d.ts'];
 // accessor's dynamic import can sit one static hop away from the index bundle
 // rather than inside it — it does exactly that once more than one entry reaches
 // loadLedger8. The invariant is about everything loading the package root pulls
-// in EAGERLY, so it is asserted over that whole static closure instead of over
-// dist/index.js alone; otherwise a static link hidden in a shared chunk slips
-// through, which is the very thing being gated.
+// in EAGERLY, so every gate below is asserted over that whole static closure
+// instead of over dist/index.js alone; otherwise a static link hidden in a
+// shared chunk slips through, which is the very thing being gated.
+//
+// Matches both `… from './x.js'` (re-exports included) and the bare
+// `import './x.js';` rollup emits for a chunk pulled in only for its side
+// effects. Missing the bare form would silently truncate the walk, which is
+// the same hole one level up. Dynamic `import('./x.js')` is deliberately NOT
+// matched: it is what laziness looks like, not what breaks it.
 const staticImportsOf = (content: string): string[] =>
-  [...content.matchAll(/from\s*['"](\.[^'"]*)['"]/g)].map(([, specifier]) => specifier);
+  [...content.matchAll(/(?:from|^\s*import)\s*['"](\.[^'"]*)['"]/gm)].map(([, specifier]) => specifier);
 
 const eagerClosureOf = (entry: string): string[] => {
   const seen = new Set<string>();
@@ -104,20 +111,16 @@ describe.skipIf(!distIndexExists)('dist laziness gate', () => {
     expect(existsSync(resolve(PKG_ROOT, path))).toBe(true);
   });
 
-  it('the index bundle has no linkage (static or dynamic) of the compact-runtime-ledger8 glue alias', () => {
-    const content = readFileSync(resolve(PKG_ROOT, DIST_INDEX_PATH), 'utf8');
-
-    expect(content).not.toMatch(/['"]compact-runtime-ledger8['"]/);
+  it('nothing loaded eagerly by the index bundle links the compact-runtime-ledger8 glue alias at all', () => {
+    expect(eagerContents(DIST_INDEX_PATH)).not.toMatch(/['"]compact-runtime-ledger8['"]/);
   });
 
-  it('the index bundle has no static linkage of the engine chunk', () => {
-    const content = readFileSync(resolve(PKG_ROOT, DIST_INDEX_PATH), 'utf8');
-
-    expect(content).not.toMatch(new RegExp(`from\\s*['"]${ENGINE_CHUNK_PATTERN}['"]`));
+  it('the engine chunk is not part of what the index bundle loads eagerly', () => {
+    expect(eagerClosureOf(DIST_INDEX_PATH)).not.toContain(join('dist', 'engine.js'));
   });
 
-  it('the index bundle keeps the lazy dynamic import of the engine chunk', () => {
-    const content = readFileSync(resolve(PKG_ROOT, DIST_INDEX_PATH), 'utf8');
+  it('what the index bundle loads eagerly keeps the lazy dynamic import of the engine chunk', () => {
+    const content = eagerContents(DIST_INDEX_PATH);
 
     expect(content).toMatch(new RegExp(`import\\(\\s*['"]${ENGINE_CHUNK_PATTERN}['"]\\s*\\)`));
   });
