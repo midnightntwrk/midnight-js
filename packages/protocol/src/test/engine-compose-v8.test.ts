@@ -21,7 +21,7 @@ import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import { describe, expect, it } from 'vitest';
 
-import { Ledger8ComposeFailedError, Ledger8ComposeOptionError, PROTOCOL_ERROR_CODES } from '../errors';
+import { ComposeFailedError, ComposeOptionError, PROTOCOL_ERROR_CODES } from '../errors';
 import { type ComposeV8CallOptions, composeV8CallTx } from '../lib/engine/compose-v8';
 import type { DownConvertedState } from '../lib/engine/down-convert';
 import type { TranscriptPojo } from '../lib/engine/execute';
@@ -163,7 +163,7 @@ describe('composeV8CallTx (real ledger-v8 WASM)', () => {
     expect(captured.address).toBe(options.contractAddress);
   });
 
-  it('throws Ledger8ComposeFailedError (stage call-operation) when the v8 contract state has no registered operation for the circuit', () => {
+  it('throws ComposeFailedError (stage call-operation) when the v8 contract state has no registered operation for the circuit', () => {
     const blankContractState = new LedgerV8.ContractState();
 
     let caught: unknown;
@@ -173,14 +173,15 @@ describe('composeV8CallTx (real ledger-v8 WASM)', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8ComposeFailedError);
-    const error = caught as Ledger8ComposeFailedError;
-    expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_COMPOSE_FAILED);
+    expect(caught).toBeInstanceOf(ComposeFailedError);
+    const error = caught as ComposeFailedError;
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.COMPOSE_FAILED);
+    expect(error.version).toBe('v8');
     expect(error.stage).toBe('call-operation');
     expect(error.circuitId).toBe('increment');
   });
 
-  it('throws Ledger8ComposeFailedError (stage call-verifier-key) when the registered operation carries no verifier key', () => {
+  it('throws ComposeFailedError (stage call-verifier-key) when the registered operation carries no verifier key', () => {
     // The state a constructor produces: the entry point is declared, but its
     // key is blank until a deploy registers one. Composing a call against it
     // would produce a transaction no ledger can verify.
@@ -194,8 +195,8 @@ describe('composeV8CallTx (real ledger-v8 WASM)', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8ComposeFailedError);
-    const error = caught as Ledger8ComposeFailedError;
+    expect(caught).toBeInstanceOf(ComposeFailedError);
+    const error = caught as ComposeFailedError;
     expect(error.stage).toBe('call-verifier-key');
     expect(error.circuitId).toBe('increment');
   });
@@ -217,9 +218,10 @@ describe('composeV8CallTx (real ledger-v8 WASM)', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8ComposeOptionError);
-    expect((caught as Ledger8ComposeOptionError).option).toBe('networkId');
-    expect((caught as Ledger8ComposeOptionError).code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_COMPOSE_OPTION_INVALID);
+    expect(caught).toBeInstanceOf(ComposeOptionError);
+    expect((caught as ComposeOptionError).option).toBe('networkId');
+    expect((caught as ComposeOptionError).version).toBe('v8');
+    expect((caught as ComposeOptionError).code).toBe(PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID);
   });
 
   it('refuses an invalid ttl rather than composing a transaction the ledger dates to the epoch', () => {
@@ -232,7 +234,7 @@ describe('composeV8CallTx (real ledger-v8 WASM)', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8ComposeOptionError);
-    expect((caught as Ledger8ComposeOptionError).option).toBe('ttl');
+    expect(caught).toBeInstanceOf(ComposeOptionError);
+    expect((caught as ComposeOptionError).option).toBe('ttl');
   });
 });

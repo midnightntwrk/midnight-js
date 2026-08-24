@@ -48,12 +48,18 @@ export interface WrapKeepStateCallOptions {
  * a deploy); it reuses whichever key was already registered on-chain by the
  * contract's original (pre-fork) deploy and carried through the migration —
  * so `contractState` must already carry that operation, or this throws
- * `Ledger8ComposeFailedError` (`../../errors.ts`) rather than silently
+ * `ComposeFailedError` (`../../errors.ts`) rather than silently
  * falling back to a blank, unverifiable operation: stage `'wrap-call'` when
  * no operation is registered for the circuit at all, and
  * `'call-verifier-key'` when the one registered carries no verifier key.
  */
 export const wrapKeepStateCall = (options: WrapKeepStateCallOptions): ledgerV9.ContractCallPrototype => {
   const { transcript, contractAddress, contractState } = options;
-  return assembleCallPrototype(ledgerV9, { transcript, contractAddress, operations: contractState, stage: 'wrap-call' });
+  return assembleCallPrototype(ledgerV9, {
+    transcript,
+    contractAddress,
+    operations: contractState,
+    stage: 'wrap-call',
+    version: 'v9'
+  });
 };

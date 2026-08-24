@@ -20,7 +20,7 @@ import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import { ContractCallPrototype, ContractOperation, ContractState, Intent, sampleContractAddress } from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
-import { Ledger8ComposeFailedError, PROTOCOL_ERROR_CODES } from '../errors';
+import { ComposeFailedError, PROTOCOL_ERROR_CODES } from '../errors';
 import type { DownConvertedState } from '../lib/engine/down-convert';
 import type { TranscriptPojo } from '../lib/engine/execute';
 import { wrapKeepStateCall } from '../lib/engine/wrap-v9';
@@ -83,7 +83,7 @@ describe('wrapKeepStateCall', () => {
     expect(() => Intent.new(ttl).addCall(prototype)).not.toThrow();
   });
 
-  it('throws Ledger8ComposeFailedError (stage wrap-call) when the given contract state has no registered operation for the circuit', () => {
+  it('throws ComposeFailedError (stage wrap-call) when the given contract state has no registered operation for the circuit', () => {
     const address = sampleContractAddress();
     const blankContractState = new ContractState();
 
@@ -94,13 +94,16 @@ describe('wrapKeepStateCall', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8ComposeFailedError);
-    const error = caught as Ledger8ComposeFailedError;
-    expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_COMPOSE_FAILED);
+    expect(caught).toBeInstanceOf(ComposeFailedError);
+    const error = caught as ComposeFailedError;
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.COMPOSE_FAILED);
+    // The keep-state leg binds natively onto v9, so its failures name v9 —
+    // even though the circuit that produced the transcript ran on v8.
+    expect(error.version).toBe('v9');
     expect(error.stage).toBe('wrap-call');
     expect(error.circuitId).toBe('increment');
   });
-  it('throws Ledger8ComposeFailedError (stage call-verifier-key) when the registered operation carries no verifier key', () => {
+  it('throws ComposeFailedError (stage call-verifier-key) when the registered operation carries no verifier key', () => {
     const address = sampleContractAddress();
     const contractState = new ContractState();
     contractState.setOperation('increment', new ContractOperation());
@@ -115,9 +118,9 @@ describe('wrapKeepStateCall', () => {
     // A slot registered with a blank ContractOperation reads back with no
     // verifier key. Composing against it yields a call no prover can verify,
     // so it must fail here rather than at submission.
-    expect(caught).toBeInstanceOf(Ledger8ComposeFailedError);
-    const error = caught as Ledger8ComposeFailedError;
-    expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_COMPOSE_FAILED);
+    expect(caught).toBeInstanceOf(ComposeFailedError);
+    const error = caught as ComposeFailedError;
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.COMPOSE_FAILED);
     expect(error.stage).toBe('call-verifier-key');
     expect(error.circuitId).toBe('increment');
   });

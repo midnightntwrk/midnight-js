@@ -59,7 +59,7 @@ export interface ComposeV8CallOptions {
  * in `packages/contracts/src/utils/ledger-utils.ts`. Only deploys use a fixed
  * segment; see `composeV8DeployTx` (`engine/deploy-v8.ts`).
  *
- * Throws `Ledger8ComposeFailedError` (`../../errors.ts`) when `contractState`
+ * Throws `ComposeFailedError` (`../../errors.ts`) when `contractState`
  * has no registered operation for the transcript's circuit (stage
  * `'call-operation'`), or when the operation it does have carries no verifier
  * key (stage `'call-verifier-key'`), rather than composing a call no ledger
@@ -67,9 +67,15 @@ export interface ComposeV8CallOptions {
  */
 export const composeV8CallTx = (options: ComposeV8CallOptions, v8: ProtocolV8): Uint8Array => {
   const { transcript, contractAddress, contractState, networkId, ttl } = options;
-  assertComposeEnvelope(options);
+  assertComposeEnvelope(options, 'v8');
 
-  const prototype = assembleCallPrototype(v8, { transcript, contractAddress, operations: contractState, stage: 'call-operation' });
+  const prototype = assembleCallPrototype(v8, {
+    transcript,
+    contractAddress,
+    operations: contractState,
+    stage: 'call-operation',
+    version: 'v8'
+  });
 
   const intent = v8.Intent.new(ttl).addCall(prototype);
   return v8.Transaction.fromPartsRandomized(networkId, undefined, undefined, intent).serialize();

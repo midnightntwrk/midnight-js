@@ -20,7 +20,7 @@ import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import { describe, expect, it, vi } from 'vitest';
 
-import { Ledger8ComposeFailedError, Ledger8ComposeOptionError, PROTOCOL_ERROR_CODES } from '../errors';
+import { ComposeFailedError, ComposeOptionError, PROTOCOL_ERROR_CODES } from '../errors';
 import {
   type ComposeV8DeployOptions,
   composeV8DeployTx,
@@ -229,7 +229,7 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
     expect(Buffer.from(deployed.operation('decrement')?.verifierKey ?? new Uint8Array())).toEqual(Buffer.from(REGISTERED_VERIFIER_KEY));
   });
 
-  it('throws Ledger8ComposeFailedError (stage deploy-verifier-key) naming the declared circuit the key map does not cover', () => {
+  it('throws ComposeFailedError (stage deploy-verifier-key) naming the declared circuit the key map does not cover', () => {
     const verifierKeys = new Map([['increment', REGISTERED_VERIFIER_KEY]]);
 
     let caught: unknown;
@@ -239,9 +239,9 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8ComposeFailedError);
-    const error = caught as Ledger8ComposeFailedError;
-    expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_COMPOSE_FAILED);
+    expect(caught).toBeInstanceOf(ComposeFailedError);
+    const error = caught as ComposeFailedError;
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.COMPOSE_FAILED);
     expect(error.stage).toBe('deploy-verifier-key');
     expect(error.circuitId).toBe('decrement');
   });
@@ -249,7 +249,7 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
   // The fail-open case: `setOperation` CREATES a slot, so without this check a
   // stray key would deploy a contract with an entry point its source never had,
   // at an address the caller's artifacts do not describe.
-  it('throws Ledger8ComposeFailedError (stage deploy-unknown-circuit) for a key naming a circuit the state does not declare', () => {
+  it('throws ComposeFailedError (stage deploy-unknown-circuit) for a key naming a circuit the state does not declare', () => {
     const verifierKeys = new Map([
       ['increment', REGISTERED_VERIFIER_KEY],
       ['stale-from-an-earlier-compile', REGISTERED_VERIFIER_KEY]
@@ -262,13 +262,13 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8ComposeFailedError);
-    const error = caught as Ledger8ComposeFailedError;
+    expect(caught).toBeInstanceOf(ComposeFailedError);
+    const error = caught as ComposeFailedError;
     expect(error.stage).toBe('deploy-unknown-circuit');
     expect(error.circuitId).toBe('stale-from-an-earlier-compile');
   });
 
-  it('throws Ledger8ComposeFailedError (stage deploy-verifier-key-blob) with the ledger failure on cause when the key bytes are not a verifier key', () => {
+  it('throws ComposeFailedError (stage deploy-verifier-key-blob) with the ledger failure on cause when the key bytes are not a verifier key', () => {
     const verifierKeys = new Map([['increment', new Uint8Array([1, 2, 3])]]);
 
     let caught: unknown;
@@ -278,8 +278,8 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8ComposeFailedError);
-    const error = caught as Ledger8ComposeFailedError;
+    expect(caught).toBeInstanceOf(ComposeFailedError);
+    const error = caught as ComposeFailedError;
     expect(error.stage).toBe('deploy-verifier-key-blob');
     expect(error.circuitId).toBe('increment');
     expect(error.cause).toBeDefined();
@@ -287,7 +287,7 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
     expect(error.message).not.toContain('1,2,3');
   });
 
-  it('throws Ledger8ComposeOptionError (contractState) with the decoder failure on cause when the state cannot be bridged into the v8 era', () => {
+  it('throws ComposeOptionError (contractState) with the decoder failure on cause when the state cannot be bridged into the v8 era', () => {
     const notAContractState = { serialize: () => new Uint8Array([9, 9, 9]) };
 
     let caught: unknown;
@@ -297,9 +297,9 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8ComposeOptionError);
-    const error = caught as Ledger8ComposeOptionError;
-    expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_COMPOSE_OPTION_INVALID);
+    expect(caught).toBeInstanceOf(ComposeOptionError);
+    const error = caught as ComposeOptionError;
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID);
     expect(error.option).toBe('contractState');
     expect(error.cause).toBeDefined();
   });
@@ -314,8 +314,8 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8ComposeOptionError);
-    expect((caught as Ledger8ComposeOptionError).option).toBe('networkId');
+    expect(caught).toBeInstanceOf(ComposeOptionError);
+    expect((caught as ComposeOptionError).option).toBe('networkId');
   });
 
   it('refuses an invalid ttl rather than composing a transaction the ledger dates to the epoch', () => {
@@ -328,8 +328,8 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8ComposeOptionError);
-    expect((caught as Ledger8ComposeOptionError).option).toBe('ttl');
+    expect(caught).toBeInstanceOf(ComposeOptionError);
+    expect((caught as ComposeOptionError).option).toBe('ttl');
   });
 });
 
@@ -392,9 +392,9 @@ describe('composeV8DeployTx against byte-array entry points', () => {
     // and not two spellings of one entry point.
     expect(Buffer.from(AMBIGUOUS_A).equals(Buffer.from(AMBIGUOUS_B))).toBe(false);
     expect(entryPointName(AMBIGUOUS_A)).toBe(entryPointName(AMBIGUOUS_B));
-    expect(caught).toBeInstanceOf(Ledger8ComposeFailedError);
-    const error = caught as Ledger8ComposeFailedError;
-    expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_COMPOSE_FAILED);
+    expect(caught).toBeInstanceOf(ComposeFailedError);
+    const error = caught as ComposeFailedError;
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.COMPOSE_FAILED);
     expect(error.stage).toBe('deploy-ambiguous-circuit');
     expect(error.circuitId).toBe(AMBIGUOUS_NAME);
     expect(registered).toEqual([]);

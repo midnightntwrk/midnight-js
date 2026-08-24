@@ -87,7 +87,7 @@ const transcript = engine.executeCircuit({
 const prototype = engine.wrapKeepStateCall({ transcript, contractAddress, contractState });
 ```
 
-The four methods form a pipeline — each result is the next call's input. `contractState` passed to `wrapKeepStateCall` must be the migrated v9 state **as read from chain**: it is where the deployed operation and its verifier key come from, and the key location the prototype carries is derived from that key. A blank or constructor-built state throws `Ledger8ComposeFailedError` (code `MIDNIGHT_JS_P_LEDGER8_COMPOSE_FAILED`) with `stage` naming which lookup failed.
+The four methods form a pipeline — each result is the next call's input. `contractState` passed to `wrapKeepStateCall` must be the migrated v9 state **as read from chain**: it is where the deployed operation and its verifier key come from, and the key location the prototype carries is derived from that key. A blank or constructor-built state throws `ComposeFailedError` (code `MIDNIGHT_JS_P_COMPOSE_FAILED`) with `stage` naming which lookup failed and `version` naming the ledger era it was composing for.
 
 Circuits with Zswap coin effects are not supported on this leg yet: the transcript does not carry the post-call Zswap local state, so `executeCircuit` throws `Ledger8ZswapUnsupportedError` (code `MIDNIGHT_JS_P_LEDGER8_ZSWAP_UNSUPPORTED`) rather than composing a call that would drop the coin movements and be rejected on submission.
 

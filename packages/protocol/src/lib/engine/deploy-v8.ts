@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { Ledger8ComposeFailedError, Ledger8ComposeOptionError } from '../../errors';
+import { ComposeFailedError, ComposeOptionError } from '../../errors';
 import type { ProtocolV8 } from '../load-v8';
 import { assertComposeEnvelope } from './compose-options';
 
@@ -130,14 +130,14 @@ export interface ComposeV8DeployOptions {
  * `engine-deploy-v8.test.ts`), but the declared union has to be resolved
  * somewhere, and decoding is the only resolution that keeps an error message
  * naming the entry point rather than dumping its bytes — which is what
- * `Ledger8ComposeFailedError` (`../../errors.ts`) promises.
+ * `ComposeFailedError` (`../../errors.ts`) promises.
  */
 export const entryPointName = (id: string | Uint8Array): string =>
   typeof id === 'string' ? id : new TextDecoder().decode(id);
 
 /**
  * Bridges a pre-fork contract state into the v8 era by bytes, reporting a
- * rejected envelope as {@link Ledger8ComposeOptionError} rather than letting a
+ * rejected envelope as {@link ComposeOptionError} rather than letting a
  * raw decoder failure escape — the same wrapping `extractEncodedStateValue`
  * (`engine/envelope.ts`) applies to the identical call.
  */
@@ -148,13 +148,13 @@ const bridgeContractState = (
   try {
     return v8.ContractState.deserialize(contractState.serialize());
   } catch (error) {
-    throw new Ledger8ComposeOptionError('contractState', error);
+    throw new ComposeOptionError('v8', 'contractState', error);
   }
 };
 
 /**
  * Registers one verifier key, reporting bytes the ledger rejects as
- * {@link Ledger8ComposeFailedError} (stage `'deploy-verifier-key-blob'`) so the
+ * {@link ComposeFailedError} (stage `'deploy-verifier-key-blob'`) so the
  * failure names the entry point it belongs to. The setter validates a tagged
  * `midnight:verifier-key[...]` blob, so a truncated, empty or wrong-era key
  * fails here rather than at submission.
@@ -170,7 +170,7 @@ const registerVerifierKey = (
   try {
     operation.verifierKey = verifierKey;
   } catch (error) {
-    throw new Ledger8ComposeFailedError('deploy-verifier-key-blob', circuitId, error);
+    throw new ComposeFailedError('v8', 'deploy-verifier-key-blob', circuitId, error);
   }
   ledgerContractState.setOperation(entryPoint, operation);
 };
@@ -185,7 +185,7 @@ const registerVerifierKey = (
  * Validates the verifier-key map against the state's declared entry points
  * BEFORE registering anything, in both directions:
  * - a declared entry point with no key in the map throws
- *   {@link Ledger8ComposeFailedError} (stage `'deploy-verifier-key'`), because
+ *   {@link ComposeFailedError} (stage `'deploy-verifier-key'`), because
  *   a ledger rejects a deploy carrying an unregistered entry point;
  * - a key naming an entry point the state does not declare throws stage
  *   `'deploy-unknown-circuit'`. This direction matters as much as the other:
@@ -217,7 +217,7 @@ const registerVerifierKey = (
  */
 export const composeV8DeployTx = (options: ComposeV8DeployOptions, v8: ProtocolV8): Uint8Array => {
   const { contractState, verifierKeys, networkId, ttl } = options;
-  assertComposeEnvelope(options);
+  assertComposeEnvelope(options, 'v8');
 
   const ledgerContractState = bridgeContractState(contractState, v8);
   // Keyed by resolved name, valued by the entry point the state actually
@@ -233,19 +233,19 @@ export const composeV8DeployTx = (options: ComposeV8DeployOptions, v8: ProtocolV
     // A name that resolves twice makes the two checks below agree while one of
     // the two slots would go unregistered, so it is refused before either runs.
     if (declared.has(circuitId)) {
-      throw new Ledger8ComposeFailedError('deploy-ambiguous-circuit', circuitId);
+      throw new ComposeFailedError('v8', 'deploy-ambiguous-circuit', circuitId);
     }
     declared.set(circuitId, entryPoint);
   }
 
   for (const circuitId of verifierKeys.keys()) {
     if (!declared.has(circuitId)) {
-      throw new Ledger8ComposeFailedError('deploy-unknown-circuit', circuitId);
+      throw new ComposeFailedError('v8', 'deploy-unknown-circuit', circuitId);
     }
   }
   for (const circuitId of declared.keys()) {
     if (!verifierKeys.has(circuitId)) {
-      throw new Ledger8ComposeFailedError('deploy-verifier-key', circuitId);
+      throw new ComposeFailedError('v8', 'deploy-verifier-key', circuitId);
     }
   }
 

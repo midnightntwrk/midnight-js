@@ -19,15 +19,16 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+  ComposeFailedError,
+  ComposeOptionError,
   DownConvertFailedError,
-  Ledger8ComposeFailedError,
-  Ledger8ComposeOptionError,
   Ledger8InstanceMismatchError,
   Ledger8RuntimeInvalidError,
   Ledger8RuntimeMissingError,
   Ledger8ZswapUnsupportedError,
   MerkleNotRehashedError,
   PROTOCOL_ERROR_CODES,
+  StateDecodeFailedError,
   UnknownLedgerVersionError,
   UnknownProtocolVersionError
 } from '../errors';
@@ -54,8 +55,9 @@ describe('PROTOCOL_ERROR_CODES', () => {
       LEDGER8_RUNTIME_MISSING: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_MISSING',
       DOWN_CONVERT_FAILED: 'MIDNIGHT_JS_P_DOWN_CONVERT_FAILED',
       MERKLE_NOT_REHASHED: 'MIDNIGHT_JS_P_MERKLE_NOT_REHASHED',
-      LEDGER8_COMPOSE_FAILED: 'MIDNIGHT_JS_P_LEDGER8_COMPOSE_FAILED',
-      LEDGER8_COMPOSE_OPTION_INVALID: 'MIDNIGHT_JS_P_LEDGER8_COMPOSE_OPTION_INVALID',
+      COMPOSE_FAILED: 'MIDNIGHT_JS_P_COMPOSE_FAILED',
+      COMPOSE_OPTION_INVALID: 'MIDNIGHT_JS_P_COMPOSE_OPTION_INVALID',
+      STATE_DECODE_FAILED: 'MIDNIGHT_JS_P_STATE_DECODE_FAILED',
       LEDGER8_ZSWAP_UNSUPPORTED: 'MIDNIGHT_JS_P_LEDGER8_ZSWAP_UNSUPPORTED',
       UNKNOWN_LEDGER_VERSION: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION',
       LEDGER8_RUNTIME_INVALID: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_INVALID'
@@ -284,36 +286,58 @@ describe('UnknownLedgerVersionError', () => {
   });
 });
 
-describe('Ledger8ComposeFailedError', () => {
-  it('carries the LEDGER8_COMPOSE_FAILED code, the wrap-call stage, and names the circuit id', () => {
-    const error = new Ledger8ComposeFailedError('wrap-call', 'increment');
+describe('ComposeFailedError', () => {
+  it('carries the COMPOSE_FAILED code, the wrap-call stage, and names the circuit id', () => {
+    const error = new ComposeFailedError('v9', 'wrap-call', 'increment');
 
     expect(error).toBeInstanceOf(Error);
-    expect(error.name).toBe('Ledger8ComposeFailedError');
-    expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_COMPOSE_FAILED);
+    expect(error.name).toBe('ComposeFailedError');
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.COMPOSE_FAILED);
+    expect(error.version).toBe('v9');
     expect(error.stage).toBe('wrap-call');
     expect(error.message).toContain('increment');
     expect(error.message).toMatch(/no registered operation/i);
   });
 
   it('never includes a hex or byte dump in its own message', () => {
-    const error = new Ledger8ComposeFailedError('wrap-call', 'increment');
+    const error = new ComposeFailedError('v9', 'wrap-call', 'increment');
 
     expect(error.message).not.toMatch(/[0-9a-f]{16,}/i);
   });
 
+  // The era is a constructor argument, not a fact baked into the text. Both
+  // eras must therefore reach the same message with only the era name
+  // swapped: an entry that still hardcoded one era would produce two
+  // messages differing in more than that one token, or in nothing at all.
+  it('names the requested era and otherwise says the same thing for both', () => {
+    const v8 = new ComposeFailedError('v8', 'call-operation', 'increment');
+    const v9 = new ComposeFailedError('v9', 'call-operation', 'increment');
+
+    expect(v8.version).toBe('v8');
+    expect(v9.version).toBe('v9');
+    expect(v8.code).toBe(PROTOCOL_ERROR_CODES.COMPOSE_FAILED);
+    expect(v9.code).toBe(PROTOCOL_ERROR_CODES.COMPOSE_FAILED);
+    expect(v8.name).toBe('ComposeFailedError');
+    expect(v9.name).toBe('ComposeFailedError');
+    expect(v8.message).not.toBe(v9.message);
+    expect(v8.message.replaceAll('v8', 'ERA')).toBe(v9.message.replaceAll('v9', 'ERA'));
+  });
+
   it('carries the deploy-verifier-key stage and names the circuit whose key is missing', () => {
-    const error = new Ledger8ComposeFailedError('deploy-verifier-key', 'increment');
+    const error = new ComposeFailedError('v8', 'deploy-verifier-key', 'increment');
 
     expect(error.stage).toBe('deploy-verifier-key');
     expect(error.circuitId).toBe('increment');
     expect(error.message).toContain('increment');
     expect(error.message).toMatch(/verifier key/i);
-    expect(error.message).toContain('composeV8DeployTx');
+    // The facade method a caller actually invokes, not the internal leg it
+    // dispatches to: only one of the two is reachable from a consumer.
+    expect(error.message).toContain('composeDeployTx');
+    expect(error.message).not.toContain('composeV8DeployTx');
   });
 
   it('carries the deploy-unknown-circuit stage and explains that the address would change', () => {
-    const error = new Ledger8ComposeFailedError('deploy-unknown-circuit', 'stale');
+    const error = new ComposeFailedError('v8', 'deploy-unknown-circuit', 'stale');
 
     expect(error.stage).toBe('deploy-unknown-circuit');
     expect(error.circuitId).toBe('stale');
@@ -323,7 +347,7 @@ describe('Ledger8ComposeFailedError', () => {
   });
 
   it('carries the deploy-ambiguous-circuit stage and explains why the name cannot address the slots', () => {
-    const error = new Ledger8ComposeFailedError('deploy-ambiguous-circuit', 'increment');
+    const error = new ComposeFailedError('v8', 'deploy-ambiguous-circuit', 'increment');
 
     expect(error.stage).toBe('deploy-ambiguous-circuit');
     expect(error.circuitId).toBe('increment');
@@ -336,7 +360,7 @@ describe('Ledger8ComposeFailedError', () => {
 
   it('carries the deploy-verifier-key-blob stage and preserves the ledger failure on cause', () => {
     const cause = new Error('expected header tag');
-    const error = new Ledger8ComposeFailedError('deploy-verifier-key-blob', 'increment', cause);
+    const error = new ComposeFailedError('v8', 'deploy-verifier-key-blob', 'increment', cause);
 
     expect(error.stage).toBe('deploy-verifier-key-blob');
     expect(error.circuitId).toBe('increment');
@@ -345,7 +369,7 @@ describe('Ledger8ComposeFailedError', () => {
   });
 
   it('carries the call-verifier-key stage and points at a constructor-built state', () => {
-    const error = new Ledger8ComposeFailedError('call-verifier-key', 'increment');
+    const error = new ComposeFailedError('v9', 'call-verifier-key', 'increment');
 
     expect(error.stage).toBe('call-verifier-key');
     expect(error.circuitId).toBe('increment');
@@ -355,12 +379,12 @@ describe('Ledger8ComposeFailedError', () => {
   });
 
   it('carries no cause for the assertion stages, which wrap nothing', () => {
-    expect(new Ledger8ComposeFailedError('wrap-call', 'increment').cause).toBeUndefined();
-    expect(new Ledger8ComposeFailedError('deploy-verifier-key', 'increment').cause).toBeUndefined();
+    expect(new ComposeFailedError('v9', 'wrap-call', 'increment').cause).toBeUndefined();
+    expect(new ComposeFailedError('v8', 'deploy-verifier-key', 'increment').cause).toBeUndefined();
   });
 
-  it('carries the call-operation stage and describes the v8-native call context', () => {
-    const error = new Ledger8ComposeFailedError('call-operation', 'increment');
+  it('carries the call-operation stage and describes the era-native call context', () => {
+    const error = new ComposeFailedError('v8', 'call-operation', 'increment');
 
     expect(error.stage).toBe('call-operation');
     expect(error.circuitId).toBe('increment');
@@ -369,56 +393,99 @@ describe('Ledger8ComposeFailedError', () => {
     expect(error.message).toMatch(/v8-native contract state/i);
   });
 
-  it('carries the call-verifier-key stage and points at a state that was never deployed', () => {
-    const error = new Ledger8ComposeFailedError('call-verifier-key', 'increment');
+  // The one stage with no circuit to name: an empty call list is a defect in
+  // the request itself, so it is refused before any circuit is looked up.
+  it('carries the call-empty stage and explains that a call transaction needs at least one call', () => {
+    const error = new ComposeFailedError('v9', 'call-empty', '(none)');
 
-    expect(error.stage).toBe('call-verifier-key');
+    expect(error.stage).toBe('call-empty');
+    expect(error.message).toMatch(/at least one call/i);
+    expect(error.cause).toBeUndefined();
+  });
+
+  it('carries the call-contract-state stage and preserves the decoder failure on cause', () => {
+    const cause = new Error('expected header tag');
+    const error = new ComposeFailedError('v9', 'call-contract-state', 'increment', cause);
+
+    expect(error.stage).toBe('call-contract-state');
     expect(error.circuitId).toBe('increment');
+    expect(error.cause).toBe(cause);
     expect(error.message).toContain('increment');
-    expect(error.message).toMatch(/carries no verifier key/i);
+    expect(error.message).toMatch(/pre-call state/i);
   });
 
   // The message table is a total Record so that a new stage cannot silently
   // ship another stage's text. This is what that buys: every stage produces
-  // its own message, and each one names the circuit it failed on.
-  it('gives every compose stage a distinct message naming the circuit', () => {
+  // its own message.
+  it('gives every compose stage a distinct message', () => {
     const stages = [
       'wrap-call',
+      'call-empty',
       'call-operation',
+      'call-contract-state',
       'call-verifier-key',
       'deploy-verifier-key',
       'deploy-unknown-circuit',
+      'deploy-ambiguous-circuit',
       'deploy-verifier-key-blob'
     ] as const;
 
-    const messages = stages.map((stage) => new Ledger8ComposeFailedError(stage, 'increment').message);
+    const messages = stages.map((stage) => new ComposeFailedError('v9', stage, 'increment').message);
 
-    expect(messages.every((message) => message.includes('increment'))).toBe(true);
     expect(new Set(messages).size).toBe(stages.length);
   });
 
+  // Every stage that resolves a circuit names it. `'call-empty'` is excluded
+  // deliberately: it is raised before any circuit is known, so a circuit id in
+  // its text would be an invention.
+  it('names the circuit on every stage that has one', () => {
+    const circuitStages = [
+      'wrap-call',
+      'call-operation',
+      'call-contract-state',
+      'call-verifier-key',
+      'deploy-verifier-key',
+      'deploy-unknown-circuit',
+      'deploy-ambiguous-circuit',
+      'deploy-verifier-key-blob'
+    ] as const;
+
+    const messages = circuitStages.map((stage) => new ComposeFailedError('v9', stage, 'increment').message);
+
+    expect(messages.every((message) => message.includes('increment'))).toBe(true);
+  });
+
   it('never includes a hex or byte dump in a call-operation message', () => {
-    const error = new Ledger8ComposeFailedError('call-operation', 'increment');
+    const error = new ComposeFailedError('v8', 'call-operation', 'increment');
 
     expect(error.message).not.toMatch(/[0-9a-f]{16,}/i);
   });
 });
 
-describe('Ledger8ComposeOptionError', () => {
-  it('carries the LEDGER8_COMPOSE_OPTION_INVALID code and preserves the decoder failure for contractState', () => {
+describe('ComposeOptionError', () => {
+  it('carries the COMPOSE_OPTION_INVALID code and preserves the decoder failure for contractState', () => {
     const cause = new Error('expected header tag');
-    const error = new Ledger8ComposeOptionError('contractState', cause);
+    const error = new ComposeOptionError('v8', 'contractState', cause);
 
     expect(error).toBeInstanceOf(Error);
-    expect(error.name).toBe('Ledger8ComposeOptionError');
-    expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_COMPOSE_OPTION_INVALID);
+    expect(error.name).toBe('ComposeOptionError');
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID);
+    expect(error.version).toBe('v8');
     expect(error.option).toBe('contractState');
     expect(error.cause).toBe(cause);
     expect(error.message).toMatch(/could not be bridged/i);
   });
 
+  it('names the requested era on the option that has one', () => {
+    const v8 = new ComposeOptionError('v8', 'contractState');
+    const v9 = new ComposeOptionError('v9', 'contractState');
+
+    expect(v8.message).not.toBe(v9.message);
+    expect(v8.message.replaceAll('v8', 'ERA')).toBe(v9.message.replaceAll('v9', 'ERA'));
+  });
+
   it('explains why an empty network id is refused rather than passed through', () => {
-    const error = new Ledger8ComposeOptionError('networkId');
+    const error = new ComposeOptionError('v9', 'networkId');
 
     expect(error.option).toBe('networkId');
     expect(error.cause).toBeUndefined();
@@ -427,17 +494,57 @@ describe('Ledger8ComposeOptionError', () => {
   });
 
   it('explains that an invalid ttl would be recorded as the epoch', () => {
-    const error = new Ledger8ComposeOptionError('ttl');
+    const error = new ComposeOptionError('v9', 'ttl');
 
     expect(error.option).toBe('ttl');
     expect(error.message).toMatch(/time-to-live/i);
     expect(error.message).toMatch(/epoch/i);
   });
 
+  it('explains that a deploy without a verifier-key map cannot register its entry points', () => {
+    const error = new ComposeOptionError('v8', 'verifierKeys');
+
+    expect(error.option).toBe('verifierKeys');
+    expect(error.message).toMatch(/verifier[- ]key map/i);
+    expect(error.message).toMatch(/entry point/i);
+  });
+
+  it('preserves the ledger failure when a supplied Zswap offer cannot be read', () => {
+    const cause = new Error('expected header tag');
+    const error = new ComposeOptionError('v9', 'zswapOffer', cause);
+
+    expect(error.option).toBe('zswapOffer');
+    expect(error.cause).toBe(cause);
+    expect(error.message).toMatch(/zswap offer/i);
+  });
+
   it('never includes a hex or byte dump in its own message', () => {
-    for (const option of ['contractState', 'networkId', 'ttl'] as const) {
-      expect(new Ledger8ComposeOptionError(option).message).not.toMatch(/[0-9a-f]{16,}/i);
+    for (const option of ['contractState', 'networkId', 'ttl', 'verifierKeys', 'zswapOffer'] as const) {
+      expect(new ComposeOptionError('v9', option).message).not.toMatch(/[0-9a-f]{16,}/i);
     }
+  });
+});
+
+describe('StateDecodeFailedError', () => {
+  // The era is what decides which decoder ran, so it is the first thing a
+  // reader needs: the same bytes are a valid state on one axis and refuse to
+  // decode on the other.
+  it('carries the STATE_DECODE_FAILED code, the requested era, and the decoder failure on cause', () => {
+    const cause = new Error('expected header tag');
+    const error = new StateDecodeFailedError('v9', cause);
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error.name).toBe('StateDecodeFailedError');
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED);
+    expect(error.version).toBe('v9');
+    expect(error.cause).toBe(cause);
+    expect(error.message).toContain('v9');
+  });
+
+  it('never includes a hex or byte dump in its own message', () => {
+    const error = new StateDecodeFailedError('v8', new Error('trailing bytes'));
+
+    expect(error.message).not.toMatch(/[0-9a-f]{16,}/i);
   });
 });
 

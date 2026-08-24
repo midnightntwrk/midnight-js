@@ -88,7 +88,7 @@ describe.skipIf(!distBundlesExist && !process.env.CI)('dist engine error gate', 
   });
 
   it('throws an error the root package can still discriminate by class and by code', async () => {
-    const { loadLedger8Engine, Ledger8ComposeFailedError, PROTOCOL_ERROR_CODES } = await import(
+    const { loadLedger8Engine, ComposeFailedError, PROTOCOL_ERROR_CODES } = await import(
       '@midnight-ntwrk/midnight-js-protocol'
     );
     const engine = await loadLedger8Engine();
@@ -104,10 +104,11 @@ describe.skipIf(!distBundlesExist && !process.env.CI)('dist engine error gate', 
       caught = error;
     }
 
-    expect(caught).toBeInstanceOf(Ledger8ComposeFailedError);
+    expect(caught).toBeInstanceOf(ComposeFailedError);
     expect(caught).toBeInstanceOf(Error);
-    const composeFailure = caught as InstanceType<typeof Ledger8ComposeFailedError>;
-    expect(composeFailure.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_COMPOSE_FAILED);
+    const composeFailure = caught as InstanceType<typeof ComposeFailedError>;
+    expect(composeFailure.code).toBe(PROTOCOL_ERROR_CODES.COMPOSE_FAILED);
+    expect(composeFailure.version).toBe('v9');
     expect(composeFailure.stage).toBe('wrap-call');
   });
 });

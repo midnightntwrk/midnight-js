@@ -16,7 +16,8 @@
 import { encodeContractKeyLocation, hashVerifierKey } from '@midnight-ntwrk/compact-js';
 import type { AlignedValue, EncodedStateValue, Op } from '@midnightntwrk/ledger-v9';
 
-import { Ledger8ComposeFailedError, type Ledger8ComposeStage } from '../../errors';
+import { ComposeFailedError, type ComposeStage } from '../../errors';
+import type { LedgerVersion } from '../ledger-version';
 import type { TranscriptPojo } from './execute';
 
 /**
@@ -85,11 +86,12 @@ export interface VerifiableOperation {
 
 /**
  * The stages {@link assembleCallPrototype} can reach on a failed operation
- * lookup. Narrower than {@link Ledger8ComposeStage}: this function only ever
+ * lookup. Narrower than {@link ComposeStage}: this function only ever
  * resolves a call's operation, so a caller cannot ask it to report a deploy
- * stage. The verifier-key stage it raises itself and is not a caller choice.
+ * stage. The verifier-key and pre-call-state stages it raises itself and are
+ * not a caller choice.
  */
-export type CallResolutionStage = Extract<Ledger8ComposeStage, 'wrap-call' | 'call-operation'>;
+export type CallResolutionStage = Extract<ComposeStage, 'wrap-call' | 'call-operation'>;
 
 /** Everything {@link assembleCallPrototype} needs beyond the ledger module. */
 export interface AssembleCallOptions<TOperation> {
@@ -97,6 +99,10 @@ export interface AssembleCallOptions<TOperation> {
   readonly contractAddress: string;
   readonly operations: CallOperationRegistry<TOperation>;
   readonly stage: CallResolutionStage;
+  // The era every failure raised here names. Passed rather than inferred from
+  // the ledger module: this function is generic over the module, so it has no
+  // way to ask which axis it was handed.
+  readonly version: LedgerVersion;
 }
 
 /**
@@ -113,7 +119,7 @@ export interface AssembleCallOptions<TOperation> {
  * so decoding it through the target module's `StateValue`/`ChargedState`
  * preserves the data exactly.
  *
- * Throws {@link Ledger8ComposeFailedError} with the caller's `stage` when
+ * Throws {@link ComposeFailedError} with the caller's `stage` when
  * `operations` has no registered operation for the transcript's circuit, and
  * with stage `'call-verifier-key'` when the operation it resolves carries no
  * verifier key — rather than silently composing a call against a blank,
@@ -138,14 +144,14 @@ export const assembleCallPrototype = <
   ledger: CallAssemblyLedger<TStateValue, TChargedState, TQueryContext, TPreTranscript, TParams, TTranscript, TOperation, TPrototype>,
   options: AssembleCallOptions<TOperation>
 ): TPrototype => {
-  const { transcript, contractAddress, operations, stage } = options;
+  const { transcript, contractAddress, operations, stage, version } = options;
 
   const op = operations.operation(transcript.circuitId);
   if (op === undefined) {
-    throw new Ledger8ComposeFailedError(stage, transcript.circuitId);
+    throw new ComposeFailedError(version, stage, transcript.circuitId);
   }
   if (op.verifierKey === undefined) {
-    throw new Ledger8ComposeFailedError('call-verifier-key', transcript.circuitId);
+    throw new ComposeFailedError(version, 'call-verifier-key', transcript.circuitId);
   }
 
   const stateValue = ledger.StateValue.decode(transcript.preContractState.data.state.encode());

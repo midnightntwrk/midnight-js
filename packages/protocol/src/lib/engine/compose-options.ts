@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
-import { Ledger8ComposeOptionError } from '../../errors';
+import { ComposeOptionError } from '../../errors';
+import type { LedgerVersion } from '../ledger-version';
 
-/** The two transaction-envelope options both composition legs take. */
+/** The two transaction-envelope options every composition leg takes. */
 export interface ComposeEnvelopeOptions {
   readonly networkId: string;
   readonly ttl: Date;
@@ -33,11 +34,11 @@ export interface ComposeEnvelopeOptions {
  * deployment targets and how long a transaction should live remain the
  * caller's decisions.
  */
-export const assertComposeEnvelope = (options: ComposeEnvelopeOptions): void => {
+export const assertComposeEnvelope = (options: ComposeEnvelopeOptions, version: LedgerVersion): void => {
   if (options.networkId.length === 0) {
-    throw new Ledger8ComposeOptionError('networkId');
+    throw new ComposeOptionError(version, 'networkId');
   }
   if (Number.isNaN(options.ttl.getTime())) {
-    throw new Ledger8ComposeOptionError('ttl');
+    throw new ComposeOptionError(version, 'ttl');
   }
 };
