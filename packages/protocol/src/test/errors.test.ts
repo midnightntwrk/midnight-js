@@ -320,6 +320,18 @@ describe('Ledger8ComposeFailedError', () => {
     expect(error.message).toMatch(/address/i);
   });
 
+  it('carries the deploy-ambiguous-circuit stage and explains why the name cannot address the slots', () => {
+    const error = new Ledger8ComposeFailedError('deploy-ambiguous-circuit', 'increment');
+
+    expect(error.stage).toBe('deploy-ambiguous-circuit');
+    expect(error.circuitId).toBe('increment');
+    expect(error.message).toContain('increment');
+    expect(error.message).toMatch(/two entry points/i);
+    // The remediation has to say this is not a compactc-built shape, or the
+    // reader's first move is to re-run the compiler, which cannot help.
+    expect(error.message).toMatch(/assembled by hand|not valid UTF-8/i);
+  });
+
   it('carries the deploy-verifier-key-blob stage and preserves the ledger failure on cause', () => {
     const cause = new Error('expected header tag');
     const error = new Ledger8ComposeFailedError('deploy-verifier-key-blob', 'increment', cause);

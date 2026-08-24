@@ -161,6 +161,7 @@ const bridgeContractState = (
  */
 const registerVerifierKey = (
   ledgerContractState: InstanceType<ProtocolV8['ContractState']>,
+  entryPoint: string | Uint8Array,
   circuitId: string,
   verifierKey: Uint8Array,
   v8: ProtocolV8
@@ -171,7 +172,7 @@ const registerVerifierKey = (
   } catch (error) {
     throw new Ledger8ComposeFailedError('deploy-verifier-key-blob', circuitId, error);
   }
-  ledgerContractState.setOperation(circuitId, operation);
+  ledgerContractState.setOperation(entryPoint, operation);
 };
 
 /**
@@ -196,7 +197,12 @@ const registerVerifierKey = (
  *
  * Together the two checks make the map and the declared entry points equal
  * sets, so no post-registration re-read is needed to know every slot carries a
- * key. Bytes the ledger itself rejects surface as stage
+ * key. They run on resolved NAMES, because that is how `verifierKeys` is
+ * keyed, so two declared entry points resolving to one name would make them
+ * agree while leaving a slot blank; that case throws stage
+ * `'deploy-ambiguous-circuit'` before either check runs. Registration itself
+ * uses the entry point the state declares, not its resolved name, since
+ * `setOperation` would otherwise create a second slot beside the declared one. Bytes the ledger itself rejects surface as stage
  * `'deploy-verifier-key-blob'` with the ledger's own failure on `cause`.
  *
  * Never proves the transaction: the returned bytes are an UNPROVEN,
@@ -214,21 +220,41 @@ export const composeV8DeployTx = (options: ComposeV8DeployOptions, v8: ProtocolV
   assertComposeEnvelope(options);
 
   const ledgerContractState = bridgeContractState(contractState, v8);
-  const declared = new Set(ledgerContractState.operations().map(entryPointName));
+  // Keyed by resolved name, valued by the entry point the state actually
+  // declares. Both halves are needed: `verifierKeys` is keyed by name, so the
+  // set arithmetic below has to run on names, while `setOperation` must be
+  // handed the declared entry point itself. Registering under the decoded name
+  // instead would leave a byte-declared slot blank and CREATE a second,
+  // undeclared one beside it — the same silently-different-address outcome
+  // `'deploy-unknown-circuit'` exists to prevent.
+  const declared = new Map<string, string | Uint8Array>();
+  for (const entryPoint of ledgerContractState.operations()) {
+    const circuitId = entryPointName(entryPoint);
+    // A name that resolves twice makes the two checks below agree while one of
+    // the two slots would go unregistered, so it is refused before either runs.
+    if (declared.has(circuitId)) {
+      throw new Ledger8ComposeFailedError('deploy-ambiguous-circuit', circuitId);
+    }
+    declared.set(circuitId, entryPoint);
+  }
 
   for (const circuitId of verifierKeys.keys()) {
     if (!declared.has(circuitId)) {
       throw new Ledger8ComposeFailedError('deploy-unknown-circuit', circuitId);
     }
   }
-  for (const circuitId of declared) {
+  for (const circuitId of declared.keys()) {
     if (!verifierKeys.has(circuitId)) {
       throw new Ledger8ComposeFailedError('deploy-verifier-key', circuitId);
     }
   }
 
+  // The non-null assertion is guarded by the two checks above: together they
+  // make `verifierKeys`' keys and `declared`'s keys the same set, so every
+  // lookup here resolves. An `undefined` branch would be unreachable, and this
+  // file carries a 100% branch floor.
   for (const [circuitId, verifierKey] of verifierKeys) {
-    registerVerifierKey(ledgerContractState, circuitId, verifierKey, v8);
+    registerVerifierKey(ledgerContractState, declared.get(circuitId)!, circuitId, verifierKey, v8);
   }
 
   const deploy = new v8.ContractDeploy(ledgerContractState);

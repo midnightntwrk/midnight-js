@@ -332,3 +332,85 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
     expect((caught as Ledger8ComposeOptionError).option).toBe('ttl');
   });
 });
+
+// `ledger-v8` declares `operations(): Array<string | Uint8Array>` and accepts
+// either form in `setOperation`/`operation`, but decodes every entry point
+// back to a string today -- pinned by the `entryPointName` suite above. The
+// byte half of that union is therefore unreachable through the real module,
+// while still being part of the contract this code is written against. These
+// cases reach it through a subclass that returns the byte form, keeping the
+// rest of the module real (same interception precedent as the capturing
+// prototype in engine-compose-v8.test.ts).
+describe('composeV8DeployTx against byte-array entry points', () => {
+  const byteEntryPointV8 = (declared: readonly Uint8Array[], registered: (string | Uint8Array)[]): typeof LedgerV8 => {
+    class ByteEntryPointContractState extends LedgerV8.ContractState {
+      static override deserialize(): ByteEntryPointContractState {
+        return new ByteEntryPointContractState();
+      }
+
+      override operations(): (string | Uint8Array)[] {
+        return [...declared];
+      }
+
+      override setOperation(id: string | Uint8Array, value: LedgerV8.ContractOperation): void {
+        registered.push(id);
+        super.setOperation(id, value);
+      }
+    }
+    return { ...LedgerV8, ContractState: ByteEntryPointContractState };
+  };
+
+  const deployOptions = (verifierKeys: ReadonlyMap<string, Uint8Array>): ComposeV8DeployOptions => ({
+    contractState: new ocrt3.ContractState(),
+    verifierKeys,
+    networkId: NETWORK_ID,
+    ttl: TTL
+  });
+
+  // 0xff and 0xfe are each an invalid UTF-8 sequence, so both decode to the
+  // SAME replacement character. Two genuinely distinct declared entry points
+  // therefore collapse to one name -- which is what makes the map-vs-declared
+  // set arithmetic agree while one of the two slots would silently go
+  // unregistered, deploying a contract at an address whose artifacts do not
+  // describe it.
+  const AMBIGUOUS_A = new Uint8Array([0xff]);
+  const AMBIGUOUS_B = new Uint8Array([0xfe]);
+  const AMBIGUOUS_NAME = new TextDecoder().decode(AMBIGUOUS_A);
+
+  it('refuses two declared entry points that resolve to the same name instead of registering only one of them', () => {
+    const registered: (string | Uint8Array)[] = [];
+    const v8 = byteEntryPointV8([AMBIGUOUS_A, AMBIGUOUS_B], registered);
+
+    let caught: unknown;
+    try {
+      composeV8DeployTx(deployOptions(new Map([[AMBIGUOUS_NAME, REGISTERED_VERIFIER_KEY]])), v8);
+    } catch (error) {
+      caught = error;
+    }
+
+    // The two byte sequences really are distinct, so this is a lossy resolution
+    // and not two spellings of one entry point.
+    expect(Buffer.from(AMBIGUOUS_A).equals(Buffer.from(AMBIGUOUS_B))).toBe(false);
+    expect(entryPointName(AMBIGUOUS_A)).toBe(entryPointName(AMBIGUOUS_B));
+    expect(caught).toBeInstanceOf(Ledger8ComposeFailedError);
+    const error = caught as Ledger8ComposeFailedError;
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_COMPOSE_FAILED);
+    expect(error.stage).toBe('deploy-ambiguous-circuit');
+    expect(error.circuitId).toBe(AMBIGUOUS_NAME);
+    expect(registered).toEqual([]);
+  });
+
+  it('registers against the entry point the state declares, not against its decoded name', () => {
+    const declaredId = new TextEncoder().encode('increment');
+    const registered: (string | Uint8Array)[] = [];
+    const v8 = byteEntryPointV8([declaredId], registered);
+
+    composeV8DeployTx(deployOptions(new Map([['increment', REGISTERED_VERIFIER_KEY]])), v8);
+
+    // `setOperation` CREATES a slot rather than requiring one, so registering
+    // under the decoded string would leave the declared byte slot unkeyed and
+    // add a second, undeclared entry point next to it -- the same
+    // silently-different-address failure `deploy-unknown-circuit` guards.
+    expect(registered).toEqual([declaredId]);
+  });
+});

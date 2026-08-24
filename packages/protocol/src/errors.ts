@@ -294,6 +294,10 @@ export class MerkleNotRehashedError extends Error {
  *   {@link composeV8DeployTx} names a circuit the contract state does not
  *   declare. Registering it would add an entry point the compiled contract
  *   never had, and silently change the deployed contract's address.
+ * - `'deploy-ambiguous-circuit'` — two entry points the contract state
+ *   declares resolve to the same name, so the verifier-key map (keyed by
+ *   name) cannot address them apart. Registering under the shared name would
+ *   key one slot and leave the other blank.
  * - `'deploy-verifier-key-blob'` — the ledger rejected the verifier-key bytes
  *   supplied for a circuit. The only stage that wraps a lower-level failure,
  *   so the only one carrying a `cause`.
@@ -304,6 +308,7 @@ export type Ledger8ComposeStage =
   | 'call-verifier-key'
   | 'deploy-verifier-key'
   | 'deploy-unknown-circuit'
+  | 'deploy-ambiguous-circuit'
   | 'deploy-verifier-key-blob';
 
 /**
@@ -372,6 +377,13 @@ export class Ledger8ComposeFailedError extends Error {
       "contract an entry point its compiled source never had, and would change the deployed contract's " +
       'address. This usually means a stale or foreign key file was picked up (for example by globbing ' +
       'keys/*.verifier across compiler runs) — supply keys for exactly the circuits this contract declares.',
+    'deploy-ambiguous-circuit': (circuitId) =>
+      `Failed to compose a ledger-8 deploy transaction: the contract state declares two entry points that ` +
+      `both resolve to the name '${circuitId}', so a verifier-key map keyed by name cannot tell them apart. ` +
+      'Registering under that name would key one slot and leave the other blank, deploying a contract whose ' +
+      "address does not match the caller's artifacts. This is not something a compactc-built contract " +
+      'produces — it means the contract state was assembled by hand, or by a tool that set an entry point to ' +
+      'bytes that are not valid UTF-8.',
     'deploy-verifier-key-blob': (circuitId) =>
       `Failed to compose a ledger-8 deploy transaction: the ledger rejected the verifier-key bytes supplied ` +
       `for circuit '${circuitId}'. Read the wrapped cause for what the ledger reported; a verifier key must ` +
