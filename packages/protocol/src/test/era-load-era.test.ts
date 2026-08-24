@@ -49,7 +49,13 @@ describe('loadLedgerEra', () => {
   it.each(['v8', 'v9'] as const)('exposes exactly the documented %s surface, and nothing else', async (version) => {
     const era = await loadLedgerEra(version);
 
-    expect(Object.keys(era).sort()).toEqual(['decodeContractState', 'extractState', 'version']);
+    expect(Object.keys(era).sort()).toEqual([
+      'composeCallTx',
+      'composeDeployTx',
+      'decodeContractState',
+      'extractState',
+      'version'
+    ]);
   });
 
   it.each(['v8', 'v9'] as const)('binds %s to the era that was asked for', async (version) => {

@@ -70,11 +70,12 @@ If the v8 module cannot be loaded (usually a broken or partial install), `loadLe
 Contracts compiled against the pre-fork toolchain keep executing on `compact-runtime@0.16` after the fork. That toolchain and its `onchain-runtime-v3` WASM live behind the `./engine` subpath, gated the same way as `./v8` and for the same reason. `loadLedger8Engine()` is the only sanctioned runtime path to it:
 
 ```typescript
-import { loadLedger8Engine } from '@midnight-ntwrk/midnight-js-protocol';
+import { loadLedger8Engine, loadLedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
 
 const engine = await loadLedger8Engine();
+const era = await loadLedgerEra('v8');
 
-const state = engine.downConvertForExecution(engine.extractState(rawContractState, 'v8'));
+const state = engine.downConvertForExecution(era.extractState(rawContractState));
 const transcript = engine.executeCircuit({
   contract,
   circuitId: 'increment',
@@ -87,7 +88,9 @@ const transcript = engine.executeCircuit({
 const prototype = engine.wrapKeepStateCall({ transcript, contractAddress, contractState });
 ```
 
-The four methods form a pipeline — each result is the next call's input. `contractState` passed to `wrapKeepStateCall` must be the migrated v9 state **as read from chain**: it is where the deployed operation and its verifier key come from, and the key location the prototype carries is derived from that key. A blank or constructor-built state throws `ComposeFailedError` (code `MIDNIGHT_JS_P_COMPOSE_FAILED`) with `stage` naming which lookup failed and `version` naming the ledger era it was composing for.
+The engine exposes exactly four methods — `downConvertForExecution`, `executeCircuit`, `executeConstructor` and `wrapKeepStateCall` — and they form a pipeline, each result being the next call's input. Reading a contract state and composing a call or a deploy are **not** here: both eras do those, so they live on the [ledger-era facade](#ledger-era-facade) instead.
+
+`contractState` passed to `wrapKeepStateCall` must be the migrated v9 state **as read from chain**: it is where the deployed operation and its verifier key come from, and the key location the prototype carries is derived from that key. A blank or constructor-built state throws `ComposeFailedError` (code `MIDNIGHT_JS_P_COMPOSE_FAILED`) with `stage` naming which lookup failed and `version` naming the ledger era it was composing for.
 
 Circuits with Zswap coin effects are not supported on this leg yet: the transcript does not carry the post-call Zswap local state, so `executeCircuit` throws `Ledger8ZswapUnsupportedError` (code `MIDNIGHT_JS_P_LEDGER8_ZSWAP_UNSUPPORTED`) rather than composing a call that would drop the coin movements and be rejected on submission.
 

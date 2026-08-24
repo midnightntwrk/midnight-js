@@ -192,8 +192,20 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
     return deploys[0].initialState;
   };
 
+  const deployedAddressOf = (bytes: Uint8Array): string => {
+    const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', bytes);
+    const deploys = [...(back.intents?.values() ?? [])]
+      .flatMap((intent) => intent.actions)
+      .filter((action) => action instanceof LedgerV8.ContractDeploy);
+    expect(deploys).toHaveLength(1);
+    return deploys[0].address;
+  };
+
   it('composes and serializes a v8-native deploy transaction, tag-prefixed exactly as ledger-v8 emits it', () => {
-    const bytes = composeV8DeployTx(buildDeployOptions(new Map([['increment', REGISTERED_VERIFIER_KEY]])), LedgerV8);
+    const { transaction: bytes } = composeV8DeployTx(
+      buildDeployOptions(new Map([['increment', REGISTERED_VERIFIER_KEY]])),
+      LedgerV8
+    );
 
     expect(bytes).toBeInstanceOf(Uint8Array);
     const tag = Buffer.from(bytes.subarray(0, V8_UNPROVEN_TX_TAG.length)).toString('latin1');
@@ -201,7 +213,10 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
   });
 
   it('round-trips through the real v8 decoder: deserialize then re-serialize yields byte-identical output', () => {
-    const bytes = composeV8DeployTx(buildDeployOptions(new Map([['increment', REGISTERED_VERIFIER_KEY]])), LedgerV8);
+    const { transaction: bytes } = composeV8DeployTx(
+      buildDeployOptions(new Map([['increment', REGISTERED_VERIFIER_KEY]])),
+      LedgerV8
+    );
 
     const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', bytes);
 
@@ -221,12 +236,20 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
       ['decrement', REGISTERED_VERIFIER_KEY]
     ]);
 
-    const bytes = composeV8DeployTx(buildDeployOptions(verifierKeys, ['increment', 'decrement']), LedgerV8);
+    const { transaction: bytes, contractAddress, initialState } = composeV8DeployTx(
+      buildDeployOptions(verifierKeys, ['increment', 'decrement']),
+      LedgerV8
+    );
 
     const deployed = deployedStateOf(bytes);
     expect(deployed.operations().sort()).toEqual(['decrement', 'increment']);
     expect(Buffer.from(deployed.operation('increment')?.verifierKey ?? new Uint8Array())).toEqual(Buffer.from(REGISTERED_VERIFIER_KEY));
     expect(Buffer.from(deployed.operation('decrement')?.verifierKey ?? new Uint8Array())).toEqual(Buffer.from(REGISTERED_VERIFIER_KEY));
+    // The address and the registered initial state come back with the
+    // transaction: a deploy mints a fresh nonce, so a caller cannot recompute
+    // the address from the state it passed in.
+    expect(contractAddress).toBe(deployedAddressOf(bytes));
+    expect(Buffer.from(initialState)).toEqual(Buffer.from(deployed.serialize()));
   });
 
   it('throws ComposeFailedError (stage deploy-verifier-key) naming the declared circuit the key map does not cover', () => {

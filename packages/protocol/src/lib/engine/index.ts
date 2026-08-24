@@ -15,26 +15,19 @@
 
 import type { ContractCallPrototype } from '@midnightntwrk/ledger-v9';
 
-import type { LedgerVersion } from '../../version';
-import { loadLedger8 } from '../load-v8';
-import { type ComposeV8CallOptions, composeV8CallTx } from './compose-v8';
 import {
-  type ComposeV8DeployOptions,
-  composeV8DeployTx,
   type ConstructorResultPojo,
   executeConstructor,
   type ExecuteConstructorOptions,
   type Ledger8ConstructorRuntime
 } from './deploy-v8';
 import { type DownConvertedState, downConvertForExecution, type Ledger8CompactRuntime } from './down-convert';
-import { type EncodedStateValue, extractEncodedStateValue } from './envelope';
+import type { EncodedStateValue } from './envelope';
 import { executeCircuit, type ExecuteCircuitOptions, type Ledger8ExecutionRuntime, type TranscriptPojo } from './execute';
 import { assertSharedLedger8Instance } from './instance-guard';
 import { wrapKeepStateCall, type WrapKeepStateCallOptions } from './wrap-v9';
 
 export type {
-  ComposeV8CallOptions,
-  ComposeV8DeployOptions,
   ConstructorResultPojo,
   DownConvertedState,
   EncodedStateValue,
@@ -45,26 +38,26 @@ export type {
 };
 
 /**
- * The public surface {@link createLedger8Engine} builds: every retained-v8
- * (pre-fork execution, v9-native keep-state binding, v8-native composition
- * and deploy) capability, with the 0.16 runtime instance already captured in
+ * The public surface {@link createLedger8Engine} builds: the retained pre-fork
+ * EXECUTION capabilities, with the 0.16 runtime instance already captured in
  * closure — no method here takes a runtime or module parameter.
  *
- * The two composition methods are async and the other five are not, because
- * only those two need the v8 ledger module: they acquire it on first use via
- * `loadLedger8` (`../load-v8.ts`), which is memoised, so the multi-megabyte v8
- * WASM is never instantiated for a consumer that only executes circuits and
- * binds them onto v9. See {@link createLedger8Engine} for why that load is not
- * hoisted into construction.
+ * Deliberately narrower than it once was. Reading a contract state and
+ * composing a call or a deploy are era-symmetric operations: both eras do them,
+ * with the same inputs and the same result shape, so they belong on the era
+ * facade (`../era/era.ts`) where a caller can reach them without knowing which
+ * era it holds. What is left here is what only the retained era can do —
+ * down-convert a post-fork state for pre-fork execution, run a pre-fork circuit
+ * or constructor, and bind a pre-fork transcript natively onto v9.
+ *
+ * Every method is synchronous: this object is handed over only after the
+ * retained toolchain has been acquired, so there is nothing left to await.
  */
 export interface Ledger8Engine {
-  extractState(raw: Uint8Array, version: LedgerVersion): EncodedStateValue;
   downConvertForExecution(state: EncodedStateValue): DownConvertedState;
   executeCircuit(options: ExecuteCircuitOptions): TranscriptPojo;
   wrapKeepStateCall(options: WrapKeepStateCallOptions): ContractCallPrototype;
-  composeCallTx(options: ComposeV8CallOptions): Promise<Uint8Array>;
   executeConstructor(options: ExecuteConstructorOptions): ConstructorResultPojo;
-  composeDeployTx(options: ComposeV8DeployOptions): Promise<Uint8Array>;
 }
 
 /**
@@ -88,17 +81,12 @@ export interface Ledger8Engine {
  * axis is asserted. Any acquisition failure surfaces through the facade
  * (`lib/engine/load-engine.ts`) as `Ledger8RuntimeMissingError` (`../../errors.ts`).
  *
- * Deliberately does NOT acquire the v8 ledger module here. Only the two
- * composition legs need it, so hoisting the load into construction would make
- * every consumer — including the keep-state path, which never touches the v8
- * axis — instantiate multi-megabyte WASM and hard-depend on ledger-v8
- * resolving. `composeCallTx`/`composeDeployTx` therefore await
- * {@link loadLedger8} per call instead; it memoises, so the module loads at most
- * once, and its rejection is already a `Ledger8RuntimeMissingError` (see
- * `../load-v8.ts`). Keeping it out of the `Promise.all` also orders
- * {@link assertSharedLedger8Instance} ahead of any v8 acquisition, so a
- * dual-instantiation can no longer lose the race and be reported as a missing
- * runtime instead.
+ * Deliberately does NOT acquire the v8 ledger module. Nothing on this surface
+ * needs it: the two legs that did — call and deploy composition — now live on
+ * the era facade (`../era/era.ts`), which acquires the module itself when a
+ * caller asks for the v8 era. A consumer that only executes circuits and binds
+ * them onto v9 therefore never instantiates the multi-megabyte v8 WASM, and
+ * never hard-depends on ledger-v8 resolving.
  */
 export const createLedger8Engine = async (): Promise<Ledger8Engine> => {
   const [glue, ocrt3] = await Promise.all([
@@ -127,12 +115,9 @@ export const createLedger8Engine = async (): Promise<Ledger8Engine> => {
   };
 
   return {
-    extractState: (raw, version) => extractEncodedStateValue(raw, version, ocrt3.ContractState),
     downConvertForExecution: (state) => downConvertForExecution(state, ledger8CompactRuntime),
     executeCircuit: (options) => executeCircuit(options, ledger8ExecutionRuntime),
     wrapKeepStateCall,
-    composeCallTx: async (options) => composeV8CallTx(options, await loadLedger8()),
-    executeConstructor: (options) => executeConstructor(options, ledger8ConstructorRuntime),
-    composeDeployTx: async (options) => composeV8DeployTx(options, await loadLedger8())
+    executeConstructor: (options) => executeConstructor(options, ledger8ConstructorRuntime)
   };
 };

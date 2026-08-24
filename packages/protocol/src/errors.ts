@@ -435,12 +435,16 @@ export class ComposeFailedError extends Error {
  *   an unparseable value yields an Invalid Date, which the ledger silently
  *   records as the Unix epoch: a transaction that is already expired when it
  *   is composed.
+ * - `'calls'` — the call list is not one the target era can compose. The
+ *   retained pre-fork era composes exactly one call, because its execution leg
+ *   runs a single circuit and refuses one with coin effects, so it has no
+ *   cross-contract call tree to express.
  * - `'verifierKeys'` — a deploy was requested with no verifier-key map, on an
  *   era whose deploy leg has to register the compiled contract's keys itself.
  * - `'zswapOffer'` — the supplied Zswap offer bytes were rejected by the
  *   target era's decoder.
  */
-export type ComposeOption = 'contractState' | 'networkId' | 'ttl' | 'verifierKeys' | 'zswapOffer';
+export type ComposeOption = 'calls' | 'contractState' | 'networkId' | 'ttl' | 'verifierKeys' | 'zswapOffer';
 
 /**
  * Thrown by the composition legs when one of their options cannot be used at
@@ -484,6 +488,14 @@ export class ComposeOptionError extends Error {
         'Refusing to compose a transaction against an empty network id. The ledger would accept it and bake ' +
         'it into the transaction, which the network then rejects at submission. Resolve the network id for ' +
         'the target environment and pass it explicitly.'
+      );
+    }
+    if (option === 'calls') {
+      return (
+        `Refusing to compose a ${version} call transaction from this call list: the era can compose exactly ` +
+        'one call, and composing only the first would silently drop the rest. This era executes a single ' +
+        'circuit and refuses one with coin effects, so it has no cross-contract call tree to express — ' +
+        'compose each call as its own transaction, or target the era that carries call trees.'
       );
     }
     if (option === 'verifierKeys') {

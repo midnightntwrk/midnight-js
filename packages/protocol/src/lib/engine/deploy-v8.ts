@@ -14,6 +14,7 @@
  */
 
 import { ComposeFailedError, ComposeOptionError } from '../../errors';
+import type { DeployResultPojo } from '../era/compose-types';
 import type { ProtocolV8 } from '../load-v8';
 import { assertComposeEnvelope } from './compose-options';
 
@@ -214,8 +215,14 @@ const registerVerifierKey = (
  * at a fixed segment id — matching `createUnprovenLedgerDeployTx`
  * (`packages/contracts/src/utils/ledger-utils.ts`), which the v9 deploy path
  * already does. Only calls randomize their segment, to stay mergeable.
+ *
+ * Returns the address and the registered initial state alongside the
+ * transaction, rather than the transaction alone. A deploy mints a fresh
+ * nonce, so the address is not a function of the state a caller passed in and
+ * cannot be recomputed from it — and the state the address was derived from is
+ * the one a caller stores and later dispatches calls against.
  */
-export const composeV8DeployTx = (options: ComposeV8DeployOptions, v8: ProtocolV8): Uint8Array => {
+export const composeV8DeployTx = (options: ComposeV8DeployOptions, v8: ProtocolV8): DeployResultPojo => {
   const { contractState, verifierKeys, networkId, ttl } = options;
   assertComposeEnvelope(options, 'v8');
 
@@ -259,5 +266,10 @@ export const composeV8DeployTx = (options: ComposeV8DeployOptions, v8: ProtocolV
 
   const deploy = new v8.ContractDeploy(ledgerContractState);
   const intent = v8.Intent.new(ttl).addDeploy(deploy);
-  return v8.Transaction.fromParts(networkId, undefined, undefined, intent).serialize();
+
+  return {
+    transaction: v8.Transaction.fromParts(networkId, undefined, undefined, intent).serialize(),
+    contractAddress: deploy.address,
+    initialState: deploy.initialState.serialize()
+  };
 };

@@ -19,9 +19,18 @@ import { UnknownLedgerVersionError } from '../../errors';
 import { extractEncodedStateValue, extractV9EncodedStateValue } from '../engine/envelope';
 import type { LedgerVersion } from '../ledger-version';
 import { loadLedger8 } from '../load-v8';
+import { composeEraV8CallTx, composeEraV8DeployTx } from './adapt-v8';
+import { composeV9CallTx, composeV9DeployTx } from './compose-v9';
 import { decodeContractStateWith } from './contract-state';
 import type { LedgerEra } from './era';
 
+export type {
+  CallTranscriptSource,
+  ComposeCallEntry,
+  ComposeCallOptions,
+  ComposeDeployOptions,
+  DeployResultPojo
+} from './compose-types';
 export type { ContractEntryPointPojo, ContractStatePojo } from './contract-state';
 export type { LedgerEra } from './era';
 
@@ -39,8 +48,13 @@ let v9EraPromise: Promise<LedgerEra> | undefined;
  */
 const createV9Era = (): LedgerEra => ({
   version: 'v9',
-  extractState: (raw) => extractV9EncodedStateValue(raw),
-  decodeContractState: (raw) => decodeContractStateWith(raw, 'v9', ledgerV9)
+  // Referenced, not wrapped: this era's operations need nothing bound into
+  // closure, so a wrapper would only add a frame between a caller and the
+  // function whose contract it is.
+  extractState: extractV9EncodedStateValue,
+  decodeContractState: (raw) => decodeContractStateWith(raw, 'v9', ledgerV9),
+  composeCallTx: composeV9CallTx,
+  composeDeployTx: composeV9DeployTx
 });
 
 /**
@@ -59,7 +73,9 @@ const createV8Era = async (): Promise<LedgerEra> => {
   return {
     version: 'v8',
     extractState: (raw) => extractEncodedStateValue(raw, 'v8', v8.ContractState),
-    decodeContractState: (raw) => decodeContractStateWith(raw, 'v8', v8)
+    decodeContractState: (raw) => decodeContractStateWith(raw, 'v8', v8),
+    composeCallTx: (options) => composeEraV8CallTx(options, v8),
+    composeDeployTx: (options) => composeEraV8DeployTx(options, v8)
   };
 };
 

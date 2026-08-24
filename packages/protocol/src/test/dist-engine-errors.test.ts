@@ -75,15 +75,7 @@ describe.skipIf(!distBundlesExist && !process.env.CI)('dist engine error gate', 
     const engine = await loadLedger8Engine();
 
     expect(Object.keys(engine).sort()).toEqual(
-      [
-        'composeCallTx',
-        'composeDeployTx',
-        'downConvertForExecution',
-        'executeCircuit',
-        'executeConstructor',
-        'extractState',
-        'wrapKeepStateCall'
-      ].sort()
+      ['downConvertForExecution', 'executeCircuit', 'executeConstructor', 'wrapKeepStateCall'].sort()
     );
   });
 

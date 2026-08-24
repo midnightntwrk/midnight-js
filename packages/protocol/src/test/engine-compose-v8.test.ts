@@ -70,13 +70,29 @@ const buildV8ContractStateWithOperation = (circuitId: string): LedgerV8.Contract
   return contractState;
 };
 
-const buildCallOptions = (contractState: LedgerV8.ContractState): ComposeV8CallOptions => ({
-  transcript: buildTranscript(),
-  contractAddress: LedgerV8.sampleContractAddress(),
-  contractState,
-  networkId: NETWORK_ID,
-  ttl: TTL
-});
+// The leg now takes the call's inputs as plain data rather than a whole
+// execution transcript — it is reached across the era facade, where no live
+// pre-fork handle may travel. This helper does the one conversion that used to
+// happen inside the leg, so every case below still starts from a realistic
+// `executeCircuit` result.
+const buildCallOptions = (contractState: LedgerV8.ContractState): ComposeV8CallOptions => {
+  const transcript = buildTranscript();
+  return {
+    circuitId: transcript.circuitId,
+    contractAddress: LedgerV8.sampleContractAddress(),
+    contractState,
+    transcript: {
+      kind: 'unpartitioned',
+      preState: transcript.preContractState.data.state.encode(),
+      publicTranscript: transcript.publicTranscript
+    },
+    privateTranscriptOutputs: transcript.privateTranscriptOutputs,
+    input: transcript.input,
+    output: transcript.output,
+    networkId: NETWORK_ID,
+    ttl: TTL
+  };
+};
 
 describe('composeV8CallTx (real ledger-v8 WASM)', () => {
   it('composes and serializes a v8-native call transaction, tag-prefixed exactly as ledger-v8 emits it', () => {

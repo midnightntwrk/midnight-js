@@ -56,11 +56,15 @@ describe('loadLedgerEra v8 failure path', () => {
   // The acquisition failure already carries a protocol code and its own
   // wrapped cause. Re-wrapping it here would bury both behind a second layer
   // and break `instanceof` narrowing for every caller.
+  // The mock rejects with an already-wrapped Ledger8RuntimeMissingError
+  // because that is the real loadLedger8 contract: it never rejects with a raw
+  // module-resolution error (see ../lib/load-v8.ts). Asserted by IDENTITY, not
+  // just by class: a re-wrap would still be an instance of the same class
+  // while burying the original cause a level deeper.
   it('lets a coded acquisition failure through unwrapped', async () => {
     const cause = new Error('ERR_MODULE_NOT_FOUND');
-    vi.doMock('../lib/load-v8', () => ({
-      loadLedger8: () => Promise.reject(new Ledger8RuntimeMissingError('/v8', cause))
-    }));
+    const missing = new Ledger8RuntimeMissingError('/v8', cause);
+    vi.doMock('../lib/load-v8', () => ({ loadLedger8: () => Promise.reject(missing) }));
     const { loadLedgerEra } = await import('../lib/era/load-era');
 
     const rejection = await loadLedgerEra('v8').then(
@@ -70,7 +74,7 @@ describe('loadLedgerEra v8 failure path', () => {
       (error: unknown) => error
     );
 
-    expect(rejection).toBeInstanceOf(Ledger8RuntimeMissingError);
+    expect(rejection).toBe(missing);
     expect(rejection).toMatchObject({ code: PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING, subpath: '/v8' });
     expect((rejection as Ledger8RuntimeMissingError).cause).toBe(cause);
   });

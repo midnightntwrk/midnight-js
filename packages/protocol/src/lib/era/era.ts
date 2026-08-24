@@ -16,6 +16,7 @@
 import type { EncodedStateValue } from '@midnightntwrk/ledger-v9';
 
 import type { LedgerVersion } from '../ledger-version';
+import type { ComposeCallOptions, ComposeDeployOptions, DeployResultPojo } from './compose-types';
 import type { ContractStatePojo } from './contract-state';
 
 /**
@@ -56,4 +57,30 @@ export interface LedgerEra {
    * verifier key registered against each.
    */
   decodeContractState(raw: Uint8Array): ContractStatePojo;
+
+  /**
+   * Composes an UNPROVEN call transaction and serializes it.
+   *
+   * The returned bytes are what `Transaction.serialize()` produces before
+   * `.prove()` is ever called; proving needs a proving provider and a running
+   * proof server, neither of which this seam has.
+   *
+   * The two eras are not equivalent here, and the difference is deliberate
+   * rather than hidden: the retained pre-fork era composes exactly one call and
+   * refuses a Zswap offer outright, because its execution leg does not carry
+   * the coin movements such a call would make. Both refusals are raised, never
+   * worked around.
+   */
+  composeCallTx(options: ComposeCallOptions): Uint8Array;
+
+  /**
+   * Composes an UNPROVEN deploy transaction and returns it together with the
+   * address the deployment will have and the initial state that address was
+   * derived from.
+   *
+   * The address cannot be recomputed from the state a caller passed in — a
+   * deploy mints a fresh nonce — which is why it is returned rather than left
+   * to the caller to derive.
+   */
+  composeDeployTx(options: ComposeDeployOptions): DeployResultPojo;
 }

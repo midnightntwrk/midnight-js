@@ -13,35 +13,45 @@
  * limitations under the License.
  */
 
+import type { AlignedValue } from '@midnightntwrk/ledger-v9';
+
+import type { CallTranscriptSource } from '../era/compose-types';
 import type { ProtocolV8 } from '../load-v8';
 import { assembleCallPrototype } from './assemble-call';
 import { assertComposeEnvelope } from './compose-options';
-import type { TranscriptPojo } from './execute';
 
 /**
  * Everything {@link composeV8CallTx} needs to assemble one v8-native call
  * transaction. `contractState` is the v8-native `ContractState` the call is
  * dispatched against, as read from chain — it is used only to look up the
- * `ContractOperation` for `transcript.circuitId`, so it must carry the
- * operation a real deploy registered, including its verifier key. A
- * constructor-built state will not do: it declares its entry points with
- * blank keys.
+ * `ContractOperation` for `circuitId`, so it must carry the operation a real
+ * deploy registered, including its verifier key. A constructor-built state
+ * will not do: it declares its entry points with blank keys.
+ *
+ * The call's own inputs are carried as plain data rather than as a whole
+ * execution transcript: this leg is reached from the era facade, across which
+ * only bytes and plain objects travel, so it can no longer be handed a
+ * transcript holding a live pre-fork `ChargedState`.
  *
  * `networkId` and `ttl` carry the caller's policy decisions (which network,
  * how long the transaction lives), but their well-formedness is checked here
  * — see `assertComposeEnvelope` (`engine/compose-options.ts`).
  */
 export interface ComposeV8CallOptions {
-  readonly transcript: TranscriptPojo;
+  readonly circuitId: string;
   readonly contractAddress: string;
   readonly contractState: InstanceType<ProtocolV8['ContractState']>;
+  readonly transcript: CallTranscriptSource;
+  readonly privateTranscriptOutputs: AlignedValue[];
+  readonly input: AlignedValue;
+  readonly output: AlignedValue;
+  readonly communicationCommitmentRandomness?: string;
   readonly networkId: string;
   readonly ttl: Date;
 }
 
 /**
- * Composes a v8-native call transaction from a {@link TranscriptPojo} — the
- * output of `executeCircuit` (`engine/execute.ts`) — and immediately
+ * Composes a v8-native call transaction from one call's inputs and immediately
  * serializes it. The call prototype comes from {@link assembleCallPrototype}
  * against the injected v8 module. This is the "same-era" leg: both the
  * circuit's execution and the call it produces are bound entirely on the
@@ -60,28 +70,23 @@ export interface ComposeV8CallOptions {
  * segment; see `composeV8DeployTx` (`engine/deploy-v8.ts`).
  *
  * Throws `ComposeFailedError` (`../../errors.ts`) when `contractState`
- * has no registered operation for the transcript's circuit (stage
+ * has no registered operation for `circuitId` (stage
  * `'call-operation'`), or when the operation it does have carries no verifier
  * key (stage `'call-verifier-key'`), rather than composing a call no ledger
  * could verify.
  */
 export const composeV8CallTx = (options: ComposeV8CallOptions, v8: ProtocolV8): Uint8Array => {
-  const { transcript, contractAddress, contractState, networkId, ttl } = options;
+  const { contractAddress, contractState, networkId, ttl } = options;
   assertComposeEnvelope(options, 'v8');
 
   const prototype = assembleCallPrototype(v8, {
-    circuitId: transcript.circuitId,
+    circuitId: options.circuitId,
     contractAddress,
-    // The retained execution leg partitions nothing: it hands over the raw op
-    // sequence the circuit emitted, against the state it ran on.
-    transcript: {
-      kind: 'unpartitioned',
-      preState: transcript.preContractState.data.state.encode(),
-      publicTranscript: transcript.publicTranscript
-    },
-    privateTranscriptOutputs: transcript.privateTranscriptOutputs,
-    input: transcript.input,
-    output: transcript.output,
+    transcript: options.transcript,
+    privateTranscriptOutputs: options.privateTranscriptOutputs,
+    input: options.input,
+    output: options.output,
+    communicationCommitmentRandomness: options.communicationCommitmentRandomness,
     operations: contractState,
     stage: 'call-operation',
     version: 'v8'

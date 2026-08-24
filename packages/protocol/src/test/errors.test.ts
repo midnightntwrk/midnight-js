@@ -501,6 +501,17 @@ describe('ComposeOptionError', () => {
     expect(error.message).toMatch(/epoch/i);
   });
 
+  // The retained era composes exactly one call. Refusing a longer list is the
+  // difference between the two eras a caller most needs told, since composing
+  // only the first entry would look like success.
+  it('explains that a call list longer than one is not composable on the era that refuses it', () => {
+    const error = new ComposeOptionError('v8', 'calls');
+
+    expect(error.option).toBe('calls');
+    expect(error.message).toMatch(/exactly one call/i);
+    expect(error.message).toMatch(/drop the rest/i);
+  });
+
   it('explains that a deploy without a verifier-key map cannot register its entry points', () => {
     const error = new ComposeOptionError('v8', 'verifierKeys');
 
@@ -519,7 +530,7 @@ describe('ComposeOptionError', () => {
   });
 
   it('never includes a hex or byte dump in its own message', () => {
-    for (const option of ['contractState', 'networkId', 'ttl', 'verifierKeys', 'zswapOffer'] as const) {
+    for (const option of ['calls', 'contractState', 'networkId', 'ttl', 'verifierKeys', 'zswapOffer'] as const) {
       expect(new ComposeOptionError('v9', option).message).not.toMatch(/[0-9a-f]{16,}/i);
     }
   });
