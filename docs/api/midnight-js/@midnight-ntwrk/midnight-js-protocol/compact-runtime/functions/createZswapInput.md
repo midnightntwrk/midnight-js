@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **createZswapInput**(`circuitContext`, `qualifiedShieldedCoinInfo`): \[\]
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:149
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:165
 
 Adds a coin to the list of inputs consumed by the circuit.
 

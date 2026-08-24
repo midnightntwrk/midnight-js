@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > `const` **createCircuitContext**: \<`PS`\>(`circuitId`, `contractAddress`, `coinPublicKeyOrZswapState`, `contractState`, `privateState`, `stateProvider?`, `gasLimit?`, `costModel?`, `time?`, `parentBlockHash?`, `reentrancyGuard?`) => [`CircuitContext`](../interfaces/CircuitContext.md)\<`PS`\>
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:180
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:198
 
 Entry point for constructing the [CircuitContext](../interfaces/CircuitContext.md) to pass as an argument to a circuit. Always use this
 function to set up the initial circuit context.

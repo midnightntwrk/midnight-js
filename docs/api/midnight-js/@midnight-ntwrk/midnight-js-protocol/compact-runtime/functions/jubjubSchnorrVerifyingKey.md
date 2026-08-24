@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **jubjubSchnorrVerifyingKey**(`signingKey`): [`JubjubPoint`](../interfaces/JubjubPoint.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/built-ins.d.ts:276
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/utils.d.ts:66
 
 Derives the Schnorr verifying key (public key) from a signing key.
 

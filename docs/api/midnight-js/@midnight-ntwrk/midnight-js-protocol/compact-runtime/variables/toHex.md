@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > `const` **toHex**: (`s`) => `string`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/utils.d.ts:20
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/utils.d.ts:22
 
 ## Parameters
 

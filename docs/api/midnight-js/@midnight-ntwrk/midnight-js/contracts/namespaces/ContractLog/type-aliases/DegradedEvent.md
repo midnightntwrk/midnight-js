@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../../../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **DegradedEvent** = [`ContractEventBase`](../interfaces/ContractEventBase.md) & `object`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:163
+Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:168
 
 An event whose payload could not be decoded — dropped on-chain (`{ tag: 'null' }` data),
 truncated, carrying the reserved fallback `version: 0`, or bearing a malformed envelope address.

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **toBinaryRepr**\<`A`\>(`rtType`, `value`): `Uint8Array`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:243
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:156
 
 ## Type Parameters
 

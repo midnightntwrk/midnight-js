@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../../../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > `const` **indexedFields**: (`event`) => `Record`\<`string`, `Uint8Array`\>
 
-Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:226
+Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:227
 
 Derive the indexable fields of a decoded event, as raw byte values keyed by field name.
 

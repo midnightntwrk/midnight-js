@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Interface: CircuitResults\<PS, R\>
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:201
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:219
 
 The results of the call to a Compact circuit
 
@@ -26,7 +26,7 @@ The results of the call to a Compact circuit
 
 > **context**: [`CircuitContext`](CircuitContext.md)\<`PS`\>
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:210
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:228
 
 The updated context after the circuit execution, that can be used to
 inform further runs
@@ -37,7 +37,7 @@ inform further runs
 
 > **gasCost**: [`RunningCost`](../../onchain-runtime/type-aliases/RunningCost.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:214
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:232
 
 The gas consumption of the circuit execution
 
@@ -47,6 +47,6 @@ The gas consumption of the circuit execution
 
 > **result**: `R`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:205
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:223
 
 The primary result, as returned from Compact
