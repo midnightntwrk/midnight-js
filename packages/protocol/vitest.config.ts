@@ -65,6 +65,7 @@ export default defineConfig({
         'src/lib/engine/deploy-v8.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/engine/index.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/engine/load-engine.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/lib/era/compose-types.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/era/contract-state.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/era/era.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/era/load-era.ts': { lines: 100, functions: 100, branches: 100, statements: 100 }

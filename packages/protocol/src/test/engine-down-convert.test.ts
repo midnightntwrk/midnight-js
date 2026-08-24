@@ -19,7 +19,8 @@ import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import type {
   AlignedValue as LedgerV8AlignedValue,
   EncodedStateValue as LedgerV8EncodedStateValue,
-  Op as LedgerV8Op
+  Op as LedgerV8Op,
+  Transcript as LedgerV8Transcript
 } from '@midnightntwrk/ledger-v8';
 import {
   type AlignedValue as LedgerV9AlignedValue,
@@ -28,7 +29,8 @@ import {
   type EncodedStateValue as LedgerV9EncodedStateValue,
   type Op as LedgerV9Op,
   StateMap as LedgerV9StateMap,
-  StateValue as LedgerV9StateValue
+  StateValue as LedgerV9StateValue,
+  type Transcript as LedgerV9Transcript
 } from '@midnightntwrk/ledger-v9';
 import type * as ocrt4 from '@midnightntwrk/onchain-runtime-v4';
 import { describe, expect, it } from 'vitest';
@@ -695,6 +697,16 @@ type _AlignedValueUnchanged = Expect<AssertEqual<ocrt3.AlignedValue, LedgerV9Ali
 type _V8EncodedStateValueUnchanged = Expect<AssertEqual<LedgerV8EncodedStateValue, LedgerV9EncodedStateValue>>;
 type _V8OpUnchanged = Expect<AssertEqual<LedgerV8Op<null>, LedgerV9Op<null>>>;
 type _V8AlignedValueUnchanged = Expect<AssertEqual<LedgerV8AlignedValue, LedgerV9AlignedValue>>;
+
+// `Transcript` joins the rows above for a reason of its own. A call can arrive
+// with its transcript already partitioned, so assemble-call.ts cannot infer the
+// pair's type from the ledger module it was handed and spells it out against
+// ledger-v9 instead. That is only sound while the two eras' shape is the same:
+// without this row, a ledger-v8 bump that diverged it would let a v9-shaped
+// transcript be handed to the v8 module with no compile error.
+type _V8TranscriptUnchanged = Expect<
+  AssertEqual<LedgerV8Transcript<LedgerV8AlignedValue>, LedgerV9Transcript<LedgerV9AlignedValue>>
+>;
 
 // Era rejection, and why it needs pinning here rather than trusting the
 // interface to keep working. `Ledger8CompactRuntime` must accept only the

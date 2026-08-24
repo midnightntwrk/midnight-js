@@ -14,22 +14,27 @@
  */
 
 import { encodeContractKeyLocation, hashVerifierKey } from '@midnight-ntwrk/compact-js';
-import type { AlignedValue, EncodedStateValue, Op } from '@midnightntwrk/ledger-v9';
+import type { AlignedValue, EncodedStateValue, Op, Transcript } from '@midnightntwrk/ledger-v9';
 
 import { ComposeFailedError, type ComposeStage } from '../../errors';
+import type { CallTranscriptSource } from '../era/compose-types';
 import type { LedgerVersion } from '../ledger-version';
-import type { TranscriptPojo } from './execute';
 
 /**
- * The structural surface a retained-era ledger module (ledger-v8 or
- * ledger-v9) exposes for assembling a call prototype from a
- * {@link TranscriptPojo}. Both modules satisfy it with every type parameter
- * inferred from the module namespace itself, so callers pass the module and
- * never spell out type arguments. The `AlignedValue`/`Op`/`EncodedStateValue`
- * payload types are declared once against ledger-v9: they are structurally
- * identical across onchain-runtime-v3, ledger-v8 and ledger-v9 (compile-time
- * drift gate at the bottom of engine-down-convert.test.ts, which pins all
- * three axes).
+ * The structural surface a ledger module (ledger-v8 or ledger-v9) exposes for
+ * assembling a call prototype. Both modules satisfy it with every type
+ * parameter inferred from the module namespace itself, so callers pass the
+ * module and never spell out type arguments. The
+ * `AlignedValue`/`Op`/`EncodedStateValue`/`Transcript` payload types are
+ * declared once against ledger-v9: they are structurally identical across
+ * onchain-runtime-v3, ledger-v8 and ledger-v9 (compile-time drift gate at the
+ * bottom of engine-down-convert.test.ts, which pins all three axes).
+ *
+ * `Transcript` is spelled out rather than left as a type parameter because a
+ * call can arrive with its transcript ALREADY partitioned (see
+ * {@link CallTranscriptSource}), in which case the pair comes from the caller
+ * rather than from this module's own partitioner — so there is no module-bound
+ * type left to infer it from.
  */
 export interface CallAssemblyLedger<
   TStateValue,
@@ -37,7 +42,6 @@ export interface CallAssemblyLedger<
   TQueryContext,
   TPreTranscript,
   TParams,
-  TTranscript,
   TOperation,
   TPrototype
 > {
@@ -49,14 +53,14 @@ export interface CallAssemblyLedger<
   readonly partitionTranscripts: (
     calls: TPreTranscript[],
     params: TParams
-  ) => (readonly [TTranscript | undefined, TTranscript | undefined])[];
+  ) => (readonly [Transcript<AlignedValue> | undefined, Transcript<AlignedValue> | undefined])[];
   readonly communicationCommitmentRandomness: () => string;
   readonly ContractCallPrototype: new (
     address: string,
     entryPoint: string,
     op: TOperation,
-    guaranteedPublicTranscript: TTranscript | undefined,
-    falliblePublicTranscript: TTranscript | undefined,
+    guaranteedPublicTranscript: Transcript<AlignedValue> | undefined,
+    falliblePublicTranscript: Transcript<AlignedValue> | undefined,
     privateTranscriptOutputs: AlignedValue[],
     input: AlignedValue,
     output: AlignedValue,
@@ -93,10 +97,27 @@ export interface VerifiableOperation {
  */
 export type CallResolutionStage = Extract<ComposeStage, 'wrap-call' | 'call-operation'>;
 
-/** Everything {@link assembleCallPrototype} needs beyond the ledger module. */
+/**
+ * Everything {@link assembleCallPrototype} needs beyond the ledger module.
+ *
+ * Carries the call's inputs directly rather than a whole execution transcript:
+ * a call that arrives already partitioned never ran on this process's execution
+ * leg at all, so there is no transcript object to hand over — only the pieces a
+ * prototype is built from.
+ */
 export interface AssembleCallOptions<TOperation> {
-  readonly transcript: TranscriptPojo;
+  readonly circuitId: string;
   readonly contractAddress: string;
+  readonly transcript: CallTranscriptSource;
+  readonly privateTranscriptOutputs: AlignedValue[];
+  readonly input: AlignedValue;
+  readonly output: AlignedValue;
+  /**
+   * The randomness the runtime bound a cross-contract callee to its caller
+   * with. Omitted for a root call, which is no one's callee and gets fresh
+   * randomness from the ledger module.
+   */
+  readonly communicationCommitmentRandomness?: string;
   readonly operations: CallOperationRegistry<TOperation>;
   readonly stage: CallResolutionStage;
   // The era every failure raised here names. Passed rather than inferred from
@@ -106,18 +127,55 @@ export interface AssembleCallOptions<TOperation> {
 }
 
 /**
- * Assembles one call prototype from a {@link TranscriptPojo} against the
- * given ledger module — the sequence both composition legs share: resolve
- * the circuit's registered operation, bridge the transcript's pre-call state
- * into the module's own `QueryContext`, partition the public transcript, and
- * construct the module's `ContractCallPrototype`.
+ * Resolves a call's guaranteed/fallible transcript pair.
  *
- * The state bridge is a safe envelope crossing, not a lossy re-encode: the
- * `EncodedStateValue` produced by `.data.state.encode()` is structurally
- * identical between the pre-fork (`onchain-runtime-v3`) package and both
- * ledger modules (compile-time drift gate in engine-down-convert.test.ts),
- * so decoding it through the target module's `StateValue`/`ChargedState`
- * preserves the data exactly.
+ * A partitioned source is passed through untouched — the whole point of the
+ * shape. Re-partitioning it would need a query context the caller no longer
+ * has, to redo work compact-js already did.
+ *
+ * An unpartitioned source is bridged into the module's own `QueryContext` and
+ * split there. That bridge is a safe envelope crossing, not a lossy re-encode:
+ * the `EncodedStateValue` algebra is structurally identical between
+ * onchain-runtime-v3 and both ledger modules (compile-time drift gate in
+ * engine-down-convert.test.ts). A state the module still cannot read is the
+ * caller's, so it leaves as {@link ComposeFailedError} at stage
+ * `'call-contract-state'` with the decoder's own failure on `cause`, rather
+ * than as a raw WASM error.
+ */
+const resolvePartition = <TStateValue, TChargedState, TQueryContext, TPreTranscript, TParams, TOperation, TPrototype>(
+  ledger: CallAssemblyLedger<TStateValue, TChargedState, TQueryContext, TPreTranscript, TParams, TOperation, TPrototype>,
+  options: AssembleCallOptions<TOperation>
+): readonly [Transcript<AlignedValue> | undefined, Transcript<AlignedValue> | undefined] => {
+  const { transcript, contractAddress, circuitId, version } = options;
+  if (transcript.kind === 'partitioned') {
+    return [transcript.guaranteed, transcript.fallible];
+  }
+
+  let queryContext: TQueryContext;
+  try {
+    const stateValue = ledger.StateValue.decode(transcript.preState);
+    queryContext = new ledger.QueryContext(new ledger.ChargedState(stateValue), contractAddress);
+  } catch (cause) {
+    throw new ComposeFailedError(version, 'call-contract-state', circuitId, cause);
+  }
+
+  const partitioned = ledger.partitionTranscripts(
+    [new ledger.PreTranscript(queryContext, transcript.publicTranscript)],
+    ledger.LedgerParameters.initialParameters()
+  );
+  const first = partitioned[0];
+  if (first === undefined) {
+    throw new Error('partitionTranscripts returned no result for the call transcript.');
+  }
+  return first;
+};
+
+/**
+ * Assembles one call prototype against the given ledger module — the sequence
+ * every composition leg shares: resolve the circuit's registered operation,
+ * resolve the call's guaranteed/fallible transcript pair (see
+ * {@link resolvePartition}), and construct the module's
+ * `ContractCallPrototype`.
  *
  * Throws {@link ComposeFailedError} with the caller's `stage` when
  * `operations` has no registered operation for the transcript's circuit, and
@@ -137,45 +195,34 @@ export const assembleCallPrototype = <
   TQueryContext,
   TPreTranscript,
   TParams,
-  TTranscript,
   TOperation extends VerifiableOperation,
   TPrototype
 >(
-  ledger: CallAssemblyLedger<TStateValue, TChargedState, TQueryContext, TPreTranscript, TParams, TTranscript, TOperation, TPrototype>,
+  ledger: CallAssemblyLedger<TStateValue, TChargedState, TQueryContext, TPreTranscript, TParams, TOperation, TPrototype>,
   options: AssembleCallOptions<TOperation>
 ): TPrototype => {
-  const { transcript, contractAddress, operations, stage, version } = options;
+  const { circuitId, contractAddress, operations, stage, version } = options;
 
-  const op = operations.operation(transcript.circuitId);
+  const op = operations.operation(circuitId);
   if (op === undefined) {
-    throw new ComposeFailedError(version, stage, transcript.circuitId);
+    throw new ComposeFailedError(version, stage, circuitId);
   }
   if (op.verifierKey === undefined) {
-    throw new ComposeFailedError(version, 'call-verifier-key', transcript.circuitId);
+    throw new ComposeFailedError(version, 'call-verifier-key', circuitId);
   }
 
-  const stateValue = ledger.StateValue.decode(transcript.preContractState.data.state.encode());
-  const queryContext = new ledger.QueryContext(new ledger.ChargedState(stateValue), contractAddress);
-  const partitioned = ledger.partitionTranscripts(
-    [new ledger.PreTranscript(queryContext, transcript.publicTranscript)],
-    ledger.LedgerParameters.initialParameters()
-  );
-  const first = partitioned[0];
-  if (first === undefined) {
-    throw new Error('partitionTranscripts returned no result for the call transcript.');
-  }
-  const [guaranteed, fallible] = first;
+  const [guaranteed, fallible] = resolvePartition(ledger, options);
 
   return new ledger.ContractCallPrototype(
     contractAddress,
-    transcript.circuitId,
+    circuitId,
     op,
     guaranteed,
     fallible,
-    transcript.privateTranscriptOutputs,
-    transcript.input,
-    transcript.output,
-    ledger.communicationCommitmentRandomness(),
+    options.privateTranscriptOutputs,
+    options.input,
+    options.output,
+    options.communicationCommitmentRandomness ?? ledger.communicationCommitmentRandomness(),
     // The canonical, contract-qualified key location this framework's provers
     // resolve artifacts by (see `encodeContractKeyLocation` and
     // `ZKConfigRegistry`). A bare circuit id is ambiguous across contracts and
@@ -183,7 +230,7 @@ export const assembleCallPrototype = <
     // proven through the registry or the DApp-connector path.
     encodeContractKeyLocation({
       contractAddress,
-      circuitId: transcript.circuitId,
+      circuitId,
       verifierKeyHash: hashVerifierKey(op.verifierKey)
     })
   );

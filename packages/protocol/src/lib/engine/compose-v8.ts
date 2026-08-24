@@ -70,8 +70,18 @@ export const composeV8CallTx = (options: ComposeV8CallOptions, v8: ProtocolV8): 
   assertComposeEnvelope(options, 'v8');
 
   const prototype = assembleCallPrototype(v8, {
-    transcript,
+    circuitId: transcript.circuitId,
     contractAddress,
+    // The retained execution leg partitions nothing: it hands over the raw op
+    // sequence the circuit emitted, against the state it ran on.
+    transcript: {
+      kind: 'unpartitioned',
+      preState: transcript.preContractState.data.state.encode(),
+      publicTranscript: transcript.publicTranscript
+    },
+    privateTranscriptOutputs: transcript.privateTranscriptOutputs,
+    input: transcript.input,
+    output: transcript.output,
     operations: contractState,
     stage: 'call-operation',
     version: 'v8'
