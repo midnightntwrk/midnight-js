@@ -30,6 +30,28 @@ const REGISTERED_VERIFIER_KEY = readFileSync(
   resolve(__dirname, '../../../../testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/keys/increment.verifier')
 );
 
+// The mis-dispatch negative from the hard-fork fixture set: a real, migrated,
+// well-formed v9 `ContractState` whose `increment` slot carries a verifier key
+// that is genuinely FOREIGN to the twin contract (fixtures/hf/README.md, "The
+// mis-dispatch fixture"). Read by path rather than through testkit-js's typed
+// accessor, for the reason engine-golden-fixtures.test.ts gives: testkit-js
+// depends on this package, so a devDependency back would close a workspace
+// cycle. packages/protocol/turbo.json declares the fixture directory as a test
+// input, so editing it invalidates this package's test cache.
+const FOREIGN_KEY_STATE_FIXTURE = 'state-co-v2-only-foreign.hex';
+
+const readHexFixture = (name: string): Uint8Array => {
+  const text = readFileSync(
+    resolve(__dirname, '../../../../testkit-js/testkit-js/src/fixtures/hf', name),
+    'utf8'
+  ).trim();
+  const bytes = Uint8Array.from(Buffer.from(text, 'hex'));
+  if (bytes.length * 2 !== text.length) {
+    throw new Error(`fixture ${name} is not valid hex in full: ${text.length} chars decoded to ${bytes.length} bytes`);
+  }
+  return bytes;
+};
+
 const FIELD_ALIGNMENT: ocrt3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
 const fieldValue = (byte: number): ocrt3.AlignedValue => ({ value: [new Uint8Array(32).fill(byte)], alignment: FIELD_ALIGNMENT });
 const buildState = (byte: number): DownConvertedState => ({ data: new ocrt3.ChargedState(ocrt3.StateValue.newCell(fieldValue(byte))) });
@@ -225,6 +247,45 @@ describe('wrapKeepStateCall call-prototype assembly', () => {
     expect(decoded).toHaveLength(1);
     expect(decoded[0]).toEqual(transcript.preContractState.data.state.encode());
     expect(decoded[0]).not.toEqual(transcript.postContractState.data.state.encode());
+  });
+
+  // Every other case in this file registers the twin contract's own key on a
+  // hand-built `new ContractState()`. This one is the mis-dispatch negative,
+  // against a REAL migrated on-chain state: the operation resolves and does
+  // carry a verifier key, so neither the `wrap-call` nor the
+  // `call-verifier-key` guard fires — the call composes. What must not happen
+  // is the foreign key being normalised away into a key location that looks
+  // like the twin contract's: that would make an unprovable call resolve a
+  // valid-looking artifact through ZKConfigRegistry, and push the failure past
+  // the last point that can explain it. Carrying the foreign hash through is
+  // what keeps the mis-dispatch detectable at artifact resolution.
+  it('carries a foreign registered key into the key location instead of normalising it to the expected one', async () => {
+    const captured: CapturedCall[] = [];
+    mockCapturingPrototype(captured);
+    const { wrapKeepStateCall } = await import('../lib/engine/wrap-v9');
+    const contractAddress = LedgerV9.sampleContractAddress();
+    const contractState = LedgerV9.ContractState.deserialize(readHexFixture(FOREIGN_KEY_STATE_FIXTURE));
+    const foreignKey = contractState.operation('increment')?.verifierKey;
+    if (foreignKey === undefined) {
+      throw new Error(`fixture invariant violated: ${FOREIGN_KEY_STATE_FIXTURE} has no keyed 'increment' operation`);
+    }
+
+    wrapKeepStateCall({ transcript: buildTranscript(), contractAddress, contractState });
+
+    // Guards the fixture itself: if a re-mint ever made this key equal to the
+    // twin contract's, the two assertions below would agree for the wrong
+    // reason and this test would stop testing anything.
+    expect(Buffer.from(foreignKey).equals(REGISTERED_VERIFIER_KEY)).toBe(false);
+    expect(captured[0]?.keyLocation).toBe(
+      encodeContractKeyLocation({ contractAddress, circuitId: 'increment', verifierKeyHash: hashVerifierKey(foreignKey) })
+    );
+    expect(captured[0]?.keyLocation).not.toBe(
+      encodeContractKeyLocation({
+        contractAddress,
+        circuitId: 'increment',
+        verifierKeyHash: hashVerifierKey(REGISTERED_VERIFIER_KEY)
+      })
+    );
   });
 
   it('keeps the guaranteed and fallible partitions in their own argument positions', async () => {
