@@ -40,5 +40,5 @@ let v8ModulePromise: Promise<ProtocolV8> | undefined;
 export const loadLedger8 = (): Promise<ProtocolV8> =>
   (v8ModulePromise ??= import('../v8.js').catch((error: unknown) => {
     v8ModulePromise = undefined;
-    throw new Ledger8RuntimeMissingError(error);
+    throw new Ledger8RuntimeMissingError('/v8', error);
   }));

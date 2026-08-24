@@ -36,6 +36,7 @@ import { createPlatform } from '@midnight-ntwrk/midnight-js-protocol/platform-js
 | `./version` | (own) | `LEDGER_VERSIONS`, `protocolVersionToLedger`, `versionOfRecord`, `networkHeadVersion` and the types `LedgerVersion`, `ProtocolVersionSource`, `VersionedRecord` — same lightweight guarantee as `./errors` |
 | `./ledger` | `@midnightntwrk/ledger-v9` | Ledger types and transaction primitives |
 | `./v8` | `@midnightntwrk/ledger-v8` | Previous-era (v8) ledger — do not import at runtime; use `loadLedger8()` |
+| `./engine` | (own) | Retained pre-fork execution engine — do not import at runtime; use `loadLedger8Engine()` |
 | `./compact-runtime` | `@midnight-ntwrk/compact-runtime` | Compact contract runtime utilities |
 | `./compact-js` | `@midnight-ntwrk/compact-js` | Compact JS bindings |
 | `./compact-js/effect` | `@midnight-ntwrk/compact-js/effect` | Effect-based Compact bindings |
@@ -62,7 +63,35 @@ Type-only imports of the subpath are allowed:
 import type { Transaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
 ```
 
-If the v8 module cannot be loaded (usually a broken or partial install), `loadLedger8()` rejects with `Ledger8RuntimeMissingError` (code `MIDNIGHT_JS_P_LEDGER8_RUNTIME_MISSING`) carrying the original error as `cause`. The failed load is not memoised — the next call retries.
+If the v8 module cannot be loaded (usually a broken or partial install), `loadLedger8()` rejects with `Ledger8RuntimeMissingError` (code `MIDNIGHT_JS_P_LEDGER8_RUNTIME_MISSING`) carrying the original error as `cause`. Its `subpath` field is `'/v8'`, naming which chunk failed. The failed load is not memoised — the next call retries.
+
+## Running Contracts on the Retained Pre-Fork Engine
+
+Contracts compiled against the pre-fork toolchain keep executing on `compact-runtime@0.16` after the fork. That toolchain and its `onchain-runtime-v3` WASM live behind the `./engine` subpath, gated the same way as `./v8` and for the same reason. `loadLedger8Engine()` is the only sanctioned runtime path to it:
+
+```typescript
+import { loadLedger8Engine } from '@midnight-ntwrk/midnight-js-protocol';
+
+const engine = await loadLedger8Engine();
+
+const state = engine.downConvertForExecution(engine.extractState(rawContractState, 'v8'));
+const transcript = engine.executeCircuit({
+  contract,
+  circuitId: 'increment',
+  args: [],
+  state,
+  address: contractAddress,
+  coinPk: coinPublicKey,
+  privateState
+});
+const prototype = engine.wrapKeepStateCall({ transcript, contractAddress, contractState });
+```
+
+The four methods form a pipeline — each result is the next call's input. `contractState` passed to `wrapKeepStateCall` must be the migrated v9 state **as read from chain**: it is where the deployed operation and its verifier key come from, and the key location the prototype carries is derived from that key. A blank or constructor-built state throws `Ledger8ComposeFailedError` (code `MIDNIGHT_JS_P_LEDGER8_COMPOSE_FAILED`) with `stage` naming which lookup failed.
+
+Circuits with Zswap coin effects are not supported on this leg yet: the transcript does not carry the post-call Zswap local state, so `executeCircuit` throws `Ledger8ZswapUnsupportedError` (code `MIDNIGHT_JS_P_LEDGER8_ZSWAP_UNSUPPORTED`) rather than composing a call that would drop the coin movements and be rejected on submission.
+
+A failure to load the chunk itself rejects with `Ledger8RuntimeMissingError` whose `subpath` is `'/engine'`; read `cause` for which module actually failed to resolve.
 
 ## Version Module
 

@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { encodeContractKeyLocation, hashVerifierKey } from '@midnight-ntwrk/compact-js';
 import type { AlignedValue, EncodedStateValue, Op } from '@midnightntwrk/ledger-v9';
 
 import { Ledger8ComposeFailedError, type Ledger8ComposeStage } from '../../errors';
@@ -25,8 +26,9 @@ import type { TranscriptPojo } from './execute';
  * inferred from the module namespace itself, so callers pass the module and
  * never spell out type arguments. The `AlignedValue`/`Op`/`EncodedStateValue`
  * payload types are declared once against ledger-v9: they are structurally
- * identical across onchain-runtime-v3, ledger-v8 and ledger-v9 (see the
- * compile-time drift gate in engine-down-convert.test.ts).
+ * identical across onchain-runtime-v3, ledger-v8 and ledger-v9 (compile-time
+ * drift gate at the bottom of engine-down-convert.test.ts, which pins all
+ * three axes).
  */
 export interface CallAssemblyLedger<
   TStateValue,
@@ -81,12 +83,20 @@ export interface VerifiableOperation {
   readonly verifierKey?: Uint8Array;
 }
 
+/**
+ * The stages {@link assembleCallPrototype} can reach on a failed operation
+ * lookup. Narrower than {@link Ledger8ComposeStage}: this function only ever
+ * resolves a call's operation, so a caller cannot ask it to report a deploy
+ * stage. The verifier-key stage it raises itself and is not a caller choice.
+ */
+export type CallResolutionStage = Extract<Ledger8ComposeStage, 'wrap-call' | 'call-operation'>;
+
 /** Everything {@link assembleCallPrototype} needs beyond the ledger module. */
 export interface AssembleCallOptions<TOperation> {
   readonly transcript: TranscriptPojo;
   readonly contractAddress: string;
   readonly operations: CallOperationRegistry<TOperation>;
-  readonly stage: Ledger8ComposeStage;
+  readonly stage: CallResolutionStage;
 }
 
 /**
@@ -160,6 +170,15 @@ export const assembleCallPrototype = <
     transcript.input,
     transcript.output,
     ledger.communicationCommitmentRandomness(),
-    transcript.circuitId
+    // The canonical, contract-qualified key location this framework's provers
+    // resolve artifacts by (see `encodeContractKeyLocation` and
+    // `ZKConfigRegistry`). A bare circuit id is ambiguous across contracts and
+    // `parseContractKeyLocation` rejects it, so a call carrying one cannot be
+    // proven through the registry or the DApp-connector path.
+    encodeContractKeyLocation({
+      contractAddress,
+      circuitId: transcript.circuitId,
+      verifierKeyHash: hashVerifierKey(op.verifierKey)
+    })
   );
 };

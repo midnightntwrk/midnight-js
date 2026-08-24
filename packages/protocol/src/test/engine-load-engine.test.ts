@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
@@ -28,13 +28,6 @@ import type { DownConvertedState } from '../lib/engine/down-convert';
 import type { ExecuteCircuitOptions, Ledger8ContractLike } from '../lib/engine/execute';
 
 const PKG_ROOT = resolve(__dirname, '..', '..');
-const distEngineExists = existsSync(resolve(PKG_ROOT, 'dist/engine.js'));
-// createLedger8Engine() calls loadLedger8() (../load-v8.ts), which resolves
-// the package self-reference specifier through the exports map to
-// dist/v8.js — so the whole happy-path suite below needs this dist
-// artifact too, or it fails with a confusing Ledger8RuntimeMissingError
-// rather than a clean skip.
-const distV8Exists = existsSync(resolve(PKG_ROOT, 'dist/v8.js'));
 const FIXTURE_DIR = resolve(PKG_ROOT, '..', '..', 'testkit-js/testkit-js/src/fixtures/hf/counter-016');
 const SAMPLE_COIN_PUBLIC_KEY = 'ca'.repeat(32);
 
@@ -44,8 +37,13 @@ const SAMPLE_COIN_PUBLIC_KEY = 'ca'.repeat(32);
 // to this test file's module registry only.
 vi.mock('@midnight-ntwrk/compact-runtime', async () => import('compact-runtime-ledger8'));
 
+interface CompiledCounterLedger {
+  readonly round: bigint;
+}
+
 interface CompiledCounterModule {
   readonly Contract: new (witnesses: Record<string, never>) => CompiledCounterContract;
+  readonly ledger: (state: ocrt3.StateValue | ocrt3.ChargedState) => CompiledCounterLedger;
 }
 
 interface CompiledCounterContract extends Ledger8ContractLike {
@@ -54,16 +52,16 @@ interface CompiledCounterContract extends Ledger8ContractLike {
   };
 }
 
-// Happy-path suite only: this file statically imports `../engine` once at
-// load time, so it never mixes with a mocked-module-registry test (those
-// live in engine-load-engine-failure.test.ts — same isolation precedent as
+// Happy-path suite only: this file statically imports `../lib/engine` once at
+// load time, so it never mixes with a mocked-module-registry test (those live
+// in engine-load-engine-chunk-failure.test.ts and
+// engine-load-engine-instance-mismatch.test.ts — same isolation precedent as
 // load-v8-failure.test.ts).
 //
-// Gated on distV8Exists (not omitted) so a run without a prior build reports
-// these as visible skips rather than failing with a confusing
-// Ledger8RuntimeMissingError — same policy as dist-laziness.test.ts and the
-// loadLedger8Engine suite below. Run `yarn build && yarn test` to green it.
-describe.skipIf(!distV8Exists)('createLedger8Engine', () => {
+// Ungated: every specifier this suite reaches — the 0.16 glue, ocrt3, and
+// loadLedger8's own `../v8.js` — resolves out of src/ or node_modules under
+// vitest, never through dist/.
+describe('createLedger8Engine', () => {
   // Strict equality, not a per-method `typeof` sweep: a method leaked onto the
   // facade, renamed, or silently dropped has to fail here, which a
   // one-directional check of the names we happen to remember cannot do.
@@ -137,7 +135,9 @@ describe.skipIf(!distV8Exists)('createLedger8Engine', () => {
 
   it('executeCircuit runs increment on the ported counter-016 fixture end-to-end', async () => {
     const engine = await createLedger8Engine();
-    const { Contract } = (await import(/* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js'))) as CompiledCounterModule;
+    const { Contract, ledger } = (await import(
+      /* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js')
+    )) as CompiledCounterModule;
     const ledger8Runtime = await import('compact-runtime-ledger8');
     const initialPrivateState: Record<string, never> = {};
     const contract = new Contract(initialPrivateState);
@@ -157,7 +157,11 @@ describe.skipIf(!distV8Exists)('createLedger8Engine', () => {
 
     const transcript = engine.executeCircuit(options);
 
+    // circuitId alone is echoed straight back from the options, so it proves
+    // nothing about execution; the round advance is what shows the retained
+    // 0.16 stack actually ran the circuit through the facade.
     expect(transcript.circuitId).toBe('increment');
+    expect(ledger(transcript.postContractState.data.state).round).toBe(1n);
   });
 
   it('executeConstructor + composeDeployTx run the full v8-native deploy leg on the ported counter-016 fixture', async () => {
@@ -256,16 +260,17 @@ describe.skipIf(!distV8Exists)('createLedger8Engine', () => {
     expect(Math.floor(intents[0].ttl.getTime() / 1000)).toBe(Math.floor(ttl.getTime() / 1000));
   });
 
-  // Every other wrapKeepStateCall test (engine-wrap-v9.test.ts and the
+  // Every other wrapKeepStateCall test (engine-wrap-v9*.test.ts and the
   // 'wrapKeepStateCall produces a v9-native ContractCallPrototype' test
   // above) hand-builds a transcript with an empty publicTranscript, so the
   // keep-state leg never exercises partitionTranscripts against a REAL op
   // sequence. This test closes that gap: it runs executeCircuit on the
-  // ported counter-016 fixture (the same recipe as the 'composeCallTx
-  // composes...' test above) to produce a transcript whose publicTranscript
-  // carries the genuine idx/addi/ins ops the compiled circuit emits, then
-  // wraps it into a v9-native ContractCallPrototype (the operation-state
-  // builder mirrors engine-wrap-v9.test.ts's buildContractStateWithOperation).
+  // ported counter-016 fixture (the same recipe as the 'executeCircuit runs
+  // increment on the ported counter-016 fixture end-to-end' test above) to
+  // produce a transcript whose publicTranscript carries the genuine
+  // idx/addi/ins ops the compiled circuit emits, then wraps it into a
+  // v9-native ContractCallPrototype (the operation-state builder mirrors
+  // engine-wrap-v9.test.ts's buildContractStateWithOperation).
   it('wrapKeepStateCall wraps a REAL executeCircuit transcript (non-empty publicTranscript) into a ContractCallPrototype accepted by Intent.new(ttl).addCall', async () => {
     const engine = await createLedger8Engine();
     const { Contract } = (await import(/* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js'))) as CompiledCounterModule;
@@ -304,10 +309,10 @@ describe.skipIf(!distV8Exists)('createLedger8Engine', () => {
   });
 });
 
-// loadLedger8Engine resolves its relative specifier to the built
-// dist/engine.js chunk, so this suite needs a prior `yarn build`; without
-// one it is reported as visible skips (same policy as dist-laziness.test.ts).
-describe.skipIf(!distEngineExists)('loadLedger8Engine', () => {
+// Under vitest `import('../../engine.js')` resolves to src/engine.ts, not the
+// built chunk, so this suite needs no prior `yarn build`. The dist artifact is
+// what dist-laziness.test.ts and dist-engine-errors.test.ts cover.
+describe('loadLedger8Engine', () => {
   it('memoises the engine promise across calls', async () => {
     const { loadLedger8Engine } = await import('../lib/engine/load-engine');
 

@@ -24,7 +24,7 @@ import type { TranscriptPojo } from './execute';
  * chain, or otherwise carrying the contract's real registered operations —
  * used only to look up the `ContractOperation` for `transcript.circuitId`
  * (mirrors `ComposeV8CallOptions`'s `contractState` parameter in
- * `engine/compose-v8.ts`).
+ * `./compose-v8.ts`).
  */
 export interface WrapKeepStateCallOptions {
   readonly transcript: TranscriptPojo;
@@ -34,9 +34,9 @@ export interface WrapKeepStateCallOptions {
 
 /**
  * Wraps a {@link TranscriptPojo} — the output of {@link executeCircuit}
- * (`engine/execute.ts`) — into a v9-native `ContractCallPrototype`, ready for
+ * (`./execute.ts`) — into a v9-native `ContractCallPrototype`, ready for
  * `Intent.new(ttl).addCall(...)`, via {@link assembleCallPrototype}
- * (`engine/assemble-call.ts`) against the ledger-v9 module. This is the
+ * (`./assemble-call.ts`) against the ledger-v9 module. This is the
  * "keep-state" leg: the contract keeps running on the retained pre-fork
  * execution engine after the fork, but the resulting call is bound NATIVELY
  * against the current ledger-v9 axis from the start — no v8-tx carrier, no

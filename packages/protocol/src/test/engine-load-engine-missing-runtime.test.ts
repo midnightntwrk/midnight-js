@@ -35,7 +35,7 @@ describe('Ledger8Engine composition — retained v8 ledger unresolvable', () => 
   });
 
   it('rejects with the loader Ledger8RuntimeMissingError, unwrapped, when the v8 ledger module cannot be acquired', async () => {
-    const missing = new Ledger8RuntimeMissingError(new Error('simulated missing v8 install'));
+    const missing = new Ledger8RuntimeMissingError('/v8', new Error('simulated missing v8 install'));
     vi.doMock('../lib/load-v8', () => ({ loadLedger8: () => Promise.reject(missing) }));
     const { createLedger8Engine } = await import('../lib/engine');
     const engine = await createLedger8Engine();

@@ -62,6 +62,13 @@ describe('wrapKeepStateCall defensive guard', () => {
       return { ...actual, partitionTranscripts: () => [] };
     });
     const { wrapKeepStateCall } = await import('../lib/engine/wrap-v9');
+    // A real verifier key, not a blank operation: the verifier-key guard in
+    // assemble-call.ts runs first and would otherwise short-circuit this test
+    // before partitionTranscripts is ever reached.
+    const op = new LedgerV9.ContractOperation();
+    op.verifierKey = readFileSync(
+      resolve(__dirname, '../../../../testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/keys/increment.verifier')
+    );
     const contractState = new LedgerV9.ContractState();
     const operation = new LedgerV9.ContractOperation();
     operation.verifierKey = REGISTERED_VERIFIER_KEY;

@@ -73,7 +73,7 @@ export interface Ledger8Engine {
  * bound to it.
  *
  * `../../engine.ts` re-exports this module as the `./engine` build entry
- * (`dist/engine.mjs`/`.cjs`), reached only by the dynamic import in
+ * (`dist/engine.js`), reached only by the dynamic import in
  * `lib/engine/load-engine.ts`. Evaluating it — which is what pulls in the glue
  * and `onchain-runtime-v3` WASM — happens only on that import, never as a side
  * effect of loading the package root.
@@ -124,7 +124,7 @@ export const createLedger8Engine = async (): Promise<Ledger8Engine> => {
     extractState: (raw, version) => extractEncodedStateValue(raw, version, ocrt3.ContractState),
     downConvertForExecution: (state) => downConvertForExecution(state, ledger8CompactRuntime),
     executeCircuit: (options) => executeCircuit(options, ledger8ExecutionRuntime),
-    wrapKeepStateCall: (options) => wrapKeepStateCall(options),
+    wrapKeepStateCall,
     composeCallTx: async (options) => composeV8CallTx(options, await loadLedger8()),
     executeConstructor: (options) => executeConstructor(options, ledger8ConstructorRuntime),
     composeDeployTx: async (options) => composeV8DeployTx(options, await loadLedger8())

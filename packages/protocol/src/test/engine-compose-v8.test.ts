@@ -16,6 +16,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { encodeContractKeyLocation, hashVerifierKey } from '@midnight-ntwrk/compact-js';
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import { describe, expect, it } from 'vitest';
@@ -99,7 +100,7 @@ describe('composeV8CallTx (real ledger-v8 WASM)', () => {
     expect(Buffer.from(back.serialize())).toEqual(Buffer.from(bytes));
   });
 
-  it('passes the exact operation resolved from contractState.operation(circuitId) into ContractCallPrototype, and keys it by circuit id', () => {
+  it('passes the exact operation resolved from contractState.operation(circuitId) into ContractCallPrototype, and keys it canonically', () => {
     // Byte comparison of two composed transactions cannot show this: the
     // assembly draws fresh `communicationCommitmentRandomness()` and
     // `fromPartsRandomized` picks a random segment id, so ANY two composes
@@ -149,7 +150,16 @@ describe('composeV8CallTx (real ledger-v8 WASM)', () => {
 
     expect(captured.op?.serialize()).toEqual(buildRegisteredOperation().serialize());
     expect(captured.entryPoint).toBe('increment');
-    expect(captured.keyLocation).toBe('increment');
+    // The entry point is the bare circuit id; the key location is not. It is
+    // the canonical, contract-qualified form provers resolve artifacts by, so
+    // a call composed here is resolvable through ZKConfigRegistry.
+    expect(captured.keyLocation).toBe(
+      encodeContractKeyLocation({
+        contractAddress: options.contractAddress,
+        circuitId: 'increment',
+        verifierKeyHash: hashVerifierKey(REGISTERED_VERIFIER_KEY)
+      })
+    );
     expect(captured.address).toBe(options.contractAddress);
   });
 

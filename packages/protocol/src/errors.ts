@@ -22,7 +22,8 @@ export const PROTOCOL_ERROR_CODES = Object.freeze({
   DOWN_CONVERT_FAILED: 'MIDNIGHT_JS_P_DOWN_CONVERT_FAILED',
   MERKLE_NOT_REHASHED: 'MIDNIGHT_JS_P_MERKLE_NOT_REHASHED',
   LEDGER8_COMPOSE_FAILED: 'MIDNIGHT_JS_P_LEDGER8_COMPOSE_FAILED',
-  LEDGER8_COMPOSE_OPTION_INVALID: 'MIDNIGHT_JS_P_LEDGER8_COMPOSE_OPTION_INVALID'
+  LEDGER8_COMPOSE_OPTION_INVALID: 'MIDNIGHT_JS_P_LEDGER8_COMPOSE_OPTION_INVALID',
+  LEDGER8_ZSWAP_UNSUPPORTED: 'MIDNIGHT_JS_P_LEDGER8_ZSWAP_UNSUPPORTED'
 } as const);
 export type ProtocolErrorCode = (typeof PROTOCOL_ERROR_CODES)[keyof typeof PROTOCOL_ERROR_CODES];
 
@@ -78,16 +79,51 @@ export class UnknownProtocolVersionError extends Error {
   }
 }
 
+/**
+ * Which lazily-loaded subpath export {@link Ledger8RuntimeMissingError} failed
+ * to acquire. Each chunk pulls a different set of retained-era dependencies, so
+ * naming the wrong one sends an operator to an entry point that loaded fine.
+ */
+export type RetainedEraSubpath = '/v8' | '/engine';
+
 export class Ledger8RuntimeMissingError extends Error {
   readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING;
 
-  constructor(cause: unknown) {
+  constructor(
+    readonly subpath: RetainedEraSubpath,
+    cause: unknown
+  ) {
     super(
-      'Failed to load the v8 ledger runtime via the midnight-js-protocol/v8 subpath export. ' +
-        'This usually means a broken or partial install of the protocol package — reinstall dependencies and retry.',
+      `Failed to load the retained pre-fork runtime via the midnight-js-protocol${subpath} subpath export. ` +
+        'Read the wrapped cause for which module actually failed to resolve or initialise. This usually means ' +
+        'a broken or partial install of the protocol package — reinstall dependencies and retry.',
       { cause }
     );
     this.name = 'Ledger8RuntimeMissingError';
+  }
+}
+
+/**
+ * Thrown when a retained pre-fork circuit produced Zswap inputs or outputs.
+ *
+ * `executeCircuit` builds its circuit context from a coin public key alone, so
+ * the post-call `currentZswapLocalState` it would need to assemble the
+ * transaction's segmented offers is not carried on {@link TranscriptPojo}. A
+ * call that moved coins would therefore compose into an unbalanced transaction,
+ * rejected on submission with nothing in the engine having reported a problem.
+ * This engine refuses that call instead.
+ */
+export class Ledger8ZswapUnsupportedError extends Error {
+  readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.LEDGER8_ZSWAP_UNSUPPORTED;
+
+  constructor(readonly circuitId: string) {
+    super(
+      `Circuit '${circuitId}' produced Zswap inputs or outputs, which the retained pre-fork execution leg ` +
+        'does not carry. Composing this call would drop those coin movements and yield an unbalanced ' +
+        'transaction that the node rejects on submission. Only circuits with no coin effects can run on the ' +
+        'retained era today.'
+    );
+    this.name = 'Ledger8ZswapUnsupportedError';
   }
 }
 
@@ -172,7 +208,11 @@ export class Ledger8InstanceMismatchError extends Error {
  * `EncodedStateValue` whichever era it came from — so its stage carries no
  * version, unlike the two extraction stages.
  */
-export type DownConvertStage = 'v8 envelope extraction' | 'v9 envelope extraction' | 'state down-convert';
+export type DownConvertStage =
+  | 'v8 envelope extraction'
+  | 'v9 envelope extraction'
+  | 'envelope extraction'
+  | 'state down-convert';
 
 /**
  * Thrown by the down-convert engine (`lib/engine/envelope.ts`,
@@ -228,17 +268,18 @@ export class MerkleNotRehashedError extends Error {
 
 /**
  * Which composition step {@link Ledger8ComposeFailedError} failed at:
- * - `'wrap-call'` — {@link wrapKeepStateCall} (`engine/wrap-v9.ts`) could not
- *   resolve a registered operation for the transcript's circuit on the given
- *   v9-native contract state.
- * - `'call-operation'` — {@link composeV8CallTx} (`engine/compose-v8.ts`)
+ * - `'wrap-call'` — {@link wrapKeepStateCall} (`lib/engine/wrap-v9.ts`) could
+ *   not resolve a registered operation for the transcript's circuit on the
+ *   given v9-native contract state.
+ * - `'call-operation'` — {@link composeV8CallTx} (`lib/engine/compose-v8.ts`)
  *   could not resolve a registered operation for the transcript's circuit on
  *   the given v8-native contract state.
  * - `'call-verifier-key'` — either call leg resolved a registered operation
  *   for the transcript's circuit, but that operation carries no verifier key,
  *   so no ledger could verify a call against it.
- * - `'deploy-verifier-key'` — {@link composeV8DeployTx} (`engine/deploy-v8.ts`)
- *   was given no verifier key for a circuit the contract state declares.
+ * - `'deploy-verifier-key'` — {@link composeV8DeployTx}
+ *   (`lib/engine/deploy-v8.ts`) was given no verifier key for a circuit the
+ *   contract state declares.
  * - `'deploy-unknown-circuit'` — the verifier-key map handed to
  *   {@link composeV8DeployTx} names a circuit the contract state does not
  *   declare. Registering it would add an entry point the compiled contract
@@ -272,7 +313,7 @@ export type Ledger8ComposeStage =
  * `circuitId` names the entry point, never its raw contents: this class
  * renders no hex and no byte-array dump, and callers pass entry-point names
  * that have already been decoded (see `entryPointName` in
- * `engine/deploy-v8.ts`).
+ * `lib/engine/deploy-v8.ts`).
  */
 export class Ledger8ComposeFailedError extends Error {
   readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.LEDGER8_COMPOSE_FAILED;
@@ -282,64 +323,51 @@ export class Ledger8ComposeFailedError extends Error {
     readonly circuitId: string,
     cause?: unknown
   ) {
-    super(Ledger8ComposeFailedError.buildMessage(stage, circuitId), { cause });
+    super(Ledger8ComposeFailedError.MESSAGES[stage](circuitId), { cause });
     this.name = 'Ledger8ComposeFailedError';
   }
 
-  private static buildMessage(stage: Ledger8ComposeStage, circuitId: string): string {
-    if (stage === 'deploy-verifier-key') {
-      return (
-        `Failed to compose a ledger-8 deploy transaction: no verifier key was supplied for circuit ` +
-        `'${circuitId}', which the contract state declares as an entry point. A deploy carrying an ` +
-        'unregistered entry point is rejected by a ledger\'s own well-formedness check. Resolve the ' +
-        "compiled contract's verifier key for this circuit (from its keys/ artifacts) and include it in the " +
-        'map passed to composeV8DeployTx.'
-      );
-    }
-    if (stage === 'deploy-unknown-circuit') {
-      return (
-        `Failed to compose a ledger-8 deploy transaction: the verifier-key map names circuit ` +
-        `'${circuitId}', which the contract state does not declare as an entry point. Registering it would ` +
-        'give the deployed contract an entry point its compiled source never had, and would change the ' +
-        "deployed contract's address. This usually means a stale or foreign key file was picked up (for " +
-        'example by globbing keys/*.verifier across compiler runs) — supply keys for exactly the circuits ' +
-        'this contract declares.'
-      );
-    }
-    if (stage === 'deploy-verifier-key-blob') {
-      return (
-        `Failed to compose a ledger-8 deploy transaction: the ledger rejected the verifier-key bytes ` +
-        `supplied for circuit '${circuitId}'. Read the wrapped cause for what the ledger reported; a ` +
-        'verifier key must be the tagged blob the compiler emits as keys/<circuit>.verifier, so this ' +
-        'usually means a truncated or empty file, or a key emitted for a different ledger era.'
-      );
-    }
-    if (stage === 'call-verifier-key') {
-      return (
-        `Failed to compose a call: the operation registered for circuit '${circuitId}' carries no verifier ` +
-        'key, so no ledger could verify a call against it. This usually means the contract state came from a ' +
-        'constructor result rather than from chain — a freshly built state declares its entry points with ' +
-        'blank keys, which only a deploy transaction fills in. Pass the contract state as read from chain ' +
-        'after a successful deploy.'
-      );
-    }
-    if (stage === 'call-operation') {
-      return (
-        `Failed to compose a ledger-8 call transaction: no registered operation found for circuit '${circuitId}' ` +
-        'on the given v8-native contract state. This usually means the contract state passed to composeV8CallTx ' +
-        'was not read from chain (or produced by a real deploy) — a bare/blank contract state has no operations ' +
-        'registered. Resolve the contract state that carries the deployed operation for this circuit and pass ' +
-        'that instead.'
-      );
-    }
-    return (
+  // A total Record rather than an if-chain, for the same reason
+  // ENVELOPE_DECODERS in lib/engine/envelope.ts is one: adding a stage without
+  // its message fails to compile here, instead of silently shipping whichever
+  // message the fallthrough happened to reach.
+  private static readonly MESSAGES: Readonly<Record<Ledger8ComposeStage, (circuitId: string) => string>> = {
+    'wrap-call': (circuitId) =>
       `Failed to compose a v9-native keep-state call: no registered operation found for circuit '${circuitId}' ` +
       'on the given contract state. This usually means the contract state passed to wrapKeepStateCall was not ' +
       'read from chain (or produced by a real deploy) — a bare/blank contract state has no operations ' +
       'registered. Resolve the contract state that carries the deployed operation for this circuit and pass ' +
-      'that instead.'
-    );
-  }
+      'that instead.',
+    'call-operation': (circuitId) =>
+      `Failed to compose a ledger-8 call transaction: no registered operation found for circuit '${circuitId}' ` +
+      'on the given v8-native contract state. This usually means the contract state passed to composeV8CallTx ' +
+      'was not read from chain (or produced by a real deploy) — a bare/blank contract state has no operations ' +
+      'registered. Resolve the contract state that carries the deployed operation for this circuit and pass ' +
+      'that instead.',
+    'call-verifier-key': (circuitId) =>
+      `Failed to compose a call: the operation registered for circuit '${circuitId}' carries no verifier key, ` +
+      'so no ledger could verify a call against it. This usually means the contract state came from a ' +
+      'constructor result rather than from chain — a freshly built state declares its entry points with blank ' +
+      'keys, which only a deploy transaction fills in. Pass the contract state as read from chain after a ' +
+      'successful deploy.',
+    'deploy-verifier-key': (circuitId) =>
+      `Failed to compose a ledger-8 deploy transaction: no verifier key was supplied for circuit ` +
+      `'${circuitId}', which the contract state declares as an entry point. A deploy carrying an ` +
+      "unregistered entry point is rejected by a ledger's own well-formedness check. Resolve the compiled " +
+      "contract's verifier key for this circuit (from its keys/ artifacts) and include it in the map passed " +
+      'to composeV8DeployTx.',
+    'deploy-unknown-circuit': (circuitId) =>
+      `Failed to compose a ledger-8 deploy transaction: the verifier-key map names circuit '${circuitId}', ` +
+      'which the contract state does not declare as an entry point. Registering it would give the deployed ' +
+      "contract an entry point its compiled source never had, and would change the deployed contract's " +
+      'address. This usually means a stale or foreign key file was picked up (for example by globbing ' +
+      'keys/*.verifier across compiler runs) — supply keys for exactly the circuits this contract declares.',
+    'deploy-verifier-key-blob': (circuitId) =>
+      `Failed to compose a ledger-8 deploy transaction: the ledger rejected the verifier-key bytes supplied ` +
+      `for circuit '${circuitId}'. Read the wrapped cause for what the ledger reported; a verifier key must ` +
+      'be the tagged blob the compiler emits as keys/<circuit>.verifier, so this usually means a truncated ' +
+      'or empty file, or a key emitted for a different ledger era.'
+  };
 }
 
 /**

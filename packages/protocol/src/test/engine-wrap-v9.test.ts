@@ -100,4 +100,25 @@ describe('wrapKeepStateCall', () => {
     expect(error.stage).toBe('wrap-call');
     expect(error.circuitId).toBe('increment');
   });
+  it('throws Ledger8ComposeFailedError (stage call-verifier-key) when the registered operation carries no verifier key', () => {
+    const address = sampleContractAddress();
+    const contractState = new ContractState();
+    contractState.setOperation('increment', new ContractOperation());
+
+    let caught: unknown;
+    try {
+      wrapKeepStateCall({ transcript: buildTranscript(), contractAddress: address, contractState });
+    } catch (error) {
+      caught = error;
+    }
+
+    // A slot registered with a blank ContractOperation reads back with no
+    // verifier key. Composing against it yields a call no prover can verify,
+    // so it must fail here rather than at submission.
+    expect(caught).toBeInstanceOf(Ledger8ComposeFailedError);
+    const error = caught as Ledger8ComposeFailedError;
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_COMPOSE_FAILED);
+    expect(error.stage).toBe('call-verifier-key');
+    expect(error.circuitId).toBe('increment');
+  });
 });

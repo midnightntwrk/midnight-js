@@ -76,6 +76,7 @@ describe('Protocol ACL package', () => {
         'Ledger8ComposeOptionError',
         'Ledger8InstanceMismatchError',
         'Ledger8RuntimeMissingError',
+        'Ledger8ZswapUnsupportedError',
         'loadLedger8',
         'loadLedger8Engine',
         'MerkleNotRehashedError',
