@@ -46,6 +46,31 @@ export interface Ledger8ContractState {
 type EnvelopeDecoder = (raw: Uint8Array, ledger8ContractState: Ledger8ContractState) => EncodedStateValue;
 
 /**
+ * Reads the primary {@link EncodedStateValue} out of a raw, serialized
+ * post-fork `contract-state[v8]` envelope.
+ *
+ * Split out of {@link extractEncodedStateValue}'s decoder table so the v9 read
+ * is reachable without a pre-fork runtime. The dispatching entry requires that
+ * runtime for every version on purpose — it is what stops a v9 caller drifting
+ * into a v8 read with nothing to decode it — but that requirement is not the
+ * v9 decode's own, and a v9-only consumer should not have to instantiate
+ * multi-megabyte pre-fork WASM to read a state its own era wrote.
+ *
+ * Owns the same wrapping the dispatching entry applies: a rejected envelope
+ * (malformed, truncated, over-long, or tagged for the other era) leaves as a
+ * {@link DownConvertFailedError} at stage `'v9 envelope extraction'`, carrying
+ * the runtime's own diagnosis on `cause`. The dispatching entry delegates here
+ * rather than decoding again, so a failure is wrapped exactly once.
+ */
+export const extractV9EncodedStateValue = (raw: Uint8Array): EncodedStateValue => {
+  try {
+    return LedgerContractStateV9.deserialize(raw).data.state.encode();
+  } catch (cause) {
+    throw new DownConvertFailedError('v9 envelope extraction', cause);
+  }
+};
+
+/**
  * One decoder per {@link LedgerVersion}. A `Record` rather than a ternary so
  * that adding a member to `LEDGER_VERSIONS` fails to compile here instead of
  * silently routing the new era's bytes to the pre-fork decoder — the same
@@ -72,7 +97,10 @@ const ENVELOPE_DECODERS: Readonly<Record<LedgerVersion, EnvelopeDecoder>> = Obje
   Object.assign(Object.create(null) as Record<LedgerVersion, EnvelopeDecoder>, {
     v8: (raw: Uint8Array, ledger8ContractState: Ledger8ContractState): EncodedStateValue =>
       ledger8ContractState.deserialize(raw).data.state.encode(),
-    v9: (raw: Uint8Array): EncodedStateValue => LedgerContractStateV9.deserialize(raw).data.state.encode()
+    // A reference to the standalone decoder, not a second copy of the same
+    // read: the two must not be able to drift apart, and the wrapping it
+    // already owns is why the dispatch below re-wraps nothing it raises.
+    v9: extractV9EncodedStateValue
   } satisfies Record<LedgerVersion, EnvelopeDecoder>)
 );
 
@@ -120,6 +148,11 @@ export const extractEncodedStateValue = (
   try {
     return decoder(raw, ledger8ContractState);
   } catch (cause) {
-    throw new DownConvertFailedError(`${version} envelope extraction`, cause);
+    // Already coded, and already naming this exact stage: the v9 decoder wraps
+    // its own failure. Re-wrapping would bury the runtime's diagnosis one
+    // level deeper for no gain.
+    throw cause instanceof DownConvertFailedError
+      ? cause
+      : new DownConvertFailedError(`${version} envelope extraction`, cause);
   }
 };

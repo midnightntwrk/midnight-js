@@ -21,7 +21,7 @@ import { describe, expect, it } from 'vitest';
 
 import { DownConvertFailedError, PROTOCOL_ERROR_CODES } from '../errors';
 import { checkRoot, downConvertForExecution } from '../lib/engine/down-convert';
-import { extractEncodedStateValue } from '../lib/engine/envelope';
+import { extractEncodedStateValue, extractV9EncodedStateValue } from '../lib/engine/envelope';
 
 // The engine's own suite (engine-down-convert.test.ts) builds its envelopes
 // in-process, so it never touches these files. What it cannot prove is what
@@ -109,5 +109,47 @@ describe('tampered goldens', () => {
     expect(() => extractEncodedStateValue(readHexFixture(fixture), version, ocrt3.ContractState)).toThrowError(
       expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED })
     );
+  });
+});
+
+// The dispatching `extractEncodedStateValue` requires the pre-fork
+// `ContractState` for EVERY version, deliberately — a v9 caller that drifted
+// into a v8 read would otherwise have no runtime to reach for. That makes the
+// v9 read unavailable to anything that has not already paid for the pre-fork
+// WASM. The standalone decoder is the same read without that requirement.
+describe('extractV9EncodedStateValue', () => {
+  it('reads a real migrated envelope to exactly what the dispatching entry produces', () => {
+    const raw = readHexFixture('state-migrated-v9.hex');
+
+    expect(extractV9EncodedStateValue(raw)).toEqual(extractEncodedStateValue(raw, 'v9', ocrt3.ContractState));
+  });
+
+  it('rejects a corrupted envelope with the same code and stage the dispatching entry reports', () => {
+    let caught: unknown;
+    try {
+      extractV9EncodedStateValue(readHexFixture('state-tampered-bytes.hex'));
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(DownConvertFailedError);
+    const failure = caught as DownConvertFailedError;
+    expect(failure.code).toBe(PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED);
+    expect(failure.stage).toBe('v9 envelope extraction');
+  });
+
+  // The dispatching entry delegates to this function rather than duplicating
+  // the decode, so its own try/catch would wrap an already-wrapped failure —
+  // burying the runtime's diagnosis one level deeper on every read.
+  it('is not double-wrapped when reached through the dispatching entry', () => {
+    let caught: unknown;
+    try {
+      extractEncodedStateValue(readHexFixture('state-tampered-bytes.hex'), 'v9', ocrt3.ContractState);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(DownConvertFailedError);
+    expect((caught as DownConvertFailedError).cause).not.toBeInstanceOf(DownConvertFailedError);
   });
 });
