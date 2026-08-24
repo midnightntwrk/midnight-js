@@ -18,7 +18,8 @@ import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { ComposeFailedError, ComposeOptionError } from '../../errors';
 import { assembleCallPrototype } from '../engine/assemble-call';
 import { assertComposeEnvelope } from '../engine/compose-options';
-import type { ComposeCallOptions } from './compose-types';
+import { entryPointName } from '../engine/deploy-v8';
+import type { ComposeCallOptions, ComposeDeployOptions, DeployResultPojo } from './compose-types';
 import { aggregateUnshieldedOffers } from './unshielded';
 
 /**
@@ -129,4 +130,107 @@ export const composeV9CallTx = (options: ComposeCallOptions): Uint8Array => {
   }
 
   return ledgerV9.Transaction.fromPartsRandomized(networkId, guaranteedOffer, fallibleOffer, intent).serialize();
+};
+
+/**
+ * Registers a verifier key for every entry point the state declares, after
+ * validating the map against those entry points in BOTH directions:
+ * - a declared entry point with no key in the map throws
+ *   {@link ComposeFailedError} at stage `'deploy-verifier-key'`, because a
+ *   ledger rejects a deploy carrying an unregistered entry point;
+ * - a key naming an entry point the state does not declare throws stage
+ *   `'deploy-unknown-circuit'`. This direction matters as much as the other:
+ *   `setOperation` CREATES a slot rather than requiring one, so an unchecked
+ *   stray key (a stale `keys/*.verifier` from an earlier compiler run) would
+ *   give the deployed contract an entry point its source never had and — since
+ *   the deploy derives its address from the initial state — silently deploy it
+ *   at a different address than the caller's artifacts describe.
+ *
+ * Together the two checks make the map and the declared entry points equal
+ * sets. They run on resolved NAMES, because that is how the map is keyed, so
+ * two declared entry points resolving to one name would make them agree while
+ * leaving a slot blank; that case throws stage `'deploy-ambiguous-circuit'`
+ * before either check runs. Registration itself uses the entry point the state
+ * declares, not its resolved name, since `setOperation` would otherwise create
+ * a second slot beside the declared one.
+ */
+const registerVerifierKeys = (
+  contractState: ledgerV9.ContractState,
+  verifierKeys: ReadonlyMap<string, Uint8Array>
+): void => {
+  // Keyed by resolved name, valued by the entry point the state actually
+  // declares. Both halves are needed: the map is keyed by name, so the set
+  // arithmetic has to run on names, while `setOperation` must be handed the
+  // declared entry point itself.
+  const declared = new Map<string, string | Uint8Array>();
+  for (const entryPoint of contractState.operations()) {
+    const circuitId = entryPointName(entryPoint);
+    if (declared.has(circuitId)) {
+      throw new ComposeFailedError('v9', 'deploy-ambiguous-circuit', circuitId);
+    }
+    declared.set(circuitId, entryPoint);
+  }
+
+  for (const circuitId of verifierKeys.keys()) {
+    if (!declared.has(circuitId)) {
+      throw new ComposeFailedError('v9', 'deploy-unknown-circuit', circuitId);
+    }
+  }
+  for (const circuitId of declared.keys()) {
+    if (!verifierKeys.has(circuitId)) {
+      throw new ComposeFailedError('v9', 'deploy-verifier-key', circuitId);
+    }
+  }
+
+  // The non-null assertion is guarded by the two checks above: together they
+  // make the map's keys and `declared`'s keys the same set, so every lookup
+  // here resolves. An `undefined` branch would be unreachable, and this file
+  // carries a 100% branch floor.
+  for (const [circuitId, verifierKey] of verifierKeys) {
+    const operation = new ledgerV9.ContractOperation();
+    try {
+      operation.verifierKey = verifierKey;
+    } catch (cause) {
+      throw new ComposeFailedError('v9', 'deploy-verifier-key-blob', circuitId, cause);
+    }
+    contractState.setOperation(declared.get(circuitId)!, operation);
+  }
+};
+
+/**
+ * Composes a v9-native deploy transaction from a serialized initial contract
+ * state and immediately serializes it, returning the transaction together with
+ * the address the deployment will have and the initial state that address is
+ * derived from.
+ *
+ * Never proves the transaction: the returned bytes are an UNPROVEN,
+ * tag-prefixed serialization, exactly what `Transaction.serialize()` produces
+ * before `.prove()` is ever called.
+ *
+ * Uses `Transaction.fromParts`, not `fromPartsRandomized`, so the intent lands
+ * at a fixed segment id. Only calls randomize their segment, to stay mergeable.
+ *
+ * With `verifierKeys` supplied, every declared entry point is registered before
+ * the address is derived — see {@link registerVerifierKeys} for the checks that
+ * run first. Without it, the state is deployed exactly as given, which is right
+ * only for a state that already carries its keys.
+ */
+export const composeV9DeployTx = (options: ComposeDeployOptions): DeployResultPojo => {
+  const { contractState, verifierKeys, networkId, ttl, guaranteedZswapOffer } = options;
+  assertComposeEnvelope(options, 'v9');
+
+  const guaranteedOffer = readZswapOffer(guaranteedZswapOffer);
+  const state = readContractState(contractState);
+  if (verifierKeys !== undefined) {
+    registerVerifierKeys(state, verifierKeys);
+  }
+
+  const deploy = new ledgerV9.ContractDeploy(state);
+  const intent = ledgerV9.Intent.new(ttl).addDeploy(deploy);
+
+  return {
+    transaction: ledgerV9.Transaction.fromParts(networkId, guaranteedOffer, undefined, intent).serialize(),
+    contractAddress: deploy.address,
+    initialState: deploy.initialState.serialize()
+  };
 };

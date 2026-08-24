@@ -85,3 +85,43 @@ export interface ComposeCallOptions {
   readonly guaranteedZswapOffer?: Uint8Array;
   readonly fallibleZswapOffer?: Uint8Array;
 }
+
+/**
+ * Everything a deploy transaction needs.
+ *
+ * `contractState` is the raw, serialized initial state the contract's
+ * constructor produced — BYTES, not a live handle, so the same options are
+ * usable on either era.
+ *
+ * `verifierKeys` maps entry-point name -> raw, tagged verifier key bytes
+ * (`keys/<id>.verifier`). A compiled contract's constructor declares an
+ * operation slot per circuit but leaves its verifier key blank, so a deploy
+ * has to carry real keys or a ledger refuses it. When supplied, the map must
+ * name exactly the entry points the state declares — no more, no fewer. Omit
+ * it only for a state that ALREADY carries its keys; omitting it for a
+ * constructor-built state deploys a contract with unregistered entry points.
+ */
+export interface ComposeDeployOptions {
+  readonly contractState: Uint8Array;
+  readonly verifierKeys?: ReadonlyMap<string, Uint8Array>;
+  readonly networkId: string;
+  readonly ttl: Date;
+  readonly guaranteedZswapOffer?: Uint8Array;
+}
+
+/**
+ * What a composed deploy hands back.
+ *
+ * Not a bare `Uint8Array`, because the transaction alone is not enough to use
+ * the deployment: `contractAddress` is derived from the initial state AFTER
+ * the verifier keys are registered, so a caller cannot recompute it without
+ * repeating the registration, and `initialState` is the state that address was
+ * derived from — what a caller stores and later hands to a call.
+ *
+ * All three are plain data, so the whole result survives a `structuredClone`.
+ */
+export interface DeployResultPojo {
+  readonly transaction: Uint8Array;
+  readonly contractAddress: string;
+  readonly initialState: Uint8Array;
+}

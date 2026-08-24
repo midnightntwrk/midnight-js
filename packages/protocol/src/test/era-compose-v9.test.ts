@@ -22,8 +22,8 @@ import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
 import { ComposeFailedError, ComposeOptionError, PROTOCOL_ERROR_CODES } from '../errors';
-import type { ComposeCallEntry, ComposeCallOptions } from '../lib/era/compose-types';
-import { composeV9CallTx } from '../lib/era/compose-v9';
+import type { ComposeCallEntry, ComposeCallOptions, ComposeDeployOptions } from '../lib/era/compose-types';
+import { composeV9CallTx, composeV9DeployTx } from '../lib/era/compose-v9';
 
 const FIELD_ALIGNMENT: ocrt3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
 const fieldValue = (byte: number): ocrt3.AlignedValue => ({
@@ -280,5 +280,185 @@ describe('composeV9CallTx', () => {
 
     expect(error).toBeInstanceOf(ComposeOptionError);
     expect(error).toMatchObject({ option: 'ttl', version: 'v9' });
+  });
+});
+
+const deployOptions = (overrides: Partial<ComposeDeployOptions> = {}): ComposeDeployOptions => ({
+  contractState: serializedStateWith(new ledgerV9.ContractOperation()),
+  verifierKeys: new Map([['increment', REGISTERED_VERIFIER_KEY]]),
+  networkId: NETWORK_ID,
+  ttl: TTL,
+  ...overrides
+});
+
+const deployIn = (
+  transaction: ledgerV9.Transaction<ledgerV9.SignatureEnabled, ledgerV9.PreProof, ledgerV9.PreBinding>
+): ledgerV9.ContractDeploy => {
+  const deploys = [...(transaction.intents?.values() ?? [])]
+    .flatMap((intent) => intent.actions)
+    .filter((action) => action instanceof ledgerV9.ContractDeploy);
+  if (deploys.length !== 1) {
+    throw new Error(`expected exactly one deploy on the transaction, found ${deploys.length}`);
+  }
+  return deploys[0];
+};
+
+const caughtDeploy = (compose: () => unknown): unknown => {
+  try {
+    compose();
+  } catch (error) {
+    return error;
+  }
+  throw new Error('expected composeV9DeployTx to throw');
+};
+
+describe('composeV9DeployTx', () => {
+  // The address is what a caller stores, indexes and hands to every later call.
+  // It cannot be recomputed from the state alone — a deploy mints a fresh
+  // nonce, so the same state deploys to a different address every time — which
+  // is exactly why the address has to be RETURNED rather than left to the
+  // caller to derive. What must hold is that the returned address is the one
+  // the returned transaction actually deploys, and that the returned initial
+  // state is the state that address was derived from, keys and all.
+  it('returns the address the returned transaction deploys, and the initial state it was derived from', () => {
+    const result = composeV9DeployTx(deployOptions());
+
+    const deployed = deployIn(readBack(result.transaction));
+    expect(result.contractAddress).toBe(deployed.address);
+    expect(Buffer.from(result.initialState)).toEqual(Buffer.from(deployed.initialState.serialize()));
+
+    const initialState = ledgerV9.ContractState.deserialize(result.initialState);
+    expect(initialState.operations()).toEqual(['increment']);
+    expect(Buffer.from(initialState.operation('increment')?.verifierKey ?? new Uint8Array())).toEqual(
+      Buffer.from(REGISTERED_VERIFIER_KEY)
+    );
+  });
+
+  // Deploying the same state twice must yield two DIFFERENT contracts, or a
+  // second deployment would collide with the first.
+  it('derives a fresh address for each deployment of the same state', () => {
+    expect(composeV9DeployTx(deployOptions()).contractAddress).not.toBe(
+      composeV9DeployTx(deployOptions()).contractAddress
+    );
+  });
+
+  // A deploy lands at a FIXED segment; only calls randomize theirs, to stay
+  // mergeable. A randomized deploy would change the transaction a caller
+  // signs for no reason, and diverge from the era's own deploy path.
+  it('lands the deploy at a fixed segment where a call randomizes its own', () => {
+    const segmentsOf = (bytes: Uint8Array): number[] => [...(readBack(bytes).intents?.keys() ?? [])];
+
+    const first = segmentsOf(composeV9DeployTx(deployOptions()).transaction);
+    const second = segmentsOf(composeV9DeployTx(deployOptions()).transaction);
+    expect(first).toEqual(second);
+
+    // Sampled repeatedly: a randomized segment can coincide with a fixed one
+    // once, so a single comparison could pass by luck.
+    const callSegments = new Set(
+      Array.from({ length: 8 }, () => segmentsOf(composeV9CallTx(callOptions())).join(','))
+    );
+    expect(callSegments.size).toBeGreaterThan(1);
+  });
+
+  it('deploys a state that already carries its keys without a verifier-key map', () => {
+    const result = composeV9DeployTx(
+      deployOptions({ contractState: serializedStateWith(keyedOperation()), verifierKeys: undefined })
+    );
+
+    const initialState = ledgerV9.ContractState.deserialize(result.initialState);
+    expect(initialState.operations()).toEqual(['increment']);
+    expect(Buffer.from(initialState.operation('increment')?.verifierKey ?? new Uint8Array())).toEqual(
+      Buffer.from(REGISTERED_VERIFIER_KEY)
+    );
+    expect(result.contractAddress).toBe(deployIn(readBack(result.transaction)).address);
+  });
+
+  it('carries a supplied guaranteed Zswap offer into the deploy transaction', () => {
+    const coin = ledgerV9.createShieldedCoinInfo(ledgerV9.sampleRawTokenType(), 100n);
+    const output = ledgerV9.ZswapOutput.new(coin, 0, ledgerV9.sampleCoinPublicKey(), ledgerV9.sampleEncryptionPublicKey());
+
+    const result = composeV9DeployTx(
+      deployOptions({ guaranteedZswapOffer: ledgerV9.ZswapOffer.fromOutput(output).serialize() })
+    );
+
+    expect(readBack(result.transaction).guaranteedOffer?.outputs).toHaveLength(1);
+  });
+
+  // `setOperation` CREATES a slot rather than requiring one, so an unchecked
+  // stray key would give the deployed contract an entry point its source never
+  // had and silently change its address.
+  it('refuses a verifier key naming a circuit the state does not declare', () => {
+    const error = caughtDeploy(() =>
+      composeV9DeployTx(
+        deployOptions({
+          verifierKeys: new Map([
+            ['increment', REGISTERED_VERIFIER_KEY],
+            ['stale', REGISTERED_VERIFIER_KEY]
+          ])
+        })
+      )
+    );
+
+    expect(error).toBeInstanceOf(ComposeFailedError);
+    expect(error).toMatchObject({ stage: 'deploy-unknown-circuit', version: 'v9', circuitId: 'stale' });
+  });
+
+  it('refuses a declared entry point the verifier-key map does not cover', () => {
+    const error = caughtDeploy(() => composeV9DeployTx(deployOptions({ verifierKeys: new Map() })));
+
+    expect(error).toBeInstanceOf(ComposeFailedError);
+    expect(error).toMatchObject({ stage: 'deploy-verifier-key', version: 'v9', circuitId: 'increment' });
+  });
+
+  // 0xff and 0xfe are each an invalid UTF-8 sequence, so both decode to the
+  // SAME replacement character. A map keyed by name would key one slot and
+  // leave the other blank, deploying a contract at an address the caller's
+  // artifacts do not describe.
+  it('refuses two declared entry points that resolve to the same name', () => {
+    const ambiguous = new ledgerV9.ContractState();
+    ambiguous.setOperation(new Uint8Array([0xff]), new ledgerV9.ContractOperation());
+    ambiguous.setOperation(new Uint8Array([0xfe]), new ledgerV9.ContractOperation());
+    const name = new TextDecoder().decode(new Uint8Array([0xff]));
+
+    const error = caughtDeploy(() =>
+      composeV9DeployTx(
+        deployOptions({
+          contractState: ambiguous.serialize(),
+          verifierKeys: new Map([[name, REGISTERED_VERIFIER_KEY]])
+        })
+      )
+    );
+
+    expect(error).toBeInstanceOf(ComposeFailedError);
+    expect(error).toMatchObject({ stage: 'deploy-ambiguous-circuit', version: 'v9', circuitId: name });
+  });
+
+  it('refuses verifier-key bytes the ledger rejects, preserving its failure on cause', () => {
+    const error = caughtDeploy(() =>
+      composeV9DeployTx(deployOptions({ verifierKeys: new Map([['increment', new Uint8Array([1, 2, 3])]]) }))
+    );
+
+    expect(error).toBeInstanceOf(ComposeFailedError);
+    expect(error).toMatchObject({ stage: 'deploy-verifier-key-blob', version: 'v9', circuitId: 'increment' });
+    expect((error as ComposeFailedError).cause).toBeInstanceOf(Error);
+  });
+
+  it('refuses a contract state this era cannot read, preserving the decoder failure', () => {
+    const error = caughtDeploy(() => composeV9DeployTx(deployOptions({ contractState: new Uint8Array([1, 2, 3]) })));
+
+    expect(error).toBeInstanceOf(ComposeOptionError);
+    expect(error).toMatchObject({ option: 'contractState', version: 'v9' });
+    expect((error as ComposeOptionError).cause).toBeInstanceOf(Error);
+  });
+
+  it('refuses an empty network id and an invalid ttl', () => {
+    expect(caughtDeploy(() => composeV9DeployTx(deployOptions({ networkId: '' })))).toMatchObject({
+      option: 'networkId',
+      version: 'v9'
+    });
+    expect(caughtDeploy(() => composeV9DeployTx(deployOptions({ ttl: new Date('not-a-date') })))).toMatchObject({
+      option: 'ttl',
+      version: 'v9'
+    });
   });
 });
