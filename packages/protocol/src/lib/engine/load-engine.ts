@@ -16,7 +16,18 @@
 import { Ledger8InstanceMismatchError, Ledger8RuntimeMissingError } from '../../errors';
 import type * as Engine from './index.js';
 
-export type { Ledger8Engine } from './index.js';
+// Type-only, so the root barrel can name every option and result type a
+// caller needs without linking the engine chunk. Without these a consumer
+// holding a Ledger8Engine cannot annotate a variable or write a helper
+// without a second, subpath-gated import.
+export type {
+  DownConvertedState,
+  EncodedStateValue,
+  ExecuteCircuitOptions,
+  Ledger8Engine,
+  TranscriptPojo,
+  WrapKeepStateCallOptions
+} from './index.js';
 
 let enginePromise: Promise<Engine.Ledger8Engine> | undefined;
 
@@ -47,5 +58,5 @@ export const loadLedger8Engine = (): Promise<Engine.Ledger8Engine> =>
       enginePromise = undefined;
       throw error instanceof Ledger8RuntimeMissingError || error instanceof Ledger8InstanceMismatchError
         ? error
-        : new Ledger8RuntimeMissingError(error);
+        : new Ledger8RuntimeMissingError('/engine', error);
     }));

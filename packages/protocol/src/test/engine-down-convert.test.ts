@@ -14,6 +14,13 @@
  */
 
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
+// Type-only: erased at build time, so this pins the ledger-v8 payload shapes
+// without linking the v8 module into anything.
+import type {
+  AlignedValue as LedgerV8AlignedValue,
+  EncodedStateValue as LedgerV8EncodedStateValue,
+  Op as LedgerV8Op
+} from '@midnightntwrk/ledger-v8';
 import {
   type AlignedValue as LedgerV9AlignedValue,
   ChargedState as LedgerV9ChargedState,
@@ -33,6 +40,7 @@ import {
   structurallyEqual
 } from '../lib/engine/down-convert';
 import { extractEncodedStateValue } from '../lib/engine/envelope';
+import type { LedgerVersion } from '../version';
 
 // Envelopes are built in-process rather than read from the hard-fork golden
 // fixtures, so this suite depends only on the two runtimes it bridges. The
@@ -108,6 +116,28 @@ describe('extractEncodedStateValue + downConvertForExecution round trip', () => 
 });
 
 describe('extractEncodedStateValue', () => {
+  // `version` is typed, but extractEncodedStateValue sits behind the public
+  // Ledger8Engine.extractState, so an untyped consumer can reach it with any
+  // string. A bare index would resolve these off Object.prototype and return
+  // their result as if it were state -- 'toString' yields the STRING
+  // '[object Undefined]' with no throw at all.
+  it.each(['v7', 'toString', 'valueOf', 'constructor'])(
+    'rejects the unsupported ledger version %s instead of routing it to a prototype member',
+    (version) => {
+      let caught: unknown;
+      try {
+        extractEncodedStateValue(ledger8Envelope(cellSv(0x07)), version as LedgerVersion, ocrt3.ContractState);
+      } catch (error) {
+        caught = error;
+      }
+
+      expect(caught).toBeInstanceOf(DownConvertFailedError);
+      const error = caught as DownConvertFailedError;
+      expect(error.code).toBe(PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED);
+      expect((error.cause as Error).message).toContain(`Unknown ledger version '${version}'`);
+    }
+  );
+
   it('reads a pre-fork envelope through the pre-fork decoder', () => {
     const extracted = extractEncodedStateValue(ledger8Envelope(cellSv(0x07)), 'v8', ocrt3.ContractState);
 
@@ -389,3 +419,12 @@ type Expect<T extends true> = T;
 type _EncodedStateValueUnchanged = Expect<AssertEqual<ocrt3.EncodedStateValue, LedgerV9EncodedStateValue>>;
 type _OpUnchanged = Expect<AssertEqual<ocrt3.Op<null>, LedgerV9Op<null>>>;
 type _AlignedValueUnchanged = Expect<AssertEqual<ocrt3.AlignedValue, LedgerV9AlignedValue>>;
+
+// The ledger-v8 axis, pinned for the same reason: assemble-call.ts crosses the
+// envelope into whichever ledger module it is handed, and its safety argument
+// ("a safe envelope crossing, not a lossy re-encode") covers ledger-v8 as soon
+// as the v8-native leg binds to it. Without these rows a ledger-v8 vendor bump
+// would break that argument with no compile error.
+type _V8EncodedStateValueUnchanged = Expect<AssertEqual<LedgerV8EncodedStateValue, LedgerV9EncodedStateValue>>;
+type _V8OpUnchanged = Expect<AssertEqual<LedgerV8Op<null>, LedgerV9Op<null>>>;
+type _V8AlignedValueUnchanged = Expect<AssertEqual<LedgerV8AlignedValue, LedgerV9AlignedValue>>;

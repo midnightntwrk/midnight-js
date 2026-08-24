@@ -13,28 +13,22 @@
  * limitations under the License.
  */
 
-import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
-
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Ledger8InstanceMismatchError, Ledger8RuntimeMissingError } from '../errors';
 
-const PKG_ROOT = resolve(__dirname, '..', '..');
-const distEngineExists = existsSync(resolve(PKG_ROOT, 'dist/engine.js'));
 // Built from parts so the runtime-reference scan in v8-surface.test.ts keeps
 // matching only lib/engine/load-engine.ts. Resolved from this file, it names
 // the same module lib/engine/load-engine.ts imports (same precedent as
 // load-v8-failure.test.ts's own V8_MODULE_SPECIFIER).
 const ENGINE_MODULE_SPECIFIER = ['..', 'engine.js'].join('/');
 
-// loadLedger8Engine resolves its relative specifier to the built
-// dist/engine.js chunk, so this suite needs a prior `yarn build`; without
-// one it is reported as visible skips (same policy as dist-laziness.test.ts /
-// load-v8-failure.test.ts). Lives in its own file so the mocked, poisoned
-// module registry cannot leak into engine-load-engine.test.ts's happy-path
-// suite (same isolation precedent as load-v8-failure.test.ts).
-describe.skipIf(!distEngineExists)('loadLedger8Engine failure path', () => {
+// Under vitest both sides of that specifier resolve to src/engine.ts, which is
+// what makes the doMock below intercept at all — so this suite needs no prior
+// `yarn build`. Lives in its own file so the mocked, poisoned module registry
+// cannot leak into engine-load-engine.test.ts's happy-path suite (same
+// isolation precedent as load-v8-failure.test.ts).
+describe('loadLedger8Engine failure path', () => {
   afterEach(() => {
     vi.doUnmock(ENGINE_MODULE_SPECIFIER);
   });
@@ -81,7 +75,7 @@ describe.skipIf(!distEngineExists)('loadLedger8Engine failure path', () => {
   });
 
   it('does not double-wrap when the engine chunk itself already rejects with Ledger8RuntimeMissingError', async () => {
-    const alreadyWrapped = new Ledger8RuntimeMissingError(new Error('inner resolution failure'));
+    const alreadyWrapped = new Ledger8RuntimeMissingError('/engine', new Error('inner resolution failure'));
     vi.doMock(ENGINE_MODULE_SPECIFIER, () => ({
       createLedger8Engine: () => Promise.reject(alreadyWrapped)
     }));

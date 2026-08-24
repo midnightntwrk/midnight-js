@@ -20,6 +20,7 @@ import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import type { ConstructorContext } from 'compact-runtime-ledger8';
 import { describe, expect, it, vi } from 'vitest';
 
+import { Ledger8ZswapUnsupportedError, PROTOCOL_ERROR_CODES } from '../errors';
 import type { DownConvertedState } from '../lib/engine/down-convert';
 import {
   executeCircuit,
@@ -28,6 +29,7 @@ import {
   type Ledger8CircuitResult,
   type Ledger8ContractLike,
   type Ledger8ExecutionRuntime,
+  type Ledger8ZswapLocalState,
   type TranscriptPojo
 } from '../lib/engine/execute';
 
@@ -37,6 +39,8 @@ const EMPTY_ALIGNED: ocrt3.AlignedValue = { value: [], alignment: [] };
 // pre-fork WASM validates this shape even where the circuit itself never
 // reads it (increment() has no coin-related effects).
 const SAMPLE_COIN_PUBLIC_KEY = 'ca'.repeat(32);
+
+const emptyZswap = (): Ledger8ZswapLocalState => ({ inputs: [], outputs: [] });
 
 const buildState = (byte: number): DownConvertedState => ({
   data: new ocrt3.ChargedState(
@@ -51,18 +55,25 @@ describe('executeCircuit (fake runtime — plumbing only, no WASM circuit execut
   it('builds the circuit context from the options, invokes the named circuit, and packages a TranscriptPojo', () => {
     const preState = buildState(0x01);
     const postState = buildState(0x02);
+    let capturedAddress: unknown;
+    let capturedCoinPk: unknown;
     let capturedContractState: unknown;
     let capturedPrivateState: unknown;
     let capturedGasLimit: unknown;
+    let capturedCostModel: unknown;
+    const injectedCostModel = ocrt3.CostModel.initialCostModel();
 
     const runtime: Ledger8ExecutionRuntime = {
-      createCircuitContext: (_address, _coinPk, contractState, privateState, gasLimit) => {
+      createCircuitContext: (address, coinPk, contractState, privateState, gasLimit, costModel) => {
+        capturedAddress = address;
+        capturedCoinPk = coinPk;
         capturedContractState = contractState;
         capturedPrivateState = privateState;
         capturedGasLimit = gasLimit;
-        return { currentQueryContext: { state: contractState }, currentPrivateState: privateState };
+        capturedCostModel = costModel;
+        return { currentQueryContext: { state: contractState }, currentPrivateState: privateState, currentZswapLocalState: emptyZswap() };
       },
-      CostModel: { initialCostModel: () => ocrt3.CostModel.initialCostModel() }
+      CostModel: { initialCostModel: () => injectedCostModel }
     };
 
     const contract: Ledger8ContractLike = {
@@ -70,7 +81,11 @@ describe('executeCircuit (fake runtime — plumbing only, no WASM circuit execut
         increment: (ctx, ...args): Ledger8CircuitResult => ({
           result: args,
           proofData: { input: EMPTY_ALIGNED, output: EMPTY_ALIGNED, publicTranscript: [], privateTranscriptOutputs: [] },
-          context: { currentQueryContext: { state: postState.data }, currentPrivateState: ctx.currentPrivateState }
+          context: {
+            currentQueryContext: { state: postState.data },
+            currentPrivateState: ctx.currentPrivateState,
+            currentZswapLocalState: emptyZswap()
+          }
         })
       }
     };
@@ -92,14 +107,25 @@ describe('executeCircuit (fake runtime — plumbing only, no WASM circuit execut
     expect(transcript.preContractState).toBe(preState);
     expect(transcript.postContractState.data).toBe(postState.data);
     expect(transcript.privateStateAfter).toEqual({ count: 1 });
+    // address and coinPk are both 32-byte hex in the real fixtures, so a
+    // transposition is invisible to the WASM runtime and has to be pinned here.
+    expect(capturedAddress).toBe('deadbeef');
+    expect(capturedCoinPk).toBe(SAMPLE_COIN_PUBLIC_KEY);
     expect(capturedContractState).toBe(preState.data);
     expect(capturedPrivateState).toEqual({ count: 1 });
     expect(capturedGasLimit).toBeUndefined();
+    // The real 0.16 createCircuitContext tolerates an undefined cost model, so
+    // dropping the injected one would otherwise go unnoticed.
+    expect(capturedCostModel).toBe(injectedCostModel);
   });
 
   it('throws a plain Error naming the unknown circuit id, never invoking createCircuitContext', () => {
     const createCircuitContext = vi.fn(
-      (): Ledger8CircuitContext => ({ currentQueryContext: { state: buildState(3).data }, currentPrivateState: undefined })
+      (): Ledger8CircuitContext => ({
+        currentQueryContext: { state: buildState(3).data },
+        currentPrivateState: undefined,
+        currentZswapLocalState: emptyZswap()
+      })
     );
     const runtime: Ledger8ExecutionRuntime = {
       createCircuitContext,
@@ -118,6 +144,113 @@ describe('executeCircuit (fake runtime — plumbing only, no WASM circuit execut
 
     expect(() => executeCircuit(options, runtime)).toThrow(/No impure circuit named 'missing'/);
     expect(createCircuitContext).not.toHaveBeenCalled();
+  });
+
+  it.each(['toString', 'valueOf', 'constructor'])(
+    'treats the Object.prototype member %s as an unknown circuit rather than dispatching to it',
+    (inheritedName) => {
+      const runtime: Ledger8ExecutionRuntime = {
+        createCircuitContext: () => ({
+          currentQueryContext: { state: buildState(4).data },
+          currentPrivateState: undefined,
+          currentZswapLocalState: emptyZswap()
+        }),
+        CostModel: { initialCostModel: () => ocrt3.CostModel.initialCostModel() }
+      };
+      // A compiled contract assigns impureCircuits a plain object literal, so
+      // its prototype chain is live: an inherited member is not `undefined` and
+      // would sail past a bare lookup, failing much later as an unrelated
+      // TypeError deep inside transcript packaging.
+      const contract: Ledger8ContractLike = { impureCircuits: {} };
+      const options: ExecuteCircuitOptions = {
+        contract,
+        circuitId: inheritedName,
+        args: [],
+        state: buildState(4),
+        address: 'deadbeef',
+        coinPk: SAMPLE_COIN_PUBLIC_KEY,
+        privateState: undefined
+      };
+
+      expect(() => executeCircuit(options, runtime)).toThrow(new RegExp(`No impure circuit named '${inheritedName}'`));
+    }
+  );
+
+  it('names the circuits the contract does carry, so a typo is diagnosable from the message alone', () => {
+    const runtime: Ledger8ExecutionRuntime = {
+      createCircuitContext: () => ({
+        currentQueryContext: { state: buildState(5).data },
+        currentPrivateState: undefined,
+        currentZswapLocalState: emptyZswap()
+      }),
+      CostModel: { initialCostModel: () => ocrt3.CostModel.initialCostModel() }
+    };
+    const contract: Ledger8ContractLike = {
+      impureCircuits: {
+        increment: () => {
+          throw new Error('never invoked');
+        }
+      }
+    };
+    const options: ExecuteCircuitOptions = {
+      contract,
+      circuitId: 'incremnt',
+      args: [],
+      state: buildState(5),
+      address: 'deadbeef',
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      privateState: undefined
+    };
+
+    expect(() => executeCircuit(options, runtime)).toThrow(/Available circuits: increment\./);
+  });
+
+  it('rejects a circuit that produced Zswap coin movements instead of dropping them from the transcript', () => {
+    const preState = buildState(0x01);
+    const runtime: Ledger8ExecutionRuntime = {
+      createCircuitContext: (_address, _coinPk, contractState, privateState) => ({
+        currentQueryContext: { state: contractState },
+        currentPrivateState: privateState,
+        currentZswapLocalState: emptyZswap()
+      }),
+      CostModel: { initialCostModel: () => ocrt3.CostModel.initialCostModel() }
+    };
+    const contract: Ledger8ContractLike = {
+      impureCircuits: {
+        send: (ctx): Ledger8CircuitResult => ({
+          result: null,
+          proofData: { input: EMPTY_ALIGNED, output: EMPTY_ALIGNED, publicTranscript: [], privateTranscriptOutputs: [] },
+          context: {
+            currentQueryContext: ctx.currentQueryContext,
+            currentPrivateState: ctx.currentPrivateState,
+            // One produced coin is enough: the transcript cannot carry it, so
+            // composing this call would silently yield an unbalanced tx.
+            currentZswapLocalState: { inputs: [], outputs: [{}] }
+          }
+        })
+      }
+    };
+    const options: ExecuteCircuitOptions = {
+      contract,
+      circuitId: 'send',
+      args: [],
+      state: preState,
+      address: 'deadbeef',
+      coinPk: SAMPLE_COIN_PUBLIC_KEY,
+      privateState: {}
+    };
+
+    let caught: unknown;
+    try {
+      executeCircuit(options, runtime);
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(Ledger8ZswapUnsupportedError);
+    const error = caught as Ledger8ZswapUnsupportedError;
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_ZSWAP_UNSUPPORTED);
+    expect(error.circuitId).toBe('send');
   });
 });
 

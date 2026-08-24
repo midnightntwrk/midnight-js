@@ -31,11 +31,14 @@ export type {
 };
 
 /**
- * The public surface {@link createLedger8Engine} builds: every retained-v8
- * (pre-fork execution, v9-native keep-state binding, v8-native composition
- * and deploy) capability, with the 0.16 runtime instance and the v8 ledger
- * module already captured in closure — no method here takes a runtime or
- * module parameter.
+ * The public surface {@link createLedger8Engine} builds: v8-era state
+ * extraction, down-convert for execution, retained pre-fork circuit execution
+ * and v9-native keep-state call binding — with the 0.16 runtime instance
+ * already captured in closure, so no method here takes a runtime or module
+ * parameter. The v8-native composition and deploy legs join this interface
+ * with the engine's remaining methods.
+ *
+ * The four methods form a pipeline: each one's result is the next one's input.
  */
 export interface Ledger8Engine {
   extractState(raw: Uint8Array, version: LedgerVersion): EncodedStateValue;
@@ -50,7 +53,7 @@ export interface Ledger8Engine {
  * bound to it.
  *
  * `../../engine.ts` re-exports this module as the `./engine` build entry
- * (`dist/engine.mjs`/`.cjs`), reached only by the dynamic import in
+ * (`dist/engine.js`), reached only by the dynamic import in
  * `lib/engine/load-engine.ts`. Evaluating it — which is what pulls in the glue
  * and `onchain-runtime-v3` WASM — happens only on that import, never as a side
  * effect of loading the package root.
@@ -86,6 +89,6 @@ export const createLedger8Engine = async (): Promise<Ledger8Engine> => {
     extractState: (raw, version) => extractEncodedStateValue(raw, version, ocrt3.ContractState),
     downConvertForExecution: (state) => downConvertForExecution(state, ledger8CompactRuntime),
     executeCircuit: (options) => executeCircuit(options, ledger8ExecutionRuntime),
-    wrapKeepStateCall: (options) => wrapKeepStateCall(options)
+    wrapKeepStateCall
   };
 };

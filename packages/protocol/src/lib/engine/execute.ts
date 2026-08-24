@@ -15,6 +15,7 @@
 
 import type { AlignedValue, ChargedState, CostModel, Op } from '@midnight-ntwrk/onchain-runtime-v3';
 
+import { Ledger8ZswapUnsupportedError } from '../../errors';
 import type { DownConvertedState } from './down-convert';
 
 /**
@@ -27,6 +28,17 @@ export interface Ledger8QueryContext {
 }
 
 /**
+ * The Zswap coin movements a pre-fork circuit recorded, as the 0.16 runtime
+ * tracks them on its `CircuitContext`. Only the two collections are declared:
+ * {@link executeCircuit} inspects them to decide whether the call moved coins
+ * at all, and never reads an individual entry.
+ */
+export interface Ledger8ZswapLocalState {
+  readonly inputs: readonly unknown[];
+  readonly outputs: readonly unknown[];
+}
+
+/**
  * The circuit-context slice {@link executeCircuit} needs from a pre-fork
  * (`compact-runtime@0.16`) `createCircuitContext` call and a circuit's
  * updated context after it runs.
@@ -34,6 +46,7 @@ export interface Ledger8QueryContext {
 export interface Ledger8CircuitContext {
   readonly currentQueryContext: Ledger8QueryContext;
   readonly currentPrivateState: unknown;
+  readonly currentZswapLocalState: Ledger8ZswapLocalState;
 }
 
 /** The proof-data slice of a pre-fork {@link Ledger8CircuitResult}. */
@@ -69,7 +82,7 @@ export interface Ledger8ContractLike {
 /**
  * The subset of the pre-fork `compact-runtime@0.16` glue {@link executeCircuit}
  * needs to build a circuit context. Injected — like {@link Ledger8CompactRuntime}
- * in `engine/down-convert.ts` — so callers target a specific WASM-backed
+ * in `./down-convert.ts` — so callers target a specific WASM-backed
  * instance and tests can substitute a controlled fake.
  */
 export interface Ledger8ExecutionRuntime {
@@ -89,13 +102,18 @@ export interface Ledger8ExecutionRuntime {
 /**
  * The result of one impure circuit's invocation on a pre-fork
  * (`compact-runtime@0.16`) contract instance: the primary result plus every
- * artifact {@link wrapKeepStateCall} (`engine/wrap-v9.ts`) needs to assemble a
+ * artifact {@link wrapKeepStateCall} (`./wrap-v9.ts`) needs to assemble a
  * v9-native `ContractCallPrototype`.
  *
  * `preContractState`/`postContractState` are {@link DownConvertedState}s —
  * the same execution-only state shape `downConvertForExecution` already
- * produces — not full pre-fork `ContractState`s: this transcript never
- * carries `.operations`, `.maintenanceAuthority`, or `.balance`.
+ * produces — not full pre-fork `ContractState`s: they carry only `.data`, so a
+ * consumer cannot reach `.operations`, `.maintenanceAuthority` or `.balance`
+ * through them.
+ *
+ * The transcript also carries no Zswap local state, which is why
+ * {@link executeCircuit} refuses a call that produced coin movements rather
+ * than returning a transcript that silently omits them.
  */
 export interface TranscriptPojo {
   readonly circuitId: string;
@@ -132,13 +150,24 @@ export interface ExecuteCircuitOptions {
  * a caller-programming-error case (an unknown circuit name passed by the
  * caller), not one of the decode/runtime-instance failure modes this engine
  * wraps elsewhere; it mirrors the plain `Error` the spike itself throws for
- * the analogous "operation missing on contract state" case.
+ * the analogous "operation missing on contract state" case. The lookup is an
+ * own-property one: `impureCircuits` is a plain object literal on every
+ * compiled contract, so a bare index would resolve `toString` or `constructor`
+ * off the prototype chain and dispatch into it.
+ *
+ * Throws {@link Ledger8ZswapUnsupportedError} when the circuit recorded Zswap
+ * inputs or outputs. {@link TranscriptPojo} does not carry the post-call Zswap
+ * local state, so such a call could only be composed into an unbalanced
+ * transaction — this fails at the point of execution instead.
  */
 export const executeCircuit = (options: ExecuteCircuitOptions, ledger8Runtime: Ledger8ExecutionRuntime): TranscriptPojo => {
   const { contract, circuitId, args, state, address, coinPk, privateState } = options;
-  const circuit = contract.impureCircuits[circuitId];
-  if (circuit === undefined) {
-    throw new Error(`No impure circuit named '${circuitId}' on this pre-fork contract instance.`);
+  const circuit = Object.hasOwn(contract.impureCircuits, circuitId) ? contract.impureCircuits[circuitId] : undefined;
+  if (typeof circuit !== 'function') {
+    throw new Error(
+      `No impure circuit named '${circuitId}' on this pre-fork contract instance. ` +
+        `Available circuits: ${Object.keys(contract.impureCircuits).join(', ') || '(none)'}.`
+    );
   }
 
   const ctx = ledger8Runtime.createCircuitContext(
@@ -150,6 +179,10 @@ export const executeCircuit = (options: ExecuteCircuitOptions, ledger8Runtime: L
     ledger8Runtime.CostModel.initialCostModel()
   );
   const res = circuit(ctx, ...args);
+  const zswap = res.context.currentZswapLocalState;
+  if (zswap.inputs.length > 0 || zswap.outputs.length > 0) {
+    throw new Ledger8ZswapUnsupportedError(circuitId);
+  }
 
   return {
     circuitId,

@@ -20,6 +20,7 @@ import {
   Ledger8ComposeFailedError,
   Ledger8InstanceMismatchError,
   Ledger8RuntimeMissingError,
+  Ledger8ZswapUnsupportedError,
   MerkleNotRehashedError,
   PROTOCOL_ERROR_CODES,
   UnknownProtocolVersionError
@@ -47,7 +48,8 @@ describe('PROTOCOL_ERROR_CODES', () => {
       LEDGER8_RUNTIME_MISSING: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_MISSING',
       DOWN_CONVERT_FAILED: 'MIDNIGHT_JS_P_DOWN_CONVERT_FAILED',
       MERKLE_NOT_REHASHED: 'MIDNIGHT_JS_P_MERKLE_NOT_REHASHED',
-      LEDGER8_COMPOSE_FAILED: 'MIDNIGHT_JS_P_LEDGER8_COMPOSE_FAILED'
+      LEDGER8_COMPOSE_FAILED: 'MIDNIGHT_JS_P_LEDGER8_COMPOSE_FAILED',
+      LEDGER8_ZSWAP_UNSUPPORTED: 'MIDNIGHT_JS_P_LEDGER8_ZSWAP_UNSUPPORTED'
     });
   });
 
@@ -94,17 +96,29 @@ describe('Ledger8RuntimeMissingError', () => {
   it('carries the LEDGER8_RUNTIME_MISSING code and preserves the cause', () => {
     const cause = new Error('ERR_MODULE_NOT_FOUND');
 
-    const error = new Ledger8RuntimeMissingError(cause);
+    const error = new Ledger8RuntimeMissingError('/v8', cause);
 
     expect(error).toBeInstanceOf(Error);
     expect(error.name).toBe('Ledger8RuntimeMissingError');
     expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING);
+    expect(error.subpath).toBe('/v8');
     expect(error.cause).toBe(cause);
     expect(error.message).toContain('midnight-js-protocol/v8');
     expect(error.message).toContain('reinstall');
     // Self-reference, so it must name no scope at all: the dual-publish renames
     // this package in `package.json` but never in a compiled string, and the
     // subpath alone identifies the import under either scope.
+    expect(packageNamesIn(error.message)).toEqual([]);
+  });
+
+  // The two chunks pull different retained-era dependencies, so a message that
+  // names the wrong one sends an operator to an entry point that loaded fine.
+  it('names the engine subpath, not the v8 one, when the engine chunk is what failed', () => {
+    const error = new Ledger8RuntimeMissingError('/engine', new Error("Cannot find package 'compact-runtime-ledger8'"));
+
+    expect(error.subpath).toBe('/engine');
+    expect(error.message).toContain('midnight-js-protocol/engine');
+    expect(error.message).not.toContain('midnight-js-protocol/v8');
     expect(packageNamesIn(error.message)).toEqual([]);
   });
 });
@@ -143,7 +157,7 @@ describe('instanceof', () => {
   // Same prototype-identity contract for the v8 loader's rejection: a caller
   // narrowing on it really does have the wrapped `cause`.
   it('recognises Ledger8RuntimeMissingError by prototype, not by its code', () => {
-    const real = new Ledger8RuntimeMissingError(new Error('ERR_MODULE_NOT_FOUND'));
+    const real = new Ledger8RuntimeMissingError('/v8', new Error('ERR_MODULE_NOT_FOUND'));
     const codeOnly = Object.assign(new Error('shaped like one of ours'), {
       code: PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_MISSING
     });
@@ -233,18 +247,57 @@ describe('Ledger8ComposeFailedError', () => {
     expect(error.message).toMatch(/VerifierKeyNotSet/);
   });
 
-  it('carries the call-operation stage and names composeV8CallTx as the failing compose context', () => {
+  it('carries the call-operation stage and describes the v8-native call context', () => {
     const error = new Ledger8ComposeFailedError('call-operation', 'increment');
 
     expect(error.stage).toBe('call-operation');
     expect(error.circuitId).toBe('increment');
     expect(error.message).toContain('increment');
     expect(error.message).toMatch(/no registered operation/i);
-    expect(error.message).toContain('composeV8CallTx');
+    expect(error.message).toMatch(/v8-native contract state/i);
   });
+
+  it('carries the call-verifier-key stage and points at a state that was never deployed', () => {
+    const error = new Ledger8ComposeFailedError('call-verifier-key', 'increment');
+
+    expect(error.stage).toBe('call-verifier-key');
+    expect(error.circuitId).toBe('increment');
+    expect(error.message).toContain('increment');
+    expect(error.message).toMatch(/carries no verifier key/i);
+  });
+
+  // The legs land across several PRs; a message naming a function this package
+  // does not export sends the reader looking for an API that is not there.
+  it.each(['wrap-call', 'call-verifier-key', 'call-operation', 'deploy-verifier-key'] as const)(
+    'names no unexported compose function in the %s message',
+    (stage) => {
+      const error = new Ledger8ComposeFailedError(stage, 'increment');
+
+      expect(error.message).not.toMatch(/composeV8(Call|Deploy)Tx/);
+    }
+  );
 
   it('never includes a hex or byte dump in a call-operation message', () => {
     const error = new Ledger8ComposeFailedError('call-operation', 'increment');
+
+    expect(error.message).not.toMatch(/[0-9a-f]{16,}/i);
+  });
+});
+
+describe('Ledger8ZswapUnsupportedError', () => {
+  it('carries the LEDGER8_ZSWAP_UNSUPPORTED code and names the circuit that moved coins', () => {
+    const error = new Ledger8ZswapUnsupportedError('send');
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error.name).toBe('Ledger8ZswapUnsupportedError');
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_ZSWAP_UNSUPPORTED);
+    expect(error.circuitId).toBe('send');
+    expect(error.message).toContain('send');
+    expect(error.message).toMatch(/unbalanced/i);
+  });
+
+  it('never includes a hex or byte dump in its own message', () => {
+    const error = new Ledger8ZswapUnsupportedError('send');
 
     expect(error.message).not.toMatch(/[0-9a-f]{16,}/i);
   });

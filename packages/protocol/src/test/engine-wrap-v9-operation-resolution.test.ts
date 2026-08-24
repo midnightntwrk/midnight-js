@@ -16,6 +16,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { encodeContractKeyLocation, hashVerifierKey } from '@midnight-ntwrk/compact-js';
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as LedgerV9 from '@midnightntwrk/ledger-v9';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -33,48 +34,95 @@ const FIELD_ALIGNMENT: ocrt3.Alignment = [{ tag: 'atom', value: { tag: 'field' }
 const fieldValue = (byte: number): ocrt3.AlignedValue => ({ value: [new Uint8Array(32).fill(byte)], alignment: FIELD_ALIGNMENT });
 const buildState = (byte: number): DownConvertedState => ({ data: new ocrt3.ChargedState(ocrt3.StateValue.newCell(fieldValue(byte))) });
 
+// Pre- and post-state carry DIFFERENT bytes on purpose: the bridge must read
+// the pre-call state, and only distinct fixtures can tell the two apart.
 const buildTranscript = (): TranscriptPojo => ({
   circuitId: 'increment',
   result: [],
   input: fieldValue(0x10),
   output: fieldValue(0x20),
   publicTranscript: [],
-  privateTranscriptOutputs: [],
+  privateTranscriptOutputs: [fieldValue(0x30)],
   preContractState: buildState(0x01),
   postContractState: buildState(0x02),
   privateStateAfter: {}
 });
 
-// Lives in its own file — a single doMock'd `ContractCallPrototype` capture,
-// using only a dynamic re-import of `../engine/wrap-v9` — so this poisoned
-// module registry cannot leak into engine-wrap-v9.test.ts's happy-path suite
-// (same isolation precedent as load-v8-failure.test.ts). Everything else in
-// `@midnightntwrk/ledger-v9` stays real (spread from importOriginal); only
-// the constructor call itself is intercepted, to prove wrapKeepStateCall
-// passes the REAL resolved operation through — not a blank default — since
-// ContractCallPrototype exposes no getter to inspect after construction.
-describe('wrapKeepStateCall operation resolution', () => {
+const registeredContractState = (): LedgerV9.ContractState => {
+  const registeredOp = new LedgerV9.ContractOperation();
+  registeredOp.verifierKey = REGISTERED_VERIFIER_KEY;
+  const contractState = new LedgerV9.ContractState();
+  contractState.setOperation('increment', registeredOp);
+  return contractState;
+};
+
+// The ten positional arguments of `ContractCallPrototype`, captured verbatim.
+// Named rather than indexed so a reordering of the ledger's own signature
+// shows up as a compile error here instead of a silently shifted assertion.
+interface CapturedCall {
+  address: unknown;
+  entryPoint: unknown;
+  op: LedgerV9.ContractOperation;
+  guaranteed: unknown;
+  fallible: unknown;
+  privateTranscriptOutputs: unknown;
+  input: unknown;
+  output: unknown;
+  commCommRand: unknown;
+  keyLocation: unknown;
+}
+
+// Lives in its own file — the doMock'd `@midnightntwrk/ledger-v9` registry
+// cannot leak into engine-wrap-v9.test.ts's happy-path suite (same isolation
+// precedent as load-v8-failure.test.ts). Everything else in the module stays
+// real (spread from importOriginal); only the pieces each test inspects are
+// intercepted, because `ContractCallPrototype` exposes no getter to read
+// back after construction.
+describe('wrapKeepStateCall call-prototype assembly', () => {
   afterEach(() => {
     vi.doUnmock('@midnightntwrk/ledger-v9');
+    vi.resetModules();
   });
 
-  it('passes the operation resolved from contractState.operation(circuitId) into ContractCallPrototype', async () => {
-    let capturedOp: LedgerV9.ContractOperation | undefined;
+  const mockCapturingPrototype = (captured: CapturedCall[]): void => {
     vi.doMock('@midnightntwrk/ledger-v9', async (importOriginal) => {
       const actual = await importOriginal<typeof LedgerV9>();
       class CapturingContractCallPrototype {
-        constructor(_address: unknown, _entryPoint: unknown, op: LedgerV9.ContractOperation) {
-          capturedOp = op;
+        constructor(
+          address: unknown,
+          entryPoint: unknown,
+          op: LedgerV9.ContractOperation,
+          guaranteed: unknown,
+          fallible: unknown,
+          privateTranscriptOutputs: unknown,
+          input: unknown,
+          output: unknown,
+          commCommRand: unknown,
+          keyLocation: unknown
+        ) {
+          captured.push({
+            address,
+            entryPoint,
+            op,
+            guaranteed,
+            fallible,
+            privateTranscriptOutputs,
+            input,
+            output,
+            commCommRand,
+            keyLocation
+          });
         }
       }
       return { ...actual, ContractCallPrototype: CapturingContractCallPrototype };
     });
-    const { wrapKeepStateCall } = await import('../lib/engine/wrap-v9');
+  };
 
-    const registeredOp = new LedgerV9.ContractOperation();
-    registeredOp.verifierKey = REGISTERED_VERIFIER_KEY;
-    const contractState = new LedgerV9.ContractState();
-    contractState.setOperation('increment', registeredOp);
+  it('passes the operation resolved from contractState.operation(circuitId) into ContractCallPrototype', async () => {
+    const captured: CapturedCall[] = [];
+    mockCapturingPrototype(captured);
+    const { wrapKeepStateCall } = await import('../lib/engine/wrap-v9');
+    const contractState = registeredContractState();
 
     wrapKeepStateCall({ transcript: buildTranscript(), contractAddress: LedgerV9.sampleContractAddress(), contractState });
 
@@ -83,7 +131,136 @@ describe('wrapKeepStateCall operation resolution', () => {
     // share object identity), so this asserts by VALUE (the serialized form)
     // rather than by reference, proving the real registered operation's
     // bytes flow through unchanged rather than a blank default's.
-    expect(capturedOp).toBeDefined();
-    expect(capturedOp?.serialize()).toEqual(registeredOp.serialize());
+    expect(captured).toHaveLength(1);
+    expect(captured[0]?.op.serialize()).toEqual(contractState.operation('increment')?.serialize());
+  });
+
+  it('places the address, entry point and transcript payloads at their own positions', async () => {
+    const captured: CapturedCall[] = [];
+    mockCapturingPrototype(captured);
+    const { wrapKeepStateCall } = await import('../lib/engine/wrap-v9');
+    const transcript = buildTranscript();
+    const contractAddress = LedgerV9.sampleContractAddress();
+
+    wrapKeepStateCall({ transcript, contractAddress, contractState: registeredContractState() });
+
+    // input/output/privateTranscriptOutputs carry distinct fixture bytes, so a
+    // transposition of any pair fails here rather than composing a valid-looking
+    // prototype that only a real ledger would reject.
+    const call = captured[0];
+    expect(call?.address).toBe(contractAddress);
+    expect(call?.entryPoint).toBe('increment');
+    expect(call?.input).toBe(transcript.input);
+    expect(call?.output).toBe(transcript.output);
+    expect(call?.privateTranscriptOutputs).toBe(transcript.privateTranscriptOutputs);
+  });
+
+  it('derives the key location in this framework canonical, contract-qualified form', async () => {
+    const captured: CapturedCall[] = [];
+    mockCapturingPrototype(captured);
+    const { wrapKeepStateCall } = await import('../lib/engine/wrap-v9');
+    const contractAddress = LedgerV9.sampleContractAddress();
+
+    wrapKeepStateCall({ transcript: buildTranscript(), contractAddress, contractState: registeredContractState() });
+
+    // A bare circuit id is ambiguous across contracts and is rejected by
+    // parseContractKeyLocation, so a prover resolving through ZKConfigRegistry
+    // could not find the artifact for this call.
+    expect(captured[0]?.keyLocation).toBe(
+      encodeContractKeyLocation({
+        contractAddress,
+        circuitId: 'increment',
+        verifierKeyHash: hashVerifierKey(REGISTERED_VERIFIER_KEY)
+      })
+    );
+  });
+
+  it('samples fresh communication commitment randomness for every call', async () => {
+    const captured: CapturedCall[] = [];
+    mockCapturingPrototype(captured);
+    const { wrapKeepStateCall } = await import('../lib/engine/wrap-v9');
+    const contractAddress = LedgerV9.sampleContractAddress();
+    const contractState = registeredContractState();
+
+    wrapKeepStateCall({ transcript: buildTranscript(), contractAddress, contractState });
+    wrapKeepStateCall({ transcript: buildTranscript(), contractAddress, contractState });
+
+    // Reusing one commitment across calls is a privacy regression that nothing
+    // downstream would surface, so it has to be pinned here.
+    expect(captured).toHaveLength(2);
+    expect(captured[0]?.commCommRand).not.toBe(captured[1]?.commCommRand);
+  });
+
+  it('bridges the PRE-call contract state into the query context, not the post-call one', async () => {
+    const decoded: LedgerV9.EncodedStateValue[] = [];
+    const captured: CapturedCall[] = [];
+    vi.doMock('@midnightntwrk/ledger-v9', async (importOriginal) => {
+      const actual = await importOriginal<typeof LedgerV9>();
+      class CapturingContractCallPrototype {
+        constructor() {
+          captured.push({} as CapturedCall);
+        }
+      }
+      return {
+        ...actual,
+        ContractCallPrototype: CapturingContractCallPrototype,
+        StateValue: {
+          ...actual.StateValue,
+          decode: (value: LedgerV9.EncodedStateValue) => {
+            decoded.push(value);
+            return actual.StateValue.decode(value);
+          }
+        }
+      };
+    });
+    const { wrapKeepStateCall } = await import('../lib/engine/wrap-v9');
+    const transcript = buildTranscript();
+
+    wrapKeepStateCall({
+      transcript,
+      contractAddress: LedgerV9.sampleContractAddress(),
+      contractState: registeredContractState()
+    });
+
+    expect(decoded).toHaveLength(1);
+    expect(decoded[0]).toEqual(transcript.preContractState.data.state.encode());
+    expect(decoded[0]).not.toEqual(transcript.postContractState.data.state.encode());
+  });
+
+  it('keeps the guaranteed and fallible partitions in their own argument positions', async () => {
+    const captured: CapturedCall[] = [];
+    const guaranteedSentinel = Symbol('guaranteed');
+    const fallibleSentinel = Symbol('fallible');
+    vi.doMock('@midnightntwrk/ledger-v9', async (importOriginal) => {
+      const actual = await importOriginal<typeof LedgerV9>();
+      class CapturingContractCallPrototype {
+        constructor(
+          address: unknown,
+          entryPoint: unknown,
+          op: LedgerV9.ContractOperation,
+          guaranteed: unknown,
+          fallible: unknown
+        ) {
+          captured.push({ address, entryPoint, op, guaranteed, fallible } as CapturedCall);
+        }
+      }
+      return {
+        ...actual,
+        ContractCallPrototype: CapturingContractCallPrototype,
+        partitionTranscripts: () => [[guaranteedSentinel, fallibleSentinel]]
+      };
+    });
+    const { wrapKeepStateCall } = await import('../lib/engine/wrap-v9');
+
+    wrapKeepStateCall({
+      transcript: buildTranscript(),
+      contractAddress: LedgerV9.sampleContractAddress(),
+      contractState: registeredContractState()
+    });
+
+    // Transposing these two composes a structurally valid prototype that
+    // Intent.addCall accepts and only a real ledger rejects.
+    expect(captured[0]?.guaranteed).toBe(guaranteedSentinel);
+    expect(captured[0]?.fallible).toBe(fallibleSentinel);
   });
 });

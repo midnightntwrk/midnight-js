@@ -17,7 +17,7 @@ import type { ContractState as OnchainContractStateV3 } from '@midnight-ntwrk/on
 import { ContractState as LedgerContractStateV9, type EncodedStateValue } from '@midnightntwrk/ledger-v9';
 
 import { DownConvertFailedError } from '../../errors';
-import type { LedgerVersion } from '../../version';
+import { LEDGER_VERSIONS, type LedgerVersion } from '../../version';
 
 export type { EncodedStateValue };
 
@@ -70,12 +70,24 @@ const ENVELOPE_DECODERS = {
  * `ledger8ContractState` is required for every `version`, not just `'v8'`:
  * making it optional would let a caller reach the `v8` branch with
  * `undefined` and fail with a `TypeError` instead of at the call site.
+ *
+ * The decoder is looked up as an own property. `version` is typed, but this
+ * function sits behind the public `Ledger8Engine.extractState`, so an untyped
+ * JavaScript consumer — or a version threaded from an indexer response — can
+ * reach it with any string. A bare index would resolve `Object.prototype`
+ * members and return their result as if it were state.
  */
 export const extractEncodedStateValue = (
   raw: Uint8Array,
   version: LedgerVersion,
   ledger8ContractState: Ledger8ContractState
 ): EncodedStateValue => {
+  if (!Object.hasOwn(ENVELOPE_DECODERS, version)) {
+    throw new DownConvertFailedError(
+      'envelope extraction',
+      new Error(`Unknown ledger version '${String(version)}'. Supported versions: ${LEDGER_VERSIONS.join(', ')}.`)
+    );
+  }
   try {
     return ENVELOPE_DECODERS[version](raw, ledger8ContractState);
   } catch (cause) {

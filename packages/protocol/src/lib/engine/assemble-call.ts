@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { encodeContractKeyLocation, hashVerifierKey } from '@midnight-ntwrk/compact-js';
 import type { AlignedValue, EncodedStateValue, Op } from '@midnightntwrk/ledger-v9';
 
 import { Ledger8ComposeFailedError, type Ledger8ComposeStage } from '../../errors';
@@ -25,8 +26,9 @@ import type { TranscriptPojo } from './execute';
  * inferred from the module namespace itself, so callers pass the module and
  * never spell out type arguments. The `AlignedValue`/`Op`/`EncodedStateValue`
  * payload types are declared once against ledger-v9: they are structurally
- * identical across onchain-runtime-v3, ledger-v8 and ledger-v9 (see the
- * compile-time drift gate in engine-down-convert.test.ts).
+ * identical across onchain-runtime-v3, ledger-v8 and ledger-v9 (compile-time
+ * drift gate at the bottom of engine-down-convert.test.ts, which pins all
+ * three axes).
  */
 export interface CallAssemblyLedger<
   TStateValue,
@@ -62,17 +64,39 @@ export interface CallAssemblyLedger<
   ) => TPrototype;
 }
 
-/** The slice of a ledger `ContractState` {@link assembleCallPrototype} reads. */
+/**
+ * The slice of a ledger `ContractState` {@link assembleCallPrototype} reads.
+ *
+ * `TOperation` is constrained to the one property this module inspects: a
+ * registered operation must carry a verifier key for a call against it to be
+ * verifiable. Both eras' `ContractOperation` declare `verifierKey` as a
+ * required `Uint8Array`, but a slot that was never assigned one reads back
+ * `undefined` — pinned by the operation-resolution tests, so a vendor change
+ * fails a test rather than silently disabling the check below.
+ */
 export interface CallOperationRegistry<TOperation> {
   readonly operation: (circuitId: string) => TOperation | undefined;
 }
+
+/** The one property {@link assembleCallPrototype} inspects on a resolved operation. */
+export interface VerifiableOperation {
+  readonly verifierKey?: Uint8Array;
+}
+
+/**
+ * The stages {@link assembleCallPrototype} can reach on a failed operation
+ * lookup. Narrower than {@link Ledger8ComposeStage}: this function only ever
+ * resolves a call's operation, so a caller cannot ask it to report a deploy
+ * stage. The verifier-key stage it raises itself and is not a caller choice.
+ */
+export type CallResolutionStage = Extract<Ledger8ComposeStage, 'wrap-call' | 'call-operation'>;
 
 /** Everything {@link assembleCallPrototype} needs beyond the ledger module. */
 export interface AssembleCallOptions<TOperation> {
   readonly transcript: TranscriptPojo;
   readonly contractAddress: string;
   readonly operations: CallOperationRegistry<TOperation>;
-  readonly stage: Ledger8ComposeStage;
+  readonly stage: CallResolutionStage;
 }
 
 /**
@@ -90,10 +114,27 @@ export interface AssembleCallOptions<TOperation> {
  * preserves the data exactly.
  *
  * Throws {@link Ledger8ComposeFailedError} with the caller's `stage` when
- * `operations` has no registered operation for the transcript's circuit,
- * rather than silently falling back to a blank, unverifiable operation.
+ * `operations` has no registered operation for the transcript's circuit, and
+ * with stage `'call-verifier-key'` when the operation it resolves carries no
+ * verifier key — rather than silently composing a call against a blank,
+ * unverifiable operation. The second check is stage-independent because the
+ * diagnosis does not differ by leg: an operation without a key is unusable on
+ * either ledger axis.
+ *
+ * `partitionTranscripts` returning nothing for the single call submitted is an
+ * internal invariant of the ledger module, not a caller error, so it throws a
+ * plain `Error` and deliberately carries no protocol error code.
  */
-export const assembleCallPrototype = <TStateValue, TChargedState, TQueryContext, TPreTranscript, TParams, TTranscript, TOperation, TPrototype>(
+export const assembleCallPrototype = <
+  TStateValue,
+  TChargedState,
+  TQueryContext,
+  TPreTranscript,
+  TParams,
+  TTranscript,
+  TOperation extends VerifiableOperation,
+  TPrototype
+>(
   ledger: CallAssemblyLedger<TStateValue, TChargedState, TQueryContext, TPreTranscript, TParams, TTranscript, TOperation, TPrototype>,
   options: AssembleCallOptions<TOperation>
 ): TPrototype => {
@@ -102,6 +143,9 @@ export const assembleCallPrototype = <TStateValue, TChargedState, TQueryContext,
   const op = operations.operation(transcript.circuitId);
   if (op === undefined) {
     throw new Ledger8ComposeFailedError(stage, transcript.circuitId);
+  }
+  if (op.verifierKey === undefined) {
+    throw new Ledger8ComposeFailedError('call-verifier-key', transcript.circuitId);
   }
 
   const stateValue = ledger.StateValue.decode(transcript.preContractState.data.state.encode());
@@ -126,6 +170,15 @@ export const assembleCallPrototype = <TStateValue, TChargedState, TQueryContext,
     transcript.input,
     transcript.output,
     ledger.communicationCommitmentRandomness(),
-    transcript.circuitId
+    // The canonical, contract-qualified key location this framework's provers
+    // resolve artifacts by (see `encodeContractKeyLocation` and
+    // `ZKConfigRegistry`). A bare circuit id is ambiguous across contracts and
+    // `parseContractKeyLocation` rejects it, so a call carrying one cannot be
+    // proven through the registry or the DApp-connector path.
+    encodeContractKeyLocation({
+      contractAddress,
+      circuitId: transcript.circuitId,
+      verifierKeyHash: hashVerifierKey(op.verifierKey)
+    })
   );
 };
