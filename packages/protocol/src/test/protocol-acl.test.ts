@@ -80,6 +80,7 @@ describe('Protocol ACL package', () => {
         'Ledger8ZswapUnsupportedError',
         'loadLedger8',
         'loadLedger8Engine',
+        'loadLedgerEra',
         'MerkleNotRehashedError',
         'networkHeadVersion',
         'onchainRuntime',

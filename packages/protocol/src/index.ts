@@ -15,6 +15,7 @@
 
 export * from './errors';
 export * from './lib/engine/load-engine';
+export * from './lib/era/load-era';
 export * from './lib/load-v8';
 export * from './version';
 export * as compactJs from '@midnight-ntwrk/compact-js';
