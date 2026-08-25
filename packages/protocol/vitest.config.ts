@@ -45,13 +45,15 @@ export default defineConfig({
         // coverage.exclude) instead — never fix a timeout by padding the test
         // timeout.
         //
-        // Two properties of this mechanism are worth knowing before editing:
+        // Three properties of this mechanism are worth knowing before editing:
         // a glob matching no file is ignored silently, so renaming or moving
-        // one of these files deletes its floor without any warning; and while
-        // the global thresholds above are also 100, these entries are
-        // redundant. They exist so that a future lowering of the global floor
-        // cannot quietly take these files down with it — do not delete them as
-        // dead config.
+        // one of these files deletes its floor without any warning; a glob
+        // matching a file with nothing to instrument is the same class of false
+        // assurance, so the two declaration-only entries below are marked as
+        // such rather than read as protecting anything; and while the global
+        // thresholds above are also 100, these entries are redundant. They
+        // exist so that a future lowering of the global floor cannot quietly
+        // take these files down with it — do not delete them as dead config.
         'src/version.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/ledger-version.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/engine/envelope.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
@@ -65,10 +67,18 @@ export default defineConfig({
         'src/lib/engine/deploy-v8.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/engine/index.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/engine/load-engine.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        // Shared by BOTH eras' deploy legs, and the three refusals it owns are
+        // what stop a deploy landing at an address the caller's artifacts do
+        // not describe. Floored for the same reason every other seam file is.
+        'src/lib/verifier-keys.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/era/adapt-v8.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        // Declaration-only: interfaces and `import type` alone, so there is
+        // nothing to instrument and this floor can never fail. Listed to keep
+        // the set of era modules complete and reviewable, not as a guarantee.
         'src/lib/era/compose-types.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/era/compose-v9.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/era/contract-state.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        // Declaration-only, as `compose-types.ts` above.
         'src/lib/era/era.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/era/load-era.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/era/unshielded.ts': { lines: 100, functions: 100, branches: 100, statements: 100 }

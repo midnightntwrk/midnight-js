@@ -18,6 +18,8 @@ import { dirname, join, resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { readHexFixture } from './fixtures';
+
 // This suite only makes sense against a real build: it inspects the rollup
 // output to guarantee the v8 ledger WASM is never inlined or statically
 // imported into the eagerly-loaded index bundle — it may load only through
@@ -77,26 +79,22 @@ const eagerContents = (entry: string): string => eagerClosureOf(entry).map((chun
 
 const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-const FIXTURES_DIR = resolve(PKG_ROOT, '..', '..', 'testkit-js/testkit-js/src/fixtures/hf');
 
-const readHexFixture = (name: string): Uint8Array => {
-  const text = readFileSync(resolve(FIXTURES_DIR, name), 'utf8').trim();
-  const bytes = Uint8Array.from(Buffer.from(text, 'hex'));
-  if (bytes.length * 2 !== text.length) {
-    throw new Error(`fixture ${name} is not valid hex in full: ${text.length} chars decoded to ${bytes.length} bytes`);
-  }
-  return bytes;
-};
 
 // Skipped (not omitted) when dist/ is absent, so a run without a prior build
 // still reports these as visible skips rather than silently vanishing —
 // run `yarn build && yarn test` to green them.
 //
+// Never skipped in CI, matching dist-engine-errors.test.ts and
+// dist-error-identity.test.ts: this is the only gate on the lazy-loading
+// contract the whole package rests on, so a CI job that ran tests without a
+// prior build must FAIL here rather than quietly drop it.
+//
 // The file reads happen lazily inside each `it` body (not in the `describe`
 // body) so that `describe.skipIf` actually prevents them from running when
 // dist/ is absent — vitest still executes a `describe` callback during test
 // collection even when `skipIf` is true; only the nested `it`s are skipped.
-describe.skipIf(!distIndexExists)('dist laziness gate', () => {
+describe.skipIf(!distIndexExists && !process.env.CI)('dist laziness gate', () => {
   // Both halves of the retained pre-fork stack, not just ledger-v8:
   // onchain-runtime-v3 is a runtime dependency of this package and carries its
   // own multi-megabyte WASM, so a static link to it costs a v9-only consumer
