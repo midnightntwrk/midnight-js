@@ -20,6 +20,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   ComposeFailedError,
+  type ComposeOption,
   ComposeOptionError,
   type ComposeStage,
   DownConvertFailedError,
@@ -422,7 +423,10 @@ const STAGE_KEYS: Readonly<Record<ComposeStage, true>> = {
   'wrap-call': true,
   'call-empty': true,
   'call-transcript-empty': true,
+  'call-partition': true,
+  'call-prototype': true,
   'call-dust-payout': true,
+  'call-unsupported-payout': true,
   'call-operation': true,
   'call-contract-state': true,
   'call-verifier-key': true,
@@ -459,6 +463,19 @@ const ALL_STAGES = Object.keys(STAGE_KEYS) as ComposeStage[];
     expect(error.message).not.toMatch(/[0-9a-f]{16,}/i);
   });
 });
+
+// The same discipline for the option union, and for the same reason: the hex
+// check below used to iterate a hand-written array, so an option added without
+// a message of its own went on being tested as though it had one.
+const OPTION_KEYS: Readonly<Record<ComposeOption, true>> = {
+  calls: true,
+  contractState: true,
+  networkId: true,
+  ttl: true,
+  verifierKeys: true,
+  zswapOffer: true
+};
+const ALL_OPTIONS = Object.keys(OPTION_KEYS) as ComposeOption[];
 
 describe('ComposeOptionError', () => {
   it('carries the COMPOSE_OPTION_INVALID code and preserves the decoder failure for contractState', () => {
@@ -528,9 +545,33 @@ describe('ComposeOptionError', () => {
   });
 
   it('never includes a hex or byte dump in its own message', () => {
-    for (const option of ['calls', 'contractState', 'networkId', 'ttl', 'verifierKeys', 'zswapOffer'] as const) {
+    for (const option of ALL_OPTIONS) {
       expect(new ComposeOptionError('v9', option).message).not.toMatch(/[0-9a-f]{16,}/i);
     }
+  });
+
+  // The message table is a total Record for the same reason
+  // `ComposeFailedError`'s is: a new option must not silently ship another
+  // option's text. It was an if-chain whose fallthrough returned the `'ttl'`
+  // message, so a seventh option would have told a caller their time-to-live
+  // was invalid while `option` named something else entirely.
+  it('gives every compose option a distinct message', () => {
+    const messages = ALL_OPTIONS.map((option) => new ComposeOptionError('v9', option).message);
+
+    expect(new Set(messages).size).toBe(ALL_OPTIONS.length);
+  });
+
+  // The one option whose diagnosis genuinely differs by era: v9 read the offer
+  // and rejected the bytes, v8 never reads one because it cannot carry the coin
+  // movements at all. A single message would send one era's caller to audit
+  // bytes that are fine.
+  it('diagnoses a refused Zswap offer differently on each era', () => {
+    const onV8 = new ComposeOptionError('v8', 'zswapOffer').message;
+    const onV9 = new ComposeOptionError('v9', 'zswapOffer').message;
+
+    expect(onV8).not.toBe(onV9);
+    expect(onV8).toMatch(/cannot be composed on this era at all/i);
+    expect(onV9).toMatch(/could not be read/i);
   });
 });
 

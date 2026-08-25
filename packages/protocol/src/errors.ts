@@ -288,20 +288,46 @@ export class MerkleNotRehashedError extends Error {
 }
 
 /**
- * Which composition step {@link ComposeFailedError} failed at:
- * - `'wrap-call'` — the keep-state leg could not resolve a registered
- *   operation for the transcript's circuit on the given contract state.
+ * What `circuitId` a {@link ComposeFailedError} names when the failure happened
+ * before any circuit was looked up — only `'call-empty'` reaches this today.
+ *
+ * Exported, and one literal rather than a per-module copy, so a consumer
+ * reading `circuitId` off a caught error can compare against it instead of
+ * matching a string this package could change, and so it can never be mistaken
+ * for a real entry point a caller might try to resolve.
+ */
+export const NO_CIRCUIT = '(none)';
+
+/**
+ * Which composition step {@link ComposeFailedError} failed at.
+ *
+ * Call stages:
  * - `'call-empty'` — a call transaction was requested with no calls in it.
  *   The one stage that names no circuit: it is raised before any circuit is
- *   looked up.
+ *   looked up, so it names {@link NO_CIRCUIT}.
  * - `'call-operation'` — a call leg could not resolve a registered operation
- *   for the transcript's circuit on the given contract state.
+ *   for the call's circuit on the given contract state.
+ * - `'call-verifier-key'` — a call leg resolved a registered operation for the
+ *   call's circuit, but that operation carries no verifier key, so no ledger
+ *   could verify a call against it.
  * - `'call-contract-state'` — the call's pre-call state could not be bridged
  *   into the target era's own state algebra. Carries the decoder's failure on
  *   `cause`.
- * - `'call-verifier-key'` — a call leg resolved a registered operation for the
- *   transcript's circuit, but that operation carries no verifier key, so no
- *   ledger could verify a call against it.
+ * - `'call-transcript-empty'` — a caller-supplied partitioned transcript
+ *   carried neither a guaranteed nor a fallible half, so the call would record
+ *   no operations at all.
+ * - `'call-partition'` — the ledger rejected the public transcript supplied
+ *   for a call while splitting it into its guaranteed and fallible halves.
+ *   Carries the runtime's own failure on `cause`.
+ * - `'call-prototype'` — the ledger rejected the call's own inputs while
+ *   constructing the call prototype. Carries the runtime's failure on `cause`.
+ * - `'call-dust-payout'` — a transcript claimed an unshielded spend to a user
+ *   address in DUST, which has no raw token type to be paid out in.
+ * - `'call-unsupported-payout'` — a transcript claimed an unshielded spend to
+ *   a user address in a token type that cannot be paid out as an unshielded
+ *   UTXO at all (a shielded token type today).
+ *
+ * Deploy stages:
  * - `'deploy-verifier-key'` — a deploy leg was given no verifier key for a
  *   circuit the contract state declares.
  * - `'deploy-unknown-circuit'` — the verifier-key map handed to a deploy leg
@@ -315,27 +341,26 @@ export class MerkleNotRehashedError extends Error {
  * - `'deploy-verifier-key-blob'` — the ledger rejected the verifier-key bytes
  *   supplied for a circuit.
  *
- * Which ledger era the failure happened on is carried separately, on the
- * error's `version` field: every stage above is reachable on both eras, so
- * folding the era into the stage would double this union without adding a
- * distinction any caller wants to `switch` on.
- */
-/**
- * What `circuitId` a {@link ComposeFailedError} names when the failure happened
- * before any circuit was looked up — only `'call-empty'` reaches this today.
+ * Keep-state stage:
+ * - `'wrap-call'` — the keep-state leg could not resolve a registered
+ *   operation for the transcript's circuit on the given contract state.
  *
- * Exported, and one literal rather than a per-module copy, so a consumer
- * reading `circuitId` off a caught error can compare against it instead of
- * matching a string this package could change, and so it can never be mistaken
- * for a real entry point a caller might try to resolve.
+ * Which ledger era the failure happened on is carried separately, on the
+ * error's `version` field. Every stage but `'wrap-call'` is reachable on both
+ * eras, so folding the era into the stage would nearly double this union
+ * without adding a distinction any caller wants to `switch` on. `'wrap-call'`
+ * is the exception because the operation it names is itself fork-crossing: it
+ * binds a pre-fork transcript onto a v9 state, so it is only ever raised for
+ * `'v9'`.
  */
-export const NO_CIRCUIT = '(none)';
-
 export type ComposeStage =
   | 'wrap-call'
   | 'call-empty'
   | 'call-transcript-empty'
+  | 'call-partition'
+  | 'call-prototype'
   | 'call-dust-payout'
+  | 'call-unsupported-payout'
   | 'call-operation'
   | 'call-contract-state'
   | 'call-verifier-key'
@@ -362,7 +387,7 @@ export type ComposeStage =
  * `circuitId` names the entry point, never its raw contents: this class
  * renders no hex and no byte-array dump, and callers pass entry-point names
  * that have already been decoded (see `entryPointName` in
- * `lib/engine/deploy-v8.ts`). `'call-empty'` is the one stage with no circuit
+ * `lib/verifier-keys.ts`). `'call-empty'` is the one stage with no circuit
  * to name, and its message names none.
  */
 export class ComposeFailedError extends Error {
@@ -423,6 +448,25 @@ export class ComposeFailedError extends Error {
       'cannot carry that payout, and composing it anyway would tell the user they were paid while the ' +
       'transaction paid them nothing. Settle dust through its own mechanism rather than as a claimed ' +
       'unshielded spend.',
+    'call-unsupported-payout': (version, circuitId) =>
+      `Failed to compose a ${version} call: the transcript for circuit '${circuitId}' claims an unshielded ` +
+      'spend to a user address in a token type that cannot be paid out as an unshielded UTXO — a shielded ' +
+      'token type today. Shielded value moves through a Zswap offer, not through a claimed unshielded ' +
+      'spend, so nothing can settle this claim; composing it anyway would tell the user they were paid ' +
+      'while the transaction paid them nothing. Move the shielded value through the guaranteed or fallible ' +
+      'Zswap offer instead.',
+    'call-partition': (version, circuitId) =>
+      `Failed to compose a ${version} call: the ${version} ledger rejected the public transcript supplied ` +
+      `for circuit '${circuitId}' while splitting it into its guaranteed and fallible halves. Read the ` +
+      'wrapped cause for what the runtime reported; it names the operation and the operand it could not ' +
+      'read. This usually means a hand-built or re-encoded op sequence rather than one an execution leg ' +
+      'produced — pass the transcript the circuit actually emitted.',
+    'call-prototype': (version, circuitId) =>
+      `Failed to compose a ${version} call: the ${version} ledger rejected the inputs supplied for circuit ` +
+      `'${circuitId}' while constructing the call prototype. Read the wrapped cause for what the runtime ` +
+      'reported; it distinguishes an out-of-range numeric field from a malformed address or aligned value. ' +
+      'Every part of a call is plain data that nothing type-checks into range, so this usually means a ' +
+      'hand-built transcript pair, private transcript output, or input/output value.',
     'call-verifier-key': (version, circuitId) =>
       `Failed to compose a ${version} call: the operation registered for circuit '${circuitId}' carries no ` +
       'verifier key, so no ledger could verify a call against it. This usually means the contract state came ' +
@@ -471,10 +515,18 @@ export class ComposeFailedError extends Error {
  *   retained pre-fork era composes exactly one call, because its execution leg
  *   runs a single circuit and refuses one with coin effects, so it has no
  *   cross-contract call tree to express.
- * - `'verifierKeys'` — a deploy was requested with no verifier-key map, on an
- *   era whose deploy leg has to register the compiled contract's keys itself.
- * - `'zswapOffer'` — the supplied Zswap offer bytes were rejected by the
- *   target era's decoder.
+ * - `'verifierKeys'` — a deploy was requested with no verifier-key map, and the
+ *   state it was given needs one. Raised on BOTH eras, for two different
+ *   reasons: the retained era's deploy leg has to register the compiled
+ *   contract's keys itself and so always needs the map, while the current era
+ *   accepts its omission for a state that already carries its keys and refuses
+ *   it only for a state still declaring a blank-keyed entry point.
+ * - `'zswapOffer'` — the offer cannot be used. Raised on BOTH eras, and this is
+ *   the one option whose meaning depends on `version`: on the current era the
+ *   supplied bytes were rejected by its decoder, while the retained era never
+ *   reads them at all because it cannot carry the coin movements an offer
+ *   implies. The remediations differ — "fix these bytes" against "this call
+ *   cannot be composed on this era" — so read `version` alongside `option`.
  */
 export type ComposeOption = 'calls' | 'contractState' | 'networkId' | 'ttl' | 'verifierKeys' | 'zswapOffer';
 
@@ -502,70 +554,57 @@ export class ComposeOptionError extends Error {
     readonly option: ComposeOption,
     cause?: unknown
   ) {
-    super(ComposeOptionError.buildMessage(version, option), { cause });
+    super(ComposeOptionError.MESSAGES[option](version), { cause });
     this.name = 'ComposeOptionError';
   }
 
-  private static buildMessage(version: LedgerVersion, option: ComposeOption): string {
-    if (option === 'contractState') {
-      return (
-        `Failed to compose a ${version} transaction: the given contract state could not be bridged into the ` +
-        `${version} ledger era. Read the wrapped cause for what the decoder reported; it distinguishes an ` +
-        'envelope tagged for a different ledger era from truncated or empty input bytes. Pass the contract ' +
-        'state the era it targets produced, not an already down-converted or otherwise re-tagged one.'
-      );
-    }
-    if (option === 'networkId') {
-      return (
-        'Refusing to compose a transaction against an empty network id. The ledger would accept it and bake ' +
-        'it into the transaction, which the network then rejects at submission. Resolve the network id for ' +
-        'the target environment and pass it explicitly.'
-      );
-    }
-    if (option === 'calls') {
-      return (
-        `Refusing to compose a ${version} call transaction from this call list: the era can compose exactly ` +
-        'one call, and composing only the first would silently drop the rest. This era executes a single ' +
-        'circuit and refuses one with coin effects, so it has no cross-contract call tree to express — ' +
-        'compose each call as its own transaction, or target the era that carries call trees.'
-      );
-    }
-    if (option === 'verifierKeys') {
-      return (
-        `Refusing to compose a ${version} deploy transaction with no verifier-key map. This era's deploy leg ` +
-        "registers the compiled contract's keys onto the initial state itself, and a constructor-built state " +
-        'declares every entry point with a blank key — without the map the deploy would carry unregistered ' +
-        "entry points and be refused by the ledger's own well-formedness check. Supply keys for exactly the " +
-        'circuits the contract declares.'
-      );
-    }
-    if (option === 'zswapOffer') {
-      // The one option whose diagnosis genuinely differs by era, so this
-      // branches rather than interpolating the era into one sentence: v9 reads
-      // the offer and reports bytes it could not decode, while v8 never reads
-      // one at all because it cannot carry the coin movements an offer implies.
-      // A single message would send one era's caller to audit bytes that are
-      // fine.
-      if (version === 'v8') {
-        return (
-          'Refusing to compose a v8 transaction carrying a Zswap offer. The retained pre-fork execution leg ' +
+  // A total Record rather than an if-chain, for exactly the reason
+  // `ComposeFailedError.MESSAGES` above is one: adding an option without its
+  // message fails to compile here. As an if-chain this fell through to the
+  // `'ttl'` text, so a seventh option would have told a caller their
+  // time-to-live was invalid while `option` named something else — an error
+  // contradicting its own field.
+  private static readonly MESSAGES: Readonly<Record<ComposeOption, (version: LedgerVersion) => string>> = {
+    contractState: (version) =>
+      `Failed to compose a ${version} transaction: the given contract state could not be bridged into the ` +
+      `${version} ledger era. Read the wrapped cause for what the decoder reported; it distinguishes an ` +
+      'envelope tagged for a different ledger era from truncated or empty input bytes. Pass the contract ' +
+      'state the era it targets produced, not an already down-converted or otherwise re-tagged one.',
+    networkId: () =>
+      'Refusing to compose a transaction against an empty network id. The ledger would accept it and bake ' +
+      'it into the transaction, which the network then rejects at submission. Resolve the network id for ' +
+      'the target environment and pass it explicitly.',
+    ttl: () =>
+      'Refusing to compose a transaction with an invalid time-to-live. An unparseable Date is recorded by ' +
+      'the ledger as the Unix epoch, producing a transaction that has already expired. Pass a valid future ' +
+      'instant as `ttl`.',
+    calls: (version) =>
+      `Refusing to compose a ${version} call transaction from this call list: the era can compose exactly ` +
+      'one call, and composing only the first would silently drop the rest. This era executes a single ' +
+      'circuit and refuses one with coin effects, so it has no cross-contract call tree to express — ' +
+      'compose each call as its own transaction, or target the era that carries call trees.',
+    verifierKeys: (version) =>
+      `Refusing to compose a ${version} deploy transaction with no verifier-key map. This era's deploy leg ` +
+      "registers the compiled contract's keys onto the initial state itself, and a constructor-built state " +
+      'declares every entry point with a blank key — without the map the deploy would carry unregistered ' +
+      "entry points and be refused by the ledger's own well-formedness check. Supply keys for exactly the " +
+      'circuits the contract declares. An era whose deploy leg accepts the omission still refuses it for a ' +
+      'state that declares a blank-keyed entry point, for the same reason.',
+    // The one option whose diagnosis genuinely differs by era, so this entry
+    // branches rather than interpolating the era into one sentence: v9 reads the
+    // offer and reports bytes it could not decode, while v8 never reads one at
+    // all because it cannot carry the coin movements an offer implies. A single
+    // message would send one era's caller to audit bytes that are fine.
+    zswapOffer: (version) =>
+      version === 'v8'
+        ? 'Refusing to compose a v8 transaction carrying a Zswap offer. The retained pre-fork execution leg ' +
           'does not carry the post-call Zswap local state, so a coin-moving call cannot be composed on this ' +
           'era at all; composing around the offer would drop the coin movements and yield an unbalanced ' +
           'transaction the node rejects at submission. Compose coin-moving calls on the v9 era.'
-        );
-      }
-      return (
-        `Failed to compose a ${version} transaction: the supplied Zswap offer bytes could not be read by the ` +
-        `${version} ledger. Read the wrapped cause for what the decoder reported. Pass the bytes that era's ` +
-        'own offer serialization produced.'
-      );
-    }
-    return (
-      'Refusing to compose a transaction with an invalid time-to-live. An unparseable Date is recorded by ' +
-      'the ledger as the Unix epoch, producing a transaction that has already expired. Pass a valid future ' +
-      'instant as `ttl`.'
-    );
-  }
+        : `Failed to compose a ${version} transaction: the supplied Zswap offer bytes could not be read by ` +
+          `the ${version} ledger. Read the wrapped cause for what the decoder reported. Pass the bytes that ` +
+          "era's own offer serialization produced."
+  };
 }
 
 /**
