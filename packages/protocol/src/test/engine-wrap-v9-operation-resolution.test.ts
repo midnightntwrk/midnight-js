@@ -14,7 +14,6 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 
 import { encodeContractKeyLocation, hashVerifierKey } from '@midnight-ntwrk/compact-js';
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
@@ -23,11 +22,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { DownConvertedState } from '../lib/engine/down-convert';
 import type { TranscriptPojo } from '../lib/engine/execute';
+import { fixturePath, readHexFixture } from './fixtures';
 
 // See engine-wrap-v9.test.ts: `ContractOperation.verifierKey`'s setter
 // validates a `midnight:verifier-key[...]:` tagged blob.
 const REGISTERED_VERIFIER_KEY = readFileSync(
-  resolve(__dirname, '../../../../testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/keys/increment.verifier')
+  fixturePath('twin-contract', 'compiled', 'keys', 'increment.verifier')
 );
 
 // The mis-dispatch negative from the hard-fork fixture set: a real, migrated,
@@ -40,17 +40,6 @@ const REGISTERED_VERIFIER_KEY = readFileSync(
 // input, so editing it invalidates this package's test cache.
 const FOREIGN_KEY_STATE_FIXTURE = 'state-co-v2-only-foreign.hex';
 
-const readHexFixture = (name: string): Uint8Array => {
-  const text = readFileSync(
-    resolve(__dirname, '../../../../testkit-js/testkit-js/src/fixtures/hf', name),
-    'utf8'
-  ).trim();
-  const bytes = Uint8Array.from(Buffer.from(text, 'hex'));
-  if (bytes.length * 2 !== text.length) {
-    throw new Error(`fixture ${name} is not valid hex in full: ${text.length} chars decoded to ${bytes.length} bytes`);
-  }
-  return bytes;
-};
 
 const FIELD_ALIGNMENT: ocrt3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
 const fieldValue = (byte: number): ocrt3.AlignedValue => ({ value: [new Uint8Array(32).fill(byte)], alignment: FIELD_ALIGNMENT });

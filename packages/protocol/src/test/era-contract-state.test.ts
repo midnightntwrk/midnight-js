@@ -13,8 +13,6 @@
  * limitations under the License.
  */
 
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 
 import { hashVerifierKey } from '@midnight-ntwrk/compact-js';
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
@@ -24,20 +22,12 @@ import { PROTOCOL_ERROR_CODES, StateDecodeFailedError } from '../errors';
 import { extractV9EncodedStateValue } from '../lib/engine/envelope';
 import { type ContractStateDecoder, decodeContractStateWith } from '../lib/era/contract-state';
 import { entryPointName } from '../lib/verifier-keys';
+import { readHexFixture } from './fixtures';
 
-const FIXTURES_DIR = resolve(__dirname, '../../../../testkit-js/testkit-js/src/fixtures/hf');
 
 // Same full-decode check the golden-fixture suite uses: `Buffer.from(_, 'hex')`
 // stops silently at the first non-hex character, so a truncated golden would
 // otherwise make a negative test pass for the wrong reason.
-const readHexFixture = (name: string): Uint8Array => {
-  const text = readFileSync(resolve(FIXTURES_DIR, name), 'utf8').trim();
-  const bytes = Uint8Array.from(Buffer.from(text, 'hex'));
-  if (bytes.length * 2 !== text.length) {
-    throw new Error(`fixture ${name} is not valid hex in full: ${text.length} chars decoded to ${bytes.length} bytes`);
-  }
-  return bytes;
-};
 
 const serializedStateWithBlankOperation = (): Uint8Array => {
   const contractState = new ledgerV9.ContractState();

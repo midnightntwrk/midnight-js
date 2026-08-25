@@ -13,12 +13,14 @@
  * limitations under the License.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
+
+import { readHexFixture } from './fixtures';
 
 // The engine lives in its own rollup entry, loaded through the package's
 // `./engine` subpath — so it is a SECOND bundle, and everything it throws
@@ -51,16 +53,7 @@ const downConvertedState = (byte: number) => ({
 
 // A transcript naming a circuit no contract state has registered: the shortest
 // real path to an error raised INSIDE the engine chunk.
-const FIXTURES_DIR = resolve(PKG_ROOT, '..', '..', 'testkit-js/testkit-js/src/fixtures/hf');
 
-const readHexFixture = (name: string): Uint8Array => {
-  const text = readFileSync(resolve(FIXTURES_DIR, name), 'utf8').trim();
-  const bytes = Uint8Array.from(Buffer.from(text, 'hex'));
-  if (bytes.length * 2 !== text.length) {
-    throw new Error(`fixture ${name} is not valid hex in full: ${text.length} chars decoded to ${bytes.length} bytes`);
-  }
-  return bytes;
-};
 
 const transcriptForUnregisteredCircuit = () => ({
   circuitId: 'increment',

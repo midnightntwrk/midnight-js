@@ -13,8 +13,6 @@
  * limitations under the License.
  */
 
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import { describe, expect, it } from 'vitest';
@@ -22,6 +20,7 @@ import { describe, expect, it } from 'vitest';
 import { DownConvertFailedError, PROTOCOL_ERROR_CODES } from '../errors';
 import { checkRoot, downConvertForExecution } from '../lib/engine/down-convert';
 import { extractEncodedStateValue, extractV9EncodedStateValue } from '../lib/engine/envelope';
+import { readHexFixture } from './fixtures';
 
 // The engine's own suite (engine-down-convert.test.ts) builds its envelopes
 // in-process, so it never touches these files. What it cannot prove is what
@@ -35,7 +34,6 @@ import { extractEncodedStateValue, extractV9EncodedStateValue } from '../lib/eng
 // back would close a workspace cycle. packages/protocol/turbo.json therefore
 // declares the fixture directory as a test input, so editing a golden
 // invalidates this package's test cache.
-const FIXTURES_DIR = resolve(__dirname, '../../../../testkit-js/testkit-js/src/fixtures/hf');
 
 /**
  * Reads a hex fixture, failing if the file did not decode in full.
@@ -43,14 +41,6 @@ const FIXTURES_DIR = resolve(__dirname, '../../../../testkit-js/testkit-js/src/f
  * without this length check a truncated or corrupted golden would still make
  * every negative test below pass — for the wrong reason.
  */
-const readHexFixture = (name: string): Uint8Array => {
-  const text = readFileSync(resolve(FIXTURES_DIR, name), 'utf8').trim();
-  const bytes = Uint8Array.from(Buffer.from(text, 'hex'));
-  if (bytes.length * 2 !== text.length) {
-    throw new Error(`fixture ${name} is not valid hex in full: ${text.length} chars decoded to ${bytes.length} bytes`);
-  }
-  return bytes;
-};
 
 describe('down-converting a real migrated state', () => {
   it('yields data byte-identical with the pre-migration v8 state', () => {
