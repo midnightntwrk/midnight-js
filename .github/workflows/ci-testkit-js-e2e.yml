@@ -239,7 +239,7 @@ jobs:
 
       - name: Publish Test Report
         if: always() && github.event_name != 'schedule'
-        uses: ctrf-io/github-test-reporter@e500b992f936420eb633c91644cf10d4d71df700 # ratchet:ctrf-io/github-test-reporter@v1.1.0
+        uses: ctrf-io/github-test-reporter@9ad85b91f851ff39e7da5f82981d30b9e637e163 # ratchet:ctrf-io/github-test-reporter@v1.1.1
         with:
           title: 'E2E Tests Results'
           report-path: 'ctrf-results/ctrf-report-merged.json'
