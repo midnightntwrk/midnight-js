@@ -14,8 +14,8 @@
  */
 
 import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 
+import { hashVerifierKey } from '@midnight-ntwrk/compact-js';
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
@@ -25,6 +25,7 @@ import { PROTOCOL_ERROR_CODES, StateDecodeFailedError } from '../errors';
 import type { CallTranscriptSource, ComposeCallOptions, ComposeDeployOptions } from '../lib/era/compose-types';
 import { loadLedgerEra } from '../lib/era/load-era';
 import type { LedgerVersion } from '../lib/ledger-version';
+import { fixturePath, readHexFixture } from './fixtures';
 
 // What parity means here, and what it deliberately does NOT mean.
 //
@@ -42,19 +43,10 @@ import type { LedgerVersion } from '../lib/ledger-version';
 // one after. Those really must decode to the same data, and that is what makes
 // every other comparison below meaningful.
 
-const FIXTURES_DIR = resolve(__dirname, '../../../../testkit-js/testkit-js/src/fixtures/hf');
 
-const readHexFixture = (name: string): Uint8Array => {
-  const text = readFileSync(resolve(FIXTURES_DIR, name), 'utf8').trim();
-  const bytes = Uint8Array.from(Buffer.from(text, 'hex'));
-  if (bytes.length * 2 !== text.length) {
-    throw new Error(`fixture ${name} is not valid hex in full: ${text.length} chars decoded to ${bytes.length} bytes`);
-  }
-  return bytes;
-};
 
 const VERIFIER_KEY = new Uint8Array(
-  readFileSync(resolve(FIXTURES_DIR, 'twin-contract/compiled/keys/increment.verifier'))
+  readFileSync(fixturePath('twin-contract', 'compiled', 'keys', 'increment.verifier'))
 );
 
 const FIELD_ALIGNMENT: ocrt3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
@@ -74,6 +66,13 @@ interface TransactionShape {
   readonly calls: readonly { readonly address: string; readonly entryPoint: string | Uint8Array }[];
   readonly deployAddresses: readonly string[];
   readonly deployedStateEntryPoints: readonly (string | Uint8Array)[];
+  /**
+   * The hash of the verifier key each declared entry point ended up carrying.
+   * Read back as well as the entry-point NAME, because an arm that registered a
+   * different key — or none — would produce the right names and the wrong
+   * contract, and the deploy derives its address from that state.
+   */
+  readonly deployedVerifierKeyHashes: readonly (string | undefined)[];
 }
 
 interface EraFixture {
@@ -130,8 +129,37 @@ const payingTranscript = (payee: Payee, value: bigint): ledgerV9.Transcript<ledg
   program: []
 });
 
+// Absent rather than a hash of nothing: hashing an empty key yields a
+// real-looking digest, which is exactly the confusion `ContractEntryPointPojo`
+// documents avoiding.
+const hashOf = (verifierKey: Uint8Array | undefined): string | undefined =>
+  verifierKey === undefined ? undefined : hashVerifierKey(verifierKey);
+
 const GUARANTEED_PAYOUT = 42n;
 const FALLIBLE_PAYOUT = 7n;
+
+/**
+ * A transcript claiming a user-addressed spend in a token type this seam cannot
+ * pay out. Built in the ledger's declared algebra like {@link payingTranscript},
+ * so it reaches the arms as a caller's transcript does.
+ */
+const unpayableTranscript = (
+  payee: Payee,
+  tokenType: ledgerV9.TokenType
+): ledgerV9.Transcript<ledgerV9.AlignedValue> => ({
+  ...payingTranscript(payee, GUARANTEED_PAYOUT),
+  effects: {
+    ...payingTranscript(payee, GUARANTEED_PAYOUT).effects,
+    claimedUnshieldedSpends: new Map([
+      [[tokenType, { tag: 'user', address: payee.owner } as ledgerV9.PublicAddress], GUARANTEED_PAYOUT]
+    ])
+  }
+});
+
+const unpayableTranscriptSource = (payee: Payee, tokenType: ledgerV9.TokenType): CallTranscriptSource => ({
+  kind: 'partitioned',
+  guaranteed: unpayableTranscript(payee, tokenType)
+});
 
 const payingTranscriptSource = (payee: Payee): CallTranscriptSource => ({
   kind: 'partitioned',
@@ -164,7 +192,12 @@ const v8Fixture: EraFixture = {
         .filter((action) => action instanceof LedgerV8.ContractCall)
         .map((call) => ({ address: call.address, entryPoint: call.entryPoint })),
       deployAddresses: deploys.map((deploy) => deploy.address),
-      deployedStateEntryPoints: deploys.flatMap((deploy) => deploy.initialState.operations())
+      deployedStateEntryPoints: deploys.flatMap((deploy) => deploy.initialState.operations()),
+      deployedVerifierKeyHashes: deploys.flatMap((deploy) =>
+        deploy.initialState
+          .operations()
+          .map((entryPoint) => hashOf(deploy.initialState.operation(entryPoint)?.verifierKey))
+      )
     };
   },
   samplePayee: () => ({ owner: LedgerV8.sampleUserAddress(), token: LedgerV8.sampleRawTokenType() }),
@@ -203,7 +236,12 @@ const v9Fixture: EraFixture = {
         .filter((action) => action instanceof ledgerV9.ContractCall)
         .map((call) => ({ address: call.address, entryPoint: call.entryPoint })),
       deployAddresses: deploys.map((deploy) => deploy.address),
-      deployedStateEntryPoints: deploys.flatMap((deploy) => deploy.initialState.operations())
+      deployedStateEntryPoints: deploys.flatMap((deploy) => deploy.initialState.operations()),
+      deployedVerifierKeyHashes: deploys.flatMap((deploy) =>
+        deploy.initialState
+          .operations()
+          .map((entryPoint) => hashOf(deploy.initialState.operation(entryPoint)?.verifierKey))
+      )
     };
   },
   samplePayee: () => ({ owner: ledgerV9.sampleUserAddress(), token: ledgerV9.sampleRawTokenType() }),
@@ -320,6 +358,75 @@ describe('the two ledger eras run the same scenario', () => {
     expect(outputs.fallible).toEqual([{ value: FALLIBLE_PAYOUT, owner: payee.owner, type: payee.token }]);
   });
 
+  // The refusals that guard that payout, run through `composeCallTx` on BOTH
+  // arms rather than against a hand-built literal. Both are transcript faults,
+  // so the transcript makes a real WASM round-trip on the way in: a vendor bump
+  // that renamed a token-type discriminant would leave a unit test on a literal
+  // green and drop the payout here.
+  it.each(ERAS)('refuses a dust payout to a user address on %s', async (version) => {
+    const era = await loadLedgerEra(version);
+    const payee = FIXTURES[version].samplePayee();
+    const options = callOptionsFor(version);
+
+    expect(() =>
+      era.composeCallTx({
+        ...options,
+        calls: [{ ...options.calls[0], transcript: unpayableTranscriptSource(payee, { tag: 'dust' }) }]
+      })
+    ).toThrowError(
+      expect.objectContaining({
+        code: PROTOCOL_ERROR_CODES.COMPOSE_FAILED,
+        stage: 'call-dust-payout',
+        version,
+        circuitId: 'increment'
+      })
+    );
+  });
+
+  it.each(ERAS)('refuses a shielded payout to a user address on %s', async (version) => {
+    const era = await loadLedgerEra(version);
+    const payee = FIXTURES[version].samplePayee();
+    const options = callOptionsFor(version);
+
+    expect(() =>
+      era.composeCallTx({
+        ...options,
+        calls: [
+          { ...options.calls[0], transcript: unpayableTranscriptSource(payee, { tag: 'shielded', raw: payee.token }) }
+        ]
+      })
+    ).toThrowError(
+      expect.objectContaining({
+        code: PROTOCOL_ERROR_CODES.COMPOSE_FAILED,
+        stage: 'call-unsupported-payout',
+        version,
+        circuitId: 'increment'
+      })
+    );
+  });
+
+  // A partitioned source carrying neither half type-checks, and composing it
+  // would claim a circuit ran while recording nothing. Both arms pass a
+  // caller-supplied pair straight through, so both must refuse this one.
+  it.each(ERAS)('refuses a partitioned transcript carrying neither half on %s', async (version) => {
+    const era = await loadLedgerEra(version);
+    const options = callOptionsFor(version);
+
+    expect(() =>
+      era.composeCallTx({
+        ...options,
+        calls: [{ ...options.calls[0], transcript: { kind: 'partitioned' } }]
+      })
+    ).toThrowError(
+      expect.objectContaining({
+        code: PROTOCOL_ERROR_CODES.COMPOSE_FAILED,
+        stage: 'call-transcript-empty',
+        version,
+        circuitId: 'increment'
+      })
+    );
+  });
+
   it.each(ERAS)('composes a deploy whose returned address is the one the transaction carries on %s', async (version) => {
     const era = await loadLedgerEra(version);
 
@@ -330,6 +437,10 @@ describe('the two ledger eras run the same scenario', () => {
     expect(shape.calls).toEqual([]);
     expect(shape.deployAddresses).toEqual([result.contractAddress]);
     expect(shape.deployedStateEntryPoints).toEqual(['increment']);
+    // The KEY crossed, not just its name: both arms must register the very key
+    // the caller supplied, or the deployed contract cannot verify a call and
+    // its address does not match the caller's artifacts.
+    expect(shape.deployedVerifierKeyHashes).toEqual([hashVerifierKey(VERIFIER_KEY)]);
   });
 
   // The boundary rule, mechanised across the whole surface: only plain data
@@ -368,6 +479,35 @@ describe('the two ledger eras run the same scenario', () => {
     const era = await loadLedgerEra(version);
 
     expect(() => era.composeCallTx({ ...callOptionsFor(version), ttl: new Date('not-a-date') })).toThrowError(
+      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID, option: 'ttl', version })
+    );
+  });
+
+  // Each of the checks above passes exactly one bad option, which is why the
+  // arms could report a DIFFERENT option for the same input while both of those
+  // stayed green: the v8 arm used to reach its own era-specific refusals before
+  // the envelope was looked at, so an empty network id lost to a Zswap offer on
+  // v8 and won on v9. A caller writing one error-handling path across both eras
+  // has to see the same option named first for the same options object.
+  it.each(ERAS)('names the envelope first when a second option is also bad on %s', async (version) => {
+    const era = await loadLedgerEra(version);
+
+    expect(() =>
+      era.composeCallTx({
+        ...callOptionsFor(version),
+        networkId: '',
+        guaranteedZswapOffer: new Uint8Array([0xff, 0xff])
+      })
+    ).toThrowError(
+      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID, option: 'networkId', version })
+    );
+  });
+
+  it.each(ERAS)('names the envelope first on a deploy with a second bad option on %s', async (version) => {
+    const era = await loadLedgerEra(version);
+    const { verifierKeys: _omitted, ...rest } = deployOptionsFor(version);
+
+    expect(() => era.composeDeployTx({ ...rest, ttl: new Date('not-a-date') })).toThrowError(
       expect.objectContaining({ code: PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID, option: 'ttl', version })
     );
   });

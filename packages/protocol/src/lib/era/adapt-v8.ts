@@ -14,6 +14,7 @@
  */
 
 import { ComposeFailedError, ComposeOptionError, NO_CIRCUIT } from '../../errors';
+import { assertComposeEnvelope } from '../engine/compose-options';
 import { composeV8CallTx } from '../engine/compose-v8';
 import { composeV8DeployTx } from '../engine/deploy-v8';
 import type { ProtocolV8 } from '../load-v8';
@@ -72,14 +73,22 @@ const refuseZswapOffer = (offers: readonly (Uint8Array | undefined)[]): void => 
  */
 export const composeEraV8CallTx = (options: ComposeCallOptions, v8: ProtocolV8): Uint8Array => {
   const { calls, networkId, ttl, guaranteedZswapOffer, fallibleZswapOffer } = options;
+  // Checked here rather than left to the inner leg, so this arm refuses the
+  // options in the SAME order the v9 arm does: envelope, then the call list,
+  // then the offers, then the era's own limits, then the state. A caller
+  // handing both an empty network id and an offer this era cannot carry has one
+  // defect to fix per era, not a different one per era. The inner leg checks the
+  // envelope again; the check is idempotent, and leaving it there keeps
+  // `composeV8CallTx` safe to call directly.
+  assertComposeEnvelope(options, 'v8');
   if (calls.length === 0) {
     throw new ComposeFailedError('v8', 'call-empty', NO_CIRCUIT);
   }
-  const [call] = calls;
   refuseZswapOffer([guaranteedZswapOffer, fallibleZswapOffer]);
   if (calls.length > 1) {
     throw new ComposeOptionError('v8', 'calls');
   }
+  const [call] = calls;
 
   return composeV8CallTx(
     {
@@ -112,9 +121,21 @@ export const composeEraV8CallTx = (options: ComposeCallOptions, v8: ProtocolV8):
  * The contract state crosses into the leg by BYTES, which is what that leg
  * takes: it deserializes into its own era rather than accepting a handle, so
  * no object is passed between two WASM copies.
+ *
+ * One ordering difference from the v9 arm survives on purpose. Both check the
+ * envelope first and the offer second, but v9 reads the state before it looks
+ * at `verifierKeys`, while this arm cannot: the state is read by the leg it
+ * delegates to, and reading it here as well would deserialize the same bytes
+ * twice. So a deploy that is BOTH unreadable and missing its key map reports
+ * `'contractState'` on v9 and `'verifierKeys'` here. Both name a real defect in
+ * the same call, and closing the gap costs a redundant deserialization of every
+ * deploy to reorder a diagnosis for a caller who has two things to fix either
+ * way.
  */
 export const composeEraV8DeployTx = (options: ComposeDeployOptions, v8: ProtocolV8): DeployResultPojo => {
   const { contractState, verifierKeys, networkId, ttl, guaranteedZswapOffer } = options;
+  // See `composeEraV8CallTx` — hoisted so both arms refuse the envelope first.
+  assertComposeEnvelope(options, 'v8');
   refuseZswapOffer([guaranteedZswapOffer]);
   if (verifierKeys === undefined) {
     throw new ComposeOptionError('v8', 'verifierKeys');
