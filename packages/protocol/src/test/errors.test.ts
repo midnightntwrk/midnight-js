@@ -21,6 +21,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ComposeFailedError,
   ComposeOptionError,
+  type ComposeStage,
   DownConvertFailedError,
   Ledger8InstanceMismatchError,
   Ledger8RuntimeInvalidError,
@@ -414,41 +415,37 @@ describe('ComposeFailedError', () => {
     expect(error.message).toMatch(/pre-call state/i);
   });
 
+// One list, keyed by the union itself: a stage added to `ComposeStage` without
+// a line here fails to compile, so these suites cannot quietly go on testing a
+// narrower set than the type declares. Two hand-written arrays could, and did.
+const STAGE_KEYS: Readonly<Record<ComposeStage, true>> = {
+  'wrap-call': true,
+  'call-empty': true,
+  'call-transcript-empty': true,
+  'call-operation': true,
+  'call-contract-state': true,
+  'call-verifier-key': true,
+  'deploy-verifier-key': true,
+  'deploy-unknown-circuit': true,
+  'deploy-ambiguous-circuit': true,
+  'deploy-verifier-key-blob': true
+};
+const ALL_STAGES = Object.keys(STAGE_KEYS) as ComposeStage[];
+
   // The message table is a total Record so that a new stage cannot silently
   // ship another stage's text. This is what that buys: every stage produces
   // its own message.
   it('gives every compose stage a distinct message', () => {
-    const stages = [
-      'wrap-call',
-      'call-empty',
-      'call-operation',
-      'call-contract-state',
-      'call-verifier-key',
-      'deploy-verifier-key',
-      'deploy-unknown-circuit',
-      'deploy-ambiguous-circuit',
-      'deploy-verifier-key-blob'
-    ] as const;
+    const messages = ALL_STAGES.map((stage) => new ComposeFailedError('v9', stage, 'increment').message);
 
-    const messages = stages.map((stage) => new ComposeFailedError('v9', stage, 'increment').message);
-
-    expect(new Set(messages).size).toBe(stages.length);
+    expect(new Set(messages).size).toBe(ALL_STAGES.length);
   });
 
   // Every stage that resolves a circuit names it. `'call-empty'` is excluded
   // deliberately: it is raised before any circuit is known, so a circuit id in
   // its text would be an invention.
   it('names the circuit on every stage that has one', () => {
-    const circuitStages = [
-      'wrap-call',
-      'call-operation',
-      'call-contract-state',
-      'call-verifier-key',
-      'deploy-verifier-key',
-      'deploy-unknown-circuit',
-      'deploy-ambiguous-circuit',
-      'deploy-verifier-key-blob'
-    ] as const;
+    const circuitStages = ALL_STAGES.filter((stage) => stage !== 'call-empty');
 
     const messages = circuitStages.map((stage) => new ComposeFailedError('v9', stage, 'increment').message);
 

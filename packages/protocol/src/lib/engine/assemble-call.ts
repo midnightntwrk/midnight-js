@@ -148,6 +148,16 @@ const resolvePartition = <TStateValue, TChargedState, TQueryContext, TPreTranscr
 ): readonly [Transcript<AlignedValue> | undefined, Transcript<AlignedValue> | undefined] => {
   const { transcript, contractAddress, circuitId, version } = options;
   if (transcript.kind === 'partitioned') {
+    // Only the CALLER-supplied pair is checked. An empty pair coming back from
+    // the module's own partitioner below is that module's answer for the
+    // program it was handed, and this seam does not overrule it. A partitioned
+    // source carrying neither half is different: it is a caller with nothing to
+    // compose, and a prototype built from it would claim a circuit ran while
+    // recording no operations — the same silent no-op `'call-empty'` refuses
+    // one level up.
+    if (transcript.guaranteed === undefined && transcript.fallible === undefined) {
+      throw new ComposeFailedError(version, 'call-transcript-empty', circuitId);
+    }
     return [transcript.guaranteed, transcript.fallible];
   }
 
@@ -178,9 +188,11 @@ const resolvePartition = <TStateValue, TChargedState, TQueryContext, TPreTranscr
  * `ContractCallPrototype`.
  *
  * Throws {@link ComposeFailedError} with the caller's `stage` when
- * `operations` has no registered operation for the transcript's circuit, and
- * with stage `'call-verifier-key'` when the operation it resolves carries no
- * verifier key — rather than silently composing a call against a blank,
+ * `operations` has no registered operation for `circuitId`, with stage
+ * `'call-transcript-empty'` when a caller-supplied partitioned pair has neither
+ * half,
+ * and with stage `'call-verifier-key'` when the operation it resolves carries
+ * no verifier key — rather than silently composing a call against a blank,
  * unverifiable operation. The second check is stage-independent because the
  * diagnosis does not differ by leg: an operation without a key is unusable on
  * either ledger axis.

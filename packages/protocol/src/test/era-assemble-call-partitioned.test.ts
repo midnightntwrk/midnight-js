@@ -128,6 +128,36 @@ describe('assembleCallPrototype from an already-partitioned transcript', () => {
   // Intent's own bytes: `Intent.new()` mints a fresh segment id, so two intents
   // built from identical calls never serialize identically. The randomness the
   // prototype carries is pinned for the same reason.
+  // `ComposeCallOptions` makes both halves optional, so a source carrying
+  // neither type-checks. Composed rather than refused, it yields a call that
+  // claims a circuit ran and records no operations: the transaction serializes,
+  // proves, submits and changes nothing. Refused only on the caller-supplied
+  // arm — an empty pair from the module's own partitioner is that module's
+  // answer, not a caller error.
+  it('refuses a partitioned source carrying neither half rather than composing a call that does nothing', () => {
+    const address = ledgerV9.sampleContractAddress();
+
+    let caught: unknown;
+    try {
+      assembleWith(
+        address,
+        { kind: 'partitioned' },
+        contractStateWithOperation(),
+        ledgerV9.communicationCommitmentRandomness()
+      );
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(ComposeFailedError);
+    expect(caught).toMatchObject({
+      code: PROTOCOL_ERROR_CODES.COMPOSE_FAILED,
+      stage: 'call-transcript-empty',
+      version: 'v9',
+      circuitId: 'increment'
+    });
+  });
+
   it('produces the same call as partitioning the same transcript inside the assembler', () => {
     const address = ledgerV9.sampleContractAddress();
     const [guaranteed, fallible] = partitionOf(address);

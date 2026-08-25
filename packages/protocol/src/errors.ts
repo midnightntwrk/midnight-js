@@ -316,6 +316,7 @@ export class MerkleNotRehashedError extends Error {
 export type ComposeStage =
   | 'wrap-call'
   | 'call-empty'
+  | 'call-transcript-empty'
   | 'call-operation'
   | 'call-contract-state'
   | 'call-verifier-key'
@@ -391,6 +392,12 @@ export class ComposeFailedError extends Error {
       `circuit '${circuitId}' could not be bridged into the ${version} ledger era. Read the wrapped cause ` +
       'for what the decoder reported; it distinguishes a state encoded by a different runtime from ' +
       'truncated or empty input. Pass the state the era it targets produced.',
+    'call-transcript-empty': (version, circuitId) =>
+      `Failed to compose a ${version} call: the transcript supplied for circuit '${circuitId}' carries neither ` +
+      'a guaranteed nor a fallible half, so the call would record no operations at all. A transaction built ' +
+      'from it serializes, proves and submits, and changes nothing — the same silent no-op an empty call list ' +
+      'would produce. Pass the partitioned pair the execution leg produced, at least one half of which is ' +
+      'always present for a circuit that ran.',
     'call-verifier-key': (version, circuitId) =>
       `Failed to compose a ${version} call: the operation registered for circuit '${circuitId}' carries no ` +
       'verifier key, so no ledger could verify a call against it. This usually means the contract state came ' +
