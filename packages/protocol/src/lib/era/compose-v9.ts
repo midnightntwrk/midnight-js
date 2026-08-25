@@ -198,6 +198,27 @@ const registerVerifierKeys = (
 };
 
 /**
+ * Refuses a state that still declares an entry point with a blank verifier key
+ * when no key map was supplied.
+ *
+ * `verifierKeys` is optional so that a state which ALREADY carries its keys can
+ * be deployed as-is. Omitting it for a constructor-built state is a different
+ * thing entirely: every entry point is declared blank, the deploy derives its
+ * address from that blank state, and the contract lands on chain unable to
+ * verify any call against it. Nothing fails until the first call, which reports
+ * `'call-verifier-key'` a long way from the cause. The v8 arm refuses the
+ * omission outright; this makes the two arms agree without taking away the one
+ * case the optionality exists for.
+ */
+const assertStateCarriesKeys = (contractState: ledgerV9.ContractState): void => {
+  for (const entryPoint of contractState.operations()) {
+    if (contractState.operation(entryPoint)?.verifierKey === undefined) {
+      throw new ComposeOptionError('v9', 'verifierKeys');
+    }
+  }
+};
+
+/**
  * Composes a v9-native deploy transaction from a serialized initial contract
  * state and immediately serializes it, returning the transaction together with
  * the address the deployment will have and the initial state that address is
@@ -213,7 +234,8 @@ const registerVerifierKeys = (
  * With `verifierKeys` supplied, every declared entry point is registered before
  * the address is derived — see {@link registerVerifierKeys} for the checks that
  * run first. Without it, the state is deployed exactly as given, which is right
- * only for a state that already carries its keys.
+ * only for a state that already carries its keys — and that is checked rather
+ * than assumed, see {@link assertStateCarriesKeys}.
  */
 export const composeV9DeployTx = (options: ComposeDeployOptions): DeployResultPojo => {
   const { contractState, verifierKeys, networkId, ttl, guaranteedZswapOffer } = options;
@@ -221,7 +243,9 @@ export const composeV9DeployTx = (options: ComposeDeployOptions): DeployResultPo
 
   const guaranteedOffer = readZswapOffer(guaranteedZswapOffer);
   const state = readContractState(contractState);
-  if (verifierKeys !== undefined) {
+  if (verifierKeys === undefined) {
+    assertStateCarriesKeys(state);
+  } else {
     registerVerifierKeys(state, verifierKeys);
   }
 

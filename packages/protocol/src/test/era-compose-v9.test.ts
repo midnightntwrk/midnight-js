@@ -404,6 +404,23 @@ describe('composeV9DeployTx', () => {
     expect(callSegments.size).toBeGreaterThan(1);
   });
 
+  // The optionality of `verifierKeys` exists for the state in the test below,
+  // not as a way to skip registration. Omitting it for a constructor-built
+  // state used to deploy a contract whose entry points are all blank, at an
+  // address derived from that blank state; the first call against it then
+  // failed at 'call-verifier-key', a long way from the cause. The v8 arm
+  // refuses the omission outright, so this is also where the two arms met.
+  it('refuses a deploy whose state still declares a blank key and carries no key map', () => {
+    const error = caughtDeploy(() => composeV9DeployTx(deployOptions({ verifierKeys: undefined })));
+
+    expect(error).toBeInstanceOf(ComposeOptionError);
+    expect(error).toMatchObject({
+      code: PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID,
+      option: 'verifierKeys',
+      version: 'v9'
+    });
+  });
+
   it('deploys a state that already carries its keys without a verifier-key map', () => {
     const result = composeV9DeployTx(
       deployOptions({ contractState: serializedStateWith(keyedOperation()), verifierKeys: undefined })
