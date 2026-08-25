@@ -53,6 +53,27 @@ describe('loadLedgerEra v8 failure path', () => {
     expect(loadLedger8).toHaveBeenCalledTimes(2);
   });
 
+  // De-memoising on failure is only half the contract. The other half is that
+  // the retry actually lands: a repaired install must yield a usable era, and
+  // that era must then be memoised like any other, rather than the slot staying
+  // cleared and every later call re-importing the WASM.
+  it('memoises the era a repaired install finally produces', async () => {
+    const repairedModule = { ContractState: class {} };
+    const loadLedger8 = vi
+      .fn()
+      .mockRejectedValueOnce(new Ledger8RuntimeMissingError('/v8', new Error('simulated v8 load failure')))
+      .mockResolvedValue(repairedModule);
+    vi.doMock('../lib/load-v8', () => ({ loadLedger8 }));
+    const { loadLedgerEra } = await import('../lib/era/load-era');
+
+    await expect(loadLedgerEra('v8')).rejects.toBeInstanceOf(Ledger8RuntimeMissingError);
+
+    const repaired = await loadLedgerEra('v8');
+    expect(repaired.version).toBe('v8');
+    expect(await loadLedgerEra('v8')).toBe(repaired);
+    expect(loadLedger8).toHaveBeenCalledTimes(2);
+  });
+
   // The acquisition failure already carries a protocol code and its own
   // wrapped cause. Re-wrapping it here would bury both behind a second layer
   // and break `instanceof` narrowing for every caller.

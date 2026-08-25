@@ -21,6 +21,7 @@ import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
+import { PROTOCOL_ERROR_CODES } from '../errors';
 import type { CallTranscriptSource, ComposeCallOptions, ComposeDeployOptions } from '../lib/era/compose-types';
 import { loadLedgerEra } from '../lib/era/load-era';
 import type { LedgerVersion } from '../lib/ledger-version';
@@ -325,6 +326,25 @@ describe('the two ledger eras run the same scenario', () => {
   // The boundary rule, mechanised across the whole surface: only plain data
   // crosses the facade. A live WASM handle in any of these results would make
   // structuredClone throw, so this fails rather than shipping one.
+  // Parity of the happy path is the easy half. A caller writing era-agnostic
+  // code also has to be able to handle a refusal the same way on both arms, so
+  // the coded refusals for a malformed envelope are pinned per era too.
+  it.each(ERAS)('refuses an empty network id with the same coded error on %s', async (version) => {
+    const era = await loadLedgerEra(version);
+
+    expect(() => era.composeCallTx({ ...callOptionsFor(version), networkId: '' })).toThrowError(
+      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID, option: 'networkId', version })
+    );
+  });
+
+  it.each(ERAS)('refuses an invalid ttl with the same coded error on %s', async (version) => {
+    const era = await loadLedgerEra(version);
+
+    expect(() => era.composeCallTx({ ...callOptionsFor(version), ttl: new Date('not-a-date') })).toThrowError(
+      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID, option: 'ttl', version })
+    );
+  });
+
   it.each(ERAS)('returns only structured-cloneable data from every %s method', async (version) => {
     const era = await loadLedgerEra(version);
     const golden = readHexFixture(FIXTURES[version].golden);

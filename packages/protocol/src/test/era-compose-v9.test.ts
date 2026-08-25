@@ -62,6 +62,33 @@ const ADDRESS = ledgerV9.sampleContractAddress();
 const USER = ledgerV9.sampleUserAddress();
 const TOKEN = ledgerV9.sampleRawTokenType();
 
+// A transcript whose effects claim an unshielded payout to a user address.
+// Module-level rather than local to one test, because the aggregation it feeds
+// has to be exercised for a call TREE as well as for a single call.
+const payingTranscript = (owner: string, value: bigint): ledgerV9.Transcript<ledgerV9.AlignedValue> => ({
+  gas: { readTime: 0n, computeTime: 0n, bytesWritten: 0n, bytesDeleted: 0n },
+  effects: {
+    claimedNullifiers: [],
+    claimedShieldedReceives: [],
+    claimedShieldedSpends: [],
+    claimedContractCalls: [],
+    shieldedMints: new Map(),
+    unshieldedMints: new Map(),
+    unshieldedInputs: new Map(),
+    unshieldedOutputs: new Map(),
+    claimedUnshieldedSpends: new Map([
+      [
+        [
+          { tag: 'unshielded', raw: TOKEN } as ledgerV9.TokenType,
+          { tag: 'user', address: owner } as ledgerV9.PublicAddress
+        ],
+        value
+      ]
+    ])
+  },
+  program: []
+});
+
 const callEntry = (overrides: Partial<ComposeCallEntry> = {}): ComposeCallEntry => ({
   contractAddress: ADDRESS,
   circuitId: 'increment',
@@ -227,36 +254,13 @@ describe('composeV9CallTx', () => {
   // call that paid a user out would compose into an unbalanced transaction the
   // node rejects on submission.
   it('attaches the unshielded offer each segment pays out', () => {
-    const transcript = (owner: string, value: bigint): ledgerV9.Transcript<ledgerV9.AlignedValue> => ({
-      gas: { readTime: 0n, computeTime: 0n, bytesWritten: 0n, bytesDeleted: 0n },
-      effects: {
-        claimedNullifiers: [],
-        claimedShieldedReceives: [],
-        claimedShieldedSpends: [],
-        claimedContractCalls: [],
-        shieldedMints: new Map(),
-        unshieldedMints: new Map(),
-        unshieldedInputs: new Map(),
-        unshieldedOutputs: new Map(),
-        claimedUnshieldedSpends: new Map([
-          [
-            [
-              { tag: 'unshielded', raw: TOKEN } as ledgerV9.TokenType,
-              { tag: 'user', address: owner } as ledgerV9.PublicAddress
-            ],
-            value
-          ]
-        ])
-      },
-      program: []
-    });
     const options = callOptions({
       calls: [
         callEntry({
           transcript: {
             kind: 'partitioned',
-            guaranteed: transcript(USER, 42n),
-            fallible: transcript(USER, 7n)
+            guaranteed: payingTranscript(USER, 42n),
+            fallible: payingTranscript(USER, 7n)
           }
         })
       ]
@@ -266,6 +270,46 @@ describe('composeV9CallTx', () => {
 
     expect(intents[0].guaranteedUnshieldedOffer?.outputs).toEqual([{ value: 42n, owner: USER, type: TOKEN }]);
     expect(intents[0].fallibleUnshieldedOffer?.outputs).toEqual([{ value: 7n, owner: USER, type: TOKEN }]);
+  });
+
+  // The cross-contract call TREE, which is the shape this arm exists to
+  // compose and which every other test here exercises with a single entry.
+  // A loop that collapsed to calls[0] or calls.at(-1), an aggregation that read
+  // only the first ContractCall off the intent, or randomness applied uniformly
+  // instead of per entry all pass a one-element suite and all produce a
+  // transaction the node rejects.
+  it('composes every call in a tree, in trace order, and aggregates the payouts of all of them', () => {
+    const calleeAddress = ledgerV9.sampleContractAddress();
+    const calleeRandomness = ledgerV9.communicationCommitmentRandomness();
+    const options = callOptions({
+      // Execution-trace order: cross-contract callee first, root call last.
+      calls: [
+        callEntry({
+          contractAddress: calleeAddress,
+          communicationCommitmentRandomness: calleeRandomness,
+          transcript: { kind: 'partitioned', guaranteed: payingTranscript(USER, 5n) }
+        }),
+        callEntry({
+          transcript: { kind: 'partitioned', guaranteed: payingTranscript(USER, 37n) }
+        })
+      ]
+    });
+
+    const transaction = readBack(composeV9CallTx(options));
+
+    const calls = callsIn(transaction);
+    expect(calls.map((call) => call.address)).toEqual([calleeAddress, ADDRESS]);
+    // Each call keeps the randomness it was bound with: the callee the one the
+    // runtime gave it, the root a fresh one. Sharing either across the tree
+    // breaks the ledger's commitment check at submission.
+    expect(calls[0].communicationCommitment).not.toBe(calls[1].communicationCommitment);
+    // Both payouts, not just the root's. A callee's payout dropped here leaves
+    // the transaction unbalanced with nothing reported at composition time.
+    const intents = [...(transaction.intents?.values() ?? [])];
+    expect(intents[0].guaranteedUnshieldedOffer?.outputs).toEqual([
+      { value: 5n, owner: USER, type: TOKEN },
+      { value: 37n, owner: USER, type: TOKEN }
+    ]);
   });
 
   it('refuses an empty network id rather than baking it into the transaction', () => {
