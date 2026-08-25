@@ -62,6 +62,17 @@ const partitionOf = (address: string): readonly [ledgerV9.Transcript<ledgerV9.Al
   )[0];
 };
 
+// Resolved rather than asserted non-null: the fixture program's ops are all
+// guaranteed, so an absent half here would mean the fixture stopped exercising
+// what these tests read it for.
+const guaranteedOf = (address: string): ledgerV9.Transcript<ledgerV9.AlignedValue> => {
+  const [guaranteed] = partitionOf(address);
+  if (guaranteed === undefined) {
+    throw new Error('expected the fixture program to partition into a guaranteed transcript');
+  }
+  return guaranteed;
+};
+
 // An Intent's actions are a union of calls and deploys, so the call has to be
 // narrowed out rather than indexed blindly.
 const callIn = (intent: ledgerV9.Intent<ledgerV9.SignatureEnabled, ledgerV9.PreProof, ledgerV9.PreBinding>): ledgerV9.ContractCall<ledgerV9.PreProof> => {
@@ -255,6 +266,67 @@ describe('assembleCallPrototype from an already-partitioned transcript', () => {
     expect(caught).toBeInstanceOf(ComposeFailedError);
     const failure = caught as ComposeFailedError;
     expect(failure.stage).toBe('call-contract-state');
+    expect(failure.version).toBe('v9');
+    expect(failure.circuitId).toBe('increment');
+    expect(failure.cause).toBeInstanceOf(Error);
+    expect(failure.message).not.toMatch(/[0-9a-f]{16,}/i);
+  });
+
+  // Everything a caller supplies here is plain data in the ledger's own
+  // declared algebra, and nothing type-checks an `Op`'s operand into range. The
+  // partitioner rejects such a program with a raw Rust serde message whose
+  // stack starts three frames deep in wasm, so it has to leave this seam coded
+  // like every other caller fault.
+  it('reports a public transcript the partitioner rejects as a coded failure', () => {
+    const address = ledgerV9.sampleContractAddress();
+
+    let caught: unknown;
+    try {
+      assembleWith(
+        address,
+        { kind: 'unpartitioned', preState: PRE_STATE, publicTranscript: [{ noop: { n: -1 } }] },
+        contractStateWithOperation(),
+        ledgerV9.communicationCommitmentRandomness()
+      );
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(ComposeFailedError);
+    const failure = caught as ComposeFailedError;
+    expect(failure.code).toBe(PROTOCOL_ERROR_CODES.COMPOSE_FAILED);
+    expect(failure.stage).toBe('call-partition');
+    expect(failure.version).toBe('v9');
+    expect(failure.circuitId).toBe('increment');
+    expect(failure.cause).toBeInstanceOf(Error);
+    expect(failure.message).not.toMatch(/[0-9a-f]{16,}/i);
+  });
+
+  // The same argument one step later: the prototype constructor re-reads the
+  // transcript pair it is handed, and a partitioned source is caller-built, so
+  // an out-of-range gas figure reaches the ledger unchecked. Reached on the
+  // partitioned arm because that is the arm whose pair never passed through
+  // this process's own partitioner.
+  it('reports a transcript pair the prototype constructor rejects as a coded failure', () => {
+    const address = ledgerV9.sampleContractAddress();
+    const guaranteed = guaranteedOf(address);
+
+    let caught: unknown;
+    try {
+      assembleWith(
+        address,
+        { kind: 'partitioned', guaranteed: { ...guaranteed, gas: { ...guaranteed.gas, readTime: -1n } } },
+        contractStateWithOperation(),
+        ledgerV9.communicationCommitmentRandomness()
+      );
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(ComposeFailedError);
+    const failure = caught as ComposeFailedError;
+    expect(failure.code).toBe(PROTOCOL_ERROR_CODES.COMPOSE_FAILED);
+    expect(failure.stage).toBe('call-prototype');
     expect(failure.version).toBe('v9');
     expect(failure.circuitId).toBe('increment');
     expect(failure.cause).toBeInstanceOf(Error);

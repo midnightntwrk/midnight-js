@@ -92,7 +92,8 @@ export interface VerifiableOperation {
  * The stages {@link assembleCallPrototype} can reach on a failed operation
  * lookup. Narrower than {@link ComposeStage}: this function only ever
  * resolves a call's operation, so a caller cannot ask it to report a deploy
- * stage. The verifier-key and pre-call-state stages it raises itself and are
+ * stage. Every other stage it can raise — the verifier-key, pre-call-state,
+ * empty-transcript, partition and prototype stages — it chooses itself, and is
  * not a caller choice.
  */
 export type CallResolutionStage = Extract<ComposeStage, 'wrap-call' | 'call-operation'>;
@@ -140,7 +141,8 @@ export interface AssembleCallOptions<TOperation> {
  * engine-down-convert.test.ts). A state the module still cannot read is the
  * caller's, so it leaves as {@link ComposeFailedError} at stage
  * `'call-contract-state'` with the decoder's own failure on `cause`, rather
- * than as a raw WASM error.
+ * than as a raw WASM error. A public transcript the partitioner itself rejects
+ * leaves the same way at stage `'call-partition'`.
  *
  * `partitionTranscripts` then returning nothing for the single call submitted
  * is an internal invariant of the ledger module, not a caller error, so that
@@ -173,10 +175,20 @@ const resolvePartition = <TStateValue, TChargedState, TQueryContext, TPreTranscr
     throw new ComposeFailedError(version, 'call-contract-state', circuitId, cause);
   }
 
-  const partitioned = ledger.partitionTranscripts(
-    [new ledger.PreTranscript(queryContext, transcript.publicTranscript)],
-    ledger.LedgerParameters.initialParameters()
-  );
+  // The public transcript is caller data in the ledger's own declared algebra,
+  // and nothing type-checks an op's operand into range, so the partitioner
+  // rejects a hand-built or re-encoded sequence with a raw runtime error whose
+  // stack starts inside wasm. Coded here so a caller catches the same shape it
+  // catches for every other caller fault on this seam.
+  let partitioned: (readonly [Transcript<AlignedValue> | undefined, Transcript<AlignedValue> | undefined])[];
+  try {
+    partitioned = ledger.partitionTranscripts(
+      [new ledger.PreTranscript(queryContext, transcript.publicTranscript)],
+      ledger.LedgerParameters.initialParameters()
+    );
+  } catch (cause) {
+    throw new ComposeFailedError(version, 'call-partition', circuitId, cause);
+  }
   const first = partitioned[0];
   if (first === undefined) {
     throw new Error('partitionTranscripts returned no result for the call transcript.');
@@ -191,15 +203,22 @@ const resolvePartition = <TStateValue, TChargedState, TQueryContext, TPreTranscr
  * {@link resolvePartition}), and construct the module's
  * `ContractCallPrototype`.
  *
- * Throws {@link ComposeFailedError} with the caller's `stage` when
- * `operations` has no registered operation for `circuitId`, with stage
- * `'call-transcript-empty'` when a caller-supplied partitioned pair has neither
- * half,
- * and with stage `'call-verifier-key'` when the operation it resolves carries
- * no verifier key — rather than silently composing a call against a blank,
- * unverifiable operation. The second check is stage-independent because the
- * diagnosis does not differ by leg: an operation without a key is unusable on
- * either ledger axis.
+ * Every failure it raises is a {@link ComposeFailedError} naming `version` and
+ * `circuitId`. Which stage it names:
+ * - the caller's own `stage`, when `operations` has no registered operation for
+ *   `circuitId`;
+ * - `'call-verifier-key'`, when the operation it resolves carries no verifier
+ *   key — rather than silently composing a call against a blank, unverifiable
+ *   operation. This one is not a caller choice, because the diagnosis does not
+ *   differ by leg: an operation without a key is unusable on either ledger axis;
+ * - `'call-transcript-empty'`, `'call-contract-state'` or `'call-partition'`,
+ *   from resolving the transcript pair — see {@link resolvePartition};
+ * - `'call-prototype'`, when the module rejects the call's own inputs.
+ *
+ * Nothing raised here is a raw runtime error, with one deliberate exception
+ * documented on {@link resolvePartition}: a module whose partitioner returns
+ * nothing has broken its own invariant, which is not a caller fault and carries
+ * no protocol error code.
  */
 export const assembleCallPrototype = <
   TStateValue,
@@ -225,25 +244,35 @@ export const assembleCallPrototype = <
 
   const [guaranteed, fallible] = resolvePartition(ledger, options);
 
-  return new ledger.ContractCallPrototype(
-    contractAddress,
-    circuitId,
-    op,
-    guaranteed,
-    fallible,
-    options.privateTranscriptOutputs,
-    options.input,
-    options.output,
-    options.communicationCommitmentRandomness ?? ledger.communicationCommitmentRandomness(),
-    // The canonical, contract-qualified key location this framework's provers
-    // resolve artifacts by (see `encodeContractKeyLocation` and
-    // `ZKConfigRegistry`). A bare circuit id is ambiguous across contracts and
-    // `parseContractKeyLocation` rejects it, so a call carrying one cannot be
-    // proven through the registry or the DApp-connector path.
-    encodeContractKeyLocation({
+  // Wrapped as one step rather than per argument: the constructor re-reads the
+  // transcript pair, the private outputs and the input/output values, all of
+  // which are caller data that nothing range-checks, and the failure a caller
+  // needs to act on is the same whichever field the runtime tripped over — the
+  // runtime's own message on `cause` names it. A partitioned pair is the
+  // sharpest case, having never passed through this process's own partitioner.
+  try {
+    return new ledger.ContractCallPrototype(
       contractAddress,
       circuitId,
-      verifierKeyHash: hashVerifierKey(op.verifierKey)
-    })
-  );
+      op,
+      guaranteed,
+      fallible,
+      options.privateTranscriptOutputs,
+      options.input,
+      options.output,
+      options.communicationCommitmentRandomness ?? ledger.communicationCommitmentRandomness(),
+      // The canonical, contract-qualified key location this framework's provers
+      // resolve artifacts by (see `encodeContractKeyLocation` and
+      // `ZKConfigRegistry`). A bare circuit id is ambiguous across contracts and
+      // `parseContractKeyLocation` rejects it, so a call carrying one cannot be
+      // proven through the registry or the DApp-connector path.
+      encodeContractKeyLocation({
+        contractAddress,
+        circuitId,
+        verifierKeyHash: hashVerifierKey(op.verifierKey)
+      })
+    );
+  } catch (cause) {
+    throw new ComposeFailedError(version, 'call-prototype', circuitId, cause);
+  }
 };
