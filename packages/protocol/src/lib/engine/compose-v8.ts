@@ -16,6 +16,7 @@
 import type { AlignedValue } from '@midnightntwrk/ledger-v9';
 
 import type { CallTranscriptSource } from '../era/compose-types';
+import { aggregateUnshieldedOffers } from '../era/unshielded';
 import type { ProtocolV8 } from '../load-v8';
 import { assembleCallPrototype } from './assemble-call';
 import { assertComposeEnvelope } from './compose-options';
@@ -93,5 +94,26 @@ export const composeV8CallTx = (options: ComposeV8CallOptions, v8: ProtocolV8): 
   });
 
   const intent = v8.Intent.new(ttl).addCall(prototype);
+
+  // Read the partitioned pair back off the intent rather than re-deriving it:
+  // these are the exact transcripts the transaction now carries, so the offers
+  // cannot describe a different partition than the call does. This mirrors the
+  // v9 arm (`../era/compose-v9.ts`) — a user-addressed payout has to be
+  // attached on BOTH eras, or a call that pays one out composes into an
+  // unbalanced transaction the node rejects on submission, with nothing having
+  // reported a problem here.
+  const unshielded = aggregateUnshieldedOffers(
+    intent.actions
+      .filter((action) => action instanceof v8.ContractCall)
+      .map((call) => ({ guaranteed: call.guaranteedTranscript, fallible: call.fallibleTranscript })),
+    v8
+  );
+  if (unshielded.guaranteed !== undefined) {
+    intent.guaranteedUnshieldedOffer = unshielded.guaranteed;
+  }
+  if (unshielded.fallible !== undefined) {
+    intent.fallibleUnshieldedOffer = unshielded.fallible;
+  }
+
   return v8.Transaction.fromPartsRandomized(networkId, undefined, undefined, intent).serialize();
 };

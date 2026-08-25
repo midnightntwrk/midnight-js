@@ -138,6 +138,8 @@ The same method names do not mean the same capabilities. The v8 arm refuses two 
 
 The v8 arm also *requires* `verifierKeys` on `composeDeployTx`, where the v9 arm treats it as optional: the retained deploy leg registers the compiled contract's keys onto the initial state itself, and a constructor-built state declares every entry point with a blank key. Omitting the map throws `ComposeOptionError` with `option: 'verifierKeys'`.
 
+What is *not* asymmetric: a call's user-addressed unshielded payouts are aggregated onto the transaction's guaranteed and fallible offers on **both** eras. Attaching them on one era only would leave the other composing an unbalanced transaction the node rejects on submission, with nothing having reported a problem at composition time — so `era-parity.test.ts` asserts the payout each segment carries, per era.
+
 ### Errors
 
 | Error | Code | Raised when |

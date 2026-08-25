@@ -21,7 +21,7 @@ import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
-import type { ComposeCallOptions, ComposeDeployOptions } from '../lib/era/compose-types';
+import type { CallTranscriptSource, ComposeCallOptions, ComposeDeployOptions } from '../lib/era/compose-types';
 import { loadLedgerEra } from '../lib/era/load-era';
 import type { LedgerVersion } from '../lib/ledger-version';
 
@@ -83,7 +83,60 @@ interface EraFixture {
   /** A state declaring `increment` with a BLANK key — what a constructor produces. */
   readonly blankContractState: () => Uint8Array;
   readonly readTransaction: (bytes: Uint8Array) => TransactionShape;
+  /** A payee this era samples for itself — the two eras' samplers are separate. */
+  readonly samplePayee: () => Payee;
+  /** The unshielded outputs each segment of a composed transaction carries. */
+  readonly readUnshieldedOutputs: (bytes: Uint8Array) => SegmentedOutputs;
 }
+
+/** Who a claimed unshielded spend pays, and in what. */
+interface Payee {
+  readonly owner: string;
+  readonly token: string;
+}
+
+/** The unshielded outputs a composed transaction carries, per segment. */
+interface SegmentedOutputs {
+  readonly guaranteed: readonly ledgerV9.UtxoOutput[] | undefined;
+  readonly fallible: readonly ledgerV9.UtxoOutput[] | undefined;
+}
+
+// Declared once against ledger-v9 and used on BOTH arms: `Transcript` and
+// `Effects` are structurally identical across the two eras (the drift gate at
+// the bottom of engine-down-convert.test.ts pins that), and `ComposeCallOptions`
+// declares this shape in the ledger-v9 algebra for exactly that reason.
+const payingTranscript = (payee: Payee, value: bigint): ledgerV9.Transcript<ledgerV9.AlignedValue> => ({
+  gas: { readTime: 0n, computeTime: 0n, bytesWritten: 0n, bytesDeleted: 0n },
+  effects: {
+    claimedNullifiers: [],
+    claimedShieldedReceives: [],
+    claimedShieldedSpends: [],
+    claimedContractCalls: [],
+    shieldedMints: new Map(),
+    unshieldedMints: new Map(),
+    unshieldedInputs: new Map(),
+    unshieldedOutputs: new Map(),
+    claimedUnshieldedSpends: new Map([
+      [
+        [
+          { tag: 'unshielded', raw: payee.token } as ledgerV9.TokenType,
+          { tag: 'user', address: payee.owner } as ledgerV9.PublicAddress
+        ],
+        value
+      ]
+    ])
+  },
+  program: []
+});
+
+const GUARANTEED_PAYOUT = 42n;
+const FALLIBLE_PAYOUT = 7n;
+
+const payingTranscriptSource = (payee: Payee): CallTranscriptSource => ({
+  kind: 'partitioned',
+  guaranteed: payingTranscript(payee, GUARANTEED_PAYOUT),
+  fallible: payingTranscript(payee, FALLIBLE_PAYOUT)
+});
 
 const v8Fixture: EraFixture = {
   golden: 'state-v8.hex',
@@ -111,6 +164,15 @@ const v8Fixture: EraFixture = {
         .map((call) => ({ address: call.address, entryPoint: call.entryPoint })),
       deployAddresses: deploys.map((deploy) => deploy.address),
       deployedStateEntryPoints: deploys.flatMap((deploy) => deploy.initialState.operations())
+    };
+  },
+  samplePayee: () => ({ owner: LedgerV8.sampleUserAddress(), token: LedgerV8.sampleRawTokenType() }),
+  readUnshieldedOutputs: (bytes) => {
+    const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', bytes);
+    const intents = [...(back.intents?.values() ?? [])];
+    return {
+      guaranteed: intents[0]?.guaranteedUnshieldedOffer?.outputs,
+      fallible: intents[0]?.fallibleUnshieldedOffer?.outputs
     };
   }
 };
@@ -141,6 +203,15 @@ const v9Fixture: EraFixture = {
         .map((call) => ({ address: call.address, entryPoint: call.entryPoint })),
       deployAddresses: deploys.map((deploy) => deploy.address),
       deployedStateEntryPoints: deploys.flatMap((deploy) => deploy.initialState.operations())
+    };
+  },
+  samplePayee: () => ({ owner: ledgerV9.sampleUserAddress(), token: ledgerV9.sampleRawTokenType() }),
+  readUnshieldedOutputs: (bytes) => {
+    const back = ledgerV9.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', bytes);
+    const intents = [...(back.intents?.values() ?? [])];
+    return {
+      guaranteed: intents[0]?.guaranteedUnshieldedOffer?.outputs,
+      fallible: intents[0]?.fallibleUnshieldedOffer?.outputs
     };
   }
 };
@@ -215,6 +286,28 @@ describe('the two ledger eras run the same scenario', () => {
     expect(shape.calls[0].address).toBe(options.calls[0].contractAddress);
     expect(shape.calls[0].entryPoint).toBe('increment');
     expect(shape.deployAddresses).toEqual([]);
+  });
+
+  // The aggregation of user-addressed unshielded payouts is not a v9
+  // refinement — a call that pays a user out has to carry the offer on EITHER
+  // era, or it composes into an unbalanced transaction the node rejects on
+  // submission with nothing having reported a problem at composition time.
+  // Asserted per era against that era's own sampled payee: the samplers are
+  // separate, so the addresses are not comparable across eras, but the payout
+  // the offer carries is.
+  it.each(ERAS)('attaches the unshielded offer each segment pays out on %s', async (version) => {
+    const era = await loadLedgerEra(version);
+    const payee = FIXTURES[version].samplePayee();
+    const options = callOptionsFor(version);
+
+    const bytes = era.composeCallTx({
+      ...options,
+      calls: [{ ...options.calls[0], transcript: payingTranscriptSource(payee) }]
+    });
+
+    const outputs = FIXTURES[version].readUnshieldedOutputs(bytes);
+    expect(outputs.guaranteed).toEqual([{ value: GUARANTEED_PAYOUT, owner: payee.owner, type: payee.token }]);
+    expect(outputs.fallible).toEqual([{ value: FALLIBLE_PAYOUT, owner: payee.owner, type: payee.token }]);
   });
 
   it.each(ERAS)('composes a deploy whose returned address is the one the transaction carries on %s', async (version) => {

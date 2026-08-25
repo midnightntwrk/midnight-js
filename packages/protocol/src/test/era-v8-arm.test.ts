@@ -128,6 +128,51 @@ const runIncrement = async (): Promise<{
   return { entry: callEntryFromTranscript(transcript, address), address };
 };
 
+// A transcript whose effects claim an unshielded payout to a user address —
+// the shape a coin-paying call produces and the only input from which the
+// transaction's unshielded offers can be derived.
+const payingTranscript = (
+  owner: string,
+  token: string,
+  value: bigint
+): LedgerV8.Transcript<LedgerV8.AlignedValue> => ({
+  gas: { readTime: 0n, computeTime: 0n, bytesWritten: 0n, bytesDeleted: 0n },
+  effects: {
+    claimedNullifiers: [],
+    claimedShieldedReceives: [],
+    claimedShieldedSpends: [],
+    claimedContractCalls: [],
+    shieldedMints: new Map(),
+    unshieldedMints: new Map(),
+    unshieldedInputs: new Map(),
+    unshieldedOutputs: new Map(),
+    claimedUnshieldedSpends: new Map([
+      [
+        [
+          { tag: 'unshielded', raw: token } as LedgerV8.TokenType,
+          { tag: 'user', address: owner } as LedgerV8.PublicAddress
+        ],
+        value
+      ]
+    ])
+  },
+  program: []
+});
+
+const payingCallEntry = (owner: string, token: string): ComposeCallEntry => ({
+  contractAddress: ocrt3.dummyContractAddress(),
+  circuitId: 'increment',
+  contractState: serializedV8StateWithOperation(),
+  transcript: {
+    kind: 'partitioned',
+    guaranteed: payingTranscript(owner, token, 42n),
+    fallible: payingTranscript(owner, token, 7n)
+  },
+  privateTranscriptOutputs: [],
+  input: { value: [], alignment: [] },
+  output: { value: [], alignment: [] }
+});
+
 describe('the v8 era arm', () => {
   it('extracts a v8-era envelope the engine can then down-convert for execution', async () => {
     const era = await loadLedgerEra('v8');
@@ -169,6 +214,29 @@ describe('the v8 era arm', () => {
     // Intents record their ttl at second granularity, so compare floored seconds.
     expect(Math.floor(intents[0].ttl.getTime() / 1000)).toBe(Math.floor(ttl.getTime() / 1000));
   });
+
+  // Both eras must attach the unshielded offer each segment pays out. Without
+  // it a v8 call that pays a user out composes into an unbalanced transaction
+  // the node rejects on submission, with nothing having reported a problem at
+  // composition time — the failure the aggregation exists to prevent, and the
+  // reason it cannot live on one era only.
+  it('attaches the unshielded offer each segment pays out', async () => {
+    const era = await loadLedgerEra('v8');
+    const owner = LedgerV8.sampleUserAddress();
+    const token = LedgerV8.sampleRawTokenType();
+
+    const bytes = era.composeCallTx({
+      calls: [payingCallEntry(owner, token)],
+      networkId: NETWORK_ID,
+      ttl: new Date(Date.now() + 3_600_000)
+    });
+
+    const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', bytes);
+    const intents = [...(back.intents?.values() ?? [])];
+    expect(intents[0].guaranteedUnshieldedOffer?.outputs).toEqual([{ value: 42n, owner, type: token }]);
+    expect(intents[0].fallibleUnshieldedOffer?.outputs).toEqual([{ value: 7n, owner, type: token }]);
+  });
+
 
   it('composes a v8-native deploy from a constructor result passed as bytes', async () => {
     const era = await loadLedgerEra('v8');
