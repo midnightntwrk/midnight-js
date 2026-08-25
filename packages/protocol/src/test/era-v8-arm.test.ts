@@ -291,9 +291,36 @@ describe('the v8 era arm', () => {
       });
 
     expect(refuse).toThrowError(
-      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.LEDGER8_ZSWAP_UNSUPPORTED })
+      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID, option: 'zswapOffer', version: 'v8' })
     );
-    expect(refuse).toThrowError(Ledger8ZswapUnsupportedError);
+    expect(refuse).toThrowError(ComposeOptionError);
+    // The class the EXECUTION leg raises when a circuit really did produce coin
+    // effects stays out of this path: nothing ran here, so a message saying a
+    // circuit produced Zswap outputs would describe something that did not
+    // happen, and the two remediations differ.
+    expect(refuse).not.toThrowError(Ledger8ZswapUnsupportedError);
+  });
+
+  // `refuseZswapOffer` tests the offers with `Array.prototype.some`, which
+  // short-circuits: with only the guaranteed offer ever set, the fallible slot
+  // was never evaluated with a defined value, and both branches of the
+  // predicate still covered. Narrowing the check to the guaranteed offer alone
+  // would have passed the whole suite while accepting an offer on an era that
+  // cannot carry coin movements.
+  it('refuses a fallible Zswap offer, not just a guaranteed one', async () => {
+    const era = await loadLedgerEra('v8');
+    const { entry } = await runIncrement();
+
+    expect(() =>
+      era.composeCallTx({
+        calls: [entry],
+        networkId: NETWORK_ID,
+        ttl: new Date(Date.now() + 3_600_000),
+        fallibleZswapOffer: new Uint8Array([1, 2, 3])
+      })
+    ).toThrowError(
+      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID, option: 'zswapOffer', version: 'v8' })
+    );
   });
 
   // The retained leg composes exactly one call: `executeCircuit` runs a single
@@ -387,7 +414,9 @@ describe('the v8 era arm', () => {
         ttl: new Date(Date.now() + 3_600_000),
         guaranteedZswapOffer: new Uint8Array([1, 2, 3])
       })
-    ).toThrowError(expect.objectContaining({ code: PROTOCOL_ERROR_CODES.LEDGER8_ZSWAP_UNSUPPORTED }));
+    ).toThrowError(
+      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID, option: 'zswapOffer', version: 'v8' })
+    );
   });
 
   it('refuses a call transaction with no calls in it', async () => {

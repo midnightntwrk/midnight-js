@@ -13,16 +13,16 @@
  * limitations under the License.
  */
 
-import { ComposeFailedError, ComposeOptionError, Ledger8ZswapUnsupportedError } from '../../errors';
+import { ComposeFailedError, ComposeOptionError } from '../../errors';
 import { composeV8CallTx } from '../engine/compose-v8';
 import { composeV8DeployTx } from '../engine/deploy-v8';
 import type { ProtocolV8 } from '../load-v8';
 import type { ComposeCallOptions, ComposeDeployOptions, DeployResultPojo } from './compose-types';
 
 /**
- * What `circuitId` a refusal names when it happened before, or apart from, any
- * circuit lookup. Kept as one literal so it can never be mistaken for a real
- * entry point a caller might try to resolve.
+ * What `circuitId` a failure names when it happened before any circuit was
+ * looked up. Kept as one literal so it can never be mistaken for a real entry
+ * point a caller might try to resolve.
  */
 const NO_CIRCUIT = '(none)';
 
@@ -50,10 +50,18 @@ const readContractState = (raw: Uint8Array, v8: ProtocolV8): InstanceType<Protoc
  * submission, with nothing having reported a problem. The two eras are
  * therefore NOT interchangeable for coin-moving circuits, and this is the seam
  * where that shows.
+ *
+ * Raised as {@link ComposeOptionError} naming the offending option, not as
+ * `Ledger8ZswapUnsupportedError`: no circuit ran here and none produced
+ * anything, so the class whose message says a circuit produced Zswap effects
+ * would be describing something that did not happen. That class stays on the
+ * execution leg, where a circuit really did. Keeping them apart is what lets a
+ * caller tell "my circuit moves coins, it cannot run on v8" from "I passed
+ * offer bytes to a v8 composition".
  */
-const refuseZswapOffer = (offers: readonly (Uint8Array | undefined)[], circuitId: string): void => {
+const refuseZswapOffer = (offers: readonly (Uint8Array | undefined)[]): void => {
   if (offers.some((offer) => offer !== undefined)) {
-    throw new Ledger8ZswapUnsupportedError(circuitId);
+    throw new ComposeOptionError('v8', 'zswapOffer');
   }
 };
 
@@ -75,7 +83,7 @@ export const composeEraV8CallTx = (options: ComposeCallOptions, v8: ProtocolV8):
     throw new ComposeFailedError('v8', 'call-empty', NO_CIRCUIT);
   }
   const [call] = calls;
-  refuseZswapOffer([guaranteedZswapOffer, fallibleZswapOffer], call.circuitId);
+  refuseZswapOffer([guaranteedZswapOffer, fallibleZswapOffer]);
   if (calls.length > 1) {
     throw new ComposeOptionError('v8', 'calls');
   }
@@ -114,7 +122,7 @@ export const composeEraV8CallTx = (options: ComposeCallOptions, v8: ProtocolV8):
  */
 export const composeEraV8DeployTx = (options: ComposeDeployOptions, v8: ProtocolV8): DeployResultPojo => {
   const { contractState, verifierKeys, networkId, ttl, guaranteedZswapOffer } = options;
-  refuseZswapOffer([guaranteedZswapOffer], NO_CIRCUIT);
+  refuseZswapOffer([guaranteedZswapOffer]);
   if (verifierKeys === undefined) {
     throw new ComposeOptionError('v8', 'verifierKeys');
   }

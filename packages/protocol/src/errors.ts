@@ -111,7 +111,14 @@ export class Ledger8RuntimeMissingError extends Error {
 }
 
 /**
- * Thrown when a retained pre-fork circuit produced Zswap inputs or outputs.
+ * Thrown by the retained pre-fork EXECUTION leg when a circuit it ran produced
+ * Zswap inputs or outputs.
+ *
+ * Only the execution leg raises this. A caller handing a Zswap offer to the v8
+ * composition legs is refused with {@link ComposeOptionError} (`option:
+ * 'zswapOffer'`) instead: no circuit produced anything there, and the two cases
+ * have different remediations — one is "this circuit cannot run on v8 at all",
+ * the other is "do not pass an offer to a v8 composition".
  *
  * `executeCircuit` builds its circuit context from a coin public key alone, so
  * the post-call `currentZswapLocalState` it would need to assemble the
@@ -515,6 +522,20 @@ export class ComposeOptionError extends Error {
       );
     }
     if (option === 'zswapOffer') {
+      // The one option whose diagnosis genuinely differs by era, so this
+      // branches rather than interpolating the era into one sentence: v9 reads
+      // the offer and reports bytes it could not decode, while v8 never reads
+      // one at all because it cannot carry the coin movements an offer implies.
+      // A single message would send one era's caller to audit bytes that are
+      // fine.
+      if (version === 'v8') {
+        return (
+          'Refusing to compose a v8 transaction carrying a Zswap offer. The retained pre-fork execution leg ' +
+          'does not carry the post-call Zswap local state, so a coin-moving call cannot be composed on this ' +
+          'era at all; composing around the offer would drop the coin movements and yield an unbalanced ' +
+          'transaction the node rejects at submission. Compose coin-moving calls on the v9 era.'
+        );
+      }
       return (
         `Failed to compose a ${version} transaction: the supplied Zswap offer bytes could not be read by the ` +
         `${version} ledger. Read the wrapped cause for what the decoder reported. Pass the bytes that era's ` +
