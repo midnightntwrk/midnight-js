@@ -16,7 +16,12 @@
 import type { ContractState as OnchainContractStateV3 } from '@midnight-ntwrk/onchain-runtime-v3';
 import { ContractState as LedgerContractStateV9, type EncodedStateValue } from '@midnightntwrk/ledger-v9';
 
-import { DownConvertFailedError, Ledger8RuntimeInvalidError, UnknownLedgerVersionError } from '../../errors';
+import {
+  DownConvertFailedError,
+  type DownConvertStage,
+  Ledger8RuntimeInvalidError,
+  UnknownLedgerVersionError
+} from '../../errors';
 import type { LedgerVersion } from '../../version';
 
 export type { EncodedStateValue };
@@ -32,12 +37,10 @@ export type { EncodedStateValue };
  * import above is erased and links nothing, leaving the pre-fork packages to
  * reach this process through a lazy acquisition path the caller owns.
  *
- * Nothing enforces this yet. The `dist-laziness` suite asserts the absence of
- * a static pre-fork link in `dist/index.js`, but no build entry reaches
- * `lib/engine/*` on this branch, so these modules are not bundled at all and a
- * value import here would not fail it. That suite starts covering this module
- * when the PR that surfaces the engine adds its build entry; until then the
- * erased `import type` is a convention, not a checked constraint.
+ * This is a checked constraint, not a convention: the root barrel re-exports
+ * `lib/era/load-era.ts`, which imports this module for its value exports, so
+ * this file sits inside the eager closure `dist-laziness.test.ts` scans. A value
+ * import of either pre-fork package here fails that suite.
  */
 export interface Ledger8ContractState {
   readonly deserialize: (raw: Uint8Array) => OnchainContractStateV3;
@@ -125,13 +128,13 @@ const ENVELOPE_DECODERS: Readonly<Record<LedgerVersion, EnvelopeDecoder>> = Obje
  * point the caller at input bytes that are not the problem.
  *
  * `version` is validated before it is used, rather than trusted from the type
- * signature. It used to sit behind the public `Ledger8Engine.extractState`,
- * which an untyped JavaScript consumer could reach with any string; that method
- * is gone and the only caller today passes a literal. The guard stays because
- * this is still an exported function, and because it is what keeps `stage`
- * inside its closed union:
- * it is built from `version`, so an unvalidated string would otherwise reach a
- * field whose whole contract is that consumers can `switch` on it.
+ * signature. That guard is what keeps `stage` inside its closed union: it is
+ * built from `version`, so an unvalidated string would otherwise reach a field
+ * whose whole contract is that consumers can `switch` on it.
+ *
+ * No production caller passes anything but a literal today, and this function
+ * is not reachable from any subpath export — see the note on collapsing this
+ * dispatch in `packages/protocol/README.md`.
  */
 export const extractEncodedStateValue = (
   raw: Uint8Array,
@@ -150,10 +153,15 @@ export const extractEncodedStateValue = (
     return decoder(raw, ledger8ContractState);
   } catch (cause) {
     // Already coded, and already naming this exact stage: the v9 decoder wraps
-    // its own failure. Re-wrapping would bury the runtime's diagnosis one
-    // level deeper for no gain.
-    throw cause instanceof DownConvertFailedError
+    // its own failure. THE STAGE IS CHECKED, not just the class — a decoder is
+    // injectable, so one that wrapped its failure at a different stage would
+    // otherwise pass straight through and tell a caller who asked for one era
+    // that the other era's codec rejected their bytes. Re-wrapping an
+    // already-correct failure would bury the runtime's diagnosis one level
+    // deeper for no gain.
+    const stage: DownConvertStage = `${version} envelope extraction`;
+    throw cause instanceof DownConvertFailedError && cause.stage === stage
       ? cause
-      : new DownConvertFailedError(`${version} envelope extraction`, cause);
+      : new DownConvertFailedError(stage, cause);
   }
 };
