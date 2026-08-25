@@ -64,12 +64,20 @@ const readZswapOffer = (raw: Uint8Array | undefined): ledgerV9.UnprovenOffer | u
  * segment id and stays mergeable with other calls. Only deploys use a fixed
  * segment.
  *
- * Every option is checked before anything is composed, and every failure is
- * coded: an empty call list is refused with {@link ComposeFailedError} at stage
- * `'call-empty'`, and an unreadable contract state, Zswap offer, network id or
- * ttl with {@link ComposeOptionError}. A missing or unkeyed operation surfaces
- * from the shared assembler as stage `'call-operation'` or
- * `'call-verifier-key'`.
+ * The transaction-wide options are all checked before anything is composed: the
+ * envelope first, then the call list, then both offers — so a caller handed bad
+ * offer bytes learns that instead of paying for a full assembly first. Each
+ * call's own contract state is read as that call is assembled, so a bad state
+ * late in a tree is reported after the earlier calls have been built. Nothing is
+ * emitted either way: the throw discards the whole intent.
+ *
+ * Every failure a caller can cause is coded. An empty call list is refused with
+ * {@link ComposeFailedError} at stage `'call-empty'`, and an unreadable contract
+ * state, Zswap offer, network id or ttl with {@link ComposeOptionError}. The
+ * shared assembler contributes stages `'call-operation'`, `'call-verifier-key'`,
+ * `'call-contract-state'`, `'call-transcript-empty'`, `'call-partition'` and
+ * `'call-prototype'`; a payout the transaction cannot settle surfaces as
+ * `'call-dust-payout'` or `'call-unsupported-payout'`.
  *
  * The transaction's two unshielded offers aggregate the user-addressed outputs
  * of EVERY call in the tree, not just the root — see
@@ -169,6 +177,19 @@ const registerVerifierKeys = (
  */
 const assertStateCarriesKeys = (contractState: ledgerV9.ContractState): void => {
   for (const entryPoint of contractState.operations()) {
+    // `?.` collapses "no operation resolves" into "operation has a blank key",
+    // which `../era/contract-state.ts` deliberately refuses to do for the same
+    // call. It is safe here because both answers have the one remediation this
+    // function exists to demand — supply the map — whereas a decoded state hands
+    // its caller a verifierKey field whose absence means "never deployed".
+    //
+    // Raised as the OPTION error, not as `ComposeFailedError`'s
+    // `'deploy-verifier-key'` stage, even though that stage means exactly this
+    // condition and would name the offending entry point. The v8 arm refuses the
+    // same omission as `ComposeOptionError('v8', 'verifierKeys')`, and a caller
+    // writing one handler across both eras matters more than naming which of a
+    // contract's slots was blank. Naming it as well needs a `circuitId` on
+    // `ComposeOptionError`, which is a wider change than this seam should make.
     if (contractState.operation(entryPoint)?.verifierKey === undefined) {
       throw new ComposeOptionError('v9', 'verifierKeys');
     }

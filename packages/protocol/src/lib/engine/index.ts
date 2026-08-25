@@ -42,7 +42,7 @@ export type {
  * EXECUTION capabilities, with the 0.16 runtime instance already captured in
  * closure — no method here takes a runtime or module parameter.
  *
- * Deliberately narrower than it once was. Reading a contract state and
+ * Scoped to what only the retained era can do. Reading a contract state and
  * composing a call or a deploy are era-symmetric operations: both eras do them,
  * with the same inputs and the same result shape, so they belong on the era
  * facade (`../era/era.ts`) where a caller can reach them without knowing which
@@ -82,11 +82,12 @@ export interface Ledger8Engine {
  * (`lib/engine/load-engine.ts`) as `Ledger8RuntimeMissingError` (`../../errors.ts`).
  *
  * Deliberately does NOT acquire the v8 ledger module. Nothing on this surface
- * needs it: the two legs that did — call and deploy composition — now live on
- * the era facade (`../era/era.ts`), which acquires the module itself when a
- * caller asks for the v8 era. A consumer that only executes circuits and binds
- * them onto v9 therefore never instantiates the multi-megabyte v8 WASM, and
- * never hard-depends on ledger-v8 resolving.
+ * needs it — call and deploy composition live on the era facade
+ * (`../era/era.ts`), which acquires the module itself when a caller asks for
+ * the v8 era. A consumer that only executes circuits and binds them onto v9
+ * therefore never instantiates the multi-megabyte v8 WASM, and never
+ * hard-depends on ledger-v8 resolving. Gated by
+ * `engine-load-engine-v8-laziness.test.ts`.
  */
 export const createLedger8Engine = async (): Promise<Ledger8Engine> => {
   const [glue, ocrt3] = await Promise.all([

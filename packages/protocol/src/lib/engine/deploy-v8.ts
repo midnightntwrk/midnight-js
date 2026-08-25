@@ -20,19 +20,22 @@ import { resolveVerifierKeyRegistrations } from '../verifier-keys';
 import { assertComposeEnvelope } from './compose-options';
 
 /**
- * The minimal shape {@link composeV8DeployTx} needs from a pre-fork
- * (`compact-runtime@0.16`) `ContractState`: just `.serialize()`, used to
- * bridge it into a v8-native `ContractState`. Crossing the era boundary by
- * bytes rather than by handle is deliberate — it is the one crossing in this
- * engine that cannot be affected by a dual-instantiation of the WASM, because
- * no object is handed between the two copies.
+ * The minimal shape a pre-fork (`compact-runtime@0.16`) `ContractState` is used
+ * through here: just `.serialize()`. It is what {@link executeConstructor}
+ * returns on its result, and `.serialize()` is how a caller turns that handle
+ * into the bytes every deploy leg takes.
+ *
+ * Crossing the era boundary by bytes rather than by handle is deliberate — it
+ * is the one crossing in this engine that cannot be affected by a
+ * dual-instantiation of the WASM, because no object is handed between the two
+ * copies.
  *
  * Structurally loose enough that unrelated serializables satisfy it, which is
  * what lets tests substitute a fake instead of invoking real WASM (the same
  * pattern `Ledger8ContractLike` in `engine/execute.ts` uses). The type
  * therefore does not enforce that the bytes are a contract state at all;
- * {@link composeV8DeployTx} turns that residual risk into a legible error
- * rather than a raw decoder failure.
+ * whichever deploy leg receives them turns that residual risk into a legible
+ * error rather than a raw decoder failure.
  */
 export interface Ledger8DeployableContractState {
   readonly serialize: () => Uint8Array;
@@ -85,8 +88,12 @@ export interface ConstructorResultPojo {
  * Runs a pre-fork (`compact-runtime@0.16`) contract's constructor
  * (`initialState`), following the `createConstructorContext` /
  * `contract.initialState(cc, ...args)` sequence the retained toolchain
- * expects, and packages the result into a {@link ConstructorResultPojo} ready
- * for {@link composeV8DeployTx}.
+ * expects, and packages the result into a {@link ConstructorResultPojo}.
+ *
+ * `contractState` on that result is a pre-fork handle, so it does not go
+ * straight into a deploy: both {@link composeV8DeployTx} and the era facade's
+ * `composeDeployTx` take the state as BYTES, which is what `.serialize()` on
+ * that handle produces.
  *
  * Produces no proof: proving applies only to the deploy transaction
  * {@link composeV8DeployTx} serializes, and not even there — see that
@@ -125,9 +132,12 @@ export interface ComposeV8DeployOptions {
 
 /**
  * Bridges a pre-fork contract state into the v8 era by bytes, reporting a
- * rejected envelope as {@link ComposeOptionError} rather than letting a
- * raw decoder failure escape — the same wrapping `extractEncodedStateValue`
- * (`engine/envelope.ts`) applies to the identical call.
+ * rejected envelope as {@link ComposeOptionError} rather than letting a raw
+ * decoder failure escape — the same wrapping the v9 deploy leg applies to the
+ * identical call (`../era/compose-v9.ts`). Not the same class
+ * `extractEncodedStateValue` (`engine/envelope.ts`) raises for its own decode:
+ * a state that cannot be READ is a different fault from an option that cannot
+ * be USED, and they carry different remediations.
  */
 const bridgeContractState = (
   contractState: Uint8Array,
@@ -170,27 +180,13 @@ const registerVerifierKey = (
  * point it declares, then wrap it in a `ContractDeploy` / `Intent` /
  * `Transaction`.
  *
- * Validates the verifier-key map against the state's declared entry points
- * BEFORE registering anything, in both directions:
- * - a declared entry point with no key in the map throws
- *   {@link ComposeFailedError} (stage `'deploy-verifier-key'`), because
- *   a ledger rejects a deploy carrying an unregistered entry point;
- * - a key naming an entry point the state does not declare throws stage
- *   `'deploy-unknown-circuit'`. This direction matters as much as the other:
- *   `setOperation` CREATES a slot rather than requiring one, so an unchecked
- *   stray key (a stale `keys/*.verifier` from an earlier compiler run) would
- *   give the deployed contract an entry point its source never had, and — since
- *   `ContractDeploy` derives its address from the initial state — silently
- *   deploy it at a different address than the caller's artifacts describe.
+ * The verifier-key map is validated against the state's declared entry points
+ * BEFORE anything is registered, by the resolver both eras' deploy legs share —
+ * see {@link resolveVerifierKeyRegistrations} for the three refusals it owns
+ * and why each one matters. Restating them here would be a second copy of one
+ * contract, which is what that resolver exists to remove.
  *
- * Together the two checks make the map and the declared entry points equal
- * sets, so no post-registration re-read is needed to know every slot carries a
- * key. They run on resolved NAMES, because that is how `verifierKeys` is
- * keyed, so two declared entry points resolving to one name would make them
- * agree while leaving a slot blank; that case throws stage
- * `'deploy-ambiguous-circuit'` before either check runs. Registration itself
- * uses the entry point the state declares, not its resolved name, since
- * `setOperation` would otherwise create a second slot beside the declared one. Bytes the ledger itself rejects surface as stage
+ * Bytes the ledger itself rejects surface here, as stage
  * `'deploy-verifier-key-blob'` with the ledger's own failure on `cause`.
  *
  * Never proves the transaction: the returned bytes are an UNPROVEN,

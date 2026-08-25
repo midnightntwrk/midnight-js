@@ -70,10 +70,10 @@ If the v8 module cannot be loaded (usually a broken or partial install), `loadLe
 Contracts compiled against the pre-fork toolchain keep executing on `compact-runtime@0.16` after the fork. That toolchain and its `onchain-runtime-v3` WASM live behind the `./engine` subpath, gated the same way as `./v8` and for the same reason. `loadLedger8Engine()` is the only sanctioned runtime path to it:
 
 ```typescript
-import { loadLedger8Engine, loadLedgerEra, protocolVersionToLedger } from '@midnight-ntwrk/midnight-js-protocol';
+import { loadLedger8Engine, loadLedgerEra, versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
 
 const engine = await loadLedger8Engine();
-const era = await loadLedgerEra(protocolVersionToLedger(record.protocolVersion));
+const era = await loadLedgerEra(versionOfRecord(indexerRecord));
 
 const state = engine.downConvertForExecution(era.extractState(rawContractState));
 const transcript = engine.executeCircuit({
@@ -136,7 +136,7 @@ The same method names do not mean the same capabilities. The v8 arm refuses two 
 - **A Zswap offer.** Pass `guaranteedZswapOffer` or `fallibleZswapOffer` to `composeCallTx` on the v8 era — or `guaranteedZswapOffer` to `composeDeployTx` — and it throws `ComposeOptionError` with `option: 'zswapOffer'`. The retained execution leg does not carry the post-call Zswap local state, so composing around the offer would silently drop the coin movements and produce an unbalanced transaction the node rejects on submission. **A circuit that moves coins cannot be composed on the v8 era at all.** `Ledger8ZswapUnsupportedError` is the separate, execution-leg failure for a circuit that actually produced coin effects; passing offer bytes to a composition is an option error, and the two are kept apart because their remediations differ.
 - **A call tree.** The v8 arm composes exactly one call. A `calls` list longer than one throws `ComposeOptionError` with `option: 'calls'` rather than composing the first entry and dropping the rest.
 
-The v8 arm also *requires* `verifierKeys` on `composeDeployTx`, where the v9 arm treats it as optional: the retained deploy leg registers the compiled contract's keys onto the initial state itself, and a constructor-built state declares every entry point with a blank key. Omitting the map throws `ComposeOptionError` with `option: 'verifierKeys'`.
+The v8 arm also *requires* `verifierKeys` on `composeDeployTx`, where the v9 arm accepts its omission in one case. The retained deploy leg registers the compiled contract's keys onto the initial state itself, so it always needs the map; omitting it throws `ComposeOptionError` with `option: 'verifierKeys'`. The v9 arm allows the omission only for a state that ALREADY carries its keys, and checks rather than assumes it: a state still declaring a blank-keyed entry point throws the same `ComposeOptionError` with the same `option`. So the two arms agree on every input except one — a pre-keyed state, which deploys as-is on v9 and needs its keys supplied again on v8.
 
 What is *not* asymmetric: a call's user-addressed unshielded payouts are aggregated onto the transaction's guaranteed and fallible offers on **both** eras. Attaching them on one era only would leave the other composing an unbalanced transaction the node rejects on submission, with nothing having reported a problem at composition time — so `era-parity.test.ts` asserts the payout each segment carries, per era.
 
@@ -145,11 +145,20 @@ What is *not* asymmetric: a call's user-addressed unshielded payouts are aggrega
 | Error | Code | Raised when |
 | ----- | ---- | ----------- |
 | `StateDecodeFailedError` | `MIDNIGHT_JS_P_STATE_DECODE_FAILED` | A contract-state envelope could not be read by the era it was requested for — most often a state written by the other era |
-| `ComposeFailedError` | `MIDNIGHT_JS_P_COMPOSE_FAILED` | A circuit's operation is missing, carries no verifier key, or names a circuit the contract does not declare; the call list is empty; a supplied transcript carries neither half; or a transcript claims a dust payout to a user address. `stage` is a closed union; `version` names the era |
-| `ComposeOptionError` | `MIDNIGHT_JS_P_COMPOSE_OPTION_INVALID` | An option cannot be used at all — an empty network id, an invalid ttl, an unreadable state, an offer the era cannot read or cannot carry, a missing verifier-key map, or a call list longer than the era can compose. `option` names the field; `version` names the era |
+| `ComposeFailedError` | `MIDNIGHT_JS_P_COMPOSE_FAILED` | Something about a CALL or a DEPLOY could not be composed: an operation that is missing, unkeyed, or names a circuit the contract does not declare; an empty call list; a pre-call state the era cannot bridge; a supplied transcript with neither half; a public transcript or a set of call inputs the ledger itself rejected; or a claimed payout the transaction cannot settle (dust, or a shielded token type). `stage` is a closed union naming which of those it was — see its own docs for the full list; `version` names the era |
+| `ComposeOptionError` | `MIDNIGHT_JS_P_COMPOSE_OPTION_INVALID` | A transaction-wide OPTION cannot be used at all — an empty network id, an invalid ttl, a contract state whose envelope the era rejected, an offer the era cannot read or cannot carry, a missing verifier-key map, or a call list longer than the era can compose. `option` names the field; `version` names the era, and for `'zswapOffer'` it also changes the meaning — read both |
 | `UnknownLedgerVersionError` | `MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION` | The requested era is not `'v8'` or `'v9'` |
 
 Each names the era it was raised for — `version` on the first three, `requestedVersion` on `UnknownLedgerVersionError`, which also takes no `cause`. None renders hex or a byte dump of its own, and the first three preserve the underlying runtime failure on `cause` where there was one.
+
+### Planned follow-ups
+
+Recorded here so the reasoning is not lost, and deliberately NOT done in the change that introduced this facade:
+
+- **Split `src/lib/era/` into `src/lib/era/v8/` and `src/lib/era/v9/`.** The module names already carry the era as a suffix (`adapt-v8.ts`, `compose-v9.ts`), which is the shape a directory expresses better than a filename: it makes the per-era surface reviewable at a glance, gives each arm a natural home for the helpers it does not share, and makes an accidental cross-era import visible as a path rather than as a suffix mismatch. It is a pure move — `src/lib/` is not a build entry, so no consumer import path changes — but it renames every path in the coverage floors in `vitest.config.ts`, and a glob there that matches no file is ignored *silently*, so the move has to land on its own where that can be verified rather than buried in a behavioural diff.
+- **Collapse the version dispatch in `lib/engine/envelope.ts`.** `extractEncodedStateValue` has one production caller, which passes the literal `'v8'`; the v9 arm calls `extractV9EncodedStateValue` directly. The decoder table, the unknown-version guard and the null-prototype defence are therefore only reachable from tests, and the per-file 100% floor keeps the tests that reach them alive. Collapsing it to a `extractV8EncodedStateValue` beside the v9 one deletes real tests, which belongs in its own change.
+- **Give `StateDecodeFailedError` a `stage`.** `decodeContractStateWith` wraps the whole read, so a state that decoded fine but declares an entry point resolving to no operation is reported with the same code and the same "resolve the era and check the bytes" remediation as an envelope written by the other era. A discriminator would separate them; it is a public error-shape change.
+- **Give `ComposeOptionError` a `circuitId`.** The v9 blank-key refusal knows which entry point was blank and cannot say so, because the field does not exist. Adding it would let that refusal name the slot without breaking the class parity the two arms currently have.
 
 ## Version Module
 

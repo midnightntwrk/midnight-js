@@ -20,16 +20,16 @@ import type { LedgerVersion } from './ledger-version';
  * Resolves a ledger entry-point key to its name.
  *
  * `ContractState.operations()` is declared `Array<string | Uint8Array>`, so a
- * key is not statically a string. In practice both eras decode even a byte-set
- * entry point back to a string (pinned by a test in
- * `engine-deploy-v8.test.ts`), but the declared union has to be resolved
+ * key is not statically a string. In practice ledger-v8 decodes even a byte-set
+ * entry point back to a string (pinned by the `entryPointName` suite in
+ * `engine-deploy-v8.test.ts`; the v9 side of that behaviour is not pinned
+ * against the real vendor), but the declared union has to be resolved
  * somewhere, and decoding is the only resolution that keeps an error message
  * naming the entry point rather than dumping its bytes — which is what
  * `ComposeFailedError` (`../errors.ts`) promises.
  *
- * Lives in a leaf both eras can reach. It used to be an export of the v8 deploy
- * leg, which meant the v9 composition arm imported a v8-named engine module for
- * a `TextDecoder` call.
+ * Lives in a leaf both eras can reach, so neither arm has to import the other's
+ * era-named module for a `TextDecoder` call.
  */
 export const entryPointName = (id: string | Uint8Array): string =>
   typeof id === 'string' ? id : new TextDecoder().decode(id);
@@ -70,12 +70,14 @@ export interface VerifierKeyRegistration {
  * would leave a byte-declared slot blank and create a second, undeclared one
  * beside it.
  *
- * Shared by both eras' deploy legs. It was written out twice, once per leg,
- * with the same three checks in the same order and the same non-null assertion
- * at the end — two copies of one invariant, which is one more than can be kept
- * correct. Resolving the key inside the loop removes the assertion too: the
- * `undefined` branch is the `'deploy-verifier-key'` check, not an unreachable
- * case to assert away.
+ * Shared by both eras' deploy legs, so the two cannot drift on which checks run
+ * or in what order. The order is itself part of the contract: ambiguity is
+ * refused before either set-comparison runs, because an ambiguous pair makes
+ * both comparisons agree while leaving one slot blank.
+ *
+ * Resolving each key inside the loop is what removes the non-null assertion the
+ * set arithmetic would otherwise need at the end: the `undefined` branch IS the
+ * `'deploy-verifier-key'` check, not an unreachable case to assert away.
  */
 export const resolveVerifierKeyRegistrations = (
   entryPoints: readonly (string | Uint8Array)[],
