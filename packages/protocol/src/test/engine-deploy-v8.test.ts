@@ -177,7 +177,7 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
     verifierKeys: ReadonlyMap<string, Uint8Array>,
     circuitIds: readonly string[] = ['increment']
   ): ComposeV8DeployOptions => ({
-    contractState: buildPreForkState(circuitIds),
+    contractState: buildPreForkState(circuitIds).serialize(),
     verifierKeys,
     networkId: NETWORK_ID,
     ttl: TTL
@@ -311,7 +311,7 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
   });
 
   it('throws ComposeOptionError (contractState) with the decoder failure on cause when the state cannot be bridged into the v8 era', () => {
-    const notAContractState = { serialize: () => new Uint8Array([9, 9, 9]) };
+    const notAContractState = new Uint8Array([9, 9, 9]);
 
     let caught: unknown;
     try {
@@ -384,7 +384,7 @@ describe('composeV8DeployTx against byte-array entry points', () => {
   };
 
   const deployOptions = (verifierKeys: ReadonlyMap<string, Uint8Array>): ComposeV8DeployOptions => ({
-    contractState: new ocrt3.ContractState(),
+    contractState: new ocrt3.ContractState().serialize(),
     verifierKeys,
     networkId: NETWORK_ID,
     ttl: TTL

@@ -34,6 +34,11 @@ export type {
 export type { ContractEntryPointPojo, ContractStatePojo } from './contract-state';
 export type { LedgerEra } from './era';
 
+// Both arms are frozen: a memoised era is one object shared by every caller in
+// the process, so an unfrozen one lets any consumer reassign `composeCallTx`
+// for all the others. The same discipline LEDGER_VERSIONS, PROTOCOL_ERROR_CODES
+// and ENVELOPE_DECODERS already apply to their own shared tables.
+//
 // One memo slot per era, not one shared slot. A shared slot would hand the
 // second caller whichever era happened to be asked for first, silently reading
 // one era's bytes with the other era's runtime — the exact confusion this
@@ -46,13 +51,17 @@ let v9EraPromise: Promise<LedgerEra> | undefined;
  * current era and is already linked by the package root, so there is nothing
  * to acquire and nothing that can fail here.
  */
-const createV9Era = (): LedgerEra => ({
-  version: 'v9',
-  extractState: (raw) => extractStateWith(raw, 'v9', extractV9EncodedStateValue),
-  decodeContractState: (raw) => decodeContractStateWith(raw, 'v9', ledgerV9),
-  composeCallTx: composeV9CallTx,
-  composeDeployTx: composeV9DeployTx
-});
+const createV9Era = (): LedgerEra => {
+  const era: LedgerEra = {
+    version: 'v9',
+    extractState: (raw) => extractStateWith(raw, 'v9', extractV9EncodedStateValue),
+    decodeContractState: (raw) => decodeContractStateWith(raw, 'v9', ledgerV9),
+    composeCallTx: composeV9CallTx,
+    composeDeployTx: composeV9DeployTx
+  };
+
+  return Object.freeze(era);
+};
 
 /**
  * The v8 arm. Acquires the retained pre-fork ledger through {@link loadLedger8}
@@ -67,13 +76,15 @@ const createV9Era = (): LedgerEra => ({
 const createV8Era = async (): Promise<LedgerEra> => {
   const v8 = await loadLedger8();
 
-  return {
+  const era: LedgerEra = {
     version: 'v8',
     extractState: (raw) => extractStateWith(raw, 'v8', (bytes) => extractEncodedStateValue(bytes, 'v8', v8.ContractState)),
     decodeContractState: (raw) => decodeContractStateWith(raw, 'v8', v8),
     composeCallTx: (options) => composeEraV8CallTx(options, v8),
     composeDeployTx: (options) => composeEraV8DeployTx(options, v8)
   };
+
+  return Object.freeze(era);
 };
 
 /**

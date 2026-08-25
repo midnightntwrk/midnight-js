@@ -101,6 +101,12 @@ describe('decodeContractStateWith', () => {
       override operations(): (string | Uint8Array)[] {
         return [AMBIGUOUS_A, AMBIGUOUS_B];
       }
+
+      // Declared AND resolvable, because a real state is both: the decoder
+      // refuses a state that declares an entry point it cannot resolve.
+      override operation(): ledgerV9.ContractOperation {
+        return new ledgerV9.ContractOperation();
+      }
     }
     const decoder: ContractStateDecoder = { ContractState: ByteEntryPointContractState };
 
@@ -113,6 +119,38 @@ describe('decodeContractStateWith', () => {
       entryPointName(AMBIGUOUS_A),
       entryPointName(AMBIGUOUS_B)
     ]);
+  });
+
+  // `verifierKey: undefined` means "declared but never deployed". A state that
+  // declares an entry point and then cannot resolve an operation for it is a
+  // different thing: broken. Reporting it as the first would have a caller
+  // comparing key hashes conclude a deployed contract does not match its
+  // artifacts.
+  it('refuses a state that declares an entry point it cannot resolve, rather than reading it as unkeyed', () => {
+    class UnresolvableContractState extends ledgerV9.ContractState {
+      static override deserialize(): UnresolvableContractState {
+        return new UnresolvableContractState();
+      }
+
+      override operations(): (string | Uint8Array)[] {
+        return ['increment'];
+      }
+
+      override operation(): undefined {
+        return undefined;
+      }
+    }
+
+    let caught: unknown;
+    try {
+      decodeContractStateWith(new Uint8Array(), 'v9', { ContractState: UnresolvableContractState });
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(StateDecodeFailedError);
+    expect(caught).toMatchObject({ code: PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED, version: 'v9' });
+    expect((caught as StateDecodeFailedError).cause).toBeInstanceOf(Error);
   });
 
   // The facade's boundary rule, mechanised: only plain data crosses it. A live

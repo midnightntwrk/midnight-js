@@ -320,6 +320,17 @@ export class MerkleNotRehashedError extends Error {
  * folding the era into the stage would double this union without adding a
  * distinction any caller wants to `switch` on.
  */
+/**
+ * What `circuitId` a {@link ComposeFailedError} names when the failure happened
+ * before any circuit was looked up — only `'call-empty'` reaches this today.
+ *
+ * Exported, and one literal rather than a per-module copy, so a consumer
+ * reading `circuitId` off a caught error can compare against it instead of
+ * matching a string this package could change, and so it can never be mistaken
+ * for a real entry point a caller might try to resolve.
+ */
+export const NO_CIRCUIT = '(none)';
+
 export type ComposeStage =
   | 'wrap-call'
   | 'call-empty'

@@ -131,7 +131,21 @@ export const decodeContractStateWith = (
   try {
     const decoded = ledger.ContractState.deserialize(raw);
     const entryPoints = decoded.operations().map((entryPoint): ContractEntryPointPojo => {
-      const verifierKey = decoded.operation(entryPoint)?.verifierKey;
+      // Not `?.`: `entryPoint` came from `operations()` on this same object, so
+      // a state that cannot resolve it is internally inconsistent, not a state
+      // with a blank slot. Optional chaining collapsed the two into the same
+      // answer, and `verifierKey: undefined` has a specific documented meaning
+      // — never deployed. A whole contract reading as never-deployed would send
+      // a caller comparing key hashes hunting a deployment bug that does not
+      // exist, so this leaves as StateDecodeFailedError like every other read
+      // failure here.
+      const operation = decoded.operation(entryPoint);
+      if (operation === undefined) {
+        throw new Error(
+          `contract state declares entry point '${entryPointName(entryPoint)}' but resolves no operation for it.`
+        );
+      }
+      const { verifierKey } = operation;
       return {
         circuitId: entryPointName(entryPoint),
         verifierKey,

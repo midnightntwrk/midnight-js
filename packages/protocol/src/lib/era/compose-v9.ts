@@ -15,20 +15,12 @@
 
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 
-import { ComposeFailedError, ComposeOptionError } from '../../errors';
+import { ComposeFailedError, ComposeOptionError, NO_CIRCUIT } from '../../errors';
 import { assembleCallPrototype } from '../engine/assemble-call';
 import { assertComposeEnvelope } from '../engine/compose-options';
 import { entryPointName, resolveVerifierKeyRegistrations } from '../verifier-keys';
 import type { ComposeCallOptions, ComposeDeployOptions, DeployResultPojo } from './compose-types';
 import { aggregateUnshieldedOffers } from './unshielded';
-
-/**
- * What `circuitId` a failure names when it happened before any circuit was
- * looked up. `'call-empty'` is the only stage that reaches this, and its
- * message names no circuit — this value exists so the field is never an
- * invented circuit name a caller might try to resolve.
- */
-const NO_CIRCUIT = '(none)';
 
 /**
  * Bridges a raw, serialized contract state into the v9 era, reporting a

@@ -117,7 +117,7 @@ export const executeConstructor = (options: ExecuteConstructorOptions, runtime: 
  * — see `assertComposeEnvelope` (`engine/compose-options.ts`).
  */
 export interface ComposeV8DeployOptions {
-  readonly contractState: Ledger8DeployableContractState;
+  readonly contractState: Uint8Array;
   readonly verifierKeys: ReadonlyMap<string, Uint8Array>;
   readonly networkId: string;
   readonly ttl: Date;
@@ -130,11 +130,11 @@ export interface ComposeV8DeployOptions {
  * (`engine/envelope.ts`) applies to the identical call.
  */
 const bridgeContractState = (
-  contractState: Ledger8DeployableContractState,
+  contractState: Uint8Array,
   v8: ProtocolV8
 ): InstanceType<ProtocolV8['ContractState']> => {
   try {
-    return v8.ContractState.deserialize(contractState.serialize());
+    return v8.ContractState.deserialize(contractState);
   } catch (error) {
     throw new ComposeOptionError('v8', 'contractState', error);
   }

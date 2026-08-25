@@ -83,6 +83,7 @@ describe('Protocol ACL package', () => {
         'loadLedgerEra',
         'MerkleNotRehashedError',
         'networkHeadVersion',
+        'NO_CIRCUIT',
         'onchainRuntime',
         'platform',
         'PROTOCOL_ERROR_CODES',

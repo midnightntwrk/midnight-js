@@ -75,6 +75,15 @@ describe('loadLedgerEra', () => {
   // One memo slot per era, not one shared slot: a shared slot would hand the
   // second caller whichever era happened to be asked for first, silently
   // decoding one era's bytes with the other era's runtime.
+  // A memoised era is one object every caller in the process holds, so an
+  // unfrozen one lets any consumer reassign a method for all the others. The
+  // same reason LEDGER_VERSIONS and PROTOCOL_ERROR_CODES are frozen.
+  it.each(['v8', 'v9'] as const)('hands out a frozen era object on %s', async (version) => {
+    const era = await loadLedgerEra(version);
+
+    expect(Object.isFrozen(era)).toBe(true);
+  });
+
   it('memoises the two eras apart', async () => {
     const [v8, v9] = await Promise.all([loadLedgerEra('v8'), loadLedgerEra('v9')]);
 

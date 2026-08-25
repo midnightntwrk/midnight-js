@@ -13,18 +13,11 @@
  * limitations under the License.
  */
 
-import { ComposeFailedError, ComposeOptionError } from '../../errors';
+import { ComposeFailedError, ComposeOptionError, NO_CIRCUIT } from '../../errors';
 import { composeV8CallTx } from '../engine/compose-v8';
 import { composeV8DeployTx } from '../engine/deploy-v8';
 import type { ProtocolV8 } from '../load-v8';
 import type { ComposeCallOptions, ComposeDeployOptions, DeployResultPojo } from './compose-types';
-
-/**
- * What `circuitId` a failure names when it happened before any circuit was
- * looked up. Kept as one literal so it can never be mistaken for a real entry
- * point a caller might try to resolve.
- */
-const NO_CIRCUIT = '(none)';
 
 /**
  * Bridges a raw, serialized contract state into the v8 era, reporting a
@@ -117,8 +110,8 @@ export const composeEraV8CallTx = (options: ComposeCallOptions, v8: ProtocolV8):
  * reported as {@link ComposeOptionError} here instead.
  *
  * The contract state crosses into the leg by BYTES, which is what that leg
- * already expects — it bridges by serialization rather than by handle, so no
- * object is passed between two WASM copies.
+ * takes: it deserializes into its own era rather than accepting a handle, so
+ * no object is passed between two WASM copies.
  */
 export const composeEraV8DeployTx = (options: ComposeDeployOptions, v8: ProtocolV8): DeployResultPojo => {
   const { contractState, verifierKeys, networkId, ttl, guaranteedZswapOffer } = options;
@@ -127,8 +120,5 @@ export const composeEraV8DeployTx = (options: ComposeDeployOptions, v8: Protocol
     throw new ComposeOptionError('v8', 'verifierKeys');
   }
 
-  return composeV8DeployTx(
-    { contractState: { serialize: () => contractState }, verifierKeys, networkId, ttl },
-    v8
-  );
+  return composeV8DeployTx({ contractState, verifierKeys, networkId, ttl }, v8);
 };
