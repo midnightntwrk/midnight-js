@@ -24,13 +24,13 @@ import { ComposeFailedError, ComposeOptionError, PROTOCOL_ERROR_CODES } from '..
 import {
   type ComposeV8DeployOptions,
   composeV8DeployTx,
-  entryPointName,
   executeConstructor,
   type ExecuteConstructorOptions,
   type Ledger8ConstructorContractLike,
   type Ledger8ConstructorResult,
   type Ledger8ConstructorRuntime
 } from '../lib/engine/deploy-v8';
+import { entryPointName } from '../lib/verifier-keys';
 
 const NETWORK_ID = 'test-network';
 const TTL = new Date(Date.now() + 3_600_000);

@@ -18,7 +18,7 @@ import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { ComposeFailedError, ComposeOptionError } from '../../errors';
 import { assembleCallPrototype } from '../engine/assemble-call';
 import { assertComposeEnvelope } from '../engine/compose-options';
-import { entryPointName } from '../engine/deploy-v8';
+import { resolveVerifierKeyRegistrations } from '../verifier-keys';
 import type { ComposeCallOptions, ComposeDeployOptions, DeployResultPojo } from './compose-types';
 import { aggregateUnshieldedOffers } from './unshielded';
 
@@ -133,67 +133,27 @@ export const composeV9CallTx = (options: ComposeCallOptions): Uint8Array => {
 };
 
 /**
- * Registers a verifier key for every entry point the state declares, after
- * validating the map against those entry points in BOTH directions:
- * - a declared entry point with no key in the map throws
- *   {@link ComposeFailedError} at stage `'deploy-verifier-key'`, because a
- *   ledger rejects a deploy carrying an unregistered entry point;
- * - a key naming an entry point the state does not declare throws stage
- *   `'deploy-unknown-circuit'`. This direction matters as much as the other:
- *   `setOperation` CREATES a slot rather than requiring one, so an unchecked
- *   stray key (a stale `keys/*.verifier` from an earlier compiler run) would
- *   give the deployed contract an entry point its source never had and — since
- *   the deploy derives its address from the initial state — silently deploy it
- *   at a different address than the caller's artifacts describe.
- *
- * Together the two checks make the map and the declared entry points equal
- * sets. They run on resolved NAMES, because that is how the map is keyed, so
- * two declared entry points resolving to one name would make them agree while
- * leaving a slot blank; that case throws stage `'deploy-ambiguous-circuit'`
- * before either check runs. Registration itself uses the entry point the state
- * declares, not its resolved name, since `setOperation` would otherwise create
- * a second slot beside the declared one.
+ * Registers a verifier key for every entry point the state declares, against
+ * the map validated by {@link resolveVerifierKeyRegistrations} — the shared
+ * resolver both eras' deploy legs use, so the two cannot drift on which checks
+ * run or in what order.
  */
 const registerVerifierKeys = (
   contractState: ledgerV9.ContractState,
   verifierKeys: ReadonlyMap<string, Uint8Array>
 ): void => {
-  // Keyed by resolved name, valued by the entry point the state actually
-  // declares. Both halves are needed: the map is keyed by name, so the set
-  // arithmetic has to run on names, while `setOperation` must be handed the
-  // declared entry point itself.
-  const declared = new Map<string, string | Uint8Array>();
-  for (const entryPoint of contractState.operations()) {
-    const circuitId = entryPointName(entryPoint);
-    if (declared.has(circuitId)) {
-      throw new ComposeFailedError('v9', 'deploy-ambiguous-circuit', circuitId);
-    }
-    declared.set(circuitId, entryPoint);
-  }
-
-  for (const circuitId of verifierKeys.keys()) {
-    if (!declared.has(circuitId)) {
-      throw new ComposeFailedError('v9', 'deploy-unknown-circuit', circuitId);
-    }
-  }
-  for (const circuitId of declared.keys()) {
-    if (!verifierKeys.has(circuitId)) {
-      throw new ComposeFailedError('v9', 'deploy-verifier-key', circuitId);
-    }
-  }
-
-  // The non-null assertion is guarded by the two checks above: together they
-  // make the map's keys and `declared`'s keys the same set, so every lookup
-  // here resolves. An `undefined` branch would be unreachable, and this file
-  // carries a 100% branch floor.
-  for (const [circuitId, verifierKey] of verifierKeys) {
+  for (const { entryPoint, circuitId, verifierKey } of resolveVerifierKeyRegistrations(
+    contractState.operations(),
+    verifierKeys,
+    'v9'
+  )) {
     const operation = new ledgerV9.ContractOperation();
     try {
       operation.verifierKey = verifierKey;
     } catch (cause) {
       throw new ComposeFailedError('v9', 'deploy-verifier-key-blob', circuitId, cause);
     }
-    contractState.setOperation(declared.get(circuitId)!, operation);
+    contractState.setOperation(entryPoint, operation);
   }
 };
 

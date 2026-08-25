@@ -16,6 +16,7 @@
 import { ComposeFailedError, ComposeOptionError } from '../../errors';
 import type { DeployResultPojo } from '../era/compose-types';
 import type { ProtocolV8 } from '../load-v8';
+import { resolveVerifierKeyRegistrations } from '../verifier-keys';
 import { assertComposeEnvelope } from './compose-options';
 
 /**
@@ -123,20 +124,6 @@ export interface ComposeV8DeployOptions {
 }
 
 /**
- * Resolves a ledger entry-point key to its name.
- *
- * `ContractState.operations()` is declared `Array<string | Uint8Array>`, so a
- * key is not statically a string. In practice ledger-v8 decodes even a
- * byte-set entry point back to a string (pinned by a test in
- * `engine-deploy-v8.test.ts`), but the declared union has to be resolved
- * somewhere, and decoding is the only resolution that keeps an error message
- * naming the entry point rather than dumping its bytes — which is what
- * `ComposeFailedError` (`../../errors.ts`) promises.
- */
-export const entryPointName = (id: string | Uint8Array): string =>
-  typeof id === 'string' ? id : new TextDecoder().decode(id);
-
-/**
  * Bridges a pre-fork contract state into the v8 era by bytes, reporting a
  * rejected envelope as {@link ComposeOptionError} rather than letting a
  * raw decoder failure escape — the same wrapping `extractEncodedStateValue`
@@ -227,41 +214,12 @@ export const composeV8DeployTx = (options: ComposeV8DeployOptions, v8: ProtocolV
   assertComposeEnvelope(options, 'v8');
 
   const ledgerContractState = bridgeContractState(contractState, v8);
-  // Keyed by resolved name, valued by the entry point the state actually
-  // declares. Both halves are needed: `verifierKeys` is keyed by name, so the
-  // set arithmetic below has to run on names, while `setOperation` must be
-  // handed the declared entry point itself. Registering under the decoded name
-  // instead would leave a byte-declared slot blank and CREATE a second,
-  // undeclared one beside it — the same silently-different-address outcome
-  // `'deploy-unknown-circuit'` exists to prevent.
-  const declared = new Map<string, string | Uint8Array>();
-  for (const entryPoint of ledgerContractState.operations()) {
-    const circuitId = entryPointName(entryPoint);
-    // A name that resolves twice makes the two checks below agree while one of
-    // the two slots would go unregistered, so it is refused before either runs.
-    if (declared.has(circuitId)) {
-      throw new ComposeFailedError('v8', 'deploy-ambiguous-circuit', circuitId);
-    }
-    declared.set(circuitId, entryPoint);
-  }
-
-  for (const circuitId of verifierKeys.keys()) {
-    if (!declared.has(circuitId)) {
-      throw new ComposeFailedError('v8', 'deploy-unknown-circuit', circuitId);
-    }
-  }
-  for (const circuitId of declared.keys()) {
-    if (!verifierKeys.has(circuitId)) {
-      throw new ComposeFailedError('v8', 'deploy-verifier-key', circuitId);
-    }
-  }
-
-  // The non-null assertion is guarded by the two checks above: together they
-  // make `verifierKeys`' keys and `declared`'s keys the same set, so every
-  // lookup here resolves. An `undefined` branch would be unreachable, and this
-  // file carries a 100% branch floor.
-  for (const [circuitId, verifierKey] of verifierKeys) {
-    registerVerifierKey(ledgerContractState, declared.get(circuitId)!, circuitId, verifierKey, v8);
+  for (const { entryPoint, circuitId, verifierKey } of resolveVerifierKeyRegistrations(
+    ledgerContractState.operations(),
+    verifierKeys,
+    'v8'
+  )) {
+    registerVerifierKey(ledgerContractState, entryPoint, circuitId, verifierKey, v8);
   }
 
   const deploy = new v8.ContractDeploy(ledgerContractState);
