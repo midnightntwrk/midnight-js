@@ -32,7 +32,7 @@ import { createPlatform } from '@midnight-ntwrk/midnight-js-protocol/platform-js
 
 | Sub-path | Re-exports | Description |
 | -------- | ---------- | ----------- |
-| `./errors` | (own) | `PROTOCOL_ERROR_CODES`, `UnknownProtocolVersionError`, `Ledger8RuntimeMissingError` and the types `ProtocolErrorCode`, `ProtocolVersionUnknownReason`, `VersionResolutionPath` — without pulling in the ledger/compact-js/onchain-runtime/platform namespaces |
+| `./errors` | (own) | `PROTOCOL_ERROR_CODES` and every error class and error type this package raises — without pulling in the ledger/compact-js/onchain-runtime/platform namespaces. `protocol-acl.test.ts` pins the exact list |
 | `./version` | (own) | `LEDGER_VERSIONS`, `protocolVersionToLedger`, `versionOfRecord`, `networkHeadVersion` and the types `LedgerVersion`, `ProtocolVersionSource`, `VersionedRecord` — same lightweight guarantee as `./errors` |
 | `./ledger` | `@midnightntwrk/ledger-v9` | Ledger types and transaction primitives |
 | `./v8` | `@midnightntwrk/ledger-v8` | Previous-era (v8) ledger — do not import at runtime; use `loadLedger8()` |
@@ -70,10 +70,10 @@ If the v8 module cannot be loaded (usually a broken or partial install), `loadLe
 Contracts compiled against the pre-fork toolchain keep executing on `compact-runtime@0.16` after the fork. That toolchain and its `onchain-runtime-v3` WASM live behind the `./engine` subpath, gated the same way as `./v8` and for the same reason. `loadLedger8Engine()` is the only sanctioned runtime path to it:
 
 ```typescript
-import { loadLedger8Engine, loadLedgerEra } from '@midnight-ntwrk/midnight-js-protocol';
+import { loadLedger8Engine, loadLedgerEra, protocolVersionToLedger } from '@midnight-ntwrk/midnight-js-protocol';
 
 const engine = await loadLedger8Engine();
-const era = await loadLedgerEra('v8');
+const era = await loadLedgerEra(protocolVersionToLedger(record.protocolVersion));
 
 const state = engine.downConvertForExecution(era.extractState(rawContractState));
 const transcript = engine.executeCircuit({
@@ -85,12 +85,12 @@ const transcript = engine.executeCircuit({
   coinPk: coinPublicKey,
   privateState
 });
-const prototype = engine.wrapKeepStateCall({ transcript, contractAddress, contractState });
+const prototype = engine.wrapKeepStateCall({ transcript, contractAddress, contractState: migratedV9ContractState });
 ```
 
-The engine exposes exactly four methods — `downConvertForExecution`, `executeCircuit`, `executeConstructor` and `wrapKeepStateCall` — and they form a pipeline, each result being the next call's input. Reading a contract state and composing a call or a deploy are **not** here: both eras do those, so they live on the [ledger-era facade](#ledger-era-facade) instead.
+The engine exposes `downConvertForExecution`, `executeCircuit`, `executeConstructor` and `wrapKeepStateCall`, and they form a pipeline, each result being the next call's input. Reading a contract state and composing a call or a deploy are **not** here: both eras do those, so they live on the [ledger-era facade](#ledger-era-facade) instead.
 
-`contractState` passed to `wrapKeepStateCall` must be the migrated v9 state **as read from chain**: it is where the deployed operation and its verifier key come from, and the key location the prototype carries is derived from that key. A blank or constructor-built state throws `ComposeFailedError` (code `MIDNIGHT_JS_P_COMPOSE_FAILED`) with `stage` naming which lookup failed and `version` naming the ledger era it was composing for.
+`migratedV9ContractState` passed to `wrapKeepStateCall` must be the migrated v9 state **as read from chain**, which is not `rawContractState` above: it is where the deployed operation and its verifier key come from, and the key location the prototype carries is derived from that key. A blank or constructor-built state throws `ComposeFailedError` (code `MIDNIGHT_JS_P_COMPOSE_FAILED`) with `stage` naming which lookup failed and `version` naming the ledger era it was composing for.
 
 Circuits with Zswap coin effects are not supported on this leg yet: the transcript does not carry the post-call Zswap local state, so `executeCircuit` throws `Ledger8ZswapUnsupportedError` (code `MIDNIGHT_JS_P_LEDGER8_ZSWAP_UNSUPPORTED`) rather than composing a call that would drop the coin movements and be rejected on submission.
 
@@ -145,11 +145,11 @@ What is *not* asymmetric: a call's user-addressed unshielded payouts are aggrega
 | Error | Code | Raised when |
 | ----- | ---- | ----------- |
 | `StateDecodeFailedError` | `MIDNIGHT_JS_P_STATE_DECODE_FAILED` | A contract-state envelope could not be read by the era it was requested for — most often a state written by the other era |
-| `ComposeFailedError` | `MIDNIGHT_JS_P_COMPOSE_FAILED` | A circuit's operation is missing, carries no verifier key, or names a circuit the contract does not declare. `stage` is a closed union; `version` names the era |
-| `ComposeOptionError` | `MIDNIGHT_JS_P_COMPOSE_OPTION_INVALID` | An option cannot be used at all — an empty network id, an invalid ttl, an unreadable state or offer, a missing verifier-key map, or a call list the era cannot compose. `option` names the field; `version` names the era |
+| `ComposeFailedError` | `MIDNIGHT_JS_P_COMPOSE_FAILED` | A circuit's operation is missing, carries no verifier key, or names a circuit the contract does not declare; the call list is empty; a supplied transcript carries neither half; or a transcript claims a dust payout to a user address. `stage` is a closed union; `version` names the era |
+| `ComposeOptionError` | `MIDNIGHT_JS_P_COMPOSE_OPTION_INVALID` | An option cannot be used at all — an empty network id, an invalid ttl, an unreadable state, an offer the era cannot read or cannot carry, a missing verifier-key map, or a call list longer than the era can compose. `option` names the field; `version` names the era |
 | `UnknownLedgerVersionError` | `MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION` | The requested era is not `'v8'` or `'v9'` |
 
-Every one of these carries `version`, renders no hex or byte dump of its own, and preserves the underlying runtime failure on `cause` where there was one.
+Each names the era it was raised for — `version` on the first three, `requestedVersion` on `UnknownLedgerVersionError`, which also takes no `cause`. None renders hex or a byte dump of its own, and the first three preserve the underlying runtime failure on `cause` where there was one.
 
 ## Version Module
 

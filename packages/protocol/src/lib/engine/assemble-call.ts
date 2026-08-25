@@ -141,6 +141,10 @@ export interface AssembleCallOptions<TOperation> {
  * caller's, so it leaves as {@link ComposeFailedError} at stage
  * `'call-contract-state'` with the decoder's own failure on `cause`, rather
  * than as a raw WASM error.
+ *
+ * `partitionTranscripts` then returning nothing for the single call submitted
+ * is an internal invariant of the ledger module, not a caller error, so that
+ * one throws a plain `Error` and deliberately carries no protocol error code.
  */
 const resolvePartition = <TStateValue, TChargedState, TQueryContext, TPreTranscript, TParams, TOperation, TPrototype>(
   ledger: CallAssemblyLedger<TStateValue, TChargedState, TQueryContext, TPreTranscript, TParams, TOperation, TPrototype>,
@@ -196,10 +200,6 @@ const resolvePartition = <TStateValue, TChargedState, TQueryContext, TPreTranscr
  * unverifiable operation. The second check is stage-independent because the
  * diagnosis does not differ by leg: an operation without a key is unusable on
  * either ledger axis.
- *
- * `partitionTranscripts` returning nothing for the single call submitted is an
- * internal invariant of the ledger module, not a caller error, so it throws a
- * plain `Error` and deliberately carries no protocol error code.
  */
 export const assembleCallPrototype = <
   TStateValue,

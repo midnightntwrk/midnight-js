@@ -104,8 +104,11 @@ const createV8Era = async (): Promise<LedgerEra> => {
  * Rejects with {@link UnknownLedgerVersionError} when `version` is not a member
  * of `LEDGER_VERSIONS`. A TypeScript caller cannot produce that; it exists for
  * the untyped JavaScript consumers this package also serves, where an era
- * string threaded from an indexer response could otherwise resolve an inherited
- * `Object.prototype` member and yield a plausible-looking non-era.
+ * string threaded from an indexer response would otherwise fall through to a
+ * plausible-looking non-era. (`../engine/envelope.ts` defends the same input
+ * against resolving an inherited `Object.prototype` member, because its
+ * dispatch is a lookup table; this one is a closed `switch`, where no string
+ * can resolve to anything but a case or the default.)
  */
 export const loadLedgerEra = (version: LedgerVersion): Promise<LedgerEra> => {
   switch (version) {

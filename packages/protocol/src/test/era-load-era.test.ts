@@ -111,10 +111,14 @@ describe('loadLedgerEra', () => {
   // The dispatch is a closed switch over LEDGER_VERSIONS, so a TypeScript
   // caller cannot reach this. It exists for the untyped JavaScript consumers
   // this package also serves, where an era string threaded from an indexer
-  // response would otherwise index a lookup table and resolve an inherited
-  // Object.prototype member into a plausible-looking non-era.
+  // response would otherwise fall through to a plausible-looking non-era.
+  //
+  // The prototype-member names are here because they are what a table-based
+  // dispatch would resolve (envelope.ts has one, and defends itself with a
+  // null-prototype table). A switch resolves none of them — they are covered so
+  // that replacing this switch with a lookup cannot quietly reintroduce it.
   it.each(['v7', 'constructor', 'toString', '__proto__'])(
-    'refuses the non-era %s rather than resolving it through the prototype chain',
+    'refuses the non-era %s rather than resolving it to anything',
     async (version) => {
       await expect(
         // @ts-expect-error - reaching the runtime guard that exists for untyped JS callers

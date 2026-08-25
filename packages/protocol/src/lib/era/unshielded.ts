@@ -32,10 +32,17 @@ export interface CallTranscriptPair {
 
 /**
  * The era module slice {@link aggregateUnshieldedOffers} needs: just the
- * `UnshieldedOffer` constructor. Injected rather than imported as a value, for
- * the same reason `ContractStateDecoder` (`./contract-state.ts`) is — a value
- * import of either era's module would statically link its WASM into whatever
- * bundle reaches this one.
+ * `UnshieldedOffer` constructor.
+ *
+ * Injected rather than imported, because this function genuinely runs on BOTH
+ * eras — the v9 composition arm passes ledger-v9, the v8 leg passes the module
+ * it was handed by `loadLedger8`. A value import of either would both pick a
+ * side and statically link that era's WASM into whatever bundle reaches this
+ * module, which for ledger-v8 is exactly what `dist-laziness.test.ts` forbids.
+ *
+ * `inputs` and `signatures` are typed `never[]` rather than the ledger's own
+ * parameter types: this seam only ever aggregates OUTPUTS, so `[]` is the only
+ * value that can be passed, and the type says so instead of a comment.
  */
 export interface UnshieldedOfferLedger<TOffer> {
   readonly UnshieldedOffer: {

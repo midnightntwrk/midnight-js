@@ -114,11 +114,13 @@ export interface ComposeDeployOptions {
  *
  * Not a bare `Uint8Array`, because the transaction alone is not enough to use
  * the deployment: `contractAddress` is derived from the initial state AFTER
- * the verifier keys are registered, so a caller cannot recompute it without
- * repeating the registration, and `initialState` is the state that address was
- * derived from — what a caller stores and later hands to a call.
+ * the verifier keys are registered AND a fresh nonce is minted, so a caller
+ * cannot recompute it at all — repeating the registration would not reproduce
+ * it — and `initialState` is the state that address was derived from — what a caller stores and later hands to a call.
  *
  * All three are plain data, so the whole result survives a `structuredClone`.
+ * That is a transport guarantee, not an immutability one: `readonly` freezes
+ * each reference, not the bytes behind it.
  */
 export interface DeployResultPojo {
   readonly transaction: Uint8Array;

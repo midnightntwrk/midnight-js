@@ -604,22 +604,6 @@ export class StateDecodeFailedError extends Error {
 
 /**
  * Thrown by `extractEncodedStateValue` (`lib/engine/envelope.ts`) when the
- * `version` it was handed is not a member of `LEDGER_VERSIONS`.
- *
- * TypeScript callers cannot produce this: `version` is typed as
- * `LedgerVersion`. It exists for the untyped JavaScript consumers this package
- * also serves, where an unvalidated string would otherwise be used to index the
- * decoder table and could resolve to an inherited `Object.prototype` member —
- * yielding a plausible-looking non-state instead of a failure.
- *
- * `requestedVersion` carries the offending value for programmatic use. It is
- * deliberately kept out of the message: this is the one input on the seam that
- * comes straight from an untrusted caller, and the down-convert errors'
- * "never renders caller-supplied text" property is only worth having if it
- * holds here too.
- */
-/**
- * Thrown by `extractEncodedStateValue` (`lib/engine/envelope.ts`) when the
  * injected pre-fork runtime cannot be used — it was not passed at all, or the
  * binding the decoder needs is absent from it.
  *
@@ -650,12 +634,31 @@ export class Ledger8RuntimeInvalidError extends Error {
   }
 }
 
+/**
+ * Thrown when a ledger era was requested by a value that is not a member of
+ * `LEDGER_VERSIONS`. Raised by `loadLedgerEra` (`lib/era/load-era.ts`) and by
+ * `extractEncodedStateValue` (`lib/engine/envelope.ts`).
+ *
+ * TypeScript callers cannot produce this: `version` is typed as
+ * `LedgerVersion`. It exists for the untyped JavaScript consumers this package
+ * also serves, where an unvalidated era string threaded from an indexer
+ * response would otherwise reach an era-keyed decision — and, where that
+ * decision is a lookup table rather than a `switch`, could resolve an inherited
+ * `Object.prototype` member and yield a plausible-looking non-era.
+ *
+ * `requestedVersion` carries the offending value for programmatic use. It is
+ * deliberately kept out of the message: this is the one input on the seam that
+ * comes straight from an untrusted caller, and the down-convert errors'
+ * "never renders caller-supplied text" property is only worth having if it
+ * holds here too. For the same reason this class names no `version` field —
+ * there is no valid era to name.
+ */
 export class UnknownLedgerVersionError extends Error {
   readonly code = PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER_VERSION;
 
   constructor(readonly requestedVersion: string) {
     super(
-      'Unknown ledger version requested for contract-state extraction. Supported eras are v8 (node 1.x) and ' +
+      'Unknown ledger version requested. Supported eras are v8 (node 1.x) and ' +
         'v9 (node 2.x); read `requestedVersion` on this error for the value that was passed. Derive it with ' +
         'protocolVersionToLedger rather than constructing the string by hand.'
     );

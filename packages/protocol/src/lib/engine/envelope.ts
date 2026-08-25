@@ -125,10 +125,11 @@ const ENVELOPE_DECODERS: Readonly<Record<LedgerVersion, EnvelopeDecoder>> = Obje
  * point the caller at input bytes that are not the problem.
  *
  * `version` is validated before it is used, rather than trusted from the type
- * signature. TypeScript cannot vouch for it here: this function sits behind
- * the public `Ledger8Engine.extractState`, so an untyped JavaScript consumer —
- * or a version threaded from an indexer response — can reach it with any
- * string. Validating first is also what keeps `stage` inside its closed union:
+ * signature. It used to sit behind the public `Ledger8Engine.extractState`,
+ * which an untyped JavaScript consumer could reach with any string; that method
+ * is gone and the only caller today passes a literal. The guard stays because
+ * this is still an exported function, and because it is what keeps `stage`
+ * inside its closed union:
  * it is built from `version`, so an unvalidated string would otherwise reach a
  * field whose whole contract is that consumers can `switch` on it.
  */
