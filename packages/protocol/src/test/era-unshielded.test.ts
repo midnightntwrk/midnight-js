@@ -106,6 +106,51 @@ describe('extractUserAddressedOutputs', () => {
       circuitId: 'increment'
     });
   });
+
+  // `TokenType` has THREE members, and excluding dust leaves two, not one.
+  // A shielded token type carries a `raw` field like an unshielded one does, so
+  // emitting it as a `UtxoOutput` type-checks and produces an unshielded UTXO
+  // payout coloured with a shielded token — a claim the transaction cannot
+  // honour. Refused for the same reason dust is: composing it tells the user
+  // they were paid and pays them nothing.
+  it('refuses a user-addressed spend in a token type that cannot be paid out unshielded', () => {
+    const transcript = transcriptWithSpends([
+      [
+        [
+          { tag: 'shielded', raw: TOKEN },
+          { tag: 'user', address: USER }
+        ],
+        13n
+      ]
+    ]);
+
+    let caught: unknown;
+    try {
+      extractUserAddressedOutputs(transcript, 'v9', 'increment');
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(ComposeFailedError);
+    expect(caught).toMatchObject({
+      code: PROTOCOL_ERROR_CODES.COMPOSE_FAILED,
+      stage: 'call-unsupported-payout',
+      version: 'v9',
+      circuitId: 'increment'
+    });
+  });
+
+  // The refusal is on the token type this seam CAN pay out, not on an
+  // enumeration of the ones it cannot: a fourth `TokenType` member added by a
+  // vendor bump must fail closed here rather than reach `tokenType.raw` and
+  // compose a payout nothing can settle.
+  it('emits an output only for an unshielded token type', () => {
+    const transcript = transcriptWithSpends([userSpend(USER, 42n)]);
+
+    expect(extractUserAddressedOutputs(transcript, 'v9', 'increment')).toEqual([
+      { value: 42n, owner: USER, type: TOKEN }
+    ]);
+  });
 });
 
 describe('aggregateUnshieldedOffers', () => {

@@ -63,12 +63,21 @@ export interface AggregatedUnshieldedOffers<TOffer> {
  * contracts and never paid out to a UTXO, so emitting one would add an output
  * the transaction cannot cover.
  *
- * A DUST-typed spend to a user address is REFUSED, not skipped. The two are not
- * the same case: a contract-addressed spend is not a payout at all, while this
- * one is a payout the transaction has no way to make — dust carries no raw
- * token type to pay out in. Dropping it silently composes a transaction that
- * tells the user they were paid and pays them nothing. Nothing can honour the
- * claim, so it leaves as a coded failure at composition time instead.
+ * A user-addressed spend this seam cannot pay out is REFUSED, not skipped. That
+ * is a different case from a contract-addressed spend, which is not a payout at
+ * all: this one is a payout the transaction has no way to make. Dropping it
+ * silently composes a transaction that tells the user they were paid and pays
+ * them nothing, so it leaves as a coded failure at composition time instead.
+ * Two token types reach that refusal — dust, which carries no raw token type to
+ * pay out in, and a shielded type, whose value moves through a Zswap offer
+ * rather than a UTXO.
+ *
+ * The check is on the ONE type this seam can pay out rather than on a list of
+ * the ones it cannot. `TokenType` is a vendor union, and a shielded type
+ * carries a `raw` field exactly as an unshielded one does, so an
+ * exclude-what-we-know-about test emits a plausible-looking `UtxoOutput` for
+ * everything it has not heard of. A fourth member added by a vendor bump has to
+ * fail closed here, not compose a payout nothing can settle.
  *
  * An absent transcript is the normal shape of a call with no fallible half, not
  * an error, so it yields no outputs rather than throwing.
@@ -89,6 +98,9 @@ export const extractUserAddressedOutputs = (
     }
     if (tokenType.tag === 'dust') {
       throw new ComposeFailedError(version, 'call-dust-payout', circuitId);
+    }
+    if (tokenType.tag !== 'unshielded') {
+      throw new ComposeFailedError(version, 'call-unsupported-payout', circuitId);
     }
     outputs.push({ value, owner: publicAddress.address, type: tokenType.raw });
   }
