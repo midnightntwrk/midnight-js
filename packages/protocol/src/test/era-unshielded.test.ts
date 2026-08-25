@@ -16,6 +16,7 @@
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
+import { ComposeFailedError, PROTOCOL_ERROR_CODES } from '../errors';
 import { aggregateUnshieldedOffers, extractUserAddressedOutputs } from '../lib/era/unshielded';
 
 const EMPTY_EFFECTS: ledgerV9.Effects = {
@@ -61,14 +62,13 @@ describe('extractUserAddressedOutputs', () => {
   // absent transcript is the normal shape of a call with no fallible half, not
   // an error, so it must produce no outputs rather than throw.
   it('reads no outputs from an absent transcript', () => {
-    expect(extractUserAddressedOutputs(undefined)).toEqual([]);
+    expect(extractUserAddressedOutputs(undefined, 'v9', 'increment')).toEqual([]);
   });
 
-  // Only a user-addressed, non-dust claimed spend becomes a UTXO output. A
-  // contract-addressed spend is settled between contracts and never paid out;
-  // a dust spend has no raw token type to pay out in. Emitting either would
-  // unbalance the transaction, which the node rejects on submission.
-  it('keeps only the user-addressed non-dust spends, mapping value, owner and type', () => {
+  // A contract-addressed spend is settled between contracts and never paid out
+  // to a UTXO, so it is skipped rather than emitted: an output the transaction
+  // cannot cover unbalances it, and the node rejects the whole thing.
+  it('keeps the user-addressed spends and skips the contract-addressed ones', () => {
     const transcript = transcriptWithSpends([
       userSpend(USER, 42n),
       [
@@ -77,13 +77,34 @@ describe('extractUserAddressedOutputs', () => {
           { tag: 'contract', address: CONTRACT }
         ],
         7n
-      ],
-      [[{ tag: 'dust' }, { tag: 'user', address: USER }], 9n]
+      ]
     ]);
 
-    const outputs = extractUserAddressedOutputs(transcript);
+    const outputs = extractUserAddressedOutputs(transcript, 'v9', 'increment');
 
     expect(outputs).toEqual([{ value: 42n, owner: USER, type: TOKEN }]);
+  });
+
+  // Dust is the case that is REFUSED rather than skipped. The claim names a
+  // user and there is no raw token type to pay them in, so dropping it would
+  // compose a transaction telling the user they were paid while paying nothing.
+  it('refuses a user-addressed dust spend rather than dropping the payout', () => {
+    const transcript = transcriptWithSpends([[[{ tag: 'dust' }, { tag: 'user', address: USER }], 9n]]);
+
+    let caught: unknown;
+    try {
+      extractUserAddressedOutputs(transcript, 'v9', 'increment');
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(ComposeFailedError);
+    expect(caught).toMatchObject({
+      code: PROTOCOL_ERROR_CODES.COMPOSE_FAILED,
+      stage: 'call-dust-payout',
+      version: 'v9',
+      circuitId: 'increment'
+    });
   });
 });
 
@@ -93,11 +114,11 @@ describe('aggregateUnshieldedOffers', () => {
   // the offer from the root call alone would drop a callee's payout and leave
   // the transaction unbalanced.
   it('spans every call in the tree rather than only the root', () => {
-    const callee = { guaranteed: transcriptWithSpends([userSpend(OTHER_USER, 5n)]) };
-    const middle = {};
-    const root = { guaranteed: transcriptWithSpends([userSpend(USER, 11n)]) };
+    const callee = { circuitId: 'callee', guaranteed: transcriptWithSpends([userSpend(OTHER_USER, 5n)]) };
+    const middle = { circuitId: 'middle' };
+    const root = { circuitId: 'increment', guaranteed: transcriptWithSpends([userSpend(USER, 11n)]) };
 
-    const offers = aggregateUnshieldedOffers([callee, middle, root], ledgerV9);
+    const offers = aggregateUnshieldedOffers([callee, middle, root], ledgerV9, 'v9');
 
     expect(offers.guaranteed?.outputs).toEqual([
       { value: 5n, owner: OTHER_USER, type: TOKEN },
@@ -108,11 +129,12 @@ describe('aggregateUnshieldedOffers', () => {
 
   it('keeps the two segments apart', () => {
     const call = {
+      circuitId: 'increment',
       guaranteed: transcriptWithSpends([userSpend(USER, 1n)]),
       fallible: transcriptWithSpends([userSpend(OTHER_USER, 2n)])
     };
 
-    const offers = aggregateUnshieldedOffers([call], ledgerV9);
+    const offers = aggregateUnshieldedOffers([call], ledgerV9, 'v9');
 
     expect(offers.guaranteed?.outputs).toEqual([{ value: 1n, owner: USER, type: TOKEN }]);
     expect(offers.fallible?.outputs).toEqual([{ value: 2n, owner: OTHER_USER, type: TOKEN }]);
@@ -122,7 +144,7 @@ describe('aggregateUnshieldedOffers', () => {
   // segment that pays out nothing, where the ledger expects the field left
   // unset entirely.
   it('produces no offer at all for a segment with nothing to pay out', () => {
-    const offers = aggregateUnshieldedOffers([{ guaranteed: transcriptWithSpends([]) }], ledgerV9);
+    const offers = aggregateUnshieldedOffers([{ circuitId: 'increment', guaranteed: transcriptWithSpends([]) }], ledgerV9, 'v9');
 
     expect(offers.guaranteed).toBeUndefined();
     expect(offers.fallible).toBeUndefined();

@@ -18,7 +18,7 @@ import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { ComposeFailedError, ComposeOptionError } from '../../errors';
 import { assembleCallPrototype } from '../engine/assemble-call';
 import { assertComposeEnvelope } from '../engine/compose-options';
-import { resolveVerifierKeyRegistrations } from '../verifier-keys';
+import { entryPointName, resolveVerifierKeyRegistrations } from '../verifier-keys';
 import type { ComposeCallOptions, ComposeDeployOptions, DeployResultPojo } from './compose-types';
 import { aggregateUnshieldedOffers } from './unshielded';
 
@@ -119,8 +119,13 @@ export const composeV9CallTx = (options: ComposeCallOptions): Uint8Array => {
   const unshielded = aggregateUnshieldedOffers(
     intent.actions
       .filter((action) => action instanceof ledgerV9.ContractCall)
-      .map((call) => ({ guaranteed: call.guaranteedTranscript, fallible: call.fallibleTranscript })),
-    ledgerV9
+      .map((call) => ({
+        circuitId: entryPointName(call.entryPoint),
+        guaranteed: call.guaranteedTranscript,
+        fallible: call.fallibleTranscript
+      })),
+    ledgerV9,
+    'v9'
   );
   if (unshielded.guaranteed !== undefined) {
     intent.guaranteedUnshieldedOffer = unshielded.guaranteed;

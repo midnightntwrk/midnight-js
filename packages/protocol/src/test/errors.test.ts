@@ -422,6 +422,7 @@ const STAGE_KEYS: Readonly<Record<ComposeStage, true>> = {
   'wrap-call': true,
   'call-empty': true,
   'call-transcript-empty': true,
+  'call-dust-payout': true,
   'call-operation': true,
   'call-contract-state': true,
   'call-verifier-key': true,

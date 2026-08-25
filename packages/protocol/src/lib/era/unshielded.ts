@@ -15,12 +15,17 @@
 
 import type { AlignedValue, Transcript, UtxoOutput } from '@midnightntwrk/ledger-v9';
 
+import { ComposeFailedError } from '../../errors';
+import type { LedgerVersion } from '../ledger-version';
+
 /**
  * The guaranteed/fallible transcript pair one call contributes to a
  * transaction. Both halves are optional: a call whose ops are all guaranteed
  * has no fallible half, and vice versa.
  */
 export interface CallTranscriptPair {
+  /** The entry point this pair belongs to — named by any failure raised for it. */
+  readonly circuitId: string;
   readonly guaranteed?: Transcript<AlignedValue>;
   readonly fallible?: Transcript<AlignedValue>;
 }
@@ -47,26 +52,38 @@ export interface AggregatedUnshieldedOffers<TOffer> {
 /**
  * Reads the UTXO outputs a call's transcript claims on behalf of USERS.
  *
- * Two kinds of claimed spend are deliberately skipped:
- * - a contract-addressed one, which is settled between contracts and never
- *   paid out to a UTXO;
- * - a dust-typed one, which has no raw token type to be paid out in.
+ * A contract-addressed claimed spend is skipped: it is settled between
+ * contracts and never paid out to a UTXO, so emitting one would add an output
+ * the transaction cannot cover.
  *
- * Emitting either would add an output the transaction cannot cover, and the
- * node rejects the whole transaction on submission. An absent transcript is
- * the normal shape of a call with no fallible half, not an error, so it yields
- * no outputs rather than throwing.
+ * A DUST-typed spend to a user address is REFUSED, not skipped. The two are not
+ * the same case: a contract-addressed spend is not a payout at all, while this
+ * one is a payout the transaction has no way to make — dust carries no raw
+ * token type to pay out in. Dropping it silently composes a transaction that
+ * tells the user they were paid and pays them nothing. Nothing can honour the
+ * claim, so it leaves as a coded failure at composition time instead.
+ *
+ * An absent transcript is the normal shape of a call with no fallible half, not
+ * an error, so it yields no outputs rather than throwing.
  */
-export const extractUserAddressedOutputs = (transcript: Transcript<AlignedValue> | undefined): UtxoOutput[] => {
+export const extractUserAddressedOutputs = (
+  transcript: Transcript<AlignedValue> | undefined,
+  version: LedgerVersion,
+  circuitId: string
+): UtxoOutput[] => {
   if (transcript === undefined) {
     return [];
   }
 
   const outputs: UtxoOutput[] = [];
   for (const [[tokenType, publicAddress], value] of transcript.effects.claimedUnshieldedSpends) {
-    if (publicAddress.tag === 'user' && tokenType.tag !== 'dust') {
-      outputs.push({ value, owner: publicAddress.address, type: tokenType.raw });
+    if (publicAddress.tag !== 'user') {
+      continue;
     }
+    if (tokenType.tag === 'dust') {
+      throw new ComposeFailedError(version, 'call-dust-payout', circuitId);
+    }
+    outputs.push({ value, owner: publicAddress.address, type: tokenType.raw });
   }
   return outputs;
 };
@@ -87,10 +104,13 @@ export const extractUserAddressedOutputs = (transcript: Transcript<AlignedValue>
  */
 export const aggregateUnshieldedOffers = <TOffer>(
   calls: readonly CallTranscriptPair[],
-  ledger: UnshieldedOfferLedger<TOffer>
+  ledger: UnshieldedOfferLedger<TOffer>,
+  version: LedgerVersion
 ): AggregatedUnshieldedOffers<TOffer> => {
-  const guaranteedOutputs = calls.flatMap((call) => extractUserAddressedOutputs(call.guaranteed));
-  const fallibleOutputs = calls.flatMap((call) => extractUserAddressedOutputs(call.fallible));
+  const guaranteedOutputs = calls.flatMap((call) =>
+    extractUserAddressedOutputs(call.guaranteed, version, call.circuitId)
+  );
+  const fallibleOutputs = calls.flatMap((call) => extractUserAddressedOutputs(call.fallible, version, call.circuitId));
 
   return {
     guaranteed: guaranteedOutputs.length > 0 ? ledger.UnshieldedOffer.new([], guaranteedOutputs, []) : undefined,

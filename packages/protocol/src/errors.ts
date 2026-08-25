@@ -324,6 +324,7 @@ export type ComposeStage =
   | 'wrap-call'
   | 'call-empty'
   | 'call-transcript-empty'
+  | 'call-dust-payout'
   | 'call-operation'
   | 'call-contract-state'
   | 'call-verifier-key'
@@ -405,6 +406,12 @@ export class ComposeFailedError extends Error {
       'from it serializes, proves and submits, and changes nothing — the same silent no-op an empty call list ' +
       'would produce. Pass the partitioned pair the execution leg produced, at least one half of which is ' +
       'always present for a circuit that ran.',
+    'call-dust-payout': (version, circuitId) =>
+      `Failed to compose a ${version} call: the transcript for circuit '${circuitId}' claims an unshielded ` +
+      'spend to a user address in DUST, which has no raw token type to be paid out in. The transaction ' +
+      'cannot carry that payout, and composing it anyway would tell the user they were paid while the ' +
+      'transaction paid them nothing. Settle dust through its own mechanism rather than as a claimed ' +
+      'unshielded spend.',
     'call-verifier-key': (version, circuitId) =>
       `Failed to compose a ${version} call: the operation registered for circuit '${circuitId}' carries no ` +
       'verifier key, so no ledger could verify a call against it. This usually means the contract state came ' +

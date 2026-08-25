@@ -18,6 +18,7 @@ import type { AlignedValue } from '@midnightntwrk/ledger-v9';
 import type { CallTranscriptSource } from '../era/compose-types';
 import { aggregateUnshieldedOffers } from '../era/unshielded';
 import type { ProtocolV8 } from '../load-v8';
+import { entryPointName } from '../verifier-keys';
 import { assembleCallPrototype } from './assemble-call';
 import { assertComposeEnvelope } from './compose-options';
 
@@ -105,8 +106,13 @@ export const composeV8CallTx = (options: ComposeV8CallOptions, v8: ProtocolV8): 
   const unshielded = aggregateUnshieldedOffers(
     intent.actions
       .filter((action) => action instanceof v8.ContractCall)
-      .map((call) => ({ guaranteed: call.guaranteedTranscript, fallible: call.fallibleTranscript })),
-    v8
+      .map((call) => ({
+        circuitId: entryPointName(call.entryPoint),
+        guaranteed: call.guaranteedTranscript,
+        fallible: call.fallibleTranscript
+      })),
+    v8,
+    'v8'
   );
   if (unshielded.guaranteed !== undefined) {
     intent.guaranteedUnshieldedOffer = unshielded.guaranteed;
