@@ -21,7 +21,7 @@ import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
-import { PROTOCOL_ERROR_CODES } from '../errors';
+import { PROTOCOL_ERROR_CODES, StateDecodeFailedError } from '../errors';
 import type { CallTranscriptSource, ComposeCallOptions, ComposeDeployOptions } from '../lib/era/compose-types';
 import { loadLedgerEra } from '../lib/era/load-era';
 import type { LedgerVersion } from '../lib/ledger-version';
@@ -242,6 +242,15 @@ const deployOptionsFor = (version: LedgerVersion): ComposeDeployOptions => ({
   ttl: ttl()
 });
 
+const caught = (read: () => unknown): unknown => {
+  try {
+    read();
+  } catch (error) {
+    return error;
+  }
+  throw new Error('expected the read to throw');
+};
+
 const ERAS = ['v8', 'v9'] as const;
 
 describe('the two ledger eras run the same scenario', () => {
@@ -329,6 +338,24 @@ describe('the two ledger eras run the same scenario', () => {
   // Parity of the happy path is the easy half. A caller writing era-agnostic
   // code also has to be able to handle a refusal the same way on both arms, so
   // the coded refusals for a malformed envelope are pinned per era too.
+  // Both read methods have to fail the same way. They did not: extractState
+  // raised DownConvertFailedError, which carries no `version` and names a
+  // down-conversion stage the caller never asked for, while decodeContractState
+  // raised StateDecodeFailedError. A caller could not write one handler.
+  it.each(ERAS)('reports an unreadable envelope the same way from both read methods on %s', async (version) => {
+    const era = await loadLedgerEra(version);
+    const unreadable = new Uint8Array([1, 2, 3]);
+
+    const fromExtract = caught(() => era.extractState(unreadable));
+    const fromDecode = caught(() => era.decodeContractState(unreadable));
+
+    for (const error of [fromExtract, fromDecode]) {
+      expect(error).toBeInstanceOf(StateDecodeFailedError);
+      expect(error).toMatchObject({ code: PROTOCOL_ERROR_CODES.STATE_DECODE_FAILED, version });
+      expect((error as StateDecodeFailedError).cause).toBeDefined();
+    }
+  });
+
   it.each(ERAS)('refuses an empty network id with the same coded error on %s', async (version) => {
     const era = await loadLedgerEra(version);
 

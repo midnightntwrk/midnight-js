@@ -47,7 +47,10 @@ export interface LedgerEra {
    * written by this era.
    *
    * Fails closed on an envelope this era cannot read — including one written
-   * by the other era — rather than returning a partial or empty state.
+   * by the other era — rather than returning a partial or empty state. The
+   * failure is a `StateDecodeFailedError` naming this era, the same class
+   * {@link LedgerEra.decodeContractState} raises, with the decoder's own
+   * diagnosis on `cause`.
    */
   extractState(raw: Uint8Array): EncodedStateValue;
 

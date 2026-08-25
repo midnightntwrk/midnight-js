@@ -85,6 +85,30 @@ export interface ContractStatePojo {
 }
 
 /**
+ * Reads the primary state out of a raw envelope with the given era's extractor,
+ * reporting every failure as {@link StateDecodeFailedError} naming `version`.
+ *
+ * Exists so the facade's two read methods fail the SAME way. Underneath, the
+ * extractors raise `DownConvertFailedError` naming an extraction stage — a
+ * class with no `version` field, and a diagnosis phrased around down-converting
+ * a state for execution, which is not what a caller asking to read a state was
+ * doing. A caller handed one era's bytes on the other era's object should learn
+ * that from `extractState` and `decodeContractState` alike, not have to know
+ * which of the two it called. The extractor's own diagnosis stays on `cause`.
+ */
+export const extractStateWith = (
+  raw: Uint8Array,
+  version: LedgerVersion,
+  extract: (raw: Uint8Array) => EncodedStateValue
+): EncodedStateValue => {
+  try {
+    return extract(raw);
+  } catch (cause) {
+    throw new StateDecodeFailedError(version, cause);
+  }
+};
+
+/**
  * Reads a raw, serialized contract-state envelope into a
  * {@link ContractStatePojo} using the given era's own `ContractState`.
  *
