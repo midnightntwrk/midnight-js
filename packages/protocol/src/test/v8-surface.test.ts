@@ -14,7 +14,7 @@
  */
 
 import { readdirSync, readFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
@@ -310,23 +310,47 @@ const PINNED_FULL_RUNTIME_SURFACE = [
 const GLUE_PATTERN = /^__wbg_|^__wbindgen_/;
 
 const SRC_ROOT = resolve(__dirname, '..');
-// The v8 module as its siblings under src/ address it: any number of path
-// segments up, always with the `.js` extension the ESM build resolves. Built
-// from parts so this file's own literal cannot trip the scan below.
-const V8_MODULE_SPECIFIER = new RegExp(`['"\`](?:\\.{1,2}/)+${['v8', 'js'].join('\\.')}['"\`]`);
-// Type-only imports are erased before anything runs, so they are not runtime
-// references — v8's types are free to be named anywhere. Comments go too, so
-// that prose naming the module does not count as reaching for it.
-const TYPE_ONLY_IMPORT = /import\s+type\s[^;]*?from\s*['"`][^'"`]+['"`];?/g;
+// Every relative specifier a module names, carrying the `.js` extension the
+// ESM build resolves. Captured generically and resolved against the importing
+// file below, rather than matched as text against one target name: since the
+// era split, `./engine.js` from lib/v8/ is the plain `lib/v8/engine.ts`
+// sibling while `../../engine.js` is the lazily-loaded `./engine` build
+// entry, and no text pattern can tell those two apart.
+const RELATIVE_SPECIFIER = /['"`]((?:\.{1,2}\/)+[^'"`]*\.js)['"`]/g;
+// Type-only imports AND type-only re-exports are erased before anything runs,
+// so neither is a runtime reference — a module's types are free to be named
+// anywhere. Anchored to the start of a line and limited to the binding forms
+// that actually carry a specifier, so this can never swallow a following real
+// import. Comments go too, so that prose naming a module does not count as
+// reaching for it.
+const TYPE_ONLY_BINDING =
+  /^\s*(?:import|export)\s+type\s+(?:\{[^}]*\}|\*\s+as\s+\w+|\w+)\s*from\s*['"`][^'"`]+['"`];?/gm;
 const COMMENT = /\/\*[\s\S]*?\*\/|\/\/[^\n]*/g;
 
-const runtimeCodeOf = (source: string): string => source.replace(COMMENT, '').replace(TYPE_ONLY_IMPORT, '');
+const runtimeCodeOf = (source: string): string => source.replace(COMMENT, '').replace(TYPE_ONLY_BINDING, '');
 
 const collectTsFiles = (dir: string): string[] =>
   readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const fullPath = join(dir, entry.name);
     return entry.isDirectory() ? collectTsFiles(fullPath) : entry.name.endsWith('.ts') ? [fullPath] : [];
   });
+
+// Which files under src/ reach `src/<entry>` at runtime. Each relative
+// specifier is resolved against the file that names it and compared to the
+// entry's own resolved path, so a match means "this exact module" rather than
+// "a specifier that ends in the same words". `entry` is built from parts by
+// every caller so this file's own literals cannot trip the scan.
+const filesReachingAtRuntime = (entry: string): string[] => {
+  const target = resolve(SRC_ROOT, entry);
+
+  return collectTsFiles(SRC_ROOT)
+    .filter((file) =>
+      [...runtimeCodeOf(readFileSync(file, 'utf8')).matchAll(RELATIVE_SPECIFIER)].some(
+        ([, specifier]) => resolve(dirname(file), specifier) === target
+      )
+    )
+    .map((file) => file.slice(SRC_ROOT.length + 1));
+};
 
 // loadLedger8 imports the v8 module by relative specifier, so these run
 // against the sources and need no prior `yarn build` — the built artifacts are
@@ -359,25 +383,12 @@ describe('loadLedger8', () => {
 
 describe('sole runtime reference to the v8 module', () => {
   it('is imported at runtime only from lib/v8/load.ts within src/', () => {
-    const filesImportingV8 = collectTsFiles(SRC_ROOT)
-      .filter((file) => V8_MODULE_SPECIFIER.test(runtimeCodeOf(readFileSync(file, 'utf8'))))
-      .map((file) => file.slice(SRC_ROOT.length + 1));
-
-    expect(filesImportingV8).toEqual([join('lib', 'v8', 'load.ts')]);
+    expect(filesReachingAtRuntime(['v8', 'js'].join('.'))).toEqual([join('lib', 'v8', 'load.ts')]);
   });
 });
 
-// The engine module as its siblings under src/ address it: any number of path
-// segments up, always with the `.js` extension the ESM build resolves. Built
-// from parts so this file's own literal cannot trip the scan below.
-const ENGINE_MODULE_SPECIFIER = new RegExp(`['"\`](?:\\.{1,2}/)+${['engine', 'js'].join('\\.')}['"\`]`);
-
 describe('sole runtime reference to the engine module', () => {
   it('is imported at runtime only from lib/v8/load-engine.ts within src/', () => {
-    const filesImportingEngine = collectTsFiles(SRC_ROOT)
-      .filter((file) => ENGINE_MODULE_SPECIFIER.test(runtimeCodeOf(readFileSync(file, 'utf8'))))
-      .map((file) => file.slice(SRC_ROOT.length + 1));
-
-    expect(filesImportingEngine).toEqual([join('lib', 'v8', 'load-engine.ts')]);
+    expect(filesReachingAtRuntime(['engine', 'js'].join('.'))).toEqual([join('lib', 'v8', 'load-engine.ts')]);
   });
 });
