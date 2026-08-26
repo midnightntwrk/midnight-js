@@ -34,9 +34,9 @@ import { readHexFixture } from './fixtures';
 // The rest of the facade contract — a failed chunk load surfacing wrapped in
 // Ledger8RuntimeMissingError, and a protocol-coded rejection passing through
 // unwrapped — is covered against src/ in
-// engine-load-engine-chunk-failure.test.ts; the dual-instantiation guard's
+// v8-load-engine-chunk-failure.test.ts; the dual-instantiation guard's
 // wiring into construction is covered in
-// engine-load-engine-instance-mismatch.test.ts. What made those failures
+// v8-load-engine-instance-mismatch.test.ts. What made those failures
 // silent in the built artifact — one error module per bundle — is what the
 // identity assertions below pin.
 const PKG_ROOT = resolve(__dirname, '..', '..');

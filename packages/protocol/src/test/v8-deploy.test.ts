@@ -35,7 +35,7 @@ import {
 const NETWORK_ID = 'test-network';
 const TTL = new Date(Date.now() + 3_600_000);
 
-// Same literal tag as engine-compose-v8.test.ts — both legs produce an
+// Same literal tag as v8-compose.test.ts — both legs produce an
 // UnprovenTransaction (SignatureEnabled/PreProof/PreBinding), so the tag is
 // identical regardless of whether the transaction carries a deploy or a call.
 // It contains `proof-preimage`, so asserting it is also what shows the
@@ -45,7 +45,7 @@ const V8_UNPROVEN_TX_TAG = 'midnight:transaction[v9](signature[v1],proof-preimag
 const KEYS_DIR = resolve(__dirname, '../../../../testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/keys');
 const REGISTERED_VERIFIER_KEY = new Uint8Array(readFileSync(resolve(KEYS_DIR, 'increment.verifier')));
 
-// Same redirect precedent as engine-execute.test.ts: the ported artifact's
+// Same redirect precedent as v8-execute.test.ts: the ported artifact's
 // bare `@midnight-ntwrk/compact-runtime` import is scoped to this file's
 // module registry, so it never leaks into other suites. Vitest hoists
 // `vi.mock` out of any nesting, so it is written at top level to read the way
@@ -363,7 +363,7 @@ describe('composeV8DeployTx (real ledger-v8 WASM)', () => {
 // while still being part of the contract this code is written against. These
 // cases reach it through a subclass that returns the byte form, keeping the
 // rest of the module real (same interception precedent as the capturing
-// prototype in engine-compose-v8.test.ts).
+// prototype in v8-compose.test.ts).
 describe('composeV8DeployTx against byte-array entry points', () => {
   const byteEntryPointV8 = (declared: readonly Uint8Array[], registered: (string | Uint8Array)[]): typeof LedgerV8 => {
     class ByteEntryPointContractState extends LedgerV8.ContractState {

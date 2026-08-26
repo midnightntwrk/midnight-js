@@ -34,7 +34,7 @@ import { fixturePath, readHexFixture } from './fixtures';
 // counts, the same entry-point names and verifier-key hashes. It is not a
 // promise of byte parity, and asserting that would be asserting something
 // false — the two eras serialize to different tagged formats, and
-// engine-compose-v8.test.ts pins the v8 transaction tag literally to prove the
+// v8-compose.test.ts pins the v8 transaction tag literally to prove the
 // point. A composed transaction is therefore read back apart with the era's own
 // decoder and compared structurally, never byte-for-byte across eras.
 //
@@ -103,7 +103,7 @@ interface SegmentedOutputs {
 
 // Declared once against ledger-v9 and used on BOTH arms: `Transcript` and
 // `Effects` are structurally identical across the two eras (the drift gate at
-// the bottom of engine-down-convert.test.ts pins that), and `ComposeCallOptions`
+// the bottom of v8-down-convert.test.ts pins that), and `ComposeCallOptions`
 // declares this shape in the ledger-v9 algebra for exactly that reason.
 const payingTranscript = (payee: Payee, value: bigint): ledgerV9.Transcript<ledgerV9.AlignedValue> => ({
   gas: { readTime: 0n, computeTime: 0n, bytesWritten: 0n, bytesDeleted: 0n },

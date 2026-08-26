@@ -19,7 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // Lives in its own file — a single doMock'd `'../lib/v8/load'`, reached only
 // through a dynamic re-import of `../lib/engine` — so this poisoned module
 // registry cannot leak into the engine happy-path suites (same isolation
-// precedent as load-v8-failure.test.ts).
+// precedent as v8-load-failure.test.ts).
 //
 // What this pins is the laziness contract stated on `Ledger8Engine`
 // (`../lib/v8/engine.ts`): NOTHING on the engine surface needs the v8 ledger

@@ -24,7 +24,7 @@ import type { DownConvertedState } from '../lib/v8/down-convert';
 import type { TranscriptPojo } from '../lib/v8/execute';
 import { fixturePath, readHexFixture } from './fixtures';
 
-// See engine-wrap-v9.test.ts: `ContractOperation.verifierKey`'s setter
+// See v9-wrap.test.ts: `ContractOperation.verifierKey`'s setter
 // validates a `midnight:verifier-key[...]:` tagged blob.
 const REGISTERED_VERIFIER_KEY = readFileSync(
   fixturePath('twin-contract', 'compiled', 'keys', 'increment.verifier')
@@ -34,7 +34,7 @@ const REGISTERED_VERIFIER_KEY = readFileSync(
 // well-formed v9 `ContractState` whose `increment` slot carries a verifier key
 // that is genuinely FOREIGN to the twin contract (fixtures/hf/README.md, "The
 // mis-dispatch fixture"). Read by path rather than through testkit-js's typed
-// accessor, for the reason engine-golden-fixtures.test.ts gives: testkit-js
+// accessor, for the reason v8-golden-fixtures.test.ts gives: testkit-js
 // depends on this package, so a devDependency back would close a workspace
 // cycle. packages/protocol/turbo.json declares the fixture directory as a test
 // input, so editing it invalidates this package's test cache.
@@ -84,8 +84,8 @@ interface CapturedCall {
 }
 
 // Lives in its own file — the doMock'd `@midnightntwrk/ledger-v9` registry
-// cannot leak into engine-wrap-v9.test.ts's happy-path suite (same isolation
-// precedent as load-v8-failure.test.ts). Everything else in the module stays
+// cannot leak into v9-wrap.test.ts's happy-path suite (same isolation
+// precedent as v8-load-failure.test.ts). Everything else in the module stays
 // real (spread from importOriginal); only the pieces each test inspects are
 // intercepted, because `ContractCallPrototype` exposes no getter to read
 // back after construction.

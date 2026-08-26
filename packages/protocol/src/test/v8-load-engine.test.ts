@@ -31,7 +31,7 @@ const SAMPLE_COIN_PUBLIC_KEY = 'ca'.repeat(32);
 
 // Redirects the ported spike fixture's bare `@midnight-ntwrk/compact-runtime`
 // import to this package's own `compact-runtime-ledger8` (the real retained
-// 0.16 instance) — see engine-execute.test.ts for the full rationale. Scoped
+// 0.16 instance) — see v8-execute.test.ts for the full rationale. Scoped
 // to this test file's module registry only.
 vi.mock('@midnight-ntwrk/compact-runtime', async () => import('compact-runtime-ledger8'));
 
@@ -52,9 +52,9 @@ interface CompiledCounterContract extends Ledger8ContractLike {
 
 // Happy-path suite only: this file statically imports `../lib/engine` once at
 // load time, so it never mixes with a mocked-module-registry test (those live
-// in engine-load-engine-chunk-failure.test.ts and
-// engine-load-engine-instance-mismatch.test.ts — same isolation precedent as
-// load-v8-failure.test.ts).
+// in v8-load-engine-chunk-failure.test.ts and
+// v8-load-engine-instance-mismatch.test.ts — same isolation precedent as
+// v8-load-failure.test.ts).
 //
 // Ungated: every specifier this suite reaches — the 0.16 glue, ocrt3, and
 // loadLedger8's own `../v8.js` — resolves out of src/ or node_modules under
@@ -83,7 +83,7 @@ describe('createLedger8Engine', () => {
     // `ContractOperation.verifierKey`'s setter validates a
     // `midnight:verifier-key[...]:` tagged blob — reuses the already-committed
     // twin-contract verifier key rather than porting new material (see
-    // engine-wrap-v9.test.ts for the full rationale).
+    // v9-wrap.test.ts for the full rationale).
     op.verifierKey = readFileSync(
       resolve(PKG_ROOT, '..', '..', 'testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/keys/increment.verifier')
     );
@@ -149,7 +149,7 @@ describe('createLedger8Engine', () => {
   // produce a transcript whose publicTranscript carries the genuine
   // idx/addi/ins ops the compiled circuit emits, then wraps it into a
   // v9-native ContractCallPrototype (the operation-state builder mirrors
-  // engine-wrap-v9.test.ts's buildContractStateWithOperation).
+  // v9-wrap.test.ts's buildContractStateWithOperation).
   it('wrapKeepStateCall wraps a REAL executeCircuit transcript (non-empty publicTranscript) into a ContractCallPrototype accepted by Intent.new(ttl).addCall', async () => {
     const engine = await createLedger8Engine();
     const { Contract } = (await import(/* @vite-ignore */ resolve(FIXTURE_DIR, 'compiled/contract/index.js'))) as CompiledCounterModule;

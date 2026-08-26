@@ -87,7 +87,7 @@ export interface Ledger8Engine {
  * the v8 era. A consumer that only executes circuits and binds them onto v9
  * therefore never instantiates the multi-megabyte v8 WASM, and never
  * hard-depends on ledger-v8 resolving. Gated by
- * `engine-load-engine-v8-laziness.test.ts`.
+ * `v8-load-engine-laziness.test.ts`.
  */
 export const createLedger8Engine = async (): Promise<Ledger8Engine> => {
   const [glue, ocrt3] = await Promise.all([

@@ -20,14 +20,14 @@ import { Ledger8InstanceMismatchError, Ledger8RuntimeMissingError } from '../err
 // Built from parts so the runtime-reference scan in v8-surface.test.ts keeps
 // matching only lib/v8/load-engine.ts. Resolved from this file, it names
 // the same module lib/v8/load-engine.ts imports (same precedent as
-// load-v8-failure.test.ts's own V8_MODULE_SPECIFIER).
+// v8-load-failure.test.ts's own V8_MODULE_SPECIFIER).
 const ENGINE_MODULE_SPECIFIER = ['..', 'engine.js'].join('/');
 
 // Under vitest both sides of that specifier resolve to src/engine.ts, which is
 // what makes the doMock below intercept at all — so this suite needs no prior
 // `yarn build`. Lives in its own file so the mocked, poisoned module registry
-// cannot leak into engine-load-engine.test.ts's happy-path suite (same
-// isolation precedent as load-v8-failure.test.ts).
+// cannot leak into v8-load-engine.test.ts's happy-path suite (same
+// isolation precedent as v8-load-failure.test.ts).
 describe('loadLedger8Engine failure path', () => {
   afterEach(() => {
     vi.doUnmock(ENGINE_MODULE_SPECIFIER);

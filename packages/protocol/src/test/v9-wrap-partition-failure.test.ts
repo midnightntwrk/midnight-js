@@ -48,9 +48,9 @@ const buildTranscript = (): TranscriptPojo => ({
 });
 
 // Lives in its own file so the mocked, poisoned `@midnightntwrk/ledger-v9`
-// module registry cannot leak into engine-wrap-v9.test.ts's happy-path suite
+// module registry cannot leak into v9-wrap.test.ts's happy-path suite
 // (vitest isolates module state per test file) — same isolation precedent as
-// load-v8-failure.test.ts.
+// v8-load-failure.test.ts.
 describe('wrapKeepStateCall defensive guard', () => {
   afterEach(() => {
     vi.doUnmock('@midnightntwrk/ledger-v9');

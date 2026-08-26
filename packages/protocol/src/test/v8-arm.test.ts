@@ -39,7 +39,7 @@ const NETWORK_ID = 'test-network';
 
 // Redirects the ported spike fixture's bare `@midnight-ntwrk/compact-runtime`
 // import to this package's own `compact-runtime-ledger8` (the real retained
-// 0.16 instance) — see engine-execute.test.ts for the full rationale.
+// 0.16 instance) — see v8-execute.test.ts for the full rationale.
 vi.mock('@midnight-ntwrk/compact-runtime', async () => import('compact-runtime-ledger8'));
 
 // Both engine surfaces at once: the fixture is a real compiled pre-fork

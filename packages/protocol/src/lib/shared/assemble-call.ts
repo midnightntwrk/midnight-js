@@ -28,7 +28,7 @@ import type { LedgerVersion } from './ledger-version';
  * `AlignedValue`/`Op`/`EncodedStateValue`/`Transcript` payload types are
  * declared once against ledger-v9: they are structurally identical across
  * onchain-runtime-v3, ledger-v8 and ledger-v9 (compile-time drift gate at the
- * bottom of engine-down-convert.test.ts, which pins all three axes).
+ * bottom of v8-down-convert.test.ts, which pins all three axes).
  *
  * `Transcript` is spelled out rather than left as a type parameter because a
  * call can arrive with its transcript ALREADY partitioned (see
@@ -138,7 +138,7 @@ export interface AssembleCallOptions<TOperation> {
  * split there. That bridge is a safe envelope crossing, not a lossy re-encode:
  * the `EncodedStateValue` algebra is structurally identical between
  * onchain-runtime-v3 and both ledger modules (compile-time drift gate in
- * engine-down-convert.test.ts). A state the module still cannot read is the
+ * v8-down-convert.test.ts). A state the module still cannot read is the
  * caller's, so it leaves as {@link ComposeFailedError} at stage
  * `'call-contract-state'` with the decoder's own failure on `cause`, rather
  * than as a raw WASM error. A public transcript the partitioner itself rejects

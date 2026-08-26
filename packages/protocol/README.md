@@ -63,7 +63,7 @@ The directory names say what a module is **about**, not what it links. Three con
 - **`lib/shared/` is not free of vendors.** `assemble-call.ts` and `contract-state.ts` link `@midnight-ntwrk/compact-js`, a post-fork package, for `hashVerifierKey` and `encodeContractKeyLocation`. Both are called by both arms, so their subject is shared even though their linkage is not. This is safe in one direction only: v9 is the eagerly-linked baseline, so a shared module reaching for it never wakes v8, while the reverse would.
 - **`lib/v9/wrap.ts` type-imports `lib/v8/execute.ts`.** `TranscriptPojo` is the v8 engine's output and `wrapKeepStateCall` binds it onto v9. The cross-era edge is the operation's whole purpose, and it is type-only.
 
-`compose-types.ts` and `era.ts` name their shared types through `@midnightntwrk/ledger-v9` because some vendor has to name them. `EncodedStateValue`, `Op`, `AlignedValue` and `Transcript` are pinned identical across `onchain-runtime-v3`, `ledger-v8` and `ledger-v9` by the compile-time assertions in `engine-down-convert.test.ts`; the import names one era, the type belongs to neither.
+`compose-types.ts` and `era.ts` name their shared types through `@midnightntwrk/ledger-v9` because some vendor has to name them. `EncodedStateValue`, `Op`, `AlignedValue` and `Transcript` are pinned identical across `onchain-runtime-v3`, `ledger-v8` and `ledger-v9` by the compile-time assertions in `v8-down-convert.test.ts`; the import names one era, the type belongs to neither.
 
 ## Accessing the v8 Ledger Era
 

@@ -45,7 +45,7 @@ export interface Ledger8CompactRuntimeStateValue {
  * `StateValue.decode` and `new ChargedState(...)` are structurally identical
  * across the fork — that identity is what makes the bridge possible, and it is
  * asserted directly by the wire-shape drift detectors in
- * `engine-down-convert.test.ts`. So neither member can tell a pre-fork runtime
+ * `v8-down-convert.test.ts`. So neither member can tell a pre-fork runtime
  * from a post-fork one, and without a third member this interface is satisfied
  * by onchain-runtime-v4 and by `compact-runtime` (which re-exports it) — both
  * public barrel exports of this very package. A caller reaching for the wrong

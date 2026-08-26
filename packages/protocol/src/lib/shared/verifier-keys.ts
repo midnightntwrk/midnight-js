@@ -22,7 +22,7 @@ import type { LedgerVersion } from './ledger-version';
  * `ContractState.operations()` is declared `Array<string | Uint8Array>`, so a
  * key is not statically a string. In practice ledger-v8 decodes even a byte-set
  * entry point back to a string (pinned by the `entryPointName` suite in
- * `engine-deploy-v8.test.ts`; the v9 side of that behaviour is not pinned
+ * `v8-deploy.test.ts`; the v9 side of that behaviour is not pinned
  * against the real vendor), but the declared union has to be resolved
  * somewhere, and decoding is the only resolution that keeps an error message
  * naming the entry point rather than dumping its bytes — which is what

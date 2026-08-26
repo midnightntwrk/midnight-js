@@ -19,7 +19,7 @@ import { Ledger8RuntimeMissingError, PROTOCOL_ERROR_CODES } from '../errors';
 
 // Lives in its own file so the mocked, poisoned module registry cannot leak
 // into the happy-path era suite (vitest isolates module state per test file) —
-// the same isolation precedent as load-v8-failure.test.ts.
+// the same isolation precedent as v8-load-failure.test.ts.
 describe('loadLedgerEra v8 failure path', () => {
   // The facade memoises per era in module scope, and vitest caches a module
   // across the tests in one file. Without a reset the second test would be

@@ -32,7 +32,7 @@ const fieldValue = (byte: number): ocrt3.AlignedValue => ({
 
 // `ContractOperation.verifierKey`'s setter validates a
 // `midnight:verifier-key[...]:` tagged blob, so a synthetic key will not do —
-// reuses the already-committed twin-contract key, as engine-wrap-v9.test.ts does.
+// reuses the already-committed twin-contract key, as v9-wrap.test.ts does.
 const REGISTERED_VERIFIER_KEY = readFileSync(
   resolve(__dirname, '../../../../testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/keys/increment.verifier')
 );

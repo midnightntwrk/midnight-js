@@ -53,7 +53,7 @@ const buildTranscript = (): TranscriptPojo => ({
 
 // `ContractOperation.verifierKey`'s setter validates a `midnight:verifier-key[...]:`
 // tagged blob — arbitrary bytes are rejected (same rationale as
-// engine-wrap-v9.test.ts). Reuses the already-committed twin-contract key.
+// v9-wrap.test.ts). Reuses the already-committed twin-contract key.
 const REGISTERED_VERIFIER_KEY = readFileSync(
   resolve(__dirname, '../../../../testkit-js/testkit-js/src/fixtures/hf/twin-contract/compiled/keys/increment.verifier')
 );
@@ -124,7 +124,7 @@ describe('composeV8CallTx (real ledger-v8 WASM)', () => {
     // constructor can be intercepted directly (no vi.doMock needed) —
     // everything else stays the real ledger-v8. Asserted by VALUE, because
     // `ContractState.operation()` returns a fresh wrapper object per call
-    // (same reasoning as engine-wrap-v9-operation-resolution.test.ts).
+    // (same reasoning as v9-wrap-operation-resolution.test.ts).
     const captured: { op?: LedgerV8.ContractOperation; entryPoint?: Uint8Array | string; keyLocation?: string; address?: string } = {};
     // Subclasses the real prototype rather than replacing it, so no cast is
     // needed and the genuine WASM constructor still validates every argument.

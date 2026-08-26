@@ -20,7 +20,7 @@ import type * as LoadV8Module from '../lib/v8/load';
 // Lives in its own file — a single doMock'd `'../lib/v8/load'`, reached only
 // through a dynamic re-import of `../lib/era/load-era` — so this poisoned
 // module registry cannot leak into the happy-path era suites (same isolation
-// precedent as load-v8-failure.test.ts).
+// precedent as v8-load-failure.test.ts).
 //
 // What this pins is the one laziness property the facade still owes a v9-only
 // consumer. Asking for the v8 era IS the observation of v8, so acquiring the
