@@ -17,7 +17,7 @@ import type { ChargedState, StateBoundedMerkleTree, StateValue } from '@midnight
 import type { AlignedValue, EncodedStateValue } from '@midnightntwrk/ledger-v9';
 
 import { DownConvertFailedError, MerkleNotRehashedError } from '../../errors';
-import type { Ledger8ContractState } from './envelope';
+import type { Ledger8ContractState } from '../era/envelope';
 
 /**
  * The subset of the pre-fork onchain-runtime-v3 `StateValue` statics

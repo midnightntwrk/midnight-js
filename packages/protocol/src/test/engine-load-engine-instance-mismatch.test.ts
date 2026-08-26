@@ -16,9 +16,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Ledger8InstanceMismatchError, PROTOCOL_ERROR_CODES } from '../errors';
-import type * as InstanceGuard from '../lib/engine/instance-guard';
+import type * as InstanceGuard from '../lib/v8/instance-guard';
 
-// Lives in its own file — a single doMock'd `'../lib/engine/instance-guard'`
+// Lives in its own file — a single doMock'd `'../lib/v8/instance-guard'`
 // scenario, using only a dynamic re-import of `../engine` — so this poisoned
 // module registry cannot leak into any other engine-facade suite (same
 // isolation precedent as load-v8-failure.test.ts). The underlying detection
@@ -28,11 +28,11 @@ import type * as InstanceGuard from '../lib/engine/instance-guard';
 // is ever returned.
 describe('createLedger8Engine construction — dual-instantiation guard wiring', () => {
   afterEach(() => {
-    vi.doUnmock('../lib/engine/instance-guard');
+    vi.doUnmock('../lib/v8/instance-guard');
   });
 
   it('rejects before returning an engine when assertSharedLedger8Instance detects a dual-instantiation', async () => {
-    vi.doMock('../lib/engine/instance-guard', async (importOriginal) => {
+    vi.doMock('../lib/v8/instance-guard', async (importOriginal) => {
       const actual = await importOriginal<typeof InstanceGuard>();
       return {
         ...actual,
@@ -41,7 +41,7 @@ describe('createLedger8Engine construction — dual-instantiation guard wiring',
         }
       };
     });
-    const { createLedger8Engine } = await import('../lib/engine');
+    const { createLedger8Engine } = await import('../lib/v8/engine');
 
     const rejection = await createLedger8Engine().then(
       () => {

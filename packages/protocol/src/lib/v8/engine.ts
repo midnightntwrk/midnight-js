@@ -15,17 +15,17 @@
 
 import type { ContractCallPrototype } from '@midnightntwrk/ledger-v9';
 
+import type { EncodedStateValue } from '../era/envelope';
+import { wrapKeepStateCall, type WrapKeepStateCallOptions } from '../v9/wrap';
 import {
   type ConstructorResultPojo,
   executeConstructor,
   type ExecuteConstructorOptions,
   type Ledger8ConstructorRuntime
-} from './deploy-v8';
+} from './deploy';
 import { type DownConvertedState, downConvertForExecution, type Ledger8CompactRuntime } from './down-convert';
-import type { EncodedStateValue } from './envelope';
 import { executeCircuit, type ExecuteCircuitOptions, type Ledger8ExecutionRuntime, type TranscriptPojo } from './execute';
 import { assertSharedLedger8Instance } from './instance-guard';
-import { wrapKeepStateCall, type WrapKeepStateCallOptions } from './wrap-v9';
 
 export type {
   ConstructorResultPojo,

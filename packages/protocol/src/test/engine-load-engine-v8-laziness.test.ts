@@ -16,7 +16,7 @@
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// Lives in its own file — a single doMock'd `'../lib/load-v8'`, reached only
+// Lives in its own file — a single doMock'd `'../lib/v8/load'`, reached only
 // through a dynamic re-import of `../lib/engine` — so this poisoned module
 // registry cannot leak into the engine happy-path suites (same isolation
 // precedent as load-v8-failure.test.ts).
@@ -42,13 +42,13 @@ describe('createLedger8Engine — v8 ledger module acquisition', () => {
   });
 
   afterEach(() => {
-    vi.doUnmock('../lib/load-v8');
+    vi.doUnmock('../lib/v8/load');
   });
 
   it('never acquires the v8 ledger module, and serves a working engine without it', async () => {
     const loadLedger8 = vi.fn(() => Promise.reject(new Error('acquired the v8 ledger module')));
-    vi.doMock('../lib/load-v8', () => ({ loadLedger8 }));
-    const { createLedger8Engine } = await import('../lib/engine');
+    vi.doMock('../lib/v8/load', () => ({ loadLedger8 }));
+    const { createLedger8Engine } = await import('../lib/v8/engine');
 
     const engine = await createLedger8Engine();
 
@@ -73,8 +73,8 @@ describe('createLedger8Engine — v8 ledger module acquisition', () => {
   // this file reasons about is pinned here rather than assumed.
   it('reasons about the whole engine surface', async () => {
     const loadLedger8 = vi.fn(() => Promise.reject(new Error('acquired the v8 ledger module')));
-    vi.doMock('../lib/load-v8', () => ({ loadLedger8 }));
-    const { createLedger8Engine } = await import('../lib/engine');
+    vi.doMock('../lib/v8/load', () => ({ loadLedger8 }));
+    const { createLedger8Engine } = await import('../lib/v8/engine');
 
     const engine = await createLedger8Engine();
 

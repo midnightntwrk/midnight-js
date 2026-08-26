@@ -22,4 +22,4 @@
  * entry is what holds the retained `compact-runtime@0.16` glue and the
  * `@midnight-ntwrk/onchain-runtime-v3` WASM out of the package root.
  */
-export * from './lib/engine';
+export * from './lib/v8/engine';

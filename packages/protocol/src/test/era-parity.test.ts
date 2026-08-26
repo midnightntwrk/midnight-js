@@ -22,9 +22,9 @@ import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
 import { PROTOCOL_ERROR_CODES, StateDecodeFailedError } from '../errors';
-import type { CallTranscriptSource, ComposeCallOptions, ComposeDeployOptions } from '../lib/era/compose-types';
 import { loadLedgerEra } from '../lib/era/load-era';
-import type { LedgerVersion } from '../lib/ledger-version';
+import type { CallTranscriptSource, ComposeCallOptions, ComposeDeployOptions } from '../lib/shared/compose-types';
+import type { LedgerVersion } from '../lib/shared/ledger-version';
 import { fixturePath, readHexFixture } from './fixtures';
 
 // What parity means here, and what it deliberately does NOT mean.

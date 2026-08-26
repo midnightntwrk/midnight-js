@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { LedgerVersion } from './lib/ledger-version';
+import type { LedgerVersion } from './lib/shared/ledger-version';
 
 /** Stable error-code strings for this package. Frozen so a downstream package cannot mutate the shared registry object at runtime. */
 export const PROTOCOL_ERROR_CODES = Object.freeze({

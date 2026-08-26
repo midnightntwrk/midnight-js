@@ -42,14 +42,14 @@ import {
   PROTOCOL_ERROR_CODES,
   UnknownLedgerVersionError
 } from '../errors';
-import type { Ledger8CompactRuntime } from '../lib/engine/down-convert';
+import { extractEncodedStateValue } from '../lib/era/envelope';
+import type { Ledger8CompactRuntime } from '../lib/v8/down-convert';
 import {
   assertMerkleTreesRehashed,
   checkRoot,
   downConvertForExecution,
   structurallyEqual
-} from '../lib/engine/down-convert';
-import { extractEncodedStateValue } from '../lib/engine/envelope';
+} from '../lib/v8/down-convert';
 
 // Envelopes are built in-process rather than read from the hard-fork golden
 // fixtures, so this suite depends only on the two runtimes it bridges. The

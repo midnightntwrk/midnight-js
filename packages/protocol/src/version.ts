@@ -14,7 +14,7 @@
  */
 
 import { UnknownProtocolVersionError, type VersionResolutionPath } from './errors';
-import { LEDGER_VERSIONS, type LedgerVersion } from './lib/ledger-version';
+import { LEDGER_VERSIONS, type LedgerVersion } from './lib/shared/ledger-version';
 
 // Re-exported rather than declared here: `./errors` also needs `LedgerVersion`
 // to type the era its composition failures name, and this module imports

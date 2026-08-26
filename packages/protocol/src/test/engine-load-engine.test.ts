@@ -21,9 +21,9 @@ import { ContractCallPrototype, ContractOperation, ContractState, Intent, sample
 import type { ConstructorContext } from 'compact-runtime-ledger8';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createLedger8Engine } from '../lib/engine';
-import type { DownConvertedState } from '../lib/engine/down-convert';
-import type { ExecuteCircuitOptions, Ledger8ContractLike } from '../lib/engine/execute';
+import type { DownConvertedState } from '../lib/v8/down-convert';
+import { createLedger8Engine } from '../lib/v8/engine';
+import type { ExecuteCircuitOptions, Ledger8ContractLike } from '../lib/v8/execute';
 
 const PKG_ROOT = resolve(__dirname, '..', '..');
 const FIXTURE_DIR = resolve(PKG_ROOT, '..', '..', 'testkit-js/testkit-js/src/fixtures/hf/counter-016');
@@ -193,7 +193,7 @@ describe('createLedger8Engine', () => {
 // what dist-laziness.test.ts and dist-engine-errors.test.ts cover.
 describe('loadLedger8Engine', () => {
   it('memoises the engine promise across calls', async () => {
-    const { loadLedger8Engine } = await import('../lib/engine/load-engine');
+    const { loadLedger8Engine } = await import('../lib/v8/load-engine');
 
     const first = loadLedger8Engine();
     const second = loadLedger8Engine();

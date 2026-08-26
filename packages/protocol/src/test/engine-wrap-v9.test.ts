@@ -21,9 +21,9 @@ import { ContractCallPrototype, ContractOperation, ContractState, Intent, sample
 import { describe, expect, it } from 'vitest';
 
 import { ComposeFailedError, PROTOCOL_ERROR_CODES } from '../errors';
-import type { DownConvertedState } from '../lib/engine/down-convert';
-import type { TranscriptPojo } from '../lib/engine/execute';
-import { wrapKeepStateCall } from '../lib/engine/wrap-v9';
+import type { DownConvertedState } from '../lib/v8/down-convert';
+import type { TranscriptPojo } from '../lib/v8/execute';
+import { wrapKeepStateCall } from '../lib/v9/wrap';
 
 const FIELD_ALIGNMENT: ocrt3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
 

@@ -16,11 +16,11 @@
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 
 import { ComposeFailedError, ComposeOptionError, NO_CIRCUIT } from '../../errors';
-import { assembleCallPrototype } from '../engine/assemble-call';
-import { assertComposeEnvelope } from '../engine/compose-options';
-import { entryPointName, resolveVerifierKeyRegistrations } from '../verifier-keys';
-import type { ComposeCallOptions, ComposeDeployOptions, DeployResultPojo } from './compose-types';
-import { aggregateUnshieldedOffers } from './unshielded';
+import { assembleCallPrototype } from '../shared/assemble-call';
+import { assertComposeEnvelope } from '../shared/compose-options';
+import type { ComposeCallOptions, ComposeDeployOptions, DeployResultPojo } from '../shared/compose-types';
+import { aggregateUnshieldedOffers } from '../shared/unshielded';
+import { entryPointName, resolveVerifierKeyRegistrations } from '../shared/verifier-keys';
 
 /**
  * Bridges a raw, serialized contract state into the v9 era, reporting a

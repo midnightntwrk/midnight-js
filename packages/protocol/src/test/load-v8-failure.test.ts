@@ -33,7 +33,7 @@ describe('loadLedger8 failure path', () => {
     vi.doMock(V8_MODULE_SPECIFIER, () => {
       throw new Error('simulated v8 load failure');
     });
-    const { loadLedger8 } = await import('../lib/load-v8');
+    const { loadLedger8 } = await import('../lib/v8/load');
 
     const first = loadLedger8();
     const error = await first.then(

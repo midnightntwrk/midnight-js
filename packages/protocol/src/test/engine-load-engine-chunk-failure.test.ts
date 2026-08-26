@@ -37,7 +37,7 @@ describe('loadLedger8Engine failure path', () => {
     vi.doMock(ENGINE_MODULE_SPECIFIER, () => {
       throw new Error('simulated engine chunk load failure');
     });
-    const { loadLedger8Engine } = await import('../lib/engine/load-engine');
+    const { loadLedger8Engine } = await import('../lib/v8/load-engine');
 
     const first = loadLedger8Engine();
     const error = await first.then(
@@ -58,7 +58,7 @@ describe('loadLedger8Engine failure path', () => {
     vi.doMock(ENGINE_MODULE_SPECIFIER, () => ({
       createLedger8Engine: () => Promise.reject(mismatch)
     }));
-    const { loadLedger8Engine } = await import('../lib/engine/load-engine');
+    const { loadLedger8Engine } = await import('../lib/v8/load-engine');
 
     const first = loadLedger8Engine();
     const error = await first.then(
@@ -79,7 +79,7 @@ describe('loadLedger8Engine failure path', () => {
     vi.doMock(ENGINE_MODULE_SPECIFIER, () => ({
       createLedger8Engine: () => Promise.reject(alreadyWrapped)
     }));
-    const { loadLedger8Engine } = await import('../lib/engine/load-engine');
+    const { loadLedger8Engine } = await import('../lib/v8/load-engine');
 
     const error = await loadLedger8Engine().then(
       () => {

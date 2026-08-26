@@ -15,9 +15,9 @@
 
 import type { EncodedStateValue } from '@midnightntwrk/ledger-v9';
 
-import type { LedgerVersion } from '../ledger-version';
-import type { ComposeCallOptions, ComposeDeployOptions, DeployResultPojo } from './compose-types';
-import type { ContractStatePojo } from './contract-state';
+import type { ComposeCallOptions, ComposeDeployOptions, DeployResultPojo } from '../shared/compose-types';
+import type { ContractStatePojo } from '../shared/contract-state';
+import type { LedgerVersion } from '../shared/ledger-version';
 
 /**
  * One ledger era, as a single object a caller holds and calls.

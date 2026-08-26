@@ -14,7 +14,7 @@
  */
 
 import { Ledger8InstanceMismatchError, Ledger8RuntimeMissingError } from '../../errors';
-import type * as Engine from './index.js';
+import type * as Engine from './engine.js';
 
 // Type-only, so the root barrel can name every option and result type a
 // caller needs without linking the engine chunk. Without these a consumer
@@ -27,7 +27,7 @@ export type {
   Ledger8Engine,
   TranscriptPojo,
   WrapKeepStateCallOptions
-} from './index.js';
+} from './engine.js';
 
 let enginePromise: Promise<Engine.Ledger8Engine> | undefined;
 

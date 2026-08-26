@@ -21,7 +21,7 @@ import type { ConstructorContext } from 'compact-runtime-ledger8';
 import { describe, expect, it, vi } from 'vitest';
 
 import { Ledger8ZswapUnsupportedError, PROTOCOL_ERROR_CODES } from '../errors';
-import type { DownConvertedState } from '../lib/engine/down-convert';
+import type { DownConvertedState } from '../lib/v8/down-convert';
 import {
   executeCircuit,
   type ExecuteCircuitOptions,
@@ -31,7 +31,7 @@ import {
   type Ledger8ExecutionRuntime,
   type Ledger8ZswapLocalState,
   type TranscriptPojo
-} from '../lib/engine/execute';
+} from '../lib/v8/execute';
 
 const FIXTURE_DIR = resolve(__dirname, '../../../../testkit-js/testkit-js/src/fixtures/hf/counter-016');
 const EMPTY_ALIGNED: ocrt3.AlignedValue = { value: [], alignment: [] };

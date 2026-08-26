@@ -15,8 +15,8 @@
 
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 
-import { assembleCallPrototype } from './assemble-call';
-import type { TranscriptPojo } from './execute';
+import { assembleCallPrototype } from '../shared/assemble-call';
+import type { TranscriptPojo } from '../v8/execute';
 
 /**
  * Everything {@link wrapKeepStateCall} needs to wrap one keep-state call.

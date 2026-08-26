@@ -18,7 +18,7 @@ import { join, resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { loadLedger8 } from '../lib/load-v8';
+import { loadLedger8 } from '../lib/v8/load';
 // Type-only import: erased at compile time, so it costs nothing at runtime,
 // but a vendor rename or removal of any of these 30 OQ3_SURFACE type-only
 // members breaks the build. This is the only check available for them —
@@ -310,10 +310,10 @@ const PINNED_FULL_RUNTIME_SURFACE = [
 const GLUE_PATTERN = /^__wbg_|^__wbindgen_/;
 
 const SRC_ROOT = resolve(__dirname, '..');
-// The v8 module as its siblings under src/ address it: one or two path
+// The v8 module as its siblings under src/ address it: any number of path
 // segments up, always with the `.js` extension the ESM build resolves. Built
 // from parts so this file's own literal cannot trip the scan below.
-const V8_MODULE_SPECIFIER = new RegExp(`['"\`]\\.{1,2}/${['v8', 'js'].join('\\.')}['"\`]`);
+const V8_MODULE_SPECIFIER = new RegExp(`['"\`](?:\\.{1,2}/)+${['v8', 'js'].join('\\.')}['"\`]`);
 // Type-only imports are erased before anything runs, so they are not runtime
 // references — v8's types are free to be named anywhere. Comments go too, so
 // that prose naming the module does not count as reaching for it.
@@ -358,12 +358,12 @@ describe('loadLedger8', () => {
 });
 
 describe('sole runtime reference to the v8 module', () => {
-  it('is imported at runtime only from lib/load-v8.ts within src/', () => {
+  it('is imported at runtime only from lib/v8/load.ts within src/', () => {
     const filesImportingV8 = collectTsFiles(SRC_ROOT)
       .filter((file) => V8_MODULE_SPECIFIER.test(runtimeCodeOf(readFileSync(file, 'utf8'))))
       .map((file) => file.slice(SRC_ROOT.length + 1));
 
-    expect(filesImportingV8).toEqual([join('lib', 'load-v8.ts')]);
+    expect(filesImportingV8).toEqual([join('lib', 'v8', 'load.ts')]);
   });
 });
 
@@ -373,11 +373,11 @@ describe('sole runtime reference to the v8 module', () => {
 const ENGINE_MODULE_SPECIFIER = new RegExp(`['"\`](?:\\.{1,2}/)+${['engine', 'js'].join('\\.')}['"\`]`);
 
 describe('sole runtime reference to the engine module', () => {
-  it('is imported at runtime only from lib/engine/load-engine.ts within src/', () => {
+  it('is imported at runtime only from lib/v8/load-engine.ts within src/', () => {
     const filesImportingEngine = collectTsFiles(SRC_ROOT)
       .filter((file) => ENGINE_MODULE_SPECIFIER.test(runtimeCodeOf(readFileSync(file, 'utf8'))))
       .map((file) => file.slice(SRC_ROOT.length + 1));
 
-    expect(filesImportingEngine).toEqual([join('lib', 'engine', 'load-engine.ts')]);
+    expect(filesImportingEngine).toEqual([join('lib', 'v8', 'load-engine.ts')]);
   });
 });

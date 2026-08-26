@@ -14,7 +14,7 @@
  */
 
 import { ComposeOptionError } from '../../errors';
-import type { LedgerVersion } from '../ledger-version';
+import type { LedgerVersion } from './ledger-version';
 
 /** The two transaction-envelope options every composition leg takes. */
 export interface ComposeEnvelopeOptions {

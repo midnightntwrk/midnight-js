@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { ComposeFailedError } from '../errors';
+import { ComposeFailedError } from '../../errors';
 import type { LedgerVersion } from './ledger-version';
 
 /**

@@ -14,11 +14,11 @@
  */
 
 import { ComposeFailedError, ComposeOptionError, NO_CIRCUIT } from '../../errors';
-import { assertComposeEnvelope } from '../engine/compose-options';
-import { composeV8CallTx } from '../engine/compose-v8';
-import { composeV8DeployTx } from '../engine/deploy-v8';
-import type { ProtocolV8 } from '../load-v8';
-import type { ComposeCallOptions, ComposeDeployOptions, DeployResultPojo } from './compose-types';
+import { assertComposeEnvelope } from '../shared/compose-options';
+import type { ComposeCallOptions, ComposeDeployOptions, DeployResultPojo } from '../shared/compose-types';
+import { composeV8CallTx } from './compose';
+import { composeV8DeployTx } from './deploy';
+import type { ProtocolV8 } from './load';
 
 /**
  * Bridges a raw, serialized contract state into the v8 era, reporting a

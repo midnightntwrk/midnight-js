@@ -15,12 +15,12 @@
 
 import type { AlignedValue } from '@midnightntwrk/ledger-v9';
 
-import type { CallTranscriptSource } from '../era/compose-types';
-import { aggregateUnshieldedOffers } from '../era/unshielded';
-import type { ProtocolV8 } from '../load-v8';
-import { entryPointName } from '../verifier-keys';
-import { assembleCallPrototype } from './assemble-call';
-import { assertComposeEnvelope } from './compose-options';
+import { assembleCallPrototype } from '../shared/assemble-call';
+import { assertComposeEnvelope } from '../shared/compose-options';
+import type { CallTranscriptSource } from '../shared/compose-types';
+import { aggregateUnshieldedOffers } from '../shared/unshielded';
+import { entryPointName } from '../shared/verifier-keys';
+import type { ProtocolV8 } from './load';
 
 /**
  * Everything {@link composeV8CallTx} needs to assemble one v8-native call

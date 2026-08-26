@@ -20,8 +20,8 @@ import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as LedgerV9 from '@midnightntwrk/ledger-v9';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { DownConvertedState } from '../lib/engine/down-convert';
-import type { TranscriptPojo } from '../lib/engine/execute';
+import type { DownConvertedState } from '../lib/v8/down-convert';
+import type { TranscriptPojo } from '../lib/v8/execute';
 
 // A REGISTERED key, not a blank operation: assembleCallPrototype rejects a
 // key-less operation before it ever partitions a transcript (stage
@@ -61,7 +61,7 @@ describe('wrapKeepStateCall defensive guard', () => {
       const actual = await importOriginal<typeof LedgerV9>();
       return { ...actual, partitionTranscripts: () => [] };
     });
-    const { wrapKeepStateCall } = await import('../lib/engine/wrap-v9');
+    const { wrapKeepStateCall } = await import('../lib/v9/wrap');
     // A real verifier key, not a blank operation: the verifier-key guard in
     // assemble-call.ts runs first and would otherwise short-circuit this test
     // before partitionTranscripts is ever reached.

@@ -14,10 +14,10 @@
  */
 
 import { ComposeFailedError, ComposeOptionError } from '../../errors';
-import type { DeployResultPojo } from '../era/compose-types';
-import type { ProtocolV8 } from '../load-v8';
-import { resolveVerifierKeyRegistrations } from '../verifier-keys';
-import { assertComposeEnvelope } from './compose-options';
+import { assertComposeEnvelope } from '../shared/compose-options';
+import type { DeployResultPojo } from '../shared/compose-types';
+import { resolveVerifierKeyRegistrations } from '../shared/verifier-keys';
+import type { ProtocolV8 } from './load';
 
 /**
  * The minimal shape a pre-fork (`compact-runtime@0.16`) `ContractState` is used

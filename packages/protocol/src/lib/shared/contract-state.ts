@@ -17,8 +17,8 @@ import { hashVerifierKey } from '@midnight-ntwrk/compact-js';
 import type { EncodedStateValue } from '@midnightntwrk/ledger-v9';
 
 import { StateDecodeFailedError } from '../../errors';
-import type { LedgerVersion } from '../ledger-version';
-import { entryPointName } from '../verifier-keys';
+import type { LedgerVersion } from './ledger-version';
+import { entryPointName } from './verifier-keys';
 
 /** The one property {@link decodeContractStateWith} reads off a registered operation. */
 export interface DecodableContractOperation {

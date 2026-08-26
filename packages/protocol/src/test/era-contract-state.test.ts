@@ -19,9 +19,9 @@ import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
 import { PROTOCOL_ERROR_CODES, StateDecodeFailedError } from '../errors';
-import { extractV9EncodedStateValue } from '../lib/engine/envelope';
-import { type ContractStateDecoder, decodeContractStateWith } from '../lib/era/contract-state';
-import { entryPointName } from '../lib/verifier-keys';
+import { extractV9EncodedStateValue } from '../lib/era/envelope';
+import { type ContractStateDecoder, decodeContractStateWith } from '../lib/shared/contract-state';
+import { entryPointName } from '../lib/shared/verifier-keys';
 import { readHexFixture } from './fixtures';
 
 

@@ -17,7 +17,7 @@ import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
 import { ComposeFailedError, PROTOCOL_ERROR_CODES } from '../errors';
-import { aggregateUnshieldedOffers, extractUserAddressedOutputs } from '../lib/era/unshielded';
+import { aggregateUnshieldedOffers, extractUserAddressedOutputs } from '../lib/shared/unshielded';
 
 const EMPTY_EFFECTS: ledgerV9.Effects = {
   claimedNullifiers: [],

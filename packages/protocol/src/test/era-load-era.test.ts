@@ -18,7 +18,7 @@ import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import { describe, expect, it } from 'vitest';
 
 import { PROTOCOL_ERROR_CODES, UnknownLedgerVersionError } from '../errors';
-import { extractEncodedStateValue } from '../lib/engine/envelope';
+import { extractEncodedStateValue } from '../lib/era/envelope';
 import { loadLedgerEra } from '../lib/era/load-era';
 import { readHexFixture } from './fixtures';
 

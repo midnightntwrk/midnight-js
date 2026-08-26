@@ -15,7 +15,7 @@
 
 import { describe, expect, it } from 'vitest';
 
-import { LEDGER_VERSIONS } from '../lib/ledger-version';
+import { LEDGER_VERSIONS } from '../lib/shared/ledger-version';
 import * as version from '../version';
 
 // `lib/ledger-version.ts` exists to break a module cycle: `errors.ts` needs

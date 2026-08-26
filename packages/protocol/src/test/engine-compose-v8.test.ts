@@ -22,9 +22,9 @@ import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import { describe, expect, it } from 'vitest';
 
 import { ComposeFailedError, ComposeOptionError, PROTOCOL_ERROR_CODES } from '../errors';
-import { type ComposeV8CallOptions, composeV8CallTx } from '../lib/engine/compose-v8';
-import type { DownConvertedState } from '../lib/engine/down-convert';
-import type { TranscriptPojo } from '../lib/engine/execute';
+import { type ComposeV8CallOptions, composeV8CallTx } from '../lib/v8/compose';
+import type { DownConvertedState } from '../lib/v8/down-convert';
+import type { TranscriptPojo } from '../lib/v8/execute';
 
 const NETWORK_ID = 'test-network';
 const TTL = new Date(Date.now() + 3_600_000);

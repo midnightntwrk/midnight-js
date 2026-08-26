@@ -18,8 +18,8 @@ import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import { describe, expect, it } from 'vitest';
 
 import { DownConvertFailedError, PROTOCOL_ERROR_CODES } from '../errors';
-import { checkRoot, downConvertForExecution } from '../lib/engine/down-convert';
-import { extractEncodedStateValue, extractV9EncodedStateValue } from '../lib/engine/envelope';
+import { extractEncodedStateValue, extractV9EncodedStateValue } from '../lib/era/envelope';
+import { checkRoot, downConvertForExecution } from '../lib/v8/down-convert';
 import { readHexFixture } from './fixtures';
 
 // The engine's own suite (engine-down-convert.test.ts) builds its envelopes

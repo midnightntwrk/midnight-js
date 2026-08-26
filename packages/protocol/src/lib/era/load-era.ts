@@ -16,12 +16,12 @@
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 
 import { UnknownLedgerVersionError } from '../../errors';
-import { extractEncodedStateValue, extractV9EncodedStateValue } from '../engine/envelope';
-import type { LedgerVersion } from '../ledger-version';
-import { loadLedger8 } from '../load-v8';
-import { composeEraV8CallTx, composeEraV8DeployTx } from './adapt-v8';
-import { composeV9CallTx, composeV9DeployTx } from './compose-v9';
-import { decodeContractStateWith, extractStateWith } from './contract-state';
+import { decodeContractStateWith, extractStateWith } from '../shared/contract-state';
+import type { LedgerVersion } from '../shared/ledger-version';
+import { composeEraV8CallTx, composeEraV8DeployTx } from '../v8/adapt';
+import { loadLedger8 } from '../v8/load';
+import { composeV9CallTx, composeV9DeployTx } from '../v9/compose';
+import { extractEncodedStateValue, extractV9EncodedStateValue } from './envelope';
 import type { LedgerEra } from './era';
 
 export type {
@@ -30,8 +30,8 @@ export type {
   ComposeCallOptions,
   ComposeDeployOptions,
   DeployResultPojo
-} from './compose-types';
-export type { ContractEntryPointPojo, ContractStatePojo } from './contract-state';
+} from '../shared/compose-types';
+export type { ContractEntryPointPojo, ContractStatePojo } from '../shared/contract-state';
 export type { LedgerEra } from './era';
 
 // Both arms are frozen: a memoised era is one object shared by every caller in

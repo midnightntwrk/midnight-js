@@ -17,8 +17,8 @@ import { encodeContractKeyLocation, hashVerifierKey } from '@midnight-ntwrk/comp
 import type { AlignedValue, EncodedStateValue, Op, Transcript } from '@midnightntwrk/ledger-v9';
 
 import { ComposeFailedError, type ComposeStage } from '../../errors';
-import type { CallTranscriptSource } from '../era/compose-types';
-import type { LedgerVersion } from '../ledger-version';
+import type { CallTranscriptSource } from './compose-types';
+import type { LedgerVersion } from './ledger-version';
 
 /**
  * The structural surface a ledger module (ledger-v8 or ledger-v9) exposes for

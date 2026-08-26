@@ -16,7 +16,7 @@
 import type { AlignedValue, Transcript, UtxoOutput } from '@midnightntwrk/ledger-v9';
 
 import { ComposeFailedError } from '../../errors';
-import type { LedgerVersion } from '../ledger-version';
+import type { LedgerVersion } from './ledger-version';
 
 /**
  * The guaranteed/fallible transcript pair one call contributes to a

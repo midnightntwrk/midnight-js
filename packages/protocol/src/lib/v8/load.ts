@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { Ledger8RuntimeMissingError } from '../errors';
-import type * as V8 from '../v8.js';
+import { Ledger8RuntimeMissingError } from '../../errors';
+import type * as V8 from '../../v8.js';
 
 export type ProtocolV8 = typeof V8;
 
@@ -38,7 +38,7 @@ let v8ModulePromise: Promise<ProtocolV8> | undefined;
  * {@link Ledger8RuntimeMissingError} and the next call retries the import.
  */
 export const loadLedger8 = (): Promise<ProtocolV8> =>
-  (v8ModulePromise ??= import('../v8.js').catch((error: unknown) => {
+  (v8ModulePromise ??= import('../../v8.js').catch((error: unknown) => {
     v8ModulePromise = undefined;
     throw new Ledger8RuntimeMissingError('/v8', error);
   }));

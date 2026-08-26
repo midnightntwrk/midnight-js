@@ -22,8 +22,8 @@ import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
 import { ComposeFailedError, ComposeOptionError, PROTOCOL_ERROR_CODES } from '../errors';
-import type { ComposeCallEntry, ComposeCallOptions, ComposeDeployOptions } from '../lib/era/compose-types';
-import { composeV9CallTx, composeV9DeployTx } from '../lib/era/compose-v9';
+import type { ComposeCallEntry, ComposeCallOptions, ComposeDeployOptions } from '../lib/shared/compose-types';
+import { composeV9CallTx, composeV9DeployTx } from '../lib/v9/compose';
 
 const FIELD_ALIGNMENT: ocrt3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
 const fieldValue = (byte: number): ocrt3.AlignedValue => ({

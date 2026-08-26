@@ -21,10 +21,10 @@ import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ComposeOptionError, Ledger8ZswapUnsupportedError, PROTOCOL_ERROR_CODES } from '../errors';
-import type { Ledger8ContractLike } from '../lib/engine/execute';
-import { loadLedger8Engine } from '../lib/engine/load-engine';
-import type { ComposeCallEntry } from '../lib/era/compose-types';
 import { loadLedgerEra } from '../lib/era/load-era';
+import type { ComposeCallEntry } from '../lib/shared/compose-types';
+import type { Ledger8ContractLike } from '../lib/v8/execute';
+import { loadLedger8Engine } from '../lib/v8/load-engine';
 
 const PKG_ROOT = resolve(__dirname, '..', '..');
 const FIXTURE_DIR = resolve(PKG_ROOT, '..', '..', 'testkit-js/testkit-js/src/fixtures/hf/counter-016');

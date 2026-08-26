@@ -20,8 +20,8 @@ import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as LedgerV9 from '@midnightntwrk/ledger-v9';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { DownConvertedState } from '../lib/engine/down-convert';
-import type { TranscriptPojo } from '../lib/engine/execute';
+import type { DownConvertedState } from '../lib/v8/down-convert';
+import type { TranscriptPojo } from '../lib/v8/execute';
 import { fixturePath, readHexFixture } from './fixtures';
 
 // See engine-wrap-v9.test.ts: `ContractOperation.verifierKey`'s setter
@@ -132,7 +132,7 @@ describe('wrapKeepStateCall call-prototype assembly', () => {
   it('passes the operation resolved from contractState.operation(circuitId) into ContractCallPrototype', async () => {
     const captured: CapturedCall[] = [];
     mockCapturingPrototype(captured);
-    const { wrapKeepStateCall } = await import('../lib/engine/wrap-v9');
+    const { wrapKeepStateCall } = await import('../lib/v9/wrap');
     const contractState = registeredContractState();
 
     wrapKeepStateCall({ transcript: buildTranscript(), contractAddress: LedgerV9.sampleContractAddress(), contractState });
@@ -149,7 +149,7 @@ describe('wrapKeepStateCall call-prototype assembly', () => {
   it('places the address, entry point and transcript payloads at their own positions', async () => {
     const captured: CapturedCall[] = [];
     mockCapturingPrototype(captured);
-    const { wrapKeepStateCall } = await import('../lib/engine/wrap-v9');
+    const { wrapKeepStateCall } = await import('../lib/v9/wrap');
     const transcript = buildTranscript();
     const contractAddress = LedgerV9.sampleContractAddress();
 
@@ -169,7 +169,7 @@ describe('wrapKeepStateCall call-prototype assembly', () => {
   it('derives the key location in this framework canonical, contract-qualified form', async () => {
     const captured: CapturedCall[] = [];
     mockCapturingPrototype(captured);
-    const { wrapKeepStateCall } = await import('../lib/engine/wrap-v9');
+    const { wrapKeepStateCall } = await import('../lib/v9/wrap');
     const contractAddress = LedgerV9.sampleContractAddress();
 
     wrapKeepStateCall({ transcript: buildTranscript(), contractAddress, contractState: registeredContractState() });
@@ -189,7 +189,7 @@ describe('wrapKeepStateCall call-prototype assembly', () => {
   it('samples fresh communication commitment randomness for every call', async () => {
     const captured: CapturedCall[] = [];
     mockCapturingPrototype(captured);
-    const { wrapKeepStateCall } = await import('../lib/engine/wrap-v9');
+    const { wrapKeepStateCall } = await import('../lib/v9/wrap');
     const contractAddress = LedgerV9.sampleContractAddress();
     const contractState = registeredContractState();
 
@@ -224,7 +224,7 @@ describe('wrapKeepStateCall call-prototype assembly', () => {
         }
       };
     });
-    const { wrapKeepStateCall } = await import('../lib/engine/wrap-v9');
+    const { wrapKeepStateCall } = await import('../lib/v9/wrap');
     const transcript = buildTranscript();
 
     wrapKeepStateCall({
@@ -251,7 +251,7 @@ describe('wrapKeepStateCall call-prototype assembly', () => {
   it('carries a foreign registered key into the key location instead of normalising it to the expected one', async () => {
     const captured: CapturedCall[] = [];
     mockCapturingPrototype(captured);
-    const { wrapKeepStateCall } = await import('../lib/engine/wrap-v9');
+    const { wrapKeepStateCall } = await import('../lib/v9/wrap');
     const contractAddress = LedgerV9.sampleContractAddress();
     const contractState = LedgerV9.ContractState.deserialize(readHexFixture(FOREIGN_KEY_STATE_FIXTURE));
     const foreignKey = contractState.operation('increment')?.verifierKey;
@@ -300,7 +300,7 @@ describe('wrapKeepStateCall call-prototype assembly', () => {
         partitionTranscripts: () => [[guaranteedSentinel, fallibleSentinel]]
       };
     });
-    const { wrapKeepStateCall } = await import('../lib/engine/wrap-v9');
+    const { wrapKeepStateCall } = await import('../lib/v9/wrap');
 
     wrapKeepStateCall({
       transcript: buildTranscript(),

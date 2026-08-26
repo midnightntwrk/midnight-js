@@ -21,6 +21,7 @@ import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import { describe, expect, it, vi } from 'vitest';
 
 import { ComposeFailedError, ComposeOptionError, PROTOCOL_ERROR_CODES } from '../errors';
+import { entryPointName } from '../lib/shared/verifier-keys';
 import {
   type ComposeV8DeployOptions,
   composeV8DeployTx,
@@ -29,8 +30,7 @@ import {
   type Ledger8ConstructorContractLike,
   type Ledger8ConstructorResult,
   type Ledger8ConstructorRuntime
-} from '../lib/engine/deploy-v8';
-import { entryPointName } from '../lib/verifier-keys';
+} from '../lib/v8/deploy';
 
 const NETWORK_ID = 'test-network';
 const TTL = new Date(Date.now() + 3_600_000);

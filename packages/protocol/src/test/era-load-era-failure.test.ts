@@ -31,7 +31,7 @@ describe('loadLedgerEra v8 failure path', () => {
   });
 
   afterEach(() => {
-    vi.doUnmock('../lib/load-v8');
+    vi.doUnmock('../lib/v8/load');
   });
 
   // A memoised rejection would make one bad install permanent for the life of
@@ -41,7 +41,7 @@ describe('loadLedgerEra v8 failure path', () => {
     const loadLedger8 = vi.fn(() =>
       Promise.reject(new Ledger8RuntimeMissingError('/v8', new Error('simulated v8 load failure')))
     );
-    vi.doMock('../lib/load-v8', () => ({ loadLedger8 }));
+    vi.doMock('../lib/v8/load', () => ({ loadLedger8 }));
     const { loadLedgerEra } = await import('../lib/era/load-era');
 
     const first = loadLedgerEra('v8');
@@ -63,7 +63,7 @@ describe('loadLedgerEra v8 failure path', () => {
       .fn()
       .mockRejectedValueOnce(new Ledger8RuntimeMissingError('/v8', new Error('simulated v8 load failure')))
       .mockResolvedValue(repairedModule);
-    vi.doMock('../lib/load-v8', () => ({ loadLedger8 }));
+    vi.doMock('../lib/v8/load', () => ({ loadLedger8 }));
     const { loadLedgerEra } = await import('../lib/era/load-era');
 
     await expect(loadLedgerEra('v8')).rejects.toBeInstanceOf(Ledger8RuntimeMissingError);
@@ -85,7 +85,7 @@ describe('loadLedgerEra v8 failure path', () => {
   it('lets a coded acquisition failure through unwrapped', async () => {
     const cause = new Error('ERR_MODULE_NOT_FOUND');
     const missing = new Ledger8RuntimeMissingError('/v8', cause);
-    vi.doMock('../lib/load-v8', () => ({ loadLedger8: () => Promise.reject(missing) }));
+    vi.doMock('../lib/v8/load', () => ({ loadLedger8: () => Promise.reject(missing) }));
     const { loadLedgerEra } = await import('../lib/era/load-era');
 
     const rejection = await loadLedgerEra('v8').then(
