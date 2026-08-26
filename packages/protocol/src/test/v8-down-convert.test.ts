@@ -671,7 +671,7 @@ describe('cross-codec down-convert over containers', () => {
 });
 
 // Compile-time drift detector. If a vendor bump ever changes the wire shape of
-// EncodedStateValue, Op, or AlignedValue between the pre-fork
+// EncodedStateValue, Op, AlignedValue or Transcript between the pre-fork
 // (onchain-runtime-v3) and post-fork (ledger-v9) packages this engine bridges,
 // this block stops compiling. It is deliberately not paired with a runtime
 // assertion, since any such assertion would be a tautology after erasure.
@@ -688,6 +688,9 @@ type Expect<T extends true> = T;
 type _EncodedStateValueUnchanged = Expect<AssertEqual<ocrt3.EncodedStateValue, LedgerV9EncodedStateValue>>;
 type _OpUnchanged = Expect<AssertEqual<ocrt3.Op<null>, LedgerV9Op<null>>>;
 type _AlignedValueUnchanged = Expect<AssertEqual<ocrt3.AlignedValue, LedgerV9AlignedValue>>;
+type _TranscriptUnchanged = Expect<
+  AssertEqual<ocrt3.Transcript<ocrt3.AlignedValue>, LedgerV9Transcript<LedgerV9AlignedValue>>
+>;
 
 // The ledger-v8 axis, pinned for the same reason: assemble-call.ts crosses the
 // envelope into whichever ledger module it is handed, and its safety argument
@@ -698,7 +701,8 @@ type _V8EncodedStateValueUnchanged = Expect<AssertEqual<LedgerV8EncodedStateValu
 type _V8OpUnchanged = Expect<AssertEqual<LedgerV8Op<null>, LedgerV9Op<null>>>;
 type _V8AlignedValueUnchanged = Expect<AssertEqual<LedgerV8AlignedValue, LedgerV9AlignedValue>>;
 
-// `Transcript` joins the rows above for a reason of its own. A call can arrive
+// The ledger-v8 `Transcript` row, which the ocrt3 axis above now also carries,
+// is here for a reason of its own. A call can arrive
 // with its transcript already partitioned, so assemble-call.ts cannot infer the
 // pair's type from the ledger module it was handed and spells it out against
 // ledger-v9 instead. That is only sound while the two eras' shape is the same:
