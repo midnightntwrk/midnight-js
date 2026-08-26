@@ -45,7 +45,7 @@ export interface DecodableContractState {
  * `ContractState` class and its static reader.
  *
  * Injected rather than imported as a value, for the same reason
- * `Ledger8ContractState` (`../engine/envelope.ts`) is: a value import of either
+ * `Ledger8ContractState` (`../era/envelope.ts`) is: a value import of either
  * era's module would statically link its WASM into whatever bundle reaches this
  * one, so a consumer of the other era would pay for a runtime it never calls.
  */

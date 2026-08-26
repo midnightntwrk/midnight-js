@@ -143,7 +143,7 @@ export class Ledger8ZswapUnsupportedError extends Error {
 
 /**
  * Which physical-copy axis `assertSharedLedger8Instance`
- * (`lib/engine/instance-guard.ts`) detected two distinct instances on.
+ * (`lib/v8/instance-guard.ts`) detected two distinct instances on.
  *
  * `'onchain-runtime-v3'` is the only member because it is the only retained
  * pre-fork package this one both depends on directly and can receive from a
@@ -183,7 +183,7 @@ const axisPackageNames = (axis: Ledger8InstanceAxis): readonly string[] =>
   PUBLISHED_SCOPES.map((scope) => `${scope}/${AXIS_BARE_PACKAGE_NAMES[axis]}`);
 
 /**
- * Thrown by `assertSharedLedger8Instance` (`lib/engine/instance-guard.ts`)
+ * Thrown by `assertSharedLedger8Instance` (`lib/v8/instance-guard.ts`)
  * when the same-named WASM package resolved to two physically distinct copies
  * in this process (a dual-instantiation).
  *
@@ -235,8 +235,8 @@ export class Ledger8InstanceMismatchError extends Error {
 export type DownConvertStage = 'v8 envelope extraction' | 'v9 envelope extraction' | 'state down-convert';
 
 /**
- * Thrown by the down-convert engine (`lib/engine/envelope.ts`,
- * `lib/engine/down-convert.ts`) when it cannot turn a raw contract-state
+ * Thrown by the down-convert engine (`lib/era/envelope.ts`,
+ * `lib/v8/down-convert.ts`) when it cannot turn a raw contract-state
  * envelope, or an already-extracted `EncodedStateValue`, into an executable
  * pre-fork state.
  *
@@ -264,7 +264,7 @@ export class DownConvertFailedError extends Error {
 }
 
 /**
- * Thrown by `checkRoot` (`lib/engine/down-convert.ts`) when a bounded Merkle
+ * Thrown by `checkRoot` (`lib/v8/down-convert.ts`) when a bounded Merkle
  * tree's root is read before the tree has been rehashed.
  *
  * A bounded Merkle tree only has a readable root once every node hash has
@@ -387,7 +387,7 @@ export type ComposeStage =
  * `circuitId` names the entry point, never its raw contents: this class
  * renders no hex and no byte-array dump, and callers pass entry-point names
  * that have already been decoded (see `entryPointName` in
- * `lib/verifier-keys.ts`). `'call-empty'` is the one stage with no circuit
+ * `lib/shared/verifier-keys.ts`). `'call-empty'` is the one stage with no circuit
  * to name, and its message names none.
  */
 export class ComposeFailedError extends Error {
@@ -404,7 +404,7 @@ export class ComposeFailedError extends Error {
   }
 
   // A total Record rather than an if-chain, for the same reason
-  // ENVELOPE_DECODERS in lib/engine/envelope.ts is one: adding a stage without
+  // ENVELOPE_DECODERS in lib/era/envelope.ts is one: adding a stage without
   // its message fails to compile here, instead of silently shipping whichever
   // message the fallthrough happened to reach.
   //
@@ -642,7 +642,7 @@ export class StateDecodeFailedError extends Error {
 }
 
 /**
- * Thrown by `extractEncodedStateValue` (`lib/engine/envelope.ts`) when the
+ * Thrown by `extractEncodedStateValue` (`lib/era/envelope.ts`) when the
  * injected pre-fork runtime cannot be used — it was not passed at all, or the
  * binding the decoder needs is absent from it.
  *
@@ -676,7 +676,7 @@ export class Ledger8RuntimeInvalidError extends Error {
 /**
  * Thrown when a ledger era was requested by a value that is not a member of
  * `LEDGER_VERSIONS`. Raised by `loadLedgerEra` (`lib/era/load-era.ts`) and by
- * `extractEncodedStateValue` (`lib/engine/envelope.ts`).
+ * `extractEncodedStateValue` (`lib/era/envelope.ts`).
  *
  * TypeScript callers cannot produce this: `version` is typed as
  * `LedgerVersion`. It exists for the untyped JavaScript consumers this package

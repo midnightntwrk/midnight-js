@@ -18,8 +18,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Ledger8RuntimeMissingError, PROTOCOL_ERROR_CODES } from '../errors';
 
 // Built from parts so the runtime-reference scan in v8-surface.test.ts keeps
-// matching only lib/load-v8.ts. Resolved from this file, it names the same
-// module lib/load-v8.ts imports.
+// matching only lib/v8/load.ts. Resolved from this file, it names the same
+// module lib/v8/load.ts imports.
 const V8_MODULE_SPECIFIER = ['..', 'v8.js'].join('/');
 
 // Lives in its own file so the mocked, poisoned module registry cannot leak

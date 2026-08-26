@@ -22,7 +22,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // precedent as load-v8-failure.test.ts).
 //
 // What this pins is the laziness contract stated on `Ledger8Engine`
-// (`../lib/engine/index.ts`): NOTHING on the engine surface needs the v8 ledger
+// (`../lib/v8/engine.ts`): NOTHING on the engine surface needs the v8 ledger
 // module, so constructing the engine must not acquire it and neither must any
 // of its methods. Without this gate, hoisting the load back into
 // `createLedger8Engine`'s `Promise.all` would make every keep-state consumer

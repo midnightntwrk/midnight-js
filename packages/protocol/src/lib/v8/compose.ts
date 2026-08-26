@@ -37,7 +37,7 @@ import type { ProtocolV8 } from './load';
  *
  * `networkId` and `ttl` carry the caller's policy decisions (which network,
  * how long the transaction lives), but their well-formedness is checked here
- * — see `assertComposeEnvelope` (`engine/compose-options.ts`).
+ * — see `assertComposeEnvelope` (`../shared/compose-options.ts`).
  */
 export interface ComposeV8CallOptions {
   readonly circuitId: string;
@@ -57,7 +57,7 @@ export interface ComposeV8CallOptions {
  * serializes it. The call prototype comes from {@link assembleCallPrototype}
  * against the injected v8 module. This is the "same-era" leg: both the
  * circuit's execution and the call it produces are bound entirely on the
- * ledger-v8 axis, as opposed to `wrapKeepStateCall` (`engine/wrap-v9.ts`),
+ * ledger-v8 axis, as opposed to `wrapKeepStateCall` (`../v9/wrap.ts`),
  * which binds a retained-execution transcript natively onto the current
  * ledger-v9 axis instead.
  *
@@ -69,7 +69,7 @@ export interface ComposeV8CallOptions {
  * Uses `Transaction.fromPartsRandomized`, so the intent lands at a random
  * segment id and stays mergeable with other calls — matching the v9 call path
  * in `packages/contracts/src/utils/ledger-utils.ts`. Only deploys use a fixed
- * segment; see `composeV8DeployTx` (`engine/deploy-v8.ts`).
+ * segment; see `composeV8DeployTx` (`./deploy.ts`).
  *
  * Throws `ComposeFailedError` (`../../errors.ts`) when `contractState`
  * has no registered operation for `circuitId` (stage
@@ -99,7 +99,7 @@ export const composeV8CallTx = (options: ComposeV8CallOptions, v8: ProtocolV8): 
   // Read the partitioned pair back off the intent rather than re-deriving it:
   // these are the exact transcripts the transaction now carries, so the offers
   // cannot describe a different partition than the call does. This mirrors the
-  // v9 arm (`../era/compose-v9.ts`) — a user-addressed payout has to be
+  // v9 arm (`../v9/compose.ts`) — a user-addressed payout has to be
   // attached on BOTH eras, or a call that pays one out composes into an
   // unbalanced transaction the node rejects on submission, with nothing having
   // reported a problem here.

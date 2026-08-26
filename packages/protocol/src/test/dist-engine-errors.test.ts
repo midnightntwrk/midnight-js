@@ -28,7 +28,7 @@ import { readHexFixture } from './fixtures';
 // resolves src/ once, which makes that boundary invisible: an error class
 // inlined separately into each bundle answers `false` to `instanceof` against
 // the root package's class, and the facade's own rejection discrimination
-// (src/lib/engine/load-engine.ts) reads the same way. This suite therefore
+// (src/lib/v8/load-engine.ts) reads the same way. This suite therefore
 // drives the BUILT package through its own exports map, and never src/.
 //
 // The rest of the facade contract — a failed chunk load surfacing wrapped in

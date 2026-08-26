@@ -18,8 +18,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Ledger8InstanceMismatchError, Ledger8RuntimeMissingError } from '../errors';
 
 // Built from parts so the runtime-reference scan in v8-surface.test.ts keeps
-// matching only lib/engine/load-engine.ts. Resolved from this file, it names
-// the same module lib/engine/load-engine.ts imports (same precedent as
+// matching only lib/v8/load-engine.ts. Resolved from this file, it names
+// the same module lib/v8/load-engine.ts imports (same precedent as
 // load-v8-failure.test.ts's own V8_MODULE_SPECIFIER).
 const ENGINE_MODULE_SPECIFIER = ['..', 'engine.js'].join('/');
 

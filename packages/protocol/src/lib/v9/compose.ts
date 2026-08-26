@@ -178,7 +178,7 @@ const registerVerifierKeys = (
 const assertStateCarriesKeys = (contractState: ledgerV9.ContractState): void => {
   for (const entryPoint of contractState.operations()) {
     // `?.` collapses "no operation resolves" into "operation has a blank key",
-    // which `../era/contract-state.ts` deliberately refuses to do for the same
+    // which `../shared/contract-state.ts` deliberately refuses to do for the same
     // call. It is safe here because both answers have the one remediation this
     // function exists to demand — supply the map — whereas a decoded state hands
     // its caller a verifierKey field whose absence means "never deployed".

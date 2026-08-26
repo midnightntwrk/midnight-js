@@ -102,7 +102,7 @@ export interface Ledger8ExecutionRuntime {
 /**
  * The result of one impure circuit's invocation on a pre-fork
  * (`compact-runtime@0.16`) contract instance: the primary result plus every
- * artifact {@link wrapKeepStateCall} (`./wrap-v9.ts`) needs to assemble a
+ * artifact {@link wrapKeepStateCall} (`../v9/wrap.ts`) needs to assemble a
  * v9-native `ContractCallPrototype`.
  *
  * `preContractState`/`postContractState` are {@link DownConvertedState}s —

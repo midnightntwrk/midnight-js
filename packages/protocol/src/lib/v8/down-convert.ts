@@ -30,7 +30,7 @@ import type { Ledger8ContractState } from '../era/envelope';
  *
  * The `dist-laziness` suite is the intended enforcement, but it does not cover
  * this module yet — it inspects `dist/index.js`, and no build entry reaches
- * `lib/engine/*` on this branch, so nothing here is bundled to inspect. It
+ * `lib/v8/*` on this branch, so nothing here is bundled to inspect. It
  * begins covering this file when the engine gains a build entry; see the same
  * note on `Ledger8ContractState` in `envelope.ts`.
  */

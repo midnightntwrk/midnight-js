@@ -61,7 +61,7 @@ const refuseZswapOffer = (offers: readonly (Uint8Array | undefined)[]): void => 
 
 /**
  * Maps the era-facade's call options onto the v8-native composition leg
- * (`../engine/compose-v8.ts`).
+ * (`./compose.ts`).
  *
  * Two shapes the facade allows are not expressible on this era, and both are
  * refused rather than silently narrowed:
@@ -109,7 +109,7 @@ export const composeEraV8CallTx = (options: ComposeCallOptions, v8: ProtocolV8):
 
 /**
  * Maps the era-facade's deploy options onto the v8-native deploy leg
- * (`../engine/deploy-v8.ts`).
+ * (`./deploy.ts`).
  *
  * `verifierKeys` is optional on the facade but required here: this era's deploy
  * leg registers the compiled contract's keys onto the initial state itself, and

@@ -18,7 +18,7 @@ import { describe, expect, it } from 'vitest';
 import { LEDGER_VERSIONS } from '../lib/shared/ledger-version';
 import * as version from '../version';
 
-// `lib/ledger-version.ts` exists to break a module cycle: `errors.ts` needs
+// `lib/shared/ledger-version.ts` exists to break a module cycle: `errors.ts` needs
 // `LedgerVersion` to type the era every composition failure names, and
 // `version.ts` needs `errors.ts` for the error it throws. Holding the constant
 // in a leaf that imports nothing lets both reach it without either importing

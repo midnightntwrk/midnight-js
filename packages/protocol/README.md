@@ -46,6 +46,25 @@ import { createPlatform } from '@midnight-ntwrk/midnight-js-protocol/platform-js
 | `./platform-js/effect/Configuration` | `@midnight-ntwrk/platform-js/effect/Configuration` | Effect-based configuration |
 | `./platform-js/effect/ContractAddress` | `@midnight-ntwrk/platform-js/effect/ContractAddress` | Effect-based contract address resolution |
 
+## Source Layout
+
+Nothing under `src/lib/` is a build entry, so this layout is internal and no consumer import path depends on it. Its job is to make one question answerable from a path alone: *which ledger does this touch?*
+
+| Directory | Holds | Ledger reference |
+|---|---|---|
+| `lib/v8/` | the retained pre-fork era: `load.ts`, `engine.ts`, `load-engine.ts`, `instance-guard.ts`, `down-convert.ts`, `execute.ts`, `compose.ts`, `deploy.ts`, `adapt.ts` | acquires `ledger-v8`, `onchain-runtime-v3` and the 0.16 glue, always through a dynamic import |
+| `lib/v9/` | the current era's composition arms: `compose.ts`, `wrap.ts` | links `ledger-v9` statically |
+| `lib/shared/` | what both arms run: `ledger-version.ts`, `verifier-keys.ts`, `compose-options.ts`, `assemble-call.ts`, `compose-types.ts`, `unshielded.ts`, `contract-state.ts` | era passed in as a `LedgerVersion` parameter, never chosen here |
+| `lib/era/` | the facade and the dispatch: `load-era.ts`, `era.ts`, `envelope.ts` | reaches both, which is the point of the layer |
+
+The directory names say what a module is **about**, not what it links. Three consequences a reader should not have to derive:
+
+- **`lib/v8/compose.ts`, `deploy.ts` and `adapt.ts` link no v8 at all.** They take the acquired module as a `ProtocolV8` parameter, which is a type. That injection is what keeps the v8 WASM out of the eager graph, and the guarantee is enforced by `dist-laziness.test.ts` and `v8-surface.test.ts` — not by this layout. Read the tests, not the directory, for the bundle boundary.
+- **`lib/shared/` is not free of vendors.** `assemble-call.ts` and `contract-state.ts` link `@midnight-ntwrk/compact-js`, a post-fork package, for `hashVerifierKey` and `encodeContractKeyLocation`. Both are called by both arms, so their subject is shared even though their linkage is not. This is safe in one direction only: v9 is the eagerly-linked baseline, so a shared module reaching for it never wakes v8, while the reverse would.
+- **`lib/v9/wrap.ts` type-imports `lib/v8/execute.ts`.** `TranscriptPojo` is the v8 engine's output and `wrapKeepStateCall` binds it onto v9. The cross-era edge is the operation's whole purpose, and it is type-only.
+
+`compose-types.ts` and `era.ts` name their shared types through `@midnightntwrk/ledger-v9` because some vendor has to name them. `EncodedStateValue`, `Op`, `AlignedValue` and `Transcript` are pinned identical across `onchain-runtime-v3`, `ledger-v8` and `ledger-v9` by the compile-time assertions in `engine-down-convert.test.ts`; the import names one era, the type belongs to neither.
+
 ## Accessing the v8 Ledger Era
 
 The `./v8` subpath re-exports the previous-era ledger (`@midnightntwrk/ledger-v8`), which carries its own WASM. To keep that WASM out of eagerly-loaded module graphs, runtime imports of `@midnight-ntwrk/midnight-js-protocol/v8` are blocked by ESLint everywhere outside this package. Use the lazy accessor instead:
@@ -155,8 +174,7 @@ Each names the era it was raised for — `version` on the first three, `requeste
 
 Recorded here so the reasoning is not lost, and deliberately NOT done in the change that introduced this facade:
 
-- **Split `src/lib/era/` into `src/lib/era/v8/` and `src/lib/era/v9/`.** The module names already carry the era as a suffix (`adapt-v8.ts`, `compose-v9.ts`), which is the shape a directory expresses better than a filename: it makes the per-era surface reviewable at a glance, gives each arm a natural home for the helpers it does not share, and makes an accidental cross-era import visible as a path rather than as a suffix mismatch. It is a pure move — `src/lib/` is not a build entry, so no consumer import path changes — but it renames every path in the coverage floors in `vitest.config.ts`, and a glob there that matches no file is ignored *silently*, so the move has to land on its own where that can be verified rather than buried in a behavioural diff.
-- **Collapse the version dispatch in `lib/engine/envelope.ts`.** `extractEncodedStateValue` has one production caller, which passes the literal `'v8'`; the v9 arm calls `extractV9EncodedStateValue` directly. The decoder table, the unknown-version guard and the null-prototype defence are therefore only reachable from tests, and the per-file 100% floor keeps the tests that reach them alive. Collapsing it to a `extractV8EncodedStateValue` beside the v9 one deletes real tests, which belongs in its own change.
+- **Collapse the version dispatch in `lib/era/envelope.ts`.** `extractEncodedStateValue` has one production caller, which passes the literal `'v8'`; the v9 arm calls `extractV9EncodedStateValue` directly. The decoder table, the unknown-version guard and the null-prototype defence are therefore only reachable from tests, and the per-file 100% floor keeps the tests that reach them alive. Collapsing it to a `extractV8EncodedStateValue` beside the v9 one deletes real tests, which belongs in its own change.
 - **Give `StateDecodeFailedError` a `stage`.** `decodeContractStateWith` wraps the whole read, so a state that decoded fine but declares an entry point resolving to no operation is reported with the same code and the same "resolve the era and check the bytes" remediation as an envelope written by the other era. A discriminator would separate them; it is a public error-shape change.
 - **Give `ComposeOptionError` a `circuitId`.** The v9 blank-key refusal knows which entry point was blank and cannot say so, because the field does not exist. Adding it would let that refusal name the slot without breaking the class parity the two arms currently have.
 

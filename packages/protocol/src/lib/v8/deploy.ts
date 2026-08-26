@@ -32,7 +32,7 @@ import type { ProtocolV8 } from './load';
  *
  * Structurally loose enough that unrelated serializables satisfy it, which is
  * what lets tests substitute a fake instead of invoking real WASM (the same
- * pattern `Ledger8ContractLike` in `engine/execute.ts` uses). The type
+ * pattern `Ledger8ContractLike` in `./execute.ts` uses). The type
  * therefore does not enforce that the bytes are a contract state at all;
  * whichever deploy leg receives them turns that residual risk into a legible
  * error rather than a raw decoder failure.
@@ -59,7 +59,7 @@ export interface Ledger8ConstructorContractLike {
 /**
  * The subset of the pre-fork `compact-runtime@0.16` glue {@link executeConstructor}
  * needs to build a constructor context. Injected — like `Ledger8ExecutionRuntime`
- * (`engine/execute.ts`) — so callers target a specific WASM-backed instance and
+ * (`./execute.ts`) — so callers target a specific WASM-backed instance and
  * tests can substitute a controlled fake.
  */
 export interface Ledger8ConstructorRuntime {
@@ -121,7 +121,7 @@ export const executeConstructor = (options: ExecuteConstructorOptions, runtime: 
  *
  * `networkId` and `ttl` carry the caller's policy decisions (which network,
  * how long the transaction lives), but their well-formedness is checked here
- * — see `assertComposeEnvelope` (`engine/compose-options.ts`).
+ * — see `assertComposeEnvelope` (`../shared/compose-options.ts`).
  */
 export interface ComposeV8DeployOptions {
   readonly contractState: Uint8Array;
@@ -134,8 +134,8 @@ export interface ComposeV8DeployOptions {
  * Bridges a pre-fork contract state into the v8 era by bytes, reporting a
  * rejected envelope as {@link ComposeOptionError} rather than letting a raw
  * decoder failure escape — the same wrapping the v9 deploy leg applies to the
- * identical call (`../era/compose-v9.ts`). Not the same class
- * `extractEncodedStateValue` (`engine/envelope.ts`) raises for its own decode:
+ * identical call (`../v9/compose.ts`). Not the same class
+ * `extractEncodedStateValue` (`../era/envelope.ts`) raises for its own decode:
  * a state that cannot be READ is a different fault from an option that cannot
  * be USED, and they carry different remediations.
  */

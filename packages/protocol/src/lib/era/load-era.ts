@@ -105,7 +105,7 @@ const createV8Era = async (): Promise<LedgerEra> => {
  * of `LEDGER_VERSIONS`. A TypeScript caller cannot produce that; it exists for
  * the untyped JavaScript consumers this package also serves, where an era
  * string threaded from an indexer response would otherwise fall through to a
- * plausible-looking non-era. (`../engine/envelope.ts` defends the same input
+ * plausible-looking non-era. (`./envelope.ts` defends the same input
  * against resolving an inherited `Object.prototype` member, because its
  * dispatch is a lookup table; this one is a closed `switch`, where no string
  * can resolve to anything but a case or the default.)
@@ -122,7 +122,7 @@ export const loadLedgerEra = (version: LedgerVersion): Promise<LedgerEra> => {
     default: {
       // Compile-time exhaustiveness, in the style of version.ts's
       // `_allLedgerVersionsAreMapped` and the Merkle walk in
-      // `../engine/down-convert.ts`: a new member of LEDGER_VERSIONS stops
+      // `../v8/down-convert.ts`: a new member of LEDGER_VERSIONS stops
       // this assignment type-checking, so the omission is a build failure
       // rather than a review miss. The runtime rejection is not redundant
       // with it — `version` reaches here from untyped callers too.

@@ -55,33 +55,44 @@ export default defineConfig({
         // exist so that a future lowering of the global floor cannot quietly
         // take these files down with it — do not delete them as dead config.
         'src/version.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
-        'src/lib/shared/ledger-version.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+
+        // Grouped by the directory each module lives in, so one era's floors
+        // read as a block and a move that forgets an entry is visible as a gap
+        // in the group rather than as a silently deleted glob.
         'src/lib/era/envelope.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
-        'src/lib/v8/down-convert.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/lib/era/load-era.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        // Declaration-only: interfaces and `import type` alone, so there is
+        // nothing to instrument and this floor can never fail. Listed to keep
+        // the set of era modules complete and reviewable, not as a guarantee.
+        'src/lib/era/era.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+
+        // The sole runtime path to the v8 module, and so the file the lazy-WASM
+        // guarantee rests on. It had no floor of its own before the directory
+        // split; it does now.
+        'src/lib/v8/load.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/lib/v8/load-engine.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/lib/v8/engine.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/v8/instance-guard.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/lib/v8/down-convert.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/v8/execute.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
-        'src/lib/shared/assemble-call.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
-        'src/lib/v9/wrap.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
-        'src/lib/shared/compose-options.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/v8/compose.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/v8/deploy.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
-        'src/lib/v8/engine.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
-        'src/lib/v8/load-engine.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/lib/v8/adapt.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+
+        'src/lib/v9/compose.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/lib/v9/wrap.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+
+        'src/lib/shared/ledger-version.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         // Shared by BOTH eras' deploy legs, and the three refusals it owns are
         // what stop a deploy landing at an address the caller's artifacts do
         // not describe. Floored for the same reason every other seam file is.
         'src/lib/shared/verifier-keys.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
-        'src/lib/v8/adapt.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
-        // Declaration-only: interfaces and `import type` alone, so there is
-        // nothing to instrument and this floor can never fail. Listed to keep
-        // the set of era modules complete and reviewable, not as a guarantee.
-        'src/lib/shared/compose-types.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
-        'src/lib/v9/compose.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/lib/shared/compose-options.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        'src/lib/shared/assemble-call.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
         'src/lib/shared/contract-state.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
-        // Declaration-only, as `compose-types.ts` above.
-        'src/lib/era/era.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
-        'src/lib/era/load-era.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
-        'src/lib/shared/unshielded.ts': { lines: 100, functions: 100, branches: 100, statements: 100 }
+        'src/lib/shared/unshielded.ts': { lines: 100, functions: 100, branches: 100, statements: 100 },
+        // Declaration-only, as `era/era.ts` above.
+        'src/lib/shared/compose-types.ts': { lines: 100, functions: 100, branches: 100, statements: 100 }
       }
     },
     reporters: [

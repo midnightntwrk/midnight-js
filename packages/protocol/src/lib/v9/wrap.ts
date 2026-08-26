@@ -24,7 +24,7 @@ import type { TranscriptPojo } from '../v8/execute';
  * chain, or otherwise carrying the contract's real registered operations —
  * used only to look up the `ContractOperation` for `transcript.circuitId`
  * (mirrors `ComposeV8CallOptions`'s `contractState` parameter in
- * `./compose-v8.ts`).
+ * `../v8/compose.ts`).
  */
 export interface WrapKeepStateCallOptions {
   readonly transcript: TranscriptPojo;

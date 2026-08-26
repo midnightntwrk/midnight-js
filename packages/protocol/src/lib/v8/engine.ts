@@ -67,7 +67,7 @@ export interface Ledger8Engine {
  *
  * `../../engine.ts` re-exports this module as the `./engine` build entry
  * (`dist/engine.js`), reached only by the dynamic import in
- * `lib/engine/load-engine.ts`. Evaluating it — which is what pulls in the glue
+ * `lib/v8/load-engine.ts`. Evaluating it — which is what pulls in the glue
  * and `onchain-runtime-v3` WASM — happens only on that import, never as a side
  * effect of loading the package root.
  *
@@ -79,7 +79,7 @@ export interface Ledger8Engine {
  * silently corrupt on a physical-instance mismatch. No other WASM package
  * this module acquires has a comparable second acquisition path, so no other
  * axis is asserted. Any acquisition failure surfaces through the facade
- * (`lib/engine/load-engine.ts`) as `Ledger8RuntimeMissingError` (`../../errors.ts`).
+ * (`lib/v8/load-engine.ts`) as `Ledger8RuntimeMissingError` (`../../errors.ts`).
  *
  * Deliberately does NOT acquire the v8 ledger module. Nothing on this surface
  * needs it — call and deploy composition live on the era facade

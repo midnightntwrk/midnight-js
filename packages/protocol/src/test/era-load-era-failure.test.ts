@@ -79,7 +79,7 @@ describe('loadLedgerEra v8 failure path', () => {
   // and break `instanceof` narrowing for every caller.
   // The mock rejects with an already-wrapped Ledger8RuntimeMissingError
   // because that is the real loadLedger8 contract: it never rejects with a raw
-  // module-resolution error (see ../lib/load-v8.ts). Asserted by IDENTITY, not
+  // module-resolution error (see ../lib/v8/load.ts). Asserted by IDENTITY, not
   // just by class: a re-wrap would still be an instance of the same class
   // while burying the original cause a level deeper.
   it('lets a coded acquisition failure through unwrapped', async () => {

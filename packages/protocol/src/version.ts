@@ -19,7 +19,7 @@ import { LEDGER_VERSIONS, type LedgerVersion } from './lib/shared/ledger-version
 // Re-exported rather than declared here: `./errors` also needs `LedgerVersion`
 // to type the era its composition failures name, and this module imports
 // `./errors`. The constant therefore lives in a leaf module both can reach —
-// see `./lib/ledger-version.ts`. Consumers keep importing both names from here
+// see `./lib/shared/ledger-version.ts`. Consumers keep importing both names from here
 // (and from the root barrel) exactly as before.
 export { LEDGER_VERSIONS, type LedgerVersion };
 
