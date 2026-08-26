@@ -246,8 +246,8 @@ THIS repo's current toolchain (`compactc 0.33.0-rc.2`, `runtime-version:
 0.18.0-rc.1`). The two are not interchangeable: `twin-contract/compiled/` emits
 0.18-era (async) codegen and cannot run against a `compact-runtime@0.16`
 instance; `counter-016/` emits the sync codegen the retained pre-fork engine
-(`packages/protocol/src/engine/execute.ts`) actually exercises, and is the
-fixture `engine-execute.test.ts` runs `increment` against.
+(`packages/protocol/src/lib/v8/execute.ts`) actually exercises, and is the
+fixture `v8-execute.test.ts` runs `increment` against.
 
 Ported verbatim (byte-for-byte, only source-map generation trimmed — same
 "drop the map, keep the module minimal" precedent as `twin-contract/`) from
@@ -274,11 +274,11 @@ artifact — same as `twin-contract/compiled/contract/index.js` — must not
 carry.
 
 `counter-016/increment-transcript.golden.json` is a golden regression
-reference for the transcript `executeCircuit` (`engine/execute.ts`) produces
+reference for the transcript `executeCircuit` (`lib/v8/execute.ts`) produces
 when running `increment()` against this contract's freshly-constructed
 initial state (`round: 0`). The spike carries no recorded transcript fixture
 of its own to port, so this one was minted once, directly from
-`engine-execute.test.ts`'s own real execution against this ported artifact
+`v8-execute.test.ts`'s own real execution against this ported artifact
 (no proving involved — circuit execution through `compact-runtime@0.16` is
 fully deterministic), and is committed as JSON with bigints written as
 `` `${n}n` ``-suffixed strings and byte arrays as lower-case hex (the two

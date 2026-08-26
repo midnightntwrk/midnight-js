@@ -28,11 +28,14 @@ import type { Ledger8ContractState } from '../era/envelope';
  * module. The pre-fork packages reach this process through a lazy acquisition
  * path the caller owns.
  *
- * The `dist-laziness` suite is the intended enforcement, but it does not cover
- * this module yet — it inspects `dist/index.js`, and no build entry reaches
- * `lib/v8/*` on this branch, so nothing here is bundled to inspect. It
- * begins covering this file when the engine gains a build entry; see the same
- * note on `Ledger8ContractState` in `envelope.ts`.
+ * The `dist-laziness` suite is the intended enforcement, but it does not reach
+ * this module: it walks the eager static closure of `dist/index.js`, and the
+ * only value import of this file is `lib/v8/engine.ts`, which no eager entry
+ * reaches — so it is bundled into `dist/engine.js` instead. Covering it needs a
+ * second closure walk rooted at that chunk, not a new build entry: the `./engine`
+ * build entry it would have waited for already exists (`src/engine.ts`).
+ * Contrast the note on `Ledger8ContractState` in `envelope.ts`, which IS inside
+ * the eager closure because the root barrel re-exports `lib/era/load-era.ts`.
  */
 export interface Ledger8CompactRuntimeStateValue {
   readonly decode: (value: EncodedStateValue) => StateValue;

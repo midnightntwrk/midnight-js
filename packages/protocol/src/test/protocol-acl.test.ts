@@ -60,10 +60,10 @@ describe('Protocol ACL package', () => {
       expect(Object.keys(ns).length).toBeGreaterThan(0);
     });
 
-    it('exposes exactly the full barrel export surface, including ./errors, ./version and lib/load-v8', () => {
+    it('exposes exactly the full barrel export surface, including ./errors, ./version and lib/v8/load', () => {
       // Strict sorted-key equality over the whole barrel: the five pre-existing
       // namespace exports (unchanged) plus every value exported from ./errors,
-      // ./version and lib/load-v8. If this fails after adding/removing a
+      // ./version and lib/v8/load. If this fails after adding/removing a
       // protocol export, update the expected list. `ProtocolV8` is a
       // type-only export and does not appear here (types have no runtime key).
       expect(sortedKeys(protocol)).toEqual([

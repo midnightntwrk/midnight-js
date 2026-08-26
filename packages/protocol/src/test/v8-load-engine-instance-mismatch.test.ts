@@ -19,7 +19,7 @@ import { Ledger8InstanceMismatchError, PROTOCOL_ERROR_CODES } from '../errors';
 import type * as InstanceGuard from '../lib/v8/instance-guard';
 
 // Lives in its own file — a single doMock'd `'../lib/v8/instance-guard'`
-// scenario, using only a dynamic re-import of `../engine` — so this poisoned
+// scenario, using only a dynamic re-import of `../lib/v8/engine` — so this poisoned
 // module registry cannot leak into any other engine-facade suite (same
 // isolation precedent as v8-load-failure.test.ts). The underlying detection
 // logic (does assertSharedLedger8Instance actually catch a dual-instantiation)

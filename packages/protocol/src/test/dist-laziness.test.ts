@@ -27,7 +27,7 @@ import { readHexFixture } from './fixtures';
 const PKG_ROOT = resolve(__dirname, '..', '..');
 const DIST_INDEX_PATH = 'dist/index.js';
 // The `./v8` entry chunk as rollup writes it into whichever eagerly-loaded
-// chunk reaches loadLedger8: the dynamic import of `../v8.js` in
+// chunk reaches loadLedger8: the dynamic import of `../../v8.js` in
 // src/lib/v8/load.ts comes out as an output-relative specifier, at whatever
 // depth that chunk sits. Built from parts so the runtime-reference scan in
 // v8-surface.test.ts keeps matching only lib/v8/load.ts.

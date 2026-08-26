@@ -50,14 +50,14 @@ interface CompiledCounterContract extends Ledger8ContractLike {
   };
 }
 
-// Happy-path suite only: this file statically imports `../lib/engine` once at
+// Happy-path suite only: this file statically imports `../lib/v8/engine` once at
 // load time, so it never mixes with a mocked-module-registry test (those live
 // in v8-load-engine-chunk-failure.test.ts and
 // v8-load-engine-instance-mismatch.test.ts — same isolation precedent as
 // v8-load-failure.test.ts).
 //
 // Ungated: every specifier this suite reaches — the 0.16 glue, ocrt3, and
-// loadLedger8's own `../v8.js` — resolves out of src/ or node_modules under
+// loadLedger8's own `../../v8.js` — resolves out of src/ or node_modules under
 // vitest, never through dist/.
 describe('createLedger8Engine', () => {
   // Strict equality, not a per-method `typeof` sweep: a method leaked onto the
@@ -139,7 +139,7 @@ describe('createLedger8Engine', () => {
     expect(ledger(transcript.postContractState.data.state).round).toBe(1n);
   });
 
-  // Every other wrapKeepStateCall test (engine-wrap-v9*.test.ts and the
+  // Every other wrapKeepStateCall test (v9-wrap*.test.ts and the
   // 'wrapKeepStateCall produces a v9-native ContractCallPrototype' test
   // above) hand-builds a transcript with an empty publicTranscript, so the
   // keep-state leg never exercises partitionTranscripts against a REAL op

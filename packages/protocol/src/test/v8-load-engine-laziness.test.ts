@@ -17,7 +17,7 @@ import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Lives in its own file — a single doMock'd `'../lib/v8/load'`, reached only
-// through a dynamic re-import of `../lib/engine` — so this poisoned module
+// through a dynamic re-import of `../lib/v8/engine` — so this poisoned module
 // registry cannot leak into the engine happy-path suites (same isolation
 // precedent as v8-load-failure.test.ts).
 //
