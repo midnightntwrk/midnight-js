@@ -75,7 +75,7 @@ const fetchCompact = async (): Promise<void> => {
   console.log(`Trying to fetch release from: ${urlString}`);
   const release: Release = await fetch(urlString, { headers: authHeaders }).then((r) => {
     if (r.ok) {
-      return r.json() as unknown as Release;
+      return r.json() as Promise<Release>;
     } else {
       console.error(`Error downloading ${urlString} ${r.status} ${r.statusText}`);
       process.exit(r.status);
@@ -83,7 +83,7 @@ const fetchCompact = async (): Promise<void> => {
   });
 
   type Asset = { name: string; url: string }
-  const assets: Asset[] = await fetch(release.assets_url, { headers: authHeaders }).then((r) => r.json() as unknown as Asset[]);
+  const assets: Asset[] = await fetch(release.assets_url, { headers: authHeaders }).then((r) => r.json() as Promise<Asset[]>);
 
   const platformToAssetSuffix = (): string => {
     if (currentPlatform === 'darwin') {

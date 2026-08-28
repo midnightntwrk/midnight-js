@@ -28,8 +28,8 @@ import {
 import path from 'path';
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 
-import { CompiledFeeMintContract } from '@/contract';
-import { type FeeMintContractCircuit, type FeeMintContractProviders } from '@/types/fee-mint-types';
+import { CompiledFeeMintContract } from '../src/contract';
+import { type FeeMintContractCircuit, type FeeMintContractProviders } from '../src/types/fee-mint-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `fee_mint_routing_${new Date().toISOString()}.log`)

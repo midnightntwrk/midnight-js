@@ -6,9 +6,9 @@
 
 # Function: deserializeCompactContractState()
 
-> **deserializeCompactContractState**(`bytes`, `ctx`): `ContractState`
+> **deserializeCompactContractState**(`bytes`, `ctx`): [`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)
 
-Deserialize a compact-runtime CompactContractState from raw bytes.
+Deserialize a compact-runtime [CompactContractState](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md) from raw bytes.
 
 ## Parameters
 
@@ -22,7 +22,7 @@ Deserialize a compact-runtime CompactContractState from raw bytes.
 
 ## Returns
 
-`ContractState`
+[`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)
 
 ## Throws
 

@@ -20,40 +20,26 @@
 import { PROTOCOL_ERROR_CODES, type ProtocolErrorCode } from '@midnight-ntwrk/midnight-js-protocol/errors';
 
 // Codes for higher layers live here because `contracts`/providers depend on
-// `utils`; protocol's own codes are imported rather than re-declared.
+// `utils`; protocol's own codes are imported rather than re-declared. Each
+// constant is added by the pull request that first throws with it, so every
+// member of this registry has a thrower.
 export const CONTRACTS_ERROR_CODES = Object.freeze({
-  ERA_ARTIFACT_MISMATCH: 'MIDNIGHT_JS_C_ERA_ARTIFACT_MISMATCH',
-  LEDGER8_DEPLOY_ON_V9: 'MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_V9',
-  HEAD_STATE_ERA_MISMATCH: 'MIDNIGHT_JS_C_HEAD_STATE_ERA_MISMATCH',
-  INDEXER_INCONSISTENCY: 'MIDNIGHT_JS_C_INDEXER_INCONSISTENCY',
-  STALE_HEAD: 'MIDNIGHT_JS_C_STALE_HEAD',
-  KEY_SET_CONTRADICTION: 'MIDNIGHT_JS_C_KEY_SET_CONTRADICTION',
-  UNSUPPORTED_KEY_SET: 'MIDNIGHT_JS_C_UNSUPPORTED_KEY_SET',
-  PROOF_VERSION_UNRESOLVED: 'MIDNIGHT_JS_C_PROOF_VERSION_UNRESOLVED',
-  ERA_INVARIANT_VIOLATION: 'MIDNIGHT_JS_C_ERA_INVARIANT_VIOLATION',
-  UNSANCTIONED_MIXING: 'MIDNIGHT_JS_C_UNSANCTIONED_MIXING',
-  MIXED_ERA_SCOPE: 'MIDNIGHT_JS_C_MIXED_ERA_SCOPE'
+  ERA_INVARIANT_VIOLATION: 'MIDNIGHT_JS_C_ERA_INVARIANT_VIOLATION'
 } as const);
 export type ContractsErrorCode = (typeof CONTRACTS_ERROR_CODES)[keyof typeof CONTRACTS_ERROR_CODES];
 
 export const PROVIDER_ERROR_CODES = Object.freeze({
-  DECODE_VERSION_MISMATCH: 'MIDNIGHT_JS_PR_DECODE_VERSION_MISMATCH',
-  MOCK_VERSION_INVARIANT: 'MIDNIGHT_JS_PR_MOCK_VERSION_INVARIANT',
   V8_PAYLOAD_UNSUPPORTED: 'MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTED'
 } as const);
 export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[keyof typeof PROVIDER_ERROR_CODES];
 
-export const UTILS_ERROR_CODES = Object.freeze({ TAG_PARSE_FAILED: 'MIDNIGHT_JS_U_TAG_PARSE_FAILED' } as const);
-export type UtilsErrorCode = (typeof UTILS_ERROR_CODES)[keyof typeof UTILS_ERROR_CODES];
-
 /** Union of every error code any midnight-js layer can produce. */
-export type MidnightJsErrorCode = ProtocolErrorCode | ContractsErrorCode | ProviderErrorCode | UtilsErrorCode;
+export type MidnightJsErrorCode = ProtocolErrorCode | ContractsErrorCode | ProviderErrorCode;
 
 export const MIDNIGHT_JS_ERROR_CODES: readonly MidnightJsErrorCode[] = Object.freeze([
   ...Object.values(PROTOCOL_ERROR_CODES),
   ...Object.values(CONTRACTS_ERROR_CODES),
-  ...Object.values(PROVIDER_ERROR_CODES),
-  ...Object.values(UTILS_ERROR_CODES)
+  ...Object.values(PROVIDER_ERROR_CODES)
 ]);
 
 const MIDNIGHT_JS_ERROR_CODE_SET: ReadonlySet<string> = new Set(MIDNIGHT_JS_ERROR_CODES);

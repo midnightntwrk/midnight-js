@@ -30,7 +30,7 @@ Initializes a new ContractTypeError.
 
 ##### contractState
 
-`ContractState`
+[`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)
 
 The initial deployed contract state.
 
@@ -62,6 +62,6 @@ The circuits that are undefined, or have a verifier key mismatch with the
 
 ### contractState
 
-> `readonly` **contractState**: `ContractState`
+> `readonly` **contractState**: [`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)
 
 The initial deployed contract state.

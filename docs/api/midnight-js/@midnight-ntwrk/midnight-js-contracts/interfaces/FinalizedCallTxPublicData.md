@@ -8,11 +8,11 @@
 
 The public data of a finalized call transaction: the circuit execution's
 public result ([CallResultPublic](CallResultPublic.md)) combined with the finalized
-transaction data (FinalizedTxData).
+transaction data ([FinalizedTxData](../../midnight-js/types/interfaces/FinalizedTxData.md)).
 
 ## Extends
 
-- [`CallResultPublic`](CallResultPublic.md).`FinalizedTxData`
+- [`CallResultPublic`](CallResultPublic.md).[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md)
 
 ## Properties
 
@@ -24,7 +24,7 @@ The author of the block in which the transaction was included.
 
 #### Inherited from
 
-`FinalizedTxData.blockAuthor`
+[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md).[`blockAuthor`](../../midnight-js/types/interfaces/FinalizedTxData.md#blockauthor)
 
 ***
 
@@ -36,7 +36,7 @@ The block hash of the block in which the transaction was included.
 
 #### Inherited from
 
-`FinalizedTxData.blockHash`
+[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md).[`blockHash`](../../midnight-js/types/interfaces/FinalizedTxData.md#blockhash)
 
 ***
 
@@ -48,7 +48,7 @@ The block height of the block in which the transaction was included.
 
 #### Inherited from
 
-`FinalizedTxData.blockHeight`
+[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md).[`blockHeight`](../../midnight-js/types/interfaces/FinalizedTxData.md#blockheight)
 
 ***
 
@@ -60,19 +60,19 @@ The timestamp of the block in which the transaction was included.
 
 #### Inherited from
 
-`FinalizedTxData.blockTimestamp`
+[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md).[`blockTimestamp`](../../midnight-js/types/interfaces/FinalizedTxData.md#blocktimestamp)
 
 ***
 
 ### fees
 
-> `readonly` **fees**: `Fees`
+> `readonly` **fees**: [`Fees`](../../midnight-js/types/type-aliases/Fees.md)
 
 The fees associated with the transaction, including both paid and estimated fees.
 
 #### Inherited from
 
-`FinalizedTxData.fees`
+[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md).[`fees`](../../midnight-js/types/interfaces/FinalizedTxData.md#fees)
 
 ***
 
@@ -84,7 +84,7 @@ All transaction IDs of the submitted transaction.
 
 #### Inherited from
 
-`FinalizedTxData.identifiers`
+[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md).[`identifiers`](../../midnight-js/types/interfaces/FinalizedTxData.md#identifiers)
 
 ***
 
@@ -96,16 +96,16 @@ The indexer internal db ID.
 
 #### Inherited from
 
-`FinalizedTxData.indexerId`
+[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md).[`indexerId`](../../midnight-js/types/interfaces/FinalizedTxData.md#indexerid)
 
 ***
 
 ### logEvents
 
-> `readonly` **logEvents**: readonly `LogEvent`[]
+> `readonly` **logEvents**: readonly [`LogEvent`](../../midnight-js/contracts/type-aliases/LogEvent.md)[]
 
 The MIP-0002 contract log events emitted during circuit execution. Surfaced on the `compact-js`
-executor result and typed by `compact-runtime`'s LogEvent. This is the single
+executor result and typed by `compact-runtime`'s [LogEvent](../../midnight-js/contracts/type-aliases/LogEvent.md). This is the single
 execution-wide list across the whole call tree (not just the root call), in emission order; each
 event is tagged with its emitting contract's address, so a per-contract view is a filter over
 that address.
@@ -123,7 +123,7 @@ Empty when the circuit emits no logs.
 
 ### nextContractState
 
-> `readonly` **nextContractState**: `StateValue`
+> `readonly` **nextContractState**: [`StateValue`](../../midnight-js-protocol/onchain-runtime/classes/StateValue.md)
 
 The public state resulting from executing the circuit.
 
@@ -135,7 +135,7 @@ The public state resulting from executing the circuit.
 
 ### partitionedTranscript
 
-> `readonly` **partitionedTranscript**: `PartitionedTranscript`
+> `readonly` **partitionedTranscript**: [`PartitionedTranscript`](../../midnight-js-protocol/ledger/type-aliases/PartitionedTranscript.md)
 
 A [publicTranscript](CallResultPublic.md#publictranscript) partitioned into guaranteed and fallible sections.
 The guaranteed section of a public transcript must succeed for the corresponding
@@ -156,13 +156,13 @@ The protocol version of the transaction.
 
 #### Inherited from
 
-`FinalizedTxData.protocolVersion`
+[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md).[`protocolVersion`](../../midnight-js/types/interfaces/FinalizedTxData.md#protocolversion)
 
 ***
 
 ### publicTranscript
 
-> `readonly` **publicTranscript**: `Op`\<`AlignedValue`\>[]
+> `readonly` **publicTranscript**: [`Op`](../../midnight-js-protocol/onchain-runtime/type-aliases/Op.md)\<[`AlignedValue`](../../midnight-js-protocol/onchain-runtime/type-aliases/AlignedValue.md)\>[]
 
 The public transcript resulting from executing the circuit.
 
@@ -174,38 +174,38 @@ The public transcript resulting from executing the circuit.
 
 ### segmentStatusMap
 
-> `readonly` **segmentStatusMap**: `Map`\<`number`, `SegmentStatus`\> \| `undefined`
+> `readonly` **segmentStatusMap**: `Map`\<`number`, [`SegmentStatus`](../../midnight-js/types/type-aliases/SegmentStatus.md)\> \| `undefined`
 
-The map that associates segment identifiers (numbers) with their corresponding status SegmentStatus.
+The map that associates segment identifiers (numbers) with their corresponding status [SegmentStatus](../../midnight-js/types/type-aliases/SegmentStatus.md).
 The segment identifier is represented as a number (key in the map), and the status indicates the success or failure of the transaction update.
 
 #### Inherited from
 
-`FinalizedTxData.segmentStatusMap`
+[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md).[`segmentStatusMap`](../../midnight-js/types/interfaces/FinalizedTxData.md#segmentstatusmap)
 
 ***
 
 ### status
 
-> `readonly` **status**: `TxStatus`
+> `readonly` **status**: [`TxStatus`](../../midnight-js/types/type-aliases/TxStatus.md)
 
 The status of a submitted transaction.
 
 #### Inherited from
 
-`FinalizedTxData.status`
+[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md).[`status`](../../midnight-js/types/interfaces/FinalizedTxData.md#status)
 
 ***
 
 ### tx
 
-> `readonly` **tx**: `Transaction`\<`SignatureEnabled`, `Proof`, `Binding`\>
+> `readonly` **tx**: [`Transaction`](../../midnight-js/types/classes/Transaction.md)\<[`SignatureEnabled`](../../midnight-js-protocol/ledger/classes/SignatureEnabled.md), [`Proof`](../../midnight-js-protocol/ledger/classes/Proof.md), [`Binding`](../../midnight-js-protocol/ledger/classes/Binding.md)\>
 
 The transaction that was finalized.
 
 #### Inherited from
 
-`FinalizedTxData.tx`
+[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md).[`tx`](../../midnight-js/types/interfaces/FinalizedTxData.md#tx)
 
 ***
 
@@ -217,7 +217,7 @@ The transaction hash of the transaction in which the original transaction was in
 
 #### Inherited from
 
-`FinalizedTxData.txHash`
+[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md).[`txHash`](../../midnight-js/types/interfaces/FinalizedTxData.md#txhash)
 
 ***
 
@@ -229,17 +229,17 @@ One of the transaction ID of the submitted transaction.
 
 #### Inherited from
 
-`FinalizedTxData.txId`
+[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md).[`txId`](../../midnight-js/types/interfaces/FinalizedTxData.md#txid)
 
 ***
 
 ### unshielded
 
-> `readonly` **unshielded**: `UnshieldedUtxos`
+> `readonly` **unshielded**: [`UnshieldedUtxos`](../../midnight-js/types/type-aliases/UnshieldedUtxos.md)
 
 Represents the unshielded outputs, typically used for transactions or operations
 involving data or values that are not encrypted or concealed.
 
 #### Inherited from
 
-`FinalizedTxData.unshielded`
+[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md).[`unshielded`](../../midnight-js/types/interfaces/FinalizedTxData.md#unshielded)

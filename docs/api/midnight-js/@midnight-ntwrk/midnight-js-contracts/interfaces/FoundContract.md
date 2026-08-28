@@ -16,7 +16,7 @@ Base type for a deployed contract that has been found on the blockchain.
 
 ### C
 
-`C` *extends* `Contract.Any`
+`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
 
 ## Properties
 

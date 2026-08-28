@@ -16,15 +16,10 @@
 import { UnknownProtocolVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { describe, expect, it } from 'vitest';
 
-import {
-  CONTRACTS_ERROR_CODES,
-  hasErrorCode,
-  MIDNIGHT_JS_ERROR_CODES,
-  PROVIDER_ERROR_CODES,
-  UTILS_ERROR_CODES
-} from '../error-codes';
-import { TagParseError } from '../serialized-tag';
+import { CONTRACTS_ERROR_CODES, hasErrorCode, MIDNIGHT_JS_ERROR_CODES, PROVIDER_ERROR_CODES } from '../error-codes';
 
+// Spelled out by hand rather than derived from the groups: a derived list
+// would agree with any regression the groups themselves contain.
 const EXPECTED_CODES = [
   // protocol (imported)
   'MIDNIGHT_JS_P_UNKNOWN_PROTOCOL_VERSION_READ',
@@ -34,23 +29,9 @@ const EXPECTED_CODES = [
   'MIDNIGHT_JS_P_DOWN_CONVERT_FAILED',
   'MIDNIGHT_JS_P_MERKLE_NOT_REHASHED',
   // contracts
-  'MIDNIGHT_JS_C_ERA_ARTIFACT_MISMATCH',
-  'MIDNIGHT_JS_C_LEDGER8_DEPLOY_ON_V9',
-  'MIDNIGHT_JS_C_HEAD_STATE_ERA_MISMATCH',
-  'MIDNIGHT_JS_C_INDEXER_INCONSISTENCY',
-  'MIDNIGHT_JS_C_STALE_HEAD',
-  'MIDNIGHT_JS_C_KEY_SET_CONTRADICTION',
-  'MIDNIGHT_JS_C_UNSUPPORTED_KEY_SET',
-  'MIDNIGHT_JS_C_PROOF_VERSION_UNRESOLVED',
   'MIDNIGHT_JS_C_ERA_INVARIANT_VIOLATION',
-  'MIDNIGHT_JS_C_UNSANCTIONED_MIXING',
-  'MIDNIGHT_JS_C_MIXED_ERA_SCOPE',
   // providers
-  'MIDNIGHT_JS_PR_DECODE_VERSION_MISMATCH',
-  'MIDNIGHT_JS_PR_MOCK_VERSION_INVARIANT',
-  'MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTED',
-  // utils
-  'MIDNIGHT_JS_U_TAG_PARSE_FAILED'
+  'MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTED'
 ];
 
 describe('MIDNIGHT_JS_ERROR_CODES', () => {
@@ -67,7 +48,7 @@ describe('MIDNIGHT_JS_ERROR_CODES', () => {
   });
 });
 
-describe('CONTRACTS_ERROR_CODES and PROVIDER_ERROR_CODES and UTILS_ERROR_CODES', () => {
+describe('CONTRACTS_ERROR_CODES and PROVIDER_ERROR_CODES', () => {
   it('every value in each group is present in the combined registry', () => {
     const combined = new Set(MIDNIGHT_JS_ERROR_CODES);
     for (const code of Object.values(CONTRACTS_ERROR_CODES)) {
@@ -76,41 +57,37 @@ describe('CONTRACTS_ERROR_CODES and PROVIDER_ERROR_CODES and UTILS_ERROR_CODES',
     for (const code of Object.values(PROVIDER_ERROR_CODES)) {
       expect(combined.has(code)).toBe(true);
     }
-    for (const code of Object.values(UTILS_ERROR_CODES)) {
-      expect(combined.has(code)).toBe(true);
-    }
   });
 
   it('are each frozen', () => {
     expect(Object.isFrozen(CONTRACTS_ERROR_CODES)).toBe(true);
     expect(Object.isFrozen(PROVIDER_ERROR_CODES)).toBe(true);
-    expect(Object.isFrozen(UTILS_ERROR_CODES)).toBe(true);
   });
 });
 
 describe('hasErrorCode', () => {
   it('returns true and narrows when the error carries the exact requested code', () => {
-    const error: unknown = Object.assign(new Error('boom'), { code: UTILS_ERROR_CODES.TAG_PARSE_FAILED });
+    const error: unknown = Object.assign(new Error('boom'), { code: PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED });
 
-    expect(hasErrorCode(error, UTILS_ERROR_CODES.TAG_PARSE_FAILED)).toBe(true);
-    if (hasErrorCode(error, UTILS_ERROR_CODES.TAG_PARSE_FAILED)) {
-      expect(error.code).toBe(UTILS_ERROR_CODES.TAG_PARSE_FAILED);
+    expect(hasErrorCode(error, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(true);
+    if (hasErrorCode(error, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)) {
+      expect(error.code).toBe(PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED);
     }
   });
 
   it('returns false when the code does not match the requested one', () => {
     const error: unknown = Object.assign(new Error('boom'), { code: 'SOME_OTHER_CODE' });
 
-    expect(hasErrorCode(error, UTILS_ERROR_CODES.TAG_PARSE_FAILED)).toBe(false);
+    expect(hasErrorCode(error, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(false);
   });
 
   it('returns false for the with-code form even for a plausible-looking typo of a real code', () => {
-    const error: unknown = Object.assign(new Error('boom'), { code: UTILS_ERROR_CODES.TAG_PARSE_FAILED });
+    const error: unknown = Object.assign(new Error('boom'), { code: PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED });
 
     // `hasErrorCode<C extends string>` intentionally does not require `C` to
     // be a member of MidnightJsErrorCode, so comparing against an arbitrary
     // (here, typo'd) string still compiles — and correctly returns false.
-    expect(hasErrorCode(error, 'MIDNIGHT_JS_U_TAG_PARSE_FAILD')).toBe(false);
+    expect(hasErrorCode(error, 'MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTD')).toBe(false);
   });
 
   it('returns false for a plain Error without a code property', () => {
@@ -120,7 +97,7 @@ describe('hasErrorCode', () => {
   it('returns false for non-Error values', () => {
     expect(hasErrorCode('not an error')).toBe(false);
     expect(hasErrorCode(undefined)).toBe(false);
-    expect(hasErrorCode({ code: UTILS_ERROR_CODES.TAG_PARSE_FAILED })).toBe(false);
+    expect(hasErrorCode({ code: PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED })).toBe(false);
   });
 
   it('returns false when the code property is not a string', () => {
@@ -141,23 +118,11 @@ describe('hasErrorCode', () => {
 
       expect(hasErrorCode(error)).toBe(true);
     });
-
-    it('returns true for a real TagParseError instance', () => {
-      const error: unknown = new TagParseError('bad tag');
-
-      expect(hasErrorCode(error)).toBe(true);
-    });
   });
 
   describe('with-code form on real error instances', () => {
     it('returns true for a real UnknownProtocolVersionError instance matching its own code', () => {
       const error = new UnknownProtocolVersionError(9_000_000, 'read', 'unknown');
-
-      expect(hasErrorCode(error, error.code)).toBe(true);
-    });
-
-    it('returns true for a real TagParseError instance matching its own code', () => {
-      const error = new TagParseError('bad tag');
 
       expect(hasErrorCode(error, error.code)).toBe(true);
     });
