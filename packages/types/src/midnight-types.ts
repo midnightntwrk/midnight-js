@@ -226,29 +226,14 @@ export type Fees = {
 export type BlockHash = string;
 
 /**
- * Data for any finalized transaction.
+ * The era-independent metadata every finalized-transaction record carries,
+ * whichever ledger runtime produced it.
  *
- * This is the v9 arm of {@link VersionedFinalizedTxData} — see
- * {@link FinalizedTxDataV8} for the v8 arm. The intent is that `version`
- * equals the ledger version `protocolVersion` resolves to (the same
- * resolution the `read`-path resolver in
- * `@midnight-ntwrk/midnight-js-protocol` performs), so a provider would only
- * produce this shape for a record that resolves to the v9 ledger runtime.
- *
- * That is not yet what ships: the providers in this repo emit only the v9 arm,
- * whatever `protocolVersion` says. Per-record version dispatch arrives with
- * dual decode. Until then, treat `version` as "the arm you were handed", not
- * as a verified statement about `protocolVersion`.
+ * Both arms of {@link VersionedFinalizedTxData} extend this, so the two arms
+ * differ in exactly two places — the `version` discriminant and the type of
+ * `tx` — and cannot drift apart as fields are added here.
  */
-export interface FinalizedTxData {
-  /**
-   * Discriminant identifying this as a v9 ledger record.
-   */
-  readonly version: 'v9';
-  /**
-   * The transaction that was finalized.
-   */
-  readonly tx: Transaction<SignatureEnabled, Proof, Binding>;
+export interface FinalizedTxRecord {
   /**
    * The status of a submitted transaction.
    */
@@ -303,6 +288,33 @@ export interface FinalizedTxData {
    * involving data or values that are not encrypted or concealed.
    */
   readonly unshielded: UnshieldedUtxos;
+}
+
+/**
+ * Data for any finalized transaction produced by the v9 ledger runtime.
+ *
+ * This is the v9 arm of {@link VersionedFinalizedTxData} — see
+ * {@link FinalizedTxDataV8} for the v8 arm. `version` is derived from the
+ * record's own `protocolVersion` by the provider that builds it, using the
+ * `read`-path resolver in `@midnight-ntwrk/midnight-js-protocol`; a provider
+ * that cannot decode the era it resolves throws rather than mislabelling the
+ * record. So `version` is a statement about the record, and narrowing on it
+ * is sound.
+ *
+ * No provider produces the v8 arm yet — the read path decodes with the v9-only
+ * deserializer, so a v8-era record surfaces as a thrown error rather than as a
+ * value. Narrowing is still required, because that changes with dual decode
+ * and the seam types should not have to change again.
+ */
+export interface FinalizedTxData extends FinalizedTxRecord {
+  /**
+   * Discriminant identifying this as a v9 ledger record.
+   */
+  readonly version: 'v9';
+  /**
+   * The transaction that was finalized.
+   */
+  readonly tx: Transaction<SignatureEnabled, Proof, Binding>;
 }
 
 /**

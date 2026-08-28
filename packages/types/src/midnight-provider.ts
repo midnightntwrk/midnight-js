@@ -24,8 +24,14 @@ import type { VersionedFinalizedTransaction } from './wallet-provider';
 export interface MidnightProvider {
   /**
    * Submit a transaction to the network to be consensed upon.
-   * @param tx The finalized transaction to submit.
-   * @returns The transaction identifier of the submitted transaction.
+   *
+   * @param tx The version-tagged finalized transaction to submit: `{ version: 'v9', tx }` for a
+   *           live v9 ledger object, `{ version: 'v8', txBytes }` for v8-era serialized bytes.
+   * @returns The transaction identifier of the submitted transaction. Not version-tagged — a
+   *          transaction identifier is era-independent.
+   * @throws V8PayloadUnsupportedError if the implementation does not handle the v8 arm. Every
+   *         provider shipped in this repo rejects `{ version: 'v8' }`.
+   * @throws UntaggedPayloadError if `version` is missing or unrecognised.
    */
   submitTx(tx: VersionedFinalizedTransaction): Promise<TransactionId>;
 }

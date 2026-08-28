@@ -48,6 +48,7 @@ import {
   toUnshieldedUtxos
 } from './codec';
 import { DEFAULT_CONTRACT_EVENTS_PAGE_SIZE } from './config';
+import { requireV9Era } from './era';
 import { IndexerDataError, IndexerInvariantError, IndexerProviderConfigError } from './errors';
 import { buildQueryVariables, buildSubscriptionVariables } from './events-filter';
 import { toContractEvent } from './events-mapping';
@@ -325,7 +326,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
           }
           const transaction: RegularTransaction & { hash: string; identifiers: string[] } = first;
           return {
-            version: 'v9',
+            version: requireV9Era(transaction, 'watchForTxData'),
             tx: parseHexTransaction(transaction.raw),
             status: toTxStatus(transaction.transactionResult),
             txId,

@@ -25,7 +25,6 @@ import type {
   TransactionId,
   UnprovenTransaction
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { assertNever } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { MidnightProvider } from '../midnight-provider';
@@ -76,19 +75,26 @@ describe('V8TxBytes', () => {
 });
 
 describe('VersionedUnprovenTransaction', () => {
-  it('narrows exhaustively over every arm of the union via assertNever in the default branch', () => {
-    const describeUnproven = (payload: VersionedUnprovenTransaction): string => {
+  it('is exhaustively narrowable, so the default branch receives never', () => {
+    const describeUnproven = (payload: VersionedUnprovenTransaction) => {
       switch (payload.version) {
         case 'v8':
           return `v8:${payload.txBytes.byteLength}`;
         case 'v9':
           return `v9:${typeof payload.tx}`;
-        default:
-          return assertNever(payload, 'describeUnproven');
+        default: {
+          // Fails to compile if an arm is added to the union without a case
+          // above, which is the property under test.
+          const unhandled: never = payload;
+          return unhandled;
+        }
       }
     };
 
-    expectTypeOf(describeUnproven).returns.toBeString();
+    // Asserting the *inferred* return type: annotating it `string` would make
+    // this unfalsifiable. `never` drops out of a union, so a genuine `string`
+    // here means both arms were reached.
+    expectTypeOf(describeUnproven).returns.toEqualTypeOf<string>();
   });
 
   it('rejects naked serialized bytes — the v8 arm is always the tagged object, never a bare Uint8Array', () => {
@@ -124,19 +130,26 @@ describe('VersionedUnprovenTransaction', () => {
 });
 
 describe('VersionedUnboundTransaction', () => {
-  it('narrows exhaustively over every arm of the union via assertNever in the default branch', () => {
-    const describeUnbound = (payload: VersionedUnboundTransaction): string => {
+  it('is exhaustively narrowable, so the default branch receives never', () => {
+    const describeUnbound = (payload: VersionedUnboundTransaction) => {
       switch (payload.version) {
         case 'v8':
           return `v8:${payload.txBytes.byteLength}`;
         case 'v9':
           return `v9:${typeof payload.tx}`;
-        default:
-          return assertNever(payload, 'describeUnbound');
+        default: {
+          // Fails to compile if an arm is added to the union without a case
+          // above, which is the property under test.
+          const unhandled: never = payload;
+          return unhandled;
+        }
       }
     };
 
-    expectTypeOf(describeUnbound).returns.toBeString();
+    // Asserting the *inferred* return type: annotating it `string` would make
+    // this unfalsifiable. `never` drops out of a union, so a genuine `string`
+    // here means both arms were reached.
+    expectTypeOf(describeUnbound).returns.toEqualTypeOf<string>();
   });
 
   it('rejects naked serialized bytes — the v8 arm is always the tagged object, never a bare Uint8Array', () => {
@@ -158,19 +171,26 @@ describe('VersionedUnboundTransaction', () => {
 });
 
 describe('VersionedFinalizedTransaction', () => {
-  it('narrows exhaustively over every arm of the union via assertNever in the default branch', () => {
-    const describeFinalized = (payload: VersionedFinalizedTransaction): string => {
+  it('is exhaustively narrowable, so the default branch receives never', () => {
+    const describeFinalized = (payload: VersionedFinalizedTransaction) => {
       switch (payload.version) {
         case 'v8':
           return `v8:${payload.txBytes.byteLength}`;
         case 'v9':
           return `v9:${typeof payload.tx}`;
-        default:
-          return assertNever(payload, 'describeFinalized');
+        default: {
+          // Fails to compile if an arm is added to the union without a case
+          // above, which is the property under test.
+          const unhandled: never = payload;
+          return unhandled;
+        }
       }
     };
 
-    expectTypeOf(describeFinalized).returns.toBeString();
+    // Asserting the *inferred* return type: annotating it `string` would make
+    // this unfalsifiable. `never` drops out of a union, so a genuine `string`
+    // here means both arms were reached.
+    expectTypeOf(describeFinalized).returns.toEqualTypeOf<string>();
   });
 
   it('rejects naked serialized bytes — the v8 arm is always the tagged object, never a bare Uint8Array', () => {

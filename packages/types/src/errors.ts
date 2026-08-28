@@ -13,7 +13,22 @@
  * limitations under the License.
  */
 
-import { PROVIDER_ERROR_CODES, type ProviderErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+/**
+ * The provider methods that carry a version-tagged transaction payload.
+ *
+ * Closed rather than a bare `string` so a caught error can be switched on
+ * exhaustively, and so a typo in a throw site is a compile error.
+ */
+export type ProviderSeam = 'proveTx' | 'balanceTx' | 'submitTx';
+
+// These two code strings are declared here rather than imported from
+// `@midnight-ntwrk/midnight-js-utils`, because `types` is the leaf package
+// every other package depends on and takes no internal dependencies (see the
+// layer table in CLAUDE.md and ADR 0006). They must stay in step with
+// PROVIDER_ERROR_CODES in `utils`, which is the registry `hasErrorCode`
+// consults; that package's error-codes test pins the same literals.
+const V8_PAYLOAD_UNSUPPORTED = 'MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTED';
+const UNTAGGED_PAYLOAD = 'MIDNIGHT_JS_PR_UNTAGGED_PAYLOAD';
 
 /**
  * Thrown by a provider that only speaks the v9 ledger runtime when it is
@@ -30,18 +45,76 @@ import { PROVIDER_ERROR_CODES, type ProviderErrorCode } from '@midnight-ntwrk/mi
  * from `@midnight-ntwrk/midnight-js-utils`.
  */
 export class V8PayloadUnsupportedError extends Error {
-  readonly code: ProviderErrorCode = PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED;
+  readonly code = V8_PAYLOAD_UNSUPPORTED;
 
   /**
-   * @param seam The provider method that received the payload, e.g. `proveTx`.
+   * @param seam The provider method that received the payload.
+   * @param byteLength Size of the rejected payload, recorded so a report of
+   *                   this error says something about what arrived.
    */
-  constructor(readonly seam: string) {
+  constructor(
+    readonly seam: ProviderSeam,
+    readonly byteLength?: number
+  ) {
     super(
-      `${seam} received a v8-era transaction payload (serialized bytes), which is not yet supported by this provider. ` +
+      `${seam} received a v8-era transaction payload (serialized bytes${
+        byteLength === undefined ? '' : `, ${byteLength} bytes`
+      }), which is not yet supported by this provider. ` +
         `Send the v9 arm of the payload ({ version: 'v9', tx }) on this seam, or route v8-era traffic to a provider ` +
         `that handles v8 payloads.`
     );
     this.name = 'V8PayloadUnsupportedError';
+  }
+}
+
+// Renders whatever arrived in `version` for the untagged-payload message.
+// Deliberately never JSON.stringify()s the payload: that throws on BigInt and
+// on circular references, and would serialize a transaction's contents into an
+// error message and from there into logs.
+const describeVersion = (payload: unknown): string => {
+  if (typeof payload !== 'object' || payload === null) {
+    return typeof payload;
+  }
+  if (!('version' in payload)) {
+    return 'no version field';
+  }
+  const version: unknown = payload.version;
+  return typeof version === 'string' ? `'${version}'` : typeof version;
+};
+
+/**
+ * Thrown when a payload crossing a version-tagged seam carries no recognised
+ * `version` discriminant — most often a transaction passed untagged, the shape
+ * these seams took before 5.0.0.
+ *
+ * The seam types make this unrepresentable in TypeScript, so it is reachable
+ * only from JavaScript, from a consumer compiled against a pre-5.0.0
+ * `midnight-js-types`, or from a payload that crossed an untyped boundary.
+ * It carries a `code` so a caller can tell this apart from an arbitrary crash.
+ */
+export class UntaggedPayloadError extends Error {
+  readonly code = UNTAGGED_PAYLOAD;
+
+  /** What the payload's `version` field actually held. */
+  readonly received: string;
+
+  /**
+   * @param seam The method that received the payload.
+   * @param payload The offending payload. Only its `version` field is read;
+   *                the payload's contents never reach the message.
+   */
+  constructor(
+    readonly seam: string,
+    payload: unknown
+  ) {
+    const received = describeVersion(payload);
+    super(
+      `${seam} received a transaction payload with no recognised 'version' discriminant (got: ${received}). ` +
+        `Payloads cross this seam version-tagged: wrap a live v9 ledger transaction as ` +
+        `{ version: 'v9', tx }, or v8-era serialized bytes as { version: 'v8', txBytes }.`
+    );
+    this.name = 'UntaggedPayloadError';
+    this.received = received;
   }
 }
 

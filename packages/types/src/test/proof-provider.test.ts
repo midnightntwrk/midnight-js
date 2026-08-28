@@ -17,8 +17,12 @@ import type { CostModel, ProvingProvider, UnprovenTransaction } from '@midnight-
 import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expect, it, vi } from 'vitest';
 
-import { V8PayloadUnsupportedError } from '../errors';
-import { createProofProvider, type UnboundTransaction } from '../proof-provider';
+import { UntaggedPayloadError, V8PayloadUnsupportedError } from '../errors';
+import {
+  createProofProvider,
+  type UnboundTransaction,
+  type VersionedUnprovenTransaction
+} from '../proof-provider';
 
 const stubProvingProvider: ProvingProvider = {
   check: vi.fn(),
@@ -54,7 +58,11 @@ describe('createProofProvider', () => {
       const result = await provider.proveTx({ version: 'v9', tx: unprovenTx });
 
       expect(unprovenTx.prove).toHaveBeenCalledWith(stubProvingProvider, stubCostModel);
-      expect(result).toEqual({ version: 'v9', tx: unboundTx });
+      // Identity, not structural equality — see the note in the dapp-connector
+      // suite: two structurally-equal ledger objects can come from different
+      // WASM instances, and conflating them is what this seam exists to stop.
+      expect(result.version).toBe('v9');
+      expect(result.version === 'v9' && result.tx).toBe(unboundTx);
     });
   });
 
@@ -76,7 +84,67 @@ describe('createProofProvider', () => {
     it('names the seam that received the payload so the caller can tell which call failed', async () => {
       const provider = createProofProvider(stubProvingProvider, stubCostModel);
 
-      await expect(provider.proveTx({ version: 'v8', txBytes: new Uint8Array() })).rejects.toThrow(/proveTx/);
+      const rejection = await provider.proveTx({ version: 'v8', txBytes: new Uint8Array() }).then(
+        () => undefined,
+        (error: unknown) => error
+      );
+
+      expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
+      expect((rejection as V8PayloadUnsupportedError).seam).toBe('proveTx');
+    });
+
+    it('records the payload size so a report of the rejection says what arrived', async () => {
+      const provider = createProofProvider(stubProvingProvider, stubCostModel);
+
+      const rejection = await provider.proveTx({ version: 'v8', txBytes: new Uint8Array([1, 2, 3, 4]) }).then(
+        () => undefined,
+        (error: unknown) => error
+      );
+
+      expect((rejection as V8PayloadUnsupportedError).byteLength).toBe(4);
+    });
+  });
+
+  // The seam types make an untagged payload unrepresentable, so these drive it
+  // the only way a real caller can: from JavaScript, or from a consumer built
+  // against a pre-5.0.0 midnight-js-types. This is the most likely runtime
+  // failure the 5.0.0 seam change creates, so it gets a coded error rather
+  // than a bare TypeError three frames away.
+  describe('payload with no recognised version discriminant', () => {
+    const proveUntagged = (payload: unknown): Promise<unknown> => {
+      const provider = createProofProvider(stubProvingProvider, stubCostModel);
+      return provider.proveTx(payload as VersionedUnprovenTransaction).then(
+        () => undefined,
+        (error: unknown) => error
+      );
+    };
+
+    it.each([
+      ['a bare transaction, the pre-5.0.0 shape', { prove: () => undefined }, 'no version field'],
+      ['an unrecognised era tag', { version: 'v10', tx: {} }, "'v10'"],
+      ['a non-string version', { version: 9, tx: {} }, 'number'],
+      ['undefined', undefined, 'undefined'],
+      ['null', null, 'object']
+    ])('rejects %s with the registered untagged-payload code', async (_label, payload, received) => {
+      const rejection = await proveUntagged(payload);
+
+      expect(rejection).toBeInstanceOf(UntaggedPayloadError);
+      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD)).toBe(true);
+      expect((rejection as UntaggedPayloadError).seam).toBe('proveTx');
+      expect((rejection as UntaggedPayloadError).received).toBe(received);
+    });
+
+    it('never reaches the proving provider', async () => {
+      await proveUntagged({ version: 'v10', tx: {} });
+
+      expect(stubProvingProvider.prove).not.toHaveBeenCalled();
+    });
+
+    it('does not put the payload contents in the message', async () => {
+      const rejection = await proveUntagged({ version: 'v10', secret: 'do-not-log-me' });
+
+      expect((rejection as Error).message).not.toContain('do-not-log-me');
+      expect((rejection as Error).message).not.toContain('secret');
     });
   });
 });

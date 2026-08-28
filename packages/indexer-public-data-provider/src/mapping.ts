@@ -23,6 +23,7 @@ import {
   toTxStatus,
   toUnshieldedUtxos
 } from './codec';
+import { requireV9Era } from './era';
 import { IndexerInvariantError } from './errors';
 import type { DeployTxQueryQuery } from './gen/graphql';
 import type { ContractBalance, RegularTransaction } from './gen/schema-types';
@@ -100,7 +101,7 @@ export const toFinalizedDeployTxData = (
   contractAddress: ContractAddress,
   transaction: RegularTransaction
 ): FinalizedTxData => ({
-  version: 'v9',
+  version: requireV9Era(transaction, 'watchForDeployTxData'),
   tx: parseHexTransaction(transaction.raw),
   status: toTxStatus(transaction.transactionResult),
   txId: correlateDeployTxId(contractAddress, transaction.contractActions, transaction.identifiers),

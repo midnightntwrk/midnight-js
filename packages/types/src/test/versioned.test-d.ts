@@ -21,11 +21,10 @@ import type {
   TransactionHash,
   TransactionId
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { assertNever } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { BlockHash, Fees, FinalizedTxData, SegmentStatus, TxStatus, UnshieldedUtxos } from '../midnight-types';
-import type { FinalizedTxDataV8, VersionedFinalizedTxData } from '../versioned';
+import type { VersionedFinalizedTxData } from '../versioned';
 
 // These are compile-level tests: the property under test is that the file
 // type-checks (or, for the `@ts-expect-error` case, that it does NOT
@@ -37,9 +36,8 @@ import type { FinalizedTxDataV8, VersionedFinalizedTxData } from '../versioned';
 
 // Spelled out independently of `FinalizedTxData` (no `Omit`/`keyof` derived
 // from it) so the equality check below actually pins the v9 arm's shape
-// instead of reflexively restating it. Field-for-field copy of the original
-// `FinalizedTxData` shape (14 fields, before the version discriminant was
-// added) plus the new `version` discriminant.
+// instead of reflexively restating it. Keep in step with `FinalizedTxData`
+// and `FinalizedTxRecord` by hand — that is what makes the check meaningful.
 type FinalizedTxDataV9Fixture = {
   readonly version: 'v9';
   readonly tx: Transaction<SignatureEnabled, Proof, Binding>;
@@ -59,19 +57,26 @@ type FinalizedTxDataV9Fixture = {
 };
 
 describe('VersionedFinalizedTxData', () => {
-  it('narrows exhaustively over every arm of the union via assertNever in the default branch', () => {
-    const describeVersion = (data: VersionedFinalizedTxData): string => {
+  it('is exhaustively narrowable, so the default branch receives never', () => {
+    const describeVersion = (data: VersionedFinalizedTxData) => {
       switch (data.version) {
         case 'v8':
           return `v8:${data.txId}`;
         case 'v9':
           return `v9:${data.txId}`;
-        default:
-          return assertNever(data, 'describeVersion');
+        default: {
+          // Fails to compile if an arm is added to the union without a case
+          // above, which is the property under test.
+          const unhandled: never = data;
+          return unhandled;
+        }
       }
     };
 
-    expectTypeOf(describeVersion).returns.toBeString();
+    // Asserting the *inferred* return type: annotating it `string` would make
+    // this unfalsifiable. `never` from the default branch drops out of the
+    // union, so a genuine `string` here means both arms were reached.
+    expectTypeOf(describeVersion).returns.toEqualTypeOf<string>();
   });
 
   it('rejects access to the v9-shaped tx field before the discriminant is narrowed', () => {
@@ -86,18 +91,12 @@ describe('VersionedFinalizedTxData', () => {
     expectTypeOf(v9Tx).not.toBeAny();
   });
 
-  it('pins the v9 arm to exactly the 14 pre-existing fields plus the version discriminant — fails if any field is dropped, added, or retyped', () => {
+  it('pins the v9 arm field-for-field — fails if any field is dropped, added, or retyped', () => {
     // Bidirectional: catches a field being dropped (fixture would then demand
     // a field FinalizedTxData no longer has), added (FinalizedTxData would
     // demand a field the fixture doesn't have), or retyped (mismatched field
-    // type breaks assignability in at least one direction). A mutation of this
-    // fixture was verified to fail this check.
+    // type breaks assignability in at least one direction).
     expectTypeOf<FinalizedTxDataV9Fixture>().toEqualTypeOf<FinalizedTxData>();
-  });
-
-  it('documents that both arms are assignable to the union (true by union subtyping alone — not a discriminating check by itself)', () => {
-    expectTypeOf<FinalizedTxData>().toMatchTypeOf<VersionedFinalizedTxData>();
-    expectTypeOf<FinalizedTxDataV8>().toMatchTypeOf<VersionedFinalizedTxData>();
   });
 
   it('has exactly the v8 and v9 arms — fails if an arm is silently removed, a third arm added, or a discriminant widened', () => {
@@ -105,8 +104,7 @@ describe('VersionedFinalizedTxData', () => {
     // property against a hardcoded literal union. Removing an arm shrinks
     // the actual union; adding a third arm (with its own literal `version`)
     // or widening an arm's `version` to a non-literal grows it — either way
-    // it stops equaling the hardcoded `'v8' | 'v9'`. A mutation of the union
-    // was verified to fail this check.
+    // it stops equaling the hardcoded `'v8' | 'v9'`.
     expectTypeOf<VersionedFinalizedTxData['version']>().toEqualTypeOf<'v8' | 'v9'>();
   });
 });

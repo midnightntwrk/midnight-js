@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import { PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import type { GraphQLFormattedError } from 'graphql';
 
 /**
@@ -201,5 +203,35 @@ export class IndexerInvariantError extends IndexerError {
   constructor(message: string) {
     super(message);
     this.name = 'IndexerInvariantError';
+  }
+}
+
+/**
+ * Raised when a record read from the indexer resolves to a ledger era this
+ * provider cannot decode.
+ *
+ * The read path deserializes with the v9-only ledger runtime, so a record
+ * belonging to the v8 era cannot be turned into a value. Reporting it here is
+ * deliberate: the alternative is stamping the record `version: 'v9'` and
+ * handing back a mislabelled result that fails later, inside the codec, with
+ * no mention of the era.
+ *
+ * `protocolVersion` is the raw integer the indexer reported, kept so a report
+ * of this error identifies the network rather than only the era.
+ */
+export class EraUnsupportedError extends IndexerError {
+  readonly code = PROVIDER_ERROR_CODES.ERA_UNSUPPORTED;
+
+  constructor(
+    readonly seam: string,
+    readonly era: LedgerVersion,
+    readonly protocolVersion: number
+  ) {
+    super(
+      `${seam} read a record from the ${era} ledger era (protocolVersion ${protocolVersion}), which this provider ` +
+        `cannot decode: the read path deserializes with the v9 ledger runtime only. Point this provider at a ` +
+        `network whose records belong to the v9 era.`
+    );
+    this.name = 'EraUnsupportedError';
   }
 }

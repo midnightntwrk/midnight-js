@@ -17,13 +17,12 @@ import { CostModel, type ProvingProvider } from '@midnight-ntwrk/midnight-js-pro
 import {
   type ProofProvider,
   type ProveTxConfig,
-  V8PayloadUnsupportedError,
+  unwrapV9,
   type VersionedUnboundTransaction,
   type VersionedUnprovenTransaction,
   type ZKConfigProvider,
   type ZKConfigRegistry
 } from '@midnight-ntwrk/midnight-js-types';
-import { assertNever } from '@midnight-ntwrk/midnight-js-utils';
 
 import { DEFAULT_TIMEOUT, httpClientProvingProvider, type ProvingProviderConfig } from './http-client-proving-provider';
 
@@ -128,29 +127,22 @@ export function httpClientProofProvider<K extends string>(
       unprovenTx: VersionedUnprovenTransaction,
       proveTxConfig?: ProveTxConfig
     ): Promise<VersionedUnboundTransaction> {
-      switch (unprovenTx.version) {
-        case 'v9': {
-          const perCallTimeout = resolveTimeout(resolvedConfig, proveTxConfig);
+      const tx = unwrapV9(unprovenTx, 'proveTx');
+      const perCallTimeout = resolveTimeout(resolvedConfig, proveTxConfig);
 
-          // Wrap the construction-time provider so every circuit-level check/prove in this proveTx uses
-          // the per-call timeout, without rebuilding the underlying provider. The timeout override is
-          // exposed by TimeoutAwareProvingProvider, so this needs no cast.
-          const perCallProvingProvider: ProvingProvider = {
-            check: (serializedPreimage, keyLocation) =>
-              baseProvingProvider.check(serializedPreimage, keyLocation, perCallTimeout),
-            prove: (serializedPreimage, keyLocation, overwriteBindingInput) =>
-              baseProvingProvider.prove(serializedPreimage, keyLocation, overwriteBindingInput, perCallTimeout),
-            lookupKey: (keyLocation) => baseProvingProvider.lookupKey(keyLocation)
-          };
+      // Wrap the construction-time provider so every circuit-level check/prove in this proveTx uses
+      // the per-call timeout, without rebuilding the underlying provider. The timeout override is
+      // exposed by TimeoutAwareProvingProvider, so this needs no cast.
+      const perCallProvingProvider: ProvingProvider = {
+        check: (serializedPreimage, keyLocation) =>
+          baseProvingProvider.check(serializedPreimage, keyLocation, perCallTimeout),
+        prove: (serializedPreimage, keyLocation, overwriteBindingInput) =>
+          baseProvingProvider.prove(serializedPreimage, keyLocation, overwriteBindingInput, perCallTimeout),
+        lookupKey: (keyLocation) => baseProvingProvider.lookupKey(keyLocation)
+      };
 
-          const costModel = CostModel.initialCostModel();
-          return { version: 'v9', tx: await unprovenTx.tx.prove(perCallProvingProvider, costModel) };
-        }
-        case 'v8':
-          throw new V8PayloadUnsupportedError('proveTx');
-        default:
-          return assertNever(unprovenTx, 'httpClientProofProvider.proveTx');
-      }
+      const costModel = CostModel.initialCostModel();
+      return { version: 'v9', tx: await tx.prove(perCallProvingProvider, costModel) };
     }
   };
 };

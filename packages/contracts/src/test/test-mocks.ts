@@ -316,7 +316,10 @@ export const createMockFinalizedTxData = (status: TxStatus = SucceedEntirely): F
   blockTimestamp: 0,
   blockAuthor: null,
   indexerId: 0,
-  protocolVersion: 0,
+  // A node 2.x protocolVersion, so this fixture agrees with its own
+  // `version: 'v9'` under the resolver in `midnight-js-protocol`. A 0.x value
+  // maps to no era at all and would make the fixture self-contradictory.
+  protocolVersion: 2_000_000,
   fees: {
     paidFees: '',
     estimatedFees: ''

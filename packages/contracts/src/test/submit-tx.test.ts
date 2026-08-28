@@ -255,6 +255,9 @@ describe('submit-tx', () => {
 
         expect(rejection).toBeInstanceOf(EraInvariantViolationError);
         expect(hasErrorCode(rejection, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
+        // Without this the test passes even if both throw sites name 'proveTx',
+        // since the seam is the only difference between the two cases.
+        expect((rejection as EraInvariantViolationError).seam).toBe('proveTx');
         expect(mockProviders.walletProvider.balanceTx).not.toHaveBeenCalled();
       });
 
@@ -268,7 +271,58 @@ describe('submit-tx', () => {
 
         expect(rejection).toBeInstanceOf(EraInvariantViolationError);
         expect(hasErrorCode(rejection, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
+        expect((rejection as EraInvariantViolationError).seam).toBe('balanceTx');
         expect(mockProviders.midnightProvider.submitTx).not.toHaveBeenCalled();
+      });
+
+      it('carries the circuitId so a dApp firing many circuits can tell which call broke', async () => {
+        mockProviders.proofProvider.proveTx = vi
+          .fn()
+          .mockResolvedValue({ version: 'v8', txBytes: new Uint8Array([1, 2, 3]) });
+
+        const rejection = await submitTxAsync(mockProviders, {
+          unprovenTx: mockUnprovenTx,
+          circuitId: 'increment' as AnyProvableCircuitId
+        }).then(
+          () => undefined,
+          (error: unknown) => error
+        );
+
+        expect((rejection as EraInvariantViolationError).circuitId).toBe('increment');
+        expect((rejection as Error).message).toContain('increment');
+      });
+    });
+
+    // `PublicDataProvider` reports both eras, but this flow is v9-only, so it
+    // narrows the record at its own boundary rather than widening `submitTx`'s
+    // public return type.
+    describe('v8 records from the read surface', () => {
+      it('rejects a v8-tagged watchForTxData record with the era-invariant code', async () => {
+        mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
+        mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
+        mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue('test-tx-id');
+        mockProviders.publicDataProvider.watchForTxData = vi
+          .fn()
+          .mockResolvedValue({ ...createMockFinalizedTxData(), version: 'v8' });
+
+        const rejection = await submitTx(mockProviders, { unprovenTx: mockUnprovenTx }).then(
+          () => undefined,
+          (error: unknown) => error
+        );
+
+        expect(rejection).toBeInstanceOf(EraInvariantViolationError);
+        expect(hasErrorCode(rejection, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
+        expect((rejection as EraInvariantViolationError).seam).toBe('watchForTxData');
+      });
+
+      it('returns the v9 record unchanged when the read surface reports v9', async () => {
+        const finalized = createMockFinalizedTxData();
+        mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
+        mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
+        mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue('test-tx-id');
+        mockProviders.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(finalized);
+
+        await expect(submitTx(mockProviders, { unprovenTx: mockUnprovenTx })).resolves.toBe(finalized);
       });
     });
   });

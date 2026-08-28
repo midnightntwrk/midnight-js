@@ -14,33 +14,58 @@
  */
 
 import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type { AnyProvableCircuitId, FinalizedTxData, PrivateStateId } from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES, type ContractsErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+import type {
+  AnyProvableCircuitId,
+  FinalizedTxData,
+  PrivateStateId,
+  ProviderSeam
+} from '@midnight-ntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 
 /**
- * An error indicating that a v8-era transaction payload — serialized,
- * tag-prefixed bytes — came back from a provider on a transaction flow that
- * only ever hands out v9 transactions.
+ * The seams this flow narrows an era at: the three transaction-flow provider
+ * methods, plus the two read-surface methods that report a finalized record.
+ */
+export type EraSeam = ProviderSeam | 'watchForTxData' | 'watchForDeployTxData';
+
+// `SubmitTxOptions.circuitId` is a single id or a list, so render both.
+const formatCircuitId = (circuitId: string | readonly string[]): string =>
+  Array.isArray(circuitId) ? circuitId.join('-') : String(circuitId);
+
+/**
+ * An error indicating that a v8-era payload came back from a provider on a
+ * flow that only ever hands out v9 transactions, or that a v8-era record came
+ * back from the read surface into that same flow.
  *
- * The provider seams carry both eras, but this flow wraps every outgoing
- * payload as v9, so a v8 response means the provider answered about a
- * different transaction than the one it was given.
+ * The provider seams and the read surface both carry two eras, but this flow
+ * tags every outgoing payload as v9 and cannot submit or report anything else.
+ * A v8 response therefore means the provider re-tagged or down-converted the
+ * payload it was handed, or that the flow is pointed at a network whose records
+ * belong to the v8 era.
  */
 export class EraInvariantViolationError extends Error {
-  readonly code: ContractsErrorCode = CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION;
+  readonly code = CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION;
 
   /**
-   * @param seam The provider method that returned the payload, e.g. `proveTx`.
+   * @param seam The provider method that returned the payload.
+   * @param circuitId The circuit, or circuits, whose flow this happened on,
+   *                  when known. A dApp firing many circuits needs this to
+   *                  tell which call broke.
    */
-  constructor(readonly seam: string) {
+  constructor(
+    readonly seam: EraSeam,
+    readonly circuitId?: string | readonly string[]
+  ) {
     super(
-      `${seam} returned a v8-era transaction payload on a flow that only submits v9 transactions. ` +
+      `${seam} returned a v8-era payload on a flow that only submits v9 transactions` +
+        `${circuitId === undefined ? '' : ` (circuit '${formatCircuitId(circuitId)}')`}. ` +
         `Check that the configured provider matches the network this application targets, and that no custom ` +
         `provider implementation re-tags the payload it was handed.`
     );
     this.name = 'EraInvariantViolationError';
   }
 }
+
 
 interface EffectContractError {
   readonly _tag: string;

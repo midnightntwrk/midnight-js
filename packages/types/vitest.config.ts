@@ -42,13 +42,16 @@ export default defineConfig({
       ['junit', { outputFile: `reports/report/test-report.xml` }],
       ['html', { outputFile: `reports/report/test-report.html` }]
     ],
-    // Compile-level assertions (`expectTypeOf`, `@ts-expect-error`) in these
-    // files are no-ops at plain runtime — vitest's typecheck pass is what turns
-    // tsc diagnostics against them into failing tests. Scoped to these files so
-    // other tests in this package aren't slowed down by a tsc pass.
+    // Compile-level assertions (`expectTypeOf`, `@ts-expect-error`) assert
+    // nothing at plain runtime — vitest's typecheck pass is what turns tsc
+    // diagnostics against them into failing tests. Those files use vitest's
+    // `*.test-d.ts` convention, which is this pass's default `include`, so a
+    // new compile-level test is picked up by naming alone; a hardcoded file
+    // list would silently stop guarding one that was added or renamed.
+    // `test.include` above matches only `*.test.ts`, so they do not also run
+    // as no-op runtime suites.
     typecheck: {
-      enabled: true,
-      include: ['**/test/versioned.test.ts', '**/test/versioned-tx.test.ts']
+      enabled: true
     }
   },
   resolve: {

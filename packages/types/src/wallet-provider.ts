@@ -35,9 +35,16 @@ export type VersionedFinalizedTransaction = VersionedTx<FinalizedTransaction>;
 export interface WalletProvider {
 
   /**
-   * Balances a transaction
-   * @param tx The transaction to balance.
-   * @param ttl
+   * Balances and signs a transaction, readying it for submission.
+   *
+   * @param tx The version-tagged transaction to balance: `{ version: 'v9', tx }` for a live v9
+   *           ledger object, `{ version: 'v8', txBytes }` for v8-era serialized bytes.
+   * @param ttl Time-to-live for the balanced transaction. Defaults to one hour when omitted.
+   * @returns The balanced, signed transaction, version-tagged. Narrow on `version` — or call
+   *          `unwrapV9` — before reading the payload.
+   * @throws V8PayloadUnsupportedError if the implementation does not handle the v8 arm. Every
+   *         provider shipped in this repo rejects `{ version: 'v8' }`.
+   * @throws UntaggedPayloadError if `version` is missing or unrecognised.
    */
   balanceTx(tx: VersionedUnboundTransaction, ttl?: Date): Promise<VersionedFinalizedTransaction>;
 
