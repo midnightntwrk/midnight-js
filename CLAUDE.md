@@ -38,7 +38,8 @@ build-tools/        # Build configuration
 Package layers (each layer depends on the one above):
 
 ```
-types                                          ← interfaces, no internal deps
+protocol                                       ← ledger/runtime bindings, era resolver
+types                                          ← provider interfaces (depends on protocol only)
 contracts, network-id, utils                   ← core logic
 provider implementations (6 packages)          ← concrete providers
 midnight-js                                    ← barrel re-export
@@ -54,6 +55,11 @@ UnprovenTransaction → ProofProvider.proveTx() → UnboundTransaction
   → WalletProvider.balanceTx() → FinalizedTransaction
   → MidnightProvider.submitTx() → TransactionId
 ```
+
+Every transaction crossing those seams is version-tagged
+(`{ version: 'v9', tx }` / `{ version: 'v8', txBytes }`), and the read surface
+reports a version-tagged record. Narrow with `unwrapV9` from `types`. See
+[ADR 0006](./docs/adr/0006-version-tagged-payloads-at-provider-seams.md).
 
 ## CI Pipeline & PR Gates
 

@@ -87,6 +87,10 @@ MidnightProviders
 5. Wait for finalization via PublicDataProvider
 ```
 
+Payloads cross steps 2-4 version-tagged (`{ version: 'v9', tx }`), and step 5
+reports a version-tagged record. Narrow on `version` — or call `unwrapV9` — at
+each boundary; there is no untagged form.
+
 ## Main APIs
 
 ### Contract Deployment
@@ -187,6 +191,7 @@ await provider.importPrivateStates(exported, { conflictStrategy: 'skip' });
 
 ```typescript
 import { httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
+import { unwrapV9 } from '@midnight-ntwrk/midnight-js-types';
 
 const proofProvider = httpClientProofProvider(
   'http://localhost:6300',
@@ -195,17 +200,20 @@ const proofProvider = httpClientProofProvider(
 
 // Transaction payloads cross a provider seam version-tagged: tag on the way
 // in, narrow on `version` on the way out. There is no untagged form.
-const proven = await proofProvider.proveTx({ version: 'v9', tx: unprovenTx });
-if (proven.version !== 'v9') {
-  throw new Error('Expected a v9 proven transaction');
-}
-const provenTx = proven.tx;
+// `unwrapV9` is the framework's narrowing helper — it throws
+// V8PayloadUnsupportedError or UntaggedPayloadError, both carrying a stable
+// `code` you can match with `hasErrorCode`.
+const provenTx = unwrapV9(
+  await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }),
+  'proveTx'
+);
 ```
 
 ### DApp Connector Proof Generation
 
 ```typescript
 import { dappConnectorProofProvider } from '@midnight-ntwrk/midnight-js-dapp-connector-proof-provider';
+import { unwrapV9 } from '@midnight-ntwrk/midnight-js-types';
 
 // High-level: transaction proving via DApp Connector wallet
 const proofProvider = await dappConnectorProofProvider(
@@ -214,11 +222,10 @@ const proofProvider = await dappConnectorProofProvider(
   costModel
 );
 
-const proven = await proofProvider.proveTx({ version: 'v9', tx: unprovenTx });
-if (proven.version !== 'v9') {
-  throw new Error('Expected a v9 proven transaction');
-}
-const provenTx = proven.tx;
+const provenTx = unwrapV9(
+  await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }),
+  'proveTx'
+);
 ```
 
 ```typescript
@@ -284,6 +291,14 @@ const providers: MidnightProviders = {
   midnightProvider   // from @midnight-ntwrk/wallet-sdk-facade
 };
 ```
+
+As of 5.0.0 `WalletProvider.balanceTx` and `MidnightProvider.submitTx` carry a
+version-tagged payload, and `balanceTx` returns one. Return types are
+covariant, so an implementation that still returns a bare
+`Promise<FinalizedTransaction>` no longer satisfies the interface: any external
+provider — including the wallet facade above — must be on a matching version.
+If you implement these interfaces yourself, narrow the incoming payload with
+`unwrapV9(tx, 'balanceTx')` and tag what you return as `{ version: 'v9', tx }`.
 
 ## Testing
 

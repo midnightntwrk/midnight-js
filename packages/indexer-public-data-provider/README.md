@@ -201,6 +201,8 @@ The `FinalizedTxData` type returned by watch methods includes:
 
 ```typescript
 type FinalizedTxData = {
+  version: 'v9';                      // Ledger-runtime discriminant, derived
+                                      // from protocolVersion
   tx: Transaction;                    // Deserialized ledger transaction
   txId: TransactionId;                // Transaction identifier
   txHash: string;                     // Transaction hash
@@ -242,3 +244,9 @@ import {
 By using this package, you agree to [Midnight's Terms and Conditions](https://midnight.network/static/terms.pdf) and [Privacy Policy](https://midnight.network/static/privacy-policy.pdf).
 
 Licensed under [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0).
+
+The watch methods return `VersionedFinalizedTxData` — the closed union of the
+v9 record above and `FinalizedTxDataV8`. Narrow on `version` before reading
+`tx`. `version` is resolved from the record's own `protocolVersion`, so a
+record from a network this provider cannot decode is reported as
+`EraUnsupportedError` rather than mislabelled as v9.

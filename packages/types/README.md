@@ -146,6 +146,8 @@ type UnshieldedBalances = UnshieldedBalance[];
 
 ```typescript
 import {
+  V8PayloadUnsupportedError,
+  UntaggedPayloadError,
   InvalidProtocolSchemeError,
   PrivateStateExportError,
   SigningKeyExportError,
@@ -182,6 +184,7 @@ import {
 
   // Transaction types
   type FinalizedTxData,
+  type FinalizedTxRecord,
   type TxStatus,
   type SegmentStatus,
   SucceedEntirely,
@@ -197,6 +200,18 @@ import {
   type UnshieldedBalances,
   type Fees,
   type BlockHash,
+
+  // Version-tagged payloads for the ledger-fork window
+  type V8TxBytes,
+  type V9Tx,
+  type VersionedTx,
+  type VersionedUnprovenTransaction,
+  type VersionedUnboundTransaction,
+  type VersionedFinalizedTransaction,
+  type FinalizedTxDataV8,
+  type VersionedFinalizedTxData,
+  type ProviderSeam,
+  unwrapV9,
 
   // Private state types
   type PrivateStateId,
