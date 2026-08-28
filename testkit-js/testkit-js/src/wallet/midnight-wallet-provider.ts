@@ -30,8 +30,7 @@ import { assertNever, ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
 import { type UnshieldedKeystore, type WalletFacade } from '@midnightntwrk/wallet-sdk';
 import type { Logger } from 'pino';
 
-import { type EnvironmentConfiguration } from '@/index';
-
+import { type EnvironmentConfiguration } from '../index';
 import { FluentWalletBuilder } from './fluent-wallet-builder';
 import { getInitialShieldedState, waitForFunds } from './wallet-utils';
 

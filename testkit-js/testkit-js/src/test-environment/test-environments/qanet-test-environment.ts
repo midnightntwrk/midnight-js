@@ -14,8 +14,7 @@
  */
 import { NetworkId } from '@midnightntwrk/wallet-sdk';
 
-import type { EnvironmentConfiguration } from '@/test-environment';
-
+import type { EnvironmentConfiguration } from '..';
 import { RemoteTestEnvironment } from './remote-test-environment';
 
 /**

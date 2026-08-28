@@ -48,9 +48,9 @@ import {
   type TestEnvironment} from '@midnight-ntwrk/testkit-js';
 import path from 'path';
 
-import { CompiledSimple } from '@/contract';
-import * as api from '@/counter-api';
-import type { SimpleContract, SimpleProviders } from '@/types/simple-types';
+import { CompiledSimple } from '../src/contract';
+import * as api from '../src/counter-api';
+import type { SimpleContract, SimpleProviders } from '../src/types/simple-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `contracts_nostate_${new Date().toISOString()}.log`)

@@ -7,9 +7,104 @@ import importPlugin from 'eslint-plugin-import';
 import simpleImportSort from 'eslint-plugin-simple-import-sort';
 import unusedImports from 'eslint-plugin-unused-imports';
 
+// No-new-occurrences gate for unsafe casts in package sources. Existing,
+// reviewed occurrences carry an inline eslint-disable; test files and
+// testkit-js are exempt (see the four `no-restricted-syntax` blocks below).
+const unsafeCastSelectors = [
+  {
+    selector: "TSAsExpression[typeAnnotation.type='TSAnyKeyword'], TSTypeAssertion[typeAnnotation.type='TSAnyKeyword']",
+    message: "Unsafe cast to 'any'. Use a precise type or a type guard instead; a reviewed exception needs an inline eslint-disable."
+  },
+  {
+    selector: "TSAsExpression[typeAnnotation.type='TSUnknownKeyword'], TSTypeAssertion[typeAnnotation.type='TSUnknownKeyword']",
+    message: "Unsafe cast to 'unknown'. Use a precise type or a type guard instead; a reviewed exception needs an inline eslint-disable."
+  },
+  {
+    selector: "TSAsExpression[typeAnnotation.type='TSNeverKeyword'], TSTypeAssertion[typeAnnotation.type='TSNeverKeyword']",
+    message: "Unsafe cast to 'never'. Use a precise type or a type guard instead; a reviewed exception needs an inline eslint-disable."
+  }
+];
 
+// The `./v8` subpath carries the previous-era ledger and its own WASM. Only
+// `loadLedger8()` may reach it at runtime, so no consumer can grow a direct v8
+// dependency that pulls that WASM into an eagerly-loaded module graph.
+const V8_RUNTIME_MESSAGE =
+  'Runtime v8 access only via loadLedger8() from @midnight-ntwrk/midnight-js-protocol.';
+
+// Blocks dynamic `import(...)` of protocol/v8 (and any subpath under it) in
+// both of its statically matchable forms: a plain string literal, and a
+// template literal with no interpolation (`` `...protocol/v8` ``) that would
+// otherwise slip past a Literal-only selector. A template literal WITH
+// interpolation cannot be matched statically and is not covered here.
+const v8DynamicImportSelectors = [
+  {
+    selector: "ImportExpression > Literal[value=/^@midnight-ntwrk\\/midnight-js-protocol\\/v8(\\/|$)/]",
+    message: `${V8_RUNTIME_MESSAGE} Dynamic imports of protocol/v8 are not allowed outside packages/protocol/src/.`
+  },
+  {
+    selector:
+      "ImportExpression > TemplateLiteral[quasis.length=1][quasis.0.value.raw=/^@midnight-ntwrk\\/midnight-js-protocol\\/v8(\\/|$)/]",
+    message: `${V8_RUNTIME_MESSAGE} Dynamic imports of protocol/v8 are not allowed outside packages/protocol/src/.`
+  }
+];
+
+// Shared file scopes for the v8 and unsafe-cast gates below -- both the
+// `@typescript-eslint/no-restricted-imports` block and the four
+// `no-restricted-syntax` blocks. They exempt different files, so the globs are
+// named once and reused rather than restated.
+const PACKAGE_SOURCE_GLOBS = ['packages/**/*.ts', 'packages/**/*.tsx', 'packages/**/*.mts'];
+const PACKAGE_TEST_GLOBS = ['packages/*/src/test/**/*.ts', 'packages/*/src/test/**/*.tsx', 'packages/*/src/test/**/*.mts'];
+const PACKAGE_TEST_DIRS = 'packages/*/src/test/**';
+const PROTOCOL_SOURCE_DIRS = 'packages/protocol/src/**';
+
+// Generic hygiene: applies everywhere, since a dist import is wrong in any
+// package regardless of who owns the module being imported.
+const distImportPattern = {
+  group: ['**/dist/**', './dist/**', '../dist/**'],
+  message: 'Direct imports from dist folders are not allowed. Use source files instead.'
+};
+
+// Version-identity gate: `packages/protocol` is the single place that pins a
+// ledger/runtime version, so everything under `packages/` reaches those
+// through it. Scoped to `packages/` only -- testkit-js is deliberately exempt,
+// like it is for the unsafe-cast gate below: fixtures and cross-version test
+// doubles legitimately need a specific version in hand.
+const protocolImportPatterns = [
+  {
+    group: ['@midnight-ntwrk/ledger-v*', '@midnightntwrk/ledger-v*'],
+    message:
+      'Import from @midnight-ntwrk/midnight-js-protocol/ledger instead. Only packages/protocol/src/ may import from ledger directly.'
+  },
+  {
+    group: ['@midnight-ntwrk/compact-runtime'],
+    message:
+      'Import from @midnight-ntwrk/midnight-js-protocol/compact-runtime instead. Only packages/protocol/src/ may import from compact-runtime directly.'
+  },
+  {
+    group: ['@midnight-ntwrk/compact-js', '@midnight-ntwrk/compact-js/*'],
+    message:
+      'Import from @midnight-ntwrk/midnight-js-protocol/compact-js instead. Only packages/protocol/src/ may import from compact-js directly.'
+  },
+  {
+    group: ['@midnight-ntwrk/onchain-runtime-v*', '@midnightntwrk/onchain-runtime-v*'],
+    message:
+      'Import from @midnight-ntwrk/midnight-js-protocol/onchain-runtime instead. Only packages/protocol/src/ may import from onchain-runtime directly.'
+  },
+  {
+    group: ['@midnight-ntwrk/platform-js', '@midnight-ntwrk/platform-js/*'],
+    message:
+      'Import from @midnight-ntwrk/midnight-js-protocol/platform-js instead. Only packages/protocol/src/ may import from platform-js directly.'
+  }
+];
 
 export default tseslint.config(
+  {
+    // A stale eslint-disable hides nothing but suggests it still does; fail
+    // the lint so it gets removed (or the regression it masked gets fixed).
+    linterOptions: {
+      reportUnusedDisableDirectives: 'error'
+    }
+  },
   {
     ignores: [
       '**/dist/**',
@@ -85,7 +180,7 @@ export default tseslint.config(
       '@typescript-eslint/no-require-imports': 'error',
       '@typescript-eslint/no-use-before-define': ['error'],
       '@typescript-eslint/no-shadow': ['error'],
-      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/consistent-type-definitions': 'off',
       '@typescript-eslint/consistent-type-imports': [
         'error',
@@ -125,37 +220,27 @@ export default tseslint.config(
       ],
       'max-classes-per-file': 'off',
       'lines-between-class-members': 'off',
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['**/dist/**', './dist/**', '../dist/**'],
-              message: 'Direct imports from dist folders are not allowed. Use source files instead.'
-            },
-            {
-              group: ['@midnight-ntwrk/ledger-v*', '@midnightntwrk/ledger-v*'],
-              message: 'Import from @midnight-ntwrk/midnight-js-protocol/ledger instead. Only packages/protocol/src/ may import from ledger directly.'
-            },
-            {
-              group: ['@midnight-ntwrk/compact-runtime'],
-              message: 'Import from @midnight-ntwrk/midnight-js-protocol/compact-runtime instead. Only packages/protocol/src/ may import from compact-runtime directly.'
-            },
-            {
-              group: ['@midnight-ntwrk/compact-js', '@midnight-ntwrk/compact-js/*'],
-              message: 'Import from @midnight-ntwrk/midnight-js-protocol/compact-js instead. Only packages/protocol/src/ may import from compact-js directly.'
-            },
-            {
-              group: ['@midnight-ntwrk/onchain-runtime-v*', '@midnightntwrk/onchain-runtime-v*'],
-              message: 'Import from @midnight-ntwrk/midnight-js-protocol/onchain-runtime instead. Only packages/protocol/src/ may import from onchain-runtime directly.'
-            },
-            {
-              group: ['@midnight-ntwrk/platform-js', '@midnight-ntwrk/platform-js/*'],
-              message: 'Import from @midnight-ntwrk/midnight-js-protocol/platform-js instead. Only packages/protocol/src/ may import from platform-js directly.'
-            }
-          ]
-        }
-      ],
+      'no-restricted-imports': ['error', { patterns: [distImportPattern] }],
+    }
+  },
+  {
+    // Version-identity gate, scoped by `files`/`ignores` rather than by a
+    // per-file override that re-declares the rule: flat config REPLACES rule
+    // options, so an override listing fewer patterns silently drops the rest.
+    // `packages/protocol/src` is exempt because it owns the pinning, and falls
+    // back to the block above -- which is why it needs no override of its own.
+    files: ['packages/**/*.ts', 'packages/**/*.tsx', 'packages/**/*.mts'],
+    ignores: ['packages/protocol/src/**'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [distImportPattern, ...protocolImportPatterns] }]
+    }
+  },
+  {
+    // Static-import half of the v8 gate. Its own rule id, so it does not
+    // interact with the `no-restricted-syntax` blocks below.
+    files: [...PACKAGE_SOURCE_GLOBS, 'testkit-js/**/*.ts'],
+    ignores: [PROTOCOL_SOURCE_DIRS],
+    rules: {
       '@typescript-eslint/no-restricted-imports': [
         'error',
         {
@@ -163,49 +248,66 @@ export default tseslint.config(
             {
               group: ['@midnight-ntwrk/midnight-js-protocol/v8', '@midnight-ntwrk/midnight-js-protocol/v8/*'],
               allowTypeImports: true,
-              message: 'Runtime v8 access only via loadLedger8() from @midnight-ntwrk/midnight-js-protocol. Type-only imports are allowed.'
+              message: `${V8_RUNTIME_MESSAGE} Type-only imports are allowed.`
             }
           ]
         }
-      ],
-      // Blocks dynamic `import(...)` of protocol/v8 (and any subpath under
-      // it) outside packages/protocol/src/, in both of its two syntactic
-      // forms: a plain string literal, and a template literal with no
-      // interpolation (`` `@midnight-ntwrk/midnight-js-protocol/v8` ``) that
-      // would otherwise slip past a Literal-only selector. A template
-      // literal WITH interpolation (e.g. built from a runtime-computed
-      // suffix) cannot be statically matched and is not covered here.
-      'no-restricted-syntax': [
-        'error',
-        {
-          selector:
-            "ImportExpression > Literal[value=/^@midnight-ntwrk\\/midnight-js-protocol\\/v8(\\/|$)/]",
-          message: 'Runtime v8 access only via loadLedger8() from @midnight-ntwrk/midnight-js-protocol. Dynamic imports of protocol/v8 are not allowed outside packages/protocol/src/.'
-        },
-        {
-          selector:
-            "ImportExpression > TemplateLiteral[quasis.length=1][quasis.0.value.raw=/^@midnight-ntwrk\\/midnight-js-protocol\\/v8(\\/|$)/]",
-          message: 'Runtime v8 access only via loadLedger8() from @midnight-ntwrk/midnight-js-protocol. Dynamic imports of protocol/v8 are not allowed outside packages/protocol/src/.'
-        }
-      ],
+      ]
+    }
+  },
+  // `no-restricted-syntax` carries two independent gates with different
+  // exemptions: unsafe casts are off in test files, the v8 ban is off in
+  // packages/protocol/src/. Flat config replaces a rule's options wholesale,
+  // so a file matched by two blocks keeps only the last one's selectors. The
+  // four blocks below are therefore mutually exclusive, and each spells out
+  // every selector list that applies to its scope. Never express one of these
+  // exemptions as `'no-restricted-syntax': 'off'`: that would also drop the
+  // other gate, silently, because an absent rule reports nothing.
+  {
+    // Package sources, the overlap: both gates apply.
+    files: PACKAGE_SOURCE_GLOBS,
+    ignores: [PACKAGE_TEST_DIRS, PROTOCOL_SOURCE_DIRS],
+    rules: {
+      'no-restricted-syntax': ['error', ...unsafeCastSelectors, ...v8DynamicImportSelectors]
     }
   },
   {
-    files: ['packages/protocol/src/**/*.ts'],
+    // Protocol sources own the v8 import, but are still held to the casts.
+    files: [PROTOCOL_SOURCE_DIRS],
+    ignores: [PACKAGE_TEST_DIRS],
     rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['**/dist/**', './dist/**', '../dist/**'],
-              message: 'Direct imports from dist folders are not allowed. Use source files instead.'
-            }
-          ]
-        }
-      ],
-      '@typescript-eslint/no-restricted-imports': 'off',
-      'no-restricted-syntax': 'off'
+      'no-restricted-syntax': ['error', ...unsafeCastSelectors]
+    }
+  },
+  {
+    // Package tests may cast — mocking and fixtures legitimately do — but may
+    // not reach for v8 directly. Protocol's own tests match neither gate.
+    files: PACKAGE_TEST_GLOBS,
+    ignores: [PROTOCOL_SOURCE_DIRS],
+    rules: {
+      'no-restricted-syntax': ['error', ...v8DynamicImportSelectors]
+    }
+  },
+  {
+    // testkit-js is fixture code: casts allowed, v8 still gated.
+    files: ['testkit-js/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': ['error', ...v8DynamicImportSelectors]
+    }
+  },
+  {
+    // Hard-fork fixture generator scripts: plain Node scripts, not part of any
+    // package's build output, run manually to (re)mint the fixtures in
+    // ../fixtures/hf. Not covered by the testkit-js/packages *.ts block above
+    // (they are .mjs), so `no-undef` needs the Node globals they actually use
+    // declared explicitly.
+    files: ['testkit-js/testkit-js/src/fixtures/hf/generators/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        Buffer: 'readonly',
+        console: 'readonly',
+        process: 'readonly'
+      }
     }
   },
   prettierConfig

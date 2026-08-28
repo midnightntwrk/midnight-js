@@ -16,7 +16,7 @@ Interface for a contract that has been deployed to the blockchain.
 
 ### C
 
-`C` *extends* `Contract.Any`
+`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
 
 ## Properties
 

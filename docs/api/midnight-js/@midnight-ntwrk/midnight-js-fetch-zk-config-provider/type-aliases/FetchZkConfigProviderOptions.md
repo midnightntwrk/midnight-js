@@ -6,7 +6,7 @@
 
 # Type Alias: FetchZkConfigProviderOptions
 
-> **FetchZkConfigProviderOptions** = `ZkConfigIntegrityOptions` & `object`
+> **FetchZkConfigProviderOptions** = [`ZkConfigIntegrityOptions`](../../midnight-js/utils/interfaces/ZkConfigIntegrityOptions.md) & `object`
 
 Options for [FetchZkConfigProvider](../classes/FetchZkConfigProvider.md). Carries the optional custom fetch alongside integrity options.
 

@@ -18,7 +18,7 @@ initial private state to run the contract constructor against.
 
 ### initialPrivateState
 
-> `readonly` **initialPrivateState**: `Contract.PrivateState`\<`C`\>
+> `readonly` **initialPrivateState**: [`PrivateState`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/PrivateState.md)\<`C`\>
 
 The private state to run the contract constructor against.
 
@@ -26,4 +26,4 @@ The private state to run the contract constructor against.
 
 ### C
 
-`C` *extends* `Contract.Any`
+`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)

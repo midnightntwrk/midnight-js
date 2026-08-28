@@ -13,33 +13,27 @@
  * limitations under the License.
  */
 
-import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
-
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { Ledger8RuntimeMissingError, PROTOCOL_ERROR_CODES } from '../errors';
 
-const PKG_ROOT = resolve(__dirname, '..', '..');
-const distV8Exists = existsSync(resolve(PKG_ROOT, 'dist/v8.mjs'));
-// Built from parts so the sole-reference scan in v8-surface.test.ts keeps
-// matching only load-v8.ts.
-const V8_SUBPATH_SPECIFIER = ['@midnight-ntwrk/midnight-js-protocol', 'v8'].join('/');
+// Built from parts so the runtime-reference scan in v8-surface.test.ts keeps
+// matching only lib/load-v8.ts. Resolved from this file, it names the same
+// module lib/load-v8.ts imports.
+const V8_MODULE_SPECIFIER = ['..', 'v8.js'].join('/');
 
 // Lives in its own file so the mocked, poisoned module registry cannot leak
 // into the happy-path suites (vitest isolates module state per test file).
-// Needs a prior `yarn build`: mocking still resolves the specifier through
-// the exports map to dist/v8.mjs (same policy as dist-laziness.test.ts).
-describe.skipIf(!distV8Exists)('loadLedger8 failure path', () => {
+describe('loadLedger8 failure path', () => {
   afterEach(() => {
-    vi.doUnmock(V8_SUBPATH_SPECIFIER);
+    vi.doUnmock(V8_MODULE_SPECIFIER);
   });
 
   it('wraps a failed import in Ledger8RuntimeMissingError and retries on the next call', async () => {
-    vi.doMock(V8_SUBPATH_SPECIFIER, () => {
+    vi.doMock(V8_MODULE_SPECIFIER, () => {
       throw new Error('simulated v8 load failure');
     });
-    const { loadLedger8 } = await import('../load-v8');
+    const { loadLedger8 } = await import('../lib/load-v8');
 
     const first = loadLedger8();
     const error = await first.then(

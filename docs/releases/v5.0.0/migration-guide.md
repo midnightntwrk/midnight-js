@@ -2,7 +2,36 @@
 
 **Migration complexity:** Significant. This is a protocol-level major release — expect to touch any code that constructs signing keys, persists exported signing keys, or imports ledger / onchain-runtime types directly.
 
-The required changes fall into four buckets: (1) bump the framework, (2) move signing keys to the structured `{ tag, value }` shape, (3) re-derive any state persisted under the old protocol, and (4) ship the `compactc` integrity manifest alongside your ZK artifacts (verification is now fail-closed). Contract-event APIs and cross-contract call support are additive — adopt them only if you need them.
+The required changes fall into five buckets: (0) raise your Node and TypeScript floors, (1) bump the framework, (2) move signing keys to the structured `{ tag, value }` shape, (3) re-derive any state persisted under the old protocol, and (4) ship the `compactc` integrity manifest alongside your ZK artifacts (verification is now fail-closed). Contract-event APIs and cross-contract call support are additive — adopt them only if you need them.
+
+---
+
+## Step 0 — Raise the Node and TypeScript floors
+
+The published packages are now ESM-only (`"type": "module"`, one `dist/<name>.js`
+per entry). Import specifiers are unchanged, but your toolchain must support
+loading an ESM-only dependency:
+
+```bash
+node -v   # must be >= 22.12
+```
+
+```jsonc
+// tsconfig.json — pick one
+{
+  "compilerOptions": {
+    "module": "nodenext" // ESM project
+    // "module": "node20"                              // CommonJS project, TypeScript >= 5.8
+    // "module": "preserve", "moduleResolution": "bundler"  // bundler-driven project
+  }
+}
+```
+
+TypeScript itself must be >= 5.8. A CommonJS project keeps working — Node 22.12
+resolves `require()` of an ES module — but `module: node16` and `module: node18`
+refuse it at **compile** time with `TS1479`. `module: node20` is the lowest
+CommonJS setting that compiles. See
+[breaking-changes.md](./breaking-changes.md) for the full matrix.
 
 ---
 
@@ -193,6 +222,7 @@ Positional provider constructors still work but are `@deprecated` for one releas
 
 ## Verification checklist
 
+- [ ] Node >= 22.12 and TypeScript >= 5.8 with `module` `node20` / `nodenext`, or `moduleResolution: bundler`.
 - [ ] `yarn install` clean with the resolutions in place (no duplicate ledger-v9 majors).
 - [ ] `yarn build` and `yarn lint` succeed.
 - [ ] All signing-key construction sites use the `{ tag, value }` shape.

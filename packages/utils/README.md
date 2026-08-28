@@ -182,8 +182,8 @@ import {
   // Error codes and guards
   CONTRACTS_ERROR_CODES,
   PROVIDER_ERROR_CODES,
-  UTILS_ERROR_CODES,
   MIDNIGHT_JS_ERROR_CODES,
+  UTILS_ERROR_CODES,
   hasErrorCode,
 
   // Serialized tag parsing

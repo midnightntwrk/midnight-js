@@ -34,13 +34,13 @@ DeployTxFailedError If the transaction is submitted successfully but produces an
 
 #### C
 
-`C` *extends* `Contract`\<`undefined`, `Witnesses`\<`undefined`\>\>
+`C` *extends* [`Contract`](../../midnight-js-protocol/compact-js/interfaces/Contract.md)\<`undefined`, [`Witnesses`](../../midnight-js-protocol/compact-js/type-aliases/Witnesses.md)\<`undefined`\>\>
 
 ### Parameters
 
 #### providers
 
-[`ContractProviders`](../type-aliases/ContractProviders.md)\<`C`, `ProvableCircuitId`\<`C`\>, `unknown`\>
+[`ContractProviders`](../type-aliases/ContractProviders.md)\<`C`, [`ProvableCircuitId`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<`C`\>, `unknown`\>
 
 #### options
 
@@ -58,7 +58,7 @@ DeployTxFailedError If the transaction is submitted successfully but produces an
 
 #### C
 
-`C` *extends* `Any`
+`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
 
 ### Parameters
 

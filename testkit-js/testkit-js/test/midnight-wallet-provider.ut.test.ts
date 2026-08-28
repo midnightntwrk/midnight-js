@@ -19,8 +19,8 @@ import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-
 import type { UnshieldedKeystore, WalletFacade } from '@midnightntwrk/wallet-sdk';
 import type { Logger } from 'pino';
 
-import type { EnvironmentConfiguration } from '@/test-environment/environment-configuration';
-import { MidnightWalletProvider } from '@/wallet/midnight-wallet-provider';
+import type { EnvironmentConfiguration } from '../src/test-environment/environment-configuration';
+import { MidnightWalletProvider } from '../src/wallet/midnight-wallet-provider';
 
 // The v8 arm is rejected before the wallet is touched, so the wallet facade
 // only needs the two methods this suite asserts are never reached.

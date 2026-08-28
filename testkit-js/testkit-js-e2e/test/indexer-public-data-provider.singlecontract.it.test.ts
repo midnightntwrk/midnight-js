@@ -25,16 +25,16 @@ import {
 import fetch from 'cross-fetch';
 import path from 'path';
 
-import { UNDEPLOYED_CONTRACT_ADDRESS, VERY_SLOW_TEST_TIMEOUT } from '@/constants';
-import { CompiledCounter } from '@/contract';
-import * as api from '@/counter-api';
-import { CounterConfiguration } from '@/counter-api';
+import { UNDEPLOYED_CONTRACT_ADDRESS, VERY_SLOW_TEST_TIMEOUT } from '../src/constants';
+import { CompiledCounter } from '../src/contract';
+import * as api from '../src/counter-api';
+import { CounterConfiguration } from '../src/counter-api';
 import {
   type CounterContract,
   type CounterProviders,
   type DeployedCounterContract,
   privateStateZero
-} from '@/types/counter-types';
+} from '../src/types/counter-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `indexer_${new Date().toISOString()}.log`)
