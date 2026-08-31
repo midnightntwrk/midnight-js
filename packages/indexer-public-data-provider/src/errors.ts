@@ -14,6 +14,7 @@
  */
 
 import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
+import type { ReadSeam } from '@midnight-ntwrk/midnight-js-types';
 import { PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import type { GraphQLFormattedError } from 'graphql';
 
@@ -222,16 +223,64 @@ export class IndexerInvariantError extends IndexerError {
 export class EraUnsupportedError extends IndexerError {
   readonly code = PROVIDER_ERROR_CODES.ERA_UNSUPPORTED;
 
+  /**
+   * @param seam The read-surface method that resolved the era.
+   * @param era The era the record resolved to.
+   * @param protocolVersion The raw integer the indexer reported.
+   * @param recordRef The record this happened on — a transaction id or a
+   *                  contract address. A dApp holding several watches open
+   *                  concurrently cannot otherwise tell which one rejected.
+   */
   constructor(
-    readonly seam: string,
+    readonly seam: ReadSeam,
     readonly era: LedgerVersion,
-    readonly protocolVersion: number
+    readonly protocolVersion: number,
+    readonly recordRef?: string
   ) {
     super(
-      `${seam} read a record from the ${era} ledger era (protocolVersion ${protocolVersion}), which this provider ` +
+      `${seam} read a record from the ${era} ledger era (protocolVersion ${protocolVersion}` +
+        `${recordRef === undefined ? '' : `, ${recordRef}`}), which this provider ` +
         `cannot decode: the read path deserializes with the v9 ledger runtime only. Point this provider at a ` +
         `network whose records belong to the v9 era.`
     );
     this.name = 'EraUnsupportedError';
+  }
+}
+
+/**
+ * Raised when a record's `protocolVersion` maps to no ledger era at all —
+ * a network outside the node major range this framework knows about, or a
+ * value that is not a non-negative integer.
+ *
+ * Distinct from {@link EraUnsupportedError}, which names an era this provider
+ * recognises but cannot decode. Here the era is unknown, so there is nothing to
+ * name.
+ *
+ * Exists so that both era failures reach a consumer through `IndexerError`.
+ * The underlying `UnknownProtocolVersionError` from
+ * `@midnight-ntwrk/midnight-js-protocol` is preserved on `cause`.
+ */
+export class EraUnresolvableError extends IndexerError {
+  readonly code = PROVIDER_ERROR_CODES.ERA_UNRESOLVABLE;
+
+  /**
+   * @param seam The read-surface method that attempted to resolve the era.
+   * @param protocolVersion The raw value the indexer reported.
+   * @param options Carries the originating error on `cause`.
+   * @param recordRef The record this happened on, when known.
+   */
+  constructor(
+    readonly seam: ReadSeam,
+    readonly protocolVersion: number,
+    options: { cause: unknown },
+    readonly recordRef?: string
+  ) {
+    super(
+      `${seam} read a record whose protocolVersion (${protocolVersion}) maps to no known ledger era` +
+        `${recordRef === undefined ? '' : ` (${recordRef})`}. ` +
+        `This framework maps node major versions 1 and 2; point this provider at a network in that range.`,
+      options
+    );
+    this.name = 'EraUnresolvableError';
   }
 }

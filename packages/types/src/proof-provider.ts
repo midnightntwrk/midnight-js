@@ -70,8 +70,7 @@ export interface ProofProvider {
    *                      a deploy transaction is being proved with no user-defined timeout.
    * @returns The proven transaction, version-tagged. Narrow on `version` — or call `unwrapV9` —
    *          before reading the payload.
-   * @throws V8PayloadUnsupportedError if the implementation does not handle the v8 arm. Every
-   *         provider shipped in this repo rejects `{ version: 'v8' }`.
+   * @throws V8PayloadUnsupportedError if the implementation does not handle the v8 arm.
    * @throws UntaggedPayloadError if `version` is missing or unrecognised.
    */
   proveTx(

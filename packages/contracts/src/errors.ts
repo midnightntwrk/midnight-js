@@ -14,23 +14,38 @@
  */
 
 import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import type {
-  AnyProvableCircuitId,
-  FinalizedTxData,
-  PrivateStateId,
-  ProviderSeam
-} from '@midnight-ntwrk/midnight-js-types';
+import type { AnyProvableCircuitId, FinalizedTxData, PrivateStateId, Seam } from '@midnight-ntwrk/midnight-js-types';
 import { CONTRACTS_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 
 /**
  * The seams this flow narrows an era at: the three transaction-flow provider
  * methods, plus the two read-surface methods that report a finalized record.
+ *
+ * An alias for {@link Seam} in `@midnight-ntwrk/midnight-js-types`, which owns
+ * the vocabulary because it declares both the provider seams and the read
+ * surface. Kept under this name so the error below reads in the era vocabulary
+ * of this package.
  */
-export type EraSeam = ProviderSeam | 'watchForTxData' | 'watchForDeployTxData';
+export type EraSeam = Seam;
 
-// `SubmitTxOptions.circuitId` is a single id or a list, so render both.
-const formatCircuitId = (circuitId: string | readonly string[]): string =>
-  Array.isArray(circuitId) ? circuitId.join('-') : String(circuitId);
+// `SubmitTxOptions.circuitId` is a single id or a list — a merged transaction
+// carries several. Each id is quoted individually so a two-circuit list cannot
+// read as one circuit whose name happens to contain the separator. Returns
+// `undefined` when there is nothing worth naming, so the caller drops the
+// clause rather than rendering an empty one.
+const formatCircuitClause = (circuitId: string | readonly string[] | undefined): string | undefined => {
+  if (circuitId === undefined) {
+    return undefined;
+  }
+  if (!Array.isArray(circuitId)) {
+    return ` (circuit '${String(circuitId)}')`;
+  }
+  if (circuitId.length === 0) {
+    return undefined;
+  }
+  const quoted = circuitId.map((id) => `'${id}'`).join(', ');
+  return circuitId.length === 1 ? ` (circuit ${quoted})` : ` (circuits ${quoted})`;
+};
 
 /**
  * An error indicating that a v8-era payload came back from a provider on a
@@ -58,7 +73,7 @@ export class EraInvariantViolationError extends Error {
   ) {
     super(
       `${seam} returned a v8-era payload on a flow that only submits v9 transactions` +
-        `${circuitId === undefined ? '' : ` (circuit '${formatCircuitId(circuitId)}')`}. ` +
+        `${formatCircuitClause(circuitId) ?? ''}. ` +
         `Check that the configured provider matches the network this application targets, and that no custom ` +
         `provider implementation re-tags the payload it was handed.`
     );

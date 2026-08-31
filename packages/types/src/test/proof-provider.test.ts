@@ -124,7 +124,11 @@ describe('createProofProvider', () => {
       ['an unrecognised era tag', { version: 'v10', tx: {} }, "'v10'"],
       ['a non-string version', { version: 9, tx: {} }, 'number'],
       ['undefined', undefined, 'undefined'],
-      ['null', null, 'object']
+      // Reported as 'null', not the `typeof null` wart 'object' — telling a
+      // developer their payload was an object with a bad version is the
+      // opposite of what happened.
+      ['null', null, 'null'],
+      ['a version string longer than the cap', { version: 'v'.repeat(80), tx: {} }, `'${'v'.repeat(32)}'… (80 chars)`]
     ])('rejects %s with the registered untagged-payload code', async (_label, payload, received) => {
       const rejection = await proveUntagged(payload);
 
@@ -134,10 +138,17 @@ describe('createProofProvider', () => {
       expect((rejection as UntaggedPayloadError).received).toBe(received);
     });
 
-    it('never reaches the proving provider', async () => {
-      await proveUntagged({ version: 'v10', tx: {} });
+    it('never invokes prove on the payload it was handed', async () => {
+      const prove = vi.fn();
 
-      expect(stubProvingProvider.prove).not.toHaveBeenCalled();
+      // The spy goes on the payload, not on `stubProvingProvider`.
+      // `createProofProvider` calls `tx.prove(provingProvider, costModel)` on
+      // the *narrowed* payload and never calls `provingProvider.prove` itself,
+      // so asserting on the latter would hold even with the `unwrapV9` call
+      // deleted. This spy is what actually runs if the narrowing is skipped.
+      await proveUntagged({ prove });
+
+      expect(prove).not.toHaveBeenCalled();
     });
 
     it('does not put the payload contents in the message', async () => {

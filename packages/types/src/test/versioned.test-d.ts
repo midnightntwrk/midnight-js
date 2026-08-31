@@ -21,18 +21,19 @@ import type {
   TransactionHash,
   TransactionId
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { FinalizedTransaction as V8Transaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { BlockHash, Fees, FinalizedTxData, SegmentStatus, TxStatus, UnshieldedUtxos } from '../midnight-types';
-import type { VersionedFinalizedTxData } from '../versioned';
+import type { FinalizedTxDataV8, VersionedFinalizedTxData } from '../versioned';
 
 // These are compile-level tests: the property under test is that the file
 // type-checks (or, for the `@ts-expect-error` case, that it does NOT
 // type-check without the suppressed error). They are verified by running
-// vitest's typecheck pass for this package (`vitest --typecheck`), which
-// surfaces `tsc` diagnostics against this file as test failures — see
-// packages/types/vitest.config.ts. Running these bodies at plain runtime is
-// incidental; `expectTypeOf(...)` performs no runtime assertion.
+// vitest's typecheck pass for this package, enabled unconditionally in
+// `vitest.config.ts`, which surfaces `tsc` diagnostics against this file as
+// test failures; a plain `yarn test` runs them. Running these bodies at
+// runtime is incidental — `expectTypeOf(...)` performs no runtime assertion.
 
 // Spelled out independently of `FinalizedTxData` (no `Omit`/`keyof` derived
 // from it) so the equality check below actually pins the v9 arm's shape
@@ -41,6 +42,28 @@ import type { VersionedFinalizedTxData } from '../versioned';
 type FinalizedTxDataV9Fixture = {
   readonly version: 'v9';
   readonly tx: Transaction<SignatureEnabled, Proof, Binding>;
+  readonly status: TxStatus;
+  readonly txId: TransactionId;
+  readonly identifiers: readonly TransactionId[];
+  readonly txHash: TransactionHash;
+  readonly blockHash: BlockHash;
+  readonly blockHeight: number;
+  readonly blockTimestamp: number;
+  readonly blockAuthor: string | null;
+  readonly indexerId: number;
+  readonly protocolVersion: number;
+  readonly fees: Fees;
+  readonly segmentStatusMap: Map<number, SegmentStatus> | undefined;
+  readonly unshielded: UnshieldedUtxos;
+};
+
+// The v8 mirror of the fixture above. The v8 arm has no producer yet, so it
+// gets the least review pressure of anything in this union — which is exactly
+// why it needs its own field-for-field pin rather than being covered only by
+// the discriminant check.
+type FinalizedTxDataV8Fixture = {
+  readonly version: 'v8';
+  readonly tx: V8Transaction;
   readonly status: TxStatus;
   readonly txId: TransactionId;
   readonly identifiers: readonly TransactionId[];
@@ -106,5 +129,50 @@ describe('VersionedFinalizedTxData', () => {
     // or widening an arm's `version` to a non-literal grows it — either way
     // it stops equaling the hardcoded `'v8' | 'v9'`.
     expectTypeOf<VersionedFinalizedTxData['version']>().toEqualTypeOf<'v8' | 'v9'>();
+  });
+
+  it('pins the v8 arm field-for-field, so the producerless arm cannot drift', () => {
+    // `FinalizedTxDataV8` inherits from `FinalizedTxRecord`, which stops the
+    // two arms diverging as fields are added to the *base*. It does not stop a
+    // field being added to this arm alone, nor an inherited field being
+    // narrowed here. That is what this pins.
+    expectTypeOf<FinalizedTxDataV8Fixture>().toEqualTypeOf<FinalizedTxDataV8>();
+  });
+});
+
+describe('the compile-time bridge to LedgerVersion', () => {
+  // Mirrors the four assertions at the foot of `versioned.ts`. The property
+  // under test is the *mechanism*, not the current era set: those assertions
+  // can only fail the build on a mismatch if this shape rejects one. The
+  // mechanism had to be pinned separately because a broken version of it fails
+  // silently — it type-checks in both directions and reads as if it works.
+  type Assert<T extends true> = T;
+
+  it('accepts an era set whose eras all have an arm', () => {
+    type Eras = 'v8' | 'v9';
+    type Arms = 'v8' | 'v9';
+    type Matched = Assert<[Exclude<Eras, Arms>] extends [never] ? true : false>;
+
+    expectTypeOf<Matched>().toEqualTypeOf<true>();
+  });
+
+  it('rejects an era that has no arm — the failure versioned.ts depends on', () => {
+    type Eras = 'v8' | 'v9' | 'v10';
+    type Arms = 'v8' | 'v9';
+
+    // @ts-expect-error `'v10'` has no arm, so the difference is non-empty, the
+    // condition resolves to `false`, and `false` does not satisfy `T extends
+    // true`. If this stops erroring, the directive itself becomes unused
+    // (TS2578) and the typecheck pass fails — so this test cannot rot into a
+    // no-op.
+    //
+    // The tuple brackets are what make it fire. A bare
+    // `Exclude<Eras, Arms> extends never ? true : false` is a *distributive*
+    // conditional: an empty difference distributes over the empty union and
+    // yields `never`, not `true` — and `never` satisfies `T extends true`. So
+    // the undistributed form is satisfied whether the sets agree or not.
+    type Mismatched = Assert<[Exclude<Eras, Arms>] extends [never] ? true : false>;
+
+    expectTypeOf<Mismatched>().toEqualTypeOf<false>();
   });
 });

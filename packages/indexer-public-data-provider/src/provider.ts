@@ -325,8 +325,11 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
             );
           }
           const transaction: RegularTransaction & { hash: string; identifiers: string[] } = first;
+          // Resolved before `parseHexTransaction`, which is v9-only: see the
+          // note in `toFinalizedDeployTxData`.
+          const version = requireV9Era(transaction, 'watchForTxData', `txId ${txId}`);
           return {
-            version: requireV9Era(transaction, 'watchForTxData'),
+            version,
             tx: parseHexTransaction(transaction.raw),
             status: toTxStatus(transaction.transactionResult),
             txId,

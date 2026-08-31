@@ -35,13 +35,8 @@ import type { FinalizedTxData, FinalizedTxRecord } from './midnight-types';
  * on the v8 path, stage is the caller's responsibility.
  */
 export interface V8TxBytes {
-  /**
-   * Discriminant identifying this as a v8-era payload.
-   */
   readonly version: 'v8';
-  /**
-   * The transaction in its serialized, tag-prefixed byte form. Unvalidated.
-   */
+  /** Serialized, tag-prefixed byte form. Unvalidated — see the note above. */
   readonly txBytes: Uint8Array;
 }
 
@@ -54,13 +49,7 @@ export interface V8TxBytes {
  *                question — unproven, unbound, or finalized.
  */
 export interface V9Tx<T> {
-  /**
-   * Discriminant identifying this as a v9-era payload.
-   */
   readonly version: 'v9';
-  /**
-   * The live v9 ledger transaction.
-   */
   readonly tx: T;
 }
 
@@ -75,8 +64,7 @@ export interface V9Tx<T> {
  *
  * The seam types do not tie the input era to the output era: nothing here
  * stops a provider returning a v9 result for a v8 input. A v9-only flow is
- * expected to check, which is what `EraInvariantViolationError` in
- * `@midnight-ntwrk/midnight-js-contracts` reports.
+ * expected to check that at its own boundary.
  *
  * @typeParam T - The v9 ledger transaction type carried by the `'v9'` arm.
  *
@@ -109,13 +97,7 @@ export type VersionedTx<T> = V8TxBytes | V9Tx<T>;
  * second breaking change when dual decode lands.
  */
 export interface FinalizedTxDataV8 extends FinalizedTxRecord {
-  /**
-   * Discriminant identifying this as a v8 ledger record.
-   */
   readonly version: 'v8';
-  /**
-   * The transaction that was finalized, as a v8 ledger transaction object.
-   */
   readonly tx: V8Transaction;
 }
 
@@ -124,30 +106,38 @@ export interface FinalizedTxDataV8 extends FinalizedTxRecord {
  * produced it. Both arms carry identical metadata; only `tx`'s type and the
  * `version` discriminant differ.
  *
- * `version` is resolved from the record's `protocolVersion` at the one
- * construction point per provider, using the `read`-path resolver in
- * `@midnight-ntwrk/midnight-js-protocol`. A provider that resolves an era it
- * cannot decode throws instead of mislabelling the record, so narrowing on
- * `version` is sound.
+ * The providers in this framework resolve `version` from the record's own
+ * `protocolVersion` at the one construction point per provider, and throw
+ * rather than mislabel a record from an era they cannot decode. Nothing in the
+ * type system obliges a third-party `PublicDataProvider` to do the same, so the
+ * discriminant is exactly as trustworthy as the provider that produced it.
  */
 export type VersionedFinalizedTxData = FinalizedTxDataV8 | FinalizedTxData;
 
 // Compile-time-only bridge to the era vocabulary in
 // `@midnight-ntwrk/midnight-js-protocol`, which owns the mapping from a raw
-// `protocolVersion` to an era. These two assignments keep the discriminant set
+// `protocolVersion` to an era. These four assertions keep the discriminant set
 // here and `LedgerVersion` there as one fact: if either side gains an era the
-// other lacks, the conditional type resolves to `never` and this file stops
-// type-checking. No runtime declarations, so `versioned.ts` stays types-only.
+// other lacks, the difference is non-empty and `Assert` fails to satisfy its
+// `true` constraint. No runtime declarations, so `versioned.ts` stays
+// types-only.
+//
+// The difference is wrapped in a tuple deliberately. A bare
+// `Difference extends never ? true : false` is a *distributive* conditional:
+// when `Difference` is `never` it distributes over the empty union and yields
+// `never` rather than `true`, and `never` satisfies `T extends true`, so the
+// assertion holds no matter what the two sides say. `[D] extends [never]`
+// compares the types directly, which is what makes these load-bearing.
 type Assert<T extends true> = T;
 type _EveryEraHasAnArm = Assert<
-  Exclude<LedgerVersion, VersionedTx<unknown>['version']> extends never ? true : never
+  [Exclude<LedgerVersion, VersionedTx<unknown>['version']>] extends [never] ? true : false
 >;
 type _NoArmOutsideTheEraSet = Assert<
-  Exclude<VersionedTx<unknown>['version'], LedgerVersion> extends never ? true : never
+  [Exclude<VersionedTx<unknown>['version'], LedgerVersion>] extends [never] ? true : false
 >;
 type _EveryEraHasAReadArm = Assert<
-  Exclude<LedgerVersion, VersionedFinalizedTxData['version']> extends never ? true : never
+  [Exclude<LedgerVersion, VersionedFinalizedTxData['version']>] extends [never] ? true : false
 >;
 type _NoReadArmOutsideTheEraSet = Assert<
-  Exclude<VersionedFinalizedTxData['version'], LedgerVersion> extends never ? true : never
+  [Exclude<VersionedFinalizedTxData['version'], LedgerVersion>] extends [never] ? true : false
 >;

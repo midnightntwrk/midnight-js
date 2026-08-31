@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { UnknownProtocolVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
+import { PROTOCOL_ERROR_CODES, UnknownProtocolVersionError } from '@midnight-ntwrk/midnight-js-protocol/errors';
 import { describe, expect, it } from 'vitest';
 
 import { CONTRACTS_ERROR_CODES, hasErrorCode, MIDNIGHT_JS_ERROR_CODES, PROVIDER_ERROR_CODES } from '../error-codes';
@@ -33,7 +33,8 @@ const EXPECTED_CODES = [
   // providers
   'MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTED',
   'MIDNIGHT_JS_PR_UNTAGGED_PAYLOAD',
-  'MIDNIGHT_JS_PR_ERA_UNSUPPORTED'
+  'MIDNIGHT_JS_PR_ERA_UNSUPPORTED',
+  'MIDNIGHT_JS_PR_ERA_UNRESOLVABLE'
 ];
 
 describe('MIDNIGHT_JS_ERROR_CODES', () => {
@@ -123,10 +124,19 @@ describe('hasErrorCode', () => {
   });
 
   describe('with-code form on real error instances', () => {
-    it('returns true for a real UnknownProtocolVersionError instance matching its own code', () => {
+    it('matches a real error instance against the registered code, not against itself', () => {
       const error = new UnknownProtocolVersionError(9_000_000, 'read', 'unknown');
 
-      expect(hasErrorCode(error, error.code)).toBe(true);
+      // Compared against the registry constant rather than `error.code`:
+      // the self-comparison holds for any string the class happens to carry,
+      // so it could not catch the class and the registry drifting apart.
+      expect(hasErrorCode(error, PROTOCOL_ERROR_CODES.UNKNOWN_PROTOCOL_VERSION_READ)).toBe(true);
+    });
+
+    it('returns false for a real error instance matched against a different registered code', () => {
+      const error = new UnknownProtocolVersionError(9_000_000, 'read', 'unknown');
+
+      expect(hasErrorCode(error, PROVIDER_ERROR_CODES.ERA_UNSUPPORTED)).toBe(false);
     });
   });
 });

@@ -55,7 +55,15 @@ export const unwrapV9 = <T>(payload: VersionedTx<T>, seam: ProviderSeam): T => {
     case 'v9':
       return payload.tx;
     case 'v8':
-      throw new V8PayloadUnsupportedError(seam, payload.txBytes?.byteLength);
+      // `txBytes` is required by the type, so the instance check is for the
+      // same JavaScript caller the object guard above exists for. Passing
+      // `undefined` rather than reading `.byteLength` off whatever arrived
+      // makes the message say the field was malformed instead of quietly
+      // omitting the size.
+      throw new V8PayloadUnsupportedError(
+        seam,
+        payload.txBytes instanceof Uint8Array ? payload.txBytes.byteLength : undefined
+      );
     default: {
       // Keeps the switch exhaustive: if an era is added to `VersionedTx`
       // without an arm here, `payload` stops being `never` and this
