@@ -152,6 +152,16 @@ export interface ContractEventBase {
    * Iteration-1 events are `version: 1`.
    */
   readonly version: number;
+  /**
+   * Protocol version of the block this event was emitted in, as the network
+   * reported it. Distinct from {@link version}: this one says which ledger era
+   * wrote {@link raw}, so a consumer decoding those bytes knows which runtime
+   * to decode them with. Resolve it with `versionOfRecord` from
+   * `@midnight-ntwrk/midnight-js-protocol` rather than comparing integers by
+   * hand — this interface satisfies that function's `VersionedRecord`
+   * parameter.
+   */
+  readonly protocolVersion: number;
   /** Address of the contract that emitted the event. */
   readonly contractAddress: ContractAddress;
   /**

@@ -197,6 +197,22 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
   }
 
   /**
+   * Route 1 again, reached from a read that decoded its state rather than
+   * serving it raw. `parseHexContractState` has already refused anything whose
+   * envelope disagreed with the reported version, so reaching here means both
+   * signals said v9 — the same evidence {@link corroborateFromStateSnapshot}
+   * requires.
+   *
+   * Only an unpinned read qualifies: with an offset, the block field is the
+   * block the caller asked for, not the network's head.
+   */
+  private corroborateFromDecodedState(isHeadRead: boolean, headProtocolVersion: number): void {
+    if (isHeadRead) {
+      this.corroborateV9(headProtocolVersion, 'snapshot-envelope');
+    }
+  }
+
+  /**
    * Route 2: a finalized transaction record this provider decoded itself,
    * whose own protocol version is on the v9 era. Such a record cannot exist
    * before the network has forked, so it is proof of the era.
@@ -371,8 +387,23 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         fetchPolicy: 'no-cache'
       })
       .then(maybeThrowQueryError)
-      .then((queryResult) => queryResult.data?.contract?.state ?? null)
-      .then((maybeContractState) => (maybeContractState ? parseHexContractState(maybeContractState) : null));
+      .then((queryResult) => queryResult.data)
+      .then((data) => {
+        const state = data?.contract?.state ?? null;
+        if (state === null) {
+          return null;
+        }
+        const block = data?.block ?? null;
+        if (block === null) {
+          // A served state with no block to date it is an inconsistent indexer,
+          // not an absent contract — the same call `queryRawContractState`
+          // makes. Decoding it would mean guessing the era.
+          throw IndexerDataError.missingHeadBlock();
+        }
+        const contractState = parseHexContractState(state, block.protocolVersion);
+        this.corroborateFromDecodedState(offset === null, block.protocolVersion);
+        return contractState;
+      });
   }
 
   queryZSwapAndContractState(
@@ -408,9 +439,17 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         if (!block || contractState == null || contractZswapState == null) {
           return null;
         }
+        // The contract state is decoded first, and it is the only one of the
+        // three carrying an envelope this client can read the era from. Its
+        // check therefore dates the whole triple: all three fields come from
+        // the one block, so a state the block's era contradicts means the
+        // zswap state and ledger parameters cannot be trusted either — and
+        // neither is decoded.
+        const parsedContractState = parseHexContractState(contractState, block.protocolVersion);
+        this.corroborateFromDecodedState(offset === null, block.protocolVersion);
         return [
           parseHexZswapState(contractZswapState),
-          parseHexContractState(contractState),
+          parsedContractState,
           parseHexLedgerParameters(block.ledgerParameters)
         ] as [ZswapChainState, ContractState, LedgerParameters];
       });
@@ -468,7 +507,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
             DeployContractStateTxQueryQuery['contractAction']
           >;
           if (!('deploy' in contract)) {
-            return contract.state;
+            return { state: contract.state, protocolVersion: contract.transaction.protocolVersion };
           }
           const deployAction = contract.deploy.transaction.contractActions.find(
             ({ address }) => address === contractAddress
@@ -476,17 +515,22 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
           if (!deployAction) {
             throw IndexerDataError.missingContractAction(contractAddress);
           }
-          return deployAction.state;
+          return {
+            state: deployAction.state,
+            protocolVersion: contract.deploy.transaction.protocolVersion
+          };
         }
         return null;
       })
-      .then((maybeContractState) => (maybeContractState ? parseHexContractState(maybeContractState) : null));
+      .then((dated) => (dated === null ? null : parseHexContractState(dated.state, dated.protocolVersion)));
   }
 
   watchForContractState(contractAddress: ContractAddress): Promise<ContractState> {
     assertIsContractAddress(contractAddress);
     return Rx.firstValueFrom(
-      waitForContractToAppear(this.client, this.pollInterval)(contractAddress)(null).pipe(Rx.map(parseHexContractState))
+      waitForContractToAppear(this.client, this.pollInterval)(contractAddress)(null).pipe(
+        Rx.map(({ state, protocolVersion }) => parseHexContractState(state, protocolVersion))
+      )
     );
   }
 

@@ -21,6 +21,7 @@ import * as Rx from 'rxjs';
 
 import { parseHexContractState, toUnshieldedBalances } from './codec';
 import {
+  IndexerDataError,
   IndexerFormattedError,
   IndexerInvariantError,
   IndexerQueryError,
@@ -45,16 +46,21 @@ import {
 export type Block = {
   hash: string;
   height: number;
-  transactions: {
-    hash: string;
-    identifiers: readonly string[];
-    contractActions: readonly { state: string; address: string }[];
-  }[];
+  protocolVersion: number;
+  transactions: Transaction[];
 };
 
+/**
+ * A transaction as the block subscription serves it. `protocolVersion` is the
+ * containing block's, copied onto every transaction when the block is
+ * flattened: the block is what dates the serialized states its transactions
+ * carry, and downstream operators see transactions with the block already
+ * gone.
+ */
 export type Transaction = {
   hash: string;
   identifiers: readonly string[];
+  protocolVersion: number;
   contractActions: readonly { state: string; address: string }[];
 };
 
@@ -174,6 +180,7 @@ export const blockOffsetToBlock$ = (apolloClient: ApolloClient) => (offset: Inpu
         return {
           hash: blocks.hash,
           height: blocks.height,
+          protocolVersion: blocks.protocolVersion,
           transactions: blocks.transactions
             .filter((tx): tx is RegularTransaction & { hash: string; contractActions: { state: string; address: string }[] } =>
               'identifiers' in tx
@@ -181,6 +188,7 @@ export const blockOffsetToBlock$ = (apolloClient: ApolloClient) => (offset: Inpu
             .map(tx => ({
               hash: tx.hash,
               identifiers: tx.identifiers,
+              protocolVersion: blocks.protocolVersion,
               contractActions: tx.contractActions
             }))
         };
@@ -211,10 +219,10 @@ export const transactionIdToTransaction$ =
 
 export const transactionToContractState$ =
   (transactionId: TransactionId) =>
-  ({ identifiers, contractActions }: Transaction) =>
+  ({ identifiers, contractActions, protocolVersion }: Transaction) =>
     Rx.zip(identifiers, contractActions).pipe(
       Rx.skipWhile((pair) => pair[0] !== transactionId),
-      Rx.map((pair) => parseHexContractState(pair[1].state))
+      Rx.map((pair) => parseHexContractState(pair[1].state, protocolVersion))
     );
 
 /**
@@ -231,7 +239,7 @@ export const blockToContractState$ = (contractAddress: ContractAddress) => (bloc
   Rx.from(block.transactions).pipe(
     Rx.concatMap(({ contractActions }) => Rx.from(contractActions)),
     Rx.filter((call) => call.address === contractAddress),
-    Rx.map((call) => parseHexContractState(call.state))
+    Rx.map((call) => parseHexContractState(call.state, block.protocolVersion))
   );
 
 export const contractAddressToLatestBlockOffset$ =
@@ -280,9 +288,11 @@ export const blockOffsetToContractState$ =
           if (!contractActions) {
             throw new IndexerSubscriptionDataError('contractActions');
           }
-          return contractActions.state;
+          return contractActions;
         }),
-        Rx.map(parseHexContractState)
+        Rx.map((contractActions) =>
+          parseHexContractState(contractActions.state, contractActions.transaction.protocolVersion)
+        )
       );
 
 export const waitForContractToAppear =
@@ -294,7 +304,14 @@ export const waitForContractToAppear =
       CONTRACT_STATE_QUERY,
       { address: contractAddress, offset },
       hasContract,
-      (data) => data.contract.state,
+      (data) => {
+        if (data.block === null) {
+          // A served state with no block to date it is an inconsistent
+          // indexer, not a contract that has yet to appear.
+          throw IndexerDataError.missingHeadBlock();
+        }
+        return { state: data.contract.state, protocolVersion: data.block.protocolVersion };
+      },
       pollInterval
     );
 

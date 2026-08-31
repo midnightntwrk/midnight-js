@@ -63,9 +63,6 @@ const PKG = '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
  * They exist (rather than inlining) so the `caller` string is centralized and
  * regression-testable. Exported for tests; not part of the public package API.
  */
-export const parseHexContractState = (s: string): ContractState =>
-  deserializeCompactContractState(toByteArray(s), { caller: `${PKG}:parseHexContractState` });
-
 export const parseHexZswapState = (s: string): ZswapChainState =>
   deserializeZswapChainState(toByteArray(s), { caller: `${PKG}:parseHexZswapState` });
 
@@ -114,6 +111,72 @@ export const contractStateEnvelopeVersion = (raw: Uint8Array): LedgerVersion => 
 };
 
 /**
+ * Decodes the indexer's hex-encoded contract state and reads the ledger era off
+ * the envelope in front of the body, in that order.
+ *
+ * Hex first: `Buffer.from(s, 'hex')` stops at the first character it cannot
+ * read, so an only-partly-hex payload would otherwise be silently truncated
+ * into a shorter, still plausible-looking byte string.
+ */
+const stateBytesAndEnvelopeVersion = (
+  hexState: string
+): { readonly raw: Uint8Array; readonly envelopeVersion: LedgerVersion } => {
+  if (!isHex(hexState)) {
+    throw IndexerDataError.malformedStateEncoding();
+  }
+  const raw = new Uint8Array(toByteArray(hexState));
+  return { raw, envelopeVersion: contractStateEnvelopeVersion(raw) };
+};
+
+/**
+ * The only ledger era the deserializers reached from this module can read.
+ *
+ * The wrappers below bind the v9 runtime at import time; the v8 runtime is
+ * reachable only through `loadLedger8()` and no read path dispatches on the era
+ * yet. Until one does, bytes from any other era must be refused rather than fed
+ * to the v9 decoder, which would return a wrong answer instead of failing.
+ */
+const DECODABLE_LEDGER_VERSION: LedgerVersion = 'v9';
+
+/**
+ * Deserialize a contract state the indexer served, but only after the era the
+ * indexer reported for it and the era written into the state's own envelope
+ * agree — and only if that era is one this path can actually decode.
+ *
+ * Two independent signals are required because neither is sufficient alone. The
+ * reported `protocolVersion` comes from a block, resolved separately from the
+ * state itself, so it can be about a different era than the bytes. The envelope
+ * comes off the bytes but is attacker-controlled and proves nothing about the
+ * network. Together, a disagreement is the honest signal that the answer cannot
+ * be trusted.
+ *
+ * Nothing reaches a deserializer until all three checks pass.
+ *
+ * @param hexState The hex-encoded serialized contract state, as the indexer
+ *                 serves it.
+ * @param protocolVersion The protocol-version integer of the block that dates
+ *                        the state.
+ *
+ * @throws {IndexerDataError} When the state is not hex-encoded, when the two
+ *   era signals disagree, or when the agreed era is not decodable here.
+ * @throws {TagParseError} When the payload carries no supported contract-state
+ *   envelope.
+ * @throws {UnknownProtocolVersionError} When `protocolVersion` resolves to no
+ *   known era.
+ */
+export const parseHexContractState = (hexState: string, protocolVersion: number): ContractState => {
+  const { raw, envelopeVersion } = stateBytesAndEnvelopeVersion(hexState);
+  const reportedVersion = protocolVersionToLedger(protocolVersion, 'read');
+  if (reportedVersion !== envelopeVersion) {
+    throw IndexerDataError.eraDisagreement(protocolVersion, reportedVersion, envelopeVersion);
+  }
+  if (envelopeVersion !== DECODABLE_LEDGER_VERSION) {
+    throw IndexerDataError.unsupportedDecodeEra(envelopeVersion);
+  }
+  return deserializeCompactContractState(raw, { caller: `${PKG}:parseHexContractState` });
+};
+
+/**
  * Builds the raw (undeserialized) contract-state record served by
  * `PublicDataProvider.queryRawContractState`.
  *
@@ -129,16 +192,12 @@ export const contractStateEnvelopeVersion = (raw: Uint8Array): LedgerVersion => 
  *                        that state.
  */
 export const toRawContractState = (hexState: string, protocolVersion: number): RawContractState => {
-  // Hex first: `Buffer.from(s, 'hex')` stops at the first character it cannot
-  // read, so an only-partly-hex payload would otherwise be silently truncated
-  // into a shorter, still plausible-looking byte string.
-  if (!isHex(hexState)) {
-    throw IndexerDataError.malformedStateEncoding();
-  }
-  const raw = new Uint8Array(toByteArray(hexState));
-  // Envelope next, before the bytes are handed to anything: rejects a payload
-  // that is not a contract state from a supported runtime.
-  contractStateEnvelopeVersion(raw);
+  // Validates the encoding and rejects anything that is not a contract state
+  // from a supported runtime. The envelope reading is deliberately not compared
+  // against `protocolVersion` here: this record's contract is that `version`
+  // reports what the network said, and agreement with the envelope is the
+  // caller's to establish.
+  const { raw } = stateBytesAndEnvelopeVersion(hexState);
   return {
     version: protocolVersionToLedger(protocolVersion, 'read'),
     protocolVersion,

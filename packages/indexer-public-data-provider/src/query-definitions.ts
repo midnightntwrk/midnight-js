@@ -225,13 +225,20 @@ export const DEPLOY_CONTRACT_STATE_TX_QUERY = gql(
     contractAction(address: $address) {
       ... on ContractDeploy {
         state
+        transaction {
+          protocolVersion
+        }
       }
       ... on ContractUpdate {
         state
+        transaction {
+          protocolVersion
+        }
       }
       ... on ContractCall {
         deploy {
           transaction {
+            protocolVersion
             contractActions {
               address
               state
@@ -263,6 +270,7 @@ export const TXS_FROM_BLOCK_SUB = gql(
     blocks(offset: $offset) {
       hash,
       height,
+      protocolVersion,
       transactions {
         hash
         contractActions {
@@ -280,6 +288,9 @@ export const TXS_FROM_BLOCK_SUB = gql(
 export const CONTRACT_STATE_QUERY = gql(
   `
   query CONTRACT_STATE_QUERY($address: HexEncoded!, $offset: BlockOffset) {
+    block(offset: $offset) {
+      protocolVersion
+    }
     contract(address: $address, offset: $offset) {
       state
     }
@@ -308,6 +319,9 @@ export const CONTRACT_STATE_SUB = gql(
   subscription CONTRACT_STATE_SUB($address: HexEncoded!, $offset: BlockOffset) {
     contractActions(address: $address, offset: $offset) {
       state
+      transaction {
+        protocolVersion
+      }
     }
   }`
 );
@@ -316,6 +330,7 @@ export const CONTRACT_AND_ZSWAP_STATE_QUERY = gql(
   `
   query CONTRACT_AND_ZSWAP_STATE_QUERY($address: HexEncoded!, $offset: BlockOffset) {
     block(offset: $offset) {
+      protocolVersion
       ledgerParameters
       contractZswapState(address: $address)
     }
@@ -417,6 +432,7 @@ export const CONTRACT_EVENTS_QUERY = gql(
       id
       maxId
       version
+      protocolVersion
       contractAddress
       transactionId
       raw
@@ -441,6 +457,7 @@ export const CONTRACT_EVENTS_SUB = gql(
       id
       maxId
       version
+      protocolVersion
       contractAddress
       transactionId
       raw

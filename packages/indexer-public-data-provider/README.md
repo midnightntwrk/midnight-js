@@ -102,6 +102,27 @@ if (state !== null) {
 `state.version` is derived from `state.protocolVersion`; this provider does not
 check it against the envelope inside `state.raw`.
 
+The methods that *do* deserialize for you — `queryContractState`,
+`queryDeployContractState`, `queryZSwapAndContractState`,
+`watchForContractState` and `contractStateObservable` — decode with the v9
+runtime only. Each asks the indexer for the protocol version of the block that
+dates the state and cross-checks it against the era written into the state's own
+envelope. If the two disagree, or if they agree on an era this client cannot
+decode, the call fails with an `IndexerDataError` rather than returning a
+mis-decoded state. Reach for `queryRawContractState` when you need to read the
+other era.
+
+Contract events carry the same dating: every `ContractEvent` has a
+`protocolVersion`, so a consumer decoding the opaque `raw` payload can tell
+which runtime wrote it. Resolve it with `versionOfRecord` from
+`@midnight-ntwrk/midnight-js-protocol`:
+
+```typescript
+import { versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
+
+const era = versionOfRecord(event); // 'v8' | 'v9'
+```
+
 `queryLatestProtocolVersion` reports the head block's protocol version. The
 answer may be served from a cache once the provider has corroborating evidence
 that the network has moved on; pass `{ fresh: true }` to force a real request.

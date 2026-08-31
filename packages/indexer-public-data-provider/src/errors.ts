@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol';
 import type { GraphQLFormattedError } from 'graphql';
 
 /**
@@ -79,7 +80,14 @@ export type IndexerDataErrorContext =
     }
   | { kind: 'unknown-event-type'; typename: string }
   | { kind: 'missing-event-field'; typename: string; field: string }
-  | { kind: 'unknown-address-kind'; typename: string; field: string; value: string };
+  | { kind: 'unknown-address-kind'; typename: string; field: string; value: string }
+  | {
+      kind: 'era-disagreement';
+      protocolVersion: number;
+      reportedVersion: LedgerVersion;
+      envelopeVersion: LedgerVersion;
+    }
+  | { kind: 'unsupported-decode-era'; version: LedgerVersion };
 
 /**
  * An error raised when indexer-returned data is structurally inconsistent
@@ -145,6 +153,18 @@ export class IndexerDataError extends IndexerError {
     return new IndexerDataError({ kind: 'unknown-address-kind', typename, field, value });
   }
 
+  static eraDisagreement(
+    protocolVersion: number,
+    reportedVersion: LedgerVersion,
+    envelopeVersion: LedgerVersion
+  ): IndexerDataError {
+    return new IndexerDataError({ kind: 'era-disagreement', protocolVersion, reportedVersion, envelopeVersion });
+  }
+
+  static unsupportedDecodeEra(version: LedgerVersion): IndexerDataError {
+    return new IndexerDataError({ kind: 'unsupported-decode-era', version });
+  }
+
   private static formatMessage(context: IndexerDataErrorContext): string {
     switch (context.kind) {
       case 'unknown-status':
@@ -172,6 +192,20 @@ export class IndexerDataError extends IndexerError {
         return `Contract event ${context.typename} is missing required field '${context.field}'`;
       case 'unknown-address-kind':
         return `Contract event ${context.typename} field '${context.field}' has unknown address kind '${context.value}'`;
+      case 'era-disagreement':
+        return (
+          `The indexer dated a contract state to protocol version ${context.protocolVersion} (ledger ` +
+          `${context.reportedVersion}), but the state's own envelope was written by ledger ` +
+          `${context.envelopeVersion}. Decoding it would produce a wrong answer rather than an error. ` +
+          'Retry against a healthy indexer; if it persists, the indexer is serving state and block data ' +
+          'from different eras.'
+        );
+      case 'unsupported-decode-era':
+        return (
+          `The indexer served a contract state from ledger ${context.version}, which this read path cannot ` +
+          'decode. Use `queryRawContractState` to obtain the bytes together with their era and decode them ' +
+          'with the matching runtime.'
+        );
     }
   }
 }
