@@ -14,25 +14,37 @@
  */
 
 import type { DustSecretKey, ZswapSecretKeys } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { V8PayloadUnsupportedError } from '@midnight-ntwrk/midnight-js-types';
+import {
+  UntaggedPayloadError,
+  V8PayloadUnsupportedError,
+  type VersionedFinalizedTransaction,
+  type VersionedUnboundTransaction
+} from '@midnight-ntwrk/midnight-js-types';
 import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import type { UnshieldedKeystore, WalletFacade } from '@midnightntwrk/wallet-sdk';
-import type { Logger } from 'pino';
+import { pino } from 'pino';
 
 import type { EnvironmentConfiguration } from '../src/test-environment/environment-configuration';
 import { MidnightWalletProvider } from '../src/wallet/midnight-wallet-provider';
 
-// The v8 arm is rejected before the wallet is touched, so the wallet facade
-// only needs the two methods this suite asserts are never reached.
-const createWalletStub = () =>
-  ({
+// The payload is rejected before the wallet is touched, so the facade only
+// needs the methods this suite asserts are never reached. A single
+// `Partial<WalletFacade> as WalletFacade` step rather than a double assertion
+// through `Pick`, which is the same escape hatch as `as unknown as`.
+const createWalletStub = (): WalletFacade => {
+  const stub: Partial<WalletFacade> = {
     balanceUnboundTransaction: vi.fn(),
     submitTransaction: vi.fn()
-  }) as Pick<WalletFacade, 'balanceUnboundTransaction' | 'submitTransaction'> as WalletFacade;
+  };
+  return stub as WalletFacade;
+};
 
+// A real pino logger rather than `{}`: `withWallet` only stores it today, but a
+// stub that is not a logger turns any future log call in this path into an
+// unreadable TypeError instead of a failed assertion.
 const createProvider = async (wallet: WalletFacade): Promise<MidnightWalletProvider> =>
   MidnightWalletProvider.withWallet(
-    {} as Logger,
+    pino({ enabled: false }),
     {} as EnvironmentConfiguration,
     wallet,
     {} as ZswapSecretKeys,
@@ -53,6 +65,8 @@ describe('MidnightWalletProvider', () => {
 
       expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
       expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(true);
+      // Without this the test passes even if balanceTx names the wrong seam.
+      expect((rejection as V8PayloadUnsupportedError).seam).toBe('balanceTx');
       expect(wallet.balanceUnboundTransaction).not.toHaveBeenCalled();
     });
   });
@@ -69,6 +83,51 @@ describe('MidnightWalletProvider', () => {
 
       expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
       expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(true);
+      expect((rejection as V8PayloadUnsupportedError).seam).toBe('submitTx');
+      expect(wallet.submitTransaction).not.toHaveBeenCalled();
+    });
+  });
+
+  // The likely 5.0.0 migration failure: a consumer built against the pre-5.0.0
+  // seam passes a bare transaction. It must fail with a coded, actionable error
+  // rather than a TypeError inside the wallet SDK.
+  describe('a payload with no recognised version discriminant', () => {
+    // These payloads are unrepresentable in the seam types on purpose — that is
+    // the property under test. This helper is the one place the type system is
+    // stepped around, rather than an `as unknown as` at each call site.
+    const untagged = <T>(payload: object): T => payload as T;
+
+    it('rejects on balanceTx with the untagged-payload code and never balances', async () => {
+      const wallet = createWalletStub();
+      const provider = await createProvider(wallet);
+
+      const rejection = await provider
+        .balanceTx(untagged<VersionedUnboundTransaction>({ prove: () => undefined }))
+        .then(
+          () => undefined,
+          (error: unknown) => error
+        );
+
+      expect(rejection).toBeInstanceOf(UntaggedPayloadError);
+      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD)).toBe(true);
+      expect((rejection as UntaggedPayloadError).seam).toBe('balanceTx');
+      expect(wallet.balanceUnboundTransaction).not.toHaveBeenCalled();
+    });
+
+    it('rejects on submitTx with the untagged-payload code and never submits', async () => {
+      const wallet = createWalletStub();
+      const provider = await createProvider(wallet);
+
+      const rejection = await provider
+        .submitTx(untagged<VersionedFinalizedTransaction>({ version: 'v10' }))
+        .then(
+          () => undefined,
+          (error: unknown) => error
+        );
+
+      expect(rejection).toBeInstanceOf(UntaggedPayloadError);
+      expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD)).toBe(true);
+      expect((rejection as UntaggedPayloadError).received).toBe("'v10'");
       expect(wallet.submitTransaction).not.toHaveBeenCalled();
     });
   });

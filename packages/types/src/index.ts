@@ -23,6 +23,7 @@ export * from './proof-provider';
 export * from './providers';
 export * from './public-data-provider';
 export * from './raw-contract-state';
+export * from './unwrap-v9';
 export * from './versioned';
 export * from './wallet-provider';
 export * from './zk-config-provider';

@@ -220,6 +220,53 @@ Positional provider constructors still work but are `@deprecated` for one releas
 
 ---
 
+## Step 13 — Narrow the version-tagged provider payloads
+
+The three transaction seams carry a `version` discriminant in both directions,
+and the read surface reports a `version`-discriminated record. This is the half
+of 5.0.0 that type-checking will not let you defer.
+
+Only the first call needs wrapping. Each seam's output is already the tagged
+input the next one expects, so a straight pipeline changes in one place:
+
+```diff
+- const proven = await proofProvider.proveTx(unprovenTx);
++ const proven = await proofProvider.proveTx({ version: 'v9', tx: unprovenTx });
+  const balanced = await walletProvider.balanceTx(proven);
+  const txId = await midnightProvider.submitTx(balanced);
+```
+
+You only narrow where you need the ledger object itself. `unwrapV9` throws a
+coded error rather than letting a bare `TypeError` surface from inside a WASM
+call:
+
+```typescript
+import { unwrapV9 } from '@midnight-ntwrk/midnight-js-types';
+
+const provenTx = unwrapV9(await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }), 'proveTx');
+```
+
+The read surface is a *different* union — its v8 arm carries `tx`, not
+`txBytes` — so `unwrapV9` does not accept it. Use a switch:
+
+```typescript
+const record = await publicDataProvider.watchForTxData(txId);
+if (record.version !== 'v9') {
+  throw new Error(`unexpected ledger era: ${record.version}`);
+}
+// record is FinalizedTxData here
+```
+
+If you *implement* `WalletProvider` or `MidnightProvider`, wrap a v9-only
+implementation with `createWalletProvider` / `createMidnightProvider` rather
+than tagging by hand — see [breaking-changes.md 8e](./breaking-changes.md).
+
+Pointing the indexer provider at a network outside the node 2.x range now
+throws at the read boundary (`EraUnsupportedError` / `EraUnresolvableError`)
+instead of returning a record that fails later inside the codec.
+
+---
+
 ## Verification checklist
 
 - [ ] Node >= 22.12 and TypeScript >= 5.8 with `module` `node20` / `nodenext`, or `moduleResolution: bundler`.
@@ -230,3 +277,6 @@ Positional provider constructors still work but are `@deprecated` for one releas
 - [ ] No direct imports of old-scope ledger / onchain-runtime packages (ESLint `no-restricted-imports` is clean).
 - [ ] Old-protocol contract state re-derived or guarded by `isDeserializationError`.
 - [ ] ZK artifacts recompiled with `compactc 0.33.0-rc.1`; `compiler/contract-manifest.json` shipped so integrity verification passes (`ZkArtifactIntegrityError` clean).
+- [ ] Every `proveTx` / `balanceTx` / `submitTx` call site sends a version-tagged payload and narrows the result.
+- [ ] Every `watchForTxData` / `watchForDeployTxData` call site narrows on `record.version`.
+- [ ] Any in-house `WalletProvider` / `MidnightProvider` implementation compiles against the tagged interfaces (or is wrapped with the `create*Provider` adapters).

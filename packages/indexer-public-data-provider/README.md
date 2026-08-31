@@ -236,13 +236,26 @@ for await (const event of getAllContractEvents(provider, { contractAddress })) {
 
 ## Transaction Data
 
-`FinalizedTxData` is the `'v9'` arm of the `VersionedFinalizedTxData` union.
-This provider always emits that arm; per-record era dispatch arrives later.
-The type returned by the watch methods includes:
+`IndexerPublicDataProvider.watchForTxData` and `watchForDeployTxData` declare
+`Promise<FinalizedTxData>` — the v9 arm only, narrower than the
+`PublicDataProvider` interface they satisfy. Holding this concrete class, you
+need no narrowing. Holding the interface, you get `VersionedFinalizedTxData`
+(the closed union of this record and `FinalizedTxDataV8`) and must narrow on
+`version` before reading `tx`.
+
+Either way the discriminant is resolved from the record's own
+`protocolVersion`, never asserted: a record this provider cannot decode is
+reported as `EraUnsupportedError` — or `EraUnresolvableError` when the
+`protocolVersion` maps to no known era — rather than mislabelled as v9. Both
+are `IndexerError` subclasses and both name the raw `protocolVersion` and the
+record being read.
+
+The v9 record includes:
 
 ```typescript
 type FinalizedTxData = {
-  version: 'v9';                      // Ledger era arm; this provider only emits v9
+  version: 'v9';                      // Ledger-runtime discriminant, derived
+                                      // from protocolVersion
   tx: Transaction;                    // Deserialized ledger transaction
   txId: TransactionId;                // Transaction identifier
   txHash: string;                     // Transaction hash

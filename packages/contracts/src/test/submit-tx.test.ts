@@ -16,8 +16,8 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import type { AnyProvableCircuitId } from '@midnight-ntwrk/midnight-js-types';
-import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
+import { type AnyProvableCircuitId, UntaggedPayloadError } from '@midnight-ntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES, hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { EraInvariantViolationError } from '../errors';
@@ -255,6 +255,9 @@ describe('submit-tx', () => {
 
         expect(rejection).toBeInstanceOf(EraInvariantViolationError);
         expect(hasErrorCode(rejection, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
+        // Without this the test passes even if both throw sites name 'proveTx',
+        // since the seam is the only difference between the two cases.
+        expect((rejection as EraInvariantViolationError).seam).toBe('proveTx');
         expect(mockProviders.walletProvider.balanceTx).not.toHaveBeenCalled();
       });
 
@@ -268,7 +271,134 @@ describe('submit-tx', () => {
 
         expect(rejection).toBeInstanceOf(EraInvariantViolationError);
         expect(hasErrorCode(rejection, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
+        expect((rejection as EraInvariantViolationError).seam).toBe('balanceTx');
         expect(mockProviders.midnightProvider.submitTx).not.toHaveBeenCalled();
+      });
+
+      it('carries the circuitId so a dApp firing many circuits can tell which call broke', async () => {
+        mockProviders.proofProvider.proveTx = vi
+          .fn()
+          .mockResolvedValue({ version: 'v8', txBytes: new Uint8Array([1, 2, 3]) });
+
+        const rejection = await submitTxAsync(mockProviders, {
+          unprovenTx: mockUnprovenTx,
+          circuitId: 'increment' as AnyProvableCircuitId
+        }).then(
+          () => undefined,
+          (error: unknown) => error
+        );
+
+        expect((rejection as EraInvariantViolationError).circuitId).toBe('increment');
+        expect((rejection as Error).message).toContain('increment');
+      });
+
+      it('names every circuit of a merged transaction, each quoted separately', async () => {
+        mockProviders.proofProvider.proveTx = vi
+          .fn()
+          .mockResolvedValue({ version: 'v8', txBytes: new Uint8Array([1, 2, 3]) });
+
+        const rejection = await submitTxAsync(mockProviders, {
+          unprovenTx: mockUnprovenTx,
+          circuitId: ['increment', 'reset'] as unknown as AnyProvableCircuitId
+        }).then(
+          () => undefined,
+          (error: unknown) => error
+        );
+
+        // Quoted individually so a two-circuit list cannot be misread as one
+        // circuit whose name contains the separator.
+        expect((rejection as Error).message).toContain("circuits 'increment', 'reset'");
+      });
+    });
+
+    // The pre-5.0.0 shapes a JavaScript caller, or a consumer built against an
+    // older `midnight-js-types`, actually produces. `requireV9` is a second,
+    // independent copy of the narrowing in `unwrapV9`, deliberately throwing a
+    // different error for the v8 arm — so the types-package tests cover none of
+    // this, and a copy-paste slip here would be invisible.
+    describe('untagged payloads from a provider', () => {
+      const rejectionOf = async (): Promise<unknown> => {
+        const options: SubmitTxOptions<AnyProvableCircuitId> = { unprovenTx: mockUnprovenTx };
+        return submitTxAsync(mockProviders, options).then(
+          () => undefined,
+          (error: unknown) => error
+        );
+      };
+
+      it.each([
+        ['a bare transaction, the pre-5.0.0 shape', { prove: (): undefined => undefined }],
+        ['an unrecognised era tag', { version: 'v10', tx: {} }],
+        ['undefined', undefined],
+        ['null', null]
+      ])('rejects %s from proveTx with the untagged-payload code, and never balances it', async (_label, payload) => {
+        mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue(payload);
+
+        const rejection = await rejectionOf();
+
+        expect(rejection).toBeInstanceOf(UntaggedPayloadError);
+        expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.UNTAGGED_PAYLOAD)).toBe(true);
+        expect((rejection as UntaggedPayloadError).seam).toBe('proveTx');
+        expect(mockProviders.walletProvider.balanceTx).not.toHaveBeenCalled();
+      });
+
+      it('rejects an untagged balanceTx response and never submits it', async () => {
+        mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
+        mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue(undefined);
+
+        const rejection = await rejectionOf();
+
+        expect(rejection).toBeInstanceOf(UntaggedPayloadError);
+        expect((rejection as UntaggedPayloadError).seam).toBe('balanceTx');
+        expect(mockProviders.midnightProvider.submitTx).not.toHaveBeenCalled();
+      });
+
+      it('rejects an untagged watchForTxData record', async () => {
+        mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
+        mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
+        mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue('test-tx-id');
+        const { version: _dropped, ...untaggedRecord } = createMockFinalizedTxData();
+        mockProviders.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(untaggedRecord);
+
+        const rejection = await submitTx(mockProviders, { unprovenTx: mockUnprovenTx }).then(
+          () => undefined,
+          (error: unknown) => error
+        );
+
+        expect(rejection).toBeInstanceOf(UntaggedPayloadError);
+        expect((rejection as UntaggedPayloadError).seam).toBe('watchForTxData');
+      });
+    });
+
+    // `PublicDataProvider` reports both eras, but this flow is v9-only, so it
+    // narrows the record at its own boundary rather than widening `submitTx`'s
+    // public return type.
+    describe('v8 records from the read surface', () => {
+      it('rejects a v8-tagged watchForTxData record with the era-invariant code', async () => {
+        mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
+        mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
+        mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue('test-tx-id');
+        mockProviders.publicDataProvider.watchForTxData = vi
+          .fn()
+          .mockResolvedValue({ ...createMockFinalizedTxData(), version: 'v8' });
+
+        const rejection = await submitTx(mockProviders, { unprovenTx: mockUnprovenTx }).then(
+          () => undefined,
+          (error: unknown) => error
+        );
+
+        expect(rejection).toBeInstanceOf(EraInvariantViolationError);
+        expect(hasErrorCode(rejection, CONTRACTS_ERROR_CODES.ERA_INVARIANT_VIOLATION)).toBe(true);
+        expect((rejection as EraInvariantViolationError).seam).toBe('watchForTxData');
+      });
+
+      it('returns the v9 record unchanged when the read surface reports v9', async () => {
+        const finalized = createMockFinalizedTxData();
+        mockProviders.proofProvider.proveTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
+        mockProviders.walletProvider.balanceTx = vi.fn().mockResolvedValue({ version: 'v9', tx: mockProvenTx });
+        mockProviders.midnightProvider.submitTx = vi.fn().mockResolvedValue('test-tx-id');
+        mockProviders.publicDataProvider.watchForTxData = vi.fn().mockResolvedValue(finalized);
+
+        await expect(submitTx(mockProviders, { unprovenTx: mockUnprovenTx })).resolves.toBe(finalized);
       });
     });
   });

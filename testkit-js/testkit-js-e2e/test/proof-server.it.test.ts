@@ -15,8 +15,7 @@
 
 import {
   createUnprovenCallTxFromInitialStates,
-  createUnprovenDeployTxFromVerifierKeys,
-  EraInvariantViolationError
+  createUnprovenDeployTxFromVerifierKeys
 } from '@midnight-ntwrk/midnight-js-contracts';
 import { DEFAULT_CONFIG, httpClientProofProvider } from '@midnight-ntwrk/midnight-js-http-client-proof-provider';
 import { getNetworkId, setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
@@ -34,7 +33,7 @@ import {
   WellFormedStrictness,
   ZswapChainState
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { ProofProvider, ProveTxConfig, UnboundTransaction } from '@midnight-ntwrk/midnight-js-types';
+import { type ProofProvider, type ProveTxConfig, type UnboundTransaction, unwrapV9 } from '@midnight-ntwrk/midnight-js-types';
 import {
   createLogger,
   DynamicProofServerContainer,
@@ -64,14 +63,11 @@ describe('Proof server integration', () => {
   // The proof-provider seam carries a version-tagged payload in both
   // directions. This suite only ever sends v9 transactions, so it wraps the
   // request and unwraps the v9 response once here, keeping every assertion
-  // below written against the plain ledger transaction.
-  const proveV9 = async (unprovenTx: UnprovenTransaction, config?: ProveTxConfig): Promise<UnboundTransaction> => {
-    const proven = await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }, config);
-    if (proven.version !== 'v9') {
-      throw new EraInvariantViolationError('proveTx');
-    }
-    return proven.tx;
-  };
+  // below written against the plain ledger transaction. `unwrapV9` is the
+  // framework's own narrowing helper, so this reads the way a consumer's code
+  // should.
+  const proveV9 = async (unprovenTx: UnprovenTransaction, config?: ProveTxConfig): Promise<UnboundTransaction> =>
+    unwrapV9(await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }, config), 'proveTx');
 
   beforeEach(() => {
     logger.info(`Running test=${expect.getState().currentTestName}`);
