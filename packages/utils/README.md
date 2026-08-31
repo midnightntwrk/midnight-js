@@ -149,8 +149,6 @@ import {
   // Date utilities
   ttlOneHour,
 
-  // Exhaustiveness checking
-
   // Error codes and guards
   CONTRACTS_ERROR_CODES,
   type ContractsErrorCode,

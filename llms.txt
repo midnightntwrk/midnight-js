@@ -87,9 +87,14 @@ MidnightProviders
 5. Wait for finalization via PublicDataProvider
 ```
 
-Payloads cross steps 2-4 version-tagged (`{ version: 'v9', tx }`), and step 5
-reports a version-tagged record. Narrow on `version` — or call `unwrapV9` — at
-each boundary; there is no untagged form.
+Payloads cross steps 2-4 version-tagged (`{ version: 'v9', tx }`); there is no
+untagged form. Narrow one with `unwrapV9(payload, seam)`, whose `seam` parameter
+accepts exactly those three methods. Step 4 returns a bare `TransactionId`,
+which is era-independent and needs no narrowing.
+
+Step 5 reports a version-tagged *record* (`VersionedFinalizedTxData`), a
+different union whose v8 arm carries `tx` rather than `txBytes`. `unwrapV9` does
+not accept it — narrow with `switch (record.version)`.
 
 ## Main APIs
 

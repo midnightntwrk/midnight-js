@@ -197,7 +197,21 @@ for await (const event of getAllContractEvents(provider, { contractAddress })) {
 
 ## Transaction Data
 
-The `FinalizedTxData` type returned by watch methods includes:
+`IndexerPublicDataProvider.watchForTxData` and `watchForDeployTxData` declare
+`Promise<FinalizedTxData>` — the v9 arm only, narrower than the
+`PublicDataProvider` interface they satisfy. Holding this concrete class, you
+need no narrowing. Holding the interface, you get `VersionedFinalizedTxData`
+(the closed union of this record and `FinalizedTxDataV8`) and must narrow on
+`version` before reading `tx`.
+
+Either way the discriminant is resolved from the record's own
+`protocolVersion`, never asserted: a record this provider cannot decode is
+reported as `EraUnsupportedError` — or `EraUnresolvableError` when the
+`protocolVersion` maps to no known era — rather than mislabelled as v9. Both
+are `IndexerError` subclasses and both name the raw `protocolVersion` and the
+record being read.
+
+The v9 record includes:
 
 ```typescript
 type FinalizedTxData = {
@@ -244,9 +258,3 @@ import {
 By using this package, you agree to [Midnight's Terms and Conditions](https://midnight.network/static/terms.pdf) and [Privacy Policy](https://midnight.network/static/privacy-policy.pdf).
 
 Licensed under [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0).
-
-The watch methods return `VersionedFinalizedTxData` — the closed union of the
-v9 record above and `FinalizedTxDataV8`. Narrow on `version` before reading
-`tx`. `version` is resolved from the record's own `protocolVersion`, so a
-record from a network this provider cannot decode is reported as
-`EraUnsupportedError` rather than mislabelled as v9.

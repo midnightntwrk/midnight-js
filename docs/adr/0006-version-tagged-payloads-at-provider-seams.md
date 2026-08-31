@@ -73,8 +73,9 @@ asserting it.
    v9 throw `V8PayloadUnsupportedError`. The v9-only contracts flow rejects a
    v8 payload with `EraInvariantViolationError`, and narrows the read surface at
    its own boundary so `submitTx` and `findDeployedContract` keep their v9
-   return types. Both errors carry a stable `code` from the registry in
-   `@midnight-ntwrk/midnight-js-utils` and a closed `seam` identifier.
+   return types. Both errors carry a stable `code` matching the registry in
+   `@midnight-ntwrk/midnight-js-utils` — declared locally, for the reason in
+   point 8 — and a closed `seam` identifier.
 
 6. **One narrowing helper, not a switch per seam.** `unwrapV9(payload, seam)`,
    exported from `midnight-js-types`, is the narrowing every v9-only provider
@@ -87,7 +88,7 @@ asserting it.
    an unsupported request.
 
    Exhaustiveness is enforced two ways: an inline `const unhandled: never`
-   assignment in each `default` branch, and the compile-time bridge in point 8,
+   assignment in each `default` branch, and the compile-time bridge in point 7,
    which fails the build if the era set and the union arms disagree. Adding an
    era is therefore a compile error, not a runtime surprise.
 
@@ -115,20 +116,42 @@ asserting it.
   `watchForTxData` and `watchForDeployTxData` must change — including external
   implementations of `WalletProvider` and `MidnightProvider`, which cannot
   satisfy the new interfaces until they are updated, because the return types
-  are covariant. Consumers must narrow on `version` for a v8 arm that no
+  are covariant. `createWalletProvider` and `createMidnightProvider` are
+  provided so an implementation can stay v9-only and never write the tag, which
+  also avoids a confusing compiler error: TypeScript reports the parameter
+  mismatch before the return-type one, so an un-migrated implementation is told
+  that `V8TxBytes` lacks 20-odd ledger methods rather than that it is missing a
+  `version` tag. Consumers must narrow on `version` for a v8 arm that no
   provider produces yet, so the narrowing is currently required but unreachable.
   Resolving the discriminant means the read path now throws on networks running
   node 1.x or 0.x instead of silently returning an undecodable record.
+
+  `V8TxBytes` is identical across the three seams, so on the v8 arm the union
+  carries no statement about pipeline stage: an unproven v8 payload is
+  assignable where a finalized one is expected. The v9 arm keeps its stage
+  distinctions. This is accepted for now because nothing produces the v8 arm;
+  closing it later means a phantom type parameter, which is itself breaking.
 
 - **Follow-ups.**
   - Dual decode: teach the read path to deserialize the v8 arm so
     `FinalizedTxDataV8` gains a producer. Until then a v8-era record is a
     loud failure, not a value.
   - Provider-side v8 support, which retires `V8PayloadUnsupportedError`.
+  - Era-guarding the contract-state read paths. `queryContractState`,
+    `queryDeployContractState`, `queryZSwapAndContractState` and
+    `watchForContractState` decode with the v9-only runtime but resolve no era,
+    because their GraphQL documents do not select `protocolVersion`. On a v8-era
+    network they fail inside the codec — the outcome this ADR exists to remove.
+    Closing it needs a query change, so it is deferred rather than overlooked.
+  - Branding `V8TxBytes.txBytes` as tag-prefixed bytes behind a smart
+    constructor. Free while nothing produces the arm; breaking for every
+    producer once v8 support ships.
   - Migration notes in `docs/releases/v5.0.0/breaking-changes.md`.
-  - `assertNever` left `midnight-js-utils` with this change: the seam
+  - `assertNever` is not exported from `midnight-js-utils`: the seam
     narrowings go through `unwrapV9` and the exhaustiveness guards are inline
-    `never` assignments, so it had no thrower. It returns with the change that
+    `never` assignments, so it has no thrower. It was added and removed inside
+    this unreleased feature stack, so no released version ever carried it and
+    there is nothing for a consumer to migrate. It arrives with the change that
     first needs it.
 
 ## Alternatives considered
