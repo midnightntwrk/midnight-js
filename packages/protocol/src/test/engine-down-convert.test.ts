@@ -399,6 +399,34 @@ describe('assertMerkleTreesRehashed recursion (contract-agnostic StateValue alge
   });
 });
 
+// The envelope seam validates its injected runtime so that a runtime fault is
+// not reported as a data fault. This seam dereferences a runtime too, and
+// without the same check a missing binding surfaces as a TypeError that the
+// catch below relabels DOWN_CONVERT_FAILED — an error whose message sends the
+// caller to audit input bytes that are fine.
+describe('downConvertForExecution runtime guard', () => {
+  it.each([
+    { name: 'no runtime at all', runtime: undefined, missingMember: 'StateValue.decode' },
+    { name: 'a null runtime', runtime: null, missingMember: 'StateValue.decode' },
+    { name: 'a runtime with no StateValue', runtime: {}, missingMember: 'StateValue.decode' },
+    { name: 'a StateValue that cannot decode', runtime: { StateValue: { decode: 'nope' } }, missingMember: 'StateValue.decode' },
+    {
+      name: 'a runtime with no ChargedState',
+      runtime: { StateValue: ocrt3.StateValue },
+      missingMember: 'ChargedState'
+    }
+  ])('rejects $name without blaming the input bytes', ({ runtime, missingMember }) => {
+    try {
+      // @ts-expect-error - reaching the runtime guard that exists for untyped JS callers
+      downConvertForExecution(ocrt3.StateValue.newNull().encode(), runtime);
+      expect.unreachable('an unusable ledger-8 runtime must throw');
+    } catch (error) {
+      expect(error).toBeInstanceOf(Ledger8RuntimeInvalidError);
+      expect(error).toMatchObject({ code: PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_INVALID, missingMember });
+    }
+  });
+});
+
 describe('downConvertForExecution safety net', () => {
   it('passes a top-level null StateValue through unchanged', () => {
     const downConverted = downConvertForExecution(ocrt3.StateValue.newNull().encode(), ocrt3);
