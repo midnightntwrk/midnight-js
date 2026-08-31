@@ -18,6 +18,7 @@ import type { DocumentNode } from 'graphql';
 import * as Rx from 'rxjs';
 import { describe, expect, test, vi } from 'vitest';
 
+import { EraUnresolvableError, EraUnsupportedError } from '../errors';
 import { IndexerPublicDataProvider } from '../provider';
 import { HEAD_PROTOCOL_VERSION_QUERY, RAW_CONTRACT_STATE_QUERY } from '../query-definitions';
 import { type ApolloRequest, stubApolloHandle, type WatchQueryStub } from './apollo-stub';
@@ -166,12 +167,16 @@ describe('head protocol-version cache', () => {
     expect(headRequestCount(query)).toBe(2);
   });
 
-  test('does not even look at the head after decoding a finalized transaction record from the older era', async () => {
+  test('does not even look at the head when the finalized record is rejected as older-era', async () => {
+    // The read path deserializes with the v9 runtime only, so an older-era
+    // record is refused rather than decoded. Corroboration rides along behind
+    // that read: a refused read must leave the cache exactly as cold as it
+    // found it, so the next head reading still goes to the network.
     const query = dispatchingQuery(new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(V8_ERA_PROTOCOL_VERSION)]]));
     const watchQuery = vi.fn().mockReturnValue(finalizedTransactionEmission(V8_ERA_PROTOCOL_VERSION));
     const provider = buildProvider(query, watchQuery);
 
-    await provider.watchForTxData(TX_ID);
+    await expect(provider.watchForTxData(TX_ID)).rejects.toThrow(EraUnsupportedError);
     const afterCorroboration = headRequestCount(query);
     await provider.queryLatestProtocolVersion();
 
@@ -203,20 +208,20 @@ describe('head protocol-version cache', () => {
     expect(headRequestCount(query)).toBe(2);
   });
 
-  test('returns the finalized record normally when its protocol version is one this client cannot resolve', async () => {
-    // Warming the cache is a side effect of the caller's real request. An
-    // integer this client does not recognize means "cannot tell which era" —
-    // it must not turn the caller's finalization read into a failure.
+  test('leaves the cache cold when the finalized record carries a protocol version it cannot resolve', async () => {
+    // An integer this client does not recognize means "cannot tell which era",
+    // so the record is refused rather than labelled. The head answer here is a
+    // resolvable one: were corroboration to run anyway, it would engage the
+    // cache off a record that proved nothing, and the second reading below
+    // would never reach the network.
     const query = dispatchingQuery(new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(V9_ERA_PROTOCOL_VERSION)]]));
     const watchQuery = vi.fn().mockReturnValue(finalizedTransactionEmission(UNRESOLVABLE_PROTOCOL_VERSION));
     const provider = buildProvider(query, watchQuery);
 
-    const finalized = await provider.watchForTxData(TX_ID);
+    await expect(provider.watchForTxData(TX_ID)).rejects.toThrow(EraUnresolvableError);
     const afterCorroboration = headRequestCount(query);
     await provider.queryLatestProtocolVersion();
 
-    expect(finalized.txId).toBe(TX_ID);
-    expect(finalized.protocolVersion).toBe(UNRESOLVABLE_PROTOCOL_VERSION);
     expect(afterCorroboration).toBe(0);
     expect(headRequestCount(query)).toBe(1);
   });

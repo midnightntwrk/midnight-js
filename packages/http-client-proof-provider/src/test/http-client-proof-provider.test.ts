@@ -147,6 +147,45 @@ describe('httpClientProofProvider', () => {
     });
   });
 
+  // This package does not delegate to `createProofProvider` — it has its own
+  // `proveTx` body — so the types-package tests of that helper cover none of
+  // this. Without these assertions, reverting the return to the untagged
+  // pre-5.0.0 `tx.prove(...)` passes the whole suite.
+  describe('the returned payload', () => {
+    const provenTx = {} as UnboundTransaction;
+
+    const stubTxProvingTo = (proven: UnboundTransaction): VersionedUnprovenTransaction => {
+      const partial: Partial<UnprovenTransaction> = {
+        prove: vi.fn(async (provingProvider: ProvingProvider) => {
+          await provingProvider.prove(new Uint8Array(), 'test-circuit');
+          return proven;
+        }) as UnprovenTransaction['prove']
+      };
+      return { version: 'v9', tx: partial as UnprovenTransaction };
+    };
+
+    test('is tagged as the v9 arm', async () => {
+      wireMocks();
+      const provider = httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider());
+
+      const result = await provider.proveTx(stubTxProvingTo(provenTx));
+
+      expect(result.version).toBe('v9');
+    });
+
+    test('carries the proved transaction itself, not a copy of it', async () => {
+      wireMocks();
+      const provider = httpClientProofProvider('http://localhost:8080', new MockZKConfigProvider());
+
+      const result = await provider.proveTx(stubTxProvingTo(provenTx));
+
+      // Identity, not structural equality: the premise of the versioned seam
+      // is that ledger objects from different WASM instances must never be
+      // conflated, and `toEqual` would pass for any empty object.
+      expect(result.version === 'v9' && result.tx).toBe(provenTx);
+    });
+  });
+
   describe('per-call timeout precedence (issue #974)', () => {
     test('threads DEFAULT_TIMEOUT when neither config.timeout nor proveTxConfig.timeout is set', async () => {
       const { proveTimeouts } = wireMocks();

@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-import type { TransactionHash, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { FinalizedTransaction as V8Transaction } from '@midnight-ntwrk/midnight-js-protocol/v8';
+import type { LedgerVersion } from '@midnight-ntwrk/midnight-js-protocol/version';
 
-import type { BlockHash, Fees, FinalizedTxData, SegmentStatus, TxStatus, UnshieldedUtxos } from './midnight-types';
+import type { FinalizedTxData, FinalizedTxRecord } from './midnight-types';
 
 /**
  * The v8 arm of every transaction payload crossing a provider seam
@@ -27,123 +27,117 @@ import type { BlockHash, Fees, FinalizedTxData, SegmentStatus, TxStatus, Unshiel
  * instances, so an object built by one cannot be handed to the other. It
  * crosses as its serialized, tag-prefixed byte form instead, and the
  * `version` discriminant says which runtime produced those bytes.
+ *
+ * Two things this type deliberately does not express. The bytes are not
+ * validated — any `Uint8Array` satisfies `txBytes`, and nothing here checks
+ * for the tag prefix. And the arm is identical for all three seams, so it
+ * carries no statement about which pipeline stage the transaction has reached;
+ * on the v8 path, stage is the caller's responsibility.
  */
 export interface V8TxBytes {
-  /**
-   * Discriminant identifying this as a v8-era payload.
-   */
   readonly version: 'v8';
-  /**
-   * The transaction in its serialized, tag-prefixed byte form.
-   */
+  /** Serialized, tag-prefixed byte form. Unvalidated — see the note above. */
   readonly txBytes: Uint8Array;
+}
+
+/**
+ * The v9 arm of every transaction payload crossing a provider seam: the live
+ * ledger object, carried directly because both sides of the seam share the v9
+ * WASM instance.
+ *
+ * @typeParam T - The v9 ledger transaction type for the pipeline stage in
+ *                question — unproven, unbound, or finalized.
+ */
+export interface V9Tx<T> {
+  readonly version: 'v9';
+  readonly tx: T;
 }
 
 /**
  * A transaction payload crossing a provider seam, discriminated by the ledger
  * runtime it belongs to: serialized bytes for the v8 era ({@link V8TxBytes}),
- * or the live ledger object of type `T` for v9.
+ * or the live ledger object for v9 ({@link V9Tx}).
  *
  * Consumers must narrow on `version` before touching the payload — there is
  * deliberately no untagged form, so a bare `Uint8Array` (bytes whose era
  * nobody can tell) is never assignable where this type is expected.
  *
+ * The seam types do not tie the input era to the output era: nothing here
+ * stops a provider returning a v9 result for a v8 input. A v9-only flow is
+ * expected to check that at its own boundary.
+ *
  * @typeParam T - The v9 ledger transaction type carried by the `'v9'` arm.
+ *
+ * @example
+ * ```typescript
+ * const proven = await proofProvider.proveTx({ version: 'v9', tx: unprovenTx });
+ * switch (proven.version) {
+ *   case 'v9':
+ *     return proven.tx; // live v9 ledger object
+ *   case 'v8':
+ *     return decodeV8(proven.txBytes); // serialized, tag-prefixed bytes
+ * }
+ * ```
  */
-export type VersionedTx<T> = V8TxBytes | { readonly version: 'v9'; readonly tx: T };
+export type VersionedTx<T> = V8TxBytes | V9Tx<T>;
 
 /**
- * The v8 arm of {@link VersionedFinalizedTxData}. Carries exactly the same
- * finalized-transaction metadata as {@link FinalizedTxData}, but with a v8
- * ledger transaction object in place of the v9 one. The intent is that
- * `version` equals the ledger version `protocolVersion` resolves to (the same
- * resolution the `read`-path resolver in
- * `@midnight-ntwrk/midnight-js-protocol` performs), so a provider would only
- * produce this shape for a record that resolves to the v8 ledger runtime.
+ * The v8 arm of {@link VersionedFinalizedTxData}. Carries the same
+ * finalized-transaction metadata as {@link FinalizedTxData} — both arms extend
+ * {@link FinalizedTxRecord} — with a v8 ledger transaction object in place of
+ * the v9 one.
  *
- * No provider in this repo produces this arm yet — they all emit the v9 arm.
- * The arm exists so consumers can be written against both eras ahead of
- * per-record version dispatch, which arrives with dual decode.
+ * `version` is derived from the record's own `protocolVersion` by the provider
+ * that builds it, so this shape is only produced for a record that resolves to
+ * the v8 ledger runtime.
+ *
+ * No provider produces this arm yet: the read path decodes with the v9-only
+ * deserializer, so a v8-era record surfaces as a thrown error rather than as a
+ * value. The arm exists so that consumers narrow once now, rather than after a
+ * second breaking change when dual decode lands.
  */
-export interface FinalizedTxDataV8 {
-  /**
-   * Discriminant identifying this as a v8 ledger record.
-   */
+export interface FinalizedTxDataV8 extends FinalizedTxRecord {
   readonly version: 'v8';
-  /**
-   * The transaction that was finalized, as a v8 ledger transaction object.
-   */
   readonly tx: V8Transaction;
-  /**
-   * The status of a submitted transaction.
-   */
-  readonly status: TxStatus;
-  /**
-   * One of the transaction ID of the submitted transaction.
-   */
-  readonly txId: TransactionId;
-  /**
-   * All transaction IDs of the submitted transaction.
-   */
-  readonly identifiers: readonly TransactionId[];
-  /**
-   * The transaction hash of the transaction in which the original transaction was included.
-   */
-  readonly txHash: TransactionHash;
-  /**
-   * The block hash of the block in which the transaction was included.
-   */
-  readonly blockHash: BlockHash;
-  /**
-   * The block height of the block in which the transaction was included.
-   */
-  readonly blockHeight: number;
-  /**
-   * The timestamp of the block in which the transaction was included.
-   */
-  readonly blockTimestamp: number;
-  /**
-   * The author of the block in which the transaction was included.
-   */
-  readonly blockAuthor: string | null;
-  /**
-   * The indexer internal db ID.
-   */
-  readonly indexerId: number;
-  /**
-   * The protocol version of the transaction.
-   */
-  readonly protocolVersion: number;
-  /**
-   * The fees associated with the transaction, including both paid and estimated fees.
-   */
-  readonly fees: Fees;
-  /**
-   * The map that associates segment identifiers (numbers) with their corresponding status {@link SegmentStatus}.
-   * The segment identifier is represented as a number (key in the map), and the status indicates the success or failure of the transaction update.
-   */
-  readonly segmentStatusMap: Map<number, SegmentStatus> | undefined;
-  /**
-   * Represents the unshielded outputs, typically used for transactions or operations
-   * involving data or values that are not encrypted or concealed.
-   */
-  readonly unshielded: UnshieldedUtxos;
 }
 
 /**
  * A finalized transaction record, discriminated by which ledger runtime
  * produced it. Both arms carry identical metadata; only `tx`'s type and the
- * `version` discriminant differ. `version` is set at exactly one
- * construction point per provider, and is meant to equal the ledger version
- * `protocolVersion` resolves to (the same resolution the `read`-path resolver
- * in `@midnight-ntwrk/midnight-js-protocol` performs). That agreement is
- * never asserted here, since `types` stays declarations-only; providers and
- * their mocks are responsible for upholding it at construction time.
+ * `version` discriminant differ.
  *
- * The providers in this repo do not uphold it yet: they emit only the v9 arm,
- * whatever `protocolVersion` says. Per-record version dispatch arrives with
- * dual decode. Narrow on `version` to pick a runtime — that is what the
- * discriminant is for — but do not yet read it as a verified statement about
- * `protocolVersion`.
+ * The providers in this framework resolve `version` from the record's own
+ * `protocolVersion` at the one construction point per provider, and throw
+ * rather than mislabel a record from an era they cannot decode. Nothing in the
+ * type system obliges a third-party `PublicDataProvider` to do the same, so the
+ * discriminant is exactly as trustworthy as the provider that produced it.
  */
 export type VersionedFinalizedTxData = FinalizedTxDataV8 | FinalizedTxData;
+
+// Compile-time-only bridge to the era vocabulary in
+// `@midnight-ntwrk/midnight-js-protocol`, which owns the mapping from a raw
+// `protocolVersion` to an era. These four assertions keep the discriminant set
+// here and `LedgerVersion` there as one fact: if either side gains an era the
+// other lacks, the difference is non-empty and `Assert` fails to satisfy its
+// `true` constraint. No runtime declarations, so `versioned.ts` stays
+// types-only.
+//
+// The difference is wrapped in a tuple deliberately. A bare
+// `Difference extends never ? true : false` is a *distributive* conditional:
+// when `Difference` is `never` it distributes over the empty union and yields
+// `never` rather than `true`, and `never` satisfies `T extends true`, so the
+// assertion holds no matter what the two sides say. `[D] extends [never]`
+// compares the types directly, which is what makes these load-bearing.
+type Assert<T extends true> = T;
+type _EveryEraHasAnArm = Assert<
+  [Exclude<LedgerVersion, VersionedTx<unknown>['version']>] extends [never] ? true : false
+>;
+type _NoArmOutsideTheEraSet = Assert<
+  [Exclude<VersionedTx<unknown>['version'], LedgerVersion>] extends [never] ? true : false
+>;
+type _EveryEraHasAReadArm = Assert<
+  [Exclude<LedgerVersion, VersionedFinalizedTxData['version']>] extends [never] ? true : false
+>;
+type _NoReadArmOutsideTheEraSet = Assert<
+  [Exclude<VersionedFinalizedTxData['version'], LedgerVersion>] extends [never] ? true : false
+>;

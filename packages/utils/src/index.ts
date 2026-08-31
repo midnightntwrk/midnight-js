@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-export * from './assert-never';
 export * from './assertion-utils';
 export * from './date-utils';
 export * from './deserialization';

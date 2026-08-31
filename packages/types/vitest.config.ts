@@ -30,11 +30,14 @@ export default defineConfig({
       exclude: ['**/test/**'],
       reporter: ['clover', 'json', 'json-summary', 'lcov', 'text'],
       reportsDirectory: './coverage',
+      // Raised to just under the measured figures when the seam tests landed.
+      // Left at the old, much lower values these would not hold the new
+      // coverage: deleting the narrowing tests would still pass CI.
       thresholds: {
-        lines: 49,
-        functions: 36,
-        branches: 61,
-        statements: 49
+        lines: 70,
+        functions: 54,
+        branches: 78,
+        statements: 70
       }
     },
     reporters: [
@@ -42,17 +45,16 @@ export default defineConfig({
       ['junit', { outputFile: `reports/report/test-report.xml` }],
       ['html', { outputFile: `reports/report/test-report.html` }]
     ],
-    // Compile-level assertions (`expectTypeOf`, `@ts-expect-error`) in these
-    // files are no-ops at plain runtime — vitest's typecheck pass is what turns
-    // tsc diagnostics against them into failing tests. Scoped to these files so
-    // other tests in this package aren't slowed down by a tsc pass.
+    // Compile-level assertions (`expectTypeOf`, `@ts-expect-error`) assert
+    // nothing at plain runtime — vitest's typecheck pass is what turns tsc
+    // diagnostics against them into failing tests. Those files use vitest's
+    // `*.test-d.ts` convention, which is this pass's default `include`, so a
+    // new compile-level test is picked up by naming alone; a hardcoded file
+    // list would silently stop guarding one that was added or renamed.
+    // `test.include` above matches only `*.test.ts`, so they do not also run
+    // as no-op runtime suites.
     typecheck: {
-      enabled: true,
-      include: [
-        '**/test/versioned.test.ts',
-        '**/test/versioned-tx.test.ts',
-        '**/test/public-data-provider.test.ts'
-      ]
+      enabled: true
     }
   },
   resolve: {

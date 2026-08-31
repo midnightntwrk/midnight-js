@@ -19,24 +19,37 @@
 // a handful of error-code strings would be a needless dependency footprint.
 import { PROTOCOL_ERROR_CODES, type ProtocolErrorCode } from '@midnight-ntwrk/midnight-js-protocol/errors';
 
-// Codes for higher layers live here because `contracts`/providers depend on
-// `utils`; protocol's own codes are imported rather than re-declared. Each
-// constant is added by the pull request that first throws with it, so every
-// member of this registry has a thrower.
+// Codes for higher layers are declared here because `contracts` and the
+// provider packages depend on `utils`; protocol's own codes are imported
+// rather than re-declared. Add a constant here in the same change that first
+// throws with it.
+//
+// The two groups below hold to that. The imported PROTOCOL_ERROR_CODES do not:
+// LEDGER8_INSTANCE_MISMATCH, DOWN_CONVERT_FAILED and MERKLE_NOT_REHASHED have
+// no thrower yet, and are reserved for the era-conversion work. Do not read
+// membership of MIDNIGHT_JS_ERROR_CODES as proof that something throws it.
 export const CONTRACTS_ERROR_CODES = Object.freeze({
   ERA_INVARIANT_VIOLATION: 'MIDNIGHT_JS_C_ERA_INVARIANT_VIOLATION'
 } as const);
 export type ContractsErrorCode = (typeof CONTRACTS_ERROR_CODES)[keyof typeof CONTRACTS_ERROR_CODES];
 
 export const PROVIDER_ERROR_CODES = Object.freeze({
-  V8_PAYLOAD_UNSUPPORTED: 'MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTED'
+  V8_PAYLOAD_UNSUPPORTED: 'MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTED',
+  UNTAGGED_PAYLOAD: 'MIDNIGHT_JS_PR_UNTAGGED_PAYLOAD',
+  ERA_UNSUPPORTED: 'MIDNIGHT_JS_PR_ERA_UNSUPPORTED',
+  ERA_UNRESOLVABLE: 'MIDNIGHT_JS_PR_ERA_UNRESOLVABLE'
 } as const);
 export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[keyof typeof PROVIDER_ERROR_CODES];
 
 export const UTILS_ERROR_CODES = Object.freeze({ TAG_PARSE_FAILED: 'MIDNIGHT_JS_U_TAG_PARSE_FAILED' } as const);
 export type UtilsErrorCode = (typeof UTILS_ERROR_CODES)[keyof typeof UTILS_ERROR_CODES];
 
-/** Union of every error code any midnight-js layer can produce. */
+/**
+ * Union of every error code carried by a *coded* midnight-js error.
+ *
+ * Not every midnight-js error carries a code, so `hasErrorCode(e) === false`
+ * does not mean the error came from somewhere else.
+ */
 export type MidnightJsErrorCode = ProtocolErrorCode | ContractsErrorCode | ProviderErrorCode | UtilsErrorCode;
 
 export const MIDNIGHT_JS_ERROR_CODES: readonly MidnightJsErrorCode[] = Object.freeze([

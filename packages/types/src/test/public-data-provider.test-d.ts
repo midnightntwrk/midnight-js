@@ -22,10 +22,10 @@ import type { RawContractState } from '../raw-contract-state';
 // These are compile-level tests: the property under test is that the file
 // type-checks (or, for the `@ts-expect-error` case, that it does NOT
 // type-check without the suppressed error). They are verified by running
-// vitest's typecheck pass for this package (`vitest --typecheck`), which
-// surfaces `tsc` diagnostics against this file as test failures — see
-// packages/types/vitest.config.ts. Running these bodies at plain runtime is
-// incidental; `expectTypeOf(...)` performs no runtime assertion.
+// vitest's typecheck pass for this package, enabled unconditionally in
+// `vitest.config.ts`, which surfaces `tsc` diagnostics against this file as
+// test failures; a plain `yarn test` runs them. Running these bodies at
+// runtime is incidental — `expectTypeOf(...)` performs no runtime assertion.
 
 // Spelled out independently of `RawContractState` (no `Omit`/`keyof` derived
 // from it, and the ledger-version domain restated as a literal union rather

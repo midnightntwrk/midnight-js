@@ -45,6 +45,7 @@ export {
   ContractTypeError,
   DeployTxFailedError,
   EraInvariantViolationError,
+  type EraSeam,
   IncompleteCallTxPrivateStateConfig,
   IncompleteFindContractPrivateStateConfig,
   TxFailedError} from './errors';

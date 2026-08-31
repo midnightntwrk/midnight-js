@@ -186,15 +186,22 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
  * // 1. Submit
  * const { txId, callTxData } = await submitCallTxAsync(providers, options);
  *
- * // 2. Watch (when ready)
- * const finalizedData = await providers.publicDataProvider.watchForTxData(txId);
+ * // 2. Watch (when ready). The read surface reports both ledger eras, so the
+ * //    record is version-tagged.
+ * const record = await providers.publicDataProvider.watchForTxData(txId);
  *
- * // 3. Check status
- * if (finalizedData.status !== SucceedEntirely) {
- *   throw new CallTxFailedError(finalizedData, options.circuitId);
+ * // 3. Narrow to the v9 arm. This flow submits v9 transactions only, so a v8
+ * //    record means the provider is pointed at the wrong network.
+ * if (record.version !== 'v9') {
+ *   throw new EraInvariantViolationError('watchForTxData', options.circuitId);
  * }
  *
- * // 4. Update private state manually if needed
+ * // 4. Check status
+ * if (record.status !== SucceedEntirely) {
+ *   throw new CallTxFailedError(record, options.circuitId);
+ * }
+ *
+ * // 5. Update private state manually if needed
  * if (options.privateStateId) {
  *   await providers.privateStateProvider.set(
  *     privateStateId,

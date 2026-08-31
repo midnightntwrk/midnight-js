@@ -16,6 +16,7 @@
 import type {
   Binding,
   CoinPublicKey,
+  ContractAddress,
   EncPublicKey,
   FinalizedTransaction,
   PreBinding,
@@ -25,7 +26,6 @@ import type {
   TransactionId,
   UnprovenTransaction
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { assertNever } from '@midnight-ntwrk/midnight-js-utils';
 import { describe, expectTypeOf, it } from 'vitest';
 
 import type { MidnightProvider } from '../midnight-provider';
@@ -35,16 +35,17 @@ import type {
   VersionedUnboundTransaction,
   VersionedUnprovenTransaction
 } from '../proof-provider';
-import type { V8TxBytes } from '../versioned';
+import type { PublicDataProvider } from '../public-data-provider';
+import type { V8TxBytes, VersionedFinalizedTxData } from '../versioned';
 import type { VersionedFinalizedTransaction, WalletProvider } from '../wallet-provider';
 
 // These are compile-level tests: the property under test is that the file
 // type-checks (or, for the `@ts-expect-error` cases, that it does NOT
 // type-check without the suppressed error). They are verified by running
-// vitest's typecheck pass for this package (`vitest --typecheck`), which
-// surfaces `tsc` diagnostics against this file as test failures — see
-// packages/types/vitest.config.ts. Running these bodies at plain runtime is
-// incidental; `expectTypeOf(...)` performs no runtime assertion.
+// vitest's typecheck pass for this package, enabled unconditionally in
+// `vitest.config.ts`, which surfaces `tsc` diagnostics against this file as
+// test failures; a plain `yarn test` runs them. Running these bodies at
+// runtime is incidental — `expectTypeOf(...)` performs no runtime assertion.
 
 // Every fixture below is spelled out by hand rather than derived from the
 // type under test (no `Omit`/`keyof`/`Parameters` off the real type), so the
@@ -76,23 +77,33 @@ describe('V8TxBytes', () => {
 });
 
 describe('VersionedUnprovenTransaction', () => {
-  it('narrows exhaustively over every arm of the union via assertNever in the default branch', () => {
-    const describeUnproven = (payload: VersionedUnprovenTransaction): string => {
+  it('is exhaustively narrowable, so the default branch receives never', () => {
+    const describeUnproven = (payload: VersionedUnprovenTransaction) => {
       switch (payload.version) {
         case 'v8':
           return `v8:${payload.txBytes.byteLength}`;
         case 'v9':
           return `v9:${typeof payload.tx}`;
-        default:
-          return assertNever(payload, 'describeUnproven');
+        default: {
+          // Fails to compile if an arm is added to the union without a case
+          // above, which is the property under test.
+          const unhandled: never = payload;
+          return unhandled;
+        }
       }
     };
 
-    expectTypeOf(describeUnproven).returns.toBeString();
+    // Asserting the *inferred* return type: annotating it `string` would make
+    // this unfalsifiable. `never` drops out of a union, so a genuine `string`
+    // here means both arms were reached.
+    expectTypeOf(describeUnproven).returns.toEqualTypeOf<string>();
   });
 
   it('rejects naked serialized bytes — the v8 arm is always the tagged object, never a bare Uint8Array', () => {
-    const acceptUnproven = (payload: VersionedUnprovenTransaction): 'v8' | 'v9' => payload.version;
+    // Return type deliberately left to inference: annotating it `'v8' | 'v9'`
+    // would make the assertion below restate the annotation instead of pinning
+    // the discriminant, and a widened `version` would still pass.
+    const acceptUnproven = (payload: VersionedUnprovenTransaction) => payload.version;
 
     // @ts-expect-error A bare `Uint8Array` carries no `version` discriminant, so a
     // consumer could not tell which ledger runtime serialized it. Callers must
@@ -124,23 +135,31 @@ describe('VersionedUnprovenTransaction', () => {
 });
 
 describe('VersionedUnboundTransaction', () => {
-  it('narrows exhaustively over every arm of the union via assertNever in the default branch', () => {
-    const describeUnbound = (payload: VersionedUnboundTransaction): string => {
+  it('is exhaustively narrowable, so the default branch receives never', () => {
+    const describeUnbound = (payload: VersionedUnboundTransaction) => {
       switch (payload.version) {
         case 'v8':
           return `v8:${payload.txBytes.byteLength}`;
         case 'v9':
           return `v9:${typeof payload.tx}`;
-        default:
-          return assertNever(payload, 'describeUnbound');
+        default: {
+          // Fails to compile if an arm is added to the union without a case
+          // above, which is the property under test.
+          const unhandled: never = payload;
+          return unhandled;
+        }
       }
     };
 
-    expectTypeOf(describeUnbound).returns.toBeString();
+    // Asserting the *inferred* return type: annotating it `string` would make
+    // this unfalsifiable. `never` drops out of a union, so a genuine `string`
+    // here means both arms were reached.
+    expectTypeOf(describeUnbound).returns.toEqualTypeOf<string>();
   });
 
   it('rejects naked serialized bytes — the v8 arm is always the tagged object, never a bare Uint8Array', () => {
-    const acceptUnbound = (payload: VersionedUnboundTransaction): 'v8' | 'v9' => payload.version;
+    // Inferred, not annotated — see the unproven case.
+    const acceptUnbound = (payload: VersionedUnboundTransaction) => payload.version;
 
     // @ts-expect-error See the unproven-transaction case: bytes must be tagged.
     acceptUnbound(new Uint8Array([1, 2, 3]));
@@ -158,23 +177,31 @@ describe('VersionedUnboundTransaction', () => {
 });
 
 describe('VersionedFinalizedTransaction', () => {
-  it('narrows exhaustively over every arm of the union via assertNever in the default branch', () => {
-    const describeFinalized = (payload: VersionedFinalizedTransaction): string => {
+  it('is exhaustively narrowable, so the default branch receives never', () => {
+    const describeFinalized = (payload: VersionedFinalizedTransaction) => {
       switch (payload.version) {
         case 'v8':
           return `v8:${payload.txBytes.byteLength}`;
         case 'v9':
           return `v9:${typeof payload.tx}`;
-        default:
-          return assertNever(payload, 'describeFinalized');
+        default: {
+          // Fails to compile if an arm is added to the union without a case
+          // above, which is the property under test.
+          const unhandled: never = payload;
+          return unhandled;
+        }
       }
     };
 
-    expectTypeOf(describeFinalized).returns.toBeString();
+    // Asserting the *inferred* return type: annotating it `string` would make
+    // this unfalsifiable. `never` drops out of a union, so a genuine `string`
+    // here means both arms were reached.
+    expectTypeOf(describeFinalized).returns.toEqualTypeOf<string>();
   });
 
   it('rejects naked serialized bytes — the v8 arm is always the tagged object, never a bare Uint8Array', () => {
-    const acceptFinalized = (payload: VersionedFinalizedTransaction): 'v8' | 'v9' => payload.version;
+    // Inferred, not annotated — see the unproven case.
+    const acceptFinalized = (payload: VersionedFinalizedTransaction) => payload.version;
 
     // @ts-expect-error See the unproven-transaction case: bytes must be tagged.
     acceptFinalized(new Uint8Array([1, 2, 3]));
@@ -215,5 +242,24 @@ describe('tx-flow provider members', () => {
   it('keeps the key-reading members of WalletProvider untouched by the payload change', () => {
     expectTypeOf<WalletProvider['getCoinPublicKey']>().toEqualTypeOf<() => CoinPublicKey>();
     expectTypeOf<WalletProvider['getEncryptionPublicKey']>().toEqualTypeOf<() => EncPublicKey>();
+  });
+});
+
+// The read surface changed its return type in the same breaking release as the
+// three seams above, but was the only one of the five with nothing pinning it.
+// Reverting either signature to `Promise<FinalizedTxData>` still type-checks
+// everywhere — `FinalizedTxData` is assignable to the union that consumes it —
+// so neither the runtime tests nor the other type tests would notice.
+describe('read-surface provider members', () => {
+  it('watchForTxData resolves a version-tagged finalized record', () => {
+    expectTypeOf<PublicDataProvider['watchForTxData']>().toEqualTypeOf<
+      (txId: TransactionId) => Promise<VersionedFinalizedTxData>
+    >();
+  });
+
+  it('watchForDeployTxData resolves a version-tagged finalized record', () => {
+    expectTypeOf<PublicDataProvider['watchForDeployTxData']>().toEqualTypeOf<
+      (contractAddress: ContractAddress) => Promise<VersionedFinalizedTxData>
+    >();
   });
 });

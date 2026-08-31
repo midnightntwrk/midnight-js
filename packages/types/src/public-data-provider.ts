@@ -17,8 +17,9 @@ import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact
 import type { ContractAddress, LedgerParameters, TransactionId, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { Observable } from 'rxjs';
 
-import type { FinalizedTxData, UnshieldedBalances } from './midnight-types';
+import type { UnshieldedBalances } from './midnight-types';
 import type { RawContractState } from './raw-contract-state';
+import type { VersionedFinalizedTxData } from './versioned';
 
 /**
  * Streams all previous states of a contract.
@@ -384,7 +385,7 @@ export interface PublicDataProvider {
    * @returns A promise that resolves with finalized transaction data when the deployment appears on-chain.
    *          The promise never rejects due to timeout.
    */
-  watchForDeployTxData(contractAddress: ContractAddress): Promise<FinalizedTxData>;
+  watchForDeployTxData(contractAddress: ContractAddress): Promise<VersionedFinalizedTxData>;
 
   /**
    * Retrieves data of the transaction containing the call or deployment with the given identifier.
@@ -405,7 +406,7 @@ export interface PublicDataProvider {
    * @returns A promise that resolves with finalized transaction data when the transaction appears on-chain.
    *          The promise never rejects due to timeout.
    */
-  watchForTxData(txId: TransactionId): Promise<FinalizedTxData>;
+  watchForTxData(txId: TransactionId): Promise<VersionedFinalizedTxData>;
 
   /**
    * Creates a stream of contract states. The observable emits a value every time a state is either

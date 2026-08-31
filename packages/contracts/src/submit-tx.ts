@@ -21,12 +21,10 @@ import {
 import {
   type AnyProvableCircuitId,
   type FinalizedTxData,
-  type VersionedTx,
 } from '@midnight-ntwrk/midnight-js-types';
-import { assertNever } from '@midnight-ntwrk/midnight-js-utils';
 
 import { type ContractProviders } from './contract-providers';
-import { EraInvariantViolationError } from './errors';
+import { requireV9, requireV9Record } from './internal/era';
 
 declare const __DEBUG__: boolean;
 
@@ -81,36 +79,23 @@ function logTransaction(circuitId: string | string[] | undefined, tx: Transactio
   }
 }
 
-/**
- * Unwraps the v9 arm of a versioned provider payload. This flow only ever
- * sends v9 payloads, so a v8 response cannot be handled here — it means the
- * provider answered about a different transaction than the one it was given.
- *
- * @param payload The payload a provider returned.
- * @param seam The provider method that returned it, used in the error message.
- */
-function requireV9<T>(payload: VersionedTx<T>, seam: string): T {
-  switch (payload.version) {
-    case 'v9':
-      return payload.tx;
-    case 'v8':
-      throw new EraInvariantViolationError(seam);
-    default:
-      return assertNever(payload, 'requireV9');
-  }
-}
-
 async function submitTxCore<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: SubmitTxProviders<C, PCK>,
   options: SubmitTxOptions<PCK>
 ): Promise<string> {
+  const { circuitId } = options;
   const provenTx = requireV9(
     await providers.proofProvider.proveTx({ version: 'v9', tx: options.unprovenTx }),
-    'proveTx'
+    'proveTx',
+    circuitId
   );
-  const toSubmit = requireV9(await providers.walletProvider.balanceTx({ version: 'v9', tx: provenTx }), 'balanceTx');
+  const toSubmit = requireV9(
+    await providers.walletProvider.balanceTx({ version: 'v9', tx: provenTx }),
+    'balanceTx',
+    circuitId
+  );
   if (__DEBUG__) {
-    logTransaction(options.circuitId, toSubmit);
+    logTransaction(circuitId, toSubmit);
   }
   return providers.midnightProvider.submitTx({ version: 'v9', tx: toSubmit });
 }
@@ -158,7 +143,11 @@ export const submitTx = async <C extends Contract.Any, PCK extends Contract.Prov
   options: SubmitTxOptions<PCK>
 ): Promise<FinalizedTxData> => {
   const txId = await submitTxCore(providers, options);
-  return providers.publicDataProvider.watchForTxData(txId);
+  return requireV9Record(
+    await providers.publicDataProvider.watchForTxData(txId),
+    'watchForTxData',
+    options.circuitId
+  );
 };
 
 /**

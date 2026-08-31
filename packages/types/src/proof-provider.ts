@@ -22,9 +22,8 @@ import {
   type Transaction,
   type UnprovenTransaction
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { assertNever } from '@midnight-ntwrk/midnight-js-utils';
 
-import { V8PayloadUnsupportedError } from './errors';
+import { unwrapV9 } from './unwrap-v9';
 import type { VersionedTx } from './versioned';
 
 export type UnboundTransaction = Transaction<SignatureEnabled, Proof, PreBinding>;
@@ -63,10 +62,16 @@ export interface ProofProvider {
   /**
    * Creates call proofs for an unproven transaction. The resulting transaction is unbalanced and
    * must be balanced using the {@link WalletProvider} interface.
-   *           contain a single contract call.
-   * @param unprovenTx
+   *
+   * @param unprovenTx The version-tagged unproven transaction: wrap a live v9 ledger object as
+   *                   `{ version: 'v9', tx }`, or v8-era serialized bytes as
+   *                   `{ version: 'v8', txBytes }`.
    * @param proveTxConfig The configuration for the proof request to the proof provider. Empty in case
    *                      a deploy transaction is being proved with no user-defined timeout.
+   * @returns The proven transaction, version-tagged. Narrow on `version` — or call `unwrapV9` —
+   *          before reading the payload.
+   * @throws V8PayloadUnsupportedError if the implementation does not handle the v8 arm.
+   * @throws UntaggedPayloadError if `version` is missing or unrecognised.
    */
   proveTx(
     unprovenTx: VersionedUnprovenTransaction,
@@ -78,6 +83,9 @@ export interface ProofProvider {
  * Creates a {@link ProofProvider} from a {@link ProvingProvider}.
  * The returned provider proves transactions using the initial cost model.
  *
+ * The returned provider serves the v9 arm only: it rejects a v8 payload with
+ * `V8PayloadUnsupportedError`, and an untagged one with `UntaggedPayloadError`.
+ *
  * @param provingProvider - The underlying proving provider used to generate proofs.
  * @param costModel - Optional cost model to use for proof generation. Defaults to the initial cost model if not provided.
  * @returns A {@link ProofProvider} that delegates proof generation to the given proving provider.
@@ -87,13 +95,7 @@ export const createProofProvider = (
   costModel: CostModel = CostModel.initialCostModel()
 ): ProofProvider => ({
   async proveTx(unprovenTx: VersionedUnprovenTransaction): Promise<VersionedUnboundTransaction> {
-    switch (unprovenTx.version) {
-      case 'v9':
-        return { version: 'v9', tx: await unprovenTx.tx.prove(provingProvider, costModel) };
-      case 'v8':
-        throw new V8PayloadUnsupportedError('proveTx');
-      default:
-        return assertNever(unprovenTx, 'createProofProvider.proveTx');
-    }
+    const tx = unwrapV9(unprovenTx, 'proveTx');
+    return { version: 'v9', tx: await tx.prove(provingProvider, costModel) };
   }
 });
