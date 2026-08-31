@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-import type { TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import type { FinalizedTransaction, TransactionId } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 
+import { unwrapV9 } from './unwrap-v9';
 import type { VersionedFinalizedTransaction } from './wallet-provider';
 
 /**
@@ -29,9 +30,36 @@ export interface MidnightProvider {
    *           live v9 ledger object, `{ version: 'v8', txBytes }` for v8-era serialized bytes.
    * @returns The transaction identifier of the submitted transaction. Not version-tagged — a
    *          transaction identifier is era-independent.
-   * @throws V8PayloadUnsupportedError if the implementation does not handle the v8 arm. Every
-   *         provider shipped in this repo rejects `{ version: 'v8' }`.
+   * @throws V8PayloadUnsupportedError if the implementation does not handle the v8 arm.
    * @throws UntaggedPayloadError if `version` is missing or unrecognised.
    */
   submitTx(tx: VersionedFinalizedTransaction): Promise<TransactionId>;
 }
+
+/**
+ * Lifts a v9-only submission function into the version-tagged
+ * {@link MidnightProvider} interface.
+ *
+ * The counterpart to `createWalletProvider`, and worth using for the same
+ * reason: it keeps the `version` tag out of implementation code, so an
+ * implementer never meets the parameter-mismatch error the tagged interface
+ * otherwise produces.
+ *
+ * The returned provider serves the v9 arm only: it rejects a v8 payload with
+ * `V8PayloadUnsupportedError` and an untagged one with `UntaggedPayloadError`.
+ *
+ * @param submitTx The v9-only submission function to wrap.
+ * @returns A {@link MidnightProvider} that narrows inbound payloads.
+ *
+ * @example
+ * ```typescript
+ * const midnightProvider = createMidnightProvider((tx) => wallet.submitTransaction(tx));
+ * ```
+ */
+export const createMidnightProvider = (
+  submitTx: (tx: FinalizedTransaction) => Promise<TransactionId>
+): MidnightProvider => ({
+  async submitTx(tx: VersionedFinalizedTransaction): Promise<TransactionId> {
+    return submitTx(unwrapV9(tx, 'submitTx'));
+  }
+});
