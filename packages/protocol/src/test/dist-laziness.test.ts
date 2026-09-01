@@ -30,7 +30,6 @@ const DIST_INDEX_PATH = 'dist/index.js';
 // in v8-surface.test.ts keeps matching only lib/load-v8.ts.
 const V8_CHUNK_SPECIFIER = ['.', 'v8.js'].join('/');
 const V8_DIST_ARTIFACTS = ['dist/v8.js', 'dist/v8.d.ts'];
-const distIndexExists = existsSync(resolve(PKG_ROOT, DIST_INDEX_PATH));
 // The `./engine` entry chunk, named the same way and for the same reason: the
 // dynamic import of `../../engine.js` in src/lib/engine/load-engine.ts comes
 // out as an output-relative specifier too.
@@ -41,15 +40,22 @@ const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\
 const V8_CHUNK_PATTERN = escapeRegExp(V8_CHUNK_SPECIFIER);
 const ENGINE_CHUNK_PATTERN = escapeRegExp(ENGINE_CHUNK_SPECIFIER);
 
-// Skipped (not omitted) when dist/ is absent, so a run without a prior build
-// still reports these as visible skips rather than silently vanishing —
-// run `yarn build && yarn test` to green them.
-//
-// The file reads happen lazily inside each `it` body (not in the `describe`
-// body) so that `describe.skipIf` actually prevents them from running when
-// dist/ is absent — vitest still executes a `describe` callback during test
-// collection even when `skipIf` is true; only the nested `it`s are skipped.
-describe.skipIf(!distIndexExists)('dist laziness gate', () => {
+// Never skipped when dist/ is absent: a skip is reported as a pass, so the
+// gate would silently stop guarding. Every orchestrated run has the build
+// ahead of it — turbo's `test` task dependsOn `build` — so dist/ exists in CI
+// and in `yarn test` at the repo root. A bare `vitest run` without a prior
+// build fails instead, with a message saying how to fix it.
+const readDistFile = (path: string): string => {
+  const absolute = resolve(PKG_ROOT, path);
+  if (!existsSync(absolute)) {
+    throw new Error(
+      `${path} is missing: this suite inspects the rollup output. Run "yarn build" first, or run "yarn turbo test", which builds before testing.`
+    );
+  }
+  return readFileSync(absolute, 'utf8');
+};
+
+describe('dist laziness gate', () => {
   // Both halves of the retained pre-fork stack, not just ledger-v8:
   // onchain-runtime-v3 is a runtime dependency of this package and carries its
   // own multi-megabyte WASM, so a static link to it costs a v9-only consumer
@@ -62,19 +68,19 @@ describe.skipIf(!distIndexExists)('dist laziness gate', () => {
   // it into an entry — at which point the erased `import type`s are what keeps
   // it green.
   it.each(['ledger-v8', 'onchain-runtime-v3'])('the index bundle has no static %s linkage', (pkg) => {
-    const content = readFileSync(resolve(PKG_ROOT, DIST_INDEX_PATH), 'utf8');
+    const content = readDistFile(DIST_INDEX_PATH);
 
     expect(content).not.toMatch(new RegExp(`from\\s*['"][^'"]*${escapeRegExp(pkg)}['"]`));
   });
 
   it('the index bundle has no static linkage of the v8 chunk', () => {
-    const content = readFileSync(resolve(PKG_ROOT, DIST_INDEX_PATH), 'utf8');
+    const content = readDistFile(DIST_INDEX_PATH);
 
     expect(content).not.toMatch(new RegExp(`from\\s*['"]${V8_CHUNK_PATTERN}['"]`));
   });
 
   it('the index bundle keeps the lazy dynamic import of the v8 chunk', () => {
-    const content = readFileSync(resolve(PKG_ROOT, DIST_INDEX_PATH), 'utf8');
+    const content = readDistFile(DIST_INDEX_PATH);
 
     expect(content).toMatch(new RegExp(`import\\(\\s*['"]${V8_CHUNK_PATTERN}['"]\\s*\\)`));
   });
@@ -84,19 +90,19 @@ describe.skipIf(!distIndexExists)('dist laziness gate', () => {
   });
 
   it('the index bundle has no linkage (static or dynamic) of the compact-runtime-ledger8 glue alias', () => {
-    const content = readFileSync(resolve(PKG_ROOT, DIST_INDEX_PATH), 'utf8');
+    const content = readDistFile(DIST_INDEX_PATH);
 
     expect(content).not.toMatch(/['"]compact-runtime-ledger8['"]/);
   });
 
   it('the index bundle has no static linkage of the engine chunk', () => {
-    const content = readFileSync(resolve(PKG_ROOT, DIST_INDEX_PATH), 'utf8');
+    const content = readDistFile(DIST_INDEX_PATH);
 
     expect(content).not.toMatch(new RegExp(`from\\s*['"]${ENGINE_CHUNK_PATTERN}['"]`));
   });
 
   it('the index bundle keeps the lazy dynamic import of the engine chunk', () => {
-    const content = readFileSync(resolve(PKG_ROOT, DIST_INDEX_PATH), 'utf8');
+    const content = readDistFile(DIST_INDEX_PATH);
 
     expect(content).toMatch(new RegExp(`import\\(\\s*['"]${ENGINE_CHUNK_PATTERN}['"]\\s*\\)`));
   });
