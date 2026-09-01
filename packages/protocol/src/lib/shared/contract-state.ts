@@ -44,10 +44,16 @@ export interface DecodableContractState {
  * The era module slice {@link decodeContractStateWith} needs: just the
  * `ContractState` class and its static reader.
  *
- * Injected rather than imported as a value, for the same reason
- * `Ledger8ContractState` (`../era/envelope.ts`) is: a value import of either
+ * Declared structurally rather than derived from one era's class, because this
+ * decoder genuinely serves BOTH axes — the v9 arm passes ledger-v9, the v8 leg
+ * passes the module `loadLedger8` handed it — and naming either era's type here
+ * would pick a side. `Ledger8ContractState` (`../era/envelope.ts`) is the
+ * single-era counterpart and IS derived from the vendor for that reason.
+ *
+ * Injection is a separate matter, and still required: a value import of either
  * era's module would statically link its WASM into whatever bundle reaches this
  * one, so a consumer of the other era would pay for a runtime it never calls.
+ * Naming a type does not — type-only imports are erased.
  */
 export interface ContractStateDecoder {
   readonly ContractState: { readonly deserialize: (raw: Uint8Array) => DecodableContractState };

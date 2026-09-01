@@ -13,7 +13,13 @@
  * limitations under the License.
  */
 
-import type { AlignedValue, ChargedState, CostModel, Op } from '@midnight-ntwrk/onchain-runtime-v3';
+import type * as OnchainRuntimeV3 from '@midnight-ntwrk/onchain-runtime-v3';
+import type { ProofData } from 'compact-runtime-ledger8';
+
+type AlignedValue = OnchainRuntimeV3.AlignedValue;
+type ChargedState = OnchainRuntimeV3.ChargedState;
+type CostModel = OnchainRuntimeV3.CostModel;
+type Op<T> = OnchainRuntimeV3.Op<T>;
 
 import { Ledger8ZswapUnsupportedError } from '../../errors';
 import type { DownConvertedState } from './down-convert';
@@ -22,10 +28,16 @@ import type { DownConvertedState } from './down-convert';
  * The `QueryContext` slice {@link executeCircuit} reads off a circuit's
  * post-call context: the resulting primary state, ready to be wrapped back
  * into a {@link DownConvertedState}.
+ *
+ * A `Pick` of the vendor's own class, not a restatement of it: the member name
+ * and its type come from onchain-runtime-v3, so a rename there fails this build
+ * instead of leaving a mirror that describes a property the runtime no longer
+ * has. It stays a narrowing rather than the whole class because `QueryContext`
+ * is a WASM class with dozens of members, and this seam reads exactly one — the
+ * narrowing is what lets the execution tests hand `executeCircuit` a
+ * one-property double instead of standing up real WASM.
  */
-export interface Ledger8QueryContext {
-  readonly state: ChargedState;
-}
+export type Ledger8QueryContext = Pick<OnchainRuntimeV3.QueryContext, 'state'>;
 
 /**
  * The Zswap coin movements a pre-fork circuit recorded, as the 0.16 runtime
@@ -42,6 +54,13 @@ export interface Ledger8ZswapLocalState {
  * The circuit-context slice {@link executeCircuit} needs from a pre-fork
  * (`compact-runtime@0.16`) `createCircuitContext` call and a circuit's
  * updated context after it runs.
+ *
+ * Not the glue's `CircuitContext` itself: that one carries a real
+ * `QueryContext`, a WASM class no test double can satisfy, and this seam reads
+ * a single property off it. The narrowing is the difference between execution
+ * tests that check plumbing with a literal and tests that must stand up WASM to
+ * do it — see {@link Ledger8QueryContext}, which derives that one property from
+ * the vendor's class so the narrowing cannot drift from it.
  */
 export interface Ledger8CircuitContext {
   readonly currentQueryContext: Ledger8QueryContext;
@@ -49,15 +68,24 @@ export interface Ledger8CircuitContext {
   readonly currentZswapLocalState: Ledger8ZswapLocalState;
 }
 
-/** The proof-data slice of a pre-fork {@link Ledger8CircuitResult}. */
-export interface Ledger8ProofData {
-  readonly input: AlignedValue;
-  readonly output: AlignedValue;
-  readonly publicTranscript: Op<AlignedValue>[];
-  readonly privateTranscriptOutputs: AlignedValue[];
-}
+/**
+ * The proof-data slice of a pre-fork {@link Ledger8CircuitResult}.
+ *
+ * The vendor's own `ProofData`, not a copy of its four members: it is already
+ * plain data with no WASM handle in it, so there was nothing for a mirror to
+ * narrow — only a shape to drift out of sync. `Readonly` is this package's own
+ * addition, and the only one.
+ */
+export type Ledger8ProofData = Readonly<ProofData>;
 
-/** What a pre-fork `impureCircuits[id](ctx, ...args)` call returns. */
+/**
+ * What a pre-fork `impureCircuits[id](ctx, ...args)` call returns.
+ *
+ * Tracks the glue's `CircuitResults` but is not derived from it: `context` is
+ * the narrowed {@link Ledger8CircuitContext} for the reason given there, and
+ * `gasCost` is absent because nothing here reads it. `proofData` IS the
+ * vendor's own type — see {@link Ledger8ProofData}.
+ */
 export interface Ledger8CircuitResult {
   readonly result: unknown;
   readonly proofData: Ledger8ProofData;
@@ -86,6 +114,15 @@ export interface Ledger8ContractLike {
  * instance and tests can substitute a controlled fake.
  */
 export interface Ledger8ExecutionRuntime {
+  /**
+   * Narrowed rather than derived, unlike its sibling below. The glue's own
+   * `createCircuitContext` is generic in the private state and returns a
+   * `CircuitContext` carrying a real `QueryContext` — a WASM class no test
+   * double can satisfy — so deriving it would make every execution test stand
+   * up real WASM to check plumbing. The narrowing returns
+   * {@link Ledger8CircuitContext} instead, and `v8-load-engine.test.ts` pins
+   * that the real glue still satisfies it.
+   */
   readonly createCircuitContext: (
     contractAddress: string,
     coinPublicKey: string,
@@ -94,9 +131,11 @@ export interface Ledger8ExecutionRuntime {
     gasLimit: undefined,
     costModel: CostModel
   ) => Ledger8CircuitContext;
-  readonly CostModel: {
-    readonly initialCostModel: () => CostModel;
-  };
+  /**
+   * A `Pick` of the vendor's class: `initialCostModel` is the only static this
+   * seam calls, and the narrowing is what lets a test inject a stub cost model.
+   */
+  readonly CostModel: Pick<typeof OnchainRuntimeV3.CostModel, 'initialCostModel'>;
 }
 
 /**
