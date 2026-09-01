@@ -120,12 +120,30 @@ const ENVELOPE_DECODERS: Readonly<Record<LedgerVersion, EnvelopeDecoder>> = Obje
  * truncated, trailing, or empty bytes.
  *
  * `ledger8ContractState` is required for every `version`, not just `'v8'`,
- * and is checked before any decoding happens. Both halves matter: requiring it
- * unconditionally keeps a v9 caller from drifting into a v8 call that has no
- * runtime to reach for, and checking it turns the omission into
- * {@link Ledger8RuntimeInvalidError} instead of a `TypeError` wrapped as a
- * {@link DownConvertFailedError} — which would name an extraction stage and
- * point the caller at input bytes that are not the problem.
+ * and is checked before any decoding happens.
+ *
+ * Requiring it unconditionally costs nobody a runtime they would not otherwise
+ * hold. This seam is reached only from the ledger-8 engine's own factory, which
+ * has already awaited onchain-runtime-v3 to assemble the runtime it hands to
+ * `downConvertForExecution`; the `'v9'` decoder is here so that the
+ * *bridge* can read a post-fork envelope before down-converting it, not to
+ * serve a caller who has no pre-fork runtime at all. Such a caller reads
+ * ledger-v9 directly and never reaches this function. Note this is a statement
+ * about the call graph, not about bundling — the separate reason the pre-fork
+ * types are imported with `import type` (see {@link Ledger8ContractState}) is
+ * unaffected either way.
+ *
+ * That is what makes the unconditional form the cheaper one: a single guard
+ * covering both eras, with no era-conditional branch to keep correct and no
+ * optional parameter weakening the one call that genuinely needs the argument.
+ * It stops being free the moment this function is surfaced beyond the engine —
+ * if a v9-only path ever calls it, move the check into the `'v8'` decoder and
+ * make the parameter optional there.
+ *
+ * Checking it turns the omission into {@link Ledger8RuntimeInvalidError}
+ * instead of a `TypeError` wrapped as a {@link DownConvertFailedError} — which
+ * would name an extraction stage and point the caller at input bytes that are
+ * not the problem.
  *
  * `version` is validated before it is used, rather than trusted from the type
  * signature. That guard is what keeps `stage` inside its closed union: it is

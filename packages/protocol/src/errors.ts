@@ -28,7 +28,8 @@ export const PROTOCOL_ERROR_CODES = Object.freeze({
   STATE_DECODE_FAILED: 'MIDNIGHT_JS_P_STATE_DECODE_FAILED',
   LEDGER8_ZSWAP_UNSUPPORTED: 'MIDNIGHT_JS_P_LEDGER8_ZSWAP_UNSUPPORTED',
   UNKNOWN_LEDGER_VERSION: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION',
-  LEDGER8_RUNTIME_INVALID: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_INVALID'
+  LEDGER8_RUNTIME_INVALID: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_INVALID',
+  UNKNOWN_LEDGER8_AXIS: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER8_AXIS'
 } as const);
 export type ProtocolErrorCode = (typeof PROTOCOL_ERROR_CODES)[keyof typeof PROTOCOL_ERROR_CODES];
 
@@ -175,9 +176,11 @@ const PUBLISHED_SCOPES = Object.freeze(['@midnight-ntwrk', '@midnightntwrk'] as 
  * this same name under a different scope, so naming only one scope would point
  * every consumer installed from the other at a package not in their tree.
  */
-const AXIS_BARE_PACKAGE_NAMES: Readonly<Record<Ledger8InstanceAxis, string>> = Object.freeze({
-  'onchain-runtime-v3': 'onchain-runtime-v3'
-});
+const AXIS_BARE_PACKAGE_NAMES: Readonly<Record<Ledger8InstanceAxis, string>> = Object.freeze(
+  Object.assign(Object.create(null) as Record<Ledger8InstanceAxis, string>, {
+    'onchain-runtime-v3': 'onchain-runtime-v3'
+  } satisfies Record<Ledger8InstanceAxis, string>)
+);
 
 const axisPackageNames = (axis: Ledger8InstanceAxis): readonly string[] =>
   PUBLISHED_SCOPES.map((scope) => `${scope}/${AXIS_BARE_PACKAGE_NAMES[axis]}`);
@@ -666,10 +669,40 @@ export class Ledger8RuntimeInvalidError extends Error {
   constructor(readonly missingMember: string) {
     super(
       'The ledger-8 runtime handed to the down-convert engine cannot be used: the binding it needs is missing. ' +
-        'Acquire the runtime with loadLedger8() and pass the pre-fork ContractState class it exposes instead of ' +
-        'assembling the runtime object by hand. Read `missingMember` on this error for the absent member.'
+        'Pass the classes of the onchain-runtime-v3 copy your application already loaded, all of them from that ' +
+        'one copy, rather than assembling the runtime object by hand. This package exposes no accessor for it — ' +
+        'loadLedger8() resolves the v8 ledger, a different package whose own same-named classes run on a ' +
+        'separate WASM instance. Read `missingMember` on this error for the absent member.'
     );
     this.name = 'Ledger8RuntimeInvalidError';
+  }
+}
+
+/**
+ * Thrown by `assertSharedLedger8Instance` (`lib/engine/instance-guard.ts`)
+ * when the `axis` it was handed is not a member of {@link Ledger8InstanceAxis}.
+ *
+ * The counterpart of {@link UnknownLedgerVersionError} on the other closed
+ * union this package validates at a boundary, and it exists for the same
+ * untyped JavaScript consumers. The axis is not only a label: it selects the
+ * package names {@link Ledger8InstanceMismatchError} tells the reader to trace,
+ * so an unvalidated string would put an `Object.prototype` member where a
+ * package name belongs, and would land in an `axis` field consumers are told
+ * they can `switch` on.
+ *
+ * `requestedAxis` carries the offending value; like `requestedVersion` it is
+ * kept out of the message, because caller-supplied text is the one thing these
+ * errors never render.
+ */
+export class UnknownLedger8AxisError extends Error {
+  readonly code = PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER8_AXIS;
+
+  constructor(readonly requestedAxis: string) {
+    super(
+      'Unknown ledger-8 instance axis requested for the shared-instance guard. The only axis this framework ' +
+        'version checks is onchain-runtime-v3; read `requestedAxis` on this error for the value that was passed.'
+    );
+    this.name = 'UnknownLedger8AxisError';
   }
 }
 
