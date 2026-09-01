@@ -31,13 +31,27 @@ const DIST_INDEX_PATH = 'dist/index.js';
 // v8-surface.test.ts keeps matching only lib/load-v8.ts.
 const V8_CHUNK_PATTERN = `(?:\\.{1,2}/)+${['v8', 'js'].join('\\.')}`;
 const V8_DIST_ARTIFACTS = ['dist/v8.js', 'dist/v8.d.ts'];
-const distIndexExists = existsSync(resolve(PKG_ROOT, DIST_INDEX_PATH));
 // The `./engine` entry chunk, named the same way and for the same reason: the
 // dynamic import of `../../engine.js` in src/lib/engine/load-engine.ts comes
 // out as an output-relative specifier too, at whatever depth the chunk that
 // imports it sits.
 const ENGINE_CHUNK_PATTERN = `(?:\\.{1,2}/)+${['engine', 'js'].join('\\.')}`;
 const ENGINE_DIST_ARTIFACTS = ['dist/engine.js', 'dist/engine.d.ts'];
+
+// Never skipped when dist/ is absent: a skip is reported as a pass, so the
+// gate would silently stop guarding. Every orchestrated run has the build
+// ahead of it — turbo's `test` task dependsOn `build` — so dist/ exists in CI
+// and in `yarn test` at the repo root. A bare `vitest run` without a prior
+// build fails instead, with a message saying how to fix it.
+const readDistFile = (path: string): string => {
+  const absolute = resolve(PKG_ROOT, path);
+  if (!existsSync(absolute)) {
+    throw new Error(
+      `${path} is missing: this suite inspects the rollup output. Run "yarn build" first, or run "yarn turbo test", which builds before testing.`
+    );
+  }
+  return readFileSync(absolute, 'utf8');
+};
 
 // Rollup hoists a module that several entries share into its own chunk, so the
 // accessor's dynamic import can sit one static hop away from the index bundle
@@ -65,7 +79,7 @@ const eagerClosureOf = (entry: string): string[] => {
       continue;
     }
     seen.add(current);
-    for (const specifier of staticImportsOf(readFileSync(resolve(PKG_ROOT, current), 'utf8'))) {
+    for (const specifier of staticImportsOf(readDistFile(current))) {
       pending.push(join(dirname(current), specifier));
     }
   }
@@ -73,19 +87,11 @@ const eagerClosureOf = (entry: string): string[] => {
   return [...seen];
 };
 
-const eagerContents = (entry: string): string => eagerClosureOf(entry).map((chunk) => readFileSync(resolve(PKG_ROOT, chunk), 'utf8')).join('\n');
+const eagerContents = (entry: string): string => eagerClosureOf(entry).map((chunk) => readDistFile(chunk)).join('\n');
 
 const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-// Skipped (not omitted) when dist/ is absent, so a run without a prior build
-// still reports these as visible skips rather than silently vanishing —
-// run `yarn build && yarn test` to green them.
-//
-// The file reads happen lazily inside each `it` body (not in the `describe`
-// body) so that `describe.skipIf` actually prevents them from running when
-// dist/ is absent — vitest still executes a `describe` callback during test
-// collection even when `skipIf` is true; only the nested `it`s are skipped.
-describe.skipIf(!distIndexExists)('dist laziness gate', () => {
+describe('dist laziness gate', () => {
   // Both halves of the retained pre-fork stack, not just ledger-v8:
   // onchain-runtime-v3 is a runtime dependency of this package and carries its
   // own multi-megabyte WASM, so a static link to it costs a v9-only consumer
