@@ -38,7 +38,7 @@ import { describe, expect, it } from 'vitest';
 // silent in the built artifact — one error module per bundle — is what the
 // identity assertions below pin.
 const PKG_ROOT = resolve(__dirname, '..', '..');
-const distBundlesExist = ['dist/index.js', 'dist/engine.js'].every((p) => existsSync(resolve(PKG_ROOT, p)));
+const DIST_BUNDLES = ['dist/index.js', 'dist/engine.js'];
 
 const FIELD_ALIGNMENT: ocrt3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
 const fieldValue = (byte: number): ocrt3.AlignedValue => ({
@@ -63,12 +63,16 @@ const transcriptForUnregisteredCircuit = () => ({
   privateStateAfter: {}
 });
 
-// Skipped (not omitted) when dist/ is absent locally — same policy as
-// dist-error-identity.test.ts; run `yarn build && yarn test` to green them. In
-// CI the build always precedes the tests, and this gate is the only cover for
-// cross-bundle error identity, so a missing artifact must fail there rather
-// than vanish behind a skip.
-describe.skipIf(!distBundlesExist && !process.env.CI)('dist engine error gate', () => {
+// Never skipped when a bundle is absent: a skip is reported as a pass, so the
+// gate would silently stop guarding — and it is the only cover for
+// cross-bundle error identity. Every orchestrated run has the build ahead of
+// it — turbo's `test` task dependsOn `build` — so a missing bundle is a real
+// failure, called out by the first case below before the imports fail.
+describe('dist engine error gate', () => {
+  it('ships the bundles this gate drives', () => {
+    expect(DIST_BUNDLES.filter((path) => !existsSync(resolve(PKG_ROOT, path)))).toEqual([]);
+  });
+
   it('loads the engine facade out of the built package and binds the retained era', async () => {
     const { loadLedger8Engine } = await import('@midnight-ntwrk/midnight-js-protocol');
 
