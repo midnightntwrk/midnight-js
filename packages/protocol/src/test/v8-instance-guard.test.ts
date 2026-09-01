@@ -21,7 +21,12 @@ import * as onchainRuntimeV3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as onchainRuntimeV3Alt from 'onchain-runtime-v3-alt';
 import { describe, expect, it } from 'vitest';
 
-import { Ledger8InstanceMismatchError, PROTOCOL_ERROR_CODES } from '../errors';
+import {
+  Ledger8InstanceMismatchError,
+  Ledger8RuntimeInvalidError,
+  PROTOCOL_ERROR_CODES,
+  UnknownLedger8AxisError
+} from '../errors';
 import type { Ledger8CompactRuntime } from '../lib/v8/down-convert';
 import { downConvertForExecution } from '../lib/v8/down-convert';
 import { assertSharedLedger8Instance } from '../lib/v8/instance-guard';
@@ -87,18 +92,55 @@ describe('assertSharedLedger8Instance', () => {
     }
   });
 
+  // A missing probe is a caller fault, not a duplicate install. Reporting it
+  // as a mismatch would assert two physical copies exist and send the reader
+  // to `npm why` to hunt a duplicate that is not there, so it gets the same
+  // code the envelope seam already uses for a runtime handed over incomplete.
   it.each([
     { name: 'both probes undefined', a: undefined, b: undefined },
     { name: 'both probes null', a: null, b: null },
     { name: 'only one probe nullish', a: onchainRuntimeV3.ChargedState, b: undefined }
-  ])('throws when $name (nullish probes are not a proof of a shared instance)', ({ a, b }) => {
+  ])('rejects $name without diagnosing a dual-instantiation', ({ a, b }) => {
     try {
       assertSharedLedger8Instance('onchain-runtime-v3', a, b);
       expect.unreachable('nullish probes must be rejected');
     } catch (error) {
-      expect(error).toBeInstanceOf(Ledger8InstanceMismatchError);
-      expect(error).toMatchObject({ axis: 'onchain-runtime-v3' });
+      expect(error).toBeInstanceOf(Ledger8RuntimeInvalidError);
+      expect(error).toMatchObject({
+        code: PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_INVALID,
+        missingMember: 'onchain-runtime-v3 instance probe'
+      });
+      expect((error as Ledger8RuntimeInvalidError).message).not.toContain('dual-instantiation');
     }
+  });
+
+  // `axis` is only type-checked for TypeScript callers, and it is interpolated
+  // into the remediation hint. An unvalidated string reaching the message
+  // renders `Object.prototype` members as package names, so it is validated
+  // against the closed union before any probe is compared.
+  it.each(['constructor', '__proto__', 'toString', 'valueOf', 'bogus'])(
+    'rejects the non-axis %s instead of naming it as a package',
+    (axis) => {
+      try {
+        // @ts-expect-error - reaching the axis guard that exists for untyped JS callers
+        assertSharedLedger8Instance(axis, onchainRuntimeV3.ChargedState, onchainRuntimeV3Alt.ChargedState);
+        expect.unreachable('a non-axis must be rejected');
+      } catch (error) {
+        expect(error).toBeInstanceOf(UnknownLedger8AxisError);
+        expect(error).toMatchObject({
+          code: PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER8_AXIS,
+          requestedAxis: axis
+        });
+        expect((error as UnknownLedger8AxisError).message).not.toContain(axis);
+      }
+    }
+  );
+
+  it('rejects a non-string axis, which cannot index the package-name table at all', () => {
+    expect(() =>
+      // @ts-expect-error - reaching the axis guard that exists for untyped JS callers
+      assertSharedLedger8Instance(42, onchainRuntimeV3.ChargedState, onchainRuntimeV3Alt.ChargedState)
+    ).toThrowError(expect.objectContaining({ code: PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER8_AXIS }));
   });
 });
 

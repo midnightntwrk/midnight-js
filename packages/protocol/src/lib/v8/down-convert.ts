@@ -16,7 +16,7 @@
 import type { ChargedState, StateBoundedMerkleTree, StateValue } from '@midnight-ntwrk/onchain-runtime-v3';
 import type { AlignedValue, EncodedStateValue } from '@midnightntwrk/ledger-v9';
 
-import { DownConvertFailedError, MerkleNotRehashedError } from '../../errors';
+import { DownConvertFailedError, Ledger8RuntimeInvalidError, MerkleNotRehashedError } from '../../errors';
 import type { Ledger8ContractState } from '../era/envelope';
 
 /**
@@ -267,6 +267,15 @@ export const assertMerkleTreesRehashed = (sv: StateValue): void => {
  * deep comparison per call, and it is deliberate: the alternative is a bridge
  * that can hand a circuit silently wrong data.
  *
+ * `ledger8Runtime` is checked before anything is decoded, for the same reason
+ * `extractEncodedStateValue` checks the runtime it is handed: a runtime missing
+ * a binding this function dereferences would otherwise raise a bare `TypeError`
+ * that the catch below relabels {@link DownConvertFailedError}, an error whose
+ * message sends the caller to audit input bytes that are not the problem. Only
+ * the two members this function actually calls are checked; `ContractState` is
+ * on {@link Ledger8CompactRuntime} to pin the era, and is never dereferenced
+ * here.
+ *
  * What it does not cover: anything the pre-fork encoder re-derives rather than
  * carries. A bounded Merkle tree encodes as its height and leaves, never its
  * node hashes, so a tree whose internal hashes were re-materialized
@@ -280,6 +289,13 @@ export const downConvertForExecution = (
   state: EncodedStateValue,
   ledger8Runtime: Ledger8CompactRuntime
 ): DownConvertedState => {
+  if (typeof ledger8Runtime?.StateValue?.decode !== 'function') {
+    throw new Ledger8RuntimeInvalidError('StateValue.decode');
+  }
+  if (typeof ledger8Runtime.ChargedState !== 'function') {
+    throw new Ledger8RuntimeInvalidError('ChargedState');
+  }
+
   try {
     const decoded = ledger8Runtime.StateValue.decode(state);
 
