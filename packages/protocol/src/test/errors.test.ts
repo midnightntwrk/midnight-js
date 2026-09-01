@@ -27,6 +27,7 @@ import {
   Ledger8ZswapUnsupportedError,
   MerkleNotRehashedError,
   PROTOCOL_ERROR_CODES,
+  UnknownLedger8AxisError,
   UnknownLedgerVersionError,
   UnknownProtocolVersionError
 } from '../errors';
@@ -56,7 +57,8 @@ describe('PROTOCOL_ERROR_CODES', () => {
       LEDGER8_COMPOSE_FAILED: 'MIDNIGHT_JS_P_LEDGER8_COMPOSE_FAILED',
       LEDGER8_ZSWAP_UNSUPPORTED: 'MIDNIGHT_JS_P_LEDGER8_ZSWAP_UNSUPPORTED',
       UNKNOWN_LEDGER_VERSION: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION',
-      LEDGER8_RUNTIME_INVALID: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_INVALID'
+      LEDGER8_RUNTIME_INVALID: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_INVALID',
+      UNKNOWN_LEDGER8_AXIS: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER8_AXIS'
     });
   });
 
@@ -381,11 +383,47 @@ describe('Ledger8RuntimeInvalidError', () => {
     expect(error.code).not.toBe(PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED);
   });
 
-  it('points at the acquisition path rather than at the input bytes', () => {
+  // `loadLedger8()` resolves @midnightntwrk/ledger-v8, which exports its own
+  // ContractState with a matching `static deserialize` on a second, unrelated
+  // WASM instance. A remediation naming it therefore hands the caller a class
+  // that satisfies the duck-typed guard and decodes on the wrong copy, so the
+  // message must route callers to onchain-runtime-v3 explicitly instead.
+  it('names the runtime the caller must supply, not the v8 ledger loader', () => {
     const error = new Ledger8RuntimeInvalidError('deserialize');
 
-    expect(error.message).toMatch(/loadLedger8/);
+    expect(error.message).toContain('onchain-runtime-v3');
+    expect(error.message).toMatch(/no accessor/i);
     expect(error.message).not.toMatch(/byte|envelope/i);
     expect(error.message).not.toMatch(/[0-9a-f]{16,}/i);
   });
+});
+
+describe('UnknownLedger8AxisError', () => {
+  it('carries its own code and keeps the offending axis out of the message', () => {
+    const error = new UnknownLedger8AxisError('__proto__');
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error.name).toBe('UnknownLedger8AxisError');
+    expect(error.code).toBe(PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER8_AXIS);
+    expect(error.requestedAxis).toBe('__proto__');
+    expect(error.message).not.toContain('__proto__');
+  });
+});
+
+// The axis is interpolated into the remediation hint via a lookup table. A
+// plain object literal resolves `constructor` through Object.prototype and
+// renders `@scope/function Object() { [native code] }` as a package name to
+// trace. Reachable only past the guard's own axis validation, so this pins the
+// table itself rather than a live path.
+describe('the axis package-name table', () => {
+  it.each(['constructor', 'toString', '__proto__'])(
+    'does not resolve the prototype member %s into a package name',
+    (axis) => {
+      // @ts-expect-error - the table is indexed by a closed union; this is the untyped-JS case
+      const { message } = new Ledger8InstanceMismatchError(axis);
+
+      expect(message).not.toContain('native code');
+      expect(message).not.toContain('[object');
+    }
+  );
 });
