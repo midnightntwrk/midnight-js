@@ -24,6 +24,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createLedger8Engine } from '../lib/engine';
 import type { DownConvertedState } from '../lib/engine/down-convert';
 import type { ExecuteCircuitOptions, Ledger8ContractLike } from '../lib/engine/execute';
+import { emptyZswapLocalState } from './fixtures';
 
 const PKG_ROOT = resolve(__dirname, '..', '..');
 const FIXTURE_DIR = resolve(PKG_ROOT, '..', '..', 'testkit-js/testkit-js/src/fixtures/hf/counter-016');
@@ -97,6 +98,7 @@ describe('createLedger8Engine', () => {
         output: { value: [], alignment: [] },
         publicTranscript: [],
         privateTranscriptOutputs: [],
+        zswapLocalState: emptyZswapLocalState(),
         preContractState: { data: state },
         postContractState: { data: state },
         privateStateAfter: {}

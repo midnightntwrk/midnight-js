@@ -108,6 +108,7 @@ export const createLedger8Engine = async (): Promise<Ledger8Engine> => {
     ChargedState: glue.ChargedState
   };
   const ledger8ExecutionRuntime: Ledger8ExecutionRuntime = {
+    decodeZswapLocalState: glue.decodeZswapLocalState,
     createCircuitContext: glue.createCircuitContext,
     CostModel: glue.CostModel
   };

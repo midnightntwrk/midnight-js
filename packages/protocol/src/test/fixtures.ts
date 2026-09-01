@@ -16,6 +16,8 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import type { ZswapLocalState } from 'compact-runtime-ledger8';
+
 // Not a `*.test.ts` file, so vitest does not collect it, and it sits under
 // `test/`, which the coverage config excludes.
 //
@@ -45,3 +47,21 @@ export const readHexFixture = (name: string): Uint8Array => {
 
 /** Resolves a path inside the shared hf fixture tree, for fixtures that are not hex. */
 export const fixturePath = (...segments: string[]): string => resolve(FIXTURES_DIR, ...segments);
+
+/**
+ * The Zswap local state a coin-FREE circuit leaves behind, as the retained 0.16
+ * runtime decodes it.
+ *
+ * Written down once because `TranscriptPojo` requires the member: a hand-built
+ * transcript fixture that omits it is not one `executeCircuit` could produce,
+ * and every leg that consumes a transcript without reading its coin movements
+ * (`wrapKeepStateCall`, `composeV8CallTx`) needs the same filler. Those legs
+ * never read the key either, so it is a well-formed 32-byte placeholder rather
+ * than a parameter each fixture has to invent a value for.
+ */
+export const emptyZswapLocalState = (): ZswapLocalState => ({
+  coinPublicKey: 'ca'.repeat(32),
+  currentIndex: 0n,
+  inputs: [],
+  outputs: []
+});

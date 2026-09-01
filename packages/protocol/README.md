@@ -92,7 +92,7 @@ The engine exposes `downConvertForExecution`, `executeCircuit`, `executeConstruc
 
 `migratedV9ContractState` passed to `wrapKeepStateCall` must be the migrated v9 state **as read from chain**, which is not `rawContractState` above: it is where the deployed operation and its verifier key come from, and the key location the prototype carries is derived from that key. A blank or constructor-built state throws `ComposeFailedError` (code `MIDNIGHT_JS_P_COMPOSE_FAILED`) with `stage` naming which lookup failed and `version` naming the ledger era it was composing for.
 
-Circuits with Zswap coin effects are not supported on this leg yet: the transcript does not carry the post-call Zswap local state, so `executeCircuit` throws `Ledger8ZswapUnsupportedError` (code `MIDNIGHT_JS_P_LEDGER8_ZSWAP_UNSUPPORTED`) rather than composing a call that would drop the coin movements and be rejected on submission.
+Circuits with Zswap coin effects run on this leg like any other. The transcript carries `zswapLocalState` — the post-call Zswap local state, decoded into the runtime's public shape — which is what you turn into the transaction's segmented Zswap offer (`zswapStateToSegmentedOffer` in `@midnight-ntwrk/midnight-js-contracts`) and pass to `composeCallTx` as `guaranteedZswapOffer` / `fallibleZswapOffer`. Dropping it is what would leave you composing a transaction missing the coin movements the circuit recorded.
 
 A failure to load the chunk itself rejects with `Ledger8RuntimeMissingError` whose `subpath` is `'/engine'`; read `cause` for which module actually failed to resolve.
 
@@ -129,12 +129,13 @@ Every value going in or coming out is plain data — `Uint8Array`s and plain obj
 
 Because the methods are synchronous, all the awaiting happens once, at `loadLedgerEra`.
 
-### The two eras are NOT equivalent for coin-moving circuits
+### Where the two eras differ
 
-The same method names do not mean the same capabilities. The v8 arm refuses two things the v9 arm accepts:
+The same method names mostly mean the same capabilities. One thing the v8 arm refuses that the v9 arm accepts:
 
-- **A Zswap offer.** Pass `guaranteedZswapOffer` or `fallibleZswapOffer` to `composeCallTx` on the v8 era — or `guaranteedZswapOffer` to `composeDeployTx` — and it throws `ComposeOptionError` with `option: 'zswapOffer'`. The retained execution leg does not carry the post-call Zswap local state, so composing around the offer would silently drop the coin movements and produce an unbalanced transaction the node rejects on submission. **A circuit that moves coins cannot be composed on the v8 era at all.** `Ledger8ZswapUnsupportedError` is the separate, execution-leg failure for a circuit that actually produced coin effects; passing offer bytes to a composition is an option error, and the two are kept apart because their remediations differ.
-- **A call tree.** The v8 arm composes exactly one call. A `calls` list longer than one throws `ComposeOptionError` with `option: 'calls'` rather than composing the first entry and dropping the rest.
+- **A call tree.** The v8 arm composes exactly one call. A cross-contract call is a ledger-9-only feature a pre-fork contract cannot emit, so that era has no call tree to express: a `calls` list longer than one throws `ComposeOptionError` with `option: 'calls'` rather than composing the first entry and dropping the rest.
+
+**A Zswap offer is not one of them.** Both eras read `guaranteedZswapOffer` / `fallibleZswapOffer` and carry the resulting offer into the transaction; both throw `ComposeOptionError` with `option: 'zswapOffer'` for bytes their own decoder rejects, with the decoder's failure on `cause`. A coin-moving call composes on either era.
 
 The v8 arm also *requires* `verifierKeys` on `composeDeployTx`, where the v9 arm accepts its omission in one case. The retained deploy leg registers the compiled contract's keys onto the initial state itself, so it always needs the map; omitting it throws `ComposeOptionError` with `option: 'verifierKeys'`. The v9 arm allows the omission only for a state that ALREADY carries its keys, and checks rather than assumes it: a state still declaring a blank-keyed entry point throws the same `ComposeOptionError` with the same `option`. So the two arms agree on every input except one — a pre-keyed state, which deploys as-is on v9 and needs its keys supplied again on v8.
 
@@ -146,7 +147,7 @@ What is *not* asymmetric: a call's user-addressed unshielded payouts are aggrega
 | ----- | ---- | ----------- |
 | `StateDecodeFailedError` | `MIDNIGHT_JS_P_STATE_DECODE_FAILED` | A contract-state envelope could not be read by the era it was requested for — most often a state written by the other era |
 | `ComposeFailedError` | `MIDNIGHT_JS_P_COMPOSE_FAILED` | Something about a CALL or a DEPLOY could not be composed: an operation that is missing, unkeyed, or names a circuit the contract does not declare; an empty call list; a pre-call state the era cannot bridge; a supplied transcript with neither half; a public transcript or a set of call inputs the ledger itself rejected; or a claimed payout the transaction cannot settle (dust, or a shielded token type). `stage` is a closed union naming which of those it was — see its own docs for the full list; `version` names the era |
-| `ComposeOptionError` | `MIDNIGHT_JS_P_COMPOSE_OPTION_INVALID` | A transaction-wide OPTION cannot be used at all — an empty network id, an invalid ttl, a contract state whose envelope the era rejected, an offer the era cannot read or cannot carry, a missing verifier-key map, or a call list longer than the era can compose. `option` names the field; `version` names the era, and for `'zswapOffer'` it also changes the meaning — read both |
+| `ComposeOptionError` | `MIDNIGHT_JS_P_COMPOSE_OPTION_INVALID` | A transaction-wide OPTION cannot be used at all — an empty network id, an invalid ttl, a contract state whose envelope the era rejected, an offer the era's decoder rejected, a missing verifier-key map, or a call list longer than the era can compose. `option` names the field, `version` names the era |
 | `UnknownLedgerVersionError` | `MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION` | The requested era is not `'v8'` or `'v9'` |
 
 Each names the era it was raised for — `version` on the first three, `requestedVersion` on `UnknownLedgerVersionError`, which also takes no `cause`. None renders hex or a byte dump of its own, and the first three preserve the underlying runtime failure on `cause` where there was one.
