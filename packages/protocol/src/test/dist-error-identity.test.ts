@@ -68,8 +68,20 @@ const nonErrorBundles = [...bundlesBySubpath.entries()]
   .filter(([subpath]) => subpath !== ERRORS_SUBPATH)
   .map(([, bundle]) => bundle);
 
-const bundlesExist = allBundles.every((p) => existsSync(resolve(PKG_ROOT, p)));
-const contentOf = (path: string): string => readFileSync(resolve(PKG_ROOT, path), 'utf8');
+// Never skipped when a bundle is absent: a skip is reported as a pass, so the
+// gate would silently stop guarding. Every orchestrated run has the build
+// ahead of it — turbo's `test` task dependsOn `build`, and CI runs
+// `yarn build` before `yarn test` — so a missing bundle is a real failure. A
+// bare `vitest run` without a prior build fails too, saying how to fix it.
+const contentOf = (path: string): string => {
+  const absolute = resolve(PKG_ROOT, path);
+  if (!existsSync(absolute)) {
+    throw new Error(
+      `${path} is missing: this suite inspects the rollup output. Run "yarn build" first, or run "yarn turbo test", which builds before testing.`
+    );
+  }
+  return readFileSync(absolute, 'utf8');
+};
 
 const isErrorClass = (value: unknown): boolean =>
   typeof value === 'function' && Object.prototype.isPrototypeOf.call(Error, value);
@@ -78,10 +90,7 @@ const isErrorClass = (value: unknown): boolean =>
 const errorClassesOf = (namespace: object): Map<string, unknown> =>
   new Map(Object.entries(namespace).filter(([, value]) => isErrorClass(value)));
 
-// Skipped (not omitted) when dist/ is absent outside CI, so a run without a
-// prior build reports visible skips rather than silently vanishing. In CI a
-// missing build is itself a failure, so the gate must not be skippable there.
-describe.skipIf(!bundlesExist && !process.env.CI)('dist error-class identity gate', () => {
+describe('dist error-class identity gate', () => {
   it('ships a bundle for every exported subpath', () => {
     expect(bundlesBySubpath.has(ERRORS_SUBPATH)).toBe(true);
     expect(allBundles.filter((p) => !existsSync(resolve(PKG_ROOT, p)))).toEqual([]);
