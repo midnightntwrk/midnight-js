@@ -24,6 +24,7 @@ import { ComposeFailedError, PROTOCOL_ERROR_CODES } from '../errors';
 import type { DownConvertedState } from '../lib/v8/down-convert';
 import type { TranscriptPojo } from '../lib/v8/execute';
 import { wrapKeepStateCall } from '../lib/v9/wrap';
+import { emptyZswapLocalState } from './fixtures';
 
 const FIELD_ALIGNMENT: ocrt3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
 
@@ -42,7 +43,8 @@ const buildTranscript = (): TranscriptPojo => ({
   privateTranscriptOutputs: [],
   preContractState: buildState(0x01),
   postContractState: buildState(0x02),
-  privateStateAfter: {}
+  privateStateAfter: {},
+  zswapLocalState: emptyZswapLocalState()
 });
 
 // `ContractOperation.verifierKey`'s setter validates a `midnight:verifier-key[...]:`

@@ -20,7 +20,7 @@ import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
-import { readHexFixture } from './fixtures';
+import { emptyZswapLocalState, readHexFixture } from './fixtures';
 
 // The engine lives in its own rollup entry, loaded through the package's
 // `./engine` subpath — so it is a SECOND bundle, and everything it throws
@@ -64,7 +64,8 @@ const transcriptForUnregisteredCircuit = () => ({
   privateTranscriptOutputs: [],
   preContractState: downConvertedState(0x01),
   postContractState: downConvertedState(0x02),
-  privateStateAfter: {}
+  privateStateAfter: {},
+  zswapLocalState: emptyZswapLocalState()
 });
 
 // Never skipped when a bundle is absent: a skip is reported as a pass, so the

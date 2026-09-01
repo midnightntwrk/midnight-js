@@ -27,7 +27,6 @@ import {
   Ledger8InstanceMismatchError,
   Ledger8RuntimeInvalidError,
   Ledger8RuntimeMissingError,
-  Ledger8ZswapUnsupportedError,
   MerkleNotRehashedError,
   PROTOCOL_ERROR_CODES,
   StateDecodeFailedError,
@@ -61,7 +60,6 @@ describe('PROTOCOL_ERROR_CODES', () => {
       COMPOSE_FAILED: 'MIDNIGHT_JS_P_COMPOSE_FAILED',
       COMPOSE_OPTION_INVALID: 'MIDNIGHT_JS_P_COMPOSE_OPTION_INVALID',
       STATE_DECODE_FAILED: 'MIDNIGHT_JS_P_STATE_DECODE_FAILED',
-      LEDGER8_ZSWAP_UNSUPPORTED: 'MIDNIGHT_JS_P_LEDGER8_ZSWAP_UNSUPPORTED',
       UNKNOWN_LEDGER_VERSION: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION',
       LEDGER8_RUNTIME_INVALID: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_INVALID',
       UNKNOWN_LEDGER8_AXIS: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER8_AXIS'
@@ -563,17 +561,17 @@ describe('ComposeOptionError', () => {
     expect(new Set(messages).size).toBe(ALL_OPTIONS.length);
   });
 
-  // The one option whose diagnosis genuinely differs by era: v9 read the offer
-  // and rejected the bytes, v8 never reads one because it cannot carry the coin
-  // movements at all. A single message would send one era's caller to audit
-  // bytes that are fine.
-  it('diagnoses a refused Zswap offer differently on each era', () => {
+  // Both eras read the offer and report the same fault, so the message differs
+  // only in the era it names. It used to say something else entirely on v8 —
+  // "this call cannot be composed on this era at all" — which was a refusal of
+  // the whole capability, not a diagnosis of the bytes.
+  it('diagnoses unreadable Zswap offer bytes the same way on both eras', () => {
     const onV8 = new ComposeOptionError('v8', 'zswapOffer').message;
     const onV9 = new ComposeOptionError('v9', 'zswapOffer').message;
 
-    expect(onV8).not.toBe(onV9);
-    expect(onV8).toMatch(/cannot be composed on this era at all/i);
+    expect(onV8).toMatch(/could not be read/i);
     expect(onV9).toMatch(/could not be read/i);
+    expect(onV8).toBe(onV9.replaceAll('v9', 'v8'));
   });
 });
 
@@ -595,25 +593,6 @@ describe('StateDecodeFailedError', () => {
 
   it('never includes a hex or byte dump in its own message', () => {
     const error = new StateDecodeFailedError('v8', new Error('trailing bytes'));
-
-    expect(error.message).not.toMatch(/[0-9a-f]{16,}/i);
-  });
-});
-
-describe('Ledger8ZswapUnsupportedError', () => {
-  it('carries the LEDGER8_ZSWAP_UNSUPPORTED code and names the circuit that moved coins', () => {
-    const error = new Ledger8ZswapUnsupportedError('send');
-
-    expect(error).toBeInstanceOf(Error);
-    expect(error.name).toBe('Ledger8ZswapUnsupportedError');
-    expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_ZSWAP_UNSUPPORTED);
-    expect(error.circuitId).toBe('send');
-    expect(error.message).toContain('send');
-    expect(error.message).toMatch(/unbalanced/i);
-  });
-
-  it('never includes a hex or byte dump in its own message', () => {
-    const error = new Ledger8ZswapUnsupportedError('send');
 
     expect(error.message).not.toMatch(/[0-9a-f]{16,}/i);
   });

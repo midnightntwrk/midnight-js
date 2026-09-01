@@ -14,6 +14,7 @@
  */
 
 import { ComposeFailedError, ComposeOptionError, NO_CIRCUIT } from '../../errors';
+import type { UnprovenOffer } from '../../v8.js';
 import { assertComposeEnvelope } from '../shared/compose-options';
 import type { ComposeCallOptions, ComposeDeployOptions, DeployResultPojo } from '../shared/compose-types';
 import { composeV8CallTx } from './compose';
@@ -35,27 +36,27 @@ const readContractState = (raw: Uint8Array, v8: ProtocolV8): InstanceType<Protoc
 };
 
 /**
- * Refuses a Zswap offer on the retained era.
+ * Reads a serialized Zswap offer into the v8 era, reporting bytes this era
+ * cannot decode as {@link ComposeOptionError} — the same wrapping the v9 arm
+ * applies to the identical call (`./compose-v9.ts`). An absent offer is the
+ * normal shape of a call that moved no shielded coins, and stays absent.
  *
- * This era's execution leg builds its circuit context from a coin public key
- * alone and does not carry the post-call Zswap local state, so a coin-moving
- * call cannot be composed here at all. Accepting an offer and composing around
- * it would produce an unbalanced transaction that the node rejects on
- * submission, with nothing having reported a problem. The two eras are
- * therefore NOT interchangeable for coin-moving circuits, and this is the seam
- * where that shows.
- *
- * Raised as {@link ComposeOptionError} naming the offending option, not as
- * `Ledger8ZswapUnsupportedError`: no circuit ran here and none produced
- * anything, so the class whose message says a circuit produced Zswap effects
- * would be describing something that did not happen. That class stays on the
- * execution leg, where a circuit really did. Keeping them apart is what lets a
- * caller tell "my circuit moves coins, it cannot run on v8" from "I passed
- * offer bytes to a v8 composition".
+ * Both eras carry an offer. The retained era executes coin-moving circuits and
+ * hands their post-call Zswap local state back on the transcript
+ * (`../engine/execute.ts`), which is what a caller turns into the offer it
+ * passes here (`zswapStateToSegmentedOffer`,
+ * `packages/contracts/src/utils/zswap-utils.ts`). Refusing the offer on this
+ * era would take away the only way to attach those coin movements to the
+ * transaction that carries the call.
  */
-const refuseZswapOffer = (offers: readonly (Uint8Array | undefined)[]): void => {
-  if (offers.some((offer) => offer !== undefined)) {
-    throw new ComposeOptionError('v8', 'zswapOffer');
+const readZswapOffer = (raw: Uint8Array | undefined, v8: ProtocolV8): UnprovenOffer | undefined => {
+  if (raw === undefined) {
+    return undefined;
+  }
+  try {
+    return v8.ZswapOffer.deserialize('pre-proof', raw);
+  } catch (cause) {
+    throw new ComposeOptionError('v8', 'zswapOffer', cause);
   }
 };
 
@@ -63,28 +64,31 @@ const refuseZswapOffer = (offers: readonly (Uint8Array | undefined)[]): void => 
  * Maps the era-facade's call options onto the v8-native composition leg
  * (`./compose.ts`).
  *
- * Two shapes the facade allows are not expressible on this era, and both are
- * refused rather than silently narrowed:
- * - a call tree with more than one entry. This era's execution leg runs a
- *   single circuit and refuses one with coin effects, so it has no
- *   cross-contract call tree; composing only the first entry would drop the
- *   rest without a word.
- * - a Zswap offer — see {@link refuseZswapOffer}.
+ * One shape the facade allows is not expressible on this era and is refused
+ * rather than silently narrowed: a call tree with more than one entry. A
+ * cross-contract call is a ledger-9-only feature that a pre-fork contract
+ * cannot emit at all, so this era has no call tree to compose, and composing
+ * only the first entry would drop the rest without a word.
+ *
+ * A Zswap offer is NOT refused — see {@link readZswapOffer}.
  */
 export const composeEraV8CallTx = (options: ComposeCallOptions, v8: ProtocolV8): Uint8Array => {
   const { calls, networkId, ttl, guaranteedZswapOffer, fallibleZswapOffer } = options;
   // Checked here rather than left to the inner leg, so this arm refuses the
   // options in the SAME order the v9 arm does: envelope, then the call list,
   // then the offers, then the era's own limits, then the state. A caller
-  // handing both an empty network id and an offer this era cannot carry has one
-  // defect to fix per era, not a different one per era. The inner leg checks the
+  // handing both an empty network id and unreadable offer bytes has one defect
+  // to fix per era, not a different one per era. The inner leg checks the
   // envelope again; the check is idempotent, and leaving it there keeps
   // `composeV8CallTx` safe to call directly.
   assertComposeEnvelope(options, 'v8');
   if (calls.length === 0) {
     throw new ComposeFailedError('v8', 'call-empty', NO_CIRCUIT);
   }
-  refuseZswapOffer([guaranteedZswapOffer, fallibleZswapOffer]);
+  // Both offers are read before anything is composed, so a caller handed bad
+  // offer bytes learns that instead of paying for a full assembly first.
+  const guaranteedOffer = readZswapOffer(guaranteedZswapOffer, v8);
+  const fallibleOffer = readZswapOffer(fallibleZswapOffer, v8);
   if (calls.length > 1) {
     throw new ComposeOptionError('v8', 'calls');
   }
@@ -101,7 +105,9 @@ export const composeEraV8CallTx = (options: ComposeCallOptions, v8: ProtocolV8):
       output: call.output,
       communicationCommitmentRandomness: call.communicationCommitmentRandomness,
       networkId,
-      ttl
+      ttl,
+      guaranteedZswapOffer: guaranteedOffer,
+      fallibleZswapOffer: fallibleOffer
     },
     v8
   );
@@ -136,10 +142,13 @@ export const composeEraV8DeployTx = (options: ComposeDeployOptions, v8: Protocol
   const { contractState, verifierKeys, networkId, ttl, guaranteedZswapOffer } = options;
   // See `composeEraV8CallTx` — hoisted so both arms refuse the envelope first.
   assertComposeEnvelope(options, 'v8');
-  refuseZswapOffer([guaranteedZswapOffer]);
+  const guaranteedOffer = readZswapOffer(guaranteedZswapOffer, v8);
   if (verifierKeys === undefined) {
     throw new ComposeOptionError('v8', 'verifierKeys');
   }
 
-  return composeV8DeployTx({ contractState, verifierKeys, networkId, ttl }, v8);
+  return composeV8DeployTx(
+    { contractState, verifierKeys, networkId, ttl, guaranteedZswapOffer: guaranteedOffer },
+    v8
+  );
 };

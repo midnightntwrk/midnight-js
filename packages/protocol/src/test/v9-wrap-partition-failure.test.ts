@@ -22,6 +22,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { DownConvertedState } from '../lib/v8/down-convert';
 import type { TranscriptPojo } from '../lib/v8/execute';
+import { emptyZswapLocalState } from './fixtures';
 
 // A REGISTERED key, not a blank operation: assembleCallPrototype rejects a
 // key-less operation before it ever partitions a transcript (stage
@@ -44,7 +45,8 @@ const buildTranscript = (): TranscriptPojo => ({
   privateTranscriptOutputs: [],
   preContractState: buildState(0x01),
   postContractState: buildState(0x02),
-  privateStateAfter: {}
+  privateStateAfter: {},
+  zswapLocalState: emptyZswapLocalState()
 });
 
 // Lives in its own file so the mocked, poisoned `@midnightntwrk/ledger-v9`

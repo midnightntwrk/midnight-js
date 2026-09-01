@@ -15,6 +15,7 @@
 
 import type { AlignedValue } from '@midnightntwrk/ledger-v9';
 
+import type { UnprovenOffer } from '../../v8.js';
 import { assembleCallPrototype } from '../shared/assemble-call';
 import { assertComposeEnvelope } from '../shared/compose-options';
 import type { CallTranscriptSource } from '../shared/compose-types';
@@ -35,6 +36,12 @@ import type { ProtocolV8 } from './load';
  * only bytes and plain objects travel, so it can no longer be handed a
  * transcript holding a live pre-fork `ChargedState`.
  *
+ * The two Zswap offers are v8-native offer HANDLES, not bytes: this leg runs
+ * inside the retained era with the module already in hand, so the era arm that
+ * reads a caller's offer bytes (`../era/adapt-v8.ts`) hands the decoded offer
+ * straight over — exactly as it already does for `contractState`. Absent
+ * offers are the normal shape of a call that moved no shielded coins.
+ *
  * `networkId` and `ttl` carry the caller's policy decisions (which network,
  * how long the transaction lives), but their well-formedness is checked here
  * — see `assertComposeEnvelope` (`../shared/compose-options.ts`).
@@ -50,6 +57,8 @@ export interface ComposeV8CallOptions {
   readonly communicationCommitmentRandomness?: string;
   readonly networkId: string;
   readonly ttl: Date;
+  readonly guaranteedZswapOffer?: UnprovenOffer;
+  readonly fallibleZswapOffer?: UnprovenOffer;
 }
 
 /**
@@ -78,7 +87,7 @@ export interface ComposeV8CallOptions {
  * could verify.
  */
 export const composeV8CallTx = (options: ComposeV8CallOptions, v8: ProtocolV8): Uint8Array => {
-  const { contractAddress, contractState, networkId, ttl } = options;
+  const { contractAddress, contractState, networkId, ttl, guaranteedZswapOffer, fallibleZswapOffer } = options;
   assertComposeEnvelope(options, 'v8');
 
   const prototype = assembleCallPrototype(v8, {
@@ -121,5 +130,5 @@ export const composeV8CallTx = (options: ComposeV8CallOptions, v8: ProtocolV8): 
     intent.fallibleUnshieldedOffer = unshielded.fallible;
   }
 
-  return v8.Transaction.fromPartsRandomized(networkId, undefined, undefined, intent).serialize();
+  return v8.Transaction.fromPartsRandomized(networkId, guaranteedZswapOffer, fallibleZswapOffer, intent).serialize();
 };

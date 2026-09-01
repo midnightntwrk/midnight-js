@@ -14,6 +14,7 @@
  */
 
 import { ComposeFailedError, ComposeOptionError } from '../../errors';
+import type { UnprovenOffer } from '../../v8.js';
 import { assertComposeEnvelope } from '../shared/compose-options';
 import type { DeployResultPojo } from '../shared/compose-types';
 import { resolveVerifierKeyRegistrations } from '../shared/verifier-keys';
@@ -128,6 +129,12 @@ export interface ComposeV8DeployOptions {
   readonly verifierKeys: ReadonlyMap<string, Uint8Array>;
   readonly networkId: string;
   readonly ttl: Date;
+  /**
+   * A v8-native offer HANDLE, for the same reason `ComposeV8CallOptions`
+   * carries handles: the era arm has already read the caller's bytes with the
+   * module this leg is about to compose against.
+   */
+  readonly guaranteedZswapOffer?: UnprovenOffer;
 }
 
 /**
@@ -206,7 +213,7 @@ const registerVerifierKey = (
  * the one a caller stores and later dispatches calls against.
  */
 export const composeV8DeployTx = (options: ComposeV8DeployOptions, v8: ProtocolV8): DeployResultPojo => {
-  const { contractState, verifierKeys, networkId, ttl } = options;
+  const { contractState, verifierKeys, networkId, ttl, guaranteedZswapOffer } = options;
   assertComposeEnvelope(options, 'v8');
 
   const ledgerContractState = bridgeContractState(contractState, v8);
@@ -222,7 +229,7 @@ export const composeV8DeployTx = (options: ComposeV8DeployOptions, v8: ProtocolV
   const intent = v8.Intent.new(ttl).addDeploy(deploy);
 
   return {
-    transaction: v8.Transaction.fromParts(networkId, undefined, undefined, intent).serialize(),
+    transaction: v8.Transaction.fromParts(networkId, guaranteedZswapOffer, undefined, intent).serialize(),
     contractAddress: deploy.address,
     initialState: deploy.initialState.serialize()
   };

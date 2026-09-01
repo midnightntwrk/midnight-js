@@ -20,7 +20,7 @@ import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as LedgerV8 from '@midnightntwrk/ledger-v8';
 import { describe, expect, it, vi } from 'vitest';
 
-import { ComposeOptionError, Ledger8ZswapUnsupportedError, PROTOCOL_ERROR_CODES } from '../errors';
+import { ComposeOptionError, PROTOCOL_ERROR_CODES } from '../errors';
 import { loadLedgerEra } from '../lib/era/load-era';
 import type { ComposeCallEntry } from '../lib/shared/compose-types';
 import type { Ledger8ContractLike } from '../lib/v8/execute';
@@ -274,40 +274,66 @@ describe('the v8 era arm', () => {
     );
   });
 
-  // The retained execution leg does not carry the post-call Zswap local state,
-  // so a coin-moving call composed on this era would drop those movements and
-  // yield an unbalanced transaction. The two eras are therefore NOT
-  // interchangeable for coin-moving circuits, and this is where that shows.
-  it('refuses a Zswap offer rather than composing a transaction that drops it', async () => {
+  // Both eras carry a caller-supplied Zswap offer. The retained era executes
+  // coin-moving circuits (the transcript carries the post-call Zswap local
+  // state, see `engine/execute.ts`), so refusing the offer here would take away
+  // the only way to attach the coin movements those circuits recorded.
+  it('carries a supplied guaranteed and fallible Zswap offer into the transaction', async () => {
+    const era = await loadLedgerEra('v8');
+    const { entry } = await runIncrement();
+    const buildOffer = (): Uint8Array => {
+      const coin = LedgerV8.createShieldedCoinInfo(LedgerV8.sampleRawTokenType(), 100n);
+      const output = LedgerV8.ZswapOutput.new(coin, 0, LedgerV8.sampleCoinPublicKey(), LedgerV8.sampleEncryptionPublicKey());
+      return LedgerV8.ZswapOffer.fromOutput(output).serialize();
+    };
+
+    const bytes = era.composeCallTx({
+      calls: [entry],
+      networkId: NETWORK_ID,
+      ttl: new Date(Date.now() + 3_600_000),
+      guaranteedZswapOffer: buildOffer(),
+      fallibleZswapOffer: buildOffer()
+    });
+
+    const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', bytes);
+    expect(back.guaranteedOffer?.outputs).toHaveLength(1);
+    // A transaction carries ONE guaranteed offer but a fallible offer per
+    // segment, and `fromPartsRandomized` picks the segment, so the fallible
+    // side has to be read out of that map rather than indexed by a known id.
+    const fallibleOffers = [...(back.fallibleOffer?.values() ?? [])];
+    expect(fallibleOffers).toHaveLength(1);
+    expect(fallibleOffers[0].outputs).toHaveLength(1);
+  });
+
+  // Both offers are read, not just the guaranteed one: with only the guaranteed
+  // slot ever exercised, narrowing the read to it would pass the whole suite
+  // while silently dropping a fallible offer from the composed transaction.
+  it('refuses guaranteed Zswap offer bytes this era cannot read, preserving the decoder failure', async () => {
     const era = await loadLedgerEra('v8');
     const { entry } = await runIncrement();
 
-    const refuse = (): unknown =>
+    let caught: unknown;
+    try {
       era.composeCallTx({
         calls: [entry],
         networkId: NETWORK_ID,
         ttl: new Date(Date.now() + 3_600_000),
         guaranteedZswapOffer: new Uint8Array([1, 2, 3])
       });
+    } catch (error) {
+      caught = error;
+    }
 
-    expect(refuse).toThrowError(
-      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID, option: 'zswapOffer', version: 'v8' })
-    );
-    expect(refuse).toThrowError(ComposeOptionError);
-    // The class the EXECUTION leg raises when a circuit really did produce coin
-    // effects stays out of this path: nothing ran here, so a message saying a
-    // circuit produced Zswap outputs would describe something that did not
-    // happen, and the two remediations differ.
-    expect(refuse).not.toThrowError(Ledger8ZswapUnsupportedError);
+    expect(caught).toBeInstanceOf(ComposeOptionError);
+    expect(caught).toMatchObject({
+      code: PROTOCOL_ERROR_CODES.COMPOSE_OPTION_INVALID,
+      option: 'zswapOffer',
+      version: 'v8'
+    });
+    expect((caught as ComposeOptionError).cause).toBeInstanceOf(Error);
   });
 
-  // `refuseZswapOffer` tests the offers with `Array.prototype.some`, which
-  // short-circuits: with only the guaranteed offer ever set, the fallible slot
-  // was never evaluated with a defined value, and both branches of the
-  // predicate still covered. Narrowing the check to the guaranteed offer alone
-  // would have passed the whole suite while accepting an offer on an era that
-  // cannot carry coin movements.
-  it('refuses a fallible Zswap offer, not just a guaranteed one', async () => {
+  it('refuses fallible Zswap offer bytes this era cannot read', async () => {
     const era = await loadLedgerEra('v8');
     const { entry } = await runIncrement();
 
@@ -395,7 +421,32 @@ describe('the v8 era arm', () => {
     expect(caught).toMatchObject({ option: 'verifierKeys', version: 'v8' });
   });
 
-  it('refuses a deploy carrying a Zswap offer', async () => {
+  it('carries a supplied guaranteed Zswap offer into the deploy transaction', async () => {
+    const era = await loadLedgerEra('v8');
+    const engine = await loadLedger8Engine();
+    const contract = await loadCounterContract();
+    const constructorResult = engine.executeConstructor({
+      contract,
+      args: [],
+      privateState: {},
+      coinPk: SAMPLE_COIN_PUBLIC_KEY
+    });
+    const coin = LedgerV8.createShieldedCoinInfo(LedgerV8.sampleRawTokenType(), 100n);
+    const output = LedgerV8.ZswapOutput.new(coin, 0, LedgerV8.sampleCoinPublicKey(), LedgerV8.sampleEncryptionPublicKey());
+
+    const result = era.composeDeployTx({
+      contractState: constructorResult.contractState.serialize(),
+      verifierKeys: new Map([['increment', VERIFIER_KEY]]),
+      networkId: NETWORK_ID,
+      ttl: new Date(Date.now() + 3_600_000),
+      guaranteedZswapOffer: LedgerV8.ZswapOffer.fromOutput(output).serialize()
+    });
+
+    const back = LedgerV8.Transaction.deserialize('signature', 'pre-proof', 'pre-binding', result.transaction);
+    expect(back.guaranteedOffer?.outputs).toHaveLength(1);
+  });
+
+  it('refuses deploy Zswap offer bytes this era cannot read', async () => {
     const era = await loadLedgerEra('v8');
     const engine = await loadLedger8Engine();
     const contract = await loadCounterContract();

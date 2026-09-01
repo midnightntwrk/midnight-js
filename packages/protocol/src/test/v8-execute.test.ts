@@ -17,10 +17,14 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
-import type { ConstructorContext } from 'compact-runtime-ledger8';
+import {
+  type ConstructorContext,
+  decodeZswapLocalState,
+  type EncodedZswapLocalState,
+  type ZswapLocalState
+} from 'compact-runtime-ledger8';
 import { describe, expect, it, vi } from 'vitest';
 
-import { Ledger8ZswapUnsupportedError, PROTOCOL_ERROR_CODES } from '../errors';
 import type { DownConvertedState } from '../lib/v8/down-convert';
 import {
   executeCircuit,
@@ -29,7 +33,6 @@ import {
   type Ledger8CircuitResult,
   type Ledger8ContractLike,
   type Ledger8ExecutionRuntime,
-  type Ledger8ZswapLocalState,
   type TranscriptPojo
 } from '../lib/v8/execute';
 
@@ -40,7 +43,12 @@ const EMPTY_ALIGNED: ocrt3.AlignedValue = { value: [], alignment: [] };
 // reads it (increment() has no coin-related effects).
 const SAMPLE_COIN_PUBLIC_KEY = 'ca'.repeat(32);
 
-const emptyZswap = (): Ledger8ZswapLocalState => ({ inputs: [], outputs: [] });
+const emptyZswap = (): EncodedZswapLocalState => ({
+  coinPublicKey: { bytes: new Uint8Array(32).fill(0xca) },
+  currentIndex: 0n,
+  inputs: [],
+  outputs: []
+});
 
 const buildState = (byte: number): DownConvertedState => ({
   data: new ocrt3.ChargedState(
@@ -64,6 +72,7 @@ describe('executeCircuit (fake runtime — plumbing only, no WASM circuit execut
     const injectedCostModel = ocrt3.CostModel.initialCostModel();
 
     const runtime: Ledger8ExecutionRuntime = {
+      decodeZswapLocalState,
       createCircuitContext: (address, coinPk, contractState, privateState, gasLimit, costModel) => {
         capturedAddress = address;
         capturedCoinPk = coinPk;
@@ -128,6 +137,7 @@ describe('executeCircuit (fake runtime — plumbing only, no WASM circuit execut
       })
     );
     const runtime: Ledger8ExecutionRuntime = {
+      decodeZswapLocalState,
       createCircuitContext,
       CostModel: { initialCostModel: () => ocrt3.CostModel.initialCostModel() }
     };
@@ -150,6 +160,7 @@ describe('executeCircuit (fake runtime — plumbing only, no WASM circuit execut
     'treats the Object.prototype member %s as an unknown circuit rather than dispatching to it',
     (inheritedName) => {
       const runtime: Ledger8ExecutionRuntime = {
+        decodeZswapLocalState,
         createCircuitContext: () => ({
           currentQueryContext: { state: buildState(4).data },
           currentPrivateState: undefined,
@@ -178,6 +189,7 @@ describe('executeCircuit (fake runtime — plumbing only, no WASM circuit execut
 
   it('names the circuits the contract does carry, so a typo is diagnosable from the message alone', () => {
     const runtime: Ledger8ExecutionRuntime = {
+      decodeZswapLocalState,
       createCircuitContext: () => ({
         currentQueryContext: { state: buildState(5).data },
         currentPrivateState: undefined,
@@ -205,9 +217,35 @@ describe('executeCircuit (fake runtime — plumbing only, no WASM circuit execut
     expect(() => executeCircuit(options, runtime)).toThrow(/Available circuits: increment\./);
   });
 
-  it('rejects a circuit that produced Zswap coin movements instead of dropping them from the transcript', () => {
+  // A coin-moving circuit is composable on this era: the transcript carries the
+  // post-call Zswap local state, which is what a caller turns into the
+  // transaction's segmented offer (`zswapStateToSegmentedOffer` in
+  // packages/contracts). Dropping it here is what would leave a caller composing
+  // an unbalanced transaction, so the carry is pinned rather than the refusal.
+  it('carries the post-call Zswap local state of a coin-moving circuit onto the transcript', () => {
     const preState = buildState(0x01);
+    const coinPublicKeyBytes = new Uint8Array(32).fill(0xca);
+    const produced: EncodedZswapLocalState = {
+      coinPublicKey: { bytes: coinPublicKeyBytes },
+      currentIndex: 1n,
+      inputs: [],
+      outputs: [
+        {
+          coinInfo: { nonce: new Uint8Array(32).fill(0x11), color: new Uint8Array(32).fill(0x22), value: 42n },
+          recipient: {
+            is_left: true,
+            left: { bytes: coinPublicKeyBytes },
+            right: { bytes: new Uint8Array(32) }
+          }
+        }
+      ]
+    };
+    let decoded: unknown;
     const runtime: Ledger8ExecutionRuntime = {
+      decodeZswapLocalState: (state) => {
+        decoded = state;
+        return decodeZswapLocalState(state);
+      },
       createCircuitContext: (_address, _coinPk, contractState, privateState) => ({
         currentQueryContext: { state: contractState },
         currentPrivateState: privateState,
@@ -223,9 +261,7 @@ describe('executeCircuit (fake runtime — plumbing only, no WASM circuit execut
           context: {
             currentQueryContext: ctx.currentQueryContext,
             currentPrivateState: ctx.currentPrivateState,
-            // One produced coin is enough: the transcript cannot carry it, so
-            // composing this call would silently yield an unbalanced tx.
-            currentZswapLocalState: { inputs: [], outputs: [{}] }
+            currentZswapLocalState: produced
           }
         })
       }
@@ -240,17 +276,18 @@ describe('executeCircuit (fake runtime — plumbing only, no WASM circuit execut
       privateState: {}
     };
 
-    let caught: unknown;
-    try {
-      executeCircuit(options, runtime);
-    } catch (error) {
-      caught = error;
-    }
+    const transcript = executeCircuit(options, runtime);
 
-    expect(caught).toBeInstanceOf(Ledger8ZswapUnsupportedError);
-    const error = caught as Ledger8ZswapUnsupportedError;
-    expect(error.code).toBe(PROTOCOL_ERROR_CODES.LEDGER8_ZSWAP_UNSUPPORTED);
-    expect(error.circuitId).toBe('send');
+    // The POST-call state, not the one the context started with: taking the
+    // pre-call state would carry an empty offer for a call that moved coins.
+    expect(decoded).toBe(produced);
+    // Decoded, not the runtime's internal byte encoding: this is the shape the
+    // offer builder consumes, and it costs a caller the retained 0.16 glue to
+    // convert for itself.
+    const expected: ZswapLocalState = decodeZswapLocalState(produced);
+    expect(transcript.zswapLocalState).toEqual(expected);
+    expect(transcript.zswapLocalState.outputs).toHaveLength(1);
+    expect(transcript.zswapLocalState.outputs[0].coinInfo.value).toBe(42n);
   });
 });
 
@@ -318,8 +355,23 @@ describe('executeCircuit against the ported spike counter-016 fixture (real comp
 
     expect(ledger(preState.data.state).round).toBe(0n);
     expect(ledger(transcript.postContractState.data.state).round).toBe(1n);
+    // Against the REAL 0.16 glue, not a fake: increment moves no coins, so the
+    // carried state is empty — but it is the runtime's own decoded shape, which
+    // is what pins the injected decoder to the glue's own function.
+    expect(transcript.zswapLocalState).toEqual({
+      coinPublicKey: SAMPLE_COIN_PUBLIC_KEY,
+      currentIndex: 0n,
+      inputs: [],
+      outputs: []
+    });
 
-    const serializable: Omit<TranscriptPojo, 'preContractState' | 'postContractState' | 'privateStateAfter'> = {
+    // `zswapLocalState` is omitted alongside the state members: the committed
+    // golden pins the PROOF artifacts, and this circuit's coin movements are
+    // asserted directly above rather than through the fixture.
+    const serializable: Omit<
+      TranscriptPojo,
+      'preContractState' | 'postContractState' | 'privateStateAfter' | 'zswapLocalState'
+    > = {
       circuitId: transcript.circuitId,
       result: transcript.result,
       input: transcript.input,
