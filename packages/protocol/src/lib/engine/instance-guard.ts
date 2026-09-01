@@ -13,7 +13,35 @@
  * limitations under the License.
  */
 
-import { type Ledger8InstanceAxis, Ledger8InstanceMismatchError } from '../../errors';
+import {
+  type Ledger8InstanceAxis,
+  Ledger8InstanceMismatchError,
+  Ledger8RuntimeInvalidError,
+  UnknownLedger8AxisError
+} from '../../errors';
+
+/**
+ * The closed set of axes this guard will run on, as a lookup rather than a
+ * comparison chain.
+ *
+ * Kept here rather than exported from `errors.ts`, which is a build entry:
+ * nothing outside this module needs to test an axis, and the engine's whole
+ * design is to stay off the public surface. The duplication of the one literal
+ * is checked, not trusted — `satisfies` fails to compile if
+ * {@link Ledger8InstanceAxis} gains a member this table does not name.
+ *
+ * Null-prototype and frozen for the reason `ENVELOPE_DECODERS` is: the value
+ * indexing it is only type-checked for TypeScript callers, and a plain object
+ * literal answers `true` for every `Object.prototype` member.
+ */
+const KNOWN_AXES: Readonly<Record<Ledger8InstanceAxis, true>> = Object.freeze(
+  Object.assign(Object.create(null) as Record<Ledger8InstanceAxis, true>, {
+    'onchain-runtime-v3': true
+  } satisfies Record<Ledger8InstanceAxis, true>)
+);
+
+const isKnownAxis = (axis: unknown): axis is Ledger8InstanceAxis =>
+  typeof axis === 'string' && KNOWN_AXES[axis as Ledger8InstanceAxis] === true;
 
 /**
  * Fails fast on a dual-instantiation of a WASM package the down-convert
@@ -65,14 +93,30 @@ import { type Ledger8InstanceAxis, Ledger8InstanceMismatchError } from '../../er
  * `===` comparison runs, rather than compared directly: two nullish values
  * are always `===` to each other, so a caller that optional-chained a missing
  * export on both sides (or simply forgot to pass a probe) would otherwise
- * pass this fail-fast safety net by accident instead of failing it.
+ * pass this fail-fast safety net by accident instead of failing it. It is
+ * reported as {@link Ledger8RuntimeInvalidError}, not as a mismatch: a missing
+ * probe is a binding the caller did not hand over, which is the same fault the
+ * envelope seam reports under that code. Calling it a dual-instantiation would
+ * assert two physical copies exist and send the reader to `npm why` after a
+ * duplicate that is not there.
+ *
+ * `axis` is validated against the closed union before either probe is looked
+ * at, for the same reason `extractEncodedStateValue` validates `version`: it is
+ * only type-checked for TypeScript callers, and it selects the package names
+ * the remediation hint tells the reader to trace.
  *
  * An axis earns an assertion only when the package genuinely reaches this
  * process through two acquisition paths — see {@link Ledger8InstanceAxis} for
  * why `'onchain-runtime-v3'` is the only member today.
  */
 export const assertSharedLedger8Instance = (axis: Ledger8InstanceAxis, probeA: unknown, probeB: unknown): void => {
-  if (probeA == null || probeB == null || probeA !== probeB) {
+  if (!isKnownAxis(axis)) {
+    throw new UnknownLedger8AxisError(String(axis));
+  }
+  if (probeA == null || probeB == null) {
+    throw new Ledger8RuntimeInvalidError(`${axis} instance probe`);
+  }
+  if (probeA !== probeB) {
     throw new Ledger8InstanceMismatchError(axis);
   }
 };
