@@ -32,8 +32,8 @@ import {
 } from '@midnight-ntwrk/testkit-js';
 import path from 'path';
 
-import * as api from '@/counter-api';
-import type { SimpleProviders } from '@/types/simple-types';
+import * as api from '../src/counter-api';
+import type { SimpleCircuit, SimpleProviders } from '../src/types/simple-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `dapp_connector_proving_${new Date().toISOString()}.log`),
@@ -72,7 +72,7 @@ describe('DApp Connector Proving', () => {
    */
   test('should deploy and call contract using dapp-connector-proof-provider with wallet-delegated proving [@slow]', async () => {
     const contractConfiguration = new api.SimpleConfiguration();
-    const zkConfigProvider = new NodeZkConfigProvider<string>(contractConfiguration.zkConfigPath);
+    const zkConfigProvider = new NodeZkConfigProvider<SimpleCircuit>(contractConfiguration.zkConfigPath);
     const costModel = CostModel.initialCostModel();
 
     const proofProvider = await dappConnectorProofProvider(walletAdapter, zkConfigProvider, costModel);

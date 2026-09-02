@@ -92,7 +92,7 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
   assertDefined(
     ContractExecutable.make(options.compiledContract)
       .getProvableCircuitIds()
-      .find((circuitId) => circuitId as unknown as PCK === options.circuitId),
+      .find((circuitId) => circuitId as unknown as PCK === options.circuitId), // eslint-disable-line no-restricted-syntax
     `Circuit '${options.circuitId}' is undefined`
   );
 
@@ -126,9 +126,9 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
       : { ...baseCircuitContext, stateProvider: calleeResolver.stateProvider, parentBlockHash: calleeResolver.blockHash };
 
   const exitResult = await contractRuntime.runPromiseExit(contractExec.circuit(
-    ProvableCircuitId<C>(options.circuitId as any), // eslint-disable-line @typescript-eslint/no-explicit-any
+    ProvableCircuitId<C>(options.circuitId as any), // eslint-disable-line @typescript-eslint/no-explicit-any, no-restricted-syntax
     circuitContext,
-    ...args as any // eslint-disable-line @typescript-eslint/no-explicit-any
+    ...args as any // eslint-disable-line @typescript-eslint/no-explicit-any, no-restricted-syntax
   ));
 
   try {
@@ -157,7 +157,7 @@ export async function createUnprovenCallTxFromInitialStates<C extends Contract.A
       private: {
         input: rootCall.private.input,
         output: rootCall.private.output,
-        result: result as unknown as Contract.CircuitReturnType<C, PCK>,
+        result: result as unknown as Contract.CircuitReturnType<C, PCK>, // eslint-disable-line no-restricted-syntax
         nextPrivateState: privateState,
         nextZswapLocalState: zswapLocalState,
         privateTranscriptOutputs: rootCall.private.privateTranscriptOutputs,
@@ -381,7 +381,7 @@ export async function createUnprovenCallTx<C extends Contract.Any, PCK extends C
   assertDefined(
     ContractExecutable.make(options.compiledContract)
       .getProvableCircuitIds()
-      .find((a) => a as unknown as PCK === options.circuitId),
+      .find((a) => a as unknown as PCK === options.circuitId), // eslint-disable-line no-restricted-syntax
     `Circuit '${options.circuitId}' is undefined`
   );
 

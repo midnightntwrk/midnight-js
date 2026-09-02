@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -14,7 +14,7 @@ Options for use when creating scoped transactions.
 
 > `readonly` `optional` **additionalCoinEncPublicKeyMappings?**: `ReadonlyMap`\<`string`, `string`\>
 
-An optional mapping of CoinPublicKey to EncPublicKey that can be used to resolve encryption
+An optional mapping of [CoinPublicKey](../../midnight-js-protocol/ledger/type-aliases/CoinPublicKey.md) to [EncPublicKey](../../midnight-js-protocol/ledger/type-aliases/EncPublicKey.md) that can be used to resolve encryption
 keys for coins created during circuit execution.
 
 ***

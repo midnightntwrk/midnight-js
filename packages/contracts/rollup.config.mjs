@@ -1,4 +1,9 @@
 import { createRollupConfig } from '../../build-tools/rollup.config.factory.mjs';
 import packageJson from './package.json' with { type: 'json' };
 
-export default createRollupConfig(packageJson);
+export default createRollupConfig(packageJson, {
+  define: {
+    // eslint-disable-next-line no-undef
+    __DEBUG__: JSON.stringify(process.env.CI !== 'true')
+  }
+});

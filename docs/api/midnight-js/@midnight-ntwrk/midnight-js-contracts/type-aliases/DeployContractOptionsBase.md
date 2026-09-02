@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -17,15 +17,15 @@ in the event that `signingKey` is undefined.
 
 ### additionalCoinEncPublicKeyMappings?
 
-> `readonly` `optional` **additionalCoinEncPublicKeyMappings?**: `ReadonlyMap`\<`CoinPublicKey`, `EncPublicKey`\>
+> `readonly` `optional` **additionalCoinEncPublicKeyMappings?**: `ReadonlyMap`\<[`CoinPublicKey`](../../midnight-js-protocol/ledger/type-aliases/CoinPublicKey.md), [`EncPublicKey`](../../midnight-js-protocol/ledger/type-aliases/EncPublicKey.md)\>
 
-An optional mapping of CoinPublicKey to EncPublicKey that can be used to resolve encryption
+An optional mapping of [CoinPublicKey](../../midnight-js-protocol/ledger/type-aliases/CoinPublicKey.md) to [EncPublicKey](../../midnight-js-protocol/ledger/type-aliases/EncPublicKey.md) that can be used to resolve encryption
 keys for coins created in the contract constructor. This is useful in cases where the constructor creates
 outputs to addresses that don't belong to the current user.
 
 ### signingKey?
 
-> `readonly` `optional` **signingKey?**: `SigningKey`
+> `readonly` `optional` **signingKey?**: [`SigningKey`](../../midnight-js-protocol/onchain-runtime/type-aliases/SigningKey.md)
 
 The signing key to add as the to-be-deployed contract's maintenance authority.
 If undefined, a new signing key is sampled and used as the CMA then stored
@@ -37,4 +37,4 @@ useful when you want to use the same CMA for two different contracts.
 
 ### C
 
-`C` *extends* `Contract.Any`
+`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -68,7 +68,7 @@ Resolves the ZK artifacts for a structured contract key.
 
 ##### location
 
-`ContractKeyLocation`
+[`ContractKeyLocation`](../../midnight-js/types/interfaces/ContractKeyLocation.md)
 
 The contract address, circuit, and deployed verifier key hash to resolve.
 

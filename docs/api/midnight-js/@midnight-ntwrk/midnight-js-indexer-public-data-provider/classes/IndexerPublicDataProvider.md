@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -6,9 +6,12 @@
 
 # Class: IndexerPublicDataProvider
 
+Interface for a public data service. This service retrieves public data from the blockchain.
+TODO: Add timeouts or retry limits to 'watchFor' queries.
+
 ## Implements
 
-- [`PublicDataProvider`](#)
+- [`PublicDataProvider`](../../midnight-js/types/interfaces/PublicDataProvider.md)
 
 ## Constructors
 
@@ -34,40 +37,40 @@
 
 ### contractEventsObservable()
 
-> **contractEventsObservable**(`filter`, `opts?`): `Observable`\<`ContractEvent`\>
+> **contractEventsObservable**(`filter`, `opts?`): `Observable`\<[`ContractEvent`](../../midnight-js/types/type-aliases/ContractEvent.md)\>
 
 Streams contract events for `filter.contractAddress`, replaying from
 `opts.startAt` then continuing live. Request building and validation are
 delegated to buildSubscriptionVariables, which throws
 **synchronously** on an invalid filter (mirroring the other observable
-methods). See the PublicDataProvider.contractEventsObservable
+methods). See the [PublicDataProvider.contractEventsObservable](../../midnight-js/types/interfaces/PublicDataProvider.md#contracteventsobservable)
 contract for cursor, completion, and at-least-once semantics.
 
 #### Parameters
 
 ##### filter
 
-`ContractEventSubscriptionFilter`
+[`ContractEventSubscriptionFilter`](../../midnight-js/types/interfaces/ContractEventSubscriptionFilter.md)
 
 ##### opts?
 
 ###### startAt?
 
-`ContractEventCursor`
+[`ContractEventCursor`](../../midnight-js/types/type-aliases/ContractEventCursor.md)
 
 #### Returns
 
-`Observable`\<`ContractEvent`\>
+`Observable`\<[`ContractEvent`](../../midnight-js/types/type-aliases/ContractEvent.md)\>
 
 #### Implementation of
 
-`PublicDataProvider.contractEventsObservable`
+[`PublicDataProvider`](../../midnight-js/types/interfaces/PublicDataProvider.md).[`contractEventsObservable`](../../midnight-js/types/interfaces/PublicDataProvider.md#contracteventsobservable)
 
 ***
 
 ### contractStateObservable()
 
-> **contractStateObservable**(`contractAddress`, `config?`): `Observable`\<`ContractState`\>
+> **contractStateObservable**(`contractAddress`, `config?`): `Observable`\<[`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)\>
 
 Creates a stream of contract states for `contractAddress`.
 
@@ -106,17 +109,17 @@ The address of the contract of interest.
 
 ##### config?
 
-`ContractStateObservableConfig` = `...`
+[`ContractStateObservableConfig`](../../midnight-js/types/type-aliases/ContractStateObservableConfig.md) = `...`
 
 The configuration of the stream. Defaults to `latest`.
 
 #### Returns
 
-`Observable`\<`ContractState`\>
+`Observable`\<[`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)\>
 
 #### Implementation of
 
-`PublicDataProvider.contractStateObservable`
+[`PublicDataProvider`](../../midnight-js/types/interfaces/PublicDataProvider.md).[`contractStateObservable`](../../midnight-js/types/interfaces/PublicDataProvider.md#contractstateobservable)
 
 ***
 
@@ -136,7 +139,7 @@ repeat/concurrent/rejection-replay semantics.
 
 ### queryBlock()
 
-> **queryBlock**(`config?`): `Promise`\<`BlockInfo` \| `null`\>
+> **queryBlock**(`config?`): `Promise`\<[`BlockInfo`](../../midnight-js/types/type-aliases/BlockInfo.md) \| `null`\>
 
 Retrieves a block. If no block hash or block height is provided, the latest block is returned.
 Immediately returns null if no matching block is found.
@@ -145,24 +148,24 @@ Immediately returns null if no matching block is found.
 
 ##### config?
 
-`BlockHeightConfig` \| `BlockHashConfig`
+[`BlockHeightConfig`](../../midnight-js/types/type-aliases/BlockHeightConfig.md) \| [`BlockHashConfig`](../../midnight-js/types/type-aliases/BlockHashConfig.md)
 
 The configuration of the query identifying the block of interest.
               If `undefined` returns the latest block.
 
 #### Returns
 
-`Promise`\<`BlockInfo` \| `null`\>
+`Promise`\<[`BlockInfo`](../../midnight-js/types/type-aliases/BlockInfo.md) \| `null`\>
 
 #### Implementation of
 
-`PublicDataProvider.queryBlock`
+[`PublicDataProvider`](../../midnight-js/types/interfaces/PublicDataProvider.md).[`queryBlock`](../../midnight-js/types/interfaces/PublicDataProvider.md#queryblock)
 
 ***
 
 ### queryContractEvents()
 
-> **queryContractEvents**(`filter`, `page?`): `Promise`\<`ContractEvent`[]\>
+> **queryContractEvents**(`filter`, `page?`): `Promise`\<[`ContractEvent`](../../midnight-js/types/type-aliases/ContractEvent.md)[]\>
 
 Queries contract events for `filter.contractAddress`. Request building and
 validation are delegated to buildQueryVariables, which throws
@@ -178,25 +181,25 @@ empty array always means "no matching events", never a swallowed error.
 
 ##### filter
 
-`ContractEventQueryFilter`
+[`ContractEventQueryFilter`](../../midnight-js/types/interfaces/ContractEventQueryFilter.md)
 
 ##### page?
 
-`ContractEventsPage`
+[`ContractEventsPage`](../../midnight-js/types/interfaces/ContractEventsPage.md)
 
 #### Returns
 
-`Promise`\<`ContractEvent`[]\>
+`Promise`\<[`ContractEvent`](../../midnight-js/types/type-aliases/ContractEvent.md)[]\>
 
 #### Implementation of
 
-`PublicDataProvider.queryContractEvents`
+[`PublicDataProvider`](../../midnight-js/types/interfaces/PublicDataProvider.md).[`queryContractEvents`](../../midnight-js/types/interfaces/PublicDataProvider.md#querycontractevents)
 
 ***
 
 ### queryContractState()
 
-> **queryContractState**(`address`, `config?`): `Promise`\<`ContractState` \| `null`\>
+> **queryContractState**(`address`, `config?`): `Promise`\<[`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md) \| `null`\>
 
 Retrieves the on-chain state of a contract. If no block hash or block height are provided, the
 contract state at the address in the latest block is returned.
@@ -208,26 +211,28 @@ Immediately returns null if no matching data is found.
 
 `string`
 
+The address of the contract of interest.
+
 ##### config?
 
-`BlockHeightConfig` \| `BlockHashConfig`
+[`BlockHeightConfig`](../../midnight-js/types/type-aliases/BlockHeightConfig.md) \| [`BlockHashConfig`](../../midnight-js/types/type-aliases/BlockHashConfig.md)
 
 The configuration of the query.
               If `undefined` returns the latest states.
 
 #### Returns
 
-`Promise`\<`ContractState` \| `null`\>
+`Promise`\<[`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md) \| `null`\>
 
 #### Implementation of
 
-`PublicDataProvider.queryContractState`
+[`PublicDataProvider`](../../midnight-js/types/interfaces/PublicDataProvider.md).[`queryContractState`](../../midnight-js/types/interfaces/PublicDataProvider.md#querycontractstate)
 
 ***
 
 ### queryDeployContractState()
 
-> **queryDeployContractState**(`contractAddress`): `Promise`\<`ContractState` \| `null`\>
+> **queryDeployContractState**(`contractAddress`): `Promise`\<[`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md) \| `null`\>
 
 Retrieves the contract state included in the deployment of the contract at the given contract address.
 Immediately returns null if no matching data is found.
@@ -242,17 +247,17 @@ The address of the contract of interest.
 
 #### Returns
 
-`Promise`\<`ContractState` \| `null`\>
+`Promise`\<[`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md) \| `null`\>
 
 #### Implementation of
 
-`PublicDataProvider.queryDeployContractState`
+[`PublicDataProvider`](../../midnight-js/types/interfaces/PublicDataProvider.md).[`queryDeployContractState`](../../midnight-js/types/interfaces/PublicDataProvider.md#querydeploycontractstate)
 
 ***
 
 ### queryUnshieldedBalances()
 
-> **queryUnshieldedBalances**(`address`, `config?`): `Promise`\<`UnshieldedBalances` \| `null`\>
+> **queryUnshieldedBalances**(`address`, `config?`): `Promise`\<[`UnshieldedBalances`](../../midnight-js/types/type-aliases/UnshieldedBalances.md) \| `null`\>
 
 Retrieves the unshielded balances associated with a specific contract address.
 
@@ -262,26 +267,28 @@ Retrieves the unshielded balances associated with a specific contract address.
 
 `string`
 
+The address of the contract of interest.
+
 ##### config?
 
-`BlockHeightConfig` \| `BlockHashConfig`
+[`BlockHeightConfig`](../../midnight-js/types/type-aliases/BlockHeightConfig.md) \| [`BlockHashConfig`](../../midnight-js/types/type-aliases/BlockHashConfig.md)
 
 The configuration of the query.
               If `undefined` returns the latest states.
 
 #### Returns
 
-`Promise`\<`UnshieldedBalances` \| `null`\>
+`Promise`\<[`UnshieldedBalances`](../../midnight-js/types/type-aliases/UnshieldedBalances.md) \| `null`\>
 
 #### Implementation of
 
-`PublicDataProvider.queryUnshieldedBalances`
+[`PublicDataProvider`](../../midnight-js/types/interfaces/PublicDataProvider.md).[`queryUnshieldedBalances`](../../midnight-js/types/interfaces/PublicDataProvider.md#queryunshieldedbalances)
 
 ***
 
 ### queryZSwapAndContractState()
 
-> **queryZSwapAndContractState**(`address`, `config?`): `Promise`\<\[`ZswapChainState`, `ContractState`, `LedgerParameters`\] \| `null`\>
+> **queryZSwapAndContractState**(`address`, `config?`): `Promise`\<\[[`ZswapChainState`](../../midnight-js-protocol/ledger/classes/ZswapChainState.md), [`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md), [`LedgerParameters`](../../midnight-js-protocol/ledger/classes/LedgerParameters.md)\] \| `null`\>
 
 Retrieves the zswap chain state (token balances), the contract state of the contract at the
 given address, and the ledger parameters in effect on the associated block. Both states are
@@ -294,26 +301,28 @@ Immediately returns null if no matching data is found.
 
 `string`
 
+The address of the contract of interest.
+
 ##### config?
 
-`BlockHeightConfig` \| `BlockHashConfig`
+[`BlockHeightConfig`](../../midnight-js/types/type-aliases/BlockHeightConfig.md) \| [`BlockHashConfig`](../../midnight-js/types/type-aliases/BlockHashConfig.md)
 
 The configuration of the query.
               If `undefined` returns the latest states.
 
 #### Returns
 
-`Promise`\<\[`ZswapChainState`, `ContractState`, `LedgerParameters`\] \| `null`\>
+`Promise`\<\[[`ZswapChainState`](../../midnight-js-protocol/ledger/classes/ZswapChainState.md), [`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md), [`LedgerParameters`](../../midnight-js-protocol/ledger/classes/LedgerParameters.md)\] \| `null`\>
 
 #### Implementation of
 
-`PublicDataProvider.queryZSwapAndContractState`
+[`PublicDataProvider`](../../midnight-js/types/interfaces/PublicDataProvider.md).[`queryZSwapAndContractState`](../../midnight-js/types/interfaces/PublicDataProvider.md#queryzswapandcontractstate)
 
 ***
 
 ### unshieldedBalancesObservable()
 
-> **unshieldedBalancesObservable**(`contractAddress`, `config?`): `Observable`\<`UnshieldedBalances`\>
+> **unshieldedBalancesObservable**(`contractAddress`, `config?`): `Observable`\<[`UnshieldedBalances`](../../midnight-js/types/type-aliases/UnshieldedBalances.md)\>
 
 Creates a stream of unshielded balances for `contractAddress`.
 
@@ -341,23 +350,23 @@ The address of the contract of interest.
 
 ##### config?
 
-`ContractStateObservableConfig` = `...`
+[`ContractStateObservableConfig`](../../midnight-js/types/type-aliases/ContractStateObservableConfig.md) = `...`
 
 The configuration of the stream. Defaults to `latest`.
 
 #### Returns
 
-`Observable`\<`UnshieldedBalances`\>
+`Observable`\<[`UnshieldedBalances`](../../midnight-js/types/type-aliases/UnshieldedBalances.md)\>
 
 #### Implementation of
 
-`PublicDataProvider.unshieldedBalancesObservable`
+[`PublicDataProvider`](../../midnight-js/types/interfaces/PublicDataProvider.md).[`unshieldedBalancesObservable`](../../midnight-js/types/interfaces/PublicDataProvider.md#unshieldedbalancesobservable)
 
 ***
 
 ### watchForContractState()
 
-> **watchForContractState**(`contractAddress`): `Promise`\<`ContractState`\>
+> **watchForContractState**(`contractAddress`): `Promise`\<[`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)\>
 
 Retrieves the contract state of the contract with the given address.
 Waits indefinitely for matching data to appear.
@@ -372,17 +381,17 @@ The address of the contract of interest.
 
 #### Returns
 
-`Promise`\<`ContractState`\>
+`Promise`\<[`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)\>
 
 #### Implementation of
 
-`PublicDataProvider.watchForContractState`
+[`PublicDataProvider`](../../midnight-js/types/interfaces/PublicDataProvider.md).[`watchForContractState`](../../midnight-js/types/interfaces/PublicDataProvider.md#watchforcontractstate)
 
 ***
 
 ### watchForDeployTxData()
 
-> **watchForDeployTxData**(`contractAddress`): `Promise`\<`FinalizedTxData`\>
+> **watchForDeployTxData**(`contractAddress`): `Promise`\<[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md)\>
 
 Retrieves data of the deployment transaction for the contract at the given contract address.
 
@@ -402,20 +411,20 @@ The address of the contract of interest.
 
 #### Returns
 
-`Promise`\<`FinalizedTxData`\>
+`Promise`\<[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md)\>
 
 A promise that resolves with finalized transaction data when the deployment appears on-chain.
          The promise never rejects due to timeout.
 
 #### Implementation of
 
-`PublicDataProvider.watchForDeployTxData`
+[`PublicDataProvider`](../../midnight-js/types/interfaces/PublicDataProvider.md).[`watchForDeployTxData`](../../midnight-js/types/interfaces/PublicDataProvider.md#watchfordeploytxdata)
 
 ***
 
 ### watchForTxData()
 
-> **watchForTxData**(`txId`): `Promise`\<`FinalizedTxData`\>
+> **watchForTxData**(`txId`): `Promise`\<[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md)\>
 
 Retrieves data of the transaction containing the call or deployment with the given identifier.
 
@@ -440,20 +449,20 @@ The identifier of the call or deployment of interest.
 
 #### Returns
 
-`Promise`\<`FinalizedTxData`\>
+`Promise`\<[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md)\>
 
 A promise that resolves with finalized transaction data when the transaction appears on-chain.
          The promise never rejects due to timeout.
 
 #### Implementation of
 
-`PublicDataProvider.watchForTxData`
+[`PublicDataProvider`](../../midnight-js/types/interfaces/PublicDataProvider.md).[`watchForTxData`](../../midnight-js/types/interfaces/PublicDataProvider.md#watchfortxdata)
 
 ***
 
 ### watchForUnshieldedBalances()
 
-> **watchForUnshieldedBalances**(`contractAddress`): `Promise`\<`UnshieldedBalances`\>
+> **watchForUnshieldedBalances**(`contractAddress`): `Promise`\<[`UnshieldedBalances`](../../midnight-js/types/type-aliases/UnshieldedBalances.md)\>
 
 Monitors for any unshielded balances associated with a specific contract address.
 
@@ -467,10 +476,10 @@ The address of the contract to monitor for unshielded balances.
 
 #### Returns
 
-`Promise`\<`UnshieldedBalances`\>
+`Promise`\<[`UnshieldedBalances`](../../midnight-js/types/type-aliases/UnshieldedBalances.md)\>
 
 A promise that resolves to the detected unshielded balances.
 
 #### Implementation of
 
-`PublicDataProvider.watchForUnshieldedBalances`
+[`PublicDataProvider`](../../midnight-js/types/interfaces/PublicDataProvider.md).[`watchForUnshieldedBalances`](../../midnight-js/types/interfaces/PublicDataProvider.md#watchforunshieldedbalances)

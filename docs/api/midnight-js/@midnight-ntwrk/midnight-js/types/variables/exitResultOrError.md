@@ -1,0 +1,38 @@
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [types](../README.md) / exitResultOrError
+
+# Variable: exitResultOrError
+
+> `const` **exitResultOrError**: \<`A`, `E`\>(`exit`) => `A`
+
+Defined in: packages/types/dist/index.d.ts:334
+
+Unwraps an Effect `Exit` instance, returning its value if it is successful, or throwing the error contained
+within it.
+
+## Type Parameters
+
+### A
+
+`A`
+
+### E
+
+`E`
+
+## Parameters
+
+### exit
+
+`Exit.Exit`\<`A`, `E`\>
+
+The source Effect `Exit` instance.
+
+## Returns
+
+`A`
+
+The value from `exit` if it is successful, otherwise throws the error contained within it.

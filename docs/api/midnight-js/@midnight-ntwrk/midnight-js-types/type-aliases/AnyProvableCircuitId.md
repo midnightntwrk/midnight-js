@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -6,4 +6,4 @@
 
 # Type Alias: AnyProvableCircuitId
 
-> **AnyProvableCircuitId** = `Contract.ProvableCircuitId`\<`Contract.Any`\>
+> **AnyProvableCircuitId** = [`ProvableCircuitId`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<[`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)\>

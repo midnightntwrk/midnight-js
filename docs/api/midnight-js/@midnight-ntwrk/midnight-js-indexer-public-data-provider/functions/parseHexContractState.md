@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Function: parseHexContractState()
 
-> **parseHexContractState**(`s`): `ContractState`
+> **parseHexContractState**(`s`): [`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)
 
 Adapters that take hex-encoded indexer payloads, decode to bytes, and
 dispatch to the typed deserialization wrappers from `@midnight-ntwrk/midnight-js-utils`.
@@ -21,4 +21,4 @@ regression-testable. Exported for tests; not part of the public package API.
 
 ## Returns
 
-`ContractState`
+[`ContractState`](../../midnight-js-protocol/onchain-runtime/classes/ContractState.md)

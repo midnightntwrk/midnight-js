@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -12,11 +12,11 @@ Encapsulates the context for managing a scoped contract transaction.
 
 ### C
 
-`C` *extends* `Contract.Any`
+`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
 
 ### PCK
 
-`PCK` *extends* `Contract.ProvableCircuitId`\<`C`\> = `Contract.ProvableCircuitId`\<`C`\>
+`PCK` *extends* [`ProvableCircuitId`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<`C`\> = [`ProvableCircuitId`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<`C`\>
 
 ## Properties
 
@@ -28,7 +28,7 @@ Encapsulates the context for managing a scoped contract transaction.
 
 ##### states
 
-[`PublicContractStates`](PublicContractStates.md) \| [`ContractStates`](ContractStates.md)\<`PrivateState`\<`C`\>\>
+[`PublicContractStates`](PublicContractStates.md) \| [`ContractStates`](ContractStates.md)\<[`PrivateState`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/PrivateState.md)\<`C`\>\>
 
 ##### identity
 
@@ -46,7 +46,7 @@ Encapsulates the context for managing a scoped contract transaction.
 
 ### \[GetCurrentStatesForIdentity\]
 
-> `readonly` **\[GetCurrentStatesForIdentity\]**: (`identity`) => `PinnedContractStates`\<`PrivateState`\<`C`\>\> \| `undefined`
+> `readonly` **\[GetCurrentStatesForIdentity\]**: (`identity`) => `PinnedContractStates`\<[`PrivateState`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/PrivateState.md)\<`C`\>\> \| `undefined`
 
 #### Parameters
 
@@ -56,7 +56,7 @@ Encapsulates the context for managing a scoped contract transaction.
 
 #### Returns
 
-`PinnedContractStates`\<`PrivateState`\<`C`\>\> \| `undefined`
+`PinnedContractStates`\<[`PrivateState`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/PrivateState.md)\<`C`\>\> \| `undefined`
 
 ***
 
@@ -104,26 +104,26 @@ Encapsulates the context for managing a scoped contract transaction.
 
 > **getAdditionalMappings**(): `ReadonlyMap`\<`string`, `string`\> \| `undefined`
 
-Gets the additional scoped CoinPublicKey to EncPublicKey mappings.
+Gets the additional scoped [CoinPublicKey](../../midnight-js-protocol/ledger/type-aliases/CoinPublicKey.md) to [EncPublicKey](../../midnight-js-protocol/ledger/type-aliases/EncPublicKey.md) mappings.
 
 #### Returns
 
 `ReadonlyMap`\<`string`, `string`\> \| `undefined`
 
-A `ReadonlyMap`<CoinPublicKey, EncPublicKey> instance, or `undefined` if no additional
+A `ReadonlyMap`<[CoinPublicKey](../../midnight-js-protocol/ledger/type-aliases/CoinPublicKey.md), [EncPublicKey](../../midnight-js-protocol/ledger/type-aliases/EncPublicKey.md)> instance, or `undefined` if no additional
 mappings were specified for the current transaction context.
 
 ***
 
 ### getCurrentStates()
 
-> **getCurrentStates**(): [`PublicContractStates`](PublicContractStates.md) \| [`ContractStates`](ContractStates.md)\<`PrivateState`\<`C`\>\> \| `undefined`
+> **getCurrentStates**(): [`PublicContractStates`](PublicContractStates.md) \| [`ContractStates`](ContractStates.md)\<[`PrivateState`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/PrivateState.md)\<`C`\>\> \| `undefined`
 
 Gets the current cached contract states within the transaction context.
 
 #### Returns
 
-[`PublicContractStates`](PublicContractStates.md) \| [`ContractStates`](ContractStates.md)\<`PrivateState`\<`C`\>\> \| `undefined`
+[`PublicContractStates`](PublicContractStates.md) \| [`ContractStates`](ContractStates.md)\<[`PrivateState`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/PrivateState.md)\<`C`\>\> \| `undefined`
 
 A cached [ContractStates](ContractStates.md) instance, or `undefined` if circuit calls are yet to be made.
 

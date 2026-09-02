@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -22,7 +22,7 @@ An error indicating that a verifier key insertion transaction failed.
 
 ##### finalizedTxData
 
-`FinalizedTxData`
+[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md)
 
 #### Returns
 
@@ -50,7 +50,7 @@ The name of the circuit that was called to create the call
 
 ### finalizedTxData
 
-> `readonly` **finalizedTxData**: `FinalizedTxData`
+> `readonly` **finalizedTxData**: [`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md)
 
 The finalization data of the transaction that failed.
 

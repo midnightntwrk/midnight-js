@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Function: getAllContractEvents()
 
-> **getAllContractEvents**(`provider`, `filter`): `AsyncIterable`\<`ContractEvent`\>
+> **getAllContractEvents**(`provider`, `filter`): `AsyncIterable`\<[`ContractEvent`](../../midnight-js/types/type-aliases/ContractEvent.md)\>
 
 Iterates **all** contract events matching `filter`, safely paged, yielding in
 ascending `id` order. The recommended way to read full history — it hides the
@@ -29,16 +29,16 @@ requests are issued.
 
 ### provider
 
-`Pick`\<[`PublicDataProvider`](#), `"queryContractEvents"`\>
+`Pick`\<[`PublicDataProvider`](../../midnight-js/types/interfaces/PublicDataProvider.md), `"queryContractEvents"`\>
 
 Anything exposing `queryContractEvents`.
 
 ### filter
 
-`ContractEventQueryFilter`
+[`ContractEventQueryFilter`](../../midnight-js/types/interfaces/ContractEventQueryFilter.md)
 
 The events to iterate; `contractAddress` is required.
 
 ## Returns
 
-`AsyncIterable`\<`ContractEvent`\>
+`AsyncIterable`\<[`ContractEvent`](../../midnight-js/types/type-aliases/ContractEvent.md)\>

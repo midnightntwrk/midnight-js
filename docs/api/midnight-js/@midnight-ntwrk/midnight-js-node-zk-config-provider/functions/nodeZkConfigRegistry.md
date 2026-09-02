@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -6,9 +6,9 @@
 
 # Function: nodeZkConfigRegistry()
 
-> **nodeZkConfigRegistry**(`artifactRoot`): `Promise`\<`ZKConfigRegistry`\>
+> **nodeZkConfigRegistry**(`artifactRoot`): `Promise`\<[`ZKConfigRegistry`](../../midnight-js/types/classes/ZKConfigRegistry.md)\>
 
-Creates a ZKConfigRegistry by discovering every compiled contract artifact bundle under
+Creates a [ZKConfigRegistry](../../midnight-js/types/classes/ZKConfigRegistry.md) by discovering every compiled contract artifact bundle under
 a directory tree.
 
 This is the zero-configuration way to provide ZK artifacts for transactions that make
@@ -31,7 +31,7 @@ The directory to search for artifact bundles.
 
 ## Returns
 
-`Promise`\<`ZKConfigRegistry`\>
+`Promise`\<[`ZKConfigRegistry`](../../midnight-js/types/classes/ZKConfigRegistry.md)\>
 
 ## Throws
 

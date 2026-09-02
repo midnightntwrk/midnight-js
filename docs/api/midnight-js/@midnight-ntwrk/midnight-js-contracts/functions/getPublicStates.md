@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -14,7 +14,7 @@ Fetches only the public visible (Zswap and ledger) states of a contract.
 
 ### publicDataProvider
 
-[`PublicDataProvider`](#)
+[`PublicDataProvider`](../../midnight-js/types/interfaces/PublicDataProvider.md)
 
 The provider to use to fetch the public states (Zswap and ledger)
                           from the blockchain.

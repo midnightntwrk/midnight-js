@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -14,7 +14,7 @@ Creates a [ContractMaintenanceTxInterface](../interfaces/ContractMaintenanceTxIn
 
 ### C
 
-`C` *extends* `Any`
+`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
 
 ## Parameters
 
@@ -26,7 +26,7 @@ The providers to use to build transactions.
 
 ### compiledContract
 
-`CompiledContract`\<`C`, `any`\>
+[`CompiledContract`](../../midnight-js-protocol/compact-js/namespaces/CompiledContract/interfaces/CompiledContract.md)\<`C`, `any`\>
 
 ### contractAddress
 

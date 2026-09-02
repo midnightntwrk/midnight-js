@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -29,17 +29,17 @@ passing the whole object across a trust boundary.
 
 ### C
 
-`C` *extends* `Contract.Any`
+`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
 
 ### PCK
 
-`PCK` *extends* `Contract.ProvableCircuitId`\<`C`\>
+`PCK` *extends* [`ProvableCircuitId`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<`C`\>
 
 ## Properties
 
 ### input
 
-> `readonly` **input**: `AlignedValue`
+> `readonly` **input**: [`AlignedValue`](../../midnight-js-protocol/onchain-runtime/type-aliases/AlignedValue.md)
 
 ZK representation of the circuit arguments.
 
@@ -47,7 +47,7 @@ ZK representation of the circuit arguments.
 
 ### nextPrivateState
 
-> `readonly` **nextPrivateState**: `PrivateState`\<`C`\>
+> `readonly` **nextPrivateState**: [`PrivateState`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/PrivateState.md)\<`C`\>
 
 The private state resulting from executing the circuit.
 
@@ -55,7 +55,7 @@ The private state resulting from executing the circuit.
 
 ### nextZswapLocalState
 
-> `readonly` **nextZswapLocalState**: `ZswapLocalState`
+> `readonly` **nextZswapLocalState**: [`ZswapLocalState`](../../midnight-js-protocol/compact-runtime/interfaces/ZswapLocalState.md)
 
 The Zswap local state resulting from executing the circuit.
 
@@ -63,7 +63,7 @@ The Zswap local state resulting from executing the circuit.
 
 ### output
 
-> `readonly` **output**: `AlignedValue`
+> `readonly` **output**: [`AlignedValue`](../../midnight-js-protocol/onchain-runtime/type-aliases/AlignedValue.md)
 
 ZK representation of the circuit result.
 
@@ -71,7 +71,7 @@ ZK representation of the circuit result.
 
 ### privateTranscriptOutputs
 
-> `readonly` **privateTranscriptOutputs**: `AlignedValue`[]
+> `readonly` **privateTranscriptOutputs**: [`AlignedValue`](../../midnight-js-protocol/onchain-runtime/type-aliases/AlignedValue.md)[]
 
 ZK representation of the circuit witness call results.
 
@@ -79,6 +79,6 @@ ZK representation of the circuit witness call results.
 
 ### result
 
-> `readonly` **result**: `CircuitReturnType`\<`C`, `PCK`\>
+> `readonly` **result**: [`CircuitReturnType`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/CircuitReturnType.md)\<`C`, `PCK`\>
 
 The JS representation of the value returned by the circuit.

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -15,13 +15,13 @@ only used if the contract being deployed has a private state.
 
 ### initialPrivateState
 
-> `readonly` **initialPrivateState**: `Contract.PrivateState`\<`C`\>
+> `readonly` **initialPrivateState**: [`PrivateState`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/PrivateState.md)\<`C`\>
 
 The private state to run the circuit against.
 
 ### privateStateId
 
-> `readonly` **privateStateId**: `PrivateStateId`
+> `readonly` **privateStateId**: [`PrivateStateId`](../../midnight-js/types/type-aliases/PrivateStateId.md)
 
 An identifier for the private state of the contract being found.
 
@@ -29,4 +29,4 @@ An identifier for the private state of the contract being found.
 
 ### C
 
-`C` *extends* `Contract.Any`
+`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)

@@ -13,16 +13,15 @@
  * limitations under the License.
  */
 
-import { FaucetClient, NodeClient } from '@/client';
-import { IndexerClient } from '@/client';
-import { ProofServerClient } from '@/client';
-import { getEnvVarWalletSeeds } from '@/env-vars';
-import { logger } from '@/logger';
-import type { ProofServerContainer } from '@/proof-server-container';
-import { DynamicProofServerContainer } from '@/proof-server-container';
-import type { EnvironmentConfiguration } from '@/test-environment';
-import { MidnightWalletProvider, WalletSaveStateProvider } from '@/wallet';
-
+import { FaucetClient, NodeClient } from '../../client';
+import { IndexerClient } from '../../client';
+import { ProofServerClient } from '../../client';
+import { getEnvVarWalletSeeds } from '../../env-vars';
+import { logger } from '../../logger';
+import type { ProofServerContainer } from '../../proof-server-container';
+import { DynamicProofServerContainer } from '../../proof-server-container';
+import { MidnightWalletProvider, WalletSaveStateProvider } from '../../wallet';
+import type { EnvironmentConfiguration } from '..';
 import { TestEnvironment } from './test-environment';
 
 /**

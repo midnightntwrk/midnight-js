@@ -24,16 +24,16 @@ import type { EnvironmentConfiguration, MidnightWalletProvider, TestEnvironment 
 import { createLogger, getTestEnvironment, initializeMidnightProviders } from '@midnight-ntwrk/testkit-js';
 import path from 'path';
 
-import { CompiledDoubleCounterContract } from '@/contract';
-import * as api from '@/double-counter-api';
-import { CounterConfiguration } from '@/double-counter-api';
+import { CompiledDoubleCounterContract } from '../src/contract';
+import * as api from '../src/double-counter-api';
+import { CounterConfiguration } from '../src/double-counter-api';
 import {
   CounterPrivateStateId,
   type CounterProviders,
   type DeployedCounterContract,
   type DoubleCounterContract,
   privateStateZero
-} from '@/types/double-counter-types';
+} from '../src/types/double-counter-types';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `scoped_tx_contracts_${new Date().toISOString()}.log`)

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Function: parseHexTransaction()
 
-> **parseHexTransaction**(`s`): `Transaction`\<`SignatureEnabled`, `Proof`, `Binding`\>
+> **parseHexTransaction**(`s`): [`Transaction`](../../midnight-js/types/classes/Transaction.md)\<[`SignatureEnabled`](../../midnight-js-protocol/ledger/classes/SignatureEnabled.md), [`Proof`](../../midnight-js-protocol/ledger/classes/Proof.md), [`Binding`](../../midnight-js-protocol/ledger/classes/Binding.md)\>
 
 ## Parameters
 
@@ -16,4 +16,4 @@
 
 ## Returns
 
-`Transaction`\<`SignatureEnabled`, `Proof`, `Binding`\>
+[`Transaction`](../../midnight-js/types/classes/Transaction.md)\<[`SignatureEnabled`](../../midnight-js-protocol/ledger/classes/SignatureEnabled.md), [`Proof`](../../midnight-js-protocol/ledger/classes/Proof.md), [`Binding`](../../midnight-js-protocol/ledger/classes/Binding.md)\>

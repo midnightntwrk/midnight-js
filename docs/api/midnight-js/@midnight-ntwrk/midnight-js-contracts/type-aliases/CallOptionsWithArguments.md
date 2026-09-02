@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Type Alias: CallOptionsWithArguments\<C, PCK\>
 
-> **CallOptionsWithArguments**\<`C`, `PCK`\> = `Contract.CircuitParameters`\<`C`, `PCK`\> *extends* \[\] ? [`CallOptionsBase`](../interfaces/CallOptionsBase.md)\<`C`, `PCK`\> : [`CallOptionsBase`](../interfaces/CallOptionsBase.md)\<`C`, `PCK`\> & `object`
+> **CallOptionsWithArguments**\<`C`, `PCK`\> = [`CircuitParameters`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/CircuitParameters.md)\<`C`, `PCK`\> *extends* \[\] ? [`CallOptionsBase`](../interfaces/CallOptionsBase.md)\<`C`, `PCK`\> : [`CallOptionsBase`](../interfaces/CallOptionsBase.md)\<`C`, `PCK`\> & `object`
 
 Conditional type that optionally adds the inferred circuit argument types to
 the options for a circuit call.
@@ -15,8 +15,8 @@ the options for a circuit call.
 
 ### C
 
-`C` *extends* `Contract.Any`
+`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
 
 ### PCK
 
-`PCK` *extends* `Contract.ProvableCircuitId`\<`C`\>
+`PCK` *extends* [`ProvableCircuitId`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<`C`\>

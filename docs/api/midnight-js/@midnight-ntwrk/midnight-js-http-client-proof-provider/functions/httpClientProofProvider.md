@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -50,10 +50,10 @@ Proof Server (/check, /prove)
 
 ## Call Signature
 
-> **httpClientProofProvider**\<`K`\>(`options`): [`ProofProvider`](#)
+> **httpClientProofProvider**\<`K`\>(`options`): [`ProofProvider`](../../midnight-js/types/interfaces/ProofProvider.md)
 
-Creates a high-level [ProofProvider](#) that implements transaction-level proving
-using the low-level circuit-by-circuit [ProvingProvider](#) as its foundation.
+Creates a high-level [ProofProvider](../../midnight-js/types/interfaces/ProofProvider.md) that implements transaction-level proving
+using the low-level circuit-by-circuit [ProvingProvider](../../midnight-js-protocol/ledger/type-aliases/ProvingProvider.md) as its foundation.
 
 This adapter bridges the gap between:
 - High-level ProofProvider interface (works with complete transactions)
@@ -75,7 +75,7 @@ Connection and proving configuration — see HttpClientProofProviderOptions
 
 ### Returns
 
-[`ProofProvider`](#)
+[`ProofProvider`](../../midnight-js/types/interfaces/ProofProvider.md)
 
 A ProofProvider instance that uses ProvingProvider internally
 
@@ -95,7 +95,7 @@ individual circuit operations using /check and /prove endpoints.
 
 ## Call Signature
 
-> **httpClientProofProvider**\<`K`\>(`url`, `zkConfigProvider`, `config?`): [`ProofProvider`](#)
+> **httpClientProofProvider**\<`K`\>(`url`, `zkConfigProvider`, `config?`): [`ProofProvider`](../../midnight-js/types/interfaces/ProofProvider.md)
 
 ### Type Parameters
 
@@ -113,7 +113,7 @@ The URL of the proof server
 
 #### zkConfigProvider
 
-`ZKConfigRegistry` \| [`ZKConfigProvider`](#)\<`K`\>
+[`ZKConfigRegistry`](../../midnight-js/types/classes/ZKConfigRegistry.md) \| [`ZKConfigProvider`](../../midnight-js/types/classes/ZKConfigProvider.md)\<`K`\>
 
 Provider for zero-knowledge configuration artifacts
 
@@ -125,7 +125,7 @@ Optional configuration for the underlying ProvingProvider
 
 ### Returns
 
-[`ProofProvider`](#)
+[`ProofProvider`](../../midnight-js/types/interfaces/ProofProvider.md)
 
 A ProofProvider instance that uses ProvingProvider internally
 

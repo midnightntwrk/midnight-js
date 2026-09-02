@@ -16,17 +16,17 @@
 import path from 'path';
 import { WebSocket } from 'ws';
 
-import { ProofServerClient } from '@/client';
+import { ProofServerClient } from '../src/client';
 import {
   defaultContainersConfiguration,
   getContainersConfiguration,
   setContainersConfiguration
-} from '@/configuration';
-import type { ContainersConfiguration } from '@/configuration-types';
-import { createLogger } from '@/logger';
-import { DynamicProofServerContainer } from '@/proof-server-container';
-import { getTestEnvironment } from '@/test-environment';
-import { LocalTestEnvironment } from '@/test-environment/test-environments';
+} from '../src/configuration';
+import type { ContainersConfiguration } from '../src/configuration-types';
+import { createLogger } from '../src/logger';
+import { DynamicProofServerContainer } from '../src/proof-server-container';
+import { getTestEnvironment } from '../src/test-environment';
+import { LocalTestEnvironment } from '../src/test-environment/test-environments';
 
 const logger = createLogger(
   path.resolve(`${process.cwd()}`, 'logs', 'tests', `it_${new Date().toISOString().replace(/:/g, '-')}.log`)

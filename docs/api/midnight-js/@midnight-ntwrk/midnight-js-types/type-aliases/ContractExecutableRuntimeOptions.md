@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -22,6 +22,6 @@ The current user's ZSwap public key.
 
 ### signingKey?
 
-> `readonly` `optional` **signingKey?**: `SigningKey`
+> `readonly` `optional` **signingKey?**: [`SigningKey`](../../midnight-js-protocol/onchain-runtime/type-aliases/SigningKey.md)
 
 The signing key to add as the to-be-deployed contract's maintenance authority.

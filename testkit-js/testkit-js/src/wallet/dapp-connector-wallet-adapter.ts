@@ -38,8 +38,7 @@ import { type BalancingRecipe } from '@midnightntwrk/wallet-sdk/facade';
 import { WasmProver } from '@midnightntwrk/wallet-sdk-prover-client/effect';
 import { firstValueFrom } from 'rxjs';
 
-import type { EnvironmentConfiguration } from '@/test-environment/environment-configuration';
-
+import type { EnvironmentConfiguration } from '../test-environment/environment-configuration';
 import type { MidnightWalletProvider } from './midnight-wallet-provider';
 
 export class DAppConnectorWalletAdapter implements ConnectedAPI {

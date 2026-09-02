@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../README.md)
 
 ***
 
@@ -66,3 +66,16 @@ Replace the direct protocol import with the corresponding subpath from this pack
 By using this package, you agree to [Midnight's Terms and Conditions](https://midnight.network/static/terms.pdf) and [Privacy Policy](https://midnight.network/static/privacy-policy.pdf).
 
 Licensed under [Apache License 2.0](http://www.apache.org/licenses/LICENSE-2.0).
+
+## Modules
+
+- [](README.md)
+- [compact-js](compact-js/README.md)
+- [compact-js/effect](compact-js/effect/README.md)
+- [compact-js/effect/Contract](compact-js/effect/Contract/README.md)
+- [compact-runtime](compact-runtime/README.md)
+- [ledger](ledger/README.md)
+- [onchain-runtime](onchain-runtime/README.md)
+- [platform-js](platform-js/README.md)
+- [platform-js/effect/Configuration](platform-js/effect/Configuration/README.md)
+- [platform-js/effect/ContractAddress](platform-js/effect/ContractAddress/README.md)

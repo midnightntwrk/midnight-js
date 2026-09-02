@@ -15,7 +15,7 @@
 
 import { rm } from 'node:fs/promises';
 
-import { buildUrlWithPath, tryDeleteDirectory } from '@/utils';
+import { buildUrlWithPath, tryDeleteDirectory } from '../src/utils';
 
 vi.mock('node:fs/promises', () => ({
   rm: vi.fn()

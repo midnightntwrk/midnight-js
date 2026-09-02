@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -13,7 +13,7 @@ given contract.
 
 ### insertVerifierKey()
 
-> **insertVerifierKey**(`newVk`): `Promise`\<`FinalizedTxData`\>
+> **insertVerifierKey**(`newVk`): `Promise`\<[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md)\>
 
 Constructs and submits a transaction that adds a new verifier key to the
 blockchain for this circuit at this contract's address.
@@ -22,23 +22,23 @@ blockchain for this circuit at this contract's address.
 
 ##### newVk
 
-`VerifierKey`
+[`VerifierKey`](../../midnight-js/types/type-aliases/VerifierKey.md)
 
 The new verifier key to add for this circuit.
 
 #### Returns
 
-`Promise`\<`FinalizedTxData`\>
+`Promise`\<[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md)\>
 
 ***
 
 ### removeVerifierKey()
 
-> **removeVerifierKey**(): `Promise`\<`FinalizedTxData`\>
+> **removeVerifierKey**(): `Promise`\<[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md)\>
 
 Constructs and submits a transaction that removes the current verifier key stored
 on the blockchain for this circuit at this contract's address.
 
 #### Returns
 
-`Promise`\<`FinalizedTxData`\>
+`Promise`\<[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md)\>

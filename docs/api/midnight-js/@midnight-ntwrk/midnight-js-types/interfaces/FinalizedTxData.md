@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -93,7 +93,7 @@ The status of a submitted transaction.
 
 ### tx
 
-> `readonly` **tx**: `Transaction`\<`SignatureEnabled`, `Proof`, `Binding`\>
+> `readonly` **tx**: [`Transaction`](../../midnight-js/types/classes/Transaction.md)\<[`SignatureEnabled`](../../midnight-js-protocol/ledger/classes/SignatureEnabled.md), [`Proof`](../../midnight-js-protocol/ledger/classes/Proof.md), [`Binding`](../../midnight-js-protocol/ledger/classes/Binding.md)\>
 
 The transaction that was finalized.
 

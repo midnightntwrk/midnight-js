@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -13,7 +13,7 @@ deployed.
 
 ### replaceAuthority()
 
-> **replaceAuthority**(`newAuthority`): `Promise`\<`FinalizedTxData`\>
+> **replaceAuthority**(`newAuthority`): `Promise`\<[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md)\>
 
 Constructs and submits a transaction that replaces the maintenance
 authority stored on the blockchain for this contract.
@@ -22,10 +22,10 @@ authority stored on the blockchain for this contract.
 
 ##### newAuthority
 
-`SigningKey`
+[`SigningKey`](../../midnight-js-protocol/onchain-runtime/type-aliases/SigningKey.md)
 
 The new contract maintenance authority for this contract.
 
 #### Returns
 
-`Promise`\<`FinalizedTxData`\>
+`Promise`\<[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md)\>

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Function: submitReplaceAuthorityTx()
 
-> **submitReplaceAuthorityTx**\<`C`\>(`providers`, `compiledContract`, `contractAddress`): (`newAuthority`) => `Promise`\<`FinalizedTxData`\>
+> **submitReplaceAuthorityTx**\<`C`\>(`providers`, `compiledContract`, `contractAddress`): (`newAuthority`) => `Promise`\<[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md)\>
 
 Constructs and submits a transaction that replaces the maintenance
 authority stored on the blockchain for this contract. After the transaction is
@@ -38,7 +38,7 @@ Midnight transactions execute in two phases:
 
 ### C
 
-`C` *extends* `Any`
+`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
 
 ## Parameters
 
@@ -50,7 +50,7 @@ The providers to use to manage the transaction lifecycle.
 
 ### compiledContract
 
-`CompiledContract`\<`C`, `any`\>
+[`CompiledContract`](../../midnight-js-protocol/compact-js/namespaces/CompiledContract/interfaces/CompiledContract.md)\<`C`, `any`\>
 
 The compiled contract for which the maintenance authority
                         should be updated.
@@ -69,19 +69,19 @@ TODO: There are at least three options we should support in the future:
 
 ## Returns
 
-> (`newAuthority`): `Promise`\<`FinalizedTxData`\>
+> (`newAuthority`): `Promise`\<[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md)\>
 
 ### Parameters
 
 #### newAuthority
 
-`SigningKey`
+[`SigningKey`](../../midnight-js-protocol/ledger/type-aliases/SigningKey.md)
 
 The signing key of the new contract maintenance authority.
 
 ### Returns
 
-`Promise`\<`FinalizedTxData`\>
+`Promise`\<[`FinalizedTxData`](../../midnight-js/types/interfaces/FinalizedTxData.md)\>
 
 A promise that resolves with the finalized transaction data, or rejects if
          an error occurs along the way.

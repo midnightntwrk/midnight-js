@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -14,7 +14,7 @@ Creates a [CallTxOptions](../type-aliases/CallTxOptions.md) object from various 
 
 ### C
 
-`C` *extends* `Any`
+`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
 
 ### PCK
 
@@ -24,7 +24,7 @@ Creates a [CallTxOptions](../type-aliases/CallTxOptions.md) object from various 
 
 ### compiledContract
 
-`CompiledContract`\<`C`, `any`\>
+[`CompiledContract`](../../midnight-js-protocol/compact-js/namespaces/CompiledContract/interfaces/CompiledContract.md)\<`C`, `any`\>
 
 ### circuitId
 
@@ -44,7 +44,7 @@ Creates a [CallTxOptions](../type-aliases/CallTxOptions.md) object from various 
 
 ### args
 
-`CircuitParameters`\<`C`, `PCK`\>
+[`CircuitParameters`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/CircuitParameters.md)\<`C`, `PCK`\>
 
 ## Returns
 

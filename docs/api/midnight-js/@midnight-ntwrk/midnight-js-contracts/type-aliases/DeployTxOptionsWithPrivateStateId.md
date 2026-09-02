@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -16,7 +16,7 @@ state needs to be stored, as is the case in [submitDeployTx](../functions/submit
 
 ### privateStateId
 
-> `readonly` **privateStateId**: `PrivateStateId`
+> `readonly` **privateStateId**: [`PrivateStateId`](../../midnight-js/types/type-aliases/PrivateStateId.md)
 
 The identifier for the private state of the contract.
 
@@ -24,4 +24,4 @@ The identifier for the private state of the contract.
 
 ### C
 
-`C` *extends* `Contract.Any`
+`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
