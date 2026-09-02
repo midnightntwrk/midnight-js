@@ -16,22 +16,23 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # ratchet:actions/setup-node@v7.0.0
+      # Separate cache namespace: this job never populates .turbo, so sharing the
+      # 'turbo' key could overwrite the build job's cache with a turbo-less one.
+      - name: Setup build environment
+        uses: ./.github/actions/setup-build-env
         with:
-          node-version: '22'
+          node-auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          cache-key-prefix: 'turbo-commitlint'
 
-      - name: Install dependency
-        run: |
-          npm install -g @commitlint/cli@18.6.1 @commitlint/config-conventional@18.6.3
+      - name: Install dependencies
+        run: yarn install --immutable
 
       - name: Validate current commit (last commit) with commitlint
         if: github.event_name == 'push'
-        run: commitlint --last --verbose
+        run: yarn commitlint --last --verbose
 
       - name: Validate PR commits
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          commitlint --from "$BASE_SHA" --to "$HEAD_SHA" --verbose
+        run: yarn commitlint --from "$BASE_SHA" --to "$HEAD_SHA" --verbose

@@ -14,7 +14,7 @@ runs:
       shell: bash
       run: |
         echo "🔍 Validating packages with publint..."
-        for dir in ${{ inputs.workspace-path }}/*/; do npx publint@latest "$dir" --strict || true; done
+        for dir in ${{ inputs.workspace-path }}/*/; do yarn publint "$dir" --strict || true; done
 
     - name: Test package creation
       shell: bash

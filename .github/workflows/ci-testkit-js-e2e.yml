@@ -180,13 +180,34 @@ jobs:
           pattern: test-results-${{ inputs.testkit_docker_env || 'default' }}-*
           path: test-results
 
+      # This job only merges artifacts, so it has no yarn install and fetches its
+      # three report CLIs ad hoc (allure-commandline, ctrf, junit-report-merger).
+      # Those fetches resolve transitive dependencies fresh on every run, with no
+      # lockfile; npm 12 refuses to run dependency lifecycle scripts by default,
+      # which is what keeps that safe.
+      #
+      # Deliberately scoped to this job: every other CI job resolves its tooling
+      # through yarn.lock and uses no npm at all, so a bad npm release can only
+      # ever break these reports, never a build, test or publish.
+      #
+      # npm 12 requires node ^22.22.2 || ^24.15.0 || >=26, and this job would
+      # otherwise inherit whatever node the runner image ships. '24' tracks the
+      # current LTS line rather than .nvmrc, which is pinned below that floor.
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # ratchet:actions/setup-node@v7.0.0
+        with:
+          node-version: '24'
+
+      - name: Pin npm
+        run: npm install -g npm@12.0.2
+
       - name: Generate Allure Report
         if: always()
         run: |
           mkdir -p allure-results
           find test-results -path '*/allure-results-*/*' -exec cp {} allure-results/ \;
           if [ "$(ls -A allure-results)" ]; then
-            npx allure-commandline generate allure-results --clean -o allure-report
+            npx --yes allure-commandline generate allure-results --clean -o allure-report
           else
             echo "No Allure results found"
           fi

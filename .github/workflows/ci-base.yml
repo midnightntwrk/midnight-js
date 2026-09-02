@@ -79,8 +79,8 @@ jobs:
             cp "$f" ".nyc_output/coverage-$i.json"
             i=$((i + 1))
           done
-          npx --yes nyc merge .nyc_output coverage.json
-          npx --yes nyc report --reporter=html --report-dir=coverage --temp-dir=.nyc_output
+          yarn nyc merge .nyc_output coverage.json
+          yarn nyc report --reporter=html --report-dir=coverage --temp-dir=.nyc_output
           rm -rf .nyc_output
 
       - name: Merge report as ZIP
