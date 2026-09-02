@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-import { ledger, UnknownProtocolVersionError } from '@midnight-ntwrk/midnight-js-protocol';
+import { ledger } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { DeserializationError, TagParseError } from '@midnight-ntwrk/midnight-js-utils';
+import { DeserializationError, deserializeCompactContractState, TagParseError } from '@midnight-ntwrk/midnight-js-utils';
 import type { DocumentNode } from 'graphql';
 import { describe, expect, test, vi } from 'vitest';
 
@@ -25,6 +25,7 @@ import { IndexerPublicDataProvider } from '../provider';
 import { CONTRACT_AND_ZSWAP_STATE_QUERY, CONTRACT_STATE_QUERY, HEAD_PROTOCOL_VERSION_QUERY } from '../query-definitions';
 import { type ApolloRequest, stubApolloHandle } from './apollo-stub';
 import {
+  mintV8ContractStateBytes,
   mintV8ContractStateHex,
   mintV9ContractStateHex,
   mintV9TransactionHex,
@@ -68,10 +69,10 @@ describe('era cross-check on the contract-state decode path', () => {
     expect(Buffer.from(state.serialize()).toString('hex')).toBe(hexState);
   });
 
-  test('refuses a state the indexer dates to an era the bytes contradict', async () => {
-    // The dangerous direction: the indexer says the newer era while the bytes
-    // are from the older one, so an era-blind decode produces garbage rather
-    // than an error.
+  test('refuses a state whose bytes are newer than the block that dates them', async () => {
+    // Impossible on a consistent indexer: a state cannot have been written by
+    // a runtime the dating block had not forked to yet. Era only moves
+    // forward, so this is the one direction that really is an indexer fault.
     const rejection = await rejectionOf(
       Promise.resolve().then(() => parseHexContractState(mintV9ContractStateHex(), V8_ERA_PROTOCOL_VERSION))
     );
@@ -86,17 +87,20 @@ describe('era cross-check on the contract-state decode path', () => {
     expect(rejection).not.toBeInstanceOf(DeserializationError);
   });
 
-  test('refuses older-era bytes the indexer dates to the newer era', async () => {
+  test('treats older bytes under a newer block as an undecodable era, not an indexer fault', async () => {
+    // The everyday case once the network has forked: a contract whose last
+    // action predates the fork still serves the older envelope, while the
+    // block that dates the read has moved on. Nothing is wrong with the
+    // indexer, so the caller is told the thing it can act on - this era is not
+    // decodable here - instead of being sent to hunt a phantom inconsistency.
     const rejection = await rejectionOf(
       mintV8ContractStateHex().then((hex) => parseHexContractState(hex, V9_ERA_PROTOCOL_VERSION))
     );
 
     expect(rejection).toBeInstanceOf(IndexerDataError);
     expect((rejection as IndexerDataError).context).toEqual({
-      kind: 'era-disagreement',
-      protocolVersion: V9_ERA_PROTOCOL_VERSION,
-      reportedVersion: 'v9',
-      envelopeVersion: 'v8'
+      kind: 'unsupported-decode-era',
+      version: 'v8'
     });
     expect(rejection).not.toBeInstanceOf(DeserializationError);
   });
@@ -134,12 +138,28 @@ describe('era cross-check on the contract-state decode path', () => {
     expect((rejection as IndexerDataError).context).toEqual({ kind: 'malformed-state-encoding' });
   });
 
-  test('propagates an unresolvable protocol version rather than guessing an era', async () => {
+  test('decodes on the envelope alone when the reported version resolves to no era', () => {
+    // The envelope is self-describing and the decoder is tag-strict, so an
+    // unresolvable reported version withholds only the upper-bound check, not
+    // the safety of the decode. Refusing here would strand a perfectly
+    // readable state behind an integer this client happens not to map.
+    const hexState = mintV9ContractStateHex();
+
+    const state = parseHexContractState(hexState, UNRESOLVABLE_PROTOCOL_VERSION);
+
+    expect(Buffer.from(state.serialize()).toString('hex')).toBe(hexState);
+  });
+
+  test('still refuses an undecodable envelope when the reported version resolves to no era', async () => {
     const rejection = await rejectionOf(
-      Promise.resolve().then(() => parseHexContractState(mintV9ContractStateHex(), UNRESOLVABLE_PROTOCOL_VERSION))
+      mintV8ContractStateHex().then((hex) => parseHexContractState(hex, UNRESOLVABLE_PROTOCOL_VERSION))
     );
 
-    expect(rejection).toBeInstanceOf(UnknownProtocolVersionError);
+    expect(rejection).toBeInstanceOf(IndexerDataError);
+    expect((rejection as IndexerDataError).context).toEqual({
+      kind: 'unsupported-decode-era',
+      version: 'v8'
+    });
   });
 });
 
@@ -178,7 +198,7 @@ describe('queryContractState dates the state it decodes', () => {
     const rejection = await rejectionOf(buildProvider(query).queryContractState(ADDRESS));
 
     expect(rejection).toBeInstanceOf(IndexerDataError);
-    expect((rejection as IndexerDataError).context).toEqual({ kind: 'missing-head-block' });
+    expect((rejection as IndexerDataError).context).toEqual({ kind: 'undated-state' });
   });
 
   test('refuses an older-era state instead of returning a mis-decoded one', async () => {
@@ -210,6 +230,26 @@ describe('queryContractState dates the state it decodes', () => {
 
     expect(cached).toBe(V9_ERA_PROTOCOL_VERSION);
     expect(headRequestCount(query)).toBe(before);
+  });
+
+  test('decodes but does not corroborate when the dating block reports an unresolvable version', async () => {
+    // The decode is safe on the envelope alone, but the latch must not be fed
+    // a version this client cannot place on the era timeline: `corroborateV9`
+    // rejects exactly that, so reaching it would turn a good read into an
+    // invariant failure.
+    const query = dispatchingQuery(
+      new Map<DocumentNode, unknown>([
+        [CONTRACT_STATE_QUERY, stateResponse(mintV9ContractStateHex(), UNRESOLVABLE_PROTOCOL_VERSION)],
+        [HEAD_PROTOCOL_VERSION_QUERY, { data: { block: { protocolVersion: V9_ERA_PROTOCOL_VERSION } } }]
+      ])
+    );
+    const provider = buildProvider(query);
+
+    await expect(provider.queryContractState(ADDRESS)).resolves.not.toBeNull();
+    const before = headRequestCount(query);
+    await provider.queryLatestProtocolVersion();
+
+    expect(headRequestCount(query)).toBe(before + 1);
   });
 
   test('does not corroborate from a state read pinned to a specific block', async () => {
@@ -266,5 +306,26 @@ describe('queryZSwapAndContractState dates the triple it decodes', () => {
     expect(rejection).toBeInstanceOf(IndexerDataError);
     expect((rejection as IndexerDataError).context).toEqual({ kind: 'unsupported-decode-era', version: 'v8' });
     expect(rejection).not.toBeInstanceOf(DeserializationError);
+  });
+});
+
+describe('the decoder on this path is tag-strict', () => {
+  test('rejects genuine older-era bytes instead of mis-decoding them', async () => {
+    // Pins the fact the era guard is reasoned from. A wrong-era contract state
+    // cannot be silently mis-decoded: the envelope tag is checked before the
+    // body is read, so the guard buys a typed, actionable failure - not
+    // protection from a plausible-looking wrong answer. If a runtime bump ever
+    // relaxes that check, the guard's justification changes, and this is where
+    // that shows up.
+    const v8Bytes = await mintV8ContractStateBytes();
+
+    const rejection = await rejectionOf(
+      Promise.resolve().then(() =>
+        deserializeCompactContractState(v8Bytes, { caller: 'era-cross-check.test:tag-strictness' })
+      )
+    );
+
+    expect(rejection).toBeInstanceOf(DeserializationError);
+    expect(((rejection as Error).cause as Error | undefined)?.message).toContain('midnight:contract-state[v6]:');
   });
 });

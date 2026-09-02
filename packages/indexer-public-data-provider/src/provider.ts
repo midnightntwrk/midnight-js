@@ -13,7 +13,6 @@
  * limitations under the License.
  */
 
-import { protocolVersionToLedger, UnknownProtocolVersionError } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import type {
   ContractAddress,
@@ -45,6 +44,7 @@ import {
   parseHexLedgerParameters,
   parseHexTransaction,
   parseHexZswapState,
+  reportedEra,
   toRawContractState,
   toSegmentStatusMap,
   toTxStatus,
@@ -122,20 +122,10 @@ type CorroborationRoute = 'snapshot-envelope' | 'finalized-record';
  *
  * Every caller here is warming a cache as a side effect of some other request
  * the user actually asked for, so "I do not recognize this integer" has to
- * mean "cannot tell which era" rather than failing that request. Only
- * {@link UnknownProtocolVersionError} is treated that way — anything else is a
- * real failure and propagates.
+ * mean "cannot tell which era" rather than failing that request — which is
+ * exactly what {@link reportedEra} yields `undefined` for.
  */
-const isV9Era = (protocolVersion: number): boolean => {
-  try {
-    return protocolVersionToLedger(protocolVersion, 'read') === 'v9';
-  } catch (error) {
-    if (error instanceof UnknownProtocolVersionError) {
-      return false;
-    }
-    throw error;
-  }
-};
+const isV9Era = (protocolVersion: number): boolean => reportedEra(protocolVersion) === 'v9';
 
 export class IndexerPublicDataProvider implements PublicDataProvider {
   private readonly handle: ApolloHandle;
@@ -199,16 +189,22 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
 
   /**
    * Route 1 again, reached from a read that decoded its state rather than
-   * serving it raw. `parseHexContractState` has already refused anything whose
-   * envelope disagreed with the reported version, so reaching here means both
-   * signals said v9 — the same evidence {@link corroborateFromStateSnapshot}
-   * requires.
+   * serving it raw. `parseHexContractState` only decodes a v9 envelope, so
+   * reaching here means the served bytes really were written by the v9 runtime
+   * — the same evidence {@link corroborateFromStateSnapshot} requires from the
+   * envelope.
+   *
+   * The head reading has to be checked separately all the same. The envelope
+   * being v9 does not make the reported integer resolvable, and
+   * {@link corroborateV9} treats an unresolvable one as a call-site bug; a good
+   * read must not be turned into an invariant failure by the cache it was only
+   * incidentally warming.
    *
    * Only an unpinned read qualifies: with an offset, the block field is the
    * block the caller asked for, not the network's head.
    */
   private corroborateFromDecodedState(isHeadRead: boolean, headProtocolVersion: number): void {
-    if (isHeadRead) {
+    if (isHeadRead && isV9Era(headProtocolVersion)) {
       this.corroborateV9(headProtocolVersion, 'snapshot-envelope');
     }
   }
@@ -361,7 +357,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
       // A served state with no block to date it is an inconsistent indexer,
       // not an absent contract. Reporting it as "nothing here" would hand the
       // caller a wrong answer that reads exactly like a correct one.
-      throw IndexerDataError.missingHeadBlock();
+      throw IndexerDataError.undatedState();
     }
     const record = toRawContractState(state, block.protocolVersion);
     if (offset === null) {
@@ -399,7 +395,7 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
           // A served state with no block to date it is an inconsistent indexer,
           // not an absent contract — the same call `queryRawContractState`
           // makes. Decoding it would mean guessing the era.
-          throw IndexerDataError.missingHeadBlock();
+          throw IndexerDataError.undatedState();
         }
         const contractState = parseHexContractState(state, block.protocolVersion);
         this.corroborateFromDecodedState(offset === null, block.protocolVersion);

@@ -182,7 +182,7 @@ describe('queryRawContractState', () => {
         );
 
       expect(rejection).toBeInstanceOf(IndexerDataError);
-      expect((rejection as IndexerDataError).context).toEqual({ kind: 'missing-head-block' });
+      expect((rejection as IndexerDataError).context).toEqual({ kind: 'undated-state' });
     });
 
     test('returns null, without reading a block, when neither the state nor the block is there', async () => {

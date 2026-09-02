@@ -72,6 +72,7 @@ export class IndexerQueryError extends IndexerError {
 export type IndexerDataErrorContext =
   | { kind: 'unknown-status'; value: string }
   | { kind: 'missing-head-block' }
+  | { kind: 'undated-state' }
   | { kind: 'malformed-state-encoding' }
   | { kind: 'missing-contract-action'; contractAddress: string }
   | {
@@ -120,6 +121,10 @@ export class IndexerDataError extends IndexerError {
 
   static missingHeadBlock(): IndexerDataError {
     return new IndexerDataError({ kind: 'missing-head-block' });
+  }
+
+  static undatedState(): IndexerDataError {
+    return new IndexerDataError({ kind: 'undated-state' });
   }
 
   static malformedStateEncoding(): IndexerDataError {
@@ -181,6 +186,12 @@ export class IndexerDataError extends IndexerError {
           'The indexer returned no head block, so the network protocol version could not be read. ' +
           'Wait for the indexer to finish indexing at least one block, then retry.'
         );
+      case 'undated-state':
+        return (
+          'The indexer served a contract state but no block to date it, so the ledger era of those bytes ' +
+          'cannot be established. The state exists, so this is an inconsistent indexer rather than an absent ' +
+          'contract. Retry against a healthy indexer.'
+        );
       case 'missing-contract-action':
         return `Deploy transaction does not contain a contract action for address ${context.contractAddress}`;
       case 'missing-identifier':
@@ -196,11 +207,11 @@ export class IndexerDataError extends IndexerError {
         return `Contract event ${context.typename} field '${context.field}' has unknown address kind '${context.value}'`;
       case 'era-disagreement':
         return (
-          `The indexer dated a contract state to protocol version ${context.protocolVersion} (ledger ` +
-          `${context.reportedVersion}), but the state's own envelope was written by ledger ` +
-          `${context.envelopeVersion}. Decoding it would produce a wrong answer rather than an error. ` +
-          'Retry against a healthy indexer; if it persists, the indexer is serving state and block data ' +
-          'from different eras.'
+          `The indexer served a contract state whose envelope was written by ledger ${context.envelopeVersion}, ` +
+          `but dated it to protocol version ${context.protocolVersion} (ledger ${context.reportedVersion}) — a ` +
+          'block from before that runtime existed. A state cannot predate the runtime that wrote it, so the two ' +
+          'answers cannot both be right. Retry against a healthy indexer; if it persists, the indexer is serving ' +
+          'state and block data from different eras.'
         );
       case 'unsupported-decode-era':
         return (

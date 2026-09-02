@@ -13,7 +13,12 @@
  * limitations under the License.
  */
 
-import { type LedgerVersion, protocolVersionToLedger } from '@midnight-ntwrk/midnight-js-protocol';
+import {
+  LEDGER_VERSIONS,
+  type LedgerVersion,
+  protocolVersionToLedger,
+  UnknownProtocolVersionError
+} from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
 import {
   type Binding,
@@ -61,7 +66,8 @@ const PKG = '@midnight-ntwrk/midnight-js-indexer-public-data-provider';
  * Adapters that take hex-encoded indexer payloads, decode to bytes, and
  * dispatch to the typed deserialization wrappers from `@midnight-ntwrk/midnight-js-utils`.
  * They exist (rather than inlining) so the `caller` string is centralized and
- * regression-testable. Exported for tests; not part of the public package API.
+ * regression-testable. Re-exported from the package entry point, so their
+ * signatures are public API.
  */
 export const parseHexZswapState = (s: string): ZswapChainState =>
   deserializeZswapChainState(toByteArray(s), { caller: `${PKG}:parseHexZswapState` });
@@ -133,41 +139,85 @@ const stateBytesAndEnvelopeVersion = (
  *
  * The wrappers below bind the v9 runtime at import time; the v8 runtime is
  * reachable only through `loadLedger8()` and no read path dispatches on the era
- * yet. Until one does, bytes from any other era must be refused rather than fed
- * to the v9 decoder, which would return a wrong answer instead of failing.
+ * yet. Until one does, bytes from any other era are refused here rather than
+ * fed to the v9 decoder — which would reject them anyway, but with a header-tag
+ * error that says nothing about what the caller should do instead.
  */
 const DECODABLE_LEDGER_VERSION: LedgerVersion = 'v9';
 
 /**
- * Deserialize a contract state the indexer served, but only after the era the
- * indexer reported for it and the era written into the state's own envelope
- * agree — and only if that era is one this path can actually decode.
+ * Whether `left` is a strictly newer ledger era than `right`.
  *
- * Two independent signals are required because neither is sufficient alone. The
- * reported `protocolVersion` comes from a block, resolved separately from the
- * state itself, so it can be about a different era than the bytes. The envelope
- * comes off the bytes but is attacker-controlled and proves nothing about the
- * network. Together, a disagreement is the honest signal that the answer cannot
- * be trusted.
+ * Positional: an era's index in `LEDGER_VERSIONS` is its place on the timeline,
+ * so a newer era appended there needs no change here.
+ */
+const isNewerEra = (left: LedgerVersion, right: LedgerVersion): boolean =>
+  LEDGER_VERSIONS.indexOf(left) > LEDGER_VERSIONS.indexOf(right);
+
+/**
+ * The era an indexer-reported `protocolVersion` resolves to, or `undefined`
+ * when this client cannot place that integer on the era timeline at all.
  *
- * Nothing reaches a deserializer until all three checks pass.
+ * Unresolvable is a distinct answer from wrong, and the two must not be
+ * conflated: the reported version is corroborating metadata here, never the
+ * authority on the bytes, so "I cannot place this integer" has to leave the
+ * decode to the envelope rather than fail the caller's read. Only
+ * {@link UnknownProtocolVersionError} is treated that way — anything else is a
+ * real failure and propagates.
+ */
+export const reportedEra = (protocolVersion: number): LedgerVersion | undefined => {
+  try {
+    return protocolVersionToLedger(protocolVersion, 'read');
+  } catch (error) {
+    if (error instanceof UnknownProtocolVersionError) {
+      return undefined;
+    }
+    throw error;
+  }
+};
+
+/**
+ * Deserialize a contract state the indexer served, after establishing which
+ * ledger runtime wrote it — and only if that runtime is one this path can
+ * decode.
+ *
+ * The envelope is the authority on the bytes, and the version the indexer
+ * reported for the dating block is an upper bound on it. That asymmetry is the
+ * whole rule, and it follows from how the two signals are obtained:
+ *
+ * - The envelope comes off the bytes themselves. It is attacker-controlled and
+ *   proves nothing about the network, but it is the one thing the deserializer
+ *   also reads: a mismatched envelope is rejected on the header tag before the
+ *   body, so it cannot produce a wrong answer, only a failure.
+ * - The reported version dates the *read*, not the bytes. The indexer serves
+ *   the latest contract action at or before the requested block, so a state can
+ *   legitimately be older than the block that dates it — after a fork, every
+ *   contract dormant across it is exactly that. Treating that ordinary case as
+ *   a contradiction would send callers hunting a fault that is not there.
+ *
+ * So an older envelope under a newer block is normal and decided on the
+ * envelope alone. The reverse — bytes written by a runtime the dating block had
+ * not forked to yet — cannot happen on a consistent indexer, and is the one
+ * direction reported as {@link IndexerDataError.eraDisagreement}.
+ *
+ * Nothing reaches a deserializer until the era is settled.
  *
  * @param hexState The hex-encoded serialized contract state, as the indexer
  *                 serves it.
  * @param protocolVersion The protocol-version integer of the block that dates
- *                        the state.
+ *                        the read. An integer this client cannot resolve
+ *                        withholds the upper-bound check and nothing else.
  *
- * @throws {IndexerDataError} When the state is not hex-encoded, when the two
- *   era signals disagree, or when the agreed era is not decodable here.
+ * @throws {IndexerDataError} When the state is not hex-encoded, when its
+ *   envelope is newer than the block that dates it, or when its era is not
+ *   decodable here.
  * @throws {TagParseError} When the payload carries no supported contract-state
  *   envelope.
- * @throws {UnknownProtocolVersionError} When `protocolVersion` resolves to no
- *   known era.
  */
 export const parseHexContractState = (hexState: string, protocolVersion: number): ContractState => {
   const { raw, envelopeVersion } = stateBytesAndEnvelopeVersion(hexState);
-  const reportedVersion = protocolVersionToLedger(protocolVersion, 'read');
-  if (reportedVersion !== envelopeVersion) {
+  const reportedVersion = reportedEra(protocolVersion);
+  if (reportedVersion !== undefined && isNewerEra(envelopeVersion, reportedVersion)) {
     throw IndexerDataError.eraDisagreement(protocolVersion, reportedVersion, envelopeVersion);
   }
   if (envelopeVersion !== DECODABLE_LEDGER_VERSION) {

@@ -308,7 +308,7 @@ export const waitForContractToAppear =
         if (data.block === null) {
           // A served state with no block to date it is an inconsistent
           // indexer, not a contract that has yet to appear.
-          throw IndexerDataError.missingHeadBlock();
+          throw IndexerDataError.undatedState();
         }
         return { state: data.contract.state, protocolVersion: data.block.protocolVersion };
       },

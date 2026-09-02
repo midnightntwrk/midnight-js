@@ -105,12 +105,16 @@ check it against the envelope inside `state.raw`.
 The methods that *do* deserialize for you — `queryContractState`,
 `queryDeployContractState`, `queryZSwapAndContractState`,
 `watchForContractState` and `contractStateObservable` — decode with the v9
-runtime only. Each asks the indexer for the protocol version of the block that
-dates the state and cross-checks it against the era written into the state's own
-envelope. If the two disagree, or if they agree on an era this client cannot
-decode, the call fails with an `IndexerDataError` rather than returning a
-mis-decoded state. Reach for `queryRawContractState` when you need to read the
-other era.
+runtime only. Each reads the ledger era off the state's own envelope and decodes
+only if that era is v9. Otherwise the call fails with an `IndexerDataError` that
+names the era it got and points at `queryRawContractState`, instead of a
+header-tag error from deep inside a decoder.
+
+A state older than the block that dates the read is normal, not a fault: the
+indexer serves the latest contract action at or before that block, so any
+contract dormant across a fork is exactly that. The protocol version the
+indexer reports is therefore an upper bound — only a state whose envelope is
+*newer* than its dating block is reported as an inconsistency.
 
 Contract events carry the same dating: every `ContractEvent` has a
 `protocolVersion`, so a consumer decoding the opaque `raw` payload can tell
