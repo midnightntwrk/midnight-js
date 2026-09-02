@@ -1,0 +1,164 @@
+/*
+ * This file is part of midnight-js.
+ * Copyright (C) Midnight Foundation
+ * SPDX-License-Identifier: Apache-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import * as onchainRuntimeV3 from '@midnight-ntwrk/onchain-runtime-v3';
+// The `-alt` package is an npm alias of the same version resolved under a
+// different package name, so Node gives it its own physical module
+// instance — a real second copy, not a test double, of the exact dual-WASM
+// failure mode this guard exists to catch.
+import * as onchainRuntimeV3Alt from 'onchain-runtime-v3-alt';
+import { describe, expect, it } from 'vitest';
+
+import {
+  Ledger8InstanceMismatchError,
+  Ledger8RuntimeInvalidError,
+  PROTOCOL_ERROR_CODES,
+  UnknownLedger8AxisError
+} from '../errors';
+import type { Ledger8CompactRuntime } from '../lib/v8/down-convert';
+import { downConvertForExecution } from '../lib/v8/down-convert';
+import { assertSharedLedger8Instance } from '../lib/v8/instance-guard';
+
+const FIELD_ALIGNMENT: onchainRuntimeV3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
+const cell = (byte: number): onchainRuntimeV3.StateValue =>
+  onchainRuntimeV3.StateValue.newCell({ value: [new Uint8Array(32).fill(byte)], alignment: FIELD_ALIGNMENT });
+
+describe('assertSharedLedger8Instance', () => {
+  it('does not throw when two independent acquisitions resolve to the same physical copy', async () => {
+    // Deliberately not `(axis, x, x)`: comparing a binding with itself is
+    // `x === x` and asserts nothing. A static import and a dynamic import of
+    // the same specifier are two separate acquisitions that Node resolves to
+    // one module record — the condition the guard is supposed to accept.
+    const viaDynamicImport = await import('@midnight-ntwrk/onchain-runtime-v3');
+
+    expect(() =>
+      assertSharedLedger8Instance('onchain-runtime-v3', onchainRuntimeV3.ChargedState, viaDynamicImport.ChargedState)
+    ).not.toThrow();
+  });
+
+  // The probe has to be a shared binding, not a module namespace object. A
+  // re-export — the case the error message names first — produces a fresh
+  // namespace over the same physical copy, so a namespace comparison would
+  // fail on a healthy install. Spreading the namespace reproduces that shape:
+  // a different object carrying identical bindings.
+  it('accepts a binding reached through a re-export, where a namespace comparison would false-positive', () => {
+    const viaReExport = { ...onchainRuntimeV3 };
+
+    expect(viaReExport).not.toBe(onchainRuntimeV3);
+    expect(() =>
+      assertSharedLedger8Instance('onchain-runtime-v3', onchainRuntimeV3.ChargedState, viaReExport.ChargedState)
+    ).not.toThrow();
+  });
+
+  it('throws Ledger8InstanceMismatchError naming the axis when the probes come from two physical copies', () => {
+    try {
+      assertSharedLedger8Instance('onchain-runtime-v3', onchainRuntimeV3.ChargedState, onchainRuntimeV3Alt.ChargedState);
+      expect.unreachable('two physical copies must be rejected');
+    } catch (error) {
+      expect(error).toBeInstanceOf(Ledger8InstanceMismatchError);
+      expect(error).toMatchObject({
+        code: PROTOCOL_ERROR_CODES.LEDGER8_INSTANCE_MISMATCH,
+        axis: 'onchain-runtime-v3'
+      });
+    }
+  });
+
+  // Both published names, not one: the dual-publish rewrites dependency scopes
+  // at pack time, so a consumer installed from either scope must find their own
+  // name in the hint. See `axisPackageNames` in `errors.ts`, which joins the
+  // scopes in `PUBLISHED_SCOPES` onto the bare names in
+  // `AXIS_BARE_PACKAGE_NAMES`.
+  it('names every published npm package, not the axis label, in the remediation hint', () => {
+    try {
+      assertSharedLedger8Instance('onchain-runtime-v3', onchainRuntimeV3.ChargedState, onchainRuntimeV3Alt.ChargedState);
+      expect.unreachable('two physical copies must be rejected');
+    } catch (error) {
+      expect(error).toBeInstanceOf(Ledger8InstanceMismatchError);
+      const { message } = error as Ledger8InstanceMismatchError;
+      expect(message).toContain('@midnight-ntwrk/onchain-runtime-v3');
+      expect(message).toContain('@midnightntwrk/onchain-runtime-v3');
+    }
+  });
+
+  // A missing probe is a caller fault, not a duplicate install. Reporting it
+  // as a mismatch would assert two physical copies exist and send the reader
+  // to `npm why` to hunt a duplicate that is not there, so it gets the same
+  // code the envelope seam already uses for a runtime handed over incomplete.
+  it.each([
+    { name: 'both probes undefined', a: undefined, b: undefined },
+    { name: 'both probes null', a: null, b: null },
+    { name: 'only one probe nullish', a: onchainRuntimeV3.ChargedState, b: undefined }
+  ])('rejects $name without diagnosing a dual-instantiation', ({ a, b }) => {
+    try {
+      assertSharedLedger8Instance('onchain-runtime-v3', a, b);
+      expect.unreachable('nullish probes must be rejected');
+    } catch (error) {
+      expect(error).toBeInstanceOf(Ledger8RuntimeInvalidError);
+      expect(error).toMatchObject({
+        code: PROTOCOL_ERROR_CODES.LEDGER8_RUNTIME_INVALID,
+        missingMember: 'onchain-runtime-v3 instance probe'
+      });
+      expect((error as Ledger8RuntimeInvalidError).message).not.toContain('dual-instantiation');
+    }
+  });
+
+  // `axis` is only type-checked for TypeScript callers, and it is interpolated
+  // into the remediation hint. An unvalidated string reaching the message
+  // renders `Object.prototype` members as package names, so it is validated
+  // against the closed union before any probe is compared.
+  it.each(['constructor', '__proto__', 'toString', 'valueOf', 'bogus'])(
+    'rejects the non-axis %s instead of naming it as a package',
+    (axis) => {
+      try {
+        // @ts-expect-error - reaching the axis guard that exists for untyped JS callers
+        assertSharedLedger8Instance(axis, onchainRuntimeV3.ChargedState, onchainRuntimeV3Alt.ChargedState);
+        expect.unreachable('a non-axis must be rejected');
+      } catch (error) {
+        expect(error).toBeInstanceOf(UnknownLedger8AxisError);
+        expect(error).toMatchObject({
+          code: PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER8_AXIS,
+          requestedAxis: axis
+        });
+        expect((error as UnknownLedger8AxisError).message).not.toContain(axis);
+      }
+    }
+  );
+
+  it('rejects a non-string axis, which cannot index the package-name table at all', () => {
+    expect(() =>
+      // @ts-expect-error - reaching the axis guard that exists for untyped JS callers
+      assertSharedLedger8Instance(42, onchainRuntimeV3.ChargedState, onchainRuntimeV3Alt.ChargedState)
+    ).toThrowError(expect.objectContaining({ code: PROTOCOL_ERROR_CODES.UNKNOWN_LEDGER8_AXIS }));
+  });
+});
+
+describe('a dual-instantiation reaching the down-convert', () => {
+  // Establishes what the guard is guarding against, using two genuinely
+  // distinct physical copies. wasm-bindgen rejects the foreign StateValue when
+  // ChargedState is constructed; downConvertForExecution must surface that as
+  // a coded error rather than letting a bare WASM TypeError escape a seam
+  // whose contract is code-based discrimination.
+  it('fails with a coded DownConvertFailedError rather than corrupt data', () => {
+    const mixedRuntime: Ledger8CompactRuntime = {
+      ContractState: onchainRuntimeV3.ContractState,
+      StateValue: onchainRuntimeV3.StateValue,
+      ChargedState: onchainRuntimeV3Alt.ChargedState
+    };
+
+    expect(() => downConvertForExecution(cell(0x11).encode(), mixedRuntime)).toThrowError(
+      expect.objectContaining({ code: PROTOCOL_ERROR_CODES.DOWN_CONVERT_FAILED })
+    );
+  });
+});
