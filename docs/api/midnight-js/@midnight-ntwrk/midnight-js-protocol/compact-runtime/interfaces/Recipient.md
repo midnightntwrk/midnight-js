@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Interface: Recipient
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:65
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:6
 
 The recipient of a coin produced by a circuit.
 
@@ -16,7 +16,7 @@ The recipient of a coin produced by a circuit.
 
 > `readonly` **is\_left**: `boolean`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:69
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:10
 
 Whether the recipient is a user or a contract.
 
@@ -26,7 +26,7 @@ Whether the recipient is a user or a contract.
 
 > `readonly` **left**: `string`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:73
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:14
 
 The recipient's public key, if the recipient is a user.
 
@@ -36,6 +36,6 @@ The recipient's public key, if the recipient is a user.
 
 > `readonly` **right**: `string`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:77
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:18
 
 The recipient's contract address, if the recipient is a contract.

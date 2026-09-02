@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Interface: EncodedCoinPublicKey
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:31
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:47
 
 A [CoinPublicKey](../../onchain-runtime/type-aliases/CoinPublicKey.md) encoded as a byte string. This representation is used internally by the contract executable.
 
@@ -16,6 +16,6 @@ A [CoinPublicKey](../../onchain-runtime/type-aliases/CoinPublicKey.md) encoded a
 
 > `readonly` **bytes**: `Uint8Array`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:35
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:51
 
 The coin public key's bytes.

@@ -7,13 +7,14 @@ labels:
   - component:midnight-js
 body:
   - type: dropdown
-    id: component
+    id: components
     attributes:
-      label: Component
-      description: Which component does this affect?
+      label: Components
+      description: Which components does this affect?
+      multiple: true
       options:
-        - midnight-js
-        - cardano-node
+        - component:midnight-js
+        - component:cardano-node
     validations:
       required: true
 

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Interface: ShieldedSpendPayload
 
-Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:60
+Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:61
 
 ## Properties
 
@@ -14,4 +14,4 @@ Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog
 
 > `readonly` **nullifier**: `Uint8Array`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:61
+Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:62

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **CallProofDataTrace** = [`CallProofData`](../interfaces/CallProofData.md)[]
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:82
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:89
 
 List of data needed to construct proofs and transactions for all circuit calls
 resulting from executing a root circuit. The calls are in depth-first traversal order.

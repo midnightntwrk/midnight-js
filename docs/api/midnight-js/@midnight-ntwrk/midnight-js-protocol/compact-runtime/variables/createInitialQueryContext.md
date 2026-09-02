@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > `const` **createInitialQueryContext**: (`contractState`, `contractAddress`, `time`, `parentBlockHash?`, `caller?`) => [`QueryContext`](../../onchain-runtime/classes/QueryContext.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:192
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:210
 
 **`Internal`**
 

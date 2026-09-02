@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Interface: ShieldedReceivePayload
 
-Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:64
+Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:65
 
 ## Properties
 
@@ -14,7 +14,7 @@ Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog
 
 > `readonly` **ciphertext**: `Option`\<`Uint8Array`\<`ArrayBufferLike`\>\>
 
-Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:67
+Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:68
 
 ***
 
@@ -22,7 +22,7 @@ Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog
 
 > `readonly` **commitment**: `Uint8Array`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:65
+Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:66
 
 ***
 
@@ -30,4 +30,4 @@ Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog
 
 > `readonly` **contractAddress**: `Option`\<`Uint8Array`\<`ArrayBufferLike`\>\>
 
-Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:66
+Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:67

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **secp256k1Mul**(`a`, `b`): [`Secp256k1Point`](../interfaces/Secp256k1Point.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/built-ins.d.ts:247
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/built-ins.d.ts:262
 
 The Compact builtin `ecMul` function for secp256k1 points.
 

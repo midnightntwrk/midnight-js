@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Interface: JubjubSchnorrSignature
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:110
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/utils.d.ts:71
 
 A Schnorr signature over the JubJub curve. TypeScript representation of the
 Compact type of the same name.
@@ -17,7 +17,7 @@ Compact type of the same name.
 
 > `readonly` **announcement**: [`JubjubPoint`](JubjubPoint.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:111
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/utils.d.ts:72
 
 ***
 
@@ -25,4 +25,4 @@ Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.t
 
 > `readonly` **response**: `bigint`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:112
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/utils.d.ts:73

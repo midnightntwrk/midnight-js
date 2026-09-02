@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Class: CompactTypeUnsignedInteger
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:144
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:115
 
 Runtime type of the builtin `Unsigned Integer` types
 
@@ -20,7 +20,7 @@ Runtime type of the builtin `Unsigned Integer` types
 
 > **new CompactTypeUnsignedInteger**(`maxValue`, `length`): `CompactTypeUnsignedInteger`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:147
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:118
 
 #### Parameters
 
@@ -42,7 +42,7 @@ Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.t
 
 > `readonly` **length**: `number`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:146
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:117
 
 ***
 
@@ -50,7 +50,7 @@ Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.t
 
 > `readonly` **maxValue**: `bigint`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:145
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:116
 
 ## Methods
 
@@ -58,7 +58,7 @@ Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.t
 
 > **alignment**(): [`Alignment`](../../onchain-runtime/type-aliases/Alignment.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:148
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:119
 
 The field-aligned binary alignment of this type.
 
@@ -76,7 +76,7 @@ The field-aligned binary alignment of this type.
 
 > **fromValue**(`value`): `bigint`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:149
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:120
 
 Converts this type's field-aligned binary representation to its TypeScript
 representation destructively; (partially) consuming the input, and
@@ -102,7 +102,7 @@ ignoring superflous data for chaining.
 
 > **toValue**(`value`): [`Value`](../../onchain-runtime/type-aliases/Value.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:150
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:121
 
 Converts this type's TypeScript representation to its field-aligned binary
 representation
