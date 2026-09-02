@@ -29,7 +29,8 @@ export type {
   ComposeCallEntry,
   ComposeCallOptions,
   ComposeDeployOptions,
-  DeployResultPojo
+  DeployResultPojo,
+  PartitionContext
 } from './compose-types';
 export type { ContractEntryPointPojo, ContractStatePojo } from './contract-state';
 export type { LedgerEra } from './era';

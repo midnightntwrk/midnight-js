@@ -25,7 +25,7 @@ import { ComposeFailedError, ComposeOptionError, PROTOCOL_ERROR_CODES } from '..
 import { type ComposeV8CallOptions, composeV8CallTx } from '../lib/engine/compose-v8';
 import type { DownConvertedState } from '../lib/engine/down-convert';
 import type { TranscriptPojo } from '../lib/engine/execute';
-import { emptyZswapLocalState } from './fixtures';
+import { emptyPartitionContext, emptyZswapLocalState } from './fixtures';
 
 const NETWORK_ID = 'test-network';
 const TTL = new Date(Date.now() + 3_600_000);
@@ -49,6 +49,7 @@ const buildTranscript = (): TranscriptPojo => ({
   privateTranscriptOutputs: [],
   preContractState: buildState(0x01),
   postContractState: buildState(0x02),
+  partitionContext: emptyPartitionContext(),
   zswapLocalState: emptyZswapLocalState(),
   privateStateAfter: {}
 });
@@ -86,7 +87,8 @@ const buildCallOptions = (contractState: LedgerV8.ContractState): ComposeV8CallO
     transcript: {
       kind: 'unpartitioned',
       preState: transcript.preContractState.data.state.encode(),
-      publicTranscript: transcript.publicTranscript
+      publicTranscript: transcript.publicTranscript,
+      partitionContext: transcript.partitionContext
     },
     privateTranscriptOutputs: transcript.privateTranscriptOutputs,
     input: transcript.input,

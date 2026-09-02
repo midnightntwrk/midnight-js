@@ -25,7 +25,7 @@ import { PROTOCOL_ERROR_CODES, StateDecodeFailedError } from '../errors';
 import type { CallTranscriptSource, ComposeCallOptions, ComposeDeployOptions } from '../lib/era/compose-types';
 import { loadLedgerEra } from '../lib/era/load-era';
 import type { LedgerVersion } from '../lib/ledger-version';
-import { fixturePath, readHexFixture } from './fixtures';
+import { emptyPartitionContext, fixturePath, readHexFixture } from './fixtures';
 
 // What parity means here, and what it deliberately does NOT mean.
 //
@@ -63,7 +63,17 @@ const ttl = (): Date => new Date(Date.now() + 3_600_000);
 /** How many calls and deploys a composed transaction carries, read back per era. */
 interface TransactionShape {
   readonly intents: number;
-  readonly calls: readonly { readonly address: string; readonly entryPoint: string | Uint8Array }[];
+  readonly calls: readonly {
+    readonly address: string;
+    readonly entryPoint: string | Uint8Array;
+    /**
+     * The claimed shielded receives the call's guaranteed transcript declares.
+     * Read back because the partitioner starts a transcript's effects from the
+     * query context it was handed, so this is where a recorded context that
+     * never reached the partitioner becomes visible — on either era.
+     */
+    readonly claimedShieldedReceives: readonly string[];
+  }[];
   readonly deployAddresses: readonly string[];
   readonly deployedStateEntryPoints: readonly (string | Uint8Array)[];
   /**
@@ -200,7 +210,11 @@ const v8Fixture: EraFixture = {
       intents: intents.length,
       calls: actions
         .filter((action) => action instanceof LedgerV8.ContractCall)
-        .map((call) => ({ address: call.address, entryPoint: call.entryPoint })),
+        .map((call) => ({
+          address: call.address,
+          entryPoint: call.entryPoint,
+          claimedShieldedReceives: call.guaranteedTranscript?.effects.claimedShieldedReceives ?? []
+        })),
       deployAddresses: deploys.map((deploy) => deploy.address),
       deployedStateEntryPoints: deploys.flatMap((deploy) => deploy.initialState.operations()),
       deployedVerifierKeyHashes: deploys.flatMap((deploy) =>
@@ -256,7 +270,11 @@ const v9Fixture: EraFixture = {
       intents: intents.length,
       calls: actions
         .filter((action) => action instanceof ledgerV9.ContractCall)
-        .map((call) => ({ address: call.address, entryPoint: call.entryPoint })),
+        .map((call) => ({
+          address: call.address,
+          entryPoint: call.entryPoint,
+          claimedShieldedReceives: call.guaranteedTranscript?.effects.claimedShieldedReceives ?? []
+        })),
       deployAddresses: deploys.map((deploy) => deploy.address),
       deployedStateEntryPoints: deploys.flatMap((deploy) => deploy.initialState.operations()),
       deployedVerifierKeyHashes: deploys.flatMap((deploy) =>
@@ -297,7 +315,12 @@ const callOptionsFor = (version: LedgerVersion): ComposeCallOptions => ({
       contractAddress: ocrt3.dummyContractAddress(),
       circuitId: 'increment',
       contractState: FIXTURES[version].keyedContractState(),
-      transcript: { kind: 'unpartitioned', preState: PRE_STATE, publicTranscript: PUBLIC_TRANSCRIPT },
+      transcript: {
+        kind: 'unpartitioned',
+        preState: PRE_STATE,
+        publicTranscript: PUBLIC_TRANSCRIPT,
+        partitionContext: emptyPartitionContext()
+      },
       privateTranscriptOutputs: [],
       input: fieldValue(0x10),
       output: fieldValue(0x20)
@@ -355,6 +378,41 @@ describe('the two ledger eras run the same scenario', () => {
       pojo.entryPoints.map((entry) => [entry.circuitId, entry.verifierKeyHash]);
     expect(hashesByCircuit(fromV8).sort()).toEqual(hashesByCircuit(fromV9).sort());
     expect(fromV8.entryPoints.every((entry) => entry.verifierKeyHash !== undefined)).toBe(true);
+  });
+
+  // Both arms partition an unpartitioned transcript themselves, so both have to
+  // bridge the context the call recorded onto the query context they partition
+  // against. Asserted through the composed transaction, per era: the
+  // partitioner starts the transcript's effects from that context, so an arm
+  // that dropped it composes a call declaring nothing was received.
+  it.each(ERAS)('bridges the context an unpartitioned call recorded on %s', async (version) => {
+    const era = await loadLedgerEra(version);
+    const received = 'ef'.repeat(32);
+    const base = callOptionsFor(version);
+    const [call] = base.calls;
+    if (call.transcript.kind !== 'unpartitioned') {
+      throw new Error('the parity call fixture is expected to arrive unpartitioned');
+    }
+    const recorded = call.transcript.partitionContext;
+    const options: ComposeCallOptions = {
+      ...base,
+      calls: [
+        {
+          ...call,
+          transcript: {
+            ...call.transcript,
+            partitionContext: {
+              ...recorded,
+              effects: { ...recorded.effects, claimedShieldedReceives: [received] }
+            }
+          }
+        }
+      ]
+    };
+
+    const shape = FIXTURES[version].readTransaction(era.composeCallTx(options));
+
+    expect(shape.calls[0].claimedShieldedReceives).toEqual([received]);
   });
 
   it.each(ERAS)('composes one call into one intent on %s', async (version) => {

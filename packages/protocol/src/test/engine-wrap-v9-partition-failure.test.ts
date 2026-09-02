@@ -22,7 +22,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { DownConvertedState } from '../lib/engine/down-convert';
 import type { TranscriptPojo } from '../lib/engine/execute';
-import { emptyZswapLocalState } from './fixtures';
+import { emptyPartitionContext, emptyZswapLocalState } from './fixtures';
 
 // A REGISTERED key, not a blank operation: assembleCallPrototype rejects a
 // key-less operation before it ever partitions a transcript (stage
@@ -46,6 +46,7 @@ const buildTranscript = (): TranscriptPojo => ({
   preContractState: buildState(0x01),
   postContractState: buildState(0x02),
   privateStateAfter: {},
+  partitionContext: emptyPartitionContext(),
   zswapLocalState: emptyZswapLocalState()
 });
 

@@ -13,7 +13,45 @@
  * limitations under the License.
  */
 
-import type { AlignedValue, EncodedStateValue, Op, Transcript } from '@midnightntwrk/ledger-v9';
+import type {
+  AlignedValue,
+  CallContext,
+  CoinCommitment,
+  Effects,
+  EncodedStateValue,
+  Op,
+  Transcript
+} from '@midnightntwrk/ledger-v9';
+
+/**
+ * The query-context state a call recorded while it ran, which its pre-call
+ * state bytes do not carry.
+ *
+ * Partitioning an unpartitioned transcript replays its program against a query
+ * context, and that context has to be the one the circuit actually ran on. A
+ * context rebuilt from `preState` alone is not: constructing one restores the
+ * state and nothing else. compact-js's own v9 leg carries exactly these three
+ * pieces across the same boundary (`ContractExecutable.js`,
+ * `asLedgerQueryContext` and `partitionAllTranscripts`).
+ *
+ * `block` and `effects` are the PRE-call values, because the partitioner
+ * recomputes both from the program it replays — post-call values would be
+ * counted twice. `comIndices` is the POST-call map: the runtime registers a
+ * received coin's commitment as the circuit produces it
+ * (`createZswapOutput` in the retained 0.16 glue), and a call that received a
+ * coin in-contract cannot be partitioned without it.
+ *
+ * Plain data on every member, so the whole record crosses an era boundary and
+ * survives a `structuredClone`. `CallContext` and `Effects` are declared once
+ * against ledger-v9 and are structurally identical on all three axes
+ * (compile-time drift gate in engine-down-convert.test.ts).
+ */
+export interface PartitionContext {
+  readonly block: CallContext;
+  readonly effects: Effects;
+  /** Commitment -> the index the runtime recorded it at. Empty for a call that received no coin. */
+  readonly comIndices: ReadonlyMap<CoinCommitment, bigint>;
+}
 
 /**
  * Where a call's public transcript comes from. Two shapes, because neither
@@ -22,7 +60,8 @@ import type { AlignedValue, EncodedStateValue, Op, Transcript } from '@midnightn
  * - `'unpartitioned'` — the retained pre-fork execution leg hands over the raw
  *   op sequence a circuit emitted, together with the state it ran against.
  *   Splitting it into a guaranteed and a fallible half is the ledger's job, and
- *   needs both halves.
+ *   needs both halves — plus the {@link PartitionContext} the leg recorded,
+ *   which the state bytes alone do not carry.
  * - `'partitioned'` — the current production path receives transcripts already
  *   split by compact-js. Re-deriving the split would mean rebuilding a query
  *   context the caller no longer has, to redo work already done.
@@ -36,6 +75,7 @@ export type CallTranscriptSource =
       readonly kind: 'unpartitioned';
       readonly preState: EncodedStateValue;
       readonly publicTranscript: Op<AlignedValue>[];
+      readonly partitionContext: PartitionContext;
     }
   | {
       readonly kind: 'partitioned';

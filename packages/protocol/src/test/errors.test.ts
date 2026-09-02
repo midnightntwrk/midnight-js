@@ -423,6 +423,7 @@ const STAGE_KEYS: Readonly<Record<ComposeStage, true>> = {
   'wrap-call': true,
   'call-empty': true,
   'call-transcript-empty': true,
+  'call-partition-context': true,
   'call-partition': true,
   'call-prototype': true,
   'call-dust-payout': true,

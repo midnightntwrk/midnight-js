@@ -59,11 +59,13 @@ export const wrapKeepStateCall = (options: WrapKeepStateCallOptions): ledgerV9.C
     circuitId: transcript.circuitId,
     contractAddress,
     // The retained execution leg partitions nothing: it hands over the raw op
-    // sequence the circuit emitted, against the state it ran on.
+    // sequence the circuit emitted, against the state it ran on — plus the
+    // context it recorded while running, which the state bytes do not carry.
     transcript: {
       kind: 'unpartitioned',
       preState: transcript.preContractState.data.state.encode(),
-      publicTranscript: transcript.publicTranscript
+      publicTranscript: transcript.publicTranscript,
+      partitionContext: transcript.partitionContext
     },
     privateTranscriptOutputs: transcript.privateTranscriptOutputs,
     input: transcript.input,

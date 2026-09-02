@@ -24,6 +24,7 @@ import { describe, expect, it } from 'vitest';
 import { ComposeFailedError, ComposeOptionError, PROTOCOL_ERROR_CODES } from '../errors';
 import type { ComposeCallEntry, ComposeCallOptions, ComposeDeployOptions } from '../lib/era/compose-types';
 import { composeV9CallTx, composeV9DeployTx } from '../lib/era/compose-v9';
+import { emptyPartitionContext } from './fixtures';
 
 const FIELD_ALIGNMENT: ocrt3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
 const fieldValue = (byte: number): ocrt3.AlignedValue => ({
@@ -93,7 +94,12 @@ const callEntry = (overrides: Partial<ComposeCallEntry> = {}): ComposeCallEntry 
   contractAddress: ADDRESS,
   circuitId: 'increment',
   contractState: serializedStateWith(keyedOperation()),
-  transcript: { kind: 'unpartitioned', preState: PRE_STATE, publicTranscript: PUBLIC_TRANSCRIPT },
+  transcript: {
+    kind: 'unpartitioned',
+    preState: PRE_STATE,
+    publicTranscript: PUBLIC_TRANSCRIPT,
+    partitionContext: emptyPartitionContext()
+  },
   privateTranscriptOutputs: [],
   input: fieldValue(0x10),
   output: fieldValue(0x20),

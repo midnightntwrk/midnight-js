@@ -23,6 +23,7 @@ import { describe, expect, it } from 'vitest';
 import { ComposeFailedError, PROTOCOL_ERROR_CODES } from '../errors';
 import { assembleCallPrototype } from '../lib/engine/assemble-call';
 import type { CallTranscriptSource } from '../lib/era/compose-types';
+import { emptyPartitionContext } from './fixtures';
 
 const FIELD_ALIGNMENT: ocrt3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
 const fieldValue = (byte: number): ocrt3.AlignedValue => ({
@@ -177,7 +178,12 @@ describe('assembleCallPrototype from an already-partitioned transcript', () => {
 
     const fromUnpartitioned = assembleWith(
       address,
-      { kind: 'unpartitioned', preState: PRE_STATE, publicTranscript: PUBLIC_TRANSCRIPT },
+      {
+        kind: 'unpartitioned',
+        preState: PRE_STATE,
+        publicTranscript: PUBLIC_TRANSCRIPT,
+        partitionContext: emptyPartitionContext()
+      },
       contractStateWithOperation(),
       randomness
     );
@@ -255,7 +261,12 @@ describe('assembleCallPrototype from an already-partitioned transcript', () => {
     try {
       assembleWith(
         address,
-        { kind: 'unpartitioned', preState: unreadable, publicTranscript: PUBLIC_TRANSCRIPT },
+        {
+          kind: 'unpartitioned',
+          preState: unreadable,
+          publicTranscript: PUBLIC_TRANSCRIPT,
+          partitionContext: emptyPartitionContext()
+        },
         contractStateWithOperation(),
         ledgerV9.communicationCommitmentRandomness()
       );
@@ -284,7 +295,12 @@ describe('assembleCallPrototype from an already-partitioned transcript', () => {
     try {
       assembleWith(
         address,
-        { kind: 'unpartitioned', preState: PRE_STATE, publicTranscript: [{ noop: { n: -1 } }] },
+        {
+          kind: 'unpartitioned',
+          preState: PRE_STATE,
+          publicTranscript: [{ noop: { n: -1 } }],
+          partitionContext: emptyPartitionContext()
+        },
         contractStateWithOperation(),
         ledgerV9.communicationCommitmentRandomness()
       );

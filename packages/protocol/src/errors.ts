@@ -287,6 +287,11 @@ export const NO_CIRCUIT = '(none)';
  * - `'call-transcript-empty'` — a caller-supplied partitioned transcript
  *   carried neither a guaranteed nor a fallible half, so the call would record
  *   no operations at all.
+ * - `'call-partition-context'` — the era rejected the query-context state the
+ *   call recorded (its block, its starting effects, or one of the commitment
+ *   indices it registered for a coin received in-contract) while bridging it
+ *   onto the context the transcript is partitioned against. Carries the
+ *   runtime's own failure on `cause`.
  * - `'call-partition'` — the ledger rejected the public transcript supplied
  *   for a call while splitting it into its guaranteed and fallible halves.
  *   Carries the runtime's own failure on `cause`.
@@ -328,6 +333,7 @@ export type ComposeStage =
   | 'wrap-call'
   | 'call-empty'
   | 'call-transcript-empty'
+  | 'call-partition-context'
   | 'call-partition'
   | 'call-prototype'
   | 'call-dust-payout'
@@ -426,12 +432,18 @@ export class ComposeFailedError extends Error {
       'spend, so nothing can settle this claim; composing it anyway would tell the user they were paid ' +
       'while the transaction paid them nothing. Move the shielded value through the guaranteed or fallible ' +
       'Zswap offer instead.',
+    'call-partition-context': (version, circuitId) =>
+      `Failed to compose a ${version} call: the ${version} era rejected the query-context state recorded ` +
+      `for circuit '${circuitId}' — its block, its starting effects, or one of the commitment indices it ` +
+      'registered for a coin received in-contract. Read the wrapped cause for the member the runtime could ' +
+      'not read. Pass the context the execution leg recorded on the transcript, unmodified.',
     'call-partition': (version, circuitId) =>
       `Failed to compose a ${version} call: the ${version} ledger rejected the public transcript supplied ` +
       `for circuit '${circuitId}' while splitting it into its guaranteed and fallible halves. Read the ` +
       'wrapped cause for what the runtime reported; it names the operation and the operand it could not ' +
-      'read. This usually means a hand-built or re-encoded op sequence rather than one an execution leg ' +
-      'produced — pass the transcript the circuit actually emitted.',
+      'read. Two causes are common: a hand-built or re-encoded op sequence rather than one an execution ' +
+      'leg produced, or a call that received a coin in-contract whose recorded commitment indices never ' +
+      'reached the partitioner — a transcript that reads a received coin cannot be split without them.',
     'call-prototype': (version, circuitId) =>
       `Failed to compose a ${version} call: the ${version} ledger rejected the inputs supplied for circuit ` +
       `'${circuitId}' while constructing the call prototype. Read the wrapped cause for what the runtime ` +
