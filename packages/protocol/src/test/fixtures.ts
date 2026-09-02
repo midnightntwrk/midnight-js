@@ -16,7 +16,10 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import type { ZswapLocalState } from 'compact-runtime-ledger8';
+
+import type { PartitionContext } from '../lib/shared/compose-types';
 
 // Not a `*.test.ts` file, so vitest does not collect it, and it sits under
 // `test/`, which the coverage config excludes.
@@ -65,3 +68,21 @@ export const emptyZswapLocalState = (): ZswapLocalState => ({
   inputs: [],
   outputs: []
 });
+
+/**
+ * The query context a call that received no coin records: the block and effects
+ * a freshly built context starts with, and an empty commitment map.
+ *
+ * Written down once for the same reason {@link emptyZswapLocalState} is, and
+ * READ OFF a real `QueryContext` rather than hand-written: `CallContext` and
+ * `Effects` are vendor shapes with a dozen members between them, and the WASM
+ * setters reject a record missing any one of them — so a hand-built literal
+ * would have to be re-edited in every fixture on a vendor bump.
+ */
+export const emptyPartitionContext = (): PartitionContext => {
+  const queryContext = new ocrt3.QueryContext(
+    new ocrt3.ChargedState(ocrt3.StateValue.newNull()),
+    ocrt3.dummyContractAddress()
+  );
+  return { block: queryContext.block, effects: queryContext.effects, comIndices: new Map() };
+};

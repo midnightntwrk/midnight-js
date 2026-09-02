@@ -59,15 +59,20 @@ export interface AggregatedUnshieldedOffers<TOffer> {
 /**
  * Reads the UTXO outputs a call's transcript claims on behalf of USERS.
  *
- * A contract-addressed claimed spend is skipped: it is settled between
- * contracts and never paid out to a UTXO, so emitting one would add an output
+ * A contract-addressed claimed spend is skipped, and cross-contract calls make
+ * that a normal, expected case rather than an oddity. It is safe to skip
+ * because a cross-contract transfer is never materialized as a UTXO: the
+ * ledger settles it against the callee's own balance update, under the
+ * `real_unshielded_spends` superset check, and `UtxoOutput.owner` takes a user
+ * address in the first place. Emitting an output for one would add a payout
  * the transaction cannot cover.
  *
  * A user-addressed spend this seam cannot pay out is REFUSED, not skipped. That
- * is a different case from a contract-addressed spend, which is not a payout at
- * all: this one is a payout the transaction has no way to make. Dropping it
- * silently composes a transaction that tells the user they were paid and pays
- * them nothing, so it leaves as a coded failure at composition time instead.
+ * is a different case from a contract-addressed spend, which is not a UTXO
+ * payout at all: this one is a payout the transaction has no way to make.
+ * Dropping it silently composes a transaction that tells the user they were
+ * paid and pays them nothing, so it leaves as a coded failure at composition
+ * time instead.
  * Two token types reach that refusal — dust, which carries no raw token type to
  * pay out in, and a shielded type, whose value moves through a Zswap offer
  * rather than a UTXO.

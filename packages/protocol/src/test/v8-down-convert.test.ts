@@ -18,14 +18,18 @@ import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 // without linking the v8 module into anything.
 import type {
   AlignedValue as LedgerV8AlignedValue,
+  CallContext as LedgerV8CallContext,
+  Effects as LedgerV8Effects,
   EncodedStateValue as LedgerV8EncodedStateValue,
   Op as LedgerV8Op,
   Transcript as LedgerV8Transcript
 } from '@midnightntwrk/ledger-v8';
 import {
   type AlignedValue as LedgerV9AlignedValue,
+  type CallContext as LedgerV9CallContext,
   ChargedState as LedgerV9ChargedState,
   ContractState as LedgerV9ContractState,
+  type Effects as LedgerV9Effects,
   type EncodedStateValue as LedgerV9EncodedStateValue,
   type Op as LedgerV9Op,
   StateMap as LedgerV9StateMap,
@@ -739,6 +743,20 @@ type _V8AlignedValueUnchanged = Expect<AssertEqual<LedgerV8AlignedValue, LedgerV
 type _V8TranscriptUnchanged = Expect<
   AssertEqual<LedgerV8Transcript<LedgerV8AlignedValue>, LedgerV9Transcript<LedgerV9AlignedValue>>
 >;
+
+// `CallContext` and `Effects` join them for the same reason one step further
+// out. A call composed from an unpartitioned transcript carries a
+// `PartitionContext` (`lib/shared/compose-types.ts`) holding both, declared once
+// against ledger-v9 and read off the PRE-FORK runtime's own query context by
+// `executeCircuit`, then written onto whichever era's `QueryContext` the
+// composition leg partitions against. Three axes have to agree for that to be
+// a move rather than a re-encode, and the WASM setters reject a record whose
+// members do not match — at runtime, from inside wasm, with no compile error to
+// warn first.
+type _CallContextUnchanged = Expect<AssertEqual<ocrt3.CallContext, LedgerV9CallContext>>;
+type _EffectsUnchanged = Expect<AssertEqual<ocrt3.Effects, LedgerV9Effects>>;
+type _V8CallContextUnchanged = Expect<AssertEqual<LedgerV8CallContext, LedgerV9CallContext>>;
+type _V8EffectsUnchanged = Expect<AssertEqual<LedgerV8Effects, LedgerV9Effects>>;
 
 // Era rejection, and why it needs pinning here rather than trusting the
 // interface to keep working. `Ledger8CompactRuntime` must accept only the

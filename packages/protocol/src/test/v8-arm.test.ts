@@ -22,7 +22,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { ComposeOptionError, PROTOCOL_ERROR_CODES } from '../errors';
 import { loadLedgerEra } from '../lib/era/load-era';
-import type { ComposeCallEntry } from '../lib/shared/compose-types';
+import type { ComposeCallEntry, PartitionContext } from '../lib/shared/compose-types';
 import type { Ledger8ContractLike } from '../lib/v8/execute';
 import { loadLedger8Engine } from '../lib/v8/load-engine';
 
@@ -88,6 +88,7 @@ const callEntryFromTranscript = (
     readonly publicTranscript: ocrt3.Op<ocrt3.AlignedValue>[];
     readonly privateTranscriptOutputs: ocrt3.AlignedValue[];
     readonly preContractState: { readonly data: ocrt3.ChargedState };
+    readonly partitionContext: PartitionContext;
   },
   contractAddress: string
 ): ComposeCallEntry => ({
@@ -97,7 +98,8 @@ const callEntryFromTranscript = (
   transcript: {
     kind: 'unpartitioned',
     preState: transcript.preContractState.data.state.encode(),
-    publicTranscript: transcript.publicTranscript
+    publicTranscript: transcript.publicTranscript,
+    partitionContext: transcript.partitionContext
   },
   privateTranscriptOutputs: transcript.privateTranscriptOutputs,
   input: transcript.input,

@@ -25,6 +25,7 @@ import {
 } from 'compact-runtime-ledger8';
 import { describe, expect, it, vi } from 'vitest';
 
+import type { PartitionContext } from '../lib/shared/compose-types';
 import type { DownConvertedState } from '../lib/v8/down-convert';
 import {
   executeCircuit,
@@ -33,8 +34,10 @@ import {
   type Ledger8CircuitResult,
   type Ledger8ContractLike,
   type Ledger8ExecutionRuntime,
+  type Ledger8QueryContext,
   type TranscriptPojo
 } from '../lib/v8/execute';
+import { emptyPartitionContext } from './fixtures';
 
 const FIXTURE_DIR = resolve(__dirname, '../../../../testkit-js/testkit-js/src/fixtures/hf/counter-016');
 const EMPTY_ALIGNED: ocrt3.AlignedValue = { value: [], alignment: [] };
@@ -48,6 +51,20 @@ const emptyZswap = (): EncodedZswapLocalState => ({
   currentIndex: 0n,
   inputs: [],
   outputs: []
+});
+
+// The `QueryContext` slice executeCircuit reads. `block` and `effects` come off
+// a real context (see `emptyPartitionContext`) rather than a literal, because
+// the vendor shapes carry a dozen members between them and a fake that invents
+// them would drift from what the runtime really serves.
+const fakeQueryContext = (
+  state: ocrt3.ChargedState,
+  recorded: PartitionContext = emptyPartitionContext()
+): Ledger8QueryContext => ({
+  state,
+  block: recorded.block,
+  effects: recorded.effects,
+  comIndices: new Map(recorded.comIndices)
 });
 
 const buildState = (byte: number): DownConvertedState => ({
@@ -80,7 +97,11 @@ describe('executeCircuit (fake runtime — plumbing only, no WASM circuit execut
         capturedPrivateState = privateState;
         capturedGasLimit = gasLimit;
         capturedCostModel = costModel;
-        return { currentQueryContext: { state: contractState }, currentPrivateState: privateState, currentZswapLocalState: emptyZswap() };
+        return {
+          currentQueryContext: fakeQueryContext(contractState),
+          currentPrivateState: privateState,
+          currentZswapLocalState: emptyZswap()
+        };
       },
       CostModel: { initialCostModel: () => injectedCostModel }
     };
@@ -91,7 +112,7 @@ describe('executeCircuit (fake runtime — plumbing only, no WASM circuit execut
           result: args,
           proofData: { input: EMPTY_ALIGNED, output: EMPTY_ALIGNED, publicTranscript: [], privateTranscriptOutputs: [] },
           context: {
-            currentQueryContext: { state: postState.data },
+            currentQueryContext: fakeQueryContext(postState.data),
             currentPrivateState: ctx.currentPrivateState,
             currentZswapLocalState: emptyZswap()
           }
@@ -131,7 +152,7 @@ describe('executeCircuit (fake runtime — plumbing only, no WASM circuit execut
   it('throws a plain Error naming the unknown circuit id, never invoking createCircuitContext', () => {
     const createCircuitContext = vi.fn(
       (): Ledger8CircuitContext => ({
-        currentQueryContext: { state: buildState(3).data },
+        currentQueryContext: fakeQueryContext(buildState(3).data),
         currentPrivateState: undefined,
         currentZswapLocalState: emptyZswap()
       })
@@ -162,7 +183,7 @@ describe('executeCircuit (fake runtime — plumbing only, no WASM circuit execut
       const runtime: Ledger8ExecutionRuntime = {
         decodeZswapLocalState,
         createCircuitContext: () => ({
-          currentQueryContext: { state: buildState(4).data },
+          currentQueryContext: fakeQueryContext(buildState(4).data),
           currentPrivateState: undefined,
           currentZswapLocalState: emptyZswap()
         }),
@@ -191,7 +212,7 @@ describe('executeCircuit (fake runtime — plumbing only, no WASM circuit execut
     const runtime: Ledger8ExecutionRuntime = {
       decodeZswapLocalState,
       createCircuitContext: () => ({
-        currentQueryContext: { state: buildState(5).data },
+        currentQueryContext: fakeQueryContext(buildState(5).data),
         currentPrivateState: undefined,
         currentZswapLocalState: emptyZswap()
       }),
@@ -247,7 +268,7 @@ describe('executeCircuit (fake runtime — plumbing only, no WASM circuit execut
         return decodeZswapLocalState(state);
       },
       createCircuitContext: (_address, _coinPk, contractState, privateState) => ({
-        currentQueryContext: { state: contractState },
+        currentQueryContext: fakeQueryContext(contractState),
         currentPrivateState: privateState,
         currentZswapLocalState: emptyZswap()
       }),
@@ -288,6 +309,69 @@ describe('executeCircuit (fake runtime — plumbing only, no WASM circuit execut
     expect(transcript.zswapLocalState).toEqual(expected);
     expect(transcript.zswapLocalState.outputs).toHaveLength(1);
     expect(transcript.zswapLocalState.outputs[0].coinInfo.value).toBe(42n);
+  });
+});
+
+describe('executeCircuit records the query context a composition leg has to partition against', () => {
+  it('takes block and effects off the PRE-call context and the commitment indices off the post-call one', () => {
+    const received: ocrt3.CoinCommitment = 'ef'.repeat(32);
+    const startingEffect: ocrt3.CoinCommitment = 'ab'.repeat(32);
+    const empty = emptyPartitionContext();
+    const preCall = fakeQueryContext(buildState(0x01).data, {
+      block: { ...empty.block, secondsSinceEpoch: 4_242n },
+      effects: { ...empty.effects, claimedShieldedReceives: [startingEffect] },
+      comIndices: new Map()
+    });
+    const postCall = fakeQueryContext(buildState(0x02).data, {
+      block: { ...empty.block, secondsSinceEpoch: 9_999n },
+      effects: { ...empty.effects, claimedShieldedReceives: [received] },
+      comIndices: new Map([[received, 7n]])
+    });
+
+    // The 0.16 glue REPLACES `currentQueryContext` on every coin the circuit
+    // registers (`createZswapOutput`), so the fake swaps it mid-call the same
+    // way. Reading block or effects after the swap would pick up the post-call
+    // context, and the partitioner recomputes both from the program it replays
+    // — counting them twice.
+    const context = {
+      currentQueryContext: preCall,
+      currentPrivateState: {},
+      currentZswapLocalState: emptyZswap()
+    };
+    const runtime: Ledger8ExecutionRuntime = {
+      decodeZswapLocalState,
+      createCircuitContext: () => context,
+      CostModel: { initialCostModel: () => ocrt3.CostModel.initialCostModel() }
+    };
+    const contract: Ledger8ContractLike = {
+      impureCircuits: {
+        receive: (): Ledger8CircuitResult => {
+          context.currentQueryContext = postCall;
+          return {
+            result: null,
+            proofData: { input: EMPTY_ALIGNED, output: EMPTY_ALIGNED, publicTranscript: [], privateTranscriptOutputs: [] },
+            context: { ...context, currentQueryContext: postCall }
+          };
+        }
+      }
+    };
+
+    const transcript = executeCircuit(
+      {
+        contract,
+        circuitId: 'receive',
+        args: [],
+        state: buildState(0x01),
+        address: ocrt3.dummyContractAddress(),
+        coinPk: SAMPLE_COIN_PUBLIC_KEY,
+        privateState: {}
+      },
+      runtime
+    );
+
+    expect(transcript.partitionContext.block.secondsSinceEpoch).toBe(4_242n);
+    expect(transcript.partitionContext.effects.claimedShieldedReceives).toEqual([startingEffect]);
+    expect([...transcript.partitionContext.comIndices]).toEqual([[received, 7n]]);
   });
 });
 
@@ -365,12 +449,24 @@ describe('executeCircuit against the ported spike counter-016 fixture (real comp
       outputs: []
     });
 
-    // `zswapLocalState` is omitted alongside the state members: the committed
-    // golden pins the PROOF artifacts, and this circuit's coin movements are
-    // asserted directly above rather than through the fixture.
+    // Against the REAL glue, the recorded context is the one it built: the
+    // called address on the block, the wall clock it stamped, and no
+    // commitments, because increment receives no coin. This is what pins the
+    // wiring to the runtime's own context rather than to a fake's.
+    expect(transcript.partitionContext.block.ownAddress).toBe(ocrt3.dummyContractAddress());
+    expect(transcript.partitionContext.block.secondsSinceEpoch).toBeGreaterThan(0n);
+    expect([...transcript.partitionContext.comIndices]).toEqual([]);
+    expect(transcript.partitionContext.effects.claimedShieldedReceives).toEqual([]);
+
+    // `zswapLocalState` is omitted alongside the state members, and
+    // `partitionContext` with them: it carries the wall clock the glue stamped
+    // on the block, so a golden that pinned it would fail a second after it
+    // was written. The four assertions above cover it instead.
+    // The committed golden pins the PROOF artifacts, and this circuit's coin
+    // movements are asserted directly above rather than through the fixture.
     const serializable: Omit<
       TranscriptPojo,
-      'preContractState' | 'postContractState' | 'privateStateAfter' | 'zswapLocalState'
+      'preContractState' | 'postContractState' | 'privateStateAfter' | 'zswapLocalState' | 'partitionContext'
     > = {
       circuitId: transcript.circuitId,
       result: transcript.result,

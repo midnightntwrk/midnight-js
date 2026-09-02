@@ -13,18 +13,37 @@
  * limitations under the License.
  */
 
-import type { AlignedValue, ChargedState, CostModel, Op } from '@midnight-ntwrk/onchain-runtime-v3';
+import type {
+  AlignedValue,
+  CallContext,
+  ChargedState,
+  CoinCommitment,
+  CostModel,
+  Effects,
+  Op
+} from '@midnight-ntwrk/onchain-runtime-v3';
 import type { EncodedZswapLocalState, ZswapLocalState } from 'compact-runtime-ledger8';
 
+import type { PartitionContext } from '../shared/compose-types';
 import type { DownConvertedState } from './down-convert';
 
 /**
  * The `QueryContext` slice {@link executeCircuit} reads off a circuit's
- * post-call context: the resulting primary state, ready to be wrapped back
- * into a {@link DownConvertedState}.
+ * context: the primary state, ready to be wrapped back into a
+ * {@link DownConvertedState}, plus the three members a composition leg needs to
+ * partition the call's public transcript against the context it really ran on
+ * (see {@link PartitionContext}).
+ *
+ * `comIndices` is read off the POST-call context, `block` and `effects` off the
+ * pre-call one — the split {@link PartitionContext} explains. All four are
+ * declared here because the runtime exposes them on the same object; which one
+ * each is read from is {@link executeCircuit}'s choice, not this type's.
  */
 export interface Ledger8QueryContext {
   readonly state: ChargedState;
+  readonly block: CallContext;
+  readonly effects: Effects;
+  readonly comIndices: Map<CoinCommitment, bigint>;
 }
 
 /**
@@ -112,6 +131,12 @@ export interface Ledger8ExecutionRuntime {
  * consumer cannot reach `.operations`, `.maintenanceAuthority` or `.balance`
  * through them.
  *
+ * `partitionContext` is the query-context state the call ran with, which the
+ * carried state bytes do not hold — see {@link PartitionContext}. Composing a
+ * call without it partitions the transcript against a context the circuit
+ * never ran on; a call that received a coin in-contract cannot be partitioned
+ * at all.
+ *
  * `zswapLocalState` is the post-call Zswap local state, DECODED into the
  * runtime's public shape: the coins the circuit spent and produced. A caller
  * turns it into the transaction's segmented Zswap offer
@@ -132,6 +157,7 @@ export interface TranscriptPojo {
   readonly preContractState: DownConvertedState;
   readonly postContractState: DownConvertedState;
   readonly privateStateAfter: unknown;
+  readonly partitionContext: PartitionContext;
   readonly zswapLocalState: ZswapLocalState;
 }
 
@@ -185,6 +211,11 @@ export const executeCircuit = (options: ExecuteCircuitOptions, ledger8Runtime: L
     undefined,
     ledger8Runtime.CostModel.initialCostModel()
   );
+  // Read BEFORE the circuit runs. The glue swaps `currentQueryContext` for a
+  // new context on every coin it registers, so after the call this object no
+  // longer answers for the context the call started from.
+  const preCallBlock = ctx.currentQueryContext.block;
+  const preCallEffects = ctx.currentQueryContext.effects;
   const res = circuit(ctx, ...args);
 
   return {
@@ -197,6 +228,11 @@ export const executeCircuit = (options: ExecuteCircuitOptions, ledger8Runtime: L
     preContractState: state,
     postContractState: { data: res.context.currentQueryContext.state },
     privateStateAfter: res.context.currentPrivateState,
+    partitionContext: {
+      block: preCallBlock,
+      effects: preCallEffects,
+      comIndices: res.context.currentQueryContext.comIndices
+    },
     zswapLocalState: ledger8Runtime.decodeZswapLocalState(res.context.currentZswapLocalState)
   };
 };
