@@ -1,0 +1,35 @@
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [utils](../README.md) / classify
+
+# Variable: classify
+
+> `const` **classify**: (`callSite`, `cause`) => [`DeserializationContext`](../interfaces/DeserializationContext.md)
+
+Defined in: packages/utils/dist/index.d.ts:96
+
+Classify a deserialization error against the shared pattern table.
+Returns a fully-populated `DeserializationContext` ready to attach to a
+`DeserializationError`.
+
+Rules (spec §7.1):
+ - First matching pattern wins.
+ - `extracted.dataType` (when populated by a pattern) overrides `callSite.dataType`.
+ - Mitigation is dispatched on `(classification, source)` (D12).
+ - `extracted` is `undefined` (not `{}`) when no pattern populated it.
+
+## Parameters
+
+### callSite
+
+[`DeserializationCallSite`](../interfaces/DeserializationCallSite.md)
+
+### cause
+
+`Error`
+
+## Returns
+
+[`DeserializationContext`](../interfaces/DeserializationContext.md)

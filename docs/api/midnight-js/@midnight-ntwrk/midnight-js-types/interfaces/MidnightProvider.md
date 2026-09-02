@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -21,7 +21,7 @@ Submit a transaction to the network to be consensed upon.
 
 ##### tx
 
-`FinalizedTransaction`
+[`FinalizedTransaction`](../../midnight-js-protocol/ledger/type-aliases/FinalizedTransaction.md)
 
 The finalized transaction to submit.
 

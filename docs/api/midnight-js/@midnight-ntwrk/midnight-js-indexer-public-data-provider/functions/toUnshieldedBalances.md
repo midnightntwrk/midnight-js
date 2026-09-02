@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Function: toUnshieldedBalances()
 
-> **toUnshieldedBalances**(`contractBalances`): `UnshieldedBalances`
+> **toUnshieldedBalances**(`contractBalances`): [`UnshieldedBalances`](../../midnight-js/types/type-aliases/UnshieldedBalances.md)
 
 ## Parameters
 
@@ -16,4 +16,4 @@ readonly `ContractBalance`[]
 
 ## Returns
 
-`UnshieldedBalances`
+[`UnshieldedBalances`](../../midnight-js/types/type-aliases/UnshieldedBalances.md)

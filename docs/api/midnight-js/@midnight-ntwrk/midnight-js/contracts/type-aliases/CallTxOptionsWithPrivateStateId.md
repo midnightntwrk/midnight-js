@@ -1,0 +1,34 @@
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
+
+***
+
+[Midnight.js API Reference](../../../../packages.md) / [@midnight-ntwrk/midnight-js](../../README.md) / [contracts](../README.md) / CallTxOptionsWithPrivateStateId
+
+# Type Alias: CallTxOptionsWithPrivateStateId\<C, PCK\>
+
+> **CallTxOptionsWithPrivateStateId**\<`C`, `PCK`\> = [`CallTxOptionsBase`](CallTxOptionsBase.md)\<`C`, `PCK`\> & `object`
+
+Defined in: packages/contracts/dist/index.d.ts:795
+
+Call transaction options with the private state ID to use to store the new private
+state resulting from the circuit call. Since a private state should already be
+stored at the given private state ID, we don't need an 'initialPrivateState' like
+in [DeployTxOptionsWithPrivateState](DeployTxOptionsWithPrivateState.md).
+
+## Type Declaration
+
+### privateStateId
+
+> `readonly` **privateStateId**: [`PrivateStateId`](../../types/type-aliases/PrivateStateId.md)
+
+The identifier for the private state of the contract.
+
+## Type Parameters
+
+### C
+
+`C` *extends* [`Any`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
+
+### PCK
+
+`PCK` *extends* [`ProvableCircuitId`](../../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<`C`\>

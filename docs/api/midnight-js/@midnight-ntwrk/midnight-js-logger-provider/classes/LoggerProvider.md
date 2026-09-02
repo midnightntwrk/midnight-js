@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -70,7 +70,7 @@ Implementation of LoggerProvider that returns a [Logger](#) instance.
 
 ##### level
 
-`LogLevel`
+[`LogLevel`](../../midnight-js/types/enumerations/LogLevel.md)
 
 #### Returns
 

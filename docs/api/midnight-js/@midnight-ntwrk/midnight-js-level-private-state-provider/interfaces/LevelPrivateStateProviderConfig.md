@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -72,7 +72,7 @@ from `@midnight-ntwrk/midnight-js-utils`:
 - no sequential patterns of length 4+ (e.g. `1234`, `abcd`)
 
 The same policy is applied to custom passwords passed to
-PrivateStateProvider.exportPrivateStates / `exportSigningKeys` and
+[PrivateStateProvider.exportPrivateStates](../../midnight-js/types/interfaces/PrivateStateProvider.md#exportprivatestates) / `exportSigningKeys` and
 their `importPrivateStates` / `importSigningKeys` counterparts. Violations
 surface as `PasswordValidationError` on storage paths, or wrapped as
 `PrivateStateExportError` / `SigningKeyExportError` (with `cause`) on

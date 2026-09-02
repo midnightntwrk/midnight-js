@@ -33,7 +33,7 @@ import {
   WalletFacade
 } from '@midnightntwrk/wallet-sdk';
 
-import { logger } from '@/logger';
+import { logger } from '../logger';
 
 export interface DustWalletOptions {
   ledgerParams: LedgerParameters;

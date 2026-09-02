@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -14,11 +14,11 @@ Executes a function within the context of a contract-scoped transaction.
 
 ### C
 
-`C` *extends* `Contract.Any`
+`C` *extends* [`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)
 
 ### PCK
 
-`PCK` *extends* `Contract.ProvableCircuitId`\<`C`\> = `Contract.ProvableCircuitId`\<`C`\>
+`PCK` *extends* [`ProvableCircuitId`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<`C`\> = [`ProvableCircuitId`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/ProvableCircuitId.md)\<`C`\>
 
 ## Parameters
 

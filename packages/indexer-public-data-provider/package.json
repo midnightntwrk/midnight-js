@@ -1,18 +1,13 @@
 {
   "name": "@midnight-ntwrk/midnight-js-indexer-public-data-provider",
-  "version": "5.0.0-beta.6",
+  "version": "5.0.0-beta.7",
+  "type": "module",
   "description": "Implementation of public data provider based on the Midnight Pub-sub indexer",
-  "main": "dist/index.cjs",
-  "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "types": {
-        "import": "./dist/index.d.mts",
-        "require": "./dist/index.d.cts"
-      },
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     }
   },
   "repository": "git@github.com:midnight-ntwrk/artifacts",
@@ -47,12 +42,13 @@
     "@graphql-codegen/typescript": "^6.0.2",
     "@graphql-codegen/typescript-operations": "^6.0.5",
     "@types/ws": "^8.18.1",
+    "rollup": "^4.60.4",
     "vitest": "^4.1.7"
   },
   "files": [
     "dist/"
   ],
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12"
   }
 }

@@ -1,11 +1,11 @@
 {
   "name": "@midnight-ntwrk/midnight-js-monorepo",
   "description": "Midnight application development framework",
-  "version": "5.0.0-beta.6",
+  "version": "5.0.0-beta.7",
   "packageManager": "yarn@4.14.1",
   "repository": "git@github.com:midnight-ntwrk/artifacts",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12"
   },
   "workspaces": [
     "packages/*",
@@ -23,7 +23,7 @@
     "e2e": "turbo run e2e",
     "e2e-single": "turbo run e2e-single",
     "check": "turbo run check && yarn lint && yarn constraints",
-    "typecheck:tests": "bash -c 'for pkg in packages/*/; do tsc --noEmit -p \"${pkg}tsconfig.json\" || exit 1; done'",
+    "typecheck:tests": "bash -c 'for cfg in packages/*/tsconfig.json testkit-js/*/tsconfig.json; do tsc --noEmit --composite false -p \"$cfg\" || exit 1; done'",
     "check:core": "turbo run check --filter='!@midnight-ntwrk/testkit-*' && yarn lint",
     "deploy": "turbo run deploy",
     "deploy:core": "turbo run deploy --filter='!@midnight-ntwrk/testkit-*'",
@@ -42,8 +42,6 @@
     "@commitlint/config-conventional": "^20.4.3",
     "@d2t/vitest-ctrf-json-reporter": "^1.3.0",
     "@eslint/js": "^10.0.1",
-    "@rollup/plugin-commonjs": "^29.0.3",
-    "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-replace": "^6.0.3",
     "@rollup/plugin-typescript": "^12.3.0",
     "@tsconfig/node24": "^24.0.4",
@@ -52,7 +50,7 @@
     "@vitest/ui": "^4.1.9",
     "@yarnpkg/types": "^4.0.1",
     "commit-and-tag-version": "^12.7.3",
-    "eslint": "^10.6.0",
+    "eslint": "^10.8.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-import": "^2.32.0",
@@ -80,7 +78,8 @@
     "@midnight-ntwrk/platform-js": "3.0.0",
     "@midnightntwrk/ledger-v9": "1.0.0-rc.3",
     "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.3",
-    "@midnight-ntwrk/compact-runtime": "0.18.0-rc.1",
+    "@midnight-ntwrk/compact-runtime": "0.19.0-rc.0",
+    "effect": "3.22.1",
     "undici": ">=7.24.0",
     "tar": ">=7.5.19",
     "fast-xml-parser": ">=5.7.0",

@@ -15,7 +15,7 @@
 
 import { setNetworkId } from '@midnight-ntwrk/midnight-js-network-id';
 import { type ContractState, StateValue } from '@midnight-ntwrk/midnight-js-protocol/compact-runtime';
-import { LedgerParameters } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import { LedgerParameters, type ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { createUnprovenCallTx, createUnprovenCallTxFromInitialStates } from '../unproven-call-tx';
@@ -171,11 +171,10 @@ describe('unproven-call-tx', () => {
 
     it('should create unproven call tx without private state provider', async () => {
       const { getPublicStates } = await import('../get-states');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const mockGetPublicStates = getPublicStates as any;
+      const mockGetPublicStates = vi.mocked(getPublicStates, { partial: true });
 
       mockGetPublicStates.mockResolvedValue({
-        zswapChainState: { test: 'zswap-chain-state' },
+        zswapChainState: { test: 'zswap-chain-state' } as unknown as ZswapChainState,
         contractState: await getInitialContractState(),
         ledgerParameters: LedgerParameters.initialParameters()
       });
@@ -206,11 +205,10 @@ describe('unproven-call-tx', () => {
 
     it('should create unproven call tx with private state provider', async () => {
       const { getStates } = await import('../get-states');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const mockGetStates = getStates as any;
+      const mockGetStates = vi.mocked(getStates, { partial: true });
 
       mockGetStates.mockResolvedValue({
-        zswapChainState: { test: 'zswap-chain-state' },
+        zswapChainState: { test: 'zswap-chain-state' } as unknown as ZswapChainState,
         contractState: await getInitialContractState(),
         privateState: { test: 'private-state' },
         ledgerParameters: LedgerParameters.initialParameters()

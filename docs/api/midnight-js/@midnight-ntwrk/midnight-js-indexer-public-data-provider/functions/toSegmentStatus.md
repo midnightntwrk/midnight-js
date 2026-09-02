@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Function: toSegmentStatus()
 
-> **toSegmentStatus**(`success`): `SegmentStatus`
+> **toSegmentStatus**(`success`): [`SegmentStatus`](../../midnight-js/types/type-aliases/SegmentStatus.md)
 
 ## Parameters
 
@@ -16,4 +16,4 @@
 
 ## Returns
 
-`SegmentStatus`
+[`SegmentStatus`](../../midnight-js/types/type-aliases/SegmentStatus.md)

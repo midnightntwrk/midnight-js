@@ -14,6 +14,7 @@
  */
 
 import { type Contract } from '@midnight-ntwrk/midnight-js-protocol/compact-js';
+import type * as midnightJsTypes from '@midnight-ntwrk/midnight-js-types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { findDeployedContract, type FoundContract } from '../find-deployed-contract';
@@ -38,8 +39,7 @@ vi.mock('../governance/tx-interfaces', () => ({
 }));
 
 vi.mock('@midnight-ntwrk/midnight-js-types', async (importOriginal) => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const actual = await importOriginal() as any;
+  const actual = await importOriginal<typeof midnightJsTypes>();
   return {
     ...actual,
     getProvableCircuitIds: vi.fn().mockReturnValue(['testCircuit'])

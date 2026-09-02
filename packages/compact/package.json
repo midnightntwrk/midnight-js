@@ -7,10 +7,10 @@
   },
   "author": "IOG",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12"
   },
   "license": "Apache-2.0",
-  "version": "5.0.0-beta.6",
+  "version": "5.0.0-beta.7",
   "type": "module",
   "bin": {
     "fetch-compactc": "dist/fetch-compact.mjs",

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Function: parseHexLedgerParameters()
 
-> **parseHexLedgerParameters**(`s`): `LedgerParameters`
+> **parseHexLedgerParameters**(`s`): [`LedgerParameters`](../../midnight-js-protocol/ledger/classes/LedgerParameters.md)
 
 ## Parameters
 
@@ -16,4 +16,4 @@
 
 ## Returns
 
-`LedgerParameters`
+[`LedgerParameters`](../../midnight-js-protocol/ledger/classes/LedgerParameters.md)

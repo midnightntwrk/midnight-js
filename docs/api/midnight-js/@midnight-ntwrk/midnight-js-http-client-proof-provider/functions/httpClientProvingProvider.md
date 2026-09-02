@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -22,7 +22,7 @@
 
 ### zkConfigProvider
 
-`ZKConfigRegistry` \| [`ZKConfigProvider`](#)\<`K`\>
+[`ZKConfigRegistry`](../../midnight-js/types/classes/ZKConfigRegistry.md) \| [`ZKConfigProvider`](../../midnight-js/types/classes/ZKConfigProvider.md)\<`K`\>
 
 ### config?
 

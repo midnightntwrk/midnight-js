@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -6,10 +6,10 @@
 
 # Function: decodeLedgerStateValue()
 
-> **decodeLedgerStateValue**(`encoded`, `ctx`): `StateValue`
+> **decodeLedgerStateValue**(`encoded`, `ctx`): [`StateValue`](../../midnight-js-protocol/ledger/classes/StateValue.md)
 
-Decode an onchain-runtime LedgerStateValue from its
-EncodedStateValue representation (a tagged union, NOT a byte
+Decode an onchain-runtime [LedgerStateValue](../../midnight-js-protocol/ledger/classes/StateValue.md) from its
+[EncodedStateValue](../../midnight-js-protocol/ledger/type-aliases/EncodedStateValue.md) representation (a tagged union, NOT a byte
 buffer — `StateValue.decode` operates on the structured encoding produced
 by `StateValue.encode()`).
 
@@ -21,7 +21,7 @@ to the underlying runtime package.
 
 ### encoded
 
-`EncodedStateValue`
+[`EncodedStateValue`](../../midnight-js-protocol/ledger/type-aliases/EncodedStateValue.md)
 
 ### ctx
 
@@ -29,7 +29,7 @@ to the underlying runtime package.
 
 ## Returns
 
-`StateValue`
+[`StateValue`](../../midnight-js-protocol/ledger/classes/StateValue.md)
 
 ## Throws
 

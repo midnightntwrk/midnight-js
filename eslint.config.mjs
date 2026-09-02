@@ -7,9 +7,72 @@ import importPlugin from 'eslint-plugin-import';
 import simpleImportSort from 'eslint-plugin-simple-import-sort';
 import unusedImports from 'eslint-plugin-unused-imports';
 
+// No-new-occurrences gate for unsafe casts in package sources. Existing,
+// reviewed occurrences carry an inline eslint-disable; test files and
+// testkit-js are exempt (see the dedicated gate block below).
+const unsafeCastSelectors = [
+  {
+    selector: "TSAsExpression[typeAnnotation.type='TSAnyKeyword'], TSTypeAssertion[typeAnnotation.type='TSAnyKeyword']",
+    message: "Unsafe cast to 'any'. Use a precise type or a type guard instead; a reviewed exception needs an inline eslint-disable."
+  },
+  {
+    selector: "TSAsExpression[typeAnnotation.type='TSUnknownKeyword'], TSTypeAssertion[typeAnnotation.type='TSUnknownKeyword']",
+    message: "Unsafe cast to 'unknown'. Use a precise type or a type guard instead; a reviewed exception needs an inline eslint-disable."
+  },
+  {
+    selector: "TSAsExpression[typeAnnotation.type='TSNeverKeyword'], TSTypeAssertion[typeAnnotation.type='TSNeverKeyword']",
+    message: "Unsafe cast to 'never'. Use a precise type or a type guard instead; a reviewed exception needs an inline eslint-disable."
+  }
+];
 
+// Generic hygiene: applies everywhere, since a dist import is wrong in any
+// package regardless of who owns the module being imported.
+const distImportPattern = {
+  group: ['**/dist/**', './dist/**', '../dist/**'],
+  message: 'Direct imports from dist folders are not allowed. Use source files instead.'
+};
+
+// Version-identity gate: `packages/protocol` is the single place that pins a
+// ledger/runtime version, so everything under `packages/` reaches those
+// through it. Scoped to `packages/` only -- testkit-js is deliberately exempt,
+// like it is for the unsafe-cast gate below: fixtures and cross-version test
+// doubles legitimately need a specific version in hand.
+const protocolImportPatterns = [
+  {
+    group: ['@midnight-ntwrk/ledger-v*', '@midnightntwrk/ledger-v*'],
+    message:
+      'Import from @midnight-ntwrk/midnight-js-protocol/ledger instead. Only packages/protocol/src/ may import from ledger directly.'
+  },
+  {
+    group: ['@midnight-ntwrk/compact-runtime'],
+    message:
+      'Import from @midnight-ntwrk/midnight-js-protocol/compact-runtime instead. Only packages/protocol/src/ may import from compact-runtime directly.'
+  },
+  {
+    group: ['@midnight-ntwrk/compact-js', '@midnight-ntwrk/compact-js/*'],
+    message:
+      'Import from @midnight-ntwrk/midnight-js-protocol/compact-js instead. Only packages/protocol/src/ may import from compact-js directly.'
+  },
+  {
+    group: ['@midnight-ntwrk/onchain-runtime-v*', '@midnightntwrk/onchain-runtime-v*'],
+    message:
+      'Import from @midnight-ntwrk/midnight-js-protocol/onchain-runtime instead. Only packages/protocol/src/ may import from onchain-runtime directly.'
+  },
+  {
+    group: ['@midnight-ntwrk/platform-js', '@midnight-ntwrk/platform-js/*'],
+    message:
+      'Import from @midnight-ntwrk/midnight-js-protocol/platform-js instead. Only packages/protocol/src/ may import from platform-js directly.'
+  }
+];
 
 export default tseslint.config(
+  {
+    // A stale eslint-disable hides nothing but suggests it still does; fail
+    // the lint so it gets removed (or the regression it masked gets fixed).
+    linterOptions: {
+      reportUnusedDisableDirectives: 'error'
+    }
+  },
   {
     ignores: [
       '**/dist/**',
@@ -85,7 +148,7 @@ export default tseslint.config(
       '@typescript-eslint/no-require-imports': 'error',
       '@typescript-eslint/no-use-before-define': ['error'],
       '@typescript-eslint/no-shadow': ['error'],
-      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/consistent-type-definitions': 'off',
       '@typescript-eslint/consistent-type-imports': [
         'error',
@@ -125,53 +188,46 @@ export default tseslint.config(
       ],
       'max-classes-per-file': 'off',
       'lines-between-class-members': 'off',
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['**/dist/**', './dist/**', '../dist/**'],
-              message: 'Direct imports from dist folders are not allowed. Use source files instead.'
-            },
-            {
-              group: ['@midnight-ntwrk/ledger-v*', '@midnightntwrk/ledger-v*'],
-              message: 'Import from @midnight-ntwrk/midnight-js-protocol/ledger instead. Only packages/protocol/src/ may import from ledger directly.'
-            },
-            {
-              group: ['@midnight-ntwrk/compact-runtime'],
-              message: 'Import from @midnight-ntwrk/midnight-js-protocol/compact-runtime instead. Only packages/protocol/src/ may import from compact-runtime directly.'
-            },
-            {
-              group: ['@midnight-ntwrk/compact-js', '@midnight-ntwrk/compact-js/*'],
-              message: 'Import from @midnight-ntwrk/midnight-js-protocol/compact-js instead. Only packages/protocol/src/ may import from compact-js directly.'
-            },
-            {
-              group: ['@midnight-ntwrk/onchain-runtime-v*', '@midnightntwrk/onchain-runtime-v*'],
-              message: 'Import from @midnight-ntwrk/midnight-js-protocol/onchain-runtime instead. Only packages/protocol/src/ may import from onchain-runtime directly.'
-            },
-            {
-              group: ['@midnight-ntwrk/platform-js', '@midnight-ntwrk/platform-js/*'],
-              message: 'Import from @midnight-ntwrk/midnight-js-protocol/platform-js instead. Only packages/protocol/src/ may import from platform-js directly.'
-            }
-          ]
-        }
-      ],
+      'no-restricted-imports': ['error', { patterns: [distImportPattern] }],
     }
   },
   {
-    files: ['packages/protocol/src/**/*.ts'],
+    // Version-identity gate, scoped by `files`/`ignores` rather than by a
+    // per-file override that re-declares the rule: flat config REPLACES rule
+    // options, so an override listing fewer patterns silently drops the rest.
+    // `packages/protocol/src` is exempt because it owns the pinning, and falls
+    // back to the block above -- which is why it needs no override of its own.
+    files: ['packages/**/*.ts', 'packages/**/*.tsx', 'packages/**/*.mts'],
+    ignores: ['packages/protocol/src/**'],
     rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['**/dist/**', './dist/**', '../dist/**'],
-              message: 'Direct imports from dist folders are not allowed. Use source files instead.'
-            }
-          ]
-        }
-      ]
+      'no-restricted-imports': ['error', { patterns: [distImportPattern, ...protocolImportPatterns] }]
+    }
+  },
+  {
+    // Unsafe-cast gate for package sources. Tests and testkit-js are exempt —
+    // mocking and fixtures legitimately cast — via files/ignores scoping
+    // rather than a 'no-restricted-syntax: off' override, so the exemption
+    // cannot silently disable unrelated selectors another block adds to this
+    // rule.
+    files: ['packages/**/*.ts', 'packages/**/*.tsx', 'packages/**/*.mts'],
+    ignores: ['packages/*/src/test/**'],
+    rules: {
+      'no-restricted-syntax': ['error', ...unsafeCastSelectors]
+    }
+  },
+  {
+    // Hard-fork fixture generator scripts: plain Node scripts, not part of any
+    // package's build output, run manually to (re)mint the fixtures in
+    // ../fixtures/hf. Not covered by the testkit-js/packages *.ts block above
+    // (they are .mjs), so `no-undef` needs the Node globals they actually use
+    // declared explicitly.
+    files: ['testkit-js/testkit-js/src/fixtures/hf/generators/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        Buffer: 'readonly',
+        console: 'readonly',
+        process: 'readonly'
+      }
     }
   },
   prettierConfig

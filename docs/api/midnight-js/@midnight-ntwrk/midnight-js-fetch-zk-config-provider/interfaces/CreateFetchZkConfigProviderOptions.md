@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -114,7 +114,7 @@ Warning sink for `warn` mode. Default: `console.warn`.
 
 ### verify?
 
-> `readonly` `optional` **verify?**: `ZkArtifactIntegrityMode`
+> `readonly` `optional` **verify?**: [`ZkArtifactIntegrityMode`](../../midnight-js/utils/type-aliases/ZkArtifactIntegrityMode.md)
 
 Default `'require'` (fail-closed). Trust boundary: without [expectedManifestHash](#expectedmanifesthash) the
 manifest is loaded from the same base location as the artifacts, so `require`/`warn` detect

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -12,7 +12,7 @@ Configuration for [submitTx](../functions/submitTx.md).
 
 ### PCK
 
-`PCK` *extends* `AnyProvableCircuitId`
+`PCK` *extends* [`AnyProvableCircuitId`](../../midnight-js/types/type-aliases/AnyProvableCircuitId.md)
 
 ## Properties
 
@@ -32,6 +32,6 @@ context), this may be an array of circuit IDs.
 
 ### unprovenTx
 
-> `readonly` **unprovenTx**: `UnprovenTransaction`
+> `readonly` **unprovenTx**: [`UnprovenTransaction`](../../midnight-js-protocol/ledger/type-aliases/UnprovenTransaction.md)
 
 The transaction to prove, balance, and submit.
