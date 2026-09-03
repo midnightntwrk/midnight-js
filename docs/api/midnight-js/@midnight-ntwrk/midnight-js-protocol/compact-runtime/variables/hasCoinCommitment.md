@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > `const` **hasCoinCommitment**: (`context`, `coinInfo`, `recipient`) => `boolean`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:172
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:188
 
 Checks whether a coin commitment has already been added to the current query context.
 

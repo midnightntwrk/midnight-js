@@ -14,15 +14,14 @@
  */
 
 import { UnknownProtocolVersionError, type VersionResolutionPath } from './errors';
+import { LEDGER_VERSIONS, type LedgerVersion } from './lib/shared/ledger-version';
 
-/**
- * The two ledger runtimes midnight-js can talk to. `v8` backs the node 1.x
- * line; `v9` backs the 2.x line. This is a closed, exhaustive set —
- * see {@link protocolVersionToLedger} for how a raw `protocolVersion`
- * integer maps onto it.
- */
-export const LEDGER_VERSIONS = ['v8', 'v9'] as const;
-export type LedgerVersion = (typeof LEDGER_VERSIONS)[number];
+// Re-exported rather than declared here: `./errors` also needs `LedgerVersion`
+// to type the era its composition failures name, and this module imports
+// `./errors`. The constant therefore lives in a leaf module both can reach —
+// see `./lib/shared/ledger-version.ts`. Consumers keep importing both names from here
+// (and from the root barrel) exactly as before.
+export { LEDGER_VERSIONS, type LedgerVersion };
 
 /**
  * Anything that can report the network's current head protocol version —

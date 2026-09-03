@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -8,6 +8,6 @@
 
 > `const` **CompactTypeField**: [`CompactType`](../interfaces/CompactType.md)\<`bigint`\>
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:121
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:92
 
 Runtime type of the builtin `Field` type

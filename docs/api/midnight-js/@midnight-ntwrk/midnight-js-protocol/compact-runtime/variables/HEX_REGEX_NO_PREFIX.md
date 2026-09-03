@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -8,6 +8,6 @@
 
 > `const` **HEX\_REGEX\_NO\_PREFIX**: `RegExp`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/utils.d.ts:6
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/utils.d.ts:8
 
 Regex matching hex strings of even length.

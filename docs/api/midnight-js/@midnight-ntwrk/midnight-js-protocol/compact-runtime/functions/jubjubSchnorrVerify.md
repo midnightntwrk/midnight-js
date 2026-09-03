@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **jubjubSchnorrVerify**\<`A`\>(`rtType`, `msg`, `verifyingKey`, `sig`): `boolean`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/built-ins.d.ts:299
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/utils.d.ts:97
 
 Verifies a Schnorr signature over the JubJub curve.
 

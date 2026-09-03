@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Interface: EncodedRecipient
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:77
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:93
 
 A [Recipient](Recipient.md) with its fields encoded as byte strings. This representation is used internally by the contract executable.
 
@@ -16,7 +16,7 @@ A [Recipient](Recipient.md) with its fields encoded as byte strings. This repres
 
 > `readonly` **is\_left**: `boolean`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:81
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:97
 
 Whether the recipient is a user or a contract.
 
@@ -26,7 +26,7 @@ Whether the recipient is a user or a contract.
 
 > `readonly` **left**: [`EncodedCoinPublicKey`](EncodedCoinPublicKey.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:85
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:101
 
 The recipient's public key, if the recipient is a user.
 
@@ -36,6 +36,6 @@ The recipient's public key, if the recipient is a user.
 
 > `readonly` **right**: [`EncodedContractAddress`](EncodedContractAddress.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:89
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:105
 
 The recipient's contract address, if the recipient is a contract.
