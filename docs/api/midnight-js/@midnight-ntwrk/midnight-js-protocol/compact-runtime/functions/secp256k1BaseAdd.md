@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **secp256k1BaseAdd**(`x`, `y`): `bigint`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/built-ins.d.ts:198
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/built-ins.d.ts:206
 
 Secp256k1 base field addition
 

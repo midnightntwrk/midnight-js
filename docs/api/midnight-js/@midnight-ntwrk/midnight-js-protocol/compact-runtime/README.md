@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../README.md)
 
 ***
 
@@ -66,12 +66,10 @@
 
 ## Variables
 
-- [Bytes32Descriptor](variables/Bytes32Descriptor.md)
 - [checkRuntimeVersion](variables/checkRuntimeVersion.md)
 - [CompactTypeBoolean](variables/CompactTypeBoolean.md)
 - [CompactTypeField](variables/CompactTypeField.md)
 - [CompactTypeJubjubPoint](variables/CompactTypeJubjubPoint.md)
-- [CompactTypeJubjubSchnorrSignature](variables/CompactTypeJubjubSchnorrSignature.md)
 - [CompactTypeMerkleTreeDigest](variables/CompactTypeMerkleTreeDigest.md)
 - [CompactTypeMerkleTreePathEntry](variables/CompactTypeMerkleTreePathEntry.md)
 - [CompactTypeOpaqueString](variables/CompactTypeOpaqueString.md)
@@ -80,7 +78,6 @@
 - [CompactTypeSecp256k1Point](variables/CompactTypeSecp256k1Point.md)
 - [CompactTypeSecp256k1Scalar](variables/CompactTypeSecp256k1Scalar.md)
 - [CONTRACT\_ADDRESS\_BYTE\_LENGTH](variables/CONTRACT_ADDRESS_BYTE_LENGTH.md)
-- [ContractAddressDescriptor](variables/ContractAddressDescriptor.md)
 - [contractDependencies](variables/contractDependencies.md)
 - [copyCircuitContext](variables/copyCircuitContext.md)
 - [createCallContext](variables/createCallContext.md)
@@ -105,16 +102,12 @@
 - [MAX\_JUBJUB\_SCALAR](variables/MAX_JUBJUB_SCALAR.md)
 - [MAX\_SECP256K1\_BASE](variables/MAX_SECP256K1_BASE.md)
 - [MAX\_SECP256K1\_SCALAR](variables/MAX_SECP256K1_SCALAR.md)
-- [MaxUint8Descriptor](variables/MaxUint8Descriptor.md)
 - [queryLedgerState](variables/queryLedgerState.md)
 - [sampleJubjubSchnorrSk](variables/sampleJubjubSchnorrSk.md)
 - [SECP256K1\_BASE\_MODULUS](variables/SECP256K1_BASE_MODULUS.md)
 - [SECP256K1\_SCALAR\_MODULUS](variables/SECP256K1_SCALAR_MODULUS.md)
-- [ShieldedCoinInfoDescriptor](variables/ShieldedCoinInfoDescriptor.md)
-- [ShieldedCoinRecipientDescriptor](variables/ShieldedCoinRecipientDescriptor.md)
 - [toHex](variables/toHex.md)
 - [versionString](variables/versionString.md)
-- [ZswapCoinPublicKeyDescriptor](variables/ZswapCoinPublicKeyDescriptor.md)
 
 ## Functions
 
@@ -156,6 +149,9 @@
 - [secp256k1BaseInv](functions/secp256k1BaseInv.md)
 - [secp256k1BaseMul](functions/secp256k1BaseMul.md)
 - [secp256k1BaseNeg](functions/secp256k1BaseNeg.md)
+- [secp256k1BaseSub](functions/secp256k1BaseSub.md)
+- [secp256k1EcdsaRecover](functions/secp256k1EcdsaRecover.md)
+- [secp256k1FromProjective](functions/secp256k1FromProjective.md)
 - [secp256k1Mul](functions/secp256k1Mul.md)
 - [secp256k1MulGenerator](functions/secp256k1MulGenerator.md)
 - [secp256k1PointX](functions/secp256k1PointX.md)
@@ -164,6 +160,8 @@
 - [secp256k1ScalarInv](functions/secp256k1ScalarInv.md)
 - [secp256k1ScalarMul](functions/secp256k1ScalarMul.md)
 - [secp256k1ScalarNeg](functions/secp256k1ScalarNeg.md)
+- [secp256k1ScalarSub](functions/secp256k1ScalarSub.md)
+- [secp256k1ToProjective](functions/secp256k1ToProjective.md)
 - [subField](functions/subField.md)
 - [toBinaryRepr](functions/toBinaryRepr.md)
 - [transientCommit](functions/transientCommit.md)

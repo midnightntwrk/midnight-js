@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Interface: CircuitContext\<PS\>
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:95
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:102
 
 The external information accessible from within a Compact circuit call
 
@@ -22,7 +22,7 @@ The external information accessible from within a Compact circuit call
 
 > `optional` **activeContracts?**: `Set`\<`string`\>
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:149
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:167
 
 The set of contract addresses currently executing on the cross-contract call
 stack: the entry contract plus every callee whose call has not yet returned.
@@ -36,7 +36,7 @@ is set.
 
 > **callContext**: `CallContext`\<`PS`\>
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:99
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:106
 
 The context for the current call.
 
@@ -46,7 +46,7 @@ The context for the current call.
 
 > **callProofDataTrace**: [`CallProofDataTrace`](../type-aliases/CallProofDataTrace.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:124
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:142
 
 Sequence of calls made during the execution of the circuit (including the call for the root circuit).
 
@@ -56,7 +56,7 @@ Sequence of calls made during the execution of the circuit (including the call f
 
 > `optional` **contractStates?**: `Record`\<`string`, [`ContractState`](../../onchain-runtime/classes/ContractState.md)\>
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:116
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:134
 
 The deployed [ocrt.ContractState](../../onchain-runtime/classes/ContractState.md) of every cross-contract callee resolved during the
 execution, keyed by address. Populated by [crossContractCall](../variables/crossContractCall.md) (via the state provider)
@@ -71,7 +71,7 @@ already-resolved callee. The entry contract is not recorded here; only fetched c
 
 > **costModel**: [`CostModel`](../../onchain-runtime/classes/CostModel.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:120
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:138
 
 The cost model to use for the execution.
 
@@ -81,7 +81,7 @@ The cost model to use for the execution.
 
 > **events**: [`LogEvent`](../type-aliases/LogEvent.md)[]
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:156
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:174
 
 Events emitted by the on-chain VM during circuit execution from `log` operations,
 each tagged with the address of the emitting contract. A single global list shared
@@ -94,7 +94,7 @@ view is a filter over the `address` tag. Surfaced via `CircuitResults.context.ev
 
 > **gasCosts**: `Record`\<[`ContractAddress`](../../onchain-runtime/type-aliases/ContractAddress.md), [`RunningCost`](../../onchain-runtime/type-aliases/RunningCost.md)\>
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:107
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:114
 
 The current gas costs for every contract in the call tree.
 
@@ -104,7 +104,7 @@ The current gas costs for every contract in the call tree.
 
 > `optional` **gasLimit?**: [`RunningCost`](../../onchain-runtime/type-aliases/RunningCost.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:128
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:146
 
 The gas limit for this circuit.
 
@@ -114,7 +114,7 @@ The gas limit for this circuit.
 
 > **queryContexts**: `Record`\<[`ContractAddress`](../../onchain-runtime/type-aliases/ContractAddress.md), [`QueryContext`](../../onchain-runtime/classes/QueryContext.md)\>
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:103
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:110
 
 The current query context of every contract in the call tree.
 
@@ -124,7 +124,7 @@ The current query context of every contract in the call tree.
 
 > `optional` **reentrancyGuard?**: `boolean`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:141
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:159
 
 When `true`, [crossContractCall](../variables/crossContractCall.md) refuses to enter a contract that is
 already executing on the current call stack — i.e. a re-entrant cross-contract
@@ -139,6 +139,23 @@ exercise recursion.
 
 > `optional` **stateProvider?**: [`ContractStateProvider`](ContractStateProvider.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:132
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:150
 
 Can fetch the current state of a contract from the blockchain.
+
+***
+
+### zswapLocalStates
+
+> **zswapLocalStates**: `Record`\<[`ContractAddress`](../../onchain-runtime/type-aliases/ContractAddress.md), [`EncodedZswapLocalState`](EncodedZswapLocalState.md)\>
+
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:125
+
+The current Zswap local state of every contract in the call tree — the shielded-coin
+counterpart of [queryContexts](#querycontexts) and [gasCosts](#gascosts), and keyed the same way.
+
+Each contract keeps its own state, with its own `currentIndex`, `inputs` and `outputs`;
+only the transaction submitter's `coinPublicKey` is shared, since one wallet pays for the
+whole transaction. Threaded across cross-contract calls (see `restoreCircuitContext`) so a
+callee's coin operations survive its return, and mirrored onto each [CallProofData](CallProofData.md)
+so transaction assembly can attribute every input and output to the contract that made it.

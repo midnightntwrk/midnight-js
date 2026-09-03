@@ -14,9 +14,11 @@
  */
 
 import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
+
+import { readHexFixture } from './fixtures';
 
 // This suite only makes sense against a real build: it inspects the rollup
 // output to guarantee the v8 ledger WASM is never inlined or statically
@@ -24,15 +26,19 @@ import { describe, expect, it } from 'vitest';
 // the dynamic import inside loadLedger8().
 const PKG_ROOT = resolve(__dirname, '..', '..');
 const DIST_INDEX_PATH = 'dist/index.js';
-// The `./v8` entry chunk as rollup writes it into the index bundle: the
-// dynamic import of `../v8.js` in src/lib/load-v8.ts comes out as an
-// output-relative specifier. Built from parts so the runtime-reference scan
-// in v8-surface.test.ts keeps matching only lib/load-v8.ts.
-const V8_CHUNK_SPECIFIER = ['.', 'v8.js'].join('/');
+// The `./v8` entry chunk as rollup writes it into whichever eagerly-loaded
+// chunk reaches loadLedger8: the dynamic import of `../../v8.js` in
+// src/lib/v8/load.ts comes out as an output-relative specifier, at whatever
+// depth that chunk sits. Built from parts so the runtime-reference scan in
+// v8-surface.test.ts keeps matching only lib/v8/load.ts.
+const V8_CHUNK_PATTERN = `(?:\\.{1,2}/)+${['v8', 'js'].join('\\.')}`;
 const V8_DIST_ARTIFACTS = ['dist/v8.js', 'dist/v8.d.ts'];
-
-const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const V8_CHUNK_PATTERN = escapeRegExp(V8_CHUNK_SPECIFIER);
+// The `./engine` entry chunk, named the same way and for the same reason: the
+// dynamic import of `../../engine.js` in src/lib/v8/load-engine.ts comes
+// out as an output-relative specifier too, at whatever depth the chunk that
+// imports it sits.
+const ENGINE_CHUNK_PATTERN = `(?:\\.{1,2}/)+${['engine', 'js'].join('\\.')}`;
+const ENGINE_DIST_ARTIFACTS = ['dist/engine.js', 'dist/engine.d.ts'];
 
 // Never skipped when dist/ is absent: a skip is reported as a pass, so the
 // gate would silently stop guarding. Every orchestrated run has the build
@@ -49,26 +55,128 @@ const readDistFile = (path: string): string => {
   return readFileSync(absolute, 'utf8');
 };
 
+// Rollup hoists a module that several entries share into its own chunk, so the
+// accessor's dynamic import can sit one static hop away from the index bundle
+// rather than inside it — it does exactly that once more than one entry reaches
+// loadLedger8. The invariant is about everything loading the package root pulls
+// in EAGERLY, so every gate below is asserted over that whole static closure
+// instead of over dist/index.js alone; otherwise a static link hidden in a
+// shared chunk slips through, which is the very thing being gated.
+//
+// Matches both `… from './x.js'` (re-exports included) and the bare
+// `import './x.js';` rollup emits for a chunk pulled in only for its side
+// effects. Missing the bare form would silently truncate the walk, which is
+// the same hole one level up. Dynamic `import('./x.js')` is deliberately NOT
+// matched: it is what laziness looks like, not what breaks it.
+const staticImportsOf = (content: string): string[] =>
+  [...content.matchAll(/(?:from|^\s*import)\s*['"](\.[^'"]*)['"]/gm)].map(([, specifier]) => specifier);
+
+const eagerClosureOf = (entry: string): string[] => {
+  const seen = new Set<string>();
+  const pending = [entry];
+
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (current === undefined || seen.has(current)) {
+      continue;
+    }
+    seen.add(current);
+    for (const specifier of staticImportsOf(readDistFile(current))) {
+      pending.push(join(dirname(current), specifier));
+    }
+  }
+
+  return [...seen];
+};
+
+const eagerContents = (entry: string): string => eagerClosureOf(entry).map((chunk) => readDistFile(chunk)).join('\n');
+
+const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 describe('dist laziness gate', () => {
-  it('the index bundle has no static ledger-v8 linkage', () => {
-    const content = readDistFile(DIST_INDEX_PATH);
+  // Both halves of the retained pre-fork stack, not just ledger-v8:
+  // onchain-runtime-v3 is a runtime dependency of this package and carries its
+  // own multi-megabyte WASM, so a static link to it costs a v9-only consumer
+  // exactly as much. The engine modules reference it only through erased
+  // `import type`s and injected parameters, which is what keeps this green.
+  it.each(['ledger-v8', 'onchain-runtime-v3'])('nothing loaded eagerly by the index bundle links %s statically', (pkg) => {
+    const content = eagerContents(DIST_INDEX_PATH);
 
-    expect(content).not.toMatch(/from\s*['"][^'"]*ledger-v8['"]/);
+    // The era facade is published through the root barrel, so `loadLedgerEra`
+    // is part of this eager closure by construction. Anchoring on it here is
+    // what ties the two halves together: the accessor a v9-only consumer calls
+    // really is in the bundle being scanned, so the absence of a static link
+    // below is a statement about the code that consumer runs, not about some
+    // other chunk that happens to be clean.
+    expect(content).toContain('loadLedgerEra');
+    expect(content).not.toMatch(new RegExp(`from\\s*['"][^'"]*${escapeRegExp(pkg)}['"]`));
   });
 
-  it('the index bundle has no static linkage of the v8 chunk', () => {
-    const content = readDistFile(DIST_INDEX_PATH);
-
-    expect(content).not.toMatch(new RegExp(`from\\s*['"]${V8_CHUNK_PATTERN}['"]`));
+  it('the v8 chunk is not part of what the index bundle loads eagerly', () => {
+    expect(eagerClosureOf(DIST_INDEX_PATH)).not.toContain(join('dist', 'v8.js'));
   });
 
-  it('the index bundle keeps the lazy dynamic import of the v8 chunk', () => {
-    const content = readDistFile(DIST_INDEX_PATH);
+  it('what the index bundle loads eagerly keeps the lazy dynamic import of the v8 chunk', () => {
+    const content = eagerContents(DIST_INDEX_PATH);
 
     expect(content).toMatch(new RegExp(`import\\(\\s*['"]${V8_CHUNK_PATTERN}['"]\\s*\\)`));
   });
 
   it.each(V8_DIST_ARTIFACTS)('%s referenced by the ./v8 exports map entry exists', (path) => {
     expect(existsSync(resolve(PKG_ROOT, path))).toBe(true);
+  });
+
+  it('nothing loaded eagerly by the index bundle links the compact-runtime-ledger8 glue alias at all', () => {
+    expect(eagerContents(DIST_INDEX_PATH)).not.toMatch(/['"]compact-runtime-ledger8['"]/);
+  });
+
+  it('the engine chunk is not part of what the index bundle loads eagerly', () => {
+    expect(eagerClosureOf(DIST_INDEX_PATH)).not.toContain(join('dist', 'engine.js'));
+  });
+
+  it('what the index bundle loads eagerly keeps the lazy dynamic import of the engine chunk', () => {
+    const content = eagerContents(DIST_INDEX_PATH);
+
+    expect(content).toMatch(new RegExp(`import\\(\\s*['"]${ENGINE_CHUNK_PATTERN}['"]\\s*\\)`));
+  });
+
+  it.each(ENGINE_DIST_ARTIFACTS)('%s referenced by the ./engine exports map entry exists', (path) => {
+    expect(existsSync(resolve(PKG_ROOT, path))).toBe(true);
+  });
+
+  // Every route to the two retained chunks, in one place. The tests above show
+  // each chunk is absent from the eager closure and that a dynamic import of it
+  // survives; this one closes the remaining gap — that no chunk in that closure
+  // reaches either one by a STATIC specifier under some other name. A static
+  // `from './v8.js'` anywhere in the closure would defeat both of the others
+  // while still leaving the dynamic import in place.
+  it.each([
+    ['v8', V8_CHUNK_PATTERN],
+    ['engine', ENGINE_CHUNK_PATTERN]
+  ])('the %s chunk is reached from the eager closure only by dynamic import', (_name, pattern) => {
+    const content = eagerContents(DIST_INDEX_PATH);
+
+    expect(content).not.toMatch(new RegExp(`(?:from|^\\s*import)\\s*['"]${pattern}['"]`, 'm'));
+    expect(content).toMatch(new RegExp(`import\\(\\s*['"]${pattern}['"]\\s*\\)`));
+  });
+
+  // The static walk above says the v9 era CAN run without the retained chunks.
+  // This says it DOES: the built package is driven through `loadLedgerEra('v9')`
+  // and made to do real work, so a v9-only consumer's path is exercised rather
+  // than only inspected.
+  it('serves a working v9 era out of the built package', async () => {
+    const { loadLedgerEra } = await import('@midnight-ntwrk/midnight-js-protocol');
+
+    const era = await loadLedgerEra('v9');
+
+    expect(era.version).toBe('v9');
+    expect(Object.keys(era).sort()).toEqual([
+      'composeCallTx',
+      'composeDeployTx',
+      'decodeContractState',
+      'extractState',
+      'version'
+    ]);
+    expect(era.decodeContractState(readHexFixture('state-migrated-v9.hex')).entryPoints.length).toBeGreaterThan(0);
   });
 });

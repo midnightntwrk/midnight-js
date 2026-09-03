@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > `const` **decodeZswapLocalState**: (`state`) => [`ZswapLocalState`](../interfaces/ZswapLocalState.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:142
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:158
 
 Converts an [EncodedZswapLocalState](../interfaces/EncodedZswapLocalState.md) to a [ZswapLocalState](../interfaces/ZswapLocalState.md). Used when we need to use data from contract
 execution to construct transactions.

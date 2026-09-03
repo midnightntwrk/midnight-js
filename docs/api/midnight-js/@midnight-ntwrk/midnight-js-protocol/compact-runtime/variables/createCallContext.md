@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > `const` **createCallContext**: \<`PS`\>(`circuitId`, `contractAddress`, `coinPublicKeyOrZswapState`, `contractState`, `privateState`, `maybeTime?`, `parentBlockHash?`, `caller?`) => `CallContext`\<`PS`\>
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:193
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:211
 
 ## Type Parameters
 

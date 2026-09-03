@@ -39,6 +39,7 @@ const SYNTAX_RULE_ID = 'no-restricted-syntax';
 const EXPLICIT_ANY_RULE_ID = '@typescript-eslint/no-explicit-any';
 const V8_SUBPATH = `${ACL_REPLACEMENT_PREFIX}/v8`;
 const ERROR_SEVERITY = 2;
+const ENGINE_SUBPATH = `${ACL_REPLACEMENT_PREFIX}/engine`;
 
 // The ESLint constructor only stores options — config resolution happens
 // lazily inside `lintText` — so eager initialisation here is cheap and lets
@@ -73,7 +74,8 @@ describe('Protocol ACL: no-restricted-imports canaries', () => {
     '@midnight-ntwrk/compact-runtime',
     '@midnight-ntwrk/compact-js',
     '@midnightntwrk/onchain-runtime-v4',
-    '@midnight-ntwrk/platform-js'
+    '@midnight-ntwrk/platform-js',
+    'compact-runtime-ledger8'
   ])('flags direct import of %s from a consumer package', async (restricted) => {
     const messages = await lintMessagesFor(importStatement(restricted), CONSUMER_PATH, RULE_ID);
 
@@ -249,5 +251,37 @@ describe('unused eslint-disable directives', () => {
 
     expect(unused).toHaveLength(1);
     expect(unused[0].severity).toBe(ERROR_SEVERITY);
+  });
+});
+
+describe('protocol/engine gate canaries', () => {
+  it('flags a runtime import of protocol/engine from a consumer package', async () => {
+    const messages = await lintMessagesFor(importStatement(ENGINE_SUBPATH), CONSUMER_PATH, TS_RULE_ID);
+
+    expect(messages).toHaveLength(1);
+  });
+
+  it('allows a type-only import of protocol/engine from a consumer package', async () => {
+    const messages = await lintMessagesFor(typeImportStatement(ENGINE_SUBPATH), CONSUMER_PATH, TS_RULE_ID);
+
+    expect(messages).toEqual([]);
+  });
+
+  it('allows a runtime import of protocol/engine inside packages/protocol/src/', async () => {
+    const messages = await lintMessagesFor(importStatement(ENGINE_SUBPATH), PROTOCOL_INTERNAL_PATH, TS_RULE_ID);
+
+    expect(messages).toEqual([]);
+  });
+
+  it('flags a dynamic import of protocol/engine from a consumer package', async () => {
+    const messages = await lintMessagesFor(dynamicImportStatement(ENGINE_SUBPATH), CONSUMER_PATH, SYNTAX_RULE_ID);
+
+    expect(messages).toHaveLength(1);
+  });
+
+  it('allows a dynamic import of protocol/engine inside packages/protocol/src/', async () => {
+    const messages = await lintMessagesFor(dynamicImportStatement(ENGINE_SUBPATH), PROTOCOL_INTERNAL_PATH, SYNTAX_RULE_ID);
+
+    expect(messages).toEqual([]);
   });
 });

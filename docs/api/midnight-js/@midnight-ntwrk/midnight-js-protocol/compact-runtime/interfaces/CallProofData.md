@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -30,7 +30,7 @@ The ID of the circuit that was called.
 
 > `optional` **commCommData?**: [`CommunicationCommitmentData`](CommunicationCommitmentData.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:36
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:43
 
 Data included by the parent call only if this was a sub-call
 
@@ -119,3 +119,16 @@ The public transcript of operations
 #### Inherited from
 
 [`ProofData`](ProofData.md).[`publicTranscript`](ProofData.md#publictranscript)
+
+***
+
+### zswapLocalState
+
+> **zswapLocalState**: [`EncodedZswapLocalState`](EncodedZswapLocalState.md)
+
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/circuit-context.d.ts:39
+
+The Zswap local state this contract accumulated during the call — the shielded coins it
+consumed and produced. Recorded per call, not just for the root, so transaction assembly can
+build one offer contribution per call and bind each contract-owned input and output to the
+contract that actually made it.
