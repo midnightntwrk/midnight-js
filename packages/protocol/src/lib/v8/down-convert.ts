@@ -13,8 +13,15 @@
  * limitations under the License.
  */
 
-import type { ChargedState, StateBoundedMerkleTree, StateValue } from '@midnight-ntwrk/onchain-runtime-v3';
+import type * as OnchainRuntimeV3 from '@midnight-ntwrk/onchain-runtime-v3';
 import type { AlignedValue, EncodedStateValue } from '@midnightntwrk/ledger-v9';
+
+// The three pre-fork instance types this module names, read off the one
+// type-only namespace import above rather than a second named import of the
+// same module. Aliases, not mirrors: they ARE the vendor's types.
+type ChargedState = OnchainRuntimeV3.ChargedState;
+type StateBoundedMerkleTree = OnchainRuntimeV3.StateBoundedMerkleTree;
+type StateValue = OnchainRuntimeV3.StateValue;
 
 import { DownConvertFailedError, Ledger8RuntimeInvalidError, MerkleNotRehashedError } from '../../errors';
 import type { Ledger8ContractState } from '../era/envelope';
@@ -23,22 +30,17 @@ import type { Ledger8ContractState } from '../era/envelope';
  * The subset of the pre-fork onchain-runtime-v3 `StateValue` statics
  * {@link downConvertForExecution} needs.
  *
- * Injected rather than imported as a value: a value import here would
- * statically link the retained pre-fork WASM into any bundle that reaches this
- * module. The pre-fork packages reach this process through a lazy acquisition
- * path the caller owns.
- *
- * The `dist-laziness` suite is the intended enforcement, but it does not reach
- * this module: it walks the eager static closure of `dist/index.js`, and the
- * only value import of this file is `lib/v8/engine.ts`, which no eager entry
- * reaches — so it is bundled into `dist/engine.js` instead. Covering it needs a
- * second closure walk rooted at that chunk, not a new build entry: the `./engine`
- * build entry it would have waited for already exists (`src/engine.ts`).
- * Contrast the note on `Ledger8ContractState` in `envelope.ts`, which IS inside
- * the eager closure because the root barrel re-exports `lib/era/load-era.ts`.
+ * DERIVED from the vendor's own class rather than restated: a `decode` whose
+ * signature moves fails this build instead of leaving a hand-written mirror
+ * describing a static the runtime no longer has. The `import type * as` this
+ * reads through is erased and links nothing — injection is about not importing
+ * a VALUE — so the lazy acquisition path the caller owns is untouched. Narrowed to `decode` because
+ * that is the only static this seam calls, and because the narrowing is what
+ * lets `v8-down-convert.test.ts` drive the decode safety net with a one-member
+ * double instead of a whole WASM class.
  */
 export interface Ledger8CompactRuntimeStateValue {
-  readonly decode: (value: EncodedStateValue) => StateValue;
+  readonly decode: (typeof OnchainRuntimeV3.StateValue)['decode'];
 }
 
 /**
@@ -66,7 +68,7 @@ export interface Ledger8CompactRuntimeStateValue {
 export interface Ledger8CompactRuntime {
   readonly ContractState: Ledger8ContractState;
   readonly StateValue: Ledger8CompactRuntimeStateValue;
-  readonly ChargedState: new (state: StateValue) => ChargedState;
+  readonly ChargedState: typeof OnchainRuntimeV3.ChargedState;
 }
 
 /**

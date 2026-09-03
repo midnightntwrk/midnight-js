@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import type { ContractState as OnchainContractStateV3 } from '@midnight-ntwrk/onchain-runtime-v3';
+import type * as OnchainRuntimeV3 from '@midnight-ntwrk/onchain-runtime-v3';
 import { ContractState as LedgerContractStateV9, type EncodedStateValue } from '@midnightntwrk/ledger-v9';
 
 import {
@@ -30,21 +30,23 @@ export type { EncodedStateValue };
  * The pre-fork `ContractState` statics {@link extractEncodedStateValue} needs
  * to read a `contract-state[v6]` envelope.
  *
- * Injected rather than imported as a value for the same reason
- * `Ledger8CompactRuntime` is: a value import would statically link the
- * retained pre-fork WASM into whatever bundle reaches this module, so a
- * v9-only consumer would pay for a runtime it never calls. The type-only
- * import above is erased and links nothing, leaving the pre-fork packages to
- * reach this process through a lazy acquisition path the caller owns.
+ * DERIVED from the vendor's own class rather than restated, so a signature
+ * change in onchain-runtime-v3 fails this build instead of quietly leaving a
+ * hand-written mirror describing a shape the runtime no longer has. Injection
+ * is still what gets the module here — that is about not importing a VALUE.
+ * The `import type * as` above is erased with the rest of the type layer and
+ * links nothing, which is the same idiom `ProtocolV8` uses in `../v8/load.ts`;
+ * this file sits inside the eager closure `dist-laziness.test.ts` scans, and
+ * that suite is what proves the erasure.
  *
- * This is a checked constraint, not a convention: the root barrel re-exports
- * `lib/era/load-era.ts`, which imports this module for its value exports, so
- * this file sits inside the eager closure `dist-laziness.test.ts` scans. A value
- * import of either pre-fork package here fails that suite.
+ * Narrowed to `deserialize` because that is the only member this seam calls.
+ * The narrowing also carries the era pin `Ledger8CompactRuntime`
+ * (`../v8/down-convert.ts`) depends on: the static's RETURN type is the v3
+ * instance, whose `query()` result diverged from v4's after the fork, so a
+ * post-fork module fails to satisfy this type. `_PostForkOnchainRuntimeIsRejected`
+ * in `v8-down-convert.test.ts` pins exactly that.
  */
-export interface Ledger8ContractState {
-  readonly deserialize: (raw: Uint8Array) => OnchainContractStateV3;
-}
+export type Ledger8ContractState = Pick<typeof OnchainRuntimeV3.ContractState, 'deserialize'>;
 
 type EnvelopeDecoder = (raw: Uint8Array, ledger8ContractState: Ledger8ContractState) => EncodedStateValue;
 

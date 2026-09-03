@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+import type * as OnchainRuntimeV3 from '@midnight-ntwrk/onchain-runtime-v3';
+
 import { ComposeFailedError, ComposeOptionError } from '../../errors';
 import type { UnprovenOffer } from '../../v8.js';
 import { assertComposeEnvelope } from '../shared/compose-options';
@@ -31,16 +33,17 @@ import type { ProtocolV8 } from './load';
  * dual-instantiation of the WASM, because no object is handed between the two
  * copies.
  *
- * Structurally loose enough that unrelated serializables satisfy it, which is
- * what lets tests substitute a fake instead of invoking real WASM (the same
- * pattern `Ledger8ContractLike` in `./execute.ts` uses). The type
- * therefore does not enforce that the bytes are a contract state at all;
- * whichever deploy leg receives them turns that residual risk into a legible
- * error rather than a raw decoder failure.
+ * A `Pick` of the vendor's own class rather than a restatement of its one
+ * member, so a change to `serialize` in onchain-runtime-v3 fails this build.
+ *
+ * Picking one member keeps it structurally loose enough that unrelated
+ * serializables satisfy it, which is what lets tests substitute a fake instead
+ * of invoking real WASM (the same pattern `Ledger8ContractLike` in
+ * `./execute.ts` uses). The type therefore does not enforce that the bytes are
+ * a contract state at all; whichever deploy leg receives them turns that
+ * residual risk into a legible error rather than a raw decoder failure.
  */
-export interface Ledger8DeployableContractState {
-  readonly serialize: () => Uint8Array;
-}
+export type Ledger8DeployableContractState = Pick<OnchainRuntimeV3.ContractState, 'serialize'>;
 
 /** What a pre-fork `contract.initialState(constructorContext, ...args)` call returns. */
 export interface Ledger8ConstructorResult {
@@ -59,9 +62,16 @@ export interface Ledger8ConstructorContractLike {
 
 /**
  * The subset of the pre-fork `compact-runtime@0.16` glue {@link executeConstructor}
- * needs to build a constructor context. Injected — like `Ledger8ExecutionRuntime`
- * (`./execute.ts`) — so callers target a specific WASM-backed instance and
- * tests can substitute a controlled fake.
+ * needs to build a constructor context. Injected so callers target a specific
+ * WASM-backed instance.
+ *
+ * Narrowed rather than derived from the glue's own `createConstructorContext`:
+ * that one is generic in the private state and returns a `ConstructorContext`,
+ * a shape this seam never inspects — it only hands the value straight back to
+ * the contract's `initialState`. Typing it as the glue's would force every
+ * constructor test to build a real context to check plumbing it does not read,
+ * so the return stays `unknown` and `v8-deploy.test.ts` pins that the real glue
+ * satisfies the narrowing.
  */
 export interface Ledger8ConstructorRuntime {
   readonly createConstructorContext: (privateState: unknown, coinPk: string) => unknown;
