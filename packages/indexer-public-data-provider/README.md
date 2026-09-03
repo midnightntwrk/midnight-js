@@ -114,7 +114,16 @@ A state older than the block that dates the read is normal, not a fault: the
 indexer serves the latest contract action at or before that block, so any
 contract dormant across a fork is exactly that. The protocol version the
 indexer reports is therefore an upper bound — only a state whose envelope is
-*newer* than its dating block is reported as an inconsistency.
+*newer* than its dating block is reported as an inconsistency, and only where
+the two are known to describe the same block.
+
+On an unpinned read they need not. `block` and `contract` are Query-root
+siblings the indexer resolves concurrently, from independent reads, and with no
+offset both follow the chain tip — so a block indexed between the two leaves
+them on either side of a fork, giving a newer envelope under an older block
+with nothing wrong anywhere. The bound is withheld for that case instead of
+being reported as a fault; the envelope still decides decodability, which is
+what keeps a wrong-era payload away from the decoder either way.
 
 Contract events carry the same dating: every `ContractEvent` has a
 `protocolVersion`, so a consumer decoding the opaque `raw` payload can tell

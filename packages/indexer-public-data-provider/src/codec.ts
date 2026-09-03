@@ -177,6 +177,28 @@ export const reportedEra = (protocolVersion: number): LedgerVersion | undefined 
 };
 
 /**
+ * Whether the `protocolVersion` handed to {@link parseHexContractState} may be
+ * trusted as an upper bound on the state's envelope.
+ *
+ * `'enforced'` is the default and the case to reach for: the version is known
+ * to describe the same block as the bytes, so bytes from a newer runtime are an
+ * indexer fault. A call site earns it either by reading the version out of the
+ * same resolution that produced the state — a `transaction` or `block` subtree
+ * carrying the state itself — or by pinning both Query-root fields to one fixed
+ * block offset.
+ *
+ * `'withheld'` is for the one shape that earns neither: `block` and `contract`
+ * asked for as Query-root siblings on an *unpinned* read. The indexer resolves
+ * those concurrently, from independent reads, and with no offset both follow
+ * the chain tip — so a block indexed between the two puts them on either side
+ * of a fork, giving a newer envelope under an older block with nothing wrong
+ * anywhere. Only the comparison is dropped; the envelope still decides
+ * decodability, which is what actually keeps a wrong-era payload away from the
+ * decoder.
+ */
+export type EnvelopeUpperBound = 'enforced' | 'withheld';
+
+/**
  * Deserialize a contract state the indexer served, after establishing which
  * ledger runtime wrote it — and only if that runtime is one this path can
  * decode.
@@ -196,9 +218,12 @@ export const reportedEra = (protocolVersion: number): LedgerVersion | undefined 
  *   a contradiction would send callers hunting a fault that is not there.
  *
  * So an older envelope under a newer block is normal and decided on the
- * envelope alone. The reverse — bytes written by a runtime the dating block had
- * not forked to yet — cannot happen on a consistent indexer, and is the one
- * direction reported as {@link IndexerDataError.eraDisagreement}.
+ * envelope alone. The reverse — bytes written by a runtime the dating block
+ * had not forked to yet — cannot happen while both signals describe the same
+ * block, and is the one direction reported as
+ * {@link IndexerDataError.eraDisagreement}. Where they need not describe the
+ * same block, the caller says so and the comparison is dropped instead of
+ * being reported as a fault — see {@link EnvelopeUpperBound}.
  *
  * Nothing reaches a deserializer until the era is settled.
  *
@@ -207,18 +232,29 @@ export const reportedEra = (protocolVersion: number): LedgerVersion | undefined 
  * @param protocolVersion The protocol-version integer of the block that dates
  *                        the read. An integer this client cannot resolve
  *                        withholds the upper-bound check and nothing else.
+ * @param options `upperBound` states whether `protocolVersion` certainly
+ *                describes the same block as the bytes, and so whether it may
+ *                bound the envelope. Defaults to `'enforced'`, so a call site
+ *                has to opt out of the check deliberately rather than lose it
+ *                by omission. See {@link EnvelopeUpperBound}.
  *
  * @throws {IndexerDataError} When the state is not hex-encoded, when its
- *   envelope is newer than the block that dates it, or when its era is not
- *   decodable here.
+ *   envelope is newer than the block that dates it and that bound is enforced,
+ *   or when its era is not decodable here.
  * @throws {TagParseError} When the payload carries no supported contract-state
  *   envelope.
  */
-export const parseHexContractState = (hexState: string, protocolVersion: number): ContractState => {
+export const parseHexContractState = (
+  hexState: string,
+  protocolVersion: number,
+  options?: { readonly upperBound?: EnvelopeUpperBound }
+): ContractState => {
   const { raw, envelopeVersion } = stateBytesAndEnvelopeVersion(hexState);
-  const reportedVersion = reportedEra(protocolVersion);
-  if (reportedVersion !== undefined && isNewerEra(envelopeVersion, reportedVersion)) {
-    throw IndexerDataError.eraDisagreement(protocolVersion, reportedVersion, envelopeVersion);
+  if ((options?.upperBound ?? 'enforced') === 'enforced') {
+    const reportedVersion = reportedEra(protocolVersion);
+    if (reportedVersion !== undefined && isNewerEra(envelopeVersion, reportedVersion)) {
+      throw IndexerDataError.eraDisagreement(protocolVersion, reportedVersion, envelopeVersion);
+    }
   }
   if (envelopeVersion !== DECODABLE_LEDGER_VERSION) {
     throw IndexerDataError.unsupportedDecodeEra(envelopeVersion);

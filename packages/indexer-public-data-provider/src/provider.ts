@@ -397,7 +397,13 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
           // makes. Decoding it would mean guessing the era.
           throw IndexerDataError.undatedState();
         }
-        const contractState = parseHexContractState(state, block.protocolVersion);
+        // Unpinned: `block` is a Query-root sibling of `contract` and both
+        // followed the chain tip, so a block indexed between the two reads
+        // leaves them on either side of a fork. Pinned: both resolved against
+        // the offset the caller named, so the bound is real.
+        const contractState = parseHexContractState(state, block.protocolVersion, {
+          upperBound: offset === null ? 'withheld' : 'enforced'
+        });
         this.corroborateFromDecodedState(offset === null, block.protocolVersion);
         return contractState;
       });
@@ -414,8 +420,9 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     // the block (not the contract's last action) on purpose — the ledger keeps only a window of past
     // commitment-tree roots, so a tree from the contract's last modification can age out and be
     // unusable for building transactions; the queried block's tree is the one execution needs.
-    // Callers pin `offset` to a specific block, so both fields resolve at the same anchor with no
-    // race between them.
+    // With `offset` pinned, both fields resolve at that one anchor with no race between them.
+    // `getPublicStates` also reaches here with no offset, and then they do race — which is why the
+    // era bound on the contract state is withheld for exactly that case below.
     const offset = toBlockOffset(config);
     return this.client
       .query({
@@ -442,7 +449,9 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
         // the one block, so a state the block's era contradicts means the
         // zswap state and ledger parameters cannot be trusted either — and
         // neither is decoded.
-        const parsedContractState = parseHexContractState(contractState, block.protocolVersion);
+        const parsedContractState = parseHexContractState(contractState, block.protocolVersion, {
+          upperBound: offset === null ? 'withheld' : 'enforced'
+        });
         this.corroborateFromDecodedState(offset === null, block.protocolVersion);
         return [
           parseHexZswapState(contractZswapState),
@@ -526,7 +535,12 @@ export class IndexerPublicDataProvider implements PublicDataProvider {
     assertIsContractAddress(contractAddress);
     return Rx.firstValueFrom(
       waitForContractToAppear(this.client, this.pollInterval)(contractAddress)(null).pipe(
-        Rx.map(({ state, protocolVersion }) => parseHexContractState(state, protocolVersion))
+        // `waitForContractToAppear` polls an unpinned `CONTRACT_STATE_QUERY`, so
+        // the block dating the state is an independently-resolved sibling of it
+        // and the two can straddle a fork. No caller can pin this one.
+        Rx.map(({ state, protocolVersion }) =>
+          parseHexContractState(state, protocolVersion, { upperBound: 'withheld' })
+        )
       )
     );
   }

@@ -17,6 +17,7 @@ import { ledger } from '@midnight-ntwrk/midnight-js-protocol';
 import type { ContractAddress } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import { DeserializationError, deserializeCompactContractState, TagParseError } from '@midnight-ntwrk/midnight-js-utils';
 import type { DocumentNode } from 'graphql';
+import * as Rx from 'rxjs';
 import { describe, expect, test, vi } from 'vitest';
 
 import { parseHexContractState } from '../codec';
@@ -163,6 +164,37 @@ describe('era cross-check on the contract-state decode path', () => {
   });
 });
 
+describe('withholding the envelope upper bound', () => {
+  test('decodes bytes newer than the reported block when the bound is withheld', () => {
+    // The state and the version that dates it came from Query-root fields the
+    // indexer resolved independently, both following the chain tip, so the
+    // fork block can be indexed between the two reads. The indexer is fine
+    // and the envelope is decodable, so the read has to succeed.
+    const hexState = mintV9ContractStateHex();
+
+    const state = parseHexContractState(hexState, V8_ERA_PROTOCOL_VERSION, { upperBound: 'withheld' });
+
+    expect(Buffer.from(state.serialize()).toString('hex')).toBe(hexState);
+  });
+
+  test('still refuses an undecodable envelope when the bound is withheld', async () => {
+    // Withholding the bound must not weaken the decodability gate. That gate
+    // reads the envelope, which comes off the bytes themselves and is
+    // therefore never subject to the race the bound is withheld for.
+    const rejection = await rejectionOf(
+      mintV8ContractStateHex().then((hex) =>
+        parseHexContractState(hex, V9_ERA_PROTOCOL_VERSION, { upperBound: 'withheld' })
+      )
+    );
+
+    expect(rejection).toBeInstanceOf(IndexerDataError);
+    expect((rejection as IndexerDataError).context).toEqual({
+      kind: 'unsupported-decode-era',
+      version: 'v8'
+    });
+  });
+});
+
 describe('queryContractState dates the state it decodes', () => {
   const stateResponse = (state: string | null, protocolVersion: number | null): unknown => ({
     data: {
@@ -269,6 +301,43 @@ describe('queryContractState dates the state it decodes', () => {
 
     expect(headRequestCount(query)).toBe(before + 1);
   });
+
+  test('decodes an unpinned read whose state is newer than the block dating it', async () => {
+    // The regression this guards: `block` and `contract` are independently
+    // resolved siblings and an unpinned read lets both follow the chain tip,
+    // so the fork block can land between them. This is the default read path
+    // - `findDeployedContract` and the governance flows all reach it with no
+    // offset - and it must not throw on a state it can decode.
+    const hexState = mintV9ContractStateHex();
+    const query = dispatchingQuery(
+      new Map([[CONTRACT_STATE_QUERY, stateResponse(hexState, V8_ERA_PROTOCOL_VERSION)]])
+    );
+
+    const state = await buildProvider(query).queryContractState(ADDRESS);
+
+    expect(Buffer.from(state?.serialize() ?? new Uint8Array()).toString('hex')).toBe(hexState);
+  });
+
+  test('refuses a pinned read whose state is newer than the block dating it', async () => {
+    // With an offset both root fields resolve against one fixed block, so they
+    // cannot straddle a boundary. Bytes newer than that block really are an
+    // indexer fault, and this is where the bound still earns its place.
+    const query = dispatchingQuery(
+      new Map([[CONTRACT_STATE_QUERY, stateResponse(mintV9ContractStateHex(), V8_ERA_PROTOCOL_VERSION)]])
+    );
+
+    const rejection = await rejectionOf(
+      buildProvider(query).queryContractState(ADDRESS, { type: 'blockHeight', blockHeight: 7 })
+    );
+
+    expect(rejection).toBeInstanceOf(IndexerDataError);
+    expect((rejection as IndexerDataError).context).toEqual({
+      kind: 'era-disagreement',
+      protocolVersion: V8_ERA_PROTOCOL_VERSION,
+      reportedVersion: 'v8',
+      envelopeVersion: 'v9'
+    });
+  });
 });
 
 describe('queryZSwapAndContractState dates the triple it decodes', () => {
@@ -307,6 +376,36 @@ describe('queryZSwapAndContractState dates the triple it decodes', () => {
     expect((rejection as IndexerDataError).context).toEqual({ kind: 'unsupported-decode-era', version: 'v8' });
     expect(rejection).not.toBeInstanceOf(DeserializationError);
   });
+
+  test('decodes an unpinned triple whose state is newer than the block dating it', async () => {
+    // Same sibling shape as `CONTRACT_STATE_QUERY`: the triple's three fields
+    // share one `block` resolution, but `contract` is still its own root
+    // field. `getPublicStates` reaches here with no offset whenever its
+    // caller passes no block hash.
+    const query = dispatchingQuery(
+      new Map([[CONTRACT_AND_ZSWAP_STATE_QUERY, tripleResponse(mintV9ContractStateHex(), V8_ERA_PROTOCOL_VERSION)]])
+    );
+
+    await expect(buildProvider(query).queryZSwapAndContractState(ADDRESS)).resolves.toHaveLength(3);
+  });
+
+  test('refuses a pinned triple whose state is newer than the block dating it', async () => {
+    const query = dispatchingQuery(
+      new Map([[CONTRACT_AND_ZSWAP_STATE_QUERY, tripleResponse(mintV9ContractStateHex(), V8_ERA_PROTOCOL_VERSION)]])
+    );
+
+    const rejection = await rejectionOf(
+      buildProvider(query).queryZSwapAndContractState(ADDRESS, { type: 'blockHeight', blockHeight: 7 })
+    );
+
+    expect(rejection).toBeInstanceOf(IndexerDataError);
+    expect((rejection as IndexerDataError).context).toEqual({
+      kind: 'era-disagreement',
+      protocolVersion: V8_ERA_PROTOCOL_VERSION,
+      reportedVersion: 'v8',
+      envelopeVersion: 'v9'
+    });
+  });
 });
 
 describe('the decoder on this path is tag-strict', () => {
@@ -327,5 +426,31 @@ describe('the decoder on this path is tag-strict', () => {
 
     expect(rejection).toBeInstanceOf(DeserializationError);
     expect(((rejection as Error).cause as Error | undefined)?.message).toContain('midnight:contract-state[v6]:');
+  });
+});
+
+describe('watchForContractState dates the state it decodes', () => {
+  test('decodes a state newer than the block dating it', async () => {
+    // `waitForContractToAppear` is hardwired to an unpinned read, so unlike
+    // the two query paths this one is exposed to the sibling race with no
+    // caller-facing way to opt out of it.
+    const hexState = mintV9ContractStateHex();
+    const watchQuery = vi.fn().mockReturnValue(
+      Rx.of({
+        data: {
+          block: { protocolVersion: V8_ERA_PROTOCOL_VERSION },
+          contract: { state: hexState }
+        },
+        dataState: 'complete',
+        loading: false,
+        networkStatus: 7,
+        partial: false
+      })
+    );
+    const provider = new IndexerPublicDataProvider(stubApolloHandle({ watchQuery }), 1000);
+
+    const state = await provider.watchForContractState(ADDRESS);
+
+    expect(Buffer.from(state.serialize()).toString('hex')).toBe(hexState);
   });
 });
