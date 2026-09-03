@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -8,11 +8,11 @@
 
 > **secp256k1PointX**(`pt`): `bigint`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/built-ins.d.ts:227
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/built-ins.d.ts:242
 
 The Compact builtin `secp256k1PointX` function
 
-This function extracts the affine X-coordinate of a Compact `Secp256k1Point`.
+This function extracts the affine x-coordinate of a Compact `Secp256k1Point`.
 
 ## Parameters
 

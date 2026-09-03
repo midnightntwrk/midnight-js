@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -8,6 +8,6 @@
 
 > `const` **CompactTypeOpaqueUint8Array**: [`CompactType`](../interfaces/CompactType.md)\<`Uint8Array`\>
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:180
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:151
 
 Runtime type of `Opaque["Uint8Array"]`

@@ -183,6 +183,143 @@ Deep imports into build output were never part of the published surface and are
 now refused by Node with `ERR_PACKAGE_PATH_NOT_EXPORTED`; import through a
 declared subpath instead.
 
+## 8. Version-tagged payloads at the provider seams and on the read surface (#1204)
+
+For the ledger-fork window every version-divergent payload became a closed,
+`version`-discriminated union, so a caller cannot reach the wrong era's payload
+without defeating the type system. See
+[ADR 0006](../../adr/0006-version-tagged-payloads-at-provider-seams.md).
+
+### 8a. The three transaction-flow seams
+
+`ProofProvider.proveTx`, `WalletProvider.balanceTx` and
+`MidnightProvider.submitTx` now take a version-tagged payload, and `proveTx`
+and `balanceTx` return one. `submitTx` still returns a bare `TransactionId`,
+which is era-independent.
+
+```typescript
+// before
+const proven = await proofProvider.proveTx(unprovenTx);
+
+// after
+const provenTx = unwrapV9(
+  await proofProvider.proveTx({ version: 'v9', tx: unprovenTx }),
+  'proveTx'
+);
+```
+
+`unwrapV9` is exported from `@midnight-ntwrk/midnight-js-types`. Narrowing by
+hand works too, but do not write `if (p.version !== 'v9') throw new Error(...)`:
+that produces an error with no `code`, and misreports a future era as
+"expected v9". `unwrapV9` throws `V8PayloadUnsupportedError` for a v8 payload
+and `UntaggedPayloadError` when `version` is missing, both carrying a stable
+`code` you can match with `hasErrorCode`.
+
+**If you implement these interfaces yourself**, this is the breaking half that
+type-checking will not let you defer: return types are covariant, so an
+implementation still returning `Promise<FinalizedTransaction>` does not satisfy
+the new `Promise<VersionedFinalizedTransaction>`. Narrow the incoming payload
+with `unwrapV9(tx, 'balanceTx')` and tag what you return as
+`{ version: 'v9', tx }`. Third-party providers must be on a matching version.
+
+### 8b. `FinalizedTxData` gained a required `version` field
+
+`FinalizedTxData` now carries `readonly version: 'v9'`, and its other 13 fields
+moved to a shared `FinalizedTxRecord` base. Any code that *constructs* a
+`FinalizedTxData` — including test fixtures and custom `PublicDataProvider`
+implementations — must set it.
+
+### 8c. The read surface reports both eras
+
+`PublicDataProvider.watchForTxData` and `watchForDeployTxData` now return
+`VersionedFinalizedTxData`, the closed union of `FinalizedTxData`
+(`version: 'v9'`) and the new `FinalizedTxDataV8`. Narrow on `version` before
+reading `tx`:
+
+```typescript
+const record = await publicDataProvider.watchForTxData(txId);
+switch (record.version) {
+  case 'v9':
+    return record.tx;              // live v9 ledger object
+  case 'v8':
+    return toMyShape(record.tx);   // v8 ledger object, already decoded
+}
+```
+
+`submitTx` and `findDeployedContract` in `midnight-js-contracts` are v9-only
+flows: they narrow internally, so their return types are unchanged — `submitTx`
+still resolves `FinalizedTxData`, and `findDeployedContract` still resolves a
+`FoundContract`. Callers of those two are unaffected. A record from another era
+is reported as `EraInvariantViolationError`, which carries the `seam` and, where
+the flow knows it, the `circuitId`.
+
+No provider produces the v8 arm yet — the read path deserializes with the
+v9-only runtime, so a v8-era record surfaces as `EraUnsupportedError` rather
+than as a value. Narrowing is required now so that dual decode does not force a
+second breaking change.
+
+### 8d. `version` is derived, not asserted
+
+`indexerPublicDataProvider` resolves `version` from each record's own
+`protocolVersion` via the resolver in `@midnight-ntwrk/midnight-js-protocol`.
+Consequence: pointing the provider at a network outside the node 2.x range now
+throws at the read boundary — `EraUnsupportedError` for a v8-era network,
+`EraUnresolvableError` for a node 0.x or otherwise unmapped one — where before
+it returned a record that failed later inside the codec, with nothing in the
+message naming the era. Both are `IndexerError` subclasses, so a single
+`instanceof IndexerError` still catches them, and both carry the raw
+`protocolVersion` plus the transaction id or contract address being read.
+
+### 8e. Implementing `WalletProvider` or `MidnightProvider`
+
+Return types are covariant, so an implementation still resolving a bare
+`FinalizedTransaction` no longer satisfies `WalletProvider`. TypeScript reports
+the *parameter* mismatch first, so the error you see names the ledger methods
+`V8TxBytes` lacks rather than the missing tag — it is still this change.
+
+Rather than tagging by hand, wrap a v9-only implementation:
+
+```typescript
+import { createMidnightProvider, createWalletProvider } from '@midnight-ntwrk/midnight-js-types';
+
+const walletProvider = createWalletProvider({
+  balanceTx: (tx, ttl) => wallet.balanceAndProveTransaction(tx, ttl),
+  getCoinPublicKey: () => wallet.coinPublicKey,
+  getEncryptionPublicKey: () => wallet.encryptionPublicKey
+});
+
+const midnightProvider = createMidnightProvider((tx) => wallet.submitTransaction(tx));
+```
+
+Both narrow the inbound payload and tag the outbound one, so the `version`
+discriminant never appears in your code.
+
+### 8f. New and changed exports
+
+**`@midnight-ntwrk/midnight-js-types`** — added: `FinalizedTxRecord`,
+`FinalizedTxDataV8`, `VersionedFinalizedTxData`, `V8TxBytes`, `V9Tx`,
+`VersionedTx`, `VersionedUnprovenTransaction`, `VersionedUnboundTransaction`,
+`VersionedFinalizedTransaction`, `ProviderSeam`, `ReadSeam`, `Seam`,
+`unwrapV9`, `V8PayloadUnsupportedError`, `UntaggedPayloadError`,
+`V9WalletProvider`, `createWalletProvider`, `createMidnightProvider`. Changed:
+`FinalizedTxData` gained `version: 'v9'`.
+
+**`@midnight-ntwrk/midnight-js-utils`** — added: `hasErrorCode`,
+`MIDNIGHT_JS_ERROR_CODES`, `MidnightJsErrorCode`, `CONTRACTS_ERROR_CODES`,
+`ContractsErrorCode`, `PROVIDER_ERROR_CODES`, `ProviderErrorCode`.
+
+**`@midnight-ntwrk/midnight-js-contracts`** — added:
+`EraInvariantViolationError` (code `MIDNIGHT_JS_C_ERA_INVARIANT_VIOLATION`,
+carries `seam` and optional `circuitId`), `EraSeam`.
+
+**`@midnight-ntwrk/midnight-js-indexer-public-data-provider`** — added:
+`EraUnsupportedError` (`MIDNIGHT_JS_PR_ERA_UNSUPPORTED`) and
+`EraUnresolvableError` (`MIDNIGHT_JS_PR_ERA_UNRESOLVABLE`), both
+`IndexerError` subclasses.
+
+Catch any of these by code with `hasErrorCode(error, CODE)` from
+`midnight-js-utils` rather than by `instanceof` across a package boundary.
+
 ---
 
 ## Non-breaking additions worth noting

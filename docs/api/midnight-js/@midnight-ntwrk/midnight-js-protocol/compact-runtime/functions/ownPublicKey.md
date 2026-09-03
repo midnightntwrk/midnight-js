@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **ownPublicKey**(`circuitContext`): [`EncodedCoinPublicKey`](../interfaces/EncodedCoinPublicKey.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:164
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:180
 
 Retrieves the Zswap coin public key of the user executing the circuit.
 

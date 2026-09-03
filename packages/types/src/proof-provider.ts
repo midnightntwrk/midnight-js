@@ -23,7 +23,23 @@ import {
   type UnprovenTransaction
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 
+import { unwrapV9 } from './unwrap-v9';
+import type { VersionedTx } from './versioned';
+
 export type UnboundTransaction = Transaction<SignatureEnabled, Proof, PreBinding>;
+
+/**
+ * An unproven transaction on its way to a {@link ProofProvider}: either the
+ * live v9 ledger object, or the serialized bytes of a v8-era transaction.
+ */
+export type VersionedUnprovenTransaction = VersionedTx<UnprovenTransaction>;
+
+/**
+ * A proven-but-unbalanced transaction coming back from a {@link ProofProvider}:
+ * either the live v9 ledger object, or the serialized bytes of a v8-era
+ * transaction.
+ */
+export type VersionedUnboundTransaction = VersionedTx<UnboundTransaction>;
 
 /**
  * The configuration for the proof request to the proof provider.
@@ -46,17 +62,29 @@ export interface ProofProvider {
   /**
    * Creates call proofs for an unproven transaction. The resulting transaction is unbalanced and
    * must be balanced using the {@link WalletProvider} interface.
-   *           contain a single contract call.
-   * @param unprovenTx
+   *
+   * @param unprovenTx The version-tagged unproven transaction: wrap a live v9 ledger object as
+   *                   `{ version: 'v9', tx }`, or v8-era serialized bytes as
+   *                   `{ version: 'v8', txBytes }`.
    * @param proveTxConfig The configuration for the proof request to the proof provider. Empty in case
    *                      a deploy transaction is being proved with no user-defined timeout.
+   * @returns The proven transaction, version-tagged. Narrow on `version` — or call `unwrapV9` —
+   *          before reading the payload.
+   * @throws V8PayloadUnsupportedError if the implementation does not handle the v8 arm.
+   * @throws UntaggedPayloadError if `version` is missing or unrecognised.
    */
-  proveTx(unprovenTx: UnprovenTransaction, proveTxConfig?: ProveTxConfig): Promise<UnboundTransaction>;
+  proveTx(
+    unprovenTx: VersionedUnprovenTransaction,
+    proveTxConfig?: ProveTxConfig
+  ): Promise<VersionedUnboundTransaction>;
 }
 
 /**
  * Creates a {@link ProofProvider} from a {@link ProvingProvider}.
  * The returned provider proves transactions using the initial cost model.
+ *
+ * The returned provider serves the v9 arm only: it rejects a v8 payload with
+ * `V8PayloadUnsupportedError`, and an untagged one with `UntaggedPayloadError`.
  *
  * @param provingProvider - The underlying proving provider used to generate proofs.
  * @param costModel - Optional cost model to use for proof generation. Defaults to the initial cost model if not provided.
@@ -66,7 +94,8 @@ export const createProofProvider = (
   provingProvider: ProvingProvider,
   costModel: CostModel = CostModel.initialCostModel()
 ): ProofProvider => ({
-  async proveTx(unprovenTx: UnprovenTransaction): Promise<UnboundTransaction> {
-    return unprovenTx.prove(provingProvider, costModel);
+  async proveTx(unprovenTx: VersionedUnprovenTransaction): Promise<VersionedUnboundTransaction> {
+    const tx = unwrapV9(unprovenTx, 'proveTx');
+    return { version: 'v9', tx: await tx.prove(provingProvider, costModel) };
   }
 });

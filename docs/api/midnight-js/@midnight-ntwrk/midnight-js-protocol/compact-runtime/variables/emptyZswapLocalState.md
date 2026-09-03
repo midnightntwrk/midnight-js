@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > `const` **emptyZswapLocalState**: (`coinPublicKey`) => [`EncodedZswapLocalState`](../interfaces/EncodedZswapLocalState.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:121
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/zswap.d.ts:137
 
 Constructs a new [EncodedZswapLocalState](../interfaces/EncodedZswapLocalState.md) with the given coin public key. The result can be used to create a
 [ConstructorContext](../interfaces/ConstructorContext.md).

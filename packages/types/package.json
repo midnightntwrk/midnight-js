@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-types",
-  "version": "5.0.0-beta.6",
+  "version": "5.0.0-beta.7",
   "type": "module",
   "description": "Shared data types and interfaces for MidnightJS modules",
   "types": "dist/index.d.ts",
@@ -30,7 +30,9 @@
     "rxjs": "^7.8.2"
   },
   "devDependencies": {
+    "@midnight-ntwrk/midnight-js-utils": "workspace:*",
     "rollup": "^4.60.4",
+    "typescript": "^6.0.3",
     "vitest": "^4.1.7"
   },
   "engines": {

@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Interface: ContractEventBase
 
-Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:130
+Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:135
 
 The common fields carried by every [ContractEvent](../type-aliases/ContractEvent.md).
 
@@ -16,7 +16,7 @@ The common fields carried by every [ContractEvent](../type-aliases/ContractEvent
 
 > `readonly` **address**: [`ContractAddress`](../../../../platform-js/effect/ContractAddress/type-aliases/ContractAddress.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:139
+Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:144
 
 The address of the contract that emitted the event. Always a validated
 [ContractAddress.ContractAddress](../../../../platform-js/effect/ContractAddress/variables/ContractAddress.md) on a [DecodedEvent](../type-aliases/DecodedEvent.md); on a [DegradedEvent](../type-aliases/DegradedEvent.md)
@@ -29,7 +29,7 @@ string as supplied by the runtime (also available on `raw.address`).
 
 > `readonly` **raw**: [`LogEvent`](../../../../compact-runtime/type-aliases/LogEvent.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:141
+Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:146
 
 The original, undecoded log event.
 
@@ -39,6 +39,6 @@ The original, undecoded log event.
 
 > `readonly` **version**: `number`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:132
+Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:137
 
 The wire-format version (`1` for Phase 1).

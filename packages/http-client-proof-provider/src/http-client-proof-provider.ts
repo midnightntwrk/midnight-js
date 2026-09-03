@@ -13,13 +13,15 @@
  * limitations under the License.
  */
 
-import { CostModel, type ProvingProvider, type UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type {
-  ProofProvider,
-  ProveTxConfig,
-  UnboundTransaction,
-  ZKConfigProvider,
-  ZKConfigRegistry
+import { CostModel, type ProvingProvider } from '@midnight-ntwrk/midnight-js-protocol/ledger';
+import {
+  type ProofProvider,
+  type ProveTxConfig,
+  unwrapV9,
+  type VersionedUnboundTransaction,
+  type VersionedUnprovenTransaction,
+  type ZKConfigProvider,
+  type ZKConfigRegistry
 } from '@midnight-ntwrk/midnight-js-types';
 
 import { DEFAULT_TIMEOUT, httpClientProvingProvider, type ProvingProviderConfig } from './http-client-proving-provider';
@@ -122,9 +124,10 @@ export function httpClientProofProvider<K extends string>(
 
   return {
     async proveTx(
-      unprovenTx: UnprovenTransaction,
+      unprovenTx: VersionedUnprovenTransaction,
       proveTxConfig?: ProveTxConfig
-    ): Promise<UnboundTransaction> {
+    ): Promise<VersionedUnboundTransaction> {
+      const tx = unwrapV9(unprovenTx, 'proveTx');
       const perCallTimeout = resolveTimeout(resolvedConfig, proveTxConfig);
 
       // Wrap the construction-time provider so every circuit-level check/prove in this proveTx uses
@@ -139,7 +142,7 @@ export function httpClientProofProvider<K extends string>(
       };
 
       const costModel = CostModel.initialCostModel();
-      return unprovenTx.prove(perCallProvingProvider, costModel);
+      return { version: 'v9', tx: await tx.prove(perCallProvingProvider, costModel) };
     }
   };
 };

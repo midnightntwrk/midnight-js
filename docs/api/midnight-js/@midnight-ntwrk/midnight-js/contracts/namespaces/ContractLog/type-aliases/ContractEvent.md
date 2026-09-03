@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../../../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **ContractEvent** = [`DecodedEvent`](DecodedEvent.md) \| [`DegradedEvent`](DegradedEvent.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:174
+Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:179
 
 A typed contract event: either a [DecodedEvent](DecodedEvent.md) or a [DegradedEvent](DegradedEvent.md). Discriminate
 on `degraded`, then narrow on `eventType`.

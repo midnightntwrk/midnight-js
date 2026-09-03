@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../../../README.md)
 
 ***
 
@@ -8,9 +8,7 @@
 
 > `const` **decode**: (`raw`) => [`ContractEvent`](../type-aliases/ContractEvent.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:193
-
-**`Experimental`**
+Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:197
 
 Decode a single raw [LogEvent](../../../../compact-runtime/type-aliases/LogEvent.md) into a typed [ContractEvent](../type-aliases/ContractEvent.md).
 
@@ -19,10 +17,9 @@ or `version: 0` payload — or a malformed envelope address — decodes to a [De
 (`degraded: true`, `payload: undefined`) per the MIP-0002 graceful-degradation rule; the raw
 event remains on `raw`.
 
- The `payload` field byte-offsets are derived from the compiler source and not yet
-confirmed against a live `emit` (see the module-level remarks and the provenance note in
-`test/effect/logEventFixtures.ts`). A wrong offset decodes silently to a wrong value; treat
-decoded payloads as provisional. The envelope and degradation behaviour are confirmed.
+The `payload` field byte-offsets follow the corrected layout from issue #278 (see the module-level
+remarks). The end-to-end cross-check against a live `emit` is the final validation gate; a wrong
+offset decodes silently to a wrong value rather than degrading.
 
 ## Parameters
 

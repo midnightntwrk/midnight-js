@@ -17,10 +17,15 @@ import {
   type CoinPublicKey,
   DustSecretKey,
   type EncPublicKey,
-  type FinalizedTransaction,
   ZswapSecretKeys
 } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import { type MidnightProvider, type UnboundTransaction, type WalletProvider } from '@midnight-ntwrk/midnight-js-types';
+import {
+  type MidnightProvider,
+  unwrapV9,
+  type VersionedFinalizedTransaction,
+  type VersionedUnboundTransaction,
+  type WalletProvider
+} from '@midnight-ntwrk/midnight-js-types';
 import { ttlOneHour } from '@midnight-ntwrk/midnight-js-utils';
 import { type UnshieldedKeystore, type WalletFacade } from '@midnightntwrk/wallet-sdk';
 import type { Logger } from 'pino';
@@ -66,16 +71,17 @@ export class MidnightWalletProvider implements MidnightProvider, WalletProvider 
   }
 
   async balanceTx(
-    tx: UnboundTransaction,
+    tx: VersionedUnboundTransaction,
     ttl: Date = ttlOneHour()
-  ): Promise<FinalizedTransaction> {
-    const finalizedTransactionRecipe = await this.wallet.balanceUnboundTransaction(tx, { shieldedSecretKeys: this.zswapSecretKeys, dustSecretKey: this.dustSecretKey}, { ttl });
+  ): Promise<VersionedFinalizedTransaction> {
+    const unbound = unwrapV9(tx, 'balanceTx');
+    const finalizedTransactionRecipe = await this.wallet.balanceUnboundTransaction(unbound, { shieldedSecretKeys: this.zswapSecretKeys, dustSecretKey: this.dustSecretKey}, { ttl });
     const signed = await this.wallet.signRecipe(finalizedTransactionRecipe, (payload) => this.unshieldedKeystore.signDataAsync(payload));
-    return this.wallet.finalizeRecipe(signed);
+    return { version: 'v9', tx: await this.wallet.finalizeRecipe(signed) };
   }
 
-  submitTx(tx: FinalizedTransaction): Promise<string> {
-    return this.wallet.submitTransaction(tx);
+  async submitTx(tx: VersionedFinalizedTransaction): Promise<string> {
+    return this.wallet.submitTransaction(unwrapV9(tx, 'submitTx'));
   }
 
   async start(waitForFundsInWallet = true): Promise<void> {

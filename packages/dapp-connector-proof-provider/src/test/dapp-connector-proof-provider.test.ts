@@ -14,7 +14,13 @@
  */
 
 import type { CostModel, UnprovenTransaction } from '@midnight-ntwrk/midnight-js-protocol/ledger';
-import type { KeyMaterialProvider, UnboundTransaction, ZKConfigProvider } from '@midnight-ntwrk/midnight-js-types';
+import {
+  type KeyMaterialProvider,
+  type UnboundTransaction,
+  V8PayloadUnsupportedError,
+  type ZKConfigProvider
+} from '@midnight-ntwrk/midnight-js-types';
+import { hasErrorCode, PROVIDER_ERROR_CODES } from '@midnight-ntwrk/midnight-js-utils';
 import type { ProvingProvider } from '@midnightntwrk/dapp-connector-api';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -66,7 +72,7 @@ describe('dappConnectorProofProvider', () => {
   it('should delegate proveTx to unprovenTx.prove with the injected cost model', async () => {
     const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
 
-    const result = await proofProvider.proveTx(mockUnprovenTx);
+    const result = await proofProvider.proveTx({ version: 'v9', tx: mockUnprovenTx });
 
     expect(mockUnprovenTx.prove).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -76,14 +82,36 @@ describe('dappConnectorProofProvider', () => {
       }),
       mockCostModel
     );
-    expect(result).toBe(mockUnboundTx);
+    // Identity, not structural equality: the whole premise of the versioned
+    // seam is that ledger objects from different WASM instances must not be
+    // interchanged, so a structurally-equal-but-different object must fail.
+    expect(result.version).toBe('v9');
+    expect(result.version === 'v9' && result.tx).toBe(mockUnboundTx);
+  });
+
+  // Behaviour is inherited from createProofProvider, but this is the seam
+  // consumers of this package actually call: without a test here, a future
+  // refactor that gives this package its own proveTx body would silently lose
+  // the rejection.
+  it('rejects a v8 payload with the registered unsupported-payload code, naming this seam', async () => {
+    const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
+
+    const rejection = await proofProvider.proveTx({ version: 'v8', txBytes: new Uint8Array([1, 2, 3]) }).then(
+      () => undefined,
+      (error: unknown) => error
+    );
+
+    expect(rejection).toBeInstanceOf(V8PayloadUnsupportedError);
+    expect(hasErrorCode(rejection, PROVIDER_ERROR_CODES.V8_PAYLOAD_UNSUPPORTED)).toBe(true);
+    expect((rejection as V8PayloadUnsupportedError).seam).toBe('proveTx');
+    expect(mockUnprovenTx.prove).not.toHaveBeenCalled();
   });
 
   it('should obtain the ProvingProvider once at setup, not per proveTx call', async () => {
     const proofProvider = await dappConnectorProofProvider(mockApi, mockZkConfigProvider, mockCostModel);
 
-    await proofProvider.proveTx(mockUnprovenTx);
-    await proofProvider.proveTx(mockUnprovenTx);
+    await proofProvider.proveTx({ version: 'v9', tx: mockUnprovenTx });
+    await proofProvider.proveTx({ version: 'v9', tx: mockUnprovenTx });
 
     expect(mockApi.getProvingProvider).toHaveBeenCalledTimes(1);
   });

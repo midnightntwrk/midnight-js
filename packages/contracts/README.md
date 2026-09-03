@@ -204,6 +204,8 @@ import {
   CallTxFailedError,
   DeployTxFailedError,
   ContractTypeError,
+  EraInvariantViolationError,
+  type EraSeam,
   TxFailedError
 } from '@midnight-ntwrk/midnight-js-contracts';
 ```

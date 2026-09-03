@@ -17,7 +17,9 @@ import type { ContractState } from '@midnight-ntwrk/midnight-js-protocol/compact
 import type { ContractAddress, LedgerParameters, TransactionId, ZswapChainState } from '@midnight-ntwrk/midnight-js-protocol/ledger';
 import type { Observable } from 'rxjs';
 
-import type { FinalizedTxData, UnshieldedBalances } from './midnight-types';
+import type { UnshieldedBalances } from './midnight-types';
+import type { RawContractState } from './raw-contract-state';
+import type { VersionedFinalizedTxData } from './versioned';
 
 /**
  * Streams all previous states of a contract.
@@ -151,6 +153,16 @@ export interface ContractEventBase {
    * Iteration-1 events are `version: 1`.
    */
   readonly version: number;
+  /**
+   * Protocol version of the block this event was emitted in, as the network
+   * reported it. Distinct from {@link version}: this one says which ledger era
+   * wrote {@link raw}, so a consumer decoding those bytes knows which runtime
+   * to decode them with. Resolve it with `versionOfRecord` from
+   * `@midnight-ntwrk/midnight-js-protocol` rather than comparing integers by
+   * hand — this interface satisfies that function's `VersionedRecord`
+   * parameter.
+   */
+  readonly protocolVersion: number;
   /** Address of the contract that emitted the event. */
   readonly contractAddress: ContractAddress;
   /**
@@ -373,7 +385,7 @@ export interface PublicDataProvider {
    * @returns A promise that resolves with finalized transaction data when the deployment appears on-chain.
    *          The promise never rejects due to timeout.
    */
-  watchForDeployTxData(contractAddress: ContractAddress): Promise<FinalizedTxData>;
+  watchForDeployTxData(contractAddress: ContractAddress): Promise<VersionedFinalizedTxData>;
 
   /**
    * Retrieves data of the transaction containing the call or deployment with the given identifier.
@@ -394,7 +406,7 @@ export interface PublicDataProvider {
    * @returns A promise that resolves with finalized transaction data when the transaction appears on-chain.
    *          The promise never rejects due to timeout.
    */
-  watchForTxData(txId: TransactionId): Promise<FinalizedTxData>;
+  watchForTxData(txId: TransactionId): Promise<VersionedFinalizedTxData>;
 
   /**
    * Creates a stream of contract states. The observable emits a value every time a state is either
@@ -466,4 +478,58 @@ export interface PublicDataProvider {
     filter: ContractEventSubscriptionFilter,
     opts?: { startAt?: ContractEventCursor }
   ): Observable<ContractEvent>;
+
+  /**
+   * Retrieves the protocol-version integer reported by the network's current
+   * head block.
+   *
+   * Implementations MAY serve this from a cache, but only after they have
+   * corroborated evidence that the network has moved to the newer ledger era.
+   * Corroboration means one of exactly two things:
+   *
+   * 1. a single response that carried both the head version and a contract
+   *    state whose envelope belongs to the newer era; or
+   * 2. a finalized record the implementation itself decoded, whose protocol
+   *    version resolves to the newer era.
+   *
+   * A head version integer on its own is never enough — an indexer can report
+   * a newer head while still serving older-era state, so caching on that
+   * alone would pin the wrong answer. While the network is still on the older
+   * era an implementation MUST NOT cache at all. Once a cached answer is
+   * established it only ever moves forward: a later older-era reading never
+   * clears or lowers it.
+   *
+   * Route 2 proves the era only. A record's protocol version is the version of
+   * the block that carried it and may sit behind the head, so it MUST NOT be
+   * returned from this method — the cached value always comes from a head
+   * reading.
+   *
+   * @param options Pass `{ fresh: true }` to skip any cache and always issue a
+   *                real request. Callers use this to re-read the head after
+   *                they have seen evidence that a cached answer disagrees with
+   *                what the network is actually serving.
+   */
+  queryLatestProtocolVersion(options?: { readonly fresh?: boolean }): Promise<number>;
+
+  /**
+   * Retrieves the on-chain state of a contract as the raw serialized bytes the
+   * network returned, without deserializing them, together with the era the
+   * record is dated to.
+   *
+   * This is the state input for callers that must work across the ledger fork:
+   * they narrow on {@link RawContractState.version} and then hand the bytes to
+   * that era's deserializer. Both eras' envelopes are returned unchanged. The
+   * era comes from the record's protocol version and is not checked against
+   * the envelope the bytes carry.
+   *
+   * Immediately returns null if no matching data is found.
+   *
+   * @param contractAddress The address of the contract of interest.
+   * @param config The configuration of the query.
+   *               If `undefined` returns the latest state.
+   */
+  queryRawContractState(
+    contractAddress: ContractAddress,
+    config?: BlockHeightConfig | BlockHashConfig
+  ): Promise<RawContractState | null>;
 }
