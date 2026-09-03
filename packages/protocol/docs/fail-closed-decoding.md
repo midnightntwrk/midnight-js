@@ -29,13 +29,10 @@ era with `protocolVersionToLedger` (`packages/protocol/src/version.ts`) rather
 than constructing the string by hand, and let the decoder have the final word.
 
 `extractEncodedStateValue` (`packages/protocol/src/lib/era/envelope.ts`)
-therefore validates `version` before it is used, rather than trusting it from
-the type signature. That guard is also what keeps `stage` inside its closed
-union: `stage` is built from `version`, so an unvalidated string would
-otherwise reach a field whose whole contract is that consumers can `switch` on
-it. No production caller passes anything but a literal today, and this function
-is not reachable from any subpath export — see the note on collapsing this
-dispatch in `packages/protocol/README.md`.
+therefore validates `version` at runtime before selecting a decoder with it;
+why that guard is not redundant with the type signature, and how much of the
+era dispatch is reachable today, belong with the package-wide table discipline
+— see [SharedTableDiscipline](./shared-table-discipline.md).
 
 ## A decode never returns a partial or empty state
 

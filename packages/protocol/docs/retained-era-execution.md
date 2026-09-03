@@ -221,14 +221,16 @@ reach `.operations`, `.maintenanceAuthority` or `.balance` through them.
 `partitionContext` is the query-context state the call ran with, which the
 carried state bytes do not hold. Composing a call without it partitions the
 transcript against a context the circuit never ran on; a call that received a
-coin in-contract cannot be partitioned at all. Of the four members the pre-fork
-query context exposes, `block` and `effects` are read off the PRE-call context,
-because the partitioner recomputes both from the program it replays — post-call
-values would be counted twice; `comIndices` is read off the POST-call one,
-because the runtime registers a received coin's commitment as the circuit
-produces it (`createZswapOutput` in the retained 0.16 glue). All four are
-declared on one type because the runtime exposes them on the same object; which
-one each is read from is `executeCircuit`'s choice, not the type's.
+coin in-contract cannot be partitioned at all. `PartitionContext` carries three
+members. `block` and `effects` are read off the PRE-call context, because the
+partitioner recomputes both from the program it replays — post-call values would
+be counted twice; `comIndices` is read off the POST-call one, because the
+runtime registers a received coin's commitment as the circuit produces it
+(`createZswapOutput` in the retained 0.16 glue). All three sit on one type
+because the runtime exposes them on the same object; which context each is read
+from is `executeCircuit`'s choice, not the type's. (The fourth member
+`Ledger8QueryContext` picks off the vendor's `QueryContext` is `state`, which
+this seam returns as `postContractState` rather than on this type.)
 
 `zswapLocalState` is the post-call Zswap local state, DECODED into the
 runtime's public shape: the coins the circuit spent and produced. A caller turns
@@ -293,41 +295,8 @@ when no operation is registered for the circuit at all, and
 
 ## The injected runtime slices
 
-Three structural slices of the retained toolchain reach these seams by
-injection rather than by import: `Ledger8CompactRuntime` (down-convert),
-`Ledger8ExecutionRuntime` (circuit execution) and `Ledger8ConstructorRuntime`
-(constructor execution). Injection is what lets a caller target a specific
-WASM-backed instance, and what lets a test substitute a controlled fake instead
-of standing up real WASM. `createLedger8Engine`
-(`packages/protocol/src/lib/v8/engine.ts`) assembles all three out of one
-acquisition and captures them in closure, so nothing on the engine's public
-surface takes a runtime parameter.
-
-`Ledger8ExecutionRuntime` carries exactly what building and running a circuit
-context needs: `decodeZswapLocalState`, `createCircuitContext`, and `CostModel`
-narrowed to `initialCostModel` — the only static this seam calls, and the
-narrowing is what lets a test inject a stub cost model. The cost model is not a
-caller choice: `executeCircuit` always builds the context with the glue's own
-`initialCostModel()` and passes no gas limit.
-
-`v8-load-engine.test.ts` pins that the real glue still satisfies the execution
-slice, and `v8-deploy.test.ts` does the same for the constructor slice, so a
-narrowing cannot drift away from the runtime it stands for.
-
-Why each slice is DERIVED from the vendor's own class where it can be, rather
-than restated as a hand-written mirror, and why each is narrowed to the members
-its seam actually calls, is in [ModuleGraphAndLazyLoading](./module-graph-and-lazy-loading.md); the trade the
-constructor slice makes is in [ComposeRefusalOrder](./compose-refusal-order.md).
-
-Two of those slices are narrowed rather than derived, and each narrowing buys
-something specific. `createCircuitContext` is the sharper case: the glue's own
-version is generic in the private state and returns a `CircuitContext` carrying
-a real `QueryContext`, a WASM class no test double can satisfy. Deriving it
-would make every execution test stand up real WASM just to check plumbing, so
-the seam narrows it to return `Ledger8CircuitContext` instead. `CostModel` is
-narrowed to `initialCostModel` for the same reason: it is the only static this
-seam calls, and the narrowing lets a test inject a stub cost model.
-
-The general rule this trades against — derive from the vendor where exactly one
-era can satisfy the shape, declare structurally where a seam serves both — is
-in [ModuleGraphAndLazyLoading](./module-graph-and-lazy-loading.md).
+`Ledger8CompactRuntime`, `Ledger8ExecutionRuntime` and
+`Ledger8ConstructorRuntime` reach these seams by injection rather than by
+import, and each is narrowed to the members its seam calls. How the three are
+typed, what each narrowing buys, and where `createLedger8Engine` assembles them
+is in [InjectedVendorSlices](./injected-vendor-slices.md).

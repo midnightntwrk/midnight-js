@@ -22,17 +22,15 @@ is checked.
 
 ## Argument position: wasm-bindgen throws
 
-As an **argument** to a wasm-bound function, wasm-bindgen emits `_assertClass`,
-which throws `expected instance of <Class>`. Loud, though deep inside a decode
-and naming neither the package nor the duplicate install.
+As an **argument** to a wasm-bound function, wasm-bindgen emits `_assertClass`
+on every object handed across a class boundary, so a cross-copy handoff throws
+`expected instance of <Class>`. Results are not corrupted silently in this
+direction.
 
-That is the whole reason `Ledger8InstanceMismatchError` exists. Mixing copies
-does not corrupt results silently in this direction: wasm-bindgen emits an
-`_assertClass` check on every object handed across a class boundary, so a
-cross-copy handoff throws `expected instance of <Class>`. That failure is loud
-but opaque — it names neither the package nor the duplicate install. The error
-replaces it with one that does, at the point the two copies are first observed
-rather than deep inside a down-convert.
+The failure is loud but opaque: it names neither the package nor the duplicate
+install, and it surfaces deep inside a decode. That is what
+`Ledger8InstanceMismatchError` exists to replace — the same fault, reported at
+the point the two copies are first observed and naming what to go and fix.
 
 ## Receiver position: nothing is checked
 
@@ -47,10 +45,10 @@ nothing about production.
 
 ## Why the guard is a correctness requirement, not a diagnostics improvement
 
-So this guard is not only a diagnosis-improver. For the receiver direction it is
-the only thing standing between a duplicate install and silently wrong contract
-state, which is why it must run before any state crosses the bridge rather than
-being treated as optional belt-and-braces.
+Improving that diagnosis is the lesser half of what the guard does. For the
+receiver direction it is the only thing standing between a duplicate install and
+silently wrong contract state, which is why it must run before any state crosses
+the bridge rather than being treated as optional belt-and-braces.
 
 ## Reference equality is the probe
 
@@ -178,17 +176,7 @@ a mixed runtime be assembled there.
 
 ## The one crossing this cannot affect
 
-Not every era crossing in the engine is exposed to a dual-instantiation. A
-crossing that passes BYTES rather than a handle is immune by construction,
-because no object is handed between the two physical copies at all.
-
-`Ledger8DeployableContractState` (`lib/v8/deploy.ts`) is that case: it is a
-`Pick` of the pre-fork `ContractState` narrowed to `.serialize()`, which is how
-a caller turns the handle `executeConstructor` returned into the bytes every
-deploy leg takes. Picking one member also keeps it structurally satisfiable by
-a test double, so the deploy tests need no real WASM.
-
-This is why the guard's blast radius is the crossings that pass handles, and
-why widening it to cover the byte crossings would assert something already
-true. The general rule about deriving versus narrowing an injected vendor slice
-is in [ModuleGraphAndLazyLoading](./module-graph-and-lazy-loading.md).
+A crossing that passes BYTES rather than a handle is immune by construction, so
+the guard's blast radius is the crossings that pass handles.
+`Ledger8DeployableContractState` (`lib/v8/deploy.ts`) is the byte case, and how
+it is typed is in [InjectedVendorSlices](./injected-vendor-slices.md).

@@ -256,66 +256,10 @@ proof server, neither of which this seam has. That holds for the deploy legs
 too, including the constructor execution that feeds them — a constructor
 produces state, never a proof.
 
-## Injected era seams: narrowed, not derived
+## Injected era seams
 
-The general rule these legs trade against is in [ModuleGraphAndLazyLoading](./module-graph-and-lazy-loading.md):
-derive an injected vendor slice from the vendor's own class where exactly one
-era can satisfy the shape, and declare it structurally where a seam serves both.
-Everything below is the compose legs' half of that — the slices here are
-narrowed on purpose, and each narrowing is a different trade.
-
-`CallAssemblyLedger` (`packages/protocol/src/lib/shared/assemble-call.ts`) is
-satisfied by both ledger modules with every type parameter inferred from the
-module namespace itself, so callers pass the module and never spell out type
-arguments. Its `AlignedValue` / `Op` / `EncodedStateValue` / `Transcript`
-payload types are declared once against ledger-v9: they are structurally
-identical across onchain-runtime-v3, ledger-v8 and ledger-v9, pinned by the
-compile-time drift gate at the bottom of `v8-down-convert.test.ts`, which covers
-all three axes. `Transcript` is spelled out rather than left as a type parameter
-because a call can arrive with its transcript ALREADY partitioned, in which case
-the pair comes from the caller rather than from the module's own partitioner —
-so there is no module-bound type left to infer it from.
-`PartitionableQueryContext` is generic in `TSelf` because `insertCommitment`
-returns a NEW context rather than mutating, which keeps the fold typed as the
-module's own context instead of widening to the interface.
-
-The recorded query context a call carries travels the same way.
-`PartitionContext`'s `CallContext` and `Effects`
-(`packages/protocol/src/lib/shared/compose-types.ts`) are likewise declared once
-against ledger-v9 and are structurally identical on all three axes, pinned by
-the compile-time drift gate in `engine-down-convert.test.ts`.
-
-`CallOperationRegistry`'s `TOperation` is constrained to the one property the
-assembler inspects. Both eras' `ContractOperation` declare `verifierKey` as a
-required `Uint8Array`, but a slot that was never assigned one reads back
-`undefined` — pinned by the operation-resolution tests, so a vendor change fails
-a test rather than silently disabling the verifier-key check.
-
-`UnshieldedOfferLedger` stays a hand-written slice because the function above it
-genuinely runs on BOTH eras: the v9 arm passes ledger-v9, the v8 leg passes the
-module `loadLedger8` handed it, and deriving the shape from either era's class
-would pick a side. Its `inputs` and `signatures` are typed `never[]` rather than
-the ledger's own parameter types, because this seam only ever aggregates
-OUTPUTS, so `[]` is the only value that can be passed and the type says so
-instead of a comment.
-
-The v8 deploy seam goes the other way where it can.
-`Ledger8DeployableContractState` is a `Pick` of the vendor's own class rather
-than a restatement of its one member, so a change to `serialize` in
-onchain-runtime-v3 fails this build; but picking one member keeps it
-structurally loose enough that unrelated serializables satisfy it, which is what
-lets tests substitute a fake instead of invoking real WASM. The type therefore
-does not enforce that the bytes are a contract state at all — whichever deploy
-leg receives them is what turns that residual risk into a legible error rather
-than a raw decoder failure. `Ledger8ConstructorRuntime` is narrowed rather than
-derived from the retained glue's own `createConstructorContext`: that one is
-generic in the private state and returns a `ConstructorContext`, a shape this
-seam never inspects, since it only hands the value straight back to the
-contract's `initialState`. Typing it as the glue's would force every constructor
-test to build a real context to check plumbing it does not read, so the return
-stays `unknown` and `v8-deploy.test.ts` pins that the real glue satisfies the
-narrowing.
-
-The `version` every failure names is passed rather than inferred from the ledger
-module, for the same reason: the assembler is generic over the module, so it has
-no way to ask which axis it was handed.
+The slices these legs take by injection — `CallAssemblyLedger`,
+`PartitionableQueryContext`, `CallOperationRegistry`, `UnshieldedOfferLedger`
+and the v8 deploy seam's two — are narrowed, and each narrowing is a different
+trade. How they are typed, and what each trade buys, is in
+[InjectedVendorSlices](./injected-vendor-slices.md).

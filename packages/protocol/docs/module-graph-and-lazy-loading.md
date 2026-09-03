@@ -92,12 +92,21 @@ through one of those two accessors, which is what keeps the number of physical
 WASM copies at one and keeps the laziness a property of a single call site
 rather than of a convention spread across files.
 
-`lib/v8/load-engine.ts` re-exports the engine's option and result types
-type-only — `DownConvertedState`, `EncodedStateValue`, `ExecuteCircuitOptions`,
-`Ledger8Engine`, `TranscriptPojo` and `WrapKeepStateCallOptions` — so the root
-barrel can name every type a caller needs without linking the engine chunk.
-Without them a consumer holding a `Ledger8Engine` cannot annotate a variable
-or write a helper without a second, subpath-gated import.
+`lib/v8/load-engine.ts` re-exports engine option and result types type-only —
+`DownConvertedState`, `EncodedStateValue`, `ExecuteCircuitOptions`,
+`Ledger8Engine`, `TranscriptPojo` and `WrapKeepStateCallOptions` — so a consumer
+holding a `Ledger8Engine` can annotate a variable or write a helper without a
+second, subpath-gated import, and without linking the engine chunk.
+
+The list is INCOMPLETE, and knowingly so as of this writing. `Ledger8Engine`
+has a fourth method, `executeConstructor(options: ExecuteConstructorOptions):
+ConstructorResultPojo` (`lib/v8/engine.ts`), and neither of those two types is
+re-exported — so neither reaches the root barrel, and `executeConstructor` is
+the one method on the seam whose argument and result a caller cannot annotate
+without the gated import. TypeDoc reports both as referenced-but-not-included.
+Closing it is a one-line change to the re-export list; it is left out of the
+documentation change that recorded this so that a docs-only commit does not
+alter the package's export surface.
 
 ## The tests that enforce each property
 
@@ -158,59 +167,10 @@ The same distinction is stated again where the seam is used: whether
 graph, not about bundling, and the reason the pre-fork types are imported with
 `import type` is unaffected either way.
 
-## Injected runtime slices are derived from the vendor, not restated
+## Injected vendor slices
 
 A seam that takes a vendor class by injection still has to name the shape it
-expects. Where exactly one era can satisfy that shape, the type is DERIVED
-from the vendor's own class rather than restated, so a vendor signature change
-fails this build instead of quietly leaving a hand-written mirror describing a
-shape the runtime no longer has:
-
-- `Ledger8ContractState` (`lib/era/envelope.ts`) is derived from the pre-fork
-  `ContractState` statics, so a signature change in onchain-runtime-v3 fails
-  the build here.
-- `Ledger8CompactRuntimeStateValue` (`lib/v8/down-convert.ts`) is derived the
-  same way from the pre-fork `StateValue` statics: a `decode` whose signature
-  moves fails this build instead of leaving a hand-written mirror describing a
-  static the runtime no longer has.
-
-Derivation is orthogonal to the import rule above. The `import type * as` each
-declaration reads through is erased and links nothing — injection is about not
-importing a value — so deriving the type leaves the lazy acquisition path the
-caller owns untouched.
-
-Each derived slice is also narrowed to the members the seam actually calls.
-
-Where a narrowing buys something beyond that — a shape a test double can
-satisfy, or a type parameter callers never have to spell out — the trade is
-recorded with the seam it belongs to: [ComposeRefusalOrder](./compose-refusal-order.md) for the compose
-legs, [RetainedEraExecution](./retained-era-execution.md) for the execution runtime, and
-[DualInstantiationGuard](./dual-instantiation-guard.md) for the byte crossing a dual-instantiation cannot
-affect.
-`Ledger8ContractState` is narrowed to `deserialize` because that is the only
-member its seam calls. `Ledger8CompactRuntimeStateValue` is narrowed to
-`decode` because that is the only static its seam calls, and because the
-narrowing is what lets `v8-down-convert.test.ts` drive the decode safety net
-with a one-member double instead of a whole WASM class.
-
-The narrowing on `Ledger8ContractState` carries one further consequence — it
-pins the slice to the pre-fork era, which is what `Ledger8CompactRuntime`
-depends on. That consequence is recorded in
-[RetainedEraExecution](./retained-era-execution.md).
-
-## Structural where a seam serves both eras
-
-The counterpart to derivation is a structural declaration, and the contrast is
-the point: derived where there is one era, structural where there are two.
-
-`ContractStateDecoder` (`lib/shared/contract-state.ts`) is declared
-structurally rather than derived from one era's class, because that decoder
-genuinely serves BOTH axes — the v9 arm passes ledger-v9, the v8 leg passes
-the module `loadLedger8` handed it — and naming either era's type there would
-pick a side. `Ledger8ContractState` is the single-era counterpart, and IS
-derived from the vendor for that reason.
-
-Injection remains required in both cases, and for the reason already given:
-naming a type links nothing, but importing either era's module as a value
-would statically link its WASM into whatever bundle reaches the importing
-module.
+expects, and this package makes that choice three ways — derived from the
+vendor's own class, declared structurally, or narrowed. That whole topic,
+including what each choice buys and how each slice is held to its vendor, is in
+[InjectedVendorSlices](./injected-vendor-slices.md).

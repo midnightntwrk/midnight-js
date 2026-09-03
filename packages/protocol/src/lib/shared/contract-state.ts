@@ -43,9 +43,10 @@ export interface DecodableContractState {
  * The era module slice {@link decodeContractStateWith} needs: just the
  * `ContractState` class and its static reader.
  *
- * @see {@link ModuleGraphAndLazyLoading} for why this slice is declared
- * structurally rather than derived from one era's class, and why the module is
- * injected rather than imported.
+ * @see {@link InjectedVendorSlices} for why this slice is declared
+ * structurally rather than derived from one era's class.
+ * @see {@link ModuleGraphAndLazyLoading} for why the module is injected rather
+ * than imported.
  */
 export interface ContractStateDecoder {
   readonly ContractState: { readonly deserialize: (raw: Uint8Array) => DecodableContractState };

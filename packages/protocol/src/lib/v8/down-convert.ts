@@ -29,7 +29,7 @@ import type { Ledger8ContractState } from '../era/envelope';
  * The subset of the pre-fork onchain-runtime-v3 `StateValue` statics
  * {@link downConvertForExecution} needs.
  *
- * @see {@link ModuleGraphAndLazyLoading}
+ * @see {@link InjectedVendorSlices}
  */
 export interface Ledger8CompactRuntimeStateValue {
   readonly decode: (typeof OnchainRuntimeV3.StateValue)['decode'];

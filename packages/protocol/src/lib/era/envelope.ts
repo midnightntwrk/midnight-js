@@ -30,8 +30,9 @@ export type { EncodedStateValue };
  * The pre-fork `ContractState` statics {@link extractEncodedStateValue} needs
  * to read a `contract-state[v6]` envelope.
  *
- * @see {@link ModuleGraphAndLazyLoading} for why this slice is derived from the
- * vendor's own class, narrowed to `deserialize`, and reached by injection
+ * @see {@link InjectedVendorSlices} for why this slice is derived from the
+ * vendor's own class and narrowed to `deserialize`.
+ * @see {@link ModuleGraphAndLazyLoading} for why it is reached by injection
  * rather than by a value import.
  * @see {@link RetainedEraExecution} for the era pin the narrowing carries.
  */

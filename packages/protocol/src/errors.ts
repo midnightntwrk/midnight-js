@@ -639,11 +639,11 @@ export class StateDecodeFailedError extends Error {
  * `assertSharedLedger8Instance` (`lib/v8/instance-guard.ts`), the latter for a
  * nullish instance probe.
  *
- * Nothing is wrong with the caller's input here, so the remediation is
- * unrelated to {@link DownConvertFailedError}'s. Distinct too from
- * {@link Ledger8RuntimeMissingError}, which reports a *failed acquisition* of
- * the v8 chunk; this one reports a runtime that was acquired, or assembled by
- * hand, and then handed over incomplete.
+ * Nothing is wrong with the caller's input here. Distinct from
+ * {@link Ledger8RuntimeMissingError}, which reports the v8 chunk failing to
+ * load at all, and from {@link DownConvertFailedError}, which reports an
+ * envelope or state that could not be turned into an executable pre-fork
+ * state.
  *
  * @param missingMember Which binding was absent. One of this module's own
  *   literals, never caller-supplied text, so it is safe to log.

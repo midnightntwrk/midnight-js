@@ -80,7 +80,8 @@ docstring resolves to it.
 | [Fail-closed decoding](./docs/fail-closed-decoding.md) | Why the envelope is the only authority over the bytes, and the division of labour between the three decode failures |
 | [Compose refusal order](./docs/compose-refusal-order.md) | The order in which both era arms refuse compose options, and the one deliberate difference between them |
 | [Verifier keys](./docs/verifier-keys.md) | Registration rules, the refusals that stop a deploy landing at an address the caller's artifacts do not describe, and why the address cannot be recomputed |
-| [Module graph and lazy loading](./docs/module-graph-and-lazy-loading.md) | Build entries, the `./v8` and `./engine` chunks, the import cycle avoided by a leaf module, and derived versus structural vendor types |
+| [Module graph and lazy loading](./docs/module-graph-and-lazy-loading.md) | Build entries, the `./v8` and `./engine` chunks, the import cycle avoided by a leaf module, and why a vendor's types are named with `import type` |
+| [Injected vendor slices](./docs/injected-vendor-slices.md) | How a seam names the vendor class it takes by injection — derived from the vendor's own class, declared structurally, or narrowed — and what each choice buys |
 | [Shared table discipline](./docs/shared-table-discipline.md) | Why the shared tables are frozen and null-prototyped, and why exhaustiveness is enforced at compile time as well as at run time |
 
 Docstrings in `src/` carry the API contract: what a symbol does, its
