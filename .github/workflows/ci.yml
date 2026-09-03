@@ -235,7 +235,7 @@ jobs:
         if: vars.PUBLISH_MIDNIGHTNTWRK == 'true' && (steps.changes.outputs.midnight-js == 'true' || steps.changes.outputs.testkit-js == 'true')
         run: |
           # OIDC trusted publishing requires npm >= 11.5.1. The npm version is pinned
-          # via .nvmrc (node 24.11.1 bundles npm 11.6.2) — this only asserts the floor,
+          # via .nvmrc (node 24.20.0 bundles npm 11.19.0) — this only asserts the floor,
           # it does NOT install/upgrade npm (that would unpin the toolchain).
           need="11.5.1"
           have="$(npm --version)"
