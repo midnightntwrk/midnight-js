@@ -42,16 +42,10 @@ export type {
  * EXECUTION capabilities, with the 0.16 runtime instance already captured in
  * closure — no method here takes a runtime or module parameter.
  *
- * Scoped to what only the retained era can do. Reading a contract state and
- * composing a call or a deploy are era-symmetric operations: both eras do them,
- * with the same inputs and the same result shape, so they belong on the era
- * facade (`../era/era.ts`) where a caller can reach them without knowing which
- * era it holds. What is left here is what only the retained era can do —
- * down-convert a post-fork state for pre-fork execution, run a pre-fork circuit
- * or constructor, and bind a pre-fork transcript natively onto v9.
- *
  * Every method is synchronous: this object is handed over only after the
- * retained toolchain has been acquired, so there is nothing left to await.
+ * retained toolchain has been acquired.
+ *
+ * @see {@link EraSeam}
  */
 export interface Ledger8Engine {
   downConvertForExecution(state: EncodedStateValue): DownConvertedState;
@@ -65,29 +59,21 @@ export interface Ledger8Engine {
  * and `@midnight-ntwrk/onchain-runtime-v3` — and builds a {@link Ledger8Engine}
  * bound to it.
  *
- * `../../engine.ts` re-exports this module as the `./engine` build entry
- * (`dist/engine.js`), reached only by the dynamic import in
- * `lib/v8/load-engine.ts`. Evaluating it — which is what pulls in the glue
- * and `onchain-runtime-v3` WASM — happens only on that import, never as a side
- * effect of loading the package root.
- *
  * Runs {@link assertSharedLedger8Instance} exactly once, on the
- * `onchain-runtime-v3` axis: it compares this package's own copy against the
- * copy the 0.16 glue resolves for its own dependency (a genuine second
- * acquisition path — a duplicate install would resolve these differently),
- * so a dual-instantiation fails loudly before any contract execution can
- * silently corrupt on a physical-instance mismatch. No other WASM package
- * this module acquires has a comparable second acquisition path, so no other
- * axis is asserted. Any acquisition failure surfaces through the facade
- * (`lib/v8/load-engine.ts`) as `Ledger8RuntimeMissingError` (`../../errors.ts`).
+ * `onchain-runtime-v3` axis. Any acquisition failure surfaces through the
+ * facade (`lib/v8/load-engine.ts`) as `Ledger8RuntimeMissingError`
+ * (`../../errors.ts`).
  *
- * Deliberately does NOT acquire the v8 ledger module. Nothing on this surface
- * needs it — call and deploy composition live on the era facade
- * (`../era/era.ts`), which acquires the module itself when a caller asks for
- * the v8 era. A consumer that only executes circuits and binds them onto v9
- * therefore never instantiates the multi-megabyte v8 WASM, and never
- * hard-depends on ledger-v8 resolving. Gated by
- * `v8-load-engine-laziness.test.ts`.
+ * Does NOT acquire the v8 ledger module: a consumer that only executes
+ * circuits and binds them onto v9 never instantiates the multi-megabyte v8
+ * WASM, and never hard-depends on ledger-v8 resolving.
+ *
+ * @returns The engine surface, with the acquired runtime captured in closure.
+ * @throws Ledger8InstanceMismatchError If `onchain-runtime-v3` resolved to two
+ *   physically distinct copies in this process.
+ * @see {@link EraSeam}
+ * @see {@link DualInstantiationGuard}
+ * @see {@link ModuleGraphAndLazyLoading}
  */
 export const createLedger8Engine = async (): Promise<Ledger8Engine> => {
   const [glue, ocrt3] = await Promise.all([
@@ -97,11 +83,9 @@ export const createLedger8Engine = async (): Promise<Ledger8Engine> => {
 
   assertSharedLedger8Instance('onchain-runtime-v3', ocrt3.ChargedState, glue.ChargedState);
 
-  // `ContractState` comes from ocrt3 while the other two come from the glue.
-  // That is sound only because the assertion above has already established the
-  // two are one physical copy: had they been distinct, it would have thrown
-  // rather than let a mixed runtime be assembled here. The member is what pins
-  // this object to the pre-fork era -- see `Ledger8CompactRuntime`.
+  // `ContractState` from ocrt3, the other two from the glue: sound only because
+  // of the assertion above -- see DualInstantiationGuard. The member is what
+  // pins this object to the pre-fork era -- see `Ledger8CompactRuntime`.
   const ledger8CompactRuntime: Ledger8CompactRuntime = {
     ContractState: ocrt3.ContractState,
     StateValue: glue.StateValue,

@@ -24,8 +24,7 @@ import type { ProtocolV8 } from './load';
 /**
  * Bridges a raw, serialized contract state into the v8 era, reporting a
  * rejected envelope as {@link ComposeOptionError} rather than letting a raw
- * decoder failure escape — the same wrapping the v9 arm applies to the
- * identical call.
+ * decoder failure escape.
  */
 const readContractState = (raw: Uint8Array, v8: ProtocolV8): InstanceType<ProtocolV8['ContractState']> => {
   try {
@@ -37,17 +36,10 @@ const readContractState = (raw: Uint8Array, v8: ProtocolV8): InstanceType<Protoc
 
 /**
  * Reads a serialized Zswap offer into the v8 era, reporting bytes this era
- * cannot decode as {@link ComposeOptionError} — the same wrapping the v9 arm
- * applies to the identical call (`./compose-v9.ts`). An absent offer is the
- * normal shape of a call that moved no shielded coins, and stays absent.
+ * cannot decode as {@link ComposeOptionError}. An absent offer is the normal
+ * shape of a call that moved no shielded coins, and stays absent.
  *
- * Both eras carry an offer. The retained era executes coin-moving circuits and
- * hands their post-call Zswap local state back on the transcript
- * (`../engine/execute.ts`), which is what a caller turns into the offer it
- * passes here (`zswapStateToSegmentedOffer`,
- * `packages/contracts/src/utils/zswap-utils.ts`). Refusing the offer on this
- * era would take away the only way to attach those coin movements to the
- * transaction that carries the call.
+ * @see {@link ComposeRefusalOrder}
  */
 const readZswapOffer = (raw: Uint8Array | undefined, v8: ProtocolV8): UnprovenOffer | undefined => {
   if (raw === undefined) {
@@ -64,29 +56,31 @@ const readZswapOffer = (raw: Uint8Array | undefined, v8: ProtocolV8): UnprovenOf
  * Maps the era-facade's call options onto the v8-native composition leg
  * (`./compose.ts`).
  *
- * One shape the facade allows is not expressible on this era and is refused
- * rather than silently narrowed: a call tree with more than one entry. A
- * cross-contract call is a ledger-9-only feature that a pre-fork contract
- * cannot emit at all, so this era has no call tree to compose, and composing
- * only the first entry would drop the rest without a word.
+ * This era composes exactly one call: a `calls` tree with more than one entry
+ * is refused rather than silently narrowed. A Zswap offer is NOT refused.
  *
- * A Zswap offer is NOT refused — see {@link readZswapOffer}.
+ * @param options The era-facade call options.
+ * @param v8 The v8 ledger module, as handed over by `loadLedger8`
+ *   (`./load.ts`).
+ * @returns The UNPROVEN, serialized call transaction.
+ * @throws ComposeOptionError If an option cannot be used: a malformed envelope
+ *   option, unreadable offer or contract-state bytes, or more than one entry in
+ *   `calls`.
+ * @throws ComposeFailedError If `calls` is empty (stage `'call-empty'`), and
+ *   for every stage the composition leg this delegates to can raise.
+ * @see {@link ComposeRefusalOrder}
+ * @see {@link EraSeam}
  */
 export const composeEraV8CallTx = (options: ComposeCallOptions, v8: ProtocolV8): Uint8Array => {
   const { calls, networkId, ttl, guaranteedZswapOffer, fallibleZswapOffer } = options;
-  // Checked here rather than left to the inner leg, so this arm refuses the
-  // options in the SAME order the v9 arm does: envelope, then the call list,
-  // then the offers, then the era's own limits, then the state. A caller
-  // handing both an empty network id and unreadable offer bytes has one defect
-  // to fix per era, not a different one per era. The inner leg checks the
-  // envelope again; the check is idempotent, and leaving it there keeps
-  // `composeV8CallTx` safe to call directly.
+  // Checked here, not left to the inner leg, so both arms refuse in the same
+  // order; the re-check in the leg is idempotent -- see ComposeRefusalOrder.
   assertComposeEnvelope(options, 'v8');
   if (calls.length === 0) {
     throw new ComposeFailedError('v8', 'call-empty', NO_CIRCUIT);
   }
-  // Both offers are read before anything is composed, so a caller handed bad
-  // offer bytes learns that instead of paying for a full assembly first.
+  // Both offers are read before anything is composed -- see
+  // ComposeRefusalOrder.
   const guaranteedOffer = readZswapOffer(guaranteedZswapOffer, v8);
   const fallibleOffer = readZswapOffer(fallibleZswapOffer, v8);
   if (calls.length > 1) {
@@ -118,25 +112,24 @@ export const composeEraV8CallTx = (options: ComposeCallOptions, v8: ProtocolV8):
  * (`./deploy.ts`).
  *
  * `verifierKeys` is optional on the facade but required here: this era's deploy
- * leg registers the compiled contract's keys onto the initial state itself, and
- * a constructor-built state declares every entry point with a blank key. A
- * deploy composed without the map would carry unregistered entry points and be
- * refused by the ledger's own well-formedness check, so the omission is
- * reported as {@link ComposeOptionError} here instead.
+ * leg registers the compiled contract's keys onto the initial state itself, so
+ * the omission is reported as {@link ComposeOptionError}.
  *
  * The contract state crosses into the leg by BYTES, which is what that leg
- * takes: it deserializes into its own era rather than accepting a handle, so
- * no object is passed between two WASM copies.
+ * takes: it deserializes into its own era rather than accepting a handle.
  *
- * One ordering difference from the v9 arm survives on purpose. Both check the
- * envelope first and the offer second, but v9 reads the state before it looks
- * at `verifierKeys`, while this arm cannot: the state is read by the leg it
- * delegates to, and reading it here as well would deserialize the same bytes
- * twice. So a deploy that is BOTH unreadable and missing its key map reports
- * `'contractState'` on v9 and `'verifierKeys'` here. Both name a real defect in
- * the same call, and closing the gap costs a redundant deserialization of every
- * deploy to reorder a diagnosis for a caller who has two things to fix either
- * way.
+ * @param options The era-facade deploy options.
+ * @param v8 The v8 ledger module, as handed over by `loadLedger8`
+ *   (`./load.ts`).
+ * @returns The UNPROVEN, serialized deploy transaction, the address it deploys
+ *   at, and the registered initial state.
+ * @throws ComposeOptionError If an option cannot be used: a malformed envelope
+ *   option, unreadable offer bytes, or an omitted `verifierKeys` map.
+ * @throws ComposeFailedError For every stage the deploy leg this delegates to
+ *   can raise.
+ * @see {@link VerifierKeys}
+ * @see {@link ComposeRefusalOrder}
+ * @see {@link EraSeam}
  */
 export const composeEraV8DeployTx = (options: ComposeDeployOptions, v8: ProtocolV8): DeployResultPojo => {
   const { contractState, verifierKeys, networkId, ttl, guaranteedZswapOffer } = options;

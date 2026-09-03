@@ -23,19 +23,17 @@ let v8ModulePromise: Promise<ProtocolV8> | undefined;
 /**
  * The only sanctioned runtime path to the v8 ledger era.
  *
- * Lives under `lib/` because every module directly under `src/` is a build
- * entry paired with an `exports` subpath (see export-surface.test.ts), and the
- * accessor is published through the root barrel instead of a subpath of its
- * own.
- *
- * The relative specifier names the `./v8` build entry, which rollup emits as
- * its own chunk and links only through this dynamic import, so the v8 WASM
- * loads on the first call and not before. Enforced by v8-surface.test.ts (no
- * other module under src/ may import the v8 module at runtime) and
- * dist-laziness.test.ts (the index bundle must never link it statically).
+ * The v8 WASM loads on the first call and not before.
  *
  * A failed load is not memoised: the rejection propagates as
  * {@link Ledger8RuntimeMissingError} and the next call retries the import.
+ *
+ * @returns The v8 ledger module, memoised after the first successful load.
+ * @throws Ledger8RuntimeMissingError If the `./v8` chunk cannot be imported.
+ *   The returned promise rejects with it, carrying the underlying failure on
+ *   `cause`.
+ * @see {@link ModuleGraphAndLazyLoading}
+ * @see {@link EraSeam}
  */
 export const loadLedger8 = (): Promise<ProtocolV8> =>
   (v8ModulePromise ??= import('../../v8.js').catch((error: unknown) => {

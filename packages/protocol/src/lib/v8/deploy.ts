@@ -33,15 +33,8 @@ import type { ProtocolV8 } from './load';
  * dual-instantiation of the WASM, because no object is handed between the two
  * copies.
  *
- * A `Pick` of the vendor's own class rather than a restatement of its one
- * member, so a change to `serialize` in onchain-runtime-v3 fails this build.
- *
- * Picking one member keeps it structurally loose enough that unrelated
- * serializables satisfy it, which is what lets tests substitute a fake instead
- * of invoking real WASM (the same pattern `Ledger8ContractLike` in
- * `./execute.ts` uses). The type therefore does not enforce that the bytes are
- * a contract state at all; whichever deploy leg receives them turns that
- * residual risk into a legible error rather than a raw decoder failure.
+ * @see {@link ComposeRefusalOrder}
+ * @see {@link EraSeam}
  */
 export type Ledger8DeployableContractState = Pick<OnchainRuntimeV3.ContractState, 'serialize'>;
 
@@ -65,13 +58,11 @@ export interface Ledger8ConstructorContractLike {
  * needs to build a constructor context. Injected so callers target a specific
  * WASM-backed instance.
  *
- * Narrowed rather than derived from the glue's own `createConstructorContext`:
- * that one is generic in the private state and returns a `ConstructorContext`,
- * a shape this seam never inspects — it only hands the value straight back to
- * the contract's `initialState`. Typing it as the glue's would force every
- * constructor test to build a real context to check plumbing it does not read,
- * so the return stays `unknown` and `v8-deploy.test.ts` pins that the real glue
- * satisfies the narrowing.
+ * The returned context is `unknown` on purpose: this seam never inspects it,
+ * it only hands the value straight back to the contract's `initialState`.
+ *
+ * @see {@link RetainedEraExecution}
+ * @see {@link ComposeRefusalOrder}
  */
 export interface Ledger8ConstructorRuntime {
   readonly createConstructorContext: (privateState: unknown, coinPk: string) => unknown;
@@ -97,18 +88,18 @@ export interface ConstructorResultPojo {
 
 /**
  * Runs a pre-fork (`compact-runtime@0.16`) contract's constructor
- * (`initialState`), following the `createConstructorContext` /
- * `contract.initialState(cc, ...args)` sequence the retained toolchain
- * expects, and packages the result into a {@link ConstructorResultPojo}.
+ * (`initialState`) and packages the result into a
+ * {@link ConstructorResultPojo}.
  *
- * `contractState` on that result is a pre-fork handle, so it does not go
- * straight into a deploy: both {@link composeV8DeployTx} and the era facade's
- * `composeDeployTx` take the state as BYTES, which is what `.serialize()` on
- * that handle produces.
- *
- * Produces no proof: proving applies only to the deploy transaction
- * {@link composeV8DeployTx} serializes, and not even there — see that
- * function's docs.
+ * @param options The compiled contract module, constructor arguments, private
+ *   state and coin public key.
+ * @param runtime The injected pre-fork glue slice used to build the
+ *   constructor context.
+ * @returns The freshly built contract state and the resulting private state.
+ *   The state is a pre-fork HANDLE, so it does not go straight into a deploy:
+ *   both {@link composeV8DeployTx} and the era facade's `composeDeployTx` take
+ *   it as BYTES, which is what `.serialize()` on that handle produces.
+ * @see {@link RetainedEraExecution}
  */
 export const executeConstructor = (options: ExecuteConstructorOptions, runtime: Ledger8ConstructorRuntime): ConstructorResultPojo => {
   const { contract, args, privateState, coinPk } = options;
@@ -124,37 +115,30 @@ export const executeConstructor = (options: ExecuteConstructorOptions, runtime: 
 /**
  * Everything {@link composeV8DeployTx} needs to assemble one v8-native
  * deploy transaction. `verifierKeys` maps entry-point name -> raw, tagged
- * verifier key bytes (`keys/<id>.verifier`): the compiled contract's
- * `initialState` declares an operation slot per circuit but leaves its
- * verifier key blank, so the deploy must carry real keys or a ledger refuses
- * it. The map must name exactly the entry points the contract state declares
- * — no more, no fewer; see {@link composeV8DeployTx}.
+ * verifier key bytes (`keys/<id>.verifier`), and must name exactly the entry
+ * points the contract state declares — no more, no fewer; see
+ * {@link composeV8DeployTx}.
  *
  * `networkId` and `ttl` carry the caller's policy decisions (which network,
- * how long the transaction lives), but their well-formedness is checked here
- * — see `assertComposeEnvelope` (`../shared/compose-options.ts`).
+ * how long the transaction lives); their well-formedness is checked here — see
+ * `assertComposeEnvelope` (`../shared/compose-options.ts`).
+ *
+ * @see {@link VerifierKeys}
+ * @see {@link ComposeRefusalOrder}
  */
 export interface ComposeV8DeployOptions {
   readonly contractState: Uint8Array;
   readonly verifierKeys: ReadonlyMap<string, Uint8Array>;
   readonly networkId: string;
   readonly ttl: Date;
-  /**
-   * A v8-native offer HANDLE, for the same reason `ComposeV8CallOptions`
-   * carries handles: the era arm has already read the caller's bytes with the
-   * module this leg is about to compose against.
-   */
+  /** A v8-native offer HANDLE, not bytes, as `ComposeV8CallOptions` also takes. */
   readonly guaranteedZswapOffer?: UnprovenOffer;
 }
 
 /**
  * Bridges a pre-fork contract state into the v8 era by bytes, reporting a
  * rejected envelope as {@link ComposeOptionError} rather than letting a raw
- * decoder failure escape — the same wrapping the v9 deploy leg applies to the
- * identical call (`../v9/compose.ts`). Not the same class
- * `extractEncodedStateValue` (`../era/envelope.ts`) raises for its own decode:
- * a state that cannot be READ is a different fault from an option that cannot
- * be USED, and they carry different remediations.
+ * decoder failure escape.
  */
 const bridgeContractState = (
   contractState: Uint8Array,
@@ -170,9 +154,7 @@ const bridgeContractState = (
 /**
  * Registers one verifier key, reporting bytes the ledger rejects as
  * {@link ComposeFailedError} (stage `'deploy-verifier-key-blob'`) so the
- * failure names the entry point it belongs to. The setter validates a tagged
- * `midnight:verifier-key[...]` blob, so a truncated, empty or wrong-era key
- * fails here rather than at submission.
+ * failure names the entry point it belongs to.
  */
 const registerVerifierKey = (
   ledgerContractState: InstanceType<ProtocolV8['ContractState']>,
@@ -198,29 +180,31 @@ const registerVerifierKey = (
  * `Transaction`.
  *
  * The verifier-key map is validated against the state's declared entry points
- * BEFORE anything is registered, by the resolver both eras' deploy legs share —
- * see {@link resolveVerifierKeyRegistrations} for the three refusals it owns
- * and why each one matters. Restating them here would be a second copy of one
- * contract, which is what that resolver exists to remove.
- *
- * Bytes the ledger itself rejects surface here, as stage
- * `'deploy-verifier-key-blob'` with the ledger's own failure on `cause`.
+ * BEFORE anything is registered, by {@link resolveVerifierKeyRegistrations} —
+ * the resolver both eras' deploy legs share.
  *
  * Never proves the transaction: the returned bytes are an UNPROVEN,
  * tag-prefixed serialization, exactly what `Transaction.serialize()` produces
- * before `.prove()` is ever called. Proving needs a proving provider and a
- * running proof server, neither of which this seam has.
+ * before `.prove()` is ever called.
  *
- * Uses `Transaction.fromParts`, not `fromPartsRandomized`, so the intent lands
- * at a fixed segment id — matching `createUnprovenLedgerDeployTx`
- * (`packages/contracts/src/utils/ledger-utils.ts`), which the v9 deploy path
- * already does. Only calls randomize their segment, to stay mergeable.
- *
- * Returns the address and the registered initial state alongside the
- * transaction, rather than the transaction alone. A deploy mints a fresh
- * nonce, so the address is not a function of the state a caller passed in and
- * cannot be recomputed from it — and the state the address was derived from is
- * the one a caller stores and later dispatches calls against.
+ * @param options The state bytes, the verifier-key map, the envelope options
+ *   and an optional Zswap offer.
+ * @param v8 The v8 ledger module, as handed over by `loadLedger8`
+ *   (`./load.ts`).
+ * @returns The UNPROVEN, serialized transaction, the address the deployment
+ *   will have, and the registered initial state. A deploy mints a fresh nonce,
+ *   so the address is not a function of the state a caller passed in and cannot
+ *   be recomputed from it — and the state the address was derived from is the
+ *   one a caller stores and later dispatches calls against.
+ * @throws ComposeOptionError If `networkId` is empty or `ttl` is not a valid
+ *   instant, or the state bytes cannot be read.
+ * @throws ComposeFailedError If the map and the state's declared entry points
+ *   do not agree (stages `'deploy-ambiguous-circuit'`,
+ *   `'deploy-unknown-circuit'`, `'deploy-verifier-key'`), or the ledger itself
+ *   rejects a key blob (stage `'deploy-verifier-key-blob'`, with the ledger's
+ *   own failure on `cause`).
+ * @see {@link VerifierKeys}
+ * @see {@link ComposeRefusalOrder}
  */
 export const composeV8DeployTx = (options: ComposeV8DeployOptions, v8: ProtocolV8): DeployResultPojo => {
   const { contractState, verifierKeys, networkId, ttl, guaranteedZswapOffer } = options;
