@@ -35,23 +35,12 @@ export type {
 export type { ContractEntryPointPojo, ContractStatePojo } from '../shared/contract-state';
 export type { LedgerEra } from './era';
 
-// Both arms are frozen: a memoised era is one object shared by every caller in
-// the process, so an unfrozen one lets any consumer reassign `composeCallTx`
-// for all the others. The same discipline LEDGER_VERSIONS, PROTOCOL_ERROR_CODES
-// and ENVELOPE_DECODERS already apply to their own shared tables.
-//
-// One memo slot per era, not one shared slot. A shared slot would hand the
-// second caller whichever era happened to be asked for first, silently reading
-// one era's bytes with the other era's runtime — the exact confusion this
-// facade exists to remove.
+// One memo slot per era, never one shared slot, and both arms are frozen --
+// see SharedTableDiscipline and EraSeam.
 let v8EraPromise: Promise<LedgerEra> | undefined;
 let v9EraPromise: Promise<LedgerEra> | undefined;
 
-/**
- * The v9 arm. Wholly synchronous: `@midnightntwrk/ledger-v9` is this package's
- * current era and is already linked by the package root, so there is nothing
- * to acquire and nothing that can fail here.
- */
+/** The v9 arm. Wholly synchronous -- see the EraSeam document. */
 const createV9Era = (): LedgerEra => {
   const era: LedgerEra = {
     version: 'v9',
@@ -65,14 +54,9 @@ const createV9Era = (): LedgerEra => {
 };
 
 /**
- * The v8 arm. Acquires the retained pre-fork ledger through {@link loadLedger8}
- * — the only sanctioned runtime path to it — and binds it into closure, so the
- * era's own methods stay synchronous.
- *
- * Hoisting the acquisition here, rather than deferring it into each method, is
- * what makes the two arms symmetrical. It costs a v9-only consumer nothing:
- * asking for the v8 era IS the observation of v8, and nothing reaches this
- * function until someone does.
+ * The v8 arm. Acquires the retained pre-fork ledger and binds it into closure,
+ * so the era's own methods stay synchronous -- see the EraSeam document for why
+ * the acquisition is hoisted here.
  */
 const createV8Era = async (): Promise<LedgerEra> => {
   const v8 = await loadLedger8();
@@ -97,19 +81,18 @@ const createV8Era = async (): Promise<LedgerEra> => {
  * by hand.
  *
  * Memoised per era, so the retained pre-fork WASM is instantiated at most once
- * per process. A FAILED v8 acquisition is not memoised: the rejection
- * propagates unchanged — already a `Ledger8RuntimeMissingError` carrying the
- * underlying cause — and the next call retries, so a repaired install does not
- * stay broken for the life of the process.
+ * per process. A FAILED v8 acquisition is not memoised: the next call retries.
  *
- * Rejects with {@link UnknownLedgerVersionError} when `version` is not a member
- * of `LEDGER_VERSIONS`. A TypeScript caller cannot produce that; it exists for
- * the untyped JavaScript consumers this package also serves, where an era
- * string threaded from an indexer response would otherwise fall through to a
- * plausible-looking non-era. (`./envelope.ts` defends the same input
- * against resolving an inherited `Object.prototype` member, because its
- * dispatch is a lookup table; this one is a closed `switch`, where no string
- * can resolve to anything but a case or the default.)
+ * @param version The era to resolve.
+ * @returns The era facade bound to `version`. The same object on every call
+ * for that era, and frozen.
+ * @throws UnknownLedgerVersionError — as a rejection — if `version` is not a
+ * member of `LEDGER_VERSIONS`.
+ * @throws Ledger8RuntimeMissingError — as a rejection — if the retained
+ * pre-fork runtime cannot be acquired. It propagates unchanged, carrying the
+ * underlying cause.
+ * @see {@link EraSeam}
+ * @see {@link SharedTableDiscipline}
  */
 export const loadLedgerEra = (version: LedgerVersion): Promise<LedgerEra> => {
   switch (version) {
@@ -121,12 +104,8 @@ export const loadLedgerEra = (version: LedgerVersion): Promise<LedgerEra> => {
         throw error;
       }));
     default: {
-      // Compile-time exhaustiveness, in the style of version.ts's
-      // `_allLedgerVersionsAreMapped` and the Merkle walk in
-      // `../v8/down-convert.ts`: a new member of LEDGER_VERSIONS stops
-      // this assignment type-checking, so the omission is a build failure
-      // rather than a review miss. The runtime rejection is not redundant
-      // with it — `version` reaches here from untyped callers too.
+      // `const unhandled: never` is a compile-time exhaustiveness gate, and the
+      // runtime rejection is not redundant with it -- see SharedTableDiscipline.
       const unhandled: never = version;
       return Promise.reject(new UnknownLedgerVersionError(String(unhandled)));
     }

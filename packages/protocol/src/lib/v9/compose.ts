@@ -24,8 +24,7 @@ import { entryPointName, resolveVerifierKeyRegistrations } from '../shared/verif
 
 /**
  * Bridges a raw, serialized contract state into the v9 era, reporting a
- * rejected envelope as {@link ComposeOptionError} rather than letting a raw
- * decoder failure escape.
+ * rejected envelope as {@link ComposeOptionError} -- see ComposeRefusalOrder.
  */
 const readContractState = (raw: Uint8Array): ledgerV9.ContractState => {
   try {
@@ -57,31 +56,15 @@ const readZswapOffer = (raw: Uint8Array | undefined): ledgerV9.UnprovenOffer | u
  *
  * Never proves the transaction: the returned bytes are an UNPROVEN,
  * tag-prefixed serialization, exactly what `Transaction.serialize()` produces
- * before `.prove()` is ever called. Proving needs a proving provider and a
- * running proof server, neither of which this seam has.
+ * before `.prove()` is ever called.
  *
- * Uses `Transaction.fromPartsRandomized`, so the intent lands at a random
- * segment id and stays mergeable with other calls. Only deploys use a fixed
- * segment.
- *
- * The transaction-wide options are all checked before anything is composed: the
- * envelope first, then the call list, then both offers — so a caller handed bad
- * offer bytes learns that instead of paying for a full assembly first. Each
- * call's own contract state is read as that call is assembled, so a bad state
- * late in a tree is reported after the earlier calls have been built. Nothing is
- * emitted either way: the throw discards the whole intent.
- *
- * Every failure a caller can cause is coded. An empty call list is refused with
- * {@link ComposeFailedError} at stage `'call-empty'`, and an unreadable contract
- * state, Zswap offer, network id or ttl with {@link ComposeOptionError}. The
- * shared assembler contributes stages `'call-operation'`, `'call-verifier-key'`,
- * `'call-contract-state'`, `'call-transcript-empty'`, `'call-partition'` and
- * `'call-prototype'`; a payout the transaction cannot settle surfaces as
- * `'call-dust-payout'` or `'call-unsupported-payout'`.
- *
- * The transaction's two unshielded offers aggregate the user-addressed outputs
- * of EVERY call in the tree, not just the root — see
- * {@link aggregateUnshieldedOffers}.
+ * @param options The calls to compose and the transaction-wide envelope.
+ * @returns The serialized UNPROVEN transaction.
+ * @throws ComposeFailedError if the call list is empty (stage `'call-empty'`)
+ * or a call cannot be assembled; `stage` names which step refused it.
+ * @throws ComposeOptionError if the network id, the ttl, a Zswap offer or a
+ * call's contract state is unusable.
+ * @see {@link ComposeRefusalOrder}
  */
 export const composeV9CallTx = (options: ComposeCallOptions): Uint8Array => {
   const { calls, networkId, ttl, guaranteedZswapOffer, fallibleZswapOffer } = options;
@@ -90,8 +73,7 @@ export const composeV9CallTx = (options: ComposeCallOptions): Uint8Array => {
     throw new ComposeFailedError('v9', 'call-empty', NO_CIRCUIT);
   }
 
-  // Read both offers before composing anything, so a caller handed bad offer
-  // bytes learns that instead of paying for a full assembly first.
+  // Read both offers before composing anything -- see ComposeRefusalOrder.
   const guaranteedOffer = readZswapOffer(guaranteedZswapOffer);
   const fallibleOffer = readZswapOffer(fallibleZswapOffer);
 
@@ -114,8 +96,7 @@ export const composeV9CallTx = (options: ComposeCallOptions): Uint8Array => {
   }
 
   // Read the partitioned pairs back off the intent rather than re-deriving
-  // them: these are the exact transcripts the transaction now carries, so the
-  // offers cannot describe a different partition than the calls do.
+  // them -- see ComposeRefusalOrder.
   const unshielded = aggregateUnshieldedOffers(
     intent.actions
       .filter((action) => action instanceof ledgerV9.ContractCall)
@@ -139,9 +120,8 @@ export const composeV9CallTx = (options: ComposeCallOptions): Uint8Array => {
 
 /**
  * Registers a verifier key for every entry point the state declares, against
- * the map validated by {@link resolveVerifierKeyRegistrations} — the shared
- * resolver both eras' deploy legs use, so the two cannot drift on which checks
- * run or in what order.
+ * the map validated by {@link resolveVerifierKeyRegistrations} -- see
+ * VerifierKeys.
  */
 const registerVerifierKeys = (
   contractState: ledgerV9.ContractState,
@@ -164,32 +144,13 @@ const registerVerifierKeys = (
 
 /**
  * Refuses a state that still declares an entry point with a blank verifier key
- * when no key map was supplied.
- *
- * `verifierKeys` is optional so that a state which ALREADY carries its keys can
- * be deployed as-is. Omitting it for a constructor-built state is a different
- * thing entirely: every entry point is declared blank, the deploy derives its
- * address from that blank state, and the contract lands on chain unable to
- * verify any call against it. Nothing fails until the first call, which reports
- * `'call-verifier-key'` a long way from the cause. The v8 arm refuses the
- * omission outright; this makes the two arms agree without taking away the one
- * case the optionality exists for.
+ * when no key map was supplied -- see VerifierKeys.
  */
 const assertStateCarriesKeys = (contractState: ledgerV9.ContractState): void => {
   for (const entryPoint of contractState.operations()) {
-    // `?.` collapses "no operation resolves" into "operation has a blank key",
-    // which `../shared/contract-state.ts` deliberately refuses to do for the same
-    // call. It is safe here because both answers have the one remediation this
-    // function exists to demand — supply the map — whereas a decoded state hands
-    // its caller a verifierKey field whose absence means "never deployed".
-    //
-    // Raised as the OPTION error, not as `ComposeFailedError`'s
-    // `'deploy-verifier-key'` stage, even though that stage means exactly this
-    // condition and would name the offending entry point. The v8 arm refuses the
-    // same omission as `ComposeOptionError('v8', 'verifierKeys')`, and a caller
-    // writing one handler across both eras matters more than naming which of a
-    // contract's slots was blank. Naming it as well needs a `circuitId` on
-    // `ComposeOptionError`, which is a wider change than this seam should make.
+    // `?.` is deliberate here, unlike in `../shared/contract-state.ts`, and so
+    // is raising the OPTION error rather than the `'deploy-verifier-key'` stage
+    // -- see VerifierKeys.
     if (contractState.operation(entryPoint)?.verifierKey === undefined) {
       throw new ComposeOptionError('v9', 'verifierKeys');
     }
@@ -206,14 +167,22 @@ const assertStateCarriesKeys = (contractState: ledgerV9.ContractState): void => 
  * tag-prefixed serialization, exactly what `Transaction.serialize()` produces
  * before `.prove()` is ever called.
  *
- * Uses `Transaction.fromParts`, not `fromPartsRandomized`, so the intent lands
- * at a fixed segment id. Only calls randomize their segment, to stay mergeable.
- *
  * With `verifierKeys` supplied, every declared entry point is registered before
- * the address is derived — see {@link registerVerifierKeys} for the checks that
- * run first. Without it, the state is deployed exactly as given, which is right
- * only for a state that already carries its keys — and that is checked rather
- * than assumed, see {@link assertStateCarriesKeys}.
+ * the address is derived. Without it, the state is deployed exactly as given —
+ * which is checked rather than assumed, see {@link assertStateCarriesKeys}.
+ *
+ * @param options The serialized initial state, its verifier keys, and the
+ * transaction-wide envelope.
+ * @returns The serialized UNPROVEN transaction, the address the deployment
+ * will have, and the initial state that address was derived from.
+ * @throws ComposeFailedError if the supplied keys do not match the state's
+ * declared entry points, or if the ledger rejects a key blob; `stage` names
+ * which check refused it.
+ * @throws ComposeOptionError if the network id, the ttl, the Zswap offer or
+ * the state bytes are unusable, or if `verifierKeys` was omitted for a state
+ * that still declares a blank key.
+ * @see {@link VerifierKeys}
+ * @see {@link ComposeRefusalOrder}
  */
 export const composeV9DeployTx = (options: ComposeDeployOptions): DeployResultPojo => {
   const { contractState, verifierKeys, networkId, ttl, guaranteedZswapOffer } = options;

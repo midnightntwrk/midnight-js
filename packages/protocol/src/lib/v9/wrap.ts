@@ -36,31 +36,29 @@ export interface WrapKeepStateCallOptions {
  * Wraps a {@link TranscriptPojo} — the output of {@link executeCircuit}
  * (`./execute.ts`) — into a v9-native `ContractCallPrototype`, ready for
  * `Intent.new(ttl).addCall(...)`, via {@link assembleCallPrototype}
- * (`./assemble-call.ts`) against the ledger-v9 module. This is the
- * "keep-state" leg: the contract keeps running on the retained pre-fork
- * execution engine after the fork, but the resulting call is bound NATIVELY
- * against the current ledger-v9 axis from the start — no v8-tx carrier, no
- * later re-bind.
+ * (`./assemble-call.ts`) against the ledger-v9 module.
  *
  * `options.contractState` is the migrated, post-fork v9 `ContractState` —
  * read from chain, or otherwise carrying the contract's real registered
- * operations. A keep-state call never registers a new verifier key (unlike
- * a deploy); it reuses whichever key was already registered on-chain by the
- * contract's original (pre-fork) deploy and carried through the migration —
- * so `contractState` must already carry that operation, or this throws
- * `ComposeFailedError` (`../../errors.ts`) rather than silently
- * falling back to a blank, unverifiable operation: stage `'wrap-call'` when
- * no operation is registered for the circuit at all, and
- * `'call-verifier-key'` when the one registered carries no verifier key.
+ * operations. It must already carry the operation for the circuit: a
+ * keep-state call registers no new verifier key.
+ *
+ * @param options The transcript to wrap, the contract's address, and the
+ * migrated post-fork state to resolve the circuit's operation against.
+ * @returns The v9-native call prototype.
+ * @throws ComposeFailedError at stage `'wrap-call'` if `contractState`
+ * registers no operation for the circuit, and at `'call-verifier-key'` if the
+ * registered operation carries no verifier key — rather than falling back to a
+ * blank, unverifiable operation.
+ * @see {@link RetainedEraExecution}
  */
 export const wrapKeepStateCall = (options: WrapKeepStateCallOptions): ledgerV9.ContractCallPrototype => {
   const { transcript, contractAddress, contractState } = options;
   return assembleCallPrototype(ledgerV9, {
     circuitId: transcript.circuitId,
     contractAddress,
-    // The retained execution leg partitions nothing: it hands over the raw op
-    // sequence the circuit emitted, against the state it ran on — plus the
-    // context it recorded while running, which the state bytes do not carry.
+    // The retained execution leg partitions nothing: it always submits the raw
+    // op sequence as `'unpartitioned'` -- see RetainedEraExecution.
     transcript: {
       kind: 'unpartitioned',
       preState: transcript.preContractState.data.state.encode(),
