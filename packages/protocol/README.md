@@ -65,6 +65,28 @@ The directory names say what a module is **about**, not what it links. Three con
 
 `compose-types.ts` and `era.ts` name their shared types through `@midnightntwrk/ledger-v9` because some vendor has to name them. `EncodedStateValue`, `Op`, `AlignedValue` and `Transcript` are pinned identical across `onchain-runtime-v3`, `ledger-v8` and `ledger-v9` by the compile-time assertions in `v8-down-convert.test.ts`; the import names one era, the type belongs to neither. Those assertions are evaluated by `yarn typecheck:tests` on the pre-push hook, not by CI — vitest transpiles test files without type-checking, so treat a failure there as the only signal you will get.
 
+## Architecture Documents
+
+The reasoning behind this package's shape lives in `docs/`, not in the source
+docstrings. Each file is registered with TypeDoc through `projectDocuments`, so
+it is a page in the generated API reference and `@see {@link Title}` in a
+docstring resolves to it.
+
+| Document | What it explains |
+|---|---|
+| [Era seam](./docs/era-seam.md) | Why only bytes and plain objects cross between the eras, how the eight operations are split between `LedgerEra` and `Ledger8Engine`, and the memoisation rules |
+| [Retained-era execution](./docs/retained-era-execution.md) | The down-conversion stages, the Merkle rehash requirement, the era pin, and what a `TranscriptPojo` carries |
+| [Dual-instantiation guard](./docs/dual-instantiation-guard.md) | What a duplicate WASM install does in the argument position versus the receiver position, and why the guard is a correctness requirement rather than a diagnostic |
+| [Fail-closed decoding](./docs/fail-closed-decoding.md) | Why the envelope is the only authority over the bytes, and the division of labour between the three decode failures |
+| [Compose refusal order](./docs/compose-refusal-order.md) | The order in which both era arms refuse compose options, and the one deliberate difference between them |
+| [Verifier keys](./docs/verifier-keys.md) | Registration rules, the refusals that stop a deploy landing at an address the caller's artifacts do not describe, and why the address cannot be recomputed |
+| [Module graph and lazy loading](./docs/module-graph-and-lazy-loading.md) | Build entries, the `./v8` and `./engine` chunks, the import cycle avoided by a leaf module, and derived versus structural vendor types |
+| [Shared table discipline](./docs/shared-table-discipline.md) | Why the shared tables are frozen and null-prototyped, and why exhaustiveness is enforced at compile time as well as at run time |
+
+Docstrings in `src/` carry the API contract: what a symbol does, its
+parameters, what it returns and what it throws. Anything that answers "why is
+it built this way" belongs in a document above, stated once.
+
 ## Accessing the v8 Ledger Era
 
 The `./v8` subpath re-exports the previous-era ledger (`@midnightntwrk/ledger-v8`), which carries its own WASM. To keep that WASM out of eagerly-loaded module graphs, runtime imports of `@midnight-ntwrk/midnight-js-protocol/v8` are blocked by ESLint everywhere outside this package. Use the lazy accessor instead:
