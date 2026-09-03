@@ -14,11 +14,33 @@
  */
 
 import { encodeContractKeyLocation, hashVerifierKey } from '@midnight-ntwrk/compact-js';
-import type { AlignedValue, EncodedStateValue, Op, Transcript } from '@midnightntwrk/ledger-v9';
+import type {
+  AlignedValue,
+  CallContext,
+  CoinCommitment,
+  Effects,
+  EncodedStateValue,
+  Op,
+  Transcript
+} from '@midnightntwrk/ledger-v9';
 
 import { ComposeFailedError, type ComposeStage } from '../../errors';
-import type { CallTranscriptSource } from './compose-types';
+import type { CallTranscriptSource, PartitionContext } from './compose-types';
 import type { LedgerVersion } from './ledger-version';
+
+/**
+ * The `QueryContext` capability {@link assembleCallPrototype} needs beyond
+ * construction: the two settable members and the one method the pre-partition
+ * bridge writes a {@link PartitionContext} through. Both eras' `QueryContext`
+ * declare all three identically, and `insertCommitment` returns a NEW context
+ * rather than mutating — hence `TSelf`, so the fold stays typed as the
+ * module's own context rather than widening to this interface.
+ */
+export interface PartitionableQueryContext<TSelf> {
+  block: CallContext;
+  effects: Effects;
+  insertCommitment: (commitment: CoinCommitment, index: bigint) => TSelf;
+}
 
 /**
  * The structural surface a ledger module (ledger-v8 or ledger-v9) exposes for
@@ -39,7 +61,7 @@ import type { LedgerVersion } from './ledger-version';
 export interface CallAssemblyLedger<
   TStateValue,
   TChargedState,
-  TQueryContext,
+  TQueryContext extends PartitionableQueryContext<TQueryContext>,
   TPreTranscript,
   TParams,
   TOperation,
@@ -128,6 +150,35 @@ export interface AssembleCallOptions<TOperation> {
 }
 
 /**
+ * Writes the context a call recorded onto the query context its transcript is
+ * about to be partitioned against — the step compact-js's own v9 leg performs
+ * before it partitions (`ContractExecutable.js`: `asLedgerQueryContext` sets
+ * `block` and `effects`, `partitionAllTranscripts` folds the commitment
+ * indices). Constructing a `QueryContext` restores the STATE and nothing else,
+ * so without this the ledger replays the program against a context the circuit
+ * never ran on.
+ *
+ * The order matches that leg: set the two members, then fold. `insertCommitment`
+ * returns a new context carrying whatever was already set, so the fold's result
+ * is what everything downstream uses — never the context it started from.
+ *
+ * Every member is caller data the runtime validates itself, from inside wasm,
+ * so the caller wraps this in its own coded stage.
+ */
+const bridgePartitionContext = <TQueryContext extends PartitionableQueryContext<TQueryContext>>(
+  queryContext: TQueryContext,
+  partitionContext: PartitionContext
+): TQueryContext => {
+  queryContext.block = partitionContext.block;
+  queryContext.effects = partitionContext.effects;
+  let bridged = queryContext;
+  for (const [commitment, index] of partitionContext.comIndices) {
+    bridged = bridged.insertCommitment(commitment, index);
+  }
+  return bridged;
+};
+
+/**
  * Resolves a call's guaranteed/fallible transcript pair.
  *
  * A partitioned source is passed through untouched — the whole point of the
@@ -135,20 +186,33 @@ export interface AssembleCallOptions<TOperation> {
  * has, to redo work compact-js already did.
  *
  * An unpartitioned source is bridged into the module's own `QueryContext` and
- * split there. That bridge is a safe envelope crossing, not a lossy re-encode:
+ * split there. The bridge is two steps: the state crosses as an envelope, then
+ * the context the call recorded is written onto it
+ * ({@link bridgePartitionContext}) — a context carrying only the state would
+ * partition the program against one the circuit never ran on. The state
+ * crossing is safe, not a lossy re-encode:
  * the `EncodedStateValue` algebra is structurally identical between
  * onchain-runtime-v3 and both ledger modules (compile-time drift gate in
  * v8-down-convert.test.ts). A state the module still cannot read is the
  * caller's, so it leaves as {@link ComposeFailedError} at stage
  * `'call-contract-state'` with the decoder's own failure on `cause`, rather
- * than as a raw WASM error. A public transcript the partitioner itself rejects
- * leaves the same way at stage `'call-partition'`.
+ * than as a raw WASM error. A recorded context the era cannot read leaves the
+ * same way at stage `'call-partition-context'`, and a public transcript the
+ * partitioner itself rejects at stage `'call-partition'`.
  *
  * `partitionTranscripts` then returning nothing for the single call submitted
  * is an internal invariant of the ledger module, not a caller error, so that
  * one throws a plain `Error` and deliberately carries no protocol error code.
  */
-const resolvePartition = <TStateValue, TChargedState, TQueryContext, TPreTranscript, TParams, TOperation, TPrototype>(
+const resolvePartition = <
+  TStateValue,
+  TChargedState,
+  TQueryContext extends PartitionableQueryContext<TQueryContext>,
+  TPreTranscript,
+  TParams,
+  TOperation,
+  TPrototype
+>(
   ledger: CallAssemblyLedger<TStateValue, TChargedState, TQueryContext, TPreTranscript, TParams, TOperation, TPrototype>,
   options: AssembleCallOptions<TOperation>
 ): readonly [Transcript<AlignedValue> | undefined, Transcript<AlignedValue> | undefined] => {
@@ -173,6 +237,12 @@ const resolvePartition = <TStateValue, TChargedState, TQueryContext, TPreTranscr
     queryContext = new ledger.QueryContext(new ledger.ChargedState(stateValue), contractAddress);
   } catch (cause) {
     throw new ComposeFailedError(version, 'call-contract-state', circuitId, cause);
+  }
+
+  try {
+    queryContext = bridgePartitionContext(queryContext, transcript.partitionContext);
+  } catch (cause) {
+    throw new ComposeFailedError(version, 'call-partition-context', circuitId, cause);
   }
 
   // The public transcript is caller data in the ledger's own declared algebra,
@@ -211,8 +281,9 @@ const resolvePartition = <TStateValue, TChargedState, TQueryContext, TPreTranscr
  *   key — rather than silently composing a call against a blank, unverifiable
  *   operation. This one is not a caller choice, because the diagnosis does not
  *   differ by leg: an operation without a key is unusable on either ledger axis;
- * - `'call-transcript-empty'`, `'call-contract-state'` or `'call-partition'`,
- *   from resolving the transcript pair — see {@link resolvePartition};
+ * - `'call-transcript-empty'`, `'call-contract-state'`,
+ *   `'call-partition-context'` or `'call-partition'`, from resolving the
+ *   transcript pair — see {@link resolvePartition};
  * - `'call-prototype'`, when the module rejects the call's own inputs.
  *
  * Nothing raised here is a raw runtime error, with one deliberate exception
@@ -223,7 +294,7 @@ const resolvePartition = <TStateValue, TChargedState, TQueryContext, TPreTranscr
 export const assembleCallPrototype = <
   TStateValue,
   TChargedState,
-  TQueryContext,
+  TQueryContext extends PartitionableQueryContext<TQueryContext>,
   TPreTranscript,
   TParams,
   TOperation extends VerifiableOperation,

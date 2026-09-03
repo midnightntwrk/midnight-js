@@ -77,7 +77,6 @@ describe('Protocol ACL package', () => {
         'Ledger8InstanceMismatchError',
         'Ledger8RuntimeInvalidError',
         'Ledger8RuntimeMissingError',
-        'Ledger8ZswapUnsupportedError',
         'loadLedger8',
         'loadLedger8Engine',
         'loadLedgerEra',

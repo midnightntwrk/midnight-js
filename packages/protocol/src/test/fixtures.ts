@@ -16,6 +16,11 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
+import type { ZswapLocalState } from 'compact-runtime-ledger8';
+
+import type { PartitionContext } from '../lib/shared/compose-types';
+
 // Not a `*.test.ts` file, so vitest does not collect it, and it sits under
 // `test/`, which the coverage config excludes.
 //
@@ -45,3 +50,39 @@ export const readHexFixture = (name: string): Uint8Array => {
 
 /** Resolves a path inside the shared hf fixture tree, for fixtures that are not hex. */
 export const fixturePath = (...segments: string[]): string => resolve(FIXTURES_DIR, ...segments);
+
+/**
+ * The Zswap local state a coin-FREE circuit leaves behind, as the retained 0.16
+ * runtime decodes it.
+ *
+ * Written down once because `TranscriptPojo` requires the member: a hand-built
+ * transcript fixture that omits it is not one `executeCircuit` could produce,
+ * and every leg that consumes a transcript without reading its coin movements
+ * (`wrapKeepStateCall`, `composeV8CallTx`) needs the same filler. Those legs
+ * never read the key either, so it is a well-formed 32-byte placeholder rather
+ * than a parameter each fixture has to invent a value for.
+ */
+export const emptyZswapLocalState = (): ZswapLocalState => ({
+  coinPublicKey: 'ca'.repeat(32),
+  currentIndex: 0n,
+  inputs: [],
+  outputs: []
+});
+
+/**
+ * The query context a call that received no coin records: the block and effects
+ * a freshly built context starts with, and an empty commitment map.
+ *
+ * Written down once for the same reason {@link emptyZswapLocalState} is, and
+ * READ OFF a real `QueryContext` rather than hand-written: `CallContext` and
+ * `Effects` are vendor shapes with a dozen members between them, and the WASM
+ * setters reject a record missing any one of them — so a hand-built literal
+ * would have to be re-edited in every fixture on a vendor bump.
+ */
+export const emptyPartitionContext = (): PartitionContext => {
+  const queryContext = new ocrt3.QueryContext(
+    new ocrt3.ChargedState(ocrt3.StateValue.newNull()),
+    ocrt3.dummyContractAddress()
+  );
+  return { block: queryContext.block, effects: queryContext.effects, comIndices: new Map() };
+};

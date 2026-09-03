@@ -20,7 +20,7 @@ import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
 import * as ledgerV9 from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
-import { readHexFixture } from './fixtures';
+import { emptyPartitionContext, emptyZswapLocalState, readHexFixture } from './fixtures';
 
 // The engine lives in its own rollup entry, loaded through the package's
 // `./engine` subpath — so it is a SECOND bundle, and everything it throws
@@ -64,7 +64,9 @@ const transcriptForUnregisteredCircuit = () => ({
   privateTranscriptOutputs: [],
   preContractState: downConvertedState(0x01),
   postContractState: downConvertedState(0x02),
-  privateStateAfter: {}
+  privateStateAfter: {},
+  partitionContext: emptyPartitionContext(),
+  zswapLocalState: emptyZswapLocalState()
 });
 
 // Never skipped when a bundle is absent: a skip is reported as a pass, so the
@@ -135,7 +137,8 @@ describe('dist engine error gate', () => {
             transcript: {
               kind: 'unpartitioned',
               preState: ocrt3.StateValue.newCell(fieldValue(0x01)).encode(),
-              publicTranscript: []
+              publicTranscript: [],
+              partitionContext: emptyPartitionContext()
             },
             privateTranscriptOutputs: [],
             input: fieldValue(0x10),

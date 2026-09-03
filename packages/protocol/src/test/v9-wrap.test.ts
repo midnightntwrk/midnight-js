@@ -17,13 +17,21 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import * as ocrt3 from '@midnight-ntwrk/onchain-runtime-v3';
-import { ContractCallPrototype, ContractOperation, ContractState, Intent, sampleContractAddress } from '@midnightntwrk/ledger-v9';
+import {
+  ContractCall,
+  ContractCallPrototype,
+  ContractOperation,
+  ContractState,
+  Intent,
+  sampleContractAddress
+} from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
 import { ComposeFailedError, PROTOCOL_ERROR_CODES } from '../errors';
 import type { DownConvertedState } from '../lib/v8/down-convert';
 import type { TranscriptPojo } from '../lib/v8/execute';
 import { wrapKeepStateCall } from '../lib/v9/wrap';
+import { emptyPartitionContext, emptyZswapLocalState } from './fixtures';
 
 const FIELD_ALIGNMENT: ocrt3.Alignment = [{ tag: 'atom', value: { tag: 'field' } }];
 
@@ -42,7 +50,9 @@ const buildTranscript = (): TranscriptPojo => ({
   privateTranscriptOutputs: [],
   preContractState: buildState(0x01),
   postContractState: buildState(0x02),
-  privateStateAfter: {}
+  privateStateAfter: {},
+  partitionContext: emptyPartitionContext(),
+  zswapLocalState: emptyZswapLocalState()
 });
 
 // `ContractOperation.verifierKey`'s setter validates a `midnight:verifier-key[...]:`
@@ -81,6 +91,39 @@ describe('wrapKeepStateCall', () => {
     const ttl = new Date(Date.now() + 3_600_000);
 
     expect(() => Intent.new(ttl).addCall(prototype)).not.toThrow();
+  });
+
+  // The keep-state leg partitions the transcript it is handed, so it is the leg
+  // that has to carry what the pre-fork context recorded. Observable through
+  // the composed call: the ledger's partitioner starts the transcript's effects
+  // from the context's own, so a dropped context shows up as a call declaring
+  // no claimed receive for a circuit that recorded one.
+  it('carries the context the execution leg recorded into the call it composes', () => {
+    const address = sampleContractAddress();
+    const received = 'ef'.repeat(32);
+    const recorded = emptyPartitionContext();
+    const transcript: TranscriptPojo = {
+      ...buildTranscript(),
+      // An empty program partitions into a pair of `undefined`s, which would
+      // make the assertion below vacuous; a single no-op is the smallest one
+      // that yields a defined guaranteed transcript.
+      publicTranscript: [{ noop: { n: 1 } }],
+      partitionContext: {
+        ...recorded,
+        effects: { ...recorded.effects, claimedShieldedReceives: [received] }
+      }
+    };
+
+    const prototype = wrapKeepStateCall({
+      transcript,
+      contractAddress: address,
+      contractState: buildContractStateWithOperation('increment')
+    });
+
+    const intent = Intent.new(new Date(Date.now() + 3_600_000)).addCall(prototype);
+    const calls = intent.actions.filter((action) => action instanceof ContractCall);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].guaranteedTranscript?.effects.claimedShieldedReceives).toEqual([received]);
   });
 
   it('throws ComposeFailedError (stage wrap-call) when the given contract state has no registered operation for the circuit', () => {

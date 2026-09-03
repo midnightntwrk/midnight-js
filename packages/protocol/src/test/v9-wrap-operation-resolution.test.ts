@@ -22,7 +22,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { DownConvertedState } from '../lib/v8/down-convert';
 import type { TranscriptPojo } from '../lib/v8/execute';
-import { fixturePath, readHexFixture } from './fixtures';
+import { emptyPartitionContext, emptyZswapLocalState, fixturePath, readHexFixture } from './fixtures';
 
 // See v9-wrap.test.ts: `ContractOperation.verifierKey`'s setter
 // validates a `midnight:verifier-key[...]:` tagged blob.
@@ -56,7 +56,9 @@ const buildTranscript = (): TranscriptPojo => ({
   privateTranscriptOutputs: [fieldValue(0x30)],
   preContractState: buildState(0x01),
   postContractState: buildState(0x02),
-  privateStateAfter: {}
+  privateStateAfter: {},
+  partitionContext: emptyPartitionContext(),
+  zswapLocalState: emptyZswapLocalState()
 });
 
 const registeredContractState = (): LedgerV9.ContractState => {

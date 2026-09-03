@@ -26,7 +26,6 @@ export const PROTOCOL_ERROR_CODES = Object.freeze({
   COMPOSE_FAILED: 'MIDNIGHT_JS_P_COMPOSE_FAILED',
   COMPOSE_OPTION_INVALID: 'MIDNIGHT_JS_P_COMPOSE_OPTION_INVALID',
   STATE_DECODE_FAILED: 'MIDNIGHT_JS_P_STATE_DECODE_FAILED',
-  LEDGER8_ZSWAP_UNSUPPORTED: 'MIDNIGHT_JS_P_LEDGER8_ZSWAP_UNSUPPORTED',
   UNKNOWN_LEDGER_VERSION: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER_VERSION',
   LEDGER8_RUNTIME_INVALID: 'MIDNIGHT_JS_P_LEDGER8_RUNTIME_INVALID',
   UNKNOWN_LEDGER8_AXIS: 'MIDNIGHT_JS_P_UNKNOWN_LEDGER8_AXIS'
@@ -108,37 +107,6 @@ export class Ledger8RuntimeMissingError extends Error {
       { cause }
     );
     this.name = 'Ledger8RuntimeMissingError';
-  }
-}
-
-/**
- * Thrown by the retained pre-fork EXECUTION leg when a circuit it ran produced
- * Zswap inputs or outputs.
- *
- * Only the execution leg raises this. A caller handing a Zswap offer to the v8
- * composition legs is refused with {@link ComposeOptionError} (`option:
- * 'zswapOffer'`) instead: no circuit produced anything there, and the two cases
- * have different remediations — one is "this circuit cannot run on v8 at all",
- * the other is "do not pass an offer to a v8 composition".
- *
- * `executeCircuit` builds its circuit context from a coin public key alone, so
- * the post-call `currentZswapLocalState` it would need to assemble the
- * transaction's segmented offers is not carried on {@link TranscriptPojo}. A
- * call that moved coins would therefore compose into an unbalanced transaction,
- * rejected on submission with nothing in the engine having reported a problem.
- * This engine refuses that call instead.
- */
-export class Ledger8ZswapUnsupportedError extends Error {
-  readonly code: ProtocolErrorCode = PROTOCOL_ERROR_CODES.LEDGER8_ZSWAP_UNSUPPORTED;
-
-  constructor(readonly circuitId: string) {
-    super(
-      `Circuit '${circuitId}' produced Zswap inputs or outputs, which the retained pre-fork execution leg ` +
-        'does not carry. Composing this call would drop those coin movements and yield an unbalanced ' +
-        'transaction that the node rejects on submission. Only circuits with no coin effects can run on the ' +
-        'retained era today.'
-    );
-    this.name = 'Ledger8ZswapUnsupportedError';
   }
 }
 
@@ -319,6 +287,11 @@ export const NO_CIRCUIT = '(none)';
  * - `'call-transcript-empty'` — a caller-supplied partitioned transcript
  *   carried neither a guaranteed nor a fallible half, so the call would record
  *   no operations at all.
+ * - `'call-partition-context'` — the era rejected the query-context state the
+ *   call recorded (its block, its starting effects, or one of the commitment
+ *   indices it registered for a coin received in-contract) while bridging it
+ *   onto the context the transcript is partitioned against. Carries the
+ *   runtime's own failure on `cause`.
  * - `'call-partition'` — the ledger rejected the public transcript supplied
  *   for a call while splitting it into its guaranteed and fallible halves.
  *   Carries the runtime's own failure on `cause`.
@@ -360,6 +333,7 @@ export type ComposeStage =
   | 'wrap-call'
   | 'call-empty'
   | 'call-transcript-empty'
+  | 'call-partition-context'
   | 'call-partition'
   | 'call-prototype'
   | 'call-dust-payout'
@@ -458,12 +432,18 @@ export class ComposeFailedError extends Error {
       'spend, so nothing can settle this claim; composing it anyway would tell the user they were paid ' +
       'while the transaction paid them nothing. Move the shielded value through the guaranteed or fallible ' +
       'Zswap offer instead.',
+    'call-partition-context': (version, circuitId) =>
+      `Failed to compose a ${version} call: the ${version} era rejected the query-context state recorded ` +
+      `for circuit '${circuitId}' — its block, its starting effects, or one of the commitment indices it ` +
+      'registered for a coin received in-contract. Read the wrapped cause for the member the runtime could ' +
+      'not read. Pass the context the execution leg recorded on the transcript, unmodified.',
     'call-partition': (version, circuitId) =>
       `Failed to compose a ${version} call: the ${version} ledger rejected the public transcript supplied ` +
       `for circuit '${circuitId}' while splitting it into its guaranteed and fallible halves. Read the ` +
       'wrapped cause for what the runtime reported; it names the operation and the operand it could not ' +
-      'read. This usually means a hand-built or re-encoded op sequence rather than one an execution leg ' +
-      'produced — pass the transcript the circuit actually emitted.',
+      'read. Two causes are common: a hand-built or re-encoded op sequence rather than one an execution ' +
+      'leg produced, or a call that received a coin in-contract whose recorded commitment indices never ' +
+      'reached the partitioner — a transcript that reads a received coin cannot be split without them.',
     'call-prototype': (version, circuitId) =>
       `Failed to compose a ${version} call: the ${version} ledger rejected the inputs supplied for circuit ` +
       `'${circuitId}' while constructing the call prototype. Read the wrapped cause for what the runtime ` +
@@ -515,21 +495,18 @@ export class ComposeFailedError extends Error {
  *   records as the Unix epoch: a transaction that is already expired when it
  *   is composed.
  * - `'calls'` — the call list is not one the target era can compose. The
- *   retained pre-fork era composes exactly one call, because its execution leg
- *   runs a single circuit and refuses one with coin effects, so it has no
- *   cross-contract call tree to express.
+ *   retained pre-fork era composes exactly one call: a cross-contract call is a
+ *   ledger-9-only feature that a pre-fork contract cannot emit, so that era has
+ *   no call tree to express.
  * - `'verifierKeys'` — a deploy was requested with no verifier-key map, and the
  *   state it was given needs one. Raised on BOTH eras, for two different
  *   reasons: the retained era's deploy leg has to register the compiled
  *   contract's keys itself and so always needs the map, while the current era
  *   accepts its omission for a state that already carries its keys and refuses
  *   it only for a state still declaring a blank-keyed entry point.
- * - `'zswapOffer'` — the offer cannot be used. Raised on BOTH eras, and this is
- *   the one option whose meaning depends on `version`: on the current era the
- *   supplied bytes were rejected by its decoder, while the retained era never
- *   reads them at all because it cannot carry the coin movements an offer
- *   implies. The remediations differ — "fix these bytes" against "this call
- *   cannot be composed on this era" — so read `version` alongside `option`.
+ * - `'zswapOffer'` — the supplied offer bytes were rejected by the target era's
+ *   decoder. Raised on BOTH eras, for the same reason and with the same
+ *   remediation: pass the bytes that era's own offer serialization produced.
  */
 export type ComposeOption = 'calls' | 'contractState' | 'networkId' | 'ttl' | 'verifierKeys' | 'zswapOffer';
 
@@ -583,8 +560,8 @@ export class ComposeOptionError extends Error {
       'instant as `ttl`.',
     calls: (version) =>
       `Refusing to compose a ${version} call transaction from this call list: the era can compose exactly ` +
-      'one call, and composing only the first would silently drop the rest. This era executes a single ' +
-      'circuit and refuses one with coin effects, so it has no cross-contract call tree to express — ' +
+      'one call, and composing only the first would silently drop the rest. A cross-contract call is a ' +
+      'ledger-9-only feature a pre-fork contract cannot emit, so this era has no call tree to express — ' +
       'compose each call as its own transaction, or target the era that carries call trees.',
     verifierKeys: (version) =>
       `Refusing to compose a ${version} deploy transaction with no verifier-key map. This era's deploy leg ` +
@@ -593,20 +570,10 @@ export class ComposeOptionError extends Error {
       "entry points and be refused by the ledger's own well-formedness check. Supply keys for exactly the " +
       'circuits the contract declares. An era whose deploy leg accepts the omission still refuses it for a ' +
       'state that declares a blank-keyed entry point, for the same reason.',
-    // The one option whose diagnosis genuinely differs by era, so this entry
-    // branches rather than interpolating the era into one sentence: v9 reads the
-    // offer and reports bytes it could not decode, while v8 never reads one at
-    // all because it cannot carry the coin movements an offer implies. A single
-    // message would send one era's caller to audit bytes that are fine.
     zswapOffer: (version) =>
-      version === 'v8'
-        ? 'Refusing to compose a v8 transaction carrying a Zswap offer. The retained pre-fork execution leg ' +
-          'does not carry the post-call Zswap local state, so a coin-moving call cannot be composed on this ' +
-          'era at all; composing around the offer would drop the coin movements and yield an unbalanced ' +
-          'transaction the node rejects at submission. Compose coin-moving calls on the v9 era.'
-        : `Failed to compose a ${version} transaction: the supplied Zswap offer bytes could not be read by ` +
-          `the ${version} ledger. Read the wrapped cause for what the decoder reported. Pass the bytes that ` +
-          "era's own offer serialization produced."
+      `Failed to compose a ${version} transaction: the supplied Zswap offer bytes could not be read by ` +
+      `the ${version} ledger. Read the wrapped cause for what the decoder reported. Pass the bytes that ` +
+      "era's own offer serialization produced."
   };
 }
 
