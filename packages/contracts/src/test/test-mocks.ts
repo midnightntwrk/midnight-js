@@ -247,6 +247,9 @@ export const createMockCoinInfo = (): ShieldedCoinInfo => ({
   value: 0n
 });
 
+/** Protocol-version integer of a node release whose ledger runtime is v9. */
+const MOCK_HEAD_PROTOCOL_VERSION = 2_000_000;
+
 export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvableCircuitId, AnyPrivateState> => ({
   midnightProvider: {
     submitTx: vi.fn()
@@ -264,7 +267,12 @@ export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvab
     watchForUnshieldedBalances: vi.fn(),
     unshieldedBalancesObservable: vi.fn(),
     queryContractEvents: vi.fn(),
-    contractEventsObservable: vi.fn()
+    contractEventsObservable: vi.fn(),
+    // The head-version read answers with the v9-era protocol version the rest
+    // of these mocks assume; the raw-state read reports "no state at this
+    // address" until a test overrides it.
+    queryLatestProtocolVersion: vi.fn().mockResolvedValue(MOCK_HEAD_PROTOCOL_VERSION),
+    queryRawContractState: vi.fn().mockResolvedValue(null)
   },
   privateStateProvider: {
     setContractAddress: vi.fn(),
@@ -300,6 +308,7 @@ export const createMockProviders = (): ContractProviders<Contract.Any, AnyProvab
 });
 
 export const createMockFinalizedTxData = (status: TxStatus = SucceedEntirely): FinalizedTxData => ({
+  version: 'v9',
   status: status,
   txId: 'test-tx-id',
   identifiers: ['test-tx-id-0', 'test-tx-id'],
@@ -315,7 +324,10 @@ export const createMockFinalizedTxData = (status: TxStatus = SucceedEntirely): F
   blockTimestamp: 0,
   blockAuthor: null,
   indexerId: 0,
-  protocolVersion: 0,
+  // A node 2.x protocolVersion, so this fixture agrees with its own
+  // `version: 'v9'` under the resolver in `midnight-js-protocol`. A 0.x value
+  // maps to no era at all and would make the fixture self-contradictory.
+  protocolVersion: 2_000_000,
   fees: {
     paidFees: '',
     estimatedFees: ''

@@ -24,6 +24,7 @@ import {
 } from '@midnight-ntwrk/midnight-js-types';
 
 import { type ContractProviders } from './contract-providers';
+import { requireV9, requireV9Record } from './internal/era';
 
 declare const __DEBUG__: boolean;
 
@@ -82,12 +83,21 @@ async function submitTxCore<C extends Contract.Any, PCK extends Contract.Provabl
   providers: SubmitTxProviders<C, PCK>,
   options: SubmitTxOptions<PCK>
 ): Promise<string> {
-  const provenTx = await providers.proofProvider.proveTx(options.unprovenTx);
-  const toSubmit = await providers.walletProvider.balanceTx(provenTx);
+  const { circuitId } = options;
+  const provenTx = requireV9(
+    await providers.proofProvider.proveTx({ version: 'v9', tx: options.unprovenTx }),
+    'proveTx',
+    circuitId
+  );
+  const toSubmit = requireV9(
+    await providers.walletProvider.balanceTx({ version: 'v9', tx: provenTx }),
+    'balanceTx',
+    circuitId
+  );
   if (__DEBUG__) {
-    logTransaction(options.circuitId, toSubmit);
+    logTransaction(circuitId, toSubmit);
   }
-  return providers.midnightProvider.submitTx(toSubmit);
+  return providers.midnightProvider.submitTx({ version: 'v9', tx: toSubmit });
 }
 
 /**
@@ -133,7 +143,11 @@ export const submitTx = async <C extends Contract.Any, PCK extends Contract.Prov
   options: SubmitTxOptions<PCK>
 ): Promise<FinalizedTxData> => {
   const txId = await submitTxCore(providers, options);
-  return providers.publicDataProvider.watchForTxData(txId);
+  return requireV9Record(
+    await providers.publicDataProvider.watchForTxData(txId),
+    'watchForTxData',
+    options.circuitId
+  );
 };
 
 /**

@@ -1893,6 +1893,7 @@ __metadata:
   dependencies:
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
     "@midnight-ntwrk/midnight-js-types": "workspace:*"
+    "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     "@midnightntwrk/dapp-connector-api": "npm:4.1.0-beta.1"
     rollup: "npm:^4.60.4"
     vitest: "npm:^4.1.7"
@@ -2074,10 +2075,12 @@ __metadata:
   resolution: "@midnight-ntwrk/midnight-js-types@workspace:packages/types"
   dependencies:
     "@midnight-ntwrk/midnight-js-protocol": "workspace:*"
+    "@midnight-ntwrk/midnight-js-utils": "workspace:*"
     effect: "npm:^3.22.1"
     pino: "npm:^10.3.1"
     rollup: "npm:^4.60.4"
     rxjs: "npm:^7.8.2"
+    typescript: "npm:^6.0.3"
     vitest: "npm:^4.1.7"
   languageName: unknown
   linkType: soft
