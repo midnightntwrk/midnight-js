@@ -79,7 +79,7 @@ plausible-looking non-era.
 
 There is a second closed union this package validates at a boundary for the same
 reason, the ledger-8 instance axis. Its own argument — why the axis is not only
-a label — belongs with the guard that uses it; see `DualInstantiationGuard`.
+a label — belongs with the guard that uses it; see [DualInstantiationGuard](./dual-instantiation-guard.md).
 
 ## Own-property lookups where a null prototype is not available
 
@@ -212,10 +212,10 @@ would cost.
 
 ## Related documents
 
-- `DualInstantiationGuard` — the ledger-8 instance axis, and why
+- [DualInstantiationGuard](./dual-instantiation-guard.md) — the ledger-8 instance axis, and why
   `onchain-runtime-v3` is the only one asserted.
-- `FailClosedDecoding` — what the decode guarantees once a decoder has been
+- [FailClosedDecoding](./fail-closed-decoding.md) — what the decode guarantees once a decoder has been
   selected, and how the failure classes divide the work between them.
-- `ModuleGraphAndLazyLoading` — why `LEDGER_VERSIONS` lives in a leaf module,
+- [ModuleGraphAndLazyLoading](./module-graph-and-lazy-loading.md) — why `LEDGER_VERSIONS` lives in a leaf module,
   and which modules are build entries.
-- `EraSeam` — why the era arms are memoised per era and what crosses the seam.
+- [EraSeam](./era-seam.md) — why the era arms are memoised per era and what crosses the seam.

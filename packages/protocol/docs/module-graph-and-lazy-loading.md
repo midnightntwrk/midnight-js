@@ -81,7 +81,7 @@ A consumer that only executes circuits and binds them onto v9 therefore never
 instantiates the v8 ledger WASM at all: `createLedger8Engine` deliberately
 does not acquire the v8 ledger module, so such a consumer never hard-depends
 on ledger-v8 resolving either. The reason that surface does not need it is
-recorded in `docs/era-seam.md`.
+recorded in [EraSeam](./era-seam.md).
 
 ## The only sanctioned runtime access
 
@@ -180,6 +180,13 @@ importing a value — so deriving the type leaves the lazy acquisition path the
 caller owns untouched.
 
 Each derived slice is also narrowed to the members the seam actually calls.
+
+Where a narrowing buys something beyond that — a shape a test double can
+satisfy, or a type parameter callers never have to spell out — the trade is
+recorded with the seam it belongs to: [ComposeRefusalOrder](./compose-refusal-order.md) for the compose
+legs, [RetainedEraExecution](./retained-era-execution.md) for the execution runtime, and
+[DualInstantiationGuard](./dual-instantiation-guard.md) for the byte crossing a dual-instantiation cannot
+affect.
 `Ledger8ContractState` is narrowed to `deserialize` because that is the only
 member its seam calls. `Ledger8CompactRuntimeStateValue` is narrowed to
 `decode` because that is the only static its seam calls, and because the
@@ -189,7 +196,7 @@ with a one-member double instead of a whole WASM class.
 The narrowing on `Ledger8ContractState` carries one further consequence — it
 pins the slice to the pre-fork era, which is what `Ledger8CompactRuntime`
 depends on. That consequence is recorded in
-`docs/retained-era-execution.md`.
+[RetainedEraExecution](./retained-era-execution.md).
 
 ## Structural where a seam serves both eras
 

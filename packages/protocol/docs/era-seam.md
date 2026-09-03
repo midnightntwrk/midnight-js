@@ -30,7 +30,7 @@ That is a transport guarantee, not an immutability one. `readonly` on a result's
 members freezes each reference, not the bytes behind it, so a result that
 survives a `structuredClone` is not thereby protected from a caller writing
 through the arrays it carries. Where this package does need immutability it
-freezes the object itself — see `SharedTableDiscipline`.
+freezes the object itself — see [SharedTableDiscipline](./shared-table-discipline.md).
 
 ## One surface, the same on both eras
 

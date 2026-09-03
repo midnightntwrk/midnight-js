@@ -16,10 +16,10 @@ down-conversion stage is for, why a tree that was not rehashed is refused
 rather than repaired, what pins the bridge to the pre-fork era, what the
 execution result has to carry, and why the runtime the seams call is injected.
 
-The error classes named here are described in `FailClosedDecoding`, which owns
+The error classes named here are described in [FailClosedDecoding](./fail-closed-decoding.md), which owns
 the division of labour between `DownConvertFailedError`,
 `StateDecodeFailedError` and `Ledger8RuntimeInvalidError`; the refusal ordering
-on the composition legs is in `ComposeRefusalOrder`.
+on the composition legs is in [ComposeRefusalOrder](./compose-refusal-order.md).
 
 ## The down-conversion stages
 
@@ -85,7 +85,7 @@ a `boundedMerkleTree` leaf tuple (`[Uint8Array, undefined]`), which arrives
 through the array branch and never reaches this comparison. So the check guards
 against a record gaining one rather than fixing a live defect. That it is a
 partial guard rather than a total one, and what `Object.hasOwn` would close, is
-part of the package-wide discipline in `SharedTableDiscipline`.
+part of the package-wide discipline in [SharedTableDiscipline](./shared-table-discipline.md).
 
 ## The Merkle walk, and why a rootless tree is refused
 
@@ -129,7 +129,7 @@ pinned by tests over a multi-entry map rather than by prose alone.
 
 The walk's `default` arm carries both a compile-time exhaustiveness assertion
 and a runtime throw; why neither is redundant with the other is in
-`SharedTableDiscipline`, alongside the same form in `version.ts` and
+[SharedTableDiscipline](./shared-table-discipline.md), alongside the same form in `version.ts` and
 `loadLedgerEra`.
 
 ## What the down-convert does not cover
@@ -180,7 +180,7 @@ two shapes would otherwise silently reopen the hole.
 
 Why the assembled object may take `ContractState` from onchain-runtime-v3 while
 the other two members come from the 0.16 glue is a dual-instantiation question,
-and belongs to `DualInstantiationGuard`.
+and belongs to [DualInstantiationGuard](./dual-instantiation-guard.md).
 
 ## Circuit dispatch
 
@@ -201,7 +201,7 @@ An unknown `circuitId` throws a plain `Error`, not a
 runtime-instance failure modes this engine wraps elsewhere; it mirrors the plain
 `Error` the spike itself throws for the analogous "operation missing on contract
 state" case. Why the lookup is an own-property one is in
-`SharedTableDiscipline`.
+[SharedTableDiscipline](./shared-table-discipline.md).
 
 A circuit that moved coins runs like any other: its post-call Zswap local state
 leaves on the result for the caller to turn into the transaction's Zswap offer.
@@ -261,8 +261,8 @@ initial ledger state.
 into a deploy: both `composeV8DeployTx` and the era facade's `composeDeployTx`
 take the state as bytes, which is what `.serialize()` on that handle produces.
 The deploy-side consequences — the blank verifier-key slots a constructor-built
-state carries, and why the address cannot be recomputed — are in `VerifierKeys`
-and `ComposeRefusalOrder`.
+state carries, and why the address cannot be recomputed — are in [VerifierKeys](./verifier-keys.md)
+and [ComposeRefusalOrder](./compose-refusal-order.md).
 
 ## Binding the result back onto v9
 
@@ -279,7 +279,7 @@ submits its transcript as `kind: 'unpartitioned'` and lets the ledger module do
 the split. The counterpart shape, a transcript already partitioned by
 compact-js, and the refusal of a partitioned transcript that carries neither
 half (`ComposeFailedError`, stage `'call-transcript-empty'`) rather than
-composing a call that records nothing, belong to `ComposeRefusalOrder`.
+composing a call that records nothing, belong to [ComposeRefusalOrder](./compose-refusal-order.md).
 
 A keep-state call never registers a new verifier key, unlike a deploy: it reuses
 whichever key was already registered on-chain by the contract's original
@@ -316,5 +316,18 @@ narrowing cannot drift away from the runtime it stands for.
 
 Why each slice is DERIVED from the vendor's own class where it can be, rather
 than restated as a hand-written mirror, and why each is narrowed to the members
-its seam actually calls, is in `ModuleGraphAndLazyLoading`; the trade the
-constructor slice makes is in `ComposeRefusalOrder`.
+its seam actually calls, is in [ModuleGraphAndLazyLoading](./module-graph-and-lazy-loading.md); the trade the
+constructor slice makes is in [ComposeRefusalOrder](./compose-refusal-order.md).
+
+Two of those slices are narrowed rather than derived, and each narrowing buys
+something specific. `createCircuitContext` is the sharper case: the glue's own
+version is generic in the private state and returns a `CircuitContext` carrying
+a real `QueryContext`, a WASM class no test double can satisfy. Deriving it
+would make every execution test stand up real WASM just to check plumbing, so
+the seam narrows it to return `Ledger8CircuitContext` instead. `CostModel` is
+narrowed to `initialCostModel` for the same reason: it is the only static this
+seam calls, and the narrowing lets a test inject a stub cost model.
+
+The general rule this trades against — derive from the vendor where exactly one
+era can satisfy the shape, declare structurally where a seam serves both — is
+in [ModuleGraphAndLazyLoading](./module-graph-and-lazy-loading.md).

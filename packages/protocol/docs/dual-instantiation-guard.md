@@ -175,3 +175,20 @@ The runtime object assembled immediately after that assertion takes
 is sound only because the assertion above has already established the two are
 one physical copy: had they been distinct, it would have thrown rather than let
 a mixed runtime be assembled there.
+
+## The one crossing this cannot affect
+
+Not every era crossing in the engine is exposed to a dual-instantiation. A
+crossing that passes BYTES rather than a handle is immune by construction,
+because no object is handed between the two physical copies at all.
+
+`Ledger8DeployableContractState` (`lib/v8/deploy.ts`) is that case: it is a
+`Pick` of the pre-fork `ContractState` narrowed to `.serialize()`, which is how
+a caller turns the handle `executeConstructor` returned into the bytes every
+deploy leg takes. Picking one member also keeps it structurally satisfiable by
+a test double, so the deploy tests need no real WASM.
+
+This is why the guard's blast radius is the crossings that pass handles, and
+why widening it to cover the byte crossings would assert something already
+true. The general rule about deriving versus narrowing an injected vendor slice
+is in [ModuleGraphAndLazyLoading](./module-graph-and-lazy-loading.md).

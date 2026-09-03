@@ -11,7 +11,7 @@ they refuse a caller's options, the one ordering difference that survives on
 purpose, what each arm accepts rather than refuses, and why every caller-caused
 failure leaves as a coded error rather than as a raw WASM failure. The
 verifier-key rules a deploy is validated against are a separate thread — see
-`VerifierKeys`.
+[VerifierKeys](./verifier-keys.md).
 
 The legs described here are `composeEraV8CallTx` / `composeEraV8DeployTx`
 (`packages/protocol/src/lib/v8/adapt.ts`), `composeV8CallTx`
@@ -258,8 +258,11 @@ produces state, never a proof.
 
 ## Injected era seams: narrowed, not derived
 
-The structural slices these legs are injected through are narrowed on purpose,
-and each narrowing is a different trade.
+The general rule these legs trade against is in [ModuleGraphAndLazyLoading](./module-graph-and-lazy-loading.md):
+derive an injected vendor slice from the vendor's own class where exactly one
+era can satisfy the shape, and declare it structurally where a seam serves both.
+Everything below is the compose legs' half of that — the slices here are
+narrowed on purpose, and each narrowing is a different trade.
 
 `CallAssemblyLedger` (`packages/protocol/src/lib/shared/assemble-call.ts`) is
 satisfied by both ledger modules with every type parameter inferred from the

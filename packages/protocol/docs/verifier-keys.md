@@ -16,7 +16,7 @@ both deploy legs, and the rules
 `resolveVerifierKeyRegistrations`
 (`packages/protocol/src/lib/shared/verifier-keys.ts`) enforces before any key is
 registered. The order in which the other compose options are refused is a
-separate thread — see `ComposeRefusalOrder`.
+separate thread — see [ComposeRefusalOrder](./compose-refusal-order.md).
 
 ## Optional on the facade, demanded by both deploy legs
 

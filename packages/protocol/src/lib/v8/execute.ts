@@ -117,12 +117,10 @@ export interface Ledger8ExecutionRuntime {
   /** The glue's own encoded -> decoded conversion for a Zswap local state. */
   readonly decodeZswapLocalState: (state: EncodedZswapLocalState) => ZswapLocalState;
   /**
-   * Narrowed rather than derived, unlike its sibling below. The glue's own
-   * `createCircuitContext` is generic in the private state and returns a
-   * `CircuitContext` carrying a real `QueryContext` — a WASM class no test
-   * double can satisfy — so deriving it would make every execution test stand
-   * up real WASM to check plumbing. The narrowing returns
-   * {@link Ledger8CircuitContext} instead.
+   * Narrowed rather than derived, and so returns
+   * {@link Ledger8CircuitContext} rather than the glue's own `CircuitContext`.
+   *
+   * @see {@link RetainedEraExecution} for what the narrowing buys
    */
   readonly createCircuitContext: (
     contractAddress: string,

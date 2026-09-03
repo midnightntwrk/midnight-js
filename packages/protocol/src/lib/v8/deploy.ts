@@ -28,12 +28,10 @@ import type { ProtocolV8 } from './load';
  * returns on its result, and `.serialize()` is how a caller turns that handle
  * into the bytes every deploy leg takes.
  *
- * Crossing the era boundary by bytes rather than by handle is deliberate — it
- * is the one crossing in this engine that cannot be affected by a
- * dual-instantiation of the WASM, because no object is handed between the two
- * copies.
+ * Crosses the era boundary by bytes, not by handle.
  *
- * @see {@link ComposeRefusalOrder}
+ * @see {@link DualInstantiationGuard} for why that crossing is the one a
+ *      duplicate install cannot affect
  * @see {@link EraSeam}
  */
 export type Ledger8DeployableContractState = Pick<OnchainRuntimeV3.ContractState, 'serialize'>;
