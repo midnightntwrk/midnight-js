@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript 6, vitest 4 (protocol thresholds 100/100/100/100, always enabled), rollup 4 per-entry file bundles, ledger-v8 8.1.x, compact-runtime 0.16 / onchain-runtime-v3 (engine era).
 
-**Spec:** `docs/superpowers/specs/2026-07-09-ledger-v8-v9-dual-support-design.md` (v5.2) — §4.1, §4.2, §6.2, §8 (protocol slice).
+**Spec:** `docs/specs/2026-07-09-ledger-v8-v9-dual-support-design.md` (v5.2) — §4.1, §4.2, §6.2, §8 (protocol slice).
 
 **Ticket:** [#1004 MJS-01](https://github.com/midnightntwrk/midnight-js/issues/1004). **Merge flow (owner instruction, 2026-08-17): long-living integration branch.** `feat/1004-protocol-dual-ledger` is a long-living branch cut from clean `origin/main` (created 2026-08-17 at `8de45623`). Every MJS-01 PR below targets it (never `main`); after 1004-A…1004-E have merged there, **one final PR** merges `feat/1004-protocol-dual-ledger` → `main` and closes #1004. Per-PR work still happens on its own `wt` worktree, branched **from the integration branch** (or stacked on the preceding PR's branch where noted).
 

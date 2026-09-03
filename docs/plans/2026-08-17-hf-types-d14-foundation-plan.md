@@ -8,7 +8,7 @@
 
 **Tech Stack:** TypeScript 6, @microsoft/api-extractor over rollup-dts output, vitest 4 + expectTypeOf compile tests.
 
-**Spec:** `docs/superpowers/specs/2026-07-09-ledger-v8-v9-dual-support-design.md` (v5.2) — §4.4 (types bullet), §4.5, AC7.
+**Spec:** `docs/specs/2026-07-09-ledger-v8-v9-dual-support-design.md` (v5.2) — §4.4 (types bullet), §4.5, AC7.
 
 **Ticket:** tracked as a checklist on [#1006](https://github.com/midnightntwrk/midnight-js/issues/1006) (shared prereq of #1005 and #1006). Branch: `feat/1006-types-d14-foundation`.
 

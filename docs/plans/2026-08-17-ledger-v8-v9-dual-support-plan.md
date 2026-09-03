@@ -1,6 +1,6 @@
 # Ledger v8/v9 Dual Support — Implementation Plan Index
 
-**Spec:** `docs/superpowers/specs/2026-07-09-ledger-v8-v9-dual-support-design.md` (v5.2 — OQ13 spike results applied 2026-08-17).
+**Spec:** `docs/specs/2026-07-09-ledger-v8-v9-dual-support-design.md` (v5.2 — OQ13 spike results applied 2026-08-17).
 The work is split into four per-ticket plans so each produces working, testable software and small PRs. Each plan repeats the Global Constraints and states the interfaces it consumes from earlier plans; executors read their plan + the spec.
 
 | # | Plan | Ticket | Branch prefix |

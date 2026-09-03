@@ -9,7 +9,7 @@ just fixtures) and report the rest as blocked.
 
 Invoke superpowers:subagent-driven-development with the plan:
 /Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js.docs-superpowers-specs/docs/plans/2026-08-17-hf-mjs01-protocol-plan.md
-Spec (binding): /Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js.docs-superpowers-specs/docs/superpowers/specs/2026-07-09-ledger-v8-v9-dual-support-design.md
+Spec (binding): /Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js.docs-superpowers-specs/docs/specs/2026-07-09-ledger-v8-v9-dual-support-design.md
 
 Prior-state ledger (tasks 0.3-partial and 1.1-1.4 are COMPLETE — do not
 re-dispatch): worktree midnight-js.feat-1004-protocol-dual-ledger,

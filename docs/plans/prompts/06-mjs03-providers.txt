@@ -7,7 +7,7 @@ engine (prompt 03).
 
 Invoke superpowers:subagent-driven-development with the plan:
 /Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js.docs-superpowers-specs/docs/plans/2026-08-17-hf-mjs03-providers-plan.md
-Spec (binding): /Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js.docs-superpowers-specs/docs/superpowers/specs/2026-07-09-ledger-v8-v9-dual-support-design.md (§4.4, §4.5, §6.3, §8 providers slice, §10 steps 4-6)
+Spec (binding): /Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js.docs-superpowers-specs/docs/specs/2026-07-09-ledger-v8-v9-dual-support-design.md (§4.4, §4.5, §6.3, §8 providers slice, §10 steps 4-6)
 
 Key implementation facts:
 - OQ3d ANSWERED: head field = Block.protocolVersion via Query.block(offset:

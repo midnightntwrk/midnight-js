@@ -4,7 +4,7 @@ and protocol ./v8 must exist on main). If not merged, stop and report.
 
 Invoke superpowers:subagent-driven-development with the plan:
 /Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js.docs-superpowers-specs/docs/plans/2026-08-17-hf-types-d14-foundation-plan.md
-Spec (binding): /Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js.docs-superpowers-specs/docs/superpowers/specs/2026-07-09-ledger-v8-v9-dual-support-design.md (§4.4 types bullet, §4.5, AC7)
+Spec (binding): /Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js.docs-superpowers-specs/docs/specs/2026-07-09-ledger-v8-v9-dual-support-design.md (§4.4 types bullet, §4.5, AC7)
 
 ORDER IS MANDATORY: Task 2.1 (API-report gate: @microsoft/api-extractor over
 the rollup-dts output, baseline committed from CURRENT main BEFORE any D14

@@ -1,7 +1,7 @@
 TASK: OQ13 discovery spike for the HF v8/v9 dual-support work (midnight-js).
 This is Task 0.1 of the MJS-01 plan. Read first:
 - Plan: /Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js.docs-superpowers-specs/docs/plans/2026-08-17-hf-mjs01-protocol-plan.md (Task 0.1 + §4.1(4))
-- Spec (binding authority): /Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js.docs-superpowers-specs/docs/superpowers/specs/2026-07-09-ledger-v8-v9-dual-support-design.md (§4.1(4), D11, D15, OQ13, A4, A5)
+- Spec (binding authority): /Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js.docs-superpowers-specs/docs/specs/2026-07-09-ledger-v8-v9-dual-support-design.md (§4.1(4), D11, D15, OQ13, A4, A5)
 
 You need access to the spike repo (github.com/shieldedtech/spike-dapp-hf) and a
 REAL 0.16-generated contract artifact (compact 0.31.1 / compact-runtime 0.16.0

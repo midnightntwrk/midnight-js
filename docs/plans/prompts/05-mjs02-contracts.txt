@@ -8,7 +8,7 @@ Task 3.2. Do only what is unblocked; report the rest.
 
 Invoke superpowers:subagent-driven-development with the plan:
 /Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js.docs-superpowers-specs/docs/plans/2026-08-17-hf-mjs02-contracts-plan.md
-Spec (binding): /Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js.docs-superpowers-specs/docs/superpowers/specs/2026-07-09-ledger-v8-v9-dual-support-design.md (§4.3, §6.2, §8 contracts slice)
+Spec (binding): /Users/paluchs/iohk/dev/github/midnightntwrk/midnight-js.docs-superpowers-specs/docs/specs/2026-07-09-ledger-v8-v9-dual-support-design.md (§4.3, §6.2, §8 contracts slice)
 
 ORDER: Task 3.1 (non-regression baselines: sha256 manifest of untouched test
 files + golden fixtures for the ENUMERATED deterministic stages — decoded
