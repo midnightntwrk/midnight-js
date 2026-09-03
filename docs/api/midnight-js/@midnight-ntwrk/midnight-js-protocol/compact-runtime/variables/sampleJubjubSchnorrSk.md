@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -8,6 +8,6 @@
 
 > `const` **sampleJubjubSchnorrSk**: *typeof* [`jubjubSampleScalar`](../functions/jubjubSampleScalar.md)
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/built-ins.d.ts:270
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/utils.d.ts:60
 
 Alias for [jubjubSampleScalar](../functions/jubjubSampleScalar.md). Samples a random JubJub Schnorr signing key.

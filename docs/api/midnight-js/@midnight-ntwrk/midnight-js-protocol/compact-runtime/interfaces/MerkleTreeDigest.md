@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -6,7 +6,7 @@
 
 # Interface: MerkleTreeDigest
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:43
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:51
 
 The hash value of a Merkle tree. TypeScript representation of the Compact
 type of the same name
@@ -17,4 +17,4 @@ type of the same name
 
 > `readonly` **field**: `bigint`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:44
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/compact-types.d.ts:52

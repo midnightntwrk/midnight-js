@@ -48,6 +48,23 @@ const v8DynamicImportSelectors = [
   }
 ];
 
+// The engine's heavy chunk is reachable only through loadLedger8Engine(); the
+// gate mirrors the v8 pair above, on the `./engine` subpath.
+const ENGINE_RUNTIME_MESSAGE =
+  'Runtime engine access only via loadLedger8Engine() from @midnight-ntwrk/midnight-js-protocol.';
+
+const engineDynamicImportSelectors = [
+  {
+    selector: "ImportExpression > Literal[value=/^@midnight-ntwrk\\/midnight-js-protocol\\/engine(\\/|$)/]",
+    message: `${ENGINE_RUNTIME_MESSAGE} Dynamic imports of protocol/engine are not allowed outside packages/protocol/src/.`
+  },
+  {
+    selector:
+      "ImportExpression > TemplateLiteral[quasis.length=1][quasis.0.value.raw=/^@midnight-ntwrk\\/midnight-js-protocol\\/engine(\\/|$)/]",
+    message: `${ENGINE_RUNTIME_MESSAGE} Dynamic imports of protocol/engine are not allowed outside packages/protocol/src/.`
+  }
+];
+
 // Shared file scopes for the v8 and unsafe-cast gates below -- both the
 // `@typescript-eslint/no-restricted-imports` block and the four
 // `no-restricted-syntax` blocks. They exempt different files, so the globs are
@@ -94,6 +111,11 @@ const protocolImportPatterns = [
     group: ['@midnight-ntwrk/platform-js', '@midnight-ntwrk/platform-js/*'],
     message:
       'Import from @midnight-ntwrk/midnight-js-protocol/platform-js instead. Only packages/protocol/src/ may import from platform-js directly.'
+  },
+  {
+    group: ['compact-runtime-ledger8'],
+    message:
+      'The retained pre-fork compact-runtime@0.16 glue is a packages/protocol/src/ implementation detail. Use loadLedger8Engine() from @midnight-ntwrk/midnight-js-protocol instead.'
   }
 ];
 
@@ -249,6 +271,14 @@ export default tseslint.config(
               group: ['@midnight-ntwrk/midnight-js-protocol/v8', '@midnight-ntwrk/midnight-js-protocol/v8/*'],
               allowTypeImports: true,
               message: `${V8_RUNTIME_MESSAGE} Type-only imports are allowed.`
+            },
+            {
+              group: [
+                '@midnight-ntwrk/midnight-js-protocol/engine',
+                '@midnight-ntwrk/midnight-js-protocol/engine/*'
+              ],
+              allowTypeImports: true,
+              message: `${ENGINE_RUNTIME_MESSAGE} Type-only imports are allowed.`
             }
           ]
         }
@@ -268,7 +298,7 @@ export default tseslint.config(
     files: PACKAGE_SOURCE_GLOBS,
     ignores: [PACKAGE_TEST_DIRS, PROTOCOL_SOURCE_DIRS],
     rules: {
-      'no-restricted-syntax': ['error', ...unsafeCastSelectors, ...v8DynamicImportSelectors]
+      'no-restricted-syntax': ['error', ...unsafeCastSelectors, ...v8DynamicImportSelectors, ...engineDynamicImportSelectors]
     }
   },
   {
@@ -285,14 +315,14 @@ export default tseslint.config(
     files: PACKAGE_TEST_GLOBS,
     ignores: [PROTOCOL_SOURCE_DIRS],
     rules: {
-      'no-restricted-syntax': ['error', ...v8DynamicImportSelectors]
+      'no-restricted-syntax': ['error', ...v8DynamicImportSelectors, ...engineDynamicImportSelectors]
     }
   },
   {
     // testkit-js is fixture code: casts allowed, v8 still gated.
     files: ['testkit-js/**/*.ts'],
     rules: {
-      'no-restricted-syntax': ['error', ...v8DynamicImportSelectors]
+      'no-restricted-syntax': ['error', ...v8DynamicImportSelectors, ...engineDynamicImportSelectors]
     }
   },
   {

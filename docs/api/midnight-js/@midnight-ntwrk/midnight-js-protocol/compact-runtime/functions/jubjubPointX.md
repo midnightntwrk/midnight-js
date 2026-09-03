@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -12,7 +12,7 @@ Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/built-ins.d.ts:10
 
 The Compact builtin `jubjubPointX` function
 
-This function extracts the X-coordinate of a Compact `JubjubPoint`.
+This function extracts the x-coordinate of a Compact `JubjubPoint`.
 
 ## Parameters
 

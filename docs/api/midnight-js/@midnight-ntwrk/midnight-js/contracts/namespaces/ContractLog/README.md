@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../../README.md)
 
 ***
 
@@ -25,14 +25,15 @@ typed, discriminated [ContractEvent](type-aliases/ContractEvent.md) whose `paylo
 - **Indexed fields** are derived from the event type (not marked by the author); see
   [indexedFields](variables/indexedFields.md). `Misc` and lifecycle events index nothing.
 - **Non-consensus**: events are NOT consensus state; retention is a downstream (indexer) policy.
-- **⚠️ Payload decoding is experimental**: the intra-`data` field byte-offsets read by
-  [decode](variables/decode.md) (Maybe flag positions, `Uint<128>` big-endianness, the `Either` discriminant
-  value) are **derived from the compiler source**, not yet confirmed against a live `emit` — the
-  bundled compactc emits no `log` ops, so no fixture exercises a real payload (see the provenance
-  note in `test/effect/logEventFixtures.ts`). The **envelope** (`version`, `eventType`, `address`,
-  degradation) is confirmed. A wrong offset would decode **silently** to a wrong value rather
-  than degrading, so treat a decoded `payload` as provisional until re-confirmed against a live
-  emit.
+- **Wire layout**: the intra-`data` field byte-offsets read by [decode](variables/decode.md) follow the
+  corrected field-aligned layout from issue #278 — a 65-byte `Either` (`[is_left:1][left:32][right:32]`,
+  `is_left=1` → coin-public-key), little-endian `Uint<128>` with trailing zeros stripped (buffers
+  are right-padded to canonical width before slicing), and the post-compact#590 `shielded-receive`
+  field order `(commitment, ciphertext, contractAddress)`. See the layout table in
+  `test/effect/logEventFixtures.ts`. The authoritative reference is the indexer's Rust decoder
+  (`ledger_state.rs`); the end-to-end cross-check against a live `emit` (see that file's provenance
+  note) is the final validation gate. A wrong offset decodes **silently** to a wrong value rather
+  than degrading.
 
 ## Other
 

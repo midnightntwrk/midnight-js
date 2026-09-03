@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/midnight-js-protocol",
-  "version": "5.0.0-beta.6",
+  "version": "5.0.0-beta.7",
   "type": "module",
   "description": "Protocol type re-exports for midnight-js framework",
   "types": "dist/index.d.ts",
@@ -24,6 +24,10 @@
     "./v8": {
       "types": "./dist/v8.d.ts",
       "default": "./dist/v8.js"
+    },
+    "./engine": {
+      "types": "./dist/engine.d.ts",
+      "default": "./dist/engine.js"
     },
     "./compact-runtime": {
       "types": "./dist/compact-runtime.d.ts",
@@ -75,17 +79,20 @@
     "dist/"
   ],
   "dependencies": {
-    "@midnight-ntwrk/compact-js": "2.5.5-rc.7",
-    "@midnight-ntwrk/compact-runtime": "0.18.0-rc.1",
+    "@midnight-ntwrk/compact-js": "2.5.5-rc.8",
+    "@midnight-ntwrk/compact-runtime": "0.19.0-rc.0",
+    "@midnight-ntwrk/onchain-runtime-v3": "3.1.0",
     "@midnight-ntwrk/platform-js": "3.0.0",
     "@midnightntwrk/ledger-v8": "8.1.1",
     "@midnightntwrk/ledger-v9": "1.0.0-rc.3",
-    "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.3"
+    "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.3",
+    "compact-runtime-ledger8": "npm:@midnight-ntwrk/compact-runtime@0.16.0"
   },
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.3.0",
     "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^10.8.1",
+    "onchain-runtime-v3-alt": "npm:@midnight-ntwrk/onchain-runtime-v3@3.1.0",
     "rollup": "^4.60.4",
     "rollup-plugin-dts": "^6.4.1",
     "typescript": "^6.0.3",

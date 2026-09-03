@@ -1,4 +1,4 @@
-[**Midnight.js API Reference v5.0.0-beta.6**](../../../../README.md)
+[**Midnight.js API Reference v5.0.0-beta.7**](../../../../README.md)
 
 ***
 
@@ -8,7 +8,7 @@
 
 > **isContractAddress**(`x`): `x is string`
 
-Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/utils.d.ts:16
+Defined in: node\_modules/@midnight-ntwrk/compact-runtime/dist/utils.d.ts:18
 
 Tests whether the input value is a [ContractAddress](../../onchain-runtime/type-aliases/ContractAddress.md), i.e., string.
 
