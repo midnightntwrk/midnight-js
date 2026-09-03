@@ -8,11 +8,24 @@
 
 **Tech Stack:** Apollo Client + GraphQL codegen (`src/gen`), vitest 4, docker integration env, testkit-js mocks, pnpm/PnP + Vite CI fixtures.
 
-**Spec:** `docs/superpowers/specs/2026-07-09-ledger-v8-v9-dual-support-design.md` (v5.2) — §4.4, §4.5, §6.3, §8 (providers slice), §10 steps 4–6, AC0/AC9.
+**Spec:** `docs/specs/2026-07-09-ledger-v8-v9-dual-support-design.md` (**v5.4**) — §4.4 (read the "As delivered (#1177 → #1207)" block first), §4.5, §6.3, §8 (providers slice), §10 steps 4–6, AC0/AC9.
+
+> **SCOPE REVISION (2026-09-03, spec v5.4) — read this before Task 4.1.** Issue #1006 landed **three PRs** (#1204 → #1177 → #1207) that ship most of Phase 4's first half. They are part of the tree [#1218](https://github.com/midnightntwrk/midnight-js/pull/1218) puts on `main`.
+>
+> | Task | Status | Left to do |
+> |---|---|---|
+> | 4.1 head query + D16 latch | **DELIVERED** (#1177, #1207) | docker integration assertion against the real head field |
+> | 4.2 `queryRawContractState` + composed request + parse | **DELIVERED** (#1177, #1207) | nothing structural; extend coverage as needed |
+> | 4.3 per-record dual decode + union surfacing | **OPEN** | all of it — today a v8 record is *refused*, not decoded |
+> | 4.4 version-tagged tx-flow seams | **PARTLY** (#1204) | the real v8 arm; the seams refuse it today |
+> | 4.5 private-state cross-window | **OPEN** | all of it |
+> | 4.6 barrel + packaging gates | **OPEN** | all of it |
+>
+> **The one design rule shipped here that this plan must not re-litigate: the envelope decides, the block bounds.** The envelope comes off the bytes and decides *decodability*; the reported `protocolVersion` dates the *read* and is an **upper bound only**, because the indexer serves the latest contract action at or before the requested block — so an older envelope under a newer block is the ordinary case. Only the reverse is reported (`era-disagreement`), and only where both signals describe the same block: `parseHexContractState` takes `{ upperBound: 'enforced' | 'withheld' }`, defaulting to `'enforced'` so no call site loses the check by omission, and `'withheld'` on the unpinned sibling reads. Withholding drops the comparison only; the envelope still decides decodability. See spec §4.4.
 
 **Ticket:** [#1006 MJS-03](https://github.com/midnightntwrk/midnight-js/issues/1006). Branch: `feat/1006-provider-dual-decode` (fresh worktree per PR).
 
-**Prerequisites:** plan-2 D14-B merged. Tasks 4.1/4.2 ship in the **cross-plan PR** together with plan-2 Task 2.3 (interface members) and the testkit mocks — spec §4.4 same-PR rule.
+**Prerequisites:** plan-2 D14-B merged — **DONE as #1204**. Tasks 4.1/4.2 were to ship in a **cross-plan PR** with plan-2 Task 2.3 (interface members) and the testkit mocks (spec §4.4 same-PR rule); that happened as **#1177 (interface members + indexer implementation) → #1207 (era dating)**. Remaining work branches off clean `origin/main` **after #1218 lands**.
 
 ## Global Constraints
 
@@ -31,7 +44,7 @@
 
 Branch: `feat/1006-provider-dual-decode`. All in-repo `PublicDataProvider` implementations + testkit mocks update in the same PR as Tasks 4.1/4.2 (interface is breaking).
 
-### Task 4.1: indexer — head query + D16 corroborated latch
+### Task 4.1: indexer — head query + D16 corroborated latch — **DELIVERED (#1177, #1207)**
 
 **Files:**
 - Modify: `packages/indexer-public-data-provider/src/provider.ts`, `src/query-definitions.ts` (new head query on the OQ3d field)
@@ -49,34 +62,40 @@ Branch: `feat/1006-provider-dual-decode`. All in-repo `PublicDataProvider` imple
     return await this.fetchHeadProtocolVersion();   // GraphQL, OQ3d field
   }
   ```
-- [ ] **Step 1: Failing tests (mock Apollo handle):** GraphQL head requests go to zero only after a corroborated v9 — **one engagement test per route** (route 1: composed snapshot returns v9 head + v9-envelope state; route 2: provider decodes a finalized record with v9-era `protocolVersion`); poisoned-latch negative: a single bare v9 int pre-fork does NOT latch — next call hits the network again; `{ fresh: true }` bypass: latched provider still issues a GraphQL request; latch never downgrades (v8 after latch is ignored for latching purposes).
-- [ ] **Step 2–4:** red → implement → green (integration test against the docker indexer asserts strictly against the OQ3d source field).
-- [ ] **Step 5: Commit** — `feat(midnight-js): add head-version query with corroborated monotonic era latch (FR3/D16)`.
+- [x] **Steps 1–5 — shipped.** `head-latch.test.ts` covers engagement per route, non-engagement on a pinned read, and non-engagement on an unresolvable head version, all by **observable request counts** rather than private state. The routes are named in code as `'snapshot-envelope'` and `'finalized-record'`; the head field is `HEAD_PROTOCOL_VERSION_QUERY` = `query { block { protocolVersion } }` (OQ3d).
+- [x] **Beyond the plan, worth knowing before extending it:** `corroborateV9` treats an **unresolvable** head version as a *call-site bug*, not a latch input, and `corroborateFromDecodedState` re-checks the head reading — so cache-warming a read the caller only did incidentally cannot fail that read. The latch now actually engages from `queryContractState` / `queryZSwapAndContractState` (#1207 gave it the evidence route 1 needs); before that only `queryRawContractState` could, and nothing calls it yet, so `queryLatestProtocolVersion` always paid for a request.
+- [ ] **Still owed:** the **docker integration** assertion against the real indexer head field. Unit coverage is against a mock Apollo handle.
 
-### Task 4.2: indexer — `queryRawContractState` + composed request + adversarial parse
+### Task 4.2: indexer — `queryRawContractState` + composed request + adversarial parse — **DELIVERED (#1177, #1207)**
 
 **Files:**
 - Modify: `src/provider.ts`, `src/query-definitions.ts` (composed call-path document: head field + raw state in one request — §4.4 mitigation), `src/codec.ts`
 - Create: `src/test/raw-contract-state.test.ts`
 
-- [ ] **Step 1: Failing tests:** round-trips both envelopes (Task 0.2 fixtures served as **hex** — the indexer's real wire encoding, `:` = `3a`); `version` derived via `protocolVersionToLedger(protocolVersion, 'read')` at the single construction point; adversarial matrix at this parse point (missing second `:`, unknown tag, tag/content mismatch, oversized prefix, all in hex encoding) → `TAG_PARSE_FAILED` typed error before any decode; the composed request feeds route-1 corroboration (Task 4.1 spy).
-- [ ] **Step 2–4:** red → implement → green. **Step 5: Commit** — `feat(midnight-js): add raw contract-state query with composed head snapshot (FR6/§4.4)`.
-- [ ] **Note (Task 0.3 discovery):** the OQ3 fail-open set is six types (see spec OQ3(c)) — the tag check cannot rely on tags discriminating era for the zswap-subsystem types; design against the full list, not `ZswapChainState` alone.
+- [x] **Steps 1–5 — shipped.** `RAW_CONTRACT_STATE_QUERY` selects `block(offset:) { protocolVersion }` beside the contract state in **one** document (still one round trip, still not one snapshot — OQ3e; the era check remains the backstop). `raw-contract-state.test.ts` covers the composed call path, both envelopes round-tripping, and the adversarial-envelope matrix, in the indexer's real hex wire encoding. `parseSerializedTag` lives in `packages/utils/src/serialized-tag.ts` with `MIDNIGHT_JS_U_TAG_PARSE_FAILED`.
+- [x] **`protocol-version-coverage.test.ts` states the whole document surface exhaustively and in BOTH directions** — a document that decodes era-sensitive bytes without dating them fails the build, and so does a document that starts paying for a field it has no use for; an unclassified new document also fails. `BLOCK_QUERY` and `LATEST_CONTRACT_TX_BLOCK_HEIGHT_QUERY` are deliberately untouched (no serialized bytes). `ContractAction` carries no era in the schema, which is why two documents reach it through `transaction`.
+- [x] **Error taxonomy shipped alongside:** `IndexerDataError` kinds `'undated-state'` (a state with no block to date it — it was mis-reusing `'missing-head-block'`, whose remediation tells the caller to wait for a block to be indexed), `'era-disagreement'` (carries `protocolVersion` / `reportedVersion` / `envelopeVersion`) and `'unsupported-decode-era'`; plus `EraUnsupportedError` / `EraUnresolvableError`.
+- [ ] **Note (Task 0.3 discovery), still live:** the OQ3 fail-open set is six types (see spec OQ3(c)) — the tag check cannot rely on tags discriminating era for the zswap-subsystem types; design against the full list, not `ZswapChainState` alone. The `[vN]` counter in a tag is the **object schema version, not the ledger era**.
+- [ ] **Follow-up recorded on #1207, still owed:** `RawContractState.version` is derived from the read-viewpoint block while its docs tell callers to narrow on it and hand the bytes to that era's deserializer — wrong runtime for a contract dormant across a fork. The type hedges; the primary instruction needs rewording.
 
-### Task 4.3: indexer — per-record dual decode + lazy `loadV8()` + union surfacing
+### Task 4.3: indexer — per-record dual decode + lazy `loadLedger8()` + union surfacing — **OPEN (all of it)**
 
 **Files:**
 - Modify: `src/mapping.ts` (both `protocolVersion:` construction sites — `toFinalizedDeployTxData`, `watchForTxData` path), `src/codec.ts`, `src/provider.ts`
 - Create: `src/test/dual-decode.test.ts`
 
-- [ ] **Step 1: Failing tests:** v9 records decode through today's static path byte-unchanged (golden against Task 3.1-era baselines); v8-tagged records decode via `loadV8()` — awaited inside the already-async query method, memoised (spy: exactly one load across N records); lazy gates: a v9-only session never triggers the v8 WASM (grep-level + spy); a decode-only session never loads the 0.16 runtimes; `VersionedFinalizedTxData` arms carry the version-truth invariant; wrong-version decode → `DECODE_VERSION_MISMATCH` wrapped `{ cause }`, cause sanitized (serialize, assert no state bytes — QA-8 fixture).
+> **Where this task starts from, as shipped.** A v8-era record is currently **named and refused**, not decoded: `requireV9Era` raises `EraUnsupportedError` (`MIDNIGHT_JS_PR_ERA_UNSUPPORTED`). `toFinalizedDeployTxData` resolves the era **before** `parseHexTransaction` deliberately — that deserializer is v9-only, so a v8 record has to surface as a named era failure rather than a codec failure. That resolution point is the seam this task replaces with a real decode. The accessor is `loadLedger8()` (the v5.2 name `loadV8()` no longer exists).
+
+- [ ] **Step 1: Failing tests:** v9 records decode through today's static path byte-unchanged (golden against Task 3.1-era baselines); v8-tagged records decode via `loadLedger8()` — awaited inside the already-async query method, memoised (spy: exactly one load across N records); lazy gates: a v9-only session never triggers the v8 WASM (grep-level + spy); a decode-only session never loads the 0.16 runtimes; `VersionedFinalizedTxData` arms carry the version-truth invariant; wrong-version decode → `DECODE_VERSION_MISMATCH` wrapped `{ cause }`, cause sanitized (serialize, assert no state bytes — QA-8 fixture).
 - [ ] **Step 2–4:** red → implement → green. **Step 5: Commit** — `feat(midnight-js): decode v8 history lazily and surface versioned records (FR6/NFR6)`.
 
-### Task 4.4: tx-flow seams — proof/wallet/midnight providers + OQ15 asserts
+### Task 4.4: tx-flow seams — proof/wallet/midnight providers + OQ15 asserts — **PARTLY DELIVERED (#1204)**
 
 **Files:**
 - Modify: `packages/http-client-proof-provider/src/`, `packages/dapp-connector-proof-provider/src/`, `packages/types/src/proof-provider.ts` (`createProofProvider` — re-audit `CostModel.initialCostModel()` for the v8 arm, record the finding)
 - Create: seam tests in each provider package
+
+> **What #1204 already shipped.** `proveTx` / `balanceTx` / `submitTx` in `types` take `VersionedTx<T> = V8TxBytes | V9Tx<T>`, with a compile-time exhaustiveness pair asserting the arms' `version` set equals `LedgerVersion` in both directions; `VersionedFinalizedTxData` and `RawContractState` likewise. `http-client-proof-provider` adopted the union. **But every v8 arm is refused today** — `unwrapV9(payload, seam)` throws `MIDNIGHT_JS_PR_V8_PAYLOAD_UNSUPPORTED`, and `contracts` mirrors it with `requireV9`. So the shape exists and this task's real content is **lifting the refusal and implementing the v8 arm**, in step with MJS-02 Task 3.5 — a half-lifted seam fails in the middle of a submit. Also note a convention divergence to resolve or accept: `unwrapV9` is a **runtime** helper living in `types`, which the repo treats as declarations-only; if it is to move, `utils` is its home and this is the task that moves it.
 
 - [ ] **Step 1: Failing tests:** the v8 arm is `{ version: 'v8', txBytes }` at every seam, request and response (strict shape assertion + `parseSerializedTag` tag assert at both proving seams and submit — the OQ15 permanent mechanism); v9 arm passes through as today's live objects (non-regression); keep-state proving passes retained key triples through the configured `proofProvider` and selects V2 by key tag; proof-server HTTP failure wrap is sanitized (QA-8).
 - [ ] **Step 2–4:** red → implement → green. **Step 5: Commit** — `feat(midnight-js): carry version-tagged tx payloads through proof/wallet/midnight seams (D14/OQ15)`.
@@ -111,6 +130,7 @@ Branch: `feat/1006-provider-dual-decode`. All in-repo `PublicDataProvider` imple
 - [ ] AC5 positive compile test runs against the guide's exact snippet.
 
 ### Task 5.3: fork-crossing e2e + harness-gated negatives (AC0/OQ14)
+- [ ] **Blocker recorded on #1207, fix before anything else in this task:** `nightly-e2e.yml` is the **only** coverage for eras other than v9 — it rotates `TESTKIT_DOCKER_ENV` across all five image sets — and it has been `startup_failure` with **zero jobs launched** for at least six consecutive nights. Until it runs, every e2e signal on this whole stack is devnet, i.e. node 2.x / ledger v9 only, and the static v8-era environment below has no CI home.
 - [ ] Static v8-era environment (QA-6) stands up (pinned v8 node/indexer/proof-server images, or recorded responses fallback — recorded in spec which FR8 items gate where until then).
 - [ ] AC0 scenario, one session, unchanged code: pre-fork v8-native call+deploy → fork (stale-head → two-step re-run → keep-state) → v9-native → reads own v8 history. Mocked head flips until OQ14 lands; authoritative at the OQ14 tier.
 - [ ] Harness-gated security negatives per the Task 0.2 Step 2 ruling: perturbed-bytes rejection at apply; A5 cross-era rewrap fails verification; double-submit — re-run's call leg fails effects-equality.
@@ -125,8 +145,8 @@ Branch: `feat/1006-provider-dual-decode`. All in-repo `PublicDataProvider` imple
 
 | PR | Tasks | Contents | Depends on |
 |----|-------|----------|-----------|
-| **cross-plan** | plan-2 Task 2.3 + 4.1, 4.2 + mocks | interface members + indexer implementation (latch, raw state) + testkit mocks — ONE PR (spec §4.4) | plan-2 D14-B |
-| 1006-A | 4.3 | per-record dual decode + lazy `loadV8()` + union surfacing | cross-plan PR, plan-1 1004-C |
+| ~~**cross-plan**~~ | plan-2 Task 2.3 + 4.1, 4.2 + mocks | **DONE** — landed as #1177 (interface members + indexer latch/raw state + mocks) then #1207 (era dating, `parseHexContractState` upper bound, contract-event `protocolVersion`) | plan-2 D14-B = #1204 |
+| 1006-A | 4.3 | per-record dual decode + lazy `loadLedger8()` + union surfacing | #1218 on `main` |
 | 1006-B | 4.4 | version-tagged proof/wallet/midnight seams + OQ15 asserts + CostModel re-audit | 1006-A |
 | 1006-C | 4.5 | private-state cross-window round-trip + mock version-invariant | 1006-A, plan-1 1004-E (keep-state) |
 | 1006-D | 4.6 | barrel re-exports + isolated-linker smoke + Vite laziness CI jobs | 1006-B |

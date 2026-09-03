@@ -1,9 +1,11 @@
 # Architecture Document — Ledger v8/v9 Support in Midnight.js (Hard-Fork Transition)
 
-**Status:** Derived from Design Spec Draft v3.9 (2026-08-06 — upstream answers confirmed by @tkerber; OQ15 resolved by ruling)
-**Source spec:** [`docs/superpowers/specs/2026-07-09-ledger-v8-v9-dual-support-design.md`](../specs/2026-07-09-ledger-v8-v9-dual-support-design.md)
+**Status:** Derived from Design Spec Draft **v5.4** (2026-09-03 — re-read against the integration tip of [#1218](https://github.com/midnightntwrk/midnight-js/pull/1218) and the #1006 tree #1204 → #1177 → #1207). **Corrected in this pass:** the Zswap refusal on the retained era is gone (OQ19 closed), and the node-version mapping now covers majors 1 and 2 only. Sections not touched by those two facts still carry their v5.3 derivation.
+**Source spec:** [`docs/specs/2026-07-09-ledger-v8-v9-dual-support-design.md`](../specs/2026-07-09-ledger-v8-v9-dual-support-design.md)
 **Related issues:** [#1004](https://github.com/midnightntwrk/midnight-js/issues/1004) · [#1005](https://github.com/midnightntwrk/midnight-js/issues/1005) · [#1006](https://github.com/midnightntwrk/midnight-js/issues/1006)
 **Program:** Ledger v8→v9 Hard Fork Migration (SOW-Q3-10 / product#119)
+
+> **Revision note.** This document was previously derived from spec v3.9 and described an architecture that no longer exists: a transitional `ledger-v8-compat` package, a `KeepStateBridge` injected by the dApp, a `rawTx` field on records, a dedicated keep-state entry point, and pre-fork construct/submit as an out-of-scope typed error. Every one of those was reversed between v4.0 and v5.3 — by owner rulings (unified entries, no transitional package, pre-fork operation in scope), by the OQ13 spike, and finally by the delivered code. It has been rewritten rather than patched. Where this document and the spec disagree, **the spec is authoritative**; where the spec and the shipped code disagree, the code is, and the spec v5.3 names each such divergence.
 
 ---
 
@@ -25,21 +27,15 @@
 
 ## 1. Purpose & Context
 
-The Midnight blockchain performs a hard fork from Ledger protocol **v8** to **v9**. After the fork:
+The Midnight blockchain performs a hard fork from Ledger protocol **v8** to **v9**. Three facts drive everything below:
 
-- On-chain history (blocks, transactions, events) before the fork height is encoded with **v8**; everything after with **v9**. One dApp session may read both.
-- At the fork, the protocol **migrates every deployed contract's `ContractState` into the ledger-9 envelope**, preserving the pre-fork verifier key (`co.v2`). State *data* and call transcripts are **byte-identical** across versions — only the envelope changes. These migration facts are **contractual upstream guarantees** (#1005 answer 1).
-- Pre-fork contracts stay compiled and executable only on the ledger-8 toolchain (compact-runtime 0.16 / onchain-runtime-v3).
+- **History is bi-versioned.** Blocks before the fork height are v8-encoded, everything after is v9. One dApp session may read v8 history and submit v9 transactions.
+- **The protocol migrates state, not artifacts.** At the fork, every deployed contract's on-chain `ContractState` is re-enveloped into ledger-9 with the pre-fork verifier key preserved (`source.v2 → op.v2`, `v3`/`ir` empty). State *data* and call transcripts are **byte-identical** across versions. Contractual upstream (#1005 answer 1).
+- **dApp upgrades cannot be coordinated with the fork height.** Existing dApps bump midnight-js *before* the fork, must keep transacting on the v8 chain, must keep working unchanged *at* the fork, and run on v9 afterwards. A framework version that operates on only one side of the fork is not adoptable.
 
-Midnight.js today is hard-pinned to v9: `@midnight-ntwrk/midnight-js-protocol` re-exports `ledger-v9` / `onchain-runtime-v4` exclusively. The solution adds exactly three capabilities:
+The goal is therefore one framework major with **one version-agnostic API** (FR0). The developer never chooses a version-specific function; the ledger era is resolved at runtime from the network and from the contract. Migration is a version bump plus mechanical type narrowing where the dApp consumes version-divergent provider surfaces — and **zero changes at the fork itself**.
 
-| Capability | Mechanism |
-|---|---|
-| **(a) Decode historical v8 records** | Framework surfaces v8 records as **raw bytes + protocol version**; the dApp decodes them with an opt-in compat codec |
-| **(b) Construct & submit v9 transactions** | Unchanged — the pipeline stays statically v9 (decision D9) |
-| **(c) Keep pre-fork contracts transacting post-fork** | **Keep-state**: down-convert migrated state, execute on the dApp's retained ledger-8 stack, wrap the transcript in a native v9 transaction with a V2 proof |
-
-**Explicit non-goal:** this is *not* a generic multi-version framework. At most two ledger versions are ever live (support window: current + previous, D8), so version dispatch is a two-case switch at the few places that need it — no facades, no parameterised accessors (D10).
+**Explicit non-goal.** This is not a generic multi-version framework. At most two eras are ever live (D8), so dispatch is a closed two-case `switch`. What v5.3 changes is *where* that switch lives — once, at the bottom, in the only package that holds both runtimes — not how many cases it has.
 
 ---
 
@@ -50,44 +46,41 @@ Midnight.js today is hard-pinned to v9: `@midnight-ntwrk/midnight-js-protocol` r
 ```mermaid
 flowchart TB
     subgraph external["External systems (outside trust boundary)"]
-        indexer["Indexer (GraphQL)<br/>reports protocolVersion per record<br/>+ network head"]
-        proofserver["Proof server (v9-era)<br/>ONE dual-capable instance<br/>ZKIR v2 + v3, server-side dispatch"]
-        node["Midnight node<br/>ledger-9 apply:<br/>transcript replay + effects equality"]
+        indexer["Indexer (GraphQL)<br/>protocolVersion per record<br/>+ Block.protocolVersion head"]
+        proofserver["Proof server<br/>ONE fork-prepared dual-capable instance<br/>ZKIR v2 + v3, server-side dispatch"]
+        node["Midnight node<br/>ledger apply:<br/>transcript replay + effects equality"]
     end
 
     subgraph dapp["dApp process (single trust domain)"]
-        app["dApp code<br/>+ retained ledger-8 stack<br/>(compact-runtime 0.16, onchain-runtime-v3)"]
-        mjs["Midnight.js framework<br/>(statically v9)"]
-        compat["@midnight-ntwrk/midnight-js-ledger-v8-compat<br/>(transitional, opt-in, dApp-installed)"]
+        app["dApp code<br/>+ retained ledger-8 artifacts<br/>(compact 0.31 / compact-runtime 0.16)"]
+        mjs["Midnight.js framework<br/>(dual-era via protocol)"]
     end
 
-    app -->|"config: keepState bridge<br/>+ codec imports"| compat
-    app --> mjs
-    compat -->|"injected inward as<br/>KeepStateBridge (POJOs + v9 types only)"| mjs
+    app -->|"one unchanged call site<br/>submitCallTx / deployContract"| mjs
     mjs <-->|"records, head version,<br/>raw contract state"| indexer
     mjs -->|"witness + key triples"| proofserver
-    mjs -->|submit v9 tx| node
+    mjs -->|"submit (v8 bytes or v9)"| node
 ```
 
-Key structural facts:
+Two structural facts replace the v3.9 picture:
 
-- **The framework core never gains a v8 dependency** (FR5). All v8 capability lives in one transitional leaf package installed and injected by the dApp.
-- **The integrity backstop is the ledger itself**: at apply, ledger-9 replays the transcript against real on-chain state and requires effects equality. Any indexer/state tampering is bounded to DoS/griefing — never fund or verification compromise.
+- **The dApp installs nothing new and injects nothing.** There is no transitional package and no bridge object. The retained ledger-8 toolchain the framework needs is a dependency of `protocol`, not of the dApp (§3.2).
+- **The integrity backstop is the ledger itself.** At apply it replays the transcript against real on-chain state and requires effects equality, which bounds indexer or state tampering to DoS/griefing for *integrity*. It bounds nothing about *disclosure* — see §6.
 
 ### 2.2 The keep-state idea in one picture
 
 ```mermaid
 flowchart LR
-    A["Migrated ContractState<br/>(v9 envelope, co.v2 key preserved,<br/>data byte-identical)"]
-    B["Down-convert<br/>(extract POJO → decode + rehash<br/>in dApp's 0.16 instance)"]
-    C["Execute circuit<br/>on unchanged ledger-8 stack<br/>(no recompilation)"]
+    A["Migrated ContractState<br/>(v9 envelope, co.v2 preserved,<br/>data byte-identical)"]
+    B["Down-convert + rehash<br/>in the engine's shared<br/>onchain-runtime-v3 instance"]
+    C["Execute circuit<br/>on the retained ledger-8 stack<br/>(no recompilation)"]
     D["Wrap POJO transcript<br/>→ native v9 ContractCallPrototype"]
-    E["v9 Intent → Transaction<br/>→ V2 proof (key-tag selected)<br/>→ submit"]
+    E["Compose v9 tx → V2 proof<br/>(key-tag selected) → submit"]
 
     A --> B --> C --> D --> E
 ```
 
-No recompilation, no v9-compiled variant, no artifact selection. The contract, its keys, and its executing runtime all stay on ledger-8; only the transaction envelope and proof wrapping are v9-native.
+No recompilation, no v9-compiled variant, no artifact selection. The contract, its keys and its executing runtime all stay on ledger-8; only the transaction envelope and the proof wrapping are v9-native.
 
 ---
 
@@ -97,193 +90,143 @@ No recompilation, no v9-compiled variant, no artifact selection. The contract, i
 
 ```mermaid
 flowchart BT
-    subgraph core["Core packages (v9-only, zero v8 knowledge)"]
-        protocol["protocol<br/>+ version.ts (additive)<br/>re-exports ledger-v9 (unchanged)"]
-        types["types<br/>declarations only: rawTx field,<br/>KeepStateBridge family + entry options,<br/>2 provider queries"]
-        utils["utils<br/>runtime helpers:<br/>isDecodedTxData(),<br/>createRawFinalizedTxData()"]
-        contracts["contracts<br/>routing,<br/>dedicated keep-state entry"]
-        indexerprov["indexer-public-data-provider<br/>raw surfacing for v8 records,<br/>queryRawContractState,<br/>queryLatestProtocolVersion"]
-        barrel["midnight-js (barrel)<br/>re-exports version utils +<br/>isDecodedTxData();<br/>compat NOT re-exported"]
+    subgraph core["Framework packages"]
+        protocol["protocol — THE dual-era seam<br/>version utils · ./v8 subpath<br/>./engine entry · era facade"]
+        types["types<br/>D14 unions + 2 provider members"]
+        utils["utils<br/>assertNever, error-code guards"]
+        contracts["contracts<br/>unified entries, dispatch,<br/>offer construction, orchestration"]
+        indexerprov["indexer-public-data-provider<br/>per-record dual decode,<br/>queryRawContractState,<br/>queryLatestProtocolVersion"]
+        barrel["midnight-js (barrel)"]
     end
 
-    subgraph leaf["Transitional leaf (dApp-side only)"]
-        compat["ledger-v8-compat<br/>entry '.': keep-state bridge<br/>entry './codec': v8 decoders"]
-    end
-
-    subgraph wasm["WASM stacks"]
-        v9["ledger-v9 / onchain-runtime-v4"]
-        v8["ledger-v8 (codec entry only)"]
+    subgraph wasm["WASM stacks — all resolved by protocol"]
+        v9["ledger-v9 + onchain-runtime-v4<br/>(eager: the current era)"]
+        v8["ledger-v8<br/>(lazy: ./v8 chunk)"]
+        r16["onchain-runtime-v3<br/>+ compact-runtime-ledger8 alias<br/>(lazy: ./engine chunk)"]
     end
 
     types --> protocol
     utils --> types
     contracts --> types
+    contracts --> protocol
     indexerprov --> types
     indexerprov --> utils
     barrel --> contracts
     barrel --> indexerprov
     barrel --> utils
     protocol --> v9
-    compat -. "peerDependency<br/>(v9 via protocol/ledger ONLY)" .-> protocol
-    compat -. "peerDependency<br/>(KeepStateBridge interface)" .-> types
-    compat -- "regular dependency<br/>(./codec entry only)" --> v8
+    protocol -. "dynamic import('../../v8.js')" .-> v8
+    protocol -. "dynamic import('../../engine.js')" .-> r16
 ```
 
-CI dependency-graph gates enforce the arrows that must **not** exist:
+The dotted arrows are the whole isolation story, and they are enforced by **built-artifact gates**, not by the diagram: `dist-laziness.test.ts` asserts on the published `dist/index.js` that neither `ledger-v8`, nor the `./engine` subpath, nor `onchain-runtime-v3`, nor the `compact-runtime-ledger8` alias is linked statically.
 
-1. No core package resolves `ledger-v8` or the compat package.
-2. The compat package resolves **no direct `ledger-v9`** — v9 enters it exclusively through the `protocol` peerDependency, which guarantees a **single v9 WASM instance** in the process (closes the #1052 dual-instantiation axis by construction).
+Note the reversal from v3.9: `types` depends on `protocol` (it always did — the repo's own CLAUDE.md layering diagram is wrong about this, and correcting it ships with this work). That dependency is the reason the unified entries cannot move down into `protocol`: they need provider interfaces from `types`, and moving them would close a cycle.
 
 ### 3.2 Component responsibilities
 
-#### `protocol` (MJS-01) — version identity only
+#### `protocol` (MJS-01) — three seams, one package
 
-One new module, nothing else changes. No new dependencies, no WASM change, no subpath change.
+`protocol` is the only package in the tree that resolves either ledger. It exposes the two eras through **three** accessors, and which one a caller reaches for is decided by a single rule.
+
+| Accessor | Returns | Acquires | For |
+|---|---|---|---|
+| `loadLedger8()` | the raw `ledger-v8` module (`ProtocolV8`) | `ledger-v8` WASM | naming and decoding raw v8 records — the provider read paths |
+| `loadLedger8Engine()` | `Ledger8Engine` (4 methods) | `onchain-runtime-v3` + the 0.16 glue | **fork-crossing** work: down-convert, execute, wrap |
+| `loadLedgerEra(v)` | `LedgerEra` (4 methods), either era | `ledger-v8` when `v === 'v8'`; nothing when `'v9'` | **era-symmetric** work: read a state, compose a call, compose a deploy |
+
+**The placement rule.** An operation belongs on the era facade **iff both eras perform it with the same inputs and the same result shape**. Everything else stays on the engine, where the era is the *subject* rather than a parameter — and keeps its `Ledger8*` name. `executeCircuit` is the instructive case: v9 execution runs through compact-js in `contracts`, so a symmetric signature would be a lie in the type, and it stays on the engine.
+
+```ts
+export interface LedgerEra {
+  readonly version: LedgerVersion;
+  extractState(raw: Uint8Array): EncodedStateValue;
+  decodeContractState(raw: Uint8Array): ContractStatePojo;
+  composeCallTx(options: ComposeCallOptions): Uint8Array;          // UNPROVEN, serialized
+  composeDeployTx(options: ComposeDeployOptions): DeployResultPojo;
+}
+
+export interface Ledger8Engine {
+  downConvertForExecution(state: EncodedStateValue): DownConvertedState;
+  executeCircuit(options: ExecuteCircuitOptions): TranscriptPojo;
+  executeConstructor(options: ExecuteConstructorOptions): ConstructorResultPojo;
+  wrapKeepStateCall(options: WrapKeepStateCallOptions): ContractCallPrototype;
+}
+```
+
+Three properties of this seam are load-bearing:
+
+- **Only plain data crosses it** — `Uint8Array`s and POJOs, never a live WASM handle, in either direction. Two eras are two WASM instances and class identity does not survive a bundle boundary. Mechanised in the tests by `structuredClone` over every facade return value.
+- **The engine and the facade are independent acquisitions.** The engine does **not** acquire `ledger-v8`; the facade does not acquire the 0.16 runtimes. A consumer that only executes circuits and binds them onto v9 never instantiates the multi-megabyte v8 WASM. A keep-state operation is the only path that holds both at once.
+- **Memoised per era, failure not memoised.** One memo slot per era, never a shared slot — a shared slot hands the second caller whichever era was asked for first, silently reading one era's bytes with the other era's runtime. Both era objects are frozen.
+
+**Version identity** (unchanged from v3.9, and delivered):
 
 ```ts
 export const LEDGER_VERSIONS = ['v8', 'v9'] as const;
 export type LedgerVersion = (typeof LEDGER_VERSIONS)[number];
-
-// Maps the indexer's protocolVersion int (encodes NODE version:
-// major·1_000_000 + minor·1_000) to a LedgerVersion.
-// Bounded per-MAJOR ranges (BC-1, v3.5): same node major ⇒ same ledger era
-// (#1005 answer 6), so an unseen MINOR within a known major maps without error —
-// a routine node upgrade (e.g. 2.2) must never brick construct/submit.
-// Fail-fast ONLY on an unknown major (a new era is genuinely possible there);
-// no open-ended `>=` — majors can rise faster than eras, so node 3.x might be v10.
-// Exception (QA-1): major 0 is exempt — 0.x minors are semver-breaking and only
-// node 0.22 is attested as v8; int 23_000 fail-fasts by design.
-export const protocolVersionToLedger = (protocolVersion: number): LedgerVersion => { ... };
-
-// Two syntactically distinct sourcing helpers — wrong pairing is visible in review:
-export const versionOfRecord = (record: { protocolVersion: number }): LedgerVersion;      // read paths
-export const networkHeadVersion = (source: { queryLatestProtocolVersion(): Promise<number> }): Promise<LedgerVersion>; // construct paths
+export const protocolVersionToLedger = (protocolVersion: number): LedgerVersion => { /* ... */ };
+export const versionOfRecord = (record: { protocolVersion: number }): LedgerVersion;                      // read paths
+export const networkHeadVersion = (s: { queryLatestProtocolVersion(): Promise<number> }): Promise<LedgerVersion>;  // construct paths
 ```
 
-Layering note: `types` depends on `protocol`, so `protocol` takes **structural parameters** — it cannot import provider interfaces. `protocolVersionToLedger` is the **sole narrowing point** from an untrusted `number` to the closed `LedgerVersion` set. `networkHeadVersion` is backed by the **additive provider query `queryLatestProtocolVersion()`** — today's `PublicDataProvider` exposes no head protocol version (see MJS-03 below; concrete indexer GraphQL field = OQ3d).
+`protocolVersionToLedger` is the **sole narrowing point** from an untrusted `number` to the closed `LedgerVersion` set. The int encodes the *node* version (`major·1_000_000 + minor·1_000`), and the table is keyed by **major**, not minor:
 
-Version-int mapping (per-major bounded ranges — OQ1 + BC-1/v3.5):
-
-| protocolVersion range | Node versions | LedgerVersion |
+| `protocolVersion` range | Node versions | `LedgerVersion` |
 |---|---|---|
-| 22 000 ≤ v < 23 000 | 0.22 only (major-0 exemption, QA-1) | v8 |
-| 1 000 000 ≤ v < 2 000 000 | 1.x (any minor) | v8 |
-| 2 000 000 ≤ v < 3 000 000 | 2.x (any minor) | v9 |
-| unknown **major** | — | **typed error** (designed maintenance signal: table extends once per node *major*, after confirming that major's era) |
+| 1 000 000 ≤ v < 2 000 000 | 1.x, any minor | v8 |
+| 2 000 000 ≤ v < 3 000 000 | 2.x, any minor | v9 |
+| anything else, **node 0.x included** | — | typed error (`reason: 'unknown'`) |
+| not a non-negative integer | — | typed error (`reason: 'malformed'`) |
 
-This deliberately diverges from the indexer's per-minor table: the indexer fail-fasting on an unmapped minor is its own operational choice; midnight-js must not amplify it client-side by bricking every dApp on a routine node minor release.
+This deliberately diverges from the indexer's table in **both** directions. Upward: the indexer fail-fasts on an unmapped *minor*, which midnight-js must not amplify client-side by bricking every dApp on a routine node minor release — hence per-major ranges. Downward, and **changed since v5.3**: the indexer maps node **0.x** and midnight-js no longer does. Earlier drafts carried a "major-0 exemption" row for node 0.22; as shipped that row is **struck**, because the framework meets only node 1.x or 2.x, so a 0.x `protocolVersion` is reported as unknown rather than resolved to v8. A fail-closed choice, commented as such in `version.ts` — do not restore it to mirror the indexer without a caller that needs it. Consequence: history cannot be read from a 0.22 indexer.
 
-#### `@midnight-ntwrk/midnight-js-ledger-v8-compat` (new, D11) — the transitional package
+**Source layout.** `src/lib/` splits four ways — `v8/`, `v9/`, `shared/`, `era/` — so a path answers "which ledger does this touch?" without reading imports. The axis is **what a module is about, not what it links**: `v8/compose.ts` links no v8 at all (it takes the module as a typed parameter), and exactly zero files link v8 statically. Do not read isolation into the paths; the dist gates are the isolation.
 
-One package per fork window, named for the version it retires with. Two entry points, so a keep-state-only consumer never pays the v8 WASM cost:
+#### `contracts` (MJS-02) — unified entries and dispatch
 
-| Entry | Purpose | Dependencies |
-|---|---|---|
-| `.` (root) | `createKeepStateBridge({ compactRuntime, onchainRuntime })` — the keep-state implementation | peerDependencies: `protocol` (v9 **only via `protocol/ledger`**) + `types` (implements `KeepStateBridge`); 0.16 runtimes are dApp-supplied instances |
-| `./codec` | v8 historical-record decoders (`decodeTransaction`, `decodeLedgerParameters`, `decodeZswapState`; final list = OQ3) | `@midnight-ntwrk/ledger-v8` as the **only regular v8 dependency in the whole tree**; importing the entry instantiates the v8 WASM — **the import is the opt-in** |
-
-Internals of the root entry (exported only for the package's own tests):
-
-- `extractEncodedStateValue` — v9-enveloped bytes → byte-identical POJO; throws on malformed input.
-- `toExecutionState` — decode **and rehash** inside the dApp's own 0.16 runtime instance (bounded Merkle trees return non-rehashed and must be rehashed before any `checkRoot`).
-- `wrapTranscriptV9` — POJO transcript + key tag → native v9 `ContractCallPrototype` (same v9 instance as the host app, guaranteed by peer resolution).
-
-The 0.16 runtime types (`CompactRuntime016`, `OnchainRuntimeV3`) are **hand-maintained structural interfaces** covering only the members the package calls; a CI compile test against the real packages (devDependencies) detects drift.
-
-#### `contracts` (MJS-02) — protocol-version orchestration
-
-- Resolves the active version **per operation** (memoised within the operation only — no session-level subscription).
-- Consumes the `KeepStateBridge` interface **declared in `types`** (v3.3 finding 1 — it is a provider-shaped seam, and repo convention keeps pluggable seams in `packages/types/src/`; feasible because `types` already depends on `protocol`). `executeCall` granularity, **only POJOs and v9 types in signatures**; witness/private-state shapes are **opaque generics** (v3.4 finding 4), so closing OQ13 cannot churn the published `types` surface:
+**One API, version-agnostic (D7).** The existing entries are the only entries. Each gains an **additive overload** accepting a 0.16-generated contract object alongside today's 0.18 signature:
 
 ```ts
-export interface KeepStateBridge<TArgs, TWitnesses, TPrivateState> {
-  /** Probe = the ContractState constructor from protocol/ledger — the symbol is PART OF
-   *  THE CONTRACT (v3.3 finding 6) and the parameter is typed (v3.4 finding 8), so a
-   *  wrong symbol is a compile error; compared by constructor-reference equality. */
-  usesSameLedgerInstance(probe: typeof ContractState): boolean;
-  executeCall(
-    input: KeepStateCallInput<TArgs, TWitnesses, TPrivateState>
-  ): Promise<KeepStateCallResult<TPrivateState>>;
-}
+// identical pre-fork, at the fork, and post-fork — and identical to every v9-native call
+await submitCallTx(providers, { compiledContract, contractAddress, circuitId: 'increment', args });
 ```
 
-- Ships keep-state as a **dedicated entry point** (e.g. `submitKeepStateCallTx`): pre-fork contracts are typed against the 0.16 toolchain and generally cannot satisfy the v9-pinned generics of the existing call entry. The v9-native entry's signatures and generics are **untouched** (FR7).
-- **"Attach" defined (no invented lifecycle):** the `keepState` bridge attaches as a **typed options field of the dedicated entry** (options type declared in `types`) — *not* on the global providers object, which has no attach lifecycle. `contracts` runs the ledger-instance identity check **at the start of every keep-state entry invocation, before any fetch or proving**; mismatch throws `KeepStateLedgerInstanceMismatchError`. Keep-state stays invisible to v9-only code paths.
-- **Single state snapshot per operation (v3.4 finding 7):** exactly one `queryRawContractState` fetch; `contracts` decodes those bytes itself (v9 decode via `protocol/ledger`) for routing + the SEC-5 pre-check, then hands the **identical bytes** to `executeCall` — routing, SEC-5 and execution can never disagree via an intra-operation TOCTOU window.
+That overload set is the largest single work item in the whole programme. The existing entries already carry four overloads anchored to the compact-js effect world, with the entire downstream type family parameterised on `C extends Contract.Any`; a 0.16 contract object satisfies none of it. "Additive overload" therefore means a **parallel options/result/provider type family plus circuit-id and args inference for the 0.16 shape**, with dispatch forking before any shared code.
 
-#### Providers (MJS-03) — shrunk scope
+**Era-tag discriminators** (OQ13 spike, verified on real artifacts of both eras). The dangerous case is not 0.16-vs-`CompiledContract`; it is a *raw* 0.18-generated `Contract` instance, which has the same own-property shape as a 0.16 one. The reliable split is asyncness: 0.18 codegen emits async members throughout, 0.16 codegen emits zero async functions.
+
+| Held by the caller | Runtime discriminant | Outcome |
+|---|---|---|
+| compact-js `CompiledContract` | `Symbol.for('compact-js/CompiledContract')` on the prototype (global registry — survives duplicated copies) | v9-native pipeline |
+| raw 0.16 `Contract` | own props exactly `['witnesses','circuits','impureCircuits','provableCircuits']`, all members **sync** | ledger-8 pipeline |
+| raw 0.18 `Contract` | `initialState.constructor.name === 'AsyncFunction'`; module exports `expectedVk` | typed era/artifact-mismatch error — never silent mis-dispatch |
+
+**What `contracts` no longer does.** #1194 moved the era-symmetric half of this component down into `protocol`. `contracts` does not compose transactions on either era and does not import `protocol/v8`.
+
+| Concern | Owner |
+|---|---|
+| Overload typing, dispatch, fail-fasts, head resolution, single-snapshot fetch, stale-head handling | `contracts` |
+| Zswap **offer construction** (per-recipient encryption-key resolver) | `contracts` |
+| Private state, provider orchestration, proving / balancing / submission | `contracts` |
+| Reading a contract state; composing a call or a deploy, either era | `protocol` — `LedgerEra` |
+| Down-convert, circuit/constructor execution, keep-state wrap | `protocol` — `Ledger8Engine` |
+
+`utils/ledger-utils.ts` is untouched and remains the production v9 path; repointing it at the facade is an explicit MJS-02 decision, not a mechanical consequence.
+
+#### Providers (MJS-03)
 
 | Provider | Change |
 |---|---|
-| `indexer-public-data-provider` | v8-tagged records populate the **sole additive field `rawTx: Uint8Array`** (`protocolVersion` pre-exists on every record — v3.4 finding 5); `rawTx` presence is the runtime discriminant. Accessing the v9-typed `tx` on a v8 record throws a typed error naming the compat codec — via a **non-enumerable accessor** (v3.3 finding 3): `JSON.stringify`, spread, `structuredClone`, deep-equality and logging middleware never trip it; only a direct `tx` read does. Records are built with `createRawFinalizedTxData()` from `utils` (mandatory for provider **and** testkit mocks — an object literal would silently satisfy the interface without the throw). Additive `queryRawContractState` returns the **serialized** migrated state (bytes, never a WASM object across the package boundary). Additive `queryLatestProtocolVersion(): Promise<number>` backs `networkHeadVersion` (v3.3 finding 4; GraphQL source field = OQ3d). Both new members are **implementer-facing breaking** (consumer-compile-compatible): all in-repo implementations + testkit mocks update in the same PR. |
-| Proof providers | **Unchanged.** The transition runs against **one dual-capable v9-era proof server** (#1005 answer 3); ZKIR self-describes its version, the server dispatches — no client-side leg routing (OQ11 dissolved). Retained pre-fork key triples pass through the existing configured `proofProvider`; the **pass-through plumbing ships with the dedicated keep-state entry (MJS-02)**. Open in OQ12: (a) the *supported* key-delivery API (the spike shipped keys ad-hoc), (b) the minimum server version with dual-ZKIR support actually shipped, (c) status of other proving modalities (e.g. DApp-connector local proving) for the migration guide. |
-| `level-private-state-provider` | Expected version-agnostic (stores opaque values the migration never touches; under keep-state still written by the unchanged 0.16 stack); confirmed during MJS-03. |
-| `types` | **Consumer-compile-compatible, declarations only** (revises v3.2's "additive-only"): the `rawTx` field, the generic `KeepStateBridge` family + keep-state entry options type, the two provider queries. Three recorded caveats: the documented `.tx` runtime break on v8 records; the SEC-9 pre-fork throw on decoded contract-state queries; the implementer-facing provider members. |
-| `utils` | **New home for the runtime helpers** (v3.6 — `types` stays implementation-free per NFR4): `isDecodedTxData(d): d is FinalizedTxData & { readonly rawTx?: undefined }` (the guard; prefer it over try/catch) and `createRawFinalizedTxData(fields)` (installs the non-enumerable throwing accessor + populates `rawTx`). |
-| `midnight-js` barrel | Re-exports the new version utils and `isDecodedTxData()`. The compat package is deliberately **not** re-exported. |
+| `indexer-public-data-provider` | Per-record dispatch on `protocolVersion`: v9 records through today's static path unchanged; v8-tagged records decode **provider-side** via `loadLedger8()`, awaited inside the already-async query methods. Two new **required** interface members: `queryRawContractState` (serialized state + version, both envelopes) and `queryLatestProtocolVersion(): Promise<number>`, backed by `Block.protocolVersion` via the argument-less root query `block`. Both are implementer-facing breaking; all in-repo implementations and testkit mocks update in the same PR. The provider owns the **monotonic era latch** (D16). |
+| Proof providers | Request payload version-tagged. One **fork-prepared** dual-capable server across the whole window (OQ16), self-dispatching on the ZKIR's embedded version — no client-side leg routing. Retained pre-fork key triples pass through the existing configured `proofProvider`. |
+| Wallet / midnight | `balanceTx` / `submitTx` carry version-tagged payloads. The v8 arm is serialized tag-prefixed bytes, request **and** response — the pre-fork wallet deserializes with its own `ledger-v8`, its native wire format. The v9 arm's representation is **an open decision** (see §5). |
+| `level-private-state-provider` | Expected version-agnostic — it stores opaque contract-defined values the envelope migration never touches. Not left as an expectation: a cross-window private-state round-trip test gates MJS-03. |
+| `types` | Consumer-breaking exactly at the documented D14 set plus the two provider members; verified by a checked-in `.d.ts` API-report diff. |
 
-**`.tx` typing decision (v3.4 finding 1) — union rejected consciously:** the declared `tx` stays *required* — a documented lying type on v8 records. A discriminated union (`{ tx } | { rawTx }`) would be honest but **consumer-compile-breaking**: every existing consumer reading `.tx` unconditionally would stop compiling, defeating AC7. The weak compile-time signal is the accepted trade-off; the guard, the non-enumerable accessor and the TROUBLESHOOTING entry are the mitigation. **Copy semantics (QA-6):** spread/clone drops the accessor — `copy.tx` is silently `undefined` (no throw), `rawTx` survives, `isDecodedTxData(copy)` returns `false`; always re-guard after cloning.
+#### What used to be here and is gone
 
-### 3.3 How compat is injected into the existing transaction flow
-
-The compat package is **not** spliced into the middle of the existing pipeline. Injection happens through one config object and one dedicated entry point; the v9-native flow is untouched end to end.
-
-```mermaid
-flowchart TB
-    subgraph dappcode["dApp code (owns the injection)"]
-        create["createKeepStateBridge({ compactRuntime, onchainRuntime })<br/>— dApp's OWN retained 0.16 instances"]
-        codec["import 'ledger-v8-compat/codec'<br/>(history decode — never enters the tx flow)"]
-    end
-    subgraph fw["Framework"]
-        entry["dedicated entry<br/>submitKeepStateCallTx(providers,<br/>{ ..., keepState: bridge })"]
-        attach["per-invocation check (before any work):<br/>usesSameLedgerInstance(ContractState)"]
-        route["routing on key set of the<br/>single fetched snapshot:<br/>co.v2-only → keep-state"]
-        pipe["UNCHANGED pipeline:<br/>Intent → Transaction → proveTx<br/>→ balanceTx → submitTx"]
-    end
-
-    create --> entry --> attach --> route
-    route -->|"bytes in / v9 ContractCallPrototype out"| pipe
-```
-
-**1. Injection point — the `keepState` options field of the dedicated entry (the only seam).** The dApp installs the compat package and constructs the bridge, supplying its **own** retained 0.16 runtime instances. The bridge attaches as a **typed options field of the dedicated keep-state entry** (type declared in `types`) — *not* on the global providers object, so keep-state stays invisible to v9-only code paths:
-
-```ts
-import { createKeepStateBridge } from '@midnight-ntwrk/midnight-js-ledger-v8-compat';
-
-await submitKeepStateCallTx(providers, {
-  ...callOptions,
-  keepState: createKeepStateBridge({ compactRuntime, onchainRuntime })
-});
-```
-
-This is dependency inversion: `types` declares the `KeepStateBridge` interface (POJOs + v9 types only); the compat package implements it (via its `types` peerDependency); `contracts` consumes it; the framework never imports compat — it receives an instance from outside. The constraint is hard: the framework cannot reach the dApp's runtime module instances (#1052 WASM dual-instantiation), so the dApp must bring them.
-
-**2. Attach = entry invocation — fail-fast validation.** There is no providers-object lifecycle in midnight-js; "attach time" means **the start of each keep-state entry invocation**. Before any fetch or proving, `contracts` calls `bridge.usesSameLedgerInstance(ContractState)` — the probe is the **`ContractState` constructor exported from `protocol/ledger`** (the pinned symbol is part of the contract, and the parameter is typed `typeof ContractState`, so a wrong symbol is a compile error); the bridge compares it by constructor-reference equality against its own import. This checks that compat and the host app share the same ledger-v9 module instance (guaranteed by the `protocol` peerDependency, but defeatable by bundler misconfiguration). A mismatch throws `KeepStateLedgerInstanceMismatchError` **before any work starts**, not as a mysterious proof failure minutes later.
-
-**3. Use time — per-operation routing into a dedicated entry.** The existing v9 call/deploy entry is untouched (FR7). Keep-state ships as a separate entry (e.g. `submitKeepStateCallTx`) because a pre-fork contract's generated types target the 0.16 toolchain and cannot satisfy the v9-pinned generics of the existing entry. On each call, `contracts` fetches the migrated `ContractState` **once** and routes on its verifier-key set: `co.v2`-only → keep-state (only here is the bridge touched; a missing `keepState` config throws a typed error containing the exact snippet above **and both plausible causes** — a migrated pre-fork contract, or a v9-era ZKIR-v2 deploy mis-hitting the route while A4 is unconfirmed); `v3`/`ir` present → v9-native, bridge never invoked.
-
-**4. Division of labour — bridge vs existing pipeline.** The bridge receives **bytes** (the raw migrated state from the provider's additive `queryRawContractState`) and returns a native v9 object:
-
-```
-contracts ──serializedContractState (Uint8Array)──▶ bridge.executeCall(...)
-   ◀── { transcript (POJO), callPrototype: ContractCallPrototype (v9), nextPrivateState }
-```
-
-From that point the transaction re-enters the **unchanged** pipeline: `Intent → Transaction` (existing `zswap-utils`) → `proveTx` (existing `proofProvider`; V2 proof selected from the key tag, server dispatches on the ZKIR's embedded version) → `balanceTx` → `submitTx`. Proof, wallet, and midnight providers are unaware compat exists — the only addition is passing the retained pre-fork key triples through the existing `proofProvider`. That **pass-through plumbing ships with the dedicated entry (MJS-02)**; what stays open in OQ12 is the *supported* key-delivery API shape (the spike delivered keys ad-hoc), the minimum dual-ZKIR proof-server version, and the DApp-connector local-proving story — OQ12 gates the MJS-03 freeze precisely because of this.
-
-**5. The non-injection: `./codec`.** The v8 history decoders never enter the transaction flow or the providers. The provider surfaces v8 records as `rawTx + protocolVersion`; the dApp imports `ledger-v8-compat/codec` and decodes on its own side. Importing that entry *is* the opt-in (it instantiates the v8 WASM).
-
-Summary: one seam (the `keepState` options field of the dedicated entry), fail-fast validation at every invocation, data crossing the boundary only as bytes/POJOs — and the prove→balance→submit chain stays exactly what runs today.
-
-### 3.4 Packaging & bundler reality (compat package)
-
-The WASM/bundle cost of the transition is a **conscious, bounded decision**, not an oversight:
-
-- **Who pays what.** A v9-only dApp ships exactly today's single WASM stack (AC6) — compat is never installed. A keep-state dApp adds its own retained 0.16 stack (`compact-runtime 0.16` + `onchain-runtime-v3`, dApp-owned — the framework never bundles them). Only a dApp that *also* decodes v8 history adds the v8 WASM, and only via the `./codec` entry — the two entry points exist precisely so a keep-state-only consumer never pays the v8 WASM cost.
-- **Import-as-opt-in is deliberate (OQ6 withdrawn).** Upstream wasm-bindgen packages instantiate their WASM at import; the spec's earlier lazy-init design (`initLedgerV8()`, pre-init throws, CJS smoke tests) was withdrawn as moot — inside an explicitly-installed transitional package, at-import instantiation is acceptable and needs **no init choreography**. Verified on `ledger-v9@1.0.0-rc.3`; the same module layout on `ledger-v8` is confirmed at pin time (OQ2).
-- **ESM-only is accepted.** Only transition-window dApps install the package — no dual `.cjs` build, no bundler-verification records; isolation is the package boundary itself.
-- **Residual bundler risk is guarded, not assumed away.** Module resolution can be defeated by bundler misconfiguration (two module contexts — cf. the repo's Vite WASM guide); that is exactly what the per-invocation `usesSameLedgerInstance` check catches, with remediation pointing at the dual-instantiation guide.
-- **Supply chain (OQ2).** The v8 dependency tree is confined to one `package.json`; the OQ2 checklist applies to it: verify org ownership of both npm scopes (`@midnight-ntwrk` vs `@midnightntwrk` — typosquat-shaped risk), exact pins + lockfile integrity, CI gate asserting only audited scopes/versions in the compat package's resolved tree.
+The transitional `ledger-v8-compat` package, `KeepStateBridge`, `createKeepStateBridge`, the dedicated `submitKeepStateCallTx` entry, the `rawTx` field with its non-enumerable throwing accessor, `isDecodedTxData()` / `createRawFinalizedTxData()`, and the SEC-9 pre-fork throw on decoded state reads. All were superseded: the transitional package by the D11 owner ruling, the bridge and the dedicated entry by D7 (unified entries), and `rawTx` by D14 (discriminated unions). They are listed here so a reader who remembers them can tell "removed" from "not yet described".
 
 ---
 
@@ -291,32 +234,39 @@ The WASM/bundle cost of the transition is a **conscious, bounded decision**, not
 
 ### 4.1 Operation routing (decision view)
 
+Three orthogonal decisions, all invisible to the caller.
+
 ```mermaid
 flowchart TD
-    start(["Operation requested"]) --> head{"networkHeadVersion?"}
-    head -->|"v8 (pre-fork)"| prefork{"Operation type?"}
-    prefork -->|"read records / raw contract state"| readok["OK — read works<br/>(v8 records + contract state<br/>surface as raw bytes; decoded<br/>state reads throw SEC-9)"]
-    prefork -->|"construct / submit"| err1["✗ typed pre-fork error (D9)<br/>'stay on midnight-js vX'"]
-    head -->|"v9 (post-fork)"| op{"Call or deploy?"}
+    start(["Operation requested"]) --> pipe{"Pipeline?<br/>artifact era of what the caller holds"}
+    pipe -->|"async raw Contract"| errA["✗ typed era/artifact mismatch"]
+    pipe -->|"0.18 CompiledContract"| head18{"Head era?"}
+    pipe -->|"0.16 raw Contract"| head16{"Head era?"}
 
-    op -->|deploy| dep{"Artifact version tag?"}
-    dep -->|ledger-9| v9dep["✓ v9-native deploy (default)"]
-    dep -->|ledger-8| err2["✗ typed error —<br/>new deploys require v9 artifacts"]
+    head18 -->|v8| errB["✗ typed — v9 artifacts<br/>cannot verify pre-fork"]
+    head18 -->|v9| v9native["v9-native pipeline<br/>era = loadLedgerEra('v9')"]
 
-    op -->|call| keys{"Verifier key set of fetched<br/>(migrated) ContractState?"}
-    keys -->|"co.v2 only"| ks["→ KEEP-STATE path"]
-    keys -->|"v3/ir present, no co.v2"| v9call["→ v9-native path (default, untouched)"]
-    keys -->|"both populated<br/>(post-fork key rotation)"| both["→ v9-native + dual-key breadcrumb"]
-    keys -->|neither| err3["✗ typed unsupported-key-set error"]
+    head16 -->|v8| kind8{"Call or deploy?"}
+    head16 -->|v9| kind9{"Call or deploy?"}
+    kind8 --> v8native["V8-NATIVE (FR8)<br/>era = loadLedgerEra('v8')<br/>engine = loadLedger8Engine()"]
+    kind9 -->|deploy| errC["✗ typed — ledger-8 deploy on a v9 head<br/>remediation → runtime-deploy chapter"]
+    kind9 -->|call| keys{"Key set of the<br/>single fetched snapshot?"}
 
-    ks --> cfg{"keepState config attached?"}
-    cfg -->|no| err4["✗ typed error with the exact<br/>config snippet to add"]
-    cfg -->|yes| bridge["bridge.executeCall(...)"]
+    keys -->|"co.v2 only"| ks["KEEP-STATE (FR4)"]
+    keys -->|"v3 / ir present"| v9native
+    keys -->|"both populated"| dual["v9-native + dual-key breadcrumb"]
+    keys -->|neither| errD["✗ typed unsupported key set"]
+
+    v8native --> zsw{"calls.length > 1?"}
+    zsw -->|yes| errE["✗ ComposeOptionError option='calls'<br/>cross-contract calls are ledger-9-only"]
+    zsw -->|no| ok8["compose via era.composeCallTx / composeDeployTx<br/>Zswap offers accepted on BOTH eras (OQ19 closed)"]
 ```
 
-The key-set truth table is **total** (the shape is an adversarial input) and routing and proof-version selection read the **same key tag**, so they can never disagree.
+The key-set truth table is **total** — the shape is adversarial input — and verification-path selection and proof-version selection read the **same** key tag, so they cannot disagree.
 
-**Provenance caveat (A4, v3.3 finding 2):** the `co.v2`-only ⇒ keep-state edge is total over *shapes*, not *provenance* — it assumes every v9-era deploy populates `v3`/`ir`. Upstream keeps ZKIR-v2 contract support, so a v9-era ZKIR-v2 deploy carrying `co.v2`-only keys is plausible and would mis-route to keep-state. A4's confirmation is asked with OQ13; indexer deploy-era metadata is the recorded fallback second signal. Until confirmed: the missing-config error names both plausible causes, and the execution-path breadcrumb carries the key-set shape + contract address (QA-7) so a mis-route is reconstructable from logs.
+**Provenance caveat (A4, unconfirmed).** The `co.v2`-only ⇒ keep-state edge is total over *shapes*, not *provenance*: it assumes every v9-era deploy populates `v3`/`ir`. Upstream keeps ZKIR-v2 contracts supported, so a v9-era ZKIR-v2 deploy carrying `co.v2`-only keys is plausible and would mis-route. Until A4 is confirmed, the contradiction errors name **both plausible causes** and the path-selection breadcrumb carries the key-set shape and contract address, so a mis-route is reconstructable from logs.
+
+**The v8 arm's one refusal is a call tree, not coin movement (OQ19 closed, #1194).** A cross-contract call is a ledger-9-only feature a pre-fork contract cannot emit, so `calls.length > 1` raises `ComposeOptionError` with `option: 'calls'` rather than composing the first entry and dropping the rest. Zswap offers are ordinary options on **both** eras. See §7 and spec §4.3/OQ19.
 
 ### 4.2 Keep-state call (sequence view)
 
@@ -324,38 +274,37 @@ The key-set truth table is **total** (the shape is an adversarial input) and rou
 sequenceDiagram
     autonumber
     participant D as dApp
-    participant C as contracts<br/>(dedicated keep-state entry)
+    participant C as contracts<br/>(the SAME submitCallTx)
     participant P as indexer-public-data-provider
-    participant B as KeepStateBridge<br/>(ledger-v8-compat, root entry)
+    participant E as protocol<br/>LedgerEra('v9') + Ledger8Engine
     participant PP as proofProvider →<br/>proof server (dual-ZKIR)
     participant W as walletProvider
     participant M as midnightProvider
 
-    D->>C: submitKeepStateCallTx(providers, { keepState: bridge, circuitId, args, witnesses, ... })
-    C->>B: usesSameLedgerInstance(ContractState)
-    alt instance mismatch (bundler misconfig)
-        B-->>C: false
-        C-->>D: ✗ KeepStateLedgerInstanceMismatchError (per invocation, before any work)
-    end
-    C->>P: queryLatestProtocolVersion → networkHeadVersion → v9
+    D->>C: submitCallTx(providers, { compiledContract, contractAddress, circuitId, args })
+    C->>C: pipelineEraOf(contract) ⇒ ledger-8
+    C->>P: queryLatestProtocolVersion → networkHeadVersion ⇒ v9
     C->>P: queryRawContractState(address)
-    P-->>C: serialized migrated state (Uint8Array, v9 envelope)
-    Note over C: ONE fetch per operation — contracts decodes these bytes<br/>for routing (key set) + SEC-5, then hands the IDENTICAL<br/>bytes to executeCall (no intra-operation TOCTOU)
-    C->>B: executeCall({ serializedContractState, circuitId, args, witnesses, privateState })
-    Note over B: extract POJO → decode + rehash in dApp's 0.16 instance<br/>→ execute circuit on retained ledger-8 stack<br/>→ wrap POJO transcript → v9 ContractCallPrototype
-    B-->>C: { transcript, callPrototype, nextPrivateState }
-    C->>C: compose Intent → Transaction (existing zswap-utils, v9-native binding)
-    C->>C: SEC-5 pre-check: local verifier key ≟ fetched co.v2 slot (throw before proving)
-    C->>PP: proveTx — V2 proof, selected by resolved key tag (never hardcoded)
+    P-->>C: serialized migrated state (v9 envelope) + version
+    Note over C: ONE fetch per operation. Routing key-set, the SEC-5 check<br/>and the execution input all derive from this single snapshot —<br/>a second fetch would open an intra-operation TOCTOU.
+    C->>C: tag-parse the raw state; compare to the resolved head era BEFORE any decode
+    C->>E: era.extractState(raw)
+    C->>C: SEC-5 pre-check — local verifier key ≟ fetched co.v2 slot (throws before proving)
+    C->>E: engine.downConvertForExecution → engine.executeCircuit
+    E-->>C: TranscriptPojo (plain data)
+    C->>E: engine.wrapKeepStateCall ⇒ v9 ContractCallPrototype
+    C->>E: era.composeCallTx({ calls, networkId, ttl, offers? })
+    E-->>C: serialized UNPROVEN transaction bytes
+    C->>PP: proveTx — V2, selected by the resolved key tag, never hardcoded
     PP-->>C: proven tx
     C->>W: balanceTx
     W-->>C: finalized tx
     C->>M: submitTx
     M-->>D: TransactionId
-    Note over M: ledger-9 apply: dispatch to preserved co.v2,<br/>replay transcript, require effects equality (backstop)
+    Note over M: ledger apply: dispatch to the preserved co.v2,<br/>replay the transcript, require effects equality (backstop)
 ```
 
-The overall transaction flow shape (`UnprovenTransaction → proveTx → balanceTx → submitTx`) is unchanged and statically v9.
+The **v8-native path (FR8)** is the same sequence with `loadLedgerEra('v8')` in place of `('v9')` and no wrap step — same method names, same option shapes, same serialized result. That symmetry is the point of the facade.
 
 ### 4.3 Historical v8 record read (sequence view)
 
@@ -364,21 +313,22 @@ sequenceDiagram
     autonumber
     participant D as dApp
     participant P as indexer-public-data-provider
-    participant K as ledger-v8-compat/codec<br/>(dApp-side import = opt-in)
+    participant PR as protocol
 
     D->>P: query historical records
     P->>P: per-record dispatch on protocolVersion
     alt record tagged v9
-        P-->>D: FinalizedTxData with decoded tx (static path, unchanged)
+        P-->>D: { version: 'v9', ... } — static decode, unchanged
     else record tagged v8
-        P-->>D: FinalizedTxData built via createRawFinalizedTxData()<br/>(rawTx populated — the sole additive field)
-        Note over D: direct .tx read throws typed (non-enumerable accessor —<br/>stringify/spread/clone never trip it);<br/>narrow with isDecodedTxData() instead of try/catch
-        D->>K: decodeTransaction(rawTx)
-        K-->>D: decoded v8 object (distinct type, lives dApp-side only)
+        P->>PR: await loadLedger8() (memoised, first v8 record only)
+        PR-->>P: ProtocolV8
+        P->>P: decode provider-side
+        P-->>D: { version: 'v8', ... }
     end
+    Note over D: narrow with a compile-time switch + assertNever.<br/>No cast, no runtime guard, no dApp-side decode step.
 ```
 
-The provider carries **zero v8 knowledge** — no injection seam, no v8 decode in core. Decoded v8 objects never inhabit v9-typed core interfaces. `rawTx` presence is the runtime discriminant (`isDecodedTxData()` from `utils`, re-exported by the barrel); a spread/cloned v8 record does **not** throw — its `tx` is `undefined`, `rawTx` survives — so re-guard after cloning (QA-6).
+Decoding moved **into** the provider (v3.9 had the dApp decode `rawTx` itself with a compat codec). A decode-only session never instantiates the 0.16 runtimes — only `ledger-v8`.
 
 ### 4.4 Transition timeline (state view)
 
@@ -387,56 +337,62 @@ stateDiagram-v2
     direction LR
     PreFork: Network head = v8
     PostFork: Network head = v9
-    Retired: Compat retired (framework v10)
+    Retired: v8 era retired (framework v10)
 
-    PreFork --> PostFork: hard fork —<br/>protocol migrates all ContractState<br/>to v9 envelope (co.v2 preserved)
-    PostFork --> Retired: midnight-js policy decision (OQ10) —<br/>npm deprecate compat package,<br/>shrink LedgerVersion
+    PreFork --> PostFork: hard fork —<br/>protocol migrates all ContractState<br/>to the v9 envelope (co.v2 preserved)
+    PostFork --> Retired: midnight-js policy act (OQ10) —<br/>drop ./v8 + ./engine + the 0.16 deps,<br/>shrink LedgerVersion
 
     note right of PreFork
-        Framework: read-capable only.
-        Raw records + raw contract state
-        work (decode via compat codec).
-        decoded state reads throw SEC-9.
-        construct/submit throws typed
-        pre-fork error (D9).
+        FULL operation (FR8): v8-native
+        calls AND deploys, read + construct
+        + submit. Ledger-8 deploys allowed.
+        v9 artifacts on a v8 head throw.
+        Coin-moving circuits: OQ19 gap.
     end note
     note right of PostFork
         v9-native: default, untouched.
-        Keep-state: pre-fork contracts
-        keep transacting (opt-in).
-        v8 history: raw + dApp-side decode.
+        Keep-state: pre-fork contracts keep
+        transacting through the SAME entries.
+        Ledger-8 deploys throw.
+        v8 history: decoded provider-side.
     end note
 ```
 
-A **stale-head race** exists at the fork boundary: the head can flip between version resolution and submit (proving takes minutes). **Detection predicate (QA-3, deterministic — independent of the node/indexer error taxonomy):** on submit rejection, re-query `queryLatestProtocolVersion`; the stale-head typed error is raised **iff** the head version differs from the one resolved at operation start — otherwise the original rejection propagates wrapped with `{ cause }`. The error advises re-resolution and rebuild — never a silent auto-retry.
+**The fork moment is the primary scenario, not a rare race.** Proving takes minutes, so every in-flight operation at the fork hits a stale head. Detection (QA-3): on submit rejection, re-query the head — bypassing the latch unconditionally — and raise the stale-head error **iff** `protocolVersionToLedger(head)` differs from the operation-start **era**. Never the raw int: a same-era node minor bump mid-operation must not masquerade as a fork.
+
+The remediation is **two-step and lives in the error text**, not only in the guide: (1) verify the original transaction did not and will not finalize — concretely, check its tx id against the history/watch query; (2) only then re-run. Bare "re-run" advice is a double-execution footgun. The contract-call leg of a duplicated run is caught by transcript replay against mutated state, but the zswap and fee legs are balanced with freshly selected coins and **can both finalize**. For a rejected ledger-8 *deploy*, "re-run" would hit the deploy-on-v9 fail-fast, so that branch points at the runtime-deploy chapter instead.
 
 ---
 
 ## 5. Data & Type Boundaries
 
-There is **no unified v8/v9 type surface**. The type discipline is enforced by placement, not discriminants:
-
 ```mermaid
 flowchart LR
-    subgraph core["Core packages — 100% v9-typed"]
-        v9types["v9 types (via protocol)<br/>+ raw bytes + version int<br/>for v8 records"]
+    subgraph consumer["dApp / consumer surfaces"]
+        u["LedgerVersion-discriminated unions<br/>narrowed by switch + assertNever"]
     end
-    subgraph bridge["Bridge interface (contracts ↔ compat)"]
-        pojo["POJOs + v9 types ONLY<br/>(executeCall granularity)"]
+    subgraph fw["Framework internals"]
+        c["contracts — options, dispatch,<br/>offer construction, orchestration"]
     end
-    subgraph dappside["dApp side only"]
-        v8types["decoded v8 objects (codec output)<br/>0.16 runtime types (structural)"]
+    subgraph seam["protocol era seam"]
+        p["ONLY Uint8Array + POJO<br/>never a live WASM handle"]
+    end
+    subgraph w["WASM"]
+        h["ledger-v8 · ledger-v9 · ocrt3 · ocrt4"]
     end
 
-    core --- bridge --- dappside
+    consumer --- fw --- seam --- w
 ```
 
 | Layer | Rule |
 |---|---|
-| Core interfaces | Carry v8 data **only** as the additive `rawTx: Uint8Array` (v8 records only; `protocolVersion` pre-exists on every record). No unions, no brands, no casts. The declared `tx` stays required — a documented lying type on v8 records (weak compile-time signal by design); mitigations: non-enumerable throwing accessor, `isDecodedTxData()` guard narrowing on `rawTx` absence, mandatory `createRawFinalizedTxData()` factory (`utils`). |
-| `KeepStateBridge` | Declared in `types`, generic over `TArgs`/`TWitnesses`/`TPrivateState` (opaque — OQ13 closes without churning `types`); POJOs + v9 types in signatures; no retained-stack (0.16) type crosses into core. |
-| Shared keep-state POJO layer | `EncodedStateValue`, transcript/`Op`/`AlignedValue` — **byte-identical across versions** (spike-established, contractual). Fixtures are the authoritative check. |
-| Package boundary | Raw serialized state crosses as **bytes**, never as a WASM-backed object. |
+| Consumer surfaces | **Closed `LedgerVersion`-discriminated unions** at every surface that can genuinely diverge — provider read surfaces and the 0.16 overload's return. Discriminant `version: LedgerVersion`; narrowing is a compile-time `switch` with `assertNever`, so at the v10 shrinking every seam fails to compile exactly where it must change. **Brands are rejected**: runtime-erased, need a parallel tag, applied via the casts NFR2 bans, and die at serialization boundaries. |
+| The 0.18 overload's return | Stays today's **plain v9 shape**. By the dispatch rules that path provably cannot produce a v8 result, so a union there would be a narrowing tax on code that cannot diverge. Guarded instead by a runtime era-invariant assert with a registered code — and recorded as the one surface that is runtime-guarded rather than compiler-guarded, so it will **not** fail to compile at the v10 widening and must be revisited by hand. |
+| Version-truth invariant | On every union arm, `version === protocolVersionToLedger(protocolVersion)`, derived at exactly one construction point per provider. Testkit mock constructors assert it. |
+| The `protocol` era seam | Only `Uint8Array`s and POJOs, both directions, mechanised by `structuredClone` in the tests. This is what lets a caller hold a result without holding the module that produced it. |
+| Tx-flow payloads — **v8 arm** | Serialized, tag-prefixed bytes (`{ version: 'v8', txBytes }`), request and response. Every one of these seams serializes immediately anyway, and a pre-fork wallet holds its own `ledger-v8` instance — a live-object handoff is #1052's dual-instantiation shape, while bytes are immune by construction. |
+| Tx-flow payloads — **v9 arm** | **OPEN (spec OQ21).** v5.2 said "today's live-object shape", which assumed `contracts` holds a live `Transaction`. It no longer does: composition returns bytes on both eras. Deserializing back (compatible, but a round trip on the hot path and it re-creates the exposure the v8 arm's byte rule exists to avoid) versus making both arms bytes (honest and #1052-immune, but consumer-breaking beyond the documented D14 set) is a decision MJS-02 must take **before** Task 3.5. |
+| Shared POJO layer | `EncodedStateValue`, transcript/`Op`/`AlignedValue` are byte-identical across eras (spike-established, contractual). **Fixtures are the authoritative check**; `AssertEqual`-style assertions detect API drift, not serialization drift. |
 
 ---
 
@@ -446,59 +402,83 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-    subgraph trusted["dApp process (trusted)"]
-        mjs[Midnight.js + compat + dApp code]
+    subgraph trusted["dApp process (one trust domain)"]
+        mjs["Midnight.js + dApp code + retained artifacts"]
     end
-    subgraph untrusted["Outside trust boundary"]
-        idx["Indexer<br/>(version ints, records, state bytes + key shapes)"]
-        ps["Proof server<br/>(receives full private witness)"]
-        zk["zk-config artifact source<br/>(prover/verifier/zkir triples)"]
+    subgraph untrusted["Outside the trust boundary"]
+        idx["Indexer — version ints, records,<br/>state bytes AND key-set shapes"]
+        ps["Proof server — full private witness"]
+        zk["zk-config source — prover/verifier/zkir triples"]
+        wal["Wallet / dapp-connector — returns the balanced tx"]
     end
-    ledger["Ledger-9 apply<br/>(effects-equality backstop)"]
+    ledger["Ledger apply<br/>(effects-equality backstop)"]
 
     idx -->|adversarial input| mjs
-    mjs -->|witness| ps
     zk -->|artifacts| mjs
+    wal -->|adversarial response| mjs
+    mjs -->|witness| ps
     mjs -->|tx| ledger
 ```
 
-| Boundary | Data crossing | Failure mode → bound |
+| Boundary | Data crossing | Bound |
 |---|---|---|
-| Indexer | `protocolVersion` ints; records; `ContractState` key-set shape + bytes | Mis-route / garbage execution input → **bounded to DoS/griefing** by the effects-equality backstop |
-| Proof server | Private witness + key triples | Witness exfiltration if compromised; single dual-capable instance is the sole witness recipient |
-| zk-config source | Artifact triples | Tampered/stale artifacts → griefing; bounded by the SEC-5 `co.v2` byte-match pre-check |
-| dApp-supplied runtime handles | Module references | Same trust domain; wrong module = typed failure (per-invocation identity check) |
+| Indexer | `protocolVersion` ints; records; fetched `ContractState` — key-set shape **and** bytes | Integrity: DoS/griefing, bounded by the backstop. **Confidentiality: NOT bounded** — state bytes are circuit input alongside the private witness, and witness-derived public outputs reach the proof server, the wallet and the doomed broadcast *before* any rejection. A lying indexer has a chosen-state oracle. Status-quo-inherited, not new to this design, and folded into the OQ8 sign-off. |
+| Proof server | Full private witness + retained key triples | Witness exfiltration if compromised; one fork-prepared server is the single witness recipient |
+| zk-config source | Artifact triples | Tampered/stale artifacts → griefing; bounded by the SEC-5 verifier-key consistency checks |
+| Wallet / connector | Version-tagged payloads out; **balanced tx back, which is adversarial input to submit** | v8 arm: tag-prefixed bytes + the tag parse. v9 arm: today's posture, no parse at the balance seam — unchanged from the current framework |
+| dApp-supplied contract object / runtimes | Module references | Same trust domain; mismatched module contexts are a deterministic typed failure |
+
+**The backstop is load-bearing and is asserted by a negative test that lives at a tier which does not yet exist (OQ14).** That is recorded, not implied: shipping without it is an explicit decision. The **harness-gated security-negative list** is (1) perturbed-state-bytes rejection at apply, (2) the A5 cross-era rewrap — worse than tampering if A5 fails, because a captured *rejected* v8 tx would finalize, (3) the double-submit backstop. Each is either a hard release gate or an explicitly owner-signed accepted residual risk with a resolve-by, decided item by item at the OQ9 close.
 
 ### 6.2 Defence layers
 
-1. **Sole narrowing point:** `protocolVersionToLedger` is the only place the untrusted int becomes a `LedgerVersion`; unknown ints fail fast.
-2. **Total routing truth table:** all four key-set shapes have a deterministic outcome; routing and proof-version selection read the same tag.
-3. **SEC-5 pre-proving check:** locally-resolved verifier key must byte-match the fetched state's `co.v2` slot — throws **before** proving starts.
-4. **Per-invocation instance identity:** one `===` constructor-reference check (probe = the pinned `ContractState` constructor from `protocol/ledger`, typed parameter) catches bundler-induced dual v9 instances at entry invocation instead of as a proof failure minutes later.
-5. **Ledger backstop:** transcript replay + effects equality at apply bounds all upstream tampering to DoS.
-6. **Observability breadcrumbs (§6.3 of spec):** a plausible-but-wrong version passes narrowing silently, so every version-dispatch decision emits a debug-level `loggerProvider` breadcrumb (selected version, path, source, raw int). Residual risk (indexer head-version downgrade cross-check) is tracked as **OQ8** with a named risk owner.
-7. **Privacy constraint on errors/logs:** version ints, sets, and key *identifiers* allowed; key bytes, decoded state contents, and raw payloads never.
+1. **Sole narrowing point** — `protocolVersionToLedger`; unknown *major* fails fast. It guards only unknown ints, so a plausible-but-wrong version passes silently: that residual is **OQ8**, and until it lands the breadcrumbs are the detection.
+2. **Head↔state era cross-check on every call path, including v9-native** — the raw state's tag prefix is compared to the resolved head era **before any decode**, so the v9 decoder is never fed v8 bytes on the strength of a head int alone. Independent of decoder fail-open behaviour, which matters: six types in the v8 surface cross-accept silently (§9).
+3. **Latch-bypassing re-read on mismatch** — post-latch, a lagging indexer replica serving a v8-envelope state would otherwise loop forever on "fork in progress". A mismatch first triggers a fresh head read; only if the fresh head still disagrees is an error raised, and if the fresh head is v9 it is a **distinct indexer-inconsistency error**, never the fork-in-progress text.
+4. **Total key-set truth table** — all four shapes have a deterministic outcome; verification path and proof version read the same tag.
+5. **SEC-5 pre-proving check** — the locally-resolved verifier key must byte-match the fetched state's slot; throws **before** proving.
+6. **Instance identity** — one assertion at engine construction on the `onchain-runtime-v3` axis. Narrower than earlier drafts: the v9-ledger axis is not probed, because no second acquisition path exists there to compare against. Hold that consciously — #1052's v9 leg now rests on the single-`protocol`-instance argument alone.
+7. **Tag parse as defence-in-depth** — bounded prefix scan, typed error on an absent or unknown tag. The tag is **unauthenticated**: anyone can prepend a well-formed tag to arbitrary content, so this defends against *accidental* arm confusion only. The node remains the authority on the body.
+8. **Ledger backstop** — transcript replay + effects equality at apply.
+9. **Breadcrumbs** — every dispatch decision emits a debug-level `loggerProvider` breadcrumb; the head-resolution one carries latch provenance, without which a poisoned-latch incident is indistinguishable from a live read in logs.
+10. **Privacy constraint, transitively through the `{cause}` chain** — version ints, sets and key *identifiers* are allowed; key bytes, decoded state, key material and raw payloads are not. Upstream WASM errors embed offsets and payload fragments, and off-device loggers serialize whole chains, so every typed error wrapping an external cause must sanitize it before it can cross the `loggerProvider` seam. The biggest offenders are the QA-3 wrap of a node submit rejection (which can embed the whole serialized tx) and proof-server failures wrapping HTTP errors.
 
 ---
 
 ## 7. Error Handling Strategy
 
-Fail-fast, typed, remediation-bearing — never a silent default. Every new error class carries a stable `code` discriminant (the repo dual-publishes under two npm scopes; `instanceof` across mixed scopes fails silently).
+Fail-fast, typed, remediation-bearing — what happened, why, and the one next step, with concrete versions. Every class carries a stable `code` discriminant, because the repo publishes under two npm scopes and `instanceof` across mixed scopes fails silently.
 
-| Condition | Error behaviour |
+**Registry placement, corrected.** v5.2 put one registry in `utils`. `protocol` sits *below* `utils` in the layering, so it owns its codes locally (`PROTOCOL_ERROR_CODES` in `packages/protocol/src/errors.ts`). The rule is therefore **one registry per package, one meta-test per registry**, with `utils` owning only the cross-package guards.
+
+`protocol`'s 12 codes, all prefixed `MIDNIGHT_JS_P_`:
+
+| Class | Raised when |
 |---|---|
-| Unknown `protocolVersion` **major** (unseen minors within a known major map without error — BC-1) | Typed error naming the observed int + supported set (distinct names for read vs construct paths) |
-| Construct/submit with v8 head | Typed pre-fork-unsupported error ("stay on midnight-js vX for pre-fork operation") |
-| Head flips between resolve and submit | Stale-head typed error raised **iff** a post-rejection head re-query differs from the operation-start version (QA-3); otherwise the original rejection propagates with `{ cause }`; advise re-resolve + rebuild; no auto-retry |
-| Direct `.tx` read on a v8-tagged record | Typed error: "decode `rawTx` with `@midnight-ntwrk/midnight-js-ledger-v8-compat/codec`" — non-enumerable accessor (stringify/spread/clone never trip it); prefer the `isDecodedTxData()` guard |
-| v9 instance mismatch at `keepState` attach | `KeepStateLedgerInstanceMismatchError` → dual-instantiation guide |
-| Down-convert failure (malformed bytes, lost `StateValue` type) | Throw — never a silently wrong or empty state |
-| Key set matches no supported proof version | Typed error (proof version always derived from key tag, never hardcoded) |
-| Local verifier key ≠ on-chain `co.v2` (SEC-5) | Typed error naming both sources, **before proving** |
-| Pre-migration (v6-envelope) state fetched (SEC-9) | Deterministic typed error on **decoded** reads only — the raw query + compat codec stay available pre-fork; never left to the v9 decoder happening to fail |
-| Keep-state route without `keepState` option | Typed error containing the exact config snippet **and both plausible causes** (migrated pre-fork contract, or a v9-era ZKIR-v2 deploy while A4 is unconfirmed) |
-| Post-fork deploy with ledger-8 artifacts | Typed rejection — new deploys require v9-compiled contracts |
-| Wrong-version decode | Decoder error re-thrown with `{ cause }` + version context; fail-open decoders get a codec-side discriminant/round-trip check |
+| `UnknownProtocolVersionError` | unknown node major — read and construct paths carry distinct codes |
+| `UnknownLedgerVersionError` | `loadLedgerEra` with a non-era string (untyped JS callers only) |
+| `Ledger8RuntimeMissingError` | the `./v8` or `./engine` chunk fails to load — never a raw module-resolution error |
+| `Ledger8RuntimeInvalidError` | the retained glue resolves but is malformed |
+| `Ledger8InstanceMismatchError` | duplicate `onchain-runtime-v3` at engine construction → dual-instantiation guide |
+| `DownConvertFailedError` | down-convert for execution fails — never a silently wrong or empty state |
+| `MerkleNotRehashedError` | a bounded Merkle tree is read before rehashing |
+| `StateDecodeFailedError` | either facade read method fails; carries `version`, decoder diagnosis on `cause` |
+| `ComposeFailedError` | composition fails; carries `version` |
+| `ComposeOptionError` | option shape rejected; carries `version` |
+| `UnknownLedger8AxisError` | the instance guard was asked for an axis outside the known set |
+| `UnknownLedgerVersionError` | `loadLedgerEra` called with a value outside `LEDGER_VERSIONS` |
+
+Two of these deserve comment because they changed the design rather than merely implementing it.
+
+**The compose errors were renamed from `Ledger8*`, and the rename was forced.** `assertComposeEnvelope` is shared by both eras' legs, so a `Ledger8`-prefixed name would have been thrown out of a purely v9 operation. The general rule that fell out: era-neutral names wherever the era is a *parameter*, `Ledger8*` only where the era is the *subject*.
+
+**There is no Zswap capability gap — the v5.3 statement here was wrong and is retracted (OQ19 closed, #1194).** `TranscriptPojo` **does** carry the post-call Zswap local state (`zswapLocalState`, decoded through the injected 0.16 glue), and **both** era arms read `guaranteedZswapOffer` / `fallibleZswapOffer` and carry the offer into the transaction. `Ledger8ZswapUnsupportedError` and its code have been deleted. Undecodable offer bytes raise `ComposeOptionError` with `option: 'zswapOffer'` identically on both eras. FR8's "full operation on the v8 chain" and AC0's "operates on a v8 head" are therefore **no longer overstated**; the remaining work is wiring `zswapStateToSegmentedOffer` in `contracts`, which is MJS-02 scope, not a capability limit.
+
+**What the retained arm does refuse, and the two limits worth carrying into MJS-02.** (1) **A call tree** — `calls.length > 1` ⇒ `ComposeOptionError` with `option: 'calls'`, because a cross-contract call is ledger-9-only. (2) **A missing `verifierKeys` map on a deploy** — required on v8 always, and on v9 for any state still declaring a blank-keyed entry point. Separately, an **unpartitioned cross-contract callee** is not composable on either arm (`PreTranscript`'s `comm_comm` is unwired) — spec **OQ22**.
+
+**An unpartitioned call must carry its recorded query context.** `CallTranscriptSource`'s `'unpartitioned'` variant takes a required `partitionContext: { block, effects, comIndices }` — `block`/`effects` from the **pre-call** context, `comIndices` from the **post-call** one. Drop it and a coin-receiving circuit cannot be partitioned (`stage: 'call-partition'`); hand the era an invalid one and you get `stage: 'call-partition-context'`. The commitment index is deliberately not re-derived, because `insertCommitment` accepts nonsense indices silently.
+
+The dispatch-level errors owned by `contracts` are unchanged in intent from earlier revisions: era/artifact mismatch both directions, ledger-8 deploy on a v9 head (→ runtime-deploy chapter), head↔state era disagreement (→ QA-3 two-step remediation), indexer inconsistency (→ retry later), pipeline↔key-set contradiction naming **both** plausible causes of the `co.v2`-only case, unsupported key set, proof-version invariant, era-invariant assert on the 0.18 return, and the stale-head family.
 
 ---
 
@@ -506,18 +486,23 @@ Fail-fast, typed, remediation-bearing — never a silent default. Every new erro
 
 | # | Decision | Rationale (condensed) |
 |---|----------|----------------------|
-| D1 | Explicit version handling; no mutable global | v8/v9 coexist in one session; a shared global is racy |
-| D2 | `protocol` stays the single v9 seam — **including for the compat package** (peerDependency) | One v9 WASM instance by construction; layering preserved |
-| D3 | Existing `protocol` exports unchanged | Backward compatibility is trivial — nothing moves |
+| D1 | Explicit version handling; no mutable global | Both eras coexist in one session; a shared global is racy |
+| D2 | `protocol` is the single seam for **both** eras | One package owns the WASM boundary; consumers never name a ledger package |
+| D3 | Existing `protocol` exports unchanged; v8-era additions are additive until v10 | Nothing moves, nothing re-points |
 | D4 | Version source = indexer `protocolVersion` | Already present; subject to the OQ8 cross-check stance |
-| D5 | v8 types never unified with v9; core carries v8 data as raw bytes + int | Compile-time separation replaces runtime discriminants |
-| D6 | Pre-fork contract support = **keep-state** | Spike-proven and contractual upstream; strictly simpler than recompile-and-upgrade |
-| D7 | Keep-state lives in the compat package behind `KeepStateBridge` (declared in `types` — provider-shaped seams live with the provider interfaces); tx composition stays in `contracts` | Core stays 100% v9-typed; WASM identity preserved; no duplicated zswap logic |
-| D8 | Support window: **current + previous** (policy, pending OQ10) | Bounds dependency/test growth; upstream imposes no ceiling — it is a midnight-js maintenance choice |
-| D9 | **Pre-fork operation out of scope**; construct/submit is v9-only | No v8 construct pipeline exists; building one serves a shrinking window (KISS/YAGNI) |
-| D10 | **No generic version-dispatch layer** | N never exceeds 2; a generic facade encodes an axis of variation an unknown v10 won't honour |
-| D11 | Transitional package `…-ledger-v8-compat`, one per fork window, named for the version it retires with | Isolation is structural (don't install it); deletion is a package deprecation, not a breaking `exports` change |
-| D12 | Fork date is not a design/priority driver | Delivery sequenced by dependency order; the date changes no line of the design |
+| D6 | Post-fork support for pre-fork contracts = **keep-state** | Spike-proven, contractual upstream; strictly simpler than recompile-and-upgrade |
+| D7 | **Unified, version-agnostic entries** — additive 0.16 overload, fully internal dispatch | Owner requirement: the developer never chooses a version-specific function. Migration = bump only; zero change at the fork |
+| D8 | Support window: current + previous | Bounds dependency and test growth; upstream imposes no ceiling, so retirement is a midnight-js policy act |
+| D9 | **Pre-fork operation IS in scope** — construct/submit dispatches on the head era | *Reverses v3.9's D9.* v9-only construct made the new major non-adoptable: dApps upgrade before the fork and must keep transacting |
+| D10 | No generic version-dispatch layer | N never exceeds 2; a generic facade encodes an axis of variation an unknown v10 will not honour. `loadLedgerEra` is not a counter-example — it is one closed two-case switch placed once, not a parameterised N-version layer |
+| D11 | **No transitional package** — the engine and the facade live in `protocol`. Sub-decision **closed by implementation** (#1165 → #1194 → #1198) | *Reverses v3.9's D11.* With unified entries the engine has no user API, so a package bought nothing; migration DX collapses to "bump only". Accepted cost: engine hotfixes ride `protocol` releases |
+| D12 | Fork date is not a design driver | Delivery sequenced by dependency order |
+| D13 | Dual-ledger `protocol`: `ledger-v8` a regular dependency exposed only at `./v8`; runtime access only via memoised `loadLedger8()` — a **relative** dynamic import (ADR 0004) | Lazy WASM; install-time cost moves to core consciously — the price of "bump and it works" |
+| D14 | Closed `LedgerVersion`-discriminated unions where surfaces genuinely diverge; v8 tx-flow arm = tag-prefixed bytes; brands rejected | Honest types over lying types; bytes close #1052 against the wallet's own `ledger-v8` |
+| D15 | Instance sharing, guarded — **narrowed**: one assertion at engine construction, `onchain-runtime-v3` axis only | The v9-ledger axis has no second acquisition path, so a probe there would always pass and prove nothing |
+| D16 | Monotonic era latch, **provider-owned and corroborated**; the QA-3 re-query bypasses it unconditionally | The fork is monotonic, so post-fork the query can decide nothing. Corroboration stops a single lying pre-fork response from becoming a permanent, self-hiding mis-dispatch |
+| D17 | **Era-symmetric operations behind one facade; fork-crossing operations on the engine.** Placement rule: join the facade iff both eras do it with the same inputs and the same result shape | Era dispatch happens once, in the only package holding both runtimes, instead of once per consumer above it |
+| D18 | **Only plain data crosses the era seam** — bytes and POJOs, never a live handle | Class identity does not survive a bundle boundary. Makes results comparable across eras and safe across a worker boundary. Open consequence: it also makes the v9 arm bytes (§5) |
 
 ---
 
@@ -525,54 +510,65 @@ Fail-fast, typed, remediation-bearing — never a silent default. Every new erro
 
 | Attribute | How the architecture delivers it | How it is verified |
 |---|---|---|
-| **v9-native non-regression (FR7)** | Keep-state is a *dedicated* entry; v9 signatures untouched | Existing v9 suites run **unmodified** (diff gate); golden-fixture byte equality on deterministic stages captured on `main` before the first PR |
-| **Structural isolation (FR5/NFR6)** | v8 confined to the compat package; v9 via peerDependency only | CI dependency-graph gates (both directions); export-surface strict-equality test |
-| **Type safety (NFR2)** | Raw-bytes surfacing; POJO-only bridge; structural 0.16 interfaces | ESLint `no-explicit-any` + `as unknown` grep gate; compile-level test that 0.16 contract types fit the dedicated entry (and are *not* required to fit the v9 entry) |
-| **Fail-fast (NFR1)** | Total truth tables; sole narrowing point; per-invocation entry checks | Every §7 error path negative-tested |
-| **Dual-instance safety (#1052)** | Peer resolution + reference-equality probe | npm-alias tests on **both axes** (0.16 `onchain-runtime-v3-alt`; v9 `ledger-v9-alt`) |
-| **Keep-state correctness** | Byte-identical POJO layer; rehash step; SEC-5 pre-check; ledger backstop | Round-trip fixtures (migrated, v6-envelope, tampered, both-keys, Merkle-bearing — minimal size); rehash-omission negative; effects-equality negative at the harness tier |
-| **Cross-fork behaviour** | Per-operation version resolution | Fork-boundary scenario: one session reads v8 history + keep-state call + v9-native flow side by side; stale-head negative |
-| **Observability** | Breadcrumbs at all four dispatch decision points | Injected-logger unit tests, strict equality on structured fields |
+| **Fork-crossing (FR0/AC0)** | One entry set; era resolved per operation; keep-state and v8-native behind the same call sites | One session, unchanged code: pre-fork v8-native → fork → stale-head → re-run → keep-state → v9-native → reads its own v8 history. Authoritative only at the OQ14 tier; mocked head flips until then |
+| **v9-native non-regression (FR7)** | The 0.18 overload's return stays plain v9; dispatch forks before shared code | Behavioural test files not touching D14 surfaces run **byte-unmodified** (sha256 manifest diff gate); golden-fixture byte equality on the enumerated deterministic stages, captured on `main` before the first change; structural equality where nonces make bytes non-deterministic |
+| **Structural isolation (FR5/NFR6)** | Two dynamic imports, two lazy chunks; zero static v8 links | `dist-laziness.test.ts` on the **built** package; `v8-surface.test.ts` (no runtime v8 import elsewhere under `src/`); `protocol-acl.test.ts` + `export-surface.test.ts` on the public surface. Both dist gates verified **by sabotage** — a deliberate static re-export plus uncoded throws made them red, restoring made them green |
+| **Era symmetry** | One facade, two arms, same signatures | `era-parity.test.ts`: `it.each(['v8','v9'])` over one scenario. `extractState` **deep-equal** across the migrated / pre-migration golden pair; the rest **shape** parity, because the two eras emit different serialization tags. Read that limit literally — it is not byte-equality of composed transactions |
+| **Laziness** | Acquisition only at an async boundary, memoised per era | `era-load-era-v8-laziness.test.ts`: `loadLedgerEra('v9')` never calls `loadLedger8`; `('v8')` calls it exactly once. `v8-load-engine-laziness.test.ts`: the engine never acquires `ledger-v8` |
+| **Error discriminability** | Stable codes plus classes | `dist-engine-errors.test.ts` / `dist-error-identity.test.ts` — discriminable by class **and** by code across the chunk boundary |
+| **Type safety (NFR2)** | Unions + `assertNever`; no casts | ESLint `no-explicit-any` + a grep gate on `as unknown`; a checked-in `.d.ts` API-report diff for `types` and the barrel, where any undocumented entry fails CI; compile-error snapshot tests for the overload diagnostics |
+| **Fail-fast (NFR1)** | Total truth tables; sole narrowing point; pre-proving checks | One negative test per §7 path, plus a per-registry meta-test asserting the code set equals the negative-tested set — a new error class cannot ship untested |
+| **Dual-instance safety (#1052)** | Shared `onchain-runtime-v3`, asserted | npm-alias dual-instance negative on the ocrt3 axis; same-instance positive. The `ledger-v9-alt` axis is dropped (D15) |
+| **Keep-state correctness** | Byte-identical POJO layer; rehash; SEC-5; ledger backstop | Round-trip fixtures (migrated, v6-envelope, tampered both ways, both-keys, Merkle-bearing, foreign `co.v2`-only); rehash-omission negative; effects-equality negative at the harness tier |
 
-Test-tier note: a fork-capable e2e environment (node/indexer/proof-server migrating at a height) does not exist yet (OQ14) — until it does, proof/apply-level acceptance criteria are authoritatively gated at the unit/integration tier (recorded explicitly, not implied).
+**Two verification facts worth carrying into MJS-02/03 rather than rediscovering:**
+
+- **Six types in the v8 surface fail *open* across eras**, in both directions: `ZswapChainState`, `ZswapOutput`, `ZswapOffer`, `EncryptionSecretKey` (both its tagged and untagged forms), `PreBinding`, and the untagged `StateValue` POJO bridge. This is systemic across the Zswap value-transfer subsystem and the crypto-primitive wrappers, not an isolated quirk — **the tag-parse defence cannot discriminate era for any of them at the current pins.** By contrast `ContractState`, `Transaction`, `Intent`, `ContractOperation`, `LedgerParameters` and `SignatureEnabled` throw cleanly on cross-version bytes. Catching a cross-era mismatch on the six needs a semantic assertion, not `.toThrow()`.
+- **A structural gate that stops matching must fail, not pass.** `v8-surface.test.ts`'s specifier regex was depth-limited and matched *nothing* once a module moved a directory deeper — and the assertion failed rather than passing vacuously. Write new gates the same way, and prove every new coverage glob live by raising its floor until it names the failure.
+
+**Test-tier honesty.** A fork-capable e2e environment does not exist (OQ14), and neither does a static v8-era environment for the pre-fork FR8 tier. Until they do, proof- and apply-level acceptance criteria — **including AC0** — gate at the unit/integration tier. That is recorded, not implied, and the release gate stands regardless: production-ready-for-the-window is declared only after AC0 passes in the OQ14 environment or in an upstream fork rehearsal.
 
 ### Delivery sequence (dependency order, D12)
 
 ```mermaid
 flowchart LR
-    s1["1. protocol<br/>version utils"] --> s2["2. types + utils<br/>bridge interface + entry options,<br/>rawTx, 2 provider queries;<br/>runtime helpers"]
-    s2 --> s3["3. ledger-v8-compat<br/>(keep-state, then codec —<br/>implements the types interface<br/>via its peer)"]
-    s3 --> s4["4. contracts<br/>routing, dedicated entry"]
-    s4 --> s5["5. indexer provider<br/>raw surfacing + both queries;<br/>barrel re-exports"]
-    s5 --> s6["6. Hardening<br/>OQ8 cross-check, OQ15 assert,<br/>fork-capable e2e (OQ14)"]
+    s1["1. protocol — DONE<br/>#1155→#1156→#1164→#1168<br/>→#1165→#1194→#1198"] --> s2["2. types + utils<br/>D14 unions, 2 provider members,<br/>assertNever + guards,<br/>API-report gate"]
+    s2 --> s3["3. contracts (MJS-02)<br/>compile-assertion harness,<br/>0.16 overloads, dispatch,<br/>orchestration, scoped rules"]
+    s3 --> s4["4. providers (MJS-03)<br/>dual decode, both queries,<br/>latch, version-tagged flows"]
+    s4 --> s5["5. Integration milestone<br/>port the spike to the<br/>productized topology"]
+    s5 --> s6["6. Hardening<br/>OQ8 cross-check, tag asserts,<br/>AC0 e2e when OQ14 lands"]
 ```
 
-`types`+`utils` MUST precede the compat package (v3.4 finding 3) — compat implements the `types`-declared interface through its peerDependency.
+Step 1 closed at 33 test files / 446 tests / 0 skipped, 100/100/100/100 coverage, with the three `dist-*` gates confirmed running rather than skipping.
 
 ---
 
 ## 10. Lifecycle & Removal Plan
 
-The compat package is **born with its retirement plan**:
+The v8 era is born with its retirement plan, and it retires from **one place**.
 
-- **Versioning:** core packages take additive/minor changes only; the compat package versions independently and fast during the window (peer range on `protocol` tracks the framework major).
-- **At framework v10:** `npm deprecate` the compat package and shrink `LedgerVersion` — the single compile-time signal downstream code keys on. Pre-announced in the package README from day one.
-- **Caveat:** upstream keeps V2 proofs and ZKIR-v2 contracts supported indefinitely — retirement is a **midnight-js policy act** (OQ10). It strands any keep-state contract that has not graduated (post-fork key rotation installing v9 artifacts — the "both keys" routing shape); the graduation mechanism is still unconfirmed upstream and is confirmed together with the window policy.
-- **Next fork:** whether a (v9, v10) transition needs its own compat package is decided by *that fork's spike* — never assumed.
+- **Versioning:** this ships as one new framework major — D14 is consumer-breaking and FR0 requires dApps to adopt exactly this major pre-fork. The migration guide is part of the deliverable.
+- **At framework v10:** drop the `./v8` and `./engine` subpaths and the 0.16-era dependencies (`onchain-runtime-v3`, the `compact-runtime-ledger8` alias), shrink `LedgerVersion` — every D14 switch then fails to compile exactly where it must change — and collapse the unions to a single arm. One breaking `exports` change, in a major that D8 implies anyway. Pre-announced from day one.
+- **The per-operation head query retires with the window**, unless the v10 fork's spike rules it a permanent fork-readiness primitive. Recorded so the perpetual round-trip cost is a decision rather than an accident.
+- **Convention for future forks is era-relative:** the current era is native in-framework; the previous era's surface and engine live behind the versioned subpath and retire with it. Whether the (v9,v10) window needs the same shape is decided by *that* fork's spike — never assumed.
+- **Caveat:** upstream keeps ZKIR-v2 contracts transactable indefinitely, so retirement is a midnight-js policy act and strands any keep-state contract that has not graduated. The graduation mechanism — post-fork key rotation installing v9 artifacts, the "both keys" shape — is still unconfirmed upstream.
 
 ### Open items that gate rollout
 
 | Item | What remains | Blocks |
 |---|---|---|
-| OQ3d | Confirm the concrete indexer GraphQL field backing `queryLatestProtocolVersion` (expected: latest block's `protocolVersion`) | MJS-03 |
-| OQ8 | Independent cross-check of the indexer head version (+ named risk owner meanwhile) | Production-readiness declaration for the transition window |
-| OQ9 | Fixture porting per the §9 inventory + verification-harness decision (ledger-v9 local verify vs spike simulator) | Decode/keep-state test slices |
-| OQ10 | Confirm "current + previous" window + graduation path | Retirement policy |
-| OQ12 | (a) Supported key-delivery API for retained pre-fork key triples (spike shipped them ad-hoc); (b) minimum proof-server version with dual-ZKIR support shipped; (c) DApp-connector local-proving status for the migration guide | MJS-03 freeze; operator-facing rollout requirement |
-| OQ13 | Final `executeCall` signature (dApp-side witness/private-state generic bindings only — the published `types` surface is generic and does not churn) + deploy-artifact version-tag field + **A4 confirmation** (does every v9-era deploy populate `v3`/`ir`?) | Compat API freeze; routing-provenance soundness |
-| OQ14 | Fork-capable e2e environment (or spike simulator adoption) | Proof/apply-level AC promotion from unit/integration tier |
-| OQ15 | **Resolved by ruling (v3.9):** no first-class discriminant API — the prepended serialized tag prefix **is** the sanctioned mechanism (parse to the second `:`, branch on the human-readable tag); implement the proving-seam assert in hardening — **non-blocking defence-in-depth** | Nothing (nice-to-have) |
-| OQ7 | Wallet SDK `migrateState` (owner assigned); test-only shim port is a named work item; validated interim: run two Wallet SDK versions, restore v1 state with v2 code | Fee-paying cross-fork e2e |
+| OQ7 | Wallet SDK `migrateState` — a **hard FR0 dependency**. Interim: the two-SDK workaround, validated as a test mechanism only and never evaluated as a production story. A PO decision point exists with a date | The release's transition-window readiness; the guide's minimum-wallet-version statement |
+| OQ8 | Independent cross-check of the indexer head version. The sign-off must cover the real bound — integrity DoS-bounded, **disclosure not bounded** — deploys by name (no state fetch ⇒ zero cross-check), and the no-logger gap | Production-readiness declaration |
+| OQ9 | Owner ruling on the harness-gated security-negative list, item by item; `ledger-v9`'s apply/well-formedness surface not exhaustively verified | Decode/engine test slices |
+| OQ10 | Confirm the window policy and the graduation path | Retirement policy |
+| OQ12 | Key-delivery API for retained triples; minimum dual-ZKIR proof-server version. Resolve-by is the pre-fork milestone **minus operator lead time**, not "before MJS-03" | MJS-03 freeze; operator rollout |
+| OQ13 | A4 (can a v9-era deploy produce a `co.v2`-only state?) and A5 (era-specific proof binding — the rewrap defence); the split-topology integration milestone. **Engine placement: closed** | Routing-provenance soundness; the A5 harness negative |
+| OQ14 | Fork-capable e2e environment; **and** a static v8-era environment for the pre-fork FR8 tier | Promotion of AC0 and the apply-level criteria off the unit tier |
+| OQ17 | Upstream confirmation that in-flight v8 transactions are **hard-rejected** at the fork. "A grace window only reduces rejections" is wrong from a security standpoint — a grace window is precisely what turns bare re-run advice into double-execution | Release gate, or a named owner-signed residual risk |
+| OQ18 | Scope ruling for DApp-connector-proving dApps, which today have **no** stated fork-crossing story | Potential FR0 hole |
+| **OQ19** | **NEW.** Coin-moving circuits on the retained era. Measure the real boundary (does keep-state fail too?), then rule: extend `TranscriptPojo` to carry the post-call Zswap state, or declare them out of scope | FR8/AC0 scope; potentially an FR0 hole of the same class as OQ18 |
+| **OQ20** | **NEW.** Scoped transactions have no composition path on a v8 head. Rule together with OQ19 — the "one facade call per scope" option is blocked by the same one-call limit | MJS-02 Task 3.7 |
+| **OQ21** | **NEW.** The v9 tx-flow arm's representation now that composition returns bytes on both eras. Consumer-visible, so it needs an AC7 allowlist entry and an AC9 recipe if it goes the honest way | MJS-02 Task 3.5 |
 
 ---
 
@@ -580,13 +576,13 @@ The compat package is **born with its retirement plan**:
 
 | Term | Meaning |
 |---|---|
-| **Keep-state** | The post-fork execution path for pre-fork contracts: down-convert migrated state → execute on the retained ledger-8 stack → wrap the transcript in a native v9 transaction with a V2 proof. No recompilation. |
-| **Migrated state** | A contract's on-chain state after the fork: re-versioned into the v9 envelope with the pre-fork verifier key preserved in `co.v2`; data bytes unchanged. |
-| **`co.v2` / `v3` / `ir`** | Slots in a `ContractState`'s operation verifier-key set. `co.v2`-only ⇒ pre-fork (keep-state); `v3`/`ir` ⇒ v9-native. |
-| **V2 / V3 proof** | Proof versions tied to ZKIR v2 (pre-fork toolchain) and v3 (v9 toolchain). Selected from the resolved key tag, never hardcoded. |
-| **Retained stack** | The dApp's own unchanged pre-fork toolchain outputs: compiled artifacts, keys, compact-runtime 0.16, onchain-runtime-v3. Owned and supplied by the dApp; the framework never touches them. |
-| **`KeepStateBridge`** | The `executeCall`-granular generic interface (declared in `types`, implemented by the compat package, consumed by `contracts`) through which keep-state execution is injected as a typed options field of the dedicated entry. POJOs + v9 types only. |
-| **`isDecodedTxData()` / `createRawFinalizedTxData()`** | Runtime helpers in `utils` (re-exported by the barrel): the `rawTx`-presence type guard for v8-tagged records, and the mandatory factory installing the non-enumerable throwing `tx` accessor (provider + testkit mocks). |
-| **Effects-equality backstop** | Ledger-9's apply-time invariant: replay the transcript against real on-chain state and require identical effects — bounds all upstream tampering to DoS. |
-| **#1052** | The WASM dual-instantiation issue: two module instances of the same WASM package break `instanceof`. Addressed by peer resolution + a per-invocation constructor-reference check at the keep-state entry. |
-| **D9** | The decision that construct/submit is v9-only; pre-fork operation is out of scope. |
+| **Keep-state** | The post-fork path for pre-fork contracts: down-convert the migrated state → execute on the retained ledger-8 stack → wrap the transcript in a native v9 transaction with a V2 proof. No recompilation, no v9 variant, and reached through the same unified entry as everything else. |
+| **v8-native** | The pre-fork path: the same engine execution, composed as a v8 transaction through `loadLedgerEra('v8')` and carried as serialized bytes end to end. |
+| **Migrated state** | A contract's on-chain state after the fork: re-enveloped into ledger-9 with the pre-fork verifier key preserved in `co.v2`; data bytes unchanged. |
+| **`co.v2` / `v3` / `ir`** | Slots in a `ContractState` operation's verifier-key set. `co.v2`-only ⇒ pre-fork (keep-state); `v3`/`ir` ⇒ v9-native; both ⇒ v9-native with a rotation breadcrumb; neither ⇒ typed error. |
+| **`LedgerEra`** | The facade object returned by `loadLedgerEra(version)`: four era-symmetric methods, identical signatures on both eras, plain data only across the seam. |
+| **`Ledger8Engine`** | The four fork-crossing operations returned by `loadLedger8Engine()`: down-convert, execute circuit, execute constructor, wrap keep-state call. Does not acquire `ledger-v8`. |
+| **Retained stack** | The pre-fork toolchain outputs the dApp keeps unchanged: compiled artifacts and keys (compact 0.31 / compact-runtime 0.16). The *runtimes* the framework needs to run them are `protocol`'s dependencies, not the dApp's. |
+| **Era-symmetric / fork-crossing** | The placement rule (D17). Symmetric = both eras, same inputs, same result shape ⇒ the facade. Fork-crossing = only the retained era can do it ⇒ the engine, and it keeps its `Ledger8*` name. |
+| **Effects-equality backstop** | The ledger's apply-time invariant: replay the transcript against real on-chain state and require identical effects. Bounds upstream tampering to DoS **for integrity only**. |
+| **#1052** | The WASM dual-instantiation issue: two module instances of the same package break `instanceof`. Addressed by one `protocol` instance, the ocrt3 assertion at engine construction, and bytes at the tx-flow seams. |
