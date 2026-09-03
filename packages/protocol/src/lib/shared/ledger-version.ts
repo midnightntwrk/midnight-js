@@ -19,22 +19,9 @@
  * `protocolVersionToLedger` (`../version.ts`) for how a raw `protocolVersion`
  * integer maps onto it.
  *
- * Held in a leaf module that imports nothing, and re-exported unchanged by
- * `../version.ts`, so the public surface is the one it always was. Two modules
- * need this set, and the dependency between them runs one way: `../version.ts`
- * imports `../errors.ts` for the error it throws, while `../errors.ts` imports
- * nothing but this file. Declaring the constant in `../version.ts` would
- * therefore close a cycle. Declaring it in `../errors.ts` would not, but it
- * would put the era vocabulary in the error module and make every reader of it
- * an importer of errors. A leaf both can reach keeps the direction and the
- * ownership straight.
- *
- * Frozen, not merely `as const`: it is a public exported constant, and an
- * unfrozen array is one a downstream package can mutate for every other
- * consumer in the process. The same discipline `PROTOCOL_ERROR_CODES` applies
- * to its own registry. Nothing reads the value at runtime to dispatch on — the
- * era tables are typed by `LedgerVersion` and built independently — so this
- * guards the export, not the dispatch.
+ * @see {@link SharedTableDiscipline} for why the array is frozen.
+ * @see {@link ModuleGraphAndLazyLoading} for why the constant is declared in
+ * this leaf module and re-exported by `../version.ts`.
  */
 export const LEDGER_VERSIONS = Object.freeze(['v8', 'v9'] as const);
 export type LedgerVersion = (typeof LEDGER_VERSIONS)[number];

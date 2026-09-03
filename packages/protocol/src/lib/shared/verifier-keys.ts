@@ -19,17 +19,10 @@ import type { LedgerVersion } from './ledger-version';
 /**
  * Resolves a ledger entry-point key to its name.
  *
- * `ContractState.operations()` is declared `Array<string | Uint8Array>`, so a
- * key is not statically a string. In practice ledger-v8 decodes even a byte-set
- * entry point back to a string (pinned by the `entryPointName` suite in
- * `v8-deploy.test.ts`; the v9 side of that behaviour is not pinned
- * against the real vendor), but the declared union has to be resolved
- * somewhere, and decoding is the only resolution that keeps an error message
- * naming the entry point rather than dumping its bytes — which is what
- * `ComposeFailedError` (`../errors.ts`) promises.
- *
- * Lives in a leaf both eras can reach, so neither arm has to import the other's
- * era-named module for a `TextDecoder` call.
+ * @param id The entry point as the state declares it — already a string, or
+ * the bytes a byte-declared entry point carries.
+ * @returns `id` itself when it is a string, otherwise its UTF-8 decoding.
+ * @see {@link VerifierKeys}
  */
 export const entryPointName = (id: string | Uint8Array): string =>
   typeof id === 'string' ? id : new TextDecoder().decode(id);
@@ -46,38 +39,24 @@ export interface VerifierKeyRegistration {
 /**
  * Pairs each supplied verifier key with the entry point the state declares for
  * it, after validating the map against those entry points in BOTH directions:
+ * every key must name a declared entry point, and every declared entry point
+ * must have a key.
  *
- * - a key naming an entry point the state does not declare throws
- *   {@link ComposeFailedError} at stage `'deploy-unknown-circuit'`. This
- *   direction matters as much as the other: `setOperation` CREATES a slot
- *   rather than requiring one, so an unchecked stray key (a stale
- *   `keys/*.verifier` from an earlier compiler run) would give the deployed
- *   contract an entry point its source never had and — since the deploy derives
- *   its address from the initial state — silently deploy it at a different
- *   address than the caller's artifacts describe;
- * - a declared entry point with no key in the map throws stage
- *   `'deploy-verifier-key'`, because a ledger rejects a deploy carrying an
- *   unregistered entry point.
- *
- * Together the two make the map and the declared entry points equal sets. They
- * run on resolved NAMES, because that is how the map is keyed, so two declared
- * entry points resolving to one name would make them agree while leaving a slot
- * blank; that case throws stage `'deploy-ambiguous-circuit'` before either
- * check runs.
- *
- * Returns registrations in the map's own order, each carrying the DECLARED
- * entry point rather than its resolved name: `setOperation` handed the name
- * would leave a byte-declared slot blank and create a second, undeclared one
- * beside it.
- *
- * Shared by both eras' deploy legs, so the two cannot drift on which checks run
- * or in what order. The order is itself part of the contract: ambiguity is
- * refused before either set-comparison runs, because an ambiguous pair makes
- * both comparisons agree while leaving one slot blank.
- *
- * Resolving each key inside the loop is what removes the non-null assertion the
- * set arithmetic would otherwise need at the end: the `undefined` branch IS the
- * `'deploy-verifier-key'` check, not an unreachable case to assert away.
+ * @param entryPoints The entry points the state declares, as `operations()`
+ * returns them.
+ * @param verifierKeys Entry-point name -> raw, tagged verifier key bytes.
+ * @param version The era every failure raised here names.
+ * @returns One registration per supplied key, in the map's own order, each
+ * carrying the DECLARED entry point rather than its resolved name — which is
+ * what `setOperation` must be handed.
+ * @throws ComposeFailedError at stage `'deploy-ambiguous-circuit'` when two
+ * declared entry points resolve to the same name. Checked before either
+ * direction below.
+ * @throws ComposeFailedError at stage `'deploy-unknown-circuit'` when a key
+ * names an entry point the state does not declare.
+ * @throws ComposeFailedError at stage `'deploy-verifier-key'` when a declared
+ * entry point has no key in the map.
+ * @see {@link VerifierKeys}
  */
 export const resolveVerifierKeyRegistrations = (
   entryPoints: readonly (string | Uint8Array)[],

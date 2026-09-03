@@ -34,21 +34,13 @@ export interface CallTranscriptPair {
  * The era module slice {@link aggregateUnshieldedOffers} needs: just the
  * `UnshieldedOffer` constructor.
  *
- * Declared structurally, and generic in `TOffer`, because this function
- * genuinely runs on BOTH eras — the v9 composition arm passes ledger-v9, the v8
- * leg passes the module it was handed by `loadLedger8`. Deriving the shape from
- * either era's class would pick a side, which is why this one stays a
- * hand-written slice while the single-era injection points are derived from
- * their vendor's own declarations.
- *
- * Injection is a separate matter, and still required: a value import of either
- * era would statically link that era's WASM into whatever bundle reaches this
- * module, which for ledger-v8 is exactly what `dist-laziness.test.ts` forbids.
- * A type-only import would not, but there is no single type to name here.
- *
- * `inputs` and `signatures` are typed `never[]` rather than the ledger's own
- * parameter types: this seam only ever aggregates OUTPUTS, so `[]` is the only
- * value that can be passed, and the type says so instead of a comment.
+ * @typeParam TOffer The offer type the era's own `UnshieldedOffer.new`
+ * returns, inferred from the module that is passed.
+ * @see {@link ComposeRefusalOrder} for why this slice is hand-written and
+ * generic rather than derived from one era's class, and why `inputs` and
+ * `signatures` are typed `never[]`.
+ * @see {@link ModuleGraphAndLazyLoading} for why the module is injected rather
+ * than imported.
  */
 export interface UnshieldedOfferLedger<TOffer> {
   readonly UnshieldedOffer: {
@@ -65,33 +57,17 @@ export interface AggregatedUnshieldedOffers<TOffer> {
 /**
  * Reads the UTXO outputs a call's transcript claims on behalf of USERS.
  *
- * A contract-addressed claimed spend is skipped, and cross-contract calls make
- * that a normal, expected case rather than an oddity. It is safe to skip
- * because a cross-contract transfer is never materialized as a UTXO: the
- * ledger settles it against the callee's own balance update, under the
- * `real_unshielded_spends` superset check, and `UtxoOutput.owner` takes a user
- * address in the first place. Emitting an output for one would add a payout
- * the transaction cannot cover.
- *
- * A user-addressed spend this seam cannot pay out is REFUSED, not skipped. That
- * is a different case from a contract-addressed spend, which is not a UTXO
- * payout at all: this one is a payout the transaction has no way to make.
- * Dropping it silently composes a transaction that tells the user they were
- * paid and pays them nothing, so it leaves as a coded failure at composition
- * time instead.
- * Two token types reach that refusal — dust, which carries no raw token type to
- * pay out in, and a shielded type, whose value moves through a Zswap offer
- * rather than a UTXO.
- *
- * The check is on the ONE type this seam can pay out rather than on a list of
- * the ones it cannot. `TokenType` is a vendor union, and a shielded type
- * carries a `raw` field exactly as an unshielded one does, so an
- * exclude-what-we-know-about test emits a plausible-looking `UtxoOutput` for
- * everything it has not heard of. A fourth member added by a vendor bump has to
- * fail closed here, not compose a payout nothing can settle.
- *
- * An absent transcript is the normal shape of a call with no fallible half, not
- * an error, so it yields no outputs rather than throwing.
+ * @param transcript One half of a call's transcript pair. Absent is the normal
+ * shape of a call with no fallible half, and yields no outputs.
+ * @param version The era every failure raised here names.
+ * @param circuitId The entry point every failure raised here names.
+ * @returns One `UtxoOutput` per user-addressed unshielded spend the transcript
+ * claims. Contract-addressed spends are skipped.
+ * @throws ComposeFailedError at stage `'call-dust-payout'` for a user-addressed
+ * dust spend.
+ * @throws ComposeFailedError at stage `'call-unsupported-payout'` for a
+ * user-addressed spend of any token type other than unshielded.
+ * @see {@link ComposeRefusalOrder}
  */
 export const extractUserAddressedOutputs = (
   transcript: Transcript<AlignedValue> | undefined,
@@ -122,15 +98,16 @@ export const extractUserAddressedOutputs = (
  * Builds the one unshielded offer each segment of a transaction carries, from
  * EVERY call in the tree.
  *
- * A user-addressed output can be produced by any call, not just the root, and a
- * transaction has a single guaranteed and a single fallible offer. Assembling
- * either from the root call alone would drop a cross-contract callee's payout
- * and leave the transaction unbalanced — rejected on submission, with nothing
- * having reported a problem at composition time.
- *
- * A segment with nothing to pay out gets no offer at all rather than an empty
- * one: the ledger expects the field left unset, not a declared offer paying out
- * nothing.
+ * @typeParam TOffer The offer type `ledger.UnshieldedOffer.new` returns.
+ * @param calls Every call in the transaction's tree — cross-contract callees
+ * as well as the root call, since any of them can produce a payout.
+ * @param ledger The era module slice carrying `UnshieldedOffer`.
+ * @param version The era every failure raised here names.
+ * @returns The guaranteed and fallible offers. A segment with nothing to pay
+ * out gets no offer at all rather than an empty one.
+ * @throws ComposeFailedError from {@link extractUserAddressedOutputs} for a
+ * user-addressed spend this seam cannot pay out.
+ * @see {@link ComposeRefusalOrder}
  */
 export const aggregateUnshieldedOffers = <TOffer>(
   calls: readonly CallTranscriptPair[],
