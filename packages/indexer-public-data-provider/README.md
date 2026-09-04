@@ -73,9 +73,7 @@ queryRawContractState(
 ): Promise<RawContractState | null>
 
 // Query the protocol version of the network's current head block
-queryLatestProtocolVersion(
-  options?: { readonly fresh?: boolean }
-): Promise<number>
+queryLatestProtocolVersion(): Promise<number>
 ```
 
 ### Reading State Across the Ledger Fork
@@ -136,9 +134,16 @@ import { versionOfRecord } from '@midnight-ntwrk/midnight-js-protocol';
 const era = versionOfRecord(event); // 'v8' | 'v9'
 ```
 
-`queryLatestProtocolVersion` reports the head block's protocol version. The
-answer may be served from a cache once the provider has corroborating evidence
-that the network has moved on; pass `{ fresh: true }` to force a real request.
+`queryLatestProtocolVersion` reports the head block's protocol version. This
+provider reads the network on every call and caches nothing. The interface
+allows an implementation to cache the answer as long as it expires by itself,
+on a bound short relative to block time; what it forbids is a reading held
+indefinitely, because the point of asking is to learn which era a transaction
+being built now will land in, and a stale answer is wrong exactly at the fork
+boundary, where that question matters. For the era of data already read, use the
+`protocolVersion` the read itself carries — it is dated to the same block as the
+bytes and costs no extra request. The decision and the deploy-path consequences
+are recorded in ADR 0008.
 
 ### Watch Methods
 

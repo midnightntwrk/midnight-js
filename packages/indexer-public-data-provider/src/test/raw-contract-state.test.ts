@@ -137,33 +137,17 @@ describe('queryRawContractState', () => {
       );
     });
 
-    test('feeds the head-version cache when the composed response reports the newer era on both fields', async () => {
+    test('answers the era from the read itself, and leaves a head read to cost its own request', async () => {
       const query = vi
         .fn<(request: ApolloRequest) => Promise<unknown>>()
         .mockResolvedValue(composedResponse(mintV9ContractStateHex(), V9_ERA_PROTOCOL_VERSION));
       const provider = buildProvider(query);
 
-      await provider.queryRawContractState(ADDRESS);
-      const cached = await provider.queryLatestProtocolVersion();
-
-      expect(cached).toBe(V9_ERA_PROTOCOL_VERSION);
-      expect(
-        query.mock.calls.filter(([request]) => request.query === HEAD_PROTOCOL_VERSION_QUERY)
-      ).toHaveLength(0);
-    });
-
-    test('does not feed the cache from a read pinned to an explicit block, which is not the head', async () => {
-      const query = vi
-        .fn<(request: ApolloRequest) => Promise<unknown>>()
-        .mockResolvedValue(composedResponse(mintV9ContractStateHex(), V9_ERA_PROTOCOL_VERSION));
-      const provider = buildProvider(query);
-
-      await provider.queryRawContractState(ADDRESS, { type: 'blockHeight', blockHeight: 5 });
+      const record = await provider.queryRawContractState(ADDRESS);
       await provider.queryLatestProtocolVersion();
 
-      expect(
-        query.mock.calls.filter(([request]) => request.query === HEAD_PROTOCOL_VERSION_QUERY)
-      ).toHaveLength(1);
+      expect(record?.protocolVersion).toBe(V9_ERA_PROTOCOL_VERSION);
+      expect(query.mock.calls.filter(([request]) => request.query === HEAD_PROTOCOL_VERSION_QUERY)).toHaveLength(1);
     });
 
     test('returns null when the contract has no state at the offset', async () => {
@@ -291,20 +275,6 @@ describe('queryRawContractState', () => {
 
       expect((rejection as Error).message).not.toContain('attacker');
       expect((rejection as Error).message).not.toContain(stateHex.slice(0, 16));
-    });
-
-    test('does not feed the head-version cache from a rejected payload', async () => {
-      const query = vi
-        .fn<(request: ApolloRequest) => Promise<unknown>>()
-        .mockResolvedValue(composedResponse(retagged(mintV9ContractStateHex(), 'attacker:v1'), V9_ERA_PROTOCOL_VERSION));
-      const provider = buildProvider(query);
-
-      await provider.queryRawContractState(ADDRESS).catch(() => undefined);
-      await provider.queryLatestProtocolVersion().catch(() => undefined);
-
-      expect(
-        query.mock.calls.filter(([request]) => request.query === HEAD_PROTOCOL_VERSION_QUERY)
-      ).toHaveLength(1);
     });
   });
 });

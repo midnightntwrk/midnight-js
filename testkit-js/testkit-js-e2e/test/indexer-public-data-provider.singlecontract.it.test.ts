@@ -135,7 +135,7 @@ describe('Indexer API', () => {
     });
     const payload = (await response.json()) as { data: { block: { protocolVersion: number } } };
 
-    const version = await publicDataProvider.queryLatestProtocolVersion({ fresh: true });
+    const version = await publicDataProvider.queryLatestProtocolVersion();
 
     expect(version).toEqual(payload.data.block.protocolVersion);
     // Resolving throws on a protocol version this client does not know, so
@@ -154,7 +154,7 @@ describe('Indexer API', () => {
     if (record && parsed) {
       expect(record.raw).toEqual(new Uint8Array(parsed.serialize()));
       expect(record.version).toEqual(versionOfRecord({ protocolVersion: record.protocolVersion }));
-      expect(record.protocolVersion).toEqual(await publicDataProvider.queryLatestProtocolVersion({ fresh: true }));
+      expect(record.protocolVersion).toEqual(await publicDataProvider.queryLatestProtocolVersion());
     }
   });
 

@@ -40,7 +40,7 @@ type RawContractStateFixture = {
 // Independent restatements of the two new member signatures — written out
 // here rather than read off the interface, so a widened parameter, a dropped
 // optional, or a changed result type breaks the equality checks below.
-type HeadVersionQuery = (options?: { readonly fresh?: boolean }) => Promise<number>;
+type HeadVersionQuery = () => Promise<number>;
 
 type RawStateQuery = (
   contractAddress: ContractAddress,
@@ -84,15 +84,18 @@ describe('PublicDataProvider head-version and raw-state members', () => {
     >().toMatchTypeOf<PublicDataProvider>();
   });
 
-  it('pins queryLatestProtocolVersion to an optional freshness option resolving to a version integer', () => {
+  it('pins queryLatestProtocolVersion to a no-argument query resolving to a version integer', () => {
     expectTypeOf<PublicDataProvider['queryLatestProtocolVersion']>().toEqualTypeOf<HeadVersionQuery>();
   });
 
-  it('keeps queryLatestProtocolVersion callable with no argument and with the freshness option', () => {
+  it('takes no options bag, so no caller can ask for a cached answer', () => {
     // Type-level call checks only — `toBeCallableWith` never invokes anything
     // at runtime, so these stay safe against the `{} as PublicDataProvider`
     // stubs used elsewhere in this file.
     expectTypeOf<PublicDataProvider['queryLatestProtocolVersion']>().toBeCallableWith();
+    // @ts-expect-error The member reads the network on every call, so there is
+    // no freshness option to pass. If an options parameter were reintroduced,
+    // this suppression would become unused and TypeScript would report *that*.
     expectTypeOf<PublicDataProvider['queryLatestProtocolVersion']>().toBeCallableWith({ fresh: true });
   });
 

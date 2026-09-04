@@ -21,7 +21,7 @@ import { IndexerDataError } from '../errors';
 import { IndexerPublicDataProvider } from '../provider';
 import { BLOCK_QUERY, CONTRACT_AND_ZSWAP_STATE_QUERY, HEAD_PROTOCOL_VERSION_QUERY } from '../query-definitions';
 import type { ApolloHandle } from '../transport';
-import { V8_ERA_PROTOCOL_VERSION, V9_ERA_PROTOCOL_VERSION } from './state-fixtures';
+import { V9_ERA_PROTOCOL_VERSION } from './state-fixtures';
 
 const ADDRESS = '12'.repeat(32) as ContractAddress;
 
@@ -155,8 +155,8 @@ describe('IndexerPublicDataProvider query methods', () => {
       expect((rejection as IndexerDataError).context).toEqual({ kind: 'missing-head-block' });
     });
 
-    test('issues a fresh request on every call while the network is still on the older era', async () => {
-      const query = dispatchingQuery(new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(V8_ERA_PROTOCOL_VERSION)]]));
+    test('issues a request on every call, whatever era the head reports', async () => {
+      const query = dispatchingQuery(new Map([[HEAD_PROTOCOL_VERSION_QUERY, headResponse(V9_ERA_PROTOCOL_VERSION)]]));
       const provider = providerWithQuery(query);
 
       await provider.queryLatestProtocolVersion();
