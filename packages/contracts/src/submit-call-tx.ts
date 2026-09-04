@@ -65,19 +65,6 @@ export async function submitCallTx<C extends Ledger8Contract, K extends Ledger8C
   options: Ledger8CallTxOptions<C, K>
 ): Promise<Ledger8FinalizedCallTxData<C, K>>;
 
-/**
- * The catch-all arm, which names {@link NeitherContractShape} — a type whose definition carries
- * the migration-guide pointer — for an object belonging to NEITHER era.
- *
- * Both type parameters exist so the arm erases to a signature compatible with the implementation
- * below it. Nothing can produce a `NeitherContractShape`, so a call that type-checks never
- * selects this arm.
- */
-export async function submitCallTx<P, T extends NeitherEraContractOptions>(
-  providers: P,
-  options: T
-): Promise<never>;
-
 export async function submitCallTx<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
   providers: SubmitTxProviders<C, PCK>,
   options: CallTxOptionsBase<C, PCK>
@@ -99,6 +86,33 @@ export async function submitCallTx<C extends Contract<undefined>, PCK extends Co
   options: CallTxOptionsBase<C, PCK>,
   transactionContext: TransactionContext<C, PCK>
 ): Promise<CallResult<C, PCK>>;
+
+/**
+ * The catch-all arm, and deliberately the LAST overload of `submitCallTx`.
+ *
+ * When no arm matches a call, TypeScript details only the LAST overload, so this is the only
+ * position from which an object belonging to NEITHER era is reported against
+ * {@link NeitherContractShape} — a type whose own definition carries the migration-guide
+ * pointer — rather than against whichever current-era arm happened to sit last.
+ *
+ * The arm is UNREACHABLE. Nothing can satisfy {@link NeitherContractShape}, so no call that
+ * type-checks ever selects it; it exists purely so the compiler has a named shape to render.
+ * Both type parameters exist so the arm erases to a signature compatible with the implementation
+ * below it.
+ *
+ * Its declared return type RESTATES the scoped-call arm above it, instantiated at that
+ * arm's own constraints. Do NOT "tidy" it to `never`, however honest that would look:
+ * `ReturnType<typeof f>` on an overloaded function ALSO resolves from the last overload, so
+ * a `never` here silently retypes `ReturnType<typeof submitCallTx>` for every existing
+ * consumer — and this package already reads `Awaited<ReturnType<typeof submitCallTx>>`.
+ * The four `ReturnType` assertions in `src/test/typecheck/overloads.test-d.ts` are the
+ * load-bearing guard on exactly that: they fail the moment this restatement drifts from the
+ * arm above.
+ */
+export async function submitCallTx<P, T extends NeitherEraContractOptions>(
+  providers: P,
+  options: T
+): Promise<CallResult<Contract<undefined>, Contract.ProvableCircuitId<Contract<undefined>>>>;
 
  /**
  * Creates and submits a transaction for the invocation of a circuit on a given contract.
@@ -196,19 +210,6 @@ export async function submitCallTxAsync<C extends Ledger8Contract, K extends Led
 ): Promise<Ledger8SubmittedCallTx<C, K>>;
 
 /**
- * The catch-all arm, which names {@link NeitherContractShape} — a type whose definition carries
- * the migration-guide pointer — for an object belonging to NEITHER era.
- *
- * Both type parameters exist so the arm erases to a signature compatible with the implementation
- * below it. Nothing can produce a `NeitherContractShape`, so a call that type-checks never
- * selects this arm.
- */
-export async function submitCallTxAsync<P, T extends NeitherEraContractOptions>(
-  providers: P,
-  options: T
-): Promise<never>;
-
-/**
  * Creates and submits a transaction for the invocation of a circuit on a given contract,
  * returning immediately after submission without waiting for finalization.
  *
@@ -286,6 +287,33 @@ export async function submitCallTxAsync<C extends Contract.Any, PCK extends Cont
   providers: SubmitCallTxProviders<C, PCK>,
   options: CallTxOptions<C, PCK>
 ): Promise<SubmittedCallTx<C, PCK>>;
+
+/**
+ * The catch-all arm, and deliberately the LAST overload of `submitCallTxAsync`.
+ *
+ * When no arm matches a call, TypeScript details only the LAST overload, so this is the only
+ * position from which an object belonging to NEITHER era is reported against
+ * {@link NeitherContractShape} — a type whose own definition carries the migration-guide
+ * pointer — rather than against whichever current-era arm happened to sit last.
+ *
+ * The arm is UNREACHABLE. Nothing can satisfy {@link NeitherContractShape}, so no call that
+ * type-checks ever selects it; it exists purely so the compiler has a named shape to render.
+ * Both type parameters exist so the arm erases to a signature compatible with the implementation
+ * below it.
+ *
+ * Its declared return type RESTATES the current-era arm above it, instantiated at that
+ * arm's own constraints. Do NOT "tidy" it to `never`, however honest that would look:
+ * `ReturnType<typeof f>` on an overloaded function ALSO resolves from the last overload, so
+ * a `never` here silently retypes `ReturnType<typeof submitCallTxAsync>` for every existing
+ * consumer — and this package already reads `Awaited<ReturnType<typeof submitCallTx>>`.
+ * The four `ReturnType` assertions in `src/test/typecheck/overloads.test-d.ts` are the
+ * load-bearing guard on exactly that: they fail the moment this restatement drifts from the
+ * arm above.
+ */
+export async function submitCallTxAsync<P, T extends NeitherEraContractOptions>(
+  providers: P,
+  options: T
+): Promise<SubmittedCallTx<Contract.Any, Contract.ProvableCircuitId<Contract.Any>>>;
 
 export async function submitCallTxAsync<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: SubmitCallTxProviders<C, PCK>,

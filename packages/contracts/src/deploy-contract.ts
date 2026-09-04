@@ -132,19 +132,6 @@ export async function deployContract<C extends Ledger8Contract>(
   options: Ledger8DeployContractOptions<C>
 ): Promise<Ledger8DeployedContract<C>>;
 
-/**
- * The catch-all arm, which names {@link NeitherContractShape} — a type whose definition carries
- * the migration-guide pointer — for an object belonging to NEITHER era.
- *
- * Both type parameters exist so the arm erases to a signature compatible with the implementation
- * below it. Nothing can produce a `NeitherContractShape`, so a call that type-checks never
- * selects this arm.
- */
-export async function deployContract<P, T extends NeitherEraContractOptions>(
-  providers: P,
-  options: T
-): Promise<never>;
-
 export async function deployContract<C extends Contract<undefined>>(
   providers: ContractProviders<C, Contract.ProvableCircuitId<C>, unknown>,
   options: DeployContractOptionsBase<C>
@@ -154,6 +141,33 @@ export async function deployContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
   options: DeployContractOptionsWithPrivateState<C>
 ): Promise<DeployedContract<C>>;
+
+/**
+ * The catch-all arm, and deliberately the LAST overload of `deployContract`.
+ *
+ * When no arm matches a call, TypeScript details only the LAST overload, so this is the only
+ * position from which an object belonging to NEITHER era is reported against
+ * {@link NeitherContractShape} — a type whose own definition carries the migration-guide
+ * pointer — rather than against whichever current-era arm happened to sit last.
+ *
+ * The arm is UNREACHABLE. Nothing can satisfy {@link NeitherContractShape}, so no call that
+ * type-checks ever selects it; it exists purely so the compiler has a named shape to render.
+ * Both type parameters exist so the arm erases to a signature compatible with the implementation
+ * below it.
+ *
+ * Its declared return type RESTATES the private-state arm above it, instantiated at that
+ * arm's own constraints. Do NOT "tidy" it to `never`, however honest that would look:
+ * `ReturnType<typeof f>` on an overloaded function ALSO resolves from the last overload, so
+ * a `never` here silently retypes `ReturnType<typeof deployContract>` for every existing
+ * consumer — and this package already reads `Awaited<ReturnType<typeof submitCallTx>>`.
+ * The four `ReturnType` assertions in `src/test/typecheck/overloads.test-d.ts` are the
+ * load-bearing guard on exactly that: they fail the moment this restatement drifts from the
+ * arm above.
+ */
+export async function deployContract<P, T extends NeitherEraContractOptions>(
+  providers: P,
+  options: T
+): Promise<DeployedContract<Contract.Any>>;
 
 /**
  * Creates and submits a contract deployment transaction. This function is the entry point for the transaction

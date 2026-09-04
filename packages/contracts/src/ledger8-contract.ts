@@ -64,24 +64,35 @@
  * genuine top type for the era that still excludes the current era's shape,
  * because a `Promise` has none of the members the retained results declare.
  *
- * ## Why the era arms are declared FIRST
+ * ## Overload order, and why the catch-all arm's return type lies
  *
- * Each entry point declares its retained-era arm and its catch-all arm BEFORE the current-era
- * arms that were already there. `ReturnType<typeof f>` on an overloaded function resolves from
- * the function's LAST overload, so an arm appended at the end silently retypes `ReturnType` for
- * every existing consumer — and one test in this package already reads
- * `Awaited<ReturnType<typeof submitCallTx>>`. Declaring the era arms first leaves the last
- * overload, and so `ReturnType`, exactly as it was.
+ * Two facts about TypeScript pull in opposite directions here, and every entry point's arm order
+ * is the resolution of that tension. Both were measured against this code, not assumed:
  *
- * The cost of that order is one thing worth knowing: when NO arm matches, TypeScript details only
- * the LAST overload, so the diagnostic for an object belonging to neither era is reported against
- * the current era's options type rather than against {@link NeitherContractShape}. The named type
- * is still what an assignability check reports, and
- * `src/test/typecheck/overloads.test-d.ts` pins its message verbatim.
+ * 1. When NO overload matches a call, the compiler details only the **LAST** overload. So the arm
+ *    that renders the diagnostic a developer actually reads is whichever one sits last.
+ * 2. `ReturnType<typeof f>` on an overloaded function ALSO resolves from the last overload. So an
+ *    arm appended at the end silently retypes `ReturnType` for every existing consumer — and this
+ *    package already reads `Awaited<ReturnType<typeof submitCallTx>>`.
  *
- * `src/test/typecheck/overloads.test-d.ts` pins both halves of the order: that each era arm is
- * REACHABLE (a retained-era call resolves to the retained-era result type, not merely compiles),
- * and that `ReturnType` still reports what it reported before the arms were added.
+ * The order that satisfies both: the **retained-era arm goes FIRST** (before the current-era arms
+ * that were already there, so it cannot be shadowed by one of them), and the **catch-all arm goes
+ * LAST** (so an object belonging to neither era is reported against
+ * {@link NeitherContractShape}). Fact 2 is then paid for by declaring the catch-all arm's return
+ * type as a RESTATEMENT of the arm above it instead of the honest `never`. The arm is unreachable
+ * — nothing can satisfy {@link NeitherContractShape} — so that declared type is never observed by a
+ * real call, and each arm carries a comment saying so, because a reader who "tidies" it to `never`
+ * would silently move the public surface.
+ *
+ * `src/test/typecheck/overloads.test-d.ts` is the guard on all of it, and under this arrangement
+ * its `ReturnType` assertions are load-bearing rather than belt-and-braces. It pins:
+ *
+ * - that each retained-era arm is REACHABLE (a retained-era call resolves to the retained-era
+ *   result type, not merely compiles), which fails if a current-era arm shadows it;
+ * - that `ReturnType` on all four entry points still reports exactly what it reported before any
+ *   era arm existed, which fails the moment a catch-all restatement drifts from the arm above it,
+ *   or a catch-all is "corrected" to `never`;
+ * - the migration-guide message verbatim.
  *
  * @see docs/adr/0006-version-tagged-payloads-at-provider-seams.md for why a
  *      retained-era result is version-tagged rather than single-era.
@@ -353,18 +364,36 @@ export const isLedger8Options = <L extends { readonly compiledContract: Ledger8C
  * matching NEITHER era's shape is refused against a name whose own definition says what went
  * wrong.
  *
- * The `__error` member exists only to carry that message; nothing constructs a value of this type,
- * and `src/test/typecheck/overloads.test-d.ts` pins the message verbatim. See "Why the era arms
- * are declared FIRST" above for where the name does, and does not, reach a compiler diagnostic.
+ * The `__error` member exists only to carry that message into the compiler's diagnostic; nothing
+ * constructs a value of this type. This declaration is the SINGLE source of the message text —
+ * {@link NeitherEraContractOptions} reaches it by indexed access — and
+ * `src/test/typecheck/overloads.test-d.ts` pins it verbatim.
  */
 export type NeitherContractShape = { readonly __error: 'Object is neither a 0.16- nor a 0.18-generated contract. See migration guide §window.' }
 
 /**
- * The catch-all arm's options type: an object whose contract belongs to neither
- * era.
+ * The catch-all arm's options type: an object whose contract belongs to neither era.
+ *
+ * `compiledContract` is {@link NeitherContractShape} INTERSECTED with a structurally identical
+ * anonymous restatement of it, and both halves are load-bearing. TypeScript renders a named type
+ * by NAME and an anonymous object type by EXPANSION, and a developer who hits this error wants
+ * both: the name to look the type up, and the expansion to read the migration-guide pointer
+ * without having to. Written this way, the diagnostic carries both — verified against the real
+ * fixtures, and recorded in the module documentation above:
+ *
+ * ```text
+ * Type '{ readonly nonsense: true; }' is not assignable to type 'NeitherContractShape & {
+ *   readonly __error: "Object is neither a 0.16- nor a 0.18-generated contract. See migration
+ *   guide §window."; }'.
+ * ```
+ *
+ * Do NOT simplify the intersection away. Dropping the anonymous half leaves the name with no
+ * message; dropping the named half leaves the message with no name. The text itself is written
+ * ONCE, at {@link NeitherContractShape}, and reached here by indexed access, so the two halves
+ * cannot drift — and `src/test/typecheck/overloads.test-d.ts` asserts they are the same type.
  */
 export interface NeitherEraContractOptions {
-  readonly compiledContract: NeitherContractShape;
+  readonly compiledContract: NeitherContractShape & { readonly __error: NeitherContractShape['__error'] };
 }
 
 /**

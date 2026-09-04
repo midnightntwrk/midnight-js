@@ -199,8 +199,25 @@ describe('submitCallTxAsync, deployContract and findDeployedContract resolve bot
 });
 
 describe('an object belonging to neither era is refused against a named error type', () => {
+  // The catch-all arm is the LAST overload of each entry point, which is the only position from
+  // which TypeScript renders it when nothing matches. What it renders is a name for the named half
+  // of `NeitherEraContractOptions['compiledContract']` and an expansion for the anonymous half, so
+  // the diagnostic carries the type's name AND the message it exists to deliver:
+  //
+  //   Type '{ readonly nonsense: true; }' is not assignable to type 'NeitherContractShape & {
+  //     readonly __error: "Object is neither a 0.16- nor a 0.18-generated contract. See migration
+  //     guide §window."; }'.
+  //
+  // The diagnostic TEXT itself is not reachable from here — vitest's typecheck pass exposes
+  // `@ts-expect-error` and `expectTypeOf`, not compiler output — so the two assertions below pin
+  // what is reachable: the message literal exactly, and that the intersection's two halves are the
+  // same type (so the anonymous half can never drift from the named one it restates).
   it('carries the migration-guide message verbatim, so a reword cannot pass unnoticed', () => {
     expectTypeOf<NeitherContractShape['__error']>().toEqualTypeOf<'Object is neither a 0.16- nor a 0.18-generated contract. See migration guide §window.'>();
+  });
+
+  it('restates NeitherContractShape without drifting from it, so both halves of the diagnostic agree', () => {
+    expectTypeOf<NeitherEraContractOptions['compiledContract']>().toEqualTypeOf<NeitherContractShape>();
   });
 
   it('does not accept a neither-era object where the catch-all arm expects its error type', () => {
@@ -209,6 +226,9 @@ describe('an object belonging to neither era is refused against a named error ty
     expectTypeOf(neither).toMatchTypeOf<NeitherEraContractOptions>();
   });
 
+  // A GUARD, not a driver, and worth saying so: this call fails against the current-era arms with
+  // or without the catch-all arm present, so the directive stays "used" either way. The two
+  // assertions above are what actually discriminate.
   it('refuses a neither-era call outright', () => {
     // @ts-expect-error - neither a 0.16- nor a 0.18-generated contract
     submitCallTx(providers016, { compiledContract: neitherShapeContract, contractAddress, circuitId: 'increment', args: [] });
@@ -216,11 +236,23 @@ describe('an object belonging to neither era is refused against a named error ty
 });
 
 describe('adding era arms leaves the pre-existing entry points overload resolution untouched', () => {
-  // `ReturnType<typeof f>` on an overloaded function resolves from its LAST overload, so an arm
-  // appended at the end silently retypes it for every existing consumer — and one test in this
-  // package already reads `Awaited<ReturnType<typeof submitCallTx>>`. That is why the era arms are
-  // declared BEFORE the pre-existing arms rather than after them. These four assertions pin that
-  // placement: reordering an era arm to the end fails them.
+  // THE LOAD-BEARING GUARD ON THE WHOLE ARRANGEMENT — not belt-and-braces. Read this before
+  // touching an overload list in `../../submit-call-tx.ts`, `../../deploy-contract.ts` or
+  // `../../find-deployed-contract.ts`.
+  //
+  // `ReturnType<typeof f>` on an overloaded function resolves from its LAST overload, so whatever
+  // sits last defines `ReturnType` for every existing consumer — and `../submit-call-tx.test.ts`
+  // already reads `Awaited<ReturnType<typeof submitCallTx>>`. What sits last in each entry point is
+  // the catch-all arm, which is unreachable and whose declared return type therefore deliberately
+  // RESTATES the arm above it instead of being the honest `never`.
+  //
+  // Nothing but these four assertions holds that in place. They fail if a catch-all's restatement
+  // drifts from the arm above it, if a catch-all is "corrected" to `Promise<never>`, or if a
+  // retained-era arm is moved to the end. Each of those three regressions was reproduced against
+  // them before this file was committed.
+  //
+  // The values below are the ones these four entry points reported BEFORE any era arm existed,
+  // measured rather than derived.
   it('leaves ReturnType<typeof submitCallTx> reporting the current-era CallResult', () => {
     expectTypeOf<ReturnType<typeof submitCallTx>>().toEqualTypeOf<Promise<CallResult<Contract<undefined>, string>>>();
   });
