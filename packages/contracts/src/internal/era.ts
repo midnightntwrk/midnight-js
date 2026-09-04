@@ -29,7 +29,7 @@ import {
   type VersionedFinalizedTxData,
   type VersionedTx
 } from '@midnight-ntwrk/midnight-js-types';
-import { parseSerializedTag, TagParseError } from '@midnight-ntwrk/midnight-js-utils';
+import { contractStateEnvelopeVersion } from '@midnight-ntwrk/midnight-js-utils';
 
 import {
   EraArtifactMismatchError,
@@ -336,44 +336,6 @@ export const assertEraCompatible = (pipeline: PipelineEra, head: LedgerVersion, 
   }
 };
 
-// A serialized contract state carries a `midnight:contract-state[vN]:` envelope tag, where the
-// bracketed number is the STATE FORMAT version and not the ledger era: the v8 ledger writes `[v6]`
-// and the v9 ledger writes `[v8]`. Never infer an era from a `[vN]` by arithmetic -- the two
-// numbers are unrelated, and the same payload family carries a third, different `[vN]` for
-// transactions.
-//
-// The mapping itself is documented, with the same two entries, at
-// `packages/protocol/src/lib/era/envelope.ts` (see `ENVELOPE_DECODERS`), which is the authority
-// cited here rather than restated. `packages/indexer-public-data-provider/src/codec.ts` carries the
-// same table for the provider's own decode path, pinned there by a test that serializes a state
-// with each runtime; a shared home for it would be better than either copy, and needs a layer both
-// `contracts` and that provider can reach.
-const CONTRACT_STATE_ENVELOPE_ERAS: Readonly<Partial<Record<string, LedgerVersion>>> = Object.freeze({
-  'midnight:contract-state[v6]': 'v8',
-  'midnight:contract-state[v8]': 'v9'
-});
-
-/**
- * Reads which ledger era wrote a serialized contract state, from the envelope tag in front of the
- * body and WITHOUT decoding the body.
- *
- * @throws TagParseError when there is no well-formed tag prefix, or the tag is not one of the
- * supported contract-state envelopes.
- */
-const envelopeEraOf = (raw: Uint8Array): LedgerVersion => {
-  const { tag } = parseSerializedTag(raw);
-  const era = CONTRACT_STATE_ENVELOPE_ERAS[tag];
-  if (era === undefined) {
-    // Deliberately does not echo the observed tag: it is attacker-controlled and validated only
-    // against a character set, so embedding it verbatim would put arbitrary text in this message.
-    throw new TagParseError(
-      'The serialized contract state does not carry a contract-state envelope from a supported ledger ' +
-        'runtime. Verify the bytes came from a raw contract-state query and not from another serialized type.'
-    );
-  }
-  return era;
-};
-
 /**
  * Refuses an operation whose network head and fetched contract state belong to different ledger
  * eras.
@@ -386,7 +348,11 @@ const envelopeEraOf = (raw: Uint8Array): LedgerVersion => {
  * The order is load-bearing:
  *
  * 1. The envelope tag is read BEFORE any decode, on both pipelines, so a state that cannot be
- *    decoded at all is still dated and a decoder is never handed bytes from the wrong era.
+ *    decoded at all is still dated and a decoder is never handed bytes from the wrong era. The
+ *    tag-to-era mapping is NOT declared here: it decides which era's decoder is handed
+ *    attacker-supplied bytes, so it lives in exactly one place, as
+ *    `contractStateEnvelopeVersion` in `@midnight-ntwrk/midnight-js-utils`, beside the tag parser
+ *    it is built on (`packages/protocol/docs/shared-table-discipline.md`).
  * 2. ERAS are compared, never raw `protocolVersion` integers — a same-era node minor bump
  *    (2_000_000 -> 2_001_000) is not a disagreement and must not be reported as one.
  * 3. On a disagreement the head is re-read, FRESH. The provider issues an uncached request per
@@ -410,7 +376,7 @@ export const assertHeadStateEraAgreement = async (
   state: RawContractState,
   pdp: HeadVersionSource
 ): Promise<void> => {
-  const stateEra = envelopeEraOf(state.raw);
+  const stateEra = contractStateEnvelopeVersion(state.raw);
   if (stateEra === head) {
     return;
   }

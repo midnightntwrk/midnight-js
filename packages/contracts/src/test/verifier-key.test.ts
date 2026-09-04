@@ -21,7 +21,7 @@ import { type ContractStatePojo, loadLedgerEra } from '@midnight-ntwrk/midnight-
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { BlankVerifierKeySlotError, VerifierKeyMismatchError } from '../errors';
-import { assertVerifierKeyMatches } from '../internal/key-set';
+import { assertVerifierKeyMatches } from '../internal/verifier-key';
 
 // The shared hard-fork fixture tree, reached by relative path: `testkit-js` depends on
 // `midnight-js-contracts`, so a package dependency here would close a workspace cycle.
@@ -35,7 +35,7 @@ const FIXTURES_DIR = resolve(fileURLToPath(new URL('../../../../', import.meta.u
 //
 // The FILENAME keeps its `co-v2` wording, which is checked in and byte-referenced from the fixture
 // manifest. That vocabulary does not appear in this package's code and does not correspond to
-// anything in either ledger's API -- see `../internal/key-set.ts` -- so the mismatch between the
+// anything in either ledger's API -- see `../internal/verifier-key.ts` -- so the mismatch between the
 // name and the code is expected rather than a defect.
 const FOREIGN_KEY_STATE = resolve(FIXTURES_DIR, 'state-co-v2-only-foreign.hex');
 // The known-good key for the counter's `increment` circuit, compiled from the same source with a

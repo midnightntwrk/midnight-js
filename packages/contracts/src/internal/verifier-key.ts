@@ -37,11 +37,12 @@
  * pipeline, or the wrong contract address — shows up precisely as a local verifier key that fails
  * to byte-match the on-chain slot, and that is caught here, before proving.
  *
- * ## On the file name
+ * ## On a name you will meet in the fixtures
  *
- * `key-set` is retained from the task that introduced it, and so is the `co-v2` wording in the
- * fixture file name `state-co-v2-only-foreign.hex`, which is checked in and byte-referenced from
- * the fixture manifest. Neither string names anything in either ledger's API.
+ * The `co-v2` wording in the fixture file name `state-co-v2-only-foreign.hex` is retained: it is
+ * checked in and byte-referenced from the fixture manifest. It names nothing in either ledger's
+ * API, and nothing in this package's code, so the mismatch between that file name and the
+ * vocabulary here is expected rather than a defect.
  *
  * @see packages/protocol/docs/verifier-keys.md
  * @see packages/protocol/docs/fail-closed-decoding.md for why a blank slot is reported as absent
