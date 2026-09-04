@@ -83,7 +83,7 @@ point rather than its resolved name: `setOperation` handed the name would leave
 a byte-declared slot blank and create a second, undeclared one beside it.
 Resolving each key inside the loop is also what removes the non-null assertion
 the set arithmetic would otherwise need at the end — the `undefined` branch IS
-the `'deploy-verifier-key'` check, not an unreachable case to assert away.
+the `'deploy-unknown-circuit'` check, not an unreachable case to assert away.
 
 The resolver is shared by both eras' deploy legs, so the two cannot drift on
 which checks run or in what order, and each leg's own docs point at it rather

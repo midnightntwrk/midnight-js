@@ -36,11 +36,14 @@ let enginePromise: Promise<Engine.Ledger8Engine> | undefined;
  * `@midnight-ntwrk/onchain-runtime-v3` WASM load only on the first call — never
  * as a side effect of importing the package root.
  *
- * A failed load is not memoised: the next call retries the import. A rejection
- * that already carries a protocol error code propagates unchanged, keeping its
- * class, code and discriminants intact for callers; any other failure (e.g. a
- * raw module-resolution error on the engine chunk itself) is wrapped in
- * {@link Ledger8RuntimeMissingError}.
+ * A failed load is not memoised: the next call retries the import. Exactly two
+ * rejections propagate unchanged — {@link Ledger8RuntimeMissingError} from the
+ * retained-runtime acquisition, and {@link Ledger8InstanceMismatchError} from
+ * the construction-time instance guard — keeping their class, code and
+ * discriminants intact for callers. Every other failure is wrapped in
+ * {@link Ledger8RuntimeMissingError}, including the coded
+ * `Ledger8RuntimeInvalidError` that same guard raises for an incomplete
+ * runtime, and a raw module-resolution error on the engine chunk itself.
  *
  * @returns The engine's public surface, memoised after the first successful
  *   load.

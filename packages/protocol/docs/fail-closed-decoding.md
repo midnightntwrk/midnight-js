@@ -135,21 +135,27 @@ no gain.
 
 `extractEncodedStateValue` takes `ledger8ContractState` for every `version`,
 not just `'v8'`. Requiring it unconditionally costs nobody a runtime they would
-not otherwise hold. This seam is reached only from the ledger-8 engine's own
-factory, which has already awaited onchain-runtime-v3 to assemble the runtime
-it hands to `downConvertForExecution`; the `'v9'` decoder is here so that the
+not otherwise hold. This seam is reached only from `createV8Era`
+(`lib/era/load-era.ts`), which has already awaited `loadLedger8()` and hands
+that module's `ContractState` in; the `'v9'` decoder is here so that the
 *bridge* can read a post-fork envelope before down-converting it, not to serve
 a caller who has no pre-fork runtime at all. Such a caller reads ledger-v9
 directly and never reaches this function. Note this is a statement about the
 call graph, not about bundling — the separate reason the pre-fork types are
 imported with `import type` is unaffected either way.
 
+`Ledger8ContractState` is declared as a `Pick` of the onchain-runtime-v3 class,
+which reads as though the engine's assembled runtime were the argument. It is
+not: the only production caller passes ledger-v8's `ContractState`, and the
+`Pick` holds because the two agree on `deserialize`. The engine's own factory
+never calls this function at all.
+
 That is what makes the unconditional form the cheaper one: a single guard
 covering both eras, with no era-conditional branch to keep correct and no
 optional parameter weakening the one call that genuinely needs the argument. It
-stops being free the moment this function is surfaced beyond the engine — if a
-v9-only path ever calls it, move the check into the `'v8'` decoder and make the
-parameter optional there.
+stops being free the moment this function is surfaced beyond the v8 era facade —
+if a v9-only path ever calls it, move the check into the `'v8'` decoder and make
+the parameter optional there.
 
 The standalone `extractV9EncodedStateValue` is the release valve that keeps
 that requirement from spreading. It was split out of
