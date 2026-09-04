@@ -216,9 +216,10 @@ interface RecordingFile {
 
 // The recorded member set is tied to the runtime's own transcript type at
 // COMPILE time: `RecordedTranscript` must name a member for every member of
-// `TranscriptPojo` except the three that carry live retained-runtime handles,
-// which cannot be serialized at all. A member added to `TranscriptPojo` fails
-// this, which is what stops the recording drifting behind the runtime.
+// `TranscriptPojo` except the two that carry live retained-runtime handles
+// (`preContractState`, `postContractState`), which cannot be serialized at all.
+// A member added to `TranscriptPojo` fails this, which is what stops the
+// recording drifting behind the runtime.
 type Assert<T extends true> = T;
 type SerializableTranscriptMember = Exclude<
   keyof TranscriptPojo,

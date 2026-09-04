@@ -351,8 +351,10 @@ export interface Ledger8FindDeployedContractOptions<C extends Ledger8Contract> {
    *
    * The field is retained rather than removed so this arm's options stay the
    * shape the current era's are, and so it can start being honoured without a
-   * change to the type. Store the key yourself, through the private-state
-   * provider, if you need it for a retained-era contract.
+   * change to the type: honouring it is client-side storage, which is
+   * era-independent, so nothing about the retained ledger prevents it. Store
+   * the key yourself, through the private-state provider, if you need it for a
+   * retained-era contract in the meantime.
    */
   readonly signingKey?: SigningKey;
 }

@@ -91,12 +91,19 @@ import { assertVerifierKeyMatches } from './verifier-key';
  * The transcript members this pipeline reads, narrowed off the engine's own
  * result type so the two cannot drift.
  *
- * Excludes `preContractState`/`postContractState`, which carry live
- * retained-runtime handles: the pre-call state the composition needs is the
- * one {@link LedgerEra.extractState} already returned, and the down-convert
- * refuses to return unless its decoding re-encodes to exactly that value, so
- * reading it off the transcript would only be a second route to the same
- * bytes.
+ * THREE members of the engine's result are left out, for two different reasons.
+ *
+ * `preContractState` and `postContractState` carry live retained-runtime
+ * handles, which may not cross this package boundary at all. Nothing is lost by
+ * dropping them: the pre-call state the composition needs is the one
+ * {@link LedgerEra.extractState} already returned, and the down-convert refuses
+ * to return unless its decoding re-encodes to exactly that value, so reading it
+ * off the transcript would only be a second route to the same bytes.
+ *
+ * `result` is plain data and could be carried, and is dropped because nothing
+ * reads it: the retained-era result types report the next private state and the
+ * finalized record, never the circuit's own return value. It belongs here the
+ * day one of them does.
  */
 export type Ledger8Transcript = Pick<
   TranscriptPojo,

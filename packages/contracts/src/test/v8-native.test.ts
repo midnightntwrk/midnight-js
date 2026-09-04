@@ -53,6 +53,7 @@ import {
   type VersionedTx,
   type ZKConfigProvider
 } from '@midnight-ntwrk/midnight-js-types';
+import { CONTRACTS_ERROR_CODES, hasErrorCode } from '@midnight-ntwrk/midnight-js-utils';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -65,7 +66,7 @@ import {
   VerifierKeyMismatchError
 } from '../errors';
 import { findDeployedContract } from '../find-deployed-contract';
-import { findLedger8Contract, runLedger8Deploy } from '../internal/ledger8-entry';
+import { findLedger8Contract, runLedger8Deploy, submitLedger8CallTx } from '../internal/ledger8-entry';
 import { runLedger8CallPipeline } from '../internal/ledger8-pipeline';
 import type {
   Ledger8CallTxOptions,
@@ -544,6 +545,50 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     expect(log).toEqual([]);
   });
 
+  it('refuses a malformed contract address on the CALL arm, without a single provider call', async () => {
+    const providers = preForkProviders(v6Envelope);
+
+    // The same local refusal the current-era arm makes, and the reason it is
+    // local: a malformed address would otherwise cost a head read and a state
+    // read to discover, and the state read would answer "no contract deployed
+    // there" -- which points at the chain for a fault in the caller's own
+    // argument.
+    await expect(
+      submitCallTx(providers, { ...callOptions(), contractAddress: 'not-a-contract-address' })
+    ).rejects.toThrow();
+    expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
+    expect(providers.publicDataProvider.queryRawContractState).not.toHaveBeenCalled();
+    expect(providers.proofProvider.proveTx).not.toHaveBeenCalled();
+  });
+
+  it('refuses a circuit the artifact does not declare, naming the circuit rather than the chain', async () => {
+    const providers = preForkProviders(v6Envelope);
+
+    // Without this check the id would travel all the way to the key lookup and
+    // come back as a blank verifier-key slot -- a diagnosis that sends a caller
+    // looking at the deployed contract for what is a typo in its own call. The
+    // id is checked against the ARTIFACT's own circuit collection, which is the
+    // only thing that can answer it locally.
+    //
+    // Driven at `submitLedger8CallTx` rather than through the overload,
+    // deliberately: the retained overload narrows `circuitId` to the ids the
+    // artifact declares, so an undeclared id is a COMPILE error there -- which
+    // is the stronger refusal and is where a TypeScript caller meets it. This
+    // check exists for the caller the type system cannot reach: JavaScript, or
+    // an id computed at run time. So the test enters at the layer that check
+    // lives on.
+    await expect(
+      submitLedger8CallTx(providers, {
+        compiledContract: contract,
+        contractAddress: recording.contractAddress,
+        circuitId: 'not_a_declared_circuit',
+        args: [recording.receivedCoin]
+      })
+    ).rejects.toThrow("Circuit 'not_a_declared_circuit' is undefined");
+    expect(providers.publicDataProvider.queryLatestProtocolVersion).not.toHaveBeenCalled();
+    expect(providers.publicDataProvider.queryRawContractState).not.toHaveBeenCalled();
+  });
+
   it('refuses the call when the chain holds a different key for the circuit, before proving', async () => {
     const providers = preForkProviders(v6Envelope);
     providers.zkConfigProvider.getVerifierKey = vi
@@ -682,6 +727,10 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     }
 
     expect(caught).toBeInstanceOf(Ledger8SeamFailedError);
+    // The CODE, not only the class: a consumer that cannot import this package's
+    // classes -- a JavaScript caller, or one narrowing across a bundle boundary
+    // -- branches on `code`, so that is the surface the negative has to pin.
+    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED)).toBe(true);
     expect((caught as Ledger8SeamFailedError).seam).toBe('proveTx');
     expect((caught as Ledger8SeamFailedError).circuitId).toBe(CIRCUIT_ID);
 
@@ -752,7 +801,15 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     const providers = preForkProviders(v6Envelope);
     providers.midnightProvider.submitTx = vi.fn().mockRejectedValue(new Error('node refused the transaction'));
 
-    await expect(submitCallTx(providers, callOptions())).rejects.toBeInstanceOf(Ledger8SeamFailedError);
+    let caught: unknown;
+    try {
+      await submitCallTx(providers, callOptions());
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(Ledger8SeamFailedError);
+    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.LEDGER8_SEAM_FAILED)).toBe(true);
+    expect((caught as Ledger8SeamFailedError).seam).toBe('submitTx');
 
     // Deciding whether a rejection means the head moved is the next task's
     // work, and it needs its own tests honestly red: the head is read once,
@@ -813,6 +870,7 @@ describe('the retained-native pipeline through the unchanged entry points', () =
     // the bare assertion the offer builder would otherwise raise from inside
     // itself, naming neither.
     expect(caught).toBeInstanceOf(Ledger8ShieldedSpendUnsupportedError);
+    expect(hasErrorCode(caught, CONTRACTS_ERROR_CODES.LEDGER8_SHIELDED_SPEND_UNSUPPORTED)).toBe(true);
     expect((caught as Ledger8ShieldedSpendUnsupportedError).circuitId).toBe(CIRCUIT_ID);
     expect((caught as Error).message).toContain('Zswap chain state');
     // Refused before anything was composed or sent anywhere.
