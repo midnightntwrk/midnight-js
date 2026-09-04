@@ -37,6 +37,19 @@ import {
 } from './governance/tx-interfaces';
 import { requireV9Record } from './internal/era';
 import {
+  type AnyLedger8FindDeployedContractOptions,
+  type AnyLedger8FoundContract,
+  isLedger8Options,
+  LEDGER8_PIPELINE_NOT_WIRED,
+  type Ledger8CircuitId,
+  type Ledger8Contract,
+  type Ledger8ContractProviders,
+  type Ledger8FindDeployedContractOptions,
+  type Ledger8FoundContract,
+  type NeitherContractShape,
+  type NeitherEraContractOptions
+} from './ledger8-contract';
+import {
   type CircuitCallTxInterface,
   createCircuitCallTxInterface
 } from './tx-interfaces';
@@ -222,6 +235,33 @@ export interface FoundContract<C extends Contract.Any> {
   readonly contractMaintenanceTx: ContractMaintenanceTxInterface;
 }
 
+/**
+ * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+ * the raw contract instance rather than inside a `CompiledContract` container. It accepts the
+ * shape but cannot execute it yet — see {@link LEDGER8_PIPELINE_NOT_WIRED}.
+ *
+ * Declared BEFORE the current-era arms, and pinned there by
+ * `src/test/typecheck/overloads.test-d.ts`; see the module documentation in
+ * `./ledger8-contract.ts` for why the order is load-bearing.
+ */
+export async function findDeployedContract<C extends Ledger8Contract>(
+  providers: Ledger8ContractProviders<C, Ledger8CircuitId<C>>,
+  options: Ledger8FindDeployedContractOptions<C>
+): Promise<Ledger8FoundContract<C>>;
+
+/**
+ * The catch-all arm, which names {@link NeitherContractShape} — a type whose definition carries
+ * the migration-guide pointer — for an object belonging to NEITHER era.
+ *
+ * Both type parameters exist so the arm erases to a signature compatible with the implementation
+ * below it. Nothing can produce a `NeitherContractShape`, so a call that type-checks never
+ * selects this arm.
+ */
+export async function findDeployedContract<P, T extends NeitherEraContractOptions>(
+  providers: P,
+  options: T
+): Promise<never>;
+
 export async function findDeployedContract<C extends Contract<undefined>>(
   providers: ContractProviders<C, Contract.ProvableCircuitId<C>, unknown>,
   options: FindDeployedContractOptionsBase<C>
@@ -256,8 +296,11 @@ export async function findDeployedContract<C extends Contract.Any>(
  */
 export async function findDeployedContract<C extends Contract.Any>(
   providers: ContractProviders<C>,
-  options: FindDeployedContractOptions<C>
-): Promise<FoundContract<C>> {
+  options: FindDeployedContractOptions<C> | AnyLedger8FindDeployedContractOptions
+): Promise<FoundContract<C> | AnyLedger8FoundContract> {
+  if (isLedger8Options<AnyLedger8FindDeployedContractOptions>(options)) {
+    throw new Error(LEDGER8_PIPELINE_NOT_WIRED);
+  }
   const { compiledContract, contractAddress } = options;
   assertIsContractAddress(contractAddress);
   providers.privateStateProvider.setContractAddress(contractAddress);

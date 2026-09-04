@@ -21,6 +21,21 @@ import { type CallResult } from './call';
 import { type ContractProviders } from './contract-providers';
 import { CallTxFailedError, IncompleteCallTxPrivateStateConfig } from './errors';
 import * as Transaction from './internal/transaction';
+import {
+  type AnyLedger8CallTxOptions,
+  type AnyLedger8FinalizedCallTxData,
+  type AnyLedger8SubmittedCallTx,
+  isLedger8Options,
+  LEDGER8_PIPELINE_NOT_WIRED,
+  type Ledger8CallTxOptions,
+  type Ledger8CircuitId,
+  type Ledger8Contract,
+  type Ledger8ContractProviders,
+  type Ledger8FinalizedCallTxData,
+  type Ledger8SubmittedCallTx,
+  type NeitherContractShape,
+  type NeitherEraContractOptions
+} from './ledger8-contract';
 import type { SubmitTxProviders } from './submit-tx';
 import { submitTxAsync } from './submit-tx';
 import { type TransactionContext } from './transaction';
@@ -35,6 +50,33 @@ import {
 export type SubmitCallTxProviders<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>> =
   | ContractProviders<C>
   | SubmitTxProviders<C, PCK>;
+
+/**
+ * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+ * the raw contract instance rather than inside a `CompiledContract` container. It accepts the
+ * shape but cannot execute it yet — see {@link LEDGER8_PIPELINE_NOT_WIRED}.
+ *
+ * Declared BEFORE the current-era arms, and pinned there by
+ * `src/test/typecheck/overloads.test-d.ts`; see the module documentation in
+ * `./ledger8-contract.ts` for why the order is load-bearing.
+ */
+export async function submitCallTx<C extends Ledger8Contract, K extends Ledger8CircuitId<C>>(
+  providers: Ledger8ContractProviders<C, K>,
+  options: Ledger8CallTxOptions<C, K>
+): Promise<Ledger8FinalizedCallTxData<C, K>>;
+
+/**
+ * The catch-all arm, which names {@link NeitherContractShape} — a type whose definition carries
+ * the migration-guide pointer — for an object belonging to NEITHER era.
+ *
+ * Both type parameters exist so the arm erases to a signature compatible with the implementation
+ * below it. Nothing can produce a `NeitherContractShape`, so a call that type-checks never
+ * selects this arm.
+ */
+export async function submitCallTx<P, T extends NeitherEraContractOptions>(
+  providers: P,
+  options: T
+): Promise<never>;
 
 export async function submitCallTx<C extends Contract<undefined>, PCK extends Contract.ProvableCircuitId<C>>(
   providers: SubmitTxProviders<C, PCK>,
@@ -100,9 +142,12 @@ export async function submitCallTx<C extends Contract<undefined>, PCK extends Co
  */
 export async function submitCallTx<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: SubmitCallTxProviders<C, PCK>,
-  options: CallTxOptions<C, PCK>,
+  options: CallTxOptions<C, PCK> | AnyLedger8CallTxOptions,
   transactionContext?: TransactionContext<C, PCK>
-): Promise<FinalizedCallTxData<C, PCK> | CallResult<C, PCK>> {
+): Promise<FinalizedCallTxData<C, PCK> | CallResult<C, PCK> | AnyLedger8FinalizedCallTxData> {
+  if (isLedger8Options<AnyLedger8CallTxOptions>(options)) {
+    throw new Error(LEDGER8_PIPELINE_NOT_WIRED);
+  }
   assertIsContractAddress(options.contractAddress);
   assertDefined(
     ContractExecutable.make(options.compiledContract)
@@ -135,6 +180,33 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
     ? Transaction.scoped(providers as ContractProviders<C, PCK>, callTxFn, transactionContext)
     : Transaction.scoped(providers as ContractProviders<C, PCK>, callTxFn)
 }
+
+/**
+ * The retained-era arm. Accepts a contract produced by the PREVIOUS Compact toolchain, passed as
+ * the raw contract instance rather than inside a `CompiledContract` container. It accepts the
+ * shape but cannot execute it yet — see {@link LEDGER8_PIPELINE_NOT_WIRED}.
+ *
+ * Declared BEFORE the current-era arms, and pinned there by
+ * `src/test/typecheck/overloads.test-d.ts`; see the module documentation in
+ * `./ledger8-contract.ts` for why the order is load-bearing.
+ */
+export async function submitCallTxAsync<C extends Ledger8Contract, K extends Ledger8CircuitId<C>>(
+  providers: Ledger8ContractProviders<C, K>,
+  options: Ledger8CallTxOptions<C, K>
+): Promise<Ledger8SubmittedCallTx<C, K>>;
+
+/**
+ * The catch-all arm, which names {@link NeitherContractShape} — a type whose definition carries
+ * the migration-guide pointer — for an object belonging to NEITHER era.
+ *
+ * Both type parameters exist so the arm erases to a signature compatible with the implementation
+ * below it. Nothing can produce a `NeitherContractShape`, so a call that type-checks never
+ * selects this arm.
+ */
+export async function submitCallTxAsync<P, T extends NeitherEraContractOptions>(
+  providers: P,
+  options: T
+): Promise<never>;
 
 /**
  * Creates and submits a transaction for the invocation of a circuit on a given contract,
@@ -213,7 +285,15 @@ export async function submitCallTx<C extends Contract.Any, PCK extends Contract.
 export async function submitCallTxAsync<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
   providers: SubmitCallTxProviders<C, PCK>,
   options: CallTxOptions<C, PCK>
-): Promise<SubmittedCallTx<C, PCK>> {
+): Promise<SubmittedCallTx<C, PCK>>;
+
+export async function submitCallTxAsync<C extends Contract.Any, PCK extends Contract.ProvableCircuitId<C>>(
+  providers: SubmitCallTxProviders<C, PCK>,
+  options: CallTxOptions<C, PCK> | AnyLedger8CallTxOptions
+): Promise<SubmittedCallTx<C, PCK> | AnyLedger8SubmittedCallTx> {
+  if (isLedger8Options<AnyLedger8CallTxOptions>(options)) {
+    throw new Error(LEDGER8_PIPELINE_NOT_WIRED);
+  }
   assertIsContractAddress(options.contractAddress);
   assertDefined(
     ContractExecutable.make(options.compiledContract)
