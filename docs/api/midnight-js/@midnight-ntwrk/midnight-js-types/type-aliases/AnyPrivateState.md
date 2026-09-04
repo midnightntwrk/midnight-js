@@ -6,4 +6,4 @@
 
 # Type Alias: AnyPrivateState
 
-> **AnyPrivateState** = [`PrivateState`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/PrivateState.md)\<[`Any`](../../midnight-js-protocol/compact-js/namespaces/Contract/type-aliases/Any.md)\>
+> **AnyPrivateState** = [`Contract.PrivateState`](https://github.com/midnightntwrk/midnight-sdk)\<[`Contract.Any`](https://github.com/midnightntwrk/midnight-sdk)\>

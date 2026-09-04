@@ -26,7 +26,7 @@ authority stored on the blockchain for this contract.
 
 ##### newAuthority
 
-[`SigningKey`](../../../midnight-js-protocol/onchain-runtime/type-aliases/SigningKey.md)
+[`SigningKey`](https://github.com/midnightntwrk/midnight-ledger)
 
 The new contract maintenance authority for this contract.
 

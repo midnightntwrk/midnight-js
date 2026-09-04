@@ -14,12 +14,12 @@ The common fields carried by every [ContractEvent](../type-aliases/ContractEvent
 
 ### address
 
-> `readonly` **address**: [`ContractAddress`](../../../../../midnight-js-protocol/platform-js/effect/ContractAddress/type-aliases/ContractAddress.md)
+> `readonly` **address**: [`ContractAddress`](https://github.com/midnightntwrk/midnight-sdk)
 
 Defined in: node\_modules/@midnight-ntwrk/compact-js/dist/dts/effect/ContractLog.d.ts:144
 
 The address of the contract that emitted the event. Always a validated
-[ContractAddress.ContractAddress](../../../../../midnight-js-protocol/platform-js/effect/ContractAddress/variables/ContractAddress.md) on a [DecodedEvent](../type-aliases/DecodedEvent.md); on a [DegradedEvent](../type-aliases/DegradedEvent.md)
+[ContractAddress.ContractAddress](https://github.com/midnightntwrk/midnight-sdk) on a [DecodedEvent](../type-aliases/DecodedEvent.md); on a [DegradedEvent](../type-aliases/DegradedEvent.md)
 whose degradation was caused by a malformed envelope address, this is the unvalidated raw
 string as supplied by the runtime (also available on `raw.address`).
 
