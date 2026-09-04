@@ -84,6 +84,7 @@ import {
   serializeQualifiedShieldedCoinInfo,
   zswapStateToSegmentedOffer
 } from '../utils/zswap-utils';
+import type { BreadcrumbSink } from './breadcrumbs';
 import { assertHeadStateEraAgreement } from './era';
 import { assertVerifierKeyMatches } from './verifier-key';
 
@@ -252,6 +253,7 @@ export interface Ledger8Snapshot {
  * @param head The era the network head is on.
  * @param pdp The read surface.
  * @param contractAddress The contract being operated on.
+ * @param logger The optional logger the dating step's breadcrumbs are written to.
  * @returns The snapshot, its extracted state and its decoded entry points.
  * @throws Error if no contract is deployed at `contractAddress`.
  * @throws HeadStateEraMismatchError, IndexerInconsistencyError if the head and
@@ -262,12 +264,13 @@ export const readLedger8Snapshot = async (
   era: LedgerEra,
   head: LedgerVersion,
   pdp: Ledger8PipelineReadSurface,
-  contractAddress: string
+  contractAddress: string,
+  logger?: BreadcrumbSink
 ): Promise<Ledger8Snapshot> => {
   const state = await pdp.queryRawContractState(contractAddress);
   assertDefined(state, `No contract deployed at contract address '${contractAddress}'`);
 
-  await assertHeadStateEraAgreement(head, state, pdp);
+  await assertHeadStateEraAgreement(head, state, pdp, logger);
 
   const encoded = era.extractState(state.raw);
   const decoded = era.decodeContractState(state.raw);
@@ -331,6 +334,8 @@ export interface Ledger8CallPipelineRequest<TState> {
   readonly engine: Ledger8ExecutionEngine<TState>;
   readonly publicDataProvider: Ledger8PipelineReadSurface;
   readonly head: LedgerVersion;
+  /** The optional logger the dating step's breadcrumbs are written to. */
+  readonly logger?: BreadcrumbSink;
   readonly contract: Ledger8ContractSlice;
   readonly contractAddress: string;
   readonly circuitId: string;
@@ -382,7 +387,7 @@ export const runLedger8CallPipeline = async <TState>(
 ): Promise<Ledger8CallPipelineResult> => {
   const { era, engine, publicDataProvider, head, contract, contractAddress, circuitId } = request;
 
-  const snapshot = await readLedger8Snapshot(era, head, publicDataProvider, contractAddress);
+  const snapshot = await readLedger8Snapshot(era, head, publicDataProvider, contractAddress, request.logger);
   // BEFORE proving, and before the circuit runs: a proof generated against a
   // key the chain does not hold is rejected on submission, so checking here
   // turns a paid-for, late failure into a free, immediate one.

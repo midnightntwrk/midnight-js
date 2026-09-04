@@ -17,7 +17,6 @@ import {
   type LedgerEra,
   type LedgerVersion,
   loadLedgerEra,
-  networkHeadVersion,
   protocolVersionToLedger,
   UnknownLedgerVersionError
 } from '@midnight-ntwrk/midnight-js-protocol';
@@ -40,6 +39,7 @@ import {
   Ledger8DeployOnV9Error
 } from '../errors';
 import type { Ledger8Contract } from '../ledger8-contract';
+import { type BreadcrumbSink, emitEncoding, emitHeadResolution } from './breadcrumbs';
 
 /**
  * Unwraps the v9 arm of a versioned payload a provider returned. The flows in
@@ -422,12 +422,23 @@ export const acquireHeadEra = async (reading: HeadEraReading): Promise<ResolvedO
  * (`docs/adr/0008-never-latch-the-network-head-version.md`).
  *
  * @param pdp The read surface to ask for the network head.
+ * @param logger The optional logger the head-resolution breadcrumb is written to.
  * @returns The head era, the integer it was resolved from, and the era facade bound to it.
  * @throws UnknownProtocolVersionError tagged with the `construct` path when the head integer
  * cannot be placed on the era timeline. A rejection from the provider propagates unchanged.
  */
-export const resolveOperationEra = async (pdp: HeadVersionSource): Promise<ResolvedOperationEra> =>
-  acquireHeadEra(await readHeadEra(pdp));
+export const resolveOperationEra = async (
+  pdp: HeadVersionSource,
+  logger?: BreadcrumbSink
+): Promise<ResolvedOperationEra> => {
+  const reading = await readHeadEra(pdp);
+  // Reported from the READING, before the era facade is acquired: acquiring
+  // the pre-fork era is a lazy runtime load, and a breadcrumb written after it
+  // would be missing for exactly the operation whose era could not be loaded.
+  emitHeadResolution(logger, reading, 'operation-start');
+
+  return acquireHeadEra(reading);
+};
 
 /**
  * Refuses an operation whose artifact era and network head era cannot be run together.
@@ -521,9 +532,14 @@ export const assertEraCompatible = (pipeline: PipelineEra, head: LedgerVersion, 
  *    both describe one chain: {@link IndexerInconsistencyError}, with retry-later text and never
  *    a claim that a fork is under way.
  *
+ * Both observations are breadcrumbed: the envelope's era as an encoding decision, and the fresh
+ * re-read of step 3 as a head resolution carrying its own provenance, so a log can tell it apart
+ * from the reading the operation started on.
+ *
  * @param head The era the operation resolved from the network head.
  * @param state The raw contract state the operation fetched, envelope included.
  * @param pdp The read surface, for the fresh head read step 3 needs.
+ * @param logger The optional logger the encoding and re-read breadcrumbs are written to.
  * @throws TagParseError if `state.raw` carries no supported contract-state envelope.
  * @throws Error, carrying the transport failure on `cause`, if the fresh head read rejects — so the
  * disagreement that was under investigation is not lost behind a bare transport error.
@@ -533,16 +549,25 @@ export const assertEraCompatible = (pipeline: PipelineEra, head: LedgerVersion, 
 export const assertHeadStateEraAgreement = async (
   head: LedgerVersion,
   state: RawContractState,
-  pdp: HeadVersionSource
+  pdp: HeadVersionSource,
+  logger?: BreadcrumbSink
 ): Promise<void> => {
   const stateEra = contractStateEnvelopeVersion(state.raw);
+  // Reported for the AGREEING case too, not only for a disagreement: which era
+  // decoded a state is the fact an operator needs when the state decodes but
+  // the call behaves oddly, and only the agreeing path reaches a decoder.
+  emitEncoding(logger, stateEra);
   if (stateEra === head) {
     return;
   }
 
-  let freshHead: LedgerVersion;
+  let freshReading: HeadEraReading;
   try {
-    freshHead = await networkHeadVersion(pdp);
+    // `readHeadEra` rather than `networkHeadVersion`: the same one round trip
+    // and the same `'construct'` era mapping, but it also yields the raw
+    // integer, which is what the breadcrumb needs and what distinguishes a
+    // same-era node bump from a real era move.
+    freshReading = await readHeadEra(pdp);
   } catch (cause) {
     // Nothing is swallowed -- the transport failure propagates on `cause` -- but on its own it
     // arrives with no trace that an era disagreement was under investigation, which is the most
@@ -555,8 +580,10 @@ export const assertHeadStateEraAgreement = async (
     );
   }
 
-  if (freshHead !== stateEra) {
-    throw new IndexerInconsistencyError(freshHead, stateEra);
+  emitHeadResolution(logger, freshReading, 'disagreement-re-read');
+
+  if (freshReading.head !== stateEra) {
+    throw new IndexerInconsistencyError(freshReading.head, stateEra);
   }
   throw new HeadStateEraMismatchError(head, stateEra);
 };

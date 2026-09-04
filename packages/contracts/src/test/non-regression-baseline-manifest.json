@@ -27,9 +27,11 @@
     "packages/contracts/src/test/resources/compiled/shielded-map/contract/index.d.ts"
   ],
   "postBaselineFiles": [
+    "packages/contracts/src/test/breadcrumbs.test.ts",
     "packages/contracts/src/test/current-era-diagnostic.test.ts",
     "packages/contracts/src/test/era-dispatch-ledger8.test.ts",
     "packages/contracts/src/test/era-dispatch.test.ts",
+    "packages/contracts/src/test/error-codes-negative.test.ts",
     "packages/contracts/src/test/keep-state.test.ts",
     "packages/contracts/src/test/ledger8-contract.test.ts",
     "packages/contracts/src/test/ledger8-fixture-types.ts",

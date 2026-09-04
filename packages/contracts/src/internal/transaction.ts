@@ -30,6 +30,7 @@ import { type ContractStates,type PublicContractStates } from '../get-states';
 import { submitTx, type SubmitTxOptions } from '../submit-tx';
 import type * as Transaction from '../transaction';
 import { type FinalizedCallTxData, type UnsubmittedCallTxData } from '../tx-model';
+import { type BreadcrumbSink, emitHeadResolution } from './breadcrumbs';
 import { acquireHeadEra, type HeadVersionSource, readHeadEra, type ResolvedOperationEra } from './era';
 
 /** @internal */
@@ -103,15 +104,23 @@ const mergeSubmitTxOptions = <PCK extends AnyProvableCircuitId>(
  * before the head era's own runtime is acquired, so a refused scope pays for no
  * era load and its refusal cannot be replaced by one failing.
  *
+ * The reading is breadcrumbed BEFORE the refusal below, so a refused scope
+ * still says in the log which head it was refused on. No pipeline-selection
+ * breadcrumb is written here: a scope does not select a pipeline -- the scope
+ * machinery is current-era-only by construction -- so its only era decision is
+ * the refusal, which already carries a registered code and remediation text.
+ *
  * @internal
  * @param pdp The read surface, for the single head read.
+ * @param logger The optional logger the head-resolution breadcrumb is written to.
  * @returns The era facts the scope runs under.
  * @throws ScopedTxEraUnsupportedError if the head era composes only one call
  * per transaction, so has nothing for a scope to batch into.
  * @throws UnknownProtocolVersionError if the head integer is off the era timeline.
  */
-export const resolveScopeEra = async (pdp: HeadVersionSource): Promise<ResolvedOperationEra> => {
+export const resolveScopeEra = async (pdp: HeadVersionSource, logger?: BreadcrumbSink): Promise<ResolvedOperationEra> => {
   const reading = await readHeadEra(pdp);
+  emitHeadResolution(logger, reading, 'operation-start');
   // REFUSED FROM THE READING ALONE, before any era is acquired. Acquiring first would make every
   // refused scope pay to instantiate a ledger it is about to be refused on -- and would make the
   // refusal depend on that instantiation succeeding, so a current-era-only caller, which is exactly
@@ -482,7 +491,7 @@ export const scopedTransaction = async <
   }
 
   const options = txCtxOrOptions as Transaction.ScopedTransactionOptions | undefined;
-  const scopeEra = await resolveScopeEra(providers.publicDataProvider);
+  const scopeEra = await resolveScopeEra(providers.publicDataProvider, providers.loggerProvider);
 
   return runScope(providers, fn, undefined, options, scopeEra);
 };
