@@ -483,33 +483,31 @@ export interface PublicDataProvider {
    * Retrieves the protocol-version integer reported by the network's current
    * head block.
    *
-   * Implementations MAY serve this from a cache, but only after they have
-   * corroborated evidence that the network has moved to the newer ledger era.
-   * Corroboration means one of exactly two things:
+   * Every call reads the network. Implementations MUST NOT cache the answer.
+   * The reason to ask is to learn which ledger era a transaction being built
+   * now will land in, and that is exactly the question a stale answer gets
+   * wrong at the one moment it matters — the fork boundary. An era only ever
+   * moves forward, so a cached reading that has fallen behind cannot be
+   * corrected by a later reading of the same kind: it would have to be
+   * recognised as wrong first (see ADR 0008).
    *
-   * 1. a single response that carried both the head version and a contract
-   *    state whose envelope belongs to the newer era; or
-   * 2. a finalized record the implementation itself decoded, whose protocol
-   *    version resolves to the newer era.
+   * This is the construct-path counterpart to the `protocolVersion` that every
+   * read on this interface already carries. Prefer that field wherever the era
+   * of *existing* data is the question — it is dated to the same block as the
+   * bytes it describes and costs no extra request. Reach for this method only
+   * where there is no record to date: the deploy path, which has no prior
+   * contract state to read.
    *
-   * A head version integer on its own is never enough — an indexer can report
-   * a newer head while still serving older-era state, so caching on that
-   * alone would pin the wrong answer. While the network is still on the older
-   * era an implementation MUST NOT cache at all. Once a cached answer is
-   * established it only ever moves forward: a later older-era reading never
-   * clears or lowers it.
+   * The answer is a lower bound on the era of the block that will include a
+   * transaction built from it, never a guarantee — inclusion happens later,
+   * and the era may have advanced by then. A caller that must be certain
+   * confirms after the fact, from the `protocolVersion` on the finalized
+   * record.
    *
-   * Route 2 proves the era only. A record's protocol version is the version of
-   * the block that carried it and may sit behind the head, so it MUST NOT be
-   * returned from this method — the cached value always comes from a head
-   * reading.
-   *
-   * @param options Pass `{ fresh: true }` to skip any cache and always issue a
-   *                real request. Callers use this to re-read the head after
-   *                they have seen evidence that a cached answer disagrees with
-   *                what the network is actually serving.
+   * @throws Implementation-specific error when the network reports no head
+   *   block at all.
    */
-  queryLatestProtocolVersion(options?: { readonly fresh?: boolean }): Promise<number>;
+  queryLatestProtocolVersion(): Promise<number>;
 
   /**
    * Retrieves the on-chain state of a contract as the raw serialized bytes the
