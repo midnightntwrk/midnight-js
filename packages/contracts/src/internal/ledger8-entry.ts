@@ -30,14 +30,30 @@
  * step deeper in the pipeline awaits a runtime and no two steps can end up
  * bound to different acquisitions.
  *
- * ## Exactly one head read per operation
+ * ## One head read per operation, plus two re-reads that each need a reason
  *
- * `resolveOperationEra` makes the single head read, and the era it resolves is
- * used for every era-dependent decision afterwards. The only second head read
- * in the whole flow is the one `assertHeadStateEraAgreement` makes when the
- * fetched state's envelope disagrees with that reading — a re-read that exists
- * precisely to tell a stale reading from an inconsistent one, and which does
- * not happen at all when the two agree.
+ * `resolveOperationEra` makes the head read every operation takes at its start,
+ * and the era it resolves is used for every era-dependent decision afterwards.
+ * Nothing re-reads the head to answer a question that reading already answered.
+ *
+ * Two re-reads exist beyond it, and neither happens on the ordinary path:
+ *
+ * - `assertHeadStateEraAgreement` re-reads when the fetched state's envelope
+ *   disagrees with the starting reading — a re-read that exists precisely to
+ *   tell a stale reading from an inconsistent one, and which does not happen at
+ *   all when the two agree.
+ * - {@link handleSubmitRejection} re-reads after the node REJECTED a submitted
+ *   transaction, to decide whether the head crossed the fork underneath the
+ *   operation. Only on a `submitTx` rejection: a proving or balancing failure
+ *   cannot mean the network moved, and is not given a re-read.
+ *
+ * So a successful operation reads the head ONCE; a submit rejection reads it
+ * twice, which is what `src/test/v8-native.test.ts` measures. `./breadcrumbs.ts`
+ * is the authority on the full count — four across this package, the fourth
+ * being the reading a SCOPE takes at its start — and every one of them is
+ * breadcrumbed with a `HeadReadingProvenance` naming which it is. Do not
+ * describe this module as making a single re-read: adding one without a
+ * provenance member is the mistake that list exists to prevent.
  *
  * @see docs/adr/0006-version-tagged-payloads-at-provider-seams.md
  * @see docs/adr/0008-never-latch-the-network-head-version.md
@@ -70,6 +86,7 @@ import { createEncryptionPublicKeyResolver } from '../utils';
 import { type BreadcrumbSink, emitPipelineSelection } from './breadcrumbs';
 import {
   assertEraCompatible,
+  type HeadVersionSource,
   requireV8,
   requireV9,
   type ResolvedOperationEra,
@@ -153,7 +170,7 @@ export interface Ledger8Runtime {
  * @throws Ledger8RuntimeMissingError if the retained runtime cannot be acquired.
  */
 export const acquireLedger8Runtime = async (
-  pdp: Pick<PublicDataProvider, 'queryLatestProtocolVersion'>,
+  pdp: HeadVersionSource,
   kind: 'call' | 'deploy',
   breadcrumbs?: { readonly logger?: BreadcrumbSink; readonly contractAddress?: string }
 ): Promise<Ledger8Runtime> => {

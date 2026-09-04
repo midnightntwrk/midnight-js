@@ -129,9 +129,13 @@ const createDeployTxOptions = <C extends Contract.Any>(
  * `./internal/ledger8-entry` is that path, and it is exercised directly — so this refusal is about
  * the result being unmaintainable, not about the pipeline being unfinished.
  *
- * Separately, a retained-era deploy against a POST-FORK head is refused with
- * `Ledger8DeployOnV9Error`: the retained era stays supported for calls against contracts already
- * on chain, and a new deployment has no such history to preserve.
+ * The refusal above is the ONLY one this arm makes, and it is unconditional: it is thrown before
+ * any head is read, so a caller never reaches an era-pairing decision here. In particular, do NOT
+ * branch on `Ledger8DeployOnV9Error` from this entry point — the pairing table does refuse
+ * `(ledger8, v9, deploy)` with it, but the only caller that asks the table a `'deploy'` question
+ * is the deliberately dormant `runLedger8Deploy`, so through `deployContract` that branch is never
+ * taken. It becomes reachable on the day this refusal is lifted, which is the day the era seam
+ * carries a maintenance authority.
  *
  * ARM ORDER IS LOAD-BEARING, in two ways, and both are pinned by
  * `src/test/typecheck/overloads.test-d.ts`. This arm is declared FIRST so no current-era arm can

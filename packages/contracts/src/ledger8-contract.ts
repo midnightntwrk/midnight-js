@@ -94,8 +94,8 @@
  *
  * There is deliberately no catch-all arm carrying {@link NEITHER_ERA_CONTRACT_MESSAGE}. Adding one
  * last would have made every mistyped current-era call report that the caller's perfectly ordinary
- * contract "is neither a 0.16- nor a 0.18-generated contract" — a false statement on the common
- * path — and an arm that is NOT last never renders at all, so it would only distort `ReturnType`
+ * contract belonged to neither era — a false statement on the common path — and an arm that is NOT
+ * last never renders at all, so it would only distort `ReturnType`
  * and `Parameters`. The guidance belongs in a thrown, typed error instead, which can carry full
  * remediation text where a compiler diagnostic cannot.
  *
@@ -433,12 +433,27 @@ export type AnyLedger8FoundContract = Ledger8FoundContract<Ledger8Contract>;
  * on one — while `typeof` still gives the type a string LITERAL member.
  * `src/test/typecheck/overloads.test-d.ts` pins the wording verbatim.
  *
- * Not re-exported from the package index: the error that carries it is the consumer surface, and
- * that error is not exported yet either — the entry points still refuse a retained-era request
- * before any pipeline runs, so nothing a consumer can reach throws it.
+ * Not re-exported from the package index, and that is a decision about THIS CONSTANT rather than
+ * about its reachability. The error carrying it is the consumer surface: `EraArtifactMismatchError`
+ * IS exported from the package index, and IS thrown on every era-dispatching entry point —
+ * `isLedger8Request` calls `pipelineEraOf`, which raises it for an object belonging to neither era.
+ * A consumer catches the error and reads `message`; nothing is served by also publishing the string
+ * for them to compare against, which would pin the wording as API.
  */
+// WHY THE VERSIONS READ THIS WAY. `0.16` is exact: the retained era is one frozen toolchain, and
+// the repo's retained fixtures are all `0.16.0`. The current side is a RANGE, not a number, because
+// it is still moving -- the current-era fixture used by the typecheck tests is `0.18.0-rc.1` while
+// the toolchain this release actually pins is `0.19.0-rc.0` (see the module documentation above),
+// and BOTH are accepted by the current-era arm. Naming either one alone is what made this text
+// contradict itself: a consumer on 0.19 was told their object was "neither a 0.16- nor a
+// 0.18-generated contract", which names two versions neither of which is theirs. The message is
+// about which ERA an object belongs to, so it names the eras and anchors each with the version that
+// opens it, and no future toolchain release invalidates it.
+// ONE string literal deliberately, never a `+` concatenation: TypeScript widens `'a' + 'b'` to
+// `string`, which would cost {@link NeitherContractShape} its string LITERAL member and break the
+// verbatim pin in `src/test/typecheck/overloads.test-d.ts`.
 export const NEITHER_ERA_CONTRACT_MESSAGE =
-  'Object is neither a 0.16- nor a 0.18-generated contract. See migration guide §window.';
+  'Object is neither a retained-era (compact-runtime 0.16) nor a current-era (compact-runtime 0.18 or later) contract. See migration guide §window.';
 
 /**
  * The type the catch-all arm of every era-dispatching entry point expects, so that an object

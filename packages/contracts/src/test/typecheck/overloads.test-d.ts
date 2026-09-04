@@ -328,7 +328,7 @@ describe('an object belonging to neither era is refused by both eras', () => {
   // wording that was reviewed. `../current-era-diagnostic.test.ts` is the companion, and pins the
   // consequence of the arrangement: that a mistyped current-era call still names its real cause.
   it('carries the migration-guide message verbatim, so a reword cannot pass unnoticed', () => {
-    expectTypeOf<NeitherContractShape['__error']>().toEqualTypeOf<'Object is neither a 0.16- nor a 0.18-generated contract. See migration guide §window.'>();
+    expectTypeOf<NeitherContractShape['__error']>().toEqualTypeOf<'Object is neither a retained-era (compact-runtime 0.16) nor a current-era (compact-runtime 0.18 or later) contract. See migration guide §window.'>();
   });
 
   it('keeps the message and the named shape in step', () => {
@@ -337,7 +337,7 @@ describe('an object belonging to neither era is refused by both eras', () => {
   });
 
   it('does not match the named neither-era shape', () => {
-    // @ts-expect-error - neither a 0.16- nor a 0.18-generated contract
+    // @ts-expect-error - neither a retained-era nor a current-era contract
     const neither: NeitherEraContractOptions = { compiledContract: neitherShapeContract };
     expectTypeOf(neither).toMatchTypeOf<NeitherEraContractOptions>();
   });
@@ -351,7 +351,7 @@ describe('an object belonging to neither era is refused by both eras', () => {
     // A GUARD, not a driver: this call fails against the current-era arms whatever the retained-era
     // arm does, so the directive stays "used" either way. The four assertions above are what
     // actually discriminate.
-    // @ts-expect-error - neither a 0.16- nor a 0.18-generated contract
+    // @ts-expect-error - neither a retained-era nor a current-era contract
     submitCallTx(providers016, { compiledContract: neitherShapeContract, contractAddress, circuitId: 'increment' });
   });
 });

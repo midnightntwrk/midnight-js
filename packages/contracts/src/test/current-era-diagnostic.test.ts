@@ -33,7 +33,7 @@ import { NEITHER_ERA_CONTRACT_MESSAGE } from '../ledger8-contract';
 //
 // It is also the reason there is no catch-all arm carrying {@link NEITHER_ERA_CONTRACT_MESSAGE}: an
 // arm placed last renders on EVERY failed call, so a mistyped current-era call would have been told
-// its perfectly ordinary contract "is neither a 0.16- nor a 0.18-generated contract" and pointed at
+// its perfectly ordinary contract belonged to neither era and pointed at
 // a migration guide. The last assertion here is the guard against that returning: the message must
 // appear nowhere in what the compiler prints for these four calls.
 //

@@ -387,6 +387,16 @@ export interface SubmittedOperation {
 // so anything that repeats the operation has to come second. Both also NAME the
 // thing to check, because "verify it did not finalize" is not an instruction a
 // caller with several operations in flight can act on otherwise.
+//
+// Only the `call` arm is reachable in production today. It is driven through
+// `submitCallTx`, and covered there. The `deploy` arm is DORMANT with
+// `runLedger8Deploy`: `kind: 'deploy'` is set at exactly one place, inside that
+// function, and no entry point invokes it -- `deployContract`'s retained arm
+// refuses unconditionally with `LEDGER8_DEPLOY_UNMAINTAINABLE` before any head
+// is read. The text is written and tested against that internal function so it
+// is correct on the day the deploy arm is enabled, which is the day the era
+// seam carries a maintenance authority; it is NOT a message a consumer can
+// provoke through this package's public surface now.
 const STALE_HEAD_MESSAGES: Readonly<
   Record<StaleHeadOperationKind, (operation: SubmittedOperation, freshEra: LedgerVersion) => string>
 > = Object.freeze({
